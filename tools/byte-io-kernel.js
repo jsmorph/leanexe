@@ -53,7 +53,7 @@ function certificates(bytes, nestedText, project = "ByteIO") {
   const rows = [`section,10,${code.start},${code.payload},${code.items},${code.count},${code.end}`,
     ...code.entries.map(e => `item,10,${e.index},${e.start},${e.end}`)];
   for (const [name, source] of decoderCertificates(project, bytes.length, nestedText, rows.join("\n"))) {
-    if (!/^ArtifactCode\d+$/.test(name) && name !== "ArtifactSection10") continue;
+    if (!/^ArtifactCode\d+(?:Sequences\d+)?$/.test(name) && name !== "ArtifactSection10") continue;
     outputs.set(name, source
       .replaceAll("artifactBytes_data", "ByteLookup.bytes_data")
       .replaceAll("artifactBytes_size", "ByteLookup.bytes_size")

@@ -11,17 +11,17 @@ def invalidEntryBumpBody : Wasm.Program :=
   | _ => []
 
 def invalidEntryAllocationRegion : Wasm.Program :=
-  [.constI64 0, .localSet 48, .constI64 0, .localSet 44, .globalGet 1, .localSet 45] ++
-    search 34 1 ++ [.localGet 48, .constI64 0, .eqI64, .iff 0 0 invalidEntryBumpBody []] ++
-    [.globalGet 2, .constI64 1, .addI64, .globalSet 2, .localGet 48, .localSet 39]
+  [.constI64 0, .localSet 46, .constI64 0, .localSet 42, .globalGet 1, .localSet 43] ++
+    search 32 1 ++ [.localGet 46, .constI64 0, .eqI64, .iff 0 0 invalidEntryBumpBody []] ++
+    [.globalGet 2, .constI64 1, .addI64, .globalSet 2, .localGet 46, .localSet 37]
 
 theorem invalid_entry_capacity_shape : gridInvalidBody.take 18 =
-    FixedArrayCapacity.constantProgram 1 1 43 := rfl
+    FixedArrayCapacity.constantProgram 1 1 41 := rfl
 
 theorem invalid_entry_allocation_shape : (gridInvalidBody.drop 18).take 17 = invalidEntryAllocationRegion := rfl
 
 theorem invalid_entry_bump_header_shape : invalidEntryBumpBody =
-    invalidEntryBumpBody.take 28 ++ allocationHeaderProgram 48 43 := rfl
+    invalidEntryBumpBody.take 28 ++ allocationHeaderProgram 46 41 := rfl
 
 #print axioms invalid_entry_capacity_shape
 #print axioms invalid_entry_allocation_shape

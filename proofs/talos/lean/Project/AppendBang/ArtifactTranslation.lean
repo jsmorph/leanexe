@@ -1,5 +1,5 @@
 import Project.AppendBang.ArtifactValidation
-import Project.AppendBang.Program
+import Project.AppendBang.FrozenProgram
 import Project.Artifact.Binary.Proof.Translate
 import Project.Artifact.Binary.Proof.Validate
 
@@ -12,31 +12,31 @@ open Wasm.Binary
 
 theorem function0_eq :
     Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!) =
-      Project.AppendBang.func0Def := by
+      Project.AppendBang.Frozen.func0Def := by
   rfl
 
 theorem function1_eq :
     Translation.functionToTalos Cache.raw 1 (Cache.raw.codes[1]!) =
-      Project.AppendBang.func1Def := by
+      Project.AppendBang.Frozen.func1Def := by
   rfl
 
 theorem function2_eq :
     Translation.functionToTalos Cache.raw 2 (Cache.raw.codes[2]!) =
-      Project.AppendBang.func2Def := by
+      Project.AppendBang.Frozen.func2Def := by
   rfl
 
 theorem function3_eq :
     Translation.functionToTalos Cache.raw 3 (Cache.raw.codes[3]!) =
-      Project.AppendBang.func3Def := by
+      Project.AppendBang.Frozen.func3Def := by
   rfl
 
 theorem function4_eq :
     Translation.functionToTalos Cache.raw 4 (Cache.raw.codes[4]!) =
-      Project.AppendBang.func4Def := by
+      Project.AppendBang.Frozen.func4Def := by
   rfl
 
 theorem functions_eq : Translation.functions Cache.raw =
-    Project.AppendBang.«module».funcs := by
+    Project.AppendBang.Frozen.«module».funcs := by
   change
     [
      Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!),
@@ -45,11 +45,11 @@ theorem functions_eq : Translation.functions Cache.raw =
      Translation.functionToTalos Cache.raw 3 (Cache.raw.codes[3]!),
      Translation.functionToTalos Cache.raw 4 (Cache.raw.codes[4]!)
     ] =
-    [Project.AppendBang.func0Def, Project.AppendBang.func1Def, Project.AppendBang.func2Def, Project.AppendBang.func3Def, Project.AppendBang.func4Def]
+    [Project.AppendBang.Frozen.func0Def, Project.AppendBang.Frozen.func1Def, Project.AppendBang.Frozen.func2Def, Project.AppendBang.Frozen.func3Def, Project.AppendBang.Frozen.func4Def]
   rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq]
 
 def executionCache : Wasm.Module :=
-  Project.AppendBang.«module»
+  Project.AppendBang.Frozen.«module»
 
 theorem translation_cache_eq :
     Translation.module Cache.raw = executionCache := by

@@ -6,10 +6,8 @@ namespace Project.TinyGpt2Checked.Spec
 open Wasm Project.TinyGpt2 Project.ProofKit FixedArrayFold Project.TinyGpt2Hidden.Spec
 
 def outputLogitProgram : Wasm.Program :=
-  [.localGet 51,
+  [.localGet 49,
    .localSet 26,
-   .constI64 0,
-   .localSet 39,
    .localGet 25,
    .localSet 28,
    .localGet 28,
@@ -38,10 +36,10 @@ def outputLogitProgram : Wasm.Program :=
    .call 83,
    .localSet 36]
 
-theorem output_logit_shape : (outputBody.drop 4).take 31 = outputLogitProgram := rfl
+theorem output_logit_shape : (outputBody.drop 4).take 29 = outputLogitProgram := rfl
 
 def outputLogitFrame (frame : Locals) (owner pointer output token value : UInt64) (x : Row) : Locals :=
-  [(26, token), (39, 0), (28, output), (37, output), (29, owner), (30, pointer),
+  [(26, token), (28, output), (37, output), (29, owner), (30, pointer),
     (31, x.x0), (32, x.x1), (33, x.x2), (34, x.x3), (35, token), (36, value)].foldl
       (fun current assignment => resultFrame current assignment.1 assignment.2) frame
 
@@ -55,11 +53,11 @@ theorem outputLogitFrame_saved {frame : Locals} {owner pointer empty : UInt64} {
     | refine OutputSaved.result ?_ _ _ (by decide) (by decide) (by decide)
 
 theorem outputLogitFrame_get (frame : Locals) (owner pointer output token value : UInt64) (x : Row)
-    (hParams : frame.params.length = 6) (hLocals : frame.locals.length = 68) :
+    (hParams : frame.params.length = 6) (hLocals : frame.locals.length = 66) :
     let next := outputLogitFrame frame owner pointer output token value x
     next.get 36 = some (.i64 value) ∧ next.get 37 = some (.i64 output) ∧
     next.get 24 = frame.get 24 ∧ next.get 25 = frame.get 25 ∧
-    next.get 51 = frame.get 51 ∧ next.get 72 = frame.get 72 := by
+    next.get 49 = frame.get 49 ∧ next.get 70 = frame.get 70 := by
   simp [outputLogitFrame, List.foldl, resultFrame, Locals.get, hParams, hLocals,
     List.getElem?_set]
 
@@ -67,13 +65,13 @@ theorem output_logit_spec (env : HostEnv Unit) (initial : Store Unit) (frame : L
     (owner pointer empty output token : UInt64) (weights : Array UInt64) (x : Row)
     (hSaved : OutputSaved owner pointer empty x frame)
     (hOutput : frame.get 25 = some (.i64 output))
-    (hToken : frame.get 51 = some (.i64 token))
+    (hToken : frame.get 49 = some (.i64 token))
     (hInput : UInt64Array.At initial pointer weights) (hSize : 2488 ≤ weights.size)
     (hBound : token.toNat < 256)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp module rest Q initial
       (outputLogitFrame frame owner pointer output token (logit weights x token) x) env) :
-    wp module ((outputBody.drop 4).take 31 ++ rest) Q initial frame env := by
+    wp module ((outputBody.drop 4).take 29 ++ rest) Q initial frame env := by
   have hPointer : frame.params[1]? = some (.i64 pointer) := by
     simpa only [Locals.get, hSaved.params, Nat.reduceLT, ↓reduceIte] using hSaved.pointer
   have hOwner : frame.params[0]? = some (.i64 owner) := by
@@ -88,7 +86,7 @@ theorem output_logit_spec (env : HostEnv Unit) (initial : Store Unit) (frame : L
     hSaved.params (by rw [hSaved.locals]; decide) hSaved.x3
   have hOut := Frame.internal_getElem?_of_get frame 6 19 (.i64 output)
     hSaved.params (by rw [hSaved.locals]; decide) hOutput
-  have hTok := Frame.internal_getElem?_of_get frame 6 45 (.i64 token)
+  have hTok := Frame.internal_getElem?_of_get frame 6 43 (.i64 token)
     hSaved.params (by rw [hSaved.locals]; decide) hToken
   rw [output_logit_shape]
   unfold outputLogitProgram

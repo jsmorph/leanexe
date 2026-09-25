@@ -188,7 +188,7 @@ function main() {
   fs.mkdirSync("tmp", { recursive: true });
   const output = fs.mkdtempSync(path.join("tmp", "packed-"));
   const modules = {};
-  for (const entry of ["readWord", "makeWords", "shifted", "generateRead",
+  for (const entry of ["readWord", "makeWords", "makeBytes", "shifted", "generateRead",
     "generateStats", "temporarySum", "generateSum", "generatedWithCall",
     "repeatedOwnedSum", "repeatedBorrowedSum", "repeatedPairSum", "publicPair"]) {
     modules[entry] = path.join(output, `${entry}.wasm`);
@@ -228,6 +228,13 @@ function main() {
     assert.match(result.stderr, /unreachable/);
   }
   for (const size of [0, 1, 17, 1024]) {
+    const byteExpected = Buffer.from(Array.from({ length: size }, (_, i) => (240 + i) & 255));
+    const byteStats = host.callStats(modules.makeBytes, "makeBytes", "bytes",
+      [host.i64(size), host.i64(240)]);
+    assert.deepEqual(Buffer.from(byteStats.result, "hex"), byteExpected);
+    assert.equal(byteStats.allocs, 1n, `one allocation for ${size} bytes`);
+    nativeExpressions.push(`(${moduleName}.makeBytes ${size} 240).data.toList.map UInt8.toNat`);
+    expectedNative.push([...byteExpected]);
     const offset = 0xfffffff0;
     const expected = Buffer.alloc(size * 4);
     for (let i = 0; i < size; i++) expected.writeUInt32LE((offset + i) >>> 0, i * 4);

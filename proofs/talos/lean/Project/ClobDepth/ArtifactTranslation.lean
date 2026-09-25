@@ -1,5 +1,5 @@
 import Project.ClobDepth.ArtifactValidation
-import Project.ClobDepth.Program
+import Project.ClobDepth.FrozenProgram
 import Project.Artifact.Binary.Proof.Translate
 import Project.Artifact.Binary.Proof.Validate
 
@@ -12,66 +12,66 @@ open Wasm.Binary
 
 theorem function0_eq :
     Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!) =
-      Project.ClobDepth.func0Def := by
+      Project.ClobDepth.Frozen.func0Def := by
   rfl
 
 theorem function1_eq :
     Translation.functionToTalos Cache.raw 1 (Cache.raw.codes[1]!) =
-      Project.ClobDepth.func1Def := by
+      Project.ClobDepth.Frozen.func1Def := by
   rfl
 
 theorem function2_eq :
     Translation.functionToTalos Cache.raw 2 (Cache.raw.codes[2]!) =
-      Project.ClobDepth.func2Def := by
+      Project.ClobDepth.Frozen.func2Def := by
   rfl
 
 theorem function3_eq :
     Translation.functionToTalos Cache.raw 3 (Cache.raw.codes[3]!) =
-      Project.ClobDepth.func3Def := by
+      Project.ClobDepth.Frozen.func3Def := by
   rfl
 
 theorem function4_eq :
     Translation.functionToTalos Cache.raw 4 (Cache.raw.codes[4]!) =
-      Project.ClobDepth.func4Def := by
+      Project.ClobDepth.Frozen.func4Def := by
   rfl
 
 theorem function5_eq :
     Translation.functionToTalos Cache.raw 5 (Cache.raw.codes[5]!) =
-      Project.ClobDepth.func5Def := by
+      Project.ClobDepth.Frozen.func5Def := by
   rfl
 
 theorem function6_eq :
     Translation.functionToTalos Cache.raw 6 (Cache.raw.codes[6]!) =
-      Project.ClobDepth.func6Def := by
+      Project.ClobDepth.Frozen.func6Def := by
   rfl
 
 theorem function7_eq :
     Translation.functionToTalos Cache.raw 7 (Cache.raw.codes[7]!) =
-      Project.ClobDepth.func7Def := by
+      Project.ClobDepth.Frozen.func7Def := by
   rfl
 
 theorem function8_eq :
     Translation.functionToTalos Cache.raw 8 (Cache.raw.codes[8]!) =
-      Project.ClobDepth.func8Def := by
+      Project.ClobDepth.Frozen.func8Def := by
   rfl
 
 theorem function9_eq :
     Translation.functionToTalos Cache.raw 9 (Cache.raw.codes[9]!) =
-      Project.ClobDepth.func9Def := by
+      Project.ClobDepth.Frozen.func9Def := by
   rfl
 
 theorem function10_eq :
     Translation.functionToTalos Cache.raw 10 (Cache.raw.codes[10]!) =
-      Project.ClobDepth.func10Def := by
+      Project.ClobDepth.Frozen.func10Def := by
   rfl
 
 theorem function11_eq :
     Translation.functionToTalos Cache.raw 11 (Cache.raw.codes[11]!) =
-      Project.ClobDepth.func11Def := by
+      Project.ClobDepth.Frozen.func11Def := by
   rfl
 
 theorem functions_eq : Translation.functions Cache.raw =
-    Project.ClobDepth.«module».funcs := by
+    Project.ClobDepth.Frozen.«module».funcs := by
   change
     [
      Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!),
@@ -87,11 +87,11 @@ theorem functions_eq : Translation.functions Cache.raw =
      Translation.functionToTalos Cache.raw 10 (Cache.raw.codes[10]!),
      Translation.functionToTalos Cache.raw 11 (Cache.raw.codes[11]!)
     ] =
-    [Project.ClobDepth.func0Def, Project.ClobDepth.func1Def, Project.ClobDepth.func2Def, Project.ClobDepth.func3Def, Project.ClobDepth.func4Def, Project.ClobDepth.func5Def, Project.ClobDepth.func6Def, Project.ClobDepth.func7Def, Project.ClobDepth.func8Def, Project.ClobDepth.func9Def, Project.ClobDepth.func10Def, Project.ClobDepth.func11Def]
+    [Project.ClobDepth.Frozen.func0Def, Project.ClobDepth.Frozen.func1Def, Project.ClobDepth.Frozen.func2Def, Project.ClobDepth.Frozen.func3Def, Project.ClobDepth.Frozen.func4Def, Project.ClobDepth.Frozen.func5Def, Project.ClobDepth.Frozen.func6Def, Project.ClobDepth.Frozen.func7Def, Project.ClobDepth.Frozen.func8Def, Project.ClobDepth.Frozen.func9Def, Project.ClobDepth.Frozen.func10Def, Project.ClobDepth.Frozen.func11Def]
   rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq, function5_eq, function6_eq, function7_eq, function8_eq, function9_eq, function10_eq, function11_eq]
 
 def executionCache : Wasm.Module :=
-  Project.ClobDepth.«module»
+  Project.ClobDepth.Frozen.«module»
 
 theorem translation_cache_eq :
     Translation.module Cache.raw = executionCache := by

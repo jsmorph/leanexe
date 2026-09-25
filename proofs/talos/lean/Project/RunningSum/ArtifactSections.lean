@@ -10,8 +10,8 @@ set_option maxRecDepth 131072
 set_option cbv.maxSteps 1000000
 
 theorem types_parsed :
-    Binary.parseSection 1 funcType { bytes, pos := 8, limit := 16469 } =
-      .ok (raw.core.types, { bytes, pos := 165, limit := 16469 }) := by cbv
+    Binary.parseSection 1 funcType { bytes, pos := 8, limit := 16553 } =
+      .ok (raw.core.types, { bytes, pos := 165, limit := 16553 }) := by cbv
 
 #print axioms types_parsed
 
@@ -81,44 +81,44 @@ theorem imports_vector :
   · decide
 
 theorem imports_sized :
-    sized (vector Binary.importEntry) { bytes, pos := 166, limit := 16469 } =
-      .ok (raw.imports, { bytes, pos := 393, limit := 16469 }) := by
+    sized (vector Binary.importEntry) { bytes, pos := 166, limit := 16553 } =
+      .ok (raw.imports, { bytes, pos := 393, limit := 16553 }) := by
   refine sized_eq_of_parts (size := 225)
-    (payload := { bytes, pos := 168, limit := 16469 }) (finish := { bytes, pos := 393, limit := 393 }) ?_ ?_ ?_ imports_vector ?_
+    (payload := { bytes, pos := 168, limit := 16553 }) (finish := { bytes, pos := 393, limit := 393 }) ?_ ?_ ?_ imports_vector ?_
   · cbv
   · decide
   · cbv
   · rfl
 
 theorem imports_parsed :
-    Binary.parseSection 2 Binary.importEntry { bytes, pos := 165, limit := 16469 } =
-      .ok (raw.imports, { bytes, pos := 393, limit := 16469 }) := by
-  refine Binary.parseSection_eq_of_parts (payload := { bytes, pos := 166, limit := 16469 }) ?_ imports_sized
+    Binary.parseSection 2 Binary.importEntry { bytes, pos := 165, limit := 16553 } =
+      .ok (raw.imports, { bytes, pos := 393, limit := 16553 }) := by
+  refine Binary.parseSection_eq_of_parts (payload := { bytes, pos := 166, limit := 16553 }) ?_ imports_sized
   cbv
 
 #print axioms imports_parsed
 
 theorem functions_parsed :
-    Binary.parseSection 3 Leb.u32 { bytes, pos := 393, limit := 16469 } =
-      .ok (raw.core.functionTypeIndices, { bytes, pos := 410, limit := 16469 }) := by cbv
+    Binary.parseSection 3 Leb.u32 { bytes, pos := 393, limit := 16553 } =
+      .ok (raw.core.functionTypeIndices, { bytes, pos := 410, limit := 16553 }) := by cbv
 
 #print axioms functions_parsed
 
 theorem memories_parsed :
-    Binary.parseSection 5 memoryType { bytes, pos := 410, limit := 16469 } =
-      .ok (raw.core.memories, { bytes, pos := 415, limit := 16469 }) := by cbv
+    Binary.parseSection 5 memoryType { bytes, pos := 410, limit := 16553 } =
+      .ok (raw.core.memories, { bytes, pos := 415, limit := 16553 }) := by cbv
 
 #print axioms memories_parsed
 
 theorem globals_parsed :
-    Binary.parseSection 6 global { bytes, pos := 415, limit := 16469 } =
-      .ok (raw.core.globals, { bytes, pos := 449, limit := 16469 }) := by cbv
+    Binary.parseSection 6 global { bytes, pos := 415, limit := 16553 } =
+      .ok (raw.core.globals, { bytes, pos := 449, limit := 16553 }) := by cbv
 
 #print axioms globals_parsed
 
 theorem exports_parsed :
-    Binary.parseSection 7 exportEntry { bytes, pos := 449, limit := 16469 } =
-      .ok (raw.core.exports, { bytes, pos := 470, limit := 16469 }) := by cbv
+    Binary.parseSection 7 exportEntry { bytes, pos := 449, limit := 16553 } =
+      .ok (raw.core.exports, { bytes, pos := 470, limit := 16553 }) := by cbv
 
 #print axioms exports_parsed
 

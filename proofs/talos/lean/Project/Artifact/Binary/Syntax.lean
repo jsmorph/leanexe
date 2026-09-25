@@ -124,6 +124,10 @@ inductive Instr where
   | f64Div
   | f32Sqrt
   | f64Sqrt
+  | f32Nearest
+  | i32TruncSatF32S
+  | f32ConvertI32S
+  | i32Extend8S
   | i32ReinterpretF32
   | i64ReinterpretF64
   | f32ReinterpretI32

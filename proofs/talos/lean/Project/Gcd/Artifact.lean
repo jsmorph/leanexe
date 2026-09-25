@@ -1,5 +1,5 @@
 import Project.Gcd.ArtifactDecode
-import Project.Gcd.Program
+import Project.Gcd.FrozenProgram
 import Project.Artifact.Binary.Evidence
 
 set_option maxRecDepth 1048576

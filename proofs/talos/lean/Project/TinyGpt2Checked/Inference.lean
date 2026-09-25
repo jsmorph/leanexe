@@ -41,7 +41,11 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
         UInt64Array.At final pointer weights ∧
         final.mem.pages = initial.mem.pages ∧
         (∀ address : Nat, address < start → final.mem.bytes address = initial.mem.bytes address) ∧
-        final = { initial with mem := final.mem, globals := final.globals }) := by
+        final = { initial with mem := final.mem, globals := final.globals } ∧
+        ∃ head releases frees : UInt64,
+          final.globals.globals[1]? = some (.i64 head) ∧
+          final.globals.globals[4]? = some (.i64 releases) ∧
+          final.globals.globals[5]? = some (.i64 frees)) := by
   have hZeroTop := top_mono start (show 0 ≤ 256 by decide)
   have hZeroFit := hZeroTop.trans_lt hFit
   have hZeroMemory := hZeroTop.trans hMemory
@@ -113,8 +117,12 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
     UInt64Array.At final (node start 256).root (infer weights t0 t1 t2 t3) ∧
     UInt64Array.At final pointer weights ∧ final.mem.pages = initial.mem.pages ∧
     (∀ address : Nat, address < start → final.mem.bytes address = initial.mem.bytes address) ∧
-    final = { initial with mem := final.mem, globals := final.globals }
-  refine ⟨rfl, ?_, ?_, hFinalPages, hFinalBytes, ?_⟩
+    final = { initial with mem := final.mem, globals := final.globals } ∧
+    ∃ head releases frees : UInt64,
+      final.globals.globals[1]? = some (.i64 head) ∧
+      final.globals.globals[4]? = some (.i64 releases) ∧
+      final.globals.globals[5]? = some (.i64 frees)
+  refine ⟨rfl, ?_, ?_, hFinalPages, hFinalBytes, ?_, ?_⟩
   · simpa only [infer_eq_logitPrefix] using hExit.1
   · apply hWeights.frame hFinalPages.ge
     intro address _ hAddress
@@ -125,6 +133,8 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
       _ = { initial with mem := final.mem, globals := final.globals } := by
         dsimp only [prepared]
         rw [OutputMemory.prepare_store]
+  · refine ⟨(node start 0).root, releases' + 1, frees' + 1, ?_, ?_, ?_⟩ <;>
+      simp [final, FixedArrayRelease.store, hCurrentGlobals, OutputMemory.globals]
 
 #print axioms infer_exact
 end Project.TinyGpt2Checked.Spec

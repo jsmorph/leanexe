@@ -54,3 +54,5 @@ exported `_start` wrapper, committed output, released buffer, and exit status ze
 kernel-checked evaluation and lifts finite execution to Talos's fuel-independent
 termination statement. The error cases state both the committed prefix and
 remaining input, as well as the allocation and free counts.
+
+The [instruction-evaluation lemmas](../talos/lean/Project/ProofKit/InterpreterEvaluation.lean) provide kernel-checked equations for integer, control, and memory instructions.  Finite execution checks use those equations to avoid repeatedly expanding the full interpreter dispatcher.

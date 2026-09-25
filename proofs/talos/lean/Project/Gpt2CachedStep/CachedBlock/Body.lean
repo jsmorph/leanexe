@@ -55,27 +55,10 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     weights input cache layer position frame hHeap hWeights hInput hCache hWeightsProtected hInputProtected
     hCacheProtected hLayer hPosition hInputSize hCacheSize hExtents hResources hPages hParams hLocals hValues hTyped
   intro store3 frame3 hFront3 hHeap3 hOwners3 hBindings3 hFrame3 hPages3 hCap3
-  let aliases3 : List PackedReleaseMany.Item :=
-    [⟨21, normalizedNode heap, values.normalized⟩,
-     ⟨24, normalizedNode heap, values.normalized⟩,
-     ⟨30, normalizedNode heap, values.normalized⟩,
-     ⟨38, qkvNode heap, values.qkv⟩,
-     ⟨41, qkvNode heap, values.qkv⟩,
-     ⟨47, qkvNode heap, values.qkv⟩,
-     ⟨52, attentionNode heap position, values.mixed⟩,
-     ⟨55, attentionNode heap position, values.mixed⟩]
-  have hAliases3 : Bindings aliases3 frame3 := by
-    rcases hFront3 with ⟨⟨⟨hp, hl, _, _, hn, _, _, hnc, _, _, _⟩,
-      hq, _, _, hqc, _, _, hna⟩, ha, _, _, hac, _, _, hqa⟩
-    intro item hItem
-    simp only [aliases3, List.mem_cons, List.not_mem_nil, or_false] at hItem
-    rcases hItem with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
-      simp only [Locals.get, hp, parameters, List.length_cons, List.length_nil,
-        hl, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, reduceIte] <;> assumption
   let items3 := frontItems heap position values
   have hOwned3 := hOwners3.owned ⟨52, attentionNode heap position, values.mixed⟩ (List.mem_cons_self)
   rcases hFront3.1.1 with ⟨hParams3, hLocals3, hValues3, hBase3, _, _, _, _, _, _, hTyped3⟩
-  rcases hFront3.2 with ⟨_, _, _, hCopyOwner3, hCopyPtr3, hCopySize3, _⟩
+  rcases hFront3.2 with ⟨_, _, _, hCopyOwner3, hCopyPtr3, hCopySize3⟩
   have hResource4 : LayerNorm.AllocationFits (attentionHeap heap position) projectionNeed
       (store3.memoryCap «module» 0) := by
     rw [hCap3]
@@ -86,20 +69,13 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (hFrame3.packed hWeightsProtected hWeights) hOwned3.buffer.values
     (hFrame3.protects _ _ hWeightsProtected) hOwned3.payload_protects hSizes.mixed hExtents.projection
     hResource4 hPages3 hParams3 hLocals3 hValues3 hBase3 hTyped3 hCopyOwner3 hCopyPtr3 hCopySize3
-  intro store4 frame4 hState4 hPassed4 hHeap4 hOwned4 hStep4 hPages4 hStepCap4
+  intro store4 frame4 hState4 hHeap4 hOwned4 hStep4 hPages4 hStepCap4
   have hFrame4 := hFrame3.trans hStep4
   have hCap4 := hStepCap4.trans hCap3
   have hFresh4 : (attentionHeap heap position).FreshNode (projectionNode heap position) :=
     (attentionHeap heap position).freshNode_allocated projectionNeed (fun h => (hResources.projection h).1.le)
   let item4 : PackedReleaseMany.Item := ⟨69, projectionNode heap position, values.projected⟩
   let items4 := item4 :: items3
-  let copyAlias4 : PackedReleaseMany.Item := { item4 with ownerLocal := 72 }
-  let argumentAlias4 : PackedReleaseMany.Item := ⟨61, attentionNode heap position, values.mixed⟩
-  let aliases4 := copyAlias4 :: item4 :: argumentAlias4 :: aliases3
-  have hAliases4 : Bindings aliases4 frame4 :=
-    (((hState4.bindings hAliases3 hParams3 hLocals3 (by decide)
-      (by simp [aliases3, params, parameters])).cons argumentAlias4 hPassed4).cons item4
-        (hState4.owner_get (by decide))).cons copyAlias4 (hState4.copy_get (by decide))
   have hOwners4 : Owners heap (projectionHeap heap position) store4 items4 :=
     hOwners3.cons hFrame3 hStep4 hHeap4 item4 hOwned4 hFresh4
   have hBindings4 : Bindings items4 frame4 :=
@@ -119,20 +95,13 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (hFrame4.packed hInputProtected hInput) hOwned4.buffer.values
     (hFrame4.protects _ _ hInputProtected) hOwned4.payload_protects hInputSize hSizes.projected
     hResource5 hPages4 hParams4 hLocals4 hValues4 hTyped4 hCopyOwner4 hCopyPtr4 hCopySize4
-  intro store5 frame5 hState5 hPassed5 hHeap5 hOwned5 hStep5 hPages5 hStepCap5
+  intro store5 frame5 hState5 hHeap5 hOwned5 hStep5 hPages5 hStepCap5
   have hFrame5 := hFrame4.trans hStep5
   have hCap5 := hStepCap5.trans hCap4
   have hFresh5 : (projectionHeap heap position).FreshNode (residualNode heap position) :=
     (projectionHeap heap position).freshNode_allocated projectionNeed (fun h => (hResources.residual h).1.le)
   let item5 : PackedReleaseMany.Item := ⟨81, residualNode heap position, values.residual⟩
   let items5 := item5 :: items4
-  let copyAlias5 : PackedReleaseMany.Item := { item5 with ownerLocal := 84 }
-  let argumentAlias5 : PackedReleaseMany.Item := ⟨78, projectionNode heap position, values.projected⟩
-  let aliases5 := copyAlias5 :: item5 :: argumentAlias5 :: aliases4
-  have hAliases5 : Bindings aliases5 frame5 :=
-    (((hState5.bindings hAliases4 hParams4 hLocals4 (by decide)
-      (by simp [aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters])).cons argumentAlias5 hPassed5).cons item5
-        (hState5.owner_get (by decide))).cons copyAlias5 (hState5.copy_get (by decide))
   have hOwners5 : Owners heap (residualHeap heap position) store5 items5 :=
     hOwners4.cons hFrame4 hStep5 hHeap5 item5 hOwned5 hFresh5
   have hBindings5 : Bindings items5 frame5 :=
@@ -152,20 +121,13 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (hFrame5.packed hWeightsProtected hWeights) hOwned5.buffer.values
     (hFrame5.protects _ _ hWeightsProtected) hOwned5.payload_protects hSizes.residual hExtents.normalized2
     hResource6 hPages5 hParams5 hLocals5 hValues5 hBase5 hTyped5 hCopyOwner5 hCopyPtr5 hCopySize5
-  intro store6 frame6 hState6 hPassed6 hHeap6 hOwned6 hStep6 hPages6 hStepCap6
+  intro store6 frame6 hState6 hHeap6 hOwned6 hStep6 hPages6 hStepCap6
   have hFrame6 := hFrame5.trans hStep6
   have hCap6 := hStepCap6.trans hCap5
   have hFresh6 : (residualHeap heap position).FreshNode (normalized2Node heap position) :=
     LayerNorm.outputNode_fresh hResources.normalized2
   let item6 : PackedReleaseMany.Item := ⟨96, normalized2Node heap position, values.normalized2⟩
   let items6 := item6 :: items5
-  let copyAlias6 : PackedReleaseMany.Item := { item6 with ownerLocal := 99 }
-  let argumentAlias6 : PackedReleaseMany.Item := ⟨90, residualNode heap position, values.residual⟩
-  let aliases6 := copyAlias6 :: item6 :: argumentAlias6 :: aliases5
-  have hAliases6 : Bindings aliases6 frame6 :=
-    (((hState6.bindings hAliases5 hParams5 hLocals5 (by decide)
-      (by simp [aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters])).cons argumentAlias6 hPassed6).cons item6
-        (hState6.owner_get (by decide))).cons copyAlias6 (hState6.copy_get (by decide))
   have hOwners6 : Owners heap (normalized2Heap heap position) store6 items6 :=
     hOwners5.cons hFrame5 hStep6 hHeap6 item6 hOwned6 hFresh6
   have hBindings6 : Bindings items6 frame6 :=
@@ -185,20 +147,13 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (hFrame6.packed hWeightsProtected hWeights) hOwned6.buffer.values
     (hFrame6.protects _ _ hWeightsProtected) hOwned6.payload_protects hSizes.normalized2 hExtents.expanded
     hResource7 hPages6 hParams6 hLocals6 hValues6 hBase6 hTyped6 hCopyOwner6 hCopyPtr6 hCopySize6
-  intro store7 frame7 hState7 hPassed7 hHeap7 hOwned7 hStep7 hPages7 hStepCap7
+  intro store7 frame7 hState7 hHeap7 hOwned7 hStep7 hPages7 hStepCap7
   have hFrame7 := hFrame6.trans hStep7
   have hCap7 := hStepCap7.trans hCap6
   have hFresh7 : (normalized2Heap heap position).FreshNode (expandedNode heap position) :=
     (normalized2Heap heap position).freshNode_allocated expandedNeed (fun h => (hResources.expanded h).1.le)
   let item7 : PackedReleaseMany.Item := ⟨113, expandedNode heap position, values.expanded⟩
   let items7 := item7 :: items6
-  let copyAlias7 : PackedReleaseMany.Item := { item7 with ownerLocal := 116 }
-  let argumentAlias7 : PackedReleaseMany.Item := ⟨105, normalized2Node heap position, values.normalized2⟩
-  let aliases7 := copyAlias7 :: item7 :: argumentAlias7 :: aliases6
-  have hAliases7 : Bindings aliases7 frame7 :=
-    (((hState7.bindings hAliases6 hParams6 hLocals6 (by decide)
-      (by simp [aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters])).cons argumentAlias7 hPassed7).cons item7
-        (hState7.owner_get (by decide))).cons copyAlias7 (hState7.copy_get (by decide))
   have hOwners7 : Owners heap (expandedHeap heap position) store7 items7 :=
     hOwners6.cons hFrame6 hStep7 hHeap7 item7 hOwned7 hFresh7
   have hBindings7 : Bindings items7 frame7 :=
@@ -215,20 +170,13 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   apply activated_spec env store7 (expandedHeap heap position) params (expandedNode heap position).root
     values.expanded frame7 hHeap7 hOwned7.buffer.values hOwned7.payload_protects hSizes.expanded
     hResource8 hPages7 hParams7 rfl hLocals7 hValues7 hTyped7 hCopyOwner7 hCopyPtr7 hCopySize7
-  intro store8 frame8 hState8 hPassed8 hHeap8 hOwned8 hStep8 hPages8 hStepCap8
+  intro store8 frame8 hState8 hHeap8 hOwned8 hStep8 hPages8 hStepCap8
   have hFrame8 := hFrame7.trans hStep8
   have hCap8 := hStepCap8.trans hCap7
   have hFresh8 : (expandedHeap heap position).FreshNode (activatedNode heap position) :=
     (expandedHeap heap position).freshNode_allocated expandedNeed (fun h => (hResources.activated h).1.le)
   let item8 : PackedReleaseMany.Item := ⟨122, activatedNode heap position, values.activated⟩
   let items8 := item8 :: items7
-  let copyAlias8 : PackedReleaseMany.Item := { item8 with ownerLocal := 125 }
-  let argumentAlias8 : PackedReleaseMany.Item := ⟨119, expandedNode heap position, values.expanded⟩
-  let aliases8 := copyAlias8 :: item8 :: argumentAlias8 :: aliases7
-  have hAliases8 : Bindings aliases8 frame8 :=
-    (((hState8.bindings hAliases7 hParams7 hLocals7 (by decide)
-      (by simp [aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters])).cons argumentAlias8 hPassed8).cons item8
-        (hState8.owner_get (by decide))).cons copyAlias8 (hState8.copy_get (by decide))
   have hOwners8 : Owners heap (activatedHeap heap position) store8 items8 :=
     hOwners7.cons hFrame7 hStep8 hHeap8 item8 hOwned8 hFresh8
   have hBindings8 : Bindings items8 frame8 :=
@@ -255,10 +203,6 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (activatedHeap heap position).freshNode_allocated projected2Need (fun h => (hResources.projected2 h).1.le)
   let item9 : PackedReleaseMany.Item := ⟨139, projected2Node heap position, values.projected2⟩
   let items9 := item9 :: items8
-  let aliases9 := item9 :: aliases8
-  have hAliases9 : Bindings aliases9 frame9 :=
-    (hState9.bindings hAliases8 hParams8 hLocals8 (by decide)
-      (by simp [aliases8, copyAlias8, argumentAlias8, item8, aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters])).cons item9 (hState9.owner_get (by decide))
   have hOwners9 : Owners heap (projected2Heap heap position) store9 items9 :=
     hOwners8.cons hFrame8 hStep9 hHeap9 item9 hOwned9 hFresh9
   have hBindings9 : Bindings items9 frame9 :=
@@ -293,9 +237,6 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     hState10.bindings hBindings9 hParams9 hLocals9 (by decide)
       (by simp [items9, items8, items7, items6, items5, items4, items3,
         item9, item8, item7, item6, item5, item4, frontItems, params, parameters])
-  have hAliases10 : Bindings aliases9 frame10 :=
-    hState10.bindings hAliases9 hParams9 hLocals9 (by decide)
-      (by simp [aliases9, item9, aliases8, copyAlias8, argumentAlias8, item8, aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters])
   have hFront10 := hState10.preserveAttention (by decide) hFront9
   rcases hState10 with ⟨hParams10, hLocals10, hValues10, hTyped10, hPrefix10,
     hOwner10, hPtr10, hSize10, hCopyOwner10, hCopyPtr10, hCopySize10⟩
@@ -303,7 +244,7 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (by simp [items9, items8, items7, items6, items5, items4, items3, frontItems])
   have hResource11 : LayerNorm.AllocationFits (hiddenHeap heap position) cacheNeed
       (store10.memoryCap «module» 0) := by rw [hCap10]; exact hResources.cache
-  rcases hFront10.1.2 with ⟨_, _, _, hQkvOwner10, hQkvPtr10, hQkvBytes10, _⟩
+  rcases hFront10.1.2 with ⟨_, _, _, hQkvOwner10, hQkvPtr10, hQkvBytes10⟩
   apply cache_spec env store10 (hiddenHeap heap position) params (qkvNode heap).root (qkvNode heap).root
     (hiddenNode heap position).root values.qkv frame10 hHeap10 hQkv10.buffer.values
     (by rw [hSizes.qkv]) hQkv10.payload_protects hResource11 hPages10 rfl
@@ -324,46 +265,11 @@ theorem body_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       (by rw [hLocals10]; decide) (by rw [hLocals11]; decide)
       (by simp [hParams10, params, parameters, items9, items8, items7, items6, items5, items4, items3,
         item9, item8, item7, item6, item5, item4, frontItems])
-  have hAliases11 : Bindings aliases9 frame11 :=
-    hAliases10.prefix (hParams11.trans hParams10.symm) hPrefix11
-      (by rw [hLocals10]; decide) (by rw [hLocals11]; decide)
-      (by simp [hParams10, aliases9, item9, aliases8, copyAlias8, argumentAlias8, item8, aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters])
   rw [← List.append_nil (func33.drop 533)]
   apply cleanup_spec env store11 (cacheHeap heap position) heap initial frame11 items9
     (hiddenNode heap position) (cacheNode heap position) values.hidden (cacheUpdate values.qkv)
     rfl hOutput11.heapAt hOwners11.owned hHidden11 hOutput11.owned hOwners11.disjoint hHiddenSep hCacheSep
     hFrame11 hOwners11.fresh hValues11 hBindings11
-  · intro item hItem slot hSlot
-    apply hAliases11 ⟨slot, item.node, item.bytes⟩
-    simp only [items9, items8, items7, items6, items5, items4, items3, item9, item8, item7, item6, item5, item4, frontItems, List.mem_cons, List.not_mem_nil, or_false] at hItem
-    rcases hItem with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
-    · simp only [ownerAliases, List.mem_cons, List.not_mem_nil, or_false] at hSlot
-      rcases hSlot with rfl <;>
-        simp [aliases9, item9, aliases8, copyAlias8, argumentAlias8, item8, aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters]
-    · simp only [ownerAliases, List.mem_cons, List.not_mem_nil, or_false] at hSlot
-      rcases hSlot with rfl | rfl <;>
-        simp [aliases9, item9, aliases8, copyAlias8, argumentAlias8, item8, aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters]
-    · simp only [ownerAliases, List.mem_cons, List.not_mem_nil, or_false] at hSlot
-      rcases hSlot with rfl | rfl | rfl <;>
-        simp [aliases9, item9, aliases8, copyAlias8, argumentAlias8, item8, aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters]
-    · simp only [ownerAliases, List.mem_cons, List.not_mem_nil, or_false] at hSlot
-      rcases hSlot with rfl | rfl | rfl <;>
-        simp [aliases9, item9, aliases8, copyAlias8, argumentAlias8, item8, aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters]
-    · simp only [ownerAliases, List.mem_cons, List.not_mem_nil, or_false] at hSlot
-      rcases hSlot with rfl | rfl | rfl <;>
-        simp [aliases9, item9, aliases8, copyAlias8, argumentAlias8, item8, aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters]
-    · simp only [ownerAliases, List.mem_cons, List.not_mem_nil, or_false] at hSlot
-      rcases hSlot with rfl | rfl | rfl <;>
-        simp [aliases9, item9, aliases8, copyAlias8, argumentAlias8, item8, aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters]
-    · simp only [ownerAliases, List.mem_cons, List.not_mem_nil, or_false] at hSlot
-      rcases hSlot with rfl | rfl | rfl <;>
-        simp [aliases9, item9, aliases8, copyAlias8, argumentAlias8, item8, aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters]
-    · simp only [ownerAliases, List.mem_cons, List.not_mem_nil, or_false] at hSlot
-      rcases hSlot with rfl | rfl | rfl <;>
-        simp [aliases9, item9, aliases8, copyAlias8, argumentAlias8, item8, aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters]
-    · simp only [ownerAliases, List.mem_cons, List.not_mem_nil, or_false] at hSlot
-      rcases hSlot with rfl | rfl | rfl <;>
-        simp [aliases9, item9, aliases8, copyAlias8, argumentAlias8, item8, aliases7, copyAlias7, argumentAlias7, item7, aliases6, copyAlias6, argumentAlias6, item6, aliases5, copyAlias5, argumentAlias5, item5, aliases4, copyAlias4, argumentAlias4, item4, aliases3, params, parameters]
   · simpa only [Locals.get, hParams11, params, parameters, hLocals11,
       List.length_cons, List.length_nil, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, reduceIte] using hHiddenOwner11
   · simpa only [Locals.get, hParams11, params, parameters, hLocals11,

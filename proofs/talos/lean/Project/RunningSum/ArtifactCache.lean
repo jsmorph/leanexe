@@ -797,7 +797,7 @@ def raw : Project.ByteIO.Binary.Raw :=
                         body := [Wasm.Binary.Instr.localGet 0,
                                  Wasm.Binary.Instr.localSet 4,
                                  Wasm.Binary.Instr.localGet 4] },
-                      { locals := [{ count := 142, type := Wasm.Binary.ValType.i64 }],
+                      { locals := [{ count := 136, type := Wasm.Binary.ValType.i64 }],
                         body := [Wasm.Binary.Instr.i64Const 0,
                                  Wasm.Binary.Instr.localSet 7,
                                  Wasm.Binary.Instr.i64Const 0,
@@ -807,7 +807,7 @@ def raw : Project.ByteIO.Binary.Raw :=
                                  Wasm.Binary.Instr.i64Const 0,
                                  Wasm.Binary.Instr.localSet 10,
                                  Wasm.Binary.Instr.i64Const 0,
-                                 Wasm.Binary.Instr.localSet 125,
+                                 Wasm.Binary.Instr.localSet 119,
                                  Wasm.Binary.Instr.localGet 2,
                                  Wasm.Binary.Instr.localGet 5,
                                  Wasm.Binary.Instr.i64LeU,
@@ -815,9 +815,9 @@ def raw : Project.ByteIO.Binary.Raw :=
                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                    [Wasm.Binary.Instr.localGet 5]
                                    (some [Wasm.Binary.Instr.localGet 2]),
-                                 Wasm.Binary.Instr.localSet 126,
+                                 Wasm.Binary.Instr.localSet 120,
                                  Wasm.Binary.Instr.i64Const 1,
-                                 Wasm.Binary.Instr.localSet 127,
+                                 Wasm.Binary.Instr.localSet 121,
                                  Wasm.Binary.Instr.localGet 7,
                                  Wasm.Binary.Instr.localSet 11,
                                  Wasm.Binary.Instr.localGet 8,
@@ -827,19 +827,17 @@ def raw : Project.ByteIO.Binary.Raw :=
                                  Wasm.Binary.Instr.localGet 10,
                                  Wasm.Binary.Instr.localSet 14,
                                  Wasm.Binary.Instr.localGet 11,
-                                 Wasm.Binary.Instr.localSet 145,
+                                 Wasm.Binary.Instr.localSet 139,
                                  Wasm.Binary.Instr.block
                                    (Wasm.Binary.BlockType.empty)
                                    [Wasm.Binary.Instr.loop
                                       (Wasm.Binary.BlockType.empty)
-                                      [Wasm.Binary.Instr.localGet 125,
-                                       Wasm.Binary.Instr.localGet 126,
+                                      [Wasm.Binary.Instr.localGet 119,
+                                       Wasm.Binary.Instr.localGet 120,
                                        Wasm.Binary.Instr.i64GeU,
                                        Wasm.Binary.Instr.brIf 1,
-                                       Wasm.Binary.Instr.localGet 125,
+                                       Wasm.Binary.Instr.localGet 119,
                                        Wasm.Binary.Instr.localSet 15,
-                                       Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.localSet 27,
                                        Wasm.Binary.Instr.localGet 12,
                                        Wasm.Binary.Instr.localSet 17,
                                        Wasm.Binary.Instr.localGet 13,
@@ -852,42 +850,42 @@ def raw : Project.ByteIO.Binary.Raw :=
                                        Wasm.Binary.Instr.iff
                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                          [Wasm.Binary.Instr.localGet 1,
-                                          Wasm.Binary.Instr.localSet 128,
+                                          Wasm.Binary.Instr.localSet 122,
                                           Wasm.Binary.Instr.localGet 2,
-                                          Wasm.Binary.Instr.localSet 129,
+                                          Wasm.Binary.Instr.localSet 123,
                                           Wasm.Binary.Instr.localGet 2,
-                                          Wasm.Binary.Instr.localSet 133,
+                                          Wasm.Binary.Instr.localSet 127,
                                           Wasm.Binary.Instr.i64Const 1,
-                                          Wasm.Binary.Instr.localSet 134,
-                                          Wasm.Binary.Instr.localGet 133,
-                                          Wasm.Binary.Instr.localGet 134,
+                                          Wasm.Binary.Instr.localSet 128,
+                                          Wasm.Binary.Instr.localGet 127,
+                                          Wasm.Binary.Instr.localGet 128,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                             [Wasm.Binary.Instr.i64Const 0]
-                                            (some [Wasm.Binary.Instr.localGet 133,
-                                              Wasm.Binary.Instr.localGet 134,
+                                            (some [Wasm.Binary.Instr.localGet 127,
+                                              Wasm.Binary.Instr.localGet 128,
                                               Wasm.Binary.Instr.i64Sub]),
-                                          Wasm.Binary.Instr.localSet 131,
+                                          Wasm.Binary.Instr.localSet 125,
                                           Wasm.Binary.Instr.localGet 15,
-                                          Wasm.Binary.Instr.localSet 132,
-                                          Wasm.Binary.Instr.localGet 131,
-                                          Wasm.Binary.Instr.localGet 132,
+                                          Wasm.Binary.Instr.localSet 126,
+                                          Wasm.Binary.Instr.localGet 125,
+                                          Wasm.Binary.Instr.localGet 126,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                             [Wasm.Binary.Instr.i64Const 0]
-                                            (some [Wasm.Binary.Instr.localGet 131,
-                                              Wasm.Binary.Instr.localGet 132,
+                                            (some [Wasm.Binary.Instr.localGet 125,
+                                              Wasm.Binary.Instr.localGet 126,
                                               Wasm.Binary.Instr.i64Sub]),
-                                          Wasm.Binary.Instr.localSet 130,
-                                          Wasm.Binary.Instr.localGet 130,
-                                          Wasm.Binary.Instr.localGet 129,
+                                          Wasm.Binary.Instr.localSet 124,
+                                          Wasm.Binary.Instr.localGet 124,
+                                          Wasm.Binary.Instr.localGet 123,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
-                                            [Wasm.Binary.Instr.localGet 128,
-                                             Wasm.Binary.Instr.localGet 130,
+                                            [Wasm.Binary.Instr.localGet 122,
+                                             Wasm.Binary.Instr.localGet 124,
                                              Wasm.Binary.Instr.i64Add,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i32Load8U { align := 0, offset := 0 },
@@ -903,42 +901,42 @@ def raw : Project.ByteIO.Binary.Raw :=
                                        Wasm.Binary.Instr.iff
                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                          [Wasm.Binary.Instr.localGet 4,
-                                          Wasm.Binary.Instr.localSet 128,
+                                          Wasm.Binary.Instr.localSet 122,
                                           Wasm.Binary.Instr.localGet 5,
-                                          Wasm.Binary.Instr.localSet 129,
+                                          Wasm.Binary.Instr.localSet 123,
                                           Wasm.Binary.Instr.localGet 5,
-                                          Wasm.Binary.Instr.localSet 133,
+                                          Wasm.Binary.Instr.localSet 127,
                                           Wasm.Binary.Instr.i64Const 1,
-                                          Wasm.Binary.Instr.localSet 134,
-                                          Wasm.Binary.Instr.localGet 133,
-                                          Wasm.Binary.Instr.localGet 134,
+                                          Wasm.Binary.Instr.localSet 128,
+                                          Wasm.Binary.Instr.localGet 127,
+                                          Wasm.Binary.Instr.localGet 128,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                             [Wasm.Binary.Instr.i64Const 0]
-                                            (some [Wasm.Binary.Instr.localGet 133,
-                                              Wasm.Binary.Instr.localGet 134,
+                                            (some [Wasm.Binary.Instr.localGet 127,
+                                              Wasm.Binary.Instr.localGet 128,
                                               Wasm.Binary.Instr.i64Sub]),
-                                          Wasm.Binary.Instr.localSet 131,
+                                          Wasm.Binary.Instr.localSet 125,
                                           Wasm.Binary.Instr.localGet 15,
-                                          Wasm.Binary.Instr.localSet 132,
-                                          Wasm.Binary.Instr.localGet 131,
-                                          Wasm.Binary.Instr.localGet 132,
+                                          Wasm.Binary.Instr.localSet 126,
+                                          Wasm.Binary.Instr.localGet 125,
+                                          Wasm.Binary.Instr.localGet 126,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                             [Wasm.Binary.Instr.i64Const 0]
-                                            (some [Wasm.Binary.Instr.localGet 131,
-                                              Wasm.Binary.Instr.localGet 132,
+                                            (some [Wasm.Binary.Instr.localGet 125,
+                                              Wasm.Binary.Instr.localGet 126,
                                               Wasm.Binary.Instr.i64Sub]),
-                                          Wasm.Binary.Instr.localSet 130,
-                                          Wasm.Binary.Instr.localGet 130,
-                                          Wasm.Binary.Instr.localGet 129,
+                                          Wasm.Binary.Instr.localSet 124,
+                                          Wasm.Binary.Instr.localGet 124,
+                                          Wasm.Binary.Instr.localGet 123,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
-                                            [Wasm.Binary.Instr.localGet 128,
-                                             Wasm.Binary.Instr.localGet 130,
+                                            [Wasm.Binary.Instr.localGet 122,
+                                             Wasm.Binary.Instr.localGet 124,
                                              Wasm.Binary.Instr.i64Add,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i32Load8U { align := 0, offset := 0 },
@@ -974,17 +972,17 @@ def raw : Project.ByteIO.Binary.Raw :=
                                            Wasm.Binary.Instr.i64Add]),
                                        Wasm.Binary.Instr.localSet 22,
                                        Wasm.Binary.Instr.localGet 22,
-                                       Wasm.Binary.Instr.localSet 128,
+                                       Wasm.Binary.Instr.localSet 122,
                                        Wasm.Binary.Instr.i64Const 10,
-                                       Wasm.Binary.Instr.localSet 129,
-                                       Wasm.Binary.Instr.localGet 129,
+                                       Wasm.Binary.Instr.localSet 123,
+                                       Wasm.Binary.Instr.localGet 123,
                                        Wasm.Binary.Instr.i64Const 0,
                                        Wasm.Binary.Instr.i64Eq,
                                        Wasm.Binary.Instr.iff
                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
-                                         [Wasm.Binary.Instr.localGet 128]
-                                         (some [Wasm.Binary.Instr.localGet 128,
-                                           Wasm.Binary.Instr.localGet 129,
+                                         [Wasm.Binary.Instr.localGet 122]
+                                         (some [Wasm.Binary.Instr.localGet 122,
+                                           Wasm.Binary.Instr.localGet 123,
                                            Wasm.Binary.Instr.i64RemU]),
                                        Wasm.Binary.Instr.i64Const 255,
                                        Wasm.Binary.Instr.i64And,
@@ -994,121 +992,121 @@ def raw : Project.ByteIO.Binary.Raw :=
                                        Wasm.Binary.Instr.localGet 18,
                                        Wasm.Binary.Instr.localSet 25,
                                        Wasm.Binary.Instr.localGet 24,
-                                       Wasm.Binary.Instr.localSet 128,
+                                       Wasm.Binary.Instr.localSet 122,
                                        Wasm.Binary.Instr.localGet 25,
-                                       Wasm.Binary.Instr.localSet 129,
+                                       Wasm.Binary.Instr.localSet 123,
                                        Wasm.Binary.Instr.localGet 23,
-                                       Wasm.Binary.Instr.localSet 130,
-                                       Wasm.Binary.Instr.localGet 129,
+                                       Wasm.Binary.Instr.localSet 124,
+                                       Wasm.Binary.Instr.localGet 123,
                                        Wasm.Binary.Instr.i64Const 1,
                                        Wasm.Binary.Instr.i64Add,
-                                       Wasm.Binary.Instr.localSet 132,
-                                       Wasm.Binary.Instr.localGet 132,
+                                       Wasm.Binary.Instr.localSet 126,
+                                       Wasm.Binary.Instr.localGet 126,
                                        Wasm.Binary.Instr.i64Const 7,
                                        Wasm.Binary.Instr.i64Add,
                                        Wasm.Binary.Instr.i64Const 8,
                                        Wasm.Binary.Instr.i64DivU,
                                        Wasm.Binary.Instr.i64Const 8,
                                        Wasm.Binary.Instr.i64Mul,
-                                       Wasm.Binary.Instr.localSet 134,
-                                       Wasm.Binary.Instr.localGet 134,
+                                       Wasm.Binary.Instr.localSet 128,
+                                       Wasm.Binary.Instr.localGet 128,
                                        Wasm.Binary.Instr.i64Const 8,
                                        Wasm.Binary.Instr.i64LtU,
                                        Wasm.Binary.Instr.iff
                                          (Wasm.Binary.BlockType.empty)
-                                         [Wasm.Binary.Instr.i64Const 8, Wasm.Binary.Instr.localSet 134]
+                                         [Wasm.Binary.Instr.i64Const 8, Wasm.Binary.Instr.localSet 128]
                                          none,
                                        Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.localSet 139,
+                                       Wasm.Binary.Instr.localSet 133,
                                        Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.localSet 135,
+                                       Wasm.Binary.Instr.localSet 129,
                                        Wasm.Binary.Instr.globalGet 1,
-                                       Wasm.Binary.Instr.localSet 136,
+                                       Wasm.Binary.Instr.localSet 130,
                                        Wasm.Binary.Instr.block
                                          (Wasm.Binary.BlockType.empty)
                                          [Wasm.Binary.Instr.loop
                                             (Wasm.Binary.BlockType.empty)
-                                            [Wasm.Binary.Instr.localGet 136,
+                                            [Wasm.Binary.Instr.localGet 130,
                                              Wasm.Binary.Instr.i64Const 0,
                                              Wasm.Binary.Instr.i64Eq,
                                              Wasm.Binary.Instr.brIf 1,
-                                             Wasm.Binary.Instr.localGet 139,
+                                             Wasm.Binary.Instr.localGet 133,
                                              Wasm.Binary.Instr.i64Const 0,
                                              Wasm.Binary.Instr.i64Ne,
                                              Wasm.Binary.Instr.brIf 1,
-                                             Wasm.Binary.Instr.localGet 136,
+                                             Wasm.Binary.Instr.localGet 130,
                                              Wasm.Binary.Instr.i64Const 32,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i64Load { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localSet 137,
-                                             Wasm.Binary.Instr.localGet 136,
+                                             Wasm.Binary.Instr.localSet 131,
+                                             Wasm.Binary.Instr.localGet 130,
                                              Wasm.Binary.Instr.i64Const 8,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i64Load { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localSet 138,
-                                             Wasm.Binary.Instr.localGet 137,
-                                             Wasm.Binary.Instr.localGet 134,
+                                             Wasm.Binary.Instr.localSet 132,
+                                             Wasm.Binary.Instr.localGet 131,
+                                             Wasm.Binary.Instr.localGet 128,
                                              Wasm.Binary.Instr.i64GeU,
                                              Wasm.Binary.Instr.iff
                                                (Wasm.Binary.BlockType.empty)
-                                               [Wasm.Binary.Instr.localGet 135,
+                                               [Wasm.Binary.Instr.localGet 129,
                                                 Wasm.Binary.Instr.i64Const 0,
                                                 Wasm.Binary.Instr.i64Eq,
                                                 Wasm.Binary.Instr.iff
                                                   (Wasm.Binary.BlockType.empty)
-                                                  [Wasm.Binary.Instr.localGet 138, Wasm.Binary.Instr.globalSet 1]
-                                                  (some [Wasm.Binary.Instr.localGet 135,
+                                                  [Wasm.Binary.Instr.localGet 132, Wasm.Binary.Instr.globalSet 1]
+                                                  (some [Wasm.Binary.Instr.localGet 129,
                                                     Wasm.Binary.Instr.i64Const 8,
                                                     Wasm.Binary.Instr.i64Sub,
                                                     Wasm.Binary.Instr.i32WrapI64,
-                                                    Wasm.Binary.Instr.localGet 138,
+                                                    Wasm.Binary.Instr.localGet 132,
                                                     Wasm.Binary.Instr.i64Store { align := 3, offset := 0 }]),
-                                                Wasm.Binary.Instr.localGet 136,
+                                                Wasm.Binary.Instr.localGet 130,
                                                 Wasm.Binary.Instr.i64Const 48,
                                                 Wasm.Binary.Instr.i64Sub,
                                                 Wasm.Binary.Instr.i32WrapI64,
                                                 Wasm.Binary.Instr.i64Const 5501223100278326855,
                                                 Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                Wasm.Binary.Instr.localGet 136,
+                                                Wasm.Binary.Instr.localGet 130,
                                                 Wasm.Binary.Instr.i64Const 40,
                                                 Wasm.Binary.Instr.i64Sub,
                                                 Wasm.Binary.Instr.i32WrapI64,
                                                 Wasm.Binary.Instr.i64Const 1,
                                                 Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                Wasm.Binary.Instr.localGet 136,
+                                                Wasm.Binary.Instr.localGet 130,
                                                 Wasm.Binary.Instr.i64Const 32,
                                                 Wasm.Binary.Instr.i64Sub,
                                                 Wasm.Binary.Instr.i32WrapI64,
-                                                Wasm.Binary.Instr.localGet 137,
+                                                Wasm.Binary.Instr.localGet 131,
                                                 Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                Wasm.Binary.Instr.localGet 136,
+                                                Wasm.Binary.Instr.localGet 130,
                                                 Wasm.Binary.Instr.i64Const 24,
                                                 Wasm.Binary.Instr.i64Sub,
                                                 Wasm.Binary.Instr.i32WrapI64,
                                                 Wasm.Binary.Instr.i64Const 0,
                                                 Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                Wasm.Binary.Instr.localGet 136,
+                                                Wasm.Binary.Instr.localGet 130,
                                                 Wasm.Binary.Instr.i64Const 16,
                                                 Wasm.Binary.Instr.i64Sub,
                                                 Wasm.Binary.Instr.i32WrapI64,
                                                 Wasm.Binary.Instr.i64Const 0,
                                                 Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                Wasm.Binary.Instr.localGet 136,
+                                                Wasm.Binary.Instr.localGet 130,
                                                 Wasm.Binary.Instr.i64Const 8,
                                                 Wasm.Binary.Instr.i64Sub,
                                                 Wasm.Binary.Instr.i32WrapI64,
                                                 Wasm.Binary.Instr.i64Const 0,
                                                 Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                Wasm.Binary.Instr.localGet 136,
-                                                Wasm.Binary.Instr.localSet 139]
-                                               (some [Wasm.Binary.Instr.localGet 136,
-                                                 Wasm.Binary.Instr.localSet 135,
-                                                 Wasm.Binary.Instr.localGet 138,
-                                                 Wasm.Binary.Instr.localSet 136]),
+                                                Wasm.Binary.Instr.localGet 130,
+                                                Wasm.Binary.Instr.localSet 133]
+                                               (some [Wasm.Binary.Instr.localGet 130,
+                                                 Wasm.Binary.Instr.localSet 129,
+                                                 Wasm.Binary.Instr.localGet 132,
+                                                 Wasm.Binary.Instr.localSet 130]),
                                              Wasm.Binary.Instr.br 0]],
-                                       Wasm.Binary.Instr.localGet 139,
+                                       Wasm.Binary.Instr.localGet 133,
                                        Wasm.Binary.Instr.i64Const 0,
                                        Wasm.Binary.Instr.i64Eq,
                                        Wasm.Binary.Instr.iff
@@ -1116,30 +1114,30 @@ def raw : Project.ByteIO.Binary.Raw :=
                                          [Wasm.Binary.Instr.globalGet 0,
                                           Wasm.Binary.Instr.i64Const 48,
                                           Wasm.Binary.Instr.i64Add,
-                                          Wasm.Binary.Instr.localGet 134,
+                                          Wasm.Binary.Instr.localGet 128,
                                           Wasm.Binary.Instr.i64Add,
-                                          Wasm.Binary.Instr.localTee 137,
+                                          Wasm.Binary.Instr.localTee 131,
                                           Wasm.Binary.Instr.globalGet 0,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.empty)
                                             [Wasm.Binary.Instr.unreachable]
                                             none,
-                                          Wasm.Binary.Instr.localGet 137,
+                                          Wasm.Binary.Instr.localGet 131,
                                           Wasm.Binary.Instr.i64Const 1,
                                           Wasm.Binary.Instr.i64Sub,
                                           Wasm.Binary.Instr.i64Const 65536,
                                           Wasm.Binary.Instr.i64DivU,
                                           Wasm.Binary.Instr.i64Const 1,
                                           Wasm.Binary.Instr.i64Add,
-                                          Wasm.Binary.Instr.localSet 138,
+                                          Wasm.Binary.Instr.localSet 132,
                                           Wasm.Binary.Instr.memorySize 0,
                                           Wasm.Binary.Instr.i64ExtendI32U,
-                                          Wasm.Binary.Instr.localGet 138,
+                                          Wasm.Binary.Instr.localGet 132,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.empty)
-                                            [Wasm.Binary.Instr.localGet 138,
+                                            [Wasm.Binary.Instr.localGet 132,
                                              Wasm.Binary.Instr.memorySize 0,
                                              Wasm.Binary.Instr.i64ExtendI32U,
                                              Wasm.Binary.Instr.i64Sub,
@@ -1155,40 +1153,40 @@ def raw : Project.ByteIO.Binary.Raw :=
                                           Wasm.Binary.Instr.globalGet 0,
                                           Wasm.Binary.Instr.i64Const 48,
                                           Wasm.Binary.Instr.i64Add,
-                                          Wasm.Binary.Instr.localSet 139,
-                                          Wasm.Binary.Instr.localGet 137,
+                                          Wasm.Binary.Instr.localSet 133,
+                                          Wasm.Binary.Instr.localGet 131,
                                           Wasm.Binary.Instr.globalSet 0,
-                                          Wasm.Binary.Instr.localGet 139,
+                                          Wasm.Binary.Instr.localGet 133,
                                           Wasm.Binary.Instr.i64Const 48,
                                           Wasm.Binary.Instr.i64Sub,
                                           Wasm.Binary.Instr.i32WrapI64,
                                           Wasm.Binary.Instr.i64Const 5501223100278326855,
                                           Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                          Wasm.Binary.Instr.localGet 139,
+                                          Wasm.Binary.Instr.localGet 133,
                                           Wasm.Binary.Instr.i64Const 40,
                                           Wasm.Binary.Instr.i64Sub,
                                           Wasm.Binary.Instr.i32WrapI64,
                                           Wasm.Binary.Instr.i64Const 1,
                                           Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                          Wasm.Binary.Instr.localGet 139,
+                                          Wasm.Binary.Instr.localGet 133,
                                           Wasm.Binary.Instr.i64Const 32,
                                           Wasm.Binary.Instr.i64Sub,
                                           Wasm.Binary.Instr.i32WrapI64,
-                                          Wasm.Binary.Instr.localGet 134,
+                                          Wasm.Binary.Instr.localGet 128,
                                           Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                          Wasm.Binary.Instr.localGet 139,
+                                          Wasm.Binary.Instr.localGet 133,
                                           Wasm.Binary.Instr.i64Const 24,
                                           Wasm.Binary.Instr.i64Sub,
                                           Wasm.Binary.Instr.i32WrapI64,
                                           Wasm.Binary.Instr.i64Const 0,
                                           Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                          Wasm.Binary.Instr.localGet 139,
+                                          Wasm.Binary.Instr.localGet 133,
                                           Wasm.Binary.Instr.i64Const 16,
                                           Wasm.Binary.Instr.i64Sub,
                                           Wasm.Binary.Instr.i32WrapI64,
                                           Wasm.Binary.Instr.i64Const 0,
                                           Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                          Wasm.Binary.Instr.localGet 139,
+                                          Wasm.Binary.Instr.localGet 133,
                                           Wasm.Binary.Instr.i64Const 8,
                                           Wasm.Binary.Instr.i64Sub,
                                           Wasm.Binary.Instr.i32WrapI64,
@@ -1199,41 +1197,41 @@ def raw : Project.ByteIO.Binary.Raw :=
                                        Wasm.Binary.Instr.i64Const 1,
                                        Wasm.Binary.Instr.i64Add,
                                        Wasm.Binary.Instr.globalSet 2,
-                                       Wasm.Binary.Instr.localGet 139,
-                                       Wasm.Binary.Instr.localSet 131,
+                                       Wasm.Binary.Instr.localGet 133,
+                                       Wasm.Binary.Instr.localSet 125,
                                        Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.localSet 133,
+                                       Wasm.Binary.Instr.localSet 127,
                                        Wasm.Binary.Instr.block
                                          (Wasm.Binary.BlockType.empty)
                                          [Wasm.Binary.Instr.loop
                                             (Wasm.Binary.BlockType.empty)
-                                            [Wasm.Binary.Instr.localGet 133,
-                                             Wasm.Binary.Instr.localGet 129,
+                                            [Wasm.Binary.Instr.localGet 127,
+                                             Wasm.Binary.Instr.localGet 123,
                                              Wasm.Binary.Instr.i64GeU,
                                              Wasm.Binary.Instr.brIf 1,
-                                             Wasm.Binary.Instr.localGet 131,
-                                             Wasm.Binary.Instr.localGet 133,
+                                             Wasm.Binary.Instr.localGet 125,
+                                             Wasm.Binary.Instr.localGet 127,
                                              Wasm.Binary.Instr.i64Add,
                                              Wasm.Binary.Instr.i32WrapI64,
-                                             Wasm.Binary.Instr.localGet 128,
-                                             Wasm.Binary.Instr.localGet 133,
+                                             Wasm.Binary.Instr.localGet 122,
+                                             Wasm.Binary.Instr.localGet 127,
                                              Wasm.Binary.Instr.i64Add,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i32Load8U { align := 0, offset := 0 },
                                              Wasm.Binary.Instr.i32Store8 { align := 0, offset := 0 },
-                                             Wasm.Binary.Instr.localGet 133,
+                                             Wasm.Binary.Instr.localGet 127,
                                              Wasm.Binary.Instr.i64Const 1,
                                              Wasm.Binary.Instr.i64Add,
-                                             Wasm.Binary.Instr.localSet 133,
+                                             Wasm.Binary.Instr.localSet 127,
                                              Wasm.Binary.Instr.br 0]],
-                                       Wasm.Binary.Instr.localGet 131,
-                                       Wasm.Binary.Instr.localGet 129,
+                                       Wasm.Binary.Instr.localGet 125,
+                                       Wasm.Binary.Instr.localGet 123,
                                        Wasm.Binary.Instr.i64Add,
                                        Wasm.Binary.Instr.i32WrapI64,
-                                       Wasm.Binary.Instr.localGet 130,
+                                       Wasm.Binary.Instr.localGet 124,
                                        Wasm.Binary.Instr.i32WrapI64,
                                        Wasm.Binary.Instr.i32Store8 { align := 0, offset := 0 },
-                                       Wasm.Binary.Instr.localGet 131,
+                                       Wasm.Binary.Instr.localGet 125,
                                        Wasm.Binary.Instr.localSet 27,
                                        Wasm.Binary.Instr.localGet 27,
                                        Wasm.Binary.Instr.localSet 28,
@@ -1261,17 +1259,17 @@ def raw : Project.ByteIO.Binary.Raw :=
                                             [Wasm.Binary.Instr.i64Const 1]
                                             (some [Wasm.Binary.Instr.i64Const 0])]
                                          (some [Wasm.Binary.Instr.localGet 22,
-                                           Wasm.Binary.Instr.localSet 128,
+                                           Wasm.Binary.Instr.localSet 122,
                                            Wasm.Binary.Instr.i64Const 10,
-                                           Wasm.Binary.Instr.localSet 129,
-                                           Wasm.Binary.Instr.localGet 129,
+                                           Wasm.Binary.Instr.localSet 123,
+                                           Wasm.Binary.Instr.localGet 123,
                                            Wasm.Binary.Instr.i64Const 0,
                                            Wasm.Binary.Instr.i64Eq,
                                            Wasm.Binary.Instr.iff
                                              (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                              [Wasm.Binary.Instr.i64Const 0]
-                                             (some [Wasm.Binary.Instr.localGet 128,
-                                               Wasm.Binary.Instr.localGet 129,
+                                             (some [Wasm.Binary.Instr.localGet 122,
+                                               Wasm.Binary.Instr.localGet 123,
                                                Wasm.Binary.Instr.i64DivU])]),
                                        Wasm.Binary.Instr.localSet 30,
                                        Wasm.Binary.Instr.localGet 27,
@@ -1282,93 +1280,73 @@ def raw : Project.ByteIO.Binary.Raw :=
                                        Wasm.Binary.Instr.localSet 33,
                                        Wasm.Binary.Instr.localGet 30,
                                        Wasm.Binary.Instr.localSet 34,
-                                       Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.localSet 35,
-                                       Wasm.Binary.Instr.localGet 27,
-                                       Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.i64Eq,
-                                       Wasm.Binary.Instr.i32Eqz,
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 27,
-                                          Wasm.Binary.Instr.localGet 31,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.empty)
-                                         [Wasm.Binary.Instr.localGet 27,
-                                          Wasm.Binary.Instr.call 18,
-                                          Wasm.Binary.Instr.globalGet 5,
-                                          Wasm.Binary.Instr.localSet 36]
-                                         (some []),
                                        Wasm.Binary.Instr.localGet 31,
-                                       Wasm.Binary.Instr.localSet 141,
+                                       Wasm.Binary.Instr.localSet 135,
                                        Wasm.Binary.Instr.localGet 32,
-                                       Wasm.Binary.Instr.localSet 142,
+                                       Wasm.Binary.Instr.localSet 136,
                                        Wasm.Binary.Instr.localGet 33,
-                                       Wasm.Binary.Instr.localSet 143,
+                                       Wasm.Binary.Instr.localSet 137,
                                        Wasm.Binary.Instr.localGet 34,
-                                       Wasm.Binary.Instr.localSet 144,
-                                       Wasm.Binary.Instr.localGet 35,
-                                       Wasm.Binary.Instr.localSet 140,
+                                       Wasm.Binary.Instr.localSet 138,
+                                       Wasm.Binary.Instr.i64Const 0,
+                                       Wasm.Binary.Instr.localSet 134,
                                        Wasm.Binary.Instr.localGet 11,
                                        Wasm.Binary.Instr.i64Const 0,
                                        Wasm.Binary.Instr.i64Ne,
                                        Wasm.Binary.Instr.localGet 11,
-                                       Wasm.Binary.Instr.localGet 145,
+                                       Wasm.Binary.Instr.localGet 139,
                                        Wasm.Binary.Instr.i64Ne,
                                        Wasm.Binary.Instr.i32And,
                                        Wasm.Binary.Instr.localGet 11,
-                                       Wasm.Binary.Instr.localGet 141,
+                                       Wasm.Binary.Instr.localGet 135,
                                        Wasm.Binary.Instr.i64Ne,
                                        Wasm.Binary.Instr.i32And,
                                        Wasm.Binary.Instr.iff
                                          (Wasm.Binary.BlockType.empty)
                                          [Wasm.Binary.Instr.localGet 11, Wasm.Binary.Instr.call 18]
                                          none,
-                                       Wasm.Binary.Instr.localGet 141,
+                                       Wasm.Binary.Instr.localGet 135,
                                        Wasm.Binary.Instr.localSet 11,
-                                       Wasm.Binary.Instr.localGet 142,
+                                       Wasm.Binary.Instr.localGet 136,
                                        Wasm.Binary.Instr.localSet 12,
-                                       Wasm.Binary.Instr.localGet 143,
+                                       Wasm.Binary.Instr.localGet 137,
                                        Wasm.Binary.Instr.localSet 13,
-                                       Wasm.Binary.Instr.localGet 144,
+                                       Wasm.Binary.Instr.localGet 138,
                                        Wasm.Binary.Instr.localSet 14,
-                                       Wasm.Binary.Instr.localGet 140,
+                                       Wasm.Binary.Instr.localGet 134,
                                        Wasm.Binary.Instr.i64Const 0,
                                        Wasm.Binary.Instr.i64Ne,
                                        Wasm.Binary.Instr.brIf 1,
-                                       Wasm.Binary.Instr.localGet 125,
-                                       Wasm.Binary.Instr.localSet 128,
-                                       Wasm.Binary.Instr.localGet 127,
-                                       Wasm.Binary.Instr.localSet 129,
-                                       Wasm.Binary.Instr.localGet 128,
-                                       Wasm.Binary.Instr.localGet 129,
+                                       Wasm.Binary.Instr.localGet 119,
+                                       Wasm.Binary.Instr.localSet 122,
+                                       Wasm.Binary.Instr.localGet 121,
+                                       Wasm.Binary.Instr.localSet 123,
+                                       Wasm.Binary.Instr.localGet 122,
+                                       Wasm.Binary.Instr.localGet 123,
                                        Wasm.Binary.Instr.i64Add,
-                                       Wasm.Binary.Instr.localTee 130,
-                                       Wasm.Binary.Instr.localGet 128,
+                                       Wasm.Binary.Instr.localTee 124,
+                                       Wasm.Binary.Instr.localGet 122,
                                        Wasm.Binary.Instr.i64LtU,
                                        Wasm.Binary.Instr.iff
                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                          [Wasm.Binary.Instr.unreachable]
-                                         (some [Wasm.Binary.Instr.localGet 130]),
-                                       Wasm.Binary.Instr.localSet 125,
+                                         (some [Wasm.Binary.Instr.localGet 124]),
+                                       Wasm.Binary.Instr.localSet 119,
                                        Wasm.Binary.Instr.br 0]],
                                  Wasm.Binary.Instr.localGet 11,
-                                 Wasm.Binary.Instr.localSet 37,
+                                 Wasm.Binary.Instr.localSet 35,
                                  Wasm.Binary.Instr.localGet 12,
-                                 Wasm.Binary.Instr.localSet 38,
+                                 Wasm.Binary.Instr.localSet 36,
                                  Wasm.Binary.Instr.localGet 13,
-                                 Wasm.Binary.Instr.localSet 39,
+                                 Wasm.Binary.Instr.localSet 37,
                                  Wasm.Binary.Instr.localGet 14,
+                                 Wasm.Binary.Instr.localSet 38,
+                                 Wasm.Binary.Instr.localGet 36,
                                  Wasm.Binary.Instr.localSet 40,
+                                 Wasm.Binary.Instr.localGet 37,
+                                 Wasm.Binary.Instr.localSet 41,
                                  Wasm.Binary.Instr.localGet 38,
                                  Wasm.Binary.Instr.localSet 42,
-                                 Wasm.Binary.Instr.localGet 39,
-                                 Wasm.Binary.Instr.localSet 43,
-                                 Wasm.Binary.Instr.localGet 40,
-                                 Wasm.Binary.Instr.localSet 44,
                                  Wasm.Binary.Instr.localGet 6,
                                  Wasm.Binary.Instr.i64Const 0,
                                  Wasm.Binary.Instr.i64Eq,
@@ -1376,7 +1354,7 @@ def raw : Project.ByteIO.Binary.Raw :=
                                  Wasm.Binary.Instr.i32Eqz,
                                  Wasm.Binary.Instr.iff
                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                   [Wasm.Binary.Instr.localGet 44,
+                                   [Wasm.Binary.Instr.localGet 42,
                                     Wasm.Binary.Instr.i64Const 0,
                                     Wasm.Binary.Instr.i64Eq,
                                     Wasm.Binary.Instr.iff
@@ -1403,130 +1381,130 @@ def raw : Project.ByteIO.Binary.Raw :=
                                  Wasm.Binary.Instr.i32Eqz,
                                  Wasm.Binary.Instr.iff
                                    (Wasm.Binary.BlockType.empty)
-                                   [Wasm.Binary.Instr.localGet 44,
+                                   [Wasm.Binary.Instr.localGet 42,
                                     Wasm.Binary.Instr.i64Const 255,
                                     Wasm.Binary.Instr.i64And,
+                                    Wasm.Binary.Instr.localSet 43,
+                                    Wasm.Binary.Instr.localGet 40,
+                                    Wasm.Binary.Instr.localSet 44,
+                                    Wasm.Binary.Instr.localGet 41,
                                     Wasm.Binary.Instr.localSet 45,
-                                    Wasm.Binary.Instr.localGet 42,
-                                    Wasm.Binary.Instr.localSet 46,
-                                    Wasm.Binary.Instr.localGet 43,
-                                    Wasm.Binary.Instr.localSet 47,
-                                    Wasm.Binary.Instr.localGet 46,
-                                    Wasm.Binary.Instr.localSet 125,
-                                    Wasm.Binary.Instr.localGet 47,
-                                    Wasm.Binary.Instr.localSet 126,
+                                    Wasm.Binary.Instr.localGet 44,
+                                    Wasm.Binary.Instr.localSet 119,
                                     Wasm.Binary.Instr.localGet 45,
-                                    Wasm.Binary.Instr.localSet 127,
-                                    Wasm.Binary.Instr.localGet 126,
+                                    Wasm.Binary.Instr.localSet 120,
+                                    Wasm.Binary.Instr.localGet 43,
+                                    Wasm.Binary.Instr.localSet 121,
+                                    Wasm.Binary.Instr.localGet 120,
                                     Wasm.Binary.Instr.i64Const 1,
                                     Wasm.Binary.Instr.i64Add,
-                                    Wasm.Binary.Instr.localSet 129,
-                                    Wasm.Binary.Instr.localGet 129,
+                                    Wasm.Binary.Instr.localSet 123,
+                                    Wasm.Binary.Instr.localGet 123,
                                     Wasm.Binary.Instr.i64Const 7,
                                     Wasm.Binary.Instr.i64Add,
                                     Wasm.Binary.Instr.i64Const 8,
                                     Wasm.Binary.Instr.i64DivU,
                                     Wasm.Binary.Instr.i64Const 8,
                                     Wasm.Binary.Instr.i64Mul,
-                                    Wasm.Binary.Instr.localSet 131,
-                                    Wasm.Binary.Instr.localGet 131,
+                                    Wasm.Binary.Instr.localSet 125,
+                                    Wasm.Binary.Instr.localGet 125,
                                     Wasm.Binary.Instr.i64Const 8,
                                     Wasm.Binary.Instr.i64LtU,
                                     Wasm.Binary.Instr.iff
                                       (Wasm.Binary.BlockType.empty)
-                                      [Wasm.Binary.Instr.i64Const 8, Wasm.Binary.Instr.localSet 131]
+                                      [Wasm.Binary.Instr.i64Const 8, Wasm.Binary.Instr.localSet 125]
                                       none,
                                     Wasm.Binary.Instr.i64Const 0,
-                                    Wasm.Binary.Instr.localSet 136,
+                                    Wasm.Binary.Instr.localSet 130,
                                     Wasm.Binary.Instr.i64Const 0,
-                                    Wasm.Binary.Instr.localSet 132,
+                                    Wasm.Binary.Instr.localSet 126,
                                     Wasm.Binary.Instr.globalGet 1,
-                                    Wasm.Binary.Instr.localSet 133,
+                                    Wasm.Binary.Instr.localSet 127,
                                     Wasm.Binary.Instr.block
                                       (Wasm.Binary.BlockType.empty)
                                       [Wasm.Binary.Instr.loop
                                          (Wasm.Binary.BlockType.empty)
-                                         [Wasm.Binary.Instr.localGet 133,
+                                         [Wasm.Binary.Instr.localGet 127,
                                           Wasm.Binary.Instr.i64Const 0,
                                           Wasm.Binary.Instr.i64Eq,
                                           Wasm.Binary.Instr.brIf 1,
-                                          Wasm.Binary.Instr.localGet 136,
+                                          Wasm.Binary.Instr.localGet 130,
                                           Wasm.Binary.Instr.i64Const 0,
                                           Wasm.Binary.Instr.i64Ne,
                                           Wasm.Binary.Instr.brIf 1,
-                                          Wasm.Binary.Instr.localGet 133,
+                                          Wasm.Binary.Instr.localGet 127,
                                           Wasm.Binary.Instr.i64Const 32,
                                           Wasm.Binary.Instr.i64Sub,
                                           Wasm.Binary.Instr.i32WrapI64,
                                           Wasm.Binary.Instr.i64Load { align := 3, offset := 0 },
-                                          Wasm.Binary.Instr.localSet 134,
-                                          Wasm.Binary.Instr.localGet 133,
+                                          Wasm.Binary.Instr.localSet 128,
+                                          Wasm.Binary.Instr.localGet 127,
                                           Wasm.Binary.Instr.i64Const 8,
                                           Wasm.Binary.Instr.i64Sub,
                                           Wasm.Binary.Instr.i32WrapI64,
                                           Wasm.Binary.Instr.i64Load { align := 3, offset := 0 },
-                                          Wasm.Binary.Instr.localSet 135,
-                                          Wasm.Binary.Instr.localGet 134,
-                                          Wasm.Binary.Instr.localGet 131,
+                                          Wasm.Binary.Instr.localSet 129,
+                                          Wasm.Binary.Instr.localGet 128,
+                                          Wasm.Binary.Instr.localGet 125,
                                           Wasm.Binary.Instr.i64GeU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.empty)
-                                            [Wasm.Binary.Instr.localGet 132,
+                                            [Wasm.Binary.Instr.localGet 126,
                                              Wasm.Binary.Instr.i64Const 0,
                                              Wasm.Binary.Instr.i64Eq,
                                              Wasm.Binary.Instr.iff
                                                (Wasm.Binary.BlockType.empty)
-                                               [Wasm.Binary.Instr.localGet 135, Wasm.Binary.Instr.globalSet 1]
-                                               (some [Wasm.Binary.Instr.localGet 132,
+                                               [Wasm.Binary.Instr.localGet 129, Wasm.Binary.Instr.globalSet 1]
+                                               (some [Wasm.Binary.Instr.localGet 126,
                                                  Wasm.Binary.Instr.i64Const 8,
                                                  Wasm.Binary.Instr.i64Sub,
                                                  Wasm.Binary.Instr.i32WrapI64,
-                                                 Wasm.Binary.Instr.localGet 135,
+                                                 Wasm.Binary.Instr.localGet 129,
                                                  Wasm.Binary.Instr.i64Store { align := 3, offset := 0 }]),
-                                             Wasm.Binary.Instr.localGet 133,
+                                             Wasm.Binary.Instr.localGet 127,
                                              Wasm.Binary.Instr.i64Const 48,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i64Const 5501223100278326855,
                                              Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localGet 133,
+                                             Wasm.Binary.Instr.localGet 127,
                                              Wasm.Binary.Instr.i64Const 40,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i64Const 1,
                                              Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localGet 133,
+                                             Wasm.Binary.Instr.localGet 127,
                                              Wasm.Binary.Instr.i64Const 32,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
-                                             Wasm.Binary.Instr.localGet 134,
+                                             Wasm.Binary.Instr.localGet 128,
                                              Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localGet 133,
+                                             Wasm.Binary.Instr.localGet 127,
                                              Wasm.Binary.Instr.i64Const 24,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i64Const 0,
                                              Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localGet 133,
+                                             Wasm.Binary.Instr.localGet 127,
                                              Wasm.Binary.Instr.i64Const 16,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i64Const 0,
                                              Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localGet 133,
+                                             Wasm.Binary.Instr.localGet 127,
                                              Wasm.Binary.Instr.i64Const 8,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i64Const 0,
                                              Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localGet 133,
-                                             Wasm.Binary.Instr.localSet 136]
-                                            (some [Wasm.Binary.Instr.localGet 133,
-                                              Wasm.Binary.Instr.localSet 132,
-                                              Wasm.Binary.Instr.localGet 135,
-                                              Wasm.Binary.Instr.localSet 133]),
+                                             Wasm.Binary.Instr.localGet 127,
+                                             Wasm.Binary.Instr.localSet 130]
+                                            (some [Wasm.Binary.Instr.localGet 127,
+                                              Wasm.Binary.Instr.localSet 126,
+                                              Wasm.Binary.Instr.localGet 129,
+                                              Wasm.Binary.Instr.localSet 127]),
                                           Wasm.Binary.Instr.br 0]],
-                                    Wasm.Binary.Instr.localGet 136,
+                                    Wasm.Binary.Instr.localGet 130,
                                     Wasm.Binary.Instr.i64Const 0,
                                     Wasm.Binary.Instr.i64Eq,
                                     Wasm.Binary.Instr.iff
@@ -1534,30 +1512,30 @@ def raw : Project.ByteIO.Binary.Raw :=
                                       [Wasm.Binary.Instr.globalGet 0,
                                        Wasm.Binary.Instr.i64Const 48,
                                        Wasm.Binary.Instr.i64Add,
-                                       Wasm.Binary.Instr.localGet 131,
+                                       Wasm.Binary.Instr.localGet 125,
                                        Wasm.Binary.Instr.i64Add,
-                                       Wasm.Binary.Instr.localTee 134,
+                                       Wasm.Binary.Instr.localTee 128,
                                        Wasm.Binary.Instr.globalGet 0,
                                        Wasm.Binary.Instr.i64LtU,
                                        Wasm.Binary.Instr.iff
                                          (Wasm.Binary.BlockType.empty)
                                          [Wasm.Binary.Instr.unreachable]
                                          none,
-                                       Wasm.Binary.Instr.localGet 134,
+                                       Wasm.Binary.Instr.localGet 128,
                                        Wasm.Binary.Instr.i64Const 1,
                                        Wasm.Binary.Instr.i64Sub,
                                        Wasm.Binary.Instr.i64Const 65536,
                                        Wasm.Binary.Instr.i64DivU,
                                        Wasm.Binary.Instr.i64Const 1,
                                        Wasm.Binary.Instr.i64Add,
-                                       Wasm.Binary.Instr.localSet 135,
+                                       Wasm.Binary.Instr.localSet 129,
                                        Wasm.Binary.Instr.memorySize 0,
                                        Wasm.Binary.Instr.i64ExtendI32U,
-                                       Wasm.Binary.Instr.localGet 135,
+                                       Wasm.Binary.Instr.localGet 129,
                                        Wasm.Binary.Instr.i64LtU,
                                        Wasm.Binary.Instr.iff
                                          (Wasm.Binary.BlockType.empty)
-                                         [Wasm.Binary.Instr.localGet 135,
+                                         [Wasm.Binary.Instr.localGet 129,
                                           Wasm.Binary.Instr.memorySize 0,
                                           Wasm.Binary.Instr.i64ExtendI32U,
                                           Wasm.Binary.Instr.i64Sub,
@@ -1573,40 +1551,40 @@ def raw : Project.ByteIO.Binary.Raw :=
                                        Wasm.Binary.Instr.globalGet 0,
                                        Wasm.Binary.Instr.i64Const 48,
                                        Wasm.Binary.Instr.i64Add,
-                                       Wasm.Binary.Instr.localSet 136,
-                                       Wasm.Binary.Instr.localGet 134,
+                                       Wasm.Binary.Instr.localSet 130,
+                                       Wasm.Binary.Instr.localGet 128,
                                        Wasm.Binary.Instr.globalSet 0,
-                                       Wasm.Binary.Instr.localGet 136,
+                                       Wasm.Binary.Instr.localGet 130,
                                        Wasm.Binary.Instr.i64Const 48,
                                        Wasm.Binary.Instr.i64Sub,
                                        Wasm.Binary.Instr.i32WrapI64,
                                        Wasm.Binary.Instr.i64Const 5501223100278326855,
                                        Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                       Wasm.Binary.Instr.localGet 136,
+                                       Wasm.Binary.Instr.localGet 130,
                                        Wasm.Binary.Instr.i64Const 40,
                                        Wasm.Binary.Instr.i64Sub,
                                        Wasm.Binary.Instr.i32WrapI64,
                                        Wasm.Binary.Instr.i64Const 1,
                                        Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                       Wasm.Binary.Instr.localGet 136,
+                                       Wasm.Binary.Instr.localGet 130,
                                        Wasm.Binary.Instr.i64Const 32,
                                        Wasm.Binary.Instr.i64Sub,
                                        Wasm.Binary.Instr.i32WrapI64,
-                                       Wasm.Binary.Instr.localGet 131,
+                                       Wasm.Binary.Instr.localGet 125,
                                        Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                       Wasm.Binary.Instr.localGet 136,
+                                       Wasm.Binary.Instr.localGet 130,
                                        Wasm.Binary.Instr.i64Const 24,
                                        Wasm.Binary.Instr.i64Sub,
                                        Wasm.Binary.Instr.i32WrapI64,
                                        Wasm.Binary.Instr.i64Const 0,
                                        Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                       Wasm.Binary.Instr.localGet 136,
+                                       Wasm.Binary.Instr.localGet 130,
                                        Wasm.Binary.Instr.i64Const 16,
                                        Wasm.Binary.Instr.i64Sub,
                                        Wasm.Binary.Instr.i32WrapI64,
                                        Wasm.Binary.Instr.i64Const 0,
                                        Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                       Wasm.Binary.Instr.localGet 136,
+                                       Wasm.Binary.Instr.localGet 130,
                                        Wasm.Binary.Instr.i64Const 8,
                                        Wasm.Binary.Instr.i64Sub,
                                        Wasm.Binary.Instr.i32WrapI64,
@@ -1617,88 +1595,88 @@ def raw : Project.ByteIO.Binary.Raw :=
                                     Wasm.Binary.Instr.i64Const 1,
                                     Wasm.Binary.Instr.i64Add,
                                     Wasm.Binary.Instr.globalSet 2,
-                                    Wasm.Binary.Instr.localGet 136,
-                                    Wasm.Binary.Instr.localSet 128,
+                                    Wasm.Binary.Instr.localGet 130,
+                                    Wasm.Binary.Instr.localSet 122,
                                     Wasm.Binary.Instr.i64Const 0,
-                                    Wasm.Binary.Instr.localSet 130,
+                                    Wasm.Binary.Instr.localSet 124,
                                     Wasm.Binary.Instr.block
                                       (Wasm.Binary.BlockType.empty)
                                       [Wasm.Binary.Instr.loop
                                          (Wasm.Binary.BlockType.empty)
-                                         [Wasm.Binary.Instr.localGet 130,
-                                          Wasm.Binary.Instr.localGet 126,
+                                         [Wasm.Binary.Instr.localGet 124,
+                                          Wasm.Binary.Instr.localGet 120,
                                           Wasm.Binary.Instr.i64GeU,
                                           Wasm.Binary.Instr.brIf 1,
-                                          Wasm.Binary.Instr.localGet 128,
-                                          Wasm.Binary.Instr.localGet 130,
+                                          Wasm.Binary.Instr.localGet 122,
+                                          Wasm.Binary.Instr.localGet 124,
                                           Wasm.Binary.Instr.i64Add,
                                           Wasm.Binary.Instr.i32WrapI64,
-                                          Wasm.Binary.Instr.localGet 125,
-                                          Wasm.Binary.Instr.localGet 130,
+                                          Wasm.Binary.Instr.localGet 119,
+                                          Wasm.Binary.Instr.localGet 124,
                                           Wasm.Binary.Instr.i64Add,
                                           Wasm.Binary.Instr.i32WrapI64,
                                           Wasm.Binary.Instr.i32Load8U { align := 0, offset := 0 },
                                           Wasm.Binary.Instr.i32Store8 { align := 0, offset := 0 },
-                                          Wasm.Binary.Instr.localGet 130,
+                                          Wasm.Binary.Instr.localGet 124,
                                           Wasm.Binary.Instr.i64Const 1,
                                           Wasm.Binary.Instr.i64Add,
-                                          Wasm.Binary.Instr.localSet 130,
+                                          Wasm.Binary.Instr.localSet 124,
                                           Wasm.Binary.Instr.br 0]],
-                                    Wasm.Binary.Instr.localGet 128,
-                                    Wasm.Binary.Instr.localGet 126,
+                                    Wasm.Binary.Instr.localGet 122,
+                                    Wasm.Binary.Instr.localGet 120,
                                     Wasm.Binary.Instr.i64Add,
                                     Wasm.Binary.Instr.i32WrapI64,
-                                    Wasm.Binary.Instr.localGet 127,
+                                    Wasm.Binary.Instr.localGet 121,
                                     Wasm.Binary.Instr.i32WrapI64,
                                     Wasm.Binary.Instr.i32Store8 { align := 0, offset := 0 },
-                                    Wasm.Binary.Instr.localGet 128,
+                                    Wasm.Binary.Instr.localGet 122,
+                                    Wasm.Binary.Instr.localSet 47,
+                                    Wasm.Binary.Instr.localGet 47,
+                                    Wasm.Binary.Instr.localSet 48,
+                                    Wasm.Binary.Instr.localGet 45,
+                                    Wasm.Binary.Instr.i64Const 1,
+                                    Wasm.Binary.Instr.i64Add,
                                     Wasm.Binary.Instr.localSet 49,
                                     Wasm.Binary.Instr.localGet 49,
                                     Wasm.Binary.Instr.localSet 50,
-                                    Wasm.Binary.Instr.localGet 47,
-                                    Wasm.Binary.Instr.i64Const 1,
-                                    Wasm.Binary.Instr.i64Add,
+                                    Wasm.Binary.Instr.localGet 50,
                                     Wasm.Binary.Instr.localSet 51,
-                                    Wasm.Binary.Instr.localGet 51,
-                                    Wasm.Binary.Instr.localSet 52,
-                                    Wasm.Binary.Instr.localGet 52,
-                                    Wasm.Binary.Instr.localSet 53,
                                     Wasm.Binary.Instr.block
                                       (Wasm.Binary.BlockType.empty)
                                       [Wasm.Binary.Instr.loop
                                          (Wasm.Binary.BlockType.empty)
-                                         [Wasm.Binary.Instr.localGet 53,
-                                          Wasm.Binary.Instr.localSet 54,
+                                         [Wasm.Binary.Instr.localGet 51,
+                                          Wasm.Binary.Instr.localSet 52,
                                           Wasm.Binary.Instr.i64Const 0,
-                                          Wasm.Binary.Instr.localGet 54,
+                                          Wasm.Binary.Instr.localGet 52,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                            [Wasm.Binary.Instr.localGet 50,
-                                             Wasm.Binary.Instr.localSet 125,
-                                             Wasm.Binary.Instr.localGet 51,
-                                             Wasm.Binary.Instr.localSet 126,
-                                             Wasm.Binary.Instr.localGet 54,
-                                             Wasm.Binary.Instr.localSet 128,
+                                            [Wasm.Binary.Instr.localGet 48,
+                                             Wasm.Binary.Instr.localSet 119,
+                                             Wasm.Binary.Instr.localGet 49,
+                                             Wasm.Binary.Instr.localSet 120,
+                                             Wasm.Binary.Instr.localGet 52,
+                                             Wasm.Binary.Instr.localSet 122,
                                              Wasm.Binary.Instr.i64Const 1,
-                                             Wasm.Binary.Instr.localSet 129,
-                                             Wasm.Binary.Instr.localGet 128,
-                                             Wasm.Binary.Instr.localGet 129,
+                                             Wasm.Binary.Instr.localSet 123,
+                                             Wasm.Binary.Instr.localGet 122,
+                                             Wasm.Binary.Instr.localGet 123,
                                              Wasm.Binary.Instr.i64LtU,
                                              Wasm.Binary.Instr.iff
                                                (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                                [Wasm.Binary.Instr.i64Const 0]
-                                               (some [Wasm.Binary.Instr.localGet 128,
-                                                 Wasm.Binary.Instr.localGet 129,
+                                               (some [Wasm.Binary.Instr.localGet 122,
+                                                 Wasm.Binary.Instr.localGet 123,
                                                  Wasm.Binary.Instr.i64Sub]),
-                                             Wasm.Binary.Instr.localSet 127,
-                                             Wasm.Binary.Instr.localGet 127,
-                                             Wasm.Binary.Instr.localGet 126,
+                                             Wasm.Binary.Instr.localSet 121,
+                                             Wasm.Binary.Instr.localGet 121,
+                                             Wasm.Binary.Instr.localGet 120,
                                              Wasm.Binary.Instr.i64LtU,
                                              Wasm.Binary.Instr.iff
                                                (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
-                                               [Wasm.Binary.Instr.localGet 125,
-                                                Wasm.Binary.Instr.localGet 127,
+                                               [Wasm.Binary.Instr.localGet 119,
+                                                Wasm.Binary.Instr.localGet 121,
                                                 Wasm.Binary.Instr.i64Add,
                                                 Wasm.Binary.Instr.i32WrapI64,
                                                 Wasm.Binary.Instr.i32Load8U { align := 0, offset := 0 },
@@ -1729,55 +1707,55 @@ def raw : Project.ByteIO.Binary.Raw :=
                                           Wasm.Binary.Instr.i32Eqz,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.empty)
-                                            [Wasm.Binary.Instr.localGet 54,
-                                             Wasm.Binary.Instr.localSet 125,
+                                            [Wasm.Binary.Instr.localGet 52,
+                                             Wasm.Binary.Instr.localSet 119,
                                              Wasm.Binary.Instr.i64Const 1,
-                                             Wasm.Binary.Instr.localSet 126,
-                                             Wasm.Binary.Instr.localGet 125,
-                                             Wasm.Binary.Instr.localGet 126,
+                                             Wasm.Binary.Instr.localSet 120,
+                                             Wasm.Binary.Instr.localGet 119,
+                                             Wasm.Binary.Instr.localGet 120,
                                              Wasm.Binary.Instr.i64LtU,
                                              Wasm.Binary.Instr.iff
                                                (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                                [Wasm.Binary.Instr.i64Const 0]
-                                               (some [Wasm.Binary.Instr.localGet 125,
-                                                 Wasm.Binary.Instr.localGet 126,
+                                               (some [Wasm.Binary.Instr.localGet 119,
+                                                 Wasm.Binary.Instr.localGet 120,
                                                  Wasm.Binary.Instr.i64Sub]),
-                                             Wasm.Binary.Instr.localSet 55,
-                                             Wasm.Binary.Instr.localGet 55,
-                                             Wasm.Binary.Instr.localSet 56]
-                                            (some [Wasm.Binary.Instr.localGet 54, Wasm.Binary.Instr.localSet 56]),
-                                          Wasm.Binary.Instr.localGet 56,
-                                          Wasm.Binary.Instr.localSet 131,
+                                             Wasm.Binary.Instr.localSet 53,
+                                             Wasm.Binary.Instr.localGet 53,
+                                             Wasm.Binary.Instr.localSet 54]
+                                            (some [Wasm.Binary.Instr.localGet 52, Wasm.Binary.Instr.localSet 54]),
+                                          Wasm.Binary.Instr.localGet 54,
+                                          Wasm.Binary.Instr.localSet 125,
                                           Wasm.Binary.Instr.i64Const 0,
-                                          Wasm.Binary.Instr.localGet 53,
+                                          Wasm.Binary.Instr.localGet 51,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                            [Wasm.Binary.Instr.localGet 50,
-                                             Wasm.Binary.Instr.localSet 125,
+                                            [Wasm.Binary.Instr.localGet 48,
+                                             Wasm.Binary.Instr.localSet 119,
+                                             Wasm.Binary.Instr.localGet 49,
+                                             Wasm.Binary.Instr.localSet 120,
                                              Wasm.Binary.Instr.localGet 51,
-                                             Wasm.Binary.Instr.localSet 126,
-                                             Wasm.Binary.Instr.localGet 53,
-                                             Wasm.Binary.Instr.localSet 128,
+                                             Wasm.Binary.Instr.localSet 122,
                                              Wasm.Binary.Instr.i64Const 1,
-                                             Wasm.Binary.Instr.localSet 129,
-                                             Wasm.Binary.Instr.localGet 128,
-                                             Wasm.Binary.Instr.localGet 129,
+                                             Wasm.Binary.Instr.localSet 123,
+                                             Wasm.Binary.Instr.localGet 122,
+                                             Wasm.Binary.Instr.localGet 123,
                                              Wasm.Binary.Instr.i64LtU,
                                              Wasm.Binary.Instr.iff
                                                (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                                [Wasm.Binary.Instr.i64Const 0]
-                                               (some [Wasm.Binary.Instr.localGet 128,
-                                                 Wasm.Binary.Instr.localGet 129,
+                                               (some [Wasm.Binary.Instr.localGet 122,
+                                                 Wasm.Binary.Instr.localGet 123,
                                                  Wasm.Binary.Instr.i64Sub]),
-                                             Wasm.Binary.Instr.localSet 127,
-                                             Wasm.Binary.Instr.localGet 127,
-                                             Wasm.Binary.Instr.localGet 126,
+                                             Wasm.Binary.Instr.localSet 121,
+                                             Wasm.Binary.Instr.localGet 121,
+                                             Wasm.Binary.Instr.localGet 120,
                                              Wasm.Binary.Instr.i64LtU,
                                              Wasm.Binary.Instr.iff
                                                (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
-                                               [Wasm.Binary.Instr.localGet 125,
-                                                Wasm.Binary.Instr.localGet 127,
+                                               [Wasm.Binary.Instr.localGet 119,
+                                                Wasm.Binary.Instr.localGet 121,
                                                 Wasm.Binary.Instr.i64Add,
                                                 Wasm.Binary.Instr.i32WrapI64,
                                                 Wasm.Binary.Instr.i32Load8U { align := 0, offset := 0 },
@@ -1810,91 +1788,89 @@ def raw : Project.ByteIO.Binary.Raw :=
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                             [Wasm.Binary.Instr.i64Const 0]
                                             (some [Wasm.Binary.Instr.i64Const 1]),
-                                          Wasm.Binary.Instr.localSet 130,
-                                          Wasm.Binary.Instr.localGet 131,
-                                          Wasm.Binary.Instr.localSet 53,
-                                          Wasm.Binary.Instr.localGet 130,
+                                          Wasm.Binary.Instr.localSet 124,
+                                          Wasm.Binary.Instr.localGet 125,
+                                          Wasm.Binary.Instr.localSet 51,
+                                          Wasm.Binary.Instr.localGet 124,
                                           Wasm.Binary.Instr.i64Const 0,
                                           Wasm.Binary.Instr.i64Ne,
                                           Wasm.Binary.Instr.brIf 1,
                                           Wasm.Binary.Instr.br 0]],
-                                    Wasm.Binary.Instr.localGet 53,
+                                    Wasm.Binary.Instr.localGet 51,
+                                    Wasm.Binary.Instr.localSet 55,
+                                    Wasm.Binary.Instr.localGet 55,
+                                    Wasm.Binary.Instr.localSet 56,
+                                    Wasm.Binary.Instr.i64Const 0,
                                     Wasm.Binary.Instr.localSet 57,
-                                    Wasm.Binary.Instr.localGet 57,
+                                    Wasm.Binary.Instr.i64Const 0,
                                     Wasm.Binary.Instr.localSet 58,
                                     Wasm.Binary.Instr.i64Const 0,
                                     Wasm.Binary.Instr.localSet 59,
                                     Wasm.Binary.Instr.i64Const 0,
-                                    Wasm.Binary.Instr.localSet 60,
-                                    Wasm.Binary.Instr.i64Const 0,
-                                    Wasm.Binary.Instr.localSet 61,
-                                    Wasm.Binary.Instr.i64Const 0,
-                                    Wasm.Binary.Instr.localSet 125,
-                                    Wasm.Binary.Instr.localGet 58,
-                                    Wasm.Binary.Instr.localSet 126,
+                                    Wasm.Binary.Instr.localSet 119,
+                                    Wasm.Binary.Instr.localGet 56,
+                                    Wasm.Binary.Instr.localSet 120,
                                     Wasm.Binary.Instr.i64Const 1,
-                                    Wasm.Binary.Instr.localSet 127,
+                                    Wasm.Binary.Instr.localSet 121,
+                                    Wasm.Binary.Instr.localGet 57,
+                                    Wasm.Binary.Instr.localSet 60,
+                                    Wasm.Binary.Instr.localGet 58,
+                                    Wasm.Binary.Instr.localSet 61,
                                     Wasm.Binary.Instr.localGet 59,
                                     Wasm.Binary.Instr.localSet 62,
                                     Wasm.Binary.Instr.localGet 60,
-                                    Wasm.Binary.Instr.localSet 63,
-                                    Wasm.Binary.Instr.localGet 61,
-                                    Wasm.Binary.Instr.localSet 64,
-                                    Wasm.Binary.Instr.localGet 62,
-                                    Wasm.Binary.Instr.localSet 144,
+                                    Wasm.Binary.Instr.localSet 138,
                                     Wasm.Binary.Instr.block
                                       (Wasm.Binary.BlockType.empty)
                                       [Wasm.Binary.Instr.loop
                                          (Wasm.Binary.BlockType.empty)
-                                         [Wasm.Binary.Instr.localGet 125,
-                                          Wasm.Binary.Instr.localGet 126,
+                                         [Wasm.Binary.Instr.localGet 119,
+                                          Wasm.Binary.Instr.localGet 120,
                                           Wasm.Binary.Instr.i64GeU,
                                           Wasm.Binary.Instr.brIf 1,
-                                          Wasm.Binary.Instr.localGet 125,
+                                          Wasm.Binary.Instr.localGet 119,
+                                          Wasm.Binary.Instr.localSet 63,
+                                          Wasm.Binary.Instr.localGet 61,
                                           Wasm.Binary.Instr.localSet 65,
-                                          Wasm.Binary.Instr.i64Const 0,
-                                          Wasm.Binary.Instr.localSet 73,
-                                          Wasm.Binary.Instr.localGet 63,
-                                          Wasm.Binary.Instr.localSet 67,
-                                          Wasm.Binary.Instr.localGet 64,
-                                          Wasm.Binary.Instr.localSet 68,
-                                          Wasm.Binary.Instr.localGet 50,
-                                          Wasm.Binary.Instr.localSet 128,
-                                          Wasm.Binary.Instr.localGet 51,
-                                          Wasm.Binary.Instr.localSet 129,
-                                          Wasm.Binary.Instr.localGet 58,
-                                          Wasm.Binary.Instr.localSet 133,
+                                          Wasm.Binary.Instr.localGet 62,
+                                          Wasm.Binary.Instr.localSet 66,
+                                          Wasm.Binary.Instr.localGet 48,
+                                          Wasm.Binary.Instr.localSet 122,
+                                          Wasm.Binary.Instr.localGet 49,
+                                          Wasm.Binary.Instr.localSet 123,
+                                          Wasm.Binary.Instr.localGet 56,
+                                          Wasm.Binary.Instr.localSet 127,
                                           Wasm.Binary.Instr.i64Const 1,
-                                          Wasm.Binary.Instr.localSet 134,
-                                          Wasm.Binary.Instr.localGet 133,
-                                          Wasm.Binary.Instr.localGet 134,
+                                          Wasm.Binary.Instr.localSet 128,
+                                          Wasm.Binary.Instr.localGet 127,
+                                          Wasm.Binary.Instr.localGet 128,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                             [Wasm.Binary.Instr.i64Const 0]
-                                            (some [Wasm.Binary.Instr.localGet 133,
-                                              Wasm.Binary.Instr.localGet 134,
+                                            (some [Wasm.Binary.Instr.localGet 127,
+                                              Wasm.Binary.Instr.localGet 128,
                                               Wasm.Binary.Instr.i64Sub]),
-                                          Wasm.Binary.Instr.localSet 131,
-                                          Wasm.Binary.Instr.localGet 65,
-                                          Wasm.Binary.Instr.localSet 132,
-                                          Wasm.Binary.Instr.localGet 131,
-                                          Wasm.Binary.Instr.localGet 132,
+                                          Wasm.Binary.Instr.localSet 125,
+                                          Wasm.Binary.Instr.localGet 63,
+                                          Wasm.Binary.Instr.localSet 126,
+                                          Wasm.Binary.Instr.localGet 125,
+                                          Wasm.Binary.Instr.localGet 126,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                             [Wasm.Binary.Instr.i64Const 0]
-                                            (some [Wasm.Binary.Instr.localGet 131,
-                                              Wasm.Binary.Instr.localGet 132,
+                                            (some [Wasm.Binary.Instr.localGet 125,
+                                              Wasm.Binary.Instr.localGet 126,
                                               Wasm.Binary.Instr.i64Sub]),
-                                          Wasm.Binary.Instr.localSet 130,
-                                          Wasm.Binary.Instr.localGet 130,
-                                          Wasm.Binary.Instr.localGet 129,
+                                          Wasm.Binary.Instr.localSet 124,
+                                          Wasm.Binary.Instr.localGet 124,
+                                          Wasm.Binary.Instr.localGet 123,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
-                                            [Wasm.Binary.Instr.localGet 128,
-                                             Wasm.Binary.Instr.localGet 130,
+                                            [Wasm.Binary.Instr.localGet 122,
+                                             Wasm.Binary.Instr.localGet 124,
                                              Wasm.Binary.Instr.i64Add,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i32Load8U { align := 0, offset := 0 },
@@ -1904,127 +1880,127 @@ def raw : Project.ByteIO.Binary.Raw :=
                                           Wasm.Binary.Instr.i64Add,
                                           Wasm.Binary.Instr.i64Const 255,
                                           Wasm.Binary.Instr.i64And,
+                                          Wasm.Binary.Instr.localSet 67,
+                                          Wasm.Binary.Instr.localGet 65,
+                                          Wasm.Binary.Instr.localSet 68,
+                                          Wasm.Binary.Instr.localGet 66,
                                           Wasm.Binary.Instr.localSet 69,
-                                          Wasm.Binary.Instr.localGet 67,
-                                          Wasm.Binary.Instr.localSet 70,
                                           Wasm.Binary.Instr.localGet 68,
-                                          Wasm.Binary.Instr.localSet 71,
-                                          Wasm.Binary.Instr.localGet 70,
-                                          Wasm.Binary.Instr.localSet 128,
-                                          Wasm.Binary.Instr.localGet 71,
-                                          Wasm.Binary.Instr.localSet 129,
+                                          Wasm.Binary.Instr.localSet 122,
                                           Wasm.Binary.Instr.localGet 69,
-                                          Wasm.Binary.Instr.localSet 130,
-                                          Wasm.Binary.Instr.localGet 129,
+                                          Wasm.Binary.Instr.localSet 123,
+                                          Wasm.Binary.Instr.localGet 67,
+                                          Wasm.Binary.Instr.localSet 124,
+                                          Wasm.Binary.Instr.localGet 123,
                                           Wasm.Binary.Instr.i64Const 1,
                                           Wasm.Binary.Instr.i64Add,
-                                          Wasm.Binary.Instr.localSet 132,
-                                          Wasm.Binary.Instr.localGet 132,
+                                          Wasm.Binary.Instr.localSet 126,
+                                          Wasm.Binary.Instr.localGet 126,
                                           Wasm.Binary.Instr.i64Const 7,
                                           Wasm.Binary.Instr.i64Add,
                                           Wasm.Binary.Instr.i64Const 8,
                                           Wasm.Binary.Instr.i64DivU,
                                           Wasm.Binary.Instr.i64Const 8,
                                           Wasm.Binary.Instr.i64Mul,
-                                          Wasm.Binary.Instr.localSet 134,
-                                          Wasm.Binary.Instr.localGet 134,
+                                          Wasm.Binary.Instr.localSet 128,
+                                          Wasm.Binary.Instr.localGet 128,
                                           Wasm.Binary.Instr.i64Const 8,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.empty)
-                                            [Wasm.Binary.Instr.i64Const 8, Wasm.Binary.Instr.localSet 134]
+                                            [Wasm.Binary.Instr.i64Const 8, Wasm.Binary.Instr.localSet 128]
                                             none,
                                           Wasm.Binary.Instr.i64Const 0,
-                                          Wasm.Binary.Instr.localSet 139,
+                                          Wasm.Binary.Instr.localSet 133,
                                           Wasm.Binary.Instr.i64Const 0,
-                                          Wasm.Binary.Instr.localSet 135,
+                                          Wasm.Binary.Instr.localSet 129,
                                           Wasm.Binary.Instr.globalGet 1,
-                                          Wasm.Binary.Instr.localSet 136,
+                                          Wasm.Binary.Instr.localSet 130,
                                           Wasm.Binary.Instr.block
                                             (Wasm.Binary.BlockType.empty)
                                             [Wasm.Binary.Instr.loop
                                                (Wasm.Binary.BlockType.empty)
-                                               [Wasm.Binary.Instr.localGet 136,
+                                               [Wasm.Binary.Instr.localGet 130,
                                                 Wasm.Binary.Instr.i64Const 0,
                                                 Wasm.Binary.Instr.i64Eq,
                                                 Wasm.Binary.Instr.brIf 1,
-                                                Wasm.Binary.Instr.localGet 139,
+                                                Wasm.Binary.Instr.localGet 133,
                                                 Wasm.Binary.Instr.i64Const 0,
                                                 Wasm.Binary.Instr.i64Ne,
                                                 Wasm.Binary.Instr.brIf 1,
-                                                Wasm.Binary.Instr.localGet 136,
+                                                Wasm.Binary.Instr.localGet 130,
                                                 Wasm.Binary.Instr.i64Const 32,
                                                 Wasm.Binary.Instr.i64Sub,
                                                 Wasm.Binary.Instr.i32WrapI64,
                                                 Wasm.Binary.Instr.i64Load { align := 3, offset := 0 },
-                                                Wasm.Binary.Instr.localSet 137,
-                                                Wasm.Binary.Instr.localGet 136,
+                                                Wasm.Binary.Instr.localSet 131,
+                                                Wasm.Binary.Instr.localGet 130,
                                                 Wasm.Binary.Instr.i64Const 8,
                                                 Wasm.Binary.Instr.i64Sub,
                                                 Wasm.Binary.Instr.i32WrapI64,
                                                 Wasm.Binary.Instr.i64Load { align := 3, offset := 0 },
-                                                Wasm.Binary.Instr.localSet 138,
-                                                Wasm.Binary.Instr.localGet 137,
-                                                Wasm.Binary.Instr.localGet 134,
+                                                Wasm.Binary.Instr.localSet 132,
+                                                Wasm.Binary.Instr.localGet 131,
+                                                Wasm.Binary.Instr.localGet 128,
                                                 Wasm.Binary.Instr.i64GeU,
                                                 Wasm.Binary.Instr.iff
                                                   (Wasm.Binary.BlockType.empty)
-                                                  [Wasm.Binary.Instr.localGet 135,
+                                                  [Wasm.Binary.Instr.localGet 129,
                                                    Wasm.Binary.Instr.i64Const 0,
                                                    Wasm.Binary.Instr.i64Eq,
                                                    Wasm.Binary.Instr.iff
                                                      (Wasm.Binary.BlockType.empty)
-                                                     [Wasm.Binary.Instr.localGet 138, Wasm.Binary.Instr.globalSet 1]
-                                                     (some [Wasm.Binary.Instr.localGet 135,
+                                                     [Wasm.Binary.Instr.localGet 132, Wasm.Binary.Instr.globalSet 1]
+                                                     (some [Wasm.Binary.Instr.localGet 129,
                                                        Wasm.Binary.Instr.i64Const 8,
                                                        Wasm.Binary.Instr.i64Sub,
                                                        Wasm.Binary.Instr.i32WrapI64,
-                                                       Wasm.Binary.Instr.localGet 138,
+                                                       Wasm.Binary.Instr.localGet 132,
                                                        Wasm.Binary.Instr.i64Store { align := 3, offset := 0 }]),
-                                                   Wasm.Binary.Instr.localGet 136,
+                                                   Wasm.Binary.Instr.localGet 130,
                                                    Wasm.Binary.Instr.i64Const 48,
                                                    Wasm.Binary.Instr.i64Sub,
                                                    Wasm.Binary.Instr.i32WrapI64,
                                                    Wasm.Binary.Instr.i64Const 5501223100278326855,
                                                    Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                   Wasm.Binary.Instr.localGet 136,
+                                                   Wasm.Binary.Instr.localGet 130,
                                                    Wasm.Binary.Instr.i64Const 40,
                                                    Wasm.Binary.Instr.i64Sub,
                                                    Wasm.Binary.Instr.i32WrapI64,
                                                    Wasm.Binary.Instr.i64Const 1,
                                                    Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                   Wasm.Binary.Instr.localGet 136,
+                                                   Wasm.Binary.Instr.localGet 130,
                                                    Wasm.Binary.Instr.i64Const 32,
                                                    Wasm.Binary.Instr.i64Sub,
                                                    Wasm.Binary.Instr.i32WrapI64,
-                                                   Wasm.Binary.Instr.localGet 137,
+                                                   Wasm.Binary.Instr.localGet 131,
                                                    Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                   Wasm.Binary.Instr.localGet 136,
+                                                   Wasm.Binary.Instr.localGet 130,
                                                    Wasm.Binary.Instr.i64Const 24,
                                                    Wasm.Binary.Instr.i64Sub,
                                                    Wasm.Binary.Instr.i32WrapI64,
                                                    Wasm.Binary.Instr.i64Const 0,
                                                    Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                   Wasm.Binary.Instr.localGet 136,
+                                                   Wasm.Binary.Instr.localGet 130,
                                                    Wasm.Binary.Instr.i64Const 16,
                                                    Wasm.Binary.Instr.i64Sub,
                                                    Wasm.Binary.Instr.i32WrapI64,
                                                    Wasm.Binary.Instr.i64Const 0,
                                                    Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                   Wasm.Binary.Instr.localGet 136,
+                                                   Wasm.Binary.Instr.localGet 130,
                                                    Wasm.Binary.Instr.i64Const 8,
                                                    Wasm.Binary.Instr.i64Sub,
                                                    Wasm.Binary.Instr.i32WrapI64,
                                                    Wasm.Binary.Instr.i64Const 0,
                                                    Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                   Wasm.Binary.Instr.localGet 136,
-                                                   Wasm.Binary.Instr.localSet 139]
-                                                  (some [Wasm.Binary.Instr.localGet 136,
-                                                    Wasm.Binary.Instr.localSet 135,
-                                                    Wasm.Binary.Instr.localGet 138,
-                                                    Wasm.Binary.Instr.localSet 136]),
+                                                   Wasm.Binary.Instr.localGet 130,
+                                                   Wasm.Binary.Instr.localSet 133]
+                                                  (some [Wasm.Binary.Instr.localGet 130,
+                                                    Wasm.Binary.Instr.localSet 129,
+                                                    Wasm.Binary.Instr.localGet 132,
+                                                    Wasm.Binary.Instr.localSet 130]),
                                                 Wasm.Binary.Instr.br 0]],
-                                          Wasm.Binary.Instr.localGet 139,
+                                          Wasm.Binary.Instr.localGet 133,
                                           Wasm.Binary.Instr.i64Const 0,
                                           Wasm.Binary.Instr.i64Eq,
                                           Wasm.Binary.Instr.iff
@@ -2032,30 +2008,30 @@ def raw : Project.ByteIO.Binary.Raw :=
                                             [Wasm.Binary.Instr.globalGet 0,
                                              Wasm.Binary.Instr.i64Const 48,
                                              Wasm.Binary.Instr.i64Add,
-                                             Wasm.Binary.Instr.localGet 134,
+                                             Wasm.Binary.Instr.localGet 128,
                                              Wasm.Binary.Instr.i64Add,
-                                             Wasm.Binary.Instr.localTee 137,
+                                             Wasm.Binary.Instr.localTee 131,
                                              Wasm.Binary.Instr.globalGet 0,
                                              Wasm.Binary.Instr.i64LtU,
                                              Wasm.Binary.Instr.iff
                                                (Wasm.Binary.BlockType.empty)
                                                [Wasm.Binary.Instr.unreachable]
                                                none,
-                                             Wasm.Binary.Instr.localGet 137,
+                                             Wasm.Binary.Instr.localGet 131,
                                              Wasm.Binary.Instr.i64Const 1,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i64Const 65536,
                                              Wasm.Binary.Instr.i64DivU,
                                              Wasm.Binary.Instr.i64Const 1,
                                              Wasm.Binary.Instr.i64Add,
-                                             Wasm.Binary.Instr.localSet 138,
+                                             Wasm.Binary.Instr.localSet 132,
                                              Wasm.Binary.Instr.memorySize 0,
                                              Wasm.Binary.Instr.i64ExtendI32U,
-                                             Wasm.Binary.Instr.localGet 138,
+                                             Wasm.Binary.Instr.localGet 132,
                                              Wasm.Binary.Instr.i64LtU,
                                              Wasm.Binary.Instr.iff
                                                (Wasm.Binary.BlockType.empty)
-                                               [Wasm.Binary.Instr.localGet 138,
+                                               [Wasm.Binary.Instr.localGet 132,
                                                 Wasm.Binary.Instr.memorySize 0,
                                                 Wasm.Binary.Instr.i64ExtendI32U,
                                                 Wasm.Binary.Instr.i64Sub,
@@ -2071,40 +2047,40 @@ def raw : Project.ByteIO.Binary.Raw :=
                                              Wasm.Binary.Instr.globalGet 0,
                                              Wasm.Binary.Instr.i64Const 48,
                                              Wasm.Binary.Instr.i64Add,
-                                             Wasm.Binary.Instr.localSet 139,
-                                             Wasm.Binary.Instr.localGet 137,
+                                             Wasm.Binary.Instr.localSet 133,
+                                             Wasm.Binary.Instr.localGet 131,
                                              Wasm.Binary.Instr.globalSet 0,
-                                             Wasm.Binary.Instr.localGet 139,
+                                             Wasm.Binary.Instr.localGet 133,
                                              Wasm.Binary.Instr.i64Const 48,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i64Const 5501223100278326855,
                                              Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localGet 139,
+                                             Wasm.Binary.Instr.localGet 133,
                                              Wasm.Binary.Instr.i64Const 40,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i64Const 1,
                                              Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localGet 139,
+                                             Wasm.Binary.Instr.localGet 133,
                                              Wasm.Binary.Instr.i64Const 32,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
-                                             Wasm.Binary.Instr.localGet 134,
+                                             Wasm.Binary.Instr.localGet 128,
                                              Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localGet 139,
+                                             Wasm.Binary.Instr.localGet 133,
                                              Wasm.Binary.Instr.i64Const 24,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i64Const 0,
                                              Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localGet 139,
+                                             Wasm.Binary.Instr.localGet 133,
                                              Wasm.Binary.Instr.i64Const 16,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
                                              Wasm.Binary.Instr.i64Const 0,
                                              Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                             Wasm.Binary.Instr.localGet 139,
+                                             Wasm.Binary.Instr.localGet 133,
                                              Wasm.Binary.Instr.i64Const 8,
                                              Wasm.Binary.Instr.i64Sub,
                                              Wasm.Binary.Instr.i32WrapI64,
@@ -2115,224 +2091,176 @@ def raw : Project.ByteIO.Binary.Raw :=
                                           Wasm.Binary.Instr.i64Const 1,
                                           Wasm.Binary.Instr.i64Add,
                                           Wasm.Binary.Instr.globalSet 2,
-                                          Wasm.Binary.Instr.localGet 139,
-                                          Wasm.Binary.Instr.localSet 131,
+                                          Wasm.Binary.Instr.localGet 133,
+                                          Wasm.Binary.Instr.localSet 125,
                                           Wasm.Binary.Instr.i64Const 0,
-                                          Wasm.Binary.Instr.localSet 133,
+                                          Wasm.Binary.Instr.localSet 127,
                                           Wasm.Binary.Instr.block
                                             (Wasm.Binary.BlockType.empty)
                                             [Wasm.Binary.Instr.loop
                                                (Wasm.Binary.BlockType.empty)
-                                               [Wasm.Binary.Instr.localGet 133,
-                                                Wasm.Binary.Instr.localGet 129,
+                                               [Wasm.Binary.Instr.localGet 127,
+                                                Wasm.Binary.Instr.localGet 123,
                                                 Wasm.Binary.Instr.i64GeU,
                                                 Wasm.Binary.Instr.brIf 1,
-                                                Wasm.Binary.Instr.localGet 131,
-                                                Wasm.Binary.Instr.localGet 133,
+                                                Wasm.Binary.Instr.localGet 125,
+                                                Wasm.Binary.Instr.localGet 127,
                                                 Wasm.Binary.Instr.i64Add,
                                                 Wasm.Binary.Instr.i32WrapI64,
-                                                Wasm.Binary.Instr.localGet 128,
-                                                Wasm.Binary.Instr.localGet 133,
+                                                Wasm.Binary.Instr.localGet 122,
+                                                Wasm.Binary.Instr.localGet 127,
                                                 Wasm.Binary.Instr.i64Add,
                                                 Wasm.Binary.Instr.i32WrapI64,
                                                 Wasm.Binary.Instr.i32Load8U { align := 0, offset := 0 },
                                                 Wasm.Binary.Instr.i32Store8 { align := 0, offset := 0 },
-                                                Wasm.Binary.Instr.localGet 133,
+                                                Wasm.Binary.Instr.localGet 127,
                                                 Wasm.Binary.Instr.i64Const 1,
                                                 Wasm.Binary.Instr.i64Add,
-                                                Wasm.Binary.Instr.localSet 133,
+                                                Wasm.Binary.Instr.localSet 127,
                                                 Wasm.Binary.Instr.br 0]],
-                                          Wasm.Binary.Instr.localGet 131,
-                                          Wasm.Binary.Instr.localGet 129,
+                                          Wasm.Binary.Instr.localGet 125,
+                                          Wasm.Binary.Instr.localGet 123,
                                           Wasm.Binary.Instr.i64Add,
                                           Wasm.Binary.Instr.i32WrapI64,
-                                          Wasm.Binary.Instr.localGet 130,
+                                          Wasm.Binary.Instr.localGet 124,
                                           Wasm.Binary.Instr.i32WrapI64,
                                           Wasm.Binary.Instr.i32Store8 { align := 0, offset := 0 },
-                                          Wasm.Binary.Instr.localGet 131,
-                                          Wasm.Binary.Instr.localSet 73,
-                                          Wasm.Binary.Instr.localGet 73,
-                                          Wasm.Binary.Instr.localSet 74,
+                                          Wasm.Binary.Instr.localGet 125,
+                                          Wasm.Binary.Instr.localSet 71,
                                           Wasm.Binary.Instr.localGet 71,
+                                          Wasm.Binary.Instr.localSet 72,
+                                          Wasm.Binary.Instr.localGet 69,
                                           Wasm.Binary.Instr.i64Const 1,
                                           Wasm.Binary.Instr.i64Add,
+                                          Wasm.Binary.Instr.localSet 73,
+                                          Wasm.Binary.Instr.localGet 71,
+                                          Wasm.Binary.Instr.localSet 74,
+                                          Wasm.Binary.Instr.localGet 72,
                                           Wasm.Binary.Instr.localSet 75,
                                           Wasm.Binary.Instr.localGet 73,
                                           Wasm.Binary.Instr.localSet 76,
                                           Wasm.Binary.Instr.localGet 74,
-                                          Wasm.Binary.Instr.localSet 77,
+                                          Wasm.Binary.Instr.localSet 135,
                                           Wasm.Binary.Instr.localGet 75,
-                                          Wasm.Binary.Instr.localSet 78,
-                                          Wasm.Binary.Instr.i64Const 0,
-                                          Wasm.Binary.Instr.localSet 79,
-                                          Wasm.Binary.Instr.localGet 73,
-                                          Wasm.Binary.Instr.i64Const 0,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz,
-                                          Wasm.Binary.Instr.iff
-                                            (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                            [Wasm.Binary.Instr.localGet 73,
-                                             Wasm.Binary.Instr.localGet 76,
-                                             Wasm.Binary.Instr.i64Eq,
-                                             Wasm.Binary.Instr.i32Eqz]
-                                            (some [Wasm.Binary.Instr.i32Const 0]),
-                                          Wasm.Binary.Instr.iff
-                                            (Wasm.Binary.BlockType.empty)
-                                            [Wasm.Binary.Instr.localGet 73,
-                                             Wasm.Binary.Instr.call 18,
-                                             Wasm.Binary.Instr.globalGet 5,
-                                             Wasm.Binary.Instr.localSet 80]
-                                            (some []),
+                                          Wasm.Binary.Instr.localSet 136,
                                           Wasm.Binary.Instr.localGet 76,
-                                          Wasm.Binary.Instr.localSet 141,
-                                          Wasm.Binary.Instr.localGet 77,
-                                          Wasm.Binary.Instr.localSet 142,
-                                          Wasm.Binary.Instr.localGet 78,
-                                          Wasm.Binary.Instr.localSet 143,
-                                          Wasm.Binary.Instr.localGet 79,
-                                          Wasm.Binary.Instr.localSet 140,
-                                          Wasm.Binary.Instr.localGet 62,
+                                          Wasm.Binary.Instr.localSet 137,
+                                          Wasm.Binary.Instr.i64Const 0,
+                                          Wasm.Binary.Instr.localSet 134,
+                                          Wasm.Binary.Instr.localGet 60,
                                           Wasm.Binary.Instr.i64Const 0,
                                           Wasm.Binary.Instr.i64Ne,
-                                          Wasm.Binary.Instr.localGet 62,
-                                          Wasm.Binary.Instr.localGet 144,
+                                          Wasm.Binary.Instr.localGet 60,
+                                          Wasm.Binary.Instr.localGet 138,
                                           Wasm.Binary.Instr.i64Ne,
                                           Wasm.Binary.Instr.i32And,
-                                          Wasm.Binary.Instr.localGet 62,
-                                          Wasm.Binary.Instr.localGet 141,
+                                          Wasm.Binary.Instr.localGet 60,
+                                          Wasm.Binary.Instr.localGet 135,
                                           Wasm.Binary.Instr.i64Ne,
                                           Wasm.Binary.Instr.i32And,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.empty)
-                                            [Wasm.Binary.Instr.localGet 62, Wasm.Binary.Instr.call 18]
+                                            [Wasm.Binary.Instr.localGet 60, Wasm.Binary.Instr.call 18]
                                             none,
-                                          Wasm.Binary.Instr.localGet 141,
+                                          Wasm.Binary.Instr.localGet 135,
+                                          Wasm.Binary.Instr.localSet 60,
+                                          Wasm.Binary.Instr.localGet 136,
+                                          Wasm.Binary.Instr.localSet 61,
+                                          Wasm.Binary.Instr.localGet 137,
                                           Wasm.Binary.Instr.localSet 62,
-                                          Wasm.Binary.Instr.localGet 142,
-                                          Wasm.Binary.Instr.localSet 63,
-                                          Wasm.Binary.Instr.localGet 143,
-                                          Wasm.Binary.Instr.localSet 64,
-                                          Wasm.Binary.Instr.localGet 140,
+                                          Wasm.Binary.Instr.localGet 134,
                                           Wasm.Binary.Instr.i64Const 0,
                                           Wasm.Binary.Instr.i64Ne,
                                           Wasm.Binary.Instr.brIf 1,
-                                          Wasm.Binary.Instr.localGet 125,
-                                          Wasm.Binary.Instr.localSet 128,
-                                          Wasm.Binary.Instr.localGet 127,
-                                          Wasm.Binary.Instr.localSet 129,
-                                          Wasm.Binary.Instr.localGet 128,
-                                          Wasm.Binary.Instr.localGet 129,
+                                          Wasm.Binary.Instr.localGet 119,
+                                          Wasm.Binary.Instr.localSet 122,
+                                          Wasm.Binary.Instr.localGet 121,
+                                          Wasm.Binary.Instr.localSet 123,
+                                          Wasm.Binary.Instr.localGet 122,
+                                          Wasm.Binary.Instr.localGet 123,
                                           Wasm.Binary.Instr.i64Add,
-                                          Wasm.Binary.Instr.localTee 130,
-                                          Wasm.Binary.Instr.localGet 128,
+                                          Wasm.Binary.Instr.localTee 124,
+                                          Wasm.Binary.Instr.localGet 122,
                                           Wasm.Binary.Instr.i64LtU,
                                           Wasm.Binary.Instr.iff
                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                             [Wasm.Binary.Instr.unreachable]
-                                            (some [Wasm.Binary.Instr.localGet 130]),
-                                          Wasm.Binary.Instr.localSet 125,
+                                            (some [Wasm.Binary.Instr.localGet 124]),
+                                          Wasm.Binary.Instr.localSet 119,
                                           Wasm.Binary.Instr.br 0]],
+                                    Wasm.Binary.Instr.localGet 60,
+                                    Wasm.Binary.Instr.localSet 77,
+                                    Wasm.Binary.Instr.localGet 61,
+                                    Wasm.Binary.Instr.localSet 78,
                                     Wasm.Binary.Instr.localGet 62,
+                                    Wasm.Binary.Instr.localSet 79,
+                                    Wasm.Binary.Instr.localGet 77,
+                                    Wasm.Binary.Instr.localSet 80,
+                                    Wasm.Binary.Instr.localGet 78,
                                     Wasm.Binary.Instr.localSet 81,
-                                    Wasm.Binary.Instr.localGet 63,
+                                    Wasm.Binary.Instr.localGet 79,
                                     Wasm.Binary.Instr.localSet 82,
-                                    Wasm.Binary.Instr.localGet 64,
-                                    Wasm.Binary.Instr.localSet 83,
+                                    Wasm.Binary.Instr.localGet 80,
+                                    Wasm.Binary.Instr.localSet 116,
                                     Wasm.Binary.Instr.localGet 81,
-                                    Wasm.Binary.Instr.localSet 84,
+                                    Wasm.Binary.Instr.localSet 117,
                                     Wasm.Binary.Instr.localGet 82,
-                                    Wasm.Binary.Instr.localSet 85,
-                                    Wasm.Binary.Instr.localGet 83,
-                                    Wasm.Binary.Instr.localSet 86,
-                                    Wasm.Binary.Instr.localGet 84,
-                                    Wasm.Binary.Instr.localSet 122,
-                                    Wasm.Binary.Instr.localGet 85,
-                                    Wasm.Binary.Instr.localSet 123,
-                                    Wasm.Binary.Instr.localGet 86,
-                                    Wasm.Binary.Instr.localSet 124,
-                                    Wasm.Binary.Instr.localGet 49,
+                                    Wasm.Binary.Instr.localSet 118,
+                                    Wasm.Binary.Instr.localGet 47,
                                     Wasm.Binary.Instr.i64Const 0,
                                     Wasm.Binary.Instr.i64Eq,
                                     Wasm.Binary.Instr.i32Eqz,
                                     Wasm.Binary.Instr.iff
                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                      [Wasm.Binary.Instr.localGet 49,
-                                       Wasm.Binary.Instr.localGet 122,
-                                       Wasm.Binary.Instr.i64Eq,
-                                       Wasm.Binary.Instr.i32Eqz]
-                                      (some [Wasm.Binary.Instr.i32Const 0]),
-                                    Wasm.Binary.Instr.iff
-                                      (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                      [Wasm.Binary.Instr.localGet 49,
-                                       Wasm.Binary.Instr.localGet 10,
-                                       Wasm.Binary.Instr.i64Eq,
-                                       Wasm.Binary.Instr.i32Eqz]
-                                      (some [Wasm.Binary.Instr.i32Const 0]),
-                                    Wasm.Binary.Instr.iff
-                                      (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                      [Wasm.Binary.Instr.localGet 49,
-                                       Wasm.Binary.Instr.localGet 9,
-                                       Wasm.Binary.Instr.i64Eq,
-                                       Wasm.Binary.Instr.i32Eqz]
-                                      (some [Wasm.Binary.Instr.i32Const 0]),
-                                    Wasm.Binary.Instr.iff
-                                      (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                      [Wasm.Binary.Instr.localGet 49,
-                                       Wasm.Binary.Instr.localGet 8,
-                                       Wasm.Binary.Instr.i64Eq,
-                                       Wasm.Binary.Instr.i32Eqz]
-                                      (some [Wasm.Binary.Instr.i32Const 0]),
-                                    Wasm.Binary.Instr.iff
-                                      (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                      [Wasm.Binary.Instr.localGet 49,
-                                       Wasm.Binary.Instr.localGet 7,
+                                      [Wasm.Binary.Instr.localGet 47,
+                                       Wasm.Binary.Instr.localGet 116,
                                        Wasm.Binary.Instr.i64Eq,
                                        Wasm.Binary.Instr.i32Eqz]
                                       (some [Wasm.Binary.Instr.i32Const 0]),
                                     Wasm.Binary.Instr.iff
                                       (Wasm.Binary.BlockType.empty)
-                                      [Wasm.Binary.Instr.localGet 49, Wasm.Binary.Instr.call 18]
+                                      [Wasm.Binary.Instr.localGet 47, Wasm.Binary.Instr.call 18]
                                       (some [])]
-                                   (some [Wasm.Binary.Instr.localGet 43,
-                                     Wasm.Binary.Instr.localSet 87,
-                                     Wasm.Binary.Instr.localGet 87,
-                                     Wasm.Binary.Instr.localSet 88,
+                                   (some [Wasm.Binary.Instr.localGet 41,
+                                     Wasm.Binary.Instr.localSet 83,
+                                     Wasm.Binary.Instr.localGet 83,
+                                     Wasm.Binary.Instr.localSet 84,
                                      Wasm.Binary.Instr.block
                                        (Wasm.Binary.BlockType.empty)
                                        [Wasm.Binary.Instr.loop
                                           (Wasm.Binary.BlockType.empty)
-                                          [Wasm.Binary.Instr.localGet 88,
-                                           Wasm.Binary.Instr.localSet 89,
+                                          [Wasm.Binary.Instr.localGet 84,
+                                           Wasm.Binary.Instr.localSet 85,
                                            Wasm.Binary.Instr.i64Const 0,
-                                           Wasm.Binary.Instr.localGet 89,
+                                           Wasm.Binary.Instr.localGet 85,
                                            Wasm.Binary.Instr.i64LtU,
                                            Wasm.Binary.Instr.iff
                                              (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                             [Wasm.Binary.Instr.localGet 42,
-                                              Wasm.Binary.Instr.localSet 125,
-                                              Wasm.Binary.Instr.localGet 43,
-                                              Wasm.Binary.Instr.localSet 126,
-                                              Wasm.Binary.Instr.localGet 89,
-                                              Wasm.Binary.Instr.localSet 128,
+                                             [Wasm.Binary.Instr.localGet 40,
+                                              Wasm.Binary.Instr.localSet 119,
+                                              Wasm.Binary.Instr.localGet 41,
+                                              Wasm.Binary.Instr.localSet 120,
+                                              Wasm.Binary.Instr.localGet 85,
+                                              Wasm.Binary.Instr.localSet 122,
                                               Wasm.Binary.Instr.i64Const 1,
-                                              Wasm.Binary.Instr.localSet 129,
-                                              Wasm.Binary.Instr.localGet 128,
-                                              Wasm.Binary.Instr.localGet 129,
+                                              Wasm.Binary.Instr.localSet 123,
+                                              Wasm.Binary.Instr.localGet 122,
+                                              Wasm.Binary.Instr.localGet 123,
                                               Wasm.Binary.Instr.i64LtU,
                                               Wasm.Binary.Instr.iff
                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                                 [Wasm.Binary.Instr.i64Const 0]
-                                                (some [Wasm.Binary.Instr.localGet 128,
-                                                  Wasm.Binary.Instr.localGet 129,
+                                                (some [Wasm.Binary.Instr.localGet 122,
+                                                  Wasm.Binary.Instr.localGet 123,
                                                   Wasm.Binary.Instr.i64Sub]),
-                                              Wasm.Binary.Instr.localSet 127,
-                                              Wasm.Binary.Instr.localGet 127,
-                                              Wasm.Binary.Instr.localGet 126,
+                                              Wasm.Binary.Instr.localSet 121,
+                                              Wasm.Binary.Instr.localGet 121,
+                                              Wasm.Binary.Instr.localGet 120,
                                               Wasm.Binary.Instr.i64LtU,
                                               Wasm.Binary.Instr.iff
                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
-                                                [Wasm.Binary.Instr.localGet 125,
-                                                 Wasm.Binary.Instr.localGet 127,
+                                                [Wasm.Binary.Instr.localGet 119,
+                                                 Wasm.Binary.Instr.localGet 121,
                                                  Wasm.Binary.Instr.i64Add,
                                                  Wasm.Binary.Instr.i32WrapI64,
                                                  Wasm.Binary.Instr.i32Load8U { align := 0, offset := 0 },
@@ -2363,55 +2291,55 @@ def raw : Project.ByteIO.Binary.Raw :=
                                            Wasm.Binary.Instr.i32Eqz,
                                            Wasm.Binary.Instr.iff
                                              (Wasm.Binary.BlockType.empty)
-                                             [Wasm.Binary.Instr.localGet 89,
-                                              Wasm.Binary.Instr.localSet 125,
+                                             [Wasm.Binary.Instr.localGet 85,
+                                              Wasm.Binary.Instr.localSet 119,
                                               Wasm.Binary.Instr.i64Const 1,
-                                              Wasm.Binary.Instr.localSet 126,
-                                              Wasm.Binary.Instr.localGet 125,
-                                              Wasm.Binary.Instr.localGet 126,
+                                              Wasm.Binary.Instr.localSet 120,
+                                              Wasm.Binary.Instr.localGet 119,
+                                              Wasm.Binary.Instr.localGet 120,
                                               Wasm.Binary.Instr.i64LtU,
                                               Wasm.Binary.Instr.iff
                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                                 [Wasm.Binary.Instr.i64Const 0]
-                                                (some [Wasm.Binary.Instr.localGet 125,
-                                                  Wasm.Binary.Instr.localGet 126,
+                                                (some [Wasm.Binary.Instr.localGet 119,
+                                                  Wasm.Binary.Instr.localGet 120,
                                                   Wasm.Binary.Instr.i64Sub]),
-                                              Wasm.Binary.Instr.localSet 90,
-                                              Wasm.Binary.Instr.localGet 90,
-                                              Wasm.Binary.Instr.localSet 91]
-                                             (some [Wasm.Binary.Instr.localGet 89, Wasm.Binary.Instr.localSet 91]),
-                                           Wasm.Binary.Instr.localGet 91,
-                                           Wasm.Binary.Instr.localSet 131,
+                                              Wasm.Binary.Instr.localSet 86,
+                                              Wasm.Binary.Instr.localGet 86,
+                                              Wasm.Binary.Instr.localSet 87]
+                                             (some [Wasm.Binary.Instr.localGet 85, Wasm.Binary.Instr.localSet 87]),
+                                           Wasm.Binary.Instr.localGet 87,
+                                           Wasm.Binary.Instr.localSet 125,
                                            Wasm.Binary.Instr.i64Const 0,
-                                           Wasm.Binary.Instr.localGet 88,
+                                           Wasm.Binary.Instr.localGet 84,
                                            Wasm.Binary.Instr.i64LtU,
                                            Wasm.Binary.Instr.iff
                                              (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                             [Wasm.Binary.Instr.localGet 42,
-                                              Wasm.Binary.Instr.localSet 125,
-                                              Wasm.Binary.Instr.localGet 43,
-                                              Wasm.Binary.Instr.localSet 126,
-                                              Wasm.Binary.Instr.localGet 88,
-                                              Wasm.Binary.Instr.localSet 128,
+                                             [Wasm.Binary.Instr.localGet 40,
+                                              Wasm.Binary.Instr.localSet 119,
+                                              Wasm.Binary.Instr.localGet 41,
+                                              Wasm.Binary.Instr.localSet 120,
+                                              Wasm.Binary.Instr.localGet 84,
+                                              Wasm.Binary.Instr.localSet 122,
                                               Wasm.Binary.Instr.i64Const 1,
-                                              Wasm.Binary.Instr.localSet 129,
-                                              Wasm.Binary.Instr.localGet 128,
-                                              Wasm.Binary.Instr.localGet 129,
+                                              Wasm.Binary.Instr.localSet 123,
+                                              Wasm.Binary.Instr.localGet 122,
+                                              Wasm.Binary.Instr.localGet 123,
                                               Wasm.Binary.Instr.i64LtU,
                                               Wasm.Binary.Instr.iff
                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                                 [Wasm.Binary.Instr.i64Const 0]
-                                                (some [Wasm.Binary.Instr.localGet 128,
-                                                  Wasm.Binary.Instr.localGet 129,
+                                                (some [Wasm.Binary.Instr.localGet 122,
+                                                  Wasm.Binary.Instr.localGet 123,
                                                   Wasm.Binary.Instr.i64Sub]),
-                                              Wasm.Binary.Instr.localSet 127,
-                                              Wasm.Binary.Instr.localGet 127,
-                                              Wasm.Binary.Instr.localGet 126,
+                                              Wasm.Binary.Instr.localSet 121,
+                                              Wasm.Binary.Instr.localGet 121,
+                                              Wasm.Binary.Instr.localGet 120,
                                               Wasm.Binary.Instr.i64LtU,
                                               Wasm.Binary.Instr.iff
                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
-                                                [Wasm.Binary.Instr.localGet 125,
-                                                 Wasm.Binary.Instr.localGet 127,
+                                                [Wasm.Binary.Instr.localGet 119,
+                                                 Wasm.Binary.Instr.localGet 121,
                                                  Wasm.Binary.Instr.i64Add,
                                                  Wasm.Binary.Instr.i32WrapI64,
                                                  Wasm.Binary.Instr.i32Load8U { align := 0, offset := 0 },
@@ -2444,91 +2372,89 @@ def raw : Project.ByteIO.Binary.Raw :=
                                              (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                              [Wasm.Binary.Instr.i64Const 0]
                                              (some [Wasm.Binary.Instr.i64Const 1]),
-                                           Wasm.Binary.Instr.localSet 130,
-                                           Wasm.Binary.Instr.localGet 131,
-                                           Wasm.Binary.Instr.localSet 88,
-                                           Wasm.Binary.Instr.localGet 130,
+                                           Wasm.Binary.Instr.localSet 124,
+                                           Wasm.Binary.Instr.localGet 125,
+                                           Wasm.Binary.Instr.localSet 84,
+                                           Wasm.Binary.Instr.localGet 124,
                                            Wasm.Binary.Instr.i64Const 0,
                                            Wasm.Binary.Instr.i64Ne,
                                            Wasm.Binary.Instr.brIf 1,
                                            Wasm.Binary.Instr.br 0]],
+                                     Wasm.Binary.Instr.localGet 84,
+                                     Wasm.Binary.Instr.localSet 88,
                                      Wasm.Binary.Instr.localGet 88,
+                                     Wasm.Binary.Instr.localSet 89,
+                                     Wasm.Binary.Instr.i64Const 0,
+                                     Wasm.Binary.Instr.localSet 90,
+                                     Wasm.Binary.Instr.i64Const 0,
+                                     Wasm.Binary.Instr.localSet 91,
+                                     Wasm.Binary.Instr.i64Const 0,
                                      Wasm.Binary.Instr.localSet 92,
-                                     Wasm.Binary.Instr.localGet 92,
-                                     Wasm.Binary.Instr.localSet 93,
                                      Wasm.Binary.Instr.i64Const 0,
-                                     Wasm.Binary.Instr.localSet 94,
-                                     Wasm.Binary.Instr.i64Const 0,
-                                     Wasm.Binary.Instr.localSet 95,
-                                     Wasm.Binary.Instr.i64Const 0,
-                                     Wasm.Binary.Instr.localSet 96,
-                                     Wasm.Binary.Instr.i64Const 0,
-                                     Wasm.Binary.Instr.localSet 125,
-                                     Wasm.Binary.Instr.localGet 93,
-                                     Wasm.Binary.Instr.localSet 126,
+                                     Wasm.Binary.Instr.localSet 119,
+                                     Wasm.Binary.Instr.localGet 89,
+                                     Wasm.Binary.Instr.localSet 120,
                                      Wasm.Binary.Instr.i64Const 1,
-                                     Wasm.Binary.Instr.localSet 127,
-                                     Wasm.Binary.Instr.localGet 94,
-                                     Wasm.Binary.Instr.localSet 97,
-                                     Wasm.Binary.Instr.localGet 95,
-                                     Wasm.Binary.Instr.localSet 98,
-                                     Wasm.Binary.Instr.localGet 96,
-                                     Wasm.Binary.Instr.localSet 99,
-                                     Wasm.Binary.Instr.localGet 97,
-                                     Wasm.Binary.Instr.localSet 144,
+                                     Wasm.Binary.Instr.localSet 121,
+                                     Wasm.Binary.Instr.localGet 90,
+                                     Wasm.Binary.Instr.localSet 93,
+                                     Wasm.Binary.Instr.localGet 91,
+                                     Wasm.Binary.Instr.localSet 94,
+                                     Wasm.Binary.Instr.localGet 92,
+                                     Wasm.Binary.Instr.localSet 95,
+                                     Wasm.Binary.Instr.localGet 93,
+                                     Wasm.Binary.Instr.localSet 138,
                                      Wasm.Binary.Instr.block
                                        (Wasm.Binary.BlockType.empty)
                                        [Wasm.Binary.Instr.loop
                                           (Wasm.Binary.BlockType.empty)
-                                          [Wasm.Binary.Instr.localGet 125,
-                                           Wasm.Binary.Instr.localGet 126,
+                                          [Wasm.Binary.Instr.localGet 119,
+                                           Wasm.Binary.Instr.localGet 120,
                                            Wasm.Binary.Instr.i64GeU,
                                            Wasm.Binary.Instr.brIf 1,
-                                           Wasm.Binary.Instr.localGet 125,
-                                           Wasm.Binary.Instr.localSet 100,
-                                           Wasm.Binary.Instr.i64Const 0,
-                                           Wasm.Binary.Instr.localSet 108,
-                                           Wasm.Binary.Instr.localGet 98,
-                                           Wasm.Binary.Instr.localSet 102,
-                                           Wasm.Binary.Instr.localGet 99,
-                                           Wasm.Binary.Instr.localSet 103,
-                                           Wasm.Binary.Instr.localGet 42,
-                                           Wasm.Binary.Instr.localSet 128,
-                                           Wasm.Binary.Instr.localGet 43,
-                                           Wasm.Binary.Instr.localSet 129,
-                                           Wasm.Binary.Instr.localGet 93,
-                                           Wasm.Binary.Instr.localSet 133,
+                                           Wasm.Binary.Instr.localGet 119,
+                                           Wasm.Binary.Instr.localSet 96,
+                                           Wasm.Binary.Instr.localGet 94,
+                                           Wasm.Binary.Instr.localSet 98,
+                                           Wasm.Binary.Instr.localGet 95,
+                                           Wasm.Binary.Instr.localSet 99,
+                                           Wasm.Binary.Instr.localGet 40,
+                                           Wasm.Binary.Instr.localSet 122,
+                                           Wasm.Binary.Instr.localGet 41,
+                                           Wasm.Binary.Instr.localSet 123,
+                                           Wasm.Binary.Instr.localGet 89,
+                                           Wasm.Binary.Instr.localSet 127,
                                            Wasm.Binary.Instr.i64Const 1,
-                                           Wasm.Binary.Instr.localSet 134,
-                                           Wasm.Binary.Instr.localGet 133,
-                                           Wasm.Binary.Instr.localGet 134,
+                                           Wasm.Binary.Instr.localSet 128,
+                                           Wasm.Binary.Instr.localGet 127,
+                                           Wasm.Binary.Instr.localGet 128,
                                            Wasm.Binary.Instr.i64LtU,
                                            Wasm.Binary.Instr.iff
                                              (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                              [Wasm.Binary.Instr.i64Const 0]
-                                             (some [Wasm.Binary.Instr.localGet 133,
-                                               Wasm.Binary.Instr.localGet 134,
+                                             (some [Wasm.Binary.Instr.localGet 127,
+                                               Wasm.Binary.Instr.localGet 128,
                                                Wasm.Binary.Instr.i64Sub]),
-                                           Wasm.Binary.Instr.localSet 131,
-                                           Wasm.Binary.Instr.localGet 100,
-                                           Wasm.Binary.Instr.localSet 132,
-                                           Wasm.Binary.Instr.localGet 131,
-                                           Wasm.Binary.Instr.localGet 132,
+                                           Wasm.Binary.Instr.localSet 125,
+                                           Wasm.Binary.Instr.localGet 96,
+                                           Wasm.Binary.Instr.localSet 126,
+                                           Wasm.Binary.Instr.localGet 125,
+                                           Wasm.Binary.Instr.localGet 126,
                                            Wasm.Binary.Instr.i64LtU,
                                            Wasm.Binary.Instr.iff
                                              (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                              [Wasm.Binary.Instr.i64Const 0]
-                                             (some [Wasm.Binary.Instr.localGet 131,
-                                               Wasm.Binary.Instr.localGet 132,
+                                             (some [Wasm.Binary.Instr.localGet 125,
+                                               Wasm.Binary.Instr.localGet 126,
                                                Wasm.Binary.Instr.i64Sub]),
-                                           Wasm.Binary.Instr.localSet 130,
-                                           Wasm.Binary.Instr.localGet 130,
-                                           Wasm.Binary.Instr.localGet 129,
+                                           Wasm.Binary.Instr.localSet 124,
+                                           Wasm.Binary.Instr.localGet 124,
+                                           Wasm.Binary.Instr.localGet 123,
                                            Wasm.Binary.Instr.i64LtU,
                                            Wasm.Binary.Instr.iff
                                              (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
-                                             [Wasm.Binary.Instr.localGet 128,
-                                              Wasm.Binary.Instr.localGet 130,
+                                             [Wasm.Binary.Instr.localGet 122,
+                                              Wasm.Binary.Instr.localGet 124,
                                               Wasm.Binary.Instr.i64Add,
                                               Wasm.Binary.Instr.i32WrapI64,
                                               Wasm.Binary.Instr.i32Load8U { align := 0, offset := 0 },
@@ -2538,127 +2464,127 @@ def raw : Project.ByteIO.Binary.Raw :=
                                            Wasm.Binary.Instr.i64Add,
                                            Wasm.Binary.Instr.i64Const 255,
                                            Wasm.Binary.Instr.i64And,
-                                           Wasm.Binary.Instr.localSet 104,
+                                           Wasm.Binary.Instr.localSet 100,
+                                           Wasm.Binary.Instr.localGet 98,
+                                           Wasm.Binary.Instr.localSet 101,
+                                           Wasm.Binary.Instr.localGet 99,
+                                           Wasm.Binary.Instr.localSet 102,
+                                           Wasm.Binary.Instr.localGet 101,
+                                           Wasm.Binary.Instr.localSet 122,
                                            Wasm.Binary.Instr.localGet 102,
-                                           Wasm.Binary.Instr.localSet 105,
-                                           Wasm.Binary.Instr.localGet 103,
-                                           Wasm.Binary.Instr.localSet 106,
-                                           Wasm.Binary.Instr.localGet 105,
-                                           Wasm.Binary.Instr.localSet 128,
-                                           Wasm.Binary.Instr.localGet 106,
-                                           Wasm.Binary.Instr.localSet 129,
-                                           Wasm.Binary.Instr.localGet 104,
-                                           Wasm.Binary.Instr.localSet 130,
-                                           Wasm.Binary.Instr.localGet 129,
+                                           Wasm.Binary.Instr.localSet 123,
+                                           Wasm.Binary.Instr.localGet 100,
+                                           Wasm.Binary.Instr.localSet 124,
+                                           Wasm.Binary.Instr.localGet 123,
                                            Wasm.Binary.Instr.i64Const 1,
                                            Wasm.Binary.Instr.i64Add,
-                                           Wasm.Binary.Instr.localSet 132,
-                                           Wasm.Binary.Instr.localGet 132,
+                                           Wasm.Binary.Instr.localSet 126,
+                                           Wasm.Binary.Instr.localGet 126,
                                            Wasm.Binary.Instr.i64Const 7,
                                            Wasm.Binary.Instr.i64Add,
                                            Wasm.Binary.Instr.i64Const 8,
                                            Wasm.Binary.Instr.i64DivU,
                                            Wasm.Binary.Instr.i64Const 8,
                                            Wasm.Binary.Instr.i64Mul,
-                                           Wasm.Binary.Instr.localSet 134,
-                                           Wasm.Binary.Instr.localGet 134,
+                                           Wasm.Binary.Instr.localSet 128,
+                                           Wasm.Binary.Instr.localGet 128,
                                            Wasm.Binary.Instr.i64Const 8,
                                            Wasm.Binary.Instr.i64LtU,
                                            Wasm.Binary.Instr.iff
                                              (Wasm.Binary.BlockType.empty)
-                                             [Wasm.Binary.Instr.i64Const 8, Wasm.Binary.Instr.localSet 134]
+                                             [Wasm.Binary.Instr.i64Const 8, Wasm.Binary.Instr.localSet 128]
                                              none,
                                            Wasm.Binary.Instr.i64Const 0,
-                                           Wasm.Binary.Instr.localSet 139,
+                                           Wasm.Binary.Instr.localSet 133,
                                            Wasm.Binary.Instr.i64Const 0,
-                                           Wasm.Binary.Instr.localSet 135,
+                                           Wasm.Binary.Instr.localSet 129,
                                            Wasm.Binary.Instr.globalGet 1,
-                                           Wasm.Binary.Instr.localSet 136,
+                                           Wasm.Binary.Instr.localSet 130,
                                            Wasm.Binary.Instr.block
                                              (Wasm.Binary.BlockType.empty)
                                              [Wasm.Binary.Instr.loop
                                                 (Wasm.Binary.BlockType.empty)
-                                                [Wasm.Binary.Instr.localGet 136,
+                                                [Wasm.Binary.Instr.localGet 130,
                                                  Wasm.Binary.Instr.i64Const 0,
                                                  Wasm.Binary.Instr.i64Eq,
                                                  Wasm.Binary.Instr.brIf 1,
-                                                 Wasm.Binary.Instr.localGet 139,
+                                                 Wasm.Binary.Instr.localGet 133,
                                                  Wasm.Binary.Instr.i64Const 0,
                                                  Wasm.Binary.Instr.i64Ne,
                                                  Wasm.Binary.Instr.brIf 1,
-                                                 Wasm.Binary.Instr.localGet 136,
+                                                 Wasm.Binary.Instr.localGet 130,
                                                  Wasm.Binary.Instr.i64Const 32,
                                                  Wasm.Binary.Instr.i64Sub,
                                                  Wasm.Binary.Instr.i32WrapI64,
                                                  Wasm.Binary.Instr.i64Load { align := 3, offset := 0 },
-                                                 Wasm.Binary.Instr.localSet 137,
-                                                 Wasm.Binary.Instr.localGet 136,
+                                                 Wasm.Binary.Instr.localSet 131,
+                                                 Wasm.Binary.Instr.localGet 130,
                                                  Wasm.Binary.Instr.i64Const 8,
                                                  Wasm.Binary.Instr.i64Sub,
                                                  Wasm.Binary.Instr.i32WrapI64,
                                                  Wasm.Binary.Instr.i64Load { align := 3, offset := 0 },
-                                                 Wasm.Binary.Instr.localSet 138,
-                                                 Wasm.Binary.Instr.localGet 137,
-                                                 Wasm.Binary.Instr.localGet 134,
+                                                 Wasm.Binary.Instr.localSet 132,
+                                                 Wasm.Binary.Instr.localGet 131,
+                                                 Wasm.Binary.Instr.localGet 128,
                                                  Wasm.Binary.Instr.i64GeU,
                                                  Wasm.Binary.Instr.iff
                                                    (Wasm.Binary.BlockType.empty)
-                                                   [Wasm.Binary.Instr.localGet 135,
+                                                   [Wasm.Binary.Instr.localGet 129,
                                                     Wasm.Binary.Instr.i64Const 0,
                                                     Wasm.Binary.Instr.i64Eq,
                                                     Wasm.Binary.Instr.iff
                                                       (Wasm.Binary.BlockType.empty)
-                                                      [Wasm.Binary.Instr.localGet 138, Wasm.Binary.Instr.globalSet 1]
-                                                      (some [Wasm.Binary.Instr.localGet 135,
+                                                      [Wasm.Binary.Instr.localGet 132, Wasm.Binary.Instr.globalSet 1]
+                                                      (some [Wasm.Binary.Instr.localGet 129,
                                                         Wasm.Binary.Instr.i64Const 8,
                                                         Wasm.Binary.Instr.i64Sub,
                                                         Wasm.Binary.Instr.i32WrapI64,
-                                                        Wasm.Binary.Instr.localGet 138,
+                                                        Wasm.Binary.Instr.localGet 132,
                                                         Wasm.Binary.Instr.i64Store { align := 3, offset := 0 }]),
-                                                    Wasm.Binary.Instr.localGet 136,
+                                                    Wasm.Binary.Instr.localGet 130,
                                                     Wasm.Binary.Instr.i64Const 48,
                                                     Wasm.Binary.Instr.i64Sub,
                                                     Wasm.Binary.Instr.i32WrapI64,
                                                     Wasm.Binary.Instr.i64Const 5501223100278326855,
                                                     Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                    Wasm.Binary.Instr.localGet 136,
+                                                    Wasm.Binary.Instr.localGet 130,
                                                     Wasm.Binary.Instr.i64Const 40,
                                                     Wasm.Binary.Instr.i64Sub,
                                                     Wasm.Binary.Instr.i32WrapI64,
                                                     Wasm.Binary.Instr.i64Const 1,
                                                     Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                    Wasm.Binary.Instr.localGet 136,
+                                                    Wasm.Binary.Instr.localGet 130,
                                                     Wasm.Binary.Instr.i64Const 32,
                                                     Wasm.Binary.Instr.i64Sub,
                                                     Wasm.Binary.Instr.i32WrapI64,
-                                                    Wasm.Binary.Instr.localGet 137,
+                                                    Wasm.Binary.Instr.localGet 131,
                                                     Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                    Wasm.Binary.Instr.localGet 136,
+                                                    Wasm.Binary.Instr.localGet 130,
                                                     Wasm.Binary.Instr.i64Const 24,
                                                     Wasm.Binary.Instr.i64Sub,
                                                     Wasm.Binary.Instr.i32WrapI64,
                                                     Wasm.Binary.Instr.i64Const 0,
                                                     Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                    Wasm.Binary.Instr.localGet 136,
+                                                    Wasm.Binary.Instr.localGet 130,
                                                     Wasm.Binary.Instr.i64Const 16,
                                                     Wasm.Binary.Instr.i64Sub,
                                                     Wasm.Binary.Instr.i32WrapI64,
                                                     Wasm.Binary.Instr.i64Const 0,
                                                     Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                    Wasm.Binary.Instr.localGet 136,
+                                                    Wasm.Binary.Instr.localGet 130,
                                                     Wasm.Binary.Instr.i64Const 8,
                                                     Wasm.Binary.Instr.i64Sub,
                                                     Wasm.Binary.Instr.i32WrapI64,
                                                     Wasm.Binary.Instr.i64Const 0,
                                                     Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                                    Wasm.Binary.Instr.localGet 136,
-                                                    Wasm.Binary.Instr.localSet 139]
-                                                   (some [Wasm.Binary.Instr.localGet 136,
-                                                     Wasm.Binary.Instr.localSet 135,
-                                                     Wasm.Binary.Instr.localGet 138,
-                                                     Wasm.Binary.Instr.localSet 136]),
+                                                    Wasm.Binary.Instr.localGet 130,
+                                                    Wasm.Binary.Instr.localSet 133]
+                                                   (some [Wasm.Binary.Instr.localGet 130,
+                                                     Wasm.Binary.Instr.localSet 129,
+                                                     Wasm.Binary.Instr.localGet 132,
+                                                     Wasm.Binary.Instr.localSet 130]),
                                                  Wasm.Binary.Instr.br 0]],
-                                           Wasm.Binary.Instr.localGet 139,
+                                           Wasm.Binary.Instr.localGet 133,
                                            Wasm.Binary.Instr.i64Const 0,
                                            Wasm.Binary.Instr.i64Eq,
                                            Wasm.Binary.Instr.iff
@@ -2666,30 +2592,30 @@ def raw : Project.ByteIO.Binary.Raw :=
                                              [Wasm.Binary.Instr.globalGet 0,
                                               Wasm.Binary.Instr.i64Const 48,
                                               Wasm.Binary.Instr.i64Add,
-                                              Wasm.Binary.Instr.localGet 134,
+                                              Wasm.Binary.Instr.localGet 128,
                                               Wasm.Binary.Instr.i64Add,
-                                              Wasm.Binary.Instr.localTee 137,
+                                              Wasm.Binary.Instr.localTee 131,
                                               Wasm.Binary.Instr.globalGet 0,
                                               Wasm.Binary.Instr.i64LtU,
                                               Wasm.Binary.Instr.iff
                                                 (Wasm.Binary.BlockType.empty)
                                                 [Wasm.Binary.Instr.unreachable]
                                                 none,
-                                              Wasm.Binary.Instr.localGet 137,
+                                              Wasm.Binary.Instr.localGet 131,
                                               Wasm.Binary.Instr.i64Const 1,
                                               Wasm.Binary.Instr.i64Sub,
                                               Wasm.Binary.Instr.i64Const 65536,
                                               Wasm.Binary.Instr.i64DivU,
                                               Wasm.Binary.Instr.i64Const 1,
                                               Wasm.Binary.Instr.i64Add,
-                                              Wasm.Binary.Instr.localSet 138,
+                                              Wasm.Binary.Instr.localSet 132,
                                               Wasm.Binary.Instr.memorySize 0,
                                               Wasm.Binary.Instr.i64ExtendI32U,
-                                              Wasm.Binary.Instr.localGet 138,
+                                              Wasm.Binary.Instr.localGet 132,
                                               Wasm.Binary.Instr.i64LtU,
                                               Wasm.Binary.Instr.iff
                                                 (Wasm.Binary.BlockType.empty)
-                                                [Wasm.Binary.Instr.localGet 138,
+                                                [Wasm.Binary.Instr.localGet 132,
                                                  Wasm.Binary.Instr.memorySize 0,
                                                  Wasm.Binary.Instr.i64ExtendI32U,
                                                  Wasm.Binary.Instr.i64Sub,
@@ -2705,40 +2631,40 @@ def raw : Project.ByteIO.Binary.Raw :=
                                               Wasm.Binary.Instr.globalGet 0,
                                               Wasm.Binary.Instr.i64Const 48,
                                               Wasm.Binary.Instr.i64Add,
-                                              Wasm.Binary.Instr.localSet 139,
-                                              Wasm.Binary.Instr.localGet 137,
+                                              Wasm.Binary.Instr.localSet 133,
+                                              Wasm.Binary.Instr.localGet 131,
                                               Wasm.Binary.Instr.globalSet 0,
-                                              Wasm.Binary.Instr.localGet 139,
+                                              Wasm.Binary.Instr.localGet 133,
                                               Wasm.Binary.Instr.i64Const 48,
                                               Wasm.Binary.Instr.i64Sub,
                                               Wasm.Binary.Instr.i32WrapI64,
                                               Wasm.Binary.Instr.i64Const 5501223100278326855,
                                               Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                              Wasm.Binary.Instr.localGet 139,
+                                              Wasm.Binary.Instr.localGet 133,
                                               Wasm.Binary.Instr.i64Const 40,
                                               Wasm.Binary.Instr.i64Sub,
                                               Wasm.Binary.Instr.i32WrapI64,
                                               Wasm.Binary.Instr.i64Const 1,
                                               Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                              Wasm.Binary.Instr.localGet 139,
+                                              Wasm.Binary.Instr.localGet 133,
                                               Wasm.Binary.Instr.i64Const 32,
                                               Wasm.Binary.Instr.i64Sub,
                                               Wasm.Binary.Instr.i32WrapI64,
-                                              Wasm.Binary.Instr.localGet 134,
+                                              Wasm.Binary.Instr.localGet 128,
                                               Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                              Wasm.Binary.Instr.localGet 139,
+                                              Wasm.Binary.Instr.localGet 133,
                                               Wasm.Binary.Instr.i64Const 24,
                                               Wasm.Binary.Instr.i64Sub,
                                               Wasm.Binary.Instr.i32WrapI64,
                                               Wasm.Binary.Instr.i64Const 0,
                                               Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                              Wasm.Binary.Instr.localGet 139,
+                                              Wasm.Binary.Instr.localGet 133,
                                               Wasm.Binary.Instr.i64Const 16,
                                               Wasm.Binary.Instr.i64Sub,
                                               Wasm.Binary.Instr.i32WrapI64,
                                               Wasm.Binary.Instr.i64Const 0,
                                               Wasm.Binary.Instr.i64Store { align := 3, offset := 0 },
-                                              Wasm.Binary.Instr.localGet 139,
+                                              Wasm.Binary.Instr.localGet 133,
                                               Wasm.Binary.Instr.i64Const 8,
                                               Wasm.Binary.Instr.i64Sub,
                                               Wasm.Binary.Instr.i32WrapI64,
@@ -2749,187 +2675,139 @@ def raw : Project.ByteIO.Binary.Raw :=
                                            Wasm.Binary.Instr.i64Const 1,
                                            Wasm.Binary.Instr.i64Add,
                                            Wasm.Binary.Instr.globalSet 2,
-                                           Wasm.Binary.Instr.localGet 139,
-                                           Wasm.Binary.Instr.localSet 131,
+                                           Wasm.Binary.Instr.localGet 133,
+                                           Wasm.Binary.Instr.localSet 125,
                                            Wasm.Binary.Instr.i64Const 0,
-                                           Wasm.Binary.Instr.localSet 133,
+                                           Wasm.Binary.Instr.localSet 127,
                                            Wasm.Binary.Instr.block
                                              (Wasm.Binary.BlockType.empty)
                                              [Wasm.Binary.Instr.loop
                                                 (Wasm.Binary.BlockType.empty)
-                                                [Wasm.Binary.Instr.localGet 133,
-                                                 Wasm.Binary.Instr.localGet 129,
+                                                [Wasm.Binary.Instr.localGet 127,
+                                                 Wasm.Binary.Instr.localGet 123,
                                                  Wasm.Binary.Instr.i64GeU,
                                                  Wasm.Binary.Instr.brIf 1,
-                                                 Wasm.Binary.Instr.localGet 131,
-                                                 Wasm.Binary.Instr.localGet 133,
+                                                 Wasm.Binary.Instr.localGet 125,
+                                                 Wasm.Binary.Instr.localGet 127,
                                                  Wasm.Binary.Instr.i64Add,
                                                  Wasm.Binary.Instr.i32WrapI64,
-                                                 Wasm.Binary.Instr.localGet 128,
-                                                 Wasm.Binary.Instr.localGet 133,
+                                                 Wasm.Binary.Instr.localGet 122,
+                                                 Wasm.Binary.Instr.localGet 127,
                                                  Wasm.Binary.Instr.i64Add,
                                                  Wasm.Binary.Instr.i32WrapI64,
                                                  Wasm.Binary.Instr.i32Load8U { align := 0, offset := 0 },
                                                  Wasm.Binary.Instr.i32Store8 { align := 0, offset := 0 },
-                                                 Wasm.Binary.Instr.localGet 133,
+                                                 Wasm.Binary.Instr.localGet 127,
                                                  Wasm.Binary.Instr.i64Const 1,
                                                  Wasm.Binary.Instr.i64Add,
-                                                 Wasm.Binary.Instr.localSet 133,
+                                                 Wasm.Binary.Instr.localSet 127,
                                                  Wasm.Binary.Instr.br 0]],
-                                           Wasm.Binary.Instr.localGet 131,
-                                           Wasm.Binary.Instr.localGet 129,
+                                           Wasm.Binary.Instr.localGet 125,
+                                           Wasm.Binary.Instr.localGet 123,
                                            Wasm.Binary.Instr.i64Add,
                                            Wasm.Binary.Instr.i32WrapI64,
-                                           Wasm.Binary.Instr.localGet 130,
+                                           Wasm.Binary.Instr.localGet 124,
                                            Wasm.Binary.Instr.i32WrapI64,
                                            Wasm.Binary.Instr.i32Store8 { align := 0, offset := 0 },
-                                           Wasm.Binary.Instr.localGet 131,
-                                           Wasm.Binary.Instr.localSet 108,
-                                           Wasm.Binary.Instr.localGet 108,
-                                           Wasm.Binary.Instr.localSet 109,
-                                           Wasm.Binary.Instr.localGet 106,
+                                           Wasm.Binary.Instr.localGet 125,
+                                           Wasm.Binary.Instr.localSet 104,
+                                           Wasm.Binary.Instr.localGet 104,
+                                           Wasm.Binary.Instr.localSet 105,
+                                           Wasm.Binary.Instr.localGet 102,
                                            Wasm.Binary.Instr.i64Const 1,
                                            Wasm.Binary.Instr.i64Add,
-                                           Wasm.Binary.Instr.localSet 110,
+                                           Wasm.Binary.Instr.localSet 106,
+                                           Wasm.Binary.Instr.localGet 104,
+                                           Wasm.Binary.Instr.localSet 107,
+                                           Wasm.Binary.Instr.localGet 105,
+                                           Wasm.Binary.Instr.localSet 108,
+                                           Wasm.Binary.Instr.localGet 106,
+                                           Wasm.Binary.Instr.localSet 109,
+                                           Wasm.Binary.Instr.localGet 107,
+                                           Wasm.Binary.Instr.localSet 135,
                                            Wasm.Binary.Instr.localGet 108,
-                                           Wasm.Binary.Instr.localSet 111,
+                                           Wasm.Binary.Instr.localSet 136,
                                            Wasm.Binary.Instr.localGet 109,
-                                           Wasm.Binary.Instr.localSet 112,
-                                           Wasm.Binary.Instr.localGet 110,
-                                           Wasm.Binary.Instr.localSet 113,
+                                           Wasm.Binary.Instr.localSet 137,
                                            Wasm.Binary.Instr.i64Const 0,
-                                           Wasm.Binary.Instr.localSet 114,
-                                           Wasm.Binary.Instr.localGet 108,
-                                           Wasm.Binary.Instr.i64Const 0,
-                                           Wasm.Binary.Instr.i64Eq,
-                                           Wasm.Binary.Instr.i32Eqz,
-                                           Wasm.Binary.Instr.iff
-                                             (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                             [Wasm.Binary.Instr.localGet 108,
-                                              Wasm.Binary.Instr.localGet 111,
-                                              Wasm.Binary.Instr.i64Eq,
-                                              Wasm.Binary.Instr.i32Eqz]
-                                             (some [Wasm.Binary.Instr.i32Const 0]),
-                                           Wasm.Binary.Instr.iff
-                                             (Wasm.Binary.BlockType.empty)
-                                             [Wasm.Binary.Instr.localGet 108,
-                                              Wasm.Binary.Instr.call 18,
-                                              Wasm.Binary.Instr.globalGet 5,
-                                              Wasm.Binary.Instr.localSet 115]
-                                             (some []),
-                                           Wasm.Binary.Instr.localGet 111,
-                                           Wasm.Binary.Instr.localSet 141,
-                                           Wasm.Binary.Instr.localGet 112,
-                                           Wasm.Binary.Instr.localSet 142,
-                                           Wasm.Binary.Instr.localGet 113,
-                                           Wasm.Binary.Instr.localSet 143,
-                                           Wasm.Binary.Instr.localGet 114,
-                                           Wasm.Binary.Instr.localSet 140,
-                                           Wasm.Binary.Instr.localGet 97,
+                                           Wasm.Binary.Instr.localSet 134,
+                                           Wasm.Binary.Instr.localGet 93,
                                            Wasm.Binary.Instr.i64Const 0,
                                            Wasm.Binary.Instr.i64Ne,
-                                           Wasm.Binary.Instr.localGet 97,
-                                           Wasm.Binary.Instr.localGet 144,
+                                           Wasm.Binary.Instr.localGet 93,
+                                           Wasm.Binary.Instr.localGet 138,
                                            Wasm.Binary.Instr.i64Ne,
                                            Wasm.Binary.Instr.i32And,
-                                           Wasm.Binary.Instr.localGet 97,
-                                           Wasm.Binary.Instr.localGet 141,
+                                           Wasm.Binary.Instr.localGet 93,
+                                           Wasm.Binary.Instr.localGet 135,
                                            Wasm.Binary.Instr.i64Ne,
                                            Wasm.Binary.Instr.i32And,
                                            Wasm.Binary.Instr.iff
                                              (Wasm.Binary.BlockType.empty)
-                                             [Wasm.Binary.Instr.localGet 97, Wasm.Binary.Instr.call 18]
+                                             [Wasm.Binary.Instr.localGet 93, Wasm.Binary.Instr.call 18]
                                              none,
-                                           Wasm.Binary.Instr.localGet 141,
-                                           Wasm.Binary.Instr.localSet 97,
-                                           Wasm.Binary.Instr.localGet 142,
-                                           Wasm.Binary.Instr.localSet 98,
-                                           Wasm.Binary.Instr.localGet 143,
-                                           Wasm.Binary.Instr.localSet 99,
-                                           Wasm.Binary.Instr.localGet 140,
+                                           Wasm.Binary.Instr.localGet 135,
+                                           Wasm.Binary.Instr.localSet 93,
+                                           Wasm.Binary.Instr.localGet 136,
+                                           Wasm.Binary.Instr.localSet 94,
+                                           Wasm.Binary.Instr.localGet 137,
+                                           Wasm.Binary.Instr.localSet 95,
+                                           Wasm.Binary.Instr.localGet 134,
                                            Wasm.Binary.Instr.i64Const 0,
                                            Wasm.Binary.Instr.i64Ne,
                                            Wasm.Binary.Instr.brIf 1,
-                                           Wasm.Binary.Instr.localGet 125,
-                                           Wasm.Binary.Instr.localSet 128,
-                                           Wasm.Binary.Instr.localGet 127,
-                                           Wasm.Binary.Instr.localSet 129,
-                                           Wasm.Binary.Instr.localGet 128,
-                                           Wasm.Binary.Instr.localGet 129,
+                                           Wasm.Binary.Instr.localGet 119,
+                                           Wasm.Binary.Instr.localSet 122,
+                                           Wasm.Binary.Instr.localGet 121,
+                                           Wasm.Binary.Instr.localSet 123,
+                                           Wasm.Binary.Instr.localGet 122,
+                                           Wasm.Binary.Instr.localGet 123,
                                            Wasm.Binary.Instr.i64Add,
-                                           Wasm.Binary.Instr.localTee 130,
-                                           Wasm.Binary.Instr.localGet 128,
+                                           Wasm.Binary.Instr.localTee 124,
+                                           Wasm.Binary.Instr.localGet 122,
                                            Wasm.Binary.Instr.i64LtU,
                                            Wasm.Binary.Instr.iff
                                              (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                              [Wasm.Binary.Instr.unreachable]
-                                             (some [Wasm.Binary.Instr.localGet 130]),
-                                           Wasm.Binary.Instr.localSet 125,
+                                             (some [Wasm.Binary.Instr.localGet 124]),
+                                           Wasm.Binary.Instr.localSet 119,
                                            Wasm.Binary.Instr.br 0]],
-                                     Wasm.Binary.Instr.localGet 97,
+                                     Wasm.Binary.Instr.localGet 93,
+                                     Wasm.Binary.Instr.localSet 110,
+                                     Wasm.Binary.Instr.localGet 94,
+                                     Wasm.Binary.Instr.localSet 111,
+                                     Wasm.Binary.Instr.localGet 95,
+                                     Wasm.Binary.Instr.localSet 112,
+                                     Wasm.Binary.Instr.localGet 110,
+                                     Wasm.Binary.Instr.localSet 113,
+                                     Wasm.Binary.Instr.localGet 111,
+                                     Wasm.Binary.Instr.localSet 114,
+                                     Wasm.Binary.Instr.localGet 112,
+                                     Wasm.Binary.Instr.localSet 115,
+                                     Wasm.Binary.Instr.localGet 113,
                                      Wasm.Binary.Instr.localSet 116,
-                                     Wasm.Binary.Instr.localGet 98,
+                                     Wasm.Binary.Instr.localGet 114,
                                      Wasm.Binary.Instr.localSet 117,
-                                     Wasm.Binary.Instr.localGet 99,
-                                     Wasm.Binary.Instr.localSet 118,
-                                     Wasm.Binary.Instr.localGet 116,
-                                     Wasm.Binary.Instr.localSet 119,
-                                     Wasm.Binary.Instr.localGet 117,
-                                     Wasm.Binary.Instr.localSet 120,
-                                     Wasm.Binary.Instr.localGet 118,
-                                     Wasm.Binary.Instr.localSet 121,
-                                     Wasm.Binary.Instr.localGet 119,
-                                     Wasm.Binary.Instr.localSet 122,
-                                     Wasm.Binary.Instr.localGet 120,
-                                     Wasm.Binary.Instr.localSet 123,
-                                     Wasm.Binary.Instr.localGet 121,
-                                     Wasm.Binary.Instr.localSet 124]),
-                                 Wasm.Binary.Instr.localGet 37,
+                                     Wasm.Binary.Instr.localGet 115,
+                                     Wasm.Binary.Instr.localSet 118]),
+                                 Wasm.Binary.Instr.localGet 35,
                                  Wasm.Binary.Instr.i64Const 0,
                                  Wasm.Binary.Instr.i64Eq,
                                  Wasm.Binary.Instr.i32Eqz,
                                  Wasm.Binary.Instr.iff
                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                   [Wasm.Binary.Instr.localGet 37,
-                                    Wasm.Binary.Instr.localGet 122,
-                                    Wasm.Binary.Instr.i64Eq,
-                                    Wasm.Binary.Instr.i32Eqz]
-                                   (some [Wasm.Binary.Instr.i32Const 0]),
-                                 Wasm.Binary.Instr.iff
-                                   (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                   [Wasm.Binary.Instr.localGet 37,
-                                    Wasm.Binary.Instr.localGet 10,
-                                    Wasm.Binary.Instr.i64Eq,
-                                    Wasm.Binary.Instr.i32Eqz]
-                                   (some [Wasm.Binary.Instr.i32Const 0]),
-                                 Wasm.Binary.Instr.iff
-                                   (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                   [Wasm.Binary.Instr.localGet 37,
-                                    Wasm.Binary.Instr.localGet 9,
-                                    Wasm.Binary.Instr.i64Eq,
-                                    Wasm.Binary.Instr.i32Eqz]
-                                   (some [Wasm.Binary.Instr.i32Const 0]),
-                                 Wasm.Binary.Instr.iff
-                                   (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                   [Wasm.Binary.Instr.localGet 37,
-                                    Wasm.Binary.Instr.localGet 8,
-                                    Wasm.Binary.Instr.i64Eq,
-                                    Wasm.Binary.Instr.i32Eqz]
-                                   (some [Wasm.Binary.Instr.i32Const 0]),
-                                 Wasm.Binary.Instr.iff
-                                   (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                   [Wasm.Binary.Instr.localGet 37,
-                                    Wasm.Binary.Instr.localGet 7,
+                                   [Wasm.Binary.Instr.localGet 35,
+                                    Wasm.Binary.Instr.localGet 116,
                                     Wasm.Binary.Instr.i64Eq,
                                     Wasm.Binary.Instr.i32Eqz]
                                    (some [Wasm.Binary.Instr.i32Const 0]),
                                  Wasm.Binary.Instr.iff
                                    (Wasm.Binary.BlockType.empty)
-                                   [Wasm.Binary.Instr.localGet 37, Wasm.Binary.Instr.call 18]
+                                   [Wasm.Binary.Instr.localGet 35, Wasm.Binary.Instr.call 18]
                                    (some []),
-                                 Wasm.Binary.Instr.localGet 122,
-                                 Wasm.Binary.Instr.localGet 123,
-                                 Wasm.Binary.Instr.localGet 124] },
+                                 Wasm.Binary.Instr.localGet 116,
+                                 Wasm.Binary.Instr.localGet 117,
+                                 Wasm.Binary.Instr.localGet 118] },
                       { locals := [{ count := 3, type := Wasm.Binary.ValType.i64 }],
                         body := [Wasm.Binary.Instr.localGet 1,
                                  Wasm.Binary.Instr.localSet 4,
@@ -5030,27 +4908,6 @@ def raw : Project.ByteIO.Binary.Raw :=
                                            Wasm.Binary.Instr.i32Eqz]
                                           (some [Wasm.Binary.Instr.i32Const 0]),
                                         Wasm.Binary.Instr.iff
-                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                          [Wasm.Binary.Instr.localGet 12,
-                                           Wasm.Binary.Instr.localGet 8,
-                                           Wasm.Binary.Instr.i64Eq,
-                                           Wasm.Binary.Instr.i32Eqz]
-                                          (some [Wasm.Binary.Instr.i32Const 0]),
-                                        Wasm.Binary.Instr.iff
-                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                          [Wasm.Binary.Instr.localGet 12,
-                                           Wasm.Binary.Instr.localGet 7,
-                                           Wasm.Binary.Instr.i64Eq,
-                                           Wasm.Binary.Instr.i32Eqz]
-                                          (some [Wasm.Binary.Instr.i32Const 0]),
-                                        Wasm.Binary.Instr.iff
-                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                          [Wasm.Binary.Instr.localGet 12,
-                                           Wasm.Binary.Instr.localGet 6,
-                                           Wasm.Binary.Instr.i64Eq,
-                                           Wasm.Binary.Instr.i32Eqz]
-                                          (some [Wasm.Binary.Instr.i32Const 0]),
-                                        Wasm.Binary.Instr.iff
                                           (Wasm.Binary.BlockType.empty)
                                           [Wasm.Binary.Instr.localGet 12, Wasm.Binary.Instr.call 18]
                                           (some []),
@@ -5062,13 +4919,6 @@ def raw : Project.ByteIO.Binary.Raw :=
                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
                                           [Wasm.Binary.Instr.localGet 7,
                                            Wasm.Binary.Instr.localGet 21,
-                                           Wasm.Binary.Instr.i64Eq,
-                                           Wasm.Binary.Instr.i32Eqz]
-                                          (some [Wasm.Binary.Instr.i32Const 0]),
-                                        Wasm.Binary.Instr.iff
-                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                          [Wasm.Binary.Instr.localGet 7,
-                                           Wasm.Binary.Instr.localGet 6,
                                            Wasm.Binary.Instr.i64Eq,
                                            Wasm.Binary.Instr.i32Eqz]
                                           (some [Wasm.Binary.Instr.i32Const 0]),
@@ -5564,20 +5414,6 @@ def raw : Project.ByteIO.Binary.Raw :=
                                         Wasm.Binary.Instr.i32Eqz]
                                        (some [Wasm.Binary.Instr.i32Const 0]),
                                      Wasm.Binary.Instr.iff
-                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                       [Wasm.Binary.Instr.localGet 35,
-                                        Wasm.Binary.Instr.localGet 28,
-                                        Wasm.Binary.Instr.i64Eq,
-                                        Wasm.Binary.Instr.i32Eqz]
-                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                     Wasm.Binary.Instr.iff
-                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                       [Wasm.Binary.Instr.localGet 35,
-                                        Wasm.Binary.Instr.localGet 24,
-                                        Wasm.Binary.Instr.i64Eq,
-                                        Wasm.Binary.Instr.i32Eqz]
-                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                     Wasm.Binary.Instr.iff
                                        (Wasm.Binary.BlockType.empty)
                                        [Wasm.Binary.Instr.localGet 35, Wasm.Binary.Instr.call 18]
                                        (some [])]),
@@ -5624,15 +5460,7 @@ def raw : Project.ByteIO.Binary.Raw :=
                                    (Wasm.Binary.BlockType.empty)
                                    [Wasm.Binary.Instr.loop
                                       (Wasm.Binary.BlockType.empty)
-                                      [Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.localSet 34,
-                                       Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.localSet 52,
-                                       Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.localSet 190,
-                                       Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.localSet 193,
-                                       Wasm.Binary.Instr.localGet 9,
+                                      [Wasm.Binary.Instr.localGet 9,
                                        Wasm.Binary.Instr.localSet 16,
                                        Wasm.Binary.Instr.localGet 10,
                                        Wasm.Binary.Instr.localSet 17,
@@ -5944,7 +5772,102 @@ def raw : Project.ByteIO.Binary.Raw :=
                                                       Wasm.Binary.Instr.i64Const 0,
                                                       Wasm.Binary.Instr.localSet 229,
                                                       Wasm.Binary.Instr.i64Const 0,
-                                                      Wasm.Binary.Instr.localSet 230])])]
+                                                      Wasm.Binary.Instr.localSet 230]),
+                                                  Wasm.Binary.Instr.localGet 52,
+                                                  Wasm.Binary.Instr.i64Const 0,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz,
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.localGet 212,
+                                                     Wasm.Binary.Instr.i64Eq,
+                                                     Wasm.Binary.Instr.i32Eqz]
+                                                    (some [Wasm.Binary.Instr.i32Const 0]),
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.localGet 219,
+                                                     Wasm.Binary.Instr.i64Eq,
+                                                     Wasm.Binary.Instr.i32Eqz]
+                                                    (some [Wasm.Binary.Instr.i32Const 0]),
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.localGet 228,
+                                                     Wasm.Binary.Instr.i64Eq,
+                                                     Wasm.Binary.Instr.i32Eqz]
+                                                    (some [Wasm.Binary.Instr.i32Const 0]),
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.localGet 216,
+                                                     Wasm.Binary.Instr.i64Eq,
+                                                     Wasm.Binary.Instr.i32Eqz]
+                                                    (some [Wasm.Binary.Instr.i32Const 0]),
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.localGet 225,
+                                                     Wasm.Binary.Instr.i64Eq,
+                                                     Wasm.Binary.Instr.i32Eqz]
+                                                    (some [Wasm.Binary.Instr.i32Const 0]),
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.localGet 34,
+                                                     Wasm.Binary.Instr.i64Eq,
+                                                     Wasm.Binary.Instr.i32Eqz]
+                                                    (some [Wasm.Binary.Instr.i32Const 0]),
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.localGet 27,
+                                                     Wasm.Binary.Instr.i64Eq,
+                                                     Wasm.Binary.Instr.i32Eqz]
+                                                    (some [Wasm.Binary.Instr.i32Const 0]),
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.localGet 24,
+                                                     Wasm.Binary.Instr.i64Eq,
+                                                     Wasm.Binary.Instr.i32Eqz]
+                                                    (some [Wasm.Binary.Instr.i32Const 0]),
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.localGet 20,
+                                                     Wasm.Binary.Instr.i64Eq,
+                                                     Wasm.Binary.Instr.i32Eqz]
+                                                    (some [Wasm.Binary.Instr.i32Const 0]),
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.localGet 17,
+                                                     Wasm.Binary.Instr.i64Eq,
+                                                     Wasm.Binary.Instr.i32Eqz]
+                                                    (some [Wasm.Binary.Instr.i32Const 0]),
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.localGet 10,
+                                                     Wasm.Binary.Instr.i64Eq,
+                                                     Wasm.Binary.Instr.i32Eqz]
+                                                    (some [Wasm.Binary.Instr.i32Const 0]),
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.localGet 13,
+                                                     Wasm.Binary.Instr.i64Eq,
+                                                     Wasm.Binary.Instr.i32Eqz]
+                                                    (some [Wasm.Binary.Instr.i32Const 0]),
+                                                  Wasm.Binary.Instr.iff
+                                                    (Wasm.Binary.BlockType.empty)
+                                                    [Wasm.Binary.Instr.localGet 52,
+                                                     Wasm.Binary.Instr.call 18,
+                                                     Wasm.Binary.Instr.globalGet 5,
+                                                     Wasm.Binary.Instr.localSet 241]
+                                                    (some [])])]
                                              (some [Wasm.Binary.Instr.i64Const 0,
                                                Wasm.Binary.Instr.localSet 254,
                                                Wasm.Binary.Instr.localGet 41,
@@ -5983,14 +5906,6 @@ def raw : Project.ByteIO.Binary.Raw :=
                                                      Wasm.Binary.Instr.brIf 1,
                                                      Wasm.Binary.Instr.localGet 254,
                                                      Wasm.Binary.Instr.localSet 70,
-                                                     Wasm.Binary.Instr.i64Const 0,
-                                                     Wasm.Binary.Instr.localSet 96,
-                                                     Wasm.Binary.Instr.i64Const 0,
-                                                     Wasm.Binary.Instr.localSet 144,
-                                                     Wasm.Binary.Instr.i64Const 0,
-                                                     Wasm.Binary.Instr.localSet 166,
-                                                     Wasm.Binary.Instr.i64Const 0,
-                                                     Wasm.Binary.Instr.localSet 167,
                                                      Wasm.Binary.Instr.localGet 63,
                                                      Wasm.Binary.Instr.localSet 71,
                                                      Wasm.Binary.Instr.localGet 64,
@@ -6270,7 +6185,74 @@ def raw : Project.ByteIO.Binary.Raw :=
                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                                           [Wasm.Binary.Instr.i64Const 1]
                                                           (some [Wasm.Binary.Instr.i64Const 0]),
-                                                        Wasm.Binary.Instr.localSet 184]
+                                                        Wasm.Binary.Instr.localSet 184,
+                                                        Wasm.Binary.Instr.localGet 96,
+                                                        Wasm.Binary.Instr.i64Const 0,
+                                                        Wasm.Binary.Instr.i64Eq,
+                                                        Wasm.Binary.Instr.i32Eqz,
+                                                        Wasm.Binary.Instr.iff
+                                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                          [Wasm.Binary.Instr.localGet 96,
+                                                           Wasm.Binary.Instr.localGet 181,
+                                                           Wasm.Binary.Instr.i64Eq,
+                                                           Wasm.Binary.Instr.i32Eqz]
+                                                          (some [Wasm.Binary.Instr.i32Const 0]),
+                                                        Wasm.Binary.Instr.iff
+                                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                          [Wasm.Binary.Instr.localGet 96,
+                                                           Wasm.Binary.Instr.localGet 178,
+                                                           Wasm.Binary.Instr.i64Eq,
+                                                           Wasm.Binary.Instr.i32Eqz]
+                                                          (some [Wasm.Binary.Instr.i32Const 0]),
+                                                        Wasm.Binary.Instr.iff
+                                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                          [Wasm.Binary.Instr.localGet 96,
+                                                           Wasm.Binary.Instr.localGet 82,
+                                                           Wasm.Binary.Instr.i64Eq,
+                                                           Wasm.Binary.Instr.i32Eqz]
+                                                          (some [Wasm.Binary.Instr.i32Const 0]),
+                                                        Wasm.Binary.Instr.iff
+                                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                          [Wasm.Binary.Instr.localGet 96,
+                                                           Wasm.Binary.Instr.localGet 79,
+                                                           Wasm.Binary.Instr.i64Eq,
+                                                           Wasm.Binary.Instr.i32Eqz]
+                                                          (some [Wasm.Binary.Instr.i32Const 0]),
+                                                        Wasm.Binary.Instr.iff
+                                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                          [Wasm.Binary.Instr.localGet 96,
+                                                           Wasm.Binary.Instr.localGet 75,
+                                                           Wasm.Binary.Instr.i64Eq,
+                                                           Wasm.Binary.Instr.i32Eqz]
+                                                          (some [Wasm.Binary.Instr.i32Const 0]),
+                                                        Wasm.Binary.Instr.iff
+                                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                          [Wasm.Binary.Instr.localGet 96,
+                                                           Wasm.Binary.Instr.localGet 72,
+                                                           Wasm.Binary.Instr.i64Eq,
+                                                           Wasm.Binary.Instr.i32Eqz]
+                                                          (some [Wasm.Binary.Instr.i32Const 0]),
+                                                        Wasm.Binary.Instr.iff
+                                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                          [Wasm.Binary.Instr.localGet 96,
+                                                           Wasm.Binary.Instr.localGet 64,
+                                                           Wasm.Binary.Instr.i64Eq,
+                                                           Wasm.Binary.Instr.i32Eqz]
+                                                          (some [Wasm.Binary.Instr.i32Const 0]),
+                                                        Wasm.Binary.Instr.iff
+                                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                          [Wasm.Binary.Instr.localGet 96,
+                                                           Wasm.Binary.Instr.localGet 67,
+                                                           Wasm.Binary.Instr.i64Eq,
+                                                           Wasm.Binary.Instr.i32Eqz]
+                                                          (some [Wasm.Binary.Instr.i32Const 0]),
+                                                        Wasm.Binary.Instr.iff
+                                                          (Wasm.Binary.BlockType.empty)
+                                                          [Wasm.Binary.Instr.localGet 96,
+                                                           Wasm.Binary.Instr.call 18,
+                                                           Wasm.Binary.Instr.globalGet 5,
+                                                           Wasm.Binary.Instr.localSet 186]
+                                                          (some [])]
                                                        (some [Wasm.Binary.Instr.localGet 85,
                                                          Wasm.Binary.Instr.localSet 140,
                                                          Wasm.Binary.Instr.localGet 83,
@@ -6651,151 +6633,231 @@ def raw : Project.ByteIO.Binary.Raw :=
                                                            (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i64))
                                                            [Wasm.Binary.Instr.i64Const 1]
                                                            (some [Wasm.Binary.Instr.i64Const 0]),
-                                                         Wasm.Binary.Instr.localSet 184]),
+                                                         Wasm.Binary.Instr.localSet 184,
+                                                         Wasm.Binary.Instr.localGet 167,
+                                                         Wasm.Binary.Instr.i64Const 0,
+                                                         Wasm.Binary.Instr.i64Eq,
+                                                         Wasm.Binary.Instr.i32Eqz,
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 167,
+                                                            Wasm.Binary.Instr.localGet 181,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 167,
+                                                            Wasm.Binary.Instr.localGet 178,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 167,
+                                                            Wasm.Binary.Instr.localGet 82,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 167,
+                                                            Wasm.Binary.Instr.localGet 79,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 167,
+                                                            Wasm.Binary.Instr.localGet 75,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 167,
+                                                            Wasm.Binary.Instr.localGet 72,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 167,
+                                                            Wasm.Binary.Instr.localGet 64,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 167,
+                                                            Wasm.Binary.Instr.localGet 67,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.empty)
+                                                           [Wasm.Binary.Instr.localGet 167,
+                                                            Wasm.Binary.Instr.call 18,
+                                                            Wasm.Binary.Instr.globalGet 5,
+                                                            Wasm.Binary.Instr.localSet 186]
+                                                           (some []),
+                                                         Wasm.Binary.Instr.localGet 166,
+                                                         Wasm.Binary.Instr.i64Const 0,
+                                                         Wasm.Binary.Instr.i64Eq,
+                                                         Wasm.Binary.Instr.i32Eqz,
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 166,
+                                                            Wasm.Binary.Instr.localGet 167,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 166,
+                                                            Wasm.Binary.Instr.localGet 181,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 166,
+                                                            Wasm.Binary.Instr.localGet 178,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 166,
+                                                            Wasm.Binary.Instr.localGet 82,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 166,
+                                                            Wasm.Binary.Instr.localGet 79,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 166,
+                                                            Wasm.Binary.Instr.localGet 75,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 166,
+                                                            Wasm.Binary.Instr.localGet 72,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 166,
+                                                            Wasm.Binary.Instr.localGet 64,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 166,
+                                                            Wasm.Binary.Instr.localGet 67,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.empty)
+                                                           [Wasm.Binary.Instr.localGet 166,
+                                                            Wasm.Binary.Instr.call 18,
+                                                            Wasm.Binary.Instr.globalGet 5,
+                                                            Wasm.Binary.Instr.localSet 186]
+                                                           (some []),
+                                                         Wasm.Binary.Instr.localGet 144,
+                                                         Wasm.Binary.Instr.i64Const 0,
+                                                         Wasm.Binary.Instr.i64Eq,
+                                                         Wasm.Binary.Instr.i32Eqz,
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 144,
+                                                            Wasm.Binary.Instr.localGet 166,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 144,
+                                                            Wasm.Binary.Instr.localGet 167,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 144,
+                                                            Wasm.Binary.Instr.localGet 181,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 144,
+                                                            Wasm.Binary.Instr.localGet 178,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 144,
+                                                            Wasm.Binary.Instr.localGet 82,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 144,
+                                                            Wasm.Binary.Instr.localGet 79,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 144,
+                                                            Wasm.Binary.Instr.localGet 75,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 144,
+                                                            Wasm.Binary.Instr.localGet 72,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 144,
+                                                            Wasm.Binary.Instr.localGet 64,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                           [Wasm.Binary.Instr.localGet 144,
+                                                            Wasm.Binary.Instr.localGet 67,
+                                                            Wasm.Binary.Instr.i64Eq,
+                                                            Wasm.Binary.Instr.i32Eqz]
+                                                           (some [Wasm.Binary.Instr.i32Const 0]),
+                                                         Wasm.Binary.Instr.iff
+                                                           (Wasm.Binary.BlockType.empty)
+                                                           [Wasm.Binary.Instr.localGet 144,
+                                                            Wasm.Binary.Instr.call 18,
+                                                            Wasm.Binary.Instr.globalGet 5,
+                                                            Wasm.Binary.Instr.localSet 186]
+                                                           (some [])]),
                                                      Wasm.Binary.Instr.localGet 184,
                                                      Wasm.Binary.Instr.localSet 185,
-                                                     Wasm.Binary.Instr.localGet 96,
-                                                     Wasm.Binary.Instr.i64Const 0,
-                                                     Wasm.Binary.Instr.i64Eq,
-                                                     Wasm.Binary.Instr.i32Eqz,
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 96,
-                                                        Wasm.Binary.Instr.localGet 178,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 96,
-                                                        Wasm.Binary.Instr.localGet 181,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.empty)
-                                                       [Wasm.Binary.Instr.localGet 96,
-                                                        Wasm.Binary.Instr.call 18,
-                                                        Wasm.Binary.Instr.globalGet 5,
-                                                        Wasm.Binary.Instr.localSet 186]
-                                                       (some []),
-                                                     Wasm.Binary.Instr.localGet 144,
-                                                     Wasm.Binary.Instr.i64Const 0,
-                                                     Wasm.Binary.Instr.i64Eq,
-                                                     Wasm.Binary.Instr.i32Eqz,
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 144,
-                                                        Wasm.Binary.Instr.localGet 96,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 144,
-                                                        Wasm.Binary.Instr.localGet 178,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 144,
-                                                        Wasm.Binary.Instr.localGet 181,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.empty)
-                                                       [Wasm.Binary.Instr.localGet 144,
-                                                        Wasm.Binary.Instr.call 18,
-                                                        Wasm.Binary.Instr.globalGet 5,
-                                                        Wasm.Binary.Instr.localSet 186]
-                                                       (some []),
-                                                     Wasm.Binary.Instr.localGet 166,
-                                                     Wasm.Binary.Instr.i64Const 0,
-                                                     Wasm.Binary.Instr.i64Eq,
-                                                     Wasm.Binary.Instr.i32Eqz,
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 166,
-                                                        Wasm.Binary.Instr.localGet 144,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 166,
-                                                        Wasm.Binary.Instr.localGet 96,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 166,
-                                                        Wasm.Binary.Instr.localGet 178,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 166,
-                                                        Wasm.Binary.Instr.localGet 181,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.empty)
-                                                       [Wasm.Binary.Instr.localGet 166,
-                                                        Wasm.Binary.Instr.call 18,
-                                                        Wasm.Binary.Instr.globalGet 5,
-                                                        Wasm.Binary.Instr.localSet 186]
-                                                       (some []),
-                                                     Wasm.Binary.Instr.localGet 167,
-                                                     Wasm.Binary.Instr.i64Const 0,
-                                                     Wasm.Binary.Instr.i64Eq,
-                                                     Wasm.Binary.Instr.i32Eqz,
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 167,
-                                                        Wasm.Binary.Instr.localGet 166,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 167,
-                                                        Wasm.Binary.Instr.localGet 144,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 167,
-                                                        Wasm.Binary.Instr.localGet 96,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 167,
-                                                        Wasm.Binary.Instr.localGet 178,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                                       [Wasm.Binary.Instr.localGet 167,
-                                                        Wasm.Binary.Instr.localGet 181,
-                                                        Wasm.Binary.Instr.i64Eq,
-                                                        Wasm.Binary.Instr.i32Eqz]
-                                                       (some [Wasm.Binary.Instr.i32Const 0]),
-                                                     Wasm.Binary.Instr.iff
-                                                       (Wasm.Binary.BlockType.empty)
-                                                       [Wasm.Binary.Instr.localGet 167,
-                                                        Wasm.Binary.Instr.call 18,
-                                                        Wasm.Binary.Instr.globalGet 5,
-                                                        Wasm.Binary.Instr.localSet 186]
-                                                       (some []),
                                                      Wasm.Binary.Instr.localGet 175,
                                                      Wasm.Binary.Instr.localSet 270,
                                                      Wasm.Binary.Instr.localGet 176,
@@ -7069,7 +7131,190 @@ def raw : Project.ByteIO.Binary.Raw :=
                                                    Wasm.Binary.Instr.i64Const 0,
                                                    Wasm.Binary.Instr.localSet 229,
                                                    Wasm.Binary.Instr.i64Const 0,
-                                                   Wasm.Binary.Instr.localSet 230])])]),
+                                                   Wasm.Binary.Instr.localSet 230]),
+                                               Wasm.Binary.Instr.localGet 193,
+                                               Wasm.Binary.Instr.i64Const 0,
+                                               Wasm.Binary.Instr.i64Eq,
+                                               Wasm.Binary.Instr.i32Eqz,
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.localGet 219,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.localGet 228,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.localGet 216,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.localGet 225,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.localGet 34,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.localGet 27,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.localGet 24,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.localGet 20,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.localGet 17,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.localGet 10,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.localGet 13,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.empty)
+                                                 [Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.call 18,
+                                                  Wasm.Binary.Instr.globalGet 5,
+                                                  Wasm.Binary.Instr.localSet 241]
+                                                 (some []),
+                                               Wasm.Binary.Instr.localGet 190,
+                                               Wasm.Binary.Instr.i64Const 0,
+                                               Wasm.Binary.Instr.i64Eq,
+                                               Wasm.Binary.Instr.i32Eqz,
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.localGet 193,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.localGet 219,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.localGet 228,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.localGet 216,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.localGet 225,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.localGet 34,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.localGet 27,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.localGet 24,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.localGet 20,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.localGet 17,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.localGet 10,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.localGet 13,
+                                                  Wasm.Binary.Instr.i64Eq,
+                                                  Wasm.Binary.Instr.i32Eqz]
+                                                 (some [Wasm.Binary.Instr.i32Const 0]),
+                                               Wasm.Binary.Instr.iff
+                                                 (Wasm.Binary.BlockType.empty)
+                                                 [Wasm.Binary.Instr.localGet 190,
+                                                  Wasm.Binary.Instr.call 18,
+                                                  Wasm.Binary.Instr.globalGet 5,
+                                                  Wasm.Binary.Instr.localSet 241]
+                                                 (some [])])]),
                                        Wasm.Binary.Instr.localGet 212,
                                        Wasm.Binary.Instr.i64Const 0,
                                        Wasm.Binary.Instr.i64Eq,
@@ -7139,6 +7384,13 @@ def raw : Project.ByteIO.Binary.Raw :=
                                        Wasm.Binary.Instr.iff
                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
                                          [Wasm.Binary.Instr.localGet 34,
+                                          Wasm.Binary.Instr.localGet 237,
+                                          Wasm.Binary.Instr.i64Eq,
+                                          Wasm.Binary.Instr.i32Eqz]
+                                         (some [Wasm.Binary.Instr.i32Const 0]),
+                                       Wasm.Binary.Instr.iff
+                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                         [Wasm.Binary.Instr.localGet 34,
                                           Wasm.Binary.Instr.localGet 234,
                                           Wasm.Binary.Instr.i64Eq,
                                           Wasm.Binary.Instr.i32Eqz]
@@ -7146,158 +7398,20 @@ def raw : Project.ByteIO.Binary.Raw :=
                                        Wasm.Binary.Instr.iff
                                          (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
                                          [Wasm.Binary.Instr.localGet 34,
-                                          Wasm.Binary.Instr.localGet 237,
+                                          Wasm.Binary.Instr.localGet 10,
+                                          Wasm.Binary.Instr.i64Eq,
+                                          Wasm.Binary.Instr.i32Eqz]
+                                         (some [Wasm.Binary.Instr.i32Const 0]),
+                                       Wasm.Binary.Instr.iff
+                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                         [Wasm.Binary.Instr.localGet 34,
+                                          Wasm.Binary.Instr.localGet 13,
                                           Wasm.Binary.Instr.i64Eq,
                                           Wasm.Binary.Instr.i32Eqz]
                                          (some [Wasm.Binary.Instr.i32Const 0]),
                                        Wasm.Binary.Instr.iff
                                          (Wasm.Binary.BlockType.empty)
                                          [Wasm.Binary.Instr.localGet 34,
-                                          Wasm.Binary.Instr.call 18,
-                                          Wasm.Binary.Instr.globalGet 5,
-                                          Wasm.Binary.Instr.localSet 241]
-                                         (some []),
-                                       Wasm.Binary.Instr.localGet 52,
-                                       Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.i64Eq,
-                                       Wasm.Binary.Instr.i32Eqz,
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 52,
-                                          Wasm.Binary.Instr.localGet 34,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 52,
-                                          Wasm.Binary.Instr.localGet 234,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 52,
-                                          Wasm.Binary.Instr.localGet 237,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.empty)
-                                         [Wasm.Binary.Instr.localGet 52,
-                                          Wasm.Binary.Instr.call 18,
-                                          Wasm.Binary.Instr.globalGet 5,
-                                          Wasm.Binary.Instr.localSet 241]
-                                         (some []),
-                                       Wasm.Binary.Instr.localGet 190,
-                                       Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.i64Eq,
-                                       Wasm.Binary.Instr.i32Eqz,
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 190,
-                                          Wasm.Binary.Instr.localGet 27,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 190,
-                                          Wasm.Binary.Instr.localGet 24,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 190,
-                                          Wasm.Binary.Instr.localGet 52,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 190,
-                                          Wasm.Binary.Instr.localGet 34,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 190,
-                                          Wasm.Binary.Instr.localGet 234,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 190,
-                                          Wasm.Binary.Instr.localGet 237,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.empty)
-                                         [Wasm.Binary.Instr.localGet 190,
-                                          Wasm.Binary.Instr.call 18,
-                                          Wasm.Binary.Instr.globalGet 5,
-                                          Wasm.Binary.Instr.localSet 241]
-                                         (some []),
-                                       Wasm.Binary.Instr.localGet 193,
-                                       Wasm.Binary.Instr.i64Const 0,
-                                       Wasm.Binary.Instr.i64Eq,
-                                       Wasm.Binary.Instr.i32Eqz,
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 193,
-                                          Wasm.Binary.Instr.localGet 27,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 193,
-                                          Wasm.Binary.Instr.localGet 24,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 193,
-                                          Wasm.Binary.Instr.localGet 190,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 193,
-                                          Wasm.Binary.Instr.localGet 52,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 193,
-                                          Wasm.Binary.Instr.localGet 34,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 193,
-                                          Wasm.Binary.Instr.localGet 234,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
-                                         [Wasm.Binary.Instr.localGet 193,
-                                          Wasm.Binary.Instr.localGet 237,
-                                          Wasm.Binary.Instr.i64Eq,
-                                          Wasm.Binary.Instr.i32Eqz]
-                                         (some [Wasm.Binary.Instr.i32Const 0]),
-                                       Wasm.Binary.Instr.iff
-                                         (Wasm.Binary.BlockType.empty)
-                                         [Wasm.Binary.Instr.localGet 193,
                                           Wasm.Binary.Instr.call 18,
                                           Wasm.Binary.Instr.globalGet 5,
                                           Wasm.Binary.Instr.localSet 241]
@@ -7375,6 +7489,51 @@ def raw : Project.ByteIO.Binary.Raw :=
                                    [Wasm.Binary.Instr.i64Const 0]
                                    (some [Wasm.Binary.Instr.localGet 252]),
                                  Wasm.Binary.Instr.localSet 253,
+                                 Wasm.Binary.Instr.localGet 245,
+                                 Wasm.Binary.Instr.i64Const 0,
+                                 Wasm.Binary.Instr.i64Eq,
+                                 Wasm.Binary.Instr.i32Eqz,
+                                 Wasm.Binary.Instr.iff
+                                   (Wasm.Binary.BlockType.empty)
+                                   [Wasm.Binary.Instr.localGet 245, Wasm.Binary.Instr.call 18]
+                                   (some []),
+                                 Wasm.Binary.Instr.localGet 248,
+                                 Wasm.Binary.Instr.i64Const 0,
+                                 Wasm.Binary.Instr.i64Eq,
+                                 Wasm.Binary.Instr.i32Eqz,
+                                 Wasm.Binary.Instr.iff
+                                   (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                   [Wasm.Binary.Instr.localGet 248,
+                                    Wasm.Binary.Instr.localGet 245,
+                                    Wasm.Binary.Instr.i64Eq,
+                                    Wasm.Binary.Instr.i32Eqz]
+                                   (some [Wasm.Binary.Instr.i32Const 0]),
+                                 Wasm.Binary.Instr.iff
+                                   (Wasm.Binary.BlockType.empty)
+                                   [Wasm.Binary.Instr.localGet 248, Wasm.Binary.Instr.call 18]
+                                   (some []),
+                                 Wasm.Binary.Instr.localGet 249,
+                                 Wasm.Binary.Instr.i64Const 0,
+                                 Wasm.Binary.Instr.i64Eq,
+                                 Wasm.Binary.Instr.i32Eqz,
+                                 Wasm.Binary.Instr.iff
+                                   (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                   [Wasm.Binary.Instr.localGet 249,
+                                    Wasm.Binary.Instr.localGet 248,
+                                    Wasm.Binary.Instr.i64Eq,
+                                    Wasm.Binary.Instr.i32Eqz]
+                                   (some [Wasm.Binary.Instr.i32Const 0]),
+                                 Wasm.Binary.Instr.iff
+                                   (Wasm.Binary.BlockType.value (Wasm.Binary.ValType.i32))
+                                   [Wasm.Binary.Instr.localGet 249,
+                                    Wasm.Binary.Instr.localGet 245,
+                                    Wasm.Binary.Instr.i64Eq,
+                                    Wasm.Binary.Instr.i32Eqz]
+                                   (some [Wasm.Binary.Instr.i32Const 0]),
+                                 Wasm.Binary.Instr.iff
+                                   (Wasm.Binary.BlockType.empty)
+                                   [Wasm.Binary.Instr.localGet 249, Wasm.Binary.Instr.call 18]
+                                   (some []),
                                  Wasm.Binary.Instr.localGet 253] },
                       { locals := [{ count := 10, type := Wasm.Binary.ValType.i64 }],
                         body := [Wasm.Binary.Instr.localGet 0,

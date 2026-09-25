@@ -36,7 +36,6 @@ theorem residual_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       KernelState (parameters weightsOwner inputOwner cacheOwner weightsPtr inputPtr cachePtr
         weights input cache layer position) (frame.locals.take 64) 64 70 73
         (allocatedNode heap.top projectionNeed heap.nodes).root 3072 result →
-      result.get 78 = some (.i64 projectedPtr) →
       (heap.allocate projectionNeed).At final →
       (heap.allocate projectionNeed).OwnsPacked final (allocatedNode heap.top projectionNeed heap.nodes)
         (addRows input projected) →
@@ -65,9 +64,6 @@ theorem residual_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   · simp (config := { maxDischargeDepth := 64 }) only [KernelState, parameters, hInputSize, hLocals,
       List.length_set, List.getElem?_set, Nat.reduceAdd, Nat.reduceEqDiff, Nat.reduceLT, reduceIte,
       I64Values.set, hTyped, List.take_set_of_le, Nat.reduceLeDiff, and_self]
-  · simp only [Locals.get, hParams, parameters, hLocals, List.length_cons, List.length_nil,
-      List.length_set, List.getElem?_set, Nat.reduceAdd, Nat.reduceEqDiff, Nat.reduceLT,
-      Nat.reduceSub, reduceIte]
   · exact hFinalHeap
   · exact hOutput
   · exact hFrame

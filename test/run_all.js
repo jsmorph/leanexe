@@ -18,6 +18,7 @@ function main() {
   run([process.execPath, path.join("test", "leanrun_macos.js")]);
   run([process.execPath, path.join("test", "artifact_conformance.js")]);
   run([process.execPath, path.join("test", "artifact_identity.js")]);
+  run([process.execPath, path.join("test", "artifact_manifest.js")]);
   run([process.execPath, path.join("test", "artifact_migrate.js")]);
   run([process.execPath, path.join("test", "artifact_release.js")]);
   run([process.execPath, path.join("test", "talos_cache.js")]);
@@ -48,11 +49,14 @@ function main() {
   run([process.execPath, path.join("test", "ownership_report.js")]);
   run([process.execPath, path.join("test", "no_js_wasm_execution.js")]);
   run([process.execPath, path.join("test", "cli_errors.js")]);
+  run([process.execPath, path.join("test", "exports.js")]);
+  run([process.execPath, path.join("test", "heap_loops.js")]);
   run([process.execPath, path.join("test", "core_correctness.js")]);
   run([process.execPath, path.join("test", "f64_bits.js")]);
   run([process.execPath, path.join("test", "f64_extended_bits.js")]);
   run([process.execPath, path.join("test", "f32_bits.js")]);
   run([process.execPath, path.join("test", "packed.js")]);
+  run([process.execPath, path.join("test", "gpt2_quantized.js")]);
   run([process.execPath, path.join("test", "f64_dot.js")]);
   run([process.execPath, path.join("test", "euler_rusanov.js")]);
   run([process.execPath, path.join("test", "euler_rusanov_step.js")]);

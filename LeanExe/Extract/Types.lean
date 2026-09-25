@@ -1361,18 +1361,23 @@ def f32BinaryPrimitive? (name : Name) : Option LeanExe.IR.U64Op :=
   else if name == ``LeanExe.Float32.divBits then some .f32DivBits
   else none
 
-def floatUnaryPrimitive? (name : Name) : Option LeanExe.IR.FloatUnaryOp :=
-  if name == ``LeanExe.Float32.sqrtBits then some .f32SqrtBits
+def scalarUnaryPrimitive? (name : Name) : Option LeanExe.IR.ScalarUnaryOp :=
+  if name == ``LeanExe.Float32.nearestBits then some .f32NearestBits
+  else if name == ``LeanExe.Float32.toInt32Bits then some .f32ToI32Bits
+  else if name == ``LeanExe.Float32.ofInt32Bits then some .i32ToF32Bits
+  else if name == ``LeanExe.Signed32.extend8Bits then some .i32Extend8Bits
+  else if name == ``LeanExe.Float32.sqrtBits then some .f32SqrtBits
   else if name == ``LeanExe.Float32.toFloat64Bits then some .f32ToF64Bits
   else if name == ``LeanExe.Float32.ofFloat64Bits then some .f64ToF32Bits
   else none
 
 def packedPrimitiveName (name : Name) : Bool :=
-  name == ``LeanExe.Packed.getUInt32LE! || name == ``LeanExe.Packed.generateUInt32LE
+  name == ``LeanExe.Packed.getUInt32LE! || name == ``LeanExe.Packed.generateUInt32LE ||
+    name == ``LeanExe.Packed.generateUInt8
 
 def compilerPrimitiveName (name : Name) : Bool :=
   (f64BinaryPrimitive? name).isSome || f64SqrtPrimitiveName name ||
-    (f32BinaryPrimitive? name).isSome || (floatUnaryPrimitive? name).isSome ||
+    (f32BinaryPrimitive? name).isSome || (scalarUnaryPrimitive? name).isSome ||
     packedPrimitiveName name || byteIOPrimitiveName name
 
 def hasDirectLambdaArg (args : List Expr) : Bool :=

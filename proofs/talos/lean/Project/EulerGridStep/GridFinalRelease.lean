@@ -29,7 +29,7 @@ theorem grid_final_release {m : Wasm.Module} (layout : Layout m)
     intro buffer hMem
     obtain rfl := List.mem_singleton.mp hMem
     exact gridLoopRoot_separate_zero base output.size cells index output[0]! hPositive hIndex hBudget32
-  have hFree := gridLoopPool_separate_zero base output.size cells index output[0]! hBudget32
+  have hFree := gridLoopPool_separate_zero base output.size cells index output[0]! hIndex hBudget32
   have hCall := release_owned_buffer_state_heap layout env initial (arenaRoot base output.size 0)
     allocs releases frees (Array.replicate output.size 0)
     [⟨gridLoopRoot base output.size index output[0]!, output⟩]

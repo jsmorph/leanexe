@@ -29,7 +29,6 @@ theorem activated_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (hNext : ∀ final result,
       KernelState params (frame.locals.take 108) 108 111 114
         (allocatedNode heap.top expandedNeed heap.nodes).root 12288 result →
-      result.get 119 = some (.i64 expandedPtr) →
       (heap.allocate expandedNeed).At final →
       (heap.allocate expandedNeed).OwnsPacked final (allocatedNode heap.top expandedNeed heap.nodes)
         (activate expanded) →
@@ -56,9 +55,6 @@ theorem activated_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   · simp (config := { maxDischargeDepth := 64 }) only [KernelState, hLocals,
       List.length_set, List.getElem?_set, Nat.reduceAdd, Nat.reduceEqDiff, Nat.reduceLT, reduceIte,
       I64Values.set, hTyped, List.take_set_of_le, Nat.reduceLeDiff, and_self]
-  · simp only [Locals.get, hParams, hParamsLength, hLocals, List.length_cons, List.length_nil,
-      List.length_set, List.getElem?_set, Nat.reduceAdd, Nat.reduceEqDiff, Nat.reduceLT,
-      Nat.reduceSub, reduceIte]
   · exact hFinalHeap
   · exact hOutput
   · exact hFrame

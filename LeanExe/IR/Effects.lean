@@ -8,7 +8,7 @@ mutual
     | .trap => false
     | .u64 _ => false
     | .f64SqrtBits value => Expr.hasEffects value
-    | .floatUnary _ value => Expr.hasEffects value
+    | .scalarUnary _ value => Expr.hasEffects value
     | .u64Bin _ left right => Expr.hasEffects left || Expr.hasEffects right
     | .ite cond thenValue elseValue =>
         Cond.hasEffects cond ||
@@ -80,7 +80,7 @@ mutual
         Expr.hasEffects ptr ||
         Expr.hasEffects len ||
         Expr.hasEffects offset
-    | .byteArrayGenerate32Ptr byteLen _ body => Expr.hasEffects byteLen || Expr.hasEffects body
+    | .byteArrayGeneratePtr _ byteLen _ body => Expr.hasEffects byteLen || Expr.hasEffects body
     | .byteArrayPushPtr ptr len value => Expr.hasEffects ptr || Expr.hasEffects len || Expr.hasEffects value
     | .byteArrayAppendPtr leftPtr leftLen rightPtr rightLen =>
         Expr.hasEffects leftPtr ||

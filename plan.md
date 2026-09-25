@@ -15,8 +15,9 @@ allocation, and cleanup.  The 128-position invocation theorem derives the
 input and resource premises, starting with reset and weight loading, then
 composing token calls and cache/logit releases.  The runtime target is
 Wasmtime's canonical-NaN mode.  Source-artifact regeneration, canonical-NaN
-tests, all 128 contexts, and three text completions pass.  Numerical bounds and exact-byte
-packaging remain deferred.  The earlier
+tests, all 128 contexts, and three text completions pass.  The exact-byte theorem
+covers the 19,083-byte cached-step binary and its complete session behavior.
+Numerical bounds remain deferred.  The earlier
 [tiny transformer development](plans/tiny-transformer.md) retains the
 four-byte proofs and the runnable tiny GPT-2/128 experiment.
 The Euler work remains at its recorded pause checkpoint.
@@ -811,7 +812,15 @@ GPT-2/128 after completing its source-equivalence proof.
 - [x] Run cached inference and CLI completion tests.
 - [x] Complete the aggregate artifact check after the shared verifier change.
 
-The 2026-09-24 repository-wide source check passes all sixty-nine cache
-comparisons and the complete library for sixty-eight registered specifications.
-The current source proofs include the ownership-guard changes. Frozen-artifact
-release identity remains deferred; earlier exact-binary results are historical.
+The GPT branch passed its repository-wide source check, including both GPT-2 sessions, before this merge.
+
+## 15. Extend GPT-2 with quantized inference
+
+The user approved the [quantized GPT-2 plan](plans/gpt2-quantized.md) on 2026-09-22.  It uses eight-bit weights and activations for learned linear projections, signed 32-bit accumulation, and FP32 computation between projections.  It covers the shared embedding, cached inference, allocation, the deployed binary, and comparison with the existing FP32 implementation.  The scalar projection on `gpt2-quantized` has checked arithmetic, execution, allocation, and exact-binary proofs.  Its measured checkpoint shapes ran 4.08–4.26 times as fast as output-major FP32.
+
+- [x] Approve the quantization rules, scalar compiler API, and [file and session API](plans/gpt2-quantized-format.md).
+- [ ] Select the output-quality criterion for adoption.
+- [x] Prove and measure an exact-binary quantized projection.
+- [x] Complete the quantized checkpoint, cached model, and session execution and memory proofs.
+- [x] Verify and deploy the frozen binary, then record storage, memory, runtime, logits, and generated-text comparisons.
+- [x] Establish numerical error bounds and conditional greedy-token certificates as a subsequent milestone.

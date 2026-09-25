@@ -1,7 +1,8 @@
-import Project.EulerRiemann.SideResidualExecution
+import Project.EulerRiemann.FrozenSideResidualExecution
 import Project.EulerRiemann.ArtifactModule
 
 namespace Project.EulerRiemann.SideResidual
+open Project.EulerRiemann.Frozen.SideResidual
 
 theorem artifact_side_residual :
     ∃ raw validated,

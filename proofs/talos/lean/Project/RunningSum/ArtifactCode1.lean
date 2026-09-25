@@ -18,9 +18,9 @@ set_option cbv.maxSteps 1000000
   cbv
 
 theorem code1_decoded :
-    code { bytes := bytes, pos := 1719, limit := 16469 } = .ok (raw.core.codes[1]!, { bytes := bytes, pos := 1730, limit := 16469 }) := by
+    code { bytes := bytes, pos := 1719, limit := 16553 } = .ok (raw.core.codes[1]!, { bytes := bytes, pos := 1730, limit := 16553 }) := by
   refine code_eq_of_parts (size := 10)
-    (payload := { bytes := bytes, pos := 1720, limit := 16469 })
+    (payload := { bytes := bytes, pos := 1720, limit := 16553 })
     (bodyStart := { bytes := bytes, pos := 1723, limit := 1730 })
     (bodyFinish := { bytes := bytes, pos := 1730, limit := 1730 })
     ?_ ?_ ?_ ?_ ?_ ?_

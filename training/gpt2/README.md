@@ -81,3 +81,46 @@ The WASM CLI compiles current Lean source on each invocation.  The exact-binary
 theorem covers the frozen module identified in the
 [artifact proof instructions](../../proofs/talos/lean/Project/Gpt2CachedStep/README.md#checking-and-evidence).
 The recorded `wasm_sha256` identifies which binary a generation run used.
+
+## Quantized candidate
+
+The quantized prototype uses signed eight-bit weights and activations in
+learned projections, signed 32-bit sums, and FP32 attention, normalization,
+and nonlinear operations.  Its [format and session API](../../plans/gpt2-quantized-format.md)
+define initialization checks and failure results.  The
+[evaluation record](../../data/gpt2-quantized-v1/README.md) gives reproduction
+commands, binary identities, memory and timing results, generated text, and
+activation-error diagnostics.
+
+| Program | Responsibility |
+|---------|----------------|
+| [Checkpoint quantizer](quantized.py) | Export packed matrices, per-output scales, retained FP32 tensors, and the model manifest. |
+| [Quantized reference](quantized_reference.py) | Evaluate integer projections and serial FP32 operations in the specified order. |
+| [Quantized WASM client](quantized_wasm.py) | Validate the loaded model, retain the cache, reject failed calls, and release buffers. |
+| [Session tests](test_quantized_session.py) | Check malformed models, rejected inputs, numerical failures, cache preservation, reset, and close. |
+| [Complete-model comparison](test_quantized_model.py) | Compare all cached prefixes bit for bit with the quantized reference and measure differences from frozen FP32 WASM. |
+| [Repeated model benchmark](benchmark_quantized_model.py) | Compare both binaries with CPU PyTorch, warm the full prefix sequence, and record repeated cached-call timing and memory. |
+| [Completion comparison](compare_quantized_text.py) | Generate from fixed prompts using shared Lean PRNG draws and retain both token streams. |
+| [Projection diagnostics](diagnose_quantized.py) | Separate activation and weight reconstruction errors at the FP32 model's projection inputs. |
+| [Grouped reference](grouped_reference.py) and [prefix experiment](experiment_grouped.py) | Evaluate the approved groups of 64 and an FP32 vocabulary-activation control against the frozen binaries. |
+| [Grouped completion comparison](compare_grouped_text.py) | Evaluate the reference variants using the retained prompts and shared sampling draws. |
+| [Grouped projection benchmark](benchmark_grouped.py) | Compare the experimental WASM projection with the per-row and FP32 projection binaries. |
+
+`tools/gpt2 --quantized` loads the verified frozen grouped binary selected by the
+[deployment record](../../data/gpt2-quantized-v1/model.json).  It verifies the
+artifact-manifest identity, file sizes, and WASM, weights, tokenizer, and configuration hashes before generation and
+records those identities in the result.  The grouped checkpoint is exported
+when absent.  FP32 remains the default.
+
+```sh
+tools/gpt2 --quantized --text 'Once upon a time, in a small village' --generate 32
+```
+
+The [complete cached-session package](../../proofs/talos/lean/Project/Gpt2QuantizedCached/README.md)
+passes execution, termination, allocation, release, and exact-binary checks.
+Conditional numerical propagation and outward evaluation cover all 302 retained
+and held-out prefixes.  The propagated bounds certify zero greedy margins.
+Observed-logit certificates establish 232 individual choices.  The original
+per-row projection has a checked [exact-binary package](../../proofs/talos/lean/Project/Gpt2QuantizedLinearRows/README.md).
+The [grouped projection](../../proofs/talos/lean/Project/Gpt2QuantizedGroupedRows/README.md)
+has a checked exact-binary theorem, including allocation and release.

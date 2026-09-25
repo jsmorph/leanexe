@@ -20,7 +20,7 @@ def layerAppendTail : Wasm.Program :=
    .constI64 0, .localSet 78]
 
 set_option maxRecDepth 32768 in
-theorem emitted_layerAppendFull : (layerBody.drop 94).take 61 = PackedAppend.program 106 ++ layerAppendTail := rfl
+theorem emitted_layerAppendFull : (layerBody.drop 88).take 61 = PackedAppend.program 106 ++ layerAppendTail := rfl
 
 theorem layerAppend_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (params : List Value) (embeddingPtr inputPtr updatesPtr hiddenPtr cachePtr : UInt64)
@@ -42,7 +42,7 @@ theorem layerAppend_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
         (allocatedRoot heap.top (PackedAppend.need updates blockCache) heap.nodes) layer updates.size result →
       heap.PackedOutput initial final (PackedAppend.need updates blockCache) (updates ++ blockCache) →
       wp «module» rest Q final result env) :
-    wp «module» ((layerBody.drop 94).take 61 ++ rest) Q initial frame env := by
+    wp «module» ((layerBody.drop 88).take 61 ++ rest) Q initial frame env := by
   rcases hState with ⟨⟨hParams, hLocals, hValues, hTyped, hEmbeddingOwner, hEmbeddingPtr, hEmbeddingSize,
     hInputOwner, hInputPtr, hInputBytes, hUpdatesOwner, hUpdatesPtr, hUpdatesBytes, hCounter, hLimit, hStep, hInitialInput, hInitialUpdates, hEmptyOwner, hEmptyPtr, hEmptySize⟩,
     hHidden49, hHidden55, hHiddenOwner, hHiddenPtr, hHiddenBytes, hCacheOwner, hOldSize, hBlockSize,

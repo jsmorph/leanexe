@@ -1,0 +1,1876 @@
+{
+  "schema": 1,
+  "status": "outward-evaluation-complete",
+  "prefixes": 229,
+  "fractional_bits": 160,
+  "columns": [
+    "index",
+    "sequence",
+    "position",
+    "logit_numerator",
+    "cache_numerator"
+  ],
+  "forward_margin_certificates": 0,
+  "inconclusive_reason": "Every propagated bound exceeds 2^129. Differences between finite FP32 logits are below 2^129, so no strict winning-margin condition can hold.",
+  "minimum_bound": "1.515968E+601",
+  "maximum_bound": "8.124149E+61429",
+  "bounds_sha256": "3690b16d4aca753359c157ec8b6aa0a667f3bd730f478ed57ead65a912078992",
+  "bounds_bytes": 8664220,
+  "compressed_bounds_sha256": "6f1f629b5b0b23ab7167a95275c35a77796fc51a7b526f968c88b787b551eda9",
+  "coverage_sha256": "73d8db0d5041c31c73771a0ec90a2eeab22808f452b4de0acb139f8b2fc7a1b0",
+  "input_sha256": {
+    "normalization/rows.bin": "82fd812f545bcf5980d6ce8ea41c1894cee1586bebf295acd8c93eacb878848e",
+    "normalization/ranges-ordered.txt": "ff55a1edd6240e411743d38a3f22c7ef3c3aa931ba5df09a2e6775a4ed5889e7",
+    "projection-ranges/ranges.weights.txt": "7a8ba71a60cb3f75297415bafd6291a244891e8783444761c578463b2a0e9df1",
+    "projection-ranges/ranges.rows.txt": "22b55ec73d8be0651942ed9a50ea86872fcb02a0663dd102b98f61d79f444b09",
+    "pointwise/ranges.embedding.txt": "4dda783a50f72e023ae4f0ff480041f146576b409bebf211e21546e3650cdfe0",
+    "pointwise/ranges.residual.txt": "77ff8d59efa90e9b6680704b18d13397eaf4339ef8c3cd725adae095cff3ebd2",
+    "nonlinear/attention-ranges.txt": "f1cd8a1ebfcbfb49cc279644ccaeb7d74a9d3b89d3ef36610a044690746dab00"
+  },
+  "sources": {
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/EvaluateForward.lean": "05c3fc07de1625f68df148e2a4e1dd92dd175208bb50d24bf5691e42ffb65d3b",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/ForwardUpper.lean": "9023575094f60b2689305d10fa49a3351d62ea72ac31345882d74ec0f713fb6d",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/OperationUpper.lean": "099f7923676e6d2a7c4ec3b089336caa0ab575360f9527b04962a0ff2fb3e908",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/NormalizationUpper.lean": "a0936c3c2ea2b3f05526fa9d5357c341b2af51cdeddff00f74a2943ace70af14",
+    "proofs/talos/lean/Project/ProofKit/DyadicUpper.lean": "b39211ceb8ac57060a8952ea5f58973a23661448b0157f855c868d23617aa28f"
+  },
+  "evaluator_sha256": "83149b50ba0568b23c807482e4ab95d8be8ee3ae71aeb023a43a8a70e8f7ef93",
+  "theorem": "Project.Gpt2QuantizedCached.Numerical.ForwardUpper.trace_close",
+  "greedy_theorem": "Project.Gpt2QuantizedCached.Numerical.ForwardUpper.choices_agree",
+  "command": "tools/leanrun --timeout 180 proofs/talos/lean/.lake/build/bin/gpt2-forward-evaluate build/gpt2-124m/quantized-group64 data/gpt2-quantized-v1/certificates/coverage.json build/gpt2-124m/quantized-group64/forward-bounds.txt",
+  "trust_boundary": "Kernel-checked operation and full-session bound theorems. Native Lean compiler/runtime evaluates natural-number bounds. Captured operands must equal source-recurrence intermediates. Python validates recorded identities and summarizes the output. Conditions include checked arithmetic ranges, reconstruction inequalities, finite magnitudes, retained parameter equality, valid shapes/tokens, and successful steps.",
+  "measurements": [
+    {
+      "sequence": 0,
+      "position": 0,
+      "logit_bound_approximate": "2.836020E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 1,
+      "logit_bound_approximate": "2.797902E+1071",
+      "logit_numerator_digits": 1120,
+      "cache_numerator_digits": 1072,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 2,
+      "logit_bound_approximate": "1.903729E+1546",
+      "logit_numerator_digits": 1595,
+      "cache_numerator_digits": 1547,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 3,
+      "logit_bound_approximate": "6.202723E+2020",
+      "logit_numerator_digits": 2069,
+      "cache_numerator_digits": 2021,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 4,
+      "logit_bound_approximate": "6.288914E+2500",
+      "logit_numerator_digits": 2549,
+      "cache_numerator_digits": 2500,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 5,
+      "logit_bound_approximate": "1.205746E+2980",
+      "logit_numerator_digits": 3029,
+      "cache_numerator_digits": 2980,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 6,
+      "logit_bound_approximate": "5.225540E+3457",
+      "logit_numerator_digits": 3506,
+      "cache_numerator_digits": 3458,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 7,
+      "logit_bound_approximate": "3.672177E+3936",
+      "logit_numerator_digits": 3985,
+      "cache_numerator_digits": 3936,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 8,
+      "logit_bound_approximate": "9.731033E+4418",
+      "logit_numerator_digits": 4468,
+      "cache_numerator_digits": 4419,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 9,
+      "logit_bound_approximate": "3.862423E+4898",
+      "logit_numerator_digits": 4947,
+      "cache_numerator_digits": 4898,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 10,
+      "logit_bound_approximate": "3.831379E+5378",
+      "logit_numerator_digits": 5427,
+      "cache_numerator_digits": 5378,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 11,
+      "logit_bound_approximate": "1.205073E+5860",
+      "logit_numerator_digits": 5909,
+      "cache_numerator_digits": 5860,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 12,
+      "logit_bound_approximate": "2.135036E+6340",
+      "logit_numerator_digits": 6389,
+      "cache_numerator_digits": 6340,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 13,
+      "logit_bound_approximate": "7.136882E+6818",
+      "logit_numerator_digits": 6868,
+      "cache_numerator_digits": 6819,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 14,
+      "logit_bound_approximate": "1.137607E+7296",
+      "logit_numerator_digits": 7345,
+      "cache_numerator_digits": 7296,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 15,
+      "logit_bound_approximate": "7.810495E+7777",
+      "logit_numerator_digits": 7827,
+      "cache_numerator_digits": 7778,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 16,
+      "logit_bound_approximate": "2.056440E+8260",
+      "logit_numerator_digits": 8309,
+      "cache_numerator_digits": 8260,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 17,
+      "logit_bound_approximate": "8.614945E+8740",
+      "logit_numerator_digits": 8790,
+      "cache_numerator_digits": 8741,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 18,
+      "logit_bound_approximate": "1.424515E+9221",
+      "logit_numerator_digits": 9270,
+      "cache_numerator_digits": 9221,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 19,
+      "logit_bound_approximate": "9.627697E+9701",
+      "logit_numerator_digits": 9751,
+      "cache_numerator_digits": 9702,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 20,
+      "logit_bound_approximate": "6.455931E+10181",
+      "logit_numerator_digits": 10230,
+      "cache_numerator_digits": 10182,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 21,
+      "logit_bound_approximate": "1.848970E+10663",
+      "logit_numerator_digits": 10712,
+      "cache_numerator_digits": 10663,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 22,
+      "logit_bound_approximate": "2.715521E+11143",
+      "logit_numerator_digits": 11192,
+      "cache_numerator_digits": 11143,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 23,
+      "logit_bound_approximate": "1.136137E+11622",
+      "logit_numerator_digits": 11671,
+      "cache_numerator_digits": 11622,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 24,
+      "logit_bound_approximate": "4.236150E+12100",
+      "logit_numerator_digits": 12149,
+      "cache_numerator_digits": 12100,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 25,
+      "logit_bound_approximate": "4.178781E+12580",
+      "logit_numerator_digits": 12629,
+      "cache_numerator_digits": 12581,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 26,
+      "logit_bound_approximate": "6.394380E+13061",
+      "logit_numerator_digits": 13110,
+      "cache_numerator_digits": 13062,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 27,
+      "logit_bound_approximate": "1.978074E+13543",
+      "logit_numerator_digits": 13592,
+      "cache_numerator_digits": 13543,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 28,
+      "logit_bound_approximate": "6.539855E+14022",
+      "logit_numerator_digits": 14071,
+      "cache_numerator_digits": 14023,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 29,
+      "logit_bound_approximate": "2.586932E+14504",
+      "logit_numerator_digits": 14553,
+      "cache_numerator_digits": 14504,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 30,
+      "logit_bound_approximate": "7.178180E+14985",
+      "logit_numerator_digits": 15035,
+      "cache_numerator_digits": 14986,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 31,
+      "logit_bound_approximate": "1.059174E+15467",
+      "logit_numerator_digits": 15516,
+      "cache_numerator_digits": 15467,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 32,
+      "logit_bound_approximate": "3.518309E+15946",
+      "logit_numerator_digits": 15995,
+      "cache_numerator_digits": 15946,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 33,
+      "logit_bound_approximate": "4.044760E+16425",
+      "logit_numerator_digits": 16474,
+      "cache_numerator_digits": 16426,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 34,
+      "logit_bound_approximate": "3.280436E+16904",
+      "logit_numerator_digits": 16953,
+      "cache_numerator_digits": 16904,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 35,
+      "logit_bound_approximate": "4.257258E+17382",
+      "logit_numerator_digits": 17431,
+      "cache_numerator_digits": 17383,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 36,
+      "logit_bound_approximate": "9.810636E+17862",
+      "logit_numerator_digits": 17912,
+      "cache_numerator_digits": 17863,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 37,
+      "logit_bound_approximate": "6.835132E+18343",
+      "logit_numerator_digits": 18392,
+      "cache_numerator_digits": 18344,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 38,
+      "logit_bound_approximate": "4.350536E+18822",
+      "logit_numerator_digits": 18871,
+      "cache_numerator_digits": 18822,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 39,
+      "logit_bound_approximate": "3.054158E+19303",
+      "logit_numerator_digits": 19352,
+      "cache_numerator_digits": 19303,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 40,
+      "logit_bound_approximate": "7.376280E+19785",
+      "logit_numerator_digits": 19835,
+      "cache_numerator_digits": 19786,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 41,
+      "logit_bound_approximate": "1.962759E+20267",
+      "logit_numerator_digits": 20316,
+      "cache_numerator_digits": 20267,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 42,
+      "logit_bound_approximate": "6.144685E+20746",
+      "logit_numerator_digits": 20795,
+      "cache_numerator_digits": 20747,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 43,
+      "logit_bound_approximate": "2.458642E+21226",
+      "logit_numerator_digits": 21275,
+      "cache_numerator_digits": 21226,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 44,
+      "logit_bound_approximate": "3.368799E+21705",
+      "logit_numerator_digits": 21754,
+      "cache_numerator_digits": 21705,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 45,
+      "logit_bound_approximate": "6.705703E+22183",
+      "logit_numerator_digits": 22232,
+      "cache_numerator_digits": 22184,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 46,
+      "logit_bound_approximate": "1.268558E+22663",
+      "logit_numerator_digits": 22712,
+      "cache_numerator_digits": 22663,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 47,
+      "logit_bound_approximate": "9.809023E+23142",
+      "logit_numerator_digits": 23192,
+      "cache_numerator_digits": 23143,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 48,
+      "logit_bound_approximate": "1.187812E+23622",
+      "logit_numerator_digits": 23671,
+      "cache_numerator_digits": 23622,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 49,
+      "logit_bound_approximate": "3.396793E+24102",
+      "logit_numerator_digits": 24151,
+      "cache_numerator_digits": 24103,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 50,
+      "logit_bound_approximate": "5.543463E+24584",
+      "logit_numerator_digits": 24633,
+      "cache_numerator_digits": 24585,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 51,
+      "logit_bound_approximate": "2.979767E+25065",
+      "logit_numerator_digits": 25114,
+      "cache_numerator_digits": 25065,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 52,
+      "logit_bound_approximate": "8.405872E+25543",
+      "logit_numerator_digits": 25593,
+      "cache_numerator_digits": 25544,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 53,
+      "logit_bound_approximate": "1.633527E+26023",
+      "logit_numerator_digits": 26072,
+      "cache_numerator_digits": 26023,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 54,
+      "logit_bound_approximate": "5.536384E+26501",
+      "logit_numerator_digits": 26550,
+      "cache_numerator_digits": 26502,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 55,
+      "logit_bound_approximate": "1.672035E+26980",
+      "logit_numerator_digits": 27029,
+      "cache_numerator_digits": 26980,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 56,
+      "logit_bound_approximate": "3.972114E+27458",
+      "logit_numerator_digits": 27507,
+      "cache_numerator_digits": 27459,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 57,
+      "logit_bound_approximate": "8.515190E+27937",
+      "logit_numerator_digits": 27987,
+      "cache_numerator_digits": 27938,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 58,
+      "logit_bound_approximate": "4.707629E+28416",
+      "logit_numerator_digits": 28465,
+      "cache_numerator_digits": 28417,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 59,
+      "logit_bound_approximate": "6.346752E+28896",
+      "logit_numerator_digits": 28945,
+      "cache_numerator_digits": 28897,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 60,
+      "logit_bound_approximate": "4.538830E+29378",
+      "logit_numerator_digits": 29427,
+      "cache_numerator_digits": 29379,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 61,
+      "logit_bound_approximate": "7.879644E+29858",
+      "logit_numerator_digits": 29908,
+      "cache_numerator_digits": 29859,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 62,
+      "logit_bound_approximate": "2.308332E+30337",
+      "logit_numerator_digits": 30386,
+      "cache_numerator_digits": 30337,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 63,
+      "logit_bound_approximate": "1.507167E+30816",
+      "logit_numerator_digits": 30865,
+      "cache_numerator_digits": 30816,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 64,
+      "logit_bound_approximate": "3.695605E+31294",
+      "logit_numerator_digits": 31343,
+      "cache_numerator_digits": 31294,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 65,
+      "logit_bound_approximate": "8.655003E+31772",
+      "logit_numerator_digits": 31822,
+      "cache_numerator_digits": 31773,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 66,
+      "logit_bound_approximate": "3.705177E+32250",
+      "logit_numerator_digits": 32299,
+      "cache_numerator_digits": 32251,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 67,
+      "logit_bound_approximate": "2.232602E+32729",
+      "logit_numerator_digits": 32778,
+      "cache_numerator_digits": 32729,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 68,
+      "logit_bound_approximate": "7.820738E+33207",
+      "logit_numerator_digits": 33257,
+      "cache_numerator_digits": 33208,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 69,
+      "logit_bound_approximate": "6.145641E+33687",
+      "logit_numerator_digits": 33736,
+      "cache_numerator_digits": 33688,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 70,
+      "logit_bound_approximate": "6.800026E+34169",
+      "logit_numerator_digits": 34218,
+      "cache_numerator_digits": 34170,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 71,
+      "logit_bound_approximate": "2.585478E+34649",
+      "logit_numerator_digits": 34698,
+      "cache_numerator_digits": 34649,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 72,
+      "logit_bound_approximate": "3.203202E+35127",
+      "logit_numerator_digits": 35176,
+      "cache_numerator_digits": 35127,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 73,
+      "logit_bound_approximate": "8.785751E+35605",
+      "logit_numerator_digits": 35655,
+      "cache_numerator_digits": 35606,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 74,
+      "logit_bound_approximate": "1.214415E+36084",
+      "logit_numerator_digits": 36133,
+      "cache_numerator_digits": 36084,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 75,
+      "logit_bound_approximate": "1.807199E+36562",
+      "logit_numerator_digits": 36611,
+      "cache_numerator_digits": 36562,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 76,
+      "logit_bound_approximate": "1.506901E+37039",
+      "logit_numerator_digits": 37088,
+      "cache_numerator_digits": 37039,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 77,
+      "logit_bound_approximate": "3.934531E+37517",
+      "logit_numerator_digits": 37566,
+      "cache_numerator_digits": 37517,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 78,
+      "logit_bound_approximate": "7.025332E+37995",
+      "logit_numerator_digits": 38045,
+      "cache_numerator_digits": 37996,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 79,
+      "logit_bound_approximate": "6.426473E+38475",
+      "logit_numerator_digits": 38524,
+      "cache_numerator_digits": 38476,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 80,
+      "logit_bound_approximate": "2.449263E+38957",
+      "logit_numerator_digits": 39006,
+      "cache_numerator_digits": 38957,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 81,
+      "logit_bound_approximate": "3.897093E+39436",
+      "logit_numerator_digits": 39485,
+      "cache_numerator_digits": 39436,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 82,
+      "logit_bound_approximate": "2.839584E+39914",
+      "logit_numerator_digits": 39963,
+      "cache_numerator_digits": 39914,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 83,
+      "logit_bound_approximate": "4.736401E+40392",
+      "logit_numerator_digits": 40441,
+      "cache_numerator_digits": 40392,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 84,
+      "logit_bound_approximate": "4.185071E+40870",
+      "logit_numerator_digits": 40919,
+      "cache_numerator_digits": 40870,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 85,
+      "logit_bound_approximate": "4.283228E+41348",
+      "logit_numerator_digits": 41397,
+      "cache_numerator_digits": 41348,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 86,
+      "logit_bound_approximate": "1.638306E+41825",
+      "logit_numerator_digits": 41874,
+      "cache_numerator_digits": 41825,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 87,
+      "logit_bound_approximate": "2.092055E+42303",
+      "logit_numerator_digits": 42352,
+      "cache_numerator_digits": 42303,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 88,
+      "logit_bound_approximate": "2.967843E+42781",
+      "logit_numerator_digits": 42830,
+      "cache_numerator_digits": 42782,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 89,
+      "logit_bound_approximate": "1.222394E+43261",
+      "logit_numerator_digits": 43310,
+      "cache_numerator_digits": 43261,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 90,
+      "logit_bound_approximate": "1.995755E+43742",
+      "logit_numerator_digits": 43791,
+      "cache_numerator_digits": 43742,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 91,
+      "logit_bound_approximate": "1.461074E+44221",
+      "logit_numerator_digits": 44270,
+      "cache_numerator_digits": 44221,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 92,
+      "logit_bound_approximate": "8.398928E+44698",
+      "logit_numerator_digits": 44748,
+      "cache_numerator_digits": 44698,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 93,
+      "logit_bound_approximate": "7.340888E+45176",
+      "logit_numerator_digits": 45226,
+      "cache_numerator_digits": 45177,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 94,
+      "logit_bound_approximate": "4.207662E+45654",
+      "logit_numerator_digits": 45703,
+      "cache_numerator_digits": 45654,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 95,
+      "logit_bound_approximate": "3.059263E+46132",
+      "logit_numerator_digits": 46181,
+      "cache_numerator_digits": 46132,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 96,
+      "logit_bound_approximate": "6.471854E+46608",
+      "logit_numerator_digits": 46657,
+      "cache_numerator_digits": 46609,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 97,
+      "logit_bound_approximate": "5.573349E+47086",
+      "logit_numerator_digits": 47135,
+      "cache_numerator_digits": 47086,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 98,
+      "logit_bound_approximate": "6.728126E+47564",
+      "logit_numerator_digits": 47613,
+      "cache_numerator_digits": 47565,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 99,
+      "logit_bound_approximate": "1.975734E+48044",
+      "logit_numerator_digits": 48093,
+      "cache_numerator_digits": 48044,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 100,
+      "logit_bound_approximate": "1.766828E+48525",
+      "logit_numerator_digits": 48574,
+      "cache_numerator_digits": 48525,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 101,
+      "logit_bound_approximate": "7.402082E+49003",
+      "logit_numerator_digits": 49053,
+      "cache_numerator_digits": 49004,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 102,
+      "logit_bound_approximate": "3.340564E+49481",
+      "logit_numerator_digits": 49530,
+      "cache_numerator_digits": 49481,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 103,
+      "logit_bound_approximate": "1.568266E+49959",
+      "logit_numerator_digits": 50008,
+      "cache_numerator_digits": 49959,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 104,
+      "logit_bound_approximate": "6.205691E+50436",
+      "logit_numerator_digits": 50485,
+      "cache_numerator_digits": 50437,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 105,
+      "logit_bound_approximate": "4.796554E+50914",
+      "logit_numerator_digits": 50963,
+      "cache_numerator_digits": 50914,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 106,
+      "logit_bound_approximate": "8.265828E+51390",
+      "logit_numerator_digits": 51440,
+      "cache_numerator_digits": 51391,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 107,
+      "logit_bound_approximate": "5.038907E+51868",
+      "logit_numerator_digits": 51917,
+      "cache_numerator_digits": 51868,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 108,
+      "logit_bound_approximate": "3.862286E+52346",
+      "logit_numerator_digits": 52395,
+      "cache_numerator_digits": 52347,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 109,
+      "logit_bound_approximate": "8.698536E+52825",
+      "logit_numerator_digits": 52875,
+      "cache_numerator_digits": 52826,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 110,
+      "logit_bound_approximate": "1.014819E+53307",
+      "logit_numerator_digits": 53356,
+      "cache_numerator_digits": 53307,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 111,
+      "logit_bound_approximate": "3.725178E+53785",
+      "logit_numerator_digits": 53834,
+      "cache_numerator_digits": 53785,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 112,
+      "logit_bound_approximate": "1.332194E+54263",
+      "logit_numerator_digits": 54312,
+      "cache_numerator_digits": 54262,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 113,
+      "logit_bound_approximate": "5.307317E+54740",
+      "logit_numerator_digits": 54789,
+      "cache_numerator_digits": 54740,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 114,
+      "logit_bound_approximate": "1.480418E+55218",
+      "logit_numerator_digits": 55267,
+      "cache_numerator_digits": 55218,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 115,
+      "logit_bound_approximate": "8.764884E+55695",
+      "logit_numerator_digits": 55745,
+      "cache_numerator_digits": 55696,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 116,
+      "logit_bound_approximate": "1.085962E+56172",
+      "logit_numerator_digits": 56221,
+      "cache_numerator_digits": 56172,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 117,
+      "logit_bound_approximate": "4.888397E+56649",
+      "logit_numerator_digits": 56698,
+      "cache_numerator_digits": 56649,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 118,
+      "logit_bound_approximate": "2.745932E+57127",
+      "logit_numerator_digits": 57176,
+      "cache_numerator_digits": 57127,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 119,
+      "logit_bound_approximate": "5.659476E+57606",
+      "logit_numerator_digits": 57655,
+      "cache_numerator_digits": 57607,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 120,
+      "logit_bound_approximate": "9.289586E+58087",
+      "logit_numerator_digits": 58137,
+      "cache_numerator_digits": 58088,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 121,
+      "logit_bound_approximate": "3.491809E+58566",
+      "logit_numerator_digits": 58615,
+      "cache_numerator_digits": 58566,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 122,
+      "logit_bound_approximate": "9.467444E+59043",
+      "logit_numerator_digits": 59093,
+      "cache_numerator_digits": 59043,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 123,
+      "logit_bound_approximate": "2.656880E+59521",
+      "logit_numerator_digits": 59570,
+      "cache_numerator_digits": 59521,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 124,
+      "logit_bound_approximate": "5.122437E+59998",
+      "logit_numerator_digits": 60047,
+      "cache_numerator_digits": 59998,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 125,
+      "logit_bound_approximate": "2.691144E+60476",
+      "logit_numerator_digits": 60525,
+      "cache_numerator_digits": 60476,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 126,
+      "logit_bound_approximate": "2.472372E+60952",
+      "logit_numerator_digits": 61001,
+      "cache_numerator_digits": 60952,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 0,
+      "position": 127,
+      "logit_bound_approximate": "8.124149E+61429",
+      "logit_numerator_digits": 61479,
+      "cache_numerator_digits": 61430,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 0,
+      "logit_bound_approximate": "2.836020E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 1,
+      "logit_bound_approximate": "2.797902E+1071",
+      "logit_numerator_digits": 1120,
+      "cache_numerator_digits": 1072,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 2,
+      "logit_bound_approximate": "1.903729E+1546",
+      "logit_numerator_digits": 1595,
+      "cache_numerator_digits": 1547,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 3,
+      "logit_bound_approximate": "6.202723E+2020",
+      "logit_numerator_digits": 2069,
+      "cache_numerator_digits": 2021,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 4,
+      "logit_bound_approximate": "6.288914E+2500",
+      "logit_numerator_digits": 2549,
+      "cache_numerator_digits": 2500,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 5,
+      "logit_bound_approximate": "1.205746E+2980",
+      "logit_numerator_digits": 3029,
+      "cache_numerator_digits": 2980,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 6,
+      "logit_bound_approximate": "5.225540E+3457",
+      "logit_numerator_digits": 3506,
+      "cache_numerator_digits": 3458,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 7,
+      "logit_bound_approximate": "3.672177E+3936",
+      "logit_numerator_digits": 3985,
+      "cache_numerator_digits": 3936,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 1,
+      "position": 8,
+      "logit_bound_approximate": "9.731033E+4418",
+      "logit_numerator_digits": 4468,
+      "cache_numerator_digits": 4419,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 0,
+      "logit_bound_approximate": "2.812650E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 1,
+      "logit_bound_approximate": "1.633879E+1076",
+      "logit_numerator_digits": 1125,
+      "cache_numerator_digits": 1076,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 2,
+      "logit_bound_approximate": "1.820118E+1554",
+      "logit_numerator_digits": 1603,
+      "cache_numerator_digits": 1554,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 3,
+      "logit_bound_approximate": "6.314102E+2034",
+      "logit_numerator_digits": 2083,
+      "cache_numerator_digits": 2035,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 2,
+      "position": 4,
+      "logit_bound_approximate": "1.292420E+2515",
+      "logit_numerator_digits": 2564,
+      "cache_numerator_digits": 2515,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 0,
+      "logit_bound_approximate": "2.812650E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 1,
+      "logit_bound_approximate": "5.591036E+1073",
+      "logit_numerator_digits": 1122,
+      "cache_numerator_digits": 1074,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 2,
+      "logit_bound_approximate": "1.687561E+1551",
+      "logit_numerator_digits": 1600,
+      "cache_numerator_digits": 1551,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 3,
+      "logit_bound_approximate": "3.216068E+2030",
+      "logit_numerator_digits": 2079,
+      "cache_numerator_digits": 2031,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 3,
+      "position": 4,
+      "logit_bound_approximate": "2.724605E+2510",
+      "logit_numerator_digits": 2559,
+      "cache_numerator_digits": 2510,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 0,
+      "logit_bound_approximate": "5.674391E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 1,
+      "logit_bound_approximate": "2.099355E+1076",
+      "logit_numerator_digits": 1125,
+      "cache_numerator_digits": 1077,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 2,
+      "logit_bound_approximate": "6.928176E+1551",
+      "logit_numerator_digits": 1601,
+      "cache_numerator_digits": 1552,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 3,
+      "logit_bound_approximate": "8.523861E+2028",
+      "logit_numerator_digits": 2078,
+      "cache_numerator_digits": 2029,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 4,
+      "logit_bound_approximate": "5.807145E+2510",
+      "logit_numerator_digits": 2559,
+      "cache_numerator_digits": 2511,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 5,
+      "logit_bound_approximate": "8.632154E+2988",
+      "logit_numerator_digits": 3038,
+      "cache_numerator_digits": 2989,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 6,
+      "logit_bound_approximate": "9.803427E+3469",
+      "logit_numerator_digits": 3519,
+      "cache_numerator_digits": 3470,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 7,
+      "logit_bound_approximate": "8.543601E+3949",
+      "logit_numerator_digits": 3999,
+      "cache_numerator_digits": 3950,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 8,
+      "logit_bound_approximate": "1.393675E+4429",
+      "logit_numerator_digits": 4478,
+      "cache_numerator_digits": 4429,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 9,
+      "logit_bound_approximate": "5.720371E+4911",
+      "logit_numerator_digits": 4960,
+      "cache_numerator_digits": 4912,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 4,
+      "position": 10,
+      "logit_bound_approximate": "1.505158E+5393",
+      "logit_numerator_digits": 5442,
+      "cache_numerator_digits": 5393,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 0,
+      "logit_bound_approximate": "2.812650E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 1,
+      "logit_bound_approximate": "4.823383E+1077",
+      "logit_numerator_digits": 1126,
+      "cache_numerator_digits": 1078,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 2,
+      "logit_bound_approximate": "4.621308E+1558",
+      "logit_numerator_digits": 1607,
+      "cache_numerator_digits": 1559,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 3,
+      "logit_bound_approximate": "1.454929E+2036",
+      "logit_numerator_digits": 2085,
+      "cache_numerator_digits": 2036,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 4,
+      "logit_bound_approximate": "2.590137E+2514",
+      "logit_numerator_digits": 2563,
+      "cache_numerator_digits": 2514,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 5,
+      "logit_bound_approximate": "1.588380E+2994",
+      "logit_numerator_digits": 3043,
+      "cache_numerator_digits": 2994,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 6,
+      "logit_bound_approximate": "4.027400E+3471",
+      "logit_numerator_digits": 3520,
+      "cache_numerator_digits": 3472,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 7,
+      "logit_bound_approximate": "2.042798E+3950",
+      "logit_numerator_digits": 3999,
+      "cache_numerator_digits": 3950,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 8,
+      "logit_bound_approximate": "3.594638E+4427",
+      "logit_numerator_digits": 4476,
+      "cache_numerator_digits": 4428,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 5,
+      "position": 9,
+      "logit_bound_approximate": "9.069666E+4908",
+      "logit_numerator_digits": 4958,
+      "cache_numerator_digits": 4909,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 0,
+      "logit_bound_approximate": "1.515968E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 1,
+      "logit_bound_approximate": "1.441035E+1077",
+      "logit_numerator_digits": 1126,
+      "cache_numerator_digits": 1077,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 2,
+      "logit_bound_approximate": "4.502628E+1554",
+      "logit_numerator_digits": 1603,
+      "cache_numerator_digits": 1555,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 3,
+      "logit_bound_approximate": "1.538913E+2029",
+      "logit_numerator_digits": 2078,
+      "cache_numerator_digits": 2029,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 4,
+      "logit_bound_approximate": "1.215189E+2505",
+      "logit_numerator_digits": 2554,
+      "cache_numerator_digits": 2505,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 5,
+      "logit_bound_approximate": "1.243202E+2982",
+      "logit_numerator_digits": 3031,
+      "cache_numerator_digits": 2983,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 6,
+      "logit_bound_approximate": "1.055605E+3460",
+      "logit_numerator_digits": 3509,
+      "cache_numerator_digits": 3460,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 7,
+      "logit_bound_approximate": "2.835433E+3937",
+      "logit_numerator_digits": 3986,
+      "cache_numerator_digits": 3937,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 8,
+      "logit_bound_approximate": "2.800335E+4418",
+      "logit_numerator_digits": 4467,
+      "cache_numerator_digits": 4418,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 9,
+      "logit_bound_approximate": "2.868104E+4897",
+      "logit_numerator_digits": 4946,
+      "cache_numerator_digits": 4897,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 10,
+      "logit_bound_approximate": "6.811473E+5373",
+      "logit_numerator_digits": 5422,
+      "cache_numerator_digits": 5374,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 11,
+      "logit_bound_approximate": "6.220990E+5850",
+      "logit_numerator_digits": 5899,
+      "cache_numerator_digits": 5851,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 12,
+      "logit_bound_approximate": "1.765613E+6329",
+      "logit_numerator_digits": 6378,
+      "cache_numerator_digits": 6330,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 13,
+      "logit_bound_approximate": "8.397964E+6806",
+      "logit_numerator_digits": 6856,
+      "cache_numerator_digits": 6807,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 14,
+      "logit_bound_approximate": "1.197998E+7288",
+      "logit_numerator_digits": 7337,
+      "cache_numerator_digits": 7288,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 15,
+      "logit_bound_approximate": "2.498712E+7766",
+      "logit_numerator_digits": 7815,
+      "cache_numerator_digits": 7766,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 16,
+      "logit_bound_approximate": "9.347232E+8243",
+      "logit_numerator_digits": 8293,
+      "cache_numerator_digits": 8244,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 6,
+      "position": 17,
+      "logit_bound_approximate": "5.543063E+8722",
+      "logit_numerator_digits": 8771,
+      "cache_numerator_digits": 8723,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 0,
+      "logit_bound_approximate": "2.812650E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 1,
+      "logit_bound_approximate": "3.342471E+1080",
+      "logit_numerator_digits": 1129,
+      "cache_numerator_digits": 1081,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 2,
+      "logit_bound_approximate": "4.288321E+1559",
+      "logit_numerator_digits": 1608,
+      "cache_numerator_digits": 1559,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 3,
+      "logit_bound_approximate": "1.237032E+2036",
+      "logit_numerator_digits": 2085,
+      "cache_numerator_digits": 2036,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 4,
+      "logit_bound_approximate": "2.767970E+2510",
+      "logit_numerator_digits": 2559,
+      "cache_numerator_digits": 2509,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 5,
+      "logit_bound_approximate": "6.705636E+2985",
+      "logit_numerator_digits": 3034,
+      "cache_numerator_digits": 2986,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 6,
+      "logit_bound_approximate": "1.961486E+3463",
+      "logit_numerator_digits": 3512,
+      "cache_numerator_digits": 3463,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 7,
+      "logit_bound_approximate": "4.920932E+3939",
+      "logit_numerator_digits": 3988,
+      "cache_numerator_digits": 3940,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 8,
+      "logit_bound_approximate": "3.488805E+4413",
+      "logit_numerator_digits": 4462,
+      "cache_numerator_digits": 4412,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 9,
+      "logit_bound_approximate": "1.229345E+4886",
+      "logit_numerator_digits": 4935,
+      "cache_numerator_digits": 4886,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 10,
+      "logit_bound_approximate": "8.711542E+5362",
+      "logit_numerator_digits": 5412,
+      "cache_numerator_digits": 5363,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 11,
+      "logit_bound_approximate": "5.684627E+5840",
+      "logit_numerator_digits": 5889,
+      "cache_numerator_digits": 5840,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 12,
+      "logit_bound_approximate": "4.007096E+6316",
+      "logit_numerator_digits": 6365,
+      "cache_numerator_digits": 6317,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 13,
+      "logit_bound_approximate": "3.299132E+6790",
+      "logit_numerator_digits": 6839,
+      "cache_numerator_digits": 6790,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 14,
+      "logit_bound_approximate": "3.453765E+7264",
+      "logit_numerator_digits": 7313,
+      "cache_numerator_digits": 7265,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 15,
+      "logit_bound_approximate": "6.079735E+7741",
+      "logit_numerator_digits": 7790,
+      "cache_numerator_digits": 7741,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 16,
+      "logit_bound_approximate": "1.770884E+8222",
+      "logit_numerator_digits": 8271,
+      "cache_numerator_digits": 8222,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 17,
+      "logit_bound_approximate": "1.266685E+8701",
+      "logit_numerator_digits": 8750,
+      "cache_numerator_digits": 8701,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 7,
+      "position": 18,
+      "logit_bound_approximate": "1.266156E+9182",
+      "logit_numerator_digits": 9231,
+      "cache_numerator_digits": 9182,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 8,
+      "position": 0,
+      "logit_bound_approximate": "1.811921E+601",
+      "logit_numerator_digits": 650,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 8,
+      "position": 1,
+      "logit_bound_approximate": "2.524451E+1076",
+      "logit_numerator_digits": 1125,
+      "cache_numerator_digits": 1076,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 8,
+      "position": 2,
+      "logit_bound_approximate": "1.345082E+1556",
+      "logit_numerator_digits": 1605,
+      "cache_numerator_digits": 1556,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 8,
+      "position": 3,
+      "logit_bound_approximate": "6.169079E+2035",
+      "logit_numerator_digits": 2084,
+      "cache_numerator_digits": 2036,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 8,
+      "position": 4,
+      "logit_bound_approximate": "7.992669E+2514",
+      "logit_numerator_digits": 2564,
+      "cache_numerator_digits": 2515,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 8,
+      "position": 5,
+      "logit_bound_approximate": "3.206401E+2995",
+      "logit_numerator_digits": 3044,
+      "cache_numerator_digits": 2995,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 8,
+      "position": 6,
+      "logit_bound_approximate": "2.056148E+3474",
+      "logit_numerator_digits": 3523,
+      "cache_numerator_digits": 3474,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 8,
+      "position": 7,
+      "logit_bound_approximate": "3.190646E+3952",
+      "logit_numerator_digits": 4001,
+      "cache_numerator_digits": 3952,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 8,
+      "position": 8,
+      "logit_bound_approximate": "3.308646E+4431",
+      "logit_numerator_digits": 4480,
+      "cache_numerator_digits": 4431,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 8,
+      "position": 9,
+      "logit_bound_approximate": "6.139738E+4910",
+      "logit_numerator_digits": 4959,
+      "cache_numerator_digits": 4911,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 8,
+      "position": 10,
+      "logit_bound_approximate": "1.253493E+5392",
+      "logit_numerator_digits": 5441,
+      "cache_numerator_digits": 5392,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 8,
+      "position": 11,
+      "logit_bound_approximate": "4.804710E+5871",
+      "logit_numerator_digits": 5920,
+      "cache_numerator_digits": 5871,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 9,
+      "position": 0,
+      "logit_bound_approximate": "1.041019E+602",
+      "logit_numerator_digits": 651,
+      "cache_numerator_digits": 600,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 9,
+      "position": 1,
+      "logit_bound_approximate": "7.125479E+1076",
+      "logit_numerator_digits": 1126,
+      "cache_numerator_digits": 1076,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 9,
+      "position": 2,
+      "logit_bound_approximate": "7.552435E+1553",
+      "logit_numerator_digits": 1603,
+      "cache_numerator_digits": 1553,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 9,
+      "position": 3,
+      "logit_bound_approximate": "6.134200E+2031",
+      "logit_numerator_digits": 2080,
+      "cache_numerator_digits": 2031,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 9,
+      "position": 4,
+      "logit_bound_approximate": "6.302404E+2511",
+      "logit_numerator_digits": 2560,
+      "cache_numerator_digits": 2512,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 9,
+      "position": 5,
+      "logit_bound_approximate": "5.031204E+2991",
+      "logit_numerator_digits": 3040,
+      "cache_numerator_digits": 2992,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 9,
+      "position": 6,
+      "logit_bound_approximate": "4.542289E+3469",
+      "logit_numerator_digits": 3518,
+      "cache_numerator_digits": 3470,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 9,
+      "position": 7,
+      "logit_bound_approximate": "1.171425E+3949",
+      "logit_numerator_digits": 3998,
+      "cache_numerator_digits": 3949,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 9,
+      "position": 8,
+      "logit_bound_approximate": "1.306807E+4429",
+      "logit_numerator_digits": 4478,
+      "cache_numerator_digits": 4429,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 9,
+      "position": 9,
+      "logit_bound_approximate": "2.488732E+4904",
+      "logit_numerator_digits": 4953,
+      "cache_numerator_digits": 4904,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 9,
+      "position": 10,
+      "logit_bound_approximate": "7.978849E+5379",
+      "logit_numerator_digits": 5429,
+      "cache_numerator_digits": 5380,
+      "forward_margin_certified": false
+    },
+    {
+      "sequence": 9,
+      "position": 11,
+      "logit_bound_approximate": "1.397033E+5860",
+      "logit_numerator_digits": 5909,
+      "cache_numerator_digits": 5859,
+      "forward_margin_certified": false
+    }
+  ]
+}

@@ -83,4 +83,20 @@ example : resultEq (Parser.runAll expression (bytes [67, 11]))
     (.error { offset := 1, kind := .unsupportedOpcode 67 }) = true := by
   decide +kernel
 
+example : Parser.runAll expression (bytes [144, 178, 192, 252, 0, 11]) =
+    .ok [.f32Nearest, .f32ConvertI32S, .i32Extend8S, .i32TruncSatF32S] := by
+  rfl
+
+example : Parser.runAll expression (bytes [252, 128, 0, 11]) =
+    .ok [.i32TruncSatF32S] := by
+  rfl
+
+example : resultEq (Parser.runAll expression (bytes [252, 1, 11]))
+    (.error { offset := 2, kind := .malformed "unsupported 0xfc subopcode" }) = true := by
+  decide +kernel
+
+example : resultEq (Parser.runAll expression (bytes [252, 128]))
+    (.error { offset := 2, kind := .unexpectedEnd }) = true := by
+  decide +kernel
+
 end Wasm.Binary.Tests

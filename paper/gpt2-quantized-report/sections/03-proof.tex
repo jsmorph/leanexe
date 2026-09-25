@@ -1,0 +1,47 @@
+\section{Exact binary and session proof}
+\label{sec:proof}
+
+\subsection{Statement for the distributed module}
+
+The execution theorem proves the behavior of a fixed byte sequence.  Lean embeds the 28,315 bytes, checks their decoding and validation, and proves equality between the decoded module's Talos translation and the execution model used by the behavioral proofs.  The package checker compares the external \code{program.wasm} file with those embedded bytes.  The SHA-256 digest identifies the file for retrieval and measurement.  The byte comparison and decoding proof establish its formal connection to the execution model.
+
+Write $B$ for the embedded bytes, $R$ for a decoded raw module, $V$ for its validated representation, and $T(V)$ for its translation to the Talos execution semantics.  The theorem \longcode{Project.Gpt2QuantizedCached.Artifact.artifact\_gpt2\_128\_exact} proves
+\begin{align}
+ \exists R,V:\quad&\operatorname{decode}(B)=\operatorname{ok}(R)\nonumber\\
+ &\land\ \operatorname{Grammar.Encodes}(B,R)\nonumber\\
+ &\land\ \operatorname{validate}(R)=\operatorname{ok}(V)\nonumber\\
+ &\land\ \operatorname{CoreValid}(R)\nonumber\\
+ &\land\ \operatorname{ExactSpecFor}(T(V)).\label{eq:artifact}
+\end{align}
+The \proofref{Gpt2QuantizedCached/ArtifactTranslation.lean}{translation proof} checks all 66 function bodies and the complete module equality.  \code{Grammar.Encodes} is the declarative binary-encoding relation.  \code{CoreValid} is the checked verifier profile's validity property.  \code{ExactSpecFor}, defined in the \proofref{Gpt2QuantizedCached/Spec.lean}{complete specification}, states the reset, allocation, loading, validation, and session result below.
+
+\begin{theorem}[Quantized session execution]
+For every byte array $W$ of length 127,695,972 and list of 32-bit token words $\tau$ of length at most 128, the specified session over $T(V)$ terminates.  It resets the instance, allocates the weight buffer, writes $W$, and returns the source model validator's status.  If validation succeeds, each requested token call returns the exact status, cache bytes, and logit bytes of the quantized Lean recurrence.  A nonzero token status ends the trace.  The specified releases terminate, and memory stays within the module's 65,536-page limit.
+\end{theorem}
+
+The theorem quantifies over all weight arrays of the required length.  It includes arrays rejected by validation and successful validation followed by a numerical failure.  Successful inference for the pinned pretrained checkpoint is established by the recorded runs.  A successful step produces 50,257 binary32 logits and appends 73,728 cache bytes.  The source trace follows the model's own status and stops on failure, so termination covers failure cleanup as well as successful traversal.
+
+The proof uses the Lean model as the behavioral specification and proves the connection from the emitted bytes.  It therefore needs no general compiler-correctness theorem.  Compiler output, annotations, and cached syntax are checked proof inputs.  A changed binary requires a new exact-byte package and proof.  The package's axiom audit reports \code{propext}, \code{Classical.choice}, and \code{Quot.sound}.  These are the standard Lean axioms accepted for this development.
+
+\subsection{Scalar operations, tensors, and proof reuse}
+
+The quantized loop proof composes byte decoding, signed extension, integer multiplication and addition, binary32 division, nearest-even rounding, integer conversion, rescaling, ordered addition, and packed output stores.  The binary32 operations use the existing integer-defined arithmetic semantics.  The WebAssembly numerical specification supplies the deployment meaning of these instructions, including rounding behavior~\cite{wasm}.  Wasmtime runs the retained binaries with arithmetic NaN canonicalization enabled to match the chosen deterministic semantics.
+
+The model retains the earlier binary32 implementations of normalization, cached attention, residual addition, and GELU.  Checked function-region equalities transfer their execution and memory theorems into the quantized module after function and type index renaming.  The \proofref{Gpt2QuantizedCached/FP32Region.lean}{binary32 region proof} covers twenty helpers, and the \proofref{Gpt2QuantizedCached/ProjectionRegion.lean}{projection region proof} covers twelve projection and runtime helpers.  The equality checks justify reuse at the instruction level.  Shared source names or apparent similarity alone provide no such transfer.
+
+The transformer-block proof follows two normalizations, four quantized projections, attention, two residual additions, GELU, and key/value extraction.  It establishes exact status and bytes, protected-input preservation, returned ownership, and cleanup along each finite-value branch.  The twelve-block traversal carries those facts through the hidden state and accumulated cache updates.  A final normalization and vocabulary projection produce the logits.  The public step theorem also checks token masking at the 64-bit calling interface, position arithmetic, input rejection, and output finiteness guards.
+
+\subsection{Cache ownership and allocation sufficiency}
+
+At position $p$, the cache contains $12\cdot2\cdot768p=18{,}432p$ binary32 words, or $73{,}728p$ bytes.  Attention reads the appropriate prior keys and values and the current QKV projection.  Each block returns 1,536 new words, and the traversal collects the twelve block updates before appending them to the prior cache.  The layout and copying order are part of the source recurrence and the byte-level execution proof.
+
+The caller retains the old cache until the token call returns.  A successful call supplies a replacement cache and a logit buffer.  After consuming the outputs, the specified host sequence releases the old cache and then the logit buffer.  A failed call ends the session and releases the remaining cache and weights.  Shutdown also releases the final cache and weights after the last successful requested token.  Ownership assertions track live packed objects and disjoint protected buffers through allocator reuse and reference-count changes.
+
+The allocation proof establishes sufficient capacity before each allocation.  A block's heap-top growth is at most 96 KiB under the proved position bound.  The complete cached hidden function has growth bounded by the incoming cache byte length plus 1,736,456 bytes.  The public token step increases the heap top by at most the incoming cache byte length plus 1,942,544 bytes.  The session invariant reserves an initial 128 MiB and 16 MiB for each token:
+\begin{equation}
+ \operatorname{heapTop}(p)\leq134{,}217{,}728+16{,}777{,}216p,
+ \qquad p\leq128.\label{eq:heap}
+\end{equation}
+This reservation fits the 32-bit linear-memory limit.  The proof also tracks the memory-page bound and fixed capacity of 65,536 pages.  Equation~\eqref{eq:heap} is a sufficient formal reservation, while the measured memory capacities in Section~\ref{sec:runtime} describe one allocator execution.  Neither quantity is process resident memory.
+
+The formal session uses a specified host byte-write operation and a specified sequence of calls.  Its implementation boundary includes the native host's corresponding copies, argument encoding, calls, output reads, and releases.  Wasmtime, its compiler, the operating system, and hardware execute those operations outside the Lean kernel.  Section~\ref{sec:boundaries} states the remaining runtime assumptions.

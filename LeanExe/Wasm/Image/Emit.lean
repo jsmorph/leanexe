@@ -142,6 +142,10 @@ mutual
     | .mulF32 => byte 148
     | .divF32 => byte 149
     | .sqrtF32 => byte 145
+    | .nearestF32 => byte 144
+    | .i32TruncSatF32S => bytes2 252 0
+    | .f32ConvertI32S => byte 178
+    | .extend8SI32 => byte 192
     | .i32ReinterpretF32 => byte 188
     | .f32ReinterpretI32 => byte 190
     | .f32DemoteF64 => byte 182

@@ -1,0 +1,78 @@
+import Project.Gpt2CachedStep.Entry.FrozenAccepted
+import Project.Gpt2CachedStep.Entry.FrozenBudget
+import Project.Gpt2CachedStep.FrozenInitialize
+
+namespace Project.Gpt2CachedStep.Frozen.Session
+open Wasm Project.Runtime Project.ProofKit PackedMemory Project.EulerRiemann.Execution LeanExe.Models.Gpt2
+
+def sourceTrace (weights : ByteArray) : List UInt32 → ByteArray → Nat → List CachedResult
+  | [], _, _ => []
+  | token :: tokens, cache, position =>
+    let output := cachedStep weights cache token position
+    output :: sourceTrace weights tokens output.cache (position + 1)
+
+def releaseThenFor (module_ : Wasm.Module) (env : HostEnv Unit) (pointer : UInt64) (store : Store Unit)
+    (Q : Store Unit → Prop) : Prop :=
+  if pointer = 0 then Q store else
+    TerminatesWith env module_ 42 store [.i64 pointer] (fun final values => values = [] ∧ Q final)
+
+def RunsFor (module_ : Wasm.Module) (env : HostEnv Unit) (weightsPtr : UInt64) (weightsSize : Nat) :
+    List UInt32 → Nat → UInt64 → Nat → Store Unit → List CachedResult → Prop
+  | [], _, _, _, _, outputs => outputs = []
+  | _ :: _, _, _, _, _, [] => False
+  | token :: tokens, position, cachePtr, cacheSize, initial, output :: outputs =>
+    TerminatesWith env module_ 38 initial
+      [.i64 (UInt64.ofNat position), .i64 token.toUInt64, .i64 (UInt64.ofNat cacheSize), .i64 cachePtr,
+       .i64 (UInt64.ofNat weightsSize), .i64 weightsPtr]
+      (fun final values => ∃ outputCachePtr outputLogitsPtr : UInt64,
+        values = [.i64 (UInt64.ofNat output.logits.size), .i64 outputLogitsPtr,
+          .i64 (UInt64.ofNat output.cache.size), .i64 outputCachePtr] ∧
+        ByteArrayAt final.mem outputCachePtr.toNat output.cache ∧
+        releaseThenFor module_ env cachePtr final (fun released =>
+          ByteArrayAt released.mem outputLogitsPtr.toNat output.logits ∧
+          TerminatesWith env module_ 42 released [.i64 outputLogitsPtr]
+            (fun next returned => returned = [] ∧
+              RunsFor module_ env weightsPtr weightsSize tokens (position + 1) outputCachePtr output.cache.size next outputs)))
+
+abbrev releaseThen := releaseThenFor «module»
+abbrev Runs := RunsFor «module»
+
+structure Ready (weights cache : ByteArray) (position : Nat) (store : Store Unit)
+    (heap : Heap) (weightNode cacheNode : FreeNode) : Prop where
+  heapAt : heap.At store
+  weightOwner : heap.OwnsPacked store weightNode weights
+  weightSize : weights.size = 497759232
+  cacheSize : cache.size = position * 73728
+  empty : position = 0 → cacheNode.root = 0
+  cache : position ≠ 0 → heap.OwnsPacked store cacheNode cache
+  separated : position ≠ 0 → regionsDisjoint weightNode.region cacheNode.region
+  top : heap.top.toNat ≤ 536870912 + position * 16777216
+  pages : store.mem.pages ≤ 65536
+  capacity : store.memoryCap «module» 0 = 65536
+
+theorem Ready.cache_at {weights cache : ByteArray} {position : Nat} {store : Store Unit}
+    {heap : Heap} {weightNode cacheNode : FreeNode}
+    (h : Ready weights cache position store heap weightNode cacheNode) :
+    ByteArrayAt store.mem cacheNode.root.toNat cache := by
+  by_cases hZero : position = 0
+  · simp [ByteArrayAt, h.empty hZero, h.cacheSize, hZero]
+  · exact (h.cache hZero).buffer.values
+
+theorem Ready.cache_protected {weights cache : ByteArray} {position : Nat} {store : Store Unit}
+    {heap : Heap} {weightNode cacheNode : FreeNode}
+    (h : Ready weights cache position store heap weightNode cacheNode) :
+    heap.Protects cacheNode.root.toNat (cacheNode.root.toNat + cache.size) := by
+  by_cases hZero : position = 0
+  · rw [h.empty hZero, h.cacheSize, hZero]
+    exact ⟨Nat.zero_le _, fun _ _ => Or.inl (Nat.zero_le _)⟩
+  · exact (h.cache hZero).payload_protects
+
+theorem ready_initial (weights : ByteArray) (hSize : weights.size = 497759232) :
+    Ready weights ByteArray.empty 0 (Initialize.store weights) Initialize.heap Initialize.weightNode ⟨0, 0⟩ := by
+  obtain ⟨hHeap, hWeights, hPages, hCap, hTop⟩ := Initialize.input weights hSize
+  exact ⟨hHeap, hWeights, hSize, rfl, fun _ => rfl, fun h => (h rfl).elim,
+    fun h => (h rfl).elim, hTop, hPages, hCap⟩
+
+#print axioms ready_initial
+
+end Project.Gpt2CachedStep.Frozen.Session

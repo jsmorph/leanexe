@@ -20,30 +20,30 @@ def initialBumpBody : Wasm.Program :=
   | _ => []
 
 def initialAllocationRegion : Wasm.Program :=
-  [.constI64 0, .localSet 50, .constI64 0, .localSet 46, .globalGet 1, .localSet 47] ++
-    search 36 1 ++ [.localGet 50, .constI64 0, .eqI64, .iff 0 0 initialBumpBody []] ++
-    [.globalGet 2, .constI64 1, .addI64, .globalSet 2, .localGet 50, .localSet 40]
+  [.constI64 0, .localSet 48, .constI64 0, .localSet 44, .globalGet 1, .localSet 45] ++
+    search 34 1 ++ [.localGet 48, .constI64 0, .eqI64, .iff 0 0 initialBumpBody []] ++
+    [.globalGet 2, .constI64 1, .addI64, .globalSet 2, .localGet 48, .localSet 38]
 
 def initialZeroBody : Wasm.Program :=
-  [.localGet 41, .localGet 39, .geUI64, .br_if 1,
-    .localGet 40, .localGet 41, .constI64 1, .mulI64, .constI64 1, .addI64,
-    .constI64 8, .mulI64, .addI64, .wrapI64, .localGet 42, .store64 0,
-    .localGet 41, .constI64 1, .addI64, .localSet 41, .br 0]
+  [.localGet 39, .localGet 37, .geUI64, .br_if 1,
+    .localGet 38, .localGet 39, .constI64 1, .mulI64, .constI64 1, .addI64,
+    .constI64 8, .mulI64, .addI64, .wrapI64, .localGet 40, .store64 0,
+    .localGet 39, .constI64 1, .addI64, .localSet 39, .br 0]
 
 def initialZeroLoop : Wasm.Program := [.block 0 0 [.loop 0 0 initialZeroBody]]
 
 theorem grid_function_shape : func36 = func36.take 17 ++
-    [.iff 0 0 gridInvalidBody gridValidBody, .localGet 38] := rfl
+    [.iff 0 0 gridInvalidBody gridValidBody, .localGet 36] := rfl
 
 theorem initial_allocation_shape : (gridValidBody.drop 54).take 17 = initialAllocationRegion := rfl
 
 theorem initial_bump_header_shape : initialBumpBody =
-    initialBumpBody.take 28 ++ allocationHeaderProgram 50 45 := rfl
+    initialBumpBody.take 28 ++ allocationHeaderProgram 48 43 := rfl
 
 theorem initial_zero_shape : (gridValidBody.drop 71).take 7 =
-    [.localGet 40, .wrapI64, .localGet 39, .store64 0, .constI64 0, .localSet 41] ++ initialZeroLoop := rfl
+    [.localGet 38, .wrapI64, .localGet 37, .store64 0, .constI64 0, .localSet 39] ++ initialZeroLoop := rfl
 
-theorem grid_frame_shape : func36Def.params.length = 2 ∧ func36Def.locals.length = 49 := ⟨rfl, rfl⟩
+theorem grid_frame_shape : func36Def.params.length = 2 ∧ func36Def.locals.length = 47 := ⟨rfl, rfl⟩
 
 #print axioms grid_function_shape
 #print axioms initial_allocation_shape
