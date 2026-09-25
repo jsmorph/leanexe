@@ -133,6 +133,10 @@ shadowing, unused values and captures. Body scalar operands retain their origina
 Boolean let scope, while direct flag references distinguish the new flag from
 external captures. Both the bound value and body are checked. Pure computations
 may repeat in generated expressions.
+UInt64 bindings inside Boolean results use the same scope-preserving approach.
+Word and flag bindings can mix and nest. The source type condition recursively
+forbids direct Boolean reads of word slots, and successful extraction proves that
+condition; scalar operands retain their original word binding context.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
@@ -910,3 +914,13 @@ dependent-choice and Boolean-local fixtures passed unchanged with 304 comparison
 and 76/eight rejections. Five original examples now compile unchanged; eighteen
 selected prior modules kept identical bytes. The complete corpus has 584
 declarations; this execution run was focused.
+
+The [word-let Boolean increment](../proofs/compiler/boolean-word-let-2026-09-25/README.md)
+adds UInt64 bindings inside Boolean results. Candidate `2477b2bb` passed all nine
+audits and 623 native Lean/V8 comparisons across 34 declarations. The first
+focused fixture passed 304 native/IR comparisons and 68 rejections. A preceding
+word-binding exclusion was promoted unchanged; the updated Boolean-let fixture
+passed 318 comparisons and 39 rejections. Prior dependent-choice tests passed
+unchanged with 304 comparisons and 76 rejections. Five original examples now
+compile unchanged; eighteen selected prior modules kept identical bytes. The
+full corpus has 600 declarations; this execution run was focused.
