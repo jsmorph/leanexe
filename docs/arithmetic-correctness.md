@@ -169,3 +169,7 @@ The [let-binding increment](../proofs/compiler/let-2026-09-24/README.md) extends
 general theorem and execution check to pure UInt64 bindings, with 142 matching
 results over twelve declarations. It retains focused evidence without rebuilding
 the fixed arithmetic distribution package.
+
+The [conditional increment](../proofs/compiler/conditionals-2026-09-25/README.md)
+adds the seven comparison forms and nested branches, with the general proof,
+all nine audits, and 254 matching results across twenty declarations.
