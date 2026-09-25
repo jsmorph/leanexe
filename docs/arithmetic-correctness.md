@@ -22,7 +22,7 @@ nesting of supported expressions:
 | `~~~` | Bitwise complement of all 64 bits |
 | `min`, `max` | Smaller/larger UInt64 operand using unsigned order |
 | `<<<`, `>>>` | Left/logical right shift; count masked to six bits |
-| `if … then … else …` | Branch on `=`, `≠`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions, optionally negated with `¬`; Boolean `==`/`!=` guards admit `&&`, `||` and repeated `!`; propositional `∧` and `∨` combine admitted comparison guards |
+| `if … then … else …` | Branch on `=`, `≠`, `<`, `≤`, `>`, `≥`, `==`, or `!=` between UInt64 expressions, optionally negated with `¬`; Boolean `==`/`!=` guards admit `&&`, `||` and repeated `!`; propositional `∧` and `∨` combine admitted guards; `true`, `false`, `True` and `False` may appear at any guard leaf |
 
 Both direct UInt64 primitives and canonical overloaded operators with the
 standard UInt64 instances are admitted. Both `UInt64.complement x` and standard
@@ -69,6 +69,14 @@ lowering. Compound Boolean guards can also appear inside propositional `∧`,
 counts retain Bool.not and propositional Not, with their exact decision evidence.
 Every Boolean subtree and compared scalar operand is checked. Custom BEq and
 decision instances, including in unused helper bodies, remain rejected.
+
+Literal `true`/`false` Boolean guards and `True`/`False` propositional guards are
+admitted as whole conditions and inside mixed guard trees. Repeated `!` and `¬`
+retain their exact source syntax and standard decision evidence. Their known
+Boolean results lower through word equality. Both branches and all nested
+operands remain checked even when a literal determines the result; unsupported
+inactive branches, custom decisions and unsupported unused helper bodies are
+rejected. This does not add general Boolean parameters, results or bindings.
 
 Standard UInt64 `min` and `max` lower to unsigned `≤` followed by selection.
 The extractor checks their exact standard Min/Max instance. Both operands are

@@ -149,5 +149,9 @@
   "rangeExtremaCount",
   "rangeExtremaExit",
   "rangeExtremaBounds",
-  "rangeExtremaStep"
+  "rangeExtremaStep",
+  "rangeLiteralBreak",
+  "rangeLiteralContinue",
+  "rangeLiteralJoined",
+  "rangeLiteralStep"
 ]
