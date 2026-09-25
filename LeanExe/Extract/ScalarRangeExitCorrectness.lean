@@ -60,9 +60,9 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
     ∃ value, Range.Exit.Eval source values value ∧ plan.Meaning saved value := by
   classical
   induction supported generalizing locals plan values with
-  | @range types count initial body indexName accumulatorName indexBi accumulatorBi hc hi hs =>
+  | @range types count initial body indexName accumulatorName indexBi accumulatorBi indexType hc hi hs =>
     change extractScalarRangeExitWith locals saved.length
-      ({ count, initial, indexName, accumulatorName, indexBi, accumulatorBi, body } : ScalarRangeView).source = some plan at compiled
+      ({ indexType, count, initial, indexName, accumulatorName, indexBi, accumulatorBi, body } : ScalarRangeExitView).source = some plan at compiled
     rw [extractScalarRangeExitWith_call] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨countIR, ec, initialIR, ei, code, es, rfl⟩ := compiled
@@ -73,7 +73,7 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
         (by simp [Step.Value.kind, Value.kind, List.map_map, Function.comp_def, ← valuesTyped])
     let f := fun index accumulator => (total index accumulator).choose
     refine ⟨Range.Exit.iterate f stop.toNat 0 start,
-      .range sc si (fun index accumulator => (total index accumulator).choose_spec),
+      .range indexType sc si (fun index accumulator => (total index accumulator).choose_spec),
       stop, start, f, ?_, ?_, ?_, ?_⟩
     · exact extractScalarExprWith_correct sc ec (bindings 0 0 0 0)
     · exact extractScalarExprWith_correct si ei (bindings 0 0 stop 0)

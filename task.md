@@ -177,6 +177,17 @@ affected compiler proof target and nine axiom audits pass. Nine public execution
 fixtures and updated admission tests are ready for the focused native/V8 check;
 that check is still pending at this candidate checkpoint.
 
+The first public range execution run accepted the real break cases but exposed
+borrowed Nat metadata on the explicit Unit-prefixed step-function fixture.
+The old exact range-head recognizer rejected that annotation before reaching
+the already-proved step compiler. `ScalarRangeExitSyntax.lean` now retains the
+exact annotated index type and checks that removing only metadata yields Nat;
+the full standard ForIn instance evidence and matching binder type remain
+checked. The independent source grammar carries this checked type, and focused
+acceptance, support, preservation and IR proofs pass. The failed execution log
+is retained. The Unit-prefixed fixture now exercises yielding before done as
+well as wrapping. Final general proof and engine reruns follow this correction.
+
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
 continue through `tools/leanrun`, with local mode and a shared serial lock.

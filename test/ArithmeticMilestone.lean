@@ -319,8 +319,8 @@ def rangeDoneFunction (count seed : UInt64) : UInt64 :=
 def rangeDoneUnitFunction (count seed : UInt64) : UInt64 :=
   forIn (m := Id) [:count.toNat] seed fun i a =>
     let finish := fun (_ : Unit) (x : UInt64) =>
-      if x == seed then pure (.done (x + 1)) else pure (.yield (x + UInt64.ofNat i))
-    finish () (a + UInt64.ofNat i)
+      if x % 3 == seed % 3 then pure (.done (x + 1)) else pure (.yield (x + UInt64.ofNat i))
+    finish () (a + UInt64.ofNat i + 1)
 
 def rangeUnusedDone (count seed : UInt64) : UInt64 := Id.run do
   let mut a := seed
