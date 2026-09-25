@@ -97,10 +97,9 @@ run_elab do
         let actual := module_.evalFunc 0 [count, seed]
         unless actual == expected do
           throwError "{name}({count}, {seed}): native={expected}, IR={actual}"
-  for name in [`RangeIntervalTest.intervalOverflow, `RangeIntervalTest.intervalCustom,
-      `RangeIntervalTest.intervalDynamic] do
+  for name in [`RangeIntervalTest.intervalOverflow, `RangeIntervalTest.intervalCustom] do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
     unless (LeanExe.Extract.Core.extractScalarFunc name (some "entry") info.type value).isNone do
       throwError "{name}: unsupported interval accepted"
-  Lean.logInfo "264 native/interval IR comparisons and three rejection tests passed"
+  Lean.logInfo "264 native/interval IR comparisons and two rejection tests passed"

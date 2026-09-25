@@ -202,6 +202,67 @@ def intervalCustom (seed : UInt64) : UInt64 :=
 def intervalDynamic (seed : UInt64) : UInt64 :=
   forIn (m := Id) [seed.toNat:10] seed fun _ a => .done a
 
+def rangeDynamicStart (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [(seed % 7).toNat:count.toNat] do
+    a := a * 3 + UInt64.ofNat i
+  return a
+
+def rangeDynamicLiteral (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [count.toNat:8] seed fun i a => .yield (a + UInt64.ofNat i)
+
+def rangeDynamicComputed (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [(count / 2).toNat:(count + seed % 3).toNat] do
+    a := a + UInt64.ofNat i
+  return a
+
+def rangeDynamicCapture (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [a.toNat:(a + count).toNat] do
+    a := a + UInt64.ofNat i + 7
+  return a
+
+def rangeDynamicHigh (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(18446744073709551615 - count).toNat:18446744073709551615] seed fun i a =>
+    .yield (a + UInt64.ofNat i)
+
+def rangeDynamicEmpty (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(count + 1).toNat:count.toNat] seed fun i a => .yield (a + UInt64.ofNat i)
+
+def rangeDynamicEqual (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(seed + count).toNat:(seed + count).toNat] seed fun i a => .done (a + UInt64.ofNat i)
+
+def rangeDynamicHugeBreak (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(seed % 7).toNat:18446744073709551615] seed fun i a => .done (a + UInt64.ofNat i + count)
+
+def rangeDynamicContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [(seed % 5).toNat:count.toNat] do
+    if UInt64.ofNat i % 3 == 0 then continue
+    a := a + UInt64.ofNat i
+    if UInt64.ofNat i == 11 then break
+  return a
+
+def rangeDynamicJoin (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(seed % 5).toNat:count.toNat] seed fun i a => do
+    let result ← if UInt64.ofNat i == 7 then pure (.done (a + 11)) else pure (.yield (a + UInt64.ofNat i))
+    return result
+
+def rangeDynamicChoice (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [(if count < seed then count / 2 else 0).toNat:count.toNat] do
+    let f := fun x : UInt64 => x + UInt64.ofNat i
+    a := f a
+  return a
+
+def dynamicNatAddition (seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(seed.toNat + 1):10] seed fun _ a => .done a
+
+def dynamicHelper (seed : UInt64) : UInt64 := seed + 1
+def dynamicCalledStart (seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(dynamicHelper seed).toNat:10] seed fun _ a => .done a
+
 def helper (x : UInt64) : UInt64 := expression x 3
 def wrongType (x : Nat) : Nat := x + 1
 def retain (x : UInt64) : UInt64 := x + 1
@@ -426,7 +487,18 @@ run_elab do
       `ArithmeticModeTest.rangeIntervalJoin,
       `ArithmeticModeTest.rangeIntervalHigh,
       `ArithmeticModeTest.rangeIntervalMaxEmpty,
-      `ArithmeticModeTest.rangeIntervalHugeBreak] do
+      `ArithmeticModeTest.rangeIntervalHugeBreak, `ArithmeticModeTest.intervalDynamic,
+      `ArithmeticModeTest.rangeDynamicStart,
+      `ArithmeticModeTest.rangeDynamicLiteral,
+      `ArithmeticModeTest.rangeDynamicComputed,
+      `ArithmeticModeTest.rangeDynamicCapture,
+      `ArithmeticModeTest.rangeDynamicHigh,
+      `ArithmeticModeTest.rangeDynamicEmpty,
+      `ArithmeticModeTest.rangeDynamicEqual,
+      `ArithmeticModeTest.rangeDynamicHugeBreak,
+      `ArithmeticModeTest.rangeDynamicContinue,
+      `ArithmeticModeTest.rangeDynamicJoin,
+      `ArithmeticModeTest.rangeDynamicChoice] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
     | .ok module_ =>
@@ -443,7 +515,8 @@ run_elab do
       `ArithmeticModeTest.rangeCustomBind,
       `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar, `ArithmeticModeTest.rangeResultFunctionBool,
       `ArithmeticModeTest.rangeUnusedStepValue, `ArithmeticModeTest.rangeUnusedStepBind, `ArithmeticModeTest.rangeCustomStepPure, `ArithmeticModeTest.rangeCustomStepBind,
-      `ArithmeticModeTest.intervalOverflow, `ArithmeticModeTest.intervalCustom, `ArithmeticModeTest.intervalDynamic,
+      `ArithmeticModeTest.dynamicNatAddition, `ArithmeticModeTest.dynamicCalledStart,
+      `ArithmeticModeTest.intervalOverflow, `ArithmeticModeTest.intervalCustom,
       `ArithmeticModeTest.rangeNatOverflow, `ArithmeticModeTest.rangeCustomNat,
       `ArithmeticModeTest.rangeUnsupportedDirect, `ArithmeticModeTest.rangeUnusedUnsupportedDone, `ArithmeticModeTest.rangeCustomOrder,
       `ArithmeticModeTest.customReturn, `ArithmeticModeTest.customSequence,

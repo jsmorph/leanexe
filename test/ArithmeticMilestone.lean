@@ -570,6 +570,60 @@ def rangeIntervalMaxEmpty (count seed : UInt64) : UInt64 :=
 def rangeIntervalHugeBreak (count seed : UInt64) : UInt64 :=
   forIn (m := Id) [2:18446744073709551615] seed fun i a => .done (a + UInt64.ofNat i + count)
 
+def rangeDynamicStart (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [(seed % 7).toNat:count.toNat] do
+    a := a * 3 + UInt64.ofNat i
+  return a
+
+def rangeDynamicLiteral (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [count.toNat:8] seed fun i a => .yield (a + UInt64.ofNat i)
+
+def rangeDynamicComputed (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [(count / 2).toNat:(count + seed % 3).toNat] do
+    a := a + UInt64.ofNat i
+  return a
+
+def rangeDynamicCapture (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [a.toNat:(a + count).toNat] do
+    a := a + UInt64.ofNat i + 7
+  return a
+
+def rangeDynamicHigh (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(18446744073709551615 - count).toNat:18446744073709551615] seed fun i a =>
+    .yield (a + UInt64.ofNat i)
+
+def rangeDynamicEmpty (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(count + 1).toNat:count.toNat] seed fun i a => .yield (a + UInt64.ofNat i)
+
+def rangeDynamicEqual (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(seed + count).toNat:(seed + count).toNat] seed fun i a => .done (a + UInt64.ofNat i)
+
+def rangeDynamicHugeBreak (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(seed % 7).toNat:18446744073709551615] seed fun i a => .done (a + UInt64.ofNat i + count)
+
+def rangeDynamicContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [(seed % 5).toNat:count.toNat] do
+    if UInt64.ofNat i % 3 == 0 then continue
+    a := a + UInt64.ofNat i
+    if UInt64.ofNat i == 11 then break
+  return a
+
+def rangeDynamicJoin (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [(seed % 5).toNat:count.toNat] seed fun i a => do
+    let result ← if UInt64.ofNat i == 7 then pure (.done (a + 11)) else pure (.yield (a + UInt64.ofNat i))
+    return result
+
+def rangeDynamicChoice (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [(if count < seed then count / 2 else 0).toNat:count.toNat] do
+    let f := fun x : UInt64 => x + UInt64.ofNat i
+    a := f a
+  return a
+
 def rangeInputs : List (UInt64 × UInt64) :=
   [0, 1, 2, 7, 16, 31].flatMap fun count =>
     [0, 1, 0x8000000000000000, 0xffffffffffffffff].map fun seed => (count, seed)
@@ -627,7 +681,18 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeIntervalJoin", rangeIntervalJoin),
    ("rangeIntervalHigh", rangeIntervalHigh),
    ("rangeIntervalMaxEmpty", rangeIntervalMaxEmpty),
-   ("rangeIntervalHugeBreak", rangeIntervalHugeBreak)]
+   ("rangeIntervalHugeBreak", rangeIntervalHugeBreak),
+   ("rangeDynamicStart", rangeDynamicStart),
+   ("rangeDynamicLiteral", rangeDynamicLiteral),
+   ("rangeDynamicComputed", rangeDynamicComputed),
+   ("rangeDynamicCapture", rangeDynamicCapture),
+   ("rangeDynamicHigh", rangeDynamicHigh),
+   ("rangeDynamicEmpty", rangeDynamicEmpty),
+   ("rangeDynamicEqual", rangeDynamicEqual),
+   ("rangeDynamicHugeBreak", rangeDynamicHugeBreak),
+   ("rangeDynamicContinue", rangeDynamicContinue),
+   ("rangeDynamicJoin", rangeDynamicJoin),
+   ("rangeDynamicChoice", rangeDynamicChoice)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),

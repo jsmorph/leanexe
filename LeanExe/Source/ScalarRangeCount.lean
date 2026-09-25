@@ -54,15 +54,8 @@ theorem Count.Supported.evaluates {types : List BindingKind} {count : Count}
   obtain ⟨word, evaluated⟩ := supported.scalar.evaluates values typed
   exact ⟨word.toNat, .of_scalar evaluated⟩
 
-/-- A standard literal first index represented exactly in the scalar loop. -/
-structure First where
-  number : Nat
-  fits : number < UInt64.size
-
-def First.source (first : First) : Lean.Expr := Range.natLiteral first.number
-
-def Count.range (count : Count) (first : Nat := 0) : Lean.Expr :=
-  Lean.mkAppN (.const ``Std.Legacy.Range.mk []) #[Range.natLiteral first,
+def Count.range (count first : Count) : Lean.Expr :=
+  Lean.mkAppN (.const ``Std.Legacy.Range.mk []) #[first.source,
     count.source, Range.natLiteral 1, .const ``Nat.zero_lt_one []]
 
 end LeanExe.Source.Scalar.Range.Exit
