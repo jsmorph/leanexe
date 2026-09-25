@@ -64,6 +64,29 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ih (.scalar (.word bound) :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
     exact ⟨target, by rw [extractScalarStepWith_bind]; simp [hb, ht]⟩
+  | manyApply call present arguments =>
+    obtain ⟨f, hf⟩ := scalarStepManyFunction_lookup (typed ▸ present)
+    obtain ⟨compiledArguments, ha⟩ := extractScalarArguments_accepts call.arguments
+      (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      (fun operand member => scalar (arguments operand member) typed total)
+    obtain ⟨target, ht⟩ := total _ (List.mem_of_getElem? hf) compiledArguments
+      (extractScalarArguments_length _ _ ha)
+    exact ⟨target, by
+      rw [extractScalarStepWith_manyApply]
+      simp only [bind, hf, Option.bind_some, ScalarStepBinding.manyFunction?, beq_self_eq_true,
+        ↓reduceIte, ha, ht]⟩
+  | letManyStepFn shape _ _ ihf ihb =>
+    have accepts (arguments : List LeanExe.IR.Expr) (len : arguments.length = shape.arity) :=
+      ihf (arguments.reverse.map (fun argument => .scalar (.word argument)) ++ locals)
+        (by simp [List.map_map, Function.comp_def, ScalarStepBinding.kind, ScalarBinding.kind,
+          List.map_const', len, typed]) (scalarStepWords_total _ total)
+    obtain ⟨checked, hc⟩ := accepts (List.replicate shape.arity (.u64 0)) (by simp)
+    simp only [List.reverse_replicate, List.map_replicate] at hc
+    let f := fun (arguments : List LeanExe.IR.Expr) => extractScalarStepWith
+      (arguments.reverse.map (fun argument => .scalar (.word argument)) ++ locals) shape.body
+    obtain ⟨target, ht⟩ := ihb (.manyFunction shape.arity f :: locals)
+      (by simp [ScalarStepBinding.kind, typed]) (extend total accepts)
+    exact ⟨target, by rw [extractScalarStepWith_letManyStepFn]; simp only [bind, hc, Option.bind_some, ht, f]⟩
   | binaryApply present first second =>
     obtain ⟨f, hf⟩ := scalarStepBinaryFunction_lookup (typed ▸ present)
     obtain ⟨a, ha⟩ := scalar first typed total

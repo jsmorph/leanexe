@@ -78,6 +78,26 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     obtain ⟨bound, hb, ht⟩ := compiled
     exact ih ht (extend bindings (scalar hb bindings))
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+  | manyApply call present arguments =>
+    rw [extractScalarStepWith_manyApply] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨f, ⟨binding, found, matched⟩, compiledArguments, ha, ht⟩ := compiled
+    have same := ScalarStepBinding.manyFunction?_some.mp matched
+    subst binding
+    exact bindings _ (List.mem_of_getElem? found) compiledArguments target
+      (extractScalarArguments_length _ _ ha)
+      (extractScalarArguments_holds call.arguments _ P ha
+        (fun operand member expression found => scalar found bindings)) ht
+  | letManyStepFn shape _ _ ihf ihb =>
+    rw [extractScalarStepWith_letManyStepFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ihb ht (extend bindings ?_) (by simp [ScalarStepBinding.kind, htypes])
+    intro arguments result len holds compiled
+    exact ihf compiled
+      (scalarStepWords_holds (fun argument member => holds argument (by simpa using member)) bindings)
+      (by simp [List.map_map, Function.comp_def, ScalarStepBinding.kind, ScalarBinding.kind,
+        List.map_const', len, htypes])
   | binaryApply present first second =>
     rw [extractScalarStepWith_binaryApply _ _ _ _ first.not_unit] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

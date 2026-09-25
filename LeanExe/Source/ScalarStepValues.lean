@@ -9,6 +9,7 @@ inductive BindingKind where
   | scalar (kind : LeanExe.Source.Scalar.BindingKind)
   | function (withUnit : Bool)
   | binaryFunction
+  | manyFunction (arity : Nat)
   deriving DecidableEq, Repr
 
 inductive Value where
@@ -17,6 +18,7 @@ inductive Value where
   | scalar (value : LeanExe.Source.Scalar.Value)
   | function (withUnit : Bool) (apply : UInt64 → ForInStep UInt64)
   | binaryFunction (apply : UInt64 → UInt64 → ForInStep UInt64)
+  | manyFunction (arity : Nat) (apply : List UInt64 → ForInStep UInt64)
 
 def Value.kind : Value → BindingKind
   | .resultFunction _ => .resultFunction
@@ -24,6 +26,7 @@ def Value.kind : Value → BindingKind
   | .scalar value => .scalar value.kind
   | .function withUnit _ => .function withUnit
   | .binaryFunction _ => .binaryFunction
+  | .manyFunction arity _ => .manyFunction arity
 
 /-- Scalar subexpressions cannot call step-valued continuations. A Unit
 placeholder preserves de Bruijn positions without making such calls available
@@ -33,14 +36,14 @@ def Value.toScalar : Value → LeanExe.Source.Scalar.Value
   | .result _ => .unit
   | .scalar value => value
   | .function _ _ => .unit
-  | .binaryFunction _ => .unit
+  | .binaryFunction _ | .manyFunction _ _ => .unit
 
 def BindingKind.toScalar : BindingKind → LeanExe.Source.Scalar.BindingKind
   | .resultFunction => .unit
   | .result => .unit
   | .scalar kind => kind
   | .function _ => .unit
-  | .binaryFunction => .unit
+  | .binaryFunction | .manyFunction _ => .unit
 
 @[simp] theorem Value.toScalar_kind (value : Value) :
     value.toScalar.kind = value.kind.toScalar := by cases value <;> rfl
@@ -59,7 +62,7 @@ theorem function_lookup {values : List Value} {types : List BindingKind} {index 
   cases value with
   | resultFunction _ => cases kind
   | result _ => cases kind
-  | scalar _ | binaryFunction _ => cases kind
+  | scalar _ | binaryFunction _ | manyFunction _ _ => cases kind
   | function shape f => cases kind; exact ⟨f, found⟩
 
 theorem result_lookup {values : List Value} {types : List BindingKind} {index : Nat}
@@ -70,7 +73,7 @@ theorem result_lookup {values : List Value} {types : List BindingKind} {index : 
   cases value with
   | resultFunction _ => cases kind
   | result outcome => exact ⟨outcome, found⟩
-  | scalar _ | binaryFunction _ => cases kind
+  | scalar _ | binaryFunction _ | manyFunction _ _ => cases kind
   | function _ _ => cases kind
 
 theorem resultFunction_lookup {values : List Value} {types : List BindingKind} {index : Nat}
@@ -81,7 +84,7 @@ theorem resultFunction_lookup {values : List Value} {types : List BindingKind} {
   cases value with
   | resultFunction f => exact ⟨f, found⟩
   | result _ => cases kind
-  | scalar _ | binaryFunction _ => cases kind
+  | scalar _ | binaryFunction _ | manyFunction _ _ => cases kind
   | function _ _ => cases kind
 
 theorem binaryFunction_lookup {values : List Value} {types : List BindingKind} {index : Nat}
@@ -91,6 +94,15 @@ theorem binaryFunction_lookup {values : List Value} {types : List BindingKind} {
   obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases value with
   | binaryFunction f => exact ⟨f, found⟩
-  | resultFunction _ | result _ | scalar _ | function _ _ => cases kind
+  | resultFunction _ | result _ | scalar _ | function _ _ | manyFunction _ _ => cases kind
+
+theorem manyFunction_lookup {values : List Value} {types : List BindingKind} {index arity : Nat}
+    (typed : values.map Value.kind = types) (present : types[index]? = some (.manyFunction arity)) :
+    ∃ f, values[index]? = some (.manyFunction arity f) := by
+  rw [← typed, List.getElem?_map] at present
+  obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
+  cases value with
+  | manyFunction count f => cases kind; exact ⟨f, found⟩
+  | resultFunction _ | result _ | scalar _ | function _ _ | binaryFunction _ => cases kind
 
 end LeanExe.Source.Scalar.Step

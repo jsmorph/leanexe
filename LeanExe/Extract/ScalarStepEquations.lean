@@ -198,8 +198,9 @@ theorem extractScalarStepWith_letResultFn (locals : List ScalarStepBinding)
   cases input <;> rw [Step.resultType, extractScalarStepWith] <;>
     simp [scalarStepResultType?, scalarStepResultType_accepts]
 
-theorem scalarFunctionSuffix_not_step (suffix : FunctionSuffix) (positive : 0 < suffix.arity) :
-    scalarStepResultType? suffix.type = none := by
+theorem scalarFunctionSuffix_not_step (suffix : FunctionSuffix) (positive : 0 < suffix.arity)
+    (render : ResultType → Lean.Expr := ResultType.expr) :
+    scalarStepResultType? (suffix.type render) = none := by
   cases suffix with
   | result => simp [FunctionSuffix.arity] at positive
   | argument => rfl
@@ -218,5 +219,36 @@ theorem extractScalarStepWith_letManyFn (locals : List ScalarStepBinding)
   have accepted := scalarManyFunction_accepts shape
   simp only [ManyFunction.type, ManyFunction.value, Parameter.arrow, Parameter.lambda] at accepted
   rw [accepted]
+
+theorem extractScalarStepWith_manyApply (locals : List ScalarStepBinding) (call : ManyCall) :
+    extractScalarStepWith locals call.expr = (do
+      let function ← locals[call.index]?.bind (ScalarStepBinding.manyFunction? call.arity)
+      let arguments ← extractScalarArguments call.arguments
+        (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      function arguments) := by
+  unfold ManyCall.expr
+  rw [extractScalarStepWith]
+  · rw [scalarManyCall_accepts]
+    rfl
+  all_goals
+    intros
+    have head := call.callee.head
+    have nonvar := call.callee.not_bvar call.positive
+    simp_all [Lean.Expr.getAppFn]
+
+theorem extractScalarStepWith_letManyStepFn (locals : List ScalarStepBinding)
+    (shape : ManyFunction) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool) :
+    extractScalarStepWith locals (shape.bind name body nondep Step.resultType) = (do
+      let _ ← extractScalarStepWith (List.replicate shape.arity (.scalar (.word (.u64 0))) ++ locals) shape.body
+      extractScalarStepWith (.manyFunction shape.arity (fun arguments =>
+        extractScalarStepWith (arguments.reverse.map (fun argument => .scalar (.word argument)) ++ locals) shape.body) :: locals) body) := by
+  rw [ManyFunction.bind, ManyFunction.type, ManyFunction.value, Parameter.arrow,
+    Parameter.arrow, Parameter.lambda, Parameter.lambda, extractScalarStepWith,
+    scalarFunctionSuffix_not_result shape.suffix shape.positive Step.resultType,
+    scalarFunctionSuffix_not_step shape.suffix shape.positive Step.resultType]
+  have rejected := scalarManyFunction_rejects_step shape
+  have accepted := scalarManyStepFunction_accepts shape
+  simp only [ManyFunction.type, ManyFunction.value, Parameter.arrow, Parameter.lambda] at rejected accepted
+  rw [rejected, accepted]
 
 end LeanExe.Extract.Core
