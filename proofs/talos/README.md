@@ -901,7 +901,7 @@ A matching aggregate artifact receipt, conformance receipt, immutable source
 revision, and the deferred cold-checkout gate must all be present before the
 current record can become ready.
 
-A future general compiler-correctness theorem would connect accepted Lean source, extracted IR, lowered WASM, and modeled WASM execution in one source-to-WASM result.  [Compiler and Generated Evidence](../../docs/compiler.md) distinguishes the checked compiler theorems available now from that longer-term result.  The runtime lemma library already reduces per-program work by replacing repeated instruction proofs with applications of shared theorems.
+The general arithmetic compiler theorem now connects admitted original Lean source, production extraction, exact emitted bytes, full validation, export lookup and terminating Wasm invocation. `Project.Compiler.ArithmeticCompilerAudit` checks its nine public results. [Arithmetic compiler correctness](../../docs/arithmetic-correctness.md) gives the exact source grammar, theorem premises, trust boundary, execution tests and independent source-package procedure. General correctness for the rest of the leanexe dialect remains incremental work.  The runtime lemma library already reduces per-program work by replacing repeated instruction proofs with applications of shared theorems.
 
 ## References
 
