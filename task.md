@@ -680,21 +680,26 @@ intended Boolean operands were parenthesized and failures retained. Evidence is
 in `proofs/compiler/boolean-proposition-2026-09-25/`. The complete corpus has 520
 declarations; this was a focused execution run. No emitter/runtime changes.
 
-Current increment: explicit decide and implicit Prop-to-Bool conversions for
-propositional equality/inequality over admitted Boolean expressions, including
-saved flags and truth coercions. The recursive source form preserves the exact
-Eq/Ne and standard decision expressions and relates native decide to the shared
-Boolean equality lowering. The prior closed decision form uses PropositionGuard
-so Boolean truth decisions follow the recursive Boolean path. Source/parser,
-scalar/step/range acceptance, native correctness and invariant proofs pass.
-All five original examples and two retained notation failures now compile
-unchanged. The first focused fixture passed 304 native/IR comparisons and 36
-rejection tests. The prior proposition-guard and closed-decide fixtures each
-pass 304 comparisons and their 44/twelve rejection tests unchanged. The general
-audit, actual compiler execution comparisons and final documentation are in progress. Boolean-returning helpers, Boolean
-public ABI, mixed Bool/word helper parameters, Boolean-result choices over
-saved-flag propositions, broader propositional combinations and loops inside
-helpers remain later capabilities.
+Completed next increment: explicit decide and implicit Prop-to-Bool conversions
+for Boolean equality/inequality, including saved flags and truth coercions.
+The recursive source form retains exact Eq/Ne conditions and standard evidence;
+a native decide lemma connects it to the shared Boolean equality lowering.
+Candidate `25a0d3b5` passed all nine compiler audits and 623 native Lean/V8
+comparisons across 34 declarations. The first focused fixture passed all 304
+native/IR comparisons and 36 rejection checks. Prior proposition-guard and
+closed-decide fixtures each passed 304 comparisons and their 44/twelve rejection
+checks unchanged. Eighteen selected prior modules kept identical bytes. All
+five original examples and both retained leading-negation failures now compile
+unchanged; all seven bodies are included in the execution fixtures. Evidence is
+in `proofs/compiler/boolean-local-decide-2026-09-25/`. The complete corpus contains
+536 declarations; this was a focused execution run. No emitter/runtime changes.
+
+Next increment: Boolean-result choices directly guarded by saved-flag
+propositions, beginning with Boolean equality/inequality. Preserve exact source
+and standard decisions, reuse shared lowering and check ordinary/Id bindings,
+helper captures and scalar/loop contexts end to end. Boolean-returning helpers,
+Boolean public ABI, mixed Bool/word helper parameters, broader propositional
+combinations and loops inside helpers remain later capabilities.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
