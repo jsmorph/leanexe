@@ -556,11 +556,14 @@ this run checked 30. No emitter/runtime changes or unrelated archive/runtime
 suite rebuilds were needed. Custom instances and general Nat arithmetic remain
 outside the admitted source grammar.
 
-Next increment: Boolean monadic bindings, such as `let flag ← pure (x == y)`,
+Current increment: Boolean monadic bindings, such as `let flag ← pure (x == y)`,
 in Id do-blocks, helper bodies, loop steps and computations surrounding a loop.
-Reuse typed Boolean bindings and the existing pure Boolean lowering. Prove exact
-standard Id action/bind syntax, source totality and extraction correctness before
-running focused native/compiler/WebAssembly comparisons. Broader Boolean result
+The independent Boolean action grammar and parser now have acceptance, exact
+reconstruction and operand-size proofs. Actions retain exact Bool-annotated
+standard Id.pure/Id.run wrappers and metadata around a BooleanLocal leaf. The
+exact Boolean bind input/domain checker is also proved. Production bind
+integration, source evaluation/support proofs and execution tests remain open.
+Reuse typed Boolean bindings and existing lowering. Broader Boolean result
 expressions, Boolean function parameters and the public Bool ABI remain later
 capabilities unless included and proved as part of this increment.
 
