@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_literal_instances.lean:104:0: error: LiteralInstanceTest.instanceLet: literal instance extraction failed
