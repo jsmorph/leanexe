@@ -1,4 +1,5 @@
 import LeanExe.Extract.ScalarPrimitive
+import LeanExe.Extract.ScalarDo
 import LeanExe.Source.ScalarHead
 
 namespace LeanExe.Extract.Core.ScalarPrimitive
@@ -28,9 +29,11 @@ theorem ofClass_sound {names : Lean.Name × Lean.Name × Lean.Name} {p : ScalarP
 def ofHead? : Lean.Expr → Option ScalarPrimitive
   | .const name _ => ofName? name
   | .app (.app (.app (.app (.const projection [.zero, .zero, .zero])
-      (.const ``UInt64 [])) (.const ``UInt64 [])) (.const ``UInt64 []))
+      (.const ``UInt64 [])) (.const ``UInt64 [])) resultType)
       (.app (.app (.const adapter [.zero]) (.const ``UInt64 [])) (.const instanceName [])) =>
-    ofClass? (projection, adapter, instanceName)
+    do
+      let _ ← scalarResultType? resultType
+      ofClass? (projection, adapter, instanceName)
   | _ => none
 
 theorem source_meaning (p : ScalarPrimitive) :
@@ -41,6 +44,10 @@ theorem source_class_meaning (p : ScalarPrimitive) :
     LeanExe.Source.Scalar.ClassBinary p.classNames p.denote := by
   cases p <;> constructor
 
+@[simp] theorem ofHead_class (p : ScalarPrimitive) (result : LeanExe.Source.Scalar.ResultType) :
+    ofHead? (LeanExe.Source.Scalar.classHead p.classNames result) = some p := by
+  cases p <;> simp [ofHead?, LeanExe.Source.Scalar.classHead, classNames, ofClass?, all]
+
 theorem ofHead_sound {head : Lean.Expr} {p : ScalarPrimitive}
     (h : ofHead? head = some p) : LeanExe.Source.Scalar.Head head p.denote := by
   unfold ofHead? at h
@@ -49,9 +56,12 @@ theorem ofHead_sound {head : Lean.Expr} {p : ScalarPrimitive}
     have meaning := p.source_meaning
     rw [ofName_sound h] at meaning
     exact .direct meaning
-  · have meaning := p.source_class_meaning
-    rw [ofClass_sound h] at meaning
-    exact .canonical meaning
+  · simp only [bind, Option.bind_eq_some_iff] at h
+    obtain ⟨result, found, matched⟩ := h
+    have meaning := p.source_class_meaning
+    rw [ofClass_sound matched] at meaning
+    rw [scalarResultType_sound found]
+    exact .canonical meaning result
   · contradiction
 
 end LeanExe.Extract.Core.ScalarPrimitive
@@ -75,18 +85,18 @@ theorem sourceHead_recognized {head : Lean.Expr} {f : UInt64 → UInt64 → UInt
       | exact ⟨.xor, by rfl, rfl⟩
       | exact ⟨.shiftLeft, by rfl, rfl⟩
       | exact ⟨.shiftRight, by rfl, rfl⟩
-  | canonical operation =>
+  | canonical operation result =>
     cases operation
     all_goals first
-      | exact ⟨.add, by rfl, rfl⟩
-      | exact ⟨.sub, by rfl, rfl⟩
-      | exact ⟨.mul, by rfl, rfl⟩
-      | exact ⟨.div, by rfl, rfl⟩
-      | exact ⟨.mod, by rfl, rfl⟩
-      | exact ⟨.land, by rfl, rfl⟩
-      | exact ⟨.lor, by rfl, rfl⟩
-      | exact ⟨.xor, by rfl, rfl⟩
-      | exact ⟨.shiftLeft, by rfl, rfl⟩
-      | exact ⟨.shiftRight, by rfl, rfl⟩
+      | exact ⟨.add, ScalarPrimitive.ofHead_class .add result, rfl⟩
+      | exact ⟨.sub, ScalarPrimitive.ofHead_class .sub result, rfl⟩
+      | exact ⟨.mul, ScalarPrimitive.ofHead_class .mul result, rfl⟩
+      | exact ⟨.div, ScalarPrimitive.ofHead_class .div result, rfl⟩
+      | exact ⟨.mod, ScalarPrimitive.ofHead_class .mod result, rfl⟩
+      | exact ⟨.land, ScalarPrimitive.ofHead_class .land result, rfl⟩
+      | exact ⟨.lor, ScalarPrimitive.ofHead_class .lor result, rfl⟩
+      | exact ⟨.xor, ScalarPrimitive.ofHead_class .xor result, rfl⟩
+      | exact ⟨.shiftLeft, ScalarPrimitive.ofHead_class .shiftLeft result, rfl⟩
+      | exact ⟨.shiftRight, ScalarPrimitive.ofHead_class .shiftRight result, rfl⟩
 
 end LeanExe.Extract.Core

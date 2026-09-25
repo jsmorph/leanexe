@@ -1,4 +1,4 @@
-import Lean
+import LeanExe.Source.ScalarDo
 
 namespace LeanExe.Source.Scalar
 
@@ -30,13 +30,15 @@ inductive ClassBinary : (Lean.Name × Lean.Name × Lean.Name) →
   | shiftRight : ClassBinary
       (``HShiftRight.hShiftRight, ``instHShiftRightOfShiftRight, ``instShiftRightUInt64) UInt64.shiftRight
 
-def classHead (names : Lean.Name × Lean.Name × Lean.Name) : Lean.Expr :=
+def classHead (names : Lean.Name × Lean.Name × Lean.Name)
+    (result : ResultType := .word) : Lean.Expr :=
   let type : Lean.Expr := .const ``UInt64 []
-  .app (.app (.app (.app (.const names.1 [.zero, .zero, .zero]) type) type) type)
+  .app (.app (.app (.app (.const names.1 [.zero, .zero, .zero]) type) type) result.expr)
     (.app (.app (.const names.2.1 [.zero]) type) (.const names.2.2 []))
 
 inductive Head : Lean.Expr → (UInt64 → UInt64 → UInt64) → Prop where
   | direct (operation : Binary name f) : Head (.const name levels) f
-  | canonical (operation : ClassBinary names f) : Head (classHead names) f
+  | canonical (operation : ClassBinary names f) (result : ResultType := .word) :
+      Head (classHead names result) f
 
 end LeanExe.Source.Scalar
