@@ -87,10 +87,18 @@ comparisons and 8,640 invalid-input checks. Prior syntax tests pass 12,896
 comparisons and 9,360 invalid-input checks. Evidence is in
 [the nested-call archive](proofs/compiler/boolean-predicate-nested-2026-09-26/README.md).
 
-Next: conjunctions and disjunctions containing Boolean-input predicate calls,
-with recursively checked Boolean operands. Direct Boolean contexts and broader
-signatures follow. Full-dialect correctness remains unfinished. Complete each
-capability through WASM and commit/push frequently.
+Conjunctions and disjunctions containing Boolean-input predicate calls now pass
+source totality, extraction correctness, acceptance, soundness and IR invariant
+proofs. Each child is recursively checked as a Boolean conversion. The existing
+lowering remains in use for expressions containing only word-input predicates.
+Focused tests pass 16,052 native/IR comparisons and 11,520 invalid-input checks.
+Prior nested-call tests pass 12,084 comparisons and 8,640 invalid-input checks.
+The general source-to-WASM theorem, eighteen audits and independent engine checks
+are next for this candidate.
+
+After this increment: Boolean equality and choice around these calls, direct
+Boolean contexts and broader signatures. Full-dialect correctness remains
+unfinished. Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 

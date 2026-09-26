@@ -200,8 +200,10 @@ also admitted, with converted calls in bounds, initial values, steps, stride
 calculations and final results. Converted calls also admit repeated Boolean
 negation, such as `(!(f flag)).toUInt64`, preserving the Boolean argument check.
 Nested converted calls, including negated inner arguments, check each argument
-as a Boolean conversion. Compound operations around calls and direct Boolean
-contexts remain subsequent capabilities.
+as a Boolean conversion. Conjunctions and disjunctions can combine these calls
+with flags, word-input predicate calls and other supported Boolean expressions,
+including nested calls and negation. Boolean equality, choices and direct
+Boolean contexts containing these calls remain subsequent capabilities.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
