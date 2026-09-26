@@ -29,10 +29,11 @@ The preceding [immediate application](proofs/compiler/boolean-application-2026-0
 [atomic comparison](proofs/compiler/reannotation-2026-09-26/README.md) archives
 record their checked increments.
 
-Next: support reusable UInt64-to-Bool local helpers in arbitrary enclosing scalar
-bodies, with a distinct typed function binding and Boolean environment. Preserve
-captures, check unused bodies, and reject word/Boolean function type confusion.
-Then extend the same capability to loop steps and broader helper signatures.
+Reusable UInt64-to-Bool local helpers now compile in arbitrary supported scalar
+bodies. Source totality, extraction acceptance and soundness, evaluation
+correctness, and IR structural properties are proved. The focused tests pass
+1,148 native/IR comparisons and 864 invalid-input checks. The full theorem and
+native/Wasm checks are next, followed by loop-step bindings and broader signatures.
 Full-dialect correctness remains unfinished. Get each capability proved and
 executing end to end, and commit/push frequently.
 
@@ -48,9 +49,12 @@ The environment, typed lookups, binding matching and existing scalar/step
 compiler proofs pass. The current named-helper fixtures still pass 2,200
 comparisons and 720 invalid-input checks. Predicate-call syntax, typed lexical
 lookup, acceptance, scope, evaluation correctness and IR structural-property
-proofs now pass. Reusable helper declarations are next; this capability is not yet admitted or
-recorded as complete. Run the full theorem and selected native/Wasm checks after
-those parts are integrated.
+proofs now pass. Reusable helper declarations preserve captured flags, words and
+functions, allow repeated calls, and check unused bodies. The independent source
+evaluation, acceptance, soundness, correctness and structural proofs pass;
+whole-function and existing step proofs also pass. Ten native fixtures and
+systematic binder/annotation cases pass 1,148 comparisons and 864 invalid-input
+tests. The full theorem and selected native/Wasm checks are pending.
 
 ## Directly applied named Boolean helpers — complete
 
