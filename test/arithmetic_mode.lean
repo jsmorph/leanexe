@@ -5007,6 +5007,63 @@ def booleanPredicateConditionBody (x y : UInt64) : UInt64 := Id.run do
   let b := if g false then x - y else y - x
   return if _h : @Ne Bool (f true) (f false) then a + b else a - b
 
+def rangeBooleanPredicateConditionBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun flag : Bool => flag || a % 7 == 0
+    if f (UInt64.ofNat i == seed % 9) then break
+    a := a + UInt64.ofNat i + 1
+  return a
+
+def rangeBooleanPredicateConditionSkip (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun flag : Bool => !flag || a == seed
+    if !f (UInt64.ofNat i % 3 == 0) then continue
+    a := a + UInt64.ofNat i + 1
+  return a
+
+def rangeBooleanPredicateConditionEq (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f := fun b : Bool => b != (a % 5 == 0)
+    if f (UInt64.ofNat i == seed % 11) = false then .done (a + 7)
+    else .yield (a + UInt64.ofNat i + 1)
+
+def rangeBooleanPredicateConditionNe (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f := fun b : Bool => b && a != 0
+    if f (UInt64.ofNat i % 3 == 0) ≠ f (seed == 0) then .yield (a + 11)
+    else .done (a + UInt64.ofNat i)
+
+def rangeBooleanPredicateConditionProof (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f := fun b : Bool => !b || a % 7 == 0
+    if _h : f (UInt64.ofNat i != seed % 13) then pure (.done (a + 3))
+    else pure (.yield (a + UInt64.ofNat i + 1))
+
+def rangeBooleanPredicateConditionOuterBreak (count seed : UInt64) : UInt64 := Id.run do
+  let captured := seed == 0
+  let f := fun b : Bool => b || captured
+  let mut a := seed
+  for i in [:count.toNat] do
+    if f (UInt64.ofNat i == seed % 11) then break
+    a := a + UInt64.ofNat i + 1
+  return a
+
+def rangeBooleanPredicateConditionNestedStep (count seed : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let g := fun b : Bool => b || a == seed
+    if f (g (UInt64.ofNat i % 3 == 0)) then pure (.done (a + 7))
+    else if _h : g (UInt64.ofNat i == seed % 7) ≠ false then pure (.yield (a + 2))
+    else pure (.done a)
+
+def rangeBooleanPredicateConditionIdStep (count seed : UInt64) : UInt64 :=
+  let f : Bool → Id (Id Bool) := fun b => !b
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    if _h : @Eq Bool (f (UInt64.ofNat i % 3 == 0)) false then .yield (a + 3)
+    else .done (a + UInt64.ofNat i)
+
 def rangeBooleanPredicateConditionStep (count seed : UInt64) : UInt64 := Id.run do
   let mut a := seed
   for i in [:count.toNat] do
@@ -7076,6 +7133,14 @@ run_elab do
       `ArithmeticModeTest.booleanPredicateConditionNested,
       `ArithmeticModeTest.booleanPredicateConditionCapture,
       `ArithmeticModeTest.booleanPredicateConditionBody,
+      `ArithmeticModeTest.rangeBooleanPredicateConditionBreak,
+      `ArithmeticModeTest.rangeBooleanPredicateConditionSkip,
+      `ArithmeticModeTest.rangeBooleanPredicateConditionEq,
+      `ArithmeticModeTest.rangeBooleanPredicateConditionNe,
+      `ArithmeticModeTest.rangeBooleanPredicateConditionProof,
+      `ArithmeticModeTest.rangeBooleanPredicateConditionOuterBreak,
+      `ArithmeticModeTest.rangeBooleanPredicateConditionNestedStep,
+      `ArithmeticModeTest.rangeBooleanPredicateConditionIdStep,
       `ArithmeticModeTest.rangeBooleanPredicateConditionStep,
       `ArithmeticModeTest.rangeBooleanPredicateConditionContinue,
       `ArithmeticModeTest.rangeBooleanPredicateConditionOuter,

@@ -74,7 +74,8 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨e, he⟩ := ihe (.scalar .unit :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
     exact ⟨⟨.ite c t.value e.value, .ite c t.done e.done⟩, by
-      rw [extractScalarStepWith_booleanDependentBranch]; simp [hc, ht, he]⟩
+      rw [extractScalarStepWith_booleanDependentBranch (noBoolean :=
+      hasBooleanPredicate_false (fun index member => scalarBooleanPredicate_none_of_predicate ((scalarStepBindings_typed typed) ▸ variables.functions index member)))]; simp [hc, ht, he]⟩
   | letBoolean bound _ ihb =>
     obtain ⟨value, hv⟩ := scalar bound typed total
     obtain ⟨target, ht⟩ := ihb (.scalar (.boolean value) :: locals)
@@ -96,7 +97,30 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨t, ht⟩ := iht locals typed total
     obtain ⟨e, he⟩ := ihe locals typed total
     exact ⟨⟨.ite c t.value e.value, .ite c t.done e.done⟩, by
-      rw [extractScalarStepWith_booleanBranch]; simp [hc, ht, he]⟩
+      rw [extractScalarStepWith_booleanBranch (noBoolean :=
+      hasBooleanPredicate_false (fun index member => scalarBooleanPredicate_none_of_predicate ((scalarStepBindings_typed typed) ▸ variables.functions index member)))]; simp [hc, ht, he]⟩
+  | chooseBooleanPredicate guard type member present arguments _ _ iht ihe =>
+    obtain ⟨condition, hc⟩ := extractBooleanCondition_accepts guard.form
+      (fun input _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar)
+        (.app (.const ``Bool.toUInt64 []) input.expr))
+      (fun input member => scalar (arguments input member) typed total)
+    obtain ⟨trueBranch, ht⟩ := iht locals typed total
+    obtain ⟨falseBranch, he⟩ := ihe locals typed total
+    have found := hasBooleanPredicate_of_kind member ((scalarStepBindings_typed typed) ▸ present)
+    exact ⟨⟨.ite condition trueBranch.value falseBranch.value,
+      .ite condition trueBranch.done falseBranch.done⟩, by
+      rw [extractScalarStepWith_booleanPredicateBranch]; simp [found, hc, ht, he]⟩
+  | chooseBooleanPredicateDependent guard type tn fn tb fb member present arguments _ _ iht ihe =>
+    obtain ⟨condition, hc⟩ := extractBooleanCondition_accepts guard.form
+      (fun input _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar)
+        (.app (.const ``Bool.toUInt64 []) input.expr))
+      (fun input member => scalar (arguments input member) typed total)
+    obtain ⟨trueBranch, ht⟩ := iht (.scalar .unit :: locals) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    obtain ⟨falseBranch, he⟩ := ihe (.scalar .unit :: locals) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    have found := hasBooleanPredicate_of_kind member ((scalarStepBindings_typed typed) ▸ present)
+    exact ⟨⟨.ite condition trueBranch.value falseBranch.value,
+      .ite condition trueBranch.done falseBranch.done⟩, by
+      rw [extractScalarStepWith_booleanPredicateDependentBranch]; simp [found, hc, ht, he]⟩
   | letE value _ ih =>
     obtain ⟨bound, hb⟩ := scalar value typed total
     obtain ⟨target, ht⟩ := ih (.scalar (.word bound) :: locals)

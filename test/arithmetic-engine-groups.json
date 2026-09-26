@@ -2427,5 +2427,33 @@
     "rangeBooleanPredicateConditionContinue",
     "rangeBooleanPredicateConditionOuter",
     "rangeBooleanPredicateConditionOuterCapture"
+  ],
+  "boolean-predicate-step-condition": [
+    "constant",
+    "compareBEq",
+    "mixedGuardDo",
+    "booleanPredicateCondition",
+    "booleanPredicateConditionRelations",
+    "booleanPredicateConditionDependent",
+    "booleanPredicateConditionNested",
+    "booleanPredicateConditionCapture",
+    "booleanPredicateConditionBody",
+    "rangeBooleanPredicateConditionStep",
+    "rangeBooleanPredicateConditionContinue",
+    "rangeBooleanPredicateConditionOuter",
+    "rangeBooleanPredicateConditionOuterCapture",
+    "rangeBooleanPredicateLoopLetBreak",
+    "rangeBooleanPredicateLoopLetContinue",
+    "rangeBooleanPredicateOuterLetCapture",
+    "rangePropChoiceBounds",
+    "rangePropChoiceOuter",
+    "rangeBooleanPredicateConditionBreak",
+    "rangeBooleanPredicateConditionSkip",
+    "rangeBooleanPredicateConditionEq",
+    "rangeBooleanPredicateConditionNe",
+    "rangeBooleanPredicateConditionProof",
+    "rangeBooleanPredicateConditionOuterBreak",
+    "rangeBooleanPredicateConditionNestedStep",
+    "rangeBooleanPredicateConditionIdStep"
   ]
 }

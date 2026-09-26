@@ -61,8 +61,13 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
                   match booleanLocalGuard? condition evidence with
                   | none => none
                   | some guard => do
-                      let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) guard.value
-                        (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+                      let c ← if hasBooleanPredicate (locals.map ScalarStepBinding.toScalar) guard.value.functions then
+                          extractBooleanCondition guard.form (fun input _ =>
+                            extractScalarExprWith (locals.map ScalarStepBinding.toScalar)
+                              (.app (.const ``Bool.toUInt64 []) input.expr))
+                        else
+                          extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) guard.value
+                            (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
                       let t ← extractScalarStepWith locals onTrue
                       let e ← extractScalarStepWith locals onFalse
                       pure { value := .ite c t.value e.value, done := .ite c t.done e.done }
@@ -275,8 +280,13 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
               match _booleanGuard : booleanLocalDependentGuard? condition evidence trueDomain falseDomain with
               | none => none
               | some guard => do
-                  let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) guard.value
-                    (fun operand _member => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+                  let c ← if hasBooleanPredicate (locals.map ScalarStepBinding.toScalar) guard.value.functions then
+                      extractBooleanCondition guard.form (fun input _ =>
+                        extractScalarExprWith (locals.map ScalarStepBinding.toScalar)
+                          (.app (.const ``Bool.toUInt64 []) input.expr))
+                    else
+                      extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) guard.value
+                        (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
                   let t ← extractScalarStepWith (.scalar .unit :: locals) onTrue
                   let e ← extractScalarStepWith (.scalar .unit :: locals) onFalse
                   pure { value := .ite c t.value e.value, done := .ite c t.done e.done }
