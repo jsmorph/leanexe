@@ -1,5 +1,5 @@
 import Project.Beck.ExecutionMembershipBase
-import Project.Beck.ExecutionFresh
+import Project.Beck.ExecutionPreviousRelease
 
 namespace Project.Beck.Execution
 
@@ -23,14 +23,8 @@ theorem membershipRelease_none (env : HostEnv Unit) (initial : Store Unit) (fram
     (values : frame.values = []) (r7 : frame.get 7 = some (.i64 0)) (r8 : frame.get 8 = some (.i64 0))
     (Q : Assertion Unit) (rest : Wasm.Program) (next : wp Project.Beck.«module» rest Q initial frame env) :
     wp Project.Beck.«module» (membershipRelease ++ rest) Q initial frame env := by
-  have frameEq : ({frame with values := []} : Locals) = frame := Frame.ext _ _ rfl rfl values.symm
   rw [membership_release_shape]
-  simp only [List.cons_append, List.nil_append]
-  repeat' ((try simp only [wp_simp, Frame.withValues_get, r7, r8, values, frameEq,
-      List.take, List.drop, List.append_nil, reduceIte, ne_eq, not_true_eq_false]) <;>
-    (refine wp_iff_cons rfl ?_; first | rw [ite_eq_left (by decide)] | rw [ite_eq_right (by decide)]))
-  simpa only [wp_simp, Frame.withValues_get, r7, r8, values, frameEq, List.take, List.drop, List.append_nil,
-    reduceIte, ne_eq, not_true_eq_false] using next
+  exact previousRelease_none env initial frame 7 8 21 14 values r7 r8 Q rest next
 
 theorem membershipRelease_owned (env : HostEnv Unit) (initial middle : Store Unit) (original current : Heap)
     (frame : Locals) (node : FreeNode) (words : Array UInt64) (newRoot wordOwner : UInt64)
@@ -46,28 +40,9 @@ theorem membershipRelease_owned (env : HostEnv Unit) (initial middle : Store Uni
       OutputBudget (current.releaseStore middle node) (current.release node) remaining pageLimit Project.Beck.«module» →
       wp Project.Beck.«module» rest Q (current.releaseStore middle node) frame env) :
     wp Project.Beck.«module» (membershipRelease ++ rest) Q middle frame env := by
-  have frameEq : ({frame with values := []} : Locals) = frame := Frame.ext _ _ rfl rfl values.symm
-  have nonzero : node.root ≠ 0 := by
-    intro equal
-    have := owned.buffer.rootBound
-    rw [equal] at this
-    contradiction
-  have call := releaseWords_budget env initial middle original current node words remaining pageLimit
-    valid owned preserved fresh budget
   rw [membership_release_shape]
-  simp only [List.cons_append, List.nil_append]
-  repeat' ((try simp only [wp_simp, Frame.withValues_get, r7, r8, r14, r21, values, frameEq,
-      nonzero, newDifferent, inputDifferent, List.take, List.drop, List.append_nil, reduceIte,
-      ne_eq, not_true_eq_false, not_false_eq_true]) <;>
-    (refine wp_iff_cons rfl ?_; first | rw [ite_eq_left (by decide)] | rw [ite_eq_right (by decide)]))
-  simp only [wp_simp, Frame.withValues_get, r7, values, List.take, List.drop, List.append_nil]
-  refine wp_call_tw call ?_
-  rintro final returned ⟨rfl, rfl, finalValid, finalFrame, finalBudget⟩
-  repeat' ((try simp only [wp_simp, Frame.withValues_get, r7, r8, r14, r21, values, frameEq,
-      List.take, List.drop, List.append_nil, reduceIte, ne_eq, not_true_eq_false]) <;>
-    (refine wp_iff_cons rfl ?_; first | rw [ite_eq_left (by decide)] | rw [ite_eq_right (by decide)]))
-  simpa only [wp_simp, Frame.withValues_get, r7, r8, values, frameEq, List.take, List.drop, List.append_nil,
-    reduceIte, ne_eq, not_true_eq_false] using next finalValid finalFrame finalBudget
+  exact previousRelease_owned env initial middle original current frame 7 8 21 14 node words newRoot wordOwner
+    remaining pageLimit valid owned preserved fresh budget newDifferent inputDifferent values r7 r8 r14 r21 Q rest next
 
 #print axioms membershipRelease_none
 #print axioms membershipRelease_owned
