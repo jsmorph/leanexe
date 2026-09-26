@@ -2,7 +2,7 @@
 
 ## Current state
 
-The experimental partitioner accepts at most six jobs and eight categories.  It constructs integer cofactor directions and rounds coordinates with a shared denominator.  The executable passes native Lean/WASM comparisons and independent output checks.  The output-correctness theorem assumes the accepted parser result has binary incidence entries, at most six jobs, and a valid overlap bound.  Proving that input validation establishes these assumptions remains open, along with allocation bounds and exact-binary execution.
+The experimental partitioner accepts at most six jobs and eight categories.  It constructs integer cofactor directions and rounds coordinates with a shared denominator.  The executable passes native Lean/WASM comparisons and independent output checks.  The output-correctness theorem covers every input accepted by the parser.  Input validation establishes binary incidence entries, at most six jobs and eight categories, and an overlap equal to the maximum parsed row count.  The complete input-encoding theorem, allocation bounds, and exact-binary execution remain open.
 
 Source proofs establish that the executable constructs a nonzero direction preserving every protected category, gives frozen jobs zero direction, and bounds every coefficient's magnitude by 120.  The boundary scan chooses the first minimum boundary ratio using exact word-sized products.  A round preserves coordinate bounds and protected category sums, keeps frozen jobs fixed, and freezes an additional job.  Starting from zero, the full rounding loop finishes with every job frozen, a nonzero denominator, and denominator at most `120^6`.  The release argument gives final discrepancy at most `2t-1` for positive overlap and zero discrepancy for zero overlap.  `Project.Beck.Result.compute_discrepancy` transfers that result to the returned zero-or-one groups and their category counts.  These proofs use counting, determinant bounds, Cramer's identity, a bordered-determinant identity, and interval inequalities.
 
@@ -35,7 +35,7 @@ The WASM entry has type `Array UInt64 → Array UInt64`.  Input words are `[n,m,
 | `[0,t,group0,...]` | Success, computed maximum overlap, and one zero-or-one group per job. |
 | `[1]` | Invalid input: missing or trailing words, invalid membership counts or identifiers, or duplicates. |
 | `[2]` | The declared job or category count exceeds capacity. |
-| `[3]` | Internal arithmetic, direction, or rounding-fuel failure.  Unreachability on valid inputs remains a proof obligation. |
+| `[3]` | Internal arithmetic, direction, or rounding-fuel failure.  The source theorem proves this result unreachable after input validation succeeds. |
 
 `[0,m]` is an empty-job input when `m ≤ 8`, and returns `[0,0]`.  Jobs with no memberships enter group one.  Their maximum overlap is zero, and every category count is zero.  Header-capacity rejection precedes membership validation.  The JSON runner also rejects malformed JSON and numbers that are negative or outside JavaScript's exact-integer range before constructing input words.
 
@@ -43,7 +43,7 @@ The WASM entry has type `Array UInt64 → Array UInt64`.  Input words are `[n,m,
 
 Rows and columns are scanned in ascending order.  The basis search extends a nonsingular minor by the first row and column with a nonzero bordered determinant.  The direction uses that minor and its column-replacement determinants.  Determinants use Laplace expansion with structurally decreasing order.
 
-Coordinates use signed 64-bit numerators and a positive shared denominator.  Arithmetic uses two’s-complement words.  For minors of order at most five, the determinant bound is 120.  The denominator grows by at most 120 per round, reaching at most `120^6 = 2985984000000`.  The source round and loop proofs establish these bounds and exactness of the updates under the incidence assumptions stated above.
+Coordinates use signed 64-bit numerators and a positive shared denominator.  Arithmetic uses two’s-complement words.  For minors of order at most five, the determinant bound is 120.  The denominator grows by at most 120 per round, reaching at most `120^6 = 2985984000000`.  The source round and loop proofs establish these bounds and exactness of the updates for every accepted input.
 
 ## Proof development
 

@@ -1,4 +1,5 @@
 import Project.Beck.Discrepancy
+import Project.Beck.Parser
 
 namespace Project.Beck.Result
 
@@ -67,7 +68,7 @@ theorem output_discrepancy (input : Input) (supported : State.Supported input)
   exact Discrepancy.initial_discrepancy input supported category
 
 theorem compute_discrepancy (words : Array UInt64) (accepted : (readInput words).status = 0)
-    (supported : State.Supported (readInput words)) (category : Fin (readInput words).categories) :
+    (category : Fin (readInput words).categories) :
     (compute words).size = (readInput words).jobs + 2 ∧ (compute words)[0]! = 0 ∧
       (compute words)[1]! = (readInput words).overlap.toUInt64 ∧
       (∀ job < (readInput words).jobs, (compute words)[job + 2]! = 0 ∨ (compute words)[job + 2]! = 1) ∧
@@ -76,8 +77,23 @@ theorem compute_discrepancy (words : Array UInt64) (accepted : (readInput words)
         ((Counting.members (readInput words) category).filter fun job =>
           (compute words)[job.val + 2]! = 0).card| ≤
         max 0 (2 * ((readInput words).overlap : ℤ) - 1) := by
+  have supported := Parser.accepted_supported words accepted
   rw [compute_eq words accepted supported]
   refine ⟨output_size _ _, output_status _ _, output_overlap _ _, ?_, output_discrepancy _ supported category⟩
+  intro job hj
+  rw [output_group _ _ job hj]
+  exact group_assigned _ _
+
+theorem compute_rejected (words : Array UInt64) (rejected : (readInput words).status ≠ 0) :
+    compute words = #[(readInput words).status] := by
+  simp [compute, rejected]
+
+theorem compute_success (words : Array UInt64) (accepted : (readInput words).status = 0) :
+    (compute words).size = (readInput words).jobs + 2 ∧ (compute words)[0]! = 0 ∧
+      (compute words)[1]! = (readInput words).overlap.toUInt64 ∧
+      ∀ job < (readInput words).jobs, (compute words)[job + 2]! = 0 ∨ (compute words)[job + 2]! = 1 := by
+  rw [compute_eq words accepted (Parser.accepted_supported words accepted)]
+  refine ⟨output_size _ _, output_status _ _, output_overlap _ _, ?_⟩
   intro job hj
   rw [output_group _ _ job hj]
   exact group_assigned _ _
