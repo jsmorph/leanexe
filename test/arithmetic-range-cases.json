@@ -353,5 +353,8 @@
   "rangeReannotatedAnd",
   "rangeReannotatedOr",
   "rangeDependentReannotated",
-  "rangeDependentReannotatedCompound"
+  "rangeDependentReannotatedCompound",
+  "rangeSavedReannotated",
+  "rangeSavedReannotatedChoice",
+  "rangeSavedReannotatedDependentChoice"
 ]

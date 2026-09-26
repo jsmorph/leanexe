@@ -32,6 +32,19 @@ Boolean-result proposition choices. Then continue broader compiler coverage.
 Full-dialect correctness remains unfinished. Keep increments focused, get each
 capability proved and executing end to end, and commit/push frequently.
 
+## Saved proposition decision equivalence — in progress
+
+Saved `decide` values and ordinary/dependent Boolean-result proposition choices
+now retain checked `DecidedGuard` evidence. The source proposition guard keeps
+its existing distinction from direct Boolean conditions. Scalar and loop-step
+correctness proofs pass, including reconstruction under erased proof binders.
+
+Focused tests pass 1,192 native/IR comparisons and 552 invalid-input tests. These
+cover saved/captured flags, nested Boolean choices, helper bodies, Id actions,
+unused values, loop break/continue, decision evidence and proof-lambda domains.
+The general compiler theorem and emitted-WASM checks are next. This increment
+is not yet recorded as complete.
+
 ## Dependent decision equivalence — complete
 
 The recognizer checks standard `GuardDecision` evidence and both exact
