@@ -1,0 +1,3 @@
+[correct bde91ed9] Prepare typed environments for reusable Boolean functions
+ 12 files changed, 154 insertions(+), 45 deletions(-)
+ create mode 100644 LeanExe/Source/ScalarBooleanEnvironment.lean

@@ -8,6 +8,39 @@ annotation fix. This compiler-proof task remains active; the completed drone tas
 is preserved separately at the end of this file. Lean runs locally through
 `tools/leanrun`. Full-dialect correctness is not yet proved.
 
+Reusable UInt64-to-Bool local helpers now compile in arbitrary supported scalar
+bodies, with repeated calls and lexical captures. The independent source
+semantics and general source-to-WASM theorem are proved. All sixteen axiom
+audits pass. Native Lean/V8 agree on 1,727 inputs across 105 declarations,
+including 27 range declarations; all 95 prior modules retain identical bytes.
+The new focused tests pass 1,148 native/IR comparisons and 864 invalid-input
+checks. Prior named-helper tests pass 2,200 comparisons and 720 rejections.
+Evidence is in [the reusable Boolean helper archive](proofs/compiler/reusable-boolean-2026-09-26/README.md).
+
+Next: reusable predicate declarations in loop-step bodies, then around loops
+and broader helper signatures. Full-dialect correctness remains unfinished.
+Get each capability proved and executing end to end, and commit/push frequently.
+
+## Reusable Boolean functions in scalar expressions — complete
+
+A distinct predicate-function binding represents UInt64-to-Bool closures in
+source values and compiled lexical bindings. Its matching relation requires
+the compiled result to evaluate to the native Boolean's zero/one encoding.
+Flags and predicate functions have separate fields in the Boolean environment;
+ordinary value binders shift both kinds of captures.
+
+Predicate-call syntax, typed lookup, scope, acceptance, soundness, evaluation
+correctness, source totality and IR structural properties are proved. Reusable
+helper declarations preserve captured flags, words and functions, permit repeated
+calls and check unused bodies. The general compiler theorem covers decoding,
+validation and execution of emitted WASM in the pinned model. Concrete checks
+cover nesting, shadowing, captures, conditions, Id result annotations and do
+blocks. Invalid function/value kinds, domains, results and unused bodies are
+rejected. Declaring a predicate directly in step or outer-loop scope remains
+subsequent work.
+
+## Directly applied named Boolean helpers — complete
+
 Directly applied named Boolean helpers now accept UInt64 or Bool arguments and
 Bool results, including standard Id annotations. Exact source binders and
 lexical captures are preserved. The recognizer checks matching parameter domains
@@ -29,41 +62,12 @@ The preceding [immediate application](proofs/compiler/boolean-application-2026-0
 [atomic comparison](proofs/compiler/reannotation-2026-09-26/README.md) archives
 record their checked increments.
 
-Reusable UInt64-to-Bool local helpers now compile in arbitrary supported scalar
-bodies. Source totality, extraction acceptance and soundness, evaluation
-correctness, and IR structural properties are proved. The focused tests pass
-1,148 native/IR comparisons and 864 invalid-input checks. The full theorem and
-native/Wasm checks are next, followed by loop-step bindings and broader signatures.
-Full-dialect correctness remains unfinished. Get each capability proved and
-executing end to end, and commit/push frequently.
-
-## Reusable Boolean functions — in progress
-
-A distinct predicate-function binding now represents UInt64-to-Bool closures
-in source values and compiled lexical bindings. Its matching relation requires
-the compiled result to evaluate to the native Boolean's zero/one encoding.
-Flags and predicate functions have separate fields in the Boolean environment;
-ordinary value binders shift both kinds of captures.
-
-The environment, typed lookups, binding matching and existing scalar/step
-compiler proofs pass. The current named-helper fixtures still pass 2,200
-comparisons and 720 invalid-input checks. Predicate-call syntax, typed lexical
-lookup, acceptance, scope, evaluation correctness and IR structural-property
-proofs now pass. Reusable helper declarations preserve captured flags, words and
-functions, allow repeated calls, and check unused bodies. The independent source
-evaluation, acceptance, soundness, correctness and structural proofs pass;
-whole-function and existing step proofs also pass. Ten native fixtures and
-systematic binder/annotation cases pass 1,148 comparisons and 864 invalid-input
-tests. The full theorem and selected native/Wasm checks are pending.
-
-## Directly applied named Boolean helpers — complete
-
 The source form retains a named helper whose entire binding body applies it to
 one argument. The argument may capture outer values but cannot reference the
 helper. Arrow/lambda domains match exactly, and result annotations are checked.
 Independent recognition and Boolean parser proofs, scalar/step correctness,
 the general compiler theorem, sixteen axiom audits and native/V8 checks pass.
-Repeated calls from an arbitrary body remain subsequent work.
+Reusable calls within scalar expressions are covered by the increment above.
 
 ## Immediate Boolean lambda applications — complete
 
