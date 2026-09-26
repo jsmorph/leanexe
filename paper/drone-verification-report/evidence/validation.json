@@ -6,7 +6,7 @@
   },
   "principalAxiomAudit": "passed",
   "nativeWasmRuns": "five matching outputs",
-  "pdf": "16 pages, five plotted runs in three figures",
+  "pdf": "17 pages, five plotted runs in four figures",
   "texWarnings": [],
   "reportLinks": "passed",
   "repositoryDocsCheck": {
@@ -14,5 +14,6 @@
     "diagnostic": "paper/wgsl-verification-report/review.md: absolute /tmp workspace path",
     "scope": "preexisting file"
   },
-  "bibliography": "one LeanExe background reference from morphism.com/marxiv; three external references"
+  "bibliography": "one LeanExe background reference from morphism.com/marxiv; three external references",
+  "opening": "context on page 1; repeated-ridges plot on page 2"
 }

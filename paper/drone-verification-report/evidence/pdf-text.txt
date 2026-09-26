@@ -4,6 +4,7 @@ Morphism
 https://morphism.com
 js@morphism.com
 September 26, 2026
+
 Abstract
 A terrain-following planner must connect its discrete route choices to continuous clearance and
 motion bounds, and connect its implementation to that mathematical result. This report describes
@@ -22,6 +23,73 @@ account of LeanExe describes its language, artifact-verification method, and the
 bounded-loop compiler-correctness theorem now present on the main branch.
 
 1
+
+End-to-end verification for practical applications
+
+LeanExe’s goal is end-to-end verification of software for practical applications: a checked connection
+from the required behavior to the instructions that execute it. The drone example computes a
+flight path from terrain elevations. Its proofs cover the mathematical path and the program that
+constructs its waypoint array, including integer arithmetic, allocation, copying, and release.
+Figure 1 uses the output of the WebAssembly planner executed in Wasmtime on a 15-station
+terrain profile. The route covers 1,400 distance units in 107 37 seconds. The planner minimizes
+travel time over its finite altitude and speed choices, then minimizes altitude excess above the
+clearance floor. The selected path stays high across the valleys while satisfying the model’s speed
+and acceleration limits. Native Lean returns the same waypoint words for this input.
+The drone proofs establish continuous clearance and motion bounds for an ideal point mass
+and exact execution of the planner in the generated WebAssembly model under stated memory
+assumptions. Relating a decoded drone binary to that model remains a separate proof obligation.
+The compiler theorem now on main provides a source-to-binary connection for its admitted scalar
+and bounded-loop language. A physical deployment would also require models of terrain uncertainty,
+vehicle dynamics, and tracking error.
+
+1
+
+Elevation (distance units)
+
+Repeated ridges
+
+300
+
+200
+
+100
+
+0
+
+0
+
+100
+
+200
+
+300
+
+400
+
+500
+
+600
+
+700
+
+800
+
+900
+
+1,000 1,100 1,200 1,300 1,400
+
+Horizontal position (distance units)
+Terrain
+
+Required corridor
+
+Drone elevation
+
+Figure 1: A compiled run over repeated ridges. The gray region shows terrain, the dashed line gives
+the required clearance floor, and the blue curve shows drone elevation. Dots mark the returned
+waypoints. The curve follows the planner’s prescribed motion between them.
+
+2
 
 Result and proof scope
 
@@ -42,22 +110,22 @@ Spec.compute_correct/compute_safe.
 The planner is a feedforward trajectory generator for an ideal point mass. Its state choices,
 motion primitives, and admissibility tests define the optimization domain. Vehicle tracking, sensor
 uncertainty, disturbances, attitude dynamics, and coupled actuator limits require additional models
-1
-
-and proofs. The available optimum concerns traversal time within the specified graph. The
+and proofs. The available optimum concerns traversal time within the specified graph. The
 continuous clearance test deliberately restricts that graph through a sufficient polynomial certificate.
 This report uses the drone branch for the planner and its proofs, and the current main branch
 for the account of LeanExe’s compiler-correctness work. The drone execution theorem concerns its
 generated WASM model. A theorem identifying a decoded drone binary with that model remains a
 separate verification step. The general compiler theorem on main covers the language admitted
-by compile-arithmetic. The heap-using drone program follows the per-program execution-proof
+2
+
+by compile-arithmetic. The heap-using drone program follows the per-program execution-proof
 route.
 
-2
+3
 
 LeanExe: goals, capabilities, and status
 
-2.1
+3.1
 
 Checked source and executable output
 
@@ -87,7 +155,7 @@ two-dimensional Euler solvers, numerical kernels, JSON processing, and an intera
 These examples exercise different subsets and have different proof scopes. A capability demonstrated
 by an executable example and a guarantee established by a theorem each require their own evidence.
 
-2.2
+3.2
 
 General scalar and bounded-loop compiler theorem
 
@@ -97,10 +165,7 @@ export, and terminates with the source result in the pinned interpreter for ever
 required length. The theorem quantifies over every host environment and initial store and preserves
 that store. Execution succeeds for all sufficiently large interpreter fuel values.
 The formal predicate Project.Compiler.ArithmeticModule.Correct relates an original
-
-2
-
-Lean.Expr, an export name, an arity, and the emitted byte array. In schematic form, it states
+Lean.Expr, an export name, an arity, and the emitted byte array. In schematic form, it states
 decode(b) = ok(r),
 
 validate(r) = ok(),
@@ -108,7 +173,10 @@ validate(r) = ok(),
 findExport(translate(r), e) = 0,
 ∀a, |a| = k =⇒ ∀H, S, ∃v, N, Apply(p, a, v) ∧
 ∀f ≥ N, run(f, translate(r), 0, S, rev(a), H) = Success([v], S).
-Here p is the source expression, b the emitted bytes, r the decoded module, e the export name, k the
+
+3
+
+Here p is the source expression, b the emitted bytes, r the decoded module, e the export name, k the
 arity, H the host environment, S the store, and f the interpreter fuel. Argument reversal records
 the interpreter’s stack convention. The implementation statement uses UInt64 arguments and
 WASM i64 values. Here Apply(p, a, v) abbreviates LeanExe.Source.Scalar.Apply with an empty
@@ -134,7 +202,7 @@ comparisons test its implementation interfaces and tool integration. The main br
 retains passing general theorem audits and focused execution checks, while identifying broader tests
 inherited from parent revisions.
 
-2.3
+3.3
 
 Artifact proofs and trust assumptions
 
@@ -151,13 +219,14 @@ and physical hardware receive empirical checks outside those Lean theorems. The 
 type-safety development proves preservation and progress for its own typed syntax and semantics.
 The drone result uses a checked generated model and program-specific execution proofs. The
 larger project also has exact-binary examples.
-3
 
-3
+4
+
+4
 
 Terrain, states, and output interpretation
 
-3.1
+4.1
 
 Input domain and clearance corridor
 
@@ -190,7 +259,7 @@ The program returns an empty array for empty input, more than 64 stations, or a 
 nonempty safety theorem therefore includes n = 1 as a separate case. The compiled exact-output
 theorem also covers every empty and rejected input satisfying its caller-memory assumptions.
 
-3.2
+4.2
 
 Finite states and component limits
 
@@ -217,17 +286,17 @@ vertical acceleration. Horizontal motion is forward, with braking and stops allo
 has continuous position and velocity, while acceleration can jump at station times. A model of a
 vehicle’s available thrust, attitude, or jerk would impose further constraints.
 
-4
+5
 
 Motion primitives and continuous safety
 
-4.1
+5.1
 
 Moving edges
 
 Consider one segment, with floor endpoints r0 , r1 , altitude endpoints z0 , z1 , and horizontal speeds
 u, v. Write d = |z1 − z0 |, ∆z = z1 − z0 , and s = t/T ∈ [0, 1]. If u + v > 0, the primitive has duration
-4
+5
 
 and position
 200
@@ -283,7 +352,7 @@ Substitution of T from (1) then gives the vertical speed and acceleration inequa
 connect these real inequalities to the integer tests after establishing the required word-arithmetic
 bounds.
 
-4.2
+5.2
 
 Bernstein clearance certificate
 
@@ -319,9 +388,9 @@ The certificate is sufficient and conservative. A cubic can remain nonnegative e
 Bernstein coefficient is negative. The admitted graph contains the edges passing the implemented
 coefficient tests. Its optimality theorem uses that exact edge relation.
 
-5
+6
 
-4.3
+5.3
 
 Rest-to-rest edges and feasibility
 
@@ -365,11 +434,11 @@ _flight proves this witness, and terminal_finite transfers it to the planner’s
 public function can reconstruct the terminal state for every accepted nonempty terrain without a
 separate unreachable-result case.
 
-5
+6
 
 Exact integer search and graph optimality
 
-5.1
+6.1
 
 Tick arithmetic and overflow bounds
 
@@ -406,14 +475,14 @@ i · 63,019,320 ticks
 200i
 At most 63 segments
 
-6
+7
 
 The row proofs allow a conservative 64-step bound. The reachable totals stay below the sentinel and
 the word modulus. Costs.predecessor_exact establishes the natural-number meaning of both
 accumulated costs and the stored parent index. This result connects the machine comparisons to
 the mathematical ordering used by the optimality proof.
 
-5.2
+6.2
 
 Bellman recurrence and tie behavior
 
@@ -440,7 +509,7 @@ plus an attaining route establish a global minimum. The planner-specific inducti
 attainment and lower bounds for the concrete recurrence. The resulting optimum applies to the
 executable row recurrence.
 
-5.3
+6.3
 
 Stored parents and the public result
 
@@ -460,7 +529,7 @@ last pair is [hn−1 , 0].
 The proof composes exact row fields, bounded predecessor costs, Bellman induction, terminal
 feasibility, history correspondence, and the reconstruction theorem. Output.compute_invalid and
 compute_empty give the rejection results. The graph restricts altitude and speed choices, vertical
-7
+8
 
 waypoint velocity, motion primitives, forward motion, and clearance certificates. Each of these
 restrictions is part of the theorem’s optimization domain.
@@ -469,7 +538,7 @@ O(n452 ) and its parent history uses O(n45) words. The implementation’s array 
 copies add work. The allocation proof below accounts for that behavior separately from the abstract
 graph-operation count.
 
-6
+7
 
 Whole-flight composition
 
@@ -508,11 +577,11 @@ each adjacent interval at a join. Left and right accelerations may differ. The f
 extend beyond the flight interval using the stitching definition. The physical safety claim applies on
 [0, tf ].
 
-7
+8
 
 Compiled execution and memory
 
-7.1
+8.1
 
 Caller assumptions and exact postcondition
 
@@ -520,7 +589,7 @@ The compiled theorem uses a one-pointer array ABI. The caller supplies a valid h
 terrain array that the callee borrows. BorrowedWords requires a valid root, enough capacity for
 a length word and the data words, exact array contents in memory, placement below the heap
 
-8
+9
 
 top, and separation from every free-list region. The callee reads that terrain without releasing it.
 Allocation and release lemmas preserve this relation as the heap changes.
@@ -556,7 +625,7 @@ trajectory derived from the source output. Exact memory equality identifies that
 returned compiled words. The source optimality theorem transfers by the same equality, and the
 named SafeSpecFor packages the whole-flight safety property.
 
-7.2
+8.2
 
 Execution proof structure
 
@@ -574,7 +643,7 @@ and release. These proofs expose ownership and budget changes in their postcondi
 next call receives the conditions it requires.
 The development record documents a composition error caught during proof construction: toplevel compute passes the terrain with owner zero, while earlier history and unwind lemmas expected
 an owned terrain pointer. The corrected frames use the borrowed-input convention. Preservation
-9
+10
 
 lemmas establish that allocation and release preserve the terrain array. The distinction is operational:
 a nonzero data pointer and a zero ownership marker describe a readable caller-owned array.
@@ -585,7 +654,7 @@ boundary. These changes retained the execution statements and made intermediate 
 explicit. The audited principal theorems depend only on propext, Classical.choice, and
 Quot.sound, as applicable.
 
-7.3
+8.3
 
 Allocation budget derivation
 
@@ -610,7 +679,7 @@ arrays and tracks the free list. The public result leaves the returned array all
 A repeated-call application must also supply a verified lifecycle for its inputs and returned arrays if
 it needs a theorem about an entire session.
 
-8
+9
 
 Example and validation evidence
 
@@ -619,11 +688,11 @@ A fresh native Lean run and a Wasmtime run of the compiled planner both return, 
 [0, 0, 145, 10, 180, 15, 165, 10, 0, 0].
 The four moving durations are 20, 8, 8, 20 seconds, giving 56 seconds or 47,040 ticks. The corridor
 floors are [0, 120, 180, 140, 0], and the selected altitude offsets are [0, 25, 0, 25, 0]. The secondary
-cost is therefore 50. Figure 1 plots the trajectory specified by these words and the exact primitive
+cost is therefore 50. Figure 2 plots the trajectory specified by these words and the exact primitive
 equations. The figure illustrates the continuous interpretation, whose safety follows from the
 universal theorem.
 
-10
+11
 
 Five-station example
 
@@ -664,7 +733,7 @@ Required corridor
 
 Drone elevation
 
-Figure 1: The five-station example. Clearance is measured at horizontal position. The first and last
+Figure 2: The five-station example. Clearance is measured at horizontal position. The first and last
 corridor segments contain takeoff and landing ramps.
 The drone branch's task.md reports tests of 48 accepted WASM routes against an independent
 graph planner, four empty or rejected inputs, and 12 native Lean/WASM comparisons. Earlier checks
@@ -691,19 +760,20 @@ whole-flight source result and the compiled specification in the same dependency
 axiom dependencies allow review of the final result’s logical assumptions. Main’s compiler theorem
 has its own tools/arithmetic-check.js proof command on that branch. The compiler account
 uses main’s theorem source and retained integration evidence. The report-specific builds used the
-11
+12
 
 drone checkout.
 
-8.1
+9.1
 
 Fresh terrain runs
 
-Figures 2 and 3 show four additional runs of the compiled planner. Each input contains 15 stations
-spanning 1,400 distance units. The figures use the returned altitude and speed words, evaluated
-with the prescribed continuous primitives at 101 normalized times per segment. Markers identify
-the returned waypoints. The filled region is the piecewise-linear terrain, and the dashed curve is the
-required corridor. The plotted horizontal coordinate follows the primitive’s progress function.
+Figures 1, 3, and 4 show four additional runs of the compiled planner. Each input contains 15
+stations spanning 1,400 distance units. The figures use the returned altitude and speed words,
+evaluated with the prescribed continuous primitives at 101 normalized times per segment. Markers
+identify the returned waypoints. The filled region is the piecewise-linear terrain, and the dashed
+curve is the required corridor. The plotted horizontal coordinate follows the primitive’s progress
+function.
 Every returned word agrees with a separate native Lean invocation on the same input. The
 report retains the complete inputs, both outputs, exact tick totals, and plotting samples in its figure
 data. The four routes have the same time, 90,240/840 = 107 37 seconds, while their selected altitude
@@ -726,7 +796,7 @@ Repeated ridges
 
 Table 1: Fresh compiled runs. The secondary cost sums altitude offsets above the station floors.
 
-12
+13
 
 Elevation (distance units)
 
@@ -810,11 +880,11 @@ Required corridor
 
 Drone elevation
 
-Figure 2: Fresh WASM outputs on flat terrain and a broad plateau. The flat route follows the
+Figure 3: Fresh WASM outputs on flat terrain and a broad plateau. The flat route follows the
 100-unit interior floor. The plateau route gains altitude before the rising terrain. Native Lean
 returns the same waypoint words.
 
-13
+14
 
 Elevation (distance units)
 
@@ -857,54 +927,13 @@ Required corridor
 
 Drone elevation
 
-Elevation (distance units)
+Figure 4: Fresh WASM output on a rounded hill. The planner selects a path above the corridor
+where doing so preserves traversal time. This plot shares its axis limits with the other 15-station
+runs, including the repeated-ridges run in Figure 1.
 
-Repeated ridges
+15
 
-300
-
-200
-
-100
-
-0
-
-0
-
-100
-
-200
-
-300
-
-400
-
-500
-
-600
-
-700
-
-800
-
-900
-
-1,000 1,100 1,200 1,300 1,400
-
-Horizontal position (distance units)
-Terrain
-
-Required corridor
-
-Drone elevation
-
-Figure 3: Fresh WASM outputs on a rounded hill and repeated ridges. The planner selects a path
-above the corridor where doing so preserves traversal time. All four 15-station plots share the same
-axis limits.
-
-14
-
-9
+10
 
 Assumptions, remaining work, and related methods
 
@@ -972,7 +1001,7 @@ Output.compute_invalid, Output.compute_empty,
 Output.compute_endpoints
 Trajectory.compute_global_smooth
 
-15
+16
 
 Claim
 
@@ -1017,6 +1046,6 @@ https://msl.cs.uiuc.edu/planning/.
 spec/core/, 2026. Accessed September 26, 2026. The report’s checked proofs use the repository-pinned
 Talos semantics.
 
-16
+17
 
 
