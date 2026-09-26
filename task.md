@@ -53,6 +53,8 @@ Artifact preparation now reproduces the recorded 14,198-byte WASM, and fresh
 runtime checks pass for 48 accepted flights, four empty/rejected inputs, and
 12 native/WASM comparisons. Scalar helpers, the square-root loop, checked
 terrain reads, and height validation also have checked execution lemmas.
+The complete segment-cost, packed predecessor, predecessor-scan, and
+best-predecessor functions also agree with their source definitions.
 
 | Property | Current proof coverage |
 |---|---|
@@ -845,3 +847,39 @@ array representation, both row accesses in range, and a representable target.
 The check takes 7.6 seconds. The aggregate
 `build/logs/drone-predecessor-1.log` passes all 3,379 jobs, with standard-only axiom
 audits. Predecessor scanning and the allocating array loops remain open.
+
+The user explicitly authorized up to 12 GB of RAM for Lean on this machine.
+Local runner mode still has no enforced cgroup memory cap; keep one Lean process
+and bounded timeouts, and monitor memory against that ceiling. Recent drone
+checks use about 4 GB resident memory. The earlier 4/6 GB standard-mode settings
+are not active in this authorized local mode.
+
+The scan proof now has checked entry, frame/invariant, and first-candidate
+prefix lemmas. `scanPrefix_spec` checks the source-index increment and overflow
+guard, copied arguments, actual predecessor call, and resulting comparison
+stack in about four seconds. The first failed frame comparison was an
+elaboration problem: normalize list append and the two representations of the
+UInt64 index before matching the continuation. The instruction prefix itself
+was already reducing successfully.
+
+The combined scan-step proof still exceeded its bounded runtime, so its time
+comparison cases were split into separate modules. `scanStep_time_lt` now
+checks in 18 seconds, with only standard axioms (`drone-scan-time-1.log`).
+The branch tactic stops at the continuation instead of trying more instruction
+rules there, and uses explicit Boolean reductions. The equal-time branch needs
+the UInt64-specific irreflexivity theorem; the generic order theorem did not
+rewrite that comparison. The remaining cases, complete scan, and best-choice
+wrapper are still being checked. Allocation/release adaptation and the
+previously pending held-out annotation regressions remain open.
+
+All scan cases now pass: equal-time in 58 seconds and the remaining unequal-time
+case in 19 seconds. Their composition checks in 2.9 seconds, the complete
+`scanPredecessors_exact` loop theorem in 5.3 seconds, and
+`bestPredecessor_exact` in 3.8 seconds. The aggregate
+`build/logs/drone-scan-best-8.log` passes all 3,388 jobs. All axiom audits contain
+only standard Lean axioms. The loop theorem quantifies over representable
+targets and packed predecessor rows covering the requested source range,
+preserves the store, returns the exact three source Choice words, and proves
+termination by decreasing fuel. The source-index overflow guard and borrowed
+array ownership bookkeeping are included. Peak observed resident memory stayed
+near 4.3 GB. Allocating array loops and the full compiled entry remain open.
