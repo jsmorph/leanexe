@@ -96,7 +96,8 @@ The first milestone has checked WASM/WGSL artifact proofs and an explicit
 controller-to-shader pipeline theorem. Its 12 geometric cases and three invalid
 parameter checks pass on a software Vulkan adapter. The separate
 [development journal](docs/lidar/journal.md) records completed checks, diagrams,
-observed runs and the agenda for oblique beams and numerical uncertainty. These
+observed runs and the agenda for numerical uncertainty. The second checked
+slice adds rational oblique beams and passes 14 geometric comparisons. These
 application, artifact and runtime claims have distinct scopes and assumptions.
 
 ## Run GPT-2 in WebAssembly

@@ -1,4 +1,5 @@
 import LeanExe.WGSL.Lidar
+import LeanExe.WGSL.LidarOblique
 import LeanExe.WGSL.LidarSummary
 import LeanExe.WGSL.UIntCertificate
 import LeanExe.Extract.Arithmetic
@@ -8,7 +9,7 @@ open LeanExe.WGSL
 
 def certificate (name : String) (kernelName : String) (kernel : UInt.Expr) : IO String := do
   let (out, code) := kernel.emit.run {}
-  let mut text := "import LeanExe.WGSL.Lidar\nimport LeanExe.WGSL.UIntComposition\nimport LeanExe.WGSL.LidarSummary\nset_option maxRecDepth 2048\nset_option maxHeartbeats 4000000\nnamespace Project.Lidar." ++ name ++ "\nopen LeanExe.WGSL.UInt\ndef state0 : Locals := []\n"
+  let mut text := "import LeanExe.WGSL.LidarOblique\nimport LeanExe.WGSL.UIntComposition\nimport LeanExe.WGSL.LidarSummary\nset_option maxRecDepth 2048\nset_option maxHeartbeats 4000000\nnamespace Project.Lidar." ++ name ++ "\nopen LeanExe.WGSL.UInt\ndef state0 : Locals := []\n"
   let mut locals : UInt.Locals := []
   let mut index := 0
   for line in code.lines do
@@ -37,13 +38,16 @@ def certificate (name : String) (kernelName : String) (kernel : UInt.Expr) : IO 
 def main (args : List String) : IO Unit := do
   let output := System.FilePath.mk (args.headD "build/lidar/bundle")
   IO.FS.createDirAll output
-  let shader := UInt.shader Lidar.kernel 4
+  let oblique := args[1]? == some "oblique"
+  let kernel := if oblique then LidarOblique.kernel else Lidar.kernel
+  let kernelName := if oblique then "LeanExe.WGSL.LidarOblique.kernel" else "LeanExe.WGSL.Lidar.kernel"
+  let shader := UInt.shader kernel 4
   IO.FS.writeFile (output / "scan.wgsl") shader
-  unless UInt.parse shader == some Lidar.kernel do
+  unless UInt.parse shader == some kernel do
     IO.FS.writeFile (output / "parse-debug.txt") (reprStr (UInt.parse shader))
     throw (IO.userError "generated lidar shader failed independent parsing")
   IO.FS.writeFile (output / "scan.wgsl") shader
-  IO.FS.writeFile (output / "Shader.lean") (← certificate "Artifact" "LeanExe.WGSL.Lidar.kernel" Lidar.kernel)
+  IO.FS.writeFile (output / "Shader.lean") (← certificate "Artifact" kernelName kernel)
   let summary := UInt.shader LidarSummary.kernel 4
   unless UInt.parse summary == some LidarSummary.kernel do
     throw (IO.userError "generated summary failed independent parsing")
