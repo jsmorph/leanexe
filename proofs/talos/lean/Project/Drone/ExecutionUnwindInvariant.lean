@@ -16,7 +16,7 @@ def unwindInv (initialHeap : Heap) (initial : Store Unit) (terrainNode historyNo
   ∃ (heap : Heap) (node : FreeNode) (row : Array UInt64) (fuel index state : Nat)
     (tracked : Bool) (out0 out1 : UInt64) (aux : List Value) (s : Scratch),
     frame = unwindFrame fuel index state terrainNode.root historyNode.root node.root tracked out0 out1 aux s ∧
-    aux.length = 36 ∧ fuel ≤ count ∧ index ≤ maxIndex ∧ index < terrain.size ∧
+    aux.length = 36 ∧ aux[33]? = some (.i64 0) ∧ aux[35]? = some (.i64 0) ∧ fuel ≤ count ∧ index ≤ maxIndex ∧ index < terrain.size ∧
     fuel ≤ index + 1 ∧ state < 45 ∧ (tracked = true ↔ fuel < count) ∧ heap.At store ∧
     Budget store heap (unwindCost fuel row.size + remaining) pageLimit ∧
     BorrowedWords heap store terrainNode terrain ∧ BorrowedWords heap store historyNode history ∧

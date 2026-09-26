@@ -24,7 +24,7 @@ theorem unwind_step_spec (env : HostEnv Unit) (store initial : Store Unit) (heap
     (hTracked : tracked = true → SeparateWords initialHeap initial rowNode)
     (Q : Assertion Unit)
     (hNext : ∀ (final : Store Unit) (nextHeap : Heap) (node : FreeNode) (nextAux : List Value) (nextScratch : Scratch),
-      nextAux.length = 36 → nextHeap.At final → Budget final nextHeap remaining pageLimit →
+      nextAux.length = 36 → nextAux[33]? = some (.i64 0) → nextAux[35]? = aux[35]? → nextHeap.At final → Budget final nextHeap remaining pageLimit →
       BorrowedWords nextHeap final terrainNode terrain → BorrowedWords nextHeap final historyNode history →
       nextHeap.OwnsWords final node ((row.push (speed state)).push (altitude (floorAt terrain index) state)) →
       regionsDisjoint terrainNode.region node.region → regionsDisjoint historyNode.region node.region →
@@ -38,7 +38,7 @@ theorem unwind_step_spec (env : HostEnv Unit) (store initial : Store Unit) (heap
   rw [hCode]
   apply unwind_two_push_spec env store heap (fuel + 1) index state remaining pageLimit terrainNode rowNode terrain row
     historyNode.root out0 out1 tracked aux s hAux hState hTerrain hIndex hRow hHeap hBudget
-  intro pushed nextHeap node pushedAux pushedScratch hLength hPushedHeap hPushedBudget hOutput hKeep hFresh
+  intro pushed nextHeap node pushedAux pushedScratch hLength hPushed35 hPushedHeap hPushedBudget hOutput hKeep hFresh
   have hCurrentTerrain := hKeep.borrowed _ _ hTerrain
   have hCurrentHistory := hKeep.borrowed _ _ hHistory
   have hOld := hKeep.owned _ _ hRow
@@ -52,13 +52,15 @@ theorem unwind_step_spec (env : HostEnv Unit) (store initial : Store Unit) (heap
   have hIndex64 : index < UInt64.size := lt_trans hIndex hTerrain.values.size_lt
   apply unwind_parent_spec env pushed (fuel + 1) index state terrainNode.root historyNode.root rowNode.root node.root
     tracked out0 out1 pushedAux pushedScratch history hLength hIndex64 hState hCurrentHistory.values hRead
-  intro parentAux parentScratch hParentLength hRoot0 hRoot1 hParent
+  intro parentAux parentScratch hParentLength hParent35 hRoot0 hRoot1 hParent
   apply unwind_tail_prepare_spec env pushed (fuel + 1) index state (unwindParent index state history)
     terrainNode.root historyNode.root rowNode.root node.root tracked out0 out1 parentAux parentScratch
     hParentLength hIndex64 hRoot0 hRoot1 hParent
   let prepared := unwindTailAux parentAux index (unwindParent index state history) terrainNode.root historyNode.root node.root
   let staged := { parentScratch with source := UInt64.ofNat index, length := 1 }
   have hPrepared : prepared.length = 36 := by simp [prepared, unwindTailAux, hParentLength]
+  have hPrepared35 : prepared[35]? = aux[35]? := by
+    simpa [prepared, unwindTailAux] using hParent35.trans hPushed35
   have hOldTerrain : rowNode.root ≠ terrainNode.root :=
     Ne.symm (word_regions_ne hTerrain.rootBound hRow.buffer.rootBound hTerrainSep)
   have hOldHistory : rowNode.root ≠ historyNode.root :=
@@ -74,8 +76,8 @@ theorem unwind_step_spec (env : HostEnv Unit) (store initial : Store Unit) (heap
       (by simp [prepared, unwindTailAux, hParentLength]) (by simp [prepared, unwindTailAux, hParentLength])
       (borrowed_root_ne_zero hTerrain) (borrowed_root_ne_zero hHistory) (owned_root_ne_zero hRow)
       hOldTerrain hOldHistory hOldRoot (fun _ => rfl) (by simp)
-    intro nextAux hAuxLength
-    exact hNext pushed nextHeap node nextAux staged hAuxLength hPushedHeap hPushedBudget hCurrentTerrain
+    intro nextAux hAuxLength hFinal33 hFinal35
+    exact hNext pushed nextHeap node nextAux staged hAuxLength hFinal33 (hFinal35.trans hPrepared35) hPushedHeap hPushedBudget hCurrentTerrain
       hCurrentHistory hOutput hNewTerrain hNewHistory hKept hFreshOriginal
   | true =>
     let released := nextHeap.releaseStore pushed rowNode
@@ -93,9 +95,9 @@ theorem unwind_step_spec (env : HostEnv Unit) (store initial : Store Unit) (heap
       (by simp [prepared, unwindTailAux, hParentLength]) (by simp [prepared, unwindTailAux, hParentLength])
       (borrowed_root_ne_zero hTerrain) (borrowed_root_ne_zero hHistory) (owned_root_ne_zero hRow)
       hOldTerrain hOldHistory hOldRoot (by simp) (fun _ => hCall)
-    intro nextAux hAuxLength
+    intro nextAux hAuxLength hFinal33 hFinal35
     have hRoot32 : rowNode.root.toNat ≤ 4294967296 := by have := hOld.buffer.addressBound; omega
-    refine hNext released (nextHeap.release rowNode) node nextAux staged hAuxLength ?_
+    refine hNext released (nextHeap.release rowNode) node nextAux staged hAuxLength hFinal33 (hFinal35.trans hPrepared35) ?_
       (hPushedBudget.released rowNode)
       (hCurrentTerrain.released rowNode hOld.buffer.rootBound hRoot32 hTerrainSep)
       (hCurrentHistory.released rowNode hOld.buffer.rootBound hRoot32 hHistorySep)

@@ -1064,3 +1064,18 @@ jobs with standard-only axioms. A frame normalization failure was resolved
 by rewriting only the length-header store, preserving the scratch equality
 needed by the copy lemma. The unwind return wrapper and final compiled
 compute/safety transfer remain open.
+
+`unwind_exact` now proves termination and exact source agreement for the
+complete compiled reconstruction function, including allocation, reversal,
+and return. `drone-unwind-2.log` passes 3,597 jobs; the wrapper checks in
+3.1 seconds with standard-only axioms. The loop invariant now preserves
+the two zero scratch slots needed at the reversal boundary. Separately
+checked frame, preparation, and return lemmas keep that boundary small.
+The nested WASM branch continuations require an explicit extensional
+equality; treating their code as plain concatenation was insufficient.
+
+Top-level composition exposed an ABI specialization still to adjust: the
+public compute passes terrain with owner zero, while the current history
+and unwind entry lemmas use its pointer as owner. Their read-only terrain
+frames will be specialized to the actual borrowed-input convention before
+completing the public compute and safety transfer proofs.
