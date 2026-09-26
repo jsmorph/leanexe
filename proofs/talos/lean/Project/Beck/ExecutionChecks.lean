@@ -1,4 +1,5 @@
 import Project.Beck.ExecutionScan
+import Project.Beck.ExecutionContains
 
 #print axioms Project.Beck.Execution.negative_exact
 #print axioms Project.Beck.Execution.magnitude_exact
@@ -20,3 +21,6 @@ import Project.Beck.ExecutionScan
 #print axioms Project.Beck.Execution.frozenStep_exact
 #print axioms Project.Beck.Execution.frozenLoop_exact
 #print axioms Project.Beck.Execution.allFrozen_exact
+#print axioms Project.Beck.Execution.containsStep_exact
+#print axioms Project.Beck.Execution.containsLoop_exact
+#print axioms Project.Beck.Execution.contains_exact
