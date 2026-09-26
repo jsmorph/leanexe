@@ -5,6 +5,7 @@ namespace LeanExe.Source.Scalar
 inductive BindingKind where
   | word | boolean | natural | unit | function (withUnit : Bool)
   | booleanFunction
+  | predicateFunction
   | binaryFunction
   | manyFunction (arity : Nat)
   deriving DecidableEq, Repr
@@ -18,6 +19,7 @@ inductive Value where
   | unit
   | function (withUnit : Bool) (apply : UInt64 → UInt64)
   | booleanFunction (apply : Bool → UInt64)
+  | predicateFunction (apply : UInt64 → Bool)
   | binaryFunction (apply : UInt64 → UInt64 → UInt64)
   | manyFunction (arity : Nat) (apply : List UInt64 → UInt64)
 
@@ -28,6 +30,7 @@ def Value.kind : Value → BindingKind
   | .unit => .unit
   | .function withUnit _ => .function withUnit
   | .booleanFunction _ => .booleanFunction
+  | .predicateFunction _ => .predicateFunction
   | .binaryFunction _ => .binaryFunction
   | .manyFunction arity _ => .manyFunction arity
 
@@ -37,7 +40,7 @@ theorem word_lookup {values : List Value} {types : List BindingKind} {index : Na
   rw [← typed, List.getElem?_map] at present
   obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases value with
-  | booleanFunction _ => cases kind
+  | booleanFunction _ | predicateFunction _ => cases kind
   | boolean _ => cases kind
   | word value => exact ⟨value, found⟩
   | natural _ | unit => cases kind
@@ -49,7 +52,7 @@ theorem boolean_lookup {values : List Value} {types : List BindingKind} {index :
   rw [← typed, List.getElem?_map] at present
   obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases value with
-  | booleanFunction _ => cases kind
+  | booleanFunction _ | predicateFunction _ => cases kind
   | boolean value => exact ⟨value, found⟩
   | word _ | natural _ | unit => cases kind
   | function _ _ | binaryFunction _ | manyFunction _ _ => cases kind
@@ -60,7 +63,7 @@ theorem natural_lookup {values : List Value} {types : List BindingKind} {index :
   rw [← typed, List.getElem?_map] at present
   obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases value with
-  | booleanFunction _ => cases kind
+  | booleanFunction _ | predicateFunction _ => cases kind
   | boolean _ => cases kind
   | natural value => exact ⟨value, found⟩
   | word _ | unit => cases kind
@@ -72,7 +75,7 @@ theorem function_lookup {values : List Value} {types : List BindingKind} {index 
   rw [← typed, List.getElem?_map] at present
   obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases value with
-  | booleanFunction _ => cases kind
+  | booleanFunction _ | predicateFunction _ => cases kind
   | boolean _ => cases kind
   | word _ => cases kind
   | natural _ | unit | binaryFunction _ | manyFunction _ _ => cases kind
@@ -86,6 +89,18 @@ theorem booleanFunction_lookup {values : List Value} {types : List BindingKind} 
   cases value with
   | boolean _ => cases kind
   | booleanFunction f => exact ⟨f, found⟩
+  | predicateFunction _ => cases kind
+  | word _ | natural _ | unit | function _ _ | binaryFunction _ | manyFunction _ _ => cases kind
+
+theorem predicateFunction_lookup {values : List Value} {types : List BindingKind} {index : Nat}
+    (typed : values.map Value.kind = types) (present : types[index]? = some .predicateFunction) :
+    ∃ f, values[index]? = some (.predicateFunction f) := by
+  rw [← typed, List.getElem?_map] at present
+  obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
+  cases value with
+  | boolean _ => cases kind
+  | predicateFunction f => exact ⟨f, found⟩
+  | booleanFunction _ => cases kind
   | word _ | natural _ | unit | function _ _ | binaryFunction _ | manyFunction _ _ => cases kind
 
 theorem binaryFunction_lookup {values : List Value} {types : List BindingKind} {index : Nat}
@@ -94,7 +109,7 @@ theorem binaryFunction_lookup {values : List Value} {types : List BindingKind} {
   rw [← typed, List.getElem?_map] at present
   obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases value with
-  | booleanFunction _ => cases kind
+  | booleanFunction _ | predicateFunction _ => cases kind
   | boolean _ => cases kind
   | binaryFunction f => exact ⟨f, found⟩
   | word _ | natural _ | unit | function _ _ | manyFunction _ _ => cases kind
@@ -105,7 +120,7 @@ theorem manyFunction_lookup {values : List Value} {types : List BindingKind} {in
   rw [← typed, List.getElem?_map] at present
   obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases value with
-  | booleanFunction _ => cases kind
+  | booleanFunction _ | predicateFunction _ => cases kind
   | boolean _ => cases kind
   | manyFunction count f => cases kind; exact ⟨f, found⟩
   | word _ | natural _ | unit | function _ _ | binaryFunction _ => cases kind

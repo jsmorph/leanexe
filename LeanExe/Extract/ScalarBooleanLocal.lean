@@ -354,7 +354,7 @@ theorem extractBooleanLocal_scoped (guard : BooleanLocal)
 theorem extractBooleanLocal_correct (guard : BooleanLocal)
     (compileVariables : (index : Nat) → index ∈ guard.variables → Option LeanExe.IR.Expr)
     (compile : (operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr)
-    (native : Lean.Expr → UInt64) (booleans : Nat → Bool) {target : LeanExe.IR.Cond} {store : LeanExe.IR.ScalarStore}
+    (native : Lean.Expr → UInt64) (booleans : LeanExe.Source.Scalar.BooleanEnvironment) {target : LeanExe.IR.Cond} {store : LeanExe.IR.ScalarStore}
     (compiled : extractBooleanLocal guard compileVariables compile = some target)
     (booleanMeanings : ∀ index member expression, compileVariables index member = some expression →
       expression.ScalarEval store (Bool.toUInt64 (booleans index)) store)
@@ -432,7 +432,7 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
       (fun operand member expression found => meanings _ _ _ found)
     apply lowerGuardNegations_correct n
     exact ihb _ _ (fun operand => native (booleanLetExpr name form.nondep value.expr operand))
-      (booleanLetBooleans (value.denote native booleans) booleans) hr
+      (booleans.bind (value.denote native booleans)) hr
       (booleanLetLookup_correct _ _ _ _ _ _ (guardWord_correct first)
         (fun index member expression found => booleanMeanings _ _ _ found))
       (fun operand member expression found => meanings _ _ _ found)
@@ -445,7 +445,7 @@ theorem extractBooleanLocal_correct (guard : BooleanLocal)
       obtain ⟨word, hv, condition, hb, rfl⟩ := compiled
       apply lowerGuardNegations_correct n
       exact ihb _ _ (fun operand => native (booleanWordLetExpr name form.nondep value operand))
-        (booleanLetBooleans false booleans) hb
+        (booleans.bind false) hb
         (booleanWordLetLookup_correct _ _ _ _ _ booleanMeanings)
         (fun operand member expression found => meanings _ _ _ found)
     · contradiction
