@@ -97,11 +97,11 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (variables : expression.VariablesMean values booleans)
       (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand)) :
       EvalWith (.app (.bvar index) expression.expr) values (f (expression.denote native booleans))
-  | applyBooleanPredicateWord (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
+  | applyBooleanPredicateWord (negations : Nat) (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
       (function : values[index]? = some (.booleanPredicateFunction f))
       (variables : expression.VariablesMean values booleans)
       (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand)) :
-      EvalWith (.app (.const ``Bool.toUInt64 []) (.app (.bvar index) expression.expr)) values (Bool.toUInt64 (f (expression.denote native booleans)))
+      EvalWith (.app (.const ``Bool.toUInt64 []) (BooleanGuardNegation.expr negations (.app (.bvar index) expression.expr))) values (Bool.toUInt64 (GuardNegation.denote negations (f (expression.denote native booleans))))
   | apply (function : values[index]? = some (.function false f)) (argument : EvalWith a values x) :
       EvalWith (.app (.bvar index) a) values (f x)
   | letFn (type : ResultType)
@@ -247,10 +247,10 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (variables : expression.VariablesTyped types)
       (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand) :
       SupportedWith types (.app (.bvar index) expression.expr)
-  | applyBooleanPredicateWord (expression : BooleanLocal) (function : types[index]? = some .booleanPredicateFunction)
+  | applyBooleanPredicateWord (negations : Nat) (expression : BooleanLocal) (function : types[index]? = some .booleanPredicateFunction)
       (variables : expression.VariablesTyped types)
       (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand) :
-      SupportedWith types (.app (.const ``Bool.toUInt64 []) (.app (.bvar index) expression.expr))
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) (BooleanGuardNegation.expr negations (.app (.bvar index) expression.expr)))
   | apply (function : types[index]? = some (.function false)) (argument : SupportedWith types a) :
       SupportedWith types (.app (.bvar index) a)
   | letFn (type : ResultType) (function : SupportedWith (.word :: types) a)
@@ -456,7 +456,7 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
       intro operand member
       simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
     exact ⟨f (expression.denote native booleans), .applyBoolean expression hf hbooleans meanings⟩
-  | applyBooleanPredicateWord expression present variables _ ihArgs =>
+  | applyBooleanPredicateWord negations expression present variables _ ihArgs =>
     obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
     obtain ⟨booleans, hbooleans⟩ := variables.evaluates values typed
     let native : Lean.Expr → UInt64 := fun operand =>
@@ -464,7 +464,7 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     have meanings : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand) := by
       intro operand member
       simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
-    exact ⟨Bool.toUInt64 (f (expression.denote native booleans)), .applyBooleanPredicateWord expression hf hbooleans meanings⟩
+    exact ⟨Bool.toUInt64 (GuardNegation.denote negations (f (expression.denote native booleans))), .applyBooleanPredicateWord negations expression hf hbooleans meanings⟩
   | apply present _ ih =>
     obtain ⟨f, hf⟩ := function_lookup typed present
     obtain ⟨x, hx⟩ := ih values typed

@@ -68,9 +68,14 @@ across loop states, and calls may supply bounds, initial values, loop steps,
 stride calculations and final results. Evidence is in
 [the outer-loop archive](proofs/compiler/boolean-predicate-outer-2026-09-26/README.md).
 
-Next: negated Boolean-input predicate calls under Bool.toUInt64, preserving typed
-argument dispatch in scalar, loop-step and outer-loop scopes. Compound calls,
-direct Boolean-context calls and broader signatures follow. Full-dialect
+Negated Boolean-input predicate calls under Bool.toUInt64 now pass the source,
+extraction and scalar invariant proofs for any number of Not wrappers. The
+zero-negation lowering keeps its existing expression. Focused native and syntax
+checks across scalar, loop-step and outer-loop scopes pass 4,148 comparisons and
+3,072 invalid-input tests. Prior unnegated Boolean-input and word-input tests pass
+1,484 comparisons and 864 invalid-input checks. The general theorem and
+independent WASM suite follow them. Compound calls, direct
+Boolean-context calls and broader signatures remain subsequent work. Full-dialect
 correctness remains unfinished. Complete each capability through WASM and
 commit/push frequently.
 
