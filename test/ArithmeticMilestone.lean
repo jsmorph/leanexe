@@ -4415,6 +4415,69 @@ def rangeIdArithmeticStep (count seed : UInt64) : UInt64 :=
       else return .yield (value + 1)
     f (a % 7 == 0 && seed != 0)
 
+def reannotatedEq (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@Eq (Id UInt64) ((x + y) % 7) 0)
+    (instDecidableEqUInt64 ((x + y) % 7) 0) (x + 1) (y + 3)
+
+def reannotatedNe (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@Ne (Id (Id UInt64)) (x - y) (y * 3))
+    (@instDecidableNot (@Eq (Id (Id UInt64)) (x - y) (y * 3))
+      (instDecidableEqUInt64 (x - y) (y * 3))) (x - y) (y + 1)
+
+def reannotatedLt (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@LT.lt (Id UInt64) instLTUInt64 (x / y) (y % 7))
+    (UInt64.decLt (x / y) (y % 7)) (x * 3) (y + 7)
+
+def reannotatedLe (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@LE.le (Id (Id UInt64)) instLEUInt64 (x &&& y) (y ||| 3))
+    (UInt64.decLe (x &&& y) (y ||| 3)) (x ^^^ y) (y / x)
+
+def reannotatedGt (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@GT.gt (Id UInt64) instLTUInt64 (x <<< y) (y ^^^ 5))
+    (UInt64.decLt (y ^^^ 5) (x <<< y)) (x + y) (y - x)
+
+def reannotatedGe (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@GE.ge (Id (Id UInt64)) instLEUInt64 (x >>> y) (y * 7))
+    (UInt64.decLe (y * 7) (x >>> y)) (x % y) (y * 7)
+
+def reannotatedNegated (x y : UInt64) : UInt64 :=
+  @ite UInt64 (Not (Not (@LE.le (Id UInt64) instLEUInt64 (x + 1) (y * 7))))
+    (@instDecidableNot (Not (@LE.le (Id UInt64) instLEUInt64 (x + 1) (y * 7)))
+      (@instDecidableNot (@LE.le (Id UInt64) instLEUInt64 (x + 1) (y * 7))
+        (UInt64.decLe (x + 1) (y * 7)))) (x + 11) (y - 13)
+
+def reannotatedHelper (x y : UInt64) : UInt64 :=
+  let f := fun z : UInt64 =>
+    @ite UInt64 (@LT.lt (Id UInt64) instLTUInt64 (z + 1) (y * 3))
+      (UInt64.decLt (z + 1) (y * 3)) (z + 1) (z * 3)
+  f x + f y
+
+def reannotatedDo (x y : UInt64) : UInt64 := Id.run do
+  let value ← @ite (Id UInt64) (@Eq (Id (Id UInt64)) ((x + y) % 7) 0)
+    (instDecidableEqUInt64 ((x + y) % 7) 0) (pure (x + 1)) (pure (y * 3))
+  return value + y
+
+def rangeReannotatedOrder (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    @ite (Id (ForInStep UInt64))
+      (@GE.ge (Id (Id UInt64)) instLEUInt64 (UInt64.ofNat i + 1) (seed % 11))
+      (UInt64.decLe (seed % 11) (UInt64.ofNat i + 1))
+      (pure (.done (a + UInt64.ofNat i)))
+      (pure (.yield (a * 3 + UInt64.ofNat i)))
+
+def rangeIdComparisonEvidenceAnnotations (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    @ite (Id (ForInStep UInt64))
+      (@LT.lt (Id UInt64) instLTUInt64 (UInt64.ofNat i) (seed % 7))
+      (UInt64.decLt (UInt64.ofNat i) (seed % 7))
+      (pure (.yield a))
+      (@ite (Id (ForInStep UInt64))
+        (@Eq (Id (Id UInt64)) ((a + UInt64.ofNat i + 1) % 5) 0)
+        (instDecidableEqUInt64 ((a + UInt64.ofNat i + 1) % 5) 0)
+        (pure (.done (a + UInt64.ofNat i + 1)))
+        (pure (.yield (a + UInt64.ofNat i + 1))))
+
+
 def idComparisonEq (x y : UInt64) : UInt64 :=
   @ite UInt64 (@Eq (Id UInt64) x y) (instDecidableEqUInt64 x y) (x + 1) (y + 3)
 
@@ -4837,7 +4900,9 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeIdArithmeticStep", rangeIdArithmeticStep),
    ("rangeIdComparisonExit", rangeIdComparisonExit),
    ("rangeIdComparisonDecide", rangeIdComparisonDecide),
-   ("rangeIdComparisonDependent", rangeIdComparisonDependent)]
+   ("rangeIdComparisonDependent", rangeIdComparisonDependent),
+   ("rangeReannotatedOrder", rangeReannotatedOrder),
+   ("rangeIdComparisonEvidenceAnnotations", rangeIdComparisonEvidenceAnnotations)]
 
 def inputs : List (UInt64 × UInt64) :=
   [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
@@ -5148,7 +5213,16 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("idComparisonDependent", idComparisonDependent),
    ("idComparisonDecide", idComparisonDecide),
    ("idComparisonChoice", idComparisonChoice),
-   ("idComparisonDo", idComparisonDo)]
+   ("idComparisonDo", idComparisonDo),
+   ("reannotatedEq", reannotatedEq),
+   ("reannotatedNe", reannotatedNe),
+   ("reannotatedLt", reannotatedLt),
+   ("reannotatedLe", reannotatedLe),
+   ("reannotatedGt", reannotatedGt),
+   ("reannotatedGe", reannotatedGe),
+   ("reannotatedNegated", reannotatedNegated),
+   ("reannotatedHelper", reannotatedHelper),
+   ("reannotatedDo", reannotatedDo)]
 
 end ArithmeticMilestone
 

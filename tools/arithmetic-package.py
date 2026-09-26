@@ -200,7 +200,7 @@ third-party sources and caches, add `--dependencies /absolute/dependency/directo
 Only the nine listed third-party packages are linked; original LeanExe, Project,
 and Interpreter build products are never imported. No compiler CLI or generator
 runs. All bundled Lean modules are rebuilt by the package's own Lake project.
-Output and all nine theorem dependency audits are in verification.log and
+Output and all declared theorem dependency audits are in verification.log and
 verification-result.json. The runtime validator theorems allow only propext;
 other audited compiler theorems allow propext, Classical.choice and Quot.sound.
 

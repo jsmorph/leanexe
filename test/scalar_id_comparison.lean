@@ -127,6 +127,7 @@ run_elab do
     (`IdComparisonTest.idComparisonLe, IdComparisonTest.idComparisonLe, false),
     (`IdComparisonTest.idComparisonGt, IdComparisonTest.idComparisonGt, false),
     (`IdComparisonTest.idComparisonGe, IdComparisonTest.idComparisonGe, false),
+    (`IdComparisonTest.rangeIdComparisonEvidenceAnnotations, IdComparisonTest.rangeIdComparisonEvidenceAnnotations, true),
     (`IdComparisonTest.rangeIdComparisonExit, IdComparisonTest.rangeIdComparisonExit, true),
     (`IdComparisonTest.idComparisonNegated, IdComparisonTest.idComparisonNegated, false),
     (`IdComparisonTest.idComparisonCompound, IdComparisonTest.idComparisonCompound, false),
@@ -154,7 +155,6 @@ run_elab do
         throwError "{name}({x}, {y}): native={expected}, IR={actual}"
       count := count + 1
   for name in [
-    `IdComparisonTest.rangeIdComparisonEvidenceAnnotations,
     `IdComparisonTest.idComparisonCustomDecision,
     `IdComparisonTest.idComparisonCustomOrder,
     `IdComparisonTest.idComparisonUnsupported,
@@ -163,5 +163,5 @@ run_elab do
     let some value := info.value? | throwError "missing body"
     unless (LeanExe.Extract.Core.extractScalarFunc name (some "entry") info.type value).isNone do
       throwError "{name}: unsupported comparison accepted"
-  unless count == 240 do throwError "wrong comparison count {count}"
-  Lean.logInfo m!"{count} native/Id-comparison IR comparisons and five declaration rejection tests passed"
+  unless count == 264 do throwError "wrong comparison count {count}"
+  Lean.logInfo m!"{count} native/Id-comparison IR comparisons and four declaration rejection tests passed"
