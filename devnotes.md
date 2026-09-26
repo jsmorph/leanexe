@@ -17524,3 +17524,11 @@ The user approved cofactor directions and a shared denominator, requested contin
 ### Beck scalar annotation metadata
 
 Corrected the shared scalar expression programs to retain the i32 or i64 result type of each value-producing conditional.  The execution proof normalizes metadata at the WP boundary through the existing proved Talos adapter.  The Beck prototype annotation equalities now check.  SequenceSoftmax and TinyGpt2Seq annotation modules also check with the corrected shared representation.  The first prototype commit, `3546fbf1`, is pushed to `origin/beck`.
+
+### Beck cofactor implementation
+
+Replaced rational row reduction and per-coordinate fraction normalization with deterministic bordered-minor search, Laplace determinants, Cramer directions, and a shared denominator.  The source uses two’s-complement UInt64 words for signed integers.  All 732 native/WASM comparisons and independent discrepancy checks pass.  The overlapping demonstration gives assignments `[1,0,0,1,1,1]` and category differences `[0,2,2]`.
+
+The compiler initially rejected a column-replacement expression passed directly to the recursive determinant because its demand analysis could not justify eager evaluation.  Naming the already-needed replacement array before the call makes evaluation order explicit and passes the existing extraction rule.  No compiler change was required.
+
+The arithmetic proof establishes exact signed addition, subtraction, multiplication, sign and magnitude interpretation, denominator growth, and the update envelope for denominator at most `120^5` and direction magnitude at most 120.  The required determinant and loop invariants remain separate obligations.  The rebuilt runner and generated artifact agree at SHA-256 `03e94615d3fac5bcb6c7adf14fecb14c531f0aca2f7f22cd2e8040c8aa66a4be`.
