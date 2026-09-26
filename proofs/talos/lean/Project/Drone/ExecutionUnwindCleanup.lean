@@ -19,7 +19,7 @@ theorem unwind_cleanup_spec (env : HostEnv Unit) (store final : Store Unit)
     (hRelease : tracked = true → TerminatesWith env Project.Drone.«module» 29 store [.i64 row]
       (fun released values => released = final ∧ values = []))
     (Q : Assertion Unit)
-    (hNext : ∀ nextAux : List Value, nextAux.length = 36 →
+    (hNext : ∀ nextAux : List Value, nextAux.length = 36 → nextAux[33]? = some (.i64 0) → nextAux[35]? = aux[35]? →
       Q (.Break 0 final (unwindFrame fuel nextIndex nextState terrain history root true out0 out1 nextAux s))) :
     wp Project.Drone.«module» (unwindLoopBody.drop 207) Q store
       (unwindFrame (fuel + 1) index state terrain history row tracked out0 out1 aux s) env := by
@@ -32,8 +32,7 @@ theorem unwind_cleanup_spec (env : HostEnv Unit) (store final : Store Unit)
     subst final
     unwind_controls [hAux, hIndex, hState, hTerrain0, hTerrain1, hHistory0, hHistory1,
       hRoot0, hRoot1, hTerrain, hHistory, hSub]
-    apply hNext
-    simp [hAux]
+    apply hNext <;> simp [hAux]
   | true =>
     unwind_controls [hAux, hIndex, hState, hTerrain0, hTerrain1, hHistory0, hHistory1,
       hRoot0, hRoot1, hTerrain, hHistory, hRow, hOldTerrain, hOldHistory, hOldRoot, hSub]
@@ -42,8 +41,7 @@ theorem unwind_cleanup_spec (env : HostEnv Unit) (store final : Store Unit)
     unwind_controls [hAux, hIndex, hState, hTerrain0, hTerrain1, hHistory0, hHistory1,
       hRoot0, hRoot1, hTerrain, hHistory, hRow, hOldTerrain, hOldHistory, hOldRoot, hSub,
       Ne.symm hOldTerrain, Ne.symm hOldHistory, func29Def]
-    apply hNext
-    simp [hAux]
+    apply hNext <;> simp [hAux]
 
 #print axioms unwind_cleanup_spec
 end Project.Drone.Execution

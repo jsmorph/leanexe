@@ -19,7 +19,7 @@ theorem unwind_parent_spec (env : HostEnv Unit) (store : Store Unit)
     (hParents : UInt64Array.At store history parents)
     (hRead : 0 < index → (index - 1) * 45 + state < parents.size)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : ∀ (nextAux : List Value) (nextScratch : Scratch), nextAux.length = 36 →
+    (hNext : ∀ (nextAux : List Value) (nextScratch : Scratch), nextAux.length = 36 → nextAux[35]? = aux[35]? →
       nextAux[12]? = some (.i64 root) → nextAux[13]? = some (.i64 root) →
       nextAux[14]? = some (.i64 (UInt64.ofNat (unwindParent index state parents))) →
       wp Project.Drone.«module» rest Q store
@@ -73,13 +73,13 @@ theorem unwind_parent_spec (env : HostEnv Unit) (store : Store Unit)
         value := 45
         spare0 := UInt64.ofNat index
         spare1 := 1 }
-      ?_ ?_ ?_ ?_ <;> simp [hAux, unwindParent, hPositive,
+      ?_ ?_ ?_ ?_ ?_ <;> simp [hAux, unwindParent, hPositive,
         getElem!_pos parents ((index - 1) * 45 + state) (hRead hPositive)]
   · have hZero : index = 0 := by omega
     subst index
     simp
     wp_unwind_frame [hAux]
-    refine hNext _ s ?_ ?_ ?_ ?_ <;> simp [hAux, unwindParent]
+    refine hNext _ s ?_ ?_ ?_ ?_ ?_ <;> simp [hAux, unwindParent]
 
 #print axioms unwind_parent_spec
 end Project.Drone.Execution
