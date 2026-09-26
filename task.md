@@ -26,10 +26,23 @@ The preceding [dependent decision](proofs/compiler/dependent-decision-2026-09-26
 [atomic comparison](proofs/compiler/reannotation-2026-09-26/README.md) archives
 record their checked increments.
 
-Next: extend Boolean-returning local helper support, including explicit result
-typing, lexical captures and calls. Then continue broader compiler coverage.
+Next: extend Boolean-returning local helper support. Immediate lambda
+applications with word or Boolean arguments are in progress; named helper
+bindings and calls follow. Both preserve explicit types and lexical captures. Then continue broader compiler coverage.
 Full-dialect correctness remains unfinished. Get each capability proved and
 executing end to end, and commit/push frequently.
+
+## Immediate Boolean lambda applications — in progress
+
+Boolean-producing lambdas now accept UInt64 or Bool arguments, including Id
+annotations, and retain their exact source binders. They share the typed lexical
+binding semantics, with captures preserved in scalar operands and Boolean slots.
+Parser acceptance/soundness, scalar correctness and loop-step correctness pass.
+New focused tests pass 1,192 native/IR comparisons and 216 invalid-input checks.
+Native fixtures assert that elaboration retains the lambda applications.
+
+The general compiler theorem and selected native/Wasm checks are next. Named
+Boolean helper bindings and calls remain subsequent work.
 
 ## Saved proposition decision equivalence — complete
 

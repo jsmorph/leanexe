@@ -4876,6 +4876,58 @@ def customNegated (x y : UInt64) : UInt64 := @ite UInt64 (¬ x < y) (customNegat
 def customNeDecision (x y : UInt64) : Decidable (x ≠ y) := inferInstance
 def customNe (x y : UInt64) : UInt64 := @ite UInt64 (x ≠ y) (customNeDecision x y) x y
 
+def booleanApplyWord (x y : UInt64) : UInt64 :=
+  if (fun z : UInt64 => z == y) x then x + 1 else y * 3
+
+def booleanApplyBool (x y : UInt64) : UInt64 :=
+  ((fun flag : Bool => !flag || x == y) (x != 0)).toUInt64 + y
+
+def booleanApplyCapture (x y : UInt64) : UInt64 :=
+  let outer := x != 0
+  let f := fun z : UInt64 => z + y
+  ((fun n : UInt64 => outer && f n == x) (x + y)).toUInt64
+
+def booleanApplyNested (x y : UInt64) : UInt64 :=
+  ((fun n : UInt64 =>
+    (fun flag : Bool => flag && n != y) (n == x)) (x + y)).toUInt64 + x
+
+def booleanApplyDependent (x y : UInt64) : UInt64 :=
+  ((fun n : UInt64 => if _h : n < y then n != x else n == y) (x + 1)).toUInt64
+
+def booleanApplyId (x y : UInt64) : UInt64 :=
+  ((fun n : Id UInt64 =>
+    (fun flag : Id Bool => !flag && !(@BEq.beq UInt64 (@instBEqOfDecidableEq UInt64 instDecidableEqUInt64) n 0))
+      (@BEq.beq UInt64 (@instBEqOfDecidableEq UInt64 instDecidableEqUInt64) n y)) (x + y)).toUInt64
+
+def booleanApplyUnused (x y : UInt64) : UInt64 :=
+  ((fun _n : UInt64 => x != y) (x / y)).toUInt64
+
+def booleanApplyDo (x y : UInt64) : UInt64 := Id.run do
+  let flag ← pure ((fun n : UInt64 => n == y) (x + 1))
+  let next ← pure ((fun b : Bool => b || x != 0) flag)
+  if next then return x + y else return x - y
+
+def rangeBooleanApplyBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i
+    if (fun n : UInt64 => n % 7 == 0) a then break
+  return a
+
+def rangeBooleanApplyContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (fun flag : Bool => !flag) (UInt64.ofNat i % 3 == 0) then continue
+    a := a + UInt64.ofNat i + 1
+  return a
+
+def rangeBooleanApplyCapture (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let flag := (fun n : UInt64 =>
+      (fun b : Bool => b && a != seed) (n % 7 == 0)) (UInt64.ofNat i)
+    if flag then pure (.done (a + UInt64.ofNat i))
+    else pure (.yield (a * 3 + UInt64.ofNat i))
+
 def savedReannotatedDecide (x y : UInt64) : UInt64 :=
   let flag := @decide (@Eq (Id UInt64) ((x + y) % 7) (0))
     (instDecidableEqUInt64 ((x + y) % 7) (0))
@@ -5868,6 +5920,17 @@ run_elab do
       `ArithmeticModeTest.rangeSavedReannotated,
       `ArithmeticModeTest.rangeSavedReannotatedChoice,
       `ArithmeticModeTest.rangeSavedReannotatedDependentChoice,
+      `ArithmeticModeTest.booleanApplyWord,
+      `ArithmeticModeTest.booleanApplyBool,
+      `ArithmeticModeTest.booleanApplyCapture,
+      `ArithmeticModeTest.booleanApplyNested,
+      `ArithmeticModeTest.booleanApplyDependent,
+      `ArithmeticModeTest.booleanApplyId,
+      `ArithmeticModeTest.booleanApplyUnused,
+      `ArithmeticModeTest.booleanApplyDo,
+      `ArithmeticModeTest.rangeBooleanApplyBreak,
+      `ArithmeticModeTest.rangeBooleanApplyContinue,
+      `ArithmeticModeTest.rangeBooleanApplyCapture,
 
       `ArithmeticModeTest.rangeDependentReannotated,
       `ArithmeticModeTest.rangeDependentReannotatedCompound,

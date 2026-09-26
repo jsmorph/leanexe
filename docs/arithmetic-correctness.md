@@ -157,6 +157,13 @@ annotations remain in the exact source syntax; derived scalar operands use the
 underlying binder type, preserving value and scope. Checked type-size and
 annotation-independent evaluation rules justify that representation.
 
+Immediate Boolean-producing lambda applications accept UInt64 or Bool arguments,
+including standard Id type annotations. The exact binder and argument are
+retained. Nested applications, captures, unused arguments, negation and choices
+use the same typed lexical evaluation as Boolean/word bindings. Arguments and
+bodies are checked even when unused. Applications compose through Boolean
+conversions, scalar and loop-step conditions, Id actions and loop exits.
+
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
 Lean generates for `let flag ← if … then pure … else pure …`, in scalar code,
@@ -166,7 +173,7 @@ preserve captures and shadowing, and all unused bodies and call arguments are
 checked. Pure scalar Boolean helpers may surround a loop and supply its bounds,
 initial value and final computation. A conditional Boolean bind before a loop
 can generate a loop-containing helper; that case remains outside this grammar.
-Public Boolean parameters/results, Boolean-returning helpers, mixed Bool/word
+Public Boolean parameters/results, named Boolean-returning helpers, mixed Bool/word
 parameter lists, loops inside helper bodies and propositional combinations
 containing saved Boolean locals remain separate capabilities.
 
