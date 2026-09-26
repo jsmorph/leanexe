@@ -1,9 +1,9 @@
-# Arithmetic compiler correctness
+# Scalar and bounded-loop compiler correctness
 
 The `compile-arithmetic` command admits a restricted source language covered by
 a general compiler theorem. Every successful admission inherits that theorem;
 users do not supply a separate proof for each program. The normal `compile`
-command accepts more of the leanexe dialect, but that broader language is not
+command accepts more of the LeanExe dialect, but that broader language is not
 yet covered by this theorem.
 
 ## Accepted source
@@ -357,105 +357,47 @@ separate user helper remain excluded even when the normal compiler supports them
 
 ## Compile and check
 
-Use the pinned Lean toolchain and the runner setup in [DEVELOPING](../DEVELOPING.md).
-For an already compiled source module:
+Use the pinned toolchain and runner configuration in [DEVELOPING](../DEVELOPING.md).
+Build the source module before compiling its entry:
 
 ```sh
+tools/leanrun --timeout 60 lake build MyModule
 tools/leanrun --timeout 60 lake env .lake/build/bin/lean-wasm compile-arithmetic \
   --module MyModule --entry MyModule.f --out build/f.wasm
 ```
 
-The repeatable execution check builds the real compiler, checks source admission
-and all reserved names, compiles 143 fresh declarations with that command,
-and runs their exact output modules with Node/V8:
+The execution driver builds the real compiler, checks source admission and
+reserved export names, obtains native Lean results, and compiles the selected
+declarations through `compile-arithmetic`. Node/V8 executes those emitted bytes
+and compares the results. It does not use the extractor's IR evaluator as its
+execution reference. Wasmtime runs the broader runtime suite.
 
-```sh
-tools/arithmetic-check.js engine
-```
+| Command | Scope |
+|---------|-------|
+| `tools/arithmetic-check.js proof` | Build the general theorem and check all nine declared axiom dependencies. |
+| `tools/arithmetic-check.js subset-engine <group>` | Compile and execute the fixed group from [the group registry](../test/arithmetic-engine-groups.json). |
+| `tools/arithmetic-check.js range-engine` | Check the [registered range declarations](../test/arithmetic-range-cases.json). |
+| `tools/arithmetic-check.js engine` | Check the complete [native/execution fixture](../test/ArithmeticMilestone.lean). |
+| `tools/arithmetic-check.js all` | Run the general proof and complete execution comparison. |
 
-It is configured to compare 2,850 results against native Lean evaluation, including overflow, zero
-divisors, high-bit values, shift counts 63/64/65/max and asymmetric arguments. Five declarations exercise plain, shadowed, nested,
-unused, and zero-argument let bindings. Eight more cover the comparison forms,
-both branches, nested choices, branch-local bindings, and conditionals inside
-comparison operands. Seven further declarations cover pure return, monadic
-bindings, sequential updates, early returns, nested blocks, branch-local binds
-and a constant do block. Seven more cover local functions, captured values
-across shadowing, calls to prior functions, nested and unused functions, joined
-branches and updates after a branch.
-Seven range declarations add zero/nonzero counts, indexed and index-free steps,
-wrapping accumulators, in-loop bindings, conditional updates, captured values,
-computations before/after the loop, and a zero-argument loop function.
-Three more range declarations cover direct local-function bindings, chained
-calls, accumulator capture across later updates, and unused local functions.
-Three further range declarations cover monadic step bindings, nested do
-computations and unused monadic values.
-Four further range declarations cover joined monadic branches, mutable branch
-updates followed by computation, continue, and nested branch continuations.
-Nine more declarations cover breaks, updates before breaks, joined binds,
-captured local functions, branch updates, continue mixed with break, both
-step-valued function shapes and unused done-returning functions.
-Three further declarations use direct step constructors in a callback and both
-local continuation shapes, mixing yielding steps with updated done values.
-Five more cover standard Nat literal bounds: zero, one, a small loop with break,
-a direct callback, and the maximum representable bound with an immediate exit.
-Eight further declarations cover nested step-valued Id computations, computed
-pure values, result aliases, lexical captures, monadic result binds, Id-typed
-lets, unused done values and multiply wrapped Id annotations.
-Six more exercise a joined monadic step-result branch, functions receiving step
-results, chained calls, captured values across shadowing, ignored arguments,
-unused function bodies and nested Id annotations on these function types.
-Nine additional scalar declarations cover inequality, negation of every
-comparison family, repeated negation and negated comparisons in functions and
-monadic bindings. Three more range declarations exercise break, continue and
-step-result branch joins with negated conditions. Eleven further declarations
-cover nonzero literal starts, dynamic and literal stops, equal/reversed bounds,
-break/continue, captured helpers, joined result binds, high indices and immediate
-exit from a huge interval. Eleven more cover dynamic starts: computed and
-conditional endpoints, captured initial accumulators, high indices, equal and
-reversed bounds, huge intervals with immediate exits, continue and result joins.
-Twelve further declarations exercise literal strides: uneven distances, dynamic
-endpoints, captured initial accumulators, high indices, empty ranges, maximal
-steps, immediate exits, continue, result joins and an explicit unit step.
-Nine new pure declarations check two-argument local functions with argument
-order, captures/shadowing, chained/nested helpers, unused bodies, monadic results,
-conditionals and computed arguments. Six further range declarations use these
-helpers in steps with captured indices/accumulators, Id results, break/continue,
-nested and unused helpers.
-Expected values come from `test/ArithmeticMilestone.lean`, independently of the
-extractor and IR evaluator. This check requires the repository's pinned Node
-24.13.0. Wasmtime continues to run the existing runtime suite; the V8 comparison
-is a separate check of the arithmetic theorem's integration with the actual CLI.
+The fixtures cover supported syntax combinations and arithmetic edge cases,
+including wrapping, zero divisors, high bits, shift counts, branch choices,
+captures, shadowing, and loop exits. Each execution mode retains the source
+admission and reserved-export checks. The driver reports the actual declaration
+and comparison counts for the chosen scope.
 
-For changes confined to range loops, `tools/arithmetic-check.js range-engine`
-checks the fixed range fixture group: 2,161 results across ninety-one declarations,
-including local functions, monadic bindings, branch continuations and breaks. It retains admission and reserved-export
-checks and saves its output under `.lake/arithmetic-check/range`. The full engine
-check remains available when a change affects the broader scalar grammar.
+For a focused increment, add its fixtures to a registered group, run that group
+and the general proof, and record the checked scope. Use the full or range modes
+when the affected behavior requires broader coverage. Run `tools/type-safety.js check`
+when changing the independent core's types, semantics or proofs; that check has
+its own `propext`-only axiom rule.
 
-For a narrow capability increment, `tools/arithmetic-check.js subset-engine
-<checked-group>` runs the fixed declarations listed in
-`test/arithmetic-engine-groups.json`. The driver and independent comparator use
-the same checked membership, retain admission and reserved-export checks, and
-save outputs under `.lake/arithmetic-check/subsets/<checked-group>`. Each new
-capability adds its fixtures to a fixed group of relevant existing cases. The
-initial `guard-core` group passed 295 comparisons across seventeen declarations.
-General compiler proofs and type validation still run for each increment; evidence
-records the actual execution group and counts rather than claiming a full-corpus
-rerun. Broader changes can use the existing full and range modes.
-
-Check the general proofs and all nine printed axiom dependencies with:
-
-```sh
-tools/arithmetic-check.js proof
-tools/type-safety.js check
-```
-
-The proof check needs Python 3, Git and the pinned dependencies in
-`proofs/talos/lean/lake-manifest.json`. Use `tools/arithmetic-check.js all` when
-both proof and execution checks are affected. Commands run Lean serially through
-`tools/leanrun`; do not wrap these drivers in a second runner. Lake reuses
-unchanged dependencies. Logs and emitted modules are in `.lake/arithmetic-check`.
-The independent type-safety check retains its `propext`-only axiom rule.
+Execution checks require pinned Node 24.13.0. Proof checks need Python 3, Git,
+and the pinned dependencies in `proofs/talos/lean/lake-manifest.json`. Drivers
+invoke Lean serially through `tools/leanrun`; do not wrap them in another runner.
+Lake reuses unchanged dependencies. Logs, native results and emitted modules are
+written under `.lake/arithmetic-check`, with separate `range` and `subsets/<group>`
+directories for the focused modes.
 
 ## The theorem
 
@@ -519,451 +461,10 @@ sources are rebuilt inside this package. `verification.log` and
 runner on macOS. Local execution uses the same explicit authorization and
 runner environment as normal development.
 
-Subsequent language extensions will be completed individually through source
-support, production compilation, proofs and execution tests. Checks should
-follow the affected dependencies, without repeating unrelated full suites.
-
-The [2026-09-24 arithmetic checkpoint](../proofs/compiler/arithmetic-2026-09-24/README.md)
-retains the completed proof, execution and type-safety checks plus the independently
-verified source archive and its hash. It is a fixed arithmetic milestone; later
-language extensions are tracked separately in `task.md`.
-
-The [let-binding increment](../proofs/compiler/let-2026-09-24/README.md) extends the
-general theorem and execution check to pure UInt64 bindings, with 142 matching
-results over twelve declarations. It retains focused evidence without rebuilding
-the fixed arithmetic distribution package.
-
-The [conditional increment](../proofs/compiler/conditionals-2026-09-25/README.md)
-adds the seven comparison forms and nested branches, with the general proof,
-all nine audits, and 254 matching results across twenty declarations.
-
-The [pure do increment](../proofs/compiler/do-2026-09-25/README.md) adds standard
-Id operations, sequential updates and early returns, with all nine audits and
-339 matching results across twenty-seven declarations.
-
-The [local-function increment](../proofs/compiler/local-functions-2026-09-25/README.md)
-adds lexical captures and branch continuations, with all nine audits and 437
-matching results across thirty-four declarations.
-
-The [range-loop increment](../proofs/compiler/range-2026-09-25/README.md) adds one
-bounded yielding range loop, with all nine audits and 582 matching results
-across forty-one declarations.
-
-The [local functions in loop steps increment](../proofs/compiler/range-local-functions-2026-09-25/README.md)
-adds direct function bindings in the yielding body, with all nine audits and
-217 matching results across the focused ten-declaration range group.
-
-The [monadic loop-step increment](../proofs/compiler/range-do-2026-09-25/README.md)
-adds straight-line Id monadic bindings in the yielding body, with all nine
-audits and 289 matching results across thirteen range declarations.
-
-The [branching loop-step increment](../proofs/compiler/range-branches-2026-09-25/README.md)
-adds yielding branch continuations and continue, with all nine audits and 385
-matching results across seventeen range declarations.
-
-
-The [early-exit range increment](../proofs/compiler/range-break-2026-09-25/README.md)
-adds break and done-returning continuations, with all nine audits and 601
-matching results across twenty-six range declarations. It preserves the initial
-borrowed-Nat metadata failure and the checked correction. This increment ran the focused range group; the larger full suite was not rerun.
-
-
-The [direct step-constructor increment](../proofs/compiler/range-direct-2026-09-25/README.md)
-adds unwrapped done/yield expressions and continuations returning them, with
-all nine audits and 673 matching results across twenty-nine range declarations.
-All twenty-six prior range modules retained identical bytes. The 1,110-result
-full suite is configured but was not rerun for this focused increment.
-
-
-The [literal range-count increment](../proofs/compiler/range-count-2026-09-25/README.md)
-adds bounded standard Nat literal stops, with all nine audits and 793 matching
-results across thirty-four range declarations. All twenty-nine prior range
-modules retained identical bytes. The full 1,230-case suite is configured;
-this increment ran the focused range group.
-
-
-The [step-result binding increment](../proofs/compiler/step-results-2026-09-25/README.md)
-adds nested Id computations, result lets, captures and straight-line monadic
-bindings, with all nine audits and 985 matching results across forty-two range
-declarations. All thirty-four prior range modules retained identical bytes.
-The focused source/IR test also passed 192 comparisons. The full 1,422-result
-suite remains configured; this increment ran the focused range group.
-
-
-The [step-result function increment](../proofs/compiler/result-functions-2026-09-25/README.md)
-adds functions taking complete loop-step results and the associated branching
-monadic continuations, with all nine audits and 1,129 matching results across
-forty-eight range declarations. All forty-two prior modules retained identical
-bytes. The focused source/IR test also passed 144 comparisons. The full
-1,566-result suite remains configured; this increment ran the focused range group.
-
-
-The [negative-condition increment](../proofs/compiler/negative-conditions-2026-09-25/README.md)
-adds UInt64 inequality and repeated propositional negation, with all nine audits
-and 1,764 matching results across the full ninety-four-declaration engine group.
-All eighty-two prior modules retained identical bytes. The focused source/IR
-test passed 198 comparisons. This increment used the full execution group because
-the shared comparison model affects scalar expressions and range loops.
-
-
-The [literal-start interval increment](../proofs/compiler/range-interval-2026-09-25/README.md)
-adds nonzero starts with all nine audits and 1,465 matching results across
-sixty-two range declarations. All fifty-one earlier range modules retained
-identical bytes, and all 264 focused native Lean/IR comparisons passed. This
-increment ran the range group; the full 2,028-result group remains configured.
-
-
-The [dynamic-start increment](../proofs/compiler/range-dynamic-2026-09-25/README.md)
-adds UInt64-expression starts with all nine audits and 1,729 matching results
-across seventy-three range declarations. All sixty-two prior range modules
-retained identical bytes; all 264 focused native Lean/IR comparisons passed.
-This increment ran the range group, with the full 2,292-result group configured.
-
-
-The [literal-stride increment](../proofs/compiler/range-stride-2026-09-25/README.md)
-adds positive literal steps with all nine audits and 2,017 matching results
-across eighty-five range declarations. All seventy-three prior range modules
-retained identical bytes; all 288 focused native Lean/IR comparisons passed.
-This increment ran the range group, with the full 2,580-result group configured.
-
-
-The [two-argument function increment](../proofs/compiler/binary-functions-2026-09-25/README.md)
-adds local scalar helpers in pure expressions and range steps, with all nine
-audits and 2,850 matching results across the full 143-declaration group.
-All 128 prior modules retained identical bytes. The focused tests passed 270
-native Lean/IR comparisons and six rejection tests.
-
-
-The [two-argument step function increment](../proofs/compiler/binary-step-functions-2026-09-25/README.md)
-adds helpers returning done/yield with standard Id wrappers. All nine audits,
-2,401 native Lean/V8 comparisons across 101 range declarations, 240 focused
-native Lean/IR comparisons and five rejection tests passed. All 91 preceding
-range modules retained identical bytes.
-
-
-The [Boolean negation increment](../proofs/compiler/boolean-not-2026-09-25/README.md)
-adds repeated `!` guards with checked recognition, semantics, lowering, encoding
-and type validation. All nine audits, 3,298 native Lean/V8 comparisons across
-165 declarations, 208 focused native Lean/IR comparisons and three rejection
-tests passed. All 153 preceding modules retained identical bytes.
-
-
-The [helpers surrounding ranges increment](../proofs/compiler/range-outer-functions-2026-09-25/README.md)
-adds captured local functions defined before loops. All nine audits, 2,737
-native Lean/V8 comparisons across 115 range declarations, 240 focused native
-Lean/IR comparisons and four rejection tests passed. All 105 preceding range
-modules retained identical bytes.
-
-
-The [ordinary lets of loop results increment](../proofs/compiler/range-let-results-2026-09-25/README.md)
-adds pure continuations after a loop-valued UInt64 binding. All nine audits,
-2,977 native Lean/V8 comparisons across 125 range declarations, 240 focused
-native Lean/IR comparisons and three rejection tests passed. All 115 preceding
-range modules retained identical bytes.
-
-
-The [UInt64 complement increment](../proofs/compiler/complement-2026-09-25/README.md)
-adds direct and standard overloaded bitwise complement with proved XOR lowering.
-All nine audits, 3,986 native Lean/V8 comparisons across 197 declarations,
-208 focused native Lean/IR comparisons and three rejection tests passed.
-All 185 preceding modules retained identical bytes.
-
-
-The [compound guard increment](../proofs/compiler/compound-guards-2026-09-25/README.md)
-adds nested propositional conjunction and disjunction over admitted comparisons.
-All nine audits, 4,242 native Lean/V8 comparisons across 211 declarations,
-256 focused native Lean/IR comparisons and three rejection tests passed.
-All 197 preceding modules retained identical bytes.
-
-
-The [compound negation increment](../proofs/compiler/compound-negation-2026-09-25/README.md)
-adds repeated propositional Not at any level of a compound guard.
-All nine audits, 4,450 native Lean/V8 comparisons across 223 declarations,
-208 focused native Lean/IR comparisons and three rejection tests passed.
-All 211 preceding modules retained identical bytes.
-
-
-The [Boolean compound increment](../proofs/compiler/boolean-compound-2026-09-25/README.md)
-adds Boolean &&/|| over UInt64 comparisons, with repeated ! at any nesting level.
-All nine audits, 4,658 native Lean/V8 comparisons across 235 declarations,
-208 focused native Lean/IR comparisons and three rejection tests passed.
-All 223 preceding modules retained identical bytes.
-
-
-The [mixed guard increment](../proofs/compiler/mixed-guards-2026-09-25/README.md)
-allows compound Boolean subtrees inside propositional conjunction, disjunction
-and negation. All nine audits, 4,866 native Lean/V8 comparisons across 247
-declarations, 208 focused native Lean/IR comparisons and three rejection tests
-passed. All 235 preceding modules retained identical bytes.
-
-
-The [UInt64 min/max increment](../proofs/compiler/extrema-2026-09-25/README.md)
-adds standard minimum and maximum with proved unsigned comparison/selection.
-All nine audits, 5,074 native Lean/V8 comparisons across 259 declarations,
-208 focused native Lean/IR comparisons and three rejection tests passed.
-All 247 preceding modules retained identical bytes.
-
-
-The [literal-guard increment](../proofs/compiler/literal-guards-2026-09-25/README.md)
-adds Boolean and propositional literals throughout mixed guards. All nine audits,
-503 native Lean/V8 comparisons in the fixed 29-declaration group, 208 focused
-native Lean/IR comparisons and three rejection tests passed. The seventeen
-selected preceding modules retained identical bytes. The full corpus contains
-271 declarations; the preceding full execution checkpoint covers 259.
-
-
-The [PUnit continuation increment](../proofs/compiler/punit-continuations-2026-09-25/README.md)
-adds the unit spelling used by further generated do joins. All nine audits,
-453 native Lean/V8 comparisons in the fixed 24-declaration group, 228 focused
-native Lean/IR comparisons and three rejection tests passed. The twelve selected
-preceding modules retained identical bytes. The full corpus contains 283
-declarations; the preceding full execution checkpoint covers 259.
-
-
-The [scalar Id annotation increment](../proofs/compiler/id-annotations-2026-09-25/README.md)
-adds retained nested Id types to results and standard run/pure/bind operations.
-All nine audits, 471 native Lean/V8 comparisons in the fixed 26-declaration group,
-208 focused native Lean/IR comparisons and three rejection tests passed. The
-fourteen selected preceding modules retained identical bytes. The full corpus
-contains 295 declarations; the preceding full execution checkpoint covers 259.
-
-
-The [finite-arity helper increment](../proofs/compiler/finite-arity-2026-09-25/README.md)
-removes the two-argument limit on local scalar helpers with shared checked
-parameter, application and closure rules. All nine compiler audits and all 571
-native Lean/V8 comparisons across the fixed 31-declaration group passed. All 256
-new native Lean/IR comparisons, four declaration rejection tests and two raw
-arity rejection tests passed; the preceding helper test passes 140 comparisons
-and three rejection tests after moving its three-argument case into positive
-coverage. The preceding outer-helper test passes 264 comparisons and three
-rejection tests after moving its equivalent case into positive coverage.
-The seventeen selected prior modules retained identical bytes. The
-full corpus contains 309 declarations; this was a focused execution run. Step-result
-helper arities were completed in the following increment.
-
-
-The [finite-arity step-helper increment](../proofs/compiler/step-finite-arity-2026-09-25/README.md)
-removes the corresponding argument limit for helpers returning complete loop
-results. Shared parsing and argument rules retain separate scalar/step closure
-kinds and prove both the value and stop flag. All nine compiler audits and all
-609 native Lean/V8 comparisons in the fixed 28-declaration group passed. All
-240 new native Lean/IR comparisons, four declaration rejection tests and two
-raw arity rejection tests passed. The preceding step-helper test passed 264
-comparisons and four rejection tests after its three-argument case became
-positive. Eighteen selected prior modules kept identical bytes. The full corpus
-contains 319 declarations; this was a focused execution run.
-
-
-The [dependent-conditional increment](../proofs/compiler/dependent-if-2026-09-25/README.md)
-adds `if h : condition then … else …` with exact decisions and proof-lambda
-domains, retaining the erased binder in each branch. All nine compiler audits
-and all 623 native Lean/V8 comparisons in the fixed 34-declaration group passed.
-All 304 focused native Lean/IR comparisons, four declaration rejection tests
-and four proof-domain rejection tests passed. The eighteen selected preceding
-modules kept identical bytes. The full corpus contains 335 declarations; this
-was a focused execution run.
-
-
-The [Boolean-local increment](../proofs/compiler/boolean-locals-2026-09-25/README.md)
-adds ordinary Boolean lets and Boolean conditions over saved flags, keeping
-Boolean and UInt64 binding kinds distinct. Scalar code, helper captures, loop
-steps and outer loop bindings have checked source and extraction rules. All
-nine compiler audits and all 623 native Lean/V8 comparisons in the fixed
-34-declaration group passed. All 304 focused native Lean/IR comparisons, four
-declaration rejection tests and four binding-kind rejection tests passed.
-Eighteen selected preceding modules kept identical bytes. The full corpus
-contains 351 declarations; this was a focused execution run.
-
-The [dependent Boolean-local increment](../proofs/compiler/boolean-dependent-2026-09-25/README.md)
-combines saved Boolean flags with dependent conditionals in scalar expressions,
-helper captures and loop steps. All nine audits and 623 native Lean/V8
-comparisons passed across a fixed 34-declaration group. The focused source test
-passed 304 native/IR comparisons and ten rejection checks for unsupported
-bodies, custom decisions, wrong proof domains and reads of erased binders.
-Eighteen selected preceding modules kept identical bytes. The full corpus
-contains 367 declarations. The retained first failure identifies a separate
-literal-instance wrapper elaboration, which remains outside this checkpoint.
-
-The [literal-instance increment](../proofs/compiler/literal-instances-2026-09-25/README.md)
-handles standard numeral instances behind constant let/lambda/application and
-metadata wrappers. The original captured-helper failure now passes unchanged.
-All nine audits and 537 native Lean/V8 comparisons passed across a fixed
-30-declaration group, with 208 focused native/IR comparisons, nine rejection
-tests and one metadata check. Eighteen selected preceding modules kept identical
-bytes. The full corpus contains 379 declarations. Standard Nat numeral
-expressions in explicit instance arguments remain a separate next capability.
-
-The [natural-numeral increment](../proofs/compiler/natural-numerals-2026-09-25/README.md)
-accepts standard Nat numeral expressions in UInt64 conversions and numeric
-instance positions, including borrowed-type and value metadata. Both recorded
-failure forms from the preceding increments now pass unchanged. All nine audits
-and 537 native Lean/V8 comparisons passed across a fixed 30-declaration group.
-The focused source test passed 208 native/IR comparisons, nine rejection checks
-and two metadata checks. Eighteen selected preceding modules kept identical
-bytes. The full corpus contains 391 declarations; this was a focused run.
-
-The [Boolean-bind increment](../proofs/compiler/boolean-bind-2026-09-25/README.md)
-supports standard Id Boolean monadic bindings in scalar expressions, helpers,
-loop steps and before/after a loop. Actions retain Boolean and nested Id
-annotations. All nine audits and 623 native Lean/V8 comparisons passed across
-34 declarations. All 304 focused native/IR comparisons, ten rejection tests
-and two metadata checks passed. The recorded initial Id Bool annotation
-failure now passes unchanged. Eighteen selected preceding modules kept
-identical bytes. The full corpus contains 407 declarations; this was a focused
-run with cached dependencies.
-
-The [Boolean-choice increment](../proofs/compiler/boolean-choice-2026-09-25/README.md)
-adds Boolean-valued conditionals over Boolean guards throughout bindings,
-helper captures and loop code. Nested choices also work directly as conditions.
-All nine audits and 623 native Lean/V8 comparisons passed across 34 declarations.
-The 304 new native/IR comparisons and twelve rejection tests passed on the
-first execution run. Earlier Boolean-local/dependent tests also passed unchanged:
-608 comparisons and eighteen rejections. Eighteen selected preceding modules
-kept identical bytes. The full corpus contains 423 declarations. Propositional
-guards inside Boolean-valued choices remain a separate following increment.
-
-The [propositional-choice increment](../proofs/compiler/proposition-choice-2026-09-25/README.md)
-adds Boolean results selected by all six UInt64 comparisons and existing closed
-propositional literal, negation and junction guards. All nine audits and 623
-native Lean/V8 comparisons passed across 34 declarations. The 304 new native/IR
-comparisons and twelve rejection tests passed on the first execution run. The
-preceding Boolean-choice fixture also passed unchanged: 304 comparisons and
-twelve rejections. Eighteen selected preceding modules kept identical bytes.
-The full corpus contains 439 declarations; this was a focused execution run.
-
-The [Boolean-function increment](../proofs/compiler/boolean-function-2026-09-25/README.md)
-adds unary Bool-parameter scalar and step-result helpers, conditional Boolean
-binds and pure scalar helpers surrounding loops. All nine audits and 647 native
-Lean/V8 comparisons passed over 35 declarations. The 328 new native/IR comparisons
-and sixteen rejection checks pass; the preceding propositional-choice fixture
-passes unchanged (304 comparisons and twelve rejection checks). Eighteen selected
-preceding modules kept identical bytes. Three original conditional-bind examples
-now compile unchanged. Initial fixture annotation and unsupported-decide failures
-are retained with the final results. The full corpus contains 456 declarations;
-this was a focused execution run.
-
-The [decide increment](../proofs/compiler/decide-2026-09-25/README.md) adds explicit
-and implicit Bool-valued decisions over the existing closed guard grammar. All
-nine audits and 623 native Lean/V8 comparisons passed across 34 declarations.
-The 304 new native/IR comparisons and twelve rejection checks passed on their
-first run. The preceding Boolean-function fixture passed unchanged (328
-comparisons and sixteen rejections), and eighteen selected preceding modules
-kept identical bytes. Five original inspected examples now compile unchanged.
-The full corpus contains 472 declarations; this was a focused execution run.
-
-The [Boolean-to-word increment](../proofs/compiler/boolean-word-2026-09-25/README.md)
-adds Bool.toUInt64 for admitted Boolean values throughout scalar and loop code.
-All nine audits and 623 native Lean/V8 comparisons passed across 34 declarations.
-The 304 new native/IR comparisons and seventeen rejection checks passed on their
-first fixture run. The preceding decide fixture passed unchanged (304 comparisons
-and twelve rejections), and eighteen selected preceding modules kept identical
-bytes. Four original examples now compile unchanged. The full corpus contains
-488 declarations; this was a focused execution run.
-
-The [Boolean-equality increment](../proofs/compiler/boolean-equality-2026-09-25/README.md)
-adds `==` and `!=` between admitted Boolean values. All nine audits and 623 native
-Lean/V8 comparisons passed across 34 declarations. The 304 new native/IR comparisons
-and twenty rejection checks passed on their first fixture run. The preceding
-Boolean-conversion fixture passed unchanged (304 comparisons and seventeen
-rejections), and eighteen selected preceding modules kept identical bytes.
-Five original examples now compile unchanged. The complete corpus contains
-504 declarations; this was a focused execution run.
-
-The [Boolean-proposition increment](../proofs/compiler/boolean-proposition-2026-09-25/README.md)
-adds Eq/Ne Boolean conditions with scalar/step results, including dependent
-branches. Candidate `d4b102ba` passed all nine audits and 623 native Lean/V8
-comparisons across 34 declarations, plus 304 focused native/IR comparisons and
-44 rejection checks. The prior equality, Boolean-local and dependent fixtures
-each passed 304 comparisons and twenty/eight/ten rejection tests. Eighteen
-selected prior modules kept identical bytes; five original examples now compile
-unchanged. Initial notation-precedence failures and their elaborated source are
-retained. The complete corpus contains 520 declarations; this execution was focused.
-
-The [Boolean-local-decide increment](../proofs/compiler/boolean-local-decide-2026-09-25/README.md)
-adds explicit and implicit decisions on Boolean equality/inequality and truth
-coercions, including saved flags and nested decisions. Candidate `25a0d3b5`
-passed all nine audits and 623 native Lean/V8 comparisons across 34 declarations.
-The first focused fixture passed 304 native/IR comparisons and 36 rejection
-checks. Both prior proposition-guard and closed-decide fixtures passed unchanged
-with 304 comparisons and 44/twelve rejections respectively. Eighteen selected
-prior modules kept identical bytes. Five original examples and two retained
-notation failures now compile unchanged and pass execution checks. The complete
-corpus contains 536 declarations; this was a focused execution run.
-
-The [Boolean-relation-choice increment](../proofs/compiler/boolean-relation-choice-2026-09-25/README.md)
-adds Boolean results selected directly by Boolean Eq/Ne, including saved flags.
-Candidate `2b75649b` passed all nine audits and 623 native Lean/V8 comparisons
-across 34 declarations. The first focused fixture passed 304 native/IR comparisons
-and 44 rejection checks. Prior Boolean-local-decide and original Boolean-choice
-fixtures passed unchanged with 304 comparisons and 36/twelve rejections. Eighteen
-selected prior modules kept identical bytes; a proved literal-true specialization
-preserves ordinary Boolean-choice lowering. Five original examples now compile
-unchanged. The complete corpus contains 552 declarations; this execution was focused.
-
-The [dependent Boolean-result increment](../proofs/compiler/boolean-dependent-choice-2026-09-25/README.md)
-adds Boolean results from proof-binding conditionals. Candidate `ba0b0f70` passed
-all nine audits and 623 native Lean/V8 comparisons across 34 declarations. The
-first focused fixture passed 304 native/IR comparisons and 76 rejection checks.
-Prior ordinary relation-choice and dependent-condition fixtures passed unchanged
-with 304 comparisons and 44/ten rejections. Binder transformations have checked
-inverse/size proofs and independent native comparisons over 4,452 positions.
-Five original examples now compile unchanged; eighteen selected prior modules
-kept identical bytes. The complete corpus has 568 declarations; this run was focused.
-
-The [Boolean-let increment](../proofs/compiler/boolean-let-2026-09-25/README.md)
-adds Bool bindings inside Boolean expressions. Candidate `d7368686` passed all
-nine audits and 623 native Lean/V8 comparisons across 34 declarations. The first
-focused fixture passed 304 native/IR comparisons and 44 rejection checks. Prior
-dependent-choice and Boolean-local fixtures passed unchanged with 304 comparisons
-and 76/eight rejections. Five original examples now compile unchanged; eighteen
-selected prior modules kept identical bytes. The complete corpus has 584
-declarations; this execution run was focused.
-
-The [word-let Boolean increment](../proofs/compiler/boolean-word-let-2026-09-25/README.md)
-adds UInt64 bindings inside Boolean results. Candidate `2477b2bb` passed all nine
-audits and 623 native Lean/V8 comparisons across 34 declarations. The first
-focused fixture passed 304 native/IR comparisons and 68 rejections. A preceding
-word-binding exclusion was promoted unchanged; the updated Boolean-let fixture
-passed 318 comparisons and 39 rejections. Prior dependent-choice tests passed
-unchanged with 304 comparisons and 76 rejections. Five original examples now
-compile unchanged; eighteen selected prior modules kept identical bytes. The
-full corpus has 600 declarations; this execution run was focused.
-
-The [annotated-let increment](../proofs/compiler/boolean-let-annotation-2026-09-25/README.md)
-adds standard nested Id annotations on Boolean/word bindings inside Boolean
-expressions. Candidate `1feb91fb` passed all nine audits and 623 native Lean/V8
-comparisons across 34 declarations. The focused fixture passed 304 native/IR
-comparisons and 100 rejections after correcting generated scalar operand types
-and annotated arithmetic result types; both failures and the unchanged test
-source are retained. A primitive test passed 420 native/IR comparisons and 100
-malformed-head rejections across all ten word operations. Five valid original
-examples now compile unchanged. Prior word-let/Boolean-let fixtures passed
-304/318 comparisons and 68/39 rejections unchanged; eighteen prior modules kept
-identical bytes. The full corpus has 616 declarations; this execution was focused.
-
-The [nested Boolean Id increment](../proofs/compiler/boolean-nested-id-2026-09-25/README.md)
-adds standard Id.run/pure and metadata at recursive Boolean expression positions,
-sharing syntax with existing Boolean actions. Candidate `44637199` passed all
-nine audits and 623 native Lean/V8 comparisons across 34 declarations. The
-focused fixture passed 304 native/IR comparisons and 164 rejections; five original
-examples compile unchanged. Prior annotated-let/word-let fixtures passed 304
-comparisons each and 100/68 rejections unchanged; eighteen prior modules kept
-identical bytes. The full corpus has 632 declarations; this execution was focused.
-
-The [ordinary Id-let increment](../proofs/compiler/id-let-2026-09-25/README.md)
-adds nested standard Id annotations on ordinary lets and matching typed numeral
-instances across scalar, step and range code. Candidate `cef8b86e` passed all
-nine audits and 623 native Lean/V8 comparisons across 34 declarations. The first
-focused fixture passed 304 native/IR comparisons, eighteen typed-numeral comparisons
-and 148 rejection tests. Five original examples compile unchanged. Prior nested-Id
-and annotated-Boolean-let fixtures passed 304 comparisons each and 164/100 rejection
-tests unchanged; eighteen prior modules kept identical bytes. The full corpus has
-648 declarations; this execution was focused.
-
-The [arithmetic Id-annotation increment](../proofs/compiler/id-arithmetic-2026-09-25/README.md)
-checks nested Id types on both arithmetic inputs, results and standard instance
-adapter types. Candidate `49f79f0f` passed nine compiler audits and 527 native
-Lean/V8 comparisons across thirty declarations before the ciogpt integration.
-Focused fixtures passed 1,048 native/IR comparisons and 304 rejection tests;
-five valid original probes compile unchanged. Eighteen prior modules kept
-identical bytes. The corpus has 660 declarations; that execution run was focused.
+## Evidence
+
+[Compiler evidence packages](../proofs/compiler) retain checked source revisions,
+theorem audit logs, native expected results, emitted modules, hashes, and the
+execution scope for each recorded check. The [active task](../task.md) identifies
+the checks relevant to current work. A package's results apply to its recorded
+sources and bytes; its manifest identifies that boundary.

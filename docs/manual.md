@@ -69,6 +69,7 @@ Choose the compile command from the entry type.  Pure WASI adapters add command 
 
 | Entry type | Command | Runtime behavior |
 |------------|---------|------------------|
+| Admitted `UInt64` scalar declaration | `compile-arithmetic` | Requires the source grammar covered by the general compiler theorem and exports a callable WASM function. |
 | Scalar or ABI value function | `compile` | Exports a callable WASM function, `memory`, `alloc`, and `reset`. |
 | Accepted pure entry | `compile-wat` | Serializes the compiled module as WAT from the same lowering as `compile`; `tools/check-wat.sh` checks the two byte for byte. |
 | `ByteArray` | `compile-wasi` | Calls the entry and writes returned bytes to stdout. |
@@ -81,6 +82,14 @@ Choose the compile command from the entry type.  Pure WASI adapters add command 
 Library-mode array and byte-array values use exported memory.  Hosts allocate input bytes with `alloc`, write data into `memory`, pass pointer-length pairs, and read returned pointer-length pairs before releasing owned root pointers or calling `reset`.  Command-mode programs hide that host ABI behind WASI.
 
 `compile --module <module> --entries <name,...> --out <path>` exports several declarations from one loaded Lean environment.  Names are comma-separated and must have distinct final components, which become the WASM export names.  Each entry must satisfy the public ABI restrictions.  The compiler extracts their shared helper functions once and adds an ABI wrapper for each entry.  The wrappers pass borrowed input owners and return the public result slots.  Calls between the declarations use their internal representations.  All exports share the module's memory, heap, and runtime counters.  `--annotations <path>` is also supported for this command.
+
+Use `compile-arithmetic` when the [general compiler theorem](arithmetic-correctness.md)
+is the required guarantee. Its grammar includes supported scalar operations,
+Boolean locals, bindings, conditionals, pure `Id` blocks, local functions, and
+one bounded range loop with supported `continue` and `break` forms. It rejects
+source outside that grammar instead of falling back to broader extraction.
+Ordinary `compile` accepts more of the dialect; compilation success alone does
+not give every such program a general source-to-WASM correctness theorem.
 
 ## Byte Input and Output
 
@@ -940,7 +949,12 @@ Use existing examples as templates:
 
 | Need | Example |
 |------|---------|
+| Scalar code covered by the general compiler theorem | [Arithmetic source](../LeanExe/Examples/Arithmetic.lean), [compiler proof guide](arithmetic-correctness.md) |
 | Scalar arithmetic | [Collatz Example](../LeanExe/Examples/Collatz.lean), [Prime Example](../LeanExe/Examples/Prime.lean) |
+| FP32 or quantized transformer inference | [GPT guide](gpt/README.md), [GPT-2 source](../LeanExe/Models/Gpt2/README.md) |
+| Streaming byte input and output | [Byte I/O examples](../LeanExe/Examples/ByteIO.lean), [running sum](#running-sum) |
+| Several exports sharing a module | [Export examples](../LeanExe/Examples/Exports.lean) |
+| Numerical kernels and complete flow calculations | [Numerical examples](../data/numerical/README.md), [Euler solver](../data/euler-reconstructed-v1/README.md) |
 | Compile-time strings and byte arrays | [ByteArray Programs](../LeanExe/Examples/ByteArrayPrograms.lean) |
 | ASCII validation and text processing | [ASCII String Programs](../LeanExe/Examples/AsciiStringPrograms.lean) |
 | Open-addressed table structure | [Integer Map Example](../LeanExe/Examples/IntMap.lean) |
