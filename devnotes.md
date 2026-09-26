@@ -17520,3 +17520,7 @@ The runner binary and the artifact generator's binary have the same SHA-256: `97
 The generated Beck program and the complete runtime-definition check pass.  The combined proof command fails only at `Project.Beck.AnnotationMatches`.  The six-job demonstration returns groups `[0,1,0,1,1,1]`, overlap two, and category differences `[0,2,2]` against bound three.  All three categories contain four jobs.  The arithmetic-representation decision remains pending.
 
 The user approved cofactor directions and a shared denominator, requested continued work through end-to-end verification, and authorized frequent commits and pushes to `beck`.  The first progress commit preserves the executable prototype, passing component proofs, tests, and diagnosed annotation failure before replacing the arithmetic representation.
+
+### Beck scalar annotation metadata
+
+Corrected the shared scalar expression programs to retain the i32 or i64 result type of each value-producing conditional.  The execution proof normalizes metadata at the WP boundary through the existing proved Talos adapter.  The Beck prototype annotation equalities now check.  SequenceSoftmax and TinyGpt2Seq annotation modules also check with the corrected shared representation.  The first prototype commit, `3546fbf1`, is pushed to `origin/beck`.

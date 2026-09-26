@@ -55,4 +55,4 @@ tools/talos-artifact.js prepare beck
 
 The registration remains incomplete.  An exact-binary package and a universal theorem connecting the current executable to the discrepancy bound have not been completed.  The [development plan](../plans/beck.md) records the remaining proof gates and the proposed arithmetic simplification.
 
-The current generated annotation module fails its GCD-loop equality check: the shared scalar-loop proof representation omits result-type metadata present in the decoded instructions.  The [development journal](../devnotes.md) records the failure and its cause.
+The generated annotation equalities pass after correcting result-type metadata in the shared scalar-loop proof representation.  The [development journal](../devnotes.md) records the original failure, its cause, and checks on two other artifacts.
