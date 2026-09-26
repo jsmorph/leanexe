@@ -362,5 +362,11 @@
   "rangeBooleanApplyCapture",
   "rangeNamedBooleanBreak",
   "rangeNamedBooleanContinue",
-  "rangeNamedBooleanCapture"
+  "rangeNamedBooleanCapture",
+  "rangeReusableBooleanBreak",
+  "rangeReusableBooleanContinue",
+  "rangeReusableBooleanCapture",
+  "rangeReusableBooleanNested",
+  "rangeReusableBooleanStepHelper",
+  "rangeReusableBooleanUnused"
 ]

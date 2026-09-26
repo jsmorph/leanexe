@@ -17,8 +17,13 @@ The new focused tests pass 1,148 native/IR comparisons and 864 invalid-input
 checks. Prior named-helper tests pass 2,200 comparisons and 720 rejections.
 Evidence is in [the reusable Boolean helper archive](proofs/compiler/reusable-boolean-2026-09-26/README.md).
 
-Next: reusable predicate declarations in loop-step bodies, then around loops
-and broader helper signatures. Full-dialect correctness remains unfinished.
+Reusable predicate declarations in loop-step bodies now have proved source
+totality, acceptance, soundness, evaluation correctness and IR invariants.
+Six concrete loops and systematic binder/annotation cases pass 1,872 native/IR
+comparisons and 864 invalid-input tests. The full theorem and the selected
+native/Wasm checks are being completed.
+Next are predicates around loops and broader helper signatures.
+Full-dialect correctness remains unfinished.
 Get each capability proved and executing end to end, and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
