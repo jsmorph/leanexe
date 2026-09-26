@@ -1036,3 +1036,21 @@ the forthcoming unwind loop. Failed runs remain in `build/logs`.
 `build/logs/drone-history-5.log` passes all 3,600 jobs, and every new axiom
 audit is standard-only. Route unwinding/reversal and final compiled
 compute/safety transfer remain open.
+
+The compiled route-unwind step is now checked end to end. It emits speed and
+altitude with two preserved, budgeted pushes; reads the parent through checked
+saturated subtraction, multiplication, addition, and array access; decrements
+the terrain index; and releases the tracked prior output while preserving
+terrain, history, and caller-live arrays. `drone-unwind-step-1.log` passes all
+3,572 jobs, with the composed step checking in 3.9 seconds and standard-only
+axioms. Explicit scratch values and checked-index arguments avoid the
+metavariable/normalization failures seen in earlier parent-read attempts.
+
+`ParentBounds.computed_parent` independently proves that every stored parent
+is below 45, without additional terrain assumptions. `WordArrayGenerateLoop`
+provides a checked framed UInt64 array-fill loop using `PrefixAt`, needed for
+the emitted reverse-copy. These checks are recorded in
+`drone-parent-bounds-2.log` and `word-array-generate-2.log`. The terminating
+unwind loop, reversal wrapper, and compiled compute/safety transfer remain
+open; reverse-read/copy files are still being checked and are not part of
+this verified checkpoint.
