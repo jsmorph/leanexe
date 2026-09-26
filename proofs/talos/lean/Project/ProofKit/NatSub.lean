@@ -41,4 +41,34 @@ theorem program_spec (leftLocal rightLocal : Nat) (module_ : Wasm.Module)
 
 #print axioms program_spec
 
+theorem guard_spec (leftLocal rightLocal : Nat) (module_ : Wasm.Module)
+    (env : HostEnv Unit) (store : Store Unit) (frame : Locals) (left right : Nat) (tail : List Value)
+    (hValues : frame.values = .i32
+      (if UInt64.ofNat left < UInt64.ofNat right then 1 else 0) :: tail)
+    (hLeft : frame.get leftLocal = some (.i64 (UInt64.ofNat left)))
+    (hRight : frame.get rightLocal = some (.i64 (UInt64.ofNat right)))
+    (hLeftFit : left < UInt64.size) (hRightFit : right < UInt64.size)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp module_ rest Q store
+      { frame with values := .i64 (UInt64.ofNat (left - right)) :: tail } env) :
+    wp module_ (.iff 0 1 [.constI64 0]
+      [.localGet leftLocal, .localGet rightLocal, .subI64] :: rest) Q store frame env := by
+  have hLeftRead := hLeft
+  have hRightRead := hRight
+  simp only [Locals.get] at hLeftRead hRightRead
+  refine wp_iff_cons hValues ?_
+  by_cases hLt : UInt64.ofNat left < UInt64.ofNat right
+  · have hSub : left - right = 0 := by
+      have := UInt64.lt_iff_toNat_lt.mp hLt
+      rw [UInt64.toNat_ofNat_of_lt' hLeftFit, UInt64.toNat_ofNat_of_lt' hRightFit] at this
+      omega
+    simpa [wp_simp, hLt, hSub, hValues] using hNext
+  · have hLe : right ≤ left := by
+      have := UInt64.lt_iff_toNat_lt.not.mp hLt
+      rw [UInt64.toNat_ofNat_of_lt' hLeftFit, UInt64.toNat_ofNat_of_lt' hRightFit] at this
+      omega
+    simpa [wp_simp, hLt, UInt64.ofNat_sub hLe, hValues, hLeftRead, hRightRead] using hNext
+
+#print axioms guard_spec
+
 end Project.ProofKit.NatSub

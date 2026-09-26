@@ -17496,3 +17496,104 @@ All twelve selected runtime/documentation commands pass; byte I/O, quantization
 and mixed exports were repeated after the final extraction fix. The integration
 archive preserves failures, final results and hashes. Broader parent aggregates
 and unrelated proof archives were not rebuilt. Main remains unchanged.
+
+## 2026-09-26: Drone technical report
+
+The user requested a detailed marXiv report on the drone work, with a stand-alone LeanExe section covering goals, capabilities, status, and the compiler-correctness results now on main.  The report uses drone revision `820b3958` for the planner and generated-model execution theorem and main revision `8dbb8e8a` for the general scalar/bounded-loop source-to-byte compiler theorem.  The two proof subjects remain distinct.  The report states the finite graph, point-mass assumptions, continuous-time guarantees, borrowed input, and allocation budget.  Historical execution comparisons are attributed to the committed development record because their original drivers and logs were excluded from that branch's commit scope.
+
+The marXiv standards and style manual were read before drafting.  The focused local check builds `Project.Drone.Spec` and `Project.Drone.SourceChecks` through the standard resource-limited runner.  Drafting, source review, PDF review, and submission are recorded in [the report review](paper/drone-verification-report/review-notes.md).
+
+The focused proof build and seven principal axiom audits passed.  Five fresh Wasmtime runs match native Lean word for word.  Their terrain and returned waypoint arrays produce five vector plots with continuous interpolation, retained CSV samples, and PNG copies.  The 16-page report passed technical and prose review, PDF text and layout checks, and metadata comparison.  The repository-wide documentation check still reports the inherited temporary-path reference in the older WGSL review.
+
+marXiv accepted the report as `2609.00019v1`.  The revised manuscript addresses all ten editorial remarks without changing its claims or execution evidence.  It defines the source-application relation and memory-capacity notation, removes repeated prose, and clarifies the proof-elaboration account.  Version 2 submission `22ebc45b02c0` is under review.  The first accepted archive PDF matches its submitted snapshot.
+
+The user requested fewer self-citations and restricted them to papers on morphism.com/marxiv.  The report now uses one LeanExe background citation, the public version 6 of *The LeanExe Subset: Types, Extraction, and Execution*.  Repository files have been removed from the bibliography.  The theorem appendix identifies implementation paths, and companion evidence retains the revisions used for the review.
+
+marXiv accepted version 2 with five wording remarks, addressed in the citation revision.  Submission `1f5f9e3f8eb1` requests version 3.  The report still has 16 pages and five plotted runs.  Its bibliography has one LeanExe background entry and three external references.  The metadata and PDF checks pass.
+
+marXiv accepted the citation revision as `2609.00019v3`.  The final review has three remarks concerning Talos and core type-safety citations and a proof-branch description.  The accepted report and full review are linked from its README.  The archived PDF equals the submitted and local PDFs.  The report uses the requested single LeanExe background reference and retains all five actual-run plots.
+
+The user requested an opening section on verification for practical applications with the repeated-ridges graph near the beginning.  The revised report places the context on page 1 and the graph at the top of page 2.  It explains the recorded run and distinguishes the drone's generated-model theorem, main's compiler result, and the physical assumptions.  The repeated-ridges plot now appears once, with a cross-reference from the later terrain discussion.  Two prose passes, metadata checks, and visual inspection passed for the 17-page PDF.
+
+marXiv accepted the opening-context revision as `2609.00019v4`.  The review retains two source-citation remarks and requests consolidation of the repeated binary-identification limitation.  The accepted archive PDF matches the submitted and local files.
+
+
+## Drone/main integration, 2026-09-26
+
+The user requested merging the advanced main branch into drone for a later
+merge back to main. Drone first fast-forwarded from `820b3958` to `b84d577e`,
+preserving the two newer report commits, then merged main at `8dbb8e8a`. The
+three conflicts were documentation: both appended journals, both task records,
+and both report index entries are retained. The automatic binary-emitter merge
+preserves the complete-result-suffix check used by drone's direct-call
+annotations alongside main's compiler changes. The pre-existing local drone
+case registration remains unstaged over main's expanded registry.
+
+The documentation gate passes all 182 maintained Markdown files. The seven
+whitespace findings in the full incoming diff are byte-for-byte inherited from
+main; the conflict resolutions introduce none. A focused build of the drone
+source and execution specifications is rebuilding the changed shared libraries
+before checking fresh compiler output and runtime comparisons.
+
+The combined proof build reached its ten-minute wall-clock limit while making
+progress, without a Lean error. Splitting out `Project.Drone.ExecutionHistory`
+completed its 3,600-job dependency graph and checked `buildHistory_exact` using
+only the standard logical axioms. The retained proof structure and shared
+lemmas required no merge edits. The source-driven artifact gate is now checking
+the merged compiler before finishing the specification.
+
+The merged compiler's cold build also reached the driver's ten-minute limit
+during native compilation, without a Lean error. Focused native-object builds
+of the extraction core and binary emitter completed, and the resumed compiler
+build passed. Fresh artifact generation exposed a real integration boundary:
+the drone cache changed in four functions (distance, rest duration, edge
+clearance, and initial-row construction). The maintained generator refreshed
+the model; its annotations were unchanged. The new 14,174-byte binary has SHA-256
+`33a4f94d391edb0ef3423be32fabde4596f36c711bc9639a21a49b223ca5ef46`.
+
+All 48 accepted planner cases and four empty/rejected inputs match the
+independent finite-graph reference with the new binary. The distance theorem
+checks unchanged, and the rest-duration theorem checks with its new local
+frame. Initial-row adapters are being updated for the reduced local frame and
+the guard that preserves the original seed and the next accumulator. Their
+loop invariant now records when the current root aliases the seed. No public
+correctness, safety, input, or allocation-budget statement is weakened.
+
+The generator protocol and cache tests pass. The aggregate source gate stops
+before compilation because the pre-existing unstaged registry entry includes
+Drone while `Project.Runtime.Checks` does not import it. That separate registry
+edit remains unstaged.
+
+The current distance, rest-duration, complete edge-duration, and initial-row
+execution theorems now pass. The initialization proof uses a 48-local frame,
+including the emitter's unused final local, and the shared UInt32 conjunction
+lemmas already used by the grid-loop proof. The strengthened internal invariant
+proves the seed-alias condition needed by the new release guard. The top-level
+source, correctness, and whole-flight safety statements remain unchanged. The
+final fresh-artifact and specification gate is running against these adapters.
+
+The final `tools/talos-proof.js check drone` gate passes: fresh compiler output
+and both generated caches agree, the 3,712-job specification build completes,
+and `Spec.compute_correct` and `Spec.compute_safe` depend only on `propext`,
+`Classical.choice`, and `Quot.sound`. The source-audit target passes all 2,001
+jobs. The direct-call annotation regression and 12 native Lean/WASM comparisons
+also pass, alongside the 52 independent planner comparisons already recorded.
+The registry still labels the local case incomplete; the focused gate therefore
+prints that status even though both public specifications are checked.
+
+All 13 WAT/direct-binary comparisons pass, and the final documentation check
+passes 182 maintained Markdown files. The full Node execution driver passes
+its version, process-routing, runner, and conformance-unit checks, then stops
+at the normative verifier digest test. This is inherited from main: its 17
+verifier source files are unchanged here, and hashing the committed
+`origin/main` files gives
+`7be51aa0ecdd90a2a87bcb905f43a2b0679a63cbfda9eab41085bea01a98d666`,
+while main's test expects
+`0b8486bea82c65a31ecdf332642f8d96fcf99f2726130f56707f373c02017194`.
+The complete execution aggregate is therefore not claimed to pass. Release
+identity work remains deferred as recorded in the development scope.
+
+A final fetch confirms main remains at `8dbb8e8a` and remote drone at `b84d577e`.
+The merge retains both parents and report histories, includes the checked drone
+proof adaptation, and leaves only the original 12-line drone registration
+addition unstaged. Public proof statements and planner source are unchanged.

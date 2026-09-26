@@ -1,0 +1,9 @@
+Decision: accept
+
+Accepted.
+
+## Remarks
+
+- Requirement 10, §3.3: “LeanExe uses the pinned Talos interpreter and proof libraries for WASM execution.”  Cite the Talos source and identify the pinned revision.  Reference [4] identifies the WebAssembly specification.
+- Requirement 10, §3.3: “The independent core type-safety development proves preservation and progress for its own typed syntax and semantics.”  Identify the development and cite the relevant proofs.
+- Requirement 12, Redundancy, §§1–2: “Relating a decoded drone binary to that model remains a separate proof obligation” and “A theorem identifying a decoded drone binary with that model remains a separate verification step” repeat the same limitation in consecutive sections.  Consolidate these scope statements.

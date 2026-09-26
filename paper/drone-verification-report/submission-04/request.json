@@ -1,0 +1,12 @@
+{
+  "title": "Verified Terrain-Following Flight Planning in LeanExe",
+  "authors": "Jamie Stephens",
+  "abstract": "A terrain-following planner must connect its discrete route choices to continuous clearance and motion bounds, and connect its implementation to that mathematical result. This report describes a LeanExe planner and Lean proofs of both connections. For every accepted nonempty terrain, the generated WebAssembly model terminates with exactly the source planner\u2019s waypoint array and a continuously differentiable point-mass flight that satisfies the specified spatial clearance and component speed bounds, with bounded acceleration between waypoints and one-sided bounds at joins. The execution theorem assumes a valid caller heap, a borrowed input array, and sufficient allocation headroom within 64 MiB. The planner minimizes exact traversal time and then sampled altitude excess over a finite layered graph. The proof covers integer arithmetic, predecessor selection, parent reconstruction, polynomial motion, allocation, copying, and release. Inputs contain at most 64 elevations, and each interior station has 45 altitude\u2013speed states. A rest-to-rest primitive proves feasibility for every accepted terrain. Identifying the decoded drone binary with the verified generated model remains a separate proof obligation. A self-contained account of LeanExe describes its language, artifact-verification method, and the scalar and bounded-loop compiler-correctness theorem now present on the main branch.",
+  "subject": "cs.LO",
+  "secondary": [
+    "cs.PL"
+  ],
+  "comments": "17 pages, five plotted runs in four figures",
+  "public": false,
+  "replaces": "2609.00019"
+}
