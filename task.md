@@ -8,47 +8,49 @@ annotation fix. This compiler-proof task remains active; the completed drone tas
 is preserved separately at the end of this file. Lean runs locally through
 `tools/leanrun`. Full-dialect correctness is not yet proved.
 
-The compound-decision extension is implemented. Propositional conjunction,
-disjunction and negation can contain standard comparisons whose arithmetic
-operands have different accepted annotations in the condition and decision
-expressions. The independent `GuardDecision` relation composes the proved
-`Reannotates` relation at comparison leaves and retains the exact enclosing
-propositions and standard instances. Canonical guards keep their admission path.
+Dependent scalar and loop-step conditionals now accept proved-equivalent
+arithmetic operands in standard decision evidence. `DecidedGuard` retains the
+original guard tree, original evidence and independent `GuardDecision` witness.
+Both proof-lambda domains are checked exactly. Erased proof binders retain their
+lexical positions, preserving outer variables and helper captures.
 
-The general source-to-WASM theorem and all fourteen axiom audits pass. The new
-focused tests pass 468 native/IR comparisons and 144 rejection tests. The previous
-atomic-annotation tests also pass: 1,550 comparisons and 990 rejection tests.
-The emitted-WASM execution group passes 903 native Lean/V8 comparisons across
-54 declarations, including sixteen range declarations. All 46 prior modules
-retain identical bytes; the full native fixture contains 694 declarations.
+The general source-to-WASM theorem and all fourteen axiom audits pass. Native
+Lean/V8 agree on 1,035 inputs across 62 declarations, including eighteen range
+declarations. All 54 prior modules retain identical bytes. The full native
+fixture contains 702 declarations. New focused tests pass 468 native/IR
+comparisons and 264 invalid-input tests. Previous dependent-if and compound
+syntax tests also pass: 304 and 336 comparisons, with eight and 144 rejections.
 
-The preceding atomic comparison increment is pushed and recorded in
-[the comparison operand archive](proofs/compiler/reannotation-2026-09-26/README.md):
-771 native Lean/V8 comparisons, 46 declarations, fourteen range declarations,
-and 35 prior modules with identical bytes. The original
-`rangeIdComparisonEvidenceAnnotations` loop compiles unchanged.
+Evidence, exact modules, source hashes and proof logs are in
+[the dependent decision archive](proofs/compiler/dependent-decision-2026-09-26/README.md).
+The preceding [compound guard](proofs/compiler/guard-decision-2026-09-26/README.md)
+and [atomic comparison](proofs/compiler/reannotation-2026-09-26/README.md) archives
+record their checked increments. The original comparison loop compiles unchanged.
 
-Evidence, exact modules, source hashes and retained diagnostics are in
-[the compound decision archive](proofs/compiler/guard-decision-2026-09-26/README.md).
-
-Next: extend proved decision evidence through dependent branches and saved
-decisions before continuing broader compiler coverage.
+Next: extend proved decision evidence through saved `decide` values and
+Boolean-result proposition choices. Then continue broader compiler coverage.
 Full-dialect correctness remains unfinished. Keep increments focused, get each
 capability proved and executing end to end, and commit/push frequently.
 
-## Dependent decision equivalence — in progress
+## Dependent decision equivalence — complete
 
-Dependent scalar and loop-step branches now retain a `DecidedGuard`: the original
-guard tree, original decision expression, and independent `GuardDecision`
-evidence. The recognizer accepts equivalent annotated arithmetic operands while
-checking both proof-lambda domains exactly. Branch contexts retain the erased
-proof binder, preserving outer variables and helper captures.
+The recognizer checks standard `GuardDecision` evidence and both exact
+proof-lambda domains. Scalar and loop-step source evaluation retain the erased
+binder. Canonical syntax helpers remain available through canonical witnesses.
 
-The scalar and step extraction/correctness proofs and the independent source
-reannotation evaluation proof pass. Focused tests pass 468 native/IR comparisons
-and 264 invalid-input tests, including incorrect proof domains. The full general
-compiler proof and emitted-WASM checks are next; this increment is not yet
-recorded as complete.
+Validation completed:
+
+- General source-to-WASM theorem and all fourteen axiom audits.
+- `scalar_dependent_decision.lean`: 132 comparisons across six scalar and two
+  range declarations, including nested binders, helpers and Id actions.
+- `scalar_dependent_decision_syntax.lean`: 336 comparisons and 264 invalid-input
+  checks of evidence, connective instances, propositions and proof domains.
+- Previous dependent-if and compound syntax tests: 640 comparisons, 152 rejections.
+- Native Lean/V8: 1,035 comparisons across 62 declarations; 54 prior binaries
+  unchanged. Source reannotation evaluation is rechecked with the new guard type.
+
+Saved decisions and Boolean-result proposition choices are the next annotation
+gap. Boolean compound subguards retain their exact standard evidence.
 
 ## Compound decision equivalence — complete
 
