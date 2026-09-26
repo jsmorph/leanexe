@@ -127,6 +127,16 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
       let annotation ← booleanType? type
       (booleanLocalOperands? body).map (fun value => .wrapped 0 (.pure annotation) value)
   | .mdata data body => (booleanLocalOperands? body).map (fun value => .wrapped 0 (.metadata data) value)
+  | .app (.lam name type body binder) value =>
+      match scalarResultType? type with
+      | some annotation => do
+          let b ← booleanLocalOperands? body
+          pure (.wordBinding 0 name (.application binder) value b annotation)
+      | none => do
+          let annotation ← booleanType? type
+          let v ← booleanLocalOperands? value
+          let b ← booleanLocalOperands? body
+          pure (.binding 0 name (.application binder) v b annotation)
   | expression => (booleanComparisonOperands? expression).map fun (op, a, b) => .compare op a b
 termination_by expression => sizeOf expression
 decreasing_by

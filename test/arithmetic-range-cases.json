@@ -356,5 +356,8 @@
   "rangeDependentReannotatedCompound",
   "rangeSavedReannotated",
   "rangeSavedReannotatedChoice",
-  "rangeSavedReannotatedDependentChoice"
+  "rangeSavedReannotatedDependentChoice",
+  "rangeBooleanApplyBreak",
+  "rangeBooleanApplyContinue",
+  "rangeBooleanApplyCapture"
 ]
