@@ -1,0 +1,32 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [17/17] Building LeanExe.Extract.ScalarBooleanFunctionLookup (864ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanFunctionLookup.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanFunctionLookup.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanFunctionLookup.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanFunctionLookup.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanFunctionLookup.setup.json --json
+error: LeanExe/Extract/ScalarBooleanFunctionLookup.lean:81:18: Type mismatch
+  meaning index
+has type
+  index ∈ Source.Scalar.booleanLetVariables indices →
+    ∀ (function : BooleanFunctionCompiler),
+      lookup index = some function →
+        ∀ (argument : IR.Expr) (value : UInt64) (target : IR.Expr),
+          argument.ScalarEval store value store →
+            function argument = some target → target.ScalarEval store (native.predicates index value).toUInt64 store
+but is expected to have type
+  ∀ (argument : IR.Expr) (value : UInt64) (target : IR.Expr),
+    argument.ScalarEval store value store →
+      function argument = some target →
+        target.ScalarEval store ((native.bind flag).predicates (index + 1) value).toUInt64 store
+error: LeanExe/Extract/ScalarBooleanFunctionLookup.lean:82:6: unexpected token '('; expected command
+error: LeanExe/Extract/ScalarBooleanFunctionLookup.lean:98:18: Type mismatch
+  holds index
+has type
+  index ∈ Source.Scalar.booleanLetVariables indices →
+    ∀ (function : BooleanFunctionCompiler),
+      lookup index = some function →
+        ∀ (argument target : IR.Expr), P argument → function argument = some target → P target
+but is expected to have type
+  ∀ (argument target : IR.Expr), P argument → function argument = some target → P target
+error: LeanExe/Extract/ScalarBooleanFunctionLookup.lean:99:6: unexpected token '('; expected command
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanFunctionLookup
+error: build failed
