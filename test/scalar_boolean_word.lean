@@ -152,6 +152,7 @@ run_elab do
     (`BooleanWordTest.rangeBoolWordBounds, BooleanWordTest.rangeBoolWordBounds, true),
     (`BooleanWordTest.rangeBoolWordStep, BooleanWordTest.rangeBoolWordStep, true),
     (`BooleanWordTest.rangeBoolWordOuter, BooleanWordTest.rangeBoolWordOuter, true)]
+  let mut comparisons : Nat := 0
   for (name, native, isRange) in cases do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
@@ -167,6 +168,7 @@ run_elab do
       let actual := module_.evalFunc 0 [x, y]
       unless actual == expected do
         throwError "{name}({x}, {y}): native={expected}, IR={actual}"
+      comparisons := comparisons + 1
   for name in [`BooleanWordTest.boolWordUnsupported, `BooleanWordTest.boolWordUnusedUnsupported, `BooleanWordTest.rangeBoolWordUnsupported] do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
@@ -185,4 +187,5 @@ run_elab do
   let wrongLevel := Lean.Expr.app (.const ``Bool.toUInt64 [.zero]) yes
   unless (LeanExe.Extract.Core.extractScalarExprWith [] wrongLevel).isNone do
     throwError "invalid conversion universe accepted"
-  Lean.logInfo "304 native/Boolean-word IR comparisons, four declaration rejection tests and thirteen raw conversion rejection tests passed"
+  unless comparisons == 318 do throwError "unexpected comparison count {comparisons}"
+  Lean.logInfo m!"{comparisons} native/Boolean-word IR comparisons, three declaration rejection tests and thirteen raw conversion rejection tests passed"
