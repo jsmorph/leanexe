@@ -57,13 +57,9 @@ def extractScalarRangeExitWith (locals : List ScalarBinding) (slot : Nat)
           match scalarResultType? sourceType with
           | none => none
           | some _ => extractScalarRangeExitWith locals slot body
-      | .letE _ (.const ``Bool []) value body _ =>
-          match booleanLocalOperands? value with
-          | none => none
-          | some expression => do
-              let c ← extractBooleanLocalWith locals expression
-                (fun operand _ => extractScalarExprWith locals operand)
-              extractScalarRangeExitWith (.boolean (guardWord c) :: locals) slot body
+      | .letE _ (.const ``Bool []) value body _ => do
+          let bound ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) value)
+          extractScalarRangeExitWith (.boolean bound :: locals) slot body
       | .letE _ (.const ``UInt64 []) value body _ =>
           match extractScalarExprWith locals value with
           | some bound => extractScalarRangeExitWith (.word bound :: locals) slot body
@@ -193,7 +189,7 @@ theorem rangeExitSupported_excludes_pure {types : List BindingKind} {source : Le
   | range =>
     simp [Range.Exit.call, Range.Exit.head, Lean.mkAppN, Lean.mkApp,
       extractScalarExprWith, ScalarPrimitive.ofHead?, scalarManyCall?, scalarLocalCall?]
-  | letBoolean expression _ _ _ ih =>
+  | letBoolean _ _ ih =>
     rw [extractScalarExprWith_letBoolean]
     simp only [bind, Option.bind_eq_none_iff]
     intro condition compiled
@@ -276,19 +272,12 @@ theorem extractScalarRangeExitWith_booleanBind (locals : List ScalarBinding) (sl
   cases type <;> rfl
 
 theorem extractScalarRangeExitWith_letBoolean (locals : List ScalarBinding) (slot : Nat)
-    (expression : BooleanLocal) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool) :
-    extractScalarRangeExitWith locals slot (.letE name (.const ``Bool []) expression.expr body nondep) = (do
-      let c ← extractBooleanLocalWith locals expression
-        (fun operand _ => extractScalarExprWith locals operand)
-      extractScalarRangeExitWith (.boolean (guardWord c) :: locals) slot body) := by
+    (value : Lean.Expr) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool) :
+    extractScalarRangeExitWith locals slot (.letE name (.const ``Bool []) value body nondep) = (do
+      let bound ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) value)
+      extractScalarRangeExitWith (.boolean bound :: locals) slot body) := by
   rw [extractScalarRangeExitWith]
-  change (match booleanLocalOperands? expression.expr with
-    | none => none
-    | some expression => do
-        let c ← extractBooleanLocalWith locals expression
-          (fun operand _ => extractScalarExprWith locals operand)
-        extractScalarRangeExitWith (.boolean (guardWord c) :: locals) slot body) = _
-  rw [booleanLocalOperands_expr]
+  rfl
 
 theorem extractScalarRangeExitWith_letE (locals : List ScalarBinding) (slot : Nat)
     (name : Lean.Name) (value body : Lean.Expr) (nondep : Bool) :
@@ -472,16 +461,14 @@ theorem extractScalarRangeExitWith_accepts {types : List BindingKind} {source : 
     have equation := extractScalarRangeExitWith_call locals slot
       { indexType, stride, first, count, initial, indexName, accumulatorName, indexBi, accumulatorBi, body }
     simpa [ScalarRangeExitView.source, ef, ec, ei, es] using equation
-  | letBoolean expression variables arguments _ ih =>
-    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals expression
-      (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
-      (fun operand member => extractScalarExprWith_accepts (arguments operand member) locals typed total)
-    obtain ⟨plan, hp⟩ := ih (.boolean (guardWord c) :: locals) (by simp [ScalarBinding.kind, typed]) (by
+  | letBoolean bound _ ih =>
+    obtain ⟨value, hv⟩ := extractScalarExprWith_accepts bound locals typed total
+    obtain ⟨plan, hp⟩ := ih (.boolean value :: locals) (by simp [ScalarBinding.kind, typed]) (by
       intro binding member
       rcases List.mem_cons.mp member with rfl | member
       · trivial
       · exact total binding member)
-    exact ⟨plan, by rw [extractScalarRangeExitWith_letBoolean]; simp [hc, hp]⟩
+    exact ⟨plan, by rw [extractScalarRangeExitWith_letBoolean]; simp [hv, hp]⟩
   | idBindBoolean action type variables arguments _ ih =>
     obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals action.leaf
       (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
@@ -687,32 +674,24 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
     subst sourceType
     change extractScalarRangeExitWith locals slot (LeanExe.Source.Scalar.Identity.pure body type) = some plan at compiled
     exact .idPure type (ih (by simpa only [extractScalarRangeExitWith_idPure] using compiled))
-  | case6 locals name value body nondep invalid rejected =>
-    rw [extractScalarRangeExitWith] at compiled
-    simp [rejected, invalid] at compiled
-  | case7 locals name value body nondep expression matched rejected ih =>
-    have same := booleanLocalOperands_sound matched
-    subst value
+  | case6 locals name value body nondep rejected ih =>
     rw [extractScalarRangeExitWith_letBoolean] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
-    obtain ⟨c, hc, ht⟩ := compiled
-    apply Range.Exit.Supported.letBoolean expression (extractBooleanLocalWith_variables hc)
-    · intro operand member
-      obtain ⟨target, found⟩ := extractBooleanLocalWith_operands hc operand member
-      exact extractScalarExprWith_supported found
-    · simpa [ScalarBinding.kind] using ih c ht
-  | case8 locals name value body nondep bound matched notRange ih =>
+    obtain ⟨bound, hb, ht⟩ := compiled
+    exact .letBoolean (extractScalarExprWith_supported hb)
+      (by simpa [ScalarBinding.kind] using ih bound ht)
+  | case7 locals name value body nondep bound matched notRange ih =>
     rw [extractScalarRangeExitWith_letE, matched] at compiled
     exact .letE (extractScalarExprWith_supported matched) (by simpa [ScalarBinding.kind] using ih compiled)
-  | case9 locals name value body nondep notPure notRange ih =>
+  | case8 locals name value body nondep notPure notRange ih =>
     rw [extractScalarRangeExitWith_letE, notPure] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hb, result, hr, _⟩ := compiled
     exact .letLeft (ih hb) (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hr)
-  | case10 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep rejected noMany notRange =>
+  | case9 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep rejected noMany notRange =>
     rw [extractScalarRangeExitWith] at compiled
     simp [notRange, rejected, noMany] at compiled
-  | case11 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep rejected shape matched notRange ihb =>
+  | case10 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep rejected shape matched notRange ihb =>
     obtain ⟨sameType, sameValue⟩ := scalarManyFunction_sound matched
     rw [sameType, sameValue] at compiled ⊢
     change Range.Exit.Supported _ (shape.bind name body nondep)
@@ -722,7 +701,7 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letManyFn shape (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case12 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep type matched notRange ihb =>
+  | case11 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep type matched notRange ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     rw [extractScalarRangeExitWith_letBinaryFn] at compiled
@@ -730,11 +709,11 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letBinaryFn type (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case13 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected noBoolean notRange =>
+  | case12 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected noBoolean notRange =>
     rw [extractScalarRangeExitWith] at compiled
     · simp [notRange, rejected, noBoolean] at compiled
     · exact excludedBinary
-  | case14 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected type matched notRange ihb =>
+  | case13 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected type matched notRange ihb =>
     rw [extractScalarRangeExitWith] at compiled
     · simp only [notRange, rejected, matched, bind, Option.bind_eq_some_iff] at compiled
       obtain ⟨boolean, parsed, checked, hc, ht⟩ := compiled
@@ -749,7 +728,7 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
           simpa [ScalarBinding.kind] using extractScalarExprWith_supported found)
         (by simpa [ScalarBinding.kind] using ihb boolean ht)
     · exact excludedBinary
-  | case15 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary type matched notRange ihb =>
+  | case14 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary type matched notRange ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     rw [extractScalarRangeExitWith_letFn] at compiled
@@ -757,10 +736,10 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letFn type (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case16 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep rejected notRange =>
+  | case15 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep rejected notRange =>
     rw [extractScalarRangeExitWith] at compiled
     simp [notRange, rejected] at compiled
-  | case17 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched notRange ihb =>
+  | case16 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched notRange ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     rw [extractScalarRangeExitWith_letUnitFn (unitForm := .unit)] at compiled
@@ -768,10 +747,10 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letUnitFn type .unit (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case18 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep rejected notRange =>
+  | case17 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep rejected notRange =>
     rw [extractScalarRangeExitWith] at compiled
     simp [notRange, rejected] at compiled
-  | case19 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched notRange ihb =>
+  | case18 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched notRange ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     rw [extractScalarRangeExitWith_letUnitFn (unitForm := .punit)] at compiled
@@ -779,13 +758,13 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letUnitFn type .punit (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case20 locals input output value name domain body bi invalid invalidBoolean rejected =>
+  | case19 locals input output value name domain body bi invalid invalidBoolean rejected =>
     rw [extractScalarRangeExitWith] at compiled
     simp [rejected, invalid, invalidBoolean] at compiled
-  | case21 locals input output value name domain body bi invalid type matched invalidAction rejected =>
+  | case20 locals input output value name domain body bi invalid type matched invalidAction rejected =>
     rw [extractScalarRangeExitWith] at compiled
     simp [rejected, invalid, matched, invalidAction] at compiled
-  | case22 locals input output value name domain body bi invalid type matched action parsed rejected ih =>
+  | case21 locals input output value name domain body bi invalid type matched action parsed rejected ih =>
     obtain ⟨hi, hd, ho⟩ := booleanBindType_sound _ matched
     have outputEq := scalarResultType_sound ho
     have valueEq := booleanAction_sound parsed
@@ -800,14 +779,14 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
       obtain ⟨target, found⟩ := extractBooleanLocalWith_operands hc operand member
       exact extractScalarExprWith_supported found
     · simpa [ScalarBinding.kind] using ih c ht
-  | case23 locals input output value name domain body bi annotations typesMatched bound matched rejected ih =>
+  | case22 locals input output value name domain body bi annotations typesMatched bound matched rejected ih =>
     obtain ⟨inputType, outputType⟩ := annotations
     obtain ⟨hi, hd, ho⟩ := scalarBindTypes_sound typesMatched
     subst input domain output
     change extractScalarRangeExitWith locals slot (Identity.bind name bi value body inputType outputType) = some plan at compiled
     rw [extractScalarRangeExitWith_idBind, matched] at compiled
     exact .bindRight inputType outputType (extractScalarExprWith_supported matched) (by simpa [ScalarBinding.kind] using ih compiled)
-  | case24 locals input output value name domain body bi annotations typesMatched notPure rejected ih =>
+  | case23 locals input output value name domain body bi annotations typesMatched notPure rejected ih =>
     obtain ⟨inputType, outputType⟩ := annotations
     obtain ⟨hi, hd, ho⟩ := scalarBindTypes_sound typesMatched
     subst input domain output
@@ -816,10 +795,10 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hb, result, hr, _⟩ := compiled
     exact .bindLeft inputType outputType (ih hb) (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hr)
-  | case25 locals name typeName resultType typeBi paramName value paramBi body nondep rejected noBoolean notRange =>
+  | case24 locals name typeName resultType typeBi paramName value paramBi body nondep rejected noBoolean notRange =>
     rw [extractScalarRangeExitWith] at compiled
     simp [notRange, rejected, noBoolean] at compiled
-  | case26 locals name typeName resultType typeBi paramName value paramBi body nondep rejected type matched notRange ihb =>
+  | case25 locals name typeName resultType typeBi paramName value paramBi body nondep rejected type matched notRange ihb =>
     rw [extractScalarRangeExitWith] at compiled
     simp only [notRange, rejected, matched, bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨boolean, parsed, checked, hc, ht⟩ := compiled
@@ -833,7 +812,7 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
         obtain ⟨target, found⟩ := extractBooleanLocalWith_operands hc operand member
         simpa [ScalarBinding.kind] using extractScalarExprWith_supported found)
       (by simpa [ScalarBinding.kind] using ihb boolean ht)
-  | case27 locals name typeName resultType typeBi paramName value paramBi body nondep type matched notRange ihb =>
+  | case26 locals name typeName resultType typeBi paramName value paramBi body nondep type matched notRange ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     rw [extractScalarRangeExitWith_letBooleanFn] at compiled
@@ -841,28 +820,28 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letBooleanFn type (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case28 locals name typeName resultType typeBi paramName domain value paramBi body nondep rejected notRange =>
+  | case27 locals name typeName resultType typeBi paramName domain value paramBi body nondep rejected notRange =>
     rw [extractScalarRangeExitWith] at compiled
     simp [notRange, rejected] at compiled
-  | case29 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType rejected foundInput notRange =>
+  | case28 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType rejected foundInput notRange =>
     rw [extractScalarRangeExitWith] at compiled
     simp [notRange, foundInput, rejected] at compiled
-  | case30 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType result foundResult foundInput notRange ih =>
+  | case29 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType result foundResult foundInput notRange ih =>
     rw [extractScalarRangeExitWith] at compiled
     simp only [notRange, ↓reduceIte, foundInput, foundResult] at compiled
     have inputEq := scalarResultType_sound foundInput
     have resultEq := booleanType_sound foundResult
     subst domain resultType
     exact .predicateInput inputType result (ih compiled)
-  | case31 locals name typeName input resultType typeBi paramName domain value paramBi body nondep different notRange =>
+  | case30 locals name typeName input resultType typeBi paramName domain value paramBi body nondep different notRange =>
     rw [extractScalarRangeExitWith] at compiled
     simp [notRange, different] at compiled
-  | case32 locals name type value body nondep rejected ih =>
+  | case31 locals name type value body nondep rejected ih =>
     change extractScalarRangeExitWith locals slot (idLetExpr name type value body nondep) = some plan at compiled
     exact .idLet (ih (by simpa only [extractScalarRangeExitWith_idLet] using compiled))
-  | case33 locals data body rejected ih =>
+  | case32 locals data body rejected ih =>
     exact .metadata (ih (by simpa only [extractScalarRangeExitWith_metadata] using compiled))
-  | case34 locals source rejected hrun hpure hboolLet hlet hbinary hunary hunit hpunit hbind hPredicateInput hidLet hmetadata =>
+  | case33 locals source rejected hrun hpure hboolLet hlet hbinary hunary hunit hpunit hbind hPredicateInput hidLet hmetadata =>
     rw [extractScalarRangeExitWith] at compiled <;> first | assumption | (simp [rejected] at compiled)
 
 end LeanExe.Extract.Core

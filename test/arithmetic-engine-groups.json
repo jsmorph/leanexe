@@ -2369,5 +2369,33 @@
     "rangeBooleanPredicateLetContinue",
     "rangeBooleanPredicateLetOuter",
     "rangeBooleanPredicateLetOuterCapture"
+  ],
+  "boolean-predicate-loop-let": [
+    "constant",
+    "compareBEq",
+    "mixedGuardDo",
+    "booleanPredicateChoice",
+    "booleanPredicateProposition",
+    "booleanPredicateLet",
+    "booleanPredicateLetChoice",
+    "booleanPredicateLetCapture",
+    "booleanPredicateLetBody",
+    "rangeBooleanPredicateLetStep",
+    "rangeBooleanPredicateLetContinue",
+    "rangeBooleanPredicateLetOuter",
+    "rangeBooleanPredicateLetOuterCapture",
+    "rangeBooleanPredicateChoiceStep",
+    "rangeBooleanPredicateChoiceOuter",
+    "rangeBooleanPredicatePropositionOuter",
+    "rangePropChoiceBounds",
+    "rangePropChoiceOuter",
+    "rangeBooleanPredicateLoopLetBreak",
+    "rangeBooleanPredicateLoopLetContinue",
+    "rangeBooleanPredicateLoopLetChoice",
+    "rangeBooleanPredicateLoopLetCapture",
+    "rangeBooleanPredicateOuterLetBounds",
+    "rangeBooleanPredicateOuterLetCapture",
+    "rangeBooleanPredicateOuterLetChoice",
+    "rangeBooleanPredicateOuterLetId"
   ]
 }

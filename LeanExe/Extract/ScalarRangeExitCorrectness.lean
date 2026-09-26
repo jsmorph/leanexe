@@ -110,32 +110,23 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
       change (LeanExe.IR.Expr.local saved.length).ScalarEval _ _ _
       rw [boundNat]
       exact .local (LeanExe.IR.rangeExitStore_value _ _ _ _ _)
-  | letBoolean expression variables arguments _ ih =>
+  | letBoolean bound _ ih =>
     rw [extractScalarRangeExitWith_letBoolean] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
-    obtain ⟨c, hc, ht⟩ := compiled
-    obtain ⟨booleans, hbooleans⟩ := variables.evaluates values valuesTyped
-    have total := fun operand member => (arguments operand member).evaluates values valuesTyped
-    let native : Lean.Expr → UInt64 := fun operand =>
-      if member : operand ∈ expression.operands then (total operand member).choose else 0
-    have meanings : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand) := by
-      intro operand member
-      simpa only [native, dite_eq_left member] using (total operand member).choose_spec
-    have extended : RangeExitBindingsMatch (.boolean (guardWord c) :: locals)
-        (.boolean (expression.denote native booleans) :: values) saved := by
-      intro accumulator index stop flag
-      apply (bindings accumulator index stop flag).cons
-      exact guardWord_correct (extractBooleanLocalWith_correct expression _ native booleans hc
-        (bindings accumulator index stop flag) hbooleans
-        (fun operand member target found => extractScalarExprWith_correct (meanings operand member)
-          found (bindings accumulator index stop flag)))
+    obtain ⟨value, hv, ht⟩ := compiled
+    obtain ⟨encoded, evaluated⟩ := bound.evaluates values valuesTyped
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    have extended : RangeExitBindingsMatch (.boolean value :: locals) (.boolean flag :: values) saved := by
+      intro accumulator index stop done
+      apply (bindings accumulator index stop done).cons
+      exact extractScalarExprWith_correct evaluated hv (bindings accumulator index stop done)
     obtain ⟨result, source, meaning⟩ := ih ht (by simp [ScalarBinding.kind, localsTyped])
       (by simp [Value.kind, valuesTyped]) extended (by
         intro binding member
         rcases List.mem_cons.mp member with rfl | member
         · trivial
         · exact totalBindings binding member)
-    exact ⟨result, .letBoolean expression hbooleans meanings source, meaning⟩
+    exact ⟨result, .letBoolean evaluated source, meaning⟩
   | idBindBoolean action type variables arguments _ ih =>
     rw [extractScalarRangeExitWith_booleanBind] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
