@@ -1,0 +1,50 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_predicate_equality_rejections.lean:17:22: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 0
+numerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_boolean_predicate_equality_rejections.lean:55:21: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 12
+numerals are polymorphic in Lean, but the numeral `12` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_boolean_predicate_equality_rejections.lean:55:9: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Lean.MessageData
+
+Hint: Adding the command `deriving instance BEq for Lean.MessageData` may allow Lean to derive the missing instance.
+test/scalar_boolean_predicate_equality_rejections.lean:16:22: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 0
+numerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_boolean_predicate_equality_rejections.lean:55:39: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 54
+numerals are polymorphic in Lean, but the numeral `54` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_boolean_predicate_equality_rejections.lean:55:27: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Lean.MessageData
+
+Hint: Adding the command `deriving instance BEq for Lean.MessageData` may allow Lean to derive the missing instance.
+test/scalar_boolean_predicate_equality_rejections.lean:33:20: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd Lean.MessageData Nat Lean.MessageData
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_boolean_predicate_equality_rejections.lean:43:20: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd Lean.MessageData Nat Lean.MessageData
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_boolean_predicate_equality_rejections.lean:54:20: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd Lean.MessageData Nat Lean.MessageData
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
