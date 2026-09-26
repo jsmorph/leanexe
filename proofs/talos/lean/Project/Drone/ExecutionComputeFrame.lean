@@ -33,7 +33,7 @@ macro "compute_controls" "[" ts:Lean.Parser.Tactic.simpLemma,* "]" : tactic => `
   (repeat' ((try wp_compute_frame [$ts,*]) <;> (advance_wp_goal; first
     | (refine wp_constIf rfl ?_)
     | (refine wp_iff_cons rfl ?_;
-       simp only [$ts,*, ne_eq, eq_self_iff_true,
+       simp [$ts,*, ne_eq, eq_self_iff_true,
          show (1 : UInt32) ≠ 0 by decide, show (1 : UInt64) ≠ 0 by decide,
          Bool.false_eq_true, Bool.true_eq_false, not_false_eq_true, not_true_eq_false,
          UInt64.lt_irrefl, ↓reduceIte])))

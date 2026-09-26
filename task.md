@@ -16,12 +16,14 @@ maneuverability constraints while maintaining a clearance corridor and beginning
 and ending on the terrain. No motor, propeller, battery, attitude, drag, lift,
 or detailed aerodynamic model is wanted.
 
-The first milestone is complete: `WholeFlight.compute_safe` is a kernel-checked
-whole-flight safety theorem for the current point-mass model, and a fresh
-aggregate source check passes. The WASM execution proof is the next milestone.
-Expansion of the model follows discussion with the user. The user declined
-reproducible-artifact packaging as a task priority.  Keep the current
-Lean-code-and-task-only commit scope.
+Both proof milestones are complete. `WholeFlight.compute_safe` proves source
+whole-flight safety for the current point-mass model. `Spec.compute_correct`
+now proves terminating compiled WASM execution with exactly the source output,
+and `Spec.compute_safe` transfers whole-flight safety to that result. The
+3,712-job specification build and fresh artifact/proof check pass with only
+standard Lean axioms. Expansion of the model follows discussion with the user.
+The user declined reproducible-artifact packaging as a task priority. Keep the
+current Lean-code-and-task-only commit scope.
 
 `Output.compute_correct` proves that every nonempty accepted terrain produces
 exactly 2n words encoding a feasible route, and that its exact tick/excess cost is globally minimal in
@@ -37,8 +39,10 @@ including joins.  The cumulative-time intervals cover the entire flight and
 agree with their local primitives.  Clearance and component speed bounds
 transfer to the global coordinate functions. `WholeFlight.compute_safe` now
 packages spatial clearance, speed, global velocity derivatives and acceleration
-bounds, continuity, stopped ground endpoints, and the singleton case. Agreement
-between compiled WASM execution and the proved source computation remains open.
+bounds, continuity, stopped ground endpoints, and the singleton case. The
+compiled execution theorem now covers allocation, copying, release, all loops,
+reversal, and accepted/empty/rejected input dispatch. It assumes a valid caller
+heap, a borrowed input array, and sufficient allocation headroom within 64 MiB.
 
 ## Safety status and remaining risks
 
@@ -54,7 +58,13 @@ runtime checks pass for 48 accepted flights, four empty/rejected inputs, and
 12 native/WASM comparisons. Scalar helpers, the square-root loop, checked
 terrain reads, and height validation also have checked execution lemmas.
 The complete segment-cost, packed predecessor, predecessor-scan, and
-best-predecessor functions also agree with their source definitions.
+best-predecessor functions also agree with their source definitions. The final
+compiled specification passed on 2026-09-26 (`drone-spec-4.log`, 3,712 jobs),
+including standard-only axiom audits for `Spec.compute_correct` and
+`Spec.compute_safe`. `drone-artifact-check-final.log` records fresh compiler and
+verifier builds, generated-program equality checks, and the specification build.
+The WASM remains 14,198 bytes with SHA256
+`0c24d2c1568ca40321421d19387843d4ee81c970d53e75adcb035b32343c0942`.
 
 | Property | Current proof coverage |
 |---|---|
@@ -71,8 +81,8 @@ inputs against an independent finite-graph planner, plus 12 native comparisons.
 The earlier six exhaustive short-route optima and separate translation checks
 remain historical evidence. Drivers and logs are excluded from commits under
 the existing scope. The source proofs quantify over all accepted inputs within
-the stated bounds; helper execution lemmas do not yet establish the full
-compiled entry theorem.
+the stated bounds, and `Spec.compute_correct` now establishes the full compiled
+entry theorem, including empty and rejected inputs under its memory preconditions.
 
 ### Remaining risks
 
@@ -82,12 +92,14 @@ and a nonempty terrain. Acceleration bounds apply to ordinary derivatives
 between joins and derivatives within each adjacent closed interval at a join;
 the two one-sided accelerations need not agree.
 
-Executable correctness: compiled WASM agreement remains unproved.  Array
-allocation, copying, ownership, release, and loop execution require semantic
-proofs and sufficient memory bounds.  The generated instruction stream will
-determine their decomposition and the amount of new shared proof support.
-Runtime test results support this work but do not establish the execution
-theorem.
+Executable correctness is now checked for the generated WASM semantics.
+`Spec.ExactSpecFor` requires a valid caller heap, a borrowed input layout,
+and 37,580,992 bytes of allocation headroom within a 1,024-page (64 MiB)
+memory limit. The conservative budget counts allocations even when the free
+list can reuse storage. The result contains exactly `compute terrain`, the
+terrain remains unchanged, and memory stays within the limit. The theorem
+does not verify the external Wasmtime host, the machine implementation of the
+WASM runtime, or physical execution of the generated trajectory.
 
 Model assumptions: safety assumes exact piecewise-linear terrain and exact
 execution of the prescribed motion with independent horizontal and vertical
@@ -1093,3 +1105,32 @@ unwind setup, and unwind call against the actual emitted entry code. These
 small CPS boundaries preserve the frame fields needed for composition.
 All audited axioms remain standard. The forward/accepted-input composition,
 public dispatch, concrete allocation bound, and safety transfer are next.
+
+The compiled execution/safety milestone is complete. `compute_forward_spec`
+and `compute_reconstruct_spec` compose the checked helpers into the accepted
+branch. `compute_guard_spec`, `compute_validate_spec`, and
+`compute_reject_spec` cover length/height validation and both empty-result
+paths. `Execution.compute_exact` proves termination and exact source output
+for the public one-pointer ABI, preserving caller-live arrays and the
+remaining allocation budget. The checked cost formula bounds every accepted
+input up to 64 points by 37,580,992 allocated bytes.
+
+`Project.Drone.Spec.compute_correct` exposes the complete compiled contract
+with a 64 MiB memory limit and intact borrowed terrain. `Spec.compute_safe`
+combines that exact memory result with `WholeFlight.Safe` under precisely the
+existing accepted, nonempty terrain assumptions. Both audits contain only
+`propext`, `Classical.choice`, and `Quot.sound`. The final check is recorded
+in `drone-spec-4.log` (3,712 jobs); the specification module checks in 3.1 seconds.
+The public entry needed an explicit final-instruction boundary after its
+nested branch continuations, plus ordinary Bool/Nat simplification of the
+source dispatch. No admitted obligations or native decision axioms were added.
+
+`tools/talos-proof.js check drone` also passes fresh generation/equality and
+proof checks in `drone-artifact-check-final.log`. The sandbox initially blocked
+the driver's Git subprocess with EPERM, so the authorized check ran outside
+the sandbox. Its final status text still reflects the locally staged registry's
+legacy `complete: false` flag; the specification target itself passes. Registry,
+driver, generated-build and packaging changes remain outside the requested
+Lean-code-and-task-only commit scope. The generated WASM hash is unchanged,
+so the earlier independent runtime comparisons remain applicable. No model
+expansion or additional physical assumptions were introduced.
