@@ -1,0 +1,215 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [46/104] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [101/106] Building LeanExe.Extract.ScalarExpr (1.3s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExpr.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExpr.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExpr.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExpr.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExpr.setup.json --json
+warning: LeanExe/Extract/ScalarExpr.lean:218:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:231:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:1058:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+error: LeanExe/Extract/ScalarExpr.lean:1067:8: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  extractScalarExprWith ?m.4059
+    ((Lean.Expr.const `Bool.toUInt64 []).app
+      (Source.Scalar.BooleanEqualityForm.equality.local ?negations ?unequal ?left ?right).expr)
+in the target expression
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (Source.Scalar.BooleanLocal.equality negations unequal left right).expr) =
+    some target
+
+case case63
+locals : List ScalarBinding
+negations : Nat
+unequal : Bool
+left right : Source.Scalar.BooleanLocal
+present : hasBooleanPredicate locals (left.functions ++ right.functions) = true
+ihl :
+  ∀ {target : IR.Expr},
+    extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app left.expr) = some target →
+      Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals)
+        ((Lean.Expr.const `Bool.toUInt64 []).app left.expr)
+ihr :
+  ∀ {target : IR.Expr},
+    extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app right.expr) = some target →
+      Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals)
+        ((Lean.Expr.const `Bool.toUInt64 []).app right.expr)
+target : IR.Expr
+parsed _boolean✝ :
+  booleanLocalOperands? (Source.Scalar.BooleanLocal.equality negations unequal left right).expr =
+    some (Source.Scalar.BooleanLocal.equality negations unequal left right)
+compiled :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (Source.Scalar.BooleanLocal.equality negations unequal left right).expr) =
+    some target
+⊢ Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals)
+    ((Lean.Expr.const `Bool.toUInt64 []).app (Source.Scalar.BooleanLocal.equality negations unequal left right).expr)
+error: LeanExe/Extract/ScalarExpr.lean:1076:8: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  extractScalarExprWith ?m.4083
+    ((Lean.Expr.const `Bool.toUInt64 []).app
+      (Source.Scalar.BooleanEqualityForm.equality.local ?negations ?unequal ?left ?right).expr)
+in the target expression
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (Source.Scalar.BooleanLocal.equality negations unequal left right).expr) =
+    some target
+
+case case64
+locals : List ScalarBinding
+negations : Nat
+unequal : Bool
+left right : Source.Scalar.BooleanLocal
+absent : ¬hasBooleanPredicate locals (left.functions ++ right.functions) = true
+ihArgs :
+  ∀ (operand : Lean.Expr),
+    operand ∈ (Source.Scalar.BooleanLocal.equality negations unequal left right).operands →
+      ∀ {target : IR.Expr},
+        extractScalarExprWith locals operand = some target →
+          Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals) operand
+target : IR.Expr
+parsed _boolean✝ :
+  booleanLocalOperands? (Source.Scalar.BooleanLocal.equality negations unequal left right).expr =
+    some (Source.Scalar.BooleanLocal.equality negations unequal left right)
+compiled :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (Source.Scalar.BooleanLocal.equality negations unequal left right).expr) =
+    some target
+⊢ Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals)
+    ((Lean.Expr.const `Bool.toUInt64 []).app (Source.Scalar.BooleanLocal.equality negations unequal left right).expr)
+error: LeanExe/Extract/ScalarExpr.lean:1085:8: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  extractScalarExprWith ?m.4107
+    ((Lean.Expr.const `Bool.toUInt64 []).app
+      (Source.Scalar.BooleanEqualityForm.decision.local ?negations ?unequal ?left ?right).expr)
+in the target expression
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (Source.Scalar.BooleanLocal.relationDecision negations unequal left right).expr) =
+    some target
+
+case case65
+locals : List ScalarBinding
+negations : Nat
+unequal : Bool
+left right : Source.Scalar.BooleanLocal
+present : hasBooleanPredicate locals (left.functions ++ right.functions) = true
+ihl :
+  ∀ {target : IR.Expr},
+    extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app left.expr) = some target →
+      Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals)
+        ((Lean.Expr.const `Bool.toUInt64 []).app left.expr)
+ihr :
+  ∀ {target : IR.Expr},
+    extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app right.expr) = some target →
+      Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals)
+        ((Lean.Expr.const `Bool.toUInt64 []).app right.expr)
+target : IR.Expr
+parsed _boolean✝ :
+  booleanLocalOperands? (Source.Scalar.BooleanLocal.relationDecision negations unequal left right).expr =
+    some (Source.Scalar.BooleanLocal.relationDecision negations unequal left right)
+compiled :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (Source.Scalar.BooleanLocal.relationDecision negations unequal left right).expr) =
+    some target
+⊢ Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals)
+    ((Lean.Expr.const `Bool.toUInt64 []).app
+      (Source.Scalar.BooleanLocal.relationDecision negations unequal left right).expr)
+error: LeanExe/Extract/ScalarExpr.lean:1094:8: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  extractScalarExprWith ?m.4131
+    ((Lean.Expr.const `Bool.toUInt64 []).app
+      (Source.Scalar.BooleanEqualityForm.decision.local ?negations ?unequal ?left ?right).expr)
+in the target expression
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (Source.Scalar.BooleanLocal.relationDecision negations unequal left right).expr) =
+    some target
+
+case case66
+locals : List ScalarBinding
+negations : Nat
+unequal : Bool
+left right : Source.Scalar.BooleanLocal
+absent : ¬hasBooleanPredicate locals (left.functions ++ right.functions) = true
+ihArgs :
+  ∀ (operand : Lean.Expr),
+    operand ∈ (Source.Scalar.BooleanLocal.relationDecision negations unequal left right).operands →
+      ∀ {target : IR.Expr},
+        extractScalarExprWith locals operand = some target →
+          Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals) operand
+target : IR.Expr
+parsed _boolean✝ :
+  booleanLocalOperands? (Source.Scalar.BooleanLocal.relationDecision negations unequal left right).expr =
+    some (Source.Scalar.BooleanLocal.relationDecision negations unequal left right)
+compiled :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (Source.Scalar.BooleanLocal.relationDecision negations unequal left right).expr) =
+    some target
+⊢ Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals)
+    ((Lean.Expr.const `Bool.toUInt64 []).app
+      (Source.Scalar.BooleanLocal.relationDecision negations unequal left right).expr)
+warning: LeanExe/Extract/ScalarExpr.lean:1374:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:1393:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [104/122] Built LeanExe.Source.ScalarRangeSupported (879ms)
+⚠ [107/122] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [116/123] Built LeanExe.Source.ScalarManyFunctionSemantics (885ms)
+✔ [117/129] Built LeanExe.Source.ScalarStep (1.5s)
+✔ [126/132] Built LeanExe.Source.ScalarRangeCount (1.1s)
+✔ [127/133] Built LeanExe.Source.ScalarRangeStrideSyntax (891ms)
+✔ [128/133] Built LeanExe.Extract.ScalarRangeCount (1.0s)
+✔ [129/133] Built LeanExe.Source.ScalarRangeExitSyntax (903ms)
+✔ [130/136] Built LeanExe.Extract.ScalarRangeStrideSyntax (895ms)
+✔ [131/138] Built LeanExe.Source.ScalarRangeExitSupported (1.1s)
+✔ [134/141] Built LeanExe.Extract.ScalarRangeExitSyntax (1.1s)
+⚠ [135/141] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [140/141] Built LeanExe.Source.ScalarFunction (997ms)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExpr
+error: build failed

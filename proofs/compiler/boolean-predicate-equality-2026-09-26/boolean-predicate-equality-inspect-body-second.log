@@ -1,0 +1,29 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+def booleanPredicateEqualityBody : (x y : UInt64) → UInt64 :=
+fun (x y : UInt64) =>
+  @Id.run.{0} UInt64
+    (have f : Bool → Id.{0} (Id.{0} Bool) := fun (b : Bool) => Bool.not b;
+    have g : (b : Bool) → Bool := fun (b : Bool) =>
+      @BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64)
+        (Bool.toUInt64
+          (@BEq.beq.{0} Bool (@inferInstance.{1} (BEq.{0} Bool) (@instBEqOfDecidableEq.{0} Bool instDecidableEqBool))
+            (f b) (f (Bool.not b))))
+        x;
+    @Bind.bind.{0, 0} Id.{0} (@Monad.toBind.{0, 0} Id.{0} Id.instMonad.{0}) UInt64 UInt64
+      (@Pure.pure.{0, 0} Id.{0}
+        (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0})) UInt64
+        (Bool.toUInt64
+          (@bne.{0} Bool (@instBEqOfDecidableEq.{0} Bool instDecidableEqBool)
+            (g (@BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) x y)) (f (g Bool.false)))))
+      fun (a : UInt64) =>
+      @Bind.bind.{0, 0} Id.{0} (@Monad.toBind.{0, 0} Id.{0} Id.instMonad.{0}) UInt64 UInt64
+        (@Pure.pure.{0, 0} Id.{0}
+          (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0})) UInt64
+          (Bool.toUInt64
+            (@Decidable.decide (@Eq.{1} Bool (f Bool.true) (Bool.not (g Bool.false)))
+              (instDecidableEqBool (f Bool.true) (Bool.not (g Bool.false))))))
+        fun (b : UInt64) =>
+        @Pure.pure.{0, 0} Id.{0}
+          (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0})) UInt64
+          (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) a b))
