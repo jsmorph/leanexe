@@ -9,6 +9,7 @@ import Project.Beck.ExecutionBudget
 import Project.Beck.ExecutionDetRead
 import Project.Beck.ExecutionDeterminant
 import Project.Beck.ExecutionBoundary
+import Project.Beck.ExecutionMembershipBase
 
 #print axioms Project.Beck.Execution.negative_exact
 #print axioms Project.Beck.Execution.magnitude_exact
@@ -61,3 +62,7 @@ import Project.Beck.ExecutionBoundary
 #print axioms Project.Beck.Execution.determinantLoop_exact
 #print axioms Project.Beck.Execution.determinant_exact
 #print axioms Project.Beck.Execution.boundaryStep_exact
+#print axioms Project.ProofKit.UInt64Array.setCopy_spec
+#print axioms Project.Beck.Execution.setFinish_owned
+#print axioms Project.Beck.Execution.membershipSetAllocated_owned
+#print axioms Project.Beck.Execution.readMemberships_zero_exact
