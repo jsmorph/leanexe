@@ -74,6 +74,52 @@ theorem determinantLoopFrame_reconstruct (frame : Locals)
     · subst i; simpa only [getElem!_pos frame.locals 39 hi] using r47
     · simp [getElem!_pos frame.locals i hi]
 
+theorem determinantLoopFrame_post (initial : Store Unit) (frame : Locals)
+    (fuel width matrixOwner matrixPointer rowOwner rowPointer columnOwner columnPointer
+      tailOwner tailPointer acc : UInt64) (index count : Nat) (Q : Assertion Unit)
+    (next : ∀ scratch, Q (.Break 0 initial
+      (determinantLoopFrame fuel width matrixOwner matrixPointer rowOwner rowPointer columnOwner columnPointer
+        tailOwner tailPointer acc index count scratch)))
+    (params : frame.params = determinantParams fuel width matrixOwner matrixPointer rowOwner rowPointer columnOwner columnPointer)
+    (locals : frame.locals.length = 52) (values : frame.values = [])
+    (tailOwnerRead : frame.get 19 = some (.i64 tailOwner))
+    (tailPointerRead : frame.get 20 = some (.i64 tailPointer))
+    (accRead : frame.get 21 = some (.i64 acc))
+    (indexRead : frame.get 45 = some (.i64 index.toUInt64))
+    (countRead : frame.get 46 = some (.i64 count.toUInt64))
+    (stepRead : frame.get 47 = some (.i64 1)) : Q (.Break 0 initial frame) := by
+  rw [determinantLoopFrame_reconstruct frame fuel width matrixOwner matrixPointer rowOwner rowPointer
+    columnOwner columnPointer tailOwner tailPointer acc index count params locals values tailOwnerRead tailPointerRead
+    accRead indexRead countRead stepRead]
+  exact next _
+
+theorem determinantReadFrame_locals (fuel width matrixOwner matrixPointer rowOwner rowPointer columnOwner columnPointer : UInt64)
+    (index : Nat) (scratch : DeterminantReadScratch) (values : List Value) :
+    (determinantReadFrame fuel width matrixOwner matrixPointer rowOwner rowPointer columnOwner columnPointer
+      index scratch values).locals = List.ofFn (fun k : Fin 52 => if k.val = 14 then .i64 index.toUInt64 else scratch k) := rfl
+
+theorem determinantReadFrame_reconstruct (frame : Locals)
+    (fuel width matrixOwner matrixPointer rowOwner rowPointer columnOwner columnPointer : UInt64) (index : Nat)
+    (params : frame.params = determinantParams fuel width matrixOwner matrixPointer rowOwner rowPointer columnOwner columnPointer)
+    (locals : frame.locals.length = 52) (indexRead : frame.get 22 = some (.i64 index.toUInt64)) :
+    frame = determinantReadFrame fuel width matrixOwner matrixPointer rowOwner rowPointer columnOwner columnPointer
+      index (fun k => frame.locals[k.val]!) frame.values := by
+  have paramsLength : frame.params.length = 8 := by simp [params, determinantParams]
+  have read := determinant_local_read frame 14 (.i64 index.toUInt64) paramsLength locals (by decide) indexRead
+  refine Frame.ext frame
+    (determinantReadFrame fuel width matrixOwner matrixPointer rowOwner rowPointer columnOwner columnPointer
+      index (fun k => frame.locals[k.val]!) frame.values) params ?_ rfl
+  rw [determinantReadFrame_locals]
+  apply List.ext_getElem
+  · simp [locals]
+  · intro i hi hj
+    rw [List.getElem_ofFn]
+    split_ifs with equal
+    · change i = 14 at equal
+      subst i
+      simpa only [getElem!_pos frame.locals 14 hi] using read
+    · simp [getElem!_pos frame.locals i hi]
+
 #print axioms determinantLoopFrame_reconstruct
 
 end Project.Beck.Execution

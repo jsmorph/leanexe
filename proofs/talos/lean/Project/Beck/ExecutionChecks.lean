@@ -7,7 +7,7 @@ import Project.Beck.ExecutionRelease
 import Project.Beck.ExecutionOmit
 import Project.Beck.ExecutionBudget
 import Project.Beck.ExecutionDetRead
-import Project.Beck.ExecutionDetStage
+import Project.Beck.ExecutionDetStep
 
 #print axioms Project.Beck.Execution.negative_exact
 #print axioms Project.Beck.Execution.magnitude_exact
@@ -53,3 +53,7 @@ import Project.Beck.ExecutionDetStage
 #print axioms Project.Beck.Execution.determinantPrefix_update
 #print axioms Project.Beck.Execution.determinantCall_zero
 #print axioms Project.Beck.Execution.determinantStage_exact
+#print axioms Project.Beck.Execution.determinantFinish_exact
+#print axioms Project.Beck.Execution.determinantNonzero_exact
+#print axioms Project.Beck.Execution.determinantCase_exact
+#print axioms Project.Beck.Execution.determinantStep_exact
