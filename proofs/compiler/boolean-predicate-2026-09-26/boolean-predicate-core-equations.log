@@ -1,0 +1,72 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [47/97] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [97/97] Building LeanExe.Extract.ScalarExprCore (12s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExprCore.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.setup.json --json
+error: LeanExe/Extract/ScalarExprCore.lean:408:2: `simp` made no progress
+info: LeanExe/Extract/ScalarExprCore.lean:407:2: locals : List ScalarBinding
+expression : Source.Scalar.BooleanLocal
+noBoolean :
+  ∀ (index : Nat), index ∈ expression.functions → locals[index]?.bind ScalarBinding.booleanPredicateFunction? = none
+⊢ (match _boolean : booleanLocalOperands? expression.expr with
+    | none => none
+    | some expression_1 =>
+      match expression_1, _boolean with
+      | Source.Scalar.BooleanLocal.predicate 0 index input, _boolean =>
+        match locals[index]?.bind ScalarBinding.booleanPredicateFunction? with
+        | some function =>
+          match _boolean : booleanLocalOperands? input with
+          | none => none
+          | some value => do
+            let condition ←
+              extractBooleanLocalWith locals value fun operand _member => extractScalarExprWith locals operand
+            function (guardWord condition)
+        | none => do
+          let condition ←
+            extractBooleanLocalWith locals expression_1 fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | x, _boolean => do
+        let condition ←
+          extractBooleanLocalWith locals expression_1 fun operand _member => extractScalarExprWith locals operand
+        pure (guardWord condition)) =
+    do
+    let condition ←
+      extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+    pure (guardWord condition)
+error: LeanExe/Extract/ScalarExprCore.lean:426:2: `simp` made no progress
+info: LeanExe/Extract/ScalarExprCore.lean:425:2: locals : List ScalarBinding
+index : Nat
+expression : Source.Scalar.BooleanLocal
+function : IR.Expr → Option IR.Expr
+found : locals[index]?.bind ScalarBinding.booleanPredicateFunction? = some function
+⊢ (match _boolean : booleanLocalOperands? ((Lean.Expr.bvar index).app expression.expr) with
+    | none => none
+    | some expression_1 =>
+      match expression_1, _boolean with
+      | Source.Scalar.BooleanLocal.predicate 0 index_1 input, _boolean =>
+        match locals[index_1]?.bind ScalarBinding.booleanPredicateFunction? with
+        | some function =>
+          match _boolean : booleanLocalOperands? input with
+          | none => none
+          | some value => do
+            let condition ←
+              extractBooleanLocalWith locals value fun operand _member => extractScalarExprWith locals operand
+            function (guardWord condition)
+        | none => do
+          let condition ←
+            extractBooleanLocalWith locals expression_1 fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | x, _boolean => do
+        let condition ←
+          extractBooleanLocalWith locals expression_1 fun operand _member => extractScalarExprWith locals operand
+        pure (guardWord condition)) =
+    do
+    let condition ←
+      extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+    function (guardWord condition)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExprCore
+error: build failed

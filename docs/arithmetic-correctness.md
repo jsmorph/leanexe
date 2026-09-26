@@ -186,8 +186,16 @@ where repeated calls may control yielding, `continue` and `break`. Step-valued
 helpers can capture them, and accumulator updates preserve their captured values.
 Predicates can also be declared before a loop and called in its bounds, initial
 value, body and final result. Captures preserve their source values throughout
-iteration. Reusable Bool-to-Bool helpers and declarations with a broader Boolean
-enclosing body remain subsequent capabilities.
+iteration.
+
+Reusable Bool-to-Bool helpers are admitted in scalar expressions when calls are
+converted with `Bool.toUInt64`, for example `let f := fun b : Bool => !b;
+(f (x == y)).toUInt64`. Captures, repeated calls, nested closures, shadowing,
+standard Id result annotations and unused helpers retain typed source evaluation.
+The function binding determines that its argument is Boolean. Word arguments,
+function/value confusion and unsupported unused bodies are rejected. Direct
+Boolean-context calls and helper declarations around or inside loop-step bodies
+remain subsequent capabilities.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations

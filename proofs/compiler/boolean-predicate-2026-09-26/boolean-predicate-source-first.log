@@ -1,0 +1,176 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [34/38] Built LeanExe.Source.ScalarValues (873ms)
+✔ [36/43] Built LeanExe.Source.ScalarBooleanLocalValues (821ms)
+✔ [43/50] Built LeanExe.Source.Scalar (1.3s)
+✖ [50/50] Building LeanExe.Extract.ScalarBindings (1.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBindings.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBindings.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBindings.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBindings.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBindings.setup.json --json
+error: LeanExe/Extract/ScalarBindings.lean:66:55: Unknown identifier `manyFunction?`
+warning: LeanExe/Extract/ScalarBindings.lean:66:70: This simp argument is unused:
+  kind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [function?, manyFunction?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarBindings.lean:208:44: Unknown identifier `function?`
+error: LeanExe/Extract/ScalarBindings.lean:208:55: Unknown identifier `manyFunction?`
+error: LeanExe/Extract/ScalarBindings.lean:208:31: unsolved goals
+case booleanPredicateFunction
+locals : List ScalarBinding
+index : Nat
+apply✝ : IR.Expr → Option IR.Expr
+found : locals[index]? = some (ScalarBinding.booleanPredicateFunction apply✝)
+kind : (ScalarBinding.booleanPredicateFunction apply✝).kind = Source.Scalar.BindingKind.word
+⊢ False
+warning: LeanExe/Extract/ScalarBindings.lean:208:70: This simp argument is unused:
+  kind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [function?, manyFunction?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarBindings.lean:219:44: Unknown identifier `function?`
+error: LeanExe/Extract/ScalarBindings.lean:219:55: Unknown identifier `manyFunction?`
+error: LeanExe/Extract/ScalarBindings.lean:219:31: unsolved goals
+case booleanPredicateFunction
+locals : List ScalarBinding
+index : Nat
+apply✝ : IR.Expr → Option IR.Expr
+found : locals[index]? = some (ScalarBinding.booleanPredicateFunction apply✝)
+kind : (ScalarBinding.booleanPredicateFunction apply✝).kind = Source.Scalar.BindingKind.boolean
+⊢ False
+warning: LeanExe/Extract/ScalarBindings.lean:219:70: This simp argument is unused:
+  kind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [function?, manyFunction?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarBindings.lean:230:44: Unknown identifier `function?`
+error: LeanExe/Extract/ScalarBindings.lean:230:55: Unknown identifier `manyFunction?`
+error: LeanExe/Extract/ScalarBindings.lean:230:31: unsolved goals
+case booleanPredicateFunction
+locals : List ScalarBinding
+index : Nat
+apply✝ : IR.Expr → Option IR.Expr
+found : locals[index]? = some (ScalarBinding.booleanPredicateFunction apply✝)
+kind : (ScalarBinding.booleanPredicateFunction apply✝).kind = Source.Scalar.BindingKind.natural
+⊢ False
+warning: LeanExe/Extract/ScalarBindings.lean:230:70: This simp argument is unused:
+  kind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [function?, manyFunction?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarBindings.lean:241:44: Unknown identifier `function?`
+error: LeanExe/Extract/ScalarBindings.lean:241:55: Unknown identifier `manyFunction?`
+error: LeanExe/Extract/ScalarBindings.lean:241:31: unsolved goals
+case booleanPredicateFunction
+locals : List ScalarBinding
+index : Nat
+withUnit : Bool
+apply✝ : IR.Expr → Option IR.Expr
+found : locals[index]? = some (ScalarBinding.booleanPredicateFunction apply✝)
+kind : (ScalarBinding.booleanPredicateFunction apply✝).kind = Source.Scalar.BindingKind.function withUnit
+⊢ False
+warning: LeanExe/Extract/ScalarBindings.lean:241:70: This simp argument is unused:
+  kind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [function?, manyFunction?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarBindings.lean:283:44: Unknown identifier `function?`
+error: LeanExe/Extract/ScalarBindings.lean:283:55: Unknown identifier `manyFunction?`
+error: LeanExe/Extract/ScalarBindings.lean:283:31: unsolved goals
+case booleanPredicateFunction
+locals : List ScalarBinding
+index : Nat
+apply✝ : IR.Expr → Option IR.Expr
+found : locals[index]? = some (ScalarBinding.booleanPredicateFunction apply✝)
+kind : (ScalarBinding.booleanPredicateFunction apply✝).kind = Source.Scalar.BindingKind.booleanFunction
+⊢ False
+warning: LeanExe/Extract/ScalarBindings.lean:283:70: This simp argument is unused:
+  kind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [function?, manyFunction?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarBindings.lean:294:76: unsolved goals
+case booleanPredicateFunction
+f apply✝ : IR.Expr → Option IR.Expr
+⊢ ¬apply✝ = f
+error: LeanExe/Extract/ScalarBindings.lean:325:44: Unknown identifier `function?`
+error: LeanExe/Extract/ScalarBindings.lean:325:55: Unknown identifier `manyFunction?`
+error: LeanExe/Extract/ScalarBindings.lean:325:31: unsolved goals
+case booleanPredicateFunction
+locals : List ScalarBinding
+index : Nat
+apply✝ : IR.Expr → Option IR.Expr
+found : locals[index]? = some (ScalarBinding.booleanPredicateFunction apply✝)
+kind : (ScalarBinding.booleanPredicateFunction apply✝).kind = Source.Scalar.BindingKind.predicateFunction
+⊢ False
+warning: LeanExe/Extract/ScalarBindings.lean:325:70: This simp argument is unused:
+  kind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [function?, manyFunction?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarBindings.lean:331:34: Redundant alternative: Any expression matching
+  booleanPredicateFunction f
+will match one of the preceding alternatives
+error: LeanExe/Extract/ScalarBindings.lean:446:44: Unknown identifier `function?`
+error: LeanExe/Extract/ScalarBindings.lean:446:55: Unknown identifier `manyFunction?`
+error: LeanExe/Extract/ScalarBindings.lean:446:31: unsolved goals
+case booleanPredicateFunction
+locals : List ScalarBinding
+index : Nat
+apply✝ : IR.Expr → Option IR.Expr
+found : locals[index]? = some (ScalarBinding.booleanPredicateFunction apply✝)
+kind : (ScalarBinding.booleanPredicateFunction apply✝).kind = Source.Scalar.BindingKind.binaryFunction
+⊢ False
+warning: LeanExe/Extract/ScalarBindings.lean:446:70: This simp argument is unused:
+  kind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [function?, manyFunction?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBindings.lean:459:44: This simp argument is unused:
+  function?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [manyFunction?, kind]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBindings.lean:459:70: This simp argument is unused:
+  kind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [function?, manyFunction?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarBindings.lean:491:44: Unknown identifier `function?`
+error: LeanExe/Extract/ScalarBindings.lean:491:55: Unknown identifier `manyFunction?`
+error: LeanExe/Extract/ScalarBindings.lean:491:31: unsolved goals
+case booleanPredicateFunction
+locals : List ScalarBinding
+index arity : Nat
+apply✝ : IR.Expr → Option IR.Expr
+found : locals[index]? = some (ScalarBinding.booleanPredicateFunction apply✝)
+kind : (ScalarBinding.booleanPredicateFunction apply✝).kind = Source.Scalar.BindingKind.manyFunction arity
+⊢ False
+warning: LeanExe/Extract/ScalarBindings.lean:491:70: This simp argument is unused:
+  kind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [function?, manyFunction?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBindings
+error: build failed
