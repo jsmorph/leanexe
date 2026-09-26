@@ -87,16 +87,16 @@ theorem function_22_while_loop_0_guard_tail_eq :
     (Project.ProofKit.Annotation.resolve Project.Beck.func22 [{ instructionIndex := 8, field := .block }, { instructionIndex := 0, field := .loop }]).getD [] = function_22_while_loop_0_guard_program ++ ((Project.ProofKit.Annotation.resolve Project.Beck.func22 [{ instructionIndex := 8, field := .block }, { instructionIndex := 0, field := .loop }]).getD []).drop 7 := by
   rfl
 
-def function_28_while_loop_0_guard_program : Wasm.Program :=
+def function_29_while_loop_0_guard_program : Wasm.Program :=
   Project.ProofKit.FuelGuard.program 0 15
 
-theorem function_28_while_loop_0_guard_eq :
-    Project.ProofKit.Annotation.region Project.Beck.func28
-      [{ instructionIndex := 6, field := .block }, { instructionIndex := 0, field := .loop }] 0 7 = some function_28_while_loop_0_guard_program := by
+theorem function_29_while_loop_0_guard_eq :
+    Project.ProofKit.Annotation.region Project.Beck.func29
+      [{ instructionIndex := 6, field := .block }, { instructionIndex := 0, field := .loop }] 0 7 = some function_29_while_loop_0_guard_program := by
   rfl
 
-theorem function_28_while_loop_0_guard_tail_eq :
-    (Project.ProofKit.Annotation.resolve Project.Beck.func28 [{ instructionIndex := 6, field := .block }, { instructionIndex := 0, field := .loop }]).getD [] = function_28_while_loop_0_guard_program ++ ((Project.ProofKit.Annotation.resolve Project.Beck.func28 [{ instructionIndex := 6, field := .block }, { instructionIndex := 0, field := .loop }]).getD []).drop 7 := by
+theorem function_29_while_loop_0_guard_tail_eq :
+    (Project.ProofKit.Annotation.resolve Project.Beck.func29 [{ instructionIndex := 6, field := .block }, { instructionIndex := 0, field := .loop }]).getD [] = function_29_while_loop_0_guard_program ++ ((Project.ProofKit.Annotation.resolve Project.Beck.func29 [{ instructionIndex := 6, field := .block }, { instructionIndex := 0, field := .loop }]).getD []).drop 7 := by
   rfl
 
 end Project.Beck.AnnotationMatches
