@@ -1,0 +1,46 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [43/58] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [47/58] Built LeanExe.Extract.ScalarBooleanRelation (934ms)
+✔ [48/58] Built LeanExe.Extract.ScalarPropositionGuard (844ms)
+✔ [50/60] Built LeanExe.Extract.ScalarBooleanLocalParser (11s)
+✔ [52/62] Built LeanExe.Extract.ScalarBooleanLocalParserEquations (892ms)
+✔ [55/64] Built LeanExe.Extract.ScalarBooleanLocalSyntax (1.5s)
+✔ [59/66] Built LeanExe.Extract.ScalarBooleanAction (874ms)
+✔ [62/76] Built LeanExe.Extract.ScalarBooleanBind (904ms)
+✔ [72/79] Built LeanExe.Extract.ScalarGuard (941ms)
+✔ [73/79] Built LeanExe.Extract.ScalarBooleanLetVariables (885ms)
+✔ [75/80] Built LeanExe.Extract.ScalarBooleanLocal (1.6s)
+✔ [76/81] Built LeanExe.Extract.ScalarDependentBranch (876ms)
+✔ [77/81] Built LeanExe.Extract.ScalarBooleanLocalBindings (902ms)
+✔ [79/91] Built LeanExe.Extract.ScalarBooleanLocalDependentBranch (888ms)
+✔ [85/94] Built LeanExe.Source.Scalar (1.2s)
+✔ [87/94] Built LeanExe.Source.ScalarRangeSupported (887ms)
+✔ [88/94] Built LeanExe.Extract.ScalarExprCore (12s)
+✔ [90/94] Built LeanExe.Extract.ScalarExpr (1.2s)
+⚠ [91/94] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [92/94] Built LeanExe.Extract.ScalarRange (2.4s)
+✔ [93/106] Built LeanExe.Extract.ScalarRangeCorrectness (934ms)
+✔ [100/107] Built LeanExe.Source.ScalarManyFunctionSemantics (879ms)
+✔ [101/110] Built LeanExe.Source.ScalarStep (1.3s)
+✔ [103/110] Built LeanExe.Extract.ScalarStep (8.8s)

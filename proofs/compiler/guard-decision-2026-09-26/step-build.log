@@ -1,0 +1,10 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [55/99] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [97/99] Built LeanExe.Extract.ScalarStepEquations (9.5s)
+✔ [98/99] Built LeanExe.Extract.ScalarStepCorrectness (1.1s)
+✔ [99/99] Built LeanExe.Extract.ScalarStepAcceptance (1.1s)
+Build completed successfully (99 jobs).
