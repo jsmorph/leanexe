@@ -1,0 +1,98 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [62/122] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [110/122] Replayed LeanExe.Extract.ScalarExpr
+warning: LeanExe/Extract/ScalarExpr.lean:177:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:178:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:192:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:193:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:254:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:267:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:1108:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1130:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1152:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1174:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1196:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1220:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1244:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1553:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:1572:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [115/122] Built LeanExe.Source.ScalarStep (1.4s)
+✔ [116/122] Built LeanExe.Extract.ScalarStep (9.3s)
+⚠ [117/122] Built LeanExe.Extract.ScalarStepEquations (9.7s)
+warning: LeanExe/Extract/ScalarStepEquations.lean:155:33: This simp argument is unused:
+  BooleanType.expr
+
+Hint: Omit it from the simp argument list.
+  [apply] simp
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [118/123] Built LeanExe.Extract.ScalarStepAcceptance (1.1s)
+✔ [119/123] Built LeanExe.Extract.ScalarStepCorrectness (1.1s)
+✔ [120/123] Built LeanExe.Extract.ScalarStepSupported (8.3s)
+✔ [122/133] Built LeanExe.Extract.ScalarStepInvariant (1.1s)
+✔ [133/140] Built LeanExe.Source.ScalarRangeExitSupported (1.1s)
+⚠ [135/140] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [137/140] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [138/140] Built LeanExe.Extract.ScalarRangeExit (7.0s)
+✖ [139/140] Building LeanExe.Extract.ScalarRangeExitInvariant (1.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarRangeExitInvariant.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarRangeExitInvariant.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarRangeExitInvariant.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarRangeExitInvariant.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarRangeExitInvariant.setup.json --json
+error: LeanExe/Extract/ScalarRangeExitInvariant.lean:69:22: Application type mismatch: The argument
+  extend bindings (expression hb bindings)
+has type
+  ∀ (binding : ScalarBinding), binding ∈ ScalarBinding.word bound :: locals → ScalarBinding.Holds P binding
+but is expected to have type
+  ∀ (binding : ScalarBinding), binding ∈ ScalarBinding.boolean bound :: locals → ScalarBinding.Holds P binding
+in the application
+  ih bound ht (extend bindings (expression hb bindings))
+✔ [140/140] Built LeanExe.Extract.ScalarRangeExitCorrectness (1.1s)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarRangeExitInvariant
+error: build failed
