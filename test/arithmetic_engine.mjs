@@ -20,7 +20,8 @@ const allEntries = ['constant', 'wrapping', 'quotient', 'remainder', 'shifts', '
   'reannotatedEq', 'reannotatedNe', 'reannotatedLt', 'reannotatedLe', 'reannotatedGt',
   'reannotatedGe', 'reannotatedNegated', 'reannotatedHelper', 'reannotatedDo',
   'reannotatedAnd', 'reannotatedOr', 'reannotatedGuardNegation', 'reannotatedNestedGuard', 'reannotatedGuardHelper', 'reannotatedGuardDo',
-  'dependentReannotatedEq', 'dependentReannotatedOrder', 'dependentReannotatedCompound', 'dependentReannotatedNested', 'dependentReannotatedHelper', 'dependentReannotatedDo', ...rangeEntries];
+  'dependentReannotatedEq', 'dependentReannotatedOrder', 'dependentReannotatedCompound', 'dependentReannotatedNested', 'dependentReannotatedHelper', 'dependentReannotatedDo',
+  'savedReannotatedDecide', 'savedReannotatedNested', 'savedReannotatedChoice', 'savedReannotatedDependentChoice', 'savedReannotatedDo', 'savedReannotatedHelper', 'savedReannotatedCaptured', 'savedReannotatedUnused', ...rangeEntries];
 const entries = suite === 'all' ? allEntries : suite === 'range' ? rangeEntries : groups[suite];
 if (!Array.isArray(entries) || entries.length === 0 || new Set(entries).size !== entries.length ||
     entries.some(name => !allEntries.includes(name))) {

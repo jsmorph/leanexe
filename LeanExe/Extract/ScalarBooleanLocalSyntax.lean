@@ -27,7 +27,7 @@ open LeanExe.Source.Scalar
 
 @[simp] theorem booleanLocalOperands_decision (guard : PropositionGuard) :
     booleanLocalOperands? guard.value.decisionExpr = some (.decision 0 guard) := by
-  rw [Guard.decisionExpr, booleanLocalOperands?]
+  rw [DecidedGuard.decisionExpr, booleanLocalOperands?]
   · simp only [propositionGuard_accepts, Option.map_some]
   · intro left right equality
     exact propositionGuard_not_boolean_equal guard left right equality
@@ -248,7 +248,7 @@ theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLoca
     rw [booleanLocalOperands?] at parsed
     · obtain ⟨g, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
       obtain ⟨hc, he⟩ := propositionGuard_sound found
-      simp only [BooleanLocal.expr, BooleanGuardNegation.expr, Guard.decisionExpr, hc, he]
+      simp only [BooleanLocal.expr, BooleanGuardNegation.expr, DecidedGuard.decisionExpr, hc, he]
     · exact excludedEqual
     · exact excludedUnequal
   | case25 left right ihl ihr =>
@@ -363,13 +363,13 @@ theorem booleanProofBranch_not_comparison (n : Nat) (shape : BooleanProofBranch)
   | zero => rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanComparisonOperands?, ih]
 
-theorem decision_not_guard (n : Nat) (guard : Guard) :
+theorem decision_not_guard (n : Nat) (guard : DecidedGuard) :
     booleanGuardOperands? (BooleanGuardNegation.expr n guard.decisionExpr) = none := by
   induction n with
   | zero => rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanGuardOperands?, ih]
 
-theorem decision_not_comparison (n : Nat) (guard : Guard) :
+theorem decision_not_comparison (n : Nat) (guard : DecidedGuard) :
     booleanComparisonOperands? (BooleanGuardNegation.expr n guard.decisionExpr) = none := by
   induction n with
   | zero => rfl

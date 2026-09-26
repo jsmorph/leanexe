@@ -55,9 +55,9 @@ operations, standard numeral encodings, and corresponding metadata wrappers;
 custom arithmetic/numeral instances and different runtime operands are rejected.
 The entire decision expression is still checked. Propositional `∧`, `∨` and negation also compose these checked comparison
 leaves, retaining exact enclosing propositions and standard decision instances.
-Saved `decide` values currently require identical condition and decision
-operands. Boolean `&&`/`||` subguards retain their exact
-standard decision evidence. Boolean `==` and `!=` heads still require an unannotated UInt64
+The same proved operand equivalence covers saved `decide` values and ordinary
+or dependent Boolean-result choices over propositional guards. Boolean `&&`/`||`
+subguards retain their exact standard decision evidence. Boolean `==` and `!=` heads still require an unannotated UInt64
 type argument.
 `>` and `≥` have their own elaborated heads, using the standard `<` and `≤`
 decision procedures with reversed operands. `≠` preserves standard inequality
@@ -132,7 +132,8 @@ Boolean-valued choices also admit propositional guards: UInt64 `=`, `≠`, `<`,
 including their Boolean comparison/literal leaves. Saved Boolean values may
 appear in either result branch. Nested Boolean and propositional choices share
 the same proved lowering. Propositional choices check their entire standard
-decision evidence and preserve the existing Boolean-choice path.
+decision evidence, including proved-equivalent arithmetic operands, and preserve
+the existing Boolean-choice path.
 Boolean-result choices also admit Boolean Eq/Ne directly, including saved flags,
 nested Boolean choices and decisions in either condition input or result branch.
 The exact standard evidence is checked. A proved literal-true specialization
@@ -172,7 +173,9 @@ containing saved Boolean locals remain separate capabilities.
 Explicit `decide` and implicit Prop-to-Bool conversions admit the existing
 closed guard grammar, including all UInt64 comparisons, propositional literals,
 negation and junctions, and closed Boolean guards. The parser requires the exact
-Decidable.decide head and the whole standard decision expression. Converted
+Decidable.decide head and the whole standard decision expression. Standard
+arithmetic operands may carry different accepted annotations in the proposition
+and its decision evidence, justified by the source equivalence proof. Converted
 values compose with Boolean negation, junctions and choices, helper arguments,
 ordinary/Id bindings, loop steps and surrounding scalar code. Unsupported
 operands are rejected even when unused or under an inactive decision. Decisions
