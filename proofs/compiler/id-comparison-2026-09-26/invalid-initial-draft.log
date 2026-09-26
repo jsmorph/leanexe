@@ -1,0 +1,242 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/id-comparison-inspect.lean:6:2: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Decidable (x = y)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+../work/id-comparison-inspect.lean:9:2: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Decidable (x ≠ y)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+../work/id-comparison-inspect.lean:12:2: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Decidable (x < y)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+../work/id-comparison-inspect.lean:15:2: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Decidable (x ≤ y)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+../work/id-comparison-inspect.lean:18:2: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Decidable (x > y)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+../work/id-comparison-inspect.lean:21:2: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Decidable (x ≥ y)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+../work/id-comparison-inspect.lean:28:4: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Decidable (a % 5 = 0)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+../work/id-comparison-inspect.lean:26:4: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Decidable (UInt64.ofNat i < seed % 7)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+IdComparisonInspect.equality: fun (x y : UInt64) =>
+  sorryAx.{1} ((tag : Unit) → UInt64) Bool.true
+    (@Function.const.{1, 1} Unit Lean.Name Unit.unit
+      (Lean.Name.num
+        (Lean.Name.str
+          (Lean.Name.str
+            (Lean.Name.num
+              (Lean.Name.str
+                (Lean.Name.str
+                  (Lean.Name.str
+                    (Lean.Name.num
+                      (Lean.Name.num
+                        (Lean.Name.num
+                          (Lean.Name.num
+                            (Lean.Name.num
+                              (Lean.Name.num (Lean.Name.str Lean.Name.anonymous "_stdin")
+                                (@OfNat.ofNat.{0} Nat (nat_lit 6) (instOfNatNat (nat_lit 6))))
+                              (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                            (@OfNat.ofNat.{0} Nat (nat_lit 6) (instOfNatNat (nat_lit 6))))
+                          (@OfNat.ofNat.{0} Nat (nat_lit 46) (instOfNatNat (nat_lit 46))))
+                        (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                      (@OfNat.ofNat.{0} Nat (nat_lit 46) (instOfNatNat (nat_lit 46))))
+                    "_sorry")
+                  "_@")
+                "_stdin")
+              (@OfNat.ofNat.{0} Nat (nat_lit 5569029) (instOfNatNat (nat_lit 5569029))))
+            "_hygCtx")
+          "_hyg")
+        (@OfNat.ofNat.{0} Nat (nat_lit 28) (instOfNatNat (nat_lit 28)))))
+accepted: false
+IdComparisonInspect.inequality: fun (x y : UInt64) =>
+  sorryAx.{1} ((tag : Unit) → UInt64) Bool.true
+    (@Function.const.{1, 1} Unit Lean.Name Unit.unit
+      (Lean.Name.num
+        (Lean.Name.str
+          (Lean.Name.str
+            (Lean.Name.num
+              (Lean.Name.str
+                (Lean.Name.str
+                  (Lean.Name.str
+                    (Lean.Name.num
+                      (Lean.Name.num
+                        (Lean.Name.num
+                          (Lean.Name.num
+                            (Lean.Name.num
+                              (Lean.Name.num (Lean.Name.str Lean.Name.anonymous "_stdin")
+                                (@OfNat.ofNat.{0} Nat (nat_lit 9) (instOfNatNat (nat_lit 9))))
+                              (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                            (@OfNat.ofNat.{0} Nat (nat_lit 9) (instOfNatNat (nat_lit 9))))
+                          (@OfNat.ofNat.{0} Nat (nat_lit 51) (instOfNatNat (nat_lit 51))))
+                        (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                      (@OfNat.ofNat.{0} Nat (nat_lit 51) (instOfNatNat (nat_lit 51))))
+                    "_sorry")
+                  "_@")
+                "_stdin")
+              (@OfNat.ofNat.{0} Nat (nat_lit 1461890225) (instOfNatNat (nat_lit 1461890225))))
+            "_hygCtx")
+          "_hyg")
+        (@OfNat.ofNat.{0} Nat (nat_lit 31) (instOfNatNat (nat_lit 31)))))
+accepted: false
+IdComparisonInspect.less: fun (x y : UInt64) =>
+  sorryAx.{1} ((tag : Unit) → UInt64) Bool.true
+    (@Function.const.{1, 1} Unit Lean.Name Unit.unit
+      (Lean.Name.num
+        (Lean.Name.str
+          (Lean.Name.str
+            (Lean.Name.num
+              (Lean.Name.str
+                (Lean.Name.str
+                  (Lean.Name.str
+                    (Lean.Name.num
+                      (Lean.Name.num
+                        (Lean.Name.num
+                          (Lean.Name.num
+                            (Lean.Name.num
+                              (Lean.Name.num (Lean.Name.str Lean.Name.anonymous "_stdin")
+                                (@OfNat.ofNat.{0} Nat (nat_lit 12) (instOfNatNat (nat_lit 12))))
+                              (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                            (@OfNat.ofNat.{0} Nat (nat_lit 12) (instOfNatNat (nat_lit 12))))
+                          (@OfNat.ofNat.{0} Nat (nat_lit 62) (instOfNatNat (nat_lit 62))))
+                        (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                      (@OfNat.ofNat.{0} Nat (nat_lit 62) (instOfNatNat (nat_lit 62))))
+                    "_sorry")
+                  "_@")
+                "_stdin")
+              (@OfNat.ofNat.{0} Nat (nat_lit 3301362296) (instOfNatNat (nat_lit 3301362296))))
+            "_hygCtx")
+          "_hyg")
+        (@OfNat.ofNat.{0} Nat (nat_lit 29) (instOfNatNat (nat_lit 29)))))
+accepted: false
+IdComparisonInspect.atMost: fun (x y : UInt64) =>
+  sorryAx.{1} ((tag : Unit) → UInt64) Bool.true
+    (@Function.const.{1, 1} Unit Lean.Name Unit.unit
+      (Lean.Name.num
+        (Lean.Name.str
+          (Lean.Name.str
+            (Lean.Name.num
+              (Lean.Name.str
+                (Lean.Name.str
+                  (Lean.Name.str
+                    (Lean.Name.num
+                      (Lean.Name.num
+                        (Lean.Name.num
+                          (Lean.Name.num
+                            (Lean.Name.num
+                              (Lean.Name.num (Lean.Name.str Lean.Name.anonymous "_stdin")
+                                (@OfNat.ofNat.{0} Nat (nat_lit 15) (instOfNatNat (nat_lit 15))))
+                              (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                            (@OfNat.ofNat.{0} Nat (nat_lit 15) (instOfNatNat (nat_lit 15))))
+                          (@OfNat.ofNat.{0} Nat (nat_lit 69) (instOfNatNat (nat_lit 69))))
+                        (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                      (@OfNat.ofNat.{0} Nat (nat_lit 69) (instOfNatNat (nat_lit 69))))
+                    "_sorry")
+                  "_@")
+                "_stdin")
+              (@OfNat.ofNat.{0} Nat (nat_lit 1286225564) (instOfNatNat (nat_lit 1286225564))))
+            "_hygCtx")
+          "_hyg")
+        (@OfNat.ofNat.{0} Nat (nat_lit 32) (instOfNatNat (nat_lit 32)))))
+accepted: false
+IdComparisonInspect.greater: fun (x y : UInt64) =>
+  sorryAx.{1} ((tag : Unit) → UInt64) Bool.true
+    (@Function.const.{1, 1} Unit Lean.Name Unit.unit
+      (Lean.Name.num
+        (Lean.Name.str
+          (Lean.Name.str
+            (Lean.Name.num
+              (Lean.Name.str
+                (Lean.Name.str
+                  (Lean.Name.str
+                    (Lean.Name.num
+                      (Lean.Name.num
+                        (Lean.Name.num
+                          (Lean.Name.num
+                            (Lean.Name.num
+                              (Lean.Name.num (Lean.Name.str Lean.Name.anonymous "_stdin")
+                                (@OfNat.ofNat.{0} Nat (nat_lit 18) (instOfNatNat (nat_lit 18))))
+                              (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                            (@OfNat.ofNat.{0} Nat (nat_lit 18) (instOfNatNat (nat_lit 18))))
+                          (@OfNat.ofNat.{0} Nat (nat_lit 62) (instOfNatNat (nat_lit 62))))
+                        (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                      (@OfNat.ofNat.{0} Nat (nat_lit 62) (instOfNatNat (nat_lit 62))))
+                    "_sorry")
+                  "_@")
+                "_stdin")
+              (@OfNat.ofNat.{0} Nat (nat_lit 2699812668) (instOfNatNat (nat_lit 2699812668))))
+            "_hygCtx")
+          "_hyg")
+        (@OfNat.ofNat.{0} Nat (nat_lit 29) (instOfNatNat (nat_lit 29)))))
+accepted: false
+IdComparisonInspect.atLeast: fun (x y : UInt64) =>
+  sorryAx.{1} ((tag : Unit) → UInt64) Bool.true
+    (@Function.const.{1, 1} Unit Lean.Name Unit.unit
+      (Lean.Name.num
+        (Lean.Name.str
+          (Lean.Name.str
+            (Lean.Name.num
+              (Lean.Name.str
+                (Lean.Name.str
+                  (Lean.Name.str
+                    (Lean.Name.num
+                      (Lean.Name.num
+                        (Lean.Name.num
+                          (Lean.Name.num
+                            (Lean.Name.num
+                              (Lean.Name.num (Lean.Name.str Lean.Name.anonymous "_stdin")
+                                (@OfNat.ofNat.{0} Nat (nat_lit 21) (instOfNatNat (nat_lit 21))))
+                              (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                            (@OfNat.ofNat.{0} Nat (nat_lit 21) (instOfNatNat (nat_lit 21))))
+                          (@OfNat.ofNat.{0} Nat (nat_lit 67) (instOfNatNat (nat_lit 67))))
+                        (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                      (@OfNat.ofNat.{0} Nat (nat_lit 67) (instOfNatNat (nat_lit 67))))
+                    "_sorry")
+                  "_@")
+                "_stdin")
+              (@OfNat.ofNat.{0} Nat (nat_lit 1101939198) (instOfNatNat (nat_lit 1101939198))))
+            "_hygCtx")
+          "_hyg")
+        (@OfNat.ofNat.{0} Nat (nat_lit 32) (instOfNatNat (nat_lit 32)))))
+accepted: false
+IdComparisonInspect.range: sorryAx.{1} ((tag : Lean.Name) → (count seed : UInt64) → UInt64) Bool.true
+  (Lean.Name.num
+    (Lean.Name.str
+      (Lean.Name.str
+        (Lean.Name.num
+          (Lean.Name.str
+            (Lean.Name.str
+              (Lean.Name.str
+                (Lean.Name.num
+                  (Lean.Name.num
+                    (Lean.Name.num
+                      (Lean.Name.num
+                        (Lean.Name.num
+                          (Lean.Name.num (Lean.Name.str Lean.Name.anonymous "_stdin")
+                            (@OfNat.ofNat.{0} Nat (nat_lit 23) (instOfNatNat (nat_lit 23))))
+                          (@OfNat.ofNat.{0} Nat (nat_lit 4) (instOfNatNat (nat_lit 4))))
+                        (@OfNat.ofNat.{0} Nat (nat_lit 23) (instOfNatNat (nat_lit 23))))
+                      (@OfNat.ofNat.{0} Nat (nat_lit 9) (instOfNatNat (nat_lit 9))))
+                    (@OfNat.ofNat.{0} Nat (nat_lit 4) (instOfNatNat (nat_lit 4))))
+                  (@OfNat.ofNat.{0} Nat (nat_lit 9) (instOfNatNat (nat_lit 9))))
+                "_sorry")
+              "_@")
+            "_stdin")
+          (@OfNat.ofNat.{0} Nat (nat_lit 1780592896) (instOfNatNat (nat_lit 1780592896))))
+        "_hygCtx")
+      "_hyg")
+    (@OfNat.ofNat.{0} Nat (nat_lit 118) (instOfNatNat (nat_lit 118))))
+accepted: false

@@ -1,20 +1,29 @@
-# Current task: compiler coverage on correct — in progress
+# Current task: compiler coverage on correct — Id comparisons complete
 
 The user resumed compiler work on `correct` from main on 2026-09-26.
 `correct` includes main through `8dbb8e8a`, including the combined compiler,
 byte-I/O, GPT, and documentation work. Lean runs locally through `tools/leanrun`.
 
-Current increment: accept standard UInt64 propositional comparisons whose word
-type retains finite `Id` annotations. Preserve exact source types and standard
-decision evidence, prove extraction and lowering, and check the real compiler
-output against native Lean. Use focused dependency builds and execution tests.
+Candidate `c8b59c3a` accepts standard UInt64 propositional comparisons with finite
+`Id` type annotations. The source syntax retains their exact types, standard
+order instances, and decision evidence. The general source-to-WASM theorem and
+all nine compiler axiom audits pass. The real compiler passes 597 native Lean/V8
+comparisons across 35 declarations, including twelve range declarations.
 
-The six comparison forms retain their exact types and standard instance/decision
-evidence. Extraction and lowering proofs pass, and fifteen declarations pass
-240 native/IR comparisons. One initial loop probe has different annotations in
-its condition operands and decision operands; it remains a rejection test.
-The accepted loop variant has explicit UInt64 operand annotations. General
-compiler proof and real WASM execution checks are pending.
+The focused fixtures pass 492 native/IR comparisons and 215 rejection tests.
+Preceding comparison and arithmetic fixtures pass unchanged, and twenty prior
+WASM modules keep identical bytes. The corpus has 675 declarations; this was a
+focused execution run. The independent core type-safety implementation, runtime,
+and binary serializer are unchanged. Evidence, exact binaries, test sources,
+and the retained initial failures are in
+[the comparison archive](proofs/compiler/id-comparison-2026-09-26/README.md).
+
+Next: support comparison decision operands that differ from their condition
+operands only by accepted type annotations. The original loop probe remains
+`rangeIdComparisonEvidenceAnnotations`, an explicit rejection test. Its accepted
+variant uses UInt64 operand annotations. Prove source equivalence before relaxing
+that check, then complete the compiler proof and native/WASM comparisons for the
+extension. Keep increments focused and commit/push frequently.
 
 ## Main integration — complete
 
@@ -912,9 +921,11 @@ Evidence is in `proofs/compiler/id-arithmetic-2026-09-25/`. The complete corpus
 has 660 declarations; the emitted-WASM check was focused. These results apply to
 `correct` before the ciogpt merge; combined validation is tracked at the top.
 
-After integration, continue incremental dialect coverage. Broader comparison
-annotations, Boolean-returning helpers, Boolean public ABI, mixed Bool/word helper
-parameters, saved-flag propositions and loops inside helpers remain later work.
+The next completed increment after integration is recorded at the top: Id type
+annotations on propositional word comparisons. Differing annotations inside
+condition and decision operands remain open. Boolean-returning helpers, Boolean
+public ABI, mixed Bool/word helper parameters, saved-flag propositions and loops
+inside helpers remain later work.
 
 Current checkout: `/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe`.
 Local Lean is the pinned 4.34.0-rc2 toolchain; Node is 24.13.0. All Lean commands
