@@ -41,12 +41,20 @@ identical bytes. Focused tests pass 9,108 comparisons and 7,344 invalid-input
 checks. Prior tests pass 2,112 comparisons and 864 invalid-input checks.
 Evidence is in [the predicate input archive](proofs/compiler/predicate-input-2026-09-26/README.md).
 
-Next: reusable Bool-to-Bool helpers, starting with explicitly word-converted
-calls. Their function bindings determine Boolean argument semantics; raw bound
-variables alone cannot distinguish a Boolean argument from a UInt64 argument.
-General calls within arbitrary Boolean expressions need a subsequent extension
-to that typed dispatch. Full-dialect correctness remains unfinished. Complete
-each capability through WASM, keep this file current, and commit/push frequently.
+Reusable Bool-to-Bool helpers now have distinct typed source and compiled
+bindings. Converted calls use those bindings to check Boolean arguments. Scalar
+source totality, acceptance, soundness, evaluation correctness and IR invariants
+pass. Ten native examples and exact syntax cases pass 2,156 comparisons and
+2,304 invalid-input tests. Prior word-predicate tests pass 1,148 comparisons and
+864 invalid-input checks. The general theorem and independent WASM checks are
+next; this increment is not yet complete through WASM.
+
+Current scope: declarations in supported scalar expressions, with calls under
+Bool.toUInt64. Captures, repeated calls, nested closures, result Id annotations,
+shadowing, dependent choices, unused bodies and do blocks are checked. Direct
+calls in Boolean guards and helper declarations around or inside loop-step
+bodies remain subsequent work. Full-dialect correctness remains unfinished.
+Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
