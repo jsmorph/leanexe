@@ -106,19 +106,21 @@ invalid-input checks and 12 admission controls. Prior tests pass 16,356 comparis
 and 11,540 invalid-input checks. Evidence is in
 [the equality archive](proofs/compiler/boolean-predicate-equality-2026-09-26/README.md).
 
-Boolean-valued choices containing Boolean-input calls now pass source totality,
-extraction correctness, acceptance, soundness and IR invariant proofs. Conditions
-may be Boolean values or Boolean Eq/Ne relations; ordinary and dependent branches
-preserve their exact source syntax. Source execution uses the selected branch,
-while compilation checks both. Focused tests pass 16,052 native/IR comparisons,
-11,628 invalid-input checks and 12 admission controls. Prior equality/choice tests
-pass 16,660 comparisons, 11,694 invalid-input checks and 12 admission controls.
-The general source-to-WASM theorem, eighteen audits and a focused 32-declaration
-independent engine check are next for this candidate.
+Boolean-valued choices containing Boolean-input calls are complete for Boolean
+conditions and Boolean Eq/Ne relations, with ordinary and dependent branches.
+The exact unused condition-proof binders are preserved. Source execution uses
+the selected branch; compilation checks both. The general source-to-WASM theorem
+and all eighteen audits pass. Native Lean/V8 agree on 575 inputs across 32 selected
+declarations, including 14 ranges; all eighteen shared modules retain identical
+bytes. Focused tests pass 16,052 native/IR comparisons and 11,628 invalid-input
+checks. Prior tests pass 16,660 comparisons and 11,694 invalid-input checks, with
+twelve admission controls in each group. Evidence is in
+[the choice archive](proofs/compiler/boolean-predicate-choice-2026-09-26/README.md).
 
-After this increment: choices over other propositions, direct Boolean contexts,
-retained instance wrappers and broader signatures. Full-dialect correctness
-remains unfinished. Complete each capability through WASM and commit/push frequently.
+Next: Boolean-valued choices over UInt64 comparisons and other admitted
+propositions, including dependent branches. Direct Boolean contexts, retained
+instance wrappers and broader signatures follow. Full-dialect correctness remains
+unfinished. Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
