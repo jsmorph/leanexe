@@ -4415,6 +4415,58 @@ def rangeIdArithmeticStep (count seed : UInt64) : UInt64 :=
       else return .yield (value + 1)
     f (a % 7 == 0 && seed != 0)
 
+def booleanPredicateTwice (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b
+  (f (x == y)).toUInt64 + (f (x != 0)).toUInt64 * 3
+
+def booleanPredicateCapture (x y : UInt64) : UInt64 :=
+  let flag := x != 0
+  let f := fun b : Bool => flag && (b || x == y)
+  (f false).toUInt64 + (f (x != y)).toUInt64 * 3
+
+def booleanPredicateWordCapture (x y : UInt64) : UInt64 :=
+  let wordPredicate := fun n : UInt64 => n == y
+  let f := fun b : Bool => b && wordPredicate x
+  (f true).toUInt64 + (f (wordPredicate y)).toUInt64
+
+def booleanPredicateNested (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b
+  let g := fun b : Bool => (f b).toUInt64 == x
+  (g (x == y)).toUInt64 + (g false).toUInt64 * 3
+
+def booleanPredicateScalarCapture (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == 0
+  let g := fun n : UInt64 => (f (n == y)).toUInt64 + n
+  g x + g y
+
+def booleanPredicateShadow (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == y
+  let saved := (f false).toUInt64
+  let f := fun b : Bool => b && saved != 0
+  (f (x != 0)).toUInt64 + saved
+
+def booleanPredicateDependent (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => if _h : x < y then b else !b
+  if (f (x == y)).toUInt64 == 1 then x + 7 else y - 3
+
+def booleanPredicateId (x y : UInt64) : UInt64 :=
+  let f : Bool → Id (Id Bool) := fun b => b && x != y
+  (f true).toUInt64 + (f false).toUInt64 * 3
+
+def booleanPredicateUnused (x y : UInt64) : UInt64 :=
+  let _f := fun b : Bool => b && x / y == 0
+  x - y
+
+def booleanPredicateDo (x y : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => !b
+  let a ← pure (f (x == y)).toUInt64
+  let b ← pure (f (x / y == 0)).toUInt64
+  return a + b
+
+def boolWordBooleanHelper (x y : UInt64) : UInt64 :=
+  let f := fun flag : Bool => !flag
+  (f (x == y)).toUInt64
+
 def predicateInputRepeated (x y : UInt64) : UInt64 :=
   let f : Id UInt64 → Bool := fun n => (show UInt64 from n) == y
   if f x || f (x + 1) then x + 7 else y - 3
@@ -5502,6 +5554,17 @@ def inputs : List (UInt64 × UInt64) :=
 
 def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
   [
+   ("booleanPredicateTwice", booleanPredicateTwice),
+   ("booleanPredicateCapture", booleanPredicateCapture),
+   ("booleanPredicateWordCapture", booleanPredicateWordCapture),
+   ("booleanPredicateNested", booleanPredicateNested),
+   ("booleanPredicateScalarCapture", booleanPredicateScalarCapture),
+   ("booleanPredicateShadow", booleanPredicateShadow),
+   ("booleanPredicateDependent", booleanPredicateDependent),
+   ("booleanPredicateId", booleanPredicateId),
+   ("booleanPredicateUnused", booleanPredicateUnused),
+   ("booleanPredicateDo", booleanPredicateDo),
+   ("boolWordBooleanHelper", boolWordBooleanHelper),
    ("predicateInputRepeated", predicateInputRepeated),
    ("predicateInputNested", predicateInputNested),
    ("predicateInputCapture", predicateInputCapture),
