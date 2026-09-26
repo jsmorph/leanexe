@@ -111,7 +111,10 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List LeanEx
         (by rw [same]; simp [LeanExe.Source.Scalar.BooleanLocal.functions])))
       (fun negations op left right same => hasBooleanPredicate_false (fun index member =>
         bindings.no_booleanPredicate_of_predicate (variables.functions index
-          (by simpa [same, LeanExe.Source.Scalar.BooleanLocal.functions] using member))))] at compiled
+          (by simpa [same, LeanExe.Source.Scalar.BooleanLocal.functions] using member))))
+      (fun form negations unequal left right same => hasBooleanPredicate_false (fun index member =>
+        bindings.no_booleanPredicate_of_predicate (variables.functions index
+          (by simpa [same] using member))))] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨condition, hc, rfl⟩ := compiled
     exact guardWord_correct (extractBooleanLocalWith_correct expression _ _ _ hc bindings variables
@@ -158,6 +161,18 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List LeanEx
       (fun operand member expression found => ihArgs operand member found bindings)
     exact bindings.booleanFunction (Option.bind_eq_some_iff.mpr hf) function _ _ target
       (guardWord_correct meaning) ht
+  | booleanEqualityWord form negations unequal left right member function _ _ ihl ihr =>
+    rw [extractScalarExprWith_booleanEquality] at compiled
+    split at compiled
+    · simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+      obtain ⟨first, hl, second, hr, rfl⟩ := compiled
+      exact booleanWordEquality_correct form negations unequal (ihl hl bindings) (ihr hr bindings)
+    · have absent := extractBooleanLocalWith_none_of_predicate_absent
+        (value := form.local negations unequal left right) (by simpa using member)
+        (bindings.no_predicate_of_booleanPredicate function)
+        (fun operand _member => extractScalarExprWith locals operand)
+      rw [absent] at compiled
+      contradiction
   | booleanJunctionWord negations op left right member function _ _ ihl ihr =>
     rw [extractScalarExprWith_booleanJunction] at compiled
     split at compiled
@@ -374,7 +389,10 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
           (by rw [same]; simp [LeanExe.Source.Scalar.BooleanLocal.functions])))
         (fun negations op left right same => hasBooleanPredicate_false (fun index member =>
           scalarBooleanPredicate_none_of_predicate (typed ▸ variables.functions index
-            (by simpa [same, LeanExe.Source.Scalar.BooleanLocal.functions] using member))))]
+            (by simpa [same, LeanExe.Source.Scalar.BooleanLocal.functions] using member))))
+        (fun form negations unequal left right same => hasBooleanPredicate_false (fun index member =>
+          scalarBooleanPredicate_none_of_predicate (typed ▸ variables.functions index
+            (by simpa [same] using member))))]
       simp [hc]⟩
   | letBoolean expression variables _ _ ihArgs ihb =>
     obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals expression
@@ -428,6 +446,12 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
     obtain ⟨target, ht⟩ := total _ (List.mem_of_getElem? hf) (guardWord condition)
     have found := congrArg (fun binding => binding.bind ScalarBinding.booleanFunction?) hf
     exact ⟨target, by rw [extractScalarExprWith_booleanApply _ _ _ _ found]; simp [hc, ht]⟩
+  | booleanEqualityWord form negations unequal left right member present _ _ ihl ihr =>
+    obtain ⟨first, hl⟩ := ihl locals typed total
+    obtain ⟨second, hr⟩ := ihr locals typed total
+    have found := hasBooleanPredicate_of_kind member (typed ▸ present)
+    exact ⟨booleanWordEquality negations unequal first second, by
+      rw [extractScalarExprWith_booleanEquality]; simp [found, hl, hr]⟩
   | booleanJunctionWord negations op left right member present _ _ ihl ihr =>
     obtain ⟨first, hl⟩ := ihl locals typed total
     obtain ⟨second, hr⟩ := ihr locals typed total
@@ -1012,7 +1036,8 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     have same := booleanLocalOperands_sound parsed
     subst argument
     rw [extractScalarExprWith_booleanWord _ _ (by
-      intro n i arg equality; cases equality; exact noBoolean) (by intros; contradiction)] at compiled
+      intro n i arg equality; cases equality; exact noBoolean) (by intros; contradiction)
+      (by intro form n unequal left right same; cases form <;> cases same)] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨condition, hc, _⟩ := compiled
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
@@ -1036,7 +1061,51 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case63 locals argument expression parsed matched excluded excludedJunction ihArgs =>
+  | case63 locals argument negations unequal left right parsed present _ ihl ihr =>
+    have same := booleanLocalOperands_sound parsed
+    subst argument
+    have equation := extractScalarExprWith_booleanEquality locals .equality negations unequal left right
+    simp only [LeanExe.Source.Scalar.BooleanEqualityForm.local] at equation
+    rw [equation] at compiled
+    simp only [present, ↓reduceIte, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨first, hl, second, hr, _⟩ := compiled
+    obtain ⟨index, member, function, found⟩ := hasBooleanPredicate_iff.mp present
+    exact .booleanEqualityWord .equality negations unequal left right member
+      (scalarBooleanPredicateFunction_kind found) (ihl hl) (ihr hr)
+  | case64 locals argument negations unequal left right parsed absent _ ihArgs =>
+    have same := booleanLocalOperands_sound parsed
+    subst argument
+    have equation := extractScalarExprWith_booleanEquality locals .equality negations unequal left right
+    simp only [LeanExe.Source.Scalar.BooleanEqualityForm.local] at equation
+    rw [equation, if_neg absent] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, _⟩ := compiled
+    exact .booleanWord _ (extractBooleanLocalWith_variables hc)
+      (fun operand member => ihArgs operand member
+        (extractBooleanLocalWith_operands hc operand member).choose_spec)
+  | case65 locals argument negations unequal left right parsed present _ ihl ihr =>
+    have same := booleanLocalOperands_sound parsed
+    subst argument
+    have equation := extractScalarExprWith_booleanEquality locals .decision negations unequal left right
+    simp only [LeanExe.Source.Scalar.BooleanEqualityForm.local] at equation
+    rw [equation] at compiled
+    simp only [present, ↓reduceIte, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨first, hl, second, hr, _⟩ := compiled
+    obtain ⟨index, member, function, found⟩ := hasBooleanPredicate_iff.mp present
+    exact .booleanEqualityWord .decision negations unequal left right member
+      (scalarBooleanPredicateFunction_kind found) (ihl hl) (ihr hr)
+  | case66 locals argument negations unequal left right parsed absent _ ihArgs =>
+    have same := booleanLocalOperands_sound parsed
+    subst argument
+    have equation := extractScalarExprWith_booleanEquality locals .decision negations unequal left right
+    simp only [LeanExe.Source.Scalar.BooleanEqualityForm.local] at equation
+    rw [equation, if_neg absent] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, _⟩ := compiled
+    exact .booleanWord _ (extractBooleanLocalWith_variables hc)
+      (fun operand member => ihArgs operand member
+        (extractBooleanLocalWith_operands hc operand member).choose_spec)
+  | case67 locals argument expression parsed matched excluded excludedJunction excludedEquality excludedDecision ihArgs =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     rw [extractScalarExprWith_booleanWord _ _ (by
@@ -1045,34 +1114,39 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
       exact False.elim (excluded negations index input matched rfl (HEq.refl _))) (by
       intro negations op left right equality
       subst expression
-      exact False.elim (excludedJunction negations op left right matched rfl (HEq.refl _)))] at compiled
+      exact False.elim (excludedJunction negations op left right matched rfl (HEq.refl _))) (by
+      intro form negations unequal left right equality
+      subst expression
+      cases form with
+      | equality => exact False.elim (excludedEquality negations unequal left right matched rfl (HEq.refl _))
+      | decision => exact False.elim (excludedDecision negations unequal left right matched rfl (HEq.refl _)))] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨condition, hc, _⟩ := compiled
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case64 locals name typeName resultType typeBi paramName domain value paramBi body nondep rejected =>
+  | case68 locals name typeName resultType typeBi paramName domain value paramBi body nondep rejected =>
     rw [extractScalarExprWith] at compiled
     simp [rejected] at compiled
-  | case65 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType rejected foundInput =>
+  | case69 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType rejected foundInput =>
     rw [extractScalarExprWith] at compiled
     simp [foundInput, rejected] at compiled
-  | case66 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType result foundResult foundInput ih =>
+  | case70 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType result foundResult foundInput ih =>
     rw [extractScalarExprWith] at compiled
     simp only [↓reduceIte, foundInput, foundResult] at compiled
     have inputEq := scalarResultType_sound foundInput
     have resultEq := booleanType_sound foundResult
     subst domain resultType
     exact .predicateInput inputType result (ih compiled)
-  | case67 locals name typeName input resultType typeBi paramName domain value paramBi body nondep different =>
+  | case71 locals name typeName input resultType typeBi paramName domain value paramBi body nondep different =>
     rw [extractScalarExprWith] at compiled
     simp [different] at compiled
-  | case68 locals name type value body nondep ih =>
+  | case72 locals name type value body nondep ih =>
     rw [extractScalarExprWith] at compiled
     exact .idLet (ih compiled)
-  | case69 locals data body ih =>
+  | case73 locals data body ih =>
     exact .metadata (ih (by simpa only [extractScalarExprWith] using compiled))
-  | case70 locals expr hvar hliteral hnatural hconverted hofNat hrun hpure hbind hchoice hunitApp hpunitApp hbin hboolLet hlet hletFn hletUnitFn hletPUnitFn happ hletBooleanFn hPredicateInput hidLet hmetadata =>
+  | case74 locals expr hvar hliteral hnatural hconverted hofNat hrun hpure hbind hchoice hunitApp hpunitApp hbin hboolLet hlet hletFn hletUnitFn hletPUnitFn happ hletBooleanFn hPredicateInput hidLet hmetadata =>
     rw [extractScalarExprWith] at compiled <;> first | assumption | contradiction
 
 theorem extractScalarExpr_supported {source : Lean.Expr} {locals : List Nat}
@@ -1186,7 +1260,10 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
         (by rw [same]; simp [LeanExe.Source.Scalar.BooleanLocal.functions])))
       (fun negations op left right same => hasBooleanPredicate_false (fun index member =>
         scalarBooleanPredicate_none_of_predicate (htypes ▸ variables.functions index
-          (by simpa [same, LeanExe.Source.Scalar.BooleanLocal.functions] using member))))] at compiled
+          (by simpa [same, LeanExe.Source.Scalar.BooleanLocal.functions] using member))))
+      (fun form negations unequal left right same => hasBooleanPredicate_false (fun index member =>
+        scalarBooleanPredicate_none_of_predicate (htypes ▸ variables.functions index
+          (by simpa [same] using member))))] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨condition, hc, rfl⟩ := compiled
     exact extractBooleanLocalWith_choice P literal binary choice expression _ hc bindings
@@ -1251,6 +1328,13 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
       (fun operand member expression found => ihArgs operand member found bindings htypes)
     exact bindings _ (List.mem_of_getElem? hf) (guardWord condition) target
       (choice _ _ (literal 1) (literal 0)) ht
+  | booleanEqualityWord form negations unequal left right member present _ _ ihl ihr =>
+    have found := hasBooleanPredicate_of_kind member (htypes ▸ present)
+    rw [extractScalarExprWith_booleanEquality] at compiled
+    simp only [found, ↓reduceIte, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨first, hl, second, hr, rfl⟩ := compiled
+    exact booleanWordEquality_holds P literal choice negations unequal
+      (ihl hl bindings htypes) (ihr hr bindings htypes)
   | booleanJunctionWord negations op left right member present _ _ ihl ihr =>
     have found := hasBooleanPredicate_of_kind member (htypes ▸ present)
     rw [extractScalarExprWith_booleanJunction] at compiled

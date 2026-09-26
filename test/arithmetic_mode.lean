@@ -4876,6 +4876,75 @@ def customNegated (x y : UInt64) : UInt64 := @ite UInt64 (¬ x < y) (customNegat
 def customNeDecision (x y : UInt64) : Decidable (x ≠ y) := inferInstance
 def customNe (x y : UInt64) : UInt64 := @ite UInt64 (x ≠ y) (customNeDecision x y) x y
 
+def booleanPredicateEqual (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != 0
+  let g := fun b : Bool => b || y == 0
+  (f (x == y) == g false).toUInt64 + (g (x != 0) != f true).toUInt64 * 3
+
+def booleanPredicateDecideEqual (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b || x == 0
+  let g := fun b : Bool => b && y != 0
+  (decide (f (x == 0) = g (x == y))).toUInt64 + (decide (g false ≠ f true)).toUInt64 * 3
+
+def booleanPredicateEqualityNot (x y : UInt64) : UInt64 :=
+  let saved := x == y
+  let f := fun b : Bool => !b || x == 0
+  (!(f saved != !(f false && saved))).toUInt64 + (!(decide (f true = saved))).toUInt64
+
+def booleanPredicateEqualityMixed (x y : UInt64) : UInt64 :=
+  let word := fun n : UInt64 => n % 3 == 0
+  let flag := fun b : Bool => b && y != 0
+  (word x == flag (x / y == 0)).toUInt64 + (decide (flag true ≠ word y)).toUInt64 * 3
+
+def booleanPredicateEqualityArgument (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b || y == 0
+  let g := fun b : Bool => b && x != y
+  (f (g (x == 0) == f false)).toUInt64 + (!(g (decide (f true ≠ g false)))).toUInt64
+
+def booleanPredicateEqualityBody (x y : UInt64) : UInt64 := Id.run do
+  let f : Bool → Id (Id Bool) := fun b => !b
+  let g := fun b : Bool => (@BEq.beq Bool (@instBEqOfDecidableEq Bool instDecidableEqBool) (f b) (f (!b))).toUInt64 == x
+  let a ← pure (g (x == y) != f (g false)).toUInt64
+  let b ← pure (decide (@Eq Bool (f true) (!(g false)))).toUInt64
+  return a + b
+
+def rangeBooleanPredicateEqualityStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b || a == 0
+    let g := fun b : Bool => !b && a != seed
+    a := a + UInt64.ofNat i
+    if (f (a % 7 == 0) == g (a == seed)).toUInt64 == 1 then break
+  return a
+
+def rangeBooleanPredicateEqualityContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != seed
+    if (!(decide (f (UInt64.ofNat i % 3 == 0) ≠ f (a == seed)))).toUInt64 == 1 then continue
+    a := a * 3 + UInt64.ofNat i + 1
+  return a
+
+def rangeBooleanPredicateEqualityOuter (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b || seed == 0
+  let g := fun b : Bool => !b && seed != 1
+  let stop := count + (decide (f false = g true)).toUInt64
+  let mut a := seed + (g false != f true).toUInt64
+  for i in [:stop.toNat] do
+    if (!(f (a % 7 == 0) == g (a == seed))).toUInt64 == 1 then break
+    a := a + UInt64.ofNat i + 1
+  return a + (decide (g (f (a == seed)) ≠ f false)).toUInt64
+
+def rangeBooleanPredicateEqualityOuterCapture (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun b : Bool => (!(decide (f b = f (!b)))).toUInt64 == 0
+  let mut a := seed
+  for i in [:count.toNat] do
+    let h := fun b : Bool => (g b != f b).toUInt64 == 1 && a != seed
+    if (h (a % 5 == 0) == g (a == seed)).toUInt64 == 1 then break
+    a := a + UInt64.ofNat i + 1
+  return a + (!(decide (g (a == seed) ≠ f true))).toUInt64
+
 def booleanPredicateAndOr (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => b && x != 0
   let g := fun b : Bool => b || y == 0
@@ -6596,6 +6665,16 @@ run_elab do
       `ArithmeticModeTest.rangeBooleanApplyBreak,
       `ArithmeticModeTest.rangeBooleanApplyContinue,
       `ArithmeticModeTest.rangeBooleanApplyCapture,
+      `ArithmeticModeTest.booleanPredicateEqual,
+      `ArithmeticModeTest.booleanPredicateDecideEqual,
+      `ArithmeticModeTest.booleanPredicateEqualityNot,
+      `ArithmeticModeTest.booleanPredicateEqualityMixed,
+      `ArithmeticModeTest.booleanPredicateEqualityArgument,
+      `ArithmeticModeTest.booleanPredicateEqualityBody,
+      `ArithmeticModeTest.rangeBooleanPredicateEqualityStep,
+      `ArithmeticModeTest.rangeBooleanPredicateEqualityContinue,
+      `ArithmeticModeTest.rangeBooleanPredicateEqualityOuter,
+      `ArithmeticModeTest.rangeBooleanPredicateEqualityOuterCapture,
       `ArithmeticModeTest.booleanPredicateAndOr,
       `ArithmeticModeTest.booleanPredicateJunctionNot,
       `ArithmeticModeTest.booleanPredicateJunctionMixed,
