@@ -27,8 +27,8 @@ theorem matrixRowStep_exact (env : HostEnv Unit) (initial middle : Store Unit) (
       finalHeap.OwnsWords final node (words.push (matrixEntry input point category index)) →
       original.Frame initial finalHeap final → FreshFor original node →
       OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
-      ∀ saved tail after, Q (.Break 0 final (matrixRowFrame input point inputOwner inputPointer pointOwner pointPointer
-        category (index + 1) node.root initialOwner saved tail after))) :
+      ∀ finalSaved tail after, matrixRowStable saved finalSaved → Q (.Break 0 final (matrixRowFrame input point inputOwner inputPointer pointOwner pointPointer
+        category (index + 1) node.root initialOwner finalSaved tail after))) :
     wp Project.Beck.«module» (matrixRowBody.drop 4) Q middle
       (matrixRowFrame input point inputOwner inputPointer pointOwner pointPointer category index oldNode.root initialOwner saved tail after) env := by
   let need := UInt64.ofNat (8 * (words.size + 2))
@@ -68,7 +68,10 @@ theorem matrixRowStep_exact (env : HostEnv Unit) (initial middle : Store Unit) (
     (allocatedNode current.top need current.nodes).root (matrixEntry input point category index)
     (tail 7) (tail 8) need previous cursor capacity afterAllocation _ rfl rfl rfl rfl
     (by simp [matrixEntryAfter, matrixRowAfter]) (by change index + 1 < 18446744073709551616; omega)
-  exact next final finalHeap _ finalValid finalOwned finalFrame fresh finalBudget
+  apply next final finalHeap _ finalValid finalOwned finalFrame fresh finalBudget
+  intro k hk
+  simp only [matrixInstalledSaved, matrixReadSaved, matrixRowSaved]
+  repeat' first | rfl | omega | split
 
 #print axioms matrixRowStep_exact
 

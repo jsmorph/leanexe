@@ -1,3 +1,4 @@
+import Project.Beck.ExecutionMatrixRowLoop
 import Project.Beck.ExecutionScan
 import Project.Beck.ExecutionContains
 import Project.Beck.ExecutionFree
@@ -98,3 +99,5 @@ import Project.Beck.ExecutionMatrixPrefix
 #print axioms Project.Beck.Execution.matrixFinish_exact
 
 #print axioms Project.Beck.Execution.matrixRowStep_exact
+
+#print axioms Project.Beck.Execution.matrixRowLoop_exact

@@ -82,8 +82,10 @@ theorem matrixFinish_exact (env : HostEnv Unit) (initial : Store Unit) (input : 
     (jobsRead : saved 61 = .i64 input.jobs.toUInt64) (stepRead : saved 62 = .i64 1)
     (ownerRead : suffix 4 = .i64 initialOwner) (indexFit : index + 1 < UInt64.size)
     (Q : Assertion Unit)
-    (next : ∀ saved tail after, Q (.Break 0 initial (matrixRowFrame input point inputOwner inputPointer pointOwner pointPointer
-      category (index + 1) root initialOwner saved tail after))) :
+    (next : Q (.Break 0 initial (matrixRowFrame input point inputOwner inputPointer pointOwner pointPointer
+      category (index + 1) root initialOwner (matrixInstalledSaved saved root)
+      (matrixFinishedTail index size root value padding79 padding80 need previous current capacity after)
+      (matrixInstalledAfter suffix root)))) :
     wp Project.Beck.«module» (matrixRowBody.drop 130) Q initial
       (matrixInstalledFrame (matrixParams input point inputOwner inputPointer pointOwner pointPointer) saved source size
         root value padding79 padding80 need previous current capacity after suffix) env := by
@@ -97,9 +99,10 @@ theorem matrixFinish_exact (env : HostEnv Unit) (initial : Store Unit) (input : 
   refine wp_iff_cons rfl ?_
   rw [ite_eq_right (by simpa only [guard, reduceIte] using (show ¬(0 : UInt32) ≠ 0 by decide))]
   wp_fixed_frame [List.take, List.drop, List.append_nil, increment]
-  apply matrixRowFrame_post initial _ input point inputOwner inputPointer pointOwner pointPointer category (index + 1) root initialOwner
-    (matrixFinishedTail index size root value padding79 padding80 need previous current capacity after) Q next
-  all_goals first | rfl | (intro k; fin_cases k <;> rfl)
+  simpa only [matrixRowFrame, matrixParams, matrixPrefix, matrixSuffix, matrixTail, matrixRowSaved,
+    matrixRowAfter, matrixInstalledSaved, matrixInstalledAfter, matrixFinishedTail, inputValues, pointValues,
+    List.reverse_cons, List.reverse_nil, List.cons_append, List.nil_append, Fin.coe_ofNat_eq_mod,
+    Nat.reduceMod, Nat.reduceEqDiff, reduceIte, categoryRead, indexRead, jobsRead, stepRead, ownerRead] using next
 
 #print axioms matrixInstall_exact
 #print axioms matrixFinish_exact
