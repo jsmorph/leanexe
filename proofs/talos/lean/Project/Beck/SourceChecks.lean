@@ -37,6 +37,10 @@ import Project.Beck.Result
 #print axioms Project.Beck.Loop.rounds_finish
 #print axioms Project.Beck.Loop.initial_finishes
 #print axioms Project.Beck.Discrepancy.initial_discrepancy
+#print axioms Project.Beck.Memberships.read_spec
+#print axioms Project.Beck.Parser.accepted_supported
+#print axioms Project.Beck.Parser.accepted_valid
+#print axioms Project.Beck.Result.compute_success
 #print axioms Project.Beck.Result.compute_discrepancy
 #print axioms Project.Beck.Rounding.protected_card_lt
 #print axioms Project.Beck.Rounding.preserving_direction_exists
