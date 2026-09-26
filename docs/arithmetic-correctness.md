@@ -175,7 +175,9 @@ outer-variable indices. Nested named applications compose in Boolean bodies.
 UInt64-to-Bool local helpers also admit repeated calls within an arbitrary
 supported scalar body, such as `let f := fun n : UInt64 => n == y;
 if f x || f (x + 1) then x else y`. Their Boolean results may carry standard
-Id annotations. Helpers capture words, flags and other supported local
+Id annotations. Inputs also admit standard Id layers when the arrow and lambda
+domains match exactly and retain the UInt64 base type. Helpers capture words,
+flags and other supported local
 functions; nested helpers and shadowing preserve the captured values. Source
 evaluation, extraction and the compiler theorem distinguish predicate functions
 from words, flags and word-returning functions. Unused helper bodies and unused

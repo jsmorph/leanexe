@@ -1,0 +1,61 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [47/98] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [97/98] Building LeanExe.Extract.ScalarPredicateInput (1.1s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarPredicateInput.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarPredicateInput.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarPredicateInput.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarPredicateInput.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarPredicateInput.setup.json --json
+error: LeanExe/Extract/ScalarPredicateInput.lean:18:26: Invalid dotted identifier notation: The expected type of `.identity` could not be determined
+
+Hint: Using one of these would be unambiguous:
+  [apply] `BooleanType.identity`
+  [apply] `ResultType.identity`
+error: LeanExe/Extract/ScalarPredicateInput.lean:18:49: Invalid dotted identifier notation: The expected type of `.identity` could not be determined
+
+Hint: Using one of these would be unambiguous:
+  [apply] `BooleanType.identity`
+  [apply] `ResultType.identity`
+error: LeanExe/Extract/ScalarPredicateInput.lean:18:109: unsolved goals
+input : ResultType
+output : BooleanType
+⊢ (match sorry () with
+    | (Lean.Expr.const `Id [Lean.Level.zero]).app inner =>
+      (scalarResultType? inner).bind fun input => some (input, output)
+    | x => none) =
+    some (input, output)
+warning: LeanExe/Extract/ScalarPredicateInput.lean:19:30: This simp argument is unused:
+  ResultType.expr
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [predicateInputTypes?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarPredicateInput.lean:23:13: Invalid dotted identifier notation: The expected type of `.identity` could not be determined
+
+Hint: Using one of these would be unambiguous:
+  [apply] `BooleanType.identity`
+  [apply] `ResultType.identity`
+error: LeanExe/Extract/ScalarPredicateInput.lean:23:49: Invalid dotted identifier notation: The expected type of `.identity` could not be determined
+
+Hint: Using one of these would be unambiguous:
+  [apply] `BooleanType.identity`
+  [apply] `ResultType.identity`
+⚠ [98/98] Built LeanExe.Extract.ScalarExpr (1.2s)
+warning: LeanExe/Extract/ScalarExpr.lean:177:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:1127:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarPredicateInput
+error: build failed

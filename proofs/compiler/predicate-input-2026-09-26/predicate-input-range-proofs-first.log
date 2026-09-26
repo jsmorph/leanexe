@@ -1,0 +1,513 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [61/121] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [100/121] Replayed LeanExe.Extract.ScalarExpr
+warning: LeanExe/Extract/ScalarExpr.lean:177:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:1127:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [117/121] Built LeanExe.Extract.ScalarRangeCount (1.0s)
+✔ [118/123] Built LeanExe.Extract.ScalarRangeStrideSyntax (889ms)
+✔ [120/128] Built LeanExe.Extract.ScalarRangeExitSyntax (1.1s)
+⚠ [122/128] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [124/128] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [126/135] Building LeanExe.Extract.ScalarRangeExit (6.7s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarRangeExit.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarRangeExit.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarRangeExit.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarRangeExit.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarRangeExit.setup.json --json
+error: LeanExe/Extract/ScalarRangeExit.lean:326:60: unsolved goals
+locals : List ScalarBinding
+slot : Nat
+input : ResultType
+result : BooleanType
+name typeName paramName : Lean.Name
+typeBi paramBi : Lean.BinderInfo
+a b : Lean.Expr
+nondep : Bool
+⊢ (match
+      scalarRangeExit?
+        (Lean.Expr.letE name
+          (Lean.Expr.forallE typeName ((Lean.Expr.const `Id [Lean.Level.zero]).app input.expr) result.expr typeBi)
+          (Lean.Expr.lam paramName ((Lean.Expr.const `Id [Lean.Level.zero]).app input.expr) a paramBi) b nondep) with
+    | some view =>
+      (extractScalarExprWith locals view.first.scalar).bind fun first =>
+        (extractScalarExprWith locals view.count.scalar).bind fun count =>
+          (extractScalarExprWith locals view.initial).bind fun initial =>
+            (extractScalarStepWith
+                  (ScalarStepBinding.scalar (ScalarBinding.word (IR.Expr.local slot)) ::
+                    ScalarStepBinding.scalar
+                        (ScalarBinding.natural
+                          (scalarRangeOffset first (scalarRangeScale view.stride.number (IR.Expr.local (slot + 1))))) ::
+                      List.map ScalarStepBinding.scalar locals)
+                  view.body).bind
+              fun code =>
+              some
+                { count := scalarRangeTrips view.stride.number (scalarRangeDistance first count), initial := initial,
+                  step := code.value, done := code.done, result := IR.Expr.local slot }
+    | none =>
+      extractScalarRangeExitWith locals slot
+        (Lean.Expr.letE name (Lean.Expr.forallE typeName input.expr result.expr typeBi)
+          (Lean.Expr.lam paramName input.expr a paramBi) b nondep)) =
+    extractScalarRangeExitWith locals slot
+      (Lean.Expr.letE name (Lean.Expr.forallE typeName input.expr result.expr typeBi)
+        (Lean.Expr.lam paramName input.expr a paramBi) b nondep)
+✔ [132/138] Built LeanExe.Source.ScalarRangeSupported (901ms)
+✔ [133/138] Built LeanExe.Extract.ScalarRange (2.4s)
+✔ [135/138] Built LeanExe.Extract.ScalarRangeCorrectness (946ms)
+✔ [137/141] Built LeanExe.Source.ScalarFunction (980ms)
+✖ [139/141] Building LeanExe.Source.ScalarHeadEvaluation (2.7s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarHeadEvaluation.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarHeadEvaluation.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarHeadEvaluation.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarHeadEvaluation.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarHeadEvaluation.setup.json --json
+error: LeanExe/Source/ScalarHeadEvaluation.lean:64:23: unsolved goals
+case predicateInput.direct.add
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+levels✝ : List Lean.Level
+expressionEq :
+  ((Lean.Expr.const `UInt64.add levels✝).app a).app b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.add x_1
+
+case predicateInput.direct.sub
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+levels✝ : List Lean.Level
+expressionEq :
+  ((Lean.Expr.const `UInt64.sub levels✝).app a).app b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.sub x_1
+
+case predicateInput.direct.mul
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+levels✝ : List Lean.Level
+expressionEq :
+  ((Lean.Expr.const `UInt64.mul levels✝).app a).app b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.mul x_1
+
+case predicateInput.direct.div
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+levels✝ : List Lean.Level
+expressionEq :
+  ((Lean.Expr.const `UInt64.div levels✝).app a).app b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.div x_1
+
+case predicateInput.direct.mod
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+levels✝ : List Lean.Level
+expressionEq :
+  ((Lean.Expr.const `UInt64.mod levels✝).app a).app b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.mod x_1
+
+case predicateInput.direct.land
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+levels✝ : List Lean.Level
+expressionEq :
+  ((Lean.Expr.const `UInt64.land levels✝).app a).app b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.land x_1
+
+case predicateInput.direct.lor
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+levels✝ : List Lean.Level
+expressionEq :
+  ((Lean.Expr.const `UInt64.lor levels✝).app a).app b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.lor x_1
+
+case predicateInput.direct.xor
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+levels✝ : List Lean.Level
+expressionEq :
+  ((Lean.Expr.const `UInt64.xor levels✝).app a).app b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.xor x_1
+
+case predicateInput.direct.shiftLeft
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+levels✝ : List Lean.Level
+expressionEq :
+  ((Lean.Expr.const `UInt64.shiftLeft levels✝).app a).app b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.shiftLeft x_1
+
+case predicateInput.direct.shiftRight
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+levels✝ : List Lean.Level
+expressionEq :
+  ((Lean.Expr.const `UInt64.shiftRight levels✝).app a).app b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.shiftRight x_1
+error: LeanExe/Source/ScalarHeadEvaluation.lean:68:57: unsolved goals
+case predicateInput.canonical.add
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+result left right instanceType : ResultType
+expressionEq :
+  ((((((Lean.Expr.const `HAdd.hAdd [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app left.expr).app
+                      right.expr).app
+                  result.expr).app
+              (((Lean.Expr.const `instHAdd [Lean.Level.zero]).app instanceType.expr).app
+                (Lean.Expr.const `instAddUInt64 []))).app
+          a).app
+      b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.add x_1
+
+case predicateInput.canonical.sub
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+result left right instanceType : ResultType
+expressionEq :
+  ((((((Lean.Expr.const `HSub.hSub [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app left.expr).app
+                      right.expr).app
+                  result.expr).app
+              (((Lean.Expr.const `instHSub [Lean.Level.zero]).app instanceType.expr).app
+                (Lean.Expr.const `instSubUInt64 []))).app
+          a).app
+      b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.sub x_1
+
+case predicateInput.canonical.mul
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+result left right instanceType : ResultType
+expressionEq :
+  ((((((Lean.Expr.const `HMul.hMul [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app left.expr).app
+                      right.expr).app
+                  result.expr).app
+              (((Lean.Expr.const `instHMul [Lean.Level.zero]).app instanceType.expr).app
+                (Lean.Expr.const `instMulUInt64 []))).app
+          a).app
+      b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.mul x_1
+
+case predicateInput.canonical.div
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+result left right instanceType : ResultType
+expressionEq :
+  ((((((Lean.Expr.const `HDiv.hDiv [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app left.expr).app
+                      right.expr).app
+                  result.expr).app
+              (((Lean.Expr.const `instHDiv [Lean.Level.zero]).app instanceType.expr).app
+                (Lean.Expr.const `instDivUInt64 []))).app
+          a).app
+      b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.div x_1
+
+case predicateInput.canonical.mod
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+result left right instanceType : ResultType
+expressionEq :
+  ((((((Lean.Expr.const `HMod.hMod [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app left.expr).app
+                      right.expr).app
+                  result.expr).app
+              (((Lean.Expr.const `instHMod [Lean.Level.zero]).app instanceType.expr).app
+                (Lean.Expr.const `instModUInt64 []))).app
+          a).app
+      b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.mod x_1
+
+case predicateInput.canonical.land
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+result left right instanceType : ResultType
+expressionEq :
+  ((((((Lean.Expr.const `HAnd.hAnd [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app left.expr).app
+                      right.expr).app
+                  result.expr).app
+              (((Lean.Expr.const `instHAndOfAndOp [Lean.Level.zero]).app instanceType.expr).app
+                (Lean.Expr.const `instAndOpUInt64 []))).app
+          a).app
+      b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.land x_1
+
+case predicateInput.canonical.lor
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+result left right instanceType : ResultType
+expressionEq :
+  ((((((Lean.Expr.const `HOr.hOr [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app left.expr).app right.expr).app
+                  result.expr).app
+              (((Lean.Expr.const `instHOrOfOrOp [Lean.Level.zero]).app instanceType.expr).app
+                (Lean.Expr.const `instOrOpUInt64 []))).app
+          a).app
+      b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.lor x_1
+
+case predicateInput.canonical.xor
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+result left right instanceType : ResultType
+expressionEq :
+  ((((((Lean.Expr.const `HXor.hXor [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app left.expr).app
+                      right.expr).app
+                  result.expr).app
+              (((Lean.Expr.const `instHXorOfXorOp [Lean.Level.zero]).app instanceType.expr).app
+                (Lean.Expr.const `instXorOpUInt64 []))).app
+          a).app
+      b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.xor x_1
+
+case predicateInput.canonical.shiftLeft
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+result left right instanceType : ResultType
+expressionEq :
+  ((((((Lean.Expr.const `HShiftLeft.hShiftLeft [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app left.expr).app
+                      right.expr).app
+                  result.expr).app
+              (((Lean.Expr.const `instHShiftLeftOfShiftLeft [Lean.Level.zero]).app instanceType.expr).app
+                (Lean.Expr.const `instShiftLeftUInt64 []))).app
+          a).app
+      b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.shiftLeft x_1
+
+case predicateInput.canonical.shiftRight
+a b : Lean.Expr
+values : List Value
+value : UInt64
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values value
+result left right instanceType : ResultType
+expressionEq :
+  ((((((Lean.Expr.const `HShiftRight.hShiftRight [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app left.expr).app
+                      right.expr).app
+                  result.expr).app
+              (((Lean.Expr.const `instHShiftRightOfShiftRight [Lean.Level.zero]).app instanceType.expr).app
+                (Lean.Expr.const `instShiftRightUInt64 []))).app
+          a).app
+      b =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+⊢ ∃ x, EvalWith a values x ∧ ∃ x_1, EvalWith b values x_1 ∧ value = x.shiftRight x_1
+Some required targets logged failures:
+- LeanExe.Extract.ScalarRangeExit
+- LeanExe.Source.ScalarHeadEvaluation
+error: build failed

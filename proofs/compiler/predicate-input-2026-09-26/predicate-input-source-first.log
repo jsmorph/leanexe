@@ -1,0 +1,31 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [4/44] Built LeanExe.Source.ScalarPredicateInput (786ms)
+✔ [41/46] Built LeanExe.Source.Scalar (1.2s)
+✔ [43/46] Built LeanExe.Source.ScalarManyFunctionSemantics (854ms)
+✔ [45/49] Built LeanExe.Source.ScalarStep (1.4s)
+✖ [47/53] Building LeanExe.Source.ScalarRangeCount (985ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarRangeCount.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarRangeCount.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarRangeCount.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarRangeCount.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarRangeCount.setup.json --json
+error: LeanExe/Source/ScalarRangeCount.lean:44:24: unsolved goals
+case literal.predicateInput
+values : List Value
+result : UInt64
+number : Nat
+fits : number < UInt64.size
+name✝ typeName✝ paramName✝ : Lean.Name
+typeBi✝ paramBi✝ : Lean.BinderInfo
+a✝ b✝ : Lean.Expr
+nondep✝ : Bool
+input✝ : ResultType
+result✝ : BooleanType
+same :
+  (((Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]).app (Lean.Expr.const `UInt64 [])).app
+          (Lean.Expr.lit (Lean.Literal.natVal number))).app
+      ((Lean.Expr.const `UInt64.instOfNat []).app (Lean.Expr.lit (Lean.Literal.natVal number))) =
+    predicateInputExpr input✝.identity result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝
+inner✝ :
+  EvalWith (predicateInputExpr input✝ result✝ name✝ typeName✝ paramName✝ typeBi✝ paramBi✝ a✝ b✝ nondep✝) values result
+⊢ (Count.literal number fits).Eval values result.toNat
+Some required targets logged failures:
+- LeanExe.Source.ScalarRangeCount
+error: build failed
