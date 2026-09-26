@@ -164,6 +164,15 @@ use the same typed lexical evaluation as Boolean/word bindings. Arguments and
 bodies are checked even when unused. Applications compose through Boolean
 conversions, scalar and loop-step conditions, Id actions and loop exits.
 
+Named Boolean helpers are admitted when the binding body directly applies the
+helper to one argument, as in `let f : UInt64 → Bool := fun n => n == y; f x`.
+The argument may capture outer values but cannot reference `f`. The helper may
+accept UInt64 or Bool, with standard Id annotations on its input and result.
+Arrow and lambda domains are checked exactly. Original names and binder
+annotations are preserved; proved binder removal maintains the argument's
+outer-variable indices. Nested named applications compose in Boolean bodies.
+Repeated uses or broader bodies around the named helper remain unsupported.
+
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
 Lean generates for `let flag ← if … then pure … else pure …`, in scalar code,
@@ -173,7 +182,7 @@ preserve captures and shadowing, and all unused bodies and call arguments are
 checked. Pure scalar Boolean helpers may surround a loop and supply its bounds,
 initial value and final computation. A conditional Boolean bind before a loop
 can generate a loop-containing helper; that case remains outside this grammar.
-Public Boolean parameters/results, named Boolean-returning helpers, mixed Bool/word
+Public Boolean parameters/results, general named Boolean-returning helpers, mixed Bool/word
 parameter lists, loops inside helper bodies and propositional combinations
 containing saved Boolean locals remain separate capabilities.
 

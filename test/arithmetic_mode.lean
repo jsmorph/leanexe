@@ -4876,6 +4876,66 @@ def customNegated (x y : UInt64) : UInt64 := @ite UInt64 (¬ x < y) (customNegat
 def customNeDecision (x y : UInt64) : Decidable (x ≠ y) := inferInstance
 def customNe (x y : UInt64) : UInt64 := @ite UInt64 (x ≠ y) (customNeDecision x y) x y
 
+def namedBooleanWord (x y : UInt64) : UInt64 :=
+  if (let f : UInt64 → Bool := fun n => n == y; f x) then x + 1 else y * 3
+
+def namedBooleanBool (x y : UInt64) : UInt64 :=
+  (let f : Bool → Bool := fun b => !b || x == y; f (x != 0)).toUInt64 + y
+
+def namedBooleanCapture (x y : UInt64) : UInt64 :=
+  let outer := x != 0
+  let shift := fun z : UInt64 => z + y
+  (let f : UInt64 → Bool := fun n => outer && shift n == x; f (x + y)).toUInt64
+
+def namedBooleanNested (x y : UInt64) : UInt64 :=
+  (let f : UInt64 → Bool := fun n =>
+     let g : Bool → Bool := fun b => b && n != y
+     g (n == x)
+   f (x + y)).toUInt64 + x
+
+def namedBooleanDependent (x y : UInt64) : UInt64 :=
+  (let f : UInt64 → Bool := fun n => if _h : n < y then n != x else n == y
+   f (x + 1)).toUInt64
+
+def namedBooleanId (x y : UInt64) : UInt64 :=
+  (let f : Id UInt64 → Id Bool := fun n =>
+     let g : Id Bool → Id Bool := fun b => !b &&
+       !(@BEq.beq UInt64 (@instBEqOfDecidableEq UInt64 instDecidableEqUInt64) n 0)
+     g (@BEq.beq UInt64 (@instBEqOfDecidableEq UInt64 instDecidableEqUInt64) n y)
+   f (x + y)).toUInt64
+
+def namedBooleanUnused (x y : UInt64) : UInt64 :=
+  (let f : UInt64 → Bool := fun _n => x != y; f (x / y)).toUInt64
+
+def namedBooleanDo (x y : UInt64) : UInt64 := Id.run do
+  let flag ← pure (let f : UInt64 → Bool := fun n => n == y; f (x + 1))
+  let next ← pure (let g : Bool → Bool := fun b => b || x != 0; g flag)
+  if next then return x + y else return x - y
+
+def rangeNamedBooleanBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i
+    if (let f : UInt64 → Bool := fun n => n % 7 == 0; f a) then break
+  return a
+
+def rangeNamedBooleanContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let f : Bool → Bool := fun b => !b; f (UInt64.ofNat i % 3 == 0)) then continue
+    a := a + UInt64.ofNat i + 1
+  return a
+
+def rangeNamedBooleanCapture (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let flag :=
+      let f : UInt64 → Bool := fun n =>
+        let g : Bool → Bool := fun b => b && a != seed
+        g (n % 7 == 0)
+      f (UInt64.ofNat i)
+    if flag then pure (.done (a + UInt64.ofNat i))
+    else pure (.yield (a * 3 + UInt64.ofNat i))
+
 def booleanApplyWord (x y : UInt64) : UInt64 :=
   if (fun z : UInt64 => z == y) x then x + 1 else y * 3
 
@@ -5931,6 +5991,17 @@ run_elab do
       `ArithmeticModeTest.rangeBooleanApplyBreak,
       `ArithmeticModeTest.rangeBooleanApplyContinue,
       `ArithmeticModeTest.rangeBooleanApplyCapture,
+      `ArithmeticModeTest.namedBooleanWord,
+      `ArithmeticModeTest.namedBooleanBool,
+      `ArithmeticModeTest.namedBooleanCapture,
+      `ArithmeticModeTest.namedBooleanNested,
+      `ArithmeticModeTest.namedBooleanDependent,
+      `ArithmeticModeTest.namedBooleanId,
+      `ArithmeticModeTest.namedBooleanUnused,
+      `ArithmeticModeTest.namedBooleanDo,
+      `ArithmeticModeTest.rangeNamedBooleanBreak,
+      `ArithmeticModeTest.rangeNamedBooleanContinue,
+      `ArithmeticModeTest.rangeNamedBooleanCapture,
 
       `ArithmeticModeTest.rangeDependentReannotated,
       `ArithmeticModeTest.rangeDependentReannotatedCompound,
