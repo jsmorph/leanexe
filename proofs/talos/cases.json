@@ -936,6 +936,16 @@
         "Project.Gpt2CachedStep.Spec.gpt2_128_exact"
       ],
       "complete": true
+    },
+    {
+      "name": "beck",
+      "module": "LeanExe.Examples.Beck",
+      "entry": "LeanExe.Examples.Beck.compute",
+      "leanModule": "Beck",
+      "specTarget": "Project.Beck.Spec",
+      "behaviorTheorems": ["Project.Beck.Spec.compute_correct"],
+      "annotations": true,
+      "complete": false
     }
   ]
 }
