@@ -15,7 +15,7 @@ theorem history_append_call_spec (env : HostEnv Unit) (store : Store Unit)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ (final : Store Unit) (root : UInt64) (nextAux : List Value) (nextScratch : Scratch),
       nextAux.length = 44 → nextAux[23]? = some (.i64 (UInt64.ofNat (index + 1))) →
-      nextAux[24]? = some (.i64 terrain) → nextAux[25]? = some (.i64 terrain) →
+      nextAux[24]? = some (.i64 0) → nextAux[25]? = some (.i64 terrain) →
       nextAux[26]? = some (.i64 layer) → nextAux[27]? = some (.i64 layer) →
       nextAux[37]? = some (.i64 root) → nextAux[38]? = some (.i64 root) →
       P final root → wp Project.Drone.«module» rest Q final

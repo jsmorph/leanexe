@@ -41,10 +41,10 @@ theorem history_read_spec (env : HostEnv Unit) (store : Store Unit)
   · simp [Locals.get, hAux]
   · simp [Locals.get, hAux]
   wp_history_frame [hAux]
-  refine wp_call_tw (floorAt_exact env _ terrain terrain heights (index - 1) hTerrain (by omega)) ?_
+  refine wp_call_tw (floorAt_exact env _ 0 terrain heights (index - 1) hTerrain (by omega)) ?_
   rintro finish values ⟨rfl, rfl⟩
   wp_history_frame [hAux, func20Def]
-  refine wp_call_tw (floorAt_exact env _ terrain terrain heights index hTerrain hIndex) ?_
+  refine wp_call_tw (floorAt_exact env _ 0 terrain heights index hTerrain hIndex) ?_
   rintro finish values ⟨rfl, rfl⟩
   wp_history_frame [hAux, func20Def]
   refine CheckedNatAdd.guard_spec 65 _ _ _ _ index 1 [] rfl ?_ hNext64 _ _ ?_

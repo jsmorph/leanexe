@@ -1079,3 +1079,17 @@ public compute passes terrain with owner zero, while the current history
 and unwind entry lemmas use its pointer as owner. Their read-only terrain
 frames will be specialized to the actual borrowed-input convention before
 completing the public compute and safety transfer proofs.
+
+History and unwind entry proofs now use compute's actual borrowed-terrain
+ABI (owner zero, pointer nonzero). The history target checked in
+`drone-borrowed-terrain-1.log`; that aggregate rebuild reached its overall
+three-minute limit after successfully checking the history and unwind
+cleanup modules. Verification was split at new checked compute-call helpers
+before the focused unwind target, which passes in
+`drone-borrowed-unwind-1.log` (3,597 jobs).
+
+`drone-compute-calls-2.log` checks the initial-row setup, history call,
+unwind setup, and unwind call against the actual emitted entry code. These
+small CPS boundaries preserve the frame fields needed for composition.
+All audited axioms remain standard. The forward/accepted-input composition,
+public dispatch, concrete allocation bound, and safety transfer are next.

@@ -9,7 +9,7 @@ def historyLoopBody : Wasm.Program :=
   | _ => []
 
 def historyParams (fuel index : Nat) (terrain previous history : UInt64) : List Value :=
-  [.i64 (UInt64.ofNat fuel), .i64 (UInt64.ofNat index), .i64 terrain, .i64 terrain,
+  [.i64 (UInt64.ofNat fuel), .i64 (UInt64.ofNat index), .i64 0, .i64 terrain,
     .i64 previous, .i64 previous, .i64 history, .i64 history]
 
 def historyFrame (fuel index : Nat) (terrain previous history out0 out1 : UInt64)

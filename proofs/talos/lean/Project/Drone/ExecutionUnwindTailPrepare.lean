@@ -6,7 +6,7 @@ open Wasm Project.ProofKit WordArrayPush
 
 def unwindTailAux (aux : List Value) (index parent : Nat) (terrain history root : UInt64) : List Value :=
   ((((((aux.set 15 (.i64 (UInt64.ofNat (index - 1)))).set 16 (.i64 (UInt64.ofNat parent))).set
-    17 (.i64 terrain)).set 18 (.i64 terrain)).set 19 (.i64 history)).set 20 (.i64 history)).set
+    17 (.i64 0)).set 18 (.i64 terrain)).set 19 (.i64 history)).set 20 (.i64 history)).set
     21 (.i64 root) |>.set 22 (.i64 root)
 
 set_option maxRecDepth 32768 in

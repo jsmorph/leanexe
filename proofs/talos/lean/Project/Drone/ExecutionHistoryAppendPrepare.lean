@@ -5,7 +5,7 @@ namespace Project.Drone.Execution
 open Wasm Project.ProofKit WordArrayPush LeanExe.Examples.Drone
 
 def historyAppendAux (aux : List Value) (index : Nat) (terrain layer history : UInt64) : List Value :=
-  (((((((((((aux.set 23 (.i64 (UInt64.ofNat (index + 1)))).set 24 (.i64 terrain)).set 25 (.i64 terrain)).set
+  (((((((((((aux.set 23 (.i64 (UInt64.ofNat (index + 1)))).set 24 (.i64 0)).set 25 (.i64 terrain)).set
     26 (.i64 layer)).set 27 (.i64 layer)).set 28 (.i64 45)).set 29 (.i64 45)).set 30 (.i64 0)).set
     31 (.i64 layer)).set 32 (.i64 layer)).set 33 (.i64 history)).set 34 (.i64 history)
 

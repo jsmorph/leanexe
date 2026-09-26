@@ -18,7 +18,7 @@ theorem unwind_exact (env : HostEnv Unit) (initial : Store Unit) (initialHeap : 
     (hHistorySep : regionsDisjoint historyNode.region rowNode.region) :
     TerminatesWith env Project.Drone.«module» 24 initial
       [.i64 rowNode.root, .i64 rowNode.root, .i64 historyNode.root, .i64 historyNode.root,
-        .i64 terrainNode.root, .i64 terrainNode.root, .i64 (UInt64.ofNat state),
+        .i64 terrainNode.root, .i64 0, .i64 (UInt64.ofNat state),
         .i64 (UInt64.ofNat index), .i64 (UInt64.ofNat count)]
       (FreshArrayResult initialHeap initial (unwind count index state terrain history row) remaining pageLimit) := by
   apply unwind_entry
