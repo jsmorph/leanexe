@@ -959,3 +959,11 @@ and 148 rejection tests. Five original examples compile unchanged. Prior nested-
 and annotated-Boolean-let fixtures passed 304 comparisons each and 164/100 rejection
 tests unchanged; eighteen prior modules kept identical bytes. The full corpus has
 648 declarations; this execution was focused.
+
+The [arithmetic Id-annotation increment](../proofs/compiler/id-arithmetic-2026-09-25/README.md)
+checks nested Id types on both arithmetic inputs, results and standard instance
+adapter types. Candidate `49f79f0f` passed nine compiler audits and 527 native
+Lean/V8 comparisons across thirty declarations before the ciogpt integration.
+Focused fixtures passed 1,048 native/IR comparisons and 304 rejection tests;
+five valid original probes compile unchanged. Eighteen prior modules kept
+identical bytes. The corpus has 660 declarations; that execution run was focused.

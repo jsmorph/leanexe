@@ -40,6 +40,9 @@ import Project.EulerOutwardGrid.ArtifactBytes
 import Project.EulerOutwardFlux.ArtifactBytes
 import Project.EulerOutwardFaceStep.ArtifactBytes
 import Project.EulerReconstructed.ArtifactBytes
+import Project.Gpt2QuantizedLinearRows.ArtifactBytes
+import Project.Gpt2QuantizedGroupedRows.ArtifactBytes
+import Project.Gpt2QuantizedCached.ArtifactBytes
 import Project.Gpt2CachedStep.ArtifactBytes
 
 private def artifactBytes : String → Option ByteArray
@@ -85,6 +88,9 @@ private def artifactBytes : String → Option ByteArray
   | "euler_outward_flux" => some Project.EulerOutwardFlux.Artifact.artifactBytes
   | "euler_outward_face_step" => some Project.EulerOutwardFaceStep.Artifact.artifactBytes
   | "euler_reconstructed" => some Project.EulerReconstructed.Artifact.artifactBytes
+  | "gpt2_quantized_linear_rows" => some Project.Gpt2QuantizedLinearRows.Artifact.artifactBytes
+  | "gpt2_quantized_grouped_rows" => some Project.Gpt2QuantizedGroupedRows.Artifact.artifactBytes
+  | "gpt2_quantized_cached" => some Project.Gpt2QuantizedCached.Artifact.artifactBytes
   | "gpt2_cached_step" => some Project.Gpt2CachedStep.Artifact.artifactBytes
   | _ => none
 

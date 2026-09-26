@@ -36,8 +36,17 @@ cc -std=c11 -O0 -Wall -Wextra -Wpedantic -Werror \
 `-O0` makes the comparison build deliberately conservative.  Each local
 mirror operation also materializes its result through a `volatile double`.
 
-Both executables reject platforms that do not advertise IEC 60559 arithmetic
-or the expected 64-bit, radix-two, 53-significand-bit format.  They set and
+The generator uses `CC` when set, otherwise `cc`.  `CC` names one executable,
+not a command with flags.  On ARM macOS, an installed GCC can be selected with
+`CC=gcc-15 node test/euler_rusanov_c.js`; Apple Clang does not advertise the
+required capability on this platform.
+
+Both executables require `__STDC_IEC_559__ >= 1` or GCC's
+`__GCC_IEC_559 >= 2`, plus the expected 64-bit, radix-two, 53-significand-bit
+format.  The [GCC macro documentation](https://gcc.gnu.org/onlinedocs/cpp/Common-Predefined-Macros.html)
+describes intended IEEE arithmetic and NaN encoding for this value, not full
+compiler or C-library Annex F conformance.  The separate runtime checks and
+pinned output words remain required.  They set and
 check `FE_TONEAREST`, require `FLT_EVAL_METHOD == 0`, and confirm that the
 integer word `3ff0000000000000` has the platform's `double` layout for `1.0`
 before evaluating a row.  Raw-word conversion in both directions uses

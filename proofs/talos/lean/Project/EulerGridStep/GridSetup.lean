@@ -15,14 +15,14 @@ def gridValidEntryFrame (ratio pointer : UInt64) (length : Nat) : Locals :=
 def gridSetupFrame (frame : Locals) (root : UInt64) : Locals :=
   { frame with
     locals := ((((((frame.locals.set 5 (.i64 root)).set 6 (.i64 root)).set 7 (.i64 0)).set
-      8 (.i64 root)).set 9 (.i64 root)).set 10 (.i64 0)).set 38 (.i64 0)
+      8 (.i64 root)).set 9 (.i64 root)).set 10 (.i64 0)).set 42 (.i64 root)
     values := [] }
 
 /-- Exact fourteen-instruction handoff from zero fill to the outer loop. -/
 theorem grid_setup_spec (m : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
     (frame : Locals) (root : UInt64)
-    (hParams : frame.params.length = 2) (hLocals : frame.locals.length = 43)
-    (hValues : frame.values = []) (hRoot : frame.locals[32]? = some (.i64 root))
+    (hParams : frame.params.length = 2) (hLocals : frame.locals.length = 47)
+    (hValues : frame.values = []) (hRoot : frame.locals[36]? = some (.i64 root))
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp m rest Q initial (gridSetupFrame frame root) env) :
     wp m ((gridValidBody.drop 78).take 14 ++ rest) Q initial frame env := by
@@ -39,14 +39,14 @@ def gridInitialScratch (ratio : UInt64) (base length : Nat) : GridScratch :=
   { l2 := ratio
     l5 := UInt64.ofNat count
     l8 := root
-    l33 := UInt64.ofNat count
-    l34 := root
-    l35 := UInt64.ofNat count
-    l37 := UInt64.ofNat cells
-    l39 := FixedArrayCapacity.normalizedCapacity (UInt64.ofNat count) 1
-    l42 := heap + 48 + fieldRequest count
-    l43 := (heap + 48 + fieldRequest count - 1) / 65536 + 1
-    l44 := root }
+    l37 := UInt64.ofNat count
+    l38 := root
+    l39 := UInt64.ofNat count
+    l41 := UInt64.ofNat cells
+    l43 := FixedArrayCapacity.normalizedCapacity (UInt64.ofNat count) 1
+    l46 := heap + 48 + fieldRequest count
+    l47 := (heap + 48 + fieldRequest count - 1) / 65536 + 1
+    l48 := root }
 
 theorem initial_grid_setup_frame (ratio pointer : UInt64) (base length : Nat) :
     gridSetupFrame (initialGridFrame (gridValidEntryFrame ratio pointer length) pointer base length)

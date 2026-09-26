@@ -5,8 +5,8 @@ open Wasm
 
 theorem initial_grid_frame_facts (ratio pointer : UInt64) (base length : Nat) :
     let frame := initialGridFrame (gridValidEntryFrame ratio pointer length) pointer base length
-    frame.params.length = 2 ∧ frame.locals.length = 43 ∧ frame.values = [] ∧
-      frame.locals[32]? = some (.i64 (arenaRoot base (1 + 6 * (length / 3)) 0)) := by
+    frame.params.length = 2 ∧ frame.locals.length = 47 ∧ frame.values = [] ∧
+      frame.locals[36]? = some (.i64 (arenaRoot base (1 + 6 * (length / 3)) 0)) := by
   simp [initialGridFrame, initialOutputFrame, initialFreshAllocFrame, initialFreshBumpFrame,
     initialCapacityFrame, initialDimensionsFrame, gridValidEntryFrame,
     grid_guard_params, grid_guard_locals, arena_root_eq_heap]

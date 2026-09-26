@@ -8,7 +8,7 @@ set_option maxRecDepth 16384
 set_option maxHeartbeats 1000000
 
 def gridEntryFrame (ratio pointer : UInt64) : Locals :=
-  { params := [.i64 ratio, .i64 pointer], locals := List.replicate 43 (.i64 0), values := [] }
+  { params := [.i64 ratio, .i64 pointer], locals := List.replicate 47 (.i64 0), values := [] }
 
 def gridEntryInvalid (ratio : UInt64) (length : Nat) : Bool :=
   !Project.EulerConservative.Model.positiveBits ratio || length == 0 || length % 3 != 0
@@ -16,8 +16,8 @@ def gridEntryInvalid (ratio : UInt64) (length : Nat) : Bool :=
 def gridGuardFrame (ratio pointer : UInt64) (length : Nat) : Locals :=
   let ls := (gridEntryFrame ratio pointer).locals.set 0 (.i64 ratio)
   let ls := if Project.EulerConservative.Model.positiveBits ratio then
-    let ls := ls.set 31 (.i64 pointer)
-    if length = 0 then ls else ((ls.set 33 (.i64 pointer)).set 31 (.i64 (UInt64.ofNat length))).set 32 (.i64 3)
+    let ls := ls.set 35 (.i64 pointer)
+    if length = 0 then ls else ((ls.set 37 (.i64 pointer)).set 35 (.i64 (UInt64.ofNat length))).set 36 (.i64 3)
     else ls
   { params := [.i64 ratio, .i64 pointer], locals := ls,
     values := [.i32 (if gridEntryInvalid ratio length then 1 else 0)] }

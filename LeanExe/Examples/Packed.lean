@@ -10,6 +10,9 @@ def readWord (bytes : ByteArray) (offset : Nat) : UInt32 :=
 def makeWords (size : Nat) (offset : UInt32) : ByteArray :=
   LeanExe.Packed.generateUInt32LE size fun index => offset + index.toUInt32
 
+def makeBytes (size : Nat) (offset : UInt8) : ByteArray :=
+  LeanExe.Packed.generateUInt8 size fun index => offset + UInt8.ofNat index
+
 def shifted (bytes : ByteArray) (shift : UInt32) : ByteArray :=
   LeanExe.Packed.generateUInt32LE (bytes.size / 4) fun index =>
     LeanExe.Float32.addBits (LeanExe.Packed.getUInt32LE! bytes (index * 4)) shift

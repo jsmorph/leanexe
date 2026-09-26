@@ -14,14 +14,14 @@ function 18.  It performs no allocation after the matcher returns.
 namespace Project.ClobLimit.LimitFilled
 
 open Wasm Project.Common Project.Clob Project.ClobLimit
-  Project.ClobLimit.InternalLoopInvariant
+  Project.ClobMatchFuel.LoopInvariant
   Project.ClobMatchFuel.AllocatorFrame Project.ClobPostOnly.Model
 
 set_option maxRecDepth 1048576
 
 def FilledSpec : Prop :=
   ∀ (env : HostEnv Unit) (st : Store Unit)
-    (book bookCapacity g0 g2 : UInt64)
+    (book bookCapacity g0 g2 g4 g5 : UInt64)
     (os : List OrderL) (order : OrderL) (limit : Nat),
     os.length < 4294967296 →
     48 ≤ book.toNat →
@@ -35,6 +35,8 @@ def FilledSpec : Prop :=
     st.globals.globals[0]? = some (.i64 g0) →
     st.globals.globals[1]? = some (.i64 0) →
     st.globals.globals[2]? = some (.i64 g2) →
+    st.globals.globals[4]? = some (.i64 g4) →
+    st.globals.globals[5]? = some (.i64 g5) →
     limit < 4294967296 →
     limit ≤ st.mem.pages * 65536 →
     g0.toNat + 112 + (os.length + 1) *
@@ -47,29 +49,30 @@ def FilledSpec : Prop :=
       (fun st' values =>
         ∃ data,
           values = [.i64 data.trades, .i64 data.book, .i64 0] ∧
-          InternalLoopResult.OutputAt
-            (RunMatchCorrect.runMatchContext st os order g0 g2 limit)
+          HeapRunMatch.OutputAt
+            (HeapRunMatch.runMatchContext st os order g0 g2 g4 g5 limit)
             st' data)
 
+set_option maxHeartbeats 2000000 in
 set_option Elab.async false in
 theorem func21_filled : FilledSpec := by
-  intro env st book bookCapacity g0 g2 os order limit hLength hBook48
-    hBook32 hBookCapacity hBookBelow hBook hFit32 hFit hPages hg0 hg1 hg2
+  intro env st book bookCapacity g0 g2 g4 g5 os order limit hLength hBook48
+    hBook32 hBookCapacity hBookBelow hBook hFit32 hFit hPages hg0 hg1 hg2 hg4 hg5
     hAddressLimit hMemoryLimit hBudget hValid hRemaining
-  let ctx := RunMatchCorrect.runMatchContext st os order g0 g2 limit
+  let ctx := HeapRunMatch.runMatchContext st os order g0 g2 g4 g5 limit
   have hContextResult : ctx.result = Model.runMatchL os order := by
-    exact RunMatchCorrect.runMatchContext_result st os order g0 g2 limit
+    exact HeapRunMatch.runMatchContext_result st os order g0 g2 g4 g5 limit
       hLength
   have hContextRemaining : ctx.result.remaining = 0 := by
     rw [hContextResult]
     exact hRemaining
   have hRunMatch : TerminatesWith (m := «module») (id := 18)
       (initial := st) (env := env)
-      (RunMatchCorrect.runMatchArgs 0 book order)
-      (InternalLoopResult.Postcondition ctx) := by
-    apply RunMatchCorrect.func18_correct env st 0 book bookCapacity g0 g2 os
+      (HeapRunMatch.runMatchArgs 0 book order)
+      (HeapRunMatch.Postcondition ctx) := by
+    apply HeapRunMatch.func18_correct env st book bookCapacity g0 g2 g4 g5 os
       order limit hLength hBook48 hBook32 hBookCapacity hBookBelow hBook
-      hFit32 hFit hPages hg0 hg1 hg2 hAddressLimit hMemoryLimit hBudget
+      hFit32 hFit hPages hg0 hg1 hg2 hg4 hg5 hAddressLimit hMemoryLimit hBudget
   apply TerminatesWith.of_wp_entry_for (f := func21Def)
   · simp [«module»]
   · change wp «module» func21 _ st (LimitEntry.entryFrame book order) env
@@ -84,7 +87,7 @@ theorem func21_filled : FilledSpec := by
     simp only [LimitEntry.validProg, LimitEntry.validPrefixProg,
       List.append_assoc]
     apply LimitRunMatchCall.validCallProg_spec env st book order
-      (InternalLoopResult.Postcondition ctx) hRunMatch
+      (HeapRunMatch.Postcondition ctx) hRunMatch
     rintro st2 values ⟨data, hValues, hOutput⟩
     apply LimitRunMatchResult.validResultPrefixProg_filled_spec env st2 book
       order ctx data values hValues hContextRemaining

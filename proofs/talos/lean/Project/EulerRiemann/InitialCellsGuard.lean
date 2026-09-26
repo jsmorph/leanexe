@@ -16,12 +16,16 @@ theorem initial_cells_body_shape : initialCellsBody = initialCellsBody.take 164 
     [.localGet 21, .localSet 13, .localGet 13, .localSet 14, .localGet 13, .localSet 15,
       .localGet 1, .localGet 2, .localGet 3, .localGet 14, .localGet 15, .call 95,
       .localSet 17, .localSet 16, .localGet 16, .localSet 19, .localGet 17, .localSet 20,
-      .localGet 13, .call 107] := by
+      .localGet 13, .constI64 0, .eqI64, .eqz,
+      .iff 0 1 [.localGet 13, .localGet 19, .eqI64, .eqz] [.const 0] [] [.i32],
+      .iff 0 0 [.localGet 13, .call 107] []] := by
   have hTail : initialCellsBody.drop 164 =
       [.localGet 21, .localSet 13, .localGet 13, .localSet 14, .localGet 13, .localSet 15,
         .localGet 1, .localGet 2, .localGet 3, .localGet 14, .localGet 15, .call 95,
         .localSet 17, .localSet 16, .localGet 16, .localSet 19, .localGet 17, .localSet 20,
-        .localGet 13, .call 107] := rfl
+        .localGet 13, .constI64 0, .eqI64, .eqz,
+        .iff 0 1 [.localGet 13, .localGet 19, .eqI64, .eqz] [.const 0] [] [.i32],
+        .iff 0 0 [.localGet 13, .call 107] []] := rfl
   exact (List.take_append_drop 164 initialCellsBody).symm.trans
     (congrArg (fun tail => initialCellsBody.take 164 ++ tail) hTail)
 

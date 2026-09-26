@@ -94,9 +94,7 @@ The focused gate regenerates the artifact and model before building the register
 tools/talos-proof.js check fold_sum
 ```
 
-After the theorem is complete, set `complete` to `true` and import `Project.<Case>.Spec` from [`Project.lean`](../proofs/talos/lean/Project.lean).  The aggregate gate verifies that completed registry entries match the specification imports and that every registered case appears in the runtime checks.  It then regenerates all registered cases serially and builds the complete `Project` target; the 2026-08-26 run passed all twenty cases.
-
-Those older aggregate results are historical: twenty cases passed on 2026-08-26 and twenty-six on 2026-09-04.  The current gate regenerates thirty-nine cases and builds the thirty-nine completed specifications.  On 2026-09-07 the then-current 29 models regenerated successfully, but the build reached its 20-minute limit while compiling existing CLOB dependencies without a theorem diagnostic; smaller missing targets must complete before a retry.
+After the theorem is complete, set `complete` to `true` and import `Project.<Case>.Spec` from [`Project.lean`](../proofs/talos/lean/Project.lean).  The aggregate gate verifies that completed registry entries match the specification imports and that every registered case appears in the runtime checks.  It then regenerates all registered cases serially, builds each completed specification under its per-case limit, and builds the complete `Project` target.
 
 ```sh
 tools/talos-proof.js check --all
@@ -112,15 +110,15 @@ Check an external binary by passing its path and the registered artifact target.
 
 ```sh
 tools/artifact-proof.js check \
-  proofs/artifacts/fold_sum/b599860eb8fe3937148455c27c8cfca5473f967001e563530b4790c43017e3b5/program.wasm \
+  proofs/artifacts/fold_sum/87fbd162ef2995bfb716b427fd2f6a98890dc10f2b28c14a81854cf56ea66f9c/program.wasm \
   Project.FoldSum.ArtifactTranslation
 ```
 
-`check-artifacts` performs the identity, embedded-byte, and exact-artifact theorem stages for all thirty-four packages.  `check-all` adds every behavioral specification and the aggregate manifest-declaration check.  Neither aggregate mode invokes LeanExe, reads a source program, or invokes `wasm-tools`.  The 2026-09-04 twenty-one-package receipt belongs to its recorded earlier input; the retained 21-package release draft records digest `dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11` and its aggregate receipt is pending.  The accepted 2026-08-26 receipt covers the twenty packages registered at that time.
+`check-artifacts` checks package identity, embedded bytes, and exact-artifact theorems for every registered package.  `check-all` adds every behavioral specification and the aggregate manifest-declaration check.  Neither aggregate mode invokes LeanExe, reads a source program, or invokes `wasm-tools`.
 
 ## Semantic Conformance Tool
 
-The conformance configuration pins the CodeLib and official WebAssembly testsuite revisions, Wasmtime version and feature options, twenty-five exact execution files with coverage labels, and fifteen invalid-module commands identified by file, assertion kind, and source line.  The command verifies those revisions and executable versions, builds the pinned Talos testsuite executable and the artifact classifier, and runs each operation serially.  A temporary one-file corpus selects each execution filename exactly, avoiding the Talos harness's substring matching.
+The conformance configuration pins the CodeLib and official WebAssembly testsuite revisions, Wasmtime version and feature options, execution files with coverage labels and invalid-module commands identified by file, assertion kind, and source line.  The command verifies those revisions and executable versions, builds the pinned Talos testsuite executable and the artifact classifier, and runs each operation serially.  A temporary one-file corpus selects each execution filename exactly, avoiding the Talos harness's substring matching.
 
 ```sh
 tools/artifact-conformance.js check
@@ -128,7 +126,7 @@ tools/artifact-conformance.js check
 
 The invalid-module stage extracts each configured official module and requires the exact decoder or validator error constructor recorded in the configuration.  `wasm-tools` adds custom name sections when encoding text-origin `assert_invalid` modules, so the command strips custom sections from those cases before classification.  It preserves raw `assert_malformed` binary modules byte-for-byte, and the 2026-08-26 run matched all fifteen classifications, including truncation, version, section, integer-width, alignment, stack, and memory-limit failures.
 
-Talos executes supported assertions and reports unsupported command kinds as skips, so the invalid-module stage supplies separate evidence for the artifact decoder and validator.  The 2026-08-26 execution run produced 3,853 passes, six known assertion failures, 627 skips, and no cascades, decoder errors, interpreter errors, or fuel exhaustion in Talos, while Wasmtime passed all twenty-five files with `function-references=y`.  The command warns only when the failures exactly match the six imported-memory rows recorded for `memory_grow.wast`; an upstream repair removes the warning, while any changed or additional failure stops the gate.
+Talos executes supported assertions and reports unsupported command kinds as skips.  The invalid-module stage separately checks the artifact decoder and validator.  The 2026-09-25 run passed the configured execution corpus in Wasmtime and 6,996 assertions in Talos, with four configured skips and no failures.  All configured invalid-module checks passed.
 
 ## Release Evidence Tool
 

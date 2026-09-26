@@ -1,0 +1,18 @@
+{
+  "title": "Quantized GPT-2 Inference with Exact WebAssembly Proofs: Arithmetic, Cached Execution, and Numerical Evidence",
+  "authors": "Jamie Stephens",
+  "abstract": "Quantization changes a language model’s arithmetic, storage, and output, while deployment adds obligations about compiled instructions and retained state. We extend LeanExe’s GPT-2 124M example with signed eight-bit weights and projection inputs, 32-bit integer accumulation, and binary32 operations elsewhere. A Lean-checked theorem connects the exact 28,315-byte WebAssembly binary to the specified quantized cached-inference algorithm, including validation, termination, allocation, and buffer release for sessions of at most 128 tokens. The specification fixes scale selection, nearest-even rounding, saturation, and the order of all rescaling operations. An initial scale per activation row caused severe output degradation. Scales for consecutive groups of 64 coordinates improved greedy agreement with the binary32 implementation from 87 to 120 of 128 retained prefixes. The deployed grouped model matches its independent reference bit for bit on 6,432,896 logits, 128 complete caches, and nine completions. Its checkpoint occupies 74.3% less storage. A controlled resident-session benchmark measures a 3.59-fold median speedup and a 34.7% reduction in warm WebAssembly memory. Across 302 evaluated positions, including prefixes of six held-out prompts, greedy choices agree at 263 positions. Separate certificates derived from observed logit pairs establish 232 individual choices after removing a common offset. Conditional numerical theorems propagate quantization and floating-point errors through the complete cached recurrence, but their evaluated forward bounds certify zero token choices. We give the theorem boundary, data identities, measurement procedures, and remaining assumptions, including native checker execution and the identity of captured operands with source intermediates.",
+  "subject": "cs.PL",
+  "secondary": [
+    "cs.CL"
+  ],
+  "comments": "20 pages. Source, theorem map, measurement records, and reproduction instructions accompany the report.",
+  "related": [
+    "2609.00011: Extends the cached binary32 GPT-2 execution proof with grouped quantized inference.",
+    "2609.00014: Uses the LeanExe GPT-2 artifact-verification architecture and adds quantized CPU execution and numerical evidence."
+  ],
+  "pdf": "paper/gpt2-quantized-report/main.pdf",
+  "pdf_sha256": "6f5156e663a24b7938d13d1b949a5991bfbd47eceb7b0f3d9614742a70b9d250",
+  "source_revision": "c655d35b5011c1703dfd22bcceaec4e5bee17088",
+  "public": false
+}

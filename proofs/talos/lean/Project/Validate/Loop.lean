@@ -39,7 +39,7 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
           .i64 (UInt64.ofNat bytes.length), .i64 0],
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0],
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     unfold func2
     wp_run
@@ -156,30 +156,39 @@ theorem func2_terminates (env : HostEnv Unit) (st : Store Unit)
             refine wp_iff_cons rfl ?_
             rw [if_neg (by simp [hsucc_no_wrap])]
             wp_run_folded []
-            refine ⟨⟨rfl, UInt64.ofNat (bytes.length + 1 - i) - 1,
-              UInt64.ofNat i + 1, l5, 0, owner, ptr, UInt64.ofNat bytes.length,
-              UInt64.ofNat i, bytes[i]!.toUInt64, bytes[i]!.toUInt64, owner, ptr,
-              UInt64.ofNat bytes.length, UInt64.ofNat i + 1, owner, ptr,
-              UInt64.ofNat bytes.length, UInt64.ofNat i + 1, UInt64.ofNat i, 1,
-              UInt64.ofNat i + 1, ?_, Or.inl ⟨rfl, i + 1, hilt, hnext, ?_, ?_⟩⟩, ?_⟩
-            · simp [vFrame]
-            · rw [hfuel_next]
-            · intro j hj
-              rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj' | rfl
-              · exact hpref j hj'
-              · exact hd
-            · simp (config := { decide := true }) only [frame_step, vMeasure, List.length, List.set, if_true, Nat.reduceSub, Nat.reduceAdd]
-              have hLen' : bytes.length + 1 < 18446744073709551616 := by
-                rw [size_eq] at hLen
-                exact hLen
-              rw [hfuel_next]
-              have hf1 : (UInt64.ofNat (bytes.length + 1 - (i + 1))).toNat =
-                  bytes.length + 1 - (i + 1) :=
-                toNat_ofNat_lt (by rw [size_eq]; omega)
-              have hf2 : (UInt64.ofNat (bytes.length + 1 - i)).toNat =
-                  bytes.length + 1 - i :=
-                toNat_ofNat_lt (by rw [size_eq]; omega)
-              omega
+            refine wp_iff_cons rfl ?_
+            rw [if_neg (by simp)]
+            wp_run_folded []
+            refine wp_iff_cons rfl ?_
+            rw [if_neg (by simp)]
+            wp_run_folded []
+            refine wp_iff_cons rfl ?_
+            by_cases hOwner : owner = 0 <;> simp [hOwner]
+            all_goals
+              refine ⟨⟨rfl, UInt64.ofNat (bytes.length + 1 - i) - 1,
+                UInt64.ofNat i + 1, l5, 0, owner, ptr, UInt64.ofNat bytes.length,
+                UInt64.ofNat i, bytes[i]!.toUInt64, bytes[i]!.toUInt64, owner, ptr,
+                UInt64.ofNat bytes.length, UInt64.ofNat i + 1, owner, ptr,
+                UInt64.ofNat bytes.length, UInt64.ofNat i + 1, UInt64.ofNat i, 1,
+                UInt64.ofNat i + 1, ?_, Or.inl ⟨rfl, i + 1, hilt, hnext, ?_, ?_⟩⟩, ?_⟩
+              · simp [vFrame, hOwner]
+              · rw [hfuel_next]
+              · intro j hj
+                rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj' | rfl
+                · exact hpref j hj'
+                · exact hd
+              · simp (config := { decide := true }) only [frame_step, vMeasure, List.length, List.set, if_true, Nat.reduceSub, Nat.reduceAdd]
+                have hLen' : bytes.length + 1 < 18446744073709551616 := by
+                  rw [size_eq] at hLen
+                  exact hLen
+                rw [hfuel_next]
+                have hf1 : (UInt64.ofNat (bytes.length + 1 - (i + 1))).toNat =
+                    bytes.length + 1 - (i + 1) :=
+                  toNat_ofNat_lt (by rw [size_eq]; omega)
+                have hf2 : (UInt64.ofNat (bytes.length + 1 - i)).toNat =
+                    bytes.length + 1 - i :=
+                  toNat_ofNat_lt (by rw [size_eq]; omega)
+                omega
           · -- non-digit byte: set the result to 0 and the done flag
             have hd0 : isAsciiDigit bytes[i]! = false := by
               cases hval : isAsciiDigit bytes[i]!

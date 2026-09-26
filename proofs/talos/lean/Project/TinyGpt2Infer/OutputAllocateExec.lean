@@ -54,7 +54,7 @@ theorem output_allocation_program_spec (module_ : Wasm.Module) (scratch : Nat)
     exact hNext previous'
 
 theorem output_allocation_spec (env : HostEnv Unit) (initial : Store Unit)
-    (params saved tail : List Wasm.Value) (hStart : params.length + saved.length = 57)
+    (params saved tail : List Wasm.Value) (hStart : params.length + saved.length = 60)
     (start count : Nat) (allocations retains releases frees previous current capacity' next result : UInt64)
     (hGlobals : initial.globals.globals = OutputMemory.globals start count allocations retains releases frees)
     (hList : FreeListAt initial.mem (freed start count))
@@ -70,7 +70,7 @@ theorem output_allocation_spec (env : HostEnv Unit) (initial : Store Unit)
       (FixedArraySearch.frame params saved tail (UInt64.ofNat (capacity (count + 1)))
         previous current capacity' next result) env := by
   rw [output_allocation_shape]
-  exact output_allocation_program_spec module 57 rfl env initial params saved tail hStart start count
+  exact output_allocation_program_spec module 60 rfl env initial params saved tail hStart start count
     allocations retains releases frees previous current capacity' next result
     hGlobals hList hFit hMemory hPages hCap Q rest hNext
 

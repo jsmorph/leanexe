@@ -134,7 +134,7 @@ function receiptMatches(receipt, expectedKeys, predicates) {
   return predicates.every((predicate) => predicate(receipt));
 }
 
-function refreshEvidence() {
+function currentEvidence() {
   const previous = readJson(evidencePath);
   const inputs = collectReleaseInputs(repoRoot);
   const { registry } = loadArtifactRegistry(repoRoot);
@@ -283,8 +283,13 @@ function refreshEvidence() {
   };
   next.blockers = derivedBlockers(next);
   next.status = next.blockers.length === 0 ? "ready" : "draft";
-  writeJsonAtomic(evidencePath, next);
   return next;
+}
+
+function refreshEvidence() {
+  const evidence = currentEvidence();
+  writeJsonAtomic(evidencePath, evidence);
+  return evidence;
 }
 
 function kernelScopeFindings(repoRoot, scopeAudit) {
@@ -784,6 +789,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  currentEvidence,
   derivedBlockers,
   kernelScopeFindings,
   loadEvidence,

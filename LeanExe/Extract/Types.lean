@@ -1,8 +1,9 @@
 import Lean
+import LeanExe.ByteIO
 import Init.Data.ByteArray.Extra
 import LeanExe.Extract.Env
 import LeanExe.Extract.Syntax
-import LeanExe.IR.Core
+import LeanExe.IR.ByteIO
 
 open Lean
 
@@ -94,6 +95,7 @@ structure Context where
   synthetics : Array SyntheticFunction
   freshResultOwnerOffsets : Array (List Nat)
   inlineStack : List Name
+  allowByteIO : Bool := false
 
 structure VariantCtorLayout where
   name : Name
@@ -156,16 +158,10 @@ def asciiStringBytes? (value : String) : Option (List UInt8) :=
   let bytes := value.toUTF8.data.toList
   if bytes.all (fun byte => byte.toNat < 128) then some bytes else none
 
-def byteArrayLiteralArrayExprAux (index : Nat) (array : IRExpr) : List UInt8 → IRExpr
-  | [] => array
-  | byte :: rest =>
-      byteArrayLiteralArrayExprAux
-        (index + 1)
-        (.arraySetSlots 1 0 0 array (.u64 index) [.u64 byte.toNat])
-        rest
-
 def byteArrayLiteralArrayExpr (bytes : List UInt8) : IRExpr :=
-  byteArrayLiteralArrayExprAux 0 (.arrayAllocSlots 1 0 (.u64 bytes.length)) bytes
+  -- A literal owns one backing array. Copying updates would leave their
+  -- intermediate arrays unbound and therefore outside temporary cleanup.
+  .arrayLiteralSlots 1 0 (bytes.map fun byte => (0, [.u64 byte.toNat]))
 
 def byteArrayLiteralValue (slot : Nat) (bytes : List UInt8) : ExtractedValue × Nat :=
   match bytes with
@@ -976,12 +972,31 @@ def functionParamSlots (useAbi : Bool) (ty : Ty) : Nat :=
 def functionParamCount (useAbi : Bool) (params : List Ty) : Nat :=
   params.foldl (fun total ty => total + functionParamSlots useAbi ty) 0
 
+def isByteIOMonad (expr : Expr) : Bool :=
+  match appFnArgs expr with
+  | (.const ``LeanExe.ByteIO _, []) => true
+  | (.const ``BaseIO _, []) => true
+  | _ => false
+
+def byteIOPayload? (expr : Expr) : Option Expr :=
+  match expr.consumeMData with
+  | .app monad payload => if isByteIOMonad monad then some payload else none
+  | _ => none
+
+def resultTypeAtom? (env : Environment) (expr : Expr) : Option Ty :=
+  match byteIOPayload? expr with
+  | some payload => typeAtom? env payload
+  | none => typeAtom? env expr
+
+def byteIOPrimitiveName (name : Name) : Bool :=
+  name == ``LeanExe.ByteIO.read || name == ``LeanExe.ByteIO.write
+
 def functionTypeWith?
     (env : Environment)
     (paramSupported resultSupported : Ty → Bool)
     (type : Expr) : Option Signature :=
   let parts := peelForall type
-  match typeAtom? env parts.snd with
+  match resultTypeAtom? env parts.snd with
   | some result =>
       let params? := parts.fst.mapM (typeAtom? env)
       match params? with
@@ -1006,7 +1021,7 @@ def supportedEntryFunction? (env : Environment) (info : ConstantInfo) : Option S
     entryFunctionType? env info.type
 
 def supportedFunction? (env : Environment) (info : ConstantInfo) : Option Signature :=
-  if info.isUnsafe || info.isPartial || info.value?.isNone then
+  if info.isUnsafe || info.isPartial || (info.value?.isNone && !byteIOPrimitiveName info.name) then
     none
   else
     functionType? env info.type
@@ -1240,7 +1255,7 @@ def specializedInlineCall?
         | _, _ => none
       let (runtimeArgs, runtimeTys, parameters) ← loop [] [] [] [] parts.fst args
       let resultExpr := betaReduceExpr 32 (parts.snd.instantiateRev args.toArray)
-      let resultTy ← typeAtom? env resultExpr
+      let resultTy ← resultTypeAtom? env resultExpr
       if supportedLocalType resultTy then
         some {
           sig := { params := runtimeTys, result := resultTy },
@@ -1321,19 +1336,24 @@ def f32BinaryPrimitive? (name : Name) : Option LeanExe.IR.U64Op :=
   else if name == ``LeanExe.Float32.divBits then some .f32DivBits
   else none
 
-def floatUnaryPrimitive? (name : Name) : Option LeanExe.IR.FloatUnaryOp :=
-  if name == ``LeanExe.Float32.sqrtBits then some .f32SqrtBits
+def scalarUnaryPrimitive? (name : Name) : Option LeanExe.IR.ScalarUnaryOp :=
+  if name == ``LeanExe.Float32.nearestBits then some .f32NearestBits
+  else if name == ``LeanExe.Float32.toInt32Bits then some .f32ToI32Bits
+  else if name == ``LeanExe.Float32.ofInt32Bits then some .i32ToF32Bits
+  else if name == ``LeanExe.Signed32.extend8Bits then some .i32Extend8Bits
+  else if name == ``LeanExe.Float32.sqrtBits then some .f32SqrtBits
   else if name == ``LeanExe.Float32.toFloat64Bits then some .f32ToF64Bits
   else if name == ``LeanExe.Float32.ofFloat64Bits then some .f64ToF32Bits
   else none
 
 def packedPrimitiveName (name : Name) : Bool :=
-  name == ``LeanExe.Packed.getUInt32LE! || name == ``LeanExe.Packed.generateUInt32LE
+  name == ``LeanExe.Packed.getUInt32LE! || name == ``LeanExe.Packed.generateUInt32LE ||
+    name == ``LeanExe.Packed.generateUInt8
 
 def compilerPrimitiveName (name : Name) : Bool :=
   (f64BinaryPrimitive? name).isSome || f64SqrtPrimitiveName name ||
-    (f32BinaryPrimitive? name).isSome || (floatUnaryPrimitive? name).isSome ||
-    packedPrimitiveName name
+    (f32BinaryPrimitive? name).isSome || (scalarUnaryPrimitive? name).isSome ||
+    packedPrimitiveName name || byteIOPrimitiveName name
 
 def hasDirectLambdaArg (args : List Expr) : Bool :=
   args.any isDirectLambda
@@ -1351,7 +1371,7 @@ def dynamicStructuralExtraArgs (expected : List Ty) (extraArgs : List Expr) :
 
 def blocksTransparentSpecialization (name : Name) : Bool :=
   let root := name.getRoot
-  name == ``ite || name == ``dite || name == ``WellFounded.fix ||
+  byteIOPrimitiveName name || name == ``ite || name == ``dite || name == ``WellFounded.fix ||
     name == ``WellFounded.Nat.fix ||
     (match name with
     | .str _ component =>

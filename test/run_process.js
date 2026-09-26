@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
 const fs = require("node:fs");
+const assert = require("node:assert/strict");
 const path = require("path");
 const {
   guardedInvocation,
   runChecked,
   runCheckedAsync,
+  withoutLeanrunNotices,
 } = require("../tools/run-process");
 const { makeTemporaryDirectory } = require("../tools/temp-directory");
 
@@ -98,6 +100,12 @@ async function checkSignalForwarding() {
 }
 
 async function main() {
+  const notice = "leanrun: explicitly authorized inherited priority; nice unavailable\r\n";
+  const diagnostic = "leanrun: exec failed\ncompiler: unexpected output\n\u00ff\u0000";
+  assert.equal(withoutLeanrunNotices(notice + diagnostic, "1"), diagnostic);
+  assert.equal(withoutLeanrunNotices(notice + diagnostic, "0"), notice + diagnostic);
+  assert.equal(withoutLeanrunNotices(`prefix ${notice}`, "1"), `prefix ${notice}`);
+  assert.equal(withoutLeanrunNotices("\n" + notice + "\n", "1"), "\n\n");
   expectFailure(["leanexe-command-that-does-not-exist"], [
     "leanexe-command-that-does-not-exist",
     "failed to start",

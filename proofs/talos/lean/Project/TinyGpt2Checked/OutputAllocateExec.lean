@@ -6,7 +6,7 @@ open Wasm Project.Runtime Project.ProofKit ArrayPushLayout
 open Project.TinyGpt2Infer
 
 theorem output_allocation_spec (env : HostEnv Unit) (initial : Store Unit)
-    (params saved tail : List Wasm.Value) (hStart : params.length + saved.length = 59)
+    (params saved tail : List Wasm.Value) (hStart : params.length + saved.length = 61)
     (start count : Nat) (allocations retains releases frees previous current capacity' next result : UInt64)
     (hGlobals : initial.globals.globals = OutputMemory.globals start count allocations retains releases frees)
     (hList : FreeListAt initial.mem (freed start count))
@@ -22,7 +22,7 @@ theorem output_allocation_spec (env : HostEnv Unit) (initial : Store Unit)
       (FixedArraySearch.frame params saved tail (UInt64.ofNat (capacity (count + 1)))
         previous current capacity' next result) env := by
   rw [output_allocation_shape]
-  exact TinyGpt2Infer.Spec.output_allocation_program_spec module 59 rfl env initial params saved tail hStart start count
+  exact TinyGpt2Infer.Spec.output_allocation_program_spec module 61 rfl env initial params saved tail hStart start count
     allocations retains releases frees previous current capacity' next result
     hGlobals hList hFit hMemory hPages hCap Q rest hNext
 

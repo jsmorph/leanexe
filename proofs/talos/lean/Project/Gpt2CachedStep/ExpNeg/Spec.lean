@@ -16,7 +16,7 @@ theorem expNeg_exact (env : HostEnv Unit) (initial : Store Unit) (input : UInt32
     UInt32.toUInt64_lt (a := 3263168512) (b := input)
   refine TerminatesWith.of_wp_entry_for (f := func27Def) rfl ?_
   change wp «module» func27 _ initial
-    { params := [.i64 input.toUInt64], locals := List.replicate 36 (.i64 0) } env
+    { params := [.i64 input.toUInt64], locals := List.replicate 37 (.i64 0) } env
   rw [emitted_entry]
   wp_packed_frame [List.getElem?_cons_zero]
   refine wp_iff_cons rfl ?_
@@ -38,7 +38,7 @@ theorem expNeg_exact (env : HostEnv Unit) (initial : Store Unit) (input : UInt32
       exact reduceStep_spec env initial input index next hindex hready hacc Q rest hnext
     · intro reduced hready hacc
       rcases hacc with ⟨hparams, hlength, hvalue, hsquares, hstride⟩
-      change wp «module» (branchCode.drop 17) _ initial reduced env
+      change wp «module» (branchCode.drop 15) _ initial reduced env
       rw [emitted_squaring, List.append_assoc]
       simp only [branchCode, func27, List.getElem?_cons_zero, List.getElem?_cons_succ,
         List.drop, List.take, List.cons_append, List.nil_append]

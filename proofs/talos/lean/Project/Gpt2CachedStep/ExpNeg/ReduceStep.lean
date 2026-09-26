@@ -13,17 +13,17 @@ def branchCode : Wasm.Program :=
   | _ => []
 
 def reduceStepCode : Wasm.Program :=
-  match (branchCode[16]? : Option Wasm.Instruction) with
+  match (branchCode[14]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => (body.drop 4).dropLast
   | _ => []
 
 set_option maxRecDepth 16384 in
-theorem emitted_reduction : branchCode = branchCode.take 16 ++
-    RangeFoldLoop.program 27 28 reduceStepCode ++ branchCode.drop 17 := rfl
+theorem emitted_reduction : branchCode = branchCode.take 14 ++
+    RangeFoldLoop.program 27 28 reduceStepCode ++ branchCode.drop 15 := rfl
 
 def Reduced (input : UInt32) (index : Nat) (frame : Locals) : Prop :=
   frame.params = [.i64 input.toUInt64] ∧
-  frame.locals.length = 36 ∧
+  frame.locals.length = 37 ∧
   frame.locals[2]? = some (.i64 (reducePrefix input index).1.toUInt64) ∧
   frame.locals[3]? = some (.i64 (UInt64.ofNat (reducePrefix input index).2)) ∧
   frame.locals[28]? = some (.i64 1)

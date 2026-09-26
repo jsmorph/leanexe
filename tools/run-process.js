@@ -2,6 +2,19 @@ const { spawn, spawnSync } = require("child_process");
 const path = require("path");
 
 const leanrun = path.join(__dirname, "leanrun");
+const localRunnerNotices = new Set([
+  "leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice",
+  "leanrun: explicitly authorized inherited priority; nice unavailable",
+  "leanrun: LEANRUN_LOCAL=1; cgroup CPU, memory, and swap limits are not enforced",
+]);
+
+// Opt-in for consumers checking compiler/program stderr, separate from wrapper
+// notices. Keep every other byte, including unknown runner failures.
+function withoutLeanrunNotices(text, localMode = process.env.LEANRUN_LOCAL) {
+  if (localMode !== "1") return text;
+  return text.replace(/[^\n]*\n|[^\n]+$/g, line =>
+    localRunnerNotices.has(line.replace(/\r?\n$/, "")) ? "" : line);
+}
 const guardedExecutables = new Set([
   "lake",
   "lean",
@@ -146,6 +159,7 @@ async function runCheckedAsync(args, options = {}) {
 }
 
 module.exports = {
+  withoutLeanrunNotices,
   guardedInvocation,
   runChecked,
   runCheckedAsync,

@@ -1,3 +1,429 @@
+## 2026-09-25: Running-sum correctness proof
+
+The requested theorem covers the existing signed-decimal program and its
+compiled WASM: every valid input line produces its integer prefix sum before
+processing the next line, and EOF ends execution after any final line.
+Host progress, successful I/O, and sufficient memory will be explicit
+premises of the successful-execution theorem.  Error behavior needs separate
+statements.  The source and compiler remain unchanged during proof work.
+
+- [x] Prove word-level decimal carry and borrow without wraparound.
+- [x] Prove the source digit loop, normalization, comparison, parsing, and rendering for valid lines.
+- [x] Prove line buffering and output order across short reads and EOF for the Lean source.
+- [ ] Prove execution of the decoded WASM and connect it to integer prefix sums.
+- [ ] Check the completed theorem and its axioms through a maintained gate.
+
+`Project.RunningSum.Render` checks `add_correct`, `parse_valid`,
+`render_correct`, and `line_add_correct` for the unchanged source.  The proof
+covers every decimal input digit and carry or borrow, the complete magnitude
+loop, zero removal, comparison, sign selection, and valid-line parsing.
+The statement interprets digits as natural numbers and signed values as
+Lean integers.  Its theorem audits use only `propext`, `Classical.choice`,
+and `Quot.sound`.  Connecting the elaborated parser required normalizing
+the identity-monad operations in both loop bodies before splitting the
+early-return match.  Two elaboration limits in earlier magnitude proof
+attempts were resolved by separating normalization and the carry branch.
+
+The existing byte-I/O gate supplies host semantics and concrete echo
+proofs.  A general execution proof for this program remains open.  Binary
+preparation reuses its checked decoder-certificate generator with a named
+project parameter.  The echo defaults remain unchanged, and the existing
+Node gate tests pass.
+
+The stream model now checks arbitrary read boundaries and EOF with or without
+a final newline.  Its line relation identifies the completed input lines,
+and `stream_correct` relates every output to the corresponding integer
+prefix sum.  `Source.main_eq` connects a named loop decomposition to the
+unchanged Lean entry.  `Source.bytes_runs` checks its per-byte loop under
+explicit successful-read and successful-write assumptions.
+`Source.main_correct` now checks for every finite valid input stream: the
+unchanged entry returns zero at EOF and produces decimal representations of
+the integer prefix sums.  `Source.newline_correct` proves that processing
+a newline calls `write` before yielding the updated total and empty input
+buffer.  A write error returns its code instead.  Both audits report only
+the standard logical axioms.
+
+The source I/O proofs use the pinned toolchain's `ST` state-token semantics.
+Lean 4.34 hides the implementation of the `BaseIO` monad instance across
+module boundaries.  Two exported equations for `pure` and `bind` use
+`import all Init.System.IO` in a small module.  The toolchain's
+`Lean/DefEqAttrib.lean` documents why their proofs use `(rfl)`: the equalities
+are kernel-checkable but depend on definitions that callers cannot unfold.
+No I/O primitive implementation is assumed through those equations.
+
+The embedded bytes and decoded cache needed larger recursion limits because
+this module exceeds the echo example's size.  Exact-byte decoding, module
+validation, imports, and `_start` export now check.  The aggregate decoding
+build reached its four-minute limit after checking code bodies zero through
+five.  Separate targets checked the remaining bodies before the final
+aggregate passed.  Universal WASM execution and memory reasoning remain open.
+The reusable heap execution lemmas currently use `Store Unit`, while the
+WASI model carries its input and output in `Store World`.  Reusing those
+lemmas requires a proved host-state transport or type generalization in
+addition to the program's instruction and loop proofs.
+
+The source and binary audits report only the standard logical axioms.  The
+Node gate tests pass, including checks that the shared generator's default
+echo output remains unchanged.  Documentation validation and
+`git diff --check` pass.  The source and compiler are unchanged, so the
+previous running-sum execution tests still describe this binary.
+
+## 2026-09-25: Running-sum byte-I/O demo
+
+The [running-sum example](LeanExe/Examples/RunningSum.lean) uses the existing
+`io` compiler and [byte-I/O API](docs/manual.md#byte-input-and-output).  Signed
+decimal arithmetic uses byte arrays because the accepted source language has
+bounded scalar integers.  The program writes after each input newline,
+retains partial lines across reads, processes a final unterminated line, and
+exits on EOF.  Malformed input returns status 28.  I/O errors propagate.
+
+The targeted Lake build and `test/running_sum.js` pass.  The test validates
+the WASM module, compares its results and native Lean results with JavaScript
+BigInt, and covers negative numbers, zero, cancellation, carry, borrow,
+values beyond 64 bits, 5,000-digit inputs spanning reads, and 1,000 successive
+additions.  The interactive test sends each subsequent line only after
+receiving the previous sum.  Empty input, CRLF, final input without a
+newline, malformed lines, and a broken output pipe pass.  The test joins
+the execution suite.  [Usage](docs/manual.md#running-sum) is documented.
+
+The first extraction rejected `Nat.toUInt8`.  Digit arithmetic now uses
+supported `UInt64` conversions, with intermediate digit values at most 19.
+The local test selects the installed validator with
+`WASM_TOOLS=/home/somebody/.cargo/bin/wasm-tools`.  The compiler and host
+required no changes.
+
+## 2026-09-24: Reconcile the byte-I/O manual after review
+
+The P3 manual statement that omitted the new proofs is replaced with the maintained byte-I/O verification command and a link to the modeled host contracts, protocol laws, and six exact-binary cases. It explicitly retains the external C, Wasmtime, OS, and clock-progress assumptions. The development guide now documents the shared canonicalizing host configuration and the compiled NaN tests. Its obsolete generated-cache count and the task record's stale pending-proof sentence are also removed. The task record records both repaired P2 regressions and the passing proof gate.
+
+`tools/check-docs.js` passes all 162 maintained Markdown files in work/io-review/docs-final.log, and `git diff --check` passes. The verification command was exercised successfully in this same follow-up; the task and journal edits add no local links or shell examples. No proof statement, generated cache, or release identity changed.
+
+## 2026-09-24: Canonical NaNs in compiled byte-I/O commands
+
+The second P2 regression uses runtime input to form signaling, quiet, and negative NaNs, then checks exact canonical results through both binary32 and binary64 source intrinsics. Before the host repair, the compiled binary32 case returns 99 instead of zero in work/io-review/nan-before.log. The byte-I/O host now explicitly selects Cranelift and enables the same NaN canonicalization as the ordinary host.
+
+`node test/byte_io.js` passes 53 executions and four pure-mode rejections in work/io-review/nan-after.log; six new runs cover both widths with three distinct nonzero payloads. The host suite still passes its seven I/O cases and twelve shared-descriptor restorations in work/io-review/host-final.log. `tools/byte-io-proof.js check` passes in work/io-review/proof-final.log: fresh echo bytes remain identical, all six exact-binary execution cases check, and all 46 public theorem audits use only standard logical axioms. The native host remains outside the formal proof boundary. The compiler implementation and registered proof subjects are unchanged, so the earlier complete source gate remains applicable. `git diff --check` passes.
+
+## 2026-09-24: Restore shared stdin/stdout flags after byte I/O
+
+The P2 review regression now runs a native socketpair harness which keeps the same open file description in the parent and both child streams. Before the repair, the first case fails with flags changing from 2 to 6 in work/io-review/flags-before.log. The host now captures both streams' original flags before any mutation and restores only descriptors whose nonblocking request succeeded. This avoids recording an already modified flag through the second alias.
+
+`node test/wasi_io_host.js` passes the seven existing host cases and twelve shared-descriptor checks in work/io-review/flags-after.log. The new cases cover both call orders, a single read or write descriptor, repeated calls, nonzero command exit, and initially blocking or nonblocking streams. The C harness bounds the child with an alarm. `git diff --check` passes. Compiler output and proof subjects are unchanged.
+
+## 2026-09-24: Byte-I/O continuation complete; full source-proof gate passes
+
+`tools/talos-proof.js check --all` passes in work/talos-all-final-2.log: all 69 regenerated Program and annotation caches match, registry/import checks pass, and the complete library builds in 5,487 jobs for all 68 registered complete specifications. The aggregate also checks the four named-field initial heap constructions. The log contains no proof errors or sorryAx. Earlier focused results include the complete certificate, both Riemann solvers, cached GPT-2, the recycled LEB encoder, all three tiny-model cases, and the retained partial sequence-softmax proof. The sequence registration remains incomplete; no new full sequence claim was added.
+
+The first full aggregate in work/talos-all-final-1.log checked all 69 caches and completed 5,481 of its then-scheduled 5,487 jobs before the twenty-minute build limit, with no proof error. A narrowed cached-model check completed the remaining dependency work before this successful maintained rerun.
+
+This closes the compiler-proof obligation for the resumed byte-I/O task. All non-release execution constituents and all 13 WAT/binary comparisons passed earlier on the same compiler implementation. The separate byte-I/O gate passed all 46 public theorem audits and six kernel-checked exact-binary echo executions. The modeled host and protocol contracts retain their documented host/clock-progress assumptions; C, Wasmtime, and OS behavior remain external assumptions tested by native execution. Source proof repairs introduced no axioms, admitted terms, or new public model-input restrictions. LEB's prior fixed bump-address statement was replaced by the actual reusable-buffer result and typed release-counter requirements.
+
+The current status guide, source-proof inventory, development plan, and task record now report the successful aggregate instead of historical cache failures. Frozen artifact and release identity work remains deferred by the user. The top-level execution driver includes those release checks, so its aggregate status is not claimed as passed; its non-release constituents are the execution evidence.
+
+Final documentation validation passes all 162 maintained Markdown files in work/io-final-docs.log. The task record's 41 local links resolve, and git diff --check passes.
+
+## 2026-09-24: Aggregate dependency rebuild completed through a narrowed final target
+
+work/talos-all-final-1.log matches all 69 regenerated caches and completes 5,481 of its then-scheduled 5,487 proof-library jobs without a proof error before the maintained twenty-minute build limit. It checks the refreshed Riemann and reconstructed initializers and public specifications, all tiny cases, certificate results, and cached hidden-state/entry components. This is an aggregate time limit with continuous successful module completions, not a silent theorem timeout.
+
+The narrowed work/cached-final-1.log then passes the complete Gpt2CachedStep.Spec (3,698 jobs), including its named-field initializer, accepted/rejected cached steps, and up-to-128-position session theorem. Audits remain standard-only. The maintained aggregate is rerunning with those dependencies checked; full aggregate success remains pending until its final result.
+
+## 2026-09-24: Maintained certificate solver gate passes
+
+`tools/talos-proof.js check euler_certificate` passes in work/certificate-maintained-2.log (4,099 proof jobs), including the public exact-output and physical residual-enclosure theorems for the existing full input range. All audits contain only standard logical axioms. The narrowed work/certificate-run-1.log completed the full run theorem (4,019 jobs) after the earlier bounded dependency build.
+
+The first maintained pass found that the broadened Heap record invalidated a six-field positional constructor at the certificate entry. It is now a named-field initialization with the same six runtime values and the default untouched-slot/suffix fields. A repository search found and repaired the same construction in Riemann, reconstructed Riemann, and cached GPT-2 initializers; their verification is included in the full aggregate now running. Certificate artifact regeneration matched the maintained cache. Full aggregate success has not yet been claimed.
+
+## 2026-09-24: Existing partial sequence softmax proof preserved
+
+work/sequence-softmax-1.log passes all 3,535 jobs, including the sequence function-region transports, empty and nonempty softmax branches, and public internal softmax contract. The nonempty branch now proves the temporary and returned roots distinct before following the generated alias guard. Audits contain only standard logical axioms. Program and annotation changes are maintained generated output. The sequence registration remains incomplete: no full sequence-inference theorem is claimed.
+
+The combined certificate/sequence dependency build in work/certificate-sequence-1.log reached its twelve-minute bound after completing certificate retry-loop and solver ownership dependencies, without a proof error. Follow-up checks split out the softmax helper and certificate run theorem. Completed modules are reused; the complete certificate and aggregate source gates remain pending. No unchanged silent theorem timeout was repeated.
+
+## 2026-09-24: All three tiny-model maintained gates pass
+
+`tools/talos-proof.js check tiny_gpt2_checked` passes in work/tiny-checked-maintained-1.log (3,793 proof jobs), and `check tiny_gpt2_hidden` passes in work/tiny-hidden-maintained-1.log (3,425 jobs). Together with the earlier inference gate, all three regenerated source cases are checked with their original public numerical and execution scope. work/tiny-docs-1.log passes all 162 maintained Markdown files; a separate task.md link review finds 41 local links and no missing targets.
+
+The certificate and existing partial sequence-softmax proofs are now under a bounded dependency rebuild following the shared allocator contract changes. The continuation record distinguishes these pending proofs and the final aggregate from completed runtime and tiny-model validation. Release identity remains deferred.
+
+## 2026-09-24: Complete tiny inference and checked-entry specifications restored
+
+work/tiny-both-3.log passes both complete specifications (3,816 jobs), including all 256 output words, termination, retained input memory, checked rejection paths, and their existing numerical corollaries. Public theorem statements retain their quantified inputs and resource assumptions; all audits use only standard logical axioms. `tools/talos-proof.js check tiny_gpt2_infer` additionally passes against fresh compiler output in work/tiny-infer-maintained-1.log (3,769 jobs). The checked and hidden maintained case checks are following.
+
+The current output loops retain the initial empty-buffer owner in a local instead of a boolean flag. Their invariants preserve that owner, prove old and new output roots distinct, and follow the actual generated release guards. The final cleanup checks retained return aliases and the inference wrapper's zero owner. Entry frames now include all 68 scratch locals, and the checked wrapper follows its additional owner/result staging and shifted rejected-input allocation. Focused diagnostics isolated frame size, inherited-field shadowing, and typed-branch stack normalization; no proof timeout or admitted term was retained. Generated programs and annotation matches remain maintained generator output. The remaining compiler validation is the certificate public gate, existing partial sequence helpers, and full source-proof gate.
+
+## 2026-09-24: Maintained recycled LEB export gate passes
+
+`tools/talos-proof.js check leb_u32` passes in work/leb-maintained-1.log (3,530 jobs). Both public entry theorems cover every input below 2^32, exact unsigned LEB128 bytes and length, unchanged pages, and preservation below the original heap top. Their audits contain only the three standard logical axioms. The existing 560-byte reservation suffices without a new memory-cap premise. The counter slots read by emitted release code are explicitly typed; untouched slot 3 and extra globals stay arbitrary.
+
+The old fixed bump-address result is false when released buffers are reused, so the current contract quantifies the returned root. Main imports the new execution proof while retaining the valid earlier bump-only iteration fragments as checked worked examples. The focused entry diagnostic caught only function-result arity normalization and byte-array indexing conversion. Generated caches were not edited by hand. Tiny-model output guards, the certificate public gate, and the full maintained source gate remain pending.
+
+## 2026-09-24: Heap framing and allocation contracts broadened without new caller restrictions
+
+work/leb-helpers-1.log passes all 3,492 jobs. Heap now preserves an optional arbitrary value in untouched global slot 3 and any globals beyond the six runtime slots; default heaps retain their prior layout. Heap.fromGlobals_at constructs the model from the slots actually read by allocation and release. Allocation, release, ownership framing, and packed push recheck with standard logical axioms.
+
+New available variants of memory ensure, bump preparation, packed allocation, and packed push require the memory-cap bound only on executions that grow memory. Existing theorem names retain their signatures as wrappers. This lets the LEB proof use its original already-reserved memory without adding a memory-cap premise. LEB branch/loop migration and the exported entry are under a separate focused check. The new runtime's releases require typed counter slots 4 and 5; neither slot 3 nor an extra-global suffix is constrained to simplify the proof.
+
+work/tiny-2.log completes the tiny inference hidden-state theorem and numerical dependencies, and reports only the output-code slice mismatches in the inference and checked cases. Both output-code decompositions have been refreshed for their distinct local-slot shifts and are being checked. Their remaining output-loop and cleanup contracts are still pending. work/leb-docs-1.log passes all 162 maintained documents. The shared helper changes require a final complete source-proof rebuild; prior case passes remain checkpoint evidence.
+
+## 2026-09-24: Recycled LEB byte loop checked
+
+The complete RecyclingLoop theorem passes in work/leb-16.log (3,510 jobs), including the active header, branch dispatch, final-byte append, continuation append and old-buffer release, pure byte decomposition, and a decreasing loop measure. All audits use only propext, Classical.choice, and Quot.sound. The theorem composes exact generated instruction slices with shared packed allocation, copying, and release contracts. Memory framing retains the 560-byte reserve and unchanged page count. It remains to connect the exported encoder and review the public store assumptions before claiming the source case complete.
+
+Diagnostics isolated list/option indexing normalization, explicit frame typing after writes, the typed-if continuation, and restoration of the block-entry stack. The branch continuation equality is proved pointwise over every continuation constructor. Small code fragments are checked by definitional equality against the generated program; Program.lean itself remains generator output. No diagnostic timed out and no axioms or admitted proof terms were added.
+
+## 2026-09-24: Certificate entry frames and LEB recycling foundations checked
+
+The certificate boundary and totals execution theorems pass in work/leb-certificate-2.log after accounting for ten additional scratch locals in each generated function. Both loop proofs and their complete entry contracts use only standard logical axioms. The earlier work/certificate-tiny-1.log reached its twelve-minute aggregate limit after completing TinyGpt2Hidden.Spec and the inference code match; the complete certificate and remaining tiny specifications still need their maintained gates.
+
+The LEB recycling code decompositions, arena preservation lemmas, and byte-mask/frame definitions pass in work/leb-3.log with standard-only audits. The arena lemmas preserve earlier memory and the original page count across allocation and release within the existing 560-byte reserve. PackedPush now also exposes its exact allocated page count. The public LEB encoder proof remains pending. Focused branch diagnostics caught redundant simplification steps after unfolding; the branch checks are continuing separately. All changed generated programs remain maintained generator output.
+
+## 2026-09-24: Reusable packed byte-push contract checked
+
+ProofKit.PackedPush.program_spec passes in work/packed-push-6.log (3,491 jobs). It composes existing capacity selection, fresh/reused allocation, and packed byte copying with a proved final byte store. The result owns exactly bytes.push byte, preserves protected caller memory, and preserves all locals outside the twelve-slot scratch region. PackedPushMemory proves the byte-array representation extension separately. Both audits use only standard logical axioms. These are reusable lemmas for the remaining LEB encoder proof; that public encoder proof is not yet refreshed.
+
+Focused diagnostics caught the distinction between default and bounded byte-array indexing, numeric normalization of the address-space bound, and explicit names needed to relate copy/store memory ranges. The final proof states the resolved bounds and ranges directly. No silent timeout or generated-program edit occurred. The complete certificate observer and tiny inference specifications are now under a separate bounded diagnostic build. Cached GPT-2 documentation checking passed all 162 maintained files in work/cached-docs-1.log.
+
+## 2026-09-24: Complete cached GPT-2 source gate passes current ownership code
+
+`tools/talos-proof.js check gpt2_cached_step` passes in work/cached-maintained-1.log (3,698 proof jobs). The preceding work/cached-complete-2.log checks the complete hidden traversal, accepted and rejected token entries, and up-to-128-token session. Public theorems preserve the arbitrary correctly sized weight bytes, exceptional binary32 values, exact cache/logit results, input memory frames, and existing memory budget. Axiom audits contain only propext, Classical.choice, and Quot.sound.
+
+Hidden traversal now tracks saved initial input/update owners and zero-valued retained locals through its actual 124-local frame. The emitted block-cache release executes before filtering the retained hidden/update aliases; later loop guards preserve the initial embedding and both next outputs while releasing the previous allocated buffers. Final hidden and token cleanup use the shared arbitrary-alias release theorem. Vocabulary projection follows the loop without the removed unused flag. The first complete diagnostic found only the entry frame count (the internal proof had used 122 rather than 124); the corrected full run passed. No generated program was hand-edited and no public input assumption was strengthened.
+
+The source proof guide now labels the earlier frozen binary result as historical; release identity remains deferred. Reconstructed documentation checking passed all 162 maintained files in work/reconstructed-docs-1.log. Remaining compiler-proof work includes the certificate observer, recycled LEB encoder, tiny inference cases, and aggregate source gate. A reusable packed byte-push proof is being checked for the encoder and is not part of this completed checkpoint.
+
+## 2026-09-24: Maintained Riemann and reconstructed solver gates pass
+
+`tools/talos-proof.js check euler_riemann` passes against fresh compiler output in work/riemann-maintained-1.log (3,874 proof jobs), and `check euler_reconstructed` passes in work/reconstructed-maintained-1.log (4,034 jobs). Reconstructed scanning uses the current flag-free loop and frame; the full solver retains arbitrary supported grids and reconstruction-trial words, exact source output, termination, memory bounds, accepted-trace safety, and balance. All public audits remain standard-only. The generated programs and annotation matches came from maintained preparation. Documentation distinguishes these current source gates from historical frozen-artifact identities, which remain deferred.
+
+The twelve-minute work/euler-remaining-3.log run completed both public specifications and continued into certificate-solver dependencies before reaching its aggregate limit, without a proof error. Follow-up maintained checks selected the two completed cases rather than repeating that broad build unchanged. The Riemann documentation check passed all 162 maintained files in work/riemann-docs-1.log. The certificate solver and the complete compiler proof library remain pending.
+
+## 2026-09-24: Riemann public solver proof passes current guarded initialization
+
+Project.EulerRiemann.Spec passes in work/euler-remaining-3.log (4.1 seconds for the public module). The focused initialization check passes in work/initial-cells-4.log (3,672 jobs, 4.5 seconds for initial_cells_exact). Singleton cleanup now proves that the old root is nonzero and distinct from the returned grid, then follows both emitted guards. The maximum-speed scan removes its unused flag and uses the current frame layout. Runtime grid range, exact results, failure behavior, numerical conclusions, and memory limits remain quantified as before; axiom audits contain only the standard three logical axioms.
+
+The initialization diagnostics in work/initial-cells-3.log exposed a conditional expression that needed the proved root inequality rather than closed decision evaluation. Earlier typed-branch diagnostics were resolved by explicitly selecting the nonzero branch before continuing symbolic execution. The broader Euler run is still building reconstructed/certificate dependencies. The maintained complete source-driven gate remains pending; frozen artifact identity remains deferred.
+
+## 2026-09-24: Complete cached block checked against retained-owner cleanup
+
+The current CachedBlock.Spec passes in work/initial-cached-block-2.log (3,844 jobs, 4.1 seconds for the public theorem). QKV and attention states now retain the argument-owner copies, and the next five kernel contracts record their staged argument binding. Prefix preservation carries those bindings through the complete block. CleanupBindings proves that every emitted comparison refers to either a returned buffer or a distinct owned temporary; PackedReleaseManyAliases then releases all nine temporaries while preserving both returned buffers and the caller frame. The public exact-result theorem keeps its original quantified inputs and resource assumptions. Its axiom audit contains only propext, Classical.choice, and Quot.sound.
+
+The first focused run found a shadowed membership proof in the pairwise-separation helper; distinct binder names repaired it. Both runs also diagnosed the independent Riemann initialization guard, which remains under a separate focused check. The twelve-minute Euler build in work/euler-remaining-2.log reached its aggregate limit while continuing numerical dependency builds, with that guard as its only reported proof failure. No generated cache was hand-edited. The cached hidden traversal, token step, session, remaining Euler cases, and complete compiler gate are still pending.
+
+## 2026-09-24: Both grid scan maintained gates pass fresh compiler output
+
+`tools/talos-proof.js check euler_grid_scan` passes in work/gridscan-maintained-1.log (3,382 jobs), and `check euler_outward_grid` passes in work/outward-maintained-1.log (3,528 jobs). The checked maximum-speed scan now performs one loop and returns both projections from its final state. The outward scan no longer writes the unused visited flag. Both retain their quantified exact-result and physical-safety contracts with only standard logical axioms. The source cache and annotation changes are maintained generator output. Grid-scan documentation now distinguishes the current single-loop source proof from the historical frozen binary identity. Runtime grid regressions already passed earlier in this branch; these repairs change only proof code and caches.
+
+## 2026-09-24: Cached normalization and attention public kernels pass current cleanup
+
+The current LayerNorm.Spec and CachedAttention.Spec pass together in work/cached-kernels-1.log (3,582 jobs). Their complete generated functions retain exact packed source bytes, owned results, caller memory frames, and resource bounds. Inverse-buffer cleanup checks the retained mean aliases; attention cleanup checks every earlier temporary alias before releasing probability, sum, exponential, maximum, and score buffers. Existing pairwise ownership separation supplies each comparison through PackedReleaseAliases. The inner variance and mixed-value loops now match the removed unused flag assignments. Public axiom audits remain standard-only.
+
+The preceding work/scans-aliases-1.log checked the single-loop Euler grid scan, both generic alias-release helpers, exponential reduction/squaring, row sums, and attention cleanup. Its sole final error was the normalization guard's list-membership simplification retaining an empty-list disjunct; explicitly simplifying that disjunct repaired the focused retry. No timeout occurred in these focused builds. The broader cached block, hidden traversal, token step, and session remain to be checked against current output.
+
+## 2026-09-24: Reusable retained-owner cleanup proofs checked
+
+ProofKit.PackedReleaseAliases composes the existing alias-comparison lemma with release of an owned packed buffer for an arbitrary list of retained locals. ProofKit.PackedReleaseManyAliases lifts that contract to a sequence of releases, preserving two retained buffers, ownership of remaining temporaries, and the caller's protected memory frame. Both pass in work/scans-aliases-1.log (4.2 and 3.9 seconds), with only standard logical axioms. Existing single-guard and two-guard examples remain valid and are retained. These helpers will support the longer current cached GPT-2 owner guards without copying their control-flow proof at each cleanup site.
+
+## 2026-09-24: Remaining proof cases are being split into focused rebuilds
+
+The twelve-minute diagnostic build in work/remaining-specs-1.log rebuilt shared Euler dependencies and checked EulerOutwardGrid.Spec, then reached its aggregate time limit while continuing dependency compilation. Its earlier concrete failure was EulerGridScan.LoopShape: the compiler now computes both returned projections in one loop instead of two. The scan frame and entry proof have been adapted to that single loop and the current 45 locals, pending the focused check. This was an aggregate limit with diagnostics and continuing module completions, not a repeated silent theorem timeout. Follow-up checks select the repaired scan and reusable cleanup helpers rather than rerunning that broad target unchanged.
+
+The outward scan's removed loop flag and current extra scratch local are covered by its checked frame and execution proof. Riemann initialization now has a guarded singleton-owner release, and cached GPT-2 cleanup has longer retained-owner comparison lists. Their proof repairs are in progress. Sequence GPT-2 remains the registry's pre-existing incomplete case, with no Spec file and no aggregate import; this task does not claim to complete that model. Its refreshed generated cache still needs review alongside retained partial examples.
+
+## 2026-09-24: Complete Euler grid export checked with recycled loop outputs
+
+The maintained `tools/talos-proof.js check euler_grid_step` passes against regenerated compiler output (work/grid-maintained-1.log, 3,565 jobs). The first, second, and reusable-pool transitions now compose with the emitted loop, its alias guards, and final initial-owner release. The theorem retains all raw ratios, shapes, numerical outcomes, and the original N+6 arena bound. The pool tracks one live result and six free buffers after the second accepted cell; cleanup restores the permutation after accepted and rejected calls. The initial owner remains protected until final cleanup. Public exact-result, accepted-safety, and reset audits contain only propext, Classical.choice, and Quot.sound.
+
+The loop and final-code checks passed before the final composition diagnostic in work/recycling-valid-2.log: the initialized array's replicated size needed explicit normalization. The repaired public execution passes in work/recycling-execution-1.log (3,563 jobs, 4.2 seconds for valid-branch composition and 3.9 seconds for the export). No timeout, new axiom, input restriction, or generated-program hand edit was used. The stale GridLoop, GridFinish, and GridValidBody modules described instructions that no longer exist; their checked replacements are RecyclingLoop, RecyclingFinishCode, and RecyclingValidBody. Aggregate imports now select those replacements. Earlier valid arena/helper examples remain. Frozen artifact identity is explicitly historical and remains outside the deferred release work. The complete compiler proof gate still has other cases to repair.
+
+## 2026-09-24: Recycled grid buffers have checked advance, cleanup, and finish contracts
+
+The complete six-reused-buffer writer preserves arbitrary framed properties, the input grid, the separately owned initial output, and memory pages. Both accepted six-clone and rejected one-clone advances now provide a proved pending release of the old output. Cleanup restores a seven-slot permutation containing the returned result and six free buffers. Pure slot relabeling retains pairwise and protected-buffer separation. The accepted composition passes in work/recycled-advance-2.log (3,489 jobs, 3.8 seconds for the top theorem); its earlier diagnostic was a missing GridSizes import and an underspecified live-buffer projection. The final initial-buffer release passes independently in work/recycling-finish-1.log (3,519 jobs, 3.7 seconds), preserving the returned array for any pool permutation. Audits use only standard logical axioms. These are ingredients for the current outer-loop invariant, not a completed grid export proof.
+
+The refreshed grid setup and initial frame pass in work/grid-setup-1.log (3,538 jobs), including the captured original owner used by loop cleanup. The cached GPT-2 row mean, inverse standard deviation, score, row maximum, and owned linear rows also pass in work/reuse-cached-small-1.log; their obsolete loop flag assignments were removed from the generated programs, shifting only the relevant loop boundaries. The new grid-helper diagnostics in that combined run were repaired separately. Remaining cached GPT-2 ownership guards and the complete grid loop still need proof integration. No full compiler proof gate is claimed.
+
+## 2026-09-24: Euler writer alias checks preserve the existing allocation contracts
+
+ProofKit.AliasGuards.distinct proves an arbitrary list of emitted short-circuit owner comparisons from distinct protected roots, preserving all caller locals. The grid writer uses it at all five cleanup sites. Frame projections discharge the concrete protected-slot lists from the existing pairwise heap separation; the fresh, mixed first-fit/bump, and free-list writer compositions retain their exact arrays, counters, free-list order, and framed memory properties. The accepted run is work/writer-release-2.log (3,468 jobs), with the final compositions taking 3.9–4.0 seconds. Every accepted audit contains only the standard logical axioms. Intermediate logs preserve a reserved identifier, typed-control normalization, and explicit list-projection diagnostics. No timeout occurred.
+
+The complete rejected grid entry also passes in work/grid-rejected-1.log (3,410 jobs), including the current six-slot scratch shift and separate result-owner/result-pointer staging. Entry guard and rejection proofs take 6.9 and 4.2 seconds. InitialArena was checked in the preceding run. The outer loop now releases old output owners between iterations, so its old accumulating-arena invariant needs replacement by an invariant that tracks recycled buffers. That remaining work is not represented as completed by this checkpoint.
+
+## 2026-09-24: Softmax ownership guard and grid initialization checked
+
+The maintained sequence_softmax gate passes against fresh compiler output (work/softmax-maintained-1.log, 3,536 jobs). The maximum and total loops no longer carry unused flag assignments. Empty-result allocation includes the new owner slot. Nonempty cleanup proves the intermediate and returned allocations disjoint from the existing heap ownership and budget, then discharges the emitted alias guard before release. Its exact output, preserved source heap, and remaining budget contract is unchanged. The empty and nonempty proofs take 5.2 and 4.4 seconds, respectively, and use only standard logical axioms.
+
+Euler grid initialization passes through InitialArena in work/grid-initial-softmax-1.log: its scratch locals shift by six, with unchanged allocation and zero-fill contracts. Individual modules take 4–7.6 seconds. The same run diagnosed a softmax nested Boolean guard requiring simplification of the emitted comparison rather than just its pointer inequality; the maintained run resolves it. The grid loop and writer cleanup proofs remain in progress, and the full compiler proof gate is still open.
+
+## 2026-09-24: Maintained limit and market gates pass
+
+Both maintained source-driven gates pass against fresh compiler output: work/limit-maintained-1.log checks clob_limit (3,660 jobs), and work/market-maintained-1.log checks clob_market (3,502 jobs). The market export transports the complete eight-function limit matcher region, including recursive release. Its generated result-owner copies and invalid-branch allocation frames are refreshed. The public market theorem takes 4.5 seconds and retains exact source results, owned arrays, counters, free-list state, pages, and the shared memory frame. Its audit inherits only the previously recorded Talos memory round-trip axiom alongside standard logical axioms.
+
+The combined focused run, work/limit-market-spec-1.log, also checks the preserved historical matcher instruction fragments (3,682 jobs). LegacyMatcher explicitly identifies them as worked examples of the earlier 64-local, bump-only instruction sequence. They are not a decomposition of the current generated function. Eighteen stale actual-function entry and residual-composition modules were retired: their current replacements are checked, and their allocator/copy/finalization facts are either retained in the historical matcher or generalized by the new residual helpers. All remaining Project imports resolve. The first market run diagnosed one explicit local-index proof still referring to 45 instead of 47; correcting that index allowed the invalid search, bump, finalization, and public theorem to pass. The initial failure remains in work/market-public-1.log.
+
+Euler grid initialization scratch locals and the softmax result-owner/cleanup guard are the next focused proof repairs. The full compiler proof gate remains unfinished.
+
+## 2026-09-24: Complete public limit theorem accepted
+
+LimitCorrect.func21_correct passes for invalid, filled, and residual orders. The residual proof composes initialized live-array geometry, first-fit allocation, header initialization, prefix copy, exact appended fields, and the three exported values. Its outcome retains owned result/source books and trades, the remaining free list, exact heap/head/allocation/release globals, unchanged pages, and a payload frame relative to the specified allocation store. The returned book address is the allocator’s actual chosen root. The obsolete assumption that this address is always the old heap top plus 48 is gone. Represented order-book inputs remain arbitrary under their original bounds and allocation budget; initialized globals 4/5 are explicitly required by current cleanup.
+
+The complete append composition takes 4.2 seconds, the exported residual branch 4.6 seconds, and the public three-branch theorem 4.6 seconds. The accepted run is work/limit-public-1.log (3,613 jobs). Header, capacity, outcome, and exported-result helpers pass in work/limit-append-outcome-1.log. Intermediate composition diagnostics involved reducible frame aliases, concrete local bounds, and empty-stack normalization; work/limit-append-compose-1.log, work/limit-append-compose-2.log, and work/limit-residual-1.log retain them. All finished audits contain only standard logical axioms and the previously recorded Talos memory round-trip axiom. The aggregate specification still needs its obsolete actual-function entry proofs separated from historical instruction-fragment examples, and the maintained case gate has not yet run.
+
+## 2026-09-24: Residual append components cover allocator reuse
+
+The residual branch now has a checked decomposition into the shared capacity, first-fit-or-bump allocator, header initialization, prefix copy, and final stores. The allocator adapter passes in 3.7 seconds; its memory theorem passes in 4.1 seconds and preserves the live book and trades, remaining free list, exact globals 0/1/2/4/5, and unchanged pages for either placement. The pure append theorem is separated from obsolete bump-only local invariants. The shared prefix copy supplies its copied words and memory frame in 3.9 seconds; the final five generated stores reconstruct the exact extended book in 18 seconds. Current local-frame projections and copy-counter preservation pass in 4.2 seconds. These are compositional helpers; the exported residual theorem remains in progress.
+
+Accepted logs are work/limit-append-copy-2.log, work/limit-append-memory-1.log, work/limit-append-finish-1.log, and work/limit-append-frames-1.log. The earlier copy diagnostic required an explicit address bound when relating generic array addresses to the CLOB flat-word representation, plus the correct structure-field goal order. The earlier allocator adapter diagnostic required explicit local-list projection and slice facts. No timeout occurred. The control/frame/copy helpers use standard logical axioms; allocator and append memory facts retain the already recorded Talos memory round-trip axiom, with no added axiom.
+
+## 2026-09-24: Heap-aware wrapper and filled limit branch accepted
+
+Function 18 now composes both initial empty allocations with the checked current internal matcher. The exported limit prefix and filled branch use its exact five returned values and preserve the matcher’s owned arrays, free list, counters, source result, pages, and memory frame. The current cleanup reads globals 4 and 5; the refreshed entry contract therefore explicitly requires initialized UInt64 release and free counters. This is a runtime state requirement, not a restriction on represented order books. The early-exit and wrapper checks pass in work/limit-runmatch-call-1.log and work/limit-runmatch-2.log; the exported frame checks pass in work/limit-export-call-1.log and work/limit-export-result-1.log.
+
+The filled branch passes all 3,484 required jobs in work/limit-filled-2.log, taking 13 seconds. Its first run reported the default 200,000-heartbeat limit during the final explicit local-frame reduction. A theorem-scoped two-million-heartbeat budget resolves that bounded elaboration diagnostic. The residual append still needs the reusable allocator composed with the generic prefix copy; no completion of the public limit or market specification is claimed yet.
+
+## 2026-09-24: Internal heap-aware matcher entry, loop, and result accepted
+
+The new HeapCorrect theorem executes the current internal function 17 from its entry through initialization, the terminating loop, and the five-value result epilogue. It covers the zero book-owner entry used by the public limit operation, arbitrary book/trade contents and valid reusable free lists, and retains the exact source result, owned arrays, allocator counters, unchanged pages, and shared memory frame. The two returned owner cells are retained as values; this theorem does not yet assert their UInt64 representation. The entry theorem takes 4.3 seconds, with the accepted output in work/limit-entry-2.log. The preceding entry diagnostic required unfolding the default scalar zero constructor; its source-frame facts already reduced directly. The outer loop and result checks are in work/limit-loop-1.log and work/limit-result-1.log. The result and initialization audits use only standard logical axioms; the full function inherits the existing Talos memory round-trip axiom.
+
+The shared matcher output now additionally preserves the complete running heap state whenever remaining quantity is nonzero. A stop keeps those facts directly; a partial fill establishes zero remaining quantity, so it cannot create a residual order. HeapResidualFacts extracts array bounds, free-list separation, node bounds, and the remaining allocation budget from that evidence. This strengthens the output predicate without new input premises. ClobMatchFuel.Spec and the internal result proof pass together (3,468 jobs, work/limit-residual-state-1.log); the geometry audit uses only propext and Quot.sound. The final limit/market export and residual allocation composition remain open.
+
+## 2026-09-24: Internal matcher dispatcher and decreasing iteration accepted
+
+The limit matcher's selected-maker path, search/stop dispatcher, lifted invariant, and complete iteration now pass in work/limit-dispatch-3.log (3,457 jobs). The selected path transports the checked five reads, cached quantity comparison, and both allocator branches together. It takes 8.9 seconds; the dispatcher takes 6.4 seconds and invariant composition 4.1 seconds. The control and measure facts use only standard logical axioms; the complete iteration inherits the already recorded Talos memory round-trip axiom from the shared matcher. No new axiom or weakened data premise was introduced. The first two logs preserve assertion simplification and empty-stack frame diagnostics. The outer loop is the next focused check.
+
+A separate five-minute cold diagnostic for EulerGridStep, EulerGridScan, Gpt2CachedStep, and SequenceSoftmax stopped at 3,461 of 3,474 currently discovered jobs. It produced the Euler initialization-shape diagnostics before reaching that limit; the later specifications were not reached. The generated grid entry shifts scratch slots by six and adds owner staging, while the writer adds alias-aware release guards. These changes require refreshed region and frame proofs before another complete-case run. The failed output is work/euler-cache-softmax-1.log.
+
+## 2026-09-24: Clipping proof accepted; LEB allocator change identified
+
+F64Clip.Spec passes all 3,428 required jobs in work/clip-final-1.log. The preparation decomposition, accepted and rejected allocation branches, traversal frame, and result owner now match the generated function. The public clip and preparation theorems retain their original numerical and memory contracts, with only standard logical axioms. Individual repaired modules take 3.8–5.1 seconds. The prior PrepareCode failure is retained in work/frames-clip-leb-1.log.
+
+That earlier run also diagnosed LebU32.Main at its stale entry frames. Inspection of the regenerated program shows a substantive change beyond local numbering: the continuation loop releases the prior buffer and can reuse freed chunks. Its former fixed bump addresses and permanently empty free list are no longer valid postconditions. The refreshed proof must preserve exact encoded bytes while describing the actual reusable allocator. No LEB proof completion is claimed.
+
+## 2026-09-24: Internal search and result frames accepted
+
+The limit matcher's search-frame relation, completion frame, and cached-maker read composition now pass. A reusable update lemma preserves related layouts under corresponding local writes. The cached-read theorem executes the existing five checked loads and retains their exact values in the internal frame; its audit uses only standard logical axioms. The output is work/frames-clip-leb-1.log. The preceding combined run exposed an uninstantiated assertion parameter and a conjunction left after simplification; explicitly selecting the source assertion resolves both without new premises.
+
+The next smaller-case diagnostic exposed the F64Clip preparation decomposition. Its generated function has one new result-owner slot, shifting allocator and traversal scratch locals. The explicit frames and helper arguments are updated for the next focused check. The LEB encoder check is still running in the same bounded diagnostic; neither unfinished case is counted as complete.
+
+## 2026-09-24: Four GPT-2 scalar and row proofs refreshed
+
+Gpt2AttentionScore.Spec, Gpt2LinearRows.Spec, Gpt2RowMean.Spec, and Gpt2RowInvStd.Spec pass against the maintained regenerated programs. The compiler removed unused loop-flag assignments. Updating the extracted instruction-region boundaries restores the exact loop decompositions; the original numerical, unchanged-input, allocation, and output-memory contracts remain in force. The public theorem audits report only standard logical axioms. The cold five-minute diagnostic completed with two stale extraction failures, preserved in work/gpt2-slices-1.log. The repaired specifications pass in work/frames-gpt2-1.log; that combined command reports failure only for a separate limit cached-read assertion adapter, which is being checked independently.
+
+## 2026-09-24: Local-frame transport and internal fill branches accepted
+
+The new LocalRegion library proves execution and total-correctness transport under a relation between parameter/local layouts. It handles the closed portable instruction set, stack discipline, structured control flow, direct calls, memory declarations, and the original fuel bound. A finite-layout constructor proves read/write compatibility from bounded injective slot maps, and constructs a related source frame. The general execution proof takes 3.2 seconds, the instruction proof 1.8 seconds, and frame construction two seconds. All general theorem audits contain only standard logical axioms.
+
+The regenerated limit matcher decomposes by checked equality into the shared matcher's full and partial branches under a local map. Two former scratch slots now carry returned owners. Both branch theorems pass in 3.8 seconds, retaining source results, owned arrays, reusable free-list state, allocator counters, memory frame, and decreasing measure. They inherit only the existing Talos memory round-trip native bit-vector axiom already used by the matcher; no new axiom is introduced. The outer loop and limit export still need the old empty-free-list contract replaced. The accepted branch log is work/limit-core-5.log.
+
+Intermediate drafts exposed structured-control stack normalization, exact list-update cases, and a dependent match in the assertion adapter. Splitting block-exit normalization into a shared lemma and eliminating the continuation relation directly resolved these issues. The logs local-region-1 through local-region-6 (first run named limit-transport-1), local-layout-1 through local-layout-3, and limit-core-1 through limit-core-5 retain the diagnostics. No timeout occurred in this sequence.
+
+## 2026-09-24: Limit and market search regions refreshed
+
+The bounded clob_limit gate completed with diagnostics in the invalid branch and search-region equality. Both are repaired. The search region now includes the recursive release helper at its generated index; the limit-to-market region also includes that helper. Their checked renamings take 5.9 and 10 seconds. The invalid-order branch passes in 16 seconds after adding the two generated result-owner slots to its explicit frames. Its exact returned values, allocation counters, and input-memory preservation are unchanged. The generated caches are from the maintained preparation tool, not handwritten edits.
+
+The complete limit matcher remains unfinished. Its current loop cleans up superseded trade arrays and can reuse free chunks, invalidating the old permanently empty free-list invariant. The existing exported matcher already proves those effects. A reusable local-frame transport theorem is in progress so that proof can be applied across the internal matcher's different parameter/local layout. The first transport draft diagnosed tactic quotation and dependent-elimination issues; no failed draft is counted as accepted. Logs are work/limit-check-1.log and work/limit-transport-1.log.
+
+## 2026-09-24: Complete matcher proof accepted
+
+ClobMatchFuel.Spec passes all 3,445 required jobs. The full-fill branch, release composition, and recursive transition pass in 17, 4.1, and 29 seconds; the partial-fill branch passes in 10 seconds. The common dispatcher passes in 12 seconds after normalizing list lookup notation at the quantity comparison. The outer loop, initial state, result extraction, generated-body decomposition, and public correctness theorem pass. The exact source book, trades, remaining quantity, ownership, allocator counters, termination, and memory frame are retained for the original represented inputs and heap assumptions.
+
+The only dispatcher diagnostic was a rewrite expecting os[i]! after the WP simplifier had expanded it to getD. Rewriting back to the source notation resolves both fill branches without changing the quantity condition. The final output is work/matcher-public-1.log. The earlier bounded consumer logs preserve the partial runs and accepted helper timings. The matcher checkpoint completes this case; the full source-driven library gate and remaining compiler cases are still pending.
+
+## 2026-09-24: Cached maker consumers and allocation copies accepted
+
+The complete full-fill trade update passes in 16 seconds after composing the cached-maker fields with the allocator and the new argument stage. Its instruction bridges pass in 4.3 and 4.2 seconds. Partial-fill book preparation passes in 4.2 seconds. The newly audited bridges use only standard logical axioms. The shifted copy, replacement, trade-allocation, and release modules also pass; the first-fit and bump proofs are the slowest cold targets at approximately 93 and 40 seconds. Runtime helper equalities pass, including the refreshed AssocList function indices.
+
+The five-minute consumer batch accepted the full-fill bridges, trade append, and partial allocator before its timeout. The follow-up narrowed to the complete full-fill update and partial book preparation, and passed all 3,398 required jobs. The matcher iteration and outer loop remain in progress. Cached-field premises are internal frame facts established by the selected-maker read proof; the public book-input contracts are being retained.
+
+## 2026-09-24: Matcher cache and allocator-frame checkpoint
+
+The selected-maker cache now has a separate checked instruction proof. It reads the five represented fields with bounds checks, records their exact values, and preserves other locals. The target passes in 6.3 seconds and its public audit lists only propext, Classical.choice, and Quot.sound. The frame preserves arbitrary caller parameters and book values.
+
+The matcher’s early exits pass in 28 seconds after changing the local count to 86. Shifted book search, first-fit allocation, bump allocation, preparation, and complete allocation pass in 4.7, 94, 40, 4.6, and 4.4 seconds. Partial-book search and first-fit allocation pass in 4.7 and 95 seconds. The five-minute diagnostic then stopped while other targets remained cold; follow-up checks use the new cache module and individual consumers. Public full matcher composition is still unfinished. The post-only whitespace formatter initially had a Python syntax error; correcting it completed the intended formatting, with equality after removing whitespace checked for every edited file.
+
+## 2026-09-24: Complete post-only proof accepted
+
+ClobPostOnly.Spec passes after updating the generated result-owner slots, scratch indices, local-frame lengths, and result assertions. The final trade bump, trade allocator, order finalizer, and append branch take 4.0, 4.3, 10, and 16 seconds respectively; the specification import completes in 3.8 seconds. All three branches retain exact returned arrays, ownership, allocation counters, page preservation, and memory frames. The final failure was a copied trade tail still using physical local 26 rather than the new owner local 34. The successful focused output is work/postonly-final-1.log. Explicit local lists were then reformatted with a whitespace-insensitive equality check.
+
+The five-minute matcher/runtime diagnostic reached 3,424 jobs and timed out while checking additional cold matcher helpers. It identified an early-exit frame length of 76 where the generated function now has 86 locals. The current matcher caches selected maker fields and stages the recursive arguments before cleanup. Its next proof work shifts the scratch frames and supplies the cached-field bridge; the unfinished aggregate is not rerun unchanged.
+
+## 2026-09-24: Shared search loop and public wrappers accepted
+
+The whole-loop theorem passes in 6.6 seconds. It combines the checked iteration with a prefix-selection invariant and decreasing fuel, including the final done-flag iteration. All three public search wrappers pass in 3.9 seconds each; the standalone exported search specification and the post-only wrapper each pass in 5.3 seconds. Their original exact source result and unchanged-store postconditions are retained, including the matcher theorem for arbitrary borrowed owners. The new public audits contain only the three standard logical axioms. Three duplicated instruction proofs, about 3,000 lines altogether, are replaced by wrappers around the shared proof.
+
+The loop drafts exposed instruction-continuation association and generated-state normalization issues, then the final function arity obligation; explicit continuation composition and the option-value definition discharged them. The post-only crossing branch passes in 23 seconds, order copying in 4.8 seconds, and order allocation in 8.1 seconds. The next append diagnostic found its result assertion still reading the former pointer slots through Locals.get, which the instruction-index update had missed. That assertion is corrected and undergoing a focused check alongside the matcher and runtime equalities.
+
+## 2026-09-24: Shared search instruction proofs accepted
+
+The standalone, post-only, and matcher search bodies are definitionally equal after substituting eligibility and release call indices. Six shared modules now check their instruction decomposition, frame contract, bounded candidate reads, tag and payload selection, borrowed-owner advance, and complete iteration. The selection proof takes 9.6 seconds and the composed iteration 4.1 seconds; their audits contain only propext, Classical.choice, and Quot.sound. The advance contract supports arbitrary borrowed owners and proves its cleanup guards cannot release them. Price choice retains the original source model for arbitrary represented books.
+
+The first composition drafts exposed a record-layout parse error, a redundant simplification, and the orientation of the list-update index equality. The focused diagnostics are retained in work/search-slices-6.log through search-slices-8.log. The accepted split proofs replace repeated instruction reasoning; whole-loop termination and the three public wrappers are still being checked. The separately repaired post-only invalid-order branch passes in 16 seconds. No full source-gate result is claimed yet.
+
+## 2026-09-24: Cancellation frame repair accepted
+
+ClobCancel.Scan passes in 5.8 seconds and ClobCancel.Spec in 25 seconds. The generated function has one additional owner slot, shifting its scan, allocation, and copy scratch locals. Updating the explicit frames and the two decreasing measures preserves the absent-id unchanged-store theorem and the found-id exact copied array, fresh ownership, allocator counters, and memory frame. The first scan attempt exposed its measure still reading the old cursor slot; it was actually reading the length, so no decrease was possible. Moving that index completes the original termination argument without new premises.
+
+The next bounded aggregate build reached 3,849 of 4,810 jobs before its twelve-minute limit. It accepted additional Euler numerical facts and matcher allocation proofs, and exposed the shared search loop in ClobMatchFuel plus the ClobPostOnly public invalid-branch frame. The next checks use split search modules and repaired frame lemmas. Checked instruction decompositions now establish that standalone, post-only, and matcher search share the same program with substituted call indices. The shared advance theorem supports arbitrary borrowed owners and passes in 6.8 seconds. Candidate reads, selection, and the whole-loop composition are still in progress; this is not an aggregate-gate completion.
+
+## 2026-09-24: Allocator-aware depth export accepted
+
+ClobDepth.Spec now passes. The two empty-array allocations take 3.8 seconds, the reusable-heap state transitions three seconds, the actual generated loop 9.2 seconds, the per-side function 4.6 seconds, and the exported two-sided function 4.2 seconds. The proof covers every represented book under the valid runtime heap and existing-memory budget. It retains exact source aggregation, input preservation, allocation counts, unchanged retains and pages, and proves disjoint unique ownership, a final valid free list, and a worst-case heap-top bound. Every protected live region is framed through allocation and release, so the first returned side survives computation of the second.
+
+The old fold's bump-only physical roots and permanently empty free list were false after cleanup. Its stale implementation is replaced by a compatibility import of HeapLoop; the valid narrow bump-allocation and update proofs remain. The refreshed public theorem requires the runtime's complete six-global heap model, including the two release counters actually read by the generated release function, and initial free chunks must be disjoint from the input. It does not restrict order-book values or omit either side. The README records this changed allocator contract. New heap facts use standard Lean axioms; the execution theorem still inherits the existing copy proof's Talos native bit-vector memory-roundtrip axiom, as recorded in the prior checkpoint.
+
+Intermediate diagnostics exposed only local-frame bounds, normalization of allocated pointers, write64 page preservation, and a simplifier cycle from a UInt64 successor rewrite. Keeping that arithmetic rewrite out of the general simplifier resolved the loop in under ten seconds. No timeout occurred in this iteration. The two search-loop layouts and the remaining aggregate gate still need verification.
+
+## 2026-09-24: Depth updates support reusable heap chunks
+
+The allocator-aware missing-price branch passes in 4.1 seconds, the matched-price branch in 4.2 seconds, and the combined function-3 termination theorem in four seconds. They cover arbitrary valid free lists and retain the exact add-level result, unique ownership, allocator state, page equality, and protection of every live input region. The release theorem executes the actual recursive release function and establishes its free-list and counter effects. Existing bump-only branch proofs remain as worked examples.
+
+The final branch integration diagnostics were local-frame index bounds and definitional root equalities; supplying the frame length and unfolding the root aliases resolved them. New allocation, frame, and release facts use only standard Lean axioms. The combined update theorem inherits the existing Talos memory round-trip native bit-vector axiom from the older copy proofs; it introduces no new axiom. The separate byte-I/O gate remains strictly kernel checked. The allocator-aware outer fold and two search-loop repairs are still pending.
+
+## 2026-09-24: Allocation without memory growth
+
+The new shared `FixedArrayAllocate.program_in_memory` theorem passes in five seconds. It composes the existing free-list search, reuse, bump, and header proofs, specializing the memory-size guard to an allocation that fits the current memory. This avoids introducing an unnecessary growth-limit premise into the refreshed depth proof: a no-growth execution never reads that limit. The theorem's axiom report contains only standard Lean axioms. The depth function's updated instruction decomposition also reduces by reflexivity in 4.4 seconds; the larger allocator invariant remains in progress.
+
+The next aggregate build reached its twelve-minute cold-build bound at 3,746 of 4,789 jobs. Besides the known depth decomposition, it exposed the changed search-loop layouts in ClobFindBest and ClobPostOnly. These changes include materialized candidate fields and zero borrowed-owner trackers, so they need updated execution scaffolding. The next checks are focused modules; the unchanged aggregate will not be repeated after its timeout.
+
+## 2026-09-24: Validation proof follows borrowed ownership
+
+Validate.Loop now passes in 16 seconds and Validate.Spec in 4.6 seconds. The invariant carries the new current and staged owner trackers as zero. The new cleanup guard therefore makes no release call; its pointer-equality selection returns zero on both branches, preserving the original unchanged-store and exact digit-validation postconditions. Intermediate diagnostics caught the unhandled guard, tactic branch scoping, and an extra symbolic walk after simplification had already consumed the continuation. The accepted proof splits only the pointer equality and reuses the same invariant witnesses in both cases. The generated frame lemmas still reduce by reflexivity. No new assumptions or axioms were added.
+
+## 2026-09-24: Dot-product and quote frame proofs refreshed
+
+The focused build accepts F64DotCheckedBits.Execution (7.7 seconds), its numerical specifications (3.6 seconds), ClobQuote.Epilogue (4.9 seconds), and ClobQuote.Spec (7.4 seconds). The proofs preserve their original numerical, source-fold, and unchanged-store postconditions. The first frame repair miscounted the generated local lists; counting the actual function declarations exposed 23 dot-product locals and 64 quote locals. Correcting the explicit frames and preserving the now-unused ownership-flag slots resolved the failures. The dot-product theorem audits list only standard Lean axioms. The new byte-I/O README is also included in the maintained documentation gate, which now checks 162 files.
+
+Validate's borrowed-owner guard proof and ClobDepth's allocator-state generalization are still in progress. No aggregate proof-gate completion is claimed.
+
+## 2026-09-24: Exact byte-I/O proof gate accepted
+
+`tools/byte-io-proof.js check` passes. It rebuilds the compiler example, validates and compares its exact 2,082 bytes, checks the embedded byte and lookup sources, builds the split Lean proofs, and audits 46 public theorems. Every dependency report contains only `propext`, `Classical.choice`, and `Quot.sound`. The six exact execution cases cover four partial binary writes, EOF, a broken pipe after a two-byte prefix, AGAIN followed by readiness, absolute-deadline timeout, and the `_start` wrapper's nonreturning status-zero exit. The cases include returned status, unconsumed input, exact output, and allocation/free effects. The contracts and protocol theorems are general over modeled host choices; the exact execution cases are concrete, not a universal compiler-refinement claim. The native C host and OS remain an external boundary documented in `proofs/byte-io/README.md`.
+
+Three whole-decoding attempts each hit their five-minute bound: direct reduction, an explicit raw cache with `cbv`, and that cache with checked byte lookup and the existing instruction evaluator. The accepted approach reuses `tools/artifact-kernel.js` to generate short instruction-tail and per-function certificates. Each of the six function certificates took three to seven seconds. A 200,000-heartbeat import-section diagnostic prompted a further split into individual imports and generic vector/section composition; the final section module takes ten seconds, code-section composition four, and full decoding four. All generated caches and offsets remain untrusted inputs checked by the kernel. The certificate generator reproduces the accepted sources exactly.
+
+The first execution pass successfully reduced the program but exposed that pinned Talos's derived `BEq Value` lacks a `LawfulBEq` instance. Boolean checks now use decidable equality for values and globals, and their soundness lemmas use the checked equality propositions directly. The accepted partial-write proof took 59 seconds; the four edge cases took 13–24 seconds each, and the exit-wrapper proof took 18. They lift finite checked execution to statements valid at every sufficient fuel. No native evaluation axiom is used. Fourteen proof-gate unit checks reject unsupported axioms, absent/duplicate reports, stale byte sources, and malformed section bounds. The existing documentation checker passes; registry consistency still reports 69 source entries, 68 complete specifications, and 43 frozen packages.
+
+The source-proof aggregate now imports `Project.ByteIO.Verification`. The separate maintained gate also checks current compiler-byte identity and theorem dependencies. BoxFree and SharedPair are already repaired and pushed; Validate, F64DotCheckedBits, ClobQuote, and ClobDepth remain to be completed before the final aggregate rerun. Release identity is still deferred by the user.
+
+## 2026-09-24: Write-loop progress theorem
+
+`Protocol.write_terminates` now proves that every trace longer than the finite pending-byte/deadline budget has completed, provided retry observations advance the clock and host calls return. Positive partial writes decrease the remaining byte count; retries decrease the time budget. The earlier failed progress proof compared two records whose result fields were propositionally equal but not yet rewritten. Applying the known `result = none` equality makes their ranks identical and closes the arithmetic proof. The accepted module elaborated in 1.1 seconds and its axiom reports contain only standard Lean axioms.
+
+Exact-byte work is now split further. The explicit decoded cache validates in 5.6 seconds, and the new missing-import-type and past-end-export rejection theorems pass. Verified tree-shaped byte lookup lemmas elaborate in 1.4 seconds. Plain whole-module decoding with the explicit cache still reached its five-minute limit; its log is retained. The next attempt uses the existing decoder evaluation helpers and the new checked lookup lemmas, with per-function certificates prepared if the remaining reduction is still too large. No native decision axiom or unproved equality is accepted by the new gate.
+
+## 2026-09-24: BoxFree and SharedPair proofs refreshed
+
+The focused builds accepted BoxFree.Spec and SharedPair.Spec against their regenerated programs. BoxFree removes the obsolete proof branch for a child retain that extraction no longer emits. SharedPair carries the additional result-owner slot through its local frames and shifts scratch indices. Its copied bytes, shared reference count, returned pair, allocation bounds, and memory-frame postconditions are unchanged. BoxFree elaborated in 46 seconds; the largest SharedPair tail took 134 seconds, with the final specification taking ten seconds. The combined command returned failure only for a separate new protocol-progress lemma, whose diagnostic identified a missing state-field rewrite; both legacy specifications built successfully. The next run isolates that new lemma.
+
+The first monolithic byte-I/O artifact proof hit its five-minute limit without a diagnostic. It is now split into an explicit decoded cache, a decoding theorem, a validation theorem, and the public artifact statements. Cache generation is untrusted; the Lean decoding theorem must establish its exact equality to the embedded bytes. The smaller host and binary-grammar checkpoint is already pushed as `097c0111`.
+
+## 2026-09-24: Byte-I/O host contracts and binary grammar
+
+The first focused formal pass now checks the protocol prefix and successful-output laws, byte-memory frames and preservation of other store resources, and all six generated-program WASI host contracts. The general contracts quantify over syscall and clock oracles; they cover short transfers, EOF, errors, monotonic clock observations, absolute-deadline polling, nonblocking flags, and exit status. The new import-bearing binary profile reuses the established instruction decoder and type validator and proves its complete section grammar and validation relation independently. Existing import-free artifact profiles remain unchanged.
+
+Eight short model iterations preceded the accepted build. Diagnostics were ordinary Lean elaboration issues: let-bound matches needed reduction before splitting, UInt comparisons needed their natural-number lemmas, and `section` was a reserved parser name. Smaller shared lemmas for memory frames, UInt64 maxima, and parser composition resolved them. The final focused build took about six seconds of new-module elaboration. The printed theorem dependencies contain only `propext`, `Classical.choice`, and `Quot.sound`. Exact-binary execution, protocol termination, maintained gate integration, and native-host correspondence documentation remain in progress. These theorems specify a modeled host; they do not certify the C compiler, Wasmtime, or the operating system.
+
+The full refreshed source-proof build reached its twenty-minute limit while building the cold dependency graph. Its diagnostics name six stale modules: BoxFree.Spec, Validate.Loop, SharedPair.Frame, F64DotCheckedBits.Execution, ClobDepth.Entry, and ClobQuote.Spec. The unchanged aggregate will not be retried: work is split into focused targets. ClobDepth's existing physical allocator invariant assumes that replaced arrays never enter the free list, so this case requires a semantic invariant revision in addition to local-layout changes. Failures and timing are retained in the task workspace logs.
+
 # Development Journal
 
 ## 2026-09-24: Type-safety working record
@@ -26,6 +452,370 @@ checked file list.
 - [x] Check whitespace and documentation-checker syntax.
 - [x] Review the new record against the source, plan, and proof journal.
 - [ ] Complete the repository documentation check.  Its only reported failure is an existing absolute temporary-workspace path in the [WGSL review](paper/wgsl-verification-report/review.md), present at `HEAD` before this update.  The new record's links pass.
+
+## 2026-09-24: Nested-loop byte-buffer cleanup
+
+The ownership audit followed effect-call retention in dead-value pruning,
+fresh read-result summaries, branch cleanup, and the emitter's initial/next
+accumulator protection.  It identified a missing nested-loop regression.  A
+new helper retained its initial input across two outer iterations, replacing
+an inner-loop buffer and writing the final buffer after each inner loop.
+The first run emitted the expected bytes but returned the allocation-balance
+failure status 99 (`io-nested-1.log`).
+
+The diagnostic IR (`nested-io.ir`) showed an inner result owner that could be
+either its borrowed initial buffer or a fresh read result.  The enclosing step
+only collected unconditionally owned temporaries and therefore never released
+the final fresh replacement.  Cleanup now collects nested fold result slots
+identified by their replacement-release offsets, carrying the initial owner
+sources as guards.  It protects these borrowed owners, the enclosing step's
+results, and earlier cleanup candidates.  Only owner offsets supply borrowed
+protection; scalar accumulator fields are excluded.
+
+The expanded suite passes 47 byte-I/O runs and four pure-mode rejections,
+including normal nested output, EOF, zero inner iterations, timeout before
+replacement, timeout after replacement, and broken output.  Every nested case
+checks allocation/free balance after the helper returns.  The 48 reference
+counting cases pass.  The full core suite passed 812 accepted, 48 rejected,
+and 14 expected traps before the final owner-offset-only guard refinement;
+the focused I/O and reference-counting suites passed again afterward.  Logs
+are `io-nested-2.log`, `io-nested-3.log`, `io-nested-final.log`,
+`refcount-nested.log`, `refcount-nested-final.log`, and `core-nested.log`.
+
+All 69 Talos cases regenerated with the annotation fix before this compiler
+repair.  They now need regeneration against the final ownership change and
+the complete source-driven behavior-proof check.  The proof refresh remains
+in progress; no full proof-gate claim is made at this checkpoint.
+
+## 2026-09-24: Fold annotations follow current ownership emission
+
+`tools/talos-artifact.js prepare --all` refreshed the initial cases, then
+rejected the first Euler Riemann array fold: its matcher expected the old
+release-ready flag.  The emitter now saves original accumulator pointers,
+which protects borrowed inputs and replaces that flag.  The annotation
+structures and scalar descriptor builder had not followed this change.
+
+Current metadata now names `initialValueStart`; readers recognize this
+layout separately from historical `releaseReadyLocal` annotations in frozen
+packages.  Matchers check saved-owner copies, initialized accumulators,
+result placement, and the current back edge.  Scalar descriptors omit the
+obsolete flag and are absent for folds that perform accumulator releases.
+No runtime instruction emission changes in this repair.  The legacy forward
+setup theorem remains selected only for the legacy instruction sequence;
+current regions still have their exact decoded-region equality.
+
+The compiler build passed all 70 jobs.  Annotation unit tests pass for both
+layouts, including mutations of staged values and saved-owner sources.
+The first new assertion used the wrong generated declaration suffix; changing
+it to the actual `_step_program` name resolved that test-only failure.
+Regeneration passed Euler Riemann and continued through the larger corpus.
+Logs are `annotation-build-1.log`, `annotations-unit-1.log`,
+`annotations-unit-2.log`, and `talos-prepare-all-2.log` in the session workspace.
+The aggregate behavior proofs have not yet run on all refreshed caches.
+
+The association-list cache also passes `tools/talos-proof.js check assoc_list`
+without a handwritten proof change.  Its diff removes an unnecessary retain
+of an owned child and an unused duplicate lookup function, renumbering later
+runtime functions.  The unchanged abstract list-segment induction and concrete
+sample-store theorem remain accepted.  This contrasts with GCD's changed
+frame witnesses and supports keeping mathematical proofs separate from
+emission-specific frames.  The accepted run is in `assoc-proof-1.log`.
+
+## 2026-09-24: C regression comparison on ARM macOS
+
+The C comparison now accepts a positive standard IEC 60559 macro or GCC's
+`__GCC_IEC_559 >= 2` advertisement.  GCC's documentation distinguishes that
+compiler arithmetic/NaN-encoding intention from full Annex F support.  All
+existing format, evaluation-width, word-layout, and rounding-mode checks and
+strict floating-point flags remain in force.  The generator accepts `CC` as
+one executable name, defaulting to `cc`, and records that selection policy.
+The checked Mac run used the installed GCC 15; no capability macro was forced.
+
+Both `CC=/opt/homebrew/bin/gcc-15 node tools/euler-rusanov-c-compare.js write`
+and `CC=/opt/homebrew/bin/gcc-15 node test/euler_rusanov_c.js` passed.  All
+eight mirror rows remain bit-exact with the frozen WASM, and all seven Lanyon
+rows retain their pinned words.  CSV SHA-256 remains
+`21a95065f98f8f3e88962f7545af27b7e7fe8dca9084dfefba048e2d40e78a7e`.
+The regression manifest records the revised local drivers, documentation,
+generator, and prior process-runner update.  Vendored source, numerical data,
+frozen artifacts, and release identity receipts are unchanged.  Logs are
+`euler-c-write.log` and `euler-c-pass.log` in the session workspace.
+
+## 2026-09-24: GCD proof refreshed after loop lowering changes
+
+The first implementation checkpoint is pushed as `d6a4d3bc`.  The user
+requested frequent commits and pushes while completing the remaining gates.
+
+`tools/talos-artifact.js prepare gcd` regenerated the source-driven cache.
+Review found three additional local slots, shifted remainder operands and
+next-iteration scratch slots, removal of the unused first-iteration flag, and
+explicit final-result moves.  The executable Euclidean algorithm and the
+quantified theorem are unchanged.  The first proof attempt failed because
+its concrete frame still described the old local list.  The repaired invariant
+extends that list and updates the next-iteration witnesses; it uses the same
+GCD identity and strictly decreasing remainder measure.  No additional axioms,
+source-specific mathematical facts, or frozen artifact changes were needed.
+
+`tools/talos-proof.js check gcd` passed, building `Project.Gcd.Spec` in 10
+seconds.  The preserved failure and success logs are `gcd-proof-1.log` and
+`gcd-proof-2.log` in the session workspace's `work` directory.  Review of the
+accepted proof and diagnostics supports retaining the existing frame-based
+loop abstraction.  The aggregate source-driven gate is running again to
+identify the next stale cache or proof.
+
+## 2026-09-24: Byte I/O resumed on ARM macOS
+
+Resumed `origin/io` at `4f3c3a39` in a fresh checkout.  The user explicitly
+authorized local Lean execution.  The repository Darwin runner retains the
+shared lock, pinned toolchain, one Lean thread, and timeouts; its existing
+Mac environment selects the approved inherited-priority fallback.  Existing
+pinned tool installations were reused, and the proof dependency tree was
+copied with APFS clones into this checkout before running the Talos gate.
+No dependency pins changed.
+
+The initial compiler build passed.  All seven native host cases, 38 existing
+byte-I/O runs with four pure-mode rejections, and 41 reference-counting cases
+passed.  The reported array alias trap was already absent: both the guarded
+out-of-bounds set and modify examples returned `7`, with one allocation and
+one free.  The set example's IR contains the enclosing-owner protection added
+by `cd20f9cf`; its binary hash differs from the old failing record.  This
+corrects the continuation document's assumption that the defect remained open.
+
+The string-literal leak did reproduce.  `"ABC".toUTF8.size` allocated five
+blocks and freed two.  Extraction constructed the temporary scalar array by
+nesting three copying `arraySetSlots` expressions around `arrayAllocSlots`.
+Only the outer array had a cleanup binding.  The repair uses the existing
+`arrayLiteralSlots` representation, which constructs one backing array before
+conversion to bytes.  It changes neither the I/O API nor runtime ownership
+rules.
+
+Regression assertions were added before the repair.  The reference-counting
+case failed with three leaked blocks, and a sequenced literal-write helper
+failed its post-call balance check with status 99.  After the repair, all 48
+reference-counting cases and 40 byte-I/O runs passed.  New cases cover scalar
+literal use, returned strings, constants and concatenation, repeated writes,
+and cleanup when output is broken.  Returned byte arrays intentionally retain
+one caller-owned allocation.
+
+The broader core suite passed 812 accepted, 48 rejected, and 14 expected-trap
+cases.  All 70 byte-array allocation cases, 75 self-emitted LEB128 cases, and
+13 WAT/binary comparisons passed.  The first pure-WASI suite attempt could
+not create Wasmtime's default cache outside the sandbox.  Its rerun uses a
+workspace-local cache configuration, without changing the CLI or engine pin.
+
+The overview, manual, compiler guide, and development guide now distinguish
+byte I/O from the pure adapters, describe the required nonblocking host, and
+record current accumulator ownership guards.  CLI error tests were extended.
+Removing a temporary checkout path from the historic WGSL review allows the
+documentation check to pass all 161 maintained Markdown files.  Logs,
+failing regressions, and generated diagnostic IR are retained in the session
+workspace's `work` directory.  Release-identity work remains deferred, and
+formal I/O host proofs remain an explicit scope decision.
+
+The non-release execution inventory has now run.  Three ownership-report
+expectations predated the guarded final loop-result release and were updated
+from two statement releases to three after inspecting the emitted report.
+All 28 ownership-report cases pass.  The CLI help and standard-comparison
+drivers had treated local-runner operating notices as program diagnostics.
+They now remove only those exact notices when local mode is enabled; tests
+preserve unknown runner failures, prefixed messages, blank lines, and other
+bytes.  The shared process runner still returns the original captured output.
+All 15 CLI error cases and help output pass.  Standard comparisons pass 340
+native Lean/Wasm cases and 62 IR interpreter cases.
+
+All other non-release inventory suites pass except the C reference comparison.
+Its default Clang invocation rejects old-style declarations and a missing
+newline in the pinned upstream fixture under warnings-as-errors.  Repeating
+with the installed GCC 15 reaches execution, but the executable rejects the
+absent `__STDC_IEC_559__` capability declaration.  The fixture, flags, and
+numeric assumptions were not weakened.  This is a remaining Mac portability
+gate.  The pure-WASI rerun passes 33 execution cases, two traps, nine
+rejections, and 16 compiles; fuzz validation passes 56 cases.
+
+The Talos aggregate built its pinned verifier and source inputs successfully,
+then stopped at the already documented `gcd` generated-program mismatch.
+Current WASM and WAT are retained under `proofs/talos/.generated/gcd`.
+Tracked caches and handwritten proofs remain unchanged, and the aggregate
+behavior-proof stage did not run.  Resolving that mismatch remains required
+before claiming the current compiler passes the full proof gate.
+
+`git diff --check`, the 161-file documentation gate, and a separate check of
+all 42 local continuation links and heading anchors passed.  This validation used local changes over `4f3c3a39`.  The user subsequently
+requested continuing through completion with frequent commits and pushes.
+The validated literal repair, regression checks, runner compatibility, and
+documentation form the first checkpoint; proof and C portability repairs
+follow separately.
+
+## 2026-09-24: Resume byte I/O work
+
+Fetched `origin/io` and checked out the local tracking branch at
+`fb19b5efdd6cc171033adf888667764203c14f14`.  The working tree was clean.
+The user deferred release-identity work and requested a current continuation
+document.  [Byte I/O completion](task.md) now records the API, implementation,
+prior test reports, open ownership defects, setup requirements, commands,
+documentation gaps, and completion agenda.
+
+Existing Talos checks cover the effect of shared compiler changes on verified
+programs.  Formal I/O proofs remain a scope decision: the current exact-binary
+profile rejects imports, while the I/O module imports six WASI functions.
+The continuation document records the host model and verifier work such a
+proof would require.
+
+This checkout has Node 24.13.0 and the pinned Lean toolchain directory.
+The compiler executable, repository Wasmtime tools, I/O host, and Talos
+dependency directory are absent.  `wasmtime` and `wasm-tools` are absent
+from `PATH`.  Runtime and proof tests have not run in this resumed session.
+
+`git diff --check` passed, and a separate check passed all 46 local links
+and whitespace in the continuation document.  The documentation checker
+reproduced the existing absolute temporary-workspace path failure in
+`paper/wgsl-verification-report/review.md`.  Its inventory omits root
+`task.md` and `devnotes.md`, so those received a separate link and prose review.
+
+## 2026-09-23: Byte I/O on branch io
+
+The final streaming test copies 4 MiB plus 137 bytes through a 4,096-byte
+read loop and compares the entire binary output.  It checks allocation and
+free counts before each iteration and after the helper returns.  The first
+nonempty-input run fails: the generated loop has no release for the read
+buffer allocated inside its conditional branch.  The existing loop cleanup
+collects top-level temporaries but does not visit branch bodies.
+
+- [x] Preserve the streaming failure as an execution test.
+- [x] Repair conditional loop-temporary cleanup and pass sustained copying.
+- [x] Finish the sequencing, ownership, and timeout audit.
+- [x] Reconcile the documented timeout, allocation, and streaming behavior.
+
+Loop cleanup now visits nested branches and clears its temporary owner slots
+at the start of every iteration.  The clearing prevents a skipped branch from
+releasing a pointer left by an earlier iteration, while the existing distinct
+owner guards preserve buffers returned in the loop accumulator.  The complete
+4 MiB copy, empty input, a short input, and alternating read/skip iterations
+pass, including allocation/free equality between iterations and on return.
+All 30 byte-I/O execution cases, four pure-mode rejection checks, and the
+existing 41 reference-counting cases pass after the repair.
+
+The carried-buffer test exposed a second loop ownership defect.  The release
+analysis required a fresh buffer on every path, so a path preserving the old
+buffer disabled cleanup for replacements too.  It now tracks preserved and
+null owners, and the emitter compares old owners with both the initial and
+next accumulator before releasing them.  Initial owners are saved after
+evaluating all initial expressions, keeping those saved pointers outside
+later loop-body scratch use.
+
+The output-error path can return the initial buffer as the final accumulator.
+Nested result cleanup must then preserve the enclosing scope's owner, or the
+two scopes release the same buffer twice.  Result materialization now includes
+the enclosing owner slots in its release guards.  The final carried-buffer
+fixture obtains its initial buffer from `read`; an earlier string-literal
+seed exposed an unrelated unreleased inner `arrayAllocSlots` in literal
+construction, and that allocation is outside this I/O test.
+
+The final audit run passes all 38 byte-I/O cases and four pure-mode rejection
+checks.  The added cases cover retained buffers across skipped iterations,
+input timeout after completed chunks, blocked and broken output, cleanup on
+early errors, and branch-selected helpers returning `Unit`.  The existing
+41 reference-counting cases also pass with the new accumulator guards and
+enclosing-scope protection.
+
+The final documentation states the implemented zero-timeout behavior: one
+immediate nonblocking attempt.  It also records that read-buffer memory
+exhaustion follows the allocator's trap behavior and identifies the streaming
+fixture.  No additional language operations or runtime dependencies were
+introduced during this final audit.
+
+The user requested implementation on `io`, a WASI stdin/stdout test harness,
+and frequent commits and pushes.  The agreed operations return immutable
+`ByteArray` values, carry an explicit `UInt64` timeout in nanoseconds, and
+preserve execution order.  A read returns up to its positive capacity, empty
+success means EOF, and timeout is an error.  A write completes all bytes or
+fails, potentially after emitting a prefix.  System-call protocols are outside
+this work.
+
+The pinned Wasmtime 44 CLI rejects `fd_fdstat_set_flags(0, NONBLOCK)` with
+WASI `BADF`.  Its [standard-stream implementation](https://github.com/bytecodealliance/wasmtime/blob/v44.0.0/crates/wasi/src/p1.rs)
+uses blocking reads and writes and changes descriptor flags only for files.
+Consequently, polling before an unrestricted blocking write cannot establish
+the required timeout behavior.  The new C test host uses the pinned Wasmtime
+engine and implements the relevant WASI Preview 1 imports over nonblocking
+native stdin/stdout.  It accepts one iovec and at most two poll subscriptions,
+which are the intended runtime's needs, and preserves descriptor flags on exit.
+
+`test/wasi_io_host.js` exercises actual WASM modules and pipes.  Its seven
+cases passed: an open empty pipe returns `AGAIN`, closed input returns EOF,
+out-of-bounds iovecs return `FAULT`, a clock wins against stalled input,
+binary bytes round-trip unchanged, poll observes EOF, and blocked output
+returns `AGAIN`.  This tests the host imports; source extraction and the
+whole-call timeout loops remain to be implemented.  The unmodified compiler
+also built successfully with the exact pinned Lean commit.
+
+The session's user explicitly authorized direct Lean execution after the
+systemd user scope failed.  This session uses the repository runner's local
+mode, retaining serialization, one Lean thread, timeout, and priority limits.
+Pinned Lean, Wasmtime, wasm-tools, and Node archives were installed under the
+ignored build directory with their published checksums verified.
+
+The initial extraction draft used `EIO UInt32` and `try`/`catch`.  The user
+rejected that exception machinery.  It was removed before committing the
+source implementation: `ByteIO` now aliases `BaseIO`, reads return an explicit
+`Except UInt32 ByteArray`, and writes return an explicit `UInt32` status.
+The command entry returns its own exit status.  Sequencing forces a call even
+when the caller ignores its result, while an ordinary let-bound action remains
+unevaluated until sequenced.
+
+An execution test exposed the existing pure-call pruning rule deleting a
+sequenced write whose result was unused.  `IR.LocalLet.effectCall` records
+that the call must execute, keeps its arguments live, and participates in the
+existing ownership analysis.  Its final lowering is an ordinary WASM call.
+The byte-I/O program represents read/write as external runtime functions,
+with no fabricated pure function bodies.  The pure compiler and scalar
+interpreter reject effectful entries.
+
+The first timed read exposed a pre-existing `i32.const` encoding error: both
+instruction emission and the legacy byte helper used unsigned LEB128, so
+address 64 decoded as -64.  The [WASM integer encoding](https://webassembly.github.io/spec/core/binary/values.html#integers)
+requires signed LEB128 for these constants.  The repair sign-extends the low
+32 bits and uses the existing signed encoder.  Boundary tests cover 63/64,
+127/128, 8191/8192, and both signed 32-bit endpoints; self-emission also checks
+high input bits are discarded.
+
+The signed-constant boundary guards passed, and Wasmtime passed all 75
+self-emitted LEB128 cases, including the new 32-bit boundaries.
+
+The source execution suite now passes 26 runs plus four rejection checks for
+pure compilation modes.  It covers binary echo, EOF, short reads, write order,
+ignored results, saved actions, explicit error inspection, invalid capacity,
+zero timeout, delayed input, blocked output, progress during a single write
+deadline, broken pipes, empty writes, saturated deadlines, helper calls,
+unused loop results, and read-buffer release.  All seven host tests still
+pass.  The ignored-loop test required the pruning analysis to propagate
+effects through loop bodies as well as direct calls.  The analysis covers
+every IR expression constructor without a catch-all case.
+
+The final pruning review also covered effects nested inside ordinary call
+arguments and branch conditions.  Calls retain those arguments when their
+results are unused.  A branch with empty arms still evaluates an effectful
+condition.
+The compiler rebuilt successfully after these changes, and the final source
+suite again passed all 26 runs and four pure-mode rejection checks.
+
+`tools/check-wat.sh` passed all thirteen byte-equality cases.  The aggregate
+execution driver stops at `proofs/artifacts/release.json` with a release input
+identity mismatch.  The same release check fails on the original revision
+`a4655383ee80d3d80830b6bddfb6248a9d5c2b4b`.
+
+Running `test/core_correctness.js` separately found an array ownership trap
+in `arraySetIfInBoundsSkipsValueTrap`.  A clean build of the original revision
+produced the identical module, with SHA-256
+`0dd850af132112b6bde0a76bbd66507d4a427a5a8b36866df9cd0f672eb96866`,
+and the same trap.  The generated code aliases an unchanged array and releases
+both aliases; that existing failure remains unresolved.
+
+The documentation gate reports an existing absolute `/tmp` example in
+`paper/wgsl-verification-report/review.md`; that file is unchanged.  The Talos
+gate began fetching its existing pinned dependencies and was stopped during
+the initial mathlib cache download, after 867 of 8,747 files.  It did not reach
+the proof checks, so Talos verification remains uncompleted.
 
 ## 2026-09-16: Tiny transformer implementation
 
@@ -16196,3 +16986,483 @@ The user then supplied the browser and machine description: Chrome on `MAC MINI/
 The user requested submission.  The current submission skill specifies Jamie Stephens as author with Morphism affiliation, so the title page and metadata were updated before submission.  The submitted title and abstract were extracted from the rebuilt PDF.  The 42-page PDF and source snapshot are retained in `paper/gpt2-comprehensive-report/submission-01`.  Submission `87ff5328fe18` is under editorial review and records relationships to the earlier CPU, WGSL, and LeanExe subset reports.
 
 marXiv accepted the comprehensive report as `2609.00014v1`.  The editorial review records nine style remarks and is preserved verbatim.  The downloaded archive PDF matches the submitted and local files, with SHA-256 `eca05705bc7a3a9b61d6f39afdf5c45d477b3afd2255708d66199c3c551ca4fb`.  The publication record, bibliography entry, README, and document evidence now identify the accepted version.
+
+### Formal byte-I/O scope accepted (2026-09-24)
+
+The user requested proofs of the new byte-I/O host behavior. Pinned Talos supplies `HostFn`, relational `HostContract`/`HostSpec`, `HostEnv.Satisfies`, and `wp_call_host_contract`; no new trusted execution primitive is necessary. The intended boundary is generated WASM under specified WASI memory, stream, and clock behavior, not a verification of C compilation, Wasmtime, or the OS. The protocol must retain prefixes committed before errors, check the same saturated absolute deadline after partial progress and waits, and state clock-progress assumptions for termination. In particular, the final successful nonblocking call does not reread the clock, so a theorem must not overstate a strict wall-clock return bound.
+
+All 69 source artifacts regenerated successfully after the nested-owner fix. The full source proof gate is checking the refreshed models. Mechanical frame repairs for AppendBang, SharedPair, FoldSum, and AssocList runtime indices await that gate’s diagnostics.
+
+The refreshed AppendBang proof passed in 12 seconds after adding the compiler’s explicit result slot to its frame and moving its loop-counter measure. FoldSum passed in 5.3 seconds after preserving the unused former ownership-flag local in its invariant. Both keep the original byte/numeric postconditions. The first full build exposed stale BoxFree proof steps for the removed child retain, Validate frame shifts for the new owner tracker, and a missed SharedPair measure application. These diagnostics are retained in `work/talos-check-final-1.log`; repairs are in progress.
+
+## 2026-09-22: Quantized GPT-2 plan
+
+The user requested a plan for eight-bit weights and linear-layer activations, integer accumulation, FP32 surrounding computation, exact-binary cached inference, evaluation, and subsequent error bounds.  The [draft plan](plans/gpt2-quantized.md) records proposals requiring design approval and expands phase 15 of the root queue.  It uses the completed [cached-session and binary proofs](proofs/talos/lean/Project/Gpt2CachedStep/README.md) as its baseline and corrects the root overview's stale statement that exact-byte packaging remained deferred.
+
+Source review found two implementation requirements: the language lacks signed integer and FP32/integer conversion operations, and the binary checker needs the selected added instruction forms and their soundness proofs.  The shared token embedding must enter the storage design because it also supplies the vocabulary projection.  The proposed symmetric range gives a maximum prefix-sum magnitude of 49,548,288 at reduction length 3,072, within signed 32-bit range.  The proposed weight payload is 127,695,940 bytes before headers and alignment.  These are calculations for the draft design.  Execution measurements remain future work.
+
+The [ONNX quantization definition](https://onnx.ai/onnx/operators/onnx__QuantizeLinear.html) and [WebAssembly numerical specification](https://webassembly.github.io/spec/core/exec/numerics.html) supply rounding, saturation, scale-axis, and conversion references.  The numerical milestone includes the accumulator-to-FP32 rounding error, the checkpoint-export relation, cached-history error, and the strict greedy-margin condition.  The evaluation separates file storage, live tensors, linear-memory capacity, and process memory because the current recorded cache allocation sequence leaves unreused smaller blocks.
+
+- [x] Review model, compiler, proof, host, and evaluation documentation and source.
+- [x] Draft the plan and add its root-queue and plan-index entries.
+- [x] Obtain design approval before implementation.
+
+Two review passes checked the arithmetic, storage calculation, proof scope, prose, and links.  A focused test passed all 47 local links, including heading targets, and whitespace in the three changed planning documents.  `git diff --check` passed.  The repository documentation test failed on a pre-existing absolute workspace path in the [WGSL review record](paper/wgsl-verification-report/review.md).  The same path is present at `HEAD`.
+
+## 2026-09-22: Quantized projection implementation
+
+The user approved the plan.  Implementation runs on `gpt2-quantized`.  The [evaluation inputs](data/gpt2-quantized-v1/evaluation.json) retain the checkpoint, tokenizer, FP32 binary, 128-token prefix sequence, three completion configurations, and six additional prompts with token IDs.  The adoption criterion remains pending.  The initial implementation uses the approved scalar instructions and the existing dependencies.
+
+The compiler now recognizes nearest-even integral FP32 rounding, saturating FP32-to-signed-word conversion, signed-word-to-FP32 conversion, and signed-byte extension.  Lean's native `Float32.round` uses halfway-away-from-zero rounding, so the nearest-even source definition uses the logical binary32 model.  The FP32 test passed 126 cases across native Lean, the IR evaluator, and Wasmtime.  Packed generation now accepts byte and word elements through one width-indexed IR node.  The packed-array test passed its existing cases and byte-generation allocation checks.
+
+The [quantized kernel](LeanExe/Models/Gpt2/Quantized/Kernel.lean) computes row scales, stores quantized input bytes once per row, accumulates signed products, and applies the specified FP32 rescaling and optional bias.  Its checked entry rejects invalid dimensions, reserved coefficients, invalid scales, nonfinite input, and nonfinite output.  All 34 initial kernel cases passed in Lean and Wasmtime, including maximum-length endpoint sums, rounding ties, scale boundaries, and allocation counts.  These tests establish measured agreement.  Source/Talos correspondence, exact accumulation, and exact-binary proofs remain in progress.
+
+The nonfinite-output case exposed a compiler leak.  Result materialization preserved an owned helper result whenever either branch returned it, including the branch that discarded it.  Result materialization now tracks preceding owned locals and releases an unreturned owner in the appropriate branch, excluding returned and transferred owners.  The rejection test now leaves only the two borrowed input buffers allocated.  Broader ownership tests remain pending.
+
+The arithmetic proof established the prefix bound and exact signed-word addition and multiplication under representability assumptions.  Its first axiom audit found that `bv_decide` introduced a native-evaluation axiom into byte decoding.  Natural-number masks and arithmetic replaced that step.  The checked [word-accumulation proof](proofs/talos/lean/Project/ProofKit/QuantizedInt32.lean) and [source dot-product proof](proofs/talos/lean/Project/ProofKit/QuantizedDot.lean) now use only `propext`, `Classical.choice`, and `Quot.sound`.  They prove exact accumulation for every prefix of at most 3,072 valid signed bytes and the bound `length * 16129`.
+
+The ownership-report test exposed three additional guarded release sites in optional byte-array results.  The runtime result and allocation/free counts for the inspected successful case remained correct.  The expected statement counts now include those guarded releases.  All 28 ownership-report and array-call cases passed.  Broader execution tests remain pending.
+
+The [integer-to-FP32 conversion proof](proofs/talos/lean/Project/ProofKit/F32Convert.lean) and [nearest-even proof](proofs/talos/lean/Project/ProofKit/F32Nearest.lean) establish source/Talos agreement for all raw input words.  Nearest-even rounding now constructs the signed integral result through the logical `ofInt` operation, with an explicit signed-zero case.  The revised source passed all 126 FP32 cases.  Saturating conversion remains in progress.
+
+The [projection measurements](data/gpt2-quantized-v1/README.md#scalar-projection-measurements) retain four checkpoint shapes and both FP32 storage orientations.  Across seven resident-session repetitions, quantized medians were 2.544 ms for QKV, 3.355 ms for expansion, 3.330 ms for reduction, and 53.356 ms for the vocabulary projection.  The output-major FP32 ratios were 4.09, 4.08, 4.15, and 4.26.  Each case matched its specified reference byte for byte and released every temporary.  The measurements include activation quantization and output release, while loading and validation remain separate.  They use FP32 inputs from one retained token and do not establish complete-model timing or quality.  The binary proof remains pending.
+
+- [x] Implement and test scalar operations and packed-byte construction.
+- [x] Implement and test the checked quantized projection.
+- [x] Complete and audit projection arithmetic and exact-binary proofs.
+- [ ] Test shared ownership changes across the existing corpus.
+- [x] Measure checkpoint projection shapes before full-model integration.
+
+The signed-to-FP32, nearest-even, saturating FP32-to-signed, and signed-byte correspondence proofs now cover every raw input word.  The arithmetic declarations use only the standard logical axioms.  The binary profile now includes all four instructions.  Decoder soundness, validator soundness, translation, instruction equality, and focused parser/type tests passed, including nonminimal unsigned-LEB subopcode zero and rejection of unsupported or truncated subopcodes.  The changed verifier-source digest requires package migration and a renewed aggregate check.
+
+The byte generator now has checked source size/read lemmas and a reusable Talos loop theorem.  The loop terminates, returns the specified bytes, and writes only the destination range under explicit address and memory bounds.  It reuses the existing counter-frame and loop support.  Allocation and complete projection composition remain open.
+
+The broader core test stopped at `arraySetIfInBoundsSkipsValueTrap`.  Its IR releases both the original array and a conditional result that aliases it on the out-of-bounds branch.  Rebuilding with the original `materializeResultValue` produced the identical failing binary, SHA-256 `0dd850af132112b6bde0a76bbd66507d4a427a5a8b36866df9cd0f672eb96866`.  The quantization changes were restored after that comparison.  This existing alias-release failure remains an aggregate-test blocker.
+
+The refcount test passed 41 cases and seven leak-accounting cases, including its one expected retained-block case.  The packed-array test passed reads, unaligned accesses, bounds failures, binary files, byte and word generation, mapping, and temporary release.  The [scalar quantizer range proof](proofs/talos/lean/Project/ProofKit/QuantizedValue.lean) proves that every quantized byte excludes `0x80`, for arbitrary raw value and scale words.  It proves a scaled-magnitude bound after clipping and checks the 128 possible integral magnitudes and both signs through kernel reduction.  The resulting declarations use only the standard logical axioms.
+
+The source-driven projection case now has a generated model and checked annotation matches.  Its registration remains incomplete.  Exact generated execution and store preservation pass for the scalar quantizer and FP32 rescaling helpers.  The source projection lemmas connect each generated activation to its row scale and establish exact, bounded accumulation for every prefix using the quantizer's byte-range theorem.  The scale-scan loop and allocation composition remain in progress.
+
+The complete [row-scale execution theorem](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/RowScale.lean) now passes.  It composes packed reads with a maximum-prefix invariant through the existing range-loop theorem, then proves the zero-row and minimum-scale branches.  The generated code reads each coefficient twice because the compiler extracts the loop's value and control result separately.  Both reads preserve the store.  Shared masked-addition and multiplication lemmas connect the compiler's widened arithmetic to `UInt32` operations.  Dot-product execution and packed allocation composition remain in progress.
+
+The generated [dot-product execution theorem](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/Dot.lean) now passes for bounded represented buffers.  It proves each bounds-checked byte read, signed extension, masked multiply/add, and loop increment, with complete store preservation.  The field selectors and shared runtime equalities also pass.  The [row-scale buffer loop](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/ScaleLoop.lean) composes the row-scale helper with packed generation and confines writes to its output.  All 34 quantized execution and allocation tests passed again.  Activation-byte generation, allocation composition, complete projection packaging, and model integration remain open.
+
+The [complete row-quantizer theorem](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/Rows.lean) now passes with the standard logical axioms.  It includes both allocation branches, exact scale and byte construction, result packing, ownership and separation of both buffers, and preservation of protected input.  Entry composition exposed an incorrect 44-local assumption in the helper invariants.  The generated function has 43 locals.  Those invariants and their checked compositions now use that frame size.  The proof reuses the existing heap allocation, memory framing, and packed ownership library.  Complete projection generation and temporary release remain open.
+
+The [projection output loop](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/ProjectionLoop.lean), [output allocation](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/ProjectionAllocate.lean), and [temporary release path](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/ProjectionRelease.lean) now pass with the standard logical axioms.  The per-cell proof covers the dot-product call, scale reads, FP32 rescaling, bias selection, and branch result packing.  A shared [bounded word-access theorem](proofs/talos/lean/Project/ProofKit/PackedWordAccess.lean) handles the compiler's inline scale and bias loads.  Output construction preserves the represented weights, activation bytes, and scales.  The return path releases both distinct temporary owners and preserves ownership of the output.  The complete entry theorem and binary packaging remain in progress.
+
+The complete [projection entry theorem](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/Linear.lean) now passes.  It specifies exact bytes, output ownership, protected-input preservation, memory capacity, and heap counters: three allocations, two releases, two frees, and no retains.  The focused source gate and independent exact-artifact checker passed for the 4,757-byte binary used in the measurements, SHA-256 `de0f34ec5a1c97a54f39c7664071278301923aebc663100fcc1002182ef9ab7a`.  The composed decoded-binary theorem uses only the standard logical axioms.  A module-parametric specification permits transfer through the checked model equality.  The proof reuses heap allocation and release, packed construction, and bounded loads.  No LTG retrieval or separate proof agent ran in this iteration.  The checked wrapper, cached model, and full evaluation remain open.
+
+Function-region transport now supports the four added scalar operations and byte loads and stores.  Its syntax, one-step transport, no-tail property, and execution transport passed.  This permits reuse of unchanged internal helper bodies when model integration changes function indices.  The public projection entry has fewer parameters than its internal calling form, so that entry still needs a separate composition proof.
+
+The [file and session API proposal](plans/gpt2-quantized-format.md) fixes the binary header, offsets, validation lifecycle, and status codes.  Approval is pending before implementation of those interfaces.  The existing core-test failure was traced to cleanup of a conditional array result that can alias an enclosing owned array.  Both slots receive releases in separate materialization scopes.  The retained failing binary and IR identify that double release.  No change to this path has been made.
+
+The earlier forty-three artifact manifests now record the extended verifier digest.  Migration preserved each binary, its embedded bytes, generated certificates, and handwritten theorems.  It changed only the verifier identity, using the migration tool's transactional file writer, and checked all forty-four manifest and binary identities.  The renewed aggregate Lean check remains pending.
+
+Conditional-result cleanup now uses the recorded owner sources to avoid releasing an alias of a surviving enclosing owner.  The core suite passed the previously failing `setIfInBounds` case and subsequent conditional-array cases.  It stopped at `arrayStructureNestedCallLoop` with a zero iteration count.  The loop returns its initial owner, and cleanup releases both the loop result and the initial owner.  Rebuilding with the original result-materialization function produced the identical failing binary, SHA-256 `409cb3edc7bd40fd6badef1f2174f80505df7b33a542cc42e2f018f6177a10a6`.  The current compiler source was restored after the comparison.  This separate loop-ownership defect remains open.
+
+After the conditional-owner fix, all 34 quantization cases, 28 ownership-report cases, 41 reference-count cases, and seven allocation-accounting cases passed.  Six accounting cases are leak-free, and the seventh retains its expected blocks.  Recompiling the projection reproduced the proved binary digest.  The focused document-link test passed 348 local targets, and whitespace checks passed.  The repository document gate still stops at the previously recorded absolute workspace path in the WGSL review record.  Full cached inference and its file/session interface await the pending design approval.
+
+## 2026-09-22: Quantized cached-model implementation
+
+The user approved the file and session API.  The Lean format validator and cached model now build, and the cached entry compiles.  The model retains the FP32 cache and attention operations, uses the proved quantized projection, and checks projection inputs and final cache/logit values for finiteness.  Execution and complete-model proofs remain pending.
+
+The checkpoint exporter produced the specified 127,695,972-byte file, SHA-256 `cdf0d8752b9b8243de911eab7435f4c96356752437d190ef4da094073f59c29a`.  Its manifest records every tensor extent, coefficient orientation, scale rule, and source checkpoint identity.  It uses the existing pinned PyTorch environment.
+
+The approved validation and token-step entries need access to the same loaded model and heap.  The compiler previously exported one source entry.  The new `--entries` form collects their joint reachable declarations, extracts shared internal functions, and adds public ABI wrappers.  Existing single-entry compilation retains its extraction path.  Each wrapper supplies borrowed owners for host inputs and removes internal owner slots from public results.  Shared-call, narrow-word, borrowed-result, and ownership tests are running.
+
+The multiple-export test passed shared calls, narrow-word wrapping, borrowed results, and allocation counts.  The first complete cached call returned finite logits but retained 36 temporary buffers: three per transformer block.  The reduced heap-loop test identified three causes: branch-local temporaries escaped cleanup, ownership inference rejected retained loop accumulators, and replacement cleanup lacked alias guards for retained owners.  Scoped cleanup now stays inside the allocating branch.  A finite ownership invariant tracks carried accumulators.  Conditional replacement cleanup preserves initial owners, next-iteration owners, and duplicate owners.  Initial-owner protection also fixes the zero-iteration double release recorded above.
+
+The reduced test passed 32 success, failure, zero-iteration, and initial-alias cases.  The core suite passed 812 accepted programs, 48 rejected programs, and 14 expected traps.  The 34 quantized projection cases, 41 reference-count cases, and seven allocation-accounting cases passed.  The first three cached steps retained only weights and the current cache.  Reset left one allocation, and close freed all 1,069 allocations.  Session tests passed malformed headers, reserved coefficients, invalid scales, nonfinite parameters, invalid token/position/cache size, and numerical failures at transformer layers 0, 5, and 11.  Every failed call preserved the preceding cache and released its temporaries.
+
+The independent quantized reference uses NumPy FP32 operations with explicit serial reduction order, the specified exponential polynomial, integer projection sums, and the exported per-output scales.  The first three complete logit vectors and caches match the candidate binary bit for bit.  The 128-prefix comparison against both this reference and the frozen FP32 binary is running.  Its early FP32 differences are substantial and include changed greedy choices.  Complete-model proofs remain open.
+
+The cross-field loop test initially retained three replaced buffers.  Branch cleanup emitted a guarded release for a buffer transferred to the branch result, and conservative release analysis then excluded the accumulator from replacement cleanup.  Definite owner-source transfer now suppresses that redundant release.  All 48 focused heap-loop cases pass, including exchanged accumulator fields.  The complete core suite passed again, as did the 28 ownership-report cases.  The projection still compiles to its proved digest.
+
+The final cached candidate has 27,638 bytes and SHA-256 `4fab215a51e58996b78dc3b988182eadcf47532f60556db7dd5d8d35468483ac`.  Its session tests pass.  Its second complete 128-prefix test matches 6,432,896 reference logits and all caches bit for bit.  FP32 greedy choices agree on 87 prefixes.  The maximum raw logit difference is 154.185, with maximum centered RMS difference 1.862 and median KL divergence 0.507 nats.  The trace medians are 202.7 ms quantized and 775.6 ms FP32.  Closing the quantized session freed all 45,569 allocations.  Both measured candidate binaries and their records are retained.
+
+The source-driven registry now accepts ordered multiple-entry cases.  The new incomplete cached case generates both public exports and the shared internal functions.  Its generated model matches the measured candidate.  Closed-function comparison identified twenty reusable FP32/runtime functions and twelve reusable projection/runtime functions.  Checked function-region proofs are in progress.
+
+Both function-region proofs now pass and use only `propext`.  They prove portability and exact instruction equality under the required function and type renamings.  The generated annotation checks and complete runtime-function checks pass.  The internal projection has extra owner parameters, so its entry still requires composition rather than direct transport of the public projection theorem.  Validator, complete cached execution, failure cleanup, session memory bounds, and binary packaging remain open.
+
+All nine retained and held-out completion cases finished.  Their first differing generated token occurs at positions 1, 2, 2, 1, 3, 2, 1, 1, and 1.  Several quantized continuations repeat words or produce broken fragments.  The two sampled cases use the existing compiled Lean PRNG and preserve every shared draw.  The data record includes all FP32 continuations as well, including repetitive greedy results.  The six previously held-out prompts have now been evaluated and must be identified as such in subsequent comparisons.
+
+The [projection diagnostic](data/gpt2-quantized-v1/projection-errors.json) checks a serial FP32 reference against the frozen binary at nine prefixes and evaluates 441 projections using their original FP32 inputs.  The FP32 logits match bit for bit.  The final vocabulary projection rounds 79.2–95.6% of its activation coordinates to zero under the approved per-row scale.  At prefix seven, activation-only reconstruction produces RMS logit error 1.812, compared with 0.318 for weight-only reconstruction.  At the first prefix, block two's feed-forward expansion rounds 97.3% of its input to zero.  These local comparisons identify substantial activation error without attributing the complete model's error to one layer.  A revised scale scheme or precision exception requires a design decision.  The approved algorithm and measured candidates remain unchanged.
+
+The user approved an experiment with activation groups of 64 and prioritized accuracy investigation over the complete-model proof.  The reference experiment computes independent scales and integer partial sums, rescales each partial in FP32, accumulates in increasing group order from positive zero, and adds bias once.  It retains the existing per-output weight scales and quantized embeddings.  A control retains the original transformer projections and uses FP32 vocabulary activations with serial FP32 products of reconstructed quantized weights.  The fixed-prefix comparison is running before generated-text evaluation.
+
+The new nonfinite-cache test first exceeded the host protocol's maximum inline command length.  It now loads the test buffer through the existing binary-file command.  This tests rejection of a NaN in the cache's final word, preservation of the original cache, and cleanup of the extra test buffer.
+
+The revised session test passes, including the nonfinite-cache case.  The grouped reference comparison finished all 128 fixed prefixes.  Greedy agreement rises from 87 to 120 prefixes, and median KL divergence falls from 0.506706 to 0.009023 nats.  The FP32 vocabulary-activation control also agrees on 120 prefixes and has median KL divergence 0.003522.  The grouped maximum centered RMS difference is 1.052.  Its largest raw difference, 49.587 at prefix 57, includes a mean shift of 43.054.  Re-evaluating the original per-row binary reproduced every retained maximum difference and token choice.  Generated-text evaluation is running with the same saved prompts and draws.  No grouped WASM binary or full-model proof has been produced.
+
+All nine grouped-reference completion cases finished.  The first sampled continuation describes a village and a monster, and the science continuation discusses testing hypotheses and developing methods.  Several greedy continuations repeat or contain false claims.  All nine grouped outputs differ from FP32, first at token positions 1, 2, 13, 4, 4, 7, 1, 2, and 1.  The FP32 vocabulary-activation control matches the entire retained FP32 code-prompt continuation.  Both variants and their sampling draws are retained.  The grouped Lean projection and its timing comparison are prepared for compilation after the serialized artifact gate completes.
+
+The comparison across all 101 prefixes of the nine prompts agrees with FP32 on 49 positions for the original scheme, 85 for groups of 64, and 87 for the FP32 vocabulary-activation control.  Median KL divergences are 0.677073, 0.066768, and 0.039378 nats.  Maximum centered RMS differences are 1.502073, 0.866216, and 0.782354.  The grouped maximum raw difference rises to 19.296 at the code prompt's final prefix, including a mean shift of 14.334 and centered RMS difference 0.797.  The reference records retain all distributions' metrics and argmax IDs.  The grouped projection module built successfully after queueing through the same machine-wide runner lock between aggregate-proof modules.  Lean execution remains serial.
+
+The grouped projection compiled to 5,441 bytes with SHA-256 `f3aa382e2e810499b73494e9a74ed380c7ef64883e65cd286353493b74f3be8b`.  Its four checkpoint projections match an independent 64-bit integer reference byte for byte.  Seven timed calls after reference comparison and two warmup calls give FP32/grouped median ratios of 3.989, 4.042, 3.909, and 3.897.  Feed-forward reduction costs 12.9% more than per-row quantization in this run.  The other three medians differ by about 1%, within their observed spread.  The benchmark held the shared runner lock and used its one-core quota and standard memory limits.  All sessions released every allocation.  Both the binary and measurements are retained.  Complete grouped-model execution and proof remain open.
+
+The three drafted source-validator characterization lemmas pass with the standard logical axioms.  The finite-helper execution proof first failed because its final goals compared widened 64-bit words with their 32-bit source values.  An explicit comparison equivalence is being checked.  These checks finish small draft modules written before the accuracy experiment.  Complete-model proof work remains deferred.
+
+The finite-helper proof passes after instantiating both operands of the widening comparison lemma explicitly.  Its axiom audit contains only `propext`, `Classical.choice`, and `Quot.sound`.  The documentation gate still reports the existing absolute workspace path in the WGSL review record.  The aggregate artifact gate continues rebuilding the Euler execution dependencies and has not yet produced a final receipt.
+
+## 2026-09-22: Grouped model completion
+
+The user requested completion in all respects, commit, push, and frequent updates.  Work resumes on the grouped candidate.  Scheme 2 distinguishes its arithmetic from the retained scheme-1 model while preserving the tensor payload.  The grouped cached model uses the same failure statuses and ownership rules.
+
+The grouped cached source builds.  Export produced 127,695,972 bytes with SHA-256 `9d60657659e502b8dae9f11c2e73583643962b42c662cb9b51aa53e8730ec314`.  A byte comparison confirmed that offsets 32 through the end match the scheme-1 export.  The generation client now has a `--quantized` path that checks a pinned binary and checkpoint identity.  Its deployment record awaits the tested binary.
+
+The aggregate artifact check passed the complete Riemann theorem and then reached the existing combined Euler outward-speed decoder proof.  That target exceeds the 4 GiB memory-high threshold and spends most of its time under memory pressure.  It has a 30-minute execution limit.  Grouped compilation and preparation attempts expired while waiting for its lock, with exit status 75 and no Lean execution.  Smaller decoder units are prepared for use after the bounded run finishes.
+
+The documentation check passes all 163 maintained Markdown files after replacing an absolute temporary-checkout path in the WGSL review record.  The complete execution driver first stopped at the verifier-digest test vector, which still recorded the old instruction profile.  The test now records the same extended verifier identity as the migrated packages and includes the quantized source imports.  Its next check requires the grouped program cache currently awaiting generation.
+
+The Euler decoder reached its execution limit with status 124.  Eight separate instruction-sequence and code-body certificates now replace that combined reduction.  Each checks in roughly two to three seconds, and their aggregate import passes.  They preserve the frozen bytes and theorem names.  The aggregate artifact check has resumed.  The release test then exposed its historical twenty-one-package expectation.  The refreshed draft covers all forty-four current packages and retains four unresolved release conditions.  The test now compares package membership with the checked registry.
+
+The grouped candidate compiled to 28,315 bytes, SHA-256 `9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075`.  Its initialization, malformed-model, rejected-call, numerical-failure, cache-preservation, reset, and close tests pass.  All 6,432,896 logits and every cache match the independent reference through 128 tokens.  Every logit vector matches the retained experiment's hash.  All nine generated token streams and sampling draws reproduce the grouped reference.  Session close frees all 45,569 allocations.  The pinned generation path passes a direct CLI test.  Repeated timing is running in the standard one-core runner scope.
+
+The grouped source lemmas prove exact integer sums and the 1,032,256 bound for every group prefix.  Generic real reconstruction, product, dot-product, and token-margin lemmas pass with standard logical axioms.  Their reconstruction assumptions still require connection to the raw-word quantizer and the complete model.  The grouped helper transport proves exact dot products, row quantization with allocation and frame preservation, and FP32 rescaling.  FP32 normalization, cached attention, residual addition, and GELU execution theorems now transfer to the grouped cached program.  The runtime checks and refreshed annotation matches pass.  One combined helper build reached its 180-second limit while rebuilding dependencies.  Separate attention and remaining-helper targets completed.
+
+The controlled full-model benchmark completed one warmup trace and three measured traces under the standard one-core limit.  The grouped medians are 27.286733 seconds against 97.935911 seconds for FP32, a 3.589140 ratio.  Measured ranges are 27.237625–27.312851 and 97.788610–97.946842 seconds.  Repeated logit hashes agree.  Warm linear memory reaches 747,110,400 and 1,144,848,384 bytes, and process RSS peaks at 759,934,976 and 1,157,341,184 bytes.  Closing the grouped session frees all 182,273 allocations.  The record preserves loading and validation times separately.  Grouped projection output-size, release, and inner dot-prefix proofs pass.  The remaining projection loop proof is in progress.
+
+The complete public grouped-projection theorem passes, including output allocation, both temporary releases, exact returned bytes, and protected-input preservation.  Its axiom audit contains only the standard logical axioms.  The proof separates dot, rescaling, group accumulation, output construction, and resource composition into checked modules.  The internal cached projection adds owner parameters and an owner result, so its adapted entry proof is being checked.  The grouped binary package is being generated from the measured 5,441-byte artifact.
+
+The aggregate artifact gate passed all forty-four registered packages on 2026-09-23.  WAT/binary agreement passed.  The execution suite passed its compiler, core, ownership, and 38 quantization cases before the Euler runtime test reported a missing `WASMTIME_C_API` environment variable.  The focused Euler test passes with the pinned C API directory.  Conformance initialized the existing pinned official-testsuite submodule and is compiling its cold interpreter dependencies.  The source aggregate exposed the previously recorded GCD cache mismatch.  Its frozen 1,249-byte model and proof are being separated from the regenerated source model, whose emission uses two additional locals.  This preserves the historical artifact while allowing the current source gate to check its own compiler output.
+
+- [x] Complete grouped cached execution and its reference, rejection, cleanup, and timing tests.
+- [ ] Prove grouped projection, validation, complete cached execution, session memory, and exact binary behavior.
+- [ ] Complete the stated numerical bounds and token-margin result, with measured certificate coverage.
+- [ ] Run the required compiler, source-proof, artifact, and conformance gates and resolve failures.
+- [ ] Finish frozen-artifact loading, documentation, reproduction, commit, and push.
+
+## 2026-09-23: Cached projection and quantizer error proofs
+
+The implementation and retained evaluation commits are pushed as `269ed012` and `f305001f`.  The internal grouped-projection theorem now passes with the cached model's two borrowed owner parameters and three-word owned result.  Its proof covers the integer group sum, ordered FP32 partial sums, bias application, output allocation, both temporary releases, and protected-buffer preservation.  Reusing the public proof required adapting the call frame and returned owner, while the arithmetic and loop invariants remain shared in structure.  The separate modules keep elaboration below the runner's focused limits.
+
+The raw-word quantizer proof establishes that the signed decoded output coefficient equals nearest-even rounding of the clipped FP32 quotient.  Its decoded error is at most one half.  A reconstruction theorem combines that result with explicit quotient-rounding and clipping bounds and a positive scale.  Deriving those premises from checked input ranges, establishing the export relation, and propagating errors through cached inference remain open.  The accepted theorems use only `propext`, `Classical.choice`, and `Quot.sound`.
+
+All layout-constant execution proofs pass.  The finite-word loop and quantized embedding proofs are being checked.  The embedding proof separates checked byte and word reads, signed conversion, rescaling, position addition, output construction, and heap ownership.  The conformance gate is still compiling its pinned interpreter dependencies, and focused jobs wait for its bounded runner calls to release the shared lock.  The documentation gate passes all 163 maintained Markdown files.
+
+The preserved GCD proof passed, but manifest validation still required the current source cache and specification names.  The manifest checker now accepts a consistent `FrozenProgram`/`FrozenSpec` pair under the case's `Frozen` namespace and requires every behavioral theorem to match the corresponding registered name there.  Tests accept both complete conventions and reject mixed cache, specification, or theorem names.  Release identity now includes the cached quantized source and format imports.
+
+The finite-word scan and checked byte-access lemma pass with the standard logical axioms.  The regenerated GCD source proof passes with its two additional locals.  The association-list frozen specification and exact translation also pass.  The embedding and remaining validator drafts have concrete proof diagnostics and remain outside the completed proof batch.
+
+## 2026-09-23: Grouped binary and validator composition
+
+Pushed `4e7d522c` after the checked projection, finite-word, binary-instruction, and arithmetic work.  The grouped projection's source gate passed.  Migration generated its 5,441-byte package with SHA-256 `f3aa382e2e810499b73494e9a74ed380c7ef64883e65cd286353493b74f3be8b`.  The combined behavioral binary theorem and package gate are queued.  The manifest retains the repository's module-identity theorem and registered behavioral declarations.
+
+The scale scan now proves exact acceptance, termination, and store preservation.  The coefficient scan and embedding byte reads exposed a control-type annotation mismatch after the WP tactic erased metadata.  The shared byte-read lemma now states the normalized instruction form used by those proofs.  Header composition also needed explicit preservation of the original store and parameter vector.  The revised files await Lean results.
+
+Block validation uses a shared short-circuit Boolean composition lemma.  The draft model predicate records the accepted coefficient, scale, and FP32 regions.  Projection allocation bounds account for its three allocations and two temporary releases.  The complete block, cached-step, and session proofs remain open.
+
+The pinned conformance interpreter is still building cold Mathlib dependencies through the serialized runner.  Manifest binding and input-identity tests pass.  The current edits pass the whitespace check.
+
+The numerical proof needs a wider scaled domain than `CodeLib.IEEE32.roundScaledMagnitude_spec`, whose premise is `n < 2^151`.  A draft [FP32 rounding bound](proofs/talos/lean/Project/ProofKit/F32RoundBounds.lean) generalizes that premise to `n < 2^bound`, with `bound ≤ 276`, while deriving the half-unit error from the selected shift.  Its magnitude and sign theorems now pass with the standard logical axioms.  It preserves the pinned integer arithmetic model.  The rational-rounding and division bounds remain in progress.
+
+The coefficient scan and model-representation lemmas pass.  The shared header-field lemma and regenerated association-list source specification also pass.  Embedding word execution reached the 200,000-heartbeat limit.  Its replacement separates token decoding/rescaling from position lookup/addition, with a shared loop-state predicate.  The header proof has local rewrite diagnostics and remains in progress.
+
+The header execution theorem, grouped-projection allocation budget, and generalized rational-rounding theorem pass.  The regenerated association-list source specification and adjusted runtime-function identities also pass.  The complete block validator has not passed: its shared Boolean-composition dependency failed before Lean reached the block target.  An earlier progress message overstated that target's status.  The embedding proof's position half passed, while its token half required replacing recursive simplification of the local-type invariant with explicit constructor applications.
+
+Conformance reached native interpreter compilation after building its cold Lean dependencies.  The draft block allocation composition gives a 96 KiB budget and awaits checking.  New source lemmas characterize model validation, and draft numerical lemmas cover integer conversion, clipping, division, addition, and multiplication over explicit raw-word ranges.  These drafts remain outside the checked commit.
+
+Pushed `d0d9b61c` with the checked header, projection-allocation, rational-rounding, and source-cache work.  The complete block validator now passes.  Its shared Boolean helper needed an explicit empty operand stack, and its final branch needed normalized control-type metadata.  All twelve subsequent tensor checks reuse that helper.  The block allocation theorem derives a 96 KiB budget from the grouped projection's three allocations, the existing FP32 budgets, and the remaining packed buffers.
+
+The checked numerical modules prove exact small signed-integer conversion, the clipping error, generalized FP32 quotient/addition/multiplication errors, scalar quantization reconstruction, and two-stage rescaling error.  Every permitted 64-coordinate dot product converts to FP32 exactly.  These theorems state their finite-value and raw-magnitude assumptions.  Deriving checkpoint ranges and composing the complete cached-model error bound remain open.
+
+The combined tensor proof reached its execution limit during size normalization.  Separate tensor, source-relation, and size modules now pass.  Generalizing the computed tensor record before splitting the accepted-result branch prevents normalization from expanding the full model calculation.  The embedding word, loop, and allocation proofs pass after explicit normalization of byte widening and signed conversion.  Its entry theorem is being checked.
+
+The first conformance run passed all 25 execution files and 15 invalid-module cases, then failed receipt generation because the running Node process had loaded the old frozen-manifest rule.  The rerun includes `f32.wast` and names the signed conversion and extension coverage.  All 2,514 FP32 assertions passed without failure or skip.  Some queued log-redirected proof commands failed before Lean execution because the sandbox blocked the systemd user bus.  The reruns use the standard runner with scope access.  No local-mode execution was used.
+
+The complete embedding entry theorem now passes with standard logical axioms.  Its final mismatch was the explicit equivalence between `UInt32.toUInt64` and `UInt64.ofNat token.toNat`.  The model-validator source scan exceeded its bound while normalization exposed fixed-size tensor validators.  A generic early-exit list-scan lemma now separates the Boolean predicate from the checkpoint operations before instantiation.
+
+Pushed `6b9ad175` with the checked embedding, complete block validator, block allocation sequence, and local numerical bounds.  The expanded conformance gate passed all 26 official execution files and 15 invalid-module cases, with 6,996 passing Talos assertions, four skipped commands, and no unexpected failures.  All 26 files passed Wasmtime.  The receipt records configuration digest `033c09e82aa772f75c722f9c278f1bdcf2c5db1d64517f3e325e7576f41ebb0b` and release-input digest `0a882905cf89eab47893a2c296a673d68bbbd3a9c3b38fcb9015df3e2c12ba86`.
+
+The grouped projection binary package passed its independent check.  Its combined theorem establishes exact decoding, grammar encoding, validation, core validity, and the behavioral specification for the retained 5,441-byte module.  The registry now contains forty-five packages.  The preceding forty-four-package aggregate receipt remains historical until the expanded registry is checked.  Model validation now has a checked source characterization: status zero is equivalent to the complete representation predicate.  The compiled global coefficient, scale, position, and final-normalization checks also pass.  Their control-flow composition and the twelve-block scan remain in progress.
+
+Pushed `70776a8e` with the grouped projection binary package.  The complete public model-validator theorem now passes for function 60, through internal function 28.  It preserves the store and returns exactly the source status for every represented byte array.  Its source characterization identifies status zero with the full model predicate.  The proof covers the header, four global checks, all thirteen regions in each block, and early termination at the first invalid block.  Each emitted loop iteration contains four repeated calls to block validation.  The checked proof preserves that instruction sequence.  Small read-only Boolean and range-exit helpers isolate control flow from the checkpoint scans.  The final target and its dependencies pass with only the standard logical axioms.
+
+Pushed `f6447753` with complete model validation.  Each transformer-block kernel now has a checked call proof: both normalizations, QKV, cached attention, the remaining three grouped projections, residual addition, GELU, hidden-output addition, and cache construction.  The projection freshness lemma accounts for both quantizer allocations before the output allocation.  Four finite-input tests preserve the earlier local prefix, and the cache loop preserves status zero through allocation and copying.  The second normalization needed an explicit division-and-extent calculation to avoid recursive normalization of large byte offsets.  Full block control-flow composition and branch cleanup remain open.
+
+The checked block decomposition preserves all four finite-value branches and their nested release sequences.  New completion and result-state lemmas distinguish status-four empty outputs from successful owned outputs.  A shared cleanup theorem now covers both cases, preserving the original protected heap and output buffers while releasing the specified temporaries.  The success-status instruction proof and local-prefix transfer lemmas pass.  Five kernel statements now use their named instruction sequences, with the existing emitted-region equalities retaining the connection to the generated block.  This reduces unfolding at composition boundaries.  The success tail remains under checking.
+
+The finite-guard theorem passes after proving equality of the explicit branch continuations by cases on the exit form.  The success-tail theorem now passes in 6.2 seconds at the default heartbeat limit, using only `propext`, `Classical.choice`, and `Quot.sound`.  It composes the final grouped projection, status assignment, residual addition, cache allocation and copying, and release of the projected buffer.  The result records exact bytes, owned and disjoint output buffers, freshness, preserved input regions, page bounds, and unchanged memory capacity.  An explicit cache-root equality and a separate cache-result lemma prevent elaboration from expanding the preceding allocation search.  The enclosing three kernel groups and four finite branches remain open.
+
+Pushed `7ff7043e` with the checked tail, result-state transfer, and branch-cleanup proofs.  The feed-forward composition also passes, in 6.6 seconds.  It covers expansion, GELU, the finite-activation guard, both result paths, and release of the expanded and activated buffers.  The shared guarded-release theorem is being generalized to preserve a failure status returned by its successful branch, as required when nesting the remaining checks.
+
+The complete block proof passes.  Its staged composition covers QKV and cached attention, the attention projection and residual path, the second normalization, feed-forward expansion and GELU, the final projection, hidden and cache outputs, all four finite-value branches, and each nested release.  `CachedBlock.Spec.cachedBlock_exact` proves the callable function's exact source status and buffer layout.  `Completion.sourceOutputs` connects the owned returned bytes to the Lean result on status zero.  The execution-budget theorem bounds the heap top by its initial value plus 96 KiB for every result path.  The full block body checked in 3.0 seconds, the callable theorem in 1.0 second, and the execution bound in 3.5 seconds.  The axiom audits contain only the standard logical axioms.  The twelve-layer traversal, token-step and session composition, full binary package, and remaining numerical obligations are open.
+
+Pushed `bcc30d00` with the complete block theorem.  The cached-hidden source recurrence and size invariant now pass.  Status zero preserves a 3,072-byte hidden tensor and accumulates 6,144 bytes per layer.  Status four skips subsequent block calls, and finalization returns empty outputs.  The initial recurrence proof exceeded its 240-second limit during kernel reduction.  A generic loop-finalization lemma reduced checking to 2.6 seconds.  The size proof also needed an abstract result predicate and direct arithmetic monotonicity instead of normalizing the fixed twelve-block expression.  It checks in 2.8 seconds.  The compiled embedding call, layer preparation, complete block call, and cache-update append pass.  The block-call and append modules check in 4.5 and 2.0 seconds, respectively, with only standard logical axioms.  Guarded releases and traversal control remain in progress.
+
+Pushed `b189bb15` with the recurrence, size invariant, embedding call, block call, and update append.  The compiled status test, break-flag assignment, and checked counter advance now pass.  Shared counted-release lemmas prove the conditional release and subsequent read of the freed-buffer counter, including null owners and retained aliases.  The complete skipped iteration checks in 1.8 seconds and preserves the store, both buffers, and the nonzero status while advancing the counter.  A shared status-dependent packed-buffer predicate connects successful owned outputs and failed empty outputs to represented bytes and protected regions.  Its block specialization checks in 2.2 seconds.  These proofs use only the standard logical axioms.  Successful-iteration ownership composition, the twelve-iteration loop, and final cache construction remain open.
+
+Pushed `86f6e164` with traversal control and skipped iterations.  The complete active iteration now passes in 3.0 seconds with standard logical axioms.  Its proof composes the block call, update append, conditional block-cache release, previous-update and hidden releases, and counter advance.  The first iteration preserves the embedding and skips the initial null update buffer.  Later iterations release both previous buffers while preserving newly produced outputs.  Status-dependent ownership covers failed blocks and their empty hidden output.  The per-layer allocation budget also passes.  The traversal state and initial-state theorem check in 3.2 seconds.  Combining both iteration branches reached the kernel recursion limit, then a 120-second timeout after increasing that limit.  The proof now separates state reconstruction from execution composition to isolate the reduction boundary.  The complete loop and final cache construction remain under development.
+
+The complete twelve-layer traversal now passes.  The state-reconstruction proof initially exceeded 120 seconds in several reduced forms.  A generic constructor over the pending-output record isolates the byte-array size conversion and prevents kernel normalization of the full source calculation.  The abstract transition checks in 1.6 seconds, recursive specialization in 1.4 seconds, complete iteration in 1.4 seconds, and loop in 1.9 seconds.  The loop covers status-zero calls and status-four skipped iterations, exact source bytes, owned updates, protected initial regions, and termination.  A separate bound proves that every traversal path increases the heap top by at most 1,659,552 bytes.  This is an allocation bound for the twelve layers, before final cache construction.  Final-output preparation, the failure guard, and the failed-output assignments pass.  The successful cache append and final releases remain under checking.  All accepted declarations use standard logical axioms.
+
+The final-cache append also passes in 1.5 seconds.  Its preparation checks in 2.6 seconds and preserves both source sizes through allocation.  The result-state theorem records exact concatenated bytes and the new cache owner.  Final temporary release and whole-function composition remain open.
+
+Pushed `c8498c46` with the complete layer loop and final-cache components.  The callable cached-hidden theorem now passes: `CachedHidden.Spec.cachedHidden_exact` proves function 58's exact source status and returned bytes, ownership, protected-input preservation, cleanup, and termination.  Finalization covers both successful cache concatenation and failed empty outputs.  Cleanup releases updates and embedding, and proves that the aliased update pointer skips its second release.  The cleanup theorem checks in 1.4 seconds, finalization transfer in 1.6 seconds, whole body in 1.4 seconds, and callable theorem in 1.3 seconds.  The first whole-body composition reached the 200,000-heartbeat limit while specializing finalization to the fixed twelve-layer expression.  A theorem over an abstract traversal state isolates that specialization and keeps each check bounded.  All accepted declarations use standard logical axioms.  The complete cached-hidden allocation bound is under checking.  Token-step branches, session composition, the full binary package, and numerical propagation remain open.
+
+Pushed `8f8ea78f` with complete cached-hidden execution.  Its allocation theorem now checks in 1.3 seconds: under the stated address premise and position below 128, it supplies every allocation-fit premise and bounds heap-top growth by `cache.size + 1,736,456` bytes.  A generic final-append bound separates arithmetic from the concrete traversal.  Explicitly expanding the `traversed` and `finalHeap` aliases before type comparison avoids reduction of the recursive heap expression.  Earlier direct comparisons reached the elaboration limit or kernel timeout.  The token-step source decomposition and call composition are the next checked boundary.
+
+The token-step source decomposition, input-bound characterization, and model extents pass.  Its cached-hidden call checks in 1.8 seconds, final normalization in 2.8 seconds, and 50,257-logit grouped projection in 2.4 seconds.  The call proofs preserve live locals and exact buffer ownership.  The normalization proof makes the constant division and checked addition explicit.  All three use standard logical axioms.  Entry guards, finite-output branches, cleanup composition, and the public token-step theorem remain open.
+
+Pushed `024c5e97` with the cached-hidden budget and token-step kernels.  All token-step guards now pass: header rejection, token and position bounds, checked cache-length arithmetic, input-cache finiteness, normalized-hidden finiteness, and the short-circuit cache/logit output check.  Result packing and the return sequence also pass.  The input test checks in 2.3 seconds, input-cache test in 2.6 seconds, output-cache test in 1.7 seconds, and combined output guard in 1.5 seconds.  Local-prefix transfer preserves the live buffer owners through each probe.  A repeated branch tactic reached its heartbeat limit.  Direct proofs of the two short-circuit comparisons and the bounded arithmetic reduced that check to a fixed instruction sequence.  The accepted proofs use standard logical axioms.  Result-branch cleanup, complete public token-step execution, session composition, the full binary package, and numerical propagation remain open.
+
+Pushed `681ebff6` with the token-step guards.  Complete token-step execution now passes.  The accepted path composes cached-hidden inference, final normalization, grouped vocabulary projection, finite-value rejection, result assignment, and all temporary releases.  The enclosing header, input-bound, and cache-finiteness gates preserve the exact source status and empty failed outputs.  The internal callable theorem checks in 1.4 seconds.  The public theorem also checks in 1.4 seconds and proves the emitted masking of arbitrary 64-bit token arguments to 32 bits, along with the five-word return layout.  All accepted declarations use only the standard logical axioms.  The stage allocation bound reached the kernel recursion limit and remains under checking.  Session composition, the complete binary package, and numerical propagation remain open.
+
+Pushed `5978ae81` with complete public token-step execution.  The token-step budget now passes in 1.2 seconds and supplies every allocation premise under the bound `heap.top + cache.size + 1,942,544 < 2^32`.  The first post-hidden budget reached its 120-second limit.  Separating normalization, projection, and cleanup bounds reduced the stage check to 1.3 seconds.  Initialization, owned release, session shutdown, success continuation, and failure continuation pass.  The session recurrence ends on a nonzero status, frees the preceding cache and weight buffer, and closes normally after the final successful token.  Each successful step releases its logits and replaced cache while preserving the loaded weights and new cache.
+
+The complete `gpt2_128_exact` theorem now passes.  It composes reset, allocation of the rounded 127,695,976-byte weight buffer, loading the 127,695,972 model bytes, exact model validation, and up to 128 token calls.  Rejected models close without inference.  The source trace specifies every status, cache, and logit result.  The session invariant allows 16 MiB of heap-top growth per token from a 128 MiB initial allowance.  Its inputs require only the model byte length and token-count bound.  Invalid token IDs and numerical failures terminate through the checked status path.  The session and combined specification each check in 1.3 seconds with standard logical axioms.  The focused source-driven gate passes.  Kernel certificate generation for the retained 28,315-byte binary is next.  Full numerical propagation and release reproduction remain open.
+
+Pushed `1a979bdb` with the complete cached-session theorem.  The frozen model binary has SHA-256 `9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075`.  The first package check failed while Lean compiled its flat 28,315-byte literal, reaching the LCNF compiler's heartbeat limit.  The migration generator now divides large byte literals into lists of at most 4,096 bytes.  A test reconstructs every emitted byte at the threshold and at the complete model's size.  The replacement byte module compiles, and the independent checker confirms equality with every external byte.  Large type and function-index sections now use separate modules of sixteen entry lemmas.  The section certificates have passed.  Function-body decoding and validation remain in progress.
+
+The numerical drafts compose exact integer dots with the two FP32 rescaling errors, then bound the ordered group additions and final bias.  A separate raw-word margin checker compares finite logits using integer multiples of `2^-149`, avoiding rounded host comparisons.  Its intended certificates concern supplied logit pairs.  Full recurrence bounds and the connection to computed inference outputs remain separate obligations.  These new numerical declarations have not yet been checked because the binary gate holds the serial Lean runner.
+
+The generator also divides function-body certificates into modules containing at most eight sequence lemmas, preserving their dependency order.  The first such module for the complete model checks in 37 seconds.  The Node test verifies that partitioning preserves every declaration exactly once and resolves every generated import.  Paired logit capture completed on 229 prefixes.  Its integer precheck accepts 119 raw-logit margins and 183 margins after subtracting the winning logit's common offset.  The latter comprise 116 of 128 fixed prefixes and 67 of 101 prompt prefixes.  Lean certificate checking remains pending.  The captured raw words, their hashes, and the capture record are retained under `build/gpt2-124m/quantized-group64/certificates`.
+
+Pushed `b8ad9ae8` with bounded certificate generation.  The group reconstruction, ordered FP32 sum, bias addition, and returned projection-word lemmas now pass, along with the first-index greedy rule and the raw-word margin checker's soundness theorem.  Six kernel-checked examples cover strict margins, ties, equality at the threshold, changed winners, common offsets, and nonfinite inputs.  The first check exposed a reserved identifier, ambiguous references to `Finite`, and an integer absolute-value cast.  Explicit names and a separate integer range lemma resolved those errors.  Each numerical module checks in roughly one second with only standard logical axioms.
+
+The Lean checker completed all 229 logit pairs and reproduced the precheck's 119 raw and 183 common-offset certificates.  [Certificate coverage](data/gpt2-quantized-v1/certificates/README.md) records the exact scope and runtime trust boundary.  Every captured group64 hash matches its retained experiment, as do all 128 FP32 fixed-prefix hashes.  These a posteriori certificates do not discharge the forward-propagation obligation.  The checkpoint-export checker and its scalar reconstruction theorem also pass as Lean declarations.  Checking all 123,532,032 coefficients, 133,201 scales, and 907,776 retained FP32 values is queued through the serial runner.  The square-root bound required for general FP32 normalization is under development.
+
+Pushed `66120d07` with the grouped numerical bounds and logit certificates.  The interpreted checkpoint checker reached its 1,200-second limit before finishing its first matrix.  Separating executable definitions from proof imports and compiling a native Lean checker reduced the complete run to within its 600-second limit.  It passed every coefficient, scale, retained FP32 word, and specified quotient-range check.  The [export record](data/gpt2-quantized-v1/certificates/export-check.json) preserves identities, counts, the successful command, and the interpreted timeout.  The soundness declarations remain kernel checked.  Whole-file execution trusts the pinned Lean native compiler and runtime.
+
+The generalized FP32 square-root theorem passes with an explicit raw-magnitude bound.  It accounts for rounding the integer square root and packing the result.  The exact-significand lemma now includes the endpoint `2^24`.  Arithmetic perturbation lemmas cover addition, multiplication, division, and square root.  The ordered FP32 dot-product theorem and grouped projection theorem compose component errors through every product, integer partial dot, rescaling, and ordered addition.  A dimension-independent real LayerNorm theorem supplies the centering and denominator perturbation result for width 768.  The initial drafts needed explicit Boolean reduction, cast normalization, and sum-factor extraction.  The accepted modules check in roughly one to two seconds with standard logical axioms.
+
+The packed-logit, cached-step, and conditional session certificate theorems pass.  The session theorem follows the two caches on a shared token sequence and proves equal first-index greedy choices when every certificate succeeds.  It makes no claim that all retained positions pass.  Forward propagation through the complete cached network remains open.  The binary gate encountered a 900-second lock-admission timeout while the interpreted checkpoint checker held the shared runner.  It resumed from cached modules after that run ended.  Updated section modules and the remaining decoder, validation, and translation certificates are still under checking.
+
+Pushed `4d1eea77` with checkpoint evidence, packed and session certificates, and the checked arithmetic bounds.  The width-768 LayerNorm forward theorem now passes.  It composes the source mean loop, rounded centering, squared differences, variance sum, division by 768, epsilon addition, square root, reciprocal, normalization, scale, and bias.  Its conclusion bounds each returned packed word against a real normalization of the specified reference input.  Assumptions identify finite inputs and parameters, raw intermediate ranges, and positive lower bounds for the square-root perturbation and reciprocal denominators.  The final composition checks in 1.3 seconds with standard logical axioms.  Applying those assumptions to measured model traces remains work for the complete numerical certificate.
+
+The exponential bound now covers the source degree-18 Horner polynomial, rounded coefficients, Taylor remainder on the reduced interval, repeated squaring, and the cutoff below minus 64.  Its reduction premise states the exact rescaling relation between input and reduced raw words.  Its other premises bound the reduced magnitude and arithmetic intermediates.  The cutoff error is at most `2^-64`.  A nonpositive-domain perturbation theorem relates the result to an inexact argument.  These declarations check in one to two seconds.  Reused real mathematics supplies the polynomial remainder and global GELU Lipschitz estimate.  New binary32 sign, magnitude, and ordering lemmas adapt the existing binary64 results.  The GELU argument theorem accounts for all five FP32 arithmetic stages and both rounded constants.  Quotient branches, attention, cache-history propagation, and evaluation of the complete forward bound remain open.
+
+All sixty-six function-body decoder certificates, the complete binary decode, and function validation have passed for the 28,315-byte model.  Function validation checked in 59 seconds.  The package driver continues through the execution-proof dependency closure before the final translation theorem and declaration audit.  No final package success is claimed at this point.
+
+The independent package check passed for the complete 28,315-byte grouped model.  It checked external-byte equality, all sixty-six function bodies, decoding, grammar membership, validation, translation, session transfer, and declarations.  The combined `artifact_gpt2_128_exact` theorem uses only standard logical axioms.  The quantized command now selects this frozen package and checks its manifest identity and file sizes along with the existing hashes.  GELU forward propagation also passes, including both quotient branches, the magnitude-eight cutoff, and input perturbation.  Its tail bound reuses the conservative 1/100 estimate and must be included in the eventual evaluated bound.  Attention, complete cache-history propagation, evaluated ranges, and final release reproduction remain open.
+
+The deployed command passed a generation test from the verified package: `tools/gpt2 --quantized --text "Once upon a time, in a small village" --generate 2` returned the expected prefix followed by “of a”.  The package bytes are identical to the binary used by the retained 128-prefix, completion, and repeated timing records.
+
+The attention forward theorem now passes through the returned packed words.  It composes the 64-term query–key dot product and scaling, checked maximum-shift conditions, rounded subtraction, exponential approximation, ordered softmax summation and division, and the probability–value dot product.  The exact real softmax cancels each computation’s maximum shift.  A shared weighted-softmax perturbation theorem propagates score and cached-value errors without a factor equal to the context length.  The final attention composition checks in 1.4 seconds with standard logical axioms.  Packed projection, embedding, residual, and GELU component bounds also pass.  Initial drafts required qualified names for decoded FP32 values, explicit row-index division identities, and an integer absolute-value cast.  Full block/session composition and measured range instances remain open.
+
+Commit `5e647f77` included the cache-lookup helper before inspection of its final build result.  That helper reached the elaboration heartbeat limit while a branch tactic tried the historical-cache hypothesis against the current-QKV branch.  The arithmetic component bounds passed.  The cache helper now selects the historical or current branch explicitly before applying the corresponding hypothesis.  Its corrected build is under checking.
+
+The corrected cache-lookup helper passes in 2.7 seconds with standard logical axioms.  Both historical-cache and current-QKV selections now use their explicit source branches.
+
+Direct quantized-versus-FP32 bounds now pass for LayerNorm, grouped learned projections, attention with historical and current key/value inputs, residual addition, and GELU.  The projection comparison transfers the incoming activation error through the local quantizer reconstruction bound and retains the exported weight error.  Each stage produces a finite maximum over its component bounds.  The complete transformer-block theorem composes all ten stages and bounds both the 768 hidden values and the 1,536-word cache update.  It checks in 3.7 seconds with standard logical axioms.  Its assumptions name arithmetic intermediates, local reconstruction errors, retained parameter equality, successful quantized block guards, and incoming hidden/cache errors.  Twelve-layer and repeated-token composition, measured range instances, and evaluated bounds remain open.
+
+The complete numerical session composition passes.  It propagates embedding error through twelve blocks, final normalization, all 50,257 vocabulary outputs, and both models' separately computed cache histories on a shared token sequence.  `Numerical.Session.trace_error` gives each returned logit's bound under explicit per-step arithmetic and reconstruction assumptions.  `Numerical.Session.choices_agree` connects those computed bounds to strict FP32 winning margins and the first-index greedy rule.  All checked declarations use standard logical axioms.  Separating cache append, state transition, finalization, and Boolean entry guards prevented normalization of large recursive source expressions at theorem boundaries.  Explicit alias rewriting resolved the last twelve-layer result conversion.  A draft packed-append file collided with an existing execution-proof module.  The original was restored unchanged, and the new source lemmas use `PackedAppendSource`.  The final session and margin build passed before staging.  Range-instance evaluation and release checks remain open.
+
+Pushed `ebce9a83` with the numerical session and greedy-preservation theorems.  Activation capture reproduced all 229 retained group64 logit hashes in 43.8 seconds.  The native Lean checker passed all 233,580 groups and 14,949,120 coefficients, including exact scale/coefficient rules and quotient ranges.  The maximum rounded quotient exceeds 127 by `2^-17`.  The checked scalar reconstruction theorem includes that clipping contribution and quotient rounding, giving a uniform captured-input bound of `150157618083 / 137438953472`.  Shared Boolean range-checker soundness now covers FP32 arithmetic, positive absolute denominator bounds, and exact exponential rescaling.  The complete specification imports these results and the numerical session, and both session theorems are registered for the package declaration audit.  The complete specification rebuild passed with standard logical axioms.  Measured nonlinear range instances, evaluation of the propagated bound, and final release checks remain open.
+
+Pushed `46e1d570` with activation evidence and numerical audit registration.  All 11,450 captured normalizations now pass native Lean arithmetic-range and denominator checks.  Capture took 110 seconds and reproduced every retained FP32 and quantized logit hash.  The checker computes the mean and variance once and validates their ordered-sum ranges with a proved recurrence.  The earlier uniform sum bound passed but enlarged the largest variance-addition exponent from 173 to 185.  Checking actual prefix sums removes that avoidable factor from the rounding bound.  The uniform sum/dot theorem remains useful for large projections.  `NormalizationRange.sound` supplies every paired-normalization premise, using a checked denominator lower bound of `1/1000` and a universal real-reference root bound.  The smallest captured denominator is 0.15138527750968933.  Source fold equalities avoid kernel expansion of the fixed 768-element list.  Checker soundness and the final conversion each check in roughly 1.5 seconds with standard logical axioms.  GELU and attention range instances, propagated-bound evaluation, and final release checks remain open.
+
+Pushed `608edda6` after the complete specification passed with the normalization evidence.  The exponential and GELU range soundness proofs now pass, including exact reduction, all eighteen polynomial stages, repeated squaring, and both quotient branches.  The native checker accepted all 16,883,712 captured GELU inputs in 279.456 seconds.  Capture reproduced all 229 retained FP32 and quantized logit hashes.  An initial native build reached its 180-second limit because the checker imported mathematical proof modules.  Separating executable definitions from proofs reduced the native dependency graph to 28 targets.  Shared Horner and dot checkers retain each running result and prove its equality to the source fold.  The FP32 reference loader now has a serial-inference base class, avoiding a diagnostic object with an absent quantized model.  Both the nonlinear and projection captures reproduce every retained hash after that change.  The first prefix also reproduces all fifty normalization records byte for byte.
+
+The attention range soundness proof passes with standard logical axioms.  Its first whole-dataset run accepted the complete 128-token trace and the first nine-token prompt before reaching its 600-second limit.  The partial profiles, executable/source hashes, and timeout record remain under the nonlinear build directory.  Profiling discarded its computed dot value and then recomputed that dot with range checks.  The revised profile retains the value and reuses its score arrays.  Final attention data evaluation and the full specification rebuild remain under checking.  Projection capture retained 22,442 input/output records, reproduced every retained logit hash, and took 108.98 seconds.  Outward evaluation uses natural-number numerators with 160 fractional bits and upward integer division.  Proofs and full-stage evaluation of that arithmetic remain in progress.
+
+The complete specification rebuild passed after rebuilding its quantized and FP32 execution dependencies.  Both paired nonlinear range conversions enter the specification imports.  All audited declarations retain standard logical axioms.  The outward integer-arithmetic lemmas and the normalization mean/centering upper bounds also pass.  Final attention data evaluation and the remaining propagated-bound stages are pending.
+
+Pushed `034585ee` with the nonlinear range checkers and complete GELU evidence.  The revised attention checker passed all 5,496 records in 521.123 seconds.  The fixed trace took 480.818 seconds, compared with 596.508 seconds before retaining profiled dot values and reusing score arrays.  The retained profiles cover every query–key product and ordered sum, score scale, softmax operation, weighted-value product and sum, and cached-value magnitude.  Both models use their own reconstructed cache histories.  The largest captured value magnitude is 13.588044166564941.  The paired attention conversion and the complete specification pass.  Projection range instances, propagated-bound evaluation, and final release checks remain open.
+
+The normalization outward-bound theorem now passes through its complete affine output.  It bounds every mean, centering, variance, square-root, reciprocal, and final-product error with the natural-number evaluator.  The bound uses the existing `1/1000` root and denominator lower bounds and the proved reference-inverse bound of 1,000.  Integer addition is exact, and multiplication and division round upward at 160 fractional bits.  A reusable integer-to-FP32 magnitude theorem also passes and will supply grouped-projection range bounds.  The initial proof needed explicit reduction of parameter fields and a natural-number cast.  The completed component theorem uses standard logical axioms.
+
+The projection range checker passed all forty-nine weight matrices and 22,442 captured input/output records across 229 prefixes in 126.862 seconds.  Its first run failed at the first activation reconstruction check after completing the weight checks.  The scale profiler passed a group index instead of the word offset expected by `rowScale`.  Multiplying by 64 fixed that diagnostic.  The failure tail, successful output, source identities, and compressed profiles are retained.  The learned-projection and vocabulary soundness conversions now pass with standard logical axioms.  They compose the checked export relation, packed-slice word equality, activation reconstruction, exact integer accumulation, FP32 rescaling, ordered sums, and bias equality.  The uniform exported-coefficient bound includes a conservative saturation contribution.  Its factor is `3/2 + 1/65536`, compared with `1/2 + 1/65536` for checked activation groups.  Initial proof drafts needed explicit source aliases and arithmetic equalities before elaboration.  The complete specification rebuild passed all 4,163 targets with standard logical axioms.
+
+Six fresh prompts are fixed in [the group64 holdout fixture](data/gpt2-quantized-v1/heldout-group64.json) before evaluation.  They cover narrative, exposition, dialogue, code, numeric prose, and a technical explanation.  The previous nine prompts remain explicitly identified as previously evaluated.  Embedding/residual range evidence, full outward evaluation, and release reproduction remain open.
+
+Pushed `739f4f4f` with the projection proofs, complete range evidence, and frozen holdout inputs.  The pointwise native checker then passed all 229 embeddings and 5,496 paired residual additions in 6.521 seconds.  It recomputed all captured embedding and residual outputs bit for bit.  Checked conditions cover finite operands, valid signed embedding coefficients, positional-word equality, and every multiplication/addition bound.  The embedding and residual soundness conversions pass with standard logical axioms.  Separating embedding computations from their proof module keeps the native executable dependency graph small.  The complete specification rebuild passed all 4,166 targets with standard logical axioms.
+
+All six fresh holdout completions finished against the frozen quantized and FP32 binaries.  First differences occur at generated positions 7, 3, 4, 11, 6, and 1.  The complete texts preserve repetition and incorrect statements from both models.  Across all 73 shared prompt prefixes, greedy winners agree at 58 positions.  Lean checked 26 raw and 49 common-offset margin certificates, reproducing every Python precheck.  The maximum raw-logit difference is 18.120101928710938 and the maximum per-vector RMS difference is 13.911928369136579.  These measurements are retained independently of the earlier nine prompts.  They do not establish forward-bound coverage or general output-quality acceptance.
+
+Pushed `dad2defe` with pointwise range evidence and held-out results.  Uniform majorants now pass for exponential, GELU, softmax, query–key scores, and weighted attention.  The nonpositive exponential error formula is at most `1/300` under the retained exponents.  Its proof includes all eighteen Horner stages, coefficient rounding, the polynomial remainder, up to six squarings, and cutoff.  The complete GELU error formula is at most `1/16`, including its `1/30000` argument bound and both quotient branches.  Softmax and attention majorants retain the captured arithmetic exponents and value magnitudes.  A shared finite-maximum lemma lifts component bounds.  These conservative majorants are inputs to complete outward evaluation.  The full specification rebuild passed all 4,172 targets with standard logical axioms.
+
+All held-out range checks passed: 3,650 normalizations, 5,382,144 GELU inputs, 1,752 attention calls, 7,154 projection input/output records, 73 embeddings, and 1,752 paired residual additions.  Capture reproduces every paired logit hash.  GELU checking took 88.788 seconds, attention 28.089 seconds, projections 79.952 seconds, and pointwise checking 2.068 seconds.  Exact commands, native executable identities, captures, logs, and compressed profiles are retained.
+
+The complete outward-bound session theorem passes.  Natural-number numerators with 160 fractional bits bound all source stages, twelve-layer traversal, vocabulary logits, and both cache histories.  Its separate greedy theorem requires strict FP32 winning margins.  Reusing the existing state-bound and cache-append lemmas kept the final block, hidden-state, and session checks at 1.4, 1.3, and 1.4 seconds.  Initial proof drafts required explicit parameter unfolding, natural-number casts, and the correct triangle-inequality argument order.  No new axioms were added.  The complete specification rebuild passed all 4,185 targets before staging.
+
+Native outward evaluation completed the original 229 prefixes in 60.887 seconds and the 73 held-out prefixes in 1.181 seconds.  Original bounds range from approximately 1.515968e601 to 8.124149e61429.  Held-out bounds reach 2.353630e7765.  Every bound exceeds the finite FP32 difference range, so forward certification succeeds at zero positions.  The conservative normalization lower bound and repeated magnitude factors make the estimate too coarse to certify precision.  Exact compressed numerators preserve this result.  The separate observed-logit certificates establish 232 individual choices across 302 prefixes, of which 263 have matching winners.  Captured operand identity with source intermediates remains an explicit assumption, and native Lean execution remains trusted for evaluating the data.  Final focused, aggregate, conformance, execution-suite, and cold-checkout tests remain active.
+
+The final independent check of the grouped cached binary passed after the outward-bound additions.  It checked the 28,315-byte artifact, source specification, and registered execution and numerical declarations with standard logical axioms.  Documentation links, whitespace, release-schema tests, and the kernel scope audit also passed.  Aggregate and cold-checkout receipts remain pending.
+
+Release preparation found three untracked tiny-model annotation modules and a tracked specification import of one of them.  All three generated annotation modules now check in Lean.  The hidden-state source gate passes.  The checked and standalone inference caches predate the compiler's returned-owner protection and temporary-checkpoint release.  Regeneration changes their output construction and checked-wrapper cleanup.  The proof updates preserve returned logits and original input weights while checking those release calls.  The first standalone output rebuild identified a saved-local prefix that still used its old index.  That prefix was corrected before the next build.
+
+The local volume has insufficient capacity for another complete proof build.  A trial checkout on the mounted `ts1` volume creates AppleDouble sidecars and fails the clean-tree requirement.  The isolated checkout under the mounted home volume stays clean and has sufficient capacity.  The cold gate will run there from the final immutable source revision, without copying local project build outputs.
+
+The standalone and checked tiny-model specifications pass against regenerated programs.  The checked wrapper now proves that releasing the clipped checkpoint preserves the logits and original input.  Its inference theorem exposes the release-counter globals needed by that composition.  The CLI accepted tokens `[0, 0, 36, 82]` with artifact `c095adafd6b3f01fd1ae279cbffc21682c1e3bd4f38aaa4b43ced09a2aa071d4`.  The aggregate source gate then found the older `validate` loop cache, which lacks current owner tracking.  Its registered historical binary must retain a frozen cache and specification before the current source proof is refreshed.
+
+The complete source-cache refresh regenerated all 72 cases and changed 22 remaining caches.  The registry contains 71 complete cases and one incomplete sequence-model case.  Historical packages require separate frozen program/specification imports when current compiler output changes.  The refreshed validation, append, box-release, CLOB cancellation/depth, shared-buffer construction, binary64 dot-product, and clipping specifications pass.  The validation frozen specification also passes.  The remaining historical specifications and current CLOB, Euler, FP32 cached-model, LEB128, and sequence-softmax proofs remain under checking.  Current quantized cache bytes are unchanged.
+
+The Euler source refresh exposed a compiler regression in conditional cleanup.  `func80` explicitly releases local 11, which aliases the first sweep result in local 9.  New branch cleanup then releases local 9 again, and the runtime traps on its freed header.  Cleanup tracked released slot numbers without resolving their known owner source.  The compiler now excludes a source when a released alias has exactly one known source.  Multiple possible sources remain conservative.  A targeted array test covers the releasing and retaining branches.  Testing and regeneration are pending.
+
+The emitted Euler binary `4a233607b5d0b9d9e7b0b9c671190707ac1aa5c1e749171e8664320164b61d24` reproduces the branch-alias failure on `solve 2`.  Wasmtime exits with status 2 and an unreachable trap in release function 107, called from step function 80.  The backtrace is retained in `build/evidence/euler-branch-alias-failure.log`.  The historical append, box-release, and CLOB cancellation specifications pass against their frozen programs.  The refreshed FP32 layer-cache release specification also passes.
+
+A small fresh-array branch reproduces the same release trap with the previous compiler.  The revised compiler passes `test/heap_loops.js`, including all existing conditional-loop cases and the new releasing/retaining branches.  The test checks returned elements and two remaining live arrays: caller input and result.  The first fixture used array push, which the source release checker rejected for escaped ownership.  A fresh map matches the accepted Euler source pattern.  Euler regeneration and the remaining proof checks continue.
+
+The regenerated Euler binary `f0ac2f623a6266109e9eb27ae0110d4cff6958532e042e18369fdbbbc5f69283` completes `solve 2` with status zero and the expected twelve output words.  Its step function again contains exactly one release of the first sweep result.  The quantized cached-model regeneration is byte-for-byte unchanged at `9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075`.  The combined historical-proof run reached its 900-second aggregate limit after the shared-buffer copy tail passed.  CLOB depth and shared-buffer enclosing modules will continue through smaller checks.
+
+Artifact regeneration passed all 72 cases after the alias-release fix.  Comparing all binary hashes changes only the Riemann, reconstructed, and certificate solvers.  The other 69 binaries, including both GPT-2 implementations, remain unchanged.  Before/after hash maps are retained under `build/evidence`.
+
+The six historical validation, append, box-release, CLOB cancellation/depth, and shared-buffer packages now pass both their frozen behavioral specifications and exact-byte translation proofs.  Their current source specifications also pass.  The remaining clipping and binary64 dot-product source proofs pass without historical artifact packages.  Aggregate gates remain pending.
+
+The refreshed sequence-softmax specification passes both branches and the guarded temporary release.  FP32 cached traversal and layer cleanup also pass.  Its final cleanup draft stopped at an unnecessary `simp` step, which was removed before a focused recheck.  The combined 500-second diagnostic reached its limit during Euler initialization dependencies after the flux execution theorem passed.  Remaining initialization work will use smaller dependency boundaries.
+
+The corrected FP32 final cleanup specification passes in 1.8 seconds.  The current Euler grid-scan specification also passes: the compiler now returns both result projections from one scan, reducing the binary from 3,292 to 3,012 bytes.  Its historical binary keeps the previous two-traversal proof.  Updating the loop frame and final result projection sufficed for the current source theorem.
+
+The frozen Euler grid-scan specification and exact-byte translation pass, preserving the historical 3,292-byte binary.  The current 3,012-byte scan specification also passes.  The frozen scan imports the preserved grid-step model and numerical scan lemmas.  One cross-package namespace opening needed the frozen qualifier.
+
+Euler initialization passes with the new nonzero/distinct-owner release guard.  `RetryStoreAt.trans` now resides in `RetryResources`, next to the other store-composition lemmas, so initialization no longer imports the later advance loop to use it.  The theorem name and statement are unchanged.  The focused initialization check passed in 1.9 seconds after its dependency rebuild.
+
+The refreshed CLOB search now has checked candidate-load and state-update lemmas.  The combined loop and selection drafts reached their diagnostic limits without completing.  Separating the five field loads and the final owner/state transition reduced those checks to 2.2 and 3.0 seconds.  An explicit resulting scratch list removed a large elaboration constraint from the transition proof.  The remaining selection branches are being checked independently before loop composition.
+
+The current CLOB search specification passes.  Its selection proof checks empty and present incumbents separately, including both price directions and the repeated eligibility calls.  The loop composes those results with the checked state update.  A permissive branch tactic left its condition unproved and caused later unification to expand execution semantics.  Explicit branch checks resolve that failure.  The frozen helper build passed in 108 seconds before the aggregate diagnostic limit.  Its loop continues through a separate check.  Exact function-body comparison also identified the same current loop in matching and post-only artifacts, including the renamed release helper.
+
+The current matching and limit-order search wrappers pass by transporting the shared search theorem through checked function renamings.  The market function region also passes.  Post-only initially failed on an incorrect helper import name, which is corrected for rechecking.  The historical CLOB search loop exhausted sixteen million heartbeats in its monolithic branch proof.  Splitting setup, tag selection, payload selection, and state update resolves that boundary.  The two selection modules check in thirteen seconds each, and the complete historical loop checks in three seconds.  Explicit normalization of the local-frame list before continuation application prevents expansion of the execution semantics during unification.  The enclosing historical specification and exact-byte translation remain under checking.
+
+The historical CLOB search specification and exact-byte translation pass in 3.1 and 1.8 seconds.  The current source proof and preserved binary proof now check separately against their respective generated programs.
+
+The complete current post-only specification passes.  Its refreshed export retains explicit owner registers for returned arrays, shifting its allocator scratch locals by two.  Updating those frames and reusing the checked search theorem sufficed for all rejection, allocation, copying, and return branches.  The Euler writer release guard, release sequence, framed release composition, and accepted writer sequence also pass.  The complete historical post-only package and FP32 cached-model specification are under checking.
+
+The post-only source specification and preserved exact-binary translation both pass.  The current and frozen matching wrappers also pass through the shared search-region proof.  The complete FP32 cached-model source specification, including session initialization, repeated steps, and release, passes after the release-guard update.  Both fresh and mixed Euler cell writers pass with the retained-root exclusion in each release guard.
+
+The current matching loop loads all five selected maker fields before either allocation branch.  Its proof now records those values in a dedicated local-frame predicate, uses them in book and trade preparation, and stages returned roots before the release guards.  Local indices alone do not describe the broader changes: the limit matcher, grid writer loop, and LEB encoder now release intermediate allocations, so their running memory invariants must represent reuse.  The frozen packages retain the original allocation behavior.
+
+The complete current Riemann solver specification passes after its initialization release guard and exported return frame changed.  The frozen FP32 pass found three references that had acquired the frozen Euler namespace even though the shared packed-memory library keeps `Heap` in `Project.EulerRiemann.Execution`.  Those references need correction before the preserved FP32 package can close.  Its projection, normalization, attention, and transformer-block modules have checked successfully.
+
+The preserved FP32 GPT-2 cached specification, complete session theorem, and exact-binary translation now pass together (3,777 build jobs, standard runner limits).  The source specification had passed separately.  The namespace correction keeps the shared packed-memory heap type in its existing namespace while the artifact-specific execution theorems use the frozen program.
+
+The matching book and trade free-list reuse proofs pass in 105 seconds each.  Full-fill preparation, finalization, and recursive transition also pass.  Two combined diagnostic runs reached their aggregate limits during dependency rebuilding.  The remaining partial allocator is being checked separately.  The Euler writer now has a checked six-reuse case: it consumes six free buffers, releases five intermediates, preserves the heap top and page count, and retains the input and protected initial output.  Its field, writer, and advance compositions check in 1.3 seconds each.  The outer grid loop still requires the resulting rotating-pool invariant.
+
+The complete current matching full-fill and partial-fill branch proofs pass, including all three allocator reuse cases.  The dispatcher required separate preparation and quantity-decision modules.  Two 120-second checks stopped during the original combined continuation proof.  The quantity slice now checks in 1.4 seconds, with explicit continuation cases instead of simplification across the full branch context.  Euler rotating-slot bounds, pairwise separation, pool rotation, and the framed release of the previous output also pass.  The reconstructed solver advance loop checks in 1.3 seconds after its dependency rebuild.
+
+The complete current matching specification passes (3,456 build jobs).  The dispatcher checks in 4.6 seconds after isolating the quantity decision and proving continuation cases without simplifying the full hypothesis context.  The loop branches, decreasing measure, initial state, exit result, exact body decomposition, and public theorem all pass.  The historical matching package remains a separate pending check.
+
+The complete reconstructed Euler source specification passes against its regenerated program.  The certificate solver passed its retry loop, flux and boundary execution, totals loop, and advance continuation before the 360-second combined diagnostic limit.  Its remaining advance and export modules will continue through smaller checks.  The grid initialization frames now account for the nine added locals and separate returned owner/pointer.  Their recheck is running.
+
+The grid initialization proof and all twelve revised initialization modules pass against the 52-local generated function.  The rotating arena state and both accepted/rejected positive-index advances also pass.  Accepted steps consume six reusable buffers after the second cell.  Rejected steps consume the free-list head.  These step theorems retain the previous output until the outer loop reads its status and releases it.
+
+The complete regenerated Euler certificate specification passes (4,154 build jobs).  Its advance loop, runtime loop, certificate packing, final solve, initial state, and public complete theorem all checked under the standard resource limits.
+
+The preserved matching package rebuild reached the 600-second aggregate limit during trade allocation.  Its early exit, book allocator reuse and bump paths, book erase/replace, partial allocator, and partial book control passed.  The remaining trade and loop targets will run separately.  The rotating grid storage invariant passes.  Release composition, outer-loop frames, and final geometry now have updated proofs awaiting focused checks.
+
+The rotating grid transition, framed release of the previous output, release continuation, and complete cell-call composition pass.  The loop shape, 52-local frame, initialization handoff, free-list geometry, and final initial-buffer release also pass.  The remaining loop proof needs explicit zero/nonzero facts at emitted release guards.  After the reported machine interruption, the checkout remains at the pushed f46e2db2 revision, all inspected proof edits remain present, and no Lean process remains.  The standard runner resumed the loop check.
+
+The complete current Euler grid specification passes (3,558 build jobs).  The loop checks in 18 seconds after stating the first-cell pointer equality and the nonzero facts used by the release guards.  The final return, initialization-to-loop handoff, valid branch, complete export, and reset all pass.  The README now describes the rotating output lifecycle and distinguishes the current generated program from the preserved 8,866-byte binary.
+
+The preserved matching specification and exact-binary translation pass together (3,469 build jobs).  Its trade allocator reuse proof checked in 107 seconds as a separate target after the aggregate timeout.  The remaining trade branches, release transitions, iteration, loop, entry, and public frozen specification then passed.  The frozen closure preserves the historical binary while the current source specification covers the regenerated control flow.
+
+The shared packed-byte copy-and-push theorem passes in 1.4 seconds.  It composes the existing copy-loop theorem with the emitted byte store, proves exact ByteArray.push contents, and limits writes to the destination payload.  This supplies the payload step for the current LEB encoder, whose allocation and release schedule now reuses two objects.
+
+The preserved Euler grid specification and exact-binary translation pass (3,566 build jobs).  Both current and historical repeated-step theorems also pass.  The artifact runner now uses the frozen runner and frozen entry predicate for its exact bytes, while the source runner uses the current generated program.
+
+The shared packed-byte push theorem passes in 2.3 seconds.  It proves allocation, copying, the appended byte, preserved locals, ownership, and the heap frame.  The current LEB branch decompositions also pass after an explicit instruction type resolved the pattern-matching error.  The reported interruption left the checkout and edits intact, and the latest grid proof commit is confirmed pushed.  The LEB loop invariant and aggregate release checks remain unfinished.
+
+The current LEB heap model, ownership transitions, both byte-append branches, release guard, state update, branch decision, and decreasing step measures pass.  The model proves that the encoder uses at most two 56-byte objects, preserves the page count, and preserves bytes below the starting heap top.  The generic push result now exposes its exact page count, which the no-growth proof needs.  The enclosing loop and export remain under construction.
+
+The preserved Euler retry and complete run theorems pass.  Its enclosing specification found a namespace mismatch: the shared array allocator uses the current matching helper, while two frozen proofs selected the preserved helper.  Explicit helper names resolve both obligations.  The corrected allocation module passes.  The enclosing specification and independent package gate remain pending.
+
+The preserved Riemann specification and exact-binary translation now pass together (3,949 build jobs).  The check includes exact execution, termination, the memory bound, numerical trace, hyperbolicity, conservation results, and residual artifact theorems.  The commit includes the checked import closure.  Further frozen Riemann modules used by the reconstructed solver remain under checking.
+
+The complete current LEB loop and exported encoder pass.  The initial-store theorem covers every input below `2^32`.  The general theorem states the six allocator globals and runtime memory-capacity condition needed by the shared allocation proof.  It exposes exact returned bytes, the alternating pointer, final heap and counters, ownership, page equality, and preservation below the starting heap top.  The preserved LEB specification and exact-binary translation also pass (3,558 build jobs).  Fourteen obsolete current proof modules were removed after their frozen counterparts passed.  The current proof uses the shared packed push, release guard, and fuel guard theorems.
+
+The preserved reconstructed-Euler scalar, reconstructed-cell, sweep, retry, and grid-scan proofs pass.  The standalone scalar proofs use current model record types, while the preserved solver uses historical types.  Fieldwise conversions and checked model equalities connect reconstruction, cell scanning, face stepping, and CFL ratios without duplicating their execution proofs.  The scan prefix uses the preserved cell model and shared array-fold lemmas.  Its scratch frame retains the existing representation through the cell conversion.  The retry theorem checks in 2.2 seconds and the scan loop in 2.6 seconds.  The enclosing run and public artifact theorems remain under checking.
+
+The quantized plan now separates completed focused proof and execution checks from pending compiler, aggregate package, conformance, and cold-checkout tests.  Current-source limit and market matching still need free-list invariants for intermediate-buffer release.  Their preserved packages remain separate pending checks.  Local disk space is 5.7 GB, with 226 GB available on the volume prepared for the clean-checkout release run.
+
+The preserved reconstructed-Euler specification and exact-binary translation pass together (4,160 build jobs).  The check covers the complete run, exact output, termination, memory bounds, reconstruction accuracy, hyperbolicity, and physical balance results.  Numerical reconstruction facts reuse the existing accuracy and factor theorems through the checked model conversion.  The commit includes the checked import closure.  Independent package verification remains part of the aggregate release gate.
+
+A direct comparison of the current limit matcher with the checked matching example finds the same loop instructions after function and local-index renaming, apart from initialization and returned-owner bookkeeping.  The full-fill allocation and release sequence matches.  The partial branch assigns its owner outputs to different locals.  Reusing those common instruction regions requires a checked local-frame renaming theorem and separate output-owner facts.  The existing function-region transport handles call indices only.  No local-frame transport has been added yet.
+
+The preserved limit and market specifications and exact-binary translations pass.  The limit proof includes complete full-fill and partial-fill execution, the terminating loop, residual-order insertion, ownership, counters, and memory frames.  The market proof reuses that matcher.  Separating the two largest function-portability lemmas resolves its combined 200,000-heartbeat limit.  Current-source limit and market proofs remain pending.  A shared local-frame relation and local instruction-renaming proof are under construction for their common matching regions.
+
+The aggregate artifact check found stale behavioral theorem names in the preserved post-only, matching, limit, market, and depth manifests.  Their program and specification fields already selected the frozen modules, but their theorem fields still selected current namespaces.  The manifests now name the corresponding checked frozen declarations.  All forty-six binary identities pass.  The independent theorem and declaration checks are running.
+
+A delegated twenty-page quantized GPT-2 report fixes source revision `c655d35b5011c1703dfd22bcceaec4e5bee17088`, maps claims to checked declarations and retained measurements, and records the failed row-scale candidate, grouped experiment, exact session proof, runtime results, and numerical limitations.  Root reviewed its complete text and selected rendered pages.  The evidence checker reads sixty-seven files from the pinned git revision and passes.  The report distinguishes 232 certificates derived from observed logits from zero forward-bound certificates and states the unfinished repository release checks.  marXiv accepted the first version with three remarks.  The revision defines the scaled-magnitude exponent and division-rounding bound, removes an approval detail, and rounds displayed trace times.  Independent review approves both versions.  marXiv accepted [version two](http://127.0.0.1:8405/abs/2609.00018v2) with no remarks.  Its archived PDF matches SHA-256 `dbf1e0bbc88fd783b98fe3b51199c9cfed4b5b32e83cf9b8a2d3b3a4cf15cc69`.  The paper directory retains both versions, evidence identities, review records, submission metadata, and publication history.
+
+The user excluded release-record maintenance from the remaining work.  Proof repairs, required proof and execution tests, and committing and pushing the changes remain authorized.  The aggregate artifact check continues through the GPT dependency closures.  The next matcher checks cover the shared local-variable renaming proof, its injective slot mapping, exact full-fill and partial-fill code regions, and memory preservation below the initial heap boundary.  These new helper modules remain untested while the aggregate Lean process holds the shared lock.
+
+The aggregate artifact check passes for all forty-six binaries, including their behavioral declarations.  The new local-variable transport library, injective slot mapping, source-frame reconstruction, call-renaming composition, and sequential continuation theorem pass focused Lean checks.  The current limit matcher has checked full-fill and partial-fill region equalities, an owner-aware dispatcher, and an exact initialization/loop/epilogue decomposition.  The allocator and release lemmas for preservation below the initial heap boundary also pass.  Exposing the existing function-region execution equality lets the two renaming proofs compose without another semantics induction.  The remaining limit loop invariant must retain owner outputs and preservation below the initial heap while intermediate trade buffers enter the free list.
+
+The matching branch theorems now retain a compositional allocation effect: preservation below any eligible heap boundary, the lower bound on newly allocated roots, and the lower bound on the resulting free-list nodes.  The full step includes the tracked-trade release under its corresponding lower-bound premise.  Partial completion retains both owner locals, array capacity and address bounds, free-list separation, and the final heap bound.  The existing matcher specification passes with these stronger postconditions.  The limit matcher can reuse these theorems with an additional invariant for the caller's protected memory and returned owners.
+
+The current limit matcher's complete internal function and `runMatch` wrapper pass.  The proof reuses the checked full-fill and partial-fill branches through function and local-variable renaming, adds owner-aware stopping, proves a decreasing loop measure, and transports the exit state to the generated five-value epilogue.  Its public postcondition retains array bounds, free-list separation, release counters, and memory preservation below the initial heap.  The shared initial-state constructor now accepts an arbitrary carried book owner.  The existing standalone matcher specification still passes.
+
+The full execution suite stopped in its release-evidence unit test because that test loaded the saved record and required it to match the working tree.  Evidence construction now has a read-only function, which the test uses to build its in-memory fixture.  The CLI still writes only through its explicit refresh command, and validation still rejects a stale input identity.  The focused unit test passes without changing the saved record.  The execution suite is running again.
+
+The complete execution suite passes: 340 standard Lean comparisons, 62 IR comparisons, and 56 final validation cases, including the quantized arithmetic and allocation tests.  The Euler C comparison reproduced all eight expected rows.  Its generator fixture changed because the shared artifact-manifest tool changed.  The WAT/binary comparison suite also passes.
+
+The public filled limit-order proof passes with the current owner locals and release counters.  The residual allocator now has a checked reuse-or-bump execution proof, an explicit returned pointer and capacity, and checked preservation of the live book, trades, and protected memory.  A shared prepared-allocation theorem reuses the existing allocator search and bump proofs.  The residual copy and append composition and the market wrapper remain unfinished.
+
+The complete current limit and market specifications pass.  Residual insertion uses the selected free-list buffer or a new allocation, copies the represented book, appends the remaining order, and retains exact allocator state and preservation below the caller's initial heap.  The generic memory-growth and bump proofs now require the runtime capacity bound only when pages must grow.  Their original unconditional interfaces remain available.  The market export reuses the owner-aware matcher and accounts for the generated owner locals.  Forty-seven obsolete current limit modules were removed after checking both public specifications and confirming that every removed module has a retained frozen counterpart.  The official conformance gate passes 26 execution files, 6,996 Talos assertions, four configured skips, and 15 invalid modules.  The aggregate source check is running.
+
+The source aggregate reproduced all seventy-two generated program caches, then reached its twenty-minute limit during the shared-dependency rebuild at Euler initialization and retry modules.  It reported no Lean errors before the timeout.  The remaining cases will run through separate registered checks before the aggregate is repeated.  The complete limit and market proof commit is confirmed on the remote branch.  The tiny GPT-2/128 generated cache is refreshed while its registered incomplete proof remains paused.
+
+The separate registered checks for `euler_riemann`, `euler_reconstructed`, and `euler_certificate` pass after completing their remaining dependency builds.  The aggregate source check is running again.  Commit `dea88fd6` is pushed, and the prepared reproduction checkout selects that commit with a clean tracked tree.  Its Node, wasm-tools, and pinned Wasmtime setup checks pass.  Dependency setup and independent artifact verification remain pending there.
+
+The user excluded separate-checkout reproduction from the task.  The prepared checkout received the committed source and pinned Wasmtime, but no Lean dependency setup or proof build ran there.  Remaining verification uses the existing checkout.  The plan and development status now record this scope.
+
+The second aggregate source attempt reproduced all seventy-two program caches and reached its twenty-minute proof-build limit after the quantized transformer-block and forward-bound dependencies passed.  It reported no Lean errors.  The aggregate driver now builds each completed registered specification with the existing per-case limit before checking the combined `Project` library.  This separates dependency rebuilding by registered case while retaining the generation, import-membership, and aggregate proof checks.
+
+The revised aggregate source check passes.  All seventy-two generated program models match their checked-in caches, all seventy-one completed registered specifications pass under their per-case limits, and the combined `Project` library passes.  The check includes both GPT-2 cached sessions and the quantized numerical session theorems.  The final aggregate exact-artifact check is running in the existing checkout.
+
+The final `tools/artifact-proof.js check-all` run passes all forty-six exact-binary packages, their behavioral specifications, and registered declaration audits.  It rebuilds affected frozen proofs against the completed shared changes and confirms both GPT-2 session packages.  Together with the passing source aggregate, complete execution suite, WAT/binary comparison, and official conformance gate, this completes verification of the quantized implementation in the existing checkout.  The source aggregate's per-case scheduling change passed its full run.  No compiler or proof changes were needed during the final artifact check.
+
+The implementation, execution and memory proofs, numerical bounds, evaluation, and reviewed marXiv report are complete.  Quantized inference remains opt-in.  Forward bounds certify zero token choices on the evaluated prefixes, while separate observed-logit certificates establish 232 choices.  Selecting an output-quality criterion for default adoption remains a future decision.  Release-record maintenance and separate-checkout reproduction remain outside this task's scope.
+
+## I/O and quantized GPT merge: 2026-09-25
+
+The `iogpt` branch merges `io` at `2db4d3f9` with `gpt2-quantized` at `ab1e91f3` in the existing checkout.  Both parents use the same Lean and Talos revisions.  The merge preserves the preexisting local release-record edits and untracked experiment files.
+
+- [x] Fetch both parents and build the combined compiler.
+- [x] Resolve ownership differences and pass the I/O and quantization execution tests.
+- [x] Regenerate the source models and check the combined proof library.
+- [x] Check the exact binaries, documentation, and merge diff.
+- [x] Commit and push `iogpt`.
+
+The first merged compiler used the GPT branch's scoped temporary cleanup and fixed-point fold ownership analysis together with the I/O branch's effect tracking.  The byte-I/O test reached `carried` and trapped while releasing a buffer.  The emitted branch released the new read buffer before assigning it to the next iteration.  Scoped cleanup started without the incoming accumulator owners, so its surviving-owner analysis lost the branch result that could contain either the old owner or the new read owner.  Cleanup now receives the accumulator owner slots from the already known accumulator type.  The existing carried-buffer test checks that correction before proof regeneration.
+
+The accumulator correction passes `carried`.  The next test, `nestedReleased`, reports an allocation imbalance.  Its inner loop can return its borrowed initial buffer or a newly read buffer.  Cleanup previously considered only folds whose result was always fresh.  The merged analysis identifies the owner offsets released by a fold, including explicit guarded releases, and guards final cleanup against the borrowed initial owners.  This preserves the I/O branch's nested-loop cleanup with the GPT branch's scoped releases.
+
+The complete ByteIO suite passes after both loop corrections: 53 runs and four pure-mode rejections.  The rebuilt quantized cached model also passes session validation, inference, failure cleanup, cache preservation, reset, and shutdown.  The first full execution suite then found a leak in `linearChecked` when finite inputs produce a nonfinite output.  The I/O branch protected every known owner during result cleanup, including the buffer being released.  Its self-comparison suppressed that release.  Result cleanup now protects returned owners and the existing explicitly tracked borrowed owners.  Both the ByteIO suite and all 38 quantized scalar, projection, rejection, and allocation cases pass after the correction.
+
+The first focused source-proof check failed in the ClobDepth entry and quantized row-scale and dot instruction decompositions.  Removed unused loop-flag assignments shift the quantized loop boundaries by two instructions.  The proof changes retain the original arithmetic and memory statements.  Complete source and exact-binary checks remain pending.
+
+Both quantized projection source specifications pass after updating the loop slices, with only the standard logical axioms.  Restoring incoming-accumulator ownership to the fold release analysis preserves the I/O branch's conditional-array cleanup.  The existing GPT heap-loop tests pass with that restoration.  A conditional array-fold fixture checks borrowed inputs and the returned array across empty, retained, replaced, and interleaved accumulator cases.  The first fixture used an inline empty literal and exposed its separately allocated initial owner.  The revised fixture supplies the initial array as a host argument so the test isolates replacement cleanup without conflating literal allocation.  Its fresh run is pending.
+
+The regenerated ClobDepth model now matches the I/O parent exactly, including conditional accumulator release.  Documentation checks pass after replacing machine-specific report-build paths with paths derived from the repository directory.
+
+The conditional-fold test and the complete ClobDepth source specification pass.  The full execution suite passes core correctness, all scalar floating-point tests, packed-memory tests, and quantized projection tests so far.  The regenerated quantized cached binary passes model validation, cached steps, failure cleanup, cache preservation, reset, and close.  The TinyGpt2Infer aggregate reached its five-minute limit without a Lean diagnostic.  Its instruction decomposition, local frame, and component-region checks pass as separate targets.
+
+The complete FP32 cached-model source specification now passes, including the revised incoming-owner guards.  The quantized model-validation proof and TinyGpt2Infer hidden-state proof also pass.  The complete execution run passed through the two-dimensional cell tests, then stopped because its invocation omitted WASMTIME_C_API.  The restarted run explicitly selects the installed Wasmtime 44 C API.  PackedReleaseConjunction proves the emitted integer conjunction of owner comparisons, with the same release condition as the existing conditional-filter theorem.  The quantized cached-loop proof uses that checked form for accumulator cleanup.
+
+TinyGpt2Infer's complete source specification passes.  The full execution suite reproduced the Euler C comparison after regenerating its generator-identity manifest, then passed the ByteIO tests.  RunningSum exposed an additional ownership error on a final line without a newline.  Scoped fold cleanup used a conservative released-slot analysis to infer owner types.  That analysis includes the input pointer and length used to allocate a released byte buffer, so cleanup misclassified the returned line length as an owner and called release on it.  Fold-temporary classification now reads explicit local release targets, alongside the fold's typed release offsets.  The existing EOF test exercises the failure.
+
+The rebuilt RunningSum passes arithmetic, native comparison, streaming, EOF, and error tests.  The complete execution suite is running again with the corrected fold-temporary classification.  The Euler grid model matches the GPT parent's instruction sequence except for removed loop-flag stores.  Its current proof uses that parent's buffer-release and allocation invariants, with the two flag stores and their frame updates removed.  This avoids applying the I/O parent's different recycling sequence to the merged model.
+
+The merge initially retained I/O proof entry points while accepting GPT-side deletions of their historical helper modules.  Restoring the imported I/O modules repairs the CLOB and LEB worked-example closures.  The shared local-frame transport proof also needs cases for the quantization instructions: signed-byte extension, byte loads and stores, FP32 nearest rounding, saturating conversion, and signed integer-to-FP32 conversion.  Each case uses the existing atomic-instruction relation.  Documentation and whitespace checks pass.
+
+The final full execution run passes, including RunningSum EOF handling.  All regenerated source models match the versions used by the repaired proofs.  The complete quantized cached-session specification, shared local-frame opcode cases, and matching-loop advance proof pass.  Exact-binary package refresh and aggregate source and artifact checks remain.
+
+The refreshed quantized cached binary matches all 6,432,896 reference logits and every attention cache across 128 prefixes, including the retained group-of-64 experiment.  The complete matching specification passes after restoring the I/O versions of its loop composition and initial-state proof.  Limit and market checking reached the four-minute combined dependency limit during the historical matcher closure without a Lean error.  Smaller closure targets continue before the aggregate.
+
+The byte-I/O echo execution check exceeded five minutes.  Precomputing its translated module did not reduce that boundary and was discarded.  The pinned Talos semantics already documents the size of the instruction dispatcher in `Interpreter/Wasm/Semantics/Lemmas.lean`.  Shared `cbv_eval` equations now isolate the integer, control, and memory instructions used by these finite checks.  Each equation follows `execOne.eq_def` and remains kernel checked.  The first lemma build found only redundant terminal `rfl` steps, which are corrected for rechecking.  The running-sum source theorem and standard-axiom audit pass after the merge, and its refreshed binary decoding is under checking.
+
+The shared instruction-evaluation equations pass, and the previously timed-out echo theorem now passes within the three-minute focused limit using them.  The running-sum decoder refresh exposed a generator integration error: the I/O wrapper filtered out `ArtifactCodeNSequencesK` modules introduced by the shared decoder generator.  The wrapper now retains those checked sequence modules.  Its gate unit tests pass, and the running-sum package is being regenerated and checked.
+
+The WAT/binary comparison suite and official conformance gate pass on `iogpt`.  Talos reports 6,996 passing assertions, four configured skips, and no failures.  Wasmtime passes the complete configured corpus, and the validator rejects the configured invalid modules.  Interleaving conformance with proof drivers caused shared dependency rebuilds between the two Lake workspaces.  Finishing conformance before resuming the proof drivers removes that repeated work.
+
+The regenerated running-sum binary passes exact decoding, grammar encoding, validation, import/export identity, and the standard-axiom audit.  The generator now emits its complete split decoder closure.  Its unchanged source correctness and output-order theorems passed separately.  Universal WASM execution and memory proofs for running sum remain outside the existing proved boundary, as documented before this merge.
+
+The complete byte-I/O gate passes against a fresh compilation of the echo fixture.  All six finite execution cases and all 46 theorem audits use only the standard logical axioms.  Source and artifact aggregate checks remain before committing the merge.
+
+The source aggregate found an obsolete `rfl` proof argument in the Validate entry theorem.  Removing that argument restores the checked call, and the focused specification passes.  The artifact aggregate found stale current-model links for fold sum.  Comparing every registered artifact model with the checked GPT parent identifies two further affected packages: CLOB quote and outward grid speed.  Their generated models omit dead loop-flag stores.  These three packages are being regenerated through the existing migration tool before repeating the exact-byte checks.
+
+Fold sum, CLOB quote, and outward grid speed have refreshed artifact packages generated from the merged compiler output.  The outward-grid package retains its kernel decoder certificates and both exact and numerical artifact theorems.  The aggregate artifact gate is checking the refreshed packages together with the preserved historical packages.
+
+The next source aggregate passed the repaired limit and market proofs, then found that the grid-step adapters still described the model before the final ownership correction.  The earlier focused grid proof therefore does not establish the final compiler output.  The current outer entry has 47 locals, stages its next accumulator before a conjunction release guard, and preserves the initial root in local 44.  Initialization, loop frames, release conditions, and return staging are being checked against that generated program without changing the program cache or the behavioral statement.
+
+The final grid-step source specification now passes.  Its initialization and return adapters use 47 locals, and the loop preserves the initial root in local 44.  Standard UInt32 conjunction equations and the checked nonzero flag fact simplify the emitted guard.  The proof retains its original storage, termination, and output-safety statements.  No source or generated-model change was required.  The aggregate source gate is running again, while the exact artifact gate has passed the refreshed fold-sum and quote packages.
+
+The final `tools/talos-proof.js check --all` run passes every registered completed case and the aggregate `Project` library.  This includes the final grid model, both complete Riemann solvers, the certificate solver, all CLOB exports, and the FP32 and quantized cached GPT sessions.  The independent artifact gate continues through the preserved frozen proof closures.
+
+The quantized CLI now selects the refreshed binary.  `tools/gpt2 --quantized --text 'Once upon a time, in a small village' --generate 8 --json` passes and generates “of a hundred inhabitants who had been scattered”.  Shutdown reports 5,697 allocations and 5,697 frees.  This is a command-line execution test, not a controlled timing measurement.  The exact-artifact aggregate remains a prerequisite for committing the merge.
+
+The artifact aggregate passed the complete Riemann package and refreshed outward-grid package, then found a stale dependency in the reconstructed solver's frozen scan proof.  That proof reused the current outward-grid local frame, whose unused loop flag was removed with the current compiler output.  The frozen binary still writes the flag.  Its scan proof now defines the historical scratch fields and local frame beside the frozen loop shape, preserving the exact program and public theorem.  This removes the dependency on the current scan layout.
+
+The corrected frozen scan and complete scan-entry proofs pass.  The final `tools/artifact-proof.js check-all` run passes every registered binary package, behavioral specification, and declaration/axiom audit, including both complete GPT sessions.  The full source gate, complete Node execution suite, byte-I/O and running-sum gates, WAT/binary comparison, official conformance, quantized reference comparison, CLI test, and verifier identity test also pass.  The documentation identifies the merged binaries and preserves the historical benchmark and report revisions.  The running-sum universal WASM execution and memory proof remains an existing open boundary.

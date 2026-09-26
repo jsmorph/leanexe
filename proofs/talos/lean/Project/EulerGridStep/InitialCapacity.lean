@@ -10,18 +10,18 @@ set_option maxHeartbeats 1000000
 
 def initialCapacityFrame (frame : Locals) (length : UInt64) : Locals :=
   { frame with
-    locals := frame.locals.set 37 (.i64 (FixedArrayCapacity.normalizedCapacity length 1)),
+    locals := frame.locals.set 41 (.i64 (FixedArrayCapacity.normalizedCapacity length 1)),
     values := [] }
 
 /-- Exact capacity arithmetic in the valid grid entry. -/
 theorem initial_capacity_spec (m : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
     (frame : Locals) (length : UInt64)
-    (hParams : frame.params.length = 2) (hLocals : frame.locals.length = 43)
-    (hValues : frame.values = []) (hLength : frame.locals[31]? = some (.i64 length))
+    (hParams : frame.params.length = 2) (hLocals : frame.locals.length = 47)
+    (hValues : frame.values = []) (hLength : frame.locals[35]? = some (.i64 length))
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp m rest Q initial (initialCapacityFrame frame length) env) :
     wp m ((gridValidBody.drop 36).take 18 ++ rest) Q initial frame env := by
-  have hLengthGet : frame.locals[31] = .i64 length := by
+  have hLengthGet : frame.locals[35] = .i64 length := by
     have h := hLength
     rw [List.getElem?_eq_getElem (by omega)] at h
     exact Option.some.inj h

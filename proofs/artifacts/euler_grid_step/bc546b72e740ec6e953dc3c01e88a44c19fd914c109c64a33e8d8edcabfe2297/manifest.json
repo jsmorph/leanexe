@@ -8,9 +8,9 @@
   "artifactBytesModule": "Project.EulerGridStep.ArtifactBytes",
   "artifactBytesDefinition": "Project.EulerGridStep.Artifact.artifactBytes",
   "rawModuleDefinition": "Project.EulerGridStep.Artifact.Cache.raw",
-  "cachedProgramModule": "Project.EulerGridStep.Program",
-  "cachedProgramDefinition": "Project.EulerGridStep.module",
-  "specModule": "Project.EulerGridStep.Spec",
+  "cachedProgramModule": "Project.EulerGridStep.FrozenProgram",
+  "cachedProgramDefinition": "Project.EulerGridStep.Frozen.module",
+  "specModule": "Project.EulerGridStep.FrozenSpec",
   "proofTarget": "Project.EulerGridStep.ArtifactTranslation",
   "identityTheorem": "Project.EulerGridStep.Artifact.decode_eq_cache",
   "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
@@ -18,12 +18,12 @@
   "cacheEqualityTheorem": "Project.EulerGridStep.Artifact.translation_cache_eq",
   "artifactCorrectnessTheorem": "Project.EulerGridStep.Artifact.artifact_module_eq_cache",
   "behaviorTheorems": [
-    "Project.EulerGridStep.Spec.stepCheckedBits_exact",
-    "Project.EulerGridStep.Spec.stepCheckedBits_wat_safe",
-    "Project.EulerGridStep.Spec.reset_exact"
+    "Project.EulerGridStep.Frozen.Spec.stepCheckedBits_exact",
+    "Project.EulerGridStep.Frozen.Spec.stepCheckedBits_wat_safe",
+    "Project.EulerGridStep.Frozen.Spec.reset_exact"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
-  "verifierSourceSha256": "9f3a46e5d733dccb0c686a6a4f2ee7213e8b265d5157972794db8569b60ab6fe",
+  "verifierSourceSha256": "0b8486bea82c65a31ecdf332642f8d96fcf99f2726130f56707f373c02017194",
   "hostAssumptions": []
 }

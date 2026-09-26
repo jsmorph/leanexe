@@ -22,63 +22,56 @@ def appendTradeStoreFrame (ptr g0 : UInt64) (order : OrderL)
     (n : Nat) : Locals :=
   { params := [.i64 ptr, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty],
-    locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
-      .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
-      .i64 order.oside, .i64 order.oprice, .i64 order.oqty,
-      .i64 0, .i64 0, .i64 0, .i64 ptr, .i64 (g0 + 48),
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 (g0 + 48), .i64 0, .i64 ptr, .i64 (UInt64.ofNat n),
-      .i64 (UInt64.ofNat n * 5), .i64 (UInt64.ofNat n + 1),
-      .i64 (g0 + 48), .i64 (UInt64.ofNat n * 5),
-      .i64 order.oid, .i64 8, .i64 0, .i64 0,
-      .i64 ((g0 + 48 + orderArrayBytesU (n + 1)) + 48 + 8),
-      .i64 (((g0 + 48 + orderArrayBytesU (n + 1)) + 48 + 8 - 1) /
-        65536 + 1),
-      .i64 0, .i64 (orderArrayBytesU (n + 1)),
-      .i64 0, .i64 0, .i64 (g0 + 48 + orderArrayBytesU (n + 1)),
-      .i64 ((g0 + 48 + orderArrayBytesU (n + 1) - 1) / 65536 + 1),
-      .i64 (g0 + 48)],
+    locals := [.i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader, .i64 order.oside, .i64 order.oprice,
+      .i64 order.oqty, .i64 1, .i64 0, .i64 ptr, .i64 order.oid, .i64 order.otrader,
+      .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0, .i64 0, .i64 0, .i64 ptr,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 (g0 + 48), .i64 (g0 + 48),
+      .i64 0, .i64 0, .i64 ptr, .i64 (UInt64.ofNat n), .i64 (UInt64.ofNat n * 5),
+      .i64 (UInt64.ofNat n + 1), .i64 (g0 + 48), .i64 (UInt64.ofNat n * 5), .i64 order.oid,
+      .i64 8, .i64 0, .i64 0, .i64 ((g0 + 48 + orderArrayBytesU (n + 1)) + 48 + 8),
+      .i64 (((g0 + 48 + orderArrayBytesU (n + 1)) + 48 + 8 - 1) / 65536 + 1), .i64 0,
+      .i64 (orderArrayBytesU (n + 1)), .i64 0, .i64 0, .i64 (g0 + 48 + orderArrayBytesU (n + 1)),
+      .i64 ((g0 + 48 + orderArrayBytesU (n + 1) - 1) / 65536 + 1), .i64 (g0 + 48)],
     values := [.i64 (g0 + 48 + orderArrayBytesU (n + 1))] }
 
 def appendTradeStoreHeaderProg : Wasm.Program :=
   [
   .constI64 (48 : UInt64),
   .addI64,
-  .localSet 46,
-  .localGet 44,
-  .globalSet 0,
+  .localSet 48,
   .localGet 46,
+  .globalSet 0,
+  .localGet 48,
   .constI64 (48 : UInt64),
   .subI64,
   .wrapI64,
   .constI64 (5501223100278326855 : UInt64),
   .store64 (0 : UInt32),
-  .localGet 46,
+  .localGet 48,
   .constI64 (40 : UInt64),
   .subI64,
   .wrapI64,
   .constI64 (1 : UInt64),
   .store64 (0 : UInt32),
-  .localGet 46,
+  .localGet 48,
   .constI64 (32 : UInt64),
   .subI64,
   .wrapI64,
-  .localGet 41,
+  .localGet 43,
   .store64 (0 : UInt32),
-  .localGet 46,
+  .localGet 48,
   .constI64 (24 : UInt64),
   .subI64,
   .wrapI64,
   .constI64 (2 : UInt64),
   .store64 (0 : UInt32),
-  .localGet 46,
+  .localGet 48,
   .constI64 (16 : UInt64),
   .subI64,
   .wrapI64,
   .constI64 (4 : UInt64),
   .store64 (0 : UInt32),
-  .localGet 46,
+  .localGet 48,
   .constI64 (8 : UInt64),
   .subI64,
   .wrapI64,
@@ -92,16 +85,16 @@ def appendTradeStoreTailProg : Wasm.Program :=
   .constI64 (1 : UInt64),
   .addI64,
   .globalSet 2,
-  .localGet 46,
-  .localSet 34,
-  .localGet 34,
+  .localGet 48,
+  .localSet 36,
+  .localGet 36,
   .wrapI64,
   .constI64 (0 : UInt64),
   .store64 (0 : UInt32),
+  .localGet 36,
+  .localSet 34,
   .localGet 34,
-  .localSet 26,
-  .localGet 26,
-  .localSet 33
+  .localSet 35
 ]
 
 def appendTradeStoreProg : Wasm.Program :=
@@ -130,8 +123,8 @@ def appendTradeAssertion (st0 : Store Unit) (g0 g2 : UInt64)
     match c with
     | .Fallthrough st' s' =>
         s'.get 31 = some (.i64 0) ∧
-        s'.get 32 = some (.i64 (g0 + 48)) ∧
-        s'.get 33 = some
+        s'.get 33 = some (.i64 (g0 + 48)) ∧
+        s'.get 35 = some
           (.i64 (g0 + 96 + orderArrayBytesU (os.length + 1))) ∧
         appendTradePost st0 g0 g2 os order st'
           [.i64 (g0 + 96 + orderArrayBytesU (os.length + 1)),

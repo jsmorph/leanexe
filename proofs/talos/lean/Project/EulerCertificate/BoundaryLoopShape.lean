@@ -10,12 +10,12 @@ open Project.EulerCertificateFlux.Execution (boundsValues vectorValues)
 open Project.EulerRiemann.Execution (cellValues boolWord)
 
 def boundaryLoop : Wasm.Program :=
-  match (func173[78]? : Option Wasm.Instruction) with
+  match (func173[76]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => body
   | _ => []
 
 theorem boundary_loop_shape :
-    func173[78]? = some (.block 0 0 [.loop 0 0 boundaryLoop]) := rfl
+    func173[76]? = some (.block 0 0 [.loop 0 0 boundaryLoop]) := rfl
 
 structure BoundaryScratch where
   cell : Cell := ⟨0, ⟨0, 0, 0, 0⟩, 0, 0⟩
@@ -39,7 +39,7 @@ def boundaryFrame (n : Nat) (trials : UInt64) (axis : Bool)
       (vectorValues acc).reverse ++ (vectorValues acc).reverse ++ List.replicate 12 (.i64 0) ++
       [.i64 pointer, .i64 (UInt64.ofNat count), .i64 (UInt64.ofNat index),
         .i64 (UInt64.ofNat n), .i64 (UInt64.ofNat n), .i64 0] ++
-      (vectorValues acc).reverse ++ [.i64 (boolWord scratch.copied)] ++ List.replicate 7 (.i64 0)
+      (vectorValues acc).reverse ++ List.replicate 19 (.i64 0)
     values := [] }
 
 def boundaryPrefix (n trials : Nat) (axis : Bool) (grid : Array Cell) (index : Nat) : Vector :=

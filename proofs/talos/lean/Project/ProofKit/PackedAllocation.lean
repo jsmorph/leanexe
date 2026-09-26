@@ -25,7 +25,7 @@ theorem allocated_count (store : Store Unit) (base need : UInt64) (nodes : List 
     split <;> simp
   · exact PackedAllocate.allocated_count ..
 
-theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit)
+theorem program_spec_available (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit)
     (params saved tail : List Wasm.Value) (start : Nat)
     (hStart : params.length + saved.length = start)
     (base need previous current capacity next result count : UInt64) (nodes : List FreeNode)
@@ -35,7 +35,8 @@ theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store
     (hList : FreeListAt store.mem nodes)
     (hBump : takeFirstFitFrom 0 need nodes = none →
       base.toNat + 48 + need.toNat ≤ 4294967296 ∧
-      FixedArrayBump.requiredPages base need ≤ store.memoryCap module_ 0)
+      (store.mem.pages < FixedArrayBump.requiredPages base need →
+        FixedArrayBump.requiredPages base need ≤ store.memoryCap module_ 0))
     (hPages : store.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ previous current capacity next : UInt64, wp module_ rest Q
@@ -49,7 +50,7 @@ theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store
     have hNone : takeFirstFit need nodes = none := by
       rw [← takeFirstFitFrom_project 0 need nodes, hTake]
       rfl
-    apply PackedAllocate.program_spec module_ env store params saved tail _ rfl
+    apply PackedAllocate.program_spec_available module_ env store params saved tail _ rfl
       (PackedReuse.program (params.length + saved.length))
       base need previous current capacity next result count nodes
       hGlobal0 hGlobal1 hGlobal2 hList hNone (hBump hTake).1 hPages hMemory32 (hBump hTake).2
@@ -71,6 +72,30 @@ theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store
     apply countProgram_spec module_ env _ _ count rfl hCount Q rest
     simpa only [allocated, root, hTake, frame, List.cons_append, List.nil_append] using
       hNext choice.previous choice.node.root choice.node.capacity choice.next
+
+theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit)
+    (params saved tail : List Wasm.Value) (start : Nat)
+    (hStart : params.length + saved.length = start)
+    (base need previous current capacity next result count : UInt64) (nodes : List FreeNode)
+    (hGlobal0 : store.globals.globals[0]? = some (.i64 base))
+    (hGlobal1 : store.globals.globals[1]? = some (.i64 (freeHead nodes)))
+    (hGlobal2 : store.globals.globals[2]? = some (.i64 count))
+    (hList : FreeListAt store.mem nodes)
+    (hBump : takeFirstFitFrom 0 need nodes = none →
+      base.toNat + 48 + need.toNat ≤ 4294967296 ∧
+      FixedArrayBump.requiredPages base need ≤ store.memoryCap module_ 0)
+    (hPages : store.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : ∀ previous current capacity next : UInt64, wp module_ rest Q
+      (counted (allocated store base need nodes) count)
+      (frame params saved tail need previous current capacity next (root base need nodes)) env) :
+    wp module_ (program start ++ rest) Q store
+      (frame params saved tail need previous current capacity next result) env := by
+  exact program_spec_available module_ env store params saved tail start hStart base need previous current
+    capacity next result count nodes hGlobal0 hGlobal1 hGlobal2 hList
+    (fun h => ⟨(hBump h).1, fun _ => (hBump h).2⟩) hPages hMemory32 Q rest hNext
+
+#print axioms program_spec_available
 
 #print axioms program_spec
 

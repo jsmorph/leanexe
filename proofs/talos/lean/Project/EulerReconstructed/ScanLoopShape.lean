@@ -9,12 +9,12 @@ open Project.EulerOutwardGrid.Execution (ScanScratch scanPrefix scanPrefix_zero
   scanPrefix_succ scanPrefix_size)
 
 def scanLoop : Wasm.Program :=
-  match (func46[25]? : Option Wasm.Instruction) with
+  match (func46[23]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => body
   | _ => []
 
 theorem scan_loop_shape :
-    func46[25]? = some (.block 0 0 [.loop 0 0 scanLoop]) := rfl
+    func46[23]? = some (.block 0 0 [.loop 0 0 scanLoop]) := rfl
 
 def scanFrame (owner pointer : UInt64) (count index : Nat)
     (acc : Checked) (scratch : ScanScratch) : Locals :=

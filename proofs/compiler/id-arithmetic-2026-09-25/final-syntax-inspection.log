@@ -1,0 +1,76 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+IdArithmeticInspect.left: fun (x y : UInt64) =>
+  have a : Id.{0} UInt64 := x;
+  @HAdd.hAdd.{0, 0, 0} (Id.{0} UInt64) UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) a y
+accepted: true
+IdArithmeticInspect.right: fun (x y : UInt64) =>
+  have b : Id.{0} (Id.{0} UInt64) := y;
+  @HSub.hSub.{0, 0, 0} UInt64 (Id.{0} (Id.{0} UInt64)) UInt64 (@instHSub.{0} (Id.{0} UInt64) instSubUInt64) x b
+accepted: true
+IdArithmeticInspect.both: fun (x y : UInt64) =>
+  have a : Id.{0} UInt64 := x;
+  have b : Id.{0} (Id.{0} UInt64) := y;
+  @HMul.hMul.{0, 0, 0} (Id.{0} UInt64) (Id.{0} (Id.{0} UInt64)) (Id.{0} UInt64)
+    (@instHMul.{0} (Id.{0} (Id.{0} UInt64)) instMulUInt64) a b
+accepted: true
+IdArithmeticInspect.bitwise: fun (x y : UInt64) =>
+  have a : Id.{0} (Id.{0} UInt64) := x;
+  have b : Id.{0} UInt64 := y;
+  @HXor.hXor.{0, 0, 0} (Id.{0} UInt64) (Id.{0} (Id.{0} UInt64)) UInt64 (@instHXorOfXorOp.{0} UInt64 instXorOpUInt64)
+    (@HAnd.hAnd.{0, 0, 0} (Id.{0} (Id.{0} UInt64)) (Id.{0} UInt64) (Id.{0} UInt64)
+      (@instHAndOfAndOp.{0} (Id.{0} UInt64) instAndOpUInt64) a b)
+    (@HOr.hOr.{0, 0, 0} (Id.{0} (Id.{0} UInt64)) (Id.{0} UInt64) (Id.{0} (Id.{0} UInt64))
+      (@instHOrOfOrOp.{0} (Id.{0} (Id.{0} UInt64)) instOrOpUInt64) a b)
+accepted: true
+IdArithmeticInspect.range: fun (count seed : UInt64) =>
+  @Id.run.{0} UInt64
+    (have bias : Id.{0} UInt64 := seed;
+    have a : UInt64 := seed;
+    @Bind.bind.{0, 0} Id.{0} (@Monad.toBind.{0, 0} Id.{0} Id.instMonad.{0}) UInt64 UInt64
+      (@ForIn.forIn.{0, 0, 0, 0} Id.{0} Std.Legacy.Range Nat
+        (@instForInOfForIn'.{0, 0, 0, 0} Id.{0} Std.Legacy.Range Nat
+          (@inferInstance.{1} (Membership.{0, 0} Nat Std.Legacy.Range) Std.Legacy.instMembershipNatRange)
+          (@Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad.{0, 0} Id.{0} Id.instMonad.{0}))
+        UInt64
+        (Std.Legacy.Range.mk (@OfNat.ofNat.{0} Nat (nat_lit 0) (instOfNatNat (nat_lit 0))) (UInt64.toNat count)
+          (@OfNat.ofNat.{0} Nat (nat_lit 1) (instOfNatNat (nat_lit 1))) Nat.zero_lt_one)
+        a fun (i : Nat) (__s : UInt64) =>
+        have a : UInt64 := __s;
+        have delta : Id.{0} (Id.{0} UInt64) := UInt64.ofNat i;
+        have current : Id.{0} UInt64 := a;
+        have a : UInt64 :=
+          @HAdd.hAdd.{0, 0, 0} (Id.{0} UInt64) (Id.{0} (Id.{0} UInt64)) UInt64
+            (@instHAdd.{0} (Id.{0} UInt64) instAddUInt64) current delta;
+        have a : UInt64 :=
+          @HAdd.hAdd.{0, 0, 0} UInt64 (Id.{0} UInt64) UInt64 (@instHAdd.{0} UInt64 instAddUInt64) a bias;
+        @ite.{1} (Id.{0} (ForInStep.{0} UInt64))
+          (@Eq.{1} Bool
+            (Bool.and
+              (@BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64)
+                (@HMod.hMod.{0, 0, 0} UInt64 UInt64 UInt64 (@instHMod.{0} UInt64 instModUInt64) a
+                  (@OfNat.ofNat.{0} UInt64 (nat_lit 7) (@UInt64.instOfNat (nat_lit 7))))
+                (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0))))
+              (@bne.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) seed
+                (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0)))))
+            Bool.true)
+          (instDecidableEqBool
+            (Bool.and
+              (@BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64)
+                (@HMod.hMod.{0, 0, 0} UInt64 UInt64 UInt64 (@instHMod.{0} UInt64 instModUInt64) a
+                  (@OfNat.ofNat.{0} UInt64 (nat_lit 7) (@UInt64.instOfNat (nat_lit 7))))
+                (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0))))
+              (@bne.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) seed
+                (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0)))))
+            Bool.true)
+          (@Pure.pure.{0, 0} Id.{0}
+            (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+            (ForInStep.{0} UInt64) (@ForInStep.done.{0} UInt64 a))
+          (@Pure.pure.{0, 0} Id.{0}
+            (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+            (ForInStep.{0} UInt64) (@ForInStep.yield.{0} UInt64 a)))
+      fun (__s : UInt64) =>
+      have a : UInt64 := __s;
+      @Pure.pure.{0, 0} Id.{0} (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+        UInt64 a)
+accepted: true
