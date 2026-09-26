@@ -1,0 +1,69 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [54/108] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [108/108] Building LeanExe.Extract.ScalarExprCore (13s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExprCore.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.setup.json --json
+error: LeanExe/Extract/ScalarExprCore.lean:432:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:432:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence onTrue onFalse : Lean.Expr
+x✝ :
+  (y : (_ : List ScalarBinding) ×' Lean.Expr) →
+    InvImage (fun x1 x2 => x1 < x2) (fun x => PSigma.casesOn x fun locals a => scalarExtractionSize a) y
+        ⟨locals,
+          (((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app onTrue).app
+            onFalse⟩ →
+      Option IR.Expr
+_h : comparison? condition evidence = none
+_g : compoundGuard? condition evidence = none
+guard : Source.Scalar.BooleanLocalGuard
+_booleanGuard : booleanLocalGuard? condition evidence = some guard
+__do_jp✝ : IR.Cond → Option IR.Expr :=
+  fun c => do
+    let t ← x✝ ⟨locals, onTrue⟩ ⋯
+    let e ← x✝ ⟨locals, onFalse⟩ ⋯
+    pure (IR.Expr.ite c t e)
+h✝ : hasBooleanPredicate locals guard.value.functions = true
+input : Source.Scalar.BooleanLocal
+_member : input ∈ guard.form.inputs
+⊢ booleanLocalOperands? ?m.6308 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:432:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:432:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence : Lean.Expr
+binderName✝¹ : Lean.Name
+trueDomain onTrue : Lean.Expr
+binderInfo✝¹ : Lean.BinderInfo
+binderName✝ : Lean.Name
+falseDomain onFalse : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+x✝ :
+  (y : (_ : List ScalarBinding) ×' Lean.Expr) →
+    InvImage (fun x1 x2 => x1 < x2) (fun x => PSigma.casesOn x fun locals a => scalarExtractionSize a) y
+        ⟨locals,
+          (((((Lean.Expr.const `dite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                (Lean.Expr.lam binderName✝¹ trueDomain onTrue binderInfo✝¹)).app
+            (Lean.Expr.lam binderName✝ falseDomain onFalse binderInfo✝)⟩ →
+      Option IR.Expr
+_guard : dependentGuard? condition evidence trueDomain falseDomain = none
+guard : Source.Scalar.BooleanLocalGuard
+_booleanGuard : booleanLocalDependentGuard? condition evidence trueDomain falseDomain = some guard
+__do_jp✝ : IR.Cond → Option IR.Expr :=
+  fun c => do
+    let t ← x✝ ⟨ScalarBinding.unit :: locals, onTrue⟩ ⋯
+    let e ← x✝ ⟨ScalarBinding.unit :: locals, onFalse⟩ ⋯
+    pure (IR.Expr.ite c t e)
+h✝ : hasBooleanPredicate locals guard.value.functions = true
+input : Source.Scalar.BooleanLocal
+_member : input ∈ guard.form.inputs
+⊢ booleanLocalOperands? ?m.6458 = some sorry
+warning: LeanExe/Extract/ScalarExprCore.lean:436:0: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarExprCore.lean:436:0: declaration uses `sorry`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExprCore
+error: build failed

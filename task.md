@@ -150,20 +150,21 @@ controls. Prior tests pass 51,154 comparisons, 31,295 invalid-input checks and
 1,992 controls. Evidence is in
 [the loop Boolean-let archive](proofs/compiler/boolean-predicate-loop-let-2026-09-26/README.md).
 
-Direct scalar conditions containing Bool-input calls now pass source totality,
-extraction correctness, acceptance, soundness and IR invariant proofs. Ordinary
-and dependent if branches admit truth tests and Boolean Eq/Ne conditions. The
-compiler checks both branches, preserves captures, and rejects proof-variable use
-as a Boolean or word. Scalar subexpressions inside loops reuse this support.
-Focused tests pass 5,556 native/IR comparisons, 5,844 invalid-input checks and
-420 controls. The general theorem, eighteen audits and selected native Lean/WASM
-execution are next for this candidate.
+Direct scalar conditions containing Bool-input calls are complete. Ordinary and
+dependent if branches admit truth tests and Boolean Eq/Ne conditions. Both
+branches are checked; captures are preserved and proof-variable use as a Boolean
+or word is rejected. Scalar subexpressions inside loops reuse this support. The
+general source-to-WASM theorem and eighteen audits pass. Native Lean/V8 agree on
+519 inputs across 28 declarations, including fourteen ranges. Eighteen shared
+modules retain identical bytes. Focused tests pass 5,556 native/IR comparisons,
+5,844 invalid-input checks and 420 controls. Prior tests pass 7,636 comparisons,
+5,274 invalid-input checks and 336 controls. Evidence is in
+[the direct-condition archive](proofs/compiler/boolean-predicate-condition-2026-09-26/README.md).
 
-Next: finish scalar conditions through WASM, then direct loop-step conditions,
-Boolean do binds and direct Boolean helper results. Saved Boolean variables in
-mixed propositional guards, retained instance wrappers and broader signatures
-follow. Full-dialect correctness remains unfinished. Complete each capability
-through WASM and commit/push frequently.
+Next: direct loop-step conditions, Boolean do binds and direct Boolean helper
+results. Saved Boolean variables in mixed propositional guards, retained instance
+wrappers and broader signatures follow. Full-dialect correctness remains
+unfinished. Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 

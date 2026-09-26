@@ -1,0 +1,108 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/BooleanPredicateConditionHelpers.lean:27:29: error: Tactic `subst` failed: invalid equality proof, it is not of the form (x = t) or (t = x)
+  input = right ∨ input ∈ []
+
+case equal.inr
+input left right : BooleanLocal
+nontrue : right.expr ≠ Lean.Expr.const `Bool.true []
+h✝ : input = right ∨ input ∈ []
+⊢ sizeOf input.expr < sizeOf (equal left right nontrue).condition
+../work/BooleanPredicateConditionHelpers.lean:30:29: error: Tactic `subst` failed: invalid equality proof, it is not of the form (x = t) or (t = x)
+  input = right ∨ input ∈ []
+
+case unequal.inr
+input left right : BooleanLocal
+h✝ : input = right ∨ input ∈ []
+⊢ sizeOf input.expr < sizeOf (unequal left right).condition
+../work/BooleanPredicateConditionHelpers.lean:26:38: warning: This simp argument is unused:
+  List.mem_singleton
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [inputs, List.mem_cons] at member
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+../work/BooleanPredicateConditionHelpers.lean:29:38: warning: This simp argument is unused:
+  List.mem_singleton
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [inputs, List.mem_cons] at member
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+../work/BooleanPredicateConditionHelpers.lean:60:14: error: unsolved goals
+value : BooleanLocal
+extract : (input : BooleanLocal) → input ∈ (BooleanConditionForm.truth value).inputs → Option IR.Expr
+arguments :
+  ∀ (input : BooleanLocal) (member : input ∈ (BooleanConditionForm.truth value).inputs),
+    ∃ result, extract input member = some result
+result : IR.Expr
+found : extract value ⋯ = some result
+⊢ wordGuard result = ?m.66
+../work/BooleanPredicateConditionHelpers.lean:64:14: error: unsolved goals
+left right : BooleanLocal
+nontrue : right.expr ≠ Lean.Expr.const `Bool.true []
+extract : (input : BooleanLocal) → input ∈ (BooleanConditionForm.equal left right nontrue).inputs → Option IR.Expr
+arguments :
+  ∀ (input : BooleanLocal) (member : input ∈ (BooleanConditionForm.equal left right nontrue).inputs),
+    ∃ result, extract input member = some result
+first : IR.Expr
+hl : extract left ⋯ = some first
+second : IR.Expr
+hr : extract right ⋯ = some second
+⊢ lowerComparison Comparison.beq first second = ?m.126
+../work/BooleanPredicateConditionHelpers.lean:68:14: error: unsolved goals
+left right : BooleanLocal
+extract : (input : BooleanLocal) → input ∈ (BooleanConditionForm.unequal left right).inputs → Option IR.Expr
+arguments :
+  ∀ (input : BooleanLocal) (member : input ∈ (BooleanConditionForm.unequal left right).inputs),
+    ∃ result, extract input member = some result
+first : IR.Expr
+hl : extract left ⋯ = some first
+second : IR.Expr
+hr : extract right ⋯ = some second
+⊢ lowerComparison Comparison.bne first second = ?m.186
+../work/BooleanPredicateConditionHelpers.lean:86:29: error: Tactic `subst` failed: invalid equality proof, it is not of the form (x = t) or (t = x)
+  input = right ∨ input ∈ []
+
+case equal.inr
+result : IR.Cond
+input left right : BooleanLocal
+nontrue : right.expr ≠ Lean.Expr.const `Bool.true []
+extract : (input : BooleanLocal) → input ∈ (BooleanConditionForm.equal left right nontrue).inputs → Option IR.Expr
+member : input ∈ (BooleanConditionForm.equal left right nontrue).inputs
+first : IR.Expr
+hl : extract left ⋯ = some first
+second : IR.Expr
+hr : extract right ⋯ = some second
+right✝ : lowerComparison Comparison.beq first second = result
+h✝ : input = right ∨ input ∈ []
+⊢ ∃ expression, extract input member = some expression
+../work/BooleanPredicateConditionHelpers.lean:93:29: error: Tactic `subst` failed: invalid equality proof, it is not of the form (x = t) or (t = x)
+  input = right ∨ input ∈ []
+
+case unequal.inr
+result : IR.Cond
+input left right : BooleanLocal
+extract : (input : BooleanLocal) → input ∈ (BooleanConditionForm.unequal left right).inputs → Option IR.Expr
+member : input ∈ (BooleanConditionForm.unequal left right).inputs
+first : IR.Expr
+hl : extract left ⋯ = some first
+second : IR.Expr
+hr : extract right ⋯ = some second
+right✝ : lowerComparison Comparison.bne first second = result
+h✝ : input = right ∨ input ∈ []
+⊢ ∃ expression, extract input member = some expression
+../work/BooleanPredicateConditionHelpers.lean:85:59: warning: This simp argument is unused:
+  List.mem_singleton
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanConditionForm.inputs, List.mem_cons] at member
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+../work/BooleanPredicateConditionHelpers.lean:92:59: warning: This simp argument is unused:
+  List.mem_singleton
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanConditionForm.inputs, List.mem_cons] at member
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
