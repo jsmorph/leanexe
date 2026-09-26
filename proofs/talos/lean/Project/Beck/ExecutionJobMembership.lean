@@ -37,7 +37,7 @@ def jobReplicatedTail (categories : Nat) (root padding55 padding56 need previous
 
 set_option maxRecDepth 2048 in
 set_option maxHeartbeats 1500000 in
-theorem jobMembershipCall_exact (env : HostEnv Unit) (initial middle : Store Unit) (original current : Heap)
+theorem jobMembershipCall_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial middle : Store Unit) (original current : Heap)
     (count categories members : Nat) (wordsPointer internal : UInt64) (oldNode zeroNode : FreeNode)
     (state : ParseState) (words row : Array UInt64) (saved : JobSaved)
     (padding55 padding56 need previous cursor capacity after : UInt64) (suffix : JobAfter) (remaining pageLimit : Nat)
@@ -61,7 +61,7 @@ theorem jobMembershipCall_exact (env : HostEnv Unit) (initial middle : Store Uni
       ∀ saved tail, Q (.Fallthrough final
         (jobFrame count categories wordsPointer node.root node.root (jobNextState state members row) saved tail))) :
     wp Project.Beck.«module» (jobEligible.drop 58) Q middle
-      (jobReplicateFrame (jobParams (count + 1) categories wordsPointer oldNode.root state)
+      (jobReplicateFrame (jobParams (rowOwner := rowOwner) (count + 1) categories wordsPointer oldNode.root state)
         (jobPreparedSaved categories members wordsPointer internal state saved) categories zeroNode.root categories.toUInt64 0
         padding55 padding56 need previous cursor capacity after zeroNode.root suffix) env := by
   have positionFit : state.position + 1 + members < UInt64.size := inputBound.trans_lt wordsAt.size_lt

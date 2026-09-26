@@ -6,7 +6,7 @@ open Wasm Project.ProofKit Project.Runtime Project.EulerRiemann.Execution LeanEx
 
 set_option maxRecDepth 2048 in
 set_option maxHeartbeats 1000000 in
-theorem readJobs_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
+theorem readJobs_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (count categories : Nat) (wordsPointer : UInt64) (node : FreeNode)
     (state out : ParseState) (words : Array UInt64) (remaining pageLimit : Nat)
     (valid : heap.At initial) (owned : heap.OwnsWords initial node state.incidence)
@@ -18,19 +18,19 @@ theorem readJobs_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (incidenceBound : state.incidence.size + count * categories ≤ 48)
     (accepted : readJobs count words categories state = some out)
     (budget : OutputBudget initial heap (1520 * count + remaining) pageLimit Project.Beck.«module») :
-    TerminatesWith env Project.Beck.«module» 5 initial (jobParams count categories wordsPointer node.root state).reverse
+    TerminatesWith env Project.Beck.«module» 5 initial (jobParams (rowOwner := rowOwner) count categories wordsPointer node.root state).reverse
       (fun final values => ∃ finalHeap finalNode,
-        values = [.i64 finalNode.root, .i64 finalNode.root, .i64 out.overlap.toUInt64, .i64 out.position.toUInt64, .i64 1] ∧
+        values = [.i64 finalNode.root, .i64 (if count = 0 then rowOwner else finalNode.root), .i64 out.overlap.toUInt64, .i64 out.position.toUInt64, .i64 1] ∧
         finalHeap.At final ∧ finalHeap.OwnsWords final finalNode out.incidence ∧ heap.Frame initial finalHeap final ∧
         OutputBudget final finalHeap remaining pageLimit Project.Beck.«module») := by
   refine TerminatesWith.of_wp_entry_for (f := func5Def) rfl ?_
   change wp Project.Beck.«module» func5 _ initial
-    { params := jobParams count categories wordsPointer node.root state
+    { params := jobParams (rowOwner := rowOwner) count categories wordsPointer node.root state
       locals := List.replicate 60 (.i64 0) } env
   simp only [func5, jobParams]
   wp_fixed_frame
   change wp Project.Beck.«module» ([.block 0 0 [.loop 0 0 jobBody]] ++ func5.drop 7) _ initial
-    (jobFrame count categories wordsPointer node.root 0 state (fun _ => .i64 0) (fun _ => 0)) env
+    (jobFrame (rowOwner := rowOwner) count categories wordsPointer node.root 0 state (fun _ => .i64 0) (fun _ => 0)) env
   apply jobLoop_exact env initial heap count categories wordsPointer node state out _ _ words remaining pageLimit
     valid owned wordsAt wordsProtected inputDifferent ownerNonzero countBound categoryBound positionBound overlapBound incidenceBound accepted budget
   intro final finalHeap finalNode finalValid finalOwned finalFrame finalBudget internal saved tail
