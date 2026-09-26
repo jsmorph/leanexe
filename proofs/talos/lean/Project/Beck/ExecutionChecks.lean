@@ -13,7 +13,7 @@ import Project.Beck.ExecutionMembershipBase
 import Project.Beck.ExecutionMemberCapacity
 import Project.Beck.ExecutionMembershipRelease
 import Project.Beck.ExecutionMembership
-import Project.Beck.ExecutionJobs
+import Project.Beck.ExecutionInput
 
 #print axioms Project.Beck.Execution.negative_exact
 #print axioms Project.Beck.Execution.magnitude_exact
@@ -82,3 +82,5 @@ import Project.Beck.ExecutionJobs
 #print axioms Project.Beck.Execution.jobEligible_exact
 
 #print axioms Project.Beck.Execution.readJobs_exact
+
+#print axioms Project.Beck.Execution.readInput_exact

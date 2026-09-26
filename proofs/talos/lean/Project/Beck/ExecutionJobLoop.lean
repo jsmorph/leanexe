@@ -5,22 +5,23 @@ namespace Project.Beck.Execution
 
 open Wasm Project.ProofKit Project.Runtime Project.EulerRiemann.Execution LeanExe.Examples.Beck
 
-def jobInv (initial : Store Unit) (heap : Heap) (count categories : Nat) (wordsPointer : UInt64)
+def jobInv (initial : Store Unit) (heap : Heap) (count categories : Nat) (wordsPointer rowOwner : UInt64)
     (words : Array UInt64) (out : ParseState) (remaining pageLimit : Nat) : AssertionF Unit := fun store frame =>
-  ∃ currentHeap left node state internal saved tail,
+  ∃ currentHeap left node state internal owner saved tail,
     currentHeap.At store ∧ currentHeap.OwnsWords store node state.incidence ∧ heap.Frame initial currentHeap store ∧
     (internal = 0 ∨ internal = node.root ∧ FreshFor heap node) ∧ node.root ≠ wordsPointer ∧
     state.position ≤ words.size ∧ state.overlap ≤ 8 ∧ state.incidence.size + left * categories ≤ 48 ∧
     readJobs left words categories state = some out ∧ left ≤ count ∧
     OutputBudget store currentHeap (1520 * left + remaining) pageLimit Project.Beck.«module» ∧
-    frame = jobFrame left categories wordsPointer node.root internal state saved tail
+    owner = (if left = count then rowOwner else node.root) ∧
+    frame = jobFrame (rowOwner := owner) left categories wordsPointer node.root internal state saved tail
 
-def jobDone (initial : Store Unit) (heap : Heap) (categories : Nat) (wordsPointer : UInt64)
+def jobDone (initial : Store Unit) (heap : Heap) (count categories : Nat) (wordsPointer rowOwner : UInt64)
     (out : ParseState) (remaining pageLimit : Nat) : AssertionF Unit := fun store frame =>
   ∃ currentHeap node internal saved tail,
     currentHeap.At store ∧ currentHeap.OwnsWords store node out.incidence ∧ heap.Frame initial currentHeap store ∧
     OutputBudget store currentHeap remaining pageLimit Project.Beck.«module» ∧
-    frame = jobFrame 0 categories wordsPointer node.root internal out saved tail
+    frame = jobFrame (rowOwner := if count = 0 then rowOwner else node.root) 0 categories wordsPointer node.root internal out saved tail
 
 set_option maxRecDepth 2048 in
 theorem job_guard_shape : jobBody =
@@ -29,7 +30,7 @@ theorem job_guard_shape : jobBody =
 
 set_option maxRecDepth 2048 in
 set_option maxHeartbeats 2000000 in
-theorem jobLoop_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
+theorem jobLoop_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (count categories : Nat) (wordsPointer : UInt64) (node : FreeNode)
     (state out : ParseState) (saved : JobSaved) (tail : JobTail) (words : Array UInt64) (remaining pageLimit : Nat)
     (valid : heap.At initial) (owned : heap.OwnsWords initial node state.incidence)
@@ -44,20 +45,20 @@ theorem jobLoop_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (next : ∀ final finalHeap node, finalHeap.At final → finalHeap.OwnsWords final node out.incidence →
       heap.Frame initial finalHeap final → OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
-      ∀ internal saved tail, wp Project.Beck.«module» rest Q final (jobFrame 0 categories wordsPointer node.root internal out saved tail) env) :
+      ∀ internal saved tail, wp Project.Beck.«module» rest Q final (jobFrame (rowOwner := if count = 0 then rowOwner else node.root) 0 categories wordsPointer node.root internal out saved tail) env) :
     wp Project.Beck.«module» ([.block 0 0 [.loop 0 0 jobBody]] ++ rest) Q initial
-      (jobFrame count categories wordsPointer node.root 0 state saved tail) env := by
+      (jobFrame (rowOwner := rowOwner) count categories wordsPointer node.root 0 state saved tail) env := by
   apply BlockLoop.program_spec Project.Beck.«module» env initial _ jobBody
-    (jobInv initial heap count categories wordsPointer words out remaining pageLimit)
-    (jobDone initial heap categories wordsPointer out remaining pageLimit) membershipMeasure
-  · rintro store frame ⟨currentHeap, left, currentNode, currentState, internal, saved', tail', _, _, _, _, _, _, _, _, _, _, _, rfl⟩
+    (jobInv initial heap count categories wordsPointer rowOwner words out remaining pageLimit)
+    (jobDone initial heap count categories wordsPointer rowOwner out remaining pageLimit) membershipMeasure
+  · rintro store frame ⟨currentHeap, left, currentNode, currentState, internal, owner, saved', tail', _, _, _, _, _, _, _, _, _, _, _, _, rfl⟩
     rfl
   · rintro store frame ⟨currentHeap, currentNode, internal, saved', tail', _, _, _, _, rfl⟩
     rfl
-  · exact ⟨heap, count, node, state, 0, saved, tail, valid, owned, Heap.Frame.refl heap initial,
-      Or.inl rfl, inputDifferent, positionBound, overlapBound, incidenceBound, accepted, Nat.le_refl _, budget, rfl⟩
-  · rintro store frame ⟨currentHeap, left, currentNode, currentState, internal, saved', tail', currentValid, currentOwned,
-      preserved, active, different, currentPosition, currentOverlap, currentSize, currentAccepted, leftBound, currentBudget, rfl⟩
+  · exact ⟨heap, count, node, state, 0, rowOwner, saved, tail, valid, owned, Heap.Frame.refl heap initial,
+      Or.inl rfl, inputDifferent, positionBound, overlapBound, incidenceBound, accepted, Nat.le_refl _, budget, by simp, rfl⟩
+  · rintro store frame ⟨currentHeap, left, currentNode, currentState, internal, owner, saved', tail', currentValid, currentOwned,
+      preserved, active, different, currentPosition, currentOverlap, currentSize, currentAccepted, leftBound, currentBudget, ownerEq, rfl⟩
     rw [job_guard_shape]
     generalize codeEq : jobBody.drop 7 = code
     cases left with
@@ -73,7 +74,7 @@ theorem jobLoop_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       · simpa only [resultEq] using currentOwned
       · simpa only [Nat.mul_zero, Nat.zero_add] using currentBudget
       · simp only [jobFrame, jobParams, jobPrefix, jobSaved, jobTail, Fin.coe_ofNat_eq_mod,
-          Nat.reduceMod, Nat.reduceEqDiff, or_false, false_or, reduceIte, resultEq, List.cons_append, List.nil_append]
+          Nat.reduceMod, Nat.reduceEqDiff, or_false, false_or, reduceIte, resultEq, List.cons_append, List.nil_append, ownerEq, eq_comm]
     | succ left =>
       have leftFit : left + 1 < UInt64.size := by change left + 1 < 18446744073709551616; omega
       have nonzero : (left + 1).toUInt64 ≠ 0 := by
@@ -105,11 +106,11 @@ theorem jobLoop_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
         (by change currentState.overlap < 18446744073709551616; omega) rowAccepted (by omega)
         (currentBudget.mono (by omega))
       intro final finalHeap finalNode finalValid finalOwned finalFrame fresh finalBudget finalSaved finalTail
-      change jobInv initial heap count categories wordsPointer words out remaining pageLimit final _ ∧ _
+      change jobInv initial heap count categories wordsPointer rowOwner words out remaining pageLimit final _ ∧ _
       refine ⟨⟨finalHeap, left, finalNode, jobNextState currentState words[currentState.position]!.toNat row,
-        finalNode.root, finalSaved, finalTail, finalValid, finalOwned, finalFrame, Or.inr ⟨rfl, fresh⟩,
+        finalNode.root, finalNode.root, finalSaved, finalTail, finalValid, finalOwned, finalFrame, Or.inr ⟨rfl, fresh⟩,
         fresh.pointer_ne wordsPointer words.size wordsProtected (by have := finalOwned.buffer.capacity; omega) finalOwned.buffer.rootBound,
-        inputBound, ?_, ?_, nextAccepted, by omega, finalBudget, rfl⟩, ?_⟩
+        inputBound, ?_, ?_, nextAccepted, by omega, finalBudget, by simp [show left ≠ count by omega], rfl⟩, ?_⟩
       · exact max_le currentOverlap (membersBound.trans categoryBound)
       · simp only [jobNextState, Array.size_append, rowSize]
         simp only [Nat.add_mul, Nat.one_mul] at currentSize
