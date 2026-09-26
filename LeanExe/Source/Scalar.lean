@@ -97,11 +97,12 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (variables : expression.VariablesMean values booleans)
       (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand)) :
       EvalWith (.app (.bvar index) expression.expr) values (f (expression.denote native booleans))
-  | applyBooleanPredicateWord (negations : Nat) (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
+  | applyBooleanPredicateWord (negations : Nat)
       (function : values[index]? = some (.booleanPredicateFunction f))
-      (variables : expression.VariablesMean values booleans)
-      (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand)) :
-      EvalWith (.app (.const ``Bool.toUInt64 []) (BooleanGuardNegation.expr negations (.app (.bvar index) expression.expr))) values (Bool.toUInt64 (GuardNegation.denote negations (f (expression.denote native booleans))))
+      (argument : EvalWith (.app (.const ``Bool.toUInt64 []) a) values (Bool.toUInt64 flag)) :
+      EvalWith (.app (.const ``Bool.toUInt64 [])
+        (BooleanGuardNegation.expr negations (.app (.bvar index) a))) values
+        (Bool.toUInt64 (GuardNegation.denote negations (f flag)))
   | apply (function : values[index]? = some (.function false f)) (argument : EvalWith a values x) :
       EvalWith (.app (.bvar index) a) values (f x)
   | letFn (type : ResultType)
@@ -247,10 +248,11 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (variables : expression.VariablesTyped types)
       (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand) :
       SupportedWith types (.app (.bvar index) expression.expr)
-  | applyBooleanPredicateWord (negations : Nat) (expression : BooleanLocal) (function : types[index]? = some .booleanPredicateFunction)
-      (variables : expression.VariablesTyped types)
-      (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand) :
-      SupportedWith types (.app (.const ``Bool.toUInt64 []) (BooleanGuardNegation.expr negations (.app (.bvar index) expression.expr)))
+  | applyBooleanPredicateWord (negations : Nat)
+      (function : types[index]? = some .booleanPredicateFunction)
+      (argument : SupportedWith types (.app (.const ``Bool.toUInt64 []) a)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 [])
+        (BooleanGuardNegation.expr negations (.app (.bvar index) a)))
   | apply (function : types[index]? = some (.function false)) (argument : SupportedWith types a) :
       SupportedWith types (.app (.bvar index) a)
   | letFn (type : ResultType) (function : SupportedWith (.word :: types) a)
@@ -313,6 +315,31 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (instanceMeaning : TypedLiteralInstance n type evidence) :
       SupportedWith types (typedLiteralExpr type numeral evidence)
   | metadata (body : SupportedWith types e) : SupportedWith types (.mdata data e)
+
+set_option linter.unusedSimpArgs false in
+theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List Value}
+    {value : UInt64} (evaluation : EvalWith (.app (.const ``Bool.toUInt64 []) argument) values value) :
+    ∃ flag : Bool, value = flag.toUInt64 := by
+  generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
+  cases evaluation with
+  | booleanWord => exact ⟨_, rfl⟩
+  | applyBooleanPredicateWord => exact ⟨_, rfl⟩
+  | complement head _ => cases head <;> simp_all
+  | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
+  | manyApply call _ _ =>
+    have root := congrArg Lean.Expr.getAppFn expressionEq
+    simp [ManyCall.expr, ManyCall.index, Lean.Expr.getAppFn] at root
+  | range =>
+    have root := congrArg Lean.Expr.getAppFn expressionEq
+    change Lean.Expr.const ``Bool.toUInt64 [] = .const ``ForIn.forIn [.zero, .zero, .zero, .zero] at root
+    simp at root
+  | _ =>
+    simp_all [literalExpr, typedLiteralExpr, Comparison.branch, CompoundGuard.branch,
+      DecidedGuard.dependentBranch, BooleanIdentity.bind, BooleanLocalGuard.branch,
+      BooleanLocalGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
+      UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head,
+      idLetExpr, predicateInputExpr]
+
 
 theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     (h : SupportedWith types expr) (values : List Value) (typed : values.map Value.kind = types) :
@@ -456,15 +483,12 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
       intro operand member
       simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
     exact ⟨f (expression.denote native booleans), .applyBoolean expression hf hbooleans meanings⟩
-  | applyBooleanPredicateWord negations expression present variables _ ihArgs =>
+  | applyBooleanPredicateWord negations present _ ih =>
     obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
-    obtain ⟨booleans, hbooleans⟩ := variables.evaluates values typed
-    let native : Lean.Expr → UInt64 := fun operand =>
-      if member : operand ∈ expression.operands then (ihArgs operand member values typed).choose else 0
-    have meanings : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand) := by
-      intro operand member
-      simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
-    exact ⟨Bool.toUInt64 (GuardNegation.denote negations (f (expression.denote native booleans))), .applyBooleanPredicateWord negations expression hf hbooleans meanings⟩
+    obtain ⟨argument, evaluated⟩ := ih values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    exact ⟨Bool.toUInt64 (GuardNegation.denote negations (f flag)),
+      .applyBooleanPredicateWord negations hf evaluated⟩
   | apply present _ ih =>
     obtain ⟨f, hf⟩ := function_lookup typed present
     obtain ⟨x, hx⟩ := ih values typed

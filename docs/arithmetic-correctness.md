@@ -199,8 +199,9 @@ the declaration even after accumulator updates. Declarations before a loop are
 also admitted, with converted calls in bounds, initial values, steps, stride
 calculations and final results. Converted calls also admit repeated Boolean
 negation, such as `(!(f flag)).toUInt64`, preserving the Boolean argument check.
-Nested calls, compound operations around calls and direct Boolean contexts remain
-subsequent capabilities.
+Nested converted calls, including negated inner arguments, check each argument
+as a Boolean conversion. Compound operations around calls and direct Boolean
+contexts remain subsequent capabilities.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
