@@ -2,7 +2,7 @@ import Project.Beck.Arithmetic
 import Project.Beck.Rounding
 import Project.Beck.Basis
 import Project.Beck.Cofactors
-import Project.Beck.MatrixBasis
+import Project.Beck.Preservation
 
 #print axioms Project.Beck.Arithmetic.add_exact
 #print axioms Project.Beck.Arithmetic.sub_exact
@@ -24,6 +24,10 @@ import Project.Beck.MatrixBasis
 #print axioms Project.Beck.FreeColumn.source_freeColumn
 #print axioms Project.Beck.MatrixBasis.selected_column_live
 #print axioms Project.Beck.MatrixBasis.basis_determinant_bound
+#print axioms Project.Beck.Direction.direction_size_nonzero
+#print axioms Project.Beck.Direction.direction_frozen_zero
+#print axioms Project.Beck.Direction.direction_bound
+#print axioms Project.Beck.Preservation.direction_preserves_category
 #print axioms Project.Beck.Rounding.protected_card_lt
 #print axioms Project.Beck.Rounding.preserving_direction_exists
 #print axioms Project.Beck.Rounding.released_category_bound

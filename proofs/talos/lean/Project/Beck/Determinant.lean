@@ -83,6 +83,15 @@ theorem cast_value (x : UInt64) : (Arithmetic.value x : UInt64) = x := by
   simp only [Arithmetic.value, UInt64.toBitVec_intCast]
   exact BitVec.ofInt_toInt
 
+theorem value_ne_zero (x : UInt64) : Arithmetic.value x ≠ 0 ↔ x ≠ 0 := by
+  constructor
+  · intro h zero
+    simp [zero, Arithmetic.value] at h
+  · intro h zero
+    apply h
+    rw [← cast_value x, zero]
+    rfl
+
 theorem value_cast (z : ℤ) (bound : Arithmetic.Fits z) :
     Arithmetic.value (z : UInt64) = z := by
   simp only [Arithmetic.value, UInt64.toBitVec_intCast, BitVec.toInt_intCast]
