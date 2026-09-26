@@ -1,0 +1,88 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [47/97] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [97/97] Building LeanExe.Extract.ScalarExpr (1.2s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExpr.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExpr.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExpr.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExpr.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExpr.setup.json --json
+warning: LeanExe/Extract/ScalarExpr.lean:177:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarExpr.lean:904:2: Too many variable names provided at alternative `case58`: 14 provided, but 12 expected
+warning: LeanExe/Extract/ScalarExpr.lean:905:31: `if_pos` has been deprecated: Use `ite_eq_left` instead
+error: LeanExe/Extract/ScalarExpr.lean:905:38: Unknown identifier `same`
+error: LeanExe/Extract/ScalarExpr.lean:907:2: Too many variable names provided at alternative `case59`: 16 provided, but 14 expected
+warning: LeanExe/Extract/ScalarExpr.lean:908:31: `if_pos` has been deprecated: Use `ite_eq_left` instead
+error: LeanExe/Extract/ScalarExpr.lean:908:31: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  if booleanType? input = none then ?m.3489 else ?m.3490
+in the target expression
+  (if paramName = paramName then
+      match scalarResultType? paramName with
+      | none => none
+      | some val =>
+        match booleanType? input with
+        | none => none
+        | some val =>
+          extractScalarExprWith locals
+            (Lean.Expr.letE name (Lean.Expr.forallE typeName paramName input resultType)
+              (Lean.Expr.lam typeBi paramName domain value) paramBi body)
+    else none) =
+    some target
+
+case case59
+locals : List ScalarBinding
+name typeName : Lean.Name
+input : Lean.Expr
+resultType : Lean.BinderInfo
+typeBi : Lean.Name
+paramName domain : Lean.Expr
+value : Lean.BinderInfo
+paramBi : Lean.Expr
+body : Bool
+nondep : Source.Scalar.ResultType
+same : booleanType? input = none
+inputType : scalarResultType? paramName = some nondep
+target : IR.Expr
+compiled :
+  (if paramName = paramName then
+      match scalarResultType? paramName with
+      | none => none
+      | some val =>
+        match booleanType? input with
+        | none => none
+        | some val =>
+          extractScalarExprWith locals
+            (Lean.Expr.letE name (Lean.Expr.forallE typeName paramName input resultType)
+              (Lean.Expr.lam typeBi paramName domain value) paramBi body)
+    else none) =
+    some target
+⊢ Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals)
+    (Lean.Expr.letE name
+      (Lean.Expr.forallE typeName ((Lean.Expr.const `Id [Lean.Level.zero]).app paramName) input resultType)
+      (Lean.Expr.lam typeBi ((Lean.Expr.const `Id [Lean.Level.zero]).app paramName) domain value) paramBi body)
+error: LeanExe/Extract/ScalarExpr.lean:910:2: Too many variable names provided at alternative `case60`: 18 provided, but 16 expected
+warning: LeanExe/Extract/ScalarExpr.lean:911:31: `if_pos` has been deprecated: Use `ite_eq_left` instead
+error: LeanExe/Extract/ScalarExpr.lean:911:38: Application type mismatch: The argument
+  same
+has type
+  Source.Scalar.BooleanType
+of sort `Type` but is expected to have type
+  paramName = paramName
+of sort `Prop` in the application
+  @if_pos (paramName = paramName) (Source.ExprEquality.instDecidableEqExpr_leanExe paramName paramName) same
+warning: LeanExe/Extract/ScalarExpr.lean:917:31: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1126:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExpr
+error: build failed

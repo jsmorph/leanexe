@@ -33,17 +33,20 @@ bytes. New focused checks pass 1,920 native/IR comparisons and 864 invalid-input
 tests. Prior step-helper checks pass 1,872 comparisons and 864 rejections.
 Evidence is in [the outer-predicate archive](proofs/compiler/outer-predicates-2026-09-26/README.md).
 
-Retained standard Id annotations on reusable predicate parameters now have an
-independent source rule and checked extraction equations. Scalar, loop-step and
-outer-loop acceptance, soundness, correctness and invariant proofs pass. Ten
-concrete examples and systematic syntax cases pass 9,108 native/IR comparisons
-and 7,344 invalid-input checks. The general theorem and selected native/Wasm
-checks follow them. Broader helper signatures come next.
-Bool-to-Bool calls need type-aware argument parsing:
-a bound Boolean and a bound word share the same raw bound-variable syntax.
-The parser must select argument semantics from the function binding rather than
-infer them from that syntax alone. Full-dialect correctness remains unfinished.
-Get each capability proved and executing end to end, and commit/push frequently.
+Retained standard Id annotations on reusable predicate parameters are complete
+in scalar, loop-step and outer-loop declarations. The general source-to-WASM
+theorem and all eighteen axiom audits pass. Native Lean/V8 agree on 951 inputs
+across 51 declarations, including 25 ranges; all 41 previous modules retain
+identical bytes. Focused tests pass 9,108 comparisons and 7,344 invalid-input
+checks. Prior tests pass 2,112 comparisons and 864 invalid-input checks.
+Evidence is in [the predicate input archive](proofs/compiler/predicate-input-2026-09-26/README.md).
+
+Next: reusable Bool-to-Bool helpers, starting with explicitly word-converted
+calls. Their function bindings determine Boolean argument semantics; raw bound
+variables alone cannot distinguish a Boolean argument from a UInt64 argument.
+General calls within arbitrary Boolean expressions need a subsequent extension
+to that typed dispatch. Full-dialect correctness remains unfinished. Complete
+each capability through WASM, keep this file current, and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
