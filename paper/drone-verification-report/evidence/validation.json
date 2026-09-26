@@ -1,0 +1,19 @@
+{
+  "date": "2026-09-26",
+  "proofBuild": {
+    "command": "tools/leanrun --timeout 15m lake -q -d proofs/talos/lean build Project.Drone.Spec Project.Drone.SourceChecks",
+    "result": "passed"
+  },
+  "principalAxiomAudit": "passed",
+  "nativeWasmRuns": "five matching outputs",
+  "pdf": "17 pages, five plotted runs in four figures",
+  "texWarnings": [],
+  "reportLinks": "passed",
+  "repositoryDocsCheck": {
+    "result": "failed",
+    "diagnostic": "paper/wgsl-verification-report/review.md: absolute /tmp workspace path",
+    "scope": "preexisting file"
+  },
+  "bibliography": "one LeanExe background reference from morphism.com/marxiv; three external references",
+  "opening": "context on page 1; repeated-ridges plot on page 2"
+}

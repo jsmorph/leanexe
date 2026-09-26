@@ -1,0 +1,25 @@
+Decision: accept
+
+Accept.
+
+## Remarks
+
+- Requirement 9, §2.2: Define the paper-specific relation “Apply(p, a, v)” and explain which representation “translate(r)” produces.  The surrounding text identifies the variables but leaves these operations implicit.
+
+- Requirement 9, §7.1: “P ≤ memoryCap(M, 0)” introduces M and memoryCap without definitions.  Identify M and explain the second argument of memoryCap.
+
+- Requirement 12, Sentences and paragraphs: Replace the independent-clause semicolons at three locations: “compile-arithmetic; the heap-using drone program” (§1), the semicolon before “the speed word denotes horizontal waypoint speed” (§3.2), and “the stitching definition; the physical safety claim applies” (§6).
+
+- Requirement 12, Filler words: Remove “actual” from “the actual executable initial and advance arrays” (§5.2) and “the actual horizontal point” (§6).  The surrounding descriptions already identify the arrays and position.
+
+- Requirement 12, Terminology, §7.2: “reduced elaboration boundaries” leaves the claimed change unclear.  Specify whether the lemmas reduced expression size, goal size, or the work performed during elaboration.
+
+- Requirement 12, Register, §7.2: “The principal audits use only propext, Classical.choice, and Quot.sound” attributes axiom dependencies to the audits.  Attribute those dependencies to the audited theorems, as §8 does.
+
+- Requirement 12, Relevance, §2.1: “Quantized GPT-2 uses eight-bit weights and activations in matrix projections, 32-bit integer accumulation, and FP32 rescaling and other model operations.”  These inference details support no subsequent claim about the planner or compiler theorem.  Omit them or explain their bearing on a specific claim.
+
+- Requirement 12, Relevance and Redundancy, §8: “a generated program of 14,198 bytes” and “A freshly compiled 14,198-byte module” repeat an exact size without using it to establish a result or identify the binary.  Remove the size unless the report explains its evidential purpose.
+
+- Requirement 12, Relevance and Redundancy, §8.1: “The four routes have the same time, 90,240/840” duplicates the four identical entries under Table 1’s “Traversal ticks” column.  State the common traversal time once and retain the differing altitude-excess costs in the table.
+
+- Requirement 12, Throat-clearing and announcements and Redundancy: “The final theorem’s subject determines the guarantee” (§2.3), “Keeping these proof subjects explicit allows a reader to identify the remaining connection” (§2.3), and “The report supplies the equations, executable acceptance tests, invariants, memory assumptions, and named theorem endpoints needed to assess the claim” (§9) repeat surrounding descriptions of proof scope or inventory the report’s contents.  Delete these sentences.

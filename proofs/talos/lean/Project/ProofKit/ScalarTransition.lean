@@ -1,5 +1,6 @@
 import Interpreter.Wasm.Wp.Loop
 import Interpreter.Wasm.Wp.Tactic
+import Project.TalosCompat
 
 namespace Project.ProofKit.ScalarTransition
 
@@ -254,7 +255,7 @@ mutual
             right.program childScratch ++ [.localSet (scratch + 1)] ++
             [.localGet (scratch + 1), .constI64 0, .eqI64,
               .iff 0 1 zeroValue
-                [.localGet scratch, .localGet (scratch + 1), op.instruction]]
+                [.localGet scratch, .localGet (scratch + 1), op.instruction] [] [.i64]]
         else
           left.program scratch ++ right.program scratch ++ [op.instruction]
     | .bool, .eq left right, scratch =>
@@ -267,12 +268,12 @@ mutual
         left.program scratch ++ right.program scratch ++ [.leUI64]
     | .bool, .not condition, scratch => condition.program scratch ++ [.eqz]
     | .bool, .and left right, scratch =>
-        left.program scratch ++ [.iff 0 1 (right.program scratch) [.const 0]]
+        left.program scratch ++ [.iff 0 1 (right.program scratch) [.const 0] [] [.i32]]
     | .bool, .or left right, scratch =>
-        left.program scratch ++ [.iff 0 1 [.const 1] (right.program scratch)]
+        left.program scratch ++ [.iff 0 1 [.const 1] (right.program scratch) [] [.i32]]
     | .u64, .ite condition thenValue elseValue, scratch =>
         condition.program scratch ++
-          [.iff 0 1 (thenValue.program scratch) (elseValue.program scratch)]
+          [.iff 0 1 (thenValue.program scratch) (elseValue.program scratch) [] [.i64]]
 
 end
 
@@ -660,6 +661,7 @@ theorem Expr.program_spec
               _ = some (.i64 leftValue) := State.get_set?_same hSetLeft
           simp only [Wasm.wp_localGet_cons, State.toLocals_get, hRightSlot,
             Wasm.wp_constI64_cons, Wasm.wp_eqI64_cons]
+          try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
           refine Wasm.wp_iff_cons rfl ?_
           by_cases hZero : rightValue = 0
           · rw [if_pos (by simp [hZero])]
@@ -703,6 +705,7 @@ theorem Expr.program_spec
               _ = some (.i64 leftValue) := State.get_set?_same hSetLeft
           simp only [Wasm.wp_localGet_cons, State.toLocals_get, hRightSlot,
             Wasm.wp_constI64_cons, Wasm.wp_eqI64_cons]
+          try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
           refine Wasm.wp_iff_cons rfl ?_
           by_cases hZero : rightValue = 0
           · rw [if_pos (by simp [hZero])]
@@ -823,6 +826,7 @@ theorem Expr.program_spec
         apply leftSpec (scratch := scratch) (state := state)
           (next := afterLeft) (result := false) (values := values)
           (rest := _) (Q := _) hLeft
+        try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
         refine Wasm.wp_iff_cons rfl ?_
         rw [if_neg (by simp)]
         simpa [wp_simp, ScalarType.value] using hNext
@@ -833,6 +837,7 @@ theorem Expr.program_spec
         apply leftSpec (scratch := scratch) (state := state)
           (next := afterLeft) (result := true) (values := values)
           (rest := _) (Q := _) hLeft
+        try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
         refine Wasm.wp_iff_cons rfl ?_
         rw [if_pos (by simp)]
         rw [← List.append_nil (right.program scratch)]
@@ -853,6 +858,7 @@ theorem Expr.program_spec
         apply leftSpec (scratch := scratch) (state := state)
           (next := afterLeft) (result := false) (values := values)
           (rest := _) (Q := _) hLeft
+        try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
         refine Wasm.wp_iff_cons rfl ?_
         rw [if_neg (by simp)]
         rw [← List.append_nil (right.program scratch)]
@@ -865,6 +871,7 @@ theorem Expr.program_spec
         apply leftSpec (scratch := scratch) (state := state)
           (next := afterLeft) (result := true) (values := values)
           (rest := _) (Q := _) hLeft
+        try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
         refine Wasm.wp_iff_cons rfl ?_
         rw [if_pos (by simp)]
         simpa [wp_simp, ScalarType.value] using hNext
@@ -881,6 +888,7 @@ theorem Expr.program_spec
         apply conditionSpec (scratch := scratch) (state := state)
           (next := afterCondition) (result := false) (values := values)
           (rest := _) (Q := _) hCondition
+        try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
         refine Wasm.wp_iff_cons rfl ?_
         rw [if_neg (by simp)]
         rw [← List.append_nil (elseValue.program scratch)]
@@ -895,6 +903,7 @@ theorem Expr.program_spec
         apply conditionSpec (scratch := scratch) (state := state)
           (next := afterCondition) (result := true) (values := values)
           (rest := _) (Q := _) hCondition
+        try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
         refine Wasm.wp_iff_cons rfl ?_
         rw [if_pos (by simp)]
         rw [← List.append_nil (thenValue.program scratch)]
@@ -954,6 +963,7 @@ theorem Stmt.program_spec
           module_ env store
           (.iff 0 0 (thenStmt.program scratch) (elseStmt.program scratch) :: rest)
           Q hCondition
+        try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
         refine Wasm.wp_iff_cons rfl ?_
         rw [if_neg (by simp)]
         rw [← List.append_nil (elseStmt.program scratch)]
@@ -966,6 +976,7 @@ theorem Stmt.program_spec
           module_ env store
           (.iff 0 0 (thenStmt.program scratch) (elseStmt.program scratch) :: rest)
           Q hCondition
+        try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
         refine Wasm.wp_iff_cons rfl ?_
         rw [if_pos (by simp)]
         rw [← List.append_nil (thenStmt.program scratch)]
