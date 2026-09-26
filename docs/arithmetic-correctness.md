@@ -193,9 +193,10 @@ converted with `Bool.toUInt64`, for example `let f := fun b : Bool => !b;
 (f (x == y)).toUInt64`. Captures, repeated calls, nested closures, shadowing,
 standard Id result annotations and unused helpers retain typed source evaluation.
 The function binding determines that its argument is Boolean. Word arguments,
-function/value confusion and unsupported unused bodies are rejected. Direct
-Boolean-context calls and helper declarations around or inside loop-step bodies
-remain subsequent capabilities.
+function/value confusion and unsupported unused bodies are rejected. These helpers can also be declared inside loop-step bodies, where converted
+calls control yielding, break and continue. Their captures keep the values from
+the declaration even after accumulator updates. Direct Boolean-context calls
+and declarations before a loop remain subsequent capabilities.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations

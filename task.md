@@ -50,18 +50,18 @@ tests pass 2,156 comparisons and 2,304 invalid-input checks. Prior tests pass
 1,466 comparisons and 880 invalid-input checks. Evidence is in
 [the Boolean-input predicate archive](proofs/compiler/boolean-predicate-2026-09-26/README.md).
 
-Bool-to-Bool helper declarations inside loop steps now pass source totality,
-extraction acceptance/soundness, evaluation correctness and IR invariant proofs.
-Six native loops and exact syntax cases pass 3,600 comparisons and 2,304
-invalid-input tests, including break, continue, captures across accumulator
-updates, nested closures, step-valued helper captures and unused declarations.
-The general compiler theorem and selected native/WASM suite follow those checks.
+Bool-to-Bool helper declarations inside loop steps are complete. Their source
+totality, acceptance, soundness, evaluation and IR invariant proofs pass, as do
+the general source-to-WASM theorem and all eighteen axiom audits. Native Lean/V8
+agree on 1,249 inputs across 68 declarations, including 31 ranges; all 62 prior
+modules retain identical bytes. Focused tests pass 3,600 comparisons and 2,304
+invalid-input checks. Prior tests pass 4,028 comparisons and 3,168 invalid-input
+checks. Evidence is in [the loop-step archive](proofs/compiler/boolean-predicate-step-2026-09-26/README.md).
 
-Next: finish the loop-step increment through WASM, then extend these declarations
-to outer-loop scope. Calls currently use Bool.toUInt64. Direct calls in Boolean
-contexts need a subsequent typed dispatch extension. Full-dialect correctness
-remains unfinished. Complete each capability through WASM and commit/push
-frequently.
+Next: helper declarations before loops. Calls currently use Bool.toUInt64.
+Direct calls in Boolean contexts need a subsequent typed dispatch extension.
+Full-dialect correctness remains unfinished. Complete each capability through
+WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
