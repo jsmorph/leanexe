@@ -380,7 +380,7 @@ theorem extractScalarRangeExitWith_accepts {types : List BindingKind} {source : 
       { indexType, stride, first, count, initial, indexName, accumulatorName, indexBi, accumulatorBi, body }
     simpa [ScalarRangeExitView.source, ef, ec, ei, es] using equation
   | letBoolean expression variables arguments _ ih =>
-    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts locals expression
+    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals expression
       (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
       (fun operand member => extractScalarExprWith_accepts (arguments operand member) locals typed total)
     obtain ⟨plan, hp⟩ := ih (.boolean (guardWord c) :: locals) (by simp [ScalarBinding.kind, typed]) (by
@@ -390,7 +390,7 @@ theorem extractScalarRangeExitWith_accepts {types : List BindingKind} {source : 
       · exact total binding member)
     exact ⟨plan, by rw [extractScalarRangeExitWith_letBoolean]; simp [hc, hp]⟩
   | idBindBoolean action type variables arguments _ ih =>
-    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts locals action.leaf
+    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals action.leaf
       (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
       (fun operand member => extractScalarExprWith_accepts (arguments operand member) locals typed total)
     obtain ⟨plan, hp⟩ := ih (.boolean (guardWord c) :: locals) (by simp [ScalarBinding.kind, typed]) (by

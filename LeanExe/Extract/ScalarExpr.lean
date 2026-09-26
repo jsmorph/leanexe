@@ -297,7 +297,7 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
     obtain ⟨e, he⟩ := ihe (.unit :: locals) (by simp [ScalarBinding.kind, typed]) extended
     exact ⟨.ite c t e, by rw [extractScalarExprWith_dependentBranch]; simp [hc, ht, he]⟩
   | chooseBooleanDependent guard type tn fn tb fb variables _ _ _ ihArgs iht ihe =>
-    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts locals guard.value
+    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals guard.value
       (fun operand _ => extractScalarExprWith locals operand)
       (by simpa [typed] using variables)
       (fun operand member => ihArgs operand member locals typed total)
@@ -310,12 +310,12 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
     obtain ⟨e, he⟩ := ihe (.unit :: locals) (by simp [ScalarBinding.kind, typed]) extended
     exact ⟨.ite c t e, by rw [extractScalarExprWith_booleanDependentBranch]; simp [hc, ht, he]⟩
   | booleanWord expression variables _ ihArgs =>
-    obtain ⟨condition, hc⟩ := extractBooleanLocalWith_accepts locals expression
+    obtain ⟨condition, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals expression
       (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
       (fun operand member => ihArgs operand member locals typed total)
     exact ⟨guardWord condition, by rw [extractScalarExprWith_booleanWord]; simp [hc]⟩
   | letBoolean expression variables _ _ ihArgs ihb =>
-    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts locals expression
+    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals expression
       (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
       (fun operand member => ihArgs operand member locals typed total)
     obtain ⟨target, ht⟩ := ihb (.boolean (guardWord c) :: locals)
@@ -326,7 +326,7 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
         · exact total binding member)
     exact ⟨target, by rw [extractScalarExprWith_letBoolean]; simp [hc, ht]⟩
   | idBindBoolean action type variables _ _ ihArgs ihb =>
-    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts locals action.leaf
+    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals action.leaf
       (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
       (fun operand member => ihArgs operand member locals typed total)
     obtain ⟨target, ht⟩ := ihb (.boolean (guardWord c) :: locals)
@@ -337,7 +337,7 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
         · exact total binding member)
     exact ⟨target, by rw [extractScalarExprWith_booleanBind]; simp [hc, ht]⟩
   | chooseBoolean guard type variables _ _ _ ihArgs iht ihe =>
-    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts locals guard.value
+    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals guard.value
       (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
       (fun operand member => ihArgs operand member locals typed total)
     obtain ⟨t, ht⟩ := iht locals typed total
@@ -361,7 +361,7 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
     exact ⟨target, by simp [hb, ht]⟩
   | applyBoolean expression present variables _ ihArgs =>
     obtain ⟨f, hf⟩ := scalarBooleanFunction_lookup (typed ▸ present)
-    obtain ⟨condition, hc⟩ := extractBooleanLocalWith_accepts locals expression _
+    obtain ⟨condition, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals expression _
       (typed ▸ variables) (fun operand member => ihArgs operand member locals typed total)
     obtain ⟨target, ht⟩ := total _ (List.mem_of_getElem? hf) (guardWord condition)
     have found := congrArg (fun binding => binding.bind ScalarBinding.booleanFunction?) hf

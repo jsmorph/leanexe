@@ -46,8 +46,9 @@ ordinary value binders shift both kinds of captures.
 
 The environment, typed lookups, binding matching and existing scalar/step
 compiler proofs pass. The current named-helper fixtures still pass 2,200
-comparisons and 720 invalid-input checks. Predicate-call syntax and reusable
-helper declarations are next; this capability is not yet admitted or
+comparisons and 720 invalid-input checks. Predicate-call syntax, typed lexical
+lookup, acceptance, scope, evaluation correctness and IR structural-property
+proofs now pass. Reusable helper declarations are next; this capability is not yet admitted or
 recorded as complete. Run the full theorem and selected native/Wasm checks after
 those parts are integrated.
 
