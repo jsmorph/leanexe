@@ -30,25 +30,25 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
         EvalWith expression (values.map Value.toScalar) (native expression))
       (branch : Eval (if guard.denote native then onTrue else onFalse) (.scalar .unit :: values) outcome) :
       Eval (guard.dependentBranch (resultType type) trueName falseName trueBi falseBi onTrue onFalse) values outcome
-  | letBoolean (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
+  | letBoolean (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
       (variables : expression.VariablesMean (values.map Value.toScalar) booleans)
       (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand (values.map Value.toScalar) (native operand))
       (body : Eval b (.scalar (.boolean (expression.denote native booleans)) :: values) value) :
       Eval (.letE name (.const ``Bool []) expression.expr b nondep) values value
-  | idBindBoolean (action : BooleanAction) (type : ResultAnnotation) {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
+  | idBindBoolean (action : BooleanAction) (type : ResultAnnotation) {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
       (variables : action.leaf.VariablesMean (values.map Value.toScalar) booleans)
       (arguments : ∀ operand, operand ∈ action.leaf.operands → EvalWith operand (values.map Value.toScalar) (native operand))
       (body : Eval b (.scalar (.boolean (action.leaf.denote native booleans)) :: values) value) :
       Eval (BooleanIdentity.bind name bi action.expr b (resultType type)) values value
   | chooseBoolean (guard : BooleanLocalGuard) (type : ResultAnnotation)
-      {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
+      {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
       (variables : guard.value.VariablesMean (values.map Value.toScalar) booleans)
       (arguments : ∀ operand, operand ∈ guard.value.operands → EvalWith operand (values.map Value.toScalar) (native operand))
       (branch : Eval (if guard.value.denote native booleans then t else e) values value) :
       Eval (guard.branch (resultType type) t e) values value
   | chooseBooleanDependent (guard : BooleanLocalGuard) (type : ResultAnnotation)
       (trueName falseName : Lean.Name) (trueBi falseBi : Lean.BinderInfo)
-      {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
+      {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
       (variables : guard.value.VariablesMean (values.map Value.toScalar) booleans)
       (arguments : ∀ operand, operand ∈ guard.value.operands → EvalWith operand (values.map Value.toScalar) (native operand))
       (branch : Eval (if guard.value.denote native booleans then t else e) (.scalar .unit :: values) value) :
@@ -114,7 +114,7 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) (resultType type) secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) values outcome
-  | applyBoolean (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
+  | applyBoolean (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
       (function : values[index]? = some (.booleanFunction f))
       (variables : expression.VariablesMean (values.map Value.toScalar) booleans)
       (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand (values.map Value.toScalar) (native operand)) :

@@ -36,6 +36,21 @@ Then extend the same capability to loop steps and broader helper signatures.
 Full-dialect correctness remains unfinished. Get each capability proved and
 executing end to end, and commit/push frequently.
 
+## Reusable Boolean functions — in progress
+
+A distinct predicate-function binding now represents UInt64-to-Bool closures
+in source values and compiled lexical bindings. Its matching relation requires
+the compiled result to evaluate to the native Boolean's zero/one encoding.
+Flags and predicate functions have separate fields in the Boolean environment;
+ordinary value binders shift both kinds of captures.
+
+The environment, typed lookups, binding matching and existing scalar/step
+compiler proofs pass. The current named-helper fixtures still pass 2,200
+comparisons and 720 invalid-input checks. Predicate-call syntax and reusable
+helper declarations are next; this capability is not yet admitted or
+recorded as complete. Run the full theorem and selected native/Wasm checks after
+those parts are integrated.
+
 ## Directly applied named Boolean helpers — complete
 
 The source form retains a named helper whose entire binding body applies it to

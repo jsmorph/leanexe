@@ -1,7 +1,7 @@
 import LeanExe.Source.ScalarPropositionGuard
 import LeanExe.Source.ScalarBooleanProofBranch
 import LeanExe.Source.ScalarBooleanWrapper
-import LeanExe.Source.ScalarBooleanLet
+import LeanExe.Source.ScalarBooleanEnvironment
 
 namespace LeanExe.Source.Scalar
 
@@ -111,7 +111,7 @@ def operands : BooleanLocal → List Lean.Expr
   | .decision _ g => g.operands
   | .equality _ _ a b | .relationDecision _ _ a b => a.operands ++ b.operands
 
-def denote (native : Lean.Expr → UInt64) (booleans : Nat → Bool) : BooleanLocal → Bool
+def denote (native : Lean.Expr → UInt64) (booleans : LeanExe.Source.Scalar.BooleanEnvironment) : BooleanLocal → Bool
   | .var n index => GuardNegation.denote n (booleans index)
   | .literal n value => GuardNegation.denote n value
   | .compare op a b => op.denote (native a) (native b)
@@ -123,10 +123,10 @@ def denote (native : Lean.Expr → UInt64) (booleans : Nat → Bool) : BooleanLo
       (if g.denote native then t.denote native booleans else e.denote native booleans)
   | .binding n name form value body _ => GuardNegation.denote n
       (body.denote (fun operand => native (booleanLetExpr name form.nondep value.expr operand))
-        (booleanLetBooleans (value.denote native booleans) booleans))
+        (booleans.bind (value.denote native booleans)))
   | .wordBinding n name form value body _ => GuardNegation.denote n
       (body.denote (fun operand => native (booleanWordLetExpr name form.nondep value operand))
-        (booleanLetBooleans false booleans))
+        (booleans.bind false))
   | .wrapped n wrapper body => GuardNegation.denote n (wrapper.denote (body.denote native booleans))
   | .decision n g => GuardNegation.denote n (g.denote native)
   | .relationDecision n unequal a b => GuardNegation.denote n
@@ -137,13 +137,13 @@ def denote (native : Lean.Expr → UInt64) (booleans : Nat → Bool) : BooleanLo
 
 /-- Id annotations retain syntax while Boolean binding evaluation uses the underlying type. -/
 theorem binding_annotation_denote (n : Nat) (name : Lean.Name) (form : Bool)
-    (value body : BooleanLocal) (type : BooleanType) (native : Lean.Expr → UInt64) (booleans : Nat → Bool) :
+    (value body : BooleanLocal) (type : BooleanType) (native : Lean.Expr → UInt64) (booleans : LeanExe.Source.Scalar.BooleanEnvironment) :
     (.binding n name form value body type : BooleanLocal).denote native booleans =
       (.binding n name form value body : BooleanLocal).denote native booleans := rfl
 
 theorem wordBinding_annotation_denote (n : Nat) (name : Lean.Name) (form : Bool)
     (value : Lean.Expr) (body : BooleanLocal) (type : ResultType)
-    (native : Lean.Expr → UInt64) (booleans : Nat → Bool) :
+    (native : Lean.Expr → UInt64) (booleans : LeanExe.Source.Scalar.BooleanEnvironment) :
     (.wordBinding n name form value body type : BooleanLocal).denote native booleans =
       (.wordBinding n name form value body : BooleanLocal).denote native booleans := rfl
 
@@ -152,7 +152,7 @@ def isTrueLiteral : BooleanLocal → Bool
   | .literal 0 true => true
   | _ => false
 
-theorem isTrueLiteral_denote {value : BooleanLocal} (native : Lean.Expr → UInt64) (booleans : Nat → Bool)
+theorem isTrueLiteral_denote {value : BooleanLocal} (native : Lean.Expr → UInt64) (booleans : LeanExe.Source.Scalar.BooleanEnvironment)
     (literal : value.isTrueLiteral = true) : value.denote native booleans = true := by
   cases value with
   | literal n flag => cases n <;> cases flag <;> simp_all [isTrueLiteral, denote, GuardNegation.denote]
