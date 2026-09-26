@@ -1,0 +1,27 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [52/52] Building LeanExe.Source.ScalarRangeExitSupported (1.1s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarRangeExitSupported.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarRangeExitSupported.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarRangeExitSupported.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarRangeExitSupported.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarRangeExitSupported.setup.json --json
+error: LeanExe/Source/ScalarRangeExitSupported.lean:48:72: Application type mismatch: The argument
+  value
+has type
+  ForInStep UInt64 → UInt64
+but is expected to have type
+  UInt64
+in the application
+  Eval b ((Value.predicateFunction fun x => BooleanLocal.denote (native x) (booleans x) expression) :: values) value
+error: LeanExe/Source/ScalarRangeExitSupported.lean:51:87: Application type mismatch: The argument
+  value
+has type
+  ForInStep UInt64 → UInt64
+but is expected to have type
+  UInt64
+in the application
+  Eval
+    (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) type.expr typeBi)
+      (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) expression.expr paramBi) b nondep)
+    values value
+warning: LeanExe/Source/ScalarRangeExitSupported.lean:151:8: declaration uses `sorry`
+Some required targets logged failures:
+- LeanExe.Source.ScalarRangeExitSupported
+error: build failed
