@@ -1,0 +1,26 @@
+\documentclass[border=5pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,pgfplots}
+\pgfplotsset{compat=1.18}
+\begin{document}
+\begin{tikzpicture}
+\begin{axis}[
+  width=16cm,height=7.2cm,
+  title={Rounded hill},title style={font=\large},
+  xlabel={Horizontal position (distance units)},ylabel={Elevation (distance units)},
+  xmin=0,xmax=1400,ymin=0,ymax=380,
+  scaled ticks=false,axis lines=left,tick align=outside,
+  xmajorgrids=false,ymajorgrids=true,grid style={gray!15},
+  legend style={at={(0.5,-0.25)},anchor=north,legend columns=3,draw=none,font=\small},
+  tick label style={font=\small},label style={font=\small},
+  no markers,clip=true]
+\addplot[draw=gray!65,fill=gray!18,thick] table[x=x,y=terrain,col sep=comma]{hill-terrain.csv} \closedcycle;
+\addlegendentry{Terrain}
+\addplot[gray!75,dashed,thick] table[x=x,y=corridor,col sep=comma]{hill-terrain.csv};
+\addlegendentry{Required corridor}
+\addplot[blue!55!black,line width=1.2pt] table[x=x,y=z,col sep=comma]{hill-path.csv};
+\addlegendentry{Drone elevation}
+\addplot[blue!55!black,only marks,mark=*,mark size=1.6pt,forget plot] table[x=x,y=altitude,col sep=comma]{hill-terrain.csv};
+\end{axis}
+\end{tikzpicture}
+\end{document}
