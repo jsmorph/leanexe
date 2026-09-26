@@ -1,12 +1,21 @@
-# Current task: user documentation
+# Current task: user documentation — complete
 
-The documentation presents LeanExe's current capabilities, runnable examples,
-and proof boundaries. The README, documentation index, GPT guide and capabilities
-page are written around those uses. The compile-arithmetic quickstart builds,
-compiles and returns 42 in Wasmtime. Documentation links and whitespace checks
-pass. The manual, language/compiler references and development instructions are
-under review for consistency. Next: finish that review, check the documented
-commands and links, and commit/push the documentation on ciogpt. Main is unchanged.
+The README and linked guides describe current capabilities, runnable examples,
+and proof boundaries. GPT-2 FP32/quantized generation, Euler, numerical kernels,
+byte I/O, scalar compilation and artifact verification have direct entry points.
+The documentation index, capabilities page, manual, language/compiler references,
+scalar proof guide, core type-safety introduction and development setup agree
+with those boundaries. Exact FP32 source and packaged-binary claims are distinct.
+
+Validation: the documented scalar quickstart builds, compiles and returns 42
+in Wasmtime; all 178 maintained Markdown files pass the documentation check;
+local heading targets and whitespace are checked. GPT command arguments are
+checked against the Python parsers and implementation. Model execution and
+Python dependency downloads are outside this documentation-only validation.
+
+The documentation is committed/pushed on ciogpt. Main remains unchanged.
+Next: merge ciogpt into main when the user requests that step. Further compiler
+coverage follows the incremental proof and execution workflow below.
 
 ---
 
