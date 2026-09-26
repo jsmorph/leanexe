@@ -1,0 +1,11 @@
+Decision: accept
+
+Accept.
+
+## Remarks
+
+- Requirement 12, Throat-clearing and announcements: The abstract says, “The report states the graph and physical-model assumptions, the distinction between generated-model verification and an exact-byte theorem, and the available execution evidence.”  State the verification limitation directly: the drone theorem concerns the generated model, and identifying the decoded binary with that model remains a separate proof obligation.
+- Requirement 12, Throat-clearing and announcements: Section 2.2 says, “This report cites that record as evidence of the compiler’s current status.”  Attach citation [8] to the preceding sentence, which states what the record establishes, and delete this announcement.
+- Requirement 12, Grammar and mechanics: Section 3.2 says, “The first and final state is zero.”  Write “The first and final states are zero” to describe the two endpoint assignments.
+- Requirement 12, Metaphor: Section 7.2 says, “Separate preservation lemmas then carry the terrain through allocations and releases.”  State that the lemmas establish preservation of the terrain array during allocation and release.
+- Requirement 12, Register and Metaphor: Section 8 says, “The report reads that theorem and its retained integration evidence without changing the drone checkout to the main compiler.”  Identify the evidence used and the verification performed.  For example: “The compiler account relies on the cited theorem source and retained integration evidence.  The report-specific builds used the drone checkout.”
