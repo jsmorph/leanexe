@@ -4415,6 +4415,80 @@ def rangeIdArithmeticStep (count seed : UInt64) : UInt64 :=
       else return .yield (value + 1)
     f (a % 7 == 0 && seed != 0)
 
+def rangeOuterPredicateBounds (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun n : UInt64 => n == seed
+  let stop := count + (f 0).toUInt64
+  let mut a := seed + (f count).toUInt64
+  for i in [:stop.toNat] do
+    if f a || f (UInt64.ofNat i) then break
+    a := a + UInt64.ofNat i + 1
+  return a + (f a).toUInt64
+
+def rangeOuterPredicateCapture (count seed : UInt64) : UInt64 := Id.run do
+  let flag := seed != 0
+  let shift := fun n : UInt64 => n + seed
+  let f := fun n : UInt64 => flag && shift n % 7 == 0
+  let mut a := seed
+  for i in [:count.toNat] do
+    if f a && !f (UInt64.ofNat i) then continue
+    a := a * 3 + UInt64.ofNat i + 1
+  return a + (f seed).toUInt64
+
+def rangeOuterPredicateNested (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun n : UInt64 => n == seed
+  let g := fun n : UInt64 => f n || f (n + 1)
+  let mut a := seed + 1
+  for i in [:count.toNat] do
+    let h := fun n : UInt64 => g n && !f (n + a)
+    if h a || h (UInt64.ofNat i) then break
+    a := a + UInt64.ofNat i + 1
+  return a + (g a).toUInt64
+
+def rangeOuterPredicateShadow (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun n : UInt64 => n == seed
+  let saved := f count
+  let f := fun n : UInt64 => saved || n % 3 == 0
+  let mut a := seed
+  for i in [:count.toNat] do
+    if f (UInt64.ofNat i) then continue
+    a := a * 3 + (f a).toUInt64
+  return a
+
+def rangeOuterPredicateUnused (count seed : UInt64) : UInt64 := Id.run do
+  let _f := fun n : UInt64 => n / seed == count
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i
+  return a
+
+def rangeOuterPredicateScalarHelper (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun n : UInt64 => n % 7 == 0
+  let g := fun n : UInt64 => if f n then n + seed else n * 3
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := g (a + UInt64.ofNat i)
+    if f a then break
+  return g a
+
+def rangeOuterPredicateId (count seed : UInt64) : UInt64 := Id.run do
+  let f : UInt64 → Id (Id Bool) := fun n => n != seed
+  let initial ← pure (if (show Bool from f count) then seed + 1 else seed)
+  let mut a := initial
+  for i in [:count.toNat] do
+    let flag ← pure (f a && f (UInt64.ofNat i))
+    if flag then break
+    a := a + UInt64.ofNat i
+  return a + (f a).toUInt64
+
+def rangeOuterPredicateStride (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun n : UInt64 => n % 5 == 0
+  let first := (f seed).toUInt64
+  let mut a := seed
+  for i in [first.toNat:count.toNat:3] do
+    a := a + UInt64.ofNat i
+    if f a || f (a + 1) then break
+  return a
+
 def rangeReusableBooleanBreak (count seed : UInt64) : UInt64 := Id.run do
   let mut a := seed
   for i in [:count.toNat] do
@@ -4977,6 +5051,15 @@ def rangeInputs : List (UInt64 × UInt64) :=
 
 def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
   [
+   ("rangeOuterPredicateBounds", rangeOuterPredicateBounds),
+   ("rangeOuterPredicateCapture", rangeOuterPredicateCapture),
+   ("rangeOuterPredicateNested", rangeOuterPredicateNested),
+   ("rangeOuterPredicateShadow", rangeOuterPredicateShadow),
+   ("rangeOuterPredicateUnused", rangeOuterPredicateUnused),
+   ("rangeOuterPredicateScalarHelper", rangeOuterPredicateScalarHelper),
+   ("rangeOuterPredicateId", rangeOuterPredicateId),
+   ("rangeOuterPredicateStride", rangeOuterPredicateStride),
+
    ("rangeReusableBooleanBreak", rangeReusableBooleanBreak),
    ("rangeReusableBooleanContinue", rangeReusableBooleanContinue),
    ("rangeReusableBooleanCapture", rangeReusableBooleanCapture),
