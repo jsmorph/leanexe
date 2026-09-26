@@ -418,5 +418,9 @@
   "rangeBooleanPredicatePropositionStep",
   "rangeBooleanPredicatePropositionContinue",
   "rangeBooleanPredicatePropositionOuter",
-  "rangeBooleanPredicatePropositionOuterCapture"
+  "rangeBooleanPredicatePropositionOuterCapture",
+  "rangeBooleanPredicateLetStep",
+  "rangeBooleanPredicateLetContinue",
+  "rangeBooleanPredicateLetOuter",
+  "rangeBooleanPredicateLetOuterCapture"
 ]

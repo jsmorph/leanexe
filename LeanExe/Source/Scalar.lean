@@ -66,11 +66,9 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand)) :
       EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) values
         (Bool.toUInt64 (expression.denote native booleans))
-  | letBoolean (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
-      (variables : expression.VariablesMean values booleans)
-      (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand))
-      (body : EvalWith b (.boolean (expression.denote native booleans) :: values) value) :
-      EvalWith (.letE name (.const ``Bool []) expression.expr b nondep) values value
+  | letBoolean (bound : EvalWith (.app (.const ``Bool.toUInt64 []) a) values (Bool.toUInt64 flag))
+      (body : EvalWith b (.boolean flag :: values) value) :
+      EvalWith (.letE name (.const ``Bool []) a b nondep) values value
   | idBindBoolean (action : BooleanAction) (type : ResultType) {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
       (variables : action.leaf.VariablesMean values booleans)
       (arguments : ∀ operand, operand ∈ action.leaf.operands → EvalWith operand values (native operand))
@@ -254,11 +252,9 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (variables : expression.VariablesTyped types)
       (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand) :
       SupportedWith types (.app (.const ``Bool.toUInt64 []) expression.expr)
-  | letBoolean (expression : BooleanLocal)
-      (variables : expression.VariablesTyped types)
-      (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand)
+  | letBoolean (bound : SupportedWith types (.app (.const ``Bool.toUInt64 []) a))
       (body : SupportedWith (.boolean :: types) b) :
-      SupportedWith types (.letE name (.const ``Bool []) expression.expr b nondep)
+      SupportedWith types (.letE name (.const ``Bool []) a b nondep)
   | idBindBoolean (action : BooleanAction) (type : ResultType)
       (variables : action.leaf.VariablesTyped types)
       (arguments : ∀ operand, operand ∈ action.leaf.operands → SupportedWith types operand)
@@ -478,16 +474,11 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
       intro operand member
       simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
     exact ⟨Bool.toUInt64 (expression.denote native booleans), .booleanWord expression hbooleans meanings⟩
-  | letBoolean expression variables _ _ ihArgs ihb =>
-    obtain ⟨booleans, hbooleans⟩ := variables.evaluates values typed
-    let native : Lean.Expr → UInt64 := fun operand =>
-      if member : operand ∈ expression.operands then (ihArgs operand member values typed).choose else 0
-    have meanings : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand) := by
-      intro operand member
-      simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
-    obtain ⟨result, body⟩ := ihb (.boolean (expression.denote native booleans) :: values)
-      (by simp [Value.kind, typed])
-    exact ⟨result, .letBoolean expression hbooleans meanings body⟩
+  | letBoolean _ _ ihv ihb =>
+    obtain ⟨encoded, hv⟩ := ihv values typed
+    obtain ⟨flag, rfl⟩ := hv.booleanConversion_result
+    obtain ⟨result, hb⟩ := ihb (.boolean flag :: values) (by simp [Value.kind, typed])
+    exact ⟨result, .letBoolean hv hb⟩
   | idBindBoolean action type variables _ _ ihArgs ihb =>
     obtain ⟨booleans, hbooleans⟩ := variables.evaluates values typed
     let native : Lean.Expr → UInt64 := fun operand =>

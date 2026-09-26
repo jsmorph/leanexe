@@ -210,8 +210,12 @@ is a Boolean value, Boolean Eq/Ne relation or an admitted proposition. Propositi
 conditions include UInt64 comparisons, literals, negation and junctions; their
 word operands can contain converted calls. Dependent branches may bind an unused
 condition proof; both branches are checked. Saved Boolean variables inside mixed
-propositional guards and direct Boolean contexts containing these calls remain
-subsequent capabilities.
+propositional guards, direct conditions, Boolean do binds and direct Boolean helper
+results containing these calls remain subsequent capabilities. Scalar Boolean `let` bindings can save these call results,
+including compound expressions and choices. The compiler checks used and unused
+bound values, preserves captures and shadowing, and keeps Boolean bindings distinct
+from word and function bindings. Scalar expressions inside loops reuse this support;
+Boolean bindings that directly continue into a loop or loop-step body remain separate.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations

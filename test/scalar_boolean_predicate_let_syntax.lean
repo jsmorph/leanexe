@@ -8,7 +8,8 @@ run_elab do
   let boolean : Lean.Expr := .const ``Bool []
   let functionType := Lean.Expr.forallE `x word (.forallE `y word word .default) .default
   let wrap (body : Lean.Expr) := Lean.Expr.lam `x word (.lam `y word body .default) .default
-  let toWord (body : Lean.Expr) := Lean.Expr.app (.const ``Bool.toUInt64 []) body
+  let toWord (body : Lean.Expr) := Lean.Expr.letE `saved (.const ``Bool []) body
+    (.app (.const ``Bool.toUInt64 []) (.bvar 0)) false
   let add (left right : Lean.Expr) := Lean.Expr.app (.app (.const ``UInt64.add []) left) right
   let inputs : List (UInt64 × UInt64) :=
     [(0, 0), (1, 0), (0, 1), (1, 1), (42, 3), (3, 17), (17, 3),
@@ -83,4 +84,4 @@ run_elab do
                   rejected := rejected + 1
   unless comparisons == 3584 && rejected == 3584 && controls == 256 do
     throwError "unexpected counts {comparisons}, {rejected}"
-  Lean.logInfo m!"{comparisons} native/Boolean-input predicate proposition syntax comparisons and {rejected} invalid-input tests and {controls} admission controls passed"
+  Lean.logInfo m!"{comparisons} native/Boolean-input predicate let syntax comparisons and {rejected} invalid-input tests and {controls} admission controls passed"

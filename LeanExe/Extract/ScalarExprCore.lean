@@ -1,4 +1,5 @@
 import Lean.Meta.Tactic.FunInd
+import LeanExe.Extract.ScalarExtractionSize
 import LeanExe.Extract.ScalarBooleanBind
 import LeanExe.Extract.ScalarTypedLiteralInstance
 import LeanExe.Extract.ScalarCall
@@ -156,13 +157,9 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
               let arguments ← extractScalarArguments call.arguments
                 (fun operand _member => extractScalarExprWith locals operand)
               function arguments
-  | .letE _ (.const ``Bool []) value body _ =>
-      match _boolean : booleanLocalOperands? value with
-      | none => none
-      | some expression => do
-          let c ← extractBooleanLocalWith locals expression
-            (fun operand _member => extractScalarExprWith locals operand)
-          extractScalarExprWith (.boolean (guardWord c) :: locals) body
+  | .letE _ (.const ``Bool []) value body _ => do
+      let bound ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) value)
+      extractScalarExprWith (.boolean bound :: locals) body
   | .letE _ (.const ``UInt64 []) value body _ => do
       let bound ← extractScalarExprWith locals value
       extractScalarExprWith (.word bound :: locals) body
@@ -352,8 +349,12 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
       extractScalarExprWith locals (.letE name type value body nondep)
   | .mdata _ body => extractScalarExprWith locals body
   | _ => none
-termination_by source => sizeOf source
+termination_by source => scalarExtractionSize source
 decreasing_by
+  all_goals simp_wf
+  all_goals try simp only [scalarExtractionSize_conversion]
+  all_goals try apply Nat.lt_of_le_of_lt (scalarExtractionSize_le _)
+  all_goals try simp only [scalarExtractionSize]
   all_goals simp_wf
   all_goals first
     | omega
@@ -695,12 +696,11 @@ theorem extractScalarExprWith_applyBooleanPredicateWordOnly (locals : List Scala
     simp [extractBooleanLocalWith, extractBooleanLocal, noPredicate]
 
 theorem extractScalarExprWith_letBoolean (locals : List ScalarBinding)
-    (expression : LeanExe.Source.Scalar.BooleanLocal) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool) :
-    extractScalarExprWith locals (.letE name (.const ``Bool []) expression.expr body nondep) = (do
-      let c ← extractBooleanLocalWith locals expression
-        (fun operand _ => extractScalarExprWith locals operand)
-      extractScalarExprWith (.boolean (guardWord c) :: locals) body) := by
-  rw [extractScalarExprWith, booleanLocalOperands_expr]
+    (value : Lean.Expr) (name : Lean.Name) (body : Lean.Expr) (nondep : Bool) :
+    extractScalarExprWith locals (.letE name (.const ``Bool []) value body nondep) = (do
+      let bound ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) value)
+      extractScalarExprWith (.boolean bound :: locals) body) := by
+  rw [extractScalarExprWith]
 
 theorem extractScalarExprWith_booleanBranch (locals : List ScalarBinding)
     (guard : LeanExe.Source.Scalar.BooleanLocalGuard) (type : LeanExe.Source.Scalar.ResultType)
