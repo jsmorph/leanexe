@@ -8,6 +8,9 @@ ADMISSION = 'LeanExe.Extract.Arithmetic.'
 MODULE = 'Project.Compiler.ArithmeticModule.'
 STANDARD = {'propext', 'Classical.choice', 'Quot.sound'}
 AUDITS = {
+    'LeanExe.Source.Scalar.Reannotates.eval_iff': STANDARD,
+    'LeanExe.Extract.Core.reannotation_sound': STANDARD,
+    'LeanExe.Extract.Core.reannotation_accepts': STANDARD,
     ADMISSION + 'compileEnvironment_accepts': STANDARD,
     ADMISSION + 'compileEnvironment_success': STANDARD,
     **{MODULE + name: {'propext'} for name in

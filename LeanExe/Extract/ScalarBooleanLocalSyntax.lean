@@ -565,7 +565,13 @@ theorem booleanLocal_not_guard (guard : BooleanLocalGuard) :
 
 theorem booleanLocal_not_compound (guard : BooleanLocalGuard) :
     compoundGuard? guard.condition guard.evidence = none := by
-  simp [compoundGuard?, compoundGuardShape?, booleanLocal_not_guard]
+  have absent : comparisonOperands? guard.condition = none := by
+    obtain ⟨value, expanded, form⟩ := guard
+    cases form with
+    | truth value => exact booleanLocal_not_comparison value expanded
+    | equal left right nontrue => exact booleanRelationEqual_not_comparison left.expr right.expr nontrue
+    | unequal left right => exact booleanRelationUnequal_not_comparison left.expr right.expr
+  simp [compoundGuard?, compoundGuardShape?, booleanLocal_not_guard, reannotatedComparison?, absent]
 
 def booleanLocalGuard? (condition evidence : Lean.Expr) : Option BooleanLocalGuard :=
   match condition with

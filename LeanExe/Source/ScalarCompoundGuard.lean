@@ -1,9 +1,11 @@
 import LeanExe.Source.ScalarGuard
+import LeanExe.Source.ScalarReannotatedComparison
 
 namespace LeanExe.Source.Scalar
 
-/-- Checked guard forms beyond atomic comparisons share the proved guard lowering. -/
+/-- Additional checked guard forms share the proved guard lowering. -/
 inductive CompoundGuard where
+  | reannotated (comparison : ReannotatedComparison)
   | literal (value : GuardLiteral)
   | proposition (junction : Junction) (left right : Guard) (negations : Nat := 0)
   | boolean (junction : Junction) (left right : BooleanGuard) (negations : Nat := 0) (propNegations : Nat := 0)
@@ -12,6 +14,7 @@ inductive CompoundGuard where
 namespace CompoundGuard
 
 def tree : CompoundGuard → Guard
+  | .reannotated comparison => .compare comparison.operation comparison.left comparison.right
   | .literal value => .literal value
   | .proposition op a b n => .junction n op a b
   | .boolean op a b n m => .boolean m n op a b
@@ -20,7 +23,9 @@ abbrev operands (guard : CompoundGuard) : List Lean.Expr := guard.tree.operands
 abbrev denote (guard : CompoundGuard) (native : Lean.Expr → UInt64) : Bool := guard.tree.denote native
 
 abbrev condition (guard : CompoundGuard) : Lean.Expr := guard.tree.condition
-abbrev evidence (guard : CompoundGuard) : Lean.Expr := guard.tree.evidence
+def evidence : CompoundGuard → Lean.Expr
+  | .reannotated comparison => comparison.evidence
+  | guard => guard.tree.evidence
 
 theorem operands_size (guard : CompoundGuard) {operand : Lean.Expr}
     (member : operand ∈ guard.operands) : sizeOf operand < sizeOf guard.condition :=

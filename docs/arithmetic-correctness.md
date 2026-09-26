@@ -47,10 +47,16 @@ heap values, imports, and floats are excluded from the current theorem.
 Comparisons use the standard UInt64 instances and exact standard decision
 procedures. Propositional `=`, `≠`, `<`, `≤`, `>` and `≥` also accept finite `Id`
 layers on their UInt64 type argument. The source syntax retains these annotations.
-The condition and decision procedure must contain identical operand expressions;
-use explicit UInt64 operand annotations or local bindings when expected types
-would otherwise make their elaborated expressions differ. Boolean `==` and `!=`
-heads still require an unannotated UInt64 type argument.
+Ordinary scalar and loop-step `if` comparisons also accept condition and decision
+operands that differ through standard arithmetic type annotations and numeral
+instances. A checked source relation proves that the corresponding operands
+have exactly the same source evaluations. It covers the ten binary UInt64
+operations, standard numeral encodings, and corresponding metadata wrappers;
+custom arithmetic/numeral instances and different runtime operands are rejected.
+The entire decision expression is still checked. Compound guards, dependent
+branches and saved `decide` values currently require identical condition and
+decision operands. Boolean `==` and `!=` heads still require an unannotated UInt64
+type argument.
 `>` and `≥` have their own elaborated heads, using the standard `<` and `≤`
 decision procedures with reversed operands. `≠` preserves standard inequality
 evidence. `¬` can wrap any admitted comparison, including another negation,
@@ -380,7 +386,7 @@ execution reference. Wasmtime runs the broader runtime suite.
 
 | Command | Scope |
 |---------|-------|
-| `tools/arithmetic-check.js proof` | Build the general theorem and check all nine declared axiom dependencies. |
+| `tools/arithmetic-check.js proof` | Build the general theorem and check all twelve declared axiom dependencies. |
 | `tools/arithmetic-check.js subset-engine <group>` | Compile and execute the fixed group from [the group registry](../test/arithmetic-engine-groups.json). |
 | `tools/arithmetic-check.js range-engine` | Check the [registered range declarations](../test/arithmetic-range-cases.json). |
 | `tools/arithmetic-check.js engine` | Check the complete [native/execution fixture](../test/ArithmeticMilestone.lean). |
@@ -423,10 +429,11 @@ arithmetic compilation alone. `extracted_correct` connects successful extraction
 to the production `CoreWasm.moduleBytes` emitter. The final theorem is universally
 quantified over admitted source programs, not restricted to the test examples.
 
-The complete audit is `Project.Compiler.ArithmeticCompilerAudit`. All nine
+The complete audit is `Project.Compiler.ArithmeticCompilerAudit`. All twelve
 reported declarations must have only the allowed dependencies. The runtime
 retain/alloc/release proofs use only `propext`; the other audited compiler
-results allow `propext`, `Classical.choice`, and `Quot.sound`.
+results and the three source-equivalence/recognition results allow `propext`,
+`Classical.choice`, and `Quot.sound`.
 
 The trusted boundary includes Lean's kernel, those standard axioms, the source
 semantics tied to native UInt64 operations, and the pinned Wasm decoder,
@@ -458,7 +465,7 @@ python3 tools/arithmetic-package.py verify .
 ```
 
 Verification checks the inventory and pins before building the bundled general
-proof and auditing all nine results. It runs no compiler CLI or generator and
+proof and auditing all twelve results. It runs no compiler CLI or generator and
 requires its own `.lake/build` to be absent. It may fetch pinned third-party
 packages, or reuse them with `--dependencies /absolute/path/to/dependencies`.
 Only those third-party libraries may reuse build products; all bundled proof

@@ -8,49 +8,55 @@ annotation fix. This compiler-proof task remains active; the completed drone tas
 is preserved separately at the end of this file. Lean runs locally through
 `tools/leanrun`. Full-dialect correctness is not yet proved.
 
-Candidate `c8b59c3a` accepts standard UInt64 propositional comparisons with finite
-`Id` type annotations. The source syntax retains their exact types, standard
-order instances, and decision evidence. The general source-to-WASM theorem and
-all nine compiler axiom audits pass. The real compiler passes 597 native Lean/V8
-comparisons across 35 declarations, including twelve range declarations.
+The comparison-operand extension is implemented. Standard arithmetic type
+annotations, standard numeral encodings and corresponding metadata wrappers can
+differ between an ordinary comparison's condition and decision operands. The
+independent `Reannotates.eval_iff` theorem proves both directions against the
+existing source semantics. The extractor checks the whole standard decision
+expression and rejects changed operands and custom operations/instances.
 
-The focused fixtures pass 492 native/IR comparisons and 215 rejection tests.
-Preceding comparison and arithmetic fixtures pass unchanged, and twenty prior
-WASM modules keep identical bytes. The corpus has 675 declarations; this was a
-focused execution run. The independent core type-safety implementation, runtime,
-and binary serializer are unchanged. Evidence, exact binaries, test sources,
-and the retained initial failures are in
-[the comparison archive](proofs/compiler/id-comparison-2026-09-26/README.md).
+The general source-to-WASM theorem and all twelve axiom audits pass, including
+three new source-equivalence/recognition audits. The focused tests pass 2,066
+native/IR comparisons and 1,204 rejection tests. The original
+`rangeIdComparisonEvidenceAnnotations` loop now compiles unchanged. The emitted
+WASM execution group contains 46 declarations; its checks are in progress.
 
-Next: support comparison decision operands that differ from their condition
-operands only by accepted type annotations. The original loop probe remains
-`rangeIdComparisonEvidenceAnnotations`, an explicit rejection test. Its accepted
-variant uses UInt64 operand annotations. Prove source equivalence before relaxing
-that check, then complete the compiler proof and native/WASM comparisons for the
-extension. Keep increments focused and commit/push frequently.
+Next: finish native Lean/V8 comparisons and archive the checked source, binaries,
+logs and failures. Then extend operand equivalence through compound guard
+conditions, dependent branches and saved decisions before continuing broader
+compiler coverage. Full-dialect correctness remains unfinished. Keep increments
+focused, get each capability proved and executing end to end, and commit/push
+frequently.
 
-## Merged compiler proof integration — in progress
+## Merged compiler proof integration — complete
 
-The general compiler proof exposed a mismatch with main's typed branch metadata:
-`ScalarTransition` retains i64/i32 result types, while `ScalarLowering` omitted
-them. The translation now preserves those types, and the binary-translation
-witness agrees. `Project.Compiler.ArithmeticTranslation` builds successfully.
-The full compiler proof and execution checks are being rerun with the comparison
-extension below; the initial failure log is retained.
+Main's shared scalar programs preserve branch result types. The general compiler
+translation now retains those i64/i32 types, and its binary-translation witness
+agrees. The complete compiler proof passes after this correction. The initial
+failure and focused proof diagnostics are retained for the evidence archive.
 
-## Comparison operand equivalence — in progress
+## Comparison operand equivalence — execution checks in progress
 
-The independent source relation `Reannotates` covers exact expressions,
-standard UInt64 arithmetic heads with accepted type annotations, standard numerals,
-and corresponding metadata wrappers. `Reannotates.eval_iff` proves both directions
-against the existing source evaluation relation. The proof uses arithmetic-head
-and numeral evaluation inversion lemmas. Its Lean build passes, and its axiom audit
-contains only `propext`, `Classical.choice`, and `Quot.sound`.
+The source relation covers exact expressions, standard UInt64 arithmetic heads,
+standard numerals and corresponding metadata wrappers. Checked recognizer
+soundness and acceptance connect that relation to ordinary scalar and loop-step
+comparison admission. This includes all six propositional comparisons, Boolean
+equality/inequality guards, nested negation, local helper bodies and Id actions.
+Compound guard evidence, dependent branch evidence and saved decisions still
+require identical condition and decision operands.
 
-The checked recognizer and comparison admission integration are next. This
-foundation alone does not extend accepted compiler input. The original loop probe
-remains rejected until admission, general compiler proofs, and native/WASM tests
-are completed. No full compiler claim is made for this checkpoint.
+Validation completed:
+
+- General compiler theorem and all twelve axiom audits; only the standard
+  `propext`, `Classical.choice`, and `Quot.sound` allowances are used.
+- `scalar_reannotation.lean`: 150 native/IR comparisons.
+- `scalar_reannotation_syntax.lean`: 1,400 comparisons and 990 invalid-input tests
+  across ten arithmetic operations and ten comparison forms.
+- `scalar_id_comparison.lean`: 264 comparisons and four rejected declarations.
+- `scalar_comparison_id_type.lean`: 252 comparisons and 210 invalid-input tests.
+
+The selected native/WASM run is pending. This checkpoint does not claim full
+LeanExe dialect correctness.
 
 ## Main integration — complete
 
