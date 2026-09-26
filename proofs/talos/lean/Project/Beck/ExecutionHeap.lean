@@ -30,6 +30,21 @@ theorem allocation_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
 def emptyWords (heap : Heap) (initial : Store Unit) : Store Unit :=
   FixedArrayResult.writeLength (heap.allocateArrayStore initial 8 1) (allocatedRoot heap.top 8 heap.nodes) 0
 
+theorem allocatedWrites_resources (heap : Heap) (initial final : Store Unit)
+    (need : UInt64) (lower upper : Nat)
+    (writes : Project.ProofKit.Memory.WritesRange (heap.allocateArrayStore initial need 1)
+      final lower upper)
+    (space : takeFirstFitFrom 0 need heap.nodes = none →
+      heap.top.toNat + 48 + need.toNat ≤ 4294967296)
+    (pages : initial.mem.pages ≤ 65536) :
+    final.mem.pages ≤ 65536 ∧
+      final.memoryCap Project.Beck.«module» 0 = initial.memoryCap Project.Beck.«module» 0 := by
+  constructor
+  · rw [writes.2.1]
+    exact heap.allocateArrayStore_pages_bound initial need 1 65536 pages space
+  · rw [writes.1]
+    exact heap.allocateArrayStore_memoryCap initial need 1 Project.Beck.«module» 0
+
 theorem emptyWords_bounds (heap : Heap) (initial : Store Unit) (valid : heap.At initial)
     (space : takeFirstFitFrom 0 8 heap.nodes = none → heap.top.toNat + 48 + 8 ≤ 4294967296) :
     (allocatedRoot heap.top 8 heap.nodes).toNat + 8 ≤ 4294967296 ∧
