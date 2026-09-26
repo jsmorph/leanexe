@@ -349,5 +349,7 @@
   "rangeIdComparisonDecide",
   "rangeIdComparisonDependent",
   "rangeReannotatedOrder",
-  "rangeIdComparisonEvidenceAnnotations"
+  "rangeIdComparisonEvidenceAnnotations",
+  "rangeReannotatedAnd",
+  "rangeReannotatedOr"
 ]

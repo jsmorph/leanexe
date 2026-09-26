@@ -14,3 +14,6 @@ import LeanExe.Source.ScalarReannotationEvaluation
 #print axioms LeanExe.Source.Scalar.Reannotates.eval_iff
 #print axioms LeanExe.Extract.Core.reannotation_sound
 #print axioms LeanExe.Extract.Core.reannotation_accepts
+
+#print axioms LeanExe.Extract.Core.guardDecision_sound
+#print axioms LeanExe.Extract.Core.guardDecision_accepts
