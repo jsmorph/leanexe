@@ -422,5 +422,13 @@
   "rangeBooleanPredicateLetStep",
   "rangeBooleanPredicateLetContinue",
   "rangeBooleanPredicateLetOuter",
-  "rangeBooleanPredicateLetOuterCapture"
+  "rangeBooleanPredicateLetOuterCapture",
+  "rangeBooleanPredicateLoopLetBreak",
+  "rangeBooleanPredicateLoopLetContinue",
+  "rangeBooleanPredicateLoopLetChoice",
+  "rangeBooleanPredicateLoopLetCapture",
+  "rangeBooleanPredicateOuterLetBounds",
+  "rangeBooleanPredicateOuterLetCapture",
+  "rangeBooleanPredicateOuterLetChoice",
+  "rangeBooleanPredicateOuterLetId"
 ]
