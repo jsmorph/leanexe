@@ -1,0 +1,113 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [16/20] Built LeanExe.Source.ScalarGuardDecision (891ms)
+✔ [19/36] Built LeanExe.Source.ScalarCompoundGuard (875ms)
+✔ [35/36] Built LeanExe.Extract.ScalarGuardDecision (923ms)
+✖ [36/36] Building LeanExe.Extract.ScalarGuardSyntax (1.2s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarGuardSyntax.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuardSyntax.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuardSyntax.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuardSyntax.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuardSyntax.setup.json --json
+error: LeanExe/Extract/ScalarGuardSyntax.lean:212:22: unsolved goals
+case reannotated.literal
+evidence : Lean.Expr
+value✝ : GuardLiteral
+meaning : GuardDecision (Guard.literal value✝) evidence
+different : evidence ≠ (Guard.literal value✝).evidence
+⊢ (if evidence = value✝.evidence then some (CompoundGuard.literal value✝) else none) =
+      some
+        (CompoundGuard.reannotated
+          { tree := Guard.literal value✝, evidence := evidence, meaning := meaning, different := different }) ∨
+    (if evidence = value✝.evidence then some (CompoundGuard.literal value✝) else none) = none ∧
+      reannotatedGuard? (Guard.literal value✝).condition evidence =
+        some { tree := Guard.literal value✝, evidence := evidence, meaning := meaning, different := different }
+
+case reannotated.compare
+evidence : Lean.Expr
+op✝ : Comparison
+left✝ right✝ : Lean.Expr
+meaning : GuardDecision (Guard.compare op✝ left✝ right✝) evidence
+different : evidence ≠ (Guard.compare op✝ left✝ right✝).evidence
+⊢ reannotatedGuard? (Guard.compare op✝ left✝ right✝).condition evidence =
+    some { tree := Guard.compare op✝ left✝ right✝, evidence := evidence, meaning := meaning, different := different }
+
+case reannotated.junction
+evidence : Lean.Expr
+negations✝ : Nat
+op✝ : Junction
+left✝ right✝ : Guard
+meaning : GuardDecision (Guard.junction negations✝ op✝ left✝ right✝) evidence
+different : evidence ≠ (Guard.junction negations✝ op✝ left✝ right✝).evidence
+⊢ (if
+          evidence =
+            GuardNegation.evidence negations✝ (op✝.condition left✝.condition right✝.condition)
+              (op✝.evidence left✝.condition right✝.condition left✝.evidence right✝.evidence) then
+        some (CompoundGuard.proposition op✝ left✝ right✝ negations✝)
+      else none) =
+      some
+        (CompoundGuard.reannotated
+          { tree := Guard.junction negations✝ op✝ left✝ right✝, evidence := evidence, meaning := meaning,
+            different := different }) ∨
+    (if
+            evidence =
+              GuardNegation.evidence negations✝ (op✝.condition left✝.condition right✝.condition)
+                (op✝.evidence left✝.condition right✝.condition left✝.evidence right✝.evidence) then
+          some (CompoundGuard.proposition op✝ left✝ right✝ negations✝)
+        else none) =
+        none ∧
+      reannotatedGuard? (Guard.junction negations✝ op✝ left✝ right✝).condition evidence =
+        some
+          { tree := Guard.junction negations✝ op✝ left✝ right✝, evidence := evidence, meaning := meaning,
+            different := different }
+
+case reannotated.boolean
+evidence : Lean.Expr
+propNegations✝ boolNegations✝ : Nat
+op✝ : Junction
+left✝ right✝ : BooleanGuard
+meaning : GuardDecision (Guard.boolean propNegations✝ boolNegations✝ op✝ left✝ right✝) evidence
+different : evidence ≠ (Guard.boolean propNegations✝ boolNegations✝ op✝ left✝ right✝).evidence
+⊢ (if
+          evidence =
+            GuardNegation.evidence propNegations✝ (BooleanGuard.junction boolNegations✝ op✝ left✝ right✝).condition
+              (BooleanGuard.junction boolNegations✝ op✝ left✝ right✝).evidence then
+        some (CompoundGuard.boolean op✝ left✝ right✝ boolNegations✝ propNegations✝)
+      else none) =
+      some
+        (CompoundGuard.reannotated
+          { tree := Guard.boolean propNegations✝ boolNegations✝ op✝ left✝ right✝, evidence := evidence,
+            meaning := meaning, different := different }) ∨
+    (if
+            evidence =
+              GuardNegation.evidence propNegations✝ (BooleanGuard.junction boolNegations✝ op✝ left✝ right✝).condition
+                (BooleanGuard.junction boolNegations✝ op✝ left✝ right✝).evidence then
+          some (CompoundGuard.boolean op✝ left✝ right✝ boolNegations✝ propNegations✝)
+        else none) =
+        none ∧
+      reannotatedGuard? (Guard.boolean propNegations✝ boolNegations✝ op✝ left✝ right✝).condition evidence =
+        some
+          { tree := Guard.boolean propNegations✝ boolNegations✝ op✝ left✝ right✝, evidence := evidence,
+            meaning := meaning, different := different }
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:216:68: This simp argument is unused:
+  ReannotatedGuard.condition
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [compoundGuard?, canonicalCompoundGuard?, CompoundGuard.condition, CompoundGuard.tree,
+    CompoundGuard.evidence, Guard.evidence]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarGuardSyntax.lean:267:21: unsolved goals
+case reannotated.compare
+evidence : Lean.Expr
+op : Comparison
+a b : Lean.Expr
+meaning : GuardDecision (Guard.compare op a b) evidence
+different : evidence ≠ (Guard.compare op a b).evidence
+⊢ ¬evidence = op.evidence a b
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:269:49: This simp argument is unused:
+  Guard.evidence
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all [comparison?, CompoundGuard.condition, CompoundGuard.tree, CompoundGuard.evidence, Guard.condition]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarGuardSyntax
+error: build failed
