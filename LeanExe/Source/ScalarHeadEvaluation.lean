@@ -64,10 +64,10 @@ theorem EvalWith.binary_inv {head a b : Lean.Expr} {values : List Value}
     | direct operation => cases operation <;> simp_all [classHead, literalExpr, typedLiteralExpr, Comparison.branch,
         CompoundGuard.branch, DecidedGuard.dependentBranch, BooleanIdentity.bind, BooleanLocalGuard.branch,
         BooleanLocalGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
-        UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr]
+        UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr, predicateInputExpr]
     | canonical operation result left right instanceType => cases operation <;> simp_all [classHead, literalExpr, typedLiteralExpr, Comparison.branch,
         CompoundGuard.branch, DecidedGuard.dependentBranch, BooleanIdentity.bind, BooleanLocalGuard.branch,
         BooleanLocalGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
-        UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr]
+        UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr, predicateInputExpr]
 
 end LeanExe.Source.Scalar

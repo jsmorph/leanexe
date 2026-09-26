@@ -62,6 +62,6 @@ theorem EvalWith.typedLiteral_inv {type : ResultType} {numeral evidence : Lean.E
     simp_all [literalExpr, typedLiteralExpr, Comparison.branch, CompoundGuard.branch,
       DecidedGuard.dependentBranch, BooleanIdentity.bind, BooleanLocalGuard.branch,
       BooleanLocalGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
-      UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr]
+      UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr, predicateInputExpr]
 
 end LeanExe.Source.Scalar

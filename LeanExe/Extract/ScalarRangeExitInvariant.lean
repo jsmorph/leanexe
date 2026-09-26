@@ -251,13 +251,26 @@ theorem extractScalarRangeExitWith_invariant (P : LeanExe.IR.Expr → Prop)
       · exact hx
       · exact bindings binding member
     · exact bindings binding member
-  | case27 locals name type value body nondep rejected ih =>
+  | case27 locals name typeName resultType typeBi paramName domain value paramBi body nondep rejected notRange =>
+    rw [extractScalarRangeExitWith] at compiled
+    simp [notRange, rejected] at compiled
+  | case28 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType rejected foundInput notRange =>
+    rw [extractScalarRangeExitWith] at compiled
+    simp [notRange, foundInput, rejected] at compiled
+  | case29 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType result foundResult foundInput notRange ih =>
+    rw [extractScalarRangeExitWith] at compiled
+    simp only [notRange, ↓reduceIte, foundInput, foundResult] at compiled
+    exact ih compiled bindings
+  | case30 locals name typeName input resultType typeBi paramName domain value paramBi body nondep different notRange =>
+    rw [extractScalarRangeExitWith] at compiled
+    simp [notRange, different] at compiled
+  | case31 locals name type value body nondep rejected ih =>
     change extractScalarRangeExitWith locals slot
       (LeanExe.Source.Scalar.idLetExpr name type value body nondep) = some plan at compiled
     exact ih (by simpa only [extractScalarRangeExitWith_idLet] using compiled) bindings
-  | case28 locals data body rejected ih =>
+  | case32 locals data body rejected ih =>
     exact ih (by simpa only [extractScalarRangeExitWith_metadata] using compiled) bindings
-  | case29 locals source rejected hrun hpure hboolLet hlet hbinary hunary hunit hpunit hbind hidLet hmetadata =>
+  | case33 locals source rejected hrun hpure hboolLet hlet hbinary hunary hunit hpunit hbind hPredicateInput hidLet hmetadata =>
     rw [extractScalarRangeExitWith] at compiled <;> first | assumption | (simp [rejected] at compiled)
 
 end LeanExe.Extract.Core

@@ -33,8 +33,13 @@ bytes. New focused checks pass 1,920 native/IR comparisons and 864 invalid-input
 tests. Prior step-helper checks pass 1,872 comparisons and 864 rejections.
 Evidence is in [the outer-predicate archive](proofs/compiler/outer-predicates-2026-09-26/README.md).
 
-Next: retained standard Id annotations on reusable predicate parameters, then
-broader helper signatures. Bool-to-Bool calls need type-aware argument parsing:
+Retained standard Id annotations on reusable predicate parameters now have an
+independent source rule and checked extraction equations. Scalar, loop-step and
+outer-loop acceptance, soundness, correctness and invariant proofs pass. Ten
+concrete examples and systematic syntax cases pass 9,108 native/IR comparisons
+and 7,344 invalid-input checks. The general theorem and selected native/Wasm
+checks follow them. Broader helper signatures come next.
+Bool-to-Bool calls need type-aware argument parsing:
 a bound Boolean and a bound word share the same raw bound-variable syntax.
 The parser must select argument semantics from the function binding rather than
 infer them from that syntax alone. Full-dialect correctness remains unfinished.
