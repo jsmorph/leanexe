@@ -117,20 +117,21 @@ checks. Prior tests pass 16,660 comparisons and 11,694 invalid-input checks, wit
 twelve admission controls in each group. Evidence is in
 [the choice archive](proofs/compiler/boolean-predicate-choice-2026-09-26/README.md).
 
-Boolean-valued choices containing Boolean-input calls now pass source totality,
-extraction correctness, acceptance, soundness and IR invariant proofs for admitted
-propositional conditions. The conditions include UInt64 comparisons, literals,
-negation and junctions, with converted calls in their word operands. Ordinary and
-dependent branches preserve captures in scalar, loop-step and outer-loop scopes.
-Focused tests pass 16,052 native/IR comparisons and 11,670 invalid-input checks,
-with twelve admission controls. The general source-to-WASM theorem, eighteen
-audits and selected native Lean/V8 execution are next for this candidate.
+Boolean-valued choices containing Boolean-input calls are complete for admitted
+propositional conditions: UInt64 comparisons, literals, negation and junctions,
+with converted calls in their word operands. Ordinary and dependent branches
+preserve captures in scalar, loop-step and outer-loop scopes. The general
+source-to-WASM theorem and all eighteen audits pass. Native Lean/V8 agree on
+555 inputs across 32 selected declarations, including twelve ranges; all eighteen
+shared modules retain identical bytes. Focused tests pass 16,052 native/IR
+comparisons and 11,670 invalid-input checks. Prior tests pass 16,356 comparisons
+and 11,640 invalid-input checks, with twelve admission controls in each group.
+Evidence is in [the propositional-choice archive](proofs/compiler/boolean-predicate-proposition-2026-09-26/README.md).
 
-Next: finish the propositional-choice candidate through WASM, then admit direct
-Boolean contexts containing Bool-input calls. Saved Boolean variables in mixed
-propositional guards, retained instance wrappers and broader signatures follow.
-Full-dialect correctness remains unfinished. Complete each capability through
-WASM and commit/push frequently.
+Next: direct Boolean contexts containing Bool-input calls, starting with scalar
+Boolean lets. Saved Boolean variables in mixed propositional guards, retained
+instance wrappers and broader signatures follow. Full-dialect correctness remains
+unfinished. Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
