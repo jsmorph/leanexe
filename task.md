@@ -1,4 +1,15 @@
-# Current task: main integration — complete
+# Current task: compiler coverage on correct — in progress
+
+The user resumed compiler work on `correct` from main on 2026-09-26.
+`correct` includes main through `8dbb8e8a`, including the combined compiler,
+byte-I/O, GPT, and documentation work. Lean runs locally through `tools/leanrun`.
+
+Current increment: accept standard UInt64 propositional comparisons whose word
+type retains finite `Id` annotations. Preserve exact source types and standard
+decision evidence, prove extraction and lowering, and check the real compiler
+output against native Lean. Use focused dependency builds and execution tests.
+
+## Main integration — complete
 
 Main includes `ciogpt` through `3a0222be`. The fetched `origin/main` at `a4655383`
 was already an ancestor, so the merge was a fast-forward with no conflicts or
