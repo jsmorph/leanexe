@@ -1,0 +1,4 @@
+[correct 7a00be91] Prove immediate Boolean lambda application lowering
+ 15 files changed, 496 insertions(+), 55 deletions(-)
+ create mode 100644 test/scalar_boolean_application.lean
+ create mode 100644 test/scalar_boolean_application_syntax.lean
