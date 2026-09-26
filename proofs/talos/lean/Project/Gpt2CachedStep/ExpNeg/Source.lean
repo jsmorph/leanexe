@@ -1,15 +1,8 @@
-import LeanExe.Models.Gpt2.Numerics
+import Project.Gpt2CachedStep.ExpNeg.Compute
 import Project.ProofKit.F32Mul
 
 namespace Project.Gpt2CachedStep.ExpNeg
 open LeanExe.Models.Gpt2
-
-def reduceStep (state : UInt32 × Nat) : UInt32 × Nat :=
-  if state.1 > 0xBF800000 then (LeanExe.Float32.mulBits state.1 0x3F000000, state.2 + 1)
-  else state
-
-def reducePrefix (input : UInt32) (count : Nat) : UInt32 × Nat :=
-  (List.range count).foldl (fun state _ => reduceStep state) (input, 0)
 
 @[simp] theorem reducePrefix_zero (input : UInt32) : reducePrefix input 0 = (input, 0) := rfl
 
@@ -24,9 +17,6 @@ theorem reducePrefix_count (input : UInt32) (count : Nat) : (reducePrefix input 
     rw [reducePrefix_succ]
     unfold reduceStep
     split <;> omega
-
-def squarePrefix (input : UInt32) (count : Nat) : UInt32 :=
-  (List.range count).foldl (fun value _ => LeanExe.Float32.mulBits value value) input
 
 @[simp] theorem squarePrefix_zero (input : UInt32) : squarePrefix input 0 = input := rfl
 

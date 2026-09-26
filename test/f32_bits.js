@@ -40,6 +40,28 @@ const vectors = {
     [[two], 0x3fb504f3n], [[0x800000n], 0x20000000n],
     [[one | negZero], "nan"], [[inf], inf], [[nan], "nan"],
   ],
+  nearestBits: [
+    [[0n], 0n], [[negZero], negZero], [[1n], 0n], [[negZero | 1n], negZero],
+    [[0x3f000000n], 0n], [[0xbf000000n], negZero],
+    [[0x3f000001n], one], [[0xbf000001n], one | negZero],
+    [[0x3fc00000n], two], [[0x40200000n], two],
+    [[0x40600000n], 0x40800000n], [[0xc0200000n], two | negZero],
+    [[0x42fd0000n], 0x42fc0000n], [[0x42fd0001n], 0x42fe0000n],
+    [[max], max], [[inf], inf], [[inf | negZero], inf | negZero], [[nan], "nan"],
+  ],
+  toInt32Bits: [
+    [[0n], 0n], [[negZero], 0n], [[0x3fc00000n], 1n],
+    [[0xbfc00000n], 0xffffffffn], [[0x4effffffn], 0x7fffff80n],
+    [[0x4f000000n], 0x7fffffffn], [[0xcf000000n], 0x80000000n],
+    [[0xcf000001n], 0x80000000n], [[inf], 0x7fffffffn],
+    [[inf | negZero], 0x80000000n], [[nan], 0n], [[0xffc12345n], 0n],
+  ],
+  ofInt32Bits: [
+    [[0n], 0n], [[1n], one], [[0xffffffffn], one | negZero],
+    [[0x7fffffffn], 0x4f000000n], [[0x80000000n], 0xcf000000n],
+    [[16777217n], 0x4b800000n], [[16777219n], 0x4b800002n],
+    [[0xfeffffffn], 0xcb800000n],
+  ],
   toFloat64Bits: [
     [[one], 0x3ff0000000000000n], [[negZero], 0x8000000000000000n],
     [[1n], 0x36a0000000000000n], [[max], 0x47efffffe0000000n],
@@ -64,6 +86,7 @@ for (const value of [0x7f800001n, 0xffc12345n]) {
   for (const entry of ["addBits", "subBits", "mulBits", "divBits"])
     vectors[entry].push([[value, one], "nan"], [[one, value], "nan"]);
   vectors.sqrtBits.push([[value], "nan"]);
+  vectors.nearestBits.push([[value], "nan"]);
   vectors.toFloat64Bits.push([[value], "nan"]);
 }
 for (const value of [0x7ff0000000000001n, 0xfff8123456789abcn])

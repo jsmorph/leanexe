@@ -75,7 +75,7 @@ def RunningData.sourceState (data : RunningData) : Model.MatchStateL :=
 
 def LoopLocalsAt (ctx : Context) (data : RunningData) (s : Locals) : Prop :=
   s.params.length = 9 ∧
-  s.locals.length = 76 ∧
+  s.locals.length = 86 ∧
   s.values = [] ∧
   s.get 0 = some (.i64 data.fuel) ∧
   s.get 9 = some (.i64 ctx.taker.oid) ∧
@@ -155,6 +155,15 @@ theorem RunningAt.values (h : RunningAt ctx st s) : s.values = [] := by
   rcases h with ⟨data, facts⟩
   exact facts.locals.2.2.1
 
+/-- A nonzero residual exits without performing the terminal partial fill.
+Retain the running heap geometry for a caller that appends the residual order. -/
+def ResidualStateAt (ctx : Context) (st : Store Unit)
+    (book bookCapacity trades tradesCapacity g0 : UInt64) (nodes : List FreeNode) : Prop :=
+  ∃ (data : RunningData) (frame : Locals), RunningFacts ctx st frame data ∧
+    data.book = book ∧ data.bookCapacity = bookCapacity ∧
+    data.trades = trades ∧ data.tradesCapacity = tradesCapacity ∧
+    data.g0 = g0 ∧ data.nodes = nodes ∧ ctx.result = data.sourceState
+
 structure CompletedData where
   book : UInt64
   bookCapacity : UInt64
@@ -169,6 +178,8 @@ structure CompletedFacts (ctx : Context) (st : Store Unit) (s : Locals)
   result : LoopControl.CompletedResultAt s data.book data.trades
     ctx.result.remaining
   fuelLocal : s.get 0 = some (.i64 data.fuel)
+  residual : ctx.result.remaining ≠ 0 → ResidualStateAt ctx st data.book
+    data.bookCapacity data.trades data.tradesCapacity data.g0 data.nodes
   bookOwned :
     OwnedOrderArrayAt st data.book data.bookCapacity ctx.result.book
   tradesOwned :

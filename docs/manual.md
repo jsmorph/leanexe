@@ -10,7 +10,7 @@ The main rule is simple: write concrete, first-order Lean.  Let Lean type-check 
 
 1. Write a Lean module under the package, usually under `LeanExe/Examples` or another namespace rooted in the module being compiled.
 2. Build the module with Lake.
-3. Run `report` on the intended entry if the source uses arrays, recursion, JSON, structures, inductives, or byte arrays.
+3. For a pure entry, run `report` if the source uses arrays, recursion, JSON, structures, inductives, or byte arrays.  For `ByteIO`, compile with `compile-wasi-io` to check source support.
 4. Compile with the command mode that matches the entry type.
 5. Run the generated WASM with Wasmtime or from a host program built on the Wasmtime API.
 6. If compilation fails, simplify the source shape before adding compiler features.
@@ -39,7 +39,7 @@ Use these rules before reaching for more specific templates:
 - Keep helper definitions under the same root namespace as the module being compiled.
 - Use named helper declarations freely when their types are concrete and first-order.
 - Use type-class-constrained helpers when the selected entry supplies concrete instances and the methods specialize to accepted first-order code.
-- Use `for` and `while` loops in `Id`, `Option`, or `Except` when the collection and accumulator types are supported.
+- Use `for` and `while` loops in `Id`, `Option`, `Except`, or `LeanExe.ByteIO` when the collection and accumulator types are supported.
 - Use direct lambdas in `Array.foldl`, `Array.foldr`, `Array.foldlM`, `Array.map`, `Array.filter`, `Array.find?`, `ByteArray.foldl`, `ByteArray.foldlM`, and similar accepted callbacks.
 - Use `UInt64` for most arithmetic at public boundaries.  Use `Nat` for fuel and indexes when the value stays within the bounded runtime representation.
 - Use `ByteArray` at command boundaries.  Validate text with `AsciiString.ofByteArray?` inside the program when the input must be ASCII.
@@ -49,7 +49,7 @@ Use these rules before reaching for more specific templates:
 
 Avoid these forms in source intended for LeanExe:
 
-- Runtime `String`, runtime `Char`, `IO`, `EIO`, `BaseIO`, `Task`, file access, randomness, time, concurrency, reflection, and FFI.
+- Runtime `String`, runtime `Char`, general `IO`, `EIO`, `BaseIO`, `Task`, file access, randomness, direct clock access, concurrency, reflection, and FFI.  The supported `LeanExe.ByteIO` operations are described below.
 - `unsafe`, `partial`, opaque executable constants, executable axioms, quotients, and arbitrary Lean runtime calls.
 - Escaping lambdas, function-valued fields, closure-valued helpers, and higher-order values that survive as runtime data.
 - Runtime-polymorphic public entries, shared generic runtime helper bodies, runtime class dictionaries, and unresolved class-constrained entries.
@@ -65,19 +65,95 @@ Public entries must be monomorphic after elaboration.  A public function with a 
 
 ## Entry Shapes
 
-Choose the compile command from the entry type.  The Lean source stays pure in every mode.  WASI adapters add command behavior around the pure entry.
+Choose the compile command from the entry type.  Pure WASI adapters add command behavior around a pure entry; `compile-wasi-io` accepts a sequenced byte-I/O action.
 
 | Entry type | Command | Runtime behavior |
 |------------|---------|------------------|
+| Admitted `UInt64` scalar declaration | `compile-arithmetic` | Requires the source grammar covered by the general compiler theorem and exports a callable WASM function. |
 | Scalar or ABI value function | `compile` | Exports a callable WASM function, `memory`, `alloc`, and `reset`. |
-| Any accepted entry | `compile-wat` | Serializes the compiled module as WAT from the same lowering as `compile`; `tools/check-wat.sh` checks the two byte for byte. |
+| Accepted pure entry | `compile-wat` | Serializes the compiled module as WAT from the same lowering as `compile`; `tools/check-wat.sh` checks the two byte for byte. |
 | `ByteArray` | `compile-wasi` | Calls the entry and writes returned bytes to stdout. |
 | `ByteArray -> ByteArray` | `compile-wasi-stdin` | Reads bounded stdin and writes returned bytes to stdout. |
 | `ByteArray -> Except ByteArray ByteArray` | `compile-wasi-stdin-except` | Writes `ok` bytes to stdout, writes `error` bytes to stderr, and exits nonzero. |
 | `Array ByteArray -> Except ByteArray ByteArray` | `compile-wasi-argv-except` | Passes user argv as an internal array of byte arrays. |
 | `ByteArray -> Array ByteArray -> Except ByteArray ByteArray` | `compile-wasi-stdin-argv-except` | Passes bounded stdin and bounded user argv. |
+| `LeanExe.ByteIO UInt32` | `compile-wasi-io` | Runs sequenced stdin reads and stdout writes; returns the exit status. |
 
 Library-mode array and byte-array values use exported memory.  Hosts allocate input bytes with `alloc`, write data into `memory`, pass pointer-length pairs, and read returned pointer-length pairs before releasing owned root pointers or calling `reset`.  Command-mode programs hide that host ABI behind WASI.
+
+`compile --module <module> --entries <name,...> --out <path>` exports several declarations from one loaded Lean environment.  Names are comma-separated and must have distinct final components, which become the WASM export names.  Each entry must satisfy the public ABI restrictions.  The compiler extracts their shared helper functions once and adds an ABI wrapper for each entry.  The wrappers pass borrowed input owners and return the public result slots.  Calls between the declarations use their internal representations.  All exports share the module's memory, heap, and runtime counters.  `--annotations <path>` is also supported for this command.
+
+Use `compile-arithmetic` when the [general compiler theorem](arithmetic-correctness.md)
+is the required guarantee. Its grammar includes supported scalar operations,
+Boolean locals, bindings, conditionals, pure `Id` blocks, local functions, and
+one bounded range loop with supported `continue` and `break` forms. It rejects
+source outside that grammar instead of falling back to broader extraction.
+Ordinary `compile` accepts more of the dialect; compilation success alone does
+not give every such program a general source-to-WASM correctness theorem.
+
+## Byte Input and Output
+
+Import `LeanExe.ByteIO` to use `read (maxBytes : Nat) (timeoutNs : UInt64)` and `write (bytes : ByteArray) (timeoutNs : UInt64)`.  A read returns `Except UInt32 ByteArray`: a short read succeeds, and empty success means EOF.  A write returns zero after writing all bytes, or an error code after possibly writing a prefix.  Callers handle these explicit results; general `IO`, `EIO`, and exception handlers are outside this interface.
+
+Each timeout is a monotonic duration in nanoseconds covering the whole operation, including retries and partial writes.  Zero permits one immediate nonblocking attempt.  Expiry returns `73`; other WASI error codes include `8` for a bad descriptor, `28` for invalid input, and `64` for a broken pipe.  Read capacity must be positive and fit WASM memory addressing.  Allocation exhaustion traps.  Returned buffers preserve their bytes across subsequent reads.
+
+The [Byte I/O examples](../LeanExe/Examples/ByteIO.lean) include an echo command and sustained streaming with allocation checks:
+
+```sh
+tools/leanrun lake build lean-wasm LeanExe.Examples.ByteIO
+tools/build-wasi-io-host.sh
+tools/leanrun .lake/build/bin/lean-wasm compile-wasi-io \
+  --module LeanExe.Examples.ByteIO \
+  --entry LeanExe.Examples.ByteIO.echo --out build/echo.wasm
+printf 'abcd' | build/tools/leanexe-wasi-io-host build/echo.wasm
+```
+
+Use the [development setup](../DEVELOPING.md#prerequisites) first.  The native host implements nonblocking WASI Preview 1 streams, a monotonic clock, and polling.  The pinned Wasmtime CLI's standard streams do not satisfy the required nonblocking contract.  Use this host or another host with that contract to enforce operation deadlines.
+
+Sequenced actions execute exactly once even when their result is ignored.  Binding an action to a local name defers it until sequencing, and sequencing that name again executes it again.  Actions cannot be stored in arrays or passed as runtime function arguments.  The primitives have compiler implementations and cannot execute natively in Lean.  `compile-wat`, `report`, and `ownership-report` retain their pure-entry scope; inspect an I/O binary with `wasm-tools print`.
+
+The [byte-I/O verification gate](../proofs/byte-io/README.md) checks modeled WASI host contracts, byte-transfer protocol laws, and six exact-binary execution cases. Run `tools/byte-io-proof.js check` in the configured development environment. These proofs use explicit host and clock-progress assumptions; they do not prove every compiled I/O program correct. The native C host, Wasmtime, and OS remain outside the formal proof boundary and are checked by execution tests.
+
+### Running sum
+
+The [running-sum program](../LeanExe/Examples/RunningSum.lean) reads one signed
+decimal integer per line and writes the cumulative sum followed by a newline
+before processing the next line.  It exits on EOF, processing any final line
+without a newline.  Decimal byte arrays support integers of any length that
+fits available memory.
+
+```sh
+tools/leanrun --timeout 15m lake build lean-wasm LeanExe.Examples.RunningSum
+tools/build-wasi-io-host.sh
+tools/leanrun --timeout 2m .lake/build/bin/lean-wasm compile-wasi-io \
+  --module LeanExe.Examples.RunningSum \
+  --entry LeanExe.Examples.RunningSum.main --out build/running-sum.wasm
+build/tools/leanexe-wasi-io-host build/running-sum.wasm
+```
+
+Enter `12`, `-5`, and `20` on successive lines to receive `12`, `7`, and `27`.
+Ctrl-D at an empty terminal prompt ends input.  Piped input works too:
+
+```sh
+printf '12\n-5\n20\n' | build/tools/leanexe-wasi-io-host build/running-sum.wasm
+```
+
+Each line accepts an optional `+` or `-` followed by decimal digits.  Leading
+zeros and CRLF line endings are accepted.  An empty or malformed line exits
+with status `28`.  Read and write errors become the exit status.  Each I/O
+operation uses the maximum timeout, allowing interactive input without a
+short deadline.
+
+`node test/running_sum.js` compares compiled execution and native Lean
+arithmetic with an independent integer reference.  It also checks output
+before the next input line, split reads, EOF, malformed input, and a broken
+output pipe.
+
+The [source correctness proof](../proofs/running-sum/README.md) proves the
+integer prefix sums, output order, and EOF return for the Lean entry under
+explicit successful-I/O assumptions.  Run
+`node tools/running-sum-proof.js check-source` to check the proof and its
+axioms.  The universal execution proof for the compiled WASM remains open.
 
 ## Memory Management
 
@@ -87,7 +163,7 @@ In library mode, the host controls result lifetime.  It may call `alloc` to rese
 
 `reset()` remains a coarse reclamation operation.  It rewinds the heap and clears the free list, invalidating every old pointer regardless of reference count.  A host should use either explicit `release` calls for individual returned objects or `reset()` at a boundary where no old pointer remains live.
 
-The compiler emits `release` for a conservative class of local heap temporaries: the released owner must be nonrecursive, currently `ByteArray` or `Array`, and the owner must come from a visible fresh allocation in a local expression, local binding, or helper-call result.  This lets scalar-result helpers reclaim internal arrays and byte arrays before returning, and it lets heap-result functions release fresh nonrecursive owners after result materialization when those owners are absent from returned heap roots and from borrowed root expressions used by the returned value.  Ordinary recursive heap temporaries remain conservative; the compiler may leak them, but it must not release them unless an explicit source-level ownership boundary or a supported accumulator-replacement rule applies.  Recursive heap allocation retains borrowed child pointers and transfers child pointers proven fresh by the same ownership summaries.  `Array.foldl`, `Array.foldr`, `Array.foldlM`, `ByteArray.foldl`, `ByteArray.foldlM`, and accepted loops release replaced accumulator owner slots after the first iteration when the next accumulator slot is proven fresh and the body has not already released the old slot; this covers byte-array accumulators, array accumulators, recursive-inductive accumulators, and owner slots inside supported accumulator structures or tagged values.  The compiler skips the initial accumulator value for this rule because ordinary Lean aliases can still refer to that value after the loop.  The compiler keeps heap-pointer helper results that may borrow from heap arguments conservative.
+The compiler emits `release` for a conservative class of local heap temporaries: the released owner must be nonrecursive, currently `ByteArray` or `Array`, and the owner must come from a visible fresh allocation in a local expression, local binding, or helper-call result.  This lets scalar-result helpers reclaim internal arrays and byte arrays before returning, and it lets heap-result functions release fresh nonrecursive owners after result materialization when those owners are absent from returned heap roots and from borrowed root expressions used by the returned value.  Ordinary recursive heap temporaries remain conservative; the compiler may leak them, but it must not release them unless an explicit source-level ownership boundary or a supported accumulator-replacement rule applies.  Recursive heap allocation retains borrowed child pointers and transfers child pointers proven fresh by the same ownership summaries.  `Array.foldl`, `Array.foldr`, `Array.foldlM`, `ByteArray.foldl`, `ByteArray.foldlM`, and accepted loops release replaced accumulator owner slots when ownership analysis permits replacement and the body has not already released the old slot; runtime guards preserve owners equal to the initial or next accumulator; this covers byte-array accumulators, array accumulators, recursive-inductive accumulators, and owner slots inside supported accumulator structures or tagged values.  The compiler preserves the initial accumulator owner because ordinary Lean aliases can still refer to it after the loop.  Scoped temporary cleanup preserves incoming accumulator owners and owners used by the next accumulator.  Result cleanup protects returned owners and tracked borrowed owners.  The compiler keeps heap-pointer helper results that may borrow from heap arguments conservative.
 
 Compiled Lean code may read runtime counters through `LeanExe.Runtime.allocCount`, `retainCount`, `releaseCount`, and `freeCount`.  It may call `LeanExe.Runtime.release value` for a monomorphic recursive-inductive root or an array value at an explicit ownership boundary; the compiled call consumes one owned root reference and returns the current free count.  The extractor preserves `let _ := LeanExe.Runtime.release value`, so a program can mark the boundary without adding the returned counter to its own result.
 
@@ -95,7 +171,7 @@ Release must be the final use of that root reference, with no copied alias, retu
 
 Ordinary Lean evaluates every definition in `LeanExe.Runtime` as a zero-valued stub, and the reference IR interpreter also treats the intrinsics as zero-valued no-ops.  Generated WASM instead updates its allocator state and counters according to the extended semantics in the language specification.  Use Wasmtime and the Talos runtime proofs for intrinsic behavior; standard-Lean and IR comparisons apply only when those observations do not affect the compared result.
 
-In WASI command mode, the generated module is a single-run command.  The adapter reads stdin or argv, calls the pure Lean entry, writes stdout or stderr, and exits.  Process exit discards all allocations, but one large request can still allocate enough intermediate data to hit a host memory limit before exit.  In those cases, source-level `LeanExe.Runtime.release` can mark an owned recursive root dead inside the command.
+In WASI command mode, the generated module is a single-run command.  Pure adapters read stdin or argv, call the pure Lean entry, write stdout or stderr, and exit.  The byte-I/O mode instead executes its entry’s sequenced reads and writes before exiting.  Process exit discards all allocations, but one large request can still allocate enough intermediate data to hit a host memory limit before exit.  In those cases, source-level `LeanExe.Runtime.release` can mark an owned recursive root dead inside the command.
 
 ## Scalar Template
 
@@ -157,6 +233,9 @@ constructs `size` words in one allocation, evaluating a direct lambda at
 indices zero through `size - 1`.  Its result is a `ByteArray` containing
 four bytes per word.  The generator may capture supported scalar and heap
 values.  It checks the output byte-count multiplication for overflow.
+
+`LeanExe.Packed.generateUInt8 size (fun i => value)` constructs `size`
+bytes in one allocation with the same direct-lambda and ownership rules.
 
 These operations store FP32 bit patterns without expanding each value to
 an eight-byte array slot.  The Wasmtime host accepts `bytes-file:PATH`
@@ -427,9 +506,9 @@ end LeanExe.Examples.ManualLoops
 
 Ordinary pure `Id.run do` blocks may use mutable scalars, structures, byte arrays, arrays, `Option`, `Except`, products, supported tagged values, and internal recursive pointers.  State records may contain heap fields such as `ByteArray` and internal `Array` values.  Nested `if`, `match`, and `if let` branches are accepted when Lean's generated continuation lambdas stay local and first-order.  `if let` and catch-all matches over `Option` and nonrecursive user inductives are accepted when Lean elaborates them to sparse generated match helpers.  Parser-style loops may combine mutable cursors, `ByteArray` indexing, mutable output buffers, mutable arrays, and explicit `Except` status values.  If a local function escapes as a runtime value, the compiler rejects it under the normal higher-order-function rule.
 
-Accepted `for` collections are `ByteArray`, fixed-width `Array` values, and ranges such as `[start:stop]` or `[start:stop:step]`, when the checked monad is `Id`, `Option`, or `Except ε`.  Source `while` loops compile through Lean's `Lean.Loop` iterator and repeat until the checked loop step returns `ForInStep.done`.  Loop accumulators may be scalars, byte arrays, internal arrays, products, structures, nonrecursive tagged values, or recursive-inductive pointers, with the same field-type limits used elsewhere in the language.
+Accepted `for` collections are `ByteArray`, fixed-width `Array` values, and ranges such as `[start:stop]` or `[start:stop:step]`, when the checked monad is `Id`, `Option`, `Except ε`, or `LeanExe.ByteIO`.  Source `while` loops compile through Lean's `Lean.Loop` iterator and repeat until the checked loop step returns `ForInStep.done`.  Loop accumulators may be scalars, byte arrays, internal arrays, products, structures, nonrecursive tagged values, or recursive-inductive pointers, with the same field-type limits used elsewhere in the language.
 
-Nested loops are accepted when each loop has a supported monad, collection, and accumulator.  The body may contain ordinary `do`-notation binds, local `let` bindings, generated product or structure destructuring, `break`, `continue`, and nested accepted loops.  `Option` and `Except` loop bodies stop after `none`, `Except.error`, or `break`, so later iterations and later trapping computations are skipped.  The compiler still rejects monads other than `Id`, `Option`, and `Except ε`, runtime callback values, polymorphic iterators, and loop bodies whose hidden carried values have unsupported runtime types.
+Nested loops are accepted when each loop has a supported monad, collection, and accumulator.  The body may contain ordinary `do`-notation binds, local `let` bindings, generated product or structure destructuring, `break`, `continue`, and nested accepted loops.  `Option` and `Except` loop bodies stop after `none`, `Except.error`, or `break`, so later iterations and later trapping computations are skipped.  The compiler still rejects monads other than `Id`, `Option`, `Except ε`, and the supported `LeanExe.ByteIO` interface, runtime callback values, polymorphic iterators, and loop bodies whose hidden carried values have unsupported runtime types.
 
 ## Arrays
 
@@ -870,7 +949,12 @@ Use existing examples as templates:
 
 | Need | Example |
 |------|---------|
+| Scalar code covered by the general compiler theorem | [Arithmetic source](../LeanExe/Examples/Arithmetic.lean), [compiler proof guide](arithmetic-correctness.md) |
 | Scalar arithmetic | [Collatz Example](../LeanExe/Examples/Collatz.lean), [Prime Example](../LeanExe/Examples/Prime.lean) |
+| FP32 or quantized transformer inference | [GPT guide](gpt/README.md), [GPT-2 source](../LeanExe/Models/Gpt2/README.md) |
+| Streaming byte input and output | [Byte I/O examples](../LeanExe/Examples/ByteIO.lean), [running sum](#running-sum) |
+| Several exports sharing a module | [Export examples](../LeanExe/Examples/Exports.lean) |
+| Numerical kernels and complete flow calculations | [Numerical examples](../data/numerical/README.md), [Euler solver](../data/euler-reconstructed-v1/README.md) |
 | Compile-time strings and byte arrays | [ByteArray Programs](../LeanExe/Examples/ByteArrayPrograms.lean) |
 | ASCII validation and text processing | [ASCII String Programs](../LeanExe/Examples/AsciiStringPrograms.lean) |
 | Open-addressed table structure | [Integer Map Example](../LeanExe/Examples/IntMap.lean) |

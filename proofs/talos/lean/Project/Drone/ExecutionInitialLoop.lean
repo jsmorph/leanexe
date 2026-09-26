@@ -7,13 +7,13 @@ set_option maxHeartbeats 400000 in
 set_option maxRecDepth 32768 in
 theorem initial_loop_spec (env : HostEnv Unit) (initial : Store Unit) (initialHeap : Heap)
     (seed : FreeNode) (remaining pageLimit : Nat) (aux : List Value) (s : Scratch) (out0 out1 : UInt64)
-    (hAux : aux.length = 21) (hHeap : initialHeap.At initial)
+    (hAux : aux.length = 19) (hHeap : initialHeap.At initial)
     (hSeed : initialHeap.OwnsWords initial seed #[])
     (hBudget : Budget initial initialHeap (advanceCost 45 0 + remaining) pageLimit)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ (final : Store Unit) (heap : Heap) (node : FreeNode) (nextAux : List Value)
       (nextScratch : Scratch) (nextOut0 nextOut1 : UInt64),
-      nextAux.length = 21 → heap.At final → Budget final heap remaining pageLimit →
+      nextAux.length = 19 → heap.At final → Budget final heap remaining pageLimit →
       heap.OwnsWords final node LeanExe.Examples.Drone.initial →
       PreservesWords initialHeap initial heap final → SeparateWords initialHeap initial node →
       wp Project.Drone.«module» rest Q final
@@ -22,14 +22,14 @@ theorem initial_loop_spec (env : HostEnv Unit) (initial : Store Unit) (initialHe
       (initialFrame seed.root seed.root 0 false aux s out0 out1) env := by
   apply wp_block_cons
   apply wp_loop_cons (Inv := initialInv initialHeap initial seed.root remaining pageLimit)
-    (μ := RangeFoldLoop.measure 27 45)
+    (μ := RangeFoldLoop.measure 25 45)
   · exact ⟨initialHeap, seed, #[], 0, false, aux, s, out0, out1, rfl, hAux, by omega,
-      by simp, hHeap, hBudget, hSeed, PreservesWords.refl _ _, by simp, rfl⟩
+      by simp, by simp, hHeap, hBudget, hSeed, PreservesWords.refl _ _, by simp, rfl⟩
   · rintro store frame ⟨heap, node, row, state, tracked, currentAux, scratch, currentOut0, currentOut1,
-      rfl, hLength, hBound, hTracking, hCurrentHeap, hCurrentBudget, hRow, hPreserve, hTracked, hExpected⟩
+      rfl, hLength, hBound, hTracking, hAlias, hCurrentHeap, hCurrentBudget, hRow, hPreserve, hTracked, hExpected⟩
     have hState : state < UInt64.size := by change state < 18446744073709551616; omega
-    change wp Project.Drone.«module» (RangeGuard.program 27 28 ++ initialLoopBody.drop 4) _ store _ env
-    apply RangeGuard.program_spec 27 28 _ _ _ _ (UInt64.ofNat state) 45 rfl
+    change wp Project.Drone.«module» (RangeGuard.program 25 26 ++ initialLoopBody.drop 4) _ store _ env
+    apply RangeGuard.program_spec 25 26 _ _ _ _ (UInt64.ofNat state) 45 rfl
       (by simp [initialFrame, Scratch.words, Locals.get, hLength])
       (by simp [initialFrame, Scratch.words, Locals.get, hLength])
     by_cases hDone : state = 45
@@ -56,12 +56,15 @@ theorem initial_loop_spec (env : HostEnv Unit) (initial : Store Unit) (initialHe
         (advanceCost (45 - (state + 1)) (row.size + 3) + remaining) pageLimit tracked currentAux scratch
         currentOut0 currentOut1 hLength (by change state + 1 < 18446744073709551616; omega)
         hRow hCurrentHeap (by simpa only [hFuel, advanceCost, Nat.add_assoc] using hCurrentBudget)
-        hPreserve hTracked
+        hPreserve hTracked hAlias
       intro final nextHeap nextNode nextAux nextScratch hNextLength hFinalHeap hFinalBudget hOutput hKeep hFresh
+      have hDifferent : nextNode.root ≠ seed.root :=
+        Ne.symm (word_regions_ne hSeed.buffer.rootBound hOutput.buffer.rootBound
+          (hFresh seed #[] (borrow_owned hSeed)))
       constructor
       · refine ⟨nextHeap, nextNode, ((row.push (initialWord state)).push (initialWord state)).push 0,
           state + 1, true, nextAux, nextScratch, nextNode.root, nextNode.root, rfl, hNextLength,
-          by omega, by simp, hFinalHeap, ?_, hOutput, hKeep, fun _ => hFresh, ?_⟩
+          by omega, by simp, by simp [hDifferent], hFinalHeap, ?_, hOutput, hKeep, fun _ => hFresh, ?_⟩
         · simpa only [Array.size_push, Nat.add_assoc] using hFinalBudget
         · rw [hFuel] at hExpected
           exact hExpected

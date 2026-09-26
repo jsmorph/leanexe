@@ -11,12 +11,12 @@ open Project.Gpt2RowInvStd (variancePrefix variancePrefix_succ rowInvStd_eq)
 open Wasm Project.ProofKit PackedMemory PackedFloatFrame LeanExe.Models.Gpt2
 
 def stepCode : Wasm.Program :=
-  match (func19[12]? : Option Wasm.Instruction) with
+  match (func19[10]? : Option Wasm.Instruction) with
   | some (Wasm.Instruction.block _ _ [Wasm.Instruction.loop _ _ body _ _] _ _) => (body.drop 4).dropLast
   | _ => []
 
 theorem emitted_loop :
-    func19 = func19.take 12 ++ RangeFoldLoop.program 21 22 stepCode ++ func19.drop 13 := rfl
+    func19 = func19.take 10 ++ RangeFoldLoop.program 21 22 stepCode ++ func19.drop 11 := rfl
 
 def Accumulator (owner ptr : UInt64) (input : ByteArray) (row index : Nat) (mean : UInt32) (frame : Locals) : Prop :=
   frame.params = [.i64 owner, .i64 ptr, .i64 (UInt64.ofNat input.size), .i64 (UInt64.ofNat row), .i64 mean.toUInt64] ∧

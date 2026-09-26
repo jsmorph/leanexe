@@ -391,7 +391,8 @@ partial def demandExpr
               args.foldl (fun acc arg => Demand.always acc (demandExpr ctx visiting arg)) .empty
           | (.const ``ByteArray.get! _, _) => .trap
           | (.const ``LeanExe.Packed.getUInt32LE! _, _) => .trap
-          | (.const ``LeanExe.Packed.generateUInt32LE _, args) =>
+          | (.const ``LeanExe.Packed.generateUInt32LE _, args)
+          | (.const ``LeanExe.Packed.generateUInt8 _, args) =>
               match args with
               | [size, generator] =>
                   Demand.always (demandExpr ctx visiting size)

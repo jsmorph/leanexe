@@ -54,8 +54,8 @@ theorem func17_zero_fuel (env : HostEnv Unit) (st : Store Unit)
         s.get 8 = some (.i64 tradesOwner) ∧
         s.get 9 = some (.i64 trades) ∧
         s.get 10 = some (.i64 remaining) ∧
-        s.get 16 = some (.i64 0) ∧
-        s.params.length = 11 ∧ s.locals.length = 64)
+        s.get 18 = some (.i64 0) ∧
+        s.params.length = 11 ∧ s.locals.length = 78)
       (μ := fun _ _ => 0)
     · simp [func17Def]
     · rintro st' s
@@ -101,17 +101,17 @@ private def stopInv (st0 : Store Unit) (fuel : UInt64) (taker : OrderL)
     s.get 8 = some (.i64 tradesOwner) ∧
     s.get 9 = some (.i64 trades) ∧
     s.get 10 = some (.i64 remaining) ∧
-    (s.get 16 = some (.i64 0) ∨
-      (s.get 16 = some (.i64 1) ∧
-        s.get 11 = some (.i64 bookOwner) ∧
-        s.get 12 = some (.i64 book) ∧
-        s.get 13 = some (.i64 tradesOwner) ∧
-        s.get 14 = some (.i64 trades) ∧
-        s.get 15 = some (.i64 remaining))) ∧
-    s.params.length = 11 ∧ s.locals.length = 64 ∧ s.values = []
+    (s.get 18 = some (.i64 0) ∨
+      (s.get 18 = some (.i64 1) ∧
+        s.get 13 = some (.i64 bookOwner) ∧
+        s.get 14 = some (.i64 book) ∧
+        s.get 15 = some (.i64 tradesOwner) ∧
+        s.get 16 = some (.i64 trades) ∧
+        s.get 17 = some (.i64 remaining))) ∧
+    s.params.length = 11 ∧ s.locals.length = 78 ∧ s.values = []
 
 private def stopMeasure (_ : Store Unit) (s : Locals) : Nat :=
-  if s.get 16 = some (.i64 0) then 1 else 0
+  if s.get 18 = some (.i64 0) then 1 else 0
 
 theorem func17_zero_remaining (env : HostEnv Unit) (st : Store Unit)
     (fuel bookOwner book tradesOwner trades : UInt64) (taker : OrderL)
@@ -168,7 +168,7 @@ theorem func17_zero_remaining (env : HostEnv Unit) (st : Store Unit)
       simp only [Locals.get] at hFuelLocal hRemaining
       rcases hPhase with hRunning | ⟨hDone, hResult⟩
       ·
-        have hRunning' : s.locals[5] = .i64 0 := by
+        have hRunning' : s.locals[7] = .i64 0 := by
           simpa [Locals.get, hParams, hLocals] using hRunning
         simp only [Locals.get] at hRunning
         wp_run
@@ -197,15 +197,15 @@ theorem func17_zero_remaining (env : HostEnv Unit) (st : Store Unit)
       · rcases hResult with
           ⟨hBookOwnerResult, hBookResult, hTradesOwnerResult,
             hTradesResult, hRemainingResult⟩
-        have hBookOwnerResult' : s.locals[0] = .i64 bookOwner := by
+        have hBookOwnerResult' : s.locals[2] = .i64 bookOwner := by
           simpa [Locals.get, hParams, hLocals] using hBookOwnerResult
-        have hBookResult' : s.locals[1] = .i64 book := by
+        have hBookResult' : s.locals[3] = .i64 book := by
           simpa [Locals.get, hParams, hLocals] using hBookResult
-        have hTradesOwnerResult' : s.locals[2] = .i64 tradesOwner := by
+        have hTradesOwnerResult' : s.locals[4] = .i64 tradesOwner := by
           simpa [Locals.get, hParams, hLocals] using hTradesOwnerResult
-        have hTradesResult' : s.locals[3] = .i64 trades := by
+        have hTradesResult' : s.locals[5] = .i64 trades := by
           simpa [Locals.get, hParams, hLocals] using hTradesResult
-        have hRemainingResult' : s.locals[4] = .i64 0 := by
+        have hRemainingResult' : s.locals[6] = .i64 0 := by
           simpa [Locals.get, hParams, hLocals] using hRemainingResult
         simp only [Locals.get] at hDone
         wp_run
@@ -280,7 +280,7 @@ theorem func17_no_maker (env : HostEnv Unit) (st : Store Unit)
       simp only [Locals.get] at hFuelLocal hRemainingLocal
       rcases hPhase with hRunning | ⟨hDone, hResult⟩
       ·
-        have hRunning' : s.locals[5] = .i64 0 := by
+        have hRunning' : s.locals[7] = .i64 0 := by
           simpa [Locals.get, hParams, hLocals] using hRunning
         simp only [Locals.get] at hRunning
         wp_run
@@ -320,15 +320,15 @@ theorem func17_no_maker (env : HostEnv Unit) (st : Store Unit)
       · rcases hResult with
           ⟨hBookOwnerResult, hBookResult, hTradesOwnerResult,
             hTradesResult, hRemainingResult⟩
-        have hBookOwnerResult' : s.locals[0] = .i64 bookOwner := by
+        have hBookOwnerResult' : s.locals[2] = .i64 bookOwner := by
           simpa [Locals.get, hParams, hLocals] using hBookOwnerResult
-        have hBookResult' : s.locals[1] = .i64 book := by
+        have hBookResult' : s.locals[3] = .i64 book := by
           simpa [Locals.get, hParams, hLocals] using hBookResult
-        have hTradesOwnerResult' : s.locals[2] = .i64 tradesOwner := by
+        have hTradesOwnerResult' : s.locals[4] = .i64 tradesOwner := by
           simpa [Locals.get, hParams, hLocals] using hTradesOwnerResult
-        have hTradesResult' : s.locals[3] = .i64 trades := by
+        have hTradesResult' : s.locals[5] = .i64 trades := by
           simpa [Locals.get, hParams, hLocals] using hTradesResult
-        have hRemainingResult' : s.locals[4] = .i64 remaining := by
+        have hRemainingResult' : s.locals[6] = .i64 remaining := by
           simpa [Locals.get, hParams, hLocals] using hRemainingResult
         simp only [Locals.get] at hDone
         wp_run

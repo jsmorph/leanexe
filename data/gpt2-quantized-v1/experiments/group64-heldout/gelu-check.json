@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "status": "lean-native-check-passed",
+  "exit_code": 0,
+  "capture": {
+    "schema": 1,
+    "status": "captured-awaiting-lean-check",
+    "gelu_values": 5382144,
+    "gelu_unique_values": 5049032,
+    "attention_records": 1752,
+    "attention_record_words": 2304,
+    "order": "Per prefix: quantized 12 layers, then FP32 12 layers, in source order",
+    "prefixes": 73,
+    "files": {
+      "gelu.bin": {
+        "bytes": 21528576,
+        "sha256": "be4f76e88cb096f46c9c854b1458aad0c09df31c3c862427d288f2d319fd673b"
+      },
+      "gelu-unique.bin": {
+        "bytes": 20196128,
+        "sha256": "92878ec411ba04b4f117b7627da030f19032f2ce2bd1c5fa42300d19eb31f9be"
+      },
+      "attention.bin": {
+        "bytes": 16146432,
+        "sha256": "657161ad76bb53a0ed80b7a3d34e2e17829b325e25b9f0f9367c36304225437e"
+      }
+    },
+    "coverage_sha256": "ea392ce16db35c713b40ec047ba60fe1118aaadd136b083846628d1c38ea14a0",
+    "source_sha256": "b2db9635b56025b1b06c5cfe2623c568cc6f94b4e24aa904d144cfd98e45bfc6",
+    "reference_sources": {
+      "quantized_reference.py": "32129e7bc189013e0246cb4ecf65e23c412d18e04a5357ecd7ca155de552c88e",
+      "diagnose_quantized.py": "ae4ca14c6657f4c63f6b2918cb0d9db97f2cab7a81f222603e324c66acaec15a"
+    },
+    "seconds": 34.04840493306983
+  },
+  "check_milliseconds": 88788,
+  "checker_sha256": "ac173f4d17add32fd0abfdc1dd342e57f34857986206807349e06dc3b79e8019",
+  "runtime_trust": "Native Lean compiler/runtime evaluates captured records. Kernel proofs establish checker soundness. Captured internal operand identity with the complete Lean recurrence remains an assumption. Capture reproduces all 73 paired logit hashes.",
+  "checker_sources": {
+    "Project/Gpt2CachedStep/ExpNeg/Compute.lean": "cf454669a957f2878fcbca318a8629a95c0f6a9264cbc32d94138be47d09232c",
+    "Project/Gpt2CachedStep/ExpNeg/RangeCheck.lean": "269b90dc2465df2dc05cccf5afdb2ed4c860924a18c11e6deb6738129e49cbb6",
+    "Project/Gpt2CachedStep/ExpNeg/RangeCertificate.lean": "5a45f43d946f5408340877f5cc689d714d661e4dcbd0ce249b892cce9457f9a3",
+    "Project/Gpt2CachedStep/GeluCompute.lean": "4e0c09e0fd8fff9691644c4006f72ce5e9953dd57166efd96c7031253e10b1b3",
+    "Project/Gpt2CachedStep/GeluRangeCheck.lean": "3430c763eccff15131dbf9a9cf96c47dbe055fee3ecceac2540cb7438d9f1fe8",
+    "Project/Gpt2CachedStep/GeluRangeCertificate.lean": "2864c9121d7dff10452b76c37b3744a285707ba9831814c2b88d68742399a215",
+    "Project/ProofKit/F32HornerRangeCheck.lean": "19e577caac4b3bb1164411614bae4694e012f9e8cfae1f6eff47646d251a2272",
+    "Project/ProofKit/F32HornerRangeCertificate.lean": "e699be9d67c2a610722e0e71492315fdebed15a77140f526fd86c1bbc3150a6a",
+    "Project/Gpt2QuantizedCached/CheckGelu.lean": "b214dd0a0cc627638874f9b36943634d9c143d09a106b17235f97ee0df36ed42"
+  },
+  "parameters": {
+    "square": 305,
+    "weighted": 300,
+    "factor": 152,
+    "product": 303,
+    "magnitude": 304,
+    "exponential": {
+      "multiplication": 299,
+      "addition": 151,
+      "squaring": 299
+    },
+    "denominatorAdd": 151,
+    "numeratorMul": 302,
+    "positiveDiv": 153,
+    "negativeDiv": 153,
+    "denominatorLower": 1
+  },
+  "command": "tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-gelu-check build/gpt2-124m/quantized-group64/heldout/nonlinear/gelu.bin",
+  "log": "gelu-check-tail.log",
+  "log_scope": "Final progress tail and successful completion, starting at record 1850000."
+}

@@ -15,8 +15,9 @@ allocation, and cleanup.  The 128-position invocation theorem derives the
 input and resource premises, starting with reset and weight loading, then
 composing token calls and cache/logit releases.  The runtime target is
 Wasmtime's canonical-NaN mode.  Source-artifact regeneration, canonical-NaN
-tests, all 128 contexts, and three text completions pass.  Numerical bounds and exact-byte
-packaging remain deferred.  The earlier
+tests, all 128 contexts, and three text completions pass.  The exact-byte theorem
+covers the 19,083-byte cached-step binary and its complete session behavior.
+Numerical bounds remain deferred.  The earlier
 [tiny transformer development](plans/tiny-transformer.md) retains the
 four-byte proofs and the runnable tiny GPT-2/128 experiment.
 The Euler work remains at its recorded pause checkpoint.
@@ -105,7 +106,7 @@ datasets, figures, the claim-to-theorem table, and the final comparison.
 The [2D Euler hyperbolicity development](plans/euler-hyperbolicity.md) is complete,
 including the independent exact-binary check and axiom audits.
 
-This file is the only active project work queue.  The compiler, execution suite, fifty-one completed source-driven Talos proofs, forty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
+This file owns the repository roadmap.  The [type-safety working state](task.md) owns the current agenda and notes for phase 15.  The compiler, execution suite, fifty-one completed source-driven Talos proofs, forty-two exact-artifact packages, annotation generator, ProofKit, structured LTG, and twelve demonstrations already exist.  The fixed Euler-step source proof and decoded-real numerical certificate are complete; its exact-byte package and verified raw dataset are complete, including host CSV/plot presentation and independent exact-rational comparison.  Detailed plans under `plans/` support unfinished items listed here and do not define separate priorities.
 
 ## 1. Reconcile current documentation and release evidence
 
@@ -811,5 +812,37 @@ GPT-2/128 after completing its source-equivalence proof.
 - [x] Run cached inference and CLI completion tests.
 - [x] Complete the aggregate artifact check after the shared verifier change.
 
-The repository-wide source check still stops at the existing `gcd` cache
-mismatch.  GPT-2's focused regeneration and proof checks pass.
+The GPT branch passed its repository-wide source check, including both GPT-2 sessions, before this merge.
+
+## 15. Establish independent core type safety
+
+Authorized on 2026-09-23, on branch `typesafety`.  The
+[working state](task.md) owns the completed proof inventory, current agenda,
+open decisions, verification evidence, and resume notes.  The
+[language definition](docs/runtime-language.md) specifies the rules, the
+[proof reference](docs/type-safety.md) states the theorem boundaries, and the
+[proof journal](plans/type-safety-journal.md) records development evidence.
+
+The current independent calculus has checked type safety, exact executable
+admission, structural equality, static/profile/operational renaming laws, and
+continuation extension with exact finite sequencing, and first-step inversion.
+Exact arbitrary-expression injection, Unit, and sum-elimination outcomes are
+also checked. The next work is the individual derived-sum expansions with their
+complete static and behavior laws.  The
+[derived-sum plan](plans/type-safety-derived-sums.md) specifies constructors,
+map/bind, and map-error for Option/Except.  Payload-discarding APIs require an
+explicit inclusion or exclusion decision.  The
+[coverage ledger](docs/type-safety-coverage.md) records the remaining language
+families.  Extraction, physical memory management, and compiler correctness
+remain separate proof tracks.
+
+## 16. Extend GPT-2 with quantized inference
+
+The user approved the [quantized GPT-2 plan](plans/gpt2-quantized.md) on 2026-09-22.  It uses eight-bit weights and activations for learned linear projections, signed 32-bit accumulation, and FP32 computation between projections.  It covers the shared embedding, cached inference, allocation, the deployed binary, and comparison with the existing FP32 implementation.  The scalar projection on `gpt2-quantized` has checked arithmetic, execution, allocation, and exact-binary proofs.  Its measured checkpoint shapes ran 4.08–4.26 times as fast as output-major FP32.
+
+- [x] Approve the quantization rules, scalar compiler API, and [file and session API](plans/gpt2-quantized-format.md).
+- [ ] Select the output-quality criterion for adoption.
+- [x] Prove and measure an exact-binary quantized projection.
+- [x] Complete the quantized checkpoint, cached model, and session execution and memory proofs.
+- [x] Verify and deploy the frozen binary, then record storage, memory, runtime, logits, and generated-text comparisons.
+- [x] Establish numerical error bounds and conditional greedy-token certificates as a subsequent milestone.

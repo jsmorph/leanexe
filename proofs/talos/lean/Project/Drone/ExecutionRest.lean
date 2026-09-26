@@ -16,7 +16,7 @@ theorem restSeconds_exact (env : HostEnv Unit) (initial : Store Unit) (dh : UInt
       (fun final values => final = initial ∧ values = [.i64 (restSeconds dh)]) := by
   refine TerminatesWith.of_wp_entry_for (f := func8Def) rfl ?_
   change wp «module» func8 _ initial
-    { params := [.i64 dh], locals := List.replicate 4 (.i64 0) } env
+    { params := [.i64 dh], locals := List.replicate 8 (.i64 0) } env
   simp only [func8]
   by_cases hInner : (3 * dh + 39) / 40 ≤ ceilSqrt ((3 * dh + 1) / 2)
   · by_cases hOuter : 25 ≤ ceilSqrt ((3 * dh + 1) / 2)

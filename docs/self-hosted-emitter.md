@@ -59,7 +59,7 @@ The retained 2026-09-02 receipt was rechecked from tracked `selfhost` commit `90
 
 Stage 0 compiles `emitImage` to Stage 1 and separately writes the canonical image of that complete module.  Wasmtime invokes Stage 1 on the image to produce Stage 2, then invokes Stage 2 in a fresh instance on the same image.  Both outputs are compared without normalization and have the Stage 1 length and digest above.  The same two stages emit every case in `proofs/talos/cases.json`; each output is compared with the exact binary selected by `proofs/artifacts/registry.json`.
 
-`test/selfhost_emitter.js` owns this receipt as an optional executable regression check.  Running it without arguments rebuilds the self image, both compiler outputs for every registered case, and all comparisons.  `--use-existing` reruns the hosts and byte comparisons against artifacts already present under `.lake/build/selfhost`.  This experiment does not block native compiler or floating-point development unless a change explicitly targets the image boundary.
+`test/selfhost_emitter.js` owns this receipt as an optional executable test. Running it without arguments rebuilds the self image, both compiler outputs for every registered case, and all comparisons. `--use-existing` reruns the hosts and byte comparisons against artifacts already present under `.lake/build/selfhost`. This experiment does not block native compiler or floating-point development unless a change explicitly targets the image boundary.
 
 An optional 2026-09-03 migration run under Lean 4.34.0-rc2 reproduced a
 570,300-byte Stage 1/Stage 2 artifact with SHA-256

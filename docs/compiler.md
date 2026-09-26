@@ -1,10 +1,18 @@
 # Compiler Architecture
 
-LeanExe loads an elaborated declaration from a built Lean module, specializes the reachable executable terms, lowers them to a first-order IR, and emits a standalone WebAssembly module.  Lean performs parsing, elaboration, type checking, instance synthesis, termination checking, and proof erasure before LeanExe examines the declaration.  The [language specification](spec.md) defines which checked terms LeanExe accepts, while this document defines the implementation stages and their assurance boundaries.
+LeanExe loads elaborated declarations from a built Lean module, specializes the reachable executable terms, lowers them to a first-order IR, and emits a standalone WebAssembly module. Lean performs parsing, elaboration, type checking, instance synthesis, termination checking, and proof checking. LeanExe handles proof erasure and runtime representation while extracting those checked terms. The [language specification](spec.md) defines which terms LeanExe accepts; this document describes the implementation stages and their assurance boundaries.
 
 ## Extraction and specialization
 
 `LeanExe.Extract.Env` imports the requested module from `.lake/build/lib/lean` and resolves the fully qualified entry declaration.  `LeanExe.Extract.Core` collects reachable declarations within the accepted dependency boundary, classifies public entries and internal helpers, and lowers their elaborated expressions.  Pattern and structural-recursion modules recognize the specific generated forms used for direct recursion, well-founded recursion, folds, predicates, loops, monadic control, and specialized library calls.
+
+For a single scalar entry, the compiler first attempts the proved
+`ScalarFunc` extraction path. Successful admission lowers to the ordinary IR
+and emitter, with source reconstruction and acceptance theorems linking it to
+the [general compiler correctness proof](arithmetic-correctness.md).
+`compile-arithmetic` requires this admission. Ordinary `compile` uses broader
+extraction when the declaration falls outside that grammar; multiple requested
+exports use the shared dependency/extraction path.
 
 Extraction specializes static inputs before deciding whether a helper belongs to the executable subset.  Static inputs include concrete type arguments, erased proofs, direct lambdas used by recognized helpers, and resolved type-class evidence.  A bounded normalizer reduces applications and method projections until the remaining term is first-order, or reports the expression that failed to specialize.
 
@@ -22,7 +30,7 @@ Recursive-expression discovery scans each supported first-order helper at its de
 | `LeanExe/Extract/ReleaseCheck.lean` | Direct-handoff validation for explicit `LeanExe.Runtime.release` calls. |
 | `LeanExe/Extract/Core.lean` | Dependency collection, two-pass ownership summaries, expression lowering, and module construction. |
 
-The compiler runs extraction twice.  The first pass computes function summaries, including fresh result-owner offsets, and the second pass lowers each function with the complete summaries available.  This structure allows the second pass to distinguish a fresh helper result from a borrowed heap reference and to insert releases only at supported ownership boundaries.
+The general extraction path runs twice. The first pass computes function summaries, including fresh result-owner offsets, and the second pass lowers each function with the complete summaries available. This structure allows the second pass to distinguish a fresh helper result from a borrowed heap reference and to insert releases only at supported ownership boundaries.
 
 An internal array result has separate owner and data-pointer slots.  When a helper call supplies an operand to an array primitive, expression extraction binds both returned slots before selecting the data pointer.  Nullary and applied calls use this same lowering.
 
@@ -50,6 +58,10 @@ Nat-tail let lowering materializes used supported bindings with the same machine
 
 ## WebAssembly backend
 
+The byte-I/O path uses `LeanExe.ByteIO`, `LeanExe.IR.ByteIO`, and `LeanExe.Wasm.ByteIO`.  `compile-wasi-io` checks for a zero-argument `ByteIO UInt32` entry and emits six WASI Preview 1 imports for nonblocking reads, writes, descriptor flags, monotonic time, polling, and exit.  Effect analysis preserves sequenced calls through unused results, arguments, and conditions.  `LocalLet.effectCall` carries those effects through pruning before lowering to ordinary calls.  The runtime retains each operation's deadline across retries and partial transfers.  The [byte-I/O specification](spec.md#byte-input-and-output) defines errors and host requirements.
+
+Loop cleanup tracks incoming accumulator owners and visits conditional branch temporaries within their scopes.  Fold-result cleanup identifies owner slots from typed release offsets and explicit local release targets.  Replaced accumulators are released only when distinct from both the initial and next owner.  Result cleanup protects returned roots and borrowed enclosing owners.  ASCII string literals use a single `arrayLiteralSlots` backing array before byte conversion, so copying updates cannot strand intermediate arrays.
+
 `LeanExe.Wasm.Instr` is the structured instruction language shared by binary emission, WAT rendering, and annotation analysis.  The backend lowers each IR function to a `List Instr`, adds allocator and reference-counting runtime functions, assembles the required sections, and serializes the module as WASM bytes.  `compile-wat` prints the same instruction trees, and `tools/check-wat.sh` checks that `wasm-tools parse` reconstructs the direct binary byte for byte.
 
 | Module | Responsibility |
@@ -67,7 +79,7 @@ Nat-tail let lowering materializes used supported bindings with the same machine
 
 The ordinary library backend emits its lowered module through the direct native
 serializer.  The experimental module-image path remains available through
-`compile-image` and as an explicit differential regression, but it is not on the
+`compile-image` and as an explicit differential test, but it is not on the
 production compiler path.  WASI adapters retain their dedicated direct assembly
 paths.  Exact-artifact verification handles the binary boundary independently by
 decoding the emitted binary with the proof workspace's checked binary decoder and
@@ -87,7 +99,10 @@ The scalar descriptor path also has compiler-side theorems.  If `ScalarDescripto
 
 The artifact consumer checks the complete decoder again against the decoded binary, including both outer branches and the nested unsigned-subtraction branch.  It generates a Lean equality to `Project.ProofKit.EncodedIndexDecoder.program`, whose neutral semantic theorem executes the local-frame update.  A generated artifact proof can use those declarations without importing the IR descriptor or compiler certificate.
 
-Development validation preserved the exact Demo 12 and ClobDepth binaries while generating decoder regions at three distinct local layouts.  Demo 12 passed generated-equality and package verification, while the ClobDepth source proof applies the neutral theorem at both of its decoder sites and passes the complete Talos proof gate.  These results establish emitter-byte preservation, exact region recognition, and cross-program semantic reuse without establishing a proof-generation-time reduction.
+The [Demo 12 package](../demos/demo-12/README.md) and ClobDepth source proof
+provide examples of generated decoder-region equalities and reuse of the neutral
+semantic theorem at distinct local layouts. Checked region identity lets those
+proofs share semantic lemmas without assuming an annotation is correct.
 
 ## Assurance boundaries
 
@@ -99,7 +114,8 @@ Development validation preserved the exact Demo 12 and ClobDepth binaries while 
 | WAT and binary serializers receive the same function instruction trees | Both consume `LeanExe.Wasm.Instr`; the byte round-trip test checks the complete module output. |
 | Selected scalar descriptors and encoded-index decoders agree with compiler emission | `LeanExe.Wasm.ScalarCertificate` proves successful reification equalities. |
 | A distributed binary satisfies a behavioral theorem | The exact-artifact path independently embeds, decodes, validates, translates, and proves the registered bytes. |
-| All accepted Lean programs compile correctly | No general extraction, IR, ownership, lowering, or serializer correctness theorem exists. |
+| Every successfully admitted arithmetic declaration compiles correctly | The [general arithmetic theorem](arithmetic-correctness.md) connects original source through the production compiler to exact bytes, full validation, export lookup and terminating invocation. |
+| Complete dialect compiler correctness | Open. The general theorem covers the linked scalar grammar, including supported branches, local functions and one bounded range loop with supported continue/break forms. Top-level helpers, general loop combinations and heap ownership remain outside it. |
 
 Differential execution and source-driven artifact proofs provide program evidence for the tested cases.  Exact-artifact proofs provide stronger evidence about named binaries without establishing a universal compiler theorem.  The [Source-Theorem Transport Plan](../plans/theorem-transport.md) describes a future refinement path whose assumptions would include explicit source, IR, lowering, and byte-identity connections.
 

@@ -1,0 +1,670 @@
+# Type-safety development journal
+
+2026-09-23: Created the `typesafety` branch at
+`a4655383ee80d3d80830b6bddfb6248a9d5c2b4b` after the user selected Track 1.
+The parent agent owns integration, review, verification setup, and publication;
+the dedicated type-safety agent owns the independent Lean modules. The first
+milestone separates untyped syntax from typing and states a bounded-natural
+invariant. An environment-and-continuation machine was selected to make lexical
+binding and evaluation order explicit; its environment lemmas replace syntactic
+substitution in the safety argument.
+
+The initial container has no Lean installation or systemd user scope. The user
+explicitly authorized direct Lean execution during this session. We will retain
+the repository runner's lock and timeout through its local mode while preparing
+the exact `4.34.0-rc2` toolchain. The initial Core module is a source checkpoint,
+not yet kernel-checked. No Lean process has run at this checkpoint.
+
+2026-09-23: Downloaded the exact official Linux Lean release and matched its
+SHA-256 against the release metadata:
+`3d011041203acacf300d343a39673f7d233743397993797c941346ae9e5df1a8`.
+The runner reported Lean `4.34.0-rc2`, commit
+`6a10ac8c22beadecabdbb0919c2b50214762f91d`. Both the focused Core target and the
+complete `LeanExe.TypeSafety` target passed in authorized local mode. The initial
+diagnostics exposed a namespace-shadowed lookup reference and a reserved local
+identifier; qualifying/renaming them sufficed. The proof statements were not
+weakened. The completed machine proves progress, preservation, safety of all
+finite reachable states, final-value typing, and arithmetic justification of
+the sole overflow failure. No source-to-core or compiler theorem is claimed.
+The first full build completed all five jobs; the safety proof job took 892 ms.
+Direct-call extension, focused examples, and public-theorem axiom audits follow.
+
+2026-09-23: Extended the core and all safety theorems to direct first-order calls
+with arbitrary finite arity, including self-recursion and mutual recursion.
+The program premise checks each body under its declared parameter context and
+the same global signature table. It does not assert safe execution or
+termination. The call-frame invariant relates accumulated values and remaining
+arguments to the exact parameter list. Calls enter fresh environments; captured
+continuations restore caller bindings. The dedicated agent completed the proof
+extension and returned the Lean execution slot to the parent for verification.
+
+The parent reviewed the runtime/typing separation, every transition and frame
+invariant, program/signature alignment, recursive-call reasoning, and the final
+theorem statements. The review found no circular safety premise. It also
+confirmed that malformed eliminations and missing bindings remain observably
+stuck, while overflow requires actual bounded operands and the overflow
+inequality. The agent identified a scope nuance: unannotated sums intentionally
+have multiple typings, so type uniqueness is not a consequence of this result.
+This limitation is now documented.
+
+Added 26 kernel-checked semantic examples. They cover lexical binding, selected
+branches, strict pairs, checked arithmetic boundaries, malformed states, argument
+order and arity, fresh call environments, continuation restoration, and safe
+recursive looping. Initial example diagnostics required unfolding Terminal
+before deciding the arithmetic proposition and exposing the empty argument
+constructor before simplifying the arity contradiction. Those repairs changed
+proof presentation, not the expected behavior or theorem statements.
+
+Added the repeatable tools/type-safety.js gate. It verifies the pinned version,
+builds the independent core, checks semantic examples, and prints transitive
+axiom dependencies of seven public theorems. The first full gate passed: every
+audited theorem uses only propext. The allowlist was tightened to that observed
+set; missing audit output and every additional axiom fail the gate. Examples
+and audit compilation treat warnings as errors. The source and docs now state
+both the checked result and the remaining source/extraction/heap/compiler gaps.
+
+The final gate also passed after the dependency allowlist was tightened, warning
+failures enabled, and theorem signatures wrapped for review. All five build jobs
+completed, all 26 examples checked, and all seven dependency audits reported
+only propext. Node syntax, whitespace, changed documentation links, and the core
+source scan passed. This completes the checked first-order core milestone;
+abstract arrays and the extraction correspondence are explicitly future work.
+
+2026-09-23: The user challenged the parent's repeated conflation of language
+soundness with compiler correctness. A fresh review of the source judgments,
+runtime typing rules, operational specification, and checked theorem statements,
+with a separate read-only critique from the type-safety agent, confirmed the
+error. A compiler bridge is not required for language type soundness. The current
+calculus already has that theorem; the full runtime language still lacks complete
+independent syntax, typing, dynamics, and the corresponding metatheory.
+
+The review identified a concrete model-adequacy issue: strict pairs in the core
+evaluate an unused overflowing component during projection, while the dialect
+documentation describes lazy projection and deferred fields. The core is a
+proved related calculus, not an established semantics-preserving fragment of
+that documented language. Its proof remains valid for its stated semantics.
+The next language task is to resolve and document the intended semantics before
+expanding coverage. Prior chat advice making an extractor bridge the next
+prerequisite for Track 1 is withdrawn.
+
+Updated the reference and plan to keep Lean logical consistency, runtime-language
+type safety, model adequacy, and compiler correctness distinct. Split language
+preservation, progress, compiler refinement, and termination in the original
+type-theory document. The review also separates a declarative ownership/effect
+discipline for explicit runtime operations from correctness of its compiler
+implementation. Only documentation and the plan changed; no theorem statement,
+proof, semantics, or verification gate was modified.
+
+2026-09-23: Reviewed maintained lazy-let, ignored-argument, product projection,
+and constructor-tag fixtures, plus thunk capture, inline-call selection, and
+materialization definitions. Initially drafted a pure deferred/strict calculus
+contract. Before implementation, the user explicitly suggested prohibiting
+unused lets and fields, asked for first-principles design, and stated that source
+will be machine-written. The deferred proposal was withdrawn. The agent confirmed
+that it had created no Demand files, edited no Lean source, and started no Lean
+process. The unpublished contract checkpoint was revised to record this choice.
+
+The selected design retains strict evaluation and adds a separate decidable
+syntactic relevance profile. Every let, parameter, product-pattern field, and
+sum-pattern payload binding must occur in its scope. Product elimination uses
+both field bindings, and the profile rejects unrestricted fst/snd. A Unit
+eliminator handles its zero-field constructor without a fabricated binding.
+Repeated uses are permitted; this is not a linearity or ownership rule.
+Syntactic occurrence is not all-path use or semantic necessity. Current compiler
+compatibility is not asserted or needed for the language soundness theorem.
+
+Assigned the agent the split/Unit elimination semantics, extensions of the
+existing safety proofs, and a Profile module combining ordinary typing with
+admission checks. The parent owns the contract, gate, tests, and publication.
+At this specification checkpoint those new cases have not yet been checked;
+the previously published strict-calculus theorem remains the checked baseline.
+
+2026-09-23: Completed product-pattern and Unit elimination, including expression
+typing, captured frames, environment extension, canonical forms, and all existing
+safety proofs. Profile admission checks every nested binding and every function
+parameter. Its safety results use ordinary configuration typing; they do not
+claim that syntactic relevance survives runtime reduction. Added explicit check
+characterizations and a program lookup theorem. No all-path usage, linearity,
+ownership, termination, or compiler correspondence claim is made.
+
+Added 41 semantic examples covering product binding order, nested lexical shifts,
+Unit elimination, ignored lets/fields/payloads/parameters, nested projection
+rejection, duplicated uses, and syntactic use in an unselected branch. They also
+separate admission from typing and exhibit malformed eliminations as stuck.
+Together with the existing 26 examples, all 67 passed.
+
+The first expanded gate caught Quot.sound in profile helper proofs, while core
+and profile safety results still depended only on propext. The agent traced this
+to standard library helper proofs, including Bool.or_eq_true_iff, and replaced
+them with direct equations and membership induction. Parameter checking now uses
+equivalent Nat recursion with its universal-index characterization proved
+directly. No statement or axiom allowlist was weakened. The final full gate
+passed: six build jobs, both example files with warnings as errors, and 20
+transitive theorem audits, each reporting only propext.
+
+2026-09-23: Specified the next persistent-array increment before completing its
+implementation. The six forms are explicitly typed empty construction, size,
+checked get, checked set, checked push, and checked append. Checked operations
+return sum Unit payload, with inl Unit for failure and inr for success. Every
+operand evaluates left to right, even when an earlier operand determines that
+the index will be invalid. Value typing requires homogeneous elements and length
+strictly below 2^64; growth either preserves that invariant or returns failure.
+The agent owns pure operation laws and machine/proof integration. Parent-owned
+examples exercise behavior independently. At this specification checkpoint those
+array examples and proofs have not yet been checked.
+
+2026-09-23: Completed the six-form persistent-array increment. Array values have
+an extrinsic homogeneous-list judgment and a length bound. ArrayValues defines
+total raw operations without typing premises, then proves their exact failure
+conditions, checked success and length characterizations, read-after-write,
+unchanged other reads, and append/push ordering laws. The machine evaluates all
+operands strictly and carries element, length, index, and captured-environment
+invariants in its frames. Existing progress, preservation, reachable-state,
+result-type, overflow, and profile theorems now include these forms.
+
+The first focused operation proofs needed explicit Nat normalization and a
+recursive index argument. Lean's direct induction tactic did not support the
+mutual value/list-typing judgment in the attempted form; induction on the raw
+list followed by typing inversion gave the required proofs. A reserved pattern
+identifier in the machine was renamed. No theorem statement was weakened.
+The parent reviewed the raw operations, exact failure/result laws, runtime
+transitions, and typing invariants independently of the agent's implementation.
+
+All 46 new array examples passed on their first gate run. They cover endpoint
+and large invalid indices, unchanged original arrays after set, nested arrays,
+failure order including invalid-set replacement evaluation, restored lexical
+environments, direct array calls, rejected heterogeneous values and wrong index
+types, and malformed array frames. The full gate passed all seven build jobs,
+113 examples with warnings as errors, and 52 transitive theorem audits. Four
+audited array/list lemmas use no axioms; the other 48 results use only propext.
+Node syntax, whitespace, and the source scan for proof holes and unsafe shortcuts
+also passed. These are abstract array results; no storage or compiler theorem
+was added.
+
+Updated the older compiler-dialect overview to remove an unconditional claim
+that source evaluation order is preserved for every accepted expression. The
+replacement distinguishes implemented demand behavior and example coverage from
+the absent general preservation theorem. The older type-theory and compilation
+specifications now link the strict normative contract and identify the compiler
+compatibility boundary explicitly.
+
+2026-09-23: The parent stopped after publishing the array milestone even though
+the user had authorized continued Track 1 work. The user challenged that stop.
+There was no technical blocker requiring it. Resumed the next declaration and
+recursive-data increment with the existing dedicated agent; publishing future
+milestones is a checkpoint within the continuing task.
+
+Workspace maintenance had removed the local checkout and toolchain since the
+last run. Re-cloned the published typesafety branch at ed83fce and restored the
+exact official Lean archive, again matching SHA-256
+3d011041203acacf300d343a39673f7d233743397993797c941346ae9e5df1a8.
+The container cannot restore archive owner IDs, so extraction was repeated with
+--no-same-owner. The restored baseline passed the full gate: seven build jobs,
+113 examples, and 52 theorem audits. No source or proof changed during recovery.
+
+2026-09-23: Agreed the nominal-data design after a read-only review. Declarations
+are finite tables of constructor field lists; references are bounded nominal
+indices, so formation terminates without unfolding recursive definitions. Empty
+types, empty constructors, and arbitrary mutual recursion are permitted. There
+are no negative field occurrences in the first-order type grammar. Runtime
+values remain finite trees. Case expressions carry explicit result types and
+branch arities; typing enforces exact branch coverage and declared field counts,
+and execution checks nominal identity and selected arity before binding fields.
+
+The review rejected checking only a term's outer type: an invalid empty-array
+annotation can disappear under size, and an invalid absent sum summand can
+disappear under case. Sum introduction and empty arrays therefore receive
+formation premises in expression and value typing. An empty nominal match also
+requires its explicit result type to be well formed. Program typing now needs
+declaration and signature formation as well as body typing; no safe-execution
+premise is introduced.
+
+The agent's focused Formation target passed, including exact Boolean-checker
+characterizations. Its focused Core target then passed with nominal syntax,
+canonical forms, exhaustive branch typing, and expression/argument/value/
+environment formation theorems. Machine, array, and profile integration and the
+expanded gate are still in progress at this contract checkpoint. The parent has
+migrated existing examples and is adding independent nominal boundary examples.
+
+2026-09-23: Completed nominal-data integration through the operational semantics,
+array typing lemmas, source relevance, and all safety proofs. During review the
+agent identified that introducing nominal references also requires formation in
+the raw runtime result type: an inherited polymorphic overflow rule would permit
+an undeclared result label. Strengthened empty-continuation and overflow typing
+with explicit formation evidence and proved formation transfer through frames,
+continuations, and states. Execution is unchanged by that strengthening.
+
+The agent's focused builds and all-module audit passed. The parent reviewed the
+actual declaration/type rules, constructor accumulation, nominal and arity guards,
+branch coverage/lookup, and formation premises, then ran the maintained gate.
+All 113 existing examples passed after explicit declaration/formation migration;
+all 57 new examples passed on their first gate run. They include rejection of
+invalid hidden types and malformed whole-program tables, valid empty elimination
+and empty arrays of an empty type, exact constructor/branch arity and coverage,
+an empty-type no-value result, runtime formation rejection, strict field order,
+captured environments, nominal mismatch stuckness, and a typed recursive list sum.
+
+The gate now audits every one of the 103 declared theorems in the six development
+modules, including helpers. All passed with no axioms beyond propext. Eight build
+jobs and 170 examples passed with the pinned Lean version. The source scan,
+whitespace check, and Node syntax check passed. Declaration-checker soundness and
+completeness are proved; a general expression/program type checker remains next.
+
+2026-09-23: Continued immediately after publishing the nominal milestone. Sum
+introductions now carry the other summand type before the payload. This is an
+explicit source-syntax choice for machine-written programs; runtime sum values
+and evaluation behavior are unchanged. The parent migrated the affected source
+examples while the agent migrated the calculus and proofs. The maintained gate
+passed eight build jobs, all 170 examples, and all 103 audits. Typing.lean is being
+developed separately and is not yet imported by the umbrella or included in this
+annotation checkpoint. Its intended public boundary includes full ambient
+formation; raw structural inference alone will not be called source admission.
+
+
+2026-09-23: Completed the algorithmic typing increment. Raw inference and
+argument/branch checkers are proved sound and complete against the raw judgments.
+Explicit sum annotations give expression type uniqueness. Public expression,
+program, and profile checks have exact characterizations including all ambient
+formation obligations. Checker-accepted closed entries inherit arbitrary-finite-
+execution safety under checker-accepted programs; no termination premise is added.
+
+The focused audit initially found an unnecessary Quot.sound dependency from
+simplifying monadic bind continuations. Replacing those continuations with direct
+structural option matches removed that dependency without changing the accepted
+terms or weakening any statement. The allowlist remains unchanged.
+
+The parent reviewed the definitions and theorem boundaries, added 65 independent
+checker/admission examples, and ran the full maintained gate. Nine build jobs,
+235 examples with warnings as errors, and all 120 theorem audits passed. Each
+new theorem uses only propext. The next coverage increment concerns the remaining
+bounded-natural operations; fixed-width words, bytes, additional collection forms,
+and effects remain explicit unfinished language obligations.
+
+
+2026-09-23: Selected the next numeric boundary from the documented primitive
+inventory and reviewed recognition/lowering code only as coverage evidence.
+It supplies no language-to-compiler correspondence theorem. The bounded-natural
+increment uses explicit binary-operation and comparison tags, with a separate
+addition/multiplication overflow tag. This avoids treating multiplication failure
+as an addition error or giving total operations spurious permitted failures.
+The implementation and its proof extensions are now in progress; the new numeric
+contract is explicitly marked unproved at this checkpoint. Word operations,
+natural pattern matching, bytes, collection forms, and effects remain tracked.
+
+
+2026-09-23: Completed bounded-natural primitive integration. The pure operation
+module defines all seven arithmetic operations and three comparisons without
+typing premises. Exact success/failure laws connect computation to independently
+stated arithmetic results; bounded-input outcome proofs justify every returned
+natural or tagged overflow. Generic strict machine frames replace the bespoke
+addition frames. Source formation, safety, relevance, inference correspondence,
+and type uniqueness extend to the new forms. Transparent derived helpers have
+typing theorems and inference/step equations.
+
+The parent independently reviewed the arithmetic and machine definitions and
+added 73 examples covering bounds, failure tags, strictness, lexical capture,
+malformed frames/failures, admission, and recursive countdown. The first gate run
+exposed an old test needing to unfold the new Overflow predicate before decide;
+this proof migration was fixed without changing its assertion. All 73 new examples
+passed on their first reached run. The full gate passed ten build jobs, all 308
+examples, and all 142 theorem audits, with no axioms beyond propext. No statement
+claims overflow-freedom, termination, fixed-width-word coverage, or compiler
+correspondence. Continued to the next word-operation design review.
+
+
+2026-09-23: Began the first word checkpoint after publishing the natural-number
+result. Widths are explicit and literals canonical; normalization is an explicit
+conversion. The first increment covers arithmetic, comparisons, and conversions;
+bitwise operations and shifts will follow. Modular subtraction is specified with
+both underflow branches, avoiding accidental use of saturating Nat subtraction.
+The parent removed an unnecessary ignored source-width parameter from the proposed
+raw cast helper: normalization takes the target, while source-width validation
+belongs to source typing and dynamics. Implementation and proofs are in progress.
+
+
+2026-09-23: Completed the first word checkpoint. Formation now includes three
+explicit word widths; literal/value typing enforces the corresponding bound.
+The machine checks runtime width tags on operations and conversions. Arithmetic
+has exact modular laws, including both subtraction branches; conversions share
+one normalization helper with proved identity, idempotence, widening, and roundtrip
+laws. The generic safety, formation, inference, uniqueness, and admission results
+now include every new form.
+
+The focused audit found Quot.sound dependencies in six algebraic helper proofs.
+Replacing broad automation with constructive power monotonicity and direct Nat
+inequality/cancellation lemmas removed them without changing the statements or
+the allowlist. The parent reviewed source typing, width checks, pure operations,
+and checker cases and added 73 regression examples. The full maintained gate
+passed eleven build jobs, all 381 examples (new word examples on their first run),
+and all 171 theorem audits. Bitwise operations, complement, shifts, and binary64
+remain outside this checked checkpoint. Continued with bitwise/shift design.
+
+
+2026-09-23: Continued with bitwise operations and masked shifts. The generic word
+binary-operation rules can support these without new frames; complement is a
+transparent XOR-with-mask expression. The early dependency audit found Quot.sound
+in standard Nat bitwise equation/bound laws and Classical.choice in mask laws.
+The agent is investigating direct or structurally recursive finite-bit proofs
+under the existing dependency limit. The contract states pointwise finite-bit
+semantics independently of the host library; no unproved library correspondence
+is claimed. The implementation and proof approach remain in progress.
+
+
+2026-09-23: Completed bitwise operations and masked shifts. The chosen independent
+finite-width recursion avoids reproving the host library's well-founded recursion
+machinery. Thirteen foundational lemmas prove arithmetic bit observations,
+reconstruction, universal pointwise operation behavior, bounds, and equality from
+bits. Word operation laws then establish identities, masks, XOR cancellation,
+complement involution, reduced-count periodicity, and exact shift formulas.
+Complement is a transparent expression with typing/checking/step/relevance laws;
+the existing generic machine and type-checker proofs include the extended enum.
+No correspondence to native Nat bitwise functions is assumed or claimed.
+
+The parent reviewed the finite-bit definitions and characterization statements
+and added 49 semantic examples. Three concrete 64-bit traces initially reached
+the elaborator recursion-depth limit; increasing only this test file's limit to
+4096 made their unchanged kernel-checked proofs elaborate. The maintained gate
+then passed twelve build jobs, all 430 examples, and all 216 theorem audits across
+ten modules, with no axioms beyond propext. No timeout or native proof shortcut
+was used. Continued to explicit natural-number pattern matching.
+
+
+2026-09-23: Completed natural zero/successor elimination. Its zero arm introduces
+no binding; the successor arm prepends the represented predecessor to the captured
+environment. Formation, safety, exact inference, uniqueness, and relevance include
+the new form. Six new public lemmas state the exact step and occurrence/admission
+rules. The parent reviewed the rules and added 35 examples covering nested scopes,
+bounds, unselected ill-typed branches, failures, relevance, and ordinary recursion.
+
+One shell submission failed before process creation and wrote no edits; checking
+the worktree confirmed that fact. The agent then submitted edits and build in
+separate calls. This was infrastructure failure, not a Lean timeout or proof
+failure. The full gate passed twelve build jobs, all 465 examples, and all 222
+audits with no axioms beyond propext. The new examples passed on their first run.
+
+A fresh comparison with the documented primitive/code-binder inventory identified
+families needing clearer tracking: Boolean derived APIs, compound structural
+equality, and Option/Except combinators. Added a coverage ledger distinguishing
+checked forms, representation ingredients, missing language rules/expansions,
+source model adequacy, and compiler correspondence. The next small increment is
+a strict Boolean derived library built from pairs, complete split, and conditionals.
+
+The inventory also records general typed traps and trapping/fallback collection
+wrappers as absent. Justified arithmetic overflow and checked Unit-plus-payload
+array APIs do not establish those different failure conventions.
+
+
+2026-09-23: Completed strict Boolean source expansions using pairs, complete
+split, and conditionals. No AST constructor or transition rule was added.
+The agent proved typing, exact raw inference, occurrence/admission equations,
+closed-body scope, strict staging, and supplied-value truth tables for arbitrary
+environments and continuations. Added general finite-execution composition.
+
+The first focused check found a missing operation type annotation and the need
+for execution composition. Broad simplification in body_closed introduced
+Quot.sound; direct reduction removed it without changing the statement or
+dependency policy. The parent reviewed the source and fixed an extra closing
+parenthesis in a new example before running the maintained gate. All thirteen
+build jobs, 512 examples, and 246 theorem audits passed. The 47 new examples
+include failure order, strict false-AND/true-OR, lexical capture, relevance,
+and rejection of wrong operand types even when raw execution happens to return.
+No claim about compound equality or compiler behavior follows from this increment.
+
+
+Structural-equality design review separated a total raw comparison algorithm
+from source equality admission. The reference explicitly excludes recursive
+variants; the extractor also rejects them. The agent's initial proposal to
+expand that domain was not adopted. The next checkpoint proves comparison of
+finite raw Value trees exactly, without adding an expression or claiming EqTy
+admission. Importing Core avoids reorganizing the value definitions.
+
+The same review identified two distinct Option/Except obligations: captured
+callback hygiene and intentional payload discard. Naive isSome/isOk or
+Except-to-Option expansions introduce unused pattern fields and fail the
+profile. Artificial dummy uses would undermine its purpose. This policy question
+remains open; mere sum representability does not settle it.
+
+The raw comparison checkpoint passed fourteen build jobs, all 537 examples,
+and all 265 theorem audits, with no dependencies beyond propext. The 25 new
+examples distinguish word widths, malformed numeric payloads, sum tags, array
+order/length, nominal identities and constructors, and nested finite recursive
+values. The new general iff laws, not these examples, establish exactness for
+all raw values. The focused proof needed one Bool conjunction theorem spelling
+correction; no timeout or semantic change was needed. No source expression,
+typing rule, machine frame, or admission judgment changed in this checkpoint.
+Next is an independent EqTy judgment and an exact terminating admission checker.
+
+
+Equality admission design: independent mutual EqTy/EqTypes/EqConstructors
+judgments describe the least closure under scalar types, products, sums, arrays,
+and every field of every nominal constructor. The checker uses synchronous
+Boolean-table saturation from the all-false table for exactly the declaration
+count. A constructive list relation and true-count argument will establish the
+stabilization bound without assumed fuel adequacy or finite-set axioms.
+The agent owns EqualityFlags/EqualityTypes and their focused Lean checks; the
+parent has prepared boundary examples and the normative design record.
+
+A second workspace interruption removed the local checkout, toolchain, and
+uncommitted files. The parent restored the published branch at b2892f0 and the
+exact pinned toolchain archive; SHA-256 matched the previously verified value.
+Extraction first failed to preserve archive ownership under the environment's
+uid mapping; extraction with --no-same-owner succeeded. The agent reported a
+successful focused EqualityFlags build before the interruption, but no received
+axiom-audit result. That draft and the parent's equality-domain examples are
+being reconstructed from visible context and must be checked again before being
+claimed as a published proof. No published source was lost.
+
+The reconstructed finite-table module rebuilt successfully and all thirteen
+helper theorems passed the dependency audit. The first nine use no axioms; the
+four saturation lemmas use only propext. The restored checkout's maintained gate
+then passed fifteen build jobs, all 537 existing examples, and all 278 audits.
+The equality-domain test draft is intentionally outside that gate until the
+specific checker exists. This checkpoint proves the generic iteration bound;
+it does not yet prove equality admission. EqualityTypes remains in development.
+
+
+Completed equality-domain admission. EqTy/EqTypes/EqConstructors are independent
+inductive judgments; the table checker is proved equivalent without global
+formation, assumed acyclicity, or a fuel-adequacy premise. Local equality-domain
+formation is also proved. The initially implicit mutual recursion for completeness
+failed elaboration because nominal field type syntax need not decrease. Using
+the generated mutual derivation recursor with all three checker motives resolved
+that proof boundary without changing a statement or adding an assumption.
+
+The full gate passed sixteen build jobs, all 575 examples, and all 300 theorem
+audits. The 38 new examples include the sharp declaration-chain bound, reachable
+cycles through arrays/sums/products, nullary alternatives beside recursion,
+unrelated cycles, empty declarations, and local admission versus global malformed
+declarations. Source structural equality and its safety cases remain the next
+increment; no source operation was added in this checkpoint.
+
+
+Integrated strict homogeneous source structural equality. The expression typing
+rule requires EqTy for the common operand type; inference uses the proved checker.
+Two continuation frames enforce left-to-right operand evaluation. The final raw
+transition computes valueEq without a dynamic typing oracle. Exact true/false
+step laws characterize equality/inequality for arbitrary raw values. Formation,
+progress, preservation, finite safety, profile admission, exact inference, and
+type uniqueness include the new cases. No failure terminal was added.
+
+The complete umbrella built on the first check. The maintained gate then passed
+sixteen build jobs, all 610 examples, and all 307 audits, including all affected
+safety and inference proofs. The 35 new examples passed on their first run and
+cover strict field/operand failure order, recursive-domain rejection despite
+empty arrays or unused summands, nominal identity/type mismatch, malformed raw
+returns, lexical capture, relevance, and typed calls. The next foundational
+increment is hygienic renaming/weakening for derived callback forms; no payload
+discard policy has been relaxed.
+
+The next checkpoint specifies hygienic renaming independently of execution.
+A variable map is lifted beneath each exact binder prefix; nominal/function
+identities and type annotations are unchanged. The first required laws are
+pointwise congruence, expression identity/composition, context lookup transport,
+and typing preservation/weakening. Pointwise statements avoid importing function
+extensionality into the dependency policy. Occurrence/admission preservation and
+runtime simulation are separate subsequent obligations. Forward context lookup
+transport alone does not justify inference equivalence: it can map an originally
+out-of-range raw variable to an in-range target variable. The parent prepared
+regressions for that boundary and for each different binding arity.
+
+
+Completed the first renaming checkpoint. Every syntax constructor, argument
+list, and nominal branch traverses the correct binder depth. Pointwise map
+congruence, identity, and composition are proved without function equality.
+Context lookup transport lifts under exact prefixes; mutual typing preservation
+and both ordinary and prefix-preserving weakening are checked. Initial proof
+checks found grouped-constructor parser layout, a reserved identifier, and
+field-notation qualification issues for function-valued propositions. These were
+proof presentation issues; no semantic assumption or theorem changed.
+
+The parent fixed an extra closing parenthesis in a drafted example before its
+first run. The full gate passed seventeen build jobs, all 636 examples, and all
+339 audits. The six lift laws, six context laws, three typing laws and two
+weakening laws use no axioms; fifteen syntax-algebra laws use only propext.
+The 26 regressions cover binder arities, nominal/function identity preservation,
+merged free indices without capture, and limits of public inference claims.
+No profile or execution equivalence is claimed by this checkpoint.
+
+Completed exact occurrence and relevance preservation under arbitrary renaming.
+The first occurrence proof kernel-checked but depended on Quot.sound through
+simplifier-generated function extensionality beneath existential predicates.
+Explicit constructive witness transport and a shared Boolean-disjunction image
+lemma removed that dependency without weakening the statement. Protected-prefix
+preimage laws then gave exact local usage, parameter-prefix usage, and mutual
+admissible-expression/list/branch equalities. Profile typing transport and
+weakening follow. Explicit local equality types resolved simp matching of lift
+versus liftN 1. No injectivity or new parameter-use assumption was introduced.
+
+The full gate passed eighteen build jobs, all 663 examples, and all 357 theorem
+audits. All eighteen new/helper proofs use at most propext; six use no axioms.
+The 27 regressions passed on their first run and distinguish merged free uses
+from protected local uses, retain rejected unused fields/projections, and show
+that inserted unused parameters remain unused. Next is raw operational
+correspondence under exact environment lookup agreement; static/profile laws
+alone are not an execution-equivalence theorem.
+
+2026-09-24: Automated workspace maintenance again removed the local checkout
+and toolchain. The parent restored the published branch at 6f12ef1 and verified
+the pinned toolchain archive's exact SHA-256 before extraction. No uncommitted
+environment-support source had been written before this interruption, so no new
+proof draft was lost. The user asked how far the track had progressed; the
+response distinguished checked calculus metatheorems from substantial remaining
+language families and did not infer completion percentage from audit counts.
+Work resumed with exact environment correspondence and branch lookup support.
+
+
+Completed environment and branch lookup support. EnvCorresponds checks all
+indices, including absence; it is separate from RenamingTyped and permits
+noninjective maps only when the exact raw lookups agree. Identity, empty,
+composition, lifted prefix, and insertion laws are proved. Branch lookup returns
+the exact mapped branch option, retaining missing entries and explicit arity.
+All eight new proofs have no axiom dependencies. The first focused check passed.
+
+The restored full gate passed nineteen build jobs, all 680 examples, and all 365
+audits. The 17 new examples passed on their first run. They exercise equal-value
+merging versus invalid merging, missing lookup protection, prefix insertion,
+branch absence/arity, and raw sum values that inhabit different source types.
+This is support for the upcoming raw step/finite-observation correspondence
+proof; no execution-equivalence result is claimed at this checkpoint.
+
+
+Completed raw operational renaming correspondence. Every suspended frame carries
+its own environment map. Fresh callees enter identical program bodies and
+argument environments. The one-step theorem compares actual optional results,
+including both missing transitions; malformed values, missing branches, wrong
+nominal IDs, and wrong arities are retained. Terminality still uses the original
+mathematical overflow predicate. Both finite-trace directions and exact
+return/overflow/stuck-reachability equivalences have no typing premises.
+
+The finite-step proof initially needed generic successful-option extraction
+lemmas instead of dependent elimination on an unreduced machine step. Minor
+deprecated/unused simplifier arguments were cleaned before integration. The
+parent's first regression run found a proposition declared with def, ambiguous
+constructor field notation, and a Decidable instance hidden behind the Terminal
+definition. Using theorem, explicit Expr constructors, and an explicit arithmetic
+goal fixed these without changing any semantics or theorem premise.
+
+The complete gate passed twenty build jobs, all 706 semantic examples, and all
+383 theorem audits. The 26 new examples include caller captures versus fresh
+callee scopes, all different binder prefixes, noninjective maps in both
+execution directions, a finite recursive prefix, exact tagged faults, forged
+overflow records, and malformed return frames. All eighteen new proof
+declarations use at most propext. The next checkpoint is continuation extension
+and finite execution decomposition for exact derived-form semantics. An
+unconditional optional-step extension equation would be false at ret value []:
+appending a continuation enables a new transition there. The upcoming statement
+must isolate that return boundary explicitly.
+
+
+Specified the next derived-sum increment in a separate plan: transparent
+Sum Unit α / Sum ε α aliases, constructors, map/bind, and map-error. Callback
+code is explicitly scoped beneath its payload. The None branch uses Unit
+elimination, so malformed raw non-Unit left payloads remain stuck. Other
+forwarding branches retain their actual payload. This is a specification
+checkpoint only: derived definitions, exact inference/profile equations, and
+execution laws remain pending. Payload-discarding observers and conversions
+are outside this first increment, with their final disposition still tracked.
+
+
+Completed continuation extension and exact finite sequencing. State.appendKont
+leaves overflow records unchanged. The optional-step equation excludes precisely
+the empty-return boundary; successful Step/Steps extension needs no extra
+premise. A constructive boundary split and finite-trace induction yield exact
+decomposition. Return, exact overflow-record, and stuck-reachability equivalences
+then distinguish operand behavior from continuation behavior. The statements
+apply to raw states and a fixed program without typing or termination premises.
+
+The focused checks proceeded through boundary/step support, finite decomposition,
+and outcome corollaries; all twenty declarations use only propext. The parent's
+24 examples passed on their first run and include the counterexample to an
+unconditional step equation, existing frames before the suffix, a fresh zero-arg
+callee, operand versus continuation faults, forged overflow, blocked operands,
+and applications of both directions of the exact equations. The maintained gate
+passed twenty-one build jobs, all 730 examples, and all 403 audits. No primitive
+syntax, typing rule, or machine transition changed. Next is general first-step
+inversion followed by the specified derived-sum constructors and combinators.
+
+
+Completed reusable first-step inversion. Steps.head_iff exposes an empty trace
+or its first transition. No-successor starts admit only reflexive traces. A
+known first transition can be removed/restored for a no-successor endpoint;
+this endpoint premise is necessary and has a concrete counterexample without
+it. Exact first-operand sequencing then reuses continuation decomposition for
+returns, overflow records, and stuck reachability. No-successor states are not
+identified with permitted terminals.
+
+All eight support declarations passed their first focused build and depend only
+on propext. The first parent regression run found two underdetermined starting
+states in theorem applications; explicitly naming those states resolved the
+elaboration failure. The full gate passed twenty-two build jobs, all 735
+examples, and all 411 audits. Five new continuation/execution examples exercise
+the missing-premise counterexample, a malformed no-successor frame, and all
+three first-operand outcome laws. Core injection, Unit, and sum-elimination
+execution laws are next, before claiming the derived Option/Except APIs.
+
+
+Publication of the execution checkpoint encountered concurrent documentation
+commit 72c89e7f, which created task.md and moved the current agenda there. The
+non-fast-forward update was rejected. The parent preserved that commit, resolved
+the plan conflict by retaining the new document ownership, and updated task.md
+with the completed 735-example/411-audit check and the next core-sum execution
+work. The other checkout's lock failure remains recorded as a distinct attempt;
+it is not substituted for the successful checks in this proof session.
+
+
+Completed exact arbitrary-expression injection, Unit-elimination, and sum-
+elimination laws. The public return/overflow/stuckness equivalences compose
+first-operand sequencing with supplied-frame inversion. They retain the exact
+overflow record, distinguish scrutinee failures from selected-body failures,
+and explicitly classify wrong Unit/sum shapes as stuck. Sum branches prepend
+the payload to the captured environment; Unit elimination introduces no binder.
+
+All 27 declarations passed focused checks and audited to propext only. The full
+gate passed twenty-three build jobs, all 758 examples, and all 438 audits. The
+23 new examples passed on their first run and exercise raw/static annotation
+separation, arbitrary expression traces, captures, fault order, selected-arm
+failures, malformed shapes, and applications of the exact laws. No new source
+primitive or machine transition was added. Derived Option/Except definitions
+and their exact static/behavior laws remain next. The documentation checker
+was rerun after integrating task.md; its sole reported failure remains the
+pre-existing absolute temporary path in the WGSL review.

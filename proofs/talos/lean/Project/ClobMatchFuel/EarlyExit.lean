@@ -45,7 +45,7 @@ theorem func14_zero_fuel (env : HostEnv Unit) (st : Store Unit)
         s.get 18 = some (.i64 remaining) ∧
         s.get 24 = some (.i64 0) ∧
         s.params.length = 9 ∧
-        s.locals.length = 76)
+        s.locals.length = 86)
       (μ := fun _ _ => 0)
     · simp [func14Def]
     · rintro st' s
@@ -90,7 +90,7 @@ private def stopInv (st0 : Store Unit) (fuel : UInt64) (taker : OrderL)
         s.get 22 = some (.i64 trades) ∧
         s.get 23 = some (.i64 remaining))) ∧
     s.params.length = 9 ∧
-    s.locals.length = 76 ∧
+    s.locals.length = 86 ∧
     s.values = []
 
 private def stopMeasure (_ : Store Unit) (s : Locals) : Nat :=

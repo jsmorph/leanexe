@@ -2,11 +2,12 @@
 "use strict";
 
 const {
+  currentEvidence,
   derivedBlockers,
-  loadEvidence,
   validateEvidence,
 } = require("../tools/artifact-release");
 const conformance = require("../proofs/talos/conformance.json");
+const registry = require("../proofs/artifacts/registry.json");
 
 function copy(value) {
   return JSON.parse(JSON.stringify(value));
@@ -22,10 +23,11 @@ function expectFailure(value, pattern) {
   throw new Error(`release evidence unexpectedly passed: ${pattern}`);
 }
 
-const { evidence, blockers } = loadEvidence();
+const evidence = currentEvidence();
+const blockers = validateEvidence(evidence);
 const expectedBlockers = derivedBlockers(evidence);
 const expectedStatus = expectedBlockers.length === 0 ? "ready" : "draft";
-if (evidence.status !== expectedStatus || evidence.packages.length !== 21 ||
+if (evidence.status !== expectedStatus || evidence.packages.length !== registry.artifacts.length ||
     JSON.stringify(blockers) !== JSON.stringify(expectedBlockers)) {
   throw new Error("the release record has the wrong state");
 }
@@ -35,6 +37,10 @@ if (JSON.stringify(blockers) !== JSON.stringify(derivedBlockers(evidence))) {
 if (blockers.some((blocker) => blocker.includes("kernel"))) {
   throw new Error("the accepted audited kernel disposition remains a blocker");
 }
+
+const staleInputs = copy(evidence);
+staleInputs.releaseInputSha256 = "0".repeat(64);
+expectFailure(staleInputs, /release input identity mismatch/);
 
 for (const count of ["fail", "cascade", "decodeError", "interpreterError", "outOfFuel"]) {
   const changed = copy(evidence);

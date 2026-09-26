@@ -35,7 +35,7 @@ theorem embedding_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
       FixedArrayBump.requiredPages heap.top embeddingNeed ≤ initial.memoryCap «module» 0)
     (hPages : initial.mem.pages ≤ 65536)
     (hParams : frame.params = parameters weightsOwner weightsPtr cacheOwner cachePtr weights cache token position)
-    (hLocals : frame.locals.length = 119) (hValues : frame.values = []) (hTyped : I64Values frame.locals)
+    (hLocals : frame.locals.length = 124) (hValues : frame.values = []) (hTyped : I64Values frame.locals)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ final result,
       EmbeddingBuiltState (parameters weightsOwner weightsPtr cacheOwner cachePtr weights cache token position)
@@ -61,7 +61,7 @@ theorem embedding_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   · simp [embeddingSizeFrame, Locals.validIndex, hParamLength, hLocals]
   let prepared := FixedArrayCapacity.capacityFrame (embeddingSizeFrame frame) 105 embeddingNeed
   have hPreparedParams : prepared.params = frame.params := rfl
-  have hPreparedLocals : prepared.locals.length = 119 := by
+  have hPreparedLocals : prepared.locals.length = 124 := by
     simp [prepared, FixedArrayCapacity.capacityFrame, embeddingSizeFrame, hLocals]
   have hPreparedTyped : I64Values prepared.locals := by
     simp (config := { maxDischargeDepth := 64 }) only [prepared, FixedArrayCapacity.capacityFrame,
@@ -84,7 +84,7 @@ theorem embedding_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   simp only [List.cons_append, List.nil_append]
   wp_packed_frame [PackedAllocation.allocatedFrame, FixedArraySearch.frame, hPreparedParams,
     hPreparedLocals, hParamLength, List.length_append, List.length_take, List.length_drop,
-    List.getElem?_append, List.getElem?_take, show min 97 119 = 97 from rfl]
+    List.getElem?_append, List.getElem?_take, show min 97 124 = 97 from rfl]
   apply embeddingLoop_spec env (heap.allocatePackedStore initial embeddingNeed)
     weightsOwner weightsPtr cacheOwner cachePtr (allocatedRoot heap.top embeddingNeed heap.nodes)
     weights cache token position _ hWeightsAllocated hTokenSize hPositionSize hToken hPosition

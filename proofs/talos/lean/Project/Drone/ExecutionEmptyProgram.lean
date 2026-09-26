@@ -56,7 +56,7 @@ theorem empty_program_spec (env : HostEnv Unit) (store : Store Unit) (heap : Hea
   exact hNext previous current capacity next
 
 theorem advance_empty_shape : (func19.drop 16).take 40 = emptyProgram 15 := rfl
-theorem initial_empty_shape : func23.take 40 = emptyProgram 22 := rfl
+theorem initial_empty_shape : func23.take 40 = emptyProgram 20 := rfl
 
 #print axioms empty_program_spec
 #print axioms advance_empty_shape

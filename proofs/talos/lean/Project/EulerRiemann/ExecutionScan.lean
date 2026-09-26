@@ -6,8 +6,8 @@ open Wasm
 set_option maxRecDepth 32768
 set_option maxHeartbeats 1000000
 
-def scanHead : Wasm.Program := func32.take 25
-def scanTail : Wasm.Program := func32.drop 26
+def scanHead : Wasm.Program := func32.take 23
+def scanTail : Wasm.Program := func32.drop 24
 
 theorem scan_shape :
     func32 = scanHead ++ [.block 0 0 [.loop 0 0 scanLoop]] ++ scanTail := rfl

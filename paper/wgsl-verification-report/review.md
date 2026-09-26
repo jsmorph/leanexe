@@ -1,6 +1,6 @@
 # WGSL branch review
 
-Reviewed source: `ba9f02ce930243a3d35d4d10df6f9c97850ca1e8`, fetched from `origin/wgsl` on 19 September 2026.  The local `wgsl` worktree pointer was older.  Review and tests used an isolated detached checkout at `/tmp/leanexe-wgsl-review`.  No WGSL implementation files were changed.
+Reviewed source: `ba9f02ce930243a3d35d4d10df6f9c97850ca1e8`, fetched from `origin/wgsl` on 19 September 2026.  The local `wgsl` worktree pointer was older.  Review and tests used an isolated detached checkout.  No WGSL implementation files were changed.
 
 ## Findings
 

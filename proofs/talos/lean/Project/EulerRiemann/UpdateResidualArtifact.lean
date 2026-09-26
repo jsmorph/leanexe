@@ -1,7 +1,8 @@
-import Project.EulerRiemann.UpdateResidualExecution
+import Project.EulerRiemann.FrozenUpdateResidualExecution
 import Project.EulerRiemann.ArtifactModule
 
 namespace Project.EulerRiemann.UpdateResidual
+open Project.EulerRiemann.Frozen.UpdateResidual
 
 theorem artifact_update_residual :
     ∃ raw validated,

@@ -6,19 +6,19 @@ open Wasm Project.Runtime Project.ProofKit Project.EulerRiemann.Execution WordAr
 
 set_option maxRecDepth 32768 in
 theorem initial_three_push_shape : (initialLoopBody.drop 25).take 211 =
-    WordArrayPush.program 30 ++ initialRepushProgram false ++ WordArrayPush.program 30 ++
-      initialRepushProgram true ++ WordArrayPush.program 30 := rfl
+    WordArrayPush.program 28 ++ initialRepushProgram false ++ WordArrayPush.program 28 ++
+      initialRepushProgram true ++ WordArrayPush.program 28 := rfl
 
 set_option maxRecDepth 32768 in
 theorem initial_three_push_spec (env : HostEnv Unit) (store : Store Unit) (heap : Heap)
     (seed row : UInt64) (state : Nat) (tracked : Bool) (aux : List Value) (s : Scratch) (out0 out1 : UInt64)
-    (source : FreeNode) (input : Array UInt64) (remaining pageLimit : Nat) (hAux : aux.length = 21)
+    (source : FreeNode) (input : Array UInt64) (remaining pageLimit : Nat) (hAux : aux.length = 19)
     (hValue : aux[4]? = some (.i64 s.value))
     (hSource : s.source = source.root) (hInput : BorrowedWords heap store source input)
     (hHeap : heap.At store) (hBudget : Budget store heap (rowPushCost input.size + remaining) pageLimit)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ (final : Store Unit) (nextHeap : Heap) (node : FreeNode) (nextAux : List Value) (nextScratch : Scratch),
-      nextAux.length = 21 → nextHeap.At final → Budget final nextHeap remaining pageLimit →
+      nextAux.length = 19 → nextHeap.At final → Budget final nextHeap remaining pageLimit →
       nextHeap.OwnsWords final node (((input.push s.value).push s.value).push 0) →
       PreservesWords heap store nextHeap final → SeparateWords heap store node →
       wp Project.Drone.«module» rest Q final

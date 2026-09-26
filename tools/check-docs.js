@@ -9,6 +9,7 @@ const roots = [
   "README.md",
   "DEVELOPING.md",
   "plan.md",
+  "task.md",
   "docs",
   "plans",
   "demos",
@@ -16,6 +17,7 @@ const roots = [
   "ltg",
   "paper",
   "proofs/talos/README.md",
+  "proofs/byte-io/README.md",
   "proofs/talos/lean/Project/ProofKit/README.md",
 ];
 const excludedNames = new Set([

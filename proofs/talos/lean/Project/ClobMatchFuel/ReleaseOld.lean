@@ -24,7 +24,7 @@ def releaseOldValuesProg : Wasm.Program :=
   .eqz,
   .iff 0 1 [
     .localGet 19,
-    .localGet 44,
+    .localGet 54,
     .eqI64,
     .eqz
   ] [
@@ -32,7 +32,7 @@ def releaseOldValuesProg : Wasm.Program :=
   ] [] [.i32],
   .iff 0 1 [
     .localGet 19,
-    .localGet 46,
+    .localGet 56,
     .eqI64,
     .eqz
   ] [
@@ -56,7 +56,7 @@ def releaseOldValuesProg : Wasm.Program :=
   ] [] [.i32],
   .iff 0 1 [
     .localGet 20,
-    .localGet 44,
+    .localGet 54,
     .eqI64,
     .eqz
   ] [
@@ -64,7 +64,7 @@ def releaseOldValuesProg : Wasm.Program :=
   ] [] [.i32],
   .iff 0 1 [
     .localGet 20,
-    .localGet 46,
+    .localGet 56,
     .eqI64,
     .eqz
   ] [
@@ -84,8 +84,8 @@ theorem releaseOldValuesProg_calls
     (tradePost : Store Unit → Store Unit → Prop)
     (hOldBookLocal : base.get 19 = some (.i64 oldBook))
     (hOldTradesLocal : base.get 20 = some (.i64 oldTrades))
-    (hNewBookLocal : base.get 44 = some (.i64 newBook))
-    (hNewTradesLocal : base.get 46 = some (.i64 newTrades))
+    (hNewBookLocal : base.get 54 = some (.i64 newBook))
+    (hNewTradesLocal : base.get 56 = some (.i64 newTrades))
     (hValues : base.values = [])
     (hOldBookNonzero : oldBook ≠ 0)
     (hOldBookNewBook : oldBook ≠ newBook)
@@ -171,8 +171,8 @@ theorem releaseOwnedArraysProg_spec
     (nodes : List FreeNode)
     (hOldBookLocal : base.get 19 = some (.i64 oldBook))
     (hOldTradesLocal : base.get 20 = some (.i64 oldTrades))
-    (hNewBookLocal : base.get 44 = some (.i64 newBook))
-    (hNewTradesLocal : base.get 46 = some (.i64 newTrades))
+    (hNewBookLocal : base.get 54 = some (.i64 newBook))
+    (hNewTradesLocal : base.get 56 = some (.i64 newTrades))
     (hValues : base.values = [])
     (hOldBook48 : 48 ≤ oldBook.toNat)
     (hOldBook32 :
@@ -388,8 +388,8 @@ theorem releaseOldValuesProg_none
     (newBook newTrades : UInt64)
     (hOldBookLocal : base.get 19 = some (.i64 0))
     (hOldTradesLocal : base.get 20 = some (.i64 0))
-    (hNewBookLocal : base.get 44 = some (.i64 newBook))
-    (hNewTradesLocal : base.get 46 = some (.i64 newTrades))
+    (hNewBookLocal : base.get 54 = some (.i64 newBook))
+    (hNewTradesLocal : base.get 56 = some (.i64 newTrades))
     (hValues : base.values = [])
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hDone : wp «module» rest Q st base env) :
@@ -450,8 +450,8 @@ theorem releaseOldValuesProg_trade_only_calls
     (tradePost : Store Unit → Prop)
     (hOldBookLocal : base.get 19 = some (.i64 0))
     (hOldTradesLocal : base.get 20 = some (.i64 oldTrades))
-    (hNewBookLocal : base.get 44 = some (.i64 newBook))
-    (hNewTradesLocal : base.get 46 = some (.i64 newTrades))
+    (hNewBookLocal : base.get 54 = some (.i64 newBook))
+    (hNewTradesLocal : base.get 56 = some (.i64 newTrades))
     (hValues : base.values = [])
     (hOldTradesNonzero : oldTrades ≠ 0)
     (hOldTradesNewBook : oldTrades ≠ newBook)
@@ -526,8 +526,8 @@ theorem releaseTrackedTradeProg_spec
     (newOrders : List OrderL) (nodes : List FreeNode)
     (hOldBookLocal : base.get 19 = some (.i64 0))
     (hOldTradesLocal : base.get 20 = some (.i64 oldTrades))
-    (hNewBookLocal : base.get 44 = some (.i64 newBook))
-    (hNewTradesLocal : base.get 46 = some (.i64 newTrades))
+    (hNewBookLocal : base.get 54 = some (.i64 newBook))
+    (hNewTradesLocal : base.get 56 = some (.i64 newTrades))
     (hValues : base.values = [])
     (hOldTrades48 : 48 ≤ oldTrades.toNat)
     (hOldTrades32 :

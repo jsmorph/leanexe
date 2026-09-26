@@ -1,0 +1,118 @@
+{
+  "candidate": "f22803ce684bc7de66c21e11e297584a0d7f74c8",
+  "lean": "4.34.0-rc2",
+  "leanCommit": "6a10ac8c22beadecabdbb0919c2b50214762f91d",
+  "node": "24.13.0",
+  "runner": "tools/leanrun, authorized local mode, serial lock",
+  "proofCommand": "tools/arithmetic-check.js proof",
+  "engineCommand": "tools/arithmetic-check.js range-engine",
+  "axiomAudits": 9,
+  "nativeV8Comparisons": 601,
+  "rangeDeclarations": 26,
+  "modules": {
+    "rangeIndexed": {
+      "sha256": "a5c344bd04f31fc262715e41a6bef6e11c91d6a1735e6e24541a46fdf475c31a",
+      "bytes": 1090
+    },
+    "rangeIndexFree": {
+      "sha256": "e38e32972638703c8806a9e410c10739d0625449349715c63d27855b7925c5fb",
+      "bytes": 1092
+    },
+    "rangeBindings": {
+      "sha256": "bb864ebffe087f3236eb98b41472bf956e948ed407d50e5290bfa06d0397be9d",
+      "bytes": 1144
+    },
+    "rangeChoice": {
+      "sha256": "dc8483e282ad31355194b11c3c98337fd0965690f16e0616efa87997c4bfba8c",
+      "bytes": 1106
+    },
+    "rangeBeforeAfter": {
+      "sha256": "c9dda074d2a6fa870659aea633ac8595e0111690b2d25cfac953faebfb3bf738",
+      "bytes": 1131
+    },
+    "rangeCaptured": {
+      "sha256": "f6c91fcfa247aa4bdf07ef83dfea8c6b38c387730ffa2621e460288064822e25",
+      "bytes": 1103
+    },
+    "rangeConstant": {
+      "sha256": "5e4bdd6df63061862dd331bab86accaf771dabfcad7f69479d251c41de018cc2",
+      "bytes": 1089
+    },
+    "rangeLocalFunction": {
+      "sha256": "c19d0f828bbf6490ec64fa9fd63c06d7aba97d9ffd887d267c750ba886e34217",
+      "bytes": 1099
+    },
+    "rangeChainedFunctions": {
+      "sha256": "85e0dffb6fb6d0c9df5297871120831b5924a5986ef2f66c90cc86d8ae6f20f3",
+      "bytes": 1142
+    },
+    "rangeUnusedFunction": {
+      "sha256": "1dbfc16ed564d2b6443c9be9f291e021b2581878a904fd1de6d5e65fceea35bb",
+      "bytes": 1098
+    },
+    "rangeMonadic": {
+      "sha256": "0e6dc86a4dd78e82989b04f74bbbf195b6ac1881ad3d7ab843d83d9c095aeb60",
+      "bytes": 1129
+    },
+    "rangeNestedDo": {
+      "sha256": "132054dd04a6b07421eb37775a2e2dcbc39743bd4160366bd92d33b60c94785c",
+      "bytes": 1139
+    },
+    "rangeUnusedBind": {
+      "sha256": "6d52bcb5ac2126320b5d32aafdc387316000b56a58d269350cb831e44bc8ad04",
+      "bytes": 1096
+    },
+    "rangeMonadicJoined": {
+      "sha256": "7aa509540769fa17c2b8e3a153441f90887c380fb4da1889702af3b46a38bd15",
+      "bytes": 1141
+    },
+    "rangeBranchUpdates": {
+      "sha256": "ce5fdf79e524f44e90699dcd27da010a5acc830536e0d4e4c514446cbf210a96",
+      "bytes": 1197
+    },
+    "rangeContinue": {
+      "sha256": "26ed2b53cc122669e4b5203f45fef46b70e3c2a23ee0bc96e17997dcbad67ebf",
+      "bytes": 1130
+    },
+    "rangeNestedBranches": {
+      "sha256": "8b6e9b993c6bb827f5e791bbb157bddaef2f0ec4c74aaf24897ab1c81c2bffce",
+      "bytes": 1292
+    },
+    "rangeBreak": {
+      "sha256": "6cfac24071b8a8d6e83432738eb2961e1d0313e2aedd259f4620c6693b22c4a3",
+      "bytes": 1174
+    },
+    "rangeBreakUpdated": {
+      "sha256": "a422c992a347d5a4751a2311d5e26a06453b79ddc30771632797daf005f983ec",
+      "bytes": 1148
+    },
+    "rangeBreakJoined": {
+      "sha256": "f8f608e0428ccd51a638b157de126ba9b6422e2bc7278c68459e3ae5503cf25d",
+      "bytes": 1258
+    },
+    "rangeBreakBeforeAfter": {
+      "sha256": "7911edb464ee6652eca888e0ffd67043c56028923a23fdb698abf74345bacd58",
+      "bytes": 1243
+    },
+    "rangeBreakBranchUpdates": {
+      "sha256": "11c95e290a04a799d4606533ccc6e9dabcb9a9e58eb56fbd9a62ea20b94cc131",
+      "bytes": 1291
+    },
+    "rangeContinueBreak": {
+      "sha256": "71168747b084d8ad529df25f3c2da2864c503d7ca559a7df21d12ec679e585b0",
+      "bytes": 1260
+    },
+    "rangeDoneFunction": {
+      "sha256": "5641eb6ca1d07a0d99676b878ad4b10e3b90f0dfc5dd4f9d005c877cd9bd180a",
+      "bytes": 1184
+    },
+    "rangeDoneUnitFunction": {
+      "sha256": "c0fba6f2ada7c190d7b071de53473b78f9543d3a8ee865a3cc90aab4c6610338",
+      "bytes": 1257
+    },
+    "rangeUnusedDone": {
+      "sha256": "a200bee12614db903f99d604aedace0145c2f85c2ec7b05dbe5fd584dcbc1242",
+      "bytes": 1112
+    }
+  }
+}

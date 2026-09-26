@@ -43,7 +43,7 @@ theorem sharedPushPair_correct : SharedPairSpec := by
       { params := [.i64 ptr, .i64 (UInt64.ofNat bytes.length)],
         locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     unfold func0
     have hraw : ((UInt64.ofNat bytes.length + 1 + 7) / 8 * 8).toNat =
@@ -64,7 +64,7 @@ theorem sharedPushPair_correct : SharedPairSpec := by
     apply wp_loop_cons
       (Inv := fun st1 s1 => st1 = st ∧
         s1 = vFrame ptr (UInt64.ofNat bytes.length) 33 ptr
-          (UInt64.ofNat bytes.length) 0 0 0 0 0 0 ptr
+          (UInt64.ofNat bytes.length) 0 0 0 0 0 0 0 ptr
           (UInt64.ofNat bytes.length) 33 0 (UInt64.ofNat bytes.length + 1) 0
           (allocSizeU (UInt64.ofNat bytes.length)) 0 0 0 0 0)
       (μ := fun _ _ => 0)

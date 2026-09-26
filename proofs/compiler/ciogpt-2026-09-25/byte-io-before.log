@@ -1,0 +1,51 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [2/305] Replayed LeanExe.Examples.AsciiDigits
+warning: LeanExe/Examples/AsciiDigits.lean:103:30: `if_false` has been deprecated: Use `ite_false` instead
+warning: LeanExe/Examples/AsciiDigits.lean:109:78: `if_true` has been deprecated: Use `ite_true` instead
+⚠ [102/305] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [128/305] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [133/305] Replayed LeanExe.Extract.ScalarFunc
+warning: LeanExe/Extract/ScalarFunc.lean:76:28: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [rangeCase, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [305/305] Built LeanExe.Examples.ByteIO (303ms)
+Build completed successfully (305 jobs).
+Error: ".lake/build/bin/lean-wasm" "compile-wasi-io" "--module" "LeanExe.Examples.ByteIO" "--entry" "LeanExe.Examples.ByteIO.float32NaNs" "--out" ".lake/build/byte-io/float32NaNs.wasm" exited with status 3:
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+lean-wasm: source: command "compile-wasi-io", module "LeanExe.Examples.ByteIO", entry "LeanExe.Examples.ByteIO.float32NaNs", output ".lake/build/byte-io/float32NaNs.wasm": while extracting LeanExe.Examples.ByteIO.float32NaNs: while extracting plain function: unsupported application: UInt8
+    at runChecked (/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/tools/run-process.js:141:11)
+    at compile (/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/test/byte_io.js:17:3)
+    at /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/test/byte_io.js:31:66
+    at Array.map (<anonymous>)
+    at main (/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/test/byte_io.js:31:47)
+    at Object.<anonymous> (/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/test/byte_io.js:129:1)
+    at Module._compile (node:internal/modules/cjs/loader:1761:14)
+    at Object..js (node:internal/modules/cjs/loader:1893:10)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)

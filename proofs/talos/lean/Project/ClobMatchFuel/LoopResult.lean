@@ -24,6 +24,8 @@ structure OutputData where
   nodes : List FreeNode
 
 structure OutputAt (ctx : Context) (st : Store Unit) (data : OutputData) : Prop where
+  residual : ctx.result.remaining ≠ 0 → ResidualStateAt ctx st data.book
+    data.bookCapacity data.trades data.tradesCapacity data.g0 data.nodes
   bookOwned : OwnedOrderArrayAt st data.book data.bookCapacity ctx.result.book
   tradesOwned :
     OwnedTradeArrayAt st data.trades data.tradesCapacity ctx.result.trades
@@ -61,6 +63,7 @@ def runningOutputData (data : RunningData) : OutputData :=
 theorem of_completed (facts : CompletedFacts ctx st s data) :
     OutputAt ctx st (completedOutputData data) := by
   exact {
+    residual := facts.residual
     bookOwned := facts.bookOwned
     tradesOwned := facts.tradesOwned
     freeList := facts.freeList
@@ -86,6 +89,7 @@ theorem of_zero_running (facts : RunningFacts ctx st s data)
   have hG4 := LoopProgress.expectedG4_current ctx st s data facts hFills
   have hG5 := LoopProgress.expectedG5_current ctx st s data facts hFills
   exact {
+    residual := fun _ => ⟨data, s, facts, rfl, rfl, rfl, rfl, rfl, rfl, hSource⟩
     bookOwned := by
       simpa [runningOutputData, hSource, RunningData.sourceState] using
         facts.bookOwned

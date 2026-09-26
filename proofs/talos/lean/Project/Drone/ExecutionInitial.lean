@@ -14,7 +14,7 @@ theorem initial_exact (env : HostEnv Unit) (store : Store Unit) (heap : Heap)
     TerminatesWith env Project.Drone.«module» 23 store []
       (FreshArrayResult heap store LeanExe.Examples.Drone.initial remaining pageLimit) := by
   apply initial_entry
-  apply empty_budget_spec env store heap [] (List.replicate 22 (.i64 0)) (List.replicate 12 (.i64 0))
+  apply empty_budget_spec env store heap [] (List.replicate 20 (.i64 0)) (List.replicate 13 (.i64 0))
     zeroPushScratch (advanceCost 45 0 + remaining) pageLimit hHeap hBudget
   intro previous current capacity next hEmptyHeap hEmptyBudget hEmptyOwner hBorrow hOwned
   let emptyHeap := heap.allocate 8

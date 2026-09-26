@@ -1,0 +1,52 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [3035/3052] Built Project.RunningSum.BaseIO (231ms)
+ℹ [3036/3052] Built Project.RunningSum.Digits (3.1s)
+info: Project/RunningSum/Digits.lean:116:0: 'Project.RunningSum.add_digit' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/RunningSum/Digits.lean:117:0: 'Project.RunningSum.sub_digit' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3037/3052] Built Project.RunningSum.Prefix (3.2s)
+info: Project/RunningSum/Prefix.lean:86:0: 'Project.RunningSum.digitPrefix_invariant' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3038/3052] Built Project.RunningSum.Normalize (2.9s)
+info: Project/RunningSum/Normalize.lean:94:0: 'Project.RunningSum.trimSize_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/RunningSum/Normalize.lean:95:0: 'Project.RunningSum.combineMagnitude_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3039/3052] Built Project.RunningSum.Reverse (2.9s)
+info: Project/RunningSum/Reverse.lean:103:0: 'Project.RunningSum.finishDigits_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3040/3052] Built Project.RunningSum.Arithmetic (2.8s)
+info: Project/RunningSum/Arithmetic.lean:55:0: 'Project.RunningSum.combine_add' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/RunningSum/Arithmetic.lean:56:0: 'Project.RunningSum.combine_sub' depends on axioms: [propext, Classical.choice, Quot.sound]
+✔ [3041/3052] Built Project.RunningSum.Order (3.4s)
+ℹ [3042/3052] Built Project.RunningSum.Compare (2.9s)
+info: Project/RunningSum/Compare.lean:64:0: 'Project.RunningSum.magnitudeLess_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3043/3052] Built Project.RunningSum.Add (2.9s)
+info: Project/RunningSum/Add.lean:22:0: 'Project.RunningSum.add_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+✔ [3044/3052] Built Project.RunningSum.Slices (2.9s)
+✔ [3045/3052] Built Project.RunningSum.ParseScan (2.9s)
+ℹ [3046/3052] Built Project.RunningSum.Parse (3.4s)
+info: Project/RunningSum/Parse.lean:84:0: 'Project.RunningSum.parse_valid' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3047/3052] Built Project.RunningSum.Render (2.8s)
+info: Project/RunningSum/Render.lean:49:0: 'Project.RunningSum.render_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/RunningSum/Render.lean:50:0: 'Project.RunningSum.line_add_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3048/3052] Built Project.RunningSum.Stream (2.9s)
+info: Project/RunningSum/Stream.lean:98:0: 'Project.RunningSum.consume_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/RunningSum/Stream.lean:165:0: 'Project.RunningSum.consumeChunks_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/RunningSum/Stream.lean:166:0: 'Project.RunningSum.stream_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3049/3052] Built Project.RunningSum.SourceControl (2.9s)
+info: Project/RunningSum/SourceControl.lean:96:0: 'Project.RunningSum.Source.main_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3050/3052] Built Project.RunningSum.SourceHost (3.4s)
+info: Project/RunningSum/SourceHost.lean:72:0: 'Project.RunningSum.Source.emitSum_runs' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/RunningSum/SourceHost.lean:73:0: 'Project.RunningSum.Source.bytes_runs' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3051/3052] Built Project.RunningSum.SourceExecution (2.9s)
+info: Project/RunningSum/SourceExecution.lean:81:0: 'Project.RunningSum.Source.main_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+ℹ [3052/3052] Built Project.RunningSum.SourceOrdering (2.9s)
+info: Project/RunningSum/SourceOrdering.lean:27:0: 'Project.RunningSum.Source.newline_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+Build completed successfully (3052 jobs).
+'Project.RunningSum.add_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.RunningSum.parse_valid' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.RunningSum.render_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.RunningSum.stream_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.RunningSum.consumeChunks_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.RunningSum.Source.main_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.RunningSum.Source.bytes_runs' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.RunningSum.Source.main_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.RunningSum.Source.newline_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+Running-sum Lean source proof passed

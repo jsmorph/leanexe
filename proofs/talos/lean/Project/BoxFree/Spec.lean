@@ -1227,10 +1227,6 @@ theorem boxFreeStats_correct : BoxFreeSpec := by
         by omega, by omega, by omega, ?_⟩
       refine wp_iff_cons rfl ?_
       rw [if_neg (by decide)]
-      try wp_run
-      try simp
-      refine wp_iff_cons rfl ?_
-      rw [if_neg (by decide)]
       wp_run
       try simp only [hg1]
       try wp_run

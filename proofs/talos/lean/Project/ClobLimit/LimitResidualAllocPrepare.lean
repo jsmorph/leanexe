@@ -11,36 +11,37 @@ following proof can treat the generated search and bump allocation separately.
 namespace Project.ClobLimit.LimitResidualAllocPrepare
 
 open Wasm Project.Common Project.Clob Project.ClobLimit
-  Project.ClobLimit.InternalLoopInvariant Project.ClobMatchFuel.Allocation
+  Project.ClobLimit.MatchInvariant Project.ClobMatchFuel.Allocation
+  Project.Runtime
 
 structure AllocLocalsAt (base : Locals) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData) : Prop where
+    (data : MatchOutput.OutputData) : Prop where
   orderLocals : LimitResidualPrepare.OrderLocalsAt base order ctx data
-  need : base.locals[47]? =
+  need : base.locals[49]? =
     some (.i64 (orderArrayBytesU (ctx.result.book.length + 1)))
-  previous : base.locals[48]? = some (.i64 0)
-  current : base.locals[49]? = some (.i64 0)
-  result : base.locals[52]? = some (.i64 0)
+  previous : base.locals[50]? = some (.i64 0)
+  current : base.locals[51]? = some (.i64 (freeHead data.nodes))
+  result : base.locals[54]? = some (.i64 0)
 
-def allocPrepareFrame (base : Locals) (n : Nat) : Locals :=
+def allocPrepareFrame (base : Locals) (n : Nat) (nodes : List FreeNode) : Locals :=
   { base with
-    locals := (((base.locals.set 47
-      (.i64 (orderArrayBytesU (n + 1)))).set 52 (.i64 0)).set 48
-      (.i64 0)).set 49 (.i64 0)
+    locals := (((base.locals.set 49
+      (.i64 (orderArrayBytesU (n + 1)))).set 54 (.i64 0)).set 50
+      (.i64 0)).set 51 (.i64 (freeHead nodes))
     values := [] }
 
 set_option maxRecDepth 1048576
 
 theorem allocPrepareFrame_allocLocals
     (base : Locals) (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData)
+    (data : MatchOutput.OutputData)
     (hOrder : LimitResidualPrepare.OrderLocalsAt base order ctx data) :
-    AllocLocalsAt (allocPrepareFrame base ctx.result.book.length)
+    AllocLocalsAt (allocPrepareFrame base ctx.result.book.length data.nodes)
       order ctx data := by
   rcases hOrder with ⟨hFields, hLength, hTotal, hAppendLength⟩
   rcases hFields with
     ⟨hParams, hLocals, hValues, hBookResult, hTradesResult, hStatus,
-      hSource, hOid, hTrader, hSide, hPrice, hRemaining⟩
+      hSource, hOid, hTrader, hSide, hPrice, hRemaining, hScratch⟩
   constructor
   · constructor
     · refine {
@@ -55,7 +56,8 @@ theorem allocPrepareFrame_allocLocals
         trader := by simpa [allocPrepareFrame] using hTrader
         side := by simpa [allocPrepareFrame] using hSide
         price := by simpa [allocPrepareFrame] using hPrice
-        remaining := by simpa [allocPrepareFrame] using hRemaining }
+        remaining := by simpa [allocPrepareFrame] using hRemaining
+        scratch := by simpa [allocPrepareFrame] using hScratch }
     · simpa [allocPrepareFrame] using hLength
     · simpa [allocPrepareFrame] using hTotal
     · simpa [allocPrepareFrame] using hAppendLength
@@ -68,9 +70,9 @@ set_option Elab.async false in
 theorem residualAllocPrepareProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (order : OrderL) (ctx : Context)
-    (data : InternalLoopResult.OutputData)
+    (data : MatchOutput.OutputData)
     (hOrder : LimitResidualPrepare.OrderLocalsAt base order ctx data)
-    (hOutput : InternalLoopResult.OutputAt ctx st data)
+    (hOutput : MatchOutput.OutputAt ctx st data)
     (hLength : ctx.result.book.length + 1 < UInt64.size)
     (hBytes : orderArrayBytes (ctx.result.book.length + 1) + 7 <
       UInt64.size)
@@ -83,7 +85,7 @@ theorem residualAllocPrepareProg_spec
   have hParams := hOrder.fields.params
   have hLocals := hOrder.fields.locals
   have hValues := hOrder.fields.values
-  have hAppendLength : base.locals[37] =
+  have hAppendLength : base.locals[39] =
       .i64 (UInt64.ofNat (n + 1)) := getElem_of_some hOrder.appendLength
   have hLength' : n + 1 < UInt64.size := by simpa [n] using hLength
   have hBytes' : orderArrayBytes (n + 1) + 7 < UInt64.size := by

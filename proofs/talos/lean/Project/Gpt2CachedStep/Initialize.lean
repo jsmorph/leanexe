@@ -6,7 +6,8 @@ import Project.ProofKit.HeapGrowth
 namespace Project.Gpt2CachedStep.Initialize
 open Wasm Project.Runtime Project.ProofKit Project.EulerRiemann.Execution
 
-def freshHeap : Heap := ⟨4096, [], 0, 0, 0, 0⟩
+def freshHeap : Heap :=
+  { top := 4096, nodes := [], allocations := 0, retains := 0, releases := 0, frees := 0 }
 def weightNeed : UInt64 := 497759232
 def weightNode : FreeNode := allocatedNode freshHeap.top weightNeed freshHeap.nodes
 def heap : Heap := freshHeap.allocate weightNeed

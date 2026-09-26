@@ -33,14 +33,14 @@ theorem reject_program_spec (env : HostEnv Unit) (initial : Store Unit)
     omega
   unfold rejectProgram
   simp only [List.append_assoc]
-  apply FixedArrayCapacity.constantProgram_spec 0 1 19 Project.F64Clip.module env initial _
-    rfl (by change 3 ≤ 19; decide) (by change 19 < 27; decide)
+  apply FixedArrayCapacity.constantProgram_spec 0 1 20 Project.F64Clip.module env initial _
+    rfl (by change 3 ≤ 20; decide) (by change 20 < 28; decide)
   change wp Project.F64Clip.module _ Q initial
     (rejectAllocationFrame count bound ptr 8 0 0 0 0 0) env
   apply FixedArrayAllocateNone.program_spec Project.F64Clip.module env initial
     [.i64 count, .i64 bound, .i64 ptr]
     (rejectSaved count bound ptr)
-    [.i64 0, .i64 0] 19 rfl (FixedArrayReuse.program 19 1) base 8 1 0 0 0 0 0 allocations []
+    [.i64 0, .i64 0] 20 rfl (FixedArrayReuse.program 20 1) base 8 1 0 0 0 0 0 allocations []
   · simp [hGlobals]
   · simp [hGlobals, freeHead]
   · simp [hGlobals]
@@ -54,7 +54,7 @@ theorem reject_program_spec (env : HostEnv Unit) (initial : Store Unit)
   · intro previous
     wp_fixed_frame [FixedArraySearch.frame, rejectSaved, List.cons_append, List.nil_append]
     apply FixedArrayResult.lengthStore_spec Project.F64Clip.module env
-      (clipAllocate initial base 0 allocations) _ (base+48) 0 15 rfl rfl
+      (clipAllocate initial base 0 allocations) _ (base+48) 0 16 rfl rfl
     · rw [Memory.toUInt32_toNat, hWords.2, Nat.mod_eq_of_lt (by omega), hAllocatedPages]
       omega
     · wp_fixed_frame [FixedArrayResult.finishProgram, List.cons_append, List.nil_append]

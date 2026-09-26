@@ -20,7 +20,7 @@ def movingTailExpr : Expr .u64 :=
     (.ite (.ltU (.const 160000)
       (.bin .mul (.bin .mul (.bin .mul (.const 6) (.get 9)) (.get 10)) (.get 10)))
       (.const 0)
-      (.ite (.leU (.get 0) (.get 1))
+      (.ite (.not (.ltU (.get 1) (.get 0)))
         (clearanceExpr 2 0 4 1) (clearanceExpr 3 1 5 0)))
 
 def movingTailValue (r0 r1 z0 z1 u v dh : UInt64) : UInt64 :=

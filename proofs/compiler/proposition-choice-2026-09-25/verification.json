@@ -1,0 +1,160 @@
+{
+  "lean": "4.34.0-rc2",
+  "leanCommit": "6a10ac8c22beadecabdbb0919c2b50214762f91d",
+  "node": "24.13.0",
+  "runner": "tools/leanrun, authorized local mode, serial lock",
+  "proofCommand": "tools/arithmetic-check.js proof",
+  "axiomAudits": 9,
+  "candidate": "30d47e67875b1fdf1666fa400f127bf765aa6711",
+  "engineCommand": "tools/arithmetic-check.js subset-engine proposition-choice",
+  "executionGroup": "proposition-choice",
+  "nativeV8Comparisons": 623,
+  "declarations": 34,
+  "rangeDeclarations": 16,
+  "rangeComparisons": 384,
+  "priorModulesByteIdentical": 18,
+  "focusedNativeIRComparisons": 304,
+  "focusedRejections": 12,
+  "focusedDeclarationRejections": 4,
+  "focusedRawChoiceRejections": 8,
+  "priorFocusedNativeIRComparisons": 304,
+  "priorFocusedRejections": 12,
+  "modules": {
+    "constant": {
+      "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "bytes": 1042
+    },
+    "booleanMany": {
+      "sha256": "a5e95e46f7be660ff7592d7aa60ddc78be5ce2c9e2f0e5d6917c3f34e617bab8",
+      "bytes": 1170
+    },
+    "booleanDo": {
+      "sha256": "c2c5fbde00b6a977ad4ccd297166a5171f0ec64d4b182a0060966c8d5b1da1fd",
+      "bytes": 1292
+    },
+    "booleanDependentMany": {
+      "sha256": "d800e299c9a715e4e5d625f754b134fa5e36cb28dd105a75e517b7cfabcdb16f",
+      "bytes": 1180
+    },
+    "booleanDependentDo": {
+      "sha256": "e76b06c98689ef2ae6a6fa415f252767b46e7af038cef15924bf86306e8f4713",
+      "bytes": 1301
+    },
+    "instanceDo": {
+      "sha256": "2aa66477ea5689192d5f8f24e89dea297252b0fc47fef0fa1dcf99881b7cd9dc",
+      "bytes": 1080
+    },
+    "naturalDependentMany": {
+      "sha256": "5f5c0de5807c901e1238be74ac268f5780a80a074655a39d97528a8afc5f97ea",
+      "bytes": 1180
+    },
+    "naturalDo": {
+      "sha256": "a6a0eec591024d2d4579ae0f2f762f74c75e5e618c46f142b60d59198836f168",
+      "bytes": 1079
+    },
+    "boolChoiceNested": {
+      "sha256": "e899e4337ed8445346540ae35c6ebe116a5a0277a5b8068e063150753f68fd1e",
+      "bytes": 1292
+    },
+    "boolChoiceDo": {
+      "sha256": "ea5ee29ef2de93bdd9766b2d87b385f1379e094bfdba04727be3363376a40dd0",
+      "bytes": 1583
+    },
+    "propChoiceLet": {
+      "sha256": "07b4115ac80fa4c79f0f4ad86c6253386cc9c9fd6d9e95823da008c46a069be6",
+      "bytes": 1536
+    },
+    "propChoiceNested": {
+      "sha256": "164445444e50ece49f70875a3ee1bc3714860589aa40fe9678b047a1f91ad520",
+      "bytes": 1326
+    },
+    "propChoiceClosed": {
+      "sha256": "8a9d329780ef99e271b63bb23ece5a01e1f9de1980d0915e6e3204d04e842955",
+      "bytes": 1129
+    },
+    "propChoiceShadow": {
+      "sha256": "88b8724857ab67f4cd603894319f36ba2537baba298b8258a9412a664cd28cc4",
+      "bytes": 1354
+    },
+    "propChoiceCapture": {
+      "sha256": "5d48669ba0d0314b83b0b97de0461a8a3cc03172db46e2ec0e3e4c7ae4e13bce",
+      "bytes": 1275
+    },
+    "propChoiceDependent": {
+      "sha256": "f27501c0d994634e300d864c533618997c1830cb50766063f5b5935dd9f862c6",
+      "bytes": 1406
+    },
+    "propChoiceDo": {
+      "sha256": "f4209c8a99b2a60c7201de9473941e32720ea6ee0d199ecd647da2726612de51",
+      "bytes": 1583
+    },
+    "propChoiceUnused": {
+      "sha256": "f37ccd470d36c42949f0e18e7f885844cd5f79ea0e8bc290727c37a4d8c23f53",
+      "bytes": 1138
+    },
+    "rangeBooleanOuter": {
+      "sha256": "65825b5ef58ae05fbc28a64718ce7f255535235ab8d9df5e11dfa3be605680ee",
+      "bytes": 1546
+    },
+    "rangeBooleanBounds": {
+      "sha256": "9cf1837a7b6fdb8389b9eb907fccbae862fe8d88ed47d9ae775d988a71fe193d",
+      "bytes": 1949
+    },
+    "rangeBooleanDependentCapture": {
+      "sha256": "f32415c45f5faac1d9274dad859f1e19dbab9900331e09a8f9e724f4746ff7be",
+      "bytes": 1348
+    },
+    "rangeBooleanDependentJoined": {
+      "sha256": "37de2c4e88df1972f000ea0a401203f8cbfbdd793f1cbc27c251bfd0f6f5ec0b",
+      "bytes": 1956
+    },
+    "rangeNaturalStep": {
+      "sha256": "78e85171ef69d1ac2697e5c9b4d580c0b25ff2ed08201bc89c42cbdebbd8cf8d",
+      "bytes": 1138
+    },
+    "rangeNaturalOuter": {
+      "sha256": "595081614db17f0cd1786bcb45367afe3d638a64c9c0e6892330f1e56b015df7",
+      "bytes": 1208
+    },
+    "rangeBoolChoiceStep": {
+      "sha256": "b16b560d07e852ded1bc8a59df5721148c72d480eb5d67add890fbd567ac5b71",
+      "bytes": 1423
+    },
+    "rangeBoolChoiceOuter": {
+      "sha256": "a9f62d3f525d65777f0ad1040c2fff2ec2ba776c46ac0b180db042b42001e863",
+      "bytes": 1491
+    },
+    "rangePropChoiceYield": {
+      "sha256": "145698627934d6223a66f219b192fc089eaaad242770b98c2585b218ca16215d",
+      "bytes": 1181
+    },
+    "rangePropChoiceBreak": {
+      "sha256": "3d7938ab755d9c5f4ba0bef058e166d51461a440399d21878aeab8259b0ac910",
+      "bytes": 1376
+    },
+    "rangePropChoiceContinue": {
+      "sha256": "b7c18456a9c89b328dafd25364acd5afbd393df3d94ee9f6460bd134b540c57b",
+      "bytes": 1601
+    },
+    "rangePropChoiceJoined": {
+      "sha256": "a18714f84e9f4300603c6457d178d012086104c9361279bec15e51769ccbcb6d",
+      "bytes": 4531
+    },
+    "rangePropChoiceCapture": {
+      "sha256": "165f45c427c04c99746f27aa6ddc154f42e48a7f440b4e32be375edae1f15a82",
+      "bytes": 1970
+    },
+    "rangePropChoiceBounds": {
+      "sha256": "dc5ebe1c7023914a23a69405287856e8996c2f33f24e4cf03fed5c7831d96efa",
+      "bytes": 2331
+    },
+    "rangePropChoiceStep": {
+      "sha256": "6e18c899171a584980e178ea2d798c6ec09cbd2fec4f29f5fa3fc3936bc60c40",
+      "bytes": 1679
+    },
+    "rangePropChoiceOuter": {
+      "sha256": "97492bde2330f3b526cc4ca580bd518b4b13a46a7240e4607d2702b405e26dc3",
+      "bytes": 1491
+    }
+  }
+}

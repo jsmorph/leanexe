@@ -1,0 +1,97 @@
+\section{Source, artifact, and evidence identities}
+\label{sec:evidence}
+
+All repository links in this report refer to revision \longcode{c655d35b5011c1703dfd22bcceaec4e5bee17088} at \url{https://github.com/jsmorph/leanexe}.  The proof workspace pins Lean 4.34.0-rc2, commit \longcode{6a10ac8c22beadecabdbb0919c2b50214762f91d}, and Talos revision \longcode{87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47}.  The exact-artifact verifier source identity is \longcode{0b8486bea82c65a31ecdf332642f8d96fcf99f2726130f56707f373c02017194}.  The upstream model revision is \longcode{607a30d783dfa663caf39e06633721c8d4cfcd7e}.  Table~\ref{tab:identities} fixes the model and binary files used by the measurements.
+
+\begin{longtable}{L{3.4cm}L{10.5cm}}
+\caption{SHA-256 identities.}\label{tab:identities}\\
+\toprule
+Object & SHA-256\\
+\midrule
+\endfirsthead
+\toprule Object & SHA-256\\\midrule
+\endhead
+Group64 binary & \longcode{9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075}\\
+Binary32 binary & \longcode{e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade}\\
+Group64 weight file & \longcode{9d60657659e502b8dae9f11c2e73583643962b42c662cb9b51aa53e8730ec314}\\
+Binary32 weight file & \longcode{6c12f993878ad39ba4aa3b0ab58a7466f5a62651cda94464dab438339008ba1d}\\
+Upstream safetensors & \longcode{248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707}\\
+Tokenizer JSON & \longcode{8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6}\\
+Native session host & \longcode{246419d68fc63c40049e09a10d8afc0e955ef3d4fe65043bf2713eeed9b6d441}\\
+Original candidate binary & \longcode{4fab215a51e58996b78dc3b988182eadcf47532f60556db7dd5d8d35468483ac}\\
+Original candidate weights & \longcode{cdf0d8752b9b8243de911eab7435f4c96356752437d190ef4da094073f59c29a}\\
+\bottomrule
+\end{longtable}
+
+\subsection{Claim-to-declaration map}
+
+Table~\ref{tab:declarations} identifies the statements supporting the proof claims.  Names beginning with \code{Q.} abbreviate \code{Project.Gpt2QuantizedCached.}.  Names beginning with \code{P.} abbreviate \code{Project.ProofKit.}.  The linked modules contain the complete hypotheses and conclusions.
+
+\small
+\begin{longtable}{L{3.3cm}L{10.6cm}}
+\caption{Checked declarations and their scope.}\label{tab:declarations}\\
+\toprule
+Claim & Declaration and module\\
+\midrule
+\endfirsthead
+\toprule Claim & Declaration and module\\\midrule
+\endhead
+Integer sum equality and prefix range & \proofref{ProofKit/QuantizedDot.lean}{\longcode{P.QuantizedDot.dot\_exact}; \longcode{P.QuantizedDot.dot\_prefix\_range}}\\[3pt]
+Scalar reconstruction & \proofref{ProofKit/QuantizedScalarError.lean}{\longcode{P.QuantizedScalarError.reconstruction}}\\[3pt]
+Two rounded rescalings & \proofref{ProofKit/QuantizedRescaleError.lean}{\longcode{P.QuantizedRescaleError.rescale\_error}}\\[3pt]
+Complete token call & \proofref{Gpt2QuantizedCached/Entry/Public.lean}{\longcode{Q.Entry.publicStep\_exact}}, exposed as \longcode{Q.Spec.cachedStep\_exact}\\[3pt]
+Model validation & \proofref{Gpt2QuantizedCached/Validation/Public.lean}{\longcode{Q.Validation.validateModel\_exact}}\\[3pt]
+Repeated calls and cleanup & \proofref{Gpt2QuantizedCached/Session/Spec.lean}{\longcode{Q.Session.runs\_exact}} and \proofref{Gpt2QuantizedCached/Session/Close.lean}{\longcode{Q.Session.close\_owned}}\\[3pt]
+Reset through closed session & \proofref{Gpt2QuantizedCached/Spec.lean}{\longcode{Q.Spec.gpt2\_128\_exact}}\\[3pt]
+Exact binary transfer & \proofref{Gpt2QuantizedCached/ArtifactTranslation.lean}{\longcode{Q.Artifact.artifact\_gpt2\_128\_exact}}\\[3pt]
+Checkpoint correspondence & \proofref{Gpt2QuantizedCached/Export.lean}{\longcode{Q.Export.projection\_checked}; \longcode{Q.Export.retained\_checked}}\\[3pt]
+Real session error formula & \proofref{Gpt2QuantizedCached/Numerical/SessionBounds.lean}{\longcode{Q.Numerical.Session.trace\_error}}\\[3pt]
+Outward session bound & \proofref{Gpt2QuantizedCached/Numerical/ForwardSession.lean}{\longcode{Q.Numerical.ForwardUpper.trace\_close}}\\[3pt]
+Forward margin implication & \proofref{Gpt2QuantizedCached/Numerical/ForwardSession.lean}{\longcode{Q.Numerical.ForwardUpper.choices\_agree}}\\[3pt]
+Observed-logit predicate & \proofref{ProofKit/F32LogitCertificate.lean}{\longcode{P.F32LogitCertificate.sound}; \longcode{P.F32LogitCertificate.greedy}}\\[3pt]
+Packed and session certificates & \proofref{ProofKit/PackedLogitCertificate.lean}{\code{PackedLogitCertificate}}, \proofref{Gpt2QuantizedCached/LogitCertificates.lean}{\code{LogitCertificates}}, and \proofref{Gpt2QuantizedCached/SessionCertificates.lean}{\code{SessionCertificates}}\\
+\bottomrule
+\end{longtable}
+\normalsize
+
+\subsection{Measurement records}
+
+The \dataref{evaluation.json}{original evaluation manifest} fixes the checkpoint, 128-token trace, nine prompt cases, and sampling parameters.  The \dataref{heldout-group64.json}{later manifest} fixes the six additional prompts before their evaluation.  Table~\ref{tab:evidence} maps measured conclusions to retained records.  Historical JSON status strings stating that a proof was pending record the state at capture time.  The current proof status follows the declarations and package checks described in Section~\ref{sec:proof}.
+
+\begin{longtable}{L{3.5cm}L{10.4cm}}
+\caption{Retained records under \code{data/gpt2-quantized-v1}.}\label{tab:evidence}\\
+\toprule Claim & Record\\\midrule
+\endfirsthead
+\toprule Claim & Record\\\midrule
+\endhead
+Storage and tensor layout & \dataref{group64-manifest.json}{Grouped checkpoint manifest} and \dataref{model.json}{current model record}.\\[3pt]
+Original error source & \dataref{projection-errors.json}{Projection diagnostics}, with local activation, weight, and combined errors.\\[3pt]
+Grouping and control & \dataref{experiments/group64/prefixes.json}{Fixed-prefix experiment} and \dataref{experiments/group64/prompts.json}{prompt-prefix experiment}.\\[3pt]
+Bitwise model agreement & \dataref{candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/cached-test.json}{Grouped cached test}.\\[3pt]
+Generated completions & \dataref{candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/completions.json}{Nine compiled cases} and \dataref{experiments/group64-heldout/completions.json}{six later cases}.\\[3pt]
+Runtime and memory & \dataref{candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/warm-benchmark.json}{Warm full-model benchmark} and \dataref{experiments/group64/projection-benchmark.json}{scoped projection benchmark}.\\[3pt]
+Checkpoint relation & \dataref{certificates/export-check.json}{Export check}, including successful native evaluation and the earlier timeout.\\[3pt]
+Activation quantizers & \dataref{certificates/activation-check.json}{Activation check}, with exact quotient and reconstruction bounds.\\[3pt]
+Range predicates & \dataref{certificates/README.md}{Original range records} and \dataref{experiments/group64-heldout/README.md}{held-out range records}, with checker logs, source digests, and compressed arithmetic profiles.\\[3pt]
+Observed-logit certificates & \dataref{certificates/coverage.json}{Original coverage} and \dataref{experiments/group64-heldout/coverage.json}{held-out coverage}.\\[3pt]
+Forward-bound failure & \dataref{certificates/forward-evaluation.json}{Original outward evaluation} and \dataref{experiments/group64-heldout/forward-evaluation.json}{held-out outward evaluation}, with compressed exact numerators.\\
+\bottomrule
+\end{longtable}
+
+\subsection{Reproduction procedure}
+
+The repository's \src{DEVELOPING.md}{development instructions} fix the native and proof toolchains.  The \src{training/gpt2/README.md}{GPT-2 training and export instructions} describe the checkpoint and Python environment.  The quantized \dataref{README.md}{evaluation guide} gives export, compile, reference-comparison, completion, and benchmark commands.  All Lean, Lake, and compiler commands use \code{tools/leanrun} under the serialized resource limits.  The exact-binary package can be checked with the following command, written over lines for readability:
+
+\begin{quote}\small\ttfamily
+tools/artifact-proof.js check \\
+proofs/artifacts/gpt2\_quantized\_cached/\\
+\longcode{9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075}/\\
+program.wasm \\
+Project.Gpt2QuantizedCached.ArtifactTranslation
+\end{quote}
+
+The directory and filename in that display form one path argument.  The paper's companion reproduction instructions preserve the executable command without line breaks inside arguments.  The package manifest fixes the embedded-byte definition, decoder and validator theorems, translated program, behavioral declarations, and verifier identity.  The focused source check uses \code{tools/talos-proof.js check gpt2\_quantized\_cached}.
+
+Export with \code{quantized.py export-model --scheme group64} recreates the scheme-two weight file.  The cached test, text comparison, and benchmark scripts accept \code{--grouped} and an explicit \code{--wasm} path.  The recorded benchmark uses \code{--repetitions 3}.  Original and later certificate records preserve the capture commands, native checker commands, source digests, data digests, and output logs.  Raw captures generated under \code{build} are reproducible from those scripts.  Compressed profiles and forward-bound numerators remain in the tracked evidence directory.
+
+The companion \code{evidence/inventory.json} records the content hashes of every source and data file selected for the report.  Its summary script recomputes the reported agreement counts, certificate counts, storage reduction, and runtime ratio from the retained JSON.  These checks validate the report's use of evidence.  Rechecking Lean theorems or rerunning inference uses the repository commands above and remains a separate operation.

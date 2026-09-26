@@ -69,6 +69,10 @@ inductive UnaryOp : Instr → ValType → ValType → Prop
   | i32WrapI64 : UnaryOp .i32WrapI64 .i64 .i32
   | i64ExtendI32U : UnaryOp .i64ExtendI32U .i32 .i64
   | f32Sqrt : UnaryOp .f32Sqrt .f32 .f32
+  | f32Nearest : UnaryOp .f32Nearest .f32 .f32
+  | f32ConvertI32S : UnaryOp .f32ConvertI32S .i32 .f32
+  | i32Extend8S : UnaryOp .i32Extend8S .i32 .i32
+  | i32TruncSatF32S : UnaryOp .i32TruncSatF32S .f32 .i32
   | f64Sqrt : UnaryOp .f64Sqrt .f64 .f64
   | i32ReinterpretF32 : UnaryOp .i32ReinterpretF32 .f32 .i32
   | i64ReinterpretF64 : UnaryOp .i64ReinterpretF64 .f64 .i64

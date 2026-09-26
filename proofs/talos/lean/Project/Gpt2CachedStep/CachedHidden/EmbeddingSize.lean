@@ -17,7 +17,7 @@ theorem emitted_embeddingSize : func36.take 11 =
       CheckedNatMul.program 103 104 ++ [.localSet 8, .localGet 8, .localSet 103] := rfl
 
 theorem embeddingSize_spec (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
-    (hParams : frame.params.length = 8) (hLocals : frame.locals.length = 119)
+    (hParams : frame.params.length = 8) (hLocals : frame.locals.length = 124)
     (hValues : frame.values = [])
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp «module» rest Q store (embeddingSizeFrame frame) env) :

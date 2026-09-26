@@ -64,16 +64,11 @@ theorem maxSpeedCheckedBits_exact_in_module {m : Wasm.Module} (layout : Layout m
         simp [Project.EulerGridStep.Model.maxSpeedCheckedBits, hEmpty, hRem, remaining]
       apply scan_loop_spec layout env initial pointer input hArray
         (input.size / 3) 0 rfl (by omega) 0 0 0
-        { l33 := UInt64.ofNat input.size, l34 := 3, l35 := pointer } target hTarget
-      intro firstIndex firstStatus firstSpeed firstScratch hFirst
+        { l36 := UInt64.ofNat input.size, l37 := 3, l38 := pointer } target hTarget
+      intro finalIndex finalStatus finalSpeed finalScratch hFinal
       entry_peel
-      apply scan_loop_spec layout env initial pointer input hArray
-        (input.size / 3) 0 rfl (by omega) 0 0 firstStatus
-        { firstScratch with l40 := 0 } target hTarget
-      intro secondIndex secondStatus secondSpeed secondScratch hSecond
-      entry_peel
-      have hStatus := congrArg Project.EulerGridStep.Model.CheckedSpeed.status hFirst
-      have hSpeed := congrArg Project.EulerGridStep.Model.CheckedSpeed.speed hSecond
+      have hStatus := congrArg Project.EulerGridStep.Model.CheckedSpeed.status hFinal
+      have hSpeed := congrArg Project.EulerGridStep.Model.CheckedSpeed.speed hFinal
       simp_all
     · have hTarget : target = ⟨1, 0⟩ := by
         rw [← hModel]
