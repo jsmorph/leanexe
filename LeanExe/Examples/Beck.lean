@@ -51,14 +51,17 @@ def readInput (words : Array UInt64) : Input := Id.run do
   if pos != words.size then return reject 1
   return ⟨0, n, m, overlap, incidence⟩
 
+def liveCount (input : Input) (x : Point) (category : Nat) : Nat := Id.run do
+  let mut live := 0
+  for job in [:input.jobs] do
+    if !frozen x job && input.incidence[job * input.categories + category]! == 1 then
+      live := live + 1
+  return live
+
 def protectedMatrix (input : Input) (x : Point) : Array UInt64 := Id.run do
   let mut matrix := #[]
   for category in [:input.categories] do
-    let mut live := 0
-    for job in [:input.jobs] do
-      if !frozen x job && input.incidence[job * input.categories + category]! == 1 then
-        live := live + 1
-    if live > input.overlap then
+    if liveCount input x category > input.overlap then
       for job in [:input.jobs] do
         matrix := matrix.push
           (if !frozen x job then input.incidence[job * input.categories + category]! else 0)
@@ -115,13 +118,15 @@ def findBasis : Nat → Nat → Array UInt64 → Basis → Basis
     if next.rows.size == basis.rows.size then basis
     else findBasis fuel width matrix next
 
+def freeColumn (input : Input) (x : Point) (columns : Array UInt64) : Nat := Id.run do
+  for col in [:input.jobs] do
+    if !frozen x col && !contains columns col.toUInt64 then return col
+  return input.jobs
+
 def direction (input : Input) (x : Point) : Array UInt64 := Id.run do
   let matrix := protectedMatrix input x
   let basis := findBasis input.jobs input.jobs matrix ⟨#[], #[], 1⟩
-  let mut free := input.jobs
-  for col in [:input.jobs] do
-    if free == input.jobs && !frozen x col && !contains basis.columns col.toUInt64 then
-      free := col
+  let free := freeColumn input x basis.columns
   if free == input.jobs then return #[]
   let mut d := (Array.replicate input.jobs (0 : UInt64)).set! free basis.determinant
   for j in [:basis.columns.size] do
