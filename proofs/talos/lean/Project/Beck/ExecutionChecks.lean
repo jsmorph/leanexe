@@ -2,6 +2,8 @@ import Project.Beck.ExecutionScan
 import Project.Beck.ExecutionContains
 import Project.Beck.ExecutionFree
 import Project.Beck.ExecutionCount
+import Project.Beck.ExecutionReject
+import Project.Beck.ExecutionRelease
 
 #print axioms Project.Beck.Execution.negative_exact
 #print axioms Project.Beck.Execution.magnitude_exact
@@ -32,3 +34,8 @@ import Project.Beck.ExecutionCount
 #print axioms Project.Beck.Execution.countStep_exact
 #print axioms Project.Beck.Execution.countLoop_exact
 #print axioms Project.Beck.Execution.liveCount_exact
+#print axioms Project.Beck.Execution.allocation_exact
+#print axioms Project.Beck.Execution.emptyWords_owned
+#print axioms Project.Beck.Execution.emptyWords_frame
+#print axioms Project.Beck.Execution.reject_owned
+#print axioms Project.Beck.Execution.releaseWords_exact

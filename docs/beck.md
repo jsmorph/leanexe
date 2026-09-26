@@ -53,7 +53,7 @@ The source and mathematical lemmas check with:
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.SourceChecks
 ```
 
-The checked WASM helper proofs cover structure accessors, sign and magnitude, boundary distance, frozen-coordinate reads, the all-frozen scan, array membership search, the free-column search, and category live-job counts.  The scan theorems prove termination, source agreement, and store preservation from the array representations.  The free-column theorem establishes the source's deterministic first-match behavior.  The category counter proves its checked indexing and count arithmetic safe within the input bounds.  These execution proofs check with:
+The checked WASM helper proofs cover structure accessors, sign and magnitude, boundary distance, frozen-coordinate reads, the all-frozen scan, array membership search, the free-column search, category live-job counts, the rejection constructor, and owned-array release.  The scan theorems prove termination, source agreement, and store preservation from the array representations.  The free-column theorem establishes the source's deterministic first-match behavior.  The category counter proves its checked indexing and count arithmetic safe within the input bounds.  The rejection constructor uses the shared allocator proof for free-list reuse and memory growth, establishes ownership of its empty array, and preserves existing protected memory.  Its allocation theorem requires explicit address and memory-capacity bounds.  These execution proofs check with:
 
 ```sh
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.ExecutionChecks
