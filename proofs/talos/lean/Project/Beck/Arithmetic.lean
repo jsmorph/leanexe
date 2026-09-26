@@ -30,6 +30,14 @@ theorem value_eq (x : UInt64) : value x =
   change (if 2 * x.toNat < 2 ^ 64 then (x.toNat : ℤ) else x.toNat - 2 ^ 64) = _
   split_ifs <;> omega
 
+theorem value_nonnegative (x : UInt64) (h : 0 ≤ value x) : value x = (x.toNat : ℤ) := by
+  have bound := x.toNat_lt
+  rw [value_eq] at *
+  split_ifs at * <;> omega
+
+theorem value_small (x : UInt64) (h : x.toNat < 9223372036854775808) :
+    value x = (x.toNat : ℤ) := by rw [value_eq, ite_eq_left h]
+
 theorem negative_iff (x : UInt64) : negative x = true ↔ value x < 0 := by
   have bound := x.toNat_lt
   rw [value_eq]
@@ -50,6 +58,18 @@ theorem magnitude_exact (x : UInt64) : ((magnitude x).toNat : ℤ) = |value x| :
     have hx : ¬value x < 0 := by simpa [negative_iff] using hn
     rw [value_eq] at hx
     split_ifs at * <;> simp_all
+
+theorem magnitude_zero (x : UInt64) : magnitude x = 0 ↔ x = 0 := by
+  have h := magnitude_exact x
+  constructor
+  · intro zero
+    have v : value x = 0 := abs_eq_zero.mp (by simpa [zero] using h.symm)
+    rw [value_eq] at v
+    have bound := x.toNat_lt
+    have : x.toNat = 0 := by split_ifs at v <;> omega
+    exact UInt64.toNat_inj.mp this
+  · intro zero
+    simp [zero, magnitude, negative]
 
 theorem denominator_growth (round : ℕ) (D speed : ℤ)
     (hD : 0 < D ∧ D ≤ 120 ^ round) (hs : 0 < speed ∧ speed ≤ 120) :
