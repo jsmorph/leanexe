@@ -1,4 +1,15 @@
-# Current task: user documentation — complete
+# Current task: main integration — complete
+
+Main includes `ciogpt` through `3a0222be`. The fetched `origin/main` at `a4655383`
+was already an ancestor, so the merge was a fast-forward with no conflicts or
+code changes. The compiler, proof, and runtime checks recorded below apply to
+the merged code. Documentation and whitespace checks pass on main.
+
+Next: continue compiler coverage incrementally, with end-to-end proofs and
+execution checks for each capability, keeping this file current and committing
+and pushing frequently.
+
+## User documentation — complete
 
 The README and linked guides describe current capabilities, runnable examples,
 and proof boundaries. GPT-2 FP32/quantized generation, Euler, numerical kernels,
@@ -15,9 +26,8 @@ local heading targets and whitespace are checked. GPT command arguments are
 checked against the Python parsers and implementation. Model execution and
 Python dependency downloads are outside this documentation-only validation.
 
-The documentation is committed/pushed on ciogpt. Main remains unchanged.
-Next: merge ciogpt into main when the user requests that step. Further compiler
-coverage follows the incremental proof and execution workflow below.
+The documentation is included in main. Further compiler coverage follows the
+incremental proof and execution workflow below.
 
 ---
 
@@ -26,7 +36,7 @@ coverage follows the incremental proof and execution workflow below.
 The user requested `ciogpt` from `correct`, merging `iogpt`, then pushing it for a
 subsequent merge into main. Merge commit `6f05315c` has parents `correct` at
 `49f79f0f` and `iogpt` at `8f703c51`. The final extraction fix is `cbefab5e`.
-Both commits are pushed to `origin/ciogpt`. Main remains unchanged.
+Both commits are pushed to `origin/ciogpt` and included in main.
 
 All six textual conflicts are resolved, retaining both compiler/proof tracks,
 both development histories, arithmetic and multi-export CLI entries, and both
@@ -69,8 +79,7 @@ for this merge. General correctness still applies to the admitted scalar/range
 subset. Byte I/O retains its modeled-host boundary, and running sum still lacks
 a universal WASM execution and memory theorem.
 
-Next: merge the pushed `ciogpt` into main when the user requests that step. Do not
-merge main as part of this task. Further dialect coverage remains incremental,
+The main merge is complete. Further dialect coverage remains incremental,
 following the scalar work record below; each increment needs end-to-end proofs,
 execution checks, a current task record, and frequent commits/pushes.
 
