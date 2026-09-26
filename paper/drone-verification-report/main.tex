@@ -22,6 +22,22 @@
 A terrain-following planner must connect its discrete route choices to continuous clearance and motion bounds, and connect its implementation to that mathematical result.  This report describes a LeanExe planner and Lean proofs of both connections.  For every accepted nonempty terrain, the generated WebAssembly model terminates with exactly the source planner's waypoint array and a continuously differentiable point-mass flight that satisfies the specified spatial clearance and component speed bounds, with bounded acceleration between waypoints and one-sided bounds at joins.  The execution theorem assumes a valid caller heap, a borrowed input array, and sufficient allocation headroom within 64 MiB.  The planner minimizes exact traversal time and then sampled altitude excess over a finite layered graph.  The proof covers integer arithmetic, predecessor selection, parent reconstruction, polynomial motion, allocation, copying, and release.  Inputs contain at most 64 elevations, and each interior station has 45 altitude--speed states.  A rest-to-rest primitive proves feasibility for every accepted terrain.  Identifying the decoded drone binary with the verified generated model remains a separate proof obligation.  A self-contained account of LeanExe describes its language, artifact-verification method, and the scalar and bounded-loop compiler-correctness theorem now present on the main branch.
 \end{abstract}
 
+\section{End-to-end verification for practical applications}
+\label{sec:context}
+
+LeanExe's goal is end-to-end verification of software for practical applications: a checked connection from the required behavior to the instructions that execute it.  The drone example computes a flight path from terrain elevations.  Its proofs cover the mathematical path and the program that constructs its waypoint array, including integer arithmetic, allocation, copying, and release.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=.98\linewidth]{figures/ridges.pdf}
+\caption{A compiled run over repeated ridges.  The gray region shows terrain, the dashed line gives the required clearance floor, and the blue curve shows drone elevation.  Dots mark the returned waypoints.  The curve follows the planner's prescribed motion between them.}
+\label{fig:ridges}
+\end{figure}
+
+Figure~\ref{fig:ridges} uses the output of the WebAssembly planner executed in Wasmtime on a 15-station terrain profile.  The route covers 1,400 distance units in $107\tfrac{3}{7}$ seconds.  The planner minimizes travel time over its finite altitude and speed choices, then minimizes altitude excess above the clearance floor.  The selected path stays high across the valleys while satisfying the model's speed and acceleration limits.  Native Lean returns the same waypoint words for this input.
+
+The drone proofs establish continuous clearance and motion bounds for an ideal point mass and exact execution of the planner in the generated WebAssembly model under stated memory assumptions.  Relating a decoded drone binary to that model remains a separate proof obligation.  The compiler theorem now on main provides a source-to-binary connection for its admitted scalar and bounded-loop language.  A physical deployment would also require models of terrain uncertainty, vehicle dynamics, and tracking error.
+
 \section{Result and proof scope}
 
 For every accepted nonempty terrain, the generated WebAssembly model terminates with exactly the source planner's waypoint array and a continuously differentiable point-mass flight that satisfies the specified spatial clearance and component speed bounds, with bounded acceleration between waypoints and one-sided bounds at joins.  The compiled result is conditional on the caller's heap and allocation budget.  The source result is conditional on the input bounds.  The physical interpretation assumes exact terrain interpolation and exact execution of the prescribed point-mass motion.
@@ -340,7 +356,7 @@ The pinned setup uses Lean 4.34.0-rc2 and the repository's Talos dependency.  Th
 
 \subsection{Fresh terrain runs}
 
-Figures~\ref{fig:flat-plateau} and~\ref{fig:hill-ridges} show four additional runs of the compiled planner.  Each input contains 15 stations spanning 1,400 distance units.  The figures use the returned altitude and speed words, evaluated with the prescribed continuous primitives at 101 normalized times per segment.  Markers identify the returned waypoints.  The filled region is the piecewise-linear terrain, and the dashed curve is the required corridor.  The plotted horizontal coordinate follows the primitive's progress function.
+Figures~\ref{fig:ridges}, \ref{fig:flat-plateau}, and~\ref{fig:hill} show four additional runs of the compiled planner.  Each input contains 15 stations spanning 1,400 distance units.  The figures use the returned altitude and speed words, evaluated with the prescribed continuous primitives at 101 normalized times per segment.  Markers identify the returned waypoints.  The filled region is the piecewise-linear terrain, and the dashed curve is the required corridor.  The plotted horizontal coordinate follows the primitive's progress function.
 
 Every returned word agrees with a separate native Lean invocation on the same input.  The report retains the complete inputs, both outputs, exact tick totals, and plotting samples in its figure data.  The four routes have the same time, $90{,}240/840=107\tfrac{3}{7}$ seconds, while their selected altitude excess differs.  In these cases the planner preserves the same waypoint-speed sequence and adjusts altitude to satisfy the terrain constraints.  Table~\ref{tab:runs} records the resulting secondary costs.  These new runs are distinct from the historical 15-station examples in the development record.
 
@@ -369,13 +385,11 @@ Repeated ridges & 800\\
 \label{fig:flat-plateau}
 \end{figure}
 
-\begin{figure}[p]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=.98\linewidth]{figures/hill.pdf}
-\vspace{8mm}
-\includegraphics[width=.98\linewidth]{figures/ridges.pdf}
-\caption{Fresh WASM outputs on a rounded hill and repeated ridges.  The planner selects a path above the corridor where doing so preserves traversal time.  All four 15-station plots share the same axis limits.}
-\label{fig:hill-ridges}
+\caption{Fresh WASM output on a rounded hill.  The planner selects a path above the corridor where doing so preserves traversal time.  This plot shares its axis limits with the other 15-station runs, including the repeated-ridges run in Figure~\ref{fig:ridges}.}
+\label{fig:hill}
 \end{figure}
 
 \clearpage
