@@ -19,10 +19,11 @@ The general source-to-WASM theorem and all twelve axiom audits pass, including
 three new source-equivalence/recognition audits. The focused tests pass 2,066
 native/IR comparisons and 1,204 rejection tests. The original
 `rangeIdComparisonEvidenceAnnotations` loop now compiles unchanged. The emitted
-WASM execution group contains 46 declarations; its checks are in progress.
+WASM execution group passes 771 native Lean/V8 comparisons across 46 declarations,
+including fourteen range declarations. All 35 prior modules retain identical
+bytes. The full native fixture contains 686 declarations.
 
-Next: finish native Lean/V8 comparisons and archive the checked source, binaries,
-logs and failures. Then extend operand equivalence through compound guard
+Next: archive the checked source, binaries, logs and failures. Then extend operand equivalence through compound guard
 conditions, dependent branches and saved decisions before continuing broader
 compiler coverage. Full-dialect correctness remains unfinished. Keep increments
 focused, get each capability proved and executing end to end, and commit/push
@@ -35,7 +36,7 @@ translation now retains those i64/i32 types, and its binary-translation witness
 agrees. The complete compiler proof passes after this correction. The initial
 failure and focused proof diagnostics are retained for the evidence archive.
 
-## Comparison operand equivalence — execution checks in progress
+## Comparison operand equivalence — complete for ordinary branches
 
 The source relation covers exact expressions, standard UInt64 arithmetic heads,
 standard numerals and corresponding metadata wrappers. Checked recognizer
@@ -55,8 +56,11 @@ Validation completed:
 - `scalar_id_comparison.lean`: 264 comparisons and four rejected declarations.
 - `scalar_comparison_id_type.lean`: 252 comparisons and 210 invalid-input tests.
 
-The selected native/WASM run is pending. This checkpoint does not claim full
-LeanExe dialect correctness.
+The selected native/WASM run passes 771 comparisons across 46 declarations.
+The first engine invocation caught missing names in the checked corpus list;
+that list is corrected, and V8 passes using the already-built artifacts. No
+Lean rebuild was needed for the test configuration fix. This checkpoint does
+not claim full LeanExe dialect correctness.
 
 ## Main integration — complete
 
