@@ -1017,3 +1017,22 @@ runs are retained. `build/logs/drone-initial-3.log` passes all 3,595 jobs;
 the loop checks in 3.6 seconds and the final wrapper in 3.1 seconds. All new
 axiom audits contain only standard Lean axioms. Full history construction,
 route unwinding/reversal, and the compiled compute/safety theorem remain open.
+
+`buildHistory_exact` now verifies the complete compiled history constructor.
+The emitted loop reads adjacent terrain floors, detects the last layer,
+allocates a seed, executes the checked row solver, appends all 45 parents,
+and advances its parameters. Its invariant proves termination, exact source
+agreement, preservation of live arrays, fresh nonempty results, and the
+remaining allocation/page budget. The emitted ownership trackers remain zero
+through this wrapper; its budget conservatively includes every allocation.
+
+The append-call setup hit a 200,000-heartbeat elaboration limit. Splitting
+its parameter preparation into a separate lemma resolved that boundary.
+An additional checked `owned_root_ne_zero` lemma prevents Lean from expanding
+an entire source row computation just to project an allocation's root bound.
+The combined step then checks in 3.4 seconds. `NatSub.guard_spec` now exposes
+saturated subtraction at an already-evaluated branch, for history reads and
+the forthcoming unwind loop. Failed runs remain in `build/logs`.
+`build/logs/drone-history-5.log` passes all 3,600 jobs, and every new axiom
+audit is standard-only. Route unwinding/reversal and final compiled
+compute/safety transfer remain open.
