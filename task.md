@@ -894,3 +894,38 @@ the focused execution check passes in 93 seconds (`allocator-region-1.log`,
 This closes the held-out regression gap for the shared scalar control-type
 change. Drone heap allocation/release adaptations are next; their initial check
 also needs the existing shared runtime/heap proof dependencies to be built.
+
+Published the allocator/regression checkpoint as `c404f1a2`. The initial heap
+aggregate built the uncached runtime and existing heap dependencies, then reached
+its ten-minute limit before the final targets. Split the generic word-buffer
+finishing lemma into `HeapWordsFinishBase.lean`, preserving the old public
+release theorem through its original import. The drone allocation and release
+adaptations now check in about three seconds each. They use the actual drone
+module and release function 29, including free-list reuse and memory growth.
+
+Added checked empty-array memory/ownership lemmas, exact word-array capacity
+arithmetic, and preservation of borrowed arrays across allocation, writes, and
+release. The borrowed representation matters for the actual host ABI:
+`tools/wasmtime-host.c` allocates terrain through the raw-buffer allocator and
+writes its length and words, without changing the header to internal-array kind.
+The input-preservation assumptions therefore do not require that internal kind.
+The empty-array proof was divided at the memory-write boundary after a bounded
+aggregate expired; its two final checks take about three seconds each.
+
+The first empty-array axiom audit exposed an inherited native `bv_decide` axiom
+through `Mem.read64_write64_same`. Replaced that use in all six locations in
+`ProofKit.FixedArrayResult` with the existing kernel-checked
+`ProofKit.Memory.read64_write64`. The allocator, empty, singleton, and pair
+result audits now contain only standard Lean axioms
+(`build/logs/allocator-result-axioms.log`). The new heap, borrowed-array, empty
+array, and capacity lemmas also have standard-only audits. Both held-out
+annotation regressions pass again after this shared change.
+
+`WordArrayPush.program` describes the common fifteen-scratch-slot push sequence.
+`Drone.ArrayPushShape` checks by reduction that all three pushes in the emitted
+advance loop match it exactly. Those are instruction-identity lemmas; the full
+shared push execution proof and the allocating controller loops remain open.
+The aggregate `build/logs/drone-array-foundations-2.log` passes all 3,489 jobs,
+including the retained Euler release theorem and both annotation examples.
+`drone-array-memory-1.log` separately passes the borrowed-input and empty-memory
+lemmas. Earlier failed and timed-out runs remain in their numbered local logs.
