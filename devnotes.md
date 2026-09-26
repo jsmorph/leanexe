@@ -17532,3 +17532,13 @@ Replaced rational row reduction and per-coordinate fraction normalization with d
 The compiler initially rejected a column-replacement expression passed directly to the recursive determinant because its demand analysis could not justify eager evaluation.  Naming the already-needed replacement array before the call makes evaluation order explicit and passes the existing extraction rule.  No compiler change was required.
 
 The arithmetic proof establishes exact signed addition, subtraction, multiplication, sign and magnitude interpretation, denominator growth, and the update envelope for denominator at most `120^5` and direction magnitude at most 120.  The required determinant and loop invariants remain separate obligations.  The rebuilt runner and generated artifact agree at SHA-256 `03e94615d3fac5bcb6c7adf14fecb14c531f0aca2f7f22cd2e8040c8aa66a4be`.
+
+### Beck determinant and basis proofs
+
+Replaced the custom index-removal loop with the compiler-supported array erasure operation.  Factored one bordered-minor candidate into a named source helper so the row/column search exposes its success and failure cases.  All 732 native/WASM comparisons still pass.
+
+The executable Laplace recursion equals the determinant over UInt64 for every square input.  Casting through the UInt64 ring then proves equality with the integer determinant whenever that determinant fits the signed range.  The binary-matrix determinant bound gives magnitude at most 120 through order five, using the general Leibniz bound rather than input enumeration.  Cramer and Schur-complement identities prove preservation of selected rows and of additional rows whose borders vanish.
+
+The source basis search now has checked first-success semantics, index-distinctness and range invariants, exact stored determinant, nonzero determinant, and a fuel theorem.  Every successful extension adds one row and column.  Since the rank cannot exceed the matrix row count, width rounds suffice whenever row count is smaller than width.  The stopped search proves every unused border zero.  The source theorem audit uses only propext, Classical.choice, and Quot.sound.
+
+Normalizing the two generated Option matchers was needed to connect the elaborated early-return loops to the reusable first-success lemma.  The proof explicitly unfolds the source matcher and retains Lean’s warning that its generated name may change during refactoring.  The executable protected-matrix and direction-assembly connections remain open.
