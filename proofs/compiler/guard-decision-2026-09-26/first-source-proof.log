@@ -1,0 +1,13 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [15/33] Building LeanExe.Source.ScalarGuardDecision (798ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarGuardDecision.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarGuardDecision.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarGuardDecision.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarGuardDecision.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarGuardDecision.setup.json --json
+error: LeanExe/Source/ScalarGuardDecision.lean:29:4: Type mismatch: After simplification, term
+  compare operation left right left right (Reannotates.same left) (Reannotates.same right)
+ has type
+  GuardDecision (Guard.compare operation left right) (operation.evidence left right)
+but is expected to have type
+  GuardDecision (Guard.compare operation left right) (Guard.compare operation left right).evidence
+Some required targets logged failures:
+- LeanExe.Source.ScalarGuardDecision
+error: build failed

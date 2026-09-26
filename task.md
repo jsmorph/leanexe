@@ -18,7 +18,9 @@ propositions and standard instances. Canonical guards keep their admission path.
 The general source-to-WASM theorem and all fourteen axiom audits pass. The new
 focused tests pass 468 native/IR comparisons and 144 rejection tests. The previous
 atomic-annotation tests also pass: 1,550 comparisons and 990 rejection tests.
-The emitted-WASM execution group contains 54 declarations; its checks are running.
+The emitted-WASM execution group passes 903 native Lean/V8 comparisons across
+54 declarations, including sixteen range declarations. All 46 prior modules
+retain identical bytes; the full native fixture contains 694 declarations.
 
 The preceding atomic comparison increment is pushed and recorded in
 [the comparison operand archive](proofs/compiler/reannotation-2026-09-26/README.md):
@@ -26,13 +28,15 @@ The preceding atomic comparison increment is pushed and recorded in
 and 35 prior modules with identical bytes. The original
 `rangeIdComparisonEvidenceAnnotations` loop compiles unchanged.
 
-Next: finish this compound-guard execution check and archive its source, modules,
-logs and failures. Then extend proved decision evidence through dependent
-branches and saved decisions before continuing broader compiler coverage.
+Evidence, exact modules, source hashes and retained diagnostics are in
+[the compound decision archive](proofs/compiler/guard-decision-2026-09-26/README.md).
+
+Next: extend proved decision evidence through dependent branches and saved
+decisions before continuing broader compiler coverage.
 Full-dialect correctness remains unfinished. Keep increments focused, get each
 capability proved and executing end to end, and commit/push frequently.
 
-## Compound decision equivalence — Wasm execution checks in progress
+## Compound decision equivalence — complete
 
 `GuardDecision` independently describes standard decision evidence for guard
 trees. Its recognizer soundness and acceptance pass Lean checking and are included
@@ -48,7 +52,8 @@ Validation completed:
   with nested junctions, literal and Boolean subguards, and repeated negation.
 - The preceding atomic source/syntax fixtures: 1,550 comparisons and 990 rejections.
 
-The native Lean/V8 run is pending. Differently annotated decision operands in
+The native Lean/V8 run passes 903 comparisons across 54 declarations.
+Differently annotated decision operands in
 dependent branches and saved decisions remain subsequent work. Boolean compound
 subguards retain their exact standard evidence.
 
