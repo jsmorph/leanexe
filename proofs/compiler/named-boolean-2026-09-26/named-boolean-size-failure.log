@@ -1,0 +1,41 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [5/7] Building LeanExe.Source.ScalarBooleanFunctionBinding (863ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarBooleanFunctionBinding.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanFunctionBinding.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanFunctionBinding.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanFunctionBinding.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanFunctionBinding.setup.json --json
+error: LeanExe/Source/ScalarBooleanFunctionBinding.lean:53:2: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  d - f ≥ 0
+  c ≥ 0
+  b ≥ 0
+  a ≥ 0
+  a - b - c - d - e ≥ 2
+where
+ a := ↑(sizeOf (value.shape.expr value.parameterName value.input value.argument value.body))
+ b := ↑(sizeOf value.parameterName)
+ c := ↑(sizeOf value.input)
+ d := ↑(sizeOf value.argument)
+ e := ↑(sizeOf value.body)
+ f := ↑(sizeOf value.expr)
+error: LeanExe/Source/ScalarBooleanFunctionBinding.lean:59:2: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  f ≥ 0
+  e ≥ 0
+  e - f ≥ 0
+  d ≥ 0
+  c ≥ 0
+  b ≥ 0
+  a ≥ 0
+  a - b - c - d - e ≥ 2
+where
+ a := ↑(sizeOf (value.shape.expr value.parameterName value.input value.argument value.body))
+ b := ↑(sizeOf value.parameterName)
+ c := ↑(sizeOf value.input)
+ d := ↑(sizeOf value.argument)
+ e := ↑(sizeOf value.body)
+ f := ↑(sizeOf value.expr)
+Some required targets logged failures:
+- LeanExe.Source.ScalarBooleanFunctionBinding
+error: build failed
