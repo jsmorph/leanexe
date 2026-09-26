@@ -115,7 +115,7 @@ structure LoopFoldParameters where
   scratchStart : Nat
   doneLocal : Nat
   stagedValueStart : Nat
-  releaseReadyLocal : Nat
+  initialValueStart : Nat
   resultLocals : Array Nat
   continuation : String
   deriving Repr, Lean.ToJson
@@ -146,7 +146,7 @@ structure ArrayFoldParameters where
   effectiveStopLocal : Nat
   doneLocal : Nat
   stagedValueStart : Nat
-  releaseReadyLocal : Nat
+  initialValueStart : Nat
   resultSlots : Array Nat
   resultLocals : Array Nat
   continuation : String
@@ -384,7 +384,7 @@ structure RelativeArrayFold where
   effectiveStopLocal : Nat
   doneLocal : Nat
   stagedValueStart : Nat
-  releaseReadyLocal : Nat
+  initialValueStart : Nat
   resultSlots : Array Nat
   resultLocals : Array Nat
   continuation : String

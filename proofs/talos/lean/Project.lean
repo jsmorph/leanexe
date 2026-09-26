@@ -150,4 +150,8 @@ import Project.Gpt2RowMean.Spec
 import Project.Gpt2RowInvStd.Spec
 import Project.Gpt2AttentionScore.Spec
 import Project.Gpt2LinearRows.Spec
+import Project.Gpt2QuantizedLinearRows.Spec
+import Project.Gpt2QuantizedGroupedRows.Spec
+import Project.Gpt2QuantizedCached.Spec
 import Project.Gpt2CachedStep.Spec
+import Project.ByteIO.Verification

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "scheme": 2,
+  "status": "verified-execution-conditional-numerical-bounds",
+  "wasm_path": "proofs/artifacts/gpt2_quantized_cached/87026cf4bd73cc7ae793195ccc1a6e0469d2eb3d007d1e01cad676e551176aa8/program.wasm",
+  "wasm_sha256": "87026cf4bd73cc7ae793195ccc1a6e0469d2eb3d007d1e01cad676e551176aa8",
+  "wasm_bytes": 28017,
+  "weights_sha256": "9d60657659e502b8dae9f11c2e73583643962b42c662cb9b51aa53e8730ec314",
+  "weight_bytes": 127695972
+}

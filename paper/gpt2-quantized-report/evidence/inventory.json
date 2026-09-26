@@ -1,0 +1,341 @@
+{
+  "schema": 1,
+  "source_revision": "c655d35b5011c1703dfd22bcceaec4e5bee17088",
+  "files": [
+    {
+      "path": "DEVELOPING.md",
+      "bytes": 28663,
+      "sha256": "5a5f1ca33e717be4af6b445d209a18a13aacc9125dfa0f9ac517ed1b2ecad7f2"
+    },
+    {
+      "path": "LeanExe/Models/Gpt2/Numerics.lean",
+      "bytes": 2819,
+      "sha256": "3406eac22a50a05425eba148fdbfbf37f51f58406347e67e083838c57351c0cc"
+    },
+    {
+      "path": "LeanExe/Models/Gpt2/Quantized/Cached.lean",
+      "bytes": 4423,
+      "sha256": "4a4b3d296b92fb40d7924453427af82d51eb9fb72f9ca3ecd92cee62f0ad56a2"
+    },
+    {
+      "path": "LeanExe/Models/Gpt2/Quantized/Format.lean",
+      "bytes": 3058,
+      "sha256": "7760528d619cf75398bbe430f503df7124d8a2fd46feeac75084d59ca730d837"
+    },
+    {
+      "path": "LeanExe/Models/Gpt2/Quantized/Grouped.lean",
+      "bytes": 1147,
+      "sha256": "f730108303f1a293e2555c8635d569e0440cbbf31abc72016693985c2b6c7860"
+    },
+    {
+      "path": "LeanExe/Models/Gpt2/Quantized/Kernel.lean",
+      "bytes": 4807,
+      "sha256": "7f9fdc9fec0890622bfd4ba447775a83b1f92697769f7ca0823ea892f6aeb270"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/README.md",
+      "bytes": 18172,
+      "sha256": "ebfbbb53701848f14aecf5950532e4f217a10c18f29be5bfee0c8db018eddc2b"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/candidates/4fab215a51e58996b78dc3b988182eadcf47532f60556db7dd5d8d35468483ac/completions.json",
+      "bytes": 25482,
+      "sha256": "b0f82ddb6f1b3fee12da4738a4ea5acbb54cf0f406bee5ffa3fdaf741cecd509"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/cached-test.json",
+      "bytes": 73600,
+      "sha256": "b79ad0288b2a1e298c310cd90bf908bf0a9ca0d7e6868b75dc12b5bea13bb441"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/completions.json",
+      "bytes": 26692,
+      "sha256": "93bbef9a051128faa9140ca9a837b5a3cc93c7b1ab6a3ffab611838db9fc185f"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/warm-benchmark.json",
+      "bytes": 122230,
+      "sha256": "654ea166f86d982fe47f30f2090c3f6a68506c8c0dcae420d39c2a4d3543721e"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/certificates/README.md",
+      "bytes": 17180,
+      "sha256": "f02999abccef9d117f7bef3f1bfc4d01569da847db28f83910411da47f32df99"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/certificates/activation-check.json",
+      "bytes": 51692,
+      "sha256": "48846ba90540587bfb5fb622e1eb75346ec5ba573b1795b4f0acf625db3a87ff"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/certificates/attention-check.json",
+      "bytes": 5626,
+      "sha256": "b1d90377597bb2d44248124defb2f490ad73ab3adef2de41673df33bc6f55b11"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/certificates/coverage.json",
+      "bytes": 230304,
+      "sha256": "73d8db0d5041c31c73771a0ec90a2eeab22808f452b4de0acb139f8b2fc7a1b0"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/certificates/export-check.json",
+      "bytes": 2344,
+      "sha256": "8daa1d0e7587f3549a1b120f28fa249b69810eef763826ff20de0493b2c9af0e"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/certificates/forward-evaluation.json",
+      "bytes": 54561,
+      "sha256": "51ff8eba22d67bf1eebb14260e8460ee5095ad72814c3cac21017c5a33f06a05"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/certificates/gelu-check.json",
+      "bytes": 3213,
+      "sha256": "66ecc18b8beccafa23cdc9cded76dacc7c047e76df5aff46ec02e7784a4b495b"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/certificates/normalization-check.json",
+      "bytes": 3307,
+      "sha256": "c9021f7c89b4d584fa59930f30272881965f3e75df20a07f95623f8be4237f1a"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/certificates/pointwise-check.json",
+      "bytes": 3639,
+      "sha256": "dbe3dee60272cc2ca5cc8280cb88d82ed53b3cf684550e05d838fee6b9d20fd9"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/certificates/projection-check.json",
+      "bytes": 10110,
+      "sha256": "04f357b01e246eabebb21e77b4a418743bc1ae2987cc32ffabe66e0bec941522"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/evaluation.json",
+      "bytes": 5534,
+      "sha256": "7f293342be1a593189e158761f8bf8d5580d9dca125c41420ed5bbf6a80d19bf"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/experiments/group64-heldout/README.md",
+      "bytes": 4079,
+      "sha256": "f0cb9fba3b21688cc3519c65e669d163efb16bab5cecc8a747faf63b1d0afc32"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/experiments/group64-heldout/attention-check.json",
+      "bytes": 3657,
+      "sha256": "ca08ea21a2dae12bc274f74e3e97318c50efc2ca49987d8ba0d39d18770f3a32"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/experiments/group64-heldout/completions.json",
+      "bytes": 16665,
+      "sha256": "fea279cf215abe774742e9eb9e18a48b65d1652b6e59c2691936fd8d5ce106a5"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/experiments/group64-heldout/coverage.json",
+      "bytes": 81841,
+      "sha256": "ea392ce16db35c713b40ec047ba60fe1118aaadd136b083846628d1c38ea14a0"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/experiments/group64-heldout/forward-evaluation.json",
+      "bytes": 19492,
+      "sha256": "39ce1a1fb21ced510a248b15064dd39e765c0a17b84f9d8563822c29f1f60d2c"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/experiments/group64-heldout/gelu-check.json",
+      "bytes": 3416,
+      "sha256": "4a2d4602e31c78dcb90d285a8f2a2b128a0a9b2fdeb38153a4da8e30c7c8434f"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/experiments/group64-heldout/normalization-check.json",
+      "bytes": 3153,
+      "sha256": "bd4a720ef6c80343b4f0b5d844cfd224497ea1df52fb11aa1f364c518f9d5545"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/experiments/group64-heldout/pointwise-check.json",
+      "bytes": 2923,
+      "sha256": "3970fb311b3944d871e6367db100311b50653fa87b83b5349fdfa5dbc77d3667"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/experiments/group64-heldout/projection-check.json",
+      "bytes": 9043,
+      "sha256": "d935a55d98ec2451725dc43507ae6a07e8f2954e7d09e75a53b14449ae921fa6"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/experiments/group64/prefixes.json",
+      "bytes": 173340,
+      "sha256": "306ca9e3dc6be7cac14447c6a1731c9f89890883ba89751a9bc8c47c9c6f11ea"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/experiments/group64/projection-benchmark.json",
+      "bytes": 15545,
+      "sha256": "855eaed85e3c643c92b17eb6de99c7f6ac1b7cb98e3b986869e7049c4c5052dd"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/experiments/group64/prompts.json",
+      "bytes": 140615,
+      "sha256": "ff6daa4c8568fff46fdf8dc6515edf7362eb0f787ad41114a95fc407b3f3e7db"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/group64-manifest.json",
+      "bytes": 34458,
+      "sha256": "7e709260959113c2121a05d9ec3e2f8069e8359b5a188a2d08d943dd7165e6ab"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/heldout-group64.json",
+      "bytes": 3303,
+      "sha256": "41ddebb785805f23ee53438ee7c2f0dde8cbe8eee37f6179c258c06a0815d581"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/model.json",
+      "bytes": 456,
+      "sha256": "837541d14b5bdf51b9707ffd1ced9bec343200e73af99b8a7acbdfce8b49d170"
+    },
+    {
+      "path": "data/gpt2-quantized-v1/projection-errors.json",
+      "bytes": 334720,
+      "sha256": "235a556f7446c95f88778e16434a4c70d0b942afceb362220e166a7cc90cb23b"
+    },
+    {
+      "path": "plans/gpt2-quantized-format.md",
+      "bytes": 4274,
+      "sha256": "09f21f945bb4cfe1d3025fc9ce1ab042e196f3b26e5779063d5647beb4c69334"
+    },
+    {
+      "path": "proofs/artifacts/gpt2_quantized_cached/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/manifest.json",
+      "bytes": 1786,
+      "sha256": "3c6dfa69c6c95e222184cf0307e866780b2db161ed049a6191504cec58850bf4"
+    },
+    {
+      "path": "proofs/artifacts/gpt2_quantized_cached/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/program.wasm",
+      "bytes": 28315,
+      "sha256": "9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/ArtifactTranslation.lean",
+      "bytes": 20411,
+      "sha256": "085127997472a820a1495c3da3dfde0342cddf816199533f17b4dcbe5d6605c8"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/Entry/Budget.lean",
+      "bytes": 3106,
+      "sha256": "a0611f566472c740d9bd82a9e66ffbd62181b5fb43f0ea4c484a8b61960a06b0"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/Entry/Public.lean",
+      "bytes": 3436,
+      "sha256": "dff4580245028117c7dd1b1bb7fd8f0fa76bd01b4df9f2ffb36f5d8cea86d319"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/Export.lean",
+      "bytes": 2374,
+      "sha256": "ae93057581108b9c0dd3744773604f1bce20b8dbfda00a1154c7624245f7c30c"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/FP32Region.lean",
+      "bytes": 5191,
+      "sha256": "d6422739cc7ea8b76ccd0631e11ae3fd4a80a4a25cca196346c8af2e44a3e065"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/LogitCertificates.lean",
+      "bytes": 1754,
+      "sha256": "ca7215a9a963554e8943d6cb124929b90b47060d57a2cee8c87c12022b05f235"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/ForwardSession.lean",
+      "bytes": 5675,
+      "sha256": "5406dfd203af16f50e73f7cadf05171090b1be3a15ecbd8bb853691af0dec996"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/ProjectionPair.lean",
+      "bytes": 5260,
+      "sha256": "577df710fff1610f095732927de1b540959a2deff78096186b948e8760a6e584"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/README.md",
+      "bytes": 8830,
+      "sha256": "99cb2ab680ed1e9a9eba2dfcfe1740b85c6b73789435525e342aed337f4fef74"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/SessionBounds.lean",
+      "bytes": 3381,
+      "sha256": "7fbb6dacee005428459efcbdde5b9c76f32860a6b29f3cd1849859e8bcd2d2a6"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/ProjectionRegion.lean",
+      "bytes": 3466,
+      "sha256": "4e9fcfd0e99379f4e7c6e43495d03fdfb21ee02796e884155d2dc2f7d3728790"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/Session/Close.lean",
+      "bytes": 2349,
+      "sha256": "6338fb2ed9a01f66d126f8e785255f1c1f271f629aa36ecd7fa313bb6d20f581"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/Session/Spec.lean",
+      "bytes": 2618,
+      "sha256": "44ff236a2ea0b8460b217712f2b4efd115b2da285552e4d86afb27cbb357069f"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/Session/State.lean",
+      "bytes": 4813,
+      "sha256": "65d83268017b24ae7ceb1cf875a7990bd3c472e21bd1c6fa20ee145c3eb8cc50"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/SessionCertificates.lean",
+      "bytes": 4437,
+      "sha256": "41d4d1c11b91937566bbe259595a09148240c7193407d0b7237d1a2528802c87"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/Spec.lean",
+      "bytes": 4648,
+      "sha256": "0bb88281a007a29f4819ae39c98aca9c233f5b0663ad60da3d95bf0259c7d4e1"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedCached/Validation/Public.lean",
+      "bytes": 1030,
+      "sha256": "e437dec8c933fa3646314e62345dc61e29f556d3ed27f5cbdc858f680e876ffd"
+    },
+    {
+      "path": "proofs/talos/lean/Project/Gpt2QuantizedGroupedRows/UniformError.lean",
+      "bytes": 5285,
+      "sha256": "db43404a42a146ef5002bd81c0aec0d4b0231c1f929f8d493497a15742ebdb2a"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/DyadicUpperSound.lean",
+      "bytes": 4078,
+      "sha256": "1cbe42c92ecb63952c9d6d4241ed9acc8de401f8dd51a212e755021e46ce3a64"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/F32LogitCertificate.lean",
+      "bytes": 4954,
+      "sha256": "434c7e3f0dd9757ae70505be3b8731957452e78ba3834d327ce472a813bb542b"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/PackedLogitCertificate.lean",
+      "bytes": 2022,
+      "sha256": "1bfa9ccc613fbacf7fb97e52e60815f98766592ec0f803ee328c6a8e19c9da11"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/QuantizedDot.lean",
+      "bytes": 2634,
+      "sha256": "b29f8fb8a29168e9499ffe623a93b345ad3a82992b2186cf24c305680e47c02b"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/QuantizedExport.lean",
+      "bytes": 2635,
+      "sha256": "c8127c4023202dc31de5b7f89c1a5a9b8839fcdb6dc233902cc3350a869c5bad"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/QuantizedRescaleError.lean",
+      "bytes": 3069,
+      "sha256": "45aae78895913dd85baa10f0145c16786ee5311cfbf7d8e2a177d9d7c0f4e0be"
+    },
+    {
+      "path": "proofs/talos/lean/Project/ProofKit/QuantizedScalarError.lean",
+      "bytes": 1178,
+      "sha256": "52df1331dfce76aa979f55a29dbc64c98b552782c3404619bb83aafbf846f2de"
+    },
+    {
+      "path": "training/gpt2/README.md",
+      "bytes": 7854,
+      "sha256": "d3450fcf27a1f23372279eb2ea279087873c3010d1fcd4b2f3f1e07180c59e98"
+    }
+  ]
+}

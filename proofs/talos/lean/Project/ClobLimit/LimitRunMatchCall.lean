@@ -19,7 +19,7 @@ def callFrame (book : UInt64) (order : OrderL) : Locals :=
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 1,
       .i64 0, .i64 book, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty] ++
-        List.replicate 38 (.i64 0)
+        List.replicate 40 (.i64 0)
     values := [] }
 
 set_option maxRecDepth 1048576
@@ -30,7 +30,7 @@ theorem validCallProg_spec (env : HostEnv Unit) (st : Store Unit)
     (P : Store Unit → List Value → Prop)
     (hCall : TerminatesWith (m := «module») (id := 18)
       (initial := st) (env := env)
-      (RunMatchCorrect.runMatchArgs 0 book order) P)
+      (HeapRunMatch.runMatchArgs 0 book order) P)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ (st' : Store Unit) (values : List Value), P st' values →
       wp «module» rest Q st' { callFrame book order with values := values }

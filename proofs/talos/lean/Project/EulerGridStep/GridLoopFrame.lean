@@ -43,7 +43,10 @@ structure GridScratch where
   l41 : UInt64 := 0
   l42 : UInt64 := 0
   l43 : UInt64 := 0
-  l44 : UInt64 := 0
+  l45 : UInt64 := 0
+  l46 : UInt64 := 0
+  l47 : UInt64 := 0
+  l48 : UInt64 := 0
   deriving Inhabited
 
 def gridLoopFrame (ratio pointer initialRoot currentRoot : UInt64) (count index : Nat)
@@ -92,7 +95,11 @@ def gridLoopFrame (ratio pointer initialRoot currentRoot : UInt64) (count index 
       .i64 scratch.l41,
       .i64 scratch.l42,
       .i64 scratch.l43,
-      .i64 scratch.l44]
+      .i64 initialRoot,
+      .i64 scratch.l45,
+      .i64 scratch.l46,
+      .i64 scratch.l47,
+      .i64 scratch.l48]
     values := [] }
 
 def gridLoopInvariant (ratio pointer : UInt64) (input : Array UInt64) (base : Nat)
@@ -118,7 +125,7 @@ theorem gridLoopMeasure_frame (count index : Nat) (initial : Store Unit)
   simp [gridLoopMeasure, gridLoopFrame, Locals.get, UInt64.toNat_ofNat_of_lt' hi]
 
 def gridSteppedScratch (scratch : GridScratch) (ratio pointer currentRoot nextRoot : UInt64)
-    (index : Nat) : GridScratch :=
+    (index : Nat) (frees : UInt64) : GridScratch :=
   { scratch with
     l13 := currentRoot
     l14 := currentRoot
@@ -137,14 +144,13 @@ def gridSteppedScratch (scratch : GridScratch) (ratio pointer currentRoot nextRo
     l27 := nextRoot
     l28 := nextRoot
     l29 := UInt64.ofNat (index + 1)
-    l33 := currentRoot
-    l34 := 0
-    l35 := UInt64.ofNat (index + 1)
-    l36 := 0
-    l37 := nextRoot
-    l38 := nextRoot
+    l37 := currentRoot
+    l38 := 0
     l39 := UInt64.ofNat (index + 1)
-    l40 := 1 }
+    l40 := 0
+    l41 := nextRoot
+    l42 := nextRoot
+    l43 := UInt64.ofNat (index + 1) }
 
 def gridDoneScratch (scratch : GridScratch) (currentRoot : UInt64) (count index : Nat) : GridScratch :=
   { scratch with
@@ -154,13 +160,12 @@ def gridDoneScratch (scratch : GridScratch) (currentRoot : UInt64) (count index 
     l27 := currentRoot
     l28 := currentRoot
     l29 := UInt64.ofNat index
-    l33 := if index < count then currentRoot else scratch.l33
-    l34 := if index < count then 0 else scratch.l34
-    l36 := 1
-    l37 := currentRoot
-    l38 := currentRoot
-    l39 := UInt64.ofNat index
-    l40 := 1 }
+    l37 := if index < count then currentRoot else scratch.l37
+    l38 := if index < count then 0 else scratch.l38
+    l40 := 1
+    l41 := currentRoot
+    l42 := currentRoot
+    l43 := UInt64.ofNat index }
 
 #print axioms gridLoopMeasure_frame
 end Project.EulerGridStep.Execution

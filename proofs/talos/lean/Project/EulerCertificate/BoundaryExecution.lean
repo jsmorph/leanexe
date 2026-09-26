@@ -9,17 +9,17 @@ open Project.EulerRiemann.Execution (boolWord)
 set_option maxRecDepth 32768
 set_option maxHeartbeats 1000000
 
-def boundaryHead : Wasm.Program := func173.take 78
-def boundaryTail : Wasm.Program := func173.drop 79
+def boundaryHead : Wasm.Program := func173.take 76
+def boundaryTail : Wasm.Program := func173.drop 77
 
 theorem boundary_shape :
     func173 = boundaryHead ++ [.block 0 0 [.loop 0 0 boundaryLoop]] ++ boundaryTail := by
   have tail : func173.drop 37 = AnnotationMatches.function_173_array_fold_0_program ++
-      func173.drop 103 := AnnotationMatches.function_173_array_fold_0_tail_eq
+      func173.drop 101 := AnnotationMatches.function_173_array_fold_0_tail_eq
   calc
     func173 = func173.take 37 ++ func173.drop 37 := (List.take_append_drop 37 func173).symm
     _ = func173.take 37 ++ (AnnotationMatches.function_173_array_fold_0_program ++
-        func173.drop 103) := by rw [tail]
+        func173.drop 101) := by rw [tail]
     _ = boundaryHead ++ [.block 0 0 [.loop 0 0 boundaryLoop]] ++ boundaryTail := rfl
 
 theorem boundary_sum_exact (env : HostEnv Unit) (initial : Store Unit)

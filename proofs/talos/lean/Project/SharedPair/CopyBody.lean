@@ -28,10 +28,10 @@ private theorem copyNotLe (bytes : List UInt8) (k : Nat)
   omega
 
 private def copyBodyProg : Wasm.Program :=
-  [.localGet 16, .localGet 12, .geUI64, .br_if 1, .localGet 14,
-    .localGet 16, .addI64, .wrapI64, .localGet 11,
-    .localGet 16, .addI64, .wrapI64, .load8U 0, .store8 0,
-    .localGet 16, .constI64 1, .addI64, .localSet 16, .br 0]
+  [.localGet 17, .localGet 13, .geUI64, .br_if 1, .localGet 15,
+    .localGet 17, .addI64, .wrapI64, .localGet 12,
+    .localGet 17, .addI64, .wrapI64, .load8U 0, .store8 0,
+    .localGet 17, .constI64 1, .addI64, .localSet 17, .br 0]
 
 /-- The copy-loop body obligation, generic over the loop rule's
 postcondition so no continuation appears in any statement.  The
@@ -81,10 +81,10 @@ theorem copyBody (env : HostEnv Unit) (st1 st2 : Store Unit)
       POST (.Break 0 st' s'))
     (hExit : ∀ (st' : Store Unit) (s' : Locals),
       k = bytes.length ∧ st' = st2 ∧
-      s' = vFrame ptr (UInt64.ofNat bytes.length) 33 ptr (UInt64.ofNat bytes.length) 0 0 0 0 0 0 ptr (UInt64.ofNat bytes.length) 33 (g0 + 48) (UInt64.ofNat bytes.length + 1) (UInt64.ofNat k) (allocSizeU (UInt64.ofNat bytes.length)) 0 0 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)) ((g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) - 1) / 65536 + 1) (g0 + 48) →
+      s' = vFrame ptr (UInt64.ofNat bytes.length) 33 ptr (UInt64.ofNat bytes.length) 0 0 0 0 0 0 0 ptr (UInt64.ofNat bytes.length) 33 (g0 + 48) (UInt64.ofNat bytes.length + 1) (UInt64.ofNat k) (allocSizeU (UInt64.ofNat bytes.length)) 0 0 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)) ((g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) - 1) / 65536 + 1) (g0 + 48) →
       POST (.Break 1 st' s'))
     (sB : Locals)
-    (hsB : sB = vFrame ptr (UInt64.ofNat bytes.length) 33 ptr (UInt64.ofNat bytes.length) 0 0 0 0 0 0 ptr (UInt64.ofNat bytes.length) 33 (g0 + 48) (UInt64.ofNat bytes.length + 1) (UInt64.ofNat k) (allocSizeU (UInt64.ofNat bytes.length)) 0 0 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)) ((g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) - 1) / 65536 + 1) (g0 + 48)) :
+    (hsB : sB = vFrame ptr (UInt64.ofNat bytes.length) 33 ptr (UInt64.ofNat bytes.length) 0 0 0 0 0 0 0 ptr (UInt64.ofNat bytes.length) 33 (g0 + 48) (UInt64.ofNat bytes.length + 1) (UInt64.ofNat k) (allocSizeU (UInt64.ofNat bytes.length)) 0 0 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length)) ((g0 + 48 + allocSizeU (UInt64.ofNat bytes.length) - 1) / 65536 + 1) (g0 + 48)) :
     wp «module» copyBodyProg POST st2 sB env := by
   subst hsB
   have hkU : (UInt64.ofNat k).toNat = k := by u64_omega

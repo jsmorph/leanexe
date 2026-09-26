@@ -73,9 +73,9 @@ theorem idIdx_none_of_clean (os : List OrderL) (cid : UInt64)
   have h := hclean j hj
   rwa [getBang_eq hj] at h
 
-/-- The scan frame is `func3`'s: two parameters and twenty-nine locals,
-with the pointer copy at 15, the length at 16, the index at 17, the encoded
-result at 18, and the element fields at 2 through 6. -/
+/-- The scan frame is `func3`'s: two parameters and thirty locals,
+with the pointer copy at 16, the length at 17, the index at 18, the encoded
+result at 19, and the element fields at 2 through 6. -/
 theorem scanIndex_spec {env : HostEnv Unit} {st : Store Unit}
     {Q : Assertion Unit} {rest : Program}
     {ptr cid : UInt64} (os : List OrderL)
@@ -87,35 +87,33 @@ theorem scanIndex_spec {env : HostEnv Unit} {st : Store Unit}
       ∀ f2 f3 f4 f5 f6 : UInt64,
         wp «module» rest Q st
           ({ params := [.i64 ptr, .i64 cid],
-             locals := [.i64 f2, .i64 f3, .i64 f4, .i64 f5, .i64 f6,
-             .i64 g7, .i64 g8, .i64 g9, .i64 g10, .i64 g11, .i64 g12,
-             .i64 g13, .i64 g14, .i64 ptr, .i64 (UInt64.ofNat os.length),
-             .i64 (UInt64.ofNat os.length), .i64 0, .i64 g19, .i64 g20,
-             .i64 g21, .i64 g22, .i64 g23, .i64 g24, .i64 g25, .i64 g26,
-             .i64 g27, .i64 g28, .i64 g29, .i64 g30],
+             locals := [.i64 f2, .i64 f3, .i64 f4, .i64 f5, .i64 f6, .i64 g7, .i64 g8, .i64 g9, .i64 g10, .i64
+               g11, .i64 g12, .i64 g13, .i64 0, .i64 g14, .i64 ptr, .i64 (UInt64.ofNat
+               os.length), .i64 (UInt64.ofNat os.length), .i64 0, .i64 g19, .i64 g20, .i64
+               g21, .i64 g22, .i64 g23, .i64 g24, .i64 g25, .i64 g26, .i64 g27, .i64 g28,
+               .i64 g29, .i64 g30],
              values := [] } : Locals)
           env)
     (hSome : ∀ i : Nat, idIdx os cid = some i →
       ∀ f2 f3 f4 f5 f6 : UInt64,
         wp «module» rest Q st
           ({ params := [.i64 ptr, .i64 cid],
-             locals := [.i64 f2, .i64 f3, .i64 f4, .i64 f5, .i64 f6,
-             .i64 g7, .i64 g8, .i64 g9, .i64 g10, .i64 g11, .i64 g12,
-             .i64 g13, .i64 g14, .i64 ptr, .i64 (UInt64.ofNat os.length),
-             .i64 (UInt64.ofNat i), .i64 (UInt64.ofNat i + 1), .i64 g19,
-             .i64 g20, .i64 g21, .i64 g22, .i64 g23, .i64 g24, .i64 g25,
-             .i64 g26, .i64 g27, .i64 g28, .i64 g29, .i64 g30],
+             locals := [.i64 f2, .i64 f3, .i64 f4, .i64 f5, .i64 f6, .i64 g7, .i64 g8, .i64 g9, .i64 g10, .i64
+               g11, .i64 g12, .i64 g13, .i64 0, .i64 g14, .i64 ptr, .i64 (UInt64.ofNat
+               os.length), .i64 (UInt64.ofNat i), .i64 (UInt64.ofNat i + 1), .i64 g19,
+               .i64 g20, .i64 g21, .i64 g22, .i64 g23, .i64 g24, .i64 g25, .i64 g26, .i64
+               g27, .i64 g28, .i64 g29, .i64 g30],
              values := [] } : Locals)
           env) :
     wp «module»
       (  .block 0 0 [
     .loop 0 0 [
+      .localGet 18,
       .localGet 17,
-      .localGet 16,
       .geUI64,
       .br_if 1,
-      .localGet 15,
-      .localGet 17,
+      .localGet 16,
+      .localGet 18,
       .constI64 (5 : UInt64),
       .mulI64,
       .constI64 (1 : UInt64),
@@ -126,8 +124,8 @@ theorem scanIndex_spec {env : HostEnv Unit} {st : Store Unit}
       .wrapI64,
       .load64 (0 : UInt32),
       .localSet 2,
-      .localGet 15,
-      .localGet 17,
+      .localGet 16,
+      .localGet 18,
       .constI64 (5 : UInt64),
       .mulI64,
       .constI64 (2 : UInt64),
@@ -138,8 +136,8 @@ theorem scanIndex_spec {env : HostEnv Unit} {st : Store Unit}
       .wrapI64,
       .load64 (0 : UInt32),
       .localSet 3,
-      .localGet 15,
-      .localGet 17,
+      .localGet 16,
+      .localGet 18,
       .constI64 (5 : UInt64),
       .mulI64,
       .constI64 (3 : UInt64),
@@ -150,8 +148,8 @@ theorem scanIndex_spec {env : HostEnv Unit} {st : Store Unit}
       .wrapI64,
       .load64 (0 : UInt32),
       .localSet 4,
-      .localGet 15,
-      .localGet 17,
+      .localGet 16,
+      .localGet 18,
       .constI64 (5 : UInt64),
       .mulI64,
       .constI64 (4 : UInt64),
@@ -162,8 +160,8 @@ theorem scanIndex_spec {env : HostEnv Unit} {st : Store Unit}
       .wrapI64,
       .load64 (0 : UInt32),
       .localSet 5,
-      .localGet 15,
-      .localGet 17,
+      .localGet 16,
+      .localGet 18,
       .constI64 (5 : UInt64),
       .mulI64,
       .constI64 (5 : UInt64),
@@ -185,27 +183,25 @@ theorem scanIndex_spec {env : HostEnv Unit} {st : Store Unit}
       .constI64 (0 : UInt64),
       .neI64,
       .iff 0 0 [
-        .localGet 17,
+        .localGet 18,
         .constI64 (1 : UInt64),
         .addI64,
-        .localSet 18,
+        .localSet 19,
         .br 2
       ] [],
-      .localGet 17,
+      .localGet 18,
       .constI64 (1 : UInt64),
       .addI64,
-      .localSet 17,
+      .localSet 18,
       .br 0
     ]
   ] :: rest)
       Q st
       ({ params := [.i64 ptr, .i64 cid],
-         locals := [.i64 e2, .i64 e3, .i64 e4, .i64 e5, .i64 e6,
-         .i64 g7, .i64 g8, .i64 g9, .i64 g10, .i64 g11, .i64 g12,
-         .i64 g13, .i64 g14, .i64 ptr, .i64 (UInt64.ofNat os.length),
-         .i64 0, .i64 0, .i64 g19, .i64 g20, .i64 g21, .i64 g22, .i64 g23,
-         .i64 g24, .i64 g25, .i64 g26, .i64 g27, .i64 g28, .i64 g29,
-         .i64 g30],
+         locals := [.i64 e2, .i64 e3, .i64 e4, .i64 e5, .i64 e6, .i64 g7, .i64 g8, .i64 g9, .i64 g10, .i64
+           g11, .i64 g12, .i64 g13, .i64 0, .i64 g14, .i64 ptr, .i64 (UInt64.ofNat
+           os.length), .i64 0, .i64 0, .i64 g19, .i64 g20, .i64 g21, .i64 g22, .i64 g23,
+           .i64 g24, .i64 g25, .i64 g26, .i64 g27, .i64 g28, .i64 g29, .i64 g30],
          values := [] } : Locals)
       env := by
   obtain ⟨-, hElems⟩ := hIn
@@ -218,17 +214,16 @@ theorem scanIndex_spec {env : HostEnv Unit} {st : Store Unit}
       (∀ j : Nat, j < k → (os[j]!.oid == cid) = false) ∧
       ∃ f2 f3 f4 f5 f6 : UInt64,
         s = ({ params := [.i64 ptr, .i64 cid],
-               locals := [.i64 f2, .i64 f3, .i64 f4, .i64 f5, .i64 f6,
-               .i64 g7, .i64 g8, .i64 g9, .i64 g10, .i64 g11, .i64 g12,
-               .i64 g13, .i64 g14, .i64 ptr, .i64 (UInt64.ofNat os.length),
-               .i64 (UInt64.ofNat k), .i64 0, .i64 g19, .i64 g20, .i64 g21,
-               .i64 g22, .i64 g23, .i64 g24, .i64 g25, .i64 g26, .i64 g27,
-               .i64 g28, .i64 g29, .i64 g30],
+               locals := [.i64 f2, .i64 f3, .i64 f4, .i64 f5, .i64 f6, .i64 g7, .i64 g8, .i64 g9, .i64 g10, .i64
+                 g11, .i64 g12, .i64 g13, .i64 0, .i64 g14, .i64 ptr, .i64 (UInt64.ofNat
+                 os.length), .i64 (UInt64.ofNat k), .i64 0, .i64 g19, .i64 g20, .i64 g21,
+                 .i64 g22, .i64 g23, .i64 g24, .i64 g25, .i64 g26, .i64 g27, .i64 g28,
+                 .i64 g29, .i64 g30],
                values := [] } : Locals))
     (μ := fun _ s =>
       match s.locals with
       | _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ ::
-        _ :: _ :: .i64 idx :: _ => os.length - idx.toNat
+        _ :: _ :: _ :: .i64 idx :: _ => os.length - idx.toNat
       | _ => 0)
   · exact ⟨rfl, 0, Nat.zero_le _, by omega, e2, e3, e4, e5, e6, rfl⟩
   · rintro st2 s2 ⟨rfl, k, hk, hclean, f2, f3, f4, f5, f6, rfl⟩

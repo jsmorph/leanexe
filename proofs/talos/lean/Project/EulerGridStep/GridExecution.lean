@@ -25,7 +25,7 @@ theorem step_valid_entry_exact {m : Wasm.Module} (layout : Layout m)
       { gridGuardFrame ratio pointer input.size with values := [.i32 0] } := by
     simp [gridGuardFrame, hValid]
   rw [hGuard]
-  change wp m [.iff 0 0 gridInvalidBody gridValidBody, .localGet 32] _ initial
+  change wp m [.iff 0 0 gridInvalidBody gridValidBody, .localGet 36] _ initial
     { gridGuardFrame ratio pointer input.size with values := [.i32 0] } env
   apply wp_iff_cons rfl
   rw [ite_eq_right (by decide : ¬ (0 : UInt32) ≠ 0)]

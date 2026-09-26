@@ -60,7 +60,7 @@ theorem copyExit_correct
       (UInt32.ofNat ((g0.toNat + 24) % 4294967296)) = 0) :
     wp «module» copyExitProg (copyPost st1 ptr g0 g2 g3 bytes) st2
       (vFrame ptr (UInt64.ofNat bytes.length) 33 ptr
-        (UInt64.ofNat bytes.length) 0 0 0 0 0 0 ptr
+        (UInt64.ofNat bytes.length) 0 0 0 0 0 0 0 ptr
         (UInt64.ofNat bytes.length) 33 (g0 + 48)
         (UInt64.ofNat bytes.length + 1) (UInt64.ofNat bytes.length)
         (allocSizeU (UInt64.ofNat bytes.length)) 0 0
@@ -113,7 +113,7 @@ theorem copyExit_correct
         33) } ∧
       sX = vFrame ptr (UInt64.ofNat bytes.length) 33 ptr
         (UInt64.ofNat bytes.length) 0 (g0 + 48) (g0 + 48)
-        (UInt64.ofNat bytes.length + 1) 0 0 ptr
+        (UInt64.ofNat bytes.length + 1) 0 0 0 ptr
         (UInt64.ofNat bytes.length) 33 (g0 + 48)
         (UInt64.ofNat bytes.length + 1) (UInt64.ofNat bytes.length) 56
         0 0 (g0 + 48 + allocSizeU (UInt64.ofNat bytes.length))
@@ -124,7 +124,7 @@ theorem copyExit_correct
   · exact ⟨rfl, by simp [vFrame]⟩
   · intro stX sX hInv
     rcases hInv with ⟨rfl, rfl⟩
-    rw [Wasm.wp_localGet_cons, vFrame_get_19]
+    rw [Wasm.wp_localGet_cons, vFrame_get_20]
     simp only
     rw [Wasm.wp_constI64_cons, Wasm.wp_eqI64_cons]
     simp only [if_pos rfl]

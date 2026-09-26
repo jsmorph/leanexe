@@ -16,12 +16,12 @@ structure OutputProgress (initial : Store Unit) (owner pointer empty : UInt64)
   store : store = { initial with mem := store.mem, globals := store.globals }
 
 def outputRemaining (_ : Store Unit) (frame : Locals) : Nat :=
-  match frame.get 47 with
+  match frame.get 49 with
   | some (.i64 count) => 256 - count.toNat
   | _ => 0
 
 theorem outputRemaining_eq (store : Store Unit) (frame : Locals) (count : Nat)
-    (hCount : count ≤ 256) (hCounter : frame.get 47 = some (.i64 (UInt64.ofNat count))) :
+    (hCount : count ≤ 256) (hCounter : frame.get 49 = some (.i64 (UInt64.ofNat count))) :
     outputRemaining store frame = 256 - count := by
   simp only [outputRemaining, hCounter]
   rw [UInt64.toNat_ofNat_of_lt' (by change count < 18446744073709551616; omega)]
@@ -29,6 +29,7 @@ theorem outputRemaining_eq (store : Store Unit) (frame : Locals) (count : Nat)
 theorem output_loop_spec (env : HostEnv Unit) (initial : Store Unit) (frame : Locals)
     (owner pointer empty : UInt64) (weights : Array UInt64) (x : Row) (start count : Nat)
     (hLocals : OutputLoopLocals owner pointer empty x (node start count).root count frame)
+    (hEmpty : empty = (node start 0).root)
     (hState : OutputMemory.State start count initial)
     (hInput : UInt64Array.At initial (node start count).root (logitPrefix weights x count))
     (hWeights : UInt64Array.At initial pointer weights) (hSize : 2488 ≤ weights.size)
@@ -69,7 +70,7 @@ theorem output_loop_spec (env : HostEnv Unit) (initial : Store Unit) (frame : Lo
         rw [hProgress.store]
         rfl
       apply output_iteration_spec env current currentFrame owner pointer empty weights x start index
-        hProgress.locals hProgress.heap hProgress.output hCurrentWeights hSize hContinue
+        hProgress.locals hEmpty hProgress.heap hProgress.output hCurrentWeights hSize hContinue
         ((top_mono start (show index + 1 ≤ 256 by omega)).trans_lt hFit)
         (by rw [hProgress.pages]; exact (top_mono start (by omega)).trans hMemory)
         (by rw [hProgress.pages]; exact hPages)

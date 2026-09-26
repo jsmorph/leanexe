@@ -5,7 +5,8 @@ open Project.EulerRiemann
 open Project.EulerRiemann.Execution
 open Wasm Project.Runtime
 
-def initialHeap : Heap := ⟨4096, [], 0, 0, 0, 0⟩
+def initialHeap : Heap :=
+  { top := 4096, nodes := [], allocations := 0, retains := 0, releases := 0, frees := 0 }
 
 theorem initial_heap_at : initialHeap.At (module.initialStore (α := Unit)) := by
   refine ⟨rfl, .nil, ?_⟩

@@ -63,8 +63,8 @@
     },
     {
       "case": "fold_sum",
-      "sha256": "b599860eb8fe3937148455c27c8cfca5473f967001e563530b4790c43017e3b5",
-      "manifest": "fold_sum/b599860eb8fe3937148455c27c8cfca5473f967001e563530b4790c43017e3b5/manifest.json",
+      "sha256": "87fbd162ef2995bfb716b427fd2f6a98890dc10f2b28c14a81854cf56ea66f9c",
+      "manifest": "fold_sum/87fbd162ef2995bfb716b427fd2f6a98890dc10f2b28c14a81854cf56ea66f9c/manifest.json",
       "proofTarget": "Project.FoldSum.ArtifactTranslation"
     },
     {
@@ -75,8 +75,8 @@
     },
     {
       "case": "clob_quote",
-      "sha256": "5e3d45cba560f8a49c5cd9aedcc33698d57fed2c27034c10da4ac26362e5d522",
-      "manifest": "clob_quote/5e3d45cba560f8a49c5cd9aedcc33698d57fed2c27034c10da4ac26362e5d522/manifest.json",
+      "sha256": "8fa402f88c006a76e8dc256bba5cfc1e46db2e1c9c222a6b892a27b0736533c3",
+      "manifest": "clob_quote/8fa402f88c006a76e8dc256bba5cfc1e46db2e1c9c222a6b892a27b0736533c3/manifest.json",
       "proofTarget": "Project.ClobQuote.ArtifactTranslation"
     },
     {
@@ -231,8 +231,8 @@
     },
     {
       "case": "euler_outward_grid",
-      "sha256": "d258ea65e71e77cf7dc6075208948fdd2948287f678f8a4ef15e507748187f4c",
-      "manifest": "euler_outward_grid/d258ea65e71e77cf7dc6075208948fdd2948287f678f8a4ef15e507748187f4c/manifest.json",
+      "sha256": "abe06aee46c09d053d9dd90da14f9f933336bc0769eb238df7e63a796e8c7ac5",
+      "manifest": "euler_outward_grid/abe06aee46c09d053d9dd90da14f9f933336bc0769eb238df7e63a796e8c7ac5/manifest.json",
       "proofTarget": "Project.EulerOutwardGrid.ArtifactTranslation"
     },
     {
@@ -252,6 +252,24 @@
       "sha256": "b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb",
       "manifest": "euler_reconstructed/b955d70e023fe830b0a284a3b634923746872e0747b381d697f5b293680362fb/manifest.json",
       "proofTarget": "Project.EulerReconstructed.ArtifactTranslation"
+    },
+    {
+      "case": "gpt2_quantized_linear_rows",
+      "sha256": "44c390d9605c8eea42b8509dcb7b367a354f2cb62df7158e59c071f87c4e3fc3",
+      "manifest": "gpt2_quantized_linear_rows/44c390d9605c8eea42b8509dcb7b367a354f2cb62df7158e59c071f87c4e3fc3/manifest.json",
+      "proofTarget": "Project.Gpt2QuantizedLinearRows.ArtifactTranslation"
+    },
+    {
+      "case": "gpt2_quantized_grouped_rows",
+      "sha256": "190af4bd96af5910ea881667bf16b26075f6faaefa5e6b491a65516ab1edf03a",
+      "manifest": "gpt2_quantized_grouped_rows/190af4bd96af5910ea881667bf16b26075f6faaefa5e6b491a65516ab1edf03a/manifest.json",
+      "proofTarget": "Project.Gpt2QuantizedGroupedRows.ArtifactTranslation"
+    },
+    {
+      "case": "gpt2_quantized_cached",
+      "sha256": "87026cf4bd73cc7ae793195ccc1a6e0469d2eb3d007d1e01cad676e551176aa8",
+      "manifest": "gpt2_quantized_cached/87026cf4bd73cc7ae793195ccc1a6e0469d2eb3d007d1e01cad676e551176aa8/manifest.json",
+      "proofTarget": "Project.Gpt2QuantizedCached.ArtifactTranslation"
     },
     {
       "case": "gpt2_cached_step",

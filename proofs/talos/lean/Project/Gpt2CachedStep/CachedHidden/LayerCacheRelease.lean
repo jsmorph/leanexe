@@ -9,16 +9,15 @@ def layerReleaseAction (ownerLocal : Nat) : Wasm.Program :=
   [.localGet ownerLocal, .call 42, .globalGet 5, .localSet 79]
 
 set_option maxRecDepth 32768 in
-theorem emitted_layerCacheRelease : (layerBody.drop 149).take 24 =
-    PackedReleaseFilter.program 69 [75, 72] (layerReleaseAction 69) ++
-    PackedReleaseFilter.program 49 [69, 75, 72] (layerReleaseAction 49) ++
-    PackedReleaseFilter.program 52 [49, 69, 75, 72] (layerReleaseAction 52) := rfl
+theorem emitted_layerCacheRelease : (layerBody.drop 149).take 10 =
+    PackedReleaseFilter.program 52 [72, 75, 78, 28, 25] (layerReleaseAction 52) := rfl
 
 theorem layerCacheRelease_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (params : List Value) (embeddingPtr inputPtr updatesPtr hiddenPtr outputPtr : UInt64)
     (cacheNode : FreeNode) (cache : ByteArray) (layer updatesSize : Nat) (frame : Locals)
     (hHeap : heap.At initial) (hCache : heap.OwnsPacked initial cacheNode cache)
     (hHiddenNe : cacheNode.root ≠ hiddenPtr) (hOutputNe : cacheNode.root ≠ outputPtr)
+    (hUpdatesNe : cacheNode.root ≠ updatesPtr) (hInputNe : cacheNode.root ≠ inputPtr)
     (hParamsLength : params.length = 8)
     (hState : LayerAppendState params embeddingPtr inputPtr updatesPtr hiddenPtr cacheNode.root outputPtr
       layer updatesSize frame)
@@ -27,7 +26,7 @@ theorem layerCacheRelease_spec (env : HostEnv Unit) (initial : Store Unit) (heap
       LayerAppendState params embeddingPtr inputPtr updatesPtr hiddenPtr cacheNode.root outputPtr layer updatesSize result →
       (heap.release cacheNode).At (heap.releaseStore initial cacheNode) →
       wp «module» rest Q (heap.releaseStore initial cacheNode) result env) :
-    wp «module» ((layerBody.drop 149).take 24 ++ rest) Q initial frame env := by
+    wp «module» ((layerBody.drop 149).take 10 ++ rest) Q initial frame env := by
   have hParams := hState.1.1
   have hLocals := hState.1.2.1
   have hValues := hState.1.2.2.1
@@ -42,39 +41,27 @@ theorem layerCacheRelease_spec (env : HostEnv Unit) (initial : Store Unit) (heap
   have hRead69 : frame.get 69 = some (.i64 outputPtr) := by simpa [Locals.get, hParams, hParamsLength, hLocals] using hOutput69
   have hRead72 : frame.get 72 = some (.i64 hiddenPtr) := by simpa [Locals.get, hParams, hParamsLength, hLocals] using hHidden72
   have hRead75 : frame.get 75 = some (.i64 outputPtr) := by simpa [Locals.get, hParams, hParamsLength, hLocals] using hOutput75
+  have hRead78 : frame.get 78 = some (.i64 0) := by
+    simpa [Locals.get, hParams, hParamsLength, hLocals] using hState.2.2.2.2.2.2.2.2.2.2
+  have hRead28 : frame.get 28 = some (.i64 updatesPtr) := by
+    simpa [Locals.get, hParams, hParamsLength, hLocals] using hState.1.2.2.2.2.2.2.2.2.2.2.1
+  have hRead25 : frame.get 25 = some (.i64 inputPtr) := by
+    simpa [Locals.get, hParams, hParamsLength, hLocals] using hState.1.2.2.2.2.2.2.2.1
+  have hNonzero : cacheNode.root ≠ 0 := by
+    intro hZero
+    have := hCache.buffer.rootBound
+    simp [hZero] at this
   rw [emitted_layerCacheRelease]
-  simp only [List.append_assoc]
-  apply PackedReleaseFilter.program_spec «module» env initial frame 69 outputPtr [(75, outputPtr), (72, hiddenPtr)]
-    (layerReleaseAction 69) hValues hRead69
-  · intro entry hMem
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hMem
-    rcases hMem with rfl | rfl
-    · exact hRead75
-    · exact hRead72
-  · intro enabled
-    exact False.elim (enabled.2 (75, outputPtr) (by simp) rfl)
-  intro _
-  apply PackedReleaseFilter.program_spec «module» env initial frame 49 hiddenPtr [(69, outputPtr), (75, outputPtr), (72, hiddenPtr)]
-    (layerReleaseAction 49) hValues hRead49
-  · intro entry hMem
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hMem
-    rcases hMem with rfl | rfl | rfl
-    · exact hRead69
-    · exact hRead75
-    · exact hRead72
-  · intro enabled
-    exact False.elim (enabled.2 (72, hiddenPtr) (by simp) rfl)
-  intro _
   apply PackedReleaseFilter.program_spec «module» env initial frame 52 cacheNode.root
-    [(49, hiddenPtr), (69, outputPtr), (75, outputPtr), (72, hiddenPtr)]
-    (layerReleaseAction 52) hValues hRead52
+    [(72, hiddenPtr), (75, outputPtr), (78, 0), (28, updatesPtr), (25, inputPtr)] (layerReleaseAction 52) hValues hRead52
   · intro entry hMem
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hMem
-    rcases hMem with rfl | rfl | rfl | rfl
-    · exact hRead49
-    · exact hRead69
-    · exact hRead75
+    rcases hMem with rfl | rfl | rfl | rfl | rfl
     · exact hRead72
+    · exact hRead75
+    · exact hRead78
+    · exact hRead28
+    · exact hRead25
   · intro _
     simp only [layerReleaseAction]
     have hRead52' := hRead52
@@ -99,7 +86,7 @@ theorem layerCacheRelease_spec (env : HostEnv Unit) (initial : Store Unit) (heap
       have hBound := hCache.buffer.rootBound
       rw [hZero] at hBound
       contradiction
-    · simpa using And.intro hHiddenNe (And.intro hOutputNe (And.intro hOutputNe hHiddenNe))
+    · simpa using And.intro hHiddenNe (And.intro hOutputNe (And.intro hNonzero (And.intro hUpdatesNe hInputNe)))
 
 #print axioms layerCacheRelease_spec
 

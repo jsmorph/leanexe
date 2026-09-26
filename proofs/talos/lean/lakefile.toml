@@ -14,3 +14,35 @@ path = "../../.."
 
 [[lean_lib]]
 name = "Project"
+
+[[lean_exe]]
+name = "gpt2-export-check"
+root = "Project.Gpt2QuantizedCached.CheckExport"
+
+[[lean_exe]]
+name = "gpt2-activation-check"
+root = "Project.Gpt2QuantizedCached.CheckActivations"
+
+[[lean_exe]]
+name = "gpt2-normalization-check"
+root = "Project.Gpt2QuantizedCached.CheckNormalizations"
+
+[[lean_exe]]
+name = "gpt2-gelu-check"
+root = "Project.Gpt2QuantizedCached.CheckGelu"
+
+[[lean_exe]]
+name = "gpt2-attention-check"
+root = "Project.Gpt2QuantizedCached.CheckAttention"
+
+[[lean_exe]]
+name = "gpt2-projection-check"
+root = "Project.Gpt2QuantizedCached.CheckProjections"
+
+[[lean_exe]]
+name = "gpt2-pointwise-check"
+root = "Project.Gpt2QuantizedCached.CheckPointwise"
+
+[[lean_exe]]
+name = "gpt2-forward-evaluate"
+root = "Project.Gpt2QuantizedCached.EvaluateForward"

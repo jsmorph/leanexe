@@ -108,7 +108,9 @@ def exceptMonadErrorType? (env : Environment) (expr : Expr) : Option Ty :=
   | _ => none
 
 def supportedMonadType? (env : Environment) (expr : Expr) : Option SupportedMonad :=
-  if isIdType expr then
+  if isByteIOMonad expr then
+    some .id
+  else if isIdType expr then
     some .id
   else if isOptionMonadType expr then
     some .option

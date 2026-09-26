@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "checked_at_utc": "2026-09-23T18:05:04.498334+00:00",
+  "command": "tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-export-check build/gpt2-124m/inference/weights.bin build/gpt2-124m/quantized-group64/weights.bin",
+  "exit_status": 0,
+  "coefficients": 123532032,
+  "scales": 133201,
+  "retained_fp32_words": 907776,
+  "projection_count": 49,
+  "quotient_scaled_bound_exponent": 156,
+  "fp32_weights_sha256": "6c12f993878ad39ba4aa3b0ab58a7466f5a62651cda94464dab438339008ba1d",
+  "quantized_weights_sha256": "9d60657659e502b8dae9f11c2e73583643962b42c662cb9b51aa53e8730ec314",
+  "native_checker_sha256": "42deec55722df76ff98d7587ed4d64f989c60d2ddac7b25c627858790cac2437",
+  "log_sha256": "3e46b1d31dfffc7ac1088fc46057a5a1ee561beceba38cd4d4f86c0ae0be8061",
+  "sources": {
+    "proofs/talos/lean/Project/ProofKit/QuantizedExportCheck.lean": "0d24cab6ddcbe195ae09730a3ebcc2ec818812ab31ce6ec8b2d4b381cbb395d1",
+    "proofs/talos/lean/Project/ProofKit/QuantizedExport.lean": "c8127c4023202dc31de5b7f89c1a5a9b8839fcdb6dc233902cc3350a869c5bad",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/ExportCheck.lean": "8bde94f47a6127bb577708c6278ebecf2f0e05d4758b204e6065b3b696bc3428",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/Export.lean": "ae93057581108b9c0dd3744773604f1bce20b8dbfda00a1154c7624245f7c30c",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/CheckExport.lean": "3f4a299edd0d93377e89fc940fd33a15c38e11c79325c4fb08f3fe8674ed6eeb",
+    "proofs/talos/lean/Project/ProofKit/QuantizedScalarError.lean": "52df1331dfce76aa979f55a29dbc64c98b552782c3404619bb83aafbf846f2de",
+    "proofs/talos/lean/lakefile.toml": "8b36ca6d2d3aae95c398c666e91c7f8ab51b651e1b534e4e6770fd306de0d569"
+  },
+  "trust_boundary": "The soundness and reconstruction declarations are kernel checked. This whole-checkpoint evaluation uses the pinned Lean native compiler and runtime. It is not a kernel evaluation of the checkpoint bytes.",
+  "earlier_attempt": {
+    "command": "tools/leanrun --lock-timeout 900 --timeout 1200 lake -d proofs/talos/lean env lean --run proofs/talos/lean/Project/Gpt2QuantizedCached/CheckExport.lean build/gpt2-124m/inference/weights.bin build/gpt2-124m/quantized-group64/weights.bin",
+    "exit_status": 124,
+    "result": "timeout before first projection completed"
+  }
+}

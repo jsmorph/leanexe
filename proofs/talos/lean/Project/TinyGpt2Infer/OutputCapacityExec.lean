@@ -8,28 +8,28 @@ open Wasm Project.TinyGpt2 Project.ProofKit FixedArrayFold ArrayPushLayout
 
 def outputCapacityPrefix : Wasm.Program :=
   [.localGet 36,
-   .localSet 48,
+   .localSet 51,
    .localGet 35,
-   .localSet 54,
-   .localGet 48,
+   .localSet 57,
+   .localGet 51,
    .wrapI64,
    .load64 0,
-   .localSet 49,
-   .localGet 49,
+   .localSet 52,
+   .localGet 52,
    .constI64 1,
    .mulI64,
-   .localSet 50,
-   .localGet 49,
+   .localSet 53,
+   .localGet 52,
    .constI64 1,
    .addI64,
-   .localSet 51]
+   .localSet 54]
 
 theorem output_capacity_shape : (outputBody.drop 33).take 34 =
-    outputCapacityPrefix ++ FixedArrayCapacity.localProgram 51 1 57 := rfl
+    outputCapacityPrefix ++ FixedArrayCapacity.localProgram 54 1 60 := rfl
 
 def outputCapacityFrame (frame : Locals) (output value : UInt64) (count : Nat) : Locals :=
-  [(48, output), (54, value), (49, UInt64.ofNat count), (50, UInt64.ofNat count),
-    (51, UInt64.ofNat (count + 1)), (57, UInt64.ofNat (capacity (count + 1)))].foldl
+  [(51, output), (57, value), (52, UInt64.ofNat count), (53, UInt64.ofNat count),
+    (54, UInt64.ofNat (count + 1)), (60, UInt64.ofNat (capacity (count + 1)))].foldl
       (fun current assignment => resultFrame current assignment.1 assignment.2) frame
 
 theorem output_capacity_word (count : Nat) (hCount : count < 256) :
@@ -61,15 +61,15 @@ theorem outputCapacityFrame_saved {frame : Locals} {pointer empty : UInt64} {x :
     | refine OutputSaved.result ?_ _ _ (by decide) (by decide) (by decide)
 
 theorem outputCapacityFrame_get (frame : Locals) (output value : UInt64) (count : Nat)
-    (hParams : frame.params.length = 5) (hLocals : frame.locals.length = 62) :
+    (hParams : frame.params.length = 5) (hLocals : frame.locals.length = 66) :
     let next := outputCapacityFrame frame output value count
-    next.get 48 = some (.i64 output) ∧ next.get 54 = some (.i64 value) ∧
-    next.get 49 = some (.i64 (UInt64.ofNat count)) ∧
-    next.get 50 = some (.i64 (UInt64.ofNat count)) ∧
-    next.get 51 = some (.i64 (UInt64.ofNat (count + 1))) ∧
-    next.get 57 = some (.i64 (UInt64.ofNat (capacity (count + 1)))) ∧
+    next.get 51 = some (.i64 output) ∧ next.get 57 = some (.i64 value) ∧
+    next.get 52 = some (.i64 (UInt64.ofNat count)) ∧
+    next.get 53 = some (.i64 (UInt64.ofNat count)) ∧
+    next.get 54 = some (.i64 (UInt64.ofNat (count + 1))) ∧
+    next.get 60 = some (.i64 (UInt64.ofNat (capacity (count + 1)))) ∧
     next.get 23 = frame.get 23 ∧ next.get 24 = frame.get 24 ∧
-    next.get 45 = frame.get 45 ∧ next.get 66 = frame.get 66 := by
+    next.get 48 = frame.get 48 ∧ next.get 69 = frame.get 69 := by
   simp [outputCapacityFrame, List.foldl, resultFrame, Locals.get, hParams, hLocals,
     List.getElem?_set]
 
@@ -99,10 +99,10 @@ theorem output_capacity_spec (env : HostEnv Unit) (initial : Store Unit) (frame 
   wp_fixed_frame [List.length_set, List.getElem?_set, Nat.reduceEqDiff, Nat.reducePow,
     UInt32.toNat_zero, UInt32.add_zero, Nat.add_zero, hSaved.params, hSaved.locals,
     hSaved.values, hOut, hVal, ← Memory.toUInt32_eq_ofNat, hBound, hRead, UInt64.mul_one, hAdd]
-  apply FixedArrayCapacity.localProgram_spec 51 (UInt64.ofNat (count + 1)) 1 57 module env initial
+  apply FixedArrayCapacity.localProgram_spec 54 (UInt64.ofNat (count + 1)) 1 60 module env initial
   · simp [Locals.get, hSaved.params, hSaved.locals, List.getElem?_set]
   · rfl
-  · simpa only [hSaved.params] using (show 5 ≤ 57 by decide)
+  · simpa only [hSaved.params] using (show 5 ≤ 60 by decide)
   · simp [Locals.validIndex, hSaved.params, hSaved.locals]
   · simpa only [outputCapacityFrame, List.foldl, resultFrame, FixedArrayCapacity.capacityFrame,
       hSaved.params, Nat.reduceSub, output_capacity_word count hCount] using hNext

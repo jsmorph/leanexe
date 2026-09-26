@@ -48,7 +48,8 @@ private def qFrame (ptr n idx b1 b2 b3 b4 b5 b6
       .i64 ptr, .i64 n, .i64 idx, .i64 n, .i64 n,
       .i64 s46, .i64 s47, .i64 s48, .i64 s49, .i64 s50, .i64 s51,
       .i64 s52, .i64 s53,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
     values := [] }
 
 private def qInv (st0 : Store Unit) (ptr : UInt64) (os : List OrderL) :
@@ -105,7 +106,8 @@ theorem quote_correct : ClobQuoteSpec := by
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
           .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-          .i64 0, .i64 0, .i64 0, .i64 0],
+          .i64 0, .i64 0, .i64 0, .i64 0,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] } env
     unfold func10
     wp_run

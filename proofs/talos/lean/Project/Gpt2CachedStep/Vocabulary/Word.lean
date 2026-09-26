@@ -4,12 +4,12 @@ import Project.ProofKit.PackedGenerateLoop
 namespace Project.Gpt2CachedStep.Vocabulary
 open Wasm Project.Common Project.ProofKit PackedMemory PackedFloatFrame
 
-def wordCode : Wasm.Program := (outerBody.drop 12).take 18
+def wordCode : Wasm.Program := (outerBody.drop 12).take 16
 
 set_option maxRecDepth 32768 in
 theorem emitted_word : wordCode =
     [.constI64 0, .localSet 8, .constI64 0, .localSet 30, .constI64 768, .localSet 31,
-     .constI64 1, .localSet 32, .localGet 8, .localSet 9, .constI64 0, .localSet 40] ++
+     .constI64 1, .localSet 32, .localGet 8, .localSet 9] ++
     RangeFoldLoop.program 30 31 dotStep ++ [.localGet 9, .localSet 22, .localGet 22, .localSet 23, .localGet 23] := rfl
 
 set_option maxRecDepth 32768 in

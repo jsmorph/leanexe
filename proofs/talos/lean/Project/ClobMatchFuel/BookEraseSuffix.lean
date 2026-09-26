@@ -40,7 +40,7 @@ def eraseSuffixInv (st0 : Store Unit) (base : Locals)
           orderWord st0 source (prefixWords + 5 + copied)
 
 def eraseSuffixMeasure (total : Nat) (_ : Store Unit) (s : Locals) : Nat :=
-  match s.locals[64]? with
+  match s.locals[74]? with
   | some (Value.i64 word) => total - word.toNat
   | _ => 0
 
@@ -52,13 +52,13 @@ def eraseResultFrame (base : Locals)
 
 def eraseSuffixBodyProg : Wasm.Program :=
   [
-  .localGet 73,
-  .localGet 70,
+  .localGet 83,
+  .localGet 80,
   .geUI64,
   .br_if 1,
-  .localGet 72,
-  .localGet 69,
-  .localGet 73,
+  .localGet 82,
+  .localGet 79,
+  .localGet 83,
   .addI64,
   .constI64 1,
   .addI64,
@@ -66,11 +66,11 @@ def eraseSuffixBodyProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 66,
-  .localGet 69,
+  .localGet 76,
+  .localGet 79,
   .constI64 5,
   .addI64,
-  .localGet 73,
+  .localGet 83,
   .addI64,
   .constI64 1,
   .addI64,
@@ -80,21 +80,21 @@ def eraseSuffixBodyProg : Wasm.Program :=
   .wrapI64,
   .load64 0,
   .store64 0,
-  .localGet 73,
+  .localGet 83,
   .constI64 1,
   .addI64,
-  .localSet 73,
+  .localSet 83,
   .br 0
 ]
 
 def eraseSuffixProg : Wasm.Program :=
   [
   .constI64 0,
-  .localSet 73,
+  .localSet 83,
   .block 0 0 [
     .loop 0 0 eraseSuffixBodyProg
   ],
-  .localGet 72
+  .localGet 82
 ]
 
 set_option Elab.async false in
@@ -103,11 +103,11 @@ theorem eraseSuffixProg_spec
     (need previous current capacity next target source g2 arrayCapacity newLength : UInt64)
     (os : List OrderL) (i targetWords prefixWords suffixWords : Nat)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
-    (hSourceLocal : base.locals[57]? = some (.i64 source))
-    (hPrefixLocal : base.locals[60]? =
+    (hLocals : base.locals.length = 86)
+    (hSourceLocal : base.locals[67]? = some (.i64 source))
+    (hPrefixLocal : base.locals[70]? =
       some (.i64 (UInt64.ofNat prefixWords)))
-    (hSuffixLocal : base.locals[61]? =
+    (hSuffixLocal : base.locals[71]? =
       some (.i64 (UInt64.ofNat suffixWords)))
     (hPrefixU : (UInt64.ofNat prefixWords).toNat = prefixWords)
     (hSuffixU : (UInt64.ofNat suffixWords).toNat = suffixWords)
@@ -147,10 +147,10 @@ theorem eraseSuffixProg_spec
     wp «module» (eraseSuffixProg ++ rest) Q st1
       (eraseCopyFrame base need previous current capacity next target
         prefixWords) env := by
-  have hSourceGet : base.locals[57] = .i64 source := getElem_of_some hSourceLocal
-  have hPrefixGet : base.locals[60] =
+  have hSourceGet : base.locals[67] = .i64 source := getElem_of_some hSourceLocal
+  have hPrefixGet : base.locals[70] =
       .i64 (UInt64.ofNat prefixWords) := getElem_of_some hPrefixLocal
-  have hSuffixGet : base.locals[61] =
+  have hSuffixGet : base.locals[71] =
       .i64 (UInt64.ofNat suffixWords) := getElem_of_some hSuffixLocal
   simp only [eraseSuffixProg, List.cons_append, List.nil_append,
     eraseCopyFrame, BookAllocSearch.bookAllocSearchFrame]

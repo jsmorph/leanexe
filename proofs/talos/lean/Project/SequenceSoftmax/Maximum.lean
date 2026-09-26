@@ -14,7 +14,7 @@ def maximumSuffix : Wasm.Program :=
    .localGet 4, .localGet 5, .call 7, .localSet 6,
    .localGet 6, .localSet 7, .localGet 7, .localSet 15,
    .constI64 0, .localSet 14, .localGet 15, .localSet 2,
-   .constI64 1, .localSet 16, .localGet 14, .constI64 0, .neI64, .br_if 1,
+   .localGet 14, .constI64 0, .neI64, .br_if 1,
    .localGet 11, .constI64 1, .addI64, .localSet 11, .br 0]
 
 def maximumBody : Wasm.Program :=
@@ -85,7 +85,7 @@ theorem maximum_step (env : HostEnv Unit) (initial : Store Unit) (owner ptr : UI
     constructor
     · let next := Softmax.maximum (maximumPrefix input index) input[index]
       refine ⟨rfl, index+1, input[index], maximumPrefix input index, input[index],
-        next, next, 0, next, 1, by omega, ?_⟩
+        next, next, 0, next, ready, by omega, ?_⟩
       simp [maximumFrame, UInt64.ofNat_add, maximumPrefix, next, ArrayFold.foldPrefix_succ _ _ _ _ hi]
     · have hNextMod : (index+1)%18446744073709551616 = index+1 :=
         Nat.mod_eq_of_lt (lt_of_le_of_lt (by omega) hInput.size_lt)

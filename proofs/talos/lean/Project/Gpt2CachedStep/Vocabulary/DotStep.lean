@@ -14,7 +14,7 @@ open Wasm Project.Common Project.ProofKit PackedMemory PackedFloatFrame LeanExe.
 def outerBody : Wasm.Program := (Annotation.resolve func37 [⟨42, .block⟩, ⟨0, .loop⟩]).getD []
 
 def dotStep : Wasm.Program :=
-  ((Annotation.resolve outerBody [⟨24, .block⟩, ⟨0, .loop⟩]).getD []).drop 4 |>.dropLast
+  ((Annotation.resolve outerBody [⟨22, .block⟩, ⟨0, .loop⟩]).getD []).drop 4 |>.dropLast
 
 def parameters (weightsOwner inputOwner weightsPtr inputPtr : UInt64) (weights input : ByteArray) : List Value :=
   [.i64 weightsOwner, .i64 weightsPtr, .i64 (UInt64.ofNat weights.size),
@@ -49,7 +49,7 @@ def dotStepCode : Wasm.Program :=
    .wrapI64, .f32ReinterpretI32, .f32Mul, .i32ReinterpretF32, .extendUI32,
    .wrapI64, .f32ReinterpretI32, .f32Add, .i32ReinterpretF32, .extendUI32,
    .localSet 20, .localGet 20, .localSet 21, .localGet 21, .localSet 39,
-   .constI64 0, .localSet 38, .localGet 39, .localSet 9, .constI64 1, .localSet 40,
+   .constI64 0, .localSet 38, .localGet 39, .localSet 9,
    .localGet 38, .constI64 0, .neI64, .br_if 1,
    .localGet 30, .localSet 33, .localGet 32, .localSet 34,
    .localGet 33, .localGet 34, .addI64, .localTee 35, .localGet 33, .ltUI64,

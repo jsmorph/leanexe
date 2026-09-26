@@ -44,6 +44,10 @@ inductive InstrAtom where
   | f32Div
   | f64Div
   | f32Sqrt
+  | f32Nearest
+  | i32TruncSatF32S
+  | f32ConvertI32S
+  | i32Extend8S
   | f64Sqrt
   | i32WrapI64
   | i64ExtendI32U
@@ -112,6 +116,10 @@ def instrView : Instr → InstrView
   | .f32Div => .atom .f32Div
   | .f64Div => .atom .f64Div
   | .f32Sqrt => .atom .f32Sqrt
+  | .f32Nearest => .atom .f32Nearest
+  | .i32TruncSatF32S => .atom .i32TruncSatF32S
+  | .f32ConvertI32S => .atom .f32ConvertI32S
+  | .i32Extend8S => .atom .i32Extend8S
   | .f64Sqrt => .atom .f64Sqrt
   | .i32WrapI64 => .atom .i32WrapI64
   | .i64ExtendI32U => .atom .i64ExtendI32U
@@ -170,6 +178,10 @@ def InstrAtom.toInstr : InstrAtom → Instr
   | .f32Div => .f32Div
   | .f64Div => .f64Div
   | .f32Sqrt => .f32Sqrt
+  | .f32Nearest => .f32Nearest
+  | .i32TruncSatF32S => .i32TruncSatF32S
+  | .f32ConvertI32S => .f32ConvertI32S
+  | .i32Extend8S => .i32Extend8S
   | .f64Sqrt => .f64Sqrt
   | .i32WrapI64 => .i32WrapI64
   | .i64ExtendI32U => .i64ExtendI32U

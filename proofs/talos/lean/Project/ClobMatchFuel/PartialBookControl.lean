@@ -16,10 +16,10 @@ open Wasm Project.Clob Project.ClobMatchFuel
 
 def partialBookSuccessProg : Wasm.Program :=
   [
-  .localGet 68,
+  .localGet 78,
   .constI64 5,
   .mulI64,
-  .localSet 69
+  .localSet 79
   ] ++ PartialBookUpdate.partialBookUpdateProg
 
 def partialBookBranchProg : Wasm.Program :=
@@ -30,7 +30,7 @@ theorem partialBookSuccessProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (book remaining : UInt64) (os : List OrderL) (i : Nat)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (Q : Assertion Unit)
     (hDone : wp «module» PartialBookUpdate.partialBookUpdateProg Q st
       (PartialBookPrepare.partialBookPrepareFrame base book remaining os i) env) :
@@ -41,11 +41,11 @@ theorem partialBookSuccessProg_spec
     { (PartialBookPrepare.partialBookGuardFrame base book remaining os i) with
       values := [] }
   let total := UInt64.ofNat os.length * 5
-  have hGet : guard.get 68 = some (.i64 (UInt64.ofNat os.length)) := by
+  have hGet : guard.get 78 = some (.i64 (UInt64.ofNat os.length)) := by
     simp [guard, PartialBookPrepare.partialBookGuardFrame,
       PartialBookPrepare.partialBookGuardLocals, Locals.get, hParams, hLocals]
   have hSet :
-      ({ guard with values := [.i64 total] }).set? 69 (.i64 total) =
+      ({ guard with values := [.i64 total] }).set? 79 (.i64 total) =
         some { (PartialBookPrepare.partialBookPrepareFrame base book remaining
           os i) with values := [.i64 total] } := by
     simp [guard, total, PartialBookPrepare.partialBookGuardFrame,
@@ -55,10 +55,10 @@ theorem partialBookSuccessProg_spec
       hLocals]
   simp only [partialBookSuccessProg, List.cons_append, List.nil_append]
   change wp «module»
-    (.localGet 68 :: .constI64 5 :: .mulI64 :: .localSet 69 ::
+    (.localGet 78 :: .constI64 5 :: .mulI64 :: .localSet 79 ::
       PartialBookUpdate.partialBookUpdateProg) Q st guard env
   simp only [wp_localGet_cons, hGet, wp_constI64_cons, wp_mulI64_cons]
-  change wp «module» (.localSet 69 :: PartialBookUpdate.partialBookUpdateProg)
+  change wp «module» (.localSet 79 :: PartialBookUpdate.partialBookUpdateProg)
     Q st { guard with values := [.i64 total] } env
   simp only [wp_localSet_cons, hSet]
   change wp «module» PartialBookUpdate.partialBookUpdateProg Q st
@@ -72,10 +72,11 @@ theorem partialBookBranchProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (book remaining : UInt64) (os : List OrderL) (i : Nat)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hBookLocal : base.locals[6]? = some (.i64 book))
     (hIndexLocal : base.locals[24]? = some (.i64 (UInt64.ofNat i)))
+    (hSelected : SelectedMaker.At base os[i]!)
     (hRemainingLocal : base.locals[9]? = some (.i64 remaining))
     (hi : i < os.length)
     (hOrdersLength64 : os.length < UInt64.size)
@@ -88,7 +89,7 @@ theorem partialBookBranchProg_spec
   unfold partialBookBranchProg
   rw [List.append_assoc]
   apply PartialBookPrepare.partialBookPrefixProg_spec env st base book remaining
-    os i hParams hLocals hValues hBookLocal hIndexLocal hRemainingLocal hi
+    os i hParams hLocals hValues hBookLocal hIndexLocal hRemainingLocal hSelected hi
     hOrdersLength64 hOrders Q
       (.iff 0 1 partialBookSuccessProg [.unreachable] [] [.i64] :: rest)
   apply BranchPost.trueOneResultIff env st
