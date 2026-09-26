@@ -4415,6 +4415,80 @@ def rangeIdArithmeticStep (count seed : UInt64) : UInt64 :=
       else return .yield (value + 1)
     f (a % 7 == 0 && seed != 0)
 
+def rangeOuterBooleanPredicateBounds (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b || seed == 0
+  let stop := count + (f false).toUInt64
+  let mut a := seed + (f (count == 0)).toUInt64
+  for i in [:stop.toNat] do
+    if (f (a % 7 == 0)).toUInt64 == 1 then break
+    a := a + UInt64.ofNat i + 1
+  return a + (f (a == seed)).toUInt64
+
+def rangeOuterBooleanPredicateCapture (count seed : UInt64) : UInt64 := Id.run do
+  let flag := seed != 0
+  let shift := fun n : UInt64 => n + seed
+  let f := fun b : Bool => flag && (b || shift seed % 7 == 0)
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (f (UInt64.ofNat i % 3 == 0)).toUInt64 != 0 then continue
+    a := a * 3 + UInt64.ofNat i + 1
+  return a + (f false).toUInt64
+
+def rangeOuterBooleanPredicateNested (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => !b
+  let g := fun b : Bool => (f b).toUInt64 == 0
+  let mut a := seed + 1
+  for i in [:count.toNat] do
+    let h := fun b : Bool => (g b).toUInt64 == 1 && a != seed
+    if (h (a % 5 == 0)).toUInt64 == 1 then break
+    a := a + UInt64.ofNat i + 1
+  return a + (g (a == seed)).toUInt64
+
+def rangeOuterBooleanPredicateShadow (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b || seed == 0
+  let saved := (f (count == 0)).toUInt64
+  let f := fun b : Bool => saved != 0 || b
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (f (UInt64.ofNat i % 3 == 0)).toUInt64 == 1 then continue
+    a := a * 3 + (f (a == seed)).toUInt64
+  return a
+
+def rangeOuterBooleanPredicateUnused (count seed : UInt64) : UInt64 := Id.run do
+  let _f := fun b : Bool => b && count / seed == 0
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + UInt64.ofNat i
+  return a
+
+def rangeOuterBooleanPredicateScalarHelper (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun n : UInt64 => if (f (n % 7 == 0)).toUInt64 == 1 then n + seed else n * 3
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := g (a + UInt64.ofNat i)
+    if (f (a % 7 == 0)).toUInt64 == 1 then break
+  return g a
+
+def rangeOuterBooleanPredicateId (count seed : UInt64) : UInt64 := Id.run do
+  let f : Bool → Id (Id Bool) := fun b => b || count == 0
+  let initial ← pure (seed + (f false).toUInt64)
+  let mut a := initial
+  for i in [:count.toNat] do
+    let converted ← pure (f (a == seed)).toUInt64
+    if converted == 1 then break
+    a := a + UInt64.ofNat i
+  return a + (f (a == count)).toUInt64
+
+def rangeOuterBooleanPredicateStride (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let first := (f (seed % 5 == 0)).toUInt64
+  let mut a := seed
+  for i in [first.toNat:count.toNat:3] do
+    a := a + UInt64.ofNat i
+    if (f (a % 7 == 0)).toUInt64 == 1 then break
+  return a
+
 def rangeBooleanPredicateBreak (count seed : UInt64) : UInt64 := Id.run do
   let mut a := seed
   for i in [:count.toNat] do
@@ -5215,6 +5289,14 @@ def rangeInputs : List (UInt64 × UInt64) :=
 
 def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
   [
+   ("rangeOuterBooleanPredicateBounds", rangeOuterBooleanPredicateBounds),
+   ("rangeOuterBooleanPredicateCapture", rangeOuterBooleanPredicateCapture),
+   ("rangeOuterBooleanPredicateNested", rangeOuterBooleanPredicateNested),
+   ("rangeOuterBooleanPredicateShadow", rangeOuterBooleanPredicateShadow),
+   ("rangeOuterBooleanPredicateUnused", rangeOuterBooleanPredicateUnused),
+   ("rangeOuterBooleanPredicateScalarHelper", rangeOuterBooleanPredicateScalarHelper),
+   ("rangeOuterBooleanPredicateId", rangeOuterBooleanPredicateId),
+   ("rangeOuterBooleanPredicateStride", rangeOuterBooleanPredicateStride),
    ("rangeBooleanPredicateBreak", rangeBooleanPredicateBreak),
    ("rangeBooleanPredicateContinue", rangeBooleanPredicateContinue),
    ("rangeBooleanPredicateCapture", rangeBooleanPredicateCapture),
