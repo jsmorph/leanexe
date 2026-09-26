@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarBooleanChoiceForm
 import LeanExe.Source.ScalarBooleanEqualityForm
 import LeanExe.Source.ScalarPredicateInput
 import LeanExe.Source.ScalarLetAnnotation
@@ -98,6 +99,16 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (variables : expression.VariablesMean values booleans)
       (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand)) :
       EvalWith (.app (.bvar index) expression.expr) values (f (expression.denote native booleans))
+  | booleanChoiceWord (form : BooleanChoiceForm) (negations : Nat) (unequal : Bool)
+      (left right yes no : BooleanLocal)
+      (member : index ∈ left.functions ++ (right.functions ++ (yes.functions ++ no.functions)))
+      (function : values[index]? = some (.booleanPredicateFunction f))
+      (first : EvalWith (.app (.const ``Bool.toUInt64 []) left.expr) values (Bool.toUInt64 a))
+      (second : EvalWith (.app (.const ``Bool.toUInt64 []) right.expr) values (Bool.toUInt64 b))
+      (branch : EvalWith (.app (.const ``Bool.toUInt64 [])
+        (if booleanRelationDecision unequal a b then yes.expr else no.expr)) values (Bool.toUInt64 flag)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) (form.local negations unequal left right yes no).expr)
+        values (Bool.toUInt64 (GuardNegation.denote negations flag))
   | booleanEqualityWord (form : BooleanEqualityForm) (negations : Nat) (unequal : Bool)
       (left right : BooleanLocal) (member : index ∈ left.functions ++ right.functions)
       (function : values[index]? = some (.booleanPredicateFunction f))
@@ -263,6 +274,15 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (variables : expression.VariablesTyped types)
       (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand) :
       SupportedWith types (.app (.bvar index) expression.expr)
+  | booleanChoiceWord (form : BooleanChoiceForm) (negations : Nat) (unequal : Bool)
+      (left right yes no : BooleanLocal)
+      (member : index ∈ left.functions ++ (right.functions ++ (yes.functions ++ no.functions)))
+      (function : types[index]? = some .booleanPredicateFunction)
+      (first : SupportedWith types (.app (.const ``Bool.toUInt64 []) left.expr))
+      (second : SupportedWith types (.app (.const ``Bool.toUInt64 []) right.expr))
+      (trueBranch : SupportedWith types (.app (.const ``Bool.toUInt64 []) yes.expr))
+      (falseBranch : SupportedWith types (.app (.const ``Bool.toUInt64 []) no.expr)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) (form.local negations unequal left right yes no).expr)
   | booleanEqualityWord (form : BooleanEqualityForm) (negations : Nat) (unequal : Bool)
       (left right : BooleanLocal) (member : index ∈ left.functions ++ right.functions)
       (function : types[index]? = some .booleanPredicateFunction)
@@ -349,7 +369,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
     ∃ flag : Bool, value = flag.toUInt64 := by
   generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
   cases evaluation with
-  | booleanWord | booleanJunctionWord | booleanEqualityWord => exact ⟨_, rfl⟩
+  | booleanWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord => exact ⟨_, rfl⟩
   | applyBooleanPredicateWord => exact ⟨_, rfl⟩
   | complement head _ => cases head <;> simp_all
   | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
@@ -510,6 +530,25 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
       intro operand member
       simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
     exact ⟨f (expression.denote native booleans), .applyBoolean expression hf hbooleans meanings⟩
+  | booleanChoiceWord form negations unequal left right yes no member present _ _ _ _ ihl ihr iht ihe =>
+    obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
+    obtain ⟨a, ha⟩ := ihl values typed
+    obtain ⟨b, hb⟩ := ihr values typed
+    obtain ⟨first, rfl⟩ := ha.booleanConversion_result
+    obtain ⟨second, rfl⟩ := hb.booleanConversion_result
+    cases result : booleanRelationDecision unequal first second with
+    | false =>
+      obtain ⟨value, evaluated⟩ := ihe values typed
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨Bool.toUInt64 (GuardNegation.denote negations flag),
+        .booleanChoiceWord form negations unequal left right yes no member hf ha hb
+          (by simpa only [result, Bool.false_eq_true, ↓reduceIte] using evaluated)⟩
+    | true =>
+      obtain ⟨value, evaluated⟩ := iht values typed
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨Bool.toUInt64 (GuardNegation.denote negations flag),
+        .booleanChoiceWord form negations unequal left right yes no member hf ha hb
+          (by simpa only [result, ↓reduceIte] using evaluated)⟩
   | booleanEqualityWord form negations unequal left right member present _ _ ihl ihr =>
     obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
     obtain ⟨a, ha⟩ := ihl values typed
