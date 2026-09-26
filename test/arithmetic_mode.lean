@@ -4876,6 +4876,52 @@ def customNegated (x y : UInt64) : UInt64 := @ite UInt64 (¬ x < y) (customNegat
 def customNeDecision (x y : UInt64) : Decidable (x ≠ y) := inferInstance
 def customNe (x y : UInt64) : UInt64 := @ite UInt64 (x ≠ y) (customNeDecision x y) x y
 
+def rangeReusableBooleanBreak (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun n : UInt64 => n % 7 == 0
+    a := a + UInt64.ofNat i
+    if f a || f (a + 1) then break
+  return a
+
+def rangeReusableBooleanContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun n : UInt64 => n % 3 == 0
+    if f (UInt64.ofNat i) && !f a then continue
+    a := a * 3 + UInt64.ofNat i + 1
+  return a
+
+def rangeReusableBooleanCapture (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let saved := a
+    let flag := a != 0
+    let shift := fun n : UInt64 => n + saved
+    let f := fun n : UInt64 => flag && shift n % 11 == 0
+    a := a + UInt64.ofNat i
+    if f a || f saved then break
+  return a
+
+def rangeReusableBooleanNested (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f := fun n : UInt64 => n % 5 == 0
+    let g := fun n : UInt64 => !f n && f (n + 1)
+    if g a || g (UInt64.ofNat i) then pure (.done (a + 1))
+    else pure (.yield (a * 3 + UInt64.ofNat i))
+
+def rangeReusableBooleanStepHelper (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let f : UInt64 → Id Bool := fun n => n % 7 == 0
+    let finish := fun n : UInt64 =>
+      if f n && !f (n + 1) then ForInStep.done (n + a) else .yield (n * 3)
+    finish (a + UInt64.ofNat i)
+
+def rangeReusableBooleanUnused (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let _f := fun n : UInt64 => n / a == seed
+    pure (.yield (a + UInt64.ofNat i))
+
 def reusableBooleanTwice (x y : UInt64) : UInt64 :=
   let f := fun n : UInt64 => n == y
   if f x || f (x + 1) then x + 7 else y - 3
@@ -6039,6 +6085,12 @@ run_elab do
       `ArithmeticModeTest.rangeBooleanApplyBreak,
       `ArithmeticModeTest.rangeBooleanApplyContinue,
       `ArithmeticModeTest.rangeBooleanApplyCapture,
+      `ArithmeticModeTest.rangeReusableBooleanBreak,
+      `ArithmeticModeTest.rangeReusableBooleanContinue,
+      `ArithmeticModeTest.rangeReusableBooleanCapture,
+      `ArithmeticModeTest.rangeReusableBooleanNested,
+      `ArithmeticModeTest.rangeReusableBooleanStepHelper,
+      `ArithmeticModeTest.rangeReusableBooleanUnused,
       `ArithmeticModeTest.reusableBooleanTwice,
       `ArithmeticModeTest.reusableBooleanCapture,
       `ArithmeticModeTest.reusableBooleanNested,

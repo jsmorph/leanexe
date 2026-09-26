@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarBooleanType
 import LeanExe.Extract.ScalarDo
 import LeanExe.Source.ScalarStepSyntax
 
@@ -35,5 +36,11 @@ theorem scalarResultType_not_step (type : ResultAnnotation) : scalarResultType? 
   induction type with
   | word => rfl
   | identity inner ih => simp [resultType, scalarResultType?, ih]
+
+@[simp] theorem scalarStepResultType_boolean (type : LeanExe.Source.Scalar.BooleanType) :
+    scalarStepResultType? type.expr = none := by
+  induction type with
+  | boolean => rfl
+  | identity inner ih => simp [LeanExe.Source.Scalar.BooleanType.expr, scalarStepResultType?, ih]
 
 end LeanExe.Extract.Core
