@@ -966,3 +966,13 @@ remaining budget. `build/logs/drone-append-step-3.log` passes all 3,532 jobs;
 all new dependency audits contain only standard Lean axioms. The terminating
 parent-history loop, other allocating loops, and compiled compute theorem are
 still open.
+
+Published the budget/parent-step checkpoint as `11a0dfa2`. The complete
+`appendParents_exact` function proof now passes (`drone-append-3.log`, 3,531
+jobs, 4.5 seconds for the final theorem). It proves source agreement and
+termination with decreasing fuel, exact owned-array return values, preservation
+of the caller's live arrays, nonaliasing of the new result after a nonempty
+append, and the remaining allocation/page budget. The entry and loop invariant
+are separate from the step theorem. All audits remain standard-only. The next
+allocating function is the row-building advance loop, combining best-choice
+scanning with three pushes per state.
