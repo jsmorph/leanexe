@@ -82,7 +82,8 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
       exact ⟨.iteTrue (by simpa [flag] using condition) valueEval,
         .iteTrue (by simpa [flag] using condition) doneEval⟩
   | @chooseBooleanDependent values t e outcome guard type tn fn tb fb native booleans variables arguments _ ih =>
-    rw [extractScalarStepWith_booleanDependentBranch] at compiled
+    rw [extractScalarStepWith_booleanDependentBranch (noBoolean :=
+      hasBooleanPredicate_false (fun index member => bindings.toScalar.no_booleanPredicate_of_predicate (variables.functions index member)))] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨c, hc, ti, ht, ei, he, rfl⟩ := compiled
     have condition := extractBooleanLocalWith_correct guard.value _ native booleans hc bindings.toScalar variables
@@ -114,7 +115,8 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     exact ihb ht (bindings.cons (binding := .scalar (.boolean (guardWord c)))
       (value := .scalar (.boolean _)) (guardWord_correct meaning))
   | @chooseBoolean values t e value guard type native booleans variables arguments branch ihb =>
-    rw [extractScalarStepWith_booleanBranch] at compiled
+    rw [extractScalarStepWith_booleanBranch (noBoolean :=
+      hasBooleanPredicate_false (fun index member => bindings.toScalar.no_booleanPredicate_of_predicate (variables.functions index member)))] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨c, hc, ti, ht, ei, he, rfl⟩ := compiled
     have condition := extractBooleanLocalWith_correct guard.value _ native booleans hc bindings.toScalar variables
@@ -126,6 +128,52 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     | true =>
       obtain ⟨v, d⟩ := ihb (by simpa [flag] using ht) bindings
       exact ⟨.iteTrue (by simpa [flag] using condition) v, .iteTrue (by simpa [flag] using condition) d⟩
+  | chooseBooleanPredicate guard type member function arguments _ ihBranch =>
+    rw [extractScalarStepWith_booleanPredicateBranch] at compiled
+    split at compiled
+    · simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+      obtain ⟨condition, hc, trueBranch, ht, falseBranch, he, rfl⟩ := compiled
+      have test := extractBooleanCondition_correct guard.form _ _ hc
+        (fun input member expression found =>
+          extractScalarExprWith_correct (arguments input member) found bindings.toScalar)
+      split at ihBranch
+      next selected =>
+        obtain ⟨v, d⟩ := ihBranch ht bindings
+        exact ⟨.iteTrue (by simpa only [selected] using test) v,
+          .iteTrue (by simpa only [selected] using test) d⟩
+      next selected =>
+        obtain ⟨v, d⟩ := ihBranch he bindings
+        have flag := Bool.eq_false_iff.mpr selected
+        exact ⟨.iteFalse (by simpa only [flag] using test) v,
+          .iteFalse (by simpa only [flag] using test) d⟩
+    · have absent := extractBooleanLocalWith_none_of_predicate_absent
+        (value := guard.value) member (bindings.toScalar.no_predicate_of_booleanPredicate function)
+        (fun operand _member => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      rw [absent] at compiled
+      contradiction
+  | chooseBooleanPredicateDependent guard type tn fn tb fb member function arguments _ ihBranch =>
+    rw [extractScalarStepWith_booleanPredicateDependentBranch] at compiled
+    split at compiled
+    · simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+      obtain ⟨condition, hc, trueBranch, ht, falseBranch, he, rfl⟩ := compiled
+      have test := extractBooleanCondition_correct guard.form _ _ hc
+        (fun input member expression found =>
+          extractScalarExprWith_correct (arguments input member) found bindings.toScalar)
+      split at ihBranch
+      next selected =>
+        obtain ⟨v, d⟩ := ihBranch ht (bindings.cons (binding := .scalar .unit) (value := .scalar .unit) trivial)
+        exact ⟨.iteTrue (by simpa only [selected] using test) v,
+          .iteTrue (by simpa only [selected] using test) d⟩
+      next selected =>
+        obtain ⟨v, d⟩ := ihBranch he (bindings.cons (binding := .scalar .unit) (value := .scalar .unit) trivial)
+        have flag := Bool.eq_false_iff.mpr selected
+        exact ⟨.iteFalse (by simpa only [flag] using test) v,
+          .iteFalse (by simpa only [flag] using test) d⟩
+    · have absent := extractBooleanLocalWith_none_of_predicate_absent
+        (value := guard.value) member (bindings.toScalar.no_predicate_of_booleanPredicate function)
+        (fun operand _member => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      rw [absent] at compiled
+      contradiction
   | letE value body ih =>
     rw [extractScalarStepWith_letE] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

@@ -78,7 +78,8 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
       (fun operand member expression found => scalar found bindings)
     exact ⟨preserve _ _ tv ev, preserve _ _ td ed⟩
   | chooseBooleanDependent guard type tn fn tb fb variables arguments _ _ iht ihe =>
-    rw [extractScalarStepWith_booleanDependentBranch] at compiled
+    rw [extractScalarStepWith_booleanDependentBranch (noBoolean :=
+      hasBooleanPredicate_false (fun index member => scalarBooleanPredicate_none_of_predicate ((scalarStepBindings_typed htypes) ▸ variables.functions index member)))] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨c, hc, t, ht, e, he, rfl⟩ := compiled
     obtain ⟨tv, td⟩ := iht ht (extend bindings (head := .scalar .unit) trivial)
@@ -104,13 +105,34 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     exact ihb ht (extend bindings (head := .scalar (.boolean (guardWord c))) bound)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
   | chooseBoolean guard type variables arguments _ _ iht ihe =>
-    rw [extractScalarStepWith_booleanBranch] at compiled
+    rw [extractScalarStepWith_booleanBranch (noBoolean :=
+      hasBooleanPredicate_false (fun index member => scalarBooleanPredicate_none_of_predicate ((scalarStepBindings_typed htypes) ▸ variables.functions index member)))] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨c, hc, t, ht, e, he, rfl⟩ := compiled
     have preserve := extractBooleanLocalWith_choice P literal binary choice guard.value _ hc
       (scalarStepBindings_holds bindings) (fun operand member expression found => scalar found bindings)
     obtain ⟨tv, td⟩ := iht ht bindings htypes
     obtain ⟨ev, ed⟩ := ihe he bindings htypes
+    exact ⟨preserve _ _ tv ev, preserve _ _ td ed⟩
+  | chooseBooleanPredicate guard type member present arguments _ _ iht ihe =>
+    have found := hasBooleanPredicate_of_kind member ((scalarStepBindings_typed htypes) ▸ present)
+    rw [extractScalarStepWith_booleanPredicateBranch] at compiled
+    simp only [found, ↓reduceIte, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, trueBranch, ht, falseBranch, he, rfl⟩ := compiled
+    obtain ⟨tv, td⟩ := iht ht bindings htypes
+    obtain ⟨ev, ed⟩ := ihe he bindings htypes
+    have preserve := extractBooleanCondition_choice P literal choice guard.form _ hc
+      (fun input member expression found => scalar found bindings)
+    exact ⟨preserve _ _ tv ev, preserve _ _ td ed⟩
+  | chooseBooleanPredicateDependent guard type tn fn tb fb member present arguments _ _ iht ihe =>
+    have found := hasBooleanPredicate_of_kind member ((scalarStepBindings_typed htypes) ▸ present)
+    rw [extractScalarStepWith_booleanPredicateDependentBranch] at compiled
+    simp only [found, ↓reduceIte, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, trueBranch, ht, falseBranch, he, rfl⟩ := compiled
+    obtain ⟨tv, td⟩ := iht ht (extend bindings (head := .scalar .unit) trivial) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+    obtain ⟨ev, ed⟩ := ihe he (extend bindings (head := .scalar .unit) trivial) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+    have preserve := extractBooleanCondition_choice P literal choice guard.form _ hc
+      (fun input member expression found => scalar found bindings)
     exact ⟨preserve _ _ tv ev, preserve _ _ td ed⟩
   | letE value _ ih =>
     rw [extractScalarStepWith_letE] at compiled

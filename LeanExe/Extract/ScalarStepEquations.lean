@@ -365,12 +365,17 @@ theorem extractScalarStepWith_letBoolean (locals : List ScalarStepBinding)
       extractScalarStepWith (.scalar (.boolean bound) :: locals) body) := by
   rw [extractScalarStepWith]
 
-theorem extractScalarStepWith_booleanBranch (locals : List ScalarStepBinding)
+theorem extractScalarStepWith_booleanPredicateBranch (locals : List ScalarStepBinding)
     (guard : LeanExe.Source.Scalar.BooleanLocalGuard) (type : LeanExe.Source.Scalar.Step.ResultAnnotation)
     (t e : Lean.Expr) :
     extractScalarStepWith locals (guard.branch (LeanExe.Source.Scalar.Step.resultType type) t e) = (do
-      let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) guard.value
-        (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      let c ← if hasBooleanPredicate (locals.map ScalarStepBinding.toScalar) guard.value.functions then
+          extractBooleanCondition guard.form (fun input _ =>
+            extractScalarExprWith (locals.map ScalarStepBinding.toScalar)
+              (.app (.const ``Bool.toUInt64 []) input.expr))
+        else
+          extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) guard.value
+            (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
       let onTrue ← extractScalarStepWith locals t
       let onFalse ← extractScalarStepWith locals e
       pure { value := .ite c onTrue.value onFalse.value, done := .ite c onTrue.done onFalse.done }) := by
@@ -378,17 +383,48 @@ theorem extractScalarStepWith_booleanBranch (locals : List ScalarStepBinding)
     scalarStepResultType_accepts, booleanLocalGuard_not_comparison, booleanLocal_not_compound,
     booleanLocalGuard_accepts]
 
-theorem extractScalarStepWith_booleanDependentBranch (locals : List ScalarStepBinding)
+theorem extractScalarStepWith_booleanBranch (locals : List ScalarStepBinding)
+    (guard : LeanExe.Source.Scalar.BooleanLocalGuard) (type : LeanExe.Source.Scalar.Step.ResultAnnotation)
+    (t e : Lean.Expr)
+    (noBoolean : hasBooleanPredicate (locals.map ScalarStepBinding.toScalar) guard.value.functions = false) :
+    extractScalarStepWith locals (guard.branch (LeanExe.Source.Scalar.Step.resultType type) t e) = (do
+      let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) guard.value
+        (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      let onTrue ← extractScalarStepWith locals t
+      let onFalse ← extractScalarStepWith locals e
+      pure { value := .ite c onTrue.value onFalse.value, done := .ite c onTrue.done onFalse.done }) := by
+  rw [extractScalarStepWith_booleanPredicateBranch, noBoolean]
+  rfl
+
+theorem extractScalarStepWith_booleanPredicateDependentBranch (locals : List ScalarStepBinding)
     (guard : LeanExe.Source.Scalar.BooleanLocalGuard) (type : LeanExe.Source.Scalar.Step.ResultAnnotation)
     (tn fn : Lean.Name) (tb fb : Lean.BinderInfo) (t e : Lean.Expr) :
     extractScalarStepWith locals (guard.dependentBranch (LeanExe.Source.Scalar.Step.resultType type) tn fn tb fb t e) = (do
-      let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) guard.value
-        (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      let c ← if hasBooleanPredicate (locals.map ScalarStepBinding.toScalar) guard.value.functions then
+          extractBooleanCondition guard.form (fun input _ =>
+            extractScalarExprWith (locals.map ScalarStepBinding.toScalar)
+              (.app (.const ``Bool.toUInt64 []) input.expr))
+        else
+          extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) guard.value
+            (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
       let onTrue ← extractScalarStepWith (.scalar .unit :: locals) t
       let onFalse ← extractScalarStepWith (.scalar .unit :: locals) e
       pure { value := .ite c onTrue.value onFalse.value, done := .ite c onTrue.done onFalse.done }) := by
   rw [LeanExe.Source.Scalar.BooleanLocalGuard.dependentBranch, extractScalarStepWith,
     scalarStepResultType_accepts, booleanLocalDependentGuard_not_closed,
     booleanLocalDependentGuard_accepts]
+
+theorem extractScalarStepWith_booleanDependentBranch (locals : List ScalarStepBinding)
+    (guard : LeanExe.Source.Scalar.BooleanLocalGuard) (type : LeanExe.Source.Scalar.Step.ResultAnnotation)
+    (tn fn : Lean.Name) (tb fb : Lean.BinderInfo) (t e : Lean.Expr)
+    (noBoolean : hasBooleanPredicate (locals.map ScalarStepBinding.toScalar) guard.value.functions = false) :
+    extractScalarStepWith locals (guard.dependentBranch (LeanExe.Source.Scalar.Step.resultType type) tn fn tb fb t e) = (do
+      let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) guard.value
+        (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
+      let onTrue ← extractScalarStepWith (.scalar .unit :: locals) t
+      let onFalse ← extractScalarStepWith (.scalar .unit :: locals) e
+      pure { value := .ite c onTrue.value onFalse.value, done := .ite c onTrue.done onFalse.done }) := by
+  rw [extractScalarStepWith_booleanPredicateDependentBranch, noBoolean]
+  rfl
 
 end LeanExe.Extract.Core

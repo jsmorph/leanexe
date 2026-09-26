@@ -213,8 +213,9 @@ condition proof; both branches are checked. Saved Boolean variables inside mixed
 propositional guards, Boolean do binds and direct Boolean helper results containing
 these calls remain subsequent capabilities. Scalar `if` conditions can use these
 calls as truth tests or Boolean Eq/Ne relations, including ordinary and dependent
-branches. Scalar subexpressions inside loops reuse this support; direct loop-step
-conditions containing these calls remain separate. Scalar Boolean `let` bindings can save these call results,
+branches. Loop-step conditions use the same checked inputs to select both the
+accumulator value and the break/continue flag. Helpers may be declared inside a
+step or captured from outside the loop. Scalar Boolean `let` bindings can save these call results,
 including compound expressions and choices. The compiler checks used and unused
 bound values, preserves captures and shadowing, and keeps Boolean bindings distinct
 from word and function bindings. Boolean bindings can also continue directly into

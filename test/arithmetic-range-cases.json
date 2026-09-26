@@ -434,5 +434,13 @@
   "rangeBooleanPredicateConditionStep",
   "rangeBooleanPredicateConditionContinue",
   "rangeBooleanPredicateConditionOuter",
-  "rangeBooleanPredicateConditionOuterCapture"
+  "rangeBooleanPredicateConditionOuterCapture",
+  "rangeBooleanPredicateConditionBreak",
+  "rangeBooleanPredicateConditionSkip",
+  "rangeBooleanPredicateConditionEq",
+  "rangeBooleanPredicateConditionNe",
+  "rangeBooleanPredicateConditionProof",
+  "rangeBooleanPredicateConditionOuterBreak",
+  "rangeBooleanPredicateConditionNestedStep",
+  "rangeBooleanPredicateConditionIdStep"
 ]
