@@ -1,56 +1,75 @@
 # LeanExe
 
-LeanExe compiles a checked declaration from a restricted Lean 4 program to a standalone WebAssembly module.  The accepted language consists of monomorphic, first-order programs over supported scalar and heap representations, including bounded arrays and internal recursive data.  It supports pure computation and explicit byte I/O through `LeanExe.ByteIO`.  The [language specification](docs/spec.md) defines that language, while the [user manual](docs/manual.md) explains how to write programs within it.
+LeanExe compiles Lean 4 programs to WebAssembly and supports proofs about their
+execution. Write a program in Lean, load its checked declarations, and compile
+them into callable WASM exports or a command with byte input and output.
 
-LeanExe also supports direct verification of an exact WASM artifact.  Its artifact path embeds the binary bytes in Lean, decodes and validates them with checked functions, connects the decoded module to the Talos execution model, and proves a behavioral theorem about that module.  A source-agreement theorem uses Lean definitions as its specification.  The proof establishes the connection to the binary without assuming compiler correctness.
+The examples include **GPT-2 text generation**, **two-dimensional Euler flow
+solvers**, streaming commands, JSON processing, and numerical kernels. The
+compiler supports a defined subset of Lean: machine integers, arrays, byte
+buffers, structures, supported inductives and recursion, conditionals, `let`,
+`do`, and loops. The [language specification](docs/spec.md) defines the accepted
+source forms, memory representation, and host interface.
 
-The restricted `compile-arithmetic` command additionally has a [general compiler
-correctness theorem](docs/arithmetic-correctness.md): every successfully admitted
-UInt64 scalar declaration produces bytes that decode, validate and execute
-to its source result in the pinned Wasm model. This includes supported lets,
-conditionals, pure Id blocks, local functions and one bounded range loop,
-including supported `continue` and `break` forms.
-The guide describes the exact
-source grammar, proof boundary, execution tests and independent source package.
+Verification has two complementary paths. A general compiler theorem covers
+an admitted scalar and bounded-loop language. For larger programs, exact-artifact
+proofs establish behavior directly from a particular WASM binary's bytes. Both
+paths use Lean to check the proofs; their scope is described below.
 
-Ordinary library-mode binary serialization can also run through LeanExe's experimental [self-hosted WebAssembly emitter](docs/self-hosted-emitter.md).  The native compiler remains the production path; the LeanExe-compiled emitter is a non-blocking deterministic regression experiment.
+## Get started
 
-![LeanExe architecture](docs/leanexe.png)
-
-## Requirements
-
-The compiler and proof workspaces pin exact Lean 4.34.0-rc2 at commit `6a10ac8c22beadecabdbb0919c2b50214762f91d`.  The proof workspace pins Talos revision `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  The complete execution suite requires Node.js 24.13.0, Wasmtime 44.0.0, a C11 compiler, and `wasm-tools` 1.251.0.  [Developing LeanExe](DEVELOPING.md) defines the setup, process limits, version checks, and required tests.
-
-Run every direct Lean or Lake command through `tools/leanrun`.  The runner
-serializes Lean work with the neighboring VQ repository; in standard mode it
-also applies the repository's CPU, memory, swap, and thread limits.  Repository
-drivers that invoke Lean already use this runner for their child processes.
-
-If a container has no systemd user scope and the user explicitly authorizes
-local execution, set `LEANRUN_LOCAL=1`.  This opt-in mode still selects the
-pinned toolchain, takes the shared lock, applies the command timeout,
-`LEAN_NUM_THREADS=1`, `nice`, and `ionice`, and prints a warning that cgroup
-CPU, memory, and swap limits are unavailable.  It never enables itself.  Put
-the variable on a runner-calling repository driver instead of wrapping that
-driver in `tools/leanrun`, so nested runner calls do not reacquire the lock:
-
-```text
-LEANRUN_LOCAL=1 tools/talos-artifact.js prepare <case>
-```
+Follow [Developing LeanExe](DEVELOPING.md#prerequisites) to configure the pinned
+Lean, Node.js, Wasmtime, C compiler, and `wasm-tools` dependencies on Linux or
+ARM macOS. Run the commands below from the repository root in that environment.
+Direct Lean, Lake, and compiler commands use `tools/leanrun`; repository drivers
+invoke it themselves. Build the compiler with:
 
 ```sh
-tools/download-wasmtime.sh
-tools/leanrun lake build
-tools/build-wasmtime-host.sh
-node test/run_all.js
+tools/leanrun --timeout 15m lake build lean-wasm
 ```
 
-The self-hosted-emitter experiment is not part of `run_all.js`.  Run
-`node test/selfhost_emitter.js` separately only when changing its image boundary.
+## Run GPT-2 in WebAssembly
 
-## Compile and run
+The [GPT examples](docs/gpt/README.md) implement transformer inference in Lean.
+Pretrained GPT-2 124M uses twelve transformer blocks, packed FP32 weights, and
+an attention cache retained between token calls. A quantized variant uses INT8
+weights and grouped activations for its projections, with FP32 computation
+around them. Both generate text through a resident Wasmtime instance.
 
-The checked [`LeanExe.Examples.Arithmetic.choose`](LeanExe/Examples/Arithmetic.lean) declaration compiles to a scalar WASM export.  Lean remains responsible for parsing, elaboration, type checking, and declaration loading.  LeanExe accepts the declaration only when every reachable runtime term lies in the supported subset.
+Install `uv` in addition to the development dependencies, then fetch the pinned
+checkpoint and run either model:
+
+```sh
+uv run --project training/gpt2 training/gpt2/reference.py fetch
+
+tools/gpt2 --text 'Once upon a time, in a small village' --generate 32
+
+tools/gpt2 --quantized \
+  --text 'Once upon a time, in a small village' --generate 32
+```
+
+The commands prepare the required packed weights. The FP32 command compiles the
+Lean model; `--quantized` loads the exact verified binary named in its model
+manifest. Prompt and completion together are limited to 128 tokens. Use
+`--top-k 1` for greedy decoding or `--json` for token IDs, binary identity,
+timing, and allocation information. The CPU reference runs with:
+
+```sh
+tools/gpt2-pytorch --text 'Once upon a time, in a small village' --generate 32
+```
+
+The [FP32 example](data/gpt2-124m/README.md) and
+[quantized example](data/gpt2-quantized-v1/README.md) include reference
+comparisons, completions, memory measurements, and proof instructions. Quantized
+weights occupy about 128 MB, versus 498 MB for FP32 parameters. Quantization can
+change token choices; execution correctness and numerical accuracy are separate
+claims. Smaller [byte-token GPT models](docs/gpt/README.md#models-and-results)
+provide examples of real-arithmetic error bounds.
+
+## Compile a Lean function
+
+[`Arithmetic.choose`](LeanExe/Examples/Arithmetic.lean) is a complete scalar
+example:
 
 ```lean
 namespace LeanExe.Examples.Arithmetic
@@ -61,171 +80,102 @@ def choose (x y : UInt64) : UInt64 :=
 end LeanExe.Examples.Arithmetic
 ```
 
-Build the module, compile the selected declaration, and invoke the exported function with Wasmtime:
+Build its source module, compile it, and invoke the export:
 
 ```sh
 tools/leanrun lake build LeanExe.Examples.Arithmetic
 
-tools/leanrun .lake/build/bin/lean-wasm compile \
+tools/leanrun .lake/build/bin/lean-wasm compile-arithmetic \
   --module LeanExe.Examples.Arithmetic \
   --entry LeanExe.Examples.Arithmetic.choose \
   --out build/choose.wasm
 
-build/tools/wasmtime/current/wasmtime run \
+"${WASMTIME:-build/tools/wasmtime/current/wasmtime}" run \
   --invoke choose build/choose.wasm 0 41
 ```
 
-Scalar parameters and results use WASM `i64`.  Arrays, byte arrays, structures, and tagged values use the memory layouts and ownership rules specified in the ABI.  Pure WASI adapters provide bounded stdin, argv, stdout, stderr, and explicit error results.  `compile-wasi-io` instead runs a `LeanExe.ByteIO UInt32` entry with sequenced stdin reads and stdout writes, explicit error codes, and operation timeouts; its return value becomes the exit status.  See the [byte I/O guide](docs/manual.md#byte-input-and-output) for the required nonblocking host.
+The result is `42`. `compile-arithmetic` accepts only the language covered by
+the [general compiler correctness theorem](docs/arithmetic-correctness.md),
+including supported scalar operations, local bindings and functions,
+conditionals, pure `Id` blocks, and one bounded range loop with supported
+`continue` and `break` forms.
 
-The [running-sum demo](docs/manual.md#running-sum) reads signed decimal integers
-from stdin and prints the cumulative sum after each line, terminating on EOF.
+Use `compile` for the broader dialect, including heap values and supported
+recursive helpers. `--entries Name.one,Name.two` exports several declarations
+with shared helpers and memory. Use `compile-wasi-io` for a `LeanExe.ByteIO UInt32`
+entry with sequenced stdin reads and stdout writes. Pure WASI adapters also
+support bounded stdin, arguments, output, and explicit error results.
+The [user manual](docs/manual.md#entry-shapes) explains which command to choose.
 
-The [pseudorandom generator](docs/prng.md) runs with
-`tools/prng.js 42 5 100`: seed 42, five results, modulus 100.  It compiles
-the Lean SplitMix64 example and prints the WASM results as decimal integers.
+## Explore the examples
 
-## Generate and verify an artifact proof
+| Example | What it demonstrates |
+|---------|----------------------|
+| [GPT inference](docs/gpt/README.md) | FP32 and quantized GPT-2, cached text generation, exact execution proofs, and numerical bounds for smaller models. |
+| [Reconstructed Euler solver](data/euler-reconstructed-v1/README.md) | A complete 2D flow calculation in WASM, with termination, memory, accepted-state safety, and conservation theorems; includes 192 × 192 and 800 × 800 results. |
+| [Numerical kernels](data/numerical/README.md) | Exponential, softmax, LayerNorm, and GELU with execution and real-arithmetic error bounds on specified domains. |
+| [Running sum](docs/manual.md#running-sum) | Interactive, signed decimal input and cumulative output using timed byte I/O and explicit error codes. |
+| [JSON tree command](docs/demo.md) | Typed recursive data, parsing, transformation, and a WASI command interface. |
+| [SplitMix64](docs/prng.md) | A Lean/WASM pseudorandom generator: `tools/prng.js 42 5 100` emits five values modulo 100 from seed 42. |
+| [Generated programs](demos/README.md) | Specifications, programs, and independently checked artifact proofs produced through `leanexegen`. |
 
-`tools/leanexegen` uses separate headless Codex tasks to generate a formal specification, a Lean program, and a proof about the compiled artifact.  Each task may iterate with Lean, while the outer tool independently checks its result.  The proof task receives the frozen specification and exact artifact model but does not receive the source program or compiler implementation.
+Byte-I/O programs use the repository's nonblocking WASI host, which provides the
+clock and polling behavior required by operation timeouts. The
+[I/O guide](docs/manual.md#byte-input-and-output) gives build and run commands.
+
+## What is proved?
+
+| Proof path | Guarantee | Scope |
+|------------|-----------|-------|
+| [Compiler correctness](docs/arithmetic-correctness.md) | Every successfully admitted declaration emits exact bytes that decode, validate, and terminate with the source result in the pinned WASM semantics. | The specified scalar and bounded-range language accepted by `compile-arithmetic`. |
+| [Exact-artifact verification](docs/artifact-format.md) | Embedded binary bytes decode and validate, translate to the execution model, and satisfy the named behavioral theorem. | The particular binary and the theorem's input, heap, and host assumptions. No compiler-correctness premise is needed. |
+| [Independent core type safety](docs/type-safety.md) | Typed programs preserve their types and cannot become stuck under the core's execution rules. | The independently defined core language; connecting the whole compiler dialect to that core is a separate obligation. |
+
+The [GPT proof guide](docs/gpt/README.md#proofs-and-evidence) distinguishes exact
+inference, session allocation and cleanup, and numerical error bounds. The
+Euler examples state their physical and numerical conditions alongside the
+theorems. The [byte-I/O proofs](proofs/byte-io/README.md) cover modeled host
+contracts, transfer laws, and concrete echo executions. Running sum has source
+correctness and exact-binary decoding/validation proofs; its universal WASM
+execution and memory theorem remains open.
+
+LeanExe does not claim a general correctness theorem for every supported source
+feature. Tests compare native Lean, supported IR evaluation, and WASM execution
+where those references apply. Formal execution claims use the pinned Talos WASM
+semantics; the native host, Wasmtime, and operating system remain outside the
+Lean proof. Numerical theorems state their own domains and assumptions.
+
+## Generate a program and its artifact proof
+
+`leanexegen` uses separate headless Codex tasks for a specification, a Lean
+program, and a proof about the compiled binary. The outer driver independently
+checks the results. This workflow uses an `Array UInt64 → Array UInt64` public
+interface and requires the [Codex setup and dependencies](docs/leanexegen.md).
 
 ```sh
 tools/leanexegen -o myprogram.wasm myprogram.txt
-tools/leanexegen --knowledge knowledge/forest.json -o myprogram.wasm myprogram.txt
 tools/leanexegen verify myprogram.proof
 tools/leanexegen run myprogram.wasm 10 20 30
 ```
 
-The public interface for this workflow is `Array UInt64 -> Array UInt64`.  The proof package records the exact binary, decoded model, formal specification, theorem, annotations, selected knowledge packages, journal, and verification results.  The [`leanexegen` reference](docs/leanexegen.md) defines generation, verification, and the optional record, propose, and promote learning phases, while [Verifying a Program](docs/verifying.md) explains the proof boundary.
+The proof package contains the exact binary, specification, theorem, and
+verification evidence. Compiler annotations and the knowledge forest supply
+proof guidance and reusable lemmas; the resulting theorem must check against
+the artifact. See [Verifying a Program](docs/verifying.md) for the manual path.
 
-Completed proof work can produce knowledge artifacts for subsequent work.  `record` preserves a run as a worked example, while `propose` either derives one guidance or checked-support candidate or records that the run supplied no useful entry.  `promote` creates a self-contained forest snapshot after review.  A later generation or reproof selects that snapshot explicitly, and its proof package records the filtered knowledge view together with the entries the proving agent used or rejected.
+## Documentation and source
 
-## Verification boundaries
+- **Use LeanExe:** [setup and testing](DEVELOPING.md), [user manual](docs/manual.md),
+  [language and ABI](docs/spec.md), [GPT guide](docs/gpt/README.md).
+- **Understand the proofs:** [compiler theorem](docs/arithmetic-correctness.md),
+  [artifact proving](docs/artifact-proving.md), [theorem inventory](proofs/talos/README.md).
+- **Work on the project:** [compiler architecture](docs/compiler.md),
+  [capabilities and limits](docs/status.md), [roadmap](plan.md), [active task](task.md).
+- **Browse further:** [documentation index](docs/README.md), [examples](LeanExe/Examples),
+  [models](LeanExe/Models/Gpt2/README.md), [proof-generation demos](demos/README.md),
+  [benchmarks](benchmarks/README.md), [papers](paper/README.md).
 
-The source-driven Talos workspace registers compiler outputs and their behavioral specifications.  The complete Riemann solver proves termination, exact output, and a 512 MiB memory bound for runtime grid sizes from two to eight hundred.  Status-zero output corresponds to the specified numerical trace through time 0.8.  The floating-point examples use raw `UInt64` binary64 interfaces and compiler-recognized intrinsics.  Their proofs include the guarded Euler Rusanov flux and a fixed two-cell step that composes three flux calls with six conservative updates.  Its public `Project.EulerRusanovStep.Spec.sodQuarterStepCheckedBits_wat_real` theorem transfers the exact generated-WAT execution result to a decoded-real certificate: all six numeric result words are finite, both cells are Euler-admissible, and their exact values and signed rounding residuals are known.  This is a fixed-instance result, not a convergence, stability, or arbitrary-mesh theorem.  These cases do not establish support for arbitrary Lean `Float` source or agreement with Lean's native `Float` evaluator.  The separate artifact registry records frozen WASM binaries, each with exact-byte identity, decoder and validator results, Talos translation equality, and behavioral theorems.  Euler is the first floating-point exact-byte package; the fixed two-cell step is now the second, with both execution and numerical behavior theorems.  Three additional primitive cases prove raw-word subtraction, division, and square root, including exact execution and bounded-domain numerical contracts; their frozen binary packages exercise the extended independent profile. The [verified step dataset](data/euler-rusanov-step-v1/README.md) includes raw words, exact-rational comparisons, decimal CSV, and a cell-average plot.  [Artifact Verification Format](docs/artifact-format.md) defines the binary packages and release record, [Talos Proofs](proofs/talos/README.md) owns the theorem inventory, and [Development Status](docs/status.md) records the current aggregate state and release blockers.
-
-The knowledge forest selects versioned LTG packages containing checked lemmas, tactics, guidance, and worked examples.  Compiler annotations identify instruction regions and guide entry retrieval, while every generated theorem still checks against the decoded artifact.  [Artifact Proving](docs/artifact-proving.md), [WebAssembly Annotations](docs/annotations.md), and [Knowledge Forest and Structured LTG](docs/ltg.md) describe these components.
-
-## Repository map
-
-| Path | Purpose |
-|------|---------|
-| `LeanExe/Extract` | Checked-declaration extraction, specialization, ownership analysis, ABI lowering, and IR generation. |
-| `LeanExe/IR` | First-order intermediate representation and reference evaluation. |
-| `LeanExe/Wasm` | Structured WASM model, emitter, binary encoder, WAT printer, annotations, and compiler-side certificate theorems. |
-| `LeanExe/Examples` | Checked source examples used by compiler and execution tests. |
-| `test` | Node and Lean tests comparing source, IR, emitted WASM, and runtime behavior. |
-| [Talos proofs](proofs/talos/README.md) | Source-driven behavioral proofs, exact-artifact verifier, and shared proof library. |
-| [Demonstrations](demos/README.md) | End-to-end generated programs and retained artifact-proof experiments. |
-| [Benchmarks](benchmarks/README.md) | Accepted, rejected, and censored proof-generation runs with journals and telemetry. |
-| [Core LTG Package](ltg/README.md) | Default versioned retrieval package for proof assets and guidance. |
-| [Default Knowledge Forest](knowledge/forest.json) | Default set of knowledge packages selected for proof generation. |
-| [Documentation](docs/README.md) | Current user, compiler, verification, proof, and status references. |
-| [Plans](plans/README.md) | Detailed plans for unfinished work governed by the root roadmap. |
-| [Research papers](paper/README.md) | LaTeX sources, reviewed PDFs, bibliographies, and publication records. |
-
-## Current work
-
-The [GPT inference and verification guide](docs/gpt/README.md) describes the
-models, goals, data flow, and source and proof directories.  The work covers
-small byte-token models and pretrained GPT-2 124M.
-
-The [four-byte model](data/tiny-gpt2-v1/README.md) returns 256 next-byte logits
-from 2,488 binary64 weights.  Its checked entry validates and clips runtime
-weights, with exact generated-WAT execution and numerical proofs.  Every
-accepted input produces finite logits.  At weight cap ten, the universal
-absolute error bound is 2,470 against real inference using the clipped weights.
-The bound is too coarse to certify numerical precision.  The
-[128-position tiny model](data/tiny-gpt2-128-v1/README.md)
-generates byte-token text in WASM.  Its complete execution proof remains paused.
-
-[Pretrained GPT-2 124M](data/gpt2-124m/README.md) generates text in binary32
-with weights and attention caches resident in Wasmtime.  It supports up to
-128 tokens.  The cached-step proof establishes exact agreement with the Lean
-algorithm.  The session proof includes initialization, input encoding,
-repeated calls, and buffer releases.  The binary proof connects those results
-to the distributed 19,083-byte module.  Numerical error bounds remain deferred.
-Retained tests compare 6,432,896 logits with CPU PyTorch over prefixes of one
-to 128 tokens.
-
-The [quantized projection](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/README.md)
-has an exact-binary proof for signed eight-bit weights and activations,
-signed 32-bit accumulation, and FP32 rescaling.  Its four measured checkpoint
-shapes ran 4.08–4.26 times as fast as the output-major FP32 projection.
-The [cached candidate](data/gpt2-quantized-v1/README.md) matches its independent
-reference across 128 prefixes and reduces weight storage by 74.3%.
-Groups of 64 activation coordinates raise greedy agreement with FP32 from
-87 to 120 of 128 prefixes.  The controlled full-model benchmark gives a
-3.59× median speedup and a 34.7% reduction in warm WASM linear memory.
-All nine compiled completions reproduce the grouped reference.
-The complete cached session and exact-binary proofs pass, including validation,
-termination, allocation bounds, and buffer release.  Conditional numerical
-bounds and their outward-rounded cached-session evaluator also pass.  Evaluated
-forward bounds are too coarse to certify any token margin.  Separate certificates
-from measured logits establish 232 individual greedy choices across 302 prefixes.
-
-```sh
-tools/tiny-gpt2.js --text 'To b'
-tools/tiny-gpt2.js --context 128 --text 'ROMEO:' --generate 160
-tools/gpt2 --text 'Once upon a time, in a small village' --generate 32
-tools/gpt2 --quantized --text 'Once upon a time, in a small village' --generate 32
-tools/gpt2-pytorch --text 'Once upon a time, in a small village' --generate 32
-```
-
-The [numerical command-line demonstrations](data/numerical/README.md) include a generated-WAT-verified exponential on [-1, 0].  Its output is finite and positive, with absolute error at most 1/4000.  The implementation accepts raw binary64 input words and executes in Wasmtime.  The extended exponential covers [-8, 0] with absolute error at most 1/300000.  The masked softmax accepts one to four scores in [-4, 4], with absolute component error at most 1/50000 and normalization error at most 32 times 2^-52.  Width-four LayerNorm accepts inputs, scales, and biases in [-4, 4], with absolute component error at most 1/1000000 and proved input and parameter perturbation bounds.  Tanh GELU accepts inputs in [-3, 3], with absolute error at most 1/80000 and input perturbation multiplier four.
-
-The fifth completed floating-point case is a guarded Euler Rusanov flux with total exact generated-WAT execution, accepted-input componentwise real-error bounds, exact closure over a frozen 1,808-byte artifact, and a formally checked eight-row raw-word interface dataset.  The sixth proves total exact execution of the generated fixed two-cell step, including all three flux calls, the accepted-status gate, six exactly associated updates, seven result words, and complete store preservation.  With `ε = 2^-52`, its decoded cells are exactly left `[207/256, 9/80 - ε/20, 257/128]` and right `[81/256, 9/80 + 3ε/40, 95/128]`; both are admissible.  Their signed errors against the exact-real decoded-input quarter step are left `[0, -3ε/64, -7ε/512]` and right `[0, 5ε/64, -25ε/512]`, giving physical two-cell balance residual `[0, ε/32, -ε/16]`.  Its exact 2,551-byte package and verified raw step dataset are complete; Wasmtime host generation and C comparisons are regression evidence, not part of the formal theorem.  Demo 12 adds a bounded first-zero search and a variable-length copy-and-shift result over artifact digest `7cdd8adba75d4f076d0a142f824a19a0d34d6a5cedd1a810a417a7fc5789f7b6`.  Its independently verified clean reproof used seven LTG entries without rejection and replaced all local search and copy-loop invariants with `FixedArrayFindIdxEq.program_spec` and `FixedArrayCopy.eraseIdxProgram_spec`.
-
-The reproof took 3,987.145392 seconds in Stage 5 against the 3,907.231311-second baseline, an increase of 2.045 percent, while reducing the proof from 860 to 607 lines, 3,516 to 2,587 words, 39,249 to 28,874 bytes, and 47 to 38 journaled checks.  The journal then produced shared theorems for a dynamic array-header length store and the encoded-index comparison with one.  The retained measurement package keeps the tool pins from that run, while a current-ProofKit re-freeze preserved the artifact digest and passed independent verification after the helper additions.  Erase setup and branch-aware result transfer remain the general proof boundaries, while the [Demo 12 record](demos/demo-12/README.md) preserves the package and detailed comparison.
-
-The merged `iogpt` branch passes the aggregate source and artifact checks, the complete execution suite, the byte-I/O and running-sum gates, the WAT/binary comparison, and official conformance.  [Development Plan](plan.md) is the work queue, and `devnotes.md` records decisions and test evidence.
-
-The Euler agenda now includes [two-dimensional flow visualizations](data/euler-2d-v1/README.md):
-192 × 192 circular-pulse and quadrant problems with density, pressure and
-schlieren views, 21-frame standalone animations, SVG/PNG posters and
-reproducible raw data. Every numerical WASM module has exact-byte proofs;
-native orchestration is independently checked against all saved raw values.
-
-The [four-state Riemann experiment](data/euler-riemann-v1/README.md) uses the
-Lanyon article's initial states and interface positions on a 192 × 192 grid
-through time 0.8.  Its short article includes final density and pressure
-figures, the extended admissibility check, numerical diagnostics, and
-reproducible data.
-
-The [complete WASM Riemann calculation](data/euler-riemann-complete-v1/README.md)
-has kernel-checked proofs covering the frozen binary from initialization
-through final output, including termination and the 512 MiB memory bound.
-Both the 192 × 192 and 800 × 800 runs returned status zero at time 0.8
-using that binary.  Their density and pressure figures and raw data are complete.
-
-The [2D hyperbolicity proof](proofs/talos/README.md#two-dimensional-euler-hyperbolicity)
-establishes the physical flux derivative and a complete real eigenbasis in
-every spatial direction at positive-density, positive-pressure states for
-gamma 7/5.  The exact-binary solver theorem applies it to accepted states,
-intermediate sweep grids, and terminal cells.
-
-The [reconstructed solver](plans/euler-mathematical-parity.md#6-complete-revised-solver-and-data)
-now has complete exact-byte proofs and an accepted independent package
-check.  Its 30,726-byte module adds positivity-limited minmod reconstruction,
-outward characteristic-speed bounds, and checked CFL conditions.  Its
-accepted trace has state and face safety, hyperbolicity, and conservation
-with bounded rounding residuals.  Both revised production grids use eight
-reconstruction attempts.  The [192-grid and 800-grid data and figures](data/euler-reconstructed-v1/README.md)
-are complete.  Both runs returned status zero at time 0.8, in 176.7 seconds
-and 3 hours 58 minutes respectively.  The short article includes their
-comparison and the claim-to-theorem table.
-
-The [net conservation-error observer](plans/euler-certificates-and-convergence.md)
-adds interval bounds for mass, both momenta, and energy.  Its source proofs
-connect the computed bounds to the existing conservation residual and
-prove that it preserves the solver's numerical output.  Complete observer
-WASM execution, allocation, exact output, and the 512 MiB memory bound now
-have checked proofs.  Exact-byte proofs remain in progress.
-The generated totals and boundary-contribution functions have exact execution
-and store-preservation proofs.  Checked function-region equality reuses the
-previous sweep, initialization, output, and release proofs.
-The trial and retry functions now have complete execution proofs, including
-all failure paths, exact interval results, and heap reservations.  The complete
-time-step loop and enclosing run now prove exact generated execution through
-initialization, final totals, and the four residual intervals.  Final packing
-and the exported entry also pass.  The focused source-artifact gate passes
-for the unchanged 45,644-byte module.  The exact-byte package remains open.
+The compiler lives in `LeanExe/Extract`, `LeanExe/IR`, and `LeanExe/Wasm`.
+The proof workspace is under `proofs/talos/lean`; exact packages are under
+`proofs/artifacts`. The [experimental WASM binary emitter](docs/self-hosted-emitter.md)
+provides a self-hosting example for the serialization stage.

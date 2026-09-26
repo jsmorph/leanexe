@@ -1,3 +1,15 @@
+# Current task: user documentation
+
+The documentation presents LeanExe's current capabilities, runnable examples,
+and proof boundaries. The README, documentation index, GPT guide and capabilities
+page are written around those uses. The compile-arithmetic quickstart builds,
+compiles and returns 42 in Wasmtime. Documentation links and whitespace checks
+pass. The manual, language/compiler references and development instructions are
+under review for consistency. Next: finish that review, check the documented
+commands and links, and commit/push the documentation on ciogpt. Main is unchanged.
+
+---
+
 # Current integration: ciogpt — complete
 
 The user requested `ciogpt` from `correct`, merging `iogpt`, then pushing it for a
