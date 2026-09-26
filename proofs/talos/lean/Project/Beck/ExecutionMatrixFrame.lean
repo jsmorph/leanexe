@@ -19,6 +19,14 @@ def matrixRowSaved (input : Input) (category index : Nat) (pointer : UInt64) (sa
   | 62 => .i64 1
   | _ => saved k
 
+def matrixRowStable (before after : MatrixSaved) : Prop :=
+  ∀ k, (k.val < 18 ∧ k.val ≠ 5 ∨ 33 ≤ k.val ∧ k.val < 60) → after k = before k
+
+theorem matrixRowStable.refl (saved : MatrixSaved) : matrixRowStable saved saved := fun _ _ => rfl
+
+theorem matrixRowStable.trans {a b c : MatrixSaved} (ab : matrixRowStable a b) (bc : matrixRowStable b c) :
+    matrixRowStable a c := fun k hk => (bc k hk).trans (ab k hk)
+
 def matrixRowAfter (owner : UInt64) (after : MatrixAfter) (k : Fin 9) : Value :=
   if k.val = 4 then .i64 owner else after k
 

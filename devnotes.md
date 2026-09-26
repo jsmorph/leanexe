@@ -17706,3 +17706,9 @@ The emitted protected-matrix row iteration now has an execution theorem.  It sel
 The array-push proof reuses the shared prefix-copy and append-store theorems.  Its allocation wrapper identifies the generated instruction sequence by definitional equality.  A local-frame reconstruction theorem records the live category, job, owner, and loop registers, allowing scratch values to vary.  Read execution checks in about eight seconds, iteration composition in about five seconds, and allocation and release components in one to two seconds.  The combined execution audit passes with standard logical axioms.
 
 An overbroad arithmetic simplification produced a rewrite cycle between word addition and natural-number conversion.  A directed length-increment identity removes the cycle.  Explicit Boolean equality reduction handles the source predicate's coercion to a proposition.  Source and binary bytes are unchanged.
+
+### Beck matrix-row loop execution
+
+The row-loop theorem composes the checked push iteration for all jobs.  Its invariant records the exact source row prefix, owned output, preserved input memory, allocation budget, and the decreasing number of remaining jobs.  It charges at most 448 bytes per job and preserves the category-loop registers needed for the outer iteration.  The row-finishing theorem now identifies its complete resulting frame, which supports proving those preservation facts without further execution analysis.  The theorem also retains whether the resulting owner is the initial row owner or a fresh allocation.
+
+The loop checks in about three seconds.  The strengthened iteration theorem checks in about 21 seconds, with standard logical axioms.  The initial loop-exit proof required explicit reflexivity for the unsigned comparison.  Category selection, the outer loop, and the complete matrix function remain open.  Source and binary bytes are unchanged.
