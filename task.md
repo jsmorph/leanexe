@@ -1054,3 +1054,13 @@ the emitted reverse-copy. These checks are recorded in
 unwind loop, reversal wrapper, and compiled compute/safety transfer remain
 open; reverse-read/copy files are still being checked and are not part of
 this verified checkpoint.
+
+The compiled unwind loop now terminates with the exact source accumulator
+and a reserved reversal budget (`drone-unwind-loop-2.log`). The shared
+reverse read/copy loop and the allocator-backed `word_reverse_budget_spec`
+also check, preserving caller-live arrays and returning a fresh owned array
+equal to the input's reverse. `drone-reverse-budget-3.log` passes all 3,590
+jobs with standard-only axioms. A frame normalization failure was resolved
+by rewriting only the length-header store, preserving the scratch equality
+needed by the copy lemma. The unwind return wrapper and final compiled
+compute/safety transfer remain open.
