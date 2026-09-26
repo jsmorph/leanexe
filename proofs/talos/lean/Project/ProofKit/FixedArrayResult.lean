@@ -1,5 +1,6 @@
 import Project.ProofKit.Array
 import Project.ProofKit.FixedArrayAllocator
+import Project.ProofKit.MemoryRoundtrip
 
 namespace Project.ProofKit.FixedArrayResult
 
@@ -101,7 +102,7 @@ theorem emptyStore_at (st : Store Unit) (root : UInt64)
   refine ⟨by simpa using hFit32, ?_, ?_, ?_⟩
   · simpa [writeLength, Mem.write64_pages] using hFitMemory
   · change (st.mem.write64 root.toUInt32 0).read64 root.toUInt32 = 0
-    exact Mem.read64_write64_same ..
+    exact Memory.read64_write64 ..
   · intro i hi
     simp at hi
 
@@ -128,7 +129,7 @@ theorem singletonStore_at (st : Store Unit) (root value : UInt64)
     calc
       _ = (st.mem.write64 root.toUInt32 1).read64 root.toUInt32 :=
         Memory.read64_write64_disjoint _ _ _ _ (Or.inl (by omega))
-      _ = 1 := Mem.read64_write64_same ..
+      _ = 1 := Memory.read64_write64 ..
   · change
       ((st.mem.write64 root.toUInt32 1).write64
         (payloadAddress root 0).toUInt32 value).read64
@@ -136,7 +137,7 @@ theorem singletonStore_at (st : Store Unit) (root value : UInt64)
     have hAddress : payloadAddress root 0 = root + 8 := by
       simp [payloadAddress]
     rw [← hAddress]
-    exact Mem.read64_write64_same ..
+    exact Memory.read64_write64 ..
 
 theorem pairStore_at (st : Store Unit) (root first second : UInt64)
     (hFit32 : root.toNat + 24 ≤ 4294967296)
@@ -174,7 +175,7 @@ theorem pairStore_at (st : Store Unit) (root first second : UInt64)
         Memory.read64_write64_disjoint _ _ _ _ (Or.inl (by omega))
       _ = (st.mem.write64 root.toUInt32 2).read64 root.toUInt32 :=
         Memory.read64_write64_disjoint _ _ _ _ (Or.inl (by omega))
-      _ = 2 := Mem.read64_write64_same ..
+      _ = 2 := Memory.read64_write64 ..
   · change
       (((st.mem.write64 root.toUInt32 2).write64
         (payloadAddress root 0).toUInt32 first).write64
@@ -186,14 +187,14 @@ theorem pairStore_at (st : Store Unit) (root first second : UInt64)
           (payloadAddress root 0).toUInt32 first).read64
             (payloadAddress root 0).toUInt32 :=
         Memory.read64_write64_disjoint _ _ _ _ (Or.inl (by omega))
-      _ = first := Mem.read64_write64_same ..
+      _ = first := Memory.read64_write64 ..
   · change
       (((st.mem.write64 root.toUInt32 2).write64
         (payloadAddress root 0).toUInt32 first).write64
         (payloadAddress root 1).toUInt32 second).read64
           (root + 16).toUInt32 = second
     rw [← hSecondAddress]
-    exact Mem.read64_write64_same ..
+    exact Memory.read64_write64 ..
 
 theorem lengthStore_spec
     (module_ : Wasm.Module) (env : HostEnv Unit) (st : Store Unit) (frame : Locals)
