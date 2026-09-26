@@ -12,8 +12,8 @@ def jobReadSaved (members position : Nat) (rowPointer : UInt64) (saved : JobSave
   | _ => saved index
 
 def jobReadFrame (count categories members : Nat) (wordsPointer incidencePointer rowPointer internal : UInt64)
-    (state : ParseState) (saved : JobSaved) (tail : JobTail) : Locals :=
-  jobFrame count categories wordsPointer incidencePointer internal state
+    (state : ParseState) (saved : JobSaved) (tail : JobTail) (rowOwner : UInt64 := incidencePointer) : Locals :=
+  jobFrame (rowOwner := rowOwner) count categories wordsPointer incidencePointer internal state
     (jobReadSaved members (state.position + 1) rowPointer saved) tail
 
 def jobNextState (state : ParseState) (members : Nat) (row : Array UInt64) : ParseState :=
@@ -26,18 +26,18 @@ def jobAppendSaved (state : ParseState) (members : Nat) (rowPointer : UInt64) (s
 
 set_option maxRecDepth 2048 in
 set_option maxHeartbeats 1500000 in
-theorem jobPrepareAppend_exact (env : HostEnv Unit) (initial : Store Unit) (count categories members : Nat)
+theorem jobPrepareAppend_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial : Store Unit) (count categories members : Nat)
     (wordsPointer incidencePointer rowPointer internal : UInt64) (state : ParseState) (row : Array UInt64)
     (saved : JobSaved) (tail : JobTail)
     (incidenceAt : UInt64Array.At initial incidencePointer state.incidence) (rowAt : UInt64Array.At initial rowPointer row)
     (positionFit : state.position + 1 + members < UInt64.size) (overlapFit : state.overlap < UInt64.size)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (next : wp Project.Beck.«module» rest Q initial
-      (jobAppendFrame (jobParams count categories wordsPointer incidencePointer state)
+      (jobAppendFrame (jobParams (rowOwner := rowOwner) count categories wordsPointer incidencePointer state)
         (jobSaved internal (jobAppendSaved state members rowPointer saved)) incidencePointer rowPointer state.incidence.size row.size
         (tail 7) (tail 8) (tail 9) (tail 10) (tail 11) (tail 12) (tail 13) (tail 14) (tail 15) (tail 16)) env) :
     wp Project.Beck.«module» (jobAccepted.take 41 ++ rest) Q initial
-      (jobReadFrame count categories members wordsPointer incidencePointer rowPointer internal state saved tail) env := by
+      (jobReadFrame (rowOwner := rowOwner) count categories members wordsPointer incidencePointer rowPointer internal state saved tail) env := by
   have memberFit : members < UInt64.size := by omega
   have guard : ¬(state.position + 1).toUInt64 + members.toUInt64 < (state.position + 1).toUInt64 :=
     CheckedNatAdd.guard_of_fits (state.position + 1) members positionFit

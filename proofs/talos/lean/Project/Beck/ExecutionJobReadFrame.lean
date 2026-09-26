@@ -4,15 +4,15 @@ namespace Project.Beck.Execution
 
 open Wasm Project.ProofKit LeanExe.Examples.Beck
 
-theorem jobReadFrame_reconstruct (frame : Locals) (count categories members : Nat)
+theorem jobReadFrame_reconstruct {rowOwner : UInt64} (frame : Locals) (count categories members : Nat)
     (wordsPointer incidencePointer rowPointer internal : UInt64) (state : ParseState) (tail : JobTail)
-    (params : frame.params = jobParams count categories wordsPointer incidencePointer state)
+    (params : frame.params = jobParams (rowOwner := rowOwner) count categories wordsPointer incidencePointer state)
     (locals : frame.locals.length = 60) (values : frame.values = [])
     (r8 : frame.get 8 = some (.i64 internal)) (r9 : frame.get 9 = some (.i64 0)) (r15 : frame.get 15 = some (.i64 0))
     (r16 : frame.get 16 = some (.i64 members.toUInt64)) (r17 : frame.get 17 = some (.i64 (state.position + 1).toUInt64))
     (r29 : frame.get 29 = some (.i64 rowPointer))
     (tailReads : ∀ index : Fin 17, frame.get (index.val + 51) = some (.i64 (tail index))) :
-    frame = jobReadFrame count categories members wordsPointer incidencePointer rowPointer internal state
+    frame = jobReadFrame (rowOwner := rowOwner) count categories members wordsPointer incidencePointer rowPointer internal state
       (fun k => frame.locals[k.val]!) tail := by
   have paramsLength : frame.params.length = 8 := by simp [params, jobParams]
   have a := job_local_read frame 8 (.i64 members.toUInt64) paramsLength locals (by decide) r16
@@ -31,12 +31,12 @@ theorem jobReadFrame_reconstruct (frame : Locals) (count categories members : Na
   rw [jobReadFrame, fixed]
   exact jobFrame_reconstruct frame count categories wordsPointer incidencePointer internal state tail params locals values r8 r9 r15 tailReads
 
-theorem jobReadFrame_wp (env : HostEnv Unit) (initial : Store Unit) (frame : Locals) (count categories members : Nat)
+theorem jobReadFrame_wp {rowOwner : UInt64} (env : HostEnv Unit) (initial : Store Unit) (frame : Locals) (count categories members : Nat)
     (wordsPointer incidencePointer rowPointer internal : UInt64) (state : ParseState) (tail : JobTail)
     (Q : Assertion Unit) (program : Wasm.Program)
     (next : ∀ saved tail, wp Project.Beck.«module» program Q initial
-      (jobReadFrame count categories members wordsPointer incidencePointer rowPointer internal state saved tail) env)
-    (params : frame.params = jobParams count categories wordsPointer incidencePointer state)
+      (jobReadFrame (rowOwner := rowOwner) count categories members wordsPointer incidencePointer rowPointer internal state saved tail) env)
+    (params : frame.params = jobParams (rowOwner := rowOwner) count categories wordsPointer incidencePointer state)
     (locals : frame.locals.length = 60) (values : frame.values = [])
     (r8 : frame.get 8 = some (.i64 internal)) (r9 : frame.get 9 = some (.i64 0)) (r15 : frame.get 15 = some (.i64 0))
     (r16 : frame.get 16 = some (.i64 members.toUInt64)) (r17 : frame.get 17 = some (.i64 (state.position + 1).toUInt64))

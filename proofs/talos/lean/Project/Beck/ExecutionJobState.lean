@@ -26,9 +26,9 @@ theorem readJobs_some_step (count categories : Nat) (words : Array UInt64) (stat
 
 abbrev JobTail := Fin 17 → UInt64
 
-def jobParams (count categories : Nat) (wordsPointer rowPointer : UInt64) (state : ParseState) : List Value :=
+def jobParams (count categories : Nat) (wordsPointer rowPointer : UInt64) (state : ParseState) (rowOwner : UInt64 := rowPointer) : List Value :=
   [.i64 count.toUInt64, .i64 wordsPointer, .i64 wordsPointer, .i64 categories.toUInt64,
-    .i64 state.position.toUInt64, .i64 state.overlap.toUInt64, .i64 rowPointer, .i64 rowPointer]
+    .i64 state.position.toUInt64, .i64 state.overlap.toUInt64, .i64 rowOwner, .i64 rowPointer]
 
 def jobSaved (internal : UInt64) (saved : JobSaved) (index : Fin 43) : Value :=
   if index.val = 0 then .i64 internal else if index.val = 1 ∨ index.val = 7 then .i64 0 else saved index
@@ -39,17 +39,17 @@ def jobTail (tail : JobTail) : List Value :=
     .i64 (tail 12), .i64 (tail 13), .i64 (tail 14), .i64 (tail 15), .i64 (tail 16)]
 
 def jobFrame (count categories : Nat) (wordsPointer rowPointer internal : UInt64)
-    (state : ParseState) (saved : JobSaved) (tail : JobTail) : Locals :=
-  { params := jobParams count categories wordsPointer rowPointer state
+    (state : ParseState) (saved : JobSaved) (tail : JobTail) (rowOwner : UInt64 := rowPointer) : Locals :=
+  { params := jobParams (rowOwner := rowOwner) count categories wordsPointer rowPointer state
     locals := jobPrefix (jobSaved internal saved) ++ jobTail tail }
 
 def jobFrameLocal (internal : UInt64) (saved : JobSaved) (tail : JobTail) (index : Fin 60) : Value :=
   if h : index.val < 43 then jobSaved internal saved ⟨index.val, h⟩
   else .i64 (tail ⟨index.val - 43, by omega⟩)
 
-theorem jobFrame_locals (count categories : Nat) (wordsPointer rowPointer internal : UInt64)
+theorem jobFrame_locals {rowOwner : UInt64} (count categories : Nat) (wordsPointer rowPointer internal : UInt64)
     (state : ParseState) (saved : JobSaved) (tail : JobTail) :
-    (jobFrame count categories wordsPointer rowPointer internal state saved tail).locals =
+    (jobFrame (rowOwner := rowOwner) count categories wordsPointer rowPointer internal state saved tail).locals =
       List.ofFn (jobFrameLocal internal saved tail) := rfl
 
 theorem job_local_read (frame : Locals) (index : Nat) (value : Value)
@@ -62,13 +62,13 @@ theorem job_local_read (frame : Locals) (index : Nat) (value : Value)
   simpa only [getElem?_pos frame.locals index indexBound, getElem!_pos frame.locals index indexBound,
     Option.some.injEq] using read'
 
-theorem jobFrame_reconstruct (frame : Locals) (count categories : Nat)
+theorem jobFrame_reconstruct {rowOwner : UInt64} (frame : Locals) (count categories : Nat)
     (wordsPointer rowPointer internal : UInt64) (state : ParseState) (tail : JobTail)
-    (params : frame.params = jobParams count categories wordsPointer rowPointer state)
+    (params : frame.params = jobParams (rowOwner := rowOwner) count categories wordsPointer rowPointer state)
     (locals : frame.locals.length = 60) (values : frame.values = [])
     (r8 : frame.get 8 = some (.i64 internal)) (r9 : frame.get 9 = some (.i64 0)) (r15 : frame.get 15 = some (.i64 0))
     (tailReads : ∀ index : Fin 17, frame.get (index.val + 51) = some (.i64 (tail index))) :
-    frame = jobFrame count categories wordsPointer rowPointer internal state (fun k => frame.locals[k.val]!) tail := by
+    frame = jobFrame (rowOwner := rowOwner) count categories wordsPointer rowPointer internal state (fun k => frame.locals[k.val]!) tail := by
   have paramsLength : frame.params.length = 8 := by simp [params, jobParams]
   have a := job_local_read frame 0 (.i64 internal) paramsLength locals (by decide) r8
   have b := job_local_read frame 1 (.i64 0) paramsLength locals (by decide) r9
