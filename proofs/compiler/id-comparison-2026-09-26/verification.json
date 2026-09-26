@@ -1,0 +1,174 @@
+{
+  "lean": "4.34.0-rc2",
+  "leanCommit": "6a10ac8c22beadecabdbb0919c2b50214762f91d",
+  "node": "24.13.0",
+  "runner": "tools/leanrun, authorized local mode, serial lock",
+  "candidate": "c8b59c3abbc7e8017f42892b70faa7c581df46ae",
+  "branch": "correct",
+  "mainBase": "8dbb8e8a70a8b0f54d3899db5b6dac8ce2d62c18",
+  "proofCommand": "tools/arithmetic-check.js proof",
+  "axiomAudits": 9,
+  "engineCommand": "tools/arithmetic-check.js subset-engine id-comparison",
+  "executionGroup": "id-comparison",
+  "nativeV8Comparisons": 597,
+  "declarations": 35,
+  "rangeDeclarations": 12,
+  "rangeComparisons": 288,
+  "priorModulesByteIdentical": 20,
+  "focusedNativeIRComparisons": 240,
+  "focusedRejections": 5,
+  "headNativeIRComparisons": 252,
+  "headRejections": 210,
+  "originalInspectedExamples": 7,
+  "originalExamplesAcceptedUnchanged": 6,
+  "originalExamplesStillRejected": 1,
+  "priorNegativeNativeIRComparisons": 198,
+  "priorArithmeticNativeIRComparisons": 208,
+  "priorArithmeticRejections": 4,
+  "priorPrimitiveNativeIRComparisons": 840,
+  "priorPrimitiveRejections": 300,
+  "fullCorpusDeclarations": 675,
+  "deferred": "Decision evidence whose operands differ from the condition operands by type annotations remains rejected.",
+  "modules": {
+    "constant": {
+      "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "bytes": 1042
+    },
+    "booleanMany": {
+      "sha256": "a5e95e46f7be660ff7592d7aa60ddc78be5ce2c9e2f0e5d6917c3f34e617bab8",
+      "bytes": 1170
+    },
+    "booleanDo": {
+      "sha256": "c2c5fbde00b6a977ad4ccd297166a5171f0ec64d4b182a0060966c8d5b1da1fd",
+      "bytes": 1292
+    },
+    "booleanDependentMany": {
+      "sha256": "d800e299c9a715e4e5d625f754b134fa5e36cb28dd105a75e517b7cfabcdb16f",
+      "bytes": 1180
+    },
+    "booleanDependentDo": {
+      "sha256": "e76b06c98689ef2ae6a6fa415f252767b46e7af038cef15924bf86306e8f4713",
+      "bytes": 1301
+    },
+    "instanceDo": {
+      "sha256": "2aa66477ea5689192d5f8f24e89dea297252b0fc47fef0fa1dcf99881b7cd9dc",
+      "bytes": 1080
+    },
+    "naturalDependentMany": {
+      "sha256": "5f5c0de5807c901e1238be74ac268f5780a80a074655a39d97528a8afc5f97ea",
+      "bytes": 1180
+    },
+    "naturalDo": {
+      "sha256": "a6a0eec591024d2d4579ae0f2f762f74c75e5e618c46f142b60d59198836f168",
+      "bytes": 1079
+    },
+    "boolWordAction": {
+      "sha256": "4e4f9f0ccdc06441014560653b1bfb1da13f0eabd6d96db0885f63531828c829",
+      "bytes": 1134
+    },
+    "boolWordNested": {
+      "sha256": "74f8a59b90f5636457cfe64fd57b7bf36bace39fe17387357ec04c3271e1f941",
+      "bytes": 1151
+    },
+    "idArithmeticLeft": {
+      "sha256": "6dd3c2d552cbff905db8a8b6d45aa1eb018233a4893803065286fa783a172cc1",
+      "bytes": 1055
+    },
+    "idComparisonEq": {
+      "sha256": "b0bff1c8ac83592d5e302bdf33af9114e36d1b7689ff4c03db258e7f7f873ee6",
+      "bytes": 1067
+    },
+    "idComparisonNe": {
+      "sha256": "5c60df71fd15c9bf133d0a6ba71f2e3e51dd6bd23562d2fe68f0214020854e36",
+      "bytes": 1068
+    },
+    "idComparisonLt": {
+      "sha256": "f2582a24ebffae8ca68b7d039052a0237e96ffec18b0bb7b10dc33a060ed7e7d",
+      "bytes": 1067
+    },
+    "idComparisonLe": {
+      "sha256": "3730cd6b33fa52667e78b70a137235cfc626b0a548f8d9a57d1eefc98d70a04f",
+      "bytes": 1086
+    },
+    "idComparisonGt": {
+      "sha256": "d48ef98852c2278338425b7828e4d64fef1651797a8e803a6dcae63680b9142b",
+      "bytes": 1068
+    },
+    "idComparisonGe": {
+      "sha256": "6bf904deb68ade5f7ab1fe35e9d2392820a78fdae96ab28ea098925321904bd6",
+      "bytes": 1087
+    },
+    "idComparisonNegated": {
+      "sha256": "a234719cdf7dd1336dac0865191ce18624a4453a71290ee6bf3e335c7fcb42d5",
+      "bytes": 1074
+    },
+    "idComparisonCompound": {
+      "sha256": "048d596e396c81ba6019636192aa00b9cfdab94ba464a176fb41d902c32c134a",
+      "bytes": 1118
+    },
+    "idComparisonDependent": {
+      "sha256": "b1f34c5bb018889431cbf7dca231b5a903d27c6121b190a7528b5b70a89bdc95",
+      "bytes": 1075
+    },
+    "idComparisonDecide": {
+      "sha256": "8ddf3bbd5c103b6c81ec9be2956382b4ac3248cd3f9db3fab876621d0d383ab7",
+      "bytes": 1083
+    },
+    "idComparisonChoice": {
+      "sha256": "f2e0e5f599630fdf78c9ed4acf75a24154430bf096b290765afac36b558d15bc",
+      "bytes": 1116
+    },
+    "idComparisonDo": {
+      "sha256": "7f42853d67176fff7a193d5bbcb2eb3ad109d9f0963a887ff6096ee3af9eb643",
+      "bytes": 1124
+    },
+    "rangeBooleanOuter": {
+      "sha256": "65825b5ef58ae05fbc28a64718ce7f255535235ab8d9df5e11dfa3be605680ee",
+      "bytes": 1546
+    },
+    "rangeBooleanBounds": {
+      "sha256": "9cf1837a7b6fdb8389b9eb907fccbae862fe8d88ed47d9ae775d988a71fe193d",
+      "bytes": 1949
+    },
+    "rangeBooleanDependentCapture": {
+      "sha256": "f32415c45f5faac1d9274dad859f1e19dbab9900331e09a8f9e724f4746ff7be",
+      "bytes": 1348
+    },
+    "rangeBooleanDependentJoined": {
+      "sha256": "37de2c4e88df1972f000ea0a401203f8cbfbdd793f1cbc27c251bfd0f6f5ec0b",
+      "bytes": 1956
+    },
+    "rangeNaturalStep": {
+      "sha256": "78e85171ef69d1ac2697e5c9b4d580c0b25ff2ed08201bc89c42cbdebbd8cf8d",
+      "bytes": 1138
+    },
+    "rangeNaturalOuter": {
+      "sha256": "595081614db17f0cd1786bcb45367afe3d638a64c9c0e6892330f1e56b015df7",
+      "bytes": 1208
+    },
+    "rangeBoolWordStep": {
+      "sha256": "9cf83df14c8a69dd8e07bbe3b15b0e9d2ca3d466327adcbadff7990b577ef600",
+      "bytes": 1213
+    },
+    "rangeBoolWordOuter": {
+      "sha256": "4a2650dd6bba93242eff5428624c7dfa06dc9772816fdffe9bc48ad54130b35a",
+      "bytes": 1388
+    },
+    "rangeIdArithmeticStep": {
+      "sha256": "88c4d2c737eeb4cb3b38c1b5b79b560066fa041744e75cb4557d927760b40678",
+      "bytes": 1266
+    },
+    "rangeIdComparisonExit": {
+      "sha256": "b5539156100baa2135dd270185890cc10c8f068f10a74e6c154e5d7f4a32c6b1",
+      "bytes": 1273
+    },
+    "rangeIdComparisonDecide": {
+      "sha256": "8e80367474931495bc66653b6a8f1bc72e7029a592a9cc34cc849c38f24f317e",
+      "bytes": 1297
+    },
+    "rangeIdComparisonDependent": {
+      "sha256": "fa1aac5ed2e924565c3f11073b7f5a956f51a9e7ff91e5b3836e58a6d217c91c",
+      "bytes": 1199
+    }
+  }
+}
