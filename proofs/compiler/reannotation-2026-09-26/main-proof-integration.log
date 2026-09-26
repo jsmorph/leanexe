@@ -1,0 +1,290 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [50/106] Built LeanExe.Extract.ScalarBooleanLocalSyntax (1.7s)
+⚠ [3084/3131] Replayed LeanExe.Examples.AsciiDigits
+warning: LeanExe/Examples/AsciiDigits.lean:103:30: `if_false` has been deprecated: Use `ite_false` instead
+warning: LeanExe/Examples/AsciiDigits.lean:109:78: `if_true` has been deprecated: Use `ite_true` instead
+⚠ [3096/3131] Replayed Project.Artifact.Binary.Proof.Cursor
+warning: Project/Artifact/Binary/Proof/Cursor.lean:131:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:145:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:156:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:162:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:180:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:180:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:191:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [3097/3131] Replayed Project.Artifact.Binary.Proof.Leb
+warning: Project/Artifact/Binary/Proof/Leb.lean:10:5: Ambiguous namespace `Parser`: it is interpreted as `_root_.Wasm.Binary.Parser` because this `open` occurs inside `namespace Wasm.Binary.Leb.Proof`, while `_root_.Parser` is silently not opened. Specify the namespace unambiguously, e.g. `_root_.Wasm.Binary.Parser`. The warning can sometimes also be addressed by moving the `open` outside of the surrounding `namespace`.
+
+Note: This linter can be disabled with `set_option linter.ambiguousOpen false`
+⚠ [3098/3131] Replayed Project.Compiler.UnsignedLeb
+warning: Project/Compiler/UnsignedLeb.lean:32:36: This simp argument is unused:
+  UInt64.toNat_add
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [UInt64.toNat_toUInt8, UInt64.toNat_mod, Nat.mod_eq_of_lt low]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/UnsignedLeb.lean:33:10: This simp argument is unused:
+  Nat.mod_eq_of_lt low
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [UInt64.toNat_toUInt8, UInt64.toNat_add, UInt64.toNat_mod]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/UnsignedLeb.lean:46:10: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Compiler/UnsignedLeb.lean:52:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [3099/3131] Replayed Project.Compiler.SignedLebBits
+warning: Project/Compiler/SignedLebBits.lean:16:35: This simp argument is unused:
+  BitVec.getLsbD_zero
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BitVec.getLsbD_and, BitVec.getLsbD_ofNat]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebBits.lean:31:10: This simp argument is unused:
+  BitVec.getLsbD_or
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BitVec.getLsbD_ushiftRight, BitVec.getLsbD_sshiftRight, BitVec.getLsbD_ofNat,
+    BitVec.getElem_sshiftRight, top, topElem, sign]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebBits.lean:31:29: This simp argument is unused:
+  BitVec.getLsbD_ushiftRight
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BitVec.getLsbD_or, BitVec.getLsbD_sshiftRight, BitVec.getLsbD_ofNat, BitVec.getElem_sshiftRight, top,
+    topElem, sign]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebBits.lean:31:57: This simp argument is unused:
+  BitVec.getLsbD_sshiftRight
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BitVec.getLsbD_or, BitVec.getLsbD_ushiftRight, BitVec.getLsbD_ofNat, BitVec.getElem_sshiftRight, top,
+    topElem, sign]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebBits.lean:32:6: This simp argument is unused:
+  BitVec.getLsbD_ofNat
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BitVec.getLsbD_or, BitVec.getLsbD_ushiftRight, BitVec.getLsbD_sshiftRight, BitVec.getElem_sshiftRight,
+    top, topElem, sign]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebBits.lean:32:56: This simp argument is unused:
+  top
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BitVec.getLsbD_or, BitVec.getLsbD_ushiftRight, BitVec.getLsbD_sshiftRight, BitVec.getLsbD_ofNat,
+    BitVec.getElem_sshiftRight, topElem, sign]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [3100/3131] Replayed Project.Compiler.SignedLebStop
+warning: Project/Compiler/SignedLebStop.lean:11:15: This simp argument is unused:
+  bit
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [Bool.false_eq_true, ite_false, ite_true, BitVec.getLsbD_and, BitVec.getLsbD_ofNat,
+    BitVec.getLsbD_zero, Nat.testBit_two_pow]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebStop.lean:12:28: This simp argument is unused:
+  BitVec.getLsbD_zero
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [bit, Bool.false_eq_true, ite_false, ite_true, BitVec.getLsbD_and, BitVec.getLsbD_ofNat,
+    Nat.testBit_two_pow]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebStop.lean:16:42: This simp argument is unused:
+  Bool.false_and
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [bit, bound, decide_true, Bool.true_and, Bool.and_true]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebStop.lean:16:58: This simp argument is unused:
+  Bool.true_and
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [bit, bound, decide_true, Bool.false_and, Bool.and_true]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebStop.lean:16:88: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+warning: Project/Compiler/SignedLebStop.lean:66:49: This simp argument is unused:
+  false_and
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [show (0 : UInt64) ≠ 64 by decide, show (64 : UInt64) ≠ 0 by decide, and_false, or_false, false_or,
+    eq_self, and_true, true_and]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebStop.lean:66:99: This simp argument is unused:
+  true_and
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [show (0 : UInt64) ≠ 64 by decide, show (64 : UInt64) ≠ 0 by decide, and_false, false_and, or_false,
+    false_or, eq_self, and_true]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [3101/3131] Replayed Project.Compiler.SignedLebTrace
+warning: Project/Compiler/SignedLebTrace.lean:77:10: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Compiler/SignedLebTrace.lean:87:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [3102/3131] Replayed Project.Compiler.SignedLeb
+warning: Project/Compiler/SignedLeb.lean:38:17: This simp argument is unused:
+  h
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [ite_true, ByteArray.push, Array.toList_push, native_low_byte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLeb.lean:38:20: This simp argument is unused:
+  ite_true
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [h, ByteArray.push, Array.toList_push, native_low_byte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLeb.lean:40:17: This simp argument is unused:
+  h
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [ite_false, ih, ByteArray.push, Array.toList_push, native_high_byte, sar7_signed, List.append_assoc,
+    List.singleton_append]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLeb.lean:40:20: This simp argument is unused:
+  ite_false
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [h, ih, ByteArray.push, Array.toList_push, native_high_byte, sar7_signed, List.append_assoc,
+    List.singleton_append]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLeb.lean:49:4: This simp argument is unused:
+  List.nil_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [LeanExe.Wasm.Leb.s64lebU64, native_bytes, ByteArray.empty, Array.toList_empty]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLeb.lean:49:21: This simp argument is unused:
+  Array.toList_empty
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [LeanExe.Wasm.Leb.s64lebU64, native_bytes, ByteArray.empty, List.nil_append]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [3103/3131] Replayed Project.Compiler.ArithmeticEncoding
+warning: Project/Compiler/ArithmeticEncoding.lean:54:26: This simp argument is unused:
+  ByteArray.toList_data_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [byteArray_toList]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [3105/3131] Replayed Interpreter.Wasm.Mem
+warning: Interpreter/Wasm/Mem.lean:133:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:152:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:152:19: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:153:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:155:20: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:155:32: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:156:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:156:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:219:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:222:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:226:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:228:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:231:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:233:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:236:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:246:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:266:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:300:44: `if_pos` has been deprecated: Use `ite_eq_left` instead
+⚠ [3116/3131] Replayed Interpreter.Wasm.Semantics.Lemmas
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:162:25: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:166:50: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:168:25: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:172:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:224:40: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:226:38: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:229:38: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:262:40: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:264:38: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:267:38: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:433:15: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:443:15: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:513:66: `if_pos` has been deprecated: Use `ite_eq_left` instead
+ℹ [3122/3131] Replayed Project.TalosCompat
+info: Project/TalosCompat.lean:92:0: 'Wasm.exec_block_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/TalosCompat.lean:93:0: 'Wasm.exec_iff_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/TalosCompat.lean:94:0: 'Wasm.wp_block_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/TalosCompat.lean:95:0: 'Wasm.wp_iff_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3123/3131] Replayed Project.ProofKit.ScalarTransition
+warning: Project/ProofKit/ScalarTransition.lean:87:45: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:101:12: `if_false` has been deprecated: Use `ite_false` instead
+warning: Project/ProofKit/ScalarTransition.lean:101:22: `if_true` has been deprecated: Use `ite_true` instead
+warning: Project/ProofKit/ScalarTransition.lean:667:16: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:669:16: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:711:16: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:714:16: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:831:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:842:12: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:863:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:876:12: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:893:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:908:12: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:664:25: This simp argument is unused:
+  List.cons_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.nil_append, Wasm.wp_iff_control_types]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ProofKit/ScalarTransition.lean:664:43: This simp argument is unused:
+  List.nil_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.cons_append, Wasm.wp_iff_control_types]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ProofKit/ScalarTransition.lean:708:25: This simp argument is unused:
+  List.cons_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.nil_append, Wasm.wp_iff_control_types]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ProofKit/ScalarTransition.lean:708:43: This simp argument is unused:
+  List.nil_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.cons_append, Wasm.wp_iff_control_types]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ProofKit/ScalarTransition.lean:968:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:981:12: `if_pos` has been deprecated: Use `ite_eq_left` instead
+⚠ [3125/3131] Replayed Project.Compiler.ControlAnnotations
+warning: Project/Compiler/ControlAnnotations.lean:77:25: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Compiler/ControlAnnotations.lean:79:25: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [3126/3131] Built Project.Compiler.ScalarLowering (4.0s)
+warning: Project/Compiler/ScalarLowering.lean:49:50: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+warning: Project/Compiler/ScalarLowering.lean:112:116: This simp argument is unused:
+  LeanExe.Wasm.ScalarDescriptor.instBEqU64Op
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [LeanExe.Wasm.ScalarDescriptor.U64Op.ctorIdx, LeanExe.Wasm.ScalarDescriptor.instBEqU64Op.beq, BEq.beq,
+    LeanExe.Wasm.ScalarDescriptor.Expr.emit, expression, operation, Project.ProofKit.ScalarTransition.Expr.program,
+    LeanExe.Wasm.ScalarDescriptor.U64Op.instruction, Project.ProofKit.ScalarTransition.U64Op.instruction,
+    program_append, program, instruction, expression_program a, expression_program b]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [3131/3131] Built Project.Compiler.ArithmeticTranslation (3.9s)
+Build completed successfully (3131 jobs).

@@ -1,0 +1,557 @@
+⚠ [3035/3061] Replayed LeanExe.Examples.AsciiDigits
+warning: LeanExe/Examples/AsciiDigits.lean:103:30: `if_false` has been deprecated: Use `ite_false` instead
+warning: LeanExe/Examples/AsciiDigits.lean:109:78: `if_true` has been deprecated: Use `ite_true` instead
+⚠ [3052/3061] Replayed Project.Artifact.Binary.Proof.Cursor
+warning: Project/Artifact/Binary/Proof/Cursor.lean:131:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:145:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:156:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:162:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:180:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:180:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:191:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [3053/3061] Replayed Project.Artifact.Binary.Proof.Leb
+warning: Project/Artifact/Binary/Proof/Leb.lean:10:5: Ambiguous namespace `Parser`: it is interpreted as `_root_.Wasm.Binary.Parser` because this `open` occurs inside `namespace Wasm.Binary.Leb.Proof`, while `_root_.Parser` is silently not opened. Specify the namespace unambiguously, e.g. `_root_.Wasm.Binary.Parser`. The warning can sometimes also be addressed by moving the `open` outside of the surrounding `namespace`.
+
+Note: This linter can be disabled with `set_option linter.ambiguousOpen false`
+⚠ [3054/3061] Replayed Project.Compiler.SignedLebBits
+warning: Project/Compiler/SignedLebBits.lean:16:35: This simp argument is unused:
+  BitVec.getLsbD_zero
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BitVec.getLsbD_and, BitVec.getLsbD_ofNat]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebBits.lean:31:10: This simp argument is unused:
+  BitVec.getLsbD_or
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BitVec.getLsbD_ushiftRight, BitVec.getLsbD_sshiftRight, BitVec.getLsbD_ofNat,
+    BitVec.getElem_sshiftRight, top, topElem, sign]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebBits.lean:31:29: This simp argument is unused:
+  BitVec.getLsbD_ushiftRight
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BitVec.getLsbD_or, BitVec.getLsbD_sshiftRight, BitVec.getLsbD_ofNat, BitVec.getElem_sshiftRight, top,
+    topElem, sign]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebBits.lean:31:57: This simp argument is unused:
+  BitVec.getLsbD_sshiftRight
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BitVec.getLsbD_or, BitVec.getLsbD_ushiftRight, BitVec.getLsbD_ofNat, BitVec.getElem_sshiftRight, top,
+    topElem, sign]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebBits.lean:32:6: This simp argument is unused:
+  BitVec.getLsbD_ofNat
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BitVec.getLsbD_or, BitVec.getLsbD_ushiftRight, BitVec.getLsbD_sshiftRight, BitVec.getElem_sshiftRight,
+    top, topElem, sign]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebBits.lean:32:56: This simp argument is unused:
+  top
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BitVec.getLsbD_or, BitVec.getLsbD_ushiftRight, BitVec.getLsbD_sshiftRight, BitVec.getLsbD_ofNat,
+    BitVec.getElem_sshiftRight, topElem, sign]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [3055/3063] Built Project.Compiler.UnsignedLeb (12s)
+warning: Project/Compiler/UnsignedLeb.lean:32:36: This simp argument is unused:
+  UInt64.toNat_add
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [UInt64.toNat_toUInt8, UInt64.toNat_mod, Nat.mod_eq_of_lt low]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/UnsignedLeb.lean:33:10: This simp argument is unused:
+  Nat.mod_eq_of_lt low
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [UInt64.toNat_toUInt8, UInt64.toNat_add, UInt64.toNat_mod]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/UnsignedLeb.lean:46:10: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Compiler/UnsignedLeb.lean:52:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [3056/3063] Replayed Project.Compiler.SignedLebStop
+warning: Project/Compiler/SignedLebStop.lean:11:15: This simp argument is unused:
+  bit
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [Bool.false_eq_true, ite_false, ite_true, BitVec.getLsbD_and, BitVec.getLsbD_ofNat,
+    BitVec.getLsbD_zero, Nat.testBit_two_pow]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebStop.lean:12:28: This simp argument is unused:
+  BitVec.getLsbD_zero
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [bit, Bool.false_eq_true, ite_false, ite_true, BitVec.getLsbD_and, BitVec.getLsbD_ofNat,
+    Nat.testBit_two_pow]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebStop.lean:16:42: This simp argument is unused:
+  Bool.false_and
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [bit, bound, decide_true, Bool.true_and, Bool.and_true]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebStop.lean:16:58: This simp argument is unused:
+  Bool.true_and
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [bit, bound, decide_true, Bool.false_and, Bool.and_true]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebStop.lean:16:88: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+warning: Project/Compiler/SignedLebStop.lean:66:49: This simp argument is unused:
+  false_and
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [show (0 : UInt64) ≠ 64 by decide, show (64 : UInt64) ≠ 0 by decide, and_false, or_false, false_or,
+    eq_self, and_true, true_and]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLebStop.lean:66:99: This simp argument is unused:
+  true_and
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [show (0 : UInt64) ≠ 64 by decide, show (64 : UInt64) ≠ 0 by decide, and_false, false_and, or_false,
+    false_or, eq_self, and_true]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [3057/3063] Replayed Project.Compiler.SignedLebTrace
+warning: Project/Compiler/SignedLebTrace.lean:77:10: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Compiler/SignedLebTrace.lean:87:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [3058/3063] Replayed Project.Compiler.SignedLeb
+warning: Project/Compiler/SignedLeb.lean:38:17: This simp argument is unused:
+  h
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [ite_true, ByteArray.push, Array.toList_push, native_low_byte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLeb.lean:38:20: This simp argument is unused:
+  ite_true
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [h, ByteArray.push, Array.toList_push, native_low_byte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLeb.lean:40:17: This simp argument is unused:
+  h
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [ite_false, ih, ByteArray.push, Array.toList_push, native_high_byte, sar7_signed, List.append_assoc,
+    List.singleton_append]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLeb.lean:40:20: This simp argument is unused:
+  ite_false
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [h, ih, ByteArray.push, Array.toList_push, native_high_byte, sar7_signed, List.append_assoc,
+    List.singleton_append]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLeb.lean:49:4: This simp argument is unused:
+  List.nil_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [LeanExe.Wasm.Leb.s64lebU64, native_bytes, ByteArray.empty, Array.toList_empty]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/SignedLeb.lean:49:21: This simp argument is unused:
+  Array.toList_empty
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [LeanExe.Wasm.Leb.s64lebU64, native_bytes, ByteArray.empty, List.nil_append]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [3059/3065] Built Project.Compiler.ArithmeticEncoding (4.1s)
+warning: Project/Compiler/ArithmeticEncoding.lean:54:26: This simp argument is unused:
+  ByteArray.toList_data_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [byteArray_toList]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [3060/3065] Replayed Project.Compiler.Parsing
+warning: Project/Compiler/Parsing.lean:52:56: This simp argument is unused:
+  List.getElem?_append_right
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [Wasm.Binary.Parser.readByte, cursor, available, List.length_append]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/Parsing.lean:59:56: This simp argument is unused:
+  List.getElem?_append_right
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [Wasm.Binary.Parser.peekByte, cursor, available]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [3061/3065] Built Project.Compiler.ContainerEncoding (3.5s)
+warning: Project/Compiler/ContainerEncoding.lean:10:4: This simp argument is unused:
+  ByteArray.toList_data_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [byteVec, LeanExe.Wasm.Leb.byteVecBytes, u32leb, byteArray_toList, ByteArray.size]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/ContainerEncoding.lean:15:4: This simp argument is unused:
+  ByteArray.toList_data_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [wasmSection, LeanExe.Wasm.Leb.sectionBytes, u32leb, byteArray_toList, ByteArray.push, ByteArray.size]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [3063/3065] Built Project.Compiler.LebParsing (3.5s)
+⚠ [3064/3075] Built Project.Compiler.ContainerParsing (3.5s)
+warning: Project/Compiler/ContainerParsing.lean:20:6: `if_pos` has been deprecated: Use `ite_eq_left` instead
+✔ [3066/3079] Built Project.Compiler.ArithmeticParsing (3.0s)
+✔ [3067/3079] Built Project.Compiler.SequenceParsing (3.6s)
+✔ [3068/3079] Built Project.Compiler.LebLengths (3.5s)
+⚠ [3069/3081] Built Project.Compiler.StructuredParsing (4.4s)
+warning: Project/Compiler/StructuredParsing.lean:64:28: This simp argument is unused:
+  List.append_assoc
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr, image_sequence]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/StructuredParsing.lean:81:28: This simp argument is unused:
+  List.append_assoc
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr, image_sequence]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [3070/3081] Built Project.Compiler.FunctionParsing (3.6s)
+✔ [3071/3081] Built LeanExe.Wasm.ArithmeticBounds (1.0s)
+✔ [3072/3081] Built Project.Compiler.HeaderParsing (3.6s)
+✔ [3073/3081] Built Project.Compiler.PayloadVectors (3.5s)
+✔ [3074/3081] Built Project.Compiler.MetadataParsing (3.6s)
+⚠ [3075/3081] Built Project.Compiler.FixedPayloads (3.6s)
+warning: Project/Compiler/FixedPayloads.lean:18:15: This simp argument is unused:
+  memoryItems
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.mem_cons, List.not_mem_nil, or_false] at member
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/FixedPayloads.lean:50:15: This simp argument is unused:
+  globalItems
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.mem_cons, List.not_mem_nil, or_false] at member
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [3076/3081] Built Project.Compiler.SectionParsing (3.5s)
+warning: Project/Compiler/SectionParsing.lean:25:17: Unused tactic linter: `omega` does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: Project/Compiler/SectionParsing.lean:25:17: this tactic is never executed
+
+Note: This linter can be disabled with `set_option linter.unreachableTactic false`
+warning: Project/Compiler/SectionParsing.lean:25:33: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+⚠ [3077/3081] Built Project.Compiler.UserPayloads (3.7s)
+warning: Project/Compiler/UserPayloads.lean:32:15: This simp argument is unused:
+  typeItems
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [LeanExe.Wasm.ArithmeticBounds.typeItems, List.mem_cons, List.not_mem_nil, or_false] at member
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/UserPayloads.lean:32:26: This simp argument is unused:
+  LeanExe.Wasm.ArithmeticBounds.typeItems
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [typeItems, List.mem_cons, List.not_mem_nil, or_false] at member
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/UserPayloads.lean:76:15: This simp argument is unused:
+  exportItems
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [LeanExe.Wasm.ArithmeticBounds.exportItems, List.mem_cons, List.not_mem_nil, or_false] at member
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/UserPayloads.lean:76:28: This simp argument is unused:
+  LeanExe.Wasm.ArithmeticBounds.exportItems
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [exportItems, List.mem_cons, List.not_mem_nil, or_false] at member
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/UserPayloads.lean:92:26: This simp argument is unused:
+  exportItems
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [LeanExe.Wasm.Binary.CoreWasm.exportSection, LeanExe.Wasm.Binary.CoreWasm.enumerate,
+    LeanExe.Wasm.Binary.CoreWasm.enumerateAux, named, exportPayload, LeanExe.Wasm.ArithmeticBounds.exportPayload,
+    LeanExe.Wasm.ArithmeticBounds.exportItems, LeanExe.Wasm.Binary.CoreWasm.runtimeStatGlobal]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [3078/3081] Built Project.Compiler.FixedPayloadBounds (3.5s)
+✔ [3079/3090] Built Project.Compiler.ModuleParsing (3.5s)
+✔ [3080/3090] Built Project.Compiler.RuntimeAtoms (3.7s)
+⚠ [3081/3090] Built Project.Compiler.ModuleSections (3.6s)
+warning: Project/Compiler/ModuleSections.lean:65:4: Unused tactic linter: `(try dsimp)` does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: Project/Compiler/ModuleSections.lean:66:4: Unused tactic linter: `(try dsimp)` does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: Project/Compiler/ModuleSections.lean:70:4: Unused tactic linter: `(try dsimp)` does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: Project/Compiler/ModuleSections.lean:76:4: Unused tactic linter: `(try dsimp)` does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: Project/Compiler/ModuleSections.lean:83:4: Unused tactic linter: `(try dsimp)` does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: Project/Compiler/ModuleSections.lean:90:4: Unused tactic linter: `(try dsimp)` does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+⚠ [3083/3091] Built Project.Compiler.RuntimeStructure (3.5s)
+warning: Project/Compiler/RuntimeStructure.lean:53:52: This simp argument is unused:
+  List.append_assoc
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [Control.source, Control.tag, LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
+    image_sequence, empty]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/RuntimeStructure.lean:53:71: This simp argument is unused:
+  empty
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [Control.source, Control.tag, LeanExe.Wasm.Binary.CoreWasm.encodeInstr, LeanExe.Wasm.Image.emitInstr,
+    image_sequence, List.append_assoc]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [3084/3091] Built Project.Compiler.RuntimeParsing (3.8s)
+✔ [3086/3091] Built Project.Compiler.RuntimeBodies (7.4s)
+✔ [3087/3092] Built Project.Compiler.RuntimeLengths (3.8s)
+✔ [3088/3093] Built Project.Compiler.RuntimeFunctionParsing (3.8s)
+⚠ [3090/3095] Built Project.Compiler.CodePayloads (3.5s)
+warning: Project/Compiler/CodePayloads.lean:34:15: This simp argument is unused:
+  codeItems
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [LeanExe.Wasm.ArithmeticBounds.codeItems, List.mem_cons, List.not_mem_nil, or_false] at member
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/Compiler/CodePayloads.lean:34:26: This simp argument is unused:
+  LeanExe.Wasm.ArithmeticBounds.codeItems
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [codeItems, List.mem_cons, List.not_mem_nil, or_false] at member
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [3092/3149] Built Project.Compiler.ArithmeticModuleBytes (3.5s)
+✔ [3141/3153] Built LeanExe.Extract.ScalarGuardSyntax (1.4s)
+✔ [3143/3155] Built LeanExe.Extract.ScalarBooleanRelation (1.1s)
+✔ [3144/3157] Built LeanExe.Extract.ScalarPropositionGuard (1.0s)
+✔ [3147/3159] Built LeanExe.Extract.ScalarBooleanLocalParser (11s)
+✔ [3151/3159] Built LeanExe.Extract.ScalarBooleanLocalParserEquations (1.0s)
+✖ [3155/3171] Building LeanExe.Extract.ScalarBooleanLocalSyntax (1.6s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/Cli/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/aesop/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/proofwidgets/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/importGraph/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/plausible/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/Qq/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/batteries/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/mathlib/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/iris/Iris/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/CodeLib/interpreter/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/CodeLib/codelib/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanLocalSyntax.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanLocalSyntax.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanLocalSyntax.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanLocalSyntax.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanLocalSyntax.setup.json --json
+error: LeanExe/Extract/ScalarBooleanLocalSyntax.lean:567:60: unsolved goals
+guard : BooleanLocalGuard
+⊢ reannotatedComparison? guard.condition guard.evidence = none
+✔ [3166/3171] Built LeanExe.Extract.ScalarGuard (1.1s)
+✔ [3168/3174] Built LeanExe.Extract.ScalarBooleanLetVariables (1.1s)
+✔ [3169/3175] Built LeanExe.Extract.ScalarBooleanLocal (1.8s)
+✔ [3172/3186] Built LeanExe.Extract.ScalarDependentBranch (1.1s)
+✔ [3180/3189] Built LeanExe.Source.Scalar (1.4s)
+✔ [3184/3201] Built LeanExe.Source.ScalarRangeSupported (1.0s)
+⚠ [3187/3201] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [3195/3202] Built LeanExe.Source.ScalarManyFunctionSemantics (1.0s)
+✔ [3196/3208] Built LeanExe.Source.ScalarStep (1.5s)
+✔ [3205/3212] Built LeanExe.Source.ScalarRangeCount (1.2s)
+✔ [3206/3212] Built LeanExe.Extract.ScalarRangeCount (1.2s)
+✔ [3207/3215] Built LeanExe.Source.ScalarRangeStrideSyntax (1.0s)
+✔ [3208/3217] Built LeanExe.Extract.ScalarRangeStrideSyntax (1.1s)
+✔ [3209/3221] Built LeanExe.Source.ScalarRangeExitSyntax (1.1s)
+✔ [3212/3221] Built LeanExe.Source.ScalarRangeExitSupported (1.2s)
+✔ [3213/3221] Built LeanExe.Extract.ScalarRangeExitSyntax (1.2s)
+⚠ [3214/3221] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [3217/3230] Built LeanExe.Source.ScalarFunction (1.1s)
+⚠ [3230/3257] Replayed Interpreter.Wasm.Mem
+warning: Interpreter/Wasm/Mem.lean:133:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:152:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:152:19: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:153:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:155:20: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:155:32: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:156:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:156:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:219:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:222:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:226:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:228:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:231:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:233:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:236:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:246:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:266:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:300:44: `if_pos` has been deprecated: Use `ite_eq_left` instead
+⚠ [3241/3257] Replayed Interpreter.Wasm.Semantics.Lemmas
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:162:25: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:166:50: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:168:25: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:172:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:224:40: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:226:38: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:229:38: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:262:40: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:264:38: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:267:38: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:433:15: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:443:15: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:513:66: `if_pos` has been deprecated: Use `ite_eq_left` instead
+ℹ [3247/3257] Replayed Project.TalosCompat
+info: Project/TalosCompat.lean:92:0: 'Wasm.exec_block_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/TalosCompat.lean:93:0: 'Wasm.exec_iff_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/TalosCompat.lean:94:0: 'Wasm.wp_block_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/TalosCompat.lean:95:0: 'Wasm.wp_iff_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3248/3257] Replayed Project.Compiler.ControlAnnotations
+warning: Project/Compiler/ControlAnnotations.lean:77:25: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Compiler/ControlAnnotations.lean:79:25: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [3250/3259] Built Project.ProofKit.ScalarTransition (5.9s)
+warning: Project/ProofKit/ScalarTransition.lean:87:45: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:101:12: `if_false` has been deprecated: Use `ite_false` instead
+warning: Project/ProofKit/ScalarTransition.lean:101:22: `if_true` has been deprecated: Use `ite_true` instead
+warning: Project/ProofKit/ScalarTransition.lean:667:16: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:669:16: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:711:16: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:714:16: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:831:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:842:12: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:863:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:876:12: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:893:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:908:12: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:664:25: This simp argument is unused:
+  List.cons_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.nil_append, Wasm.wp_iff_control_types]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ProofKit/ScalarTransition.lean:664:43: This simp argument is unused:
+  List.nil_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.cons_append, Wasm.wp_iff_control_types]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ProofKit/ScalarTransition.lean:708:25: This simp argument is unused:
+  List.cons_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.nil_append, Wasm.wp_iff_control_types]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ProofKit/ScalarTransition.lean:708:43: This simp argument is unused:
+  List.nil_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.cons_append, Wasm.wp_iff_control_types]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ProofKit/ScalarTransition.lean:968:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:981:12: `if_pos` has been deprecated: Use `ite_eq_left` instead
+✖ [3251/3266] Building Project.Compiler.ScalarLowering (4.3s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/Cli/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/aesop/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/proofwidgets/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/importGraph/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/plausible/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/Qq/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/batteries/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/mathlib/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/iris/Iris/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/CodeLib/interpreter/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/CodeLib/codelib/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/Project/Compiler/ScalarLowering.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/build/lib/lean/Project/Compiler/ScalarLowering.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/build/lib/lean/Project/Compiler/ScalarLowering.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/build/ir/Project/Compiler/ScalarLowering.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/build/ir/Project/Compiler/ScalarLowering.setup.json --json
+warning: Project/Compiler/ScalarLowering.lean:49:50: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+error: Project/Compiler/ScalarLowering.lean:110:17: unsolved goals
+case bin.divU
+scratch : ℕ
+a b : LeanExe.Wasm.ScalarDescriptor.Expr
+⊢ False
+
+case bin.remU
+scratch : ℕ
+a b : LeanExe.Wasm.ScalarDescriptor.Expr
+⊢ False
+error: Project/Compiler/ScalarLowering.lean:117:16: unsolved goals
+case ite
+scratch : ℕ
+c : LeanExe.Wasm.ScalarDescriptor.Cond
+a b : LeanExe.Wasm.ScalarDescriptor.Expr
+⊢ False
+error: Project/Compiler/ScalarLowering.lean:137:23: unsolved goals
+case and
+scratch : ℕ
+a b : LeanExe.Wasm.ScalarDescriptor.Cond
+⊢ False
+error: Project/Compiler/ScalarLowering.lean:137:23: unsolved goals
+case or
+scratch : ℕ
+a b : LeanExe.Wasm.ScalarDescriptor.Cond
+⊢ False
+warning: Project/Compiler/ScalarLowering.lean:121:2: unused `termination_by`, function is not recursive
+warning: Project/Compiler/ScalarLowering.lean:112:116: This simp argument is unused:
+  LeanExe.Wasm.ScalarDescriptor.instBEqU64Op
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [LeanExe.Wasm.ScalarDescriptor.U64Op.ctorIdx, LeanExe.Wasm.ScalarDescriptor.instBEqU64Op.beq, BEq.beq,
+    LeanExe.Wasm.ScalarDescriptor.Expr.emit, expression, operation, Project.ProofKit.ScalarTransition.Expr.program,
+    LeanExe.Wasm.ScalarDescriptor.U64Op.instruction, Project.ProofKit.ScalarTransition.U64Op.instruction,
+    program_append, program, instruction, expression_program a, expression_program b]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [3259/3266] Built LeanExe.Wasm.ScalarCertificate (1.9s)
+✔ [3262/3290] Built LeanExe.Wasm.ScalarAnnotatedCertificate (1.2s)
+✔ [3287/3292] Built Project.Compiler.RuntimeValidation (3.5s)
+ℹ [3289/3294] Built Project.Compiler.RuntimeRetainValidation (3.5s)
+info: Project/Compiler/RuntimeRetainValidation.lean:14:0: 'Project.Compiler.ArithmeticModule.retain_valid' depends on axioms: [propext]
+ℹ [3290/3294] Built Project.Compiler.RuntimeAllocValidation (3.6s)
+info: Project/Compiler/RuntimeAllocValidation.lean:14:0: 'Project.Compiler.ArithmeticModule.alloc_valid' depends on axioms: [propext]
+ℹ [3292/3302] Built Project.Compiler.RuntimeReleaseValidation (3.6s)
+info: Project/Compiler/RuntimeReleaseValidation.lean:14:0: 'Project.Compiler.ArithmeticModule.release_valid' depends on axioms: [propext]
+ℹ [3293/3302] Replayed Project.Artifact.Binary.ValidationParts
+info: Project/Artifact/Binary/ValidationParts.lean:25:0: 'Wasm.Binary.validateFunctionPairs_eq_cons' depends on axioms: [propext]
+info: Project/Artifact/Binary/ValidationParts.lean:26:0: 'Wasm.Binary.validateRaw_eq_of_parts' depends on axioms: [propext]
+✔ [3299/3302] Built LeanExe.Source.ScalarHeadEvaluation (2.9s)
+✔ [3300/3302] Built LeanExe.Source.ScalarLiteralEvaluation (1.1s)
+✔ [3301/3302] Built LeanExe.Source.ScalarReannotationEvaluation (1.0s)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanLocalSyntax
+- Project.Compiler.ScalarLowering

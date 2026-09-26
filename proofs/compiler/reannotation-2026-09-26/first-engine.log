@@ -1,0 +1,11 @@
+file:///Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/test/arithmetic_engine.mjs:23
+  throw new Error(`invalid checked execution group: ${suite}`);
+        ^
+
+Error: invalid checked execution group: reannotation
+    at file:///Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/test/arithmetic_engine.mjs:23:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:413:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:660:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.13.0

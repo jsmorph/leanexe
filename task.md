@@ -23,7 +23,10 @@ WASM execution group passes 771 native Lean/V8 comparisons across 46 declaration
 including fourteen range declarations. All 35 prior modules retain identical
 bytes. The full native fixture contains 686 declarations.
 
-Next: archive the checked source, binaries, logs and failures. Then extend operand equivalence through compound guard
+Evidence, exact modules, hashes, test sources and retained failures are in
+[the comparison operand archive](proofs/compiler/reannotation-2026-09-26/README.md).
+
+Next: extend operand equivalence through compound guard
 conditions, dependent branches and saved decisions before continuing broader
 compiler coverage. Full-dialect correctness remains unfinished. Keep increments
 focused, get each capability proved and executing end to end, and commit/push

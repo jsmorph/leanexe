@@ -1,0 +1,66 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [21/21] Building LeanExe.Extract.ScalarReannotation (1.1s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarReannotation.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarReannotation.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarReannotation.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarReannotation.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarReannotation.setup.json --json
+error: LeanExe/Extract/ScalarReannotation.lean:33:25: unsolved goals
+number : Nat
+x✝ type✝ numeral✝ evidence✝ : Lean.Expr
+type : ResultType
+foundType : scalarResultType? type✝ = some type
+foundValue : naturalLiteral? numeral✝ = some number
+h✝ : typedLiteralInstance? number type evidence✝ = true
+⊢ evidence✝ = ?m.159
+error: LeanExe/Extract/ScalarReannotation.lean:61:23: `simp` made no progress
+error: LeanExe/Extract/ScalarReannotation.lean:62:58: unsolved goals
+case binary
+source target sourceHead✝ : Lean.Expr
+operation✝ : UInt64 → UInt64 → UInt64
+targetHead✝ sourceLeft✝ targetLeft✝ sourceRight✝ targetRight✝ : Lean.Expr
+sourceMeaning : Head sourceHead✝ operation✝
+targetMeaning : Head targetHead✝ operation✝
+left : Reannotates sourceLeft✝ targetLeft✝
+right : Reannotates sourceRight✝ targetRight✝
+ihl : reannotation? sourceLeft✝ targetLeft✝ = true
+ihr : reannotation? sourceRight✝ targetRight✝ = true
+first : ScalarPrimitive
+sourceFound : ScalarPrimitive.ofHead? sourceHead✝ = some first
+sourceValue : first.denote = operation✝
+targetFound : ScalarPrimitive.ofHead? targetHead✝ = some first
+targetValue : first.denote = operation✝
+⊢ ((sourceHead✝ = targetHead✝ ∧ sourceLeft✝ = targetLeft✝) ∧ sourceRight✝ = targetRight✝ ∨
+      (match annotatedNumeral? ((sourceHead✝.app sourceLeft✝).app sourceRight✝),
+          annotatedNumeral? ((targetHead✝.app targetLeft✝).app targetRight✝) with
+        | some first, some second => first == second
+        | x, x_1 => false) =
+        true) ∨
+    (first == first) = true
+error: LeanExe/Extract/ScalarReannotation.lean:69:90: unsolved goals
+case numeral.x_2
+source target : Lean.Expr
+number✝ : Nat
+sourceNumeral✝ targetNumeral✝ sourceEvidence✝ targetEvidence✝ : Lean.Expr
+sourceType targetType : ResultType
+sourceNumber : NaturalLiteral number✝ sourceNumeral✝
+targetNumber : NaturalLiteral number✝ targetNumeral✝
+sourceInstance : TypedLiteralInstance number✝ sourceType sourceEvidence✝
+targetInstance : TypedLiteralInstance number✝ targetType targetEvidence✝
+⊢ ∀ (sourceHead sourceLeft sourceRight targetHead targetLeft targetRight : Lean.Expr),
+    typedLiteralExpr sourceType sourceNumeral✝ sourceEvidence✝ = (sourceHead.app sourceLeft).app sourceRight →
+      typedLiteralExpr targetType targetNumeral✝ targetEvidence✝ = (targetHead.app targetLeft).app targetRight → False
+
+case numeral.x_3
+source target : Lean.Expr
+number✝ : Nat
+sourceNumeral✝ targetNumeral✝ sourceEvidence✝ targetEvidence✝ : Lean.Expr
+sourceType targetType : ResultType
+sourceNumber : NaturalLiteral number✝ sourceNumeral✝
+targetNumber : NaturalLiteral number✝ targetNumeral✝
+sourceInstance : TypedLiteralInstance number✝ sourceType sourceEvidence✝
+targetInstance : TypedLiteralInstance number✝ targetType targetEvidence✝
+⊢ ∀ (data : Lean.MData) (source : Lean.Expr) (data_1 : Lean.MData) (target : Lean.Expr),
+    typedLiteralExpr sourceType sourceNumeral✝ sourceEvidence✝ = Lean.Expr.mdata data source →
+      typedLiteralExpr targetType targetNumeral✝ targetEvidence✝ = Lean.Expr.mdata data_1 target → False
+error: LeanExe/Extract/ScalarReannotation.lean:77:25: Unknown identifier `sizeOf_induction`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarReannotation
+error: build failed

@@ -1,0 +1,49 @@
+⚠ [1/149] Replayed LeanExe.Examples.AsciiDigits
+warning: LeanExe/Examples/AsciiDigits.lean:103:30: `if_false` has been deprecated: Use `ite_false` instead
+warning: LeanExe/Examples/AsciiDigits.lean:109:78: `if_true` has been deprecated: Use `ite_true` instead
+⚠ [105/149] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [131/149] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [136/149] Replayed LeanExe.Extract.ScalarFunc
+warning: LeanExe/Extract/ScalarFunc.lean:76:28: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [rangeCase, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [148/312] Built LeanExe.Extract.Eval (1.0s)
+✔ [150/312] Built LeanExe.Wasm.ByteIO (975ms)
+✔ [152/312] Built LeanExe.Extract.Report (1.5s)
+✔ [192/312] Built LeanExe.Source.ScalarReannotation:c.o (337ms)
+✔ [193/312] Built LeanExe.Source.ScalarReannotatedComparison:c.o (174ms)
+✔ [194/312] Built LeanExe.Source.ScalarCompoundGuard:c.o (123ms)
+✔ [206/312] Built LeanExe.Extract.ScalarReannotation:c.o (243ms)
+✔ [207/312] Built LeanExe.Extract.ScalarReannotatedComparison:c.o (184ms)
+✔ [208/312] Built LeanExe.Extract.ScalarGuardSyntax:c.o (229ms)
+✔ [297/312] Built LeanExe.Wasm.Binary:c.o (6.8s)
+✔ [304/312] Built LeanExe.Wasm.Wat (1.0s)
+✔ [305/312] Built LeanExe.Extract.OwnershipReport (1.1s)
+✔ [308/312] Built LeanExe.CLI (1.2s)
+✔ [310/312] Built Main (910ms)
+✔ [312/312] Built «lean-wasm»:exe (1.2s)
+Build completed successfully (312 jobs).
