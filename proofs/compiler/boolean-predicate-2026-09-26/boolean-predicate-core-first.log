@@ -1,0 +1,93 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [46/80] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [76/83] Built LeanExe.Extract.ScalarBooleanFunctionLookup (897ms)
+✔ [78/85] Built LeanExe.Extract.ScalarBooleanLocalCore (1.0s)
+✔ [79/85] Built LeanExe.Extract.ScalarBooleanLocalFacts (1.4s)
+✔ [80/85] Built LeanExe.Extract.ScalarBooleanLocalAcceptance (1.5s)
+✔ [82/88] Built LeanExe.Extract.ScalarBooleanLocalCorrectness (1.0s)
+✔ [84/90] Built LeanExe.Extract.ScalarBooleanLocal (867ms)
+✔ [87/96] Built LeanExe.Extract.ScalarBooleanLocalBindings (929ms)
+✖ [96/96] Building LeanExe.Extract.ScalarExprCore (12s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExprCore.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.setup.json --json
+error: LeanExe/Extract/ScalarExprCore.lean:316:41: Unknown identifier `_g`
+error: LeanExe/Extract/ScalarExprCore.lean:316:41: Unknown identifier `_g`
+warning: LeanExe/Extract/ScalarExprCore.lean:320:0: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarExprCore.lean:320:0: declaration uses `sorry`
+error: LeanExe/Extract/ScalarExprCore.lean:405:29: Tactic `rewrite` failed: motive is not type correct:
+  fun _a =>
+    (match _boolean : _a with
+      | none => none
+      | some expression_1 =>
+        match expression_1, _boolean with
+        | Source.Scalar.BooleanLocal.predicate 0 index input, _boolean =>
+          match locals[index]?.bind ScalarBinding.booleanPredicateFunction? with
+          | some function =>
+            match _boolean : booleanLocalOperands? input with
+            | none => none
+            | some value => do
+              let condition ←
+                extractBooleanLocalWith locals value fun operand _member => extractScalarExprWith locals operand
+              function (guardWord condition)
+          | none => do
+            let condition ←
+              extractBooleanLocalWith locals expression_1 fun operand _member => extractScalarExprWith locals operand
+            pure (guardWord condition)
+        | x, _boolean => do
+          let condition ←
+            extractBooleanLocalWith locals expression_1 fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)) =
+      do
+      let condition ←
+        extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+      pure (guardWord condition)
+Error: Application type mismatch: The argument
+  fun expression _boolean => Option IR.Expr
+has type
+  (expression : Source.Scalar.BooleanLocal) → _a = some expression → Type
+but is expected to have type
+  (expression : Source.Scalar.BooleanLocal) → booleanLocalOperands? expression✝.expr = some expression → Type
+in the application
+  extractScalarExprWith.match_29 expression✝.expr fun expression _boolean => Option IR.Expr
+
+Explanation: The rewrite tactic rewrites an expression 'e' using an equality 'a = b' by the following process. First, it looks for all 'a' in 'e'. Second, it tries to abstract these occurrences of 'a' to create a function 'm := fun _a => ...', called the *motive*, with the property that 'm a' is definitionally equal to 'e'. Third, we observe that 'congrArg' implies that 'm a = m b', which can be used with lemmas such as 'Eq.mpr' to change the goal. However, if 'e' depends on specific properties of 'a', then the motive 'm' might not typecheck.
+
+Possible solutions: use rewrite's 'occs' configuration option to limit which occurrences are rewritten, or use 'simp' or 'conv' mode, which have strategies for certain kinds of dependencies (these tactics can handle proofs and 'Decidable' instances whose types depend on the rewritten term, and 'simp' can apply user-defined '@[congr]' theorems as well).
+
+locals : List ScalarBinding
+expression : Source.Scalar.BooleanLocal
+noBoolean :
+  ∀ (index : Nat), index ∈ expression.functions → locals[index]?.bind ScalarBinding.booleanPredicateFunction? = none
+⊢ (match _boolean : booleanLocalOperands? expression.expr with
+    | none => none
+    | some expression_1 =>
+      match expression_1, _boolean with
+      | Source.Scalar.BooleanLocal.predicate 0 index input, _boolean =>
+        match locals[index]?.bind ScalarBinding.booleanPredicateFunction? with
+        | some function =>
+          match _boolean : booleanLocalOperands? input with
+          | none => none
+          | some value => do
+            let condition ←
+              extractBooleanLocalWith locals value fun operand _member => extractScalarExprWith locals operand
+            function (guardWord condition)
+        | none => do
+          let condition ←
+            extractBooleanLocalWith locals expression_1 fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | x, _boolean => do
+        let condition ←
+          extractBooleanLocalWith locals expression_1 fun operand _member => extractScalarExprWith locals operand
+        pure (guardWord condition)) =
+    do
+    let condition ←
+      extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+    pure (guardWord condition)
+error: LeanExe/Extract/ScalarExprCore.lean:422:2: `simp` made no progress
+error: LeanExe/Extract/ScalarExprCore.lean:551:2: No goals to be solved
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExprCore
+error: build failed

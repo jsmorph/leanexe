@@ -1,0 +1,34 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [47/97] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [97/97] Building LeanExe.Extract.ScalarExprCore (12s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExprCore.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.setup.json --json
+error: LeanExe/Extract/ScalarExprCore.lean:414:12: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:431:78: Application type mismatch: The argument
+  Eq.symm parsed
+has type
+  some value = booleanLocalOperands? ((Lean.Expr.bvar index).app expression.expr)
+but is expected to have type
+  some value = some (Source.Scalar.BooleanLocal.predicate 0 index expression.expr)
+in the application
+  Option.some.inj (Eq.symm parsed)
+warning: LeanExe/Extract/ScalarExprCore.lean:448:10: This simp argument is unused:
+  found
+
+Hint: Omit it from the simp argument list.
+  [apply] simp
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExprCore.lean:456:69: This simp argument is unused:
+  found
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [extractBooleanLocalWith, extractBooleanLocal, noPredicate]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExprCore
+error: build failed

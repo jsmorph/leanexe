@@ -1,0 +1,300 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [47/98] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [97/98] Replayed LeanExe.Extract.ScalarExprCore
+warning: LeanExe/Extract/ScalarExprCore.lean:448:10: This simp argument is unused:
+  found
+
+Hint: Omit it from the simp argument list.
+  [apply] simp
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExprCore.lean:459:69: This simp argument is unused:
+  found
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [extractBooleanLocalWith, extractBooleanLocal, noPredicate]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✖ [98/98] Building LeanExe.Extract.ScalarExpr (1.3s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExpr.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExpr.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExpr.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExpr.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExpr.setup.json --json
+warning: LeanExe/Extract/ScalarExpr.lean:188:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:201:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarExpr.lean:946:4: Tactic `contradiction` failed
+
+case case54
+locals : List ScalarBinding
+name typeName : Lean.Name
+resultType : Lean.Expr
+typeBi : Lean.BinderInfo
+paramName : Lean.Name
+value : Lean.Expr
+paramBi : Lean.BinderInfo
+body : Lean.Expr
+nondep : Bool
+rejected : scalarResultType? resultType = none
+x✝ : booleanType? resultType = none
+target : IR.Expr
+compiled :
+  (match none with
+    | none =>
+      match booleanType? resultType with
+      | none => none
+      | some val =>
+        match _boolean : booleanLocalOperands? value with
+        | none => none
+        | some expression => do
+          let _ ←
+            extractBooleanLocalWith (ScalarBinding.boolean (IR.Expr.u64 0) :: locals) expression fun operand _member =>
+                extractScalarExprWith (ScalarBinding.boolean (IR.Expr.u64 0) :: locals) operand
+          have function : ScalarBinding :=
+            ScalarBinding.booleanPredicateFunction fun argument => do
+              let condition ←
+                extractBooleanLocalWith (ScalarBinding.boolean argument :: locals) expression fun operand _member =>
+                    extractScalarExprWith (ScalarBinding.boolean argument :: locals) operand
+              pure (guardWord condition)
+          extractScalarExprWith (function :: locals) body
+    | some val => do
+      let _ ← extractScalarExprWith (ScalarBinding.boolean (IR.Expr.u64 0) :: locals) value
+      have function : ScalarBinding :=
+        ScalarBinding.booleanFunction fun argument =>
+          extractScalarExprWith (ScalarBinding.boolean argument :: locals) value
+      extractScalarExprWith (function :: locals) body) =
+    some target
+⊢ Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals)
+    (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+      (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body nondep)
+error: LeanExe/Extract/ScalarExpr.lean:947:2: Too many variable names provided at alternative `case55`: 15 provided, but 14 expected
+error: LeanExe/Extract/ScalarExpr.lean:948:40: Application type mismatch: The argument
+  matched
+has type
+  Source.Scalar.BooleanType
+of sort `Type` but is expected to have type
+  scalarResultType? ?m.3286 = some ?m.3287
+of sort `Prop` in the application
+  scalarResultType_sound matched
+error: LeanExe/Extract/ScalarExpr.lean:956:31: Invalid rewrite argument: Expected an equality or iff proof or definition name, but `rejected` is a value of type
+  Lean.Name
+error: LeanExe/Extract/ScalarExpr.lean:959:44: Application type mismatch: The argument
+  parsed
+has type
+  Lean.Expr
+of sort `Type` but is expected to have type
+  booleanLocalOperands? ?m.3317 = some ?m.3318
+of sort `Prop` in the application
+  booleanLocalOperands_sound parsed
+error: LeanExe/Extract/ScalarExpr.lean:968:2: Too many variable names provided at alternative `case58`: 12 provided, but 3 expected
+error: LeanExe/Extract/ScalarExpr.lean:970:10: Unknown identifier `rejected`
+error: LeanExe/Extract/ScalarExpr.lean:968:102: unsolved goals
+case case58
+locals : List ScalarBinding
+name : Lean.Expr
+typeName : booleanLocalOperands? name = none
+target : IR.Expr
+compiled :
+  (match _boolean : booleanLocalOperands? name with
+    | none => none
+    | some expression =>
+      match expression, _boolean with
+      | Source.Scalar.BooleanLocal.predicate 0 index input, _boolean =>
+        match locals[index]?.bind ScalarBinding.booleanPredicateFunction? with
+        | some function =>
+          match _boolean : booleanLocalOperands? input with
+          | none => none
+          | some value =>
+            (extractBooleanLocalWith locals value fun operand _member => extractScalarExprWith locals operand).bind
+              fun condition => function (guardWord condition)
+        | none =>
+          (extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand).bind
+            fun condition => some (guardWord condition)
+      | x, _boolean =>
+        (extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand).bind
+          fun condition => some (guardWord condition)) =
+    some target
+⊢ Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals) ((Lean.Expr.const `Bool.toUInt64 []).app name)
+error: LeanExe/Extract/ScalarExpr.lean:971:2: Too many variable names provided at alternative `case59`: 14 provided, but 9 expected
+error: LeanExe/Extract/ScalarExpr.lean:973:10: Unknown identifier `foundInput`
+error: LeanExe/Extract/ScalarExpr.lean:973:22: Unknown identifier `rejected`
+error: LeanExe/Extract/ScalarExpr.lean:971:123: unsolved goals
+case case59
+locals : List ScalarBinding
+name : Lean.Expr
+typeName : Nat
+resultType : Lean.Expr
+typeBi : booleanLocalOperands? name = some (Source.Scalar.BooleanLocal.predicate 0 typeName resultType)
+paramName : IR.Expr → Option IR.Expr
+domain : locals[typeName]?.bind ScalarBinding.booleanPredicateFunction? = some paramName
+value : booleanLocalOperands? resultType = none
+paramBi : booleanLocalOperands? name = some (Source.Scalar.BooleanLocal.predicate 0 typeName resultType)
+target : IR.Expr
+compiled :
+  (match _boolean : booleanLocalOperands? name with
+    | none => none
+    | some expression =>
+      match expression, _boolean with
+      | Source.Scalar.BooleanLocal.predicate 0 index input, _boolean =>
+        match locals[index]?.bind ScalarBinding.booleanPredicateFunction? with
+        | some function =>
+          match _boolean : booleanLocalOperands? input with
+          | none => none
+          | some value =>
+            (extractBooleanLocalWith locals value fun operand _member => extractScalarExprWith locals operand).bind
+              fun condition => function (guardWord condition)
+        | none =>
+          (extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand).bind
+            fun condition => some (guardWord condition)
+      | x, _boolean =>
+        (extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand).bind
+          fun condition => some (guardWord condition)) =
+    some target
+⊢ Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals) ((Lean.Expr.const `Bool.toUInt64 []).app name)
+error: LeanExe/Extract/ScalarExpr.lean:974:2: Too many variable names provided at alternative `case60`: 16 provided, but 11 expected
+error: LeanExe/Extract/ScalarExpr.lean:976:27: Unknown identifier `foundInput`
+error: LeanExe/Extract/ScalarExpr.lean:976:39: Unknown identifier `foundResult`
+error: LeanExe/Extract/ScalarExpr.lean:976:4: `simp` made no progress
+error: LeanExe/Extract/ScalarExpr.lean:981:2: Too many variable names provided at alternative `case61`: 13 provided, but 8 expected
+error: LeanExe/Extract/ScalarExpr.lean:983:10: Unknown identifier `different`
+error: LeanExe/Extract/ScalarExpr.lean:981:109: unsolved goals
+case case61
+locals : List ScalarBinding
+name : Lean.Expr
+typeName : Nat
+input : Lean.Expr
+resultType : booleanLocalOperands? name = some (Source.Scalar.BooleanLocal.predicate 0 typeName input)
+typeBi : locals[typeName]?.bind ScalarBinding.booleanPredicateFunction? = none
+paramName : booleanLocalOperands? name = some (Source.Scalar.BooleanLocal.predicate 0 typeName input)
+domain :
+  ∀ (operand : Lean.Expr),
+    operand ∈ (Source.Scalar.BooleanLocal.predicate 0 typeName input).operands →
+      ∀ {target : IR.Expr},
+        extractScalarExprWith locals operand = some target →
+          Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals) operand
+target : IR.Expr
+compiled :
+  (match _boolean : booleanLocalOperands? name with
+    | none => none
+    | some expression =>
+      match expression, _boolean with
+      | Source.Scalar.BooleanLocal.predicate 0 index input, _boolean =>
+        match locals[index]?.bind ScalarBinding.booleanPredicateFunction? with
+        | some function =>
+          match _boolean : booleanLocalOperands? input with
+          | none => none
+          | some value =>
+            (extractBooleanLocalWith locals value fun operand _member => extractScalarExprWith locals operand).bind
+              fun condition => function (guardWord condition)
+        | none =>
+          (extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand).bind
+            fun condition => some (guardWord condition)
+      | x, _boolean =>
+        (extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand).bind
+          fun condition => some (guardWord condition)) =
+    some target
+⊢ Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals) ((Lean.Expr.const `Bool.toUInt64 []).app name)
+error: LeanExe/Extract/ScalarExpr.lean:986:21: Application type mismatch: The argument
+  compiled
+has type
+  (match _boolean : booleanLocalOperands? name with
+    | none => none
+    | some expression =>
+      match expression, _boolean with
+      | Source.Scalar.BooleanLocal.predicate 0 index input, _boolean =>
+        match locals[index]?.bind ScalarBinding.booleanPredicateFunction? with
+        | some function =>
+          match _boolean : booleanLocalOperands? input with
+          | none => none
+          | some value => do
+            let condition ←
+              extractBooleanLocalWith locals value fun operand _member => extractScalarExprWith locals operand
+            function (guardWord condition)
+        | none => do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | x, _boolean => do
+        let condition ←
+          extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+        pure (guardWord condition)) =
+    some target
+of sort `Prop` but is expected to have type
+  Lean.Expr
+of sort `Type` in the application
+  ih compiled
+error: LeanExe/Extract/ScalarExpr.lean:988:21: Function expected at
+  ih
+but this term has type
+  Lean.Expr
+
+Note: Expected a function because this term is being applied to the argument
+  (by simpa only [extractScalarExprWith] using compiled)
+error: LeanExe/Extract/ScalarExpr.lean:989:2: Too many variable names provided at alternative `case64`: 24 provided, but 14 expected
+error: LeanExe/Extract/ScalarExpr.lean:990:68: Tactic `contradiction` failed
+
+case case64
+locals : List ScalarBinding
+expr hvar : Lean.Name
+hliteral : Lean.Expr
+hnatural : Lean.BinderInfo
+hconverted : Lean.Name
+hofNat hrun : Lean.Expr
+hpure : Lean.BinderInfo
+hbind : Lean.Expr
+hchoice : Bool
+hunitApp : Source.Scalar.ResultType
+hpunitApp : booleanType? hliteral = none
+hbin : scalarResultType? hofNat = some hunitApp
+target : IR.Expr
+compiled :
+  (if hofNat = hofNat then
+      match scalarResultType? hofNat with
+      | none => none
+      | some val =>
+        match booleanType? hliteral with
+        | none => none
+        | some val =>
+          extractScalarExprWith locals
+            (Lean.Expr.letE expr (Lean.Expr.forallE hvar hofNat hliteral hnatural)
+              (Lean.Expr.lam hconverted hofNat hrun hpure) hbind hchoice)
+    else none) =
+    some target
+⊢ Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals)
+    (Lean.Expr.letE expr (Lean.Expr.forallE hvar ((Lean.Expr.const `Id [Lean.Level.zero]).app hofNat) hliteral hnatural)
+      (Lean.Expr.lam hconverted ((Lean.Expr.const `Id [Lean.Level.zero]).app hofNat) hrun hpure) hbind hchoice)
+error: LeanExe/Extract/ScalarExpr.lean:604:2: Alternative `case65` has not been provided
+error: LeanExe/Extract/ScalarExpr.lean:604:2: Alternative `case66` has not been provided
+error: LeanExe/Extract/ScalarExpr.lean:604:2: Alternative `case67` has not been provided
+error: LeanExe/Extract/ScalarExpr.lean:604:2: Alternative `case68` has not been provided
+error: LeanExe/Extract/ScalarExpr.lean:604:2: Alternative `case69` has not been provided
+error: LeanExe/Extract/ScalarExpr.lean:1012:4: Alternative `booleanPredicateFunction` has not been provided
+warning: LeanExe/Extract/ScalarExpr.lean:1203:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:1222:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExpr
+error: build failed
