@@ -53,6 +53,12 @@ The source and mathematical lemmas check with:
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.SourceChecks
 ```
 
+The checked WASM helper proofs cover structure accessors, sign and magnitude, boundary distance, frozen-coordinate reads, and the complete all-frozen scan.  The scan theorem proves termination, source agreement, and store preservation from the array representation.  These execution proofs check with:
+
+```sh
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.ExecutionChecks
+```
+
 The artifact generator checks the compiler-produced WAT and writes the Talos execution model and annotation equalities:
 
 ```sh
