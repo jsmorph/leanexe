@@ -12,6 +12,10 @@ def ResultType.expr : ResultType → Lean.Expr
   | .word => .const ``UInt64 []
   | .identity inner => .app (.const ``Id [.zero]) inner.expr
 
+@[simp] theorem ResultType.expr_ne_bool (type : ResultType) :
+    type.expr ≠ .const ``Bool [] := by
+  cases type <;> simp [ResultType.expr]
+
 namespace Identity
 
 /-- Canonical standard Id operations, including their complete instance evidence. -/

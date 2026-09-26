@@ -4876,6 +4876,114 @@ def customNegated (x y : UInt64) : UInt64 := @ite UInt64 (¬ x < y) (customNegat
 def customNeDecision (x y : UInt64) : Decidable (x ≠ y) := inferInstance
 def customNe (x y : UInt64) : UInt64 := @ite UInt64 (x ≠ y) (customNeDecision x y) x y
 
+def idComparisonEq (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@Eq (Id UInt64) x y) (instDecidableEqUInt64 x y) (x + 1) (y + 3)
+
+def idComparisonNe (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@Ne (Id (Id UInt64)) x y)
+    (@instDecidableNot (@Eq (Id (Id UInt64)) x y) (instDecidableEqUInt64 x y)) (x - y) (y + 1)
+
+def idComparisonLt (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@LT.lt (Id UInt64) instLTUInt64 x y) (UInt64.decLt x y) (x * 3) (y + 7)
+
+def idComparisonLe (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@LE.le (Id (Id UInt64)) instLEUInt64 x y) (UInt64.decLe x y) (x ^^^ y) (y / x)
+
+def idComparisonGt (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@GT.gt (Id UInt64) instLTUInt64 x y) (UInt64.decLt y x) (x + y) (y - x)
+
+def idComparisonGe (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@GE.ge (Id (Id UInt64)) instLEUInt64 x y) (UInt64.decLe y x) (x % y) (y * 7)
+
+def rangeIdComparisonExit (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    @ite (Id (ForInStep UInt64))
+      (@LT.lt (Id UInt64) instLTUInt64 (UInt64.ofNat i) (seed % 7 : UInt64))
+      (UInt64.decLt (UInt64.ofNat i) (seed % 7))
+      (pure (.yield a))
+      (@ite (Id (ForInStep UInt64))
+        (@Eq (Id (Id UInt64)) ((a + UInt64.ofNat i + 1) % 5 : UInt64) (0 : UInt64))
+        (instDecidableEqUInt64 ((a + UInt64.ofNat i + 1) % 5) 0)
+        (pure (.done (a + UInt64.ofNat i + 1)))
+        (pure (.yield (a + UInt64.ofNat i + 1))))
+
+def idComparisonNegated (x y : UInt64) : UInt64 :=
+  @ite UInt64 (Not (@LE.le (Id (Id (Id UInt64))) instLEUInt64 x y))
+    (@instDecidableNot (@LE.le (Id (Id (Id UInt64))) instLEUInt64 x y) (UInt64.decLe x y))
+    (x + 11) (y - 13)
+
+def idComparisonCompound (x y : UInt64) : UInt64 :=
+  @ite UInt64 ((@Eq (Id UInt64) x y) ∨ (@LT.lt (Id (Id UInt64)) instLTUInt64 x y))
+    (@instDecidableOr (@Eq (Id UInt64) x y) (@LT.lt (Id (Id UInt64)) instLTUInt64 x y)
+      (instDecidableEqUInt64 x y) (UInt64.decLt x y)) (x * 3) (y / x)
+
+def idComparisonDependent (x y : UInt64) : UInt64 :=
+  @dite UInt64 (@Eq (Id (Id UInt64)) x y) (instDecidableEqUInt64 x y)
+    (fun _ => let f := fun z : UInt64 => z + x; f y)
+    (fun _ => y - x)
+
+def idComparisonDecide (x y : UInt64) : UInt64 :=
+  let flag := @decide (@GE.ge (Id UInt64) instLEUInt64 x y) (UInt64.decLe y x)
+  if flag then x + 17 else y + 19
+
+def idComparisonChoice (x y : UInt64) : UInt64 :=
+  let flag := @ite Bool (@Eq (Id UInt64) x y) (instDecidableEqUInt64 x y) (x != 0) (y == 0)
+  if flag then x ^^^ y else x * 7
+
+def idComparisonDo (x y : UInt64) : UInt64 := Id.run do
+  let f := fun z : UInt64 =>
+    @ite UInt64 (@LT.lt (Id UInt64) instLTUInt64 z y) (UInt64.decLt z y) (z + 1) (z * 3)
+  let value ← @ite (Id UInt64) (@Eq (Id (Id UInt64)) x y) (instDecidableEqUInt64 x y)
+    (pure (f x)) (pure (f (x + y)))
+  return value + f y
+
+def rangeIdComparisonDecide (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let flag := @decide (@LT.lt (Id (Id UInt64)) instLTUInt64 (UInt64.ofNat i) (seed % 7 : UInt64))
+      (UInt64.decLt (UInt64.ofNat i) (seed % 7))
+    if flag then continue
+    a := a + UInt64.ofNat i + 1
+    if a % 5 == 0 then break
+  return a
+
+def rangeIdComparisonDependent (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    @dite (Id (ForInStep UInt64)) (@GE.ge (Id (Id UInt64)) instLEUInt64 (UInt64.ofNat i) (seed % 11 : UInt64))
+      (UInt64.decLe (seed % 11) (UInt64.ofNat i))
+      (fun _ => pure (.done (a + UInt64.ofNat i)))
+      (fun _ => pure (.yield (a * 3 + UInt64.ofNat i)))
+
+def idComparisonCustomDecision (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@Eq (Id UInt64) x y) ((fun d : Decidable (x = y) => d) (instDecidableEqUInt64 x y)) (x + 1) (y + 3)
+
+def idComparisonCustomOrder (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@LT.lt (Id UInt64) { lt := fun a b => a = b } x y)
+    (instDecidableEqUInt64 x y) (x + 1) (y + 3)
+
+def idComparisonUnsupported (x y : UInt64) : UInt64 :=
+  @ite UInt64 (@Eq (Id UInt64) (UInt64.ofNat (toString x).length) y)
+    (instDecidableEqUInt64 (UInt64.ofNat (toString x).length) y) (x + 1) (y + 3)
+
+def rangeIdComparisonUnsupported (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    @ite (Id (ForInStep UInt64)) (@Eq (Id UInt64) (UInt64.ofNat (toString i).length) a)
+      (instDecidableEqUInt64 (UInt64.ofNat (toString i).length) a)
+      (pure (.done a)) (pure (.yield (a + 1)))
+
+def rangeIdComparisonEvidenceAnnotations (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    @ite (Id (ForInStep UInt64))
+      (@LT.lt (Id UInt64) instLTUInt64 (UInt64.ofNat i) (seed % 7))
+      (UInt64.decLt (UInt64.ofNat i) (seed % 7))
+      (pure (.yield a))
+      (@ite (Id (ForInStep UInt64))
+        (@Eq (Id (Id UInt64)) ((a + UInt64.ofNat i + 1) % 5) 0)
+        (instDecidableEqUInt64 ((a + UInt64.ofNat i + 1) % 5) 0)
+        (pure (.done (a + UInt64.ofNat i + 1)))
+        (pure (.yield (a + UInt64.ofNat i + 1))))
+
+
 end ArithmeticModeTest
 
 run_elab do
@@ -5456,6 +5564,21 @@ run_elab do
       `ArithmeticModeTest.rangeIdArithmeticContinue,
       `ArithmeticModeTest.rangeIdArithmeticBounds,
       `ArithmeticModeTest.rangeIdArithmeticStep,
+      `ArithmeticModeTest.idComparisonEq,
+      `ArithmeticModeTest.idComparisonNe,
+      `ArithmeticModeTest.idComparisonLt,
+      `ArithmeticModeTest.idComparisonLe,
+      `ArithmeticModeTest.idComparisonGt,
+      `ArithmeticModeTest.idComparisonGe,
+      `ArithmeticModeTest.rangeIdComparisonExit,
+      `ArithmeticModeTest.idComparisonNegated,
+      `ArithmeticModeTest.idComparisonCompound,
+      `ArithmeticModeTest.idComparisonDependent,
+      `ArithmeticModeTest.idComparisonDecide,
+      `ArithmeticModeTest.idComparisonChoice,
+      `ArithmeticModeTest.idComparisonDo,
+      `ArithmeticModeTest.rangeIdComparisonDecide,
+      `ArithmeticModeTest.rangeIdComparisonDependent,
       `ArithmeticModeTest.rangeBinaryStepThree] do
     match LeanExe.Extract.Arithmetic.compileEnvironment env `ArithmeticModeTest name with
     | .error message => throwError "arithmetic mode rejected {name}: {message}"
@@ -5467,6 +5590,12 @@ run_elab do
             LeanExe.Wasm.Binary.CoreWasm.moduleBytes normal do
           throwError "arithmetic mode changed production bytes for {name}"
   for name in [`ArithmeticModeTest.natBinding,
+      `ArithmeticModeTest.rangeIdComparisonEvidenceAnnotations,
+      `ArithmeticModeTest.idComparisonCustomDecision,
+      `ArithmeticModeTest.idComparisonCustomOrder,
+      `ArithmeticModeTest.idComparisonUnsupported,
+      `ArithmeticModeTest.rangeIdComparisonUnsupported,
+
       `ArithmeticModeTest.unsupportedLocalBody,
       `ArithmeticModeTest.rangeTwice,
       `ArithmeticModeTest.rangeUnsupportedFunction,

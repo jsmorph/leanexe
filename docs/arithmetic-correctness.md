@@ -45,7 +45,13 @@ public Nat parameters/results. Custom
 instances, top-level helper calls, recursion, general runtime Nat,
 heap values, imports, and floats are excluded from the current theorem.
 Comparisons use the standard UInt64 instances and exact standard decision
-procedures. `>` and `≥` have their own elaborated heads, using the standard `<` and `≤`
+procedures. Propositional `=`, `≠`, `<`, `≤`, `>` and `≥` also accept finite `Id`
+layers on their UInt64 type argument. The source syntax retains these annotations.
+The condition and decision procedure must contain identical operand expressions;
+use explicit UInt64 operand annotations or local bindings when expected types
+would otherwise make their elaborated expressions differ. Boolean `==` and `!=`
+heads still require an unannotated UInt64 type argument.
+`>` and `≥` have their own elaborated heads, using the standard `<` and `≤`
 decision procedures with reversed operands. `≠` preserves standard inequality
 evidence. `¬` can wrap any admitted comparison, including another negation,
 and its exact standard decision evidence is checked recursively. The emitted

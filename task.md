@@ -9,6 +9,13 @@ type retains finite `Id` annotations. Preserve exact source types and standard
 decision evidence, prove extraction and lowering, and check the real compiler
 output against native Lean. Use focused dependency builds and execution tests.
 
+The six comparison forms retain their exact types and standard instance/decision
+evidence. Extraction and lowering proofs pass, and fifteen declarations pass
+240 native/IR comparisons. One initial loop probe has different annotations in
+its condition operands and decision operands; it remains a rejection test.
+The accepted loop variant has explicit UInt64 operand annotations. General
+compiler proof and real WASM execution checks are pending.
+
 ## Main integration — complete
 
 Main includes `ciogpt` through `3a0222be`. The fetched `origin/main` at `a4655383`
