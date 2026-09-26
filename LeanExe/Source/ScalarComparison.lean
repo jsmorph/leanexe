@@ -4,7 +4,13 @@ namespace LeanExe.Source.Scalar
 
 /-- Canonical Lean comparison forms, with their native UInt64 meanings. -/
 inductive Comparison where
-  | eq | ne | lt | le | gt | ge | beq | bne
+  | eq (type : ResultType := .word)
+  | ne (type : ResultType := .word)
+  | lt (type : ResultType := .word)
+  | le (type : ResultType := .word)
+  | gt (type : ResultType := .word)
+  | ge (type : ResultType := .word)
+  | beq | bne
   | negate (comparison : Comparison)
   | boolNot (comparison : BooleanComparison)
   deriving DecidableEq, Repr
@@ -12,12 +18,12 @@ inductive Comparison where
 namespace Comparison
 
 def denote : Comparison → UInt64 → UInt64 → Bool
-  | .eq => fun x y => decide (x = y)
-  | .ne => fun x y => decide (x ≠ y)
-  | .lt => fun x y => decide (x < y)
-  | .le => fun x y => decide (x ≤ y)
-  | .gt => fun x y => decide (x > y)
-  | .ge => fun x y => decide (x ≥ y)
+  | .eq _ => fun x y => decide (x = y)
+  | .ne _ => fun x y => decide (x ≠ y)
+  | .lt _ => fun x y => decide (x < y)
+  | .le _ => fun x y => decide (x ≤ y)
+  | .gt _ => fun x y => decide (x > y)
+  | .ge _ => fun x y => decide (x ≥ y)
   | .beq => fun x y => x == y
   | .bne => fun x y => x != y
   | .negate op => fun x y => !(denote op x y)
@@ -30,15 +36,15 @@ def boolExpr (op : Comparison) (a b : Lean.Expr) : Lean.Expr :=
       (.const ``instDecidableEqUInt64 []))) a) b
 
 def condition : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
-  | .eq, a, b => .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``UInt64 [])) a) b
-  | .ne, a, b => .app (.app (.app (.const ``Ne [.succ .zero]) (.const ``UInt64 [])) a) b
-  | .lt, a, b => .app (.app (.app (.app (.const ``LT.lt [.zero]) (.const ``UInt64 []))
+  | .eq type, a, b => .app (.app (.app (.const ``Eq [.succ .zero]) type.expr) a) b
+  | .ne type, a, b => .app (.app (.app (.const ``Ne [.succ .zero]) type.expr) a) b
+  | .lt type, a, b => .app (.app (.app (.app (.const ``LT.lt [.zero]) type.expr)
       (.const ``instLTUInt64 [])) a) b
-  | .le, a, b => .app (.app (.app (.app (.const ``LE.le [.zero]) (.const ``UInt64 []))
+  | .le type, a, b => .app (.app (.app (.app (.const ``LE.le [.zero]) type.expr)
       (.const ``instLEUInt64 [])) a) b
-  | .gt, a, b => .app (.app (.app (.app (.const ``GT.gt [.zero]) (.const ``UInt64 []))
+  | .gt type, a, b => .app (.app (.app (.app (.const ``GT.gt [.zero]) type.expr)
       (.const ``instLTUInt64 [])) a) b
-  | .ge, a, b => .app (.app (.app (.app (.const ``GE.ge [.zero]) (.const ``UInt64 []))
+  | .ge type, a, b => .app (.app (.app (.app (.const ``GE.ge [.zero]) type.expr)
       (.const ``instLEUInt64 [])) a) b
   | .beq, a, b => .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool []))
       (boolExpr .beq a b)) (.const ``Bool.true [])
@@ -49,13 +55,13 @@ def condition : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
       (.app (.const ``Bool.not []) (op.expr a b))) (.const ``Bool.true [])
 
 def evidence : Comparison → Lean.Expr → Lean.Expr → Lean.Expr
-  | .eq, a, b => .app (.app (.const ``instDecidableEqUInt64 []) a) b
-  | .ne, a, b => .app (.app (.const ``instDecidableNot []) (condition .eq a b))
+  | .eq _, a, b => .app (.app (.const ``instDecidableEqUInt64 []) a) b
+  | .ne type, a, b => .app (.app (.const ``instDecidableNot []) (condition (.eq type) a b))
       (.app (.app (.const ``instDecidableEqUInt64 []) a) b)
-  | .lt, a, b => .app (.app (.const ``UInt64.decLt []) a) b
-  | .le, a, b => .app (.app (.const ``UInt64.decLe []) a) b
-  | .gt, a, b => .app (.app (.const ``UInt64.decLt []) b) a
-  | .ge, a, b => .app (.app (.const ``UInt64.decLe []) b) a
+  | .lt _, a, b => .app (.app (.const ``UInt64.decLt []) a) b
+  | .le _, a, b => .app (.app (.const ``UInt64.decLe []) a) b
+  | .gt _, a, b => .app (.app (.const ``UInt64.decLt []) b) a
+  | .ge _, a, b => .app (.app (.const ``UInt64.decLe []) b) a
   | .beq, a, b => .app (.app (.const ``instDecidableEqBool []) (boolExpr .beq a b))
       (.const ``Bool.true [])
   | .bne, a, b => .app (.app (.const ``instDecidableEqBool []) (boolExpr .bne a b))

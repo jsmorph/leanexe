@@ -344,5 +344,8 @@
   "rangeIdArithmeticYield",
   "rangeIdArithmeticContinue",
   "rangeIdArithmeticBounds",
-  "rangeIdArithmeticStep"
+  "rangeIdArithmeticStep",
+  "rangeIdComparisonExit",
+  "rangeIdComparisonDecide",
+  "rangeIdComparisonDependent"
 ]
