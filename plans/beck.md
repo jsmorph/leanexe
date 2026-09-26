@@ -19,9 +19,11 @@ Use integer cofactor directions and signed `UInt64` numerators with a shared den
 - [x] Create `beck` from local `main` at `8dbb8e8a` in a separate worktree.
 - [x] Read repository instructions, compiler and verification documentation, and the drone source and final theorem statements.
 - [x] Compile and run the entry and native comparison.
-- [ ] Prove validation and exact arithmetic alongside executable increments.
-- [ ] Prove preserving-direction construction and rounding progress.
-- [ ] Prove the universal discrepancy, termination, and resource theorems.
+- [x] Prove exact arithmetic under the incidence assumptions.
+- [x] Prove preserving-direction construction and rounding progress.
+- [x] Prove discrepancy and sufficient rounding fuel for supported incidence inputs.
+- [ ] Prove input validation establishes the incidence assumptions and the input memberships.
+- [ ] Prove allocation and WASM resource bounds.
 - [ ] Check the identified binary and its independent proof package.
 - [x] Add exhaustive small tests, edge cases, and an overlapping demonstration.
 - [ ] Increase capacity with the complete theorem and execution tests preserved.
