@@ -1,0 +1,93 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [46/103] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [100/106] Replayed LeanExe.Extract.ScalarExpr
+warning: LeanExe/Extract/ScalarExpr.lean:188:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:201:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:1256:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:1275:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [101/106] Built LeanExe.Source.ScalarRangeSupported (850ms)
+⚠ [103/106] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [104/106] Built LeanExe.Extract.ScalarRange (2.3s)
+✔ [105/119] Built LeanExe.Extract.ScalarRangeCorrectness (936ms)
+✔ [113/119] Built LeanExe.Source.ScalarManyFunctionSemantics (988ms)
+✔ [114/120] Built LeanExe.Source.ScalarStep (1.6s)
+✔ [116/123] Built LeanExe.Extract.ScalarStep (8.0s)
+⚠ [118/123] Built LeanExe.Extract.ScalarStepEquations (9.6s)
+warning: LeanExe/Extract/ScalarStepEquations.lean:155:33: This simp argument is unused:
+  BooleanType.expr
+
+Hint: Omit it from the simp argument list.
+  [apply] simp
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [120/126] Built LeanExe.Extract.ScalarStepSupported (8.1s)
+✔ [121/126] Built LeanExe.Extract.ScalarStepAcceptance (1.2s)
+✔ [123/129] Built LeanExe.Source.ScalarRangeCount (1.1s)
+✔ [124/130] Built LeanExe.Source.ScalarRangeStrideSyntax (887ms)
+✔ [125/130] Built LeanExe.Extract.ScalarRangeCount (1.0s)
+✔ [126/133] Built LeanExe.Source.ScalarRangeExitSyntax (888ms)
+✔ [127/133] Built LeanExe.Extract.ScalarRangeStrideSyntax (879ms)
+✔ [128/135] Built LeanExe.Source.ScalarRangeExitSupported (1.1s)
+✔ [130/135] Built LeanExe.Extract.ScalarRangeExitSyntax (1.1s)
+⚠ [132/138] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [133/138] Built LeanExe.Extract.ScalarStepCorrectness (1.1s)
+✔ [134/138] Built LeanExe.Extract.ScalarRangeExit (7.9s)
+✔ [136/138] Built LeanExe.Extract.ScalarRangeExitCorrectness (1.1s)
+✔ [137/138] Built LeanExe.Source.ScalarFunction (980ms)
+⚠ [138/138] Built LeanExe.Extract.ScalarFunc (1.0s)
+warning: LeanExe/Extract/ScalarFunc.lean:76:28: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [rangeCase, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Build completed successfully (138 jobs).
