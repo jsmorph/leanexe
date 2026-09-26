@@ -1,0 +1,374 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [48/106] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [106/106] Building LeanExe.Extract.ScalarExprCore (7.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExprCore.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.setup.json --json
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+sourceType body : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+sourceType body : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+input output value : Lean.Expr
+binderName✝ : Lean.Name
+domain body : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+action : Source.Scalar.BooleanAction
+_action : booleanAction? value = some action
+operand : Lean.Expr
+_member : operand ∈ action.leaf.operands
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+input output value : Lean.Expr
+binderName✝ : Lean.Name
+domain body : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+action : Source.Scalar.BooleanAction
+_action : booleanAction? value = some action
+c : IR.Cond
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+input output value : Lean.Expr
+binderName✝ : Lean.Name
+domain body : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+input output value : Lean.Expr
+binderName✝ : Lean.Name
+domain body : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+bound : IR.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence onTrue onFalse : Lean.Expr
+_h : comparison? condition evidence = none
+_g : compoundGuard? condition evidence = none
+guard : Source.Scalar.BooleanLocalGuard
+_booleanGuard : booleanLocalGuard? condition evidence = some guard
+operand : Lean.Expr
+_member : operand ∈ guard.value.operands
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence onTrue onFalse : Lean.Expr
+_h : comparison? condition evidence = none
+_g : compoundGuard? condition evidence = none
+guard : Source.Scalar.BooleanLocalGuard
+_booleanGuard : booleanLocalGuard? condition evidence = some guard
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence onTrue onFalse : Lean.Expr
+_h : comparison? condition evidence = none
+_g : compoundGuard? condition evidence = none
+guard : Source.Scalar.BooleanLocalGuard
+_booleanGuard : booleanLocalGuard? condition evidence = some guard
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence onTrue onFalse : Lean.Expr
+_h : comparison? condition evidence = none
+guard : Source.Scalar.CompoundGuard
+_g : compoundGuard? condition evidence = some guard
+operand : Lean.Expr
+_member : operand ∈ guard.tree.operands
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence onTrue onFalse : Lean.Expr
+_h : comparison? condition evidence = none
+guard : Source.Scalar.CompoundGuard
+_g : compoundGuard? condition evidence = some guard
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence onTrue onFalse : Lean.Expr
+_h : comparison? condition evidence = none
+guard : Source.Scalar.CompoundGuard
+_g : compoundGuard? condition evidence = some guard
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence onTrue onFalse : Lean.Expr
+op : Source.Scalar.Comparison
+left right : Lean.Expr
+_h : comparison? condition evidence = some (op, left, right)
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence onTrue onFalse : Lean.Expr
+op : Source.Scalar.Comparison
+left right : Lean.Expr
+_h : comparison? condition evidence = some (op, left, right)
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence onTrue onFalse : Lean.Expr
+op : Source.Scalar.Comparison
+left right : Lean.Expr
+_h : comparison? condition evidence = some (op, left, right)
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence onTrue onFalse : Lean.Expr
+op : Source.Scalar.Comparison
+left right : Lean.Expr
+_h : comparison? condition evidence = some (op, left, right)
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+index : Nat
+argument : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+index : Nat
+argument : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+index : Nat
+first second : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+index : Nat
+first second : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+argument : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+argument : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+left right : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+left right : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+left right : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+left right : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence : Lean.Expr
+binderName✝¹ : Lean.Name
+trueDomain onTrue : Lean.Expr
+binderInfo✝¹ : Lean.BinderInfo
+binderName✝ : Lean.Name
+falseDomain onFalse : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+_guard : dependentGuard? condition evidence trueDomain falseDomain = none
+guard : Source.Scalar.BooleanLocalGuard
+_booleanGuard : booleanLocalDependentGuard? condition evidence trueDomain falseDomain = some guard
+operand : Lean.Expr
+_member : operand ∈ guard.value.operands
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence : Lean.Expr
+binderName✝¹ : Lean.Name
+trueDomain onTrue : Lean.Expr
+binderInfo✝¹ : Lean.BinderInfo
+binderName✝ : Lean.Name
+falseDomain onFalse : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+_guard : dependentGuard? condition evidence trueDomain falseDomain = none
+guard : Source.Scalar.BooleanLocalGuard
+_booleanGuard : booleanLocalDependentGuard? condition evidence trueDomain falseDomain = some guard
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence : Lean.Expr
+binderName✝¹ : Lean.Name
+trueDomain onTrue : Lean.Expr
+binderInfo✝¹ : Lean.BinderInfo
+binderName✝ : Lean.Name
+falseDomain onFalse : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+_guard : dependentGuard? condition evidence trueDomain falseDomain = none
+guard : Source.Scalar.BooleanLocalGuard
+_booleanGuard : booleanLocalDependentGuard? condition evidence trueDomain falseDomain = some guard
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence : Lean.Expr
+binderName✝¹ : Lean.Name
+trueDomain onTrue : Lean.Expr
+binderInfo✝¹ : Lean.BinderInfo
+binderName✝ : Lean.Name
+falseDomain onFalse : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+guard : Source.Scalar.DecidedGuard
+_guard : dependentGuard? condition evidence trueDomain falseDomain = some guard
+operand : Lean.Expr
+_member : operand ∈ guard.tree.operands
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence : Lean.Expr
+binderName✝¹ : Lean.Name
+trueDomain onTrue : Lean.Expr
+binderInfo✝¹ : Lean.BinderInfo
+binderName✝ : Lean.Name
+falseDomain onFalse : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+guard : Source.Scalar.DecidedGuard
+_guard : dependentGuard? condition evidence trueDomain falseDomain = some guard
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+type condition evidence : Lean.Expr
+binderName✝¹ : Lean.Name
+trueDomain onTrue : Lean.Expr
+binderInfo✝¹ : Lean.BinderInfo
+binderName✝ : Lean.Name
+falseDomain onFalse : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+guard : Source.Scalar.DecidedGuard
+_guard : dependentGuard? condition evidence trueDomain falseDomain = some guard
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+head left right : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:74: Tactic `assumption` failed
+
+locals : List ScalarBinding
+head left right : Lean.Expr
+⊢ booleanLocalOperands? ?m.6158 = some sorry
+error: LeanExe/Extract/ScalarExprCore.lean:420:95: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  c ≥ 0
+  b ≥ 0
+  b - c ≥ 0
+  a ≥ 0
+  a - b ≥ 1
+where
+ a := ↑(sizeOf value)
+ b := ↑(sizeOf operand)
+ c := ↑(sizeOf (Lean.Expr.letE declName✝ (Lean.Expr.const `Bool []) value body nondep✝))
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:420:58: Unknown identifier `expression`
+error: LeanExe/Extract/ScalarExprCore.lean:420:86: maximum number of errors (100; from option `maxErrors`) reached, exiting
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExprCore
+error: build failed
