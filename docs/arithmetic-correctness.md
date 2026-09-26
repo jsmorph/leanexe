@@ -206,9 +206,12 @@ including nested calls and negation. Equality and inequality can compare these
 results, through either `==`/`!=` or `decide` of a Boolean Eq/Ne proposition. The
 parser checks the standard comparison and decision instances. Boolean-valued
 choices admit these calls in their condition and either branch when the condition
-is a Boolean value or Boolean Eq/Ne relation. Dependent branches may bind an
-unused condition proof; both branches are checked. Choices over other propositions
-and direct Boolean contexts containing these calls remain subsequent capabilities.
+is a Boolean value, Boolean Eq/Ne relation or an admitted proposition. Propositional
+conditions include UInt64 comparisons, literals, negation and junctions; their
+word operands can contain converted calls. Dependent branches may bind an unused
+condition proof; both branches are checked. Saved Boolean variables inside mixed
+propositional guards and direct Boolean contexts containing these calls remain
+subsequent capabilities.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
