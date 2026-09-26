@@ -201,14 +201,29 @@ def structuralBEqApplication? (env : Environment) (name : Name) (expr : Expr) : 
     | (_, _type :: evidence :: _left :: _right :: []) => structuralBEqEvidence? env 16 evidence
     | _ => false
 
+def standardNarrowLiteral (expr : Expr) : Bool :=
+  match expr.consumeMData with
+  | .app (.app (.app (.const ``OfNat.ofNat [.zero]) (.const type [])) (.lit (.natVal value)))
+      (.app (.const instanceName []) (.lit (.natVal found))) =>
+      value == found &&
+        ((type == ``UInt8 && instanceName == ``UInt8.instOfNat) ||
+         (type == ``UInt32 && instanceName == ``UInt32.instOfNat))
+  | _ => false
+
+def primitiveClassMethod (name : Name) : Bool :=
+  name == ``OfNat.ofNat || name == ``HAdd.hAdd || name == ``HSub.hSub ||
+    name == ``HMul.hMul || name == ``HDiv.hDiv || name == ``HMod.hMod ||
+    name == ``LT.lt || name == ``LE.le || name == ``GT.gt || name == ``GE.ge ||
+    name == ``Min.min || name == ``Max.max
+
 def classEvidenceNormalizedApp? (env : Environment) (name : Name) (expr : Expr) : Option Expr :=
-  if structuralBEqApplication? env name expr then
+  if structuralBEqApplication? env name expr || standardNarrowLiteral expr then
     none
   else if isEvidenceProjectionFunction env name || classEvidenceApplication? env expr then
     -- Resolve the selected method without unfolding class operations inside
     -- runtime operands (for example a byte-array indexing operation).
     let normalized :=
-      match env.getProjectionFnInfo? name with
+      match if primitiveClassMethod name then env.getProjectionFnInfo? name else none with
       | some projection =>
           let (head, args) := appFnArgs expr
           let evidenceCount := projection.numParams + 1

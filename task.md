@@ -44,6 +44,21 @@ model identity checks are pending. Commit/push this integration checkpoint, then
 record and push final validation. Do not merge main in this task. Integration
 validation is INCOMPLETE.
 
+The integration checkpoint is pushed at `6f05315c`. The byte-I/O gate passed
+all 46 audits, and running-sum source passed all nine audits. Exact-byte checks
+exposed a difference in narrow constants after class resolution. Globally folding
+raw narrow conversions also changed existing GPT instructions, so that attempt
+was discarded. The final repair recognizes only exact standard UInt8/UInt32
+literal evidence and keeps the prior normalization for other class operations.
+Custom instances still resolve to their actual values. Four narrow numeral cases
+and 56 existing class-evidence comparisons pass. All four generated GPT models
+match the checked iogpt caches; the three quantized binaries also match their
+registered artifacts byte for byte. The current FP32 model matches iogpt, while
+its separately frozen historical artifact remains 19,083 bytes (current compiler
+output: 18,966 bytes). That distinction predates this merge. Final scalar,
+byte-I/O, running-sum binary and affected runtime checks are running before the
+validation archive is committed. No proof statement has been weakened.
+
 ---
 
 # Scalar compiler correctness: arithmetic complete; expanding coverage
