@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+1536 native/Boolean-input step predicate direct step let syntax comparisons and 896 invalid-input tests and 64 admission controls passed
