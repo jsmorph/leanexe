@@ -204,7 +204,10 @@ as a Boolean conversion. Conjunctions and disjunctions can combine these calls
 with flags, word-input predicate calls and other supported Boolean expressions,
 including nested calls and negation. Equality and inequality can compare these
 results, through either `==`/`!=` or `decide` of a Boolean Eq/Ne proposition. The
-parser checks the standard comparison and decision instances. Boolean choices
+parser checks the standard comparison and decision instances. Boolean-valued
+choices admit these calls in their condition and either branch when the condition
+is a Boolean value or Boolean Eq/Ne relation. Dependent branches may bind an
+unused condition proof; both branches are checked. Choices over other propositions
 and direct Boolean contexts containing these calls remain subsequent capabilities.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,

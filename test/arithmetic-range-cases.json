@@ -410,5 +410,9 @@
   "rangeBooleanPredicateEqualityStep",
   "rangeBooleanPredicateEqualityContinue",
   "rangeBooleanPredicateEqualityOuter",
-  "rangeBooleanPredicateEqualityOuterCapture"
+  "rangeBooleanPredicateEqualityOuterCapture",
+  "rangeBooleanPredicateChoiceStep",
+  "rangeBooleanPredicateChoiceContinue",
+  "rangeBooleanPredicateChoiceOuter",
+  "rangeBooleanPredicateChoiceOuterCapture"
 ]

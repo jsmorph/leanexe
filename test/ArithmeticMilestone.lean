@@ -4415,6 +4415,83 @@ def rangeIdArithmeticStep (count seed : UInt64) : UInt64 :=
       else return .yield (value + 1)
     f (a % 7 == 0 && seed != 0)
 
+def booleanPredicateChoice (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != 0
+  let g := fun b : Bool => b || y == 0
+  (if f (x == y) then f false else g true).toUInt64 +
+    (if g false = f true then g (x == 0) else f (y == 0)).toUInt64 * 3
+
+def booleanPredicateChoiceDependent (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b || x == 0
+  let g := fun b : Bool => b && y != 0
+  (if _h : f (x == 0) ≠ g (x == y) then f false else !(g true)).toUInt64 +
+    (if _h : g false then !(f true) else g (f false)).toUInt64
+
+def booleanPredicateChoiceNested (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b || x == 0
+  let g := fun b : Bool => b && y != 0
+  (!(if f (x == y) then
+    (if _h : g true = f false then g false else f true)
+    else g (x == 0) && f (y == 0))).toUInt64
+
+def booleanPredicateChoiceArgument (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b || y == 0
+  let g := fun b : Bool => b && x != y
+  (f (if g (x == 0) then f false else g true)).toUInt64 +
+    (!(g (if _h : f true ≠ g false then g (f false) else f (g true)))).toUInt64
+
+def booleanPredicateChoiceBranches (x y : UInt64) : UInt64 :=
+  let saved := x == y
+  let f := fun b : Bool => b || saved
+  let y := y + 1
+  let g := fun b : Bool => !b && x == y
+  (if saved then f true else g false).toUInt64 +
+    (if _h : x != y then g true else f false).toUInt64 * 3
+
+def booleanPredicateChoiceBody (x y : UInt64) : UInt64 := Id.run do
+  let f : Bool → Id (Id Bool) := fun b => !b
+  let g := fun b : Bool => Bool.toUInt64 (if @Eq Bool (f b) true then f false else f true) == x
+  let a ← pure (if g (x == y) then g false else !(f true)).toUInt64
+  let b ← pure (!(if _h : g true then f false else g (f true))).toUInt64
+  return a + b
+
+def rangeBooleanPredicateChoiceStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b || a == 0
+    let g := fun b : Bool => !b && a != seed
+    a := a + UInt64.ofNat i
+    if (if f (a % 7 == 0) then g (a == seed) else f true).toUInt64 == 1 then break
+  return a
+
+def rangeBooleanPredicateChoiceContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != seed
+    if (!(if _h : f (UInt64.ofNat i % 3 == 0) then f (a == seed) else f true)).toUInt64 == 1 then continue
+    a := a * 3 + UInt64.ofNat i + 1
+  return a
+
+def rangeBooleanPredicateChoiceOuter (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b || seed == 0
+  let g := fun b : Bool => !b && seed != 1
+  let stop := count + (if f false then g true else f true).toUInt64
+  let mut a := seed + (if _h : g false = f true then f false else g false).toUInt64
+  for i in [:stop.toNat] do
+    if (!(if f (a % 7 == 0) then g (a == seed) else f true)).toUInt64 == 1 then break
+    a := a + UInt64.ofNat i + 1
+  return a + (if _h : g (f (a == seed)) ≠ f false then f true else g false).toUInt64
+
+def rangeBooleanPredicateChoiceOuterCapture (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun b : Bool => (!(if _h : f b then f (!b) else f b)).toUInt64 == 0
+  let mut a := seed
+  for i in [:count.toNat] do
+    let h := fun b : Bool => (if g b then f b else g false).toUInt64 == 1 && a != seed
+    if (if h (a % 5 == 0) then g (a == seed) else h true).toUInt64 == 1 then break
+    a := a + UInt64.ofNat i + 1
+  return a + (!(if _h : g (a == seed) then f true else g false)).toUInt64
+
 def booleanPredicateEqual (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => b && x != 0
   let g := fun b : Bool => b || y == 0
@@ -5561,6 +5638,10 @@ def rangeInputs : List (UInt64 × UInt64) :=
 
 def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
   [
+   ("rangeBooleanPredicateChoiceStep", rangeBooleanPredicateChoiceStep),
+   ("rangeBooleanPredicateChoiceContinue", rangeBooleanPredicateChoiceContinue),
+   ("rangeBooleanPredicateChoiceOuter", rangeBooleanPredicateChoiceOuter),
+   ("rangeBooleanPredicateChoiceOuterCapture", rangeBooleanPredicateChoiceOuterCapture),
    ("rangeBooleanPredicateEqualityStep", rangeBooleanPredicateEqualityStep),
    ("rangeBooleanPredicateEqualityContinue", rangeBooleanPredicateEqualityContinue),
    ("rangeBooleanPredicateEqualityOuter", rangeBooleanPredicateEqualityOuter),
@@ -5975,6 +6056,12 @@ def inputs : List (UInt64 × UInt64) :=
 
 def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
   [
+   ("booleanPredicateChoice", booleanPredicateChoice),
+   ("booleanPredicateChoiceDependent", booleanPredicateChoiceDependent),
+   ("booleanPredicateChoiceNested", booleanPredicateChoiceNested),
+   ("booleanPredicateChoiceArgument", booleanPredicateChoiceArgument),
+   ("booleanPredicateChoiceBranches", booleanPredicateChoiceBranches),
+   ("booleanPredicateChoiceBody", booleanPredicateChoiceBody),
    ("booleanPredicateEqual", booleanPredicateEqual),
    ("booleanPredicateDecideEqual", booleanPredicateDecideEqual),
    ("booleanPredicateEqualityNot", booleanPredicateEqualityNot),
