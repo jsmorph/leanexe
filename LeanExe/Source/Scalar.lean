@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarBooleanConditionInputs
 import LeanExe.Source.ScalarBooleanPropositionChoiceForm
 import LeanExe.Source.ScalarBooleanChoiceForm
 import LeanExe.Source.ScalarBooleanEqualityForm
@@ -86,6 +87,23 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (variables : guard.value.VariablesMean values booleans)
       (arguments : ∀ operand, operand ∈ guard.value.operands → EvalWith operand values (native operand))
       (branch : EvalWith (if guard.value.denote native booleans then t else e) (.unit :: values) value) :
+      EvalWith (guard.dependentBranch type.expr trueName falseName trueBi falseBi t e) values value
+  | chooseBooleanPredicate (guard : BooleanLocalGuard) (type : ResultType)
+      (member : index ∈ guard.value.functions)
+      (function : values[index]? = some (.booleanPredicateFunction f))
+      {native : BooleanLocal → Bool}
+      (arguments : ∀ input, input ∈ guard.form.inputs →
+        EvalWith (.app (.const ``Bool.toUInt64 []) input.expr) values (Bool.toUInt64 (native input)))
+      (branch : EvalWith (if guard.form.denoteInputs native then t else e) values value) :
+      EvalWith (guard.branch type.expr t e) values value
+  | chooseBooleanPredicateDependent (guard : BooleanLocalGuard) (type : ResultType)
+      (trueName falseName : Lean.Name) (trueBi falseBi : Lean.BinderInfo)
+      (member : index ∈ guard.value.functions)
+      (function : values[index]? = some (.booleanPredicateFunction f))
+      {native : BooleanLocal → Bool}
+      (arguments : ∀ input, input ∈ guard.form.inputs →
+        EvalWith (.app (.const ``Bool.toUInt64 []) input.expr) values (Bool.toUInt64 (native input)))
+      (branch : EvalWith (if guard.form.denoteInputs native then t else e) (.unit :: values) value) :
       EvalWith (guard.dependentBranch type.expr trueName falseName trueBi falseBi t e) values value
   | letE (value : EvalWith a values x) (body : EvalWith b (.word x :: values) y) :
       EvalWith (.letE name (.const ``UInt64 []) a b nondep) values y
@@ -269,6 +287,21 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (trueName falseName : Lean.Name) (trueBi falseBi : Lean.BinderInfo)
       (variables : guard.value.VariablesTyped types)
       (arguments : ∀ operand, operand ∈ guard.value.operands → SupportedWith types operand)
+      (onTrue : SupportedWith (.unit :: types) t) (onFalse : SupportedWith (.unit :: types) e) :
+      SupportedWith types (guard.dependentBranch type.expr trueName falseName trueBi falseBi t e)
+  | chooseBooleanPredicate (guard : BooleanLocalGuard) (type : ResultType)
+      (member : index ∈ guard.value.functions)
+      (function : types[index]? = some .booleanPredicateFunction)
+      (arguments : ∀ input, input ∈ guard.form.inputs →
+        SupportedWith types (.app (.const ``Bool.toUInt64 []) input.expr))
+      (onTrue : SupportedWith types t) (onFalse : SupportedWith types e) :
+      SupportedWith types (guard.branch type.expr t e)
+  | chooseBooleanPredicateDependent (guard : BooleanLocalGuard) (type : ResultType)
+      (trueName falseName : Lean.Name) (trueBi falseBi : Lean.BinderInfo)
+      (member : index ∈ guard.value.functions)
+      (function : types[index]? = some .booleanPredicateFunction)
+      (arguments : ∀ input, input ∈ guard.form.inputs →
+        SupportedWith types (.app (.const ``Bool.toUInt64 []) input.expr))
       (onTrue : SupportedWith (.unit :: types) t) (onFalse : SupportedWith (.unit :: types) e) :
       SupportedWith types (guard.dependentBranch type.expr trueName falseName trueBi falseBi t e)
   | letE (value : SupportedWith types a) (body : SupportedWith (.word :: types) b) :
@@ -517,6 +550,52 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     | true =>
       obtain ⟨value, body⟩ := iht (.unit :: values) (by simp [Value.kind, typed])
       exact ⟨value, .chooseBooleanDependent guard type tn fn tb fb hbooleans meanings (by simpa [flag] using body)⟩
+  | chooseBooleanPredicate guard type member present _ _ _ ihArgs iht ihe =>
+    obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
+    have inputFlag : ∀ input, input ∈ guard.form.inputs →
+        ∃ flag : Bool, EvalWith (.app (.const ``Bool.toUInt64 []) input.expr) values flag.toUInt64 := by
+      intro input member
+      obtain ⟨encoded, evaluated⟩ := ihArgs input member values typed
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let native : BooleanLocal → Bool := fun input =>
+      if member : input ∈ guard.form.inputs then (inputFlag input member).choose else false
+    have meanings : ∀ input, input ∈ guard.form.inputs →
+        EvalWith (.app (.const ``Bool.toUInt64 []) input.expr) values (native input).toUInt64 := by
+      intro input member
+      simpa only [native, dite_eq_left member] using (inputFlag input member).choose_spec
+    cases result : guard.form.denoteInputs native with
+    | false =>
+      obtain ⟨value, evaluated⟩ := ihe values typed
+      exact ⟨value, .chooseBooleanPredicate guard type member hf meanings
+        (by simpa only [result, Bool.false_eq_true, ↓reduceIte] using evaluated)⟩
+    | true =>
+      obtain ⟨value, evaluated⟩ := iht values typed
+      exact ⟨value, .chooseBooleanPredicate guard type member hf meanings
+        (by simpa only [result, ↓reduceIte] using evaluated)⟩
+  | chooseBooleanPredicateDependent guard type tn fn tb fb member present _ _ _ ihArgs iht ihe =>
+    obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
+    have inputFlag : ∀ input, input ∈ guard.form.inputs →
+        ∃ flag : Bool, EvalWith (.app (.const ``Bool.toUInt64 []) input.expr) values flag.toUInt64 := by
+      intro input member
+      obtain ⟨encoded, evaluated⟩ := ihArgs input member values typed
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let native : BooleanLocal → Bool := fun input =>
+      if member : input ∈ guard.form.inputs then (inputFlag input member).choose else false
+    have meanings : ∀ input, input ∈ guard.form.inputs →
+        EvalWith (.app (.const ``Bool.toUInt64 []) input.expr) values (native input).toUInt64 := by
+      intro input member
+      simpa only [native, dite_eq_left member] using (inputFlag input member).choose_spec
+    cases result : guard.form.denoteInputs native with
+    | false =>
+      obtain ⟨value, evaluated⟩ := ihe (.unit :: values) (by simp [Value.kind, typed])
+      exact ⟨value, .chooseBooleanPredicateDependent guard type tn fn tb fb member hf meanings
+        (by simpa only [result, Bool.false_eq_true, ↓reduceIte] using evaluated)⟩
+    | true =>
+      obtain ⟨value, evaluated⟩ := iht (.unit :: values) (by simp [Value.kind, typed])
+      exact ⟨value, .chooseBooleanPredicateDependent guard type tn fn tb fb member hf meanings
+        (by simpa only [result, ↓reduceIte] using evaluated)⟩
   | letE _ _ ihv ihb =>
     obtain ⟨x, hx⟩ := ihv values typed
     obtain ⟨y, hy⟩ := ihb (.word x :: values) (by simp [Value.kind, typed])
