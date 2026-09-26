@@ -380,5 +380,11 @@
   "rangePredicateInputStep",
   "rangePredicateInputStepCapture",
   "rangePredicateInputOuter",
-  "rangePredicateInputOuterCapture"
+  "rangePredicateInputOuterCapture",
+  "rangeBooleanPredicateBreak",
+  "rangeBooleanPredicateContinue",
+  "rangeBooleanPredicateCapture",
+  "rangeBooleanPredicateNested",
+  "rangeBooleanPredicateStepHelper",
+  "rangeBooleanPredicateUnused"
 ]

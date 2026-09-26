@@ -240,6 +240,35 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     rw [extractScalarStepWith_letPredicateFn]
     simp only [hc, bind, Option.bind_some]
     exact ht
+  | letBooleanPredicateFn expression type variables arguments _ ih =>
+    have totalBooleans (argument : LeanExe.IR.Expr) :
+        ∀ binding ∈ ScalarBinding.boolean argument :: locals.map ScalarStepBinding.toScalar, binding.Total := by
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · trivial
+      · exact scalarStepBindings_total total binding member
+    have accepts (argument : LeanExe.IR.Expr) := extractBooleanLocalWith_accepts
+      (.boolean argument :: locals.map ScalarStepBinding.toScalar) expression
+      (fun operand _ => extractScalarExprWith (.boolean argument :: locals.map ScalarStepBinding.toScalar) operand)
+      (by simpa [ScalarBinding.kind, scalarStepBindings_typed typed] using variables)
+      (fun operand member => extractScalarExprWith_accepts (arguments operand member) _
+        (by simpa [ScalarBinding.kind] using scalarStepBindings_typed typed) (totalBooleans argument))
+      (totalBooleans argument)
+    obtain ⟨checked, hc⟩ := accepts (.u64 0)
+    let f := fun argument => do
+      let condition ← extractBooleanLocalWith (.boolean argument :: locals.map ScalarStepBinding.toScalar) expression
+        (fun operand _ => extractScalarExprWith (.boolean argument :: locals.map ScalarStepBinding.toScalar) operand)
+      pure (guardWord condition)
+    have functionTotal : (ScalarBinding.booleanPredicateFunction f).Total := by
+      intro argument
+      obtain ⟨condition, found⟩ := accepts argument
+      exact ⟨guardWord condition, by simp [f, found]⟩
+    obtain ⟨target, ht⟩ := ih (.scalar (.booleanPredicateFunction f) :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total functionTotal)
+    refine ⟨target, ?_⟩
+    rw [extractScalarStepWith_letBooleanPredicateFn]
+    simp only [hc, bind, Option.bind_some]
+    exact ht
   | predicateInput input result _ ih =>
     obtain ⟨target, ht⟩ := ih locals typed total
     exact ⟨target, by rw [extractScalarStepWith_predicateInput]; exact ht⟩

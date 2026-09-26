@@ -88,6 +88,16 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
       Eval (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep) values outcome
+  | letBooleanPredicateFn (expression : BooleanLocal) (type : BooleanType)
+      {native : Bool → Lean.Expr → UInt64} {booleans : Bool → BooleanEnvironment}
+      (variables : ∀ x, expression.VariablesMean (.boolean x :: values.map Value.toScalar) (booleans x))
+      (arguments : ∀ x operand, operand ∈ expression.operands →
+        EvalWith operand (.boolean x :: values.map Value.toScalar) (native x operand))
+      (body : Eval b (.scalar (.booleanPredicateFunction
+        (fun x => expression.denote (native x) (booleans x))) :: values) outcome) :
+      Eval (.letE name
+        (.forallE typeName (.const ``Bool []) type.expr typeBi)
+        (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) values outcome
   | predicateInput (input : ResultType) (result : BooleanType)
       (inner : Eval (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep) values outcome) :
       Eval (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep) values outcome
@@ -260,6 +270,14 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       Supported types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep)
+  | letBooleanPredicateFn (expression : BooleanLocal) (type : BooleanType)
+      (variables : expression.VariablesTyped (.boolean :: types.map BindingKind.toScalar))
+      (arguments : ∀ operand, operand ∈ expression.operands →
+        SupportedWith (.boolean :: types.map BindingKind.toScalar) operand)
+      (body : Supported (.scalar .booleanPredicateFunction :: types) b) :
+      Supported types (.letE name
+        (.forallE typeName (.const ``Bool []) type.expr typeBi)
+        (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep)
   | predicateInput (input : ResultType) (result : BooleanType)
       (inner : Supported types (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep)) :
       Supported types (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep)
@@ -498,6 +516,24 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
       (fun x => expression.denote (native x) (booleans x))) :: values)
       (by simp [Value.kind, Scalar.Value.kind, typed])
     exact ⟨outcome, .letPredicateFn expression type
+      (fun x => (environments x).choose_spec) meanings evaluated⟩
+  | letBooleanPredicateFn expression type variables arguments _ ih =>
+    have environments := fun x => variables.evaluates (.boolean x :: values.map Value.toScalar)
+      (by simpa [Scalar.Value.kind] using typed_projection typed)
+    let booleans := fun x => (environments x).choose
+    have total := fun x operand member => (arguments operand member).evaluates
+      (.boolean x :: values.map Value.toScalar)
+      (by simpa [Scalar.Value.kind] using typed_projection typed)
+    let native : Bool → Lean.Expr → UInt64 := fun x operand =>
+      if member : operand ∈ expression.operands then (total x operand member).choose else 0
+    have meanings : ∀ x operand, operand ∈ expression.operands →
+        EvalWith operand (.boolean x :: values.map Value.toScalar) (native x operand) := by
+      intro x operand member
+      simpa only [native, dite_eq_left member] using (total x operand member).choose_spec
+    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.booleanPredicateFunction
+      (fun x => expression.denote (native x) (booleans x))) :: values)
+      (by simp [Value.kind, Scalar.Value.kind, typed])
+    exact ⟨outcome, .letBooleanPredicateFn expression type
       (fun x => (environments x).choose_spec) meanings evaluated⟩
   | predicateInput input result _ ih =>
     obtain ⟨outcome, evaluated⟩ := ih values typed

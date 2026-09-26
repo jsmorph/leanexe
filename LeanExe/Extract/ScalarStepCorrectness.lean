@@ -178,6 +178,19 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     exact guardWord_correct (extractBooleanLocalWith_correct expression _ _ _ hc inner
       (variables value) (fun operand member expression found =>
         extractScalarExprWith_correct (arguments value operand member) found inner))
+  | letBooleanPredicateFn expression type variables arguments _ ih =>
+    rw [extractScalarStepWith_letBooleanPredicateFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ih ht
+    apply bindings.cons
+    intro argument value target ha compiled
+    simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, rfl⟩ := compiled
+    have inner := bindings.toScalar.cons (binding := .boolean argument) (value := .boolean value) ha
+    exact guardWord_correct (extractBooleanLocalWith_correct expression _ _ _ hc inner
+      (variables value) (fun operand member expression found =>
+        extractScalarExprWith_correct (arguments value operand member) found inner))
   | predicateInput input result _ ih =>
     rw [extractScalarStepWith_predicateInput] at compiled
     exact ih compiled bindings
