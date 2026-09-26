@@ -179,9 +179,11 @@ Id annotations. Helpers capture words, flags and other supported local
 functions; nested helpers and shadowing preserve the captured values. Source
 evaluation, extraction and the compiler theorem distinguish predicate functions
 from words, flags and word-returning functions. Unused helper bodies and unused
-arguments are checked. Declaring these reusable helpers in loop-step scope or
-around a loop, reusable Bool-to-Bool helpers, and declarations with a broader
-Boolean enclosing body remain subsequent capabilities.
+arguments are checked. The same helpers can be declared inside loop-step bodies,
+where repeated calls may control yielding, `continue` and `break`. Step-valued
+helpers can capture them, and accumulator updates preserve their captured values.
+Declaring predicates around a loop, reusable Bool-to-Bool helpers, and declarations
+with a broader Boolean enclosing body remain subsequent capabilities.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
