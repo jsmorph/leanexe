@@ -10,7 +10,7 @@ def unwindLoopBody : Wasm.Program :=
 
 def unwindParams (fuel index state : Nat) (terrain history row : UInt64) : List Value :=
   [.i64 (UInt64.ofNat fuel), .i64 (UInt64.ofNat index), .i64 (UInt64.ofNat state),
-    .i64 terrain, .i64 terrain, .i64 history, .i64 history, .i64 row, .i64 row]
+    .i64 0, .i64 terrain, .i64 history, .i64 history, .i64 row, .i64 row]
 
 def unwindFrame (fuel index state : Nat) (terrain history row : UInt64) (tracked : Bool)
     (out0 out1 : UInt64) (aux : List Value) (s : Scratch) : Locals :=

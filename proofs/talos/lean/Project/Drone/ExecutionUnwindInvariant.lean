@@ -36,7 +36,7 @@ theorem unwind_entry (env : HostEnv Unit) (store : Store Unit)
       store (unwindFrame count index state terrain history row false 0 0
         (List.replicate 36 (.i64 0)) zeroPushScratch) env) :
     TerminatesWith env Project.Drone.«module» 24 store
-      [.i64 row, .i64 row, .i64 history, .i64 history, .i64 terrain, .i64 terrain,
+      [.i64 row, .i64 row, .i64 history, .i64 history, .i64 terrain, .i64 0,
         .i64 (UInt64.ofNat state), .i64 (UInt64.ofNat index), .i64 (UInt64.ofNat count)] P := by
   refine TerminatesWith.of_wp_entry_for (f := func24Def) rfl ?_
   change wp Project.Drone.«module» func24 _ store

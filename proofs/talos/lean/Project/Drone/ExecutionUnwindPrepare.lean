@@ -39,7 +39,7 @@ theorem unwind_altitude_spec (env : HostEnv Unit) (store : Store Unit)
   simp only [unwindLoopBody, func24, List.getElem?_cons_zero, List.getElem?_cons_succ,
     List.drop, List.take, List.cons_append, List.nil_append]
   wp_unwind_frame [hAux]
-  refine wp_call_tw (floorAt_exact env store terrain terrain heights index hTerrain hIndex) ?_
+  refine wp_call_tw (floorAt_exact env store 0 terrain heights index hTerrain hIndex) ?_
   rintro final values ⟨rfl, rfl⟩
   wp_unwind_frame [hAux, func20Def]
   refine wp_call_tw (altitude_exact env _ (floorAt heights index) state hState) ?_
