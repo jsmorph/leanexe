@@ -8,42 +8,39 @@ annotation fix. This compiler-proof task remains active; the completed drone tas
 is preserved separately at the end of this file. Lean runs locally through
 `tools/leanrun`. Full-dialect correctness is not yet proved.
 
-Dependent scalar and loop-step conditionals now accept proved-equivalent
-arithmetic operands in standard decision evidence. `DecidedGuard` retains the
-original guard tree, original evidence and independent `GuardDecision` witness.
-Both proof-lambda domains are checked exactly. Erased proof binders retain their
-lexical positions, preserving outer variables and helper captures.
+Saved `decide` values and ordinary/dependent Boolean-result proposition choices
+now accept proved-equivalent arithmetic operands in standard decision evidence.
+`DecidedGuard` preserves the original evidence and its independent witness;
+proof-lambda domains remain exact.
 
 The general source-to-WASM theorem and all fourteen axiom audits pass. Native
-Lean/V8 agree on 1,035 inputs across 62 declarations, including eighteen range
-declarations. All 54 prior modules retain identical bytes. The full native
-fixture contains 702 declarations. New focused tests pass 468 native/IR
-comparisons and 264 invalid-input tests. Previous dependent-if and compound
-syntax tests also pass: 304 and 336 comparisons, with eight and 144 rejections.
+Lean/V8 agree on 1,219 inputs across 73 declarations, including 21 range
+declarations. All 62 prior modules retain identical bytes. New focused tests
+pass 1,192 native/IR comparisons and 552 invalid-input tests. The previous three
+fixtures pass 912 comparisons and 100 rejections.
 
 Evidence, exact modules, source hashes and proof logs are in
-[the dependent decision archive](proofs/compiler/dependent-decision-2026-09-26/README.md).
-The preceding [compound guard](proofs/compiler/guard-decision-2026-09-26/README.md)
-and [atomic comparison](proofs/compiler/reannotation-2026-09-26/README.md) archives
-record their checked increments. The original comparison loop compiles unchanged.
+[the saved decision archive](proofs/compiler/saved-decision-2026-09-26/README.md).
+The preceding [dependent decision](proofs/compiler/dependent-decision-2026-09-26/README.md),
+[compound guard](proofs/compiler/guard-decision-2026-09-26/README.md), and
+[atomic comparison](proofs/compiler/reannotation-2026-09-26/README.md) archives
+record their checked increments.
 
-Next: extend proved decision evidence through saved `decide` values and
-Boolean-result proposition choices. Then continue broader compiler coverage.
-Full-dialect correctness remains unfinished. Keep increments focused, get each
-capability proved and executing end to end, and commit/push frequently.
+Next: extend Boolean-returning local helper support, including explicit result
+typing, lexical captures and calls. Then continue broader compiler coverage.
+Full-dialect correctness remains unfinished. Get each capability proved and
+executing end to end, and commit/push frequently.
 
-## Saved proposition decision equivalence — in progress
+## Saved proposition decision equivalence — complete
 
 Saved `decide` values and ordinary/dependent Boolean-result proposition choices
-now retain checked `DecidedGuard` evidence. The source proposition guard keeps
-its existing distinction from direct Boolean conditions. Scalar and loop-step
-correctness proofs pass, including reconstruction under erased proof binders.
+retain checked `DecidedGuard` evidence. The source proposition guard keeps its
+distinction from direct Boolean conditions. Scalar and loop-step correctness
+proofs pass, including reconstruction under erased proof binders.
 
-Focused tests pass 1,192 native/IR comparisons and 552 invalid-input tests. These
-cover saved/captured flags, nested Boolean choices, helper bodies, Id actions,
-unused values, loop break/continue, decision evidence and proof-lambda domains.
-The general compiler theorem and emitted-WASM checks are next. This increment
-is not yet recorded as complete.
+The general compiler theorem, fourteen axiom audits and emitted-Wasm checks pass.
+Focused tests cover saved/captured flags, nested Boolean choices, helper bodies,
+Id actions, unused values, loop break/continue, decision evidence and proof domains.
 
 ## Dependent decision equivalence — complete
 
