@@ -21,24 +21,9 @@ theorem membershipCleanup_exact (env : HostEnv Unit) (initial middle : Store Uni
       OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
       wp Project.Beck.«module» rest Q final frame env) :
     wp Project.Beck.«module» (membershipRelease ++ rest) Q middle frame env := by
-  rcases active with zero | ⟨rfl, fresh⟩
-  · apply membershipRelease_none env middle frame values (by simpa only [zero] using r7) r8
-    exact next middle current valid newOwned preserved budget
-  · have different : oldNode.root ≠ newNode.root := by
-      intro equal
-      have oldRoot := oldOwned.buffer.rootBound
-      have newRoot := newOwned.buffer.rootBound
-      have oldCapacity := oldOwned.buffer.capacity
-      have newCapacity := newOwned.buffer.capacity
-      simp only [regionsDisjoint, FreeNode.region, equal] at separated
-      rw [equal] at oldRoot
-      omega
-    apply membershipRelease_owned env initial middle original current frame oldNode oldRow newNode.root wordOwner
-      remaining pageLimit valid oldOwned preserved fresh budget different inputDifferent values r7 r8 r14 r21
-    intro finalValid finalFrame finalBudget
-    exact next _ _ finalValid
-      (newOwned.released oldNode oldOwned.buffer.rootBound (by have := oldOwned.buffer.addressBound; omega)
-        (regionsDisjoint_symm separated)) finalFrame finalBudget
+  rw [membership_release_shape]
+  exact previousCleanup_exact env initial middle original current frame 7 8 21 14 oldNode newNode oldRow newRow internal wordOwner
+    remaining pageLimit valid oldOwned newOwned preserved active separated inputDifferent budget values r7 r8 r14 r21 Q rest next
 
 #print axioms membershipCleanup_exact
 
