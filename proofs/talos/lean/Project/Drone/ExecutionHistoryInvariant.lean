@@ -32,7 +32,7 @@ theorem history_entry (env : HostEnv Unit) (store : Store Unit)
         | _ => False)
       store (historyFrame fuel index terrain previous history 0 0 (List.replicate 44 (.i64 0)) zeroPushScratch) env) :
     TerminatesWith env Project.Drone.«module» 22 store
-      [.i64 history, .i64 history, .i64 previous, .i64 previous, .i64 terrain, .i64 terrain,
+      [.i64 history, .i64 history, .i64 previous, .i64 previous, .i64 terrain, .i64 0,
         .i64 (UInt64.ofNat index), .i64 (UInt64.ofNat fuel)] P := by
   refine TerminatesWith.of_wp_entry_for (f := func22Def) rfl ?_
   change wp Project.Drone.«module» func22 _ store

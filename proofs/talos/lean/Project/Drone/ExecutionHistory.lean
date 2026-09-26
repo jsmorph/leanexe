@@ -16,7 +16,7 @@ theorem buildHistory_exact (env : HostEnv Unit) (initial : Store Unit) (initialH
     (hSeparate : regionsDisjoint terrainNode.region historyNode.region) :
     TerminatesWith env Project.Drone.«module» 22 initial
       [.i64 historyNode.root, .i64 historyNode.root, .i64 previousNode.root, .i64 previousNode.root,
-        .i64 terrainNode.root, .i64 terrainNode.root, .i64 (UInt64.ofNat index), .i64 (UInt64.ofNat count)]
+        .i64 terrainNode.root, .i64 0, .i64 (UInt64.ofNat index), .i64 (UInt64.ofNat count)]
       (AppendResult initialHeap initial terrainNode terrain (buildHistory count index terrain previous history)
         count remaining pageLimit) := by
   have hCount : count < UInt64.size := by have := hTerrain.values.size_lt; omega
