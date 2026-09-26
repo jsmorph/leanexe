@@ -1,0 +1,6 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/narrow_numeral_evidence.lean:16:0: error: NarrowNumeralEvidence.customByte: expected folded source value 91, got LeanExe.IR.Expr.u64Bin
+  (LeanExe.IR.U64Op.bitAnd)
+  (LeanExe.IR.Expr.u64 91)
+  (LeanExe.IR.Expr.u64 255)

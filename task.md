@@ -1,63 +1,55 @@
-# Current integration: ciogpt
+# Current integration: ciogpt — complete
 
 The user requested `ciogpt` from `correct`, merging `iogpt`, then pushing it for a
-subsequent merge into main. Parents: `correct` at `49f79f0f` and `iogpt` at
-`8f703c51`. Main remains unchanged. Both parents and the existing work are retained.
+subsequent merge into main. Merge commit `6f05315c` has parents `correct` at
+`49f79f0f` and `iogpt` at `8f703c51`. The final extraction fix is `cbefab5e`.
+Both commits are pushed to `origin/ciogpt`. Main remains unchanged.
 
-The six textual conflicts are resolved by retaining arithmetic and multi-export
-CLI entries, both extraction dependencies, both development histories and plan
-tracks, and the current scalar correctness status. The incoming I/O task record
-is retained below as history. General scalar compiler proofs remain the authority
-for their admitted subset; GPT and I/O have their separately documented proof
-boundaries. The latest arithmetic increment passed before integration and its
-previously pending archive is now retained.
+All six textual conflicts are resolved, retaining both compiler/proof tracks,
+both development histories, arithmetic and multi-export CLI entries, and both
+extraction dependencies. The prior correct checkpoint's pending arithmetic
+evidence is retained separately from this integration's fresh results.
 
-The combined compiler builds and the 178-file documentation check passes. The
-first aggregate build reached its 90-second limit while rebuilding dependencies;
-smaller emitter, range, extraction and final compiler targets all passed. A new
-mixed multi-export test reproduced a merge interaction: the scalar shortcut
-compiled only its first entry, omitting subsequent exports. It now applies only
-when no additional roots were requested; the unchanged test now passes. All nine
-general compiler audits pass on the combined compiler, as do 527 native Lean/V8
-comparisons across thirty declarations. No general-proof repair was needed.
+The merge exposed three areas needing repair. The scalar shortcut now applies
+only to single-export compilation, so mixed scalar/byte-array exports are kept.
+Arithmetic class-method resolution preserves runtime operands such as byte
+indexing; exact standard UInt8/UInt32 numeral evidence preserves the previous
+emitted constants while custom instances retain their actual meanings. A broader
+raw-constant-folding attempt changed existing GPT instructions and was discarded.
+The byte-I/O validator uses an explicit `List.head!` simplification after the
+shared decoder import narrowed. No proof statement or premise was weakened.
 
-The first I/O run exposed a second interaction: class-method normalization
-recursively unfolded byte indexing inside an arithmetic operand into unsupported
-matcher syntax. It now resolves the method's type/evidence prefix and reapplies
-runtime operands without normalizing their class operations. Six isolated narrow
-word/byte-access probes and the existing 56 custom/standard arithmetic comparisons
-pass. The unchanged I/O NaN tests and all 53 byte-I/O runs now pass; no
-custom-instance behavior was discarded. The first failure is retained in `../work/ciogpt-byte-io-before.log`.
+Fresh integration validation is COMPLETE:
 
-All twelve selected execution/documentation commands pass: byte I/O and host,
-heap loops, reference counts, quantized operations, FP32, packed data, running sum,
-CLI diagnostics, signed LEB encoding, thirteen WAT/binary comparisons and the
-178-file documentation check. All thirty selected scalar modules matched the
-pre-merge bytes at the first check. Final checks after the normalization fix are
-running now: general compiler audits/execution, exact echo/host proofs and the
-running-sum source and binary proof boundaries, using cached dependencies. The
-final scalar rerun passes all nine audits and 527 comparisons; all thirty modules
-remain byte-identical to correct. The I/O validator proof needed an explicit
-List.head! simplification after the shared decoder import became narrower; that
-proof passes with standard axioms. The remaining I/O/running-sum checks and GPT
-model identity checks are pending. Commit/push this integration checkpoint, then
-record and push final validation. Do not merge main in this task. Integration
-validation is INCOMPLETE.
+- All nine general scalar compiler axiom audits and 527 native Lean/V8 comparisons
+  across thirty declarations pass. All thirty emitted modules match correct.
+- All 46 byte-I/O theorem audits and the freshly compiled exact echo binary pass.
+- Running-sum source passes nine audits; its exact binary passes all six decoding,
+  validation and import/export audits and matches fresh compiler output.
+- All four regenerated GPT models and annotation caches match iogpt. The three
+  quantized binaries also match their registered artifacts byte for byte. The
+  current FP32 output remains 18,966 bytes and matches the iogpt model; its separate
+  historical frozen artifact remains 19,083 bytes. This distinction predates ciogpt.
+- Four narrow numeral cases, 56 class-evidence comparisons, six narrow arithmetic/
+  byte-access probes and the mixed multi-export test pass.
+- All twelve selected runtime/documentation commands pass: byte I/O and host,
+  heap loops, reference counts, quantized operations, FP32, packed data, running
+  sum, CLI diagnostics, LEB encoding, thirteen WAT/binary comparisons and 178
+  maintained Markdown files. Byte I/O, quantized operations and mixed exports
+  pass again after the final extraction adjustment.
 
-The integration checkpoint is pushed at `6f05315c`. The byte-I/O gate passed
-all 46 audits, and running-sum source passed all nine audits. Exact-byte checks
-exposed a difference in narrow constants after class resolution. Globally folding
-raw narrow conversions also changed existing GPT instructions, so that attempt
-was discarded. The final repair recognizes only exact standard UInt8/UInt32
-literal evidence and keeps the prior normalization for other class operations.
-Custom instances still resolve to their actual values. Four narrow numeral cases
-and 56 existing class-evidence comparisons pass. All four generated GPT models
-match the checked iogpt caches; the three quantized binaries also match their
-registered artifacts byte for byte. The current FP32 model matches iogpt, while
-its separately frozen historical artifact remains 19,083 bytes (current compiler
-output: 18,966 bytes). That distinction predates this merge. Final scalar,
-byte-I/O, running-sum binary and affected runtime checks are running before the
-validation archive is committed. No proof statement has been weakened.
+Evidence, hashes, commands and preserved failures are in
+[the integration archive](proofs/compiler/ciogpt-2026-09-25/README.md).
+The broader source/artifact aggregates, large GPT reference runs and unrelated
+type-safety archive retain their parent-revision records; they were not rebuilt
+for this merge. General correctness still applies to the admitted scalar/range
+subset. Byte I/O retains its modeled-host boundary, and running sum still lacks
+a universal WASM execution and memory theorem.
+
+Next: merge the pushed `ciogpt` into main when the user requests that step. Do not
+merge main as part of this task. Further dialect coverage remains incremental,
+following the scalar work record below; each increment needs end-to-end proofs,
+execution checks, a current task record, and frequent commits/pushes.
 
 ---
 

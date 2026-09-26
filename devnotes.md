@@ -17466,3 +17466,33 @@ The quantized CLI now selects the refreshed binary.  `tools/gpt2 --quantized --t
 The artifact aggregate passed the complete Riemann package and refreshed outward-grid package, then found a stale dependency in the reconstructed solver's frozen scan proof.  That proof reused the current outward-grid local frame, whose unused loop flag was removed with the current compiler output.  The frozen binary still writes the flag.  Its scan proof now defines the historical scratch fields and local frame beside the frozen loop shape, preserving the exact program and public theorem.  This removes the dependency on the current scan layout.
 
 The corrected frozen scan and complete scan-entry proofs pass.  The final `tools/artifact-proof.js check-all` run passes every registered binary package, behavioral specification, and declaration/axiom audit, including both complete GPT sessions.  The full source gate, complete Node execution suite, byte-I/O and running-sum gates, WAT/binary comparison, official conformance, quantized reference comparison, CLI test, and verifier identity test also pass.  The documentation identifies the merged binaries and preserves the historical benchmark and report revisions.  The running-sum universal WASM execution and memory proof remains an existing open boundary.
+
+
+## correct and iogpt integration, 2026-09-25
+
+The user requested ciogpt from correct, merging iogpt and pushing for a later main
+merge. The merge retains both histories and compiler/proof tracks. A mixed export
+test exposed the scalar shortcut returning before additional requested entries
+were extracted. Restricting that shortcut to single-export compilation fixes it.
+The first byte-I/O NaN test exposed class normalization unfolding byte indexing
+inside arithmetic operands. Resolving arithmetic methods separately from runtime
+operands preserves both indexing and custom-instance semantics.
+
+Exact running-sum and GPT identity checks then caught changed narrow constants.
+A broad raw-literal folding attempt removed existing GPT instructions and was
+discarded. Exact standard UInt8/UInt32 numeral evidence now retains its prior
+lowering, while other class operations preserve their existing normalization.
+Four standard/custom narrow numeral cases and 56 class-evidence comparisons pass.
+The byte-I/O validator needed an explicit singleton-head simplification after
+the shared decoder import narrowed; its original theorem and premises remain.
+
+The final compiler passes nine general theorem audits and 527 native Lean/V8
+comparisons, with all thirty selected modules byte-identical to correct. The
+byte-I/O gate passes all 46 audits and exact echo bytes. Running sum passes nine
+source audits and six exact-binary audits. Four GPT models and annotation caches
+match iogpt; all three quantized binaries match registered artifact hashes. The
+current FP32 model remains distinct from its older frozen artifact, as on iogpt.
+All twelve selected runtime/documentation commands pass; byte I/O, quantization
+and mixed exports were repeated after the final extraction fix. The integration
+archive preserves failures, final results and hashes. Broader parent aggregates
+and unrelated proof archives were not rebuilt. Main remains unchanged.
