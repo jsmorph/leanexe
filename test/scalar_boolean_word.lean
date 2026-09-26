@@ -115,7 +115,7 @@ def boolWordUnusedUnsupported (x y : UInt64) : UInt64 :=
   let _unused := (false && (toString x == toString y)).toUInt64
   x + y
 
-def boolWordUnknownHelper (x y : UInt64) : UInt64 :=
+def boolWordBooleanHelper (x y : UInt64) : UInt64 :=
   let f := fun flag : Bool => !flag
   (f (x == y)).toUInt64
 
@@ -135,6 +135,7 @@ end BooleanWordTest
 run_elab do
   let env ← Lean.getEnv
   let cases : List (Lean.Name × (UInt64 → UInt64 → UInt64) × Bool) := [
+    (`BooleanWordTest.boolWordBooleanHelper, BooleanWordTest.boolWordBooleanHelper, false),
     (`BooleanWordTest.boolWordDirect, BooleanWordTest.boolWordDirect, false),
     (`BooleanWordTest.boolWordCaptured, BooleanWordTest.boolWordCaptured, false),
     (`BooleanWordTest.boolWordAction, BooleanWordTest.boolWordAction, false),
@@ -166,7 +167,7 @@ run_elab do
       let actual := module_.evalFunc 0 [x, y]
       unless actual == expected do
         throwError "{name}({x}, {y}): native={expected}, IR={actual}"
-  for name in [`BooleanWordTest.boolWordUnsupported, `BooleanWordTest.boolWordUnusedUnsupported, `BooleanWordTest.boolWordUnknownHelper, `BooleanWordTest.rangeBoolWordUnsupported] do
+  for name in [`BooleanWordTest.boolWordUnsupported, `BooleanWordTest.boolWordUnusedUnsupported, `BooleanWordTest.rangeBoolWordUnsupported] do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
     unless (LeanExe.Extract.Core.extractScalarFunc name (some "entry") info.type value).isNone do

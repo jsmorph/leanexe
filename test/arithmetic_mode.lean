@@ -3178,7 +3178,7 @@ def boolWordUnusedUnsupported (x y : UInt64) : UInt64 :=
   let _unused := (false && (toString x == toString y)).toUInt64
   x + y
 
-def boolWordUnknownHelper (x y : UInt64) : UInt64 :=
+def boolWordBooleanHelper (x y : UInt64) : UInt64 :=
   let f := fun flag : Bool => !flag
   (f (x == y)).toUInt64
 
@@ -4876,6 +4876,54 @@ def customNegated (x y : UInt64) : UInt64 := @ite UInt64 (¬ x < y) (customNegat
 def customNeDecision (x y : UInt64) : Decidable (x ≠ y) := inferInstance
 def customNe (x y : UInt64) : UInt64 := @ite UInt64 (x ≠ y) (customNeDecision x y) x y
 
+def booleanPredicateTwice (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b
+  (f (x == y)).toUInt64 + (f (x != 0)).toUInt64 * 3
+
+def booleanPredicateCapture (x y : UInt64) : UInt64 :=
+  let flag := x != 0
+  let f := fun b : Bool => flag && (b || x == y)
+  (f false).toUInt64 + (f (x != y)).toUInt64 * 3
+
+def booleanPredicateWordCapture (x y : UInt64) : UInt64 :=
+  let wordPredicate := fun n : UInt64 => n == y
+  let f := fun b : Bool => b && wordPredicate x
+  (f true).toUInt64 + (f (wordPredicate y)).toUInt64
+
+def booleanPredicateNested (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b
+  let g := fun b : Bool => (f b).toUInt64 == x
+  (g (x == y)).toUInt64 + (g false).toUInt64 * 3
+
+def booleanPredicateScalarCapture (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == 0
+  let g := fun n : UInt64 => (f (n == y)).toUInt64 + n
+  g x + g y
+
+def booleanPredicateShadow (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == y
+  let saved := (f false).toUInt64
+  let f := fun b : Bool => b && saved != 0
+  (f (x != 0)).toUInt64 + saved
+
+def booleanPredicateDependent (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => if _h : x < y then b else !b
+  if (f (x == y)).toUInt64 == 1 then x + 7 else y - 3
+
+def booleanPredicateId (x y : UInt64) : UInt64 :=
+  let f : Bool → Id (Id Bool) := fun b => b && x != y
+  (f true).toUInt64 + (f false).toUInt64 * 3
+
+def booleanPredicateUnused (x y : UInt64) : UInt64 :=
+  let _f := fun b : Bool => b && x / y == 0
+  x - y
+
+def booleanPredicateDo (x y : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => !b
+  let a ← pure (f (x == y)).toUInt64
+  let b ← pure (f (x / y == 0)).toUInt64
+  return a + b
+
 def predicateInputRepeated (x y : UInt64) : UInt64 :=
   let f : Id UInt64 → Bool := fun n => (show UInt64 from n) == y
   if f x || f (x + 1) then x + 7 else y - 3
@@ -6226,6 +6274,17 @@ run_elab do
       `ArithmeticModeTest.rangeBooleanApplyBreak,
       `ArithmeticModeTest.rangeBooleanApplyContinue,
       `ArithmeticModeTest.rangeBooleanApplyCapture,
+      `ArithmeticModeTest.booleanPredicateTwice,
+      `ArithmeticModeTest.booleanPredicateCapture,
+      `ArithmeticModeTest.booleanPredicateWordCapture,
+      `ArithmeticModeTest.booleanPredicateNested,
+      `ArithmeticModeTest.booleanPredicateScalarCapture,
+      `ArithmeticModeTest.booleanPredicateShadow,
+      `ArithmeticModeTest.booleanPredicateDependent,
+      `ArithmeticModeTest.booleanPredicateId,
+      `ArithmeticModeTest.booleanPredicateUnused,
+      `ArithmeticModeTest.booleanPredicateDo,
+      `ArithmeticModeTest.boolWordBooleanHelper,
       `ArithmeticModeTest.predicateInputRepeated,
       `ArithmeticModeTest.predicateInputNested,
       `ArithmeticModeTest.predicateInputCapture,
@@ -6317,7 +6376,7 @@ run_elab do
       `ArithmeticModeTest.propChoiceUnsupportedArm, `ArithmeticModeTest.propChoiceUnusedUnsupported, `ArithmeticModeTest.propChoiceCustomDecision, `ArithmeticModeTest.rangePropChoiceUnsupportedArm,
       `ArithmeticModeTest.boolFnUnusedUnsupported, `ArithmeticModeTest.boolFnUnsupportedArgument, `ArithmeticModeTest.boolFnBooleanResult, `ArithmeticModeTest.rangeBoolFnUnusedUnsupported,
       `ArithmeticModeTest.decideUnsupportedOperand, `ArithmeticModeTest.decideUnusedUnsupported, `ArithmeticModeTest.decideCustomEvidence, `ArithmeticModeTest.rangeDecideUnsupported,
-      `ArithmeticModeTest.boolWordUnsupported, `ArithmeticModeTest.boolWordUnusedUnsupported, `ArithmeticModeTest.boolWordUnknownHelper, `ArithmeticModeTest.rangeBoolWordUnsupported,
+      `ArithmeticModeTest.boolWordUnsupported, `ArithmeticModeTest.boolWordUnusedUnsupported, `ArithmeticModeTest.rangeBoolWordUnsupported,
       `ArithmeticModeTest.boolEqUnsupported, `ArithmeticModeTest.boolEqUnusedUnsupported, `ArithmeticModeTest.boolEqCustomInstance, `ArithmeticModeTest.rangeBoolEqUnsupported,
       `ArithmeticModeTest.boolPropUnsupported, `ArithmeticModeTest.boolPropInactiveUnsupported, `ArithmeticModeTest.boolPropCustomDecision, `ArithmeticModeTest.rangeBoolPropUnsupported,
       `ArithmeticModeTest.localDecideUnsupported, `ArithmeticModeTest.localDecideInactiveUnsupported, `ArithmeticModeTest.localDecideCustomDecision, `ArithmeticModeTest.rangeLocalDecideUnsupported,

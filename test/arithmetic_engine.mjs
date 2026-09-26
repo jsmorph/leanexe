@@ -9,7 +9,7 @@ if (!directory || process.argv.length > 4 || (!['all', 'range'].includes(suite) 
 }
 const rangeEntries = JSON.parse(readFileSync(new URL('./arithmetic-range-cases.json', import.meta.url), 'utf8'));
 const cases = readFileSync(resolve(directory, 'expected.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
-const allEntries = ['constant', 'wrapping', 'quotient', 'remainder', 'shifts', 'nested', 'order',
+const allEntries = ['booleanPredicateTwice', 'booleanPredicateCapture', 'booleanPredicateWordCapture', 'booleanPredicateNested', 'booleanPredicateScalarCapture', 'booleanPredicateShadow', 'booleanPredicateDependent', 'booleanPredicateId', 'booleanPredicateUnused', 'booleanPredicateDo', 'boolWordBooleanHelper', 'constant', 'wrapping', 'quotient', 'remainder', 'shifts', 'nested', 'order',
   'bindings', 'shadowed', 'nestedBindings', 'unusedBinding', 'boundConstant',
   'compareEq', 'compareLt', 'compareLe', 'compareBEq', 'compareBNe',
   'nestedChoice', 'choiceBindings', 'choiceOperands',
