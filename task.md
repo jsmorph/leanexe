@@ -41,20 +41,22 @@ identical bytes. Focused tests pass 9,108 comparisons and 7,344 invalid-input
 checks. Prior tests pass 2,112 comparisons and 864 invalid-input checks.
 Evidence is in [the predicate input archive](proofs/compiler/predicate-input-2026-09-26/README.md).
 
-Reusable Bool-to-Bool helpers now have distinct typed source and compiled
-bindings. Converted calls use those bindings to check Boolean arguments. Scalar
-source totality, acceptance, soundness, evaluation correctness and IR invariants
-pass. Ten native examples and exact syntax cases pass 2,156 comparisons and
-2,304 invalid-input tests. Prior word-predicate tests pass 1,148 comparisons and
-864 invalid-input checks. The general theorem and independent WASM checks are
-next; this increment is not yet complete through WASM.
+Reusable Bool-to-Bool helpers with converted calls are complete in scalar
+expressions. Their source totality, acceptance, soundness, evaluation and IR
+invariant proofs pass, as do the general source-to-WASM theorem and all eighteen
+axiom audits. Native Lean/V8 agree on 1,105 inputs across 62 declarations,
+including 25 ranges; all 51 previous modules retain identical bytes. Focused
+tests pass 2,156 comparisons and 2,304 invalid-input checks. Prior tests pass
+1,466 comparisons and 880 invalid-input checks. Evidence is in
+[the Boolean-input predicate archive](proofs/compiler/boolean-predicate-2026-09-26/README.md).
 
 Current scope: declarations in supported scalar expressions, with calls under
 Bool.toUInt64. Captures, repeated calls, nested closures, result Id annotations,
-shadowing, dependent choices, unused bodies and do blocks are checked. Direct
-calls in Boolean guards and helper declarations around or inside loop-step
-bodies remain subsequent work. Full-dialect correctness remains unfinished.
-Complete each capability through WASM and commit/push frequently.
+shadowing, dependent choices, unused bodies and do blocks are checked. Next:
+helper declarations inside loop-step bodies, followed by declarations around
+loops. Direct calls in Boolean contexts need a subsequent typed dispatch
+extension. Full-dialect correctness remains unfinished. Complete each capability
+through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
