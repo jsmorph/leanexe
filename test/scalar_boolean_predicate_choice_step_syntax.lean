@@ -16,6 +16,7 @@ run_elab do
       ([0, 1, 0x8000000000000000, 0xffffffffffffffff] : List UInt64).map fun seed => (n, seed)
   let mut comparisons : Nat := 0
   let mut rejected : Nat := 0
+  let mut controls : Nat := 0
   for binder in [Lean.BinderInfo.default, .implicit] do
     for depth in [0, 2] do
       let bt := (List.range depth).foldl (fun t _ => BooleanType.identity t) .boolean
@@ -55,6 +56,11 @@ run_elab do
                   let actual := module_.evalFunc 0 [count, seed]
                   unless actual == expected do throwError "Boolean-input step predicate result {actual}, expected {expected}"
                   comparisons := comparisons + 1
+                let unused := helper boolean bt.expr boolean helperBody.expr
+                  (.letE `unused boolean (.app (.bvar 0) literal) (Step.yieldDirect (literalExpr 0)) false)
+                unless (extractScalarFunc `unusedBooleanStepLet (some "entry") functionType (wrap unused)).isSome do
+                  throwError "valid unused Boolean step let was rejected"
+                controls := controls + 1
                 let invalid : List Lean.Expr :=
                   [helper boolean bt.expr word helperBody.expr continuation,
                    helper word bt.expr boolean helperBody.expr continuation,
@@ -70,13 +76,11 @@ run_elab do
                    helper boolean bt.expr boolean helperBody.expr (Step.yieldDirect (call (.const `unsupportedArgument []))),
                    helper boolean bt.expr boolean helperBody.expr
                      (Step.yieldDirect (toWord (.app (.bvar 1) literal))),
-                   helper boolean bt.expr boolean helperBody.expr
-                     (.letE `unused boolean (.app (.bvar 0) literal) (Step.yieldDirect (literalExpr 0)) false),
                    helper boolean bt.expr boolean (.app (.bvar 0) literal) (Step.yieldDirect (literalExpr 0))]
                 for body in invalid do
                   if (extractScalarFunc `invalidBooleanPredicateStep (some "entry") functionType (wrap body)).isSome then
                     throwError "invalid Boolean-input predicate was admitted"
                   rejected := rejected + 1
-  unless comparisons == 6144 && rejected == 3840 do
+  unless comparisons == 6144 && rejected == 3584 && controls == 256 do
     throwError "unexpected counts {comparisons}, {rejected}"
-  Lean.logInfo m!"{comparisons} native/Boolean-input step predicate choice syntax comparisons and {rejected} invalid-input tests passed"
+  Lean.logInfo m!"{comparisons} native/Boolean-input step predicate choice syntax comparisons and {rejected} invalid-input tests and {controls} admission controls passed"

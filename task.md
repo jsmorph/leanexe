@@ -139,11 +139,18 @@ comparisons, 11,468 invalid-input checks and 280 controls. Prior tests pass 33,3
 comparisons, 27,913 invalid-input checks and 1,468 controls. Evidence is in
 [the scalar Boolean-let archive](proofs/compiler/boolean-predicate-let-2026-09-26/README.md).
 
-Next: direct Boolean bindings in loop-step and outer-loop bodies, followed by
-conditions, do binds and helper results. Saved Boolean variables in mixed
-propositional guards, retained instance wrappers and broader signatures follow.
-Full-dialect correctness remains unfinished. Complete each capability through
-WASM and commit/push frequently.
+Direct Boolean bindings in loop-step and outer-loop bodies now pass source
+totality, extraction correctness, acceptance, soundness and IR invariant proofs.
+Saved flags can control break/continue, determine bounds and initial values,
+be captured by helpers, and contribute to final results. Used and unused values
+are checked. Focused tests pass 3,264 native/IR comparisons, 1,672 invalid-input
+checks and eighty controls. The general theorem, eighteen audits and selected
+native Lean/WASM execution are next for this candidate.
+
+Next: finish loop Boolean bindings through WASM, then direct conditions, Boolean
+do binds and helper results. Saved Boolean variables in mixed propositional guards,
+retained instance wrappers and broader signatures follow. Full-dialect correctness
+remains unfinished. Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 

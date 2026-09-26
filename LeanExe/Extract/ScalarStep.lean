@@ -18,13 +18,10 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       match scalarStepResultType? type with
       | none => none
       | some _ => extractScalarStepWith locals body
-  | .letE _ (.const ``Bool []) value body _ =>
-      match booleanLocalOperands? value with
-      | none => none
-      | some expression => do
-          let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) expression
-            (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
-          extractScalarStepWith (.scalar (.boolean (guardWord c)) :: locals) body
+  | .letE _ (.const ``Bool []) value body _ => do
+      let bound ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar)
+        (.app (.const ``Bool.toUInt64 []) value)
+      extractScalarStepWith (.scalar (.boolean bound) :: locals) body
   | .letE _ (.const ``UInt64 []) value body _ => do
       let bound ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) value
       extractScalarStepWith (.scalar (.word bound) :: locals) body

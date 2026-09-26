@@ -75,14 +75,11 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
     exact ⟨⟨.ite c t.value e.value, .ite c t.done e.done⟩, by
       rw [extractScalarStepWith_booleanDependentBranch]; simp [hc, ht, he]⟩
-  | letBoolean expression variables arguments _ ihb =>
-    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := scalarStepBindings_total total) (locals.map ScalarStepBinding.toScalar) expression
-      (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
-      (by rw [scalarStepBindings_typed typed]; exact variables)
-      (fun operand member => scalar (arguments operand member) typed total)
-    obtain ⟨target, ht⟩ := ihb (.scalar (.boolean (guardWord c)) :: locals)
+  | letBoolean bound _ ihb =>
+    obtain ⟨value, hv⟩ := scalar bound typed total
+    obtain ⟨target, ht⟩ := ihb (.scalar (.boolean value) :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
-    exact ⟨target, by rw [extractScalarStepWith_letBoolean]; simp [hc, ht]⟩
+    exact ⟨target, by rw [extractScalarStepWith_letBoolean]; simp [hv, ht]⟩
   | idBindBoolean action type variables arguments _ ihb =>
     obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := scalarStepBindings_total total) (locals.map ScalarStepBinding.toScalar) action.leaf
       (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)

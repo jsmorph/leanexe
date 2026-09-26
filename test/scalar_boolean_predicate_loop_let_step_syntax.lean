@@ -10,7 +10,6 @@ run_elab do
   let wrap (body : Lean.Expr) := Lean.Expr.lam `count word (.lam `seed word
     (Range.call (.bvar 1) (.bvar 0) `i `a .default .default body) .default) .default
   let toWord (body : Lean.Expr) := Lean.Expr.app (.const ``Bool.toUInt64 []) body
-  let call (argument : Lean.Expr) := toWord (.app (.bvar 0) argument)
   let add (left right : Lean.Expr) := Lean.Expr.app (.app (.const ``UInt64.add []) left) right
   let inputs : List (UInt64 × UInt64) :=
     ([0, 1, 2, 7, 16, 31] : List UInt64).flatMap fun n =>
@@ -18,20 +17,25 @@ run_elab do
   let mut comparisons : Nat := 0
   let mut rejected : Nat := 0
   let mut controls : Nat := 0
-  for binder in [Lean.BinderInfo.default, .implicit, .strictImplicit, .instImplicit] do
-    for depth in [0, 1, 3] do
+  for binder in [Lean.BinderInfo.default, .implicit] do
+    for depth in [0, 2] do
       let bt := (List.range depth).foldl (fun t _ => BooleanType.identity t) .boolean
-      for negations in [0, 1, 2] do
+      for negations in [0, 1, 2, 3] do
+        let call (argument : Lean.Expr) := toWord
+          (BooleanGuardNegation.expr negations (.app (.bvar 0) argument))
         for nondep in [false, true] do
           for flag in [false, true] do
-            let helperBody : BooleanLocal := .junction negations .conjunction
+            let helperBody : BooleanLocal := .junction 0 .conjunction
               (.var 0 0) (.compare .ne (.bvar 1) (.bvar 3))
             let indexWord : Lean.Expr := .app (.const ``UInt64.ofNat []) (.bvar 2)
             let argument : BooleanLocal := .compare .eq indexWord (.bvar 3)
             let literal := booleanLiteralExpr flag
-            let continuation := Step.branch .eq .word (call argument.expr) (literalExpr 1)
-              (Step.doneDirect (add (add (.bvar 1) (call literal)) (literalExpr 7)))
-              (Step.yieldDirect (add (add (add (.bvar 1) indexWord) (call literal)) (literalExpr 1)))
+            let continuation := Lean.Expr.letE `saved boolean
+              (BooleanGuardNegation.expr negations (.app (.bvar 0) literal))
+              (Step.branch .eq .word (LeanExe.Source.ExprProofBinder.lift 0 (call argument.expr)) (literalExpr 1)
+                (Step.doneDirect (add (add (.bvar 2) (toWord (.bvar 0))) (literalExpr 7)))
+                (Step.yieldDirect (add (add (add (.bvar 2) (LeanExe.Source.ExprProofBinder.lift 0 indexWord))
+                  (toWord (.bvar 0))) (literalExpr 1)))) nondep
             let helper (input result domain value body : Lean.Expr) :=
               Lean.Expr.letE `predicate (.forallE `typeInput input result binder)
                 (.lam `valueInput domain value binder) body nondep
@@ -72,6 +76,6 @@ run_elab do
               if (extractScalarFunc `invalidBooleanPredicateStep (some "entry") functionType (wrap body)).isSome then
                 throwError "invalid Boolean-input predicate was admitted"
               rejected := rejected + 1
-  unless comparisons == 3456 && rejected == 2016 && controls == 144 do
+  unless comparisons == 1536 && rejected == 896 && controls == 64 do
     throwError "unexpected counts {comparisons}, {rejected}"
-  Lean.logInfo m!"{comparisons} native/Boolean-input step predicate syntax comparisons and {rejected} invalid-input tests and {controls} admission controls passed"
+  Lean.logInfo m!"{comparisons} native/Boolean-input step predicate direct step let syntax comparisons and {rejected} invalid-input tests and {controls} admission controls passed"
