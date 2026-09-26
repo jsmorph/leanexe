@@ -2,7 +2,7 @@ import Project.Beck.Arithmetic
 import Project.Beck.Rounding
 import Project.Beck.Basis
 import Project.Beck.Cofactors
-import Project.Beck.Preservation
+import Project.Beck.Loop
 
 #print axioms Project.Beck.Arithmetic.add_exact
 #print axioms Project.Beck.Arithmetic.sub_exact
@@ -28,6 +28,14 @@ import Project.Beck.Preservation
 #print axioms Project.Beck.Direction.direction_frozen_zero
 #print axioms Project.Beck.Direction.direction_bound
 #print axioms Project.Beck.Preservation.direction_preserves_category
+#print axioms Project.Beck.Boundary.boundaryStep_spec
+#print axioms Project.Beck.State.update_exact
+#print axioms Project.Beck.SourceRound.round_eq
+#print axioms Project.Beck.SourceRound.round_valid_progress
+#print axioms Project.Beck.SourceRound.updated_fixed
+#print axioms Project.Beck.SourceRound.updated_preserves_category
+#print axioms Project.Beck.Loop.rounds_finish
+#print axioms Project.Beck.Loop.initial_finishes
 #print axioms Project.Beck.Rounding.protected_card_lt
 #print axioms Project.Beck.Rounding.preserving_direction_exists
 #print axioms Project.Beck.Rounding.released_category_bound

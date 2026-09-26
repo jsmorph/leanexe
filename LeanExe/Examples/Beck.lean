@@ -139,9 +139,7 @@ def direction (input : Input) (x : Point) : Array UInt64 := Id.run do
 def gap (denominator numerator direction : UInt64) : UInt64 :=
   if negative direction then denominator + numerator else denominator - numerator
 
-def round (input : Input) (x : Point) : Point := Id.run do
-  let d := direction input x
-  if d.size != input.jobs then return ⟨0, #[]⟩
+def boundaryStep (input : Input) (x : Point) (d : Array UInt64) : UInt64 × UInt64 := Id.run do
   let mut stepNumerator := 0
   let mut stepDenominator := 0
   for job in [:input.jobs] do
@@ -151,6 +149,14 @@ def round (input : Input) (x : Point) : Point := Id.run do
       if stepDenominator == 0 || distance * stepDenominator < stepNumerator * speed then
         stepNumerator := distance
         stepDenominator := speed
+  return (stepNumerator, stepDenominator)
+
+def round (input : Input) (x : Point) : Point := Id.run do
+  let d := direction input x
+  if d.size != input.jobs then return ⟨0, #[]⟩
+  let step := boundaryStep input x d
+  let stepNumerator := step.1
+  let stepDenominator := step.2
   if stepDenominator == 0 then return ⟨0, #[]⟩
   let denominator := x.denominator * stepDenominator
   let mut numerators := #[]
