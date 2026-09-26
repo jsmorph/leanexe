@@ -24,7 +24,7 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
         EvalWith expression (values.map Value.toScalar) (native expression))
       (chosen : Eval (if guard.denote native then onTrue else onFalse) values outcome) :
       Eval (guard.branch (resultType type) onTrue onFalse) values outcome
-  | chooseDependent (guard : Guard) (type : ResultAnnotation)
+  | chooseDependent (guard : DecidedGuard) (type : ResultAnnotation)
       (trueName falseName : Lean.Name) (trueBi falseBi : Lean.BinderInfo) {native : Lean.Expr → UInt64}
       (arguments : ∀ expression, expression ∈ guard.operands →
         EvalWith expression (values.map Value.toScalar) (native expression))
@@ -188,7 +188,7 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
         SupportedWith (types.map BindingKind.toScalar) expression)
       (onTrue : Supported types t) (onFalse : Supported types e) :
       Supported types (guard.branch (resultType type) t e)
-  | chooseDependent (guard : Guard) (type : ResultAnnotation)
+  | chooseDependent (guard : DecidedGuard) (type : ResultAnnotation)
       (trueName falseName : Lean.Name) (trueBi falseBi : Lean.BinderInfo)
       (arguments : ∀ expression, expression ∈ guard.operands →
         SupportedWith (types.map BindingKind.toScalar) expression)

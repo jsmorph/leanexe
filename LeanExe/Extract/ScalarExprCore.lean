@@ -313,7 +313,7 @@ theorem extractScalarExprWith_compoundBranch (guard : LeanExe.Source.Scalar.Comp
   rw [LeanExe.Source.Scalar.CompoundGuard.branch, extractScalarExprWith]
   rw [scalarResultType_accepts, compoundGuard_not_comparison, compoundGuard_accepts]
 
-theorem extractScalarExprWith_dependentBranch (guard : LeanExe.Source.Scalar.Guard)
+theorem extractScalarExprWith_dependentBranch (guard : LeanExe.Source.Scalar.DecidedGuard)
     (locals : List ScalarBinding) (type : LeanExe.Source.Scalar.ResultType)
     (tn fn : Lean.Name) (tb fb : Lean.BinderInfo) (t e : Lean.Expr) :
     extractScalarExprWith locals (guard.dependentBranch type.expr tn fn tb fb t e) = (do
@@ -321,7 +321,7 @@ theorem extractScalarExprWith_dependentBranch (guard : LeanExe.Source.Scalar.Gua
       let onTrue ← extractScalarExprWith (.unit :: locals) t
       let onFalse ← extractScalarExprWith (.unit :: locals) e
       pure (.ite c onTrue onFalse)) := by
-  rw [LeanExe.Source.Scalar.Guard.dependentBranch, extractScalarExprWith,
+  rw [LeanExe.Source.Scalar.DecidedGuard.dependentBranch, extractScalarExprWith,
     scalarResultType_accepts, dependentGuard_accepts]
 
 theorem extractScalarExprWith_booleanBind (locals : List ScalarBinding)

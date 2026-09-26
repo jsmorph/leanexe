@@ -52,7 +52,7 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (arguments : ∀ expression, expression ∈ guard.operands → EvalWith expression values (native expression))
       (branch : EvalWith (if guard.denote native then onTrue else onFalse) values value) :
       EvalWith (guard.branch type.expr onTrue onFalse) values value
-  | chooseDependent (guard : Guard) (type : ResultType)
+  | chooseDependent (guard : DecidedGuard) (type : ResultType)
       (trueName falseName : Lean.Name) (trueBi falseBi : Lean.BinderInfo) {native : Lean.Expr → UInt64}
       (arguments : ∀ expression, expression ∈ guard.operands → EvalWith expression values (native expression))
       (branch : EvalWith (if guard.denote native then onTrue else onFalse) (.unit :: values) value) :
@@ -178,7 +178,7 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (arguments : ∀ expression, expression ∈ guard.operands → SupportedWith types expression)
       (onTrue : SupportedWith types t) (onFalse : SupportedWith types e) :
       SupportedWith types (guard.branch type.expr t e)
-  | chooseDependent (guard : Guard) (type : ResultType)
+  | chooseDependent (guard : DecidedGuard) (type : ResultType)
       (trueName falseName : Lean.Name) (trueBi falseBi : Lean.BinderInfo)
       (arguments : ∀ expression, expression ∈ guard.operands → SupportedWith types expression)
       (onTrue : SupportedWith (.unit :: types) t) (onFalse : SupportedWith (.unit :: types) e) :

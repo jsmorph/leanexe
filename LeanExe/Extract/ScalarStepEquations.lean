@@ -280,7 +280,7 @@ theorem extractScalarStepWith_letManyStepFn (locals : List ScalarStepBinding)
   simp only [ManyFunction.type, ManyFunction.value, Parameter.arrow, Parameter.lambda] at rejected accepted
   rw [rejected, accepted]
 
-theorem extractScalarStepWith_dependentBranch (guard : LeanExe.Source.Scalar.Guard)
+theorem extractScalarStepWith_dependentBranch (guard : LeanExe.Source.Scalar.DecidedGuard)
     (locals : List ScalarStepBinding) (type : LeanExe.Source.Scalar.Step.ResultAnnotation)
     (tn fn : Lean.Name) (tb fb : Lean.BinderInfo) (t e : Lean.Expr) :
     extractScalarStepWith locals (guard.dependentBranch (LeanExe.Source.Scalar.Step.resultType type) tn fn tb fb t e) = (do
@@ -288,7 +288,7 @@ theorem extractScalarStepWith_dependentBranch (guard : LeanExe.Source.Scalar.Gua
       let onTrue ← extractScalarStepWith (.scalar .unit :: locals) t
       let onFalse ← extractScalarStepWith (.scalar .unit :: locals) e
       pure { value := .ite c onTrue.value onFalse.value, done := .ite c onTrue.done onFalse.done }) := by
-  rw [LeanExe.Source.Scalar.Guard.dependentBranch, extractScalarStepWith,
+  rw [LeanExe.Source.Scalar.DecidedGuard.dependentBranch, extractScalarStepWith,
     scalarStepResultType_accepts, dependentGuard_accepts]
 
 theorem extractScalarStepWith_booleanBind (locals : List ScalarStepBinding)

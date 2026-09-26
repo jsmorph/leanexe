@@ -351,5 +351,7 @@
   "rangeReannotatedOrder",
   "rangeIdComparisonEvidenceAnnotations",
   "rangeReannotatedAnd",
-  "rangeReannotatedOr"
+  "rangeReannotatedOr",
+  "rangeDependentReannotated",
+  "rangeDependentReannotatedCompound"
 ]
