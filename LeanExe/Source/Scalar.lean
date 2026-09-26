@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarPredicateInput
 import LeanExe.Source.ScalarLetAnnotation
 import LeanExe.Source.ScalarTypedLiteralInstance
 import LeanExe.Source.ScalarBooleanAction
@@ -114,6 +115,9 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       EvalWith (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep) values value
+  | predicateInput (input : ResultType) (result : BooleanType)
+      (inner : EvalWith (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep) values outcome) :
+      EvalWith (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep) values outcome
   | letBooleanFn (type : ResultType)
       (function : ∀ x, EvalWith a (.boolean x :: values) (f x))
       (body : EvalWith b (.booleanFunction f :: values) value) :
@@ -242,6 +246,9 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       SupportedWith types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep)
+  | predicateInput (input : ResultType) (result : BooleanType)
+      (inner : SupportedWith types (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep)) :
+      SupportedWith types (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep)
   | letBooleanFn (type : ResultType) (function : SupportedWith (.boolean :: types) a)
       (body : SupportedWith (.booleanFunction :: types) b) :
       SupportedWith types (.letE name
@@ -447,6 +454,9 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     obtain ⟨value, hv⟩ := ihb (.predicateFunction
       (fun x => expression.denote (native x) (booleans x)) :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letPredicateFn expression type (fun x => (environments x).choose_spec) meanings hv⟩
+  | predicateInput input result _ ih =>
+    obtain ⟨outcome, evaluated⟩ := ih values typed
+    exact ⟨outcome, .predicateInput input result evaluated⟩
   | letBooleanFn type _ _ ihf ihb =>
     have total := fun x => ihf (.boolean x :: values) (by simp [Value.kind, typed])
     let f := fun x => (total x).choose

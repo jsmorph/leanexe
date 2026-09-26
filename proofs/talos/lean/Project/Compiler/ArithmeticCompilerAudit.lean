@@ -20,3 +20,6 @@ import LeanExe.Source.ScalarReannotationEvaluation
 
 #print axioms LeanExe.Extract.Core.booleanFunctionApplication_sound
 #print axioms LeanExe.Extract.Core.booleanFunctionApplication_accepts
+
+#print axioms LeanExe.Extract.Core.predicateInputTypes_sound
+#print axioms LeanExe.Extract.Core.predicateInputTypes_accepts

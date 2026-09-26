@@ -8,6 +8,8 @@ ADMISSION = 'LeanExe.Extract.Arithmetic.'
 MODULE = 'Project.Compiler.ArithmeticModule.'
 STANDARD = {'propext', 'Classical.choice', 'Quot.sound'}
 AUDITS = {
+    'LeanExe.Extract.Core.predicateInputTypes_sound': STANDARD,
+    'LeanExe.Extract.Core.predicateInputTypes_accepts': STANDARD,
     'LeanExe.Extract.Core.booleanFunctionApplication_sound': STANDARD,
     'LeanExe.Extract.Core.booleanFunctionApplication_accepts': STANDARD,
     'LeanExe.Extract.Core.guardDecision_sound': STANDARD,

@@ -4415,6 +4415,73 @@ def rangeIdArithmeticStep (count seed : UInt64) : UInt64 :=
       else return .yield (value + 1)
     f (a % 7 == 0 && seed != 0)
 
+def predicateInputRepeated (x y : UInt64) : UInt64 :=
+  let f : Id UInt64 → Bool := fun n => (show UInt64 from n) == y
+  if f x || f (x + 1) then x + 7 else y - 3
+
+def predicateInputNested (x y : UInt64) : UInt64 :=
+  let f : Id (Id UInt64) → Id (Id Bool) := fun n => (show UInt64 from n) == y
+  let g : Id UInt64 → Bool := fun n => !(f (show UInt64 from n)) && f ((show UInt64 from n) + 1)
+  (g x).toUInt64 + (g y).toUInt64 * 3
+
+def predicateInputCapture (x y : UInt64) : UInt64 :=
+  let flag := x != 0
+  let shift := fun n : UInt64 => n + y
+  let f : Id (Id (Id UInt64)) → Bool := fun n => flag && shift (show UInt64 from n) != x
+  (f x).toUInt64 + (f y).toUInt64 * 7
+
+def predicateInputShadow (x y : UInt64) : UInt64 :=
+  let f : Id UInt64 → Bool := fun n => (show UInt64 from n) == x
+  let saved := f y
+  let f : Id (Id UInt64) → Bool := fun n => saved || (show UInt64 from n) != y
+  if f x && f y then x - y else x + y
+
+def predicateInputUnused (x y : UInt64) : UInt64 :=
+  let _f : Id (Id UInt64) → Id Bool := fun n => (show UInt64 from n) / y == x
+  x - y
+
+def predicateInputDo (x y : UInt64) : UInt64 := Id.run do
+  let f : Id UInt64 → Bool := fun n => (show UInt64 from n) != y
+  let a ← pure (f x)
+  let b ← pure (f (x + 1))
+  if a && b then return x + y else return x - y
+
+def rangePredicateInputStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f : Id UInt64 → Bool := fun n => (show UInt64 from n) % 7 == 0
+    a := a + UInt64.ofNat i
+    if f a || f (a + 1) then break
+  return a
+
+def rangePredicateInputStepCapture (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f : Id (Id UInt64) → Id Bool := fun n => (show UInt64 from n) == a
+    let g : Id UInt64 → Bool := fun n => !(f (show UInt64 from n)) && f ((show UInt64 from n) + 1)
+    if g (UInt64.ofNat i) then continue
+    a := a + (g a).toUInt64 + UInt64.ofNat i
+  return a
+
+def rangePredicateInputOuter (count seed : UInt64) : UInt64 := Id.run do
+  let f : Id (Id UInt64) → Bool := fun n => (show UInt64 from n) % 5 == 0
+  let first := (f seed).toUInt64
+  let mut a := seed
+  for i in [first.toNat:count.toNat:3] do
+    a := a + UInt64.ofNat i
+    if f a || f (a + 1) then break
+  return a + (f a).toUInt64
+
+def rangePredicateInputOuterCapture (count seed : UInt64) : UInt64 := Id.run do
+  let flag := seed != 0
+  let f : Id UInt64 → Id (Id Bool) := fun n => flag && (show UInt64 from n) == seed
+  let g := fun n : UInt64 => if (show Bool from f n) then n + 1 else n * 3
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := g (a + UInt64.ofNat i)
+    if (show Bool from f a) then break
+  return g a
+
 def rangeOuterPredicateBounds (count seed : UInt64) : UInt64 := Id.run do
   let f := fun n : UInt64 => n == seed
   let stop := count + (f 0).toUInt64
@@ -5051,6 +5118,11 @@ def rangeInputs : List (UInt64 × UInt64) :=
 
 def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
   [
+   ("rangePredicateInputStep", rangePredicateInputStep),
+   ("rangePredicateInputStepCapture", rangePredicateInputStepCapture),
+   ("rangePredicateInputOuter", rangePredicateInputOuter),
+   ("rangePredicateInputOuterCapture", rangePredicateInputOuterCapture),
+
    ("rangeOuterPredicateBounds", rangeOuterPredicateBounds),
    ("rangeOuterPredicateCapture", rangeOuterPredicateCapture),
    ("rangeOuterPredicateNested", rangeOuterPredicateNested),
@@ -5429,7 +5501,14 @@ def inputs : List (UInt64 × UInt64) :=
    (0x0123456789abcdef, 0xffffffffffffffff), (3, 17), (17, 3)]
 
 def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
-  [("wrapping", wrapping), ("quotient", quotient), ("remainder", remainder),
+  [
+   ("predicateInputRepeated", predicateInputRepeated),
+   ("predicateInputNested", predicateInputNested),
+   ("predicateInputCapture", predicateInputCapture),
+   ("predicateInputShadow", predicateInputShadow),
+   ("predicateInputUnused", predicateInputUnused),
+   ("predicateInputDo", predicateInputDo),
+("wrapping", wrapping), ("quotient", quotient), ("remainder", remainder),
    ("shifts", shifts), ("nested", nested), ("order", order),
    ("bindings", bindings), ("shadowed", shadowed), ("nestedBindings", nestedBindings),
    ("unusedBinding", unusedBinding), ("compareEq", compareEq), ("compareLt", compareLt),

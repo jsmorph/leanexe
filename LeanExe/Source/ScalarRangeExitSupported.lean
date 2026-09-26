@@ -49,6 +49,9 @@ inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
       Eval (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep) values outcome
+  | predicateInput (input : ResultType) (result : BooleanType)
+      (inner : Eval (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep) values outcome) :
+      Eval (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep) values outcome
   | letBooleanFn (type : ResultType)
       (function : ∀ x, EvalWith a (.boolean x :: values) (f x))
       (body : Eval b (.booleanFunction f :: values) outcome) :
@@ -119,6 +122,9 @@ inductive Supported : List Scalar.BindingKind → Lean.Expr → Prop where
       Supported types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep)
+  | predicateInput (input : ResultType) (result : BooleanType)
+      (inner : Supported types (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep)) :
+      Supported types (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep)
   | letBooleanFn (type : ResultType) (function : SupportedWith (.boolean :: types) a)
       (body : Supported (.booleanFunction :: types) b) :
       Supported types (.letE name
@@ -222,6 +228,9 @@ theorem Supported.evaluates {types : List Scalar.BindingKind} {expr : Lean.Expr}
     obtain ⟨value, hv⟩ := ihb (.predicateFunction
       (fun x => expression.denote (native x) (booleans x)) :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letPredicateFn expression type (fun x => (environments x).choose_spec) meanings hv⟩
+  | predicateInput input result _ ih =>
+    obtain ⟨outcome, evaluated⟩ := ih values typed
+    exact ⟨outcome, .predicateInput input result evaluated⟩
   | letBooleanFn type function _ ihb =>
     have total := fun x => function.evaluates (.boolean x :: values) (by simp [Value.kind, typed])
     let f := fun x => (total x).choose

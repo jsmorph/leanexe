@@ -44,7 +44,7 @@ theorem Count.Eval.of_scalar {count : Count} {values : List Value} {result : UIn
   | literal number fits =>
     generalize same : Count.scalar (.literal number fits) = source at evaluated
     cases evaluated <;>
-      simp_all [Count.scalar, Scalar.literalExpr, idLetExpr, typedLiteralExpr,
+      simp_all [Count.scalar, Scalar.literalExpr, idLetExpr, typedLiteralExpr, predicateInputExpr,
         Identity.run, Identity.pure, Identity.bind, BooleanIdentity.bind,
         Comparison.branch, CompoundGuard.branch, DecidedGuard.dependentBranch, BooleanLocalGuard.branch, BooleanLocalGuard.dependentBranch,
         Extremum.expr, Extremum.head,
