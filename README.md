@@ -84,6 +84,21 @@ explains the mathematics, proof targets, and recorded native Lean/Wasmtime
 comparisons for its stated revision. Those comparisons are tests of concrete
 runs; the source and modeled-execution theorems quantify over their input domains.
 
+## Deterministic lidar on WebGPU
+
+The [`lidar` development](docs/lidar/README.md) starts with four cardinal beams
+and four axis-aligned rectangles. Lean-checked geometry and integer arithmetic
+proofs connect to the emitted WGSL through an independent statement parser.
+The resident WebGPU demonstration uses a compiled WASM parameter controller and
+reads a four-byte requested hit-count/nearest-distance summary.
+
+The first milestone has checked WASM/WGSL artifact proofs and an explicit
+controller-to-shader pipeline theorem. Its 12 geometric cases and three invalid
+parameter checks pass on a software Vulkan adapter. The separate
+[development journal](docs/lidar/journal.md) records completed checks, diagrams,
+observed runs and the agenda for oblique beams and numerical uncertainty. These
+application, artifact and runtime claims have distinct scopes and assumptions.
+
 ## Run GPT-2 in WebAssembly
 
 [GPT-2 124M](docs/gpt/README.md) runs a twelve-block transformer in Wasmtime
