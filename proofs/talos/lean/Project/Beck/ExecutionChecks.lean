@@ -12,6 +12,7 @@ import Project.Beck.ExecutionBoundary
 import Project.Beck.ExecutionMembershipBase
 import Project.Beck.ExecutionMemberCapacity
 import Project.Beck.ExecutionMembershipRelease
+import Project.Beck.ExecutionMembershipFresh
 
 #print axioms Project.Beck.Execution.negative_exact
 #print axioms Project.Beck.Execution.magnitude_exact
@@ -72,3 +73,4 @@ import Project.Beck.ExecutionMembershipRelease
 #print axioms Project.Beck.Execution.releaseWords_budget
 #print axioms Project.Beck.Execution.membershipRelease_none
 #print axioms Project.Beck.Execution.membershipRelease_owned
+#print axioms Project.Beck.Execution.membershipFresh_exact
