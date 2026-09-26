@@ -17552,3 +17552,11 @@ The counter equals the finite-set cardinality used by the double-counting theore
 The flattening proof uses list induction with explicit bounds on row and column indices.  Giving the full list argument to `getElem!_pos` avoids Lean inferring a natural-number container from an unresolved placeholder.  The finite-set cardinality proof required normalizing `decide` under a sum.  Neither change alters the executable arithmetic or capacities.
 
 The runner and regenerated artifact agree at SHA-256 `fd12b8ec03212c02f580162c53cdb035bf1c05cc31fab6843d087b11975846a2`.  Universal source correctness, arithmetic hypotheses across all rounds, allocation sufficiency, and exact-WASM execution remain open.
+
+### Beck executable direction correctness
+
+The direction-array proof now establishes its length, a nonzero free coefficient, zero coefficients on frozen jobs, and magnitude at most 120 for every coefficient.  The indexed-write lemma proves the values stored at selected columns and leaves other coordinates unchanged.  These theorems apply to the executable direction for every binary incidence input with at most six jobs satisfying the overlap bound, whenever a live job remains.
+
+The preservation proof identifies column-replacement determinants with rational Cramer coefficients.  Reindexing the appended row and column through `finSumFinEquiv` identifies the executable bordered minor with the block matrix in the Schur-complement identity.  The border identity uses `Fin 1` for its singleton block to match that equivalence.  The determinant cast proof covers order six, so a failed extension's zero word determinant gives a zero rational determinant.  The selected minor remains nonsingular because its determinant magnitude is at most 120.
+
+A finite-support sum identity converts the assembled array's dot product to the selected coefficients and free coefficient.  Cramer's identity handles selected rows.  Maximality and the bordered determinant handle other rows.  The executable matrix-entry theorem then gives zero direction sum for every protected category.  This closes the direction component's preservation and internal-failure obligations.  Boundary selection, state invariants across rounds, parser validity, resource sufficiency, and exact-binary execution remain open.
