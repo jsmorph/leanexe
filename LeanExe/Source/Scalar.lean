@@ -97,6 +97,13 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (variables : expression.VariablesMean values booleans)
       (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand)) :
       EvalWith (.app (.bvar index) expression.expr) values (f (expression.denote native booleans))
+  | booleanJunctionWord (negations : Nat) (op : Junction) (left right : BooleanLocal)
+      (member : index ∈ left.functions ++ right.functions)
+      (function : values[index]? = some (.booleanPredicateFunction f))
+      (first : EvalWith (.app (.const ``Bool.toUInt64 []) left.expr) values (Bool.toUInt64 a))
+      (second : EvalWith (.app (.const ``Bool.toUInt64 []) right.expr) values (Bool.toUInt64 b)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) (BooleanLocal.junction negations op left right).expr)
+        values (Bool.toUInt64 (GuardNegation.denote negations (op.denote a b)))
   | applyBooleanPredicateWord (negations : Nat)
       (function : values[index]? = some (.booleanPredicateFunction f))
       (argument : EvalWith (.app (.const ``Bool.toUInt64 []) a) values (Bool.toUInt64 flag)) :
@@ -248,6 +255,12 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (variables : expression.VariablesTyped types)
       (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand) :
       SupportedWith types (.app (.bvar index) expression.expr)
+  | booleanJunctionWord (negations : Nat) (op : Junction) (left right : BooleanLocal)
+      (member : index ∈ left.functions ++ right.functions)
+      (function : types[index]? = some .booleanPredicateFunction)
+      (first : SupportedWith types (.app (.const ``Bool.toUInt64 []) left.expr))
+      (second : SupportedWith types (.app (.const ``Bool.toUInt64 []) right.expr)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) (BooleanLocal.junction negations op left right).expr)
   | applyBooleanPredicateWord (negations : Nat)
       (function : types[index]? = some .booleanPredicateFunction)
       (argument : SupportedWith types (.app (.const ``Bool.toUInt64 []) a)) :
@@ -322,7 +335,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
     ∃ flag : Bool, value = flag.toUInt64 := by
   generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
   cases evaluation with
-  | booleanWord => exact ⟨_, rfl⟩
+  | booleanWord | booleanJunctionWord => exact ⟨_, rfl⟩
   | applyBooleanPredicateWord => exact ⟨_, rfl⟩
   | complement head _ => cases head <;> simp_all
   | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
@@ -483,6 +496,14 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
       intro operand member
       simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
     exact ⟨f (expression.denote native booleans), .applyBoolean expression hf hbooleans meanings⟩
+  | booleanJunctionWord negations op left right member present _ _ ihl ihr =>
+    obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
+    obtain ⟨a, ha⟩ := ihl values typed
+    obtain ⟨b, hb⟩ := ihr values typed
+    obtain ⟨first, rfl⟩ := ha.booleanConversion_result
+    obtain ⟨second, rfl⟩ := hb.booleanConversion_result
+    exact ⟨Bool.toUInt64 (GuardNegation.denote negations (op.denote first second)),
+      .booleanJunctionWord negations op left right member hf ha hb⟩
   | applyBooleanPredicateWord negations present _ ih =>
     obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
     obtain ⟨argument, evaluated⟩ := ih values typed
