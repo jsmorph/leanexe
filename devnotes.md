@@ -17542,3 +17542,13 @@ The executable Laplace recursion equals the determinant over UInt64 for every sq
 The source basis search now has checked first-success semantics, index-distinctness and range invariants, exact stored determinant, nonzero determinant, and a fuel theorem.  Every successful extension adds one row and column.  Since the rank cannot exceed the matrix row count, width rounds suffice whenever row count is smaller than width.  The stopped search proves every unused border zero.  The source theorem audit uses only propext, Classical.choice, and Quot.sound.
 
 Normalizing the two generated Option matchers was needed to connect the elaborated early-return loops to the reusable first-success lemma.  The proof explicitly unfolds the source matcher and retains Lean’s warning that its generated name may change during refactoring.  The executable protected-matrix and direction-assembly connections remain open.
+
+### Beck protected matrix and free column
+
+Factored the live-job counter and free-column search into source helpers.  The free-column helper returns the first eligible column and preserves the preceding scan's deterministic choice.  The native/WASM comparison and independent output checks pass for all 732 cases after these changes.
+
+The counter equals the finite-set cardinality used by the double-counting theorem.  The flattened matrix has the selected rows, expected entries, binary values, and zero columns at frozen jobs.  Those identities discharge the row-count hypothesis of the source basis-search theorem.  A finite-set inclusion argument proves that a live column outside the selected basis exists, and the executable first-success search returns one.  A zero-column determinant contradiction proves that every selected basis column is live.  The selected basis determinant satisfies the established bound of 120.
+
+The flattening proof uses list induction with explicit bounds on row and column indices.  Giving the full list argument to `getElem!_pos` avoids Lean inferring a natural-number container from an unresolved placeholder.  The finite-set cardinality proof required normalizing `decide` under a sum.  Neither change alters the executable arithmetic or capacities.
+
+The runner and regenerated artifact agree at SHA-256 `fd12b8ec03212c02f580162c53cdb035bf1c05cc31fab6843d087b11975846a2`.  Universal source correctness, arithmetic hypotheses across all rounds, allocation sufficiency, and exact-WASM execution remain open.
