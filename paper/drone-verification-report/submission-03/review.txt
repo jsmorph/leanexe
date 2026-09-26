@@ -1,0 +1,9 @@
+Decision: accept
+
+Accepted.
+
+## Remarks
+
+- Requirement 10: “LeanExe uses the pinned Talos interpreter and proof libraries for WASM execution.”  Add a citation identifying the Talos source used by the development.
+- Requirement 10: “The independent core type-safety development proves preservation and progress for its own typed syntax and semantics.”  Identify that development and cite its preservation and progress results.
+- Requirement 12, Vague references: “The final nested branch used an explicit last-instruction boundary.”  Name the proof and branch so the reader can identify the construction.
