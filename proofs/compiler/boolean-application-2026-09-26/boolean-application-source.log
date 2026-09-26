@@ -1,0 +1,33 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [22/23] Built LeanExe.Source.ScalarBooleanLet (831ms)
+⚠ [23/23] Built LeanExe.Source.ScalarBooleanLocal (1.5s)
+warning: LeanExe/Source/ScalarBooleanLocal.lean:239:59: This simp argument is unused:
+  BooleanBindingForm.nondep
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanBindingForm.expr, booleanLetExpr]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Source/ScalarBooleanLocal.lean:239:86: This simp argument is unused:
+  booleanLetExpr
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanBindingForm.expr, BooleanBindingForm.nondep]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Source/ScalarBooleanLocal.lean:252:54: This simp argument is unused:
+  BooleanBindingForm.nondep
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanBindingForm.expr, booleanWordLetExpr]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Source/ScalarBooleanLocal.lean:252:81: This simp argument is unused:
+  booleanWordLetExpr
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanBindingForm.expr, BooleanBindingForm.nondep]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Build completed successfully (23 jobs).

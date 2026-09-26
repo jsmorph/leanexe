@@ -8,41 +8,42 @@ annotation fix. This compiler-proof task remains active; the completed drone tas
 is preserved separately at the end of this file. Lean runs locally through
 `tools/leanrun`. Full-dialect correctness is not yet proved.
 
-Saved `decide` values and ordinary/dependent Boolean-result proposition choices
-now accept proved-equivalent arithmetic operands in standard decision evidence.
-`DecidedGuard` preserves the original evidence and its independent witness;
-proof-lambda domains remain exact.
+Immediate Boolean-producing lambda applications now accept UInt64 or Bool
+arguments, including standard Id type annotations. Exact source binders and
+lexical captures are preserved. Nested applications compose through scalar
+code, Boolean conversions, Id actions and loop-step control.
 
 The general source-to-WASM theorem and all fourteen axiom audits pass. Native
-Lean/V8 agree on 1,219 inputs across 73 declarations, including 21 range
-declarations. All 62 prior modules retain identical bytes. New focused tests
-pass 1,192 native/IR comparisons and 552 invalid-input tests. The previous three
-fixtures pass 912 comparisons and 100 rejections.
+Lean/V8 agree on 1,403 inputs across 84 declarations, including 24 range
+declarations. All 73 prior modules retain identical bytes. New focused tests
+pass 1,192 native/IR comparisons and 216 invalid-input tests. The preceding
+binding and saved-decision fixtures pass 792 comparisons and 168 rejections.
 
 Evidence, exact modules, source hashes and proof logs are in
-[the saved decision archive](proofs/compiler/saved-decision-2026-09-26/README.md).
-The preceding [dependent decision](proofs/compiler/dependent-decision-2026-09-26/README.md),
+[the Boolean application archive](proofs/compiler/boolean-application-2026-09-26/README.md).
+The preceding [saved decision](proofs/compiler/saved-decision-2026-09-26/README.md),
+[dependent decision](proofs/compiler/dependent-decision-2026-09-26/README.md),
 [compound guard](proofs/compiler/guard-decision-2026-09-26/README.md), and
 [atomic comparison](proofs/compiler/reannotation-2026-09-26/README.md) archives
 record their checked increments.
 
-Next: extend Boolean-returning local helper support. Immediate lambda
-applications with word or Boolean arguments are in progress; named helper
-bindings and calls follow. Both preserve explicit types and lexical captures. Then continue broader compiler coverage.
+Next: extend named Boolean-returning local helper bindings and calls, starting
+with a helper applied directly to an argument. Preserve explicit types and
+lexical captures. Then broaden named-helper uses and continue compiler coverage.
 Full-dialect correctness remains unfinished. Get each capability proved and
 executing end to end, and commit/push frequently.
 
-## Immediate Boolean lambda applications — in progress
+## Immediate Boolean lambda applications — complete
 
-Boolean-producing lambdas now accept UInt64 or Bool arguments, including Id
-annotations, and retain their exact source binders. They share the typed lexical
-binding semantics, with captures preserved in scalar operands and Boolean slots.
-Parser acceptance/soundness, scalar correctness and loop-step correctness pass.
-New focused tests pass 1,192 native/IR comparisons and 216 invalid-input checks.
-Native fixtures assert that elaboration retains the lambda applications.
+`BooleanBindingForm` preserves either the original let binding or immediate
+lambda application. Both use typed lexical binding evaluation. Source size,
+parser acceptance/soundness, scalar correctness and loop-step correctness pass.
+New focused tests cover captures, nested scopes, annotations, unused arguments,
+dependent conditions, Id actions and loop exits. Native fixtures assert that
+elaboration retains the lambda applications.
 
-The general compiler theorem and selected native/Wasm checks are next. Named
-Boolean helper bindings and calls remain subsequent work.
+The general compiler theorem, fourteen axiom audits and native/V8 checks pass.
+Named Boolean helper bindings and calls remain subsequent work.
 
 ## Saved proposition decision equivalence — complete
 
