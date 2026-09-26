@@ -36,21 +36,20 @@ open LeanExe.Source.Scalar
   · intro left right equality
     exact propositionGuard_not_boolean_unequal guard left right equality
 
-@[simp] theorem booleanLocalOperands_binding (name : Lean.Name) (nondep : Bool)
+@[simp] theorem booleanLocalOperands_binding (name : Lean.Name) (nondep : BooleanBindingForm)
     (type : BooleanType) (value body : Lean.Expr) :
-    booleanLocalOperands? (booleanLetExpr name nondep value body type) = (do
+    booleanLocalOperands? (nondep.expr name type.expr value body) = (do
       let v ← booleanLocalOperands? value
       let b ← booleanLocalOperands? body
       pure (.binding 0 name nondep v b type)) := by
-  rw [booleanLetExpr, booleanLocalOperands?, scalarResultType_boolean, booleanType_accepts]
-  rfl
+  cases nondep <;> rw [BooleanBindingForm.expr, booleanLocalOperands?, scalarResultType_boolean, booleanType_accepts] <;> rfl
 
-@[simp] theorem booleanLocalOperands_wordBinding (name : Lean.Name) (nondep : Bool)
+@[simp] theorem booleanLocalOperands_wordBinding (name : Lean.Name) (nondep : BooleanBindingForm)
     (type : ResultType) (value body : Lean.Expr) :
-    booleanLocalOperands? (booleanWordLetExpr name nondep value body type) = (do
+    booleanLocalOperands? (nondep.expr name type.expr value body) = (do
       let b ← booleanLocalOperands? body
       pure (.wordBinding 0 name nondep value b type)) := by
-  rw [booleanWordLetExpr, booleanLocalOperands?, scalarResultType_accepts]
+  cases nondep <;> rw [BooleanBindingForm.expr, booleanLocalOperands?, scalarResultType_accepts]
 
 @[simp] theorem booleanLocalOperands_wrapped (wrapper : BooleanWrapper) (body : Lean.Expr) :
     booleanLocalOperands? (wrapper.expr body) =
