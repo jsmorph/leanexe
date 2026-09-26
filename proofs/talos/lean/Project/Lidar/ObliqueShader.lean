@@ -5,10 +5,9 @@ import LeanExe.WGSL.LidarOblique
 namespace Project.Lidar.ObliqueShader
 open LeanExe.WGSL LeanExe.Examples.Lidar
 
-theorem kernel_trace (input : UInt.Input) (bounded : input.Bounded 4095) :
-    LidarOblique.kernel.eval32 input = LeanExe.Examples.LidarOblique.trace (Shader.boxes input)
+theorem kernel_trace_math (input : UInt.Input) :
+    LidarOblique.kernel.eval input = LeanExe.Examples.LidarOblique.trace (Shader.boxes input)
       (input.params 0) (input.params 1) input.direction (input.params 2) := by
-  rw [LidarOblique.exact input bounded]
   have h := Oblique.positive_first
     (LeanExe.Examples.LidarOblique.reflected (Lidar.boxAt input 3) input.direction)
     (LeanExe.Examples.LidarOblique.originX (input.params 0) input.direction)
@@ -19,6 +18,12 @@ theorem kernel_trace (input : UInt.Input) (bounded : input.Bounded 4095) :
   simp only [LidarOblique.kernel, UInt.Expr.eval, LidarOblique.eval_box,
     Shader.boxes, LeanExe.Examples.LidarOblique.trace]
   rw [Nat.min_eq_left hb]
+
+theorem kernel_trace (input : UInt.Input) (bounded : input.Bounded 4095) :
+    LidarOblique.kernel.eval32 input = LeanExe.Examples.LidarOblique.trace (Shader.boxes input)
+      (input.params 0) (input.params 1) input.direction (input.params 2) := by
+  rw [LidarOblique.exact input bounded]
+  exact kernel_trace_math input
 
 theorem certified_correct (source : String) (certified : UInt.Certified source LidarOblique.kernel)
     (input : UInt.Input) (bounded : input.Bounded 4095)

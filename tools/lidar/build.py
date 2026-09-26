@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate and check the cardinal lidar bundle through the repository Lean runner."""
+"""Generate and check a lidar bundle through the repository Lean runner."""
 import argparse
 import hashlib
 import json
@@ -151,24 +151,31 @@ def controller_byte_parts(output):
     return files
 
 
-def compare_artifact_bytes(output):
-    for artifact in ['scan.wgsl', 'summary.wgsl', 'controller.wasm']:
+def artifact_names(mode):
+    return ['scan.wgsl', 'summary.wgsl', 'controller.wasm'] + (['inner.wgsl'] if mode == 'interval' else [])
+
+
+def compare_artifact_bytes(output, mode):
+    for artifact in artifact_names(mode):
         if (output/artifact).read_bytes() != (output/('certified-'+artifact)).read_bytes():
             raise SystemExit(f'{artifact} differs from the value named in its checked theorem')
 
 
-def export_certified_values(output, env):
+def export_certified_values(output, env, mode):
     """Serialize the values named by the checked theorems, then compare files.
 
     This is the explicit trusted IO boundary; it does not reconstruct shader
     headers or parse Lean source with a second hand-written representation.
     """
     source = 'import Application\n'
-    for name, value, operation in [
+    values = [
         ('scan.wgsl', 'Project.Lidar.Artifact.shaderText', 'writeFile'),
         ('summary.wgsl', 'Project.Lidar.SummaryArtifact.shaderText', 'writeFile'),
         ('controller.wasm', 'Project.Lidar.ControllerArtifact.bytes', 'writeBinFile'),
-    ]:
+    ]
+    if mode == 'interval':
+        values.append(('inner.wgsl', 'Project.Lidar.InnerArtifact.shaderText', 'writeFile'))
+    for name, value, operation in values:
         target = json.dumps(str(output/('certified-'+name)))
         source += f'#eval IO.FS.{operation} {target} {value}\n'
     path = output/'Identity.lean'
@@ -176,7 +183,7 @@ def export_certified_values(output, env):
     lean(['lake', '-d', 'proofs/talos/lean', 'env', 'lean', '-M', '8192',
           '--run', 'tools/lidar/Check.lean', str(path), str(path.with_suffix('.olean'))],
          'artifact-identity', env)
-    compare_artifact_bytes(output)
+    compare_artifact_bytes(output, mode)
 
 
 def check_frontend_rejection(output, env):
@@ -195,11 +202,11 @@ def check_frontend_rejection(output, env):
 
 
 def finish_bundle(output, env, mode='cardinal'):
-    export_certified_values(output, env)
-    receipt = {'schema': 1, 'mode': mode, 'milestone': mode + ' integer lidar',
-               'ticks_per_unit': 60 if mode == 'oblique' else 1,
+    export_certified_values(output, env, mode)
+    receipt = {'schema': 1, 'mode': mode, 'milestone': 'conservative interval lidar' if mode == 'interval' else mode + ' integer lidar',
+               'ticks_per_unit': 1 if mode == 'cardinal' else 60,
                'artifacts': {name: hashlib.sha256((output/name).read_bytes()).hexdigest()
-                             for name in ['scan.wgsl','summary.wgsl','controller.wasm']},
+                             for name in artifact_names(mode)},
                'assumptions': ['WebGPU implements the accepted u32 subset',
                                'host validates, copies, binds and schedules the declared buffers',
                                'WASM engine implements the modeled arithmetic semantics',
@@ -211,30 +218,34 @@ def finish_bundle(output, env, mode='cardinal'):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path)
-    parser.add_argument('--mode', choices=['cardinal', 'oblique'], default='cardinal')
+    parser.add_argument('--mode', choices=['cardinal', 'oblique', 'interval'], default='cardinal')
     args = parser.parse_args()
     output = (args.out or ROOT / 'build/lidar' /
-              ('oblique' if args.mode == 'oblique' else 'bundle')).resolve()
+              ('bundle' if args.mode == 'cardinal' else args.mode)).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    (output/'checked.json').unlink(missing_ok=True)
     env = dict(os.environ)
     toolchain = ROOT / 'build/tools/lean-4.34.0-rc2-linux'
     if toolchain.exists():
         env.setdefault('LEANRUN_TOOLCHAIN', str(toolchain))
     lean(['lake', 'build', 'LeanExe.WGSL.LidarSummary', 'LeanExe.WGSL.LidarOblique',
-          'LeanExe.WGSL.UIntComposition'], 'compiler', env)
+          'LeanExe.WGSL.UIntComposition', 'LeanExe.WGSL.LidarInterval'], 'compiler', env)
     lean(['lake', '-d', 'proofs/talos/lean', 'build', 'Project.Lidar.Shader',
           'Project.Lidar.Continuous', 'Project.Lidar.Controller', 'Project.Lidar.Summary',
           'Project.Compiler.ScalarResult', 'Project.Lidar.ParserChecks',
-          'Project.Lidar.ObliqueShader'], 'application', env, timeout='10m')
+          'Project.Lidar.ObliqueShader', 'Project.Lidar.IntervalQuery'], 'application', env, timeout='10m')
     lean(['lake', 'env', 'lean', '--run', 'tools/lidar/Generate.lean', str(output), args.mode], 'generate', env)
-    application = 'ObliqueApplication.lean' if args.mode == 'oblique' else 'Application.lean'
+    application = {'cardinal': 'Application.lean', 'oblique': 'ObliqueApplication.lean',
+                   'interval': 'IntervalApplication.lean'}[args.mode]
     shutil.copyfile(ROOT / 'tools/lidar' / application, output / 'Application.lean')
     shutil.copyfile(ROOT / 'tools/lidar/ControllerIR.lean', output / 'ControllerIR.lean')
     shutil.copyfile(ROOT / 'tools/lidar/ControllerResult.lean', output / 'ControllerResult.lean')
     env['LEAN_PATH'] = str(output) + ':' + env.get('LEAN_PATH', '')
     check_frontend_rejection(output, env)
-    for name in ['Shader', 'Summary', 'Controller', 'ControllerIR', 'ControllerResult', 'Application']:
+    names = ['Shader'] + (['Inner'] if args.mode == 'interval' else [])
+    for name in names + ['Summary', 'Controller', 'ControllerIR', 'ControllerResult', 'Application']:
         proof = output / (name + '.lean')
-        files = (split_certificate(proof) if name in ['Shader', 'Summary'] else
+        files = (split_certificate(proof) if name in ['Shader', 'Inner', 'Summary'] else
                  split_controller(proof) if name == 'Controller' else [proof])
         for file in files:
             lean(['lake', '-d', 'proofs/talos/lean', 'env', 'lean', '-M', '8192',

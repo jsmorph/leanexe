@@ -97,7 +97,10 @@ controller-to-shader pipeline theorem. Its 12 geometric cases and three invalid
 parameter checks pass on a software Vulkan adapter. The separate
 [development journal](docs/lidar/journal.md) records completed checks, diagrams,
 observed runs and the agenda for numerical uncertainty. The second checked
-slice adds rational oblique beams and passes 14 geometric comparisons. These
+slice adds rational oblique beams and passes 14 geometric comparisons. A third
+checked slice encloses real-coordinate uncertainty, returning a certified miss,
+a bounded hit distance, or explicit uncertainty; its 12 observed cases pass.
+These
 application, artifact and runtime claims have distinct scopes and assumptions.
 
 ## Run GPT-2 in WebAssembly

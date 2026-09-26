@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="500" viewBox="0 0 860 500">
+<rect width="860" height="500" fill="#f8fafc"/>
+<g font-family="system-ui,sans-serif" fill="#172033">
+<text x="28" y="32" font-size="22">Lidar · conservative distance intervals</text>
+<text x="28" y="58" font-size="13">Actual WebGPU summaries · rectangle endpoint uncertainty ±1 grid unit</text>
+<rect x="243.3" y="154.29999999999998" width="32.400000000000006" height="86.4" fill="#fef3c7" stroke="#d97706"/>
+<rect x="246.0" y="156.99999999999997" width="27.0" height="81.0" fill="#cbd5e1" stroke="#64748b"/>
+<rect x="248.70000000000002" y="159.7" width="21.6" height="75.60000000000001" fill="#a7f3d0" stroke="#047857"/>
+<rect x="270.3" y="127.29999999999995" width="32.400000000000006" height="59.400000000000006" fill="#fef3c7" stroke="#d97706"/>
+<rect x="273.0" y="130.0" width="27.0" height="54.0" fill="#cbd5e1" stroke="#64748b"/>
+<rect x="275.70000000000005" y="132.7" width="21.6" height="48.6" fill="#a7f3d0" stroke="#047857"/>
+<rect x="81.30000000000001" y="127.29999999999995" width="59.400000000000006" height="59.400000000000006" fill="#fef3c7" stroke="#d97706"/>
+<rect x="84.0" y="130.0" width="54.0" height="54.0" fill="#cbd5e1" stroke="#64748b"/>
+<rect x="86.7" y="132.7" width="48.6" height="48.6" fill="#a7f3d0" stroke="#047857"/>
+<rect x="243.3" y="343.3" width="32.400000000000006" height="59.400000000000006" fill="#fef3c7" stroke="#d97706"/>
+<rect x="246.0" y="346.0" width="27.0" height="54.0" fill="#cbd5e1" stroke="#64748b"/>
+<rect x="248.70000000000002" y="348.7" width="21.6" height="48.6" fill="#a7f3d0" stroke="#047857"/>
+<path d="M192.0 292.0 L243.3 223.6" stroke="#047857" stroke-width="2"/>
+<path d="M243.3 223.6 L248.70000000000002 216.39999999999998" stroke="#d97706" stroke-width="8" stroke-linecap="round"/>
+<text x="480" y="115" font-size="15">NE: [95/3, 35]</text>
+<path d="M192.0 292.0 L113.025 186.7" stroke="#047857" stroke-width="2"/>
+<path d="M113.025 186.7 L108.97500000000001 181.29999999999998" stroke="#d97706" stroke-width="8" stroke-linecap="round"/>
+<text x="480" y="145" font-size="15">NW: [195/4, 205/4]</text>
+<path d="M192.0 292.0 L243.3 360.4" stroke="#047857" stroke-width="2"/>
+<path d="M243.3 360.4 L248.70000000000002 367.6" stroke="#d97706" stroke-width="8" stroke-linecap="round"/>
+<text x="480" y="175" font-size="15">SE: [95/3, 35]</text>
+<path d="M192.0 292.0 L94.80000000000001 421.6" stroke="#b45309" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="480" y="205" font-size="15">SW: certified miss</text>
+<circle cx="192.0" cy="292.0" r="5" fill="#1d4ed8"/>
+<text x="480" y="255" font-size="15">Nearest midpoint: 100/3 units</text>
+<text x="480" y="280" font-size="15">Proved error bound: 5/3 units</text>
+<text x="480" y="330" font-size="13">Amber: outer rectangle / distance band</text>
+<text x="480" y="354" font-size="13">Green: inner rectangle / certain hit</text>
+<text x="480" y="390" font-size="13">Tangent case: explicitly uncertain</text>
+<text x="480" y="414" font-size="13">8 summary bytes read per request</text>
+<text x="28" y="478" font-size="12">Vulkan · CPU adapter · physical distances shown</text>
+</g></svg>
