@@ -4876,6 +4876,68 @@ def customNegated (x y : UInt64) : UInt64 := @ite UInt64 (¬ x < y) (customNegat
 def customNeDecision (x y : UInt64) : Decidable (x ≠ y) := inferInstance
 def customNe (x y : UInt64) : UInt64 := @ite UInt64 (x ≠ y) (customNeDecision x y) x y
 
+def reannotatedAnd (x y : UInt64) : UInt64 :=
+  @ite UInt64
+    ((@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) ∧ (@Eq (Id (Id UInt64)) ((x + y) % 5) (0)))
+    (@instDecidableAnd (@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) (@Eq (Id (Id UInt64)) ((x + y) % 5) (0))
+      (UInt64.decLt (x + 1) (y * 7)) (instDecidableEqUInt64 ((x + y) % 5) (0)))
+    (x + 1) (y * 3)
+
+def reannotatedOr (x y : UInt64) : UInt64 :=
+  @ite UInt64
+    ((@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) ∨ (@Ne (Id (Id UInt64)) (x ^^^ y) (y + 3)))
+    (@instDecidableOr (@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) (@Ne (Id (Id UInt64)) (x ^^^ y) (y + 3))
+      (UInt64.decLt (x + 1) (y * 7)) (@instDecidableNot (@Eq (Id (Id UInt64)) (x ^^^ y) (y + 3)) (instDecidableEqUInt64 (x ^^^ y) (y + 3))))
+    (x + 1) (y * 3)
+
+def reannotatedGuardNegation (x y : UInt64) : UInt64 :=
+  @ite UInt64
+    (Not (Not ((@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) ∧ (@Eq (Id (Id UInt64)) ((x + y) % 5) (0)))))
+    (@instDecidableNot (Not ((@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) ∧ (@Eq (Id (Id UInt64)) ((x + y) % 5) (0)))) (@instDecidableNot ((@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) ∧ (@Eq (Id (Id UInt64)) ((x + y) % 5) (0))) (@instDecidableAnd (@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) (@Eq (Id (Id UInt64)) ((x + y) % 5) (0))
+      (UInt64.decLt (x + 1) (y * 7)) (instDecidableEqUInt64 ((x + y) % 5) (0)))))
+    (x + 1) (y * 3)
+
+def reannotatedNestedGuard (x y : UInt64) : UInt64 :=
+  @ite UInt64
+    (((@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) ∨ (@Eq (Id (Id UInt64)) ((x + y) % 5) (0))) ∧ (Not (@Ne (Id (Id UInt64)) (x ^^^ y) (y + 3))))
+    (@instDecidableAnd ((@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) ∨ (@Eq (Id (Id UInt64)) ((x + y) % 5) (0))) (Not (@Ne (Id (Id UInt64)) (x ^^^ y) (y + 3)))
+      (@instDecidableOr (@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) (@Eq (Id (Id UInt64)) ((x + y) % 5) (0))
+      (UInt64.decLt (x + 1) (y * 7)) (instDecidableEqUInt64 ((x + y) % 5) (0))) (@instDecidableNot (@Ne (Id (Id UInt64)) (x ^^^ y) (y + 3)) (@instDecidableNot (@Eq (Id (Id UInt64)) (x ^^^ y) (y + 3)) (instDecidableEqUInt64 (x ^^^ y) (y + 3)))))
+    (x + 1) (y * 3)
+
+def reannotatedGuardHelper (x y : UInt64) : UInt64 :=
+  let f := fun z : UInt64 =>
+    @ite UInt64
+      ((@LT.lt (Id UInt64) instLTUInt64 (z + 1) (y * 3)) ∨ (@Ne (Id (Id UInt64)) (z % 5) (0)))
+      (@instDecidableOr (@LT.lt (Id UInt64) instLTUInt64 (z + 1) (y * 3)) (@Ne (Id (Id UInt64)) (z % 5) (0))
+        (UInt64.decLt (z + 1) (y * 3)) (@instDecidableNot (@Eq (Id (Id UInt64)) (z % 5) (0)) (instDecidableEqUInt64 (z % 5) (0))))
+      (z + 1) (z * 3)
+  f x + f y
+
+def reannotatedGuardDo (x y : UInt64) : UInt64 := Id.run do
+  let value ← @ite (Id UInt64)
+    ((@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) ∧ (@Eq (Id (Id UInt64)) ((x + y) % 5) (0)))
+    (@instDecidableAnd (@LT.lt (Id UInt64) instLTUInt64 (x + 1) (y * 7)) (@Eq (Id (Id UInt64)) ((x + y) % 5) (0))
+      (UInt64.decLt (x + 1) (y * 7)) (instDecidableEqUInt64 ((x + y) % 5) (0)))
+    (pure (x + 1)) (pure (y * 3))
+  return value + y
+
+def rangeReannotatedAnd (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    @ite (Id (ForInStep UInt64))
+      ((@GE.ge (Id (Id UInt64)) instLEUInt64 (UInt64.ofNat i + 1) (seed % 7)) ∧ (@Ne (Id UInt64) ((a + UInt64.ofNat i) % 5) (0)))
+      (@instDecidableAnd (@GE.ge (Id (Id UInt64)) instLEUInt64 (UInt64.ofNat i + 1) (seed % 7)) (@Ne (Id UInt64) ((a + UInt64.ofNat i) % 5) (0))
+        (UInt64.decLe (seed % 7) (UInt64.ofNat i + 1)) (@instDecidableNot (@Eq (Id UInt64) ((a + UInt64.ofNat i) % 5) (0)) (instDecidableEqUInt64 ((a + UInt64.ofNat i) % 5) (0))))
+      (pure (.done (a + UInt64.ofNat i))) (pure (.yield (a * 3 + UInt64.ofNat i)))
+
+def rangeReannotatedOr (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    @ite (Id (ForInStep UInt64))
+      ((@GT.gt (Id UInt64) instLTUInt64 (UInt64.ofNat i + 1) (seed % 11)) ∨ (@Eq (Id (Id UInt64)) ((a + UInt64.ofNat i) % 7) (0)))
+      (@instDecidableOr (@GT.gt (Id UInt64) instLTUInt64 (UInt64.ofNat i + 1) (seed % 11)) (@Eq (Id (Id UInt64)) ((a + UInt64.ofNat i) % 7) (0))
+        (UInt64.decLt (seed % 11) (UInt64.ofNat i + 1)) (instDecidableEqUInt64 ((a + UInt64.ofNat i) % 7) (0)))
+      (pure (.done (a + UInt64.ofNat i))) (pure (.yield (a * 3 + UInt64.ofNat i)))
+
 def reannotatedEq (x y : UInt64) : UInt64 :=
   @ite UInt64 (@Eq (Id UInt64) ((x + y) % 7) 0)
     (instDecidableEqUInt64 ((x + y) % 7) 0) (x + 1) (y + 3)
@@ -5636,6 +5698,15 @@ run_elab do
       `ArithmeticModeTest.reannotatedNegated,
       `ArithmeticModeTest.reannotatedHelper,
       `ArithmeticModeTest.reannotatedDo,
+      `ArithmeticModeTest.reannotatedAnd,
+      `ArithmeticModeTest.reannotatedOr,
+      `ArithmeticModeTest.reannotatedGuardNegation,
+      `ArithmeticModeTest.reannotatedNestedGuard,
+      `ArithmeticModeTest.reannotatedGuardHelper,
+      `ArithmeticModeTest.reannotatedGuardDo,
+      `ArithmeticModeTest.rangeReannotatedAnd,
+      `ArithmeticModeTest.rangeReannotatedOr,
+
       `ArithmeticModeTest.rangeReannotatedOrder,
       `ArithmeticModeTest.rangeIdComparisonEvidenceAnnotations,
 

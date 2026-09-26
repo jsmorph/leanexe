@@ -1,11 +1,11 @@
 import LeanExe.Source.ScalarGuard
-import LeanExe.Source.ScalarReannotatedComparison
+import LeanExe.Source.ScalarGuardDecision
 
 namespace LeanExe.Source.Scalar
 
 /-- Additional checked guard forms share the proved guard lowering. -/
 inductive CompoundGuard where
-  | reannotated (comparison : ReannotatedComparison)
+  | reannotated (guard : ReannotatedGuard)
   | literal (value : GuardLiteral)
   | proposition (junction : Junction) (left right : Guard) (negations : Nat := 0)
   | boolean (junction : Junction) (left right : BooleanGuard) (negations : Nat := 0) (propNegations : Nat := 0)
@@ -14,7 +14,7 @@ inductive CompoundGuard where
 namespace CompoundGuard
 
 def tree : CompoundGuard → Guard
-  | .reannotated comparison => .compare comparison.operation comparison.left comparison.right
+  | .reannotated guard => guard.tree
   | .literal value => .literal value
   | .proposition op a b n => .junction n op a b
   | .boolean op a b n m => .boolean m n op a b
@@ -24,7 +24,7 @@ abbrev denote (guard : CompoundGuard) (native : Lean.Expr → UInt64) : Bool := 
 
 abbrev condition (guard : CompoundGuard) : Lean.Expr := guard.tree.condition
 def evidence : CompoundGuard → Lean.Expr
-  | .reannotated comparison => comparison.evidence
+  | .reannotated guard => guard.evidence
   | guard => guard.tree.evidence
 
 theorem operands_size (guard : CompoundGuard) {operand : Lean.Expr}
