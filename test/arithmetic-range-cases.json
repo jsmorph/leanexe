@@ -430,5 +430,9 @@
   "rangeBooleanPredicateOuterLetBounds",
   "rangeBooleanPredicateOuterLetCapture",
   "rangeBooleanPredicateOuterLetChoice",
-  "rangeBooleanPredicateOuterLetId"
+  "rangeBooleanPredicateOuterLetId",
+  "rangeBooleanPredicateConditionStep",
+  "rangeBooleanPredicateConditionContinue",
+  "rangeBooleanPredicateConditionOuter",
+  "rangeBooleanPredicateConditionOuterCapture"
 ]
