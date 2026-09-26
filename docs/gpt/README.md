@@ -1,104 +1,129 @@
 # GPT inference and verification
 
-[LeanExe's](../../README.md) GPT work implements next-token prediction in Lean,
-compiles it to WebAssembly, and proves properties of the resulting programs.
-Each model takes a sequence of token IDs and returns a logit, or unnormalized
-score, for each possible next token.  The tiny models assign one token to each
-byte.  Pretrained GPT-2 uses a tokenizer to encode text as vocabulary IDs.
+LeanExe runs transformer inference written in Lean as WebAssembly. The examples
+range from small byte-token models with numerical error bounds to pretrained
+GPT-2 124M with complete cached-inference execution proofs. Model weights are
+runtime data; LeanExe compiles the inference algorithm.
 
-A checkpoint stores the model's learned parameters, called weights.
-Inference evaluates the model with those weights.  A host program selects
-a token from the returned logits, appends it to the input, and repeats
-inference to generate text.  The compiler translates the inference code.
-Weights enter the compiled program as runtime data.
+Each inference call returns logits: one score for every possible next token.
+The host selects a token, extends the prompt, and repeats. Pretrained GPT-2 uses
+its byte-pair tokenizer and keeps an attention key/value cache between calls.
+The tiny models assign one token to each byte.
 
-The work has two goals: prove that executable inference agrees with its Lean
-algorithm, including memory use and termination, and bound numerical error
-against real arithmetic.  Small trained models support the numerical work.
-Pretrained GPT-2 supplies a larger execution and artifact-verification case.
-Execution proofs use Talos, a Lean definition of WebAssembly execution.
+## Run pretrained GPT-2
+
+Configure the [development environment](../../DEVELOPING.md#prerequisites) and
+install `uv`. From the repository root, fetch the pinned checkpoint:
+
+```sh
+uv run --project training/gpt2 training/gpt2/reference.py fetch
+```
+
+Run FP32 inference, quantized inference, or the CPU PyTorch reference:
+
+```sh
+tools/gpt2 --text 'Once upon a time, in a small village' --generate 32
+tools/gpt2 --quantized --text 'Once upon a time, in a small village' --generate 32
+tools/gpt2-pytorch --text 'Once upon a time, in a small village' --generate 32
+```
+
+`uv` manages the pinned Python dependencies. The WASM commands prepare packed
+weights when needed and check weight and tokenizer identities. The FP32 command
+builds the selected Lean entry. The quantized command loads the exact binary
+selected by its [model manifest](../../data/gpt2-quantized-v1/model.json).
+
+| Option | Use |
+|--------|-----|
+| `--generate N` | Request up to N new tokens. Prompt and completion together are limited to 128 tokens. |
+| `--top-k 1` | Select greedy decoding. The default samples among the top 40 logits at temperature 0.8. |
+| `--seed N` | Set the sampling seed; the default is 42. |
+| `--json` | Return token IDs, model and binary identity, timing, allocation information, and stopping condition. |
+| `--logits PATH` | Save the last evaluated context's 50,257 little-endian FP32 logits. |
+| `--full` | Recompute the FP32 prefix instead of using the cache; mutually exclusive with `--quantized`. |
+
+Generation also stops at the end-of-text token. FP32 parameters occupy
+497,759,232 bytes; quantized weights occupy 127,695,972 bytes. Runtime memory
+includes weights, caches, and intermediate tensors. See the model records for
+measured memory and runtime under their stated conditions.
 
 ## Models and results
 
-| Model | Input and representation | Current result |
-|-------|--------------------------|----------------|
-| [Four-byte tiny GPT-2](../../data/tiny-gpt2-v1/README.md) | Four byte tokens, 2,488 binary64 parameters, one width-four transformer block, 256 output logits. | Execution and numerical proofs for the generated WebAssembly text (WAT) model, with runtime weight validation and clipping.  The unconditional error bound is too coarse to certify precision. |
-| [64-position](../../data/tiny-gpt2-64-v1/README.md) and [128-position tiny GPT-2](../../data/tiny-gpt2-128-v1/README.md) | Byte tokens, the same block dimensions, and longer position tables. | Trained checkpoints and CPU tests.  The 128-position model also generates text in WASM.  Its complete execution proof remains open. |
-| [Pretrained GPT-2 124M](../../data/gpt2-124m/README.md) | Up to 128 byte-pair tokens, 124,439,808 binary32 parameters, twelve width-768 blocks, 50,257 output logits. | Cached WASM generation, exact token-step and session proofs, and a proof about the distributed binary.  Real-arithmetic error bounds remain deferred. |
-| [Quantized GPT-2 124M](../../data/gpt2-quantized-v1/README.md) | Signed eight-bit weights and projection activations, activation groups of 64, signed 32-bit partial sums, and FP32 surrounding computation. | Exact binary and cached-session proofs, including termination, allocation, and cleanup.  Measured weight storage falls by 74.3%, with a 3.59× median runtime speedup.  Conditional numerical bounds are proved and evaluated, but too coarse to certify token margins. |
+| Model | Computation | Verification and evidence |
+|-------|-------------|---------------------------|
+| [Pretrained GPT-2 124M](../../data/gpt2-124m/README.md) | Twelve width-768 transformer blocks, FP32 arithmetic, 50,257 output logits, and up to 128 tokens. | Exact cached token-step and session proofs, plus a separately identified exact-binary package. Reference tests compare 6,432,896 logits across 128 prefixes. Real-arithmetic error bounds remain open. |
+| [Quantized GPT-2 124M](../../data/gpt2-quantized-v1/README.md) | INT8 projection weights and activations grouped in 64 coordinates, signed 32-bit partial sums, and surrounding FP32 computation. | Complete session and exact-binary proofs, including rejection, termination, allocation, and release. Tests compare every logit and cache against the independent quantized reference. Numerical bounds are proved but too coarse to establish all greedy choices. |
+| [Four-byte tiny GPT-2](../../data/tiny-gpt2-v1/README.md) | Four byte tokens, 2,488 binary64 parameters, one width-four block, and 256 output logits. | Generated-WASM execution and numerical proofs, with runtime weight validation and clipping. The unconditional error bound is too coarse to certify precision. |
+| [64-position](../../data/tiny-gpt2-64-v1/README.md) and [128-position tiny GPT-2](../../data/tiny-gpt2-128-v1/README.md) | Byte-token models with longer position tables. | Trained checkpoints and CPU tests; the 128-position model generates text in WASM. Its complete execution proof remains open. |
 
-The pretrained checkpoint retains its original 1,024 positional embeddings.
-The implementation and session theorem support positions zero through 127.
+The pretrained checkpoint contains 1,024 positional embeddings; this implementation
+and its session theorem support positions zero through 127. Quantized inference
+implements a different arithmetic recurrence from FP32 and can select different
+tokens. The [quantized measurements](../../data/gpt2-quantized-v1/README.md)
+describe speed, memory, and token agreement for the measured prompts and settings.
 
-## Data and execution
-
-The tiny-model training program writes a checkpoint containing named tensors
-and raw binary64 parameter words.  Its CLI passes the weights, four byte
-tokens, and a weight bound to a checked WASM entry.  The entry validates the
-inputs, clips finite weights to the requested interval, runs the transformer,
-and returns all 256 logits.  The [training directory](../../training/tiny-gpt2/README.md)
-contains the PyTorch model, exporter, and numerical audits.  The
-[tiny-model source](../../proofs/talos/lean/Project/TinyGpt2/README.md)
-defines the inference algorithm and real-arithmetic comparison.
-
-For pretrained GPT-2, the [Python programs](../../training/gpt2/README.md)
-download and check a pinned checkpoint, export packed binary32 weights,
-and tokenize text.  LeanExe compiles the [Lean model](../../LeanExe/Models/Gpt2/README.md)
-to WASM.  The C host loads that module and the weights into a resident
-Wasmtime instance.  Each call consumes the next token and an attention
-key/value cache, then returns an updated cache and 50,257 logits.  The cache
-stores vectors computed for earlier tokens, which later calls reuse for
-attention.  Python releases the preceding cache, retains the new cache,
-reads and releases the logits, selects the next token, and decodes the
-generated token sequence as text.
-
-Commands run from the repository root after the setup in the linked model
-documents and [development guide](../../DEVELOPING.md):
+Run the tiny examples with:
 
 ```sh
 tools/tiny-gpt2.js --text 'To b'
 tools/tiny-gpt2.js --context 128 --text 'ROMEO:' --generate 160
-tools/gpt2 --text 'Once upon a time, in a small village' --generate 32
-tools/gpt2 --quantized --text 'Once upon a time, in a small village' --generate 32
 ```
 
-The 128-position tiny model advances a window of byte tokens.  Pretrained
-GPT-2 stops at 128 total tokens, including the prompt.
+The 128-position tiny model advances a window of byte tokens, so its output
+length is not limited to 128 total tokens.
+
+## Data and execution
+
+The [Python tools](../../training/gpt2/README.md) fetch and validate a pinned
+checkpoint, pack the weights, and tokenize text. The
+[Lean model](../../LeanExe/Models/Gpt2/README.md) implements embeddings,
+normalization, attention, projection, activation, and cached inference.
+
+The native host loads the WASM module and weights into one Wasmtime instance.
+Each token call takes weights, a cache, a token ID, and a position; it returns
+the extended cache and a logit vector. The host releases the preceding cache,
+retains the returned cache, reads and releases the logits, and selects the next
+token. Model arithmetic executes inside WASM. Tokenization, sampling
+probabilities, and text decoding execute in the host; WASM SplitMix64 supplies
+the WASM command's sampling draws.
+
+The [tiny-model training tools](../../training/tiny-gpt2/README.md) provide the
+PyTorch model, exporter, checkpoints, and numerical audits. The four-byte entry
+validates inputs and clips finite weights to the requested bound before inference.
 
 ## Proofs and evidence
 
-| Question | Evidence and scope |
-|----------|--------------------|
-| Does generated WASM compute the Lean algorithm? | [Tiny checked-entry proofs](../../proofs/talos/lean/Project/TinyGpt2Checked/README.md) and [pretrained cached-inference proofs](../../proofs/talos/lean/Project/Gpt2CachedStep/README.md) establish exact results, termination, and stated memory properties in Talos's WASM semantics. |
-| Does the distributed pretrained binary have that behavior? | The cached-inference artifact proof checks its embedded bytes, decoding, validation, and equality with the execution model, then applies the session theorem. |
-| How close are computed logits to real arithmetic? | Tiny-model numerical theorems bound outputs and error for a specified weight domain and normalization bounds.  The checked entry compares against the real model using clipped weights.  Fixed-checkpoint certificates cover every four-byte input. |
-| How does inference compare with PyTorch? | Checkpoint records retain measured logits, intermediate tensors, completions, and memory use.  The tiny-model audits also retain adversarial token and weight cases that exposed unsuitable numerical domains and approximation error. |
+| Question | Proof boundary |
+|----------|----------------|
+| Does a token call compute the Lean algorithm? | The [cached-step theorem](../../proofs/talos/lean/Project/Gpt2CachedStep/README.md) proves exact cache and logit bytes, termination, a valid resulting heap, and preservation of protected inputs under its representation and capacity assumptions. |
+| Does a complete session behave correctly? | The session theorem composes initialization, weight loading, successive token calls, and buffer release. It derives the per-call heap and representation conditions for the specified inputs. |
+| Do particular binary bytes have that behavior? | Exact-artifact proofs check embedded bytes, decoding, validation, and translation to the proved execution model. Their guarantee applies to the identified binary. |
+| Are the logits close to real arithmetic? | Separate numerical theorems bound error under stated input and weight conditions. Execution equality alone does not establish numerical accuracy or token agreement with another implementation. |
 
-Execution equality fixes the implemented arithmetic, including its
-approximations and exceptional floating-point values.  Numerical theorems
-add real-arithmetic claims under their stated assumptions.  Tokenization,
-sampling, the native host, and Wasmtime are outside the Lean proof.
+The FP32 source check regenerates compiler output and verifies its execution
+model. Its exact-artifact check verifies the binary named in the package, a
+separate proof subject. The FP32 CLI reports its emitted binary hash with
+`--json`. The quantized CLI checks its selected binary against the artifact
+manifest before running it. [Checking instructions](../../proofs/talos/lean/Project/Gpt2CachedStep/README.md#checking-and-evidence)
+and the [quantized proof package](../../proofs/talos/lean/Project/Gpt2QuantizedCached/README.md)
+identify the respective commands and theorem targets.
 
-The quantized command loads the frozen, verified binary and checks the model
-and tokenizer identities.  Its [numerical evidence](../../data/gpt2-quantized-v1/certificates/README.md)
-compares both implementations on shared token prefixes while propagating their
-separate cache histories.  Forward bounds certify no token choices on the
-302 evaluated prefixes.  Separate certificates from measured logits establish
-232 individual greedy choices.  Captured operand identity with the source
-recurrences remains an explicit assumption, and data evaluation trusts the
-pinned native Lean compiler and runtime.
+Execution equality fixes the implemented arithmetic, including approximations
+and exceptional floating-point values. The FP32 runtime uses Wasmtime with
+canonical NaNs. Tokenization, sampling, the native host, and Wasmtime are outside
+the Lean proof. The session theorem specifies the required host call sequence.
 
-For the four-byte model, the runtime theorem covers every valid prompt and
-every accepted weight array after clipping to a bound B in [0, 10].  At
-B = 10, it proves finite logits of magnitude at most 1,260 and absolute
-error at most 2,470 against the real model with clipped weights.  The original
-checkpoint has a separate magnitude certificate of 117.  Measured errors
-in the adversarial audits concern the recorded inputs and arithmetic versions.
+For the four-byte model, accepted weights are clipped to a bound B in [0, 10].
+At B = 10, the theorem gives finite logits of magnitude at most 1,260 and
+absolute error at most 2,470 against the real model with clipped weights.
+These bounds do not establish useful output precision.
 
-The [Talos proof inventory](../../proofs/talos/README.md) records registered
-theorems and check commands.  The [cached execution report](../../paper/gpt2-verification-report/README.md)
-describes the pretrained token-step, session, and binary proofs.  The
-[broader GPT report](../../paper/gpt2-comprehensive-report/README.md) also covers
-the separate WGSL branch's shader and browser work.  The
-[numerical-bounds draft](https://github.com/jsmorph/cap/blob/6ad59ec/reports/gpt-bounds-2026-09-21/README.md)
-examines the tiny model's bounds and adversarial cases.
+The quantized [numerical certificates](../../data/gpt2-quantized-v1/certificates/README.md)
+cover 302 evaluated prefixes. Propagated forward bounds certify no token choices;
+separate certificates from measured logits establish 232 individual greedy
+choices. Operand identity with the source recurrences remains an explicit
+assumption, and data evaluation trusts the pinned native Lean compiler and runtime.
+
+The [Talos inventory](../../proofs/talos/README.md) lists theorem targets and
+checks. The [cached execution report](../../paper/gpt2-verification-report/README.md)
+and [comprehensive GPT report](../../paper/gpt2-comprehensive-report/README.md)
+provide detailed accounts of the algorithms and verification.
