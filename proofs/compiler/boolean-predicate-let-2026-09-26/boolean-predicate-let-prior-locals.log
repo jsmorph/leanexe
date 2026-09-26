@@ -1,0 +1,4 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+no such file or directory (error code: 2)
+  file: test/scalar_boolean_local.lean

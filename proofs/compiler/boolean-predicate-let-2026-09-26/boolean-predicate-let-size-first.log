@@ -1,0 +1,5 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+1176
+425
+../work/BooleanPredicateLetSize.lean:8:4: error: Failed to find LCNF signature for Lean.Expr._sizeOf_inst
