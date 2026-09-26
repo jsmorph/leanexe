@@ -1,0 +1,6 @@
+[correct b38a0ab0] Prove directly applied named Boolean helper lowering
+ 19 files changed, 775 insertions(+), 105 deletions(-)
+ create mode 100644 LeanExe/Extract/ScalarBooleanFunctionBinding.lean
+ create mode 100644 LeanExe/Source/ScalarBooleanFunctionBinding.lean
+ create mode 100644 test/scalar_named_boolean_application.lean
+ create mode 100644 test/scalar_named_boolean_application_syntax.lean

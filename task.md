@@ -8,44 +8,42 @@ annotation fix. This compiler-proof task remains active; the completed drone tas
 is preserved separately at the end of this file. Lean runs locally through
 `tools/leanrun`. Full-dialect correctness is not yet proved.
 
-Immediate Boolean-producing lambda applications now accept UInt64 or Bool
-arguments, including standard Id type annotations. Exact source binders and
-lexical captures are preserved. Nested applications compose through scalar
-code, Boolean conversions, Id actions and loop-step control.
+Directly applied named Boolean helpers now accept UInt64 or Bool arguments and
+Bool results, including standard Id annotations. Exact source binders and
+lexical captures are preserved. The recognizer checks matching parameter domains
+and proves that removing the helper binder preserves the argument. Captures,
+nesting, scalar/step conditions, Id actions and loop exits are checked.
 
-The general source-to-WASM theorem and all fourteen axiom audits pass. Native
-Lean/V8 agree on 1,403 inputs across 84 declarations, including 24 range
-declarations. All 73 prior modules retain identical bytes. New focused tests
-pass 1,192 native/IR comparisons and 216 invalid-input tests. The preceding
-binding and saved-decision fixtures pass 792 comparisons and 168 rejections.
+The general source-to-WASM theorem and all sixteen axiom audits pass. Native
+Lean/V8 agree on 1,587 inputs across 95 declarations, including 27 range
+declarations. All 84 prior modules retain identical bytes. New focused tests
+pass 2,200 native/IR comparisons and 720 invalid-input tests. Previous fixtures
+pass 1,496 comparisons and 316 rejections.
 
 Evidence, exact modules, source hashes and proof logs are in
-[the Boolean application archive](proofs/compiler/boolean-application-2026-09-26/README.md).
-The preceding [saved decision](proofs/compiler/saved-decision-2026-09-26/README.md),
+[the named Boolean helper archive](proofs/compiler/named-boolean-2026-09-26/README.md).
+The preceding [immediate application](proofs/compiler/boolean-application-2026-09-26/README.md),
+[saved decision](proofs/compiler/saved-decision-2026-09-26/README.md),
 [dependent decision](proofs/compiler/dependent-decision-2026-09-26/README.md),
 [compound guard](proofs/compiler/guard-decision-2026-09-26/README.md), and
 [atomic comparison](proofs/compiler/reannotation-2026-09-26/README.md) archives
 record their checked increments.
 
-Next: extend named Boolean-returning local helper bindings and calls, starting
-with a helper applied directly to an argument. Preserve explicit types and
-lexical captures. Then broaden named-helper uses and continue compiler coverage.
+Next: support reusable UInt64-to-Bool local helpers in arbitrary enclosing scalar
+bodies, with a distinct typed function binding and Boolean environment. Preserve
+captures, check unused bodies, and reject word/Boolean function type confusion.
+Then extend the same capability to loop steps and broader helper signatures.
 Full-dialect correctness remains unfinished. Get each capability proved and
 executing end to end, and commit/push frequently.
 
-## Directly applied named Boolean helpers — in progress
+## Directly applied named Boolean helpers — complete
 
-The Boolean source grammar now retains a named helper whose binding body
-applies it directly to one argument. The helper accepts UInt64 or Bool and
-returns Bool, with standard Id annotations. The recognizer checks identical
-arrow/lambda domains and a Boolean result. The existing proved binder removal
-rejects arguments that reference the helper and preserves outer captures.
-
-Independent recognizer acceptance/soundness, Boolean parser, scalar correctness
-and loop-step correctness proofs pass. Focused tests pass 2,200 native/IR
-comparisons and 720 invalid-input checks. The general compiler theorem, sixteen
-axiom audits and emitted-Wasm checks are next. Repeated helper uses and broader
-enclosing bodies remain subsequent work.
+The source form retains a named helper whose entire binding body applies it to
+one argument. The argument may capture outer values but cannot reference the
+helper. Arrow/lambda domains match exactly, and result annotations are checked.
+Independent recognition and Boolean parser proofs, scalar/step correctness,
+the general compiler theorem, sixteen axiom audits and native/V8 checks pass.
+Repeated calls from an arbitrary body remain subsequent work.
 
 ## Immediate Boolean lambda applications — complete
 

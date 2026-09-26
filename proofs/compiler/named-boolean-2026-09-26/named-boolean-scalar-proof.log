@@ -1,0 +1,16 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [24/67] Built LeanExe.Source.ScalarBooleanAction (876ms)
+⚠ [45/67] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [63/69] Built LeanExe.Extract.ScalarBooleanAction (865ms)
+✔ [65/79] Built LeanExe.Extract.ScalarBooleanBind (914ms)
+✔ [77/82] Built LeanExe.Source.ScalarBooleanLocalValues (872ms)
+✔ [78/84] Built LeanExe.Extract.ScalarBooleanLocalBindings (891ms)
+✔ [83/90] Built LeanExe.Extract.ScalarBooleanLocalDependentBranch (914ms)
+✔ [88/90] Built LeanExe.Source.Scalar (1.2s)
+✔ [89/90] Built LeanExe.Extract.ScalarExprCore (12s)
+✔ [90/90] Built LeanExe.Extract.ScalarExpr (1.2s)
+Build completed successfully (90 jobs).
