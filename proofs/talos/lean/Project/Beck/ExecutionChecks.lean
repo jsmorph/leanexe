@@ -13,6 +13,7 @@ import Project.Beck.ExecutionMembershipBase
 import Project.Beck.ExecutionMemberCapacity
 import Project.Beck.ExecutionMembershipRelease
 import Project.Beck.ExecutionMembership
+import Project.Beck.ExecutionJobState
 
 #print axioms Project.Beck.Execution.negative_exact
 #print axioms Project.Beck.Execution.magnitude_exact
@@ -75,3 +76,6 @@ import Project.Beck.ExecutionMembership
 #print axioms Project.Beck.Execution.membershipRelease_owned
 #print axioms Project.Beck.Execution.membershipFresh_exact
 #print axioms Project.Beck.Execution.readMemberships_exact
+#print axioms Project.Beck.Execution.jobReplicateCapacity_owned
+#print axioms Project.Beck.Execution.jobAppendCapacity_owned
+#print axioms Project.Beck.Execution.jobCleanup_exact
