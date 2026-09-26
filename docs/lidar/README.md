@@ -4,13 +4,23 @@ Lidar is being developed as successive complete Lean → WASM/WGSL → WebGPU
 examples. The [development journal](journal.md) records the agenda, figures,
 checked results and actual execution evidence.
 
-The first implementation uses four cardinal beams and four closed axis-aligned
-rectangles with integer coordinates in `[0,4095]`. One shader invocation owns
+Two checked modes use four fixed beams and four closed axis-aligned rectangles
+with integer coordinates in `[0,4095]`. One shader invocation owns
 one beam result. The scene, directions and results remain in device buffers;
 WASM supplies a 16-byte parameter block and a second shader computes a requested
 hit-count/nearest-range summary. The host reads only that 4-byte summary.
 
 ![First cardinal scan](figures/cardinal.svg)
+
+| Mode | Unit directions | Range/result word | Maximum physical range |
+|---|---|---|---|
+| Cardinal | East, west, north, south | One tick per distance unit | 4095 units |
+| Oblique | `(±3/5, ±4/5)` | 60 ticks per distance unit | 68.25 units |
+
+The oblique intersection answers are exact rational distances. For example,
+2000 ticks means `100/3` units, with zero arithmetic approximation error.
+
+![Oblique scan](figures/oblique.svg)
 
 ## Build and run
 
@@ -27,6 +37,18 @@ python3 tools/lidar/build.py
 build/lidar/venv/bin/python tools/lidar/run.py
 python3 tools/lidar/plot.py
 ```
+
+Build and run the oblique slice with the same dependencies:
+
+```sh
+python3 tools/lidar/build.py --mode oblique
+build/lidar/venv/bin/python tools/lidar/run_oblique.py
+python3 tools/lidar/plot.py build/lidar/oblique-run.json docs/lidar/figures/oblique.svg
+```
+
+Its bundle is `build/lidar/oblique`. Coordinates remain integer grid units;
+the range parameter and observed `nearest` field are integer ticks. The evidence
+records `ticks_per_unit: 60`, and the figure displays physical distance units.
 
 If local execution without systemd limits has already been authorized, prefix
 the build command with `LEANRUN_LOCAL=1`. The build driver uses the repository
@@ -48,7 +70,8 @@ the final theorem dependencies for unexpected axioms.
 
 ## Geometry and requests
 
-Directions are east, west, north and south. A four-bit mask selects which beams
+Direction IDs follow the order in the mode table (NE, NW, SE, SW for oblique).
+A four-bit mask selects which beams
 contribute to a summary. The hit count is the number of selected beams that hit
 any rectangle within range. The maximum range is inclusive. Tangency counts as a
 hit, and an origin inside or on an obstacle returns zero. No selected hit
@@ -56,10 +79,9 @@ returns `nearest: null`. The demonstration includes an occluded obstacle,
 range-boundary hits, a tangent ray, rejected parameters, and repeated scans with
 changing sensor positions and request masks.
 
-The first domain is exact integer geometry. It has no Monte Carlo sampling,
+The current domain is exact integer-coordinate geometry. It has no Monte Carlo sampling,
 sensor noise, trigonometric approximation, or floating-point shader operations.
-Oblique directions and explicit uncertainty from numerical input rounding are
-subsequent milestones in the journal.
+Explicit uncertainty from numerical input rounding is the next milestone.
 
 ## What the proofs cover
 
@@ -68,6 +90,9 @@ summary formula, exact WGSL certificates, exact WASM controller proofs and
 artifact-identity checks have passed. The identified artifacts pass all 12
 geometric cases and three invalid-parameter checks on software WebGPU.
 Those observed runs remain separate evidence from the universal proofs.
+Milestone 2 also passes its oblique geometric/arithmetic proofs, exact artifact
+checks and 14 observed comparisons; its [run evidence](evidence/oblique-run.json)
+includes fractional intersections, reflected directions and corner tangency.
 
 - [Cardinal geometry](../../proofs/talos/lean/Project/Lidar/Cardinal.lean) proves
   nearest-hit selection and the miss characterization for any valid rectangle
@@ -91,6 +116,10 @@ Those observed runs remain separate evidence from the universal proofs.
 - [The pipeline theorem](../../tools/lidar/Application.lean) composes that WASM
   result, the unpacked parameter fields, and the exact scan shader's continuous
   nearest-hit property in one statement.
+- [Oblique geometry](../../proofs/talos/lean/Project/Lidar/Oblique.lean) proves
+  unit direction vectors and continuous nearest intersections at the 60-tick
+  scale. [Its pipeline theorem](../../tools/lidar/ObliqueApplication.lean)
+  connects the emitted oblique shader and the same emitted WASM controller.
 
 The artifact checks and the observed runs are separate evidence. Consult the
 journal for which checks have completed at the current development milestone.

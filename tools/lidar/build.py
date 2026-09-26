@@ -194,9 +194,10 @@ def check_frontend_rejection(output, env):
         raise SystemExit(f'frontend did not report the expected invalid-proof rejection; see {log}')
 
 
-def finish_bundle(output, env):
+def finish_bundle(output, env, mode='cardinal'):
     export_certified_values(output, env)
-    receipt = {'schema': 1, 'milestone': 'cardinal integer lidar',
+    receipt = {'schema': 1, 'mode': mode, 'milestone': mode + ' integer lidar',
+               'ticks_per_unit': 60 if mode == 'oblique' else 1,
                'artifacts': {name: hashlib.sha256((output/name).read_bytes()).hexdigest()
                              for name in ['scan.wgsl','summary.wgsl','controller.wasm']},
                'assumptions': ['WebGPU implements the accepted u32 subset',
@@ -209,19 +210,24 @@ def finish_bundle(output, env):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--out', type=Path, default=ROOT / 'build/lidar/bundle')
+    parser.add_argument('--out', type=Path)
+    parser.add_argument('--mode', choices=['cardinal', 'oblique'], default='cardinal')
     args = parser.parse_args()
-    output = args.out.resolve()
+    output = (args.out or ROOT / 'build/lidar' /
+              ('oblique' if args.mode == 'oblique' else 'bundle')).resolve()
     env = dict(os.environ)
     toolchain = ROOT / 'build/tools/lean-4.34.0-rc2-linux'
     if toolchain.exists():
         env.setdefault('LEANRUN_TOOLCHAIN', str(toolchain))
-    lean(['lake', 'build', 'LeanExe.WGSL.LidarSummary', 'LeanExe.WGSL.UIntComposition'], 'compiler', env)
+    lean(['lake', 'build', 'LeanExe.WGSL.LidarSummary', 'LeanExe.WGSL.LidarOblique',
+          'LeanExe.WGSL.UIntComposition'], 'compiler', env)
     lean(['lake', '-d', 'proofs/talos/lean', 'build', 'Project.Lidar.Shader',
           'Project.Lidar.Continuous', 'Project.Lidar.Controller', 'Project.Lidar.Summary',
-          'Project.Compiler.ScalarResult', 'Project.Lidar.ParserChecks'], 'application', env, timeout='10m')
-    lean(['lake', 'env', 'lean', '--run', 'tools/lidar/Generate.lean', str(output)], 'generate', env)
-    shutil.copyfile(ROOT / 'tools/lidar/Application.lean', output / 'Application.lean')
+          'Project.Compiler.ScalarResult', 'Project.Lidar.ParserChecks',
+          'Project.Lidar.ObliqueShader'], 'application', env, timeout='10m')
+    lean(['lake', 'env', 'lean', '--run', 'tools/lidar/Generate.lean', str(output), args.mode], 'generate', env)
+    application = 'ObliqueApplication.lean' if args.mode == 'oblique' else 'Application.lean'
+    shutil.copyfile(ROOT / 'tools/lidar' / application, output / 'Application.lean')
     shutil.copyfile(ROOT / 'tools/lidar/ControllerIR.lean', output / 'ControllerIR.lean')
     shutil.copyfile(ROOT / 'tools/lidar/ControllerResult.lean', output / 'ControllerResult.lean')
     env['LEAN_PATH'] = str(output) + ':' + env.get('LEAN_PATH', '')
@@ -234,7 +240,7 @@ def main():
             lean(['lake', '-d', 'proofs/talos/lean', 'env', 'lean', '-M', '8192',
                   '--run', 'tools/lidar/Check.lean', str(file), str(file.with_suffix('.olean'))],
                  file.stem.lower() + ('-definitions' if file.stem.endswith('Data') else '-certificate'), env)
-    finish_bundle(output, env)
+    finish_bundle(output, env, args.mode)
 
 
 if __name__ == '__main__':

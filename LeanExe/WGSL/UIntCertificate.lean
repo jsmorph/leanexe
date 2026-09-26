@@ -9,7 +9,7 @@ def lineStep (locals : Locals) (line : String) : Option Locals := do
   let tokens ← (tokenize line).toOption
   match tokens with
   | "let" :: name :: ":" :: "u32" :: "=" :: rest =>
-    if (lookup locals name).isSome || !(name.startsWith "v") then none else do
+    if (lookup locals name).isSome || !(localName name) then none else do
       let rhs ← rest.reverse.tail?
       if rest.getLast? != some ";" then none else do
         let value ← rhs? locals rhs.reverse

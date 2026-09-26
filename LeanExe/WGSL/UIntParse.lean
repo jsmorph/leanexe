@@ -21,6 +21,12 @@ def word? (text : String) : Option Nat := do
   let n ← decimal reversed.reverse
   if n < modulus then some n else none
 
+/-- Canonical emitted local names also exclude WGSL keywords such as `var`. -/
+def localName (name : String) : Bool :=
+  match name.toList with
+  | 'v' :: digits => (decimal digits).isSome
+  | _ => false
+
 abbrev Locals := List (String × Expr)
 
 def lookup (locals : Locals) (name : String) : Option Expr :=
@@ -34,6 +40,7 @@ def rhs? (locals : Locals) : List String → Option Expr
     else if buffer == "params" && n < 4 then some (.read .params n) else none
   | ["directions", "[", "gid", ".", "x", "]"] => some .direction
   | [a, "+", b] => return .add (← lookup locals a) (← lookup locals b)
+  | [a, "*", b] => return .mul (← lookup locals a) (← lookup locals b)
   | ["max", "(", a, ",", b, ")", "-", c] => do
     if b != c then none else return .sub (← lookup locals a) (← lookup locals b)
   | ["min", "(", a, ",", b, ")"] => return .min (← lookup locals a) (← lookup locals b)
@@ -51,7 +58,7 @@ def rhs? (locals : Locals) : List String → Option Expr
 def body? : Nat → Locals → List String → Option Expr
   | 0, _, _ => none
   | fuel+1, locals, "let" :: name :: ":" :: "u32" :: "=" :: rest => do
-    if (lookup locals name).isSome || !(name.startsWith "v") then none else do
+    if (lookup locals name).isSome || !(localName name) then none else do
       let value ← rhs? locals (rest.takeWhile (· != ";"))
       let rest ← (rest.dropWhile (· != ";")).tail?
       body? fuel ((name,value)::locals) rest

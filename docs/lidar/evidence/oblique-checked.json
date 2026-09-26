@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "mode": "oblique",
+  "milestone": "oblique integer lidar",
+  "ticks_per_unit": 60,
+  "artifacts": {
+    "scan.wgsl": "cfa345bd89da69d49ac972a510dc08c930f576b6001a10651bb01806f96db114",
+    "summary.wgsl": "cf9eb84afc78289b1976d19f4327ebce3d6a70729c17bafa0d2b71db002c6949",
+    "controller.wasm": "838c9fdab4e787387784d44730530727f5a0a7c2565a411fa60f76c3e367877d"
+  },
+  "assumptions": [
+    "WebGPU implements the accepted u32 subset",
+    "host validates, copies, binds and schedules the declared buffers",
+    "WASM engine implements the modeled arithmetic semantics",
+    "file IO and the checked-source-to-external-file comparison"
+  ]
+}

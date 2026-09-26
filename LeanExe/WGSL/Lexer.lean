@@ -58,7 +58,7 @@ private def scan : Nat → List Char → Except String (List String)
         return String.singleton c :: (← scan fuel cs)
       throw s!"unsupported character in WGSL subset: {c.toNat}"
 
-/-- A deliberately narrow lexer for the emitted GEMM syntax, not all WGSL.
+/-- A deliberately narrow lexer for the emitted shader syntax, not all WGSL.
 No Unicode normalization, comment concatenation or source rewriting occurs. -/
 def tokenize (source : String) : Except String (List String) :=
   let chars := source.toList

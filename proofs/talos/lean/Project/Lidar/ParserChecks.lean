@@ -8,6 +8,11 @@ example : lineStep [] "let v0 : u32 = 4294967296u;" = none := by decide +kernel
 example : lineStep [] "let v0 : u32 = scene[16u];" = none := by decide +kernel
 example : lineStep [] "let v0 : u32 = params[4u];" = none := by decide +kernel
 example : lineStep [] "let v0 : u32 = unknown + unknown;" = none := by decide +kernel
+example : lineStep [] "let var : u32 = 0u;" = none := by decide +kernel
+example : lineStep [] "let vec2 : u32 = 0u;" = none := by decide +kernel
+example : lineStep [("v0", .lit 3), ("v1", .lit 4)] "let v2 : u32 = v0 * v1;" =
+    some [("v2", .mul (.lit 3) (.lit 4)), ("v0", .lit 3), ("v1", .lit 4)] := by decide +kernel
+example : ¬ (Expr.mul (.lit 65536) (.lit 65536)).Checked 4095 := by decide +kernel
 example : lineStep [("v0", .lit 1)] "let v0 : u32 = 2u;" = none := by decide +kernel
 example : rhs? [("v0", .lit 1), ("v1", .lit 2)]
     ["max", "(", "v0", ",", "v1", ")", "-", "v0"] = none := by decide +kernel

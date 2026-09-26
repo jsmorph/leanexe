@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="740" height="630" viewBox="0 0 740 630">
+<rect width="740" height="630" fill="#f8fafc"/>
+<g font-family="system-ui,sans-serif" fill="#172033">
+<text x="30" y="30" font-size="22">Lidar scan · actual WebGPU summaries</text>
+<text x="30" y="54" font-size="13">Closed rectangles · oblique beams · sensor (100, 100) · range 60</text>
+<path d="M45.0 90 V560" stroke="#dce3eb"/>
+<text x="37.0" y="580" font-size="10">0</text>
+<path d="M45 560.0 H550" stroke="#dce3eb"/>
+<text x="18" y="564.0" font-size="10">0</text>
+<path d="M95.0 90 V560" stroke="#dce3eb"/>
+<text x="87.0" y="580" font-size="10">20</text>
+<path d="M45 510.0 H550" stroke="#dce3eb"/>
+<text x="18" y="514.0" font-size="10">20</text>
+<path d="M145.0 90 V560" stroke="#dce3eb"/>
+<text x="137.0" y="580" font-size="10">40</text>
+<path d="M45 460.0 H550" stroke="#dce3eb"/>
+<text x="18" y="464.0" font-size="10">40</text>
+<path d="M195.0 90 V560" stroke="#dce3eb"/>
+<text x="187.0" y="580" font-size="10">60</text>
+<path d="M45 410.0 H550" stroke="#dce3eb"/>
+<text x="18" y="414.0" font-size="10">60</text>
+<path d="M245.0 90 V560" stroke="#dce3eb"/>
+<text x="237.0" y="580" font-size="10">80</text>
+<path d="M45 360.0 H550" stroke="#dce3eb"/>
+<text x="18" y="364.0" font-size="10">80</text>
+<path d="M295.0 90 V560" stroke="#dce3eb"/>
+<text x="287.0" y="580" font-size="10">100</text>
+<path d="M45 310.0 H550" stroke="#dce3eb"/>
+<text x="18" y="314.0" font-size="10">100</text>
+<path d="M345.0 90 V560" stroke="#dce3eb"/>
+<text x="337.0" y="580" font-size="10">120</text>
+<path d="M45 260.0 H550" stroke="#dce3eb"/>
+<text x="18" y="264.0" font-size="10">120</text>
+<path d="M395.0 90 V560" stroke="#dce3eb"/>
+<text x="387.0" y="580" font-size="10">140</text>
+<path d="M45 210.0 H550" stroke="#dce3eb"/>
+<text x="18" y="214.0" font-size="10">140</text>
+<path d="M445.0 90 V560" stroke="#dce3eb"/>
+<text x="437.0" y="580" font-size="10">160</text>
+<path d="M45 160.0 H550" stroke="#dce3eb"/>
+<text x="18" y="164.0" font-size="10">160</text>
+<path d="M495.0 90 V560" stroke="#dce3eb"/>
+<text x="487.0" y="580" font-size="10">180</text>
+<path d="M45 110.0 H550" stroke="#dce3eb"/>
+<text x="18" y="114.0" font-size="10">180</text>
+<rect x="345.0" y="185.0" width="25.0" height="75.0" fill="#cbd5e1" stroke="#64748b"/>
+<text x="348.0" y="197.0" font-size="11">0</text>
+<rect x="370.0" y="160.0" width="25.0" height="50.0" fill="#cbd5e1" stroke="#64748b"/>
+<text x="373.0" y="172.0" font-size="11">1</text>
+<rect x="195.0" y="160.0" width="50.0" height="50.0" fill="#cbd5e1" stroke="#64748b"/>
+<text x="198.0" y="172.0" font-size="11">2</text>
+<rect x="345.0" y="360.0" width="25.0" height="50.0" fill="#cbd5e1" stroke="#64748b"/>
+<text x="348.0" y="372.0" font-size="11">3</text>
+<path d="M295.0 310.0 L345.0 243.33333333333331" stroke="#047857" stroke-width="3"/>
+<circle cx="345.0" cy="243.33333333333331" r="4" fill="#047857"/>
+<text x="575" y="115" font-size="13">NE: 100/3</text>
+<path d="M295.0 310.0 L220.0 210.0" stroke="#047857" stroke-width="3"/>
+<circle cx="220.0" cy="210.0" r="4" fill="#047857"/>
+<text x="575" y="141" font-size="13">NW: 50</text>
+<path d="M295.0 310.0 L345.0 376.6666666666667" stroke="#047857" stroke-width="3"/>
+<circle cx="345.0" cy="376.6666666666667" r="4" fill="#047857"/>
+<text x="575" y="167" font-size="13">SE: 100/3</text>
+<path d="M295.0 310.0 L205.0 430.0" stroke="#b45309" stroke-width="3" stroke-dasharray="7 5"/>
+<circle cx="205.0" cy="430.0" r="4" fill="#b45309"/>
+<text x="575" y="193" font-size="13">SW: miss</text>
+<circle cx="295.0" cy="310.0" r="6" fill="#1d4ed8"/>
+<text x="575" y="245" font-size="13">Nearest: 100/3 units</text>
+<text x="575" y="270" font-size="13">Hit count: 3</text>
+<text x="575" y="320" font-size="12">4-byte summary</text>
+<text x="575" y="340" font-size="12">16-byte parameters</text>
+<text x="30" y="613" font-size="12">Vulkan · CPU adapter · observations checked separately from proofs</text>
+</g></svg>

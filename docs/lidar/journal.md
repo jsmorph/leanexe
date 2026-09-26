@@ -9,8 +9,8 @@ compiler diagnostics stay in ignored build logs.
 | Milestone | Complete slice | Status |
 |---|---|---|
 | 1 | Four cardinal beams, bounded integer rectangles, nearest-hit proof, emitted WASM/WGSL, resident WebGPU execution and compact summary | Complete |
-| 2 | Fixed oblique directions, exact intersection specification, numerical bounds, compiled execution and geometric comparisons | In progress |
-| 3 | Broader numerical domain, certified hit/miss/uncertain results, conservative nearest-range bounds | Planned |
+| 2 | Fixed oblique directions, exact intersection specification, numerical bounds, compiled execution and geometric comparisons | Complete |
+| 3 | Broader numerical domain, certified hit/miss/uncertain results, conservative nearest-range bounds | In progress |
 | 4 | Repeated scans, parameter updates, requested summaries, stale-result and transfer checks | Planned |
 
 A milestone is complete only when its application theorem, artifact connection,
@@ -175,3 +175,52 @@ The false-theorem rejection check, artifact mutation checks and documentation
 link check also pass. This completes the first small slice; the oblique source
 and geometric proof are now under development. Their completion will require
 their own checked artifact and executed comparisons.
+
+### Oblique geometry and bounded arithmetic
+
+Milestone 1 is preserved in commit `7c475552`. The oblique nearest-hit theorem
+now checks over continuous rays with unit directions `(±3/5, ±4/5)`. Its slab
+test takes the maximum entry tick and minimum exit tick, accepts equality at
+tangencies, and minimizes over the rectangle list. An occupied origin returns
+zero. The proof relates the scaled calculation to ordinary Cartesian membership.
+
+```mermaid
+flowchart LR
+  X[X interval: 100 ticks per coordinate unit] --> E[Maximum entry tick]
+  Y[Y interval: 75 ticks per coordinate unit] --> E
+  X --> L[Minimum exit tick]
+  Y --> L
+  E --> T[Entry within exit and requested range]
+  L --> T
+  T --> N[Nearest valid rectangle entry]
+```
+
+The numerical expression and its zero-error `u32` theorem check on the stated
+bounded input domain. Multiplication is the only added shader operation.
+The independent parser also restricts local names to the emitted `v0`, `v1`,
+… form, excluding reserved keywords; negative checks cover this and arithmetic
+overflow rejection. Exact shader certificates and the demonstration are next.
+
+The planned scene exercises a nearest distance of `2000/60 = 100/3` units,
+a reflected beam at `3000/60 = 50` units, occlusion, a miss, and a corner tangent.
+These are expected geometric answers until the retained run evidence is added.
+
+### Milestone 2 — fractional intersections observed
+
+The oblique scan's exact shader certificate, summary certificate, WASM
+controller certificate and combined pipeline theorem all pass. The identified
+artifacts pass all 14 [recorded WebGPU cases](evidence/oblique-run.json), including
+the `100/3`-unit nearest distance, the 50-unit reflected hit, an exact corner
+tangent and misses immediately before or below that tangent.
+
+![Observed oblique scan](figures/oblique.svg)
+
+The scene and direction buffers are uploaded once. Fourteen queries upload
+224 parameter bytes and read 56 summary bytes. Execution again uses the CPU
+Vulkan adapter. The WASM controller and summary shader bytes are identical to
+milestone 1; the scan shader now handles the rational oblique directions.
+
+The next slice encloses a real-coordinate scene between conservative inner and
+outer integer rectangles. An outer miss will certify a miss; an inner hit will
+give a nearest-distance interval and midpoint error bound. Cases where the
+outer scan hits and the inner scan misses will explicitly remain uncertain.
