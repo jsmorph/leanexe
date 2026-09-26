@@ -257,6 +257,10 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
         · exact totalBindings binding member)
     exact ⟨result, .letPredicateFn expression type
       (fun x => (environments x).choose_spec) meanings hs, hm⟩
+  | predicateInput input result _ ih =>
+    rw [extractScalarRangeExitWith_predicateInput] at compiled
+    obtain ⟨outcome, evaluated, meaning⟩ := ih compiled localsTyped valuesTyped bindings totalBindings
+    exact ⟨outcome, .predicateInput input result evaluated, meaning⟩
   | letBooleanFn type function _ ih =>
     rw [extractScalarRangeExitWith_letBooleanFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

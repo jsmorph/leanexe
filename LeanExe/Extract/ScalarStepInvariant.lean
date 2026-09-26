@@ -236,6 +236,9 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
       · exact scalarStepBindings_holds bindings binding member
     exact (extractBooleanLocalWith_choice P literal binary choice boolean _ hc inner
       (fun operand member result found => expression found inner)) _ _ (literal 1) (literal 0)
+  | predicateInput input result _ ih =>
+    rw [extractScalarStepWith_predicateInput] at compiled
+    exact ih compiled bindings htypes
   | letBooleanFn type function _ ih =>
     rw [extractScalarStepWith_letBooleanFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

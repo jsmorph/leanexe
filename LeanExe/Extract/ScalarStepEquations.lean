@@ -138,6 +138,29 @@ theorem extractScalarStepWith_letPredicateFn (locals : List ScalarStepBinding)
     booleanType_accepts, booleanLocalOperands_expr]
   all_goals cases type <;> simp [BooleanType.expr]
 
+theorem extractScalarStepWith_predicateInput (locals : List ScalarStepBinding)
+    (input : LeanExe.Source.Scalar.ResultType) (result : LeanExe.Source.Scalar.BooleanType)
+    (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
+    (a b : Lean.Expr) (nondep : Bool) :
+    extractScalarStepWith locals (LeanExe.Source.Scalar.predicateInputExpr (.identity input) result
+      name typeName paramName typeBi paramBi a b nondep) =
+    extractScalarStepWith locals (LeanExe.Source.Scalar.predicateInputExpr input result
+      name typeName paramName typeBi paramBi a b nondep) := by
+  simp only [LeanExe.Source.Scalar.predicateInputExpr, LeanExe.Source.Scalar.ResultType.expr]
+  have noInput : scalarStepResultType? (.app (.const ``Id [.zero]) input.expr) = none :=
+    scalarStepResultType_not_scalar (.identity input)
+  rw [extractScalarStepWith]
+  · simp only [↓reduceIte, noInput, scalarStepResultType_boolean]
+    split
+    next found =>
+      have impossible := found.symm.trans (predicateInputTypes_accepts input result)
+      cases impossible
+    next types found =>
+      have same := Option.some.inj (found.symm.trans (predicateInputTypes_accepts input result))
+      subst types
+      rfl
+  all_goals simp
+
 theorem extractScalarStepWith_letBooleanFn (locals : List ScalarStepBinding)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
     (type : ResultType) (a b : Lean.Expr) (nondep : Bool) :

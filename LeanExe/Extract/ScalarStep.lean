@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarPredicateInput
 import LeanExe.Extract.ScalarManyStepFunction
 import LeanExe.Extract.ScalarExpr
 import LeanExe.Extract.ScalarStepBindings
@@ -221,7 +222,7 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
               let function := ScalarStepBinding.booleanFunction fun argument =>
                 extractScalarStepWith (.scalar (.boolean argument) :: locals) value
               extractScalarStepWith (function :: locals) body
-  | .letE _ (.forallE _ input output _) (.lam _ domain value _) body _ =>
+  | .letE name (.forallE typeName input output typeBi) (.lam paramName domain value paramBi) body nondep =>
       if input = domain then
         match scalarStepResultType? input, scalarStepResultType? output with
         | some _, some _ => do
@@ -229,7 +230,12 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
             let function := ScalarStepBinding.resultFunction fun argument =>
               extractScalarStepWith (.result argument :: locals) value
             extractScalarStepWith (function :: locals) body
-        | _, _ => none
+        | _, _ =>
+            match _annotation : predicateInputTypes? input domain output with
+            | none => none
+            | some types => extractScalarStepWith locals
+                (LeanExe.Source.Scalar.predicateInputExpr types.1 types.2
+                  name typeName paramName typeBi paramBi value body nondep)
       else none
   | .letE name (.app (.const ``Id [.zero]) type) value body nondep =>
       extractScalarStepWith locals (.letE name type value body nondep)
@@ -284,5 +290,8 @@ decreasing_by
   all_goals first
     | omega
     | (have bound := scalarManyStepFunction_body_size _stepFunction; simp_all; omega)
+    | (obtain ⟨hi, hd, ho⟩ := predicateInputTypes_sound _annotation
+       simp_all [LeanExe.Source.Scalar.predicateInputExpr, LeanExe.Source.Scalar.ResultType.expr]
+       omega)
 
 end LeanExe.Extract.Core

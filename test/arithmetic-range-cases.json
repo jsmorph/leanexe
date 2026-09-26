@@ -376,5 +376,9 @@
   "rangeOuterPredicateUnused",
   "rangeOuterPredicateScalarHelper",
   "rangeOuterPredicateId",
-  "rangeOuterPredicateStride"
+  "rangeOuterPredicateStride",
+  "rangePredicateInputStep",
+  "rangePredicateInputStepCapture",
+  "rangePredicateInputOuter",
+  "rangePredicateInputOuterCapture"
 ]
