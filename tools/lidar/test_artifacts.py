@@ -13,7 +13,7 @@ class ArtifactIdentity(unittest.TestCase):
             bundle = Path(temp)
             files = {'scan.wgsl': b'scan', 'summary.wgsl': b'summary',
                      'controller.wasm': b'\0asm'}
-            receipt = {'schema': 1, 'artifacts': {
+            receipt = {'schema': 1, 'mode': 'cardinal', 'artifacts': {
                 name: hashlib.sha256(data).hexdigest() for name, data in files.items()}}
             for name, data in files.items():
                 (bundle / name).write_bytes(data)
@@ -27,6 +27,25 @@ class ArtifactIdentity(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, 'differs from the checked artifact'):
                         checked_artifacts(bundle)
                     (bundle / name).write_bytes(data)
+
+    def test_interval_requires_identified_inner_shader(self):
+        with tempfile.TemporaryDirectory() as temp:
+            bundle = Path(temp)
+            files = {'scan.wgsl': b'outer', 'inner.wgsl': b'inner',
+                     'summary.wgsl': b'summary', 'controller.wasm': b'\0asm'}
+            receipt = {'schema': 1, 'mode': 'interval', 'artifacts': {
+                name: hashlib.sha256(data).hexdigest() for name, data in files.items()}}
+            for name, data in files.items():
+                (bundle/name).write_bytes(data)
+            (bundle/'checked.json').write_text(json.dumps(receipt))
+            self.assertEqual(checked_artifacts(bundle), files)
+            (bundle/'inner.wgsl').write_bytes(b'wrong inner shader')
+            with self.assertRaisesRegex(ValueError, 'inner.wgsl differs'):
+                checked_artifacts(bundle)
+            receipt['artifacts']['../extra'] = 'unexpected'
+            (bundle/'checked.json').write_text(json.dumps(receipt))
+            with self.assertRaisesRegex(ValueError, 'unexpected artifact set'):
+                checked_artifacts(bundle)
 
 
 if __name__ == '__main__':

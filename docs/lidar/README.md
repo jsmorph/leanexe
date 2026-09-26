@@ -4,8 +4,8 @@ Lidar is being developed as successive complete Lean → WASM/WGSL → WebGPU
 examples. The [development journal](journal.md) records the agenda, figures,
 checked results and actual execution evidence.
 
-Two checked modes use four fixed beams and four closed axis-aligned rectangles
-with integer coordinates in `[0,4095]`. One shader invocation owns
+The exact cardinal and oblique modes use four fixed beams and four closed
+axis-aligned rectangles with integer coordinates in `[0,4095]`. One shader invocation owns
 one beam result. The scene, directions and results remain in device buffers;
 WASM supplies a 16-byte parameter block and a second shader computes a requested
 hit-count/nearest-range summary. The host reads only that 4-byte summary.
@@ -66,7 +66,9 @@ The pinned Lean release crashes in its import-memory optimization on the large
 compiler proof graph in this environment. [Check.lean](../../tools/lidar/Check.lean)
 uses Lean's standard frontend with `leakEnv := false` to avoid that optimization.
 It retains ordinary elaboration and kernel checking; the build separately audits
-the final theorem dependencies for unexpected axioms.
+the final theorem dependencies for unexpected axioms and checks that a deliberately
+false `1 = 2` theorem is rejected. The wrapper's `unsafe main` accesses Lean's
+runtime APIs; it does not supply a logical axiom or bypass proof checking.
 
 ## Geometry and requests
 
@@ -79,9 +81,55 @@ returns `nearest: null`. The demonstration includes an occluded obstacle,
 range-boundary hits, a tangent ray, rejected parameters, and repeated scans with
 changing sensor positions and request masks.
 
-The current domain is exact integer-coordinate geometry. It has no Monte Carlo sampling,
-sensor noise, trigonometric approximation, or floating-point shader operations.
-Explicit uncertainty from numerical input rounding is the next milestone.
+The exact modes have no Monte Carlo sampling, sensor noise, trigonometric
+approximation, or floating-point shader operations.
+
+## Conservative real-coordinate bounds
+
+**Status: checked end to end.**
+The interval mode uses the same four oblique directions and nominal integer
+rectangles. Each actual real-valued rectangle endpoint may differ from its
+nominal value by at most one grid unit. The sensor position remains exact and
+integral. Nominal endpoints must lie in `[1,4094]`; width and height must each
+be at least two units. Supplying valid endpoint-error bounds is a precondition;
+this example does not infer them from physical measurements.
+
+The GPU traces both the one-unit-expanded and one-unit-contracted scene, then
+summarizes each over the requested beam mask. Both sets of per-beam results
+remain resident. The host reads two 4-byte summary words:
+
+| Observed bounds | Result | Geometric guarantee |
+|---|---|---|
+| Outer scene misses | `miss` | Every selected beam misses every allowed real scene within range |
+| Inner scene hits | `hit` | Actual nearest selected hit lies in `[lower_ticks/60, upper_ticks/60]` |
+| Outer hits; inner misses | `uncertain` | The stated uncertainty permits an unresolved boundary case |
+
+For a certified hit, the reported midpoint error is at most
+`(upper_ticks - lower_ticks)/120` physical units. The host formats these rational
+quantities exactly using integer fractions. An uncertain result has no midpoint
+or claimed finite hit-distance error. The requested maximum range remains
+inclusive. With an empty mask the result is a miss over the empty set of beams.
+
+The new numerical error is explicitly bounded **input representation error**;
+GPU arithmetic still has zero error on the stated domain. The one-unit bound
+is deterministic and has no random/noise interpretation. Near a corner tangent
+or a range edge, uncertainty is an intended result.
+
+The interval bundle and demonstration use:
+
+```sh
+python3 tools/lidar/build.py --mode interval
+build/lidar/venv/bin/python tools/lidar/run_interval.py
+python3 tools/lidar/plot_interval.py
+```
+
+Its bundle is `build/lidar/interval`; its observed results are written to
+`build/lidar/interval-run.json`. The mask and parameter encoding are shared
+with the exact modes. All 12 [recorded comparisons](evidence/interval-run.json),
+three invalid-parameter checks and three invalid-scene checks pass. The final
+artifact-connected theorem and its axiom audit also pass.
+
+![Observed conservative intervals](figures/interval.svg)
 
 ## What the proofs cover
 
@@ -121,6 +169,15 @@ includes fractional intersections, reflected directions and corner tangency.
   scale. [Its pipeline theorem](../../tools/lidar/ObliqueApplication.lean)
   connects the emitted oblique shader and the same emitted WASM controller.
 
+- [Real-scene enclosure](../../proofs/talos/lean/Project/Lidar/IntervalBounds.lean)
+  proves inclusion between the inner, actual, and outer scenes.
+  [Interval geometry](../../proofs/talos/lean/Project/Lidar/Interval.lean) proves
+  existence of a nearest real hit and the conservative midpoint error bound.
+- [Requested interval summaries](../../proofs/talos/lean/Project/Lidar/IntervalQuery.lean)
+  connect the per-beam calculations to the nearest selected hit.
+  [The interval pipeline](../../tools/lidar/IntervalApplication.lean) connects
+  that contract to both emitted scans, summary-word decoding, and emitted WASM.
+
 The artifact checks and the observed runs are separate evidence. Consult the
 journal for which checks have completed at the current development milestone.
 
@@ -143,8 +200,10 @@ loading the identified artifacts, transferring words without changing their
 values, binding the declared buffers, maintaining distinct output storage, and
 submitting the scan before its summary. Allocation success, filesystem identity
 checks, Python bindings, the driver, operating system and hardware are external
-assumptions. The mathematical scene is exact; it is not a claim about an
-unmodeled physical sensor or real terrain.
+assumptions. The exact modes model integer scenes. The interval mode quantifies over all
+real scenes satisfying its endpoint-error precondition. Neither supplies a
+model of physical sensor calibration, measurement errors outside that bound,
+or real terrain.
 
 The recorded execution used **Mesa llvmpipe through Vulkan, a CPU WebGPU
 adapter**. It establishes observed agreement on the recorded cases, not

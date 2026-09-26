@@ -32,6 +32,7 @@ def words(values):
 class Scan:
     def __init__(self, bundle, rectangles):
         artifacts = checked_artifacts(bundle)
+        self.artifacts = artifacts
         self.digests = {name: hashlib.sha256(data).hexdigest() for name, data in artifacts.items()}
         if len(rectangles) != 4 or any(len(b) != 4 or not
                 (0 <= b[0] <= b[2] <= 4095 and 0 <= b[1] <= b[3] <= 4095) for b in rectangles):
@@ -46,16 +47,7 @@ class Scan:
         self.pipelines = []
         self.groups = []
         for name, inp, out in [('scan.wgsl', self.scene, self.results), ('summary.wgsl', self.results, self.summary)]:
-            code = artifacts[name].decode('utf-8')
-            module = self.device.create_shader_module(code=code)
-            pipeline = self.device.create_compute_pipeline(layout='auto', compute={'module': module, 'entry_point': 'lidar'})
-            # Auto layouts omit the direction binding when the summary does not read it.
-            bindings = [(0, inp), (2, self.params), (3, out)]
-            if name == 'scan.wgsl':
-                bindings.insert(1, (1, self.directions))
-            entries = [{'binding': i, 'resource': {'buffer': b, 'offset': 0, 'size': b.size}} for i, b in bindings]
-            self.pipelines.append(pipeline)
-            self.groups.append(self.device.create_bind_group(layout=pipeline.get_bind_group_layout(0), entries=entries))
+            self.add_pipeline(name, inp, out)
         self.engine = wasmtime.Engine()
         self.store = wasmtime.Store(self.engine)
         self.wasm = wasmtime.Instance(self.store, wasmtime.Module(self.engine, artifacts['controller.wasm']), [])
@@ -63,7 +55,17 @@ class Scan:
         self.counters = {'scene_upload_bytes': 64, 'direction_upload_bytes': 16, 'parameter_upload_bytes': 0,
                          'readback_bytes': 0, 'scans': 0, 'dispatches': 0}
 
-    def scan(self, x, y, distance, mask):
+    def add_pipeline(self, name, inp, out):
+        module = self.device.create_shader_module(code=self.artifacts[name].decode('utf-8'))
+        pipeline = self.device.create_compute_pipeline(layout='auto', compute={'module': module, 'entry_point': 'lidar'})
+        bindings = [(0, inp), (2, self.params), (3, out)]
+        if name != 'summary.wgsl':
+            bindings.insert(1, (1, self.directions))
+        entries = [{'binding': i, 'resource': {'buffer': b, 'offset': 0, 'size': b.size}} for i, b in bindings]
+        self.pipelines.append(pipeline)
+        self.groups.append(self.device.create_bind_group(layout=pipeline.get_bind_group_layout(0), entries=entries))
+
+    def parameter_words(self, x, y, distance, mask):
         for value in [x, y, distance, mask]:
             if not isinstance(value, int) or not 0 <= value < 2**63:
                 raise ValueError('parameters must be nonnegative signed-i64-compatible integers')
@@ -71,6 +73,10 @@ class Scan:
         if packed == -1:
             raise ValueError('WASM rejected scan parameters')
         params = [packed & 4095, (packed >> 12) & 4095, (packed >> 24) & 4095, (packed >> 36) & 15]
+        return params
+
+    def scan(self, x, y, distance, mask):
+        params = self.parameter_words(x, y, distance, mask)
         self.device.queue.write_buffer(self.params, 0, words(params))
         encoder = self.device.create_command_encoder()
         for pipeline, group in zip(self.pipelines, self.groups):

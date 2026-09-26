@@ -10,8 +10,8 @@ compiler diagnostics stay in ignored build logs.
 |---|---|---|
 | 1 | Four cardinal beams, bounded integer rectangles, nearest-hit proof, emitted WASM/WGSL, resident WebGPU execution and compact summary | Complete |
 | 2 | Fixed oblique directions, exact intersection specification, numerical bounds, compiled execution and geometric comparisons | Complete |
-| 3 | Broader numerical domain, certified hit/miss/uncertain results, conservative nearest-range bounds | In progress |
-| 4 | Repeated scans, parameter updates, requested summaries, stale-result and transfer checks | Planned |
+| 3 | Broader numerical domain, certified hit/miss/uncertain results, conservative nearest-range bounds | Complete |
+| 4 | Repeated scans, parameter updates, requested summaries, stale-result and transfer checks | In progress |
 
 A milestone is complete only when its application theorem, artifact connection,
 executed demonstration, and build/run instructions agree on the same scope.
@@ -224,3 +224,65 @@ The next slice encloses a real-coordinate scene between conservative inner and
 outer integer rectangles. An outer miss will certify a miss; an inner hit will
 give a nearest-distance interval and midpoint error bound. Cases where the
 outer scan hits and the inner scan misses will explicitly remain uncertain.
+
+### Enclosing real-coordinate scenes
+
+Milestone 2 is preserved in commit `782499c8`. The third slice uses integer
+nominal rectangle endpoints with an explicit one-grid-unit bound on each real
+endpoint. Nominal endpoints lie in `[1,4094]`, with width and height at least
+two. The GPU forms an outer rectangle by expanding each side by one and an
+inner rectangle by contracting each side by one. Both stay in the proved
+integer domain. The real scene may use nonintegral coordinates anywhere inside
+those endpoint bounds; no probability distribution or sensor noise is assumed.
+
+```mermaid
+flowchart LR
+  N[Resident nominal scene] --> O[Outer-rectangle scan]
+  N --> I[Inner-rectangle scan]
+  O --> L[Requested lower distance]
+  I --> U[Requested upper distance]
+  L --> C{Classification}
+  U --> C
+  C --> M[Outer miss: certified miss]
+  C --> H[Inner hit: certified distance interval]
+  C --> Q[Otherwise: explicitly uncertain]
+```
+
+The enclosure, existence of a nearest real hit, requested-beam selection, and
+midpoint error bound now have checked proofs. For returned tick bounds `L,U`,
+a certified hit lies in `[L/60,U/60]`; the midpoint error is at most
+`(U-L)/120` physical units. An outer hit alone deliberately certifies neither a
+hit nor a miss. The proof does not silently classify a tangent or range edge.
+
+No new WGSL operation is needed. A proved scene-read substitution reuses the
+oblique scan expression for both bounds. The runtime will read two four-byte
+summary words, leaving both per-beam result buffers resident. Exact artifact
+checks and observed comparisons are in progress before this milestone closes.
+
+### Milestone 3 — uncertainty checked end to end
+
+The full interval build passes, including both exact scan shader certificates,
+summary-word decoding, the emitted WASM result theorem and the final
+`Application.pipeline` theorem. The axiom audit reports only `propext`,
+`Classical.choice`, and `Quot.sound`. The bytes exported from the checked
+artifact definitions match every executed file.
+
+All 12 [observed cases](evidence/interval-run.json) pass on the CPU Vulkan
+adapter. They include the nearest interval `[1900,2100]` ticks, a reflected
+interval `[2925,3075]`, a definite miss, an occupied origin, empty selection,
+and explicit uncertainty at a corner and range edge. Three invalid parameter
+blocks and three invalid nominal scenes are rejected. The first interval's
+midpoint is `100/3` units, with a proved error bound of `5/3` units under the
+stated endpoint assumptions.
+
+![Observed conservative intervals](figures/interval.svg)
+
+The scene and directions are uploaded once (64 and 16 bytes). Twelve requests
+upload 192 parameter bytes and read 96 summary bytes. Both sets of beam results
+lack the readback usage flag. Input approximation is explicit; shader arithmetic
+has zero error on the stated domain.
+
+The next complete step will reuse resident beam results for mask-only updates,
+while forcing a fresh scan after pose or range changes. A parameter-dependency
+proof will justify reusing scans while the summary still runs for every request.
+Artifact connections and stale-result tests must close that step together.
