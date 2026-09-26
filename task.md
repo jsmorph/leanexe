@@ -77,10 +77,19 @@ pass 4,148 comparisons and 3,072 invalid-input checks. Prior tests pass 1,484
 comparisons and 864 invalid-input checks. Evidence is in
 [the negation archive](proofs/compiler/boolean-predicate-negation-2026-09-26/README.md).
 
-Next: nested calls such as f (g flag), checking each Boolean argument through
-its admitted Bool.toUInt64 conversion. Compound calls, direct Boolean contexts
-and broader signatures follow. Full-dialect correctness remains unfinished.
-Complete each capability through WASM and commit/push frequently.
+Nested converted calls such as `(f (g flag)).toUInt64` now pass source totality,
+acceptance, soundness, evaluation and IR invariant proofs. Each nested argument
+is checked as an admitted Boolean conversion; a separate source lemma proves
+that such an evaluation always yields an encoded Boolean. Scalar, loop-step and
+outer-loop focused tests pass 12,084 native/IR comparisons and 8,640 invalid-input
+checks. Existing syntax tests pass 12,896 comparisons and 9,360 invalid-input
+checks. Formerly unsupported nested-call fixtures have moved to positive coverage.
+The general source-to-WASM theorem, eighteen audits and independent engine checks
+are next for this candidate.
+
+After this increment: compound calls, direct Boolean contexts and broader
+signatures. Full-dialect correctness remains unfinished. Complete each capability
+through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 

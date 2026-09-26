@@ -4876,6 +4876,76 @@ def customNegated (x y : UInt64) : UInt64 := @ite UInt64 (¬ x < y) (customNegat
 def customNeDecision (x y : UInt64) : Decidable (x ≠ y) := inferInstance
 def customNe (x y : UInt64) : UInt64 := @ite UInt64 (x ≠ y) (customNeDecision x y) x y
 
+def booleanPredicateCompose (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != 0
+  let g := fun b : Bool => b || y == 0
+  (f (g (x == y))).toUInt64 + (g (f false)).toUInt64 * 3
+
+def booleanPredicateComposeRepeat (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b || x == y
+  (f (f (f (x != 0)))).toUInt64 + (f (f false)).toUInt64 * 3
+
+def booleanPredicateComposeNot (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && y != 0
+  let g := fun b : Bool => b || x == 0
+  (!(f (!(g (x / y == 0))))).toUInt64 + (g (!(!(f true)))).toUInt64
+
+def booleanPredicateComposeCapture (x y : UInt64) : UInt64 :=
+  let saved := x != 0
+  let f := fun b : Bool => saved || b
+  let y := y + 1
+  let g := fun b : Bool => b && x == y
+  (f (g (x == y))).toUInt64 + (g (f false)).toUInt64 * 3
+
+def booleanPredicateComposeBody (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b
+  let g := fun b : Bool => (!(f (f b))).toUInt64 == x
+  (g (f (x == y))).toUInt64 + (!(g (f false))).toUInt64
+
+def booleanPredicateComposeId (x y : UInt64) : UInt64 := Id.run do
+  let f : Bool → Id (Id Bool) := fun b => b && x != y
+  let g := fun b : Bool => !b || x == 0
+  let a ← pure (f (g true)).toUInt64
+  let b ← pure (!(g (f false))).toUInt64
+  return a + b
+
+def rangeBooleanPredicateComposeStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b || a == 0
+    let g := fun b : Bool => !b && a != seed
+    a := a + UInt64.ofNat i
+    if (f (g (a % 7 == 0))).toUInt64 == 1 then break
+  return a
+
+def rangeBooleanPredicateComposeContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != seed
+    if (!(f (!(f (UInt64.ofNat i % 3 == 0))))).toUInt64 == 1 then continue
+    a := a * 3 + UInt64.ofNat i + 1
+  return a
+
+def rangeBooleanPredicateComposeOuter (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b || seed == 0
+  let g := fun b : Bool => !b && seed != 1
+  let stop := count + (f (g false)).toUInt64
+  let mut a := seed + (g (f true)).toUInt64
+  for i in [:stop.toNat] do
+    if (!(f (g (a % 7 == 0)))).toUInt64 == 1 then break
+    a := a + UInt64.ofNat i + 1
+  return a + (g (f (a == seed))).toUInt64
+
+def rangeBooleanPredicateComposeOuterCapture (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun b : Bool => (!(f (f b))).toUInt64 == 0
+  let mut a := seed
+  for i in [:count.toNat] do
+    let h := fun b : Bool => (g (f b)).toUInt64 == 1 && a != seed
+    if (h (g (a % 5 == 0))).toUInt64 == 1 then break
+    a := a + UInt64.ofNat i + 1
+  return a + (!(g (f (a == seed)))).toUInt64
+
 def booleanPredicateNot (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => b && x != 0
   (!(f (x == y))).toUInt64 + (!(f false)).toUInt64 * 3
@@ -6457,6 +6527,16 @@ run_elab do
       `ArithmeticModeTest.rangeBooleanApplyBreak,
       `ArithmeticModeTest.rangeBooleanApplyContinue,
       `ArithmeticModeTest.rangeBooleanApplyCapture,
+      `ArithmeticModeTest.booleanPredicateCompose,
+      `ArithmeticModeTest.booleanPredicateComposeRepeat,
+      `ArithmeticModeTest.booleanPredicateComposeNot,
+      `ArithmeticModeTest.booleanPredicateComposeCapture,
+      `ArithmeticModeTest.booleanPredicateComposeBody,
+      `ArithmeticModeTest.booleanPredicateComposeId,
+      `ArithmeticModeTest.rangeBooleanPredicateComposeStep,
+      `ArithmeticModeTest.rangeBooleanPredicateComposeContinue,
+      `ArithmeticModeTest.rangeBooleanPredicateComposeOuter,
+      `ArithmeticModeTest.rangeBooleanPredicateComposeOuterCapture,
       `ArithmeticModeTest.booleanPredicateNot,
       `ArithmeticModeTest.booleanPredicateNotTwice,
       `ArithmeticModeTest.booleanPredicateNotThrice,

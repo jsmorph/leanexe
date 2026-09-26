@@ -398,5 +398,9 @@
   "rangeBooleanPredicateNotStep",
   "rangeBooleanPredicateNotContinue",
   "rangeBooleanPredicateNotOuter",
-  "rangeBooleanPredicateNotOuterCapture"
+  "rangeBooleanPredicateNotOuterCapture",
+  "rangeBooleanPredicateComposeStep",
+  "rangeBooleanPredicateComposeContinue",
+  "rangeBooleanPredicateComposeOuter",
+  "rangeBooleanPredicateComposeOuterCapture"
 ]
