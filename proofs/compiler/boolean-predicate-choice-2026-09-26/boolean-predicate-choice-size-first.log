@@ -1,0 +1,65 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/BooleanChoiceConditionSize.lean:6:0: error: Failed to find LCNF signature for Lean.Expr._sizeOf_inst
+../work/BooleanChoiceConditionSize.lean:7:0: error: Failed to find LCNF signature for Lean.Expr._sizeOf_inst
+../work/BooleanChoiceConditionSize.lean:16:2: error: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  i ≥ 0
+  h ≥ 0
+  g ≥ 0
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  c ≥ 0
+  b ≥ 0
+  a ≥ 0
+  a - b - c - d - e - f - g ≥ 16
+  a - d - e - h - i ≤ 7
+where
+ a := ↑(sizeOf
+    (BooleanGuardNegation.expr n
+      ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app (Lean.Expr.const `Bool [])).app
+                    (booleanRelationCondition unequal left.expr right.expr)).app
+                (booleanRelationEvidence unequal left.expr right.expr)).app
+            yes.expr).app
+        no.expr)))
+ b := ↑(sizeOf "ite")
+ c := ↑(sizeOf "Bool")
+ d := ↑(sizeOf (booleanRelationCondition unequal left.expr right.expr))
+ e := ↑(sizeOf (booleanRelationEvidence unequal left.expr right.expr))
+ f := ↑(sizeOf yes.expr)
+ g := ↑(sizeOf no.expr)
+ h := ↑(sizeOf "Decidable")
+ i := ↑(sizeOf "decide")
+../work/BooleanChoiceConditionSize.lean:24:2: error: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  k ≥ 0
+  j ≥ 0
+  i ≥ 0
+  h ≥ 0
+  g ≥ 0
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  c ≥ 0
+  b ≥ 0
+  a ≥ 0
+  a - b - c - d - e - f - g ≥ 16
+  a - h - i - j - k ≤ 7
+where
+ a := ↑(sizeOf
+    (BooleanGuardNegation.expr n
+      ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app (Lean.Expr.const `Bool [])).app guard.condition).app
+                guard.evidence).app
+            yes.expr).app
+        no.expr)))
+ b := ↑(sizeOf "ite")
+ c := ↑(sizeOf "Bool")
+ d := ↑(sizeOf guard.condition)
+ e := ↑(sizeOf guard.evidence)
+ f := ↑(sizeOf yes.expr)
+ g := ↑(sizeOf no.expr)
+ h := ↑(sizeOf "Decidable")
+ i := ↑(sizeOf "decide")
+ j := ↑(sizeOf guard.value.condition)
+ k := ↑(sizeOf guard.value.evidence)

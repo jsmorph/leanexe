@@ -1,0 +1,17 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [46/71] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [70/99] Built LeanExe.Source.ScalarBooleanChoiceForm (982ms)
+✔ [98/103] Built LeanExe.Extract.ScalarBooleanPredicateChoice (860ms)
+✔ [102/103] Built LeanExe.Source.Scalar (1.4s)
+⚠ [103/103] Built LeanExe.Extract.ScalarExprCore (14s)
+warning: LeanExe/Extract/ScalarExprCore.lean:304:39: Variable name `shape` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _shape
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+Build completed successfully (103 jobs).

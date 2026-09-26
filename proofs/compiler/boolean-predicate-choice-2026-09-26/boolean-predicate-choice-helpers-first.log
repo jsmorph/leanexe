@@ -1,0 +1,28 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/BooleanPredicateChoiceHelpers.lean:68:33: error: Type mismatch: After simplification, term
+  condition
+ has type
+  (lowerComparison (if unequal = true then Comparison.bne else Comparison.beq) left right).ScalarEval store
+    (if unequal = true then a != b else a == b) store
+but is expected to have type
+  (lowerComparison (if unequal = true then Comparison.bne else Comparison.beq) left right).ScalarEval store false ?m.307
+../work/BooleanPredicateChoiceHelpers.lean:68:69: error: Type mismatch: After simplification, term
+  branch
+ has type
+  (if if unequal = true then ¬a = b else a = b then yes else no).ScalarEval store value.toUInt64 store
+but is expected to have type
+  no.ScalarEval ?m.307 value.toUInt64 store
+../work/BooleanPredicateChoiceHelpers.lean:69:31: error: Type mismatch: After simplification, term
+  condition
+ has type
+  (lowerComparison (if unequal = true then Comparison.bne else Comparison.beq) left right).ScalarEval store
+    (if unequal = true then a != b else a == b) store
+but is expected to have type
+  (lowerComparison (if unequal = true then Comparison.bne else Comparison.beq) left right).ScalarEval store true ?m.344
+../work/BooleanPredicateChoiceHelpers.lean:69:67: error: Type mismatch: After simplification, term
+  branch
+ has type
+  (if if unequal = true then ¬a = b else a = b then yes else no).ScalarEval store value.toUInt64 store
+but is expected to have type
+  yes.ScalarEval ?m.344 value.toUInt64 store
