@@ -254,6 +254,7 @@ mutual
 
   def Stmt.ofLocalLet : LeanExe.IR.LocalLet → Option Stmt
     | .expr slot value => return .assign slot (← Expr.ofIR value)
+    | .effectCall _ _ _
     | .call _ _ _ => none
     | .slots slots values => do
         if slots.length != values.length then none else
@@ -270,7 +271,7 @@ mutual
 end
 
 def PostTest.ofIR
-    (accumulatorStart doneLocal stagedValueStart releaseReadyLocal : Nat)
+    (accumulatorStart doneLocal stagedValueStart : Nat)
     (bodyValues : List LeanExe.IR.Expr)
     (bodyLets : List LeanExe.IR.LocalLet)
     (doneValue : LeanExe.IR.Expr) : Option PostTest := do
@@ -283,7 +284,7 @@ def PostTest.ofIR
   pure {
     body := Stmt.seqList <|
       [lets, Stmt.seqList stages, .assign doneLocal done,
-        Stmt.seqList copies, .assign releaseReadyLocal (.const 1)]
+        Stmt.seqList copies]
     condition := .ne (.get doneLocal) (.const 0)
   }
 

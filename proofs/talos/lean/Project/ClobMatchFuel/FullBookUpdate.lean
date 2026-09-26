@@ -25,17 +25,17 @@ theorem fullBookUpdateProg_spec
     (os : List OrderL) (ts : List TradeL) (i : Nat)
     (nodes : List FreeNode)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
-    (hBookLocal : base.locals[57]? = some (.i64 book))
-    (hPrefixLocal : base.locals[60]? =
+    (hBookLocal : base.locals[67]? = some (.i64 book))
+    (hPrefixLocal : base.locals[70]? =
       some (.i64 (UInt64.ofNat (i * 5))))
-    (hSuffixLocal : base.locals[61]? =
+    (hSuffixLocal : base.locals[71]? =
       some (.i64 (UInt64.ofNat ((os.length - 1 - i) * 5))))
-    (hLengthLocal : base.locals[62]? =
+    (hLengthLocal : base.locals[72]? =
       some (.i64 (UInt64.ofNat (os.length - 1))))
-    (hCapacityLocal : base.locals[70]? = some (.i64 capacity))
-    (hNextLocal : base.locals[71]? = some (.i64 next))
+    (hCapacityLocal : base.locals[80]? = some (.i64 capacity))
+    (hNextLocal : base.locals[81]? = some (.i64 next))
     (hi : i < os.length)
     (hn : os.length - 1 < UInt64.size)
     (hOrderWords64 : os.length * 5 < UInt64.size)

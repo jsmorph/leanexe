@@ -44,14 +44,14 @@ theorem prepare_exact (env : HostEnv Unit) (initial : Store Unit)
       hGlobals hInput hBefore (by omega) (by omega) hPages hCap _ [] ?_
     rintro final frame ⟨hRoot, hValues, hOutput, hPreserved, hFinalPages, hWrites⟩
     simp [wp_simp, prepare, ha, hOutput, hPreserved, hFinalPages]
-    change (match frame.get 14 with | some v => v = .i64 (base+48) ∧ _ | none => False)
+    change (match frame.get 15 with | some v => v = .i64 (base+48) ∧ _ | none => False)
     rw [hRoot]
     exact ⟨rfl, by simpa using hWrites⟩
   · refine accept_program_spec env initial count bound ptr base w allocations retains releases frees
       hGlobals hInput hBefore hFit hMemory hPages hCap _ [] ?_
     rintro final frame ⟨hRoot, hValues, hOutput, hPreserved, hFinalPages, hWrites⟩
     simp [wp_simp, prepare, ha, hOutput, hPreserved, hFinalPages]
-    change (match frame.get 14 with | some v => v = .i64 (base+48) ∧ _ | none => False)
+    change (match frame.get 15 with | some v => v = .i64 (base+48) ∧ _ | none => False)
     rw [hRoot]
     exact ⟨rfl, by simpa using hWrites⟩
 

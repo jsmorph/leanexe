@@ -7,7 +7,11 @@ The artifact is the compiler's own unsigned LEB128 encoder, compiled by the
 compiler.  `Main.lean` proves `u32lebU64_correct`: for every `n` below
 `2 ^ 32` the export returns a pointer to a buffer holding exactly the bytes
 of `lebList 10 n`, together with its length, leaving every byte below the
-old heap top unchanged.
+old heap top unchanged. The initial store has an empty free list, typed
+allocation/release counters, and the existing 560-byte reserve. The returned
+root is existential because the allocator can reuse released buffers; no
+fixed bump address or unchanged release counter is claimed. Untouched global
+slot 3, additional globals, and the memory cap remain arbitrary.
 
 `lebList` is the pure recursion that `LeanExe/Wasm/LebTheorems.lean` proves
 equal to the shipped source encoder (`u32lebU64_eq_lebList`).  Composing the

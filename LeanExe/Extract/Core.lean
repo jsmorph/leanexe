@@ -30,25 +30,111 @@ structure ExtractedForInStepBody where
   bodyDone : IRExpr
   nextLocal : Nat
 
-def releaseForInStepTemporaries (ctx : Context) (ty : Ty)
+partial def localLetsExplicitReleaseSlots (lets : List LeanExe.IR.LocalLet) : List Nat :=
+  lets.foldl (fun released item => addLiveSlots released (match item with
+    | .expr _ (.release (.local slot)) => [slot]
+    | .branch _ thenLets elseLets =>
+        addLiveSlots (localLetsExplicitReleaseSlots thenLets) (localLetsExplicitReleaseSlots elseLets)
+    | _ => [])) []
+
+def forInFoldTemporaryBorrowedSlots? : IRExpr → Option (List Nat)
+  | .arrayFoldMultiSlot _ width _ _ _ _ initial start _ _ lets _ releases offset
+  | .byteArrayFoldMultiSlot width _ _ _ _ initial start _ _ lets _ releases offset
+  | .rangeFoldMultiSlot width _ _ _ initial start _ _ lets _ releases offset
+  | .loopFoldMultiSlot width initial start _ lets _ releases offset =>
+      let released := localLetsExplicitReleaseSlots lets
+      let releases := addLiveSlots releases ((List.range width).filter fun i =>
+        released.contains (start + i))
+      if releases.contains offset then
+        some ((releases.filterMap fun slot => initial[slot]?).flatMap
+          exprBorrowedOwnerSourceSlots)
+      else none
+  | _ => none
+
+def forInLocalFoldTemporaries : LeanExe.IR.LocalLet → List (Nat × List Nat)
+  | .expr slot expr =>
+      match forInFoldTemporaryBorrowedSlots? expr with
+      | some borrowed => [(slot, borrowed)]
+      | none => []
+  | .slots slots values => (slots.zip values).filterMap fun (slot, value) =>
+      (forInFoldTemporaryBorrowedSlots? value).map (slot, ·)
+  | _ => []
+
+partial def releaseScopedTemporaries (ctx : Context) (initial protectedSlots : List Nat)
+    (releaseSlot : Nat) (lets : List LeanExe.IR.LocalLet) : List LeanExe.IR.LocalLet :=
+  let rec descend (known : List Nat) : List LeanExe.IR.LocalLet → List LeanExe.IR.LocalLet
+    | [] => []
+    | item :: rest =>
+        let live := (pruneLocalLetsWithLive rest protectedSlots).snd
+        let item := match item with
+          | .branch cond thenLets elseLets => .branch cond
+              (releaseScopedTemporaries ctx known live releaseSlot thenLets)
+              (releaseScopedTemporaries ctx known live releaseSlot elseLets)
+          | other => other
+        item :: descend (ownedHeapLocalsAfterLocalLet ctx.freshResultOwnerOffsets known item) rest
+  let lets := descend initial lets
+  let released := localLetsReleasedSlots lets
+  let sources := ownerSourcesAfterLocalLetsForAlloc ctx.freshResultOwnerOffsets
+    (initial.map fun slot => (slot, [slot])) lets
+  let transferred := protectedSlots.filterMap fun slot =>
+    match ownerSourceSlots? sources slot with
+    | some [owner] => some owner
+    | _ => none
+  let folds := lets.flatMap forInLocalFoldTemporaries
+  let owners := (addLiveSlots (localLetsOwnedNonrecursiveHeapSlots ctx lets initial)
+    (folds.map Prod.fst)).filter fun slot =>
+      !released.contains slot && !transferred.contains slot
+  let surviving := ownedHeapLocalsAfterLocalLets ctx.freshResultOwnerOffsets initial lets
+  let protectedSlots := addLiveSlots initial (protectedSlots.filter surviving.contains)
+  let cleanup := owners.foldl (fun (prior, cleanup) slot =>
+    let borrowed := (folds.filter fun item => item.fst == slot).flatMap Prod.snd
+    let cond := (addLiveSlots prior borrowed).foldl
+      (fun cond other => .and cond (.not (.eqU64 (.local slot) (.local other))))
+      (.not (.eqU64 (.local slot) (.u64 0)))
+    (slot :: prior, cleanup ++ [.branch cond [.expr releaseSlot (.release (.local slot))] []]))
+    (protectedSlots, [])
+  lets ++ cleanup.snd
+
+def releaseForInStepTemporaries (ctx : Context) (ty : Ty) (accStart : Nat)
     (step : ExtractedForInStepBody) : ExtractedForInStepBody :=
-  let released := addLiveSlots (localLetsReleasedSlots step.bodyLets) (exprReleasedSlots step.bodyDone)
-  let owners := (localLetsOwnedNonrecursiveHeapSlots ctx step.bodyLets).filter fun slot =>
-    !released.contains slot
-  if owners.isEmpty then step else
-    let protectedSlots := (tyReleaseOwnerSlotOffsets ty).filterMap fun offset => step.bodyTargets[offset]?
-    let doneSlot := step.nextLocal
+  let protectedSlots := (tyReleaseOwnerSlotOffsets ty).filterMap fun offset => step.bodyTargets[offset]?
+  let doneSlot := step.nextLocal
+  let releaseSlot := doneSlot + 1
+  let lets := step.bodyLets ++ [.expr doneSlot step.bodyDone]
+  let initial := (tyReleaseOwnerSlotOffsets ty).map (accStart + ·)
+  let cleaned := releaseScopedTemporaries ctx initial (doneSlot :: protectedSlots) releaseSlot lets
+  if cleaned == lets then step else
+    { step with bodyLets := cleaned, bodyDone := .local doneSlot, nextLocal := releaseSlot + 1 }
+
+def prepareFoldOwnership (ctx : Context) (ty : Ty) (accStart : Nat)
+    (initValues : List IRExpr) (step : ExtractedForInStepBody) :
+    List IRExpr × ExtractedForInStepBody × List Nat :=
+  let releases := foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets ty
+    accStart step.bodyLets step.bodyDone step.bodyTargets
+  let owned := foldAccumulatorOwnedOffsets ctx.freshResultOwnerOffsets ty
+    accStart step.bodyLets step.bodyDone step.bodyTargets
+  if owned == releases then (initValues, step, releases) else
+    let ownerOffsets := tyReleaseOwnerSlotOffsets ty
+    let initialStart := step.nextLocal
+    let doneSlot := initialStart + initValues.length
     let releaseSlot := doneSlot + 1
-    let cleanup := owners.foldl (fun (prior, lets) slot =>
+    let protectedSlots := ownerOffsets.flatMap fun offset =>
+      (initialStart + offset) :: (step.bodyTargets[offset]?.toList)
+    let cleanup := owned.foldl (fun (prior, cleanup) offset =>
+      let slot := accStart + offset
       let cond := prior.foldl
         (fun cond other => .and cond (.not (.eqU64 (.local slot) (.local other))))
         (.not (.eqU64 (.local slot) (.u64 0)))
-      (slot :: prior, lets ++ [.branch cond [.expr releaseSlot (.release (.local slot))] []]))
+      (slot :: prior, cleanup ++ [.branch cond [.expr releaseSlot (.release (.local slot))] []]))
       (protectedSlots, [])
-    { step with
+    let initValues := (initValues.zipIdx).map fun (value, offset) =>
+      if ownerOffsets.contains offset then
+        .letE (initialStart + offset) value (.local (initialStart + offset)) else value
+    let step := { step with
       bodyLets := step.bodyLets ++ [.expr doneSlot step.bodyDone] ++ cleanup.snd
       bodyDone := .local doneSlot
       nextLocal := releaseSlot + 1 }
+    (initValues, step, [])
 
 def valueIteConst
     (cond : IRCond)
@@ -119,7 +205,17 @@ def classEvidenceNormalizedApp? (env : Environment) (name : Name) (expr : Expr) 
   if structuralBEqApplication? env name expr then
     none
   else if isEvidenceProjectionFunction env name || classEvidenceApplication? env expr then
-    let normalized := normalizeClassEvidenceExpr env 64 expr
+    -- Resolve the selected method without unfolding class operations inside
+    -- runtime operands (for example a byte-array indexing operation).
+    let normalized :=
+      match env.getProjectionFnInfo? name with
+      | some projection =>
+          let (head, args) := appFnArgs expr
+          let evidenceCount := projection.numParams + 1
+          let method := normalizeClassEvidenceExpr env 64
+            (rebuildApp head (args.take evidenceCount))
+          betaReduceExpr 32 (rebuildApp method (args.drop evidenceCount))
+      | none => normalizeClassEvidenceExpr env 64 expr
     let (fn, _) := appFnArgs normalized
     match fn.consumeMData with
     | .const normalizedName _ => if normalizedName == name then none else some normalized
@@ -403,7 +499,7 @@ mutual
                   }
               | none =>
                   return ← extractForInStepBody ctx (.recursor :: locals) nextLocal resultTy letBody
-            else if isStringType type then
+            else if isStringType type || (byteIOPayload? type).isSome then
               return ← extractForInStepBody ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal resultTy letBody
             else
               match value.consumeMData with
@@ -681,7 +777,7 @@ mutual
           extractMonadicForInStepBody ctx nextLocal monad payloadTy accStart []
             itemLocals bodyExpr
     let accumulatorTy ← forInAccumulatorType monad payloadTy
-    .ok (releaseForInStepTemporaries ctx accumulatorTy step)
+    .ok (releaseForInStepTemporaries ctx accumulatorTy accStart step)
 
   partial def extractMonadicFoldStep
       (ctx : Context)
@@ -1077,7 +1173,7 @@ mutual
               .ok (.letE releaseSlot releaseResult.fst bodyResult.fst, bodyResult.snd)
           | none =>
               extractValueFrom ctx (.recursor :: locals) nextLocal body
-        else if isStringType type then
+        else if isStringType type || (byteIOPayload? type).isSome then
           extractValueFrom ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal body
         else
           match value.consumeMData with
@@ -1541,10 +1637,8 @@ mutual
                             forIn.resultTy accStart
                             (.value (.scalar (.local byteSlot)) :: locals)
                             stepBody
-                        let releaseOffsets :=
-                          foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets
-                            accumulatorTy accStart step.bodyLets step.bodyDone
-                            step.bodyTargets
+                        let (initSlots, step, releaseOffsets) :=
+                          prepareFoldOwnership ctx accumulatorTy accStart initSlots step
                         let resultValue :=
                           valueFromInternalSlots accumulatorTy
                             (fun offset =>
@@ -1588,10 +1682,8 @@ mutual
                                 forIn.monad forIn.resultTy accStart
                                 (.value itemValue :: locals)
                                 stepBody
-                            let releaseOffsets :=
-                              foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets
-                                accumulatorTy accStart step.bodyLets step.bodyDone
-                                step.bodyTargets
+                            let (initSlots, step, releaseOffsets) :=
+                              prepareFoldOwnership ctx accumulatorTy accStart initSlots step
                             let resultValue :=
                               valueFromInternalSlots accumulatorTy
                                 (fun offset =>
@@ -1633,10 +1725,8 @@ mutual
                             forIn.monad forIn.resultTy accStart
                             (.value (.scalar (.u64 0)) :: locals)
                             stepBody
-                        let releaseOffsets :=
-                          foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets
-                            accumulatorTy accStart step.bodyLets step.bodyDone
-                            step.bodyTargets
+                        let (initSlots, step, releaseOffsets) :=
+                          prepareFoldOwnership ctx accumulatorTy accStart initSlots step
                         let resultValue :=
                           valueFromInternalSlots accumulatorTy
                             (fun offset =>
@@ -1669,10 +1759,8 @@ mutual
                             forIn.monad forIn.resultTy accStart
                             (.value (.scalar (.local itemSlot)) :: locals)
                             stepBody
-                        let releaseOffsets :=
-                          foldAccumulatorReleaseOffsets ctx.freshResultOwnerOffsets
-                            accumulatorTy accStart step.bodyLets step.bodyDone
-                            step.bodyTargets
+                        let (initSlots, step, releaseOffsets) :=
+                          prepareFoldOwnership ctx accumulatorTy accStart initSlots step
                         let resultValue :=
                           valueFromInternalSlots accumulatorTy
                             (fun offset =>
@@ -1788,6 +1876,16 @@ mutual
             match args.reverse with
             | value :: _ => extractValueFrom ctx locals nextLocal value
             | _ => .error "unsupported Id.run application"
+        | (.const ``LeanExe.ByteIO.read _, args)
+        | (.const ``LeanExe.ByteIO.write _, args) =>
+            if !ctx.allowByteIO then
+              .error "read/write require compile-wasi-io"
+            else
+              let (fn, _) := appFnArgs expr
+              let name := fn.constName!
+              match ← extractFunctionCallValueFrom ctx locals nextLocal name args with
+              | some result => .ok result
+              | none => .error "missing ByteIO primitive"
         | (.const ``Pure.pure _, args) =>
             match args, args.reverse with
             | monadTy :: _, value :: _ =>
@@ -1816,7 +1914,7 @@ mutual
                       match collectLambdas bindFn 1 with
                       | some body => .ok body
                       | none => .error "unsupported Id bind function"
-                    if valueContainsFoldMultiSlot valueResult.fst then
+                    if isByteIOMonad monadTy || valueContainsFoldMultiSlot valueResult.fst then
                       let sourceTy ← match sourceTy? with
                         | some ty => .ok ty
                         | none => .error "unsupported Id bind source type"
@@ -2532,9 +2630,12 @@ mutual
                               (.byteArray (.local ownerSlot) slicePtr sliceLen)))))),
                     stopSlot + 1)
             | _ => .error "unsupported ByteArray.extract application"
-        | (.const ``LeanExe.Packed.generateUInt32LE _, args) =>
+        | (.const generatorName@``LeanExe.Packed.generateUInt32LE _, args)
+        | (.const generatorName@``LeanExe.Packed.generateUInt8 _, args) =>
             match args with
             | [size, generator] =>
+                let width : LeanExe.IR.PackedWidth :=
+                  if generatorName == ``LeanExe.Packed.generateUInt8 then .u8 else .u32
                 let sizeResult ← extractExprFrom ctx locals nextLocal size
                 let lenSlot := sizeResult.snd
                 let indexSlot := lenSlot + 1
@@ -2545,8 +2646,8 @@ mutual
                 let bodyResult ← extractExprFrom ctx (.slot indexSlot :: locals) (indexSlot + 1) body
                 let ptrSlot := bodyResult.snd
                 .ok
-                  (.letE lenSlot (.u64Bin .natMul sizeResult.fst (.u64 4))
-                    (.letE ptrSlot (.byteArrayGenerate32Ptr (.local lenSlot) indexSlot bodyResult.fst)
+                  (.letE lenSlot (.u64Bin .natMul sizeResult.fst (.u64 width.bytes))
+                    (.letE ptrSlot (.byteArrayGeneratePtr width (.local lenSlot) indexSlot bodyResult.fst)
                       (.byteArray (.local ptrSlot) (.local ptrSlot) (.local lenSlot))),
                     ptrSlot + 1)
             | _ => .error "unsupported packed generator application"
@@ -2830,7 +2931,7 @@ mutual
                 .ok (← valueIte condResult.fst trueResult.fst falseResult.fst, trueResult.snd)
             | none => .error "unsupported Bool.casesOn application"
         | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
-            match typeAtom? ctx.env ty with
+            match resultTypeAtom? ctx.env ty with
             | some resultTy =>
                 if supportedLocalType resultTy then
                   let condResult ← extractCondFrom ctx locals nextLocal condExpr
@@ -2855,7 +2956,7 @@ mutual
                     let exprResult ← extractExprFrom ctx locals nextLocal expr
                     .ok (.scalar exprResult.fst, exprResult.snd)
         | (.const ``dite _, [ty, condExpr, _, thenArm, elseArm]) =>
-            match typeAtom? ctx.env ty with
+            match resultTypeAtom? ctx.env ty with
             | some resultTy =>
                 if supportedLocalType resultTy then
                   let condResult ← extractCondFrom ctx locals nextLocal condExpr
@@ -3567,7 +3668,7 @@ mutual
     match functionIndex? ctx name with
     | none => .ok none
     | some index =>
-        strictRecursiveCallCheck ctx name args
+        if !byteIOPrimitiveName name then strictRecursiveCallCheck ctx name args
         let sig ←
           match ctx.env.find? name with
           | some info =>
@@ -3581,10 +3682,12 @@ mutual
         let slotStart := argsResult.nextLocal
         let slots := (List.range slotCount).map (fun offset => slotStart + offset)
         let value := valueFromInternalSlots sig.result fun offset => .local (slotStart + offset)
-        .ok
-          (some
-            (wrapValueLets argsResult.lets (.letCall slots index argsResult.args value),
-              slotStart + slotCount))
+        let effectful := (ctx.env.find? name).any fun info =>
+          (byteIOPayload? (peelForall info.type).snd).isSome
+        let callValue := if effectful then
+          .letLocal [.effectCall slots index argsResult.args] value
+        else .letCall slots index argsResult.args value
+        .ok (some (wrapValueLets argsResult.lets callValue, slotStart + slotCount))
 
   partial def extractExprFrom
       (ctx : Context)
@@ -3622,7 +3725,7 @@ mutual
               .ok (.letE releaseSlot releaseResult.fst bodyResult.fst, bodyResult.snd)
           | none =>
               extractExprFrom ctx (.recursor :: locals) nextLocal body
-        else if isStringType type then
+        else if isStringType type || (byteIOPayload? type).isSome then
           extractExprFrom ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal body
         else
           match value.consumeMData with
@@ -3782,7 +3885,7 @@ mutual
                 let valueResult ← extractValueFrom ctx locals nextLocal expr
                 .ok (← scalarValue valueResult.fst, valueResult.snd)
             | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
-                if typeAtom? ctx.env ty |>.isSome then
+                if resultTypeAtom? ctx.env ty |>.isSome then
                   let condResult ← extractCondFrom ctx locals nextLocal condExpr
                   let thenResult ← extractExprFrom ctx locals condResult.snd thenExpr
                   let elseResult ← extractExprFrom ctx locals thenResult.snd elseExpr
@@ -4832,11 +4935,11 @@ mutual
           let result ← extractExprFrom ctx locals nextLocal value
           .ok (.f64SqrtBits result.fst, result.snd)
       | _ => .error s!"floating-point square root requires exactly one argument: {primitive}"
-    else if let some op := floatUnaryPrimitive? primitive then
+    else if let some op := scalarUnaryPrimitive? primitive then
       match args with
       | [value] =>
           let result ← extractExprFrom ctx locals nextLocal value
-          .ok (.floatUnary op result.fst, result.snd)
+          .ok (.scalarUnary op result.fst, result.snd)
       | _ => .error s!"floating-point unary intrinsic requires exactly one argument: {primitive}"
     else if let some op := (f64BinaryPrimitive? primitive).orElse fun _ => f32BinaryPrimitive? primitive then
       match args with
@@ -5168,7 +5271,7 @@ mutual
     | .letE _ type value body _ =>
         if !containsBVar 0 body then
           extractCondFrom ctx (.recursor :: locals) nextLocal body
-        else if isStringType type then
+        else if isStringType type || (byteIOPayload? type).isSome then
           extractCondFrom ctx (.thunk locals ctx.inlineStack value :: locals) nextLocal body
         else
           match value.consumeMData with
@@ -5235,7 +5338,7 @@ mutual
                   "unsupported String equality string: expected ASCII"
               .ok (if leftBytes == rightBytes then .true else .false, nextLocal)
             else
-              match typeAtom? ctx.env ty with
+              match resultTypeAtom? ctx.env ty with
               | some eqTy =>
                   if supportedEqType eqTy then
                     let eqResult ← extractStructuralEqExprFrom ctx locals nextLocal eqTy left right
@@ -6170,7 +6273,7 @@ partial def parseStepBodyAt? (env : Environment) (paramCount recursorIndex : Nat
       let expectedArgs := paramCount - 1
       match appFnArgs body with
       | (.const ``ite _, [ty, condExpr, _, thenExpr, elseExpr]) =>
-          if typeAtom? env ty |>.isSome then
+          if resultTypeAtom? env ty |>.isSome then
             match recCallArgsAt? recursorIndex expectedArgs thenExpr with
             | some args => .ok (some (condExpr, true), some elseExpr, args)
             | none =>
@@ -6887,7 +6990,7 @@ mutual
                 stmt := .seq (.assign releaseSlot releaseResult.fst) bodyResult.stmt }
           | none =>
               extractNatTailStepStmt lower (.recursor :: locals) (recursorIndex + 1) nextLocal body
-        else if isStringType type then
+        else if isStringType type || (byteIOPayload? type).isSome then
           extractNatTailStepStmt lower
             (.thunk locals lower.extractCtx.inlineStack value :: locals)
             (recursorIndex + 1)
@@ -7393,10 +7496,12 @@ def extractScalarEntry? (exportEntry : Bool) (env : Environment)
 def compileEnvironmentWithEntryModeDetailed
     (exportEntry : Bool)
     (env : Environment)
-    (moduleName entry : Name) :
+    (moduleName entry : Name)
+    (additionalRoots : List Name := []) (allowByteIO : Bool := false) :
     Except String CompiledModule := do
-  if let some scalar := extractScalarEntry? exportEntry env moduleName entry then
-    return scalar
+  if additionalRoots.isEmpty then
+    if let some scalar := extractScalarEntry? exportEntry env moduleName entry then
+      return scalar
   let entryInfo ←
     match env.find? entry with
     | some info => .ok info
@@ -7405,7 +7510,15 @@ def compileEnvironmentWithEntryModeDetailed
     match entryModeSignature? exportEntry env entry entry entryInfo with
     | some sig => .ok sig
     | none => .error (functionTypeRejectionMessage env entry entryInfo.type)
-  let (_, namesList) ← collectReachable env moduleName.getRoot entry [] []
+  let reachable ← collectReachable env moduleName.getRoot entry [] []
+  let reachable ← additionalRoots.foldlM (fun state name =>
+    collectReachable env moduleName.getRoot name state.fst state.snd) reachable
+  let namesList := reachable.snd
+  if !allowByteIO then
+    for name in namesList do
+      if let some info := env.find? name then
+        if (byteIOPayload? (peelForall info.type).snd).isSome then
+          throw "ByteIO declarations require compile-wasi-io"
   let root := moduleName.getRoot
   let mut synthetics := #[]
   for name in namesList do
@@ -7422,14 +7535,16 @@ def compileEnvironmentWithEntryModeDetailed
       | some value => .ok (betaSpecializeExpr env root 32 value)
       | none => .error s!"declaration has no executable value: {name}"
     synthetics := collectFunctionExpressionStructuralSynthetics env root namesList sig value synthetics
-  let names := (namesList ++ synthetics.toList.map (fun synth => synth.name)).toArray
+  let primitives := if allowByteIO then [``LeanExe.ByteIO.read, ``LeanExe.ByteIO.write] else []
+  let names := (namesList ++ synthetics.toList.map (fun synth => synth.name) ++ primitives).toArray
   let baseCtx : Context :=
     { env := env,
       root := root,
       names := names,
       synthetics := synthetics,
       freshResultOwnerOffsets := #[],
-      inlineStack := [] }
+      inlineStack := [],
+      allowByteIO := allowByteIO }
   let firstPassFuncs ← extractFunctionsWithEntryMode exportEntry baseCtx entry namesList
   let freshResultOwnerOffsets :=
     freshResultOwnerOffsetsForModule baseCtx { funcs := firstPassFuncs }
@@ -7467,6 +7582,60 @@ def compileDetailed (moduleText entryText : String) : IO CompiledModule := do
   let env ← LeanExe.Extract.Env.loadEnvironment moduleName
   match compileEnvironmentWithEntryModeDetailed true env moduleName entryName with
   | .ok compiled => pure compiled
+  | .error error => throw <| IO.userError error
+
+def compileExportsEnvironment (env : Environment) (moduleName : Name)
+    (entries : List Name) : Except String IRModule := do
+  let first ← match entries with
+    | first :: _ => .ok first
+    | [] => .error "at least one exported entry is required"
+  let mut exportNames : List String := []
+  let mut signatures : List Signature := []
+  for entry in entries do
+    let info ← match env.find? entry with
+      | some info => .ok info
+      | none => .error s!"entry not found: {entry}"
+    let sig ← match supportedEntryFunction? env info with
+      | some sig => .ok sig
+      | none => .error (functionTypeRejectionMessage env entry info.type)
+    let name := shortExportName entry
+    if (reservedExportNames ++ ["retain", "release", "free", "allocCount", "retainCount",
+        "releaseCount", "freeCount"]).contains name then
+      throw s!"entry export name is reserved by the runtime ABI: {name}"
+    if exportNames.contains name then throw s!"duplicate entry export name: {name}"
+    exportNames := exportNames ++ [name]
+    signatures := signatures ++ [sig]
+  let compiled ← compileEnvironmentWithEntryModeDetailed false env moduleName first entries.tail
+  let mut funcs := compiled.module.funcs
+  for (entry, sig) in entries.zip signatures do
+    let index ← match functionIndex? compiled.ctx entry with
+      | some index => .ok index
+      | none => .error s!"exported entry missing from extracted functions: {entry}"
+    let mut args : List IRExpr := []
+    let mut paramSlot := 0
+    for ty in sig.params do
+      args := args ++ (← flattenInternalValue ty (extractedValueForParam paramSlot ty))
+      paramSlot := paramSlot + abiSlots ty
+    let resultSlots := (List.range (internalSlots sig.result)).map (paramSlot + ·)
+    let results ← flattenAbiValue sig.result
+      (valueFromInternalSlots sig.result (fun offset => .local (paramSlot + offset)))
+    funcs := funcs.push {
+      sourceName := entry
+      exportName := some (shortExportName entry)
+      params := paramSlot
+      locals := paramSlot + internalSlots sig.result
+      body := .call resultSlots index args
+      results := results }
+  return { funcs }
+
+def compileExports (moduleText entriesText : String) : IO IRModule := do
+  let moduleName := LeanExe.Extract.Env.parseName moduleText
+  let entries := entriesText.splitOn ","
+  if entries.any String.isEmpty then
+    throw <| IO.userError "exported entry names must be nonempty"
+  let env ← LeanExe.Extract.Env.loadEnvironment moduleName
+  match compileExportsEnvironment env moduleName (entries.map LeanExe.Extract.Env.parseName) with
+  | .ok module_ => pure module_
   | .error error => throw <| IO.userError error
 
 def compileProgramEnvironment (env : Environment) (moduleName entry : Name) :
@@ -7593,3 +7762,27 @@ def compileStdinArgvExceptProgram (moduleText entryText : String) : IO IRModule 
   | .error error => throw <| IO.userError error
 
 end LeanExe.Extract.Core
+
+namespace LeanExe.Extract.Core.ByteIOCompilation
+
+def compileEnvironment (env : Environment) (moduleName entry : Name) : Except String LeanExe.IR.ByteIOProgram := do
+  let info ← match env.find? entry with
+    | some info => .ok info
+    | none => .error s!"entry not found: {entry}"
+  match byteIOPayload? info.type with
+  | some (.const ``UInt32 _) => pure ()
+  | _ => throw "ByteIO entry must have type ByteIO UInt32"
+  let compiled ← compileEnvironmentWithEntryModeDetailed false env moduleName entry (allowByteIO := true)
+  let some entryIndex := functionIndex? compiled.ctx entry
+    | throw "missing ByteIO entry after extraction"
+  .ok { module := compiled.module, entryIndex := entryIndex }
+
+def compile (moduleText entryText : String) : IO LeanExe.IR.ByteIOProgram := do
+  let moduleName := LeanExe.Extract.Env.parseName moduleText
+  let entryName := LeanExe.Extract.Env.parseName entryText
+  let env ← LeanExe.Extract.Env.loadEnvironment moduleName
+  match compileEnvironment env moduleName entryName with
+  | .ok module_ => pure module_
+  | .error error => throw <| IO.userError error
+
+end LeanExe.Extract.Core.ByteIOCompilation

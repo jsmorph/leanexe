@@ -71,6 +71,28 @@ theorem initial_cells_exact (env : HostEnv Unit) (initial : Store Unit) (heap : 
   have hRelease := release_owned env current currentHeap source #[Traversal.initialCell n 0]
     hCurrent.heapState hSource
   rw [hRoot] at hRelease
+  have hNonzero : heap.top + 48 ≠ 0 := by
+    have hr := hSource.buffer.rootBound
+    rw [hRoot] at hr
+    intro hz
+    simp [hz] at hr
+  have hDifferent : heap.top + 48 ≠ result.root := by
+    intro heq
+    have hr := hSource.buffer.rootBound
+    have hn := congrArg UInt64.toNat heq
+    simp only [regionsDisjoint, FreeNode.region] at hOldNew
+    rw [hRoot] at hr hOldNew
+    omega
+  wp_run [List.set, List.length_set, List.getElem?_set,
+    Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff, reduceIte]
+  refine wp_iff_cons rfl ?_
+  simp only [ne_eq, hNonzero, reduceIte]
+  rw [ite_eq_left (by decide)]
+  wp_run [List.set, List.length_set, List.getElem?_set,
+    Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff, reduceIte,
+    hNonzero, hDifferent]
+  refine wp_iff_cons rfl ?_
+  rw [ite_eq_left (by simp [hDifferent])]
   wp_run [List.set, List.length_set, List.getElem?_set,
     Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceEqDiff, reduceIte]
   refine wp_call_tw hRelease ?_

@@ -98,6 +98,13 @@ private theorem semantics_eq_aux
       have hExec := exec_eq_of_one hOne
       exact ⟨hOne, hExec, run_eq_of_exec hShift hExec⟩
 
+theorem exec_eq
+    (hShift : Shift source target rename typeRename domain)
+    (hPortable : PortableProgram domain program) :
+    exec fuel target st s (renameProgram rename program) env =
+      exec fuel source st s program env :=
+  (semantics_eq_aux hShift fuel).2.1 env st s program hPortable
+
 theorem run_eq (hShift : Shift source target rename typeRename domain) (id : Nat)
     (hDomain : domain id) :
     run fuel target (rename id) st args env =
@@ -114,6 +121,7 @@ theorem terminatesWith
   obtain ⟨values, finalStore, hRun, hPost⟩ := hFuel fuel hMinimum
   exact ⟨values, finalStore, by rw [run_eq hShift id hDomain]; exact hRun, hPost⟩
 
+#print axioms exec_eq
 #print axioms run_eq
 #print axioms terminatesWith
 end Project.FunctionRegion

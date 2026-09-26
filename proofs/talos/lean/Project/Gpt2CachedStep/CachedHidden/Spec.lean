@@ -50,7 +50,7 @@ theorem cachedHidden_exact (env : HostEnv Unit) (initial : Store Unit) (heap : H
   refine TerminatesWith.of_wp_entry_for (f := func36Def) rfl ?_
   change wp «module» func36 _ initial
     { params := parameters weightsOwner weightsPtr cacheOwner cachePtr weights cache token position,
-      locals := List.replicate 119 (.i64 0) } env
+      locals := List.replicate 124 (.i64 0) } env
   apply body_spec env initial heap weightsOwner weightsPtr cacheOwner cachePtr weights cache token position _
     hHeap hWeights hCache hWeightsProtected hCacheProtected hToken hPosition hTokenSize hPositionSize hWeightsSize
     hCacheSize hAppendSize hResources hPages rfl (List.length_replicate ..) rfl (I64Values.replicate _ _)

@@ -5,7 +5,7 @@ open Wasm Project.Runtime Project.ProofKit PackedMemory Project.EulerRiemann.Exe
 
 set_option maxRecDepth 32768 in
 theorem emitted_layerBody : layerBody =
-    [.localGet 103, .localGet 104, .geUI64, .br_if 1] ++ (layerBody.drop 4).take 217 ++ [.br 0] := rfl
+    [.localGet 103, .localGet 104, .geUI64, .br_if 1] ++ (layerBody.drop 4).take 241 ++ [.br 0] := rfl
 
 theorem layerLoop_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (embeddingNode : FreeNode) (weightsOwner weightsPtr cacheOwner cachePtr : UInt64)
@@ -27,7 +27,7 @@ theorem layerLoop_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (hNext : ∀ final result, TraversalState initial heap embeddingNode
       (parameters weightsOwner weightsPtr cacheOwner cachePtr weights cache token position)
       weights cache token position 12 final result → wp «module» rest Q final result env) :
-    wp «module» ((func36.drop 75).take 1 ++ rest) Q initial frame env := by
+    wp «module» ((func36.drop 77).take 1 ++ rest) Q initial frame env := by
   let Inv : AssertionF Unit := fun current next => ∃ index, index ≤ 12 ∧
     TraversalState initial heap embeddingNode
       (parameters weightsOwner weightsPtr cacheOwner cachePtr weights cache token position)
@@ -60,7 +60,7 @@ theorem layerLoop_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
         omega
       simp only [ge_iff_le, hGuard, ite_false, hEmpty]
       apply traversalStep_spec env initial current heap embeddingNode weightsOwner weightsPtr cacheOwner cachePtr
-        weights cache token position index next hWeights hCache hWeightsProtected hCacheProtected
+        weights cache token position index next hEmbedding hWeights hCache hWeightsProtected hCacheProtected
         hPosition hLt hCacheSize hWeightsSize hResources hTraversal
       intro final result hResult
       simp only [wp_br_cons, List.take_zero, List.drop_zero, List.nil_append]

@@ -13,12 +13,12 @@ def inferenceParams (owner pointer t0 t1 t2 t3 : UInt64) : List Wasm.Value :=
 def inferenceSaved (owner pointer t0 t1 t2 t3 : UInt64) (x : Row) : List Wasm.Value :=
   [.i64 owner, .i64 pointer, .i64 t0, .i64 t1, .i64 t2, .i64 t3, .i64 3,
     .i64 x.x0, .i64 x.x1, .i64 x.x2, .i64 x.x3,
-    .i64 x.x0, .i64 x.x1, .i64 x.x2, .i64 x.x3] ++ List.replicate 30 (.i64 0)
+    .i64 x.x0, .i64 x.x1, .i64 x.x2, .i64 x.x3] ++ List.replicate 32 (.i64 0)
 
 def initialAllocationFrame (owner pointer t0 t1 t2 t3 : UInt64) (x : Row)
     (need previous current capacity next result : UInt64) : Locals :=
   FixedArraySearch.frame (inferenceParams owner pointer t0 t1 t2 t3)
-    (inferenceSaved owner pointer t0 t1 t2 t3 x) (List.replicate 12 (.i64 0))
+    (inferenceSaved owner pointer t0 t1 t2 t3 x) (List.replicate 13 (.i64 0))
     need previous current capacity next result
 
 def inferenceHiddenPrefix : Wasm.Program :=
@@ -33,7 +33,7 @@ def inferenceHiddenPrefix : Wasm.Program :=
    .localGet 15, .localSet 19, .localGet 16, .localSet 20]
 
 theorem inference_prefix_shape : func84.take 52 =
-    inferenceHiddenPrefix ++ FixedArrayCapacity.constantProgram 0 1 51 := rfl
+    inferenceHiddenPrefix ++ FixedArrayCapacity.constantProgram 0 1 53 := rfl
 
 theorem inference_prefix_spec (env : HostEnv Unit) (initial : Store Unit)
     (owner pointer : UInt64) (weights : Array UInt64) (t0 t1 t2 t3 : UInt64)
@@ -52,8 +52,8 @@ theorem inference_prefix_spec (env : HostEnv Unit) (initial : Store Unit)
     hWeights hSize ht0 ht1 ht2 ht3) rfl rfl rfl [] ?_ ?_
   · rfl
   wp_fixed_frame [rowResults, List.append_nil]
-  apply FixedArrayCapacity.constantProgram_spec 0 1 51 module env initial _ rfl
-    (by change 6 ≤ 51; decide) (by change 51 < 6 + 63; decide)
+  apply FixedArrayCapacity.constantProgram_spec 0 1 53 module env initial _ rfl
+    (by change 6 ≤ 53; decide) (by change 53 < 6 + 66; decide)
   have hCapacity : FixedArrayCapacity.normalizedCapacity 0 1 = 8 := by decide
   simpa only [initialAllocationFrame, inferenceParams, inferenceSaved, FixedArraySearch.frame,
     FixedArrayCapacity.capacityFrame, hCapacity, List.length_cons, List.length_nil,

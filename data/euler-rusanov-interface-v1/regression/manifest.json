@@ -138,6 +138,7 @@
   },
   "compilerContract": {
     "executable": "cc",
+    "overrideEnvironmentVariable": "CC",
     "language": "C11",
     "flags": [
       "-std=c11",
@@ -163,7 +164,7 @@
     ],
     "floatingPointEnvironment": "IEC 60559 binary64, FE_TONEAREST",
     "platformChecks": [
-      "__STDC_IEC_559__ is defined",
+      "__STDC_IEC_559__ >= 1 or __GCC_IEC_559 >= 2",
       "CHAR_BIT == 8 and uint64_t/double are 8 bytes",
       "FLT_RADIX == 2 and binary64 exponent/significand limits match",
       "FLT_EVAL_METHOD == 0",
@@ -176,18 +177,18 @@
   "cSources": {
     "fixedAlphaMirror": {
       "path": "test/fixtures/euler-rusanov-c/fixed-alpha-mirror.c",
-      "byteLength": 8269,
-      "sha256": "05299ed73f677833f1047bf5160c5f05da2b2d785f81d39a93db23516e57f252"
+      "byteLength": 8431,
+      "sha256": "4dbf2309bcc9a1e4059142123b742175bab78d27b71b5fb5b4a216ffdbf4ee23"
     },
     "lanyonDriver": {
       "path": "test/fixtures/euler-rusanov-c/lanyon-driver.c",
-      "byteLength": 7996,
-      "sha256": "8b75570129c8e823b19f36ffe4b50579e149c19243121b2824a8d088508a12ac"
+      "byteLength": 8158,
+      "sha256": "53cf96d22bd14892b9520c7379bab36512adc134a9cef562080505b8f5ac95ea"
     },
     "fixtureReadme": {
       "path": "test/fixtures/euler-rusanov-c/README.md",
-      "byteLength": 6222,
-      "sha256": "dad5f92add6058028d9a326de9222c9cc2060d01012ef9bcbeae770a5c47cc46"
+      "byteLength": 6787,
+      "sha256": "92d225b2ccb18350df13e4a3b6e923b6b9e004951d0816b75f3e56c82fc15312"
     },
     "lanyonUpstream": {
       "repository": "https://github.com/lanyonai/CompressibleEuler",
@@ -255,18 +256,18 @@
     "sources": [
       {
         "path": "test/fixtures/euler-rusanov-c/README.md",
-        "byteLength": 6222,
-        "sha256": "dad5f92add6058028d9a326de9222c9cc2060d01012ef9bcbeae770a5c47cc46"
+        "byteLength": 6787,
+        "sha256": "92d225b2ccb18350df13e4a3b6e923b6b9e004951d0816b75f3e56c82fc15312"
       },
       {
         "path": "test/fixtures/euler-rusanov-c/fixed-alpha-mirror.c",
-        "byteLength": 8269,
-        "sha256": "05299ed73f677833f1047bf5160c5f05da2b2d785f81d39a93db23516e57f252"
+        "byteLength": 8431,
+        "sha256": "4dbf2309bcc9a1e4059142123b742175bab78d27b71b5fb5b4a216ffdbf4ee23"
       },
       {
         "path": "test/fixtures/euler-rusanov-c/lanyon-driver.c",
-        "byteLength": 7996,
-        "sha256": "8b75570129c8e823b19f36ffe4b50579e149c19243121b2824a8d088508a12ac"
+        "byteLength": 8158,
+        "sha256": "53cf96d22bd14892b9520c7379bab36512adc134a9cef562080505b8f5ac95ea"
       },
       {
         "path": "test/fixtures/euler-rusanov-c/lanyon/a736aa5f8b17efd225c4692404e2442361d06729/LICENSE",
@@ -285,13 +286,13 @@
       },
       {
         "path": "tools/artifact-manifest.js",
-        "byteLength": 10390,
-        "sha256": "eb45f6b633fae795caec46e64e0406bb6902a2927b7da9ad8f79de7353e60cb8"
+        "byteLength": 11031,
+        "sha256": "10935c3634cbe0ca6fd1ab6e7023a7b80e11ef4e32b20444faf0928698f5a2c6"
       },
       {
         "path": "tools/euler-rusanov-c-compare.js",
-        "byteLength": 20859,
-        "sha256": "14a4b643883347353720e040c7ecc657e536b738a3e137ded5fa2db5148beff8"
+        "byteLength": 20934,
+        "sha256": "9d898baf56f30abee1fd1b437d3fbbc1e4c612d0dd24d494d4e4ee51ec9934a2"
       },
       {
         "path": "tools/euler-rusanov-interface.js",
@@ -300,8 +301,8 @@
       },
       {
         "path": "tools/run-process.js",
-        "byteLength": 4388,
-        "sha256": "cca86fdac9851c3e7a9a3f826735f96d28e44754442749ad66388abf85f5b5f4"
+        "byteLength": 5084,
+        "sha256": "ac53772d13640c4306c5badf5c530ebfd5bd42c3768e056eee99953fc59972a0"
       },
       {
         "path": "tools/wasmtime-host.js",
@@ -309,9 +310,9 @@
         "sha256": "8e49c5b75d582f13104bd895edacbe87f41919806186f3df43bc2588b87e83b6"
       }
     ],
-    "sha256": "7b734eabb0b4e2fe03feb2097679d6b6cd9296dcd049a42bfe98e80f5ce72895"
+    "sha256": "afef30aeb2e2518f7c4411df81290c2c05834a0e81190d8541f66169a28d168a"
   },
-  "generatorRevision": "sha256:7b734eabb0b4e2fe03feb2097679d6b6cd9296dcd049a42bfe98e80f5ce72895",
+  "generatorRevision": "sha256:afef30aeb2e2518f7c4411df81290c2c05834a0e81190d8541f66169a28d168a",
   "csvFile": "c-comparison-v1.csv",
   "csvByteLength": 4119,
   "csvSha256": "21a95065f98f8f3e88962f7545af27b7e7fe8dca9084dfefba048e2d40e78a7e",

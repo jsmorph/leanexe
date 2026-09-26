@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 3,
+  "case": "gpt2_quantized_cached",
+  "sha256": "87026cf4bd73cc7ae793195ccc1a6e0469d2eb3d007d1e01cad676e551176aa8",
+  "byteLength": 28017,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.Gpt2QuantizedCached.ArtifactBytes",
+  "artifactBytesDefinition": "Project.Gpt2QuantizedCached.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.Gpt2QuantizedCached.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.Gpt2QuantizedCached.Program",
+  "cachedProgramDefinition": "Project.Gpt2QuantizedCached.module",
+  "specModule": "Project.Gpt2QuantizedCached.Spec",
+  "proofTarget": "Project.Gpt2QuantizedCached.ArtifactTranslation",
+  "identityTheorem": "Project.Gpt2QuantizedCached.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.Gpt2QuantizedCached.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.Gpt2QuantizedCached.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.Gpt2QuantizedCached.Spec.cachedStep_exact",
+    "Project.Gpt2QuantizedCached.Spec.validateModel_exact",
+    "Project.Gpt2QuantizedCached.Spec.gpt2_128_exact",
+    "Project.Gpt2QuantizedCached.Spec.cached_session_logit_bound",
+    "Project.Gpt2QuantizedCached.Spec.cached_session_greedy",
+    "Project.Gpt2QuantizedCached.Spec.cached_session_outward_bound",
+    "Project.Gpt2QuantizedCached.Spec.cached_session_outward_greedy"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "0b8486bea82c65a31ecdf332642f8d96fcf99f2726130f56707f373c02017194",
+  "hostAssumptions": []
+}

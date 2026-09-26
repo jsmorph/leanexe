@@ -287,6 +287,10 @@ mutual
     | .f32Div => binary context path base .f32 .f32 state
     | .f64Div => binary context path base .f64 .f64 state
     | .f32Sqrt => unary context path base .f32 .f32 state
+    | .f32Nearest => unary context path base .f32 .f32 state
+    | .f32ConvertI32S => unary context path base .i32 .f32 state
+    | .i32Extend8S => unary context path base .i32 .i32 state
+    | .i32TruncSatF32S => unary context path base .f32 .i32 state
     | .f64Sqrt => unary context path base .f64 .f64 state
     | .i32WrapI64 => unary context path base .i64 .i32 state
     | .i64ExtendI32U => unary context path base .i32 .i64 state

@@ -63,6 +63,7 @@ def softmaxNonempty : Wasm.Program :=
    .constI64 0,
    .eqI64,
    .eqz,
+   .iff 0 1 [.localGet 9, .localGet 21, .eqI64, .eqz] [.const 0] [] [.i32],
    .iff 0 0 [
     .localGet 9,
     .call 82

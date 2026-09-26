@@ -20,18 +20,18 @@ set_option maxHeartbeats 8000000
 
 def bumpFrame (base : Locals) (g0 : UInt64) : Locals :=
   { base with
-    locals := ((base.locals.set 46 (.i64 (g0 + 56))).set 47
-      (.i64 ((g0 + 56 - 1) / 65536 + 1))).set 48 (.i64 (g0 + 48))
+    locals := ((base.locals.set 48 (.i64 (g0 + 56))).set 49
+      (.i64 ((g0 + 56 - 1) / 65536 + 1))).set 50 (.i64 (g0 + 48))
     values := [] }
 
 set_option Elab.async false in
 theorem invalidBumpProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals) (g0 : UInt64)
     (hParams : base.params.length = 6)
-    (hLocals : base.locals.length = 49)
+    (hLocals : base.locals.length = 51)
     (hValues : base.values = [])
-    (hNeed : base.locals[43]? = some (.i64 8))
-    (hResult : base.locals[48]? = some (.i64 0))
+    (hNeed : base.locals[45]? = some (.i64 8))
+    (hResult : base.locals[50]? = some (.i64 0))
     (hFit32 : g0.toNat + 56 < 4294967296)
     (hFit : g0.toNat + 56 ≤ st.mem.pages * 65536)
     (hPages : st.mem.pages ≤ 65536)
@@ -42,8 +42,8 @@ theorem invalidBumpProg_spec
       (bumpFrame base g0) env) :
     wp Project.ClobMarket.«module» (Entry.invalidBumpProg ++ rest) Q st
       base env := by
-  have hNeed' : base.locals[43] = .i64 8 := getElem_of_some hNeed
-  have hResult' : base.locals[48] = .i64 0 := getElem_of_some hResult
+  have hNeed' : base.locals[45] = .i64 8 := getElem_of_some hNeed
+  have hResult' : base.locals[50] = .i64 0 := getElem_of_some hResult
   simp only [Entry.invalidBumpProg, Entry.invalidProg,
     Entry.outerBranch, func21]
   wp_run_with [hParams, hLocals, hValues, hNeed', hResult']

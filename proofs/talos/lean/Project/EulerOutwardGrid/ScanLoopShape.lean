@@ -8,18 +8,17 @@ open Project.ProofKit.F64Outward (Checked)
 open Project.EulerOutwardSpeed.Execution (checkedValues)
 
 def scanLoop : Wasm.Program :=
-  match (func45[25]? : Option Wasm.Instruction) with
+  match (func45[23]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => body
   | _ => []
 
 theorem scan_loop_shape :
-    func45[25]? = some (.block 0 0 [.loop 0 0 scanLoop]) := rfl
+    func45[23]? = some (.block 0 0 [.loop 0 0 scanLoop]) := rfl
 
 structure ScanScratch where
   cell : Traversal.Cell := ⟨0, ⟨0, 0, 0, 0⟩, 0, 0⟩
   previous : Checked := ⟨0, 0⟩
   borrowed : UInt64 := 0
-  visited : UInt64 := 0
 
 def scanFrame (pointer : UInt64) (count index : Nat)
     (acc : Checked) (scratch : ScanScratch) : Locals :=
@@ -39,8 +38,8 @@ def scanFrame (pointer : UInt64) (count index : Nat)
       .i64 0, .i64 0,
       .i64 pointer, .i64 (UInt64.ofNat count), .i64 (UInt64.ofNat index),
       .i64 (UInt64.ofNat count), .i64 (UInt64.ofNat count),
-      .i64 scratch.borrowed, .i64 acc.status, .i64 acc.value, .i64 scratch.visited,
-      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0]
+      .i64 scratch.borrowed, .i64 acc.status, .i64 acc.value, .i64 0,
+      .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0]
     values := [] }
 
 def scanPrefix (grid : Array Traversal.Cell) (index : Nat) : Checked :=

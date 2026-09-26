@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "status": "native-lean-gelu-ranges-passed",
+  "gelu_values": 16883712,
+  "gelu_unique_values": 13205150,
+  "attention_records": 5496,
+  "attention_record_words": 2304,
+  "order": "Per prefix: quantized 12 layers, then FP32 12 layers, in source order",
+  "prefixes": 229,
+  "files": {
+    "gelu.bin": {
+      "bytes": 67534848,
+      "sha256": "c57cb0b6dad68fc161cf47252956b1e738f96ee21fa4832b3b3a972725d4798d"
+    },
+    "gelu-unique.bin": {
+      "bytes": 52820600,
+      "sha256": "c5eebd0d1b84cc6b9762bad0d18d2fe4fe4b9953eb689f0028870005213b73bc"
+    },
+    "attention.bin": {
+      "bytes": 50651136,
+      "sha256": "62001cd9d87af5eb07bfa66db00b179f171c20c6caa5f33f692e61ee8f3a3d4b"
+    }
+  },
+  "coverage_sha256": "73d8db0d5041c31c73771a0ec90a2eeab22808f452b4de0acb139f8b2fc7a1b0",
+  "source_sha256": "fa87b9c46e30ba1a6e134fbb716f2ad7da7acfdb4900a52e96677415fe1a525f",
+  "reference_sources": {
+    "quantized_reference.py": "32129e7bc189013e0246cb4ecf65e23c412d18e04a5357ecd7ca155de552c88e",
+    "diagnose_quantized.py": "ae4ca14c6657f4c63f6b2918cb0d9db97f2cab7a81f222603e324c66acaec15a"
+  },
+  "seconds": 279.456,
+  "checked_values": 16883712,
+  "command": "tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-gelu-check build/gpt2-124m/quantized-group64/nonlinear/gelu.bin",
+  "parameters": {
+    "square": 305,
+    "weighted": 300,
+    "factor": 152,
+    "product": 303,
+    "magnitude": 304,
+    "exponential": {
+      "multiplication": 299,
+      "addition": 151,
+      "squaring": 299
+    },
+    "denominatorAdd": 151,
+    "numeratorMul": 302,
+    "positiveDiv": 153,
+    "negativeDiv": 153,
+    "denominatorLower": 1
+  },
+  "checker_sources": {
+    "Project/Gpt2CachedStep/ExpNeg/Compute.lean": "cf454669a957f2878fcbca318a8629a95c0f6a9264cbc32d94138be47d09232c",
+    "Project/Gpt2CachedStep/ExpNeg/RangeCheck.lean": "269b90dc2465df2dc05cccf5afdb2ed4c860924a18c11e6deb6738129e49cbb6",
+    "Project/Gpt2CachedStep/ExpNeg/RangeCertificate.lean": "5a45f43d946f5408340877f5cc689d714d661e4dcbd0ce249b892cce9457f9a3",
+    "Project/Gpt2CachedStep/GeluCompute.lean": "4e0c09e0fd8fff9691644c4006f72ce5e9953dd57166efd96c7031253e10b1b3",
+    "Project/Gpt2CachedStep/GeluRangeCheck.lean": "3430c763eccff15131dbf9a9cf96c47dbe055fee3ecceac2540cb7438d9f1fe8",
+    "Project/Gpt2CachedStep/GeluRangeCertificate.lean": "2864c9121d7dff10452b76c37b3744a285707ba9831814c2b88d68742399a215",
+    "Project/ProofKit/F32HornerRangeCheck.lean": "19e577caac4b3bb1164411614bae4694e012f9e8cfae1f6eff47646d251a2272",
+    "Project/ProofKit/F32HornerRangeCertificate.lean": "e699be9d67c2a610722e0e71492315fdebed15a77140f526fd86c1bbc3150a6a",
+    "Project/Gpt2QuantizedCached/CheckGelu.lean": "b214dd0a0cc627638874f9b36943634d9c143d09a106b17235f97ee0df36ed42"
+  },
+  "checker_sha256": "ac173f4d17add32fd0abfdc1dd342e57f34857986206807349e06dc3b79e8019",
+  "trust_boundary": "Kernel-checked soundness. Native Lean compiler and runtime trusted for complete data evaluation. Capture is tied to every retained FP32 and quantized logit hash.",
+  "scope": "All GELU range conditions for the captured values, including exponential reduction and arithmetic. Propagated forward-error evaluation is separate."
+}

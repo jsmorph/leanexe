@@ -224,7 +224,7 @@ function validatePinnedUpstream(upstreamMetadata) {
 
 function compilerCommand(source, output, extraFlags = []) {
   return [
-    "cc",
+    process.env.CC || "cc",
     ...strictCFlags,
     source,
     "-o",
@@ -382,13 +382,14 @@ function manifestText(interfaceBuilt, rows, csv, identity, upstreamMetadata) {
     },
     compilerContract: {
       executable: "cc",
+      overrideEnvironmentVariable: "CC",
       language: "C11",
       flags: strictCFlags,
       mirrorLinkFlags: linkFlags,
       lanyonLinkFlags: linkFlags,
       floatingPointEnvironment: "IEC 60559 binary64, FE_TONEAREST",
       platformChecks: [
-        "__STDC_IEC_559__ is defined",
+        "__STDC_IEC_559__ >= 1 or __GCC_IEC_559 >= 2",
         "CHAR_BIT == 8 and uint64_t/double are 8 bytes",
         "FLT_RADIX == 2 and binary64 exponent/significand limits match",
         "FLT_EVAL_METHOD == 0",

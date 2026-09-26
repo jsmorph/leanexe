@@ -21,8 +21,6 @@ def func0 : Wasm.Program :=
   .localSet 4,
   .localGet 3,
   .localSet 5,
-  .constI64 0,
-  .localSet 19,
   .block 0 0 [
    .loop 0 0 [
     .localGet 4,
@@ -58,17 +56,17 @@ def func0 : Wasm.Program :=
     .eqz,
     .iff 0 0 [
      .localGet 6,
-     .localSet 14,
+     .localSet 16,
      .localGet 7,
-     .localSet 15,
-     .localGet 15,
+     .localSet 17,
+     .localGet 17,
      .constI64 0,
      .eqI64,
      .iff 0 1 [
-      .localGet 14
+      .localGet 16
      ] [
-      .localGet 14,
-      .localGet 15,
+      .localGet 16,
+      .localGet 17,
       .remUI64
      ] [] [.i64],
      .localSet 8,
@@ -87,9 +85,9 @@ def func0 : Wasm.Program :=
      .localSet 12
     ],
     .localGet 11,
-    .localSet 17,
+    .localSet 19,
     .localGet 12,
-    .localSet 18,
+    .localSet 20,
     .localGet 5,
     .constI64 0,
     .eqI64,
@@ -122,14 +120,12 @@ def func0 : Wasm.Program :=
     ] [
      .constI64 1
     ] [] [.i64],
-    .localSet 16,
-    .localGet 17,
+    .localSet 18,
+    .localGet 19,
     .localSet 4,
-    .localGet 18,
+    .localGet 20,
     .localSet 5,
-    .constI64 1,
-    .localSet 19,
-    .localGet 16,
+    .localGet 18,
     .constI64 0,
     .neI64,
     .br_if 1,
@@ -138,11 +134,15 @@ def func0 : Wasm.Program :=
   ],
   .localGet 4,
   .localSet 13,
-  .localGet 13
+  .localGet 5,
+  .localSet 14,
+  .localGet 13,
+  .localSet 15,
+  .localGet 15
  ]
 
 def func0Def : Wasm.Function :=
-  { params := [.i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func0, results := [.i64], typeIdx := some 0 }
+  { params := [.i64, .i64], locals := [.i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64, .i64], body := func0, results := [.i64], typeIdx := some 0 }
 
 /-- Exported function. -/
 def func1 : Wasm.Program :=

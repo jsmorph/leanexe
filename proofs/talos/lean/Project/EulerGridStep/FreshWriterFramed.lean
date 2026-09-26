@@ -50,6 +50,8 @@ theorem writeCell_fresh_framed {m : Wasm.Module} (layout : Layout m)
     roots output index cell count (allocs + 6) releases frees initial.mem.pages P
   have hRun := writer_accepted_sequence layout env initial unused roots index cell W R hAccepted
     ⟨hState, hP, rfl⟩ (by
+      intro count hLo hHi
+      exact (hSlots count (by omega) 6 (by decide) (by omega)).ne) (by
       intro field hField current ⟨hCurrent, hObserved, hPages⟩
       apply (fresh_cell_field_call layout env current (writerCallUnused unused roots field)
         allocs releases frees base output index field cell hField hi hCurrent).mono

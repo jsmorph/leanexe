@@ -1,0 +1,1329 @@
+Quantized GPT-2 Inference with Exact WebAssembly Proofs:
+Arithmetic, Cached Execution, and Numerical Evidence
+Jamie Stephens∗
+24 September 2026
+
+Abstract
+Quantization changes a language model’s arithmetic, storage, and output, while deployment
+adds obligations about compiled instructions and retained state. We extend LeanExe’s GPT-2
+124M example with signed eight-bit weights and projection inputs, 32-bit integer accumulation,
+and binary32 operations elsewhere. A Lean-checked theorem connects the exact 28,315-byte
+WebAssembly binary to the specified quantized cached-inference algorithm, including validation,
+termination, allocation, and buffer release for sessions of at most 128 tokens. The specification
+fixes scale selection, nearest-even rounding, saturation, and the order of all rescaling operations.
+An initial scale per activation row caused severe output degradation. Scales for consecutive
+groups of 64 coordinates improved greedy agreement with the binary32 implementation from 87
+to 120 of 128 retained prefixes. The deployed grouped model matches its independent reference
+bit for bit on 6,432,896 logits, 128 complete caches, and nine completions. Its checkpoint occupies
+74.3% less storage. A controlled resident-session benchmark measures a 3.59-fold median
+speedup and a 34.7% reduction in warm WebAssembly memory. Across 302 evaluated positions,
+including prefixes of six held-out prompts, greedy choices agree at 263 positions. Separate
+certificates derived from observed logit pairs establish 232 individual choices after removing
+a common offset. Conditional numerical theorems propagate quantization and floating-point
+errors through the complete cached recurrence, but their evaluated forward bounds certify zero
+token choices. We give the theorem boundary, data identities, measurement procedures, and
+remaining assumptions, including native checker execution and the identity of captured operands
+with source intermediates.
+
+Contents
+1 Verified quantized cached inference
+1.1 Relationship to quantization and verification work . . . . . . . . . . . . . . . . . . .
+
+3
+3
+
+2 Quantization and arithmetic order
+2.1 Scale selection and coefficient encoding . . . . . . . . . . . . . . . . . . . . . . . . . .
+2.2 Grouped projection . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+2.3 Accumulator range and conversion . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+2.4 Model format and validation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+4
+4
+4
+5
+5
+
+3 Exact binary and session proof
+3.1 Statement for the distributed module . . . . . . . . . . . . . . . . . . . . . . . . . . .
+3.2 Scalar operations, tensors, and proof reuse . . . . . . . . . . . . . . . . . . . . . . . .
+3.3 Cache ownership and allocation sufficiency . . . . . . . . . . . . . . . . . . . . . . . .
+
+6
+6
+7
+7
+
+∗
+
+Morphism (https://morphism.com). Contact: js@morphism.com.
+
+1
+
+4 Checkpoint export correspondence
+
+8
+
+5 Accuracy diagnosis and grouped evaluation
+9
+5.1 Reference agreement and original failure . . . . . . . . . . . . . . . . . . . . . . . . . 9
+5.2 Group64 experiment and vocabulary control . . . . . . . . . . . . . . . . . . . . . . . 9
+5.3 Generated text and held-out inputs . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+6 Storage, runtime, and memory measurements
+11
+6.1 Projection costs . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+7 Conditional numerical bounds and token certificates
+7.1 Projection error with rounded rescaling . . . . . . . . . . . . . . . . . . . . . . . . .
+7.2 Nonlinear operations and cached recurrence . . . . . . . . . . . . . . . . . . . . . . .
+7.3 Captured range evidence and forward failure . . . . . . . . . . . . . . . . . . . . . .
+7.4 Certificates from observed logit pairs . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+13
+13
+13
+14
+15
+
+8 Trust assumptions and remaining work
+
+16
+
+A Source, artifact, and evidence identities
+A.1 Claim-to-declaration map . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+A.2 Measurement records . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+A.3 Reproduction procedure . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+16
+17
+18
+19
+
+2
+
+1
+
+Verified quantized cached inference
+
+A Lean-checked theorem connects the exact 28,315-byte WebAssembly binary to the specified
+quantized cached-inference algorithm, including validation, termination, allocation, and buffer
+release for sessions of at most 128 tokens. The model has GPT-2’s 124,439,808 parameters, twelve
+transformer blocks, hidden width 768, twelve attention heads, feed-forward width 3,072, and
+vocabulary size 50,257. The checkpoint stores 1,024 position embeddings. The deployed recurrence
+accepts positions zero through 127. We use the existing checkpoint, tokenizer, prompts, serial
+binary32 implementation, and reference harness from the earlier cached-inference work [4, 1, 5].
+The new computation quantizes learned projection weights and their activation inputs to integers
+in [−127, 127]. Each group of 64 activation coordinates has its own scale. Every output channel
+has one weight scale across its input width. Integer products accumulate in 32-bit words, and
+each group sum converts to binary32 before rescaling and addition. Token embeddings share the
+quantized vocabulary matrix. Position embeddings, normalization parameters, biases, attention
+scores and values, cached keys and values, GELU, softmax, residual additions, and output logits
+retain binary32 arithmetic.
+The execution proof establishes exact agreement with the quantized algorithm for the frozen
+binary. Experiments measure the algorithm’s agreement with its independent reference and its
+differences from the binary32 model. Numerical theorems bound those differences under explicit
+assumptions. The evaluated forward bounds are too large to establish a token choice. Certificates
+constructed from already observed logit pairs establish some individual choices. These conclusions
+have different premises and evidence, which Sections 3, 5, and 7 specify.
+The report fixes the implementation and evidence at LeanExe revision c655d35b5011c170
+3dfd22bcceaec4e5bee17088. Quantized command-line inference is opt-in through tools/gpt2
+--quantized. The binary32 path remains the default. The focused quantized source and exactbinary package checks have passed. Repository-wide release work remains open at this revision:
+current limit/market matcher proof repairs, their preserved artifact packages, aggregate source
+and artifact checks, the complete execution and conformance tests, and a matching clean-checkout
+receipt. The reported GPT results therefore identify a checked component and recorded experiments
+within an unfinished repository release.
+
+1.1
+
+Relationship to quantization and verification work
+
+Integer quantization with explicit scale and rounding rules follows established inference practice.
+Jacob et al. describe integer-only inference and training designed to preserve accuracy [3]. The present
+implementation uses post-training quantization and binary32 rescaling and nonlinear operations. Its
+deployed mathematical object is a mixed integer/binary32 recurrence with a fixed evaluation order.
+Activation outliers have motivated specialized transformer quantizers. LLM.int8() combines
+vector-wise quantization with a separate higher-precision computation for outlier dimensions [2].
+SmoothQuant transfers activation scaling difficulty into weights through an equivalent transformation
+before quantization [7]. Our experiment instead changes the activation scale granularity to 64coordinate groups while preserving eight-bit products and the exported coefficient payload. The
+comparison in Section 5 measures this particular change on GPT-2. The benchmark compares two
+LeanExe WebAssembly implementations on one host, so it supplies no runtime comparison with
+those systems.
+QEBVerif uses differential reachability analysis and mixed-integer linear programming to verify
+bounds between neural networks and their quantized counterparts [8]. Our numerical work proves
+compositional error formulas in Lean for the integer and binary32 operations of a cached transformer.
+
+3
+
+The binary proof additionally covers the deployed instructions and memory operations. The
+present forward evaluator’s failure to establish useful margins is a concrete limitation of its error
+formulas. The earlier LeanExe reports supply the binary32 session, floating-point semantics, and
+proof organization reused here [1, 5].
+
+2
+
+Quantization and arithmetic order
+
+2.1
+
+Scale selection and coefficient encoding
+
+Let fl32 (x) denote the binary32 result of the specified rounded operation, and let rne(x) denote
+rounding a represented value to the nearest integer with ties to even. For a finite vector x =
+(x0 , . . . , xd−1 ), the scale rule is
+(
+
+m = max |xi |,
+i
+
+s(x) =
+
+1,
+max{2−126 , fl32 (m/127)},
+
+m = 0,
+m > 0.
+
+(1)
+
+The implementation compares the magnitude bits of finite binary32 words to obtain m. The floor
+is the smallest positive normal binary32 value. It prevents a positive scale from becoming zero or
+subnormal. The all-zero vector has scale one and all-zero coefficients.
+The signed coefficient is
+
+
+qs (xi ) = rne clip[−127,127] fl32 (xi /s)
+
+
+
+.
+
+(2)
+
+Division rounds before clipping, and clipping precedes nearest-even rounding. The result is converted
+to a signed 32-bit integer and stored as its low byte. Thus −127 has byte representation 0x81,
+zero has 0x00, and 127 has 0x7f. The validator rejects 0x80, the encoding of −128. Zero point
+zero is implicit. Both signs of an input zero produce integer zero. The definitions rowScale,
+quantizeValue, and quantizeRows implement these rules in the projection source.
+Each learned projection stores coefficients in output-major order: all input coordinates for output
+channel j occupy one contiguous row. Its scale sw
+j comes from Equation (1) applied to that complete
+weight row. Token embedding row j uses the same rule and the same coefficient row later used to
+compute vocabulary logit j. Learned projection biases and normalization parameters retain their
+original binary32 words.
+
+2.2
+
+Grouped projection
+
+Let the input width be d = 64G. GPT-2 uses G = 12 for width 768 and G = 48 for width 3,072. For
+input row r, group g contains coordinates 64g through 64g + 63. Its scale is sxr,g , and its coefficients
+x . With output-major weight coefficients q w , the projection computes
+are qr,g,i
+j,g,i
+ar,j,g =
+
+63
+X
+
+x
+w
+qr,g,i
+qj,g,i
+,
+
+(3)
+
+i=0
+
+
+
+
+
+ur,j,g = fl32 f32(ar,j,g ) fl32 (sxr,g sw
+j ) ,
+t0 = +0,
+(
+
+yr,j =
+
+(4)
+
+tg+1 = fl32 (tg + ur,j,g ),
+
+(5)
+
+fl32 (tG + bj ), with bias,
+tG ,
+without bias.
+
+(6)
+
+4
+
+The inner scale product in Equation (4) rounds first. The accumulator converts to binary32 exactly
+under the range bound below. A second multiplication rounds the rescaled partial sum. Equation (5)
+adds groups in increasing index order, starting from positive zero. Bias is added once after the last
+group. The vocabulary projection uses the bias-free case. The grouped source definition fixes this
+order, including each binary32 rounding point.
+The original candidate used one activation scale and one integer dot product for the complete
+input row, followed by one rescaling. Grouping therefore changes both the quantizer and the floatingpoint accumulation order. Its measured improvement cannot be attributed to scale granularity
+alone while assuming identical arithmetic elsewhere. The weight coefficients, per-output weight
+scales, and quantized embedding values remain unchanged between the two schemes.
+
+2.3
+
+Accumulator range and conversion
+
+Every permitted coefficient has magnitude at most 127, so every integer product has magnitude at
+most 1272 = 16,129. For every prefix of k products,
+X
+
+qix qiw ≤ k 16,129.
+
+(7)
+
+i<k
+
+For k ≤ 64, the bound is 1,032,256 < 220 . Products and all partial sums fit the signed 32-bit
+range, and the final integer converts to binary32 exactly because its magnitude is less than 224 .
+For the original complete-row kernel, k ≤ 3,072 gives 49,548,288 < 231 . That larger bound still
+proves accumulation safety, while a complete-row accumulator can require rounding on conversion
+to binary32.
+The implementation stores products and sums as UInt32 words. The checked dot_exact
+theorem identifies the signed decoding of the resulting word with the mathematical integer sum. Its
+companion dot_prefix_range proves Equation (7). These results use the exclusion of byte 0x80
+and the width bound to justify the implementation’s word arithmetic. The grouped numerical proof
+uses the sharper 64-term bound and the checked integer-to-binary32 conversion theorem.
+
+2.4
+
+Model format and validation
+
+The version-one checkpoint occupies 127,695,972 bytes: a 32-byte header and a 127,695,940-byte
+payload. Words are little-endian, and tensor starts are four-byte aligned. The header contains the
+magic string LXQGPT2 followed by zero, format version one, header and payload lengths, scheme
+identifier two, context limit 128, and a zero reserved word. Scheme one identifies the preserved
+complete-row candidate. Scheme two identifies Equations (3)–(6). The tensor payload is identical
+between the schemes, while the changed header produces a different whole-file hash.
+The payload contains 123,532,032 coefficient bytes, 133,201 binary32 scales, and 907,776 retained
+binary32 words. The shared token/vocabulary matrix contributes 38,597,376 coefficient bytes and
+50,257 scales. Twelve transformer blocks follow the position embeddings. The final normalization
+parameters end the file. The tensor manifest gives all offsets, dimensions, and lengths, and the
+format specification states the public API.
+Initialization checks the complete header, excludes every forbidden coefficient, requires every
+scale to be finite and at least 2−126 , and checks every retained binary32 parameter for finiteness.
+Each token call checks the header again, token and position bounds, cache length, and cache
+finiteness. The status codes are zero for success, one for format rejection, two for model-parameter
+rejection during validation, three for token/cache rejection, and four for numerical failure. Failure
+5
+
+returns empty output buffers. A finite validated checkpoint can still cause a numerical failure during
+inference. Validation establishes its represented shape and permitted values, while the execution
+theorem covers the resulting success or failure path.
+
+3
+
+Exact binary and session proof
+
+3.1
+
+Statement for the distributed module
+
+The execution theorem proves the behavior of a fixed byte sequence. Lean embeds the 28,315 bytes,
+checks their decoding and validation, and proves equality between the decoded module’s Talos
+translation and the execution model used by the behavioral proofs. The package checker compares
+the external program.wasm file with those embedded bytes. The SHA-256 digest identifies the
+file for retrieval and measurement. The byte comparison and decoding proof establish its formal
+connection to the execution model.
+Write B for the embedded bytes, R for a decoded raw module, V for its validated representation,
+and T (V ) for its translation to the Talos execution semantics. The theorem Project.Gpt2Quantiz
+edCached.Artifact.artifact_gpt2_128_exact proves
+∃R, V :
+
+decode(B) = ok(R)
+∧ Grammar. Encodes(B, R)
+∧ validate(R) = ok(V )
+∧ CoreValid(R)
+∧ ExactSpecFor(T (V )).
+
+(8)
+
+The translation proof checks all 66 function bodies and the complete module equality.
+Grammar.Encodes is the declarative binary-encoding relation. CoreValid is the checked verifier profile’s validity property. ExactSpecFor, defined in the complete specification, states the
+reset, allocation, loading, validation, and session result below.
+Theorem 1 (Quantized session execution). For every byte array W of length 127,695,972 and
+list of 32-bit token words τ of length at most 128, the specified session over T (V ) terminates. It
+resets the instance, allocates the weight buffer, writes W , and returns the source model validator’s
+status. If validation succeeds, each requested token call returns the exact status, cache bytes, and
+logit bytes of the quantized Lean recurrence. A nonzero token status ends the trace. The specified
+releases terminate, and memory stays within the module’s 65,536-page limit.
+The theorem quantifies over all weight arrays of the required length. It includes arrays rejected
+by validation and successful validation followed by a numerical failure. Successful inference for the
+pinned pretrained checkpoint is established by the recorded runs. A successful step produces 50,257
+binary32 logits and appends 73,728 cache bytes. The source trace follows the model’s own status
+and stops on failure, so termination covers failure cleanup as well as successful traversal.
+The proof uses the Lean model as the behavioral specification and proves the connection from
+the emitted bytes. It therefore needs no general compiler-correctness theorem. Compiler output,
+annotations, and cached syntax are checked proof inputs. A changed binary requires a new exactbyte package and proof. The package’s axiom audit reports propext, Classical.choice, and
+Quot.sound. These are the standard Lean axioms accepted for this development.
+
+6
+
+3.2
+
+Scalar operations, tensors, and proof reuse
+
+The quantized loop proof composes byte decoding, signed extension, integer multiplication and
+addition, binary32 division, nearest-even rounding, integer conversion, rescaling, ordered addition,
+and packed output stores. The binary32 operations use the existing integer-defined arithmetic
+semantics. The WebAssembly numerical specification supplies the deployment meaning of these
+instructions, including rounding behavior [6]. Wasmtime runs the retained binaries with arithmetic
+NaN canonicalization enabled to match the chosen deterministic semantics.
+The model retains the earlier binary32 implementations of normalization, cached attention,
+residual addition, and GELU. Checked function-region equalities transfer their execution and
+memory theorems into the quantized module after function and type index renaming. The binary32
+region proof covers twenty helpers, and the projection region proof covers twelve projection and
+runtime helpers. The equality checks justify reuse at the instruction level. Shared source names or
+apparent similarity alone provide no such transfer.
+The transformer-block proof follows two normalizations, four quantized projections, attention,
+two residual additions, GELU, and key/value extraction. It establishes exact status and bytes,
+protected-input preservation, returned ownership, and cleanup along each finite-value branch. The
+twelve-block traversal carries those facts through the hidden state and accumulated cache updates.
+A final normalization and vocabulary projection produce the logits. The public step theorem also
+checks token masking at the 64-bit calling interface, position arithmetic, input rejection, and output
+finiteness guards.
+
+3.3
+
+Cache ownership and allocation sufficiency
+
+At position p, the cache contains 12 · 2 · 768p = 18,432p binary32 words, or 73,728p bytes. Attention
+reads the appropriate prior keys and values and the current QKV projection. Each block returns
+1,536 new words, and the traversal collects the twelve block updates before appending them to
+the prior cache. The layout and copying order are part of the source recurrence and the byte-level
+execution proof.
+The caller retains the old cache until the token call returns. A successful call supplies a
+replacement cache and a logit buffer. After consuming the outputs, the specified host sequence
+releases the old cache and then the logit buffer. A failed call ends the session and releases the
+remaining cache and weights. Shutdown also releases the final cache and weights after the last
+successful requested token. Ownership assertions track live packed objects and disjoint protected
+buffers through allocator reuse and reference-count changes.
+The allocation proof establishes sufficient capacity before each allocation. A block’s heap-top
+growth is at most 96 KiB under the proved position bound. The complete cached hidden function
+has growth bounded by the incoming cache byte length plus 1,736,456 bytes. The public token step
+increases the heap top by at most the incoming cache byte length plus 1,942,544 bytes. The session
+invariant reserves an initial 128 MiB and 16 MiB for each token:
+heapTop(p) ≤ 134,217,728 + 16,777,216p,
+
+p ≤ 128.
+
+(9)
+
+This reservation fits the 32-bit linear-memory limit. The proof also tracks the memory-page bound
+and fixed capacity of 65,536 pages. Equation (9) is a sufficient formal reservation, while the measured
+memory capacities in Section 6 describe one allocator execution. Neither quantity is process resident
+memory.
+The formal session uses a specified host byte-write operation and a specified sequence of calls. Its
+implementation boundary includes the native host’s corresponding copies, argument encoding, calls,
+7
+
+output reads, and releases. Wasmtime, its compiler, the operating system, and hardware execute
+those operations outside the Lean kernel. Section 8 states the remaining runtime assumptions.
+
+4
+
+Checkpoint export correspondence
+
+The exporter reads the pinned openai-community/gpt2 checkpoint and writes the fixed quantized
+layout. Its revision, source-file digest, tensor manifest, original binary32 weight digest, and quantized
+weight digest are recorded. The learned block matrices change from the source layout to outputmajor coefficient rows. The shared token embedding and vocabulary matrix retains its token-row
+orientation. A mistaken transpose would change inference while leaving the byte count valid, so the
+export relation states the source index corresponding to every target row and coordinate.
+The checked export predicate compares the binary32 and quantized files. For each of 49 projection
+matrices, it checks the specified row scale and every coefficient from Equations (1) and (2). For
+each retained tensor, it checks finiteness and equality of the binary32 words. The complete-file run
+accepted 123,532,032 coefficients, 133,201 scales, and 907,776 retained words. The first interpreted
+run timed out before completing its first matrix. The retained successful run evaluates the checked
+definitions through the pinned native Lean compiler and runtime. The export record preserves both
+outcomes.
+The theorem Export.projection_checked derives the per-row check from the wholefile predicate.
+Export.retained_checked supplies retained-word equality and finiteness.
+QuantizedExport.reconstruction connects accepted quantizer rows to a real-valued reconstruction bound. The proofs of these implications check in the Lean kernel. The successful
+evaluation over all checkpoint bytes uses the native execution boundary described above. The
+checkpoint’s identity with the downloaded training artifact uses the recorded file hashes and
+exporter inputs.
+For a finite input x, positive finite scale s, and rounded quotient r = fl32 (x/s), the scalar theorem
+gives
+
+
+(10)
+|sqs (x) − x| ≤ s 12 + max(0, |r| − 127) + εdiv .
+For a finite binary32 value y, define M (y) = 2149 |y|, a nonnegative integer that expresses its
+magnitude in units of 2−149 . The quotient-range premise for an integer exponent b with 24 ≤ b ≤ 275
+is
+M (x)2149 ≤ M (s)2b ,
+equivalently
+|x/s| ≤ 2b−149 .
+(11)
+Under this premise, F32DivisionBounds.div_real_error bounds the division error by
+εdiv (b) =
+
+2b−24
+= 2b−173 .
+2149
+
+(12)
+
+Thus b = 156 asserts |x/s| ≤ 128 and gives εdiv (156) = 2−17 . In Equation (10), the
+half-unit term comes from nearest-even rounding, the maximum term covers clipping, and
+εdiv (b) covers the initial binary32 division. The quotient-range assumption is explicit in
+QuantizedScalarError.reconstruction. The proof accounts for rounded scale selection and
+finite division.
+The retained activation records cover 233,580 groups and 14,949,120 coefficients at 229 evaluated
+positions. A native Lean checker verifies the same quantizer relation, finite inputs, positive finite
+scales, and quotient range. The largest observed scale is approximately 2.18501425, and the largest
+rounded quotient magnitude is 127 + 2−17 . The checked exponent 156 bounds quotient rounding by
+
+8
+
+2−17 . Equation (10) then gives a component bound s(1/2 + 2−16 ) for those records. Using their
+largest scale yields the exact uniform local bound
+150,157,618,083
+≈ 1.09254046.
+137,438,953,472
+This quantity bounds activation reconstruction at the captured quantizers. Subsequent multiplication,
+rescaling, summation, and transformer operations add further error. The full-model bound treats
+those stages separately.
+
+5
+
+Accuracy diagnosis and grouped evaluation
+
+5.1
+
+Reference agreement and original failure
+
+The first cached candidate reproduced its independent quantized reference on every logit and cache
+in the fixed 128-prefix trace. That implementation agreement coexisted with poor agreement with
+binary32 inference. Its greedy choice matched the binary32 model on 87 of 128 prefixes, and all
+nine retained completions differed within their first three generated tokens. The first sampled
+continuation contained the fragment “the first of the the Pisa, will to the that a the the”. Its
+binary32 counterpart described a village. The complete texts, token IDs, and shared sampling draws
+remain in the original completion record.
+We diagnosed projection error before completing the full-model proof. A separate serial binary32
+reference reproduced the frozen binary32 module’s logits bit for bit. For each of 49 projections
+at the first nine fixed prefixes, the diagnostic used that model’s input and compared activationonly reconstruction, weight-only reconstruction, and the integer projection against the original
+projection. Using the same input isolates a local operation’s error. It leaves the propagation of
+earlier quantization errors outside that comparison.
+The vocabulary projection had the largest local RMS error at eight of nine prefixes. Its input
+maximum magnitude ranged from 53.4 to 198.5, while its median coordinate magnitude ranged
+from 0.115 to 0.312. The complete-row scale quantized 79.2–95.6% of its coordinates to zero. At
+prefix seven, activation quantization alone gave RMS output error 1.812, weight quantization alone
+gave 0.318, and the complete integer projection gave 1.839. Outliers also appeared within the
+transformer: block two’s expansion at the first prefix quantized 97.3% of its input coordinates to zero.
+Its activation-only RMS output error was 0.270, compared with 0.022 from weight reconstruction.
+The projection diagnostics support activation scaling as a substantial local error source.
+
+5.2
+
+Group64 experiment and vocabulary control
+
+The experiment used independent scales for consecutive groups of 64 activation coordinates. It kept
+the coefficient payload and quantized embeddings fixed and adopted the ordered group-rescaling
+computation of Section 2. A control kept complete-row transformer projections but used binary32
+vocabulary activations and serial binary32 multiplication of reconstructed quantized vocabulary
+weights. The control tests whether removing activation quantization at the last projection accounts
+for much of the original distribution error.
+Table 1 reports greedy agreement and the KL divergence from the binary32 softmax distribution
+to each candidate. Each prefix supplies the same token sequence to both models, with each model
+maintaining its own cache. The fixed-trace record and prompt-prefix record retain every logit hash
+and per-prefix metric. The control’s improvement supports final-projection activation quantization
+
+9
+
+Input set
+
+Arithmetic
+
+Greedy matches
+
+Median KL
+
+Maximum KL
+
+Fixed trace
+
+Complete-row
+Group64
+Binary32 vocabulary control
+
+87/128
+120/128
+120/128
+
+0.506706
+0.009023
+0.003522
+
+4.182229
+0.251639
+0.150031
+
+Nine prompt prefixes
+
+Complete-row
+Group64
+Binary32 vocabulary control
+
+49/101
+85/101
+87/101
+
+0.677073
+0.066768
+0.039378
+
+3.736186
+0.244526
+0.240125
+
+Table 1: Agreement with the frozen serial binary32 model. KL divergence is in nats. The binary32
+vocabulary control retains quantized transformer projections and quantized vocabulary weights.
+as a major contributor on these inputs. The experiment does not assign a causal share of final error
+to every transformer layer.
+Raw logit differences contain a component common to all vocabulary entries. Such a shift
+preserves softmax probabilities and greedy order. With differences δj = zjq − zjf and their mean
+qP
+
+2
+δ̄, the centered RMS is
+j (δj − δ̄) /50,257. On the fixed trace, grouping reduced the maximum
+centered RMS from 1.862 to 1.052. Its largest absolute difference was 49.587 at prefix 57, where
+the mean shift was 43.054, centered RMS was 0.868, and KL divergence was 0.000507 nats. On
+prompt prefixes, the grouped maximum raw difference rose from the original 13.893 to 19.296, while
+maximum centered RMS fell from 1.502 to 0.866. Reporting both quantities separates a common
+offset from changed relative logits.
+The compiled grouped binary matches all 6,432,896 reference logits and each of 128 complete
+caches bit for bit. Every logit vector also reproduces its grouped-experiment hash. The cached
+comparison therefore tests the complete deployed recurrence against the independently implemented
+serial quantized reference. The reference preserves the specified polynomial approximations and
+operation order. This test establishes agreement on its finite input set. The execution theorem
+establishes exact source agreement for all inputs satisfying its session setup.
+
+5.3
+
+Generated text and held-out inputs
+
+The compiled grouped model reproduces all nine reference completions, including the two sampled
+cases using the same Lean PRNG draws. Table 2 gives the first generated position at which group64
+and binary32 differ. The village sample begins with a village and a monster, while the science
+sample starts “to understand and test hypotheses”. Greedy completions still contain repetition and
+factual errors. The science, narrative, code, numerical, and explanatory prompts provide examples
+of changed behavior, but this small collection supplies no semantic-quality score.
+The six prompts initially designated held-out in the first candidate’s manifest had already been
+evaluated when grouping was proposed. We therefore fixed another six prompts after the group64
+implementation and before evaluating them. They cover narrative, exposition, dialogue, code,
+arithmetic prose, and matrix multiplication. Their complete input token lists and 32-token greedy
+requests appear in the held-out manifest. No quantizer tuning used their results.
+On all 73 prefixes of those six prompts, greedy choices agree at 58 positions. The held-out logit
+record reports maximum absolute difference 18.1201. Their six generated continuations all diverge
+from binary32, at generated positions 7, 3, 4, 11, 6, and 1. Repetition occurs in both models. The
+quantized code continuation repeats a loop fragment, and its matrix explanation confuses row and
+column conditions. The complete held-out texts preserve these failures.
+Across the fixed trace, nine original prompt-prefix sequences, and six later prompt-prefix
+
+10
+
+Prompt
+
+Requested tokens
+
+First difference
+
+64
+32
+16
+32
+
+1
+2
+13
+4
+
+32
+32
+
+4
+7
+
+32
+
+1
+
+32
+32
+
+2
+1
+
+Once upon a time, in a small village
+The purpose of science is
+The capital of France is
+A proof of the theorem begins with the following
+observation:
+The train arrived at the station just before midnight.
+def sum_of_squares(values): with initial total
+zero
+The measurements were 0.125, 3.5, and 127.0. Their
+sum is
+In the garden, the children found a small wooden box.
+Q: Why does ice float on water? A:
+
+Table 2: Group64 versus binary32 completion differences, with generated positions counted from
+one. The first two cases use top-k = 40, temperature 0.8, and seeds 42 and 7. The remaining cases
+use greedy decoding. Exact prompts, newlines, tokens, and draws appear in the completion record.
+sequences, group64 and binary32 agree on 263 of 302 evaluated positions. These positions include
+repeated token prefixes across sets. The fixed 128-token trace also repeats a short phrase through
+most of its length. The observations characterize the retained tests and the six later prompts. They
+supply no estimate of corpus-wide accuracy, perplexity, factual reliability, or long-context behavior.
+The deployment decision remains opt-in quantized inference with binary32 as the default.
+
+6
+
+Storage, runtime, and memory measurements
+
+The quantized checkpoint reduces storage by 74.3%. Retained binary32 tensors and scale words
+account for the difference from a fourfold reduction. Cache values remain binary32, so cache storage
+per token is unchanged.
+The controlled full-model benchmark runs both frozen binaries on appledev1, aarch64 Linux,
+using Wasmtime 44.0.0 with canonical NaNs. It uses one warmup 128-prefix trace and three
+measured traces. It alternates the model order at each position and repetition. The execution
+scope gives the process one core of CPU quota, a 4 GiB memory-high threshold, 6 GiB memory
+maximum, and 1 GiB swap maximum, while the shared runner lock excludes concurrent Lean work.
+The record includes the host executable digest, CPU feature listing, Linux identity, source hashes,
+NumPy version 2.5.3, and PyTorch version 2.9.1+cpu.
+Timing covers resident cached calls, logit transfer, and temporary-buffer release. Loading,
+validation, reference comparisons, and hashing occur outside the measured interval. Table 3 reports
+the retained warm-session measurements. Every repeated logit vector has the same hash. This
+is a comparison with LeanExe’s serial binary32 WebAssembly baseline on the recorded host and
+workload. PyTorch supplies a separate reference comparison outside the timing interval.
+The complete one-trace cached comparison records different memory capacities: 737,673,216
+bytes for group64 and 1,107,361,792 bytes for binary32 at position 128. Those figures describe
+the first trace’s terminal capacity. Table 3 describes the maximum after repeated warm traces,
+including allocator growth and reuse. WebAssembly linear memory retains allocated capacity until
+the instance closes, even after object release. Peak process resident memory also includes the native
+runtime and other process allocations.
+After each successful token call and host cleanup, the quantized session retains two live allocations:
+11
+
+Measurement
+Checkpoint bytes
+Median 128-prefix trace time (s)
+Minimum measured trace time (s)
+Maximum measured trace time (s)
+Maximum warm linear-memory bytes
+Peak process resident bytes
+
+Group64
+
+Binary32
+
+127,695,972
+27.287
+27.238
+27.313
+747,110,400
+759,934,976
+
+497,759,232
+97.936
+97.789
+97.947
+1,144,848,384
+1,157,341,184
+
+Table 3: One warmup trace followed by three measured 128-prefix traces with resident weights. The
+median time ratio is 3.59, and the warm linear-memory reduction is 34.7%. The small repetition
+count and single host limit the runtime conclusion to this experiment.
+weights and current cache. By session close, the allocator has freed all 45,569 allocations made during
+the single 128-token session. The four-trace benchmark’s cumulative count is 182,273 allocations,
+all freed by close. The session tests also cover invalid headers, the wrong scheme, malformed
+model parameters, invalid tokens, invalid cache shapes or values, failures after allocation at three
+transformer depths, preservation of the preceding cache, reset, and close. These records test the
+native orchestration corresponding to the formal session.
+
+6.1
+
+Projection costs
+
+The grouped projection experiment measures four checkpoint shapes on the original first-token
+binary32 inputs. It compares group64, complete-row quantization, and an output-major binary32
+projection. All variants run under the same one-core resource scope. Each measurement follows
+a reference comparison and two warmup calls, then records seven timed calls. Timing includes
+activation quantization, projection, the host round trip, and output release. Weight loading and
+validation occur before timing.
+Projection
+QKV, 768 × 2304
+Expansion, 768 × 3072
+Reduction, 3072 × 768
+Vocabulary, 768 × 50257
+
+Group64 (ms)
+
+Row scale (ms)
+
+Binary32 (ms)
+
+Ratio
+
+3.428
+5.311
+5.225
+77.938
+
+3.475
+5.365
+4.626
+78.903
+
+13.674
+21.465
+20.422
+303.692
+
+3.99
+4.04
+3.91
+3.90
+
+Table 4: Median projection times and binary32/group64 ratio. Dimensions are input width by
+output width. These four local measurements use binary32-model inputs and therefore exclude
+accumulated full-model quantization error.
+The reduction projection takes 12.9% longer with group64 than with a complete-row scale in this
+run. The other three medians differ by about 1%. Grouping adds activation scales and group-level
+binary32 work. Its checkpoint payload remains unchanged. Each grouped call allocates three buffers
+and releases all three after output consumption. Measured linear-memory capacity equals the
+complete-row projection in these four cases. The projection record includes all repetitions, output
+hashes, and allocation counts.
+The grouped projection’s output matches its independent reference byte for byte for all four
+shapes. The reference uses 64-bit integer accumulation and checks the 1,032,256 bound, while the
+deployed implementation uses 32-bit word accumulation. Their equality tests the range proof’s
+intended arithmetic on real checkpoint values. Earlier unscoped projection measurements used
+
+12
+
+different resource limits and are retained separately. Their times are excluded from Table 4.
+
+7
+
+Conditional numerical bounds and token certificates
+
+7.1
+
+Projection error with rounded rescaling
+
+The numerical development bounds the difference between the quantized and binary32 Lean
+recurrences on a common token sequence, with each recurrence retaining its own cache. A projection
+combines error already present in its input, fresh activation quantization error, weight reconstruction
+error, and rounding in both implementations. For reference coordinates xi , wi and reconstructed
+bi , w
+bi satisfying
+coordinates x
+bi − xi | ≤ exi ,
+|x
+
+bi − wi | ≤ ew
+|w
+i ,
+
+the exact-product difference obeys
+x w
+bi w
+bi − xi wi | ≤ |wi |exi + |xi |ew
+|x
+i + ei ei .
+
+(13)
+
+The incoming activation bound adds to the local reconstruction bound in exi . This relation
+connects the quantized projection to the binary32 model’s current input, accounting for differences
+accumulated by earlier stages.
+For an integer group accumulator a, the checked rescaling theorem bounds Equation (4) by
+|u − asx sw | ≤ εout + |a|εscale .
+
+(14)
+
+The first term bounds the outer multiplication. The second accounts for the rounded scale product.
+The exact integer conversion follows from |a| < 224 . The theorem requires finite scales and
+explicit bounds on both multiplication operands. Summing Equation (13) within a group, applying
+Equation (14), and adding the errors of ordered group additions and the final bias gives a component
+bound. The binary32 reference’s serial multiplication, addition, and bias errors also contribute.
+The executable outward bound replaces per-coordinate magnitudes by checked uniform bounds.
+With |xi | ≤ X, |wi | ≤ W , exi ≤ Ex , and ew
+i ≤ Ew , a group contribution is bounded by
+εout + 1,032,256εscale + 64(W Ex + XEw + Ex Ew ).
+
+(15)
+
+The projection bound multiplies the group-level expression and addition allowance by the number
+of groups, then includes bias and reference-computation rounding. The uniform grouped bound and
+paired projection theorem prove these steps. Repeated magnitude bounds and repeated propagation
+through all layers can make the bound large even when measured differences remain small.
+
+7.2
+
+Nonlinear operations and cached recurrence
+
+LayerNorm comparison accounts for ordered mean and variance sums, centering, epsilon addition,
+square root, reciprocal, gamma multiplication, and beta addition. Its assumptions include finite
+inputs and parameters, arithmetic-range bounds, retained parameter equality, and positive lower
+bounds for both computed and real-reference denominators. The measured checker uses 1/1000 as
+the denominator lower bound. The smallest observed denominator among the original 229 positions
+is approximately 0.151385. A separate theorem supplies the real-reference root lower bound from
+the positive normalization epsilon.
+Attention comparison follows query–key dot products, score scaling, maximum subtraction,
+exponential evaluation, softmax normalization, and probability–value products. It carries errors in
+13
+
+historical cached keys and values as well as errors in the current QKV projection. The exponential
+bound includes the degree-18 polynomial remainder, rounded coefficients, up to six halvings and
+corresponding squarings, and the cutoff below −64. Exact reduction is an explicit premise. The
+soundness conversion also needs maximum dominance and positive denominator lower bounds. The
+retained softmax denominator bound is one.
+The GELU theorem includes its argument arithmetic, the exponential computation, both quotient
+branches, and the magnitude-eight cutoff. It uses a conservative real tail bound of 1/100 at that
+cutoff. Under the recorded range exponents, proved majorants bound the exponential error by
+1/300 and the complete GELU error formula by 1/16. These are local approximation and rounding
+bounds under their stated premises. Residual additions contribute rounding from both recurrences
+and the error inherited from each input.
+For each token, the cache bound retains the maximum of the prior cache error and the new
+key/value error. The hidden-state bound passes through all twelve transformer blocks, then through
+final normalization and the vocabulary projection. Session.trace_error proves a per-position,
+per-logit bound for the paired source traces. Its Session.Conditions predicate states the necessary
+arithmetic and reconstruction obligations against the source intermediates. Both initial caches can
+be empty, giving initial cache error zero.
+The outward evaluator stores a nonnegative bound as a natural-number numerator divided
+by 2160 . Multiplication, division, and conversion from fractions round upward. Numerators have
+arbitrary precision. The outward arithmetic soundness proof and operation-specific proofs establish
+that this representation bounds the real error formulas. ForwardUpper.trace_close proves the
+complete executable bound recurrence, including both cache histories. Its premises include valid
+tokens and positions, correct cache shapes, successful quantized steps, finite magnitude bounds,
+local arithmetic bounds, reconstruction inequalities, and retained parameter equality.
+
+7.3
+
+Captured range evidence and forward failure
+
+Native Lean checkers evaluate the finite range predicates on captured operands. Table 5 gives the
+coverage. Captures reproduce all recorded final logit hashes for both models. The normalization
+checker recomputes ordered sums. The GELU checker checks all Horner and squaring stages. The
+attention checker reconstructs the two cache histories and checks score and weighted-value arithmetic.
+Projection checks establish finite values and conservative ranges for dots, rescaling, group sums, and
+biases. Pointwise checks recompute captured embeddings and residual outputs bit for bit.
+Checked records
+LayerNorm calls, both models
+GELU input words, both models
+Attention calls, both models
+Projection input/output records, both models
+Paired embedding records
+Paired residual-addition records
+
+Original 229 positions
+
+Later 73 positions
+
+11,450
+16,883,712
+5,496
+22,442
+229
+5,496
+
+3,650
+5,382,144
+1,752
+7,154
+73
+1,752
+
+Table 5: Range-check coverage from the original and held-out evidence directories. Paired pointwise
+records contain the quantized and binary32 computations. Both sets use the same 49 checked
+projection matrices.
+Captured operand identity remains a premise: the supplied operand arrays must equal the
+intermediates of the complete Lean recurrence. Matching final logit hashes supplies evidence for
+the capture, but it proves no internal operand equality in the kernel. The projection checker also
+14
+
+uses conservative arithmetic bounds without recomputing every full projection output. The native
+compiler and runtime evaluate the data predicates and bound numerators. The kernel checks the
+soundness implications from those predicates. These distinctions apply to the recorded numerical
+evaluation even though the separate binary execution theorem is complete.
+The original forward evaluation and held-out forward evaluation produce a finite outward bound
+at every one of 302 evaluated positions. The smallest reported bound is approximately 1.516 × 10601 ,
+and the largest is approximately 8.124 × 1061429 . Every bound exceeds 2129 , whereas the difference
+between two finite binary32 values is less than 2129 . Consequently, the evaluated forward bounds
+certify zero greedy choices and give no useful numerical-precision estimate. The exact integer
+numerators and evaluator identities remain in the evidence records.
+Equation (15) and the nonlinear comparison formulas repeatedly replace component information
+by magnitude bounds and propagate those bounds through layers and cache history. They explain
+the form of the accumulated conservatism. The retained evaluation does not isolate each formula’s
+contribution to the final excess. Tighter bounds require analysis of those stages, with separate
+evidence for any proposed improvement.
+
+7.4
+
+Certificates from observed logit pairs
+
+Let z f , z q be finite binary32 logit arrays, let k be the binary32 winner, and let c be a common offset.
+If bounds ej satisfy
+|zjq − c − zjf | ≤ ej
+
+and zkf − zjf > ek + ej
+
+(j ̸= k),
+
+then zkq > zjq for every competitor. The result follows by subtracting the two error inequalities. A
+common offset cancels from every pairwise difference. The checked logit predicate and soundness
+theorem implement the comparison with integers in units of 2−149 , so every finite binary32 input
+has an exact representation. They also check lengths, winner membership, and finiteness. Equality
+in the margin test is inconclusive. The general greedy operation retains the first index on ties, while
+an accepted strict certificate establishes a unique winner.
+The raw certificate sets c = 0 and uses the observed component errors. The common-offset
+certificate sets c = zkq − zkf , which makes the winner’s error zero, then uses exact shifted component
+errors. Table 6 reports the two checks. The common-offset check certifies 232 observations. Of the
+263 agreeing observations, 31 remain inconclusive under that sufficient condition. Certificate failure
+therefore cannot establish a changed winner.
+Input set
+
+Positions
+
+Greedy agreement
+
+Raw
+
+Common offset
+
+Fixed trace
+Nine original prompt sequences
+Six later prompt sequences
+
+128
+101
+73
+
+120
+85
+58
+
+85
+34
+26
+
+116
+67
+49
+
+Total observations
+
+302
+
+263
+
+145
+
+232
+
+Table 6: Certificates derived from observed logit pairs. Counts include overlapping prefixes between
+input sets. The forward-bound certificate count is zero for all three sets.
+The packed-word theorem connects the predicate to returned byte arrays, and the cached-step
+theorem connects such arrays to the paired recurrences. A session theorem proves equal greedy
+choices along a common token sequence when every required step passes its certificate. The
+recorded acceptance counts establish individual choices for the supplied logit pairs. They use
+measured differences after both models have run. The numerical forward theorem would support a
+15
+
+different conclusion from propagated bounds, but its measured bounds satisfy no margin. Complete
+sampled-text identity or semantic correctness does not follow from either acceptance count.
+
+8
+
+Trust assumptions and remaining work
+
+The execution result depends on the Lean kernel accepting the proof, the stated Lean axioms, and
+the adequacy of the formal decoder, verifier profile, integer and floating-point semantics, and Talos
+execution model for the claimed WebAssembly behavior. The proof connects those definitions to the
+embedded bytes. Native deployment further depends on the external-file check, runtime execution,
+host byte transfers and calls, operating system, and hardware. Arithmetic NaN canonicalization is
+enabled in the retained Wasmtime configuration. The package’s empty host-import assumption
+list concerns imported WebAssembly functions. It does not remove the external runtime and
+orchestration assumptions.
+The numerical result adds assumptions about the input checkpoint relation, arithmetic ranges,
+positive denominators, magnitudes, source-intermediate identities, successful steps, and native
+checker evaluation. Source-level error theorems enter the quantized package’s declaration audit
+alongside the execution theorems. The principal exact-binary theorem in Equation (8) states
+execution behavior. Applying the numerical comparison to an observed deployment also requires the
+numerical premises and the connection from measured operands to the specified source computation.
+The experiments compare one pinned model on a small fixed collection of inputs. Their strongest
+implementation test is exact agreement between the grouped WebAssembly and quantized reference
+across the retained complete caches and outputs. Their strongest numerical preservation result
+is the per-observation common-offset margin check. The generated texts record repetition and
+incorrect statements in both models. The runtime result describes a scalar CPU WebAssembly
+implementation on one host, with three measured full traces and a stated timing interval. It supplies
+no comparison with optimized native matrix libraries, SIMD quantized kernels, GPU inference, or
+other hardware.
+The next numerical task is to tighten the forward bound and discharge captured-operand identity
+with the source recurrence through checked evidence. Componentwise bounds, better control of
+normalization and attention perturbations, and preservation of useful dependencies are possible
+directions whose benefit requires measurement and proof. A useful milestone would certify a token
+from pre-output error bounds and a strict winning margin. The present experiment establishes the
+theorem structure and a complete bound evaluation, with zero such certifications.
+Repository release completion requires the remaining matcher proof repairs, current aggregate
+source and frozen-package checks, full execution and semantic-conformance runs, and a receipt from
+an immutable clean checkout. The quantized implementation’s binary identity and retained GPT
+evidence are already fixed. Later release receipts should identify their own source revision and
+input digest, so a repository-wide result cannot be inferred from the focused package’s success. The
+report’s source and data identifiers permit checking the reported component independently while
+those broader tasks continue.
+
+A
+
+Source, artifact, and evidence identities
+
+All repository links in this report refer to revision c655d35b5011c1703dfd22bcceaec4e5bee17088
+at https://github.com/jsmorph/leanexe. The proof workspace pins Lean 4.34.0-rc2, commit 6a
+10ac8c22beadecabdbb0919c2b50214762f91d, and Talos revision 87e3aa5e8f6e6f3b3eb5e7e4c5a
+ba43071002d47. The exact-artifact verifier source identity is 0b8486bea82c65a31ecdf332642f8d9
+16
+
+6fcf99f2726130f56707f373c02017194. The upstream model revision is 607a30d783dfa663caf39
+e06633721c8d4cfcd7e. Table 7 fixes the model and binary files used by the measurements.
+Table 7: SHA-256 identities.
+Object
+
+SHA-256
+
+Group64 binary
+
+9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d
+80659ce773075
+e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4
+aacf7a2b4ade
+9d60657659e502b8dae9f11c2e73583643962b42c662cb9b51a
+a53e8730ec314
+6c12f993878ad39ba4aa3b0ab58a7466f5a62651cda94464dab4
+38339008ba1d
+248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b4731
+82f0f81d3a707
+8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8
+a5a9e970478a6
+246419d68fc63c40049e09a10d8afc0e955ef3d4fe65043bf271
+3eeed9b6d441
+4fab215a51e58996b78dc3b988182eadcf47532f60556db7dd5
+d8d35468483ac
+cdf0d8752b9b8243de911eab7435f4c96356752437d190ef4da
+094073f59c29a
+
+Binary32 binary
+Group64 weight file
+Binary32 weight file
+Upstream
+safetensors
+Tokenizer JSON
+Native session host
+Original candidate
+binary
+Original candidate
+weights
+
+A.1
+
+Claim-to-declaration map
+
+Table 8 identifies the statements supporting the proof claims. Names beginning with Q. abbreviate
+Project.Gpt2QuantizedCached.. Names beginning with P. abbreviate Project.ProofKit.. The
+linked modules contain the complete hypotheses and conclusions.
+Table 8: Checked declarations and their scope.
+Claim
+
+Declaration and module
+
+Integer sum equality
+and prefix range
+Scalar reconstruction
+
+P.QuantizedDot.dot_exact; P.QuantizedDot.dot_prefix_range
+
+Two rounded
+rescalings
+Complete token call
+
+P.QuantizedRescaleError.rescale_error
+
+Model validation
+
+Q.Validation.validateModel_exact
+
+Repeated calls and
+cleanup
+Reset through closed
+session
+Exact binary transfer
+
+Q.Session.runs_exact and Q.Session.close_owned
+
+Checkpoint
+correspondence
+
+Q.Export.projection_checked; Q.Export.retained_checked
+
+P.QuantizedScalarError.reconstruction
+
+Q.Entry.publicStep_exact, exposed as Q.Spec.cachedStep_exact
+
+Q.Spec.gpt2_128_exact
+Q.Artifact.artifact_gpt2_128_exact
+
+17
+
+A.2
+
+Claim
+
+Declaration and module
+
+Real session error
+formula
+Outward session
+bound
+Forward margin
+implication
+Observed-logit
+predicate
+Packed and session
+certificates
+
+Q.Numerical.Session.trace_error
+Q.Numerical.ForwardUpper.trace_close
+Q.Numerical.ForwardUpper.choices_agree
+P.F32LogitCertificate.sound; P.F32LogitCertificate.greedy
+PackedLogitCertificate, LogitCertificates, and
+SessionCertificates
+
+Measurement records
+
+The original evaluation manifest fixes the checkpoint, 128-token trace, nine prompt cases, and
+sampling parameters. The later manifest fixes the six additional prompts before their evaluation.
+Table 9 maps measured conclusions to retained records. Historical JSON status strings stating
+that a proof was pending record the state at capture time. The current proof status follows the
+declarations and package checks described in Section 3.
+Table 9: Retained records under data/gpt2-quantized-v1.
+Claim
+
+Record
+
+Storage and tensor
+layout
+Original error source
+
+Grouped checkpoint manifest and current model record.
+
+Grouping and
+control
+Bitwise model
+agreement
+Generated
+completions
+Runtime and
+memory
+Checkpoint relation
+Activation
+quantizers
+Range predicates
+
+Observed-logit
+certificates
+Forward-bound
+failure
+
+Projection diagnostics, with local activation, weight, and
+combined errors.
+Fixed-prefix experiment and prompt-prefix experiment.
+Grouped cached test.
+Nine compiled cases and six later cases.
+Warm full-model benchmark and scoped projection
+benchmark.
+Export check, including successful native evaluation and the
+earlier timeout.
+Activation check, with exact quotient and reconstruction
+bounds.
+Original range records and held-out range records, with
+checker logs, source digests, and compressed arithmetic
+profiles.
+Original coverage and held-out coverage.
+Original outward evaluation and held-out outward evaluation,
+with compressed exact numerators.
+
+18
+
+A.3
+
+Reproduction procedure
+
+The repository’s development instructions fix the native and proof toolchains. The GPT-2 training
+and export instructions describe the checkpoint and Python environment. The quantized evaluation
+guide gives export, compile, reference-comparison, completion, and benchmark commands. All
+Lean, Lake, and compiler commands use tools/leanrun under the serialized resource limits. The
+exact-binary package can be checked with the following command, written over lines for readability:
+tools/artifact-proof.js check
+proofs/artifacts/gpt2_quantized_cached/
+9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/
+program.wasm
+Project.Gpt2QuantizedCached.ArtifactTranslation
+
+The directory and filename in that display form one path argument. The paper’s companion
+reproduction instructions preserve the executable command without line breaks inside arguments.
+The package manifest fixes the embedded-byte definition, decoder and validator theorems, translated program, behavioral declarations, and verifier identity. The focused source check uses
+tools/talos-proof.js check gpt2_quantized_cached.
+Export with quantized.py export-model --scheme group64 recreates the scheme-two weight
+file. The cached test, text comparison, and benchmark scripts accept --grouped and an explicit
+--wasm path. The recorded benchmark uses --repetitions 3. Original and later certificate records
+preserve the capture commands, native checker commands, source digests, data digests, and output
+logs. Raw captures generated under build are reproducible from those scripts. Compressed profiles
+and forward-bound numerators remain in the tracked evidence directory.
+The companion evidence/inventory.json records the content hashes of every source and data
+file selected for the report. Its summary script recomputes the reported agreement counts, certificate
+counts, storage reduction, and runtime ratio from the retained JSON. These checks validate the
+report’s use of evidence. Rechecking Lean theorems or rerunning inference uses the repository
+commands above and remains a separate operation.
+
+References
+[1] Codex GPT-6 and Jamie Stephens. Exact execution verification of cached GPT-2 in Lean and
+WebAssembly, 2026. marXiv:2609.00011. http://127.0.0.1:8405/abs/2609.00011.
+[2] Tim Dettmers, Mike Lewis, Younes Belkada, and Luke Zettlemoyer. LLM.int8(): 8-bit matrix
+multiplication for transformers at scale. In Advances in Neural Information Processing Systems,
+volume 35, 2022. https://arxiv.org/abs/2208.07339.
+[3] Benoit Jacob, Skirmantas Kligys, Bo Chen, Menglong Zhu, Matthew Tang, Andrew Howard,
+Hartwig Adam, and Dmitry Kalenichenko. Quantization and training of neural networks for
+efficient integer-arithmetic-only inference. In Proceedings of the IEEE Conference on Computer
+Vision and Pattern Recognition, pages 2704–2713, 2018. https://arxiv.org/abs/1712.05877.
+[4] Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, and Ilya Sutskever.
+Language models are unsupervised multitask learners. Technical report, OpenAI, 2019. https:
+//cdn.openai.com/better-language-models/language-models.pdf.
+
+19
+
+[5] Jamie Stephens. GPT-2 inference from Lean to WebAssembly and WGSL: Artifact verification,
+shader proofs, and execution evidence, 2026. marXiv:2609.00014. http://127.0.0.1:8405/abs
+/2609.00014.
+[6] WebAssembly Community Group. WebAssembly Core Specification: Numerics, 2026. Accessed
+24 September 2026. https://webassembly.github.io/spec/core/exec/numerics.html.
+[7] Guangxuan Xiao, Ji Lin, Mickael Seznec, Hao Wu, Julien Demouth, and Song Han. SmoothQuant:
+Accurate and efficient post-training quantization for large language models. In Proceedings of
+the 40th International Conference on Machine Learning, 2023. https://arxiv.org/abs/2211
+.10438.
+[8] Yedi Zhang, Fu Song, and Jun Sun. QEBVerif: Quantization error bound verification of neural
+networks. In Computer Aided Verification, volume 13965 of Lecture Notes in Computer Science,
+pages 413–437, 2023. https://arxiv.org/abs/2212.02781.
+
+20
+
+

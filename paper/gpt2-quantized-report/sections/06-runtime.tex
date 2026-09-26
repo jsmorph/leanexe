@@ -1,0 +1,56 @@
+\section{Storage, runtime, and memory measurements}
+\label{sec:runtime}
+
+The quantized checkpoint reduces storage by 74.3\%.  Retained binary32 tensors and scale words account for the difference from a fourfold reduction.  Cache values remain binary32, so cache storage per token is unchanged.
+
+The controlled full-model benchmark runs both frozen binaries on \code{appledev1}, aarch64 Linux, using Wasmtime 44.0.0 with canonical NaNs.  It uses one warmup 128-prefix trace and three measured traces.  It alternates the model order at each position and repetition.  The execution scope gives the process one core of CPU quota, a 4 GiB memory-high threshold, 6 GiB memory maximum, and 1 GiB swap maximum, while the shared runner lock excludes concurrent Lean work.  The record includes the host executable digest, CPU feature listing, Linux identity, source hashes, NumPy version 2.5.3, and PyTorch version 2.9.1+cpu.
+
+Timing covers resident cached calls, logit transfer, and temporary-buffer release.  Loading, validation, reference comparisons, and hashing occur outside the measured interval.  Table~\ref{tab:runtime} reports the retained \dataref{candidates/9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075/warm-benchmark.json}{warm-session measurements}.  Every repeated logit vector has the same hash.  This is a comparison with LeanExe's serial binary32 WebAssembly baseline on the recorded host and workload.  PyTorch supplies a separate reference comparison outside the timing interval.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Measurement & Group64 & Binary32\\
+\midrule
+Checkpoint bytes & 127,695,972 & 497,759,232\\
+Median 128-prefix trace time (s) & 27.287 & 97.936\\
+Minimum measured trace time (s) & 27.238 & 97.789\\
+Maximum measured trace time (s) & 27.313 & 97.947\\
+Maximum warm linear-memory bytes & 747,110,400 & 1,144,848,384\\
+Peak process resident bytes & 759,934,976 & 1,157,341,184\\
+\bottomrule
+\end{tabular}
+\caption{One warmup trace followed by three measured 128-prefix traces with resident weights.  The median time ratio is 3.59, and the warm linear-memory reduction is 34.7\%.  The small repetition count and single host limit the runtime conclusion to this experiment.}
+\label{tab:runtime}
+\end{table}
+
+The complete one-trace cached comparison records different memory capacities: 737,673,216 bytes for group64 and 1,107,361,792 bytes for binary32 at position 128.  Those figures describe the first trace's terminal capacity.  Table~\ref{tab:runtime} describes the maximum after repeated warm traces, including allocator growth and reuse.  WebAssembly linear memory retains allocated capacity until the instance closes, even after object release.  Peak process resident memory also includes the native runtime and other process allocations.
+
+After each successful token call and host cleanup, the quantized session retains two live allocations: weights and current cache.  By session close, the allocator has freed all 45,569 allocations made during the single 128-token session.  The four-trace benchmark's cumulative count is 182,273 allocations, all freed by close.  The session tests also cover invalid headers, the wrong scheme, malformed model parameters, invalid tokens, invalid cache shapes or values, failures after allocation at three transformer depths, preservation of the preceding cache, reset, and close.  These records test the native orchestration corresponding to the formal session.
+
+\subsection{Projection costs}
+
+The grouped projection experiment measures four checkpoint shapes on the original first-token binary32 inputs.  It compares group64, complete-row quantization, and an output-major binary32 projection.  All variants run under the same one-core resource scope.  Each measurement follows a reference comparison and two warmup calls, then records seven timed calls.  Timing includes activation quantization, projection, the host round trip, and output release.  Weight loading and validation occur before timing.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Projection & Group64 (ms) & Row scale (ms) & Binary32 (ms) & Ratio\\
+\midrule
+QKV, $768\times2304$ & 3.428 & 3.475 & 13.674 & 3.99\\
+Expansion, $768\times3072$ & 5.311 & 5.365 & 21.465 & 4.04\\
+Reduction, $3072\times768$ & 5.225 & 4.626 & 20.422 & 3.91\\
+Vocabulary, $768\times50257$ & 77.938 & 78.903 & 303.692 & 3.90\\
+\bottomrule
+\end{tabular}
+\caption{Median projection times and binary32/group64 ratio.  Dimensions are input width by output width.  These four local measurements use binary32-model inputs and therefore exclude accumulated full-model quantization error.}
+\label{tab:projection}
+\end{table}
+
+The reduction projection takes 12.9\% longer with group64 than with a complete-row scale in this run.  The other three medians differ by about 1\%.  Grouping adds activation scales and group-level binary32 work.  Its checkpoint payload remains unchanged.  Each grouped call allocates three buffers and releases all three after output consumption.  Measured linear-memory capacity equals the complete-row projection in these four cases.  The \dataref{experiments/group64/projection-benchmark.json}{projection record} includes all repetitions, output hashes, and allocation counts.
+
+The grouped projection's output matches its independent reference byte for byte for all four shapes.  The reference uses 64-bit integer accumulation and checks the $1{,}032{,}256$ bound, while the deployed implementation uses 32-bit word accumulation.  Their equality tests the range proof's intended arithmetic on real checkpoint values.  Earlier unscoped projection measurements used different resource limits and are retained separately.  Their times are excluded from Table~\ref{tab:projection}.

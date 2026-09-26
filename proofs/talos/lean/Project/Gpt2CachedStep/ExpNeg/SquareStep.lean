@@ -4,17 +4,17 @@ namespace Project.Gpt2CachedStep.ExpNeg
 open Wasm Project.ProofKit PackedFloatFrame
 
 def squareStepCode : Wasm.Program :=
-  match (branchCode[42]? : Option Wasm.Instruction) with
+  match (branchCode[38]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => (body.drop 4).dropLast
   | _ => []
 
 set_option maxRecDepth 16384 in
-theorem emitted_squaring : branchCode.drop 17 = (branchCode.drop 17).take 25 ++
-    RangeFoldLoop.program 27 28 squareStepCode ++ branchCode.drop 43 := rfl
+theorem emitted_squaring : branchCode.drop 15 = (branchCode.drop 15).take 23 ++
+    RangeFoldLoop.program 27 28 squareStepCode ++ branchCode.drop 39 := rfl
 
 def Squared (input value : UInt32) (index : Nat) (frame : Locals) : Prop :=
   frame.params = [.i64 input.toUInt64] ∧
-  frame.locals.length = 36 ∧
+  frame.locals.length = 37 ∧
   frame.locals[18]? = some (.i64 (squarePrefix value index).toUInt64) ∧
   frame.locals[28]? = some (.i64 1)
 

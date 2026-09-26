@@ -7,20 +7,20 @@ namespace Project.F64Clip.Spec
 open Wasm Project.ProofKit UInt64Array Memory
 
 def mapSuffix : Wasm.Program :=
-  [.localGet 17, .localGet 18, .constI64 1, .mulI64, .constI64 1, .addI64,
+  [.localGet 18, .localGet 19, .constI64 1, .mulI64, .constI64 1, .addI64,
    .constI64 8, .mulI64, .addI64, .wrapI64,
    .localGet 1, .localSet 9, .localGet 8, .localSet 10, .localGet 9, .localGet 10,
    .call 5, .localSet 11, .localGet 11, .store64 0,
-   .localGet 18, .constI64 1, .addI64, .localSet 18, .br 0]
+   .localGet 19, .constI64 1, .addI64, .localSet 19, .br 0]
 
 def mapBody : Wasm.Program :=
-  FixedArrayTraversalInput.continuingProgram 15 18 16 8 ++ mapSuffix
+  FixedArrayTraversalInput.continuingProgram 16 19 17 8 ++ mapSuffix
 
 def mapFrame (count bound ptr root : UInt64) (size index : Nat)
     (last argument result : UInt64) (tail : List Value) : Locals :=
   { params := [.i64 count, .i64 bound, .i64 ptr]
     locals := [.i64 count, .i64 bound, .i64 0, .i64 ptr, .i64 1,
-      .i64 last, .i64 argument, .i64 last, .i64 result, .i64 0, .i64 0, .i64 0,
+      .i64 last, .i64 argument, .i64 last, .i64 result, .i64 0, .i64 0, .i64 0, .i64 0,
       .i64 ptr, .i64 (UInt64.ofNat size), .i64 root, .i64 (UInt64.ofNat index), .i64 0, .i64 0] ++ tail
     values := [] }
 
@@ -43,7 +43,7 @@ def mapDone (initial : Store Unit) (count bound ptr root : UInt64) (w : Array UI
     WritesRange initial st root.toNat (root.toNat+8*(w.size+1))
 
 def mapMeasure (w : Array UInt64) (_ : Store Unit) (frame : Locals) : Nat :=
-  match frame.get 18 with
+  match frame.get 19 with
   | some (.i64 index) => w.size-index.toNat
   | _ => 0
 
@@ -67,7 +67,7 @@ theorem map_step (env : HostEnv Unit) (initial : Store Unit) (count bound ptr ro
   by_cases hEnd : index = w.size
   · subst index
     unfold mapBody
-    refine FixedArrayTraversalInput.continuingProgram_exit_spec 15 18 16 8
+    refine FixedArrayTraversalInput.continuingProgram_exit_spec 16 19 17 8
       Project.F64Clip.module env st _ (UInt64.ofNat w.size) rfl
       (by simp +arith [mapFrame, Locals.get]) (by simp +arith [mapFrame, Locals.get]) _ _ ?_
     exact ⟨last, argument, result, rfl,
@@ -77,7 +77,7 @@ theorem map_step (env : HostEnv Unit) (initial : Store Unit) (count bound ptr ro
       rw [UInt64.lt_iff_toNat_lt, hIndexNat, hSizeNat]
       exact hi
     unfold mapBody
-    refine FixedArrayTraversalInput.continuingProgram_spec 15 18 16 8 Project.F64Clip.module env
+    refine FixedArrayTraversalInput.continuingProgram_spec 16 19 17 8 Project.F64Clip.module env
       st _ ptr (UInt64.ofNat index) (UInt64.ofNat w.size) w index
       rfl (by simp +arith [mapFrame, Locals.get]) (by simp +arith [mapFrame, Locals.get])
       (by simp +arith [mapFrame, Locals.get]) rfl hlt

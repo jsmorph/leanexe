@@ -57,7 +57,7 @@
       "feature": "global.get and global.set",
       "officialFile": "global.wast",
       "reason": "The official file combines local globals with imported spectest globals and a later table form, so its failures do not isolate the no-import artifact profile.",
-      "otherEvidence": "All twenty-one exact artifact translations and their differential execution tests cover the compiler's mutable scalar runtime globals."
+      "otherEvidence": "The registered exact artifact translations and their differential execution tests cover the compiler's mutable scalar runtime globals."
     }
   ],
   "validatorCases": [
@@ -185,7 +185,11 @@
   "files": [
     {
       "name": "i32.wast",
-      "covers": ["i32 integer operations"]
+      "covers": ["i32 integer operations", "i32.extend8_s"]
+    },
+    {
+      "name": "f32.wast",
+      "covers": ["FP32 operations", "f32.nearest"]
     },
     {
       "name": "i64.wast",
@@ -269,7 +273,7 @@
     },
     {
       "name": "conversions.wast",
-      "covers": ["i32.wrap_i64", "i64.extend_i32_u"]
+      "covers": ["i32.wrap_i64", "i64.extend_i32_u", "i32.trunc_sat_f32_s", "f32.convert_i32_s"]
     },
     {
       "name": "func.wast",

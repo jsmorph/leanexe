@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 3,
+  "case": "gpt2_quantized_grouped_rows",
+  "sha256": "190af4bd96af5910ea881667bf16b26075f6faaefa5e6b491a65516ab1edf03a",
+  "byteLength": 5409,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.Gpt2QuantizedGroupedRows.ArtifactBytes",
+  "artifactBytesDefinition": "Project.Gpt2QuantizedGroupedRows.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.Gpt2QuantizedGroupedRows.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.Gpt2QuantizedGroupedRows.Program",
+  "cachedProgramDefinition": "Project.Gpt2QuantizedGroupedRows.module",
+  "specModule": "Project.Gpt2QuantizedGroupedRows.Spec",
+  "proofTarget": "Project.Gpt2QuantizedGroupedRows.ArtifactTranslation",
+  "identityTheorem": "Project.Gpt2QuantizedGroupedRows.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.Gpt2QuantizedGroupedRows.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.Gpt2QuantizedGroupedRows.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.Gpt2QuantizedGroupedRows.Spec.linearGroupedRows_exact",
+    "Project.Gpt2QuantizedGroupedRows.group_accumulator_bound",
+    "Project.Gpt2QuantizedGroupedRows.Projection.outputHeap_counts"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "0b8486bea82c65a31ecdf332642f8d96fcf99f2726130f56707f373c02017194",
+  "hostAssumptions": []
+}

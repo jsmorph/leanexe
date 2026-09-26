@@ -1,0 +1,7 @@
+checked attention sequence 0, prefix 10, records 240, milliseconds 3103
+checked attention sequence 1, prefix 8, records 432, milliseconds 5109
+checked attention sequence 2, prefix 13, records 744, milliseconds 10228
+checked attention sequence 3, prefix 16, records 1128, milliseconds 17878
+checked attention sequence 4, prefix 13, records 1440, milliseconds 22984
+checked attention sequence 5, prefix 13, records 1752, milliseconds 28089
+Attention range check passed: 1752 records, milliseconds 28089

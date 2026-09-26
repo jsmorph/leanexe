@@ -42,6 +42,7 @@ theorem of_stop (ctx : Context) (st : Store Unit) (s : Locals)
   refine {
     result := ?_
     fuelLocal := hFuelResult
+    residual := fun _ => ⟨data, s, facts, rfl, rfl, rfl, rfl, rfl, rfl, hSource⟩
     bookOwned := ?_
     tradesOwned := ?_
     freeList := facts.freeList
@@ -112,6 +113,9 @@ theorem of_partial (ctx : Context) (st : Store Unit) (s : Locals)
   refine {
     result := ?_
     fuelLocal := hResultFuel
+    residual := by
+      intro hNonzero
+      exact False.elim (hNonzero (by simp [hSource, partialState]))
     bookOwned := ?_
     tradesOwned := ?_
     freeList := hFreeList

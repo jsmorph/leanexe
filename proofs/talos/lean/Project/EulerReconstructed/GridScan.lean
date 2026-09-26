@@ -11,13 +11,13 @@ open Project.EulerOutwardSpeed.Execution (checkedValues)
 set_option maxRecDepth 32768
 set_option maxHeartbeats 1000000
 
-def scanHead : Wasm.Program := func46.take 25
-def scanTail : Wasm.Program := func46.drop 26
+def scanHead : Wasm.Program := func46.take 23
+def scanTail : Wasm.Program := func46.drop 24
 
 theorem scan_shape :
     func46 = scanHead ++ [.block 0 0 [.loop 0 0 scanLoop]] ++ scanTail := by
   calc
-    func46 = AnnotationMatches.function_46_array_fold_0_program ++ func46.drop 30 :=
+    func46 = AnnotationMatches.function_46_array_fold_0_program ++ func46.drop 28 :=
       AnnotationMatches.function_46_array_fold_0_tail_eq
     _ = scanHead ++ [.block 0 0 [.loop 0 0 scanLoop]] ++ scanTail := rfl
 

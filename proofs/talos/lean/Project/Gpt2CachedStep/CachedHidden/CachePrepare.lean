@@ -5,14 +5,16 @@ open Wasm Project.ProofKit PackedFloatFrame
 
 def CachePreparedState (params : List Value) (embeddingPtr hiddenPtr updatesPtr cachePtr : UInt64)
     (cacheSize updatesSize : Nat) (frame : Locals) : Prop :=
-  frame.params = params ∧ frame.locals.length = 119 ∧ frame.values = [] ∧ I64Values frame.locals ∧
+  frame.params = params ∧ frame.locals.length = 124 ∧ frame.values = [] ∧ I64Values frame.locals ∧
   frame.locals[11]? = some (.i64 embeddingPtr) ∧ frame.locals[75]? = some (.i64 updatesPtr) ∧
   frame.locals[89]? = some (.i64 hiddenPtr) ∧ frame.locals[90]? = some (.i64 hiddenPtr) ∧
   frame.locals[91]? = some (.i64 3072) ∧
   frame.locals[85]? = some (.i64 (UInt64.ofNat cacheSize)) ∧
   frame.locals[87]? = some (.i64 (UInt64.ofNat updatesSize)) ∧
   frame.locals[95]? = some (.i64 cachePtr) ∧ frame.locals[96]? = some (.i64 (UInt64.ofNat cacheSize)) ∧
-  frame.locals[97]? = some (.i64 updatesPtr) ∧ frame.locals[98]? = some (.i64 (UInt64.ofNat updatesSize))
+  frame.locals[97]? = some (.i64 updatesPtr) ∧ frame.locals[98]? = some (.i64 (UInt64.ofNat updatesSize)) ∧
+  frame.locals[12]? = some (.i64 embeddingPtr) ∧
+  frame.locals[14]? = some (.i64 0) ∧ frame.locals[15]? = some (.i64 0) ∧ frame.locals[16]? = some (.i64 0)
 
 def cachePrepareCode : Wasm.Program :=
   [.localGet 25, .localSet 80, .localGet 26, .localSet 81, .localGet 27, .localSet 82,
@@ -26,7 +28,7 @@ def cachePrepareCode : Wasm.Program :=
    .localGet 94, .localSet 105, .localGet 95, .localSet 106]
 
 set_option maxRecDepth 32768 in
-theorem emitted_cachePrepare : (func36.drop 76).take 44 = cachePrepareCode := rfl
+theorem emitted_cachePrepare : (func36.drop 78).take 44 = cachePrepareCode := rfl
 
 theorem cachePrepare_spec (env : HostEnv Unit) (store : Store Unit)
     (weightsOwner weightsPtr cacheOwner cachePtr embeddingPtr hiddenPtr updatesPtr : UInt64)
@@ -37,9 +39,9 @@ theorem cachePrepare_spec (env : HostEnv Unit) (store : Store Unit)
     (hNext : ∀ result, CachePreparedState
       (parameters weightsOwner weightsPtr cacheOwner cachePtr weights cache token position)
       embeddingPtr hiddenPtr updatesPtr cachePtr cache.size updatesSize result → wp «module» rest Q store result env) :
-    wp «module» ((func36.drop 76).take 44 ++ rest) Q store frame env := by
-  rcases hState with ⟨hParams, hLocals, hValues, hTyped, hEmbedding, _, _, hInputOwner, hInputPtr, hInputSize,
-    hUpdatesOwner, hUpdatesPtr, hUpdatesSize, _, _, _, _⟩
+    wp «module» ((func36.drop 78).take 44 ++ rest) Q store frame env := by
+  rcases hState with ⟨hParams, hLocals, hValues, hTyped, hEmbedding, hEmbeddingPtr, _, hInputOwner, hInputPtr, hInputSize,
+    hUpdatesOwner, hUpdatesPtr, hUpdatesSize, _, _, _, _, _, hEmptyOwner, hEmptyPtr, hEmptySize⟩
   rw [emitted_cachePrepare]
   simp only [cachePrepareCode, List.cons_append, List.nil_append]
   wp_packed_frame [hParams, parameters, hLocals, hValues, hInputOwner, hInputPtr, hInputSize,
@@ -47,7 +49,7 @@ theorem cachePrepare_spec (env : HostEnv Unit) (store : Store Unit)
   apply hNext
   simp (config := { maxDischargeDepth := 64 }) only [CachePreparedState, parameters, hLocals,
     List.length_set, List.getElem?_set, Nat.reduceEqDiff, Nat.reduceLT, reduceIte,
-    I64Values.set, hTyped, hEmbedding, UInt64.ofNat_uInt32ToNat, and_self]
+    I64Values.set, hTyped, hEmbedding, hEmbeddingPtr, hEmptyOwner, hEmptyPtr, hEmptySize, UInt64.ofNat_uInt32ToNat, and_self]
 
 #print axioms cachePrepare_spec
 
