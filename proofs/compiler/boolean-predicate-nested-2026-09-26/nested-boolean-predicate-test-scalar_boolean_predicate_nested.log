@@ -1,0 +1,5 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_predicate_nested.lean:87:63: error(lean.unknownIdentifier): Unknown identifier `BooleanPredicateNestedTest.booleanPredicateComposeTwice`
+test/scalar_boolean_predicate_nested.lean:88:64: error(lean.unknownIdentifier): Unknown identifier `BooleanPredicateNestedTest.booleanPredicateComposeThrice`
+test/scalar_boolean_predicate_nested.lean:90:64: error(lean.unknownIdentifier): Unknown identifier `BooleanPredicateNestedTest.booleanPredicateComposeNested`
