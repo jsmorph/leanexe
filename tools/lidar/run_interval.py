@@ -24,9 +24,14 @@ class IntervalScan(Scan):
 
     def scan(self, x, y, distance, mask):
         params = self.parameter_words(x, y, distance, mask)
+        pose = tuple(params[:3])
+        reuse = pose == self._pose
+        self._pose = None
         self.device.queue.write_buffer(self.params, 0, words(params))
         encoder = self.device.create_command_encoder()
-        for pipeline, group in zip(self.pipelines, self.groups):
+        selected = [1, 3] if reuse else [0, 1, 2, 3]
+        for index in selected:
+            pipeline, group = self.pipelines[index], self.groups[index]
             compute = encoder.begin_compute_pass()
             compute.set_pipeline(pipeline)
             compute.set_bind_group(0, group)
@@ -37,8 +42,10 @@ class IntervalScan(Scan):
         inner, = struct.unpack('<I', self.device.queue.read_buffer(self.inner_summary, 0, 4))
         self.counters['parameter_upload_bytes'] += 16
         self.counters['readback_bytes'] += 8
-        self.counters['scans'] += 1
-        self.counters['dispatches'] += 4
+        self._pose = pose
+        self.counters['queries'] += 1
+        self.counters['scans'] += int(not reuse)
+        self.counters['dispatches'] += len(selected)
         lower, upper = outer % 8192, inner % 8192
         status = 'miss' if lower > distance else 'hit' if upper <= distance else 'uncertain'
         return {'status': status, 'possible_hits': outer // 8192, 'certain_hits': inner // 8192,

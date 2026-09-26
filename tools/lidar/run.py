@@ -53,7 +53,8 @@ class Scan:
         self.wasm = wasmtime.Instance(self.store, wasmtime.Module(self.engine, artifacts['controller.wasm']), [])
         self.controller = self.wasm.exports(self.store)['parameters']
         self.counters = {'scene_upload_bytes': 64, 'direction_upload_bytes': 16, 'parameter_upload_bytes': 0,
-                         'readback_bytes': 0, 'scans': 0, 'dispatches': 0}
+                         'readback_bytes': 0, 'scans': 0, 'queries': 0, 'dispatches': 0}
+        self._pose = None
 
     def add_pipeline(self, name, inp, out):
         module = self.device.create_shader_module(code=self.artifacts[name].decode('utf-8'))
@@ -77,9 +78,14 @@ class Scan:
 
     def scan(self, x, y, distance, mask):
         params = self.parameter_words(x, y, distance, mask)
+        pose = tuple(params[:3])
+        reuse = pose == self._pose
+        self._pose = None  # A failed dispatch/readback must force a fresh scan.
         self.device.queue.write_buffer(self.params, 0, words(params))
         encoder = self.device.create_command_encoder()
-        for pipeline, group in zip(self.pipelines, self.groups):
+        selected = [1] if reuse else [0, 1]
+        for index in selected:
+            pipeline, group = self.pipelines[index], self.groups[index]
             compute = encoder.begin_compute_pass()
             compute.set_pipeline(pipeline)
             compute.set_bind_group(0, group)
@@ -89,8 +95,10 @@ class Scan:
         summary, = struct.unpack('<I', self.device.queue.read_buffer(self.summary, 0, 4))
         self.counters['parameter_upload_bytes'] += 16
         self.counters['readback_bytes'] += 4
-        self.counters['scans'] += 1
-        self.counters['dispatches'] += 2
+        self._pose = pose
+        self.counters['queries'] += 1
+        self.counters['scans'] += int(not reuse)
+        self.counters['dispatches'] += len(selected)
         return {'hits': summary // 8192, 'nearest': None if summary % 8192 > distance else summary % 8192}
 
 

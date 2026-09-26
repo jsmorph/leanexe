@@ -1,0 +1,57 @@
+{
+  "cardinal": {
+    "schema": 1,
+    "mode": "cardinal",
+    "milestone": "cardinal integer lidar",
+    "ticks_per_unit": 1,
+    "resident_summary_reuse": true,
+    "artifacts": {
+      "scan.wgsl": "dd7adcc228cacb2c21b15d79e95814e3ba9a96d5d713c1188b85b7089d3ed90a",
+      "summary.wgsl": "cf9eb84afc78289b1976d19f4327ebce3d6a70729c17bafa0d2b71db002c6949",
+      "controller.wasm": "838c9fdab4e787387784d44730530727f5a0a7c2565a411fa60f76c3e367877d"
+    },
+    "assumptions": [
+      "WebGPU implements the accepted u32 subset",
+      "host validates, copies, binds and schedules the declared buffers",
+      "WASM engine implements the modeled arithmetic semantics",
+      "file IO and the checked-source-to-external-file comparison"
+    ]
+  },
+  "oblique": {
+    "schema": 1,
+    "mode": "oblique",
+    "milestone": "oblique integer lidar",
+    "ticks_per_unit": 60,
+    "resident_summary_reuse": true,
+    "artifacts": {
+      "scan.wgsl": "cfa345bd89da69d49ac972a510dc08c930f576b6001a10651bb01806f96db114",
+      "summary.wgsl": "cf9eb84afc78289b1976d19f4327ebce3d6a70729c17bafa0d2b71db002c6949",
+      "controller.wasm": "838c9fdab4e787387784d44730530727f5a0a7c2565a411fa60f76c3e367877d"
+    },
+    "assumptions": [
+      "WebGPU implements the accepted u32 subset",
+      "host validates, copies, binds and schedules the declared buffers",
+      "WASM engine implements the modeled arithmetic semantics",
+      "file IO and the checked-source-to-external-file comparison"
+    ]
+  },
+  "interval": {
+    "schema": 1,
+    "mode": "interval",
+    "milestone": "conservative interval lidar",
+    "ticks_per_unit": 60,
+    "resident_summary_reuse": true,
+    "artifacts": {
+      "scan.wgsl": "f98c93aa9d2f728185c7883e18d1b728e10d693341bfa2e29d3e2f51ed85afa5",
+      "summary.wgsl": "cf9eb84afc78289b1976d19f4327ebce3d6a70729c17bafa0d2b71db002c6949",
+      "controller.wasm": "838c9fdab4e787387784d44730530727f5a0a7c2565a411fa60f76c3e367877d",
+      "inner.wgsl": "98a972d48fb4b551f37637ad7bea3ee3b9b36ceebb0247184e81602a8a4e731f"
+    },
+    "assumptions": [
+      "WebGPU implements the accepted u32 subset",
+      "host validates, copies, binds and schedules the declared buffers",
+      "WASM engine implements the modeled arithmetic semantics",
+      "file IO and the checked-source-to-external-file comparison"
+    ]
+  }
+}

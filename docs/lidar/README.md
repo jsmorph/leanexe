@@ -5,10 +5,15 @@ examples. The [development journal](journal.md) records the agenda, figures,
 checked results and actual execution evidence.
 
 The exact cardinal and oblique modes use four fixed beams and four closed
-axis-aligned rectangles with integer coordinates in `[0,4095]`. One shader invocation owns
-one beam result. The scene, directions and results remain in device buffers;
-WASM supplies a 16-byte parameter block and a second shader computes a requested
-hit-count/nearest-range summary. The host reads only that 4-byte summary.
+axis-aligned rectangles with integer coordinates in `[0,4095]`. One shader
+invocation owns one beam result. The scene, directions and results remain in device buffers;
+WASM returns a packed parameter word, which the host unpacks into a 16-byte GPU
+parameter block. A second shader computes a requested hit-count/nearest-range
+summary. The host reads only that 4-byte summary.
+
+Lean proofs connect the application properties to modeled execution of the
+actual emitted WASM/WGSL. Host and GPU implementation assumptions are stated
+below. Observed execution uses a CPU Vulkan adapter and is separate evidence.
 
 ![First cardinal scan](figures/cardinal.svg)
 
@@ -131,6 +136,35 @@ artifact-connected theorem and its axiom audit also pass.
 
 ![Observed conservative intervals](figures/interval.svg)
 
+## Repeated requests
+
+**Status: checked and exercised across all three modes.** A mask-only update reuses the
+resident beam results and runs only the summary shader (two summaries in interval
+mode). Changing sensor position or maximum range forces a new scan. Creating a
+new runner supplies a new scene; its first request always scans. Calls to a
+runner are serialized.
+
+The parameter-dependency proof applies to the emitted scan artifacts. The host's
+cache invalidation and scheduling remain explicit implementation obligations.
+A failed submission/readback clears the completed-pose marker, while a WASM
+rejection occurs before any GPU update. Each successful query still uploads
+16 parameter bytes and reads 4 or 8 summary bytes. Counters describe successfully
+completed requests: `queries` counts them all,
+while `scans` counts those that freshly compute beam results.
+
+After building all three modes, run the stream comparisons with:
+
+```sh
+build/lidar/venv/bin/python tools/lidar/run_stream.py
+```
+
+All 33 [recorded requests](evidence/stream-run.json) pass, including exact
+per-request dispatch/transfer expectations. Each mode executes five fresh scans
+for eleven requests, while six requests reuse results. Cardinal and oblique
+read 44 summary bytes each; interval reads 88. Three invalid-mask updates are
+rejected without changing transfer counters. The original 38 geometric
+comparisons also pass with reuse enabled.
+
 ## What the proofs cover
 
 Milestone 1 is complete: geometry, integer arithmetic, parameter packing,
@@ -168,7 +202,6 @@ includes fractional intersections, reflected directions and corner tangency.
   unit direction vectors and continuous nearest intersections at the 60-tick
   scale. [Its pipeline theorem](../../tools/lidar/ObliqueApplication.lean)
   connects the emitted oblique shader and the same emitted WASM controller.
-
 - [Real-scene enclosure](../../proofs/talos/lean/Project/Lidar/IntervalBounds.lean)
   proves inclusion between the inner, actual, and outer scenes.
   [Interval geometry](../../proofs/talos/lean/Project/Lidar/Interval.lean) proves
@@ -177,6 +210,9 @@ includes fractional intersections, reflected directions and corner tangency.
   connect the per-beam calculations to the nearest selected hit.
   [The interval pipeline](../../tools/lidar/IntervalApplication.lean) connects
   that contract to both emitted scans, summary-word decoding, and emitted WASM.
+- [Parameter stability](../../LeanExe/WGSL/UIntStability.lean) proves that changes
+  outside a checked parameter prefix preserve the scan's modeled `u32` result.
+  Each bundle's generated `Stream.lean` connects this to its exact scan shader.
 
 The artifact checks and the observed runs are separate evidence. Consult the
 journal for which checks have completed at the current development milestone.
@@ -190,7 +226,7 @@ buffer visibility between dispatches. The model follows WGSL's
 [32-bit unsigned integer semantics](https://www.w3.org/TR/WGSL/#integer-types),
 including modulo `2^32` arithmetic; the checked bounds prove that wrapping does
 not occur on the stated domain. Subtraction is explicitly saturated by
-`max(a,b)-b`. No floating-point profile is needed for this first domain. The
+`max(a,b)-b`. No floating-point profile is needed for these modes. The
 WASM engine must implement the modeled 64-bit integer semantics. The packed
 valid result fits in 40 bits; the rejected all-ones result is received as `-1`
 through Wasmtime's signed host representation.
@@ -198,10 +234,11 @@ through Wasmtime's signed host representation.
 The native host is responsible for validating rectangle ordering and bounds,
 loading the identified artifacts, transferring words without changing their
 values, binding the declared buffers, maintaining distinct output storage, and
-submitting the scan before its summary. Allocation success, filesystem identity
+ensuring the resident scan matches the current pose/range before its summary.
+Allocation success, filesystem identity
 checks, Python bindings, the driver, operating system and hardware are external
-assumptions. The exact modes model integer scenes. The interval mode quantifies over all
-real scenes satisfying its endpoint-error precondition. Neither supplies a
+assumptions. The exact modes model integer scenes. The interval mode quantifies
+over all real scenes satisfying its endpoint-error precondition. Neither supplies a
 model of physical sensor calibration, measurement errors outside that bound,
 or real terrain.
 
