@@ -236,6 +236,22 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
       · exact scalarStepBindings_holds bindings binding member
     exact (extractBooleanLocalWith_choice P literal binary choice boolean _ hc inner
       (fun operand member result found => expression found inner)) _ _ (literal 1) (literal 0)
+  | letBooleanPredicateFn boolean type variables arguments _ ih =>
+    rw [extractScalarStepWith_letBooleanPredicateFn] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ih ht (extend bindings ?_) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+    intro argument result ha compiled
+    simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨condition, hc, rfl⟩ := compiled
+    have inner : ∀ binding ∈ ScalarBinding.boolean argument :: locals.map ScalarStepBinding.toScalar,
+        binding.Holds P := by
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact ha
+      · exact scalarStepBindings_holds bindings binding member
+    exact (extractBooleanLocalWith_choice P literal binary choice boolean _ hc inner
+      (fun operand member result found => expression found inner)) _ _ (literal 1) (literal 0)
   | predicateInput input result _ ih =>
     rw [extractScalarStepWith_predicateInput] at compiled
     exact ih compiled bindings htypes

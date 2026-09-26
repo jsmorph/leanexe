@@ -50,13 +50,18 @@ tests pass 2,156 comparisons and 2,304 invalid-input checks. Prior tests pass
 1,466 comparisons and 880 invalid-input checks. Evidence is in
 [the Boolean-input predicate archive](proofs/compiler/boolean-predicate-2026-09-26/README.md).
 
-Current scope: declarations in supported scalar expressions, with calls under
-Bool.toUInt64. Captures, repeated calls, nested closures, result Id annotations,
-shadowing, dependent choices, unused bodies and do blocks are checked. Next:
-helper declarations inside loop-step bodies, followed by declarations around
-loops. Direct calls in Boolean contexts need a subsequent typed dispatch
-extension. Full-dialect correctness remains unfinished. Complete each capability
-through WASM and commit/push frequently.
+Bool-to-Bool helper declarations inside loop steps now pass source totality,
+extraction acceptance/soundness, evaluation correctness and IR invariant proofs.
+Six native loops and exact syntax cases pass 3,600 comparisons and 2,304
+invalid-input tests, including break, continue, captures across accumulator
+updates, nested closures, step-valued helper captures and unused declarations.
+The general compiler theorem and selected native/WASM suite follow those checks.
+
+Next: finish the loop-step increment through WASM, then extend these declarations
+to outer-loop scope. Calls currently use Bool.toUInt64. Direct calls in Boolean
+contexts need a subsequent typed dispatch extension. Full-dialect correctness
+remains unfinished. Complete each capability through WASM and commit/push
+frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
