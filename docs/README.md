@@ -1,52 +1,63 @@
 # Documentation
 
-LeanExe assigns one subject to each maintained document.  The repository [README](../README.md) introduces the system, [Developing LeanExe](../DEVELOPING.md) owns setup and tests, and the root [Development Plan](../plan.md) owns the repository roadmap.  The [compiler-correctness working state](../task.md) owns the `correct` branch's current agenda and notes.  The development journal records rationale and test evidence.
+Start with the [project overview](../README.md), then choose a guide for the
+program you want to run, write, or verify.
 
-## Language and compiler
+## Run and write programs
 
-| Document | Authority |
-|----------|-----------|
-| [LeanExe User Manual](manual.md) | Source patterns, examples, diagnostics, and authoring guidance. |
-| [Language Specification](spec.md) | Accepted Lean subset, numeric semantics, ABI, memory representation, ownership rules, and rejection boundaries. |
-| [LeanExe Type Theory](typetheory.md) | Relationship among Lean's source theory, the executable fragment, runtime values, and artifact propositions. |
-| [Type Theory of the LeanExe Fragment](leanexe-type-theory.md) | Mathematical typing, representation, specialization, and ownership judgments, with implementation-defined recognition premises. |
-| [Independent Core Type Safety](type-safety.md) | Mechanized core-language safety work, exact fragment coverage, theorem boundaries, and verification status. |
-| [Compiler-Correctness Working State](../task.md) | Current proof checkpoint, incremental coverage agenda, verification evidence, and working notes for `correct`. |
-| [Arithmetic Compiler Correctness](arithmetic-correctness.md) | General arithmetic theorem, exact admitted source grammar, compiler execution tests, and standalone proof package. |
-| [Formal Specification of Compilation and Execution](leanexe-formal-specification.md) | Compilation and execution relations, numeric and collection operations, heap representation, ABI, WASI, and open proof obligations. |
-| [Compiler Architecture](compiler.md) | Extraction, specialization, IR, ownership analysis, WASM emission, annotations, and compiler theorem boundaries. |
-| [Self-Hosted WebAssembly Emitter](self-hosted-emitter.md) | Canonical final-module image, host ABI, precise self-hosting claim, compatibility rules, and bootstrap receipt. |
-| [Architecture Diagram](leanexe.png) | High-level source, compilation, annotation, LTG, execution, and proof flow. |
-| [JSON Tree WASI Example](demo.md) | Source, compilation, command execution, and verification for a typed tree-processing program. |
-| [Pseudorandom Number Generator](prng.md) | Lean SplitMix64 example, seed/count/modulus CLI, and execution tests. |
+| Guide | What it covers |
+|-------|----------------|
+| [Setup and development](../DEVELOPING.md) | Pinned tools, Linux and ARM macOS setup, focused builds, tests, and diagnostics. |
+| [User manual](manual.md) | Supported source patterns, compile commands, entry types, memory management, and authoring examples. |
+| [Language specification](spec.md) | Accepted Lean dialect, numeric behavior, ABI, ownership, byte I/O, and rejection boundaries. |
+| [GPT inference](gpt/README.md) | FP32 and quantized GPT-2, tiny byte-token models, run commands, data flow, and proof scope. |
+| [Running sum](manual.md#running-sum) | Interactive byte input/output, signed decimal arithmetic, errors, and EOF. |
+| [JSON tree command](demo.md) | A typed tree-processing program with a WASI command interface. |
+| [Pseudorandom generator](prng.md) | SplitMix64 source, seed/count/modulus command, and execution tests. |
+| [Numerical kernels](../data/numerical/README.md) | Executable exponential, softmax, LayerNorm, and GELU examples with numerical bounds. |
+| [Euler flow solver](../data/euler-reconstructed-v1/README.md) | Complete 2D WASM calculations, exact-binary theorems, figures, and reproducible data. |
 
-## Artifact verification and proving
+## Understand and check proofs
 
-| Document | Authority |
-|----------|-----------|
-| [Artifact Verification Format](artifact-format.md) | Restricted binary profile, exact-byte packages, decoding, validation, theorem boundary, and release evidence. |
-| [Verifying a Program](verifying.md) | Procedure for creating, registering, proving, and independently checking an artifact package. |
-| [Artifact Proving](artifact-proving.md) | Relationship among Talos, ProofKit, compiler annotations, LTG retrieval, generated proof work, and independent checking. |
-| [`leanexegen` Reference](leanexegen.md) | CLI stages, task isolation, fixed public interface, proof packages, verification, and reproving. |
-| [WebAssembly Annotations](annotations.md) | Implemented sidecar schema, recognized regions, generated checked declarations, and recipe selection. |
-| [Knowledge Forest and Structured LTG](ltg.md) | Package and catalog schemas, forest selection, filtering, checked declarations, learning phases, exclusions, and task snapshots. |
-| [LTG Metrics](ltg-metrics.md) | Reproducible measurements of catalog structure, declarations, tactics, coverage, and content size. |
-| [Artifact-Proof Strategies](proof-strategies.md) | General proof-construction and diagnosis guidance that applies across artifact families. |
-| [Talos Imported-Memory Defect](telos-bug.md) | Reproduction, semantic cause, conformance warning, artifact-profile effect, and upstream repair boundary. |
+| Guide | What it covers |
+|-------|----------------|
+| [Scalar compiler correctness](arithmetic-correctness.md) | General source-to-exact-WASM theorem, admitted grammar, execution tests, and standalone proof package. |
+| [Verifying a program](verifying.md) | Creating, registering, proving, and independently checking an artifact package. |
+| [Artifact verification format](artifact-format.md) | Binary profile, embedded bytes, decoding, validation, and exact-artifact theorem boundary. |
+| [Artifact proving](artifact-proving.md) | Talos, ProofKit, annotations, retrieval, generated proofs, and independent checking. |
+| [`leanexegen` reference](leanexegen.md) | Specification/program/proof tasks, public interface, package verification, and reproving. |
+| [Byte-I/O verification](../proofs/byte-io/README.md) | Modeled host contracts, transfer protocol laws, concrete exact-binary cases, and host assumptions. |
+| [Theorem inventory](../proofs/talos/README.md) | Registered source-driven and exact-artifact theorems and their check commands. |
+| [Proof strategies](proof-strategies.md) | Proof construction and diagnosis across artifact families. |
+| [Imported-memory semantics](telos-bug.md) | The Talos imported-memory limitation, conformance scope, and artifact-profile restrictions. |
 
-## Status and evidence
+## Language models and compiler internals
 
-| Document | Authority |
-|----------|-----------|
-| [GPT Inference and Verification](gpt/README.md) | Model families, goals, checkpoint-to-output data flow, source and proof directories, and current verification scope. |
-| [Development Status](status.md) | Current checked capabilities, known limitations, and release state. |
-| [LTG and CLOB Retrospective](retro-1.md) | Measured LTG results, structured-retrieval limits, CLOB findings, and the relationship between them. |
-| [Development Plan](../plan.md) | Ordered active work and completion conditions. |
-| [Detailed Plans](../plans/README.md) | Technical plans for unfinished work referenced by the root roadmap. |
-| [Proof-Grade `f64` Artifact Semantics](../plans/f64-artifact-semantics.md) | Active plan for exact binary64 artifact execution, finite-result safety, numerical refinement, and checked certificates. |
-| [Talos Proof Inventory](../proofs/talos/README.md) | Registered source-driven and exact-artifact theorem inventory. |
-| [Demonstrations](../demos/README.md) | Twelve end-to-end programs and their retained proof packages. |
-| [Benchmark Evidence](../benchmarks/README.md) | Proof-generation runs, journals, telemetry, and acceptance results. |
-| [Research Papers](../paper/README.md) | Publication sources, PDFs, and marXiv records. |
+| Guide | What it covers |
+|-------|----------------|
+| [Compiler architecture](compiler.md) | Extraction, specialization, proved scalar lowering, ownership, IR, and WASM emission. |
+| [LeanExe type theory](typetheory.md) | Lean source theory, executable terms, runtime values, and artifact propositions. |
+| [Fragment type theory](leanexe-type-theory.md) | Typing, representation, specialization, and ownership judgments. |
+| [Independent core type safety](type-safety.md) | Preservation, progress, and the exact scope of the mechanized core. |
+| [Type-safety coverage](type-safety-coverage.md) | Coverage by operation family and remaining model obligations. |
+| [Runtime language](runtime-language.md) | Independent runtime syntax, typing, evaluation, and admissible errors. |
+| [Formal compilation and execution specification](leanexe-formal-specification.md) | Compilation relations, operations, heap, ABI, WASI, and open obligations. |
+| [WASM annotations](annotations.md) | Sidecar schema, instruction regions, checked adapters, and proof recipes. |
+| [WASM binary emitter](self-hosted-emitter.md) | Experimental self-hosted serialization, module-image schema, and bootstrap checks. |
+| [Architecture diagram](leanexe.png) | Compilation, annotations, execution, and proof flow. |
 
-Proof journals, benchmark runs, `devnotes.md`, and published papers preserve evidence or research records.  They may contain observations tied to an older artifact, proof interface, or tool version.  Current behavior comes from the references above and the checked implementation.
+## Proof support and project work
+
+| Guide | What it covers |
+|-------|----------------|
+| [Knowledge forest and LTG](ltg.md) | Lemma, tactic, guidance, and worked-example packages; retrieval and promotion. |
+| [LTG metrics](ltg-metrics.md) | Measurements of declarations, tactics, coverage, and package structure. |
+| [Capabilities and limits](status.md) | Implemented behavior, proof boundaries, and open work. |
+| [Roadmap](../plan.md) and [detailed plans](../plans/README.md) | Priorities and completion conditions. |
+| [Active task](../task.md) | Current instructions, checks, and next steps. |
+| [Demonstrations](../demos/README.md) | Generated programs and their artifact-proof packages. |
+| [Benchmarks](../benchmarks/README.md) | Proof-generation measurements, journals, and acceptance evidence. |
+| [Research papers](../paper/README.md) | Publication sources, PDFs, and claim-to-theorem accounts. |
+
+Use the language specification for accepted behavior, the theorem inventories
+for formal claims, and the referenced manifests for exact binary identities.
