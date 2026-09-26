@@ -443,9 +443,9 @@ example : eraseTypeIdx Project.Gpt2QuantizedCached.func63Def = eraseTypeIdx rese
 example : eraseTypeIdx Project.Gpt2QuantizedCached.func64Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.Gpt2QuantizedCached.func65Def = eraseTypeIdx (releaseFuncDef 65) := rfl
 
-example : eraseTypeIdx Project.Beck.func33Def = eraseTypeIdx allocFuncDef := rfl
-example : eraseTypeIdx Project.Beck.func34Def = eraseTypeIdx resetFuncDef := rfl
-example : eraseTypeIdx Project.Beck.func35Def = eraseTypeIdx retainFuncDef := rfl
-example : eraseTypeIdx Project.Beck.func36Def = eraseTypeIdx (releaseFuncDef 36) := rfl
+example : eraseTypeIdx Project.Beck.func27Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.Beck.func28Def = eraseTypeIdx resetFuncDef := rfl
+example : eraseTypeIdx Project.Beck.func29Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.Beck.func30Def = eraseTypeIdx (releaseFuncDef 30) := rfl
 
 end Project.Runtime

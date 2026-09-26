@@ -6,13 +6,13 @@ Implement two groups with unweighted category counts.  The first capacity target
 
 The executable starts at zero, preserves every category with more than the maximum overlap in undecided jobs, selects a deterministic kernel direction, and moves to a boundary.  Source proofs must establish progress, termination, the discrepancy bound, exact arithmetic, and sufficient helper fuel.  The binary theorem must establish termination, agreement, and sufficient allocation under stated caller assumptions.
 
-## Interface proposal
+## Interface
 
 The runner accepts `{"categories": m, "jobs": [[category IDs], ...]}`.  IDs are integers in `[0,m)`.  Membership order has no semantic meaning.  Repeated membership within a job is invalid.  Separate categories may contain identical sets of jobs.
 
 The WASM entry accepts an `Array UInt64` containing `[n,m,k0,ids0...,k1,ids1...,...]`.  It checks counts, lengths, IDs, and duplicates.  Success returns `[0,t,group0,...]`, with groups zero and one and `t` computed from the input.  Empty jobs return `[0,0]`.  Zero-overlap jobs enter group one.  Invalid input returns `[1]`, and capacity overflow returns `[2]`.  Internal arithmetic or fuel failure must be unreachable on supported inputs.
 
-Use exact signed fractions represented with `UInt64` fields, checked arithmetic, and reduction by the Euclidean algorithm.  Scan rows, columns, and boundary candidates in ascending index order.  The capacity target becomes a published guarantee only after the arithmetic proof passes.
+Use integer cofactor directions and signed `UInt64` numerators with a shared denominator.  Scan rows, columns, and boundary candidates in ascending index order.  The capacity target becomes a published guarantee only after the arithmetic proof passes.
 
 ## Work and evidence
 

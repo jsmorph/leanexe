@@ -1,100 +1,99 @@
 import LeanExe.Examples.Beck
-import Mathlib.Data.Nat.GCD.Basic
 import Mathlib.Tactic
 
 namespace Project.Beck.Arithmetic
 
 open LeanExe.Examples.Beck
 
-theorem twice_remainder_lt (a b : ℕ) (positive : 0 < b) (ordered : b ≤ a) :
-    2 * (a % b) < a := by
-  have remainder := Nat.mod_lt a positive
-  by_cases half : 2 * b ≤ a
-  · omega
-  · have quotient : a % b = a - b := by
-      rw [Nat.mod_eq_sub_mod ordered, Nat.mod_eq_of_lt (by omega)]
-    rw [quotient]
-    omega
+def value (x : UInt64) : ℤ := x.toBitVec.toInt
 
-theorem gcd_step (a b : UInt64) :
-    Nat.gcd b.toNat (a % b).toNat = Nat.gcd a.toNat b.toNat := by
-  rw [UInt64.toNat_mod, Nat.gcd_comm b.toNat, ← Nat.gcd_rec, Nat.gcd_comm]
+def Fits (x : ℤ) : Prop := -9223372036854775808 ≤ x ∧ x < 9223372036854775808
 
-theorem gcdFuel_correct (bits : ℕ) (a b : UInt64) (bound : b.toNat < 2^bits) :
-    (gcdFuel (2 * bits + 1) a b).toNat = Nat.gcd a.toNat b.toNat := by
-  induction bits generalizing a b with
-  | zero =>
-    have hb : b = 0 := by apply UInt64.toNat.inj; simp_all
-    subst b
-    simp [gcdFuel]
-  | succ bits ih =>
-    by_cases hb : b = 0
-    · subst b
-      simp [gcdFuel]
-    · have bp : 0 < b.toNat := by
-        have : b.toNat ≠ 0 := by
-          intro h
-          exact hb (UInt64.toNat.inj (by simpa using h))
-        omega
-      have fuel : 2 * (bits + 1) + 1 = (2 * bits + 1) + 2 := by omega
-      rw [fuel, gcdFuel]
-      simp only [beq_iff_eq, hb, ↓reduceIte]
-      by_cases hr : a % b = 0
-      · rw [hr, gcdFuel]
-        simp only [beq_self_eq_true, ↓reduceIte]
-        have step := gcd_step a b
-        simpa [hr] using step
-      · rw [gcdFuel]
-        simp only [beq_iff_eq, hr, ↓reduceIte]
-        have rp : 0 < (a % b).toNat := by
-          have : (a % b).toNat ≠ 0 := by
-            intro h
-            exact hr (UInt64.toNat.inj (by simpa using h))
-          omega
-        have smaller : (a % b).toNat < b.toNat := by
-          simpa using Nat.mod_lt a.toNat bp
-        have twice := twice_remainder_lt b.toNat (a % b).toNat rp (by omega)
-        have reduced : (b % (a % b)).toNat < 2^bits := by
-          rw [UInt64.toNat_mod]
-          rw [pow_succ] at bound
-          omega
-        rw [ih _ _ reduced, gcd_step, gcd_step]
+theorem bmod_exact (x : ℤ) (h : Fits x) : x.bmod (2 ^ 64) = x := by
+  exact Int.bmod_eq_of_le (by norm_num; exact h.1) (by norm_num; exact h.2)
 
-theorem gcd129_correct (a b : UInt64) :
-    (gcdFuel 129 a b).toNat = Nat.gcd a.toNat b.toNat := by
-  exact gcdFuel_correct 64 a b b.toNat_lt
+theorem add_exact (a b : UInt64) (h : Fits (value a + value b)) :
+    value (a + b) = value a + value b := by
+  simpa only [value, UInt64.toBitVec_add, BitVec.toInt_add] using bmod_exact _ h
 
-theorem word_positive (a : UInt64) (nonzero : a ≠ 0) : 0 < a.toNat := by
-  have h : a.toNat ≠ 0 := by
-    intro h
-    exact nonzero (UInt64.toNat.inj (by simpa using h))
-  omega
+theorem sub_exact (a b : UInt64) (h : Fits (value a - value b)) :
+    value (a - b) = value a - value b := by
+  simpa only [value, UInt64.toBitVec_sub, BitVec.toInt_sub] using bmod_exact _ h
 
-def value (a : Fraction) : ℚ :=
-  (if a.negative then -1 else 1) * (a.numerator.toNat : ℚ) / (a.denominator.toNat : ℚ)
+theorem mul_exact (a b : UInt64) (h : Fits (value a * value b)) :
+    value (a * b) = value a * value b := by
+  simpa only [value, UInt64.toBitVec_mul, BitVec.toInt_mul] using bmod_exact _ h
 
-theorem fraction_exact (negative : Bool) (n d : UInt64) (denominator : d ≠ 0) :
-    (fraction negative n d).denominator ≠ 0 ∧
-    value (fraction negative n d) =
-      (if negative then -1 else 1) * (n.toNat : ℚ) / (d.toNat : ℚ) := by
-  have dp := word_positive d denominator
-  have gp : 0 < (gcdFuel 129 n d).toNat := by
-    rw [gcd129_correct]
-    exact Nat.gcd_pos_of_pos_right _ dp
-  have gn : gcdFuel 129 n d ≠ 0 := by
-    intro h
-    simp [h] at gp
-  by_cases zeroNumerator : n = 0
-  · simp [fraction, denominator, zeroNumerator, zero, value]
-  · simp only [fraction, beq_iff_eq, denominator, zeroNumerator, gn, ↓reduceIte]
-    constructor
-    · intro h
-      have hp : 0 < (d / gcdFuel 129 n d).toNat := by
-        rw [UInt64.toNat_div, gcd129_correct]
-        exact Nat.div_gcd_pos_of_pos_right _ dp
-      simp [h] at hp
-    · simp only [value, UInt64.toNat_div, gcd129_correct]
-      rw [mul_div_assoc, Nat.cast_div_div_div_cancel_right
-        (Nat.gcd_dvd_right _ _) (Nat.gcd_dvd_left _ _), ← mul_div_assoc]
+theorem value_eq (x : UInt64) : value x =
+    if x.toNat < 9223372036854775808 then (x.toNat : ℤ) else x.toNat - 18446744073709551616 := by
+  simp only [value, BitVec.toInt_eq_toNat_cond]
+  change (if 2 * x.toNat < 2 ^ 64 then (x.toNat : ℤ) else x.toNat - 2 ^ 64) = _
+  split_ifs <;> omega
+
+theorem negative_iff (x : UInt64) : negative x = true ↔ value x < 0 := by
+  have bound := x.toNat_lt
+  rw [value_eq]
+  simp only [negative, decide_eq_true_eq, UInt64.le_iff_toNat_le]
+  change 9223372036854775808 ≤ x.toNat ↔ _
+  split_ifs <;> omega
+
+theorem magnitude_exact (x : UInt64) : ((magnitude x).toNat : ℤ) = |value x| := by
+  have bound := x.toNat_lt
+  unfold magnitude
+  by_cases hn : negative x = true
+  · rw [ite_eq_left hn, UInt64.toNat_sub]
+    have hx := (negative_iff x).mp hn
+    rw [abs_of_neg hx, value_eq] at *
+    norm_num at *
+    split_ifs at * <;> omega
+  · rw [ite_eq_right hn, value_eq]
+    have hx : ¬value x < 0 := by simpa [negative_iff] using hn
+    rw [value_eq] at hx
+    split_ifs at * <;> simp_all
+
+theorem denominator_growth (round : ℕ) (D speed : ℤ)
+    (hD : 0 < D ∧ D ≤ 120 ^ round) (hs : 0 < speed ∧ speed ≤ 120) :
+    0 < D * speed ∧ D * speed ≤ 120 ^ (round + 1) := by
+  constructor
+  · exact mul_pos hD.1 hs.1
+  · calc
+      D * speed ≤ 120 ^ round * 120 :=
+        mul_le_mul hD.2 hs.2 (le_of_lt hs.1) (by positivity)
+      _ = 120 ^ (round + 1) := by rw [pow_succ]
+
+theorem update_bounds (D p d speed distance : ℤ)
+    (hD : 0 < D ∧ D ≤ 120 ^ 5)
+    (hp : |p| ≤ D) (hd : |d| ≤ 120)
+    (hs : 0 < speed ∧ speed ≤ 120) (hg : 0 ≤ distance ∧ distance ≤ 2 * D) :
+    Fits (D * speed) ∧ Fits (p * speed) ∧ Fits (distance * d) ∧
+      Fits (p * speed + distance * d) ∧ Fits (distance * speed) := by
+  have ps : |p * speed| ≤ 120 * D := by
+    rw [abs_mul, abs_of_pos hs.1]
+    nlinarith [mul_le_mul hp hs.2 (le_of_lt hs.1) (le_of_lt hD.1)]
+  have gd : |distance * d| ≤ 240 * D := by
+    rw [abs_mul, abs_of_nonneg hg.1]
+    nlinarith [mul_le_mul hg.2 hd (abs_nonneg d) (by linarith : 0 ≤ 2 * D)]
+  have total : |p * speed + distance * d| ≤ 360 * D :=
+    (abs_add_le _ _).trans (by linarith)
+  have ds := mul_le_mul hD.2 hs.2 (le_of_lt hs.1) (by norm_num : (0 : ℤ) ≤ 120 ^ 5)
+  have gs := mul_le_mul hg.2 hs.2 (le_of_lt hs.1) (by linarith : 0 ≤ 2 * D)
+  rw [abs_le] at ps gd total
+  norm_num at hD ds
+  dsimp [Fits]
+  constructor
+  · constructor <;> nlinarith
+  constructor
+  · constructor <;> nlinarith
+  constructor
+  · constructor <;> nlinarith
+  constructor
+  · constructor <;> nlinarith
+  · constructor <;> nlinarith
+
+theorem shared_denominator_update (D p d speed distance : ℚ)
+    (hD : D ≠ 0) (hs : speed ≠ 0) :
+    (p * speed + distance * d) / (D * speed) =
+      p / D + (distance / (D * speed)) * d := by
+  field_simp
 
 end Project.Beck.Arithmetic

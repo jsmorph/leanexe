@@ -2,9 +2,9 @@
 
 ## Current state
 
-The experimental partitioner accepts at most six jobs and eight categories.  It computes assignments with exact signed fractions, Gaussian elimination, and boundary rounding.  The executable passes native Lean/WASM comparisons and independent output checks.  Its universal source-correctness and exact-binary execution theorems remain open.  The capacity limits currently restrict execution tests.  Their arithmetic and allocation sufficiency still require proofs.
+The experimental partitioner accepts at most six jobs and eight categories.  It constructs integer cofactor directions and rounds coordinates with a shared denominator.  The executable passes native Lean/WASM comparisons and independent output checks.  Its universal source-correctness and exact-binary execution theorems remain open.  The capacity limits currently restrict execution tests.  Their arithmetic and allocation sufficiency still require proofs.
 
-Checked general lemmas establish that the protected category count is smaller than the undecided job count, a nonzero preserving direction exists, moving to the first boundary freezes a coordinate, and releasing a category with at most `t` undecided jobs gives a final discrepancy at most `2t-1`.  Checked source lemmas establish sufficient GCD fuel for every pair of `UInt64` inputs and exact fraction reduction.  Connecting these lemmas to the executable validation, elimination, and rounding loops remains work in progress.
+Checked general lemmas establish that the protected category count is smaller than the undecided job count, a nonzero preserving direction exists, moving to the first boundary freezes a coordinate, and releasing a category with at most `t` undecided jobs gives a final discrepancy at most `2t-1`.  Checked source lemmas establish signed-word arithmetic, sign and magnitude interpretation, denominator growth, and update bounds when direction magnitudes are at most 120.  Connecting the determinant bound and rounding invariants to the executable validation, basis search, and rounding loops remains work in progress.
 
 ## Input and execution
 
@@ -39,6 +39,12 @@ The WASM entry has type `Array UInt64 → Array UInt64`.  Input words are `[n,m,
 
 `[0,m]` is an empty-job input when `m ≤ 8`, and returns `[0,0]`.  Jobs with no memberships enter group one.  Their maximum overlap is zero, and every category count is zero.  Header-capacity rejection precedes membership validation.  The JSON runner also rejects malformed JSON and numbers that are negative or outside JavaScript's exact-integer range before constructing input words.
 
+## Arithmetic
+
+Rows and columns are scanned in ascending order.  The basis search extends a nonsingular minor by the first row and column with a nonzero bordered determinant.  The direction uses that minor and its column-replacement determinants.  Determinants use Laplace expansion with structurally decreasing order.
+
+Coordinates use signed 64-bit numerators and a positive shared denominator.  Arithmetic uses two’s-complement words.  For minors of order at most five, the determinant bound is 120.  The denominator then grows by at most 120 per round, reaching at most `120^6 = 2985984000000`.  Proved arithmetic lemmas cover the update products and sums under these bounds.  Proving that every executable round satisfies their hypotheses remains open.
+
 ## Proof development
 
 The source and mathematical lemmas check with:
@@ -53,6 +59,6 @@ The artifact generator checks the compiler-produced WAT and writes the Talos exe
 tools/talos-artifact.js prepare beck
 ```
 
-The registration remains incomplete.  An exact-binary package and a universal theorem connecting the current executable to the discrepancy bound have not been completed.  The [development plan](../plans/beck.md) records the remaining proof gates and the proposed arithmetic simplification.
+The registration remains incomplete.  An exact-binary package and a universal theorem connecting the current executable to the discrepancy bound have not been completed.  The [development plan](../plans/beck.md) records the remaining proof gates and the approved arithmetic design.
 
 The generated annotation equalities pass after correcting result-type metadata in the shared scalar-loop proof representation.  The [development journal](../devnotes.md) records the original failure, its cause, and checks on two other artifacts.
