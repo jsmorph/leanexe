@@ -22,7 +22,8 @@ Use integer cofactor directions and signed `UInt64` numerators with a shared den
 - [x] Prove exact arithmetic under the incidence assumptions.
 - [x] Prove preserving-direction construction and rounding progress.
 - [x] Prove discrepancy and sufficient rounding fuel for supported incidence inputs.
-- [ ] Prove input validation establishes the incidence assumptions and the input memberships.
+- [x] Prove input validation establishes the incidence assumptions and exact maximum row count.
+- [ ] Prove complete correspondence between accepted inputs and the membership encoding.
 - [ ] Prove allocation and WASM resource bounds.
 - [ ] Check the identified binary and its independent proof package.
 - [x] Add exhaustive small tests, edge cases, and an overlapping demonstration.

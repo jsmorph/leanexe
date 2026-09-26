@@ -25,31 +25,46 @@ structure Input where
 
 def reject (status : UInt64) : Input := ⟨status, 0, 0, 0, #[]⟩
 
-def readInput (words : Array UInt64) : Input := Id.run do
-  if words.size < 2 then return reject 1
-  if words[0]! > 6 || words[1]! > 8 then return reject 2
-  let n := words[0]!.toNat
-  let m := words[1]!.toNat
-  let mut incidence := Array.replicate (n * m) (0 : UInt64)
-  let mut pos := 2
-  let mut overlap := 0
-  for job in [:n] do
-    if pos ≥ words.size then return reject 1
-    let count := words[pos]!
-    pos := pos + 1
-    if count > m.toUInt64 then return reject 1
-    let count := count.toNat
-    if pos + count > words.size then return reject 1
-    overlap := max overlap count
-    for k in [:count] do
-      let category := words[pos + k]!
-      if category ≥ m.toUInt64 then return reject 1
-      let index := job * m + category.toNat
-      if incidence[index]! != 0 then return reject 1
-      incidence := incidence.set! index 1
-    pos := pos + count
-  if pos != words.size then return reject 1
-  return ⟨0, n, m, overlap, incidence⟩
+def readMemberships : Nat → Array UInt64 → Nat → Nat → Array UInt64 → Option (Array UInt64)
+  | 0, _, _, _, row => some row
+  | count + 1, words, pos, categories, row =>
+    let category := words[pos]!.toNat
+    if category ≥ categories then none
+    else if row[category]! != 0 then none
+    else readMemberships count words (pos + 1) categories (row.set! category 1)
+
+structure ParseState where
+  position : Nat
+  overlap : Nat
+  incidence : Array UInt64
+  deriving Inhabited, Repr
+
+def readJobs : Nat → Array UInt64 → Nat → ParseState → Option ParseState
+  | 0, _, _, state => some state
+  | jobs + 1, words, categories, state =>
+    if state.position ≥ words.size then none
+    else
+      let count := words[state.position]!.toNat
+      let pos := state.position + 1
+      if count > categories || pos + count > words.size then none
+      else
+        match readMemberships count words pos categories (Array.replicate categories 0) with
+        | none => none
+        | some row =>
+          let next := ParseState.mk (pos + count) (max state.overlap count) (state.incidence ++ row)
+          readJobs jobs words categories next
+
+def readInput (words : Array UInt64) : Input :=
+  if words.size < 2 then reject 1
+  else if words[0]! > 6 || words[1]! > 8 then reject 2
+  else
+    let n := words[0]!.toNat
+    let m := words[1]!.toNat
+    match readJobs n words m ⟨2, 0, #[]⟩ with
+    | none => reject 1
+    | some result =>
+      if result.position != words.size then reject 1
+      else ⟨0, n, m, result.overlap, result.incidence⟩
 
 def liveCount (input : Input) (x : Point) (category : Nat) : Nat := Id.run do
   let mut live := 0
