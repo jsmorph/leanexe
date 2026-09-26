@@ -1,6 +1,6 @@
 import LeanExe.Source.ScalarCompoundGuard
 import LeanExe.Extract.ScalarBooleanGuardSyntax
-import LeanExe.Extract.ScalarReannotatedComparison
+import LeanExe.Extract.ScalarGuardDecision
 
 namespace LeanExe.Extract.Core
 
@@ -137,6 +137,36 @@ theorem junction_not_comparison (n : Nat) (op : Junction) (a b : Lean.Expr) :
   | zero => cases op <;> rfl
   | succ n ih => simp [GuardNegation.condition, comparisonOperands?, ih]
 
+def reannotatedGuard? (condition evidence : Lean.Expr) : Option ReannotatedGuard := do
+  let tree ← guardOperands? condition
+  if different : evidence ≠ tree.evidence then
+    if accepted : guardDecision? tree evidence = true then
+      some ⟨tree, evidence, guardDecision_sound accepted, different⟩
+    else none
+  else none
+
+@[simp] theorem reannotatedGuard_accepts (guard : ReannotatedGuard) :
+    reannotatedGuard? guard.condition guard.evidence = some guard := by
+  cases guard with
+  | mk tree evidence meaning different =>
+    simp [reannotatedGuard?, ReannotatedGuard.condition, different, guardDecision_accepts meaning]
+
+@[simp] theorem reannotatedGuard_canonical_none (guard : Guard) :
+    reannotatedGuard? guard.condition guard.evidence = none := by
+  simp [reannotatedGuard?]
+
+theorem reannotatedGuard_sound {condition evidence : Lean.Expr} {guard : ReannotatedGuard}
+    (found : reannotatedGuard? condition evidence = some guard) :
+    condition = guard.condition ∧ evidence = guard.evidence := by
+  simp only [reannotatedGuard?, bind, Option.bind_eq_some_iff] at found
+  obtain ⟨tree, parsed, accepted⟩ := found
+  split at accepted
+  · split at accepted
+    · cases accepted
+      exact ⟨guardOperands_sound parsed, rfl⟩
+    · contradiction
+  · contradiction
+
 def compoundGuardShape? (condition : Lean.Expr) : Option CompoundGuard := do
   let tree ← guardOperands? condition
   match tree with
@@ -145,11 +175,13 @@ def compoundGuardShape? (condition : Lean.Expr) : Option CompoundGuard := do
   | .boolean m n op a b => some (.boolean op a b n m)
   | .compare .. => none
 
-@[simp] theorem compoundGuardShape_accepts (guard : CompoundGuard) :
-    compoundGuardShape? guard.condition = (match guard with
-      | .reannotated _ => none
-      | _ => some guard) := by
-  cases guard <;> simp [compoundGuardShape?, CompoundGuard.condition, CompoundGuard.tree]
+@[simp] theorem compoundGuardShape_condition (tree : Guard) :
+    compoundGuardShape? tree.condition = (match tree with
+      | .literal value => some (.literal value)
+      | .junction n op a b => some (.proposition op a b n)
+      | .boolean m n op a b => some (.boolean op a b n m)
+      | .compare .. => none) := by
+  simp [compoundGuardShape?]
 
 theorem compoundGuardShape_sound {condition : Lean.Expr} {guard : CompoundGuard}
     (parsed : compoundGuardShape? condition = some guard) : condition = guard.condition := by
@@ -161,34 +193,52 @@ theorem compoundGuardShape_sound {condition : Lean.Expr} {guard : CompoundGuard}
   | junction n op a b => cases accepted; exact guardOperands_sound found
   | boolean m n op a b => cases accepted; exact guardOperands_sound found
 
+private def canonicalCompoundGuard? (condition evidence : Lean.Expr) : Option CompoundGuard := do
+  let guard ← compoundGuardShape? condition
+  if LeanExe.Source.ExprEquality.same evidence guard.evidence then some guard else none
+
 /-- Check the entire decision expression for every admitted guard form. -/
 def compoundGuard? (condition evidence : Lean.Expr) : Option CompoundGuard :=
-  match compoundGuardShape? condition with
-  | some guard =>
-      if LeanExe.Source.ExprEquality.same evidence guard.evidence then some guard else none
-  | none => (reannotatedComparison? condition evidence).map CompoundGuard.reannotated
+  (canonicalCompoundGuard? condition evidence).orElse fun _ =>
+    (reannotatedGuard? condition evidence).map CompoundGuard.reannotated
+
+theorem compoundGuard_none_of_no_guard {condition evidence : Lean.Expr}
+    (absent : guardOperands? condition = none) : compoundGuard? condition evidence = none := by
+  simp [compoundGuard?, canonicalCompoundGuard?, compoundGuardShape?, reannotatedGuard?, absent]
 
 @[simp] theorem compoundGuard_accepts (guard : CompoundGuard) :
     compoundGuard? guard.condition guard.evidence = some guard := by
   cases guard with
-  | reannotated comparison =>
-    simp [compoundGuard?, compoundGuardShape?, CompoundGuard.condition, CompoundGuard.tree,
-      CompoundGuard.evidence, Guard.condition]
-  | _ => simp [compoundGuard?]
+  | reannotated guard =>
+    have absent : canonicalCompoundGuard? guard.condition guard.evidence = none := by
+      rcases guard with ⟨tree, evidence, meaning, different⟩
+      have distinct := different
+      cases tree <;> simp only [Guard.evidence] at distinct
+      all_goals simp [canonicalCompoundGuard?, ReannotatedGuard.condition,
+        CompoundGuard.evidence, CompoundGuard.tree, Guard.evidence, distinct]
+    simpa [compoundGuard?, CompoundGuard.condition, CompoundGuard.tree,
+      CompoundGuard.evidence, absent] using reannotatedGuard_accepts guard
+  | _ => simp [compoundGuard?, canonicalCompoundGuard?, CompoundGuard.condition,
+      CompoundGuard.tree, CompoundGuard.evidence]
 
 theorem compoundGuard_sound {condition evidence : Lean.Expr} {guard : CompoundGuard}
     (parsed : compoundGuard? condition evidence = some guard) :
     condition = guard.condition ∧ evidence = guard.evidence := by
   unfold compoundGuard? at parsed
-  split at parsed
-  · rename_i shape found
-    split at parsed
-    · rename_i same
-      cases parsed
-      exact ⟨compoundGuardShape_sound found, LeanExe.Source.ExprEquality.same_eq_true.mp same⟩
+  cases found : canonicalCompoundGuard? condition evidence with
+  | none =>
+    rw [found] at parsed
+    obtain ⟨guard, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
+    exact reannotatedGuard_sound found
+  | some shape =>
+    rw [found] at parsed
+    cases parsed
+    simp only [canonicalCompoundGuard?, bind, Option.bind_eq_some_iff] at found
+    obtain ⟨shape, parsedShape, accepted⟩ := found
+    split at accepted
+    · cases accepted
+      exact ⟨compoundGuardShape_sound parsedShape, LeanExe.Source.ExprEquality.same_eq_true.mp (by assumption)⟩
     · contradiction
-  · obtain ⟨comparison, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
-    exact reannotatedComparison_sound found
 
 theorem compoundGuard_size {condition evidence : Lean.Expr} {guard : CompoundGuard}
     (parsed : compoundGuard? condition evidence = some guard) {operand : Lean.Expr}
@@ -215,7 +265,22 @@ theorem guardLiteral_not_comparison (literal : GuardLiteral) :
 @[simp] theorem compoundGuard_not_comparison (guard : CompoundGuard) :
     comparison? guard.condition guard.evidence = none := by
   cases guard with
-  | reannotated comparison => exact reannotatedComparison_not_comparison comparison
+  | reannotated guard =>
+    rcases guard with ⟨tree, evidence, meaning, different⟩
+    cases tree with
+    | compare op a b =>
+      have distinct : evidence ≠ op.evidence a b := different
+      simp [comparison?, CompoundGuard.condition, CompoundGuard.tree,
+        CompoundGuard.evidence, Guard.condition, distinct]
+    | literal value =>
+      simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition,
+        guardLiteral_not_comparison]
+    | junction n op a b =>
+      simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition,
+        junction_not_comparison]
+    | boolean m n op a b =>
+      have absent := negated_not_comparison m _ (booleanJunction_condition_not_comparison n op a b)
+      simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, absent]
   | literal value =>
     simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, guardLiteral_not_comparison]
   | proposition op a b n =>

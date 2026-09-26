@@ -8,39 +8,49 @@ annotation fix. This compiler-proof task remains active; the completed drone tas
 is preserved separately at the end of this file. Lean runs locally through
 `tools/leanrun`. Full-dialect correctness is not yet proved.
 
-The comparison-operand extension is implemented. Standard arithmetic type
-annotations, standard numeral encodings and corresponding metadata wrappers can
-differ between an ordinary comparison's condition and decision operands. The
-independent `Reannotates.eval_iff` theorem proves both directions against the
-existing source semantics. The extractor checks the whole standard decision
-expression and rejects changed operands and custom operations/instances.
+The compound-decision extension is implemented. Propositional conjunction,
+disjunction and negation can contain standard comparisons whose arithmetic
+operands have different accepted annotations in the condition and decision
+expressions. The independent `GuardDecision` relation composes the proved
+`Reannotates` relation at comparison leaves and retains the exact enclosing
+propositions and standard instances. Canonical guards keep their admission path.
 
-The general source-to-WASM theorem and all twelve axiom audits pass, including
-three new source-equivalence/recognition audits. The focused tests pass 2,066
-native/IR comparisons and 1,204 rejection tests. The original
-`rangeIdComparisonEvidenceAnnotations` loop now compiles unchanged. The emitted
-WASM execution group passes 771 native Lean/V8 comparisons across 46 declarations,
-including fourteen range declarations. All 35 prior modules retain identical
-bytes. The full native fixture contains 686 declarations.
+The general source-to-WASM theorem and all fourteen axiom audits pass. The new
+focused tests pass 468 native/IR comparisons and 144 rejection tests. The previous
+atomic-annotation tests also pass: 1,550 comparisons and 990 rejection tests.
+The emitted-WASM execution group contains 54 declarations; its checks are running.
 
-Evidence, exact modules, hashes, test sources and retained failures are in
-[the comparison operand archive](proofs/compiler/reannotation-2026-09-26/README.md).
+The preceding atomic comparison increment is pushed and recorded in
+[the comparison operand archive](proofs/compiler/reannotation-2026-09-26/README.md):
+771 native Lean/V8 comparisons, 46 declarations, fourteen range declarations,
+and 35 prior modules with identical bytes. The original
+`rangeIdComparisonEvidenceAnnotations` loop compiles unchanged.
 
-Next: extend operand equivalence through compound guard
-conditions, dependent branches and saved decisions before continuing broader
-compiler coverage. Full-dialect correctness remains unfinished. Keep increments
-focused, get each capability proved and executing end to end, and commit/push
-frequently.
+Next: finish this compound-guard execution check and archive its source, modules,
+logs and failures. Then extend proved decision evidence through dependent
+branches and saved decisions before continuing broader compiler coverage.
+Full-dialect correctness remains unfinished. Keep increments focused, get each
+capability proved and executing end to end, and commit/push frequently.
 
-## Compound decision equivalence — in progress
+## Compound decision equivalence — Wasm execution checks in progress
 
 `GuardDecision` independently describes standard decision evidence for guard
-trees. Its comparison leaves use the checked `Reannotates` relation; conjunction,
-disjunction and negation retain exact enclosing propositions and instances.
-Recognizer soundness and acceptance pass Lean checking. Ordinary guard admission
-is being connected to this relation, followed by focused native/IR tests, the
-general compiler theorem, and emitted-WASM comparisons. No completed claim is
-made for this next increment yet.
+trees. Its recognizer soundness and acceptance pass Lean checking and are included
+in the fourteen-declaration compiler audit. Ordinary scalar and loop-step guard
+admission shares the existing tree lowering.
+
+Validation completed:
+
+- General compiler theorem and all fourteen axiom audits.
+- `scalar_guard_decision.lean`: 132 native/IR comparisons across six scalar and
+  two range declarations, including helpers, Id actions, nested and negated guards.
+- `scalar_guard_decision_syntax.lean`: 336 comparisons and 144 invalid-input tests
+  with nested junctions, literal and Boolean subguards, and repeated negation.
+- The preceding atomic source/syntax fixtures: 1,550 comparisons and 990 rejections.
+
+The native Lean/V8 run is pending. Differently annotated decision operands in
+dependent branches and saved decisions remain subsequent work. Boolean compound
+subguards retain their exact standard evidence.
 
 ## Merged compiler proof integration — complete
 
@@ -49,7 +59,7 @@ translation now retains those i64/i32 types, and its binary-translation witness
 agrees. The complete compiler proof passes after this correction. The initial
 failure and focused proof diagnostics are retained for the evidence archive.
 
-## Comparison operand equivalence — complete for ordinary branches
+## Atomic comparison operand equivalence — completed at aadf243e
 
 The source relation covers exact expressions, standard UInt64 arithmetic heads,
 standard numerals and corresponding metadata wrappers. Checked recognizer
