@@ -26,13 +26,19 @@ pass 1,148 comparisons and 864 rejections. The eleven modules shared with the
 previous archive retain identical bytes. Evidence is in
 [the loop-step helper archive](proofs/compiler/reusable-boolean-step-2026-09-26/README.md).
 
-Predicates declared around a loop now have proved source totality, acceptance,
-soundness, evaluation correctness and IR invariants. Eight concrete loops and
-systematic syntax checks pass 1,920 native/IR comparisons and 864 invalid-input
-tests. The full theorem and selected native/Wasm checks are next, followed by
-broader helper signatures.
-Full-dialect correctness remains unfinished. Get each capability proved and
-executing end to end, and commit/push frequently.
+Predicates declared around a loop are complete. The general source-to-WASM
+theorem and all sixteen audits pass. Native Lean/V8 agree on 771 inputs across
+41 declarations, including 21 ranges; all 33 previous modules retain identical
+bytes. New focused checks pass 1,920 native/IR comparisons and 864 invalid-input
+tests. Prior step-helper checks pass 1,872 comparisons and 864 rejections.
+Evidence is in [the outer-predicate archive](proofs/compiler/outer-predicates-2026-09-26/README.md).
+
+Next: retained standard Id annotations on reusable predicate parameters, then
+broader helper signatures. Bool-to-Bool calls need type-aware argument parsing:
+a bound Boolean and a bound word share the same raw bound-variable syntax.
+The parser must select argument semantics from the function binding rather than
+infer them from that syntax alone. Full-dialect correctness remains unfinished.
+Get each capability proved and executing end to end, and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
@@ -49,8 +55,7 @@ calls and check unused bodies. The general compiler theorem covers decoding,
 validation and execution of emitted WASM in the pinned model. Concrete checks
 cover nesting, shadowing, captures, conditions, Id result annotations and do
 blocks. Invalid function/value kinds, domains, results and unused bodies are
-rejected. Step declarations are covered by the following increment; outer-loop scope
-remains subsequent work.
+rejected. Step and outer-loop declarations are covered by the increments recorded above.
 
 ## Directly applied named Boolean helpers — complete
 
