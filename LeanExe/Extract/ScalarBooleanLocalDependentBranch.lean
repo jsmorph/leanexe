@@ -4,8 +4,7 @@ import LeanExe.Extract.ScalarDependentBranch
 namespace LeanExe.Extract.Core
 open LeanExe.Source.Scalar
 
-/-- Dependent Boolean-local conditions retain the same exact decision and
-proof-domain requirements as closed dependent guards. -/
+/-- Check standard Boolean-local decision evidence and both exact proof domains. -/
 def booleanLocalDependentGuard? (condition evidence trueDomain falseDomain : Lean.Expr) :
     Option BooleanLocalGuard := do
   let guard ← booleanLocalGuard? condition evidence

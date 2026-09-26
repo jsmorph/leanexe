@@ -5,9 +5,12 @@ import LeanExe.Source.ScalarBooleanLet
 
 namespace LeanExe.Source.Scalar
 
-/-- Bool-valued decision with exact standard proposition and decision evidence. -/
-def Guard.decisionExpr (guard : Guard) : Lean.Expr :=
+/-- Bool-valued decision with independently checked standard evidence. -/
+def DecidedGuard.decisionExpr (guard : DecidedGuard) : Lean.Expr :=
   .app (.app (.const ``Decidable.decide []) guard.condition) guard.evidence
+
+abbrev Guard.decisionExpr (guard : Guard) : Lean.Expr :=
+  (DecidedGuard.canonical guard).decisionExpr
 
 /-- Standard Bool equality/inequality with the exact default instance. -/
 def booleanEqualityExpr (unequal : Bool) (left right : Lean.Expr) : Lean.Expr :=
@@ -260,7 +263,7 @@ theorem operands_size (guard : BooleanLocal) {operand : Lean.Expr}
   | decision n g =>
     apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
     have bound := g.value.operands_size member
-    simp only [Guard.decisionExpr]
+    simp only [DecidedGuard.decisionExpr]
     simp_all
     omega
 

@@ -7,8 +7,8 @@ open LeanExe.Source.Scalar
 def propositionGuard? (condition evidence : Lean.Expr) : Option PropositionGuard := do
   let guard ← guardOperands? condition
   if nonboolean : guard.hasBooleanCondition = false then
-    if LeanExe.Source.ExprEquality.same evidence guard.evidence then
-      some ⟨guard, nonboolean⟩
+    if accepted : guardDecision? guard evidence = true then
+      some ⟨⟨guard, evidence, guardDecision_sound accepted⟩, nonboolean⟩
     else none
   else none
 
@@ -16,7 +16,10 @@ def propositionGuard? (condition evidence : Lean.Expr) : Option PropositionGuard
     propositionGuard? guard.condition guard.evidence = some guard := by
   cases guard with
   | mk value nonboolean =>
-    simp [propositionGuard?, PropositionGuard.condition, PropositionGuard.evidence, nonboolean]
+    cases value with
+    | mk tree evidence meaning =>
+      simp [propositionGuard?, PropositionGuard.condition, PropositionGuard.evidence,
+        DecidedGuard.condition, nonboolean, guardDecision_accepts meaning]
 
 theorem propositionGuard_sound {condition evidence : Lean.Expr} {guard : PropositionGuard}
     (parsed : propositionGuard? condition evidence = some guard) :
@@ -27,7 +30,7 @@ theorem propositionGuard_sound {condition evidence : Lean.Expr} {guard : Proposi
   · split at accepted
     · rename_i same
       cases accepted
-      exact ⟨guardOperands_sound found, LeanExe.Source.ExprEquality.same_eq_true.mp same⟩
+      exact ⟨guardOperands_sound found, rfl⟩
     · contradiction
   · contradiction
 
