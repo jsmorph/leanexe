@@ -17586,3 +17586,9 @@ Factored the nested parser loops into structurally recursive membership and job 
 Proof failures came from simplification unfolding `Array.set!` before its indexing lemmas applied, unconstrained helper arguments, and word literals requiring explicit decidable contradictions.  Explicit finite-set membership rewrites and helper arguments resolved them.  The checked proof uses the existing logical axioms.  Complete encoding acceptance/rejection, allocation, and exact-WASM execution remain open.
 
 Regenerated the model and annotation equalities for SHA-256 `55f407d3f82b34a59e95489f2ed40ea756cb621d780f76ee48eb5a60645d080f`.  The test and artifact-generator binaries agree.  The compute export is now 35, and the runtime functions are 36–39.
+
+### Beck encoding and source theorem
+
+`Encoding.Input` describes the two-word header and consecutive counted membership records.  It requires distinct in-range identifiers, exact record lengths, complete word consumption, and the published capacity bounds.  `Names.read_sound` and `read_complete` establish both directions of membership validation.  Induction on job records proves acceptance and rejection correspond exactly to this encoding, identifies every flattened incidence entry, and identifies the returned overlap with the maximum encoded list length.  Valid encodings contain at most 56 words.
+
+`Source.compute_correct` now states the output guarantee directly for these membership lists: success, exact output length, maximum overlap, binary groups, and category-count discrepancy.  The proof handles zero overlap through the zero bound.  Source checking covers the parser, algorithm, arithmetic, and output theorem without additional program-specific axioms.  Allocation and exact-WASM agreement remain open.  These proof changes leave the binary unchanged.
