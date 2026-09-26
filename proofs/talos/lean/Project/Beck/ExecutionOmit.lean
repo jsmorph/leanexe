@@ -58,7 +58,9 @@ theorem omitIndex_inBounds (env : HostEnv Unit) (initial : Store Unit) (heap : H
         (heap.allocate need).OwnsWords final node (omitIndex words index) ∧
         heap.Frame initial (heap.allocate need) final ∧
         final.mem.pages ≤ 65536 ∧
-        final.memoryCap Project.Beck.«module» 0 = initial.memoryCap Project.Beck.«module» 0) := by
+        final.memoryCap Project.Beck.«module» 0 = initial.memoryCap Project.Beck.«module» 0 ∧
+        Project.ProofKit.Memory.WritesRange (heap.allocateArrayStore initial need 1) final
+          node.root.toNat (node.root.toNat + 8 * words.size)) := by
   have indexWord : (UInt64.ofNat index).toNat = index := by rw [UInt64.toNat_ofNat']; omega
   have sizeWord : (UInt64.ofNat words.size).toNat = words.size := by rw [UInt64.toNat_ofNat']; omega
   have needWord : (UInt64.ofNat (8 * words.size)).toNat = 8 * words.size := by
@@ -188,8 +190,8 @@ theorem omitIndex_inBounds (env : HostEnv Unit) (initial : Store Unit) (heap : H
   refine wp_iff_cons rfl ?_
   rw [ite_eq_left ltWord, ite_eq_left (by decide)]
   wp_fixed_frame [List.take, List.append_nil, func23Def]
-  exact ⟨rfl, finalHeap, owned, frame,
-    allocatedWrites_resources heap initial final need _ _ writes bump pages⟩
+  obtain ⟨finalPages, finalCap⟩ := allocatedWrites_resources heap initial final need _ _ writes bump pages
+  exact ⟨rfl, finalHeap, owned, frame, finalPages, finalCap, writes⟩
 
 theorem omitIndex_outOfBounds (env : HostEnv Unit) (initial : Store Unit)
     (words : Array UInt64) (ptr owner index : UInt64)
