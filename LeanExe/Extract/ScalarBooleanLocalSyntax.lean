@@ -43,6 +43,12 @@ open LeanExe.Source.Scalar
     | succ n ih =>
       simpa only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLocalOperands?,
         Option.map_some, BooleanLocal.negate] using congrArg (Option.map BooleanLocal.negate) ih
+  | predicate n index argument =>
+    induction n with
+    | zero => simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLocalOperands?]
+    | succ n ih =>
+      simpa only [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLocalOperands?,
+        Option.map_some, BooleanLocal.negate] using congrArg (Option.map BooleanLocal.negate) ih
   | literal n value =>
     induction n with
     | zero => cases value <;> simp [BooleanLocal.expr, BooleanGuardNegation.expr, booleanLiteralExpr, booleanLocalOperands?]
@@ -329,7 +335,11 @@ theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLoca
     obtain ⟨annotation, ht, v, hv, b, hb, rfl⟩ := parsed
     simp [BooleanLocal.expr, BooleanGuardNegation.expr, BooleanBindingForm.expr,
       booleanType_sound ht, ihv hv, ihb hb]
-  | case36 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse excludedVar excludedChoiceEq excludedChoiceNe excludedProposition excludedDependentEq excludedDependentNe excludedDependentProp excludedDecisionEq excludedDecisionNe excludedDecision excludedEq excludedNe excludedBinding excludedRun excludedPure excludedMetadata excludedApplication =>
+  | case36 index argument =>
+    simp only [booleanLocalOperands?, Option.some.injEq] at parsed
+    subst guard
+    rfl
+  | case37 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse excludedVar excludedChoiceEq excludedChoiceNe excludedProposition excludedDependentEq excludedDependentNe excludedDependentProp excludedDecisionEq excludedDecisionNe excludedDecision excludedEq excludedNe excludedBinding excludedRun excludedPure excludedMetadata excludedApplication excludedPredicate =>
     rw [booleanLocalOperands?] at parsed
     · obtain ⟨⟨op, a, b⟩, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
       exact booleanComparisonOperands_sound found
@@ -355,6 +365,7 @@ theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLoca
     · exact excludedPure
     · exact excludedMetadata
     · exact excludedApplication
+    · exact excludedPredicate
 
 theorem booleanLocalOperands_size {expression : Lean.Expr} {value : BooleanLocal}
     (parsed : booleanLocalOperands? expression = some value) {operand : Lean.Expr}
@@ -480,10 +491,23 @@ theorem booleanWrapper_not_comparison (n : Nat) (wrapper : BooleanWrapper) (body
   | zero => cases wrapper <;> rfl
   | succ n ih => simp [BooleanGuardNegation.expr, booleanComparisonOperands?, ih]
 
+theorem booleanPredicate_not_guard (n index : Nat) (argument : Lean.Expr) :
+    booleanGuardOperands? (BooleanGuardNegation.expr n (.app (.bvar index) argument)) = none := by
+  induction n with
+  | zero => rfl
+  | succ n ih => simp [BooleanGuardNegation.expr, booleanGuardOperands?, ih]
+
+theorem booleanPredicate_not_comparison (n index : Nat) (argument : Lean.Expr) :
+    booleanComparisonOperands? (BooleanGuardNegation.expr n (.app (.bvar index) argument)) = none := by
+  induction n with
+  | zero => rfl
+  | succ n ih => simp [BooleanGuardNegation.expr, booleanComparisonOperands?, ih]
+
 theorem booleanGuardOperands_local_closed (value : BooleanLocal) {guard : BooleanGuard}
     (parsed : booleanGuardOperands? value.expr = some guard) : value.extended = false := by
   induction value generalizing guard with
   | var n index => simp [BooleanLocal.expr, booleanGuardOperands_variable] at parsed
+  | predicate n index argument => simp [BooleanLocal.expr, booleanPredicate_not_guard] at parsed
   | literal | compare => rfl
   | choice n unequal a b t e => simp [BooleanLocal.expr, booleanChoice_not_guard] at parsed
   | proposition n g t e => simp [BooleanLocal.expr, propositionChoice_not_guard] at parsed
@@ -532,6 +556,11 @@ theorem booleanLocal_not_comparison (value : BooleanLocal) (expanded : value.ext
     | zero => rfl
     | succ n => simp [BooleanLocal.condition, BooleanLocal.expr, BooleanGuardNegation.expr,
         comparisonOperands?, booleanComparisonOperands_variable]
+  | predicate n index argument =>
+    cases n with
+    | zero => rfl
+    | succ n => simp [BooleanLocal.condition, BooleanLocal.expr, BooleanGuardNegation.expr,
+        comparisonOperands?, booleanPredicate_not_comparison]
   | junction n op a b =>
     cases n with
     | zero => cases op <;> rfl
