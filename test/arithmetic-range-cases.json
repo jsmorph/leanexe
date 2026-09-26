@@ -394,5 +394,9 @@
   "rangeOuterBooleanPredicateUnused",
   "rangeOuterBooleanPredicateScalarHelper",
   "rangeOuterBooleanPredicateId",
-  "rangeOuterBooleanPredicateStride"
+  "rangeOuterBooleanPredicateStride",
+  "rangeBooleanPredicateNotStep",
+  "rangeBooleanPredicateNotContinue",
+  "rangeBooleanPredicateNotOuter",
+  "rangeBooleanPredicateNotOuterCapture"
 ]
