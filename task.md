@@ -998,3 +998,22 @@ axiom audits. The row loop itself checks in 4.5 seconds and the complete step
 in 4.7 seconds. Observed Lean RSS was about 4.1 GB plus 0.9 GB for Lake, below
 the user's 12 GB ceiling. Initial-row construction, full history construction,
 route unwinding/reversal, and the compiled compute/safety transfer remain open.
+
+The complete compiled initial-row constructor now checks in `initial_exact`.
+The source range fold is characterized by `initialRows`; each emitted loop
+step chooses the exact initial cost, performs three budgeted pushes, releases
+the previous tracked row, and advances its state without overflow. The loop
+terminates after 45 states. The wrapper allocates and finally releases its
+empty seed while preserving every caller-live array and returning a fresh,
+owned array equal to the source `initial`.
+
+The large loop step was divided into preparation, one/two/three pushes,
+cleanup, and a small invariant. A shared `RangeGuard` lemma handles the
+emitted unsigned range exit without expanding the following body. Early
+cleanup failures exposed missing nonzero-root assumptions and an unresolved
+`br_if` condition; the checked proof makes those conditions explicit. The
+entry proof also needed explicit allocator scratch normalization. Failed
+runs are retained. `build/logs/drone-initial-3.log` passes all 3,595 jobs;
+the loop checks in 3.6 seconds and the final wrapper in 3.1 seconds. All new
+axiom audits contain only standard Lean axioms. Full history construction,
+route unwinding/reversal, and the compiled compute/safety theorem remain open.
