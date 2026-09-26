@@ -976,3 +976,25 @@ append, and the remaining allocation/page budget. The entry and loop invariant
 are separate from the step theorem. All audits remain standard-only. The next
 allocating function is the row-building advance loop, combining best-choice
 scanning with three pushes per state.
+
+The entire row-building `advanceLoop_exact` and its `advance_exact` wrapper
+now pass. Choice selection covers ordinary states and the final-layer stopped
+state restriction; preparation checks target increment; the three pushes
+preserve every caller-live array and have exact allocation budgets; both
+borrowed and tracked old-row cleanup cases pass. The loop proves termination,
+source agreement, owned results, and nonaliasing/preservation.
+
+The first combined three-push proof reached its elaboration heartbeat limit.
+Splitting off `advance_two_push_spec` reduced the final two/three-push checks
+to about four seconds each. Some large instruction-shape reductions also
+needed the existing 32,768 recursion-depth setting. The wrapper now has
+separately checked entry and finish lemmas; its earlier heartbeat failures
+also followed a shadowed `previous` binder (allocator scratch word versus
+source array), which is fixed. Read the first diagnostic before the later
+normalization errors. The final wrapper check takes 3.1 seconds.
+
+`build/logs/drone-advance-5.log` passes all 3,572 jobs, with standard-only
+axiom audits. The row loop itself checks in 4.5 seconds and the complete step
+in 4.7 seconds. Observed Lean RSS was about 4.1 GB plus 0.9 GB for Lake, below
+the user's 12 GB ceiling. Initial-row construction, full history construction,
+route unwinding/reversal, and the compiled compute/safety transfer remain open.
