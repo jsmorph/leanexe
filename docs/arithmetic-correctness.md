@@ -202,8 +202,10 @@ negation, such as `(!(f flag)).toUInt64`, preserving the Boolean argument check.
 Nested converted calls, including negated inner arguments, check each argument
 as a Boolean conversion. Conjunctions and disjunctions can combine these calls
 with flags, word-input predicate calls and other supported Boolean expressions,
-including nested calls and negation. Boolean equality, choices and direct
-Boolean contexts containing these calls remain subsequent capabilities.
+including nested calls and negation. Equality and inequality can compare these
+results, through either `==`/`!=` or `decide` of a Boolean Eq/Ne proposition. The
+parser checks the standard comparison and decision instances. Boolean choices
+and direct Boolean contexts containing these calls remain subsequent capabilities.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
