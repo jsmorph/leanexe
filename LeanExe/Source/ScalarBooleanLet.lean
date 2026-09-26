@@ -1,4 +1,4 @@
-import LeanExe.Source.ScalarBooleanType
+import LeanExe.Source.ScalarBooleanFunctionBinding
 import LeanExe.Source.ScalarDo
 
 namespace LeanExe.Source.Scalar
@@ -7,19 +7,30 @@ namespace LeanExe.Source.Scalar
 inductive BooleanBindingForm where
   | letE (nondep : Bool)
   | application (binder : Lean.BinderInfo)
+  | namedApplication (shape : BooleanFunctionBinding)
   deriving Repr
 
 instance : Coe Bool BooleanBindingForm := ⟨BooleanBindingForm.letE⟩
 
 def BooleanBindingForm.nondep : BooleanBindingForm → Bool
   | .letE nondep => nondep
-  | .application _ => false
+  | .application _ | .namedApplication _ => false
 
 def BooleanBindingForm.expr (form : BooleanBindingForm) (name : Lean.Name)
     (type value body : Lean.Expr) : Lean.Expr :=
   match form with
   | .letE nondep => .letE name type value body nondep
   | .application binder => .app (.lam name type body binder) value
+  | .namedApplication shape => shape.expr name type value body
+
+theorem BooleanBindingForm.binding_size (form : BooleanBindingForm) (name : Lean.Name)
+    (type value body : Lean.Expr) :
+    sizeOf (.letE name type value body form.nondep : Lean.Expr) ≤
+      sizeOf (form.expr name type value body) := by
+  cases form with
+  | letE nondep => exact Nat.le_refl _
+  | application binder => simp [expr, nondep]; omega
+  | namedApplication shape => exact shape.binding_size name type value body
 
 /-- Preserve a Boolean binding around a scalar operand from its body. -/
 def booleanLetExpr (name : Lean.Name) (nondep : Bool) (value body : Lean.Expr)

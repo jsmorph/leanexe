@@ -1,5 +1,6 @@
 import LeanExe.Source.ScalarBooleanLocal
 import LeanExe.Extract.ScalarPropositionGuard
+import LeanExe.Extract.ScalarBooleanFunctionBinding
 import LeanExe.Extract.ScalarBooleanProofBodies
 import LeanExe.Extract.ScalarBooleanLetTypes
 import Lean.Meta.Tactic.FunInd
@@ -108,15 +109,28 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
       let b ← booleanLocalOperands? right
       pure (.equality 0 true a b)
   | .letE name type value body nondep =>
-      match scalarResultType? type with
-      | some annotation => do
-          let b ← booleanLocalOperands? body
-          pure (.wordBinding 0 name nondep value b annotation)
-      | none => do
-          let annotation ← booleanType? type
-          let v ← booleanLocalOperands? value
-          let b ← booleanLocalOperands? body
-          pure (.binding 0 name nondep v b annotation)
+      match _named : booleanFunctionApplication? (.letE name type value body nondep) with
+      | some application =>
+          match scalarResultType? application.input with
+          | some annotation => do
+              let b ← booleanLocalOperands? application.body
+              pure (.wordBinding 0 application.parameterName (.namedApplication application.shape)
+                application.argument b annotation)
+          | none => do
+              let annotation ← booleanType? application.input
+              let v ← booleanLocalOperands? application.argument
+              let b ← booleanLocalOperands? application.body
+              pure (.binding 0 application.parameterName (.namedApplication application.shape) v b annotation)
+      | none =>
+          match scalarResultType? type with
+          | some annotation => do
+              let b ← booleanLocalOperands? body
+              pure (.wordBinding 0 name nondep value b annotation)
+          | none => do
+              let annotation ← booleanType? type
+              let v ← booleanLocalOperands? value
+              let b ← booleanLocalOperands? body
+              pure (.binding 0 name nondep v b annotation)
   | .app (.app (.const ``Id.run [.zero]) type) body => do
       let annotation ← booleanType? type
       (booleanLocalOperands? body).map (fun value => .wrapped 0 (.run annotation) value)
@@ -144,6 +158,7 @@ decreasing_by
   all_goals first
     | omega
     | (have bounds := booleanProofBodies_sizes _bodies; omega)
+    | (have bounds := booleanFunctionApplication_sizes _named; simp_all <;> omega)
 
 -- Realize the induction theorem with the parser's bounded elaboration budget.
 run_elab Lean.executeReservedNameAction `LeanExe.Extract.Core.booleanLocalOperands?.induct

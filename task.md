@@ -33,6 +33,20 @@ lexical captures. Then broaden named-helper uses and continue compiler coverage.
 Full-dialect correctness remains unfinished. Get each capability proved and
 executing end to end, and commit/push frequently.
 
+## Directly applied named Boolean helpers — in progress
+
+The Boolean source grammar now retains a named helper whose binding body
+applies it directly to one argument. The helper accepts UInt64 or Bool and
+returns Bool, with standard Id annotations. The recognizer checks identical
+arrow/lambda domains and a Boolean result. The existing proved binder removal
+rejects arguments that reference the helper and preserves outer captures.
+
+Independent recognizer acceptance/soundness, Boolean parser, scalar correctness
+and loop-step correctness proofs pass. Focused tests pass 2,200 native/IR
+comparisons and 720 invalid-input checks. The general compiler theorem, sixteen
+axiom audits and emitted-Wasm checks are next. Repeated helper uses and broader
+enclosing bodies remain subsequent work.
+
 ## Immediate Boolean lambda applications — complete
 
 `BooleanBindingForm` preserves either the original let binding or immediate

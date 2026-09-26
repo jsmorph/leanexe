@@ -17,3 +17,6 @@ import LeanExe.Source.ScalarReannotationEvaluation
 
 #print axioms LeanExe.Extract.Core.guardDecision_sound
 #print axioms LeanExe.Extract.Core.guardDecision_accepts
+
+#print axioms LeanExe.Extract.Core.booleanFunctionApplication_sound
+#print axioms LeanExe.Extract.Core.booleanFunctionApplication_accepts
