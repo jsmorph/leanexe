@@ -1,0 +1,172 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [44/57] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [51/58] Built LeanExe.Extract.ScalarBooleanLocalParser (11s)
+✖ [54/60] Building LeanExe.Extract.ScalarBooleanLocalParserEquations (913ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanLocalParserEquations.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanLocalParserEquations.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanLocalParserEquations.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanLocalParserEquations.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanLocalParserEquations.setup.json --json
+error: LeanExe/Extract/ScalarBooleanLocalParserEquations.lean:55:10: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  booleanFunctionApplication?
+    { shape := shape, parameterName := name, input := type.expr, argument := value, body := body }.expr
+in the target expression
+  (match _named :
+      booleanFunctionApplication?
+        (Lean.Expr.letE shape.functionName (Lean.Expr.forallE shape.typeName type.expr shape.result.expr shape.typeInfo)
+          (Lean.Expr.lam name type.expr body shape.valueInfo)
+          ((Lean.Expr.bvar 0).app (Source.ExprProofBinder.lift 0 value)) shape.nondep) with
+    | some application =>
+      match scalarResultType? application.input with
+      | some annotation => do
+        let b ← booleanLocalOperands? application.body
+        pure
+            (BooleanLocal.wordBinding 0 application.parameterName
+              (BooleanBindingForm.namedApplication application.shape) application.argument b annotation)
+      | none => do
+        let annotation ← booleanType? application.input
+        let v ← booleanLocalOperands? application.argument
+        let b ← booleanLocalOperands? application.body
+        pure
+            (BooleanLocal.binding 0 application.parameterName (BooleanBindingForm.namedApplication application.shape) v
+              b annotation)
+    | none =>
+      match scalarResultType? (Lean.Expr.forallE shape.typeName type.expr shape.result.expr shape.typeInfo) with
+      | some annotation => do
+        let b ← booleanLocalOperands? ((Lean.Expr.bvar 0).app (Source.ExprProofBinder.lift 0 value))
+        pure
+            (BooleanLocal.wordBinding 0 shape.functionName (BooleanBindingForm.letE shape.nondep)
+              (Lean.Expr.lam name type.expr body shape.valueInfo) b annotation)
+      | none => do
+        let annotation ← booleanType? (Lean.Expr.forallE shape.typeName type.expr shape.result.expr shape.typeInfo)
+        let v ← booleanLocalOperands? (Lean.Expr.lam name type.expr body shape.valueInfo)
+        let b ← booleanLocalOperands? ((Lean.Expr.bvar 0).app (Source.ExprProofBinder.lift 0 value))
+        pure (BooleanLocal.binding 0 shape.functionName (BooleanBindingForm.letE shape.nondep) v b annotation)) =
+    do
+    let v ← booleanLocalOperands? value
+    let b ← booleanLocalOperands? body
+    pure (BooleanLocal.binding 0 name (BooleanBindingForm.namedApplication shape) v b type)
+
+case namedApplication
+name : Lean.Name
+type : BooleanType
+value body : Lean.Expr
+shape : BooleanFunctionBinding
+⊢ (match _named :
+      booleanFunctionApplication?
+        (Lean.Expr.letE shape.functionName (Lean.Expr.forallE shape.typeName type.expr shape.result.expr shape.typeInfo)
+          (Lean.Expr.lam name type.expr body shape.valueInfo)
+          ((Lean.Expr.bvar 0).app (Source.ExprProofBinder.lift 0 value)) shape.nondep) with
+    | some application =>
+      match scalarResultType? application.input with
+      | some annotation => do
+        let b ← booleanLocalOperands? application.body
+        pure
+            (BooleanLocal.wordBinding 0 application.parameterName
+              (BooleanBindingForm.namedApplication application.shape) application.argument b annotation)
+      | none => do
+        let annotation ← booleanType? application.input
+        let v ← booleanLocalOperands? application.argument
+        let b ← booleanLocalOperands? application.body
+        pure
+            (BooleanLocal.binding 0 application.parameterName (BooleanBindingForm.namedApplication application.shape) v
+              b annotation)
+    | none =>
+      match scalarResultType? (Lean.Expr.forallE shape.typeName type.expr shape.result.expr shape.typeInfo) with
+      | some annotation => do
+        let b ← booleanLocalOperands? ((Lean.Expr.bvar 0).app (Source.ExprProofBinder.lift 0 value))
+        pure
+            (BooleanLocal.wordBinding 0 shape.functionName (BooleanBindingForm.letE shape.nondep)
+              (Lean.Expr.lam name type.expr body shape.valueInfo) b annotation)
+      | none => do
+        let annotation ← booleanType? (Lean.Expr.forallE shape.typeName type.expr shape.result.expr shape.typeInfo)
+        let v ← booleanLocalOperands? (Lean.Expr.lam name type.expr body shape.valueInfo)
+        let b ← booleanLocalOperands? ((Lean.Expr.bvar 0).app (Source.ExprProofBinder.lift 0 value))
+        pure (BooleanLocal.binding 0 shape.functionName (BooleanBindingForm.letE shape.nondep) v b annotation)) =
+    do
+    let v ← booleanLocalOperands? value
+    let b ← booleanLocalOperands? body
+    pure (BooleanLocal.binding 0 name (BooleanBindingForm.namedApplication shape) v b type)
+error: LeanExe/Extract/ScalarBooleanLocalParserEquations.lean:71:10: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  booleanFunctionApplication?
+    { shape := shape, parameterName := name, input := type.expr, argument := value, body := body }.expr
+in the target expression
+  (match _named :
+      booleanFunctionApplication?
+        (Lean.Expr.letE shape.functionName (Lean.Expr.forallE shape.typeName type.expr shape.result.expr shape.typeInfo)
+          (Lean.Expr.lam name type.expr body shape.valueInfo)
+          ((Lean.Expr.bvar 0).app (Source.ExprProofBinder.lift 0 value)) shape.nondep) with
+    | some application =>
+      match scalarResultType? application.input with
+      | some annotation => do
+        let b ← booleanLocalOperands? application.body
+        pure
+            (BooleanLocal.wordBinding 0 application.parameterName
+              (BooleanBindingForm.namedApplication application.shape) application.argument b annotation)
+      | none => do
+        let annotation ← booleanType? application.input
+        let v ← booleanLocalOperands? application.argument
+        let b ← booleanLocalOperands? application.body
+        pure
+            (BooleanLocal.binding 0 application.parameterName (BooleanBindingForm.namedApplication application.shape) v
+              b annotation)
+    | none =>
+      match scalarResultType? (Lean.Expr.forallE shape.typeName type.expr shape.result.expr shape.typeInfo) with
+      | some annotation => do
+        let b ← booleanLocalOperands? ((Lean.Expr.bvar 0).app (Source.ExprProofBinder.lift 0 value))
+        pure
+            (BooleanLocal.wordBinding 0 shape.functionName (BooleanBindingForm.letE shape.nondep)
+              (Lean.Expr.lam name type.expr body shape.valueInfo) b annotation)
+      | none => do
+        let annotation ← booleanType? (Lean.Expr.forallE shape.typeName type.expr shape.result.expr shape.typeInfo)
+        let v ← booleanLocalOperands? (Lean.Expr.lam name type.expr body shape.valueInfo)
+        let b ← booleanLocalOperands? ((Lean.Expr.bvar 0).app (Source.ExprProofBinder.lift 0 value))
+        pure (BooleanLocal.binding 0 shape.functionName (BooleanBindingForm.letE shape.nondep) v b annotation)) =
+    do
+    let b ← booleanLocalOperands? body
+    pure (BooleanLocal.wordBinding 0 name (BooleanBindingForm.namedApplication shape) value b type)
+
+case namedApplication
+name : Lean.Name
+type : ResultType
+value body : Lean.Expr
+shape : BooleanFunctionBinding
+⊢ (match _named :
+      booleanFunctionApplication?
+        (Lean.Expr.letE shape.functionName (Lean.Expr.forallE shape.typeName type.expr shape.result.expr shape.typeInfo)
+          (Lean.Expr.lam name type.expr body shape.valueInfo)
+          ((Lean.Expr.bvar 0).app (Source.ExprProofBinder.lift 0 value)) shape.nondep) with
+    | some application =>
+      match scalarResultType? application.input with
+      | some annotation => do
+        let b ← booleanLocalOperands? application.body
+        pure
+            (BooleanLocal.wordBinding 0 application.parameterName
+              (BooleanBindingForm.namedApplication application.shape) application.argument b annotation)
+      | none => do
+        let annotation ← booleanType? application.input
+        let v ← booleanLocalOperands? application.argument
+        let b ← booleanLocalOperands? application.body
+        pure
+            (BooleanLocal.binding 0 application.parameterName (BooleanBindingForm.namedApplication application.shape) v
+              b annotation)
+    | none =>
+      match scalarResultType? (Lean.Expr.forallE shape.typeName type.expr shape.result.expr shape.typeInfo) with
+      | some annotation => do
+        let b ← booleanLocalOperands? ((Lean.Expr.bvar 0).app (Source.ExprProofBinder.lift 0 value))
+        pure
+            (BooleanLocal.wordBinding 0 shape.functionName (BooleanBindingForm.letE shape.nondep)
+              (Lean.Expr.lam name type.expr body shape.valueInfo) b annotation)
+      | none => do
+        let annotation ← booleanType? (Lean.Expr.forallE shape.typeName type.expr shape.result.expr shape.typeInfo)
+        let v ← booleanLocalOperands? (Lean.Expr.lam name type.expr body shape.valueInfo)
+        let b ← booleanLocalOperands? ((Lean.Expr.bvar 0).app (Source.ExprProofBinder.lift 0 value))
+        pure (BooleanLocal.binding 0 shape.functionName (BooleanBindingForm.letE shape.nondep) v b annotation)) =
+    do
+    let b ← booleanLocalOperands? body
+    pure (BooleanLocal.wordBinding 0 name (BooleanBindingForm.namedApplication shape) value b type)
+✔ [59/60] Built LeanExe.Extract.ScalarBooleanLetVariables (911ms)
+✔ [60/60] Built LeanExe.Extract.ScalarBooleanLocal (1.6s)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanLocalParserEquations
+error: build failed

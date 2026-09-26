@@ -1,0 +1,19 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [22/25] Built LeanExe.Source.ScalarBooleanLet (877ms)
+✔ [23/51] Built LeanExe.Source.ScalarBooleanLocal (1.5s)
+⚠ [47/53] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [48/53] Built LeanExe.Extract.ScalarBooleanFunctionBinding (893ms)
+✔ [51/53] Built LeanExe.Extract.ScalarBooleanRelation (938ms)
+✖ [52/53] Building LeanExe.Extract.ScalarBooleanLocalParser (10s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanLocalParser.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanLocalParser.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanLocalParser.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanLocalParser.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanLocalParser.setup.json --json
+error: LeanExe/Extract/ScalarBooleanLocalParser.lean:161:73: No goals to be solved
+error: LeanExe/Extract/ScalarBooleanLocalParser.lean:161:73: No goals to be solved
+error: LeanExe/Extract/ScalarBooleanLocalParser.lean:161:73: No goals to be solved
+warning: LeanExe/Extract/ScalarBooleanLocalParser.lean:164:0: declaration uses `sorry`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanLocalParser
+error: build failed
