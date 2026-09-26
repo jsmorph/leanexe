@@ -883,3 +883,14 @@ preserves the store, returns the exact three source Choice words, and proves
 termination by decreasing fuel. The source-index overflow guard and borrowed
 array ownership bookkeeping are included. Peak observed resident memory stayed
 near 4.3 GB. Allocating array loops and the full compiled entry remain open.
+
+Published the scan/best checkpoint as `8dcce121`. Split the unchanged allocator
+definitions and frame helpers into `FixedArrayAllocatorBase.lean`, leaving its
+execution theorem in `FixedArrayAllocator.lean`. The base checks in 4.6 seconds;
+the focused execution check passes in 93 seconds (`allocator-region-1.log`,
+3,345 jobs). The formerly blocked annotation regressions now both pass:
+`Project.TinyGpt2Seq.AnnotationMatches` and
+`Project.SequenceSoftmax.AnnotationMatches` (`scalar-held-out-2.log`, 3,362 jobs).
+This closes the held-out regression gap for the shared scalar control-type
+change. Drone heap allocation/release adaptations are next; their initial check
+also needs the existing shared runtime/heap proof dependencies to be built.
