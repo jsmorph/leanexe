@@ -216,7 +216,18 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
           extractScalarStepWith (.scalar function :: locals) body
       | none =>
           match scalarStepResultType? resultType with
-          | none => none
+          | none =>
+              match booleanType? resultType with
+              | none => none
+              | some _ => do
+                  let expression ← booleanLocalOperands? value
+                  let _ ← extractBooleanLocalWith (.boolean (.u64 0) :: locals.map ScalarStepBinding.toScalar) expression
+                    (fun operand _ => extractScalarExprWith (.boolean (.u64 0) :: locals.map ScalarStepBinding.toScalar) operand)
+                  let function := ScalarBinding.booleanPredicateFunction fun argument => do
+                    let condition ← extractBooleanLocalWith (.boolean argument :: locals.map ScalarStepBinding.toScalar) expression
+                      (fun operand _ => extractScalarExprWith (.boolean argument :: locals.map ScalarStepBinding.toScalar) operand)
+                    pure (guardWord condition)
+                  extractScalarStepWith (.scalar function :: locals) body
           | some _ => do
               let _ ← extractScalarStepWith (.scalar (.boolean (.u64 0)) :: locals) value
               let function := ScalarStepBinding.booleanFunction fun argument =>
