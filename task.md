@@ -29,6 +29,20 @@ variant uses UInt64 operand annotations. Prove source equivalence before relaxin
 that check, then complete the compiler proof and native/WASM comparisons for the
 extension. Keep increments focused and commit/push frequently.
 
+## Comparison operand equivalence — in progress
+
+The independent source relation `Reannotates` covers exact expressions,
+standard UInt64 arithmetic heads with accepted type annotations, standard numerals,
+and corresponding metadata wrappers. `Reannotates.eval_iff` proves both directions
+against the existing source evaluation relation. The proof uses arithmetic-head
+and numeral evaluation inversion lemmas. Its Lean build passes, and its axiom audit
+contains only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The checked recognizer and comparison admission integration are next. This
+foundation alone does not extend accepted compiler input. The original loop probe
+remains rejected until admission, general compiler proofs, and native/WASM tests
+are completed. No full compiler claim is made for this checkpoint.
+
 ## Main integration — complete
 
 Main includes `ciogpt` through `3a0222be`. The fetched `origin/main` at `a4655383`
