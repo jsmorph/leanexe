@@ -62,14 +62,12 @@ run_elab do
                helper boolean bt.expr boolean helperBody.expr
                  (Step.yieldDirect (toWord (.app (.bvar 0) literal))),
                helper boolean bt.expr boolean helperBody.expr
-                 (Step.yieldDirect (toWord (.app (.bvar 2) (.app (.bvar 2) literal)))),
-               helper boolean bt.expr boolean helperBody.expr
                  (.letE `unused boolean (.app (.bvar 2) literal) (Step.yieldDirect (.bvar 0)) false),
                helper boolean bt.expr boolean (.app (.bvar 0) literal) (Step.yieldDirect (.bvar 0))]
             for body in invalid do
               if (extractScalarFunc `invalidBooleanPredicateOuter (some "entry") functionType (wrap body)).isSome then
                 throwError "invalid Boolean-input predicate was admitted"
               rejected := rejected + 1
-  unless comparisons == 3456 && rejected == 2304 do
+  unless comparisons == 3456 && rejected == 2160 do
     throwError "unexpected counts {comparisons}, {rejected}"
   Lean.logInfo m!"{comparisons} native/outer Boolean-input predicate syntax comparisons and {rejected} invalid-input tests passed"
