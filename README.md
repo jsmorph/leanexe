@@ -1,26 +1,23 @@
 # LeanExe
 
-LeanExe compiles Lean 4 programs to WebAssembly and supports proofs about their
-execution. Write a program in Lean, load its checked declarations, and compile
-them into callable WASM exports or a command with byte input and output.
+LeanExe compiles a subset of Lean 4 to WebAssembly. It produces callable functions
+and commands with byte input and output. Examples include GPT-2 text generation,
+two-dimensional Euler flow solvers, JSON processing, and numerical kernels.
 
-The examples include **GPT-2 text generation**, **two-dimensional Euler flow
-solvers**, streaming commands, JSON processing, and numerical kernels. The
-compiler supports a defined subset of Lean: machine integers, arrays, byte
-buffers, structures, supported inductives and recursion, conditionals, `let`,
-`do`, and loops. The [language specification](docs/spec.md) defines the accepted
-source forms, memory representation, and host interface.
+The language includes machine integers, arrays, byte buffers, structures,
+selected inductive types and recursion forms, conditionals, `let`, `do`, and
+loops. The [language specification](docs/spec.md) defines the accepted source
+forms, memory representation, and host interface.
 
-Verification has two complementary paths. A general compiler theorem covers
-an admitted scalar and bounded-loop language. For larger programs, exact-artifact
-proofs establish behavior directly from a particular WASM binary's bytes. Both
-paths use Lean to check the proofs; their scope is described below.
+A compiler correctness theorem proves that code accepted by `compile-arithmetic`
+produces WASM with the same result as the source. Separate artifact proofs
+establish properties of specific WASM binaries. Lean checks both kinds of proof.
 
 ## Get started
 
-Follow [Developing LeanExe](DEVELOPING.md#prerequisites) to configure the pinned
-Lean, Node.js, Wasmtime, C compiler, and `wasm-tools` dependencies on Linux or
-ARM macOS. Run the commands below from the repository root in that environment.
+Follow [Developing LeanExe](DEVELOPING.md#prerequisites) to configure Lean,
+Node.js, Wasmtime, a C compiler, and `wasm-tools` on Linux or ARM macOS.
+Run the commands below from the repository root in that environment.
 Direct Lean, Lake, and compiler commands use `tools/leanrun`; repository drivers
 invoke it themselves. Build the compiler with:
 
@@ -30,11 +27,11 @@ tools/leanrun --timeout 15m lake build lean-wasm
 
 ## Run GPT-2 in WebAssembly
 
-The [GPT examples](docs/gpt/README.md) implement transformer inference in Lean.
-Pretrained GPT-2 124M uses twelve transformer blocks, packed FP32 weights, and
-an attention cache retained between token calls. A quantized variant uses INT8
-weights and grouped activations for its projections, with FP32 computation
-around them. Both generate text through a resident Wasmtime instance.
+[GPT-2 124M](docs/gpt/README.md) runs a twelve-block transformer in Wasmtime
+using FP32 weights and an attention cache. The quantized model uses INT8 weights
+and activations, 32-bit integer accumulation, and FP32 rescaling for matrix
+projections. Its other model operations use FP32. Weights and caches stay in
+one Wasmtime instance between token calls.
 
 Install `uv` in addition to the development dependencies, then fetch the pinned
 checkpoint and run either model:
@@ -48,10 +45,10 @@ tools/gpt2 --quantized \
   --text 'Once upon a time, in a small village' --generate 32
 ```
 
-The commands prepare the required packed weights. The FP32 command compiles the
-Lean model; `--quantized` loads the exact verified binary named in its model
+The commands pack the weights when needed. The FP32 command compiles the
+Lean model; `--quantized` loads the verified binary named in its model
 manifest. Prompt and completion together are limited to 128 tokens. Use
-`--top-k 1` for greedy decoding or `--json` for token IDs, binary identity,
+`--top-k 1` for greedy decoding or `--json` for token IDs, the binary hash,
 timing, and allocation information. The CPU reference runs with:
 
 ```sh
@@ -62,14 +59,14 @@ The [FP32 example](data/gpt2-124m/README.md) and
 [quantized example](data/gpt2-quantized-v1/README.md) include reference
 comparisons, completions, memory measurements, and proof instructions. Quantized
 weights occupy about 128 MB, versus 498 MB for FP32 parameters. Quantization can
-change token choices; execution correctness and numerical accuracy are separate
-claims. Smaller [byte-token GPT models](docs/gpt/README.md#models-and-results)
-provide examples of real-arithmetic error bounds.
+change token choices. Execution proofs establish the implemented algorithm's
+results; numerical proofs bound its error against real arithmetic. The
+[four-byte GPT model](data/tiny-gpt2-v1/README.md) has proved numerical error bounds.
 
 ## Compile a Lean function
 
-[`Arithmetic.choose`](LeanExe/Examples/Arithmetic.lean) is a complete scalar
-example:
+[`Arithmetic.choose`](LeanExe/Examples/Arithmetic.lean) uses wrapping `UInt64`
+arithmetic:
 
 ```lean
 namespace LeanExe.Examples.Arithmetic
@@ -96,18 +93,18 @@ tools/leanrun .lake/build/bin/lean-wasm compile-arithmetic \
 
 The result is `42`. `compile-arithmetic` accepts only the language covered by
 the [general compiler correctness theorem](docs/arithmetic-correctness.md),
-including supported scalar operations, local bindings and functions,
-conditionals, pure `Id` blocks, and one bounded range loop with supported
+including `UInt64` arithmetic, local bindings and functions, conditionals,
+pure `Id` blocks, and one bounded range loop. The grammar specifies the accepted
 `continue` and `break` forms.
 
-Use `compile` for the broader dialect, including heap values and supported
-recursive helpers. `--entries Name.one,Name.two` exports several declarations
+Use `compile` for heap values and supported recursive helpers.
+`--entries Name.one,Name.two` exports several declarations
 with shared helpers and memory. Use `compile-wasi-io` for a `LeanExe.ByteIO UInt32`
 entry with sequenced stdin reads and stdout writes. Pure WASI adapters also
 support bounded stdin, arguments, output, and explicit error results.
-The [user manual](docs/manual.md#entry-shapes) explains which command to choose.
+See the [user manual](docs/manual.md#entry-shapes) for entry types and command options.
 
-## Explore the examples
+## Examples
 
 | Example | What it demonstrates |
 |---------|----------------------|
@@ -123,34 +120,34 @@ Byte-I/O programs use the repository's nonblocking WASI host, which provides the
 clock and polling behavior required by operation timeouts. The
 [I/O guide](docs/manual.md#byte-input-and-output) gives build and run commands.
 
-## What is proved?
+## Proofs and limits
 
-| Proof path | Guarantee | Scope |
+| Proof | Guarantee | Scope |
 |------------|-----------|-------|
-| [Compiler correctness](docs/arithmetic-correctness.md) | Every successfully admitted declaration emits exact bytes that decode, validate, and terminate with the source result in the pinned WASM semantics. | The specified scalar and bounded-range language accepted by `compile-arithmetic`. |
-| [Exact-artifact verification](docs/artifact-format.md) | Embedded binary bytes decode and validate, translate to the execution model, and satisfy the named behavioral theorem. | The particular binary and the theorem's input, heap, and host assumptions. No compiler-correctness premise is needed. |
-| [Independent core type safety](docs/type-safety.md) | Typed programs preserve their types and cannot become stuck under the core's execution rules. | The independently defined core language; connecting the whole compiler dialect to that core is a separate obligation. |
+| [Compiler correctness](docs/arithmetic-correctness.md) | Emitted bytes decode to a valid module whose exported function terminates with the source result in the WASM model. | Every declaration accepted by `compile-arithmetic`. |
+| [Exact-artifact verification](docs/artifact-format.md) | The identified binary decodes, validates, and satisfies its behavioral theorem under the WASM execution model. | The binary and the theorem's input, heap, and host assumptions. The proof does not assume compiler correctness. |
+| [Independent core type safety](docs/type-safety.md) | Typed programs preserve their types and cannot become stuck under the core's execution rules. | The independent core's syntax and semantics. |
 
-The [GPT proof guide](docs/gpt/README.md#proofs-and-evidence) distinguishes exact
-inference, session allocation and cleanup, and numerical error bounds. The
-Euler examples state their physical and numerical conditions alongside the
-theorems. The [byte-I/O proofs](proofs/byte-io/README.md) cover modeled host
-contracts, transfer laws, and concrete echo executions. Running sum has source
+The [GPT-2 session proofs](docs/gpt/README.md#proofs-and-evidence) cover cached
+token calls, allocation, and buffer release. The
+[byte-I/O proofs](proofs/byte-io/README.md) cover modeled host contracts,
+transfer laws, and concrete echo executions. Running sum has source
 correctness and exact-binary decoding/validation proofs; its universal WASM
 execution and memory theorem remains open.
 
-LeanExe does not claim a general correctness theorem for every supported source
-feature. Tests compare native Lean, supported IR evaluation, and WASM execution
-where those references apply. Formal execution claims use the pinned Talos WASM
-semantics; the native host, Wasmtime, and operating system remain outside the
-Lean proof. Numerical theorems state their own domains and assumptions.
+General compiler correctness is limited to the `compile-arithmetic` grammar.
+Tests compare native Lean, supported IR evaluation, and WASM execution where
+those references apply. Formal execution proofs use the pinned Talos WASM
+semantics. The native host, Wasmtime, and operating system are outside the
+Lean proof.
 
 ## Generate a program and its artifact proof
 
-`leanexegen` uses separate headless Codex tasks for a specification, a Lean
-program, and a proof about the compiled binary. The outer driver independently
-checks the results. This workflow uses an `Array UInt64 → Array UInt64` public
-interface and requires the [Codex setup and dependencies](docs/leanexegen.md).
+`tools/leanexegen` reads a program request from a text file. Separate Codex tasks
+generate a specification, a Lean implementation, and a proof about the compiled
+binary. The tool checks the generated Lean files and artifact proof before
+writing the program and proof package. Programs use an `Array UInt64 → Array UInt64`
+public interface. Generation requires an [authenticated Codex CLI](docs/leanexegen.md).
 
 ```sh
 tools/leanexegen -o myprogram.wasm myprogram.txt
@@ -158,10 +155,9 @@ tools/leanexegen verify myprogram.proof
 tools/leanexegen run myprogram.wasm 10 20 30
 ```
 
-The proof package contains the exact binary, specification, theorem, and
-verification evidence. Compiler annotations and the knowledge forest supply
-proof guidance and reusable lemmas; the resulting theorem must check against
-the artifact. See [Verifying a Program](docs/verifying.md) for the manual path.
+The proof package contains the binary, specification, Lean proof, and check
+results. [Verifying a Program](docs/verifying.md) describes manual proof
+construction and checking.
 
 ## Documentation and source
 
@@ -171,11 +167,11 @@ the artifact. See [Verifying a Program](docs/verifying.md) for the manual path.
   [artifact proving](docs/artifact-proving.md), [theorem inventory](proofs/talos/README.md).
 - **Work on the project:** [compiler architecture](docs/compiler.md),
   [capabilities and limits](docs/status.md), [roadmap](plan.md), [active task](task.md).
-- **Browse further:** [documentation index](docs/README.md), [examples](LeanExe/Examples),
+- **Examples and reference:** [documentation index](docs/README.md), [examples](LeanExe/Examples),
   [models](LeanExe/Models/Gpt2/README.md), [proof-generation demos](demos/README.md),
   [benchmarks](benchmarks/README.md), [papers](paper/README.md).
 
-The compiler lives in `LeanExe/Extract`, `LeanExe/IR`, and `LeanExe/Wasm`.
-The proof workspace is under `proofs/talos/lean`; exact packages are under
+The compiler code is in `LeanExe/Extract`, `LeanExe/IR`, and `LeanExe/Wasm`.
+The proof workspace is under `proofs/talos/lean`; artifact proof packages are under
 `proofs/artifacts`. The [experimental WASM binary emitter](docs/self-hosted-emitter.md)
-provides a self-hosting example for the serialization stage.
+runs binary serialization in WebAssembly.

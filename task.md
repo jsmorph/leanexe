@@ -6,6 +6,8 @@ byte I/O, scalar compilation and artifact verification have direct entry points.
 The documentation index, capabilities page, manual, language/compiler references,
 scalar proof guide, core type-safety introduction and development setup agree
 with those boundaries. Exact FP32 source and packaged-binary claims are distinct.
+The README uses direct descriptions of capabilities, commands, and proof scope,
+without filler introductions or metaphors.
 
 Validation: the documented scalar quickstart builds, compiles and returns 42
 in Wasmtime; all 178 maintained Markdown files pass the documentation check;
