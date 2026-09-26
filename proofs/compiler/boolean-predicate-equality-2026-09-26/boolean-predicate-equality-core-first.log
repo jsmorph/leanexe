@@ -1,0 +1,20 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [46/71] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [70/96] Built LeanExe.Source.ScalarBooleanEqualityForm (1.1s)
+✔ [96/101] Built LeanExe.Extract.ScalarBooleanPredicateEquality (890ms)
+✔ [100/101] Built LeanExe.Source.Scalar (1.4s)
+✖ [101/101] Building LeanExe.Extract.ScalarExprCore (12s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExprCore.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.setup.json --json
+error: LeanExe/Extract/ScalarExprCore.lean:342:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:342:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:342:86: Unknown identifier `_member`
+error: LeanExe/Extract/ScalarExprCore.lean:342:86: Unknown identifier `_member`
+warning: LeanExe/Extract/ScalarExprCore.lean:346:0: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarExprCore.lean:346:0: declaration uses `sorry`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExprCore
+error: build failed

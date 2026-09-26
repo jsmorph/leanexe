@@ -1,0 +1,8 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/BooleanPredicateEqualityHelpers.lean:36:28: error: unexpected token 'local'; expected ']'
+../work/BooleanPredicateEqualityHelpers.lean:36:22: error: `simp` made no progress
+../work/BooleanPredicateEqualityHelpers.lean:36:22: error: `simp` made no progress
+../work/BooleanPredicateEqualityHelpers.lean:33:2: error: Alternative `decision` has not been provided
+../work/BooleanPredicateEqualityHelpers.lean:36:33: error: unexpected token ','; expected 'binder_predicate', 'builtin_cbv_simproc', 'builtin_dsimproc', 'builtin_simproc', 'cbv_simproc', 'def_eval_config_item', 'dsimproc', 'elab', 'elab_rules', 'grind_pattern', 'infix', 'infixl', 'infixr', 'instance', 'macro', 'macro_rules', 'notation', 'postfix', 'prefix', 'simproc', 'syntax' or 'unif_hint'
+../work/BooleanPredicateEqualityHelpers.lean:39:33: error: unexpected token ','; expected 'binder_predicate', 'builtin_cbv_simproc', 'builtin_dsimproc', 'builtin_simproc', 'cbv_simproc', 'def_eval_config_item', 'dsimproc', 'elab', 'elab_rules', 'grind_pattern', 'infix', 'infixl', 'infixr', 'instance', 'macro', 'macro_rules', 'notation', 'postfix', 'prefix', 'simproc', 'syntax' or 'unif_hint'
