@@ -32,6 +32,16 @@ compiler coverage. Full-dialect correctness remains unfinished. Keep increments
 focused, get each capability proved and executing end to end, and commit/push
 frequently.
 
+## Compound decision equivalence — in progress
+
+`GuardDecision` independently describes standard decision evidence for guard
+trees. Its comparison leaves use the checked `Reannotates` relation; conjunction,
+disjunction and negation retain exact enclosing propositions and instances.
+Recognizer soundness and acceptance pass Lean checking. Ordinary guard admission
+is being connected to this relation, followed by focused native/IR tests, the
+general compiler theorem, and emitted-WASM comparisons. No completed claim is
+made for this next increment yet.
+
 ## Merged compiler proof integration — complete
 
 Main's shared scalar programs preserve branch result types. The general compiler
