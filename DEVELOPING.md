@@ -15,7 +15,7 @@ On an ARM Mac, run these commands from the repository root:
 ```sh
 sh tools/bootstrap-macos.sh
 source tools/macos-env.sh
-tools/leanrun --timeout 15m lake build
+tools/leanrun --timeout 15m lake build lean-wasm
 ```
 
 The bootstrap verifies official archive SHA-256 digests and installs the same
@@ -26,13 +26,14 @@ native `flock`, a process-group timeout, one Lean thread, and nice priority.
 It requires explicit local mode because systemd cgroups and `ionice` are
 unavailable.  If a sandbox blocks `nice`, it stops unless the user has expressly
 authorized `LEANRUN_INHERIT_PRIORITY=1`; that exception retains inherited
-priority and prints a diagnostic.  The user approved that exception for this
-project's ARM Mac sandbox on 2026-09-07, and `tools/macos-env.sh` enables it.
-The Linux `/proc` compatibility preload is not used on macOS.
+priority and prints a diagnostic. `tools/macos-env.sh` selects local mode and
+the inherited-priority setting; use that configuration only in an environment
+where those exceptions are explicitly authorized. The Linux `/proc`
+compatibility preload is not used on macOS.
 
 | Tool | Repository requirement |
 |------|------------------------|
-| Lean and Lake | Install through `elan`.  The compiler root pins exact Lean 4.34.0-rc2 at commit `6a10ac8c22beadecabdbb0919c2b50214762f91d`. |
+| Lean and Lake | Use `elan` on Linux or the repository bootstrap on ARM macOS. The compiler root pins exact Lean 4.34.0-rc2 at commit `6a10ac8c22beadecabdbb0919c2b50214762f91d`. |
 | Proof Lean and Lake | The proof workspace records its exact Lean 4.34.0-rc2 pin in `proofs/talos/lean/lean-toolchain`; its Lake files pin Talos revision `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`. |
 | Wasmtime | `tools/download-wasmtime.sh` installs the default 44.0.0 CLI and C API under `build/tools/wasmtime` after checking the published SHA-256 hashes. |
 | C compiler | A C11 compiler available as `cc` builds the Wasmtime host runner. |
@@ -46,9 +47,9 @@ These environment variables configure local executables and the Wasmtime downloa
 
 | Variable | Meaning |
 |----------|---------|
-| `CC` | C compiler for the Euler regression comparison; defaults to `cc`. ARM macOS can use `gcc-15` to meet its advertised IEEE arithmetic checks. |
+| `CC` | C compiler for the Euler comparison tests; defaults to `cc`. ARM macOS can use `gcc-15` to meet its advertised IEEE arithmetic checks. |
 | `WASMTIME` | Wasmtime CLI used by tests and comparison tools. |
-| `WASMTIME_C_API` | Directory containing `include/wasmtime.h` and `lib/libwasmtime.so`. |
+| `WASMTIME_C_API` | Directory containing `include/wasmtime.h` and the library: `lib/libwasmtime.so` on Linux or `lib/libwasmtime.dylib` on macOS. |
 | `WASMTIME_VERSION` | Wasmtime release version downloaded by the setup script.  The default is 44.0.0. |
 | `WASMTIME_PLATFORM` | Release platform name.  Automatic detection supports `aarch64-linux` and `x86_64-linux`. |
 | `WASMTIME_BASE_URL` | Release mirror containing archives with the standard Wasmtime filenames. |
@@ -104,14 +105,24 @@ Repository Node drivers route Lean commands through `tools/leanrun`, and the Tal
 
 ## First Build
 
-Install the runtime tools, build the compiler, build the native ABI runner, and run the execution suite from the repository root.  The download command writes only under the ignored `build` directory.  The suite rebuilds the compiler before running its Node drivers.
+On Linux, install the pinned Wasmtime CLI and C API:
 
 ```sh
 tools/download-wasmtime.sh
-tools/leanrun lake build
-tools/build-wasmtime-host.sh
-node test/run_all.js
 ```
+
+On ARM macOS, use the bootstrap and environment script in
+[Prerequisites](#prerequisites). In either configured environment, build the
+compiler and native ABI runner from the repository root:
+
+```sh
+tools/leanrun --timeout 15m lake build lean-wasm
+tools/build-wasmtime-host.sh
+```
+
+Run `node test/run_all.js` for the complete execution suite. Its drivers build
+the source modules they need. During development, use the focused checks below
+for the affected behavior.
 
 Initialize the proof workspace by running a focused Talos proof from the repository root.  The artifact stage fetches the pinned Talos dependency and builds its verifier when absent, then both stages populate ignored compiler and proof outputs.  A cold run may compile thousands of Lean jobs, while later runs reuse content-identical generated files and Lake outputs.
 
@@ -167,7 +178,25 @@ codec, emitter, or bootstrap boundary; it does not block native compiler work.
 
 ## Proof Artifacts
 
-The proof workspace includes completed specifications for all eight CLOB exports and the FP32 and quantized GPT-2 cached sessions.  The first five floating-point cases culminate in the guarded Euler Rusanov flux; the sixth composes that proof three times with six proved update-helper calls to establish total exact generated-WAT execution of a fixed two-cell step.  `Project.EulerRusanovStep.Numerical.sodQuarterStepCheckedBitsModel_real` proves the pure result's decoded-real certificate, and the registered behavior theorem `Project.EulerRusanovStep.Spec.sodQuarterStepCheckedBits_wat_real` attaches it to the actual generated-WAT execution.  With `ε = 2^-52`, all six numeric output words are finite; the exact cells are left `[207/256, 9/80 - ε/20, 257/128]` and right `[81/256, 9/80 + 3ε/40, 95/128]`, and both are admissible.  The signed errors against the exact-real decoded-input quarter step are left `[0, -3ε/64, -7ε/512]` and right `[0, 5ε/64, -25ε/512]`; their physical balance residual is `[0, ε/32, -ε/16]`.  This certificate concerns that fixed step only and establishes no general convergence or stability result.  `proofs/talos/cases.json` maps each source entry to its generated module and handwritten specification target, while `proofs/artifacts/registry.json` maps each frozen package to its exact-artifact proof target.  These floating-point entries expose binary64 encodings as `UInt64` and call compiler-recognized `LeanExe.Float64` intrinsics; ordinary Lean `Float` source and agreement with Lean's native `Float` evaluator remain outside the proof claim.  The current `tools/talos-proof.js check --all` gate regenerates the registered source cases and checks their completed specifications.  The Euler flux case additionally has exact closure over its frozen 1,808-byte artifact and a formal eight-row interface-data theorem; the step now has its exact 2,551-byte package and both behavior theorems; the StepData.artifact_stepV1 theorem certifies the published raw dataset.  Reproduce its exact-rational comparison, CSV, and plot with `node tools/euler-rusanov-step-data.js check`; host/C comparisons remain regression-only.  Current release status comes from `tools/artifact-release.js inspect`.
+The proof workspace covers programs including FP32 and quantized GPT-2 cached
+sessions, CLOB operations, numerical kernels, and complete Euler solvers.
+[The theorem inventory](proofs/talos/README.md) identifies each public claim and
+its assumptions. Source-driven proofs and exact-artifact proofs have distinct
+inputs:
+
+- `proofs/talos/cases.json` maps source entries to generated execution models and
+  registered behavioral specifications.
+- `proofs/artifacts/registry.json` maps packaged binary identities to their
+  exact-artifact proof targets. A theorem for one hash does not cover a different
+  compiler output.
+
+Numerical claims add real-arithmetic contracts to execution theorems. For
+example, the [Euler step dataset](data/euler-rusanov-step-v1/README.md) connects
+exact output words to checked real values and rounding bounds. Reproduce its
+rational comparison, CSV, and plot with `node tools/euler-rusanov-step-data.js check`.
+Host and C comparisons are execution tests; the Lean theorem states the formal
+boundary. Floating-point examples use compiler-recognized raw-word intrinsics,
+not general Lean `Float` source.
 
 `tools/talos-artifact.js prepare <case>` builds the source and compiler, emits ignored WASM and WAT, and asks the pinned Talos verifier to refresh the tracked `Project/<Case>/Program.lean` proof cache.  The tool creates a fresh uniquely named `tmp/leanexe-talos-*` staging directory inside the repository, gives Talos a disposable `rust/<case>/Cargo.toml` and artifact tree there, and removes only that same newly created staging directory before returning.  It never treats pre-existing `tmp/` entries as cleanup targets.  It replaces the three requested outputs only after generation succeeds, leaves a byte-identical cache untouched, and never edits handwritten proof modules.  Under the local operating envelope, invoke this Node driver directly: it invokes `tools/leanrun` for its own children, and an outer `tools/leanrun` wrapper is rejected as a nested runner.
 
@@ -191,30 +220,16 @@ tools/artifact-conformance.js check
 
 A cold conformance run builds the direct imports of Mathlib's pinned `Mathlib.Tactic` umbrella in fixed-size groups, then builds the testsuite library and executable as separate targets.  Each group has its own process limit, so the initial dependency compilation does not share one timeout with the complete import graph and final executable link.  The conformance driver reads this target list from the checked-out pinned Mathlib source rather than maintaining another dependency inventory.
 
-The 2026-09-24 conformance run passed all twenty-six configured execution files in Wasmtime.  Talos passed 6,996 assertions with four configured skips and no failures.  The gate checks the exact configured corpus and rejects unexpected failures or skips.
+The conformance gate runs the configured execution corpus in Wasmtime and Talos. Its checked configuration names permitted skips; unexpected failures or skips fail the check.
 
-The same command extracts fifteen exact `assert_invalid` and `assert_malformed` modules from the pinned official corpus and checks their precise artifact decoder or validator errors.  All fifteen cases passed on 2026-09-24.  The tool removes custom sections added by `wasm-tools` when encoding text-origin invalid modules because the accepted artifact profile rejects those sections before the intended validation rule.  It preserves raw malformed binary modules byte-for-byte and rejects any changed command, classification stage, or error constructor.
+The same command extracts the configured `assert_invalid` and `assert_malformed` modules from the pinned official corpus and checks their precise artifact decoder or validator errors.  The tool removes custom sections added by `wasm-tools` when encoding text-origin invalid modules because the accepted artifact profile rejects those sections before the intended validation rule.  It preserves raw malformed binary modules byte-for-byte and rejects any changed command, classification stage, or error constructor.
 
-`proofs/artifacts/release.json` binds the artifact registry, each package manifest,
-every recorded theorem name, the tool pins, and the artifact and conformance
-results.  `tools/artifact-release.js inspect` validates those identities and
-derives the unresolved release conditions from the record.  The checked-in
-draft now records the Lean 4.34.0-rc2 and Talos
-`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` pins and the migrated release-input
-identity.  `tools/artifact-release.js inspect` is authoritative for its current
-warm-receipt state.  The retained draft's release-input digest is
-`dfad5b82317c9ca0a67e6692ecb872457e6d6406cd9d6bad90e1333a29c1ec11`, and
-`sourceRevision` remains null.  The 2026-09-04 aggregate artifact receipt is
-historical for its earlier exact input; matching aggregate artifact proof,
-semantic conformance, immutable source revision, and cold-checkout evidence are
-the draft's four recorded release conditions.  The successful 2026-08-26
-receipts also belong to their earlier input digest.  The 2026-09-19 aggregate
-artifact check passed all 43 current packages.  The historical release draft
-does not record that run.
-
-`tools/artifact-release.js check-cold <revision>` clones the recorded source revision below the repository's ignored `tmp/` directory, compares its release inputs byte-for-byte with the recorded input identity, checks the external tools and exact Lean commit, fetches the pinned proof dependencies, initializes the official testsuite, and runs both release gates.  The artifact gate builds the shared Talos library and artifact translator, then computes each artifact theorem's and behavioral specification's repository-local import closure.  It builds those dependencies in order, with a separate limit for every module, before building each root target.  Artifact and behavioral checks share the set of completed dependencies within one run.  These divisions bound each build invocation's dependency work, while the command rejects tracked changes after setup or either gate, rechecks the input identity, and writes a receipt after success.
-
-Quantized GPT-2 verification completed in the existing checkout on 2026-09-24.  The user excluded release-record maintenance and separate-checkout reproduction from this work.
+Release records are a separate packaging workflow. `proofs/artifacts/release.json`
+binds registry entries, manifests, theorem names, tool pins, and gate results.
+`tools/artifact-release.js inspect` checks those identities and reports the
+record's unresolved conditions. Use the [artifact format guide](docs/artifact-format.md)
+for release recording and separate-checkout reproduction when that workflow is
+requested. Ordinary development uses the checks for its affected boundary.
 
 ## Generated Files and Dependencies
 
@@ -256,4 +271,4 @@ Failure messages should identify the command, module, entry, declaration, and re
 
 Each document has one role.  The repository overview provides a short introduction; this guide owns setup, development workflow, and gates; the manual owns source patterns and diagnostics; the specification owns semantics and rejection boundaries; the compiler reference owns implementation architecture; the Talos README owns the proof inventory; the verification guide owns proof procedure; the development plan owns future work; and the journal owns rationale and test evidence.  Update the authoritative document in the same change as the behavior it describes.
 
-Update the authoritative document in the same change as the behavior it describes.  Keep volatile counts in one inventory and link to it elsewhere when the number adds no value.  Mark historical experiments and superseded plans at the top so a reader cannot mistake them for current procedure.
+Write maintained guides in terms of current behavior, commands, and proof boundaries. Keep volatile counts and measurement details in the relevant inventory or evidence package and link to them. Review changed command examples against their implementations, and keep exact-binary claims tied to the corresponding manifest.

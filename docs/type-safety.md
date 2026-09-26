@@ -1,12 +1,10 @@
 # Independent core type safety
 
-Track 1 establishes operational type safety for an independent first-order core.
-The work is on `typesafety`, starting from compiler revision
-`a4655383ee80d3d80830b6bddfb6248a9d5c2b4b`.  The [working state](../task.md)
-owns the current agenda, open decisions, and resume notes.  The
-[journal](../plans/type-safety-journal.md) records proof and verification history.
-The [coverage ledger](type-safety-coverage.md)
-tracks each documented operation family, including derived APIs not yet proved.
+LeanExe has an operational type-safety proof for an independent first-order core.
+The [coverage ledger](type-safety-coverage.md) identifies the modeled operation
+families, including derived APIs not yet proved. The [runtime-language definition](runtime-language.md)
+states the intended evaluation rules, and the [active task](../task.md) records
+the current work and checks.
 
 ## What soundness means here
 
@@ -25,7 +23,7 @@ Four subjects must remain distinct:
 | Compiler correctness | Prove that extraction and compilation respect the specified language. These are separate translation theorems. |
 
 The full runtime-language theorem remains open because its independent language
-definition and metatheory are incomplete. The missing compiler proof is a
+definition and metatheory are incomplete. Compiler correctness is a
 different obligation, not the reason the full language theorem is unfinished.
 
 ## Language and execution
@@ -287,7 +285,7 @@ current compiler's treatment of unused expressions. The profile requires used
 binding introductions and complete product patterns; its occurrence checker is
 separate from ordinary typing. The compiler does not yet enforce these rules.
 
-The [working agenda](../task.md#current-agenda) records the next proofs,
+The [working agenda](../task.md) records the next proofs,
 open design decisions, and remaining language families.  Every extension needs
 complete typing and execution rules or a proved expansion, with the corresponding
 formation, progress, preservation, executable admission, and uniqueness results.

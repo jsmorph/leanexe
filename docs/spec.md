@@ -1,8 +1,8 @@
 # LeanExe Language Specification
 
-LeanExe accepts a restricted executable subset of Lean 4 and emits a standalone WebAssembly module for one selected entry declaration.  Lean remains the parser, elaborator, type checker, and proof checker.  The compiler reads checked declarations from the Lean environment, rejects declarations outside this specification, and emits WASM only for accepted programs.
+LeanExe accepts a restricted executable subset of Lean 4 and emits a standalone WebAssembly module for selected entry declarations. Lean remains the parser, elaborator, type checker, and proof checker. The compiler reads checked declarations from the Lean environment, rejects declarations outside this specification, and emits WASM only for accepted programs. Library mode can export several entries; each WASI command mode selects one entry.
 
-The language targets deterministic pure programs over machine integers, byte buffers, arrays, structures, and inductive values.  It supports enough Lean to write conventional first-order programs with bounded loops and recursive helper data structures.  `ByteIO` adds ordered byte reads and writes with explicit errors and timeouts.  Other Lean effects, file access, user-defined host calls, concurrency, randomness, and direct clock access remain outside the accepted source language.  The older WASI command modes provide fixed adapters around pure entries.
+The language targets deterministic pure programs over machine integers, byte buffers, arrays, structures, and inductive values.  It supports enough Lean to write conventional first-order programs with bounded loops and recursive helper data structures.  `ByteIO` adds ordered byte reads and writes with explicit errors and timeouts.  Other Lean effects, file access, user-defined host calls, concurrency, randomness, and direct clock access remain outside the accepted source language. Pure WASI command modes provide fixed adapters around pure entries.
 
 ## Compilation Model
 
@@ -20,6 +20,16 @@ tools/leanrun .lake/build/bin/lean-wasm compile \
   --entry Module.Name.entry \
   --out build/entry.wasm
 ```
+
+For multiple library exports, replace `--entry` with `--entries Name.one,Name.two`.
+Each entry obeys the public ABI restrictions and must have a distinct final name
+component. The exports share memory, runtime functions, and reachable helpers.
+
+`compile-arithmetic` uses the same module/entry/output options but requires the
+restricted grammar defined in [Scalar compiler correctness](arithmetic-correctness.md).
+Every successful admission is covered by its general source-to-exact-WASM
+theorem. This specification describes the broader accepted dialect; that theorem
+does not cover all of it.
 
 `compile-wat` writes the module as WAT text from the same structured instructions the binary encoder serializes, and `tools/check-wat.sh` verifies that parsing the text reproduces the binary byte for byte.  `compile-wasi` emits a WASI command module for a zero-argument entry whose result type is `ByteArray`; the generated `_start` wrapper calls the pure Lean entry and writes the returned bytes to stdout.  `compile-wasi-stdin --max-input-bytes n` emits a WASI command module for an entry of type `ByteArray -> ByteArray`; the generated `_start` wrapper reads stdin through `fd_read` up to the configured limit, calls the pure Lean entry, and writes the returned bytes to stdout.  `compile-wasi-stdin-except --max-input-bytes n` emits a WASI command module for an entry of type `ByteArray -> Except ByteArray ByteArray`; `Except.ok` writes stdout and returns success, while `Except.error` writes stderr and exits with status `1`.  `compile-wasi-argv-except --max-args n --max-argv-bytes n` emits a WASI command module for an entry of type `Array ByteArray -> Except ByteArray ByteArray`; the wrapper reads WASI argv, skips `argv[0]`, and passes user arguments as an internal array of byte strings.  `compile-wasi-stdin-argv-except --max-input-bytes n --max-args n --max-argv-bytes n` emits a WASI command module for an entry of type `ByteArray -> Array ByteArray -> Except ByteArray ByteArray`; the wrapper passes bounded stdin and user arguments to the pure Lean entry.  `report --module Module.Name --entry Module.Name.entry` imports the same module and prints the entry shape, dependency frontier, and first rejection reasons.  `dump-ir --module Module.Name --entry Module.Name.entry` prints the extracted IR for an accepted entry.  `ownership-report --module Module.Name --entry Module.Name.entry` compiles the entry to IR and prints ownership data for each extracted function, including result owner offsets, helper-result fresh-owner offsets, compiler-emitted releases, returned owner expressions, fold accumulator release offsets, and explicit `LeanExe.Runtime.release` expressions.  A program that Lean accepts but LeanExe rejects lies outside this language.
 
