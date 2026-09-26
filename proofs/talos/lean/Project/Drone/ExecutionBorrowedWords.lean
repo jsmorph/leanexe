@@ -68,4 +68,38 @@ theorem BorrowedWords.released {heap : Heap} {store : Store Unit} {source : Free
 #print axioms BorrowedWords.arrayAllocated
 #print axioms BorrowedWords.writesRange
 #print axioms BorrowedWords.released
+
+theorem BorrowedWords.allocate_word_disjoint {heap : Heap} {store : Store Unit} {source : FreeNode}
+    {words : Array UInt64} (h : BorrowedWords heap store source words)
+    (need : UInt64) (size : Nat) (hNeed : 8 * (size + 1) ≤ need.toNat)
+    (hBump : takeFirstFitFrom 0 need heap.nodes = none →
+      heap.top.toNat + 48 + need.toNat ≤ 4294967296) :
+    source.root.toNat + 8 * (words.size + 1) ≤ (allocatedRoot heap.top need heap.nodes).toNat ∨
+    (allocatedRoot heap.top need heap.nodes).toNat + 8 * (size + 1) ≤ source.root.toNat := by
+  have hSep := allocated_region_disjoint heap.top need source heap.nodes
+    h.rootBound h.separated h.below hBump
+  have hSourceCapacity := h.capacity
+  have hCapacity := allocated_capacity need heap.nodes
+  simp only [allocatedNode, regionsDisjoint, FreeNode.region] at hSep
+  omega
+
+theorem BorrowedWords.arrayWritten {heap : Heap} {initial final : Store Unit} {source : FreeNode}
+    {words : Array UInt64} (h : BorrowedWords heap initial source words)
+    (need stride : UInt64) (size : Nat) (hHeap : heap.At initial)
+    (hNeed : 8 * (size + 1) ≤ need.toNat)
+    (hBump : takeFirstFitFrom 0 need heap.nodes = none →
+      heap.top.toNat + 48 + need.toNat ≤ 4294967296)
+    (hWrites : Memory.WritesRange (heap.allocateArrayStore initial need stride) final
+      (allocatedRoot heap.top need heap.nodes).toNat
+      ((allocatedRoot heap.top need heap.nodes).toNat + 8 * (size + 1))) :
+    BorrowedWords (heap.allocate need) final source words := by
+  have hSep := allocated_region_disjoint heap.top need source heap.nodes
+    h.rootBound h.separated h.below hBump
+  have hCapacity := allocated_capacity need heap.nodes
+  apply (h.arrayAllocated need stride hHeap hBump).writesRange hWrites
+  simp only [allocatedNode, regionsDisjoint, FreeNode.region] at hSep
+  omega
+
+#print axioms BorrowedWords.allocate_word_disjoint
+#print axioms BorrowedWords.arrayWritten
 end Project.Drone.Execution
