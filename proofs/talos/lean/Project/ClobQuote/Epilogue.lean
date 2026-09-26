@@ -48,7 +48,8 @@ theorem epilogueA {env : HostEnv Unit} {st : Store Unit}
           .i64 L37, .i64 L38, .i64 L39, .i64 L40, .i64 L41, .i64 L42,
           .i64 L43, .i64 L44, .i64 L45, .i64 L46, .i64 L47, .i64 L48,
           .i64 L49, .i64 L50, .i64 L51, .i64 L52, .i64 L53, .i64 L54,
-          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59],
+          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] }
       env) :
     wp «module»
@@ -65,7 +66,8 @@ theorem epilogueA {env : HostEnv Unit} {st : Store Unit}
           .i64 L37, .i64 L38, .i64 L39, .i64 L40, .i64 L41, .i64 L42,
           .i64 L43, .i64 L44, .i64 L45, .i64 L46, .i64 L47, .i64 L48,
           .i64 L49, .i64 L50, .i64 L51, .i64 L52, .i64 L53, .i64 L54,
-          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59],
+          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [.i64 w1, .i64 w2, .i64 w3, .i64 w4, .i64 w5, .i64 w6] }
       env := by
   wp_walk
@@ -89,7 +91,8 @@ theorem epilogueB {env : HostEnv Unit} {st : Store Unit}
           .i64 L37, .i64 L38, .i64 L39, .i64 L40, .i64 L41, .i64 L42,
           .i64 L43, .i64 L44, .i64 L45, .i64 L46, .i64 L47, .i64 L48,
           .i64 L49, .i64 L50, .i64 L51, .i64 L52, .i64 L53, .i64 L54,
-          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59],
+          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] }
       env) :
     wp «module»
@@ -105,7 +108,8 @@ theorem epilogueB {env : HostEnv Unit} {st : Store Unit}
           .i64 L37, .i64 L38, .i64 L39, .i64 L40, .i64 L41, .i64 L42,
           .i64 L43, .i64 L44, .i64 L45, .i64 L46, .i64 L47, .i64 L48,
           .i64 L49, .i64 L50, .i64 L51, .i64 L52, .i64 L53, .i64 L54,
-          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59],
+          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] }
       env := by
   wp_walk
@@ -129,7 +133,8 @@ theorem epilogueC {env : HostEnv Unit} {st : Store Unit}
           .i64 L37, .i64 L38, .i64 L39, .i64 L40, .i64 L41, .i64 L42,
           .i64 L43, .i64 L44, .i64 L45, .i64 L46, .i64 w6, .i64 w5,
           .i64 w4, .i64 w3, .i64 w2, .i64 w1, .i64 L53, .i64 L54,
-          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59],
+          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] }
       env) :
     wp «module»
@@ -145,7 +150,8 @@ theorem epilogueC {env : HostEnv Unit} {st : Store Unit}
           .i64 L37, .i64 L38, .i64 L39, .i64 L40, .i64 L41, .i64 L42,
           .i64 L43, .i64 L44, .i64 L45, .i64 L46, .i64 L47, .i64 L48,
           .i64 L49, .i64 L50, .i64 L51, .i64 L52, .i64 L53, .i64 L54,
-          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59],
+          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] }
       env := by
   wp_walk
@@ -167,12 +173,13 @@ theorem epilogueD {env : HostEnv Unit} {st : Store Unit}
           .i64 w4, .i64 w3, .i64 w2, .i64 w1, .i64 L35, .i64 L36,
           .i64 L37, .i64 L38, .i64 L39, .i64 L40, .i64 L41, .i64 L42,
           .i64 L43, .i64 L44, .i64 L45, .i64 0, .i64 w6, .i64 w5,
-          .i64 w4, .i64 w3, .i64 w2, .i64 w1, .i64 1, .i64 L54,
-          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59],
+          .i64 w4, .i64 w3, .i64 w2, .i64 w1, .i64 L53, .i64 L54,
+          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] }
       env) :
     wp «module»
-      (.constI64 0 :: .localSet 46 :: .localGet 47 :: .localSet 1 :: .localGet 48 :: .localSet 2 :: .localGet 49 :: .localSet 3 :: .localGet 50 :: .localSet 4 :: .localGet 51 :: .localSet 5 :: .localGet 52 :: .localSet 6 :: .constI64 1 :: .localSet 53 :: rest)
+      (.constI64 0 :: .localSet 46 :: .localGet 47 :: .localSet 1 :: .localGet 48 :: .localSet 2 :: .localGet 49 :: .localSet 3 :: .localGet 50 :: .localSet 4 :: .localGet 51 :: .localSet 5 :: .localGet 52 :: .localSet 6 :: rest)
       Q st
       { params := [.i64 p0],
         locals := [.i64 L1, .i64 L2, .i64 L3, .i64 L4, .i64 L5, .i64 L6,
@@ -184,7 +191,8 @@ theorem epilogueD {env : HostEnv Unit} {st : Store Unit}
           .i64 L37, .i64 L38, .i64 L39, .i64 L40, .i64 L41, .i64 L42,
           .i64 L43, .i64 L44, .i64 L45, .i64 L46, .i64 w6, .i64 w5,
           .i64 w4, .i64 w3, .i64 w2, .i64 w1, .i64 L53, .i64 L54,
-          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59],
+          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] }
       env := by
   wp_walk
@@ -194,7 +202,7 @@ theorem epilogueE {env : HostEnv Unit} {st : Store Unit}
     {Q : Assertion Unit} {p0 : UInt64}
     {L7 L8 L9 L10 L11 L12 L13 L14 L15 L16 L17 L18
      L19 L20 L21 L22 L35 L36 L37 L38 L39 L40 L41 L42
-     L43 L44 L45 L54 L55 L56 L57 L58 L59 w1 w2 w3
+     L43 L44 L45 L53 L54 L55 L56 L57 L58 L59 w1 w2 w3
      w4 w5 w6 : UInt64}
     (hBr : Q (Continuation.Break 0 st
       { params := [.i64 p0],
@@ -206,8 +214,9 @@ theorem epilogueE {env : HostEnv Unit} {st : Store Unit}
           .i64 w4, .i64 w3, .i64 w2, .i64 w1, .i64 L35, .i64 L36,
           .i64 L37, .i64 L38, .i64 L39, .i64 L40, .i64 L41, .i64 L42,
           .i64 (L43 + 1), .i64 L44, .i64 L45, .i64 0, .i64 w6, .i64 w5,
-          .i64 w4, .i64 w3, .i64 w2, .i64 w1, .i64 1, .i64 L54,
-          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59],
+          .i64 w4, .i64 w3, .i64 w2, .i64 w1, .i64 L53, .i64 L54,
+          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] })) :
     wp «module»
       (.localGet 46 :: .constI64 0 :: .neI64 :: .br_if 1 ::
@@ -223,8 +232,9 @@ theorem epilogueE {env : HostEnv Unit} {st : Store Unit}
           .i64 w4, .i64 w3, .i64 w2, .i64 w1, .i64 L35, .i64 L36,
           .i64 L37, .i64 L38, .i64 L39, .i64 L40, .i64 L41, .i64 L42,
           .i64 L43, .i64 L44, .i64 L45, .i64 0, .i64 w6, .i64 w5,
-          .i64 w4, .i64 w3, .i64 w2, .i64 w1, .i64 1, .i64 L54,
-          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59],
+          .i64 w4, .i64 w3, .i64 w2, .i64 w1, .i64 L53, .i64 L54,
+          .i64 L55, .i64 L56, .i64 L57, .i64 L58, .i64 L59,
+          .i64 0, .i64 0, .i64 0, .i64 0, .i64 0],
         values := [] }
       env := by
   wp_walk

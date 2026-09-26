@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "status": "lean-native-check-passed",
+  "prefixes": 229,
+  "embedding_records": 229,
+  "residual_records": 5496,
+  "embedding_record_bytes": 6152,
+  "residual_record_bytes": 18432,
+  "embedding_layout": "token and position u32, quantized output, FP32 output",
+  "residual_layout": "quantized left/right/output, FP32 left/right/output; each vector is 768 FP32 words",
+  "order": "prefix, layer, residual stage, model",
+  "source_sha256": "41285a19dfd7682c577f14b05d6b931a3bd3b4d0d626bcc7d3f4ed06b0d8744d",
+  "coverage_sha256": "73d8db0d5041c31c73771a0ec90a2eeab22808f452b4de0acb139f8b2fc7a1b0",
+  "normalization_sha256": "82fd812f545bcf5980d6ce8ea41c1894cee1586bebf295acd8c93eacb878848e",
+  "projection_sha256": "bdd0e31264988526ed9b0176381cf3144f9e18fd53ec9f948d2433dc517ea8fb",
+  "embedding_sha256": "07808f7401d12175936420716d75c90f6ad50bfe70cb3b735d1e93389794398f",
+  "residual_sha256": "c4ff3cda1e1769520f5bd18993c638827132867ce97b96057736185a4e96fd10",
+  "check_milliseconds": 6521,
+  "checker_sha256": "5346e39d78c9fcdccccd1294318e569ce996a0b612e817d1dba9c68a099e570a",
+  "check_command": "tools/leanrun --timeout 180 proofs/talos/lean/.lake/build/bin/gpt2-pointwise-check build/gpt2-124m/inference/weights.bin build/gpt2-124m/quantized-group64/weights.bin build/gpt2-124m/quantized-group64/pointwise/embedding.bin build/gpt2-124m/quantized-group64/pointwise/residual.bin build/gpt2-124m/quantized-group64/pointwise/ranges",
+  "profiles": {
+    "embedding": {
+      "sha256": "4dda783a50f72e023ae4f0ff480041f146576b409bebf211e21546e3650cdfe0",
+      "gzip_sha256": "662f86d769562474ec6e5fff4ef00aaf1429d18014e8fd32dab900fce40b5f93",
+      "columns": [
+        "index",
+        "token",
+        "position",
+        "quantized_mul",
+        "quantized_add",
+        "reference_add"
+      ],
+      "records": 229,
+      "bounds": {
+        "quantized_mul": {
+          "minimum": 297,
+          "maximum": 299
+        },
+        "quantized_add": {
+          "minimum": 149,
+          "maximum": 152
+        },
+        "reference_add": {
+          "minimum": 149,
+          "maximum": 152
+        }
+      }
+    },
+    "residual": {
+      "sha256": "77ff8d59efa90e9b6680704b18d13397eaf4339ef8c3cd725adae095cff3ebd2",
+      "gzip_sha256": "80b98f031362ca8f1a3f4d0f9b0f33e70530e6175ad01b54c28d440c88343254",
+      "columns": [
+        "index",
+        "quantized_add",
+        "reference_add"
+      ],
+      "records": 5496,
+      "bounds": {
+        "quantized_add": {
+          "minimum": 153,
+          "maximum": 161
+        },
+        "reference_add": {
+          "minimum": 153,
+          "maximum": 161
+        }
+      }
+    }
+  },
+  "checked_sources": {
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/CheckPointwise.lean": "af7c4815ceb588d45fbe13659104a5f6d421acc9fe68509697ec66e3970f4af4",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/Numerical/PointwiseRangeCheck.lean": "1b09b65b5735f7edcfaefb8c505727556f494874ca3b809011b20bc86bb9e93f",
+    "proofs/talos/lean/Project/Gpt2QuantizedCached/Embedding/Compute.lean": "5d893a1ee6fd35938af4bfa5abe398d0b47a78685f4c9a1fb030e4cd72e319c2"
+  },
+  "runtime_trust": "Native Lean compiler/runtime evaluates the checker. Inputs come from hash-verified normalization and projection captures. Their equality to complete source-recurrence intermediates remains a premise of the full numerical theorem.",
+  "scope": "All 229 embedding outputs and 10992 residual outputs recomputed bit for bit, with finite operands, arithmetic ranges, valid embedding coefficients, and position-word equality. Export reconstruction uses the separately checked checkpoint relation."
+}

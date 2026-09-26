@@ -3,8 +3,9 @@
 This directory proves exact execution of GPT-2 124M inference for a sequence
 of up to 128 tokens.  It covers the twelve transformer blocks, attention
 cache, final normalization, all 50,257 logits, allocation, and buffer
-release.  It also proves that the distributed 19,083-byte WASM binary has
-the specified behavior.
+release. The source-driven proof checks the model generated from the compiler's
+output. The exact-artifact package checks its separately identified 19,083-byte
+binary. Each check establishes the guarantee for its own proof subject.
 
 The specification is the [Lean cached model](../../../../../LeanExe/Models/Gpt2/README.md).
 Weights arrive as runtime bytes.  The proof accepts every correctly sized

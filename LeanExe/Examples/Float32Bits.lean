@@ -7,6 +7,9 @@ def subBits (left right : UInt32) : UInt32 := LeanExe.Float32.subBits left right
 def mulBits (left right : UInt32) : UInt32 := LeanExe.Float32.mulBits left right
 def divBits (left right : UInt32) : UInt32 := LeanExe.Float32.divBits left right
 def sqrtBits (value : UInt32) : UInt32 := LeanExe.Float32.sqrtBits value
+def nearestBits (value : UInt32) : UInt32 := LeanExe.Float32.nearestBits value
+def toInt32Bits (value : UInt32) : UInt32 := LeanExe.Float32.toInt32Bits value
+def ofInt32Bits (value : UInt32) : UInt32 := LeanExe.Float32.ofInt32Bits value
 def toFloat64Bits (value : UInt32) : UInt64 := LeanExe.Float32.toFloat64Bits value
 def ofFloat64Bits (value : UInt64) : UInt32 := LeanExe.Float32.ofFloat64Bits value
 

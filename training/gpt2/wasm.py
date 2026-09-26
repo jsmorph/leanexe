@@ -45,6 +45,29 @@ def prepare(directory, cached=False):
     return weights, wasm
 
 
+def prepare_quantized(directory):
+    deployment = json.loads((ROOT / "data/gpt2-quantized-v1/model.json").read_text())
+    wasm = ROOT / deployment["wasm_path"]
+    manifest = json.loads(wasm.with_name("manifest.json").read_text())
+    if (manifest["case"] != "gpt2_quantized_cached"
+            or manifest["sha256"] != deployment["wasm_sha256"]
+            or manifest["byteLength"] != deployment["wasm_bytes"]):
+        raise ValueError("Quantized deployment differs from the verified artifact manifest")
+    if wasm.stat().st_size != deployment["wasm_bytes"] or digest(wasm) != deployment["wasm_sha256"]:
+        raise ValueError("Quantized WASM differs from the pinned binary")
+    weights = directory / "quantized-group64/weights.bin"
+    if not weights.exists():
+        run([sys.executable, ROOT / "training/gpt2/quantized.py", "export-model",
+             "--scheme", "group64", "--model-dir", directory], timeout=600)
+    if weights.stat().st_size != deployment["weight_bytes"] or digest(weights) != deployment["weights_sha256"]:
+        raise ValueError("Quantized weights differ from the pinned checkpoint export")
+    for name in ("config.json", "tokenizer.json", "tokenizer_config.json"):
+        if digest(directory / name) != MANIFEST["files"][name]:
+            raise ValueError(f"{name}: SHA-256 differs from the pinned checkpoint")
+    run([ROOT / "tools/build-wasmtime-host.sh"])
+    return weights, wasm
+
+
 class WasmModel:
     def __init__(self, wasm, weights, cached=False):
         if "\n" in str(weights) or "\r" in str(weights):
@@ -172,7 +195,11 @@ def generate(args):
     from transformers import AutoTokenizer
 
     directory = args.model_dir.resolve()
-    weights, wasm = prepare(directory, cached=not args.full)
+    if args.quantized:
+        from quantized_wasm import QuantizedModel
+        weights, wasm = prepare_quantized(directory)
+    else:
+        weights, wasm = prepare(directory, cached=not args.full)
     tokenizer = AutoTokenizer.from_pretrained(directory, local_files_only=True)
     tokens = tokenizer.encode(args.text)
     if not 1 <= len(tokens) < 128:
@@ -188,7 +215,8 @@ def generate(args):
         draws = [0.0] * count
     started = time.monotonic()
     generated = []
-    with WasmModel(wasm, weights, cached=not args.full) as model:
+    instance = QuantizedModel(wasm, weights) if args.quantized else WasmModel(wasm, weights, cached=not args.full)
+    with instance as model:
         for draw in draws:
             logits = model.infer(tokens)
             token = sample(logits, args.top_k, args.temperature, draw)
@@ -200,9 +228,10 @@ def generate(args):
             args.logits.write_bytes(struct.pack("<50257f", *logits))
         stats, memory_bytes = model.stats, model.memory_bytes
     return {
-        "runtime": "LeanExe/WASM FP32, Wasmtime", "model": MANIFEST["model"],
+        "runtime": "LeanExe/WASM INT8 group64/FP32, Wasmtime" if args.quantized else "LeanExe/WASM FP32, Wasmtime",
+        "model": MANIFEST["model"],
         "revision": MANIFEST["revision"], "parameters": MANIFEST["parameters"],
-        "weights_sha256": PACKED_SHA256, "wasm_sha256": digest(wasm),
+        "weights_sha256": digest(weights), "wasm_sha256": digest(wasm),
         "context_limit": 128, "prompt": args.text, "prompt_tokens": prompt_tokens,
         "kv_cache": not args.full,
         "generated_tokens": generated, "completion": tokenizer.decode(generated, skip_special_tokens=True),
@@ -212,6 +241,7 @@ def generate(args):
             ("context_limit" if len(tokens) == 128 else "length"),
         "seconds": time.monotonic() - started, "wasm_memory_bytes": memory_bytes,
         "allocations": stats[0], "frees": stats[3],
+        **({"scheme": 2, "close_allocations": model.stats[0], "close_frees": model.stats[3]} if args.quantized else {}),
     }
 
 
@@ -225,7 +255,9 @@ def main():
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--logits", type=Path, help="Save the last evaluated context's 50257 little-endian FP32 logits")
     parser.add_argument("--json", action="store_true")
-    parser.add_argument("--full", action="store_true", help="Recompute the full prefix without a key/value cache")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--full", action="store_true", help="Recompute the full prefix without a key/value cache")
+    mode.add_argument("--quantized", action="store_true", help="Use the pinned INT8 group64/FP32 cached binary")
     args = parser.parse_args()
     if args.generate <= 0:
         parser.error("--generate must be positive")

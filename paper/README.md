@@ -13,6 +13,7 @@ This directory contains research papers covering LeanExe's language, WebAssembly
 | [Cached GPT-2 verification report](gpt2-verification-report/README.md) | Exact execution of the Lean GPT-2/128 recurrence, packed FP32 arithmetic, allocation sufficiency, and command-line inference. | [marXiv:2609.00011](http://127.0.0.1:8405/abs/2609.00011) |
 | [WGSL verification report](wgsl-verification-report/README.md) | Checked shader compilation, packed matrix equalities, and conditional hybrid GPT-2/128 execution. | [marXiv:2609.00012](http://127.0.0.1:8405/abs/2609.00012) |
 | [Comprehensive GPT-2 report](gpt2-comprehensive-report/README.md) | LeanExe, CPU artifact and WGSL proofs, theorem structure, literature comparison, and browser execution images. | [marXiv:2609.00014](http://127.0.0.1:8405/abs/2609.00014) |
+| [Quantized GPT-2 report](gpt2-quantized-report/README.md) | Grouped INT8 arithmetic, exact binary and cached-session proofs, accuracy diagnosis, runtime measurements, and numerical bounds. | [marXiv:2609.00018](http://127.0.0.1:8405/abs/2609.00018) |
 | [Drone verification report](drone-verification-report/README.md) | Finite-graph optimality, continuous flight safety, generated-model execution, and five terrain runs. | [marXiv:2609.00019](http://127.0.0.1:8405/abs/2609.00019) |
 
 The root manuscript consists of four publication files:

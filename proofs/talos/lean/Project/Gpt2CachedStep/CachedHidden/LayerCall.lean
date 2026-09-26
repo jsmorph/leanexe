@@ -6,7 +6,7 @@ open Wasm Project.Runtime Project.ProofKit PackedMemory PackedFloatFrame Project
 
 def LayerState (params : List Value) (embeddingPtr inputPtr updatesPtr : UInt64)
     (layer updatesSize : Nat) (frame : Locals) : Prop :=
-  frame.params = params ∧ frame.locals.length = 119 ∧ frame.values = [] ∧ I64Values frame.locals ∧
+  frame.params = params ∧ frame.locals.length = 124 ∧ frame.values = [] ∧ I64Values frame.locals ∧
   frame.locals[11]? = some (.i64 embeddingPtr) ∧ frame.locals[12]? = some (.i64 embeddingPtr) ∧
   frame.locals[13]? = some (.i64 3072) ∧
   frame.locals[17]? = some (.i64 inputPtr) ∧ frame.locals[18]? = some (.i64 inputPtr) ∧
@@ -14,7 +14,9 @@ def LayerState (params : List Value) (embeddingPtr inputPtr updatesPtr : UInt64)
   frame.locals[20]? = some (.i64 updatesPtr) ∧ frame.locals[21]? = some (.i64 updatesPtr) ∧
   frame.locals[22]? = some (.i64 (UInt64.ofNat updatesSize)) ∧
   frame.locals[95]? = some (.i64 (UInt64.ofNat layer)) ∧ frame.locals[96]? = some (.i64 12) ∧
-  frame.locals[97]? = some (.i64 1) ∧ frame.locals[118]? = some (.i64 (if layer = 0 then 0 else 1))
+  frame.locals[97]? = some (.i64 1) ∧ frame.locals[118]? = some (.i64 embeddingPtr) ∧
+  frame.locals[121]? = some (.i64 0) ∧
+  frame.locals[14]? = some (.i64 0) ∧ frame.locals[15]? = some (.i64 0) ∧ frame.locals[16]? = some (.i64 0)
 
 def LayerCallState (params : List Value) (embeddingPtr inputPtr updatesPtr hiddenPtr cachePtr : UInt64)
     (layer updatesSize : Nat) (frame : Locals) : Prop :=
@@ -81,7 +83,7 @@ theorem layerCall_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     wp «module» ((layerBody.drop 4).take 84 ++ rest) Q initial frame env := by
   rcases hState with ⟨hParams, hLocals, hValues, hTyped, hEmbeddingOwner, hEmbeddingPtr, hEmbeddingSize,
     hInputOwner, hInputPtr, hInputBytes, hUpdatesOwner, hUpdatesPtr, hUpdatesBytes,
-    hCounter, hLimit, hStep, hOld⟩
+    hCounter, hLimit, hStep, hInitialInput, hInitialUpdates, hEmptyOwner, hEmptyPtr, hEmptySize⟩
   have hCall := CachedBlock.Spec.cachedBlock_exact env initial heap weightsOwner inputPtr cacheOwner
     weightsPtr inputPtr cachePtr weights input cache layer position hHeap hWeights hInput hCache
     hWeightsProtected hInputProtected hCacheProtected hLayer hPosition hInputSize hCacheSize hWeightsSize hResources hPages
@@ -100,7 +102,7 @@ theorem layerCall_spec (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
   · simp (config := { maxDischargeDepth := 64 }) only [LayerCallState, LayerState, parameters, hLocals,
       List.length_set, List.getElem?_set, Nat.reduceEqDiff, Nat.reduceLT, reduceIte,
       hEmbeddingOwner, hEmbeddingPtr, hEmbeddingSize, hInputOwner, hInputPtr, hInputBytes,
-      hUpdatesOwner, hUpdatesPtr, hUpdatesBytes, hCounter, hLimit, hStep, hOld,
+      hUpdatesOwner, hUpdatesPtr, hUpdatesBytes, hCounter, hLimit, hStep, hInitialInput, hInitialUpdates, hEmptyOwner, hEmptyPtr, hEmptySize,
       I64Values.set, hTyped, UInt64.ofNat_uInt32ToNat,
       show UInt64.ofNat 3072 = 3072 from rfl, show UInt64.ofNat 6144 = 6144 from rfl, and_self]
   · exact hFinalHeap

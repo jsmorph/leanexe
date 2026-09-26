@@ -18,7 +18,7 @@ def invalidFrame (book : UInt64) (order : OrderL) : Locals :=
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty]
     locals := [.i64 0, .i64 book, .i64 order.oid, .i64 order.otrader,
       .i64 order.oside, .i64 order.oprice, .i64 order.oqty, .i64 0] ++
-        List.replicate 41 (.i64 0)
+        List.replicate 43 (.i64 0)
     values := [.i32 0] }
 
 set_option maxRecDepth 1048576

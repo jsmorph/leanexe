@@ -51,7 +51,7 @@ const repoRoot = path.resolve(__dirname, "..");
 if (talosBoundaryTarget !== "Project.TalosPrelude") {
   throw new Error("the artifact proof gate no longer uses LeanExe's focused Talos boundary");
 }
-const expectedVerifierDigest = "9f3a46e5d733dccb0c686a6a4f2ee7213e8b265d5157972794db8569b60ab6fe";
+const expectedVerifierDigest = "0b8486bea82c65a31ecdf332642f8d96fcf99f2726130f56707f373c02017194";
 if (verifierSourceSha256(repoRoot) !== expectedVerifierDigest) {
   throw new Error("the normative verifier source digest changed without updating its test vector");
 }
@@ -99,9 +99,11 @@ const localImports = localLeanImportClosure(repoRoot, [
   ...proofSources.map((source) => source.relative),
 ]);
 const expectedLocalImports = [
+  "LeanExe/ByteIO.lean",
   "LeanExe/Examples/AsciiDigits.lean",
   "LeanExe/Examples/EulerRiemann/Grid.lean",
   "LeanExe/Examples/Packed.lean",
+  "LeanExe/Examples/RunningSum.lean",
   "LeanExe/Examples/TalosAssocList.lean",
   "LeanExe/Float32.lean",
   "LeanExe/Models/Gpt2/Block.lean",
@@ -109,8 +111,13 @@ const expectedLocalImports = [
   "LeanExe/Models/Gpt2/Inference.lean",
   "LeanExe/Models/Gpt2/Kernel.lean",
   "LeanExe/Models/Gpt2/Numerics.lean",
+  "LeanExe/Models/Gpt2/Quantized/Cached.lean",
+  "LeanExe/Models/Gpt2/Quantized/Format.lean",
+  "LeanExe/Models/Gpt2/Quantized/Grouped.lean",
+  "LeanExe/Models/Gpt2/Quantized/Kernel.lean",
   "LeanExe/Packed.lean",
   "LeanExe/Runtime.lean",
+  "LeanExe/Signed32.lean",
 ];
 if (JSON.stringify(localImports) !== JSON.stringify(expectedLocalImports)) {
   throw new Error("the artifact proof's root-package import closure changed");

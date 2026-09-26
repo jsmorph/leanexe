@@ -92,19 +92,71 @@ theorem token_accept_spec (env : HostEnv Unit) (initial : Store Unit)
       hStartFit (by rw [hPages']; exact hStartMemory)
       (by rw [hPages']; exact hPages)
       (by rw [hPages', hStore']; exact hCap)) ?_
-    rintro final values ⟨rfl, hOutput, _, hFinalPages, hFinalBytes, hFinalStore⟩
+    rintro final values ⟨rfl, hOutput, hFinalClipped, hFinalPages, hFinalBytes, hFinalStore,
+      head, finalReleases, finalFrees, hHead, hReleases, hFrees⟩
+    have hRootLow : 48 ≤ (base + 48).toNat := by rw [hWords.2]; omega
+    have hRoot32 : (base + 48).toNat < 4294967296 := by rw [hWords.2]; omega
+    have hNonzero : base + 48 ≠ 0 := by
+      intro hZero
+      rw [hZero] at hRootLow
+      contradiction
+    have hNode := node_toNat start 256 hStartFit
+    have hNodeLow := root_ge start 256
+    have hStartLow : base.toNat + 48 < start := by dsimp only [start]; omega
+    have hDistinct : base + 48 ≠ (node start 256).root := by
+      intro hEq
+      have hValue := congrArg UInt64.toNat hEq
+      rw [hWords.2, hNode.1] at hValue
+      omega
+    have hFinalHeader := Project.Clob.FreshFixedArrayAt.frame_region (st' := final)
+      hRoot32 hRootLow (by
+        intro address _ hUpper
+        apply hFinalBytes
+        change address < (base + 48).toNat +
+          (UInt64ArrayAllocation.capacity clipped.size).toNat at hUpper
+        rw [hWords.2, hWords.1] at hUpper
+        exact hUpper) hHeader
+    wp_fixed_frame [hNonzero]
+    refine wp_iff_cons rfl ?_
+    rw [ite_eq_left (by simp)]
+    wp_fixed_frame [hDistinct]
+    refine wp_iff_cons rfl ?_
+    rw [ite_eq_left (by simp)]
     wp_fixed_frame
+    refine wp_call_tw (output_release_exact env final (base + 48) (clipCapacity clipped.size)
+      head finalReleases finalFrees clipped hRootLow hFinalHeader hFinalClipped
+      hHead hReleases hFrees) ?_
+    rintro released values ⟨rfl, rfl⟩
+    wp_fixed_frame
+    let released := FixedArrayRelease.store final (base + 48) head finalReleases finalFrees
+    have hReleasedBytes := FixedArrayRelease.bytes_outside final (base + 48) head
+      finalReleases finalFrees hRootLow hRoot32.le
+    have hBelow (address : Nat) (hAddress : address < base.toNat) :
+        released.mem.bytes address = final.mem.bytes address := by
+      apply hReleasedBytes address (Or.inl ?_)
+      rw [hWords.2]
+      omega
     apply hNext
     refine ⟨(node start 256).root, rfl, rfl, ?_, ?_, hFinalPages.trans hPages', ?_, ?_⟩
-    · change UInt64Array.At final (node start 256).root
+    · change UInt64Array.At released (node start 256).root
         (if clipped.size = 2488 then infer clipped t0 t1 t2 t3 else clipped)
-      simpa only [hs, ite_true] using hOutput
-    · apply hInput'.frame hFinalPages.ge
+      simp only [hs, ite_true]
+      apply hOutput.frame (by rfl)
+      intro address hLower _
+      apply hReleasedBytes address (Or.inr ?_)
+      rw [hWords.2]
+      rw [hNode.1] at hLower
+      omega
+    · apply hInput'.frame (final := released) (by exact hFinalPages.ge)
       intro address _ hAddress
-      exact hFinalBytes address (by dsimp [start]; omega)
+      exact (hBelow address (by omega)).trans (hFinalBytes address (by dsimp [start]; omega))
     · intro address hAddress
-      exact (hFinalBytes address (by dsimp [start]; omega)).trans (hBytes' address hAddress)
-    · rw [hFinalStore, hStore']
+      exact (hBelow address hAddress).trans
+        ((hFinalBytes address (by dsimp [start]; omega)).trans (hBytes' address hAddress))
+    · calc
+        released = { final with mem := released.mem, globals := released.globals } := rfl
+        _ = { prepared with mem := released.mem, globals := released.globals } := by rw [hFinalStore]
+        _ = { initial with mem := released.mem, globals := released.globals } := by rw [hStore']
   · have hWord : UInt64.ofNat clipped.size ≠ 2488 := fun h => hs (hSizeWord.mp h)
     repeat first
       | wp_fixed_frame [hWord]

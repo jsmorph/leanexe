@@ -1,0 +1,105 @@
+\section{Conditional numerical bounds and token certificates}
+\label{sec:numerical}
+
+\subsection{Projection error with rounded rescaling}
+
+The numerical development bounds the difference between the quantized and binary32 Lean recurrences on a common token sequence, with each recurrence retaining its own cache.  A projection combines error already present in its input, fresh activation quantization error, weight reconstruction error, and rounding in both implementations.  For reference coordinates $x_i,w_i$ and reconstructed coordinates $\widehat x_i,\widehat w_i$ satisfying
+\[
+ |\widehat x_i-x_i|\leq e^x_i,\qquad
+ |\widehat w_i-w_i|\leq e^w_i,
+\]
+the exact-product difference obeys
+\begin{equation}
+ |\widehat x_i\widehat w_i-x_iw_i|
+ \leq |w_i|e^x_i+|x_i|e^w_i+e^x_i e^w_i.
+ \label{eq:producterror}
+\end{equation}
+The incoming activation bound adds to the local reconstruction bound in $e^x_i$.  This relation connects the quantized projection to the binary32 model's current input, accounting for differences accumulated by earlier stages.
+
+For an integer group accumulator $a$, the checked rescaling theorem bounds Equation~\eqref{eq:rescale} by
+\begin{equation}
+ |u-a s^x s^w|\leq\varepsilon_{\rm out}+|a|\varepsilon_{\rm scale}.
+ \label{eq:rescaleerror}
+\end{equation}
+The first term bounds the outer multiplication.  The second accounts for the rounded scale product.  The exact integer conversion follows from $|a|<2^{24}$.  The theorem requires finite scales and explicit bounds on both multiplication operands.  Summing Equation~\eqref{eq:producterror} within a group, applying Equation~\eqref{eq:rescaleerror}, and adding the errors of ordered group additions and the final bias gives a component bound.  The binary32 reference's serial multiplication, addition, and bias errors also contribute.
+
+The executable outward bound replaces per-coordinate magnitudes by checked uniform bounds.  With $|x_i|\leq X$, $|w_i|\leq W$, $e^x_i\leq E_x$, and $e^w_i\leq E_w$, a group contribution is bounded by
+\begin{equation}
+ \varepsilon_{\rm out}+1{,}032{,}256\varepsilon_{\rm scale}
+ +64(WE_x+XE_w+E_xE_w).
+ \label{eq:groupupper}
+\end{equation}
+The projection bound multiplies the group-level expression and addition allowance by the number of groups, then includes bias and reference-computation rounding.  The \proofref{Gpt2QuantizedGroupedRows/UniformError.lean}{uniform grouped bound} and \proofref{Gpt2QuantizedCached/Numerical/ProjectionPair.lean}{paired projection theorem} prove these steps.  Repeated magnitude bounds and repeated propagation through all layers can make the bound large even when measured differences remain small.
+
+\subsection{Nonlinear operations and cached recurrence}
+
+LayerNorm comparison accounts for ordered mean and variance sums, centering, epsilon addition, square root, reciprocal, gamma multiplication, and beta addition.  Its assumptions include finite inputs and parameters, arithmetic-range bounds, retained parameter equality, and positive lower bounds for both computed and real-reference denominators.  The measured checker uses $1/1000$ as the denominator lower bound.  The smallest observed denominator among the original 229 positions is approximately 0.151385.  A separate theorem supplies the real-reference root lower bound from the positive normalization epsilon.
+
+Attention comparison follows query--key dot products, score scaling, maximum subtraction, exponential evaluation, softmax normalization, and probability--value products.  It carries errors in historical cached keys and values as well as errors in the current QKV projection.  The exponential bound includes the degree-18 polynomial remainder, rounded coefficients, up to six halvings and corresponding squarings, and the cutoff below $-64$.  Exact reduction is an explicit premise.  The soundness conversion also needs maximum dominance and positive denominator lower bounds.  The retained softmax denominator bound is one.
+
+The GELU theorem includes its argument arithmetic, the exponential computation, both quotient branches, and the magnitude-eight cutoff.  It uses a conservative real tail bound of $1/100$ at that cutoff.  Under the recorded range exponents, proved majorants bound the exponential error by $1/300$ and the complete GELU error formula by $1/16$.  These are local approximation and rounding bounds under their stated premises.  Residual additions contribute rounding from both recurrences and the error inherited from each input.
+
+For each token, the cache bound retains the maximum of the prior cache error and the new key/value error.  The hidden-state bound passes through all twelve transformer blocks, then through final normalization and the vocabulary projection.  \proofref{Gpt2QuantizedCached/Numerical/SessionBounds.lean}{\code{Session.trace\_error}} proves a per-position, per-logit bound for the paired source traces.  Its \code{Session.Conditions} predicate states the necessary arithmetic and reconstruction obligations against the source intermediates.  Both initial caches can be empty, giving initial cache error zero.
+
+The outward evaluator stores a nonnegative bound as a natural-number numerator divided by $2^{160}$.  Multiplication, division, and conversion from fractions round upward.  Numerators have arbitrary precision.  The \proofref{ProofKit/DyadicUpperSound.lean}{outward arithmetic soundness proof} and operation-specific proofs establish that this representation bounds the real error formulas.  \proofref{Gpt2QuantizedCached/Numerical/ForwardSession.lean}{\code{ForwardUpper.trace\_close}} proves the complete executable bound recurrence, including both cache histories.  Its premises include valid tokens and positions, correct cache shapes, successful quantized steps, finite magnitude bounds, local arithmetic bounds, reconstruction inequalities, and retained parameter equality.
+
+\subsection{Captured range evidence and forward failure}
+
+Native Lean checkers evaluate the finite range predicates on captured operands.  Table~\ref{tab:ranges} gives the coverage.  Captures reproduce all recorded final logit hashes for both models.  The normalization checker recomputes ordered sums.  The GELU checker checks all Horner and squaring stages.  The attention checker reconstructs the two cache histories and checks score and weighted-value arithmetic.  Projection checks establish finite values and conservative ranges for dots, rescaling, group sums, and biases.  Pointwise checks recompute captured embeddings and residual outputs bit for bit.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Checked records & Original 229 positions & Later 73 positions\\
+\midrule
+LayerNorm calls, both models & 11,450 & 3,650\\
+GELU input words, both models & 16,883,712 & 5,382,144\\
+Attention calls, both models & 5,496 & 1,752\\
+Projection input/output records, both models & 22,442 & 7,154\\
+Paired embedding records & 229 & 73\\
+Paired residual-addition records & 5,496 & 1,752\\
+\bottomrule
+\end{tabular}
+\caption{Range-check coverage from the original and held-out evidence directories.  Paired pointwise records contain the quantized and binary32 computations.  Both sets use the same 49 checked projection matrices.}
+\label{tab:ranges}
+\end{table}
+
+Captured operand identity remains a premise: the supplied operand arrays must equal the intermediates of the complete Lean recurrence.  Matching final logit hashes supplies evidence for the capture, but it proves no internal operand equality in the kernel.  The projection checker also uses conservative arithmetic bounds without recomputing every full projection output.  The native compiler and runtime evaluate the data predicates and bound numerators.  The kernel checks the soundness implications from those predicates.  These distinctions apply to the recorded numerical evaluation even though the separate binary execution theorem is complete.
+
+The \dataref{certificates/forward-evaluation.json}{original forward evaluation} and \dataref{experiments/group64-heldout/forward-evaluation.json}{held-out forward evaluation} produce a finite outward bound at every one of 302 evaluated positions.  The smallest reported bound is approximately $1.516\times10^{601}$, and the largest is approximately $8.124\times10^{61429}$.  Every bound exceeds $2^{129}$, whereas the difference between two finite binary32 values is less than $2^{129}$.  Consequently, the evaluated forward bounds certify zero greedy choices and give no useful numerical-precision estimate.  The exact integer numerators and evaluator identities remain in the evidence records.
+
+Equation~\eqref{eq:groupupper} and the nonlinear comparison formulas repeatedly replace component information by magnitude bounds and propagate those bounds through layers and cache history.  They explain the form of the accumulated conservatism.  The retained evaluation does not isolate each formula's contribution to the final excess.  Tighter bounds require analysis of those stages, with separate evidence for any proposed improvement.
+
+\subsection{Certificates from observed logit pairs}
+
+Let $z^f,z^q$ be finite binary32 logit arrays, let $k$ be the binary32 winner, and let $c$ be a common offset.  If bounds $e_j$ satisfy
+\[
+ |z^q_j-c-z^f_j|\leq e_j
+ \quad\text{and}\quad
+ z^f_k-z^f_j>e_k+e_j\quad(j\ne k),
+\]
+then $z^q_k>z^q_j$ for every competitor.  The result follows by subtracting the two error inequalities.  A common offset cancels from every pairwise difference.  The \proofref{ProofKit/F32LogitCertificate.lean}{checked logit predicate and soundness theorem} implement the comparison with integers in units of $2^{-149}$, so every finite binary32 input has an exact representation.  They also check lengths, winner membership, and finiteness.  Equality in the margin test is inconclusive.  The general greedy operation retains the first index on ties, while an accepted strict certificate establishes a unique winner.
+
+The raw certificate sets $c=0$ and uses the observed component errors.  The common-offset certificate sets $c=z^q_k-z^f_k$, which makes the winner's error zero, then uses exact shifted component errors.  Table~\ref{tab:certificates} reports the two checks.  The common-offset check certifies 232 observations.  Of the 263 agreeing observations, 31 remain inconclusive under that sufficient condition.  Certificate failure therefore cannot establish a changed winner.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Input set & Positions & Greedy agreement & Raw & Common offset\\
+\midrule
+Fixed trace & 128 & 120 & 85 & 116\\
+Nine original prompt sequences & 101 & 85 & 34 & 67\\
+Six later prompt sequences & 73 & 58 & 26 & 49\\
+\midrule
+Total observations & 302 & 263 & 145 & 232\\
+\bottomrule
+\end{tabular}
+\caption{Certificates derived from observed logit pairs.  Counts include overlapping prefixes between input sets.  The forward-bound certificate count is zero for all three sets.}
+\label{tab:certificates}
+\end{table}
+
+The packed-word theorem connects the predicate to returned byte arrays, and the cached-step theorem connects such arrays to the paired recurrences.  A session theorem proves equal greedy choices along a common token sequence when every required step passes its certificate.  The recorded acceptance counts establish individual choices for the supplied logit pairs.  They use measured differences after both models have run.  The numerical forward theorem would support a different conclusion from propagated bounds, but its measured bounds satisfy no margin.  Complete sampled-text identity or semantic correctness does not follow from either acceptance count.

@@ -262,6 +262,7 @@ async function main() {
 
   const compiler = manifest.compilerContract;
   requireEqual("compiler executable", compiler.executable, "cc");
+  requireEqual("compiler override variable", compiler.overrideEnvironmentVariable, "CC");
   requireEqual("compiler language", compiler.language, "C11");
   requireJsonEqual("compiler flags", compiler.flags, expectedStrictCFlags);
   requireJsonEqual("mirror link flags", compiler.mirrorLinkFlags, ["-lm"]);
@@ -273,14 +274,14 @@ async function main() {
   requireFileIdentity(
     "fixed-alpha mirror source",
     mirrorSourcePath,
-    8269,
-    "05299ed73f677833f1047bf5160c5f05da2b2d785f81d39a93db23516e57f252",
+    8431,
+    "4dbf2309bcc9a1e4059142123b742175bab78d27b71b5fb5b4a216ffdbf4ee23",
   );
   const driverIdentity = requireFileIdentity(
     "Lanyon driver source",
     "test/fixtures/euler-rusanov-c/lanyon-driver.c",
-    7996,
-    "8b75570129c8e823b19f36ffe4b50579e149c19243121b2824a8d088508a12ac",
+    8158,
+    "53cf96d22bd14892b9520c7379bab36512adc134a9cef562080505b8f5ac95ea",
   );
   requireJsonEqual("manifest mirror source identity", manifest.cSources.fixedAlphaMirror, fileIdentity(mirrorSourcePath));
   requireJsonEqual("manifest Lanyon driver identity", manifest.cSources.lanyonDriver, driverIdentity);

@@ -188,7 +188,7 @@ theorem foldSum_correct : FoldSumSpec := by
           bytes[k]!.toUInt64,
           UInt64.ofNat (sumTake bytes k) + bytes[k]!.toUInt64,
           UInt64.ofNat (sumTake bytes k) + bytes[k]!.toUInt64,
-          1, ?_⟩, ?_⟩
+          l16, ?_⟩, ?_⟩
         · simp only [fFrame, ← hacc, ← hkadd]
           simp
         · have hk1 : (UInt64.ofNat k + 1).toNat = k + 1 := by

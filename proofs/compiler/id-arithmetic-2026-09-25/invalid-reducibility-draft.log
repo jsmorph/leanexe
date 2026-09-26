@@ -1,0 +1,226 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/id-arithmetic-inspect.lean:4:17: error: failed to set `[local reducible]` for `Id`, recall that `[reducible]` affects the term indexing datastructures used by `simp` and type class resolution
+
+Note: Use `set_option allowUnsafeReducibility true` to override reducibility status validation
+../work/id-arithmetic-inspect.lean:8:2: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd (Id UInt64) UInt64 ?m.3
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+../work/id-arithmetic-inspect.lean:12:2: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HSub UInt64 (Id (Id UInt64)) ?m.3
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+../work/id-arithmetic-inspect.lean:17:2: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HMul (Id UInt64) (Id (Id UInt64)) ?m.3
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+../work/id-arithmetic-inspect.lean:22:3: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAnd (Id (Id UInt64)) (Id UInt64) ?m.3
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+../work/id-arithmetic-inspect.lean:30:9: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd (Id UInt64) (Id (Id UInt64)) ?m.11
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+IdArithmeticInspect.left: fun (x y : UInt64) =>
+  have a : Id.{0} UInt64 := x;
+  sorryAx.{1} ((tag : Unit) → UInt64) Bool.true
+    (@Function.const.{1, 1} Unit Lean.Name Unit.unit
+      (Lean.Name.num
+        (Lean.Name.str
+          (Lean.Name.str
+            (Lean.Name.num
+              (Lean.Name.str
+                (Lean.Name.str
+                  (Lean.Name.str
+                    (Lean.Name.num
+                      (Lean.Name.num
+                        (Lean.Name.num
+                          (Lean.Name.num
+                            (Lean.Name.num
+                              (Lean.Name.num (Lean.Name.str Lean.Name.anonymous "_stdin")
+                                (@OfNat.ofNat.{0} Nat (nat_lit 8) (instOfNatNat (nat_lit 8))))
+                              (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                            (@OfNat.ofNat.{0} Nat (nat_lit 8) (instOfNatNat (nat_lit 8))))
+                          (@OfNat.ofNat.{0} Nat (nat_lit 7) (instOfNatNat (nat_lit 7))))
+                        (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                      (@OfNat.ofNat.{0} Nat (nat_lit 7) (instOfNatNat (nat_lit 7))))
+                    "_sorry")
+                  "_@")
+                "_stdin")
+              (@OfNat.ofNat.{0} Nat (nat_lit 1888824956) (instOfNatNat (nat_lit 1888824956))))
+            "_hygCtx")
+          "_hyg")
+        (@OfNat.ofNat.{0} Nat (nat_lit 14) (instOfNatNat (nat_lit 14)))))
+accepted: false
+IdArithmeticInspect.right: fun (x y : UInt64) =>
+  have b : Id.{0} (Id.{0} UInt64) := y;
+  sorryAx.{1} ((tag : Unit) → UInt64) Bool.true
+    (@Function.const.{1, 1} Unit Lean.Name Unit.unit
+      (Lean.Name.num
+        (Lean.Name.str
+          (Lean.Name.str
+            (Lean.Name.num
+              (Lean.Name.str
+                (Lean.Name.str
+                  (Lean.Name.str
+                    (Lean.Name.num
+                      (Lean.Name.num
+                        (Lean.Name.num
+                          (Lean.Name.num
+                            (Lean.Name.num
+                              (Lean.Name.num (Lean.Name.str Lean.Name.anonymous "_stdin")
+                                (@OfNat.ofNat.{0} Nat (nat_lit 12) (instOfNatNat (nat_lit 12))))
+                              (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                            (@OfNat.ofNat.{0} Nat (nat_lit 12) (instOfNatNat (nat_lit 12))))
+                          (@OfNat.ofNat.{0} Nat (nat_lit 7) (instOfNatNat (nat_lit 7))))
+                        (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                      (@OfNat.ofNat.{0} Nat (nat_lit 7) (instOfNatNat (nat_lit 7))))
+                    "_sorry")
+                  "_@")
+                "_stdin")
+              (@OfNat.ofNat.{0} Nat (nat_lit 3132994416) (instOfNatNat (nat_lit 3132994416))))
+            "_hygCtx")
+          "_hyg")
+        (@OfNat.ofNat.{0} Nat (nat_lit 17) (instOfNatNat (nat_lit 17)))))
+accepted: false
+IdArithmeticInspect.both: fun (x y : UInt64) =>
+  have a : Id.{0} UInt64 := x;
+  have b : Id.{0} (Id.{0} UInt64) := y;
+  sorryAx.{1} ((tag : Unit) → UInt64) Bool.true
+    (@Function.const.{1, 1} Unit Lean.Name Unit.unit
+      (Lean.Name.num
+        (Lean.Name.str
+          (Lean.Name.str
+            (Lean.Name.num
+              (Lean.Name.str
+                (Lean.Name.str
+                  (Lean.Name.str
+                    (Lean.Name.num
+                      (Lean.Name.num
+                        (Lean.Name.num
+                          (Lean.Name.num
+                            (Lean.Name.num
+                              (Lean.Name.num (Lean.Name.str Lean.Name.anonymous "_stdin")
+                                (@OfNat.ofNat.{0} Nat (nat_lit 17) (instOfNatNat (nat_lit 17))))
+                              (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                            (@OfNat.ofNat.{0} Nat (nat_lit 17) (instOfNatNat (nat_lit 17))))
+                          (@OfNat.ofNat.{0} Nat (nat_lit 7) (instOfNatNat (nat_lit 7))))
+                        (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                      (@OfNat.ofNat.{0} Nat (nat_lit 7) (instOfNatNat (nat_lit 7))))
+                    "_sorry")
+                  "_@")
+                "_stdin")
+              (@OfNat.ofNat.{0} Nat (nat_lit 2416880004) (instOfNatNat (nat_lit 2416880004))))
+            "_hygCtx")
+          "_hyg")
+        (@OfNat.ofNat.{0} Nat (nat_lit 21) (instOfNatNat (nat_lit 21)))))
+accepted: false
+IdArithmeticInspect.bitwise: fun (x y : UInt64) =>
+  have a : Id.{0} (Id.{0} UInt64) := x;
+  have b : Id.{0} UInt64 := y;
+  sorryAx.{1} ((tag : Unit) → UInt64) Bool.true
+    (@Function.const.{1, 1} Unit Lean.Name Unit.unit
+      (Lean.Name.num
+        (Lean.Name.str
+          (Lean.Name.str
+            (Lean.Name.num
+              (Lean.Name.str
+                (Lean.Name.str
+                  (Lean.Name.str
+                    (Lean.Name.num
+                      (Lean.Name.num
+                        (Lean.Name.num
+                          (Lean.Name.num
+                            (Lean.Name.num
+                              (Lean.Name.num (Lean.Name.str Lean.Name.anonymous "_stdin")
+                                (@OfNat.ofNat.{0} Nat (nat_lit 22) (instOfNatNat (nat_lit 22))))
+                              (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                            (@OfNat.ofNat.{0} Nat (nat_lit 22) (instOfNatNat (nat_lit 22))))
+                          (@OfNat.ofNat.{0} Nat (nat_lit 25) (instOfNatNat (nat_lit 25))))
+                        (@OfNat.ofNat.{0} Nat (nat_lit 2) (instOfNatNat (nat_lit 2))))
+                      (@OfNat.ofNat.{0} Nat (nat_lit 25) (instOfNatNat (nat_lit 25))))
+                    "_sorry")
+                  "_@")
+                "_stdin")
+              (@OfNat.ofNat.{0} Nat (nat_lit 4198671947) (instOfNatNat (nat_lit 4198671947))))
+            "_hygCtx")
+          "_hyg")
+        (@OfNat.ofNat.{0} Nat (nat_lit 25) (instOfNatNat (nat_lit 25)))))
+accepted: false
+IdArithmeticInspect.range: fun (count seed : UInt64) =>
+  @Id.run.{0} UInt64
+    (have bias : Id.{0} UInt64 := seed;
+    have a : UInt64 := seed;
+    @Bind.bind.{0, 0} Id.{0} (@Monad.toBind.{0, 0} Id.{0} Id.instMonad.{0}) UInt64 UInt64
+      (@ForIn.forIn.{0, 0, 0, 0} Id.{0} Std.Legacy.Range Nat
+        (@instForInOfForIn'.{0, 0, 0, 0} Id.{0} Std.Legacy.Range Nat
+          (@inferInstance.{1} (Membership.{0, 0} Nat Std.Legacy.Range) Std.Legacy.instMembershipNatRange)
+          (@Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad.{0, 0} Id.{0} Id.instMonad.{0}))
+        UInt64
+        (Std.Legacy.Range.mk (@OfNat.ofNat.{0} Nat (nat_lit 0) (instOfNatNat (nat_lit 0))) (UInt64.toNat count)
+          (@OfNat.ofNat.{0} Nat (nat_lit 1) (instOfNatNat (nat_lit 1))) Nat.zero_lt_one)
+        a fun (i : Nat) (__s : UInt64) =>
+        have a : UInt64 := __s;
+        have delta : Id.{0} (Id.{0} UInt64) := UInt64.ofNat i;
+        have current : Id.{0} UInt64 := a;
+        have a : UInt64 :=
+          sorryAx.{1} ((tag : Unit) → UInt64) Bool.true
+            (@Function.const.{1, 1} Unit Lean.Name Unit.unit
+              (Lean.Name.num
+                (Lean.Name.str
+                  (Lean.Name.str
+                    (Lean.Name.num
+                      (Lean.Name.str
+                        (Lean.Name.str
+                          (Lean.Name.str
+                            (Lean.Name.num
+                              (Lean.Name.num
+                                (Lean.Name.num
+                                  (Lean.Name.num
+                                    (Lean.Name.num
+                                      (Lean.Name.num (Lean.Name.str Lean.Name.anonymous "_stdin")
+                                        (@OfNat.ofNat.{0} Nat (nat_lit 30) (instOfNatNat (nat_lit 30))))
+                                      (@OfNat.ofNat.{0} Nat (nat_lit 9) (instOfNatNat (nat_lit 9))))
+                                    (@OfNat.ofNat.{0} Nat (nat_lit 30) (instOfNatNat (nat_lit 30))))
+                                  (@OfNat.ofNat.{0} Nat (nat_lit 31) (instOfNatNat (nat_lit 31))))
+                                (@OfNat.ofNat.{0} Nat (nat_lit 9) (instOfNatNat (nat_lit 9))))
+                              (@OfNat.ofNat.{0} Nat (nat_lit 31) (instOfNatNat (nat_lit 31))))
+                            "_sorry")
+                          "_@")
+                        "_stdin")
+                      (@OfNat.ofNat.{0} Nat (nat_lit 1780592896) (instOfNatNat (nat_lit 1780592896))))
+                    "_hygCtx")
+                  "_hyg")
+                (@OfNat.ofNat.{0} Nat (nat_lit 60) (instOfNatNat (nat_lit 60)))));
+        @ite.{1} (Id.{0} (ForInStep.{0} UInt64))
+          (@Eq.{1} Bool
+            (Bool.and
+              (@BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64)
+                (@HMod.hMod.{0, 0, 0} UInt64 UInt64 UInt64 (@instHMod.{0} UInt64 instModUInt64) a
+                  (@OfNat.ofNat.{0} UInt64 (nat_lit 7) (@UInt64.instOfNat (nat_lit 7))))
+                (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0))))
+              (@bne.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) seed
+                (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0)))))
+            Bool.true)
+          (instDecidableEqBool
+            (Bool.and
+              (@BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64)
+                (@HMod.hMod.{0, 0, 0} UInt64 UInt64 UInt64 (@instHMod.{0} UInt64 instModUInt64) a
+                  (@OfNat.ofNat.{0} UInt64 (nat_lit 7) (@UInt64.instOfNat (nat_lit 7))))
+                (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0))))
+              (@bne.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) seed
+                (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0)))))
+            Bool.true)
+          (@Pure.pure.{0, 0} Id.{0}
+            (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+            (ForInStep.{0} UInt64) (@ForInStep.done.{0} UInt64 a))
+          (@Pure.pure.{0, 0} Id.{0}
+            (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+            (ForInStep.{0} UInt64) (@ForInStep.yield.{0} UInt64 a)))
+      fun (__s : UInt64) =>
+      have a : UInt64 := __s;
+      @Pure.pure.{0, 0} Id.{0} (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+        UInt64 a)
+accepted: false

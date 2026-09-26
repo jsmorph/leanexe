@@ -12,7 +12,7 @@ theorem grid_guard_params (ratio pointer : UInt64) (length : Nat) :
     (gridGuardFrame ratio pointer length).params.length = 2 := rfl
 
 theorem grid_guard_locals (ratio pointer : UInt64) (length : Nat) :
-    (gridGuardFrame ratio pointer length).locals.length = 43 := by
+    (gridGuardFrame ratio pointer length).locals.length = 47 := by
   unfold gridGuardFrame
   split <;> simp_all [gridEntryFrame]
   split <;> simp
@@ -37,7 +37,7 @@ theorem step_rejected_entry_exact {m : Wasm.Module} (layout : Layout m)
       { gridGuardFrame ratio pointer input.size with values := [.i32 1] } := by
     simp [gridGuardFrame, hInvalid]
   rw [hGuard]
-  change wp m [.iff 0 0 gridInvalidBody gridValidBody, .localGet 32] _ initial
+  change wp m [.iff 0 0 gridInvalidBody gridValidBody, .localGet 36] _ initial
     { gridGuardFrame ratio pointer input.size with values := [.i32 1] } env
   apply wp_iff_cons rfl
   rw [ite_eq_left (by decide : (1 : UInt32) ≠ 0)]

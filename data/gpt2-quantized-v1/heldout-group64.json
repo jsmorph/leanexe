@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "status": "inputs-frozen-before-evaluation",
+  "source_revision": "82e9e77340d5dc673aa14e4cd31078d589c8b273",
+  "checkpoint": {
+    "model": "openai-community/gpt2",
+    "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+    "parameters": 124439808,
+    "layers": 12,
+    "width": 768,
+    "heads": 12,
+    "feedforward_width": 3072,
+    "vocabulary": 50257,
+    "position_rows": 1024,
+    "reference_context_limit": 128,
+    "files": {
+      "config.json": "0daed7749b4f02b8f76240d5444551d7b08712dab4d0adb8239c56ba823bb7b4",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "model.safetensors": "248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707"
+    }
+  },
+  "fp32_wasm_sha256": "e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade",
+  "quantized_wasm_sha256": "9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075",
+  "scheme": 2,
+  "purpose": "Fresh prompts fixed after group64 implementation and before evaluating these prompts. No quantizer tuning uses these results.",
+  "retained_completions": [],
+  "heldout": [
+    {
+      "id": "narrative",
+      "prompt": "Mara opened the envelope and recognized the handwriting.",
+      "prompt_tokens": [
+        44,
+        3301,
+        4721,
+        262,
+        22878,
+        290,
+        8018,
+        262,
+        44396,
+        13
+      ],
+      "generate": 32,
+      "top_k": 1
+    },
+    {
+      "id": "exposition",
+      "prompt": "A telescope collects light from distant objects using",
+      "prompt_tokens": [
+        32,
+        24344,
+        26609,
+        1657,
+        422,
+        12899,
+        5563,
+        1262
+      ],
+      "generate": 32,
+      "top_k": 1
+    },
+    {
+      "id": "dialogue",
+      "prompt": "\"Where did you put the map?\" she asked.\n\"",
+      "prompt_tokens": [
+        1,
+        8496,
+        750,
+        345,
+        1234,
+        262,
+        3975,
+        1701,
+        673,
+        1965,
+        13,
+        198,
+        1
+      ],
+      "generate": 32,
+      "top_k": 1
+    },
+    {
+      "id": "code",
+      "prompt": "def count_positive(numbers):\n    count = 0\n",
+      "prompt_tokens": [
+        4299,
+        954,
+        62,
+        24561,
+        7,
+        77,
+        17024,
+        2599,
+        198,
+        220,
+        220,
+        220,
+        954,
+        796,
+        657,
+        198
+      ],
+      "generate": 32,
+      "top_k": 1
+    },
+    {
+      "id": "numeric",
+      "prompt": "The container holds 24 liters. After removing 6 liters,",
+      "prompt_tokens": [
+        464,
+        9290,
+        6622,
+        1987,
+        6578,
+        364,
+        13,
+        2293,
+        10829,
+        718,
+        6578,
+        364,
+        11
+      ],
+      "generate": 32,
+      "top_k": 1
+    },
+    {
+      "id": "technical",
+      "prompt": "To multiply two matrices, the number of columns in the first",
+      "prompt_tokens": [
+        2514,
+        29162,
+        734,
+        2603,
+        45977,
+        11,
+        262,
+        1271,
+        286,
+        15180,
+        287,
+        262,
+        717
+      ],
+      "generate": 32,
+      "top_k": 1
+    }
+  ]
+}

@@ -1,10 +1,11 @@
 # Detailed Plans
 
-The root [Development Plan](../plan.md) is the only active work queue.  This directory contains a detailed technical plan when an unfinished item needs more design than the root queue should carry.  Completed implementation plans and experiment sequences are removed after their current facts enter reference documentation and their remaining tasks enter the root plan.
+The root [Development Plan](../plan.md) owns the repository roadmap.  The [type-safety working state](../task.md) owns the current agenda and notes for phase 15.  This directory contains a detailed technical plan when an unfinished item needs more design than the root queue should carry.  Completed implementation plans and experiment sequences are removed after their current facts enter reference documentation and their remaining tasks enter the root plan.
 
 | Plan | Status | Scope |
 |------|--------|-------|
-| [Pretrained GPT-2 through LeanExe](gpt2-124m.md) | Exact execution proofs active | Pretrained 124M FP32 text generation in WASM, with resident weights, cached attention, and tests through 128 tokens.  Packed reads have exact source-agreement proofs.  Construction and tensor traversal are next. |
+| [Pretrained GPT-2 through LeanExe](gpt2-124m.md) | Execution and exact-binary proofs complete | Pretrained 124M FP32 text generation, with resident weights, cached attention, and a proved 128-token session.  Current evidence is in the [cached-inference guide](../proofs/talos/lean/Project/Gpt2CachedStep/README.md). |
+| [Verified quantized GPT-2 124M](gpt2-quantized.md) | Implementation, proofs, evaluation, and repository checks complete; default adoption remains undecided | Eight-bit weights and grouped linear-layer activations, integer accumulation, FP32 surrounding computation, exact-binary cached inference, comparative evaluation, and conditional numerical certificates.  The [file and session API](gpt2-quantized-format.md) is approved. |
 | [Verified tiny transformer inference](tiny-transformer.md) | Proof work paused | Retains four-byte proofs, shared numerical components, and tiny GPT-2/128 text generation. |
 | [Self-Hosted WebAssembly Emitter](self-hosted-emitter.md) | Completed experimental milestone; optional regression path | Records canonical final-module serialization and exact self-reproduction without blocking native compiler development. |
 | [Source-Theorem Transport](theorem-transport.md) | Deferred pending smaller compiler-theorem experiments | Connect a Lean source theorem through proof-grade IR semantics and verified lowering to a theorem about exact artifact bytes. |

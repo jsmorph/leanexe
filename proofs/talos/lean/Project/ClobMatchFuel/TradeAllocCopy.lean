@@ -24,15 +24,15 @@ theorem tradeAllocCopyProg_spec
     (source sourceCapacity g0 g2 capacity next : UInt64)
     (ts : List TradeL) (nodes : List FreeNode)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
-    (hSourceLocal : base.locals[57]? = some (.i64 source))
-    (hTotalLocal : base.locals[59]? =
+    (hSourceLocal : base.locals[67]? = some (.i64 source))
+    (hTotalLocal : base.locals[69]? =
       some (.i64 (UInt64.ofNat ts.length * 4)))
-    (hLengthLocal : base.locals[60]? =
+    (hLengthLocal : base.locals[70]? =
       some (.i64 (UInt64.ofNat (ts.length + 1))))
-    (hCapacityLocal : base.locals[72]? = some (.i64 capacity))
-    (hNextLocal : base.locals[73]? = some (.i64 next))
+    (hCapacityLocal : base.locals[82]? = some (.i64 capacity))
+    (hNextLocal : base.locals[83]? = some (.i64 next))
     (hn : ts.length + 1 < UInt64.size)
     (hbytes : tradeArrayBytes (ts.length + 1) + 7 < UInt64.size)
     (hTotalU : (UInt64.ofNat ts.length * 4).toNat = ts.length * 4)

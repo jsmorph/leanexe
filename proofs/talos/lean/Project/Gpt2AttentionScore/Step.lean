@@ -10,13 +10,13 @@ namespace Project.Gpt2AttentionScore
 open Wasm Project.Common Project.ProofKit PackedMemory PackedFloatFrame LeanExe.Models.Gpt2
 
 def stepCode : Wasm.Program :=
-  match (func1[12]? : Option Wasm.Instruction) with
+  match (func1[10]? : Option Wasm.Instruction) with
   | some (Wasm.Instruction.block _ _ [Wasm.Instruction.loop _ _ body _ _] _ _) => (body.drop 4).dropLast
   | _ => []
 
 set_option maxRecDepth 16384 in
 theorem emitted_loop :
-    func1 = func1.take 12 ++ RangeFoldLoop.program 26 27 stepCode ++ func1.drop 13 := rfl
+    func1 = func1.take 10 ++ RangeFoldLoop.program 26 27 stepCode ++ func1.drop 11 := rfl
 
 def Accumulator (ptr : UInt64) (input : ByteArray) (target source head index : Nat)
     (frame : Locals) : Prop :=

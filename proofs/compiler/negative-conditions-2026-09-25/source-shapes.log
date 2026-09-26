@@ -1,0 +1,38 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+def NegativeShapes.ne : (x y : UInt64) → UInt64 :=
+fun (x y : UInt64) =>
+  @ite.{1} UInt64 (@Ne.{1} UInt64 x y) (@instDecidableNot (@Eq.{1} UInt64 x y) (instDecidableEqUInt64 x y))
+    (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) x
+      (@OfNat.ofNat.{0} UInt64 (nat_lit 1) (@UInt64.instOfNat (nat_lit 1))))
+    (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) y
+      (@OfNat.ofNat.{0} UInt64 (nat_lit 2) (@UInt64.instOfNat (nat_lit 2))))
+def NegativeShapes.notLt : (x y : UInt64) → UInt64 :=
+fun (x y : UInt64) =>
+  @ite.{1} UInt64 (Not (@LT.lt.{0} UInt64 instLTUInt64 x y))
+    (@instDecidableNot (@LT.lt.{0} UInt64 instLTUInt64 x y) (UInt64.decLt x y))
+    (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) x
+      (@OfNat.ofNat.{0} UInt64 (nat_lit 1) (@UInt64.instOfNat (nat_lit 1))))
+    (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) y
+      (@OfNat.ofNat.{0} UInt64 (nat_lit 2) (@UInt64.instOfNat (nat_lit 2))))
+def NegativeShapes.notNotLe : (x y : UInt64) → UInt64 :=
+fun (x y : UInt64) =>
+  @ite.{1} UInt64 (Not (Not (@LE.le.{0} UInt64 instLEUInt64 x y)))
+    (@instDecidableNot (Not (@LE.le.{0} UInt64 instLEUInt64 x y))
+      (@instDecidableNot (@LE.le.{0} UInt64 instLEUInt64 x y) (UInt64.decLe x y)))
+    (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) x
+      (@OfNat.ofNat.{0} UInt64 (nat_lit 1) (@UInt64.instOfNat (nat_lit 1))))
+    (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) y
+      (@OfNat.ofNat.{0} UInt64 (nat_lit 2) (@UInt64.instOfNat (nat_lit 2))))
+def NegativeShapes.notBool : (x y : UInt64) → UInt64 :=
+fun (x y : UInt64) =>
+  @ite.{1} UInt64
+    (Not (@Eq.{1} Bool (@BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) x y) Bool.true))
+    (@instDecidableNot
+      (@Eq.{1} Bool (@BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) x y) Bool.true)
+      (instDecidableEqBool (@BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) x y)
+        Bool.true))
+    (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) x
+      (@OfNat.ofNat.{0} UInt64 (nat_lit 1) (@UInt64.instOfNat (nat_lit 1))))
+    (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) y
+      (@OfNat.ofNat.{0} UInt64 (nat_lit 2) (@UInt64.instOfNat (nat_lit 2))))

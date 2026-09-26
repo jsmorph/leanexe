@@ -352,7 +352,6 @@ theorem artifact_module_eq_cache :
       validated.toTalos = executionCache := by
   exact artifact_correct_of (fun module_ => module_ = executionCache) rfl
 
-
 theorem artifact_gridUpper_exact :
     ∃ raw validated,
       decode artifactBytes = .ok raw ∧

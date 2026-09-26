@@ -49,7 +49,7 @@ theorem completeProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (book trades remaining : UInt64)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hBook : base.get 15 = some (.i64 book))
     (hTrades : base.get 17 = some (.i64 trades))
@@ -72,56 +72,46 @@ theorem completeProg_spec
 
 def fullBranchProg : Wasm.Program :=
   [
-  .localGet 9,
-  .localSet 34,
-  .localGet 10,
-  .localSet 35,
-  .localGet 11,
-  .localSet 36,
-  .localGet 12,
-  .localSet 37,
-  .localGet 13,
-  .localSet 38,
   .localGet 15,
   .localSet 39,
   .localGet 33,
   .localSet 40,
   .localGet 40,
   .localGet 39,
-  .localSet 66,
-  .localGet 66,
+  .localSet 76,
+  .localGet 76,
   .wrapI64,
   .load64 0,
   .ltUI64,
   .iff 0 1 [
     .localGet 39,
-    .localSet 66,
+    .localSet 76,
     .localGet 40,
-    .localSet 67,
-    .localGet 66,
+    .localSet 77,
+    .localGet 76,
     .wrapI64,
     .load64 0,
-    .localSet 68,
-    .localGet 67,
-    .localGet 68,
+    .localSet 78,
+    .localGet 77,
+    .localGet 78,
     .ltUI64,
     .iff 0 1 ([
-      .localGet 68,
+      .localGet 78,
       .constI64 1,
       .subI64,
-      .localSet 71,
-      .localGet 67,
+      .localSet 81,
+      .localGet 77,
       .constI64 5,
       .mulI64,
-      .localSet 69,
-      .localGet 71,
-      .localGet 67,
+      .localSet 79,
+      .localGet 81,
+      .localGet 77,
       .subI64,
       .constI64 5,
       .mulI64,
-      .localSet 70
+      .localSet 80
     ] ++ FullBookUpdate.fullBookUpdateProg) [
-      .localGet 66
+      .localGet 76
     ] [] [.i64]
   ] [
     .unreachable
@@ -131,19 +121,14 @@ def fullBranchProg : Wasm.Program :=
 
 def fullPrepareLocals (base : Locals) (book : UInt64) (taker : OrderL)
     (os : List OrderL) (i : Nat) : List Value :=
-  let locals := base.locals.set 25 (.i64 taker.oid)
-  let locals := locals.set 26 (.i64 taker.otrader)
-  let locals := locals.set 27 (.i64 taker.oside)
-  let locals := locals.set 28 (.i64 taker.oprice)
-  let locals := locals.set 29 (.i64 taker.oqty)
-  let locals := locals.set 30 (.i64 book)
+  let locals := base.locals.set 30 (.i64 book)
   let locals := locals.set 31 (.i64 (UInt64.ofNat i))
-  let locals := locals.set 57 (.i64 book)
-  let locals := locals.set 58 (.i64 (UInt64.ofNat i))
-  let locals := locals.set 59 (.i64 (UInt64.ofNat os.length))
-  let locals := locals.set 62 (.i64 (UInt64.ofNat (os.length - 1)))
-  let locals := locals.set 60 (.i64 (UInt64.ofNat (i * 5)))
-  locals.set 61 (.i64 (UInt64.ofNat ((os.length - 1 - i) * 5)))
+  let locals := locals.set 67 (.i64 book)
+  let locals := locals.set 68 (.i64 (UInt64.ofNat i))
+  let locals := locals.set 69 (.i64 (UInt64.ofNat os.length))
+  let locals := locals.set 72 (.i64 (UInt64.ofNat (os.length - 1)))
+  let locals := locals.set 70 (.i64 (UInt64.ofNat (i * 5)))
+  locals.set 71 (.i64 (UInt64.ofNat ((os.length - 1 - i) * 5)))
 
 def fullPrepareFrame (base : Locals) (book : UInt64) (taker : OrderL)
     (os : List OrderL) (i : Nat) : Locals :=
@@ -154,7 +139,7 @@ theorem fullBranchProg_spec
     (env : HostEnv Unit) (st : Store Unit) (base : Locals)
     (book : UInt64) (taker : OrderL) (os : List OrderL) (i : Nat)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hOid : base.get 9 = some (.i64 taker.oid))
     (hTrader : base.get 10 = some (.i64 taker.otrader))
@@ -280,11 +265,8 @@ def searchFrame (base : Locals) (bookOwner book : UInt64) (taker : OrderL)
     values := [] }
 
 def quantityFrame (base : Locals) (bookOwner book : UInt64)
-    (taker : OrderL) (i : Nat) : Locals :=
-  { base with
-    locals := ((searchLocals base bookOwner book taker (some i)).set 57
-      (.i64 book)).set 58 (.i64 (UInt64.ofNat i))
-    values := [] }
+    (taker : OrderL) (i : Nat) (maker : OrderL) : Locals :=
+  SelectedMaker.cacheFrame (searchFrame base bookOwner book taker (some i)) book i maker
 
 def zeroIffPost (env : HostEnv Unit) (rest : Wasm.Program)
     (Q : Assertion Unit) : Assertion Unit :=
@@ -349,36 +331,12 @@ def dispatchProg : Wasm.Program :=
     .localGet 32,
     .constI64 0,
     .eqI64,
-    .iff 0 0 completeProg [
-      .localGet 15,
-      .localSet 66,
-      .localGet 33,
-      .localSet 67,
-      .localGet 67,
-      .localGet 66,
-      .wrapI64,
-      .load64 0,
-      .ltUI64,
-      .iff 0 1 [
-        .localGet 66,
-        .localGet 67,
-        .constI64 5,
-        .mulI64,
-        .constI64 5,
-        .addI64,
-        .constI64 8,
-        .mulI64,
-        .addI64,
-        .wrapI64,
-        .load64 0
-      ] [
-        .unreachable
-      ] [] [.i64],
+    .iff 0 0 completeProg (SelectedMaker.readProg ++ [
+      .localGet 38,
       .localGet 18,
       .leUI64,
-      .iff 0 0 fullBranchProg
-        PartialBranch.partialBranchProg
-    ]
+      .iff 0 0 fullBranchProg PartialBranch.partialBranchProg
+    ])
   ]
   ]
 
@@ -388,7 +346,7 @@ theorem dispatchProg_spec
     (fuel bookOwner book trades remaining : UInt64) (taker : OrderL)
     (os : List OrderL)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
     (hFuel : base.get 0 = some (.i64 fuel))
     (hOid : base.get 9 = some (.i64 taker.oid))
@@ -413,13 +371,13 @@ theorem dispatchProg_spec
       os[i]!.oqty ≤ remaining →
       wp «module» fullBranchProg
         (dispatchBranchPost env rest Q) st
-        (quantityFrame base bookOwner book taker i) env)
+        (quantityFrame base bookOwner book taker i os[i]!) env)
     (hPartial : ∀ i,
       remaining ≠ 0 → findBestL os taker = some i →
       ¬os[i]!.oqty ≤ remaining →
       wp «module» PartialBranch.partialBranchProg
         (dispatchBranchPost env rest Q) st
-        (quantityFrame base bookOwner book taker i) env) :
+        (quantityFrame base bookOwner book taker i os[i]!) env) :
     wp «module» (dispatchProg ++ rest) Q st base env := by
   simp only [Locals.get] at hOid hTrader hSide hPrice hQty hBookOwner hBook hTrades hRemaining
   have hOid' : base.locals[0] = .i64 taker.oid := by
@@ -494,41 +452,26 @@ theorem dispatchProg_spec
         · simpa [completeFrame] using hFuel
     | some i =>
         have hi : i < os.length := findBestL_some_lt os taker i hFind
-        have hLength64 : os.length < UInt64.size := by
-          rw [size_eq]
-          omega
-        have hIndexLt : UInt64.ofNat i < UInt64.ofNat os.length := by
-          rw [UInt64.lt_iff_toNat_lt, toNat_ofNat_lt (by omega),
-            toNat_ofNat_lt hLength64]
-          exact hi
-        have hMakerBound :
-            (book.toNat + (i * 5 + 4 + 1) * 8) % 4294967296 + 8 ≤
-              st.mem.pages * 65536 :=
-          hOrders.orderWord_bound i 4 hi (by omega)
-        have hMakerRead : st.mem.read64 (UInt32.ofNat
-            ((book.toNat + (i * 5 + 4 + 1) * 8) % 4294967296)) =
-            os[i]!.oqty := by
-          simpa [orderWord, OrderL.word] using
-            hOrders.orderWord_eq i 4 hi (by omega)
         simp [optionVals, hFind, optionTag, optionPayload] at hvs
         subst vs
         wp_run
         simp [hParams, hLocals]
         refine wp_iff_cons rfl ?_
         rw [if_neg (by simp)]
-        norm_num
-        simp (config := { maxSteps := 10000000 }) [wp_simp, hParams,
-          hLocals, hBook']
-        rw [if_neg (Nat.not_lt.mpr hOrders.1.2), hOrders.1.1,
-          if_pos hIndexLt]
+        simp only [List.append_assoc]
+        change wp «module» (SelectedMaker.readProg ++ _) _ st
+          (searchFrame base bookOwner book taker (some i)) env
+        apply SelectedMaker.read_spec env st
+          (searchFrame base bookOwner book taker (some i)) book os i
+          (by simpa [searchFrame] using hParams)
+          (by simp [searchFrame, searchLocals, hLocals]) rfl
+          (by simp [searchFrame, searchLocals, hLocals, hBook'])
+          (by simp [searchFrame, searchLocals, hLocals, optionPayload])
+          hLength32 hi hOrders
+        wp_run_with [SelectedMaker.cacheFrame, SelectedMaker.cacheLocals, searchFrame,
+          searchLocals, hParams, hLocals, hRemaining']
         refine wp_iff_cons rfl ?_
-        rw [if_pos (by simp)]
-        simp (config := { maxSteps := 10000000 }) [wp_simp, hParams,
-          hLocals]
-        rw [if_neg (Nat.not_lt.mpr hMakerBound), hMakerRead]
-        rw [hRemaining']
-        wp_run
-        refine wp_iff_cons rfl ?_
+        simp only [← List.getElem!_eq_getElem?_getD]
         by_cases hMakerQty : os[i]!.oqty ≤ remaining
         · rw [if_pos hMakerQty]
           refine wp.imp (hFull i hRemainingZero hFind hMakerQty) ?_

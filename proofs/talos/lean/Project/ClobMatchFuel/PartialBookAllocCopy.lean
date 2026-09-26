@@ -35,15 +35,15 @@ theorem partialBookAllocCopyProg_spec
     (source sourceCapacity g0 g2 capacity next : UInt64)
     (os : List OrderL) (nodes : List FreeNode)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [])
-    (hSourceLocal : base.locals[57]? = some (.i64 source))
-    (hLengthLocal : base.locals[59]? =
+    (hSourceLocal : base.locals[67]? = some (.i64 source))
+    (hLengthLocal : base.locals[69]? =
       some (.i64 (UInt64.ofNat os.length)))
-    (hTotalLocal : base.locals[60]? =
+    (hTotalLocal : base.locals[70]? =
       some (.i64 (UInt64.ofNat os.length * 5)))
-    (hCapacityLocal : base.locals[73]? = some (.i64 capacity))
-    (hNextLocal : base.locals[74]? = some (.i64 next))
+    (hCapacityLocal : base.locals[83]? = some (.i64 capacity))
+    (hNextLocal : base.locals[84]? = some (.i64 next))
     (hn : os.length < UInt64.size)
     (hbytes : orderArrayBytes os.length + 7 < UInt64.size)
     (hTotalU : (UInt64.ofNat os.length * 5).toNat = os.length * 5)

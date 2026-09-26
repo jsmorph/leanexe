@@ -5,10 +5,10 @@ namespace Project.Gpt2LinearRows
 
 open Wasm Project.Common Project.ProofKit PackedMemory PackedFloatFrame LeanExe.Models.Gpt2
 
-def wordCode : Wasm.Program := (outerBody.drop 12).take 66
+def wordCode : Wasm.Program := (outerBody.drop 12).take 64
 
 set_option maxRecDepth 32768 in
-theorem emitted_dot : wordCode = wordCode.take 30 ++ RangeFoldLoop.program 43 44 dotStep ++ wordCode.drop 31 := rfl
+theorem emitted_dot : wordCode = wordCode.take 28 ++ RangeFoldLoop.program 43 44 dotStep ++ wordCode.drop 29 := rfl
 
 def OutputState (weightsPtr inputPtr : UInt64) (weights input : ByteArray)
     (weightOffset biasOffset inputWidth outputWidth rows : Nat) (frame : Locals) : Prop :=

@@ -1,5 +1,5 @@
 import Project.ClobMarket.MatchRegion
-import Project.ClobLimit.RunMatchCorrect
+import Project.ClobLimit.HeapRunMatch
 
 /-!
 # Transported `runMatch` correctness
@@ -14,12 +14,12 @@ namespace Project.ClobMarket.RunMatch
 
 open Wasm Project.Common Project.Clob
   Project.ClobMarket.MatchRegion
-  Project.ClobLimit.InternalLoopInvariant
+  Project.ClobMatchFuel.LoopInvariant
   Project.ClobMatchFuel.AllocatorFrame
 
 def RunMatchSpec : Prop :=
   ∀ (env : HostEnv Unit) (st : Store Unit)
-    (bookOwner book bookCapacity g0 g2 : UInt64)
+    (book bookCapacity g0 g2 g4 g5 : UInt64)
     (os : List OrderL) (taker : OrderL) (limit : Nat),
     os.length < 4294967296 →
     48 ≤ book.toNat →
@@ -33,6 +33,8 @@ def RunMatchSpec : Prop :=
     st.globals.globals[0]? = some (.i64 g0) →
     st.globals.globals[1]? = some (.i64 0) →
     st.globals.globals[2]? = some (.i64 g2) →
+    st.globals.globals[4]? = some (.i64 g4) →
+    st.globals.globals[5]? = some (.i64 g5) →
     limit < 4294967296 →
     limit ≤ st.mem.pages * 65536 →
     g0.toNat + 112 + (os.length + 1) *
@@ -40,20 +42,19 @@ def RunMatchSpec : Prop :=
         limit →
     TerminatesWith (m := Project.ClobMarket.«module») (id := 18)
       (initial := st) (env := env)
-      (Project.ClobLimit.RunMatchCorrect.runMatchArgs bookOwner book taker)
-      (Project.ClobLimit.InternalLoopResult.Postcondition
-        (Project.ClobLimit.RunMatchCorrect.runMatchContext st os taker g0 g2
-          limit))
+      (Project.ClobLimit.HeapRunMatch.runMatchArgs 0 book taker)
+      (Project.ClobLimit.HeapRunMatch.Postcondition
+        (Project.ClobLimit.HeapRunMatch.runMatchContext st os taker g0 g2 g4 g5 limit))
 
 theorem func18_correct : RunMatchSpec := by
-  intro env st bookOwner book bookCapacity g0 g2 os taker limit hLength
+  intro env st book bookCapacity g0 g2 g4 g5 os taker limit hLength
     hBook48 hBook32 hBookCapacity hBookBelow hBook hFit32 hFit hPages hg0
-    hg1 hg2 hAddressLimit hMemoryLimit hBudget
+    hg1 hg2 hg4 hg5 hAddressLimit hMemoryLimit hBudget
   exact Project.FunctionRegion.terminatesWith matchShift 18
     (by simp [MatchDomain])
-    (Project.ClobLimit.RunMatchCorrect.func18_correct env st bookOwner book
-      bookCapacity g0 g2 os taker limit hLength hBook48 hBook32 hBookCapacity
-      hBookBelow hBook hFit32 hFit hPages hg0 hg1 hg2 hAddressLimit
+    (Project.ClobLimit.HeapRunMatch.func18_correct env st book
+      bookCapacity g0 g2 g4 g5 os taker limit hLength hBook48 hBook32 hBookCapacity
+      hBookBelow hBook hFit32 hFit hPages hg0 hg1 hg2 hg4 hg5 hAddressLimit
       hMemoryLimit hBudget)
 
 end Project.ClobMarket.RunMatch

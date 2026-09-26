@@ -29,8 +29,8 @@ macro "wp_run_big" : tactic => `(tactic|
 
 def appendOrderFinishProg : Wasm.Program :=
   [
-  .localGet 38,
-  .localGet 35,
+  .localGet 40,
+  .localGet 37,
   .constI64 (5 : UInt64),
   .mulI64,
   .constI64 (1 : UInt64),
@@ -39,10 +39,10 @@ def appendOrderFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 40,
+  .localGet 42,
   .store64 (0 : UInt32),
-  .localGet 38,
-  .localGet 35,
+  .localGet 40,
+  .localGet 37,
   .constI64 (5 : UInt64),
   .mulI64,
   .constI64 (2 : UInt64),
@@ -51,10 +51,10 @@ def appendOrderFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 41,
+  .localGet 43,
   .store64 (0 : UInt32),
-  .localGet 38,
-  .localGet 35,
+  .localGet 40,
+  .localGet 37,
   .constI64 (5 : UInt64),
   .mulI64,
   .constI64 (3 : UInt64),
@@ -63,10 +63,10 @@ def appendOrderFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 42,
+  .localGet 44,
   .store64 (0 : UInt32),
-  .localGet 38,
-  .localGet 35,
+  .localGet 40,
+  .localGet 37,
   .constI64 (5 : UInt64),
   .mulI64,
   .constI64 (4 : UInt64),
@@ -75,10 +75,10 @@ def appendOrderFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 43,
+  .localGet 45,
   .store64 (0 : UInt32),
-  .localGet 38,
-  .localGet 35,
+  .localGet 40,
+  .localGet 37,
   .constI64 (5 : UInt64),
   .mulI64,
   .constI64 (5 : UInt64),
@@ -87,12 +87,12 @@ def appendOrderFinishProg : Wasm.Program :=
   .mulI64,
   .addI64,
   .wrapI64,
-  .localGet 44,
+  .localGet 46,
   .store64 (0 : UInt32),
-  .localGet 38,
-  .localSet 25,
-  .localGet 25,
+  .localGet 40,
   .localSet 32,
+  .localGet 32,
+  .localSet 33,
   .constI64 (8 : UInt64),
   .constI64 (0 : UInt64),
   .constI64 (4 : UInt64),
@@ -106,20 +106,20 @@ def appendOrderFinishProg : Wasm.Program :=
   .divUI64,
   .constI64 (8 : UInt64),
   .mulI64,
-  .localSet 41,
-  .localGet 41,
+  .localSet 43,
+  .localGet 43,
   .constI64 (8 : UInt64),
   .ltUI64,
   .iff 0 0 [
     .constI64 (8 : UInt64),
-    .localSet 41
+    .localSet 43
   ] [],
   .constI64 (0 : UInt64),
-  .localSet 46,
+  .localSet 48,
   .constI64 (0 : UInt64),
-  .localSet 42,
+  .localSet 44,
   .globalGet 1,
-  .localSet 43
+  .localSet 45
 ]
 
 def appendOrderFinishPost (st0 st6 : Store Unit) (g0 g2 : UInt64)
@@ -162,7 +162,7 @@ theorem appendOrderFinishProg_spec (env : HostEnv Unit)
       (appendCopyFrame ptr g0 order os.length (os.length * 5)) env := by
   obtain ⟨k, hk, hFrame, hpg, hgl, hfresh, hlength, hlo, hcopied⟩ := hInv
   have hkU : UInt64.ofNat (os.length * 5) = UInt64.ofNat k := by
-    have h := congrArg (fun s : Locals => s.locals[33]?) hFrame
+    have h := congrArg (fun s : Locals => s.locals[35]?) hFrame
     simpa [appendCopyFrame] using h
   have hkEq : k = os.length * 5 := by
     have h := congrArg UInt64.toNat hkU

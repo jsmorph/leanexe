@@ -1,0 +1,20 @@
+/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/tools/run-process.js:141
+    throw new Error(`${formatCommand(args)} ${termination}${detail}`);
+    ^
+
+Error: ".lake/build/bin/lean-wasm" "compile" "--module" "LeanExe.Examples.Exports" "--entries" "LeanExe.Examples.Exports.wordIncrement,LeanExe.Examples.Exports.wordDouble,LeanExe.Examples.Exports.appendByte,LeanExe.Examples.Exports.appendTwice,LeanExe.Examples.Exports.borrow,LeanExe.Examples.Exports.increment" "--out" "tmp/exports-OjNX1q/exports.wasm" exited with status 3:
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+lean-wasm: source: command "compile", module "LeanExe.Examples.Exports", entries "LeanExe.Examples.Exports.wordIncrement,LeanExe.Examples.Exports.wordDouble,LeanExe.Examples.Exports.appendByte,LeanExe.Examples.Exports.appendTwice,LeanExe.Examples.Exports.borrow,LeanExe.Examples.Exports.increment", output "tmp/exports-OjNX1q/exports.wasm": exported entry missing from extracted functions: LeanExe.Examples.Exports.wordDouble
+    at runChecked (/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/tools/run-process.js:141:11)
+    at Object.<anonymous> (/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/test/exports.js:17:1)
+    at Module._compile (node:internal/modules/cjs/loader:1761:14)
+    at Object..js (node:internal/modules/cjs/loader:1893:10)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+
+Node.js v24.13.0

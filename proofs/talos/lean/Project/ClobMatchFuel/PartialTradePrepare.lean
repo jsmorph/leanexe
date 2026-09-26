@@ -1,3 +1,4 @@
+import Project.ClobMatchFuel.SelectedMaker
 import Project.ClobMatchFuel.PartialBookPrepare
 import Project.ClobMatchFuel.TradeAllocAppend
 
@@ -20,94 +21,40 @@ set_option maxRecDepth 1048576
 
 def partialTradePrepareProg : Wasm.Program :=
   [
-  .localSet 63,
-  .localGet 63,
+  .localSet 73,
+  .localGet 73,
   .localSet 21,
   .localGet 17,
-  .localSet 64,
-  .localGet 64,
-  .localSet 66,
-  .localGet 9,
-  .localSet 72,
-  .localGet 15,
-  .localSet 78,
-  .localGet 33,
-  .localSet 79,
-  .localGet 79,
-  .localGet 78,
-  .wrapI64,
-  .load64 0,
-  .ltUI64,
-  .iff 0 1 [
-    .localGet 78,
-    .localGet 79,
-    .constI64 5,
-    .mulI64,
-    .constI64 1,
-    .addI64,
-    .constI64 8,
-    .mulI64,
-    .addI64,
-    .wrapI64,
-    .load64 0
-  ] [
-    .unreachable
-  ] [] [.i64],
-  .localSet 73,
-  .localGet 15,
-  .localSet 78,
-  .localGet 33,
-  .localSet 79,
-  .localGet 79,
-  .localGet 78,
-  .wrapI64,
-  .load64 0,
-  .ltUI64,
-  .iff 0 1 [
-    .localGet 78,
-    .localGet 79,
-    .constI64 5,
-    .mulI64,
-    .constI64 4,
-    .addI64,
-    .constI64 8,
-    .mulI64,
-    .addI64,
-    .wrapI64,
-    .load64 0
-  ] [
-    .unreachable
-  ] [] [.i64],
   .localSet 74,
+  .localGet 74,
+  .localSet 76,
+  .localGet 9,
+  .localSet 82,
+  .localGet 34,
+  .localSet 83,
+  .localGet 37,
+  .localSet 84,
   .localGet 18,
-  .localSet 75,
-  .localGet 66,
+  .localSet 85,
+  .localGet 76,
   .wrapI64,
   .load64 0,
-  .localSet 67,
-  .localGet 67,
+  .localSet 77,
+  .localGet 77,
   .constI64 4,
   .mulI64,
-  .localSet 68,
-  .localGet 67,
+  .localSet 78,
+  .localGet 77,
   .constI64 1,
   .addI64,
-  .localSet 69
+  .localSet 79
   ]
 
 def partialTradePrepareFrame (base : Locals) (newBook oldBook oldTrades : UInt64)
     (taker maker : OrderL) (remaining : UInt64) (i : Nat)
     (ts : List TradeL) : Locals :=
   { base with
-    locals := ((((((((((((((base.locals.set 54 (.i64 newBook)).set 12
-      (.i64 newBook)).set 55 (.i64 oldTrades)).set 57
-      (.i64 oldTrades)).set 63 (.i64 taker.oid)).set 69
-      (.i64 oldBook)).set 70 (.i64 (UInt64.ofNat i))).set 64
-      (.i64 maker.oid)).set 69 (.i64 oldBook)).set 70
-      (.i64 (UInt64.ofNat i))).set 65 (.i64 maker.oprice)).set 66
-      (.i64 remaining)).set 58 (.i64 (UInt64.ofNat ts.length))).set 59
-      (.i64 (UInt64.ofNat ts.length * 4))).set 60
-      (.i64 (UInt64.ofNat ts.length + 1))
+    locals := (((((((((((base.locals.set 64 (.i64 (newBook))).set 12 (.i64 (newBook))).set 65 (.i64 (oldTrades))).set 67 (.i64 (oldTrades))).set 73 (.i64 (taker.oid))).set 74 (.i64 (maker.oid))).set 75 (.i64 (maker.oprice))).set 76 (.i64 (remaining))).set 68 (.i64 (UInt64.ofNat ts.length))).set 69 (.i64 (UInt64.ofNat ts.length * 4))).set 70 (.i64 (UInt64.ofNat ts.length + 1)))
     values := [] }
 
 set_option Elab.async false in
@@ -116,13 +63,14 @@ theorem partialTradePrepareProg_spec
     (newBook oldBook oldTrades remaining : UInt64)
     (taker : OrderL) (os : List OrderL) (ts : List TradeL) (i : Nat)
     (hParams : base.params.length = 9)
-    (hLocals : base.locals.length = 76)
+    (hLocals : base.locals.length = 86)
     (hValues : base.values = [.i64 newBook])
     (hTakerLocal : base.locals[0]? = some (.i64 taker.oid))
     (hBookLocal : base.locals[6]? = some (.i64 oldBook))
     (hTradesLocal : base.locals[8]? = some (.i64 oldTrades))
     (hRemainingLocal : base.locals[9]? = some (.i64 remaining))
     (hIndexLocal : base.locals[24]? = some (.i64 (UInt64.ofNat i)))
+    (hSelected : SelectedMaker.At base os[i]!)
     (hi : i < os.length)
     (hOrdersLength64 : os.length < UInt64.size)
     (hOrders : OrdersAt st oldBook os)
@@ -132,56 +80,19 @@ theorem partialTradePrepareProg_spec
       (partialTradePrepareFrame base newBook oldBook oldTrades taker os[i]!
         remaining i ts) env) :
     wp «module» (partialTradePrepareProg ++ rest) Q st base env := by
-  have hTakerGet : base.locals[0] = .i64 taker.oid := getElem_of_some hTakerLocal
-  have hBookGet : base.locals[6] = .i64 oldBook := getElem_of_some hBookLocal
-  have hTradesGet : base.locals[8] = .i64 oldTrades := getElem_of_some hTradesLocal
-  have hRemainingGet : base.locals[9] = .i64 remaining := getElem_of_some hRemainingLocal
-  have hIndexGet : base.locals[24] = .i64 (UInt64.ofNat i) := getElem_of_some hIndexLocal
-  have hBookLengthRead :
-      st.mem.read64 (UInt32.ofNat (oldBook.toNat % 4294967296)) =
-        UInt64.ofNat os.length := hOrders.1.1
-  have hBookLengthBound :
-      oldBook.toNat % 4294967296 + 8 ≤ st.mem.pages * 65536 := hOrders.1.2
-  have hTradesLengthRead :
-      st.mem.read64 (UInt32.ofNat (oldTrades.toNat % 4294967296)) =
-        UInt64.ofNat ts.length := hTrades.1.1
-  have hTradesLengthBound :
-      oldTrades.toNat % 4294967296 + 8 ≤ st.mem.pages * 65536 := hTrades.1.2
-  have hFieldBound (field : Nat) (hfield : field < 5) :
-      (oldBook.toNat + (i * 5 + field + 1) * 8) % 4294967296 + 8 ≤
-        st.mem.pages * 65536 :=
-    hOrders.orderWord_bound i field hi hfield
-  have hFieldRead (field : Nat) (hfield : field < 5) :
-      st.mem.read64 (UInt32.ofNat
-        ((oldBook.toNat + (i * 5 + field + 1) * 8) % 4294967296)) =
-        os[i]!.word field := by
-    simpa only [orderWord] using hOrders.orderWord_eq i field hi hfield
-  have hIndexLt : UInt64.ofNat i < UInt64.ofNat os.length := by
-    rw [UInt64.lt_iff_toNat_lt, toNat_ofNat_lt (by omega),
-      toNat_ofNat_lt hOrdersLength64]
-    exact hi
+  obtain ⟨hMakerId, _, _, hMakerPrice, hMakerQty⟩ := hSelected
+  have hMakerId' := getElem_of_some hMakerId
+  have hMakerPrice' := getElem_of_some hMakerPrice
+  have hMakerQty' := getElem_of_some hMakerQty
+  have hTaker' := getElem_of_some hTakerLocal
+  have hTrades' := getElem_of_some hTradesLocal
+  have hRemaining' := getElem_of_some hRemainingLocal
+  have hHead := hTrades.1.1
+  have hSafe := Nat.not_lt.mpr hTrades.1.2
   simp only [partialTradePrepareProg, List.cons_append, List.nil_append]
-  wp_run_with [hParams, hLocals, hValues, hTakerGet, hBookGet, hTradesGet, hRemainingGet, hIndexGet]
-  rw [if_neg (Nat.not_lt.mpr hBookLengthBound), hBookLengthRead,
-    if_pos hIndexLt]
-  refine wp_iff_cons rfl ?_
-  rw [if_pos (by simp)]
-  wp_run_with [hParams, hLocals, hValues, hTakerGet, hBookGet, hTradesGet, hRemainingGet, hIndexGet]
-  rw [if_neg (Nat.not_lt.mpr (hFieldBound 0 (by omega))),
-    hFieldRead 0 (by omega)]
-  simp only [OrderL.word]
-  wp_run_with [hParams, hLocals, hValues, hTakerGet, hBookGet, hTradesGet, hRemainingGet, hIndexGet]
-  rw [if_neg (Nat.not_lt.mpr hBookLengthBound), hBookLengthRead,
-    if_pos hIndexLt]
-  refine wp_iff_cons rfl ?_
-  rw [if_pos (by simp)]
-  wp_run_with [hParams, hLocals, hValues, hTakerGet, hBookGet, hTradesGet, hRemainingGet, hIndexGet]
-  rw [if_neg (Nat.not_lt.mpr (hFieldBound 3 (by omega))),
-    hFieldRead 3 (by omega)]
-  simp only [OrderL.word]
-  wp_run_with [hParams, hLocals, hValues, hTakerGet, hBookGet, hTradesGet, hRemainingGet, hIndexGet]
-  rw [if_neg (Nat.not_lt.mpr hTradesLengthBound), hTradesLengthRead]
-  simpa only [partialTradePrepareFrame,
-    List.getElem!_eq_getElem?_getD] using hDone
+  wp_run_with [hParams, hLocals, hValues, hMakerId', hMakerPrice', hMakerQty',
+    hTaker', hTrades', hHead, hSafe, hRemaining']
+  simpa only [partialTradePrepareFrame, List.getElem!_eq_getElem?_getD] using hDone
 
+#print axioms partialTradePrepareProg_spec
 end Project.ClobMatchFuel.PartialTradePrepare

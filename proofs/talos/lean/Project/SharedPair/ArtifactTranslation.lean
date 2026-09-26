@@ -1,5 +1,5 @@
 import Project.SharedPair.ArtifactValidation
-import Project.SharedPair.Program
+import Project.SharedPair.FrozenProgram
 import Project.Artifact.Binary.Proof.Translate
 import Project.Artifact.Binary.Proof.Validate
 
@@ -12,31 +12,31 @@ open Wasm.Binary
 
 theorem function0_eq :
     Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!) =
-      Project.SharedPair.func0Def := by
+      Project.SharedPair.Frozen.func0Def := by
   rfl
 
 theorem function1_eq :
     Translation.functionToTalos Cache.raw 1 (Cache.raw.codes[1]!) =
-      Project.SharedPair.func1Def := by
+      Project.SharedPair.Frozen.func1Def := by
   rfl
 
 theorem function2_eq :
     Translation.functionToTalos Cache.raw 2 (Cache.raw.codes[2]!) =
-      Project.SharedPair.func2Def := by
+      Project.SharedPair.Frozen.func2Def := by
   rfl
 
 theorem function3_eq :
     Translation.functionToTalos Cache.raw 3 (Cache.raw.codes[3]!) =
-      Project.SharedPair.func3Def := by
+      Project.SharedPair.Frozen.func3Def := by
   rfl
 
 theorem function4_eq :
     Translation.functionToTalos Cache.raw 4 (Cache.raw.codes[4]!) =
-      Project.SharedPair.func4Def := by
+      Project.SharedPair.Frozen.func4Def := by
   rfl
 
 theorem functions_eq : Translation.functions Cache.raw =
-    Project.SharedPair.«module».funcs := by
+    Project.SharedPair.Frozen.«module».funcs := by
   change
     [
      Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!),
@@ -45,11 +45,11 @@ theorem functions_eq : Translation.functions Cache.raw =
      Translation.functionToTalos Cache.raw 3 (Cache.raw.codes[3]!),
      Translation.functionToTalos Cache.raw 4 (Cache.raw.codes[4]!)
     ] =
-    [Project.SharedPair.func0Def, Project.SharedPair.func1Def, Project.SharedPair.func2Def, Project.SharedPair.func3Def, Project.SharedPair.func4Def]
+    [Project.SharedPair.Frozen.func0Def, Project.SharedPair.Frozen.func1Def, Project.SharedPair.Frozen.func2Def, Project.SharedPair.Frozen.func3Def, Project.SharedPair.Frozen.func4Def]
   rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq]
 
 def executionCache : Wasm.Module :=
-  Project.SharedPair.«module»
+  Project.SharedPair.Frozen.«module»
 
 theorem translation_cache_eq :
     Translation.module Cache.raw = executionCache := by

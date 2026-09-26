@@ -6,7 +6,7 @@ open Wasm Project.ProofKit WordArrayPush
 set_option maxRecDepth 32768 in
 theorem initial_finish_spec (env : HostEnv Unit) (store final : Store Unit)
     (seed row : UInt64) (aux : List Value) (s : Scratch) (out0 out1 : UInt64)
-    (hAux : aux.length = 21) (hSeed : seed ≠ 0) (hDifferent : seed ≠ row)
+    (hAux : aux.length = 19) (hSeed : seed ≠ 0) (hDifferent : seed ≠ row)
     (hCall : TerminatesWith env Project.Drone.«module» 29 store [.i64 seed]
       (fun released values => released = final ∧ values = []))
     (P : Store Unit → List Value → Prop) (hNext : P final [.i64 row, .i64 row]) :

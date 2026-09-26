@@ -1,0 +1,124 @@
+{
+  "lean": "4.34.0-rc2",
+  "leanCommit": "6a10ac8c22beadecabdbb0919c2b50214762f91d",
+  "node": "24.13.0",
+  "runner": "tools/leanrun, authorized local mode, serial lock",
+  "proofCommand": "tools/arithmetic-check.js proof",
+  "axiomAudits": 9,
+  "candidate": "4c8beae370d27373eba0c2f709380912dde49d50",
+  "engineCommand": "tools/arithmetic-check.js subset-engine id-annotations",
+  "executionGroup": "id-annotations",
+  "nativeV8Comparisons": 471,
+  "declarations": 26,
+  "rangeDeclarations": 12,
+  "rangeComparisons": 288,
+  "priorModulesByteIdentical": 14,
+  "focusedNativeIRComparisons": 208,
+  "focusedRejections": 3,
+  "modules": {
+    "constant": {
+      "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "bytes": 1042
+    },
+    "doJoined": {
+      "sha256": "8dd4dca30bef01f8a43bd1518703239bdd95db99713daa6409324e3c060fa9ad",
+      "bytes": 1067
+    },
+    "doBranchUpdates": {
+      "sha256": "0ecf5202f5e3006b19c5542944b7c65b3832f920e539691cfcc6f7d44536914e",
+      "bytes": 1179
+    },
+    "binaryOrder": {
+      "sha256": "6c794f518496a2c2fab72e4e60558e91bd3ec1bc32475928f5a0de29421895cb",
+      "bytes": 1050
+    },
+    "mixedGuardDo": {
+      "sha256": "1f4c92a71bc21ed1f377a29564554caeac842a179c7c3457753296bfa09a960e",
+      "bytes": 1290
+    },
+    "punitDo": {
+      "sha256": "86d0dd0e535b1d3a944e0b5dc9555e6a54c22738a3d9bc7025a65d76ac2fa4e3",
+      "bytes": 1144
+    },
+    "idReturnedHelper": {
+      "sha256": "b5a2618c0173859d8e23972f98638b7c7226ce92ad642410afcf16e00588d446",
+      "bytes": 1153
+    },
+    "idPureNested": {
+      "sha256": "c0895ea4bc5e527582043820de16fe88a6051fbce67eb175006dad84ccfbc476",
+      "bytes": 1051
+    },
+    "idRunNested": {
+      "sha256": "255ad9b5cfca23aef0ed2e578969cd8ac006f51614c73d6f95839993a0081dbd",
+      "bytes": 1050
+    },
+    "idBindInput": {
+      "sha256": "fb6aa911bd62dfb7837f60839c4a75fa1b8fa6dd8f5afedb57ca1c7b5b8d4e31",
+      "bytes": 1053
+    },
+    "idBindOutput": {
+      "sha256": "2da19bfd22afd7201cf09021ecebd9673731b791d875b9852faf19abbe3bdebb",
+      "bytes": 1057
+    },
+    "idConditional": {
+      "sha256": "d4ff2edad3809f068d69ddbbb5f44be58cd7a676c785fdcaf1b882394f497519",
+      "bytes": 1066
+    },
+    "idFunctions": {
+      "sha256": "29c9e83fe3cdd5680f410dea72f776c6cb6b3a7a2d8fa97a6affad6e845951dd",
+      "bytes": 1076
+    },
+    "idUnused": {
+      "sha256": "64b9366b9c465b0be61b80518a079822a32a4fbd1dcde89a5de97e6b826d448c",
+      "bytes": 1047
+    },
+    "rangeBreakJoined": {
+      "sha256": "f8f608e0428ccd51a638b157de126ba9b6422e2bc7278c68459e3ae5503cf25d",
+      "bytes": 1258
+    },
+    "rangeDoneUnitFunction": {
+      "sha256": "c0fba6f2ada7c190d7b071de53473b78f9543d3a8ee865a3cc90aab4c6610338",
+      "bytes": 1257
+    },
+    "rangeDirectUnitFunction": {
+      "sha256": "118c14d997378048cf39581ec52634abc952c05a86e7e18e109ba4c0b191a5d8",
+      "bytes": 1259
+    },
+    "rangeOuterUnit": {
+      "sha256": "50f1d5fa348ba30eb45ece3ce29ea5bc4537d2b0771e330589812899bbd1301b",
+      "bytes": 1203
+    },
+    "rangeLetHelper": {
+      "sha256": "e31fe0a3c2a39c4d9b34ee49c0467f9b02b25f9aa3438b80288208b2430e6178",
+      "bytes": 1138
+    },
+    "rangeBoolCompoundStep": {
+      "sha256": "e5f40cdc94ae85bf9348ae152499820ebf7881909ef912aa8cedf8379e561501",
+      "bytes": 1455
+    },
+    "rangeLiteralJoined": {
+      "sha256": "31ac44853accf11597dec2714da5fb172276af3beb13206017133f6454c5a3f1",
+      "bytes": 1624
+    },
+    "rangePUnitJoined": {
+      "sha256": "a55303708b9d49708520e8a623a8e0048c2b77b33e1476967853bc0b18d3f6aa",
+      "bytes": 1622
+    },
+    "rangeIdWrapped": {
+      "sha256": "3928163ccf972007c34832d35f6787aee8a2406fa3f29cd13cd0e96b8c5b2cc1",
+      "bytes": 1095
+    },
+    "rangeIdBindLeft": {
+      "sha256": "529f04a8ec85806cd671b0f913bd4f45490ee10212f8bd127e0e377b97586afa",
+      "bytes": 1203
+    },
+    "rangeIdBindRight": {
+      "sha256": "ab8fe585d11109db1457731af32ad32c75497cb0fcdecfd1ec1dc9de4f74f836",
+      "bytes": 1097
+    },
+    "rangeIdStepHelper": {
+      "sha256": "c361fb0edba680b3232cee633d546853f3608c73d6d62b1333b92bfa77a34804",
+      "bytes": 1274
+    }
+  }
+}

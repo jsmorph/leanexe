@@ -9,12 +9,12 @@ namespace Project.Gpt2RowMean
 open Wasm Project.ProofKit PackedMemory PackedFloatFrame LeanExe.Models.Gpt2
 
 def stepCode : Wasm.Program :=
-  match (func1[12]? : Option Wasm.Instruction) with
+  match (func1[10]? : Option Wasm.Instruction) with
   | some (Wasm.Instruction.block _ _ [Wasm.Instruction.loop _ _ body _ _] _ _) => (body.drop 4).dropLast
   | _ => []
 
 theorem emitted_loop :
-    func1 = func1.take 12 ++ RangeFoldLoop.program 16 17 stepCode ++ func1.drop 13 := rfl
+    func1 = func1.take 10 ++ RangeFoldLoop.program 16 17 stepCode ++ func1.drop 11 := rfl
 
 def Accumulator (ptr : UInt64) (input : ByteArray) (row index : Nat) (frame : Locals) : Prop :=
   frame.params = [.i64 ptr, .i64 (UInt64.ofNat input.size), .i64 (UInt64.ofNat row)] ∧

@@ -11,9 +11,9 @@ macro "finish_edge_eval" : tactic => `(tactic|
     Option.bind_none, Option.map, List.length, List.getElem?_cons_zero,
     List.getElem?_cons_succ, List.set, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub,
     reduceCtorEq, or_true, true_or, or_false, false_or, Bool.false_eq_true,
-    Bool.not_eq_true', Bool.not_true, Bool.not_false, beq_self_eq_true,
+    Bool.not_eq_true', UInt64.not_lt, Bool.not_true, Bool.not_false, beq_self_eq_true,
     decide_true, decide_false, ite_true, ite_false, show (5 : UInt64) ≠ 0 by decide, *]
-   simp))
+   simp_all))
 
 set_option maxHeartbeats 1000000 in
 theorem movingTail_evalU64 (r0 r1 z0 z1 u v dh : UInt64) :

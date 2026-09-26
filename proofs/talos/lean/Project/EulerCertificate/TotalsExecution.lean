@@ -9,17 +9,17 @@ open Project.EulerCertificateFlux.Execution (boundsValues vectorValues)
 set_option maxRecDepth 32768
 set_option maxHeartbeats 400000
 
-def totalsHead : Wasm.Program := func74.take 82
-def totalsTail : Wasm.Program := func74.drop 83
+def totalsHead : Wasm.Program := func74.take 80
+def totalsTail : Wasm.Program := func74.drop 81
 
 theorem totals_shape :
     func74 = totalsHead ++ [.block 0 0 [.loop 0 0 totalsLoop]] ++ totalsTail := by
   have tail : func74.drop 37 = AnnotationMatches.function_74_array_fold_0_program ++
-      func74.drop 107 := AnnotationMatches.function_74_array_fold_0_tail_eq
+      func74.drop 105 := AnnotationMatches.function_74_array_fold_0_tail_eq
   calc
     func74 = func74.take 37 ++ func74.drop 37 := (List.take_append_drop 37 func74).symm
     _ = func74.take 37 ++ (AnnotationMatches.function_74_array_fold_0_program ++
-        func74.drop 107) := by rw [tail]
+        func74.drop 105) := by rw [tail]
     _ = totalsHead ++ [.block 0 0 [.loop 0 0 totalsLoop]] ++ totalsTail := rfl
 
 theorem totals_sum_exact (env : HostEnv Unit) (initial : Store Unit)

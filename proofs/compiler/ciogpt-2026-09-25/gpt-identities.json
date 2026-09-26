@@ -1,0 +1,30 @@
+{
+  "gpt2_quantized_linear_rows": {
+    "sha256": "44c390d9605c8eea42b8509dcb7b367a354f2cb62df7158e59c071f87c4e3fc3",
+    "bytes": 4741,
+    "registeredArtifactSha256": "44c390d9605c8eea42b8509dcb7b367a354f2cb62df7158e59c071f87c4e3fc3",
+    "registeredArtifactByteIdentical": true,
+    "checkedIogptModelIdentical": true
+  },
+  "gpt2_quantized_grouped_rows": {
+    "sha256": "190af4bd96af5910ea881667bf16b26075f6faaefa5e6b491a65516ab1edf03a",
+    "bytes": 5409,
+    "registeredArtifactSha256": "190af4bd96af5910ea881667bf16b26075f6faaefa5e6b491a65516ab1edf03a",
+    "registeredArtifactByteIdentical": true,
+    "checkedIogptModelIdentical": true
+  },
+  "gpt2_quantized_cached": {
+    "sha256": "87026cf4bd73cc7ae793195ccc1a6e0469d2eb3d007d1e01cad676e551176aa8",
+    "bytes": 28017,
+    "registeredArtifactSha256": "87026cf4bd73cc7ae793195ccc1a6e0469d2eb3d007d1e01cad676e551176aa8",
+    "registeredArtifactByteIdentical": true,
+    "checkedIogptModelIdentical": true
+  },
+  "gpt2_cached_step": {
+    "sha256": "16fc4a69402a44aef1325ddad922e5d3ba98f28b623deee06041cefddce10f51",
+    "bytes": 18966,
+    "registeredArtifactSha256": "e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade",
+    "registeredArtifactByteIdentical": false,
+    "checkedIogptModelIdentical": true
+  }
+}

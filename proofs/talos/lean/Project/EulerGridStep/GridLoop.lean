@@ -11,7 +11,7 @@ macro "grid_loop_peel" : tactic => `(tactic|
   repeat
     first
     | wp_run [gridLoopFrame, List.set, List.getElem?_cons_zero, List.getElem?_cons_succ,
-        reduceIte, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceMul, *, -UInt64.ofNat_div, -UInt64.ofNat_mul, -UInt64.ofNat_add, -getElem!_pos]
+        reduceIte, UInt32.and_zero, UInt32.zero_and, UInt32.and_self, show (1 : UInt32) ≠ 0 from by decide, Nat.reduceAdd, Nat.reduceLT, Nat.reduceSub, Nat.reduceMul, *, -UInt64.ofNat_div, -UInt64.ofNat_mul, -UInt64.ofNat_add, -getElem!_pos]
     | refine ⟨by omega, ?_⟩
     | (try rw [Wasm.wp_iff_control_types])
       refine wp_iff_cons rfl ?_
@@ -56,6 +56,12 @@ theorem grid_loop_spec {m : Wasm.Module} (layout : Layout m)
       rw [UInt64.lt_iff_toNat_lt, hiNat, hCountNat]
     have hOut := hStore.arrayAt
     have hNonempty : 0 < out.size := by omega
+    have hCurrent48 := (hStore.buffers.liveAt
+      ⟨gridLoopRoot base out.size i out[0]!, out⟩ (by simp)).2.1.root48
+    have hCurrentNonzero : gridLoopRoot base (1 + 6 * (input.size / 3)) i out[0]! ≠ 0 := by
+      intro hz
+      rw [hsz, hz] at hCurrent48
+      contradiction
     obtain ⟨hZeroNat, hWord, hMemory, hRead⟩ := arrayRead_facts current
       (gridLoopRoot base out.size i out[0]!) out hOut 0 hNonempty
     simp only [show UInt64.ofNat 0 = 0 from rfl, Nat.zero_add, Nat.one_mul] at hWord hMemory hRead
@@ -71,6 +77,11 @@ theorem grid_loop_spec {m : Wasm.Module} (layout : Layout m)
     dsimp only
     by_cases hlt : i < input.size / 3
     · have hEncoded := hComparison.mpr hlt
+      have hCountNonzero : UInt64.ofNat (input.size / 3) ≠ 0 := by
+        intro hz
+        have hh := congrArg UInt64.toNat hz
+        rw [hCountNat, UInt64.toNat_zero] at hh
+        omega
       by_cases hs : out[0]! = 0
       · have hTargetNext := ht.trans (gridRemaining_step ratio input out (input.size / 3) i hlt hs)
         have hSucc64 : i + 1 < UInt64.size := by omega
@@ -85,7 +96,7 @@ theorem grid_loop_spec {m : Wasm.Module} (layout : Layout m)
         simp only [advanceAt_size, hsz, hs] at hCall hWord hSafe hLengthSafe hLengthRead hPointerAddress hReadStatus
         grid_loop_peel
         refine wp_call_tw hCall ?_
-        rintro final values ⟨rfl, ⟨na, nr, nf, hn⟩, hp, hg, ho, hb⟩
+        rintro final values ⟨rfl, ho, hFinish⟩
         have hoOriginal : UInt64Array.At final (gridLoopRoot base out.size i out[0]!) out := by
           simpa only [hsz, hs] using ho
         obtain ⟨hnZero, hnWord, hnMemory, hnRead⟩ := arrayRead_facts final
@@ -100,29 +111,66 @@ theorem grid_loop_spec {m : Wasm.Module} (layout : Layout m)
           simpa [Array.getD, hNonempty] using hnRead
         simp only [hsz, hs] at hnWord hnSafe hnLengthSafe hnLengthRead hnPointerAddress hnReadStatus
         grid_loop_peel
-        refine ⟨?_, ?_⟩
-        · refine ⟨hg, i + 1, Model.advanceAt ratio input out i, na, nr, nf,
-            gridSteppedScratch sc ratio pointer (gridLoopRoot base out.size i out[0]!)
-              (gridLoopRoot base (Model.advanceAt ratio input out i).size (i + 1)
-                (Model.advanceAt ratio input out i)[0]!) i,
-            (by omega), (by simpa only [advanceAt_size] using hsz), hn,
-            (by simpa only [advanceAt_size, hsz] using hb), (by simpa only [hTarget] using hTargetNext), ?_⟩
-          simp [gridLoopFrame, gridSteppedScratch, hs, hsz, advanceAt_size, -getElem!_pos, -UInt64.ofNat_div, -UInt64.ofNat_add]
-        · simp [gridLoopMeasure, Locals.get, hiNat, hSuccNat, -UInt64.ofNat_add]
-          omega
+        by_cases hz : i = 0
+        · have hSame : gridLoopRoot base (1 + 6 * (input.size / 3)) i 0 =
+              arenaRoot base (1 + 6 * (input.size / 3)) 0 := by simp [gridLoopRoot, hz]
+          have hZeroNonzero : gridLoopRoot base (1 + 6 * (input.size / 3)) 0 0 ≠ 0 := by
+            simpa only [hz, hs] using hCurrentNonzero
+          have hSameZero : gridLoopRoot base (1 + 6 * (input.size / 3)) 0 0 =
+              arenaRoot base (1 + 6 * (input.size / 3)) 0 := rfl
+          have hInitialNonzero : arenaRoot base (1 + 6 * (input.size / 3)) 0 ≠ 0 := hZeroNonzero
+          simp only [GridAdvanceFinish, ite_eq_left hz, GridNextState] at hFinish
+          obtain ⟨⟨na, nr, nf, hn⟩, hg, hb⟩ := hFinish
+          grid_loop_peel
+          refine ⟨?_, ?_⟩
+          · refine ⟨hg, i + 1, Model.advanceAt ratio input out i, na, nr, nf,
+              gridSteppedScratch sc ratio pointer (gridLoopRoot base out.size i out[0]!)
+                (gridLoopRoot base (Model.advanceAt ratio input out i).size (i + 1)
+                  (Model.advanceAt ratio input out i)[0]!) i nf,
+              (by omega), (by simpa only [advanceAt_size] using hsz), hn,
+              (by simpa only [advanceAt_size, hsz] using hb), (by simpa only [hTarget] using hTargetNext), ?_⟩
+            simp [gridLoopFrame, gridSteppedScratch, hs, hz, hsz, advanceAt_size, hSameZero, -getElem!_pos, -UInt64.ofNat_div, -UInt64.ofNat_add]
+          · simp [gridLoopMeasure, Locals.get, hiNat, hSuccNat, -UInt64.ofNat_add]
+            omega
+        · simp only [GridAdvanceFinish, ite_eq_right hz] at hFinish
+          obtain ⟨hNonzero, hInitial, hDifferent, hRelease⟩ := hFinish
+          simp only [hsz, hs, advanceAt_size] at hNonzero hInitial hDifferent hRelease
+          grid_loop_peel
+          refine wp_call_tw hRelease ?_
+          rintro finished values ⟨rfl, ⟨na, nr, nf, hn⟩, hg, hb⟩
+          have hFree := hn.buffers.frees
+          grid_loop_peel
+          refine ⟨?_, ?_⟩
+          · refine ⟨hg, i + 1, Model.advanceAt ratio input out i, na, nr, nf,
+              gridSteppedScratch sc ratio pointer (gridLoopRoot base out.size i out[0]!)
+                (gridLoopRoot base (Model.advanceAt ratio input out i).size (i + 1)
+                  (Model.advanceAt ratio input out i)[0]!) i nf,
+              (by omega), (by simpa only [advanceAt_size] using hsz), hn,
+              (by simpa only [advanceAt_size, hsz] using hb), (by simpa only [hTarget] using hTargetNext), ?_⟩
+            simp [gridLoopFrame, gridSteppedScratch, hs, hz, hsz, advanceAt_size, -getElem!_pos, -UInt64.ofNat_div, -UInt64.ofNat_add]
+          · simp [gridLoopMeasure, Locals.get, hiNat, hSuccNat, -UInt64.ofNat_add]
+            omega
       · have hd : i = input.size / 3 ∨ out[0]! ≠ 0 := Or.inr hs
         have hDone := ht.trans (gridRemaining_done ratio input out (input.size / 3) i hi hd)
         grid_loop_peel
-        simpa [gridLoopFrame, gridDoneScratch, hlt, hsz, -getElem!_pos, -UInt64.ofNat_div] using
-          hNext current i out a r f (gridDoneScratch sc (gridLoopRoot base out.size i out[0]!) (input.size / 3) i)
-            hGrid hi hsz hStore hOwn hd hDone
+        by_cases hInitial : gridLoopRoot base (1 + 6 * (input.size / 3)) i out[0]! =
+            arenaRoot base (1 + 6 * (input.size / 3)) 0
+        all_goals grid_loop_peel
+        all_goals
+          simpa [gridLoopFrame, gridDoneScratch, hlt, hsz, hInitial, -getElem!_pos, -UInt64.ofNat_div] using
+            (hNext current i out a r f (gridDoneScratch sc (gridLoopRoot base out.size i out[0]!) (input.size / 3) i)
+              hGrid hi hsz hStore hOwn hd hDone)
     · have hEncoded : ¬ (UInt64.ofNat i < UInt64.ofNat (input.size / 3)) := fun h => hlt (hComparison.mp h)
       have hd : i = input.size / 3 ∨ out[0]! ≠ 0 := Or.inl (by omega)
       have hDone := ht.trans (gridRemaining_done ratio input out (input.size / 3) i hi hd)
       grid_loop_peel
-      simpa [gridLoopFrame, gridDoneScratch, hlt, hsz, -getElem!_pos, -UInt64.ofNat_div] using
-        hNext current i out a r f (gridDoneScratch sc (gridLoopRoot base out.size i out[0]!) (input.size / 3) i)
-          hGrid hi hsz hStore hOwn hd hDone
+      by_cases hInitial : gridLoopRoot base (1 + 6 * (input.size / 3)) i out[0]! =
+          arenaRoot base (1 + 6 * (input.size / 3)) 0
+      all_goals grid_loop_peel
+      all_goals
+        simpa [gridLoopFrame, gridDoneScratch, hlt, hsz, hInitial, -getElem!_pos, -UInt64.ofNat_div] using
+          (hNext current i out a r f (gridDoneScratch sc (gridLoopRoot base out.size i out[0]!) (input.size / 3) i)
+            hGrid hi hsz hStore hOwn hd hDone)
 
 #print axioms grid_loop_spec
 end Project.EulerGridStep.Execution

@@ -42,11 +42,11 @@ def allocSizeU (len : UInt64) : UInt64 :=
   (len + 1 + 7) / 8 * 8
 
 def vFrame
-    (ptr len l2 l3 l4 l5 l6 l7 l8 l9 l10 l11 l12 l13 l14 l15 l16 l17 l18 l19
+    (ptr len l2 l3 l4 l5 l6 l7 l8 l9 l10 lNew l11 l12 l13 l14 l15 l16 l17 l18 l19
       l20 l21 l22 : UInt64) : Locals :=
   { params := [.i64 ptr, .i64 len],
     locals := [.i64 l2, .i64 l3, .i64 l4, .i64 l5, .i64 l6, .i64 l7, .i64 l8,
-      .i64 l9, .i64 l10, .i64 l11, .i64 l12, .i64 l13, .i64 l14, .i64 l15,
+      .i64 l9, .i64 l10, .i64 lNew, .i64 l11, .i64 l12, .i64 l13, .i64 l14, .i64 l15,
       .i64 l16, .i64 l17, .i64 l18, .i64 l19, .i64 l20, .i64 l21, .i64 l22],
     values := [] }
 
@@ -57,7 +57,7 @@ def vInv (st0 : Store Unit) (ptr g0 g2 : UInt64) (bytes : List UInt8) :
   fun st s =>
     ∃ k : Nat, k ≤ bytes.length ∧
       s = vFrame ptr (UInt64.ofNat bytes.length) 33 ptr
-        (UInt64.ofNat bytes.length) 0 0 0 0 0 0 ptr
+        (UInt64.ofNat bytes.length) 0 0 0 0 0 0 0 ptr
         (UInt64.ofNat bytes.length) 33 (g0 + 48)
         (UInt64.ofNat bytes.length + 1) (UInt64.ofNat k)
         (allocSizeU (UInt64.ofNat bytes.length)) 0 0
@@ -81,7 +81,7 @@ def vInv (st0 : Store Unit) (ptr g0 g2 : UInt64) (bytes : List UInt8) :
 def vMeasure (bytes : List UInt8) (_ : Store Unit) (s : Locals) : Nat :=
   match s.locals with
   | _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ :: _ ::
-      .i64 l16 :: _ =>
+      _ :: .i64 l16 :: _ =>
       bytes.length - l16.toNat
   | _ => 0
 
@@ -165,7 +165,7 @@ def copyStore (st1 : Store Unit) (g0 g2 : UInt64)
 
 def copyLocals (ptr g0 : UInt64) (bytes : List UInt8) : Locals :=
   vFrame ptr (UInt64.ofNat bytes.length) 33 ptr
-    (UInt64.ofNat bytes.length) 0 0 0 0 0 0 ptr
+    (UInt64.ofNat bytes.length) 0 0 0 0 0 0 0 ptr
     (UInt64.ofNat bytes.length) 33 (g0 + 48)
     (UInt64.ofNat bytes.length + 1) 0
     (allocSizeU (UInt64.ofNat bytes.length)) 0 0

@@ -4,11 +4,11 @@ namespace Project.Gpt2CachedStep.LayerNorm
 open Wasm Project.Common Project.ProofKit PackedMemory PackedFloatFrame LeanExe.Models.Gpt2
 open Project.Gpt2RowInvStd (variancePrefix variancePrefix_zero rowInvStd_eq)
 
-def inversesWord : Wasm.Program := (inversesBody.drop 12).take 57
+def inversesWord : Wasm.Program := (inversesBody.drop 12).take 55
 
 set_option maxRecDepth 32768 in
-theorem emitted_variance : inversesWord = inversesWord.take 14 ++
-    RangeFoldLoop.program 72 73 varianceStep ++ inversesWord.drop 15 := rfl
+theorem emitted_variance : inversesWord = inversesWord.take 12 ++
+    RangeFoldLoop.program 72 73 varianceStep ++ inversesWord.drop 13 := rfl
 
 set_option maxRecDepth 32768 in
 theorem emitted_inverses : (func20.drop 91).take 1 =
