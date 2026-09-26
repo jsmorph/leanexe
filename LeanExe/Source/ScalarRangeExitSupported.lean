@@ -15,12 +15,12 @@ inductive Eval : Lean.Expr → List Scalar.Value → UInt64 → Prop where
       Eval (call indexType stride firstExpr countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
         values (iterate (fun i accumulator => stepFn (begin + stride.number * i) accumulator)
           (trips (stop - begin) stride.number) 0 start)
-  | letBoolean (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
+  | letBoolean (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
       (variables : expression.VariablesMean values booleans)
       (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand))
       (body : Eval b (.boolean (expression.denote native booleans) :: values) outcome) :
       Eval (.letE name (.const ``Bool []) expression.expr b nondep) values outcome
-  | idBindBoolean (action : BooleanAction) (type : ResultType) {native : Lean.Expr → UInt64} {booleans : Nat → Bool}
+  | idBindBoolean (action : BooleanAction) (type : ResultType) {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
       (variables : action.leaf.VariablesMean values booleans)
       (arguments : ∀ operand, operand ∈ action.leaf.operands → EvalWith operand values (native operand))
       (body : Eval b (.boolean (action.leaf.denote native booleans) :: values) outcome) :

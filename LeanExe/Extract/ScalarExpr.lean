@@ -864,7 +864,7 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
     obtain ⟨binding, hb, matched⟩ := Option.bind_eq_some_iff.mp found
     cases binding with
     | word expression => cases matched; exact bindings _ (List.mem_of_getElem? hb)
-    | booleanFunction _ | boolean _ | natural _ | unit | function _ _ | binaryFunction _ | manyFunction _ _ => contradiction
+    | booleanFunction _ | predicateFunction _ | boolean _ | natural _ | unit | function _ _ | binaryFunction _ | manyFunction _ _ => contradiction
   | @natural types index levels hi =>
     have found : (locals[index]?.bind ScalarBinding.natural?) = some target := by
       simpa only [extractScalarExprWith] using compiled

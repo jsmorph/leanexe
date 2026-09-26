@@ -38,7 +38,7 @@ theorem extractBooleanLocalWith_operands {locals : List ScalarBinding} {value : 
 theorem extractBooleanLocalWith_correct {locals : List ScalarBinding} {values : List Value}
     {store : LeanExe.IR.ScalarStore} (value : BooleanLocal)
     (compile : (operand : Lean.Expr) → operand ∈ value.operands → Option LeanExe.IR.Expr)
-    (native : Lean.Expr → UInt64) (booleans : Nat → Bool) {target : LeanExe.IR.Cond}
+    (native : Lean.Expr → UInt64) (booleans : LeanExe.Source.Scalar.BooleanEnvironment) {target : LeanExe.IR.Cond}
     (compiled : extractBooleanLocalWith locals value compile = some target)
     (bindings : ScalarBindingsMatch locals values store)
     (variables : value.VariablesMean values booleans)
