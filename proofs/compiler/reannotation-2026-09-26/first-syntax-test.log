@@ -1,0 +1,54 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_reannotation_syntax.lean:30:25: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 0
+numerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_reannotation_syntax.lean:75:24: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 1400
+numerals are polymorphic in Lean, but the numeral `1400` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_reannotation_syntax.lean:75:9: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Lean.MessageData
+
+Hint: Adding the command `deriving instance BEq for Lean.MessageData` may allow Lean to derive the missing instance.
+test/scalar_reannotation_syntax.lean:31:22: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 0
+numerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_reannotation_syntax.lean:75:44: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 990
+numerals are polymorphic in Lean, but the numeral `990` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_reannotation_syntax.lean:75:32: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Lean.MessageData
+
+Hint: Adding the command `deriving instance BEq for Lean.MessageData` may allow Lean to derive the missing instance.
+test/scalar_reannotation_syntax.lean:51:23: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd Lean.MessageData Nat Lean.MessageData
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_reannotation_syntax.lean:63:20: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd Lean.MessageData Nat Lean.MessageData
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_reannotation_syntax.lean:68:20: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd Lean.MessageData Nat Lean.MessageData
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_reannotation_syntax.lean:74:20: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd Lean.MessageData Nat Lean.MessageData
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.

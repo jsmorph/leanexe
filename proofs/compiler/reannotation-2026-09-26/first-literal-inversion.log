@@ -1,0 +1,74 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/reannotation-literal.lean:11:22: error: unsolved goals
+case metadata.metadata
+number : Nat
+expression expression✝¹ : Lean.Expr
+data✝¹ : Lean.MData
+other : Nat
+expression✝ : Lean.Expr
+data✝ : Lean.MData
+first : NaturalLiteral number expression✝
+ih :
+  ∀ {other : Nat} {otherExpression : Lean.Expr},
+    NaturalLiteral other otherExpression → expression✝ = otherExpression → number = other
+value✝ : NaturalLiteral other expression✝
+same : data✝¹ = data✝ ∧ expression✝¹ = expression✝
+⊢ number = other
+../work/reannotation-literal.lean:30:76: error: Application type mismatch: The argument
+  expressionEq
+has type
+  typedLiteralExpr type numeral evidence = literalExpr n✝
+but is expected to have type
+  typedLiteralExpr ?m.140 numeral ?m.144 = typedLiteralExpr ?m.141 (Lean.Expr.lit (Lean.Literal.natVal n✝)) ?m.145
+in the application
+  typed_literal_numeral expressionEq
+../work/reannotation-literal.lean:33:76: error: Application type mismatch: The argument
+  expressionEq
+has type
+  typedLiteralExpr type numeral evidence =
+    (((Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]).app (Lean.Expr.const `UInt64 [])).app
+          (Lean.Expr.lit (Lean.Literal.natVal n✝))).app
+      evidence✝
+but is expected to have type
+  typedLiteralExpr ?m.201 numeral ?m.205 = typedLiteralExpr ?m.202 (Lean.Expr.lit (Lean.Literal.natVal n✝)) ?m.206
+in the application
+  typed_literal_numeral expressionEq
+../work/reannotation-literal.lean:36:83: error: Application type mismatch: The argument
+  expressionEq
+has type
+  typedLiteralExpr type numeral evidence =
+    (((Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]).app (Lean.Expr.const `UInt64 [])).app numeral✝).app evidence✝
+but is expected to have type
+  typedLiteralExpr ?m.261 numeral ?m.265 = typedLiteralExpr ?m.262 numeral✝ ?m.266
+in the application
+  typed_literal_numeral expressionEq
+../work/reannotation-literal.lean:54:4: error: Tactic `contradiction` failed
+
+case range
+type : ResultType
+numeral evidence : Lean.Expr
+values : List Value
+number : Nat
+numberMeaning : NaturalLiteral number numeral
+count✝ : Lean.Expr
+stop✝ : UInt64
+initial✝ : Lean.Expr
+start✝ : UInt64
+stepBody✝ scalarBody✝ : Lean.Expr
+step✝ : Nat → UInt64 → UInt64
+indexName✝ accumulatorName✝ : Lean.Name
+indexBi✝ accumulatorBi✝ : Lean.BinderInfo
+yielding : Range.YieldScalar stepBody✝ scalarBody✝
+expressionEq :
+  typedLiteralExpr type numeral evidence =
+    Range.call count✝ initial✝ indexName✝ accumulatorName✝ indexBi✝ accumulatorBi✝ stepBody✝
+countValue : EvalWith count✝ values stop✝
+initialValue : EvalWith initial✝ values start✝
+steps :
+  ∀ (index : Nat) (value : UInt64),
+    EvalWith scalarBody✝ (Value.word value :: Value.natural index :: values) (step✝ index value)
+root :
+  Lean.Expr.const `OfNat.ofNat [Lean.Level.zero] =
+    Lean.Expr.const `ForIn.forIn [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]
+⊢ Range.iterate step✝ stop✝.toNat 0 start✝ = UInt64.ofNat number

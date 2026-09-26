@@ -1,0 +1,82 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/reannotation-inversion.lean:10:22: error: Dependent elimination failed: Failed to solve equation
+  "add" = "sub"
+../work/reannotation-inversion.lean:10:22: error: Dependent elimination failed: Failed to solve equation
+  "sub" = "add"
+../work/reannotation-inversion.lean:10:22: error: Dependent elimination failed: Failed to solve equation
+  "mul" = "add"
+../work/reannotation-inversion.lean:10:22: error: Dependent elimination failed: Failed to solve equation
+  "div" = "add"
+../work/reannotation-inversion.lean:10:22: error: Dependent elimination failed: Failed to solve equation
+  "mod" = "add"
+../work/reannotation-inversion.lean:10:22: error: Dependent elimination failed: Failed to solve equation
+  "land" = "add"
+../work/reannotation-inversion.lean:10:22: error: Dependent elimination failed: Failed to solve equation
+  "lor" = "add"
+../work/reannotation-inversion.lean:10:22: error: Dependent elimination failed: Failed to solve equation
+  "xor" = "add"
+../work/reannotation-inversion.lean:10:22: error: Dependent elimination failed: Failed to solve equation
+  "shiftLeft" = "add"
+../work/reannotation-inversion.lean:10:22: error: Dependent elimination failed: Failed to solve equation
+  "shiftRight" = "add"
+../work/reannotation-inversion.lean:13:4: error: Dependent elimination failed: Failed to solve equation
+  `HAdd.hAdd = names✝.1
+../work/reannotation-inversion.lean:13:4: error: Dependent elimination failed: Failed to solve equation
+  `HSub.hSub = names✝.1
+../work/reannotation-inversion.lean:13:4: error: Dependent elimination failed: Failed to solve equation
+  `HMul.hMul = names✝.1
+../work/reannotation-inversion.lean:13:4: error: Dependent elimination failed: Failed to solve equation
+  `HDiv.hDiv = names✝.1
+../work/reannotation-inversion.lean:13:4: error: Dependent elimination failed: Failed to solve equation
+  `HMod.hMod = names✝.1
+../work/reannotation-inversion.lean:13:4: error: Dependent elimination failed: Failed to solve equation
+  `HAnd.hAnd = names✝.1
+../work/reannotation-inversion.lean:13:4: error: Dependent elimination failed: Failed to solve equation
+  `HOr.hOr = names✝.1
+../work/reannotation-inversion.lean:13:4: error: Dependent elimination failed: Failed to solve equation
+  `HXor.hXor = names✝.1
+../work/reannotation-inversion.lean:13:4: error: Dependent elimination failed: Failed to solve equation
+  `HShiftLeft.hShiftLeft = names✝.1
+../work/reannotation-inversion.lean:13:4: error: Dependent elimination failed: Failed to solve equation
+  `HShiftRight.hShiftRight = names✝.1
+../work/reannotation-inversion.lean:22:24: error: Dependent elimination failed: Failed to solve equation
+  "UInt64" = "Id"
+../work/reannotation-inversion.lean:22:24: error: Dependent elimination failed: Failed to solve equation
+  "UInt64" = "Id"
+../work/reannotation-inversion.lean:22:24: error: Dependent elimination failed: Failed to solve equation
+  "UInt64" = "Id"
+../work/reannotation-inversion.lean:22:24: error: Dependent elimination failed: Failed to solve equation
+  "UInt64" = "Id"
+../work/reannotation-inversion.lean:22:24: error: Dependent elimination failed: Failed to solve equation
+  "UInt64" = "Id"
+../work/reannotation-inversion.lean:22:24: error: Dependent elimination failed: Failed to solve equation
+  "UInt64" = "Id"
+../work/reannotation-inversion.lean:22:24: error: Dependent elimination failed: Failed to solve equation
+  "UInt64" = "Id"
+../work/reannotation-inversion.lean:22:24: error: Dependent elimination failed: Failed to solve equation
+  "UInt64" = "Id"
+../work/reannotation-inversion.lean:22:24: error: Dependent elimination failed: Failed to solve equation
+  "UInt64" = "Id"
+../work/reannotation-inversion.lean:22:24: error: Dependent elimination failed: Failed to solve equation
+  "UInt64" = "Id"
+../work/reannotation-inversion.lean:27:24: error: Dependent elimination failed: Failed to solve equation
+  "HAdd" = "Bind"
+../work/reannotation-inversion.lean:27:24: error: Dependent elimination failed: Failed to solve equation
+  "HSub" = "Bind"
+../work/reannotation-inversion.lean:27:24: error: Dependent elimination failed: Failed to solve equation
+  "HMul" = "Bind"
+../work/reannotation-inversion.lean:27:24: error: Dependent elimination failed: Failed to solve equation
+  "HDiv" = "Bind"
+../work/reannotation-inversion.lean:27:24: error: Dependent elimination failed: Failed to solve equation
+  "HMod" = "Bind"
+../work/reannotation-inversion.lean:27:24: error: Dependent elimination failed: Failed to solve equation
+  "HAnd" = "Bind"
+../work/reannotation-inversion.lean:27:24: error: Dependent elimination failed: Failed to solve equation
+  "HOr" = "Bind"
+../work/reannotation-inversion.lean:27:24: error: Dependent elimination failed: Failed to solve equation
+  "HXor" = "Bind"
+../work/reannotation-inversion.lean:27:24: error: Dependent elimination failed: Failed to solve equation
+  "HShiftLeft" = "Bind"
+../work/reannotation-inversion.lean:27:24: error: Dependent elimination failed: Failed to solve equation
+  "HShiftRight" = "Bind"
