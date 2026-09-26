@@ -26,7 +26,11 @@ pass 1,148 comparisons and 864 rejections. The eleven modules shared with the
 previous archive retain identical bytes. Evidence is in
 [the loop-step helper archive](proofs/compiler/reusable-boolean-step-2026-09-26/README.md).
 
-Next: predicates declared around a loop, then broader helper signatures.
+Predicates declared around a loop now have proved source totality, acceptance,
+soundness, evaluation correctness and IR invariants. Eight concrete loops and
+systematic syntax checks pass 1,920 native/IR comparisons and 864 invalid-input
+tests. The full theorem and selected native/Wasm checks are next, followed by
+broader helper signatures.
 Full-dialect correctness remains unfinished. Get each capability proved and
 executing end to end, and commit/push frequently.
 

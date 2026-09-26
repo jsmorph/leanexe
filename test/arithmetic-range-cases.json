@@ -368,5 +368,13 @@
   "rangeReusableBooleanCapture",
   "rangeReusableBooleanNested",
   "rangeReusableBooleanStepHelper",
-  "rangeReusableBooleanUnused"
+  "rangeReusableBooleanUnused",
+  "rangeOuterPredicateBounds",
+  "rangeOuterPredicateCapture",
+  "rangeOuterPredicateNested",
+  "rangeOuterPredicateShadow",
+  "rangeOuterPredicateUnused",
+  "rangeOuterPredicateScalarHelper",
+  "rangeOuterPredicateId",
+  "rangeOuterPredicateStride"
 ]
