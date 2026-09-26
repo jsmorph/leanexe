@@ -58,17 +58,21 @@ modules retain identical bytes. Focused tests pass 3,600 comparisons and 2,304
 invalid-input checks. Prior tests pass 4,028 comparisons and 3,168 invalid-input
 checks. Evidence is in [the loop-step archive](proofs/compiler/boolean-predicate-step-2026-09-26/README.md).
 
-Bool-to-Bool helper declarations before loops now pass source totality, pure
-scalar exclusion, extraction acceptance/soundness, evaluation correctness and
-IR invariant proofs. Eight native examples and exact syntax checks pass 3,648
-comparisons and 2,304 invalid-input tests. Captures remain fixed for every loop
-accumulator/index/stop/exit state. Calls may contribute to bounds, initialization,
-steps, stride calculations and final results. Previous helper checks, the general
-compiler theorem and the independent WASM suite finish this increment next.
+Bool-to-Bool helper declarations before loops are complete. Source totality,
+acceptance, soundness, evaluation, IR invariants and the general source-to-WASM
+theorem pass, with all eighteen axiom audits. Native Lean/V8 agree on 1,441 inputs
+across 76 declarations, including 39 ranges; all 68 prior modules retain identical
+bytes. Focused tests pass 3,648 comparisons and 2,304 invalid-input checks. Prior
+tests pass 5,520 comparisons and 3,168 invalid-input checks. Captures remain fixed
+across loop states, and calls may supply bounds, initial values, loop steps,
+stride calculations and final results. Evidence is in
+[the outer-loop archive](proofs/compiler/boolean-predicate-outer-2026-09-26/README.md).
 
-Calls currently use Bool.toUInt64. Direct Boolean-context calls and broader
-function signatures remain subsequent work. Full-dialect correctness remains
-unfinished. Complete each capability through WASM and commit/push frequently.
+Next: negated Boolean-input predicate calls under Bool.toUInt64, preserving typed
+argument dispatch in scalar, loop-step and outer-loop scopes. Compound calls,
+direct Boolean-context calls and broader signatures follow. Full-dialect
+correctness remains unfinished. Complete each capability through WASM and
+commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
