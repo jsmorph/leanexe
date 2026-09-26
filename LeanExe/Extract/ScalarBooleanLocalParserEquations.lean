@@ -36,20 +36,56 @@ open LeanExe.Source.Scalar
   · intro left right equality
     exact propositionGuard_not_boolean_unequal guard left right equality
 
-@[simp] theorem booleanLocalOperands_binding (name : Lean.Name) (nondep : BooleanBindingForm)
+@[simp] theorem booleanLocalOperands_binding (name : Lean.Name) (form : BooleanBindingForm)
     (type : BooleanType) (value body : Lean.Expr) :
-    booleanLocalOperands? (nondep.expr name type.expr value body) = (do
+    booleanLocalOperands? (form.expr name type.expr value body) = (do
       let v ← booleanLocalOperands? value
       let b ← booleanLocalOperands? body
-      pure (.binding 0 name nondep v b type)) := by
-  cases nondep <;> rw [BooleanBindingForm.expr, booleanLocalOperands?, scalarResultType_boolean, booleanType_accepts] <;> rfl
+      pure (.binding 0 name form v b type)) := by
+  cases form with
+  | letE nondep =>
+      rw [BooleanBindingForm.expr, booleanLocalOperands?, booleanFunctionApplication_booleanLet,
+        scalarResultType_boolean, booleanType_accepts]
+      rfl
+  | application binder =>
+      rw [BooleanBindingForm.expr, booleanLocalOperands?, scalarResultType_boolean, booleanType_accepts]
+      rfl
+  | namedApplication shape =>
+      rw [BooleanBindingForm.expr, BooleanFunctionBinding.expr, booleanLocalOperands?]
+      have accepted := booleanFunctionApplication_accepts (⟨shape, name, type.expr, value, body⟩ : BooleanFunctionApplication)
+      split
+      · rename_i application found
+        have same : application = (⟨shape, name, type.expr, value, body⟩ : BooleanFunctionApplication) :=
+          Option.some.inj (found.symm.trans accepted)
+        subst application
+        simp [scalarResultType_boolean, booleanType_accepts]
+      · rename_i rejected
+        have impossible := rejected.symm.trans accepted
+        cases impossible
 
-@[simp] theorem booleanLocalOperands_wordBinding (name : Lean.Name) (nondep : BooleanBindingForm)
+@[simp] theorem booleanLocalOperands_wordBinding (name : Lean.Name) (form : BooleanBindingForm)
     (type : ResultType) (value body : Lean.Expr) :
-    booleanLocalOperands? (nondep.expr name type.expr value body) = (do
+    booleanLocalOperands? (form.expr name type.expr value body) = (do
       let b ← booleanLocalOperands? body
-      pure (.wordBinding 0 name nondep value b type)) := by
-  cases nondep <;> rw [BooleanBindingForm.expr, booleanLocalOperands?, scalarResultType_accepts]
+      pure (.wordBinding 0 name form value b type)) := by
+  cases form with
+  | letE nondep =>
+      rw [BooleanBindingForm.expr, booleanLocalOperands?, booleanFunctionApplication_wordLet,
+        scalarResultType_accepts]
+  | application binder =>
+      rw [BooleanBindingForm.expr, booleanLocalOperands?, scalarResultType_accepts]
+  | namedApplication shape =>
+      rw [BooleanBindingForm.expr, BooleanFunctionBinding.expr, booleanLocalOperands?]
+      have accepted := booleanFunctionApplication_accepts (⟨shape, name, type.expr, value, body⟩ : BooleanFunctionApplication)
+      split
+      · rename_i application found
+        have same : application = (⟨shape, name, type.expr, value, body⟩ : BooleanFunctionApplication) :=
+          Option.some.inj (found.symm.trans accepted)
+        subst application
+        simp [scalarResultType_accepts]
+      · rename_i rejected
+        have impossible := rejected.symm.trans accepted
+        cases impossible
 
 @[simp] theorem booleanLocalOperands_wrapped (wrapper : BooleanWrapper) (body : Lean.Expr) :
     booleanLocalOperands? (wrapper.expr body) =

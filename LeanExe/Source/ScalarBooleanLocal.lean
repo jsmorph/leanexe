@@ -65,9 +65,9 @@ inductive BooleanLocal where
       (left right yes no : BooleanLocal)
   | dependentProposition (negations : Nat) (shape : BooleanProofBranch) (guard : PropositionGuard)
       (yes no : BooleanLocal)
-  | binding (negations : Nat) (name : Lean.Name) (nondep : BooleanBindingForm) (value body : BooleanLocal)
+  | binding (negations : Nat) (name : Lean.Name) (form : BooleanBindingForm) (value body : BooleanLocal)
       (type : BooleanType := .boolean)
-  | wordBinding (negations : Nat) (name : Lean.Name) (nondep : BooleanBindingForm) (value : Lean.Expr) (body : BooleanLocal)
+  | wordBinding (negations : Nat) (name : Lean.Name) (form : BooleanBindingForm) (value : Lean.Expr) (body : BooleanLocal)
       (type : ResultType := .word)
   | wrapped (negations : Nat) (wrapper : BooleanWrapper) (body : BooleanLocal)
   | decision (negations : Nat) (guard : PropositionGuard)
@@ -89,10 +89,10 @@ def expr : BooleanLocal → Lean.Expr
         (booleanRelationEvidence unequal a.expr b.expr) t.expr e.expr)
   | .dependentProposition n shape g t e => BooleanGuardNegation.expr n
       (shape.expr g.condition g.evidence t.expr e.expr)
-  | .binding n name nondep value body type => BooleanGuardNegation.expr n
-      (nondep.expr name type.expr value.expr body.expr)
-  | .wordBinding n name nondep value body type => BooleanGuardNegation.expr n
-      (nondep.expr name type.expr value body.expr)
+  | .binding n name form value body type => BooleanGuardNegation.expr n
+      (form.expr name type.expr value.expr body.expr)
+  | .wordBinding n name form value body type => BooleanGuardNegation.expr n
+      (form.expr name type.expr value body.expr)
   | .wrapped n wrapper body => BooleanGuardNegation.expr n (wrapper.expr body.expr)
   | .decision n g => BooleanGuardNegation.expr n g.value.decisionExpr
   | .relationDecision n unequal a b => BooleanGuardNegation.expr n (booleanRelationDecisionExpr unequal a.expr b.expr)
@@ -105,8 +105,8 @@ def operands : BooleanLocal → List Lean.Expr
   | .junction _ _ a b => a.operands ++ b.operands
   | .choice _ _ a b t e | .dependentChoice _ _ _ a b t e => a.operands ++ (b.operands ++ (t.operands ++ e.operands))
   | .proposition _ g t e | .dependentProposition _ _ g t e => g.operands ++ (t.operands ++ e.operands)
-  | .binding _ name nondep value body _ => value.operands ++ body.operands.map (fun operand => booleanLetExpr name nondep.nondep value.expr operand)
-  | .wordBinding _ name nondep value body _ => value :: body.operands.map (fun operand => booleanWordLetExpr name nondep.nondep value operand)
+  | .binding _ name form value body _ => value.operands ++ body.operands.map (fun operand => booleanLetExpr name form.nondep value.expr operand)
+  | .wordBinding _ name form value body _ => value :: body.operands.map (fun operand => booleanWordLetExpr name form.nondep value operand)
   | .wrapped _ _ body => body.operands
   | .decision _ g => g.operands
   | .equality _ _ a b | .relationDecision _ _ a b => a.operands ++ b.operands
@@ -121,11 +121,11 @@ def denote (native : Lean.Expr → UInt64) (booleans : Nat → Bool) : BooleanLo
        then t.denote native booleans else e.denote native booleans)
   | .proposition n g t e | .dependentProposition n _ g t e => GuardNegation.denote n
       (if g.denote native then t.denote native booleans else e.denote native booleans)
-  | .binding n name nondep value body _ => GuardNegation.denote n
-      (body.denote (fun operand => native (booleanLetExpr name nondep.nondep value.expr operand))
+  | .binding n name form value body _ => GuardNegation.denote n
+      (body.denote (fun operand => native (booleanLetExpr name form.nondep value.expr operand))
         (booleanLetBooleans (value.denote native booleans) booleans))
-  | .wordBinding n name nondep value body _ => GuardNegation.denote n
-      (body.denote (fun operand => native (booleanWordLetExpr name nondep.nondep value operand))
+  | .wordBinding n name form value body _ => GuardNegation.denote n
+      (body.denote (fun operand => native (booleanWordLetExpr name form.nondep value operand))
         (booleanLetBooleans false booleans))
   | .wrapped n wrapper body => GuardNegation.denote n (wrapper.denote (body.denote native booleans))
   | .decision n g => GuardNegation.denote n (g.denote native)
@@ -136,16 +136,16 @@ def denote (native : Lean.Expr → UInt64) (booleans : Nat → Bool) : BooleanLo
        else a.denote native booleans == b.denote native booleans)
 
 /-- Id annotations retain syntax while Boolean binding evaluation uses the underlying type. -/
-theorem binding_annotation_denote (n : Nat) (name : Lean.Name) (nondep : Bool)
+theorem binding_annotation_denote (n : Nat) (name : Lean.Name) (form : Bool)
     (value body : BooleanLocal) (type : BooleanType) (native : Lean.Expr → UInt64) (booleans : Nat → Bool) :
-    (.binding n name nondep value body type : BooleanLocal).denote native booleans =
-      (.binding n name nondep value body : BooleanLocal).denote native booleans := rfl
+    (.binding n name form value body type : BooleanLocal).denote native booleans =
+      (.binding n name form value body : BooleanLocal).denote native booleans := rfl
 
-theorem wordBinding_annotation_denote (n : Nat) (name : Lean.Name) (nondep : Bool)
+theorem wordBinding_annotation_denote (n : Nat) (name : Lean.Name) (form : Bool)
     (value : Lean.Expr) (body : BooleanLocal) (type : ResultType)
     (native : Lean.Expr → UInt64) (booleans : Nat → Bool) :
-    (.wordBinding n name nondep value body type : BooleanLocal).denote native booleans =
-      (.wordBinding n name nondep value body : BooleanLocal).denote native booleans := rfl
+    (.wordBinding n name form value body type : BooleanLocal).denote native booleans =
+      (.wordBinding n name form value body : BooleanLocal).denote native booleans := rfl
 
 /-- The exact literal used by the usual Boolean-to-proposition truth coercion. -/
 def isTrueLiteral : BooleanLocal → Bool
@@ -167,8 +167,8 @@ def negate : BooleanLocal → BooleanLocal
   | .proposition n g t e => .proposition (n + 1) g t e
   | .dependentChoice n shape unequal a b t e => .dependentChoice (n + 1) shape unequal a b t e
   | .dependentProposition n shape g t e => .dependentProposition (n + 1) shape g t e
-  | .binding n name nondep value body type => .binding (n + 1) name nondep value body type
-  | .wordBinding n name nondep value body type => .wordBinding (n + 1) name nondep value body type
+  | .binding n name form value body type => .binding (n + 1) name form value body type
+  | .wordBinding n name form value body type => .wordBinding (n + 1) name form value body type
   | .wrapped n wrapper body => .wrapped (n + 1) wrapper body
   | .decision n g => .decision (n + 1) g
   | .relationDecision n unequal a b => .relationDecision (n + 1) unequal a b
@@ -231,31 +231,32 @@ theorem operands_size (guard : BooleanLocal) {operand : Lean.Expr}
     · exact Nat.lt_trans (g.value.operands_size member) (shape.condition_size _ _ _ _)
     · exact Nat.lt_trans (iht member) (shape.yes_size _ _ _ _)
     · exact Nat.lt_trans (ihe member) (shape.no_size _ _ _ _)
-  | binding n name nondep value body type ihv ihb =>
+  | binding n name form value body type ihv ihb =>
     apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
+    apply Nat.lt_of_lt_of_le _ (form.binding_size name type.expr value.expr body.expr)
     simp only [operands, List.mem_append, List.mem_map] at member
     rcases member with member | ⟨inner, member, rfl⟩
     · have bound := ihv member
-      cases nondep <;> simp only [BooleanBindingForm.expr]
-      all_goals clear ihv ihb
-      all_goals simp_all <;> omega
+      clear ihv ihb
+      simp_all <;> omega
     · have bound := ihb member
       have annotationBound := BooleanType.base_size type
       simp only [BooleanType.expr] at annotationBound
-      cases nondep <;> simp only [BooleanBindingForm.expr, BooleanBindingForm.nondep, booleanLetExpr, BooleanType.expr]
-      all_goals clear ihv ihb
-      all_goals simp_all <;> omega
-  | wordBinding n name nondep value body type ihb =>
+      simp only [booleanLetExpr, BooleanType.expr]
+      clear ihv ihb
+      simp_all <;> omega
+  | wordBinding n name form value body type ihb =>
     apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
+    apply Nat.lt_of_lt_of_le _ (form.binding_size name type.expr value body.expr)
     simp only [operands, List.mem_cons, List.mem_map] at member
     rcases member with rfl | ⟨inner, innerMember, rfl⟩
-    · cases nondep <;> simp [BooleanBindingForm.expr] <;> omega
+    · simp; omega
     · have bound := ihb innerMember
       have annotationBound := ResultType.word_size type
       simp only [ResultType.expr] at annotationBound
       clear ihb
-      cases nondep <;> simp only [BooleanBindingForm.expr, BooleanBindingForm.nondep, booleanWordLetExpr, ResultType.expr]
-      all_goals simp_all <;> omega
+      simp only [booleanWordLetExpr, ResultType.expr]
+      simp_all <;> omega
   | wrapped n wrapper body ih =>
     apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
     exact Nat.lt_trans (ih member) (wrapper.body_size body.expr)
