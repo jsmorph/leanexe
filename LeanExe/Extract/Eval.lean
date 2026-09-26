@@ -29,7 +29,7 @@ mutual
     | .trap => true
     | .u64 _ => true
     | .f64SqrtBits value => scalarExpr value
-    | .floatUnary _ value => scalarExpr value
+    | .scalarUnary _ value => scalarExpr value
     | .u64Bin _ left right => scalarExpr left && scalarExpr right
     | .ite cond thenValue elseValue =>
         scalarCond cond && scalarExpr thenValue && scalarExpr elseValue
@@ -58,6 +58,7 @@ mutual
 
   partial def scalarLocalLet : LeanExe.IR.LocalLet → Bool
     | .expr _ value => scalarExpr value
+    | .effectCall _ _ _ => false
     | .call _ _ args => args.all scalarExpr
     | .slots _ values => values.all scalarExpr
     | .branch cond thenLets elseLets =>

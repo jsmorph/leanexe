@@ -6,21 +6,21 @@ open Wasm Project.Runtime Project.ProofKit Project.EulerRiemann.Execution WordAr
 set_option maxRecDepth 32768 in
 theorem initial_two_push_spec (env : HostEnv Unit) (store : Store Unit) (heap : Heap)
     (seed row : UInt64) (state : Nat) (tracked : Bool) (aux : List Value) (s : Scratch) (out0 out1 : UInt64)
-    (source : FreeNode) (input : Array UInt64) (remaining pageLimit : Nat) (hAux : aux.length = 21)
+    (source : FreeNode) (input : Array UInt64) (remaining pageLimit : Nat) (hAux : aux.length = 19)
     (hValue : aux[4]? = some (.i64 s.value))
     (hSource : s.source = source.root) (hInput : BorrowedWords heap store source input)
     (hHeap : heap.At store)
     (hBudget : Budget store heap (pushCost input.size + (pushCost (input.size + 1) + remaining)) pageLimit)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : ∀ (final : Store Unit) (nextHeap : Heap) (node : FreeNode) (nextAux : List Value) (nextScratch : Scratch),
-      nextAux.length = 21 → (∀ i, i ≠ 7 → nextAux[i]? = aux[i]?) →
+      nextAux.length = 19 → (∀ i, i ≠ 7 → nextAux[i]? = aux[i]?) →
       nextHeap.At final → Budget final nextHeap remaining pageLimit →
       nextHeap.OwnsWords final node ((input.push s.value).push 0) →
       PreservesWords heap store nextHeap final → SeparateWords heap store node →
       wp Project.Drone.«module» rest Q final
         { initialFrame seed row state tracked nextAux nextScratch out0 out1 with values := [.i64 node.root] } env) :
-    wp Project.Drone.«module» (WordArrayPush.program 30 ++ initialRepushProgram true ++
-      WordArrayPush.program 30 ++ rest) Q store (initialFrame seed row state tracked aux s out0 out1) env := by
+    wp Project.Drone.«module» (WordArrayPush.program 28 ++ initialRepushProgram true ++
+      WordArrayPush.program 28 ++ rest) Q store (initialFrame seed row state tracked aux s out0 out1) env := by
   apply initial_push_spec env store heap seed row state tracked aux s out0 out1 source input
     (pushCost (input.size + 1) + remaining) pageLimit hAux hSource hInput hHeap hBudget
   intro first p1 c1 cap1 n1 hHeap1 hBudget1 hOutput1 hKeep1 _

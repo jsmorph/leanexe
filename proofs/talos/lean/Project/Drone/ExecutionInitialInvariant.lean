@@ -11,7 +11,8 @@ def initialInv (initialHeap : Heap) (initial : Store Unit) (seed : UInt64) (rema
   ∃ (heap : Heap) (node : FreeNode) (row : Array UInt64) (state : Nat) (tracked : Bool)
     (aux : List Value) (s : Scratch) (out0 out1 : UInt64),
     frame = initialFrame seed node.root state tracked aux s out0 out1 ∧
-    aux.length = 21 ∧ state ≤ 45 ∧ (tracked = true ↔ 0 < state) ∧ heap.At store ∧
+    aux.length = 19 ∧ state ≤ 45 ∧ (tracked = true ↔ 0 < state) ∧
+    (node.root = seed ↔ tracked = false) ∧ heap.At store ∧
     Budget store heap (advanceCost (45 - state) row.size + remaining) pageLimit ∧
     heap.OwnsWords store node row ∧ PreservesWords initialHeap initial heap store ∧
     (tracked = true → SeparateWords initialHeap initial node) ∧

@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "status": "lean-native-check-passed",
+  "exit_code": 0,
+  "capture": {
+    "schema": 1,
+    "status": "captured-awaiting-lean-check",
+    "gelu_values": 5382144,
+    "gelu_unique_values": 5049032,
+    "attention_records": 1752,
+    "attention_record_words": 2304,
+    "order": "Per prefix: quantized 12 layers, then FP32 12 layers, in source order",
+    "prefixes": 73,
+    "files": {
+      "gelu.bin": {
+        "bytes": 21528576,
+        "sha256": "be4f76e88cb096f46c9c854b1458aad0c09df31c3c862427d288f2d319fd673b"
+      },
+      "gelu-unique.bin": {
+        "bytes": 20196128,
+        "sha256": "92878ec411ba04b4f117b7627da030f19032f2ce2bd1c5fa42300d19eb31f9be"
+      },
+      "attention.bin": {
+        "bytes": 16146432,
+        "sha256": "657161ad76bb53a0ed80b7a3d34e2e17829b325e25b9f0f9367c36304225437e"
+      }
+    },
+    "coverage_sha256": "ea392ce16db35c713b40ec047ba60fe1118aaadd136b083846628d1c38ea14a0",
+    "source_sha256": "b2db9635b56025b1b06c5cfe2623c568cc6f94b4e24aa904d144cfd98e45bfc6",
+    "reference_sources": {
+      "quantized_reference.py": "32129e7bc189013e0246cb4ecf65e23c412d18e04a5357ecd7ca155de552c88e",
+      "diagnose_quantized.py": "ae4ca14c6657f4c63f6b2918cb0d9db97f2cab7a81f222603e324c66acaec15a"
+    },
+    "seconds": 34.04840493306983
+  },
+  "check_milliseconds": 28089,
+  "checker_sha256": "f5de0e1a955bd098b1e6a6ec1c22e4c64a0cea6b9a456bb3265e22453c1eeb93",
+  "runtime_trust": "Native Lean compiler/runtime evaluates captured records. Kernel proofs establish checker soundness. Captured internal operand identity with the complete Lean recurrence remains an assumption. Capture reproduces all 73 paired logit hashes.",
+  "checker_sources": {
+    "Project/Gpt2CachedStep/CachedAttention/RangeCheck.lean": "6857fc7c0699108a487f81ce5c095cfca507343a285f44da6c8a6fa74f37881b",
+    "Project/Gpt2CachedStep/CachedAttention/RangeCertificate.lean": "3a3404b014be197bd82b087c08881ad3737150f7f37407c96a6bb354acb88e70",
+    "Project/Gpt2CachedStep/CachedAttention/SoftmaxRangeCheck.lean": "31ac748494b4336817d34be15a3d6a878ec8c7946e1f117006f7034113274c41",
+    "Project/Gpt2CachedStep/CachedAttention/SoftmaxRangeCertificate.lean": "cf94b6c3f99c443841b936d6d5e4c65d1b19a37059642b989ad8daabe0dd90cd",
+    "Project/ProofKit/F32DotRangeCheck.lean": "9d20f774fa632e0dc84a1ca1f3945474a4bcf3473e4602287a1721c21c636594",
+    "Project/ProofKit/F32DotRangeCertificate.lean": "292fdd24b5362bbf75d49bae3487084b2df3fc69f81f07a9224b55b098715100",
+    "Project/Gpt2QuantizedCached/Numerical/AttentionRange.lean": "24afedc617f238b811a7128b59770e0d0c6dba93e9ee859cb7a5baae7f35c95a",
+    "Project/Gpt2QuantizedCached/CheckAttention.lean": "66fb1569d0b9c2618cf643a847979c68ebd490a4f90d6120dd2312637b8398db"
+  },
+  "columns": [
+    "index",
+    "sequence",
+    "position",
+    "model",
+    "layer",
+    "score_mul",
+    "score_add",
+    "score_scale",
+    "softmax_sub",
+    "softmax_sum",
+    "softmax_div",
+    "value_mul",
+    "value_add",
+    "value_magnitude_scaled_2_pow_149"
+  ],
+  "exponential_parameters": {
+    "multiplication": 299,
+    "addition": 151,
+    "squaring": 299
+  },
+  "denominator_lower_bound": 1,
+  "command": "tools/leanrun --timeout 600 proofs/talos/lean/.lake/build/bin/gpt2-attention-check build/gpt2-124m/quantized-group64/heldout/nonlinear/attention.bin data/gpt2-quantized-v1/experiments/group64-heldout/coverage.json build/gpt2-124m/quantized-group64/heldout/nonlinear/attention-ranges.txt",
+  "profile": {
+    "sha256": "f59562f279041542176c50c7c759dafa7094f321c00aa6d04a0f9b277ecbca52",
+    "gzip_sha256": "aa91c33a566be591207ca2c78742ba4de6cb97e195bd28158500a94eede1ddc1",
+    "rows": 1752
+  }
+}

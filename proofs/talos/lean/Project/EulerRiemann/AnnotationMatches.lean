@@ -23,15 +23,15 @@ set_option maxHeartbeats 8000000
 namespace Project.EulerRiemann.AnnotationMatches
 
 def function_32_array_fold_0_program : Wasm.Program :=
-  (Project.ProofKit.Annotation.region Project.EulerRiemann.func32 [] 0 30).getD []
+  (Project.ProofKit.Annotation.region Project.EulerRiemann.func32 [] 0 28).getD []
 
 theorem function_32_array_fold_0_eq :
-    Project.ProofKit.Annotation.region Project.EulerRiemann.func32 [] 0 30 = some function_32_array_fold_0_program := by
+    Project.ProofKit.Annotation.region Project.EulerRiemann.func32 [] 0 28 = some function_32_array_fold_0_program := by
   rfl
 
 theorem function_32_array_fold_0_tail_eq :
     ((Project.ProofKit.Annotation.resolve Project.EulerRiemann.func32 []).getD []).drop 0 =
-      Project.EulerRiemann.AnnotationMatches.function_32_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.EulerRiemann.func32 []).getD []).drop 30 := by
+      Project.EulerRiemann.AnnotationMatches.function_32_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.EulerRiemann.func32 []).getD []).drop 28 := by
   rfl
 
 

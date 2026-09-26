@@ -1,5 +1,5 @@
 import Project.ClobCancel.ArtifactValidation
-import Project.ClobCancel.Program
+import Project.ClobCancel.FrozenProgram
 import Project.Artifact.Binary.Proof.Translate
 import Project.Artifact.Binary.Proof.Validate
 
@@ -12,46 +12,46 @@ open Wasm.Binary
 
 theorem function0_eq :
     Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!) =
-      Project.ClobCancel.func0Def := by
+      Project.ClobCancel.Frozen.func0Def := by
   rfl
 
 theorem function1_eq :
     Translation.functionToTalos Cache.raw 1 (Cache.raw.codes[1]!) =
-      Project.ClobCancel.func1Def := by
+      Project.ClobCancel.Frozen.func1Def := by
   rfl
 
 theorem function2_eq :
     Translation.functionToTalos Cache.raw 2 (Cache.raw.codes[2]!) =
-      Project.ClobCancel.func2Def := by
+      Project.ClobCancel.Frozen.func2Def := by
   rfl
 
 theorem function3_eq :
     Translation.functionToTalos Cache.raw 3 (Cache.raw.codes[3]!) =
-      Project.ClobCancel.func3Def := by
+      Project.ClobCancel.Frozen.func3Def := by
   rfl
 
 theorem function4_eq :
     Translation.functionToTalos Cache.raw 4 (Cache.raw.codes[4]!) =
-      Project.ClobCancel.func4Def := by
+      Project.ClobCancel.Frozen.func4Def := by
   rfl
 
 theorem function5_eq :
     Translation.functionToTalos Cache.raw 5 (Cache.raw.codes[5]!) =
-      Project.ClobCancel.func5Def := by
+      Project.ClobCancel.Frozen.func5Def := by
   rfl
 
 theorem function6_eq :
     Translation.functionToTalos Cache.raw 6 (Cache.raw.codes[6]!) =
-      Project.ClobCancel.func6Def := by
+      Project.ClobCancel.Frozen.func6Def := by
   rfl
 
 theorem function7_eq :
     Translation.functionToTalos Cache.raw 7 (Cache.raw.codes[7]!) =
-      Project.ClobCancel.func7Def := by
+      Project.ClobCancel.Frozen.func7Def := by
   rfl
 
 theorem functions_eq : Translation.functions Cache.raw =
-    Project.ClobCancel.«module».funcs := by
+    Project.ClobCancel.Frozen.«module».funcs := by
   change
     [
      Translation.functionToTalos Cache.raw 0 (Cache.raw.codes[0]!),
@@ -63,11 +63,11 @@ theorem functions_eq : Translation.functions Cache.raw =
      Translation.functionToTalos Cache.raw 6 (Cache.raw.codes[6]!),
      Translation.functionToTalos Cache.raw 7 (Cache.raw.codes[7]!)
     ] =
-    [Project.ClobCancel.func0Def, Project.ClobCancel.func1Def, Project.ClobCancel.func2Def, Project.ClobCancel.func3Def, Project.ClobCancel.func4Def, Project.ClobCancel.func5Def, Project.ClobCancel.func6Def, Project.ClobCancel.func7Def]
+    [Project.ClobCancel.Frozen.func0Def, Project.ClobCancel.Frozen.func1Def, Project.ClobCancel.Frozen.func2Def, Project.ClobCancel.Frozen.func3Def, Project.ClobCancel.Frozen.func4Def, Project.ClobCancel.Frozen.func5Def, Project.ClobCancel.Frozen.func6Def, Project.ClobCancel.Frozen.func7Def]
   rw [function0_eq, function1_eq, function2_eq, function3_eq, function4_eq, function5_eq, function6_eq, function7_eq]
 
 def executionCache : Wasm.Module :=
-  Project.ClobCancel.«module»
+  Project.ClobCancel.Frozen.«module»
 
 theorem translation_cache_eq :
     Translation.module Cache.raw = executionCache := by

@@ -23,12 +23,12 @@ def ensureProgram (pageLocal : Nat) : Wasm.Program :=
   [.memorySize, .extendUI32, .localGet pageLocal, .ltUI64,
     .iff 0 0 (.localGet pageLocal :: growProgram) []]
 
-theorem ensureProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit)
+theorem ensureProgram_spec_available (module_ : Wasm.Module) (env : HostEnv Unit)
     (store : Store Unit) (frame : Locals) (pageLocal required : Nat)
     (hMemory32 : module_.memIs64 = false) (hValues : frame.values = [])
     (hLocal : frame.get pageLocal = some (.i64 (UInt64.ofNat required)))
     (hCurrent : store.mem.pages ≤ 65536) (hBound : required ≤ 65536)
-    (hCap : required ≤ store.memoryCap module_ 0)
+    (hCap : store.mem.pages < required → required ≤ store.memoryCap module_ 0)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp module_ rest Q (ensured store required) frame env) :
     wp module_ (ensureProgram pageLocal ++ rest) Q store frame env := by
@@ -53,9 +53,23 @@ theorem ensureProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit)
   by_cases hLess : store.mem.pages < required
   · simp [hCompare, hLess, hLocal']
     apply growProgram_spec module_ env store _ required [] hMemory32 rfl
-      (Nat.le_of_lt hLess) hBound hCap _ []
+      (Nat.le_of_lt hLess) hBound (hCap hLess) _ []
     simpa [ensured, hLess, hValues, hEmpty] using hNext
   · simpa [hCompare, hLess, ensured, hValues, hEmpty] using hNext
+
+theorem ensureProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit)
+    (store : Store Unit) (frame : Locals) (pageLocal required : Nat)
+    (hMemory32 : module_.memIs64 = false) (hValues : frame.values = [])
+    (hLocal : frame.get pageLocal = some (.i64 (UInt64.ofNat required)))
+    (hCurrent : store.mem.pages ≤ 65536) (hBound : required ≤ 65536)
+    (hCap : required ≤ store.memoryCap module_ 0)
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hNext : wp module_ rest Q (ensured store required) frame env) :
+    wp module_ (ensureProgram pageLocal ++ rest) Q store frame env := by
+  exact ensureProgram_spec_available module_ env store frame pageLocal required hMemory32 hValues hLocal hCurrent hBound
+    (fun _ => hCap) Q rest hNext
+
+#print axioms ensureProgram_spec_available
 
 #print axioms ensured_pages
 #print axioms ensured_bytes

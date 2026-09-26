@@ -4,7 +4,7 @@ namespace Project.TinyGpt2Infer.Spec
 open Wasm Project.TinyGpt2 Project.ProofKit
 
 theorem output_guard_shape : outputBody =
-    [.localGet 45, .localGet 46, .geUI64, .br_if 1] ++ outputBody.drop 4 := by
+    [.localGet 48, .localGet 49, .geUI64, .br_if 1] ++ outputBody.drop 4 := by
   exact (List.take_append_drop 4 outputBody).symm
 
 theorem output_guard_spec (env : HostEnv Unit) (initial : Store Unit) (frame : Locals)
@@ -14,9 +14,9 @@ theorem output_guard_spec (env : HostEnv Unit) (initial : Store Unit) (frame : L
     (hDone : count = 256 → Q (.Break 1 initial frame))
     (hNext : count < 256 → wp module (outputBody.drop 4) Q initial frame env) :
     wp module outputBody Q initial frame env := by
-  have hCounter := Frame.internal_getElem?_of_get frame 5 40 (.i64 (UInt64.ofNat count))
+  have hCounter := Frame.internal_getElem?_of_get frame 5 43 (.i64 (UInt64.ofNat count))
     hLocals.params (by rw [hLocals.locals]; decide) hLocals.counter
-  have hLimit := Frame.internal_getElem?_of_get frame 5 41 (.i64 256)
+  have hLimit := Frame.internal_getElem?_of_get frame 5 44 (.i64 256)
     hLocals.params (by rw [hLocals.locals]; decide) hLocals.limit
   have hToken : (UInt64.ofNat count).toNat = count := by
     apply UInt64.toNat_ofNat_of_lt'

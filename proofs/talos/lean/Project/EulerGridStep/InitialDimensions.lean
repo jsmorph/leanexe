@@ -12,25 +12,25 @@ def initialDimensionsFrame (frame : Locals) (pointer : UInt64) (length : Nat) : 
   let cells := length / 3
   let cellsWord := UInt64.ofNat cells
   let countWord := UInt64.ofNat (1 + 6 * cells)
-  let ls := frame.locals.set 33 (.i64 pointer)
-  let ls := ls.set 31 (.i64 (UInt64.ofNat length))
-  let ls := ls.set 32 (.i64 3)
+  let ls := frame.locals.set 37 (.i64 pointer)
+  let ls := ls.set 35 (.i64 (UInt64.ofNat length))
+  let ls := ls.set 36 (.i64 3)
   let ls := ls.set 2 (.i64 cellsWord)
-  let ls := ls.set 31 (.i64 1)
-  let ls := ls.set 34 (.i64 6)
-  let ls := ls.set 35 (.i64 cellsWord)
-  let ls := ls.set 32 (.i64 (UInt64.ofNat (6 * cells)))
-  let ls := ls.set 33 (.i64 countWord)
+  let ls := ls.set 35 (.i64 1)
+  let ls := ls.set 38 (.i64 6)
+  let ls := ls.set 39 (.i64 cellsWord)
+  let ls := ls.set 36 (.i64 (UInt64.ofNat (6 * cells)))
+  let ls := ls.set 37 (.i64 countWord)
   let ls := ls.set 3 (.i64 countWord)
-  let ls := ls.set 31 (.i64 countWord)
+  let ls := ls.set 35 (.i64 countWord)
   { frame with
-    locals := ls.set 34 (.i64 0)
+    locals := ls.set 38 (.i64 0)
     values := [] }
 
 /-- The valid entry computes the cell count and output length without integer overflow. -/
 theorem initial_dimensions_spec (m : Wasm.Module) (env : HostEnv Unit) (initial : Store Unit)
     (frame : Locals) (pointer : UInt64) (input : Array UInt64)
-    (hParams : frame.params.length = 2) (hLocals : frame.locals.length = 43)
+    (hParams : frame.params.length = 2) (hLocals : frame.locals.length = 47)
     (hValues : frame.values = []) (hPointer : frame.params[1]? = some (.i64 pointer))
     (hArray : UInt64Array.At initial pointer input)
     (hPositive : 0 < input.size / 3)

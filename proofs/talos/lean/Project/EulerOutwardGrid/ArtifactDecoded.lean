@@ -1,4 +1,5 @@
 import Project.EulerOutwardGrid.ArtifactParsed
+import Project.Artifact.Binary.Decode
 
 set_option maxRecDepth 1048576
 
@@ -6,15 +7,12 @@ namespace Project.EulerOutwardGrid.Artifact
 
 open Wasm.Binary
 
-theorem decode_eq_cache_computed : decode artifactBytes = .ok Cache.raw := by
-  exact decode_eq_cache_parts
-
 def decodedRaw? : Option RawModule :=
   (decode artifactBytes).toOption
 
 theorem decodedRaw_isSome : decodedRaw?.isSome = true := by
   unfold decodedRaw?
-  rw [decode_eq_cache_computed]
+  rw [decode_eq_cache_parts]
   rfl
 
 def decodedRaw : RawModule :=
@@ -33,6 +31,4 @@ theorem decode_eq_decodedRaw : decode artifactBytes = .ok decodedRaw := by
       rw [hdecode]
       rfl
 
-#print axioms decode_eq_cache_computed
-#print axioms decode_eq_decodedRaw
 end Project.EulerOutwardGrid.Artifact

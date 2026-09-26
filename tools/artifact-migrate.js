@@ -201,6 +201,18 @@ function functionCount(item) {
 }
 
 function bytesModule(item, sha256, bytes, kernel = false) {
+  let data;
+  if (kernel && bytes.length > 16384) {
+    const chunks = [];
+    for (let offset = 0; offset < bytes.length; offset += 4096) {
+      chunks.push(`def bytesChunk${chunks.length} : List UInt8 :=\n  [\n${formatBytes(bytes.subarray(offset, offset + 4096))}\n  ]`);
+    }
+    data = `${chunks.join("\n\n")}\n\ndef artifactData : Array UInt8 :=\n  ⟨${chunks.map((_, index) => `bytesChunk${index}`).join(" ++ ")}⟩`;
+  } else {
+    data = kernel
+      ? `def artifactData : Array UInt8 :=\n  ⟨[\n${formatBytes(bytes)}\n  ]⟩`
+      : `def artifactBytes : ByteArray :=\n  [\n${formatBytes(bytes)}\n  ].map UInt8.ofNat |>.toByteArray`;
+  }
   return `import Project.Artifact.Binary.Translate
 
 set_option maxRecDepth 1048576
@@ -210,10 +222,8 @@ namespace Project.${item.leanModule}.Artifact
 def sha256 : String :=
   "${sha256}"
 
-${kernel ? "def artifactData : Array UInt8 :=\n  ⟨[" : "def artifactBytes : ByteArray :=\n  ["}
-${formatBytes(bytes)}
-${kernel ? "  ]⟩\n\ndef artifactBytes : ByteArray :=\n  ⟨artifactData⟩\n\ntheorem artifactBytes_data : artifactBytes.data = artifactData := rfl" : "  ].map UInt8.ofNat |>.toByteArray"}
-
+${data}
+${kernel ? "\ndef artifactBytes : ByteArray :=\n  ⟨artifactData⟩\n\ntheorem artifactBytes_data : artifactBytes.data = artifactData := rfl\n" : ""}
 theorem artifactBytes_size : artifactBytes.size = ${bytes.length} := by
   ${kernel ? "rfl" : "native_decide"}
 
@@ -609,5 +619,6 @@ module.exports = {
   binaryOutput,
   buildDumpRaw,
   byteLookupModule,
+  bytesModule,
   textOutput,
 };

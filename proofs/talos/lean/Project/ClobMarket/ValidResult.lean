@@ -12,10 +12,10 @@ predicate is reduced while the generated local assignments execute.
 namespace Project.ClobMarket.ValidResult
 
 open Wasm Project.Clob Project.ClobMarket
-  Project.ClobLimit.InternalLoopInvariant
+  Project.ClobMatchFuel.LoopInvariant
 
 def outputFrame (book : UInt64) (order : OrderL)
-    (ctx : Context) (data : Project.ClobLimit.InternalLoopResult.OutputData) :
+    (ctx : Context) (data : Project.ClobLimit.HeapRunMatch.OutputData) :
     Locals :=
   let taker := Model.unlimitedTakerL order
   { params := [.i64 book, .i64 order.oid, .i64 order.otrader,
@@ -25,15 +25,15 @@ def outputFrame (book : UInt64) (order : OrderL)
       .i64 taker.oid, .i64 taker.otrader, .i64 taker.oside,
       .i64 taker.oprice, .i64 taker.oqty, .i64 0, .i64 book,
       .i64 taker.oid, .i64 taker.otrader, .i64 taker.oside,
-      .i64 taker.oprice, .i64 taker.oqty, .i64 data.bookOwner,
-      .i64 data.book, .i64 data.tradesOwner, .i64 data.trades,
-      .i64 ctx.result.remaining, .i64 0, .i64 data.book, .i64 0,
+      .i64 taker.oprice, .i64 taker.oqty, data.bookOwner,
+      .i64 data.book, data.tradesOwner, .i64 data.trades,
+      .i64 ctx.result.remaining, data.bookOwner, .i64 data.book, data.tradesOwner,
       .i64 data.trades, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
-      .i64 data.book, .i64 data.trades] ++ List.replicate 13 (.i64 0)
+      data.bookOwner, .i64 data.book, data.tradesOwner, .i64 data.trades] ++ List.replicate 13 (.i64 0)
     values := [.i64 data.trades, .i64 data.book, .i64 0] }
 
 def resultFrame (book : UInt64) (order : OrderL)
-    (ctx : Context) (data : Project.ClobLimit.InternalLoopResult.OutputData) :
+    (ctx : Context) (data : Project.ClobLimit.HeapRunMatch.OutputData) :
     Locals :=
   { outputFrame book order ctx data with values := [] }
 
@@ -42,10 +42,10 @@ set_option maxRecDepth 1048576
 set_option Elab.async false in
 theorem validResultProg_spec (env : HostEnv Unit) (st : Store Unit)
     (book : UInt64) (order : OrderL) (ctx : Context)
-    (data : Project.ClobLimit.InternalLoopResult.OutputData)
+    (data : Project.ClobLimit.HeapRunMatch.OutputData)
     (values : List Value)
     (hValues : values =
-      Project.ClobLimit.InternalLoopResult.outputValues ctx data)
+      Project.ClobLimit.HeapRunMatch.outputValues ctx data)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp Project.ClobMarket.«module» rest Q st
       (resultFrame book order ctx data) env) :
@@ -54,7 +54,7 @@ theorem validResultProg_spec (env : HostEnv Unit) (st : Store Unit)
       { Call.callFrame book order with values := values } env := by
   subst values
   simp only [Entry.validResultProg, List.cons_append, List.nil_append]
-  simp [Project.ClobLimit.InternalLoopResult.outputValues,
+  simp [Project.ClobLimit.HeapRunMatch.outputValues, Project.ClobLimit.HeapResult.outputValues,
     Call.callFrame]
   refine wp_call_tw (Helpers.func19_spec env st) ?_
   rintro st1 result ⟨rfl, rfl⟩
@@ -64,7 +64,7 @@ theorem validResultProg_spec (env : HostEnv Unit) (st : Store Unit)
 set_option Elab.async false in
 theorem resultProg_spec (env : HostEnv Unit) (st : Store Unit)
     (book : UInt64) (order : OrderL) (ctx : Context)
-    (data : Project.ClobLimit.InternalLoopResult.OutputData)
+    (data : Project.ClobLimit.HeapRunMatch.OutputData)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp Project.ClobMarket.«module» rest Q st
       (outputFrame book order ctx data) env) :

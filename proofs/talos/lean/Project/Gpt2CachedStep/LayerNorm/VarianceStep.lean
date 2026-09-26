@@ -11,7 +11,7 @@ def inversesBody : Wasm.Program :=
   | _ => []
 
 def varianceStep : Wasm.Program :=
-  match (inversesBody[26]? : Option Wasm.Instruction) with
+  match (inversesBody[24]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => (body.drop 4).dropLast
   | _ => []
 

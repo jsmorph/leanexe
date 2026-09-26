@@ -1,0 +1,955 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+BooleanPropositionInspect.equal: fun x y =>
+  have a := x == 0;
+  have b := y == 0;
+  if a = b then x + y else x - y
+Lean.Expr.lam
+  `x
+  (Lean.Expr.const `UInt64 [])
+  (Lean.Expr.lam
+    `y
+    (Lean.Expr.const `UInt64 [])
+    (Lean.Expr.letE
+      `a
+      (Lean.Expr.const `Bool [])
+      (Lean.Expr.app
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app (Lean.Expr.const `BEq.beq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+            (Lean.Expr.app
+              (Lean.Expr.app (Lean.Expr.const `instBEqOfDecidableEq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+              (Lean.Expr.const `instDecidableEqUInt64 [])))
+          (Lean.Expr.bvar 1))
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+            (Lean.Expr.lit (Lean.Literal.natVal 0)))
+          (Lean.Expr.app (Lean.Expr.const `UInt64.instOfNat []) (Lean.Expr.lit (Lean.Literal.natVal 0)))))
+      (Lean.Expr.letE
+        `b
+        (Lean.Expr.const `Bool [])
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app
+              (Lean.Expr.app (Lean.Expr.const `BEq.beq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+              (Lean.Expr.app
+                (Lean.Expr.app (Lean.Expr.const `instBEqOfDecidableEq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                (Lean.Expr.const `instDecidableEqUInt64 [])))
+            (Lean.Expr.bvar 1))
+          (Lean.Expr.app
+            (Lean.Expr.app
+              (Lean.Expr.app (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+              (Lean.Expr.lit (Lean.Literal.natVal 0)))
+            (Lean.Expr.app (Lean.Expr.const `UInt64.instOfNat []) (Lean.Expr.lit (Lean.Literal.natVal 0)))))
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app (Lean.Expr.const `ite [Lean.Level.succ (Lean.Level.zero)]) (Lean.Expr.const `UInt64 []))
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app (Lean.Expr.const `Eq [Lean.Level.succ (Lean.Level.zero)]) (Lean.Expr.const `Bool []))
+                    (Lean.Expr.bvar 1))
+                  (Lean.Expr.bvar 0)))
+              (Lean.Expr.app
+                (Lean.Expr.app (Lean.Expr.const `instDecidableEqBool []) (Lean.Expr.bvar 1))
+                (Lean.Expr.bvar 0)))
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.const `HAdd.hAdd [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                        (Lean.Expr.const `UInt64 []))
+                      (Lean.Expr.const `UInt64 []))
+                    (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.app
+                    (Lean.Expr.app (Lean.Expr.const `instHAdd [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                    (Lean.Expr.const `instAddUInt64 [])))
+                (Lean.Expr.bvar 3))
+              (Lean.Expr.bvar 2)))
+          (Lean.Expr.app
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.const `HSub.hSub [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                      (Lean.Expr.const `UInt64 []))
+                    (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.const `UInt64 []))
+                (Lean.Expr.app
+                  (Lean.Expr.app (Lean.Expr.const `instHSub [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.const `instSubUInt64 [])))
+              (Lean.Expr.bvar 3))
+            (Lean.Expr.bvar 2)))
+        true)
+      true)
+    (Lean.BinderInfo.default))
+  (Lean.BinderInfo.default)
+accepted: false
+BooleanPropositionInspect.unequal: fun x y =>
+  have a := x == y;
+  have b := decide (x < y);
+  if a ≠ b then x + 7 else y - 11
+Lean.Expr.lam
+  `x
+  (Lean.Expr.const `UInt64 [])
+  (Lean.Expr.lam
+    `y
+    (Lean.Expr.const `UInt64 [])
+    (Lean.Expr.letE
+      `a
+      (Lean.Expr.const `Bool [])
+      (Lean.Expr.app
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app (Lean.Expr.const `BEq.beq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+            (Lean.Expr.app
+              (Lean.Expr.app (Lean.Expr.const `instBEqOfDecidableEq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+              (Lean.Expr.const `instDecidableEqUInt64 [])))
+          (Lean.Expr.bvar 1))
+        (Lean.Expr.bvar 0))
+      (Lean.Expr.letE
+        `b
+        (Lean.Expr.const `Bool [])
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.const `Decidable.decide [])
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app (Lean.Expr.const `LT.lt [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.const `instLTUInt64 []))
+                (Lean.Expr.bvar 2))
+              (Lean.Expr.bvar 1)))
+          (Lean.Expr.app (Lean.Expr.app (Lean.Expr.const `UInt64.decLt []) (Lean.Expr.bvar 2)) (Lean.Expr.bvar 1)))
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app (Lean.Expr.const `ite [Lean.Level.succ (Lean.Level.zero)]) (Lean.Expr.const `UInt64 []))
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app (Lean.Expr.const `Ne [Lean.Level.succ (Lean.Level.zero)]) (Lean.Expr.const `Bool []))
+                    (Lean.Expr.bvar 1))
+                  (Lean.Expr.bvar 0)))
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.const `instDecidableNot [])
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.const `Eq [Lean.Level.succ (Lean.Level.zero)])
+                        (Lean.Expr.const `Bool []))
+                      (Lean.Expr.bvar 1))
+                    (Lean.Expr.bvar 0)))
+                (Lean.Expr.app
+                  (Lean.Expr.app (Lean.Expr.const `instDecidableEqBool []) (Lean.Expr.bvar 1))
+                  (Lean.Expr.bvar 0))))
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.const `HAdd.hAdd [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                        (Lean.Expr.const `UInt64 []))
+                      (Lean.Expr.const `UInt64 []))
+                    (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.app
+                    (Lean.Expr.app (Lean.Expr.const `instHAdd [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                    (Lean.Expr.const `instAddUInt64 [])))
+                (Lean.Expr.bvar 3))
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.lit (Lean.Literal.natVal 7)))
+                (Lean.Expr.app (Lean.Expr.const `UInt64.instOfNat []) (Lean.Expr.lit (Lean.Literal.natVal 7))))))
+          (Lean.Expr.app
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.const `HSub.hSub [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                      (Lean.Expr.const `UInt64 []))
+                    (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.const `UInt64 []))
+                (Lean.Expr.app
+                  (Lean.Expr.app (Lean.Expr.const `instHSub [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.const `instSubUInt64 [])))
+              (Lean.Expr.bvar 2))
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                (Lean.Expr.lit (Lean.Literal.natVal 11)))
+              (Lean.Expr.app (Lean.Expr.const `UInt64.instOfNat []) (Lean.Expr.lit (Lean.Literal.natVal 11))))))
+        true)
+      true)
+    (Lean.BinderInfo.default))
+  (Lean.BinderInfo.default)
+accepted: false
+BooleanPropositionInspect.literals: fun x y =>
+  have flag := x != 0;
+  if flag = false then x + y else if true ≠ flag then x - y else y
+Lean.Expr.lam
+  `x
+  (Lean.Expr.const `UInt64 [])
+  (Lean.Expr.lam
+    `y
+    (Lean.Expr.const `UInt64 [])
+    (Lean.Expr.letE
+      `flag
+      (Lean.Expr.const `Bool [])
+      (Lean.Expr.app
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app (Lean.Expr.const `bne [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+            (Lean.Expr.app
+              (Lean.Expr.app (Lean.Expr.const `instBEqOfDecidableEq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+              (Lean.Expr.const `instDecidableEqUInt64 [])))
+          (Lean.Expr.bvar 1))
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+            (Lean.Expr.lit (Lean.Literal.natVal 0)))
+          (Lean.Expr.app (Lean.Expr.const `UInt64.instOfNat []) (Lean.Expr.lit (Lean.Literal.natVal 0)))))
+      (Lean.Expr.app
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app
+              (Lean.Expr.app (Lean.Expr.const `ite [Lean.Level.succ (Lean.Level.zero)]) (Lean.Expr.const `UInt64 []))
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app (Lean.Expr.const `Eq [Lean.Level.succ (Lean.Level.zero)]) (Lean.Expr.const `Bool []))
+                  (Lean.Expr.bvar 0))
+                (Lean.Expr.const `Bool.false [])))
+            (Lean.Expr.app
+              (Lean.Expr.app (Lean.Expr.const `instDecidableEqBool []) (Lean.Expr.bvar 0))
+              (Lean.Expr.const `Bool.false [])))
+          (Lean.Expr.app
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.const `HAdd.hAdd [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                      (Lean.Expr.const `UInt64 []))
+                    (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.const `UInt64 []))
+                (Lean.Expr.app
+                  (Lean.Expr.app (Lean.Expr.const `instHAdd [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.const `instAddUInt64 [])))
+              (Lean.Expr.bvar 2))
+            (Lean.Expr.bvar 1)))
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app (Lean.Expr.const `ite [Lean.Level.succ (Lean.Level.zero)]) (Lean.Expr.const `UInt64 []))
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app (Lean.Expr.const `Ne [Lean.Level.succ (Lean.Level.zero)]) (Lean.Expr.const `Bool []))
+                    (Lean.Expr.const `Bool.true []))
+                  (Lean.Expr.bvar 0)))
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.const `instDecidableNot [])
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.const `Eq [Lean.Level.succ (Lean.Level.zero)])
+                        (Lean.Expr.const `Bool []))
+                      (Lean.Expr.const `Bool.true []))
+                    (Lean.Expr.bvar 0)))
+                (Lean.Expr.app
+                  (Lean.Expr.app (Lean.Expr.const `instDecidableEqBool []) (Lean.Expr.const `Bool.true []))
+                  (Lean.Expr.bvar 0))))
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.const `HSub.hSub [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                        (Lean.Expr.const `UInt64 []))
+                      (Lean.Expr.const `UInt64 []))
+                    (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.app
+                    (Lean.Expr.app (Lean.Expr.const `instHSub [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                    (Lean.Expr.const `instSubUInt64 [])))
+                (Lean.Expr.bvar 2))
+              (Lean.Expr.bvar 1)))
+          (Lean.Expr.bvar 1)))
+      true)
+    (Lean.BinderInfo.default))
+  (Lean.BinderInfo.default)
+accepted: false
+BooleanPropositionInspect.dependent: fun x y =>
+  have outer := x == 0;
+  have f := fun flag =>
+    if _h : flag = outer then
+      have g := fun other => if other ≠ flag then x + y else x - y;
+      g (y == 0)
+    else (flag != outer).toUInt64 + x;
+  f (y != 0)
+Lean.Expr.lam
+  `x
+  (Lean.Expr.const `UInt64 [])
+  (Lean.Expr.lam
+    `y
+    (Lean.Expr.const `UInt64 [])
+    (Lean.Expr.letE
+      `outer
+      (Lean.Expr.const `Bool [])
+      (Lean.Expr.app
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app (Lean.Expr.const `BEq.beq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+            (Lean.Expr.app
+              (Lean.Expr.app (Lean.Expr.const `instBEqOfDecidableEq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+              (Lean.Expr.const `instDecidableEqUInt64 [])))
+          (Lean.Expr.bvar 1))
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+            (Lean.Expr.lit (Lean.Literal.natVal 0)))
+          (Lean.Expr.app (Lean.Expr.const `UInt64.instOfNat []) (Lean.Expr.lit (Lean.Literal.natVal 0)))))
+      (Lean.Expr.letE
+        `f
+        (Lean.Expr.forallE `flag (Lean.Expr.const `Bool []) (Lean.Expr.const `UInt64 []) (Lean.BinderInfo.default))
+        (Lean.Expr.lam
+          `flag
+          (Lean.Expr.const `Bool [])
+          (Lean.Expr.app
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.const `dite [Lean.Level.succ (Lean.Level.zero)])
+                    (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.const `Eq [Lean.Level.succ (Lean.Level.zero)])
+                        (Lean.Expr.const `Bool []))
+                      (Lean.Expr.bvar 0))
+                    (Lean.Expr.bvar 1)))
+                (Lean.Expr.app
+                  (Lean.Expr.app (Lean.Expr.const `instDecidableEqBool []) (Lean.Expr.bvar 0))
+                  (Lean.Expr.bvar 1)))
+              (Lean.Expr.lam
+                `_h
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app (Lean.Expr.const `Eq [Lean.Level.succ (Lean.Level.zero)]) (Lean.Expr.const `Bool []))
+                    (Lean.Expr.bvar 0))
+                  (Lean.Expr.bvar 1))
+                (Lean.Expr.letE
+                  `g
+                  (Lean.Expr.forallE
+                    `other
+                    (Lean.Expr.const `Bool [])
+                    (Lean.Expr.const `UInt64 [])
+                    (Lean.BinderInfo.default))
+                  (Lean.Expr.lam
+                    `other
+                    (Lean.Expr.const `Bool [])
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.app
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.const `ite [Lean.Level.succ (Lean.Level.zero)])
+                              (Lean.Expr.const `UInt64 []))
+                            (Lean.Expr.app
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.const `Ne [Lean.Level.succ (Lean.Level.zero)])
+                                  (Lean.Expr.const `Bool []))
+                                (Lean.Expr.bvar 0))
+                              (Lean.Expr.bvar 2)))
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.const `instDecidableNot [])
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.app
+                                    (Lean.Expr.const `Eq [Lean.Level.succ (Lean.Level.zero)])
+                                    (Lean.Expr.const `Bool []))
+                                  (Lean.Expr.bvar 0))
+                                (Lean.Expr.bvar 2)))
+                            (Lean.Expr.app
+                              (Lean.Expr.app (Lean.Expr.const `instDecidableEqBool []) (Lean.Expr.bvar 0))
+                              (Lean.Expr.bvar 2))))
+                        (Lean.Expr.app
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.app
+                                    (Lean.Expr.const `HAdd.hAdd [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                                    (Lean.Expr.const `UInt64 []))
+                                  (Lean.Expr.const `UInt64 []))
+                                (Lean.Expr.const `UInt64 []))
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.const `instHAdd [Lean.Level.zero])
+                                  (Lean.Expr.const `UInt64 []))
+                                (Lean.Expr.const `instAddUInt64 [])))
+                            (Lean.Expr.bvar 5))
+                          (Lean.Expr.bvar 4)))
+                      (Lean.Expr.app
+                        (Lean.Expr.app
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.const `HSub.hSub [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                                  (Lean.Expr.const `UInt64 []))
+                                (Lean.Expr.const `UInt64 []))
+                              (Lean.Expr.const `UInt64 []))
+                            (Lean.Expr.app
+                              (Lean.Expr.app (Lean.Expr.const `instHSub [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                              (Lean.Expr.const `instSubUInt64 [])))
+                          (Lean.Expr.bvar 5))
+                        (Lean.Expr.bvar 4)))
+                    (Lean.BinderInfo.default))
+                  (Lean.Expr.app
+                    (Lean.Expr.bvar 0)
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.app
+                          (Lean.Expr.app (Lean.Expr.const `BEq.beq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.const `instBEqOfDecidableEq [Lean.Level.zero])
+                              (Lean.Expr.const `UInt64 []))
+                            (Lean.Expr.const `instDecidableEqUInt64 [])))
+                        (Lean.Expr.bvar 4))
+                      (Lean.Expr.app
+                        (Lean.Expr.app
+                          (Lean.Expr.app (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                          (Lean.Expr.lit (Lean.Literal.natVal 0)))
+                        (Lean.Expr.app
+                          (Lean.Expr.const `UInt64.instOfNat [])
+                          (Lean.Expr.lit (Lean.Literal.natVal 0))))))
+                  true)
+                (Lean.BinderInfo.default)))
+            (Lean.Expr.lam
+              `_h
+              (Lean.Expr.app
+                (Lean.Expr.const `Not [])
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app (Lean.Expr.const `Eq [Lean.Level.succ (Lean.Level.zero)]) (Lean.Expr.const `Bool []))
+                    (Lean.Expr.bvar 0))
+                  (Lean.Expr.bvar 1)))
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.app
+                          (Lean.Expr.const `HAdd.hAdd [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                          (Lean.Expr.const `UInt64 []))
+                        (Lean.Expr.const `UInt64 []))
+                      (Lean.Expr.const `UInt64 []))
+                    (Lean.Expr.app
+                      (Lean.Expr.app (Lean.Expr.const `instHAdd [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                      (Lean.Expr.const `instAddUInt64 [])))
+                  (Lean.Expr.app
+                    (Lean.Expr.const `Bool.toUInt64 [])
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.app
+                          (Lean.Expr.app (Lean.Expr.const `bne [Lean.Level.zero]) (Lean.Expr.const `Bool []))
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.const `instBEqOfDecidableEq [Lean.Level.zero])
+                              (Lean.Expr.const `Bool []))
+                            (Lean.Expr.const `instDecidableEqBool [])))
+                        (Lean.Expr.bvar 1))
+                      (Lean.Expr.bvar 2))))
+                (Lean.Expr.bvar 4))
+              (Lean.BinderInfo.default)))
+          (Lean.BinderInfo.default))
+        (Lean.Expr.app
+          (Lean.Expr.bvar 0)
+          (Lean.Expr.app
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app (Lean.Expr.const `bne [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                (Lean.Expr.app
+                  (Lean.Expr.app (Lean.Expr.const `instBEqOfDecidableEq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.const `instDecidableEqUInt64 [])))
+              (Lean.Expr.bvar 2))
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                (Lean.Expr.lit (Lean.Literal.natVal 0)))
+              (Lean.Expr.app (Lean.Expr.const `UInt64.instOfNat []) (Lean.Expr.lit (Lean.Literal.natVal 0))))))
+        true)
+      true)
+    (Lean.BinderInfo.default))
+  (Lean.BinderInfo.default)
+accepted: false
+BooleanPropositionInspect.range: fun count seed =>
+  (have a := seed;
+    do
+    let __s ←
+      forIn [:count.toNat] a fun i __s =>
+          have a := __s;
+          have first := a % 2 == 0;
+          have second := UInt64.ofNat i % 3 == 0;
+          have __do_jp := fun __r a =>
+            if _h : first ≠ second then pure (ForInStep.done a) else pure (ForInStep.yield a);
+          if first = second then
+            have a := a + 3;
+            __do_jp () a
+          else
+            have a := a + 7;
+            __do_jp () a
+    have a : UInt64 := __s
+    pure a).run
+Lean.Expr.lam
+  `count
+  (Lean.Expr.const `UInt64 [])
+  (Lean.Expr.lam
+    `seed
+    (Lean.Expr.const `UInt64 [])
+    (Lean.Expr.app
+      (Lean.Expr.app (Lean.Expr.const `Id.run [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+      (Lean.Expr.letE
+        `a
+        (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.bvar 0)
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero])
+                    (Lean.Expr.const `Id [Lean.Level.zero]))
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero])
+                      (Lean.Expr.const `Id [Lean.Level.zero]))
+                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))
+                (Lean.Expr.const `UInt64 []))
+              (Lean.Expr.const `UInt64 []))
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.app
+                          (Lean.Expr.app
+                            (Lean.Expr.const
+                              `ForIn.forIn
+                              [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                            (Lean.Expr.const `Id [Lean.Level.zero]))
+                          (Lean.Expr.const `Std.Legacy.Range []))
+                        (Lean.Expr.const `Nat []))
+                      (Lean.Expr.app
+                        (Lean.Expr.app
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.app
+                                (Lean.Expr.const
+                                  `instForInOfForIn'
+                                  [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                                (Lean.Expr.const `Id [Lean.Level.zero]))
+                              (Lean.Expr.const `Std.Legacy.Range []))
+                            (Lean.Expr.const `Nat []))
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.const `inferInstance [Lean.Level.succ (Lean.Level.zero)])
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.const `Membership [Lean.Level.zero, Lean.Level.zero])
+                                  (Lean.Expr.const `Nat []))
+                                (Lean.Expr.const `Std.Legacy.Range [])))
+                            (Lean.Expr.const `Std.Legacy.instMembershipNatRange [])))
+                        (Lean.Expr.app
+                          (Lean.Expr.app
+                            (Lean.Expr.const
+                              `Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad
+                              [Lean.Level.zero, Lean.Level.zero])
+                            (Lean.Expr.const `Id [Lean.Level.zero]))
+                          (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))))
+                    (Lean.Expr.const `UInt64 []))
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.app
+                          (Lean.Expr.const `Std.Legacy.Range.mk [])
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.app (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]) (Lean.Expr.const `Nat []))
+                              (Lean.Expr.lit (Lean.Literal.natVal 0)))
+                            (Lean.Expr.app (Lean.Expr.const `instOfNatNat []) (Lean.Expr.lit (Lean.Literal.natVal 0)))))
+                        (Lean.Expr.app (Lean.Expr.const `UInt64.toNat []) (Lean.Expr.bvar 2)))
+                      (Lean.Expr.app
+                        (Lean.Expr.app
+                          (Lean.Expr.app (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]) (Lean.Expr.const `Nat []))
+                          (Lean.Expr.lit (Lean.Literal.natVal 1)))
+                        (Lean.Expr.app (Lean.Expr.const `instOfNatNat []) (Lean.Expr.lit (Lean.Literal.natVal 1)))))
+                    (Lean.Expr.const `Nat.zero_lt_one [])))
+                (Lean.Expr.bvar 0))
+              (Lean.Expr.lam
+                `i
+                (Lean.Expr.const `Nat [])
+                (Lean.Expr.lam
+                  (Lean.Name.mkNum (Lean.Name.mkStr (Lean.Name.mkStr (Lean.Name.mkNum `__s.«_@»._stdin 1780592896) "_hygCtx") "_hyg") 31)
+                  (Lean.Expr.const `UInt64 [])
+                  (Lean.Expr.letE
+                    `a
+                    (Lean.Expr.const `UInt64 [])
+                    (Lean.Expr.bvar 0)
+                    (Lean.Expr.letE
+                      `first
+                      (Lean.Expr.const `Bool [])
+                      (Lean.Expr.app
+                        (Lean.Expr.app
+                          (Lean.Expr.app
+                            (Lean.Expr.app (Lean.Expr.const `BEq.beq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                            (Lean.Expr.app
+                              (Lean.Expr.app
+                                (Lean.Expr.const `instBEqOfDecidableEq [Lean.Level.zero])
+                                (Lean.Expr.const `UInt64 []))
+                              (Lean.Expr.const `instDecidableEqUInt64 [])))
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.app
+                                    (Lean.Expr.app
+                                      (Lean.Expr.const `HMod.hMod [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                                      (Lean.Expr.const `UInt64 []))
+                                    (Lean.Expr.const `UInt64 []))
+                                  (Lean.Expr.const `UInt64 []))
+                                (Lean.Expr.app
+                                  (Lean.Expr.app
+                                    (Lean.Expr.const `instHMod [Lean.Level.zero])
+                                    (Lean.Expr.const `UInt64 []))
+                                  (Lean.Expr.const `instModUInt64 [])))
+                              (Lean.Expr.bvar 0))
+                            (Lean.Expr.app
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero])
+                                  (Lean.Expr.const `UInt64 []))
+                                (Lean.Expr.lit (Lean.Literal.natVal 2)))
+                              (Lean.Expr.app
+                                (Lean.Expr.const `UInt64.instOfNat [])
+                                (Lean.Expr.lit (Lean.Literal.natVal 2))))))
+                        (Lean.Expr.app
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero])
+                              (Lean.Expr.const `UInt64 []))
+                            (Lean.Expr.lit (Lean.Literal.natVal 0)))
+                          (Lean.Expr.app
+                            (Lean.Expr.const `UInt64.instOfNat [])
+                            (Lean.Expr.lit (Lean.Literal.natVal 0)))))
+                      (Lean.Expr.letE
+                        `second
+                        (Lean.Expr.const `Bool [])
+                        (Lean.Expr.app
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.app (Lean.Expr.const `BEq.beq [Lean.Level.zero]) (Lean.Expr.const `UInt64 []))
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.const `instBEqOfDecidableEq [Lean.Level.zero])
+                                  (Lean.Expr.const `UInt64 []))
+                                (Lean.Expr.const `instDecidableEqUInt64 [])))
+                            (Lean.Expr.app
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.app
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.const `HMod.hMod [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                                        (Lean.Expr.const `UInt64 []))
+                                      (Lean.Expr.const `UInt64 []))
+                                    (Lean.Expr.const `UInt64 []))
+                                  (Lean.Expr.app
+                                    (Lean.Expr.app
+                                      (Lean.Expr.const `instHMod [Lean.Level.zero])
+                                      (Lean.Expr.const `UInt64 []))
+                                    (Lean.Expr.const `instModUInt64 [])))
+                                (Lean.Expr.app (Lean.Expr.const `UInt64.ofNat []) (Lean.Expr.bvar 3)))
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.app
+                                    (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero])
+                                    (Lean.Expr.const `UInt64 []))
+                                  (Lean.Expr.lit (Lean.Literal.natVal 3)))
+                                (Lean.Expr.app
+                                  (Lean.Expr.const `UInt64.instOfNat [])
+                                  (Lean.Expr.lit (Lean.Literal.natVal 3))))))
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.app
+                                (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero])
+                                (Lean.Expr.const `UInt64 []))
+                              (Lean.Expr.lit (Lean.Literal.natVal 0)))
+                            (Lean.Expr.app
+                              (Lean.Expr.const `UInt64.instOfNat [])
+                              (Lean.Expr.lit (Lean.Literal.natVal 0)))))
+                        (Lean.Expr.letE
+                          (Lean.Name.mkNum (Lean.Name.mkStr (Lean.Name.mkStr (Lean.Name.mkNum `__do_jp.«_@»._stdin 1780592896) "_hygCtx") "_hyg") 54)
+                          (Lean.Expr.forallE
+                            (Lean.Name.mkNum (Lean.Name.mkStr (Lean.Name.mkStr (Lean.Name.mkNum `x.«_@»._stdin 1780592896) "_hygCtx") "_hyg") 56)
+                            (Lean.Expr.const `Unit [])
+                            (Lean.Expr.forallE
+                              (Lean.Name.mkNum (Lean.Name.mkStr (Lean.Name.mkStr (Lean.Name.mkNum `x.«_@»._stdin 1780592896) "_hygCtx") "_hyg") 55)
+                              (Lean.Expr.const `UInt64 [])
+                              (Lean.Expr.app
+                                (Lean.Expr.const `Id [Lean.Level.zero])
+                                (Lean.Expr.app
+                                  (Lean.Expr.const `ForInStep [Lean.Level.zero])
+                                  (Lean.Expr.const `UInt64 [])))
+                              (Lean.BinderInfo.default))
+                            (Lean.BinderInfo.default))
+                          (Lean.Expr.lam
+                            (Lean.Name.mkNum (Lean.Name.mkStr (Lean.Name.mkStr (Lean.Name.mkNum `__r.«_@»._stdin 1780592896) "_hygCtx") "_hyg") 32)
+                            (Lean.Expr.const `Unit [])
+                            (Lean.Expr.lam
+                              `a
+                              (Lean.Expr.const `UInt64 [])
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.app
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.const `dite [Lean.Level.succ (Lean.Level.zero)])
+                                        (Lean.Expr.app
+                                          (Lean.Expr.const `Id [Lean.Level.zero])
+                                          (Lean.Expr.app
+                                            (Lean.Expr.const `ForInStep [Lean.Level.zero])
+                                            (Lean.Expr.const `UInt64 []))))
+                                      (Lean.Expr.app
+                                        (Lean.Expr.app
+                                          (Lean.Expr.app
+                                            (Lean.Expr.const `Ne [Lean.Level.succ (Lean.Level.zero)])
+                                            (Lean.Expr.const `Bool []))
+                                          (Lean.Expr.bvar 3))
+                                        (Lean.Expr.bvar 2)))
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.const `instDecidableNot [])
+                                        (Lean.Expr.app
+                                          (Lean.Expr.app
+                                            (Lean.Expr.app
+                                              (Lean.Expr.const `Eq [Lean.Level.succ (Lean.Level.zero)])
+                                              (Lean.Expr.const `Bool []))
+                                            (Lean.Expr.bvar 3))
+                                          (Lean.Expr.bvar 2)))
+                                      (Lean.Expr.app
+                                        (Lean.Expr.app (Lean.Expr.const `instDecidableEqBool []) (Lean.Expr.bvar 3))
+                                        (Lean.Expr.bvar 2))))
+                                  (Lean.Expr.lam
+                                    `_h
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.app
+                                          (Lean.Expr.const `Ne [Lean.Level.succ (Lean.Level.zero)])
+                                          (Lean.Expr.const `Bool []))
+                                        (Lean.Expr.bvar 3))
+                                      (Lean.Expr.bvar 2))
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.app
+                                          (Lean.Expr.app
+                                            (Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero])
+                                            (Lean.Expr.const `Id [Lean.Level.zero]))
+                                          (Lean.Expr.app
+                                            (Lean.Expr.app
+                                              (Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero])
+                                              (Lean.Expr.const `Id [Lean.Level.zero]))
+                                            (Lean.Expr.app
+                                              (Lean.Expr.app
+                                                (Lean.Expr.const
+                                                  `Monad.toApplicative
+                                                  [Lean.Level.zero, Lean.Level.zero])
+                                                (Lean.Expr.const `Id [Lean.Level.zero]))
+                                              (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))))
+                                        (Lean.Expr.app
+                                          (Lean.Expr.const `ForInStep [Lean.Level.zero])
+                                          (Lean.Expr.const `UInt64 [])))
+                                      (Lean.Expr.app
+                                        (Lean.Expr.app
+                                          (Lean.Expr.const `ForInStep.done [Lean.Level.zero])
+                                          (Lean.Expr.const `UInt64 []))
+                                        (Lean.Expr.bvar 1)))
+                                    (Lean.BinderInfo.default)))
+                                (Lean.Expr.lam
+                                  `_h
+                                  (Lean.Expr.app
+                                    (Lean.Expr.const `Not [])
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.app
+                                          (Lean.Expr.const `Ne [Lean.Level.succ (Lean.Level.zero)])
+                                          (Lean.Expr.const `Bool []))
+                                        (Lean.Expr.bvar 3))
+                                      (Lean.Expr.bvar 2)))
+                                  (Lean.Expr.app
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.app
+                                          (Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero])
+                                          (Lean.Expr.const `Id [Lean.Level.zero]))
+                                        (Lean.Expr.app
+                                          (Lean.Expr.app
+                                            (Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero])
+                                            (Lean.Expr.const `Id [Lean.Level.zero]))
+                                          (Lean.Expr.app
+                                            (Lean.Expr.app
+                                              (Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero])
+                                              (Lean.Expr.const `Id [Lean.Level.zero]))
+                                            (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))))
+                                      (Lean.Expr.app
+                                        (Lean.Expr.const `ForInStep [Lean.Level.zero])
+                                        (Lean.Expr.const `UInt64 [])))
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.const `ForInStep.yield [Lean.Level.zero])
+                                        (Lean.Expr.const `UInt64 []))
+                                      (Lean.Expr.bvar 1)))
+                                  (Lean.BinderInfo.default)))
+                              (Lean.BinderInfo.default))
+                            (Lean.BinderInfo.default))
+                          (Lean.Expr.app
+                            (Lean.Expr.app
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.app
+                                    (Lean.Expr.const `ite [Lean.Level.succ (Lean.Level.zero)])
+                                    (Lean.Expr.app
+                                      (Lean.Expr.const `Id [Lean.Level.zero])
+                                      (Lean.Expr.app
+                                        (Lean.Expr.const `ForInStep [Lean.Level.zero])
+                                        (Lean.Expr.const `UInt64 []))))
+                                  (Lean.Expr.app
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.const `Eq [Lean.Level.succ (Lean.Level.zero)])
+                                        (Lean.Expr.const `Bool []))
+                                      (Lean.Expr.bvar 2))
+                                    (Lean.Expr.bvar 1)))
+                                (Lean.Expr.app
+                                  (Lean.Expr.app (Lean.Expr.const `instDecidableEqBool []) (Lean.Expr.bvar 2))
+                                  (Lean.Expr.bvar 1)))
+                              (Lean.Expr.letE
+                                `a
+                                (Lean.Expr.const `UInt64 [])
+                                (Lean.Expr.app
+                                  (Lean.Expr.app
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.app
+                                          (Lean.Expr.app
+                                            (Lean.Expr.const
+                                              `HAdd.hAdd
+                                              [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                                            (Lean.Expr.const `UInt64 []))
+                                          (Lean.Expr.const `UInt64 []))
+                                        (Lean.Expr.const `UInt64 []))
+                                      (Lean.Expr.app
+                                        (Lean.Expr.app
+                                          (Lean.Expr.const `instHAdd [Lean.Level.zero])
+                                          (Lean.Expr.const `UInt64 []))
+                                        (Lean.Expr.const `instAddUInt64 [])))
+                                    (Lean.Expr.bvar 3))
+                                  (Lean.Expr.app
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero])
+                                        (Lean.Expr.const `UInt64 []))
+                                      (Lean.Expr.lit (Lean.Literal.natVal 3)))
+                                    (Lean.Expr.app
+                                      (Lean.Expr.const `UInt64.instOfNat [])
+                                      (Lean.Expr.lit (Lean.Literal.natVal 3)))))
+                                (Lean.Expr.app
+                                  (Lean.Expr.app (Lean.Expr.bvar 1) (Lean.Expr.const `Unit.unit []))
+                                  (Lean.Expr.bvar 0))
+                                true))
+                            (Lean.Expr.letE
+                              `a
+                              (Lean.Expr.const `UInt64 [])
+                              (Lean.Expr.app
+                                (Lean.Expr.app
+                                  (Lean.Expr.app
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.app
+                                          (Lean.Expr.const
+                                            `HAdd.hAdd
+                                            [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                                          (Lean.Expr.const `UInt64 []))
+                                        (Lean.Expr.const `UInt64 []))
+                                      (Lean.Expr.const `UInt64 []))
+                                    (Lean.Expr.app
+                                      (Lean.Expr.app
+                                        (Lean.Expr.const `instHAdd [Lean.Level.zero])
+                                        (Lean.Expr.const `UInt64 []))
+                                      (Lean.Expr.const `instAddUInt64 [])))
+                                  (Lean.Expr.bvar 3))
+                                (Lean.Expr.app
+                                  (Lean.Expr.app
+                                    (Lean.Expr.app
+                                      (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero])
+                                      (Lean.Expr.const `UInt64 []))
+                                    (Lean.Expr.lit (Lean.Literal.natVal 7)))
+                                  (Lean.Expr.app
+                                    (Lean.Expr.const `UInt64.instOfNat [])
+                                    (Lean.Expr.lit (Lean.Literal.natVal 7)))))
+                              (Lean.Expr.app
+                                (Lean.Expr.app (Lean.Expr.bvar 1) (Lean.Expr.const `Unit.unit []))
+                                (Lean.Expr.bvar 0))
+                              true))
+                          true)
+                        true)
+                      true)
+                    true)
+                  (Lean.BinderInfo.default))
+                (Lean.BinderInfo.default))))
+          (Lean.Expr.lam
+            (Lean.Name.mkNum (Lean.Name.mkStr (Lean.Name.mkStr (Lean.Name.mkNum `__s.«_@»._stdin 1780592896) "_hygCtx") "_hyg") 31)
+            (Lean.Expr.const `UInt64 [])
+            (Lean.Expr.letE
+              `a
+              (Lean.Expr.const `UInt64 [])
+              (Lean.Expr.bvar 0)
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.app
+                      (Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero])
+                      (Lean.Expr.const `Id [Lean.Level.zero]))
+                    (Lean.Expr.app
+                      (Lean.Expr.app
+                        (Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero])
+                        (Lean.Expr.const `Id [Lean.Level.zero]))
+                      (Lean.Expr.app
+                        (Lean.Expr.app
+                          (Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero])
+                          (Lean.Expr.const `Id [Lean.Level.zero]))
+                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))))
+                  (Lean.Expr.const `UInt64 []))
+                (Lean.Expr.bvar 0))
+              true)
+            (Lean.BinderInfo.default)))
+        true))
+    (Lean.BinderInfo.default))
+  (Lean.BinderInfo.default)
+accepted: false

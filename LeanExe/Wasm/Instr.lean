@@ -60,6 +60,10 @@ inductive Instr where
   | mulF32
   | divF32
   | sqrtF32
+  | nearestF32
+  | i32TruncSatF32S
+  | f32ConvertI32S
+  | extend8SI32
   | i32ReinterpretF32
   | f32ReinterpretI32
   | f32DemoteF64

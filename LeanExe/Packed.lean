@@ -19,4 +19,10 @@ def generateUInt32LE (size : Nat) (value : Nat → UInt32) : ByteArray := Id.run
     bytes := bytes.push (word >>> 24).toUInt8
   return bytes
 
+def generateUInt8 (size : Nat) (value : Nat → UInt8) : ByteArray := Id.run do
+  let mut bytes := ByteArray.emptyWithCapacity size
+  for index in [:size] do
+    bytes := bytes.push (value index)
+  return bytes
+
 end LeanExe.Packed

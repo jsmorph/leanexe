@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "status": "lean-native-check-passed",
+  "width": 768,
+  "records": 3650,
+  "record_bytes": 9216,
+  "record_layout": "768 input FP32 words, 768 gamma words, 768 beta words; little-endian",
+  "order": "Per prefix: quantized 25 normalizations, then FP32 25 normalizations, in source order",
+  "prefixes": 73,
+  "rows_sha256": "819f87c68017355d0da78e8b6a0f47f20250d62fb5df589ba0ea9478aa057fba",
+  "rows_bytes": 33638400,
+  "coverage_sha256": "ea392ce16db35c713b40ec047ba60fe1118aaadd136b083846628d1c38ea14a0",
+  "source_sha256": "9826f51e23f3526c3ccd03df64f752a8b452f9eceaf6fc657f1d4a55adad99af",
+  "reference_sources": {
+    "quantized_reference.py": "32129e7bc189013e0246cb4ecf65e23c412d18e04a5357ecd7ca155de552c88e",
+    "diagnose_quantized.py": "ae4ca14c6657f4c63f6b2918cb0d9db97f2cab7a81f222603e324c66acaec15a"
+  },
+  "seconds": 31.840666432050057,
+  "exit_code": 0,
+  "runtime_trust": "Native Lean compiler/runtime evaluates captured records. Kernel proofs establish checker soundness. Captured internal operand identity with the complete Lean recurrence remains an assumption. Capture reproduces all 73 paired logit hashes.",
+  "checker_sha256": "96b9ce69eb2c1d97b529087b652acecfed0d117ee21e22f58576a0c8930a91f7",
+  "checker_source_sha256": "a634aa093e94293dfa13fd1fc98a431bb4abf186f1c6aee8b37a5b20b1ed1b3e",
+  "range_columns": [
+    "record",
+    "input_scaled_magnitude",
+    "mean_add",
+    "mean_div",
+    "center_sub",
+    "variance_mul",
+    "variance_add",
+    "variance_div",
+    "epsilon_add",
+    "square_root",
+    "reciprocal",
+    "normalized_mul",
+    "scale_mul",
+    "bias_add",
+    "denominator_bits"
+  ],
+  "denominator_lower": {
+    "numerator": 1,
+    "denominator": 1000
+  },
+  "reference_root_lower": {
+    "numerator": 1,
+    "denominator": 1000,
+    "scope": "Kernel theorem for every real reference input"
+  },
+  "check_command": "tools/leanrun --timeout 180 proofs/talos/lean/.lake/build/bin/gpt2-normalization-check build/gpt2-124m/quantized-group64/heldout/normalization/rows.bin build/gpt2-124m/quantized-group64/heldout/normalization/ranges-ordered.txt",
+  "ranges_sha256": "08bc413dc0f0c1a3c9932d78bca06d5277cff00e4d12771d96bd5d4bc3ac0332",
+  "ranges_gzip_sha256": "4f21cb041932962a5fed75d0e3213a7ea2945e801b389f5e85b8b16aa569d434",
+  "exponents": {
+    "mean_add": {
+      "minimum": 151,
+      "maximum": 161
+    },
+    "mean_div": {
+      "minimum": 130,
+      "maximum": 153
+    },
+    "center_sub": {
+      "minimum": 150,
+      "maximum": 161
+    },
+    "variance_mul": {
+      "minimum": 299,
+      "maximum": 322
+    },
+    "variance_add": {
+      "minimum": 154,
+      "maximum": 173
+    },
+    "variance_div": {
+      "minimum": 145,
+      "maximum": 164
+    },
+    "epsilon_add": {
+      "minimum": 144,
+      "maximum": 163
+    },
+    "square_root": {
+      "minimum": 147,
+      "maximum": 156
+    },
+    "reciprocal": {
+      "minimum": 144,
+      "maximum": 153
+    },
+    "normalized_mul": {
+      "minimum": 301,
+      "maximum": 303
+    },
+    "scale_mul": {
+      "minimum": 297,
+      "maximum": 306
+    },
+    "bias_add": {
+      "minimum": 148,
+      "maximum": 157
+    }
+  }
+}

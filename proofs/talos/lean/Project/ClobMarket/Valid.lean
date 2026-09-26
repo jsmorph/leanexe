@@ -12,12 +12,12 @@ namespace Project.ClobMarket.Valid
 
 open Wasm Project.Common Project.Clob Project.ClobMarket
   Project.ClobMarket.Model
-  Project.ClobLimit.InternalLoopInvariant
+  Project.ClobMatchFuel.LoopInvariant
   Project.ClobMatchFuel.AllocatorFrame Project.ClobPostOnly.Model
 
 def ValidSpec : Prop :=
   ∀ (env : HostEnv Unit) (st : Store Unit)
-    (book bookCapacity g0 g2 : UInt64)
+    (book bookCapacity g0 g2 g4 g5 : UInt64)
     (os : List OrderL) (order : OrderL) (limit : Nat),
     os.length < 4294967296 →
     48 ≤ book.toNat →
@@ -31,6 +31,8 @@ def ValidSpec : Prop :=
     st.globals.globals[0]? = some (.i64 g0) →
     st.globals.globals[1]? = some (.i64 0) →
     st.globals.globals[2]? = some (.i64 g2) →
+    st.globals.globals[4]? = some (.i64 g4) →
+    st.globals.globals[5]? = some (.i64 g5) →
     limit < 4294967296 →
     limit ≤ st.mem.pages * 65536 →
     g0.toNat + 112 + (os.length + 1) *
@@ -42,27 +44,26 @@ def ValidSpec : Prop :=
       (fun st' values =>
         ∃ data,
           values = [.i64 data.trades, .i64 data.book, .i64 0] ∧
-          Project.ClobLimit.InternalLoopResult.OutputAt
-            (Project.ClobLimit.RunMatchCorrect.runMatchContext st os
-              (unlimitedTakerL order) g0 g2 limit) st' data)
+          Project.ClobLimit.HeapRunMatch.OutputAt
+            (Project.ClobLimit.HeapRunMatch.runMatchContext st os
+              (unlimitedTakerL order) g0 g2 g4 g5 limit) st' data)
 
 set_option maxRecDepth 1048576
 
 set_option Elab.async false in
 theorem func21_valid : ValidSpec := by
-  intro env st book bookCapacity g0 g2 os order limit hLength hBook48
-    hBook32 hBookCapacity hBookBelow hBook hFit32 hFit hPages hg0 hg1 hg2
-    hAddressLimit hMemoryLimit hBudget hValid
+  intro env st book bookCapacity g0 g2 g4 g5 os order limit hLength hBook48
+    hBook32 hBookCapacity hBookBelow hBook hFit32 hFit hPages hg0 hg1 hg2 hg4 hg5 hAddressLimit hMemoryLimit hBudget hValid
   let taker := unlimitedTakerL order
-  let ctx := Project.ClobLimit.RunMatchCorrect.runMatchContext st os taker
-    g0 g2 limit
+  let ctx := Project.ClobLimit.HeapRunMatch.runMatchContext st os taker
+    g0 g2 g4 g5 limit
   have hRunMatch : TerminatesWith (m := Project.ClobMarket.«module»)
       (id := 18) (initial := st) (env := env)
-      (Project.ClobLimit.RunMatchCorrect.runMatchArgs 0 book taker)
-      (Project.ClobLimit.InternalLoopResult.Postcondition ctx) := by
-    apply RunMatch.func18_correct env st 0 book bookCapacity g0 g2 os taker
+      (Project.ClobLimit.HeapRunMatch.runMatchArgs 0 book taker)
+      (Project.ClobLimit.HeapRunMatch.Postcondition ctx) := by
+    apply RunMatch.func18_correct env st book bookCapacity g0 g2 g4 g5 os taker
       limit hLength hBook48 hBook32 hBookCapacity hBookBelow hBook hFit32
-      hFit hPages hg0 hg1 hg2 hAddressLimit hMemoryLimit hBudget
+      hFit hPages hg0 hg1 hg2 hg4 hg5 hAddressLimit hMemoryLimit hBudget
   apply TerminatesWith.of_wp_entry_for (f := func21Def)
   · simp [Project.ClobMarket.«module»]
   · change wp Project.ClobMarket.«module» func21 _ st
@@ -77,7 +78,7 @@ theorem func21_valid : ValidSpec := by
     simp only [Entry.validProg, List.append_assoc]
     apply Price.priceProg_spec env st book order
     apply Call.callProg_spec env st book order
-      (Project.ClobLimit.InternalLoopResult.Postcondition ctx) hRunMatch
+      (Project.ClobLimit.HeapRunMatch.Postcondition ctx) hRunMatch
     rintro st2 values ⟨data, hValues, hOutput⟩
     apply ValidResult.validResultProg_spec env st2 book order ctx data values
       hValues

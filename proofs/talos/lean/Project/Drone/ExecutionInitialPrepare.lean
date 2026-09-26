@@ -7,9 +7,9 @@ set_option maxRecDepth 32768 in
 set_option maxHeartbeats 200000 in
 theorem initial_prepare_spec (env : HostEnv Unit) (store : Store Unit)
     (seed row : UInt64) (state : Nat) (tracked : Bool) (aux : List Value) (s : Scratch) (out0 out1 : UInt64)
-    (hAux : aux.length = 21) (hState : state < UInt64.size)
+    (hAux : aux.length = 19) (hState : state < UInt64.size)
     (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : ∀ nextAux : List Value, nextAux.length = 21 →
+    (hNext : ∀ nextAux : List Value, nextAux.length = 19 →
       nextAux[4]? = some (.i64 (initialWord state)) →
       wp Project.Drone.«module» rest Q store
         (initialFrame seed row state tracked nextAux { s with source := row, value := initialWord state } out0 out1) env) :

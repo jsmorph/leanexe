@@ -1,0 +1,54 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [2/350] Replayed Interpreter.Wasm.Mem
+warning: Interpreter/Wasm/Mem.lean:133:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:152:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:152:19: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:153:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:155:20: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:155:32: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:156:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:156:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:219:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:222:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:226:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:228:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:231:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:233:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:236:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:246:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:266:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:300:44: `if_pos` has been deprecated: Use `ite_eq_left` instead
+⚠ [749/755] Replayed Project.Artifact.Binary.Proof.Cursor
+warning: Project/Artifact/Binary/Proof/Cursor.lean:131:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:145:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:156:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:162:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:180:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:180:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:191:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [750/755] Replayed Project.Artifact.Binary.Proof.Leb
+warning: Project/Artifact/Binary/Proof/Leb.lean:10:5: Ambiguous namespace `Parser`: it is interpreted as `_root_.Wasm.Binary.Parser` because this `open` occurs inside `namespace Wasm.Binary.Leb.Proof`, while `_root_.Parser` is silently not opened. Specify the namespace unambiguously, e.g. `_root_.Wasm.Binary.Parser`. The warning can sometimes also be addressed by moving the `open` outside of the surrounding `namespace`.
+
+Note: This linter can be disabled with `set_option linter.ambiguousOpen false`
+⚠ [751/755] Replayed Project.Artifact.Binary.Proof.Primitives
+warning: Project/Artifact/Binary/Proof/Primitives.lean:6:5: Ambiguous namespace `Parser`: it is interpreted as `_root_.Wasm.Binary.Parser` because this `open` occurs inside `namespace Wasm.Binary.Proof`, while `_root_.Parser` is silently not opened. Specify the namespace unambiguously, e.g. `_root_.Wasm.Binary.Parser`. The warning can sometimes also be addressed by moving the `open` outside of the surrounding `namespace`.
+
+Note: This linter can be disabled with `set_option linter.ambiguousOpen false`
+⚠ [752/755] Replayed Project.Artifact.Binary.Proof.Decode
+warning: Project/Artifact/Binary/Proof/Decode.lean:6:5: Ambiguous namespace `Parser`: it is interpreted as `_root_.Wasm.Binary.Parser` because this `open` occurs inside `namespace Wasm.Binary.Proof`, while `_root_.Parser` is silently not opened. Specify the namespace unambiguously, e.g. `_root_.Wasm.Binary.Parser`. The warning can sometimes also be addressed by moving the `open` outside of the surrounding `namespace`.
+
+Note: This linter can be disabled with `set_option linter.ambiguousOpen false`
+⚠ [755/755] Built Project.ByteIO.Binary (1.2s)
+warning: Project/ByteIO/Binary.lean:117:26: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+warning: Project/ByteIO/Binary.lean:143:22: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+info: Project/ByteIO/Binary.lean:239:0: 'Project.ByteIO.Binary.decode_sound' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Binary.lean:240:0: 'Project.ByteIO.Binary.validate_sound' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Binary.lean:242:0: 'Project.ByteIO.Binary.importEntry_sound' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Binary.lean:243:0: 'Project.ByteIO.Binary.section_sound' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Binary.lean:244:0: 'Project.ByteIO.Binary.translation_fields' depends on axioms: [propext, Quot.sound]
+Build completed successfully (755 jobs).

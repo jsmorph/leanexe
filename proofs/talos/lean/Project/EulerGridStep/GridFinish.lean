@@ -11,7 +11,9 @@ def gridFinishFrame (ratio pointer : UInt64) (base cells index : Nat) (output : 
     (scratch : GridScratch) : Locals :=
   let root := gridLoopRoot base output.size index output[0]!
   let frame := gridLoopFrame ratio pointer (arenaRoot base output.size 0) root cells index scratch
-  { frame with locals := (frame.locals.set 29 (.i64 root)).set 30 (.i64 root), values := [] }
+  { frame with locals := ((((((frame.locals.set 28 (.i64 root)).set 29 (.i64 root)).set
+      30 (.i64 (UInt64.ofNat index))).set 31 (.i64 root)).set 32 (.i64 root)).set
+      33 (.i64 root)).set 34 (.i64 root), values := [] }
 
 /-- Exact post-loop return staging and guarded release of the initial array. -/
 theorem grid_finish_spec {m : Wasm.Module} (layout : Layout m)
@@ -35,6 +37,7 @@ theorem grid_finish_spec {m : Wasm.Module} (layout : Layout m)
     have hn := congrArg UInt64.toNat h
     rw [hRootNat, UInt64.toNat_zero] at hn
     omega
+  have hDifferent := (gridLoopRoot_separate_zero base output.size cells index output[0]! hPositive hIndex hBudget32).ne
   have hCall := grid_final_release layout env initial base cells index output allocs releases frees
     hPositive hIndex hStorage hProtected
   unfold gridValidBody func36

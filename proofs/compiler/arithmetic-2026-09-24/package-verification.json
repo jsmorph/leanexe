@@ -1,0 +1,58 @@
+{
+  "audits": {
+    "LeanExe.Extract.Arithmetic.compileEnvironment_accepts": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "LeanExe.Extract.Arithmetic.compileEnvironment_success": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "Project.Compiler.ArithmeticModule.alloc_valid": [
+      "propext"
+    ],
+    "Project.Compiler.ArithmeticModule.compileEnvironment_correct": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "Project.Compiler.ArithmeticModule.compileEnvironment_sound": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "Project.Compiler.ArithmeticModule.extracted_correct": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "Project.Compiler.ArithmeticModule.extracted_module_valid": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "Project.Compiler.ArithmeticModule.release_valid": [
+      "propext"
+    ],
+    "Project.Compiler.ArithmeticModule.retain_valid": [
+      "propext"
+    ]
+  },
+  "command": [
+    "tools/leanrun",
+    "--timeout",
+    "900",
+    "lake",
+    "build",
+    "Project.Compiler.ArithmeticCompilerAudit"
+  ],
+  "commit": "878cfd1e3181784e9356223d96b7009045e88533",
+  "exitStatus": 0,
+  "localMode": "1",
+  "logSha256": "182fe2fd2bf7ba22b6242329f34591ec1a49df061a2d2b53fe8dfd4a34685098",
+  "sourceModules": 133,
+  "toolchain": "leanprover/lean4:v4.34.0-rc2",
+  "tree": "96d852166c2d32b96c1ce2e23ff0a2f6be38648e"
+}

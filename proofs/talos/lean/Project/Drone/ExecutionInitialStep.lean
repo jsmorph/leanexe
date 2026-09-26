@@ -11,15 +11,16 @@ set_option maxRecDepth 32768 in
 theorem initial_step_spec (env : HostEnv Unit) (store initial : Store Unit) (heap initialHeap : Heap)
     (seed : UInt64) (node : FreeNode) (row : Array UInt64) (state remaining pageLimit : Nat)
     (tracked : Bool) (aux : List Value) (s : Scratch) (out0 out1 : UInt64)
-    (hAux : aux.length = 21) (hState : state + 1 < UInt64.size)
+    (hAux : aux.length = 19) (hState : state + 1 < UInt64.size)
     (hRow : heap.OwnsWords store node row) (hHeap : heap.At store)
     (hBudget : Budget store heap (rowPushCost row.size + remaining) pageLimit)
     (hPreserve : PreservesWords initialHeap initial heap store)
     (hTracked : tracked = true → SeparateWords initialHeap initial node)
+    (hAlias : node.root = seed ↔ tracked = false)
     (Q : Assertion Unit)
     (hNext : ∀ (final : Store Unit) (nextHeap : Heap) (nextNode : FreeNode)
       (nextAux : List Value) (nextScratch : Scratch),
-      nextAux.length = 21 → nextHeap.At final → Budget final nextHeap remaining pageLimit →
+      nextAux.length = 19 → nextHeap.At final → Budget final nextHeap remaining pageLimit →
       nextHeap.OwnsWords final nextNode (((row.push (initialWord state)).push (initialWord state)).push 0) →
       PreservesWords initialHeap initial nextHeap final → SeparateWords initialHeap initial nextNode →
       Q (.Break 0 final (initialFrame seed nextNode.root (state + 1) true nextAux nextScratch
@@ -45,10 +46,12 @@ theorem initial_step_spec (env : HostEnv Unit) (store initial : Store Unit) (hea
     intro h; have := hRow.buffer.rootBound; rw [h] at this; contradiction
   have hNewNonzero : nextNode.root ≠ 0 := by
     intro h; have := hOutput.buffer.rootBound; rw [h] at this; contradiction
+  have hDifferent : node.root ≠ nextNode.root :=
+    word_regions_ne hOld.buffer.rootBound hOutput.buffer.rootBound hSeparate
   cases tracked with
   | false =>
     apply initial_tail_spec env pushed pushed seed node.root nextNode.root state false pushedAux nextScratch
-      out0 out1 hPushedLength hState hOldNonzero hNewNonzero (fun _ => rfl) (by simp)
+      out0 out1 hPushedLength hState hOldNonzero hNewNonzero hDifferent hAlias (fun _ => rfl) (by simp)
     intro nextAux finalScratch hLength
     exact hNext pushed nextHeap nextNode nextAux finalScratch hLength hPushedHeap hPushedBudget
       hOutput hKept hFreshOriginal
@@ -61,7 +64,7 @@ theorem initial_step_spec (env : HostEnv Unit) (store initial : Store Unit) (hea
       rintro finish values ⟨hValues, hFinish, _⟩
       exact ⟨hFinish, hValues⟩
     apply initial_tail_spec env pushed released seed node.root nextNode.root state true pushedAux nextScratch
-      out0 out1 hPushedLength hState hOldNonzero hNewNonzero (by simp) (fun _ => hCall)
+      out0 out1 hPushedLength hState hOldNonzero hNewNonzero hDifferent hAlias (by simp) (fun _ => hCall)
     intro nextAux finalScratch hLength
     have hRoot32 : node.root.toNat ≤ 4294967296 := by have := hOld.buffer.addressBound; omega
     apply hNext released (nextHeap.release node) nextNode nextAux finalScratch hLength

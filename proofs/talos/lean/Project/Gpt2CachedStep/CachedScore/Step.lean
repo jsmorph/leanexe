@@ -10,13 +10,13 @@ namespace Project.Gpt2CachedStep.CachedScore
 open Wasm Project.Common Project.ProofKit PackedMemory PackedFloatFrame LeanExe.Models.Gpt2
 
 def stepCode : Wasm.Program :=
-  match (func23[12]? : Option Wasm.Instruction) with
+  match (func23[10]? : Option Wasm.Instruction) with
   | some (Wasm.Instruction.block _ _ [Wasm.Instruction.loop _ _ body _ _] _ _) => (body.drop 4).dropLast
   | _ => []
 
 set_option maxRecDepth 16384 in
 theorem emitted_loop :
-    func23 = func23.take 12 ++ RangeFoldLoop.program 37 38 stepCode ++ func23.drop 13 := rfl
+    func23 = func23.take 10 ++ RangeFoldLoop.program 37 38 stepCode ++ func23.drop 11 := rfl
 
 def parameters (cacheOwner qkvOwner cachePtr qkvPtr : UInt64) (cache qkv : ByteArray)
     (layer position source head : Nat) : List Wasm.Value :=

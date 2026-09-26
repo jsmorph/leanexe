@@ -76,7 +76,7 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
   apply output_loop_spec env prepared _ pointer (node start 0).root weights
     (hidden weights t0 t1 t2 t3 3) start 0
     (initialReadyFrame_locals pointer t0 t1 t2 t3 (hidden weights t0 t1 t2 t3 3) start previous)
-    hPreparedState hPreparedState.emptyArray hPreparedWeights hSize hWeightsBefore (by decide) hFit
+    rfl hPreparedState hPreparedState.emptyArray hPreparedWeights hSize hWeightsBefore (by decide) hFit
     (by rw [hPreparedPages]; exact hMemory)
     (by rw [hPreparedPages]; exact hPages)
     (by rw [hPreparedPages, hPreparedCap]; exact hCap)
@@ -87,7 +87,15 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
   apply output_exit_spec env current currentFrame (node start 0).root (node start 0).capacity
     (freeHead (freed start 256)) releases' frees' (node start 256).root
     hProgress.locals.params hProgress.locals.locals hProgress.locals.values
-    hProgress.locals.current hProgress.locals.output hProgress.locals.empty
+    hProgress.locals.current hProgress.locals.output hProgress.locals.empty hProgress.locals.owner
+    (by
+      intro hEq
+      have hResult := node_toNat start 256 hFit
+      have hNat := congrArg UInt64.toNat hEq
+      rw [hEmpty.1, hResult.1] at hNat
+      have hSep := separated start (show 0 < 256 by decide)
+      simp only [top, root, capacity] at hSep hNat
+      omega)
     (by rw [hEmpty.1]; omega) hProgress.heap.emptyHeader hProgress.heap.emptyArray
     (by simp [hCurrentGlobals, OutputMemory.globals])
     (by simp [hCurrentGlobals, OutputMemory.globals])

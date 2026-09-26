@@ -57,7 +57,7 @@ set_option cbv.maxSteps 1000000
     if (!code) throw Error(`missing function ${index}`);
     const name = `ArtifactCode${index}`;
     groups.push(`${prefix}.${name}`);
-    let source = header();
+    const sequenceDeclarations = [];
     const selected = [...sequences.values()].filter(sequence =>
       sequence.path.split(".")[0] === String(index) &&
       (sequence.path === String(index) || sequence.finish - sequence.start >= 128));
@@ -66,15 +66,25 @@ set_option cbv.maxSteps 1000000
       let end = sequence.finish;
       for (const offset of [...sequence.offsets].reverse()) {
         if (end - offset.pos < 128 && offset.index !== 0) continue;
-        source += `@[cbv_eval] theorem ${seqName(sequence.path, offset.index)} :
+        sequenceDeclarations.push(`@[cbv_eval] theorem ${seqName(sequence.path, offset.index)} :
     instructionSequenceAt ${offset.fuel} ${sequence.allowElse} ${cursor(offset.pos, sequence.limit)} =
       .ok (((${body(sequence.path)}).drop ${offset.index}, .${sequence.ending}), ${cursor(sequence.finish, sequence.limit)}) := by
   cbv
 
-`;
+`);
         end = offset.pos;
       }
     }
+    let source;
+    if (sequenceDeclarations.length > 8) {
+      let previous = [];
+      for (let offset = 0; offset < sequenceDeclarations.length; offset += 8) {
+        const partName = `${name}Sequences${offset / 8}`;
+        save(partName, header(previous) + sequenceDeclarations.slice(offset, offset + 8).join(""));
+        previous = [`${prefix}.${partName}`];
+      }
+      source = header(previous);
+    } else source = header() + sequenceDeclarations.join("");
     source += `theorem code${index}_decoded :
     code ${cursor(code.start)} = .ok (Cache.raw.codes[${index}]!, ${cursor(code.stop)}) := by
   refine code_eq_of_parts (size := ${code.stop - code.payload})
@@ -105,12 +115,25 @@ set_option cbv.maxSteps 1000000
     const [tag, field, parser] = kind;
     const name = `ArtifactSection${id}`;
     sectionImports.push(`${prefix}.${name}`);
-    let source = header(id === 10 ? groups : []);
-    if (id !== 10) for (const entry of section.entries) source += `theorem ${tag}${entry.index}_decoded :
+    const itemImports = [];
+    let itemSource = "";
+    if (id !== 10) {
+      for (let offset = 0; offset < section.entries.length; offset += 16) {
+        const declarations = section.entries.slice(offset, offset + 16).map(entry => `theorem ${tag}${entry.index}_decoded :
     ${parser} ${cursor(entry.start, section.end)} =
       .ok (Cache.raw.${field}[${entry.index}]!, ${cursor(entry.end, section.end)}) := by cbv
 
-`;
+#print axioms ${tag}${entry.index}_decoded
+
+`).join("");
+        if (section.count > 16) {
+          const partName = `${name}Items${offset / 16}`;
+          save(partName, header() + declarations);
+          itemImports.push(`${prefix}.${partName}`);
+        } else itemSource += declarations;
+      }
+    }
+    let source = header(id === 10 ? groups : itemImports) + itemSource;
     source += `theorem ${field}_tail${section.count} :
     Internal.vectorLoop ${parser} 0 ${cursor(section.end, section.end)} =
       .ok (Cache.raw.${field}.drop ${section.count}, ${cursor(section.end, section.end)}) := by rfl

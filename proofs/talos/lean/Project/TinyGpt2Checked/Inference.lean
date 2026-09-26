@@ -41,7 +41,11 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
         UInt64Array.At final pointer weights ∧
         final.mem.pages = initial.mem.pages ∧
         (∀ address : Nat, address < start → final.mem.bytes address = initial.mem.bytes address) ∧
-        final = { initial with mem := final.mem, globals := final.globals }) := by
+        final = { initial with mem := final.mem, globals := final.globals } ∧
+        ∃ head releases frees : UInt64,
+          final.globals.globals[1]? = some (.i64 head) ∧
+          final.globals.globals[4]? = some (.i64 releases) ∧
+          final.globals.globals[5]? = some (.i64 frees)) := by
   have hZeroTop := top_mono start (show 0 ≤ 256 by decide)
   have hZeroFit := hZeroTop.trans_lt hFit
   have hZeroMemory := hZeroTop.trans hMemory
@@ -75,7 +79,7 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
   apply output_loop_spec env prepared _ owner pointer (node start 0).root weights
     (hidden weights t0 t1 t2 t3 3) start 0
     (initialReadyFrame_locals owner pointer t0 t1 t2 t3 (hidden weights t0 t1 t2 t3 3) start previous)
-    hPreparedState hPreparedState.emptyArray hPreparedWeights hSize hWeightsBefore (by decide) hFit
+    rfl hPreparedState hPreparedState.emptyArray hPreparedWeights hSize hWeightsBefore (by decide) hFit
     (by rw [hPreparedPages]; exact hMemory)
     (by rw [hPreparedPages]; exact hPages)
     (by rw [hPreparedPages, hPreparedCap]; exact hCap)
@@ -87,6 +91,14 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
     (freeHead (freed start 256)) releases' frees' (node start 256).root
     hProgress.locals.params hProgress.locals.locals hProgress.locals.values
     hProgress.locals.current hProgress.locals.output hProgress.locals.empty
+    (by
+      intro hEq
+      have hResult := node_toNat start 256 hFit
+      have hNat := congrArg UInt64.toNat hEq
+      rw [hEmpty.1, hResult.1] at hNat
+      have hSep := separated start (show 0 < 256 by decide)
+      simp only [top, root, capacity] at hSep hNat
+      omega)
     (by rw [hEmpty.1]; omega) hProgress.heap.emptyHeader hProgress.heap.emptyArray
     (by simp [hCurrentGlobals, OutputMemory.globals])
     (by simp [hCurrentGlobals, OutputMemory.globals])
@@ -105,8 +117,12 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
     UInt64Array.At final (node start 256).root (infer weights t0 t1 t2 t3) ∧
     UInt64Array.At final pointer weights ∧ final.mem.pages = initial.mem.pages ∧
     (∀ address : Nat, address < start → final.mem.bytes address = initial.mem.bytes address) ∧
-    final = { initial with mem := final.mem, globals := final.globals }
-  refine ⟨rfl, ?_, ?_, hFinalPages, hFinalBytes, ?_⟩
+    final = { initial with mem := final.mem, globals := final.globals } ∧
+    ∃ head releases frees : UInt64,
+      final.globals.globals[1]? = some (.i64 head) ∧
+      final.globals.globals[4]? = some (.i64 releases) ∧
+      final.globals.globals[5]? = some (.i64 frees)
+  refine ⟨rfl, ?_, ?_, hFinalPages, hFinalBytes, ?_, ?_⟩
   · simpa only [infer_eq_logitPrefix] using hExit.1
   · apply hWeights.frame hFinalPages.ge
     intro address _ hAddress
@@ -117,6 +133,8 @@ theorem infer_exact (env : HostEnv Unit) (initial : Store Unit)
       _ = { initial with mem := final.mem, globals := final.globals } := by
         dsimp only [prepared]
         rw [OutputMemory.prepare_store]
+  · refine ⟨(node start 0).root, releases' + 1, frees' + 1, ?_, ?_, ?_⟩ <;>
+      simp [final, FixedArrayRelease.store, hCurrentGlobals, OutputMemory.globals]
 
 #print axioms infer_exact
 end Project.TinyGpt2Checked.Spec

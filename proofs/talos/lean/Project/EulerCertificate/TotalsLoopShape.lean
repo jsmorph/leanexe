@@ -9,18 +9,17 @@ open Project.EulerCertificateFlux.Execution (boundsValues vectorValues)
 open Project.EulerRiemann.Execution (cellValues)
 
 def totalsLoop : Wasm.Program :=
-  match (func74[82]? : Option Wasm.Instruction) with
+  match (func74[80]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => body
   | _ => []
 
 theorem totals_loop_shape :
-    func74[82]? = some (.block 0 0 [.loop 0 0 totalsLoop]) := rfl
+    func74[80]? = some (.block 0 0 [.loop 0 0 totalsLoop]) := rfl
 
 structure TotalsScratch where
   cell : Cell := ⟨0, ⟨0, 0, 0, 0⟩, 0, 0⟩
   previous : Vector := Vectors.zero
   borrowed : UInt64 := 0
-  visited : UInt64 := 0
 
 def totalsFrame (owner pointer : UInt64) (count index : Nat)
     (acc : Vector) (scratch : TotalsScratch) : Locals :=
@@ -32,7 +31,7 @@ def totalsFrame (owner pointer : UInt64) (count index : Nat)
       List.replicate 12 (.i64 0) ++
       [.i64 pointer, .i64 (UInt64.ofNat count), .i64 (UInt64.ofNat index),
         .i64 (UInt64.ofNat count), .i64 (UInt64.ofNat count), .i64 scratch.borrowed] ++
-      (vectorValues acc).reverse ++ [.i64 scratch.visited] ++ List.replicate 8 (.i64 0)
+      (vectorValues acc).reverse ++ List.replicate 20 (.i64 0)
     values := [] }
 
 def totalsPrefix (grid : Array Cell) (index : Nat) : Vector :=

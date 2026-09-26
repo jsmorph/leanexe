@@ -6,7 +6,7 @@ open Wasm Project.Runtime Project.ProofKit Project.EulerRiemann.Execution WordAr
 
 theorem initial_push_spec (env : HostEnv Unit) (store : Store Unit) (heap : Heap)
     (seed row : UInt64) (state : Nat) (tracked : Bool) (aux : List Value) (s : Scratch) (out0 out1 : UInt64)
-    (source : FreeNode) (input : Array UInt64) (remaining pageLimit : Nat) (hAux : aux.length = 21)
+    (source : FreeNode) (input : Array UInt64) (remaining pageLimit : Nat) (hAux : aux.length = 19)
     (hSource : s.source = source.root) (hInput : BorrowedWords heap store source input)
     (hHeap : heap.At store) (hBudget : Budget store heap (pushCost input.size + remaining) pageLimit)
     (Q : Assertion Unit) (rest : Wasm.Program)
@@ -22,13 +22,13 @@ theorem initial_push_spec (env : HostEnv Unit) (store : Store Unit) (heap : Heap
             (pushedScratch s input.size (allocatedRoot heap.top (pushNeed input.size) heap.nodes)
               previous current capacity next) out0 out1 with
           values := [.i64 (allocatedRoot heap.top (pushNeed input.size) heap.nodes)] } env) :
-    wp Project.Drone.«module» (WordArrayPush.program 30 ++ rest) Q store
+    wp Project.Drone.«module» (WordArrayPush.program 28 ++ rest) Q store
       (initialFrame seed row state tracked aux s out0 out1) env := by
   rw [initialFrame_as_push]
   let saved : List Value := [.i64 0, .i64 seed, .i64 seed, .i64 45, .i64 row, .i64 row] ++
     (aux ++ [.i64 (UInt64.ofNat state), .i64 45, .i64 1])
-  let tail : List Value := [.i64 0, .i64 out0, .i64 out1, .i64 (if tracked then 1 else 0)]
-  have hStart : ([] : List Value).length + saved.length = 30 := by simp [saved, hAux]
+  let tail : List Value := [.i64 0, .i64 out0, .i64 out1, .i64 seed, .i64 0]
+  have hStart : ([] : List Value).length + saved.length = 28 := by simp [saved, hAux]
   rw [← hStart]
   apply word_push_budget_spec env store heap [] saved tail s source input remaining pageLimit
     hSource hInput hHeap hBudget Q rest
@@ -39,12 +39,12 @@ theorem initial_push_spec (env : HostEnv Unit) (store : Store Unit) (heap : Heap
       (fun saved words h => (hBorrow saved words h).2)
 
 def initialRepushProgram (second : Bool) : Wasm.Program :=
-  if second then [.localSet 13, .localGet 13, .localSet 30, .constI64 0, .localSet 36]
-  else [.localSet 12, .localGet 12, .localSet 30, .localGet 10, .localSet 36]
+  if second then [.localSet 13, .localGet 13, .localSet 28, .constI64 0, .localSet 34]
+  else [.localSet 12, .localGet 12, .localSet 28, .localGet 10, .localSet 34]
 
 theorem initial_repush_spec (env : HostEnv Unit) (store : Store Unit)
     (seed row : UInt64) (state : Nat) (tracked second : Bool) (aux : List Value) (s : Scratch)
-    (out0 out1 root value : UInt64) (hAux : aux.length = 21)
+    (out0 out1 root value : UInt64) (hAux : aux.length = 19)
     (hValue : aux[4]? = some (.i64 value))
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp Project.Drone.«module» rest Q store

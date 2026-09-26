@@ -1,11 +1,13 @@
 import LeanExe.Core
 import LeanExe.Extract.Core
+import LeanExe.Extract.Arithmetic
 import LeanExe.Extract.Eval
 import LeanExe.Extract.OwnershipReport
 import LeanExe.Extract.Report
 import LeanExe.Examples.AsciiDigits
 import LeanExe.Examples.Collatz
 import LeanExe.Wasm.Binary
+import LeanExe.Wasm.ByteIO
 import LeanExe.Wasm.Wat
 
 namespace LeanExe.CLI
@@ -24,9 +26,13 @@ def usage : String :=
     "  lean-wasm eval --hex <hex-bytes>",
     "  lean-wasm eval-ir --module <module> --entry <name> [arg ...]",
     "  lean-wasm compile --module <module> --entry <name> --out <path>",
+    "  lean-wasm compile-arithmetic --module <module> --entry <name> --out <path>",
+
+    "  lean-wasm compile --module <module> --entries <name,...> --out <path>",
     "  lean-wasm compile --module <module> --entry <name> --out <path> --annotations <path>",
     "  lean-wasm compile-image --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wat --module <module> --entry <name> --out <path>",
+    "  lean-wasm compile-wasi-io --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi-stdin --max-input-bytes <n> --module <module> --entry <name> --out <path>",
     "  lean-wasm compile-wasi-stdin-except --max-input-bytes <n> --module <module> --entry <name> --out <path>",
@@ -197,10 +203,10 @@ def printTextResult (context content : String) : IO UInt32 := do
   | .ok _ => return 0
   | .error error => reportError error
 
-def compileBytesResult
+def compileBytesResult {α : Type}
     (context out : String)
-    (compileAction : IO LeanExe.IR.Module)
-    (encode : LeanExe.IR.Module → Except String ByteArray) : IO UInt32 := do
+    (compileAction : IO α)
+    (encode : α → Except String ByteArray) : IO UInt32 := do
   match ← captureError .source context compileAction with
   | .error error => reportError error
   | .ok module_ =>
@@ -311,6 +317,12 @@ def dispatch : List String → IO UInt32
               match ← captureError .io context printValues with
               | .ok _ => return 0
               | .error error => reportError error
+  | ["compile-arithmetic", "--module", moduleName, "--entry", entryName, "--out", out] =>
+      compileBytesResult
+        (commandContext "compile-arithmetic" [("module", moduleName), ("entry", entryName), ("out", out)])
+        out
+        (LeanExe.Extract.Arithmetic.compile moduleName entryName)
+        (fun module_ => .ok (LeanExe.Wasm.Binary.CoreWasm.moduleBytes module_))
   | ["compile", "--module", moduleName, "--entry", entryName, "--out", out] =>
       compileBytesResult
         (commandContext "compile"
@@ -326,6 +338,17 @@ def dispatch : List String → IO UInt32
             ("annotations", annotationsOut)])
         out annotationsOut
         (LeanExe.Extract.Core.compile moduleName entryName)
+  | ["compile", "--module", moduleName, "--entries", entries, "--out", out] =>
+      compileBytesResult
+        (commandContext "compile" [("module", moduleName), ("entries", entries), ("output", out)])
+        out (LeanExe.Extract.Core.compileExports moduleName entries)
+        (fun module_ => .ok (LeanExe.Wasm.Binary.CoreWasm.moduleBytes module_))
+  | ["compile", "--module", moduleName, "--entries", entries, "--out", out,
+      "--annotations", annotationsOut] =>
+      compileAnnotatedResult
+        (commandContext "compile" [("module", moduleName), ("entries", entries), ("output", out),
+          ("annotations", annotationsOut)])
+        out annotationsOut (LeanExe.Extract.Core.compileExports moduleName entries)
   | ["compile-image", "--module", moduleName, "--entry", entryName, "--out", out] =>
       compileBytesResult
         (commandContext "compile-image"
@@ -341,6 +364,13 @@ def dispatch : List String → IO UInt32
           [("module", moduleName), ("entry", entryName), ("output", out)])
         out
         (LeanExe.Wasm.Wat.moduleWat <$> LeanExe.Extract.Core.compile moduleName entryName)
+  | ["compile-wasi-io", "--module", moduleName, "--entry", entryName, "--out", out] =>
+      compileBytesResult
+        (commandContext "compile-wasi-io"
+          [("module", moduleName), ("entry", entryName), ("output", out)])
+        out
+        (LeanExe.Extract.Core.ByteIOCompilation.compile moduleName entryName)
+        LeanExe.Wasm.Binary.CoreWasm.ByteIO.moduleBytes
   | ["compile-wasi", "--module", moduleName, "--entry", entryName, "--out", out] =>
       compileBytesResult
         (commandContext "compile-wasi"

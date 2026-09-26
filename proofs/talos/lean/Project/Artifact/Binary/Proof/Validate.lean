@@ -594,6 +594,26 @@ mutual
         rw [hfinish]
         exact Validity.InstrValid.unary .f32Sqrt .f32 .f32 start.toValidity
           popped Validity.UnaryOp.f32Sqrt heffect
+    | f32Nearest =>
+        rcases unary_sound h with ⟨popped, heffect, hfinish⟩
+        rw [hfinish]
+        exact Validity.InstrValid.unary .f32Nearest .f32 .f32 start.toValidity
+          popped Validity.UnaryOp.f32Nearest heffect
+    | f32ConvertI32S =>
+        rcases unary_sound h with ⟨popped, heffect, hfinish⟩
+        rw [hfinish]
+        exact Validity.InstrValid.unary .f32ConvertI32S .i32 .f32 start.toValidity
+          popped Validity.UnaryOp.f32ConvertI32S heffect
+    | i32Extend8S =>
+        rcases unary_sound h with ⟨popped, heffect, hfinish⟩
+        rw [hfinish]
+        exact Validity.InstrValid.unary .i32Extend8S .i32 .i32 start.toValidity
+          popped Validity.UnaryOp.i32Extend8S heffect
+    | i32TruncSatF32S =>
+        rcases unary_sound h with ⟨popped, heffect, hfinish⟩
+        rw [hfinish]
+        exact Validity.InstrValid.unary .i32TruncSatF32S .f32 .i32 start.toValidity
+          popped Validity.UnaryOp.i32TruncSatF32S heffect
     | f64Sqrt =>
         rcases unary_sound h with ⟨popped, heffect, hfinish⟩
         rw [hfinish]

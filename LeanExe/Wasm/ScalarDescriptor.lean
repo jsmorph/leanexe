@@ -79,6 +79,14 @@ structure While where
   body : Stmt
   deriving Repr, BEq
 
+/-- Scalar statement sequences containing loop-free statements and while loops.
+This joins loop initialization and final results without using opaque emission. -/
+inductive Program where
+  | scalar (statement : Stmt)
+  | loop (descriptor : While)
+  | seq (first second : Program)
+  deriving Repr, BEq
+
 structure PostTest where
   condition : Cond
   body : Stmt
@@ -210,6 +218,18 @@ def While.ofIR : LeanExe.IR.Stmt → Option While
   | .while condition body => return ⟨← Cond.ofIR condition, ← Stmt.ofIR body⟩
   | _ => none
 
+def Program.ofIR (statement : LeanExe.IR.Stmt) : Option Program :=
+  match While.ofIR statement with
+  | some descriptor => some (.loop descriptor)
+  | none =>
+      match Stmt.ofIR statement with
+      | some descriptor => some (.scalar descriptor)
+      | none =>
+          match statement with
+          | .seq first second => return .seq (← Program.ofIR first) (← Program.ofIR second)
+          | _ => none
+termination_by sizeOf statement
+
 def EncodedIndex.ofExpr
     (decodedLocal : Nat) : LeanExe.IR.Expr → Option EncodedIndex
   | .ite
@@ -234,6 +254,7 @@ mutual
 
   def Stmt.ofLocalLet : LeanExe.IR.LocalLet → Option Stmt
     | .expr slot value => return .assign slot (← Expr.ofIR value)
+    | .effectCall _ _ _
     | .call _ _ _ => none
     | .slots slots values => do
         if slots.length != values.length then none else
@@ -250,7 +271,7 @@ mutual
 end
 
 def PostTest.ofIR
-    (accumulatorStart doneLocal stagedValueStart releaseReadyLocal : Nat)
+    (accumulatorStart doneLocal stagedValueStart : Nat)
     (bodyValues : List LeanExe.IR.Expr)
     (bodyLets : List LeanExe.IR.LocalLet)
     (doneValue : LeanExe.IR.Expr) : Option PostTest := do
@@ -263,7 +284,7 @@ def PostTest.ofIR
   pure {
     body := Stmt.seqList <|
       [lets, Stmt.seqList stages, .assign doneLocal done,
-        Stmt.seqList copies, .assign releaseReadyLocal (.const 1)]
+        Stmt.seqList copies]
     condition := .ne (.get doneLocal) (.const 0)
   }
 
@@ -314,6 +335,11 @@ def While.emit (descriptor : While) (scratch : Nat) : List Instr :=
   [.block [.loop
     (descriptor.condition.emit scratch ++ [.eqzI32, .brIf 1] ++
       descriptor.body.emit scratch ++ [.br 0])]]
+
+def Program.emit : Program → Nat → List Instr
+  | .scalar statement, scratch => statement.emit scratch
+  | .loop descriptor, scratch => descriptor.emit scratch
+  | .seq first second, scratch => first.emit scratch ++ second.emit scratch
 
 def EncodedIndex.emitValue (encodedLocal scratch : Nat) : List Instr :=
   [.localGet encodedLocal,

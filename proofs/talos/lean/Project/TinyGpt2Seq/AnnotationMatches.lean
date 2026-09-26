@@ -51,15 +51,15 @@ theorem function_39_while_loop_0_guard_tail_eq :
   rfl
 
 def function_46_array_fold_0_program : Wasm.Program :=
-  (Project.ProofKit.Annotation.region Project.TinyGpt2Seq.func46 [] 0 35).getD []
+  (Project.ProofKit.Annotation.region Project.TinyGpt2Seq.func46 [] 0 33).getD []
 
 theorem function_46_array_fold_0_eq :
-    Project.ProofKit.Annotation.region Project.TinyGpt2Seq.func46 [] 0 35 = some function_46_array_fold_0_program := by
+    Project.ProofKit.Annotation.region Project.TinyGpt2Seq.func46 [] 0 33 = some function_46_array_fold_0_program := by
   rfl
 
 theorem function_46_array_fold_0_tail_eq :
     ((Project.ProofKit.Annotation.resolve Project.TinyGpt2Seq.func46 []).getD []).drop 0 =
-      Project.TinyGpt2Seq.AnnotationMatches.function_46_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.TinyGpt2Seq.func46 []).getD []).drop 35 := by
+      Project.TinyGpt2Seq.AnnotationMatches.function_46_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.TinyGpt2Seq.func46 []).getD []).drop 33 := by
   rfl
 
 def function_46_array_fold_0_continuing_program : Wasm.Program :=
@@ -69,7 +69,7 @@ def function_46_array_fold_0_continuing_program : Wasm.Program :=
 
 theorem function_46_array_fold_0_continuing_eq :
     Project.ProofKit.Annotation.region Project.TinyGpt2Seq.func46
-      [{ instructionIndex := 32, field := .block }, { instructionIndex := 0, field := .loop }] 0 16 =
+      [{ instructionIndex := 30, field := .block }, { instructionIndex := 0, field := .loop }] 0 16 =
         some function_46_array_fold_0_continuing_program := by
   rfl
 
@@ -79,8 +79,8 @@ def function_46_array_fold_0_result_program : Wasm.Program :=
 
 theorem function_46_array_fold_0_result_eq :
     Project.ProofKit.Annotation.region Project.TinyGpt2Seq.func46
-      [] 33
-      35 = some function_46_array_fold_0_result_program := by
+      [] 31
+      33 = some function_46_array_fold_0_result_program := by
   rfl
 
 
@@ -228,15 +228,15 @@ theorem function_46_array_fold_0_continuing_spec (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 
 
 
 def function_48_array_fold_0_program : Wasm.Program :=
-  (Project.ProofKit.Annotation.region Project.TinyGpt2Seq.func48 [] 0 26).getD []
+  (Project.ProofKit.Annotation.region Project.TinyGpt2Seq.func48 [] 0 24).getD []
 
 theorem function_48_array_fold_0_eq :
-    Project.ProofKit.Annotation.region Project.TinyGpt2Seq.func48 [] 0 26 = some function_48_array_fold_0_program := by
+    Project.ProofKit.Annotation.region Project.TinyGpt2Seq.func48 [] 0 24 = some function_48_array_fold_0_program := by
   rfl
 
 theorem function_48_array_fold_0_tail_eq :
     ((Project.ProofKit.Annotation.resolve Project.TinyGpt2Seq.func48 []).getD []).drop 0 =
-      Project.TinyGpt2Seq.AnnotationMatches.function_48_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.TinyGpt2Seq.func48 []).getD []).drop 26 := by
+      Project.TinyGpt2Seq.AnnotationMatches.function_48_array_fold_0_program ++ ((Project.ProofKit.Annotation.resolve Project.TinyGpt2Seq.func48 []).getD []).drop 24 := by
   rfl
 
 def function_48_array_fold_0_continuing_program : Wasm.Program :=
@@ -246,7 +246,7 @@ def function_48_array_fold_0_continuing_program : Wasm.Program :=
 
 theorem function_48_array_fold_0_continuing_eq :
     Project.ProofKit.Annotation.region Project.TinyGpt2Seq.func48
-      [{ instructionIndex := 23, field := .block }, { instructionIndex := 0, field := .loop }] 0 16 =
+      [{ instructionIndex := 21, field := .block }, { instructionIndex := 0, field := .loop }] 0 16 =
         some function_48_array_fold_0_continuing_program := by
   rfl
 
@@ -256,8 +256,8 @@ def function_48_array_fold_0_result_program : Wasm.Program :=
 
 theorem function_48_array_fold_0_result_eq :
     Project.ProofKit.Annotation.region Project.TinyGpt2Seq.func48
-      [] 24
-      26 = some function_48_array_fold_0_result_program := by
+      [] 22
+      24 = some function_48_array_fold_0_result_program := by
   rfl
 
 

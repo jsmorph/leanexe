@@ -875,6 +875,56 @@
       "complete": true
     },
     {
+      "name": "gpt2_quantized_linear_rows",
+      "module": "LeanExe.Models.Gpt2.Quantized.Kernel",
+      "entry": "LeanExe.Models.Gpt2.Quantized.linearRows",
+      "leanModule": "Gpt2QuantizedLinearRows",
+      "specTarget": "Project.Gpt2QuantizedLinearRows.Spec",
+      "behaviorTheorems": [
+        "Project.Gpt2QuantizedLinearRows.Spec.linearRows_exact",
+        "Project.Gpt2QuantizedLinearRows.projection_dot_prefix",
+        "Project.Gpt2QuantizedLinearRows.Projection.outputHeap_counts"
+      ],
+      "annotations": true,
+      "complete": true
+    },
+    {
+      "name": "gpt2_quantized_grouped_rows",
+      "module": "LeanExe.Models.Gpt2.Quantized.Grouped",
+      "entry": "LeanExe.Models.Gpt2.Quantized.linearGroupedRows",
+      "leanModule": "Gpt2QuantizedGroupedRows",
+      "specTarget": "Project.Gpt2QuantizedGroupedRows.Spec",
+      "behaviorTheorems": [
+        "Project.Gpt2QuantizedGroupedRows.Spec.linearGroupedRows_exact",
+        "Project.Gpt2QuantizedGroupedRows.group_accumulator_bound",
+        "Project.Gpt2QuantizedGroupedRows.Projection.outputHeap_counts"
+      ],
+      "annotations": true,
+      "complete": true
+    },
+    {
+      "name": "gpt2_quantized_cached",
+      "module": "LeanExe.Models.Gpt2.Quantized.Cached",
+      "entry": "LeanExe.Models.Gpt2.Quantized.cachedStep",
+      "entries": [
+        "LeanExe.Models.Gpt2.Quantized.validateModel",
+        "LeanExe.Models.Gpt2.Quantized.cachedStep"
+      ],
+      "leanModule": "Gpt2QuantizedCached",
+      "specTarget": "Project.Gpt2QuantizedCached.Spec",
+      "behaviorTheorems": [
+        "Project.Gpt2QuantizedCached.Spec.cachedStep_exact",
+        "Project.Gpt2QuantizedCached.Spec.validateModel_exact",
+        "Project.Gpt2QuantizedCached.Spec.gpt2_128_exact",
+        "Project.Gpt2QuantizedCached.Spec.cached_session_logit_bound",
+        "Project.Gpt2QuantizedCached.Spec.cached_session_greedy",
+        "Project.Gpt2QuantizedCached.Spec.cached_session_outward_bound",
+        "Project.Gpt2QuantizedCached.Spec.cached_session_outward_greedy"
+      ],
+      "annotations": true,
+      "complete": true
+    },
+    {
       "name": "gpt2_cached_step",
       "module": "LeanExe.Models.Gpt2.Cached",
       "entry": "LeanExe.Models.Gpt2.cachedStep",

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 3,
+  "case": "fold_sum",
+  "sha256": "87fbd162ef2995bfb716b427fd2f6a98890dc10f2b28c14a81854cf56ea66f9c",
+  "byteLength": 1158,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.FoldSum.ArtifactBytes",
+  "artifactBytesDefinition": "Project.FoldSum.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.FoldSum.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.FoldSum.Program",
+  "cachedProgramDefinition": "Project.FoldSum.module",
+  "specModule": "Project.FoldSum.Spec",
+  "proofTarget": "Project.FoldSum.ArtifactTranslation",
+  "identityTheorem": "Project.FoldSum.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.FoldSum.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.FoldSum.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.FoldSum.Spec.foldSum_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "0b8486bea82c65a31ecdf332642f8d96fcf99f2726130f56707f373c02017194",
+  "hostAssumptions": []
+}

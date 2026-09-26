@@ -11,12 +11,12 @@ namespace Project.Gpt2CachedStep.CachedRowSum
 open Wasm Project.ProofKit PackedMemory PackedFloatFrame LeanExe.Models.Gpt2
 
 def stepCode : Wasm.Program :=
-  match (func28[12]? : Option Wasm.Instruction) with
+  match (func28[10]? : Option Wasm.Instruction) with
   | some (Wasm.Instruction.block _ _ [Wasm.Instruction.loop _ _ body _ _] _ _) => (body.drop 4).dropLast
   | _ => []
 
 theorem emitted_loop :
-    func28 = func28.take 12 ++ RangeFoldLoop.program 18 19 stepCode ++ func28.drop 13 := rfl
+    func28 = func28.take 10 ++ RangeFoldLoop.program 18 19 stepCode ++ func28.drop 11 := rfl
 
 def Accumulator (owner ptr : UInt64) (input : ByteArray) (head size index : Nat) (frame : Locals) : Prop :=
   frame.params = [.i64 owner, .i64 ptr, .i64 (UInt64.ofNat input.size), .i64 (UInt64.ofNat head), .i64 (UInt64.ofNat size)] ∧

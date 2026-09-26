@@ -4,7 +4,12 @@
 
 LeanExe accepts checked Lean declarations through a representation and extraction discipline.  This document gives that discipline mathematical notation, runtime type-formation rules, and a typed first-order presentation.  The [Formal Specification](leanexe-formal-specification.md) defines compilation, memory, numeric behavior, and execution.  The [Language Specification](spec.md) and [User Manual](manual.md) describe the source forms.
 
-The definitions below combine independently stated runtime typing rules with an implementation-indexed acceptance relation.  Central acceptance premises, including recursor recognition and expression extraction, refer to implementation function graphs.  The document therefore specifies the implementation while leaving an independent formalization and its equivalence proof open.  It has no accompanying mechanized metatheory.  A rule marked “implemented” names the executable predicate that fixes its premises.  A proposed preservation statement appears only under proof obligations.
+The definitions below combine independently stated runtime typing rules with an implementation-indexed acceptance relation.  Central acceptance premises, including recursor recognition and expression extraction, refer to implementation function graphs.  The full runtime calculus lacks a complete independent formalization and type-soundness proof; some collection and recursion rules remain schematic.  The [independent core type-safety development](type-safety.md) proves progress and preservation for a smaller, separately specified first-order language.  Its adequacy for this broader language remains to be established.  Correctness of recognition, extraction, and compilation is a separate set of obligations, not a prerequisite for proving the runtime language's own type soundness.  A rule marked “implemented” names the executable predicate that fixes its premises.
+
+The [strict runtime-language contract](runtime-language.md) records the new
+normative choices for machine-written programs. Its relevance restrictions and
+strict evaluation are not requirements currently enforced by this document's
+implementation-indexed acceptance relation.
 
 Let `E` be a checked Lean environment, `Γ` a Lean local context, `Ξ` a first-order function-signature context, and `Δ` a context of runtime variables.  Let `v` identify the exact compiler source and pinned Lean toolchain.  The judgments have distinct subjects:
 
@@ -377,8 +382,10 @@ The following statements describe a possible mechanization.  They are unproved h
 | Extraction typing | Successful extraction produces `SlotWF(M)` and the represented entry signature. |
 | Demand soundness | Necessary-demand and possible-trap summaries justify every strict materialization and discarded expression. |
 | Ownership soundness | Retains, transfers, releases, and escaped references preserve a stated heap representation invariant. |
-| Operational preservation | Represented inputs produce related source and compiled outcomes under explicit numeric, memory, and effect premises. |
-| Progress and termination | A represented configuration takes a step, returns, or reaches a specified trap, and terminates only under a stated termination premise. |
+| Language preservation | Every step of the independently specified runtime language preserves configuration typing. |
+| Language progress | Every well-typed runtime-language configuration can step, return, or reach an explicitly specified failure. |
+| Compiler refinement | Represented inputs produce related source and compiled outcomes under explicit numeric, memory, and effect premises. |
+| Termination | Executions terminate under a separately stated termination premise or for a separately justified terminating fragment. |
 
 The executable recognizers fix acceptance at a revision, so completeness means agreement with that explicit boundary.  Completeness for all Lean terms satisfying a semantic property would be a different claim.
 

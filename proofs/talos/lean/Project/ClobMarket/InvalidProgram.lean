@@ -38,15 +38,15 @@ theorem invalidProg_spec
   have hParams : base.params.length = 6 := by
     simp [base, InvalidPrepare.prepareFrame, InvalidPrepare.branchFrame,
       InvalidEntry.invalidFrame]
-  have hLocals : base.locals.length = 49 := by
+  have hLocals : base.locals.length = 51 := by
     simp [base, InvalidPrepare.prepareFrame, InvalidPrepare.branchFrame,
       InvalidEntry.invalidFrame]
   have hValues : base.values = [] := by
     simp [base, InvalidPrepare.prepareFrame]
-  have hNeed : base.locals[43]? = some (.i64 8) := by
+  have hNeed : base.locals[45]? = some (.i64 8) := by
     simp [base, InvalidPrepare.prepareFrame, InvalidPrepare.branchFrame,
       InvalidEntry.invalidFrame]
-  have hResult : base.locals[48]? = some (.i64 0) := by
+  have hResult : base.locals[50]? = some (.i64 0) := by
     simp [base, InvalidPrepare.prepareFrame, InvalidPrepare.branchFrame,
       InvalidEntry.invalidFrame]
   rw [Entry.invalidProg_decomposition]
