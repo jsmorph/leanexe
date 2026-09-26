@@ -1,0 +1,36 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/BooleanPredicateJunctionHelpers.lean:39:58: error: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  f ≥ 0
+  e ≥ 0
+  e - f ≥ 0
+  d ≥ 0
+  c ≥ 0
+  b ≥ 0
+  a ≥ 0
+  a - b - c - d - e ≥ 7
+where
+ a := ↑(sizeOf (BooleanGuardNegation.expr n (((Lean.Expr.const `Bool.and []).app left.expr).app right.expr)))
+ b := ↑(sizeOf "Bool")
+ c := ↑(sizeOf "and")
+ d := ↑(sizeOf left.expr)
+ e := ↑(sizeOf right.expr)
+ f := ↑(sizeOf (BooleanLocal.junction n Junction.conjunction left right).expr)
+../work/BooleanPredicateJunctionHelpers.lean:39:58: error: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  f ≥ 0
+  e ≥ 0
+  e - f ≥ 0
+  d ≥ 0
+  c ≥ 0
+  b ≥ 0
+  a ≥ 0
+  a - b - c - d - e ≥ 7
+where
+ a := ↑(sizeOf (BooleanGuardNegation.expr n (((Lean.Expr.const `Bool.or []).app left.expr).app right.expr)))
+ b := ↑(sizeOf "Bool")
+ c := ↑(sizeOf "or")
+ d := ↑(sizeOf left.expr)
+ e := ↑(sizeOf right.expr)
+ f := ↑(sizeOf (BooleanLocal.junction n Junction.disjunction left right).expr)
