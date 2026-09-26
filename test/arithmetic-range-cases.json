@@ -347,5 +347,7 @@
   "rangeIdArithmeticStep",
   "rangeIdComparisonExit",
   "rangeIdComparisonDecide",
-  "rangeIdComparisonDependent"
+  "rangeIdComparisonDependent",
+  "rangeReannotatedOrder",
+  "rangeIdComparisonEvidenceAnnotations"
 ]

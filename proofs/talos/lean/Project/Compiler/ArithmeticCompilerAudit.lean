@@ -1,4 +1,5 @@
 import Project.Compiler.SourceCorrectness
+import LeanExe.Source.ScalarReannotationEvaluation
 
 #print axioms LeanExe.Extract.Arithmetic.compileEnvironment_accepts
 #print axioms LeanExe.Extract.Arithmetic.compileEnvironment_success
@@ -9,3 +10,7 @@ import Project.Compiler.SourceCorrectness
 #print axioms Project.Compiler.ArithmeticModule.extracted_correct
 #print axioms Project.Compiler.ArithmeticModule.compileEnvironment_correct
 #print axioms Project.Compiler.ArithmeticModule.compileEnvironment_sound
+
+#print axioms LeanExe.Source.Scalar.Reannotates.eval_iff
+#print axioms LeanExe.Extract.Core.reannotation_sound
+#print axioms LeanExe.Extract.Core.reannotation_accepts
