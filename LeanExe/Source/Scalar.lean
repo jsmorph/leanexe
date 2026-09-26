@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarBooleanPropositionChoiceForm
 import LeanExe.Source.ScalarBooleanChoiceForm
 import LeanExe.Source.ScalarBooleanEqualityForm
 import LeanExe.Source.ScalarPredicateInput
@@ -99,6 +100,16 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (variables : expression.VariablesMean values booleans)
       (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand values (native operand)) :
       EvalWith (.app (.bvar index) expression.expr) values (f (expression.denote native booleans))
+  | booleanPropositionWord (form : BooleanChoiceForm) (negations : Nat)
+      (guard : PropositionGuard) (yes no : BooleanLocal)
+      (member : index ∈ yes.functions ++ no.functions)
+      (function : values[index]? = some (.booleanPredicateFunction f))
+      {native : Lean.Expr → UInt64}
+      (operands : ∀ operand, operand ∈ guard.operands → EvalWith operand values (native operand))
+      (branch : EvalWith (.app (.const ``Bool.toUInt64 [])
+        (if guard.denote native then yes.expr else no.expr)) values (Bool.toUInt64 flag)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) (form.proposition negations guard yes no).expr)
+        values (Bool.toUInt64 (GuardNegation.denote negations flag))
   | booleanChoiceWord (form : BooleanChoiceForm) (negations : Nat) (unequal : Bool)
       (left right yes no : BooleanLocal)
       (member : index ∈ left.functions ++ (right.functions ++ (yes.functions ++ no.functions)))
@@ -274,6 +285,14 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (variables : expression.VariablesTyped types)
       (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith types operand) :
       SupportedWith types (.app (.bvar index) expression.expr)
+  | booleanPropositionWord (form : BooleanChoiceForm) (negations : Nat)
+      (guard : PropositionGuard) (yes no : BooleanLocal)
+      (member : index ∈ yes.functions ++ no.functions)
+      (function : types[index]? = some .booleanPredicateFunction)
+      (operands : ∀ operand, operand ∈ guard.operands → SupportedWith types operand)
+      (trueBranch : SupportedWith types (.app (.const ``Bool.toUInt64 []) yes.expr))
+      (falseBranch : SupportedWith types (.app (.const ``Bool.toUInt64 []) no.expr)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) (form.proposition negations guard yes no).expr)
   | booleanChoiceWord (form : BooleanChoiceForm) (negations : Nat) (unequal : Bool)
       (left right yes no : BooleanLocal)
       (member : index ∈ left.functions ++ (right.functions ++ (yes.functions ++ no.functions)))
@@ -369,7 +388,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
     ∃ flag : Bool, value = flag.toUInt64 := by
   generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
   cases evaluation with
-  | booleanWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord => exact ⟨_, rfl⟩
+  | booleanWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord | booleanPropositionWord => exact ⟨_, rfl⟩
   | applyBooleanPredicateWord => exact ⟨_, rfl⟩
   | complement head _ => cases head <;> simp_all
   | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
@@ -530,6 +549,26 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
       intro operand member
       simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
     exact ⟨f (expression.denote native booleans), .applyBoolean expression hf hbooleans meanings⟩
+  | booleanPropositionWord form negations guard yes no member present _ _ _ ihArgs iht ihe =>
+    obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
+    let native : Lean.Expr → UInt64 := fun operand =>
+      if member : operand ∈ guard.operands then (ihArgs operand member values typed).choose else 0
+    have meanings : ∀ operand, operand ∈ guard.operands → EvalWith operand values (native operand) := by
+      intro operand member
+      simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
+    cases result : guard.denote native with
+    | false =>
+      obtain ⟨value, evaluated⟩ := ihe values typed
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨Bool.toUInt64 (GuardNegation.denote negations flag),
+        .booleanPropositionWord form negations guard yes no member hf meanings
+          (by simpa only [result, Bool.false_eq_true, ↓reduceIte] using evaluated)⟩
+    | true =>
+      obtain ⟨value, evaluated⟩ := iht values typed
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨Bool.toUInt64 (GuardNegation.denote negations flag),
+        .booleanPropositionWord form negations guard yes no member hf meanings
+          (by simpa only [result, ↓reduceIte] using evaluated)⟩
   | booleanChoiceWord form negations unequal left right yes no member present _ _ _ _ ihl ihr iht ihe =>
     obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
     obtain ⟨a, ha⟩ := ihl values typed

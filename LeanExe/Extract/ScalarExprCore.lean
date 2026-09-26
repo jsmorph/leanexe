@@ -8,7 +8,7 @@ import LeanExe.Extract.ScalarHead
 import LeanExe.Extract.ScalarComplement
 import LeanExe.Extract.ScalarExtremum
 import LeanExe.Extract.ScalarDo
-import LeanExe.Extract.ScalarBooleanPredicateChoice
+import LeanExe.Extract.ScalarBooleanPredicatePropositionChoice
 import LeanExe.Extract.ScalarBooleanPredicateBindings
 import LeanExe.Extract.ScalarBindings
 import LeanExe.Extract.ScalarBooleanLocalDependentBranch
@@ -312,6 +312,26 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
                 let condition ← extractBooleanLocalWith locals expression
                   (fun operand _member => extractScalarExprWith locals operand)
                 pure (guardWord condition)
+          | .proposition negations guard yes no =>
+              if hasBooleanPredicate locals (yes.functions ++ no.functions) then do
+                let test ← extractGuard guard.value (fun operand _member => extractScalarExprWith locals operand)
+                let trueBranch ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) yes.expr)
+                let falseBranch ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) no.expr)
+                pure (booleanWordConditional negations test trueBranch falseBranch)
+              else do
+                let condition ← extractBooleanLocalWith locals expression
+                  (fun operand _member => extractScalarExprWith locals operand)
+                pure (guardWord condition)
+          | .dependentProposition negations _shape guard yes no =>
+              if hasBooleanPredicate locals (yes.functions ++ no.functions) then do
+                let test ← extractGuard guard.value (fun operand _member => extractScalarExprWith locals operand)
+                let trueBranch ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) yes.expr)
+                let falseBranch ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) no.expr)
+                pure (booleanWordConditional negations test trueBranch falseBranch)
+              else do
+                let condition ← extractBooleanLocalWith locals expression
+                  (fun operand _member => extractScalarExprWith locals operand)
+                pure (guardWord condition)
           | _ => do
               let condition ← extractBooleanLocalWith locals expression
                 (fun operand _member => extractScalarExprWith locals operand)
@@ -368,6 +388,26 @@ decreasing_by
     | (have same := booleanLocalOperands_sound _boolean
        have bounds := LeanExe.Source.Scalar.BooleanChoiceForm.children_size (.dependent _shape) negations unequal left right yes no
        simp only [LeanExe.Source.Scalar.BooleanChoiceForm.local] at bounds
+       rw [← same] at bounds
+       omega)
+    | (have same := booleanLocalOperands_sound _boolean
+       have bounds := LeanExe.Source.Scalar.BooleanChoiceForm.proposition_children_size .ordinary negations guard yes no
+       simp only [LeanExe.Source.Scalar.BooleanChoiceForm.proposition] at bounds
+       rw [← same] at bounds
+       omega)
+    | (have same := booleanLocalOperands_sound _boolean
+       have bounds := LeanExe.Source.Scalar.BooleanChoiceForm.proposition_operands_size .ordinary negations guard yes no _member
+       simp only [LeanExe.Source.Scalar.BooleanChoiceForm.proposition] at bounds
+       rw [← same] at bounds
+       omega)
+    | (have same := booleanLocalOperands_sound _boolean
+       have bounds := LeanExe.Source.Scalar.BooleanChoiceForm.proposition_children_size (.dependent _shape) negations guard yes no
+       simp only [LeanExe.Source.Scalar.BooleanChoiceForm.proposition] at bounds
+       rw [← same] at bounds
+       omega)
+    | (have same := booleanLocalOperands_sound _boolean
+       have bounds := LeanExe.Source.Scalar.BooleanChoiceForm.proposition_operands_size (.dependent _shape) negations guard yes no _member
+       simp only [LeanExe.Source.Scalar.BooleanChoiceForm.proposition] at bounds
        rw [← same] at bounds
        omega)
     | (have bounds := booleanLocalGuard_size _booleanGuard _member; omega)
@@ -465,7 +505,10 @@ theorem extractScalarExprWith_booleanWord (locals : List ScalarBinding)
       hasBooleanPredicate locals (left.functions ++ right.functions) = false)
     (noChoice : ∀ (form : LeanExe.Source.Scalar.BooleanChoiceForm) negations unequal left right yes no,
       expression = form.local negations unequal left right yes no →
-      hasBooleanPredicate locals (left.functions ++ (right.functions ++ (yes.functions ++ no.functions))) = false) :
+      hasBooleanPredicate locals (left.functions ++ (right.functions ++ (yes.functions ++ no.functions))) = false)
+    (noProposition : ∀ (form : LeanExe.Source.Scalar.BooleanChoiceForm) negations guard yes no,
+      expression = form.proposition negations guard yes no →
+      hasBooleanPredicate locals (yes.functions ++ no.functions) = false) :
     extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) expression.expr) = (do
       let condition ← extractBooleanLocalWith locals expression
         (fun operand _member => extractScalarExprWith locals operand)
@@ -489,6 +532,10 @@ theorem extractScalarExprWith_booleanWord (locals : List ScalarBinding)
       simp only [noChoice .ordinary negations unequal left right yes no rfl, Bool.false_eq_true, ↓reduceIte]
     next negations shape unequal left right yes no _ _ =>
       simp only [noChoice (.dependent shape) negations unequal left right yes no rfl, Bool.false_eq_true, ↓reduceIte]
+    next negations guard yes no _ _ =>
+      simp only [noProposition .ordinary negations guard yes no rfl, Bool.false_eq_true, ↓reduceIte]
+    next negations shape guard yes no _ _ =>
+      simp only [noProposition (.dependent shape) negations guard yes no rfl, Bool.false_eq_true, ↓reduceIte]
     next => rfl
 
 theorem extractScalarExprWith_booleanJunction (locals : List ScalarBinding)
@@ -564,6 +611,31 @@ theorem extractScalarExprWith_booleanChoice (locals : List ScalarBinding)
       subst value
       rfl
 
+theorem extractScalarExprWith_booleanProposition (locals : List ScalarBinding)
+    (form : LeanExe.Source.Scalar.BooleanChoiceForm) (negations : Nat)
+    (guard : LeanExe.Source.Scalar.PropositionGuard) (yes no : LeanExe.Source.Scalar.BooleanLocal) :
+    extractScalarExprWith locals (.app (.const ``Bool.toUInt64 [])
+      (form.proposition negations guard yes no).expr) =
+      (if hasBooleanPredicate locals (yes.functions ++ no.functions) then do
+        let test ← extractGuard guard.value (fun operand _member => extractScalarExprWith locals operand)
+        let trueBranch ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) yes.expr)
+        let falseBranch ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) no.expr)
+        pure (booleanWordConditional negations test trueBranch falseBranch)
+      else do
+        let condition ← extractBooleanLocalWith locals (form.proposition negations guard yes no)
+          (fun operand _member => extractScalarExprWith locals operand)
+        pure (guardWord condition)) := by
+  have accepted := booleanLocalOperands_expr (form.proposition negations guard yes no)
+  cases form <;> simp only [LeanExe.Source.Scalar.BooleanChoiceForm.proposition] at accepted ⊢
+  all_goals
+    rw [extractScalarExprWith]
+    split
+    next rejected => rw [rejected] at accepted; cases accepted
+    next value parsed =>
+      have same := Option.some.inj (parsed.symm.trans accepted)
+      subst value
+      rfl
+
 theorem extractScalarExprWith_booleanPredicateCall (locals : List ScalarBinding)
     (negations index : Nat) (input : Lean.Expr) (function : LeanExe.IR.Expr → Option LeanExe.IR.Expr)
     (found : (locals[index]?.bind ScalarBinding.booleanPredicateFunction?) = some function) :
@@ -618,7 +690,8 @@ theorem extractScalarExprWith_applyBooleanPredicateWordOnly (locals : List Scala
       (LeanExe.Source.Scalar.BooleanLocal.predicate negations index input).expr) = _
     rw [extractScalarExprWith_booleanWord _ _ noBoolean (by intros; contradiction)
       (by intro form n unequal left right same; cases form <;> cases same)
-      (by intro form n unequal left right yes no same; cases form <;> cases same)]
+      (by intro form n unequal left right yes no same; cases form <;> cases same)
+      (by intro form n guard yes no same; cases form <;> cases same)]
     simp [extractBooleanLocalWith, extractBooleanLocal, noPredicate]
 
 theorem extractScalarExprWith_letBoolean (locals : List ScalarBinding)
