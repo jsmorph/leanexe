@@ -1,0 +1,319 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+case18: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence onTrue onFalse : Lean.Expr),
+  LeanExe.Extract.Core.scalarResultType? type = none →
+    motive locals
+      ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app onTrue).app onFalse)
+case19: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence onTrue onFalse : Lean.Expr)
+  (type_1 : LeanExe.Source.Scalar.ResultType),
+  LeanExe.Extract.Core.scalarResultType? type = some type_1 →
+    LeanExe.Extract.Core.comparison? condition evidence = none →
+      LeanExe.Extract.Core.compoundGuard? condition evidence = none →
+        LeanExe.Extract.Core.booleanLocalGuard? condition evidence = none →
+          motive locals
+            ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app onTrue).app
+              onFalse)
+case20: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence onTrue onFalse : Lean.Expr)
+  (type_1 : LeanExe.Source.Scalar.ResultType),
+  LeanExe.Extract.Core.scalarResultType? type = some type_1 →
+    LeanExe.Extract.Core.comparison? condition evidence = none →
+      LeanExe.Extract.Core.compoundGuard? condition evidence = none →
+        ∀ (guard : LeanExe.Source.Scalar.BooleanLocalGuard),
+          LeanExe.Extract.Core.booleanLocalGuard? condition evidence = some guard →
+            LeanExe.Extract.Core.hasBooleanPredicate locals guard.value.functions = true →
+              motive locals onTrue →
+                motive locals onFalse →
+                  (∀ (input : LeanExe.Source.Scalar.BooleanLocal),
+                      input ∈ guard.form.inputs → motive locals ((Lean.Expr.const `Bool.toUInt64 []).app input.expr)) →
+                    motive locals
+                      ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                            onTrue).app
+                        onFalse)
+case21: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence onTrue onFalse : Lean.Expr)
+  (type_1 : LeanExe.Source.Scalar.ResultType),
+  LeanExe.Extract.Core.scalarResultType? type = some type_1 →
+    LeanExe.Extract.Core.comparison? condition evidence = none →
+      LeanExe.Extract.Core.compoundGuard? condition evidence = none →
+        ∀ (guard : LeanExe.Source.Scalar.BooleanLocalGuard),
+          LeanExe.Extract.Core.booleanLocalGuard? condition evidence = some guard →
+            ¬LeanExe.Extract.Core.hasBooleanPredicate locals guard.value.functions = true →
+              motive locals onTrue →
+                motive locals onFalse →
+                  (∀ (operand : Lean.Expr), operand ∈ guard.value.operands → motive locals operand) →
+                    motive locals
+                      ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                            onTrue).app
+                        onFalse)
+case22: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence onTrue onFalse : Lean.Expr)
+  (type_1 : LeanExe.Source.Scalar.ResultType),
+  LeanExe.Extract.Core.scalarResultType? type = some type_1 →
+    LeanExe.Extract.Core.comparison? condition evidence = none →
+      ∀ (guard : LeanExe.Source.Scalar.CompoundGuard),
+        LeanExe.Extract.Core.compoundGuard? condition evidence = some guard →
+          (∀ (operand : Lean.Expr), operand ∈ guard.tree.operands → motive locals operand) →
+            motive locals onTrue →
+              motive locals onFalse →
+                motive locals
+                  ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                        onTrue).app
+                    onFalse)
+case23: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence onTrue onFalse : Lean.Expr)
+  (type_1 : LeanExe.Source.Scalar.ResultType),
+  LeanExe.Extract.Core.scalarResultType? type = some type_1 →
+    ∀ (op : LeanExe.Source.Scalar.Comparison) (left right : Lean.Expr),
+      LeanExe.Extract.Core.comparison? condition evidence = some (op, left, right) →
+        motive locals left →
+          motive locals right →
+            motive locals onTrue →
+              motive locals onFalse →
+                motive locals
+                  ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                        onTrue).app
+                    onFalse)
+case24: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (index : Nat) (argument : Lean.Expr),
+  motive locals argument → motive locals (((Lean.Expr.bvar index).app (Lean.Expr.const `Unit.unit [])).app argument)
+case25: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (index : Nat) (argument : Lean.Expr),
+  motive locals argument →
+    motive locals (((Lean.Expr.bvar index).app (Lean.Expr.const `PUnit.unit [Lean.Level.zero.succ])).app argument)
+case26: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (index : Nat) (first second : Lean.Expr),
+  (first = Lean.Expr.const `Unit.unit [] → False) →
+    (first = Lean.Expr.const `PUnit.unit [Lean.Level.zero.succ] → False) →
+      motive locals first → motive locals second → motive locals (((Lean.Expr.bvar index).app first).app second)
+case27: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (argument : Lean.Expr),
+  motive locals argument → motive locals ((Lean.Expr.const `UInt64.complement []).app argument)
+case28: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (argument : Lean.Expr),
+  motive locals argument →
+    motive locals
+      ((((Lean.Expr.const `Complement.complement [Lean.Level.zero]).app (Lean.Expr.const `UInt64 [])).app
+            (Lean.Expr.const `instComplementUInt64 [])).app
+        argument)
+case29: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (left right : Lean.Expr),
+  motive locals left →
+    motive locals right →
+      motive locals
+        (((((Lean.Expr.const `Min.min [Lean.Level.zero]).app (Lean.Expr.const `UInt64 [])).app
+                  (Lean.Expr.const `instMinUInt64 [])).app
+              left).app
+          right)
+case30: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (left right : Lean.Expr),
+  motive locals left →
+    motive locals right →
+      motive locals
+        (((((Lean.Expr.const `Max.max [Lean.Level.zero]).app (Lean.Expr.const `UInt64 [])).app
+                  (Lean.Expr.const `instMaxUInt64 [])).app
+              left).app
+          right)
+case31: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence : Lean.Expr)
+  (binderName : Lean.Name) (trueDomain onTrue : Lean.Expr) (binderInfo : Lean.BinderInfo) (binderName_1 : Lean.Name)
+  (falseDomain onFalse : Lean.Expr) (binderInfo_1 : Lean.BinderInfo),
+  LeanExe.Extract.Core.scalarResultType? type = none →
+    motive locals
+      ((((((Lean.Expr.const `dite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+            (Lean.Expr.lam binderName trueDomain onTrue binderInfo)).app
+        (Lean.Expr.lam binderName_1 falseDomain onFalse binderInfo_1))
+case32: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence : Lean.Expr)
+  (binderName : Lean.Name) (trueDomain onTrue : Lean.Expr) (binderInfo : Lean.BinderInfo) (binderName_1 : Lean.Name)
+  (falseDomain onFalse : Lean.Expr) (binderInfo_1 : Lean.BinderInfo) (type_1 : LeanExe.Source.Scalar.ResultType),
+  LeanExe.Extract.Core.scalarResultType? type = some type_1 →
+    LeanExe.Extract.Core.dependentGuard? condition evidence trueDomain falseDomain = none →
+      LeanExe.Extract.Core.booleanLocalDependentGuard? condition evidence trueDomain falseDomain = none →
+        motive locals
+          ((((((Lean.Expr.const `dite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                (Lean.Expr.lam binderName trueDomain onTrue binderInfo)).app
+            (Lean.Expr.lam binderName_1 falseDomain onFalse binderInfo_1))
+case33: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence : Lean.Expr)
+  (binderName : Lean.Name) (trueDomain onTrue : Lean.Expr) (binderInfo : Lean.BinderInfo) (binderName_1 : Lean.Name)
+  (falseDomain onFalse : Lean.Expr) (binderInfo_1 : Lean.BinderInfo) (type_1 : LeanExe.Source.Scalar.ResultType),
+  LeanExe.Extract.Core.scalarResultType? type = some type_1 →
+    LeanExe.Extract.Core.dependentGuard? condition evidence trueDomain falseDomain = none →
+      ∀ (guard : LeanExe.Source.Scalar.BooleanLocalGuard),
+        LeanExe.Extract.Core.booleanLocalDependentGuard? condition evidence trueDomain falseDomain = some guard →
+          LeanExe.Extract.Core.hasBooleanPredicate locals guard.value.functions = true →
+            motive (LeanExe.Extract.Core.ScalarBinding.unit :: locals) onTrue →
+              motive (LeanExe.Extract.Core.ScalarBinding.unit :: locals) onFalse →
+                (∀ (input : LeanExe.Source.Scalar.BooleanLocal),
+                    input ∈ guard.form.inputs → motive locals ((Lean.Expr.const `Bool.toUInt64 []).app input.expr)) →
+                  motive locals
+                    ((((((Lean.Expr.const `dite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                          (Lean.Expr.lam binderName trueDomain onTrue binderInfo)).app
+                      (Lean.Expr.lam binderName_1 falseDomain onFalse binderInfo_1))
+case34: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence : Lean.Expr)
+  (binderName : Lean.Name) (trueDomain onTrue : Lean.Expr) (binderInfo : Lean.BinderInfo) (binderName_1 : Lean.Name)
+  (falseDomain onFalse : Lean.Expr) (binderInfo_1 : Lean.BinderInfo) (type_1 : LeanExe.Source.Scalar.ResultType),
+  LeanExe.Extract.Core.scalarResultType? type = some type_1 →
+    LeanExe.Extract.Core.dependentGuard? condition evidence trueDomain falseDomain = none →
+      ∀ (guard : LeanExe.Source.Scalar.BooleanLocalGuard),
+        LeanExe.Extract.Core.booleanLocalDependentGuard? condition evidence trueDomain falseDomain = some guard →
+          ¬LeanExe.Extract.Core.hasBooleanPredicate locals guard.value.functions = true →
+            motive (LeanExe.Extract.Core.ScalarBinding.unit :: locals) onTrue →
+              motive (LeanExe.Extract.Core.ScalarBinding.unit :: locals) onFalse →
+                (∀ (operand : Lean.Expr), operand ∈ guard.value.operands → motive locals operand) →
+                  motive locals
+                    ((((((Lean.Expr.const `dite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                          (Lean.Expr.lam binderName trueDomain onTrue binderInfo)).app
+                      (Lean.Expr.lam binderName_1 falseDomain onFalse binderInfo_1))
+case35: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence : Lean.Expr)
+  (binderName : Lean.Name) (trueDomain onTrue : Lean.Expr) (binderInfo : Lean.BinderInfo) (binderName_1 : Lean.Name)
+  (falseDomain onFalse : Lean.Expr) (binderInfo_1 : Lean.BinderInfo) (type_1 : LeanExe.Source.Scalar.ResultType),
+  LeanExe.Extract.Core.scalarResultType? type = some type_1 →
+    ∀ (guard : LeanExe.Source.Scalar.DecidedGuard),
+      LeanExe.Extract.Core.dependentGuard? condition evidence trueDomain falseDomain = some guard →
+        (∀ (operand : Lean.Expr), operand ∈ guard.tree.operands → motive locals operand) →
+          motive (LeanExe.Extract.Core.ScalarBinding.unit :: locals) onTrue →
+            motive (LeanExe.Extract.Core.ScalarBinding.unit :: locals) onFalse →
+              motive locals
+                ((((((Lean.Expr.const `dite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                      (Lean.Expr.lam binderName trueDomain onTrue binderInfo)).app
+                  (Lean.Expr.lam binderName_1 falseDomain onFalse binderInfo_1))
+case36: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (head left right : Lean.Expr),
+  (∀ (sourceType : Lean.Expr), head = (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]).app sourceType → False) →
+    (head = Lean.Expr.const `Id.run [Lean.Level.zero] → False) →
+      (head =
+            ((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+              (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))) →
+          False) →
+        (∀ (input output : Lean.Expr) (binderName : Lean.Name) (domain body : Lean.Expr) (binderInfo : Lean.BinderInfo),
+            right = Lean.Expr.lam binderName domain body binderInfo →
+              head =
+                  ((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                            (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                              (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                        input).app
+                    output →
+                False) →
+          (∀ (type condition evidence : Lean.Expr),
+              head = (((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence → False) →
+            (∀ (index : Nat), head = Lean.Expr.bvar index → left = Lean.Expr.const `Unit.unit [] → False) →
+              (∀ (index : Nat),
+                  head = Lean.Expr.bvar index → left = Lean.Expr.const `PUnit.unit [Lean.Level.zero.succ] → False) →
+                (∀ (index : Nat), head = Lean.Expr.bvar index → False) →
+                  (head = (Lean.Expr.const `Complement.complement [Lean.Level.zero]).app (Lean.Expr.const `UInt64 []) →
+                      left = Lean.Expr.const `instComplementUInt64 [] → False) →
+                    (head =
+                          ((Lean.Expr.const `Min.min [Lean.Level.zero]).app (Lean.Expr.const `UInt64 [])).app
+                            (Lean.Expr.const `instMinUInt64 []) →
+                        False) →
+                      (head =
+                            ((Lean.Expr.const `Max.max [Lean.Level.zero]).app (Lean.Expr.const `UInt64 [])).app
+                              (Lean.Expr.const `instMaxUInt64 []) →
+                          False) →
+                        (∀ (type condition evidence : Lean.Expr) (binderName : Lean.Name)
+                            (trueDomain onTrue : Lean.Expr) (binderInfo : Lean.BinderInfo) (binderName_1 : Lean.Name)
+                            (falseDomain onFalse : Lean.Expr) (binderInfo_1 : Lean.BinderInfo),
+                            right = Lean.Expr.lam binderName_1 falseDomain onFalse binderInfo_1 →
+                              head =
+                                  (((Lean.Expr.const `dite [Lean.Level.zero.succ]).app type).app condition).app
+                                    evidence →
+                                left = Lean.Expr.lam binderName trueDomain onTrue binderInfo → False) →
+                          ∀ (op : LeanExe.Extract.Core.ScalarPrimitive),
+                            LeanExe.Extract.Core.ScalarPrimitive.ofHead? head = some op →
+                              motive locals left → motive locals right → motive locals ((head.app left).app right)
+case37: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (head left right : Lean.Expr),
+  (∀ (sourceType : Lean.Expr), head = (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]).app sourceType → False) →
+    (head = Lean.Expr.const `Id.run [Lean.Level.zero] → False) →
+      (head =
+            ((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+              (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))) →
+          False) →
+        (∀ (input output : Lean.Expr) (binderName : Lean.Name) (domain body : Lean.Expr) (binderInfo : Lean.BinderInfo),
+            right = Lean.Expr.lam binderName domain body binderInfo →
+              head =
+                  ((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                            (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                              (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                        input).app
+                    output →
+                False) →
+          (∀ (type condition evidence : Lean.Expr),
+              head = (((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence → False) →
+            (∀ (index : Nat), head = Lean.Expr.bvar index → left = Lean.Expr.const `Unit.unit [] → False) →
+              (∀ (index : Nat),
+                  head = Lean.Expr.bvar index → left = Lean.Expr.const `PUnit.unit [Lean.Level.zero.succ] → False) →
+                (∀ (index : Nat), head = Lean.Expr.bvar index → False) →
+                  (head = (Lean.Expr.const `Complement.complement [Lean.Level.zero]).app (Lean.Expr.const `UInt64 []) →
+                      left = Lean.Expr.const `instComplementUInt64 [] → False) →
+                    (head =
+                          ((Lean.Expr.const `Min.min [Lean.Level.zero]).app (Lean.Expr.const `UInt64 [])).app
+                            (Lean.Expr.const `instMinUInt64 []) →
+                        False) →
+                      (head =
+                            ((Lean.Expr.const `Max.max [Lean.Level.zero]).app (Lean.Expr.const `UInt64 [])).app
+                              (Lean.Expr.const `instMaxUInt64 []) →
+                          False) →
+                        (∀ (type condition evidence : Lean.Expr) (binderName : Lean.Name)
+                            (trueDomain onTrue : Lean.Expr) (binderInfo : Lean.BinderInfo) (binderName_1 : Lean.Name)
+                            (falseDomain onFalse : Lean.Expr) (binderInfo_1 : Lean.BinderInfo),
+                            right = Lean.Expr.lam binderName_1 falseDomain onFalse binderInfo_1 →
+                              head =
+                                  (((Lean.Expr.const `dite [Lean.Level.zero.succ]).app type).app condition).app
+                                    evidence →
+                                left = Lean.Expr.lam binderName trueDomain onTrue binderInfo → False) →
+                          LeanExe.Extract.Core.ScalarPrimitive.ofHead? head = none →
+                            LeanExe.Extract.Core.scalarManyCall? head left right = none →
+                              motive locals ((head.app left).app right)
+case38: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (head left right : Lean.Expr),
+  (∀ (sourceType : Lean.Expr), head = (Lean.Expr.const `OfNat.ofNat [Lean.Level.zero]).app sourceType → False) →
+    (head = Lean.Expr.const `Id.run [Lean.Level.zero] → False) →
+      (head =
+            ((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+              (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))) →
+          False) →
+        (∀ (input output : Lean.Expr) (binderName : Lean.Name) (domain body : Lean.Expr) (binderInfo : Lean.BinderInfo),
+            right = Lean.Expr.lam binderName domain body binderInfo →
+              head =
+                  ((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                            (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                              (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                        input).app
+                    output →
+                False) →
+          (∀ (type condition evidence : Lean.Expr),
+              head = (((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence → False) →
+            (∀ (index : Nat), head = Lean.Expr.bvar index → left = Lean.Expr.const `Unit.unit [] → False) →
+              (∀ (index : Nat),
+                  head = Lean.Expr.bvar index → left = Lean.Expr.const `PUnit.unit [Lean.Level.zero.succ] → False) →
+                (∀ (index : Nat), head = Lean.Expr.bvar index → False) →
+                  (head = (Lean.Expr.const `Complement.complement [Lean.Level.zero]).app (Lean.Expr.const `UInt64 []) →
+                      left = Lean.Expr.const `instComplementUInt64 [] → False) →
+                    (head =
+                          ((Lean.Expr.const `Min.min [Lean.Level.zero]).app (Lean.Expr.const `UInt64 [])).app
+                            (Lean.Expr.const `instMinUInt64 []) →
+                        False) →
+                      (head =
+                            ((Lean.Expr.const `Max.max [Lean.Level.zero]).app (Lean.Expr.const `UInt64 [])).app
+                              (Lean.Expr.const `instMaxUInt64 []) →
+                          False) →
+                        (∀ (type condition evidence : Lean.Expr) (binderName : Lean.Name)
+                            (trueDomain onTrue : Lean.Expr) (binderInfo : Lean.BinderInfo) (binderName_1 : Lean.Name)
+                            (falseDomain onFalse : Lean.Expr) (binderInfo_1 : Lean.BinderInfo),
+                            right = Lean.Expr.lam binderName_1 falseDomain onFalse binderInfo_1 →
+                              head =
+                                  (((Lean.Expr.const `dite [Lean.Level.zero.succ]).app type).app condition).app
+                                    evidence →
+                                left = Lean.Expr.lam binderName trueDomain onTrue binderInfo → False) →
+                          LeanExe.Extract.Core.ScalarPrimitive.ofHead? head = none →
+                            ∀ (call : LeanExe.Source.Scalar.ManyCall),
+                              LeanExe.Extract.Core.scalarManyCall? head left right = some call →
+                                (∀ (operand : Lean.Expr), operand ∈ call.arguments → motive locals operand) →
+                                  motive locals ((head.app left).app right)
