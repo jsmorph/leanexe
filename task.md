@@ -68,16 +68,19 @@ across loop states, and calls may supply bounds, initial values, loop steps,
 stride calculations and final results. Evidence is in
 [the outer-loop archive](proofs/compiler/boolean-predicate-outer-2026-09-26/README.md).
 
-Negated Boolean-input predicate calls under Bool.toUInt64 now pass the source,
-extraction and scalar invariant proofs for any number of Not wrappers. The
-zero-negation lowering keeps its existing expression. Focused native and syntax
-checks across scalar, loop-step and outer-loop scopes pass 4,148 comparisons and
-3,072 invalid-input tests. Prior unnegated Boolean-input and word-input tests pass
-1,484 comparisons and 864 invalid-input checks. The general theorem and
-independent WASM suite follow them. Compound calls, direct
-Boolean-context calls and broader signatures remain subsequent work. Full-dialect
-correctness remains unfinished. Complete each capability through WASM and
-commit/push frequently.
+Negated Boolean-input predicate calls under Bool.toUInt64 are complete in scalar,
+loop-step and outer-loop scopes. Source, extraction, IR invariants and the
+general source-to-WASM theorem pass for any number of Not wrappers, with all
+eighteen axiom audits. Native Lean/V8 agree on 1,621 inputs across 86 declarations,
+including 43 ranges; all 76 previous modules retain identical bytes. Focused tests
+pass 4,148 comparisons and 3,072 invalid-input checks. Prior tests pass 1,484
+comparisons and 864 invalid-input checks. Evidence is in
+[the negation archive](proofs/compiler/boolean-predicate-negation-2026-09-26/README.md).
+
+Next: nested calls such as f (g flag), checking each Boolean argument through
+its admitted Bool.toUInt64 conversion. Compound calls, direct Boolean contexts
+and broader signatures follow. Full-dialect correctness remains unfinished.
+Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
