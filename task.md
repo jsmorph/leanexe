@@ -96,9 +96,18 @@ native/IR comparisons and 11,520 invalid-input checks. Prior nested-call tests p
 12,084 comparisons and 8,640 invalid-input checks. Evidence is in
 [the junction archive](proofs/compiler/boolean-predicate-junction-2026-09-26/README.md).
 
-Next: Boolean equality and decisions around these calls. Choices, direct Boolean
-contexts and broader signatures follow. Full-dialect correctness remains
-unfinished. Complete each capability through WASM and commit/push frequently.
+Boolean equality and inequality around Boolean-input calls, including decisions
+of Eq/Ne propositions, now pass source totality, extraction correctness,
+acceptance, soundness and IR invariant proofs. A source form preserves the exact
+BEq or decision expression while both converted children retain Boolean checks.
+Focused tests pass 16,052 native/IR comparisons, 11,574 invalid-input checks and
+12 admission controls. Prior junction/equality tests pass 16,356 comparisons and
+11,540 invalid-input checks. The general source-to-WASM theorem, eighteen audits
+and independent engine checks are next for this candidate.
+
+After this increment: Boolean choices around these calls, direct Boolean contexts
+and broader signatures. Full-dialect correctness remains unfinished. Complete
+each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
