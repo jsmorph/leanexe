@@ -128,10 +128,19 @@ comparisons and 11,670 invalid-input checks. Prior tests pass 16,356 comparisons
 and 11,640 invalid-input checks, with twelve admission controls in each group.
 Evidence is in [the propositional-choice archive](proofs/compiler/boolean-predicate-proposition-2026-09-26/README.md).
 
-Next: direct Boolean contexts containing Bool-input calls, starting with scalar
-Boolean lets. Saved Boolean variables in mixed propositional guards, retained
-instance wrappers and broader signatures follow. Full-dialect correctness remains
-unfinished. Complete each capability through WASM and commit/push frequently.
+Direct scalar Boolean lets now pass source totality, extraction correctness,
+acceptance, soundness and IR invariant proofs. A bound expression uses the checked
+Boolean conversion and its native Boolean value is installed for the body. Used
+and unused values are checked, including nested calls, choices, captures, shadowing
+and Id annotations. Scalar computations inside loops reuse this support. Focused
+tests pass 16,052 native/IR comparisons, 11,468 invalid-input checks and 280 admission
+controls. The full theorem, audits and focused WASM execution are next.
+
+Next: finish scalar Boolean lets through WASM, then extend direct Boolean contexts
+to loop-step bindings, outer-loop bindings, conditions, do binds and helper results.
+Saved Boolean variables in mixed propositional guards, retained instance wrappers
+and broader signatures follow. Full-dialect correctness remains unfinished.
+Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
