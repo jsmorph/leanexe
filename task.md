@@ -58,10 +58,17 @@ modules retain identical bytes. Focused tests pass 3,600 comparisons and 2,304
 invalid-input checks. Prior tests pass 4,028 comparisons and 3,168 invalid-input
 checks. Evidence is in [the loop-step archive](proofs/compiler/boolean-predicate-step-2026-09-26/README.md).
 
-Next: helper declarations before loops. Calls currently use Bool.toUInt64.
-Direct calls in Boolean contexts need a subsequent typed dispatch extension.
-Full-dialect correctness remains unfinished. Complete each capability through
-WASM and commit/push frequently.
+Bool-to-Bool helper declarations before loops now pass source totality, pure
+scalar exclusion, extraction acceptance/soundness, evaluation correctness and
+IR invariant proofs. Eight native examples and exact syntax checks pass 3,648
+comparisons and 2,304 invalid-input tests. Captures remain fixed for every loop
+accumulator/index/stop/exit state. Calls may contribute to bounds, initialization,
+steps, stride calculations and final results. Previous helper checks, the general
+compiler theorem and the independent WASM suite finish this increment next.
+
+Calls currently use Bool.toUInt64. Direct Boolean-context calls and broader
+function signatures remain subsequent work. Full-dialect correctness remains
+unfinished. Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
