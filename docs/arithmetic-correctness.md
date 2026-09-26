@@ -47,7 +47,7 @@ heap values, imports, and floats are excluded from the current theorem.
 Comparisons use the standard UInt64 instances and exact standard decision
 procedures. Propositional `=`, `≠`, `<`, `≤`, `>` and `≥` also accept finite `Id`
 layers on their UInt64 type argument. The source syntax retains these annotations.
-Ordinary scalar and loop-step `if` comparisons also accept condition and decision
+Ordinary and dependent scalar and loop-step `if` comparisons also accept condition and decision
 operands that differ through standard arithmetic type annotations and numeral
 instances. A checked source relation proves that the corresponding operands
 have exactly the same source evaluations. It covers the ten binary UInt64
@@ -55,8 +55,8 @@ operations, standard numeral encodings, and corresponding metadata wrappers;
 custom arithmetic/numeral instances and different runtime operands are rejected.
 The entire decision expression is still checked. Propositional `∧`, `∨` and negation also compose these checked comparison
 leaves, retaining exact enclosing propositions and standard decision instances.
-Dependent branches and saved `decide` values currently require identical
-condition and decision operands. Boolean `&&`/`||` subguards retain their exact
+Saved `decide` values currently require identical condition and decision
+operands. Boolean `&&`/`||` subguards retain their exact
 standard decision evidence. Boolean `==` and `!=` heads still require an unannotated UInt64
 type argument.
 `>` and `≥` have their own elaborated heads, using the standard `<` and `≤`
@@ -213,8 +213,9 @@ variables, wrong input kinds, extra universe arguments and unsupported Boolean
 forms are rejected. Public arguments/results remain UInt64.
 
 Dependent `if h : condition then … else …` admits the same guard trees and
-scalar/step result annotations. The extractor checks the standard decision and
-both proof-lambda domains exactly. Each branch keeps an erased binder in its
+scalar/step result annotations. The extractor checks the whole standard decision
+expression, allowing proved-equivalent arithmetic operands, and checks both
+proof-lambda domains exactly. Each branch keeps an erased binder in its
 lexical context, preserving references to outer values and helper captures.
 Both branch bodies and every guard operand must be supported, including inactive
 branches. Proofs cannot be read as executable scalar values. Nested dependent

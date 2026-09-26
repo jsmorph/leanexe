@@ -60,7 +60,7 @@ theorem EvalWith.typedLiteral_inv {type : ResultType} {numeral evidence : Lean.E
     simp at root
   | _ =>
     simp_all [literalExpr, typedLiteralExpr, Comparison.branch, CompoundGuard.branch,
-      Guard.dependentBranch, BooleanIdentity.bind, BooleanLocalGuard.branch,
+      DecidedGuard.dependentBranch, BooleanIdentity.bind, BooleanLocalGuard.branch,
       BooleanLocalGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
       UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr]
 

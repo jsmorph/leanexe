@@ -36,6 +36,20 @@ decisions before continuing broader compiler coverage.
 Full-dialect correctness remains unfinished. Keep increments focused, get each
 capability proved and executing end to end, and commit/push frequently.
 
+## Dependent decision equivalence — in progress
+
+Dependent scalar and loop-step branches now retain a `DecidedGuard`: the original
+guard tree, original decision expression, and independent `GuardDecision`
+evidence. The recognizer accepts equivalent annotated arithmetic operands while
+checking both proof-lambda domains exactly. Branch contexts retain the erased
+proof binder, preserving outer variables and helper captures.
+
+The scalar and step extraction/correctness proofs and the independent source
+reannotation evaluation proof pass. Focused tests pass 468 native/IR comparisons
+and 264 invalid-input tests, including incorrect proof domains. The full general
+compiler proof and emitted-WASM checks are next; this increment is not yet
+recorded as complete.
+
 ## Compound decision equivalence — complete
 
 `GuardDecision` independently describes standard decision evidence for guard
