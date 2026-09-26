@@ -2,7 +2,7 @@ import Project.Beck.Arithmetic
 import Project.Beck.Rounding
 import Project.Beck.Basis
 import Project.Beck.Cofactors
-import Project.Beck.Result
+import Project.Beck.Source
 
 #print axioms Project.Beck.Arithmetic.add_exact
 #print axioms Project.Beck.Arithmetic.sub_exact
@@ -40,6 +40,12 @@ import Project.Beck.Result
 #print axioms Project.Beck.Memberships.read_spec
 #print axioms Project.Beck.Parser.accepted_supported
 #print axioms Project.Beck.Parser.accepted_valid
+#print axioms Project.Beck.Names.read_sound
+#print axioms Project.Beck.Names.read_complete
+#print axioms Project.Beck.Encoding.accepted_iff
+#print axioms Project.Beck.Encoding.input_eq
+#print axioms Project.Beck.Encoding.input_size_bound
+#print axioms Project.Beck.Source.compute_correct
 #print axioms Project.Beck.Result.compute_success
 #print axioms Project.Beck.Result.compute_discrepancy
 #print axioms Project.Beck.Rounding.protected_card_lt
