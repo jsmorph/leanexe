@@ -64,11 +64,8 @@ def protectedMatrix (input : Input) (x : Point) : Array UInt64 := Id.run do
           (if !frozen x job then input.incidence[job * input.categories + category]! else 0)
   return matrix
 
-def omitIndex (xs : Array UInt64) (index : Nat) : Array UInt64 := Id.run do
-  let mut result := #[]
-  for i in [:xs.size] do
-    if i != index then result := result.push xs[i]!
-  return result
+def omitIndex (xs : Array UInt64) (index : Nat) : Array UInt64 :=
+  xs.eraseIdxIfInBounds index
 
 def contains (xs : Array UInt64) (value : UInt64) : Bool := Id.run do
   for i in [:xs.size] do
@@ -94,15 +91,21 @@ structure Basis where
   determinant : UInt64
   deriving Inhabited, Repr
 
+def borderCandidate (width : Nat) (matrix : Array UInt64) (basis : Basis)
+    (row col : Nat) : Option Basis :=
+  if contains basis.rows row.toUInt64 || contains basis.columns col.toUInt64 then none
+  else
+    let rows := basis.rows.push row.toUInt64
+    let columns := basis.columns.push col.toUInt64
+    let value := determinant rows.size width matrix rows columns
+    if value == 0 then none else some ⟨rows, columns, value⟩
+
 def extend (width : Nat) (matrix : Array UInt64) (basis : Basis) : Basis := Id.run do
   for row in [:matrix.size / width] do
-    if !contains basis.rows row.toUInt64 then
-      for col in [:width] do
-        if !contains basis.columns col.toUInt64 then
-          let rows := basis.rows.push row.toUInt64
-          let columns := basis.columns.push col.toUInt64
-          let value := determinant rows.size width matrix rows columns
-          if value != 0 then return ⟨rows, columns, value⟩
+    for col in [:width] do
+      match borderCandidate width matrix basis row col with
+      | some next => return next
+      | none => pure ()
   return basis
 
 def findBasis : Nat → Nat → Array UInt64 → Basis → Basis
