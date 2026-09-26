@@ -17,14 +17,18 @@ The new focused tests pass 1,148 native/IR comparisons and 864 invalid-input
 checks. Prior named-helper tests pass 2,200 comparisons and 720 rejections.
 Evidence is in [the reusable Boolean helper archive](proofs/compiler/reusable-boolean-2026-09-26/README.md).
 
-Reusable predicate declarations in loop-step bodies now have proved source
-totality, acceptance, soundness, evaluation correctness and IR invariants.
-Six concrete loops and systematic binder/annotation cases pass 1,872 native/IR
-comparisons and 864 invalid-input tests. The full theorem and the selected
-native/Wasm checks are being completed.
-Next are predicates around loops and broader helper signatures.
-Full-dialect correctness remains unfinished.
-Get each capability proved and executing end to end, and commit/push frequently.
+Reusable predicate declarations inside loop-step bodies are also complete.
+The source semantics, extraction proofs, IR invariants and general source-to-WASM
+theorem pass, with sixteen axiom audits. Native Lean/V8 agree on 579 inputs across
+33 selected declarations, including 13 ranges. New focused tests pass 1,872
+native/IR comparisons and 864 invalid-input checks; prior scalar-helper tests
+pass 1,148 comparisons and 864 rejections. The eleven modules shared with the
+previous archive retain identical bytes. Evidence is in
+[the loop-step helper archive](proofs/compiler/reusable-boolean-step-2026-09-26/README.md).
+
+Next: predicates declared around a loop, then broader helper signatures.
+Full-dialect correctness remains unfinished. Get each capability proved and
+executing end to end, and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
@@ -41,8 +45,8 @@ calls and check unused bodies. The general compiler theorem covers decoding,
 validation and execution of emitted WASM in the pinned model. Concrete checks
 cover nesting, shadowing, captures, conditions, Id result annotations and do
 blocks. Invalid function/value kinds, domains, results and unused bodies are
-rejected. Declaring a predicate directly in step or outer-loop scope remains
-subsequent work.
+rejected. Step declarations are covered by the following increment; outer-loop scope
+remains subsequent work.
 
 ## Directly applied named Boolean helpers — complete
 

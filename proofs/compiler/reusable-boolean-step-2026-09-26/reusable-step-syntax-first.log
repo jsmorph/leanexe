@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_reusable_boolean_step_syntax.lean:28:43: error: Insufficient number of fields for `⟨...⟩` constructor: Constructor `LeanExe.Source.Scalar.BooleanLocalGuard.mk` has 3 explicit field, but only 2 were provided
