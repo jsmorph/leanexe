@@ -4,6 +4,7 @@ import Project.Beck.ExecutionFree
 import Project.Beck.ExecutionCount
 import Project.Beck.ExecutionReject
 import Project.Beck.ExecutionRelease
+import Project.Beck.ExecutionOmit
 
 #print axioms Project.Beck.Execution.negative_exact
 #print axioms Project.Beck.Execution.magnitude_exact
@@ -39,3 +40,5 @@ import Project.Beck.ExecutionRelease
 #print axioms Project.Beck.Execution.emptyWords_frame
 #print axioms Project.Beck.Execution.reject_owned
 #print axioms Project.Beck.Execution.releaseWords_exact
+#print axioms Project.Beck.Execution.omitIndex_inBounds
+#print axioms Project.Beck.Execution.omitIndex_outOfBounds
