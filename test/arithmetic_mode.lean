@@ -4876,6 +4876,54 @@ def customNegated (x y : UInt64) : UInt64 := @ite UInt64 (¬ x < y) (customNegat
 def customNeDecision (x y : UInt64) : Decidable (x ≠ y) := inferInstance
 def customNe (x y : UInt64) : UInt64 := @ite UInt64 (x ≠ y) (customNeDecision x y) x y
 
+def reusableBooleanTwice (x y : UInt64) : UInt64 :=
+  let f := fun n : UInt64 => n == y
+  if f x || f (x + 1) then x + 7 else y - 3
+
+def reusableBooleanCapture (x y : UInt64) : UInt64 :=
+  let flag := x != 0
+  let shift := fun n : UInt64 => n + y
+  let f := fun n : UInt64 => flag && shift n != x
+  (f x).toUInt64 + (f y).toUInt64 * 3
+
+def reusableBooleanNested (x y : UInt64) : UInt64 :=
+  let f := fun n : UInt64 => n == y
+  let g := fun n : UInt64 => !f n && f (n + 1)
+  if g x then (f y).toUInt64 + x else (g y).toUInt64 + y
+
+def reusableBooleanScalarCapture (x y : UInt64) : UInt64 :=
+  let f := fun n : UInt64 => n != y
+  let g := fun n : UInt64 => if f n then n + 1 else n * 3
+  g x + g y
+
+def reusableBooleanShadow (x y : UInt64) : UInt64 :=
+  let f := fun n : UInt64 => n == x
+  let saved := f y
+  let f := fun n : UInt64 => saved || n != y
+  if f x && f y then x - y else x + y
+
+def reusableBooleanDependent (x y : UInt64) : UInt64 :=
+  let f := fun n : UInt64 => if _h : n < y then n != x else n == y
+  if _h : f x then (f y).toUInt64 + x else (f (x + 1)).toUInt64 + y
+
+def reusableBooleanId (x y : UInt64) : UInt64 :=
+  let f : UInt64 → Id (Id Bool) := fun n => n == y
+  (f x).toUInt64 + (f (x + 1)).toUInt64
+
+def reusableBooleanUnused (x y : UInt64) : UInt64 :=
+  let _f := fun n : UInt64 => n / y == x
+  x - y
+
+def reusableBooleanIgnoredArgument (x y : UInt64) : UInt64 :=
+  let f := fun _n : UInt64 => x == y
+  (f (x / y)).toUInt64 + (f (y / x)).toUInt64
+
+def reusableBooleanDo (x y : UInt64) : UInt64 := Id.run do
+  let f := fun n : UInt64 => n != y
+  let a ← pure (f x)
+  let b ← pure (f (x + 1))
+  if a && b then return x + y else return x - y
+
 def namedBooleanWord (x y : UInt64) : UInt64 :=
   if (let f : UInt64 → Bool := fun n => n == y; f x) then x + 1 else y * 3
 
@@ -5991,6 +6039,16 @@ run_elab do
       `ArithmeticModeTest.rangeBooleanApplyBreak,
       `ArithmeticModeTest.rangeBooleanApplyContinue,
       `ArithmeticModeTest.rangeBooleanApplyCapture,
+      `ArithmeticModeTest.reusableBooleanTwice,
+      `ArithmeticModeTest.reusableBooleanCapture,
+      `ArithmeticModeTest.reusableBooleanNested,
+      `ArithmeticModeTest.reusableBooleanScalarCapture,
+      `ArithmeticModeTest.reusableBooleanShadow,
+      `ArithmeticModeTest.reusableBooleanDependent,
+      `ArithmeticModeTest.reusableBooleanId,
+      `ArithmeticModeTest.reusableBooleanUnused,
+      `ArithmeticModeTest.reusableBooleanIgnoredArgument,
+      `ArithmeticModeTest.reusableBooleanDo,
       `ArithmeticModeTest.namedBooleanWord,
       `ArithmeticModeTest.namedBooleanBool,
       `ArithmeticModeTest.namedBooleanCapture,
