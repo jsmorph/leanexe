@@ -29,6 +29,15 @@ variant uses UInt64 operand annotations. Prove source equivalence before relaxin
 that check, then complete the compiler proof and native/WASM comparisons for the
 extension. Keep increments focused and commit/push frequently.
 
+## Merged compiler proof integration — in progress
+
+The general compiler proof exposed a mismatch with main's typed branch metadata:
+`ScalarTransition` retains i64/i32 result types, while `ScalarLowering` omitted
+them. The translation now preserves those types, and the binary-translation
+witness agrees. `Project.Compiler.ArithmeticTranslation` builds successfully.
+The full compiler proof and execution checks are being rerun with the comparison
+extension below; the initial failure log is retained.
+
 ## Comparison operand equivalence — in progress
 
 The independent source relation `Reannotates` covers exact expressions,
