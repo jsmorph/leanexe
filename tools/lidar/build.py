@@ -151,6 +151,31 @@ def controller_byte_parts(output):
     return files
 
 
+def write_stream_certificate(output, mode):
+    kernels = {
+        'cardinal': [('Artifact', 'Lidar.kernel', 'cardinal_scan_prefix')],
+        'oblique': [('Artifact', 'LidarOblique.kernel', 'oblique_scan_prefix')],
+        'interval': [('Artifact', 'LidarInterval.outer', 'outer_scan_prefix'),
+                     ('InnerArtifact', 'LidarInterval.inner', 'inner_scan_prefix')],
+    }[mode]
+    source = ('import Application\nimport LeanExe.WGSL.UIntStability\n'
+              'namespace Project.Lidar.Application\nopen LeanExe.WGSL\n')
+    for index, (artifact, kernel, prefix) in enumerate(kernels):
+        source += f'''/-- The previously computed word remains the correct result of the actual
+scan artifact after only unobserved parameter words (including the mask) change. -/
+theorem retained_scan{index} (previous current : UInt.Input)
+    (scene : previous.scene = current.scene)
+    (direction : previous.direction = current.direction)
+    (params : ∀ i, i < 3 → previous.params i = current.params i) :
+    UInt.Executes {artifact}.shaderText current ({kernel}.eval32 previous) := by
+  rw [UInt.eval32_stable {kernel} 3 UInt.{prefix} previous current scene direction params]
+  exact UInt.certified_executes {artifact}.certified current
+#print axioms retained_scan{index}
+'''
+    source += 'end Project.Lidar.Application\n'
+    (output/'Stream.lean').write_text(source)
+
+
 def artifact_names(mode):
     return ['scan.wgsl', 'summary.wgsl', 'controller.wasm'] + (['inner.wgsl'] if mode == 'interval' else [])
 
@@ -167,7 +192,7 @@ def export_certified_values(output, env, mode):
     This is the explicit trusted IO boundary; it does not reconstruct shader
     headers or parse Lean source with a second hand-written representation.
     """
-    source = 'import Application\n'
+    source = 'import Stream\n'
     values = [
         ('scan.wgsl', 'Project.Lidar.Artifact.shaderText', 'writeFile'),
         ('summary.wgsl', 'Project.Lidar.SummaryArtifact.shaderText', 'writeFile'),
@@ -205,6 +230,7 @@ def finish_bundle(output, env, mode='cardinal'):
     export_certified_values(output, env, mode)
     receipt = {'schema': 1, 'mode': mode, 'milestone': 'conservative interval lidar' if mode == 'interval' else mode + ' integer lidar',
                'ticks_per_unit': 1 if mode == 'cardinal' else 60,
+               'resident_summary_reuse': True,
                'artifacts': {name: hashlib.sha256((output/name).read_bytes()).hexdigest()
                              for name in artifact_names(mode)},
                'assumptions': ['WebGPU implements the accepted u32 subset',
@@ -229,7 +255,8 @@ def main():
     if toolchain.exists():
         env.setdefault('LEANRUN_TOOLCHAIN', str(toolchain))
     lean(['lake', 'build', 'LeanExe.WGSL.LidarSummary', 'LeanExe.WGSL.LidarOblique',
-          'LeanExe.WGSL.UIntComposition', 'LeanExe.WGSL.LidarInterval'], 'compiler', env)
+          'LeanExe.WGSL.UIntComposition', 'LeanExe.WGSL.LidarInterval',
+          'LeanExe.WGSL.UIntStability'], 'compiler', env)
     lean(['lake', '-d', 'proofs/talos/lean', 'build', 'Project.Lidar.Shader',
           'Project.Lidar.Continuous', 'Project.Lidar.Controller', 'Project.Lidar.Summary',
           'Project.Compiler.ScalarResult', 'Project.Lidar.ParserChecks',
@@ -242,8 +269,9 @@ def main():
     shutil.copyfile(ROOT / 'tools/lidar/ControllerResult.lean', output / 'ControllerResult.lean')
     env['LEAN_PATH'] = str(output) + ':' + env.get('LEAN_PATH', '')
     check_frontend_rejection(output, env)
+    write_stream_certificate(output, args.mode)
     names = ['Shader'] + (['Inner'] if args.mode == 'interval' else [])
-    for name in names + ['Summary', 'Controller', 'ControllerIR', 'ControllerResult', 'Application']:
+    for name in names + ['Summary', 'Controller', 'ControllerIR', 'ControllerResult', 'Application', 'Stream']:
         proof = output / (name + '.lean')
         files = (split_certificate(proof) if name in ['Shader', 'Inner', 'Summary'] else
                  split_controller(proof) if name == 'Controller' else [proof])

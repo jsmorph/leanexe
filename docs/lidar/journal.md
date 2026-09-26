@@ -11,7 +11,7 @@ compiler diagnostics stay in ignored build logs.
 | 1 | Four cardinal beams, bounded integer rectangles, nearest-hit proof, emitted WASM/WGSL, resident WebGPU execution and compact summary | Complete |
 | 2 | Fixed oblique directions, exact intersection specification, numerical bounds, compiled execution and geometric comparisons | Complete |
 | 3 | Broader numerical domain, certified hit/miss/uncertain results, conservative nearest-range bounds | Complete |
-| 4 | Repeated scans, parameter updates, requested summaries, stale-result and transfer checks | In progress |
+| 4 | Repeated scans, parameter updates, requested summaries, stale-result and transfer checks | Complete |
 
 A milestone is complete only when its application theorem, artifact connection,
 executed demonstration, and build/run instructions agree on the same scope.
@@ -286,3 +286,75 @@ The next complete step will reuse resident beam results for mask-only updates,
 while forcing a fresh scan after pose or range changes. A parameter-dependency
 proof will justify reusing scans while the summary still runs for every request.
 Artifact connections and stale-result tests must close that step together.
+
+### Reusing completed beam results
+
+Milestone 3 is preserved in commit `fcc59012`. A general parameter-dependency
+checker now proves that all scan kernels read only the pose/range prefix of
+the parameter block. Its preservation theorem covers modeled `u32` execution
+without requiring a no-overflow premise. Generated `Stream.lean` theorems apply
+that result to the exact certified shader text: the old beam result is also the
+new request's correct result whenever scene, direction, pose and range agree.
+
+```mermaid
+flowchart TD
+  P[WASM validates new parameter request] --> C{Same completed pose and range?}
+  C -->|Yes| R[Reuse resident beam results]
+  C -->|No| S[Run fresh beam scan or interval scan pair]
+  R --> Q[Run summary for the new mask]
+  S --> Q
+  Q --> H[Read requested 4-byte or 8-byte summary]
+  H --> K[Mark this pose complete]
+```
+
+The host clears its completed-pose marker before submission and restores it
+only after successful readback. A rejected parameter request leaves existing
+results intact. Calls are serialized, and scene/direction buffers are immutable
+for a runner's lifetime. The proofs establish scan-result preservation. Recorded runs test scheduling
+and cache invalidation on their listed cases; Python and the WebGPU driver
+remain outside the formal model.
+
+The existing oblique and interval demonstrations pass with result reuse enabled.
+Cardinal shader certificates are being regenerated against the current grammar;
+the three-mode stream test will then check mask changes, moves, range changes,
+returning to a previous pose, rejected updates, and exact transfer counters.
+
+### Milestone 4 — resident summaries checked across all modes
+
+The exact-artifact reuse theorems pass for cardinal, oblique and both interval
+scans. Cardinal shader certificates were regenerated against the current
+compiler/parser; its controller modules were reused only after the generated
+controller certificate source and WASM bytes matched the fully checked interval
+build. The oblique application theorem was rechecked against the current
+geometry module. All final artifact identity checks pass.
+
+All 33 [stream requests](evidence/stream-run.json) pass on the CPU Vulkan adapter,
+including per-request transfer and dispatch assertions. Each mode rejects an
+invalid mask without changing transfer counters or corrupting the subsequent
+summary. Returning to an earlier pose, shortening/restoring range, and choosing
+a different beam all give the expected geometric answers.
+
+| Mode | Requests | Fresh scans | Dispatches | Parameter bytes | Summary bytes |
+|---|---:|---:|---:|---:|---:|
+| Cardinal | 11 | 5 | 16 | 176 | 44 |
+| Oblique | 11 | 5 | 16 | 176 | 44 |
+| Interval | 11 | 5 | 32 | 176 | 88 |
+
+Each runner uploads its 64-byte scene and 16-byte directions once. The interval
+mode uses two beam scans and two summaries when fresh, and only two summaries
+when reusing results. No beam result buffer is read back. These counters record
+completed demo requests, not performance measurements or arbitrary failed runs.
+The original 38 geometric comparisons also pass with reuse enabled.
+
+The [final receipts](evidence/stream-checked.json) identify the artifacts used by
+the stream tests. The full interval build, false-theorem rejection, changed-file
+rejection tests, and documentation-link checks pass. A separate README review
+clarified the packed WASM word versus host buffer transfer, stated the real-scene
+error precondition, and distinguished modeled artifact theorems from observed
+software-WebGPU runs and external host/driver assumptions.
+
+All four planned slices are complete. The delivered domain remains deliberately
+small: four rectangles, four fixed unit directions, one exact integer sensor
+position, bounded range, and optional bounded rectangle-endpoint uncertainty.
+Arbitrary directions, moving GPU scenes, floating-point arithmetic, sensor noise,
+and hardware-GPU performance are future extensions rather than current claims.
