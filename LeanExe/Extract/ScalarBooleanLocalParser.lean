@@ -151,6 +151,7 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
           let v ← booleanLocalOperands? value
           let b ← booleanLocalOperands? body
           pure (.binding 0 name (.application binder) v b annotation)
+  | .app (.bvar index) argument => some (.predicate 0 index argument)
   | expression => (booleanComparisonOperands? expression).map fun (op, a, b) => .compare op a b
 termination_by expression => sizeOf expression
 decreasing_by

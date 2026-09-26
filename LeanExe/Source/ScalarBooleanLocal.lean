@@ -56,6 +56,7 @@ def booleanChoiceExpr (unequal : Bool) (left right yes no : Lean.Expr) : Lean.Ex
 /-- Boolean expressions with explicit lexical references, distinct from scalar operands. -/
 inductive BooleanLocal where
   | var (negations index : Nat)
+  | predicate (negations index : Nat) (argument : Lean.Expr)
   | literal (negations : Nat) (value : Bool)
   | compare (op : BooleanComparison) (left right : Lean.Expr)
   | junction (negations : Nat) (op : Junction) (left right : BooleanLocal)
@@ -79,6 +80,7 @@ namespace BooleanLocal
 
 def expr : BooleanLocal → Lean.Expr
   | .var n index => BooleanGuardNegation.expr n (.bvar index)
+  | .predicate n index argument => BooleanGuardNegation.expr n (.app (.bvar index) argument)
   | .literal n value => BooleanGuardNegation.expr n (booleanLiteralExpr value)
   | .compare op a b => op.expr a b
   | .junction n op a b => BooleanGuardNegation.expr n (op.booleanExpr a.expr b.expr)
@@ -100,6 +102,7 @@ def expr : BooleanLocal → Lean.Expr
 
 def operands : BooleanLocal → List Lean.Expr
   | .var _ _ => []
+  | .predicate _ _ argument => [argument]
   | .literal _ _ => []
   | .compare _ a b => [a, b]
   | .junction _ _ a b => a.operands ++ b.operands
@@ -113,6 +116,7 @@ def operands : BooleanLocal → List Lean.Expr
 
 def denote (native : Lean.Expr → UInt64) (booleans : LeanExe.Source.Scalar.BooleanEnvironment) : BooleanLocal → Bool
   | .var n index => GuardNegation.denote n (booleans index)
+  | .predicate n index argument => GuardNegation.denote n (booleans.predicates index (native argument))
   | .literal n value => GuardNegation.denote n value
   | .compare op a b => op.denote (native a) (native b)
   | .junction n op a b => GuardNegation.denote n (op.denote (a.denote native booleans) (b.denote native booleans))
@@ -160,6 +164,7 @@ theorem isTrueLiteral_denote {value : BooleanLocal} (native : Lean.Expr → UInt
 
 def negate : BooleanLocal → BooleanLocal
   | .var n index => .var (n + 1) index
+  | .predicate n index argument => .predicate (n + 1) index argument
   | .literal n value => .literal (n + 1) value
   | .compare op a b => .compare (.negate op) a b
   | .junction n op a b => .junction (n + 1) op a b
@@ -182,6 +187,12 @@ theorem operands_size (guard : BooleanLocal) {operand : Lean.Expr}
     (member : operand ∈ guard.operands) : sizeOf operand < sizeOf guard.expr := by
   induction guard generalizing operand with
   | literal | var => simp [operands] at member
+  | predicate n index argument =>
+    simp only [operands, List.mem_singleton] at member
+    subst operand
+    apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
+    simp
+    omega
   | compare op a b =>
     simp only [operands, List.mem_cons, List.not_mem_nil, or_false] at member
     have bounds := op.operands_size a b
@@ -286,7 +297,7 @@ theorem operands_size (guard : BooleanLocal) {operand : Lean.Expr}
 
 def variables : BooleanLocal → List Nat
   | .var _ index => [index]
-  | .literal .. | .compare .. | .decision .. => []
+  | .literal .. | .compare .. | .decision .. | .predicate .. => []
   | .junction _ _ a b => a.variables ++ b.variables
   | .choice _ _ a b t e | .dependentChoice _ _ _ a b t e => a.variables ++ (b.variables ++ (t.variables ++ e.variables))
   | .proposition _ _ t e | .dependentProposition _ _ _ t e => t.variables ++ e.variables
@@ -295,20 +306,32 @@ def variables : BooleanLocal → List Nat
   | .wordBinding _ _ _ _ body _ => booleanLetVariables body.variables
   | .wrapped _ _ body => body.variables
 
-/-- Word-bound slots cannot be used as Boolean references, including in nested values. -/
+/-- Predicate-function references use their own typed lexical lookup. -/
+def functions : BooleanLocal → List Nat
+  | .predicate _ index _ => [index]
+  | .var .. | .literal .. | .compare .. | .decision .. => []
+  | .junction _ _ a b | .equality _ _ a b | .relationDecision _ _ a b => a.functions ++ b.functions
+  | .choice _ _ a b t e | .dependentChoice _ _ _ a b t e =>
+      a.functions ++ (b.functions ++ (t.functions ++ e.functions))
+  | .proposition _ _ t e | .dependentProposition _ _ _ t e => t.functions ++ e.functions
+  | .binding _ _ _ value body _ => value.functions ++ booleanLetVariables body.functions
+  | .wordBinding _ _ _ _ body _ => booleanLetVariables body.functions
+  | .wrapped _ _ body => body.functions
+
+/-- Word slots cannot be read as flags, and value slots cannot be called as functions. -/
 def WellScoped : BooleanLocal → Prop
-  | .var .. | .literal .. | .compare .. | .decision .. => True
-  | .junction _ _ a b | .equality _ _ a b | .relationDecision _ _ a b
-  | .binding _ _ _ a b _ => a.WellScoped ∧ b.WellScoped
+  | .var .. | .literal .. | .compare .. | .decision .. | .predicate .. => True
+  | .junction _ _ a b | .equality _ _ a b | .relationDecision _ _ a b => a.WellScoped ∧ b.WellScoped
+  | .binding _ _ _ a b _ => a.WellScoped ∧ b.WellScoped ∧ 0 ∉ b.functions
   | .choice _ _ a b t e | .dependentChoice _ _ _ a b t e =>
       a.WellScoped ∧ b.WellScoped ∧ t.WellScoped ∧ e.WellScoped
   | .proposition _ _ t e | .dependentProposition _ _ _ t e => t.WellScoped ∧ e.WellScoped
-  | .wordBinding _ _ _ _ body _ => 0 ∉ body.variables ∧ body.WellScoped
+  | .wordBinding _ _ _ _ body _ => 0 ∉ body.variables ∧ body.WellScoped ∧ 0 ∉ body.functions
   | .wrapped _ _ body => body.WellScoped
 
 /-- Whether this value needs the Boolean-local path beyond the closed guard grammar. -/
 def extended : BooleanLocal → Bool
-  | .var .. | .choice .. | .proposition .. | .dependentChoice .. | .dependentProposition ..
+  | .var .. | .predicate .. | .choice .. | .proposition .. | .dependentChoice .. | .dependentProposition ..
   | .decision .. | .equality .. | .relationDecision .. | .binding .. | .wordBinding .. | .wrapped .. => true
   | .literal .. | .compare .. => false
   | .junction _ _ a b => a.extended || b.extended
