@@ -8,11 +8,11 @@ open Matrix
 variable {ι : Type*} [Fintype ι] [DecidableEq ι]
 
 def border (A : Matrix ι ι ℚ) (b c : ι → ℚ) (a : ℚ) :
-    Matrix (ι ⊕ Unit) (ι ⊕ Unit) ℚ :=
+    Matrix (ι ⊕ Fin 1) (ι ⊕ Fin 1) ℚ :=
   Matrix.fromBlocks A (Matrix.of fun i _ => b i)
     (Matrix.of fun _ j => c j) (Matrix.of fun _ _ => a)
 
-def direction (A : Matrix ι ι ℚ) (b : ι → ℚ) : ι ⊕ Unit → ℚ :=
+def direction (A : Matrix ι ι ℚ) (b : ι → ℚ) : ι ⊕ Fin 1 → ℚ :=
   Sum.elim (fun j => -A.cramer b j) (fun _ => A.det)
 
 theorem border_det (A : Matrix ι ι ℚ) (b c : ι → ℚ) (a : ℚ)
@@ -20,7 +20,7 @@ theorem border_det (A : Matrix ι ι ℚ) (b c : ι → ℚ) (a : ℚ)
     (border A b c a).det = a * A.det - dotProduct c (A.cramer b) := by
   let : Invertible A := A.invertibleOfIsUnitDet (isUnit_iff_ne_zero.mpr nonzero)
   have cramer := A.det_smul_inv_mulVec_eq_cramer b (isUnit_iff_ne_zero.mpr nonzero)
-  erw [border, Matrix.det_fromBlocks₁₁, Matrix.det_unique (n := Unit),
+  erw [border, Matrix.det_fromBlocks₁₁, Matrix.det_unique (n := Fin 1),
     Matrix.invOf_eq_nonsing_inv]
   simp only [Matrix.sub_apply, Matrix.mul_apply, Matrix.of_apply]
   rw [← cramer]
@@ -39,7 +39,7 @@ theorem border_det (A : Matrix ι ι ℚ) (b c : ι → ℚ) (a : ℚ)
 theorem direction_nonzero (A : Matrix ι ι ℚ) (b : ι → ℚ) (h : A.det ≠ 0) :
     direction A b ≠ 0 := by
   intro zero
-  have := congrFun zero (Sum.inr ())
+  have := congrFun zero (Sum.inr 0)
   exact h this
 
 theorem selected_row_preserved (A : Matrix ι ι ℚ) (b : ι → ℚ) (i : ι) :
