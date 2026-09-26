@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_predicate_proposition.lean:93:0: error: BooleanPredicatePropositionTest.booleanPredicatePropositionCapture: reusable Boolean helper extraction failed
