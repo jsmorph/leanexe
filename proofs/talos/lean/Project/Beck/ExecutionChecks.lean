@@ -14,6 +14,10 @@ import Project.Beck.ExecutionMemberCapacity
 import Project.Beck.ExecutionMembershipRelease
 import Project.Beck.ExecutionMembership
 import Project.Beck.ExecutionInput
+import Project.Beck.ExecutionMatrixRead
+import Project.Beck.ExecutionMatrixRelease
+import Project.Beck.ExecutionMatrixStep
+import Project.Beck.ExecutionMatrixPrefix
 
 #print axioms Project.Beck.Execution.negative_exact
 #print axioms Project.Beck.Execution.magnitude_exact
@@ -84,3 +88,13 @@ import Project.Beck.ExecutionInput
 #print axioms Project.Beck.Execution.readJobs_exact
 
 #print axioms Project.Beck.Execution.readInput_exact
+
+#print axioms Project.Beck.Execution.matrixPushCapacity_owned
+#print axioms Project.Beck.Execution.matrixRead_exact
+#print axioms Project.Beck.Execution.matrixCleanup_exact
+#print axioms Project.Beck.Execution.matrixRowFrame_reconstruct
+
+#print axioms Project.Beck.Execution.matrixInstall_exact
+#print axioms Project.Beck.Execution.matrixFinish_exact
+
+#print axioms Project.Beck.Execution.matrixRowStep_exact
