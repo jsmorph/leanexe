@@ -36,9 +36,9 @@ mutual
     | .loop body => return .loop 0 0 (← program body)
     | .iff result thenBody elseBody =>
         return .iff 0 (if result then 1 else 0) (← program thenBody)
-          (← program (elseBody.getD []))
+          (← program (elseBody.getD [])) [] (if result then [.i64] else [])
     | .iffI32 thenBody elseBody =>
-        return .iff 0 1 (← program thenBody) (← program (elseBody.getD []))
+        return .iff 0 1 (← program thenBody) (← program (elseBody.getD [])) [] [.i32]
     | .br depth => some (.br depth)
     | .brIf depth => some (.br_if depth)
     | _ => none
