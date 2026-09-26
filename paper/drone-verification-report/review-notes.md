@@ -50,3 +50,11 @@ The user requested one LeanExe background reference, drawn from morphism.com/mar
 The final citation revision retains one LeanExe background entry and three external references.  All citation keys resolve, the abstract matches the compiled PDF, and the 16-page build has no layout or citation warnings.  The bibliography page was visually inspected.  The version 2 archive PDF equals its submitted snapshot.  marXiv accepted submission `1f5f9e3f8eb1` as [2609.00019v3](http://127.0.0.1:8405/abs/2609.00019v3).  The archive PDF equals the submitted and local PDFs.  The final title and bibliography pages were visually inspected.
 
 The [final editorial review](submission-03/review.txt) accepts the report with three remarks: it requests citations identifying the Talos source and the separate core type-safety results, and a more specific description of the final nested-branch proof.  The accepted version retains the user's single LeanExe background reference.  The review text is preserved verbatim.
+
+## Opening context and repeated-ridges figure
+
+The user requested a first section giving context for practical verified software and an early view of the repeated-ridges run.  The revision places that context on page 1 and the graph at the top of page 2.  The discussion gives the recorded Wasmtime run's domain and time, explains the planner's objective, and states the generated-model and physical assumptions.  The later terrain section refers to the opening figure.  The ridge graph appears once, and all five plotted runs remain.
+
+Two prose passes checked the new claims against the retained run evidence and theorem scopes.  The 17-page PDF has no layout or citation warnings.  The first two pages were visually inspected, and title and abstract still match the submission metadata.  The existing proof build, axiom audit, and five native/WASM comparisons remain the evidence for the unchanged program and figures.
+
+marXiv accepted submission `193ee48ff712` as [2609.00019v4](http://127.0.0.1:8405/abs/2609.00019v4).  The [complete review](submission-04/review.txt) is retained verbatim.  It requests Talos and core type-safety source citations and consolidation of the binary-identification limitation repeated in the first two sections.  The archive PDF equals the submitted and local PDFs.

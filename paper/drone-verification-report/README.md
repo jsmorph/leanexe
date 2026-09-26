@@ -1,11 +1,11 @@
 # Verified Terrain-Following Flight Planning in LeanExe
 
-This report describes the drone planner's finite-graph optimum, continuous point-mass safety, and generated-WASM-model execution proof.  Its stand-alone LeanExe section includes the scalar and bounded-loop compiler-correctness results on main.
+The report opens with the goal of end-to-end verification for practical applications and the repeated-ridges run.  It describes the drone planner's finite-graph optimum, continuous point-mass safety, and generated-WASM-model execution proof.  Its stand-alone LeanExe section includes the scalar and bounded-loop compiler-correctness results on main.
 
 The drone proof subject is revision `820b3958`.  The LeanExe overview and compiler theorem use main at `8dbb8e8a`.  The report distinguishes the generated drone model from an exact-byte artifact theorem and states the physical and heap assumptions.
 
-- [Accepted marXiv version](http://127.0.0.1:8405/abs/2609.00019v3)
-- [Editorial review](submission-03/review.txt)
+- [Accepted marXiv version](http://127.0.0.1:8405/abs/2609.00019v4)
+- [Editorial review](submission-04/review.txt)
 - [Report source](main.tex)
 - [Report PDF](main.pdf)
 - [Bibliography](references.bib)
@@ -36,4 +36,4 @@ python3 paper/drone-verification-report/build.py
 
 Individual vector figures: [five-station example](figures/example.pdf), [flat terrain](figures/flat.pdf), [broad plateau](figures/plateau.pdf), [rounded hill](figures/hill.pdf), and [repeated ridges](figures/ridges.pdf).
 
-marXiv accepted version 3 on September 26, 2026.  It uses one LeanExe background reference from morphism.com/marxiv and three external references.  The five actual-run plots show terrain, the clearance corridor, and drone elevation.
+marXiv accepted version 4 on September 26, 2026.  It uses one LeanExe background reference from morphism.com/marxiv and three external references.  The five actual-run plots show terrain, the clearance corridor, and drone elevation.  The opening context is on page 1, and the repeated-ridges graph is at the top of page 2.
