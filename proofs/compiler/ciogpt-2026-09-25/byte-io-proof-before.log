@@ -1,0 +1,191 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [2/305] Replayed LeanExe.Examples.AsciiDigits
+warning: LeanExe/Examples/AsciiDigits.lean:103:30: `if_false` has been deprecated: Use `ite_false` instead
+warning: LeanExe/Examples/AsciiDigits.lean:109:78: `if_true` has been deprecated: Use `ite_true` instead
+⚠ [102/305] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [128/305] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [133/305] Replayed LeanExe.Extract.ScalarFunc
+warning: LeanExe/Extract/ScalarFunc.lean:76:28: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [rangeCase, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Build completed successfully (305 jobs).
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [475/475] Replayed Project.ByteIO.Protocol
+warning: Project/ByteIO/Protocol.lean:178:54: This simp argument is unused:
+  observe
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ByteIO/Protocol.lean:187:32: Unused tactic linter: `omega` does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: Project/ByteIO/Protocol.lean:187:32: this tactic is never executed
+
+Note: This linter can be disabled with `set_option linter.unreachableTactic false`
+warning: Project/ByteIO/Protocol.lean:232:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ByteIO/Protocol.lean:236:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+info: Project/ByteIO/Protocol.lean:282:0: 'Project.ByteIO.Protocol.writeStep_progress' depends on axioms: [propext, Quot.sound]
+info: Project/ByteIO/Protocol.lean:283:0: 'Project.ByteIO.Protocol.write_terminates' depends on axioms: [propext, Quot.sound]
+info: Project/ByteIO/Protocol.lean:285:0: 'Project.ByteIO.Protocol.emitted_prefix' depends on axioms: [propext]
+info: Project/ByteIO/Protocol.lean:286:0: 'Project.ByteIO.Protocol.successful_write_exact' depends on axioms: [propext]
+info: Project/ByteIO/Protocol.lean:287:0: 'Project.ByteIO.Protocol.retry_progress' depends on axioms: [propext, Quot.sound]
+Build completed successfully (475 jobs).
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [2/390] Replayed Interpreter.Wasm.Mem
+warning: Interpreter/Wasm/Mem.lean:133:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:152:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:152:19: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:153:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:155:20: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:155:32: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:156:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:156:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:219:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:222:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:226:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:228:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:231:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:233:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:236:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:246:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:266:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:300:44: `if_pos` has been deprecated: Use `ite_eq_left` instead
+ℹ [485/723] Replayed Project.ByteIO.Memory
+info: Project/ByteIO/Memory.lean:132:0: 'Project.ByteIO.commitRead_at' depends on axioms: [propext, Quot.sound]
+info: Project/ByteIO/Memory.lean:133:0: 'Project.ByteIO.commitRead_frame' depends on axioms: [propext, Quot.sound]
+info: Project/ByteIO/Memory.lean:134:0: 'Project.ByteIO.commitWrite_frame' depends on axioms: [propext, Quot.sound]
+⚠ [3045/3049] Replayed Interpreter.Wasm.Semantics.Lemmas
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:162:25: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:166:50: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:168:25: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:172:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:224:40: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:226:38: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:229:38: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:262:40: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:264:38: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:267:38: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:433:15: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:443:15: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:513:66: `if_pos` has been deprecated: Use `ite_eq_left` instead
+ℹ [3048/3049] Replayed Project.ByteIO.Host
+info: Project/ByteIO/Host.lean:161:0: 'Project.ByteIO.fdRead_contract' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Host.lean:162:0: 'Project.ByteIO.fdWrite_contract' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Host.lean:163:0: 'Project.ByteIO.readHost_contract' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Host.lean:164:0: 'Project.ByteIO.writeHost_contract' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3049/3049] Replayed Project.ByteIO.Wasi
+warning: Project/ByteIO/Wasi.lean:50:46: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+warning: Project/ByteIO/Wasi.lean:163:28: This simp argument is unused:
+  ih
+
+Hint: Omit it from the simp argument list.
+  [apply] simp
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+info: Project/ByteIO/Wasi.lean:348:0: 'Project.ByteIO.wasiEnv_satisfies' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Wasi.lean:349:0: 'Project.ByteIO.pollCall_contract' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Wasi.lean:351:0: 'Project.ByteIO.flagsCall_contract' depends on axioms: [propext]
+info: Project/ByteIO/Wasi.lean:352:0: 'Project.ByteIO.clockCall_contract' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Wasi.lean:353:0: 'Project.ByteIO.pollTime_monotone' depends on axioms: [propext, Quot.sound]
+info: Project/ByteIO/Wasi.lean:354:0: 'Project.ByteIO.pollEvents_count' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Wasi.lean:355:0: 'Project.ByteIO.poll_before_deadline_ready' depends on axioms: [propext, Quot.sound]
+info: Project/ByteIO/Wasi.lean:356:0: 'Project.ByteIO.commitPoll_frame' depends on axioms: [propext, Quot.sound]
+info: Project/ByteIO/Wasi.lean:357:0: 'Project.ByteIO.exit_records_status' depends on axioms: [propext]
+Build completed successfully (3049 jobs).
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [2/346] Replayed Interpreter.Wasm.Mem
+warning: Interpreter/Wasm/Mem.lean:133:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:152:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:152:19: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:153:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:155:20: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:155:32: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:156:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:156:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:219:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:222:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:226:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:228:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:231:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:233:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:236:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:246:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:266:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:300:44: `if_pos` has been deprecated: Use `ite_eq_left` instead
+⚠ [749/755] Replayed Project.Artifact.Binary.Proof.Cursor
+warning: Project/Artifact/Binary/Proof/Cursor.lean:131:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:145:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:156:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:162:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:180:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:180:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/Artifact/Binary/Proof/Cursor.lean:191:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [750/755] Replayed Project.Artifact.Binary.Proof.Leb
+warning: Project/Artifact/Binary/Proof/Leb.lean:10:5: Ambiguous namespace `Parser`: it is interpreted as `_root_.Wasm.Binary.Parser` because this `open` occurs inside `namespace Wasm.Binary.Leb.Proof`, while `_root_.Parser` is silently not opened. Specify the namespace unambiguously, e.g. `_root_.Wasm.Binary.Parser`. The warning can sometimes also be addressed by moving the `open` outside of the surrounding `namespace`.
+
+Note: This linter can be disabled with `set_option linter.ambiguousOpen false`
+✔ [751/755] Built Project.Artifact.Binary.Validity (379ms)
+⚠ [752/755] Built Project.Artifact.Binary.Proof.Primitives (1.1s)
+warning: Project/Artifact/Binary/Proof/Primitives.lean:6:5: Ambiguous namespace `Parser`: it is interpreted as `_root_.Wasm.Binary.Parser` because this `open` occurs inside `namespace Wasm.Binary.Proof`, while `_root_.Parser` is silently not opened. Specify the namespace unambiguously, e.g. `_root_.Wasm.Binary.Parser`. The warning can sometimes also be addressed by moving the `open` outside of the surrounding `namespace`.
+
+Note: This linter can be disabled with `set_option linter.ambiguousOpen false`
+✔ [753/755] Built Project.Artifact.Binary.Proof.Validate (1.1s)
+⚠ [754/755] Built Project.Artifact.Binary.Proof.Decode (1.9s)
+warning: Project/Artifact/Binary/Proof/Decode.lean:6:5: Ambiguous namespace `Parser`: it is interpreted as `_root_.Wasm.Binary.Parser` because this `open` occurs inside `namespace Wasm.Binary.Proof`, while `_root_.Parser` is silently not opened. Specify the namespace unambiguously, e.g. `_root_.Wasm.Binary.Parser`. The warning can sometimes also be addressed by moving the `open` outside of the surrounding `namespace`.
+
+Note: This linter can be disabled with `set_option linter.ambiguousOpen false`
+✖ [755/755] Building Project.ByteIO.Binary (1.2s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/Cli/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/aesop/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/proofwidgets/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/importGraph/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/plausible/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/Qq/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/batteries/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/mathlib/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/iris/Iris/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/CodeLib/interpreter/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/packages/CodeLib/codelib/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean:/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/Project/ByteIO/Binary.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/build/lib/lean/Project/ByteIO/Binary.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/build/lib/lean/Project/ByteIO/Binary.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/build/ir/Project/ByteIO/Binary.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean/.lake/build/ir/Project/ByteIO/Binary.setup.json --json
+warning: Project/ByteIO/Binary.lean:117:26: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+warning: Project/ByteIO/Binary.lean:143:22: Local variable 'unit' resembles constructor 'PUnit.unit' - write '.unit' (with a dot) or 'PUnit.unit' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+error: Project/ByteIO/Binary.lean:236:16: Type mismatch: After simplification, term
+  hlimits
+ has type
+  @Eq (Except ValidationError Unit) (Validator.validateLimits [memory].head!.limits) (Except.ok v✝²)
+but is expected to have type
+  @Eq (Except ValidationError Unit) (Validator.validateLimits memory.limits) (Except.ok ())
+info: Project/ByteIO/Binary.lean:239:0: 'Project.ByteIO.Binary.decode_sound' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Binary.lean:240:0: 'Project.ByteIO.Binary.validate_sound' depends on axioms: [propext, sorryAx]
+info: Project/ByteIO/Binary.lean:242:0: 'Project.ByteIO.Binary.importEntry_sound' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Binary.lean:243:0: 'Project.ByteIO.Binary.section_sound' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/ByteIO/Binary.lean:244:0: 'Project.ByteIO.Binary.translation_fields' depends on axioms: [propext, Quot.sound]
+Some required targets logged failures:
+- Project.ByteIO.Binary
+error: build failed
+byte-io-proof.js: "lake" "-d" "/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/proofs/talos/lean" "build" "Project.ByteIO.Binary" exited with status 1

@@ -1,0 +1,106 @@
+checked wasm-tools 1.251.0
+Building the pinned Talos verifier.
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [3/52] Replayed Interpreter.Wasm.Mem
+warning: Interpreter/Wasm/Mem.lean:133:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:152:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:152:19: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:153:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:155:20: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:155:32: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:156:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:156:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:219:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:222:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:226:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:228:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:231:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:233:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:236:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:246:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:266:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:300:44: `if_pos` has been deprecated: Use `ite_eq_left` instead
+Build completed successfully (52 jobs).
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [1/135] Replayed LeanExe.Examples.AsciiDigits
+warning: LeanExe/Examples/AsciiDigits.lean:103:30: `if_false` has been deprecated: Use `ite_false` instead
+warning: LeanExe/Examples/AsciiDigits.lean:109:78: `if_true` has been deprecated: Use `ite_true` instead
+⚠ [101/135] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [127/135] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [132/135] Replayed LeanExe.Extract.ScalarFunc
+warning: LeanExe/Extract/ScalarFunc.lean:76:28: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [rangeCase, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [134/145] Built LeanExe.Extract.ScalarEntryCorrectness (947ms)
+✔ [143/304] Built LeanExe.Extract.Eval (964ms)
+✔ [146/304] Built LeanExe.Extract.Report (1.6s)
+✔ [147/304] Built LeanExe.Extract.Arithmetic (943ms)
+✔ [281/304] Built LeanExe.Extract.Core:c.o (19s)
+✔ [296/308] Built LeanExe.Extract.OwnershipReport (1.2s)
+✔ [299/308] Built LeanExe.CLI (1.2s)
+✔ [303/311] Built Main (907ms)
+✔ [307/313] Built «lean-wasm»:exe (525ms)
+Build completed successfully (313 jobs).
+Preparing Talos artifact: gpt2_quantized_linear_rows
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+==> 1 crate(s): gpt2_quantized_linear_rows
+    emitted /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/tmp/leanexe-talos-8qw1LD/lean/Project/Gpt2QuantizedLinearRows/Program.lean
+    scaffolded /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/tmp/leanexe-talos-8qw1LD/lean/Project/Gpt2QuantizedLinearRows/Spec.lean
+Prepared Talos artifact: gpt2_quantized_linear_rows
+Preparing Talos artifact: gpt2_quantized_grouped_rows
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+==> 1 crate(s): gpt2_quantized_grouped_rows
+    emitted /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/tmp/leanexe-talos-O804sj/lean/Project/Gpt2QuantizedGroupedRows/Program.lean
+    scaffolded /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/tmp/leanexe-talos-O804sj/lean/Project/Gpt2QuantizedGroupedRows/Spec.lean
+Prepared Talos artifact: gpt2_quantized_grouped_rows
+Preparing Talos artifact: gpt2_quantized_cached
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+==> 1 crate(s): gpt2_quantized_cached
+    emitted /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/tmp/leanexe-talos-TEoXzz/lean/Project/Gpt2QuantizedCached/Program.lean
+    scaffolded /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/tmp/leanexe-talos-TEoXzz/lean/Project/Gpt2QuantizedCached/Spec.lean
+Prepared Talos artifact: gpt2_quantized_cached
+Preparing Talos artifact: gpt2_cached_step
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+==> 1 crate(s): gpt2_cached_step
+    emitted /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/tmp/leanexe-talos-GOjBo9/lean/Project/Gpt2CachedStep/Program.lean
+    scaffolded /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/tmp/leanexe-talos-GOjBo9/lean/Project/Gpt2CachedStep/Spec.lean
+Prepared Talos artifact: gpt2_cached_step
+All four GPT generated execution models match the checked iogpt caches.
