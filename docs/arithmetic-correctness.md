@@ -171,7 +171,17 @@ accept UInt64 or Bool, with standard Id annotations on its input and result.
 Arrow and lambda domains are checked exactly. Original names and binder
 annotations are preserved; proved binder removal maintains the argument's
 outer-variable indices. Nested named applications compose in Boolean bodies.
-Repeated uses or broader bodies around the named helper remain unsupported.
+
+UInt64-to-Bool local helpers also admit repeated calls within an arbitrary
+supported scalar body, such as `let f := fun n : UInt64 => n == y;
+if f x || f (x + 1) then x else y`. Their Boolean results may carry standard
+Id annotations. Helpers capture words, flags and other supported local
+functions; nested helpers and shadowing preserve the captured values. Source
+evaluation, extraction and the compiler theorem distinguish predicate functions
+from words, flags and word-returning functions. Unused helper bodies and unused
+arguments are checked. Declaring these reusable helpers in loop-step scope or
+around a loop, reusable Bool-to-Bool helpers, and declarations with a broader
+Boolean enclosing body remain subsequent capabilities.
 
 Unary Bool-parameter local helpers may return UInt64 or ForInStep UInt64,
 including nested Id result annotations. This admits the shared continuations
@@ -182,7 +192,7 @@ preserve captures and shadowing, and all unused bodies and call arguments are
 checked. Pure scalar Boolean helpers may surround a loop and supply its bounds,
 initial value and final computation. A conditional Boolean bind before a loop
 can generate a loop-containing helper; that case remains outside this grammar.
-Public Boolean parameters/results, general named Boolean-returning helpers, mixed Bool/word
+Public Boolean parameters/results, broader Boolean-returning helper signatures, mixed Bool/word
 parameter lists, loops inside helper bodies and propositional combinations
 containing saved Boolean locals remain separate capabilities.
 
