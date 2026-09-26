@@ -104,6 +104,16 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       EvalWith (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values value
+  | letPredicateFn (expression : BooleanLocal) (type : BooleanType)
+      {native : UInt64 → Lean.Expr → UInt64} {booleans : UInt64 → BooleanEnvironment}
+      (variables : ∀ x, expression.VariablesMean (.word x :: values) (booleans x))
+      (arguments : ∀ x operand, operand ∈ expression.operands →
+        EvalWith operand (.word x :: values) (native x operand))
+      (body : EvalWith b (.predicateFunction
+        (fun x => expression.denote (native x) (booleans x)) :: values) value) :
+      EvalWith (.letE name
+        (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
+        (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep) values value
   | letBooleanFn (type : ResultType)
       (function : ∀ x, EvalWith a (.boolean x :: values) (f x))
       (body : EvalWith b (.booleanFunction f :: values) value) :
@@ -225,6 +235,13 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       SupportedWith types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
+  | letPredicateFn (expression : BooleanLocal) (type : BooleanType)
+      (variables : expression.VariablesTyped (.word :: types))
+      (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith (.word :: types) operand)
+      (body : SupportedWith (.predicateFunction :: types) b) :
+      SupportedWith types (.letE name
+        (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
+        (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep)
   | letBooleanFn (type : ResultType) (function : SupportedWith (.boolean :: types) a)
       (body : SupportedWith (.booleanFunction :: types) b) :
       SupportedWith types (.letE name
@@ -415,6 +432,21 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.function false f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letFn type (fun x => (total x).choose_spec) hv⟩
+  | letPredicateFn expression type variables _ _ ihArgs ihb =>
+    have environments := fun x => variables.evaluates (.word x :: values)
+      (by simp [Value.kind, typed])
+    let booleans := fun x => (environments x).choose
+    let native : UInt64 → Lean.Expr → UInt64 := fun x operand =>
+      if member : operand ∈ expression.operands then
+        (ihArgs operand member (.word x :: values) (by simp [Value.kind, typed])).choose else 0
+    have meanings : ∀ x operand, operand ∈ expression.operands →
+        EvalWith operand (.word x :: values) (native x operand) := by
+      intro x operand member
+      simpa only [native, dite_eq_left member] using
+        (ihArgs operand member (.word x :: values) (by simp [Value.kind, typed])).choose_spec
+    obtain ⟨value, hv⟩ := ihb (.predicateFunction
+      (fun x => expression.denote (native x) (booleans x)) :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letPredicateFn expression type (fun x => (environments x).choose_spec) meanings hv⟩
   | letBooleanFn type _ _ ihf ihb =>
     have total := fun x => ihf (.boolean x :: values) (by simp [Value.kind, typed])
     let f := fun x => (total x).choose
