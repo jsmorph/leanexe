@@ -32,6 +32,8 @@ def guardOperands? : Lean.Expr → Option Guard
     guardOperands? (op.condition a b) = some (.compare op a b) := by
   induction op with
   | negate op ih => simp [Comparison.condition, guardOperands?, ih, Guard.negate]
+  | eq type => cases type <;>
+      simp [Comparison.condition, guardOperands?, comparisonOperands?, ResultType.expr, scalarResultType?]
   | _ => simp [Comparison.condition, Comparison.boolExpr, guardOperands?, comparisonOperands?]
 
 @[simp] theorem guardOperands_condition (guard : Guard) :

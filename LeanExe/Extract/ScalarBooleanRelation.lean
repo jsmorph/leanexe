@@ -7,7 +7,7 @@ open LeanExe.Source.Scalar
 theorem booleanRelationEqual_not_comparison (left right : Lean.Expr)
     (nontrue : right ≠ .const ``Bool.true []) :
     comparisonOperands? (booleanRelationCondition false left right) = none := by
-  rw [booleanRelationCondition, comparisonOperands?] <;> simp_all
+  simp [booleanRelationCondition, comparisonOperands?, scalarResultType?, nontrue]
 
 theorem booleanRelationUnequal_not_comparison (left right : Lean.Expr) :
     comparisonOperands? (booleanRelationCondition true left right) = none := by

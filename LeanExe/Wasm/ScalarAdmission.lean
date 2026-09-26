@@ -4,12 +4,12 @@ import LeanExe.Wasm.ScalarDescriptor
 namespace LeanExe.Wasm.ScalarDescriptor
 
 def comparison : LeanExe.Source.Scalar.Comparison → Expr → Expr → Cond
-  | .eq, a, b => .eq a b
-  | .ne, a, b => .not (.eq a b)
-  | .lt, a, b => .ltU a b
-  | .le, a, b => .leU a b
-  | .gt, a, b => .not (.leU a b)
-  | .ge, a, b => .not (.ltU a b)
+  | .eq _, a, b => .eq a b
+  | .ne _, a, b => .not (.eq a b)
+  | .lt _, a, b => .ltU a b
+  | .le _, a, b => .leU a b
+  | .gt _, a, b => .not (.leU a b)
+  | .ge _, a, b => .not (.ltU a b)
   | .beq, a, b => .eq a b
   | .bne, a, b => .not (.eq a b)
   | .negate op, a, b => .not (comparison op a b)
