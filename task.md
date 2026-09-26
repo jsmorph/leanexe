@@ -929,3 +929,20 @@ The aggregate `build/logs/drone-array-foundations-2.log` passes all 3,489 jobs,
 including the retained Euler release theorem and both annotation examples.
 `drone-array-memory-1.log` separately passes the borrowed-input and empty-memory
 lemmas. Earlier failed and timed-out runs remain in their numbered local logs.
+
+The shared array-push execution theorem now passes. `WordArrayPushFrame` models
+the fifteen scratch slots; separate preparation, capacity, header installation,
+and copy/append lemmas each check in roughly three seconds. The complete drone
+`word_push_spec` composes them with the existing free-list allocator, returns
+the exact pushed array and pointer, preserves the borrowed source, and restores
+the heap and new-buffer ownership invariants. Its write-range result also lets
+callers preserve unrelated live arrays. Both fresh allocation and free-list
+reuse are covered. `build/logs/drone-push-3.log` passes all 3,484 jobs, and every
+new axiom audit contains only standard Lean axioms.
+
+The small failed iterations were local elaboration issues: slot zero needs an
+explicit frame lookup, store addresses need the numeric 32-bit modulus exposed,
+and UInt64 capacity equality must be converted to a natural-number bound. No
+silent timeout occurred in this checkpoint. The full allocating controller
+loops and compiled compute/safety transfer remain open; source and earlier
+scalar/scan execution proofs remain checked.
