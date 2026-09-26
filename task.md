@@ -946,3 +946,23 @@ and UInt64 capacity equality must be converted to a natural-number bound. No
 silent timeout occurred in this checkpoint. The full allocating controller
 loops and compiled compute/safety transfer remain open; source and earlier
 scalar/scan execution proofs remain checked.
+
+Published the shared push theorem as `2396ddba`. The budgeted push wrapper now
+reuses `OutputBudget` to account for allocation bytes, physical pages, and the
+module's memory cap while preserving every previously live borrowed/owned word
+array. The emitted empty-array allocation sequence also has an execution
+theorem, checked instruction matches in `advance` and `initial`, and a budgeted
+wrapper. The initial budget build populated existing output-map dependencies;
+its final diagnostics were two redundant tactics, not resource exhaustion.
+
+The parent-history loop now has checked packed-parent reads and both cleanup
+cases. `append_read_spec` covers state increment, multiplication by three,
+offset addition, and checked load. The cleanup proofs distinguish an initial
+borrowed buffer from a tracked buffer that must be released. Both cases check
+in about eight seconds. `PreservesWords` records caller-owned and borrowed
+arrays across allocations/releases; the complete `append_step_spec` uses it
+to keep the caller's live memory intact and proves the next loop state and
+remaining budget. `build/logs/drone-append-step-3.log` passes all 3,532 jobs;
+all new dependency audits contain only standard Lean axioms. The terminating
+parent-history loop, other allocating loops, and compiled compute theorem are
+still open.
