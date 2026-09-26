@@ -77,19 +77,20 @@ pass 4,148 comparisons and 3,072 invalid-input checks. Prior tests pass 1,484
 comparisons and 864 invalid-input checks. Evidence is in
 [the negation archive](proofs/compiler/boolean-predicate-negation-2026-09-26/README.md).
 
-Nested converted calls such as `(f (g flag)).toUInt64` now pass source totality,
-acceptance, soundness, evaluation and IR invariant proofs. Each nested argument
-is checked as an admitted Boolean conversion; a separate source lemma proves
-that such an evaluation always yields an encoded Boolean. Scalar, loop-step and
-outer-loop focused tests pass 12,084 native/IR comparisons and 8,640 invalid-input
-checks. Existing syntax tests pass 12,896 comparisons and 9,360 invalid-input
-checks. Formerly unsupported nested-call fixtures have moved to positive coverage.
-The general source-to-WASM theorem, eighteen audits and independent engine checks
-are next for this candidate.
+Nested converted calls such as `(f (g flag)).toUInt64` are complete in scalar,
+loop-step and outer-loop scopes. Each argument is checked as an admitted Boolean
+conversion; the source result lemma proves it evaluates to an encoded Boolean.
+The general source-to-WASM theorem and all eighteen axiom audits pass. Native
+Lean/V8 agree on 1,801 inputs across 96 declarations, including 47 ranges; all 86
+prior modules retain identical bytes. Focused tests pass 12,084 native/IR
+comparisons and 8,640 invalid-input checks. Prior syntax tests pass 12,896
+comparisons and 9,360 invalid-input checks. Evidence is in
+[the nested-call archive](proofs/compiler/boolean-predicate-nested-2026-09-26/README.md).
 
-After this increment: compound calls, direct Boolean contexts and broader
-signatures. Full-dialect correctness remains unfinished. Complete each capability
-through WASM and commit/push frequently.
+Next: conjunctions and disjunctions containing Boolean-input predicate calls,
+with recursively checked Boolean operands. Direct Boolean contexts and broader
+signatures follow. Full-dialect correctness remains unfinished. Complete each
+capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
