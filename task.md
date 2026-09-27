@@ -468,11 +468,16 @@ controls. Prior tests pass 64,992 comparisons, 55,296 invalid-input checks and
 4,608 controls. Evidence is in
 [the helper input-annotation archive](proofs/compiler/boolean-loop-helper-input-id-2026-09-27/README.md).
 
-Current capability: helpers with two or more word arguments before Boolean
-loops. Source totality, extraction acceptance/soundness, correctness and IR
-invariants pass for binary and arbitrary larger arities. New tests pass 24,432
-native/IR comparisons, 20,736 invalid-input checks and 1,728 unused-helper controls.
-Complete compiler proof, native Lean/V8 checks and evidence archive are next.
+Helpers with two or more UInt64 arguments before Boolean loops are complete,
+including arbitrary larger arities, captured functions and standard Id results.
+Argument order and captured values are preserved for every loop state.
+Unused helper bodies are checked. The complete source-to-WASM theorem and nineteen
+audits pass. Native Lean/V8 agree on 609 inputs across 28 declarations, including
+twenty-three ranges; eighteen prior modules retain identical bytes. New tests pass
+24,432 native/IR comparisons, 20,736 invalid-input checks and 1,728 unused helper
+controls. Prior tests pass 97,008 comparisons, 82,944 invalid-input checks and
+6,912 controls. Evidence is in
+[the multiple-argument loop-helper archive](proofs/compiler/boolean-loop-many-helpers-2026-09-27/README.md).
 
 Next: Unit-prefixed helpers before Boolean loops, retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
