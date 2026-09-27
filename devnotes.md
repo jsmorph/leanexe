@@ -17858,3 +17858,9 @@ The guard, scan, call, cleanup, and iteration compositions check in one to three
 The loop and full function compositions check in one to two seconds.  Inspection of the computation entry revealed separate allocations for the initial point's owner and data pointers.  The rounding proofs now distinguish those pointers throughout.  The combined execution gate passes 3,749 build jobs with standard logical axioms, and the documentation check passes 180 maintained files.
 
 Entry inspection also identified two remaining interface assumptions: `compute` passes owner zero to `readInput`, while the existing parser execution theorem assumes owner equals data pointer.  For zero jobs, the parser returns distinct incidence owner and data pointers, while the current outer-rounding theorem assumes those input pointers coincide.  The next proof work must cover these emitted cases before entry composition.  Source and binary bytes are unchanged.  Computation entry, the global resource theorem, and independent artifact verification remain open.
+
+### Beck borrowed membership input
+
+`readMemberships_owner_exact` now covers both a borrowed input owner of zero and an owner equal to the input data pointer.  The loop retains the represented data pointer separately from the owner used by the emitted release guards.  Allocation separation and positive owned roots exclude release of the borrowed input.  The original theorem remains a specialization for callers whose owner equals their data pointer.
+
+The modified membership modules check with standard logical axioms.  The combined execution build reached its 180-second limit while recompiling dependent basis-search modules, without a proof diagnostic.  Verification is proceeding through smaller dependency targets before the combined gate.  Job parsing and complete input parsing still require the owner-zero generalization.  Source and binary bytes are unchanged.

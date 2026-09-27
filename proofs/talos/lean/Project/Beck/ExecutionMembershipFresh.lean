@@ -16,7 +16,7 @@ theorem membershipFresh_exact (env : HostEnv Unit) (initial middle : Store Unit)
     (valid : current.At middle) (owned : current.OwnsWords middle oldNode row)
     (preserved : original.Frame initial current middle)
     (active : internal = 0 ∨ internal = oldNode.root ∧ FreshFor original oldNode)
-    (inputDifferent : oldNode.root ≠ wordsOwner) (ownerNonzero : wordsOwner ≠ 0)
+    (inputDifferent : oldNode.root ≠ wordsOwner)
     (bound : row.size ≤ 56) (inside : category < row.size) (positionBound : position + 1 < UInt64.size)
     (categoryRead : saved 6 = .i64 category.toUInt64)
     (budget : OutputBudget middle current (48 + 8 * (row.size + 1) + remaining) pageLimit Project.Beck.«module»)
@@ -36,10 +36,13 @@ theorem membershipFresh_exact (env : HostEnv Unit) (initial middle : Store Unit)
     fun h => ((budget.bump need (by rw [needWord]; omega)) h).1.le
   have separated := owned.allocation_disjoint need space
   have fresh := allocated_fresh original current initial middle preserved need space
-  have ownerDifferent : wordsOwner ≠ internal := by
-    rcases active with zero | ⟨equal, _⟩
-    · simpa only [zero] using ownerNonzero
-    · simpa only [equal] using inputDifferent.symm
+  have ownerSafe : wordsOwner = 0 ∨ wordsOwner ≠ internal := by
+    by_cases zero : wordsOwner = 0
+    · exact Or.inl zero
+    · apply Or.inr
+      rcases active with empty | ⟨equal, _⟩
+      · simpa only [empty] using zero
+      · simpa only [equal] using inputDifferent.symm
   rw [← List.take_append_drop 35 membershipFresh]
   apply membershipPrepare_exact env middle (count + 1) position categories category wordsOwner wordsPointer oldNode.root internal
     saved tail row owned.buffer.values positionBound categoryRead
@@ -61,7 +64,7 @@ theorem membershipFresh_exact (env : HostEnv Unit) (initial middle : Store Unit)
     | skip
   intro final finalHeap finalValid finalOwned finalFrame finalBudget
   apply membershipFinish_exact env final count position categories category row.size wordsOwner wordsPointer oldNode.root internal
-    saved tail (allocatedNode current.top need current.nodes).root need previous cursor capacity after ownerNonzero ownerDifferent
+    saved tail (allocatedNode current.top need current.nodes).root need previous cursor capacity after ownerSafe
   exact next final finalHeap _ finalValid finalOwned finalFrame fresh finalBudget
 
 #print axioms membershipFresh_exact

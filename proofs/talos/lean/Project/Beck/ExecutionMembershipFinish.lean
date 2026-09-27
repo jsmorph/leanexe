@@ -39,7 +39,7 @@ set_option maxHeartbeats 1000000 in
 theorem membershipFinish_exact (env : HostEnv Unit) (initial : Store Unit)
     (count position categories category size : Nat) (wordsOwner wordsPointer rowPointer internal : UInt64)
     (saved : MemberSetSaved) (tail : MembershipTail) (root need previous current capacity after : UInt64)
-    (ownerNonzero : wordsOwner ≠ 0) (ownerDifferent : wordsOwner ≠ internal)
+    (ownerSafe : wordsOwner = 0 ∨ wordsOwner ≠ internal)
     (Q : Assertion Unit)
     (next : ∀ saved tail, Q (.Fallthrough initial
       (membershipFrame count (position + 1) categories wordsOwner wordsPointer root root saved tail))) :
@@ -49,18 +49,23 @@ theorem membershipFinish_exact (env : HostEnv Unit) (initial : Store Unit)
   have decrement : (count + 1).toUInt64 - 1 = count.toUInt64 := by
     rw [Nat.toUInt64, UInt64.ofNat_add]
     exact UInt64.add_sub_cancel _ _
-  simp only [membershipFresh, membershipInRange, membershipBody, func2, List.getElem?_cons_zero,
-    List.getElem?_cons_succ, List.drop, membershipAllocatedFrame, memberSetFrame,
-    membershipPreparedSaved, membershipSaved, memberSetPrefix, membershipParams,
-    Fin.coe_ofNat_eq_mod, Nat.reduceMod, Nat.reduceEqDiff, or_false, false_or, reduceIte,
-    List.cons_append, List.nil_append]
-  repeat' ((try wp_fixed_frame [ownerNonzero, ownerDifferent, List.take, List.drop, List.append_nil, decrement]) <;>
-    (refine wp_iff_cons rfl ?_; first | rw [ite_eq_left (by decide)] | rw [ite_eq_right (by decide)]))
-  wp_fixed_frame [ownerNonzero, ownerDifferent, List.take, List.drop, List.append_nil, decrement]
-  apply membershipFrame_post initial _ count (position + 1) categories wordsOwner wordsPointer root root
-    (membershipAllocatedTail category size rowPointer root need previous current capacity after tail) Q next
-  all_goals first | rfl | (intro index; fin_cases index <;> rfl)
-
+  by_cases ownerZero : wordsOwner = 0
+  all_goals by_cases ownerEqual : wordsOwner = internal
+  all_goals try exact False.elim (ownerSafe.elim ownerZero (fun different => different ownerEqual))
+  all_goals try simp only [ownerZero] at ownerEqual
+  all_goals try (replace ownerEqual : internal = 0 := ownerEqual.symm)
+  all_goals
+    simp only [membershipFresh, membershipInRange, membershipBody, func2, List.getElem?_cons_zero,
+      List.getElem?_cons_succ, List.drop, membershipAllocatedFrame, memberSetFrame,
+      membershipPreparedSaved, membershipSaved, memberSetPrefix, membershipParams,
+      Fin.coe_ofNat_eq_mod, Nat.reduceMod, Nat.reduceEqDiff, or_false, false_or, reduceIte,
+      List.cons_append, List.nil_append]
+    repeat' ((try wp_fixed_frame [ownerZero, ownerEqual, List.take, List.drop, List.append_nil, decrement]) <;>
+      (refine wp_iff_cons rfl ?_; first | rw [ite_eq_left (by decide)] | rw [ite_eq_right (by decide)]))
+    wp_fixed_frame [ownerZero, ownerEqual, List.take, List.drop, List.append_nil, decrement]
+    apply membershipFrame_post initial _ count (position + 1) categories wordsOwner wordsPointer root root
+      (membershipAllocatedTail category size rowPointer root need previous current capacity after tail) Q next
+    all_goals first | rfl | (solve | simp [membershipParams, Locals.get, ownerZero, ownerEqual]) | (intro index; fin_cases index <;> rfl)
 #print axioms membershipFinish_exact
 
 end Project.Beck.Execution

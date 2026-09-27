@@ -10,21 +10,21 @@ def membershipMeasure (_ : Store Unit) (frame : Locals) : Nat :=
   | _ => 0
 
 def membershipInv (initial : Store Unit) (heap : Heap) (count position categories : Nat)
-    (wordsPointer : UInt64) (words out : Array UInt64) (remaining pageLimit : Nat) : AssertionF Unit := fun store frame =>
+    (wordsOwner wordsPointer : UInt64) (words out : Array UInt64) (remaining pageLimit : Nat) : AssertionF Unit := fun store frame =>
   ∃ currentHeap left cursor node row internal saved tail,
     currentHeap.At store ∧ currentHeap.OwnsWords store node row ∧ heap.Frame initial currentHeap store ∧
     (internal = 0 ∨ internal = node.root ∧ FreshFor heap node) ∧ node.root ≠ wordsPointer ∧
     row.size = categories ∧ readMemberships left words cursor categories row = some out ∧
     left ≤ count ∧ cursor + left = position + count ∧
     OutputBudget store currentHeap (membershipBytes left categories + remaining) pageLimit Project.Beck.«module» ∧
-    frame = membershipFrame left cursor categories wordsPointer wordsPointer node.root internal saved tail
+    frame = membershipFrame left cursor categories wordsOwner wordsPointer node.root internal saved tail
 
 def membershipDone (initial : Store Unit) (heap : Heap) (position categories : Nat)
-    (wordsPointer : UInt64) (out : Array UInt64) (remaining pageLimit : Nat) : AssertionF Unit := fun store frame =>
+    (wordsOwner wordsPointer : UInt64) (out : Array UInt64) (remaining pageLimit : Nat) : AssertionF Unit := fun store frame =>
   ∃ currentHeap node internal saved tail,
     currentHeap.At store ∧ currentHeap.OwnsWords store node out ∧ heap.Frame initial currentHeap store ∧
     OutputBudget store currentHeap remaining pageLimit Project.Beck.«module» ∧
-    frame = membershipFrame 0 position categories wordsPointer wordsPointer node.root internal saved tail
+    frame = membershipFrame 0 position categories wordsOwner wordsPointer node.root internal saved tail
 
 set_option maxRecDepth 2048 in
 theorem membership_guard_shape : membershipBody =
@@ -35,12 +35,12 @@ theorem membership_guard_shape : membershipBody =
 set_option maxRecDepth 2048 in
 set_option maxHeartbeats 1500000 in
 theorem membershipLoop_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
-    (count position categories : Nat) (wordsPointer : UInt64) (node : FreeNode)
+    (count position categories : Nat) (wordsOwner wordsPointer : UInt64) (node : FreeNode)
     (saved : MemberSetSaved) (tail : MembershipTail) (words row out : Array UInt64) (remaining pageLimit : Nat)
     (valid : heap.At initial) (owned : heap.OwnsWords initial node row)
     (wordsAt : UInt64Array.At initial wordsPointer words)
     (wordsProtected : heap.Protects wordsPointer.toNat (wordsPointer.toNat + 8 * (words.size + 1)))
-    (inputDifferent : node.root ≠ wordsPointer) (ownerNonzero : wordsPointer ≠ 0)
+    (inputDifferent : node.root ≠ wordsPointer) (ownerMode : wordsOwner = 0 ∨ wordsOwner = wordsPointer)
     (countBound : count ≤ 8) (categoryBound : categories ≤ 8)
     (rowSize : row.size = categories) (inputBound : position + count ≤ words.size)
     (accepted : readMemberships count words position categories row = some out)
@@ -49,12 +49,12 @@ theorem membershipLoop_exact (env : HostEnv Unit) (initial : Store Unit) (heap :
     (next : ∀ final finalHeap node, finalHeap.At final → finalHeap.OwnsWords final node out →
       heap.Frame initial finalHeap final → OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
       ∀ internal saved tail, wp Project.Beck.«module» rest Q final
-        (membershipFrame 0 (position + count) categories wordsPointer wordsPointer node.root internal saved tail) env) :
+        (membershipFrame 0 (position + count) categories wordsOwner wordsPointer node.root internal saved tail) env) :
     wp Project.Beck.«module» ([.block 0 0 [.loop 0 0 membershipBody]] ++ rest) Q initial
-      (membershipFrame count position categories wordsPointer wordsPointer node.root 0 saved tail) env := by
+      (membershipFrame count position categories wordsOwner wordsPointer node.root 0 saved tail) env := by
   apply BlockLoop.program_spec Project.Beck.«module» env initial _ membershipBody
-    (membershipInv initial heap count position categories wordsPointer words out remaining pageLimit)
-    (membershipDone initial heap (position + count) categories wordsPointer out remaining pageLimit) membershipMeasure
+    (membershipInv initial heap count position categories wordsOwner wordsPointer words out remaining pageLimit)
+    (membershipDone initial heap (position + count) categories wordsOwner wordsPointer out remaining pageLimit) membershipMeasure
   · rintro store frame ⟨currentHeap, left, cursor, currentNode, currentRow, internal, saved', tail', _, _, _, _, _, _, _, _, _, _, rfl⟩
     rfl
   · rintro store frame ⟨currentHeap, currentNode, internal, saved', tail', _, _, _, _, rfl⟩
@@ -96,13 +96,20 @@ theorem membershipLoop_exact (env : HostEnv Unit) (initial : Store Unit) (heap :
       rw [ite_eq_left (by decide)]
       wp_fixed_frame [List.take, List.drop, List.append_nil]
       rw [← codeEq]
-      apply membershipValidate_exact env initial store heap currentHeap left cursor categories wordsPointer wordsPointer internal currentNode
+      apply membershipValidate_exact env initial store heap currentHeap left cursor categories wordsOwner wordsPointer internal currentNode
         saved' tail' words currentRow (membershipBytes left categories + remaining) pageLimit
-        currentValid currentOwned (preserved.words wordsProtected wordsAt) (by omega) preserved active different ownerNonzero
+        currentValid currentOwned (preserved.words wordsProtected wordsAt) (by omega) preserved active (by
+          rcases ownerMode with zero | equal
+          · rw [zero]
+            intro h
+            have := currentOwned.buffer.rootBound
+            rw [h] at this
+            contradiction
+          · simpa only [equal] using different)
         (by omega) currentSize categoryInside entryZero
         (by simpa only [membershipBytes_succ, currentSize, Nat.add_assoc] using currentBudget)
       intro final finalHeap finalNode finalValid finalOwned finalFrame fresh finalBudget finalSaved finalTail
-      change membershipInv initial heap count position categories wordsPointer words out remaining pageLimit final _ ∧ _
+      change membershipInv initial heap count position categories wordsOwner wordsPointer words out remaining pageLimit final _ ∧ _
       refine ⟨⟨finalHeap, left, cursor + 1, finalNode, currentRow.set! words[cursor]!.toNat 1, finalNode.root,
         finalSaved, finalTail, finalValid, finalOwned, finalFrame, Or.inr ⟨rfl, fresh⟩,
         fresh.pointer_ne wordsPointer words.size wordsProtected (by have := finalOwned.buffer.capacity; omega) finalOwned.buffer.rootBound,
