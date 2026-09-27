@@ -5589,6 +5589,79 @@ def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
   return a
 
+def rangeFlagYield (count : UInt64) (flag : Bool) : UInt64 := Id.run do
+  let mut a := flag.toUInt64
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + flag.toUInt64
+  return a
+
+def rangeFlagExit (count : UInt64) (flag : Bool) : UInt64 := Id.run do
+  let mut a : UInt64 := 1
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if flag && a % 7 == 0 then break
+  return a
+
+def rangeFlagContinue (count : UInt64) (flag : Bool) : UInt64 := Id.run do
+  let mut a := count
+  for i in [:count.toNat] do
+    if flag && i.toUInt64 % 3 == 0 then continue
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeFlagsBoth (left right : Bool) : UInt64 := Id.run do
+  let n : UInt64 := if left then 7 else 3
+  let mut a := right.toUInt64
+  for i in [:n.toNat] do
+    a := a + i.toUInt64 + left.toUInt64
+    if right && a % 5 == 0 then break
+  return a
+
+def rangeFlagOuter (count : UInt64) (flag : Bool) : UInt64 := Id.run do
+  let f := fun b : Bool => if b then count + flag.toUInt64 else count - flag.toUInt64
+  let mut a := f false
+  for i in [:count.toNat] do
+    a := a + f (i.toUInt64 % 2 == 0)
+  return a
+
+def rangeFlagStepHelper (count : UInt64) (flag : Bool) : UInt64 := Id.run do
+  let mut a := count
+  for i in [:count.toNat] do
+    let f := fun b : Bool => if b then a + flag.toUInt64 else a + i.toUInt64
+    a := f flag
+    if a % 11 == 0 then break
+  return a
+
+def rangeFlagAlias (count : UInt64) (flag : Bool) : UInt64 := Id.run do
+  let saved := !flag
+  let mut a := count + saved.toUInt64
+  for i in [:count.toNat] do
+    if saved then a := a + i.toUInt64 else a := a + 1
+  return a
+
+def rangeFlagBind (count : UInt64) (flag : Bool) : Id UInt64 := do
+  let saved ← pure flag
+  let mut a := count
+  for i in [:count.toNat] do
+    if !saved && i.toUInt64 % 2 == 0 then continue
+    a := a + i.toUInt64 + saved.toUInt64
+  return a
+
+def rangeFlagCount (flag : Bool) (count : UInt64) : UInt64 := Id.run do
+  let stop := count % 17 + flag.toUInt64
+  let mut a : UInt64 := if flag then 1 else 7
+  for i in [:stop.toNat] do
+    a := a + i.toUInt64
+  return a
+
+def rangeFlagResult (flag : Bool) (count : UInt64) : UInt64 := Id.run do
+  let stop := count % 17
+  let mut a := count
+  for i in [:stop.toNat] do
+    a := a + i.toUInt64
+    if flag && a % 7 == 0 then break
+  return if flag then a + count else a - count
+
 def publicFlagWord (flag : Bool) (x : UInt64) : UInt64 :=
   if flag then x + 7 else x - 3
 
@@ -8505,6 +8578,16 @@ run_elab do
       `ArithmeticModeTest.rangeLocalNotContinue,
       `ArithmeticModeTest.rangeLocalNotOuter,
       `ArithmeticModeTest.rangeLocalNotHelper,
+      `ArithmeticModeTest.rangeFlagYield,
+      `ArithmeticModeTest.rangeFlagExit,
+      `ArithmeticModeTest.rangeFlagContinue,
+      `ArithmeticModeTest.rangeFlagsBoth,
+      `ArithmeticModeTest.rangeFlagOuter,
+      `ArithmeticModeTest.rangeFlagStepHelper,
+      `ArithmeticModeTest.rangeFlagAlias,
+      `ArithmeticModeTest.rangeFlagBind,
+      `ArithmeticModeTest.rangeFlagCount,
+      `ArithmeticModeTest.rangeFlagResult,
       `ArithmeticModeTest.publicFlagWord,
       `ArithmeticModeTest.publicWordFlag,
       `ArithmeticModeTest.publicFlagsWord,

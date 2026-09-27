@@ -30,7 +30,7 @@ theorem extracted_function_body_bytes
         (fun outcome => outcome = .Fallthrough store (next.toLocals [.i64 value]))
         store ((ScalarLowering.functionState func args).toLocals []) env := by
   obtain ⟨arity, result, body, signature, annotations, hb, branches⟩ := extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, inputs, plan, hp, rfl⟩ | ⟨rfl, inputs, plan, hp, rfl⟩
+  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩
   · have hlen : args.length = arity := len
     subst arity
     obtain ⟨value, applied, irEval⟩ := scalarPublic_application signature annotations hb hi args [0] rfl
@@ -60,11 +60,9 @@ theorem extracted_function_body_bytes
     · exact bodyBound
   · have hlen : args.length = arity := len
     subst arity
-    obtain ⟨value, semantics, meaning⟩ := rangeFunc_meaning hp rfl
-    have applied := LeanExe.Source.Scalar.apply_of_collectLambdas args []
-      (by simpa [inputs] using annotations) hb (by simpa using semantics)
-    obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRange_admitted hp
-      (by intro index present; simpa using present)
+    obtain ⟨value, applied, meaning⟩ := rangePublic_application signature annotations hb hp args rfl
+    obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRangePublic_admitted hp
+      (scalarSignature_inputs_length signature)
     obtain ⟨raw, next, parsed, executed⟩ := range_function_body_bytes args name exportName releaseIndex
       matched arithmetic reads meaning localBound bodyBound m env store
     refine ⟨value, raw, next, applied, ?_, executed⟩
@@ -75,11 +73,9 @@ theorem extracted_function_body_bytes
     simpa only [countEq] using parsed
   · have hlen : args.length = arity := len
     subst arity
-    obtain ⟨value, semantics, meaning⟩ := rangeExitFunc_meaning hp rfl
-    have applied := LeanExe.Source.Scalar.apply_exit_of_collectLambdas args []
-      (by simpa [inputs] using annotations) hb (by simpa using semantics)
-    obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRangeExit_admitted hp
-      (by intro index present; simpa using present)
+    obtain ⟨value, applied, meaning⟩ := rangeExitPublic_application signature annotations hb hp args rfl
+    obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRangeExitPublic_admitted hp
+      (scalarSignature_inputs_length signature)
     obtain ⟨raw, next, parsed, executed⟩ := range_exit_function_body_bytes args name exportName releaseIndex
       matched arithmetic reads meaning localBound bodyBound m env store
     refine ⟨value, raw, next, applied, ?_, executed⟩

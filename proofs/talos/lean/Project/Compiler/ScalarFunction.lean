@@ -59,7 +59,7 @@ theorem extracted_function_execution {name : Lean.Name} {exportName : Option Str
       Wasm.wp m code (fun outcome => outcome = .Fallthrough store (next.toLocals [.i64 value]))
         store ((functionState func args).toLocals []) env := by
   obtain ⟨arity, result, body, signature, annotations, hb, branches⟩ := LeanExe.Extract.Core.extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, inputs, plan, hp, rfl⟩ | ⟨rfl, inputs, plan, hp, rfl⟩
+  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩
   · have hlen : args.length = arity := len
     subst arity
     obtain ⟨value, applied, irEval⟩ := LeanExe.Extract.Core.scalarPublic_application
@@ -70,21 +70,17 @@ theorem extracted_function_execution {name : Lean.Name} {exportName : Option Str
     exact ⟨value, code, next, applied, emitted, executed⟩
   · have hlen : args.length = arity := len
     subst arity
-    obtain ⟨value, semantics, meaning⟩ := LeanExe.Extract.Core.rangeFunc_meaning hp rfl
-    have applied := LeanExe.Source.Scalar.apply_of_collectLambdas args []
-      (by simpa [inputs] using annotations) hb (by simpa using semantics)
-    obtain ⟨descriptor, matched, _, _⟩ := LeanExe.Extract.Core.extractScalarRange_admitted hp
-      (by intro index present; simpa using present)
+    obtain ⟨value, applied, meaning⟩ := LeanExe.Extract.Core.rangePublic_application signature annotations hb hp args rfl
+    obtain ⟨descriptor, matched, _, _⟩ := LeanExe.Extract.Core.extractScalarRangePublic_admitted hp
+      (LeanExe.Extract.Core.scalarSignature_inputs_length signature)
     obtain ⟨code, next, emitted, executed⟩ := range_function_execution args name exportName
       releaseIndex matched meaning m env store
     exact ⟨value, code, next, applied, emitted, executed⟩
   · have hlen : args.length = arity := len
     subst arity
-    obtain ⟨value, semantics, meaning⟩ := LeanExe.Extract.Core.rangeExitFunc_meaning hp rfl
-    have applied := LeanExe.Source.Scalar.apply_exit_of_collectLambdas args []
-      (by simpa [inputs] using annotations) hb (by simpa using semantics)
-    obtain ⟨descriptor, matched, _, _⟩ := LeanExe.Extract.Core.extractScalarRangeExit_admitted hp
-      (by intro index present; simpa using present)
+    obtain ⟨value, applied, meaning⟩ := LeanExe.Extract.Core.rangeExitPublic_application signature annotations hb hp args rfl
+    obtain ⟨descriptor, matched, _, _⟩ := LeanExe.Extract.Core.extractScalarRangeExitPublic_admitted hp
+      (LeanExe.Extract.Core.scalarSignature_inputs_length signature)
     obtain ⟨code, next, emitted, executed⟩ := range_exit_function_execution args name exportName
       releaseIndex matched meaning m env store
     exact ⟨value, code, next, applied, emitted, executed⟩

@@ -522,5 +522,15 @@
   "rangePublicIdYield",
   "rangePublicIdExit",
   "rangePublicIdContinue",
-  "rangePublicIdCapture"
+  "rangePublicIdCapture",
+  "rangeFlagYield",
+  "rangeFlagExit",
+  "rangeFlagContinue",
+  "rangeFlagsBoth",
+  "rangeFlagOuter",
+  "rangeFlagStepHelper",
+  "rangeFlagAlias",
+  "rangeFlagBind",
+  "rangeFlagCount",
+  "rangeFlagResult"
 ]
