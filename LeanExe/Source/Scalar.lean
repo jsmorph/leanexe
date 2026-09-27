@@ -146,6 +146,15 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (second : EvalWith (.app (.const ``Bool.toUInt64 []) right.expr) values (Bool.toUInt64 b)) :
       EvalWith (.app (.const ``Bool.toUInt64 []) (form.local negations unequal left right).expr)
         values (Bool.toUInt64 (GuardNegation.denote negations (form.denote unequal a b)))
+  | booleanBindingWord (negations : Nat) (name : Lean.Name) (form : BooleanBindingForm)
+      (value body : BooleanLocal) (type : BooleanType)
+      (member : index ∈ value.functions ++ booleanLetVariables body.functions)
+      (function : values[index]? = some (.booleanPredicateFunction f))
+      (bound : EvalWith (.app (.const ``Bool.toUInt64 []) value.expr) values (Bool.toUInt64 flag))
+      (result : EvalWith (.app (.const ``Bool.toUInt64 []) body.expr)
+        (.boolean flag :: values) (Bool.toUInt64 outcome)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) (BooleanLocal.binding negations name form value body type).expr)
+        values (Bool.toUInt64 (GuardNegation.denote negations outcome))
   | booleanWrappedWord (negations : Nat) (wrapper : BooleanWrapper) (body : BooleanLocal)
       (member : index ∈ body.functions)
       (function : values[index]? = some (.booleanPredicateFunction f))
@@ -343,6 +352,13 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (first : SupportedWith types (.app (.const ``Bool.toUInt64 []) left.expr))
       (second : SupportedWith types (.app (.const ``Bool.toUInt64 []) right.expr)) :
       SupportedWith types (.app (.const ``Bool.toUInt64 []) (form.local negations unequal left right).expr)
+  | booleanBindingWord (negations : Nat) (name : Lean.Name) (form : BooleanBindingForm)
+      (value body : BooleanLocal) (type : BooleanType)
+      (member : index ∈ value.functions ++ booleanLetVariables body.functions)
+      (function : types[index]? = some .booleanPredicateFunction)
+      (bound : SupportedWith types (.app (.const ``Bool.toUInt64 []) value.expr))
+      (result : SupportedWith (.boolean :: types) (.app (.const ``Bool.toUInt64 []) body.expr)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) (BooleanLocal.binding negations name form value body type).expr)
   | booleanWrappedWord (negations : Nat) (wrapper : BooleanWrapper) (body : BooleanLocal)
       (member : index ∈ body.functions)
       (function : types[index]? = some .booleanPredicateFunction)
@@ -426,7 +442,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
     ∃ flag : Bool, value = flag.toUInt64 := by
   generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
   cases evaluation with
-  | booleanWord | booleanWrappedWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord | booleanPropositionWord => exact ⟨_, rfl⟩
+  | booleanWord | booleanBindingWord | booleanWrappedWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord | booleanPropositionWord => exact ⟨_, rfl⟩
   | applyBooleanPredicateWord => exact ⟨_, rfl⟩
   | complement head _ => cases head <;> simp_all
   | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
@@ -674,6 +690,14 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     obtain ⟨second, rfl⟩ := hb.booleanConversion_result
     exact ⟨Bool.toUInt64 (GuardNegation.denote negations (form.denote unequal first second)),
       .booleanEqualityWord form negations unequal left right member hf ha hb⟩
+  | booleanBindingWord negations name form value body type member present _ _ ihv ihb =>
+    obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
+    obtain ⟨encoded, bound⟩ := ihv values typed
+    obtain ⟨flag, rfl⟩ := bound.booleanConversion_result
+    obtain ⟨result, evaluated⟩ := ihb (.boolean flag :: values) (by simp [Value.kind, typed])
+    obtain ⟨outcome, rfl⟩ := evaluated.booleanConversion_result
+    exact ⟨Bool.toUInt64 (GuardNegation.denote negations outcome),
+      .booleanBindingWord negations name form value body type member hf bound evaluated⟩
   | booleanWrappedWord negations wrapper body member present _ ih =>
     obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
     obtain ⟨encoded, evaluated⟩ := ih values typed
