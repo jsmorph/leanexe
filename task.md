@@ -511,7 +511,17 @@ controls. Prior tests pass 32,496 comparisons, 29,952 invalid-input checks and
 2,304 controls. Evidence is in
 [the mixed-condition loop archive](proofs/compiler/boolean-loop-mixed-condition-2026-09-27/README.md).
 
-Next: local continuations containing loops, followed by
+Current capability: direct local calls to functions containing Boolean-result
+loops. Source totality, exact argument parsing, extraction acceptance/support,
+evaluation and invariant proofs pass for word and Boolean parameters. The existing
+scalar helper path runs first; a checked direct-call fallback binds the argument
+in the function body. Public extraction and WASM admission proofs pass. New tests pass 16,368
+native/IR comparisons, 5,760 invalid-input checks and 576 equivalent-binding
+controls. The complete compiler proof and WASM checks are next. A saved native
+failure identifies wrappers around the direct call as the next capability.
+
+Next: standard wrappers around local continuation calls, conditional calls to
+loop-containing continuations, followed by
 retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
 Also extend UInt64-to-Bool helper bodies to call captured
