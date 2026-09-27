@@ -1,0 +1,45 @@
+cli-build: passed
+admission-test: passed
+reserved-exports: passed
+fixture: passed
+native-results: passed
+compile-constant: passed
+compile-publicInputIdWord: passed
+compile-publicInputIdResult: passed
+compile-publicBoolHelpersNested: passed
+compile-publicBoolHelpersRepeated: passed
+compile-publicBoolHelpersWrapped: passed
+compile-publicBoolHelpersInputId: passed
+compile-publicBoolHelpersWord: passed
+compile-publicBoolHelpersMany: passed
+compile-publicBoolHelpersUnit: passed
+compile-publicBoolHelpersShadow: passed
+compile-publicBoolHelpersSaved: passed
+compile-publicBoolHelpersUnused: passed
+compile-publicFlagWord: passed
+compile-publicFlagResult: passed
+compile-rangeWordBoolHelperId: passed
+compile-rangeWordChooseLoops: passed
+compile-rangeWordChooseHelpers: passed
+compile-rangeWordChooseSetupWord: passed
+compile-rangeWordChooseSetupFlag: passed
+compile-rangeWordChooseSetupDo: passed
+compile-rangeWordChooseSetupNested: passed
+compile-rangeWordChooseSavedResult: passed
+compile-rangeWordChooseShowResult: passed
+compile-rangeWordChooseSetupExit: passed
+compile-rangeWordChooseSetupContinue: passed
+compile-rangeWordChooseSetupStride: passed
+compile-rangeWordChooseSetupId: passed
+file:///Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/test/arithmetic_engine.mjs:28
+  throw new Error(`invalid checked execution group: ${suite}`);
+        ^
+
+Error: invalid checked execution group: boolean-helper-composition
+    at file:///Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/test/arithmetic_engine.mjs:28:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:413:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:660:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.13.0
+
