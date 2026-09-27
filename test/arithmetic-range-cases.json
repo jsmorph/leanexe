@@ -757,5 +757,15 @@
   "rangeWordBoolSetupExit",
   "rangeWordBoolSetupContinue",
   "rangeWordBoolSetupStride",
-  "rangeWordBoolSetupId"
+  "rangeWordBoolSetupId",
+  "rangeWordBoolHelperWord",
+  "rangeWordBoolHelperBoolean",
+  "rangeWordBoolHelperPredicate",
+  "rangeWordBoolHelperBooleanPredicate",
+  "rangeWordBoolHelperBinary",
+  "rangeWordBoolHelperMany",
+  "rangeWordBoolHelperManyFive",
+  "rangeWordBoolHelperUnit",
+  "rangeWordBoolHelperPunit",
+  "rangeWordBoolHelperId"
 ]
