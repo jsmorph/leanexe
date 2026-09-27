@@ -1021,16 +1021,24 @@ invalid inputs and 288 controls. All six fixed probes compile; five compiled
 before the extension. The corpus contains 1691 declarations. Evidence is in
 [the word-step archive](proofs/compiler/boolean-binary-step-helper-2026-09-27/README.md).
 
-Current capability: binary Boolean helper declarations in Boolean-accumulator
-loop steps. Source totality, extraction, correctness, complete acceptance, source
-reconstruction and IR invariants pass; function integration passes 210 targets.
-All six fixed probes now compile. Focused tests pass 9,408 native/IR comparisons,
-17,664 invalid-input checks and 384 admission controls. Eight native fixtures are
-registered; the full WASM proof gate and independent V8 run are next.
-An additional branch-command fixture exposed a generated Unit-to-Bool-to-Boolean-
-step continuation. Its unchanged failing declaration is preserved for the next
-increment; the current fixture tests the equivalent conditional assignment.
-Declarations around whole loops remain separate.
+Binary Boolean helper declarations around Boolean-accumulator loop steps are proved
+through WASM. Captures, argument order, saved results, nested helpers and early
+exits are checked. Unused bodies are validated even in empty ranges. The complete
+proof gate passes 3396 targets and all 38 audits. Native Lean/V8 agree on 1,787
+inputs across 90 declarations; 82 prior modules retain identical bytes and
+0 changed. New tests pass 9,408 comparisons, 17,664 invalid-input checks and
+384 admission controls; prior tests pass 37,344 comparisons, 33,792
+invalid inputs and 384 controls. All six fixed probes compile; all rejected
+before the extension. The corpus contains 1699 declarations. Evidence is in
+[the Boolean-step archive](proofs/compiler/boolean-binary-flag-step-helper-2026-09-27/README.md).
+
+Current capability: generated Unit-to-Bool-to-Boolean-step continuations. The
+unchanged branch-command example rejects through both direct and environment
+extraction; Lean introduces this helper when both branches update the flag before
+a shared early-exit condition. Preserve it and prove the distinct function kind,
+source evaluation, totality, extraction, acceptance and IR invariants before the
+full WASM and independent engine checks. Binary predicates around whole loops,
+multiple loops and the remaining dialect still need proofs.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

@@ -1,0 +1,52 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+def BinaryFlagStepHelperTest.rangeBinaryFlagStepHelperChoice : (count seed : UInt64) → Id.{0} Bool :=
+fun (count seed : UInt64) =>
+  have a : Bool :=
+    @bne.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64) seed
+      (@OfNat.ofNat.{0} UInt64 (nat_lit 0) (@UInt64.instOfNat (nat_lit 0)));
+  @Bind.bind.{0, 0} Id.{0} (@Monad.toBind.{0, 0} Id.{0} Id.instMonad.{0}) Bool Bool
+    (@ForIn.forIn.{0, 0, 0, 0} Id.{0} Std.Legacy.Range Nat
+      (@instForInOfForIn'.{0, 0, 0, 0} Id.{0} Std.Legacy.Range Nat
+        (@inferInstance.{1} (Membership.{0, 0} Nat Std.Legacy.Range) Std.Legacy.instMembershipNatRange)
+        (@Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad.{0, 0} Id.{0} Id.instMonad.{0}))
+      Bool
+      (Std.Legacy.Range.mk (@OfNat.ofNat.{0} Nat (nat_lit 0) (instOfNatNat (nat_lit 0))) (UInt64.toNat count)
+        (@OfNat.ofNat.{0} Nat (nat_lit 1) (instOfNatNat (nat_lit 1))) Nat.zero_lt_one)
+      a fun (i : Nat) (__s : Bool) =>
+      have a : Bool := __s;
+      have f : (x y : UInt64) → Bool := fun (x y : UInt64) =>
+        @BEq.beq.{0} UInt64 (@instBEqOfDecidableEq.{0} UInt64 instDecidableEqUInt64)
+          (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) x
+            (@HMul.hMul.{0, 0, 0} UInt64 UInt64 UInt64 (@instHMul.{0} UInt64 instMulUInt64)
+              (@OfNat.ofNat.{0} UInt64 (nat_lit 3) (@UInt64.instOfNat (nat_lit 3))) y))
+          (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) seed (Bool.toUInt64 a));
+      have first : UInt64 :=
+        @ite.{1} UInt64 (@Eq.{1} Bool a Bool.true) (instDecidableEqBool a Bool.true) seed (Nat.toUInt64 i);
+      have __do_jp : Unit → Bool → Id.{0} (ForInStep.{0} Bool) := fun (__r : Unit) (a : Bool) =>
+        @ite.{1} (Id.{0} (ForInStep.{0} Bool)) (@Eq.{1} Bool (f (Bool.toUInt64 a) first) Bool.true)
+          (instDecidableEqBool (f (Bool.toUInt64 a) first) Bool.true)
+          (@Pure.pure.{0, 0} Id.{0}
+            (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+            (ForInStep.{0} Bool) (@ForInStep.done.{0} Bool a))
+          (@Pure.pure.{0, 0} Id.{0}
+            (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+            (ForInStep.{0} Bool) (@ForInStep.yield.{0} Bool a));
+      @ite.{1} (Id.{0} (ForInStep.{0} Bool))
+        (@Eq.{1} Bool
+          (f first
+            (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) seed (Nat.toUInt64 i)))
+          Bool.true)
+        (instDecidableEqBool
+          (f first
+            (@HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64) seed (Nat.toUInt64 i)))
+          Bool.true)
+        (have a : Bool := Bool.not a;
+        __do_jp Unit.unit a)
+        (have a : Bool := f seed (Nat.toUInt64 i);
+        __do_jp Unit.unit a))
+    fun (__s : Bool) =>
+    have a : Bool := __s;
+    @Pure.pure.{0, 0} Id.{0} (@Applicative.toPure.{0, 0} Id.{0} (@Monad.toApplicative.{0, 0} Id.{0} Id.instMonad.{0}))
+      Bool a
+environment accepted: false
