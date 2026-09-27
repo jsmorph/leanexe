@@ -23,14 +23,14 @@ def booleanHelper? (booleanInput : Bool) (source : Lean.Expr) : Option (BooleanH
     match same : source with
     | .letE functionName (.forallE typeName input result typeInfo)
         (.lam parameterName domain body valueInfo) continuation nondep =>
-        if inputs : input = .const (if booleanInput then ``Bool else ``UInt64) [] ∧ domain = input then
+        if inputs : PublicArgument.ofType? input = some (if booleanInput then .boolean else .word) ∧ domain = input then
           match resultFound : booleanType? result with
           | some resultType =>
               let shape : BooleanFunctionBinding := ⟨functionName, typeName, typeInfo, valueInfo, resultType, nondep⟩
-              have exactSource : source = booleanHelperExpr booleanInput shape parameterName body continuation := by
-                rw [same, inputs.2, inputs.1, booleanType_sound resultFound]
+              have exactSource : source = booleanHelperExpr booleanInput shape parameterName body continuation input := by
+                rw [same, inputs.2, booleanType_sound resultFound]
                 rfl
-              some ⟨shape, parameterName, body, continuation,
+              some ⟨shape, parameterName, body, continuation, input, PublicArgument.ofType_sound inputs.1,
                 fun value equal => booleanLocal_excluded absent value (same.symm.trans (exactSource.trans equal))⟩
           | none => none
         else none
@@ -40,9 +40,10 @@ def booleanHelper? (booleanInput : Bool) (source : Lean.Expr) : Option (BooleanH
 @[simp] theorem booleanHelper_accepts (value : BooleanHelper booleanInput) :
     booleanHelper? booleanInput value.expr = some value := by
   have absent := booleanHelper_not_local value
-  rcases value with ⟨shape, parameterName, body, continuation, extended⟩
+  rcases value with ⟨shape, parameterName, body, continuation, domain, input, extended⟩
+  have parsed := PublicArgument.ofType_accepts input
   simp [booleanHelper?, BooleanHelper.expr, booleanHelperExpr] at absent ⊢
-  simp [absent]
+  simp [absent, parsed]
   split <;> simp_all
   simp_all only [booleanType_accepts, Option.some.injEq]
   cases shape
@@ -51,8 +52,9 @@ def booleanHelper? (booleanInput : Bool) (source : Lean.Expr) : Option (BooleanH
 @[simp] theorem booleanHelper_other (value : BooleanHelper booleanInput) :
     booleanHelper? (!booleanInput) value.expr = none := by
   have absent := booleanHelper_not_local value
+  have parsed := PublicArgument.ofType_accepts value.input
   cases booleanInput <;> simp [booleanHelper?, BooleanHelper.expr, booleanHelperExpr] at absent ⊢
-  all_goals simp [absent]
+  all_goals simp_all
 
 theorem booleanHelper_sound {source : Lean.Expr} {value : BooleanHelper booleanInput}
     (parsed : booleanHelper? booleanInput source = some value) : source = value.expr := by
@@ -65,8 +67,8 @@ theorem booleanHelper_sound {source : Lean.Expr} {value : BooleanHelper booleanI
   all_goals split at parsed <;> try contradiction
   all_goals rename_i resultType resultFound
   all_goals cases parsed
-  all_goals simp only [BooleanHelper.expr, booleanHelperExpr, Bool.false_eq_true, ite_false, ite_true]
-  all_goals rw [inputs.2, inputs.1, booleanType_sound resultFound]
+  all_goals simp only [BooleanHelper.expr, booleanHelperExpr]
+  all_goals rw [inputs.2, booleanType_sound resultFound]
 
 theorem booleanHelper_sizes {source : Lean.Expr} {value : BooleanHelper booleanInput}
     (parsed : booleanHelper? booleanInput source = some value) :

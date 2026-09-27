@@ -16,6 +16,11 @@ def guardLetType? (type : Lean.Expr) : Option GuardLetType :=
               (booleanType? result).map (.predicate false name info)
           | .forallE name (.const ``Bool []) result info =>
               (booleanType? result).map (.predicate true name info)
+          | .forallE name (.app (.const ``Id [.zero]) domain) result info =>
+              match parsed : PublicArgument.ofType? domain with
+              | some kind => (booleanType? result).map
+                  (.predicateId kind domain (PublicArgument.ofType_sound parsed) name info)
+              | none => none
           | _ => none
 
 @[simp] theorem guardLetType_accepts (type : GuardLetType) :
@@ -25,6 +30,10 @@ def guardLetType? (type : Lean.Expr) : Option GuardLetType :=
   | boolean type => simp [guardLetType?, GuardLetType.expr, scalarResultType_boolean]
   | predicate booleanInput inputName info result =>
     cases booleanInput <;> simp [guardLetType?, GuardLetType.expr, scalarResultType?, booleanType?]
+  | predicateId kind domain input inputName info result =>
+    simp [guardLetType?, GuardLetType.expr, scalarResultType?, booleanType?]
+    have parsed := PublicArgument.ofType_accepts input
+    split <;> simp_all
 
 theorem guardLetType_sound {type : Lean.Expr} {result : GuardLetType}
     (found : guardLetType? type = some result) : type = result.expr := by
@@ -37,10 +46,18 @@ theorem guardLetType_sound {type : Lean.Expr} {result : GuardLetType}
     · rename_i result parsed
       cases found
       exact booleanType_sound parsed
-    · split at found <;> try contradiction
-      all_goals
-        obtain ⟨annotation, parsed, rfl⟩ := Option.map_eq_some_iff.mp found
+    · split at found
+      · obtain ⟨annotation, parsed, rfl⟩ := Option.map_eq_some_iff.mp found
         rw [booleanType_sound parsed]
         rfl
+      · obtain ⟨annotation, parsed, rfl⟩ := Option.map_eq_some_iff.mp found
+        rw [booleanType_sound parsed]
+        rfl
+      · split at found
+        · obtain ⟨annotation, parsed, rfl⟩ := Option.map_eq_some_iff.mp found
+          rw [booleanType_sound parsed]
+          rfl
+        · contradiction
+      · contradiction
 
 end LeanExe.Extract.Core
