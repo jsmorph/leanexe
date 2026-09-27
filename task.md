@@ -1010,15 +1010,23 @@ and 288 admission controls; prior tests pass 32,756 comparisons, 52,995 invalid
 inputs and 768 controls. All six fixed probes compile. The corpus contains 1683
 declarations. Evidence is in [the binary-helper archive](proofs/compiler/boolean-binary-helper-2026-09-27/README.md).
 
-Current capability: binary Boolean helper declarations in word-accumulator loop
-bodies. Source totality, extraction, termination, evaluation correctness,
-admission, source reconstruction and IR invariants pass. Range/function integration
-passes 210 targets. All six fixed probes now compile. Focused tests pass 9,408
-native/IR comparisons, 17,664 invalid-input checks and 384 admission controls,
-covering early exits, captures, nested helpers, saved results, unused bodies and
-empty ranges. Eight native fixtures are registered. Complete WASM proofs and V8
-checks remain before advancing. Boolean-accumulator loops and declarations around
-whole loops remain separate increments.
+Binary Boolean helper declarations around word-accumulator loop steps are proved
+through WASM. Captures, argument order, saved results, nested helpers and early
+exits are checked. Unused bodies are validated even in empty ranges. The complete
+proof gate passes 3396 targets and all 38 audits. Native Lean/V8 agree on 1,595
+inputs across 82 declarations; 74 prior modules retain identical bytes and
+0 changed. New tests pass 9,408 comparisons, 17,664 invalid-input checks and
+384 admission controls; prior tests pass 20,042 comparisons, 29,520
+invalid inputs and 288 controls. All six fixed probes compile; five compiled
+before the extension. The corpus contains 1691 declarations. Evidence is in
+[the word-step archive](proofs/compiler/boolean-binary-step-helper-2026-09-27/README.md).
+
+Current capability: binary Boolean helper declarations in Boolean-accumulator
+loop steps. Six fixed probes report 0 accepted and
+6 rejected. Preserve those probes and reuse the scalar
+binary predicate kind. Prove source evaluation, totality, extraction, admission
+and invariants before the full WASM and independent engine checks. Declarations
+around whole loops remain separate.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
