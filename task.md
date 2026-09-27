@@ -628,14 +628,16 @@ and 9,216 controls. Prior checks pass 306,432 comparisons, 154,368 invalid-input
 tests and 18,432 controls. The native corpus contains 1347 declarations.
 Evidence is in [the word-conditional archive](proofs/compiler/word-loop-conditional-2026-09-27/README.md).
 
-Current capability: bindings around word-result conditionals. Pure word/Boolean
-setup, ordinary lets, standard Id binds and saved word results are covered by
-independent source semantics, totality, acceptance, support recovery, preservation
-and invariant proofs. Ten native examples, including show and nested Id
-annotations, pass 240 comparisons. Syntax checks pass 129,024 comparisons,
-73,728 invalid-input tests and 6,144 controls. Two-loop computations remain
-rejected. Adjacent tests pass 387,072 comparisons, 205,824 invalid-input tests
-and 15,360 controls. The full proof and WASM gates are next.
+Bindings around word-result conditionals are complete. Pure word/Boolean setup,
+ordinary lets, exact standard Id binds, saved results and show preserve source
+computations. Both used and unused values are checked; loop values require pure
+tails. Source-to-WASM correctness and all nineteen audits pass. Native Lean/V8
+agree on 609 inputs across 28 declarations, including twenty-three ranges;
+eighteen prior modules retain identical bytes. New tests pass 129,264 comparisons,
+73,728 invalid-input tests and 6,144 controls. Prior tests pass 387,072 comparisons,
+205,824 invalid-input checks and 15,360 controls. The native corpus contains 1357
+declarations. Evidence is in
+[the word-binding archive](proofs/compiler/word-loop-binding-2026-09-27/README.md).
 
 Next: local helper declarations around word conditionals, followed by
 retained instances, broader signatures, and composition of multiple loops.
