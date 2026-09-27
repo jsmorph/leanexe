@@ -796,12 +796,15 @@ contains 1497 declarations. Evidence is in
 [the proposition predicate-let archive](proofs/compiler/boolean-proposition-helper-let-2026-09-27/README.md).
 
 Current capability: general Boolean bodies inside local predicate helpers.
-The converted helper path already recursively compiles its body, but its syntax
-parser restricts that body to BooleanLocal. Retain the exact raw body and prove
-parser soundness and acceptance, allowing the existing recursive conversion and
-source rules to check nested helpers and wrappers. Preserve unused-body checking.
-Use the fixed next probes to distinguish this from ordinary word continuations
-and Id input domains, which may require separate work.
+The converted helper parser now retains the exact raw body. Existing recursive
+Boolean conversion proofs establish source totality, acceptance, correctness and
+IR invariants for nested helpers, wrappers and choices. The focused parser,
+scalar and public compiler builds pass. Three fixed probes pass unchanged.
+New tests pass 37,812 native/IR comparisons, 33,792 invalid-input checks and
+768 controls, including unsupported unused bodies. Prior tests pass 76,252
+comparisons, 77,744 invalid-input checks and 640 controls. The full compiler
+proof and independent WASM checks are next. Ordinary word-continuation helper bodies
+and Id inputs remain separately recorded gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

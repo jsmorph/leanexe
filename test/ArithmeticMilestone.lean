@@ -8188,6 +8188,74 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def booleanHelperBodyNested (x y : UInt64) : UInt64 :=
+  (let f := fun n : UInt64 =>
+    let g := fun k : UInt64 => k == y
+    g n || g 0
+   f x && f y).toUInt64 + x
+
+def booleanHelperBodyWrapped (x y : UInt64) : UInt64 :=
+  (let f := fun b : Bool => Id.run do
+    let g := fun k : Bool => k || x == y
+    return g b && g (y == 0)
+   f (x == 0) || f (x == y)).toUInt64 + y
+
+def booleanHelperBodyMixed (x y : UInt64) : UInt64 :=
+  (let f := fun n : UInt64 =>
+    let g := fun b : Bool => b || n == y
+    g (n == 0) && g (y == 0)
+   f x || f (x + y)).toUInt64 + x
+
+def booleanHelperBodyCaptures (x y : UInt64) : UInt64 :=
+  (let p := fun n : UInt64 => n == y
+   let f := fun b : Bool =>
+    let g := fun n : UInt64 => p n || b
+    g x && g 0
+   f (x == 0) || f (y == 0)).toUInt64 + y
+
+def booleanHelperBodyUnused (x y : UInt64) : UInt64 :=
+  (let _unused := fun n : UInt64 =>
+    let g := fun k : UInt64 => k == y
+    g n || g 0
+   x == y).toUInt64 + x
+
+def booleanHelperBodyChoice (x y : UInt64) : UInt64 :=
+  (let f := fun n : UInt64 =>
+    if _h : n < y then (let g := fun k : UInt64 => k % 3 == 0; g n || g y)
+    else (let g := fun b : Bool => !b || y == 0; g (n == 0) && g (n == y))
+   f x && f y).toUInt64 + x
+
+def rangeHelperBodyStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let f := fun n : UInt64 => (let g := fun k : UInt64 => k % 3 == 0; g n || g a); f a && f i.toUInt64) then
+      a := a + i.toUInt64 + 7
+    else a := a * 3 + 1
+  return a
+
+def rangeHelperBodyExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if _h : (let f := fun b : Bool => (let g := fun n : UInt64 => n % 7 == 0 || b; g a && g seed); f (i.toUInt64 == 0) || f (a == seed)) then break
+  return a
+
+def rangeHelperBodyContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let f := fun n : UInt64 => (let g := fun b : Bool => b || n == seed; g (n % 3 == 0) && g (a == 0)); f a || f i.toUInt64) then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangeHelperBodyTail (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+  return (let f := fun b : Bool => Id.run do
+    let g := fun n : UInt64 => n == seed || b
+    return g a && g 0
+   f (a == 0) || f (a == seed)).toUInt64 + a
+
 def propositionHelperLetCompound (x y : UInt64) : UInt64 :=
   (if x < y ∧ (let f := fun n : UInt64 => n == y; f x || f 0) then
     (let g := fun b : Bool => b || y == 0; g (x == 0)) else x == y).toUInt64 + x
@@ -11355,6 +11423,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolRelationExit", (fun (x y : UInt64) => rangeBoolRelationExit x y)),
    ("rangeBoolRelationContinue", (fun (x y : UInt64) => rangeBoolRelationContinue x y)),
    ("rangeBoolRelationTail", (fun (x y : UInt64) => (rangeBoolRelationTail x y).toUInt64)),
+   ("rangeHelperBodyStep", (fun (x y : UInt64) => rangeHelperBodyStep x y)),
+   ("rangeHelperBodyExit", (fun (x y : UInt64) => rangeHelperBodyExit x y)),
+   ("rangeHelperBodyContinue", (fun (x y : UInt64) => rangeHelperBodyContinue x y)),
+   ("rangeHelperBodyTail", (fun (x y : UInt64) => rangeHelperBodyTail x y)),
    ("rangePropositionHelperLetStep", (fun (x y : UInt64) => rangePropositionHelperLetStep x y)),
    ("rangePropositionHelperLetExit", (fun (x y : UInt64) => rangePropositionHelperLetExit x y)),
    ("rangePropositionHelperLetContinue", (fun (x y : UInt64) => rangePropositionHelperLetContinue x y)),
@@ -12009,6 +12081,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("booleanPropRelationWords", (fun (x y : UInt64) => booleanPropRelationWords x y)),
    ("booleanPropRelationHelpers", (fun (x y : UInt64) => (booleanPropRelationHelpers x y).toUInt64)),
    ("booleanPropRelationLet", (fun (x y : UInt64) => booleanPropRelationLet x y)),
+   ("booleanHelperBodyNested", (fun (x y : UInt64) => booleanHelperBodyNested x y)),
+   ("booleanHelperBodyWrapped", (fun (x y : UInt64) => booleanHelperBodyWrapped x y)),
+   ("booleanHelperBodyMixed", (fun (x y : UInt64) => booleanHelperBodyMixed x y)),
+   ("booleanHelperBodyCaptures", (fun (x y : UInt64) => booleanHelperBodyCaptures x y)),
+   ("booleanHelperBodyUnused", (fun (x y : UInt64) => booleanHelperBodyUnused x y)),
+   ("booleanHelperBodyChoice", (fun (x y : UInt64) => booleanHelperBodyChoice x y)),
    ("propositionHelperLetCompound", (fun (x y : UInt64) => propositionHelperLetCompound x y)),
    ("propositionHelperLetBoolean", (fun (x y : UInt64) => propositionHelperLetBoolean x y)),
    ("propositionHelperLetDecision", (fun (x y : UInt64) => propositionHelperLetDecision x y)),

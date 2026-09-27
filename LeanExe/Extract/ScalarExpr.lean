@@ -847,7 +847,7 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
         · exact total binding member)
     obtain ⟨checked, hc⟩ := accepts (.u64 0)
     let f := fun argument => extractScalarExprWith (.word argument :: locals)
-      (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+      (.app (.const ``Bool.toUInt64 []) helper.body)
     obtain ⟨target, ht⟩ := ihb (.predicateFunction f :: locals)
       (by simp [ScalarBinding.kind, typed]) (by
         intro binding member; rcases List.mem_cons.mp member with rfl | member
@@ -862,7 +862,7 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
         · exact total binding member)
     obtain ⟨checked, hc⟩ := accepts (.u64 0)
     let f := fun argument => extractScalarExprWith (.boolean argument :: locals)
-      (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+      (.app (.const ``Bool.toUInt64 []) helper.body)
     obtain ⟨target, ht⟩ := ihb (.booleanPredicateFunction f :: locals)
       (by simp [ScalarBinding.kind, typed]) (by
         intro binding member; rcases List.mem_cons.mp member with rfl | member

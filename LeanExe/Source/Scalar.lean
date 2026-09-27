@@ -252,13 +252,13 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (body : EvalWith (.app (.const ``Bool.toUInt64 []) wrapped.body) values (Bool.toUInt64 flag)) :
       EvalWith (.app (.const ``Bool.toUInt64 []) wrapped.expr) values (Bool.toUInt64 (wrapped.wrapper.denote flag))
   | scopedPredicate (helper : BooleanHelper false)
-      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) helper.body)
         (.word x :: values) (Bool.toUInt64 (f x)))
       (body : EvalWith (.app (.const ``Bool.toUInt64 []) helper.continuation)
         (.predicateFunction f :: values) (Bool.toUInt64 flag)) :
       EvalWith (.app (.const ``Bool.toUInt64 []) helper.expr) values (Bool.toUInt64 flag)
   | scopedBooleanPredicate (helper : BooleanHelper true)
-      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) helper.body)
         (.boolean x :: values) (Bool.toUInt64 (f x)))
       (body : EvalWith (.app (.const ``Bool.toUInt64 []) helper.continuation)
         (.booleanPredicateFunction f :: values) (Bool.toUInt64 flag)) :
@@ -510,11 +510,11 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (body : SupportedWith types (.app (.const ``Bool.toUInt64 []) wrapped.body)) :
       SupportedWith types (.app (.const ``Bool.toUInt64 []) wrapped.expr)
   | scopedPredicate (helper : BooleanHelper false)
-      (function : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) helper.body.expr))
+      (function : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) helper.body))
       (body : SupportedWith (.predicateFunction :: types) (.app (.const ``Bool.toUInt64 []) helper.continuation)) :
       SupportedWith types (.app (.const ``Bool.toUInt64 []) helper.expr)
   | scopedBooleanPredicate (helper : BooleanHelper true)
-      (function : SupportedWith (.boolean :: types) (.app (.const ``Bool.toUInt64 []) helper.body.expr))
+      (function : SupportedWith (.boolean :: types) (.app (.const ``Bool.toUInt64 []) helper.body))
       (body : SupportedWith (.booleanPredicateFunction :: types) (.app (.const ``Bool.toUInt64 []) helper.continuation)) :
       SupportedWith types (.app (.const ``Bool.toUInt64 []) helper.expr)
   | predicateInput (input : ResultType) (result : BooleanType)
@@ -964,7 +964,7 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     exact ⟨(wrapped.wrapper.denote flag).toUInt64, .scopedWrapper wrapped evaluated⟩
   | scopedPredicate helper _ _ ihf ihb =>
     have total : ∀ x, ∃ flag : Bool,
-        EvalWith (.app (.const ``Bool.toUInt64 []) helper.body.expr) (.word x :: values) flag.toUInt64 := by
+        EvalWith (.app (.const ``Bool.toUInt64 []) helper.body) (.word x :: values) flag.toUInt64 := by
       intro x
       obtain ⟨encoded, evaluated⟩ := ihf (.word x :: values) (by simp [Value.kind, typed])
       obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
@@ -975,7 +975,7 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     exact ⟨flag.toUInt64, .scopedPredicate helper (fun x => (total x).choose_spec) evaluated⟩
   | scopedBooleanPredicate helper _ _ ihf ihb =>
     have total : ∀ x, ∃ flag : Bool,
-        EvalWith (.app (.const ``Bool.toUInt64 []) helper.body.expr) (.boolean x :: values) flag.toUInt64 := by
+        EvalWith (.app (.const ``Bool.toUInt64 []) helper.body) (.boolean x :: values) flag.toUInt64 := by
       intro x
       obtain ⟨encoded, evaluated⟩ := ihf (.boolean x :: values) (by simp [Value.kind, typed])
       obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result

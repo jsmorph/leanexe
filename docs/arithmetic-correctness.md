@@ -422,8 +422,11 @@ retained condition. They compose with conjunctions, disjunctions and negation.
 
 Boolean-to-word conversions and word-valued conditions admit local UInt64-to-Bool
 and Bool-to-Bool declarations followed by repeated calls or nested predicate
-scopes. Each body uses the supported Boolean expression grammar, and each
-continuation is checked recursively. Captures, Id result annotations and unused
+scopes. In Boolean-to-word conversions, both the body and continuation use the
+recursive Boolean conversion checker. Bodies may themselves contain predicate
+scopes, wrappers and choices with general helper branches. Each body is validated
+even when the helper is unused. Ordinary word continuations use the supported
+Boolean helper grammar. Captures, Id result annotations and unused
 helpers are checked. Ordinary and dependent conditions check their standard
 decisions and proof-branch domains. Loop step conditions use the same conversion,
 including break and continue. Standard Id.run, pure and metadata wrappers may
