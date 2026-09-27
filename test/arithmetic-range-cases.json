@@ -767,5 +767,15 @@
   "rangeWordBoolHelperManyFive",
   "rangeWordBoolHelperUnit",
   "rangeWordBoolHelperPunit",
-  "rangeWordBoolHelperId"
+  "rangeWordBoolHelperId",
+  "rangeWordChooseLoops",
+  "rangeWordChooseScalarLeft",
+  "rangeWordChooseScalarRight",
+  "rangeWordChooseNested",
+  "rangeWordChooseBooleanLoop",
+  "rangeWordChooseExit",
+  "rangeWordChooseContinue",
+  "rangeWordChooseStride",
+  "rangeWordChooseHelpers",
+  "rangeWordChooseId"
 ]

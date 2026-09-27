@@ -1,4 +1,4 @@
-import LeanExe.Wasm.ScalarBooleanWordRangeAdmission
+import LeanExe.Wasm.ScalarWordRangeAdmission
 import LeanExe.Wasm.ScalarPublicAdmission
 import Project.Compiler.FunctionTyping
 import Project.Compiler.RangeTyping
@@ -114,7 +114,7 @@ theorem extracted_function_valid
         rw [scratch] at locals
         simpa [ScalarRangeExitPlan.func, Nat.add_assoc] using locals
       exact typed context localTypes [] 0 0 [] (Nat.le_refl 0)
-  · obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarBooleanWordRangePublic_admitted extracted
+  · obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarWordRangePublic_admitted extracted
       (scalarSignature_inputs_length signature)
     have scratch := RangeExit.func_scratch matched arity name (some entry)
     have format : arity + 4 + descriptor.scratchWidth < 2 ^ 32 := by

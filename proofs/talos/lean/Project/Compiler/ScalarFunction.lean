@@ -1,4 +1,4 @@
-import LeanExe.Wasm.ScalarBooleanWordRangeAdmission
+import LeanExe.Wasm.ScalarWordRangeAdmission
 import Project.Compiler.FunctionState
 import Project.Compiler.RangeFunctionExecution
 import Project.Compiler.RangeExitFunctionExecution
@@ -95,8 +95,8 @@ theorem extracted_function_execution {name : Lean.Name} {exportName : Option Str
     exact ⟨flag.toUInt64, code, next, applied, emitted, executed⟩
   · have hlen : args.length = arity := len
     subst arity
-    obtain ⟨value, applied, meaning⟩ := LeanExe.Extract.Core.booleanWordRangePublic_application signature annotations hb hp args rfl
-    obtain ⟨descriptor, matched, _, _⟩ := LeanExe.Extract.Core.extractScalarBooleanWordRangePublic_admitted hp
+    obtain ⟨value, applied, meaning⟩ := LeanExe.Extract.Core.wordRangePublic_application signature annotations hb hp args rfl
+    obtain ⟨descriptor, matched, _, _⟩ := LeanExe.Extract.Core.extractScalarWordRangePublic_admitted hp
       (LeanExe.Extract.Core.scalarSignature_inputs_length signature)
     obtain ⟨code, next, emitted, executed⟩ := range_exit_function_execution args name exportName
       releaseIndex matched meaning m env store

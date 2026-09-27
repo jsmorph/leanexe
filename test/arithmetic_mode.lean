@@ -7637,6 +7637,117 @@ def rangeWordBoolHelperId (count seed : UInt64) : Id UInt64 := do
     pure (Id.run (flip (value % 7 == seed % 7))))
   pure (if flag then Id.run (bump count) else Id.run (bump seed) * 3)
 
+def rangeWordChooseLoops (count seed : UInt64) : UInt64 :=
+  if seed % 2 == 0 then Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do a := a + i.toUInt64 + 1
+    return a
+  else Id.run do
+    let mut a := seed + 7
+    for i in [:count.toNat] do a := a * 3 + i.toUInt64
+    return a
+
+def rangeWordChooseScalarLeft (count seed : UInt64) : UInt64 :=
+  if seed < count then seed * 7 + count else Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do a := a + i.toUInt64 + 1
+    return a
+
+def rangeWordChooseScalarRight (count seed : UInt64) : UInt64 :=
+  if seed % 3 == 0 then Id.run do
+    let mut a := seed + 7
+    for i in [:count.toNat] do a := a * 3 + i.toUInt64
+    return a
+  else seed * 7 + count
+
+def rangeWordChooseNested (count seed : UInt64) : UInt64 :=
+  if seed % 2 == 0 then
+    if count % 3 == 0 then Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do a := a + i.toUInt64 + 1
+      return a
+    else seed + count * 3
+  else
+    if seed < count then seed * 7 else Id.run do
+      let mut a := seed + 7
+      for i in [:count.toNat] do a := a * 3 + i.toUInt64
+      return a
+
+def rangeWordChooseBooleanLoop (count seed : UInt64) : UInt64 :=
+  if seed % 2 == 0 then
+    let flag :=
+      let value := Id.run do
+        let mut a := seed
+        for i in [:count.toNat] do a := a + i.toUInt64 + 1
+        return a
+      value % 7 == seed % 7
+    if flag then seed + count else seed * 3
+  else Id.run do
+    let mut a := seed + 7
+    for i in [:count.toNat] do a := a * 3 + i.toUInt64
+    return a
+
+def rangeWordChooseExit (count seed : UInt64) : UInt64 :=
+  if seed % 3 == 0 then Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if a % 7 == 0 then break
+    return a
+  else Id.run do
+    let mut a := seed + 7
+    for i in [:count.toNat] do
+      a := a * 3 + i.toUInt64
+      if a % 11 == 0 then break
+    return a
+
+def rangeWordChooseContinue (count seed : UInt64) : Id UInt64 := do
+  if seed % 2 == 0 then
+    let mut a := seed
+    for i in [:count.toNat] do
+      if i.toUInt64 % 2 == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a
+  else
+    let mut a := seed + 7
+    for i in [:count.toNat] do
+      if i.toUInt64 % 3 == 0 then continue
+      a := a * 3 + i.toUInt64
+    return a
+
+def rangeWordChooseStride (count seed : UInt64) : UInt64 :=
+  if seed % 2 == 0 then Id.run do
+    let mut a := seed
+    for i in [1:count.toNat:3] do a := a + i.toUInt64 + 1
+    return a
+  else Id.run do
+    let mut a := seed + 7
+    for i in [2:count.toNat:5] do a := a * 3 + i.toUInt64
+    return a
+
+def rangeWordChooseHelpers (count seed : UInt64) : UInt64 :=
+  if seed % 2 == 0 then
+    let bump : UInt64 → UInt64 := fun x => x + seed % 7
+    let flag :=
+      let value := Id.run do
+        let mut a := bump seed
+        for i in [:count.toNat] do a := a + bump i.toUInt64 + 1
+        return a
+      value % 7 == seed % 7
+    if flag then bump count else bump seed * 3
+  else
+    let combine : UInt64 → UInt64 → UInt64 := fun x y => x * 3 + y + seed
+    Id.run do
+      let mut a := combine seed 1
+      for i in [:count.toNat] do a := combine a i.toUInt64
+      return a
+
+def rangeWordChooseId (count seed : UInt64) : Id (Id UInt64) :=
+  Id.run (pure (if seed % 2 == 0 then (Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do a := a + i.toUInt64 + 1
+    return a) else seed * 7 + count) : Id (Id UInt64))
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -11332,6 +11443,16 @@ run_elab do
       `ArithmeticModeTest.rangeWordBoolHelperUnit,
       `ArithmeticModeTest.rangeWordBoolHelperPunit,
       `ArithmeticModeTest.rangeWordBoolHelperId,
+      `ArithmeticModeTest.rangeWordChooseLoops,
+      `ArithmeticModeTest.rangeWordChooseScalarLeft,
+      `ArithmeticModeTest.rangeWordChooseScalarRight,
+      `ArithmeticModeTest.rangeWordChooseNested,
+      `ArithmeticModeTest.rangeWordChooseBooleanLoop,
+      `ArithmeticModeTest.rangeWordChooseExit,
+      `ArithmeticModeTest.rangeWordChooseContinue,
+      `ArithmeticModeTest.rangeWordChooseStride,
+      `ArithmeticModeTest.rangeWordChooseHelpers,
+      `ArithmeticModeTest.rangeWordChooseId,
       `ArithmeticModeTest.rangeBoolLetIdWord,
       `ArithmeticModeTest.rangeBoolLetIdWordLayers,
       `ArithmeticModeTest.rangeBoolLetIdFlag,
