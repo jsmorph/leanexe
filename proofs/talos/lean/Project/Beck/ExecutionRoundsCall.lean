@@ -4,9 +4,9 @@ namespace Project.Beck.Execution
 
 open Wasm Project.ProofKit Project.Runtime Project.EulerRiemann.Execution LeanExe.Examples.Beck
 
-def roundsPreparedLocals (locals : List Value) (input : Input) (point : Point) (inputRoot pointRoot : UInt64) : List Value :=
+def roundsPreparedLocals (locals : List Value) (input : Input) (point : Point) (inputRoot pointOwner pointRoot : UInt64) : List Value :=
   let l := (((locals.set 10 (.i64 input.status)).set 11 (.i64 input.jobs.toUInt64)).set 12 (.i64 input.categories.toUInt64)).set 13 (.i64 input.overlap.toUInt64)
-  let l := (((l.set 14 (.i64 inputRoot)).set 15 (.i64 inputRoot)).set 16 (.i64 point.denominator)).set 17 (.i64 pointRoot)
+  let l := (((l.set 14 (.i64 inputRoot)).set 15 (.i64 inputRoot)).set 16 (.i64 point.denominator)).set 17 (.i64 pointOwner)
   l.set 18 (.i64 pointRoot)
 
 def roundsReadLocals (locals : List Value) (point : Point) (root : UInt64) : List Value :=
@@ -15,14 +15,14 @@ def roundsReadLocals (locals : List Value) (point : Point) (root : UInt64) : Lis
 
 set_option maxRecDepth 4096 in
 theorem roundsPrepare_exact (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
-    (fuel : Nat) (input : Input) (point : Point) (inputRoot pointRoot : UInt64) (size : locals.length = 61)
+    (fuel : Nat) (input : Input) (point : Point) (inputRoot pointOwner pointRoot : UInt64) (size : locals.length = 61)
     (Q : Assertion Unit)
     (next : Q (.Fallthrough initial
-      { params := roundsParams fuel input point inputRoot pointRoot
-        locals := roundsPreparedLocals locals input point inputRoot pointRoot
-        values := (matrixParams input point inputRoot inputRoot pointRoot pointRoot).reverse })) :
+      { params := roundsParams fuel input point inputRoot pointOwner pointRoot
+        locals := roundsPreparedLocals locals input point inputRoot pointOwner pointRoot
+        values := (matrixParams input point inputRoot inputRoot pointOwner pointRoot).reverse })) :
     wp Project.Beck.«module» (roundsAdvancing.take 27) Q initial
-      { params := roundsParams fuel input point inputRoot pointRoot, locals := locals } env := by
+      { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
   simp only [roundsAdvancing, roundsBody, func34, List.getElem?_cons_zero, List.getElem?_cons_succ, List.take]
   wp_run [roundsParams, matrixParams, inputValues, pointValues, List.reverse_cons, List.reverse_nil, List.cons_append, List.nil_append,
     size, List.length_set, List.getElem?_set, List.getElem?_cons_zero, List.getElem?_cons_succ,
@@ -51,17 +51,17 @@ set_option maxRecDepth 4096 in
 theorem rounds_call_shape : roundsAdvancing.take 47 =
     roundsAdvancing.take 27 ++ (.call 33 :: (roundsAdvancing.drop 28).take 19) := rfl
 
-theorem roundsPrepared_state {locals : List Value} {stopped : Bool} {point : Point} {root internal : UInt64}
-    (state : RoundsLocals locals stopped point root internal) (input : Input) (inputRoot : UInt64) :
-    RoundsLocals (roundsPreparedLocals locals input point inputRoot root) stopped point root internal := by
+theorem roundsPrepared_state {locals : List Value} {stopped : Bool} {point : Point} {pointOwner root internal : UInt64}
+    (state : RoundsLocals locals stopped point pointOwner root internal) (input : Input) (inputRoot : UInt64) :
+    RoundsLocals (roundsPreparedLocals locals input point inputRoot pointOwner root) stopped point pointOwner root internal := by
   apply state.preserved
   · simp [roundsPreparedLocals]
   · intro k bound
     simp (discharger := omega) only [roundsPreparedLocals, List.getElem?_set_ne]
 
-theorem roundsRead_state {locals : List Value} {stopped : Bool} {point : Point} {root internal : UInt64}
-    (state : RoundsLocals locals stopped point root internal) (nextPoint : Point) (nextRoot : UInt64) :
-    RoundsLocals (roundsReadLocals locals nextPoint nextRoot) stopped point root internal := by
+theorem roundsRead_state {locals : List Value} {stopped : Bool} {point : Point} {pointOwner root internal : UInt64}
+    (state : RoundsLocals locals stopped point pointOwner root internal) (nextPoint : Point) (nextRoot : UInt64) :
+    RoundsLocals (roundsReadLocals locals nextPoint nextRoot) stopped point pointOwner root internal := by
   apply state.preserved
   · simp [roundsReadLocals]
   · intro k bound
@@ -69,7 +69,7 @@ theorem roundsRead_state {locals : List Value} {stopped : Bool} {point : Point} 
 
 set_option maxRecDepth 4096 in
 theorem roundsCall_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap) (locals : List Value)
-    (fuel : Nat) (input : Input) (point : Point) (inputRoot pointRoot : UInt64) (roundNumber remaining pageLimit : Nat)
+    (fuel : Nat) (input : Input) (point : Point) (inputRoot pointOwner pointRoot : UInt64) (roundNumber remaining pageLimit : Nat)
     (size : locals.length = 61) (valid : heap.At initial) (supported : Project.Beck.State.Supported input)
     (pointValid : Project.Beck.State.Valid input.jobs point roundNumber) (roundBound : roundNumber ≤ 5)
     (nonempty : (Project.Beck.Counting.live input point).Nonempty)
@@ -86,11 +86,11 @@ theorem roundsCall_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
       heap.Frame initial finalHeap final → FreshFor heap node →
       OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
       Q (.Fallthrough final
-        { params := roundsParams fuel input point inputRoot pointRoot
-          locals := roundsReadLocals (roundsPreparedLocals locals input point inputRoot pointRoot) (LeanExe.Examples.Beck.round input point) node.root
+        { params := roundsParams fuel input point inputRoot pointOwner pointRoot
+          locals := roundsReadLocals (roundsPreparedLocals locals input point inputRoot pointOwner pointRoot) (LeanExe.Examples.Beck.round input point) node.root
           values := [.i32 0] })) :
     wp Project.Beck.«module» (roundsAdvancing.take 47) Q initial
-      { params := roundsParams fuel input point inputRoot pointRoot, locals := locals } env := by
+      { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
   have nextValid := (Project.Beck.SourceRound.round_valid_progress input point roundNumber supported pointValid roundBound nonempty).1
   have nonzero : (LeanExe.Examples.Beck.round input point).denominator ≠ 0 := by
     intro zero
@@ -98,13 +98,13 @@ theorem roundsCall_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Hea
     simp [zero] at positive
   rw [rounds_call_shape]
   refine Sequence.wp_append (P := fun store frame => store = initial ∧ frame =
-    { params := roundsParams fuel input point inputRoot pointRoot
-      locals := roundsPreparedLocals locals input point inputRoot pointRoot
-      values := (matrixParams input point inputRoot inputRoot pointRoot pointRoot).reverse }) ?_ ?_
-  · exact roundsPrepare_exact env initial locals fuel input point inputRoot pointRoot size _ ⟨rfl, rfl⟩
+    { params := roundsParams fuel input point inputRoot pointOwner pointRoot
+      locals := roundsPreparedLocals locals input point inputRoot pointOwner pointRoot
+      values := (matrixParams input point inputRoot inputRoot pointOwner pointRoot).reverse }) ?_ ?_
+  · exact roundsPrepare_exact env initial locals fuel input point inputRoot pointOwner pointRoot size _ ⟨rfl, rfl⟩
   rintro store frame ⟨same, frameSame⟩
   subst store frame
-  refine wp_call_tw (round_exact env initial heap input point inputRoot inputRoot pointRoot pointRoot roundNumber remaining pageLimit
+  refine wp_call_tw (round_exact env initial heap input point inputRoot inputRoot pointOwner pointRoot roundNumber remaining pageLimit
     valid supported pointValid roundBound nonempty pointAt pointProtected inputAt inputProtected inputSize categories overlap budget) ?_
   rintro final values ⟨finalHeap, node, finalValid, finalOwned, finalFrame, fresh, finalBudget, rfl⟩
   apply roundsRead_exact env final _ _ (LeanExe.Examples.Beck.round input point) node.root

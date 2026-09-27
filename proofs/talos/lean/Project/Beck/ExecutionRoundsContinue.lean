@@ -17,15 +17,15 @@ def roundsContinuedLocals (locals : List Value) (input : Input) (point : Point) 
 
 set_option maxRecDepth 4096 in
 theorem roundsContinuePrepare_exact (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
-    (fuel : Nat) (input : Input) (point nextPoint : Point) (inputRoot pointRoot nextRoot : UInt64)
+    (fuel : Nat) (input : Input) (point nextPoint : Point) (inputRoot pointOwner pointRoot nextRoot : UInt64)
     (size : locals.length = 61) (denRead : locals[22]? = some (.i64 nextPoint.denominator))
     (ownerRead : locals[23]? = some (.i64 nextRoot)) (pointerRead : locals[24]? = some (.i64 nextRoot))
     (Q : Assertion Unit)
     (next : Q (.Fallthrough initial
-      { params := roundsParams fuel input point inputRoot pointRoot
+      { params := roundsParams fuel input point inputRoot pointOwner pointRoot
         locals := roundsContinuePrepared locals input nextPoint inputRoot nextRoot })) :
     wp Project.Beck.«module» (roundsContinue.take 18) Q initial
-      { params := roundsParams fuel input point inputRoot pointRoot, locals := locals } env := by
+      { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
   simp only [roundsContinue, roundsAdvancing, roundsBody, func34, List.getElem?_cons_zero, List.getElem?_cons_succ, List.take]
   wp_run [roundsParams, matrixParams, inputValues, pointValues, List.reverse_cons, List.reverse_nil, List.cons_append, List.nil_append,
     size, List.length_set, List.getElem?_set, List.getElem?_cons_zero, List.getElem?_cons_succ,
@@ -36,17 +36,17 @@ set_option maxRecDepth 4096 in
 theorem rounds_continue_shape : roundsContinue = roundsContinue.take 18 ++
     (previousReleaseProgram 10 11 43 40 ++ roundsContinue.drop 33) := rfl
 
-theorem roundsContinuePrepared_state {locals : List Value} {stopped : Bool} {point : Point} {root internal : UInt64}
-    (state : RoundsLocals locals stopped point root internal) (input : Input) (nextPoint : Point) (inputRoot nextRoot : UInt64) :
-    RoundsLocals (roundsContinuePrepared locals input nextPoint inputRoot nextRoot) stopped point root internal := by
+theorem roundsContinuePrepared_state {locals : List Value} {stopped : Bool} {point : Point} {pointOwner root internal : UInt64}
+    (state : RoundsLocals locals stopped point pointOwner root internal) (input : Input) (nextPoint : Point) (inputRoot nextRoot : UInt64) :
+    RoundsLocals (roundsContinuePrepared locals input nextPoint inputRoot nextRoot) stopped point pointOwner root internal := by
   apply state.preserved
   · simp [roundsContinuePrepared]
   · intro k bound
     simp (discharger := omega) only [roundsContinuePrepared, List.getElem?_set_ne]
 
-theorem roundsContinued_state {locals : List Value} {point : Point} {root internal : UInt64}
-    (state : RoundsLocals locals false point root internal) (input : Input) (nextPoint : Point) (inputRoot nextRoot : UInt64) :
-    RoundsLocals (roundsContinuedLocals locals input nextPoint inputRoot nextRoot) false nextPoint nextRoot nextRoot := by
+theorem roundsContinued_state {locals : List Value} {point : Point} {pointOwner root internal : UInt64}
+    (state : RoundsLocals locals false point pointOwner root internal) (input : Input) (nextPoint : Point) (inputRoot nextRoot : UInt64) :
+    RoundsLocals (roundsContinuedLocals locals input nextPoint inputRoot nextRoot) false nextPoint nextRoot nextRoot nextRoot := by
   constructor
   · simp [roundsContinuedLocals, state.size]
   · simp [roundsContinuedLocals, state.size]
@@ -57,15 +57,15 @@ theorem roundsContinued_state {locals : List Value} {point : Point} {root intern
 set_option maxRecDepth 4096 in
 set_option maxHeartbeats 2000000 in
 theorem roundsAdvance_exact (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
-    (fuel : Nat) (input : Input) (point nextPoint : Point) (inputRoot pointRoot nextRoot internal : UInt64)
+    (fuel : Nat) (input : Input) (point nextPoint : Point) (inputRoot pointOwner pointRoot nextRoot internal : UInt64)
     (size : locals.length = 61) (owner : locals[0]? = some (.i64 internal)) (extra : locals[1]? = some (.i64 0))
     (inputNonzero : inputRoot ≠ 0) (inputDifferent : inputRoot ≠ internal)
     (Q : Assertion Unit)
     (next : Q (.Fallthrough initial
-      { params := roundsParams fuel input nextPoint inputRoot nextRoot
+      { params := roundsParams fuel input nextPoint inputRoot nextRoot nextRoot
         locals := roundsContinuedLocals (roundsContinuePrepared locals input nextPoint inputRoot nextRoot) input nextPoint inputRoot nextRoot })) :
     wp Project.Beck.«module» (roundsContinue.drop 33) Q initial
-      { params := roundsParams (fuel + 1) input point inputRoot pointRoot
+      { params := roundsParams (fuel + 1) input point inputRoot pointOwner pointRoot
         locals := roundsContinuePrepared locals input nextPoint inputRoot nextRoot } env := by
   have subtract : (fuel + 1).toUInt64 - 1 = fuel.toUInt64 := by
     change UInt64.ofNat (fuel + 1) - 1 = UInt64.ofNat fuel

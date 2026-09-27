@@ -5,19 +5,19 @@ namespace Project.Beck.Execution
 
 open Wasm Project.ProofKit Project.Runtime Project.EulerRiemann.Execution LeanExe.Examples.Beck
 
-def roundsScanPrepared (locals : List Value) (point : Point) (root : UInt64) : List Value :=
-  ((locals.set 6 (.i64 point.denominator)).set 7 (.i64 root)).set 8 (.i64 root)
+def roundsScanPrepared (locals : List Value) (point : Point) (pointOwner root : UInt64) : List Value :=
+  ((locals.set 6 (.i64 point.denominator)).set 7 (.i64 pointOwner)).set 8 (.i64 root)
 
-def roundsScanLocals (locals : List Value) (point : Point) (root : UInt64) : List Value :=
-  (roundsScanPrepared locals point root).set 9 (.i64 (boolWord (allFrozen point)))
+def roundsScanLocals (locals : List Value) (point : Point) (pointOwner root : UInt64) : List Value :=
+  (roundsScanPrepared locals point pointOwner root).set 9 (.i64 (boolWord (allFrozen point)))
 
 set_option maxRecDepth 4096 in
 theorem roundsScanPrepare_exact (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
-    (fuel : Nat) (input : Input) (point : Point) (inputRoot pointRoot : UInt64) (size : locals.length = 61)
+    (fuel : Nat) (input : Input) (point : Point) (inputRoot pointOwner pointRoot : UInt64) (size : locals.length = 61)
     (Q : Assertion Unit)
-    (next : Q (.Fallthrough initial { params := roundsParams fuel input point inputRoot pointRoot, locals := roundsScanPrepared locals point pointRoot, values := pointValues point pointRoot pointRoot })) :
+    (next : Q (.Fallthrough initial { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := roundsScanPrepared locals point pointOwner pointRoot, values := pointValues point pointOwner pointRoot })) :
     wp Project.Beck.«module» ((roundsBody.drop 7).take 9) Q initial
-      { params := roundsParams fuel input point inputRoot pointRoot, locals := locals } env := by
+      { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
   simp only [roundsBody, func34, List.getElem?_cons_zero, List.getElem?_cons_succ, List.drop, List.take]
   wp_run [roundsParams, matrixParams, inputValues, pointValues, List.reverse_cons, List.reverse_nil, List.cons_append, List.nil_append,
     size, List.length_set, List.getElem?_set, List.getElem?_cons_zero, List.getElem?_cons_succ,
@@ -47,9 +47,9 @@ set_option maxRecDepth 4096 in
 theorem rounds_scan_shape : (roundsBody.drop 7).take 18 =
     (roundsBody.drop 7).take 9 ++ (.call 13 :: (roundsBody.drop 17).take 8) := rfl
 
-theorem roundsScan_state {locals : List Value} {stopped : Bool} {point : Point} {root internal : UInt64}
-    (state : RoundsLocals locals stopped point root internal) :
-    RoundsLocals (roundsScanLocals locals point root) stopped point root internal := by
+theorem roundsScan_state {locals : List Value} {stopped : Bool} {point : Point} {pointOwner root internal : UInt64}
+    (state : RoundsLocals locals stopped point pointOwner root internal) :
+    RoundsLocals (roundsScanLocals locals point pointOwner root) stopped point pointOwner root internal := by
   apply state.preserved
   · simp [roundsScanLocals, roundsScanPrepared]
   · intro k bound
@@ -57,31 +57,31 @@ theorem roundsScan_state {locals : List Value} {stopped : Bool} {point : Point} 
 
 set_option maxRecDepth 4096 in
 theorem roundsScan_exact (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
-    (fuel : Nat) (input : Input) (point : Point) (inputRoot pointRoot : UInt64) (size : locals.length = 61)
+    (fuel : Nat) (input : Input) (point : Point) (inputRoot pointOwner pointRoot : UInt64) (size : locals.length = 61)
     (represented : UInt64Array.At initial pointRoot point.numerators) (Q : Assertion Unit)
-    (next : Q (.Fallthrough initial { params := roundsParams fuel input point inputRoot pointRoot, locals := roundsScanLocals locals point pointRoot, values := [.i32 (if allFrozen point then 1 else 0)] })) :
+    (next : Q (.Fallthrough initial { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := roundsScanLocals locals point pointOwner pointRoot, values := [.i32 (if allFrozen point then 1 else 0)] })) :
     wp Project.Beck.«module» ((roundsBody.drop 7).take 18) Q initial
-      { params := roundsParams fuel input point inputRoot pointRoot, locals := locals } env := by
+      { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
   rw [rounds_scan_shape]
   refine Sequence.wp_append (P := fun store frame => store = initial ∧ frame =
-    { params := roundsParams fuel input point inputRoot pointRoot, locals := roundsScanPrepared locals point pointRoot,
-      values := pointValues point pointRoot pointRoot }) ?_ ?_
-  · exact roundsScanPrepare_exact env initial locals fuel input point inputRoot pointRoot size _ ⟨rfl, rfl⟩
+    { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := roundsScanPrepared locals point pointOwner pointRoot,
+      values := pointValues point pointOwner pointRoot }) ?_ ?_
+  · exact roundsScanPrepare_exact env initial locals fuel input point inputRoot pointOwner pointRoot size _ ⟨rfl, rfl⟩
   rintro store frame ⟨same, frameSame⟩
   subst store frame
-  refine wp_call_tw (allFrozen_exact env initial point pointRoot pointRoot represented) ?_
+  refine wp_call_tw (allFrozen_exact env initial point pointOwner pointRoot represented) ?_
   rintro final values ⟨same, rfl⟩
   subst final
   exact roundsScanResult_exact env initial _ _ (allFrozen point)
     (by simp [roundsParams, matrixParams, inputValues, pointValues])
     (by simp [roundsScanPrepared, size]) Q next
 
-def roundsStoppedLocals (locals : List Value) (point : Point) (root : UInt64) : List Value :=
-  (((locals.set 2 (.i64 point.denominator)).set 3 (.i64 root)).set 4 (.i64 root)).set 5 (.i64 1)
+def roundsStoppedLocals (locals : List Value) (point : Point) (pointOwner root : UInt64) : List Value :=
+  (((locals.set 2 (.i64 point.denominator)).set 3 (.i64 pointOwner)).set 4 (.i64 root)).set 5 (.i64 1)
 
-theorem roundsStopped_state {locals : List Value} {point : Point} {root internal : UInt64}
-    (state : RoundsLocals locals false point root internal) :
-    RoundsLocals (roundsStoppedLocals locals point root) true point root internal := by
+theorem roundsStopped_state {locals : List Value} {point : Point} {pointOwner root internal : UInt64}
+    (state : RoundsLocals locals false point pointOwner root internal) :
+    RoundsLocals (roundsStoppedLocals locals point pointOwner root) true point pointOwner root internal := by
   constructor
   · simp [roundsStoppedLocals, state.size]
   · simpa [roundsStoppedLocals] using state.owner
@@ -91,12 +91,12 @@ theorem roundsStopped_state {locals : List Value} {point : Point} {root internal
 
 set_option maxRecDepth 4096 in
 theorem roundsStop_exact (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
-    (fuel : Nat) (input : Input) (point : Point) (inputRoot pointRoot : UInt64) (size : locals.length = 61)
+    (fuel : Nat) (input : Input) (point : Point) (inputRoot pointOwner pointRoot : UInt64) (size : locals.length = 61)
     (Q : Assertion Unit)
-    (next : Q (.Fallthrough initial { params := roundsParams fuel input point inputRoot pointRoot, locals := roundsStoppedLocals locals point pointRoot })) :
+    (next : Q (.Fallthrough initial { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := roundsStoppedLocals locals point pointOwner pointRoot })) :
     wp Project.Beck.«module» [.localGet 7, .localSet 12, .localGet 8, .localSet 13,
       .localGet 9, .localSet 14, .constI64 1, .localSet 15] Q initial
-      { params := roundsParams fuel input point inputRoot pointRoot, locals := locals } env := by
+      { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
   wp_run [roundsParams, matrixParams, inputValues, pointValues, List.reverse_cons, List.reverse_nil, List.cons_append, List.nil_append,
     size, List.length_set, List.getElem?_set, List.getElem?_cons_zero, List.getElem?_cons_succ,
     Nat.reduceAdd, Nat.reduceSub, Nat.reduceLT, Nat.reduceEqDiff, reduceIte]
