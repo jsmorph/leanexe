@@ -417,8 +417,13 @@ Prior tests pass 161,760 comparisons, 113,280 invalid-input checks and 8,256 con
 Evidence is in
 [the Boolean loop flag-setup archive](proofs/compiler/boolean-loop-flag-setup-2026-09-27/README.md).
 
-Next: Id annotations on loop let domains and local helpers before Boolean loops,
-retained instances and broader signatures. Conditional Id actions can elaborate
+Current capability: retained standard Id annotations on word/Boolean setup let
+domains and word-loop result bindings in Boolean-returning functions. Source
+totality, acceptance, extraction correctness, public application and IR invariant
+proofs pass. New tests pass 64,752 native/IR comparisons, 78,336 invalid-input checks
+and 6,912 controls. The complete compiler theorem and V8 gates are next.
+
+Next: local helpers before Boolean loops, retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
 Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean

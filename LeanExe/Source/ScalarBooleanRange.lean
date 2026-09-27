@@ -33,6 +33,9 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
       (value : Range.Exit.Eval a values x)
       (body : EvalWith (.app (.const ``Bool.toUInt64 []) b) (.word x :: values) flag.toUInt64) :
       Eval (bind name binder input output a b) values flag
+  | idLet (type : Lean.Expr)
+      (body : Eval (.letE name type value tail nondep) values result) :
+      Eval (.letE name (.app (.const ``Id [.zero]) type) value tail nondep) values result
   | wrapped (wrapper : BooleanWrapper) (body : Eval source values flag) :
       Eval (wrapper.expr source) values flag
 
@@ -57,6 +60,9 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       (value : Range.Exit.Supported types a)
       (body : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) b)) :
       Supported types (bind name binder input output a b)
+  | idLet (type : Lean.Expr)
+      (body : Supported types (.letE name type value tail nondep)) :
+      Supported types (.letE name (.app (.const ``Id [.zero]) type) value tail nondep)
   | wrapped (wrapper : BooleanWrapper) (body : Supported types source) :
       Supported types (wrapper.expr source)
 
@@ -92,6 +98,9 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨result, hr⟩ := body.evaluates (.word x :: values) (by simp [Value.kind, typed])
     obtain ⟨flag, rfl⟩ := hr.booleanConversion_result
     exact ⟨flag, .bindResult input output hx hr⟩
+  | idLet type _ ih =>
+    obtain ⟨flag, evaluated⟩ := ih values typed
+    exact ⟨flag, .idLet type evaluated⟩
   | wrapped wrapper _ ih =>
     obtain ⟨flag, evaluated⟩ := ih values typed
     exact ⟨flag, .wrapped wrapper evaluated⟩

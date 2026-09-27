@@ -20,6 +20,8 @@ def extractScalarBooleanRangeWith (locals : List ScalarBinding) (slot : Nat)
       match extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) value) with
       | none => none
       | some flag => extractScalarBooleanRangeWith (.boolean flag :: locals) slot body
+  | .letE name (.app (.const ``Id [.zero]) type) value body nondep =>
+      extractScalarBooleanRangeWith locals slot (.letE name type value body nondep)
   | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
       (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
         (.const ``Id.instMonad [.zero]))) input) output) value)
@@ -84,6 +86,12 @@ decreasing_by
   rw [BooleanRange.bindBoolean, BooleanBindingForm.expr, extractScalarBooleanRangeWith,
     booleanRangeBindTypes_not_boolean, booleanRangeFlagBindTypes_accepts]
   cases extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) value) <;> rfl
+
+@[simp] theorem extractScalarBooleanRangeWith_idLet (locals : List ScalarBinding) (slot : Nat)
+    (name : Lean.Name) (type value body : Lean.Expr) (nondep : Bool) :
+    extractScalarBooleanRangeWith locals slot (.letE name (.app (.const ``Id [.zero]) type) value body nondep) =
+      extractScalarBooleanRangeWith locals slot (.letE name type value body nondep) := by
+  rw [extractScalarBooleanRangeWith]
 
 @[simp] theorem extractScalarBooleanRangeWith_wrapped (locals : List ScalarBinding) (slot : Nat)
     (wrapper : BooleanWrapper) (body : Lean.Expr) :
@@ -151,6 +159,7 @@ theorem extractScalarBooleanRangeWith_accepts {types : List BindingKind} {source
         · trivial
         · exact total binding member)
     exact ⟨{ plan with result }, by simp [rangeExitSupported_excludes_pure value, hp, hr]⟩
+  | idLet type _ ih => simpa only [extractScalarBooleanRangeWith_idLet] using ih locals typed total
   | wrapped wrapper _ ih => simpa using ih locals typed total
 
 theorem extractScalarBooleanRangeWith_supported {source : Lean.Expr} {locals : List ScalarBinding}
@@ -170,25 +179,26 @@ theorem extractScalarBooleanRangeWith_supported {source : Lean.Expr} {locals : L
   | case4 locals name value body nondep flag matched ih =>
     exact .letFlagBefore (extractScalarExprWith_supported matched)
       (by simpa [ScalarBinding.kind] using ih compiled)
-  | case5 => contradiction
+  | case5 locals name type value body nondep ih => exact .idLet type (ih compiled)
   | case6 => contradiction
-  | case7 locals input output value name domain body binder notWord types parsed flag matched ih =>
+  | case7 => contradiction
+  | case8 locals input output value name domain body binder notWord types parsed flag matched ih =>
     obtain ⟨rfl, rfl, rfl⟩ := booleanRangeFlagBindTypes_sound parsed
     exact .bindFlagBefore types.1 types.2 (extractScalarExprWith_supported matched)
       (by simpa [ScalarBinding.kind] using ih compiled)
-  | case8 locals input output value name domain body binder types parsed bound matched ih =>
+  | case9 locals input output value name domain body binder types parsed bound matched ih =>
     obtain ⟨rfl, rfl, rfl⟩ := booleanRangeBindTypes_sound parsed
     exact .bindBefore types.1 types.2 (extractScalarExprWith_supported matched)
       (by simpa [ScalarBinding.kind] using ih compiled)
-  | case9 locals input output value name domain body binder types parsed notPure =>
+  | case10 locals input output value name domain body binder types parsed notPure =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hp, result, hr, _⟩ := compiled
     obtain ⟨rfl, rfl, rfl⟩ := booleanRangeBindTypes_sound parsed
     exact .bindResult types.1 types.2 (extractScalarRangeExitWith_supported hp)
       (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hr)
-  | case10 locals source notLet notFlag notBind wrapper body parsed ih =>
+  | case11 locals source notLet notFlag notIdLet notBind wrapper body parsed ih =>
     rw [booleanRangeWrapper_sound parsed]
     exact .wrapped wrapper (ih compiled)
-  | case11 => contradiction
+  | case12 => contradiction
 
 end LeanExe.Extract.Core

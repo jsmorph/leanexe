@@ -576,5 +576,15 @@
   "rangeBoolFlagSetupStride",
   "rangeBoolFlagSetupCapture",
   "rangeBoolFlagSetupInput",
-  "rangeBoolFlagSetupId"
+  "rangeBoolFlagSetupId",
+  "rangeBoolLetIdWord",
+  "rangeBoolLetIdWordLayers",
+  "rangeBoolLetIdFlag",
+  "rangeBoolLetIdFlagLayers",
+  "rangeBoolLetIdResult",
+  "rangeBoolLetIdResultLayers",
+  "rangeBoolLetIdMixed",
+  "rangeBoolLetIdExit",
+  "rangeBoolLetIdContinue",
+  "rangeBoolLetIdInput"
 ]
