@@ -817,12 +817,15 @@ The native corpus contains 1517 declarations. Evidence is in
 [the scalar helper-body archive](proofs/compiler/boolean-helper-word-body-2026-09-27/README.md).
 
 Current capability: general predicate bodies in dedicated loop-step bindings.
-The fixed loop probe still rejects a Boolean-input helper before break. Generalize
-the two step binding rules and equations to raw bodies, using the checked scalar
-Boolean conversion for validation, source meaning and IR properties. Preserve
-step values and exit flags, checking dependent branches, captures and unused
-bodies. Three loop probes already pass through scalar paths and remain positive
-controls. Both outer-loop probes and Id input domains remain separate gaps.
+The step binding rules, equations and parser retain raw bodies and use the
+checked scalar Boolean conversion, including unused-body validation. Source,
+acceptance, support, correctness and invariant proofs and the public compiler
+build pass. All ten fixed step probes pass unchanged. New tests pass 32,496
+comparisons, 19,584 invalid-input checks and 1,152 controls. Prior tests pass
+101,136 comparisons, 94,240 invalid-input checks and 1,104 controls. The full
+compiler proof and WASM checks are next. The original loop probe now admits all
+four step forms; both outer-loop declarations remain rejected. Id inputs inside
+converted helper scopes and other outer grammars remain separate gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

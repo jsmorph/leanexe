@@ -102,20 +102,20 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
       Eval (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values outcome
-  | letPredicateFn (expression : BooleanLocal) (type : BooleanType)
-      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr)
+  | letPredicateFn (expression : Lean.Expr) (type : BooleanType)
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) expression)
         (.word x :: values.map Value.toScalar) (Bool.toUInt64 (f x)))
       (body : Eval b (.scalar (.predicateFunction f) :: values) outcome) :
       Eval (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
-        (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep) values outcome
-  | letBooleanPredicateFn (expression : BooleanLocal) (type : BooleanType)
-      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr)
+        (.lam paramName (.const ``UInt64 []) expression paramBi) b nondep) values outcome
+  | letBooleanPredicateFn (expression : Lean.Expr) (type : BooleanType)
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) expression)
         (.boolean x :: values.map Value.toScalar) (Bool.toUInt64 (f x)))
       (body : Eval b (.scalar (.booleanPredicateFunction f) :: values) outcome) :
       Eval (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
-        (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) values outcome
+        (.lam paramName (.const ``Bool []) expression paramBi) b nondep) values outcome
   | predicateInput (input : ResultType) (result : BooleanType)
       (inner : Eval (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep) values outcome) :
       Eval (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep) values outcome
@@ -304,18 +304,18 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       Supported types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
-  | letPredicateFn (expression : BooleanLocal) (type : BooleanType)
-      (function : SupportedWith (.word :: types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) expression.expr))
+  | letPredicateFn (expression : Lean.Expr) (type : BooleanType)
+      (function : SupportedWith (.word :: types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) expression))
       (body : Supported (.scalar .predicateFunction :: types) b) :
       Supported types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
-        (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep)
-  | letBooleanPredicateFn (expression : BooleanLocal) (type : BooleanType)
-      (function : SupportedWith (.boolean :: types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) expression.expr))
+        (.lam paramName (.const ``UInt64 []) expression paramBi) b nondep)
+  | letBooleanPredicateFn (expression : Lean.Expr) (type : BooleanType)
+      (function : SupportedWith (.boolean :: types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) expression))
       (body : Supported (.scalar .booleanPredicateFunction :: types) b) :
       Supported types (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
-        (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep)
+        (.lam paramName (.const ``Bool []) expression paramBi) b nondep)
   | predicateInput (input : ResultType) (result : BooleanType)
       (inner : Supported types (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep)) :
       Supported types (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep)
@@ -598,7 +598,7 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     exact ⟨outcome, .letFn type (fun x => (total x).choose_spec) evaluated⟩
   | letPredicateFn expression type function _ ih =>
     have total : ∀ x : UInt64, ∃ flag : Bool,
-        EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.word x :: values.map Value.toScalar) flag.toUInt64 := by
+        EvalWith (.app (.const ``Bool.toUInt64 []) expression) (.word x :: values.map Value.toScalar) flag.toUInt64 := by
       intro x
       obtain ⟨encoded, evaluated⟩ := function.evaluates (.word x :: values.map Value.toScalar) (by simpa [Scalar.Value.kind] using typed_projection typed)
       obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
@@ -609,7 +609,7 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     exact ⟨outcome, .letPredicateFn expression type (fun x => (total x).choose_spec) evaluated⟩
   | letBooleanPredicateFn expression type function _ ih =>
     have total : ∀ x : Bool, ∃ flag : Bool,
-        EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.boolean x :: values.map Value.toScalar) flag.toUInt64 := by
+        EvalWith (.app (.const ``Bool.toUInt64 []) expression) (.boolean x :: values.map Value.toScalar) flag.toUInt64 := by
       intro x
       obtain ⟨encoded, evaluated⟩ := function.evaluates (.boolean x :: values.map Value.toScalar) (by simpa [Scalar.Value.kind] using typed_projection typed)
       obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
