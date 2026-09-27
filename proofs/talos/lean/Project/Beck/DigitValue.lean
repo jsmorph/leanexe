@@ -11,6 +11,16 @@ def Valid (digits : Array UInt64) : Prop := ∀ digit ∈ digits, LimbArithmetic
 
 theorem value_empty : value #[] = 0 := rfl
 
+theorem extract_valid (digits : Array UInt64) (valid : Valid digits) (first last : ℕ) :
+    Valid (digits.extract first last) := by
+  intro digit member
+  obtain ⟨index, inside, equal⟩ := Array.mem_extract_iff_getElem.mp member
+  rw [← equal]
+  exact valid _ (Array.getElem_mem (by omega))
+
+theorem trim_valid (digits : Array UInt64) (valid : Valid digits) :
+    Valid (Digits.trim digits) := extract_valid digits valid _ _
+
 theorem value_push (digits : Array UInt64) (digit : UInt64) :
     value (digits.push digit) = value digits + 4294967296 ^ digits.size * digit.toNat := by
   simp [value, Nat.ofDigits_append]
