@@ -2,7 +2,7 @@
 
 The partitioner splits jobs with overlapping categories between two groups.  If each job belongs to at most `t ≥ 1` categories, the required difference between each category's group counts is at most `2t-1`.
 
-The executable uses exact multiword integers and fraction-free elimination.  Its complete source and exact-WASM correctness proof remains in progress.  The current parser's address check bounds the incidence array, but a sufficient bound for the whole computation remains to prove.
+The executable uses exact multiword integers and fraction-free elimination.  Lean checks its universal source correctness theorem.  Exact-WASM correctness remains in progress.  The current parser's address check bounds the incidence array, but a sufficient bound for the whole computation remains to prove.
 
 ## Build and run
 
@@ -24,7 +24,7 @@ Input JSON has the form:
 
 Category identifiers range from zero through `categories-1`.  Memberships within one job must be distinct.  Empty jobs and unused categories are allowed.  Empty input produces no assignments.  With zero overlap, every category count is zero.  Group sizes may differ.
 
-The word-array input is `[jobCount, categoryCount, count0, ids0..., count1, ids1..., ...]`.  Success returns `[0, overlap, groups...]`, where each group is zero or one.  Malformed input returns `[1]`, the preliminary address-limit rejection returns `[2]`, and an internal arithmetic or progress failure returns `[3]`.  Proving internal failures unreachable for every supported input remains part of the source proof.
+The word-array input is `[jobCount, categoryCount, count0, ids0..., count1, ids1..., ...]`.  Success returns `[0, overlap, groups...]`, where each group is zero or one.  Malformed input returns `[1]`, the preliminary address-limit rejection returns `[2]`, and an internal arithmetic or progress failure returns `[3]`.  The source theorem proves internal failures unreachable for every accepted input.
 
 ## Browser demo
 
@@ -57,13 +57,15 @@ Checked arithmetic lemmas cover limb validity, normalization, addition, subtract
 
 `ExactRound.correct` proves that the executable round succeeds on a valid state with an undecided job.  Exact cross-product comparisons select the minimum positive gap-to-speed ratio.  The returned state stays in the cube, preserves frozen coordinates and protected category sums, and freezes at least one additional job.
 
+`ExactSource.compute_correct` proves the complete source result for an encoded list of jobs and any category count.  Its input predicate requires distinct, in-range memberships, complete encoding, and the parser's incidence-address check.  `ExactEncoding.accepted_iff` proves that this predicate characterizes accepted inputs.  The output has one binary assignment per job, reports the maximum overlap, and bounds each category's group-count difference by `max 0 (2t-1)`.  `ExactLoop.rounds_eq` and `ExactFinish.initial_correct` prove that the executable loop succeeds within the supplied `n` rounds.
+
 Focused checks run through the required Lean runner:
 
 ```sh
-tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.ExactRound Project.Beck.GenericLoop
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.ExactSource
 ```
 
-The remaining proof work connects the executable loop and parser to source output correctness, derives resource bounds, and proves exact-binary execution.  The [development plan](../plans/beck.md) tracks those tasks.  Earlier bounded execution proofs are retired.
+The remaining proof work derives resource bounds and proves exact-binary execution.  The [development plan](../plans/beck.md) tracks those tasks.  Earlier bounded execution proofs are retired.
 
 ## Measurements
 
