@@ -19,7 +19,8 @@ The compiler corrections address repeated evaluation of monadic loop bodies and 
 - [x] Prove the elimination invariant and successful kernel-preserving echelon reduction.
 - [x] Prove complete exact back substitution with a determinant-scaled integer kernel.
 - [x] Connect protected-matrix construction and free-column availability to the direction theorem.
-- [ ] Connect the implemented rounding step and parser to the universal source theorem.
+- [x] Prove successful boundary selection and the implemented rounding step.
+- [ ] Connect the executable loop and parser to the universal source theorem.
 - [ ] Derive sufficient indexing, arithmetic-width, fuel, and allocation bounds.
 - [ ] Prove exact-WASM execution and check the independent package.
 - [ ] Run native/WASM, browser, edge-case, and memory tests against that binary.
