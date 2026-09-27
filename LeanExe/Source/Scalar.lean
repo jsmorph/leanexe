@@ -208,20 +208,20 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       EvalWith (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values value
-  | letPredicateFn (expression : BooleanLocal) (type : BooleanType)
-      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr)
+  | letPredicateFn (expression : Lean.Expr) (type : BooleanType)
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) expression)
         (.word x :: values) (Bool.toUInt64 (f x)))
       (body : EvalWith b (.predicateFunction f :: values) value) :
       EvalWith (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
-        (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep) values value
-  | letBooleanPredicateFn (expression : BooleanLocal) (type : BooleanType)
-      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr)
+        (.lam paramName (.const ``UInt64 []) expression paramBi) b nondep) values value
+  | letBooleanPredicateFn (expression : Lean.Expr) (type : BooleanType)
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) expression)
         (.boolean x :: values) (Bool.toUInt64 (f x)))
       (body : EvalWith b (.booleanPredicateFunction f :: values) value) :
       EvalWith (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
-        (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) values value
+        (.lam paramName (.const ``Bool []) expression paramBi) b nondep) values value
   | scopedRelationSelection (related : BooleanRelationSelection)
       (left : EvalWith (.app (.const ``Bool.toUInt64 []) related.selection.guard.left) values (Bool.toUInt64 a))
       (right : EvalWith (.app (.const ``Bool.toUInt64 []) related.selection.guard.right) values (Bool.toUInt64 b))
@@ -467,18 +467,18 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       SupportedWith types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
-  | letPredicateFn (expression : BooleanLocal) (type : BooleanType)
-      (function : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) expression.expr))
+  | letPredicateFn (expression : Lean.Expr) (type : BooleanType)
+      (function : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) expression))
       (body : SupportedWith (.predicateFunction :: types) b) :
       SupportedWith types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
-        (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep)
-  | letBooleanPredicateFn (expression : BooleanLocal) (type : BooleanType)
-      (function : SupportedWith (.boolean :: types) (.app (.const ``Bool.toUInt64 []) expression.expr))
+        (.lam paramName (.const ``UInt64 []) expression paramBi) b nondep)
+  | letBooleanPredicateFn (expression : Lean.Expr) (type : BooleanType)
+      (function : SupportedWith (.boolean :: types) (.app (.const ``Bool.toUInt64 []) expression))
       (body : SupportedWith (.booleanPredicateFunction :: types) b) :
       SupportedWith types (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
-        (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep)
+        (.lam paramName (.const ``Bool []) expression paramBi) b nondep)
   | scopedRelationSelection (related : BooleanRelationSelection)
       (left : SupportedWith types (.app (.const ``Bool.toUInt64 []) related.selection.guard.left))
       (right : SupportedWith types (.app (.const ``Bool.toUInt64 []) related.selection.guard.right))
@@ -879,7 +879,7 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     exact ⟨value, .letFn type (fun x => (total x).choose_spec) hv⟩
   | letPredicateFn expression type _ _ ihf ihb =>
     have total : ∀ x, ∃ flag : Bool,
-        EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.word x :: values) flag.toUInt64 := by
+        EvalWith (.app (.const ``Bool.toUInt64 []) expression) (.word x :: values) flag.toUInt64 := by
       intro x
       obtain ⟨encoded, evaluated⟩ := ihf (.word x :: values) (by simp [Value.kind, typed])
       obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
@@ -889,7 +889,7 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     exact ⟨value, .letPredicateFn expression type (fun x => (total x).choose_spec) hv⟩
   | letBooleanPredicateFn expression type _ _ ihf ihb =>
     have total : ∀ x, ∃ flag : Bool,
-        EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.boolean x :: values) flag.toUInt64 := by
+        EvalWith (.app (.const ``Bool.toUInt64 []) expression) (.boolean x :: values) flag.toUInt64 := by
       intro x
       obtain ⟨encoded, evaluated⟩ := ihf (.boolean x :: values) (by simp [Value.kind, typed])
       obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
