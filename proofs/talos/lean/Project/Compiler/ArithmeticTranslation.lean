@@ -58,7 +58,7 @@ mutual
     | if64 left right =>
       obtain ⟨l, hl, el⟩ := left.translation
       obtain ⟨r, hr, er⟩ := right.translation
-      refine ⟨.iff 0 1 l r, ?_, .cons (.iff el er) .nil⟩
+      refine ⟨.iff 0 1 l r [] [.i64], ?_, .cons (.iff el er) .nil⟩
       simp [ScalarLowering.instruction, hl, hr]
     | if0 left right =>
       obtain ⟨l, hl, el⟩ := left.translation
