@@ -151,6 +151,22 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
           let v ← booleanLocalOperands? value
           let b ← booleanLocalOperands? body
           pure (.binding 0 name (.application binder) v b annotation)
+  | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
+      (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
+        (.const ``Id.instMonad [.zero]))) input) output) value)
+      (.lam name domain body binder) =>
+      if input = domain then do
+        let result ← booleanType? output
+        match scalarResultType? input with
+        | some annotation => do
+            let b ← booleanLocalOperands? body
+            pure (.wordBinding 0 name (.monadic binder result) value b annotation)
+        | none => do
+            let annotation ← booleanType? input
+            let v ← booleanLocalOperands? value
+            let b ← booleanLocalOperands? body
+            pure (.binding 0 name (.monadic binder result) v b annotation)
+      else none
   | .app (.bvar index) argument => some (.predicate 0 index argument)
   | expression => (booleanComparisonOperands? expression).map fun (op, a, b) => .compare op a b
 termination_by expression => sizeOf expression
