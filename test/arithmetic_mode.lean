@@ -5589,6 +5589,71 @@ def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
   return a
 
+def booleanInputWord (x y : UInt64) : UInt64 :=
+  let f : Id Bool → UInt64 := fun (b : Id Bool) => if Id.run b then x + y else x - y
+  f (x == 0) + f (x != y)
+
+def booleanInputPredicate (x y : UInt64) : UInt64 :=
+  let f : Id Bool → Id Bool := fun (b : Id Bool) => b || x == y
+  (f (x == 0)).toUInt64 + (f (x != y)).toUInt64 + x
+
+def booleanInputNested (x y : UInt64) : UInt64 :=
+  let f : Id (Id Bool) → Id (Id Bool) := fun (b : Id (Id Bool)) => b && x != y
+  let g : Id Bool → Id UInt64 := fun (b : Id Bool) => (f b).toUInt64 + y
+  Id.run (g (x == 0)) + Id.run (g (x != y))
+
+def booleanInputUnused (x y : UInt64) : UInt64 :=
+  let _unused : Id Bool → UInt64 := fun (b : Id Bool) => if Id.run b then x / 0 else y % 0
+  x + y
+
+def booleanInputDecision (x y : UInt64) : UInt64 :=
+  let f : Id Bool → Bool := fun (b : Id Bool) => b || x == y
+  let g : Id (Id Bool) → Bool := fun (b : Id (Id Bool)) => if ¬ f b then !b else b
+  (decide (g true ∧ x < y)).toUInt64 + (g false).toUInt64 + y
+
+def booleanInputBind (x y : UInt64) : UInt64 := Id.run do
+  let f : Id Bool → Id (Id UInt64) := fun (b : Id Bool) => do
+    let saved ← pure (b || x == y)
+    return (show UInt64 from if saved then x + 3 else y + 7)
+  let a ← f (x == 0)
+  return Id.run a + Id.run (← f (decide (Id.run a < y)))
+
+def rangeBooleanInputStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let f : Id Bool → Id (ForInStep UInt64) := fun (flag : Id Bool) => do
+      let g : Id (Id Bool) → ForInStep UInt64 := fun (inner : Id (Id Bool)) =>
+        if flag && !inner then .done (a + i.toUInt64) else .yield (a - count)
+      return g (a == seed)
+    f (i.toUInt64 % 3 == 0)
+
+def rangeBooleanInputContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f : Id Bool → Id Bool := fun (b : Id Bool) => b && a != 0
+    if Id.run (f (i.toUInt64 == seed)) then
+      a := a + 3
+      continue
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeBooleanInputOuter (count seed : UInt64) : UInt64 := Id.run do
+  let flag := seed != 0
+  let f : Id (Id Bool) → UInt64 := fun (b : Id (Id Bool)) => if b || flag then seed + 1 else seed
+  let mut a := f (count == 0)
+  for i in [:count.toNat] do
+    if a < f (i.toUInt64 == 0) then break
+    a := a + i.toUInt64 + 1
+  return a + f (a == seed)
+
+def rangeBooleanInputHelper (count seed : UInt64) : UInt64 := Id.run do
+  let f : Id Bool → Id Bool := fun (b : Id Bool) => b && seed != 0
+  let mut a := seed
+  for i in [:count.toNat] do
+    let g : Id (Id Bool) → UInt64 := fun (b : Id (Id Bool)) => (f b).toUInt64 + a
+    if g (i.toUInt64 == 0) < seed then break
+    a := g (a == seed) + i.toUInt64 + 1
+  return a + (f (a == seed)).toUInt64
+
 def booleanPredicateResultBool (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => !b && x != 0
   let g := fun b : Bool => f b
@@ -8252,6 +8317,16 @@ run_elab do
       `ArithmeticModeTest.rangeLocalNotContinue,
       `ArithmeticModeTest.rangeLocalNotOuter,
       `ArithmeticModeTest.rangeLocalNotHelper,
+      `ArithmeticModeTest.booleanInputWord,
+      `ArithmeticModeTest.booleanInputPredicate,
+      `ArithmeticModeTest.booleanInputNested,
+      `ArithmeticModeTest.booleanInputUnused,
+      `ArithmeticModeTest.booleanInputDecision,
+      `ArithmeticModeTest.booleanInputBind,
+      `ArithmeticModeTest.rangeBooleanInputStep,
+      `ArithmeticModeTest.rangeBooleanInputContinue,
+      `ArithmeticModeTest.rangeBooleanInputOuter,
+      `ArithmeticModeTest.rangeBooleanInputHelper,
       `ArithmeticModeTest.booleanPredicateResultBool,
       `ArithmeticModeTest.booleanPredicateResultWord,
       `ArithmeticModeTest.booleanPredicateResultNested,

@@ -110,6 +110,9 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
   | predicateInput (input : ResultType) (result : BooleanType)
       (inner : Eval (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep) values outcome) :
       Eval (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep) values outcome
+  | booleanInput (input : BooleanType) (result : Lean.Expr)
+      (inner : Eval (booleanInputExpr input result name typeName paramName typeBi paramBi a b nondep) values outcome) :
+      Eval (booleanInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep) values outcome
   | letBooleanFn (type : ResultType)
       (function : ∀ x, EvalWith a (.boolean x :: values.map Value.toScalar) (f x))
       (body : Eval b (.scalar (.booleanFunction f) :: values) outcome) :
@@ -299,6 +302,9 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
   | predicateInput (input : ResultType) (result : BooleanType)
       (inner : Supported types (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep)) :
       Supported types (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep)
+  | booleanInput (input : BooleanType) (result : Lean.Expr)
+      (inner : Supported types (booleanInputExpr input result name typeName paramName typeBi paramBi a b nondep)) :
+      Supported types (booleanInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep)
   | letBooleanFn (type : ResultType)
       (function : SupportedWith (.boolean :: types.map BindingKind.toScalar) a)
       (body : Supported (.scalar (.booleanFunction) :: types) b) :
@@ -580,6 +586,9 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
   | predicateInput input result _ ih =>
     obtain ⟨outcome, evaluated⟩ := ih values typed
     exact ⟨outcome, .predicateInput input result evaluated⟩
+  | booleanInput input result _ ih =>
+    obtain ⟨outcome, evaluated⟩ := ih values typed
+    exact ⟨outcome, .booleanInput input result evaluated⟩
   | letBooleanFn type function _ ih =>
     have total := fun x => function.evaluates (.boolean x :: values.map Value.toScalar)
       (by simpa [LeanExe.Source.Scalar.Value.kind] using typed_projection typed)

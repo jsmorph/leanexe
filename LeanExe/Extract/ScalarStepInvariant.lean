@@ -261,6 +261,9 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
   | predicateInput input result _ ih =>
     rw [extractScalarStepWith_predicateInput] at compiled
     exact ih compiled bindings htypes
+  | booleanInput input result _ ih =>
+    rw [extractScalarStepWith_booleanInput] at compiled
+    exact ih compiled bindings htypes
   | letBooleanFn type function _ ih =>
     rw [extractScalarStepWith_letBooleanFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

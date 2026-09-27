@@ -175,6 +175,40 @@ theorem extractScalarStepWith_predicateInput (locals : List ScalarStepBinding)
       rfl
   all_goals simp
 
+theorem extractScalarStepWith_booleanInput (locals : List ScalarStepBinding)
+    (input : LeanExe.Source.Scalar.BooleanType) (result : Lean.Expr)
+    (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
+    (a b : Lean.Expr) (nondep : Bool) :
+    extractScalarStepWith locals (LeanExe.Source.Scalar.booleanInputExpr (.identity input) result
+      name typeName paramName typeBi paramBi a b nondep) =
+    extractScalarStepWith locals (LeanExe.Source.Scalar.booleanInputExpr input result
+      name typeName paramName typeBi paramBi a b nondep) := by
+  simp only [LeanExe.Source.Scalar.booleanInputExpr, LeanExe.Source.Scalar.BooleanType.expr]
+  have noInput : scalarStepResultType? (.app (.const ``Id [.zero]) input.expr) = none :=
+    scalarStepResultType_boolean (.identity input)
+  rw [extractScalarStepWith]
+  · have noAnnotation := predicateInputTypes_boolean (.identity input) result
+    change predicateInputTypes? (.app (.const ``Id [.zero]) input.expr)
+      (.app (.const ``Id [.zero]) input.expr) result = none at noAnnotation
+    have inputParsed := booleanInputTypes_accepts input
+    change booleanInputTypes? (.app (.const ``Id [.zero]) input.expr)
+      (.app (.const ``Id [.zero]) input.expr) = some input at inputParsed
+    simp only [↓reduceIte, noInput]
+    split
+    next absent =>
+      split
+      next rejected =>
+        have impossible := rejected.symm.trans inputParsed
+        cases impossible
+      next type found =>
+        have same := Option.some.inj (found.symm.trans inputParsed)
+        subst type
+        rfl
+    next types found =>
+      have impossible := found.symm.trans noAnnotation
+      cases impossible
+  all_goals simp
+
 theorem extractScalarStepWith_letBooleanFn (locals : List ScalarStepBinding)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
     (type : ResultType) (a b : Lean.Expr) (nondep : Bool) :

@@ -374,7 +374,12 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
       (.lam paramName (.app (.const ``Id [.zero]) domain) value paramBi) body nondep =>
       if input = domain then
         match scalarResultType? input with
-        | none => none
+        | none =>
+            match booleanType? input with
+            | none => none
+            | some _ => extractScalarExprWith locals (.letE name
+                (.forallE typeName input resultType typeBi)
+                (.lam paramName domain value paramBi) body nondep)
         | some _ =>
             match booleanType? resultType with
             | none => none
@@ -1018,6 +1023,18 @@ theorem extractScalarExprWith_predicateInput (locals : List ScalarBinding)
   simp only [LeanExe.Source.Scalar.predicateInputExpr, LeanExe.Source.Scalar.ResultType.expr]
   rw [extractScalarExprWith]
   simp [scalarResultType_accepts, booleanType_accepts]
+
+theorem extractScalarExprWith_booleanInput (locals : List ScalarBinding)
+    (input : LeanExe.Source.Scalar.BooleanType) (result : Lean.Expr)
+    (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
+    (a b : Lean.Expr) (nondep : Bool) :
+    extractScalarExprWith locals (LeanExe.Source.Scalar.booleanInputExpr (.identity input) result
+      name typeName paramName typeBi paramBi a b nondep) =
+    extractScalarExprWith locals (LeanExe.Source.Scalar.booleanInputExpr input result
+      name typeName paramName typeBi paramBi a b nondep) := by
+  simp only [LeanExe.Source.Scalar.booleanInputExpr, LeanExe.Source.Scalar.BooleanType.expr]
+  rw [extractScalarExprWith]
+  simp [scalarResultType_boolean, booleanType_accepts]
 
 theorem extractScalarExprWith_letBooleanFn (locals : List ScalarBinding)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)

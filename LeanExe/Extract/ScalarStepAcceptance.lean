@@ -258,6 +258,9 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
   | predicateInput input result _ ih =>
     obtain ⟨target, ht⟩ := ih locals typed total
     exact ⟨target, by rw [extractScalarStepWith_predicateInput]; exact ht⟩
+  | booleanInput input result _ ih =>
+    obtain ⟨target, ht⟩ := ih locals typed total
+    exact ⟨target, by rw [extractScalarStepWith_booleanInput]; exact ht⟩
   | @letBooleanFn a types b name typeName typeBi paramName paramBi nondep type function _ ih =>
     have accepts (argument : LeanExe.IR.Expr) := extractScalarExprWith_accepts function
       (.boolean argument :: locals.map ScalarStepBinding.toScalar)

@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarBooleanInput
 import LeanExe.Source.ScalarBooleanConditionInputs
 import LeanExe.Source.ScalarBooleanPropositionChoiceForm
 import LeanExe.Source.ScalarBooleanChoiceForm
@@ -208,6 +209,9 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
   | predicateInput (input : ResultType) (result : BooleanType)
       (inner : EvalWith (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep) values outcome) :
       EvalWith (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep) values outcome
+  | booleanInput (input : BooleanType) (result : Lean.Expr)
+      (inner : EvalWith (booleanInputExpr input result name typeName paramName typeBi paramBi a b nondep) values outcome) :
+      EvalWith (booleanInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep) values outcome
   | letBooleanFn (type : ResultType)
       (function : ∀ x, EvalWith a (.boolean x :: values) (f x))
       (body : EvalWith b (.booleanFunction f :: values) value) :
@@ -413,6 +417,9 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
   | predicateInput (input : ResultType) (result : BooleanType)
       (inner : SupportedWith types (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep)) :
       SupportedWith types (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep)
+  | booleanInput (input : BooleanType) (result : Lean.Expr)
+      (inner : SupportedWith types (booleanInputExpr input result name typeName paramName typeBi paramBi a b nondep)) :
+      SupportedWith types (booleanInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep)
   | letBooleanFn (type : ResultType) (function : SupportedWith (.boolean :: types) a)
       (body : SupportedWith (.booleanFunction :: types) b) :
       SupportedWith types (.letE name
@@ -474,7 +481,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
       DecidedGuard.dependentBranch, BooleanIdentity.bind, BooleanLocalGuard.branch,
       BooleanLocalGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
       UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head,
-      idLetExpr, predicateInputExpr]
+      idLetExpr, predicateInputExpr, booleanInputExpr]
 
 
 theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
@@ -773,6 +780,9 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
   | predicateInput input result _ ih =>
     obtain ⟨outcome, evaluated⟩ := ih values typed
     exact ⟨outcome, .predicateInput input result evaluated⟩
+  | booleanInput input result _ ih =>
+    obtain ⟨outcome, evaluated⟩ := ih values typed
+    exact ⟨outcome, .booleanInput input result evaluated⟩
   | letBooleanFn type _ _ ihf ihb =>
     have total := fun x => ihf (.boolean x :: values) (by simp [Value.kind, typed])
     let f := fun x => (total x).choose

@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarBooleanInput
 import LeanExe.Extract.ScalarPredicateInput
 import LeanExe.Extract.ScalarManyStepFunction
 import LeanExe.Extract.ScalarExpr
@@ -242,7 +243,12 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
             extractScalarStepWith (function :: locals) body
         | _, _ =>
             match _annotation : predicateInputTypes? input domain output with
-            | none => none
+            | none =>
+                match _booleanInput : booleanInputTypes? input domain with
+                | none => none
+                | some type => extractScalarStepWith locals
+                    (LeanExe.Source.Scalar.booleanInputExpr type output
+                      name typeName paramName typeBi paramBi value body nondep)
             | some types => extractScalarStepWith locals
                 (LeanExe.Source.Scalar.predicateInputExpr types.1 types.2
                   name typeName paramName typeBi paramBi value body nondep)
@@ -307,6 +313,9 @@ decreasing_by
     | (have bound := scalarManyStepFunction_body_size _stepFunction; simp_all; omega)
     | (obtain ⟨hi, hd, ho⟩ := predicateInputTypes_sound _annotation
        simp_all [LeanExe.Source.Scalar.predicateInputExpr, LeanExe.Source.Scalar.ResultType.expr]
+       omega)
+    | (obtain ⟨hi, hd⟩ := booleanInputTypes_sound _booleanInput
+       simp_all [LeanExe.Source.Scalar.booleanInputExpr, LeanExe.Source.Scalar.BooleanType.expr]
        omega)
 
 end LeanExe.Extract.Core

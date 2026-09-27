@@ -510,5 +510,9 @@
   "rangeLocalNotStep",
   "rangeLocalNotContinue",
   "rangeLocalNotOuter",
-  "rangeLocalNotHelper"
+  "rangeLocalNotHelper",
+  "rangeBooleanInputStep",
+  "rangeBooleanInputContinue",
+  "rangeBooleanInputOuter",
+  "rangeBooleanInputHelper"
 ]
