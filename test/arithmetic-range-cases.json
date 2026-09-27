@@ -980,5 +980,9 @@
   "rangeBooleanScopeBindStep",
   "rangeBooleanScopeBindExit",
   "rangeBooleanScopeBindContinue",
-  "rangeBooleanScopeBindTail"
+  "rangeBooleanScopeBindTail",
+  "rangeBooleanScopeApplicationStep",
+  "rangeBooleanScopeApplicationExit",
+  "rangeBooleanScopeApplicationContinue",
+  "rangeBooleanScopeApplicationTail"
 ]

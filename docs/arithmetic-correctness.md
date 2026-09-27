@@ -456,7 +456,8 @@ recursive Boolean conversion checker. Bodies may themselves contain predicate
 scopes, wrappers and choices with general helper branches. Each body is validated
 even when the helper is unused. UInt64 and Bool bindings may surround general
 helper scopes, including nested bindings, captured values and unused values.
-Ordinary lets and standard Id monadic binds are supported. Their annotations may
+Ordinary lets, direct lambda applications and standard Id monadic binds are
+supported. Their annotations may
 retain standard Id layers. Monadic binds require the exact standard instance,
 matching input and continuation domains, and a supported Boolean result type.
 Both the bound value and Boolean continuation are checked; the bound value is
@@ -760,9 +761,10 @@ The pure-source `Correct`, `compileEnvironment_correct` and `extracted_correct`
 theorems also remain available. These theorems quantify over admitted programs
 and inputs; the test examples do not limit their scope.
 
-The complete audit is `Project.Compiler.ArithmeticCompilerAudit`. All thirty-two
+The complete audit is `Project.Compiler.ArithmeticCompilerAudit`. All thirty-three
 reported declarations must have only the allowed dependencies. The matcher
-forwarding identity and standard Id bind equation use no axioms. The runtime retain/alloc/release proofs use
+forwarding identity, direct-application equation and standard Id bind equation
+use no axioms. The runtime retain/alloc/release proofs use
 only `propext`; the remaining audited results allow `propext`, `Classical.choice`,
 and `Quot.sound`.
 
