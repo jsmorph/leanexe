@@ -24,7 +24,8 @@ example : Validator.validateRaw dataRaw = .ok () := by decide +kernel
 example : CoreValid dataRaw := Proof.validateRaw_sound (by decide +kernel)
 
 example : (Translation.module dataRaw).memory =
-    some { pagesMin := 1, data := [{ offset := some 16, bytes := [42, 43] }] } := by rfl
+    some { pagesMin := 1
+           data := [{ offset := some 16, bytes := [42, 43], offsetType := some .i32 }] } := by rfl
 
 example : ((Translation.module dataRaw).initialStore (α := Unit)).mem.read8 16 = 42 := by
   decide +kernel

@@ -1,3 +1,4 @@
+import Project.ExpArm.Program
 /-
   Pins every generated module's runtime functions to the shared definitions
   in `Defs.lean`.  Nominal type indices are local to each generated module, so
@@ -441,5 +442,11 @@ example : eraseTypeIdx Project.Gpt2QuantizedCached.func62Def = eraseTypeIdx allo
 example : eraseTypeIdx Project.Gpt2QuantizedCached.func63Def = eraseTypeIdx resetFuncDef := rfl
 example : eraseTypeIdx Project.Gpt2QuantizedCached.func64Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.Gpt2QuantizedCached.func65Def = eraseTypeIdx (releaseFuncDef 65) := rfl
+
+example : eraseTypeIdx Project.ExpArm.func3Def = eraseTypeIdx allocFuncDef := rfl
+example : eraseTypeIdx Project.ExpArm.func4Def =
+    { resetFuncDef with body := .constI64 6152 :: resetBody.tail } := rfl
+example : eraseTypeIdx Project.ExpArm.func5Def = eraseTypeIdx retainFuncDef := rfl
+example : eraseTypeIdx Project.ExpArm.func6Def = eraseTypeIdx (releaseFuncDef 6) := rfl
 
 end Project.Runtime

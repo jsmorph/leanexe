@@ -1,0 +1,22 @@
+import Project.ExpArm.ArtifactValidationExports
+import Project.ExpArm.ArtifactCache
+import Project.Artifact.Binary.ValidationParts
+import Lean.Elab.Tactic.Cbv
+
+namespace Project.ExpArm.Artifact
+open Wasm.Binary
+
+set_option maxRecDepth 131072
+set_option cbv.maxSteps 1000000
+
+def resolvedTypes : List FuncType :=
+  Cache.raw.functionTypeIndices.map (fun index => Cache.raw.types[index.toNat]!)
+
+theorem validation_sections : Validator.validateSections Cache.raw = .ok () := by cbv
+theorem validation_memory : Cache.raw.memories.length = 1 := by rfl
+theorem validation_limits : Validator.validateLimits Cache.raw.memories.head!.limits = .ok () := by cbv
+theorem validation_globals : Validator.validateGlobals Cache.raw.globals = .ok () := by cbv
+theorem validation_data : Validator.validateData Cache.raw.data = .ok () := by cbv
+theorem validation_types : Validator.resolveFunctionTypes Cache.raw = .ok resolvedTypes := by cbv
+
+end Project.ExpArm.Artifact

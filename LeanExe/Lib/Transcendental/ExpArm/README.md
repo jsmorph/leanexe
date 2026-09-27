@@ -4,11 +4,13 @@
 
 ## Verification status
 
-The verification target is the emitted WASM: termination, memory behavior, and numerical accuracy under stated assumptions.  A proof establishing those properties remains outstanding.  Lean checks the source types, and execution tests supply development evidence.  The accuracy target is an error below one ulp with round-to-nearest, ties-to-even arithmetic.  The tests compare WASM with the Lean port, Lean's `Float.exp`, JavaScript's `Math.exp`, and a high-precision decimal reference.
+The [binary theorem](../../../../proofs/talos/lean/Project/ExpArm/Spec.lean), `Project.ExpArm.Spec.exp_binary`, proves that the recorded WASM bytes decode and validate to a module whose exponential terminates for every input word, preserves the complete store, and returns the result of an [exact binary64 computation](../../../../proofs/talos/lean/Project/ExpArm/Model.lean).  The theorem uses Talos's WASM semantics with round-to-nearest, ties-to-even arithmetic.  It includes a proof that instantiation initializes the lookup table.  The more general `exp_exact` theorem applies to any store containing that table, allowing repeated calls.
+
+For inputs with magnitude below `2^-54`, `exp_tiny_error` proves that the WASM returns one with absolute error below `2^-53` against the real exponential.  The full-range accuracy target is an error below one ulp.  Its proof remains outstanding.  Execution tests compare WASM with the Lean port, Lean's `Float.exp`, JavaScript's `Math.exp`, and a high-precision decimal reference.
 
 On the 49,821-input development corpus, WASM and the Lean port agree bit for bit.  The largest measured errors are 0.504059 ulp for this implementation, 0.503354 ulp for Lean's `Float.exp`, and 0.871814 ulp for JavaScript's `Math.exp`.  The respective counts of differences from the reference's rounded result are 49, 36, and 4,153.  These measurements used Linux AArch64 and Node.js 24.13.0.  Throughput and latency have yet to be measured.
 
-Arm reports a worst-case error of 0.511 ulp for the selected configuration without fused multiply-add.  That published analysis motivates the algorithm choice.  Establishing a universal error bound for the emitted WASM requires a proof of its computation.
+Arm reports a worst-case error of 0.511 ulp for the selected configuration without fused multiply-add.
 
 ## API and computation
 

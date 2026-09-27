@@ -598,6 +598,22 @@
       "complete": true
     },
     {
+      "name": "exp_arm",
+      "annotations": true,
+      "module": "LeanExe.Lib.Transcendental.ExpArm.Basic",
+      "entry": "LeanExe.Lib.Transcendental.exp",
+      "leanModule": "ExpArm",
+      "specTarget": "Project.ExpArm.Spec",
+      "behaviorTheorems": [
+        "Project.ExpArm.Spec.exp_exact",
+        "Project.ExpArm.Spec.exp_initial",
+        "Project.ExpArm.Spec.exp_binary",
+        "Project.ExpArm.Spec.exp_tiny_error",
+        "Project.ExpArm.Spec.exp_nan_result"
+      ],
+      "complete": false
+    },
+    {
       "name": "exp_small",
       "annotations": true,
       "module": "Project.ExpSmall.Model",

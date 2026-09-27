@@ -22,7 +22,7 @@ reuse that theorem rather than repeat its load and bounds-check reasoning.
 
 - [x] Check data-section decoding, validation, and translation proofs.
 - [x] Prove universal exponential execution and initial table contents.
-- [ ] Connect the behavior theorem to the emitted binary.
+- [x] Connect the behavior theorem to the emitted binary.
 - [ ] Establish numerical guarantees and update the component report.
 
 The parser and validator soundness proofs accept the added active data
@@ -98,6 +98,25 @@ removes that dependency.  The initialization theorem now uses only the three
 standard Lean axioms listed above.  Exact rational checks also establish
 128th-power enclosures for every corrected table entry, with radius `2^-104`.
 Those checks take 3.2 seconds and will supply the table's real error bound.
+
+The binary theorem and independent artifact check pass.  The recorded bytes
+decode and validate to the execution module.  `exp_binary` then proves
+termination, exact result bits, and unchanged store for every input word from
+the initialized store.  The package also checks the general-store execution
+theorem, the tiny-input numerical bound, and canonical NaN behavior.  All five
+behavior theorems use only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The rational table enclosures now imply the real bound
+`|H_j * (1 + t_j) - exp(j * log(2)/128)| ≤ 2^-104` for every table index.
+The updated README and three-page PDF describe the checked WASM guarantees
+and retain the outstanding full-range numerical bound.  Both prose review
+passes, all three rendered pages, and the 189-file documentation check pass.
+The data translation tests and the runtime identity checks also pass.  The
+reset identity accounts for the allocation arena beginning after the table.
+The generated annotation module supplies no matching lemmas for this case.
+The execution proof instead uses the generated instruction definitions and
+shared frame, call, and array-read theorems.  Constant word-valued conditions
+needed explicit simplification between those shared proof steps.
 
 ## 2026-09-27: Static numeric tables
 
