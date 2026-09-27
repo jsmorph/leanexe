@@ -736,13 +736,22 @@ checks and 384 controls. Prior tests pass 25,460 comparisons, 19,456 invalid-inp
 checks and 704 controls. The native corpus contains 1447 declarations. Evidence
 is in [the helper-junction archive](proofs/compiler/boolean-helper-junction-2026-09-27/README.md).
 
-Current capability: Boolean equality and inequality around general helper scopes,
-including exact standard decisions. All ten original probes pass unchanged.
-Source totality, parser acceptance/soundness, scalar correctness and IR invariants
-pass. New tests pass 37,812 comparisons, 45,312 invalid-input checks and 768
-controls. Six adjacent tests pass 34,868 comparisons, 29,824 invalid-input checks
-and 896 controls. The general compiler-proof and independent WASM checks follow.
-Choices, nested helper bodies and Id inputs remain separately confirmed gaps.
+Boolean equality and inequality around general helper scopes are complete,
+including standard decisions of Eq/Ne. Source totality, parser acceptance and
+soundness, scalar correctness, IR invariants and the general source-to-WASM
+theorem pass, with all nineteen audits. Ten original probes pass unchanged.
+Native Lean/V8 agree on 993 inputs across 54 declarations, including 25 ranges;
+44 prior modules retain identical bytes and 0 changed. New tests pass
+37,812 comparisons, 45,312 invalid-input checks and 768 controls. Prior tests pass
+34,868 comparisons, 29,824 invalid-input checks and 896 controls. The native corpus
+contains 1457 declarations. Evidence is in
+[the helper-equality archive](proofs/compiler/boolean-helper-equality-2026-09-27/README.md).
+
+Current capability: Boolean-valued choices containing general helper scopes.
+The composite choice probe remains rejected after equality support. Preserve the
+exact condition, evidence and dependent proof binders; recursively convert the
+condition and both branches. Nested helper bodies and Id inputs remain separately
+confirmed gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
