@@ -1,0 +1,44 @@
+--- ../work/boolean-helper-id-input-prior-module-before.wat	2026-09-27 13:45:09
++++ ../work/boolean-helper-id-input-prior-module-after.wat	2026-09-27 13:45:09
+@@ -23,40 +23,7 @@
+   (export "releaseCount" (global 4))
+   (export "freeCount" (global 5))
+   (func (;0;) (type 0) (param i64 i64) (result i64)
+-    (local i64 i64 i64 i64)
+-    i64.const 0
+-    local.set 4
+-    i64.const 0
+-    local.set 2
+-    i64.const 0
+-    local.set 3
+-    i64.const 0
+-    local.set 5
+-    block ;; label = @1
+-      loop ;; label = @2
+-        local.get 3
+-        local.get 4
+-        i64.lt_u
+-        i32.eqz
+-        br_if 1 (;@1;)
+-        i64.const 0
+-        local.set 5
+-        i64.const 0
+-        local.set 2
+-        local.get 5
+-        i64.const 0
+-        i64.eq
+-        if (result i64) ;; label = @3
+-          local.get 3
+-          i64.const 1
+-          i64.add
+-        else
+-          local.get 4
+-        end
+-        local.set 3
+-        br 0 (;@2;)
+-      end
+-    end
++    (local i64)
+     local.get 0
+     i64.const 1
+     i64.add

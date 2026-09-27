@@ -953,20 +953,24 @@ Prior tests pass 32,688 comparisons and 18,816 invalid-input checks. Four fixed
 production probes are restored. The corpus contains 1632 declarations. Evidence is
 in [the generated-matcher archive](proofs/compiler/boolean-step-matcher-2026-09-27/README.md).
 
-Current capability: retained Id input annotations in converted Boolean helper
-scopes. The unchanged identityInput probe and ten new fixed examples reject
-before implementation. The source helper now retains its exact domain and an
-independent PublicArgument.Domain certificate. Recognition requires matching
-arrow/lambda domains; its acceptance and soundness proofs pass 67 targets.
-The full extractor passes 205 targets. The syntax matrix passes 32,256 native/IR
-comparisons, 48,384 invalid-input checks and 768 admission controls. Nine of ten
-fixed probes compile after extending proposition-let input checking; its
-independent typed Id case and recognizer proofs pass 21 targets. The combined
-extractor proofs pass after splitting the final dependency build. New tests pass
-105,012 native/IR comparisons, 123,984 invalid-input checks and 1,344 admission
-controls. A word let
-surrounding the general Boolean helper also fails with bare inputs; that original
-capture probe is preserved for the next increment. The public WASM gate is pending.
+Retained Id inputs in general Boolean helper scopes and predicate lets inside
+propositions are proved through WASM. The grammar records exact scalar domains;
+arrow and lambda annotations must match. The complete proof gate passes 3391
+targets and all 29 audits. Native Lean/V8 agree on 1,401 inputs across 71
+declarations; 60 prior modules retain identical bytes. One module shrinks from
+1277 to 1219 bytes because direct scalar extraction removes its zero-iteration
+loop. New tests pass 105,012
+comparisons, 123,984 invalid-input checks and 1,344 admission controls; prior
+tests pass 89,280 comparisons, 95,152 invalid-input checks and 960 controls.
+The original identityInput probe and nine new fixed probes compile. The corpus
+contains 1642 declarations. Evidence is in
+[the retained helper-input archive](proofs/compiler/boolean-helper-id-input-2026-09-27/README.md).
+
+Current capability: word and Boolean let bindings around general Boolean helper
+scopes. The original capture probe is unchanged and rejects even with bare helper
+inputs. Preserve that probe and the new scope-binding probes, extend the independent
+source grammar and extractor, then complete native/V8 checks and source-to-WASM
+proofs before advancing.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

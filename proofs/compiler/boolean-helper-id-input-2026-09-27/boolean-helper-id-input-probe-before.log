@@ -1,0 +1,20 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/boolean-helper-id-input-probe.lean:43:65: error: Application type mismatch: The argument
+  a > 7
+has type
+  Prop
+but is expected to have type
+  Id Bool
+in the application
+  f (a > 7)
+BooleanHelperIdInputProbe.booleanHelperIdInputWord: false
+BooleanHelperIdInputProbe.booleanHelperIdInputBoolean: false
+BooleanHelperIdInputProbe.booleanHelperIdInputNested: false
+BooleanHelperIdInputProbe.booleanHelperIdInputCapture: false
+BooleanHelperIdInputProbe.booleanHelperIdInputUnused: false
+BooleanHelperIdInputProbe.booleanHelperIdInputProposition: false
+BooleanHelperIdInputProbe.rangeBooleanHelperIdInputStep: false
+BooleanHelperIdInputProbe.rangeBooleanHelperIdInputExit: false
+BooleanHelperIdInputProbe.rangeBooleanHelperIdInputContinue: false
+BooleanHelperIdInputProbe.rangeBooleanHelperIdInputTail: false

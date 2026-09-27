@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_helper_id_input.lean:69:0: error: BooleanHelperIdInputTest.booleanHelperIdInputCapture: retained Id helper input extraction failed
