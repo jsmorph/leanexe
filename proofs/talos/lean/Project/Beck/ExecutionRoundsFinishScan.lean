@@ -12,12 +12,12 @@ def roundsFinishScanLocals (locals : List Value) (point : Point) (pointOwner roo
   (roundsFinishScanPrepared locals point pointOwner root).set 49 (.i64 (boolWord (allFrozen point)))
 
 set_option maxRecDepth 4096 in
-theorem roundsFinishScanPrepare_exact (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
+theorem roundsFinishScanPrepare_exact {inputOwner : UInt64} (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
     (fuel : Nat) (input : Input) (point : Point) (inputRoot pointOwner pointRoot : UInt64) (size : locals.length = 61)
     (Q : Assertion Unit)
-    (next : Q (.Fallthrough initial { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := roundsFinishScanPrepared locals point pointOwner pointRoot, values := pointValues point pointOwner pointRoot })) :
+    (next : Q (.Fallthrough initial { params := roundsParams (inputOwner := inputOwner) fuel input point inputRoot pointOwner pointRoot, locals := roundsFinishScanPrepared locals point pointOwner pointRoot, values := pointValues point pointOwner pointRoot })) :
     wp Project.Beck.«module» (roundsFinish.take 9) Q initial
-      { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
+      { params := roundsParams (inputOwner := inputOwner) fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
   simp only [roundsFinish, func34, List.getElem?_cons_zero, List.getElem?_cons_succ, List.drop, List.take]
   wp_run [roundsParams, matrixParams, inputValues, pointValues, List.reverse_cons, List.reverse_nil, List.cons_append, List.nil_append,
     size, List.length_set, List.getElem?_set, List.getElem?_cons_zero, List.getElem?_cons_succ,
@@ -48,15 +48,15 @@ theorem rounds_finish_scan_shape : roundsFinish.take 18 =
     roundsFinish.take 9 ++ (.call 13 :: (roundsFinish.drop 10).take 8) := rfl
 
 set_option maxRecDepth 4096 in
-theorem roundsFinishScan_exact (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
+theorem roundsFinishScan_exact {inputOwner : UInt64} (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
     (fuel : Nat) (input : Input) (point : Point) (inputRoot pointOwner pointRoot : UInt64) (size : locals.length = 61)
     (represented : UInt64Array.At initial pointRoot point.numerators) (Q : Assertion Unit)
-    (next : Q (.Fallthrough initial { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := roundsFinishScanLocals locals point pointOwner pointRoot, values := [.i32 (if allFrozen point then 1 else 0)] })) :
+    (next : Q (.Fallthrough initial { params := roundsParams (inputOwner := inputOwner) fuel input point inputRoot pointOwner pointRoot, locals := roundsFinishScanLocals locals point pointOwner pointRoot, values := [.i32 (if allFrozen point then 1 else 0)] })) :
     wp Project.Beck.«module» (roundsFinish.take 18) Q initial
-      { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
+      { params := roundsParams (inputOwner := inputOwner) fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
   rw [rounds_finish_scan_shape]
   refine Sequence.wp_append (P := fun store frame => store = initial ∧ frame =
-    { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := roundsFinishScanPrepared locals point pointOwner pointRoot,
+    { params := roundsParams (inputOwner := inputOwner) fuel input point inputRoot pointOwner pointRoot, locals := roundsFinishScanPrepared locals point pointOwner pointRoot,
       values := pointValues point pointOwner pointRoot }) ?_ ?_
   · exact roundsFinishScanPrepare_exact env initial locals fuel input point inputRoot pointOwner pointRoot size _ ⟨rfl, rfl⟩
   rintro store frame ⟨same, frameSame⟩

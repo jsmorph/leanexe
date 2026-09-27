@@ -17876,3 +17876,11 @@ The job-parser target passes 3,576 build jobs.  The direction and outer-rounding
 `readInput_owner_exact` now covers the owner-zero call emitted by `compute`.  The proof retains separate owner and data registers through header checks, initial allocations, job parsing, and return.  It also records that a positive job count gives equal incidence owner and data pointers.  Zero jobs preserve the emitted distinct initial allocations.  The allocation bound remains `112 + 1520*n` bytes.
 
 The complete parser target passes 3,587 build jobs with standard logical axioms.  A mechanical edit initially inserted a proof expression into an introduction pattern.  Correcting that pattern resolved the diagnostic.  The empty-input rounding call, computation entry, global resource theorem, and independent artifact verification remain open.  Source and binary bytes are unchanged.
+
+### Beck zero-fuel call and computation entry fragments
+
+`rounds_zero_exact` proves the emitted zero-fuel function call for an already frozen point with arbitrary incidence owner and data pointers.  It returns that point and leaves the store unchanged.  The proof reuses the loop guard and final scan after generalizing their parameter representation.  This covers the distinct incidence pointers returned by parsing zero jobs.
+
+The computation entry now has checked fragments for its borrowed parser call, accepted-status guard, initial register preparation, and zero-array allocation.  The allocation proof reuses the capacity, allocator, and terminating replicate-loop theorems.  The parser call returns owned incidence, preserved input memory, the remaining allocation budget, and the owner equality needed for positive job counts.
+
+The combined execution gate passes 3,754 build jobs with standard logical axioms.  The dependency rebuild and zero-fuel theorem completed within the 300-second target limit.  Entry-fragment diagnostics caught a reserved identifier, malformed field-notation grouping, and an incorrectly predicted register update in the status guard.  Correcting those proof descriptions gave checked fragments in one to two seconds.  The documentation check passes 180 maintained files.  Complete entry composition, output construction and cleanup, the global resource theorem, and independent artifact verification remain open.  Source and binary bytes are unchanged.

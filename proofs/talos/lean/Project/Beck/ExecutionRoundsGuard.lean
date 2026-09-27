@@ -9,16 +9,16 @@ theorem rounds_guard_shape : roundsBody = roundsBody.take 7 ++ roundsBody.drop 7
 
 set_option maxRecDepth 4096 in
 set_option maxHeartbeats 2000000 in
-theorem roundsGuard_exact (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
+theorem roundsGuard_exact {inputOwner : UInt64} (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
     (fuel : Nat) (input : Input) (point : Point) (inputRoot pointOwner pointRoot internal : UInt64) (stopped : Bool)
     (fuelBound : fuel ≤ 6) (state : RoundsLocals locals stopped point pointOwner pointRoot internal)
     (Q : Assertion Unit)
     (next : fuel ≠ 0 → stopped = false → wp Project.Beck.«module» (roundsBody.drop 7) Q initial
-      { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := locals } env)
+      { params := roundsParams (inputOwner := inputOwner) fuel input point inputRoot pointOwner pointRoot, locals := locals } env)
     (done : fuel = 0 ∨ stopped = true → Q (.Break 1 initial
-      { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := locals })) :
+      { params := roundsParams (inputOwner := inputOwner) fuel input point inputRoot pointOwner pointRoot, locals := locals })) :
     wp Project.Beck.«module» roundsBody Q initial
-      { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
+      { params := roundsParams (inputOwner := inputOwner) fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
   have fit : fuel < UInt64.size := by change fuel < 18446744073709551616; omega
   have wordZero : fuel.toUInt64 = 0 ↔ fuel = 0 := by
     rw [← UInt64.toNat_inj, UInt64.toNat_ofNat_of_lt' fit, UInt64.toNat_zero]

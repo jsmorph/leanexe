@@ -19,15 +19,15 @@ theorem rounds_finish_shape : roundsFinish = roundsFinish.take 18 ++
 
 set_option maxRecDepth 4096 in
 set_option maxHeartbeats 2000000 in
-theorem roundsReturn_exact (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
+theorem roundsReturn_exact {inputOwner : UInt64} (env : HostEnv Unit) (initial : Store Unit) (locals : List Value)
     (fuel : Nat) (input : Input) (point : Point) (inputRoot pointOwner pointRoot internal : UInt64) (stopped : Bool)
     (state : RoundsLocals locals stopped point pointOwner pointRoot internal)
     (represented : UInt64Array.At initial pointRoot point.numerators) (frozen : allFrozen point = true)
     (Q : Assertion Unit)
     (next : ∀ finalFrame, finalFrame.values = pointValues point pointOwner pointRoot → Q (.Fallthrough initial finalFrame)) :
     wp Project.Beck.«module» (func34.drop 7) Q initial
-      { params := roundsParams fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
-  have paramsSize : (roundsParams fuel input point inputRoot pointOwner pointRoot).length = 10 := by
+      { params := roundsParams (inputOwner := inputOwner) fuel input point inputRoot pointOwner pointRoot, locals := locals } env := by
+  have paramsSize : (roundsParams (inputOwner := inputOwner) fuel input point inputRoot pointOwner pointRoot).length = 10 := by
     simp [roundsParams, matrixParams, inputValues, pointValues]
   rw [rounds_return_shape]
   cases stopped
