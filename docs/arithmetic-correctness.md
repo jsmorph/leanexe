@@ -469,8 +469,8 @@ retain standard Id layers. Helpers can capture outer values, call unary predicat
 and be called repeatedly. Both arguments and unused helper bodies are checked.
 Binary predicates have a distinct function kind, so treating their results as
 unconverted words is rejected. Binary predicate declarations also scope complete
-word-accumulator and Boolean-accumulator loop steps, including early exits, saved Boolean results and
-nested binary predicates. The body captures the current loop environment.
+word-accumulator and Boolean-accumulator loop steps, including early exits, saved
+Boolean results and nested binary predicates. The body captures the current loop environment.
 Unsupported bodies are rejected even when the helper is unused or the range is
 empty.
 Ordinary scalar word continuations and loop-step
@@ -589,6 +589,14 @@ Calls must supply exactly the declared number of arguments, in source order.
 All arguments are checked and evaluated, including ones unused by the body.
 Partial applications, function-valued parameters/results and
 top-level helper calls remain separate capabilities.
+
+Boolean loop steps also admit `Unit → Bool → ForInStep Bool` continuations,
+including the equivalent PUnit form and retained Id layers on the Boolean input
+and step result. These include continuations generated when both branches update
+the flag before a shared computation. Typed lookup distinguishes Unit and PUnit.
+Calls require the matching unit constructor and a checked Boolean argument.
+Captures, nested continuations, saved step results and early exits are preserved;
+unused bodies are checked even in empty ranges.
 
 Boolean loop steps support explicit `ForInStep.casesOn` and ordinary `match`
 over a `ForInStep Bool` value. Matches may appear in local helpers, nest, capture

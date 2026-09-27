@@ -8330,6 +8330,59 @@ def rangeBooleanScopeApplicationTail (count seed : UInt64) : Id UInt64 := do
     f (a == 0) || f (seed == 0)) (pure (pure (a == seed)))).toUInt64
 
 
+def rangeBooleanStepUnitFunctionDirect (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed != 0) fun i flag =>
+    let f := fun (_u : Unit) (b : Bool) =>
+      if i.toUInt64 == seed then ForInStep.done (!b) else ForInStep.yield b
+    f () flag
+
+def rangeBooleanStepUnitFunctionPUnit (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed != 0) fun i flag =>
+    let f := fun (_u : PUnit.{1}) (b : Bool) =>
+      if i.toUInt64 % 3 == seed then ForInStep.done b else ForInStep.yield (!b)
+    f PUnit.unit.{1} flag
+
+def rangeBooleanStepUnitFunctionRetained (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed != 0) fun i flag =>
+    let f : Unit → Id Bool → Id (Id (ForInStep Bool)) := fun _u b =>
+      pure (pure (if i.toUInt64 == seed then ForInStep.done (!b) else ForInStep.yield b))
+    Id.run (Id.run (f () (pure flag)))
+
+def rangeBooleanStepUnitFunctionCapture (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed != 0) fun i flag =>
+    let f := fun (_u : Unit) (b : Bool) =>
+      if i.toUInt64 == seed then ForInStep.done (b != flag) else ForInStep.yield b
+    f () (!flag)
+
+def rangeBooleanStepUnitFunctionNested (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed != 0) fun i flag =>
+    let f := fun (_u : Unit) (b : Bool) =>
+      if i.toUInt64 == seed then ForInStep.done (!b) else ForInStep.yield b
+    let g := fun (_u : PUnit.{1}) (b : Bool) => f () (b != flag)
+    g PUnit.unit.{1} flag
+
+def rangeBooleanStepUnitFunctionUnused (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed != 0) fun i flag =>
+    let _f := fun (_u : Unit) (b : Bool) =>
+      if i.toUInt64 == seed then ForInStep.done (!b) else ForInStep.yield b
+    ForInStep.yield (!flag)
+def rangeBooleanStepUnitFunctionGenerated (count seed : UInt64) : Id Bool := do
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    let f := fun x y : UInt64 => x + 3 * y == seed + a.toUInt64
+    let first := if a then seed else i.toUInt64
+    if f first (seed + i.toUInt64) then a := !a else a := f seed i.toUInt64
+    if f a.toUInt64 first then break
+  return a
+
+def rangeBooleanStepUnitFunctionWordTail (count seed : UInt64) : UInt64 :=
+  let flag : Bool := forIn (m := Id) [:count.toNat] (seed != 0) fun i flag =>
+    let f := fun (_u : Unit) (b : Bool) =>
+      if (i.toUInt64 + seed) % 7 == b.toUInt64 then ForInStep.done (!b) else ForInStep.yield b
+    f () (flag != (i.toUInt64 % 3 == 0))
+  if flag then seed + count else seed * 3 + 1
+
+
 def rangeBinaryFlagStepHelperDirect (count seed : UInt64) : Id Bool := do
   let mut a := seed != 0
   for i in [:count.toNat] do
@@ -12780,6 +12833,14 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBooleanScopeApplicationExit", (fun (x y : UInt64) => rangeBooleanScopeApplicationExit x y)),
    ("rangeBooleanScopeApplicationContinue", (fun (x y : UInt64) => rangeBooleanScopeApplicationContinue x y)),
    ("rangeBooleanScopeApplicationTail", (fun (x y : UInt64) => rangeBooleanScopeApplicationTail x y)),
+   ("rangeBooleanStepUnitFunctionDirect", (fun (x y : UInt64) => (rangeBooleanStepUnitFunctionDirect x y).toUInt64)),
+   ("rangeBooleanStepUnitFunctionPUnit", (fun (x y : UInt64) => (rangeBooleanStepUnitFunctionPUnit x y).toUInt64)),
+   ("rangeBooleanStepUnitFunctionRetained", (fun (x y : UInt64) => (rangeBooleanStepUnitFunctionRetained x y).toUInt64)),
+   ("rangeBooleanStepUnitFunctionCapture", (fun (x y : UInt64) => (rangeBooleanStepUnitFunctionCapture x y).toUInt64)),
+   ("rangeBooleanStepUnitFunctionNested", (fun (x y : UInt64) => (rangeBooleanStepUnitFunctionNested x y).toUInt64)),
+   ("rangeBooleanStepUnitFunctionUnused", (fun (x y : UInt64) => (rangeBooleanStepUnitFunctionUnused x y).toUInt64)),
+   ("rangeBooleanStepUnitFunctionGenerated", (fun (x y : UInt64) => (rangeBooleanStepUnitFunctionGenerated x y).toUInt64)),
+   ("rangeBooleanStepUnitFunctionWordTail", (fun (x y : UInt64) => rangeBooleanStepUnitFunctionWordTail x y)),
    ("rangeBinaryFlagStepHelperDirect", (fun (x y : UInt64) => (rangeBinaryFlagStepHelperDirect x y).toUInt64)),
    ("rangeBinaryFlagStepHelperExit", (fun (x y : UInt64) => (rangeBinaryFlagStepHelperExit x y).toUInt64)),
    ("rangeBinaryFlagStepHelperContinue", (fun (x y : UInt64) => (rangeBinaryFlagStepHelperContinue x y).toUInt64)),

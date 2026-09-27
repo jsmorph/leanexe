@@ -1004,5 +1004,13 @@
   "rangeBinaryFlagStepHelperUnused",
   "rangeBinaryFlagStepHelperWordTail",
   "rangeBinaryFlagStepHelperCapturedExit",
-  "rangeBinaryFlagStepHelperChoice"
+  "rangeBinaryFlagStepHelperChoice",
+  "rangeBooleanStepUnitFunctionDirect",
+  "rangeBooleanStepUnitFunctionPUnit",
+  "rangeBooleanStepUnitFunctionRetained",
+  "rangeBooleanStepUnitFunctionCapture",
+  "rangeBooleanStepUnitFunctionNested",
+  "rangeBooleanStepUnitFunctionUnused",
+  "rangeBooleanStepUnitFunctionGenerated",
+  "rangeBooleanStepUnitFunctionWordTail"
 ]
