@@ -109,7 +109,7 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
   | case11 => contradiction
   | case12 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary notWord type parsed enclosingIH directIH =>
     rcases scalarBooleanRangeContinuation_success compiled with
-      ⟨expression, checked, sameValue, validated, emitted⟩ | ⟨argument, bound, sameBody, validated, emitted⟩
+      ⟨expression, checked, sameValue, validated, emitted⟩ | ⟨call, argument, bound, sameBody, validated, emitted⟩
     · have sameType := booleanType_sound parsed
       subst resultType
       subst value
@@ -150,7 +150,7 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
           rcases List.mem_cons.mp member with rfl | member
           · trivial
           · exact total binding member)
-      exact ⟨flag, .applyWord ⟨name, typeName, typeBi, paramBi, type, nondep⟩ hx evaluated, meaning⟩
+      exact ⟨flag, .applyWord ⟨name, typeName, typeBi, paramBi, type, nondep⟩ call hx evaluated, meaning⟩
   | case13 => contradiction
   | case14 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary type parsed checked validated ih =>
     have same := scalarResultType_sound parsed
@@ -180,7 +180,7 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
   | case15 => contradiction
   | case16 locals name typeName resultType typeBi paramName value paramBi body nondep notWord type parsed enclosingIH directIH =>
     rcases scalarBooleanRangeContinuation_success compiled with
-      ⟨expression, checked, sameValue, validated, emitted⟩ | ⟨argument, bound, sameBody, validated, emitted⟩
+      ⟨expression, checked, sameValue, validated, emitted⟩ | ⟨call, argument, bound, sameBody, validated, emitted⟩
     · have sameType := booleanType_sound parsed
       subst resultType
       subst value
@@ -226,7 +226,7 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
           rcases List.mem_cons.mp member with rfl | member
           · trivial
           · exact total binding member)
-      exact ⟨result, .applyBoolean ⟨name, typeName, typeBi, paramBi, type, nondep⟩ hx evaluated, meaning⟩
+      exact ⟨result, .applyBoolean ⟨name, typeName, typeBi, paramBi, type, nondep⟩ call hx evaluated, meaning⟩
   | case17 => contradiction
   | case18 locals name typeName resultType typeBi paramName value paramBi body nondep type parsed checked validated ih =>
     have same := scalarResultType_sound parsed
