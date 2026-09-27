@@ -906,13 +906,22 @@ step-result bind is preserved for the next capability. The corpus contains
 1593 declarations. Evidence is in
 [the Boolean step result archive](proofs/compiler/boolean-step-result-2026-09-27/README.md).
 
-Current capability: functions taking complete Boolean step results. Distinct
-source and compiled closures preserve value and exit status through captures,
-nested/repeated calls, and exact Id input/output annotations. Source totality,
-extraction correctness, acceptance/support and invariants pass. All four fixed
-function probes and the conditional step-result bind now compile. New tests pass
-14,064 native/IR comparisons and 8,064 invalid-input checks. The public compiler
-build passes; source-to-WASM audits and independent V8 comparisons are pending.
+Functions taking complete Boolean step results are proved through WASM. Distinct
+source and compiled closures preserve both result components through captures,
+nested/repeated calls, exact Id annotations and conditional continuations.
+Ignoring a done argument continues the loop. The source-to-WASM theorem and
+nineteen audits pass. Native Lean/V8 agree on 1,053 inputs across 54 declarations;
+44 prior modules retain identical bytes and 0 changed. New tests pass
+14,064 comparisons and 8,064 invalid-input checks; prior tests pass 67,776
+comparisons and 35,232 invalid-input checks. Four fixed function probes and
+the conditional result bind are restored; three result controls remain accepted.
+The corpus contains 1603 declarations. Evidence is in
+[the step result function archive](proofs/compiler/boolean-step-result-function-2026-09-27/README.md).
+
+Current capability: scalar helper declarations within Boolean steps. Four fixed
+word/Boolean input/output probes are preserved. Reuse scalar closure semantics
+and proofs while checking exact annotations and lexical captures, then prove
+this extension through WASM before adding step-result pattern matching.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
