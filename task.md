@@ -350,7 +350,17 @@ native/IR comparisons, 20,352 invalid-input checks and 1,536 controls. Prior tes
 pass 93,130 comparisons, 67,023 rejections and 3,456 controls. Evidence is in
 [the public result annotation archive](proofs/compiler/public-result-id-2026-09-26/README.md).
 
-Next: Boolean parameters and loop results, retained instances and broader signatures. Full-dialect
+Current capability: mixed Bool/UInt64 public parameters in scalar functions.
+Boolean i64 inputs decode zero as false and nonzero as true. Source application
+and extraction preserve typed, normalized bindings and check each lambda domain
+against the declared parameter kind. Focused source/IR and WASM proofs pass; final
+compiler, native and V8 checks are next. Existing word-parameter loops remain supported.
+
+Next: Boolean parameter captures in loops, Boolean loop results, retained instances
+and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
+Bool-to-Bool helpers, and allow compound helper-let bodies under public Boolean
+result conversion. Compound propositions combining Boolean equality with Boolean
+truth guards also need coverage. Native fixtures exposed these grammar gaps. Full-dialect
 correctness remains unfinished.
 Complete each capability through WASM and commit/push frequently.
 
