@@ -19,6 +19,10 @@ Schema version 2, library profile 1, has the following ordered wire fields.  All
 
 Function bodies are linear instruction records rather than Lean runtime objects.  Tags 0 through 40 encode scalar, indexed, memory, return, and drop instructions.  Tags 41 through 44 open block, loop, `i64`-result `if`, and `i32`-result `if` records.  Tags 45 and 46 encode `br` and `br_if`; tag 47 is `else`; and tag 48 closes structured control.  The validator checks local, global, function, branch, export, and mutable-global references before emission.
 
+Schema version 2 rejects modules with static data or floating-point
+instructions.  The production binary and WAT serializers support those
+modules.
+
 The library profile limits inputs to 64 MiB, one function body to 32 MiB, output to 128 MiB, functions and exports to 65,536 each, globals to 256, locals to 1,048,576, instructions per body to 1,048,576, nesting depth to 256, and export names to 4,096 bytes.  An incompatible wire change requires a new schema version.  A compatible new module family requires a distinct profile when its assumptions differ from library profile 1.
 
 ## Native and host boundaries

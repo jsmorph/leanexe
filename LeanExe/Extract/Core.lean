@@ -23,6 +23,32 @@ def extractScalarTree? (locals : List Binding) (expr : Expr) : Option IRExpr := 
   let slots ← scalarBindingSlots? locals
   extractScalarExpr slots expr
 
+def staticArrayWords? (env : Environment) (name : Name) : Option (Array UInt64) := do
+  let info ← env.find? name
+  if info.isUnsafe || info.isPartial then none else do
+    let value ← info.value?
+    let (.const ``List.toArray _, [_, items]) := appFnArgs value | none
+    let (.u64, values) ← listLiteralItems? env items | none
+    let words ← values.mapM fun item => do
+      let .u64 word ← extractScalarExpr [] item | none
+      pure (UInt64.ofNat word)
+    pure words.toArray
+
+def collectStaticArrays (env : Environment) (names : List Name) :
+    Array (Name × Nat) × Array UInt64 := Id.run do
+  let mut arrays := #[]
+  let mut data := #[]
+  for name in names do
+    if let some words := staticArrayWords? env name then
+      arrays := arrays.push (name, 4096 + 8 * data.size)
+      data := data.push (UInt64.ofNat words.size) ++ words
+  return (arrays, data)
+
+def staticArrayAddress? (ctx : Context) (expr : Expr) : Option IRExpr := do
+  let .const name _ := expr.consumeMData | none
+  let (_, address) ← ctx.staticArrays.find? (fun item => item.fst == name)
+  pure (.u64 address)
+
 structure ExtractedForInStepBody where
   bodyTargets : List Nat
   bodyValues : List IRExpr
@@ -247,6 +273,12 @@ def directScalarLePrimitive (name : Name) : Bool :=
     name == ``UInt8.le
 
 mutual
+  partial def extractArrayReadFrom (ctx : Context) (locals : List Binding)
+      (nextLocal : Nat) (array : Expr) : Except String (IRExpr × Nat) :=
+    match staticArrayAddress? ctx array with
+    | some address => .ok (address, nextLocal)
+    | none => extractExprFrom ctx locals nextLocal array
+
   partial def extractStructuralRecCallValueFrom
       (ctx : Context)
       (locals : List Binding)
@@ -2493,7 +2525,7 @@ mutual
             | itemTy :: _, index :: array :: _ =>
                 match typeAtom? ctx.env itemTy with
                 | some itemTy =>
-                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let arrayResult ← extractArrayReadFrom ctx locals nextLocal array
                     let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                     let value ← arrayLoadValue itemTy arrayResult.fst indexResult.fst
                     .ok (value, indexResult.snd)
@@ -2504,7 +2536,7 @@ mutual
             | index :: array :: _ =>
                 match primitiveReceiverType? ctx.env args with
                 | some (.array itemTy) =>
-                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let arrayResult ← extractArrayReadFrom ctx locals nextLocal array
                     let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                     let value ← arrayLoadValue itemTy arrayResult.fst indexResult.fst
                     .ok (value, indexResult.snd)
@@ -2526,7 +2558,7 @@ mutual
             | _proof :: index :: array :: _ =>
                 match primitiveReceiverType? ctx.env args with
                 | some (.array itemTy) =>
-                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let arrayResult ← extractArrayReadFrom ctx locals nextLocal array
                     let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                     let value ← arrayLoadValue itemTy arrayResult.fst indexResult.fst
                     .ok (value, indexResult.snd)
@@ -4515,7 +4547,7 @@ mutual
             | (.const ``Array.get!Internal _, args) =>
                 match args.reverse with
                 | index :: array :: _ =>
-                    let arrayResult ← extractExprFrom ctx locals nextLocal array
+                    let arrayResult ← extractArrayReadFrom ctx locals nextLocal array
                     let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                     .ok (.arrayGetSlot 1 0 arrayResult.fst indexResult.fst, indexResult.snd)
                 | _ => .error "unsupported Array.get!Internal application"
@@ -4532,7 +4564,7 @@ mutual
                             (.byteArrayGet parts.snd.fst parts.snd.snd indexResult.fst),
                             indexResult.snd)
                     | _ =>
-                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let arrayResult ← extractArrayReadFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         .ok (.arrayGetSlot 1 0 arrayResult.fst indexResult.fst, indexResult.snd)
                 | _ => .error "unsupported GetElem?.getElem! application"
@@ -4549,7 +4581,7 @@ mutual
                             (.byteArrayGet parts.snd.fst parts.snd.snd indexResult.fst),
                             indexResult.snd)
                     | _ =>
-                        let arrayResult ← extractExprFrom ctx locals nextLocal array
+                        let arrayResult ← extractArrayReadFrom ctx locals nextLocal array
                         let indexResult ← extractExprFrom ctx locals arrayResult.snd index
                         .ok (.arrayGetSlot 1 0 arrayResult.fst indexResult.fst, indexResult.snd)
                 | _ => .error "unsupported GetElem.getElem application"
@@ -7552,6 +7584,9 @@ def compileEnvironmentWithEntryModeDetailed
     synthetics := collectFunctionExpressionStructuralSynthetics env root namesList sig value synthetics
   let primitives := if allowByteIO then [``LeanExe.ByteIO.read, ``LeanExe.ByteIO.write] else []
   let names := (namesList ++ synthetics.toList.map (fun synth => synth.name) ++ primitives).toArray
+  let (staticArrays, staticData) := collectStaticArrays env namesList
+  if 4096 + 8 * staticData.size > 4294967296 then
+    throw "constant arrays exceed WASM memory capacity"
   let baseCtx : Context :=
     { env := env,
       root := root,
@@ -7559,14 +7594,15 @@ def compileEnvironmentWithEntryModeDetailed
       synthetics := synthetics,
       freshResultOwnerOffsets := #[],
       inlineStack := [],
-      allowByteIO := allowByteIO }
+      allowByteIO := allowByteIO,
+      staticArrays }
   let firstPassFuncs ← extractFunctionsWithEntryMode exportEntry baseCtx entry namesList
   let freshResultOwnerOffsets :=
     freshResultOwnerOffsetsForModule baseCtx { funcs := firstPassFuncs }
   let ctx : Context := { baseCtx with freshResultOwnerOffsets := freshResultOwnerOffsets }
   let releaseJudgments ← validateModuleReleases ctx entry namesList
   let funcs ← extractFunctionsWithEntryMode exportEntry ctx entry namesList
-  .ok { ctx := ctx, module := { funcs := funcs }, releaseJudgments := releaseJudgments }
+  .ok { ctx := ctx, module := { funcs := funcs, staticData }, releaseJudgments := releaseJudgments }
 
 def compileEnvironmentWithEntryMode
     (exportEntry : Bool)
@@ -7641,7 +7677,7 @@ def compileExportsEnvironment (env : Environment) (moduleName : Name)
       locals := paramSlot + internalSlots sig.result
       body := .call resultSlots index args
       results := results }
-  return { funcs }
+  return { compiled.module with funcs }
 
 def compileExports (moduleText entriesText : String) : IO IRModule := do
   let moduleName := LeanExe.Extract.Env.parseName moduleText

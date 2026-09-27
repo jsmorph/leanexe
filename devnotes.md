@@ -1,3 +1,61 @@
+## 2026-09-27: Static numeric tables
+
+The exponential port required a constant 2 KiB table.  The user approved static
+table storage in the compiler.  Direct reads from named `Array UInt64`
+literals now use a WASM data segment.  The allocator and reset operation
+preserve that region.  Array updates retain their existing copy and ownership
+behavior.  The experimental image schema reports its unsupported static-data
+case.  Production binary, WAT, and WASI serializers emit the data segment.
+
+An initial parser extension substituted nested list bindings and hit the
+120-second compilation limit.  Tracking parsed list bindings removes the
+repeated expansion.  An allocation test then found a second indexed-read
+extraction path.  Both paths now use the same static lookup helper.
+
+- [x] Test values, bounds, zero-allocation reads, copying, and reset.
+- [x] Test WAT/binary agreement and a WASI table client.
+- [x] Run existing multiple-export, binary64, and reference-count tests.
+
+The static-table tests pass.  Existing tests pass for multiple exports and
+ownership, binary64 subtraction/division/square root, and 48 reference-count
+cases with seven allocation-accounting cases.  The module-image integration
+checks build.  These checks supply compiler development evidence.
+
+## 2026-09-27: Full-range binary64 exponential
+
+The user approved a port of Arm's 128-entry, degree-five exponential and a
+compiler extension for static numeric lookup tables.  The implementation
+follows the non-FMA, round-to-nearest path in
+[Arm's exponential source](https://github.com/ARM-software/optimized-routines/blob/master/math/exp.c)
+and uses its [coefficients and table](https://github.com/ARM-software/optimized-routines/blob/master/math/exp_data.c)
+under the MIT license.  The existing degree-six Taylor component remains
+available as `expTaylor6`.
+
+The table occupies 2 KiB.  Named `Array UInt64` literals now have storage in a
+WASM data segment for direct indexed reads.  The compiler reserves that storage
+before the allocation arena, and reset preserves it.  Array values passed to
+other operations retain their existing ownership and allocation behavior.
+Large Lean array literals contain nested constant-list bindings.  The literal
+parser now recognizes those bindings when their elements are scalar literals.
+
+Lean 4.34.0-rc2 declares `Float.exp` with `@[extern "exp"]`, making it a
+comparison with the platform math library.  Accuracy tests also compare with
+JavaScript `Math.exp` and a high-precision reference from Python's standard
+library.  [Decimal.exp](https://docs.python.org/3/library/decimal.html#decimal.Decimal.exp)
+rounds to nearest at the selected decimal precision.  Adjacent decimal values
+enclose that result's rounding uncertainty.  The test increases precision
+until both bounds round to the same binary64 value.
+
+The user clarified that the required verification concerns the emitted WASM's
+behavior.  Source and compiler tests supply development evidence.  The target
+proofs must establish the WASM's behavior under explicit assumptions.  Whether
+the earlier PoC deferral continues to apply is awaiting clarification.
+
+- [x] Port range reduction, polynomial evaluation, and boundary handling.
+- [ ] Test static data storage and existing compiler behavior.
+- [ ] Test numerical accuracy, native Lean agreement, and a sigmoid client.
+- [ ] Review the README, annotated citations, and rendered report.
+
 ## 2026-09-27: Component prose and verification status
 
 Each component README and report now explains how LeanExe compiles the source

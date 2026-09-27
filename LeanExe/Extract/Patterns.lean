@@ -353,19 +353,29 @@ partial def forInStepBody? (resultTy : Ty) (expr : Expr) : Except String ForInSt
           | none => .error s!"unsupported conditional for-in accumulator type: {reprStr resultTy}"
       | _ => .error s!"unsupported for-in body: {expr}"
 
-partial def listLiteralItems? (env : Environment) (expr : Expr) : Option (Ty × List Expr) :=
-  match appFnArgs expr with
-  | (.const ``List.nil _, [itemTy]) =>
-      typeAtom? env itemTy |>.map (fun ty => (ty, []))
-  | (.const ``List.cons _, [itemTy, head, tail]) =>
-      match typeAtom? env itemTy, listLiteralItems? env tail with
-      | some ty, some (tailTy, items) =>
-          if ty == tailTy then
-            some (ty, head :: items)
-          else
-            none
-      | _, _ => none
-  | _ => none
+partial def listLiteralItemsWith? (env : Environment)
+    (bindings : List (Ty × List Expr)) (expr : Expr) : Option (Ty × List Expr) :=
+  match expr.consumeMData with
+  | .bvar index => bindings[index]?
+  | .letE _ _ value body _ => do
+      let items ← listLiteralItemsWith? env bindings value
+      if items.snd.all (fun item => (scalarLiteralExpr? item).isSome) then
+        listLiteralItemsWith? env (items :: bindings) body
+      else none
+  | _ =>
+    match appFnArgs expr with
+    | (.const ``List.nil _, [itemTy]) =>
+        typeAtom? env itemTy |>.map (fun ty => (ty, []))
+    | (.const ``List.cons _, [itemTy, head, tail]) =>
+        if !bindings.isEmpty && (scalarLiteralExpr? head).isNone then none else
+        match typeAtom? env itemTy, listLiteralItemsWith? env bindings tail with
+        | some ty, some (tailTy, items) =>
+            if ty == tailTy then some (ty, head :: items) else none
+        | _, _ => none
+    | _ => none
+
+def listLiteralItems? (env : Environment) (expr : Expr) : Option (Ty × List Expr) :=
+  listLiteralItemsWith? env [] expr
 
 def isMatcherName (candidate : Name) : Bool :=
   match candidate with

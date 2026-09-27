@@ -133,7 +133,7 @@ def corePlan (module_ : Module) : List PlanFunc :=
     [{ typeIndex := count, params := 1, results := 1, extraLocals := 6,
        code := coreAllocInstrs },
      { typeIndex := count + 1, params := 0, results := 0, extraLocals := 0,
-       code := coreResetInstrs },
+       code := coreResetInstrs module_.heapStart },
      { typeIndex := count + 2, params := 1, results := 1, extraLocals := 1,
        code := coreRetainInstrs },
      { typeIndex := count + 3, params := 1, results := 0, extraLocals := 8,
@@ -186,9 +186,16 @@ def exportLines (module_ : Module) : List String :=
      s!"  (export \"releaseCount\" (global {runtimeStatGlobal .releases}))",
      s!"  (export \"freeCount\" (global {runtimeStatGlobal .frees}))"]
 
-def globalLines : List String :=
-  [4096, 0, 0, 0, 0, 0].zipIdx.map fun (init, index) =>
+def globalLines (heapStart : Nat := 4096) : List String :=
+  [heapStart, 0, 0, 0, 0, 0].zipIdx.map fun (init, index) =>
     s!"  (global (;{index};) (mut i64) (i64.const {init}))"
+
+def dataLines (module_ : Module) : List String :=
+  if module_.staticData.isEmpty then [] else
+    let hex := "0123456789abcdef".toList.toArray
+    let bytes := String.join ((staticDataBytes module_).map fun byte =>
+      String.ofList ['\\', hex[byte.toNat / 16]!, hex[byte.toNat % 16]!])
+    [s!"  (data (i32.const 4096) \"{bytes}\")"]
 
 def moduleWat (module_ : Module) : String :=
   let plan := corePlan module_
@@ -201,10 +208,11 @@ def moduleWat (module_ : Module) : String :=
   let lines :=
     ["(module"] ++
       typeLines ++
-      ["  (memory (;0;) 16)"] ++
-      globalLines ++
+      [s!"  (memory (;0;) {module_.memoryPages})"] ++
+      globalLines module_.heapStart ++
       exportLines module_ ++
       (plan.zipIdx.flatMap fun (func, index) => funcLines index func) ++
+      dataLines module_ ++
       [")"]
   String.intercalate "\n" lines ++ "\n"
 

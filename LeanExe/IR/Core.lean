@@ -236,8 +236,15 @@ mutual
 
   structure Module where
     funcs : Array Func
+    staticData : Array UInt64 := #[]
     deriving BEq, Repr
 end
+
+def Module.heapStart (module_ : Module) : Nat :=
+  4096 + 8 * module_.staticData.size
+
+def Module.memoryPages (module_ : Module) : Nat :=
+  max 16 ((module_.heapStart + 65535) / 65536)
 
 def Module.getFunc? (module_ : Module) (index : Nat) : Option Func :=
   module_.funcs[index]?
