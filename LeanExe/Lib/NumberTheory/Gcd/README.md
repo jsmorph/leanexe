@@ -2,7 +2,7 @@
 
 This implementation computes the greatest common divisor of two `UInt64` values with Euclid's remainder loop.  Zero inputs are accepted, including `gcd 0 0 = 0`.  It belongs to the number-theory library.
 
-The [binary GCD component](../binary-gcd/README.md) implements a different algorithm for the same task.  Its fraction client uses the same input and output conventions.
+The [binary GCD component](../BinaryGcd/README.md) implements a different algorithm for the same task.  Its fraction client uses the same input and output conventions.
 
 ## Use
 
@@ -17,16 +17,16 @@ tools/seminum ratio 2 1,3,2 2,2
 # 5/2
 ```
 
-The [setup guide](../../README.md#setup-and-commands) lists prerequisites.  Arguments are decimal integers from zero through `18446744073709551615`.  Fraction reduction requires a positive denominator.  Invalid input exits with status 2 and a diagnostic on stderr.
+The [setup guide](../../../../libraries/README.md#setup-and-commands) lists prerequisites.  Arguments are decimal integers from zero through `18446744073709551615`.  Fraction reduction requires a positive denominator.  Invalid input exits with status 2 and a diagnostic on stderr.
 
 ```lean
-import LeanExe.Lib.NumberTheory.Gcd
+import LeanExe.Lib.NumberTheory.Gcd.Basic
 
 def LeanExe.Examples.commonFactor (a b : UInt64) : UInt64 :=
   LeanExe.Lib.NumberTheory.gcd a b
 ```
 
-The API is `gcd (a b : UInt64) : UInt64`.  The [source](../../../LeanExe/Lib/NumberTheory/Gcd.lean) contains the loop.  The [client programs](../../../LeanExe/Examples/Seminum.lean) use it for fraction reduction and for a polynomial ratio that also calls the polynomial library.
+The API is `gcd (a b : UInt64) : UInt64`.  The [source](Basic.lean) contains the loop.  The [client programs](../../../Examples/Seminum.lean) use it for fraction reduction and for a polynomial ratio that also calls the polynomial library.
 
 ## Specification and tests
 
