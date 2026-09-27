@@ -387,12 +387,15 @@ eighteen ranges; eighteen prior modules retain identical bytes. New tests pass
 182,424 comparisons, 92,160 invalid-input checks and 6,816 controls. Evidence is in
 [the Boolean loop-result archive](proofs/compiler/public-boolean-loop-results-2026-09-27/README.md).
 
-Current capability: standard Id monadic binding of a word loop into a Boolean
-continuation. Check exact input/continuation annotations and standard instances,
-then reuse the proved loop plan and Boolean result encoding. Source evaluation,
-acceptance, extraction correctness, public application and IR invariant checks
-pass. New tests pass 32,496 native/IR comparisons, 46,080 invalid-input checks and
-2,304 explicit-let controls. The complete compiler theorem and V8 checks are next.
+Standard Id monadic binding of word loops into Boolean continuations is complete.
+Exact continuation domains and standard instances are checked, including retained
+Id input/output annotations. The complete source-to-WASM theorem and nineteen
+audits pass. Native Lean/V8 agree on 579 inputs across 28 declarations, including
+twenty ranges; eighteen prior modules retain identical bytes. New tests pass
+32,496 native/IR comparisons, 46,080 invalid-input checks and 2,304 explicit-let
+controls. Prior tests pass 121,416 comparisons, 67,200 invalid-input checks and
+4,224 controls. Evidence is in
+[the Boolean loop-bind archive](proofs/compiler/boolean-loop-bind-2026-09-27/README.md).
 
 Next: scalar setup before Boolean loops, retained instances and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean

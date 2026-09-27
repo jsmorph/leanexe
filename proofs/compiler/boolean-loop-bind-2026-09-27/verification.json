@@ -1,0 +1,153 @@
+{
+  "candidate": "9c95d8ab4d24ad79f2abcba8789e8a39cd12701b",
+  "proofCandidate": "d489bfd9933e057f79ab1df78ab0fbac9397f3b2",
+  "proofReuse": "Only native fixture names and test registrations changed after the proof gate; compiler and proof sources are identical.",
+  "branch": "correct",
+  "lean": "4.34.0-rc2",
+  "leanCommit": "6a10ac8c22beadecabdbb0919c2b50214762f91d",
+  "node": "24.13.0",
+  "runner": "tools/leanrun, authorized local mode, serial lock",
+  "proofCommand": "tools/arithmetic-check.js proof",
+  "axiomAudits": 19,
+  "engineCommand": "tools/arithmetic-check.js subset-engine boolean-loop-bind",
+  "nativeV8Comparisons": 579,
+  "declarations": 28,
+  "rangeDeclarations": 20,
+  "rangeComparisons": 480,
+  "priorModulesByteIdentical": 18,
+  "focusedNativeIRComparisons": 32496,
+  "focusedRejections": 46080,
+  "explicitLetControls": 2304,
+  "priorNativeIRComparisons": 121416,
+  "priorRejections": 67200,
+  "priorAdmissionControls": 4224,
+  "fullCorpusDeclarations": 1126,
+  "deferred": "Scalar setup before Boolean loops; compound and pure-wrapped Boolean helper bodies; compound proposition decisions; full LeanExe dialect compiler correctness.",
+  "sourceHashes": {
+    "LeanExe/Extract/ScalarBooleanRange.lean": "dff6986177e83604719e1a8398026ab4f1e35c0c087d0797087298ccf49dea96",
+    "LeanExe/Extract/ScalarBooleanRangeCorrectness.lean": "d365a44a5b5efa8f9debcd86f88e89a71ea28b3c76fb1d8617c6086bc6ac9c33",
+    "LeanExe/Extract/ScalarBooleanRangeInvariant.lean": "e988d4480fa9c76b9891d93e4c049af4207323360736a04b26c4a8134d369a8f",
+    "LeanExe/Extract/ScalarBooleanRangeSyntax.lean": "c252399e44be8e6fa3f7039bc7b1c2d6ee0c55d94c4c7f4e319f3e034f41bffc",
+    "LeanExe/Source/ScalarBooleanRange.lean": "e86646cbbcc3a1b46e2f5f51828257a4a9b7ae2975e4ce5bf5f98a7fae5cbd4b",
+    "test/ArithmeticMilestone.lean": "8f486b83695c24f7eb4b87bf84ebb8b64747d976cf7406c274c9ffe87d103ca9",
+    "test/arithmetic-engine-groups.json": "de81f2f71008cebfd2c41bdbc728474eafbe34f653005a20aa45181a41a2cd94",
+    "test/arithmetic-range-cases.json": "b4545e7a0e7de43a3c1b511e49b06d823b06b766756dab27c8760a8f609a5de2",
+    "test/arithmetic_mode.lean": "b7b7f2d0b0baf6cc5ae62e59e6a4eba67b42dab8021cb28590a96adfa7fb71f9",
+    "test/scalar_boolean_loop_bind.lean": "56f76cbf9c11f0314bde2689a93db3b1dd98f9f064e2168825c820186deb8544",
+    "test/scalar_boolean_loop_bind_syntax.lean": "062d2803060612e5df926212e78d14e4af9a1f3f0afdec3e4d3d101fb9f23e64"
+  },
+  "modules": {
+    "constant": {
+      "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "bytes": 1042
+    },
+    "publicFlagBind": {
+      "sha256": "24f982c3518cbf8256a464f2b9bc7fa132bdf237f3ce8b11eda6a54ec45a27f5",
+      "bytes": 1176
+    },
+    "publicFlagResult": {
+      "sha256": "b4255409bb6e98c1b54f3256e01344a6fe033cc4a0f54e3fa5494b0e86f38095",
+      "bytes": 1101
+    },
+    "publicFlagWord": {
+      "sha256": "d239e95b104196c33b596f359e83b3fdb4b6dbd50584efdd7d8c8823f07fb1b7",
+      "bytes": 1079
+    },
+    "publicIdBool": {
+      "sha256": "bc07877a9b0223d53d85885e40fb3b25bddd511b570ba1f81adbbf5805b1228c",
+      "bytes": 1086
+    },
+    "publicIdWord": {
+      "sha256": "e0f3865d01059bcb84225a0c018d6259a2c8f928829d4de38213e3cf24a53fa9",
+      "bytes": 1051
+    },
+    "publicInputIdResult": {
+      "sha256": "dd5e7cfe6bcf055757b30010da3aef55d8d48fc21579546ddd7a73e3258630e8",
+      "bytes": 1105
+    },
+    "publicInputIdWord": {
+      "sha256": "0dfd7f9a5e0f9c1b004fa914f238b00e8adbe503c54979e8d8127aca5e16f3e2",
+      "bytes": 1056
+    },
+    "rangeBoolCapture": {
+      "sha256": "2dfd3e89e5acbd3f2fc8d54020f7dc7b821b2978287d2a53f9aed03c0d292e2d",
+      "bytes": 1203
+    },
+    "rangeBoolContinue": {
+      "sha256": "74770e4395a4754e8eff90914b28419922d79114e897bce28474f10dbacbbcf2",
+      "bytes": 1219
+    },
+    "rangeBoolExit": {
+      "sha256": "b3cab2134a53f3c26cd21fd91715eda0b6a47befa049ad96802e71a36e4a4704",
+      "bytes": 1231
+    },
+    "rangeBoolFlag": {
+      "sha256": "f662bcea80e272f2ee75dea1fae2aa61b042bf808940e924cc166eb5f13fcc38",
+      "bytes": 1326
+    },
+    "rangeBoolResultBindCapture": {
+      "sha256": "8b74b03158fd5a2957881d4c806fd49b551407133e56718acb7f3dc157397b02",
+      "bytes": 1242
+    },
+    "rangeBoolResultBindContinue": {
+      "sha256": "8989d7c5dbdd1fff5dff3de3f130c51f2167a9d808a62f41c54afe801071c29a",
+      "bytes": 1230
+    },
+    "rangeBoolResultBindExit": {
+      "sha256": "cd5c0336383b1691bd4498c9f65bdf98499758689e2d153a74ceb73c8853808c",
+      "bytes": 1242
+    },
+    "rangeBoolResultBindFlag": {
+      "sha256": "1f307e9ad3ac6f6a353cb297384573c96b4ab21aee9a8fe6e7ddf81395996f25",
+      "bytes": 1337
+    },
+    "rangeBoolResultBindIdAction": {
+      "sha256": "2038772d394b5baf88975de2d04c5e163729607fb6f9fd06b92a4077e45d17b0",
+      "bytes": 1225
+    },
+    "rangeBoolResultBindIdInputs": {
+      "sha256": "de06d4bb1f4a31cfddd8112bd0059d01a443a14d36e2622a8d70825c822cd3e2",
+      "bytes": 1358
+    },
+    "rangeBoolResultBindNestedResult": {
+      "sha256": "894b3d7c0d0521b399ac75c41640c0741f8ada6e35da9bb2e2f24a55aeb59a66",
+      "bytes": 1210
+    },
+    "rangeBoolResultBindStepHelper": {
+      "sha256": "e68c3e94862f5a274c23e45b497102d035be106b5869604a8d98ef552432b503",
+      "bytes": 1251
+    },
+    "rangeBoolResultBindStride": {
+      "sha256": "a04a2666dfb3d73567011ffea79f73e0fd80f0d472f75572ba64f28c329be85b",
+      "bytes": 1301
+    },
+    "rangeBoolResultBindYield": {
+      "sha256": "dc6de1ecced4484c039c2e3fcb773fa5a7528fbab92fcc82257ce24a54a35806",
+      "bytes": 1136
+    },
+    "rangeBoolRun": {
+      "sha256": "205aecf5bf98a198af631b0bc393205ff8a948d135bb4228105b7a749e8ff6d2",
+      "bytes": 1208
+    },
+    "rangeBoolStride": {
+      "sha256": "92ed2bd814c244c4ce86536fca4b99b4b599c07852c3fb4d7e3de75d0157d639",
+      "bytes": 1290
+    },
+    "rangeBoolYield": {
+      "sha256": "815dc17a18e97294ffabe445c871f291394627064fc63d717cb7d352d5eafcde",
+      "bytes": 1125
+    },
+    "rangeInputIdContinue": {
+      "sha256": "4410cfd039bfd28bd7435d7e1c4bd14b4c81db965b04c50b039ea6a1f52c8845",
+      "bytes": 1318
+    },
+    "rangeInputIdExit": {
+      "sha256": "eaf82acc1b7e0eec7285495f509d7bedc624f161689831f9e09b4df54f451ce1",
+      "bytes": 1275
+    },
+    "rangeInputIdYield": {
+      "sha256": "d34499ff4685c4036443436ebdfb690c7976ebf910c58d6657358301635092a0",
+      "bytes": 1144
+    }
+  }
+}
