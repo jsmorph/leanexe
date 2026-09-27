@@ -666,5 +666,15 @@
   "rangeBoolMixedConditionContinue",
   "rangeBoolMixedConditionStride",
   "rangeBoolMixedConditionId",
-  "rangeBoolMixedConditionCapture"
+  "rangeBoolMixedConditionCapture",
+  "rangeBoolDirectWord",
+  "rangeBoolDirectFlag",
+  "rangeBoolDirectBooleanArgument",
+  "rangeBoolDirectWordCapture",
+  "rangeBoolDirectBooleanCapture",
+  "rangeBoolDirectNested",
+  "rangeBoolDirectExit",
+  "rangeBoolDirectContinue",
+  "rangeBoolDirectStride",
+  "rangeBoolDirectId"
 ]

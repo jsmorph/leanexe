@@ -6500,6 +6500,113 @@ def rangeBoolMixedConditionCapture (count seed : UInt64) : Id Bool :=
   else
     pure (threshold == seed)
 
+def rangeBoolDirectWord (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  run (count % 17)
+
+def rangeBoolDirectFlag (count : UInt64) (flag : Bool) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := count
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + (if selected then 1 else 3)
+      return a
+    selected && value != count
+  run (!flag)
+
+def rangeBoolDirectBooleanArgument (count seed : UInt64) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if selected then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    selected || value % 5 == 0
+  run (seed % 2 == 0 && count != 0)
+
+def rangeBoolDirectWordCapture (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x * 3 + seed
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := f seed
+      for i in [:limit.toNat] do
+        a := f a + i.toUInt64
+      return a
+    f value == f seed
+  run (count % 19)
+
+def rangeBoolDirectBooleanCapture (count seed : UInt64) : Bool :=
+  let p := fun flag : Bool => flag || seed == 0
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if p selected then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    p selected && value != seed
+  run (p (count == 0))
+
+def rangeBoolDirectNested (count seed : UInt64) : Bool :=
+  let outer := fun selected : Bool =>
+    let inner := fun limit : UInt64 =>
+      let value := Id.run do
+        let mut a := seed
+        for i in [:limit.toNat] do
+          a := a + i.toUInt64 + (if selected then 1 else 3)
+        return a
+      selected && value != seed
+    inner (count % 17)
+  outer (seed % 2 == 0)
+
+def rangeBoolDirectExit (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+        if a % 7 == 0 then break
+      return a
+    value % 7 == 0
+  run (count % 17)
+
+def rangeBoolDirectContinue (count seed : UInt64) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if selected && i.toUInt64 % 2 == 0 then continue
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  run (seed % 2 == 0)
+
+def rangeBoolDirectStride (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [(seed % 3).toNat:limit.toNat:3] do
+        a := a + i.toUInt64 + 1
+        if a % 5 == 0 then break
+      return a
+    value % 5 == 0
+  run (count % 23)
+
+def rangeBoolDirectId (count seed : UInt64) : Id Bool :=
+  let run (selected : Id (Id Bool)) : Id (Id Bool) := do
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if Id.run (Id.run selected) then a := a + i.toUInt64 + 1 else a := a + 3
+      return a)
+    pure (Id.run (Id.run selected) && value != seed)
+  run (pure (pure (seed % 2 == 0)))
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -10094,6 +10201,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolMixedConditionStride,
       `ArithmeticModeTest.rangeBoolMixedConditionId,
       `ArithmeticModeTest.rangeBoolMixedConditionCapture,
+      `ArithmeticModeTest.rangeBoolDirectWord,
+      `ArithmeticModeTest.rangeBoolDirectFlag,
+      `ArithmeticModeTest.rangeBoolDirectBooleanArgument,
+      `ArithmeticModeTest.rangeBoolDirectWordCapture,
+      `ArithmeticModeTest.rangeBoolDirectBooleanCapture,
+      `ArithmeticModeTest.rangeBoolDirectNested,
+      `ArithmeticModeTest.rangeBoolDirectExit,
+      `ArithmeticModeTest.rangeBoolDirectContinue,
+      `ArithmeticModeTest.rangeBoolDirectStride,
+      `ArithmeticModeTest.rangeBoolDirectId,
       `ArithmeticModeTest.rangeBoolLetIdWord,
       `ArithmeticModeTest.rangeBoolLetIdWordLayers,
       `ArithmeticModeTest.rangeBoolLetIdFlag,

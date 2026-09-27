@@ -1,0 +1,151 @@
+import LeanExe.Extract.ScalarFunc
+
+namespace BooleanLoopDirectContinuationTest
+
+def rangeBoolDirectWord (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  run (count % 17)
+
+def rangeBoolDirectFlag (count : UInt64) (flag : Bool) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := count
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + (if selected then 1 else 3)
+      return a
+    selected && value != count
+  run (!flag)
+
+def rangeBoolDirectBooleanArgument (count seed : UInt64) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if selected then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    selected || value % 5 == 0
+  run (seed % 2 == 0 && count != 0)
+
+def rangeBoolDirectWordCapture (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x * 3 + seed
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := f seed
+      for i in [:limit.toNat] do
+        a := f a + i.toUInt64
+      return a
+    f value == f seed
+  run (count % 19)
+
+def rangeBoolDirectBooleanCapture (count seed : UInt64) : Bool :=
+  let p := fun flag : Bool => flag || seed == 0
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if p selected then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    p selected && value != seed
+  run (p (count == 0))
+
+def rangeBoolDirectNested (count seed : UInt64) : Bool :=
+  let outer := fun selected : Bool =>
+    let inner := fun limit : UInt64 =>
+      let value := Id.run do
+        let mut a := seed
+        for i in [:limit.toNat] do
+          a := a + i.toUInt64 + (if selected then 1 else 3)
+        return a
+      selected && value != seed
+    inner (count % 17)
+  outer (seed % 2 == 0)
+
+def rangeBoolDirectExit (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+        if a % 7 == 0 then break
+      return a
+    value % 7 == 0
+  run (count % 17)
+
+def rangeBoolDirectContinue (count seed : UInt64) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if selected && i.toUInt64 % 2 == 0 then continue
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  run (seed % 2 == 0)
+
+def rangeBoolDirectStride (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [(seed % 3).toNat:limit.toNat:3] do
+        a := a + i.toUInt64 + 1
+        if a % 5 == 0 then break
+      return a
+    value % 5 == 0
+  run (count % 23)
+
+def rangeBoolDirectId (count seed : UInt64) : Id Bool :=
+  let run (selected : Id (Id Bool)) : Id (Id Bool) := do
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if Id.run (Id.run selected) then a := a + i.toUInt64 + 1 else a := a + 3
+      return a)
+    pure (Id.run (Id.run selected) && value != seed)
+  run (pure (pure (seed % 2 == 0)))
+
+def inputs : List (UInt64 × UInt64) :=
+  [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
+   (0xffffffffffffffff, 1), (0x8000000000000000, 2), (42, 3),
+   (0xffffffffffffffff, 63), (0x8000000000000001, 64), (0xffffffffffffffff, 65),
+   (0x0123456789abcdef, 0xffffffffffffffff), (3, 17), (17, 3)]
+
+end BooleanLoopDirectContinuationTest
+
+run_elab do
+  let env ← Lean.getEnv
+  let cases : List (Lean.Name × (UInt64 → UInt64 → UInt64) × Bool) := [
+    (`BooleanLoopDirectContinuationTest.rangeBoolDirectWord, (fun (x y : UInt64) => (BooleanLoopDirectContinuationTest.rangeBoolDirectWord x y).toUInt64), true),
+    (`BooleanLoopDirectContinuationTest.rangeBoolDirectFlag, (fun (x y : UInt64) => (BooleanLoopDirectContinuationTest.rangeBoolDirectFlag x (y != 0)).toUInt64), true),
+    (`BooleanLoopDirectContinuationTest.rangeBoolDirectBooleanArgument, (fun (x y : UInt64) => (BooleanLoopDirectContinuationTest.rangeBoolDirectBooleanArgument x y).toUInt64), true),
+    (`BooleanLoopDirectContinuationTest.rangeBoolDirectWordCapture, (fun (x y : UInt64) => (BooleanLoopDirectContinuationTest.rangeBoolDirectWordCapture x y).toUInt64), true),
+    (`BooleanLoopDirectContinuationTest.rangeBoolDirectBooleanCapture, (fun (x y : UInt64) => (BooleanLoopDirectContinuationTest.rangeBoolDirectBooleanCapture x y).toUInt64), true),
+    (`BooleanLoopDirectContinuationTest.rangeBoolDirectNested, (fun (x y : UInt64) => (BooleanLoopDirectContinuationTest.rangeBoolDirectNested x y).toUInt64), true),
+    (`BooleanLoopDirectContinuationTest.rangeBoolDirectExit, (fun (x y : UInt64) => (BooleanLoopDirectContinuationTest.rangeBoolDirectExit x y).toUInt64), true),
+    (`BooleanLoopDirectContinuationTest.rangeBoolDirectContinue, (fun (x y : UInt64) => (BooleanLoopDirectContinuationTest.rangeBoolDirectContinue x y).toUInt64), true),
+    (`BooleanLoopDirectContinuationTest.rangeBoolDirectStride, (fun (x y : UInt64) => (BooleanLoopDirectContinuationTest.rangeBoolDirectStride x y).toUInt64), true),
+    (`BooleanLoopDirectContinuationTest.rangeBoolDirectId, (fun (x y : UInt64) => (BooleanLoopDirectContinuationTest.rangeBoolDirectId x y).toUInt64), true)]
+  let mut comparisons : Nat := 0
+  for (name, native, isRange) in cases do
+    let some info := env.find? name | throwError "missing declaration"
+    let some value := info.value? | throwError "missing body"
+    let some func := LeanExe.Extract.Core.extractScalarFunc name (some "entry") info.type value |
+      throwError "{name}: Boolean loop direct-continuation extraction failed"
+    let module_ : LeanExe.IR.Module := { funcs := #[func] }
+    let inputs := if isRange then
+      ([0, 1, 2, 7, 16, 31] : List UInt64).flatMap fun n =>
+        ([0, 1, 0x8000000000000000, 0xffffffffffffffff] : List UInt64).map fun seed => (n, seed)
+      else BooleanLoopDirectContinuationTest.inputs
+    for (x, y) in inputs do
+      let expected := native x y
+      let actual := module_.evalFunc 0 [x, y]
+      unless actual == expected do
+        throwError "{name}({x}, {y}): native={expected}, IR={actual}"
+      comparisons := comparisons + 1
+  unless comparisons == 240 do throwError "unexpected comparison count {comparisons}"
+  Lean.logInfo m!"{comparisons} native/Boolean loop direct-continuation IR comparisons passed"
