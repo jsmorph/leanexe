@@ -17,6 +17,18 @@ theorem Eval.call_of_invokes
   obtain ⟨function, returned, found, arity, executed, output⟩ := called
   exact .call found inputs arity executed output written
 
+theorem Invokes.of_body
+    {functions : Module} {effects : Effects σ} {callee : Nat}
+    {initial final : σ} {args : List UInt64} {value : UInt64}
+    {function : Function} {returned : Locals}
+    (found : functions[callee]? = some function)
+    (arity : args.length = function.params)
+    (executed : Eval functions effects function.body initial
+      (args ++ List.replicate function.locals 0) final returned)
+    (output : function.result.eval returned = some value) :
+    Invokes functions effects callee initial args final value :=
+  ⟨function, returned, found, arity, executed, output⟩
+
 /-- The value field is an ordinary Lean function. Its certificate states that
 the generated core module returns that function's value for every argument. -/
 def Native : Nat → Type
@@ -40,41 +52,64 @@ open Lean Elab Tactic
 syntax "core_native_eval" : tactic
 syntax "core_native_invokes" : tactic
 
-/-- Internal proof construction for the ordinary-definition frontend. Each
-step builds a kernel-checked evaluation constructor. -/
-elab_rules : tactic
-| `(tactic| core_native_eval) => do
-  evalTactic (← `(tactic| (
-    first
-    | exact LeanExe.Core.Eval.skip
-    | apply LeanExe.Core.Eval.assign <;> rfl
-    | apply LeanExe.Core.Eval.seq
-      · core_native_eval
-      · core_native_eval
-    | apply LeanExe.Core.Eval.yes
-      · simp_all [LeanExe.Wasm.ScalarDescriptor.Cond.eval,
-          LeanExe.Wasm.ScalarDescriptor.Expr.eval,
-          LeanExe.Wasm.ScalarDescriptor.U64Op.apply]
-      · core_native_eval
-    | apply LeanExe.Core.Eval.no
-      · simp_all [LeanExe.Wasm.ScalarDescriptor.Cond.eval,
-          LeanExe.Wasm.ScalarDescriptor.Expr.eval,
-          LeanExe.Wasm.ScalarDescriptor.U64Op.apply]
-      · core_native_eval
-    | apply LeanExe.Core.Eval.call_of_invokes
-      · rfl
-      · first | assumption | solve_by_elim
-      · rfl)))
+private def solveNativeCondition : TacticM Unit := withMainContext do
+  let goal :: remaining ← getGoals | throwError "Expected a source condition goal"
+  setGoals [goal]
+  evalTactic (← `(tactic| simp_all (config := { zetaDelta := true })
+    [LeanExe.Wasm.ScalarDescriptor.Cond.eval,
+    LeanExe.Wasm.ScalarDescriptor.Expr.eval,
+    LeanExe.Wasm.ScalarDescriptor.U64Op.apply,
+    LeanExe.IR.ScalarStore.write]))
+  unless (← getUnsolvedGoals).isEmpty do
+    evalTactic (← `(tactic| try assumption))
+  unless (← getUnsolvedGoals).isEmpty do
+    throwError "Could not establish the native branch condition:\n{← Lean.Meta.ppGoal (← getMainGoal)}"
+  setGoals remaining
+
+/-- Construct evaluation proofs by the compiled statement's constructor. -/
+private partial def proveNativeEval : TacticM Unit := withMainContext do
+  let target ← Lean.Meta.whnf (← (← getMainGoal).getType)
+  unless target.getAppFn.isConstOf ``LeanExe.Core.Eval do
+    throwError "Expected a core evaluation: {target}"
+  let statement ← Lean.Meta.whnf target.getAppArgs[3]!
+  match statement.getAppFn.constName? with
+  | some ``LeanExe.Core.Stmt.skip =>
+    evalTactic (← `(tactic| exact LeanExe.Core.Eval.skip))
+  | some ``LeanExe.Core.Stmt.assign =>
+    evalTactic (← `(tactic| apply LeanExe.Core.Eval.assign))
+    evalTactic (← `(tactic| rfl))
+    evalTactic (← `(tactic| rfl))
+  | some ``LeanExe.Core.Stmt.seq =>
+    evalTactic (← `(tactic| apply LeanExe.Core.Eval.seq))
+    proveNativeEval
+    proveNativeEval
+  | some ``LeanExe.Core.Stmt.branch =>
+    let saved ← saveState
+    try
+      evalTactic (← `(tactic| apply LeanExe.Core.Eval.yes))
+      solveNativeCondition
+    catch _ =>
+      saved.restore
+      evalTactic (← `(tactic| apply LeanExe.Core.Eval.no))
+      solveNativeCondition
+    proveNativeEval
+  | some ``LeanExe.Core.Stmt.call =>
+    evalTactic (← `(tactic| apply LeanExe.Core.Eval.call_of_invokes))
+    evalTactic (← `(tactic| rfl))
+    evalTactic (← `(tactic| first | assumption | solve_by_elim))
+    evalTactic (← `(tactic| rfl))
+  | _ => throwError "Native proof construction does not handle this statement: {statement}"
 
 elab_rules : tactic
-| `(tactic| core_native_invokes) => do
-  evalTactic (← `(tactic| (
-    unfold LeanExe.Core.Invokes
-    refine ⟨_, _, ?_, ?_, ?_, ?_⟩
-    · rfl
-    · rfl
-    · core_native_eval
-    · first
-      | rfl
-      | simp_all [LeanExe.Wasm.ScalarDescriptor.Expr.eval,
-          LeanExe.Wasm.ScalarDescriptor.U64Op.apply])))
+| `(tactic| core_native_eval) => proveNativeEval
+
+elab_rules : tactic
+| `(tactic| core_native_invokes) => withMainContext do
+  evalTactic (← `(tactic| apply LeanExe.Core.Invokes.of_body))
+  evalTactic (← `(tactic| rfl))
+  evalTactic (← `(tactic| rfl))
+  evalTactic (← `(tactic| core_native_eval))
+  evalTactic (← `(tactic| first
+    | rfl
+    | simp_all [LeanExe.Wasm.ScalarDescriptor.Expr.eval,
+        LeanExe.Wasm.ScalarDescriptor.U64Op.apply]))
