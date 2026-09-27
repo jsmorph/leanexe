@@ -858,8 +858,10 @@ source-driven proof Lake files pin floating-point Talos revision
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and its transitive dependencies.
 All forty-three exact-artifact manifests identify this same current Talos
 revision and verifier-source identity.  The source artifact tool fetches its
-pinned dependency and builds the verifier under the resource limits when a
-local verifier is absent.
+pinned dependency and builds `Verifier/verifier` from this proof workspace
+under the resource limits.  The conformance tool builds
+`WasmInterpreterLean/testsuite` from the same workspace.  Both executables
+share the proofs' Mathlib installation and other dependencies.
 
 The conformance gate uses the official WebAssembly testsuite submodule already pinned by CodeLib.  After Lake fetches CodeLib, initialize that nested submodule with `git -C proofs/talos/lean/.lake/packages/CodeLib submodule update --init vendor/testsuite`.  The gate verifies both repository revisions and stops on a mismatch rather than fetching or changing either checkout.
 

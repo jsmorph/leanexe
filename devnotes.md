@@ -1,5 +1,42 @@
 # Development Journal
 
+## 2026-09-27: Shared Talos build dependencies
+
+The user approved building the Talos verifier within the proof workspace to
+remove its duplicate Mathlib installation.  The workspace now requires
+`Verifier` by path from the existing pinned Talos checkout.  The artifact
+driver builds `Verifier/verifier` there.  The conformance driver also builds
+the interpreter testsuite there because its previous standalone build used
+the same duplicate dependency directory.
+
+The pinned Lake documentation describes path dependencies in
+`src/lean/lake/README.md`.  Its `Lake/Load/Resolve.lean` loads requirements
+in reverse order.  Declaring Verifier before CodeLib therefore fetches the
+Talos checkout before loading the verifier's path dependency.  A temporary
+workspace fetched Talos from the local checkout and loaded the verifier with
+the existing shared Mathlib installation.  That test workspace was removed.
+
+Lake's selective `update Verifier` preserved every Git revision.  It changed
+the interpreter's relative path from the CodeLib package to the verifier
+package, resolving to the same source directory.  Mathlib's post-update hook
+downloaded its cache despite the unchanged version.  Cleanup removed those
+0.431 GiB of archives and the unused 6.119 GiB dependency installation.
+
+The local tests used `tools/leanrun` with the repository's standard CPU,
+memory, swap, and thread limits.  With the duplicate dependencies moved
+aside, the Horner model comparison and proofs passed.  The conformance
+command passed all 25 execution files and 15 invalid-module cases, then
+exited with status 1 while collecting release inputs: the committed
+`Project/Drone/Program.lean` has no entry in `cases.json`.  Comparing the
+committed tree and working tree confirmed the same mismatch in both.
+
+- [x] Build the verifier, regenerate the Horner model without changes, and
+  check its execution and numerical proofs through `tools/talos-proof.js`.
+- [x] Run the Talos cache and conformance driver JavaScript tests.
+- [x] Load the verifier from a fresh Talos checkout with shared dependencies.
+- [x] Run conformance with the duplicate dependency directory unavailable.
+- [x] Remove the unused dependency installation and downloaded archives.
+
 ## 2026-09-16: Tiny transformer implementation
 
 The user authorized implementation of the tiny GPT-2-style model, beginning
