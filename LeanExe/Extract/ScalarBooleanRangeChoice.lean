@@ -6,6 +6,57 @@ namespace LeanExe.Extract.Core
 open LeanExe.Source.Scalar
 open LeanExe.IR (rangeExitStore)
 
+theorem ScalarRangeExitPlan.scalar_meaning {target : LeanExe.IR.Expr}
+    {saved : List UInt64} {value : UInt64}
+    (stable : ∀ accumulator index stop done,
+      target.ScalarEval (rangeExitStore saved accumulator index stop done) value
+        (rangeExitStore saved accumulator index stop done)) :
+    (ScalarRangeExitPlan.scalar target).Meaning saved value := by
+  refine ⟨0, 0, (fun _ a => ForInStep.yield a), .const, .const, ?_, ?_⟩
+  · intro index bound
+    have impossible : index < 0 := bound
+    omega
+  · intro done
+    exact stable 0 0 0 done
+
+theorem ScalarRangeExitPlan.scalar_holds (P : LeanExe.IR.Expr → Prop)
+    (literal : ∀ n, P (.u64 n)) {value : LeanExe.IR.Expr} (holds : P value) :
+    (ScalarRangeExitPlan.scalar value).Holds P :=
+  ⟨literal 0, literal 0, literal 0, literal 0, holds⟩
+
+theorem scalarBooleanRangeArm_correct {locals : List ScalarBinding} {source : Lean.Expr}
+    {plan : ScalarRangeExitPlan} (saved : List UInt64) (values : List Value)
+    (compiled : scalarBooleanRangeArm (extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) source))
+      (fun _ => extractScalarBooleanRangeWith locals saved.length source) = some plan)
+    (typed : values.map Value.kind = locals.map ScalarBinding.kind)
+    (bindings : RangeExitBindingsMatch locals values saved)
+    (fallback : ∀ plan, extractScalarBooleanRangeWith locals saved.length source = some plan →
+      ∃ flag, BooleanRange.Eval source values flag ∧ plan.Meaning saved flag.toUInt64) :
+    ∃ flag, (EvalWith (.app (.const ``Bool.toUInt64 []) source) values flag.toUInt64 ∨
+      BooleanRange.Eval source values flag) ∧ plan.Meaning saved flag.toUInt64 := by
+  rcases scalarBooleanRangeArm_success compiled with ⟨value, matched, rfl⟩ | ⟨notScalar, matched⟩
+  · obtain ⟨encoded, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    exact ⟨flag, .inl evaluated, ScalarRangeExitPlan.scalar_meaning (fun accumulator index stop done =>
+      extractScalarExprWith_correct evaluated matched (bindings accumulator index stop done))⟩
+  · obtain ⟨flag, evaluated, meaning⟩ := fallback plan matched
+    exact ⟨flag, .inr evaluated, meaning⟩
+
+theorem scalarBooleanRangeArm_invariant (P : LeanExe.IR.Expr → Prop)
+    (literal : ∀ n, P (.u64 n))
+    (binary : ∀ p a b, P a → P b → P (ScalarPrimitive.lower p a b))
+    (choice : ∀ op a b t e, P a → P b → P t → P e → P (.ite (lowerComparison op a b) t e))
+    {locals : List ScalarBinding} {source : Lean.Expr} {slot : Nat} {plan : ScalarRangeExitPlan}
+    (compiled : scalarBooleanRangeArm (extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) source))
+      (fun _ => extractScalarBooleanRangeWith locals slot source) = some plan)
+    (bindings : ∀ binding ∈ locals, binding.Holds P)
+    (fallback : ∀ plan, extractScalarBooleanRangeWith locals slot source = some plan → plan.Holds P) :
+    plan.Holds P := by
+  rcases scalarBooleanRangeArm_success compiled with ⟨value, matched, rfl⟩ | ⟨notScalar, matched⟩
+  · exact ScalarRangeExitPlan.scalar_holds P literal
+      (extractScalarExprWith_invariant P literal binary choice matched bindings)
+  · exact fallback plan matched
+
 /-- A captured condition selects the same branch at every loop state. -/
 theorem ScalarRangeExitPlan.choice_meaning {guard : LeanExe.IR.Expr}
     {yes no : ScalarRangeExitPlan} {saved : List UInt64} {flag : Bool} {value : UInt64}
