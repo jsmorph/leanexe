@@ -377,7 +377,14 @@ native/IR comparisons, 53,376 invalid-input checks and 4,224 controls. Prior tes
 pass 105,340 comparisons, 53,568 rejection checks and 2,592 controls. Evidence is in
 [the public parameter annotation archive](proofs/compiler/public-parameter-id-2026-09-26/README.md).
 
-Next: Boolean loop results, retained instances and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
+Current capability: Boolean results computed after a word-valued loop bound by
+let, with metadata and standard Boolean Id wrappers. Add independent Boolean
+source evaluation and reuse the existing loop plan with a converted result.
+Source totality, exact wrapper parsing, extraction acceptance and support, result
+evaluation and IR invariant proofs pass. Public declaration and WASM integration
+are next for this increment.
+
+Next: Boolean-result Id/do sequencing, retained instances and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound helper-let bodies under public Boolean
 result conversion. Compound propositions combining Boolean equality with Boolean
 truth guards also need coverage. Native fixtures exposed these grammar gaps. Full-dialect
