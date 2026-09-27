@@ -8,6 +8,9 @@ ADMISSION = 'LeanExe.Extract.Arithmetic.'
 MODULE = 'Project.Compiler.ArithmeticModule.'
 STANDARD = {'propext', 'Classical.choice', 'Quot.sound'}
 AUDITS = {
+    'LeanExe.Source.Scalar.BooleanScopeBindingForm.monadic_apply': set(),
+    'LeanExe.Extract.Core.booleanScopeBinding_sound': STANDARD,
+    'LeanExe.Extract.Core.booleanScopeBinding_accepts': STANDARD,
     'LeanExe.Source.Scalar.StepMatcher.denote_cases': set(),
     'LeanExe.Extract.Core.findStepMatcher_sound': STANDARD,
     'LeanExe.Extract.Core.findStepMatcher_accepts': STANDARD,

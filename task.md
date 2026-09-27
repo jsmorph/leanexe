@@ -977,9 +977,11 @@ compile, including the unchanged capture probe. The corpus contains 1652 declara
 Evidence is in [the scope-binding archive](proofs/compiler/boolean-scope-binding-2026-09-27/README.md).
 
 Current capability: standard Id monadic scalar bindings around general Boolean
-helper scopes. Preserve the fixed bind probes, extend exact source syntax and
-annotation/instance checks, prove native source behavior and extraction, then
-complete emitted-WASM proofs and independent engine checks before advancing.
+helper scopes. Exact source syntax, annotation/instance checks, native Id bind
+behavior and recognizer proofs pass. The existing scalar evaluation, acceptance,
+reconstruction and IR invariant proofs pass unchanged (140 targets). The six fixed
+bind probes are preserved. Function/loop integration, tests, emitted-WASM proofs
+and independent engine checks remain before advancing.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

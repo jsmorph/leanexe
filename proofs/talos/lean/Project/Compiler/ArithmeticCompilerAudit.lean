@@ -36,3 +36,7 @@ import LeanExe.Source.ScalarReannotationEvaluation
 #print axioms LeanExe.Extract.Arithmetic.compileEnvironment_environment_accepts
 #print axioms Project.Compiler.ArithmeticModule.environment_extracted_correct
 #print axioms Project.Compiler.ArithmeticModule.compileEnvironment_environment_correct
+
+#print axioms LeanExe.Source.Scalar.BooleanScopeBindingForm.monadic_apply
+#print axioms LeanExe.Extract.Core.booleanScopeBinding_sound
+#print axioms LeanExe.Extract.Core.booleanScopeBinding_accepts
