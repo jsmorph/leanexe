@@ -1,0 +1,614 @@
+{
+  "candidate": "56c76e3a34cc6f3422f6ed19e20ab6552c6fd97d",
+  "branch": "correct",
+  "lean": "4.34.0-rc2",
+  "leanCommit": "6a10ac8c22beadecabdbb0919c2b50214762f91d",
+  "node": "24.13.0",
+  "runner": "tools/leanrun, authorized local mode, serial lock",
+  "proofCommand": "tools/arithmetic-check.js proof",
+  "proofBuildTargets": 3386,
+  "axiomAudits": 19,
+  "engineCommand": "tools/arithmetic-check.js subset-engine boolean-step-result",
+  "nativeV8Comparisons": 1053,
+  "declarations": 54,
+  "rangeDeclarations": 31,
+  "rangeComparisons": 744,
+  "priorModulesByteIdentical": 44,
+  "priorModulesChanged": 0,
+  "focusedNativeIRComparisons": 18672,
+  "focusedRejections": 9600,
+  "priorNativeIRComparisons": 65472,
+  "priorRejections": 39456,
+  "priorAdmissionControls": 0,
+  "restoredSavedResultProbes": 2,
+  "restoredShowProbe": 1,
+  "deferredConditionalResultBindProbe": 1,
+  "retainedResultAndHelperProbes": 4,
+  "retainedAccumulatorProbes": 6,
+  "fullCorpusDeclarations": 1593,
+  "deferred": "Functions taking complete Boolean step results; step-result pattern matching; scalar helpers within Boolean steps; Id inputs in converted helper scopes; multiple loops and full-dialect compiler correctness.",
+  "sourceHashes": {
+    "LeanExe/Extract/ScalarBooleanStep.lean": "29462263038ed98f30855ed52f0ebfcf67614523566b772ba52c35d74432110f",
+    "LeanExe/Extract/ScalarBooleanStepBindings.lean": "71deaf85fa12bedc63470d9c29b7441944d155521c4a74536d12d3888de4d30b",
+    "LeanExe/Source/ScalarBooleanStep.lean": "9129a2fb18612872214ffb604ce0d22a1ab37b61bf376b9c8843784fba53c17d",
+    "LeanExe/Source/ScalarBooleanStepValues.lean": "18e05f30c6ca670b4432a8838b2371f21040dac68eea46ec80e4fb588e39f4cd",
+    "test/ArithmeticMilestone.lean": "b745856d7eccc5c724314818d45b2eb0f0c7545daf04ab8f551ac0dc485edaef",
+    "test/arithmetic-engine-groups.json": "e70b0d09465a9fdc6773d08c334150f7dbafc98319f4c0998b2a4fdde5109886",
+    "test/arithmetic-range-cases.json": "6484f434800a07a8ea27b3c25b6d9da5a2e295d538b104a8356747b7b81869ee",
+    "test/arithmetic_mode.lean": "c0d3dfe8310134603375003e53479fb94a000cdbafdf8bb6ce3728ead35c2601",
+    "test/scalar_boolean_step_result.lean": "75ad36b3fdb1bcc67aef5014cdfd06333d03513f2cd2070cfb1a7bd7a191e09b",
+    "test/scalar_boolean_step_result_syntax.lean": "92328a85838cdc3182183a59436630658c773066ac819f64c6c0a18c07dc8654"
+  },
+  "modules": {
+    "booleanHelperBodyCaptures": {
+      "sha256": "03a212f1aceb54d2596831ea69ac1c366f934938c700b0d161c0215367e3c455",
+      "bytes": 1373
+    },
+    "booleanHelperBodyChoice": {
+      "sha256": "da0d9aa638e6e79c4240e6f169064833cc2ef01400097b4a3e572b50b9a643c7",
+      "bytes": 1564
+    },
+    "booleanHelperBodyMixed": {
+      "sha256": "c53518fad75c2edbea61a13c8b3ce94edeb5ddc355d585a33354e9e760f340d5",
+      "bytes": 1302
+    },
+    "booleanHelperBodyNested": {
+      "sha256": "d444fa15a23241b5b69e7e070645f4f8ef85d9d8ebf02c19400d88c5b9606b8b",
+      "bytes": 1216
+    },
+    "booleanHelperBodyUnused": {
+      "sha256": "22e4b9b26064a857e778797fa18fa262df4ea538faf7a5ba8709b023777a858a",
+      "bytes": 1074
+    },
+    "booleanHelperBodyWrapped": {
+      "sha256": "f60473f17a084c3309b2db963563be1f40356aa6dc8dc5a920ea345c918ed66e",
+      "bytes": 1284
+    },
+    "constant": {
+      "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "bytes": 1042
+    },
+    "predicateBodyWordBoolean": {
+      "sha256": "fbbb41b78b8941bcc5e9afe783544009b5d287b892804e15292a7cdf640db94a",
+      "bytes": 1209
+    },
+    "predicateBodyWordCapture": {
+      "sha256": "d0bc0cbbbfe9979e9e658ed2f45790204b58e98c025fc9f66ce188d1311fc7e9",
+      "bytes": 1384
+    },
+    "predicateBodyWordDo": {
+      "sha256": "5130a1572a15918ab905cad247fdf0d81be75dd2cb9c0af5075bfbaa14d2b2cc",
+      "bytes": 1182
+    },
+    "predicateBodyWordProposition": {
+      "sha256": "b711492edeb1d15b76874ec0ab374b4cc3901e9603fcfa4f6b0ea6f50c640073",
+      "bytes": 1260
+    },
+    "predicateBodyWordRepeated": {
+      "sha256": "faaaa239f46b1044dedfe891109f1e6998522f6c7e02bc7bd6e3dfd38ec7049f",
+      "bytes": 1207
+    },
+    "predicateBodyWordUnused": {
+      "sha256": "6c3d1446213a9d439a4461ae3b70c4b9b8522a34646bd8be7c37b13a8d049973",
+      "bytes": 1063
+    },
+    "publicBoolHelpersInputId": {
+      "sha256": "90d04fe5350a9eb17cc60f056f5d93f3c3ec4f2c2f67dad281458854a791d91a",
+      "bytes": 1277
+    },
+    "publicBoolHelpersNested": {
+      "sha256": "e295d768a6866963d7a6b4852026b062a6d4cd2ef9e447e0806477ffb012bb29",
+      "bytes": 1123
+    },
+    "publicBoolHelpersRepeated": {
+      "sha256": "52ac7e5bd88f4b25053e9675001cfe50d838110742bad468e7184895ce52f871",
+      "bytes": 1237
+    },
+    "publicBoolHelpersUnused": {
+      "sha256": "7cd33240f196c5ef8062766d70a1b3d6fca01264694cc1141ab1c232a24a3bf8",
+      "bytes": 1278
+    },
+    "publicBoolHelpersWord": {
+      "sha256": "1d034f0a3740b00d83067b85225a47a61987a3ab09c4ff8aa5ce78159c649d15",
+      "bytes": 1275
+    },
+    "publicBoolHelpersWrapped": {
+      "sha256": "00f93f913e519cec3e2d151f3a2c76d43e8c44b704a608f58f7fe54d599502a2",
+      "bytes": 1184
+    },
+    "publicFlagResult": {
+      "sha256": "b4255409bb6e98c1b54f3256e01344a6fe033cc4a0f54e3fa5494b0e86f38095",
+      "bytes": 1101
+    },
+    "publicFlagWord": {
+      "sha256": "d239e95b104196c33b596f359e83b3fdb4b6dbd50584efdd7d8c8823f07fb1b7",
+      "bytes": 1079
+    },
+    "publicInputIdResult": {
+      "sha256": "dd5e7cfe6bcf055757b30010da3aef55d8d48fc21579546ddd7a73e3258630e8",
+      "bytes": 1105
+    },
+    "publicInputIdWord": {
+      "sha256": "0dfd7f9a5e0f9c1b004fa914f238b00e8adbe503c54979e8d8127aca5e16f3e2",
+      "bytes": 1056
+    },
+    "rangeBooleanAccumulatorHigh": {
+      "sha256": "27a1a1501898be1cf8194b9e86978be4abe9e9bb1b8672a91b8be2a74a35fddb",
+      "bytes": 1312
+    },
+    "rangeBooleanAccumulatorHuge": {
+      "sha256": "207bcb979d2c6cf7f19d26eb92b77afb9c013697f3f61e10afb9ac0a88b0af85",
+      "bytes": 1222
+    },
+    "rangeBooleanStepBindBoolean": {
+      "sha256": "643a207b6a0d5d22557dbbbc649cf309ceab4a89cea4137f241a7b545bbe225f",
+      "bytes": 1246
+    },
+    "rangeBooleanStepBindCaptured": {
+      "sha256": "6a0648de8424f10bbe5020ae1212215ff859de964dbb3fdaa647b548d86bab31",
+      "bytes": 1886
+    },
+    "rangeBooleanStepBindChain": {
+      "sha256": "ee2bb9515e851a8b4ba95b9e8ae3281fa5be32b740babb213358b3424bbbff2c",
+      "bytes": 1465
+    },
+    "rangeBooleanStepBindContinue": {
+      "sha256": "43233d809247e1eaaeced33aa04d15eaa5864c3f2fa03eb77d0213570c4d4d96",
+      "bytes": 1534
+    },
+    "rangeBooleanStepBindUnusedBoolean": {
+      "sha256": "a0e49e1a72f829329cfc5a43763e22d39a342c16508a2b9268c9fcf6c95b4d8e",
+      "bytes": 1229
+    },
+    "rangeBooleanStepBindUnusedWord": {
+      "sha256": "6d00072c13601249ed9806f6c32e5db942330199b39fa3e1c995c8675c52c595",
+      "bytes": 1226
+    },
+    "rangeBooleanStepBindWord": {
+      "sha256": "64ae8944dc6edbc3b8e58b41402ddf804010b4471de41925eaa023c4e49f6198",
+      "bytes": 1257
+    },
+    "rangeBooleanStepBindWordTail": {
+      "sha256": "94650d5400644327a344c6fa5628bc1e38ff03ba23456ab6731ae51da65a374d",
+      "bytes": 1567
+    },
+    "rangeBooleanStepFunctionBoolean": {
+      "sha256": "c3ab32eaa2f2e0419ecc603f1648bea349b07b6749c845e0ce95165cf28bf575",
+      "bytes": 1305
+    },
+    "rangeBooleanStepFunctionChoiceBoolean": {
+      "sha256": "3cd7b8867da919d962f14d57382d29513a7f4ee86be77f7cb00d16f70e357adb",
+      "bytes": 1491
+    },
+    "rangeBooleanStepFunctionChoiceWord": {
+      "sha256": "45002fcbe732d7ec4a6fcfa7f3165c84f3c832a29e7d8c561c9886cb6cc82004",
+      "bytes": 1816
+    },
+    "rangeBooleanStepFunctionFlagInput": {
+      "sha256": "000fbf20bc8d44bc324d51783deb4ee2535b575f11a3bdec6edcb6e2b04bbf5c",
+      "bytes": 1341
+    },
+    "rangeBooleanStepFunctionNested": {
+      "sha256": "58736e19e0222f25a66a0c0fae17d0daff62200479e5f7a835eb348993059e98",
+      "bytes": 1625
+    },
+    "rangeBooleanStepFunctionRepeated": {
+      "sha256": "7db038dc235525f8895d288b81b646c27afdd0fc43d3b70a76fafc6cfd91b5fd",
+      "bytes": 1605
+    },
+    "rangeBooleanStepFunctionRetained": {
+      "sha256": "d5679ff8a353dee627ef945755127b8967492615f191fbd591740dda2ab7133e",
+      "bytes": 1258
+    },
+    "rangeBooleanStepFunctionUnused": {
+      "sha256": "1197ea519c178fd4e0a74b7bb75a6ae5f876368ae18f15946ef97587f2ba9ddf",
+      "bytes": 1205
+    },
+    "rangeBooleanStepFunctionWord": {
+      "sha256": "45afc7bdde454c2620bd3ff0a7a78de36f6c07343f89ca2b7d01fa16b57e2ac7",
+      "bytes": 1330
+    },
+    "rangeBooleanStepFunctionWordTail": {
+      "sha256": "ddf8dc7e38a66ed403fd28ccfea635a6afc11255698adc318a58152be7d27d18",
+      "bytes": 1351
+    },
+    "rangeBooleanStepResultAlias": {
+      "sha256": "0729fc6b10b3d66baa9ca287067268c0a3d550fa21cdc6cd2d59739b1ea08dc4",
+      "bytes": 1279
+    },
+    "rangeBooleanStepResultBound": {
+      "sha256": "01f8322b136a686a2d1e2743e1b35d4f66f71b2ef978d8f593587fa7de2bfebf",
+      "bytes": 1179
+    },
+    "rangeBooleanStepResultCapture": {
+      "sha256": "0c239cf72d58e85291a026fbfb793fe83e82d272d70985fbce31aa1ba77badea",
+      "bytes": 1469
+    },
+    "rangeBooleanStepResultFlagInput": {
+      "sha256": "b61fb7e1f51334e97f3f7fcd3094a5155df3a5c084477bc2ecd8b8102566a4bf",
+      "bytes": 1328
+    },
+    "rangeBooleanStepResultIgnored": {
+      "sha256": "b0fbbc168b547022785e45a19255f18b1389a09507ec41727e0aa8562f76f062",
+      "bytes": 1181
+    },
+    "rangeBooleanStepResultMonadicIgnored": {
+      "sha256": "f406692df2eed2abd8430d3d4a42b05261bb7e935967cc0fd8a4cfacf26fcc70",
+      "bytes": 1188
+    },
+    "rangeBooleanStepResultNested": {
+      "sha256": "d3f0c849ce340db15b4e06fe1455a93e14e82b2d00b8d187bbac8ec515db30c1",
+      "bytes": 1280
+    },
+    "rangeBooleanStepResultSaved": {
+      "sha256": "14332834a0450af45aadd9d6209adb5a90abfc484ffcf578c49524150ca3f5cd",
+      "bytes": 1279
+    },
+    "rangeBooleanStepResultShow": {
+      "sha256": "946c9cdf1120bd8beb9925333cee6262c33665af528978ae621d9cbdd6156635",
+      "bytes": 1252
+    },
+    "rangeBooleanStepResultWordTail": {
+      "sha256": "650055cf98634cfd62868bbb059a9c868c1add034a3eb2fba6b8e363acb9c638",
+      "bytes": 1299
+    },
+    "rangePredicateBodyBreakWord": {
+      "sha256": "f2cee253e78392b9c1da7d2db913f2abf10417ce577a8079d499aa590eb7c13d",
+      "bytes": 1609
+    }
+  },
+  "priorModuleComparison": {
+    "rangeBooleanStepFunctionRetained": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepFunctionRetained.wasm",
+      "previousSha256": "d5679ff8a353dee627ef945755127b8967492615f191fbd591740dda2ab7133e",
+      "sha256": "d5679ff8a353dee627ef945755127b8967492615f191fbd591740dda2ab7133e",
+      "byteIdentical": true,
+      "previousBytes": 1258,
+      "bytes": 1258
+    },
+    "rangeBooleanStepFunctionUnused": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepFunctionUnused.wasm",
+      "previousSha256": "1197ea519c178fd4e0a74b7bb75a6ae5f876368ae18f15946ef97587f2ba9ddf",
+      "sha256": "1197ea519c178fd4e0a74b7bb75a6ae5f876368ae18f15946ef97587f2ba9ddf",
+      "byteIdentical": true,
+      "previousBytes": 1205,
+      "bytes": 1205
+    },
+    "predicateBodyWordCapture": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/predicateBodyWordCapture.wasm",
+      "previousSha256": "d0bc0cbbbfe9979e9e658ed2f45790204b58e98c025fc9f66ce188d1311fc7e9",
+      "sha256": "d0bc0cbbbfe9979e9e658ed2f45790204b58e98c025fc9f66ce188d1311fc7e9",
+      "byteIdentical": true,
+      "previousBytes": 1384,
+      "bytes": 1384
+    },
+    "publicInputIdResult": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/publicInputIdResult.wasm",
+      "previousSha256": "dd5e7cfe6bcf055757b30010da3aef55d8d48fc21579546ddd7a73e3258630e8",
+      "sha256": "dd5e7cfe6bcf055757b30010da3aef55d8d48fc21579546ddd7a73e3258630e8",
+      "byteIdentical": true,
+      "previousBytes": 1105,
+      "bytes": 1105
+    },
+    "booleanHelperBodyUnused": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/booleanHelperBodyUnused.wasm",
+      "previousSha256": "22e4b9b26064a857e778797fa18fa262df4ea538faf7a5ba8709b023777a858a",
+      "sha256": "22e4b9b26064a857e778797fa18fa262df4ea538faf7a5ba8709b023777a858a",
+      "byteIdentical": true,
+      "previousBytes": 1074,
+      "bytes": 1074
+    },
+    "rangeBooleanStepBindUnusedBoolean": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepBindUnusedBoolean.wasm",
+      "previousSha256": "a0e49e1a72f829329cfc5a43763e22d39a342c16508a2b9268c9fcf6c95b4d8e",
+      "sha256": "a0e49e1a72f829329cfc5a43763e22d39a342c16508a2b9268c9fcf6c95b4d8e",
+      "byteIdentical": true,
+      "previousBytes": 1229,
+      "bytes": 1229
+    },
+    "booleanHelperBodyChoice": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/booleanHelperBodyChoice.wasm",
+      "previousSha256": "da0d9aa638e6e79c4240e6f169064833cc2ef01400097b4a3e572b50b9a643c7",
+      "sha256": "da0d9aa638e6e79c4240e6f169064833cc2ef01400097b4a3e572b50b9a643c7",
+      "byteIdentical": true,
+      "previousBytes": 1564,
+      "bytes": 1564
+    },
+    "publicFlagWord": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/publicFlagWord.wasm",
+      "previousSha256": "d239e95b104196c33b596f359e83b3fdb4b6dbd50584efdd7d8c8823f07fb1b7",
+      "sha256": "d239e95b104196c33b596f359e83b3fdb4b6dbd50584efdd7d8c8823f07fb1b7",
+      "byteIdentical": true,
+      "previousBytes": 1079,
+      "bytes": 1079
+    },
+    "publicBoolHelpersWord": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/publicBoolHelpersWord.wasm",
+      "previousSha256": "1d034f0a3740b00d83067b85225a47a61987a3ab09c4ff8aa5ce78159c649d15",
+      "sha256": "1d034f0a3740b00d83067b85225a47a61987a3ab09c4ff8aa5ce78159c649d15",
+      "byteIdentical": true,
+      "previousBytes": 1275,
+      "bytes": 1275
+    },
+    "publicBoolHelpersUnused": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/publicBoolHelpersUnused.wasm",
+      "previousSha256": "7cd33240f196c5ef8062766d70a1b3d6fca01264694cc1141ab1c232a24a3bf8",
+      "sha256": "7cd33240f196c5ef8062766d70a1b3d6fca01264694cc1141ab1c232a24a3bf8",
+      "byteIdentical": true,
+      "previousBytes": 1278,
+      "bytes": 1278
+    },
+    "publicBoolHelpersInputId": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/publicBoolHelpersInputId.wasm",
+      "previousSha256": "90d04fe5350a9eb17cc60f056f5d93f3c3ec4f2c2f67dad281458854a791d91a",
+      "sha256": "90d04fe5350a9eb17cc60f056f5d93f3c3ec4f2c2f67dad281458854a791d91a",
+      "byteIdentical": true,
+      "previousBytes": 1277,
+      "bytes": 1277
+    },
+    "rangeBooleanStepFunctionWord": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepFunctionWord.wasm",
+      "previousSha256": "45afc7bdde454c2620bd3ff0a7a78de36f6c07343f89ca2b7d01fa16b57e2ac7",
+      "sha256": "45afc7bdde454c2620bd3ff0a7a78de36f6c07343f89ca2b7d01fa16b57e2ac7",
+      "byteIdentical": true,
+      "previousBytes": 1330,
+      "bytes": 1330
+    },
+    "predicateBodyWordRepeated": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/predicateBodyWordRepeated.wasm",
+      "previousSha256": "faaaa239f46b1044dedfe891109f1e6998522f6c7e02bc7bd6e3dfd38ec7049f",
+      "sha256": "faaaa239f46b1044dedfe891109f1e6998522f6c7e02bc7bd6e3dfd38ec7049f",
+      "byteIdentical": true,
+      "previousBytes": 1207,
+      "bytes": 1207
+    },
+    "predicateBodyWordBoolean": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/predicateBodyWordBoolean.wasm",
+      "previousSha256": "fbbb41b78b8941bcc5e9afe783544009b5d287b892804e15292a7cdf640db94a",
+      "sha256": "fbbb41b78b8941bcc5e9afe783544009b5d287b892804e15292a7cdf640db94a",
+      "byteIdentical": true,
+      "previousBytes": 1209,
+      "bytes": 1209
+    },
+    "rangeBooleanStepBindCaptured": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepBindCaptured.wasm",
+      "previousSha256": "6a0648de8424f10bbe5020ae1212215ff859de964dbb3fdaa647b548d86bab31",
+      "sha256": "6a0648de8424f10bbe5020ae1212215ff859de964dbb3fdaa647b548d86bab31",
+      "byteIdentical": true,
+      "previousBytes": 1886,
+      "bytes": 1886
+    },
+    "predicateBodyWordDo": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/predicateBodyWordDo.wasm",
+      "previousSha256": "5130a1572a15918ab905cad247fdf0d81be75dd2cb9c0af5075bfbaa14d2b2cc",
+      "sha256": "5130a1572a15918ab905cad247fdf0d81be75dd2cb9c0af5075bfbaa14d2b2cc",
+      "byteIdentical": true,
+      "previousBytes": 1182,
+      "bytes": 1182
+    },
+    "rangeBooleanStepBindContinue": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepBindContinue.wasm",
+      "previousSha256": "43233d809247e1eaaeced33aa04d15eaa5864c3f2fa03eb77d0213570c4d4d96",
+      "sha256": "43233d809247e1eaaeced33aa04d15eaa5864c3f2fa03eb77d0213570c4d4d96",
+      "byteIdentical": true,
+      "previousBytes": 1534,
+      "bytes": 1534
+    },
+    "constant": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/constant.wasm",
+      "previousSha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "byteIdentical": true,
+      "previousBytes": 1042,
+      "bytes": 1042
+    },
+    "rangeBooleanStepFunctionWordTail": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepFunctionWordTail.wasm",
+      "previousSha256": "ddf8dc7e38a66ed403fd28ccfea635a6afc11255698adc318a58152be7d27d18",
+      "sha256": "ddf8dc7e38a66ed403fd28ccfea635a6afc11255698adc318a58152be7d27d18",
+      "byteIdentical": true,
+      "previousBytes": 1351,
+      "bytes": 1351
+    },
+    "booleanHelperBodyMixed": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/booleanHelperBodyMixed.wasm",
+      "previousSha256": "c53518fad75c2edbea61a13c8b3ce94edeb5ddc355d585a33354e9e760f340d5",
+      "sha256": "c53518fad75c2edbea61a13c8b3ce94edeb5ddc355d585a33354e9e760f340d5",
+      "byteIdentical": true,
+      "previousBytes": 1302,
+      "bytes": 1302
+    },
+    "publicBoolHelpersWrapped": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/publicBoolHelpersWrapped.wasm",
+      "previousSha256": "00f93f913e519cec3e2d151f3a2c76d43e8c44b704a608f58f7fe54d599502a2",
+      "sha256": "00f93f913e519cec3e2d151f3a2c76d43e8c44b704a608f58f7fe54d599502a2",
+      "byteIdentical": true,
+      "previousBytes": 1184,
+      "bytes": 1184
+    },
+    "booleanHelperBodyWrapped": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/booleanHelperBodyWrapped.wasm",
+      "previousSha256": "f60473f17a084c3309b2db963563be1f40356aa6dc8dc5a920ea345c918ed66e",
+      "sha256": "f60473f17a084c3309b2db963563be1f40356aa6dc8dc5a920ea345c918ed66e",
+      "byteIdentical": true,
+      "previousBytes": 1284,
+      "bytes": 1284
+    },
+    "rangeBooleanStepFunctionRepeated": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepFunctionRepeated.wasm",
+      "previousSha256": "7db038dc235525f8895d288b81b646c27afdd0fc43d3b70a76fafc6cfd91b5fd",
+      "sha256": "7db038dc235525f8895d288b81b646c27afdd0fc43d3b70a76fafc6cfd91b5fd",
+      "byteIdentical": true,
+      "previousBytes": 1605,
+      "bytes": 1605
+    },
+    "predicateBodyWordProposition": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/predicateBodyWordProposition.wasm",
+      "previousSha256": "b711492edeb1d15b76874ec0ab374b4cc3901e9603fcfa4f6b0ea6f50c640073",
+      "sha256": "b711492edeb1d15b76874ec0ab374b4cc3901e9603fcfa4f6b0ea6f50c640073",
+      "byteIdentical": true,
+      "previousBytes": 1260,
+      "bytes": 1260
+    },
+    "rangeBooleanStepFunctionChoiceBoolean": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepFunctionChoiceBoolean.wasm",
+      "previousSha256": "3cd7b8867da919d962f14d57382d29513a7f4ee86be77f7cb00d16f70e357adb",
+      "sha256": "3cd7b8867da919d962f14d57382d29513a7f4ee86be77f7cb00d16f70e357adb",
+      "byteIdentical": true,
+      "previousBytes": 1491,
+      "bytes": 1491
+    },
+    "rangeBooleanAccumulatorHuge": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanAccumulatorHuge.wasm",
+      "previousSha256": "207bcb979d2c6cf7f19d26eb92b77afb9c013697f3f61e10afb9ac0a88b0af85",
+      "sha256": "207bcb979d2c6cf7f19d26eb92b77afb9c013697f3f61e10afb9ac0a88b0af85",
+      "byteIdentical": true,
+      "previousBytes": 1222,
+      "bytes": 1222
+    },
+    "publicBoolHelpersRepeated": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/publicBoolHelpersRepeated.wasm",
+      "previousSha256": "52ac7e5bd88f4b25053e9675001cfe50d838110742bad468e7184895ce52f871",
+      "sha256": "52ac7e5bd88f4b25053e9675001cfe50d838110742bad468e7184895ce52f871",
+      "byteIdentical": true,
+      "previousBytes": 1237,
+      "bytes": 1237
+    },
+    "rangeBooleanStepBindWordTail": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepBindWordTail.wasm",
+      "previousSha256": "94650d5400644327a344c6fa5628bc1e38ff03ba23456ab6731ae51da65a374d",
+      "sha256": "94650d5400644327a344c6fa5628bc1e38ff03ba23456ab6731ae51da65a374d",
+      "byteIdentical": true,
+      "previousBytes": 1567,
+      "bytes": 1567
+    },
+    "publicBoolHelpersNested": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/publicBoolHelpersNested.wasm",
+      "previousSha256": "e295d768a6866963d7a6b4852026b062a6d4cd2ef9e447e0806477ffb012bb29",
+      "sha256": "e295d768a6866963d7a6b4852026b062a6d4cd2ef9e447e0806477ffb012bb29",
+      "byteIdentical": true,
+      "previousBytes": 1123,
+      "bytes": 1123
+    },
+    "booleanHelperBodyCaptures": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/booleanHelperBodyCaptures.wasm",
+      "previousSha256": "03a212f1aceb54d2596831ea69ac1c366f934938c700b0d161c0215367e3c455",
+      "sha256": "03a212f1aceb54d2596831ea69ac1c366f934938c700b0d161c0215367e3c455",
+      "byteIdentical": true,
+      "previousBytes": 1373,
+      "bytes": 1373
+    },
+    "rangeBooleanStepFunctionNested": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepFunctionNested.wasm",
+      "previousSha256": "58736e19e0222f25a66a0c0fae17d0daff62200479e5f7a835eb348993059e98",
+      "sha256": "58736e19e0222f25a66a0c0fae17d0daff62200479e5f7a835eb348993059e98",
+      "byteIdentical": true,
+      "previousBytes": 1625,
+      "bytes": 1625
+    },
+    "rangeBooleanStepFunctionBoolean": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepFunctionBoolean.wasm",
+      "previousSha256": "c3ab32eaa2f2e0419ecc603f1648bea349b07b6749c845e0ce95165cf28bf575",
+      "sha256": "c3ab32eaa2f2e0419ecc603f1648bea349b07b6749c845e0ce95165cf28bf575",
+      "byteIdentical": true,
+      "previousBytes": 1305,
+      "bytes": 1305
+    },
+    "rangeBooleanStepBindBoolean": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepBindBoolean.wasm",
+      "previousSha256": "643a207b6a0d5d22557dbbbc649cf309ceab4a89cea4137f241a7b545bbe225f",
+      "sha256": "643a207b6a0d5d22557dbbbc649cf309ceab4a89cea4137f241a7b545bbe225f",
+      "byteIdentical": true,
+      "previousBytes": 1246,
+      "bytes": 1246
+    },
+    "rangeBooleanStepBindChain": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepBindChain.wasm",
+      "previousSha256": "ee2bb9515e851a8b4ba95b9e8ae3281fa5be32b740babb213358b3424bbbff2c",
+      "sha256": "ee2bb9515e851a8b4ba95b9e8ae3281fa5be32b740babb213358b3424bbbff2c",
+      "byteIdentical": true,
+      "previousBytes": 1465,
+      "bytes": 1465
+    },
+    "rangeBooleanStepBindWord": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepBindWord.wasm",
+      "previousSha256": "64ae8944dc6edbc3b8e58b41402ddf804010b4471de41925eaa023c4e49f6198",
+      "sha256": "64ae8944dc6edbc3b8e58b41402ddf804010b4471de41925eaa023c4e49f6198",
+      "byteIdentical": true,
+      "previousBytes": 1257,
+      "bytes": 1257
+    },
+    "booleanHelperBodyNested": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/booleanHelperBodyNested.wasm",
+      "previousSha256": "d444fa15a23241b5b69e7e070645f4f8ef85d9d8ebf02c19400d88c5b9606b8b",
+      "sha256": "d444fa15a23241b5b69e7e070645f4f8ef85d9d8ebf02c19400d88c5b9606b8b",
+      "byteIdentical": true,
+      "previousBytes": 1216,
+      "bytes": 1216
+    },
+    "rangeBooleanAccumulatorHigh": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanAccumulatorHigh.wasm",
+      "previousSha256": "27a1a1501898be1cf8194b9e86978be4abe9e9bb1b8672a91b8be2a74a35fddb",
+      "sha256": "27a1a1501898be1cf8194b9e86978be4abe9e9bb1b8672a91b8be2a74a35fddb",
+      "byteIdentical": true,
+      "previousBytes": 1312,
+      "bytes": 1312
+    },
+    "rangeBooleanStepFunctionFlagInput": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepFunctionFlagInput.wasm",
+      "previousSha256": "000fbf20bc8d44bc324d51783deb4ee2535b575f11a3bdec6edcb6e2b04bbf5c",
+      "sha256": "000fbf20bc8d44bc324d51783deb4ee2535b575f11a3bdec6edcb6e2b04bbf5c",
+      "byteIdentical": true,
+      "previousBytes": 1341,
+      "bytes": 1341
+    },
+    "publicFlagResult": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/publicFlagResult.wasm",
+      "previousSha256": "b4255409bb6e98c1b54f3256e01344a6fe033cc4a0f54e3fa5494b0e86f38095",
+      "sha256": "b4255409bb6e98c1b54f3256e01344a6fe033cc4a0f54e3fa5494b0e86f38095",
+      "byteIdentical": true,
+      "previousBytes": 1101,
+      "bytes": 1101
+    },
+    "rangeBooleanStepBindUnusedWord": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepBindUnusedWord.wasm",
+      "previousSha256": "6d00072c13601249ed9806f6c32e5db942330199b39fa3e1c995c8675c52c595",
+      "sha256": "6d00072c13601249ed9806f6c32e5db942330199b39fa3e1c995c8675c52c595",
+      "byteIdentical": true,
+      "previousBytes": 1226,
+      "bytes": 1226
+    },
+    "predicateBodyWordUnused": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/predicateBodyWordUnused.wasm",
+      "previousSha256": "6c3d1446213a9d439a4461ae3b70c4b9b8522a34646bd8be7c37b13a8d049973",
+      "sha256": "6c3d1446213a9d439a4461ae3b70c4b9b8522a34646bd8be7c37b13a8d049973",
+      "byteIdentical": true,
+      "previousBytes": 1063,
+      "bytes": 1063
+    },
+    "rangeBooleanStepFunctionChoiceWord": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangeBooleanStepFunctionChoiceWord.wasm",
+      "previousSha256": "45002fcbe732d7ec4a6fcfa7f3165c84f3c832a29e7d8c561c9886cb6cc82004",
+      "sha256": "45002fcbe732d7ec4a6fcfa7f3165c84f3c832a29e7d8c561c9886cb6cc82004",
+      "byteIdentical": true,
+      "previousBytes": 1816,
+      "bytes": 1816
+    },
+    "publicInputIdWord": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/publicInputIdWord.wasm",
+      "previousSha256": "0dfd7f9a5e0f9c1b004fa914f238b00e8adbe503c54979e8d8127aca5e16f3e2",
+      "sha256": "0dfd7f9a5e0f9c1b004fa914f238b00e8adbe503c54979e8d8127aca5e16f3e2",
+      "byteIdentical": true,
+      "previousBytes": 1056,
+      "bytes": 1056
+    },
+    "rangePredicateBodyBreakWord": {
+      "previous": "proofs/compiler/boolean-step-function-2026-09-27/rangePredicateBodyBreakWord.wasm",
+      "previousSha256": "f2cee253e78392b9c1da7d2db913f2abf10417ce577a8079d499aa590eb7c13d",
+      "sha256": "f2cee253e78392b9c1da7d2db913f2abf10417ce577a8079d499aa590eb7c13d",
+      "byteIdentical": true,
+      "previousBytes": 1609,
+      "bytes": 1609
+    }
+  }
+}

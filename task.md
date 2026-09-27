@@ -893,15 +893,23 @@ fixed `show` probe still requires complete step-result bindings. The corpus
 contains 1583 declarations. Evidence is in
 [the Boolean step function archive](proofs/compiler/boolean-step-function-2026-09-27/README.md).
 
-Current capability: complete Boolean step-result bindings. Result kinds, lookup,
-source totality, exact ordinary-let/Id-bind annotations, acceptance/support,
-correctness and invariants pass on their first focused builds. Public integration
-passes. The saved and ignored-done probes and retained/show helper are restored;
-the simple bound probe and three earlier helper probes remain accepted. The
-conditional step-result bind still needs a function taking a complete step and
-is preserved for the next capability. Ten native programs pass 240 comparisons;
-syntax tests pass 18,432 comparisons and 9,600 invalid-input checks. The general
-source-to-WASM proof and independent V8 checks are next.
+Complete Boolean step-result bindings are proved through WASM. Ordinary lets,
+aliases, standard Id binds, show and captures retain value and exit status.
+Ignoring a done result continues the loop. Source totality, exact annotations,
+extraction and the general source-to-WASM theorem pass with nineteen audits.
+Native Lean/V8 agree on 1,053 inputs across 54 declarations; 44 prior modules
+retain identical bytes and 0 changed. New tests pass 18,672 comparisons
+and 9,600 invalid-input checks. Prior tests pass 65,472 comparisons and 39,456
+invalid-input checks. Saved, ignored-done and retained/show probes are restored;
+four result/helper and six accumulator controls remain accepted. The conditional
+step-result bind is preserved for the next capability. The corpus contains
+1593 declarations. Evidence is in
+[the Boolean step result archive](proofs/compiler/boolean-step-result-2026-09-27/README.md).
+
+Current capability: functions taking complete Boolean step results. Add distinct
+source and compiled closures with lexical proofs for both result projections,
+restore the fixed conditional step-result bind, and prove the extension through
+WASM before adding step-result pattern matching or broader scalar helper forms.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

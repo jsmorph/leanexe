@@ -1,0 +1,26 @@
+{
+  "names": [
+    "rangeBooleanStepResultSaved",
+    "rangeBooleanStepResultBound",
+    "rangeBooleanStepResultIgnored",
+    "rangeBooleanStepResultShow",
+    "rangeBooleanStepResultAlias",
+    "rangeBooleanStepResultCapture",
+    "rangeBooleanStepResultMonadicIgnored",
+    "rangeBooleanStepResultNested",
+    "rangeBooleanStepResultFlagInput",
+    "rangeBooleanStepResultWordTail"
+  ],
+  "adapters": {
+    "rangeBooleanStepResultSaved": "(fun (x y : UInt64) => (rangeBooleanStepResultSaved x y).toUInt64)",
+    "rangeBooleanStepResultBound": "(fun (x y : UInt64) => (rangeBooleanStepResultBound x y).toUInt64)",
+    "rangeBooleanStepResultIgnored": "(fun (x y : UInt64) => (rangeBooleanStepResultIgnored x y).toUInt64)",
+    "rangeBooleanStepResultShow": "(fun (x y : UInt64) => (rangeBooleanStepResultShow x y).toUInt64)",
+    "rangeBooleanStepResultAlias": "(fun (x y : UInt64) => (rangeBooleanStepResultAlias x y).toUInt64)",
+    "rangeBooleanStepResultCapture": "(fun (x y : UInt64) => (rangeBooleanStepResultCapture x y).toUInt64)",
+    "rangeBooleanStepResultMonadicIgnored": "(fun (x y : UInt64) => (rangeBooleanStepResultMonadicIgnored x y).toUInt64)",
+    "rangeBooleanStepResultNested": "(fun (x y : UInt64) => (rangeBooleanStepResultNested x y).toUInt64)",
+    "rangeBooleanStepResultFlagInput": "(fun (x y : UInt64) => (rangeBooleanStepResultFlagInput x (y != 0)).toUInt64)",
+    "rangeBooleanStepResultWordTail": "(fun (x y : UInt64) => rangeBooleanStepResultWordTail x y)"
+  }
+}
