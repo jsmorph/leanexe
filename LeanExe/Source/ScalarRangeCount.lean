@@ -46,7 +46,7 @@ theorem Count.Eval.of_scalar {count : Count} {values : List Value} {result : UIn
     cases evaluated <;>
       simp_all [Count.scalar, Scalar.literalExpr, idLetExpr, typedLiteralExpr, predicateInputExpr, booleanInputExpr,
         Identity.run, Identity.pure, Identity.bind, BooleanIdentity.bind,
-        Comparison.branch, CompoundGuard.branch, DecidedGuard.dependentBranch, BooleanLocalGuard.branch, BooleanLocalGuard.dependentBranch,
+        Comparison.branch, CompoundGuard.branch, DecidedGuard.dependentBranch, BooleanLocalGuard.branch, BooleanLocalGuard.dependentBranch, BooleanScopeGuard.branch, BooleanScopeGuard.dependentBranch,
         Extremum.expr, Extremum.head,
         ManyFunction.bind, ManyCall.expr, Range.call, Range.head, Lean.mkAppN, Lean.mkApp]
     case ofNat =>

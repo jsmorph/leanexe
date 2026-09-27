@@ -1,3 +1,5 @@
+import LeanExe.Extract.ScalarBooleanScopeGuard
+import LeanExe.Extract.ScalarBooleanHelper
 import LeanExe.Extract.ScalarBooleanCondition
 import Lean.Meta.Tactic.FunInd
 import LeanExe.Extract.ScalarExtractionSize
@@ -97,7 +99,14 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
           match _g : compoundGuard? condition evidence with
           | none =>
             match _booleanGuard : booleanLocalGuard? condition evidence with
-            | none => none
+            | none =>
+                match _scope : booleanScopeGuard? condition evidence with
+                | none => none
+                | some guard => do
+                    let c ← extractScalarExprWith locals guard.operand
+                    let t ← extractScalarExprWith locals onTrue
+                    let e ← extractScalarExprWith locals onFalse
+                    pure (.ite (wordGuard c) t e)
             | some guard => do
                 let c ← if hasBooleanPredicate locals guard.value.functions then
                     extractBooleanCondition guard.form (fun input _member =>
@@ -154,7 +163,14 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
           match _guard : dependentGuard? condition evidence trueDomain falseDomain with
           | none =>
               match _booleanGuard : booleanLocalDependentGuard? condition evidence trueDomain falseDomain with
-              | none => none
+              | none =>
+                  match _scope : booleanScopeDependentGuard? condition evidence trueDomain falseDomain with
+                  | none => none
+                  | some guard => do
+                      let c ← extractScalarExprWith locals guard.operand
+                      let t ← extractScalarExprWith (.unit :: locals) onTrue
+                      let e ← extractScalarExprWith (.unit :: locals) onFalse
+                      pure (.ite (wordGuard c) t e)
               | some guard => do
                   let c ← if hasBooleanPredicate locals guard.value.functions then
                       extractBooleanCondition guard.form (fun input _member =>
@@ -276,7 +292,23 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
           extractScalarExprWith (function :: locals) body
   | .app (.const ``Bool.toUInt64 []) argument =>
       match _boolean : booleanLocalOperands? argument with
-      | none => none
+      | none =>
+          match _wordHelper : booleanHelper? false argument with
+          | some helper => do
+              let _ ← extractScalarExprWith (.word (.u64 0) :: locals)
+                (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+              let function := ScalarBinding.predicateFunction fun input =>
+                extractScalarExprWith (.word input :: locals) (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+              extractScalarExprWith (function :: locals) (.app (.const ``Bool.toUInt64 []) helper.continuation)
+          | none =>
+              match _booleanHelper : booleanHelper? true argument with
+              | some helper => do
+                  let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals)
+                    (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+                  let function := ScalarBinding.booleanPredicateFunction fun input =>
+                    extractScalarExprWith (.boolean input :: locals) (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+                  extractScalarExprWith (function :: locals) (.app (.const ``Bool.toUInt64 []) helper.continuation)
+              | none => none
       | some expression =>
           match expression with
           | .predicate negations index input =>
@@ -410,6 +442,10 @@ decreasing_by
   all_goals simp_wf
   all_goals first
     | omega
+    | (have bound := booleanScopeGuard_size _scope; omega)
+    | (have bound := booleanScopeDependentGuard_size _scope; omega)
+    | (have bounds := booleanHelper_sizes _wordHelper; omega)
+    | (have bounds := booleanHelper_sizes _booleanHelper; omega)
     | (exact scalarManyCall_size _call _member)
     | (have bounds := scalarManyFunction_body_size _function; simp_all; omega)
     | (have bounds := booleanLocalDependentGuard_size _booleanGuard _member; omega)
@@ -511,6 +547,78 @@ run_elab Lean.executeReservedNameAction `LeanExe.Extract.Core.extractScalarExprW
 /-- Source argument indices map to the production IR's materialized slots. -/
 def extractScalarExpr (locals : List Nat) (source : Lean.Expr) : Option LeanExe.IR.Expr :=
   extractScalarExprWith (locals.map fun slot => .word (.local slot)) source
+
+theorem extractScalarExprWith_scopeBranch (locals : List ScalarBinding)
+    (guard : LeanExe.Source.Scalar.BooleanScopeGuard) (type : LeanExe.Source.Scalar.ResultType)
+    (yes no : Lean.Expr) :
+    extractScalarExprWith locals (guard.branch type.expr yes no) = (do
+      let condition ← extractScalarExprWith locals guard.operand
+      let t ← extractScalarExprWith locals yes
+      let e ← extractScalarExprWith locals no
+      pure (.ite (wordGuard condition) t e)) := by
+  rw [LeanExe.Source.Scalar.BooleanScopeGuard.branch, extractScalarExprWith]
+  rw [scalarResultType_accepts, booleanScopeGuard_not_comparison,
+    booleanScopeGuard_not_compound, booleanScopeGuard_not_boolean, booleanScopeGuard_accepts]
+
+theorem extractScalarExprWith_scopeDependentBranch (locals : List ScalarBinding)
+    (guard : LeanExe.Source.Scalar.BooleanScopeGuard) (type : LeanExe.Source.Scalar.ResultType)
+    (tn fn : Lean.Name) (ti fi : Lean.BinderInfo) (yes no : Lean.Expr) :
+    extractScalarExprWith locals (guard.dependentBranch type.expr tn fn ti fi yes no) = (do
+      let condition ← extractScalarExprWith locals guard.operand
+      let t ← extractScalarExprWith (.unit :: locals) yes
+      let e ← extractScalarExprWith (.unit :: locals) no
+      pure (.ite (wordGuard condition) t e)) := by
+  rw [LeanExe.Source.Scalar.BooleanScopeGuard.dependentBranch, extractScalarExprWith]
+  rw [scalarResultType_accepts, booleanScopeGuard_not_dependent,
+    booleanScopeGuard_not_booleanDependent, booleanScopeDependentGuard_accepts]
+
+theorem extractScalarExprWith_scopedPredicate (locals : List ScalarBinding)
+    (helper : LeanExe.Source.Scalar.BooleanHelper false) :
+    extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) helper.expr) = (do
+      let _ ← extractScalarExprWith (.word (.u64 0) :: locals) (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+      let function := ScalarBinding.predicateFunction fun input =>
+        extractScalarExprWith (.word input :: locals) (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+      extractScalarExprWith (function :: locals) (.app (.const ``Bool.toUInt64 []) helper.continuation)) := by
+  rw [extractScalarExprWith]
+  split
+  · split
+    · rename_i actual found
+      have equal := Option.some.inj ((booleanHelper_accepts helper).symm.trans found)
+      subst actual
+      rfl
+    · rename_i absent
+      rw [booleanHelper_accepts] at absent
+      contradiction
+  · rename_i expression found
+    rw [booleanHelper_not_local] at found
+    contradiction
+
+theorem extractScalarExprWith_scopedBooleanPredicate (locals : List ScalarBinding)
+    (helper : LeanExe.Source.Scalar.BooleanHelper true) :
+    extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) helper.expr) = (do
+      let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals) (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+      let function := ScalarBinding.booleanPredicateFunction fun input =>
+        extractScalarExprWith (.boolean input :: locals) (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+      extractScalarExprWith (function :: locals) (.app (.const ``Bool.toUInt64 []) helper.continuation)) := by
+  have other := booleanHelper_other helper
+  change booleanHelper? false helper.expr = none at other
+  rw [extractScalarExprWith]
+  split
+  · split
+    · rename_i actual found
+      rw [other] at found
+      contradiction
+    · split
+      · rename_i actual found
+        have equal := Option.some.inj ((booleanHelper_accepts helper).symm.trans found)
+        subst actual
+        rfl
+      · rename_i absent
+        rw [booleanHelper_accepts] at absent
+        contradiction
+  · rename_i expression found
+    rw [booleanHelper_not_local] at found
+    contradiction
 
 theorem extractScalarExprWith_binary {head : Lean.Expr} {f : UInt64 → UInt64 → UInt64}
     (h : LeanExe.Source.Scalar.Head head f) (locals : List ScalarBinding) (a b : Lean.Expr) :
