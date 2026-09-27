@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarBooleanBinaryHelper
 import LeanExe.Extract.ScalarBooleanScopeBinding
 import LeanExe.Extract.ScalarBooleanRelationSelection
 import LeanExe.Extract.ScalarBooleanGuardedSelection
@@ -214,16 +215,29 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
   | .letE _ (.const ``UInt64 []) value body _ => do
       let bound ← extractScalarExprWith locals value
       extractScalarExprWith (.word bound :: locals) body
-  | .letE _ (.forallE firstTypeName (.const ``UInt64 [])
+  | .letE functionName (.forallE firstTypeName (.const ``UInt64 [])
       (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
-      (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) body _ =>
+      (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) body nondep =>
       match scalarResultType? resultType with
       | none =>
           match _function : scalarManyFunction?
               (.forallE firstTypeName (.const ``UInt64 [])
                 (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
               (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) with
-          | none => none
+          | none =>
+              match _binaryOuter : booleanBinaryHelper? (.letE functionName
+                  (.forallE firstTypeName (.const ``UInt64 [])
+                    (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
+                  (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi)
+                  body nondep) with
+              | none => none
+              | some helper => do
+                  let _ ← extractScalarExprWith (.word (.u64 0) :: .word (.u64 0) :: locals)
+                    (.app (.const ``Bool.toUInt64 []) helper.body)
+                  let function := ScalarBinding.binaryPredicateFunction fun first second =>
+                    extractScalarExprWith (.word second :: .word first :: locals)
+                      (.app (.const ``Bool.toUInt64 []) helper.body)
+                  extractScalarExprWith (function :: locals) helper.continuation
           | some shape => do
               let _ ← extractScalarExprWith (List.replicate shape.arity (.word (.u64 0)) ++ locals) shape.body
               let function := ScalarBinding.manyFunction shape.arity fun arguments =>
@@ -333,7 +347,24 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
                                                   extractScalarExprWith (.word value :: locals) (.app (.const ``Bool.toUInt64 []) binding.body)
                                               | none =>
                                                   match _scopeBoolean : booleanScopeBinding? true argument with
-                                                  | none => none
+                                                  | none =>
+                                                      match _binaryCall : booleanBinaryCall? argument with
+                                                      | some call => do
+                                                          let function ← locals[call.index]?.bind ScalarBinding.binaryPredicateFunction?
+                                                          let first ← extractScalarExprWith locals call.first
+                                                          let second ← extractScalarExprWith locals call.second
+                                                          function first second
+                                                      | none =>
+                                                          match _binaryHelper : booleanBinaryHelper? argument with
+                                                          | none => none
+                                                          | some helper => do
+                                                              let _ ← extractScalarExprWith (.word (.u64 0) :: .word (.u64 0) :: locals)
+                                                                (.app (.const ``Bool.toUInt64 []) helper.body)
+                                                              let function := ScalarBinding.binaryPredicateFunction fun first second =>
+                                                                extractScalarExprWith (.word second :: .word first :: locals)
+                                                                  (.app (.const ``Bool.toUInt64 []) helper.body)
+                                                              extractScalarExprWith (function :: locals)
+                                                                (.app (.const ``Bool.toUInt64 []) helper.continuation)
                                                   | some binding => do
                                                       let value ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) binding.value)
                                                       extractScalarExprWith (.boolean value :: locals) (.app (.const ``Bool.toUInt64 []) binding.body)
@@ -500,6 +531,9 @@ decreasing_by
   all_goals simp_wf
   all_goals first
     | omega
+    | (have bounds := booleanBinaryHelper_sizes _binaryOuter; simp at bounds; omega)
+    | (have bounds := booleanBinaryHelper_sizes _binaryHelper; omega)
+    | (have bounds := booleanBinaryCall_sizes _binaryCall; omega)
     | (have bounds := booleanScopeBinding_sizes _scopeWord; omega)
     | (have bounds := booleanScopeBinding_sizes _scopeBoolean; omega)
     | (have bound := booleanScopeGuard_size _scope; omega)

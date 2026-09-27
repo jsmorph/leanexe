@@ -7,6 +7,7 @@ import LeanExe.Source.ScalarBooleanNegated
 import LeanExe.Source.ScalarBooleanWrapped
 import LeanExe.Source.ScalarBooleanScopeGuard
 import LeanExe.Source.ScalarBooleanScopeBinding
+import LeanExe.Source.ScalarBooleanBinaryHelper
 import LeanExe.Source.ScalarBooleanHelper
 import LeanExe.Source.ScalarBooleanInput
 import LeanExe.Source.ScalarBooleanConditionInputs
@@ -252,6 +253,21 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
   | scopedWrapper (wrapped : BooleanWrapped)
       (body : EvalWith (.app (.const ``Bool.toUInt64 []) wrapped.body) values (Bool.toUInt64 flag)) :
       EvalWith (.app (.const ``Bool.toUInt64 []) wrapped.expr) values (Bool.toUInt64 (wrapped.wrapper.denote flag))
+  | applyBinaryPredicate (call : BooleanBinaryCall)
+      (function : values[call.index]? = some (.binaryPredicateFunction f))
+      (first : EvalWith call.first values x) (second : EvalWith call.second values y) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) call.expr) values (Bool.toUInt64 (f x y))
+  | letBinaryPredicate (helper : BooleanBinaryHelper)
+      (function : ∀ x y, EvalWith (.app (.const ``Bool.toUInt64 []) helper.body)
+        (.word y :: .word x :: values) (Bool.toUInt64 (f x y)))
+      (body : EvalWith helper.continuation (.binaryPredicateFunction f :: values) result) :
+      EvalWith helper.expr values result
+  | scopedBinaryPredicate (helper : BooleanBinaryHelper)
+      (function : ∀ x y, EvalWith (.app (.const ``Bool.toUInt64 []) helper.body)
+        (.word y :: .word x :: values) (Bool.toUInt64 (f x y)))
+      (body : EvalWith (.app (.const ``Bool.toUInt64 []) helper.continuation)
+        (.binaryPredicateFunction f :: values) (Bool.toUInt64 flag)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) helper.expr) values (Bool.toUInt64 flag)
   | scopedWordBinding (binding : BooleanScopeBinding false)
       (bound : EvalWith binding.value values input)
       (body : EvalWith (.app (.const ``Bool.toUInt64 []) binding.body)
@@ -520,6 +536,18 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
   | scopedWrapper (wrapped : BooleanWrapped)
       (body : SupportedWith types (.app (.const ``Bool.toUInt64 []) wrapped.body)) :
       SupportedWith types (.app (.const ``Bool.toUInt64 []) wrapped.expr)
+  | applyBinaryPredicate (call : BooleanBinaryCall)
+      (function : types[call.index]? = some .binaryPredicateFunction)
+      (first : SupportedWith types call.first) (second : SupportedWith types call.second) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) call.expr)
+  | letBinaryPredicate (helper : BooleanBinaryHelper)
+      (function : SupportedWith (.word :: .word :: types) (.app (.const ``Bool.toUInt64 []) helper.body))
+      (body : SupportedWith (.binaryPredicateFunction :: types) helper.continuation) :
+      SupportedWith types helper.expr
+  | scopedBinaryPredicate (helper : BooleanBinaryHelper)
+      (function : SupportedWith (.word :: .word :: types) (.app (.const ``Bool.toUInt64 []) helper.body))
+      (body : SupportedWith (.binaryPredicateFunction :: types) (.app (.const ``Bool.toUInt64 []) helper.continuation)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) helper.expr)
   | scopedWordBinding (binding : BooleanScopeBinding false)
       (bound : SupportedWith types binding.value)
       (body : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) binding.body)) :
@@ -588,7 +616,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
   generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
   cases evaluation with
   | booleanWord | booleanBindingWord | wordBindingBooleanWord | booleanWrappedWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord | booleanPropositionWord => exact ⟨_, rfl⟩
-  | scopedWordBinding | scopedBooleanBinding | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate | scopedWrapper | scopedNegation | scopedJunction | scopedEquality | scopedSelection | scopedPropositionSelection | scopedRelationSelection => exact ⟨_, rfl⟩
+  | applyBinaryPredicate | scopedBinaryPredicate | scopedWordBinding | scopedBooleanBinding | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate | scopedWrapper | scopedNegation | scopedJunction | scopedEquality | scopedSelection | scopedPropositionSelection | scopedRelationSelection => exact ⟨_, rfl⟩
   | complement head _ => cases head <;> simp_all
   | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
   | manyApply call _ _ =>
@@ -604,7 +632,8 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
       BooleanIdentity.bind, BooleanLocalGuard.branch,
       BooleanLocalGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
       UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head,
-      idLetExpr, predicateInputExpr, booleanInputExpr]
+      idLetExpr, predicateInputExpr, booleanInputExpr,
+      BooleanBinaryHelper.expr, BooleanBinaryFunctionBinding.expr]
 
 
 theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
@@ -981,6 +1010,32 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     obtain ⟨value, evaluated⟩ := ih values typed
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
     exact ⟨(wrapped.wrapper.denote flag).toUInt64, .scopedWrapper wrapped evaluated⟩
+  | applyBinaryPredicate call present _ _ ihx ihy =>
+    obtain ⟨f, hf⟩ := binaryPredicateFunction_lookup typed present
+    obtain ⟨x, hx⟩ := ihx values typed
+    obtain ⟨y, hy⟩ := ihy values typed
+    exact ⟨Bool.toUInt64 (f x y), .applyBinaryPredicate call hf hx hy⟩
+  | letBinaryPredicate helper _ _ ihf ihb =>
+    have total : ∀ x y, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) helper.body) (.word y :: .word x :: values) flag.toUInt64 := by
+      intro x y
+      obtain ⟨encoded, evaluated⟩ := ihf (.word y :: .word x :: values) (by simp [Value.kind, typed])
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x y => (total x y).choose
+    obtain ⟨result, evaluated⟩ := ihb (.binaryPredicateFunction f :: values) (by simp [Value.kind, typed])
+    exact ⟨result, .letBinaryPredicate helper (fun x y => (total x y).choose_spec) evaluated⟩
+  | scopedBinaryPredicate helper _ _ ihf ihb =>
+    have total : ∀ x y, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) helper.body) (.word y :: .word x :: values) flag.toUInt64 := by
+      intro x y
+      obtain ⟨encoded, evaluated⟩ := ihf (.word y :: .word x :: values) (by simp [Value.kind, typed])
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x y => (total x y).choose
+    obtain ⟨encoded, evaluated⟩ := ihb (.binaryPredicateFunction f :: values) (by simp [Value.kind, typed])
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    exact ⟨flag.toUInt64, .scopedBinaryPredicate helper (fun x y => (total x y).choose_spec) evaluated⟩
   | scopedWordBinding binding _ _ ihv ihb =>
     obtain ⟨input, bound⟩ := ihv values typed
     obtain ⟨encoded, body⟩ := ihb (.word input :: values) (by simp [Value.kind, typed])

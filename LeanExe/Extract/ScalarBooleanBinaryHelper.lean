@@ -194,4 +194,7 @@ theorem booleanBinaryCall_sizes {source : Lean.Expr} {call : BooleanBinaryCall}
   rw [dite_eq_left (booleanBinaryCall_not_local call)]
   rfl
 
+@[simp] theorem booleanBinaryHelper_not_call (helper : BooleanBinaryHelper) :
+    booleanBinaryCall? helper.expr = none := rfl
+
 end LeanExe.Extract.Core
