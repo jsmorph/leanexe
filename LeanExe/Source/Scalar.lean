@@ -155,6 +155,15 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
         (.boolean flag :: values) (Bool.toUInt64 outcome)) :
       EvalWith (.app (.const ``Bool.toUInt64 []) (BooleanLocal.binding negations name form value body type).expr)
         values (Bool.toUInt64 (GuardNegation.denote negations outcome))
+  | wordBindingBooleanWord (negations : Nat) (name : Lean.Name) (form : BooleanBindingForm)
+      (value : Lean.Expr) (body : BooleanLocal) (type : ResultType)
+      (member : index ∈ booleanLetVariables body.functions)
+      (function : values[index]? = some (.booleanPredicateFunction f))
+      (bound : EvalWith value values flag)
+      (result : EvalWith (.app (.const ``Bool.toUInt64 []) body.expr)
+        (.word flag :: values) (Bool.toUInt64 outcome)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) (BooleanLocal.wordBinding negations name form value body type).expr)
+        values (Bool.toUInt64 (GuardNegation.denote negations outcome))
   | booleanWrappedWord (negations : Nat) (wrapper : BooleanWrapper) (body : BooleanLocal)
       (member : index ∈ body.functions)
       (function : values[index]? = some (.booleanPredicateFunction f))
@@ -359,6 +368,13 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (bound : SupportedWith types (.app (.const ``Bool.toUInt64 []) value.expr))
       (result : SupportedWith (.boolean :: types) (.app (.const ``Bool.toUInt64 []) body.expr)) :
       SupportedWith types (.app (.const ``Bool.toUInt64 []) (BooleanLocal.binding negations name form value body type).expr)
+  | wordBindingBooleanWord (negations : Nat) (name : Lean.Name) (form : BooleanBindingForm)
+      (value : Lean.Expr) (body : BooleanLocal) (type : ResultType)
+      (member : index ∈ booleanLetVariables body.functions)
+      (function : types[index]? = some .booleanPredicateFunction)
+      (bound : SupportedWith types value)
+      (result : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) body.expr)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) (BooleanLocal.wordBinding negations name form value body type).expr)
   | booleanWrappedWord (negations : Nat) (wrapper : BooleanWrapper) (body : BooleanLocal)
       (member : index ∈ body.functions)
       (function : types[index]? = some .booleanPredicateFunction)
@@ -442,7 +458,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
     ∃ flag : Bool, value = flag.toUInt64 := by
   generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
   cases evaluation with
-  | booleanWord | booleanBindingWord | booleanWrappedWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord | booleanPropositionWord => exact ⟨_, rfl⟩
+  | booleanWord | booleanBindingWord | wordBindingBooleanWord | booleanWrappedWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord | booleanPropositionWord => exact ⟨_, rfl⟩
   | applyBooleanPredicateWord => exact ⟨_, rfl⟩
   | complement head _ => cases head <;> simp_all
   | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
@@ -698,6 +714,13 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     obtain ⟨outcome, rfl⟩ := evaluated.booleanConversion_result
     exact ⟨Bool.toUInt64 (GuardNegation.denote negations outcome),
       .booleanBindingWord negations name form value body type member hf bound evaluated⟩
+  | wordBindingBooleanWord negations name form value body type member present _ _ ihv ihb =>
+    obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
+    obtain ⟨flag, bound⟩ := ihv values typed
+    obtain ⟨result, evaluated⟩ := ihb (.word flag :: values) (by simp [Value.kind, typed])
+    obtain ⟨outcome, rfl⟩ := evaluated.booleanConversion_result
+    exact ⟨Bool.toUInt64 (GuardNegation.denote negations outcome),
+      .wordBindingBooleanWord negations name form value body type member hf bound evaluated⟩
   | booleanWrappedWord negations wrapper body member present _ ih =>
     obtain ⟨f, hf⟩ := booleanPredicateFunction_lookup typed present
     obtain ⟨encoded, evaluated⟩ := ih values typed

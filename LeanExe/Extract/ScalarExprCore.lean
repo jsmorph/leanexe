@@ -357,6 +357,15 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
                 let condition ← extractBooleanLocalWith locals expression
                   (fun operand _member => extractScalarExprWith locals operand)
                 pure (guardWord condition)
+          | .wordBinding negations name form value body type =>
+              if hasBooleanPredicate locals (LeanExe.Source.Scalar.booleanLetVariables body.functions) then do
+                let bound ← extractScalarExprWith locals value
+                let result ← extractScalarExprWith (.word bound :: locals) (.app (.const ``Bool.toUInt64 []) body.expr)
+                pure (booleanWordNegation negations result)
+              else do
+                let condition ← extractBooleanLocalWith locals expression
+                  (fun operand _member => extractScalarExprWith locals operand)
+                pure (guardWord condition)
           | _ => do
               let condition ← extractBooleanLocalWith locals expression
                 (fun operand _member => extractScalarExprWith locals operand)
@@ -404,6 +413,14 @@ decreasing_by
        have bound := form.binding_size name type.expr value.expr body.expr
        have outer := LeanExe.Source.Scalar.BooleanGuardNegation.expr_size negations
          (form.expr name type.expr value.expr body.expr)
+       simp only [LeanExe.Source.Scalar.BooleanLocal.expr] at same
+       rw [← same] at outer
+       simp at bound
+       omega)
+    | (have same := booleanLocalOperands_sound _boolean
+       have bound := form.binding_size name type.expr value body.expr
+       have outer := LeanExe.Source.Scalar.BooleanGuardNegation.expr_size negations
+         (form.expr name type.expr value body.expr)
        simp only [LeanExe.Source.Scalar.BooleanLocal.expr] at same
        rw [← same] at outer
        simp at bound
@@ -564,7 +581,9 @@ theorem extractScalarExprWith_booleanWord (locals : List ScalarBinding)
     (noWrapped : ∀ negations wrapper body, expression = .wrapped negations wrapper body →
       hasBooleanPredicate locals body.functions = false)
     (noBinding : ∀ negations name form value body type, expression = .binding negations name form value body type →
-      hasBooleanPredicate locals (value.functions ++ LeanExe.Source.Scalar.booleanLetVariables body.functions) = false) :
+      hasBooleanPredicate locals (value.functions ++ LeanExe.Source.Scalar.booleanLetVariables body.functions) = false)
+    (noWordBinding : ∀ negations name form value body type, expression = .wordBinding negations name form value body type →
+      hasBooleanPredicate locals (LeanExe.Source.Scalar.booleanLetVariables body.functions) = false) :
     extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) expression.expr) = (do
       let condition ← extractBooleanLocalWith locals expression
         (fun operand _member => extractScalarExprWith locals operand)
@@ -596,6 +615,8 @@ theorem extractScalarExprWith_booleanWord (locals : List ScalarBinding)
       simp only [noWrapped negations wrapper body rfl, Bool.false_eq_true, ↓reduceIte]
     next negations name form value body type _ _ =>
       simp only [noBinding negations name form value body type rfl, Bool.false_eq_true, ↓reduceIte]
+    next negations name form value body type _ _ =>
+      simp only [noWordBinding negations name form value body type rfl, Bool.false_eq_true, ↓reduceIte]
     next => rfl
 
 theorem extractScalarExprWith_booleanBinding (locals : List ScalarBinding)
@@ -613,6 +634,29 @@ theorem extractScalarExprWith_booleanBinding (locals : List ScalarBinding)
         pure (guardWord condition)) := by
   have accepted := booleanLocalOperands_expr
     (LeanExe.Source.Scalar.BooleanLocal.binding negations name form value body type)
+  rw [extractScalarExprWith]
+  split
+  next rejected => rw [rejected] at accepted; cases accepted
+  next expression parsed =>
+    have same := Option.some.inj (parsed.symm.trans accepted)
+    subst expression
+    rfl
+
+theorem extractScalarExprWith_booleanWordBinding (locals : List ScalarBinding)
+    (negations : Nat) (name : Lean.Name) (form : LeanExe.Source.Scalar.BooleanBindingForm)
+    (value : Lean.Expr) (body : LeanExe.Source.Scalar.BooleanLocal) (type : LeanExe.Source.Scalar.ResultType) :
+    extractScalarExprWith locals (.app (.const ``Bool.toUInt64 [])
+      (LeanExe.Source.Scalar.BooleanLocal.wordBinding negations name form value body type).expr) =
+      (if hasBooleanPredicate locals (LeanExe.Source.Scalar.booleanLetVariables body.functions) then do
+        let bound ← extractScalarExprWith locals value
+        let result ← extractScalarExprWith (.word bound :: locals) (.app (.const ``Bool.toUInt64 []) body.expr)
+        pure (booleanWordNegation negations result)
+      else do
+        let condition ← extractBooleanLocalWith locals (.wordBinding negations name form value body type)
+          (fun operand _member => extractScalarExprWith locals operand)
+        pure (guardWord condition)) := by
+  have accepted := booleanLocalOperands_expr
+    (LeanExe.Source.Scalar.BooleanLocal.wordBinding negations name form value body type)
   rw [extractScalarExprWith]
   split
   next rejected => rw [rejected] at accepted; cases accepted
@@ -797,7 +841,7 @@ theorem extractScalarExprWith_applyBooleanPredicateWordOnly (locals : List Scala
       (by intro form n unequal left right same; cases form <;> cases same)
       (by intro form n unequal left right yes no same; cases form <;> cases same)
       (by intro form n guard yes no same; cases form <;> cases same)
-      (by intros; contradiction) (by intros; contradiction)]
+      (by intros; contradiction) (by intros; contradiction) (by intros; contradiction)]
     simp [extractBooleanLocalWith, extractBooleanLocal, noPredicate]
 
 theorem extractScalarExprWith_letBoolean (locals : List ScalarBinding)

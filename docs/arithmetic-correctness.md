@@ -210,8 +210,11 @@ Boolean-valued lets, immediate applications and named immediate applications
 can use these calls in the bound value or body. Bound flags preserve captures
 and shadowing, including inside converted helper results and loop conditions.
 Both used and unused values are checked; standard Id annotations and negation
-are retained. UInt64 bindings and monadic binds inside Boolean-valued results
-remain subsequent capabilities.
+are retained. UInt64 bindings inside Boolean results use the same binding forms,
+with the bound expression checked as a word. Their Boolean bodies may call captured
+helpers, including in loop conditions and helper results. Word and Boolean bindings
+remain distinct. Monadic binds inside Boolean-valued results remain a subsequent
+capability.
 Nested converted calls, including negated inner arguments, check each argument
 as a Boolean conversion. Conjunctions and disjunctions can combine these calls
 with flags, word-input predicate calls and other supported Boolean expressions,

@@ -5084,6 +5084,67 @@ def rangeBooleanBoundResultHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (g true).toUInt64 + 1
   return a + (g false).toUInt64
 
+def booleanWordBoundResultValue (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  (let saved := x + (f true).toUInt64; f (saved == y)).toUInt64 + y
+
+def booleanWordBoundResultBody (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == y
+  (let saved := x + y; f (saved == 0)).toUInt64 + x
+
+def booleanWordBoundResultNested (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  (let saved := x + 1; let saved := saved + y; f (saved == y)).toUInt64 + y
+
+def booleanWordBoundResultCapture (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  let g := fun n : UInt64 => let saved := n + x; f (saved == y)
+  (g y).toUInt64 + (g x).toUInt64
+
+def booleanWordBoundResultApplication (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  ((fun saved : UInt64 => f (saved == y)) (x + (f true).toUInt64)).toUInt64 + x
+
+def booleanWordBoundResultNamed (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  (let transform := fun saved : UInt64 => f (saved == y); transform (x + (f true).toUInt64)).toUInt64 + y
+
+def rangeBooleanWordBoundResultStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != seed
+    a := a + (let saved := a + i.toUInt64; f (saved == seed)).toUInt64 + 1
+  return a
+
+def rangeBooleanWordBoundResultCondition (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != seed
+    if (let saved := a + i.toUInt64; f (saved != seed)) then break
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeBooleanWordBoundResultOuter (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let saved := (let value := seed + 1; f (value == 0))
+  let mut a := seed + saved.toUInt64
+  for i in [:count.toNat] do
+    if (let value := a + i.toUInt64; f (value == seed)) then
+      a := a + 3
+      continue
+    a := a + 1
+  return a + saved.toUInt64
+
+def rangeBooleanWordBoundResultHelper (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun n : UInt64 => let saved := n + seed; f (saved == 0)
+  let mut a := seed
+  for i in [:count.toNat] do
+    let h := fun n : UInt64 => let saved := n + a; g saved
+    if h i.toUInt64 then break
+    a := a + (g a).toUInt64 + 1
+  return a + (g seed).toUInt64
+
 def booleanPredicateResultBool (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => !b && x != 0
   let g := fun b : Bool => f b
@@ -7667,6 +7728,16 @@ run_elab do
       `ArithmeticModeTest.rangeBooleanBoundResultCondition,
       `ArithmeticModeTest.rangeBooleanBoundResultOuter,
       `ArithmeticModeTest.rangeBooleanBoundResultHelper,
+      `ArithmeticModeTest.booleanWordBoundResultValue,
+      `ArithmeticModeTest.booleanWordBoundResultBody,
+      `ArithmeticModeTest.booleanWordBoundResultNested,
+      `ArithmeticModeTest.booleanWordBoundResultCapture,
+      `ArithmeticModeTest.booleanWordBoundResultApplication,
+      `ArithmeticModeTest.booleanWordBoundResultNamed,
+      `ArithmeticModeTest.rangeBooleanWordBoundResultStep,
+      `ArithmeticModeTest.rangeBooleanWordBoundResultCondition,
+      `ArithmeticModeTest.rangeBooleanWordBoundResultOuter,
+      `ArithmeticModeTest.rangeBooleanWordBoundResultHelper,
       `ArithmeticModeTest.booleanPredicateResultBool,
       `ArithmeticModeTest.booleanPredicateResultWord,
       `ArithmeticModeTest.booleanPredicateResultNested,
