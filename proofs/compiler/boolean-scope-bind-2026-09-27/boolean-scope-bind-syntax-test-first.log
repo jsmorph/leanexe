@@ -1,0 +1,15 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_scope_bind_syntax.lean:10:5: error: unexpected token 'instance'; expected '(', ':=', 'rec', '|', identifier or term
+test/scalar_boolean_scope_bind_syntax.lean:10:14: error: unexpected token ':='; expected ':'
+test/scalar_boolean_scope_bind_syntax.lean:61:46: error: unexpected token '.'; expected '_' or identifier
+test/scalar_boolean_scope_bind_syntax.lean:107:102: error: unexpected token ','; expected ':'
+test/scalar_boolean_scope_bind_syntax.lean:108:102: error: unexpected token ','; expected ':'
+test/scalar_boolean_scope_bind_syntax.lean:109:114: error: unexpected token ','; expected ':'
+test/scalar_boolean_scope_bind_syntax.lean:112:87: error: unexpected token ','; expected ':'
+test/scalar_boolean_scope_bind_syntax.lean:113:92: error: unexpected token ','; expected ':'
+test/scalar_boolean_scope_bind_syntax.lean:114:71: error: unexpected token '.'; expected '_' or identifier
+test/scalar_boolean_scope_bind_syntax.lean:115:91: error: unexpected token '.'; expected '_' or identifier
+test/scalar_boolean_scope_bind_syntax.lean:116:91: error: unexpected token '.'; expected '_' or identifier
+test/scalar_boolean_scope_bind_syntax.lean:117:64: error: unexpected token 'if'; expected '_' or identifier
+test/scalar_boolean_scope_bind_syntax.lean:118:91: error: unexpected token '.'; expected '_' or identifier
