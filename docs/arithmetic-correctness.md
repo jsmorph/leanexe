@@ -35,9 +35,11 @@ Boolean computation. Unused setup expressions are checked. Bool let bindings and
 as well. Each flag action is checked as an admitted Boolean conversion, and its
 normalized value is preserved in loop captures and the final result. Boolean bind
 input/output types may retain Id layers; exact lambda domains and standard
-instances are required. Let domains with Id annotations, outer helper declarations
-and conditional actions that introduce loop-containing local continuations
-remain unsupported forms. Public parameter
+instances are required. The domains of word/Boolean setup lets and word-loop
+result bindings may retain any number of exact standard Id layers. Their original
+annotations remain in the source semantics; invalid heads, universes and underlying
+types are rejected. Outer helper declarations and conditional actions that
+introduce loop-containing local continuations remain unsupported forms. Public parameter
 domains may retain any number of standard Id layers. Declared and lambda domains
 must have the same base scalar kind; differing Id depths preserve their meaning.
 Custom annotation heads, wrong universes and metadata inside parameter domains

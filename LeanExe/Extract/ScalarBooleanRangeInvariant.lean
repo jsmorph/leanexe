@@ -37,21 +37,22 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact extractScalarExprWith_invariant P literal binary choice matched bindings
     · exact bindings binding member
-  | case5 => contradiction
+  | case5 locals name type value body nondep ih => exact ih compiled bindings
   | case6 => contradiction
-  | case7 locals input output value name domain body binder notWord types parsed bound matched ih =>
+  | case7 => contradiction
+  | case8 locals input output value name domain body binder notWord types parsed bound matched ih =>
     apply ih compiled
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · exact extractScalarExprWith_invariant P literal binary choice matched bindings
     · exact bindings binding member
-  | case8 locals input output value name domain body binder types parsed bound matched ih =>
+  | case9 locals input output value name domain body binder types parsed bound matched ih =>
     apply ih compiled
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · exact extractScalarExprWith_invariant P literal binary choice matched bindings
     · exact bindings binding member
-  | case9 locals input output value name domain body binder types parsed notPure =>
+  | case10 locals input output value name domain body binder types parsed notPure =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hp, result, hr, rfl⟩ := compiled
     obtain ⟨count, initial, step, done, tail⟩ :=
@@ -62,7 +63,7 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact tail
     · exact bindings binding member
-  | case10 locals source notLet notFlag notBind wrapper body parsed ih => exact ih compiled bindings
-  | case11 => contradiction
+  | case11 locals source notLet notFlag notIdLet notBind wrapper body parsed ih => exact ih compiled bindings
+  | case12 => contradiction
 
 end LeanExe.Extract.Core

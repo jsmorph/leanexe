@@ -5589,6 +5589,103 @@ def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
   return a
 
+def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
+  let start : Id UInt64 := seed + 7
+  let value := Id.run do
+    let mut a := Id.run start
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+    return a
+  value == Id.run start
+
+def rangeBoolLetIdWordLayers (count seed : UInt64) : Bool :=
+  let start : Id (Id UInt64) := pure (pure (seed + 1))
+  let stop : Id UInt64 := count % 17
+  let value := Id.run do
+    let mut a := Id.run (Id.run start)
+    for i in [:(Id.run stop).toNat] do
+      a := a + i.toUInt64 + 1
+    return a
+  value != Id.run (Id.run start)
+
+def rangeBoolLetIdFlag (count seed : UInt64) : Bool :=
+  let flag : Id Bool := seed % 3 == 0
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + (Id.run flag).toUInt64
+    return a
+  Id.run flag && value == seed
+
+def rangeBoolLetIdFlagLayers (count seed : UInt64) : Bool :=
+  let flag : Id (Id Bool) := pure (pure (seed % 2 == 0))
+  let start : Id UInt64 := seed + (Id.run (Id.run flag)).toUInt64
+  let value := Id.run do
+    let mut a := Id.run start
+    for i in [:count.toNat] do
+      if Id.run (Id.run flag) && i.toUInt64 % 3 == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a
+  Id.run (Id.run flag) || value == Id.run start
+
+def rangeBoolLetIdResult (count seed : UInt64) : Bool :=
+  let value : Id UInt64 := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+    return a
+  Id.run value == seed
+
+def rangeBoolLetIdResultLayers (count seed : UInt64) : Id Bool :=
+  let value : Id (Id UInt64) := pure (pure (Id.run do
+    let mut a := seed
+    for i in [1:count.toNat:3] do
+      a := a + i.toUInt64
+      if a % 7 == 0 then break
+    return a))
+  pure (Id.run (Id.run value) % 7 == 0)
+
+def rangeBoolLetIdMixed (count seed : UInt64) : Bool :=
+  let start : Id UInt64 := seed + 3
+  let flag : Id Bool := Id.run start % 2 == 0
+  let value : Id UInt64 := Id.run do
+    let mut a := Id.run start
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + (Id.run flag).toUInt64
+    return a
+  Id.run flag && Id.run value != Id.run start
+
+def rangeBoolLetIdExit (count seed : UInt64) : Bool :=
+  let flag : Id Bool := seed != 0
+  let value : Id (Id UInt64) := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if Id.run flag && a % 7 == 0 then break
+    return a
+  Id.run flag || Id.run (Id.run value) == seed
+
+def rangeBoolLetIdContinue (count seed : UInt64) : Bool := Id.run (
+  let flag : Id Bool := seed % 3 == 0
+  let value : Id UInt64 := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if Id.run flag && i.toUInt64 % 2 == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a
+  pure (Id.run flag && Id.run value == seed))
+
+def rangeBoolLetIdInput (count : Id UInt64) (input : Id Bool) : Id (Id Bool) :=
+  let flag : Id (Id Bool) := pure (pure (!Id.run input))
+  let start : Id UInt64 := (Id.run input).toUInt64
+  let value : Id (Id UInt64) := Id.run do
+    let mut a := Id.run start
+    for i in [:(Id.run count).toNat] do
+      a := a + i.toUInt64 + 1
+      if Id.run (Id.run flag) && a % 7 == 0 then break
+    return a
+  pure (pure (Id.run (Id.run flag) && Id.run (Id.run value) == Id.run start))
+
 def rangeBoolFlagSetupLet (count seed : UInt64) : Bool :=
   let flag := seed % 3 == 0
   let value := Id.run do
@@ -9006,6 +9103,16 @@ run_elab do
       `ArithmeticModeTest.rangeLocalNotContinue,
       `ArithmeticModeTest.rangeLocalNotOuter,
       `ArithmeticModeTest.rangeLocalNotHelper,
+      `ArithmeticModeTest.rangeBoolLetIdWord,
+      `ArithmeticModeTest.rangeBoolLetIdWordLayers,
+      `ArithmeticModeTest.rangeBoolLetIdFlag,
+      `ArithmeticModeTest.rangeBoolLetIdFlagLayers,
+      `ArithmeticModeTest.rangeBoolLetIdResult,
+      `ArithmeticModeTest.rangeBoolLetIdResultLayers,
+      `ArithmeticModeTest.rangeBoolLetIdMixed,
+      `ArithmeticModeTest.rangeBoolLetIdExit,
+      `ArithmeticModeTest.rangeBoolLetIdContinue,
+      `ArithmeticModeTest.rangeBoolLetIdInput,
       `ArithmeticModeTest.rangeBoolFlagSetupLet,
       `ArithmeticModeTest.rangeBoolFlagSetupChain,
       `ArithmeticModeTest.rangeBoolFlagSetupBind,
