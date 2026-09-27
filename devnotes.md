@@ -17814,3 +17814,9 @@ The matrix-loop cleanup theorem now derives from a register-parameterized releas
 `directionLoop_exact` now proves the complete emitted cofactor loop.  Its invariant owns the array obtained by the first `index` source updates, preserves the initial heap's protected memory, and reserves the per-iteration charge times the remaining rank.  The measure `rank - index` proves termination.  The result distinguishes the unchanged initial allocation from a fresh result allocation, supporting the final cleanup proof.
 
 The source-prefix induction and loop composition check in about two seconds.  The combined execution gate passes 3,713 build jobs with standard logical axioms.  Direction return and cleanup, enclosing rounding functions, the global resource bound, and independent artifact verification remain open.  Source and binary bytes are unchanged.
+
+### Beck complete direction assembly branch
+
+`directionAssembly_exact` now composes initial-vector construction, loop setup, the complete cofactor loop, result installation, and release of the initial vector when a later allocation replaces it.  The branch returns the source `assemble` result with ownership and freshness, preserves the caller's protected memory, and charges the two initial allocations plus the per-iteration bound times the basis rank.  The loop result retains allocation identity when no iteration runs, which supplies the zero-rank cleanup case.
+
+Assembly composition checks in about one second, and return cleanup checks in about two seconds.  The combined execution gate passes 3,716 build jobs with standard logical axioms.  The direction function still needs its outer guard, release of the matrix and four initial basis arrays, and full-call composition.  Enclosing rounding functions, the global resource bound, and independent artifact verification remain open.  Source and binary bytes are unchanged.
