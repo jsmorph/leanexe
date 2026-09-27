@@ -64,6 +64,19 @@ node test/beck_browser.mjs
 
 The first test checks HTTP responses, artifact identity, 14 worker/Wasmtime comparisons, input validation, and independent output checks.  The second uses an installed Chromium executable, selected by `CHROMIUM` when needed.  It tests all six scenarios, membership edits, empty inputs, rejection controls, browser errors, and mobile overflow.  Screenshots go to `build/beck-web`.
 
+## Capacity development
+
+`LeanExe.Examples.BeckExact.compute` is the replacement under development.  It uses multiword integers and fraction-free elimination.  Its arithmetic proofs and dimension-independent rounding theorem check, but connecting its elimination and rounding implementation to the theorem remains open.  Its preliminary input-size check does not establish sufficient allocation.  The browser therefore continues to run the verified reference.
+
+```sh
+tools/beck-exact.js data/beck/exact-overlap.json
+node test/beck_exact.js
+node test/beck_exact.js --memory
+node test/beck_exact.js --stress
+```
+
+The default test covers 609 native/WASM comparisons with independent category counts.  The memory test covers eight fixed overlapping inputs from 24 to 128 jobs, identifies the binary by SHA-256, and reports linear-memory growth and allocation counters.  Final linear-memory size records the peak extent because WASM memory does not shrink.  Host-engine memory is excluded.  The stress test preserves a 256-job, four-category input that currently exhausts the 4 GiB WASM memory limit and exits with a failure.  These measurements guide resource analysis.  They do not define supported capacities for the replacement.  The [development journal](../devnotes.md#beck-comparison-exact-division-identity-and-memory-measurements) records the results and current proof boundaries.
+
 ## Arithmetic
 
 Rows and columns are scanned in ascending order.  The basis search extends a nonsingular minor by the first row and column with a nonzero bordered determinant.  The direction uses that minor and its column-replacement determinants.  Determinants use Laplace expansion with structurally decreasing order.
