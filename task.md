@@ -200,9 +200,17 @@ modules retain identical bytes. Focused tests pass 12,480 native/IR comparisons,
 11,102 rejections and 790 controls. Evidence is in
 [the loop Boolean-bind archive](proofs/compiler/boolean-predicate-loop-bind-2026-09-26/README.md).
 
-Next: direct Boolean helper results. Saved Boolean variables in mixed propositional
-guards, retained instance and Bool-parameter Id wrappers, and broader signatures
-follow. Full-dialect correctness remains unfinished. Complete each capability
+Direct Boolean helper results in scalar declarations pass focused proof and
+syntax checks. UInt64-to-Bool and Bool-to-Bool bodies recursively check encoded
+Boolean results, including direct calls, nested helpers, captures, wrappers and
+unused declarations. New tests pass 7,348 native/IR comparisons, 5,120 invalid-input
+checks and 512 admission controls. The full compiler proof and selected WASM
+execution checks are pending.
+
+Next: complete this increment through WASM, then extend direct Boolean helper
+results to declarations in loop-step and outer-loop bodies. Saved Boolean
+variables in mixed propositional guards, retained instance and Bool-parameter Id
+wrappers, and broader signatures follow. Full-dialect correctness remains unfinished. Complete each capability
 through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
