@@ -4073,6 +4073,12 @@
     "rangeInnerHelperStep",
     "rangeInnerHelperExit",
     "rangeInnerHelperContinue",
-    "rangeInnerHelperTail"
+    "rangeInnerHelperTail",
+    "publicBoolHelpersNested",
+    "publicBoolHelpersRepeated",
+    "publicBoolHelpersWrapped",
+    "publicBoolHelpersInputId",
+    "publicBoolHelpersWord",
+    "publicBoolHelpersUnused"
   ]
 }
