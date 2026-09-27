@@ -1,0 +1,8 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_predicate_wrapper_rejections.lean:12:48: error: unexpected token 'instance'; expected ')', ',' or ':'
+test/scalar_boolean_predicate_wrapper_rejections.lean:12:79: error: unexpected token ')'; expected ':=', 'where' or '|'
+test/scalar_boolean_predicate_wrapper_rejections.lean:12:63: error(lean.inferBinderTypeFailed): Failed to infer type of binder `body`
+
+Note: Because this declaration's type has been explicitly provided, all parameter types and holes (e.g., `_`) in its header are resolved before its body is processed; information from the declaration body cannot be used to infer what these values should be
+test/scalar_boolean_predicate_wrapper_rejections.lean:13:61: error: unexpected token ','; expected ':'
