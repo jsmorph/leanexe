@@ -215,9 +215,11 @@ choices admit these calls in their condition and either branch when the conditio
 is a Boolean value, Boolean Eq/Ne relation or an admitted proposition. Propositional
 conditions include UInt64 comparisons, literals, negation and junctions; their
 word operands can contain converted calls. Dependent branches may bind an unused
-condition proof; both branches are checked. Saved Boolean variables inside mixed
-propositional guards and direct Boolean helper results containing these calls
-remain subsequent capabilities. Scalar Boolean do binds admit these calls in
+condition proof; both branches are checked. Scalar UInt64-to-Bool and Bool-to-Bool helper declarations can return these
+calls directly, including nested calls, captures and standard Id wrappers.
+The complete helper body is recursively checked even when unused. Declarations
+whose continuation is a loop step or contains a loop, and saved Boolean variables
+inside mixed propositional guards, remain subsequent capabilities. Scalar Boolean do binds admit these calls in
 direct actions or under standard pure/Id.run/metadata wrappers. The complete
 action is recursively checked, including unused results, and its encoded Boolean
 is stored with a distinct binding kind. Captures, shadowing and scalar calculations

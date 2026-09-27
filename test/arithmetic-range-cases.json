@@ -458,5 +458,9 @@
   "rangeBooleanPredicateOuterBindBounds",
   "rangeBooleanPredicateOuterBindCapture",
   "rangeBooleanPredicateOuterBindChoice",
-  "rangeBooleanPredicateOuterBindDirect"
+  "rangeBooleanPredicateOuterBindDirect",
+  "rangeBooleanPredicateResultStep",
+  "rangeBooleanPredicateResultCondition",
+  "rangeBooleanPredicateResultOuter",
+  "rangeBooleanPredicateResultHelper"
 ]
