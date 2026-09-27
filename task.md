@@ -20,7 +20,9 @@ Checked in Lean:
   native-to-Talos theorems depend only on Lean's standard axioms.
 - `Extract.certifyMemory`: ordinary StateM ByteArray definitions now generate
   native certificates for read/compute, read/write copy, growth with size, and
-  recursive writes. No native state-transition premise is left to the caller.
+  recursive writes. All four compile to valid, encoder-ready Talos modules.
+  The recursive-write theorem covers every native input and represented initial
+  memory, and specializes to the generated module's actual initial store.
 - `Project.Core.MemoryCompiler`: state certificates produce exported Talos
   modules with validity/readiness and a theorem for the original Lean result
   and final bytes. The generated module's initial zero memory is represented.
@@ -48,8 +50,10 @@ Checked in Lean:
 Remaining work:
 
 - Connect actual ordinary Lean bounded loops to the frontend. The generic native
-  range-loop proof is being checked; frontend lowering/proof generation remains.
-- Check representative recursive and looping programs through the complete path.
+  range-loop proof passes Lean; frontend lowering/proof generation remains.
+- Check ordinary bounded looping programs through the complete path.
+- Fix frontend acceptance of shared-helper call graphs, Boolean comparisons
+  against false, and zero-argument definitions found during review.
 
 The core lowering theorem alone does not establish correctness of the ordinary
 Lean frontend. The compiler is not yet complete.
