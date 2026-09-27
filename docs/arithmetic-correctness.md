@@ -472,7 +472,9 @@ unconverted words is rejected. Binary predicate declarations also scope complete
 word-accumulator and Boolean-accumulator loop steps, including early exits, saved
 Boolean results and nested binary predicates. The body captures the current loop environment.
 Unsupported bodies are rejected even when the helper is unused or the range is
-empty.
+empty. Binary Boolean helpers may also surround a complete word-valued loop
+computation, including bounds, initial values, step bodies and final scalar
+expressions. Captured values remain those present when the helper is declared.
 Ordinary scalar word continuations and loop-step
 helper declarations use the same recursive body check, including predicate lets
 inside propositions. Helpers declared before word-result and Boolean-result
