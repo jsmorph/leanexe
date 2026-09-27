@@ -971,8 +971,10 @@ scopes. The original capture probe is unchanged and rejects even with bare helpe
 inputs. All six new fixed probes reject before the change. The independent
 binding grammar, recognizer and source totality pass 104 targets. Core extraction
 equations pass 139 targets. Reconstruction, acceptance, evaluation correctness
-and generic IR invariants pass 140 targets. Function integration, native/syntax
-tests, the complete WASM proof gate and independent V8 checks are next.
+and generic IR invariants pass 140 targets; function integration passes 207.
+All six fixed scope-binding probes compile, restoring the unchanged capture
+probe too. New tests pass 16,308 native/IR comparisons, 17,280 invalid-input
+checks and 384 admission controls. The complete WASM proof and V8 gates are next.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
