@@ -1,0 +1,16 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/boolean-step-unit-function-probe.lean:12:18: error: Failed to infer universe levels in type of binder `_u`
+  PUnit.{?u.29}
+../work/boolean-step-unit-function-probe.lean:12:8: error: failed to infer universe levels in `let` declaration type
+  PUnit.{?u.29} → Bool → ForInStep Bool
+../work/boolean-step-unit-function-probe.lean:32:18: error: Failed to infer universe levels in type of binder `_u`
+  PUnit.{?u.28}
+../work/boolean-step-unit-function-probe.lean:32:8: error: failed to infer universe levels in `let` declaration type
+  PUnit.{?u.28} → Bool → ForInStep Bool
+BooleanStepUnitFunctionProbe.direct: false
+BooleanStepUnitFunctionProbe.punit: false
+BooleanStepUnitFunctionProbe.retained: false
+BooleanStepUnitFunctionProbe.capture: false
+BooleanStepUnitFunctionProbe.nested: false
+BooleanStepUnitFunctionProbe.unused: false

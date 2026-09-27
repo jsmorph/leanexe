@@ -1,0 +1,10 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_step_unit_function_syntax.lean:112:65: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Lean.ToMessageData UnitSyntax
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_boolean_step_unit_function_syntax.lean:63:82: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Lean.ToMessageData UnitSyntax
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
