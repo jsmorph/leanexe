@@ -1,5 +1,5 @@
 "use strict";
-const { decoderCertificates } = require("./artifact-kernel");
+const { decoderProofs } = require("./artifact-kernel");
 
 // Untrusted proof generation. Every emitted cursor, cache item, and section
 // equality is checked by Lean; this scanner is outside the trusted decoder.
@@ -52,7 +52,7 @@ function certificates(bytes, nestedText, project = "ByteIO") {
   const sections = sectionMetadata(bytes), code = sections.at(-1), outputs = new Map();
   const rows = [`section,10,${code.start},${code.payload},${code.items},${code.count},${code.end}`,
     ...code.entries.map(e => `item,10,${e.index},${e.start},${e.end}`)];
-  for (const [name, source] of decoderCertificates(project, bytes.length, nestedText, rows.join("\n"))) {
+  for (const [name, source] of decoderProofs(project, bytes.length, nestedText, rows.join("\n"))) {
     if (!/^ArtifactCode\d+(?:Sequences\d+)?$/.test(name) && name !== "ArtifactSection10") continue;
     outputs.set(name, source
       .replaceAll("artifactBytes_data", "ByteLookup.bytes_data")
