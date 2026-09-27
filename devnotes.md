@@ -18051,3 +18051,15 @@ The three targets pass with standard logical axioms.  The proof reuses the check
 `Pivot.pivot_correct` proves that the source search returns the first nonzero entry at or below the active row, or the row-count sentinel when every candidate is zero.  `RowSwap` proves the exact array entry permutation, size and integer-validity preservation, and equality of rational kernels.  Both targets pass through the local runner with standard logical axioms.
 
 The matrix-update fold lemmas now apply to arrays of any element type.  The row-swap proof reuses them.  The next step tracks active entries as bordered determinants and proves that pivot extension preserves that representation.  This establishes the divisibility assumptions needed by the executable elimination loop.
+
+### Beck complete echelon reduction
+
+`MinorState` proves determinant condensation across pivot extension, including the empty initial block.  `ActiveMatrix` maintains that representation through row swaps, skipped columns, and elimination.  It derives each exact-division obligation.  `EchelonProof.echelon_correct` proves that the source `echelon` function succeeds for every valid integer matrix with positive width and compatible dimensions.  The result preserves the rational kernel, array size, integer validity, and nonzero determinant scale.  Its rank is at most the row count, and every remaining row is zero after processing all columns.
+
+`BackSubstitution.step_correct` proves that the implemented sum and exact division recover a pivot coordinate when an integer solution satisfies the row equation.  The integer-solution witness for the complete direction remains to construct.  All four modules pass through the local runner with only `propext`, `Classical.choice`, and `Quot.sound`.  One check waited almost fifteen minutes for the machine-wide lock.  Subsequent diagnostics concerned monadic reduction and local let expressions, resolved by explicit loop equalities and reduction before rewriting.
+
+### Beck division-loop allocation diagnosis
+
+A temporary export of function 38 from binary `db621cd72e3af5e4b20e049a33c6165f2016723f9cce75f3196d3fe12f3e9a2b` exercises `Digits.divRem` directly.  Quotients and remainders agree with independent JavaScript integers for one, two, four, eight, sixteen, and thirty-two limbs.  After releasing inputs and outputs, the allocation-minus-free count is exactly thirty-two times the limb count.  Live blocks contain the shifted remainders.  Separate exports of `shiftBit` and `compare` release every allocation for the same sizes.
+
+The emitted division loop calls `shiftBit` twice per iteration.  The second call computes the loop's done flag and leaves its result live.  `forInStepBody?` copies source let bindings into separate value and done expressions, which `extractForInStepBody` extracts independently.  A reduced test and correction are in progress.  The production binary remains unchanged.
