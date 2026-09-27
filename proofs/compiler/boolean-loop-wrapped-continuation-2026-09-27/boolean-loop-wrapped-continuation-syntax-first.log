@@ -1,0 +1,16 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:110:55: error: unexpected token 'universe'; expected ')', '_', identifier or term
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:110:63: error: unexpected token ':'; expected identifier
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:111:64: error: unexpected token ']'; expected identifier
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:112:60: error: unexpected token ':'; expected identifier
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:113:83: error: unexpected token ','; expected identifier
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:113:93: error: unexpected token ']'; expected identifier
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:113:118: error: unexpected token ']'; expected identifier
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:114:74: error: unexpected token ','; expected identifier
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:114:84: error: unexpected token ']'; expected identifier
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:114:109: error: unexpected token ']'; expected identifier
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:115:77: error: unexpected token ','; expected identifier
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:115:87: error: unexpected token ']'; expected identifier
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:115:112: error: unexpected token ']'; expected identifier
+test/scalar_boolean_loop_wrapped_continuation_syntax.lean:116:50: error: unexpected token ']'; expected identifier
