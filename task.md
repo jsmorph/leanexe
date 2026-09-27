@@ -220,8 +220,14 @@ and 1,024 controls. Prior tests pass 18,580 comparisons, 11,792 invalid-input ch
 and 720 controls. Evidence is in
 [the loop helper-result archive](proofs/compiler/boolean-predicate-loop-result-2026-09-26/README.md).
 
-Next: Nat.toUInt64 (the elaborated spelling of i.toUInt64), alongside existing
-UInt64.ofNat support. Boolean let/bind expressions inside converted results,
+Nat.toUInt64 now passes focused source/extraction/invariant proofs, 180 native/IR
+comparisons, 176 admission/encoding controls and 728 invalid-input tests. Existing
+numeral and loop-helper tests pass 24,976 comparisons, 9,225 invalid-input checks
+and 1,026 controls. General compiler proof and selected WASM checks are pending.
+The alias preserves UInt64.ofNat semantics for literals and typed loop indices.
+
+Next: finish this increment through WASM, then Boolean let/bind expressions inside
+converted results. Subsequent work includes
 saved Boolean variables in mixed propositional guards, retained instance and
 Bool-parameter Id wrappers, and broader signatures follow. Full-dialect
 correctness remains unfinished. Complete each capability through WASM and

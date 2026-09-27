@@ -11,6 +11,11 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List LeanEx
   induction semantics generalizing locals target with
   | var h => exact bindings.word (by simpa only [extractScalarExprWith] using compiled) h
   | natural h => exact bindings.natural (by simpa only [extractScalarExprWith] using compiled) h
+  | naturalToUInt64 h => exact bindings.natural (by simpa only [extractScalarExprWith] using compiled) h
+  | naturalLiteralToUInt64 meaning =>
+    simp only [extractScalarExprWith_naturalLiteralToUInt64 _ meaning, Option.some.injEq] at compiled
+    subst target
+    exact .const
   | literal =>
     simp only [extractScalarExprWith, Option.some.injEq] at compiled
     subst target
@@ -398,6 +403,10 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
   | natural present =>
     obtain ⟨target, found⟩ := scalarNatural_lookup (typed ▸ present)
     exact ⟨target, by simpa only [extractScalarExprWith] using found⟩
+  | naturalToUInt64 present =>
+    obtain ⟨target, found⟩ := scalarNatural_lookup (typed ▸ present)
+    exact ⟨target, by simpa only [extractScalarExprWith] using found⟩
+  | naturalLiteralToUInt64 meaning => exact ⟨.u64 _, extractScalarExprWith_naturalLiteralToUInt64 _ meaning⟩
   | literal => exact ⟨.u64 _, by rw [extractScalarExprWith]⟩
   | ofNat => exact ⟨.u64 _, extractScalarExprWith_literalExpr _ _⟩
   | ofNatInstance meaning => exact ⟨.u64 _, extractScalarExprWith_ofNatInstance _ meaning⟩
@@ -761,39 +770,48 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     · rw [rejected] at compiled
       contradiction
     all_goals assumption
-  | case6 locals sourceType numeral evidence rejected =>
+  | case6 locals index =>
+    exact .naturalToUInt64 (scalarNatural_kind (by simpa only [extractScalarExprWith] using compiled))
+  | case7 locals numeral noVariable number parsed =>
+    exact .naturalLiteralToUInt64 (naturalLiteral_sound parsed)
+  | case8 locals numeral noVariable rejected =>
+    rw [extractScalarExprWith] at compiled
+    · rw [rejected] at compiled
+      contradiction
+    all_goals assumption
+  | case9 locals sourceType numeral evidence rejected =>
     simp [extractScalarExprWith, rejected] at compiled
-  | case7 locals sourceType numeral evidence type matched number parsed accepted =>
+  | case10 locals sourceType numeral evidence type matched number parsed accepted =>
     have same := scalarResultType_sound matched
     subst sourceType
     exact .ofNatTyped (naturalLiteral_sound parsed) (typedLiteralInstance_sound accepted)
-  | case8 locals sourceType numeral evidence type matched number parsed rejected =>
+  | case11 locals sourceType numeral evidence type matched number parsed rejected =>
     simp [extractScalarExprWith, matched, parsed, rejected] at compiled
-  | case9 locals sourceType numeral evidence type matched rejected =>
+  | case12 locals sourceType numeral evidence type matched rejected =>
     simp [extractScalarExprWith, matched, rejected] at compiled
-  | case10 locals sourceType body rejected =>
+  | case13 locals sourceType body rejected =>
     rw [extractScalarExprWith, rejected] at compiled
     contradiction
-  | case11 locals sourceType body type matched ih =>
+  | case14 locals sourceType body type matched ih =>
     have same := scalarResultType_sound matched
     subst sourceType
     change extractScalarExprWith locals (LeanExe.Source.Scalar.Identity.run body type) = some target at compiled
     exact .idRun type (ih (by simpa only [extractScalarExprWith_idRun] using compiled))
-  | case12 locals sourceType body rejected =>
+  | case15 locals sourceType body rejected =>
     rw [extractScalarExprWith, rejected] at compiled
     contradiction
-  | case13 locals sourceType body type matched ih =>
+  | case16 locals sourceType body type matched ih =>
     have same := scalarResultType_sound matched
     subst sourceType
     change extractScalarExprWith locals (LeanExe.Source.Scalar.Identity.pure body type) = some target at compiled
     exact .idPure type (ih (by simpa only [extractScalarExprWith_idPure] using compiled))
-  | case14 locals input output value name domain body bi rejected rejectedBoolean =>
+  | case17 locals input output value name domain body bi rejected rejectedBoolean =>
     rw [extractScalarExprWith, rejected, rejectedBoolean] at compiled
     contradiction
-  | case15 locals input output value name domain body bi rejected type matched rejectedAction =>
+  | case18 locals input output value name domain body bi rejected type matched rejectedAction =>
     rw [extractScalarExprWith, rejected, matched, rejectedAction] at compiled
     contradiction
-  | case16 locals input output value name domain body bi rejected type matched action parsed ihv ihb =>
+  | case19 locals input output value name domain body bi rejected type matched action parsed ihv ihb =>
     obtain ⟨hi, hd, ho⟩ := booleanBindType_sound _ matched
     have outputEq := scalarResultType_sound ho
     have valueEq := booleanAction_sound parsed
@@ -805,7 +823,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨c, hc, ht⟩ := compiled
     exact .idBindBoolean action type (ihv hc)
       (by simpa [ScalarBinding.kind] using ihb c ht)
-  | case17 locals input output value name domain body bi annotations matched ihv ihb =>
+  | case20 locals input output value name domain body bi annotations matched ihv ihb =>
     obtain ⟨inputType, outputType⟩ := annotations
     obtain ⟨hi, hd, ho⟩ := scalarBindTypes_sound matched
     subst input domain output
@@ -815,15 +833,15 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, ht⟩ := compiled
     exact .idBind inputType outputType (ihv hb) (by simpa [ScalarBinding.kind] using ihb bound ht)
-  | case18 locals sourceType condition evidence t e rejected =>
+  | case21 locals sourceType condition evidence t e rejected =>
     rw [extractScalarExprWith] at compiled
     rw [rejected] at compiled
     contradiction
-  | case19 locals sourceType condition evidence t e type typeMatched rejected rejectedGuard rejectedLocal =>
+  | case22 locals sourceType condition evidence t e type typeMatched rejected rejectedGuard rejectedLocal =>
     rw [extractScalarExprWith] at compiled
     rw [typeMatched, rejected, rejectedGuard, rejectedLocal] at compiled
     contradiction
-  | case20 locals sourceType condition evidence t e type typeMatched rejected rejectedGuard guard matched present iht ihe ihArgs =>
+  | case23 locals sourceType condition evidence t e type typeMatched rejected rejectedGuard guard matched present iht ihe ihArgs =>
     have typeEq := scalarResultType_sound typeMatched
     subst sourceType
     obtain ⟨hc, he⟩ := booleanLocalGuard_sound matched
@@ -836,7 +854,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .chooseBooleanPredicate guard type member (scalarBooleanPredicateFunction_kind found)
       (fun input member => ihArgs input member
         (extractBooleanCondition_inputs guard.form _ hc input member).choose_spec) (iht ht) (ihe he)
-  | case21 locals sourceType condition evidence t e type typeMatched rejected rejectedGuard guard matched absent iht ihe ihArgs =>
+  | case24 locals sourceType condition evidence t e type typeMatched rejected rejectedGuard guard matched absent iht ihe ihArgs =>
     have typeEq := scalarResultType_sound typeMatched
     subst sourceType
     obtain ⟨hc, he⟩ := booleanLocalGuard_sound matched
@@ -850,7 +868,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     intro operand member
     obtain ⟨expression, found⟩ := extractBooleanLocalWith_operands hc operand member
     exact ihArgs operand member found
-  | case22 locals sourceType condition evidence t e type typeMatched rejected guard matched ihArgs iht ihe =>
+  | case25 locals sourceType condition evidence t e type typeMatched rejected guard matched ihArgs iht ihe =>
     have typeEq := scalarResultType_sound typeMatched
     subst sourceType
     obtain ⟨hc, he⟩ := compoundGuard_sound matched
@@ -864,7 +882,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     intro operand member
     obtain ⟨expression, found⟩ := extractGuard_operands guard.tree _ hc operand member
     exact ihArgs operand member found
-  | case23 locals sourceType condition evidence t e type typeMatched op a b matched ihl ihr iht ihe =>
+  | case26 locals sourceType condition evidence t e type typeMatched op a b matched ihl ihr iht ihe =>
     have typeEq := scalarResultType_sound typeMatched
     subst sourceType
     obtain ⟨hc, he⟩ := comparison_sound matched
@@ -875,17 +893,17 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨ai, ha, bi, hb, ti, ht, ei, he, _⟩ := compiled
     exact .choose op type (ihl ha) (ihr hb) (iht ht) (ihe he)
-  | case24 locals index argument ih =>
+  | case27 locals index argument ih =>
     rw [extractScalarExprWith] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨f, hf, arg, ha, _⟩ := compiled
     exact .unitApply .unit (scalarFunction_kind (Option.bind_eq_some_iff.mpr hf)) (ih ha)
-  | case25 locals index argument ih =>
+  | case28 locals index argument ih =>
     rw [extractScalarExprWith] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨f, hf, arg, ha, _⟩ := compiled
     exact .unitApply .punit (scalarFunction_kind (Option.bind_eq_some_iff.mpr hf)) (ih ha)
-  | case26 locals index first second excludedUnit excludedPUnit ihFirst ihSecond =>
+  | case29 locals index first second excludedUnit excludedPUnit ihFirst ihSecond =>
     rw [extractScalarExprWith_binaryApply _ _ _ _ (by
       intro unitForm; cases unitForm
       · exact excludedUnit
@@ -893,35 +911,35 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨f, hf, a, ha, b, hb, _⟩ := compiled
     exact .binaryApply (scalarBinaryFunction_kind (Option.bind_eq_some_iff.mpr hf)) (ihFirst ha) (ihSecond hb)
-  | case27 locals argument ih =>
+  | case30 locals argument ih =>
     rw [extractScalarExprWith_complement .direct] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨value, ha, _⟩ := compiled
     exact .complement .direct (ih ha)
-  | case28 locals argument ih =>
+  | case31 locals argument ih =>
     rw [extractScalarExprWith_complement .canonical] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨value, ha, _⟩ := compiled
     exact .complement .canonical (ih ha)
-  | case29 locals left right ihl ihr =>
+  | case32 locals left right ihl ihr =>
     change extractScalarExprWith locals (LeanExe.Source.Scalar.Extremum.minimum.expr left right) = some target at compiled
     rw [extractScalarExprWith_extremum .minimum] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨a, ha, b, hb, _⟩ := compiled
     exact .extremum .minimum (ihl ha) (ihr hb)
-  | case30 locals left right ihl ihr =>
+  | case33 locals left right ihl ihr =>
     change extractScalarExprWith locals (LeanExe.Source.Scalar.Extremum.maximum.expr left right) = some target at compiled
     rw [extractScalarExprWith_extremum .maximum] at compiled
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨a, ha, b, hb, _⟩ := compiled
     exact .extremum .maximum (ihl ha) (ihr hb)
-  | case31 locals type condition evidence tn td t tb fn fd e fb rejected =>
+  | case34 locals type condition evidence tn td t tb fn fd e fb rejected =>
     rw [extractScalarExprWith, rejected] at compiled
     contradiction
-  | case32 locals type condition evidence tn td t tb fn fd e fb result matched rejected rejectedBoolean =>
+  | case35 locals type condition evidence tn td t tb fn fd e fb result matched rejected rejectedBoolean =>
     rw [extractScalarExprWith, matched, rejected, rejectedBoolean] at compiled
     contradiction
-  | case33 locals sourceType condition evidence tn td t tb fn fd e fb type matched rejected guard parsed present iht ihe ihArgs =>
+  | case36 locals sourceType condition evidence tn td t tb fn fd e fb type matched rejected guard parsed present iht ihe ihArgs =>
     have typeEq := scalarResultType_sound matched
     subst sourceType
     obtain ⟨hc, hd, htDomain, heDomain⟩ := booleanLocalDependentGuard_sound parsed
@@ -935,7 +953,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
       (fun input member => ihArgs input member
         (extractBooleanCondition_inputs guard.form _ hc input member).choose_spec)
       (by simpa [ScalarBinding.kind] using iht ht) (by simpa [ScalarBinding.kind] using ihe he)
-  | case34 locals sourceType condition evidence tn td t tb fn fd e fb type matched rejected guard parsed absent iht ihe ihArgs =>
+  | case37 locals sourceType condition evidence tn td t tb fn fd e fb type matched rejected guard parsed absent iht ihe ihArgs =>
     have typeEq := scalarResultType_sound matched
     subst sourceType
     obtain ⟨hc, hd, htDomain, heDomain⟩ := booleanLocalDependentGuard_sound parsed
@@ -951,7 +969,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
       exact ihArgs operand member found
     · simpa [ScalarBinding.kind] using iht ht
     · simpa [ScalarBinding.kind] using ihe he
-  | case35 locals sourceType condition evidence tn td t tb fn fd e fb type matched guard parsed ihArgs iht ihe =>
+  | case38 locals sourceType condition evidence tn td t tb fn fd e fb type matched guard parsed ihArgs iht ihe =>
     have typeEq := scalarResultType_sound matched
     subst sourceType
     obtain ⟨hc, hd, htDomain, heDomain⟩ := dependentGuard_sound parsed
@@ -966,18 +984,18 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
       exact ihArgs operand member found
     · simpa [ScalarBinding.kind] using iht ht
     · simpa [ScalarBinding.kind] using ihe he
-  | case36 locals head left right excluded excludedRun excludedPure excludedBind excludedIf excludedUnit excludedPUnit excludedBinary excludedComplement excludedMin excludedMax excludedDependent p hp ihl ihr =>
+  | case39 locals head left right excluded excludedRun excludedPure excludedBind excludedIf excludedUnit excludedPUnit excludedBinary excludedComplement excludedMin excludedMax excludedDependent p hp ihl ihr =>
     have meaning := ScalarPrimitive.ofHead_sound hp
     rw [extractScalarExprWith_binary meaning] at compiled
     simp only [bind, pure, hp, Option.bind_some, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨a, ha, b, hb, _⟩ := compiled
     exact .binary meaning (ihl ha) (ihr hb)
-  | case37 locals head left right excluded excludedRun excludedPure excludedBind excludedIf excludedUnit excludedPUnit excludedBinary excludedComplement excludedMin excludedMax excludedDependent rejectedPrimitive rejectedCall =>
+  | case40 locals head left right excluded excludedRun excludedPure excludedBind excludedIf excludedUnit excludedPUnit excludedBinary excludedComplement excludedMin excludedMax excludedDependent rejectedPrimitive rejectedCall =>
     rw [extractScalarExprWith] at compiled
     · rw [rejectedPrimitive, rejectedCall] at compiled
       contradiction
     all_goals assumption
-  | case38 locals head left right excluded excludedRun excludedPure excludedBind excludedIf excludedUnit excludedPUnit excludedBinary excludedComplement excludedMin excludedMax excludedDependent rejectedPrimitive call matched ihArgs =>
+  | case41 locals head left right excluded excludedRun excludedPure excludedBind excludedIf excludedUnit excludedPUnit excludedBinary excludedComplement excludedMin excludedMax excludedDependent rejectedPrimitive call matched ihArgs =>
     rw [scalarManyCall_sound matched] at compiled ⊢
     rw [extractScalarExprWith_manyApply] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
@@ -987,20 +1005,20 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     intro operand member
     obtain ⟨expression, found⟩ := extractScalarArguments_operands call.arguments _ ha operand member
     exact ihArgs operand member found
-  | case39 locals name value body nondep ihv ihb =>
+  | case42 locals name value body nondep ihv ihb =>
     rw [extractScalarExprWith_letBoolean] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, ht⟩ := compiled
     exact .letBoolean (ihv hb) (by simpa [ScalarBinding.kind] using ihb bound ht)
-  | case40 locals name value body nondep ihv ihb =>
+  | case43 locals name value body nondep ihv ihb =>
     simp only [extractScalarExprWith, bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, ht⟩ := compiled
     exact .letE (ihv hb) (by simpa [ScalarBinding.kind] using ihb bound ht)
-  | case41 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep rejected rejectedMany =>
+  | case44 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep rejected rejectedMany =>
     rw [extractScalarExprWith] at compiled
     rw [rejected, rejectedMany] at compiled
     contradiction
-  | case42 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep rejected shape matched ih0 ihf ihb =>
+  | case45 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep rejected shape matched ih0 ihf ihb =>
     obtain ⟨sameType, sameValue⟩ := scalarManyFunction_sound matched
     rw [sameType, sameValue] at compiled ⊢
     change extractScalarExprWith locals (shape.bind name body nondep) = some target at compiled
@@ -1010,7 +1028,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letManyFn shape (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case43 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep type matched ih0 ihf ihb =>
+  | case46 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep type matched ih0 ihf ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     rw [extractScalarExprWith_letBinaryFn] at compiled
@@ -1018,17 +1036,17 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letBinaryFn type (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case44 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected noBoolean =>
+  | case47 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected noBoolean =>
     rw [extractScalarExprWith] at compiled
     · rw [rejected, noBoolean] at compiled
       contradiction
     · exact excludedBinary
-  | case45 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected type matched noExpression =>
+  | case48 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected type matched noExpression =>
     rw [extractScalarExprWith] at compiled
     · rw [rejected, matched, noExpression] at compiled
       contradiction
     · exact excludedBinary
-  | case46 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected type matched expression parsed ih0 ihf ihb =>
+  | case49 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected type matched expression parsed ih0 ihf ihb =>
     have sameType := booleanType_sound matched
     have sameValue := booleanLocalOperands_sound parsed
     subst resultType
@@ -1039,7 +1057,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .letPredicateFn expression type
       (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case47 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary type matched ih0 ihf ihb =>
+  | case50 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary type matched ih0 ihf ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     rw [extractScalarExprWith_letFn] at compiled
@@ -1047,11 +1065,11 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letFn type (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case48 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep rejected =>
+  | case51 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep rejected =>
     rw [extractScalarExprWith] at compiled
     rw [rejected] at compiled
     contradiction
-  | case49 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched ih0 ihf ihb =>
+  | case52 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched ih0 ihf ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     change extractScalarExprWith locals (.letE name
@@ -1064,11 +1082,11 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letUnitFn type .unit (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case50 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep rejected =>
+  | case53 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep rejected =>
     rw [extractScalarExprWith] at compiled
     rw [rejected] at compiled
     contradiction
-  | case51 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched ih0 ihf ihb =>
+  | case54 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type matched ih0 ihf ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType
     change extractScalarExprWith locals (.letE name
@@ -1081,15 +1099,15 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letUnitFn type .punit (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case52 locals index argument function matched ih =>
+  | case55 locals index argument function matched ih =>
     rw [extractScalarExprWith, matched] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨arg, ha, ht⟩ := compiled
     exact .apply (scalarFunction_kind matched) (ih ha)
-  | case53 locals index argument noWord noBoolean =>
+  | case56 locals index argument noWord noBoolean =>
     rw [extractScalarExprWith, noWord, noBoolean] at compiled
     contradiction
-  | case54 locals index argument noWord expression parsed ihArgs =>
+  | case57 locals index argument noWord expression parsed ihArgs =>
     rw [extractScalarExprWith, noWord, parsed] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨function, hf, condition, hc, ht⟩ := compiled
@@ -1099,13 +1117,13 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
       (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case55 locals name typeName resultType typeBi paramName value paramBi body nondep rejected noBoolean =>
+  | case58 locals name typeName resultType typeBi paramName value paramBi body nondep rejected noBoolean =>
     rw [extractScalarExprWith, rejected, noBoolean] at compiled
     contradiction
-  | case56 locals name typeName resultType typeBi paramName value paramBi body nondep rejected type matched noExpression =>
+  | case59 locals name typeName resultType typeBi paramName value paramBi body nondep rejected type matched noExpression =>
     rw [extractScalarExprWith, rejected, matched, noExpression] at compiled
     contradiction
-  | case57 locals name typeName resultType typeBi paramName value paramBi body nondep rejected type matched expression parsed ih0 ihf ihb =>
+  | case60 locals name typeName resultType typeBi paramName value paramBi body nondep rejected type matched expression parsed ih0 ihf ihb =>
     have sameType := booleanType_sound matched
     have sameValue := booleanLocalOperands_sound parsed
     subst resultType
@@ -1116,7 +1134,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .letBooleanPredicateFn expression type
       (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case58 locals name typeName resultType typeBi paramName value paramBi body nondep type matched ih0 ihf ihb =>
+  | case61 locals name typeName resultType typeBi paramName value paramBi body nondep type matched ih0 ihf ihb =>
     have same := scalarResultType_sound matched
     subst resultType
     rw [extractScalarExprWith_letBooleanFn] at compiled
@@ -1124,12 +1142,12 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨checked, hc, ht⟩ := compiled
     exact .letBooleanFn type (by simpa [ScalarBinding.kind] using ih0 hc)
       (by simpa [ScalarBinding.kind] using ihb ht)
-  | case59 locals argument rejected =>
+  | case62 locals argument rejected =>
     rw [extractScalarExprWith] at compiled
     split at compiled
     next => contradiction
     next expression parsed => rw [rejected] at parsed; contradiction
-  | case60 locals argument negations index input parsed function found _ ihArgument =>
+  | case63 locals argument negations index input parsed function found _ ihArgument =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     change extractScalarExprWith locals (.app (.const ``Bool.toUInt64 [])
@@ -1139,7 +1157,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨argument, ha, _⟩ := compiled
     exact .applyBooleanPredicateWord negations (scalarBooleanPredicateFunction_kind found)
       (ihArgument ha)
-  | case61 locals argument negations index input parsed noBoolean _ ihArgs =>
+  | case64 locals argument negations index input parsed noBoolean _ ihArgs =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     rw [extractScalarExprWith_booleanWord _ _ (by
@@ -1153,7 +1171,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case62 locals argument negations op left right parsed present _ ihl ihr =>
+  | case65 locals argument negations op left right parsed present _ ihl ihr =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     rw [extractScalarExprWith_booleanJunction] at compiled
@@ -1162,7 +1180,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨index, member, function, found⟩ := hasBooleanPredicate_iff.mp present
     exact .booleanJunctionWord negations op left right member
       (scalarBooleanPredicateFunction_kind found) (ihl hl) (ihr hr)
-  | case63 locals argument negations op left right parsed absent _ ihArgs =>
+  | case66 locals argument negations op left right parsed absent _ ihArgs =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     rw [extractScalarExprWith_booleanJunction, if_neg absent] at compiled
@@ -1171,7 +1189,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case64 locals argument negations unequal left right parsed present _ ihl ihr =>
+  | case67 locals argument negations unequal left right parsed present _ ihl ihr =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     have equation := extractScalarExprWith_booleanEquality locals .equality negations unequal left right
@@ -1182,7 +1200,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨index, member, function, found⟩ := hasBooleanPredicate_iff.mp present
     exact .booleanEqualityWord .equality negations unequal left right member
       (scalarBooleanPredicateFunction_kind found) (ihl hl) (ihr hr)
-  | case65 locals argument negations unequal left right parsed absent _ ihArgs =>
+  | case68 locals argument negations unequal left right parsed absent _ ihArgs =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     have equation := extractScalarExprWith_booleanEquality locals .equality negations unequal left right
@@ -1193,7 +1211,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case66 locals argument negations unequal left right parsed present _ ihl ihr =>
+  | case69 locals argument negations unequal left right parsed present _ ihl ihr =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     have equation := extractScalarExprWith_booleanEquality locals .decision negations unequal left right
@@ -1204,7 +1222,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨index, member, function, found⟩ := hasBooleanPredicate_iff.mp present
     exact .booleanEqualityWord .decision negations unequal left right member
       (scalarBooleanPredicateFunction_kind found) (ihl hl) (ihr hr)
-  | case67 locals argument negations unequal left right parsed absent _ ihArgs =>
+  | case70 locals argument negations unequal left right parsed absent _ ihArgs =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     have equation := extractScalarExprWith_booleanEquality locals .decision negations unequal left right
@@ -1215,7 +1233,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case68 locals argument negations unequal left right yes no parsed present _ ihl ihr iht ihe =>
+  | case71 locals argument negations unequal left right yes no parsed present _ ihl ihr iht ihe =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     have equation := extractScalarExprWith_booleanChoice locals .ordinary negations unequal left right yes no
@@ -1226,7 +1244,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨index, member, function, found⟩ := hasBooleanPredicate_iff.mp present
     exact .booleanChoiceWord .ordinary negations unequal left right yes no member
       (scalarBooleanPredicateFunction_kind found) (ihl hl) (ihr hr) (iht ht) (ihe he)
-  | case69 locals argument negations unequal left right yes no parsed absent _ ihArgs =>
+  | case72 locals argument negations unequal left right yes no parsed absent _ ihArgs =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     have equation := extractScalarExprWith_booleanChoice locals .ordinary negations unequal left right yes no
@@ -1237,7 +1255,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case70 locals argument negations shape unequal left right yes no parsed present _ ihl ihr iht ihe =>
+  | case73 locals argument negations shape unequal left right yes no parsed present _ ihl ihr iht ihe =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     have equation := extractScalarExprWith_booleanChoice locals (.dependent shape) negations unequal left right yes no
@@ -1248,7 +1266,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨index, member, function, found⟩ := hasBooleanPredicate_iff.mp present
     exact .booleanChoiceWord (.dependent shape) negations unequal left right yes no member
       (scalarBooleanPredicateFunction_kind found) (ihl hl) (ihr hr) (iht ht) (ihe he)
-  | case71 locals argument negations shape unequal left right yes no parsed absent _ ihArgs =>
+  | case74 locals argument negations shape unequal left right yes no parsed absent _ ihArgs =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     have equation := extractScalarExprWith_booleanChoice locals (.dependent shape) negations unequal left right yes no
@@ -1259,7 +1277,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case72 locals argument negations guard yes no parsed present _ ihArgs iht ihe =>
+  | case75 locals argument negations guard yes no parsed present _ ihArgs iht ihe =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     have equation := extractScalarExprWith_booleanProposition locals .ordinary negations guard yes no
@@ -1272,7 +1290,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
       (scalarBooleanPredicateFunction_kind found)
       (fun operand member => ihArgs operand member
         (extractGuard_operands guard.value _ hc operand member).choose_spec) (iht ht) (ihe he)
-  | case73 locals argument negations guard yes no parsed absent _ ihArgs =>
+  | case76 locals argument negations guard yes no parsed absent _ ihArgs =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     have equation := extractScalarExprWith_booleanProposition locals .ordinary negations guard yes no
@@ -1283,7 +1301,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case74 locals argument negations shape guard yes no parsed present _ ihArgs iht ihe =>
+  | case77 locals argument negations shape guard yes no parsed present _ ihArgs iht ihe =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     have equation := extractScalarExprWith_booleanProposition locals (.dependent shape) negations guard yes no
@@ -1296,7 +1314,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
       (scalarBooleanPredicateFunction_kind found)
       (fun operand member => ihArgs operand member
         (extractGuard_operands guard.value _ hc operand member).choose_spec) (iht ht) (ihe he)
-  | case75 locals argument negations shape guard yes no parsed absent _ ihArgs =>
+  | case78 locals argument negations shape guard yes no parsed absent _ ihArgs =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     have equation := extractScalarExprWith_booleanProposition locals (.dependent shape) negations guard yes no
@@ -1307,7 +1325,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case76 locals argument negations wrapper body parsed present _ ih =>
+  | case79 locals argument negations wrapper body parsed present _ ih =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     rw [extractScalarExprWith_booleanWrapped] at compiled
@@ -1316,7 +1334,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     obtain ⟨index, member, function, found⟩ := hasBooleanPredicate_iff.mp present
     exact .booleanWrappedWord negations wrapper body member
       (scalarBooleanPredicateFunction_kind found) (ih hi)
-  | case77 locals argument negations wrapper body parsed absent _ ihArgs =>
+  | case80 locals argument negations wrapper body parsed absent _ ihArgs =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     rw [extractScalarExprWith_booleanWrapped, if_neg absent] at compiled
@@ -1325,7 +1343,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case78 locals argument expression parsed matched excluded excludedJunction excludedEquality excludedDecision excludedChoice excludedDependentChoice excludedProposition excludedDependentProposition excludedWrapped ihArgs =>
+  | case81 locals argument expression parsed matched excluded excludedJunction excludedEquality excludedDecision excludedChoice excludedDependentChoice excludedProposition excludedDependentProposition excludedWrapped ihArgs =>
     have same := booleanLocalOperands_sound parsed
     subst argument
     rw [extractScalarExprWith_booleanWord _ _ (by
@@ -1358,28 +1376,28 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case79 locals name typeName resultType typeBi paramName domain value paramBi body nondep rejected =>
+  | case82 locals name typeName resultType typeBi paramName domain value paramBi body nondep rejected =>
     rw [extractScalarExprWith] at compiled
     simp [rejected] at compiled
-  | case80 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType rejected foundInput =>
+  | case83 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType rejected foundInput =>
     rw [extractScalarExprWith] at compiled
     simp [foundInput, rejected] at compiled
-  | case81 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType result foundResult foundInput ih =>
+  | case84 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType result foundResult foundInput ih =>
     rw [extractScalarExprWith] at compiled
     simp only [↓reduceIte, foundInput, foundResult] at compiled
     have inputEq := scalarResultType_sound foundInput
     have resultEq := booleanType_sound foundResult
     subst domain resultType
     exact .predicateInput inputType result (ih compiled)
-  | case82 locals name typeName input resultType typeBi paramName domain value paramBi body nondep different =>
+  | case85 locals name typeName input resultType typeBi paramName domain value paramBi body nondep different =>
     rw [extractScalarExprWith] at compiled
     simp [different] at compiled
-  | case83 locals name type value body nondep ih =>
+  | case86 locals name type value body nondep ih =>
     rw [extractScalarExprWith] at compiled
     exact .idLet (ih compiled)
-  | case84 locals data body ih =>
+  | case87 locals data body ih =>
     exact .metadata (ih (by simpa only [extractScalarExprWith] using compiled))
-  | case85 locals expr hvar hliteral hnatural hconverted hofNat hrun hpure hbind hchoice hunitApp hpunitApp hbin hboolLet hlet hletFn hletUnitFn hletPUnitFn happ hletBooleanFn hPredicateInput hidLet hmetadata =>
+  | case88 locals expr hvar hliteral hnatural hconverted hnatVariable hnatConverted hofNat hrun hpure hbind hchoice hunitApp hpunitApp hbin hboolLet hlet hletFn hletUnitFn hletPUnitFn happ hletBooleanFn hPredicateInput hidLet hmetadata =>
     rw [extractScalarExprWith] at compiled <;> first | assumption | contradiction
 
 theorem extractScalarExpr_supported {source : Lean.Expr} {locals : List Nat}
@@ -1413,6 +1431,17 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
     have same := ScalarBinding.natural?_some.mp matched
     subst binding
     exact bindings _ (List.mem_of_getElem? hb)
+  | @naturalToUInt64 types index hi =>
+    have found : (locals[index]?.bind ScalarBinding.natural?) = some target := by
+      simpa only [extractScalarExprWith] using compiled
+    obtain ⟨binding, hb, matched⟩ := Option.bind_eq_some_iff.mp found
+    have same := ScalarBinding.natural?_some.mp matched
+    subst binding
+    exact bindings _ (List.mem_of_getElem? hb)
+  | naturalLiteralToUInt64 meaning =>
+    simp only [extractScalarExprWith_naturalLiteralToUInt64 _ meaning, Option.some.injEq] at compiled
+    subst target
+    exact literal _
   | literal =>
     simp only [extractScalarExprWith, Option.some.injEq] at compiled
     subst target

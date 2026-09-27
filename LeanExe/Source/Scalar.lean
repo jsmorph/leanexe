@@ -35,6 +35,10 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
   | var (h : values[index]? = some (.word value)) : EvalWith (.bvar index) values value
   | natural (h : values[index]? = some (.natural value)) :
       EvalWith (.app (.const ``UInt64.ofNat levels) (.bvar index)) values (UInt64.ofNat value)
+  | naturalToUInt64 (h : values[index]? = some (.natural value)) :
+      EvalWith (.app (.const ``Nat.toUInt64 []) (.bvar index)) values value.toUInt64
+  | naturalLiteralToUInt64 (numberMeaning : NaturalLiteral n numeral) :
+      EvalWith (.app (.const ``Nat.toUInt64 []) numeral) values n.toUInt64
   | literal : EvalWith (.app (.const ``UInt64.ofNat levels) (.lit (.natVal n)))
       values (UInt64.ofNat n)
   | ofNat : EvalWith (literalExpr n) values (UInt64.ofNat n)
@@ -239,6 +243,10 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
   | var (h : types[index]? = some .word) : SupportedWith types (.bvar index)
   | natural (h : types[index]? = some .natural) :
       SupportedWith types (.app (.const ``UInt64.ofNat levels) (.bvar index))
+  | naturalToUInt64 (h : types[index]? = some .natural) :
+      SupportedWith types (.app (.const ``Nat.toUInt64 []) (.bvar index))
+  | naturalLiteralToUInt64 (numberMeaning : NaturalLiteral n numeral) :
+      SupportedWith types (.app (.const ``Nat.toUInt64 []) numeral)
   | literal : SupportedWith types (.app (.const ``UInt64.ofNat levels) (.lit (.natVal n)))
   | ofNat : SupportedWith types (literalExpr n)
   | ofNatInstance (instanceMeaning : LiteralInstance n 0 evidence) :
@@ -448,6 +456,10 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
   | natural hi =>
     obtain ⟨value, hv⟩ := natural_lookup typed hi
     exact ⟨UInt64.ofNat value, .natural hv⟩
+  | naturalToUInt64 hi =>
+    obtain ⟨value, hv⟩ := natural_lookup typed hi
+    exact ⟨value.toUInt64, .naturalToUInt64 hv⟩
+  | naturalLiteralToUInt64 meaning => exact ⟨_, .naturalLiteralToUInt64 meaning⟩
   | literal => exact ⟨_, .literal⟩
   | ofNat => exact ⟨_, .ofNat⟩
   | ofNatInstance evidence => exact ⟨_, .ofNatInstance evidence⟩
