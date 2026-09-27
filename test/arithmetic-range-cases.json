@@ -787,5 +787,15 @@
   "rangeWordChooseSetupExit",
   "rangeWordChooseSetupContinue",
   "rangeWordChooseSetupStride",
-  "rangeWordChooseSetupId"
+  "rangeWordChooseSetupId",
+  "rangeWordChooseHelperWord",
+  "rangeWordChooseHelperBoolean",
+  "rangeWordChooseHelperPredicate",
+  "rangeWordChooseHelperBooleanPredicate",
+  "rangeWordChooseHelperBinary",
+  "rangeWordChooseHelperMany",
+  "rangeWordChooseHelperManyFive",
+  "rangeWordChooseHelperUnit",
+  "rangeWordChooseHelperPunit",
+  "rangeWordChooseHelperId"
 ]
