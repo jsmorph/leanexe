@@ -5589,6 +5589,106 @@ def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
   return a
 
+def rangeBoolWordSetupLet (count seed : UInt64) : Bool :=
+  let start := seed + 7
+  let value := Id.run do
+    let mut a := start
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+    return a
+  value == start
+
+def rangeBoolWordSetupChain (count seed : UInt64) : Bool :=
+  let start := seed + 7
+  let stop := count % 17
+  let delta := seed % 5 + 1
+  let value := Id.run do
+    let mut a := start
+    for i in [:stop.toNat] do
+      a := a + i.toUInt64 + delta
+    return a
+  value == start || value == seed
+
+def rangeBoolWordSetupBind (count seed : UInt64) : Id Bool := do
+  let start ← pure (seed + 3)
+  let stop ← pure (count % 17)
+  let value ← (do
+    let mut a := start
+    for i in [:stop.toNat] do
+      a := a + i.toUInt64 + 1
+    return a)
+  return value != start
+
+def rangeBoolWordSetupCount (count seed : UInt64) : Bool :=
+  let stop := count % 17
+  let value := Id.run do
+    let mut a := seed
+    for i in [:stop.toNat] do
+      a := a + i.toUInt64 + stop
+    return a
+  value == seed + stop
+
+def rangeBoolWordSetupExit (count seed : UInt64) : Id Bool := do
+  let delta ← pure (seed % 7 + 1)
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + delta
+      if a % 7 == 0 then break
+    return a)
+  return value % 7 == 0
+
+def rangeBoolWordSetupContinue (count seed : UInt64) : Bool := Id.run do
+  let offset := seed % 3
+  let start := seed + offset
+  let value ← (do
+    let mut a := start
+    for i in [:count.toNat] do
+      if i.toUInt64 % 3 == offset then continue
+      a := a + i.toUInt64 + 1
+    return a)
+  return value == start
+
+def rangeBoolWordSetupStride (count seed : UInt64) : Bool :=
+  let start := seed % 3
+  let value := Id.run do
+    let mut a := seed
+    for i in [start.toNat:count.toNat:3] do
+      a := a + i.toUInt64 + 1
+      if a % 5 == 0 then break
+    return a
+  decide (value ≤ seed)
+
+def rangeBoolWordSetupCapture (count seed : UInt64) : Id Bool := do
+  let captured ← pure (seed + 7)
+  let value ← (do
+    let f := fun x : UInt64 => x + captured
+    let mut a := f seed
+    for i in [:count.toNat] do
+      a := f (a + i.toUInt64)
+    return a)
+  return value == captured || value == seed
+
+def rangeBoolWordSetupFlag (count : UInt64) (flag : Bool) : Bool :=
+  let start := count + flag.toUInt64
+  let value := Id.run do
+    let mut a := start
+    for i in [:count.toNat] do
+      if flag && i.toUInt64 % 3 == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a
+  flag && value != start
+
+def rangeBoolWordSetupId (count : Id UInt64) (seed : UInt64) : Id (Id Bool) := do
+  let start : Id UInt64 ← pure (pure (seed + 1))
+  let value ← (do
+    let mut a := Id.run start
+    for i in [:(Id.run count).toNat] do
+      a := a + i.toUInt64 + 1
+      if a % 7 == 0 then break
+    return a)
+  return pure (value == Id.run start)
+
 def rangeBoolResultBindYield (count seed : UInt64) : Id Bool := do
   let value ← (do
     let mut a := seed
@@ -8808,6 +8908,16 @@ run_elab do
       `ArithmeticModeTest.rangeLocalNotContinue,
       `ArithmeticModeTest.rangeLocalNotOuter,
       `ArithmeticModeTest.rangeLocalNotHelper,
+      `ArithmeticModeTest.rangeBoolWordSetupLet,
+      `ArithmeticModeTest.rangeBoolWordSetupChain,
+      `ArithmeticModeTest.rangeBoolWordSetupBind,
+      `ArithmeticModeTest.rangeBoolWordSetupCount,
+      `ArithmeticModeTest.rangeBoolWordSetupExit,
+      `ArithmeticModeTest.rangeBoolWordSetupContinue,
+      `ArithmeticModeTest.rangeBoolWordSetupStride,
+      `ArithmeticModeTest.rangeBoolWordSetupCapture,
+      `ArithmeticModeTest.rangeBoolWordSetupFlag,
+      `ArithmeticModeTest.rangeBoolWordSetupId,
       `ArithmeticModeTest.rangeBoolResultBindYield,
       `ArithmeticModeTest.rangeBoolResultBindExit,
       `ArithmeticModeTest.rangeBoolResultBindContinue,

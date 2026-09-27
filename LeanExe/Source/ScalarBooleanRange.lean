@@ -10,6 +10,11 @@ def bind (name : Lean.Name) (binder : Lean.BinderInfo) (input : ResultType)
 
 /-- A word-valued loop followed by a Boolean result computation. -/
 inductive Eval : Lean.Expr → List Value → Bool → Prop where
+  | letBefore (value : EvalWith a values x) (body : Eval b (.word x :: values) flag) :
+      Eval (.letE name (.const ``UInt64 []) a b nondep) values flag
+  | bindBefore (input : ResultType) (output : BooleanType)
+      (value : EvalWith a values x) (body : Eval b (.word x :: values) flag) :
+      Eval (bind name binder input output a b) values flag
   | letResult (value : Range.Exit.Eval a values x)
       (body : EvalWith (.app (.const ``Bool.toUInt64 []) b) (.word x :: values) flag.toUInt64) :
       Eval (.letE name (.const ``UInt64 []) a b nondep) values flag
@@ -22,6 +27,11 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
 
 /-- Source support checks both the loop and its Boolean continuation. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
+  | letBefore (value : SupportedWith types a) (body : Supported (.word :: types) b) :
+      Supported types (.letE name (.const ``UInt64 []) a b nondep)
+  | bindBefore (input : ResultType) (output : BooleanType)
+      (value : SupportedWith types a) (body : Supported (.word :: types) b) :
+      Supported types (bind name binder input output a b)
   | letResult (value : Range.Exit.Supported types a)
       (body : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) b)) :
       Supported types (.letE name (.const ``UInt64 []) a b nondep)
@@ -36,6 +46,14 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (supported : Supported types source) (values : List Value)
     (typed : values.map Value.kind = types) : ∃ flag, Eval source values flag := by
   induction supported generalizing values with
+  | letBefore value _ ih =>
+    obtain ⟨x, hx⟩ := value.evaluates values typed
+    obtain ⟨flag, evaluated⟩ := ih (.word x :: values) (by simp [Value.kind, typed])
+    exact ⟨flag, .letBefore hx evaluated⟩
+  | bindBefore input output value _ ih =>
+    obtain ⟨x, hx⟩ := value.evaluates values typed
+    obtain ⟨flag, evaluated⟩ := ih (.word x :: values) (by simp [Value.kind, typed])
+    exact ⟨flag, .bindBefore input output hx evaluated⟩
   | letResult value body =>
     obtain ⟨x, hx⟩ := value.evaluates values typed
     obtain ⟨result, hr⟩ := body.evaluates (.word x :: values) (by simp [Value.kind, typed])
