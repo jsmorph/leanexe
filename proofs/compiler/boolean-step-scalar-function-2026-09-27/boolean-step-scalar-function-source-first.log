@@ -1,0 +1,23 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [66/66] Building LeanExe.Source.ScalarBooleanStep (1.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarBooleanStep.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanStep.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanStep.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanStep.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanStep.setup.json --json
+error: LeanExe/Source/ScalarBooleanStep.lean:298:51: Application type mismatch: The argument
+  a
+has type
+  List BindingKind
+but is expected to have type
+  Lean.Expr
+in the application
+  (Lean.Expr.const `Bool.toUInt64 []).app a
+error: LeanExe/Source/ScalarBooleanStep.lean:317:51: Application type mismatch: The argument
+  a
+has type
+  List BindingKind
+but is expected to have type
+  Lean.Expr
+in the application
+  (Lean.Expr.const `Bool.toUInt64 []).app a
+Some required targets logged failures:
+- LeanExe.Source.ScalarBooleanStep
+error: build failed

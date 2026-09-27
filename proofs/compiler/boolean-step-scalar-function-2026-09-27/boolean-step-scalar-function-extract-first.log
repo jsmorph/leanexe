@@ -1,0 +1,1214 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [91/147] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [142/147] Replayed LeanExe.Extract.ScalarExprCore
+warning: LeanExe/Extract/ScalarExprCore.lean:432:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:440:31: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:440:36: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:440:52: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:449:35: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:449:40: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:449:56: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:516:12: Variable name `bounds` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _bounds
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+⚠ [143/147] Replayed LeanExe.Extract.ScalarExpr
+warning: LeanExe/Extract/ScalarExpr.lean:190:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:191:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:206:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:207:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:238:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:239:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:253:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:254:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1095:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1205:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1485:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1507:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1529:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1551:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1573:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1597:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1621:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1639:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1658:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1677:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+✖ [147/147] Building LeanExe.Extract.ScalarBooleanStep (4.3s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanStep.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanStep.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanStep.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanStep.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanStep.setup.json --json
+warning: LeanExe/Extract/ScalarBooleanStep.lean:409:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarBooleanStep.lean:421:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarBooleanStep.lean:433:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarBooleanStep.lean:445:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarBooleanStep.lean:390:12: This simp argument is unused:
+  Option.bind_some
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.functionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes_not_step, booleanStepFlagBindTypes_not_step,
+    booleanStepResultBindTypes_accepts, bind, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:406:24: This simp argument is unused:
+  booleanRangeBindTypes?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?, scalarResultType_accepts,
+    booleanType_accepts, scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar,
+    booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:406:48: This simp argument is unused:
+  booleanStepFlagWordTypes?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanRangeFlagBindTypes?, scalarResultType_accepts, booleanType_accepts,
+    scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar, booleanStepResultType_boolean, bind,
+    pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:406:75: This simp argument is unused:
+  booleanRangeFlagBindTypes?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, scalarResultType_accepts, booleanType_accepts,
+    scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar, booleanStepResultType_boolean, bind,
+    pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:407:32: This simp argument is unused:
+  booleanType_accepts
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar,
+    booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:407:53: This simp argument is unused:
+  scalarResultType_boolean
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, booleanType_scalar, booleanStepResultType_scalar,
+    booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:408:36: This simp argument is unused:
+  booleanStepResultType_boolean
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, bind, pure, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:409:12: This simp argument is unused:
+  pure
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:418:48: This simp argument is unused:
+  booleanStepFlagWordTypes?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanRangeFlagBindTypes?, scalarResultType_accepts, booleanType_accepts,
+    scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar, booleanStepResultType_boolean, bind,
+    pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:418:75: This simp argument is unused:
+  booleanRangeFlagBindTypes?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, scalarResultType_accepts, booleanType_accepts,
+    scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar, booleanStepResultType_boolean, bind,
+    pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:421:12: This simp argument is unused:
+  pure
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:430:75: This simp argument is unused:
+  booleanRangeFlagBindTypes?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, scalarResultType_accepts, booleanType_accepts,
+    scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar, booleanStepResultType_boolean, bind,
+    pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:433:12: This simp argument is unused:
+  pure
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:443:6: This simp argument is unused:
+  scalarResultType_accepts
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    booleanType_accepts, scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar,
+    booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:443:79: This simp argument is unused:
+  booleanType_scalar
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanStepResultType_scalar,
+    booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:444:6: This simp argument is unused:
+  booleanStepResultType_scalar
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:445:12: This simp argument is unused:
+  pure
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:601:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarBooleanStep.lean:619:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarBooleanStep.lean:637:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarBooleanStep.lean:655:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarBooleanStep.lean:598:24: This simp argument is unused:
+  booleanRangeBindTypes?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?, scalarResultType_accepts,
+    booleanType_accepts, scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar,
+    booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff, hc,
+    emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:598:48: This simp argument is unused:
+  booleanStepFlagWordTypes?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanRangeFlagBindTypes?, scalarResultType_accepts, booleanType_accepts,
+    scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar, booleanStepResultType_boolean, bind,
+    pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:598:75: This simp argument is unused:
+  booleanRangeFlagBindTypes?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, scalarResultType_accepts, booleanType_accepts,
+    scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar, booleanStepResultType_boolean, bind,
+    pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:599:32: This simp argument is unused:
+  booleanType_accepts
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar,
+    booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff, hc,
+    emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:599:53: This simp argument is unused:
+  scalarResultType_boolean
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, booleanType_scalar, booleanStepResultType_scalar,
+    booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff, hc,
+    emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:600:36: This simp argument is unused:
+  booleanStepResultType_boolean
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, bind, pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff, hc,
+    emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:601:12: This simp argument is unused:
+  pure
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:601:54: This simp argument is unused:
+  if_pos
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none,
+    Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:601:62: This simp argument is unused:
+  Option.bind_eq_some_iff
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos,
+    hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:616:48: This simp argument is unused:
+  booleanStepFlagWordTypes?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanRangeFlagBindTypes?, scalarResultType_accepts, booleanType_accepts,
+    scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar, booleanStepResultType_boolean, bind,
+    pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:616:75: This simp argument is unused:
+  booleanRangeFlagBindTypes?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, scalarResultType_accepts, booleanType_accepts,
+    scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar, booleanStepResultType_boolean, bind,
+    pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:619:12: This simp argument is unused:
+  pure
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:619:54: This simp argument is unused:
+  if_pos
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none,
+    Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:619:62: This simp argument is unused:
+  Option.bind_eq_some_iff
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos,
+    hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:634:75: This simp argument is unused:
+  booleanRangeFlagBindTypes?
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, scalarResultType_accepts, booleanType_accepts,
+    scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar, booleanStepResultType_boolean, bind,
+    pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:637:12: This simp argument is unused:
+  pure
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:637:54: This simp argument is unused:
+  if_pos
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none,
+    Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:637:62: This simp argument is unused:
+  Option.bind_eq_some_iff
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos,
+    hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:653:6: This simp argument is unused:
+  scalarResultType_accepts
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    booleanType_accepts, scalarResultType_boolean, booleanType_scalar, booleanStepResultType_scalar,
+    booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff, hc,
+    emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:653:79: This simp argument is unused:
+  booleanType_scalar
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanStepResultType_scalar,
+    booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff, hc,
+    emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:654:6: This simp argument is unused:
+  booleanStepResultType_scalar
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos, Option.bind_eq_some_iff, hc,
+    emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:655:12: This simp argument is unused:
+  pure
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, Option.bind_some, Option.bind_none, if_pos,
+    Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:655:54: This simp argument is unused:
+  if_pos
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none,
+    Option.bind_eq_some_iff, hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanStep.lean:655:62: This simp argument is unused:
+  Option.bind_eq_some_iff
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanStep.scalarFunctionExpr, extractBooleanStepWith, scalarResultType?, booleanType?,
+    booleanStepResultType?, booleanStepWordBindTypes?, booleanStepFlagBindTypes?, booleanStepResultBindTypes?,
+    scalarBindTypes?, booleanRangeBindTypes?, booleanStepFlagWordTypes?, booleanRangeFlagBindTypes?,
+    scalarResultType_accepts, booleanType_accepts, scalarResultType_boolean, booleanType_scalar,
+    booleanStepResultType_scalar, booleanStepResultType_boolean, bind, pure, Option.bind_some, Option.bind_none, if_pos,
+    hc, emitted, f]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarBooleanStep.lean:737:10: Type mismatch: After simplification, term
+  extractScalarExprWith_supported matched
+ has type
+  SupportedWith
+    (BindingKind.word ::
+      List.map
+        (fun x =>
+          match x.toScalar with
+          | ScalarBinding.word expression => BindingKind.word
+          | ScalarBinding.boolean expression => BindingKind.boolean
+          | ScalarBinding.natural expression => BindingKind.natural
+          | ScalarBinding.unit => BindingKind.unit
+          | ScalarBinding.function withUnit apply => BindingKind.function withUnit
+          | ScalarBinding.booleanFunction apply => BindingKind.booleanFunction
+          | ScalarBinding.predicateFunction apply => BindingKind.predicateFunction
+          | ScalarBinding.booleanPredicateFunction apply => BindingKind.booleanPredicateFunction
+          | ScalarBinding.binaryFunction apply => BindingKind.binaryFunction
+          | ScalarBinding.manyFunction arity apply => BindingKind.manyFunction arity)
+        locals)
+    value
+but is expected to have type
+  SupportedWith (BindingKind.word :: List.map (fun x => x.kind.toScalar) locals) value
+error: LeanExe/Extract/ScalarBooleanStep.lean:738:71: Application type mismatch: The argument
+  emitted
+has type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.function false fun argument =>
+            extractScalarExprWith (ScalarBinding.word argument :: List.map BooleanStepBinding.toScalar locals) value) ::
+        locals)
+      body =
+    some code
+but is expected to have type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.function false fun argument =>
+            extractScalarExprWith
+              (ScalarBinding.word argument ::
+                List.map
+                  (fun x =>
+                    match x with
+                    | ⟨x, h⟩ => x.toScalar)
+                  locals.attach)
+              value) ::
+        locals)
+      body =
+    some ?m.865
+in the application
+  ih emitted
+error: LeanExe/Extract/ScalarBooleanStep.lean:738:7: unsolved goals
+expression :
+  ∀ {locals : List BooleanStepBinding} {source : Lean.Expr} {target : IR.Expr},
+    extractScalarExprWith (List.map BooleanStepBinding.toScalar locals) source = some target →
+      SupportedWith (List.map BooleanStep.BindingKind.toScalar (List.map BooleanStepBinding.kind locals)) source
+locals : List BooleanStepBinding
+name : Lean.Name
+body : Lean.Expr
+nondep : Bool
+typeName : Lean.Name
+typeBi : Lean.BinderInfo
+paramName : Lean.Name
+value : Lean.Expr
+paramBi : Lean.BinderInfo
+ih :
+  ∀ {code : ScalarStepCode},
+    extractBooleanStepWith
+          (BooleanStepBinding.scalar
+              (ScalarBinding.function false fun argument =>
+                extractScalarExprWith
+                  (ScalarBinding.word argument ::
+                    List.map
+                      (fun x =>
+                        match x with
+                        | ⟨x, h⟩ => x.toScalar)
+                      locals.attach)
+                  value) ::
+            locals)
+          body =
+        some code →
+      BooleanStep.Supported
+        (List.map BooleanStepBinding.kind
+          (BooleanStepBinding.scalar
+              (ScalarBinding.function false fun argument =>
+                extractScalarExprWith
+                  (ScalarBinding.word argument ::
+                    List.map
+                      (fun x =>
+                        match x with
+                        | ⟨x, h⟩ => x.toScalar)
+                      locals.attach)
+                  value) ::
+            locals))
+        body
+code : ScalarStepCode
+checked : IR.Expr
+matched :
+  extractScalarExprWith (ScalarBinding.word (IR.Expr.u64 0) :: List.map BooleanStepBinding.toScalar locals) value =
+    some checked
+emitted :
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.function false fun argument =>
+            extractScalarExprWith (ScalarBinding.word argument :: List.map BooleanStepBinding.toScalar locals) value) ::
+        locals)
+      body =
+    some code
+inputType outputType : ResultType
+notWord : scalarResultType? (Lean.Expr.forallE typeName inputType.expr outputType.expr typeBi) = none
+notFlag : booleanType? (Lean.Expr.forallE typeName inputType.expr outputType.expr typeBi) = none
+notStep : booleanStepResultType? (Lean.Expr.forallE typeName inputType.expr outputType.expr typeBi) = none
+notWordFunction : booleanStepWordBindTypes? inputType.expr inputType.expr outputType.expr = none
+notFlagFunction : booleanStepFlagBindTypes? inputType.expr inputType.expr outputType.expr = none
+notResultFunction : booleanStepResultBindTypes? inputType.expr inputType.expr outputType.expr = none
+parsed : scalarBindTypes? inputType.expr inputType.expr outputType.expr = some (inputType, outputType)
+⊢ BooleanStep.Supported
+    (BooleanStep.BindingKind.scalar (BindingKind.function false) :: List.map BooleanStepBinding.kind locals) body
+error: LeanExe/Extract/ScalarBooleanStep.lean:745:10: Type mismatch: After simplification, term
+  extractScalarExprWith_supported matched
+ has type
+  SupportedWith
+    (BindingKind.word ::
+      List.map
+        (fun x =>
+          match x.toScalar with
+          | ScalarBinding.word expression => BindingKind.word
+          | ScalarBinding.boolean expression => BindingKind.boolean
+          | ScalarBinding.natural expression => BindingKind.natural
+          | ScalarBinding.unit => BindingKind.unit
+          | ScalarBinding.function withUnit apply => BindingKind.function withUnit
+          | ScalarBinding.booleanFunction apply => BindingKind.booleanFunction
+          | ScalarBinding.predicateFunction apply => BindingKind.predicateFunction
+          | ScalarBinding.booleanPredicateFunction apply => BindingKind.booleanPredicateFunction
+          | ScalarBinding.binaryFunction apply => BindingKind.binaryFunction
+          | ScalarBinding.manyFunction arity apply => BindingKind.manyFunction arity)
+        locals)
+    ((Lean.Expr.const `Bool.toUInt64 []).app value)
+but is expected to have type
+  SupportedWith (BindingKind.word :: List.map (fun x => x.kind.toScalar) locals)
+    ((Lean.Expr.const `Bool.toUInt64 []).app value)
+error: LeanExe/Extract/ScalarBooleanStep.lean:746:71: Application type mismatch: The argument
+  emitted
+has type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.predicateFunction fun argument =>
+            extractScalarExprWith (ScalarBinding.word argument :: List.map BooleanStepBinding.toScalar locals)
+              ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+        locals)
+      body =
+    some code
+but is expected to have type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.predicateFunction fun argument =>
+            extractScalarExprWith
+              (ScalarBinding.word argument ::
+                List.map
+                  (fun x =>
+                    match x with
+                    | ⟨x, h⟩ => x.toScalar)
+                  locals.attach)
+              ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+        locals)
+      body =
+    some ?m.980
+in the application
+  ih emitted
+error: LeanExe/Extract/ScalarBooleanStep.lean:746:7: unsolved goals
+expression :
+  ∀ {locals : List BooleanStepBinding} {source : Lean.Expr} {target : IR.Expr},
+    extractScalarExprWith (List.map BooleanStepBinding.toScalar locals) source = some target →
+      SupportedWith (List.map BooleanStep.BindingKind.toScalar (List.map BooleanStepBinding.kind locals)) source
+locals : List BooleanStepBinding
+name : Lean.Name
+body : Lean.Expr
+nondep : Bool
+typeName : Lean.Name
+typeBi : Lean.BinderInfo
+paramName : Lean.Name
+value : Lean.Expr
+paramBi : Lean.BinderInfo
+ih :
+  ∀ {code : ScalarStepCode},
+    extractBooleanStepWith
+          (BooleanStepBinding.scalar
+              (ScalarBinding.predicateFunction fun argument =>
+                extractScalarExprWith
+                  (ScalarBinding.word argument ::
+                    List.map
+                      (fun x =>
+                        match x with
+                        | ⟨x, h⟩ => x.toScalar)
+                      locals.attach)
+                  ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+            locals)
+          body =
+        some code →
+      BooleanStep.Supported
+        (List.map BooleanStepBinding.kind
+          (BooleanStepBinding.scalar
+              (ScalarBinding.predicateFunction fun argument =>
+                extractScalarExprWith
+                  (ScalarBinding.word argument ::
+                    List.map
+                      (fun x =>
+                        match x with
+                        | ⟨x, h⟩ => x.toScalar)
+                      locals.attach)
+                  ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+            locals))
+        body
+code : ScalarStepCode
+checked : IR.Expr
+matched :
+  extractScalarExprWith (ScalarBinding.word (IR.Expr.u64 0) :: List.map BooleanStepBinding.toScalar locals)
+      ((Lean.Expr.const `Bool.toUInt64 []).app value) =
+    some checked
+emitted :
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.predicateFunction fun argument =>
+            extractScalarExprWith (ScalarBinding.word argument :: List.map BooleanStepBinding.toScalar locals)
+              ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+        locals)
+      body =
+    some code
+inputType : ResultType
+outputType : BooleanType
+notWord : scalarResultType? (Lean.Expr.forallE typeName inputType.expr outputType.expr typeBi) = none
+notFlag : booleanType? (Lean.Expr.forallE typeName inputType.expr outputType.expr typeBi) = none
+notStep : booleanStepResultType? (Lean.Expr.forallE typeName inputType.expr outputType.expr typeBi) = none
+notWordFunction : booleanStepWordBindTypes? inputType.expr inputType.expr outputType.expr = none
+notFlagFunction : booleanStepFlagBindTypes? inputType.expr inputType.expr outputType.expr = none
+notResultFunction : booleanStepResultBindTypes? inputType.expr inputType.expr outputType.expr = none
+notScalarWord : scalarBindTypes? inputType.expr inputType.expr outputType.expr = none
+parsed : booleanRangeBindTypes? inputType.expr inputType.expr outputType.expr = some (inputType, outputType)
+⊢ BooleanStep.Supported
+    (BooleanStep.BindingKind.scalar BindingKind.predicateFunction :: List.map BooleanStepBinding.kind locals) body
+error: LeanExe/Extract/ScalarBooleanStep.lean:753:10: Type mismatch: After simplification, term
+  extractScalarExprWith_supported matched
+ has type
+  SupportedWith
+    (BindingKind.boolean ::
+      List.map
+        (fun x =>
+          match x.toScalar with
+          | ScalarBinding.word expression => BindingKind.word
+          | ScalarBinding.boolean expression => BindingKind.boolean
+          | ScalarBinding.natural expression => BindingKind.natural
+          | ScalarBinding.unit => BindingKind.unit
+          | ScalarBinding.function withUnit apply => BindingKind.function withUnit
+          | ScalarBinding.booleanFunction apply => BindingKind.booleanFunction
+          | ScalarBinding.predicateFunction apply => BindingKind.predicateFunction
+          | ScalarBinding.booleanPredicateFunction apply => BindingKind.booleanPredicateFunction
+          | ScalarBinding.binaryFunction apply => BindingKind.binaryFunction
+          | ScalarBinding.manyFunction arity apply => BindingKind.manyFunction arity)
+        locals)
+    value
+but is expected to have type
+  SupportedWith (BindingKind.boolean :: List.map (fun x => x.kind.toScalar) locals) value
+error: LeanExe/Extract/ScalarBooleanStep.lean:754:71: Application type mismatch: The argument
+  emitted
+has type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.booleanFunction fun argument =>
+            extractScalarExprWith (ScalarBinding.boolean argument :: List.map BooleanStepBinding.toScalar locals)
+              value) ::
+        locals)
+      body =
+    some code
+but is expected to have type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.booleanFunction fun argument =>
+            extractScalarExprWith
+              (ScalarBinding.boolean argument ::
+                List.map
+                  (fun x =>
+                    match x with
+                    | ⟨x, h⟩ => x.toScalar)
+                  locals.attach)
+              value) ::
+        locals)
+      body =
+    some ?m.1095
+in the application
+  ih emitted
+error: LeanExe/Extract/ScalarBooleanStep.lean:754:7: unsolved goals
+expression :
+  ∀ {locals : List BooleanStepBinding} {source : Lean.Expr} {target : IR.Expr},
+    extractScalarExprWith (List.map BooleanStepBinding.toScalar locals) source = some target →
+      SupportedWith (List.map BooleanStep.BindingKind.toScalar (List.map BooleanStepBinding.kind locals)) source
+locals : List BooleanStepBinding
+name : Lean.Name
+body : Lean.Expr
+nondep : Bool
+typeName : Lean.Name
+typeBi : Lean.BinderInfo
+paramName : Lean.Name
+value : Lean.Expr
+paramBi : Lean.BinderInfo
+ih :
+  ∀ {code : ScalarStepCode},
+    extractBooleanStepWith
+          (BooleanStepBinding.scalar
+              (ScalarBinding.booleanFunction fun argument =>
+                extractScalarExprWith
+                  (ScalarBinding.boolean argument ::
+                    List.map
+                      (fun x =>
+                        match x with
+                        | ⟨x, h⟩ => x.toScalar)
+                      locals.attach)
+                  value) ::
+            locals)
+          body =
+        some code →
+      BooleanStep.Supported
+        (List.map BooleanStepBinding.kind
+          (BooleanStepBinding.scalar
+              (ScalarBinding.booleanFunction fun argument =>
+                extractScalarExprWith
+                  (ScalarBinding.boolean argument ::
+                    List.map
+                      (fun x =>
+                        match x with
+                        | ⟨x, h⟩ => x.toScalar)
+                      locals.attach)
+                  value) ::
+            locals))
+        body
+code : ScalarStepCode
+checked : IR.Expr
+matched :
+  extractScalarExprWith (ScalarBinding.boolean (IR.Expr.u64 0) :: List.map BooleanStepBinding.toScalar locals) value =
+    some checked
+emitted :
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.booleanFunction fun argument =>
+            extractScalarExprWith (ScalarBinding.boolean argument :: List.map BooleanStepBinding.toScalar locals)
+              value) ::
+        locals)
+      body =
+    some code
+inputType : BooleanType
+outputType : ResultType
+notWord : scalarResultType? (Lean.Expr.forallE typeName inputType.expr outputType.expr typeBi) = none
+notFlag : booleanType? (Lean.Expr.forallE typeName inputType.expr outputType.expr typeBi) = none
+notStep : booleanStepResultType? (Lean.Expr.forallE typeName inputType.expr outputType.expr typeBi) = none
+notWordFunction : booleanStepWordBindTypes? inputType.expr inputType.expr outputType.expr = none
+notFlagFunction : booleanStepFlagBindTypes? inputType.expr inputType.expr outputType.expr = none
+notResultFunction : booleanStepResultBindTypes? inputType.expr inputType.expr outputType.expr = none
+notScalarWord : scalarBindTypes? inputType.expr inputType.expr outputType.expr = none
+notScalarPredicate : booleanRangeBindTypes? inputType.expr inputType.expr outputType.expr = none
+parsed : booleanStepFlagWordTypes? inputType.expr inputType.expr outputType.expr = some (inputType, outputType)
+⊢ BooleanStep.Supported
+    (BooleanStep.BindingKind.scalar BindingKind.booleanFunction :: List.map BooleanStepBinding.kind locals) body
+error: LeanExe/Extract/ScalarBooleanStep.lean:760:10: Type mismatch: After simplification, term
+  extractScalarExprWith_supported matched
+ has type
+  SupportedWith
+    (BindingKind.boolean ::
+      List.map
+        (fun x =>
+          match x.toScalar with
+          | ScalarBinding.word expression => BindingKind.word
+          | ScalarBinding.boolean expression => BindingKind.boolean
+          | ScalarBinding.natural expression => BindingKind.natural
+          | ScalarBinding.unit => BindingKind.unit
+          | ScalarBinding.function withUnit apply => BindingKind.function withUnit
+          | ScalarBinding.booleanFunction apply => BindingKind.booleanFunction
+          | ScalarBinding.predicateFunction apply => BindingKind.predicateFunction
+          | ScalarBinding.booleanPredicateFunction apply => BindingKind.booleanPredicateFunction
+          | ScalarBinding.binaryFunction apply => BindingKind.binaryFunction
+          | ScalarBinding.manyFunction arity apply => BindingKind.manyFunction arity)
+        locals)
+    ((Lean.Expr.const `Bool.toUInt64 []).app value)
+but is expected to have type
+  SupportedWith (BindingKind.boolean :: List.map (fun x => x.kind.toScalar) locals)
+    ((Lean.Expr.const `Bool.toUInt64 []).app value)
+error: LeanExe/Extract/ScalarBooleanStep.lean:761:71: Application type mismatch: The argument
+  emitted
+has type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.booleanPredicateFunction fun argument =>
+            extractScalarExprWith (ScalarBinding.boolean argument :: List.map BooleanStepBinding.toScalar locals)
+              ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+        locals)
+      body =
+    some code
+but is expected to have type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.booleanPredicateFunction fun argument =>
+            extractScalarExprWith
+              (ScalarBinding.boolean argument ::
+                List.map
+                  (fun x =>
+                    match x with
+                    | ⟨x, h⟩ => x.toScalar)
+                  locals.attach)
+              ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+        locals)
+      body =
+    some ?m.1223
+in the application
+  ih emitted
+error: LeanExe/Extract/ScalarBooleanStep.lean:761:7: unsolved goals
+expression :
+  ∀ {locals : List BooleanStepBinding} {source : Lean.Expr} {target : IR.Expr},
+    extractScalarExprWith (List.map BooleanStepBinding.toScalar locals) source = some target →
+      SupportedWith (List.map BooleanStep.BindingKind.toScalar (List.map BooleanStepBinding.kind locals)) source
+locals : List BooleanStepBinding
+name : Lean.Name
+body : Lean.Expr
+nondep : Bool
+typeName : Lean.Name
+typeBi : Lean.BinderInfo
+paramName : Lean.Name
+value : Lean.Expr
+paramBi : Lean.BinderInfo
+ih :
+  ∀ {code : ScalarStepCode},
+    extractBooleanStepWith
+          (BooleanStepBinding.scalar
+              (ScalarBinding.booleanPredicateFunction fun argument =>
+                extractScalarExprWith
+                  (ScalarBinding.boolean argument ::
+                    List.map
+                      (fun x =>
+                        match x with
+                        | ⟨x, h⟩ => x.toScalar)
+                      locals.attach)
+                  ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+            locals)
+          body =
+        some code →
+      BooleanStep.Supported
+        (List.map BooleanStepBinding.kind
+          (BooleanStepBinding.scalar
+              (ScalarBinding.booleanPredicateFunction fun argument =>
+                extractScalarExprWith
+                  (ScalarBinding.boolean argument ::
+                    List.map
+                      (fun x =>
+                        match x with
+                        | ⟨x, h⟩ => x.toScalar)
+                      locals.attach)
+                  ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+            locals))
+        body
+code : ScalarStepCode
+inputType outputType : BooleanType
+checked : IR.Expr
+matched :
+  extractScalarExprWith (ScalarBinding.boolean (IR.Expr.u64 0) :: List.map BooleanStepBinding.toScalar locals)
+      ((Lean.Expr.const `Bool.toUInt64 []).app value) =
+    some checked
+emitted :
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.booleanPredicateFunction fun argument =>
+            extractScalarExprWith (ScalarBinding.boolean argument :: List.map BooleanStepBinding.toScalar locals)
+              ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+        locals)
+      body =
+    some code
+notWord : scalarResultType? (Lean.Expr.forallE typeName inputType.expr outputType.expr typeBi) = none
+notFlag : booleanType? (Lean.Expr.forallE typeName inputType.expr outputType.expr typeBi) = none
+notStep : booleanStepResultType? (Lean.Expr.forallE typeName inputType.expr outputType.expr typeBi) = none
+notWordFunction : booleanStepWordBindTypes? inputType.expr inputType.expr outputType.expr = none
+notFlagFunction : booleanStepFlagBindTypes? inputType.expr inputType.expr outputType.expr = none
+notResultFunction : booleanStepResultBindTypes? inputType.expr inputType.expr outputType.expr = none
+notScalarWord : scalarBindTypes? inputType.expr inputType.expr outputType.expr = none
+notScalarPredicate : booleanRangeBindTypes? inputType.expr inputType.expr outputType.expr = none
+notScalarBoolean : booleanStepFlagWordTypes? inputType.expr inputType.expr outputType.expr = none
+parsed : booleanRangeFlagBindTypes? inputType.expr inputType.expr outputType.expr = some (inputType, outputType)
+⊢ BooleanStep.Supported
+    (BooleanStep.BindingKind.scalar BindingKind.booleanPredicateFunction :: List.map BooleanStepBinding.kind locals)
+    body
+error: LeanExe/Extract/ScalarBooleanStep.lean:900:13: Application type mismatch: The argument
+  emitted
+has type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.function false fun argument =>
+            extractScalarExprWith (ScalarBinding.word argument :: List.map BooleanStepBinding.toScalar locals) value) ::
+        locals)
+      body =
+    some code
+but is expected to have type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.function false fun argument =>
+            extractScalarExprWith
+              (ScalarBinding.word argument ::
+                List.map
+                  (fun x =>
+                    match x with
+                    | ⟨x, h⟩ => x.toScalar)
+                  locals.attach)
+              value) ::
+        locals)
+      body =
+    some ?m.821
+in the application
+  ih emitted
+error: LeanExe/Extract/ScalarBooleanStep.lean:908:57: Application type mismatch: The argument
+  member
+has type
+  binding ∈
+    List.map
+      (fun x =>
+        match x with
+        | ⟨x, h⟩ => x.toScalar)
+      locals.attach
+but is expected to have type
+  binding ∈ List.map BooleanStepBinding.toScalar locals
+in the application
+  booleanStepBindings_holds bindings binding member
+error: LeanExe/Extract/ScalarBooleanStep.lean:913:13: Application type mismatch: The argument
+  emitted
+has type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.predicateFunction fun argument =>
+            extractScalarExprWith (ScalarBinding.word argument :: List.map BooleanStepBinding.toScalar locals)
+              ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+        locals)
+      body =
+    some code
+but is expected to have type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.predicateFunction fun argument =>
+            extractScalarExprWith
+              (ScalarBinding.word argument ::
+                List.map
+                  (fun x =>
+                    match x with
+                    | ⟨x, h⟩ => x.toScalar)
+                  locals.attach)
+              ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+        locals)
+      body =
+    some ?m.926
+in the application
+  ih emitted
+error: LeanExe/Extract/ScalarBooleanStep.lean:921:57: Application type mismatch: The argument
+  member
+has type
+  binding ∈
+    List.map
+      (fun x =>
+        match x with
+        | ⟨x, h⟩ => x.toScalar)
+      locals.attach
+but is expected to have type
+  binding ∈ List.map BooleanStepBinding.toScalar locals
+in the application
+  booleanStepBindings_holds bindings binding member
+error: LeanExe/Extract/ScalarBooleanStep.lean:926:13: Application type mismatch: The argument
+  emitted
+has type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.booleanFunction fun argument =>
+            extractScalarExprWith (ScalarBinding.boolean argument :: List.map BooleanStepBinding.toScalar locals)
+              value) ::
+        locals)
+      body =
+    some code
+but is expected to have type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.booleanFunction fun argument =>
+            extractScalarExprWith
+              (ScalarBinding.boolean argument ::
+                List.map
+                  (fun x =>
+                    match x with
+                    | ⟨x, h⟩ => x.toScalar)
+                  locals.attach)
+              value) ::
+        locals)
+      body =
+    some ?m.1031
+in the application
+  ih emitted
+error: LeanExe/Extract/ScalarBooleanStep.lean:934:57: Application type mismatch: The argument
+  member
+has type
+  binding ∈
+    List.map
+      (fun x =>
+        match x with
+        | ⟨x, h⟩ => x.toScalar)
+      locals.attach
+but is expected to have type
+  binding ∈ List.map BooleanStepBinding.toScalar locals
+in the application
+  booleanStepBindings_holds bindings binding member
+error: LeanExe/Extract/ScalarBooleanStep.lean:939:13: Application type mismatch: The argument
+  emitted
+has type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.booleanPredicateFunction fun argument =>
+            extractScalarExprWith (ScalarBinding.boolean argument :: List.map BooleanStepBinding.toScalar locals)
+              ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+        locals)
+      body =
+    some code
+but is expected to have type
+  extractBooleanStepWith
+      (BooleanStepBinding.scalar
+          (ScalarBinding.booleanPredicateFunction fun argument =>
+            extractScalarExprWith
+              (ScalarBinding.boolean argument ::
+                List.map
+                  (fun x =>
+                    match x with
+                    | ⟨x, h⟩ => x.toScalar)
+                  locals.attach)
+              ((Lean.Expr.const `Bool.toUInt64 []).app value)) ::
+        locals)
+      body =
+    some ?m.1150
+in the application
+  ih emitted
+error: LeanExe/Extract/ScalarBooleanStep.lean:947:57: Application type mismatch: The argument
+  member
+has type
+  binding ∈
+    List.map
+      (fun x =>
+        match x with
+        | ⟨x, h⟩ => x.toScalar)
+      locals.attach
+but is expected to have type
+  binding ∈ List.map BooleanStepBinding.toScalar locals
+in the application
+  booleanStepBindings_holds bindings binding member
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanStep
+error: build failed
