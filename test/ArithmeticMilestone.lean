@@ -8188,6 +8188,58 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def booleanHelperNegationWord (x y : UInt64) : UInt64 :=
+  (!(let f := fun n : UInt64 => n == y; f x || f 0)).toUInt64 + x
+
+def booleanHelperNegationBoolean (x y : UInt64) : UInt64 :=
+  if !(Id.run do
+    let f := fun b : Bool => !b || y == 0
+    return f (x == y) && f (x == 0)) then x + 7 else y + 11
+
+def booleanHelperNegationDependent (x y : UInt64) : UInt64 :=
+  if _h : !(let f := fun n : UInt64 => n == y; f x || f 0) then x - 3 else y * 7
+
+def booleanHelperNegationNested (x y : UInt64) : UInt64 :=
+  (!(!(!(Id.run (pure (let f := fun n : UInt64 => n == y; f x || f 0) : Id (Id Bool)))))).toUInt64 + x
+
+def booleanHelperNegationUnused (x y : UInt64) : UInt64 :=
+  (!(let _unused := fun b : Bool => b && x != 0; x == y)).toUInt64 + y
+
+def booleanHelperNegationIdResult (x y : UInt64) : UInt64 :=
+  (!(!(pure (let f := fun n : UInt64 => (pure (n == y) : Id Bool); f x || f 0) : Id (Id Bool)))).toUInt64 + x
+
+def rangeHelperNegationStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if !(let f := fun n : UInt64 => n % 2 == 0; f a && f i.toUInt64) then
+      a := a + i.toUInt64 + 7
+    else a := a * 3 + 1
+  return a
+
+def rangeHelperNegationExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if !(Id.run do
+      let f := fun n : UInt64 => n % 7 == 0
+      return f a || f (i.toUInt64 + 1)) then break
+  return a
+
+def rangeHelperNegationContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if !(!(let f := fun b : Bool => !b || a % 2 == 0; f (i.toUInt64 % 3 == 0) && f (a == seed))) then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangeHelperNegationTail (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+  return (!(Id.run do
+    let f := fun n : UInt64 => n == seed
+    return f a || f 0)).toUInt64 + a
+
 def booleanInnerWrapperWord (x y : UInt64) : UInt64 :=
   (Id.run do
     let f := fun n : UInt64 => n == y
@@ -10925,6 +10977,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolRelationExit", (fun (x y : UInt64) => rangeBoolRelationExit x y)),
    ("rangeBoolRelationContinue", (fun (x y : UInt64) => rangeBoolRelationContinue x y)),
    ("rangeBoolRelationTail", (fun (x y : UInt64) => (rangeBoolRelationTail x y).toUInt64)),
+   ("rangeHelperNegationStep", (fun (x y : UInt64) => rangeHelperNegationStep x y)),
+   ("rangeHelperNegationExit", (fun (x y : UInt64) => rangeHelperNegationExit x y)),
+   ("rangeHelperNegationContinue", (fun (x y : UInt64) => rangeHelperNegationContinue x y)),
+   ("rangeHelperNegationTail", (fun (x y : UInt64) => rangeHelperNegationTail x y)),
    ("rangeInnerWrapperStep", (fun (x y : UInt64) => rangeInnerWrapperStep x y)),
    ("rangeInnerWrapperExit", (fun (x y : UInt64) => rangeInnerWrapperExit x y)),
    ("rangeInnerWrapperContinue", (fun (x y : UInt64) => rangeInnerWrapperContinue x y)),
@@ -11551,6 +11607,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("booleanPropRelationWords", (fun (x y : UInt64) => booleanPropRelationWords x y)),
    ("booleanPropRelationHelpers", (fun (x y : UInt64) => (booleanPropRelationHelpers x y).toUInt64)),
    ("booleanPropRelationLet", (fun (x y : UInt64) => booleanPropRelationLet x y)),
+   ("booleanHelperNegationWord", (fun (x y : UInt64) => booleanHelperNegationWord x y)),
+   ("booleanHelperNegationBoolean", (fun (x y : UInt64) => booleanHelperNegationBoolean x y)),
+   ("booleanHelperNegationDependent", (fun (x y : UInt64) => booleanHelperNegationDependent x y)),
+   ("booleanHelperNegationNested", (fun (x y : UInt64) => booleanHelperNegationNested x y)),
+   ("booleanHelperNegationUnused", (fun (x y : UInt64) => booleanHelperNegationUnused x y)),
+   ("booleanHelperNegationIdResult", (fun (x y : UInt64) => booleanHelperNegationIdResult x y)),
    ("booleanInnerWrapperWord", (fun (x y : UInt64) => booleanInnerWrapperWord x y)),
    ("booleanInnerWrapperBoolean", (fun (x y : UInt64) => booleanInnerWrapperBoolean x y)),
    ("booleanInnerWrapperDependent", (fun (x y : UInt64) => booleanInnerWrapperDependent x y)),

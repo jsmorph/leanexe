@@ -716,10 +716,12 @@ checks and 256 controls. Prior tests pass 44,308 comparisons, 24,416 invalid-inp
 checks and 3,360 controls. The native corpus contains 1427 declarations.
 Evidence is in [the inner-wrapper archive](proofs/compiler/boolean-inner-wrapper-2026-09-27/README.md).
 
-Next capability: measure and extend Boolean negation and composition around
-helper scopes. Scratch probes cover negation, junctions, equality, choices,
-nested helper bodies and Id input types; run them before selecting the next
-bounded extension.
+Current capability: Boolean negation around general helper scopes.
+The negation probe now passes unchanged. Source totality, parser acceptance and
+soundness, scalar correctness and IR invariants pass. New tests pass 9,588
+value/exit comparisons, 8,448 invalid-input checks and 192 controls. Adjacent
+tests and the final compiler-proof/native-V8 gates remain. The other five probe
+failures remain open.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
