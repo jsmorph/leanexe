@@ -1,0 +1,250 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [76/162] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:367:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [119/162] Replayed LeanExe.Extract.ScalarExprCore
+warning: LeanExe/Extract/ScalarExprCore.lean:339:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:347:31: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:347:36: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:347:52: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:356:35: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:356:40: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:356:56: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:411:12: Variable name `bounds` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _bounds
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+⚠ [120/162] Replayed LeanExe.Extract.ScalarExpr
+warning: LeanExe/Extract/ScalarExpr.lean:172:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:173:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:188:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:189:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:220:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:221:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:235:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:236:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:923:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1022:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1238:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1260:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1282:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1304:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1326:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1350:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1374:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1392:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1411:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1430:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [127/162] Replayed LeanExe.Extract.ScalarStepEquations
+warning: LeanExe/Extract/ScalarStepEquations.lean:153:33: This simp argument is unused:
+  BooleanType.expr
+
+Hint: Omit it from the simp argument list.
+  [apply] simp
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [129/162] Replayed LeanExe.Extract.ScalarStepSupported
+warning: LeanExe/Extract/ScalarStepSupported.lean:96:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarStepSupported.lean:437:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [142/162] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [144/162] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [154/162] Replayed LeanExe.Extract.ScalarStepCorrectness
+warning: LeanExe/Extract/ScalarStepCorrectness.lean:299:23: This simp argument is unused:
+  Option.bind_some
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [bind, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✖ [162/162] Building LeanExe.Extract.ScalarBooleanWordRange (2.8s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanWordRange.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanWordRange.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanWordRange.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanWordRange.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanWordRange.setup.json --json
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:112:2: Too many variable names provided at alternative `case2`: 8 provided, but 7 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:113:26: Unknown identifier `parsed`
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:119:2: Too many variable names provided at alternative `case4`: 10 provided, but 9 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:120:62: Unknown identifier `parsed`
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:120:12: Tactic `subst` failed: invalid equality proof, it is not of the form (x = t) or (t = x)
+  ?m.41 = BooleanType.expr ?m.44
+
+case case4
+locals✝ : List ScalarBinding
+slot : Nat
+locals input output : Lean.Expr
+value : Lean.Name
+name domain : Lean.Expr
+body : Lean.BinderInfo
+binder : BooleanType × ResultType
+types : booleanWordRangeBindTypes? locals name input = some binder
+plan : ScalarRangeExitPlan
+compiled :
+  (do
+      let plan ← extractScalarBooleanRangeWith locals✝ slot output
+      let result ← extractScalarExprWith (ScalarBinding.boolean plan.result :: locals✝) domain
+      pure { count := plan.count, initial := plan.initial, step := plan.step, done := plan.done, result := result }) =
+    some plan
+left✝ : ?m.41 = BooleanType.expr ?m.44
+right✝ : ?m.42 = BooleanType.expr ?m.44 ∧ ?m.43 = ResultType.expr ?m.45
+⊢ BooleanWordRange.Supported (List.map ScalarBinding.kind locals✝)
+    (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                  locals).app
+              input).app
+          output).app
+      (Lean.Expr.lam value name domain body))
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:127:2: Too many variable names provided at alternative `case7`: 6 provided, but 5 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:128:31: Application type mismatch: The argument
+  parsed
+has type
+  extractScalarBooleanWordRangeWith locals✝ slot type = some ?m.79 →
+    BooleanWordRange.Supported (List.map ScalarBinding.kind locals✝) type
+but is expected to have type
+  scalarResultType? ?m.77 = some ?m.78
+in the application
+  scalarResultType_sound parsed
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:131:2: Too many variable names provided at alternative `case9`: 6 provided, but 5 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:132:31: Application type mismatch: The argument
+  parsed
+has type
+  extractScalarBooleanWordRangeWith locals✝ slot type = some ?m.92 →
+    BooleanWordRange.Supported (List.map ScalarBinding.kind locals✝) type
+but is expected to have type
+  scalarResultType? ?m.90 = some ?m.91
+in the application
+  scalarResultType_sound parsed
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:134:2: Too many variable names provided at alternative `case10`: 4 provided, but 3 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:134:51: Unknown identifier `ih`
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:147:2: Too many variable names provided at alternative `case2`: 8 provided, but 7 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:148:26: Unknown identifier `parsed`
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:160:2: Too many variable names provided at alternative `case4`: 10 provided, but 9 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:161:62: Unknown identifier `parsed`
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:161:12: Tactic `subst` failed: invalid equality proof, it is not of the form (x = t) or (t = x)
+  ?m.52 = BooleanType.expr ?m.55
+
+case case4
+locals✝ : List ScalarBinding
+saved : List UInt64
+values : List Value
+typed : List.map Value.kind values = List.map ScalarBinding.kind locals✝
+bindings : RangeExitBindingsMatch locals✝ values saved
+total : ∀ (binding : ScalarBinding), binding ∈ locals✝ → binding.Total
+locals input output : Lean.Expr
+value : Lean.Name
+name domain : Lean.Expr
+body : Lean.BinderInfo
+binder : BooleanType × ResultType
+types : booleanWordRangeBindTypes? locals name input = some binder
+plan : ScalarRangeExitPlan
+compiled :
+  (do
+      let plan ← extractScalarBooleanRangeWith locals✝ saved.length output
+      let result ← extractScalarExprWith (ScalarBinding.boolean plan.result :: locals✝) domain
+      pure { count := plan.count, initial := plan.initial, step := plan.step, done := plan.done, result := result }) =
+    some plan
+left✝ : ?m.52 = BooleanType.expr ?m.55
+right✝ : ?m.53 = BooleanType.expr ?m.55 ∧ ?m.54 = ResultType.expr ?m.56
+⊢ ∃ result,
+    BooleanWordRange.Eval
+        (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                          (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                            (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                      locals).app
+                  input).app
+              output).app
+          (Lean.Expr.lam value name domain body))
+        values result ∧
+      plan.Meaning saved result
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:176:2: Too many variable names provided at alternative `case7`: 6 provided, but 5 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:177:31: Application type mismatch: The argument
+  parsed
+has type
+  extractScalarBooleanWordRangeWith locals✝ saved.length type = some ?m.111 →
+    ∃ result, BooleanWordRange.Eval type values result ∧ ScalarRangeExitPlan.Meaning ?m.111 saved result
+but is expected to have type
+  scalarResultType? ?m.109 = some ?m.110
+in the application
+  scalarResultType_sound parsed
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:181:2: Too many variable names provided at alternative `case9`: 6 provided, but 5 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:182:31: Application type mismatch: The argument
+  parsed
+has type
+  extractScalarBooleanWordRangeWith locals✝ saved.length type = some ?m.124 →
+    ∃ result, BooleanWordRange.Eval type values result ∧ ScalarRangeExitPlan.Meaning ?m.124 saved result
+but is expected to have type
+  scalarResultType? ?m.122 = some ?m.123
+in the application
+  scalarResultType_sound parsed
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:185:2: Too many variable names provided at alternative `case10`: 4 provided, but 3 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:186:42: Unknown identifier `ih`
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:186:11: Tactic `rcases` failed: `x✝ : ?m.130` is not an inductive datatype
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:215:2: Too many variable names provided at alternative `case7`: 6 provided, but 5 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:215:53: Unknown identifier `ih`
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:217:2: Too many variable names provided at alternative `case9`: 6 provided, but 5 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:217:53: Unknown identifier `ih`
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:218:2: Too many variable names provided at alternative `case10`: 4 provided, but 3 expected
+error: LeanExe/Extract/ScalarBooleanWordRange.lean:218:40: Unknown identifier `ih`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanWordRange
+error: build failed

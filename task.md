@@ -584,16 +584,18 @@ invalid-input checks and 2,304 binding controls. Prior tests pass 120,960 compar
 84,096 invalid-input checks and 5,760 controls. Evidence is in
 [the result-binding archive](proofs/compiler/boolean-loop-result-binding-2026-09-27/README.md).
 
-Current capability: word results from Boolean loops. Source totality, extraction
-acceptance and recovery, correctness, invariants, public compilation and WASM
-admission pass. The new final word path retains a Boolean loop plan while checking
-a scalar word continuation, including direct Bool.toUInt64 conversion. New tests
-pass 97,032 native/IR comparisons, 46,080 invalid-input checks and 4,608 controls.
-The complete proof and nineteen audits pass. The unchanged rangeLetBool example
-moved from excluded syntax to positive tests; its acceptance follows from this
-extension. Native Lean/WASM checks are next.
+Word results from Boolean loops are complete for Boolean lets, standard Id binds,
+direct Bool.toUInt64 conversion and word Id wrappers. The pure continuation can
+contain arithmetic, conditionals, bindings and local helpers. The source-to-WASM
+theorem and nineteen audits pass, including the new public compiler case in
+instruction execution, byte encoding, validation and exported invocation. Native
+Lean/V8 agree on 633 inputs across 29 declarations, including twenty-four ranges;
+eighteen prior modules retain identical bytes. New tests pass 97,032 native/IR
+comparisons, 46,080 invalid-input checks and 4,608 controls. Prior tests pass 80,640
+comparisons, 42,624 invalid-input checks and 2,304 controls. Evidence is in
+[the word-result archive](proofs/compiler/boolean-loop-word-result-2026-09-27/README.md).
 
-Next: word results from Boolean loops and broader helper-result bodies, followed by
+Next: pure bindings and local helper declarations around Boolean-to-word loops, followed by
 retained instances, broader signatures, and composition of multiple loops.
 Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean
