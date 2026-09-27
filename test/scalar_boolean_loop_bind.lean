@@ -2,7 +2,7 @@ import LeanExe.Extract.ScalarFunc
 
 namespace BooleanLoopBindTest
 
-def rangeBoolBindYield (count seed : UInt64) : Id Bool := do
+def rangeBoolResultBindYield (count seed : UInt64) : Id Bool := do
   let value ← (do
     let mut a := seed
     for i in [:count.toNat] do
@@ -10,7 +10,7 @@ def rangeBoolBindYield (count seed : UInt64) : Id Bool := do
     return a)
   return value == seed
 
-def rangeBoolBindExit (count seed : UInt64) : Id Bool := do
+def rangeBoolResultBindExit (count seed : UInt64) : Id Bool := do
   let value ← (do
     let mut a := seed
     for i in [:count.toNat] do
@@ -19,7 +19,7 @@ def rangeBoolBindExit (count seed : UInt64) : Id Bool := do
     return a)
   return value % 7 == 0
 
-def rangeBoolBindContinue (count seed : UInt64) : Id Bool := do
+def rangeBoolResultBindContinue (count seed : UInt64) : Id Bool := do
   let value ← (do
     let mut a := seed
     for i in [:count.toNat] do
@@ -28,7 +28,7 @@ def rangeBoolBindContinue (count seed : UInt64) : Id Bool := do
     return a)
   return value != seed && value != 0
 
-def rangeBoolBindStride (count seed : UInt64) : Id Bool := do
+def rangeBoolResultBindStride (count seed : UInt64) : Id Bool := do
   let value ← (do
     let mut a := seed
     for i in [1:count.toNat:3] do
@@ -37,7 +37,7 @@ def rangeBoolBindStride (count seed : UInt64) : Id Bool := do
     return a)
   return decide (value ≤ seed)
 
-def rangeBoolBindStepHelper (count seed : UInt64) : Id Bool := do
+def rangeBoolResultBindStepHelper (count seed : UInt64) : Id Bool := do
   let value ← (do
     let mut a := seed
     for i in [:count.toNat] do
@@ -47,7 +47,7 @@ def rangeBoolBindStepHelper (count seed : UInt64) : Id Bool := do
     return a)
   return value == 0 || value == seed
 
-def rangeBoolBindCapture (count seed : UInt64) : Id Bool := do
+def rangeBoolResultBindCapture (count seed : UInt64) : Id Bool := do
   let value ← (do
     let f := fun b : Bool => if b then seed + 7 else seed + 3
     let mut a := f false
@@ -56,7 +56,7 @@ def rangeBoolBindCapture (count seed : UInt64) : Id Bool := do
     return a)
   return value == seed || value == seed + 3
 
-def rangeBoolBindFlag (count : UInt64) (flag : Bool) : Id Bool := do
+def rangeBoolResultBindFlag (count : UInt64) (flag : Bool) : Id Bool := do
   let value ← (do
     let mut a := flag.toUInt64
     for i in [:count.toNat] do
@@ -65,7 +65,7 @@ def rangeBoolBindFlag (count : UInt64) (flag : Bool) : Id Bool := do
     return a)
   return flag && value != 0
 
-def rangeBoolBindIdInputs (count : Id UInt64) (flag : Id Bool) : Id Bool := do
+def rangeBoolResultBindIdInputs (count : Id UInt64) (flag : Id Bool) : Id Bool := do
   let value ← (do
     let mut a := (Id.run flag).toUInt64
     for i in [:(Id.run count).toNat] do
@@ -74,7 +74,7 @@ def rangeBoolBindIdInputs (count : Id UInt64) (flag : Id Bool) : Id Bool := do
     return a)
   return Id.run flag || value == 0
 
-def rangeBoolBindIdAction (count seed : UInt64) : Id Bool := do
+def rangeBoolResultBindIdAction (count seed : UInt64) : Id Bool := do
   let value : Id UInt64 ← pure (Id.run do
     let mut a := seed
     for i in [:count.toNat] do
@@ -83,7 +83,7 @@ def rangeBoolBindIdAction (count seed : UInt64) : Id Bool := do
     return a)
   return Id.run value != seed
 
-def rangeBoolBindNestedResult (count seed : UInt64) : Id (Id Bool) := do
+def rangeBoolResultBindNestedResult (count seed : UInt64) : Id (Id Bool) := do
   let value ← (do
     let mut a := seed
     for i in [:count.toNat] do
@@ -103,16 +103,16 @@ end BooleanLoopBindTest
 run_elab do
   let env ← Lean.getEnv
   let cases : List (Lean.Name × (UInt64 → UInt64 → UInt64) × Bool) := [
-    (`BooleanLoopBindTest.rangeBoolBindYield, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolBindYield x y).toUInt64), true),
-    (`BooleanLoopBindTest.rangeBoolBindExit, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolBindExit x y).toUInt64), true),
-    (`BooleanLoopBindTest.rangeBoolBindContinue, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolBindContinue x y).toUInt64), true),
-    (`BooleanLoopBindTest.rangeBoolBindStride, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolBindStride x y).toUInt64), true),
-    (`BooleanLoopBindTest.rangeBoolBindStepHelper, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolBindStepHelper x y).toUInt64), true),
-    (`BooleanLoopBindTest.rangeBoolBindCapture, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolBindCapture x y).toUInt64), true),
-    (`BooleanLoopBindTest.rangeBoolBindFlag, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolBindFlag x (y != 0)).toUInt64), true),
-    (`BooleanLoopBindTest.rangeBoolBindIdInputs, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolBindIdInputs x (y != 0)).toUInt64), true),
-    (`BooleanLoopBindTest.rangeBoolBindIdAction, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolBindIdAction x y).toUInt64), true),
-    (`BooleanLoopBindTest.rangeBoolBindNestedResult, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolBindNestedResult x y).toUInt64), true)]
+    (`BooleanLoopBindTest.rangeBoolResultBindYield, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolResultBindYield x y).toUInt64), true),
+    (`BooleanLoopBindTest.rangeBoolResultBindExit, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolResultBindExit x y).toUInt64), true),
+    (`BooleanLoopBindTest.rangeBoolResultBindContinue, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolResultBindContinue x y).toUInt64), true),
+    (`BooleanLoopBindTest.rangeBoolResultBindStride, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolResultBindStride x y).toUInt64), true),
+    (`BooleanLoopBindTest.rangeBoolResultBindStepHelper, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolResultBindStepHelper x y).toUInt64), true),
+    (`BooleanLoopBindTest.rangeBoolResultBindCapture, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolResultBindCapture x y).toUInt64), true),
+    (`BooleanLoopBindTest.rangeBoolResultBindFlag, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolResultBindFlag x (y != 0)).toUInt64), true),
+    (`BooleanLoopBindTest.rangeBoolResultBindIdInputs, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolResultBindIdInputs x (y != 0)).toUInt64), true),
+    (`BooleanLoopBindTest.rangeBoolResultBindIdAction, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolResultBindIdAction x y).toUInt64), true),
+    (`BooleanLoopBindTest.rangeBoolResultBindNestedResult, (fun (x y : UInt64) => (BooleanLoopBindTest.rangeBoolResultBindNestedResult x y).toUInt64), true)]
   let mut comparisons : Nat := 0
   for (name, native, isRange) in cases do
     let some info := env.find? name | throwError "missing declaration"

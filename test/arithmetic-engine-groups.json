@@ -3163,15 +3163,15 @@
     "rangeBoolCapture",
     "rangeBoolFlag",
     "rangeBoolRun",
-    "rangeBoolBindYield",
-    "rangeBoolBindExit",
-    "rangeBoolBindContinue",
-    "rangeBoolBindStride",
-    "rangeBoolBindStepHelper",
-    "rangeBoolBindCapture",
-    "rangeBoolBindFlag",
-    "rangeBoolBindIdInputs",
-    "rangeBoolBindIdAction",
-    "rangeBoolBindNestedResult"
+    "rangeBoolResultBindYield",
+    "rangeBoolResultBindExit",
+    "rangeBoolResultBindContinue",
+    "rangeBoolResultBindStride",
+    "rangeBoolResultBindStepHelper",
+    "rangeBoolResultBindCapture",
+    "rangeBoolResultBindFlag",
+    "rangeBoolResultBindIdInputs",
+    "rangeBoolResultBindIdAction",
+    "rangeBoolResultBindNestedResult"
   ]
 }
