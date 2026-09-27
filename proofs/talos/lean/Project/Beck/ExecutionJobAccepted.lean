@@ -6,7 +6,7 @@ open Wasm Project.ProofKit Project.Runtime Project.EulerRiemann.Execution LeanEx
 
 set_option maxRecDepth 2048 in
 set_option maxHeartbeats 1500000 in
-theorem jobAccepted_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial middle : Store Unit) (original current : Heap)
+theorem jobAccepted_exact {rowOwner wordsOwner : UInt64} (env : HostEnv Unit) (initial middle : Store Unit) (original current : Heap)
     (count categories members : Nat) (wordsPointer rowPointer internal : UInt64) (oldNode : FreeNode)
     (state : ParseState) (row : Array UInt64) (saved : JobSaved) (tail : JobTail) (remaining pageLimit : Nat)
     (valid : current.At middle) (owned : current.OwnsWords middle oldNode state.incidence)
@@ -14,7 +14,7 @@ theorem jobAccepted_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial midd
     (rowProtected : current.Protects rowPointer.toNat (rowPointer.toNat + 8 * (row.size + 1)))
     (preserved : original.Frame initial current middle)
     (active : internal = 0 ∨ internal = oldNode.root ∧ FreshFor original oldNode)
-    (inputDifferent : oldNode.root ≠ wordsPointer) (ownerNonzero : wordsPointer ≠ 0)
+    (inputDifferent : oldNode.root ≠ wordsOwner)
     (bound : state.incidence.size + row.size ≤ 56)
     (positionFit : state.position + 1 + members < UInt64.size) (overlapFit : state.overlap < UInt64.size)
     (budget : OutputBudget middle current (48 + 8 * (state.incidence.size + row.size + 1) + remaining) pageLimit Project.Beck.«module»)
@@ -23,9 +23,9 @@ theorem jobAccepted_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial midd
       original.Frame initial finalHeap final → FreshFor original node →
       OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
       ∀ saved tail, Q (.Fallthrough final
-        (jobFrame count categories wordsPointer node.root node.root (jobNextState state members row) saved tail))) :
+        (jobFrame (wordsOwner := wordsOwner) count categories wordsPointer node.root node.root (jobNextState state members row) saved tail))) :
     wp Project.Beck.«module» jobAccepted Q middle
-      (jobReadFrame (rowOwner := rowOwner) (count + 1) categories members wordsPointer oldNode.root rowPointer internal state saved tail) env := by
+      (jobReadFrame (rowOwner := rowOwner) (wordsOwner := wordsOwner) (count + 1) categories members wordsPointer oldNode.root rowPointer internal state saved tail) env := by
   let need := UInt64.ofNat (8 * (state.incidence.size + row.size + 1))
   have needWord : need.toNat = 8 * (state.incidence.size + row.size + 1) := by dsimp [need]; rw [UInt64.toNat_ofNat']; omega
   have space : takeFirstFitFrom 0 need current.nodes = none →
@@ -33,10 +33,12 @@ theorem jobAccepted_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial midd
     fun h => ((budget.bump need (by rw [needWord]; omega)) h).1.le
   have separated := owned.allocation_disjoint need space
   have fresh := allocated_fresh original current initial middle preserved need space
-  have ownerDifferent : wordsPointer ≠ internal := by
+  have ownerSafe : wordsOwner = 0 ∨ wordsOwner ≠ internal := by
     rcases active with zero | ⟨equal, _⟩
-    · simpa only [zero] using ownerNonzero
-    · simpa only [equal] using inputDifferent.symm
+    · by_cases ownerZero : wordsOwner = 0
+      · exact Or.inl ownerZero
+      · exact Or.inr (by simpa only [zero] using ownerZero)
+    · exact Or.inr (by simpa only [equal] using inputDifferent.symm)
   rw [← List.take_append_drop 41 jobAccepted]
   apply jobPrepareAppend_exact env middle (count + 1) categories members wordsPointer oldNode.root rowPointer internal
     state row saved tail owned.buffer.values rowAt positionFit overlapFit
@@ -53,7 +55,7 @@ theorem jobAccepted_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial midd
     (jobAppendSaved state members rowPointer saved) oldNode.root rowPointer state.incidence.size row.size
     (allocatedNode current.top need current.nodes).root (tail 9) (tail 10) need previous cursor capacity after rfl rfl
   apply jobCleanup_exact env initial allocated original (current.allocate need) _ oldNode
-    (allocatedNode current.top need current.nodes) state.incidence (state.incidence ++ row) internal wordsPointer remaining pageLimit
+    (allocatedNode current.top need current.nodes) state.incidence (state.incidence ++ row) internal wordsOwner remaining pageLimit
     allocatedValid (allocationFrame.ownsWords allocatedValid owned) newOwned (preserved.trans allocationFrame)
     active separated inputDifferent allocatedBudget
   all_goals first
@@ -65,7 +67,7 @@ theorem jobAccepted_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial midd
   intro final finalHeap finalValid finalOwned finalFrame finalBudget
   apply jobFinish_exact env final count categories wordsPointer internal state (jobNextState state members row)
     (jobAppendSaved state members rowPointer saved) oldNode.root rowPointer state.incidence.size row.size
-    (allocatedNode current.top need current.nodes).root (tail 9) (tail 10) need previous cursor capacity after ownerNonzero ownerDifferent
+    (allocatedNode current.top need current.nodes).root (tail 9) (tail 10) need previous cursor capacity after ownerSafe
   exact next final finalHeap _ finalValid finalOwned finalFrame fresh finalBudget
 
 #print axioms jobAccepted_exact

@@ -17864,3 +17864,9 @@ Entry inspection also identified two remaining interface assumptions: `compute` 
 `readMemberships_owner_exact` now covers both a borrowed input owner of zero and an owner equal to the input data pointer.  The loop retains the represented data pointer separately from the owner used by the emitted release guards.  Allocation separation and positive owned roots exclude release of the borrowed input.  The original theorem remains a specialization for callers whose owner equals their data pointer.
 
 The modified membership modules check with standard logical axioms.  The combined execution build reached its 180-second limit while recompiling dependent basis-search modules, without a proof diagnostic.  Verification is proceeding through smaller dependency targets before the combined gate.  Job parsing and complete input parsing still require the owner-zero generalization.  Source and binary bytes are unchanged.
+
+### Beck borrowed job input
+
+`readJobs_owner_exact` extends the job parser to owner zero while retaining a separate represented input pointer.  The proof composes the generalized membership reader, incidence concatenation, intermediate-array releases, and terminating job loop.  Its byte bound remains 1,520 per job.  Existing equal-owner callers use the original theorem as a specialization.
+
+The job-parser target passes 3,576 build jobs.  The direction and outer-rounding dependency targets also pass after the membership change, completing the dependency rebuild interrupted by the earlier combined timeout.  All audited theorems use standard logical axioms.  Complete input parsing, computation entry, the global resource theorem, and independent artifact verification remain open.  Source and binary bytes are unchanged.
