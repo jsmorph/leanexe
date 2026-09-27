@@ -22,9 +22,13 @@ function decoderCertificates(leanModule, size, nestedText, sectionsText) {
       sections.set(id, { start, payload, items, count, end, entries: [] });
     } else if (row[0] === "item") {
       sections.get(+row[1]).entries.push({ index: +row[2], start: +row[3], end: +row[4] });
+    } else if (row[0] === "data") {
+      const entry = sections.get(11)?.entries.find(entry => entry.index === +row[1]);
+      if (!entry) throw Error(`data payload metadata has no segment: ${row[1]}`);
+      Object.assign(entry, { afterMode: +row[2], afterOffset: +row[3], bytesStart: +row[4], byteCount: +row[5] });
     } else throw Error(`unexpected section metadata: ${row.join(",")}`);
   }
-  if (codes.size === 0 || sections.get(10)?.end !== size) throw Error("incomplete code metadata");
+  if (codes.size === 0 || [...sections.values()].at(-1)?.end !== size) throw Error("incomplete code metadata");
   const cursor = (pos, limit = size) => `{ bytes := artifactBytes, pos := ${pos}, limit := ${limit} }`;
   const header = (imports = []) => `import ${prefix}.ArtifactByteLookup
 import ${prefix}.ArtifactCache
@@ -86,9 +90,9 @@ set_option cbv.maxSteps 1000000
       source = header(previous);
     } else source = header() + sequenceDeclarations.join("");
     source += `theorem code${index}_decoded :
-    code ${cursor(code.start)} = .ok (Cache.raw.codes[${index}]!, ${cursor(code.stop)}) := by
+    code ${cursor(code.start, sections.get(10).end)} = .ok (Cache.raw.codes[${index}]!, ${cursor(code.stop, sections.get(10).end)}) := by
   refine code_eq_of_parts (size := ${code.stop - code.payload})
-    (payload := ${cursor(code.payload)})
+    (payload := ${cursor(code.payload, sections.get(10).end)})
     (bodyStart := ${cursor(code.body, code.stop)})
     (bodyFinish := ${cursor(code.stop, code.stop)})
     ?_ ?_ ?_ ?_ ?_ ?_
@@ -107,6 +111,7 @@ set_option cbv.maxSteps 1000000
     [1, ["type", "types", "funcType"]], [3, ["function", "functionTypeIndices", "Leb.u32"]],
     [5, ["memory", "memories", "memoryType"]], [6, ["global", "globals", "global"]],
     [7, ["export", "exports", "exportEntry"]], [10, ["code", "codes", "code"]],
+    [11, ["data", "data", "dataSegment"]],
   ]);
   const sectionImports = [];
   for (const [id, section] of sections) {
@@ -117,7 +122,59 @@ set_option cbv.maxSteps 1000000
     sectionImports.push(`${prefix}.${name}`);
     const itemImports = [];
     let itemSource = "";
-    if (id !== 10) {
+    if (id === 11) {
+      itemImports.push("Project.Artifact.Binary.DataParts");
+      for (const entry of section.entries) {
+        if (!Number.isInteger(entry.bytesStart) || entry.bytesStart + entry.byteCount !== entry.end) {
+          throw Error(`invalid data payload metadata: ${entry.index}`);
+        }
+        const bytes = `(Cache.raw.data[${entry.index}]!).bytes`;
+        const base = `data${entry.index}`;
+        const chunks = [];
+        for (let offset = 0; offset < entry.byteCount; offset += 128) {
+          const count = Math.min(128, entry.byteCount - offset);
+          chunks.push({ offset, count });
+          itemSource += `theorem ${base}_chunk${offset} :
+    Parser.readBytes ${count} ${cursor(entry.bytesStart + offset, section.end)} =
+      .ok ((${bytes}.drop ${offset}).take ${count}, ${cursor(entry.bytesStart + offset + count, section.end)}) := by
+  apply readBytes_eq_of_vectorLoop ${count} (by cbv)
+  cbv
+
+`;
+        }
+        itemSource += `theorem ${base}_tail${entry.byteCount} :
+    Parser.readBytes 0 ${cursor(entry.end, section.end)} =
+      .ok (${bytes}.drop ${entry.byteCount}, ${cursor(entry.end, section.end)}) := by
+  apply readBytes_eq_of_vectorLoop 0 (by cbv)
+  cbv
+
+`;
+        for (const { offset, count } of chunks.reverse()) {
+          itemSource += `theorem ${base}_tail${offset} :
+    Parser.readBytes ${entry.byteCount - offset} ${cursor(entry.bytesStart + offset, section.end)} =
+      .ok (${bytes}.drop ${offset}, ${cursor(entry.end, section.end)}) := by
+  exact readBytes_eq_split (by cbv)
+    ${base}_chunk${offset} ${base}_tail${offset + count}
+
+`;
+        }
+        itemSource += `theorem ${base}_decoded :
+    dataSegment ${cursor(entry.start, section.end)} =
+      .ok (Cache.raw.data[${entry.index}]!, ${cursor(entry.end, section.end)}) := by
+  refine dataSegment_eq_of_parts (count := ${entry.byteCount})
+    (afterMode := ${cursor(entry.afterMode, section.end)})
+    (afterOffset := ${cursor(entry.afterOffset, section.end)})
+    (payload := ${cursor(entry.bytesStart, section.end)}) ?_ ?_ ?_ ?_
+  · cbv
+  · cbv
+  · cbv
+  · exact ${base}_tail0
+
+#print axioms ${base}_decoded
+
+`;
+      }
+    } else if (id !== 10) {
       for (let offset = 0; offset < section.entries.length; offset += 16) {
         const declarations = section.entries.slice(offset, offset + 16).map(entry => `theorem ${tag}${entry.index}_decoded :
     ${parser} ${cursor(entry.start, section.end)} =
@@ -251,6 +308,7 @@ theorem validation_sections : Validator.validateSections Cache.raw = .ok () := b
 theorem validation_memory : Cache.raw.memories.length = 1 := by rfl
 theorem validation_limits : Validator.validateLimits Cache.raw.memories.head!.limits = .ok () := by cbv
 theorem validation_globals : Validator.validateGlobals Cache.raw.globals = .ok () := by cbv
+theorem validation_data : Validator.validateData Cache.raw.data = .ok () := by cbv
 theorem validation_types : Validator.resolveFunctionTypes Cache.raw = .ok resolvedTypes := by cbv
 `;
   save("ArtifactValidationMetadata", source);
@@ -264,7 +322,7 @@ def cacheValidationSucceeded : Bool := (validate Cache.raw).toOption.isSome
 
 theorem cache_validation_test : cacheValidationSucceeded = true := by
   have hraw := validateRaw_eq_of_parts validation_sections validation_memory
-    validation_limits validation_globals validation_exports validation_types validation_functions
+    validation_limits validation_globals validation_exports validation_types validation_functions validation_data
   unfold cacheValidationSucceeded validate
   rw [hraw]
   rfl

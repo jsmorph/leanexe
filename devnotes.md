@@ -40,6 +40,21 @@ The independent artifact driver already gives the Talos boundary sixty
 minutes.  Subsequent dependency preparation uses that boundary separately
 from the application proofs.
 
+The exponential's data section exposed a generator assumption that the code
+section ended at the file boundary.  Code-body proofs now use the code
+section's declared end, and the code-section proof passes.  Direct reduction
+of the table payload exhausted the evaluator's step bound.  Splitting that
+reduction into 128-byte pieces still reached a six-minute build limit.
+`ByteArray.extract` was reducing the full byte-array representation instead
+of using the proved lookup tree.  A reusable lemma now derives a `readBytes`
+result from a sequence of byte reads.  Its proof passes, and generated table
+proofs use it to keep byte lookup within that tree.
+
+The revised table-data proof passes in 51 seconds.  Decoding and validation
+of the complete 12,733-byte exponential binary also pass.  The proofs use
+`propext`, `Classical.choice`, and `Quot.sound`.  The generated-model execution
+proof remains a separate obligation.
+
 ## 2026-09-27: Static numeric tables
 
 The exponential port required a constant 2 KiB table.  The user approved static

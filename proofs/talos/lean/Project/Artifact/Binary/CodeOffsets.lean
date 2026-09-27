@@ -104,6 +104,11 @@ private def vectorOffsets (id : UInt8) (parser : Parser α) (start : Cursor) :
   for index in [:count.toNat] do
     let (_, next) ← parser cursor
     result := s!"item,{id},{index},{cursor.pos},{next.pos}" :: result
+    if id = 11 then
+      let (_, afterMode) ← Leb.u32 cursor
+      let (_, afterOffset) ← constExpr afterMode
+      let (byteCount, bytesStart) ← Leb.u32 afterOffset
+      result := s!"data,{index},{afterMode.pos},{afterOffset.pos},{bytesStart.pos},{byteCount}" :: result
     cursor := next
   return (result.reverse, finish)
 
@@ -123,6 +128,7 @@ private def sectionOffsets (bytes : ByteArray) : Except Error (List String) := d
       | .global => vectorOffsets rawId global payload
       | .export => vectorOffsets rawId exportEntry payload
       | .code => vectorOffsets rawId code payload
+      | .data => vectorOffsets rawId dataSegment payload
     result := result ++ lines
     cursor := next
   throw { offset := cursor.pos, kind := .malformed "section count exceeds input size" }
