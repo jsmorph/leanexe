@@ -1,6 +1,6 @@
 import LeanExe.Source.ScalarBooleanStep
 import LeanExe.Extract.ScalarExpr
-import LeanExe.Extract.ScalarStepBindings
+import LeanExe.Extract.ScalarBooleanStepBindings
 import LeanExe.Extract.ScalarBooleanLetTypes
 
 namespace LeanExe.Extract.Core
@@ -76,12 +76,12 @@ theorem booleanStepFlagBindTypes_sound {input domain output : Lean.Expr}
   simp [booleanStepWordBindTypes?, scalarResultType_boolean]
 
 /-- Compile a Boolean update and its exit flag as two read-only word expressions. -/
-def extractBooleanStepWith (locals : List ScalarBinding) : Lean.Expr → Option ScalarStepCode
+def extractBooleanStepWith (locals : List BooleanStepBinding) : Lean.Expr → Option ScalarStepCode
   | .app (.app (.const ``ForInStep.yield [.zero]) (.const ``Bool [])) value => do
-      let result ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) value)
+      let result ← extractScalarExprWith (locals.map BooleanStepBinding.toScalar) (.app (.const ``Bool.toUInt64 []) value)
       pure ⟨result, .u64 0⟩
   | .app (.app (.const ``ForInStep.done [.zero]) (.const ``Bool [])) value => do
-      let result ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) value)
+      let result ← extractScalarExprWith (locals.map BooleanStepBinding.toScalar) (.app (.const ``Bool.toUInt64 []) value)
       pure ⟨result, .u64 1⟩
   | .app (.app (.const ``Id.run [.zero]) type) body => do
       let _ ← booleanStepResultType? type
@@ -95,7 +95,7 @@ def extractBooleanStepWith (locals : List ScalarBinding) : Lean.Expr → Option 
   | .mdata _ body => extractBooleanStepWith locals body
   | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type) condition) evidence) yes) no => do
       let _ ← booleanStepResultType? type
-      let condition ← extractScalarExprWith locals (BooleanStep.decision condition evidence)
+      let condition ← extractScalarExprWith (locals.map BooleanStepBinding.toScalar) (BooleanStep.decision condition evidence)
       let first ← extractBooleanStepWith locals yes
       let second ← extractBooleanStepWith locals no
       pure ⟨.ite (wordGuard condition) first.value second.value,
@@ -103,44 +103,44 @@ def extractBooleanStepWith (locals : List ScalarBinding) : Lean.Expr → Option 
   | .letE _ type value body _ =>
       match scalarResultType? type with
       | some _ => do
-          let result ← extractScalarExprWith locals value
-          extractBooleanStepWith (.word result :: locals) body
+          let result ← extractScalarExprWith (locals.map BooleanStepBinding.toScalar) value
+          extractBooleanStepWith (.scalar (.word result) :: locals) body
       | none => do
           let _ ← booleanType? type
-          let result ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) value)
-          extractBooleanStepWith (.boolean result :: locals) body
+          let result ← extractScalarExprWith (locals.map BooleanStepBinding.toScalar) (.app (.const ``Bool.toUInt64 []) value)
+          extractBooleanStepWith (.scalar (.boolean result) :: locals) body
   | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
       (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
         (.const ``Id.instMonad [.zero]))) input) output) value) (.lam _ domain body _) =>
       match booleanStepWordBindTypes? input domain output with
       | some _ => do
-          let result ← extractScalarExprWith locals value
-          extractBooleanStepWith (.word result :: locals) body
+          let result ← extractScalarExprWith (locals.map BooleanStepBinding.toScalar) value
+          extractBooleanStepWith (.scalar (.word result) :: locals) body
       | none => do
           let _ ← booleanStepFlagBindTypes? input domain output
-          let result ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) value)
-          extractBooleanStepWith (.boolean result :: locals) body
+          let result ← extractScalarExprWith (locals.map BooleanStepBinding.toScalar) (.app (.const ``Bool.toUInt64 []) value)
+          extractBooleanStepWith (.scalar (.boolean result) :: locals) body
   | _ => none
 termination_by source => sizeOf source
 decreasing_by all_goals simp_wf; omega
 
-theorem extractBooleanStepWith_correct {source : Lean.Expr} {values : List Value}
+theorem extractBooleanStepWith_correct {source : Lean.Expr} {values : List BooleanStep.Value}
     {outcome : ForInStep Bool} (semantics : BooleanStep.Eval source values outcome)
-    {locals : List ScalarBinding} {code : ScalarStepCode} {store : LeanExe.IR.ScalarStore}
+    {locals : List BooleanStepBinding} {code : ScalarStepCode} {store : LeanExe.IR.ScalarStore}
     (compiled : extractBooleanStepWith locals source = some code)
-    (bindings : ScalarBindingsMatch locals values store) :
+    (bindings : BooleanStepBindingsMatch locals values store) :
     code.Meaning store (BooleanAccumulator.encodeStep outcome) := by
   induction semantics generalizing locals code with
   | yieldDirect value =>
     simp only [BooleanStep.yieldDirect, extractBooleanStepWith, bind, pure,
       Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨result, matched, rfl⟩ := compiled
-    exact ⟨extractScalarExprWith_correct value matched bindings, .const⟩
+    exact ⟨extractScalarExprWith_correct value matched bindings.toScalar, .const⟩
   | doneDirect value =>
     simp only [BooleanStep.doneDirect, extractBooleanStepWith, bind, pure,
       Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨result, matched, rfl⟩ := compiled
-    exact ⟨extractScalarExprWith_correct value matched bindings, .const⟩
+    exact ⟨extractScalarExprWith_correct value matched bindings.toScalar, .const⟩
   | idRun type _ ih =>
     simp only [BooleanStep.idRun, extractBooleanStepWith, booleanStepResultType_accepts,
       bind, Option.bind_some] at compiled
@@ -152,11 +152,11 @@ theorem extractBooleanStepWith_correct {source : Lean.Expr} {values : List Value
   | metadata _ ih =>
     rw [extractBooleanStepWith] at compiled
     exact ih compiled bindings
-  | @choose test evidence values flag yes no outcome type condition body ih =>
+  | @choose test evidence flag yes no values outcome type condition body ih =>
     simp only [BooleanStep.choiceExpr, extractBooleanStepWith, booleanStepResultType_accepts,
       bind, pure, Option.bind_some, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨guard, matched, first, firstFound, second, secondFound, rfl⟩ := compiled
-    have test := wordGuard_correct (extractScalarExprWith_correct condition matched bindings)
+    have test := wordGuard_correct (extractScalarExprWith_correct condition matched bindings.toScalar)
     cases flag with
     | false =>
       obtain ⟨valueEval, doneEval⟩ := ih secondFound bindings
@@ -168,33 +168,35 @@ theorem extractBooleanStepWith_correct {source : Lean.Expr} {values : List Value
     simp only [extractBooleanStepWith, scalarResultType_accepts, bind,
       Option.bind_eq_some_iff] at compiled
     obtain ⟨result, matched, emitted⟩ := compiled
-    exact ih emitted (bindings.cons (extractScalarExprWith_correct value matched bindings))
+    exact ih emitted (bindings.cons (extractScalarExprWith_correct value matched bindings.toScalar))
   | letBoolean type value _ ih =>
     simp only [extractBooleanStepWith, scalarResultType_boolean, booleanType_accepts,
       bind, Option.bind_some, Option.bind_eq_some_iff] at compiled
     obtain ⟨result, matched, emitted⟩ := compiled
-    exact ih emitted (bindings.cons (extractScalarExprWith_correct value matched bindings))
+    exact ih emitted (bindings.cons (extractScalarExprWith_correct value matched bindings.toScalar))
   | bindWord input output value _ ih =>
     simp only [BooleanStep.bindExpr, extractBooleanStepWith, booleanStepWordBindTypes_accepts,
       bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨result, matched, emitted⟩ := compiled
-    exact ih emitted (bindings.cons (extractScalarExprWith_correct value matched bindings))
+    exact ih emitted (bindings.cons (extractScalarExprWith_correct value matched bindings.toScalar))
   | bindBoolean input output value _ ih =>
     simp only [BooleanStep.bindExpr, extractBooleanStepWith, booleanStepWordBindTypes_not_boolean,
       booleanStepFlagBindTypes_accepts, bind, Option.bind_some, Option.bind_eq_some_iff] at compiled
     obtain ⟨result, matched, emitted⟩ := compiled
-    exact ih emitted (bindings.cons (extractScalarExprWith_correct value matched bindings))
+    exact ih emitted (bindings.cons (extractScalarExprWith_correct value matched bindings.toScalar))
 
-theorem extractBooleanStepWith_accepts {types : List BindingKind} {source : Lean.Expr}
-    (supported : BooleanStep.Supported types source) (locals : List ScalarBinding)
-    (typed : locals.map ScalarBinding.kind = types) (total : ∀ binding ∈ locals, binding.Total) :
+theorem extractBooleanStepWith_accepts {types : List BooleanStep.BindingKind} {source : Lean.Expr}
+    (supported : BooleanStep.Supported types source) (locals : List BooleanStepBinding)
+    (typed : locals.map BooleanStepBinding.kind = types) (total : ∀ binding ∈ locals, binding.Total) :
     ∃ code, extractBooleanStepWith locals source = some code := by
   induction supported generalizing locals with
   | yieldDirect value =>
-    obtain ⟨result, matched⟩ := extractScalarExprWith_accepts value locals typed total
+    obtain ⟨result, matched⟩ := extractScalarExprWith_accepts value (locals.map BooleanStepBinding.toScalar)
+      (booleanStepBindings_typed typed) (booleanStepBindings_total total)
     exact ⟨⟨result, .u64 0⟩, by simp [BooleanStep.yieldDirect, extractBooleanStepWith, matched]⟩
   | doneDirect value =>
-    obtain ⟨result, matched⟩ := extractScalarExprWith_accepts value locals typed total
+    obtain ⟨result, matched⟩ := extractScalarExprWith_accepts value (locals.map BooleanStepBinding.toScalar)
+      (booleanStepBindings_typed typed) (booleanStepBindings_total total)
     exact ⟨⟨result, .u64 1⟩, by simp [BooleanStep.doneDirect, extractBooleanStepWith, matched]⟩
   | idRun type _ ih =>
     obtain ⟨code, emitted⟩ := ih locals typed total
@@ -206,56 +208,65 @@ theorem extractBooleanStepWith_accepts {types : List BindingKind} {source : Lean
     obtain ⟨code, emitted⟩ := ih locals typed total
     exact ⟨code, by simp [extractBooleanStepWith, emitted]⟩
   | choose type condition _ _ yesIH noIH =>
-    obtain ⟨guard, matched⟩ := extractScalarExprWith_accepts condition locals typed total
+    obtain ⟨guard, matched⟩ := extractScalarExprWith_accepts condition (locals.map BooleanStepBinding.toScalar)
+      (booleanStepBindings_typed typed) (booleanStepBindings_total total)
     obtain ⟨first, firstFound⟩ := yesIH locals typed total
     obtain ⟨second, secondFound⟩ := noIH locals typed total
     exact ⟨⟨.ite (wordGuard guard) first.value second.value, .ite (wordGuard guard) first.done second.done⟩,
       by simp [BooleanStep.choiceExpr, extractBooleanStepWith, matched, firstFound, secondFound]⟩
   | letWord type value _ ih =>
-    obtain ⟨result, matched⟩ := extractScalarExprWith_accepts value locals typed total
-    obtain ⟨code, emitted⟩ := ih (.word result :: locals) (by simp [ScalarBinding.kind, typed]) (by
+    obtain ⟨result, matched⟩ := extractScalarExprWith_accepts value (locals.map BooleanStepBinding.toScalar)
+      (booleanStepBindings_typed typed) (booleanStepBindings_total total)
+    obtain ⟨code, emitted⟩ := ih (.scalar (.word result) :: locals) (by simp [BooleanStepBinding.kind, ScalarBinding.kind, typed]) (by
       intro binding member
       rcases List.mem_cons.mp member with rfl | member
       · trivial
       · exact total binding member)
     exact ⟨code, by simp [extractBooleanStepWith, scalarResultType_accepts, matched, emitted]⟩
   | letBoolean type value _ ih =>
-    obtain ⟨result, matched⟩ := extractScalarExprWith_accepts value locals typed total
-    obtain ⟨code, emitted⟩ := ih (.boolean result :: locals) (by simp [ScalarBinding.kind, typed]) (by
+    obtain ⟨result, matched⟩ := extractScalarExprWith_accepts value (locals.map BooleanStepBinding.toScalar)
+      (booleanStepBindings_typed typed) (booleanStepBindings_total total)
+    obtain ⟨code, emitted⟩ := ih (.scalar (.boolean result) :: locals) (by simp [BooleanStepBinding.kind, ScalarBinding.kind, typed]) (by
       intro binding member
       rcases List.mem_cons.mp member with rfl | member
       · trivial
       · exact total binding member)
     exact ⟨code, by simp [extractBooleanStepWith, scalarResultType_boolean, matched, emitted]⟩
   | bindWord input output value _ ih =>
-    obtain ⟨result, matched⟩ := extractScalarExprWith_accepts value locals typed total
-    obtain ⟨code, emitted⟩ := ih (.word result :: locals) (by simp [ScalarBinding.kind, typed]) (by
+    obtain ⟨result, matched⟩ := extractScalarExprWith_accepts value (locals.map BooleanStepBinding.toScalar)
+      (booleanStepBindings_typed typed) (booleanStepBindings_total total)
+    obtain ⟨code, emitted⟩ := ih (.scalar (.word result) :: locals) (by simp [BooleanStepBinding.kind, ScalarBinding.kind, typed]) (by
       intro binding member
       rcases List.mem_cons.mp member with rfl | member
       · trivial
       · exact total binding member)
     exact ⟨code, by simp [BooleanStep.bindExpr, extractBooleanStepWith, matched, emitted]⟩
   | bindBoolean input output value _ ih =>
-    obtain ⟨result, matched⟩ := extractScalarExprWith_accepts value locals typed total
-    obtain ⟨code, emitted⟩ := ih (.boolean result :: locals) (by simp [ScalarBinding.kind, typed]) (by
+    obtain ⟨result, matched⟩ := extractScalarExprWith_accepts value (locals.map BooleanStepBinding.toScalar)
+      (booleanStepBindings_typed typed) (booleanStepBindings_total total)
+    obtain ⟨code, emitted⟩ := ih (.scalar (.boolean result) :: locals) (by simp [BooleanStepBinding.kind, ScalarBinding.kind, typed]) (by
       intro binding member
       rcases List.mem_cons.mp member with rfl | member
       · trivial
       · exact total binding member)
     exact ⟨code, by simp [BooleanStep.bindExpr, extractBooleanStepWith, matched, emitted]⟩
 
-theorem extractBooleanStepWith_supported {locals : List ScalarBinding} {source : Lean.Expr}
+theorem extractBooleanStepWith_supported {locals : List BooleanStepBinding} {source : Lean.Expr}
     {code : ScalarStepCode} (compiled : extractBooleanStepWith locals source = some code) :
-    BooleanStep.Supported (locals.map ScalarBinding.kind) source := by
+    BooleanStep.Supported (locals.map BooleanStepBinding.kind) source := by
+  have expression {locals : List BooleanStepBinding} {source : Lean.Expr} {target : LeanExe.IR.Expr}
+      (compiled : extractScalarExprWith (locals.map BooleanStepBinding.toScalar) source = some target) :
+      SupportedWith ((locals.map BooleanStepBinding.kind).map BooleanStep.BindingKind.toScalar) source := by
+    simpa [List.map_map, Function.comp_def] using extractScalarExprWith_supported compiled
   fun_induction extractBooleanStepWith locals source generalizing code with
   | case1 locals value =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨result, matched, rfl⟩ := compiled
-    exact .yieldDirect (extractScalarExprWith_supported matched)
+    exact .yieldDirect (expression matched)
   | case2 locals value =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨result, matched, rfl⟩ := compiled
-    exact .doneDirect (extractScalarExprWith_supported matched)
+    exact .doneDirect (expression matched)
   | case3 locals type body ih =>
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨annotation, typed, emitted⟩ := compiled
@@ -271,45 +282,45 @@ theorem extractBooleanStepWith_supported {locals : List ScalarBinding} {source :
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨annotation, typed, guard, matched, first, firstFound, second, secondFound, rfl⟩ := compiled
     rw [booleanStepResultType_sound typed]
-    exact .choose annotation (extractScalarExprWith_supported matched) (yesIH firstFound) (noIH secondFound)
+    exact .choose annotation (expression matched) (yesIH firstFound) (noIH secondFound)
   | case7 locals name type value body nondep annotation typed ih =>
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨result, matched, emitted⟩ := compiled
     rw [scalarResultType_sound typed]
-    exact .letWord annotation (extractScalarExprWith_supported matched)
-      (by simpa [ScalarBinding.kind] using ih result emitted)
+    exact .letWord annotation (expression matched)
+      (by simpa [BooleanStepBinding.kind, ScalarBinding.kind] using ih result emitted)
   | case8 locals name type value body nondep notWord ih =>
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨annotation, typed, result, matched, emitted⟩ := compiled
     rw [booleanType_sound typed]
-    exact .letBoolean annotation (extractScalarExprWith_supported matched)
-      (by simpa [ScalarBinding.kind] using ih result emitted)
+    exact .letBoolean annotation (expression matched)
+      (by simpa [BooleanStepBinding.kind, ScalarBinding.kind] using ih result emitted)
   | case9 locals input output value name domain body bi annotation typed ih =>
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨result, matched, emitted⟩ := compiled
     obtain ⟨inputType, outputType⟩ := annotation
     obtain ⟨rfl, rfl, rfl⟩ := booleanStepWordBindTypes_sound typed
-    exact .bindWord inputType outputType (extractScalarExprWith_supported matched)
-      (by simpa [ScalarBinding.kind] using ih result emitted)
+    exact .bindWord inputType outputType (expression matched)
+      (by simpa [BooleanStepBinding.kind, ScalarBinding.kind] using ih result emitted)
   | case10 locals input output value name domain body bi notWord ih =>
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨⟨inputType, outputType⟩, typed, result, matched, emitted⟩ := compiled
     obtain ⟨rfl, rfl, rfl⟩ := booleanStepFlagBindTypes_sound typed
-    exact .bindBoolean inputType outputType (extractScalarExprWith_supported matched)
-      (by simpa [ScalarBinding.kind] using ih result emitted)
+    exact .bindBoolean inputType outputType (expression matched)
+      (by simpa [BooleanStepBinding.kind, ScalarBinding.kind] using ih result emitted)
   | case11 => contradiction
 
 theorem extractBooleanStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     (literal : ∀ n, P (.u64 n))
     (binary : ∀ p a b, P a → P b → P (ScalarPrimitive.lower p a b))
     (choice : ∀ op a b t e, P a → P b → P t → P e → P (.ite (lowerComparison op a b) t e))
-    {locals : List ScalarBinding} {source : Lean.Expr} {code : ScalarStepCode}
+    {locals : List BooleanStepBinding} {source : Lean.Expr} {code : ScalarStepCode}
     (compiled : extractBooleanStepWith locals source = some code)
     (bindings : ∀ binding ∈ locals, binding.Holds P) : code.Holds P := by
-  have expression {locals : List ScalarBinding} {source : Lean.Expr} {target : LeanExe.IR.Expr}
-      (compiled : extractScalarExprWith locals source = some target)
+  have expression {locals : List BooleanStepBinding} {source : Lean.Expr} {target : LeanExe.IR.Expr}
+      (compiled : extractScalarExprWith (locals.map BooleanStepBinding.toScalar) source = some target)
       (bindings : ∀ binding ∈ locals, binding.Holds P) : P target :=
-    extractScalarExprWith_invariant P literal binary choice compiled bindings
+    extractScalarExprWith_invariant P literal binary choice compiled (booleanStepBindings_holds bindings)
   fun_induction extractBooleanStepWith locals source generalizing code with
   | case1 locals value =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
