@@ -427,7 +427,14 @@ tests pass 185,952 comparisons, 137,472 invalid-input checks and 11,712 controls
 Evidence is in
 [the Boolean loop let-annotation archive](proofs/compiler/boolean-loop-let-id-2026-09-27/README.md).
 
-Next: local helpers before Boolean loops, retained instances and broader signatures. Conditional Id actions can elaborate
+Current capability: unary UInt64-to-UInt64 local helpers before Boolean loops,
+with captured lexical values and standard Id result annotations. Source totality,
+acceptance, extraction correctness, public application and IR invariant proofs
+pass. New tests pass 32,496 native/IR comparisons, 27,648 invalid-input checks and
+2,304 unused helper controls. The complete compiler theorem and V8 gates are next.
+
+Next: Boolean helper inputs/results and other helper shapes before Boolean loops,
+retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
 Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean

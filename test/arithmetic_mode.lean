@@ -5589,6 +5589,102 @@ def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
   return a
 
+def rangeBoolWordHelperRepeat (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x + seed + 1
+  let value := Id.run do
+    let mut a := f seed
+    for i in [:count.toNat] do
+      a := f a + f i.toUInt64
+    return a
+  f value == f (f seed)
+
+def rangeBoolWordHelperCount (count seed : UInt64) : Bool :=
+  let limit := fun x : UInt64 => x % 17
+  let value := Id.run do
+    let mut a := seed
+    for i in [:(limit count).toNat] do
+      a := a + i.toUInt64 + 1
+    return a
+  value == seed + limit count
+
+def rangeBoolWordHelperInitial (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x * 3 + seed
+  let value := Id.run do
+    let mut a := f 0
+    for i in [:count.toNat] do
+      a := a + f i.toUInt64
+    return a
+  value == f 0
+
+def rangeBoolWordHelperNested (count seed : UInt64) : Id Bool :=
+  let f := fun x : UInt64 => x + seed
+  let g := fun x : UInt64 => f (x * 3) + f x
+  let value := Id.run do
+    let mut a := g 0
+    for i in [:count.toNat] do
+      a := g (a + i.toUInt64)
+    return a
+  pure (g value == g seed)
+
+def rangeBoolWordHelperFlag (count : UInt64) (flag : Bool) : Bool :=
+  let f := fun x : UInt64 => if flag then x + 7 else x - 3
+  let value := Id.run do
+    let mut a := f count
+    for i in [:count.toNat] do
+      a := f (a + i.toUInt64)
+    return a
+  flag && value == f count
+
+def rangeBoolWordHelperExit (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x + seed % 5 + 1
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := f (a + i.toUInt64)
+      if a % 7 == 0 then break
+    return a
+  f value % 7 == 0
+
+def rangeBoolWordHelperContinue (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x % 3
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if f i.toUInt64 == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a
+  f value == f seed
+
+def rangeBoolWordHelperStride (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x % 3
+  let value := Id.run do
+    let mut a := seed
+    for i in [(f seed).toNat:count.toNat:3] do
+      a := a + i.toUInt64 + 1
+      if a % 5 == 0 then break
+    return a
+  f value == f seed
+
+def rangeBoolWordHelperId (count : Id UInt64) (seed : UInt64) : Id Bool :=
+  let f (x : UInt64) : Id (Id UInt64) := pure (pure (x + seed + 1))
+  let value : Id UInt64 := Id.run do
+    let mut a := Id.run (Id.run (f 0))
+    for i in [:(Id.run count).toNat] do
+      a := Id.run (Id.run (f (a + i.toUInt64)))
+    return a
+  pure (Id.run (Id.run (f (Id.run value))) == seed)
+
+def rangeBoolWordHelperShadow (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x + seed
+  let initial := f 0
+  let f := fun x : UInt64 => f x + count
+  let value := Id.run do
+    let mut a := initial
+    for i in [:count.toNat] do
+      a := f (a + i.toUInt64)
+    return a
+  f value == f initial
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -9103,6 +9199,16 @@ run_elab do
       `ArithmeticModeTest.rangeLocalNotContinue,
       `ArithmeticModeTest.rangeLocalNotOuter,
       `ArithmeticModeTest.rangeLocalNotHelper,
+      `ArithmeticModeTest.rangeBoolWordHelperRepeat,
+      `ArithmeticModeTest.rangeBoolWordHelperCount,
+      `ArithmeticModeTest.rangeBoolWordHelperInitial,
+      `ArithmeticModeTest.rangeBoolWordHelperNested,
+      `ArithmeticModeTest.rangeBoolWordHelperFlag,
+      `ArithmeticModeTest.rangeBoolWordHelperExit,
+      `ArithmeticModeTest.rangeBoolWordHelperContinue,
+      `ArithmeticModeTest.rangeBoolWordHelperStride,
+      `ArithmeticModeTest.rangeBoolWordHelperId,
+      `ArithmeticModeTest.rangeBoolWordHelperShadow,
       `ArithmeticModeTest.rangeBoolLetIdWord,
       `ArithmeticModeTest.rangeBoolLetIdWordLayers,
       `ArithmeticModeTest.rangeBoolLetIdFlag,

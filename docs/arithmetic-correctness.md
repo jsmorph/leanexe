@@ -38,8 +38,11 @@ input/output types may retain Id layers; exact lambda domains and standard
 instances are required. The domains of word/Boolean setup lets and word-loop
 result bindings may retain any number of exact standard Id layers. Their original
 annotations remain in the source semantics; invalid heads, universes and underlying
-types are rejected. Outer helper declarations and conditional actions that
-introduce loop-containing local continuations remain unsupported forms. Public parameter
+types are rejected. Local UInt64-to-UInt64 helpers may be declared before Boolean
+loops, with standard Id result annotations, nested helper captures and repeated
+calls in bounds, initial values, steps and final Boolean computations. Their
+bodies are checked even when unused. Other outer helper shapes and conditional
+actions that introduce loop-containing local continuations remain unsupported. Public parameter
 domains may retain any number of standard Id layers. Declared and lambda domains
 must have the same base scalar kind; differing Id depths preserve their meaning.
 Custom annotation heads, wrong universes and metadata inside parameter domains

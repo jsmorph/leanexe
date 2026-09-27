@@ -14,6 +14,12 @@ def bindBoolean (name : Lean.Name) (binder : Lean.BinderInfo) (input output : Bo
 
 /-- A word-valued loop followed by a Boolean result computation. -/
 inductive Eval : Lean.Expr → List Value → Bool → Prop where
+  | letFn (type : ResultType)
+      (function : ∀ x, EvalWith a (.word x :: values) (f x))
+      (body : Eval b (.function false f :: values) outcome) :
+      Eval (.letE name
+        (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
+        (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values outcome
   | letFlagBefore (value : EvalWith (.app (.const ``Bool.toUInt64 []) a) values flag.toUInt64)
       (body : Eval b (.boolean flag :: values) result) :
       Eval (.letE name (.const ``Bool []) a b nondep) values result
@@ -41,6 +47,11 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
 
 /-- Source support checks both the loop and its Boolean continuation. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
+  | letFn (type : ResultType) (function : SupportedWith (.word :: types) a)
+      (body : Supported (.function false :: types) b) :
+      Supported types (.letE name
+        (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
+        (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
   | letFlagBefore (value : SupportedWith types (.app (.const ``Bool.toUInt64 []) a))
       (body : Supported (.boolean :: types) b) :
       Supported types (.letE name (.const ``Bool []) a b nondep)
@@ -70,6 +81,11 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (supported : Supported types source) (values : List Value)
     (typed : values.map Value.kind = types) : ∃ flag, Eval source values flag := by
   induction supported generalizing values with
+  | letFn type function _ ihb =>
+    have total := fun x => function.evaluates (.word x :: values) (by simp [Value.kind, typed])
+    let f := fun x => (total x).choose
+    obtain ⟨value, hv⟩ := ihb (.function false f :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letFn type (fun x => (total x).choose_spec) hv⟩
   | letFlagBefore value _ ih =>
     obtain ⟨encoded, evaluated⟩ := value.evaluates values typed
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
