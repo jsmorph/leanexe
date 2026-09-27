@@ -11,21 +11,21 @@ def matrixRowMeasure (_store : Store Unit) (frame : Locals) : Nat :=
   | _, _ => 0
 
 def matrixRowInv (initial : Store Unit) (heap : Heap) (input : Input) (point : Point)
-    (inputOwner inputPointer pointOwner pointPointer : UInt64) (category : Nat) (initialOwner : UInt64)
+    (inputOwner inputPointer pointOwner pointPointer : UInt64) (category : Nat) (initialNode : FreeNode)
     (base : Array UInt64) (originalSaved : MatrixSaved) (remaining pageLimit : Nat) : AssertionF Unit := fun store frame =>
   ∃ current index node saved tail after,
     current.At store ∧ current.OwnsWords store node (matrixRowPrefix input point category base index) ∧
-    heap.Frame initial current store ∧ (node.root = initialOwner ∨ FreshFor heap node) ∧
+    heap.Frame initial current store ∧ (node = initialNode ∨ FreshFor heap node) ∧
     index ≤ input.jobs ∧ OutputBudget store current (448 * (input.jobs - index) + remaining) pageLimit Project.Beck.«module» ∧
-    matrixRowStable originalSaved saved ∧ frame = matrixRowFrame input point inputOwner inputPointer pointOwner pointPointer category index node.root initialOwner saved tail after
+    matrixRowStable originalSaved saved ∧ frame = matrixRowFrame input point inputOwner inputPointer pointOwner pointPointer category index node.root initialNode.root saved tail after
 
 def matrixRowDone (initial : Store Unit) (heap : Heap) (input : Input) (point : Point)
-    (inputOwner inputPointer pointOwner pointPointer : UInt64) (category : Nat) (initialOwner : UInt64)
+    (inputOwner inputPointer pointOwner pointPointer : UInt64) (category : Nat) (initialNode : FreeNode)
     (base : Array UInt64) (originalSaved : MatrixSaved) (remaining pageLimit : Nat) : AssertionF Unit := fun store frame =>
   ∃ current node saved tail after,
     current.At store ∧ current.OwnsWords store node (matrixRowPrefix input point category base input.jobs) ∧
-    heap.Frame initial current store ∧ (node.root = initialOwner ∨ FreshFor heap node) ∧ OutputBudget store current remaining pageLimit Project.Beck.«module» ∧
-    matrixRowStable originalSaved saved ∧ frame = matrixRowFrame input point inputOwner inputPointer pointOwner pointPointer category input.jobs node.root initialOwner saved tail after
+    heap.Frame initial current store ∧ (node = initialNode ∨ FreshFor heap node) ∧ OutputBudget store current remaining pageLimit Project.Beck.«module» ∧
+    matrixRowStable originalSaved saved ∧ frame = matrixRowFrame input point inputOwner inputPointer pointOwner pointPointer category input.jobs node.root initialNode.root saved tail after
 
 set_option maxRecDepth 2048 in
 theorem matrix_row_guard_shape : matrixRowBody =
@@ -49,15 +49,15 @@ theorem matrixRowLoop_exact (env : HostEnv Unit) (initial : Store Unit) (heap : 
     (Q : Assertion Unit) (rest : Wasm.Program)
     (next : ∀ final finalHeap finalNode, finalHeap.At final →
       finalHeap.OwnsWords final finalNode (matrixRowPrefix input point category base input.jobs) →
-      heap.Frame initial finalHeap final → (finalNode.root = node.root ∨ FreshFor heap finalNode) → OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
+      heap.Frame initial finalHeap final → (finalNode = node ∨ FreshFor heap finalNode) → OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
       ∀ finalSaved tail after, matrixRowStable saved finalSaved → wp Project.Beck.«module» rest Q final
         (matrixRowFrame input point inputOwner inputPointer pointOwner pointPointer category input.jobs finalNode.root node.root finalSaved tail after) env) :
     wp Project.Beck.«module» ([.block 0 0 [.loop 0 0 matrixRowBody]] ++ rest) Q initial
       (matrixRowFrame input point inputOwner inputPointer pointOwner pointPointer category 0 node.root node.root saved tail after) env := by
   have jobsFit : input.jobs < UInt64.size := by change input.jobs < 18446744073709551616; omega
   apply BlockLoop.program_spec Project.Beck.«module» env initial _ matrixRowBody
-    (matrixRowInv initial heap input point inputOwner inputPointer pointOwner pointPointer category node.root base saved remaining pageLimit)
-    (matrixRowDone initial heap input point inputOwner inputPointer pointOwner pointPointer category node.root base saved remaining pageLimit)
+    (matrixRowInv initial heap input point inputOwner inputPointer pointOwner pointPointer category node base saved remaining pageLimit)
+    (matrixRowDone initial heap input point inputOwner inputPointer pointOwner pointPointer category node base saved remaining pageLimit)
     matrixRowMeasure
   · rintro store frame ⟨current, index, currentNode, saved', tail', after', _, _, _, _, _, _, _, rfl⟩
     rfl
@@ -81,12 +81,12 @@ theorem matrixRowLoop_exact (env : HostEnv Unit) (initial : Store Unit) (heap : 
       rw [← codeEq]
       apply matrixRowStep_exact env initial store heap current input point inputOwner inputPointer pointOwner pointPointer
         category index currentNode node.root (matrixRowPrefix input point category base index) saved' tail' after'
-        (448 * (input.jobs - (index + 1)) + remaining) pageLimit currentValid currentOwned preserved active
+        (448 * (input.jobs - (index + 1)) + remaining) pageLimit currentValid currentOwned preserved (active.imp (congrArg FreeNode.root) id)
         (preserved.words pointProtected pointArray) (preserved.words inputProtected inputArray) pointSize inputSize jobs categories categoryBound inside
         (by rw [matrixRowPrefix_size]; omega)
         (currentBudget.mono (by rw [matrixRowPrefix_size]; omega))
       intro final finalHeap finalNode finalValid finalOwned finalFrame fresh finalBudget finalSaved finalTail finalAfter finalStable
-      change matrixRowInv initial heap input point inputOwner inputPointer pointOwner pointPointer category node.root base saved remaining pageLimit
+      change matrixRowInv initial heap input point inputOwner inputPointer pointOwner pointPointer category node base saved remaining pageLimit
         final _ ∧ _
       refine ⟨⟨finalHeap, index + 1, finalNode, finalSaved, finalTail, finalAfter, finalValid, ?_, finalFrame,
         Or.inr fresh, by omega, finalBudget, stable.trans finalStable, rfl⟩, ?_⟩
