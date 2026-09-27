@@ -1038,7 +1038,9 @@ extraction. Six additional native probes also reject after fixing explicit PUnit
 universe annotations. A distinct function kind retains Unit/PUnit at typed lookup;
 source values, compiled bindings, matching, totality and invariant projections
 pass 21 targets. Source evaluation and totality pass 69 targets. Exact recognition,
-extraction, general compiler proofs, tests and WASM/engine checks remain. Binary
+extraction, termination, declaration/call equations, evaluation correctness,
+complete acceptance, reconstruction and IR invariants pass 154 targets. Function
+integration, focused tests and WASM/engine checks remain. Binary
 predicates around whole loops, multiple loops and the remaining dialect still
 need proofs.
 

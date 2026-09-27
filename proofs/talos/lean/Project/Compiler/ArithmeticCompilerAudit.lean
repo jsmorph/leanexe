@@ -48,3 +48,11 @@ import LeanExe.Source.ScalarReannotationEvaluation
 #print axioms LeanExe.Extract.Core.booleanBinaryHelper_accepts
 #print axioms LeanExe.Extract.Core.booleanBinaryCall_sound
 #print axioms LeanExe.Extract.Core.booleanBinaryCall_accepts
+
+#print axioms LeanExe.Source.Scalar.BooleanStep.UnitBooleanFunction.apply
+#print axioms LeanExe.Extract.Core.booleanStepUnitTypes_sound
+#print axioms LeanExe.Extract.Core.booleanStepUnitTypes_accepts
+#print axioms LeanExe.Extract.Core.booleanStepUnitValue_sound
+#print axioms LeanExe.Extract.Core.booleanStepUnitValue_accepts
+#print axioms LeanExe.Extract.Core.booleanUnitStepFunction_sound
+#print axioms LeanExe.Extract.Core.booleanUnitStepFunction_accepts
