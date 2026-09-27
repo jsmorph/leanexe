@@ -40,3 +40,5 @@ import LeanExe.Source.ScalarReannotationEvaluation
 #print axioms LeanExe.Source.Scalar.BooleanScopeBindingForm.monadic_apply
 #print axioms LeanExe.Extract.Core.booleanScopeBinding_sound
 #print axioms LeanExe.Extract.Core.booleanScopeBinding_accepts
+
+#print axioms LeanExe.Source.Scalar.BooleanScopeBindingForm.application_apply

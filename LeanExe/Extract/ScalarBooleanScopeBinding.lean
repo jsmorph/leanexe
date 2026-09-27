@@ -18,6 +18,11 @@ def booleanScopeBinding? (booleanInput : Bool) (source : Lean.Expr) : Option (Bo
           some ⟨name, domain, PublicArgument.ofType_sound input, value, body, .letE nondep,
             booleanLocal_excluded absent⟩
         else none
+    | .app (.lam name domain body binder) value =>
+        if input : PublicArgument.ofType? domain = some (if booleanInput then .boolean else .word) then
+          some ⟨name, domain, PublicArgument.ofType_sound input, value, body, .application binder,
+            booleanLocal_excluded absent⟩
+        else none
     | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
         (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
           (.const ``Id.instMonad [.zero]))) inputType) output) value)
@@ -49,6 +54,10 @@ def booleanScopeBinding? (booleanInput : Bool) (source : Lean.Expr) : Option (Bo
     simp [booleanScopeBinding?, BooleanScopeBinding.expr, BooleanScopeBindingForm.expr,
       BooleanScopeBindingForm.base, BooleanBindingForm.expr] at absent ⊢
     simp [absent, parsed]
+  | application binder =>
+    simp [booleanScopeBinding?, BooleanScopeBinding.expr, BooleanScopeBindingForm.expr,
+      BooleanScopeBindingForm.base, BooleanBindingForm.expr] at absent ⊢
+    simp [absent, parsed]
   | monadic binder result =>
     simp [booleanScopeBinding?, BooleanScopeBinding.expr, BooleanScopeBindingForm.expr,
       BooleanScopeBindingForm.base, BooleanBindingForm.expr] at absent ⊢
@@ -74,6 +83,9 @@ theorem booleanScopeBinding_sound {source : Lean.Expr} {binding : BooleanScopeBi
     simp only [Bool.false_eq_true, ite_false, ite_true] at parsed
     split at parsed <;> try contradiction
     split at parsed
+    · split at parsed <;> try contradiction
+      cases parsed
+      rfl
     · split at parsed <;> try contradiction
       cases parsed
       rfl
