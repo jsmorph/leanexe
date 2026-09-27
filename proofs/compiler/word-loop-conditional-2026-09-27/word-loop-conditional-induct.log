@@ -1,0 +1,508 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+theorem LeanExe.Extract.Core.extractScalarWordRangeWith.induct : ∀ (locals : List LeanExe.Extract.Core.ScalarBinding)
+  (slot : Nat) (motive : Lean.Expr → Prop),
+  (∀ (x : Lean.Expr) (value : LeanExe.IR.Expr),
+      LeanExe.Extract.Core.extractScalarExprWith locals x = some value → motive x) →
+    (∀ (x : Lean.Expr),
+        LeanExe.Extract.Core.extractScalarExprWith locals x = none →
+          ∀ (plan : LeanExe.Extract.Core.ScalarRangeExitPlan),
+            LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x = some plan → motive x) →
+      (∀ (x : Lean.Expr),
+          LeanExe.Extract.Core.extractScalarExprWith locals x = none →
+            LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x = none →
+              ∀ (plan : LeanExe.Extract.Core.ScalarRangeExitPlan),
+                LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot x = some plan → motive x) →
+        (∀ (type condition evidence yes no : Lean.Expr),
+            LeanExe.Extract.Core.scalarResultType? type = none →
+              LeanExe.Extract.Core.extractScalarExprWith locals
+                    ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                          yes).app
+                      no) =
+                  none →
+                LeanExe.Extract.Core.extractScalarRangeExitWith locals slot
+                      ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                            yes).app
+                        no) =
+                    none →
+                  LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot
+                        ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                              yes).app
+                          no) =
+                      none →
+                    motive
+                      ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                            yes).app
+                        no)) →
+          (∀ (type condition evidence yes no : Lean.Expr) (val : LeanExe.Source.Scalar.ResultType),
+              LeanExe.Extract.Core.scalarResultType? type = some val →
+                LeanExe.Extract.Core.extractScalarExprWith locals
+                      ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                            yes).app
+                        no) =
+                    none →
+                  LeanExe.Extract.Core.extractScalarRangeExitWith locals slot
+                        ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                              yes).app
+                          no) =
+                      none →
+                    LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot
+                          ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                                yes).app
+                            no) =
+                        none →
+                      motive yes →
+                        motive no →
+                          motive
+                            ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app
+                                      evidence).app
+                                  yes).app
+                              no)) →
+            (∀ (type body : Lean.Expr),
+                LeanExe.Extract.Core.scalarResultType? type = none →
+                  LeanExe.Extract.Core.extractScalarExprWith locals
+                        (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body) =
+                      none →
+                    LeanExe.Extract.Core.extractScalarRangeExitWith locals slot
+                          (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body) =
+                        none →
+                      LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot
+                            (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body) =
+                          none →
+                        motive (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body)) →
+              (∀ (type body : Lean.Expr) (val : LeanExe.Source.Scalar.ResultType),
+                  LeanExe.Extract.Core.scalarResultType? type = some val →
+                    LeanExe.Extract.Core.extractScalarExprWith locals
+                          (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body) =
+                        none →
+                      LeanExe.Extract.Core.extractScalarRangeExitWith locals slot
+                            (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body) =
+                          none →
+                        LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot
+                              (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body) =
+                            none →
+                          motive body → motive (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body)) →
+                (∀ (type body : Lean.Expr),
+                    LeanExe.Extract.Core.scalarResultType? type = none →
+                      LeanExe.Extract.Core.extractScalarExprWith locals
+                            (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                      (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                        (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                          (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                  type).app
+                              body) =
+                          none →
+                        LeanExe.Extract.Core.extractScalarRangeExitWith locals slot
+                              (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                        (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                          (((Lean.Expr.const `Monad.toApplicative
+                                                    [Lean.Level.zero, Lean.Level.zero]).app
+                                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                            (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                    type).app
+                                body) =
+                            none →
+                          LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot
+                                (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                          (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                            (((Lean.Expr.const `Monad.toApplicative
+                                                      [Lean.Level.zero, Lean.Level.zero]).app
+                                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                              (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                      type).app
+                                  body) =
+                              none →
+                            motive
+                              (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                        (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                          (((Lean.Expr.const `Monad.toApplicative
+                                                    [Lean.Level.zero, Lean.Level.zero]).app
+                                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                            (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                    type).app
+                                body)) →
+                  (∀ (type body : Lean.Expr) (val : LeanExe.Source.Scalar.ResultType),
+                      LeanExe.Extract.Core.scalarResultType? type = some val →
+                        LeanExe.Extract.Core.extractScalarExprWith locals
+                              (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                        (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                          (((Lean.Expr.const `Monad.toApplicative
+                                                    [Lean.Level.zero, Lean.Level.zero]).app
+                                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                            (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                    type).app
+                                body) =
+                            none →
+                          LeanExe.Extract.Core.extractScalarRangeExitWith locals slot
+                                (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                          (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                            (((Lean.Expr.const `Monad.toApplicative
+                                                      [Lean.Level.zero, Lean.Level.zero]).app
+                                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                              (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                      type).app
+                                  body) =
+                              none →
+                            LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot
+                                  (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                            (((Lean.Expr.const `Applicative.toPure
+                                                      [Lean.Level.zero, Lean.Level.zero]).app
+                                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                              (((Lean.Expr.const `Monad.toApplicative
+                                                        [Lean.Level.zero, Lean.Level.zero]).app
+                                                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                        type).app
+                                    body) =
+                                none →
+                              motive body →
+                                motive
+                                  (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                            (((Lean.Expr.const `Applicative.toPure
+                                                      [Lean.Level.zero, Lean.Level.zero]).app
+                                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                              (((Lean.Expr.const `Monad.toApplicative
+                                                        [Lean.Level.zero, Lean.Level.zero]).app
+                                                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                        type).app
+                                    body)) →
+                    (∀ (data : Lean.MData) (body : Lean.Expr),
+                        LeanExe.Extract.Core.extractScalarExprWith locals (Lean.Expr.mdata data body) = none →
+                          LeanExe.Extract.Core.extractScalarRangeExitWith locals slot (Lean.Expr.mdata data body) =
+                              none →
+                            LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot
+                                  (Lean.Expr.mdata data body) =
+                                none →
+                              motive body → motive (Lean.Expr.mdata data body)) →
+                      (∀ (x : Lean.Expr),
+                          LeanExe.Extract.Core.extractScalarExprWith locals x = none →
+                            LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x = none →
+                              LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot x = none →
+                                (∀ (type condition evidence yes no : Lean.Expr),
+                                    x =
+                                        (((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app
+                                                  evidence).app
+                                              yes).app
+                                          no →
+                                      False) →
+                                  (∀ (type body : Lean.Expr),
+                                      x = ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body → False) →
+                                    (∀ (type body : Lean.Expr),
+                                        x =
+                                            ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                      (((Lean.Expr.const `Applicative.toPure
+                                                                [Lean.Level.zero, Lean.Level.zero]).app
+                                                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                        (((Lean.Expr.const `Monad.toApplicative
+                                                                  [Lean.Level.zero, Lean.Level.zero]).app
+                                                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                          (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                                  type).app
+                                              body →
+                                          False) →
+                                      (∀ (data : Lean.MData) (body : Lean.Expr),
+                                          x = Lean.Expr.mdata data body → False) →
+                                        motive x) →
+                        ∀ (source : Lean.Expr), motive source :=
+fun locals slot motive case1 case2 case3 case4 case5 case6 case7 case8 case9 case10 case11 source =>
+  WellFounded.Nat.fix (fun x => sizeOf x)
+    (fun x a =>
+      Eq.mpr (Eq.refl (motive x))
+        (LeanExe.Extract.Core.extractScalarWordRangeWith.match_17.splitter
+          (fun x_1 => LeanExe.Extract.Core.extractScalarExprWith locals x = x_1 → motive x)
+          (LeanExe.Extract.Core.extractScalarExprWith locals x)
+          (fun value x_1 => Eq.mpr (Eq.refl (motive x)) (case1 x value x_1))
+          (Function.const Unit fun x_1 =>
+            Eq.mpr (Eq.refl (motive x))
+              (LeanExe.Extract.Core.extractScalarWordRangeWith.match_15.splitter
+                (fun x_2 => LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x = x_2 → motive x)
+                (LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x)
+                (fun plan x_2 => Eq.mpr (Eq.refl (motive x)) (case2 x x_1 plan x_2))
+                (Function.const Unit fun x_2 =>
+                  Eq.mpr (Eq.refl (motive x))
+                    (LeanExe.Extract.Core.extractScalarWordRangeWith.match_15.splitter
+                      (fun x_3 => LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot x = x_3 → motive x)
+                      (LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot x)
+                      (fun plan x_3 => Eq.mpr (Eq.refl (motive x)) (case3 x x_1 x_2 plan x_3))
+                      (Function.const Unit fun x_3 =>
+                        Eq.mpr (Eq.refl (motive x))
+                          (LeanExe.Extract.Core.extractScalarWordRangeWith.match_3.splitter
+                            (fun source =>
+                              x = source →
+                                (∀ (y : Lean.Expr),
+                                    InvImage (fun x1 x2 => x1 < x2) (fun x => sizeOf x) y source → motive y) →
+                                  motive source)
+                            x
+                            (fun type condition evidence yes no x_4 x_5 =>
+                              Eq.mpr
+                                (Eq.refl
+                                  (motive
+                                    ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app
+                                              evidence).app
+                                          yes).app
+                                      no)))
+                                (LeanExe.Extract.Core.extractScalarWordRangeWith.match_1.splitter
+                                  (fun x =>
+                                    LeanExe.Extract.Core.scalarResultType? type = x →
+                                      motive
+                                        ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app
+                                                  evidence).app
+                                              yes).app
+                                          no))
+                                  (LeanExe.Extract.Core.scalarResultType? type)
+                                  (Function.const Unit fun x_6 =>
+                                    Eq.mpr
+                                      (Eq.refl
+                                        (motive
+                                          ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app
+                                                        condition).app
+                                                    evidence).app
+                                                yes).app
+                                            no)))
+                                      (Eq.ndrec (motive := fun x =>
+                                        LeanExe.Extract.Core.extractScalarExprWith locals x = none →
+                                          LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x = none →
+                                            LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot x =
+                                                none →
+                                              motive
+                                                ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app
+                                                              condition).app
+                                                          evidence).app
+                                                      yes).app
+                                                  no))
+                                        (fun x x_7 x_8 => case4 type condition evidence yes no x_6 x x_7 x_8)
+                                        (Eq.symm x_4) x_1 x_2 x_3))
+                                  (fun val x_6 =>
+                                    Eq.mpr
+                                      (Eq.refl
+                                        (motive
+                                          ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app
+                                                        condition).app
+                                                    evidence).app
+                                                yes).app
+                                            no)))
+                                      (Eq.ndrec (motive := fun x =>
+                                        LeanExe.Extract.Core.extractScalarExprWith locals x = none →
+                                          LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x = none →
+                                            LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot x =
+                                                none →
+                                              motive yes →
+                                                motive no →
+                                                  motive
+                                                    ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app
+                                                                  condition).app
+                                                              evidence).app
+                                                          yes).app
+                                                      no))
+                                        (fun x x_7 x_8 => case5 type condition evidence yes no val x_6 x x_7 x_8)
+                                        (Eq.symm x_4) x_1 x_2 x_3
+                                        (id
+                                          (x_5 yes
+                                            (LeanExe.Extract.Core.extractScalarWordRangeWith._proof_1 type condition
+                                              evidence yes no)))
+                                        (id
+                                          (x_5 no
+                                            (LeanExe.Extract.Core.extractScalarWordRangeWith._proof_2 type condition
+                                              evidence yes no)))))
+                                  (Eq.refl (LeanExe.Extract.Core.scalarResultType? type))))
+                            (fun type body x_4 x_5 =>
+                              Eq.mpr
+                                (Eq.refl (motive (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body)))
+                                (LeanExe.Extract.Core.extractScalarWordRangeWith.match_1.splitter
+                                  (fun x =>
+                                    LeanExe.Extract.Core.scalarResultType? type = x →
+                                      motive (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body))
+                                  (LeanExe.Extract.Core.scalarResultType? type)
+                                  (Function.const Unit fun x_6 =>
+                                    Eq.mpr
+                                      (Eq.refl
+                                        (motive (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body)))
+                                      (Eq.ndrec (motive := fun x =>
+                                        LeanExe.Extract.Core.extractScalarExprWith locals x = none →
+                                          LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x = none →
+                                            LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot x =
+                                                none →
+                                              motive (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body))
+                                        (fun x x_7 x_8 => case6 type body x_6 x x_7 x_8) (Eq.symm x_4) x_1 x_2 x_3))
+                                  (fun val x_6 =>
+                                    Eq.mpr
+                                      (Eq.refl
+                                        (motive (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body)))
+                                      (Eq.ndrec (motive := fun x =>
+                                        LeanExe.Extract.Core.extractScalarExprWith locals x = none →
+                                          LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x = none →
+                                            LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot x =
+                                                none →
+                                              motive body →
+                                                motive
+                                                  (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body))
+                                        (fun x x_7 x_8 => case7 type body val x_6 x x_7 x_8) (Eq.symm x_4) x_1 x_2 x_3
+                                        (id
+                                          (x_5 body
+                                            (LeanExe.Extract.Core.extractScalarWordRangeWith._proof_3 type body)))))
+                                  (Eq.refl (LeanExe.Extract.Core.scalarResultType? type))))
+                            (fun type body x_4 x_5 =>
+                              Eq.mpr
+                                (Eq.refl
+                                  (motive
+                                    (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                              (((Lean.Expr.const `Applicative.toPure
+                                                        [Lean.Level.zero, Lean.Level.zero]).app
+                                                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                (((Lean.Expr.const `Monad.toApplicative
+                                                          [Lean.Level.zero, Lean.Level.zero]).app
+                                                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                  (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                          type).app
+                                      body)))
+                                (LeanExe.Extract.Core.extractScalarWordRangeWith.match_1.splitter
+                                  (fun x =>
+                                    LeanExe.Extract.Core.scalarResultType? type = x →
+                                      motive
+                                        (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                  (((Lean.Expr.const `Applicative.toPure
+                                                            [Lean.Level.zero, Lean.Level.zero]).app
+                                                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                    (((Lean.Expr.const `Monad.toApplicative
+                                                              [Lean.Level.zero, Lean.Level.zero]).app
+                                                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                              type).app
+                                          body))
+                                  (LeanExe.Extract.Core.scalarResultType? type)
+                                  (Function.const Unit fun x_6 =>
+                                    Eq.mpr
+                                      (Eq.refl
+                                        (motive
+                                          (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                    (((Lean.Expr.const `Applicative.toPure
+                                                              [Lean.Level.zero, Lean.Level.zero]).app
+                                                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                      (((Lean.Expr.const `Monad.toApplicative
+                                                                [Lean.Level.zero, Lean.Level.zero]).app
+                                                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                                type).app
+                                            body)))
+                                      (Eq.ndrec (motive := fun x =>
+                                        LeanExe.Extract.Core.extractScalarExprWith locals x = none →
+                                          LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x = none →
+                                            LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot x =
+                                                none →
+                                              motive
+                                                (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                          (((Lean.Expr.const `Applicative.toPure
+                                                                    [Lean.Level.zero, Lean.Level.zero]).app
+                                                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                            (((Lean.Expr.const `Monad.toApplicative
+                                                                      [Lean.Level.zero, Lean.Level.zero]).app
+                                                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                              (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                                      type).app
+                                                  body))
+                                        (fun x x_7 x_8 => case8 type body x_6 x x_7 x_8) (Eq.symm x_4) x_1 x_2 x_3))
+                                  (fun val x_6 =>
+                                    Eq.mpr
+                                      (Eq.refl
+                                        (motive
+                                          (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                    (((Lean.Expr.const `Applicative.toPure
+                                                              [Lean.Level.zero, Lean.Level.zero]).app
+                                                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                      (((Lean.Expr.const `Monad.toApplicative
+                                                                [Lean.Level.zero, Lean.Level.zero]).app
+                                                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                                type).app
+                                            body)))
+                                      (Eq.ndrec (motive := fun x =>
+                                        LeanExe.Extract.Core.extractScalarExprWith locals x = none →
+                                          LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x = none →
+                                            LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot x =
+                                                none →
+                                              motive body →
+                                                motive
+                                                  (((((Lean.Expr.const `Pure.pure
+                                                                    [Lean.Level.zero, Lean.Level.zero]).app
+                                                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                            (((Lean.Expr.const `Applicative.toPure
+                                                                      [Lean.Level.zero, Lean.Level.zero]).app
+                                                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                              (((Lean.Expr.const `Monad.toApplicative
+                                                                        [Lean.Level.zero, Lean.Level.zero]).app
+                                                                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                                (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                                        type).app
+                                                    body))
+                                        (fun x x_7 x_8 => case9 type body val x_6 x x_7 x_8) (Eq.symm x_4) x_1 x_2 x_3
+                                        (id
+                                          (x_5 body
+                                            (LeanExe.Extract.Core.extractScalarWordRangeWith._proof_4 type body)))))
+                                  (Eq.refl (LeanExe.Extract.Core.scalarResultType? type))))
+                            (fun data body x_4 x_5 =>
+                              Eq.mpr (Eq.refl (motive (Lean.Expr.mdata data body)))
+                                (Eq.ndrec (motive := fun x =>
+                                  LeanExe.Extract.Core.extractScalarExprWith locals x = none →
+                                    LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x = none →
+                                      LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot x = none →
+                                        motive body → motive (Lean.Expr.mdata data body))
+                                  (fun x x_6 x_7 => case10 data body x x_6 x_7) (Eq.symm x_4) x_1 x_2 x_3
+                                  (id (x_5 body (LeanExe.Extract.Core.extractScalarWordRangeWith._proof_5 data body)))))
+                            (fun x_4 x_5 x_6 x_7 x_8 x_9 x_10 =>
+                              Eq.mpr (Eq.refl (motive x_4))
+                                (Eq.ndrec (motive := fun x =>
+                                  (∀ (type condition evidence yes no : Lean.Expr),
+                                      x =
+                                          (((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app
+                                                    evidence).app
+                                                yes).app
+                                            no →
+                                        False) →
+                                    (∀ (type body : Lean.Expr),
+                                        x = ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body → False) →
+                                      (∀ (type body : Lean.Expr),
+                                          x =
+                                              ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                        (((Lean.Expr.const `Applicative.toPure
+                                                                  [Lean.Level.zero, Lean.Level.zero]).app
+                                                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                          (((Lean.Expr.const `Monad.toApplicative
+                                                                    [Lean.Level.zero, Lean.Level.zero]).app
+                                                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                            (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                                    type).app
+                                                body →
+                                            False) →
+                                        (∀ (data : Lean.MData) (body : Lean.Expr),
+                                            x = Lean.Expr.mdata data body → False) →
+                                          motive x)
+                                  (fun x_11 x_12 x_13 x_14 => case11 x x_1 x_2 x_3 x_11 x_12 x_13 x_14) x_9 x_5 x_6 x_7
+                                  x_8))
+                            (Eq.refl x) a))
+                      (Eq.refl (LeanExe.Extract.Core.extractScalarBooleanWordRangeWith locals slot x))))
+                (Eq.refl (LeanExe.Extract.Core.extractScalarRangeExitWith locals slot x))))
+          (Eq.refl (LeanExe.Extract.Core.extractScalarExprWith locals x))))
+    source
