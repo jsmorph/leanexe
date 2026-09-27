@@ -4,16 +4,16 @@ namespace Project.Beck.Elimination
 
 open LeanExe.Examples.BeckExact IntegerAdd
 
-theorem fold_set_size {α : Type*} (items : List α) (position : α → ℕ) (entry : α → ℤ)
-    (initial : Array ℤ) :
+theorem fold_set_size {α β : Type*} (items : List α) (position : α → ℕ) (entry : α → β)
+    (initial : Array β) :
     (items.foldl (fun result item => result.set! (position item) (entry item)) initial).size =
       initial.size := by
   induction items generalizing initial with
   | nil => rfl
   | cons head tail ih => simpa using ih (initial.set! (position head) (entry head))
 
-theorem fold_set_get {α : Type*} (items : List α) (position : α → ℕ) (entry : α → ℤ)
-    (initial : Array ℤ) (query : ℕ) (inside : query < initial.size) (answer : ℤ)
+theorem fold_set_get {α β : Type*} [Inhabited β] (items : List α) (position : α → ℕ) (entry : α → β)
+    (initial : Array β) (query : ℕ) (inside : query < initial.size) (answer : β)
     (same : ∀ item ∈ items, position item = query → entry item = answer) :
     (items.foldl (fun result item => result.set! (position item) (entry item)) initial)[query]! =
       if ∃ item ∈ items, position item = query then answer else initial[query]! := by

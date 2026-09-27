@@ -18045,3 +18045,9 @@ All four new targets pass the local Lean runner with standard resource limits.  
 `Elimination.eliminate_preserves` proves equality of the input and output kernels over rational vectors.  Its assumptions include a nonzero pivot, zeros before the pivot column in the active rows, and exact divisibility.  The proof covers the executable `eliminate` function for arbitrary dimensions satisfying the indexing assumptions.  Establishing these assumptions through `echelon`, especially the minor invariant across row swaps and pivot selection, remains open.
 
 The three targets pass with standard logical axioms.  The proof reuses the checked multiword arithmetic and a loop-refinement lemma.  Diagnostics exposed partially applied monadic callbacks and dependent decidability arguments in list-membership rewrites.  Definitional equality and simplification resolved them.  The executable source and binary remain unchanged.
+
+### Beck pivot search and row swaps
+
+`Pivot.pivot_correct` proves that the source search returns the first nonzero entry at or below the active row, or the row-count sentinel when every candidate is zero.  `RowSwap` proves the exact array entry permutation, size and integer-validity preservation, and equality of rational kernels.  Both targets pass through the local runner with standard logical axioms.
+
+The matrix-update fold lemmas now apply to arrays of any element type.  The row-swap proof reuses them.  The next step tracks active entries as bordered determinants and proves that pivot extension preserves that representation.  This establishes the divisibility assumptions needed by the executable elimination loop.
