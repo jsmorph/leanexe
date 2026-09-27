@@ -21,6 +21,11 @@ Checked in Lean:
   compiler's output module and preserves the entire caller store.
 - `Project.Core.Validity`: source variable bounds and call arities imply valid
   compiler output; the proof permits additional proved runtime functions.
+- `Project.Core.Compiler`: finite source checks and size checks return a Talos
+  module carrying module validity, encoder readiness, and its native correctness
+  theorem. The theorem states the original Lean function's value for every input.
+- `Project.Core.MemoryModuleValidity`: the entire memory module, including its
+  four runtime functions, satisfies the encoder's module typing relation.
 - `Project.Core.MemoryRuntime`: native StateM ByteArray read, write, size and
   grow operations have concrete Talos implementations. The compiler invocation
   theorem uses these implementations, with no assumed primitive correctness.
@@ -29,9 +34,9 @@ Checked in Lean:
 
 Remaining work:
 
-- Generate kernel-checked native correspondence automatically from ordinary Lean
-  definitions, using Lean's equation and functional-induction theorems.
-- Finish automatic source checks and encoder readiness obligations.
+- Finish the proof-producing native frontend. Generated certificates for ordinary
+  Euclidean recursion and a function with two recursive calls pass Lean. A
+  conditional using a local let still needs its proof-generation fix.
 - Connect native data and memory operations, including growth, to the frontend.
 - Check representative recursive and looping programs through the complete path.
 
