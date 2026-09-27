@@ -37,7 +37,7 @@ def jobReplicatedTail (categories : Nat) (root padding55 padding56 need previous
 
 set_option maxRecDepth 2048 in
 set_option maxHeartbeats 1500000 in
-theorem jobMembershipCall_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial middle : Store Unit) (original current : Heap)
+theorem jobMembershipCall_exact {rowOwner wordsOwner : UInt64} (env : HostEnv Unit) (initial middle : Store Unit) (original current : Heap)
     (count categories members : Nat) (wordsPointer internal : UInt64) (oldNode zeroNode : FreeNode)
     (state : ParseState) (words row : Array UInt64) (saved : JobSaved)
     (padding55 padding56 need previous cursor capacity after : UInt64) (suffix : JobAfter) (remaining pageLimit : Nat)
@@ -47,7 +47,7 @@ theorem jobMembershipCall_exact {rowOwner : UInt64} (env : HostEnv Unit) (initia
     (wordsProtected : current.Protects wordsPointer.toNat (wordsPointer.toNat + 8 * (words.size + 1)))
     (preserved : original.Frame initial current middle)
     (active : internal = 0 ∨ internal = oldNode.root ∧ FreshFor original oldNode)
-    (inputDifferent : oldNode.root ≠ wordsPointer) (zeroDifferent : zeroNode.root ≠ wordsPointer) (ownerNonzero : wordsPointer ≠ 0)
+    (inputDifferent : oldNode.root ≠ wordsPointer) (zeroDifferent : zeroNode.root ≠ wordsPointer) (ownerMode : wordsOwner = 0 ∨ wordsOwner = wordsPointer)
     (memberBound : members ≤ 8) (categoryBound : categories ≤ 8)
     (inputBound : state.position + 1 + members ≤ words.size) (overlapFit : state.overlap < UInt64.size)
     (accepted : readMemberships members words (state.position + 1) categories (Array.replicate categories 0) = some row)
@@ -59,15 +59,23 @@ theorem jobMembershipCall_exact {rowOwner : UInt64} (env : HostEnv Unit) (initia
       original.Frame initial finalHeap final → FreshFor original node →
       OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
       ∀ saved tail, Q (.Fallthrough final
-        (jobFrame count categories wordsPointer node.root node.root (jobNextState state members row) saved tail))) :
+        (jobFrame (wordsOwner := wordsOwner) count categories wordsPointer node.root node.root (jobNextState state members row) saved tail))) :
     wp Project.Beck.«module» (jobEligible.drop 58) Q middle
-      (jobReplicateFrame (jobParams (rowOwner := rowOwner) (count + 1) categories wordsPointer oldNode.root state)
-        (jobPreparedSaved categories members wordsPointer internal state saved) categories zeroNode.root categories.toUInt64 0
+      (jobReplicateFrame (jobParams (rowOwner := rowOwner) (wordsOwner := wordsOwner) (count + 1) categories wordsPointer oldNode.root state)
+        (jobPreparedSaved categories members wordsOwner wordsPointer internal state saved) categories zeroNode.root categories.toUInt64 0
         padding55 padding56 need previous cursor capacity after zeroNode.root suffix) env := by
   have positionFit : state.position + 1 + members < UInt64.size := inputBound.trans_lt wordsAt.size_lt
-  have call := readMemberships_exact env middle current members (state.position + 1) categories wordsPointer zeroNode
+  have ownerDifferent : oldNode.root ≠ wordsOwner := by
+    rcases ownerMode with zero | same
+    · rw [zero]
+      intro equal
+      have bound := owned.buffer.rootBound
+      simp only [equal, UInt64.toNat_zero] at bound
+      omega
+    · simpa only [same] using inputDifferent
+  have call := readMemberships_owner_exact env middle current members (state.position + 1) categories wordsOwner wordsPointer zeroNode
     words (Array.replicate categories 0) row (48 + 8 * (state.incidence.size + row.size + 1) + remaining) pageLimit
-    valid zeroOwned wordsAt wordsProtected zeroDifferent ownerNonzero memberBound categoryBound (by simp) inputBound accepted budget
+    valid zeroOwned wordsAt wordsProtected zeroDifferent ownerMode memberBound categoryBound (by simp) inputBound accepted budget
   rw [job_membership_shape]
   generalize acceptedEq : jobAccepted = acceptedCode
   simp only [jobReplicateFrame, jobParams, jobPreparedSaved, jobSaved, jobPrefix,
@@ -86,7 +94,7 @@ theorem jobMembershipCall_exact {rowOwner : UInt64} (env : HostEnv Unit) (initia
   intro finalSaved finalTail
   apply jobAccepted_exact env initial final original finalHeap count categories members wordsPointer rowNode.root internal oldNode state row
     finalSaved finalTail remaining pageLimit finalValid (memberFrame.ownsWords finalValid owned) rowOwned.buffer.values
-    (ownedWords_protects rowOwned) (preserved.trans memberFrame) active inputDifferent ownerNonzero bound positionFit overlapFit finalBudget
+    (ownedWords_protects rowOwned) (preserved.trans memberFrame) active ownerDifferent bound positionFit overlapFit finalBudget
   intro result resultHeap resultNode resultValid resultOwned resultFrame fresh resultBudget resultSaved resultTail
   simpa only [jobFrame, List.take, List.drop, List.append_nil, wp_nil] using
     next result resultHeap resultNode resultValid resultOwned resultFrame fresh resultBudget resultSaved resultTail

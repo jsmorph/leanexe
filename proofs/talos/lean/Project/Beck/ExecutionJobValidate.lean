@@ -31,7 +31,7 @@ def jobValidatedTail (position members : Nat) (tail : JobTail) (index : Fin 17) 
 
 set_option maxRecDepth 2048 in
 set_option maxHeartbeats 2000000 in
-theorem jobValidate_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial middle : Store Unit) (original current : Heap)
+theorem jobValidate_exact {rowOwner wordsOwner : UInt64} (env : HostEnv Unit) (initial middle : Store Unit) (original current : Heap)
     (count categories members : Nat) (wordsPointer internal : UInt64) (oldNode : FreeNode)
     (state : ParseState) (words row : Array UInt64) (saved : JobSaved) (tail : JobTail) (remaining pageLimit : Nat)
     (valid : current.At middle) (owned : current.OwnsWords middle oldNode state.incidence)
@@ -39,7 +39,7 @@ theorem jobValidate_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial midd
     (wordsProtected : current.Protects wordsPointer.toNat (wordsPointer.toNat + 8 * (words.size + 1)))
     (preserved : original.Frame initial current middle)
     (active : internal = 0 ∨ internal = oldNode.root ∧ FreshFor original oldNode)
-    (inputDifferent : oldNode.root ≠ wordsPointer) (ownerNonzero : wordsPointer ≠ 0)
+    (inputDifferent : oldNode.root ≠ wordsPointer) (ownerMode : wordsOwner = 0 ∨ wordsOwner = wordsPointer)
     (memberBound : members ≤ categories) (categoryBound : categories ≤ 8)
     (positionInside : state.position < words.size) (countAt : words[state.position]! = members.toUInt64)
     (inputBound : state.position + 1 + members ≤ words.size) (overlapFit : state.overlap < UInt64.size)
@@ -51,9 +51,9 @@ theorem jobValidate_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial midd
       original.Frame initial finalHeap final → FreshFor original node →
       OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
       ∀ saved tail, Q (.Break 0 final
-        (jobFrame count categories wordsPointer node.root node.root (jobNextState state members row) saved tail))) :
+        (jobFrame (wordsOwner := wordsOwner) count categories wordsPointer node.root node.root (jobNextState state members row) saved tail))) :
     wp Project.Beck.«module» (jobBody.drop 7) Q middle
-      (jobFrame (rowOwner := rowOwner) (count + 1) categories wordsPointer oldNode.root internal state saved tail) env := by
+      (jobFrame (rowOwner := rowOwner) (wordsOwner := wordsOwner) (count + 1) categories wordsPointer oldNode.root internal state saved tail) env := by
   have sizeFit := wordsAt.size_lt
   have positionFit : state.position < UInt64.size := positionInside.trans sizeFit
   have nextFit : state.position + 1 < UInt64.size := by omega
@@ -124,7 +124,7 @@ theorem jobValidate_exact {rowOwner : UInt64} (env : HostEnv Unit) (initial midd
   rw [← eligibleEq]
   apply jobEligible_exact env initial middle original current count categories members wordsPointer internal oldNode state words row saved
     (jobValidatedTail state.position members tail) remaining pageLimit valid owned wordsAt wordsProtected preserved active inputDifferent
-    ownerNonzero (by omega) categoryBound inputBound overlapFit accepted bound budget
+    ownerMode (by omega) categoryBound inputBound overlapFit accepted bound budget
   intro final finalHeap node finalValid finalOwned finalFrame fresh finalBudget finalSaved finalTail
   simpa only [jobFrame, List.take, List.drop, List.append_nil, wp_simp] using
     next final finalHeap node finalValid finalOwned finalFrame fresh finalBudget finalSaved finalTail
