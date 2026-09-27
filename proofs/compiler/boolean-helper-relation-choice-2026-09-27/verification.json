@@ -1,0 +1,616 @@
+{
+  "candidate": "32932d289287a562de2407b7167274d7294d5d51",
+  "branch": "correct",
+  "lean": "4.34.0-rc2",
+  "leanCommit": "6a10ac8c22beadecabdbb0919c2b50214762f91d",
+  "node": "24.13.0",
+  "runner": "tools/leanrun, authorized local mode, serial lock",
+  "proofCommand": "tools/arithmetic-check.js proof",
+  "proofBuildTargets": 3377,
+  "axiomAudits": 19,
+  "engineCommand": "tools/arithmetic-check.js subset-engine boolean-helper-relation-choice",
+  "nativeV8Comparisons": 993,
+  "declarations": 54,
+  "rangeDeclarations": 25,
+  "rangeComparisons": 600,
+  "priorModulesByteIdentical": 44,
+  "priorModulesChanged": 0,
+  "focusedNativeIRComparisons": 62900,
+  "focusedRejections": 97920,
+  "syntaxControls": 1280,
+  "priorNativeIRComparisons": 53684,
+  "priorRejections": 62080,
+  "priorAdmissionControls": 1280,
+  "restoredProbeDeclarations": 12,
+  "retainedPositiveProbeDeclarations": 5,
+  "deferredProbeDeclarations": 1,
+  "fullCorpusDeclarations": 1487,
+  "deferred": "Function-typed proposition lets, broader helper bodies and Id inputs; composition of loops, retained instances, broader signatures, and full LeanExe dialect compiler correctness.",
+  "sourceHashes": {
+    "LeanExe/Extract/ScalarBooleanRelationSelection.lean": "d02c202fb7a7417adaf8b5d6e197b918aa20928a80f14823cc4cd2cd8ea45aab",
+    "LeanExe/Extract/ScalarExpr.lean": "4b5e6595a18c0ff1c3f19e8f1a65b1e669318fad4d9b0698e63192291afdaaef",
+    "LeanExe/Extract/ScalarExprCore.lean": "3fc3c9b3296d2cccd3fe9245c632aedde8300ebcb43c8c0e0bc3438796a030b0",
+    "LeanExe/Source/Scalar.lean": "a32fbbc6a6f95da10d68b40cea9c9c5148347a7fd59edf64ba836cc3eaa0804e",
+    "LeanExe/Source/ScalarBooleanRelationSelection.lean": "e220962cfa6d7181e1983e56d5d626068db47e292cd78451c2815efd8339659b",
+    "test/ArithmeticMilestone.lean": "9bb1b78c5a214aa9373cfd2286052ed6c6dc11399488f78be9578674f88bfb2c",
+    "test/arithmetic-engine-groups.json": "695f45813a63b9d1495fcc876936d39db693a4623a7964999a7114c4a6f96119",
+    "test/arithmetic-range-cases.json": "d37d3f77a00110bad07af5e37e7188316976abc1a54d70e9445f7c97b5d34307",
+    "test/arithmetic_engine.mjs": "c3bd30825eefb970b2f9d7246de6e32d30c7415b4d8743ea7b267940cf5a2533",
+    "test/arithmetic_mode.lean": "5850512354ec1993730bb490bc92aabb6d39d1a9fec24bd43844bbd516c2bb08",
+    "test/scalar_boolean_helper_relation_choice.lean": "bc1696c2e52bf89460ba7ef1e3ffd337ca4326b28b635c898497993eb462e4d8",
+    "test/scalar_boolean_helper_relation_choice_step_syntax.lean": "a72a453db0c5d319287cf34a8ffb2e367dfb3d7b700365356f7b8100043b8c22",
+    "test/scalar_boolean_helper_relation_choice_syntax.lean": "1692eb3f79a92162c4399917f5f833c61055263d083e275b5924995890a014a3"
+  },
+  "modules": {
+    "booleanHelperChoiceCondition": {
+      "sha256": "517475b84913e7018dfcb7fcba13f006e52605bcb08fad56547262eb89d2d035",
+      "bytes": 1159
+    },
+    "booleanHelperChoiceDependent": {
+      "sha256": "22e22c59e84f9e0bb38a471327828b054c2bc4a5fc0f7df1c05c35aff955ce93",
+      "bytes": 1359
+    },
+    "booleanHelperChoiceNested": {
+      "sha256": "2f5269e4355f3d5b3431ce0efb3d3747dcd779a7dc175f0b725b21031423573c",
+      "bytes": 1391
+    },
+    "booleanHelperChoiceNo": {
+      "sha256": "4beee359310220d38de6f836d96e33af514ddf64c2c46dc8fd6301b2fe96150e",
+      "bytes": 1236
+    },
+    "booleanHelperChoiceUnused": {
+      "sha256": "cb4c006a81c8b07e5cc9d01e311452e2c9406c6c92d9e9331fc52b81a4744d95",
+      "bytes": 1156
+    },
+    "booleanHelperChoiceYes": {
+      "sha256": "60ddf4b5de3448c377fe9dc4535b3fc56e5936fd846dc09b80a3033d65cb1d15",
+      "bytes": 1216
+    },
+    "booleanHelperPropositionChoiceCompound": {
+      "sha256": "23b80afe1ebbaa5812d5a530d0caa12f6952c59f390e4c855d6a198d190a3c9c",
+      "bytes": 1372
+    },
+    "booleanHelperPropositionChoiceDependent": {
+      "sha256": "176c0a4e72ca01eaa5590026afa84d58e9b3c6c9ef99903a803771daedd265ed",
+      "bytes": 1396
+    },
+    "booleanHelperPropositionChoiceLe": {
+      "sha256": "b77953034241646108fdf54bb94128759dd43672ce10002b4cccb00cfeea8977",
+      "bytes": 1283
+    },
+    "booleanHelperPropositionChoiceLet": {
+      "sha256": "7a8c41fbf96ac920349ca03c8800ee476e4f342886cbde1364ed857ce3c12f9d",
+      "bytes": 1196
+    },
+    "booleanHelperPropositionChoiceNegated": {
+      "sha256": "25424e59ce19f4abddf25263797c48c75b3871022012609a5dd755b1f81c5c05",
+      "bytes": 1198
+    },
+    "booleanHelperPropositionChoiceWord": {
+      "sha256": "d49ca9439bdc25d80f81d0eea5a4f24cd3cb0468df96a402edd325b5e0884017",
+      "bytes": 1241
+    },
+    "booleanHelperRelationChoiceDependent": {
+      "sha256": "56cfd906c7ca45fed64c8b20ac71d1d9ee5fff4c7a691954babcaa747788a403",
+      "bytes": 1469
+    },
+    "booleanHelperRelationChoiceFalse": {
+      "sha256": "84bc2eea33b5ed462588a8736f76ad48b3dd043812652ec1dd4c219f89c8598a",
+      "bytes": 1261
+    },
+    "booleanHelperRelationChoiceLeft": {
+      "sha256": "44fc1832fbd8c9b1a17a38bf922b948bc330f83365176c59922e21f12fef4170",
+      "bytes": 1260
+    },
+    "booleanHelperRelationChoiceNested": {
+      "sha256": "e8ba1c7b108a61c2f5086d912363c682fa246c65fe55f5dd538511f99f0ec37e",
+      "bytes": 1422
+    },
+    "booleanHelperRelationChoiceRight": {
+      "sha256": "b8dd5708c0f50179464ea7205881d84d3d568435ed2963ad9c439f57752d1be6",
+      "bytes": 1328
+    },
+    "booleanHelperRelationChoiceTrue": {
+      "sha256": "852ec4bdb40ef2228886a752534f02e9f9280e23872475268f5d0b000276b5a3",
+      "bytes": 1261
+    },
+    "constant": {
+      "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "bytes": 1042
+    },
+    "publicBoolHelpersInputId": {
+      "sha256": "90d04fe5350a9eb17cc60f056f5d93f3c3ec4f2c2f67dad281458854a791d91a",
+      "bytes": 1277
+    },
+    "publicBoolHelpersNested": {
+      "sha256": "e295d768a6866963d7a6b4852026b062a6d4cd2ef9e447e0806477ffb012bb29",
+      "bytes": 1123
+    },
+    "publicBoolHelpersRepeated": {
+      "sha256": "52ac7e5bd88f4b25053e9675001cfe50d838110742bad468e7184895ce52f871",
+      "bytes": 1237
+    },
+    "publicBoolHelpersUnused": {
+      "sha256": "7cd33240f196c5ef8062766d70a1b3d6fca01264694cc1141ab1c232a24a3bf8",
+      "bytes": 1278
+    },
+    "publicBoolHelpersWord": {
+      "sha256": "1d034f0a3740b00d83067b85225a47a61987a3ab09c4ff8aa5ce78159c649d15",
+      "bytes": 1275
+    },
+    "publicBoolHelpersWrapped": {
+      "sha256": "00f93f913e519cec3e2d151f3a2c76d43e8c44b704a608f58f7fe54d599502a2",
+      "bytes": 1184
+    },
+    "publicFlagResult": {
+      "sha256": "b4255409bb6e98c1b54f3256e01344a6fe033cc4a0f54e3fa5494b0e86f38095",
+      "bytes": 1101
+    },
+    "publicFlagWord": {
+      "sha256": "d239e95b104196c33b596f359e83b3fdb4b6dbd50584efdd7d8c8823f07fb1b7",
+      "bytes": 1079
+    },
+    "publicInputIdResult": {
+      "sha256": "dd5e7cfe6bcf055757b30010da3aef55d8d48fc21579546ddd7a73e3258630e8",
+      "bytes": 1105
+    },
+    "publicInputIdWord": {
+      "sha256": "0dfd7f9a5e0f9c1b004fa914f238b00e8adbe503c54979e8d8127aca5e16f3e2",
+      "bytes": 1056
+    },
+    "rangeHelperChoiceContinue": {
+      "sha256": "88b8b1ca71fb82360ef2d59a72983a920c6f5bb9bd979e006a9cb8ee399fd7be",
+      "bytes": 1340
+    },
+    "rangeHelperChoiceExit": {
+      "sha256": "de973fc8652691bb2e73b24053c2bfd39f247bb49e0e1a5b1784481a4c531a99",
+      "bytes": 1723
+    },
+    "rangeHelperChoiceStep": {
+      "sha256": "6b31862a71bdfae7d3831822f38a93c496d1d495dbb0687329741a8ff9c0a12f",
+      "bytes": 1256
+    },
+    "rangeHelperChoiceTail": {
+      "sha256": "3a9b23b8aec57a764d58e1085bac971918b36cd55f7beb688be15ae44cb80cba",
+      "bytes": 1306
+    },
+    "rangeHelperPropositionChoiceContinue": {
+      "sha256": "d334835ba24a743d7607f522f0983e5ea76bdd15505e4bc999aece0357522fa7",
+      "bytes": 1365
+    },
+    "rangeHelperPropositionChoiceExit": {
+      "sha256": "9a26b55cdc3fe3eac58cccede80353e151ae86295a233e7368e1e1389d7364b5",
+      "bytes": 1798
+    },
+    "rangeHelperPropositionChoiceStep": {
+      "sha256": "16ad8666f18d4a6e5e914a4c11cd54f0785c205ab248ab19b8879ceedd6015c5",
+      "bytes": 1262
+    },
+    "rangeHelperPropositionChoiceTail": {
+      "sha256": "e9de9e6e34ac06369c178d904b8f5d1ca8c00be6f3f1806fb34914f272058410",
+      "bytes": 1309
+    },
+    "rangeHelperRelationChoiceContinue": {
+      "sha256": "27096be6610e3da66a02f21916204ef30664bf8f0cf649e1af9f4b55c18c753c",
+      "bytes": 1451
+    },
+    "rangeHelperRelationChoiceExit": {
+      "sha256": "de36f7b419398f8c2c05b28f84b2c4594cc8c13760f6d81dcea0b3b82380f550",
+      "bytes": 1755
+    },
+    "rangeHelperRelationChoiceStep": {
+      "sha256": "45153cfe969ec8f134cee628f0889244508ccb155575ba61ebe30ce0a32a0cab",
+      "bytes": 1383
+    },
+    "rangeHelperRelationChoiceTail": {
+      "sha256": "3abb83034ecd2538edbb305570c289aef4f782e147b8183f0f1d92406bba134a",
+      "bytes": 1416
+    },
+    "rangeWordBoolHelperId": {
+      "sha256": "14da36d08edff13ac522065addb9461e9dab82157f9d938d6610e585e22a6c58",
+      "bytes": 1314
+    },
+    "rangeWordChooseHelpers": {
+      "sha256": "d60a2823e9f401431ea8c0e02e9d366f000102fea7ce37de8c06d51ea322b60b",
+      "bytes": 1646
+    },
+    "rangeWordChooseLoops": {
+      "sha256": "c7429e13edd50ec2b0dba662efd29d2c0fcc59cad1dd1a1bb6809cc740b8db9e",
+      "bytes": 1466
+    },
+    "rangeWordChooseSavedResult": {
+      "sha256": "9e34fc3b276c68afd9f2e870e9d68d8912b6a012da76c23db4bd7fe6ed92d019",
+      "bytes": 1554
+    },
+    "rangeWordChooseSetupContinue": {
+      "sha256": "62cf2507f1a1692903b2ea84a9d27ce498b1144ce63b44b9414c1c6d11801ee9",
+      "bytes": 1692
+    },
+    "rangeWordChooseSetupDo": {
+      "sha256": "869fb531bbe7fda8cbf38c4324f261d79b8da07f9b451f5d0760898ccd44111d",
+      "bytes": 1530
+    },
+    "rangeWordChooseSetupExit": {
+      "sha256": "7f1bba88c1e49437e106f9d9e179ab3454d3e3d705ecd65207c97f024776a9b1",
+      "bytes": 1804
+    },
+    "rangeWordChooseSetupFlag": {
+      "sha256": "d71aefc2e27bc554b06ab438b8b59bf1d2456c38ec66721f7897a572aaeb10ee",
+      "bytes": 1625
+    },
+    "rangeWordChooseSetupId": {
+      "sha256": "e9e33a074c6589245a3de8563e37bcc373b8aa6bd3428f19c07e036a73659b91",
+      "bytes": 1619
+    },
+    "rangeWordChooseSetupNested": {
+      "sha256": "4adf5260923d762480f9c9eaf0843fd9fc91bae1045668b3b5ed0205489213bb",
+      "bytes": 1949
+    },
+    "rangeWordChooseSetupStride": {
+      "sha256": "347993eff4c581baa951744f5b09b28adcf590556519ff84e54d21cc4ace4cb0",
+      "bytes": 1645
+    },
+    "rangeWordChooseSetupWord": {
+      "sha256": "b60a0b19a20d3526bbdb3c939f13b845cc25ea867f316f68ec34835dcefdab07",
+      "bytes": 1532
+    },
+    "rangeWordChooseShowResult": {
+      "sha256": "f336ad91903e499dc00ef6517190b2f50bfaf47edc49a00d8fa3bf0e94f22e0b",
+      "bytes": 1474
+    }
+  },
+  "priorModuleComparison": {
+    "rangeHelperChoiceTail": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeHelperChoiceTail.wasm",
+      "previousSha256": "3a9b23b8aec57a764d58e1085bac971918b36cd55f7beb688be15ae44cb80cba",
+      "sha256": "3a9b23b8aec57a764d58e1085bac971918b36cd55f7beb688be15ae44cb80cba",
+      "byteIdentical": true,
+      "previousBytes": 1306,
+      "bytes": 1306
+    },
+    "rangeHelperChoiceContinue": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeHelperChoiceContinue.wasm",
+      "previousSha256": "88b8b1ca71fb82360ef2d59a72983a920c6f5bb9bd979e006a9cb8ee399fd7be",
+      "sha256": "88b8b1ca71fb82360ef2d59a72983a920c6f5bb9bd979e006a9cb8ee399fd7be",
+      "byteIdentical": true,
+      "previousBytes": 1340,
+      "bytes": 1340
+    },
+    "publicInputIdResult": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/publicInputIdResult.wasm",
+      "previousSha256": "dd5e7cfe6bcf055757b30010da3aef55d8d48fc21579546ddd7a73e3258630e8",
+      "sha256": "dd5e7cfe6bcf055757b30010da3aef55d8d48fc21579546ddd7a73e3258630e8",
+      "byteIdentical": true,
+      "previousBytes": 1105,
+      "bytes": 1105
+    },
+    "rangeWordChooseSetupFlag": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordChooseSetupFlag.wasm",
+      "previousSha256": "d71aefc2e27bc554b06ab438b8b59bf1d2456c38ec66721f7897a572aaeb10ee",
+      "sha256": "d71aefc2e27bc554b06ab438b8b59bf1d2456c38ec66721f7897a572aaeb10ee",
+      "byteIdentical": true,
+      "previousBytes": 1625,
+      "bytes": 1625
+    },
+    "rangeHelperPropositionChoiceStep": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeHelperPropositionChoiceStep.wasm",
+      "previousSha256": "16ad8666f18d4a6e5e914a4c11cd54f0785c205ab248ab19b8879ceedd6015c5",
+      "sha256": "16ad8666f18d4a6e5e914a4c11cd54f0785c205ab248ab19b8879ceedd6015c5",
+      "byteIdentical": true,
+      "previousBytes": 1262,
+      "bytes": 1262
+    },
+    "rangeWordBoolHelperId": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordBoolHelperId.wasm",
+      "previousSha256": "14da36d08edff13ac522065addb9461e9dab82157f9d938d6610e585e22a6c58",
+      "sha256": "14da36d08edff13ac522065addb9461e9dab82157f9d938d6610e585e22a6c58",
+      "byteIdentical": true,
+      "previousBytes": 1314,
+      "bytes": 1314
+    },
+    "booleanHelperChoiceNo": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/booleanHelperChoiceNo.wasm",
+      "previousSha256": "4beee359310220d38de6f836d96e33af514ddf64c2c46dc8fd6301b2fe96150e",
+      "sha256": "4beee359310220d38de6f836d96e33af514ddf64c2c46dc8fd6301b2fe96150e",
+      "byteIdentical": true,
+      "previousBytes": 1236,
+      "bytes": 1236
+    },
+    "booleanHelperPropositionChoiceWord": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/booleanHelperPropositionChoiceWord.wasm",
+      "previousSha256": "d49ca9439bdc25d80f81d0eea5a4f24cd3cb0468df96a402edd325b5e0884017",
+      "sha256": "d49ca9439bdc25d80f81d0eea5a4f24cd3cb0468df96a402edd325b5e0884017",
+      "byteIdentical": true,
+      "previousBytes": 1241,
+      "bytes": 1241
+    },
+    "rangeHelperPropositionChoiceExit": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeHelperPropositionChoiceExit.wasm",
+      "previousSha256": "9a26b55cdc3fe3eac58cccede80353e151ae86295a233e7368e1e1389d7364b5",
+      "sha256": "9a26b55cdc3fe3eac58cccede80353e151ae86295a233e7368e1e1389d7364b5",
+      "byteIdentical": true,
+      "previousBytes": 1798,
+      "bytes": 1798
+    },
+    "booleanHelperChoiceUnused": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/booleanHelperChoiceUnused.wasm",
+      "previousSha256": "cb4c006a81c8b07e5cc9d01e311452e2c9406c6c92d9e9331fc52b81a4744d95",
+      "sha256": "cb4c006a81c8b07e5cc9d01e311452e2c9406c6c92d9e9331fc52b81a4744d95",
+      "byteIdentical": true,
+      "previousBytes": 1156,
+      "bytes": 1156
+    },
+    "publicFlagWord": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/publicFlagWord.wasm",
+      "previousSha256": "d239e95b104196c33b596f359e83b3fdb4b6dbd50584efdd7d8c8823f07fb1b7",
+      "sha256": "d239e95b104196c33b596f359e83b3fdb4b6dbd50584efdd7d8c8823f07fb1b7",
+      "byteIdentical": true,
+      "previousBytes": 1079,
+      "bytes": 1079
+    },
+    "rangeWordChooseSavedResult": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordChooseSavedResult.wasm",
+      "previousSha256": "9e34fc3b276c68afd9f2e870e9d68d8912b6a012da76c23db4bd7fe6ed92d019",
+      "sha256": "9e34fc3b276c68afd9f2e870e9d68d8912b6a012da76c23db4bd7fe6ed92d019",
+      "byteIdentical": true,
+      "previousBytes": 1554,
+      "bytes": 1554
+    },
+    "booleanHelperPropositionChoiceDependent": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/booleanHelperPropositionChoiceDependent.wasm",
+      "previousSha256": "176c0a4e72ca01eaa5590026afa84d58e9b3c6c9ef99903a803771daedd265ed",
+      "sha256": "176c0a4e72ca01eaa5590026afa84d58e9b3c6c9ef99903a803771daedd265ed",
+      "byteIdentical": true,
+      "previousBytes": 1396,
+      "bytes": 1396
+    },
+    "publicBoolHelpersWord": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/publicBoolHelpersWord.wasm",
+      "previousSha256": "1d034f0a3740b00d83067b85225a47a61987a3ab09c4ff8aa5ce78159c649d15",
+      "sha256": "1d034f0a3740b00d83067b85225a47a61987a3ab09c4ff8aa5ce78159c649d15",
+      "byteIdentical": true,
+      "previousBytes": 1275,
+      "bytes": 1275
+    },
+    "publicBoolHelpersUnused": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/publicBoolHelpersUnused.wasm",
+      "previousSha256": "7cd33240f196c5ef8062766d70a1b3d6fca01264694cc1141ab1c232a24a3bf8",
+      "sha256": "7cd33240f196c5ef8062766d70a1b3d6fca01264694cc1141ab1c232a24a3bf8",
+      "byteIdentical": true,
+      "previousBytes": 1278,
+      "bytes": 1278
+    },
+    "rangeWordChooseSetupWord": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordChooseSetupWord.wasm",
+      "previousSha256": "b60a0b19a20d3526bbdb3c939f13b845cc25ea867f316f68ec34835dcefdab07",
+      "sha256": "b60a0b19a20d3526bbdb3c939f13b845cc25ea867f316f68ec34835dcefdab07",
+      "byteIdentical": true,
+      "previousBytes": 1532,
+      "bytes": 1532
+    },
+    "publicBoolHelpersInputId": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/publicBoolHelpersInputId.wasm",
+      "previousSha256": "90d04fe5350a9eb17cc60f056f5d93f3c3ec4f2c2f67dad281458854a791d91a",
+      "sha256": "90d04fe5350a9eb17cc60f056f5d93f3c3ec4f2c2f67dad281458854a791d91a",
+      "byteIdentical": true,
+      "previousBytes": 1277,
+      "bytes": 1277
+    },
+    "rangeHelperChoiceStep": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeHelperChoiceStep.wasm",
+      "previousSha256": "6b31862a71bdfae7d3831822f38a93c496d1d495dbb0687329741a8ff9c0a12f",
+      "sha256": "6b31862a71bdfae7d3831822f38a93c496d1d495dbb0687329741a8ff9c0a12f",
+      "byteIdentical": true,
+      "previousBytes": 1256,
+      "bytes": 1256
+    },
+    "rangeWordChooseSetupStride": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordChooseSetupStride.wasm",
+      "previousSha256": "347993eff4c581baa951744f5b09b28adcf590556519ff84e54d21cc4ace4cb0",
+      "sha256": "347993eff4c581baa951744f5b09b28adcf590556519ff84e54d21cc4ace4cb0",
+      "byteIdentical": true,
+      "previousBytes": 1645,
+      "bytes": 1645
+    },
+    "rangeHelperPropositionChoiceTail": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeHelperPropositionChoiceTail.wasm",
+      "previousSha256": "e9de9e6e34ac06369c178d904b8f5d1ca8c00be6f3f1806fb34914f272058410",
+      "sha256": "e9de9e6e34ac06369c178d904b8f5d1ca8c00be6f3f1806fb34914f272058410",
+      "byteIdentical": true,
+      "previousBytes": 1309,
+      "bytes": 1309
+    },
+    "constant": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/constant.wasm",
+      "previousSha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "byteIdentical": true,
+      "previousBytes": 1042,
+      "bytes": 1042
+    },
+    "publicBoolHelpersWrapped": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/publicBoolHelpersWrapped.wasm",
+      "previousSha256": "00f93f913e519cec3e2d151f3a2c76d43e8c44b704a608f58f7fe54d599502a2",
+      "sha256": "00f93f913e519cec3e2d151f3a2c76d43e8c44b704a608f58f7fe54d599502a2",
+      "byteIdentical": true,
+      "previousBytes": 1184,
+      "bytes": 1184
+    },
+    "booleanHelperPropositionChoiceNegated": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/booleanHelperPropositionChoiceNegated.wasm",
+      "previousSha256": "25424e59ce19f4abddf25263797c48c75b3871022012609a5dd755b1f81c5c05",
+      "sha256": "25424e59ce19f4abddf25263797c48c75b3871022012609a5dd755b1f81c5c05",
+      "byteIdentical": true,
+      "previousBytes": 1198,
+      "bytes": 1198
+    },
+    "rangeWordChooseSetupId": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordChooseSetupId.wasm",
+      "previousSha256": "e9e33a074c6589245a3de8563e37bcc373b8aa6bd3428f19c07e036a73659b91",
+      "sha256": "e9e33a074c6589245a3de8563e37bcc373b8aa6bd3428f19c07e036a73659b91",
+      "byteIdentical": true,
+      "previousBytes": 1619,
+      "bytes": 1619
+    },
+    "rangeHelperChoiceExit": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeHelperChoiceExit.wasm",
+      "previousSha256": "de973fc8652691bb2e73b24053c2bfd39f247bb49e0e1a5b1784481a4c531a99",
+      "sha256": "de973fc8652691bb2e73b24053c2bfd39f247bb49e0e1a5b1784481a4c531a99",
+      "byteIdentical": true,
+      "previousBytes": 1723,
+      "bytes": 1723
+    },
+    "publicBoolHelpersRepeated": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/publicBoolHelpersRepeated.wasm",
+      "previousSha256": "52ac7e5bd88f4b25053e9675001cfe50d838110742bad468e7184895ce52f871",
+      "sha256": "52ac7e5bd88f4b25053e9675001cfe50d838110742bad468e7184895ce52f871",
+      "byteIdentical": true,
+      "previousBytes": 1237,
+      "bytes": 1237
+    },
+    "rangeHelperPropositionChoiceContinue": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeHelperPropositionChoiceContinue.wasm",
+      "previousSha256": "d334835ba24a743d7607f522f0983e5ea76bdd15505e4bc999aece0357522fa7",
+      "sha256": "d334835ba24a743d7607f522f0983e5ea76bdd15505e4bc999aece0357522fa7",
+      "byteIdentical": true,
+      "previousBytes": 1365,
+      "bytes": 1365
+    },
+    "publicBoolHelpersNested": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/publicBoolHelpersNested.wasm",
+      "previousSha256": "e295d768a6866963d7a6b4852026b062a6d4cd2ef9e447e0806477ffb012bb29",
+      "sha256": "e295d768a6866963d7a6b4852026b062a6d4cd2ef9e447e0806477ffb012bb29",
+      "byteIdentical": true,
+      "previousBytes": 1123,
+      "bytes": 1123
+    },
+    "booleanHelperChoiceNested": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/booleanHelperChoiceNested.wasm",
+      "previousSha256": "2f5269e4355f3d5b3431ce0efb3d3747dcd779a7dc175f0b725b21031423573c",
+      "sha256": "2f5269e4355f3d5b3431ce0efb3d3747dcd779a7dc175f0b725b21031423573c",
+      "byteIdentical": true,
+      "previousBytes": 1391,
+      "bytes": 1391
+    },
+    "booleanHelperPropositionChoiceCompound": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/booleanHelperPropositionChoiceCompound.wasm",
+      "previousSha256": "23b80afe1ebbaa5812d5a530d0caa12f6952c59f390e4c855d6a198d190a3c9c",
+      "sha256": "23b80afe1ebbaa5812d5a530d0caa12f6952c59f390e4c855d6a198d190a3c9c",
+      "byteIdentical": true,
+      "previousBytes": 1372,
+      "bytes": 1372
+    },
+    "rangeWordChooseSetupDo": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordChooseSetupDo.wasm",
+      "previousSha256": "869fb531bbe7fda8cbf38c4324f261d79b8da07f9b451f5d0760898ccd44111d",
+      "sha256": "869fb531bbe7fda8cbf38c4324f261d79b8da07f9b451f5d0760898ccd44111d",
+      "byteIdentical": true,
+      "previousBytes": 1530,
+      "bytes": 1530
+    },
+    "rangeWordChooseHelpers": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordChooseHelpers.wasm",
+      "previousSha256": "d60a2823e9f401431ea8c0e02e9d366f000102fea7ce37de8c06d51ea322b60b",
+      "sha256": "d60a2823e9f401431ea8c0e02e9d366f000102fea7ce37de8c06d51ea322b60b",
+      "byteIdentical": true,
+      "previousBytes": 1646,
+      "bytes": 1646
+    },
+    "booleanHelperPropositionChoiceLe": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/booleanHelperPropositionChoiceLe.wasm",
+      "previousSha256": "b77953034241646108fdf54bb94128759dd43672ce10002b4cccb00cfeea8977",
+      "sha256": "b77953034241646108fdf54bb94128759dd43672ce10002b4cccb00cfeea8977",
+      "byteIdentical": true,
+      "previousBytes": 1283,
+      "bytes": 1283
+    },
+    "publicFlagResult": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/publicFlagResult.wasm",
+      "previousSha256": "b4255409bb6e98c1b54f3256e01344a6fe033cc4a0f54e3fa5494b0e86f38095",
+      "sha256": "b4255409bb6e98c1b54f3256e01344a6fe033cc4a0f54e3fa5494b0e86f38095",
+      "byteIdentical": true,
+      "previousBytes": 1101,
+      "bytes": 1101
+    },
+    "booleanHelperPropositionChoiceLet": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/booleanHelperPropositionChoiceLet.wasm",
+      "previousSha256": "7a8c41fbf96ac920349ca03c8800ee476e4f342886cbde1364ed857ce3c12f9d",
+      "sha256": "7a8c41fbf96ac920349ca03c8800ee476e4f342886cbde1364ed857ce3c12f9d",
+      "byteIdentical": true,
+      "previousBytes": 1196,
+      "bytes": 1196
+    },
+    "rangeWordChooseSetupExit": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordChooseSetupExit.wasm",
+      "previousSha256": "7f1bba88c1e49437e106f9d9e179ab3454d3e3d705ecd65207c97f024776a9b1",
+      "sha256": "7f1bba88c1e49437e106f9d9e179ab3454d3e3d705ecd65207c97f024776a9b1",
+      "byteIdentical": true,
+      "previousBytes": 1804,
+      "bytes": 1804
+    },
+    "rangeWordChooseSetupContinue": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordChooseSetupContinue.wasm",
+      "previousSha256": "62cf2507f1a1692903b2ea84a9d27ce498b1144ce63b44b9414c1c6d11801ee9",
+      "sha256": "62cf2507f1a1692903b2ea84a9d27ce498b1144ce63b44b9414c1c6d11801ee9",
+      "byteIdentical": true,
+      "previousBytes": 1692,
+      "bytes": 1692
+    },
+    "publicInputIdWord": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/publicInputIdWord.wasm",
+      "previousSha256": "0dfd7f9a5e0f9c1b004fa914f238b00e8adbe503c54979e8d8127aca5e16f3e2",
+      "sha256": "0dfd7f9a5e0f9c1b004fa914f238b00e8adbe503c54979e8d8127aca5e16f3e2",
+      "byteIdentical": true,
+      "previousBytes": 1056,
+      "bytes": 1056
+    },
+    "booleanHelperChoiceDependent": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/booleanHelperChoiceDependent.wasm",
+      "previousSha256": "22e22c59e84f9e0bb38a471327828b054c2bc4a5fc0f7df1c05c35aff955ce93",
+      "sha256": "22e22c59e84f9e0bb38a471327828b054c2bc4a5fc0f7df1c05c35aff955ce93",
+      "byteIdentical": true,
+      "previousBytes": 1359,
+      "bytes": 1359
+    },
+    "booleanHelperChoiceYes": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/booleanHelperChoiceYes.wasm",
+      "previousSha256": "60ddf4b5de3448c377fe9dc4535b3fc56e5936fd846dc09b80a3033d65cb1d15",
+      "sha256": "60ddf4b5de3448c377fe9dc4535b3fc56e5936fd846dc09b80a3033d65cb1d15",
+      "byteIdentical": true,
+      "previousBytes": 1216,
+      "bytes": 1216
+    },
+    "booleanHelperChoiceCondition": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/booleanHelperChoiceCondition.wasm",
+      "previousSha256": "517475b84913e7018dfcb7fcba13f006e52605bcb08fad56547262eb89d2d035",
+      "sha256": "517475b84913e7018dfcb7fcba13f006e52605bcb08fad56547262eb89d2d035",
+      "byteIdentical": true,
+      "previousBytes": 1159,
+      "bytes": 1159
+    },
+    "rangeWordChooseSetupNested": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordChooseSetupNested.wasm",
+      "previousSha256": "4adf5260923d762480f9c9eaf0843fd9fc91bae1045668b3b5ed0205489213bb",
+      "sha256": "4adf5260923d762480f9c9eaf0843fd9fc91bae1045668b3b5ed0205489213bb",
+      "byteIdentical": true,
+      "previousBytes": 1949,
+      "bytes": 1949
+    },
+    "rangeWordChooseShowResult": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordChooseShowResult.wasm",
+      "previousSha256": "f336ad91903e499dc00ef6517190b2f50bfaf47edc49a00d8fa3bf0e94f22e0b",
+      "sha256": "f336ad91903e499dc00ef6517190b2f50bfaf47edc49a00d8fa3bf0e94f22e0b",
+      "byteIdentical": true,
+      "previousBytes": 1474,
+      "bytes": 1474
+    },
+    "rangeWordChooseLoops": {
+      "previous": "proofs/compiler/boolean-helper-propositional-choice-2026-09-27/rangeWordChooseLoops.wasm",
+      "previousSha256": "c7429e13edd50ec2b0dba662efd29d2c0fcc59cad1dd1a1bb6809cc740b8db9e",
+      "sha256": "c7429e13edd50ec2b0dba662efd29d2c0fcc59cad1dd1a1bb6809cc740b8db9e",
+      "byteIdentical": true,
+      "previousBytes": 1466,
+      "bytes": 1466
+    }
+  }
+}
