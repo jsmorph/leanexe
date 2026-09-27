@@ -4895,6 +4895,67 @@ def rangeCallMixedHelper (count seed : UInt64) : UInt64 := Id.run do
     else break
   return a
 
+def extendedMixedJunction (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  if (f (x == 0) && (x != y || f true)) ∧ x < y then x + 3 else y + 7
+
+def extendedMixedChoice (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  if x ≤ y ∨ (if x < y then f true else f false) then x + 1 else y
+
+def extendedMixedLet (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  if (Id.run (let flag := f (x == 0); let word := x + flag.toUInt64; f (word != y))) ∧ x < y then x + y else x - y
+
+def extendedMixedBind (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  if x = 0 ∨ (Id.run do let flag ← pure (f (x == 0)); return f (!flag)) then x + 1 else y + 2
+
+def extendedMixedWrapped (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  let saved := decide ((Id.run (pure (f true))) ∧ x < y)
+  saved.toUInt64 + x
+
+def extendedMixedRelation (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  let g := fun b : Bool => if (f b == b) ∧ x < y then f true else f false
+  (g true).toUInt64 + (g false).toUInt64 + y
+
+def rangeExtendedMixedStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != 0
+    if (f (i.toUInt64 != seed) || f true) ∧ i.toUInt64 < a then break
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeExtendedMixedContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun n : UInt64 => n != seed
+    if a = 0 ∨ (Id.run (let flag := f i.toUInt64; !flag)) then
+      a := a + 3
+      continue
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeExtendedMixedOuter (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun n : UInt64 => n != seed
+  let mut a := if (Id.run (pure (f true))) ∧ count < seed then seed + 1 else seed
+  for i in [:count.toNat] do
+    if (f (g i.toUInt64) != g a) ∧ a < seed then a := a + 2 else a := a + 1
+  return a + (decide ((f true && g a) ∨ a = seed)).toUInt64
+
+def rangeExtendedMixedHelper (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun b : Bool => if (Id.run do let flag ← pure (f b); return f (!flag)) ∧ seed < count then !b else b
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (if a = 0 then g true else g false) ∧ i.toUInt64 < a then break
+    a := a + (f (g true)).toUInt64 + 1
+  return a
+
 def booleanPredicateResultBool (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => !b && x != 0
   let g := fun b : Bool => f b
@@ -6862,6 +6923,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeCallMixedContinue", rangeCallMixedContinue),
    ("rangeCallMixedOuter", rangeCallMixedOuter),
    ("rangeCallMixedHelper", rangeCallMixedHelper),
+   ("rangeExtendedMixedStep", rangeExtendedMixedStep),
+   ("rangeExtendedMixedContinue", rangeExtendedMixedContinue),
+   ("rangeExtendedMixedOuter", rangeExtendedMixedOuter),
+   ("rangeExtendedMixedHelper", rangeExtendedMixedHelper),
    ("rangeBooleanPredicateResultLocalBool", rangeBooleanPredicateResultLocalBool),
    ("rangeBooleanPredicateResultLocalWord", rangeBooleanPredicateResultLocalWord),
    ("rangeBooleanPredicateResultLocalNested", rangeBooleanPredicateResultLocalNested),
@@ -7348,6 +7413,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("callMixedNegation", callMixedNegation),
    ("callMixedDecision", callMixedDecision),
    ("callMixedHelper", callMixedHelper),
+   ("extendedMixedJunction", extendedMixedJunction),
+   ("extendedMixedChoice", extendedMixedChoice),
+   ("extendedMixedLet", extendedMixedLet),
+   ("extendedMixedBind", extendedMixedBind),
+   ("extendedMixedWrapped", extendedMixedWrapped),
+   ("extendedMixedRelation", extendedMixedRelation),
    ("booleanPredicateResultBool", booleanPredicateResultBool),
    ("booleanPredicateResultWord", booleanPredicateResultWord),
    ("booleanPredicateResultNested", booleanPredicateResultNested),

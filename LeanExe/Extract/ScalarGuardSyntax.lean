@@ -64,15 +64,16 @@ def guardOperands? : Lean.Expr → Option Guard
 
 @[simp] theorem savedBooleanGuard_not_guard (guard : SavedBooleanGuard) :
     guardOperands? guard.condition = none := by
-  obtain ⟨index, negations, propNegations, argument⟩ := guard
+  obtain ⟨value, extended, propNegations⟩ := guard
   induction propNegations with
   | zero =>
-    cases negations with
-    | zero => cases argument <;> rfl
-    | succ n =>
-      simp [SavedBooleanGuard.condition, SavedBooleanGuard.expr, GuardNegation.condition,
-        BooleanGuardNegation.expr, guardOperands?, comparisonOperands?, savedBooleanValue_not_comparison,
-        booleanGuardCondition?, booleanGuardOperands?, savedBooleanValue_not_closed]
+    have noClosed := savedBooleanValue_not_closed ⟨value, extended, 0⟩
+    change booleanGuardOperands? value = none at noClosed
+    change guardOperands? (.app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) value)
+      (.const ``Bool.true [])) = none
+    rw [guardOperands?]
+    · simp [booleanTruth_not_comparison_of_not_closed value extended, booleanGuardCondition?, noClosed]
+    all_goals simp
   | succ n ih =>
     simpa only [SavedBooleanGuard.condition, SavedBooleanGuard.expr, GuardNegation.condition,
       guardOperands?, Option.map_none] using congrArg (Option.map Guard.negate) ih
