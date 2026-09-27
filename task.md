@@ -511,14 +511,17 @@ controls. Prior tests pass 32,496 comparisons, 29,952 invalid-input checks and
 2,304 controls. Evidence is in
 [the mixed-condition loop archive](proofs/compiler/boolean-loop-mixed-condition-2026-09-27/README.md).
 
-Current capability: direct local calls to functions containing Boolean-result
-loops. Source totality, exact argument parsing, extraction acceptance/support,
-evaluation and invariant proofs pass for word and Boolean parameters. The existing
-scalar helper path runs first; a checked direct-call fallback binds the argument
-in the function body. Public extraction and WASM admission proofs pass. New tests pass 16,368
-native/IR comparisons, 5,760 invalid-input checks and 576 equivalent-binding
-controls. The complete compiler proof and WASM checks are next. A saved native
-failure identifies wrappers around the direct call as the next capability.
+Direct local calls to functions containing Boolean-result loops are complete for
+word and Boolean parameters, captured values/functions, nested calls and Id
+annotations. The argument cannot refer to the helper itself. The existing scalar
+helper path runs first; the checked direct-call fallback preserves argument
+bindings across loop states. The complete source-to-WASM theorem and nineteen
+audits pass. Native Lean/V8 agree on 609 inputs across 28 declarations, including
+twenty-three ranges; eighteen prior modules retain identical bytes. New tests pass
+16,368 native/IR comparisons, 5,760 invalid-input checks and 576 equivalent-binding
+controls. Prior tests pass 161,280 comparisons, 96,768 invalid-input checks and
+8,064 controls. Evidence is in
+[the direct-continuation archive](proofs/compiler/boolean-loop-direct-continuation-2026-09-27/README.md).
 
 Next: standard wrappers around local continuation calls, conditional calls to
 loop-containing continuations, followed by
