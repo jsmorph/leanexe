@@ -930,10 +930,12 @@ result-function controls remain accepted. The corpus contains 1615 declarations.
 Evidence is in
 [the Boolean step scalar-helper archive](proofs/compiler/boolean-step-scalar-function-2026-09-27/README.md).
 
-Current capability: inspecting complete Boolean step results. Preserve fixed
-match/casesOn probes, check exact motives and branch domains, and prove primitive
-casesOn elimination through WASM. Ordinary match uses a generated matcher declaration,
-which needs a separate checked declaration-expansion capability.
+Current capability: explicit ForInStep.casesOn for Boolean step results. Source
+totality, checked motives/domains, extraction correctness, acceptance/support and
+invariants pass. Direct, captured-helper and retained-Id probes compile; ordinary
+match still uses an unsupported generated matcher declaration. The public compiler
+build passes, and new tests pass 18,624 native/IR comparisons and 10,752 invalid-input
+checks. Source-to-WASM audits and independent V8 comparisons are pending.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
