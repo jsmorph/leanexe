@@ -18,6 +18,7 @@ import Project.Beck.ExecutionRoundBoundary
 import Project.Beck.ExecutionRoundPush
 import Project.Beck.ExecutionRoundNumerator
 import Project.Beck.ExecutionRoundLoop
+import Project.Beck.ExecutionRound
 import Project.Beck.ExecutionWordSetWindow
 import Project.Beck.ExecutionMatrix
 import Project.Beck.ExecutionScan
@@ -177,3 +178,8 @@ import Project.Beck.ExecutionMatrixPrefix
 #print axioms Project.Beck.Execution.roundNumerator_exact
 #print axioms Project.Beck.Execution.roundStep_exact
 #print axioms Project.Beck.Execution.roundLoop_exact
+#print axioms Project.Beck.Execution.wordEmpty_exact
+#print axioms Project.Beck.Execution.roundInit_exact
+#print axioms Project.Beck.Execution.roundFinish_exact
+#print axioms Project.Beck.Execution.roundUpdate_exact
+#print axioms Project.Beck.Execution.round_exact
