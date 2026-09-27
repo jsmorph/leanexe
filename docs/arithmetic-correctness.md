@@ -312,8 +312,11 @@ Decision evidence preserves the exact Boolean leaf while allowing proved
 annotation equivalence in arithmetic leaves. Direct calls to Bool- or UInt64-input Boolean helpers can also be leaves,
 including nested calls, negation, Id result annotations and captures. The typed
 call checker validates each argument and rejects value/function confusion.
-Compound Boolean expressions as leaves of these mixed propositions remain
-subsequent work.
+Compound Boolean leaves also admit junctions, equality/inequality, choices,
+Boolean and word lets, standard Id binds, wrappers and metadata. The existing
+Boolean conversion checker validates the entire expression. Native Boolean lets
+inside Id.run use this form. Bare lets elaborated inside a proposition, with
+substituted decision operands, remain a separate unsupported form.
 
 Bool.toUInt64 and equivalent dot notation convert admitted Boolean values to
 UInt64. Inputs may be literals, saved flags, comparisons, decisions, negations,

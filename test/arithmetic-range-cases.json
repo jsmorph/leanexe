@@ -494,5 +494,9 @@
   "rangeCallMixedStep",
   "rangeCallMixedContinue",
   "rangeCallMixedOuter",
-  "rangeCallMixedHelper"
+  "rangeCallMixedHelper",
+  "rangeExtendedMixedStep",
+  "rangeExtendedMixedContinue",
+  "rangeExtendedMixedOuter",
+  "rangeExtendedMixedHelper"
 ]

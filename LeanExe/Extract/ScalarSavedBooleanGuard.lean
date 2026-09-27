@@ -4,51 +4,30 @@ import LeanExe.Extract.ScalarBooleanGuardSyntax
 namespace LeanExe.Extract.Core
 open LeanExe.Source.Scalar
 
-def savedBooleanValue? : Lean.Expr → Option (Nat × Nat × Option Lean.Expr)
-  | .bvar index => some (index, 0, none)
-  | .app (.bvar index) argument => some (index, 0, some argument)
-  | .app (.const ``Bool.not []) value => do
-      let (index, negations, argument) ← savedBooleanValue? value
-      some (index, negations + 1, argument)
-  | _ => none
-
-@[simp] theorem savedBooleanValue_accepts (index negations : Nat) (argument : Option Lean.Expr) :
-    savedBooleanValue? (BooleanGuardNegation.expr negations (SavedBooleanGuard.reference index argument)) =
-      some (index, negations, argument) := by
-  induction negations with
-  | zero => cases argument <;> rfl
-  | succ n ih => simp [BooleanGuardNegation.expr, savedBooleanValue?, ih]
-
-theorem savedBooleanValue_sound {value : Lean.Expr} {index negations : Nat} {argument : Option Lean.Expr}
-    (parsed : savedBooleanValue? value = some (index, negations, argument)) :
-    value = BooleanGuardNegation.expr negations (SavedBooleanGuard.reference index argument) := by
-  induction value using savedBooleanValue?.induct generalizing index negations argument with
-  | case1 idx => cases parsed; rfl
-  | case2 idx arg => cases parsed; rfl
-  | case3 value ih =>
-    simp only [savedBooleanValue?, bind, Option.bind_eq_some_iff, Option.some.injEq] at parsed
-    obtain ⟨⟨idx, n, arg⟩, found, same⟩ := parsed
-    cases same
-    simp [BooleanGuardNegation.expr, ih found]
-  | case4 value noVar noCall noNot =>
-    rw [savedBooleanValue?] at parsed
-    · cases parsed
-    · exact noVar
-    · exact noCall
-    · exact noNot
+@[simp] theorem savedBooleanValue_not_closed (guard : SavedBooleanGuard) :
+    booleanGuardOperands? guard.expr = none := by
+  cases found : booleanGuardOperands? guard.expr with
+  | none => rfl
+  | some closed => exact False.elim (guard.extended closed (booleanGuardOperands_sound found))
 
 def savedBooleanGuard? : Lean.Expr → Option SavedBooleanGuard
   | .app (.const ``Not []) value => (savedBooleanGuard? value).map SavedBooleanGuard.negate
-  | .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) value) (.const ``Bool.true []) => do
-      let (index, negations, argument) ← savedBooleanValue? value
-      some ⟨index, negations, 0, argument⟩
+  | .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) value) (.const ``Bool.true []) =>
+      if excluded : booleanGuardOperands? value = none then
+        some ⟨value, fun closed same => by
+          rw [same, booleanGuardOperands_expr] at excluded
+          contradiction, 0⟩
+      else none
   | _ => none
 
 @[simp] theorem savedBooleanGuard_accepts (guard : SavedBooleanGuard) :
     savedBooleanGuard? guard.condition = some guard := by
-  obtain ⟨index, negations, propNegations, argument⟩ := guard
+  obtain ⟨value, extended, propNegations⟩ := guard
   induction propNegations with
-  | zero => simp [SavedBooleanGuard.condition, SavedBooleanGuard.expr, GuardNegation.condition, savedBooleanGuard?]
+  | zero =>
+    have excluded := savedBooleanValue_not_closed ⟨value, extended, 0⟩
+    change booleanGuardOperands? value = none at excluded
+    simp [SavedBooleanGuard.condition, SavedBooleanGuard.expr, GuardNegation.condition, savedBooleanGuard?, excluded]
   | succ n ih =>
     simpa only [SavedBooleanGuard.condition, GuardNegation.condition, savedBooleanGuard?,
       Option.map_some, SavedBooleanGuard.negate, SavedBooleanGuard.expr] using congrArg (Option.map SavedBooleanGuard.negate) ih
@@ -61,26 +40,45 @@ theorem savedBooleanGuard_sound {condition : Lean.Expr} {guard : SavedBooleanGua
     obtain ⟨inner, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
     rw [SavedBooleanGuard.negate_condition, ih found]
   | case2 value =>
-    simp only [savedBooleanGuard?, bind, Option.bind_eq_some_iff, Option.some.injEq] at parsed
-    obtain ⟨⟨index, negations, argument⟩, found, rfl⟩ := parsed
-    simp [SavedBooleanGuard.condition, SavedBooleanGuard.expr, GuardNegation.condition,
-      savedBooleanValue_sound found]
-  | case3 value noNot noTruth =>
+    rw [savedBooleanGuard?] at parsed
+    split at parsed
+    · cases parsed; rfl
+    · contradiction
+  | case3 value excluded =>
+    simp [savedBooleanGuard?, excluded] at parsed
+  | case4 value noNot noTruth =>
     rw [savedBooleanGuard?] at parsed
     · cases parsed
     · exact noNot
     · exact noTruth
 
-theorem savedBooleanValue_not_comparison (index negations : Nat) (argument : Option Lean.Expr) :
-    booleanComparisonOperands? (BooleanGuardNegation.expr negations (SavedBooleanGuard.reference index argument)) = none := by
-  induction negations with
-  | zero => cases argument <;> rfl
-  | succ n ih => simp [BooleanGuardNegation.expr, booleanComparisonOperands?, ih]
-
-theorem savedBooleanValue_not_closed (index negations : Nat) (argument : Option Lean.Expr) :
-    booleanGuardOperands? (BooleanGuardNegation.expr negations (SavedBooleanGuard.reference index argument)) = none := by
-  induction negations with
-  | zero => cases argument <;> rfl
-  | succ n ih => simp [BooleanGuardNegation.expr, booleanGuardOperands?, ih]
+theorem booleanTruth_not_comparison_of_not_closed (value : Lean.Expr)
+    (extended : ∀ guard : BooleanGuard, value ≠ guard.expr) :
+    comparisonOperands? (.app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) value)
+      (.const ``Bool.true [])) = none := by
+  cases found : comparisonOperands? (.app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) value)
+      (.const ``Bool.true [])) with
+  | none => rfl
+  | some result =>
+    obtain ⟨op, a, b⟩ := result
+    have shape := comparisonOperands_sound found
+    cases op with
+    | eq type | ne type | lt type | le type | gt type | ge type =>
+      cases type <;> simp [Comparison.condition, ResultType.expr] at shape
+    | negate op => simp [Comparison.condition] at shape
+    | beq =>
+      have same : value = (BooleanGuard.compare .eq a b).expr := by
+        simpa [Comparison.condition, Comparison.boolExpr, BooleanGuard.expr,
+          BooleanComparison.expr, BooleanComparison.atom] using shape
+      exact False.elim (extended _ same)
+    | bne =>
+      have same : value = (BooleanGuard.compare .ne a b).expr := by
+        simpa [Comparison.condition, Comparison.boolExpr, BooleanGuard.expr,
+          BooleanComparison.expr, BooleanComparison.atom] using shape
+      exact False.elim (extended _ same)
+    | boolNot op =>
+      have same : value = (BooleanGuard.compare (.negate op) a b).expr := by
+        simpa [Comparison.condition, BooleanGuard.expr, BooleanComparison.expr] using shape
+      exact False.elim (extended _ same)
 
 end LeanExe.Extract.Core

@@ -14,6 +14,16 @@ run_elab do
      (0x8000000000000000, 2), (0xffffffffffffffff, 63),
      (0x8000000000000001, 64), (0xffffffffffffffff, 65),
      (0x0123456789abcdef, 0xffffffffffffffff)]
+  let makeLeaf (index bn pn : Nat) (argument : Option Lean.Expr) : Lean.Elab.Term.TermElabM SavedBooleanGuard := do
+    let base := match argument with | none => Lean.Expr.bvar index | some arg => .app (.bvar index) arg
+    let value := BooleanGuardNegation.expr bn base
+    let condition := GuardNegation.condition pn
+      (.app (.app (.app (.const ``Eq [.succ .zero]) boolean) value) (booleanLiteralExpr true))
+    let some guard := savedBooleanGuard? condition | throwError "local Boolean leaf rejected"
+    pure guard
+  let wrongLeaf (guard : SavedBooleanGuard) := GuardNegation.evidence guard.propNegations
+    (.app (.app (.app (.const ``Eq [.succ .zero]) boolean) (.bvar 9)) (booleanLiteralExpr true))
+    (.app (.app (.const ``instDecidableEqBool []) (.bvar 9)) (booleanLiteralExpr true))
   let sourceAdd := Lean.Expr.app (.app (classHead ScalarPrimitive.add.classNames
     (.identity .word) .word .word .word) (.bvar 3)) (.bvar 2)
   let targetAdd := Lean.Expr.app (.app (.const ``UInt64.add []) (.bvar 3)) (.bvar 2)
@@ -25,15 +35,15 @@ run_elab do
         GuardNegation.evidence n (op.condition left.condition right.condition)
           (op.evidence left.condition right.condition (decision badSaved left) (decision badSaved right))
     | .savedLeft n op left right =>
-        let saved := if badSaved then ({ left with index := 9 } : SavedBooleanGuard).evidence else left.evidence
+        let saved := if badSaved then wrongLeaf left else left.evidence
         GuardNegation.evidence n (op.condition left.condition right.condition)
           (op.evidence left.condition right.condition saved (decision badSaved right))
     | .savedRight n op left right =>
-        let saved := if badSaved then ({ right with index := 9 } : SavedBooleanGuard).evidence else right.evidence
+        let saved := if badSaved then wrongLeaf right else right.evidence
         GuardNegation.evidence n (op.condition left.condition right.condition)
           (op.evidence left.condition right.condition (decision badSaved left) saved)
     | .savedBoth n op left right =>
-        let saved := if badSaved then ({ left with index := 9 } : SavedBooleanGuard).evidence else left.evidence
+        let saved := if badSaved then wrongLeaf left else left.evidence
         GuardNegation.evidence n (op.condition left.condition right.condition)
           (op.evidence left.condition right.condition saved right.evidence)
     | guard => guard.evidence
@@ -48,16 +58,16 @@ run_elab do
           (.letE `second bt.expr (booleanLiteralExpr secondFlag) body false) false) .default) .default
       for op in [Junction.conjunction, .disjunction] do
         for (bn, pn, n) in [(0, 0, 0), (1, 0, 1), (0, 1, 2), (2, 2, 3)] do
-          let first : SavedBooleanGuard := ⟨1, bn, pn, none⟩
-          let second : SavedBooleanGuard := ⟨0, bn + 1, pn + 1, none⟩
+          let first ← makeLeaf 1 bn pn none
+          let second ← makeLeaf 0 (bn + 1) (pn + 1) none
           let less : Guard := .compare (.lt (.identity .word)) sourceAdd (.bvar 2)
           let equal : Guard := .compare .eq (.bvar 3) (.bvar 2)
           let trees (a b : SavedBooleanGuard) : List Guard :=
             [.savedLeft n op a less, .savedRight n op equal b, .savedBoth n op a b,
              .junction n op (.savedLeft 1 .conjunction a less) (.savedRight 2 .disjunction equal b)]
           let valid := trees first second
-          let wordLeaves := trees { first with index := 3 } { second with index := 2 }
-          let missingLeaves := trees { first with index := 7 } { second with index := 8 }
+          let wordLeaves := trees (← makeLeaf 3 bn pn none) (← makeLeaf 2 (bn + 1) (pn + 1) none)
+          let missingLeaves := trees (← makeLeaf 7 bn pn none) (← makeLeaf 8 (bn + 1) (pn + 1) none)
           for (guard, badWord, missing) in valid.zip (wordLeaves.zip missingLeaves) do
             unless (guardOperands? guard.condition).isSome && guardDecision? guard guard.evidence do
               throwError "saved mixed guard parser rejected"
