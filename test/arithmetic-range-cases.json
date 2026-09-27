@@ -446,5 +446,9 @@
   "rangeBooleanPredicateWrapperStep",
   "rangeBooleanPredicateWrapperContinue",
   "rangeBooleanPredicateWrapperOuter",
-  "rangeBooleanPredicateWrapperCapture"
+  "rangeBooleanPredicateWrapperCapture",
+  "rangeBooleanPredicateBindStep",
+  "rangeBooleanPredicateBindCondition",
+  "rangeBooleanPredicateBindOuter",
+  "rangeBooleanPredicateBindOuterCapture"
 ]
