@@ -42,6 +42,12 @@ def functionExpr (input : Lean.Expr) (output : BooleanType)
   .letE name (.forallE typeName input (resultType output) typeBi)
     (.lam paramName input value paramBi) body nondep
 
+def scalarFunctionExpr (input output : Lean.Expr)
+    (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
+    (value body : Lean.Expr) (nondep : Bool) : Lean.Expr :=
+  .letE name (.forallE typeName input output typeBi)
+    (.lam paramName input value paramBi) body nondep
+
 /-- Native Boolean step results retain their yield/done distinction. -/
 inductive Eval : Lean.Expr → List Value → ForInStep Bool → Prop where
   | yieldDirect (value : EvalWith (.app (.const ``Bool.toUInt64 []) source) (values.map Value.toScalar) (Bool.toUInt64 flag)) :
@@ -102,6 +108,23 @@ inductive Eval : Lean.Expr → List Value → ForInStep Bool → Prop where
       (argument : Eval a values bound) :
       Eval (.app (.bvar index) a) values (f bound)
 
+  | letScalarWordFunction (input : ResultType) (output : ResultType)
+      (function : ∀ x, EvalWith a (.word x :: values.map Value.toScalar) (f x))
+      (body : Eval b (.scalar (.function false f) :: values) outcome) :
+      Eval (scalarFunctionExpr input.expr output.expr name typeName paramName typeBi paramBi a b nondep) values outcome
+  | letScalarPredicateFunction (input : ResultType) (output : BooleanType)
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) a) (.word x :: values.map Value.toScalar) (Bool.toUInt64 (f x)))
+      (body : Eval b (.scalar (.predicateFunction f) :: values) outcome) :
+      Eval (scalarFunctionExpr input.expr output.expr name typeName paramName typeBi paramBi a b nondep) values outcome
+  | letScalarBooleanFunction (input : BooleanType) (output : ResultType)
+      (function : ∀ x, EvalWith a (.boolean x :: values.map Value.toScalar) (f x))
+      (body : Eval b (.scalar (.booleanFunction f) :: values) outcome) :
+      Eval (scalarFunctionExpr input.expr output.expr name typeName paramName typeBi paramBi a b nondep) values outcome
+  | letScalarBooleanPredicateFunction (input : BooleanType) (output : BooleanType)
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) a) (.boolean x :: values.map Value.toScalar) (Bool.toUInt64 (f x)))
+      (body : Eval b (.scalar (.booleanPredicateFunction f) :: values) outcome) :
+      Eval (scalarFunctionExpr input.expr output.expr name typeName paramName typeBi paramBi a b nondep) values outcome
+
 /-- Support checks both branches and every bound value, including unused ones. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
   | yieldDirect (value : SupportedWith (types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) source)) :
@@ -156,6 +179,23 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       Supported types (functionExpr (resultType input) output name typeName paramName typeBi paramBi a b nondep)
   | resultApply (function : types[index]? = some .resultFunction) (argument : Supported types a) :
       Supported types (.app (.bvar index) a)
+
+  | letScalarWordFunction (input : ResultType) (output : ResultType)
+      (function : SupportedWith (.word :: types.map BindingKind.toScalar) a)
+      (body : Supported (.scalar (.function false) :: types) b) :
+      Supported types (scalarFunctionExpr input.expr output.expr name typeName paramName typeBi paramBi a b nondep)
+  | letScalarPredicateFunction (input : ResultType) (output : BooleanType)
+      (function : SupportedWith (.word :: types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) a))
+      (body : Supported (.scalar (.predicateFunction) :: types) b) :
+      Supported types (scalarFunctionExpr input.expr output.expr name typeName paramName typeBi paramBi a b nondep)
+  | letScalarBooleanFunction (input : BooleanType) (output : ResultType)
+      (function : SupportedWith (.boolean :: types.map BindingKind.toScalar) a)
+      (body : Supported (.scalar (.booleanFunction) :: types) b) :
+      Supported types (scalarFunctionExpr input.expr output.expr name typeName paramName typeBi paramBi a b nondep)
+  | letScalarBooleanPredicateFunction (input : BooleanType) (output : BooleanType)
+      (function : SupportedWith (.boolean :: types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) a))
+      (body : Supported (.scalar (.booleanPredicateFunction) :: types) b) :
+      Supported types (scalarFunctionExpr input.expr output.expr name typeName paramName typeBi paramBi a b nondep)
 
 theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (supported : Supported types source) (values : List Value)
@@ -246,5 +286,43 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨f, found⟩ := resultFunction_lookup typed present
     obtain ⟨bound, evaluated⟩ := ih values typed
     exact ⟨f bound, .resultApply found evaluated⟩
+  | @letScalarWordFunction types a b name typeName paramName typeBi paramBi nondep input output function body ih =>
+    have total (x : UInt64) := function.evaluates (.word x :: values.map Value.toScalar)
+      (by simp [Scalar.Value.kind, typed_projection typed])
+    let f := fun x => (total x).choose
+    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.function false f) :: values)
+      (by simp [Value.kind, Scalar.Value.kind, typed])
+    exact ⟨outcome, .letScalarWordFunction input output (fun x => (total x).choose_spec) evaluated⟩
+  | @letScalarPredicateFunction a types b name typeName paramName typeBi paramBi nondep input output function body ih =>
+    have total : ∀ x : UInt64, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) a) (.word x :: values.map Value.toScalar) flag.toUInt64 := by
+      intro x
+      obtain ⟨encoded, evaluated⟩ := function.evaluates (.word x :: values.map Value.toScalar)
+        (by simp [Scalar.Value.kind, typed_projection typed])
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x => (total x).choose
+    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.predicateFunction f) :: values)
+      (by simp [Value.kind, Scalar.Value.kind, typed])
+    exact ⟨outcome, .letScalarPredicateFunction input output (fun x => (total x).choose_spec) evaluated⟩
+  | @letScalarBooleanFunction types a b name typeName paramName typeBi paramBi nondep input output function body ih =>
+    have total (x : Bool) := function.evaluates (.boolean x :: values.map Value.toScalar)
+      (by simp [Scalar.Value.kind, typed_projection typed])
+    let f := fun x => (total x).choose
+    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.booleanFunction f) :: values)
+      (by simp [Value.kind, Scalar.Value.kind, typed])
+    exact ⟨outcome, .letScalarBooleanFunction input output (fun x => (total x).choose_spec) evaluated⟩
+  | @letScalarBooleanPredicateFunction a types b name typeName paramName typeBi paramBi nondep input output function body ih =>
+    have total : ∀ x : Bool, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) a) (.boolean x :: values.map Value.toScalar) flag.toUInt64 := by
+      intro x
+      obtain ⟨encoded, evaluated⟩ := function.evaluates (.boolean x :: values.map Value.toScalar)
+        (by simp [Scalar.Value.kind, typed_projection typed])
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x => (total x).choose
+    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.booleanPredicateFunction f) :: values)
+      (by simp [Value.kind, Scalar.Value.kind, typed])
+    exact ⟨outcome, .letScalarBooleanPredicateFunction input output (fun x => (total x).choose_spec) evaluated⟩
 
 end LeanExe.Source.Scalar.BooleanStep

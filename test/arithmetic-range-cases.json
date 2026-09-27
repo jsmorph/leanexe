@@ -939,5 +939,17 @@
   "rangeBooleanStepResultFunctionRepeated",
   "rangeBooleanStepResultFunctionMonadic",
   "rangeBooleanStepResultFunctionFlagInput",
-  "rangeBooleanStepResultFunctionWordTail"
+  "rangeBooleanStepResultFunctionWordTail",
+  "rangeBooleanStepScalarWord",
+  "rangeBooleanStepScalarPredicate",
+  "rangeBooleanStepScalarBooleanWord",
+  "rangeBooleanStepScalarBooleanPredicate",
+  "rangeBooleanStepScalarWordId",
+  "rangeBooleanStepScalarPredicateId",
+  "rangeBooleanStepScalarBooleanWordId",
+  "rangeBooleanStepScalarBooleanPredicateId",
+  "rangeBooleanStepScalarCapture",
+  "rangeBooleanStepScalarUnused",
+  "rangeBooleanStepScalarRepeated",
+  "rangeBooleanStepScalarNested"
 ]

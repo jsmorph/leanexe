@@ -8188,6 +8188,71 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def rangeBooleanStepScalarWord (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f := fun n : UInt64 => n + seed
+    if f i.toUInt64 == 0 then .done (!flag) else .yield flag
+
+def rangeBooleanStepScalarPredicate (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f := fun n : UInt64 => n % 3 == seed
+    if f i.toUInt64 then .done (!flag) else .yield flag
+
+def rangeBooleanStepScalarBooleanWord (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f := fun b : Bool => if b then seed + 1 else seed * 3
+    if f flag == i.toUInt64 then .done (!flag) else .yield flag
+
+def rangeBooleanStepScalarBooleanPredicate (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f := fun b : Bool => b != (i.toUInt64 == seed)
+    .yield (f flag)
+
+def rangeBooleanStepScalarWordId (count seed : UInt64) : Bool :=
+  forIn (m := Id) [1:count.toNat:3] (seed == 0) fun i flag =>
+    let f : Id UInt64 → Id UInt64 := fun n => pure (Id.run n + seed)
+    if Id.run (f (pure i.toUInt64)) == 0 then .done (!flag) else .yield flag
+
+def rangeBooleanStepScalarPredicateId (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f : Id UInt64 → Id (Id Bool) := fun n => pure (pure (Id.run n % 3 == seed))
+    if Id.run (Id.run (f (pure i.toUInt64))) then .done (!flag) else .yield flag
+
+def rangeBooleanStepScalarBooleanWordId (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f : Id Bool → Id UInt64 := fun b => pure (if Id.run b then seed + 1 else seed * 3)
+    if Id.run (f (pure flag)) == i.toUInt64 then .done (!flag) else .yield flag
+
+def rangeBooleanStepScalarBooleanPredicateId (count : UInt64) (seed : Bool) : Id Bool :=
+  forIn (m := Id) [1:count.toNat:3] seed fun i flag =>
+    let f : Id Bool → Id (Id Bool) := fun b => pure (pure (Id.run b != (i.toUInt64 % 3 == 0)))
+    .yield (Id.run (Id.run (f (pure flag))))
+
+def rangeBooleanStepScalarCapture (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let saved := flag
+    let f := fun n : UInt64 => saved != (n == seed)
+    let saved := !flag
+    if saved then .yield (f i.toUInt64) else .done (f seed)
+
+def rangeBooleanStepScalarUnused (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let _f := fun n : UInt64 => n + seed
+    let _g := fun b : Bool => b != flag
+    .yield (flag != (i.toUInt64 == seed))
+
+def rangeBooleanStepScalarRepeated (count seed : UInt64) : UInt64 :=
+  let flag : Bool := forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f := fun n : UInt64 => n + seed
+    if f (f i.toUInt64) == 0 then .done (!flag) else .yield flag
+  if flag then seed + count else seed * 3
+
+def rangeBooleanStepScalarNested (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f := fun n : UInt64 => n + seed
+    let g := fun b : Bool => b != (f i.toUInt64 == 0)
+    .yield (g flag)
+
 def rangeBooleanStepResultFunctionDirect (count seed : UInt64) : Bool :=
   forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
     let f := fun result : ForInStep Bool => result
@@ -12123,6 +12188,18 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolRelationExit", (fun (x y : UInt64) => rangeBoolRelationExit x y)),
    ("rangeBoolRelationContinue", (fun (x y : UInt64) => rangeBoolRelationContinue x y)),
    ("rangeBoolRelationTail", (fun (x y : UInt64) => (rangeBoolRelationTail x y).toUInt64)),
+   ("rangeBooleanStepScalarWord", (fun (x y : UInt64) => (rangeBooleanStepScalarWord x y).toUInt64)),
+   ("rangeBooleanStepScalarPredicate", (fun (x y : UInt64) => (rangeBooleanStepScalarPredicate x y).toUInt64)),
+   ("rangeBooleanStepScalarBooleanWord", (fun (x y : UInt64) => (rangeBooleanStepScalarBooleanWord x y).toUInt64)),
+   ("rangeBooleanStepScalarBooleanPredicate", (fun (x y : UInt64) => (rangeBooleanStepScalarBooleanPredicate x y).toUInt64)),
+   ("rangeBooleanStepScalarWordId", (fun (x y : UInt64) => (rangeBooleanStepScalarWordId x y).toUInt64)),
+   ("rangeBooleanStepScalarPredicateId", (fun (x y : UInt64) => (rangeBooleanStepScalarPredicateId x y).toUInt64)),
+   ("rangeBooleanStepScalarBooleanWordId", (fun (x y : UInt64) => (rangeBooleanStepScalarBooleanWordId x y).toUInt64)),
+   ("rangeBooleanStepScalarBooleanPredicateId", (fun (x y : UInt64) => (rangeBooleanStepScalarBooleanPredicateId x (y != 0)).toUInt64)),
+   ("rangeBooleanStepScalarCapture", (fun (x y : UInt64) => (rangeBooleanStepScalarCapture x y).toUInt64)),
+   ("rangeBooleanStepScalarUnused", (fun (x y : UInt64) => (rangeBooleanStepScalarUnused x y).toUInt64)),
+   ("rangeBooleanStepScalarRepeated", (fun (x y : UInt64) => rangeBooleanStepScalarRepeated x y)),
+   ("rangeBooleanStepScalarNested", (fun (x y : UInt64) => (rangeBooleanStepScalarNested x y).toUInt64)),
    ("rangeBooleanStepResultFunctionDirect", (fun (x y : UInt64) => (rangeBooleanStepResultFunctionDirect x y).toUInt64)),
    ("rangeBooleanStepResultFunctionIgnored", (fun (x y : UInt64) => (rangeBooleanStepResultFunctionIgnored x y).toUInt64)),
    ("rangeBooleanStepResultFunctionNested", (fun (x y : UInt64) => (rangeBooleanStepResultFunctionNested x y).toUInt64)),

@@ -39,7 +39,11 @@ status are preserved. A bound `done` exits only when it becomes the callback
 result; ignoring it continues the loop. Every bound computation is checked.
 Functions taking complete Boolean steps preserve both result components, including
 through conditional continuations. Ignored step arguments are checked without
-forcing an exit. Step-result pattern matching is not yet admitted.
+forcing an exit. Scalar helpers may also be declared inside Boolean steps with any word/Boolean
+input and result combination. Exact standard Id annotations are checked. Helpers
+can be nested, reused, or captured by another function; captured values retain
+their lexical meaning. Every function body is checked even when unused.
+Step-result pattern matching is not yet admitted.
 
 A word-valued loop may feed a Boolean continuation, for example
 `let value := Id.run do ...; value == seed` or

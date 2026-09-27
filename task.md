@@ -918,10 +918,12 @@ the conditional result bind are restored; three result controls remain accepted.
 The corpus contains 1603 declarations. Evidence is in
 [the step result function archive](proofs/compiler/boolean-step-result-function-2026-09-27/README.md).
 
-Current capability: scalar helper declarations within Boolean steps. Four fixed
-word/Boolean input/output probes are preserved. Reuse scalar closure semantics
-and proofs while checking exact annotations and lexical captures, then prove
-this extension through WASM before adding step-result pattern matching.
+Current capability: scalar helper declarations within Boolean steps. All four
+word/Boolean input/output combinations now have source totality, exact annotation
+checks, extraction correctness, acceptance/support and invariant proofs. Four
+fixed probes now compile. The public compiler build passes, and new tests pass
+27,936 native/IR comparisons and 16,128 invalid-input checks. Source-to-WASM audits
+and independent V8 comparisons are pending.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
