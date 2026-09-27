@@ -457,12 +457,16 @@ controls. Prior tests pass 64,752 comparisons, 55,296 invalid-input checks and
 4,608 controls. Evidence is in
 [the Boolean-result loop-helper archive](proofs/compiler/boolean-loop-predicate-helpers-2026-09-27/README.md).
 
-Current capability: retained Id input annotations on helpers before Boolean
-loops. A recursive source/extraction rule handles any number of standard Id
-layers across all four word/Boolean input and result combinations. Input domains
-must match. Focused proofs pass; new tests pass 64,752 native/IR comparisons,
-73,728 invalid-input checks and 4,608 unused-helper controls. Complete compiler
-proof, native Lean/V8 checks and evidence archive are next.
+Standard Id input annotations on helpers before Boolean loops are complete,
+including any number of layers across word/Boolean input and result kinds.
+Declared and lambda input domains must match; captured values remain fixed.
+Unused helper bodies are checked. The complete source-to-WASM theorem and nineteen
+audits pass. Native Lean/V8 agree on 609 inputs across 28 declarations, including
+twenty-three ranges; eighteen prior modules retain identical bytes. New tests pass
+64,752 native/IR comparisons, 73,728 invalid-input checks and 4,608 unused helper
+controls. Prior tests pass 64,992 comparisons, 55,296 invalid-input checks and
+4,608 controls. Evidence is in
+[the helper input-annotation archive](proofs/compiler/boolean-loop-helper-input-id-2026-09-27/README.md).
 
 Next: helpers with multiple word arguments and Unit arguments before Boolean
 loops, retained instances and broader signatures. Conditional Id actions can elaborate
