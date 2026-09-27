@@ -1,5 +1,6 @@
 import Project.ExpArm.NormalPath
 import Project.ExpArm.AdjustedScale
+import Project.ProofKit.F64PowerValue
 
 namespace Project.ExpArm
 open CodeLib.IEEE64
@@ -81,7 +82,97 @@ theorem negative_reduction_bounds (x : UInt64) (hf : Finite x)
   have hu' : reductionInteger x ≤ (-94081 : Int) := by exact_mod_cast hu
   omega
 
+theorem adjusted_path_normal (x scale : UInt64) (hf : Finite x) (hx : |value x| ≤ 800)
+    (c : Int) (hm : -1019 ≤ reductionInteger x/128+c ∧ reductionInteger x/128+c ≤ 926)
+    (hsf : Finite scale)
+    (hs : value scale * (2 : ℝ)^1023 =
+      value (tableScaleWord (reductionWord x &&& 127).toNat) *
+        (2 : ℝ)^(1023+(reductionInteger x/128+c)).toNat) :
+    Wasm.IEEE64.sign (adjustedPath x scale) = false ∧
+      0 < Wasm.IEEE64.exponent (adjustedPath x scale) := by
+  have h := adjusted_path_error x scale hf hx c hm hsf hs
+  apply Project.ProofKit.F64NormalScale.normal_of_value _ h.1
+  let f := scaleFactor (reductionInteger x/128+c)
+  have hp : 0 < f := scaleFactor_pos _
+  have hl : (2 : ℝ)^(-1019 : Int) ≤ f := by
+    rw [show f = (2 : ℝ)^(reductionInteger x/128+c) from
+      scaleFactor_zpow _ (by omega)]
+    exact zpow_le_zpow_right₀ (by norm_num) hm.1
+  have herr : |value (adjustedPath x scale)-Real.exp (value x+(c : ℝ)*Real.log 2)| <
+      f/2^52 := by
+    have hh := h.2.2.2
+    change |_ - _| < if _ then f/2^53 else f/2^52 at hh
+    split at hh
+    · exact hh.trans (div_lt_div_of_pos_left hp (by positivity) (by norm_num))
+    · exact hh
+  have hy : f/2 ≤ Real.exp (value x+(c : ℝ)*Real.log 2) := h.2.1
+  have hv : f/4 < value (adjustedPath x scale) := by
+    have hh := (abs_lt.mp herr).1
+    nlinarith
+  have hb : (2 : ℝ)^(-1022 : Int) ≤ f/4 := by
+    have hnum : (2 : ℝ)^(-1022 : Int) ≤ (2 : ℝ)^(-1019 : Int)/4 := by norm_num
+    exact hnum.trans (div_le_div_of_nonneg_right hl (by norm_num))
+  exact hb.trans hv.le
+
+def positiveCore (x : UInt64) : UInt64 :=
+  let word := reductionWord x
+  adjustedPath x (table[2*(word &&& 127).toNat+1]! + (word <<< 45) - ((1009 : UInt64) <<< 52))
+
+def negativeCore (x : UInt64) : UInt64 :=
+  let word := reductionWord x
+  adjustedPath x (table[2*(word &&& 127).toNat+1]! + (word <<< 45) + ((1022 : UInt64) <<< 52))
+
+theorem positive_core_error (x : UInt64) (hf : Finite x)
+    (hx : 512 ≤ value x ∧ value x ≤ 800) :
+    let f := scaleFactor (reductionInteger x/128-1009)
+    let y := Real.exp (value x-1009*Real.log 2)
+    Finite (positiveCore x) ∧ f/2 ≤ y ∧ y < 2*f ∧
+    |value (positiveCore x)-y| < if y < f then f/2^53 else f/2^52 := by
+  have hm := positive_reduction_bounds x hf hx
+  have hs := positive_scale_value (reductionWord x) (by
+    change 1 ≤ 1023+(reductionInteger x/128-1009) ∧ 1023+(reductionInteger x/128-1009) < 2047
+    omega)
+  have h := adjusted_path_error x _ hf (abs_le.mpr ⟨by linarith, hx.2⟩) (-1009)
+    (by omega) hs.1 hs.2.2
+  simpa only [positiveCore, Int.cast_neg, Int.cast_ofNat, neg_mul, sub_eq_add_neg] using h
+
+theorem negative_core_error (x : UInt64) (hf : Finite x)
+    (hx : -800 ≤ value x ∧ value x ≤ -512) :
+    let f := scaleFactor (reductionInteger x/128+1022)
+    let y := Real.exp (value x+1022*Real.log 2)
+    Finite (negativeCore x) ∧ f/2 ≤ y ∧ y < 2*f ∧
+    |value (negativeCore x)-y| < if y < f then f/2^53 else f/2^52 := by
+  have hm := negative_reduction_bounds x hf hx
+  have hs := negative_scale_value (reductionWord x) (by
+    change 1 ≤ 1023+(reductionInteger x/128+1022) ∧ 1023+(reductionInteger x/128+1022) < 2047
+    omega)
+  exact adjusted_path_error x _ hf (abs_le.mpr ⟨hx.1, by linarith⟩) 1022
+    (by omega) hs.1 hs.2.2
+
+theorem positive_core_normal (x : UInt64) (hf : Finite x)
+    (hx : 512 ≤ value x ∧ value x ≤ 800) :
+    Wasm.IEEE64.sign (positiveCore x) = false ∧ 0 < Wasm.IEEE64.exponent (positiveCore x) := by
+  have hm := positive_reduction_bounds x hf hx
+  have hs := positive_scale_value (reductionWord x) (by
+    change 1 ≤ 1023+(reductionInteger x/128-1009) ∧ 1023+(reductionInteger x/128-1009) < 2047
+    omega)
+  exact adjusted_path_normal x _ hf (abs_le.mpr ⟨by linarith, hx.2⟩) (-1009)
+    (by omega) hs.1 hs.2.2
+
+theorem negative_core_normal (x : UInt64) (hf : Finite x)
+    (hx : -800 ≤ value x ∧ value x ≤ -512) :
+    Wasm.IEEE64.sign (negativeCore x) = false ∧ 0 < Wasm.IEEE64.exponent (negativeCore x) := by
+  have hm := negative_reduction_bounds x hf hx
+  have hs := negative_scale_value (reductionWord x) (by
+    change 1 ≤ 1023+(reductionInteger x/128+1022) ∧ 1023+(reductionInteger x/128+1022) < 2047
+    omega)
+  exact adjusted_path_normal x _ hf (abs_le.mpr ⟨hx.1, by linarith⟩) 1022
+    (by omega) hs.1 hs.2.2
+
 #print axioms adjusted_path_error
+#print axioms adjusted_path_normal
+#print axioms positive_core_error
+#print axioms negative_core_error
 #print axioms positive_reduction_bounds
 #print axioms negative_reduction_bounds
 end Project.ExpArm
