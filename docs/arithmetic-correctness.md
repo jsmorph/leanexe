@@ -443,6 +443,9 @@ These choices also accept supported propositional guards, including UInt64
 comparisons, negation, compound propositions and proposition lets. Guard operands
 are recursively compiled, and the retained standard evidence is checked before
 compiling either branch. Proposition lets currently bind UInt64 or Bool values.
+Direct Boolean Eq/Ne conditions may compare general helper scopes, including
+relations to true or false. Both Boolean operands and both branches are checked;
+the exact standard decision evidence and dependent proof domains are retained.
 
 Saved Boolean variables and their negations may appear inside propositional
 conjunctions and disjunctions, such as `flag ∧ x < y` or `x = y ∨ !flag`.
