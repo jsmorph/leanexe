@@ -482,4 +482,44 @@ theorem extractScalarStepWith_booleanDependentBranch (locals : List ScalarStepBi
   rw [extractScalarStepWith_booleanPredicateDependentBranch, noBoolean]
   rfl
 
+theorem booleanBinaryHelper_not_manyStep (helper : BooleanBinaryHelper) :
+    scalarManyStepFunction? (helper.shape.first.arrow (helper.shape.second.arrow helper.shape.result.expr))
+      (helper.shape.first.lambda (helper.shape.second.lambda helper.body)) = none := by
+  cases result : helper.shape.result <;>
+    simp [scalarManyStepFunction?, manyFunction?, Parameter.arrow, Parameter.lambda,
+      functionSuffix?, BooleanType.expr, FunctionSuffix.arity]
+
+theorem extractScalarStepWith_letBinaryPredicate (locals : List ScalarStepBinding)
+    (helper : BooleanBinaryHelper) :
+    extractScalarStepWith locals helper.expr = (do
+      let _ ← extractScalarExprWith (.word (.u64 0) :: .word (.u64 0) :: locals.map ScalarStepBinding.toScalar)
+        (.app (.const ``Bool.toUInt64 []) helper.body)
+      let function := ScalarBinding.binaryPredicateFunction fun first second =>
+        extractScalarExprWith (.word second :: .word first :: locals.map ScalarStepBinding.toScalar)
+          (.app (.const ``Bool.toUInt64 []) helper.body)
+      extractScalarStepWith (.scalar function :: locals) helper.continuation) := by
+  have noMany := booleanBinaryHelper_not_many helper
+  have noManyStep := booleanBinaryHelper_not_manyStep helper
+  simp only [Parameter.arrow, Parameter.lambda] at noMany noManyStep
+  rw [BooleanBinaryHelper.expr, BooleanBinaryFunctionBinding.expr, Parameter.arrow, Parameter.arrow,
+    Parameter.lambda, Parameter.lambda, extractScalarStepWith, scalarResultType_boolean,
+    scalarStepResultType_boolean, noMany, noManyStep]
+  change (match found : booleanBinaryHelper? helper.expr with
+    | none => none
+    | some value => do
+        let _ ← extractScalarExprWith (.word (.u64 0) :: .word (.u64 0) :: locals.map ScalarStepBinding.toScalar)
+          (.app (.const ``Bool.toUInt64 []) value.body)
+        let function := ScalarBinding.binaryPredicateFunction fun first second =>
+          extractScalarExprWith (.word second :: .word first :: locals.map ScalarStepBinding.toScalar)
+            (.app (.const ``Bool.toUInt64 []) value.body)
+        extractScalarStepWith (.scalar function :: locals) value.continuation) = _
+  split
+  · rename_i found
+    rw [booleanBinaryHelper_accepts] at found
+    contradiction
+  · rename_i actual found
+    have equal := Option.some.inj ((booleanBinaryHelper_accepts helper).symm.trans found)
+    subst actual
+    rfl
+
 end LeanExe.Extract.Core

@@ -235,6 +235,16 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     apply bindings.cons
     intro argument value target ha hc
     exact extractScalarExprWith_correct (function value) hc (bindings.toScalar.cons ha)
+  | letBinaryPredicate helper function body ih =>
+    rw [extractScalarStepWith_letBinaryPredicate] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ih ht
+    apply bindings.cons
+    intro first x second y target hx hy hc
+    exact extractScalarExprWith_correct (function x y) hc
+      ((bindings.toScalar.cons (binding := .word first) (value := .word x) hx).cons
+        (binding := .word second) (value := .word y) hy)
   | letPredicateFn expression type function body ih =>
     rw [extractScalarStepWith_letPredicateFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

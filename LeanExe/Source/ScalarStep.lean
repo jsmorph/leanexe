@@ -83,6 +83,11 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
   | idBind (type : ResultAnnotation) (value : EvalWith a (values.map Value.toScalar) x)
       (body : Eval b (.scalar (.word x) :: values) outcome) :
       Eval (bindWord name bi type a b) values outcome
+  | letBinaryPredicate (helper : BooleanBinaryHelper)
+      (function : ∀ x y, EvalWith (.app (.const ``Bool.toUInt64 []) helper.body)
+        (.word y :: .word x :: values.map Value.toScalar) (Bool.toUInt64 (f x y)))
+      (body : Eval helper.continuation (.scalar (.binaryPredicateFunction f) :: values) outcome) :
+      Eval helper.expr values outcome
   | letBinaryFn (type : ResultType)
       (function : ∀ x y, EvalWith a (.word y :: .word x :: values.map Value.toScalar) (f x y))
       (body : Eval b (.scalar (.binaryFunction f) :: values) outcome) :
@@ -286,6 +291,11 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
   | idBind (type : ResultAnnotation) (value : SupportedWith (types.map BindingKind.toScalar) a)
       (body : Supported (.scalar .word :: types) b) :
       Supported types (bindWord name bi type a b)
+  | letBinaryPredicate (helper : BooleanBinaryHelper)
+      (function : SupportedWith (.word :: .word :: types.map BindingKind.toScalar)
+        (.app (.const ``Bool.toUInt64 []) helper.body))
+      (body : Supported (.scalar .binaryPredicateFunction :: types) helper.continuation) :
+      Supported types helper.expr
   | letBinaryFn (type : ResultType)
       (function : SupportedWith (.word :: .word :: types.map BindingKind.toScalar) a)
       (body : Supported (.scalar .binaryFunction :: types) b) :
@@ -578,6 +588,20 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨x, hx⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.word x) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
     exact ⟨outcome, .idBind type hx evaluated⟩
+  | letBinaryPredicate helper function _ ih =>
+    have total : ∀ x y, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) helper.body)
+          (.word y :: .word x :: values.map Value.toScalar) flag.toUInt64 := by
+      intro x y
+      obtain ⟨encoded, evaluated⟩ := function.evaluates
+        (.word y :: .word x :: values.map Value.toScalar)
+        (by simpa [Scalar.Value.kind] using typed_projection typed)
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x y => (total x y).choose
+    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.binaryPredicateFunction f) :: values)
+      (by simp [Value.kind, Scalar.Value.kind, typed])
+    exact ⟨outcome, .letBinaryPredicate helper (fun x y => (total x y).choose_spec) evaluated⟩
   | letBinaryFn type function _ ih =>
     have total := fun x y => function.evaluates (.word y :: .word x :: values.map Value.toScalar)
       (by simpa [LeanExe.Source.Scalar.Value.kind] using typed_projection typed)

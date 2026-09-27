@@ -1010,11 +1010,13 @@ and 288 admission controls; prior tests pass 32,756 comparisons, 52,995 invalid
 inputs and 768 controls. All six fixed probes compile. The corpus contains 1683
 declarations. Evidence is in [the binary-helper archive](proofs/compiler/boolean-binary-helper-2026-09-27/README.md).
 
-Current capability: binary Boolean helper declarations in loop-step bodies.
-Five fixed probes already compile; the early-exit probe rejects. Preserve all six,
-reuse the scalar binary predicate kind, and prove
-step source evaluation, extraction and invariants before completing WASM proofs
-and independent engine checks. Keep declarations around whole loops separate.
+Current capability: binary Boolean helper declarations in word-accumulator loop
+bodies. Five fixed probes already compile; the early-exit probe rejects. All six
+are preserved. Source totality, extraction, termination and extraction equations
+pass. Step evaluation correctness, admission, source reconstruction and IR
+invariants pass 159 targets. Range/function integration, focused tests, complete
+WASM proofs and V8 checks remain before advancing. Boolean-accumulator loops and
+declarations around whole loops remain separate increments.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
