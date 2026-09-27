@@ -968,9 +968,11 @@ contains 1642 declarations. Evidence is in
 
 Current capability: word and Boolean let bindings around general Boolean helper
 scopes. The original capture probe is unchanged and rejects even with bare helper
-inputs. Preserve that probe and the new scope-binding probes, extend the independent
-source grammar and extractor, then complete native/V8 checks and source-to-WASM
-proofs before advancing.
+inputs. All six new fixed probes reject before the change. The independent
+binding grammar, recognizer and source totality pass 104 targets. Core extraction
+equations pass 139 targets. Reconstruction, acceptance, evaluation correctness
+and generic IR invariants pass 140 targets. Function integration, native/syntax
+tests, the complete WASM proof gate and independent V8 checks are next.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

@@ -6,6 +6,7 @@ import LeanExe.Source.ScalarBooleanJoined
 import LeanExe.Source.ScalarBooleanNegated
 import LeanExe.Source.ScalarBooleanWrapped
 import LeanExe.Source.ScalarBooleanScopeGuard
+import LeanExe.Source.ScalarBooleanScopeBinding
 import LeanExe.Source.ScalarBooleanHelper
 import LeanExe.Source.ScalarBooleanInput
 import LeanExe.Source.ScalarBooleanConditionInputs
@@ -251,6 +252,16 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
   | scopedWrapper (wrapped : BooleanWrapped)
       (body : EvalWith (.app (.const ``Bool.toUInt64 []) wrapped.body) values (Bool.toUInt64 flag)) :
       EvalWith (.app (.const ``Bool.toUInt64 []) wrapped.expr) values (Bool.toUInt64 (wrapped.wrapper.denote flag))
+  | scopedWordBinding (binding : BooleanScopeBinding false)
+      (bound : EvalWith binding.value values input)
+      (body : EvalWith (.app (.const ``Bool.toUInt64 []) binding.body)
+        (.word input :: values) (Bool.toUInt64 flag)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) binding.expr) values (Bool.toUInt64 flag)
+  | scopedBooleanBinding (binding : BooleanScopeBinding true)
+      (bound : EvalWith (.app (.const ``Bool.toUInt64 []) binding.value) values (Bool.toUInt64 input))
+      (body : EvalWith (.app (.const ``Bool.toUInt64 []) binding.body)
+        (.boolean input :: values) (Bool.toUInt64 flag)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) binding.expr) values (Bool.toUInt64 flag)
   | scopedPredicate (helper : BooleanHelper false)
       (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) helper.body)
         (.word x :: values) (Bool.toUInt64 (f x)))
@@ -509,6 +520,14 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
   | scopedWrapper (wrapped : BooleanWrapped)
       (body : SupportedWith types (.app (.const ``Bool.toUInt64 []) wrapped.body)) :
       SupportedWith types (.app (.const ``Bool.toUInt64 []) wrapped.expr)
+  | scopedWordBinding (binding : BooleanScopeBinding false)
+      (bound : SupportedWith types binding.value)
+      (body : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) binding.body)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) binding.expr)
+  | scopedBooleanBinding (binding : BooleanScopeBinding true)
+      (bound : SupportedWith types (.app (.const ``Bool.toUInt64 []) binding.value))
+      (body : SupportedWith (.boolean :: types) (.app (.const ``Bool.toUInt64 []) binding.body)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) binding.expr)
   | scopedPredicate (helper : BooleanHelper false)
       (function : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) helper.body))
       (body : SupportedWith (.predicateFunction :: types) (.app (.const ``Bool.toUInt64 []) helper.continuation)) :
@@ -569,7 +588,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
   generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
   cases evaluation with
   | booleanWord | booleanBindingWord | wordBindingBooleanWord | booleanWrappedWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord | booleanPropositionWord => exact ⟨_, rfl⟩
-  | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate | scopedWrapper | scopedNegation | scopedJunction | scopedEquality | scopedSelection | scopedPropositionSelection | scopedRelationSelection => exact ⟨_, rfl⟩
+  | scopedWordBinding | scopedBooleanBinding | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate | scopedWrapper | scopedNegation | scopedJunction | scopedEquality | scopedSelection | scopedPropositionSelection | scopedRelationSelection => exact ⟨_, rfl⟩
   | complement head _ => cases head <;> simp_all
   | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
   | manyApply call _ _ =>
@@ -962,6 +981,17 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     obtain ⟨value, evaluated⟩ := ih values typed
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
     exact ⟨(wrapped.wrapper.denote flag).toUInt64, .scopedWrapper wrapped evaluated⟩
+  | scopedWordBinding binding _ _ ihv ihb =>
+    obtain ⟨input, bound⟩ := ihv values typed
+    obtain ⟨encoded, body⟩ := ihb (.word input :: values) (by simp [Value.kind, typed])
+    obtain ⟨flag, rfl⟩ := body.booleanConversion_result
+    exact ⟨flag.toUInt64, .scopedWordBinding binding bound body⟩
+  | scopedBooleanBinding binding _ _ ihv ihb =>
+    obtain ⟨encodedInput, bound⟩ := ihv values typed
+    obtain ⟨input, rfl⟩ := bound.booleanConversion_result
+    obtain ⟨encoded, body⟩ := ihb (.boolean input :: values) (by simp [Value.kind, typed])
+    obtain ⟨flag, rfl⟩ := body.booleanConversion_result
+    exact ⟨flag.toUInt64, .scopedBooleanBinding binding bound body⟩
   | scopedPredicate helper _ _ ihf ihb =>
     have total : ∀ x, ∃ flag : Bool,
         EvalWith (.app (.const ``Bool.toUInt64 []) helper.body) (.word x :: values) flag.toUInt64 := by
