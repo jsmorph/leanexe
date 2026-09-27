@@ -1,0 +1,9 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+(436, 194, 191, 416, 753, 338, 315)
+(1176, 626,
+  sizeOf ((Lean.Expr.const `Bool.toUInt64 []).app (Lean.Expr.bvar 0)) <
+    sizeOf
+        ((((Lean.Expr.const `Eq [Lean.Level.zero.succ]).app (Lean.Expr.const `Bool [])).app (Lean.Expr.bvar 0)).app
+          (Lean.Expr.bvar 0)) +
+      guardOperandOverhead)

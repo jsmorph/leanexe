@@ -1,0 +1,40 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/boolean-proposition-relation-probe.lean:18:2: error: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  f ≥ 0
+  e ≥ 0
+  e ≥ 0
+  e + f ≥ -3
+  d ≥ 0
+  c ≥ 0
+  c + d - f ≤ -6
+  b ≥ 0
+  a ≥ 0
+where
+ a := ↑(sizeOf "Bool")
+ b := ↑(sizeOf left)
+ c := ↑(sizeOf "Eq")
+ d := ↑(sizeOf right)
+ e := ↑(1 + (1 + (2 + sizeOf "Bool") + sizeOf "toUInt64") - (1 + (2 + sizeOf "Bool") + (1 + (2 + sizeOf "True") + 1)))
+ f := ↑(sizeOf "True")
+../work/boolean-proposition-relation-probe.lean:24:2: error: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  f ≥ 0
+  e ≥ 0
+  e ≥ 0
+  e + f ≥ -3
+  d ≥ 0
+  c ≥ 0
+  c + d - f ≤ -6
+  b ≥ 0
+  a ≥ 0
+where
+ a := ↑(sizeOf "Bool")
+ b := ↑(sizeOf right)
+ c := ↑(sizeOf "Ne")
+ d := ↑(sizeOf left)
+ e := ↑(1 + (1 + (2 + sizeOf "Bool") + sizeOf "toUInt64") - (1 + (2 + sizeOf "Bool") + (1 + (2 + sizeOf "True") + 1)))
+ f := ↑(sizeOf "True")
+BooleanPropositionRelationProbe.combined: false
+BooleanPropositionRelationProbe.mixed: false
