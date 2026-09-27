@@ -848,15 +848,23 @@ comparisons and 3,888 invalid-input checks. Prior tests pass 540,144 comparisons
 probes pass unchanged. The native corpus contains 1545 declarations. Evidence is
 in [the outer Boolean-loop helper-body archive](proofs/compiler/boolean-helper-outer-boolean-body-2026-09-27/README.md).
 
-Current capability: general predicate bodies around Boolean-derived word results
-and word conditionals. Both source and extraction modules pass their focused
-proofs, including totality, acceptance/support, correctness and invariants; the
-public compiler target passes too. Four original and eight new fixed probes
-compile unchanged. New tests pass 20,928 native/IR comparisons and 7,776 invalid-input
-checks. Prior predicate sections and Boolean-result tests pass 139,584 comparisons,
-77,616 invalid-input checks and 9,216 controls. Four original general-body probes
-still pass; the Id-input probe remains rejected. Full proof and WASM gates follow. Boolean accumulators, Id inputs in converted helper scopes and
-multiple dynamic loops remain separate open capabilities.
+General predicate bodies around Boolean-derived word results and word
+conditionals are complete. Source totality, acceptance/support, correctness,
+invariants and the general source-to-WASM theorem pass with nineteen audits.
+Native Lean/V8 agree on 1,005 inputs across 52 declarations, including 29 ranges;
+44 prior modules retain identical bytes and 0 changed. New tests pass
+20,928 comparisons and 7,776 invalid-input checks. Prior tests pass 139,584
+comparisons, 77,616 invalid-input checks and 9,216 controls. Four original and
+eight new probes pass unchanged. The native corpus contains 1553 declarations.
+Evidence is in [the remaining outer helper-body archive](proofs/compiler/boolean-helper-remaining-outer-body-2026-09-27/README.md).
+
+Current capability: Boolean loop accumulators. The fixed failing probes from the
+Boolean-result helper archive require a new accumulator source rule and a proved
+Boolean encoding through the existing word-valued loop plan. Start with a bounded
+step grammar, connect native iteration to the existing range model, and complete
+the public compiler and WASM proof before expanding step composition. Id inputs
+in converted helper scopes, multiple dynamic loops and broader signatures remain
+separate open capabilities.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
