@@ -51,12 +51,12 @@ Every coordinate starts at zero with one shared positive denominator.  A categor
 
 The checked mathematics includes the protected-category counting argument, kernel existence, the category-release discrepancy bound, and a rounding-loop theorem over arbitrary finite job and category types.  The loop theorem requires a step preserving the cube, frozen coordinates, and protected sums while freezing an additional coordinate.  It then proves completion in at most the number of jobs.
 
-Checked arithmetic lemmas cover limb validity, normalization, addition, subtraction, comparison, multiplication, signed operations, bit extraction, and binary long division.  Signed exact division succeeds for every valid integer pair with a nonzero divisor dividing the numerator.  The Bareiss update theorem connects that executable arithmetic to determinant condensation.  Establishing the minor invariant through the full elimination loop remains open.
+Checked arithmetic lemmas cover limb validity, normalization, addition, subtraction, comparison, multiplication, signed operations, bit extraction, and binary long division.  Signed exact division succeeds for every valid integer pair with a nonzero divisor dividing the numerator.  The Bareiss update theorem connects that executable arithmetic to determinant condensation.  The per-pivot matrix-update loop preserves integer validity, size, and the rational kernel under its divisibility and pivot assumptions.  Establishing those assumptions through row swaps and pivot selection remains open.
 
 Focused checks run through the required Lean runner:
 
 ```sh
-tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.Bareiss Project.Beck.GenericLoop
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.EliminationKernel Project.Beck.GenericLoop
 ```
 
 The remaining proof work covers elimination invariants and back substitution, the implemented rounding step, source output correctness, resource bounds, and exact-binary execution.  The [development plan](../plans/beck.md) tracks those tasks.  Earlier bounded execution proofs are retired.

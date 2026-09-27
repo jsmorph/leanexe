@@ -18037,3 +18037,11 @@ After consolidation, all 609 native/WASM comparisons, 14 worker/Wasmtime compari
 `Bareiss.bordered_update` connects the executable multiplication, subtraction, and exact division to the bordered determinant identity.  The row-reduction lemma preserves the zero dot-product condition with a nonzero pivot and previous divisor.  The full matrix-loop minor invariant and back-substitution proof remain open.
 
 All four new targets pass the local Lean runner with standard resource limits.  Their axiom audits contain only `propext`, `Classical.choice`, and `Quot.sound`.  Initial diagnostics concerned list indexing, conditional loop normalization, and multiplication of the subtraction equation by a power of two.  The executable source and WASM bytes are unchanged.
+
+### Beck matrix-update refinement
+
+`Elimination.eliminate_correct` proves successful execution of the nested source matrix-update loops when the previous divisor is nonzero and divides every update numerator.  It preserves integer validity and relates the returned array to an integer model.  `Elimination.model_get` determines every returned entry and proves that the array size stays fixed.
+
+`Elimination.eliminate_preserves` proves equality of the input and output kernels over rational vectors.  Its assumptions include a nonzero pivot, zeros before the pivot column in the active rows, and exact divisibility.  The proof covers the executable `eliminate` function for arbitrary dimensions satisfying the indexing assumptions.  Establishing these assumptions through `echelon`, especially the minor invariant across row swaps and pivot selection, remains open.
+
+The three targets pass with standard logical axioms.  The proof reuses the checked multiword arithmetic and a loop-refinement lemma.  Diagnostics exposed partially applied monadic callbacks and dependent decidability arguments in list-membership rewrites.  Definitional equality and simplification resolved them.  The executable source and binary remain unchanged.
