@@ -490,5 +490,9 @@
   "rangeSavedMixedStep",
   "rangeSavedMixedContinue",
   "rangeSavedMixedOuter",
-  "rangeSavedMixedHelper"
+  "rangeSavedMixedHelper",
+  "rangeCallMixedStep",
+  "rangeCallMixedContinue",
+  "rangeCallMixedOuter",
+  "rangeCallMixedHelper"
 ]

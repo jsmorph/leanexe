@@ -48,8 +48,8 @@ run_elab do
           (.letE `second bt.expr (booleanLiteralExpr secondFlag) body false) false) .default) .default
       for op in [Junction.conjunction, .disjunction] do
         for (bn, pn, n) in [(0, 0, 0), (1, 0, 1), (0, 1, 2), (2, 2, 3)] do
-          let first : SavedBooleanGuard := ⟨1, bn, pn⟩
-          let second : SavedBooleanGuard := ⟨0, bn + 1, pn + 1⟩
+          let first : SavedBooleanGuard := ⟨1, bn, pn, none⟩
+          let second : SavedBooleanGuard := ⟨0, bn + 1, pn + 1, none⟩
           let less : Guard := .compare (.lt (.identity .word)) sourceAdd (.bvar 2)
           let equal : Guard := .compare .eq (.bvar 3) (.bvar 2)
           let trees (a b : SavedBooleanGuard) : List Guard :=

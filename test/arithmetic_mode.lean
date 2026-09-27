@@ -5291,6 +5291,71 @@ def rangeSavedMixedHelper (count seed : UInt64) : UInt64 := Id.run do
     else break
   return a
 
+def callMixedBool (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  if f (x == 0) ∧ x < y then x + 3 else y + 7
+
+def callMixedWord (x y : UInt64) : UInt64 :=
+  let f := fun n : UInt64 => n != x
+  if x ≤ y ∨ f (x + y) then (f y).toUInt64 + x else y
+
+def callMixedPair (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  let g := fun n : UInt64 => n != x
+  if f true ∧ ¬ g y then x + y else x - y
+
+def callMixedNegation (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  let g := fun n : UInt64 => n != x
+  if ¬ (f (g y) ∧ ¬ (x = 0 ∨ !f true)) then x + 1 else y + 2
+
+def callMixedDecision (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  let g := fun n : UInt64 => n != x
+  let saved := decide ((f (x == 0) ∧ x < y) ∨ (!g y ∧ y < x))
+  saved.toUInt64 + x
+
+def callMixedHelper (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  let g := fun n : UInt64 => if f (n == 0) ∧ n < x then f true else f false
+  (g x).toUInt64 + (g y).toUInt64 + y
+
+def rangeCallMixedStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != 0
+    if f (i.toUInt64 != seed) ∧ i.toUInt64 < a then break
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeCallMixedContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun n : UInt64 => n != seed
+    if a = 0 ∨ !f i.toUInt64 then
+      a := a + 3
+      continue
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeCallMixedOuter (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun n : UInt64 => n != seed
+  let mut a := if f true ∧ count < seed then seed + 1 else seed
+  for i in [:count.toNat] do
+    if f (g i.toUInt64) ∧ ¬ g a then a := a + 2 else a := a + 1
+  return a + (decide (f true ∨ a = seed)).toUInt64
+
+def rangeCallMixedHelper (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun b : Bool => if f b ∧ seed < count then !b else b
+  let mut a := seed
+  for i in [:count.toNat] do
+    if ¬ (g (a == 0) ∧ i.toUInt64 < a) then
+      a := a + (f (g true)).toUInt64 + 1
+    else break
+  return a
+
 def booleanPredicateResultBool (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => !b && x != 0
   let g := fun b : Bool => f b
@@ -7904,6 +7969,16 @@ run_elab do
       `ArithmeticModeTest.rangeSavedMixedContinue,
       `ArithmeticModeTest.rangeSavedMixedOuter,
       `ArithmeticModeTest.rangeSavedMixedHelper,
+      `ArithmeticModeTest.callMixedBool,
+      `ArithmeticModeTest.callMixedWord,
+      `ArithmeticModeTest.callMixedPair,
+      `ArithmeticModeTest.callMixedNegation,
+      `ArithmeticModeTest.callMixedDecision,
+      `ArithmeticModeTest.callMixedHelper,
+      `ArithmeticModeTest.rangeCallMixedStep,
+      `ArithmeticModeTest.rangeCallMixedContinue,
+      `ArithmeticModeTest.rangeCallMixedOuter,
+      `ArithmeticModeTest.rangeCallMixedHelper,
       `ArithmeticModeTest.booleanPredicateResultBool,
       `ArithmeticModeTest.booleanPredicateResultWord,
       `ArithmeticModeTest.booleanPredicateResultNested,

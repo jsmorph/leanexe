@@ -267,9 +267,18 @@ thirteen ranges; eighteen shared modules retain identical bytes. New tests pass
 tests pass 10,328 comparisons, 7,625 invalid-input checks and 512 controls.
 Evidence is in [the saved mixed-guard archive](proofs/compiler/saved-mixed-guard-2026-09-26/README.md).
 
-Next capabilities: direct Boolean helper calls and compound Boolean expressions
-in mixed propositional guards, retained instance and Bool-parameter Id wrappers,
-and broader signatures. Full-dialect correctness remains unfinished.
+Direct Boolean helper calls in mixed propositional guards pass parser, scalar,
+loop and IR invariant proofs. Bool- and UInt64-input calls preserve arguments,
+captures, negation and Id result annotations, including nested calls. New tests
+pass 18,100 native/IR comparisons, 12,288 invalid-input checks and 256 controls.
+Prior guard, decision, proposition and bind tests pass 28,428 comparisons,
+18,633 invalid-input checks and 768 controls. The general compiler theorem,
+native/V8 comparisons and evidence archive are next for this increment.
+
+Next capabilities: compound Boolean expressions in mixed propositional guards,
+standalone propositional negation of local Boolean values, retained instance and
+Bool-parameter Id wrappers, and broader signatures. Full-dialect correctness
+remains unfinished.
 Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
