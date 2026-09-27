@@ -646,5 +646,15 @@
   "rangeBoolUnitHelperContinue",
   "rangeBoolUnitHelperStride",
   "rangeBoolUnitHelperId",
-  "rangeBoolUnitHelperShadow"
+  "rangeBoolUnitHelperShadow",
+  "rangeBoolOuterConditionEqual",
+  "rangeBoolOuterConditionOrder",
+  "rangeBoolOuterConditionFlag",
+  "rangeBoolOuterConditionNested",
+  "rangeBoolOuterConditionHelper",
+  "rangeBoolOuterConditionExit",
+  "rangeBoolOuterConditionContinue",
+  "rangeBoolOuterConditionStride",
+  "rangeBoolOuterConditionId",
+  "rangeBoolOuterConditionCapture"
 ]

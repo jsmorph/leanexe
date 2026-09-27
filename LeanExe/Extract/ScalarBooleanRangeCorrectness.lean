@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarBooleanRangeChoice
 import LeanExe.Extract.ScalarBooleanRange
 import LeanExe.Extract.ScalarRangeExitCorrectness
 
@@ -329,9 +330,30 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
     intro exitFlag
     exact extractScalarExprWith_correct hy hr
       ((bindings (Range.Exit.iterate step stop.toNat 0 start) stop.toNat stop exitFlag).cons (resultEval exitFlag))
-  | case36 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind wrapper body parsed ih =>
+  | case36 => contradiction
+  | case37 => contradiction
+  | case38 locals type condition evidence yes no resultType parsed guard matched yesIH noIH =>
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨first, ht, second, he, rfl⟩ := compiled
+    have same := booleanType_sound parsed
+    subst type
+    obtain ⟨encoded, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    obtain ⟨yesResult, yesEval, yesMeaning⟩ := yesIH values ht typed bindings total
+    obtain ⟨noResult, noEval, noMeaning⟩ := noIH values he typed bindings total
+    have stable : ∀ accumulator index stop done,
+        guard.ScalarEval (LeanExe.IR.rangeExitStore saved accumulator index stop done) flag.toUInt64
+          (LeanExe.IR.rangeExitStore saved accumulator index stop done) := by
+      intro accumulator index stop done
+      exact extractScalarExprWith_correct evaluated matched (bindings accumulator index stop done)
+    cases flag with
+    | false => exact ⟨noResult, .choice resultType evaluated noEval,
+        ScalarRangeExitPlan.choice_meaning stable noMeaning⟩
+    | true => exact ⟨yesResult, .choice resultType evaluated yesEval,
+        ScalarRangeExitPlan.choice_meaning stable yesMeaning⟩
+  | case39 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind notIf wrapper body parsed ih =>
     obtain ⟨flag, evaluated, meaning⟩ := ih values compiled typed bindings total
     exact ⟨flag, booleanRangeWrapper_sound parsed ▸ BooleanRange.Eval.wrapped wrapper evaluated, meaning⟩
-  | case37 => contradiction
+  | case40 => contradiction
 
 end LeanExe.Extract.Core
