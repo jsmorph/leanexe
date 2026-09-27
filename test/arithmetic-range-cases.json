@@ -996,5 +996,13 @@
   "rangeBinaryStepHelperUnused",
   "rangeBinaryStepHelperWordTail",
   "rangeBinaryStepHelperCapturedExit",
-  "rangeBinaryStepHelperChoice"
+  "rangeBinaryStepHelperChoice",
+  "rangeBinaryFlagStepHelperDirect",
+  "rangeBinaryFlagStepHelperExit",
+  "rangeBinaryFlagStepHelperContinue",
+  "rangeBinaryFlagStepHelperNested",
+  "rangeBinaryFlagStepHelperUnused",
+  "rangeBinaryFlagStepHelperWordTail",
+  "rangeBinaryFlagStepHelperCapturedExit",
+  "rangeBinaryFlagStepHelperChoice"
 ]
