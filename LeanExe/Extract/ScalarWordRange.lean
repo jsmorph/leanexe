@@ -17,6 +17,33 @@ def extractScalarWordRangeWith (locals : List ScalarBinding) (slot : Nat)
       | some plan => some plan
       | none =>
         match source with
+        | .letE _ type value body _ =>
+            match booleanType? type with
+            | none =>
+                match scalarResultType? type with
+                | none => none
+                | some _ => scalarRangeValueBinding (extractScalarExprWith locals value)
+                  (fun bound => extractScalarWordRangeWith (.word bound :: locals) slot body)
+                  (fun _ => extractScalarWordRangeWith locals slot value)
+                  (fun bound => extractScalarExprWith (.word bound :: locals) body)
+            | some _ => do
+                let bound ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) value)
+                extractScalarWordRangeWith (.boolean bound :: locals) slot body
+        | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
+            (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
+              (.const ``Id.instMonad [.zero]))) input) output) value)
+            (.lam _ domain body _) =>
+            match booleanWordRangeBindTypes? input domain output with
+            | none =>
+                match scalarBindTypes? input domain output with
+                | none => none
+                | some _ => scalarRangeValueBinding (extractScalarExprWith locals value)
+                  (fun bound => extractScalarWordRangeWith (.word bound :: locals) slot body)
+                  (fun _ => extractScalarWordRangeWith locals slot value)
+                  (fun bound => extractScalarExprWith (.word bound :: locals) body)
+            | some _ => do
+                let bound ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) value)
+                extractScalarWordRangeWith (.boolean bound :: locals) slot body
         | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type) condition) evidence) yes) no =>
             match scalarResultType? type with
             | none => none
@@ -47,7 +74,7 @@ theorem extractScalarWordRangeWith_accepts {types : List BindingKind} {source : 
     (typed : locals.map ScalarBinding.kind = types)
     (total : ∀ binding ∈ locals, binding.Total) :
     ∃ plan, extractScalarWordRangeWith locals slot source = some plan := by
-  induction supported with
+  induction supported generalizing locals with
   | scalar body =>
     obtain ⟨value, accepted⟩ := extractScalarExprWith_accepts body locals typed total
     exact ⟨ScalarRangeExitPlan.scalar value, by rw [extractScalarWordRangeWith.eq_def, accepted]⟩
@@ -67,10 +94,109 @@ theorem extractScalarWordRangeWith_accepts {types : List BindingKind} {source : 
       · exact ⟨_, rfl⟩
       · rw [accepted]
         exact ⟨plan, rfl⟩
+  | letFlagBefore input value _ ih =>
+    obtain ⟨bound, hb⟩ := extractScalarExprWith_accepts value locals typed total
+    obtain ⟨plan, hp⟩ := ih (.boolean bound :: locals) (by simp [ScalarBinding.kind, typed]) (by
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · trivial
+      · exact total binding member)
+    rw [extractScalarWordRangeWith.eq_def]
+    split
+    · exact ⟨_, rfl⟩
+    · split
+      · exact ⟨_, rfl⟩
+      · split
+        · exact ⟨_, rfl⟩
+        · simp [booleanType_accepts, hb, hp]
+  | bindFlagBefore input output value _ ih =>
+    obtain ⟨bound, hb⟩ := extractScalarExprWith_accepts value locals typed total
+    obtain ⟨plan, hp⟩ := ih (.boolean bound :: locals) (by simp [ScalarBinding.kind, typed]) (by
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · trivial
+      · exact total binding member)
+    simp only [BooleanWordRange.bind]
+    rw [extractScalarWordRangeWith.eq_def]
+    split
+    · exact ⟨_, rfl⟩
+    · split
+      · exact ⟨_, rfl⟩
+      · split
+        · exact ⟨_, rfl⟩
+        · simp [booleanWordRangeBindTypes_accepts, hb, hp]
+  | letWordBefore input value _ ih =>
+    obtain ⟨bound, hb⟩ := extractScalarExprWith_accepts value locals typed total
+    obtain ⟨plan, hp⟩ := ih (.word bound :: locals) (by simp [ScalarBinding.kind, typed]) (by
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · trivial
+      · exact total binding member)
+    rw [extractScalarWordRangeWith.eq_def]
+    split
+    · exact ⟨_, rfl⟩
+    · split
+      · exact ⟨_, rfl⟩
+      · split
+        · exact ⟨_, rfl⟩
+        · simp only [booleanType_scalar, scalarResultType_accepts]
+          exact ⟨plan, scalarRangeValueBinding_accepts_primary hb hp⟩
+  | bindWordBefore input output value _ ih =>
+    obtain ⟨bound, hb⟩ := extractScalarExprWith_accepts value locals typed total
+    obtain ⟨plan, hp⟩ := ih (.word bound :: locals) (by simp [ScalarBinding.kind, typed]) (by
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · trivial
+      · exact total binding member)
+    simp only [Identity.bind]
+    rw [extractScalarWordRangeWith.eq_def]
+    split
+    · exact ⟨_, rfl⟩
+    · split
+      · exact ⟨_, rfl⟩
+      · split
+        · exact ⟨_, rfl⟩
+        · simp only [booleanWordRangeBindTypes_not_word, scalarBindTypes_accepts]
+          exact ⟨plan, scalarRangeValueBinding_accepts_primary hb hp⟩
+  | letWordResult input _ body ih =>
+    obtain ⟨before, hp⟩ := ih locals typed total
+    obtain ⟨tail, ht⟩ := extractScalarExprWith_accepts body (.word before.result :: locals)
+      (by simp [ScalarBinding.kind, typed]) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        · exact total binding member)
+    rw [extractScalarWordRangeWith.eq_def]
+    split
+    · exact ⟨_, rfl⟩
+    · split
+      · exact ⟨_, rfl⟩
+      · split
+        · exact ⟨_, rfl⟩
+        · simp only [booleanType_scalar, scalarResultType_accepts]
+          exact scalarRangeValueBinding_accepts_loop hp ht
+  | bindWordResult input output _ body ih =>
+    obtain ⟨before, hp⟩ := ih locals typed total
+    obtain ⟨tail, ht⟩ := extractScalarExprWith_accepts body (.word before.result :: locals)
+      (by simp [ScalarBinding.kind, typed]) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        · exact total binding member)
+    simp only [Identity.bind]
+    rw [extractScalarWordRangeWith.eq_def]
+    split
+    · exact ⟨_, rfl⟩
+    · split
+      · exact ⟨_, rfl⟩
+      · split
+        · exact ⟨_, rfl⟩
+        · simp only [booleanWordRangeBindTypes_not_word, scalarBindTypes_accepts]
+          exact scalarRangeValueBinding_accepts_loop hp ht
   | choice type condition _ _ yesIH noIH =>
     obtain ⟨guard, hg⟩ := extractScalarExprWith_accepts condition locals typed total
-    obtain ⟨yes, hy⟩ := yesIH
-    obtain ⟨no, hn⟩ := noIH
+    obtain ⟨yes, hy⟩ := yesIH locals typed total
+    obtain ⟨no, hn⟩ := noIH locals typed total
     simp only [WordRange.choiceExpr]
     rw [extractScalarWordRangeWith.eq_def]
     split
@@ -81,7 +207,7 @@ theorem extractScalarWordRangeWith_accepts {types : List BindingKind} {source : 
         · exact ⟨_, rfl⟩
         · simp [scalarResultType_accepts, hg, hy, hn]
   | run type _ ih =>
-    obtain ⟨plan, hp⟩ := ih
+    obtain ⟨plan, hp⟩ := ih locals typed total
     simp only [Identity.run]
     rw [extractScalarWordRangeWith.eq_def]
     split
@@ -92,7 +218,7 @@ theorem extractScalarWordRangeWith_accepts {types : List BindingKind} {source : 
         · exact ⟨_, rfl⟩
         · simp [scalarResultType_accepts, hp]
   | pure type _ ih =>
-    obtain ⟨plan, hp⟩ := ih
+    obtain ⟨plan, hp⟩ := ih locals typed total
     simp only [Identity.pure]
     rw [extractScalarWordRangeWith.eq_def]
     split
@@ -103,7 +229,7 @@ theorem extractScalarWordRangeWith_accepts {types : List BindingKind} {source : 
         · exact ⟨_, rfl⟩
         · simp [scalarResultType_accepts, hp]
   | metadata _ ih =>
-    obtain ⟨plan, hp⟩ := ih
+    obtain ⟨plan, hp⟩ := ih locals typed total
     rw [extractScalarWordRangeWith.eq_def]
     split
     · exact ⟨_, rfl⟩
@@ -113,32 +239,62 @@ theorem extractScalarWordRangeWith_accepts {types : List BindingKind} {source : 
         · exact ⟨_, rfl⟩
         · exact ⟨plan, hp⟩
 
+
 theorem extractScalarWordRangeWith_supported {source : Lean.Expr} {locals : List ScalarBinding}
     {slot : Nat} {plan : ScalarRangeExitPlan}
     (compiled : extractScalarWordRangeWith locals slot source = some plan) :
     WordRange.Supported (locals.map ScalarBinding.kind) source := by
   fun_induction extractScalarWordRangeWith locals slot source generalizing plan with
-  | case1 source value matched => exact .scalar (extractScalarExprWith_supported matched)
-  | case2 source notScalar before matched => exact .rangeExit (extractScalarRangeExitWith_supported matched)
-  | case3 source notScalar notRange before matched => exact .booleanWord (extractScalarBooleanWordRangeWith_supported matched)
+  | case1 locals source value matched => exact .scalar (extractScalarExprWith_supported matched)
+  | case2 locals source notScalar before matched => exact .rangeExit (extractScalarRangeExitWith_supported matched)
+  | case3 locals source notScalar notRange before matched => exact .booleanWord (extractScalarBooleanWordRangeWith_supported matched)
   | case4 => contradiction
-  | case5 type condition evidence yes no result parsed notScalar notRange notBoolean yesIH noIH =>
+  | case5 locals name type value body nondep notBoolean input parsed notScalar notRange notOld bodyIH valueIH =>
+    rw [scalarResultType_sound parsed]
+    rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, tail, hp, ht, rfl⟩
+    · exact .letWordBefore input (extractScalarExprWith_supported matched)
+        (by simpa [ScalarBinding.kind] using bodyIH bound hc)
+    · exact .letWordResult input (valueIH hp)
+        (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported ht)
+  | case6 locals name type value body nondep input parsed notScalar notRange notOld bodyIH =>
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨bound, matched, compiled⟩ := compiled
+    rw [booleanType_sound parsed]
+    exact .letFlagBefore input (extractScalarExprWith_supported matched)
+      (by simpa [ScalarBinding.kind] using bodyIH bound compiled)
+  | case7 => contradiction
+  | case8 locals input output value name domain body binder notBoolean types parsed notScalar notRange notOld bodyIH valueIH =>
+    obtain ⟨rfl, rfl, rfl⟩ := scalarBindTypes_sound parsed
+    rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, tail, hp, ht, rfl⟩
+    · exact .bindWordBefore types.1 types.2 (extractScalarExprWith_supported matched)
+        (by simpa [ScalarBinding.kind] using bodyIH bound hc)
+    · exact .bindWordResult types.1 types.2 (valueIH hp)
+        (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported ht)
+  | case9 locals input output value name domain body binder types parsed notScalar notRange notOld bodyIH =>
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨bound, matched, compiled⟩ := compiled
+    obtain ⟨rfl, rfl, rfl⟩ := booleanWordRangeBindTypes_sound parsed
+    exact .bindFlagBefore types.1 types.2 (extractScalarExprWith_supported matched)
+      (by simpa [ScalarBinding.kind] using bodyIH bound compiled)
+  | case10 => contradiction
+  | case11 locals type condition evidence yes no result parsed notScalar notRange notBoolean yesIH noIH =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨guard, hg, first, hy, second, hn, rfl⟩ := compiled
     rw [scalarResultType_sound parsed]
     exact .choice result (extractScalarExprWith_supported hg) (yesIH hy) (noIH hn)
-  | case6 => contradiction
-  | case7 type body result parsed notScalar notRange notBoolean ih =>
+  | case12 => contradiction
+  | case13 locals type body result parsed notScalar notRange notBoolean ih =>
     rw [scalarResultType_sound parsed]
     exact .run result (ih compiled)
-  | case8 => contradiction
-  | case9 type body result parsed notScalar notRange notBoolean ih =>
+  | case14 => contradiction
+  | case15 locals type body result parsed notScalar notRange notBoolean ih =>
     rw [scalarResultType_sound parsed]
     exact .pure result (ih compiled)
-  | case10 data body notScalar notRange notBoolean ih => exact .metadata (ih compiled)
-  | case11 => contradiction
+  | case16 locals data body notScalar notRange notBoolean ih => exact .metadata (ih compiled)
+  | case17 => contradiction
 
 /-- The selected word computation preserves its native source result. -/
+
 theorem extractScalarWordRangeWith_correct {source : Lean.Expr} {locals : List ScalarBinding}
     {plan : ScalarRangeExitPlan} (saved : List UInt64) (values : List Value)
     (compiled : extractScalarWordRangeWith locals saved.length source = some plan)
@@ -146,22 +302,96 @@ theorem extractScalarWordRangeWith_correct {source : Lean.Expr} {locals : List S
     (bindings : RangeExitBindingsMatch locals values saved)
     (total : ∀ binding ∈ locals, binding.Total) :
     ∃ value, WordRange.Eval source values value ∧ plan.Meaning saved value := by
-  fun_induction extractScalarWordRangeWith locals saved.length source generalizing plan with
-  | case1 source target matched =>
+  fun_induction extractScalarWordRangeWith locals saved.length source generalizing values plan with
+  | case1 locals source target matched =>
     cases compiled
     obtain ⟨value, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
     exact ⟨value, .scalar evaluated, ScalarRangeExitPlan.scalar_meaning (fun accumulator index stop done =>
       extractScalarExprWith_correct evaluated matched (bindings accumulator index stop done))⟩
-  | case2 source notScalar before matched =>
+  | case2 locals source notScalar before matched =>
     cases compiled
     obtain ⟨value, evaluated, meaning⟩ := extractScalarRangeExitWith_correct saved values matched typed bindings total
     exact ⟨value, .rangeExit evaluated, meaning⟩
-  | case3 source notScalar notRange before matched =>
+  | case3 locals source notScalar notRange before matched =>
     cases compiled
     obtain ⟨value, evaluated, meaning⟩ := extractScalarBooleanWordRangeWith_correct saved values matched typed bindings total
     exact ⟨value, .booleanWord evaluated, meaning⟩
   | case4 => contradiction
-  | case5 type condition evidence yes no result parsed notScalar notRange notBoolean yesIH noIH =>
+  | case5 locals name type value body nondep notBoolean input parsed notScalar notRange notOld bodyIH valueIH =>
+    rw [scalarResultType_sound parsed]
+    rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, tail, hp, ht, rfl⟩
+    · obtain ⟨word, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
+      obtain ⟨result, continuation, meaning⟩ := bodyIH bound (.word word :: values) hc
+        (by simp [Value.kind, ScalarBinding.kind, typed]) (bindings.bind evaluated matched) (by
+          intro binding member
+          rcases List.mem_cons.mp member with rfl | member
+          · trivial
+          · exact total binding member)
+      exact ⟨result, .letWordBefore input evaluated continuation, meaning⟩
+    · obtain ⟨word, evaluated, stop, start, step, countEval, initialEval, stepEval, resultEval⟩ :=
+        valueIH values hp typed bindings total
+      obtain ⟨result, continuation⟩ := (extractScalarExprWith_supported ht).evaluates
+        (.word word :: values) (by simp [Value.kind, ScalarBinding.kind, typed])
+      refine ⟨result, .letWordResult input evaluated continuation, stop, start, step, countEval, initialEval, stepEval, ?_⟩
+      intro exitFlag
+      exact extractScalarExprWith_correct continuation ht
+        ((bindings (Range.Exit.iterate step stop.toNat 0 start) stop.toNat stop exitFlag).cons (resultEval exitFlag))
+  | case6 locals name type value body nondep input parsed notScalar notRange notOld bodyIH =>
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨bound, matched, compiled⟩ := compiled
+    rw [booleanType_sound parsed]
+    obtain ⟨encoded, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    have extended : RangeExitBindingsMatch (.boolean bound :: locals) (.boolean flag :: values) saved := by
+      intro accumulator index stop done
+      exact (bindings accumulator index stop done).cons
+        (extractScalarExprWith_correct evaluated matched (bindings accumulator index stop done))
+    obtain ⟨result, continuation, meaning⟩ := bodyIH bound (.boolean flag :: values) compiled
+      (by simp [Value.kind, ScalarBinding.kind, typed]) extended (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        · exact total binding member)
+    exact ⟨result, .letFlagBefore input evaluated continuation, meaning⟩
+  | case7 => contradiction
+  | case8 locals input output value name domain body binder notBoolean types parsed notScalar notRange notOld bodyIH valueIH =>
+    obtain ⟨rfl, rfl, rfl⟩ := scalarBindTypes_sound parsed
+    rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, tail, hp, ht, rfl⟩
+    · obtain ⟨word, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
+      obtain ⟨result, continuation, meaning⟩ := bodyIH bound (.word word :: values) hc
+        (by simp [Value.kind, ScalarBinding.kind, typed]) (bindings.bind evaluated matched) (by
+          intro binding member
+          rcases List.mem_cons.mp member with rfl | member
+          · trivial
+          · exact total binding member)
+      exact ⟨result, .bindWordBefore types.1 types.2 evaluated continuation, meaning⟩
+    · obtain ⟨word, evaluated, stop, start, step, countEval, initialEval, stepEval, resultEval⟩ :=
+        valueIH values hp typed bindings total
+      obtain ⟨result, continuation⟩ := (extractScalarExprWith_supported ht).evaluates
+        (.word word :: values) (by simp [Value.kind, ScalarBinding.kind, typed])
+      refine ⟨result, .bindWordResult types.1 types.2 evaluated continuation, stop, start, step, countEval, initialEval, stepEval, ?_⟩
+      intro exitFlag
+      exact extractScalarExprWith_correct continuation ht
+        ((bindings (Range.Exit.iterate step stop.toNat 0 start) stop.toNat stop exitFlag).cons (resultEval exitFlag))
+  | case9 locals input output value name domain body binder types parsed notScalar notRange notOld bodyIH =>
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨bound, matched, compiled⟩ := compiled
+    obtain ⟨rfl, rfl, rfl⟩ := booleanWordRangeBindTypes_sound parsed
+    obtain ⟨encoded, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    have extended : RangeExitBindingsMatch (.boolean bound :: locals) (.boolean flag :: values) saved := by
+      intro accumulator index stop done
+      exact (bindings accumulator index stop done).cons
+        (extractScalarExprWith_correct evaluated matched (bindings accumulator index stop done))
+    obtain ⟨result, continuation, meaning⟩ := bodyIH bound (.boolean flag :: values) compiled
+      (by simp [Value.kind, ScalarBinding.kind, typed]) extended (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        · exact total binding member)
+    exact ⟨result, .bindFlagBefore types.1 types.2 evaluated continuation, meaning⟩
+  | case10 => contradiction
+  | case11 locals type condition evidence yes no result parsed notScalar notRange notBoolean yesIH noIH =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨guard, hg, first, hy, second, hn, rfl⟩ := compiled
     rw [scalarResultType_sound parsed]
@@ -174,25 +404,26 @@ theorem extractScalarWordRangeWith_correct {source : Lean.Expr} {locals : List S
       exact extractScalarExprWith_correct evaluated hg (bindings accumulator index stop done)
     cases flag with
     | false =>
-      obtain ⟨value, branch, meaning⟩ := noIH hn
+      obtain ⟨value, branch, meaning⟩ := noIH values hn typed bindings total
       exact ⟨value, .choice result evaluated branch, ScalarRangeExitPlan.choice_meaning stable meaning⟩
     | true =>
-      obtain ⟨value, branch, meaning⟩ := yesIH hy
+      obtain ⟨value, branch, meaning⟩ := yesIH values hy typed bindings total
       exact ⟨value, .choice result evaluated branch, ScalarRangeExitPlan.choice_meaning stable meaning⟩
-  | case6 => contradiction
-  | case7 type body result parsed notScalar notRange notBoolean ih =>
+  | case12 => contradiction
+  | case13 locals type body result parsed notScalar notRange notBoolean ih =>
     rw [scalarResultType_sound parsed]
-    obtain ⟨value, evaluated, meaning⟩ := ih compiled
+    obtain ⟨value, evaluated, meaning⟩ := ih values compiled typed bindings total
     exact ⟨value, .run result evaluated, meaning⟩
-  | case8 => contradiction
-  | case9 type body result parsed notScalar notRange notBoolean ih =>
+  | case14 => contradiction
+  | case15 locals type body result parsed notScalar notRange notBoolean ih =>
     rw [scalarResultType_sound parsed]
-    obtain ⟨value, evaluated, meaning⟩ := ih compiled
+    obtain ⟨value, evaluated, meaning⟩ := ih values compiled typed bindings total
     exact ⟨value, .pure result evaluated, meaning⟩
-  | case10 data body notScalar notRange notBoolean ih =>
-    obtain ⟨value, evaluated, meaning⟩ := ih compiled
+  | case16 locals data body notScalar notRange notBoolean ih =>
+    obtain ⟨value, evaluated, meaning⟩ := ih values compiled typed bindings total
     exact ⟨value, .metadata evaluated, meaning⟩
-  | case11 => contradiction
+  | case17 => contradiction
+
 
 theorem extractScalarWordRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     (literal : ∀ n, P (.u64 n))
@@ -203,27 +434,74 @@ theorem extractScalarWordRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     (compiled : extractScalarWordRangeWith locals slot source = some plan)
     (bindings : ∀ binding ∈ locals, binding.Holds P) : plan.Holds P := by
   fun_induction extractScalarWordRangeWith locals slot source generalizing plan with
-  | case1 source target matched =>
+  | case1 locals source target matched =>
     cases compiled
     exact ScalarRangeExitPlan.scalar_holds P literal
       (extractScalarExprWith_invariant P literal binary choice matched bindings)
-  | case2 source notScalar before matched =>
+  | case2 locals source notScalar before matched =>
     cases compiled
     exact extractScalarRangeExitWith_invariant P literal binary choice accumulator index matched bindings
-  | case3 source notScalar notRange before matched =>
+  | case3 locals source notScalar notRange before matched =>
     cases compiled
     exact extractScalarBooleanWordRangeWith_invariant P literal binary choice accumulator index matched bindings
   | case4 => contradiction
-  | case5 type condition evidence yes no result parsed notScalar notRange notBoolean yesIH noIH =>
+  | case5 locals name type value body nondep notBoolean input parsed notScalar notRange notOld bodyIH valueIH =>
+    rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, tail, hp, ht, rfl⟩
+    · apply bodyIH bound hc
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact extractScalarExprWith_invariant P literal binary choice matched bindings
+      · exact bindings binding member
+    · obtain ⟨count, initial, step, done, result⟩ := valueIH hp bindings
+      refine ⟨count, initial, step, done, ?_⟩
+      apply extractScalarExprWith_invariant P literal binary choice ht
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact result
+      · exact bindings binding member
+  | case6 locals name type value body nondep input parsed notScalar notRange notOld bodyIH =>
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨bound, matched, compiled⟩ := compiled
+    apply bodyIH bound compiled
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · exact extractScalarExprWith_invariant P literal binary choice matched bindings
+    · exact bindings binding member
+  | case7 => contradiction
+  | case8 locals input output value name domain body binder notBoolean types parsed notScalar notRange notOld bodyIH valueIH =>
+    rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, tail, hp, ht, rfl⟩
+    · apply bodyIH bound hc
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact extractScalarExprWith_invariant P literal binary choice matched bindings
+      · exact bindings binding member
+    · obtain ⟨count, initial, step, done, result⟩ := valueIH hp bindings
+      refine ⟨count, initial, step, done, ?_⟩
+      apply extractScalarExprWith_invariant P literal binary choice ht
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact result
+      · exact bindings binding member
+  | case9 locals input output value name domain body binder types parsed notScalar notRange notOld bodyIH =>
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨bound, matched, compiled⟩ := compiled
+    apply bodyIH bound compiled
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · exact extractScalarExprWith_invariant P literal binary choice matched bindings
+    · exact bindings binding member
+  | case10 => contradiction
+  | case11 locals type condition evidence yes no result parsed notScalar notRange notBoolean yesIH noIH =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨guard, hg, first, hy, second, hn, rfl⟩ := compiled
     exact ScalarRangeExitPlan.choice_holds P literal choice
-      (extractScalarExprWith_invariant P literal binary choice hg bindings) (yesIH hy) (noIH hn)
-  | case6 => contradiction
-  | case7 type body result parsed notScalar notRange notBoolean ih => exact ih compiled
-  | case8 => contradiction
-  | case9 type body result parsed notScalar notRange notBoolean ih => exact ih compiled
-  | case10 data body notScalar notRange notBoolean ih => exact ih compiled
-  | case11 => contradiction
+      (extractScalarExprWith_invariant P literal binary choice hg bindings) (yesIH hy bindings) (noIH hn bindings)
+  | case12 => contradiction
+  | case13 locals type body result parsed notScalar notRange notBoolean ih => exact ih compiled bindings
+  | case14 => contradiction
+  | case15 locals type body result parsed notScalar notRange notBoolean ih => exact ih compiled bindings
+  | case16 locals data body notScalar notRange notBoolean ih => exact ih compiled bindings
+  | case17 => contradiction
+
 
 end LeanExe.Extract.Core

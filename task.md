@@ -628,7 +628,16 @@ and 9,216 controls. Prior checks pass 306,432 comparisons, 154,368 invalid-input
 tests and 18,432 controls. The native corpus contains 1347 declarations.
 Evidence is in [the word-conditional archive](proofs/compiler/word-loop-conditional-2026-09-27/README.md).
 
-Next: setup/helper declarations around word conditionals, followed by
+Current capability: bindings around word-result conditionals. Pure word/Boolean
+setup, ordinary lets, standard Id binds and saved word results are covered by
+independent source semantics, totality, acceptance, support recovery, preservation
+and invariant proofs. Ten native examples, including show and nested Id
+annotations, pass 240 comparisons. Syntax checks pass 129,024 comparisons,
+73,728 invalid-input tests and 6,144 controls. Two-loop computations remain
+rejected. Adjacent tests pass 387,072 comparisons, 205,824 invalid-input tests
+and 15,360 controls. The full proof and WASM gates are next.
+
+Next: local helper declarations around word conditionals, followed by
 retained instances, broader signatures, and composition of multiple loops.
 Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean
