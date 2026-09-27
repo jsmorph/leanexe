@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import {parseArgs} from 'node:util';
 import {CpuEstimator,validateFeatures} from './spectral-kl/runtime.mjs';
 import {observations} from './spectral-kl/reference.mjs';
+import {checkScore} from './spectral-kl/check-score.mjs';
 
 const help=`Spectral KL moment estimator
 
@@ -14,6 +15,9 @@ Both groups use the same 1–32 features, with at most 524288 values per group.
 Values must be finite and in [-16,16]. Inputs are rounded to binary32 for both
 backends. eta defaults to 1 and must be in [2^-20,256]. The current solver
 accepts generalized eigenvalues in [1/2,3/2].
+Every returned score must pass the proved Lean error checker.
+--tolerance sets the absolute error bound (default 0.000001).
+--intervals sets the interval count (default 8, maximum 4096).
 
 Build first: node tools/spectral-kl/build.js
 GPU dependency: npm install --prefix build/spectral-kl-gpu webgpu@0.6.1
@@ -43,6 +47,7 @@ async function main() {
   const {values}=parseArgs({options:{
     help:{type:'boolean'},example:{type:'boolean'},input:{type:'string'},
     backend:{type:'string',default:'cpu'},'allow-software':{type:'boolean'},
+    tolerance:{type:'string',default:'0.000001'},'intervals':{type:'string',default:'8'},
   }});
   if (values.help) {console.log(help);return;}
   if (!['cpu','gpu'].includes(values.backend)) throw new Error('Backend must be cpu or gpu');
@@ -71,9 +76,13 @@ async function main() {
       pm=await gpu.moments(p,width);qm=await gpu.moments(q,width);
     } else {pm=cpu.moments(p,width);qm=cpu.moments(q,width);}
     const score=cpu.score(pm,qm,width,eta);
+    const checked=await checkScore({p,q,width,eta,score,pm,qm,
+      tolerance:Number(values.tolerance),cells:Number(values['intervals'])});
     console.log(JSON.stringify({score,backend:values.backend,features:width,
       samples:{p:p.length/width,q:q.length/width},eta,inputPrecision:'binary32',
       momentPrecision:gpu?'binary32':'binary64',solver:'Lean/WASM binary64',
+      absoluteErrorBound:checked.absoluteErrorBound,
+      checkInput:checked.inputPath,
       ...(gpu?{adapter:gpu.info}:{}),
     },null,2));
   } finally {gpu?.destroy();}

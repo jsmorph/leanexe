@@ -183,7 +183,7 @@ See the [user manual](docs/manual.md#entry-shapes) for entry types and command o
 | [GPT inference](docs/gpt/README.md) | FP32 and quantized cached inference, execution proofs, identified binary packages, and separate numerical bounds with model-specific limits. |
 | [Reconstructed Euler solver](data/euler-reconstructed-v1/README.md) | A complete 2D flow calculation with exact-binary execution, termination, memory bounds, positive density and pressure in accepted states, and conservation balances with rounding residuals. Convergence to a continuous entropy solution remains open. |
 | [Numerical kernels](data/numerical/README.md) | Exponential, softmax, LayerNorm, and GELU with execution and real-arithmetic error bounds on specified domains. |
-| [Spectral KL estimator](docs/spectral-kl.md) | Observations to a regularized matrix score, CPU and WebGPU moment computation, and a proved scalar kernel error bound. Complete matrix accuracy is currently tested. |
+| [Spectral KL estimator](docs/spectral-kl.md) | Proved rational matrix estimator for every positive ridge, with exact integer CPU and GPU moment variants, plus a bounded scalar binary64 estimator. The GPU proof covers the emitted shader's modeled semantics; the device/compiler remain trusted. The original floating-point Jacobi solver and f32 shader remain unproved. |
 | [Running sum](docs/manual.md#running-sum) | Interactive, signed decimal input and cumulative output using timed byte I/O and explicit error codes. |
 | [JSON tree command](docs/demo.md) | Typed recursive data, parsing, transformation, and a WASI command interface. |
 | [SplitMix64](docs/prng.md) | A Lean/WASM pseudorandom generator: `tools/prng.js 42 5 100` emits five values modulo 100 from seed 42. |

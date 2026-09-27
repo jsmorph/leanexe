@@ -3,6 +3,8 @@ import fs from 'node:fs/promises';
 import {CpuEstimator} from '../tools/spectral-kl/runtime.mjs';
 import {referenceMoments,referenceScore,observations} from '../tools/spectral-kl/reference.mjs';
 
+// Integration checks of the proposal generators. The public acceptance path
+// is exercised in spectral_cli.mjs; its error guarantee is proved in Lean.
 const cpu=await CpuEstimator.create(await fs.readFile('.lake/build/spectral-kl/matrix.wasm'));
 function maxDifference(a,b) {
   assert.equal(a.length,b.length);
@@ -76,6 +78,6 @@ if(process.argv.includes('--gpu')) {
       assert.ok(Math.abs(score-expected)<2e-12,`WebGPU minimum ridge m=${m}`);
     }
     await assert.rejects(()=>gpu.moments(new Float32Array([Infinity]),1));
-    console.log('WebGPU full pipeline and tile-boundary checks passed');
+    console.log('WebGPU proposal pipeline and tile-boundary checks passed');
   } finally {gpu.destroy();}
 }

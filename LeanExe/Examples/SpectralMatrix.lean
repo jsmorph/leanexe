@@ -1,7 +1,7 @@
 import LeanExe.Examples.SpectralKL
 
 namespace LeanExe.Examples.SpectralMatrix
-open LeanExe.Float64
+open LeanExe.IEEE64
 open LeanExe.Examples.SpectralKL (Result kernel40Polynomial)
 
 def magnitude (x : UInt64) : UInt64 := x &&& 0x7FFFFFFFFFFFFFFF
@@ -227,9 +227,10 @@ def validMoments (p q : Array UInt64) (m : Nat) : Bool := Id.run do
     i := i+1
   return true
 
-/-- Dense score, status 1: input; 2: spectral domain; 3: factorization/finite
-result; 4: convergence. Matrix accuracy is currently established by numerical
-regressions; the scalar kernel has a separate Lean error theorem. -/
+/-- Dense score proposal, status 1: input; 2: spectral domain;
+3: factorization/finite result; 4: convergence. The public CLI sends this
+proposal to the proved residual checker before returning a final score.
+This function alone does not provide a matrix error guarantee. -/
 def score (p q : Array UInt64) (width eta : UInt64) : Result :=
   if width == 0 || width > 32 || eta < 0x3EB0000000000000 || eta > 0x4070000000000000 then ⟨1, 0⟩
   else

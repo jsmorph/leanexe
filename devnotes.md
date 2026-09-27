@@ -17599,7 +17599,7 @@ addition unstaged. Public proof statements and planner source are unchanged.
 
 ## 2026-09-27 — spectral KL numerical iterations
 
-On `mathalgo`, four complete iterations implement the regularized spectral KL
+On `mathalgo`, four initial iterations implement the regularized spectral KL
 moment functional from Francis Bach’s article. The first established a scalar
 Lean → WASM → Wasmtime path and a pure IEEE error theorem. The second proved a
 coarse cancellation-free kernel approximation. The third added sample input
@@ -17628,3 +17628,155 @@ roundoff, shader arithmetic, and universal WASM execution require further
 proofs before claiming a certified complete score. Sampling error is a separate
 statistical question. The [usage guide](docs/spectral-kl.md) and
 [iteration record](plans/spectral-kl.md) state the current bounds and commands.
+
+### Correction and proof repair
+
+Calling those iterations complete was incorrect. The scalar model had no
+proved connection to the executed source, and the matrix implementation had
+no final-score theorem. A later minimum-ridge example with nearly dependent
+features exposed a GPU score about 6.1% too large despite the earlier numerical
+checks passing.
+
+The repair changes the public acceptance path: CPU and GPU produce proposals,
+and a native Lean checker must certify the complete score against the exact
+sample-based inverse-matrix integral. General residual and interval-integration
+theorems justify exact rational enclosure arithmetic. A successful checker
+result carries the final error theorem in its type. A separate source/model
+equality proof now connects the executed scalar kernel to its error bound.
+
+The first large exact-checker run timed out at five minutes. Functions used as
+vectors repeatedly evaluated their construction. Storing coordinates and using
+tail-recursive accumulation addresses that cost; explicit equality proofs
+connect the optimized enclosure to the specification. No solver or shader
+accuracy premise is added. See the iteration record and usage guide for the
+precise theorem, runtime trust boundary, and retained numerical restrictions.
+
+Both repaired 32-feature examples pass the proved acceptance function at
+absolute tolerance 1e-6. The known GPU error case is rejected; the corresponding
+CPU proposal is accepted with a finer integration partition. The checker input
+and exact rational enclosure are retained for replay. In user-facing language,
+these inputs are candidate data; the proof is the universally quantified Lean
+theorem about the acceptance function. Invalid-input regressions do not add a
+mathematical guarantee.
+
+The final proof audit, scalar compilation/Wasmtime checks, matrix CPU/software
+WebGPU checks, public CLI checks, and documentation check pass. The public
+`Certificate.Fast.accepted_error` theorem names the function run by the checker
+and the proposed score supplied by the CLI. Its axioms are `propext`,
+`Classical.choice`, and `Quot.sound`. The CLI now calls its saved numerical input
+`checkInput` and uses `--intervals` for the integration partition size.
+
+### Proof of the computed scalar estimator
+
+The acceptance checker does not fulfill the requested proof of the numerical
+algorithm. Work has now connected the actual scalar sample reductions and
+complete arithmetic to the defining integral. `Scalar.fromBoundedSamples_correct`
+proves success, finiteness, and error at most 1e-6 for all admitted arrays and
+ridges in [1,256]. Each group has 1–2^20 observations in [-1/2,1/2]. The earlier
+ridge-one computation was built, proved, and executed before this extension.
+
+The reduction implementation uses explicit `Array.foldl` lambdas. Passing the
+addition constant directly to `foldl` failed the compiler's closure lowering;
+eta-expanding that argument fixed compilation without changing its semantics.
+The reduction/model equality theorems cover those executed folds. The bounded
+estimator invokes shared `scalarScore` arithmetic after input validation;
+its proof establishes the kernel argument's domain without a result checker.
+
+The scalar CLI now defaults to direct Lean execution of the proved function.
+The optional WASM engine executes the same source but trusts the translation.
+Both engines ran on 65536 and 65539 observations at ridge one, then at ridge
+3.5. Their agreement is an execution check; the theorem establishes accuracy.
+The full matrix solver and GPU shader still lack computation proofs. Large
+sample reductions are appropriate GPU work, so that obligation remains open.
+
+### Full matrix computation proof
+
+The new matrix polynomial path computes the original sample integral in
+arbitrary finite dimension on a stated moment/ridge domain. Twelve rational
+Richardson iteration steps suffice for error at most 1e-6, including decimal
+rounding. Stored arrays and explicit coefficient lists are the executed
+representations, and equality theorems connect their reductions and iteration
+to the real matrix analysis. An initial use of Mathlib's abstract polynomial
+operations failed because they were noncomputable; the retained coefficient
+list implementation has proofs of evaluation and integration.
+
+The fixed-depth version was proved and run directly in Lean on 4 and 32
+correlated features before adding adaptive depth selection. The adaptive
+version selects enough steps from the input-derived analytical bound and has
+its own success and accuracy theorem. The same examples then completed with
+one and two steps. No proposed score or external solution vector is an input
+to either algorithm. These proofs concern exact rational computation; they
+do not cover the earlier floating-point Jacobi solver or GPU shader.
+
+### General matrix domain and automatic iteration
+
+The matrix polynomial estimator now has a total correctness theorem for all
+nonempty rational sample groups, arbitrary finite dimension, and every
+positive ridge. A damped Richardson step has a proved contraction even when
+the original series would diverge. An executable increasing search selects
+enough steps; a rational ceiling bound proves the search budget sufficient.
+The final 1e-6 bound includes the implemented sample statistics, polynomial
+arithmetic, integration, and decimal rounding. No external candidate score
+or approximate solution is supplied.
+
+After the general damped implementation was proved and run on 4 and 32
+features outside the earlier domain, automatic selection of the smaller
+contraction factor was added and proved. The same examples then used 12
+instead of 25 steps, and 20 instead of 29. A separate example executed the
+automatically selected damped branch. Direct Lean executes the same functions
+named by the public theorems. The JSON boundary and evaluator remain trusted.
+
+This generality has a cost: small ridges may require impractical numbers of
+steps and large exact rational coefficients. The theorem guarantees
+mathematical termination, not completion within the CLI's five-minute limit.
+No proof for the old floating-point Jacobi solver or GPU shader is implied.
+
+## 2026-09-27: Exact integer GPU moments and small-ridge preconditioning
+
+A separate signed-16-bit input path computes column sums and full Gram
+matrices with exact two-limb u32 reductions. The CPU reductions, bias removal,
+and sample-to-score computation are proved. The emitted WGSL is parsed back
+to the modeled program; its arithmetic, address bounds, loop reductions,
+distinct writes, and score composition have proofs. The GPU compiler,
+device execution, host transport, JSON boundary, and Lean evaluator remain
+trusted. This does not cover the earlier floating-point shader.
+
+CPU and software WebGPU executions completed for 32 features and
+16381/16384 rows, about 33.6 million products on the GPU path. The shader
+computes all moments; the CPU only performs exact bias correction and the
+shared rational score calculation. Both paths returned 0.003893093480 at
+eta=1. Numerical agreement is execution evidence; the general theorems
+establish the error bound.
+
+The next iteration adds exact midpoint inversion and matrix-preconditioned
+polynomial iteration. Its complete CPU and shader-semantics theorems have
+passed. Both paths completed the nearly rank-one two-feature example with
+512 rows per group, shift (-1/4096,1/4096), and eta=2^-20, returning
+0.060047320542 in three steps. Work continues on the 32-feature small-ridge
+run, tightening the endpoint contraction bound and sharing one factorization
+among all inverse columns. The chosen GPU work remains the sample reductions.
+
+The first large small-ridge run timed out. Replacing the sum of endpoint
+bounds by their maximum and sharing the elimination factors passed the full
+proof composition. Both small executions then completed in two steps with
+score 0.060047173764. The large execution is being rerun after those changes.
+
+The second large run also hit the five-minute limit. Exact diagnostics show
+that preconditioning is selected and contracts by at most 0.581479090712;
+the old method's factor is about 0.999999999804. The next revision therefore
+changes the integration algorithm. It streams centered Neumann coefficient
+vectors and integrates each scalar monomial weight exactly. Its integral
+identity, residual error bound, and sample-to-score CPU/GPU compositions all
+pass Lean checking. The inverse hypothesis in the streamed theorem is
+proved from the actual midpoint factorization in the public computation
+theorem. Both small execution paths completed with score 0.060047173764 and
+four coefficient terms. The 32-feature workload is being rerun with this
+algorithm.
+
+The streamed implementation completed the previously failing 32-feature
+input on both CPU and software WebGPU within the existing timeout. Both
+returned 1.192735996967 at eta=2^-20 using 82 coefficient terms, for
+16381/16384 observations. The GPU performed all roughly 33.6 million feature
+products and returned only integer sums to the score core. This is a
+completed execution pair, with the universal source error theorem already
+checked; it is not a hardware GPU measurement.

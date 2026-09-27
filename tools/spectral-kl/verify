@@ -1,0 +1,186 @@
+#!/bin/sh
+# Stable entry point for repeatable spectral verification and approval rules.
+set -eu
+spectral_root="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
+cd "$spectral_root"
+spectral_local=0
+spectral_software=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --local) spectral_local=1; shift ;;
+    --software) spectral_software=1; shift ;;
+    *) break ;;
+  esac
+done
+if [ "$#" -ne 1 ]; then
+  echo 'usage: tools/spectral-kl/verify [--local] [--software] TARGET' >&2
+  echo 'targets: build audit scalar-proof scalar-audit scalar scalar-example scalar-example-wasm scalar-ridge-example scalar-ridge-example-wasm matrix-series-proof matrix-series-audit matrix-series-example matrix-series-large matrix-series-conditioned matrix-general-proof matrix-general-audit matrix-general-example matrix-general-large matrix-general-damped matrix-damped-proof matrix-damped-example matrix-damped-large matrix matrix-gpu cli cli-gpu example-cpu example-gpu docs' >&2
+  echo 'integer/preconditioned targets: word-moments-proof word-shader-proof word-shader-audit word-moments-example word-moments-large word-gpu-example word-gpu-large exact-solve-proof preconditioned-proof preconditioned-audit preconditioned-example preconditioned-gpu-example preconditioned-large preconditioned-gpu-large' >&2
+  echo 'streamed-series targets: neumann-proof preconditioned-rational preconditioned-large-diagnostics' >&2
+  exit 2
+fi
+if [ "$spectral_local" = 1 ]; then export LEANRUN_LOCAL=1; fi
+if [ -x "$spectral_root/build/tools/node-v24.13.0-linux-x64/bin/node" ]; then
+  PATH="$spectral_root/build/tools/node-v24.13.0-linux-x64/bin:$PATH"
+  export PATH
+fi
+if [ -z "${LEANRUN_TOOLCHAIN:-}" ] && [ -d "$spectral_root/build/tools/lean-4.34.0-rc2-linux" ]; then
+  LEANRUN_TOOLCHAIN="$spectral_root/build/tools/lean-4.34.0-rc2-linux"
+  export LEANRUN_TOOLCHAIN
+fi
+if [ -n "${LEANRUN_TOOLCHAIN:-}" ]; then
+  PATH="$LEANRUN_TOOLCHAIN/bin:$PATH"
+  export PATH
+fi
+spectral_gpu_flag=''
+if [ "$spectral_software" = 1 ]; then
+  spectral_gpu_flag='--allow-software'
+  spectral_vulkan="$spectral_root/build/spectral-kl-gpu/vulkan"
+  if [ -f "$spectral_vulkan/usr/share/vulkan/icd.d/lvp_icd.json" ]; then
+    export WEBGPU_BACKEND=vulkan
+    export LD_LIBRARY_PATH="$spectral_vulkan/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    export VK_ICD_FILENAMES="$spectral_vulkan/usr/share/vulkan/icd.d/lvp_icd.json"
+    export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+    export MESA_SHADER_CACHE_DIR="$spectral_root/build/spectral-kl-gpu/shader-cache"
+  fi
+fi
+case "$1" in
+  neumann-proof)
+    mkdir -p build/logs
+    if tools/leanrun --timeout 3m lake -d proofs/talos/lean build Project.SpectralKL.MatrixNeumannScore \
+        > build/logs/spectral-kl-neumann-proof.log 2>&1; then
+      tail -n 15 build/logs/spectral-kl-neumann-proof.log
+    else
+      tail -n 90 build/logs/spectral-kl-neumann-proof.log
+      exit 1
+    fi
+    ;;
+  preconditioned-proof|preconditioned-audit)
+    mkdir -p build/logs
+    if tools/leanrun --timeout 3m lake -d proofs/talos/lean build Project.SpectralKL.WordAccelerated \
+        > build/logs/spectral-kl-preconditioned-proof.log 2>&1; then
+      tail -n 15 build/logs/spectral-kl-preconditioned-proof.log
+    else
+      tail -n 90 build/logs/spectral-kl-preconditioned-proof.log
+      exit 1
+    fi
+    if [ "$1" = preconditioned-audit ]; then
+      exec tools/leanrun --timeout 1m lake -d proofs/talos/lean env lean "$spectral_root/tools/spectral-kl/preconditioned-audit.lean"
+    fi
+    ;;
+  exact-solve-proof)
+    mkdir -p build/logs
+    if tools/leanrun --timeout 3m lake -d proofs/talos/lean build Project.SpectralKL.ExactSolve \
+        > build/logs/spectral-kl-exact-solve-proof.log 2>&1; then
+      tail -n 12 build/logs/spectral-kl-exact-solve-proof.log
+    else
+      tail -n 75 build/logs/spectral-kl-exact-solve-proof.log
+      exit 1
+    fi
+    ;;
+  word-shader-proof|word-shader-audit)
+    mkdir -p build/logs
+    if tools/leanrun --timeout 3m lake -d proofs/talos/lean build Project.SpectralKL.WordAccelerated \
+        > build/logs/spectral-kl-word-shader-proof.log 2>&1; then
+      tail -n 12 build/logs/spectral-kl-word-shader-proof.log
+    else
+      tail -n 70 build/logs/spectral-kl-word-shader-proof.log
+      exit 1
+    fi
+    if [ "$1" = word-shader-audit ]; then
+      exec tools/leanrun --timeout 1m lake -d proofs/talos/lean env lean "$spectral_root/tools/spectral-kl/word-shader-audit.lean"
+    fi
+    ;;
+  word-moments-proof)
+    mkdir -p build/logs
+    if tools/leanrun --timeout 3m lake -d proofs/talos/lean build Project.SpectralKL.WordAccelerated \
+        > build/logs/spectral-kl-word-moments-proof.log 2>&1; then
+      tail -n 12 build/logs/spectral-kl-word-moments-proof.log
+    else
+      tail -n 70 build/logs/spectral-kl-word-moments-proof.log
+      exit 1
+    fi
+    ;;
+  matrix-damped-proof|matrix-general-proof|matrix-general-audit)
+    mkdir -p build/logs
+    if tools/leanrun --timeout 3m lake -d proofs/talos/lean build Project.SpectralKL.MatrixAccelerated \
+        > build/logs/spectral-kl-matrix-damped-proof.log 2>&1; then
+      tail -n 12 build/logs/spectral-kl-matrix-damped-proof.log
+    else
+      tail -n 70 build/logs/spectral-kl-matrix-damped-proof.log
+      exit 1
+    fi
+    if [ "$1" = matrix-general-audit ]; then
+      exec tools/leanrun --timeout 1m lake -d proofs/talos/lean env lean "$spectral_root/tools/spectral-kl/matrix-general-audit.lean"
+    fi
+    ;;
+  build) exec node tools/spectral-kl/build.js ;;
+  matrix-series-proof|matrix-series-audit)
+    mkdir -p build/logs
+    if tools/leanrun --timeout 3m lake -d proofs/talos/lean build Project.SpectralKL.MatrixAccelerated \
+        > build/logs/spectral-kl-matrix-series-proof.log 2>&1; then
+      tail -n 12 build/logs/spectral-kl-matrix-series-proof.log
+    else
+      tail -n 90 build/logs/spectral-kl-matrix-series-proof.log
+      exit 1
+    fi
+    if [ "$1" = matrix-series-audit ]; then
+      exec tools/leanrun --timeout 1m lake -d proofs/talos/lean env lean "$spectral_root/tools/spectral-kl/matrix-series-audit.lean"
+    fi
+    ;;
+  scalar-proof|scalar-audit)
+    mkdir -p build/logs
+    if tools/leanrun --timeout 3m lake -d proofs/talos/lean build Project.SpectralKL.ScalarEstimator \
+        > build/logs/spectral-kl-scalar-proof.log 2>&1; then
+      tail -n 8 build/logs/spectral-kl-scalar-proof.log
+    else
+      tail -n 100 build/logs/spectral-kl-scalar-proof.log
+      exit 1
+    fi
+    if [ "$1" = scalar-audit ]; then
+      exec tools/leanrun --timeout 1m lake -d proofs/talos/lean env lean "$spectral_root/tools/spectral-kl/scalar-audit.lean"
+    fi
+    ;;
+  audit)
+    mkdir -p build/logs
+    if ! tools/leanrun --timeout 5m lake -d proofs/talos/lean build \
+        Project.SpectralKL.Executable Project.SpectralKL.CertificateRun Project.SpectralKL.ScalarEstimator \
+        Project.SpectralKL.WordAccelerated \
+        > build/logs/spectral-kl-proof-build.log 2>&1; then
+      cat build/logs/spectral-kl-proof-build.log
+      exit 1
+    fi
+    exec tools/leanrun --timeout 1m lake -d proofs/talos/lean env lean "$spectral_root/tools/spectral-kl/audit.lean"
+    ;;
+  scalar) exec node test/spectral_kl.js ;;
+  scalar-example) exec node tools/spectral-kl/scalar.mjs --example ;;
+  scalar-example-wasm) exec node tools/spectral-kl/scalar.mjs --example --engine wasm ;;
+  scalar-ridge-example) exec node tools/spectral-kl/scalar.mjs --example --eta 3.5 ;;
+  scalar-ridge-example-wasm) exec node tools/spectral-kl/scalar.mjs --example --eta 3.5 --engine wasm ;;
+  matrix) exec node test/spectral_matrix.mjs ;;
+  matrix-series-example) exec node tools/spectral-kl/matrix-series.mjs --example ;;
+  matrix-series-large) exec node tools/spectral-kl/matrix-series.mjs --example --features 32 --rows 1024 ;;
+  matrix-series-conditioned) exec node tools/spectral-kl/matrix-series.mjs --example --features 32 --rows 1024 --scale 3 ;;
+  matrix-damped-example) exec node tools/spectral-kl/matrix-series.mjs --example --features 4 --rows 64 --scale 8 --method damped ;;
+  matrix-damped-large) exec node tools/spectral-kl/matrix-series.mjs --example --features 32 --rows 1024 --scale 4 --method damped ;;
+  matrix-general-example) exec node tools/spectral-kl/matrix-series.mjs --example --features 4 --rows 64 --scale 8 ;;
+  matrix-general-large) exec node tools/spectral-kl/matrix-series.mjs --example --features 32 --rows 1024 --scale 4 ;;
+  matrix-general-damped) exec node tools/spectral-kl/matrix-series.mjs --example --features 4 --rows 64 --scale 10 ;;
+  word-moments-example) exec node tools/spectral-kl/word-moments.mjs --example ;;
+  preconditioned-example) exec node tools/spectral-kl/word-moments.mjs --example --features 2 --rows 512 --fixture cancellation --denominator 4096 --method preconditioned ;;
+  preconditioned-rational) exec node tools/spectral-kl/matrix-series.mjs --example --features 4 --rows 64 --scale 0.3 --eta 0.00000095367431640625 --method preconditioned ;;
+  preconditioned-gpu-example) exec node tools/spectral-kl/word-moments.mjs --example --features 2 --rows 512 --fixture cancellation --denominator 4096 --method preconditioned --backend gpu $spectral_gpu_flag ;;
+  preconditioned-large) exec node tools/spectral-kl/word-moments.mjs --example --features 32 --rows 16381 --eta 0.00000095367431640625 --method preconditioned ;;
+  preconditioned-large-diagnostics) exec node tools/spectral-kl/word-moments.mjs --example --features 32 --rows 16381 --eta 0.00000095367431640625 --method preconditioned --diagnostics ;;
+  preconditioned-gpu-large) exec node tools/spectral-kl/word-moments.mjs --example --features 32 --rows 16381 --eta 0.00000095367431640625 --method preconditioned --backend gpu $spectral_gpu_flag ;;
+  word-moments-large) exec node tools/spectral-kl/word-moments.mjs --example --features 32 --rows 16381 ;;
+  word-gpu-example) exec node tools/spectral-kl/word-moments.mjs --example --backend gpu $spectral_gpu_flag ;;
+  word-gpu-large) exec node tools/spectral-kl/word-moments.mjs --example --features 32 --rows 16381 --backend gpu $spectral_gpu_flag ;;
+  matrix-gpu) exec node test/spectral_matrix.mjs --gpu $spectral_gpu_flag ;;
+  cli) exec node test/spectral_cli.mjs ;;
+  cli-gpu) exec node test/spectral_cli.mjs --gpu $spectral_gpu_flag ;;
+  example-cpu) exec node tools/spectral-kl.mjs --example --backend cpu ;;
+  example-gpu) exec node tools/spectral-kl.mjs --example --backend gpu $spectral_gpu_flag ;;
+  docs) exec node tools/check-docs.js ;;
+  *) echo "unknown spectral verification target: $1" >&2; exit 2 ;;
+esac

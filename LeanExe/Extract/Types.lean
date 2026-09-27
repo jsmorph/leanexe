@@ -1315,19 +1315,19 @@ def containsConstant (name : Name) (info : ConstantInfo) : Bool :=
   info.value? |>.any (fun value => value.getUsedConstants.contains name)
 
 def f64BinaryPrimitive? (name : Name) : Option LeanExe.IR.U64Op :=
-  if name == ``LeanExe.Float64.addBits || name == `Wasm.IEEE64.add then
+  if name == ``LeanExe.Float64.addBits || name == `LeanExe.IEEE64.addBits || name == `Wasm.IEEE64.add then
     some .f64AddBits
-  else if name == ``LeanExe.Float64.subBits || name == `Wasm.IEEE64.sub then
+  else if name == ``LeanExe.Float64.subBits || name == `LeanExe.IEEE64.subBits || name == `Wasm.IEEE64.sub then
     some .f64SubBits
-  else if name == ``LeanExe.Float64.mulBits || name == `Wasm.IEEE64.mul then
+  else if name == ``LeanExe.Float64.mulBits || name == `LeanExe.IEEE64.mulBits || name == `Wasm.IEEE64.mul then
     some .f64MulBits
-  else if name == ``LeanExe.Float64.divBits || name == `Wasm.IEEE64.div then
+  else if name == ``LeanExe.Float64.divBits || name == `LeanExe.IEEE64.divBits || name == `Wasm.IEEE64.div then
     some .f64DivBits
   else
     none
 
 def f64SqrtPrimitiveName (name : Name) : Bool :=
-  name == ``LeanExe.Float64.sqrtBits || name == `Wasm.IEEE64.sqrt
+  name == ``LeanExe.Float64.sqrtBits || name == `LeanExe.IEEE64.sqrtBits || name == `Wasm.IEEE64.sqrt
 
 def f32BinaryPrimitive? (name : Name) : Option LeanExe.IR.U64Op :=
   if name == ``LeanExe.Float32.addBits then some .f32AddBits

@@ -8,7 +8,7 @@ const host = require('./wasmtime_host');
 const moduleName = 'LeanExe.Examples.SpectralKL';
 const outDir = path.join('.lake', 'build', 'spectral-kl');
 const wasm = path.join(outDir, 'spectral-kl.wasm');
-const entries = ['equalMoments', 'kernel2', 'kernel40', 'scalarMoments', 'fromSamples'];
+const entries = ['equalMoments', 'kernel2', 'kernel40', 'scalarMoments', 'fromSamples', 'fromUnitSamples', 'fromBoundedSamples'];
 
 function bits(value) {
   const b = Buffer.alloc(8);
@@ -107,6 +107,25 @@ function main() {
     assert.deepEqual(result,[status,0n]);
   }
   console.log(`spectral KL iteration 3: ${deltas.length} high-precision kernel checks; max error ${maxError}; sample-to-score and rejection checks passed`);
+  // Exercise the entry whose complete source error theorem is
+  // Scalar.fromUnitSamples_correct. These calls check compiler/ABI integration.
+  for(const [p,q] of [
+    [[0.5],[-0.5]], [[0.1,0.3,-0.2],[0.2,0.4]], [[0,-0],[0]],
+  ]) {
+    const words=host.call(wasm,'fromUnitSamples','slots:2',
+      [host.arrayU64(p.map(bits)),host.arrayU64(q.map(bits))])
+      .split(/\s+/).map(x=>BigInt.asUintN(64,BigInt(x)));
+    assert.equal(words[0],0n);
+    assert.ok(Number.isFinite(number(words[1])));
+  }
+  for(const eta of [1,3.5,256]) {
+    const words=host.call(wasm,'fromBoundedSamples','slots:2',
+      [host.arrayU64([0.5].map(bits)),host.arrayU64([-0.5].map(bits)),host.i64(bits(eta))])
+      .split(/\s+/).map(x=>BigInt.asUintN(64,BigInt(x)));
+    assert.equal(words[0],0n);
+    assert.ok(Number.isFinite(number(words[1])));
+  }
+  console.log('Complete scalar estimator: WASM entry and ABI integration passed');
 }
 if (require.main === module) main();
 module.exports = { bits, number, call, build, wasm };
