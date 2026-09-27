@@ -430,8 +430,9 @@ helper declarations use the same recursive body check, including predicate lets
 inside propositions. Helpers declared before word-result and Boolean-result
 loops also use this check, preserving captures in bounds, initial values, loop
 steps and final results. Boolean-result helper dispatch retains the existing
-direct, wrapped and conditional loop-valued call paths. Other outer-loop
-grammars retain their supported Boolean helper forms. Captures, Id result annotations and unused
+direct, wrapped and conditional loop-valued call paths. Helpers around
+Boolean-derived word results and word-valued conditionals use the same checked
+body conversion. Captures, Id result annotations and unused
 helpers are checked. Ordinary and dependent conditions check their standard
 decisions and proof-branch domains. Loop step conditions use the same conversion,
 including break and continue. Standard Id.run, pure and metadata wrappers may
