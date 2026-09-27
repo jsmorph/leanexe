@@ -112,6 +112,32 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     obtain ⟨value, hv, ht⟩ := compiled
     exact ihb ht (bindings.cons (binding := .scalar (.boolean value))
       (value := .scalar (.boolean _)) (extractScalarExprWith_correct bound hv bindings.toScalar))
+  | @chooseScope flag t e values value guard type condition _ ihb =>
+    rw [extractScalarStepWith_scopeBranch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨c, hc, ti, ht, ei, he, rfl⟩ := compiled
+    have test : (wordGuard c).ScalarEval store flag store := by
+      cases flag <;> exact .eq (extractScalarExprWith_correct condition hc bindings.toScalar) .const
+    cases flag with
+    | false =>
+      obtain ⟨v, d⟩ := ihb he bindings
+      exact ⟨.iteFalse test v, .iteFalse test d⟩
+    | true =>
+      obtain ⟨v, d⟩ := ihb ht bindings
+      exact ⟨.iteTrue test v, .iteTrue test d⟩
+  | @chooseScopeDependent flag t e values value guard type tn fn ti fi condition _ ihb =>
+    rw [extractScalarStepWith_scopeDependentBranch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨c, hc, ti, ht, ei, he, rfl⟩ := compiled
+    have test : (wordGuard c).ScalarEval store flag store := by
+      cases flag <;> exact .eq (extractScalarExprWith_correct condition hc bindings.toScalar) .const
+    cases flag with
+    | false =>
+      obtain ⟨v, d⟩ := ihb he (bindings.cons (binding := .scalar .unit) (value := .scalar .unit) trivial)
+      exact ⟨.iteFalse test v, .iteFalse test d⟩
+    | true =>
+      obtain ⟨v, d⟩ := ihb ht (bindings.cons (binding := .scalar .unit) (value := .scalar .unit) trivial)
+      exact ⟨.iteTrue test v, .iteTrue test d⟩
   | @chooseBoolean values t e value guard type native booleans variables arguments branch ihb =>
     rw [extractScalarStepWith_booleanBranch (noBoolean :=
       hasBooleanPredicate_false (fun index member => bindings.toScalar.no_booleanPredicate_of_predicate (variables.functions index member)))] at compiled

@@ -59,7 +59,14 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
               match compoundGuard? condition evidence with
               | none =>
                   match booleanLocalGuard? condition evidence with
-                  | none => none
+                  | none =>
+                      match booleanScopeGuard? condition evidence with
+                      | none => none
+                      | some guard => do
+                          let c ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) guard.operand
+                          let t ← extractScalarStepWith locals onTrue
+                          let e ← extractScalarStepWith locals onFalse
+                          pure { value := .ite (wordGuard c) t.value e.value, done := .ite (wordGuard c) t.done e.done }
                   | some guard => do
                       let c ← if hasBooleanPredicate (locals.map ScalarStepBinding.toScalar) guard.value.functions then
                           extractBooleanCondition guard.form (fun input _ =>
@@ -280,7 +287,14 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
           match _guard : dependentGuard? condition evidence trueDomain falseDomain with
           | none =>
               match _booleanGuard : booleanLocalDependentGuard? condition evidence trueDomain falseDomain with
-              | none => none
+              | none =>
+                  match booleanScopeDependentGuard? condition evidence trueDomain falseDomain with
+                  | none => none
+                  | some guard => do
+                      let c ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) guard.operand
+                      let t ← extractScalarStepWith (.scalar .unit :: locals) onTrue
+                      let e ← extractScalarStepWith (.scalar .unit :: locals) onFalse
+                      pure { value := .ite (wordGuard c) t.value e.value, done := .ite (wordGuard c) t.done e.done }
               | some guard => do
                   let c ← if hasBooleanPredicate (locals.map ScalarStepBinding.toScalar) guard.value.functions then
                       extractBooleanCondition guard.form (fun input _ =>

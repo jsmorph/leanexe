@@ -695,16 +695,17 @@ comparisons, 77,736 invalid-input checks and 2,528 controls. The native corpus
 contains 1407 declarations. Evidence is in
 [the proposition-let relation archive](proofs/compiler/boolean-proposition-let-relation-2026-09-27/README.md).
 
-Current capability: local predicate declarations used directly inside Boolean
-conditions. Probes show saved Boolean values already compile through the public
-range dispatcher, while direct conditions and Id.run-wrapped inner helper bodies
-are rejected. The first extension retains the existing Boolean parser and adds
-a complementary independent source rule for word/Boolean-input predicate scopes.
-Source totality, parser acceptance/soundness, scalar correctness and IR
-invariants pass. Focused tests pass 1,344 native/IR comparisons, 1,248
-invalid-input checks and 32 controls. Public tests exposed the corresponding
-loop break/continue condition path as still unsupported; that path is next in
-this increment. Wrappers follow once direct scopes work through WASM.
+Current capability: local predicate declarations directly inside Boolean
+conversions and conditions. Source totality, parsing, scalar/step correctness,
+acceptance and IR invariants pass. Public native/IR tests pass 180 comparisons,
+including loop break/continue and final results. Raw scalar and step syntax tests
+pass 3,136 value/exit comparisons, 2,176 invalid-input checks and 64 controls.
+The expanded scalar converter can select the existing scalar fast path for
+previously admitted public Boolean helpers; their explicit range plans still
+produce the same results. The prior plan-identity test now checks execution of
+both paths and unused-helper controls. The final compiler-proof and native/V8
+gates remain to run before this capability is complete. General Id.run-wrapped
+scopes follow this increment.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

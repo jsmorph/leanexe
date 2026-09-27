@@ -38,6 +38,15 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
         (values.map Value.toScalar) (Bool.toUInt64 flag))
       (body : Eval b (.scalar (.boolean flag) :: values) value) :
       Eval (BooleanIdentity.bind name bi action.expr b (resultType type)) values value
+  | chooseScope (guard : BooleanScopeGuard) (type : ResultAnnotation)
+      (condition : EvalWith guard.operand (values.map Value.toScalar) (Bool.toUInt64 flag))
+      (branch : Eval (if flag then t else e) values value) :
+      Eval (guard.branch (resultType type) t e) values value
+  | chooseScopeDependent (guard : BooleanScopeGuard) (type : ResultAnnotation)
+      (trueName falseName : Lean.Name) (trueInfo falseInfo : Lean.BinderInfo)
+      (condition : EvalWith guard.operand (values.map Value.toScalar) (Bool.toUInt64 flag))
+      (branch : Eval (if flag then t else e) (.scalar .unit :: values) value) :
+      Eval (guard.dependentBranch (resultType type) trueName falseName trueInfo falseInfo t e) values value
   | chooseBoolean (guard : BooleanLocalGuard) (type : ResultAnnotation)
       {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
       (variables : guard.value.VariablesMean (values.map Value.toScalar) booleans)
@@ -236,6 +245,15 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
         (.app (.const ``Bool.toUInt64 []) action.expr))
       (body : Supported (.scalar .boolean :: types) b) :
       Supported types (BooleanIdentity.bind name bi action.expr b (resultType type))
+  | chooseScope (guard : BooleanScopeGuard) (type : ResultAnnotation)
+      (condition : SupportedWith (types.map BindingKind.toScalar) guard.operand)
+      (onTrue : Supported types t) (onFalse : Supported types e) :
+      Supported types (guard.branch (resultType type) t e)
+  | chooseScopeDependent (guard : BooleanScopeGuard) (type : ResultAnnotation)
+      (trueName falseName : Lean.Name) (trueInfo falseInfo : Lean.BinderInfo)
+      (condition : SupportedWith (types.map BindingKind.toScalar) guard.operand)
+      (onTrue : Supported (.scalar .unit :: types) t) (onFalse : Supported (.scalar .unit :: types) e) :
+      Supported types (guard.dependentBranch (resultType type) trueName falseName trueInfo falseInfo t e)
   | chooseBoolean (guard : BooleanLocalGuard) (type : ResultAnnotation)
       (variables : guard.value.VariablesTyped (types.map BindingKind.toScalar))
       (arguments : ∀ operand, operand ∈ guard.value.operands → SupportedWith (types.map BindingKind.toScalar) operand)
@@ -458,6 +476,26 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨result, hb⟩ := ihb (.scalar (.boolean flag) :: values)
       (by simp [Value.kind, Scalar.Value.kind, typed])
     exact ⟨result, .idBindBoolean action type hv hb⟩
+  | chooseScope guard type condition _ _ iht ihe =>
+    obtain ⟨encoded, evaluated⟩ := condition.evaluates (values.map Value.toScalar) (typed_projection typed)
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    cases flag with
+    | false =>
+      obtain ⟨value, branch⟩ := ihe values typed
+      exact ⟨value, .chooseScope guard type evaluated branch⟩
+    | true =>
+      obtain ⟨value, branch⟩ := iht values typed
+      exact ⟨value, .chooseScope guard type evaluated branch⟩
+  | chooseScopeDependent guard type tn fn ti fi condition _ _ iht ihe =>
+    obtain ⟨encoded, evaluated⟩ := condition.evaluates (values.map Value.toScalar) (typed_projection typed)
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    cases flag with
+    | false =>
+      obtain ⟨value, branch⟩ := ihe (.scalar .unit :: values) (by simp [Value.kind, Scalar.Value.kind, typed])
+      exact ⟨value, .chooseScopeDependent guard type tn fn ti fi evaluated branch⟩
+    | true =>
+      obtain ⟨value, branch⟩ := iht (.scalar .unit :: values) (by simp [Value.kind, Scalar.Value.kind, typed])
+      exact ⟨value, .chooseScopeDependent guard type tn fn ti fi evaluated branch⟩
   | chooseBoolean guard type variables arguments _ _ iht ihe =>
     obtain ⟨booleans, hbooleans⟩ := variables.evaluates (values.map Value.toScalar) (typed_projection typed)
     let native : Lean.Expr → UInt64 := fun operand =>
