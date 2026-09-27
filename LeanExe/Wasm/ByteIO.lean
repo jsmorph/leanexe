@@ -135,10 +135,10 @@ def moduleBytes (program : LeanExe.IR.ByteIOProgram) : Except String ByteArray :
        wasiStartType, funcType [i64] [], funcType [i64, i64] [i64]])) ++
     imports ++
     (wasmSection 3 <| u32Vec ((List.range (shifted.funcs.size + 5)).map (· + importTypes.length))) ++
-    coreMemorySection ++ coreGlobalSection ++
+    coreMemorySection module_.memoryPages ++ coreGlobalSection module_.heapStart ++
     (wasmSection 7 <| vec [exportEntry "memory" 2 0, exportEntry "_start" 0 startIndex]) ++
     (wasmSection 10 <| vec (bodies ++
       [readBody waitIndex releaseIndex, writeBody waitIndex,
-       startBody (program.entryIndex + importCount), coreReleaseBody releaseIndex, waitBody]))).toArray
+       startBody (program.entryIndex + importCount), coreReleaseBody releaseIndex, waitBody])) ++ staticDataSection module_).toArray
 
 end LeanExe.Wasm.Binary.CoreWasm.ByteIO

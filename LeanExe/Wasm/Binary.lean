@@ -451,7 +451,7 @@ def shiftFuncCalls (offset : Nat) (func : Func) : Func :=
     results := func.results.map (shiftExprCalls offset) }
 
 def shiftModuleCalls (offset : Nat) (module_ : Module) : Module :=
-  { funcs := module_.funcs.map (shiftFuncCalls offset) }
+  { module_ with funcs := module_.funcs.map (shiftFuncCalls offset) }
 
 def emitU64Op : LeanExe.IR.U64Op → List Instr
   | .add => [Instr.addI64]
@@ -496,9 +496,9 @@ def isF32Binary : LeanExe.IR.U64Op → Bool
   | .f32AddBits | .f32SubBits | .f32MulBits | .f32DivBits => true
   | _ => false
 
-def coreGlobalSection : List UInt8 :=
+def coreGlobalSection (heapStart : Nat := 4096) : List UInt8 :=
   wasmSection 6 <| vec [
-    ofNats [126, 1] ++ LeanExe.Wasm.Binary.i64Const 4096 ++ ofNats [11],
+    ofNats [126, 1] ++ LeanExe.Wasm.Binary.i64Const heapStart ++ ofNats [11],
     ofNats [126, 1] ++ LeanExe.Wasm.Binary.i64Const 0 ++ ofNats [11],
     ofNats [126, 1] ++ LeanExe.Wasm.Binary.i64Const 0 ++ ofNats [11],
     ofNats [126, 1] ++ LeanExe.Wasm.Binary.i64Const 0 ++ ofNats [11],
@@ -506,10 +506,19 @@ def coreGlobalSection : List UInt8 :=
     ofNats [126, 1] ++ LeanExe.Wasm.Binary.i64Const 0 ++ ofNats [11]
   ]
 
-def coreMemorySection : List UInt8 :=
+def coreMemorySection (pages : Nat := 16) : List UInt8 :=
   wasmSection 5 <| vec [
-    ofNats [0] ++ u32leb 16
+    ofNats [0] ++ u32leb pages
   ]
+
+def staticDataBytes (module_ : Module) : List UInt8 :=
+  module_.staticData.toList.flatMap fun word =>
+    (List.range 8).map fun i => (word >>> (UInt64.ofNat (8 * i))).toUInt8
+
+def staticDataSection (module_ : Module) : List UInt8 :=
+  if module_.staticData.isEmpty then [] else
+    wasmSection 11 <| vec [ofNats [0, 65] ++ s64lebInt 4096 ++ ofNats [11] ++
+      byteVec (staticDataBytes module_)]
 
 def i32WrapI64 : List Instr :=
   [Instr.wrapI64]
@@ -4310,16 +4319,16 @@ def coreAllocInstrs : List Instr :=
 def coreAllocBody : List UInt8 :=
   bodyI (ofNats [1, 6, 126]) coreAllocInstrs
 
-def coreResetInstrs : List Instr :=
-  (i64Const 4096 ++ globalSet 0 ++
+def coreResetInstrs (heapStart : Nat := 4096) : List Instr :=
+  (i64Const heapStart ++ globalSet 0 ++
       i64Const 0 ++ globalSet 1 ++
       i64Const 0 ++ globalSet (runtimeStatGlobal .allocs) ++
       i64Const 0 ++ globalSet (runtimeStatGlobal .retains) ++
       i64Const 0 ++ globalSet (runtimeStatGlobal .releases) ++
       i64Const 0 ++ globalSet (runtimeStatGlobal .frees))
 
-def coreResetBody : List UInt8 :=
-  bodyI (ofNats [0]) coreResetInstrs
+def coreResetBody (heapStart : Nat := 4096) : List UInt8 :=
+  bodyI (ofNats [0]) (coreResetInstrs heapStart)
 
 def coreRetainInstrs : List Instr :=
   let rcLocal := 1
@@ -4460,6 +4469,8 @@ def imageExports (module_ : Module) : Array LeanExe.Wasm.Image.Export :=
 
 /-- Freeze a lowered library module after instruction lowering and runtime selection. -/
 def moduleImage (module_ : Module) : Except String LeanExe.Wasm.Image.Module := do
+  if !module_.staticData.isEmpty then
+    throw "leanexe-image: image schema v2 does not support static data"
   let releaseIndex := module_.funcs.size + 3
   let userFunctions ← module_.funcs.toList.mapM (imageUserFunction releaseIndex)
   let runtimeFunctions ← imageRuntimeFunctions releaseIndex
@@ -4482,16 +4493,17 @@ def codeSection (module_ : Module) : List UInt8 :=
   let releaseIndex := module_.funcs.size + 3
   wasmSection 10 <| vec (
     module_.funcs.toList.map (emitFuncBody releaseIndex) ++
-      [coreAllocBody, coreResetBody, coreRetainBody, coreReleaseBody releaseIndex])
+      [coreAllocBody, coreResetBody module_.heapStart, coreRetainBody, coreReleaseBody releaseIndex])
 
 def legacyModuleBytes (module_ : Module) : ByteArray :=
   ByteArray.mk <| (ofNats [0, 97, 115, 109, 1, 0, 0, 0]
     ++ typeSection module_
     ++ functionSection module_
-    ++ coreMemorySection
-    ++ coreGlobalSection
+    ++ coreMemorySection module_.memoryPages
+    ++ coreGlobalSection module_.heapStart
     ++ exportSection module_
-    ++ codeSection module_).toArray
+    ++ codeSection module_
+    ++ staticDataSection module_).toArray
 
 /-- Production native serialization.  The image emitter remains an experimental,
 independently callable regression path. -/
@@ -5134,10 +5146,11 @@ def wasiModuleBytes (module_ : Module) : Except String ByteArray := do
     ++ wasiTypeSection module_
     ++ wasiImportSection
     ++ wasiFunctionSection module_
-    ++ coreMemorySection
-    ++ coreGlobalSection
+    ++ coreMemorySection module_.memoryPages
+    ++ coreGlobalSection module_.heapStart
     ++ wasiExportSection module_ 1
-    ++ wasiCodeSection module_ entryIndex).toArray
+    ++ wasiCodeSection module_ entryIndex
+      ++ staticDataSection module_).toArray
 
 def wasiStdinModuleBytes (maxInput : Nat) (module_ : Module) : Except String ByteArray := do
   if maxInput > wasiMaxInputBytes then
@@ -5151,10 +5164,11 @@ def wasiStdinModuleBytes (maxInput : Nat) (module_ : Module) : Except String Byt
       ++ wasiTypeSection module_
       ++ wasiStdinImportSection
       ++ wasiFunctionSection module_
-      ++ coreMemorySection
-      ++ coreGlobalSection
+      ++ coreMemorySection module_.memoryPages
+      ++ coreGlobalSection module_.heapStart
       ++ wasiExportSection module_ 2
-      ++ wasiStdinCodeSection maxInput module_ entryIndex).toArray
+      ++ wasiStdinCodeSection maxInput module_ entryIndex
+      ++ staticDataSection module_).toArray
 
 def wasiStdinExceptModuleBytes (maxInput : Nat) (module_ : Module) : Except String ByteArray := do
   if maxInput > wasiMaxInputBytes then
@@ -5168,10 +5182,11 @@ def wasiStdinExceptModuleBytes (maxInput : Nat) (module_ : Module) : Except Stri
       ++ wasiTypeSectionWithImportTypes [wasiFdIoType, wasiProcExitType] module_
       ++ wasiStdinExceptImportSection
       ++ wasiFunctionSectionWithImportTypes 2 module_
-      ++ coreMemorySection
-      ++ coreGlobalSection
+      ++ coreMemorySection module_.memoryPages
+      ++ coreGlobalSection module_.heapStart
       ++ wasiExportSection module_ 3
-      ++ wasiStdinExceptCodeSection maxInput module_ entryIndex).toArray
+      ++ wasiStdinExceptCodeSection maxInput module_ entryIndex
+      ++ staticDataSection module_).toArray
 
 def wasiArgvExceptModuleBytes
     (maxArgs maxArgBytes : Nat)
@@ -5190,10 +5205,11 @@ def wasiArgvExceptModuleBytes
       ++ wasiTypeSectionWithImportTypes [wasiFdIoType, wasiArgsType, wasiProcExitType] module_
       ++ wasiArgvExceptImportSection
       ++ wasiFunctionSectionWithImportTypes 3 module_
-      ++ coreMemorySection
-      ++ coreGlobalSection
+      ++ coreMemorySection module_.memoryPages
+      ++ coreGlobalSection module_.heapStart
       ++ wasiExportSection module_ 4
-      ++ wasiArgvExceptCodeSection maxArgs maxArgBytes module_ entryIndex).toArray
+      ++ wasiArgvExceptCodeSection maxArgs maxArgBytes module_ entryIndex
+      ++ staticDataSection module_).toArray
 
 def wasiStdinArgvExceptModuleBytes
     (maxInput maxArgs maxArgBytes : Nat)
@@ -5214,10 +5230,11 @@ def wasiStdinArgvExceptModuleBytes
       ++ wasiTypeSectionWithImportTypes [wasiFdIoType, wasiArgsType, wasiProcExitType] module_
       ++ wasiStdinArgvExceptImportSection
       ++ wasiFunctionSectionWithImportTypes 3 module_
-      ++ coreMemorySection
-      ++ coreGlobalSection
+      ++ coreMemorySection module_.memoryPages
+      ++ coreGlobalSection module_.heapStart
       ++ wasiExportSection module_ 5
-      ++ wasiStdinArgvExceptCodeSection maxInput maxArgs maxArgBytes module_ entryIndex).toArray
+      ++ wasiStdinArgvExceptCodeSection maxInput maxArgs maxArgBytes module_ entryIndex
+      ++ staticDataSection module_).toArray
 
 end CoreWasm
 

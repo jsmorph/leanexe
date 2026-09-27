@@ -96,6 +96,7 @@ structure Context where
   freshResultOwnerOffsets : Array (List Nat)
   inlineStack : List Name
   allowByteIO : Bool := false
+  staticArrays : Array (Name × Nat) := #[]
 
 structure VariantCtorLayout where
   name : Name

@@ -56,6 +56,14 @@ Internal and public Nat-tail loops track owned roots acquired during iteration. 
 
 Nat-tail let lowering materializes used supported bindings with the same machinery as ordinary value extraction and preserves an explicit release whose counter result is unused.  The continuation receives the materialized bindings' ownership facts.  The fresh-result analysis starts with unknown parameters and zero-valued non-parameter locals.  Null owners require no release.  At a loop, the analysis repeatedly removes ownership facts until every remaining fact survives the body.  This accounts for borrowed pointers propagated across several iterations and for fresh results assigned on every loop exit.
 
+Named `Array UInt64` literals supply static lookup tables for direct scalar
+indexing (`table[i]` and `table[i]!`).  Extraction records their length and
+words in the module's static data and lowers each read to a bounds-checked
+memory load.  The binary and WAT serializers place those words at address
+4096 and start the allocation arena after them.  `reset` returns the arena to
+that start address.  Operations that consume or update an array value retain
+the ordinary ownership and allocation rules.
+
 ## WebAssembly backend
 
 The byte-I/O path uses `LeanExe.ByteIO`, `LeanExe.IR.ByteIO`, and `LeanExe.Wasm.ByteIO`.  `compile-wasi-io` checks for a zero-argument `ByteIO UInt32` entry and emits six WASI Preview 1 imports for nonblocking reads, writes, descriptor flags, monotonic time, polling, and exit.  Effect analysis preserves sequenced calls through unused results, arguments, and conditions.  `LocalLet.effectCall` carries those effects through pruning before lowering to ordinary calls.  The runtime retains each operation's deadline across retries and partial transfers.  The [byte-I/O specification](spec.md#byte-input-and-output) defines errors and host requirements.

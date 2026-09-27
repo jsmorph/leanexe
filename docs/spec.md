@@ -123,6 +123,12 @@ Arrays cross the public ABI as one arena pointer.  Inside compiled code, an `Arr
 
 LeanExe allocates heap-backed values in WASM linear memory with a small reference-counted object header before each returned payload pointer.  Heap-backed values such as `ByteArray`, `Array`, recursive inductives, internal nested arrays, and JSON AST nodes use this allocator when compiled code constructs them.  Allocations never move, the allocator grows memory when the free list and current heap range cannot satisfy a request, and the current collector reuses whole released blocks through a free list.
 
+Direct indexing into a named `Array UInt64` literal reads a static table in
+linear memory and retains the normal bounds check.  The module initializes
+the table through a data segment.  Allocation starts after the static data,
+and `reset` preserves it.  Host writes must preserve the static data.  Array
+updates and array values passed to other functions use ordinary heap storage.
+
 In library mode, `alloc(len)` creates a raw byte object with reference count `1` and returns the payload pointer.  `retain(ptr)` increments the count for a nonzero pointer and returns the same pointer.  `release(ptr)` decrements the count, puts the object on the free list when the count reaches zero, and traps on invalid or double release; `free(ptr)` is the same operation under a host-facing name.
 
 The generated compiler backend emits reference-counted allocation headers for byte arrays, arrays, and recursive-inductive heap objects.  Recursive-inductive heap objects store a child-pointer mask in their header, so `release` can recursively release fields that hold recursive-inductive child pointers, `ByteArray` owner slots, or `Array` owner slots.  Arrays store the same child-pointer mask for fixed-width element layouts, including marked slots inside products, structures, and nonrecursive tagged values.  Array-producing operations retain recursive children, `ByteArray` owners, and `Array` owners when they copy existing elements, and they transfer freshly constructed owned children into inserted element slots.  Array operations that can return the original array preserve the original owner slot, so a no-op over a borrowed public array remains borrowed.
