@@ -991,8 +991,10 @@ Current capability: directly applied scalar bindings around general Boolean
 helper scopes. All six fixed application probes initially reject. Exact source
 syntax, native beta reduction, recognizer proofs and recursive size bounds pass
 84 targets. General scalar evaluation, acceptance, reconstruction and IR invariant
-proofs pass 140 targets unchanged. Loop/function integration, tests, emitted-WASM
-proofs and independent engine checks remain before advancing.
+proofs pass 140 targets unchanged. Loop/function integration passes 207 targets.
+All six fixed probes compile; new tests pass 16,308 native/IR comparisons, 21,888
+invalid-input checks and 384 admission controls. The complete source-to-WASM
+proof, 33 audits and independent engine checks remain before advancing.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
