@@ -426,19 +426,19 @@ async function buildTestsuite() {
     await runCheckedAsync([
       leanrun,
       "--timeout", "30m",
-      "lake", "-d", interpreterRoot, "build",
+      "lake", "-d", proofRoot, "build",
       ...tacticImports.slice(index, index + chunkSize),
     ], { cwd: repoRoot, env: process.env, stdio: "inherit" });
   }
   await runCheckedAsync([
     leanrun,
     "--timeout", "30m",
-    "lake", "-d", interpreterRoot, "build", "Interpreter.Testsuite.Exec",
+    "lake", "-d", proofRoot, "build", "Interpreter.Testsuite.Exec",
   ], { cwd: repoRoot, env: process.env, stdio: "inherit" });
   await runCheckedAsync([
     leanrun,
     "--timeout", "30m",
-    "lake", "-d", interpreterRoot, "build", "testsuite",
+    "lake", "-d", proofRoot, "build", "WasmInterpreterLean/testsuite",
   ], { cwd: repoRoot, env: process.env, stdio: "inherit" });
 }
 
