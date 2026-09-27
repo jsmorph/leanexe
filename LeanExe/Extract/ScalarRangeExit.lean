@@ -94,12 +94,11 @@ def extractScalarRangeExitWith (locals : List ScalarBinding) (slot : Nat)
               match booleanType? resultType with
               | none => none
               | some _ => do
-                  let expression ← booleanLocalOperands? value
                   let _ ← extractScalarExprWith (.word (.u64 0) :: locals)
-                    (.app (.const ``Bool.toUInt64 []) expression.expr)
+                    (.app (.const ``Bool.toUInt64 []) value)
                   let function := ScalarBinding.predicateFunction fun argument =>
                     extractScalarExprWith (.word argument :: locals)
-                      (.app (.const ``Bool.toUInt64 []) expression.expr)
+                      (.app (.const ``Bool.toUInt64 []) value)
                   extractScalarRangeExitWith (function :: locals) slot body
           | some _ => do
               let _ ← extractScalarExprWith (.word (.u64 0) :: locals) value
@@ -147,12 +146,11 @@ def extractScalarRangeExitWith (locals : List ScalarBinding) (slot : Nat)
               match booleanType? resultType with
               | none => none
               | some _ => do
-                  let expression ← booleanLocalOperands? value
                   let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals)
-                    (.app (.const ``Bool.toUInt64 []) expression.expr)
+                    (.app (.const ``Bool.toUInt64 []) value)
                   let function := ScalarBinding.booleanPredicateFunction fun argument =>
                     extractScalarExprWith (.boolean argument :: locals)
-                      (.app (.const ``Bool.toUInt64 []) expression.expr)
+                      (.app (.const ``Bool.toUInt64 []) value)
                   extractScalarRangeExitWith (function :: locals) slot body
           | some _ => do
               let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals) value
@@ -310,34 +308,32 @@ theorem extractScalarRangeExitWith_letFn (locals : List ScalarBinding) (slot : N
 
 theorem extractScalarRangeExitWith_letPredicateFn (locals : List ScalarBinding) (slot : Nat)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
-    (type : LeanExe.Source.Scalar.BooleanType) (expression : LeanExe.Source.Scalar.BooleanLocal)
+    (type : LeanExe.Source.Scalar.BooleanType) (expression : Lean.Expr)
     (b : Lean.Expr) (nondep : Bool) :
     extractScalarRangeExitWith locals slot (.letE name
       (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
-      (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep) = (do
+      (.lam paramName (.const ``UInt64 []) expression paramBi) b nondep) = (do
         let _ ← extractScalarExprWith (.word (.u64 0) :: locals)
-          (.app (.const ``Bool.toUInt64 []) expression.expr)
+          (.app (.const ``Bool.toUInt64 []) expression)
         extractScalarRangeExitWith (.predicateFunction (fun argument =>
           extractScalarExprWith (.word argument :: locals)
-            (.app (.const ``Bool.toUInt64 []) expression.expr)) :: locals) slot b) := by
-  rw [extractScalarRangeExitWith, scalarResultType_boolean, booleanType_accepts,
-    booleanLocalOperands_expr]
+            (.app (.const ``Bool.toUInt64 []) expression)) :: locals) slot b) := by
+  rw [extractScalarRangeExitWith, scalarResultType_boolean, booleanType_accepts]
   all_goals first | rfl | (cases type <;> simp [LeanExe.Source.Scalar.BooleanType.expr])
 
 theorem extractScalarRangeExitWith_letBooleanPredicateFn (locals : List ScalarBinding) (slot : Nat)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
-    (type : LeanExe.Source.Scalar.BooleanType) (expression : LeanExe.Source.Scalar.BooleanLocal)
+    (type : LeanExe.Source.Scalar.BooleanType) (expression : Lean.Expr)
     (b : Lean.Expr) (nondep : Bool) :
     extractScalarRangeExitWith locals slot (.letE name
       (.forallE typeName (.const ``Bool []) type.expr typeBi)
-      (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) = (do
+      (.lam paramName (.const ``Bool []) expression paramBi) b nondep) = (do
         let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals)
-          (.app (.const ``Bool.toUInt64 []) expression.expr)
+          (.app (.const ``Bool.toUInt64 []) expression)
         extractScalarRangeExitWith (.booleanPredicateFunction (fun argument =>
           extractScalarExprWith (.boolean argument :: locals)
-            (.app (.const ``Bool.toUInt64 []) expression.expr)) :: locals) slot b) := by
-  rw [extractScalarRangeExitWith, scalarResultType_boolean, booleanType_accepts,
-    booleanLocalOperands_expr]
+            (.app (.const ``Bool.toUInt64 []) expression)) :: locals) slot b) := by
+  rw [extractScalarRangeExitWith, scalarResultType_boolean, booleanType_accepts]
   all_goals first | rfl | (cases type <;> simp [LeanExe.Source.Scalar.BooleanType.expr])
 
 theorem extractScalarRangeExitWith_predicateInput (locals : List ScalarBinding) (slot : Nat)
@@ -529,7 +525,7 @@ theorem extractScalarRangeExitWith_accepts {types : List BindingKind} {source : 
         · exact total binding member)
     obtain ⟨checked, hc⟩ := accepts (.u64 0)
     let f := fun argument => extractScalarExprWith (.word argument :: locals)
-      (.app (.const ``Bool.toUInt64 []) expression.expr)
+      (.app (.const ``Bool.toUInt64 []) expression)
     obtain ⟨target, ht⟩ := ihb (.predicateFunction f :: locals)
       (by simp [ScalarBinding.kind, typed]) (by
         intro binding member; rcases List.mem_cons.mp member with rfl | member
@@ -544,7 +540,7 @@ theorem extractScalarRangeExitWith_accepts {types : List BindingKind} {source : 
         · exact total binding member)
     obtain ⟨checked, hc⟩ := accepts (.u64 0)
     let f := fun argument => extractScalarExprWith (.boolean argument :: locals)
-      (.app (.const ``Bool.toUInt64 []) expression.expr)
+      (.app (.const ``Bool.toUInt64 []) expression)
     obtain ⟨target, ht⟩ := ihb (.booleanPredicateFunction f :: locals)
       (by simp [ScalarBinding.kind, typed]) (by
         intro binding member; rcases List.mem_cons.mp member with rfl | member
@@ -703,14 +699,12 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
   | case13 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected type matched notRange ihb =>
     rw [extractScalarRangeExitWith] at compiled
     · simp only [notRange, rejected, matched, bind, Option.bind_eq_some_iff] at compiled
-      obtain ⟨boolean, parsed, checked, hc, ht⟩ := compiled
+      obtain ⟨checked, hc, ht⟩ := compiled
       have sameType := booleanType_sound matched
-      have sameValue := booleanLocalOperands_sound parsed
       subst resultType
-      subst value
-      exact .letPredicateFn boolean type
+      exact .letPredicateFn value type
         (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hc)
-        (by simpa [ScalarBinding.kind] using ihb boolean ht)
+        (by simpa [ScalarBinding.kind] using ihb ht)
     · exact excludedBinary
   | case14 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary type matched notRange ihb =>
     have typeEq := scalarResultType_sound matched
@@ -782,14 +776,12 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
   | case25 locals name typeName resultType typeBi paramName value paramBi body nondep rejected type matched notRange ihb =>
     rw [extractScalarRangeExitWith] at compiled
     simp only [notRange, rejected, matched, bind, Option.bind_eq_some_iff] at compiled
-    obtain ⟨boolean, parsed, checked, hc, ht⟩ := compiled
+    obtain ⟨checked, hc, ht⟩ := compiled
     have sameType := booleanType_sound matched
-    have sameValue := booleanLocalOperands_sound parsed
     subst resultType
-    subst value
-    exact .letBooleanPredicateFn boolean type
+    exact .letBooleanPredicateFn value type
       (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hc)
-      (by simpa [ScalarBinding.kind] using ihb boolean ht)
+      (by simpa [ScalarBinding.kind] using ihb ht)
   | case26 locals name typeName resultType typeBi paramName value paramBi body nondep type matched notRange ihb =>
     have typeEq := scalarResultType_sound matched
     subst resultType

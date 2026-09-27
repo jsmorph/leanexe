@@ -828,12 +828,15 @@ still pass. The native corpus contains 1527 declarations. Evidence is in
 [the step helper-body archive](proofs/compiler/boolean-helper-step-body-2026-09-27/README.md).
 
 Current capability: general predicate bodies before word-result loops.
-Ten fixed outer-prefix probes remain rejected. Generalize the RangeExit predicate
-binding rules and equations to raw bodies, preserving helper captures before the
-loop, unused-body validation, source totality and loop exit semantics. Test bounds,
-initial values, loop bodies and tails. Keep the BooleanRange continuation
-dispatcher and other outer grammars separate until their own proof and WASM
-checks pass. Id inputs in converted helper scopes remain another gap.
+The RangeExit binding rules and equations retain raw bodies and preserve captures,
+unused-body validation, totality and exit semantics. Source, parser, acceptance,
+support, correctness and invariant proofs and the public compiler target pass.
+Ten fixed new probes and both original outer-prefix probes pass unchanged, with
+four prior step controls still passing. New tests pass 10,608 comparisons and
+3,888 invalid-input checks. Prior tests pass 41,136 comparisons, 25,056 invalid-input
+checks and 1,152 controls. The full compiler proof and WASM checks are next. Five Boolean-result loop probes remain rejected; their continuation
+dispatcher is the next separate capability. Other outer grammars and Id inputs
+in converted helper scopes remain recorded gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

@@ -863,5 +863,15 @@
   "rangePredicateBodyUnused",
   "rangePredicateBodyWrapped",
   "rangePredicateBodyNested",
-  "rangePredicateBodyId"
+  "rangePredicateBodyId",
+  "rangePredicateOuterBodyWord",
+  "rangePredicateOuterBodyBoolean",
+  "rangePredicateOuterBodyUnused",
+  "rangePredicateOuterBodyBound",
+  "rangePredicateOuterBodyInitial",
+  "rangePredicateOuterBodyTail",
+  "rangePredicateOuterBodyCapture",
+  "rangePredicateOuterBodyWrapped",
+  "rangePredicateOuterBodyNested",
+  "rangePredicateOuterBodyId"
 ]
