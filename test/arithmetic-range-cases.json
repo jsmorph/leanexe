@@ -984,5 +984,9 @@
   "rangeBooleanScopeApplicationStep",
   "rangeBooleanScopeApplicationExit",
   "rangeBooleanScopeApplicationContinue",
-  "rangeBooleanScopeApplicationTail"
+  "rangeBooleanScopeApplicationTail",
+  "rangeBinaryBooleanHelperStep",
+  "rangeBinaryBooleanHelperExit",
+  "rangeBinaryBooleanHelperContinue",
+  "rangeBinaryBooleanHelperTail"
 ]
