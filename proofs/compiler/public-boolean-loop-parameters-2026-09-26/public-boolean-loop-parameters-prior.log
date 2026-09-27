@@ -1,0 +1,9 @@
+scalar_public_boolean_parameters 0 140 native/public Boolean parameter IR comparisons passed
+scalar_public_boolean_parameters_syntax 0 44352 native/public parameter syntax comparisons, 18432 invalid-input tests and 1056 result-conversion controls passed
+scalar_public_result_id 0 180 native/public result-Id IR comparisons passed
+scalar_public_result_id_syntax 0 33024 native/public result-Id syntax comparisons, 20352 invalid-input tests and 1536 word-result controls passed
+scalar_boolean_call_argument 0 180 native/Boolean-call-argument IR comparisons passed
+scalar_boolean_call_argument_syntax 0 56832 native/Boolean-call-argument syntax comparisons and 48384 invalid-input tests and 2688 admission controls passed
+scalar_boolean_input 0 180 native/boolean-input IR comparisons passed
+scalar_boolean_input_syntax 0 18944 native/boolean-input syntax comparisons and 10752 invalid-input tests passed
+scalar_range_exit_function 0 216 native/whole-function early-exit IR comparisons passed
