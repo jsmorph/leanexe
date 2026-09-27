@@ -256,7 +256,41 @@ function checkNestedMonadicLoops() {
   }
 }
 
+function checkConditionalIdArrayLoop() {
+  const name = "conditionalIdArrayLoop";
+  const output = fs.mkdtempSync(path.join("tmp", "conditional-id-loop-"));
+  const binary = path.join(output, name + ".wasm");
+  run([leanExe, "compile", "--module", correctnessModule,
+    "--entries", `${correctnessModule}.${name},${correctnessModule}.${name}Stats`, "--out", binary]);
+  for (const [count, stop] of [[0, 0], [1, 0], [8, 0], [8, 1], [8, 4], [8, 8]]) {
+    const expected = [];
+    let work = 0;
+    for (let index = 0; index < count; index++) {
+      expected.push(index);
+      work++;
+      if (expected.length === stop) break;
+      if (index % 2 !== 0) {
+        expected[0] = 99;
+        work++;
+      }
+    }
+    const [size, allocations] = callI64Slots(binary, `${name}Stats`, 2, [BigInt(count), BigInt(stop)]);
+    assert.equal(size, BigInt(expected.length));
+    assert.equal(allocations, BigInt(1 + work), `${name}(${count}, ${stop}): duplicated body evaluation`);
+    const [words, stats] = run([ensureHost(), "call-stats", binary, name,
+      "array-u64", `i64:${count}`, `i64:${stop}`]).trim().split("\n");
+    assert.deepEqual(JSON.parse(words), expected);
+    const [, allocated, , , freed] = stats.split(" ").map(Number);
+    assert.equal(allocated - freed, 1, `${name}(${count}, ${stop}): unreleased intermediate array`);
+  }
+}
+
 function main() {
+  if (process.argv[2] === "--conditional") {
+    checkConditionalIdArrayLoop();
+    process.stdout.write("checked conditional Id loop results, allocations, and releases\n");
+    return;
+  }
   if (process.argv[2] === "--nested") {
     checkNestedArrayUpdateLoop();
     checkNestedMonadicLoops();
@@ -271,6 +305,7 @@ function main() {
   checkExplicitRecursiveReleaseSuppressesCompilerRelease();
   checkFreshArrayRelease();
   checkNestedArrayUpdateLoop();
+  checkConditionalIdArrayLoop();
   checkInternalArrayLoop();
   checkTailRelease();
   checkFreshTailResult();

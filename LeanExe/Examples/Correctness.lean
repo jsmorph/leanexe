@@ -3056,6 +3056,20 @@ structure NestedLoopStats where
   result : UInt64
   allocations : UInt64
 
+def conditionalIdArrayLoop (count stop : Nat) : Array UInt64 := Id.run do
+  let mut output := #[]
+  for index in [:count] do
+    let next := output.push index.toUInt64
+    if next.size == stop then return next
+    output := if index % 2 == 0 then next else next.set! 0 99
+  return output
+
+def conditionalIdArrayLoopStats (count stop : Nat) : NestedLoopStats :=
+  let before := LeanExe.Runtime.allocCount
+  let result := conditionalIdArrayLoop count stop
+  let allocations := LeanExe.Runtime.allocCount - before
+  ⟨result.size.toUInt64, allocations⟩
+
 def nestedOptionArrayLoopStats (rows columns stop : Nat) : NestedLoopStats :=
   let before := LeanExe.Runtime.allocCount
   let result := nestedOptionArrayLoop rows columns stop

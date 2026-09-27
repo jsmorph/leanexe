@@ -4223,15 +4223,10 @@ partial def materializeResultValue
         (addLiveSlots ownedLocals (localLetsOwnedNonrecursiveHeapSlots ctx kept ownedLocals))
         (localLetsReleasedSlots kept)
       let bodyStmt ← materializeResultValue ctx useAbi ty targets body refreshed.snd nextOwned
-      let stmt := .seq
-        (LeanExe.IR.seqList (kept.map (localLetStmtWithOwnedReleases ctx canReleaseOwnedTemps)))
-        bodyStmt
       let released :=
         addLiveSlots
           (localLetsReleasedSlotsWithLater (valueReleasedSlots body) kept)
           (stmtReleasedSlots bodyStmt)
-      let returnedOwnerSlots :=
-        localLetsResultOwnerLocalSlotsWithLater ctx (valueResultOwnerLocalSlots ctx body) kept
       let ownerSlots := localLetsOwnedNonrecursiveHeapSlots ctx kept (ownerSources.map Prod.fst)
       let survivingOwners := removeLiveSlots ownedLocals released
       let borrowedOwners := ownerSlots.foldl (fun owners slot =>
@@ -4241,10 +4236,26 @@ partial def materializeResultValue
         addLiveSlots owners
           ((slot :: (ownerSourceSlots? ownerSources slot).getD []).filter survivingOwners.contains))
         borrowedOwners
-      .ok (appendDistinctReleases stmt
-        (ownerSlots.filter fun slot =>
-          releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&
-            !released.contains slot) (addLiveSlots protectedSlots borrowedOwners))
+      let rec cleanup (bindings : List LeanExe.IR.LocalLet)
+          (selected : ExtractedValue) (stmt : IRStmt) : IRStmt :=
+        match selected, stmt with
+        | .letLocal inner body, .seq leading rest =>
+            .seq leading (cleanup (bindings ++ inner) body rest)
+        | .ite _ thenValue elseValue, .ite cond thenStmt elseStmt =>
+            .ite cond (cleanup bindings thenValue thenStmt) (cleanup bindings elseValue elseStmt)
+        | _, _ =>
+            let returnedOwnerSlots := localLetsResultOwnerLocalSlotsWithLater ctx
+              (valueResultOwnerLocalSlots ctx selected) bindings
+            let released := addLiveSlots
+              (localLetsReleasedSlotsWithLater (valueReleasedSlots selected) bindings)
+              (stmtReleasedSlots stmt)
+            appendDistinctReleases stmt
+              (ownerSlots.filter fun slot =>
+                releaseSlotAllowedForResult canReleaseOwnedTemps returnedOwnerSlots slot &&
+                  !released.contains slot) (addLiveSlots protectedSlots borrowedOwners)
+      .ok (.seq
+        (LeanExe.IR.seqList (kept.map (localLetStmtWithOwnedReleases ctx canReleaseOwnedTemps)))
+        (cleanup kept body bodyStmt))
   | .ite cond thenValue elseValue => do
       let cond := refreshOwnerMasksCondForAlloc ctx.freshResultOwnerOffsets ownerSources cond
       let surviving := removeLiveSlots ownedLocals (condReleasedSlots cond)

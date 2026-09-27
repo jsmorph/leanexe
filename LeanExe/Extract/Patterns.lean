@@ -262,28 +262,6 @@ structure ForInStepBody where
 def boolLiteralExpr (value : Bool) : Expr :=
   if value then .const ``Bool.true [] else .const ``Bool.false []
 
-def mkIteExpr (ty cond inst thenExpr elseExpr : Expr) : Expr :=
-  .app
-    (.app
-      (.app
-        (.app
-          (.app (.const ``ite []) ty)
-          cond)
-        inst)
-      thenExpr)
-    elseExpr
-
-def wrapForInStepLet
-    (name : Name)
-    (type value : Expr)
-    (nondep : Bool)
-    (step : ForInStepBody) :
-    ForInStepBody :=
-  {
-    done := .letE name type value step.done nondep
-    value := .letE name type value step.value nondep
-  }
-
 partial def betaReduceLocalExpr (fuel : Nat) (expr : Expr) : Expr :=
   match fuel with
   | 0 => expr
@@ -309,49 +287,21 @@ partial def betaReduceLocalExpr (fuel : Nat) (expr : Expr) : Expr :=
       | .proj typeName index body => .proj typeName index (reduce body)
       | other => other
 
-partial def forInStepBody? (resultTy : Ty) (expr : Expr) : Except String ForInStepBody := do
-  match expr.consumeMData with
-  | .letE name type value body nondep => do
-      match value.consumeMData with
-      | .lam _ _ _ _ =>
-          forInStepBody? resultTy (betaReduceLocalExpr 32 (body.instantiateRev #[value]))
-      | _ =>
-          .ok (wrapForInStepLet name type value nondep (← forInStepBody? resultTy body))
-  | expr =>
-      match appFnArgs expr with
-      | (.const ``ForInStep.yield _, args) =>
-          match args.reverse with
-          | value :: _ => .ok { done := boolLiteralExpr false, value := value }
-          | _ => .error "unsupported ForInStep.yield application"
-      | (.const ``ForInStep.done _, args) =>
-          match args.reverse with
-          | value :: _ => .ok { done := boolLiteralExpr true, value := value }
-          | _ => .error "unsupported ForInStep.done application"
-      | (.const ``Pure.pure _, args) =>
-          match idPureArg? (.const ``Pure.pure []) args with
-          | some value => forInStepBody? resultTy value
-          | none => .error "unsupported for-in pure step"
-      | (.const ``Bind.bind _, args) =>
-          match idBindArgs? (.const ``Bind.bind []) args with
-          | some (value, bindFn) =>
-              match bindFn.consumeMData with
-              | .lam name type body _ =>
-                  forInStepBody? resultTy (.letE name type value body true)
-              | _ => .error "unsupported for-in body bind function"
-          | none => .error "unsupported for-in body bind"
-      | (.const ``ite _, [_ty, condExpr, inst, thenExpr, elseExpr]) =>
-          match tyExpr? resultTy with
-          | some resultTyExpr => do
-              let thenStep ← forInStepBody? resultTy thenExpr
-              let elseStep ← forInStepBody? resultTy elseExpr
-              .ok {
-                done :=
-                  mkIteExpr (.const ``Bool []) condExpr inst thenStep.done elseStep.done
-                value :=
-                  mkIteExpr resultTyExpr condExpr inst thenStep.value elseStep.value
-              }
-          | none => .error s!"unsupported conditional for-in accumulator type: {reprStr resultTy}"
-      | _ => .error s!"unsupported for-in body: {expr}"
+partial def forInStepConstructor? (expr : Expr) : Except String ForInStepBody :=
+  match appFnArgs expr.consumeMData with
+  | (.const ``ForInStep.yield _, args) =>
+      match args.reverse with
+      | value :: _ => .ok { done := boolLiteralExpr false, value := value }
+      | _ => .error "unsupported ForInStep.yield application"
+  | (.const ``ForInStep.done _, args) =>
+      match args.reverse with
+      | value :: _ => .ok { done := boolLiteralExpr true, value := value }
+      | _ => .error "unsupported ForInStep.done application"
+  | (.const ``Pure.pure _, args) =>
+      match idPureArg? (.const ``Pure.pure []) args with
+      | some value => forInStepConstructor? value
+      | none => .error "unsupported for-in pure step"
+  | _ => .error s!"unsupported for-in step constructor: {expr}"
 
 partial def listLiteralItems? (env : Environment) (expr : Expr) : Option (Ty × List Expr) :=
   match appFnArgs expr with

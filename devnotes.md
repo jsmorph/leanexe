@@ -18063,3 +18063,25 @@ The matrix-update fold lemmas now apply to arrays of any element type.  The row-
 A temporary export of function 38 from binary `db621cd72e3af5e4b20e049a33c6165f2016723f9cce75f3196d3fe12f3e9a2b` exercises `Digits.divRem` directly.  Quotients and remainders agree with independent JavaScript integers for one, two, four, eight, sixteen, and thirty-two limbs.  After releasing inputs and outputs, the allocation-minus-free count is exactly thirty-two times the limb count.  Live blocks contain the shifted remainders.  Separate exports of `shiftBit` and `compare` release every allocation for the same sizes.
 
 The emitted division loop calls `shiftBit` twice per iteration.  The second call computes the loop's done flag and leaves its result live.  `forInStepBody?` copies source let bindings into separate value and done expressions, which `extractForInStepBody` extracts independently.  A reduced test and correction are in progress.  The production binary remains unchanged.
+
+### Shared loop evaluation and conditional release
+
+The for-in recognizer now handles direct `yield` and `done` constructors.  The structured extractor handles shared lets and branches once.  This removes duplicated computation of loop values and done flags.  A reduced conditional-array test also exposed a retained previous accumulator on early return.  Result cleanup now follows projection bindings into the selected branch before identifying returned owners.  The reduced test checks values, exact allocation counts, and release of every intermediate array, including early returns at the first, middle, and final iteration.
+
+The compiler build, complete ownership test, heap-loop test, 609 Beck native/WASM comparisons, eight larger memory comparisons, 256-job stress comparison, 13 WAT round trips, 14 browser-worker/Wasmtime comparisons, six-scenario Chromium test, and JavaScript execution guard pass.  Direct division diagnostics release every allocation after releasing inputs and outputs for one through thirty-two limbs.  The complete test runner still stops at the recorded normative-verifier source-digest mismatch.  The broad Talos proof gate builds its requested source prerequisites, then stops because the generated GCD program differs from its tracked cache.  Neither gate refreshes tracked artifacts.
+
+The resulting generalized binary has SHA-256 `b8e5be491442b24828881d936ca4216daf1165e6351968979cc4d85c0517c206` and 67,964 bytes.  The server on `0.0.0.0:8091` serves that binary.  The final measurements are:
+
+| Jobs | Categories | Linear memory, bytes | WASM host invocation, ms |
+|---:|---:|---:|---:|
+| 24 | 16 | 18,612,224 | 57.5 |
+| 32 | 16 | 228,589,568 | 472.5 |
+| 40 | 16 | 393,019,392 | 829.1 |
+| 48 | 16 | 727,252,992 | 1,422.2 |
+| 64 | 16 | 1,724,907,520 | 2,464.0 |
+| 64 | 8 | 196,935,680 | 318.7 |
+| 128 | 8 | 1,751,842,816 | 2,821.4 |
+| 128 | 4 | 402,391,040 | 705.8 |
+| 256 | 4 | 2,875,260,928 | 6,206.0 |
+
+The 256-job fixture previously exhausted the four-GiB address range.  Every measured output now agrees with native Lean and passes independent category-count checks.  Full-partitioner allocation counters still show retained allocations.  Their causes, the sufficient resource bound, and the complete generalized source-to-WASM theorem remain open.
