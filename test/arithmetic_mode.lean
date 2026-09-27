@@ -14262,6 +14262,7 @@ run_elab do
       `ArithmeticModeTest.rangeBooleanScopeApplicationExit,
       `ArithmeticModeTest.rangeBooleanScopeApplicationContinue,
       `ArithmeticModeTest.rangeBooleanScopeApplicationTail,
+      `ArithmeticModeTest.rangeTwice,
       `ArithmeticModeTest.rangeSequenceDirect,
       `ArithmeticModeTest.rangeSequenceDependent,
       `ArithmeticModeTest.rangeSequenceExits,
@@ -14867,7 +14868,6 @@ run_elab do
       `ArithmeticModeTest.rangeIdComparisonUnsupported,
 
       `ArithmeticModeTest.unsupportedLocalBody,
-      `ArithmeticModeTest.rangeTwice,
       `ArithmeticModeTest.rangeUnsupportedFunction,
       `ArithmeticModeTest.rangeCustomBind,
       `ArithmeticModeTest.rangeUnsupportedResultFunction, `ArithmeticModeTest.rangeResultFunctionScalar,

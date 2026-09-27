@@ -6312,6 +6312,7 @@
     "rangeSequenceThree",
     "rangeSequenceShadow",
     "rangeSequenceIdBind",
-    "rangeSequenceBoolInput"
+    "rangeSequenceBoolInput",
+    "rangeTwice"
   ]
 }

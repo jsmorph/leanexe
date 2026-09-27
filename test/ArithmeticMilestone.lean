@@ -8330,6 +8330,14 @@ def rangeBooleanScopeApplicationTail (count seed : UInt64) : Id UInt64 := do
     f (a == 0) || f (seed == 0)) (pure (pure (a == seed)))).toUInt64
 
 
+def rangeTwice (n seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for _ in [:n.toNat] do
+    a := a + 1
+  for _ in [:n.toNat] do
+    a := a * 3
+  return a
+
 def rangeSequenceDirect (count seed : UInt64) : Id UInt64 := do
   let mut a := seed
   for i in [:count.toNat] do a := a + i.toUInt64
@@ -13026,6 +13034,7 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBooleanScopeApplicationExit", (fun (x y : UInt64) => rangeBooleanScopeApplicationExit x y)),
    ("rangeBooleanScopeApplicationContinue", (fun (x y : UInt64) => rangeBooleanScopeApplicationContinue x y)),
    ("rangeBooleanScopeApplicationTail", (fun (x y : UInt64) => rangeBooleanScopeApplicationTail x y)),
+   ("rangeTwice", (fun (x y : UInt64) => rangeTwice x y)),
    ("rangeSequenceDirect", (fun (x y : UInt64) => rangeSequenceDirect x y)),
    ("rangeSequenceDependent", (fun (x y : UInt64) => rangeSequenceDependent x y)),
    ("rangeSequenceExits", (fun (x y : UInt64) => rangeSequenceExits x y)),
