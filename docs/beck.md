@@ -65,7 +65,9 @@ The bordered-minor candidate theorem covers duplicate-index checks, row and colu
 
 The complete basis-extension theorem proves the nested row and column search, termination, and first-success selection.  It derives the candidate bounds from a well-formed basis and returns either the unchanged basis fields or fresh, disjoint owned index arrays.  It preserves protected memory and charges at most `(208 + determinantBytes(k+1)) * width * (matrix.size / width)` bytes.  The theorem includes the matrix-header read, guarded division, all release guards, and function entry and return.
 
-The complete repeated-extension theorem returns the source `findBasis` result, preserves protected memory, and retains represented index arrays and fresh output ownership when the basis changes.  Its loop terminates by fuel and the stop flag.  It charges `200368 * width * (matrix.size / width) * fuel` bytes for fuel and width at most six and fewer than six matrix rows.  These execution proofs check with:
+The complete repeated-extension theorem returns the source `findBasis` result, preserves protected memory, and retains represented index arrays and fresh output ownership when the basis changes.  Its loop terminates by fuel and the stop flag.  It charges `200368 * width * (matrix.size / width) * fuel` bytes for fuel and width at most six and fewer than six matrix rows.
+
+The complete direction theorem covers protected-matrix construction, basis search, free-column selection, initial-vector allocation, the terminating cofactor loop, and all emitted releases.  It returns an owned array equal to the source direction and preserves the caller's protected memory.  The supported-input theorem derives the matrix, rank, and free-column preconditions from the source counting and basis results whenever a live job remains.  Its allocation charge combines the search bound, two vector allocations, and one column replacement, determinant call, and vector replacement per basis column.  Enclosing rounding and computation entry proofs remain open.  These execution proofs check with:
 
 ```sh
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.ExecutionChecks
