@@ -468,8 +468,13 @@ controls. Prior tests pass 64,992 comparisons, 55,296 invalid-input checks and
 4,608 controls. Evidence is in
 [the helper input-annotation archive](proofs/compiler/boolean-loop-helper-input-id-2026-09-27/README.md).
 
-Next: helpers with multiple word arguments and Unit arguments before Boolean
-loops, retained instances and broader signatures. Conditional Id actions can elaborate
+Current capability: helpers with two or more word arguments before Boolean
+loops. Source totality, extraction acceptance/soundness, correctness and IR
+invariants pass for binary and arbitrary larger arities. New tests pass 24,432
+native/IR comparisons, 20,736 invalid-input checks and 1,728 unused-helper controls.
+Complete compiler proof, native Lean/V8 checks and evidence archive are next.
+
+Next: Unit-prefixed helpers before Boolean loops, retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
 Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean
