@@ -1,0 +1,78 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [67/140] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [138/140] Built LeanExe.Source.Scalar (1.7s)
+⚠ [139/140] Built LeanExe.Extract.ScalarExprCore (17s)
+warning: LeanExe/Extract/ScalarExprCore.lean:443:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:451:31: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:451:36: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:451:52: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:460:35: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:460:40: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:460:56: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:529:12: Variable name `bounds` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _bounds
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+⚠ [140/140] Built LeanExe.Extract.ScalarExpr (1.7s)
+warning: LeanExe/Extract/ScalarExpr.lean:190:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:191:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:206:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:207:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:238:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:239:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:253:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:254:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1119:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1229:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1525:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1547:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1569:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1591:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1613:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1637:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1661:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1679:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1698:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1717:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+Build completed successfully (140 jobs).

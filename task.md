@@ -976,14 +976,21 @@ inputs and 1,344 controls. All six fixed scope probes and ten prior Id-input pro
 compile, including the unchanged capture probe. The corpus contains 1652 declarations.
 Evidence is in [the scope-binding archive](proofs/compiler/boolean-scope-binding-2026-09-27/README.md).
 
-Current capability: standard Id monadic scalar bindings around general Boolean
-helper scopes. Exact source syntax, annotation/instance checks, native Id bind
-behavior and recognizer proofs pass. The existing scalar evaluation, acceptance,
-reconstruction and IR invariant proofs pass unchanged (140 targets). The six fixed
-bind probes now compile. Function/loop integration passes 207 targets. New tests
-pass 16,308 native/IR comparisons, 31,104 invalid-input checks and 384 admission
-controls. The full source-to-WASM proof, 32 audits and independent engine checks
-remain before advancing.
+Standard Id monadic word and Boolean bindings around general helper scopes are
+proved through WASM, including nested captures, unused values, conditional actions
+and standard Id annotations. The full standard bind instance and continuation
+types are checked. The complete proof gate passes 3393 targets and all 32 audits;
+the native Id bind equation has no axioms. Native Lean/V8 agree on 1,389 inputs
+across 73 declarations; 63 prior modules retain identical bytes and 0 changed.
+New tests pass 16,308 comparisons, 31,104 invalid-input checks and 384 admission
+controls; prior tests pass 62,580 comparisons, 73,152 invalid inputs and 1,152 controls.
+All six fixed bind probes compile. The corpus contains 1662 declarations.
+Evidence is in [the monadic scope archive](proofs/compiler/boolean-scope-bind-2026-09-27/README.md).
+
+Current capability: directly applied scalar bindings around general Boolean
+helper scopes. Preserve the six fixed application probes, extend exact source
+syntax and prove native beta reduction, recognition and extraction, then complete
+emitted-WASM proofs and independent engine checks before advancing.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

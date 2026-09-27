@@ -1,0 +1,74 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [67/84] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [84/84] Building LeanExe.Extract.ScalarBooleanScopeBinding (2.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanScopeBinding.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanScopeBinding.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanScopeBinding.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanScopeBinding.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanScopeBinding.setup.json --json
+error: LeanExe/Extract/ScalarBooleanScopeBinding.lean:60:64: unsolved goals
+case false.monadic
+name : Lean.Name
+domain : Lean.Expr
+input : (if false = true then PublicArgument.boolean else PublicArgument.word).Domain domain
+value body : Lean.Expr
+binder✝ : Lean.BinderInfo
+result✝ : BooleanType
+extended :
+  ∀ (expression : BooleanLocal),
+    (BooleanScopeBindingForm.monadic binder✝ result✝).expr name domain value body ≠ expression.expr
+absent :
+  booleanLocalOperands?
+      (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                        (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                          (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                    domain).app
+                result✝.expr).app
+            value).app
+        (Lean.Expr.lam name domain body binder✝)) =
+    none
+parsed : PublicArgument.ofType? domain = some PublicArgument.word
+⊢ (match resultFound : booleanType? result✝.expr with
+    | some result => none
+    | none => none) =
+    none
+
+case true.monadic
+name : Lean.Name
+domain : Lean.Expr
+input : (if true = true then PublicArgument.boolean else PublicArgument.word).Domain domain
+value body : Lean.Expr
+binder✝ : Lean.BinderInfo
+result✝ : BooleanType
+extended :
+  ∀ (expression : BooleanLocal),
+    (BooleanScopeBindingForm.monadic binder✝ result✝).expr name domain value body ≠ expression.expr
+absent :
+  booleanLocalOperands?
+      (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                        (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                          (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                    domain).app
+                result✝.expr).app
+            value).app
+        (Lean.Expr.lam name domain body binder✝)) =
+    none
+parsed : PublicArgument.ofType? domain = some PublicArgument.boolean
+⊢ (match resultFound : booleanType? result✝.expr with
+    | some result => none
+    | none => none) =
+    none
+warning: LeanExe/Extract/ScalarBooleanScopeBinding.lean:66:22: This simp argument is unused:
+  booleanType_accepts
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanScopeBinding
+error: build failed
