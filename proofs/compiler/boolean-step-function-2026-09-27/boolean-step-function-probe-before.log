@@ -1,0 +1,6 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+BooleanStepFunctionProbe.word: false
+BooleanStepFunctionProbe.boolean: false
+BooleanStepFunctionProbe.nested: false
+BooleanStepFunctionProbe.retained: false

@@ -1,0 +1,26 @@
+{
+  "names": [
+    "rangeBooleanStepFunctionWord",
+    "rangeBooleanStepFunctionBoolean",
+    "rangeBooleanStepFunctionNested",
+    "rangeBooleanStepFunctionRetained",
+    "rangeBooleanStepFunctionChoiceWord",
+    "rangeBooleanStepFunctionChoiceBoolean",
+    "rangeBooleanStepFunctionUnused",
+    "rangeBooleanStepFunctionRepeated",
+    "rangeBooleanStepFunctionFlagInput",
+    "rangeBooleanStepFunctionWordTail"
+  ],
+  "adapters": {
+    "rangeBooleanStepFunctionWord": "(fun (x y : UInt64) => (rangeBooleanStepFunctionWord x y).toUInt64)",
+    "rangeBooleanStepFunctionBoolean": "(fun (x y : UInt64) => (rangeBooleanStepFunctionBoolean x y).toUInt64)",
+    "rangeBooleanStepFunctionNested": "(fun (x y : UInt64) => (rangeBooleanStepFunctionNested x y).toUInt64)",
+    "rangeBooleanStepFunctionRetained": "(fun (x y : UInt64) => (rangeBooleanStepFunctionRetained x y).toUInt64)",
+    "rangeBooleanStepFunctionChoiceWord": "(fun (x y : UInt64) => (rangeBooleanStepFunctionChoiceWord x y).toUInt64)",
+    "rangeBooleanStepFunctionChoiceBoolean": "(fun (x y : UInt64) => (rangeBooleanStepFunctionChoiceBoolean x y).toUInt64)",
+    "rangeBooleanStepFunctionUnused": "(fun (x y : UInt64) => (rangeBooleanStepFunctionUnused x y).toUInt64)",
+    "rangeBooleanStepFunctionRepeated": "(fun (x y : UInt64) => (rangeBooleanStepFunctionRepeated x y).toUInt64)",
+    "rangeBooleanStepFunctionFlagInput": "(fun (x y : UInt64) => (rangeBooleanStepFunctionFlagInput x (y != 0)).toUInt64)",
+    "rangeBooleanStepFunctionWordTail": "(fun (x y : UInt64) => rangeBooleanStepFunctionWordTail x y)"
+  }
+}
