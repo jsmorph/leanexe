@@ -17968,3 +17968,24 @@ The fixed overlapping input now completes through WASM at 24, 32, 40, 48, and 64
 The wider suite stops at an outdated verifier-source digest in `test/artifact_identity.js`.  The 17 normative verifier files have the same digest at branch base `8dbb8e8a` as in this worktree: `7be51aa0ecdd90a2a87bcb905f43a2b0679a63cbfda9eab41085bea01a98d666`.  Fifty-six of the 57 artifact manifests record an earlier identity.  Updating the test vector alone exposes those stale manifests.  The temporary test-vector edit was removed.  Rebuilding every package would expand this iteration substantially.
 
 The core execution test also stops at `uint32MinMax` with `unsupported application: UInt32.toBitVec`.  Investigation is in progress.  The user authorized wider checks and asked to limit time spent on them.
+
+### Beck comparison, exact division identity, and memory measurements
+
+`DigitCompare.compare_correct` proves magnitude comparison for arbitrary valid limb arrays, including leading zeros.  The source comparison now uses a structurally recursive descending scan.  `MinorIdentity.exact_divisor` proves the integer divisibility identity needed by fraction-free elimination for arbitrary finite leading-block size and nonzero determinant.  Both targets pass Lean with `propext`, `Classical.choice`, and `Quot.sound`.  The elimination refinement remains open.
+
+Measurements used prototype binary SHA-256 `31c41ac27b56c26320ac014ed3226757f227d1480b956cd1354bd3f40520ae8d`, 72,882 bytes.  The Wasmtime host reports linear-memory size before and after each call.  WASM memory grows without shrinking, so the final size records its peak extent for that invocation.  The measurement excludes host-engine memory.  Every completed output passed the independent category-count check.
+
+| Jobs | Categories | Overlap | WASM memory | Process elapsed |
+|---:|---:|---:|---:|---:|
+| 24 | 16 | 3 | 28.625 MiB | 59 ms |
+| 32 | 16 | 3 | 300.938 MiB | 339 ms |
+| 40 | 16 | 3 | 492.75 MiB | 466 ms |
+| 48 | 16 | 3 | 890.5 MiB | 860 ms |
+| 64 | 16 | 3 | 2,015 MiB | 2,007 ms |
+| 64 | 8 | 3 | 271 MiB | 304 ms |
+| 128 | 8 | 3 | 2,515.063 MiB | 3,154 ms |
+| 128 | 4 | 2 | 603.75 MiB | 899 ms |
+
+The 256-job, four-category, overlap-two instance trapped at an `unreachable` instruction.  Its backtrace includes integer helpers and recursive rounding frames.  The exact trap cause remains to establish.  The fixed inputs and measurement command need a repository test entry.  The user accepts approximately 301 MiB and approved continued implementation, proofs, and the browser demo after discussing these results.
+
+For `p` protected categories and rank `r`, the current elimination performs `O(n*p*r)` integer operations per round.  Rebuilding it through at most `n` rounds gives `O(n^4)` elimination operations in the general case.  Phillips's [terrain approximation paper, section 2](https://users.cs.utah.edu/~jeffp/papers/arXiv0801.2793v2.pdf) records that bound for a direct Beck–Fiala construction.  [Bansal's iterated-rounding account, section 5.1](https://ir.cwi.nl/pub/29307/29307.pdf) gives the protected-row counting argument.  The quoted operation count excludes integer widths, copying, and input scans.  It is an upper bound for this implementation.  The best available implementation bound has not been established in this work.
