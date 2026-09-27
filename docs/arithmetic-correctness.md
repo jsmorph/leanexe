@@ -43,7 +43,12 @@ forcing an exit. Scalar helpers may also be declared inside Boolean steps with a
 input and result combination. Exact standard Id annotations are checked. Helpers
 can be nested, reused, or captured by another function; captured values retain
 their lexical meaning. Every function body is checked even when unused.
-Step-result pattern matching is not yet admitted.
+Explicit `ForInStep.casesOn` inspects a Boolean step result, binds its payload,
+and selects the done or yield branch. Nondependent result motives may retain
+standard Id layers. Motive and branch domains are checked, as are both branch
+bodies. Inspecting a done result does not itself stop the loop: the selected
+branch determines the returned result. Ordinary `match` through a generated
+matcher declaration is not yet admitted.
 
 A word-valued loop may feed a Boolean continuation, for example
 `let value := Id.run do ...; value == seed` or

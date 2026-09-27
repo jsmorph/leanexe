@@ -951,5 +951,13 @@
   "rangeBooleanStepScalarCapture",
   "rangeBooleanStepScalarUnused",
   "rangeBooleanStepScalarRepeated",
-  "rangeBooleanStepScalarNested"
+  "rangeBooleanStepScalarNested",
+  "rangeBooleanStepCasesDirect",
+  "rangeBooleanStepCasesHelper",
+  "rangeBooleanStepCasesRetained",
+  "rangeBooleanStepCasesIdentity",
+  "rangeBooleanStepCasesContinue",
+  "rangeBooleanStepCasesNested",
+  "rangeBooleanStepCasesFlagInput",
+  "rangeBooleanStepCasesWordTail"
 ]

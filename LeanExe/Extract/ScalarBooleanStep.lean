@@ -267,6 +267,15 @@ def extractBooleanStepWith (locals : List BooleanStepBinding) : Lean.Expr → Op
               let value ← extractBooleanStepWith locals argument
               f value
   | .bvar index => locals[index]?.bind BooleanStepBinding.result?
+  | .app (.app (.app (.app (.app (.const ``ForInStep.casesOn [.succ .zero, .zero]) (.const ``Bool []))
+      (.lam _ (.app (.const ``ForInStep [.zero]) (.const ``Bool [])) type _)) value)
+      (.lam _ (.const ``Bool []) doneBody _)) (.lam _ (.const ``Bool []) yieldBody _) => do
+      let _ ← booleanStepResultType? type
+      let result ← extractBooleanStepWith locals value
+      let first ← extractBooleanStepWith (.scalar (.boolean result.value) :: locals) doneBody
+      let second ← extractBooleanStepWith (.scalar (.boolean result.value) :: locals) yieldBody
+      pure ⟨.ite (wordGuard result.done) first.value second.value,
+        .ite (wordGuard result.done) first.done second.done⟩
   | _ => none
 termination_by source => sizeOf source
 decreasing_by all_goals simp_wf; omega
@@ -448,6 +457,24 @@ theorem extractBooleanStepWith_correct {source : Lean.Expr} {values : List Boole
     apply bindings.cons
     intro argument value target ha hc
     exact extractScalarExprWith_correct (function value) hc (bindings.toScalar.cons ha)
+  | casesDone output value body ihv ihb =>
+    simp only [BooleanStep.casesExpr, BooleanStep.resultType, extractBooleanStepWith,
+      booleanStepResultType_accepts, bind, pure, Option.bind_some, Option.bind_eq_some_iff,
+      Option.some.injEq] at compiled
+    obtain ⟨bound, matched, first, doneFound, second, yieldFound, rfl⟩ := compiled
+    have result := ihv matched bindings
+    have test := wordGuard_correct (value := true) result.2
+    obtain ⟨valueEval, doneEval⟩ := ihb doneFound (bindings.cons result.1)
+    exact ⟨.iteTrue test valueEval, .iteTrue test doneEval⟩
+  | casesYield output value body ihv ihb =>
+    simp only [BooleanStep.casesExpr, BooleanStep.resultType, extractBooleanStepWith,
+      booleanStepResultType_accepts, bind, pure, Option.bind_some, Option.bind_eq_some_iff,
+      Option.some.injEq] at compiled
+    obtain ⟨bound, matched, first, doneFound, second, yieldFound, rfl⟩ := compiled
+    have result := ihv matched bindings
+    have test := wordGuard_correct (value := false) result.2
+    obtain ⟨valueEval, doneEval⟩ := ihb yieldFound (bindings.cons result.1)
+    exact ⟨.iteFalse test valueEval, .iteFalse test doneEval⟩
 
 theorem extractBooleanStepWith_accepts {types : List BooleanStep.BindingKind} {source : Lean.Expr}
     (supported : BooleanStep.Supported types source) (locals : List BooleanStepBinding)
@@ -653,6 +680,15 @@ theorem extractBooleanStepWith_accepts {types : List BooleanStep.BindingKind} {s
       booleanType_accepts, scalarResultType_boolean,
       booleanStepResultType_boolean,
       bind, Option.bind_some, Option.bind_none, hc, emitted, f]⟩
+  | casesResult output value doneBody yieldBody ihv ihd ihy =>
+    obtain ⟨bound, matched⟩ := ihv locals typed total
+    obtain ⟨first, doneFound⟩ := ihd (.scalar (.boolean bound.value) :: locals)
+      (by simp [BooleanStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    obtain ⟨second, yieldFound⟩ := ihy (.scalar (.boolean bound.value) :: locals)
+      (by simp [BooleanStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    exact ⟨⟨.ite (wordGuard bound.done) first.value second.value,
+        .ite (wordGuard bound.done) first.done second.done⟩, by
+      simp [BooleanStep.casesExpr, BooleanStep.resultType, extractBooleanStepWith, matched, doneFound, yieldFound]⟩
 
 theorem extractBooleanStepWith_supported {locals : List BooleanStepBinding} {source : Lean.Expr}
     {code : ScalarStepCode} (compiled : extractBooleanStepWith locals source = some code) :
@@ -809,7 +845,14 @@ theorem extractBooleanStepWith_supported {locals : List BooleanStepBinding} {sou
     obtain ⟨f, found, arg, matched, _⟩ := compiled
     exact .resultApply (booleanStep_resultFunction_kind (Option.bind_eq_some_iff.mpr found)) (ih matched)
   | case24 locals index => exact .resultVar (booleanStep_result_kind compiled)
-  | case25 => contradiction
+  | case25 locals motiveName type motiveBi value doneName doneBody doneBi yieldName yieldBody yieldBi ihv ihd ihy =>
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨output, parsed, bound, matched, first, doneFound, second, yieldFound, rfl⟩ := compiled
+    rw [booleanStepResultType_sound parsed]
+    exact .casesResult output (ihv matched)
+      (by simpa [BooleanStepBinding.kind, ScalarBinding.kind] using ihd bound doneFound)
+      (by simpa [BooleanStepBinding.kind, ScalarBinding.kind] using ihy bound yieldFound)
+  | case26 => contradiction
 
 theorem extractBooleanStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     (literal : ∀ n, P (.u64 n))
@@ -1017,6 +1060,19 @@ theorem extractBooleanStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     have same := BooleanStepBinding.result?_some.mp matched
     subst binding
     exact bindings _ (List.mem_of_getElem? found)
-  | case25 => contradiction
+  | case25 locals motiveName type motiveBi value doneName doneBody doneBi yieldName yieldBody yieldBi ihv ihd ihy =>
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨output, parsed, bound, matched, first, doneFound, second, yieldFound, rfl⟩ := compiled
+    obtain ⟨valueHolds, doneHolds⟩ := ihv matched bindings
+    have extended : ∀ binding ∈ BooleanStepBinding.scalar (.boolean bound.value) :: locals, binding.Holds P := by
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact valueHolds
+      · exact bindings binding member
+    obtain ⟨firstValue, firstDone⟩ := ihd bound doneFound extended
+    obtain ⟨secondValue, secondDone⟩ := ihy bound yieldFound extended
+    exact ⟨choice .eq bound.done (.u64 1) _ _ doneHolds (literal 1) firstValue secondValue,
+      choice .eq bound.done (.u64 1) _ _ doneHolds (literal 1) firstDone secondDone⟩
+  | case26 => contradiction
 
 end LeanExe.Extract.Core

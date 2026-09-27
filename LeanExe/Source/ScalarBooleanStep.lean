@@ -48,6 +48,14 @@ def scalarFunctionExpr (input output : Lean.Expr)
   .letE name (.forallE typeName input output typeBi)
     (.lam paramName input value paramBi) body nondep
 
+/-- Nondependent inspection checks the complete result and binds its Boolean payload. -/
+def casesExpr (output : BooleanType) (motiveName doneName yieldName : Lean.Name)
+    (motiveBi doneBi yieldBi : Lean.BinderInfo) (value doneBody yieldBody : Lean.Expr) : Lean.Expr :=
+  .app (.app (.app (.app (.app (.const ``ForInStep.casesOn [.succ .zero, .zero]) (.const ``Bool []))
+    (.lam motiveName (resultType .boolean) (resultType output) motiveBi)) value)
+    (.lam doneName (.const ``Bool []) doneBody doneBi))
+    (.lam yieldName (.const ``Bool []) yieldBody yieldBi)
+
 /-- Native Boolean step results retain their yield/done distinction. -/
 inductive Eval : Lean.Expr → List Value → ForInStep Bool → Prop where
   | yieldDirect (value : EvalWith (.app (.const ``Bool.toUInt64 []) source) (values.map Value.toScalar) (Bool.toUInt64 flag)) :
@@ -125,6 +133,13 @@ inductive Eval : Lean.Expr → List Value → ForInStep Bool → Prop where
       (body : Eval b (.scalar (.booleanPredicateFunction f) :: values) outcome) :
       Eval (scalarFunctionExpr input.expr output.expr name typeName paramName typeBi paramBi a b nondep) values outcome
 
+  | casesDone (output : BooleanType) (value : Eval a values (.done flag))
+      (body : Eval doneBody (.scalar (.boolean flag) :: values) outcome) :
+      Eval (casesExpr output motiveName doneName yieldName motiveBi doneBi yieldBi a doneBody yieldBody) values outcome
+  | casesYield (output : BooleanType) (value : Eval a values (.yield flag))
+      (body : Eval yieldBody (.scalar (.boolean flag) :: values) outcome) :
+      Eval (casesExpr output motiveName doneName yieldName motiveBi doneBi yieldBi a doneBody yieldBody) values outcome
+
 /-- Support checks both branches and every bound value, including unused ones. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
   | yieldDirect (value : SupportedWith (types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) source)) :
@@ -196,6 +211,11 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       (function : SupportedWith (.boolean :: types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) a))
       (body : Supported (.scalar (.booleanPredicateFunction) :: types) b) :
       Supported types (scalarFunctionExpr input.expr output.expr name typeName paramName typeBi paramBi a b nondep)
+
+  | casesResult (output : BooleanType) (value : Supported types a)
+      (doneBody : Supported (.scalar .boolean :: types) doneExpr)
+      (yieldBody : Supported (.scalar .boolean :: types) yieldExpr) :
+      Supported types (casesExpr output motiveName doneName yieldName motiveBi doneBi yieldBi a doneExpr yieldExpr)
 
 theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (supported : Supported types source) (values : List Value)
@@ -324,5 +344,16 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.booleanPredicateFunction f) :: values)
       (by simp [Value.kind, Scalar.Value.kind, typed])
     exact ⟨outcome, .letScalarBooleanPredicateFunction input output (fun x => (total x).choose_spec) evaluated⟩
+  | casesResult output value doneBody yieldBody ihv ihd ihy =>
+    obtain ⟨result, evaluated⟩ := ihv values typed
+    cases result with
+    | done flag =>
+      obtain ⟨outcome, body⟩ := ihd (.scalar (.boolean flag) :: values)
+        (by simp [Value.kind, Scalar.Value.kind, typed])
+      exact ⟨outcome, .casesDone output evaluated body⟩
+    | yield flag =>
+      obtain ⟨outcome, body⟩ := ihy (.scalar (.boolean flag) :: values)
+        (by simp [Value.kind, Scalar.Value.kind, typed])
+      exact ⟨outcome, .casesYield output evaluated body⟩
 
 end LeanExe.Source.Scalar.BooleanStep
