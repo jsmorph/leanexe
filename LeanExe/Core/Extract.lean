@@ -1,4 +1,4 @@
-import LeanExe.Core.Native
+import LeanExe.Core.StateNative
 import Lean.Meta.Eqns
 import Lean.Meta.Tactic.FunInd
 
@@ -14,9 +14,11 @@ private structure Entry where
   name : Name
   equation : Name := .anonymous
   function : Option Function := none
+  stateful : Bool := false
 
 private structure ExtractState where
   entries : Array Entry := #[]
+  memory : Bool := false
 
 private abbrev ExtractM := StateT ExtractState MetaM
 private abbrev Bindings := Array (Expr × ScalarExpr)
@@ -63,19 +65,25 @@ mutual
     modify fun state => { state with entries := state.entries.push { name, equation } }
     let equationInfo ← getConstInfo equation
     let state ← get
-    let function ← runScoped <| forallTelescope equationInfo.type fun args equality => do
+    let (function, stateful) ← runScoped <| forallTelescope equationInfo.type fun args equality => do
       for arg in args do
         unless ← isDefEq (← inferType arg) (mkConst ``UInt64) do
           throwError "Every runtime parameter must be UInt64: {name}"
       let some (_, _, rhs) := equality.eq?
         | throwError "Expected an unfolding equality for {name}"
-      unless ← isDefEq (← inferType rhs) (mkConst ``UInt64) do
-        throwError "The result must be UInt64: {name}"
+      let resultType ← inferType rhs
+      let stateful ← if ← isDefEq resultType (mkConst ``UInt64) then pure false else do
+        unless state.memory && (← isDefEq resultType
+          (mkApp2 (mkConst ``StateM [.zero]) (mkConst ``ByteArray) (mkConst ``UInt64))) do
+          throwError "The result must be UInt64 or an enabled StateM ByteArray UInt64 computation: {name}"
+        pure true
       let bindings := args.mapIdx fun i arg => (arg, LeanExe.Wasm.ScalarDescriptor.Expr.get i)
-      let ((body, result, next), state) ← (lower bindings rhs args.size).run state
-      return ({ params := args.size, locals := next - args.size, body, result }, state)
+      let action := if stateful then lowerState bindings rhs args.size else lower bindings rhs args.size
+      let ((body, result, next), state) ← action.run state
+      return (({ params := args.size, locals := next - args.size, body, result }, stateful), state)
     modify fun state =>
-      { state with entries := state.entries.modify index fun entry => { entry with function := some function } }
+      { state with entries := state.entries.modify index fun entry =>
+        { entry with function := some function, stateful } }
     return index
 
   private partial def lower (bindings : Bindings) (expression : Expr) (next : Nat) :
@@ -135,6 +143,62 @@ mutual
       let state ← get
       runScoped <| lambdaTelescope expression fun _ body => (lower bindings body next).run state
     else lower bindings expression next
+
+  private partial def lowerState (bindings : Bindings) (expression : Expr) (next : Nat) :
+      ExtractM (Stmt × ScalarExpr × Nat) := do
+    let expression := expression.consumeMData
+    if let .letE name type value body _ := expression then
+      unless ← isDefEq type (mkConst ``UInt64) do
+        throwError "State computations require UInt64 runtime let bindings: {expression}"
+      let (first, value, next) ← lower bindings value next
+      let slot := next
+      let state ← get
+      let (second, result, next) ← runScoped <| withLocalDeclD name type fun boundValue =>
+        (lowerState (bindings.push (boundValue, .get slot))
+          (body.instantiate1 boundValue) (slot + 1)).run state
+      return (sequence (sequence first (.assign slot value)) second, result, next)
+    let fn := expression.getAppFn
+    let args := expression.getAppArgs
+    if fn.isConstOf ``Pure.pure then
+      return ← lower bindings args.back! next
+    if fn.isConstOf ``Bind.bind && args.size ≥ 2 then
+      let computation := args[args.size - 2]!
+      let continuation := args[args.size - 1]!
+      let (first, value, next) ← lowerState bindings computation next
+      let slot := next
+      let state ← get
+      let (second, result, next) ← runScoped <| lambdaTelescope continuation fun parameters body => do
+        unless parameters.size == 1 && (← isDefEq (← inferType parameters[0]!) (mkConst ``UInt64)) do
+          throwError "State computation binds must produce one UInt64: {continuation}"
+        (lowerState (bindings.push (parameters[0]!, .get slot)) body (slot + 1)).run state
+      return (sequence (sequence first (.assign slot value)) second, result, next)
+    if (fn.isConstOf ``ite || fn.isConstOf ``dite) && args.size == 5 then
+      let (testCode, test, next) ← lowerCondition bindings args[1]! next
+      let slot := next
+      let (yes, yesValue, next) ← lowerStateArm bindings args[3]! (slot + 1) (fn.isConstOf ``dite)
+      let (no, noValue, next) ← lowerStateArm bindings args[4]! next (fn.isConstOf ``dite)
+      return (sequence testCode (.branch test
+        (sequence yes (.assign slot yesValue)) (sequence no (.assign slot noValue))), .get slot, next)
+    if let .const name _ := fn then
+      let operation :=
+        if name == ``Memory.read then some 0 else
+        if name == ``Memory.write then some 1 else
+        if name == ``Memory.size then some 2 else
+        if name == ``Memory.grow then some 3 else none
+      if let some operation := operation then
+        let (code, inputs, next) ← lowerArguments bindings args.toList next
+        return (sequence code (.effect next operation inputs), .get next, next + 1)
+      let callee ← ensureFunction name
+      let (code, inputs, next) ← lowerArguments bindings args.toList next
+      return (sequence code (.call next callee inputs), .get next, next + 1)
+    throwError "Unsupported state computation: {expression}"
+
+  private partial def lowerStateArm (bindings : Bindings) (expression : Expr) (next : Nat)
+      (dependent : Bool) : ExtractM (Stmt × ScalarExpr × Nat) := do
+    if dependent then
+      let state ← get
+      runScoped <| lambdaTelescope expression fun _ body => (lowerState bindings body next).run state
+    else lowerState bindings expression next
 
   private partial def lowerArguments (bindings : Bindings) (arguments : List Expr) (next : Nat) :
       ExtractM (Stmt × List ScalarExpr × Nat) := do
@@ -228,7 +292,7 @@ private partial def listCertificateProof (arguments : Array Ident) (proof : TSyn
   let lengthName := mkIdent `length
   if arguments.isEmpty then
     `(tactic| cases $argsName:term with
-      | nil => simpa [LeanExe.Core.applyNative] using $proof
+      | nil => simpa [LeanExe.Core.applyNative, LeanExe.Core.applyStateNative] using $proof
       | cons _ _ => simp at $lengthName:ident)
   else
     let name := arguments[0]!
@@ -240,8 +304,8 @@ private partial def listCertificateProof (arguments : Array Ident) (proof : TSyn
 /-- Extract ordinary definitions and synthesize native-to-core proofs. There is
 no trusted connection from the metaprogram's output to the original function:
 the generated proof is checked by Lean's kernel. -/
-def certify (sourceName certificateName : Name) : TermElabM Unit := do
-    let (_, state) ← (ensureFunction sourceName).run {}
+private def certifyCore (memory : Bool) (sourceName certificateName : Name) : TermElabM Unit := do
+    let (_, state) ← (ensureFunction sourceName).run { memory }
     let functions ← state.entries.toList.mapM fun entry => do
       let some function := entry.function | throwError "Unfinished definition: {entry.name}"
       return function
@@ -254,15 +318,27 @@ def certify (sourceName certificateName : Name) : TermElabM Unit := do
       let some function := functions[index]? | throwError "Missing compiled function {index}"
       let proofName := certificateName ++ Name.mkSimple s!"function_{index}"
       let nativeInfo ← getConstInfo entry.name
-      let proofType ← forallTelescope nativeInfo.type fun args _ => do
-        let invocation ← mkAppM ``Invokes #[mkConst moduleName, mkConst ``noEffects,
-          mkNatLit index, mkConst ``Unit.unit, quoteList (mkConst ``UInt64) args.toList,
-          mkConst ``Unit.unit, mkAppN (mkConst entry.name) args]
-        mkForallFVars args invocation
+      let proofType ← forallBoundedTelescope nativeInfo.type (some function.params) fun args _ => do
+        let nativeValue := mkAppN (mkConst entry.name) args
+        if memory then
+          withLocalDeclD `initial (mkConst ``ByteArray) fun initial => do
+            let computation := mkApp nativeValue initial
+            let final := if entry.stateful then mkProj ``Prod 1 computation else initial
+            let value := if entry.stateful then mkProj ``Prod 0 computation else nativeValue
+            let invocation ← mkAppM ``Invokes #[mkConst moduleName, mkConst ``Memory.effects,
+              mkNatLit index, initial, quoteList (mkConst ``UInt64) args.toList, final, value]
+            mkForallFVars (args.push initial) invocation
+        else
+          let invocation ← mkAppM ``Invokes #[mkConst moduleName, mkConst ``noEffects,
+            mkNatLit index, mkConst ``Unit.unit, quoteList (mkConst ``UInt64) args.toList,
+            mkConst ``Unit.unit, nativeValue]
+          mkForallFVars args invocation
       let identifiers := (List.range function.params).toArray.map fun i => mkIdent <| Name.mkSimple s!"arg{i}"
       let application ← `(term| $(mkIdent entry.name) $identifiers:ident*)
       let introductions ← `(tactic| intro $identifiers:ident*)
-      let helperFacts ← proved.mapM fun name => `(tactic| have := $(mkIdent name))
+      let helperNames := if memory then proved ++ #[``Memory.effects.run_read,
+        ``Memory.effects.run_write, ``Memory.effects.run_size, ``Memory.effects.run_grow] else proved
+      let helperFacts ← helperNames.mapM fun name => `(tactic| have := $(mkIdent name))
       let inductionStep ← `(tactic| first | fun_induction $application | fun_cases $application)
       let moduleStep ← `(tactic| dsimp only [$(mkIdent moduleName):term])
       let proofGoal ← mkFreshExprSyntheticOpaqueMVar proofType
@@ -274,6 +350,7 @@ def certify (sourceName certificateName : Name) : TermElabM Unit := do
         let mut remaining := []
         for goal in branches do
           Tactic.setGoals [goal]
+          if memory then Tactic.evalTactic (← `(tactic| intro $(mkIdent `initial):ident))
           Tactic.evalTactic moduleStep
           Tactic.evalTactic (← `(tactic| core_native_invokes))
           remaining := remaining ++ (← Tactic.getUnsolvedGoals)
@@ -292,7 +369,10 @@ def certify (sourceName certificateName : Name) : TermElabM Unit := do
     let identifiers := (List.range root.params).toArray.map fun i => mkIdent <| Name.mkSimple s!"arg{i}"
     let proofApplication ← `(term| $(mkIdent (certificateName ++ `function_0)) $identifiers:ident*)
     let bodyProof ← listCertificateProof identifiers proofApplication
-    let constructor := mkAppN (mkConst ``NativeCertificate.mk)
+    let constructor := if memory then
+      mkAppN (mkConst ``StateCertificate.mk) #[mkConst ``ByteArray, mkNatLit root.params,
+        mkConst ``Memory.effects, mkConst sourceName, mkConst moduleName, mkNatLit 0]
+    else mkAppN (mkConst ``NativeCertificate.mk)
       #[mkNatLit root.params, mkConst sourceName, mkConst moduleName, mkNatLit 0]
     let constructorType ← whnf (← inferType constructor)
     let proofGoal ← mkFreshExprSyntheticOpaqueMVar constructorType.bindingDomain!
@@ -307,5 +387,13 @@ def certify (sourceName certificateName : Name) : TermElabM Unit := do
       throwError "Could not finish the native certificate for {sourceName}"
     addDefinition certificateName (mkApp constructor proof)
     logInfo m!"Compiled {sourceName}; generated kernel-checked native certificate {certificateName}."
+
+/-- Certify an ordinary pure machine-word function. -/
+def certify (sourceName certificateName : Name) : TermElabM Unit :=
+  certifyCore false sourceName certificateName
+
+/-- Certify an ordinary StateM ByteArray function and all its reachable helpers. -/
+def certifyMemory (sourceName certificateName : Name) : TermElabM Unit :=
+  certifyCore true sourceName certificateName
 
 end LeanExe.Core.Extract

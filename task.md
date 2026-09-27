@@ -16,6 +16,14 @@ Checked in Lean:
   definitions, including let, conditionals, named helpers and genuine recursion.
   Generated native certificates pass for Euclidean gcd, non-tail recursion with
   two calls per step, arithmetic with a local let, and calls combining them.
+  All four also compile to valid, encoder-ready Talos modules. Their complete
+  native-to-Talos theorems depend only on Lean's standard axioms.
+- `Extract.certifyMemory`: ordinary StateM ByteArray definitions now generate
+  native certificates for read/compute, read/write copy, growth with size, and
+  recursive writes. No native state-transition premise is left to the caller.
+- `Project.Core.MemoryCompiler`: state certificates produce exported Talos
+  modules with validity/readiness and a theorem for the original Lean result
+  and final bytes. The generated module's initial zero memory is represented.
 
 - `LeanExe.Core.Program`: source control, recursive calls, and explicit primitive
   effects with native UInt64 operations.
@@ -39,8 +47,8 @@ Checked in Lean:
 
 Remaining work:
 
-- Connect native stateful programs and actual ordinary Lean loops to the frontend.
-- Connect native data and memory operations, including growth, to the frontend.
+- Connect actual ordinary Lean bounded loops to the frontend. The generic native
+  range-loop proof is being checked; frontend lowering/proof generation remains.
 - Check representative recursive and looping programs through the complete path.
 
 The core lowering theorem alone does not establish correctness of the ordinary
