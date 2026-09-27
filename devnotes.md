@@ -131,6 +131,29 @@ by at most `1/2 + 2^-35`, and the ideal reduced argument has magnitude at
 most `0.00275`.  The half-unit addition bound and exact subtraction both use
 the same IEEE operations as the WASM execution model.
 
+The floating-point reduction error is at most `10^-18` for inputs of
+magnitude at most 800.  Exact multiplication by the high logarithm part
+keeps the first cancellation within the required error budget.  The low
+product and both additions use their proved IEEE rounding bounds.
+Polynomial evaluation contributes at most `1.1 * 10^-18` relative to the
+real polynomial and table correction.  Combining those bounds with the
+table approximation and an exponential perturbation bound gives absolute
+error at most `3 * 10^-17` before exponent scaling and final rounding.
+These proofs check in under five seconds per module with the standard
+axioms.  Full reconstruction, subnormal rounding, and the outer input
+regions remain outstanding.
+
+The polynomial proof reuses the existing `Approximation` structure.  Two
+new shared methods retain magnitude-dependent rounding bounds for operands
+below one.  Normal power-of-two multiplication now has a checked result-word
+formula that includes overflow.  A table-word congruence relates the
+compiler's bit shifts to the integer quotient and remainder.  Direct
+rewriting in that proof exhausted the elaborator's heartbeat limit.
+Separating arbitrary-word arithmetic from the concrete table reduced the
+module check to 2.2 seconds.  A fifteen-minute wait for another checkout's
+Lean build delayed these checks.  The shared lock and resource limits stayed
+in force.
+
 The generated annotation module supplies no matching lemmas for this case.
 The execution proof instead uses the generated instruction definitions and
 shared frame, call, and array-read theorems.  Constant word-valued conditions

@@ -26,6 +26,10 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.F64Numerical` | Pure IEEE64 Horner multiply-add semantics, a reusable two-rounding stage theorem, and the guarded quadratic finite-result and `3 * 2^-52` absolute-error theorem. |
 | `Project.ProofKit.RealNormBounds` | Dimension-parameterized squared-norm, dot-product, matrix, and bilinear bounds, plus invariance of a zero-sum dot product under constant coefficient shifts. |
 | `Project.ProofKit.F64Rational` | Computable exact rational decoding of a binary64 word and equality of its real cast with the existing scaled-integer real-value definition. |
+| `Project.ProofKit.F64ExactArithmetic` | Exact packing, addition, and multiplication when the scaled result has at most 53 significant bits and satisfies the stated finite-range bound. |
+| `Project.ProofKit.F64AddUlp` | Addition error bounded by half the binary64 spacing below a supplied power-of-two bound. |
+| `Project.ProofKit.F64ApproximationSmall` | Addition and multiplication of bounded approximations, retaining relative rounding error and multiplication underflow error for magnitudes below one. |
+| `Project.ProofKit.F64NormalScale` | Exact result words for normal binary64 multiplication by a power of two, including overflow. |
 | `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |
 | `Project.ProofKit.ScalarFrame` | Adapts scalar statement execution and assignment evaluation to arbitrary Locals and result-assignment frames. |
 | `Project.ProofKit.ScalarConditional` | Executes scalar conditional expressions and assignments while retaining decoded control-type metadata. |
