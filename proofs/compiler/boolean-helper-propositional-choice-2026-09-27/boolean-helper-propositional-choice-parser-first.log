@@ -1,0 +1,92 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [33/34] Running LeanExe.Extract.ScalarBooleanGuardedSelection
+error: LeanExe/Extract/ScalarBooleanGuardedSelection.lean: module imports itself
+error: build cycle detected:
+  leanexe/+LeanExe.Extract.ScalarBooleanGuardedSelection:precompileImports
+  leanexe/+LeanExe.Extract.ScalarBooleanGuardedSelection:presetup
+  leanexe/+LeanExe.Extract.ScalarBooleanGuardedSelection:leanArts
+  leanexe/+LeanExe.Extract.ScalarBooleanGuardedSelection:precompileImports
+✖ [34/34] Building LeanExe.Source.ScalarBooleanGuardedSelection (868ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarBooleanGuardedSelection.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanGuardedSelection.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanGuardedSelection.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanGuardedSelection.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanGuardedSelection.setup.json --json
+error: LeanExe/Source/ScalarBooleanGuardedSelection.lean:31:50: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  d ≥ 0
+  c ≥ 0
+  b ≥ 0
+  a ≥ 0
+  a - b ≥ 0
+  a - c + d ≤ -4
+where
+ a := ↑(sizeOf inner.expr)
+ b := ↑(sizeOf (Lean.Expr.const `Bool []))
+ c := ↑(sizeOf "Bool")
+ d := ↑(sizeOf "Id")
+error: LeanExe/Source/ScalarBooleanGuardedSelection.lean:43:4: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  j ≥ 0
+  i ≥ 0
+  h ≥ 0
+  g ≥ 0
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  d - e ≥ 4
+  c ≥ 0
+  c - d - f - g - h - i - j ≥ 12
+  b ≥ 0
+  b - e - f ≤ 4
+  a ≥ 0
+  a + b - c ≥ 1
+where
+ a := ↑(sizeOf guard.value.condition)
+ b := ↑guardOperandOverhead
+ c := ↑(sizeOf operand)
+ d := ↑(sizeOf type.expr)
+ e := ↑(sizeOf "Bool")
+ f := ↑(sizeOf "ite")
+ g := ↑(sizeOf guard.condition)
+ h := ↑(sizeOf guard.evidence)
+ i := ↑(sizeOf yes)
+ j := ↑(sizeOf no)
+error: LeanExe/Source/ScalarBooleanGuardedSelection.lean:48:4: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  o ≥ 0
+  n ≥ 0
+  m ≥ 0
+  l ≥ 0
+  k ≥ 0
+  j ≥ 0
+  i ≥ 0
+  h ≥ 0
+  g ≥ 0
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  d - e ≥ 4
+  c ≥ 0
+  c - d - f - 3*g - h - i - j - k - l - m - n - o ≥ 19
+  b ≥ 0
+  b - e - f ≤ 4
+  a ≥ 0
+  a + b - c ≥ 1
+where
+ a := ↑(sizeOf guard.value.condition)
+ b := ↑guardOperandOverhead
+ c := ↑(sizeOf operand)
+ d := ↑(sizeOf type.expr)
+ e := ↑(sizeOf "Bool")
+ f := ↑(sizeOf "dite")
+ g := ↑(sizeOf guard.condition)
+ h := ↑(sizeOf guard.evidence)
+ i := ↑(sizeOf shape.trueName)
+ j := ↑(sizeOf (ExprProofBinder.lift 0 yes))
+ k := ↑(sizeOf shape.trueInfo)
+ l := ↑(sizeOf shape.falseName)
+ m := ↑(sizeOf "Not")
+ n := ↑(sizeOf (ExprProofBinder.lift 0 no))
+ o := ↑(sizeOf shape.falseInfo)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanGuardedSelection
+- LeanExe.Source.ScalarBooleanGuardedSelection
+error: build failed

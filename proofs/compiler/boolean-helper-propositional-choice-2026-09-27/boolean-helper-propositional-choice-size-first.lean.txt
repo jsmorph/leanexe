@@ -1,0 +1,5 @@
+import LeanExe.Source.ScalarBooleanSelected
+open LeanExe.Source.Scalar
+#eval sizeOf (Lean.mkAppN (.const ``Decidable.decide []) #[.bvar 0, .bvar 0])
+#eval sizeOf (Lean.mkAppN (.const ``ite [.succ .zero]) #[BooleanType.boolean.expr, .bvar 0, .bvar 0, .bvar 0, .bvar 0])
+#eval sizeOf (Lean.Expr.const ``Bool [])

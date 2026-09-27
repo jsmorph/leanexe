@@ -758,16 +758,25 @@ controls. Prior tests pass 53,684 comparisons, 56,320 invalid-input checks and
 1,280 controls. The native corpus contains 1467 declarations. Evidence is in
 [the helper-choice archive](proofs/compiler/boolean-helper-choice-2026-09-27/README.md).
 
-Current capability: propositional conditions in Boolean-valued choices with helper
-scopes. Source totality, parser acceptance/soundness, scalar correctness and IR
-invariants pass. New tests pass 37,812 comparisons, 51,072 invalid-input checks
-and 768 controls. Six adjacent tests pass 41,140 comparisons, 45,056 invalid-input
-checks and 1,024 controls. The general compiler-proof/WASM checks follow. The original word-comparison probe and repeated-call negation/let probes
-now pass, as do the two original positive controls. The compound probe remains
-rejected because Lean moves its helper into a function-typed proposition let;
-that exact fixture and its diagnostic are retained. Current compound tests use
-explicit Boolean-to-word guard operands. Direct Boolean Eq/Ne conditions,
-function-typed proposition lets, nested helper bodies and Id inputs remain open.
+Boolean-valued choices with helper branches over existing supported propositional
+guards are complete. Source totality, parser acceptance/soundness, scalar
+correctness, IR invariants and the general source-to-WASM theorem pass, with all
+nineteen audits. Native Lean/V8 agree on 993 inputs across 54 declarations,
+including 25 ranges; 44 prior modules retain identical bytes and 0
+changed. New tests pass 37,812 comparisons, 51,072 invalid-input checks and 768
+controls. Prior tests pass 41,140 comparisons, 45,056 invalid-input checks and
+1,024 controls. The native corpus contains 1477 declarations. Evidence is in
+[the propositional-choice archive](proofs/compiler/boolean-helper-propositional-choice-2026-09-27/README.md).
+Three rejected probes now pass; two positive controls still pass. The unchanged
+compound probe exposes a function-typed proposition let and remains rejected.
+The first native fixture and diagnostic are retained alongside cases using
+explicit Boolean-to-word guard operands.
+
+Current capability: direct Boolean Eq/Ne conditions in Boolean-valued choices
+with general helper scopes. The original relation and equality-to-false probes
+remain rejected. Preserve exact relation/evidence and dependent binders, compile
+both Boolean operands and both branches, and reuse booleanWordChoice. Function-
+typed proposition lets, nested helper bodies and Id inputs are subsequent gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

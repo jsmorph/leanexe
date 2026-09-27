@@ -1,0 +1,36 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [35/78] Built LeanExe.Source.ScalarBooleanGuardedSelection (953ms)
+⚠ [63/78] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [78/78] Building LeanExe.Extract.ScalarBooleanGuardedSelection (1.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanGuardedSelection.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanGuardedSelection.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanGuardedSelection.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanGuardedSelection.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanGuardedSelection.setup.json --json
+error: LeanExe/Extract/ScalarBooleanGuardedSelection.lean:142:6: Tactic `rewrite` failed: motive is not type correct:
+  fun _a =>
+    (match parsed : _a with
+      | some selection => some { selection := selection, extended := ⋯ }
+      | none => none) =
+      none
+Error: Application type mismatch: The argument
+  parsed
+has type
+  _a = some selection
+but is expected to have type
+  booleanSelectionSyntax? value.expr = some selection
+in the application
+  booleanSelected?._proof_1 value.expr (booleanGuardedSelection_not_local value) selection parsed
+
+Explanation: The rewrite tactic rewrites an expression 'e' using an equality 'a = b' by the following process. First, it looks for all 'a' in 'e'. Second, it tries to abstract these occurrences of 'a' to create a function 'm := fun _a => ...', called the *motive*, with the property that 'm a' is definitionally equal to 'e'. Third, we observe that 'congrArg' implies that 'm a = m b', which can be used with lemmas such as 'Eq.mpr' to change the goal. However, if 'e' depends on specific properties of 'a', then the motive 'm' might not typecheck.
+
+Possible solutions: use rewrite's 'occs' configuration option to limit which occurrences are rewritten, or use 'simp' or 'conv' mode, which have strategies for certain kinds of dependencies (these tactics can handle proofs and 'Decidable' instances whose types depend on the rewritten term, and 'simp' can apply user-defined '@[congr]' theorems as well).
+
+value : BooleanGuardedSelection
+⊢ (match parsed : booleanSelectionSyntax? value.expr with
+    | some selection => some { selection := selection, extended := ⋯ }
+    | none => none) =
+    none
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanGuardedSelection
+error: build failed

@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_helper_propositional_choice.lean:80:0: error: BooleanHelperPropositionChoiceTest.booleanHelperPropositionChoiceCompound: propositional Boolean helper extraction failed

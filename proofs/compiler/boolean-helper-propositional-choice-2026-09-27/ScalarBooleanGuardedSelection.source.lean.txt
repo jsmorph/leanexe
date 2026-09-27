@@ -1,0 +1,67 @@
+import LeanExe.Source.ScalarBooleanSelected
+
+namespace LeanExe.Source.Scalar
+
+/-- A Boolean-valued choice over an independently checked proposition. -/
+structure BooleanGuardedSelectionSyntax where
+  type : BooleanType
+  proof : Option BooleanProofBranch
+  guard : PropositionGuard
+  yes : Lean.Expr
+  no : Lean.Expr
+
+namespace BooleanGuardedSelectionSyntax
+
+def expr (value : BooleanGuardedSelectionSyntax) : Lean.Expr :=
+  match value.proof with
+  | none =>
+    .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) value.type.expr)
+      value.guard.condition) value.guard.evidence) value.yes) value.no
+  | some shape =>
+    .app (.app (.app (.app (.app (.const ``dite [.succ .zero]) value.type.expr)
+      value.guard.condition) value.guard.evidence)
+      (.lam shape.trueName value.guard.condition (ExprProofBinder.lift 0 value.yes) shape.trueInfo))
+      (.lam shape.falseName (.app (.const ``Not []) value.guard.condition)
+        (ExprProofBinder.lift 0 value.no) shape.falseInfo)
+
+private theorem type_size (type : BooleanType) :
+    sizeOf (.const ``Bool [] : Lean.Expr) ≤ sizeOf type.expr := by
+  induction type with
+  | boolean => exact Nat.le_refl _
+  | identity inner ih => simp [BooleanType.expr]; omega
+
+theorem operands_size (value : BooleanGuardedSelectionSyntax) {operand : Lean.Expr}
+    (member : operand ∈ value.guard.operands) : sizeOf operand < sizeOf value.expr := by
+  have bound := value.guard.value.operands_size member
+  have ht := type_size value.type
+  rcases value with ⟨type, proof, guard, yes, no⟩
+  cases proof with
+  | none =>
+    have overhead := guardOperandOverhead_ite
+    simp only [expr] at *
+    simp at *
+    omega
+  | some shape =>
+    have overhead := guardOperandOverhead_dite
+    simp only [expr] at *
+    simp at *
+    omega
+
+theorem branches_size (value : BooleanGuardedSelectionSyntax) :
+    sizeOf value.yes < sizeOf value.expr ∧ sizeOf value.no < sizeOf value.expr := by
+  rcases value with ⟨type, proof, guard, yes, no⟩
+  have hy := ExprProofBinder.lift_size yes 0
+  have hn := ExprProofBinder.lift_size no 0
+  cases proof <;> simp [expr] <;> omega
+
+end BooleanGuardedSelectionSyntax
+
+/-- A propositional Boolean choice outside the closed BooleanLocal grammar. -/
+structure BooleanGuardedSelection where
+  selection : BooleanGuardedSelectionSyntax
+  extended : ∀ expression : BooleanLocal, selection.expr ≠ expression.expr
+
+namespace BooleanGuardedSelection
+abbrev expr (value : BooleanGuardedSelection) : Lean.Expr := value.selection.expr
+end BooleanGuardedSelection
+end LeanExe.Source.Scalar

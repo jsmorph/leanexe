@@ -1,0 +1,58 @@
+import LeanExe.Source.ScalarBooleanSelected
+
+namespace LeanExe.Source.Scalar
+
+/-- A Boolean-valued choice over a proposition other than direct Boolean truth. -/
+structure BooleanDecidedSelectionSyntax where
+  type : BooleanType
+  proof : Option BooleanProofBranch
+  condition : Lean.Expr
+  evidence : Lean.Expr
+  yes : Lean.Expr
+  no : Lean.Expr
+  nontruth : ∀ operand : Lean.Expr,
+    condition ≠ booleanRelationCondition false operand (booleanLiteralExpr true)
+
+namespace BooleanDecidedSelectionSyntax
+
+def decision (value : BooleanDecidedSelectionSyntax) : Lean.Expr :=
+  .app (.app (.const ``Decidable.decide []) value.condition) value.evidence
+
+def expr (value : BooleanDecidedSelectionSyntax) : Lean.Expr :=
+  match value.proof with
+  | none =>
+    .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) value.type.expr)
+      value.condition) value.evidence) value.yes) value.no
+  | some shape =>
+    .app (.app (.app (.app (.app (.const ``dite [.succ .zero]) value.type.expr)
+      value.condition) value.evidence)
+      (.lam shape.trueName value.condition (ExprProofBinder.lift 0 value.yes) shape.trueInfo))
+      (.lam shape.falseName (.app (.const ``Not []) value.condition)
+        (ExprProofBinder.lift 0 value.no) shape.falseInfo)
+
+private theorem type_size (type : BooleanType) :
+    sizeOf (.const ``Bool [] : Lean.Expr) ≤ sizeOf type.expr := by
+  induction type with
+  | boolean => exact Nat.le_refl _
+  | identity inner ih => simp [BooleanType.expr]; omega
+
+theorem children_size (value : BooleanDecidedSelectionSyntax) :
+    sizeOf value.decision < sizeOf value.expr ∧
+      sizeOf value.yes < sizeOf value.expr ∧ sizeOf value.no < sizeOf value.expr := by
+  rcases value with ⟨type, proof, condition, evidence, yes, no, nontruth⟩
+  have hy := ExprProofBinder.lift_size yes 0
+  have hn := ExprProofBinder.lift_size no 0
+  have ht := type_size type
+  cases proof <;> simp [expr, decision] at * <;> omega
+
+end BooleanDecidedSelectionSyntax
+
+/-- A propositional Boolean choice outside the closed BooleanLocal grammar. -/
+structure BooleanDecidedSelection where
+  selection : BooleanDecidedSelectionSyntax
+  extended : ∀ expression : BooleanLocal, selection.expr ≠ expression.expr
+
+namespace BooleanDecidedSelection
+abbrev expr (value : BooleanDecidedSelection) : Lean.Expr := value.selection.expr
+end BooleanDecidedSelection
+end LeanExe.Source.Scalar

@@ -1,0 +1,28 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [33/34] Running LeanExe.Extract.ScalarBooleanGuardedSelection
+error: LeanExe/Extract/ScalarBooleanGuardedSelection.lean: module imports itself
+error: build cycle detected:
+  leanexe/+LeanExe.Extract.ScalarBooleanGuardedSelection:precompileImports
+  leanexe/+LeanExe.Extract.ScalarBooleanGuardedSelection:presetup
+  leanexe/+LeanExe.Extract.ScalarBooleanGuardedSelection:leanArts
+  leanexe/+LeanExe.Extract.ScalarBooleanGuardedSelection:precompileImports
+✖ [34/34] Building LeanExe.Source.ScalarBooleanGuardedSelection (986ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarBooleanGuardedSelection.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanGuardedSelection.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanGuardedSelection.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanGuardedSelection.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanGuardedSelection.setup.json --json
+error: LeanExe/Source/ScalarBooleanGuardedSelection.lean:31:50: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  d ≥ 0
+  c ≥ 0
+  b ≥ 0
+  a ≥ 0
+  a - b ≥ 0
+  a - c + d ≤ -4
+where
+ a := ↑(sizeOf inner.expr)
+ b := ↑(sizeOf (Lean.Expr.const `Bool []))
+ c := ↑(sizeOf "Bool")
+ d := ↑(sizeOf "Id")
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanGuardedSelection
+- LeanExe.Source.ScalarBooleanGuardedSelection
+error: build failed

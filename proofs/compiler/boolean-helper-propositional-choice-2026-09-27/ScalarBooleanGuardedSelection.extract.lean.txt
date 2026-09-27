@@ -1,0 +1,156 @@
+import LeanExe.Source.ScalarBooleanGuardedSelection
+import LeanExe.Extract.ScalarBooleanGuardedSelection
+import LeanExe.Extract.ScalarBooleanProofBodies
+
+namespace LeanExe.Extract.Core
+open LeanExe.Source.Scalar
+
+/-- Parse the proposition and its exact standard evidence before both branches. -/
+def booleanGuardedSelectionSyntax? : Lean.Expr → Option BooleanGuardedSelectionSyntax
+  | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) annotation) condition) evidence) yes) no => do
+      let type ← booleanType? annotation
+      let guard ← propositionGuard? condition evidence
+      pure ⟨type, none, guard, yes, no⟩
+  | .app (.app (.app (.app (.app (.const ``dite [.succ .zero]) annotation) condition) evidence)
+      (.lam tn td yes ti)) (.lam fn fd no fi) => do
+      let type ← booleanType? annotation
+      let guard ← propositionGuard? condition evidence
+      let (t, e) ← booleanProofBodies? condition td yes fd no
+      pure ⟨type, some ⟨tn, fn, ti, fi⟩, guard, t, e⟩
+  | _ => none
+
+@[simp] theorem booleanGuardedSelectionSyntax_accepts (value : BooleanGuardedSelectionSyntax) :
+    booleanGuardedSelectionSyntax? value.expr = some value := by
+  rcases value with ⟨type, proof, guard, yes, no⟩
+  cases proof <;> simp [booleanGuardedSelectionSyntax?, BooleanGuardedSelectionSyntax.expr]
+
+theorem booleanGuardedSelectionSyntax_sound {source : Lean.Expr} {value : BooleanGuardedSelectionSyntax}
+    (parsed : booleanGuardedSelectionSyntax? source = some value) : source = value.expr := by
+  unfold booleanGuardedSelectionSyntax? at parsed
+  split at parsed
+  · simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
+    obtain ⟨type, found, guard, guardFound, rfl⟩ := parsed
+    obtain ⟨hc, he⟩ := propositionGuard_sound guardFound
+    rw [booleanType_sound found, hc, he]
+    rfl
+  · simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
+    obtain ⟨type, found, guard, guardFound, ⟨t, e⟩, bodies, rfl⟩ := parsed
+    obtain ⟨hc, he⟩ := propositionGuard_sound guardFound
+    obtain ⟨htd, hfd, ht, hn⟩ := booleanProofBodies_sound bodies
+    rw [booleanType_sound found, htd, hfd, ht, hn, hc, he]
+    rfl
+  · contradiction
+
+private def choiceCondition : Lean.Expr → Lean.Expr
+  | .app (.app (.app (.app (.app _ _) condition) _) _) _ => condition
+  | other => other
+
+theorem booleanGuardedSelectionSyntax_not_boolean (value : BooleanGuardedSelectionSyntax)
+    (other : BooleanSelectionSyntax) : value.expr ≠ other.expr := by
+  intro equal
+  have projected := congrArg choiceCondition equal
+  rcases value with ⟨type, proof, guard, yes, no⟩
+  rcases other with ⟨otherType, otherProof, condition, otherYes, otherNo⟩
+  cases proof <;> cases otherProof
+  all_goals
+    change guard.condition = booleanRelationCondition false condition (booleanLiteralExpr true) at projected
+    exact guard.not_boolean_condition condition projected
+
+@[simp] theorem booleanGuardedSelectionSyntax_not_selected (value : BooleanGuardedSelectionSyntax) :
+    booleanSelectionSyntax? value.expr = none := by
+  cases parsed : booleanSelectionSyntax? value.expr with
+  | none => rfl
+  | some other =>
+    exact False.elim (booleanGuardedSelectionSyntax_not_boolean value other (booleanSelectionSyntax_sound parsed))
+
+@[simp] theorem booleanGuardedSelection_not_local (value : BooleanGuardedSelection) :
+    booleanLocalOperands? value.expr = none := by
+  cases found : booleanLocalOperands? value.expr with
+  | none => rfl
+  | some expression => exact False.elim (value.extended expression (booleanLocalOperands_sound found))
+
+def booleanGuardedSelection? (source : Lean.Expr) : Option BooleanGuardedSelection :=
+  if absent : booleanLocalOperands? source = none then
+    match parsed : booleanGuardedSelectionSyntax? source with
+    | some selection => some ⟨selection,
+        fun expression same => booleanLocal_excluded absent expression ((booleanGuardedSelectionSyntax_sound parsed).trans same)⟩
+    | none => none
+  else none
+
+@[simp] theorem booleanGuardedSelection_accepts (value : BooleanGuardedSelection) :
+    booleanGuardedSelection? value.expr = some value := by
+  have absent := booleanGuardedSelection_not_local value
+  rcases value with ⟨selection, extended⟩
+  simp only [booleanGuardedSelection?, dite_eq_left absent]
+  split
+  · rename_i actual found
+    have same := Option.some.inj ((booleanGuardedSelectionSyntax_accepts selection).symm.trans found)
+    cases same
+    rfl
+  · rename_i found
+    rw [booleanGuardedSelectionSyntax_accepts] at found
+    contradiction
+
+theorem booleanGuardedSelection_sound {source : Lean.Expr} {value : BooleanGuardedSelection}
+    (parsed : booleanGuardedSelection? source = some value) : source = value.expr := by
+  unfold booleanGuardedSelection? at parsed
+  split at parsed <;> try contradiction
+  split at parsed <;> try contradiction
+  rename_i selection found
+  cases parsed
+  exact booleanGuardedSelectionSyntax_sound found
+
+@[simp] theorem booleanGuardedSelection_not_helper (value : BooleanGuardedSelection) (booleanInput : Bool) :
+    booleanHelper? booleanInput value.expr = none := by
+  unfold booleanHelper?
+  rw [dite_eq_left (booleanGuardedSelection_not_local value)]
+  rcases value with ⟨⟨type, proof, condition, yes, no⟩, extended⟩
+  cases proof <;> rfl
+
+@[simp] theorem booleanGuardedSelection_not_wrapped (value : BooleanGuardedSelection) :
+    booleanWrapped? value.expr = none := by
+  unfold booleanWrapped?
+  rw [dite_eq_left (booleanGuardedSelection_not_local value)]
+  rcases value with ⟨⟨type, proof, condition, yes, no⟩, extended⟩
+  cases proof <;> rfl
+
+@[simp] theorem booleanGuardedSelection_not_negated (value : BooleanGuardedSelection) :
+    booleanNegated? value.expr = none := by
+  unfold booleanNegated?
+  rw [dite_eq_left (booleanGuardedSelection_not_local value)]
+  rcases value with ⟨⟨type, proof, condition, yes, no⟩, extended⟩
+  cases proof <;> rfl
+
+@[simp] theorem booleanGuardedSelection_not_joined (value : BooleanGuardedSelection) :
+    booleanJoined? value.expr = none := by
+  unfold booleanJoined?
+  rw [dite_eq_left (booleanGuardedSelection_not_local value)]
+  rcases value with ⟨⟨type, proof, condition, yes, no⟩, extended⟩
+  cases proof <;> rfl
+
+@[simp] theorem booleanGuardedSelection_not_related (value : BooleanGuardedSelection) :
+    booleanRelated? value.expr = none := by
+  unfold booleanRelated?
+  rw [dite_eq_left (booleanGuardedSelection_not_local value)]
+  rcases value with ⟨⟨type, proof, condition, yes, no⟩, extended⟩
+  cases proof <;> rfl
+
+@[simp] theorem booleanGuardedSelection_not_selected (value : BooleanGuardedSelection) :
+    booleanSelected? value.expr = none := by
+  unfold booleanSelected?
+  rw [dite_eq_left (booleanGuardedSelection_not_local value)]
+  rw [booleanGuardedSelectionSyntax_not_selected]
+
+theorem booleanGuardedSelection_operand_size {source : Lean.Expr} {value : BooleanGuardedSelection}
+    (parsed : booleanGuardedSelection? source = some value) {operand : Lean.Expr}
+    (member : operand ∈ value.selection.guard.operands) : sizeOf operand < sizeOf source := by
+  rw [booleanGuardedSelection_sound parsed]
+  exact value.selection.operands_size member
+
+theorem booleanGuardedSelection_branch_sizes {source : Lean.Expr} {value : BooleanGuardedSelection}
+    (parsed : booleanGuardedSelection? source = some value) :
+    sizeOf value.selection.yes < sizeOf source ∧ sizeOf value.selection.no < sizeOf source := by
+  rw [booleanGuardedSelection_sound parsed]
+  exact value.selection.branches_size
+
+end LeanExe.Extract.Core
