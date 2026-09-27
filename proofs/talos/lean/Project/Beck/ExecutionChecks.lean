@@ -9,6 +9,7 @@ import Project.Beck.ExecutionDirectionGuard
 import Project.Beck.ExecutionDirectionFirstRead
 import Project.Beck.ExecutionDirectionSearch
 import Project.Beck.ExecutionDirectionZero
+import Project.Beck.ExecutionDirectionVector
 import Project.Beck.ExecutionWordSetWindow
 import Project.Beck.ExecutionMatrix
 import Project.Beck.ExecutionScan
@@ -145,3 +146,6 @@ import Project.Beck.ExecutionMatrixPrefix
 #print axioms Project.Beck.Execution.directionDeterminant_exact
 #print axioms Project.Beck.Execution.directionZero_exact
 #print axioms Project.Beck.Execution.WordLocals.setFrame
+#print axioms Project.Beck.Execution.wordSetLocal_exact
+#print axioms Project.Beck.Execution.directionFirstSet_exact
+#print axioms Project.Beck.Execution.directionVector_exact
