@@ -454,10 +454,13 @@ universes and unsupported base types are rejected. In Boolean-to-word conversion
 both the body and continuation use the
 recursive Boolean conversion checker. Bodies may themselves contain predicate
 scopes, wrappers and choices with general helper branches. Each body is validated
-even when the helper is unused. Ordinary UInt64 and Bool let bindings may surround
-general helper scopes, including nested lets, captured values and unused bindings.
-Their annotations may retain standard Id layers. Both the bound value and Boolean
-continuation are checked; the bound value is evaluated before the continuation.
+even when the helper is unused. UInt64 and Bool bindings may surround general
+helper scopes, including nested bindings, captured values and unused values.
+Ordinary lets and standard Id monadic binds are supported. Their annotations may
+retain standard Id layers. Monadic binds require the exact standard instance,
+matching input and continuation domains, and a supported Boolean result type.
+Both the bound value and Boolean continuation are checked; the bound value is
+evaluated before the continuation.
 Ordinary scalar word continuations and loop-step
 helper declarations use the same recursive body check, including predicate lets
 inside propositions. Helpers declared before word-result and Boolean-result
@@ -757,9 +760,9 @@ The pure-source `Correct`, `compileEnvironment_correct` and `extracted_correct`
 theorems also remain available. These theorems quantify over admitted programs
 and inputs; the test examples do not limit their scope.
 
-The complete audit is `Project.Compiler.ArithmeticCompilerAudit`. All twenty-nine
+The complete audit is `Project.Compiler.ArithmeticCompilerAudit`. All thirty-two
 reported declarations must have only the allowed dependencies. The matcher
-forwarding identity uses no axioms. The runtime retain/alloc/release proofs use
+forwarding identity and standard Id bind equation use no axioms. The runtime retain/alloc/release proofs use
 only `propext`; the remaining audited results allow `propext`, `Classical.choice`,
 and `Quot.sound`.
 

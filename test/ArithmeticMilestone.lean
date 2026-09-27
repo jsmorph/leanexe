@@ -8188,6 +8188,82 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def booleanScopeBindWord (x y : UInt64) : UInt64 :=
+  (Id.run do
+    let saved ← (pure (x + y) : Id UInt64)
+    let f := fun n : Id UInt64 => (Id.run n) == saved
+    return f x || f y).toUInt64 + x
+
+def booleanScopeBindFlag (x y : UInt64) : UInt64 :=
+  (Id.run do
+    let saved ← (pure (x == y) : Id Bool)
+    let f := fun b : Id Bool => Id.run b || saved
+    return f (x == 0) && f (y == 0)).toUInt64 + y
+
+def booleanScopeBindNested (x y : UInt64) : UInt64 :=
+  (Id.run do
+    let saved ← (pure (x + y) : Id UInt64)
+    let flag ← (pure (saved == y) : Id Bool)
+    let f := fun n : UInt64 => flag || n == saved
+    return f x && f y).toUInt64 + x
+
+def booleanScopeBindRetained (x y : UInt64) : UInt64 :=
+  (Id.run do
+    let saved ← (pure (pure (x + y)) : Id (Id UInt64))
+    let f := fun n : UInt64 => n == Id.run saved
+    return f x || f y).toUInt64 + y
+
+def booleanScopeBindUnused (x y : UInt64) : UInt64 :=
+  (Id.run do
+    let _unused ← (pure (x == y) : Id Bool)
+    let f := fun n : UInt64 => n == y
+    return f x || f 0).toUInt64 + x
+
+def booleanScopeBindChoice (x y : UInt64) : UInt64 :=
+  (Id.run do
+    let saved ← (if x == 0 then pure y else pure (x + y) : Id UInt64)
+    let f := fun n : UInt64 => n == saved
+    return f x || f y).toUInt64 + y
+
+def rangeBooleanScopeBindStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + (Id.run do
+      let saved ← (pure (a + i.toUInt64) : Id UInt64)
+      let f := fun n : Id UInt64 => Id.run n == saved
+      return f i.toUInt64 || f seed).toUInt64
+  return a
+
+def rangeBooleanScopeBindExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if (Id.run do
+      let saved ← (pure (a == seed) : Id Bool)
+      let f := fun b : Id Bool => Id.run b || saved
+      return f (a == 7) && f (i.toUInt64 == seed)) then break
+  return a
+
+def rangeBooleanScopeBindContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (Id.run do
+      let saved ← (pure (pure (a + seed)) : Id (Id UInt64))
+      let f := fun n : UInt64 => n == Id.run saved
+      return f i.toUInt64 || f seed) then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangeBooleanScopeBindTail (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+  return a + (Id.run do
+    let saved ← (pure (pure (a == seed)) : Id (Id Bool))
+    let f := fun b : Bool => b != Id.run saved
+    return f (a == 0) || f (seed == 0)).toUInt64
+
+
 def booleanScopeBindingWord (x y : UInt64) : UInt64 :=
   (let saved := x + y
    let f := fun n : Id UInt64 =>
@@ -12438,6 +12514,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolRelationExit", (fun (x y : UInt64) => rangeBoolRelationExit x y)),
    ("rangeBoolRelationContinue", (fun (x y : UInt64) => rangeBoolRelationContinue x y)),
    ("rangeBoolRelationTail", (fun (x y : UInt64) => (rangeBoolRelationTail x y).toUInt64)),
+   ("rangeBooleanScopeBindStep", (fun (x y : UInt64) => rangeBooleanScopeBindStep x y)),
+   ("rangeBooleanScopeBindExit", (fun (x y : UInt64) => rangeBooleanScopeBindExit x y)),
+   ("rangeBooleanScopeBindContinue", (fun (x y : UInt64) => rangeBooleanScopeBindContinue x y)),
+   ("rangeBooleanScopeBindTail", (fun (x y : UInt64) => rangeBooleanScopeBindTail x y)),
    ("rangeBooleanScopeBindingStep", (fun (x y : UInt64) => rangeBooleanScopeBindingStep x y)),
    ("rangeBooleanScopeBindingExit", (fun (x y : UInt64) => rangeBooleanScopeBindingExit x y)),
    ("rangeBooleanScopeBindingContinue", (fun (x y : UInt64) => rangeBooleanScopeBindingContinue x y)),
@@ -13229,6 +13309,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("predicateBodyWordCapture", (fun (x y : UInt64) => predicateBodyWordCapture x y)),
    ("predicateBodyWordProposition", (fun (x y : UInt64) => predicateBodyWordProposition x y)),
    ("predicateBodyWordDo", (fun (x y : UInt64) => predicateBodyWordDo x y)),
+   ("booleanScopeBindWord", booleanScopeBindWord),
+   ("booleanScopeBindFlag", booleanScopeBindFlag),
+   ("booleanScopeBindNested", booleanScopeBindNested),
+   ("booleanScopeBindRetained", booleanScopeBindRetained),
+   ("booleanScopeBindUnused", booleanScopeBindUnused),
+   ("booleanScopeBindChoice", booleanScopeBindChoice),
    ("booleanScopeBindingWord", booleanScopeBindingWord),
    ("booleanScopeBindingFlag", booleanScopeBindingFlag),
    ("booleanScopeBindingWordId", booleanScopeBindingWordId),

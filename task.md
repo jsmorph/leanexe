@@ -980,8 +980,10 @@ Current capability: standard Id monadic scalar bindings around general Boolean
 helper scopes. Exact source syntax, annotation/instance checks, native Id bind
 behavior and recognizer proofs pass. The existing scalar evaluation, acceptance,
 reconstruction and IR invariant proofs pass unchanged (140 targets). The six fixed
-bind probes are preserved. Function/loop integration, tests, emitted-WASM proofs
-and independent engine checks remain before advancing.
+bind probes now compile. Function/loop integration passes 207 targets. New tests
+pass 16,308 native/IR comparisons, 31,104 invalid-input checks and 384 admission
+controls. The full source-to-WASM proof, 32 audits and independent engine checks
+remain before advancing.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
