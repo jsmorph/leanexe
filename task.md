@@ -574,14 +574,17 @@ modules retain identical bytes. New tests pass 97,008 native/IR comparisons,
 comparisons, 122,112 invalid-input checks and 5,760 controls. Evidence is in
 [the wrapped conditional archive](proofs/compiler/boolean-loop-wrapped-conditional-2026-09-27/README.md).
 
-Current capability: general Boolean loop-result bindings. The source semantics,
-acceptance, support recovery, correctness, invariant and public WASM admission
-proofs pass. Ordinary lets and standard Id binds preserve the old scalar-value/
-loop-body path, then try a Boolean loop value with a scalar Boolean tail. New
-tests pass 64,752 native/IR comparisons, 34,560 invalid-input checks and 2,304
-binding controls. The complete proof and native Lean/WASM checks are next.
+General Boolean loop-result bindings are complete. Ordinary lets and standard Id
+binds can use a loop's Boolean result in a scalar Boolean continuation, including
+captured helpers, further bindings, comparisons, conjunction and negation. The
+source-to-WASM theorem and nineteen audits pass. Native Lean/V8 agree on 609 inputs
+across 28 declarations, including twenty-three ranges; eighteen prior modules
+retain identical bytes. New tests pass 64,752 native/IR comparisons, 34,560
+invalid-input checks and 2,304 binding controls. Prior tests pass 120,960 comparisons,
+84,096 invalid-input checks and 5,760 controls. Evidence is in
+[the result-binding archive](proofs/compiler/boolean-loop-result-binding-2026-09-27/README.md).
 
-Next: general Boolean loop-result bindings, followed by
+Next: word results from Boolean loops and broader helper-result bodies, followed by
 retained instances, broader signatures, and composition of multiple loops.
 Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean
