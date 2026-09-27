@@ -821,5 +821,9 @@
   "rangeHelperNegationStep",
   "rangeHelperNegationExit",
   "rangeHelperNegationContinue",
-  "rangeHelperNegationTail"
+  "rangeHelperNegationTail",
+  "rangeHelperJunctionStep",
+  "rangeHelperJunctionExit",
+  "rangeHelperJunctionContinue",
+  "rangeHelperJunctionTail"
 ]

@@ -430,6 +430,9 @@ surround these scopes, including nested wrappers. The wrapper types and canonica
 pure instance are checked before recursively converting the body. Boolean
 negation may surround these scopes or wrappers and may repeat. Its operand uses
 the checked Boolean conversion in scalar expressions and loop conditions.
+Conjunctions and disjunctions also accept general scopes on either or both sides,
+including wrappers and negations. Both operands must be supported, including an
+operand whose value does not affect the result.
 
 Saved Boolean variables and their negations may appear inside propositional
 conjunctions and disjunctions, such as `flag ∧ x < y` or `x = y ∨ !flag`.
