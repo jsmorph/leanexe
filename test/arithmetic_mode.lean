@@ -6607,6 +6607,113 @@ def rangeBoolDirectId (count seed : UInt64) : Id Bool :=
     pure (Id.run (Id.run selected) && value != seed)
   run (pure (pure (seed % 2 == 0)))
 
+def rangeBoolWrappedCallWord (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  Id.run (run (count % 17))
+
+def rangeBoolWrappedCallFlag (count : UInt64) (flag : Bool) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := count
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + (if selected then 1 else 3)
+      return a
+    selected && value != count
+  Id.run (pure (run (!flag)) : Id Bool)
+
+def rangeBoolWrappedCallBooleanArgument (count seed : UInt64) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if selected then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    selected || value % 5 == 0
+  Id.run (Id.run (pure (pure (run (seed % 2 == 0 && count != 0))) : Id (Id Bool)))
+
+def rangeBoolWrappedCallWordCapture (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x * 3 + seed
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := f seed
+      for i in [:limit.toNat] do
+        a := f a + i.toUInt64
+      return a
+    f value == f seed
+  Id.run (run (count % 19))
+
+def rangeBoolWrappedCallBooleanCapture (count seed : UInt64) : Bool :=
+  let p := fun flag : Bool => flag || seed == 0
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if p selected then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    p selected && value != seed
+  Id.run (pure (run (p (count == 0))) : Id Bool)
+
+def rangeBoolWrappedCallNested (count seed : UInt64) : Bool :=
+  let outer := fun selected : Bool =>
+    let inner := fun limit : UInt64 =>
+      let value := Id.run do
+        let mut a := seed
+        for i in [:limit.toNat] do
+          a := a + i.toUInt64 + (if selected then 1 else 3)
+        return a
+      selected && value != seed
+    Id.run (inner (count % 17))
+  Id.run (Id.run (pure (pure (outer (seed % 2 == 0))) : Id (Id Bool)))
+
+def rangeBoolWrappedCallExit (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+        if a % 7 == 0 then break
+      return a
+    value % 7 == 0
+  Id.run (run (count % 17))
+
+def rangeBoolWrappedCallContinue (count seed : UInt64) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if selected && i.toUInt64 % 2 == 0 then continue
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  Id.run (pure (run (seed % 2 == 0)) : Id Bool)
+
+def rangeBoolWrappedCallStride (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [(seed % 3).toNat:limit.toNat:3] do
+        a := a + i.toUInt64 + 1
+        if a % 5 == 0 then break
+      return a
+    value % 5 == 0
+  Id.run (Id.run (pure (pure (run (count % 23))) : Id (Id Bool)))
+
+def rangeBoolWrappedCallId (count seed : UInt64) : Id Bool :=
+  let run (selected : Id (Id Bool)) : Id (Id Bool) := do
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if Id.run (Id.run selected) then a := a + i.toUInt64 + 1 else a := a + 3
+      return a)
+    pure (Id.run (Id.run selected) && value != seed)
+  Id.run (run (pure (pure (seed % 2 == 0))))
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -10211,6 +10318,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolDirectContinue,
       `ArithmeticModeTest.rangeBoolDirectStride,
       `ArithmeticModeTest.rangeBoolDirectId,
+      `ArithmeticModeTest.rangeBoolWrappedCallWord,
+      `ArithmeticModeTest.rangeBoolWrappedCallFlag,
+      `ArithmeticModeTest.rangeBoolWrappedCallBooleanArgument,
+      `ArithmeticModeTest.rangeBoolWrappedCallWordCapture,
+      `ArithmeticModeTest.rangeBoolWrappedCallBooleanCapture,
+      `ArithmeticModeTest.rangeBoolWrappedCallNested,
+      `ArithmeticModeTest.rangeBoolWrappedCallExit,
+      `ArithmeticModeTest.rangeBoolWrappedCallContinue,
+      `ArithmeticModeTest.rangeBoolWrappedCallStride,
+      `ArithmeticModeTest.rangeBoolWrappedCallId,
       `ArithmeticModeTest.rangeBoolLetIdWord,
       `ArithmeticModeTest.rangeBoolLetIdWordLayers,
       `ArithmeticModeTest.rangeBoolLetIdFlag,

@@ -1,6 +1,6 @@
 import LeanExe.Source.ScalarRangeExitSupported
 import LeanExe.Source.ScalarBooleanLet
-import LeanExe.Source.ScalarBooleanFunctionBinding
+import LeanExe.Source.ScalarBooleanCall
 
 namespace LeanExe.Source.Scalar.BooleanRange
 
@@ -23,13 +23,13 @@ def choiceExpr (type : BooleanType) (condition evidence yes no : Lean.Expr) : Le
 
 /-- A word-valued loop followed by a Boolean result computation. -/
 inductive Eval : Lean.Expr → List Value → Bool → Prop where
-  | applyWord (shape : BooleanFunctionBinding)
+  | applyWord (shape : BooleanFunctionBinding) (call : BooleanCall)
       (argument : EvalWith a values x) (body : Eval b (.word x :: values) result) :
-      Eval (shape.expr parameterName (.const ``UInt64 []) a b) values result
-  | applyBoolean (shape : BooleanFunctionBinding)
+      Eval (shape.callExpr call parameterName (.const ``UInt64 []) a b) values result
+  | applyBoolean (shape : BooleanFunctionBinding) (call : BooleanCall)
       (argument : EvalWith (.app (.const ``Bool.toUInt64 []) a) values flag.toUInt64)
       (body : Eval b (.boolean flag :: values) result) :
-      Eval (shape.expr parameterName (.const ``Bool []) a b) values result
+      Eval (shape.callExpr call parameterName (.const ``Bool []) a b) values result
   | choice (type : BooleanType)
       (condition : EvalWith (decision test evidence) values (Bool.toUInt64 flag))
       (body : Eval (if flag then yes else no) values result) :
@@ -117,13 +117,13 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
 
 /-- Source support checks both the loop and its Boolean continuation. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
-  | applyWord (shape : BooleanFunctionBinding)
+  | applyWord (shape : BooleanFunctionBinding) (call : BooleanCall)
       (argument : SupportedWith types a) (body : Supported (.word :: types) b) :
-      Supported types (shape.expr parameterName (.const ``UInt64 []) a b)
-  | applyBoolean (shape : BooleanFunctionBinding)
+      Supported types (shape.callExpr call parameterName (.const ``UInt64 []) a b)
+  | applyBoolean (shape : BooleanFunctionBinding) (call : BooleanCall)
       (argument : SupportedWith types (.app (.const ``Bool.toUInt64 []) a))
       (body : Supported (.boolean :: types) b) :
-      Supported types (shape.expr parameterName (.const ``Bool []) a b)
+      Supported types (shape.callExpr call parameterName (.const ``Bool []) a b)
   | choice (type : BooleanType) (condition : SupportedWith types (decision test evidence))
       (yesBranch : Supported types yes) (noBranch : Supported types no) :
       Supported types (choiceExpr type test evidence yes no)
@@ -211,15 +211,15 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (supported : Supported types source) (values : List Value)
     (typed : values.map Value.kind = types) : ∃ flag, Eval source values flag := by
   induction supported generalizing values with
-  | applyWord shape argument _ ih =>
+  | applyWord shape call argument _ ih =>
     obtain ⟨x, hx⟩ := argument.evaluates values typed
     obtain ⟨result, body⟩ := ih (.word x :: values) (by simp [Value.kind, typed])
-    exact ⟨result, .applyWord shape hx body⟩
-  | applyBoolean shape argument _ ih =>
+    exact ⟨result, .applyWord shape call hx body⟩
+  | applyBoolean shape call argument _ ih =>
     obtain ⟨encoded, evaluated⟩ := argument.evaluates values typed
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
     obtain ⟨result, body⟩ := ih (.boolean flag :: values) (by simp [Value.kind, typed])
-    exact ⟨result, .applyBoolean shape evaluated body⟩
+    exact ⟨result, .applyBoolean shape call evaluated body⟩
   | choice type condition _ _ yesIH noIH =>
     obtain ⟨encoded, evaluated⟩ := condition.evaluates values typed
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result

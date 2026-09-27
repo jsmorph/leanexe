@@ -349,7 +349,7 @@ theorem extractScalarBooleanRangeWith_accepts {types : List BindingKind} {source
     (total : ∀ binding ∈ locals, binding.Total) :
     ∃ plan, extractScalarBooleanRangeWith locals slot source = some plan := by
   induction supported generalizing locals with
-  | @applyWord types a b parameterName shape argument _ ih =>
+  | @applyWord types a b parameterName shape call argument _ ih =>
     obtain ⟨bound, matched⟩ := extractScalarExprWith_accepts argument locals typed total
     have emitted := ih (.word bound :: locals)
       (by simp [ScalarBinding.kind, typed]) (by
@@ -357,9 +357,9 @@ theorem extractScalarBooleanRangeWith_accepts {types : List BindingKind} {source
         rcases List.mem_cons.mp member with rfl | member
         · trivial
         · exact total binding member)
-    rw [BooleanFunctionBinding.expr, extractScalarBooleanRangeWith_letPredicateFn]
+    rw [BooleanFunctionBinding.callExpr, extractScalarBooleanRangeWith_letPredicateFn]
     exact scalarBooleanRangeContinuation_accepts_direct matched emitted
-  | @applyBoolean types a b parameterName shape argument _ ih =>
+  | @applyBoolean types a b parameterName shape call argument _ ih =>
     obtain ⟨bound, matched⟩ := extractScalarExprWith_accepts argument locals typed total
     have emitted := ih (.boolean bound :: locals)
       (by simp [ScalarBinding.kind, typed]) (by
@@ -367,7 +367,7 @@ theorem extractScalarBooleanRangeWith_accepts {types : List BindingKind} {source
         rcases List.mem_cons.mp member with rfl | member
         · trivial
         · exact total binding member)
-    rw [BooleanFunctionBinding.expr, extractScalarBooleanRangeWith_letBooleanPredicateFn]
+    rw [BooleanFunctionBinding.callExpr, extractScalarBooleanRangeWith_letBooleanPredicateFn]
     exact scalarBooleanRangeContinuation_accepts_direct matched emitted
   | @choice types test evidence yes no type condition _ _ yesIH noIH =>
     obtain ⟨guard, hg⟩ := extractScalarExprWith_accepts condition locals typed total
@@ -628,13 +628,13 @@ theorem extractScalarBooleanRangeWith_supported {source : Lean.Expr} {locals : L
     have sameType := booleanType_sound parsed
     subst resultType
     rcases scalarBooleanRangeContinuation_success compiled with
-      ⟨expression, checked, sameValue, validated, emitted⟩ | ⟨argument, bound, sameBody, validated, emitted⟩
+      ⟨expression, checked, sameValue, validated, emitted⟩ | ⟨call, argument, bound, sameBody, validated, emitted⟩
     · subst value
       exact .letPredicateFn expression type
         (by simpa [booleanRangeInput, ScalarBinding.kind] using extractScalarExprWith_supported validated)
         (by simpa [booleanRangePredicate, ScalarBinding.kind] using enclosingIH _ emitted)
     · subst body
-      exact .applyWord ⟨name, typeName, typeBi, paramBi, type, nondep⟩
+      exact .applyWord ⟨name, typeName, typeBi, paramBi, type, nondep⟩ call
         (by simpa [booleanRangeArgument] using extractScalarExprWith_supported validated)
         (by simpa [booleanRangeInput, ScalarBinding.kind] using directIH _ emitted)
   | case13 => contradiction
@@ -649,13 +649,13 @@ theorem extractScalarBooleanRangeWith_supported {source : Lean.Expr} {locals : L
     have sameType := booleanType_sound parsed
     subst resultType
     rcases scalarBooleanRangeContinuation_success compiled with
-      ⟨expression, checked, sameValue, validated, emitted⟩ | ⟨argument, bound, sameBody, validated, emitted⟩
+      ⟨expression, checked, sameValue, validated, emitted⟩ | ⟨call, argument, bound, sameBody, validated, emitted⟩
     · subst value
       exact .letBooleanPredicateFn expression type
         (by simpa [booleanRangeInput, ScalarBinding.kind] using extractScalarExprWith_supported validated)
         (by simpa [booleanRangePredicate, ScalarBinding.kind] using enclosingIH _ emitted)
     · subst body
-      exact .applyBoolean ⟨name, typeName, typeBi, paramBi, type, nondep⟩
+      exact .applyBoolean ⟨name, typeName, typeBi, paramBi, type, nondep⟩ call
         (by simpa [booleanRangeArgument] using extractScalarExprWith_supported validated)
         (by simpa [booleanRangeInput, ScalarBinding.kind] using directIH _ emitted)
   | case17 => contradiction
