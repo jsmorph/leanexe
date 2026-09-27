@@ -17742,3 +17742,9 @@ The guard proof composes the checked membership searches and the emitted Boolean
 The emitted column iteration now has checked argument preparation and complete control flow after the candidate call.  The latter theorem decodes the optional basis, proves all five release sites unreachable, installs the result, and either exits on success or increments the column without overflow.  A counting-and-indexing lemma derives every candidate's determinant preconditions from a well-formed basis and the scan bounds.  Loop composition remains open.
 
 These proofs represent scratch locals as a list with explicit updates.  The shared list-read and list-length lemmas handle local writes without repeating the full 158-register frame.  Preparation, selection, installation, and increment proofs check in about one to two seconds.  The release-guard proof checks in about 13 seconds.  Register-preservation lemmas retain the outer loop state.  A directed conversion of the checked increment avoids the word-addition simplifier cycle.  Source and binary bytes remain unchanged.
+
+### Beck complete column-search loop
+
+The column-iteration theorem now composes the candidate call with the checked control flow.  The complete column-loop theorem returns the first successful source candidate, or proves every column unsuccessful.  Its invariant records unsuccessful earlier columns, protected memory, the remaining allocation budget, and the decreasing number of columns.  Successful results retain owned, disjoint row and column arrays and freshness relative to the original caller.  The loop charges at most `width * (208 + determinantBytes(k+1))` bytes for a basis of order `k`.
+
+The iteration and loop each check in about one second with standard logical axioms.  The first-result proof uses prefix properties of list search, without enumerating inputs.  The outer row scan and complete extension call remain open.  Source and binary bytes are unchanged.
