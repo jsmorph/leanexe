@@ -716,12 +716,21 @@ checks and 256 controls. Prior tests pass 44,308 comparisons, 24,416 invalid-inp
 checks and 3,360 controls. The native corpus contains 1427 declarations.
 Evidence is in [the inner-wrapper archive](proofs/compiler/boolean-inner-wrapper-2026-09-27/README.md).
 
-Current capability: Boolean negation around general helper scopes.
-The negation probe now passes unchanged. Source totality, parser acceptance and
-soundness, scalar correctness and IR invariants pass. New tests pass 9,588
-value/exit comparisons, 8,448 invalid-input checks and 192 controls. Adjacent
-tests and the final compiler-proof/native-V8 gates remain. The other five probe
-failures remain open.
+Boolean negation around general helper scopes is complete. Source totality,
+parser acceptance/soundness, scalar correctness, IR invariants and the general
+source-to-WASM theorem pass, with all nineteen audits. The original negation
+probe passes unchanged. Native Lean/V8 agree on 993 inputs across 54 declarations,
+including 25 ranges; 44 prior modules retain identical bytes and 0
+changed. New tests pass 9,588 comparisons, 8,448 invalid-input checks and 192
+controls. Prior tests pass 16,692 comparisons, 14,016 invalid-input checks and
+384 controls. The native corpus contains 1437 declarations. Evidence is in
+[the helper-negation archive](proofs/compiler/boolean-helper-negation-2026-09-27/README.md).
+
+Current capability: conjunctions and disjunctions around general Boolean helper
+scopes. The conjunction probe remains rejected after negation support. Extend
+recursive conversion of both operands and reuse the proved Boolean conjunction
+and disjunction lowering. Equality, choices, nested helper bodies and Id inputs
+remain separately confirmed gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
