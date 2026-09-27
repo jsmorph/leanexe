@@ -397,11 +397,14 @@ controls. Prior tests pass 121,416 comparisons, 67,200 invalid-input checks and
 4,224 controls. Evidence is in
 [the Boolean loop-bind archive](proofs/compiler/boolean-loop-bind-2026-09-27/README.md).
 
-Current capability: scalar UInt64 let and Id monadic setup before Boolean loop
-results, preserving lexical captures as loop locals change. Source totality,
-acceptance, extraction correctness, public application and IR invariant proofs
-pass. New tests pass 24,432 native/IR comparisons, 13,824 invalid-input checks and
-1,728 lexical setup controls. The complete theorem/V8 gates are next.
+Scalar UInt64 setup before Boolean loop results is complete. Lexical lets and
+word-valued Id binds preserve captured values across loop states. The complete
+source-to-WASM theorem and nineteen audits pass. Native Lean/V8 agree on 599
+inputs across 28 declarations, including twenty-two ranges; eighteen prior
+modules retain identical bytes. New tests pass 24,432 native/IR comparisons,
+13,824 invalid-input checks and 1,728 lexical setup controls. Prior tests pass
+153,696 comparisons, 113,280 invalid-input checks and 6,528 controls. Evidence is in
+[the Boolean loop word-setup archive](proofs/compiler/boolean-loop-word-setup-2026-09-27/README.md).
 
 Next: Boolean setup and local helpers before Boolean loops, retained instances
 and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
