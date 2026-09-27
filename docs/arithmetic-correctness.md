@@ -434,7 +434,11 @@ Conjunctions and disjunctions also accept general scopes on either or both sides
 including wrappers and negations. Both operands must be supported, including an
 operand whose value does not affect the result. Boolean equality and inequality,
 including standard decisions of Eq/Ne, also accept these operands. The exact
-comparison instance, relation and decision evidence are checked.
+comparison instance, relation and decision evidence are checked. Boolean-valued
+conditionals may contain these scopes in their Boolean condition or either
+branch, with ordinary or dependent choices and standard Id result annotations.
+Compilation checks both branches; execution evaluates the selected branch.
+Dependent choices check the proof domains and remove unused proof binders.
 
 Saved Boolean variables and their negations may appear inside propositional
 conjunctions and disjunctions, such as `flag ∧ x < y` or `x = y ∨ !flag`.

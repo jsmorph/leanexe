@@ -748,10 +748,14 @@ contains 1457 declarations. Evidence is in
 [the helper-equality archive](proofs/compiler/boolean-helper-equality-2026-09-27/README.md).
 
 Current capability: Boolean-valued choices containing general helper scopes.
-The composite choice probe remains rejected after equality support. Preserve the
-exact condition, evidence and dependent proof binders; recursively convert the
-condition and both branches. Nested helper bodies and Id inputs remain separately
-confirmed gaps.
+All ten original probes pass unchanged. Source totality, parser acceptance and
+soundness, scalar correctness and IR invariants pass. New tests pass 25,268
+comparisons, 34,048 invalid-input checks and 512 controls. Six adjacent tests pass
+53,684 comparisons, 56,320 invalid-input checks and 1,280 controls. The general
+compiler-proof and independent WASM checks follow. The condition tests a Boolean
+value against true. Additional probes confirm gaps for word comparisons, direct
+Boolean relations and compound propositions with these scopes. Nested helper
+bodies and Id inputs also remain open.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
