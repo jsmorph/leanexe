@@ -1,3 +1,4 @@
+import LeanExe.Wasm.ScalarBooleanRangeAdmission
 import LeanExe.Wasm.ScalarPublicAdmission
 import Project.Compiler.FunctionTyping
 import Project.Compiler.RangeTyping
@@ -24,7 +25,7 @@ theorem extracted_function_valid
     Validator.validateFunction (rawModule func entry user) (typeValues func) 0
       (typeValues func).head! user = .ok () := by
   obtain ⟨arity, result, body, signature, _, _, branches⟩ := extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, extracted, rfl⟩ | ⟨rfl, plan, extracted, rfl⟩ | ⟨rfl, plan, extracted, rfl⟩
+  rcases branches with ⟨ir, extracted, rfl⟩ | ⟨rfl, plan, extracted, rfl⟩ | ⟨rfl, plan, extracted, rfl⟩ | ⟨rfl, plan, extracted, rfl⟩
   · obtain ⟨descriptor, recognized, arithmetic, readBound⟩ := extractScalarPublic_admitted extracted
     have scratch := scalarFunc_scratch arity name (some entry) recognized
     have format : arity + 1 + descriptor.scratchWidth < 2 ^ 32 := by
@@ -72,6 +73,27 @@ theorem extracted_function_valid
         simpa [ScalarRangePlan.func, Nat.add_assoc] using locals
       exact typed context localTypes [] 0 0 [] (Nat.le_refl 0)
   · obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRangeExitPublic_admitted extracted
+      (scalarSignature_inputs_length signature)
+    have scratch := RangeExit.func_scratch matched arity name (some entry)
+    have format : arity + 4 + descriptor.scratchWidth < 2 ^ 32 := by
+      rw [scratch] at localBound
+      exact localBound
+    obtain ⟨raw, encoded, typed⟩ := range_exit_function_sequence matched arithmetic arity 4 name (some entry) reads format
+    have parsedTyped := function_body 4 encoded
+      (by simp [ScalarRangeExitPlan.func])
+      (by rw [scratch]; simp only [ScalarRangeExitPlan.func]; omega) bodyBound
+    have same := parsed.unique parsedTyped
+    subst user
+    apply user_valid (func := plan.func name (some entry) arity) rfl rfl
+    · rw [scratch]
+      simp only [ScalarRangeExitPlan.func]
+      omega
+    · intro context locals
+      have localTypes : Locals64 context (arity + 4 + descriptor.scratchWidth) := by
+        rw [scratch] at locals
+        simpa [ScalarRangeExitPlan.func, Nat.add_assoc] using locals
+      exact typed context localTypes [] 0 0 [] (Nat.le_refl 0)
+  · obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarBooleanRangePublic_admitted extracted
       (scalarSignature_inputs_length signature)
     have scratch := RangeExit.func_scratch matched arity name (some entry)
     have format : arity + 4 + descriptor.scratchWidth < 2 ^ 32 := by

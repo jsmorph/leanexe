@@ -536,5 +536,15 @@
   "rangeInputIdYield",
   "rangeInputIdExit",
   "rangeInputIdContinue",
-  "rangeInputIdCapture"
+  "rangeInputIdCapture",
+  "rangeBoolYield",
+  "rangeBoolExit",
+  "rangeBoolContinue",
+  "rangeBoolStride",
+  "rangeBoolStepHelper",
+  "rangeBoolCapture",
+  "rangeBoolFlag",
+  "rangeBoolIdInputs",
+  "rangeBoolPure",
+  "rangeBoolRun"
 ]

@@ -381,8 +381,11 @@ Current capability: Boolean results computed after a word-valued loop bound by
 let, with metadata and standard Boolean Id wrappers. Add independent Boolean
 source evaluation and reuse the existing loop plan with a converted result.
 Source totality, exact wrapper parsing, extraction acceptance and support, result
-evaluation and IR invariant proofs pass. Public declaration and WASM integration
-are next for this increment.
+evaluation, public declaration correctness, and WASM admission/encoding/validation
+proofs pass focused checks. Ten native declarations pass 240 IR comparisons,
+covering yielding, break, continue, stride, captured helpers, mixed public inputs
+and Id wrappers. Raw syntax tests pass 16,128 comparisons and 13,824 invalid-input checks.
+The complete theorem and V8 gates are next.
 
 Next: Boolean-result Id/do sequencing, retained instances and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound helper-let bodies under public Boolean

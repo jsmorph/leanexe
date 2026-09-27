@@ -5128,6 +5128,97 @@ def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
   return a
 
+def rangeBoolYield (count seed : UInt64) : Bool :=
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+    return a
+  value == seed
+
+def rangeBoolExit (count seed : UInt64) : Bool :=
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if a % 7 == 0 then break
+    return a
+  value % 7 == 0
+
+def rangeBoolContinue (count seed : UInt64) : Bool :=
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if i.toUInt64 % 3 == 0 then continue
+      a := a + i.toUInt64
+    return a
+  value != seed && value != 0
+
+def rangeBoolStride (count seed : UInt64) : Bool :=
+  let value := Id.run do
+    let mut a := seed
+    for i in [1:count.toNat:3] do
+      a := a + i.toUInt64
+      if a % 5 == 0 then break
+    return a
+  decide (value ≤ seed)
+
+def rangeBoolStepHelper (count seed : UInt64) : Bool :=
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      let f := fun x : UInt64 => x + i.toUInt64 + seed
+      a := f a
+      if a % 11 == 0 then break
+    return a
+  value == 0 || value == seed
+
+def rangeBoolCapture (count seed : UInt64) : Bool :=
+  let value := Id.run do
+    let f := fun b : Bool => if b then seed + 7 else seed + 3
+    let mut a := f false
+    for i in [:count.toNat] do
+      a := a + f (i.toUInt64 % 2 == 0)
+    return a
+  let f := fun x : UInt64 => x == seed
+  f value
+
+def rangeBoolFlag (count : UInt64) (flag : Bool) : Bool :=
+  let value := Id.run do
+    let mut a := flag.toUInt64
+    for i in [:count.toNat] do
+      if flag && i.toUInt64 % 3 == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a
+  flag && value != 0
+
+def rangeBoolIdInputs (count : Id UInt64) (flag : Id Bool) : Bool :=
+  let value := Id.run do
+    let mut a := (Id.run flag).toUInt64
+    for i in [:(Id.run count).toNat] do
+      a := a + i.toUInt64 + 1
+      if Id.run flag && a % 7 == 0 then break
+    return a
+  Id.run flag || value == 0
+
+def rangeBoolPure (count seed : UInt64) : Id Bool :=
+  pure (
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value != seed)
+
+def rangeBoolRun (count seed : UInt64) : Bool := Id.run (
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if a % 5 == 0 then break
+    return a
+  pure (value == seed))
+
 def publicInputIdWord (x : Id UInt64) (y : UInt64) : UInt64 := Id.run x + y
 
 def publicInputIdFlag (flag : Id Bool) (x : UInt64) : UInt64 :=
@@ -7486,6 +7577,16 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeLocalNotContinue", rangeLocalNotContinue),
    ("rangeLocalNotOuter", rangeLocalNotOuter),
    ("rangeLocalNotHelper", rangeLocalNotHelper),
+   ("rangeBoolYield", (fun (x y : UInt64) => (rangeBoolYield x y).toUInt64)),
+   ("rangeBoolExit", (fun (x y : UInt64) => (rangeBoolExit x y).toUInt64)),
+   ("rangeBoolContinue", (fun (x y : UInt64) => (rangeBoolContinue x y).toUInt64)),
+   ("rangeBoolStride", (fun (x y : UInt64) => (rangeBoolStride x y).toUInt64)),
+   ("rangeBoolStepHelper", (fun (x y : UInt64) => (rangeBoolStepHelper x y).toUInt64)),
+   ("rangeBoolCapture", (fun (x y : UInt64) => (rangeBoolCapture x y).toUInt64)),
+   ("rangeBoolFlag", (fun (x y : UInt64) => (rangeBoolFlag x (y != 0)).toUInt64)),
+   ("rangeBoolIdInputs", (fun (x y : UInt64) => (rangeBoolIdInputs x (y != 0)).toUInt64)),
+   ("rangeBoolPure", (fun (x y : UInt64) => (rangeBoolPure x y).toUInt64)),
+   ("rangeBoolRun", (fun (x y : UInt64) => (rangeBoolRun x y).toUInt64)),
    ("rangeInputIdYield", (fun (x y : UInt64) => Id.run (rangeInputIdYield x (y != 0)))),
    ("rangeInputIdExit", (fun (x y : UInt64) => Id.run (rangeInputIdExit x (y != 0)))),
    ("rangeInputIdContinue", (fun (x y : UInt64) => Id.run (rangeInputIdContinue x (y != 0)))),

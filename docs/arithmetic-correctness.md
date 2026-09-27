@@ -20,8 +20,12 @@ number of standard Id layers, including metadata between layers. Each Id must wr
 entire function signature is rejected. The signature extension preserves the
 result encoding and all body checks. Mixed Boolean/UInt64 parameters are supported
 in scalar bodies and bounded loops, including early exits and continue. Captured
-Boolean inputs retain their decoded values as loop locals change. Loop-containing
-functions currently require UInt64 accumulators and results. Public parameter
+Boolean inputs retain their decoded values as loop locals change. Loop accumulators remain UInt64. A loop may produce a public Boolean result
+through an explicit UInt64 `let` binding followed by an admitted Boolean body,
+for example `let value := Id.run do ...; value == seed`. This includes yielding,
+break, continue, stride and captured helpers in the bound loop. Metadata and
+standard Boolean Id run/pure wrappers may surround the binding. General
+Boolean-result monadic sequencing around loops remains outside this form. Public parameter
 domains may retain any number of standard Id layers. Declared and lambda domains
 must have the same base scalar kind; differing Id depths preserve their meaning.
 Custom annotation heads, wrong universes and metadata inside parameter domains
