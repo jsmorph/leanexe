@@ -258,9 +258,17 @@ comparisons, 3,072 invalid-input checks and 256 controls. Prior tests pass 42,76
 comparisons, 28,032 invalid-input checks and 2,368 controls. Evidence is in
 [the Boolean result-bind archive](proofs/compiler/boolean-result-bind-2026-09-26/README.md).
 
-Next capabilities: saved Boolean variables in mixed propositional guards,
-retained instance and Bool-parameter Id wrappers, and broader signatures.
-Full-dialect correctness remains unfinished.
+Saved Boolean variables in mixed propositional guards pass the source, parser,
+scalar extraction, loop proofs and IR invariants. Conjunctions and disjunctions
+admit flags on either side, two flags, nested mixed trees and both kinds of
+negation. New tests pass 18,100 native/IR comparisons, 11,008 invalid-input checks
+and 256 controls. Prior guard, decision, proposition and bind tests pass 10,328
+comparisons, 7,625 invalid-input checks and 512 controls. The general compiler
+theorem, native/V8 comparisons and archive are next for this increment.
+
+Next capabilities: direct Boolean helper calls and compound Boolean expressions
+in mixed propositional guards, retained instance and Bool-parameter Id wrappers,
+and broader signatures. Full-dialect correctness remains unfinished.
 Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete

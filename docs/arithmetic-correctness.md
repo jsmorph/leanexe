@@ -302,6 +302,16 @@ inactive branches. This composes through helpers, joined Id updates, loop
 break/continue, bounds and surrounding scalar code. Ordinary Boolean-result
 choices, including dependent Boolean results, also admit these propositions.
 
+Saved Boolean variables and their negations may appear inside propositional
+conjunctions and disjunctions, such as `flag ∧ x < y` or `x = y ∨ !flag`.
+Both sides may be saved flags, and mixed trees may nest and use propositional
+negation. Ordinary/dependent choices, saved decisions, helper bodies and loop
+break/continue use the same checked guard lowering. Each flag is converted through
+the typed Boolean extractor; word variables and missing bindings are rejected.
+Decision evidence preserves the exact Boolean leaf while allowing proved
+annotation equivalence in arithmetic leaves. Direct helper calls and compound
+Boolean expressions as leaves of these mixed propositions remain subsequent work.
+
 Bool.toUInt64 and equivalent dot notation convert admitted Boolean values to
 UInt64. Inputs may be literals, saved flags, comparisons, decisions, negations,
 junctions or nested choices, including those in helpers and loop contexts.

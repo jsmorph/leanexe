@@ -61,6 +61,16 @@ def guardDecision? : Guard → Lean.Expr → Bool
       | none => false
   | guard@(.boolean ..), evidence => LeanExe.Source.ExprEquality.same evidence guard.evidence
 
+  | .savedLeft n op left right, evidence =>
+      match junctionEvidenceOperands? n op left.condition right.condition evidence with
+      | some (leftEvidence, rightEvidence) => LeanExe.Source.ExprEquality.same leftEvidence left.evidence && guardDecision? right rightEvidence
+      | none => false
+  | .savedRight n op left right, evidence =>
+      match junctionEvidenceOperands? n op left.condition right.condition evidence with
+      | some (leftEvidence, rightEvidence) => guardDecision? left leftEvidence && LeanExe.Source.ExprEquality.same rightEvidence right.evidence
+      | none => false
+  | guard@(.savedBoth ..), evidence => LeanExe.Source.ExprEquality.same evidence guard.evidence
+
 @[simp] theorem guardDecision_accepts {guard : Guard} {evidence : Lean.Expr}
     (meaning : GuardDecision guard evidence) : guardDecision? guard evidence = true := by
   induction meaning with
@@ -69,6 +79,9 @@ def guardDecision? : Guard → Lean.Expr → Bool
     simp [guardDecision?, reannotation_accepts leftMeaning, reannotation_accepts rightMeaning]
   | junction n op left right leftMeaning rightMeaning ihl ihr => simp [guardDecision?, ihl, ihr]
   | boolean => simp [guardDecision?]
+  | savedLeft n op left right meaning ih => simp [guardDecision?, ih]
+  | savedRight n op left right meaning ih => simp [guardDecision?, ih]
+  | savedBoth => simp [guardDecision?, Guard.evidence]
 
 theorem guardDecision_sound {guard : Guard} {evidence : Lean.Expr}
     (accepted : guardDecision? guard evidence = true) : GuardDecision guard evidence := by
@@ -98,6 +111,29 @@ theorem guardDecision_sound {guard : Guard} {evidence : Lean.Expr}
     have same := LeanExe.Source.ExprEquality.same_eq_true.mp accepted
     rw [same]
     exact .boolean m n op left right
+
+  | savedLeft n op left right ih =>
+    simp only [guardDecision?] at accepted
+    split at accepted
+    · rename_i leftEvidence rightEvidence found
+      have same := accepted
+      simp only [Bool.and_eq_true] at same
+      rw [junctionEvidenceOperands_sound found, LeanExe.Source.ExprEquality.same_eq_true.mp same.1]
+      exact .savedLeft n op left right (ih same.2)
+    · contradiction
+  | savedRight n op left right ih =>
+    simp only [guardDecision?] at accepted
+    split at accepted
+    · rename_i leftEvidence rightEvidence found
+      have same := accepted
+      simp only [Bool.and_eq_true] at same
+      rw [junctionEvidenceOperands_sound found, LeanExe.Source.ExprEquality.same_eq_true.mp same.2]
+      exact .savedRight n op left right (ih same.1)
+    · contradiction
+  | savedBoth n op left right =>
+    have same := LeanExe.Source.ExprEquality.same_eq_true.mp accepted
+    rw [same]
+    exact .savedBoth n op left right
 
 @[simp] theorem guardDecision_canonical (guard : Guard) : guardDecision? guard guard.evidence = true :=
   guardDecision_accepts (.canonical guard)

@@ -4766,6 +4766,70 @@ def rangeBooleanResultBindHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (g a).toUInt64 + 1
   return a + (g seed).toUInt64
 
+def savedMixedLeft (x y : UInt64) : UInt64 :=
+  let flag := x != 0
+  if flag ∧ x < y then x + 3 else y + 7
+
+def savedMixedRight (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  let flag := f (x == 0)
+  if x ≤ y ∨ flag then (f (!flag)).toUInt64 + x else y
+
+def savedMixedPair (x y : UInt64) : UInt64 :=
+  let a := x != 0
+  let b := y == 0
+  if a ∧ ¬ b then x + y else x - y
+
+def savedMixedNegation (x y : UInt64) : UInt64 :=
+  let flag := x != y
+  if ¬ (flag ∧ ¬ (x = 0 ∨ !flag)) then x + 1 else y + 2
+
+def savedMixedDecision (x y : UInt64) : UInt64 :=
+  let flag := x != y
+  let saved := decide ((flag ∧ x < y) ∨ (!flag ∧ y < x))
+  saved.toUInt64 + x
+
+def savedMixedHelper (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => if b ∧ x < y then !b else b
+  let a := x != 0
+  (f a).toUInt64 + (f (!a)).toUInt64 + y
+
+def rangeSavedMixedStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let flag := a != 0
+    if flag ∧ i.toUInt64 < a then break
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeSavedMixedContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let flag := i.toUInt64 == seed
+    if a = 0 ∨ !flag then
+      a := a + 3
+      continue
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeSavedMixedOuter (count seed : UInt64) : UInt64 := Id.run do
+  let flag := seed != 0
+  let mut a := if flag ∧ count < seed then seed + 1 else seed
+  for i in [:count.toNat] do
+    let other := a == i.toUInt64
+    if flag ∧ ¬ other then a := a + 2 else a := a + 1
+  return a + (decide (flag ∨ a = seed)).toUInt64
+
+def rangeSavedMixedHelper (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => if b ∧ seed < count then !b else b
+  let mut a := seed
+  for i in [:count.toNat] do
+    let flag := f (a == 0)
+    if ¬ (flag ∧ i.toUInt64 < a) then
+      a := a + (f (!flag)).toUInt64 + 1
+    else break
+  return a
+
 def booleanPredicateResultBool (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => !b && x != 0
   let g := fun b : Bool => f b
@@ -6725,6 +6789,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBooleanResultBindCondition", rangeBooleanResultBindCondition),
    ("rangeBooleanResultBindOuter", rangeBooleanResultBindOuter),
    ("rangeBooleanResultBindHelper", rangeBooleanResultBindHelper),
+   ("rangeSavedMixedStep", rangeSavedMixedStep),
+   ("rangeSavedMixedContinue", rangeSavedMixedContinue),
+   ("rangeSavedMixedOuter", rangeSavedMixedOuter),
+   ("rangeSavedMixedHelper", rangeSavedMixedHelper),
    ("rangeBooleanPredicateResultLocalBool", rangeBooleanPredicateResultLocalBool),
    ("rangeBooleanPredicateResultLocalWord", rangeBooleanPredicateResultLocalWord),
    ("rangeBooleanPredicateResultLocalNested", rangeBooleanPredicateResultLocalNested),
@@ -7199,6 +7267,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("booleanResultBindCapture", booleanResultBindCapture),
    ("booleanResultBindUnused", booleanResultBindUnused),
    ("booleanResultBindCondition", booleanResultBindCondition),
+   ("savedMixedLeft", savedMixedLeft),
+   ("savedMixedRight", savedMixedRight),
+   ("savedMixedPair", savedMixedPair),
+   ("savedMixedNegation", savedMixedNegation),
+   ("savedMixedDecision", savedMixedDecision),
+   ("savedMixedHelper", savedMixedHelper),
    ("booleanPredicateResultBool", booleanPredicateResultBool),
    ("booleanPredicateResultWord", booleanPredicateResultWord),
    ("booleanPredicateResultNested", booleanPredicateResultNested),

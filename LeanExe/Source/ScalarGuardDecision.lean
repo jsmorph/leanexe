@@ -21,6 +21,20 @@ inductive GuardDecision : Guard → Lean.Expr → Prop where
   | boolean (propNegations boolNegations : Nat) (operation : Junction) (left right : BooleanGuard) :
       GuardDecision (.boolean propNegations boolNegations operation left right)
         (Guard.boolean propNegations boolNegations operation left right).evidence
+  | savedLeft (negations : Nat) (operation : Junction) (left : SavedBooleanGuard) (right : Guard)
+      (rightMeaning : GuardDecision right rightEvidence) :
+      GuardDecision (.savedLeft negations operation left right)
+        (GuardNegation.evidence negations (operation.condition left.condition right.condition)
+          (operation.evidence left.condition right.condition left.evidence rightEvidence))
+  | savedRight (negations : Nat) (operation : Junction) (left : Guard) (right : SavedBooleanGuard)
+      (leftMeaning : GuardDecision left leftEvidence) :
+      GuardDecision (.savedRight negations operation left right)
+        (GuardNegation.evidence negations (operation.condition left.condition right.condition)
+          (operation.evidence left.condition right.condition leftEvidence right.evidence))
+  | savedBoth (negations : Nat) (operation : Junction) (left right : SavedBooleanGuard) :
+      GuardDecision (.savedBoth negations operation left right)
+        (GuardNegation.evidence negations (operation.condition left.condition right.condition)
+          (operation.evidence left.condition right.condition left.evidence right.evidence))
 
 theorem GuardDecision.canonical (guard : Guard) : GuardDecision guard guard.evidence := by
   induction guard with
@@ -29,6 +43,9 @@ theorem GuardDecision.canonical (guard : Guard) : GuardDecision guard guard.evid
     simpa [Guard.evidence] using GuardDecision.compare operation left right left right (.same left) (.same right)
   | junction n operation left right ihl ihr => exact .junction n operation left right ihl ihr
   | boolean m n operation left right => exact .boolean m n operation left right
+  | savedLeft n op left right ih => exact .savedLeft n op left right ih
+  | savedRight n op left right ih => exact .savedRight n op left right ih
+  | savedBoth n op left right => exact .savedBoth n op left right
 
 /-- Noncanonical decision syntax for an independently supported guard tree. -/
 structure ReannotatedGuard where

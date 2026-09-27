@@ -1,4 +1,5 @@
 import LeanExe.Source.ScalarGuardLiteral
+import LeanExe.Source.ScalarSavedBooleanGuard
 
 namespace LeanExe.Source.Scalar
 
@@ -8,6 +9,9 @@ inductive Guard where
   | compare (op : Comparison) (left right : Lean.Expr)
   | junction (negations : Nat) (op : Junction) (left right : Guard)
   | boolean (propNegations boolNegations : Nat) (op : Junction) (left right : BooleanGuard)
+  | savedLeft (negations : Nat) (op : Junction) (left : SavedBooleanGuard) (right : Guard)
+  | savedRight (negations : Nat) (op : Junction) (left : Guard) (right : SavedBooleanGuard)
+  | savedBoth (negations : Nat) (op : Junction) (left right : SavedBooleanGuard)
   deriving Repr
 
 namespace Guard
@@ -17,12 +21,18 @@ def operands : Guard → List Lean.Expr
   | .compare _ a b => [a, b]
   | .junction _ _ a b => a.operands ++ b.operands
   | .boolean _ n op a b => (BooleanGuard.junction n op a b).operands
+  | .savedLeft _ _ a b => [a.operand] ++ b.operands
+  | .savedRight _ _ a b => a.operands ++ [b.operand]
+  | .savedBoth _ _ a b => [a.operand] ++ [b.operand]
 
 def condition : Guard → Lean.Expr
   | .literal value => value.condition
   | .compare op a b => op.condition a b
   | .junction n op a b => GuardNegation.condition n (op.condition a.condition b.condition)
   | .boolean m n op a b => GuardNegation.condition m (BooleanGuard.junction n op a b).condition
+  | .savedLeft n op a b => GuardNegation.condition n (op.condition a.condition b.condition)
+  | .savedRight n op a b => GuardNegation.condition n (op.condition a.condition b.condition)
+  | .savedBoth n op a b => GuardNegation.condition n (op.condition a.condition b.condition)
 
 def evidence : Guard → Lean.Expr
   | .literal value => value.evidence
@@ -31,18 +41,30 @@ def evidence : Guard → Lean.Expr
       (op.evidence a.condition b.condition a.evidence b.evidence)
   | .boolean m n op a b => GuardNegation.evidence m (BooleanGuard.junction n op a b).condition
       (BooleanGuard.junction n op a b).evidence
+  | .savedLeft n op a b => GuardNegation.evidence n (op.condition a.condition b.condition)
+      (op.evidence a.condition b.condition a.evidence b.evidence)
+  | .savedRight n op a b => GuardNegation.evidence n (op.condition a.condition b.condition)
+      (op.evidence a.condition b.condition a.evidence b.evidence)
+  | .savedBoth n op a b => GuardNegation.evidence n (op.condition a.condition b.condition)
+      (op.evidence a.condition b.condition a.evidence b.evidence)
 
 def denote (native : Lean.Expr → UInt64) : Guard → Bool
   | .literal value => value.denote
   | .compare op a b => op.denote (native a) (native b)
   | .junction n op a b => GuardNegation.denote n (op.denote (a.denote native) (b.denote native))
   | .boolean m n op a b => GuardNegation.denote m ((BooleanGuard.junction n op a b).denote native)
+  | .savedLeft n op a b => GuardNegation.denote n (op.denote (a.denote native) (b.denote native))
+  | .savedRight n op a b => GuardNegation.denote n (op.denote (a.denote native) (b.denote native))
+  | .savedBoth n op a b => GuardNegation.denote n (op.denote (a.denote native) (b.denote native))
 
 def negate : Guard → Guard
   | .literal value => .literal value.negate
   | .compare op a b => .compare (.negate op) a b
   | .junction n op a b => .junction (n + 1) op a b
   | .boolean m n op a b => .boolean (m + 1) n op a b
+  | .savedLeft n op a b => .savedLeft (n + 1) op a b
+  | .savedRight n op a b => .savedRight (n + 1) op a b
+  | .savedBoth n op a b => .savedBoth (n + 1) op a b
 
 theorem negate_condition (guard : Guard) :
     guard.negate.condition = .app (.const ``Not []) guard.condition := by
@@ -73,6 +95,30 @@ theorem operands_size (guard : Guard) {operand : Lean.Expr}
     have bound := (BooleanGuard.junction n op a b).operands_size (operand := operand) member
     simp only [BooleanGuard.condition]
     simp_all; omega
+  | savedLeft n op a b ihb =>
+    apply Nat.lt_of_lt_of_le _ (GuardNegation.condition_size n _)
+    simp only [operands, List.mem_append, List.mem_singleton] at member
+    cases op <;> simp only [Junction.condition]
+    all_goals rcases member with member | member
+    all_goals first
+      | (subst operand; have h := a.operand_size; simp_all; omega)
+      | (have h := ihb member; simp_all; omega)
+  | savedRight n op a b iha =>
+    apply Nat.lt_of_lt_of_le _ (GuardNegation.condition_size n _)
+    simp only [operands, List.mem_append, List.mem_singleton] at member
+    cases op <;> simp only [Junction.condition]
+    all_goals rcases member with member | member
+    all_goals first
+      | (subst operand; have h := b.operand_size; simp_all; omega)
+      | (have h := iha member; simp_all; omega)
+  | savedBoth n op a b =>
+    apply Nat.lt_of_lt_of_le _ (GuardNegation.condition_size n _)
+    simp only [operands, List.mem_append, List.mem_singleton] at member
+    cases op <;> simp only [Junction.condition]
+    all_goals rcases member with member | member
+    all_goals first
+      | (subst operand; have h := a.operand_size; simp_all; omega)
+      | (subst operand; have h := b.operand_size; simp_all; omega)
 
 end Guard
 
