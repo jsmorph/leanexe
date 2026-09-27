@@ -69,6 +69,24 @@ theorem extendInstalled_choice (locals : List Value) (size : locals.length = 158
     ExtendChoiceLocals (extendInstalledLocals locals found rows columns value) found rows columns value := by
   constructor <;> simp [extendInstalledLocals, extendSelectedLocals, List.getElem?_set, size]
 
+theorem extendPrepared_search {locals : List Value} {row rows column width : Nat}
+    (state : ExtendSearchLocals locals row rows column width) (matrixOwner matrixPointer : UInt64)
+    (basis : Basis) (rowOwner rowPointer columnOwner columnPointer : UInt64) :
+    ExtendSearchLocals (extendPreparedLocals locals width matrixOwner matrixPointer basis
+      rowOwner rowPointer columnOwner columnPointer row column) row rows column width := by
+  refine ⟨extendPrepared_scan state.toExtendScanLocals matrixOwner matrixPointer basis rowOwner rowPointer columnOwner columnPointer column, ?_, ?_⟩
+  · intro k lower upper
+    interval_cases k <;> simpa [extendPreparedLocals, List.getElem?_set] using state.innerEmpty _ (by decide) (by decide)
+  · simpa [extendPreparedLocals, List.getElem?_set] using state.columnIndex
+
+theorem extendContinue_search {locals : List Value} {row rows column width : Nat}
+    (state : ExtendSearchLocals locals row rows column width) :
+    ExtendSearchLocals (extendAdvancedLocals (extendInstalledLocals locals false 0 0 0) column) row rows (column + 1) width := by
+  refine ⟨extendAdvanced_scan (extendInstalled_scan state.toExtendScanLocals false 0 0 0) column, ?_, ?_⟩
+  · intro k lower upper
+    interval_cases k <;> simp [extendAdvancedLocals, extendInstalledLocals, extendSelectedLocals, List.getElem?_set, state.size]
+  · simp [extendAdvancedLocals, extendInstalledLocals, extendSelectedLocals, List.getElem?_set, state.size]
+
 #print axioms extendPrepared_scan
 #print axioms extendInstalled_scan
 #print axioms extendAdvanced_scan
