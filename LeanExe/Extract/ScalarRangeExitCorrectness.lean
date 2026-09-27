@@ -381,12 +381,11 @@ theorem extractScalarRangeExitWith_correct {source : Lean.Expr} {locals : List S
   scalarRangeExit_correct_of_supported (extractScalarRangeExitWith_supported compiled) saved
     compiled rfl typed bindings total
 
-/-- The extracted setup, dynamic loop, result assignment and scalar ABI execute
-with the source value. All iteration premises were derived by the extractor. -/
-theorem ScalarRangeExitPlan.Meaning.func_correct {plan : ScalarRangeExitPlan} {args : List UInt64}
-    {value : UInt64} (meaning : plan.Meaning args value)
-    (name : Lean.Name) (exportName : Option String) :
-    (plan.func name exportName args.length).ScalarEval args value := by
+/-- A range plan executes in its four allocated locals and preserves the saved prefix. -/
+theorem ScalarRangeExitPlan.Meaning.body_correct {plan : ScalarRangeExitPlan} {args : List UInt64}
+    {value : UInt64} (meaning : plan.Meaning args value) :
+    ∃ (stop flag : UInt64), (plan.body args.length).ScalarEval (rangeExitStore args 0 0 0 0)
+      (rangeExitStore args value stop.toNat stop flag) := by
   obtain ⟨stop, start, step, countEval, initialEval, stepEval, resultEval⟩ := meaning
   have countWrite : (rangeExitStore args 0 0 0 0).write (args.length + 2) stop =
       some (rangeExitStore args 0 0 stop 0) := by
@@ -402,6 +401,15 @@ theorem ScalarRangeExitPlan.Meaning.func_correct {plan : ScalarRangeExitPlan} {a
           (.seq (.assign .const (LeanExe.IR.rangeExitStore_write_flag args start 0 stop 0 0))
             (.seq loopEval (.assign (resultEval flag)
               (LeanExe.IR.rangeExitStore_write_value args _ value stop.toNat stop flag))))))
+  exact ⟨stop, flag, bodyEval⟩
+
+/-- The extracted setup, dynamic loop, result assignment and scalar ABI execute
+with the source value. All iteration premises were derived by the extractor. -/
+theorem ScalarRangeExitPlan.Meaning.func_correct {plan : ScalarRangeExitPlan} {args : List UInt64}
+    {value : UInt64} (meaning : plan.Meaning args value)
+    (name : Lean.Name) (exportName : Option String) :
+    (plan.func name exportName args.length).ScalarEval args value := by
+  obtain ⟨stop, flag, bodyEval⟩ := meaning.body_correct
   refine .run (afterBody := rangeExitStore args value stop.toNat stop flag)
     (afterResult := rangeExitStore args value stop.toNat stop flag) rfl (by simp [ScalarRangeExitPlan.func]) ?_ rfl ?_
   · simpa [ScalarRangeExitPlan.func, rangeExitStore] using bodyEval

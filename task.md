@@ -1068,9 +1068,11 @@ extension. The corpus contains 1723 declarations. Evidence is in
 
 Current capability: consecutive bounded loops with word results.
 Six fixed probes report 0 accepted and 6 rejected before the increment.
-Preserve the probes. Prove finite-store framing and sequence-plan execution,
-then source semantics, extraction, admission, correctness, descriptor bounds,
-and the complete WASM theorem before the independent engine checks.
+The finite-store frame theorem and source totality pass with the factored
+single-loop execution proof (187 targets). Sequence-plan width, result-slot
+bounds, prefix preservation, composition and public-result execution pass
+177 targets. Extraction, complete admission, source correctness, descriptor
+bounds and full WASM integration remain before the independent engine checks.
 
 Next: Boolean-result loop combinations and nested loops. Broader helper
 signatures, heap values, floats, imports and global calls remain outside the
