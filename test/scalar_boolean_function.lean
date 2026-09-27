@@ -155,6 +155,7 @@ end BooleanFunctionTest
 run_elab do
   let env ← Lean.getEnv
   let cases : List (Lean.Name × (UInt64 → UInt64 → UInt64) × Bool) := [
+    (`BooleanFunctionTest.boolFnBooleanResult, BooleanFunctionTest.boolFnBooleanResult, false),
     (`BooleanFunctionTest.boolFnConditional, BooleanFunctionTest.boolFnConditional, false),
     (`BooleanFunctionTest.boolFnLocalGuard, BooleanFunctionTest.boolFnLocalGuard, false),
     (`BooleanFunctionTest.boolFnNested, BooleanFunctionTest.boolFnNested, false),
@@ -172,6 +173,7 @@ run_elab do
     (`BooleanFunctionTest.rangeBoolFnStep, BooleanFunctionTest.rangeBoolFnStep, true),
     (`BooleanFunctionTest.rangeBoolFnOuter, BooleanFunctionTest.rangeBoolFnOuter, true),
     (`BooleanFunctionTest.rangeResultFunctionBool, BooleanFunctionTest.rangeResultFunctionBool, true)]
+  let mut comparisons : Nat := 0
   for (name, native, isRange) in cases do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
@@ -187,7 +189,9 @@ run_elab do
       let actual := module_.evalFunc 0 [x, y]
       unless actual == expected do
         throwError "{name}({x}, {y}): native={expected}, IR={actual}"
-  for name in [`BooleanFunctionTest.boolFnUnusedUnsupported, `BooleanFunctionTest.boolFnUnsupportedArgument, `BooleanFunctionTest.boolFnBooleanResult, `BooleanFunctionTest.rangeBoolFnUnusedUnsupported] do
+      comparisons := comparisons + 1
+  unless comparisons == 342 do throwError "unexpected comparison count {comparisons}"
+  for name in [`BooleanFunctionTest.boolFnUnusedUnsupported, `BooleanFunctionTest.boolFnUnsupportedArgument, `BooleanFunctionTest.rangeBoolFnUnusedUnsupported] do
     let some info := env.find? name | throwError "missing declaration"
     let some value := info.value? | throwError "missing body"
     unless (LeanExe.Extract.Core.extractScalarFunc name (some "entry") info.type value).isNone do
@@ -212,4 +216,4 @@ run_elab do
       let rejected := if isStep then (LeanExe.Extract.Core.extractScalarStepWith [] source).isNone
         else (LeanExe.Extract.Core.extractScalarExprWith [] source).isNone
       unless rejected do throwError "invalid Boolean helper accepted: {source}"
-  Lean.logInfo "328 native/Boolean-function IR comparisons, four declaration rejection tests and twelve raw helper rejection tests passed"
+  Lean.logInfo "342 native/Boolean-function IR comparisons, three declaration rejection tests and twelve raw helper rejection tests passed"

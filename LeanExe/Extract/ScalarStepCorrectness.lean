@@ -228,6 +228,9 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
   | predicateInput input result _ ih =>
     rw [extractScalarStepWith_predicateInput] at compiled
     exact ih compiled bindings
+  | booleanInput input result _ ih =>
+    rw [extractScalarStepWith_booleanInput] at compiled
+    exact ih compiled bindings
   | letBooleanFn type function body ih =>
     rw [extractScalarStepWith_letBooleanFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

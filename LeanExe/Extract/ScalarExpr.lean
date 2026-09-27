@@ -349,6 +349,9 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List LeanEx
   | predicateInput input result _ ih =>
     rw [extractScalarExprWith_predicateInput] at compiled
     exact ih compiled bindings
+  | booleanInput input result _ ih =>
+    rw [extractScalarExprWith_booleanInput] at compiled
+    exact ih compiled bindings
   | letBooleanFn type function body ihf ihb =>
     rw [extractScalarExprWith_letBooleanFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
@@ -711,6 +714,9 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
   | predicateInput input result _ ih =>
     obtain ⟨target, ht⟩ := ih locals typed total
     exact ⟨target, by rw [extractScalarExprWith_predicateInput]; exact ht⟩
+  | booleanInput input result _ ih =>
+    obtain ⟨target, ht⟩ := ih locals typed total
+    exact ⟨target, by rw [extractScalarExprWith_booleanInput]; exact ht⟩
   | @letBooleanFn types a b name typeName typeBi paramName paramBi nondep type _ _ ihf ihb =>
     have accepts (argument : LeanExe.IR.Expr) := ihf (.boolean argument :: locals)
       (by simp [ScalarBinding.kind, typed]) (by
@@ -1478,28 +1484,34 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     exact .booleanWord _ (extractBooleanLocalWith_variables hc)
       (fun operand member => ihArgs operand member
         (extractBooleanLocalWith_operands hc operand member).choose_spec)
-  | case86 locals name typeName resultType typeBi paramName domain value paramBi body nondep rejected =>
+  | case86 locals name typeName resultType typeBi paramName domain value paramBi body nondep rejected noBoolean =>
     rw [extractScalarExprWith] at compiled
-    simp [rejected] at compiled
-  | case87 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType rejected foundInput =>
+    simp [rejected, noBoolean] at compiled
+  | case87 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType noWord foundInput ih =>
+    rw [extractScalarExprWith] at compiled
+    simp only [↓reduceIte, noWord, foundInput] at compiled
+    have inputEq := booleanType_sound foundInput
+    subst domain
+    exact .booleanInput inputType resultType (ih compiled)
+  | case88 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType rejected foundInput =>
     rw [extractScalarExprWith] at compiled
     simp [foundInput, rejected] at compiled
-  | case88 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType result foundResult foundInput ih =>
+  | case89 locals name typeName resultType typeBi paramName domain value paramBi body nondep inputType result foundResult foundInput ih =>
     rw [extractScalarExprWith] at compiled
     simp only [↓reduceIte, foundInput, foundResult] at compiled
     have inputEq := scalarResultType_sound foundInput
     have resultEq := booleanType_sound foundResult
     subst domain resultType
     exact .predicateInput inputType result (ih compiled)
-  | case89 locals name typeName input resultType typeBi paramName domain value paramBi body nondep different =>
+  | case90 locals name typeName input resultType typeBi paramName domain value paramBi body nondep different =>
     rw [extractScalarExprWith] at compiled
     simp [different] at compiled
-  | case90 locals name type value body nondep ih =>
+  | case91 locals name type value body nondep ih =>
     rw [extractScalarExprWith] at compiled
     exact .idLet (ih compiled)
-  | case91 locals data body ih =>
+  | case92 locals data body ih =>
     exact .metadata (ih (by simpa only [extractScalarExprWith] using compiled))
-  | case92 locals expr hvar hliteral hnatural hconverted hnatVariable hnatConverted hofNat hrun hpure hbind hchoice hunitApp hpunitApp hbin hboolLet hlet hletFn hletUnitFn hletPUnitFn happ hletBooleanFn hPredicateInput hidLet hmetadata =>
+  | case93 locals expr hvar hliteral hnatural hconverted hnatVariable hnatConverted hofNat hrun hpure hbind hchoice hunitApp hpunitApp hbin hboolLet hlet hletFn hletUnitFn hletPUnitFn happ hletBooleanFn hPredicateInput hidLet hmetadata =>
     rw [extractScalarExprWith] at compiled <;> first | assumption | contradiction
 
 theorem extractScalarExpr_supported {source : Lean.Expr} {locals : List Nat}
@@ -1841,6 +1853,9 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
     · exact bindings binding member
   | predicateInput input result _ ih =>
     rw [extractScalarExprWith_predicateInput] at compiled
+    exact ih compiled bindings htypes
+  | booleanInput input result _ ih =>
+    rw [extractScalarExprWith_booleanInput] at compiled
     exact ih compiled bindings htypes
   | letBooleanFn type _ _ ihf ihb =>
     rw [extractScalarExprWith_letBooleanFn] at compiled

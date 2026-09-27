@@ -212,6 +212,14 @@ Predicates can also be declared before a loop and called in its bounds, initial
 value, body and final result. Captures preserve their source values throughout
 iteration.
 
+Bool-input local helper declarations admit any number of standard Id layers
+when their arrow and lambda domains match exactly. The source rule removes one
+matched layer and recursively checks the complete helper. Result annotations,
+helper bodies, captures and uses remain checked. This applies to the existing
+Bool-, UInt64- and ForInStep UInt64-returning helpers in their supported scalar,
+loop-step and outer-loop scopes. Unsupported unused bodies, wrong argument
+kinds and mismatched annotations are rejected.
+
 Reusable Bool-to-Bool helpers are admitted in scalar expressions when calls are
 converted with `Bool.toUInt64`, for example `let f := fun b : Bool => !b;
 (f (x == y)).toUInt64`. Captures, repeated calls, nested closures, shadowing,
