@@ -1,3 +1,4 @@
+import LeanExe.Wasm.ScalarBooleanSequenceAdmission
 import LeanExe.Wasm.ScalarSequenceAdmission
 import Project.Compiler.SequenceFunctionBytes
 import LeanExe.Wasm.ScalarWordRangeAdmission
@@ -33,7 +34,7 @@ theorem extracted_function_body_bytes
         (fun outcome => outcome = .Fallthrough store (next.toLocals [.i64 value]))
         store ((ScalarLowering.functionState func args).toLocals []) env := by
   obtain ⟨arity, result, body, signature, annotations, hb, branches⟩ := extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩
+  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩
   · have hlen : args.length = arity := len
     subst arity
     obtain ⟨value, applied, irEval⟩ := scalarPublic_application signature annotations hb hi args [0] rfl
@@ -121,6 +122,19 @@ theorem extracted_function_body_bytes
     obtain ⟨raw, next, parsed, executed⟩ := sequence_function_body_bytes args name exportName releaseIndex
       matched arithmetic reads meaning localBound bodyBound m env store
     refine ⟨value, raw, next, applied, ?_, executed⟩
+    have countEq : (plan.func name exportName args.length).locals - (plan.func name exportName args.length).params +
+        LeanExe.Wasm.Binary.CoreWasm.funcScratch (plan.func name exportName args.length) = plan.width + descriptor.scratchWidth := by
+      rw [matched.func_scratch]
+      simp [ScalarSequencePlan.func]
+    simpa only [countEq] using parsed
+  · have hlen : args.length = arity := len
+    subst arity
+    obtain ⟨flag, applied, meaning⟩ := booleanSequencePublic_application signature annotations hb hp args rfl
+    obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarBooleanSequencePublic_admitted hp
+      (scalarSignature_inputs_length signature)
+    obtain ⟨raw, next, parsed, executed⟩ := sequence_function_body_bytes args name exportName releaseIndex
+      matched arithmetic reads meaning localBound bodyBound m env store
+    refine ⟨flag.toUInt64, raw, next, applied, ?_, executed⟩
     have countEq : (plan.func name exportName args.length).locals - (plan.func name exportName args.length).params +
         LeanExe.Wasm.Binary.CoreWasm.funcScratch (plan.func name exportName args.length) = plan.width + descriptor.scratchWidth := by
       rw [matched.func_scratch]

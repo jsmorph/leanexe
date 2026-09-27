@@ -1038,5 +1038,13 @@
   "rangeSequenceIdBind",
   "rangeSequenceBoolInput",
   "rangeTwice",
-  "rangeLetTwoLoops"
+  "rangeLetTwoLoops",
+  "rangeBooleanSequenceDirect",
+  "rangeBooleanSequenceDependent",
+  "rangeBooleanSequenceExits",
+  "rangeBooleanSequenceUnused",
+  "rangeBooleanSequenceThree",
+  "rangeBooleanSequenceRetained",
+  "rangeBooleanSequenceBoolInput",
+  "rangeBooleanSequenceWordTail"
 ]

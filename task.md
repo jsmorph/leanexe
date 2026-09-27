@@ -1079,10 +1079,14 @@ deferred. The corpus contains 1733 declarations. Evidence is in
 [the sequence archive](proofs/compiler/scalar-loop-sequence-2026-09-27/README.md).
 
 Current capability: word prefixes with Boolean-result loop continuations.
-All six fixed native probes reject before this increment. Reuse sequence plans,
-framing, descriptors, WASM execution, bytes and validation. Prove independent
-Boolean sequence semantics, source totality, exact admission, capture preservation,
-result encoding and invariants, then finish native/IR and V8 checks.
+All six fixed native probes rejected before the increment and now compile.
+Independent source semantics, totality, exact admission, reconstruction, capture
+preservation and IR invariants pass (212 targets). Public admission and Boolean
+result encoding pass with descriptor admission (244 targets). Existing sequence
+plans, framing, WASM execution, function bytes and validation are reused; the
+focused byte integration passes 3360 targets. Native fixtures and syntax tests
+pass 14,016 comparisons, 18,432 invalid-input checks and 576 admission controls.
+The complete proof gate and independent engine checks are next.
 
 Next: Boolean-result bound prefixes and nested loops. Broader helper signatures,
 heap values, floats, imports and global calls remain outside the complete compiler

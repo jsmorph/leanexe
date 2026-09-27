@@ -162,7 +162,7 @@ The result is `42`. `compile-arithmetic` accepts only the language covered by
 the [general compiler correctness theorem](docs/arithmetic-correctness.md),
 including `UInt64` arithmetic, Boolean parameters and results, local bindings and functions, conditionals,
 pure `Id` blocks, and bounded range loops, including consecutive word-result
-computations. The grammar specifies the accepted
+computations followed by a word or Boolean result. The grammar specifies the accepted
 `continue` and `break` forms. The theorem proves preservation of the source
 computation. Any claim that the source solves the intended problem requires
 an application specification and proof of its own.

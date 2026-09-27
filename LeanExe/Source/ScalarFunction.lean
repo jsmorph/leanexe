@@ -1,4 +1,4 @@
-import LeanExe.Source.ScalarSequence
+import LeanExe.Source.ScalarBooleanSequence
 import LeanExe.Source.ScalarPublicArgument
 import LeanExe.Source.ScalarRangeSupported
 import LeanExe.Source.ScalarRangeExitSupported
@@ -53,7 +53,8 @@ def DeclarationSupported (type value : Lean.Expr) : Prop :=
             Range.Exit.Supported ((publicInputs type).reverse.map PublicArgument.kind) body)) ∨
         (result = .boolean ∧ BooleanRange.Supported ((publicInputs type).reverse.map PublicArgument.kind) body) ∨
         (result = .word ∧ WordRange.Supported ((publicInputs type).reverse.map PublicArgument.kind) body) ∨
-        (result = .word ∧ Sequence.Supported ((publicInputs type).reverse.map PublicArgument.kind) body))
+        (result = .word ∧ Sequence.Supported ((publicInputs type).reverse.map PublicArgument.kind) body) ∨
+        (result = .boolean ∧ BooleanSequence.Supported ((publicInputs type).reverse.map PublicArgument.kind) body))
 
 /-- Application of scalar arguments to the original elaborated lambda term.
 The local environment is in de Bruijn order. -/
@@ -65,6 +66,7 @@ inductive Apply : Lean.Expr → List Value → List UInt64 → UInt64 → Prop w
       Apply expr locals [] flag.toUInt64
   | wordRangeDone (body : WordRange.Eval expr locals value) : Apply expr locals [] value
   | sequenceDone (body : Sequence.Eval expr locals value) : Apply expr locals [] value
+  | booleanSequenceDone (body : BooleanSequence.Eval expr locals flag) : Apply expr locals [] flag.toUInt64
   | exit (body : Range.Exit.Eval expr locals value) : Apply expr locals [] value
   | lam (body : Apply expr (.word arg :: locals) args value) :
       Apply (.lam name (.const ``UInt64 []) expr bi) locals (arg :: args) value
