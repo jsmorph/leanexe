@@ -20,6 +20,7 @@ inductive ValidationErrorKind where
   | invalidNameEncoding (name : String)
   | constantOutOfRange (width : Nat) (value : Int)
   | globalInitializerType
+  | dataOffsetType
   | stackUnderflow (expected : Option ValType)
   | typeMismatch (expected found : ValType)
   | stackHeightMismatch (expected found : Nat)
@@ -358,6 +359,7 @@ def sectionRank : SectionId → Nat
   | .global => 4
   | .export => 5
   | .code => 6
+  | .data => 7
 
 def orderedSections : List SectionId → Bool
   | [] => true
@@ -387,7 +389,8 @@ def validateSections (module_ : RawModule) : Except ValidationError Unit :=
        (.memory, !module_.memories.isEmpty),
        (.global, !module_.globals.isEmpty),
        (.export, !module_.exports.isEmpty),
-       (.code, !module_.codes.isEmpty)]
+       (.code, !module_.codes.isEmpty),
+       (.data, !module_.data.isEmpty)]
   else
     moduleFailure .invalidSectionSequence
 
@@ -492,6 +495,19 @@ def validateFunctions (module_ : RawModule) (functions : List FuncType) :
     Except ValidationError Unit :=
   validateFunctionPairs module_ functions 0 functions module_.codes
 
+def validateDataSegment (segment : DataSegment) : Except ValidationError Unit :=
+  match segment.offset with
+  | .i32Const value =>
+      if inSignedRange 32 value then pure ()
+      else moduleFailure (.constantOutOfRange 32 value)
+  | .i64Const _ => moduleFailure .dataOffsetType
+
+def validateData : List DataSegment → Except ValidationError Unit
+  | [] => pure ()
+  | segment :: rest => do
+      validateDataSegment segment
+      validateData rest
+
 def validateRaw (module_ : RawModule) : Except ValidationError Unit := do
   validateSections module_
   if module_.memories.length = 1 then
@@ -500,6 +516,7 @@ def validateRaw (module_ : RawModule) : Except ValidationError Unit := do
     moduleFailure (.memoryCount module_.memories.length)
   validateGlobals module_.globals
   validateExports module_
+  validateData module_.data
   let functions ← resolveFunctionTypes module_
   validateFunctions module_ functions
 

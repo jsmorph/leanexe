@@ -131,6 +131,14 @@ inductive Global : List UInt8 → Binary.Global → Prop
       (initEncoding : ConstExpr initBytes init) :
       Global (typeBytes ++ initBytes) { type, init }
 
+inductive DataSegment : List UInt8 → Binary.DataSegment → Prop
+  | active (modeBytes offsetBytes lengthBytes bytes : List UInt8)
+      (offset : Binary.ConstExpr)
+      (modeEncoding : U32 modeBytes 0)
+      (offsetEncoding : ConstExpr offsetBytes offset)
+      (lengthEncoding : U32 lengthBytes bytes.length) :
+      DataSegment (modeBytes ++ offsetBytes ++ lengthBytes ++ bytes) { offset, bytes }
+
 inductive MemArg : List UInt8 → Binary.MemArg → Prop
   | intro (alignBytes offsetBytes : List UInt8) (align offset : UInt32)
       (alignEncoding : U32 alignBytes align.toNat)
@@ -302,6 +310,10 @@ inductive Section (module_ : Binary.RawModule) : List UInt8 → Binary.SectionId
       (encoding : Sized (Vector Code) bytes module_.codes) :
       Section module_ (byte 10 :: bytes) .code
 
+  | data (bytes : List UInt8)
+      (encoding : Sized (Vector DataSegment) bytes module_.data) :
+      Section module_ (byte 11 :: bytes) .data
+
 inductive Sections (module_ : Binary.RawModule) : List UInt8 → List Binary.SectionId → Prop
   | nil : Sections module_ [] []
   | cons (headBytes tailBytes : List UInt8) (head : Binary.SectionId)
@@ -322,7 +334,8 @@ def AbsentFieldsEmpty (module_ : Binary.RawModule) : Prop :=
   (.memory ∈ module_.sections ∨ module_.memories = []) ∧
   (.global ∈ module_.sections ∨ module_.globals = []) ∧
   (.export ∈ module_.sections ∨ module_.exports = []) ∧
-  (.code ∈ module_.sections ∨ module_.codes = [])
+  (.code ∈ module_.sections ∨ module_.codes = []) ∧
+  (.data ∈ module_.sections ∨ module_.data = [])
 
 def ModuleBytes (bytes : List UInt8) (module_ : Binary.RawModule) : Prop :=
   ∃ sectionBytes,

@@ -17,10 +17,11 @@ theorem validateRaw_eq_of_parts {raw : RawModule} {functions : List FuncType}
     (globals : Validator.validateGlobals raw.globals = .ok ())
     (exports : Validator.validateExports raw = .ok ())
     (types : Validator.resolveFunctionTypes raw = .ok functions)
-    (bodies : Validator.validateFunctions raw functions = .ok ()) :
+    (bodies : Validator.validateFunctions raw functions = .ok ())
+    (data : Validator.validateData raw.data = .ok () := by decide) :
     Validator.validateRaw raw = .ok () := by
   simp [Validator.validateRaw, Bind.bind, Except.bind,
-    sections, memory, limits, globals, exports, types, bodies]
+    sections, memory, limits, globals, exports, data, types, bodies]
 
 #print axioms validateFunctionPairs_eq_cons
 #print axioms validateRaw_eq_of_parts
