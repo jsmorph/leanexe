@@ -8,6 +8,10 @@ namespace LeanExe.Extract.Core
 def scalarSignature? : Lean.Expr → Option (Nat × LeanExe.Source.Scalar.PublicResult)
   | .const ``UInt64 [] => some (0, .word)
   | .const ``Bool [] => some (0, .boolean)
+  | .app (.const ``Id [.zero]) inner =>
+      match scalarSignature? inner with
+      | some (0, result) => some (0, result)
+      | _ => none
   | .forallE _ (.const ``UInt64 []) body _ =>
       (scalarSignature? body).map fun signature => (signature.1 + 1, signature.2)
   | .mdata _ body => scalarSignature? body
@@ -19,6 +23,7 @@ theorem scalarSignature_accepts {type : Lean.Expr} {arity : Nat}
     scalarSignature? type = some (arity, result) := by
   induction h with
   | result kind => cases kind <;> rfl
+  | idResult _ ih => simp [scalarSignature?, ih]
   | arg _ ih => simp [scalarSignature?, ih]
   | metadata _ ih => exact ih
 

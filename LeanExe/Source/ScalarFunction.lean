@@ -25,6 +25,8 @@ end PublicResult
 
 inductive Arrow : Lean.Expr → Nat → PublicResult → Prop where
   | result (kind : PublicResult) : Arrow kind.type 0 kind
+  | idResult (body : Arrow type 0 kind) :
+      Arrow (.app (.const ``Id [.zero]) type) 0 kind
   | arg (rest : Arrow type arity kind) :
       Arrow (.forallE name (.const ``UInt64 []) type bi) (arity + 1) kind
   | metadata (body : Arrow type arity kind) : Arrow (.mdata data type) arity kind
