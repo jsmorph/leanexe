@@ -108,7 +108,10 @@ is evaluated under the original let, preserving captures and shadowing. Used
 and unused bound values are checked. The decision expression must match the
 standard evidence with the bound value substituted into its body. Ordinary and
 dependent conditions, saved decisions and Boolean-result choices share this
-rule. This grammar does not yet admit arbitrary local function declarations or
+rule. Conjunction and disjunction decision instances may retain either condition
+argument or reduce a prefix of its leading lets. The original condition and all
+bound values remain checked. Changed propositions, child decisions and instance
+heads are rejected. This grammar does not yet admit arbitrary local function declarations or
 noncanonical decision annotations inside proposition lets.
 
 Literal `true`/`false` Boolean guards and `True`/`False` propositional guards are

@@ -5475,6 +5475,59 @@ def rangePropositionLetHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + 1
   return a
 
+def decisionLetUnused (x y : UInt64) : UInt64 :=
+  if (let _saved := x == y; True) ∧ (let _word := x + y; False) then x else y + 1
+
+def decisionLetLeft (x y : UInt64) : UInt64 :=
+  if (let _word := x + y; let _saved := x == y; True) ∧ x < y then x + 3 else y + 7
+
+def decisionLetRight (x y : UInt64) : UInt64 :=
+  let flag := x == 0
+  if flag ∨ (let _word := x + y; False) then x + 1 else y + 2
+
+def decisionLetDependent (x y : UInt64) : UInt64 :=
+  let flag := x == y
+  if _h : (let _saved := flag; True) ∧ flag then x + y else x - y
+
+def decisionLetSaved (x y : UInt64) : UInt64 :=
+  let flag := decide ((let _saved := x == 0; False) ∨ (let _word := x + y; True))
+  flag.toUInt64 + x
+
+def decisionLetHelper (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => if (let _saved := b; True) ∧ x < y then !b else b
+  (f true).toUInt64 + (f false).toUInt64 + y
+
+def rangeDecisionLetStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let _saved := a == seed; True) ∧ i.toUInt64 < a then break
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeDecisionLetContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if a = seed ∨ (let _word := a + i.toUInt64; False) then
+      a := a + 3
+      continue
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeDecisionLetOuter (count seed : UInt64) : UInt64 := Id.run do
+  let flag := seed != 0
+  let mut a := if flag ∧ (let _saved := flag; True) then seed + 1 else seed
+  for i in [:count.toNat] do
+    if (let _word := a + i.toUInt64; False) ∨ a < seed then a := a + 2 else a := a + 1
+  return a + (decide ((let _saved := flag; True) ∧ a = seed)).toUInt64
+
+def rangeDecisionLetHelper (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => if (let _saved := b; True) ∧ seed < count then !b else b
+  let mut a := seed
+  for i in [:count.toNat] do
+    if f true ∧ (let _word := a + i.toUInt64; True) then break
+    a := a + (f (a == 0)).toUInt64 + 1
+  return a
+
 def booleanPredicateResultBool (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => !b && x != 0
   let g := fun b : Bool => f b
@@ -8118,6 +8171,16 @@ run_elab do
       `ArithmeticModeTest.rangePropositionLetContinue,
       `ArithmeticModeTest.rangePropositionLetOuter,
       `ArithmeticModeTest.rangePropositionLetHelper,
+      `ArithmeticModeTest.decisionLetUnused,
+      `ArithmeticModeTest.decisionLetLeft,
+      `ArithmeticModeTest.decisionLetRight,
+      `ArithmeticModeTest.decisionLetDependent,
+      `ArithmeticModeTest.decisionLetSaved,
+      `ArithmeticModeTest.decisionLetHelper,
+      `ArithmeticModeTest.rangeDecisionLetStep,
+      `ArithmeticModeTest.rangeDecisionLetContinue,
+      `ArithmeticModeTest.rangeDecisionLetOuter,
+      `ArithmeticModeTest.rangeDecisionLetHelper,
       `ArithmeticModeTest.booleanPredicateResultBool,
       `ArithmeticModeTest.booleanPredicateResultWord,
       `ArithmeticModeTest.booleanPredicateResultNested,

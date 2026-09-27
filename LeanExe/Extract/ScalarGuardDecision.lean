@@ -13,37 +13,55 @@ private theorem stripDecisionNegations_accepts (n : Nat) (condition evidence : L
     stripDecisionNegations? n (GuardNegation.evidence n condition evidence) = some evidence := by
   induction n <;> simp_all [stripDecisionNegations?, GuardNegation.evidence]
 
-/-- Find the two child decisions, then check all connective and proposition syntax. -/
-def junctionEvidenceOperands? (n : Nat) (operation : Junction) (left right evidence : Lean.Expr) :
-    Option (Lean.Expr × Lean.Expr) := do
+def conditionChoice? (choices : List Lean.Expr) (condition : Lean.Expr) : Bool :=
+  choices.any (LeanExe.Source.ExprEquality.same condition)
+
+@[simp] theorem conditionChoice_eq_true (choices : List Lean.Expr) (condition : Lean.Expr) :
+    conditionChoice? choices condition = true ↔ condition ∈ choices := by
+  simp [conditionChoice?, List.any_eq_true]
+
+/-- Check the connective, proposition arguments, child decisions and every negation wrapper. -/
+def junctionEvidenceOperands? (n : Nat) (operation : Junction) (left right : Lean.Expr)
+    (leftChoices rightChoices : List Lean.Expr) (evidence : Lean.Expr) :
+    Option (Lean.Expr × Lean.Expr × Lean.Expr × Lean.Expr) := do
   let inner ← stripDecisionNegations? n evidence
   match inner with
-  | .app (.app _ leftEvidence) rightEvidence =>
-      if LeanExe.Source.ExprEquality.same evidence
-          (GuardNegation.evidence n (operation.condition left right)
-            (operation.evidence left right leftEvidence rightEvidence)) then
-        some (leftEvidence, rightEvidence)
+  | .app (.app (.app (.app _ leftProposition) rightProposition) leftEvidence) rightEvidence =>
+      if conditionChoice? leftChoices leftProposition && conditionChoice? rightChoices rightProposition &&
+          LeanExe.Source.ExprEquality.same evidence
+            (GuardNegation.evidence n (operation.condition left right)
+              (operation.evidence leftProposition rightProposition leftEvidence rightEvidence)) then
+        some (leftProposition, rightProposition, leftEvidence, rightEvidence)
       else none
   | _ => none
 
 @[simp] theorem junctionEvidenceOperands_accepts (n : Nat) (operation : Junction)
-    (left right leftEvidence rightEvidence : Lean.Expr) :
-    junctionEvidenceOperands? n operation left right
+    (left right leftEvidence rightEvidence : Lean.Expr) (leftChoices rightChoices : List Lean.Expr)
+    {leftProposition rightProposition : Lean.Expr}
+    (leftMember : leftProposition ∈ leftChoices) (rightMember : rightProposition ∈ rightChoices) :
+    junctionEvidenceOperands? n operation left right leftChoices rightChoices
       (GuardNegation.evidence n (operation.condition left right)
-        (operation.evidence left right leftEvidence rightEvidence)) = some (leftEvidence, rightEvidence) := by
-  simp [junctionEvidenceOperands?, stripDecisionNegations_accepts, Junction.evidence]
+        (operation.evidence leftProposition rightProposition leftEvidence rightEvidence)) =
+      some (leftProposition, rightProposition, leftEvidence, rightEvidence) := by
+  simp [junctionEvidenceOperands?, stripDecisionNegations_accepts, Junction.evidence, leftMember, rightMember]
 
 theorem junctionEvidenceOperands_sound {n : Nat} {operation : Junction}
-    {left right evidence leftEvidence rightEvidence : Lean.Expr}
-    (found : junctionEvidenceOperands? n operation left right evidence = some (leftEvidence, rightEvidence)) :
-    evidence = GuardNegation.evidence n (operation.condition left right)
-      (operation.evidence left right leftEvidence rightEvidence) := by
+    {left right evidence leftProposition rightProposition leftEvidence rightEvidence : Lean.Expr}
+    {leftChoices rightChoices : List Lean.Expr}
+    (found : junctionEvidenceOperands? n operation left right leftChoices rightChoices evidence =
+      some (leftProposition, rightProposition, leftEvidence, rightEvidence)) :
+    leftProposition ∈ leftChoices ∧ rightProposition ∈ rightChoices ∧
+      evidence = GuardNegation.evidence n (operation.condition left right)
+        (operation.evidence leftProposition rightProposition leftEvidence rightEvidence) := by
   simp only [junctionEvidenceOperands?, bind, Option.bind_eq_some_iff] at found
   obtain ⟨inner, _, accepted⟩ := found
   split at accepted
   · split at accepted
-    · cases accepted
-      exact LeanExe.Source.ExprEquality.same_eq_true.mp (by assumption)
+    · rename_i valid
+      cases accepted
+      simp only [Bool.and_eq_true, conditionChoice_eq_true, LeanExe.Source.ExprEquality.same_eq_true,
+        and_assoc] at valid
+      exact valid
     · contradiction
   · contradiction
 
@@ -55,19 +73,19 @@ def guardDecision? : Guard → Lean.Expr → Bool
           reannotation? left decisionLeft && reannotation? right decisionRight
       | none => false
   | .junction n op left right, evidence =>
-      match junctionEvidenceOperands? n op left.condition right.condition evidence with
-      | some (leftEvidence, rightEvidence) =>
+      match junctionEvidenceOperands? n op left.condition right.condition left.conditionChoices right.conditionChoices evidence with
+      | some (_, _, leftEvidence, rightEvidence) =>
           guardDecision? left leftEvidence && guardDecision? right rightEvidence
       | none => false
   | guard@(.boolean ..), evidence => LeanExe.Source.ExprEquality.same evidence guard.evidence
 
   | .savedLeft n op left right, evidence =>
-      match junctionEvidenceOperands? n op left.condition right.condition evidence with
-      | some (leftEvidence, rightEvidence) => LeanExe.Source.ExprEquality.same leftEvidence left.evidence && guardDecision? right rightEvidence
+      match junctionEvidenceOperands? n op left.condition right.condition [left.condition] right.conditionChoices evidence with
+      | some (_, _, leftEvidence, rightEvidence) => LeanExe.Source.ExprEquality.same leftEvidence left.evidence && guardDecision? right rightEvidence
       | none => false
   | .savedRight n op left right, evidence =>
-      match junctionEvidenceOperands? n op left.condition right.condition evidence with
-      | some (leftEvidence, rightEvidence) => guardDecision? left leftEvidence && LeanExe.Source.ExprEquality.same rightEvidence right.evidence
+      match junctionEvidenceOperands? n op left.condition right.condition left.conditionChoices [right.condition] evidence with
+      | some (_, _, leftEvidence, rightEvidence) => guardDecision? left leftEvidence && LeanExe.Source.ExprEquality.same rightEvidence right.evidence
       | none => false
   | guard@(.savedBoth ..), evidence => LeanExe.Source.ExprEquality.same evidence guard.evidence
   | guard@(.letGuard ..), evidence => LeanExe.Source.ExprEquality.same evidence guard.evidence
@@ -79,10 +97,11 @@ def guardDecision? : Guard → Lean.Expr → Bool
   | literal value => simp [guardDecision?]
   | compare op left right decisionLeft decisionRight leftMeaning rightMeaning =>
     simp [guardDecision?, reannotation_accepts leftMeaning, reannotation_accepts rightMeaning]
-  | junction n op left right leftMeaning rightMeaning ihl ihr => simp [guardDecision?, ihl, ihr]
+  | junction n op left right leftCondition rightCondition leftMeaning rightMeaning ihl ihr =>
+    simp [guardDecision?, leftCondition.mem_choices, rightCondition.mem_choices, ihl, ihr]
   | boolean => simp [guardDecision?]
-  | savedLeft n op left right meaning ih => simp [guardDecision?, ih]
-  | savedRight n op left right meaning ih => simp [guardDecision?, ih]
+  | savedLeft n op left right condition meaning ih => simp [guardDecision?, condition.mem_choices, ih]
+  | savedRight n op left right condition meaning ih => simp [guardDecision?, condition.mem_choices, ih]
   | savedBoth => simp [guardDecision?, Guard.evidence]
   | letGuard => simp [guardDecision?]
   | letSaved => simp [guardDecision?]
@@ -106,10 +125,12 @@ theorem guardDecision_sound {guard : Guard} {evidence : Lean.Expr}
   | junction n op left right ihl ihr =>
     simp only [guardDecision?] at accepted
     split at accepted
-    · rename_i leftEvidence rightEvidence found
+    · rename_i leftProposition rightProposition leftEvidence rightEvidence found
       simp only [Bool.and_eq_true] at accepted
-      rw [junctionEvidenceOperands_sound found]
-      exact .junction n op left right (ihl accepted.1) (ihr accepted.2)
+      obtain ⟨leftMember, rightMember, same⟩ := junctionEvidenceOperands_sound found
+      rw [same]
+      exact .junction n op left right (left.conditionChoices_sound leftMember)
+        (right.conditionChoices_sound rightMember) (ihl accepted.1) (ihr accepted.2)
     · contradiction
   | boolean m n op left right =>
     have same := LeanExe.Source.ExprEquality.same_eq_true.mp accepted
@@ -119,20 +140,24 @@ theorem guardDecision_sound {guard : Guard} {evidence : Lean.Expr}
   | savedLeft n op left right ih =>
     simp only [guardDecision?] at accepted
     split at accepted
-    · rename_i leftEvidence rightEvidence found
+    · rename_i leftProposition rightProposition leftEvidence rightEvidence found
       have same := accepted
       simp only [Bool.and_eq_true] at same
-      rw [junctionEvidenceOperands_sound found, LeanExe.Source.ExprEquality.same_eq_true.mp same.1]
-      exact .savedLeft n op left right (ih same.2)
+      obtain ⟨leftMember, rightMember, equal⟩ := junctionEvidenceOperands_sound found
+      have leftSame : leftProposition = left.condition := List.mem_singleton.mp leftMember
+      rw [equal, leftSame, LeanExe.Source.ExprEquality.same_eq_true.mp same.1]
+      exact .savedLeft n op left right (right.conditionChoices_sound rightMember) (ih same.2)
     · contradiction
   | savedRight n op left right ih =>
     simp only [guardDecision?] at accepted
     split at accepted
-    · rename_i leftEvidence rightEvidence found
+    · rename_i leftProposition rightProposition leftEvidence rightEvidence found
       have same := accepted
       simp only [Bool.and_eq_true] at same
-      rw [junctionEvidenceOperands_sound found, LeanExe.Source.ExprEquality.same_eq_true.mp same.2]
-      exact .savedRight n op left right (ih same.1)
+      obtain ⟨leftMember, rightMember, equal⟩ := junctionEvidenceOperands_sound found
+      have rightSame : rightProposition = right.condition := List.mem_singleton.mp rightMember
+      rw [equal, rightSame, LeanExe.Source.ExprEquality.same_eq_true.mp same.2]
+      exact .savedRight n op left right (left.conditionChoices_sound leftMember) (ih same.1)
     · contradiction
   | savedBoth n op left right =>
     have same := LeanExe.Source.ExprEquality.same_eq_true.mp accepted

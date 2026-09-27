@@ -294,14 +294,16 @@ comparisons, 16,152 invalid-input checks and 576 controls. Prior tests pass 78,9
 comparisons, 47,817 invalid-input checks and 1,792 controls. Evidence is in
 [the proposition-let archive](proofs/compiler/proposition-let-2026-09-26/README.md).
 
-Next capability: let reduction in decision type arguments. For example, Lean
-can retain `(let _saved := x == y; True) ∧ (let _word := x + y; False)` as the
-condition while supplying `True` and `False` to its conjunction decision. The
-current recognizer checks the exact enclosing type arguments and rejects that
-form. Add a checked let-reduction relation while continuing to check all bound
-values in the original condition. Canonical substituted leaf evidence is covered.
+Let reduction in conjunction and disjunction decision arguments passes source
+membership, decision acceptance/soundness, parser reconstruction, scalar and loop
+correctness, and both IR invariant checks. Each argument may retain its original
+proposition or reduce a prefix of its leading lets. Original conditions and all
+bound values remain checked. New tests pass 96,948 native/IR comparisons, 50,720
+invalid-input checks and 2,336 controls. Prior tests pass 103,336 comparisons,
+63,969 invalid-input checks and 2,368 controls. The full source-to-WASM and
+independent engine checks are pending.
 
-Then: standalone propositional negation of local Boolean values, retained instance
+Next: standalone propositional negation of local Boolean values, retained instance
 and Bool-parameter Id wrappers, and broader signatures. Full-dialect correctness
 remains unfinished.
 Complete each capability through WASM and commit/push frequently.

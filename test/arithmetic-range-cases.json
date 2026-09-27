@@ -502,5 +502,9 @@
   "rangePropositionLetStep",
   "rangePropositionLetContinue",
   "rangePropositionLetOuter",
-  "rangePropositionLetHelper"
+  "rangePropositionLetHelper",
+  "rangeDecisionLetStep",
+  "rangeDecisionLetContinue",
+  "rangeDecisionLetOuter",
+  "rangeDecisionLetHelper"
 ]
