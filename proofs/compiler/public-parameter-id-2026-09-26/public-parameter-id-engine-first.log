@@ -1,0 +1,27 @@
+cli-build: passed
+admission-test: passed
+reserved-exports: passed
+fixture: exit 1
+test/ArithmeticMilestone.lean:8032:52: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq (Id UInt64)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/ArithmeticMilestone.lean:8033:61: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq (Id UInt64)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/ArithmeticMilestone.lean:8029:63: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq (Id UInt64)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/ArithmeticMilestone.lean:8026:64: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq (Id UInt64)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/ArithmeticMilestone.lean:8027:64: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq (Id UInt64)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+
