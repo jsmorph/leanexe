@@ -869,10 +869,13 @@ Prior tests pass 47,856 comparisons, 25,488 invalid-input checks and
 positive controls remain accepted. The corpus contains 1565 declarations.
 Evidence is in [the Boolean accumulator archive](proofs/compiler/boolean-accumulator-2026-09-27/README.md).
 
-Current capability: monadic scalar bindings inside Boolean loop steps. Preserve
-fixed native probes, add exact standard Id bind syntax with checked word/Boolean
-input domains and Boolean step output annotations, and prove the extension
-through WASM before expanding step-result bindings and helper functions.
+Current capability: monadic scalar bindings inside Boolean loop steps. Source
+totality, exact annotation parsers, acceptance/support, correctness and invariants
+pass, followed by the public extractor. Two original direct-bind probes and
+eight native programs compile. The two original conditional-action probes still
+require step-returning local continuations; both remain fixed for the next
+extension. New syntax tests pass 13,824 comparisons and 7,488 invalid-input
+checks. The general source-to-WASM proof and independent V8 checks are next.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

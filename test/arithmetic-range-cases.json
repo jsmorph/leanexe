@@ -901,5 +901,13 @@
   "rangeBooleanAccumulatorWordTail",
   "rangeBooleanAccumulatorInput",
   "rangeBooleanAccumulatorHigh",
-  "rangeBooleanAccumulatorHuge"
+  "rangeBooleanAccumulatorHuge",
+  "rangeBooleanStepBindWord",
+  "rangeBooleanStepBindBoolean",
+  "rangeBooleanStepBindChain",
+  "rangeBooleanStepBindUnusedWord",
+  "rangeBooleanStepBindUnusedBoolean",
+  "rangeBooleanStepBindCaptured",
+  "rangeBooleanStepBindContinue",
+  "rangeBooleanStepBindWordTail"
 ]
