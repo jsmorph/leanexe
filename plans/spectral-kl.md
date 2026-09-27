@@ -85,3 +85,44 @@ for this scalar iteration; introduce GPU at the full batch Gram computation.
 The compiler rejected a 41-element array literal through `List.toArray`.
 Constructing the coefficient array with `Array.push` compiles successfully and
 preserves the checked coefficient-list equality.
+
+### Iteration 4 — dense matrices and WebGPU moments
+
+Completed the observations → means and uncentered second moments → Cholesky
+whitening → symmetric Jacobi rotations → stable spectral sum pipeline in Lean
+and compiled it to WASM. The shared CLI accepts JSON observations, with separate
+CPU and GPU modes. See [the guide](../docs/spectral-kl.md) for usage and limits.
+
+`node tools/spectral-kl/build.js`, `node test/spectral_matrix.mjs`, and
+`node test/spectral_cli.mjs` pass. Matrix tests compare against Simpson
+quadrature with independent pivoted linear solves, for dimensions 1, 2, 3, 8,
+16 and 32. The largest case uses 16381 and 16384 observations. The largest
+observed difference from quadrature is 1.98e-16. Rank-deficient raw moments,
+repeated eigenvalues, sign/permutation invariance, ridge monotonicity, and
+explicit failure cases also pass. CPU and GPU cases at minimum ridge and
+maximum feature magnitude agree with a rank-one closed form to 2.23e-16,
+including a matrix with condition number about 8.6e9. This evidence is numerical testing, not a
+matrix error certificate; a composed conditioning and roundoff theorem remains
+open.
+
+GPU decision: full batch Gram computation is substantial independent reduction
+work. Each of the two 32-feature groups requires roughly 16 million feature
+products. Added a separate two-pass WGSL implementation, with the same
+binary32 input values as the CPU baseline. CPU accumulation uses binary64;
+WGSL uses binary32 and tree reductions. Both feed the same WASM solver.
+
+`node test/spectral_matrix.mjs --gpu --allow-software` passes on Mesa llvmpipe
+(Mesa 25.0.7, LLVM 19.1.7) through Dawn `webgpu@0.6.1`. Maximum moment difference
+from CPU: 1.43e-8; maximum complete score difference: 2.00e-9. Additional cases
+cover 1, 255, 256, 257 and 1031 observations, ±16 features and partial tiles.
+Both CLI example modes run end to end. The CPU score is 0.01931482755368568.
+No hardware GPU is exposed in this environment; this is software WebGPU
+validation. Hardware execution and shader numerical proofs remain open.
+The Vulkan loader, Mesa and LLVM shared libraries were extracted locally
+under ignored `build/spectral-kl-gpu`, without system installation.
+
+The initial monolithic matrix entry hit the compiler’s 120-second limit.
+Splitting it into Cholesky, triangular solve, whitening, rotation and spectral
+sum helpers let compilation complete. The mathematical pipeline stayed the
+same. A sandbox EPERM blocked CLI subprocess testing; the approved direct
+test passed outside that restriction.

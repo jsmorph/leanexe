@@ -17596,3 +17596,35 @@ A final fetch confirms main remains at `8dbb8e8a` and remote drone at `b84d577e`
 The merge retains both parents and report histories, includes the checked drone
 proof adaptation, and leaves only the original 12-line drone registration
 addition unstaged. Public proof statements and planner source are unchanged.
+
+## 2026-09-27 — spectral KL numerical iterations
+
+On `mathalgo`, four complete iterations implement the regularized spectral KL
+moment functional from Francis Bach’s article. The first established a scalar
+Lean → WASM → Wasmtime path and a pure IEEE error theorem. The second proved a
+coarse cancellation-free kernel approximation. The third added sample input
+and a degree-40 kernel with a proved total absolute error at most 1e-14;
+109 WASM comparisons with a 100-digit logarithm oracle observed at most
+5.56e-16 error. A generic geometric remainder and a contracting Horner bound
+provide the reusable mathematical parts. The coefficient table uses
+`Array.push` because compilation rejected the large array literal’s
+`List.toArray` expansion.
+
+The fourth iteration adds a dense matrix pipeline and a JSON CLI. Independent
+quadrature with direct linear solves agrees with the Cholesky/Jacobi WASM
+implementation to 1.98e-16 on the tested cases. These checks include dimensions
+through 32, rank-deficient raw moments and repeated eigenvalues. Splitting the
+matrix implementation into numerical helpers resolved a compilation timeout.
+
+The scalar iterations had no substantial GPU work. Dense moment accumulation
+does: roughly 16 million products per group in the largest example. The
+separate WGSL variant runs tree reductions over observations, then feeds the
+same WASM solver. Through Dawn and software Vulkan, the full pipeline passes
+with at most 2e-9 score difference from CPU. There is no exposed hardware GPU;
+the locally extracted .so files provide the software validation runtime.
+
+The proofs cover the scalar numerical model. Matrix conditioning, moment
+roundoff, shader arithmetic, and universal WASM execution require further
+proofs before claiming a certified complete score. Sampling error is a separate
+statistical question. The [usage guide](docs/spectral-kl.md) and
+[iteration record](plans/spectral-kl.md) state the current bounds and commands.
