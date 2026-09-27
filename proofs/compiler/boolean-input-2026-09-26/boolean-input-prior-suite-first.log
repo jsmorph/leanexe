@@ -1,0 +1,5 @@
+scalar_predicate_input 0 180 native/predicate-input IR comparisons passed
+scalar_predicate_input_syntax 0 2016 native/predicate-input syntax comparisons and 2448 invalid-input tests passed
+scalar_predicate_input_step_syntax 0 3456 native/predicate-input step syntax comparisons and 2448 invalid-input tests passed
+scalar_predicate_input_outer_syntax 0 3456 native/predicate-input outer syntax comparisons and 2448 invalid-input tests passed
+scalar_boolean_function 1 test/scalar_boolean_function.lean:155:0: error: BooleanFunctionTest.boolFnBooleanResult: unsupported Boolean function accepted
