@@ -180,20 +180,21 @@ native/IR comparisons, 16,716 invalid-input checks and 804 controls. Prior tests
 pass 15,572 comparisons, 11,598 rejections and 828 controls. Evidence is in
 [the Boolean-wrapper archive](proofs/compiler/boolean-predicate-wrapper-2026-09-26/README.md).
 
-Scalar Boolean do binds containing Bool-input calls now pass source totality,
-extraction correctness, acceptance, soundness and invariant proofs. Direct and
+Scalar Boolean do binds containing Bool-input calls are complete. Direct and
 wrapped actions are recursively checked, including unused values. Captures,
 shadowing, choices and scalar calculations inside loops preserve typed flags.
-Focused tests pass 8,244 native/IR comparisons, 9,216 invalid-input checks and 672
-controls. Prior tests pass 6,468 comparisons, 5,608 rejections and 422 controls.
-The general compiler theorem, eighteen audits and native Lean/WASM execution are
-next for this candidate.
+The general source-to-WASM theorem and eighteen audits pass. Native Lean/V8 agree
+on 509 inputs across 28 declarations, including thirteen ranges; eighteen shared
+modules retain identical bytes. Focused tests pass 8,244 native/IR comparisons,
+9,216 invalid-input checks and 672 controls. Prior tests pass 6,468 comparisons,
+5,608 rejections and 422 controls. Evidence is in
+[the scalar Boolean-bind archive](proofs/compiler/boolean-predicate-bind-2026-09-26/README.md).
 
-Next: finish scalar Boolean binds through WASM, then binds that continue into
-loop-step and outer-loop bodies, followed by direct Boolean helper results. Saved
-Boolean variables in mixed propositional guards, retained instance and
-Bool-parameter Id wrappers, and broader signatures follow. Full-dialect correctness
-remains unfinished. Complete each capability through WASM and commit/push frequently.
+Next: Boolean binds that continue into loop-step and outer-loop bodies, followed
+by direct Boolean helper results. Saved Boolean variables in mixed propositional
+guards, retained instance and Bool-parameter Id wrappers, and broader signatures
+follow. Full-dialect correctness remains unfinished. Complete each capability
+through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
