@@ -500,13 +500,16 @@ controls. Prior tests pass 40,560 comparisons, 39,168 invalid-input checks and
 2,880 controls. Evidence is in
 [the outer-condition loop archive](proofs/compiler/boolean-loop-outer-condition-2026-09-27/README.md).
 
-Current capability: mixed scalar/loop arms in outer Boolean conditions. A lazy
-arm selector tries scalar extraction before loop extraction, with both arms
-checked. Scalar arms have proved zero-iteration plans. Focused source, extraction,
-correctness, invariant and WASM-admission proofs pass. New tests pass 97,008
-native/IR comparisons, 41,472 invalid-input checks and 3,456 wrapper controls,
-including direct range-extractor checks for both-scalar arms. Complete compiler
-proof, native Lean/V8 checks and evidence archive are next.
+Mixed scalar/loop arms in outer Boolean conditions are complete, including both
+arm orders, both-scalar arms, nested conditions and standard Id results. Scalar
+arms use proved zero-iteration plans; loop extraction is a lazy fallback. Both
+arms and exact decision evidence are checked. The complete source-to-WASM theorem and nineteen
+audits pass. Native Lean/V8 agree on 609 inputs across 28 declarations, including
+twenty-three ranges; eighteen prior modules retain identical bytes. New tests pass
+97,008 native/IR comparisons, 41,472 invalid-input checks and 3,456 wrapper
+controls. Prior tests pass 32,496 comparisons, 29,952 invalid-input checks and
+2,304 controls. Evidence is in
+[the mixed-condition loop archive](proofs/compiler/boolean-loop-mixed-condition-2026-09-27/README.md).
 
 Next: local continuations containing loops, followed by
 retained instances and broader signatures. Conditional Id actions can elaborate
