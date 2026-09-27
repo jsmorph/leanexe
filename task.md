@@ -1055,18 +1055,26 @@ comparisons, 17,664 invalid-input checks and 384 controls; prior tests pass
 All six fixed probes compile. The corpus contains 1715 declarations. Evidence is in
 [the outer word-loop archive](proofs/compiler/boolean-binary-word-loop-helper-2026-09-27/README.md).
 
-Current capability: binary Boolean helper declarations around Boolean-result loops.
-Five fixed probes rejected before this increment; the word-tail probe already
-compiled. All six now compile. Source totality, complete acceptance, source
-reconstruction, correctness across loop states and IR invariants pass. Function
-integration passes 211 targets. New tests pass 9,408 native/IR comparisons,
-17,664 invalid-input checks and 384 admission controls. Eight native fixtures
-are registered. Full WASM and independent engine checks remain before advancing.
-Multiple loops and the remaining dialect still need proofs.
+Binary Boolean helpers around Boolean-result loop computations are proved through
+WASM. Captures, bounds, initial flags, step bodies, exits and saved loop results
+are checked. Unused bodies are validated even in empty ranges. The complete
+proof gate passes 3397 targets and all 45 audits. Native Lean/V8 agree on 2,363
+inputs across 114 declarations; all 106 prior modules retain identical bytes.
+New tests pass 9,408 comparisons, 17,664 invalid-input checks and 384 controls;
+prior tests pass 18,816 comparisons, 35,328 invalid inputs and 768 controls.
+All six fixed probes compile; the word-tail probe already compiled before the
+extension. The corpus contains 1723 declarations. Evidence is in
+[the outer Boolean-loop archive](proofs/compiler/boolean-binary-boolean-loop-helper-2026-09-27/README.md).
 
-Next: general helper compositions inside scalar Boolean operands. Retained
-instances, broader signatures, composition of multiple loops and the remaining
-LeanExe dialect also need proofs. Full-dialect correctness remains unfinished.
+Current capability: consecutive bounded loops with word results.
+Six fixed probes report 0 accepted and 6 rejected before the increment.
+Preserve the probes. Prove finite-store framing and sequence-plan execution,
+then source semantics, extraction, admission, correctness, descriptor bounds,
+and the complete WASM theorem before the independent engine checks.
+
+Next: Boolean-result loop combinations and nested loops. Broader helper
+signatures, heap values, floats, imports and global calls remain outside the
+complete compiler theorem. Full-dialect correctness remains unfinished.
 Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
