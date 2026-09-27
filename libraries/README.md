@@ -1,6 +1,6 @@
 # Seminumerical libraries
 
-This PoC develops small LeanExe components, runnable clients, and technical reports.  It contains number-theory, polynomial, and transcendental libraries.  Components have stated specifications and execution tests.  Correctness proofs are deferred.
+These libraries provide Lean functions, runnable clients, and technical reports.  [LeanExe](../README.md) compiles the functions and their callers to WebAssembly (WASM), which the examples run in Wasmtime.
 
 ## Components
 
@@ -8,10 +8,18 @@ This PoC develops small LeanExe components, runnable clients, and technical repo
 |------|-----------|----------------|---------------|
 | Greatest common divisor | Euclidean remainder algorithm | `UInt64` loop | [GCD](../LeanExe/Lib/NumberTheory/Gcd/README.md) |
 | Greatest common divisor | Binary GCD | `UInt64` shifts and subtraction | [Binary GCD](../LeanExe/Lib/NumberTheory/BinaryGcd/README.md) |
-| Polynomial evaluation | Horner's rule | Checked `UInt64` loop | [Horner evaluation](../LeanExe/Lib/Polynomial/Horner/README.md) |
+| Polynomial evaluation | Horner's rule | `UInt64` loop with overflow checks | [Horner evaluation](../LeanExe/Lib/Polynomial/Horner/README.md) |
 | Exponential | Degree-six Taylor approximation | Binary64 Horner evaluation on `[-1, 0]` | [Bounded exponential](../LeanExe/Lib/Transcendental/Exp/README.md) |
 
 A task may have several algorithms, and an algorithm may have several implementations.  Each catalog entry identifies one implementation and its public Lean declaration.  A library groups related components.  Clients select implementations through ordinary imports and function calls.
+
+## Verification status
+
+Formal correctness proofs for these library functions, their generated WASM, and their clients remain deferred.  Lean checks the source types.  The execution tests pass 252 WASM/native comparisons across the four components and their clients.  GCD and polynomial tests use integer references.  Exponential tests compare result bits and check sampled accuracy against JavaScript's `Math.exp`.  The tests also check rejected inputs, CLI diagnostics, and component discovery.  Each component's README and report identify its test cases and intended specification.
+
+The exponential follows a separate development with a [Lean theorem about its WASM model](../proofs/talos/lean/Project/ExpSmall/Spec.lean).  The [exponential component](../LeanExe/Lib/Transcendental/Exp/README.md#verification-status) states that theorem's scope and the proof connection still required for this implementation.
+
+The examples use the compiler's `compile` command.  The [general compiler correctness theorem](../docs/arithmetic-correctness.md) applies to the restricted `compile-arithmetic` command.  Evidence for these compiled library clients comes from the execution tests described above.
 
 ## Setup and commands
 
@@ -38,11 +46,11 @@ Integer commands accept decimal `UInt64` values.  Array arguments use comma-sepa
 
 Each component directory under `LeanExe/Lib` contains its implementation in `Basic.lean`, its README, and its report in LaTeX and PDF form.  Reports include listings from the executable Lean files.  From the repository root, `tools/seminum reports` builds every report with `pdflatex` and copies the PDFs into the component directories.  Auxiliary files remain under `build/seminum/reports`.  The PDFs can be read without a TeX installation.
 
-The [development journal](../devnotes.md) records batch reviews and remaining work.  The first batch introduced Euclidean GCD and Horner evaluation.  The second added binary GCD and a bounded exponential.  The combined test suite passes 252 WASM/native comparisons and checks CLI errors, mathematical references, and component discovery.  The reports include the exact commands and scope of the numerical comparison.
+The [development journal](../devnotes.md) records batch reviews and remaining work.  The reports describe the algorithms, implementation choices, and tests.
 
 ## Adding a component or library
 
-A contribution can contain one component or a group of components.  Its README describes the API, intended behavior, runnable example, test and proof status, and references with an explanation of their use.  A short report explains the algorithm and implementation choices.  Related implementations can share explanatory material and tests.
+A contribution can contain one component or a group of components.  Its README describes the API, intended behavior, runnable example, test and proof status, and references with an explanation of their use.  A proof claim names the theorem and the function or model it covers.  A test claim identifies the tested inputs and reference calculation.  A short report explains the algorithm and implementation choices.  Related implementations can share explanatory material and tests.
 
 These initial libraries use modules under `LeanExe.Lib` because the current compiler accepts executable helper dependencies under the entry module's root namespace.  The [language specification](../docs/spec.md) describes that boundary.  Independently named external libraries need an extension to dependency admission.  Private helpers also encounter this boundary because Lean gives them names rooted at `_private`.  The current components use public definitions.
 

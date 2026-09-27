@@ -4,11 +4,19 @@
 \maketitle
 
 \section{Task and interface}
-The task is the greatest common divisor of two nonnegative integers represented
-by \texttt{UInt64}.  The intended result of \texttt{gcdBinary a b} is
-$\gcd(a,b)$, with $\gcd(0,0)=0$.  Euclidean GCD and binary GCD are two algorithms
-for this task.  This component implements the latter with shifts and subtraction.
-Formal correctness proofs for the library integration are deferred.
+\texttt{gcdBinary} computes the greatest common divisor of two \texttt{UInt64}
+values using shifts, comparisons, and subtraction.  It accepts every pair of
+input words.  The intended result is $\gcd(a,b)$, with $\gcd(0,0)=0$.
+
+LeanExe compiles the Lean function and its callers to WebAssembly (WASM).
+The examples run that WASM in Wasmtime.
+
+\section{Verification status}
+Lean checks the source types.  Execution tests pass for selected inputs:
+both GCD implementations agree with an arbitrary-precision integer reference
+in WASM and native Lean.  The native test also checks Lean's \texttt{Nat.gcd}.
+Formal correctness and termination proofs for this source function,
+its generated WASM, and its fraction client remain deferred.
 
 \section{Algorithm and executable source}
 Common factors of two can be removed from both operands and restored at the
@@ -18,18 +26,19 @@ These identities are described in NIST's binary GCD entry~\cite{binary}.
 
 \lstinputlisting{LeanExe/Lib/NumberTheory/BinaryGcd/Basic.lean}
 
-The document build reads this listing from the executable Lean file.  Zero
-inputs return before a shift loop can encounter zero.  The common shift count
-is at most 63 for nonzero inputs.  Each subtraction orders the operands first,
-so the intended arithmetic uses a nonnegative difference.  The returned value
-fits within the original inputs.  The implementation carries three words and
-allocates no arrays.
+The listing comes from \texttt{Basic.lean}.  Zero inputs return before a shift
+loop can encounter zero.  The common shift count is at most 63 for nonzero
+inputs.  Ordering the operands before subtraction gives a nonnegative
+difference.  The result fits in \texttt{UInt64}.  The loop keeps two operands
+and a shift count.
 
 \section{A shared client task}
 The example program provides two fraction-reduction functions.  One calls
 Euclidean GCD and the other calls binary GCD.  Both use the same result helper,
 which rejects a zero denominator and divides the numerator and denominator
-by the selected divisor.
+by the selected divisor.  The commands run from the repository root after
+following the
+\href{https://github.com/jsmorph/leanexe/blob/lib1/DEVELOPING.md}{setup guide}.
 
 \begin{lstlisting}
 tools/seminum gcd-binary 48 18
@@ -40,21 +49,19 @@ tools/seminum fraction 48 18
 8/3
 \end{lstlisting}
 
-Selection occurs through the imported declaration and client call.  The
-catalog associates both implementations with the greatest-common-divisor task
-and records their distinct algorithms.  The compiler's source-name annotations
-identify the functions present in the generated WASM.
+Arguments are unsigned decimal words through $2^{64}-1$.  Invalid syntax
+and a zero denominator produce status 2 and a diagnostic on standard error.
 
-\section{Tests and comparison limits}
-The test suite applies both GCD algorithms to the same word pairs and compares
-Wasmtime output with native Lean.  Native results also agree with
-\texttt{Nat.gcd} on those cases.  Inputs include zero, maximum words, powers
-of two, large consecutive Fibonacci numbers, and deterministic full-width
-pairs.  Fraction clients cover zero numerators and denominator rejection.
+\section{Tests}
+From the repository root, \texttt{node test/seminum.js} runs the comparisons
+described above on the same word pairs for both GCD implementations.
+Inputs include zero, maximum words, powers of two, consecutive large Fibonacci
+numbers, and generated full-width pairs.  Fraction cases check reduction and
+rejection of a zero denominator.  CLI tests check results and invalid-input
+diagnostics.
 
-The comparison measures functional agreement on these inputs.  Performance
-comparison requires a separate experiment with repeated calls in one instance
-so compilation and process startup do not dominate the measurements.
+The test source is \texttt{test/seminum.js}.  The native reference driver is
+\texttt{test/SeminumNative.lean}.
 
 \begin{thebibliography}{9}
 \bibitem{binary} Paul E. Black, ``binary GCD,'' NIST Dictionary of Algorithms

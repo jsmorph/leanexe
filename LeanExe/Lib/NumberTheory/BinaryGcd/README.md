@@ -1,10 +1,16 @@
 # Binary GCD
 
-This implementation computes the greatest common divisor with shifts, comparisons, and subtraction.  It solves the same task as the [Euclidean implementation](../Gcd/README.md) through a different algorithm.  Both accept all `UInt64` pairs and use zero for `gcd 0 0`.
+`gcdBinary` computes the greatest common divisor of two unsigned 64-bit integers using shifts, comparisons, and subtraction.  It accepts zero inputs, including `gcdBinary 0 0 = 0`.
+
+[LeanExe](../../../../README.md) compiles the Lean function and its callers to WebAssembly (WASM).  The [command-line examples](../../../../libraries/README.md#setup-and-commands) run that WASM in Wasmtime.  The [Euclidean GCD implementation](../Gcd/README.md) uses remainders.
+
+## Verification status
+
+Lean checks the source types.  For both GCD implementations, passing execution tests establish agreement between WASM, native Lean, and mathematical references on the tested inputs.  Formal correctness and termination proofs for this source function, its generated WASM, and its fraction client remain deferred.
 
 ## Use
 
-The [setup guide](../../../../libraries/README.md#setup-and-commands) lists prerequisites.  These commands build and execute the WASM clients:
+The [setup guide](../../../../libraries/README.md#setup-and-commands) lists prerequisites.  From the repository root, these commands build and execute the WASM examples:
 
 ```sh
 tools/seminum gcd-binary 48 18
@@ -13,6 +19,8 @@ tools/seminum fraction-binary 48 18
 # 8/3
 ```
 
+Arguments are decimal integers from zero through `18446744073709551615`.  Fraction reduction requires a positive denominator.  Invalid input exits with status 2 and a diagnostic on stderr.
+
 ```lean
 import LeanExe.Lib.NumberTheory.BinaryGcd.Basic
 
@@ -20,15 +28,13 @@ def LeanExe.Examples.commonFactorBinary (a b : UInt64) : UInt64 :=
   LeanExe.Lib.NumberTheory.gcdBinary a b
 ```
 
-The API is `gcdBinary (a b : UInt64) : UInt64`.  The [source](Basic.lean) removes common powers of two, reduces odd operands by subtraction, and restores the common power.  The [fraction client](../../../Examples/Seminum.lean) calls this implementation and shares result handling with the Euclidean client.
+The API is `gcdBinary (a b : UInt64) : UInt64`.  The intended result is `Nat.gcd a.toNat b.toNat`, represented as a word.  The [source](Basic.lean) handles zero before its shift loops, removes common powers of two, reduces odd operands by subtraction, and restores the common power.  It uses constant working storage.  The [fraction client](../../../Examples/Seminum.lean) shares result handling with the Euclidean client.
 
-## Specification and tests
+## Tests and report
 
-The intended result is `Nat.gcd a.toNat b.toNat`, represented as a word.  The implementation handles zero before its shift loops.  It uses constant working storage.  Correctness proofs are deferred.
+From the repository root, `node test/seminum.js` compares both GCD implementations on the same inputs.  WASM and native Lean results agree with an arbitrary-precision integer GCD reference, and the native test also checks Lean's `Nat.gcd`.  Inputs include zero, maximum words, powers of two, consecutive large Fibonacci numbers, and generated full-width pairs.  Fraction cases check reduction and rejection of a zero denominator.  CLI tests check results and invalid-input diagnostics.
 
-`node test/seminum.js` compares both algorithms on the same inputs, compares their WASM and native Lean results, and checks the native values against `Nat.gcd`.  Cases include maximum words, zero inputs, powers of two, large consecutive Fibonacci numbers, and fraction clients.  This comparison establishes agreement on the tested cases.  Performance comparisons remain future work.
-
-The [technical report](report.pdf) includes the source, algorithm explanation, and client commands.  Rebuild it with `tools/seminum reports`.
+The [test source](../../../../test/seminum.js) and [native reference driver](../../../../test/SeminumNative.lean) define the cases.  The [technical report](report.pdf) explains the algorithm and includes the executable source.  `tools/seminum reports` rebuilds the PDF from [its LaTeX source](report.tex).
 
 ## Annotated references
 

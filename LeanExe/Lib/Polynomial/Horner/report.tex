@@ -1,10 +1,10 @@
 \input{libraries/report-preamble.tex}
-\title{Checked Horner Evaluation on Unsigned Integers}
+\title{Horner Evaluation with Integer Overflow Checks}
 \begin{document}
 \maketitle
 
 \section{Task and interface}
-The task is to evaluate $p(x)=\sum_{i=0}^{n-1}c_i x^i$ for nonnegative integer
+\texttt{eval} evaluates $p(x)=\sum_{i=0}^{n-1}c_i x^i$ for nonnegative integer
 coefficients and argument.  Each coefficient and $x$ are represented by
 \texttt{UInt64}.  The array stores coefficients in ascending degree order.
 An empty array represents zero.  Trailing zero coefficients are accepted.
@@ -12,7 +12,15 @@ An empty array represents zero.  Trailing zero coefficients are accepted.
 \texttt{LeanExe.Lib.Polynomial.eval} returns \texttt{some value} when every
 Horner intermediate fits in a word and \texttt{none} when an intermediate
 would exceed $M=2^{64}-1$.  The intended successful result is exact integer
-evaluation.  Formal correctness proofs for this component are deferred.
+evaluation.  LeanExe compiles the Lean function and its callers to WebAssembly
+(WASM).  The examples run that WASM in Wasmtime.
+
+\section{Verification status}
+Lean checks the source types.  Execution tests pass for selected inputs:
+WASM and native Lean results agree with an arbitrary-precision sum-of-powers
+reference, including overflow cases.  Formal proofs of polynomial correctness,
+overflow detection, termination, and the behavior of the generated WASM and
+clients remain deferred.
 
 \section{Recurrence and overflow check}
 Horner's recurrence processes coefficients from highest degree to lowest,
@@ -31,16 +39,17 @@ and one accumulated value.
 
 \lstinputlisting{LeanExe/Lib/Polynomial/Horner/Basic.lean}
 
-The listing comes from the executable source.  For coefficients $[1,3,2]$
+The listing comes from \texttt{Basic.lean}.  For coefficients $[1,3,2]$
 and $x=2$, the accumulated values are $2$, $7$, and $15$.  The implementation
-performs $n$ multiply-add updates and at most $n$ divisions for the checks.
-This operation count describes the source loop.  Runtime depends on the
-compiled program and execution engine.
+performs $n$ multiply-add updates on a successful evaluation and at most $n$
+divisions for the checks.  An overflow causes an early return.
 
 \section{Clients and commands}
 The polynomial client converts the optional result to an explicit status and
 value.  The polynomial-ratio client evaluates two arrays, checks the denominator,
-and reduces the resulting fraction through the number-theory library.
+and reduces the resulting fraction through GCD.  The commands run from the
+repository root after following the
+\href{https://github.com/jsmorph/leanexe/blob/lib1/DEVELOPING.md}{setup guide}.
 
 \begin{lstlisting}
 tools/seminum polynomial 2 1,3,2
@@ -58,14 +67,14 @@ status 2.  Its exact result would be $M+2$.  Decimal parsing, compilation,
 and invocation belong to the command driver.  Polynomial arithmetic executes
 in the generated WASM.
 
-\section{Tests and reuse}
-The test computes reference values with arbitrary-precision integers using
-the sum of powers, compares them with Wasmtime output, and compares the same
-cases with native Lean.  It includes empty and constant polynomials, zero
-arguments, maximum words, exact boundary results, overflow, and failures
-in either polynomial of a ratio.  The example module imports the component
-and calls its public declaration.  The compiler's source-name annotations
-allow the catalog to identify that declaration in the generated program.
+\section{Tests}
+From the repository root, \texttt{node test/seminum.js} runs the comparisons
+described above.  Cases include empty and constant polynomials, zero arguments,
+maximum words, exact boundary results, and overflow.  Ratio tests check
+successful composition, a zero denominator, and overflow in either polynomial.
+CLI tests check results and invalid-input diagnostics.  The cases are defined
+in \texttt{test/seminum.js} and the native reference driver
+\texttt{test/SeminumNative.lean}.
 
 \begin{thebibliography}{9}
 \bibitem{horner} NIST Digital Library of Mathematical Functions,
