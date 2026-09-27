@@ -36,6 +36,9 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.F64Accuracy` | Binary64 error below one ulp, using the exact result's binade and the minimum subnormal spacing. |
 | `Project.ProofKit.F64OneSubtract` | Exact subtraction between one and a binary64 value in [1, 2]. |
 | `Project.ProofKit.F64OneAdd` | Rounded addition near [1, 2], with endpoint and error bounds. |
+| `Project.ProofKit.CompensatedSumBounds` | Accumulated rounding error in a compensated sum, with relative and absolute bounds. |
+| `Project.ProofKit.F64CompensatedSum` | Binary64 compensated summation before subnormal scaling. |
+| `Project.ProofKit.F64SubnormalScale` | Exact scaling into the subnormal range after subtraction of one. |
 | `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |
 | `Project.ProofKit.ScalarFrame` | Adapts scalar statement execution and assignment evaluation to arbitrary Locals and result-assignment frames. |
 | `Project.ProofKit.ScalarConditional` | Executes scalar conditional expressions and assignments while retaining decoded control-type metadata. |

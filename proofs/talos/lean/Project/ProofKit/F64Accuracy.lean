@@ -1,4 +1,5 @@
 import CodeLib.IEEE64.Roundoff
+import Mathlib.Data.Int.Log
 
 namespace Project.ProofKit.F64Accuracy
 open CodeLib.IEEE64
@@ -7,6 +8,11 @@ def ErrorBelowOneUlp (word : UInt64) (exact : ℝ) : Prop :=
   Finite word ∧ ∃ e : Int,
     (2 : ℝ)^e ≤ exact ∧ exact < (2 : ℝ)^(e+1) ∧
     |value word-exact| < max ((2 : ℝ)^(e-52)) ((2 : ℝ)^(-1074 : Int))
+
+theorem of_subnormal_error (word : UInt64) (exact : ℝ) (hf : Finite word) (hp : 0 < exact)
+    (he : |value word-exact| < (2 : ℝ)^(-1074 : Int)) : ErrorBelowOneUlp word exact := by
+  exact ⟨hf, Int.log 2 exact, Int.zpow_log_le_self (by decide) hp,
+    Int.lt_zpow_succ_log_self (by decide) exact, he.trans_le (le_max_right _ _)⟩
 
 theorem of_adjacent_binades (word : UInt64) (exact : ℝ) (m : Int) (hf : Finite word)
     (hl : ((2 : ℝ)^m)/2 ≤ exact) (hu : exact < 2*((2 : ℝ)^m))

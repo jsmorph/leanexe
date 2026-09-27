@@ -118,9 +118,11 @@ def positiveCore (x : UInt64) : UInt64 :=
   let word := reductionWord x
   adjustedPath x (table[2*(word &&& 127).toNat+1]! + (word <<< 45) - ((1009 : UInt64) <<< 52))
 
-def negativeCore (x : UInt64) : UInt64 :=
+def negativeScale (x : UInt64) : UInt64 :=
   let word := reductionWord x
-  adjustedPath x (table[2*(word &&& 127).toNat+1]! + (word <<< 45) + ((1022 : UInt64) <<< 52))
+  table[2*(word &&& 127).toNat+1]! + (word <<< 45) + ((1022 : UInt64) <<< 52)
+
+def negativeCore (x : UInt64) : UInt64 := adjustedPath x (negativeScale x)
 
 theorem positive_core_error (x : UInt64) (hf : Finite x)
     (hx : 512 ≤ value x ∧ value x ≤ 800) :

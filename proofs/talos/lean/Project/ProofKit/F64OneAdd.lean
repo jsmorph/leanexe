@@ -64,5 +64,48 @@ theorem add_interval (a b : UInt64) (ha : Finite a) (hb : Finite b)
   have hw := interval_of_near _ h.1 h.2.1 h.2.2.1
   exact ⟨h.1, hw.1, hw.2, h.2.2.2⟩
 
+theorem below_one_value (a : UInt64) (ha : a < 0x3FF0000000000000) :
+    value a ≤ 1-1/(2 : ℝ)^53 := by
+  have hw : absBits a ≤ absBits 0x3FEFFFFFFFFFFFFF := by
+    have h := UInt64.and_le_left (a := a) (b := 0x7FFFFFFFFFFFFFFF)
+    simp only [UInt64.le_iff_toNat_le, UInt64.lt_iff_toNat_lt] at *
+    change (absBits a).toNat ≤ 0x3FEFFFFFFFFFFFFF
+    change (absBits a).toNat ≤ a.toNat at h
+    change a.toNat < 0x3FF0000000000000 at ha
+    omega
+  have h := abs_value_mono a 0x3FEFFFFFFFFFFFFF hw
+  have hv : value 0x3FEFFFFFFFFFFFFF = 1-1/(2 : ℝ)^53 := by
+    norm_num [value, Wasm.IEEE64.scaledValue, Wasm.IEEE64.sign,
+      Wasm.IEEE64.scaledMagnitude, Wasm.IEEE64.exponent, Wasm.IEEE64.fraction, UInt64.toNat_ofNat]
+  rw [hv, abs_of_pos (by norm_num : (0 : ℝ) < 1-1/2^53)] at h
+  exact (le_abs_self _).trans h
+
+theorem add_one (y : UInt64) (hy : Finite y) (hl : 0 < value y) (hu : value y ≤ 1) :
+    let h := Wasm.IEEE64.add 0x3FF0000000000000 y
+    Finite h ∧ 0x3FF0000000000000 ≤ h ∧ h ≤ 0x4000000000000000 ∧
+      1 ≤ value h ∧ value h ≤ 1+2*value y ∧
+      |value h-(1+value y)| ≤ 1/(2 : ℝ)^53 := by
+  have h := add_interval 0x3FF0000000000000 y (by rfl) hy
+    (by rw [one_value]; linarith) (by rw [one_value]; linarith)
+  rw [one_value] at h
+  have hv : 1 ≤ value (Wasm.IEEE64.add 0x3FF0000000000000 y) ∧
+      value (Wasm.IEEE64.add 0x3FF0000000000000 y) ≤ 1+2*value y := by
+    by_cases hc : value y < 1/(2 : ℝ)^53
+    · have hp := F64PowerRounding.add_above_power 0x3FF0000000000000 y (by rfl) hy
+        1074 (by decide) (by decide)
+        (by rw [one_value]; norm_num; linarith)
+        (by
+          rw [one_value]
+          have heq : ((2 : ℝ)^1074+2^(1074-53 : Nat))/2^1074 = 1+1/(2 : ℝ)^53 := by norm_num
+          rw [heq]
+          linarith)
+      have hpv : value (Wasm.IEEE64.add 0x3FF0000000000000 y) = 1 := by simpa using hp.2
+      rw [hpv]
+      constructor <;> linarith
+    · have he := abs_le.mp h.2.2.2
+      constructor <;> linarith
+  exact ⟨h.1, h.2.1, h.2.2.1, hv.1, hv.2, h.2.2.2⟩
+
 #print axioms add_interval
+#print axioms add_one
 end Project.ProofKit.F64OneAdd

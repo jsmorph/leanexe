@@ -198,6 +198,25 @@ checks pass in 1.7 seconds.  Broad simplification of a cast containing the
 large integer scale exceeded recursion depth.  Keeping its product explicit
 and distributing the multiplication reduced the proof to integer arithmetic.
 
+The subnormal reconstruction now has a checked error bound below one
+minimum-subnormal ulp for inputs in [-800, -512] that take the compensated
+branch.  A shared compensation proof bounds the error before final scaling
+by `2^-53 + 3 * 10^-18`.  Its output lies on the required `2^-52` grid, so
+multiplication by `2^-1022` is exact.  Combining this with table, reduction,
+polynomial, and multiplication errors proves the component's numerical
+bound.  The component theorem checks in 2.2 seconds.  The largest shared
+compensation module checks in four seconds.  All audited declarations use
+the standard axioms.
+
+The reduced-argument magnitude bound also now covers every finite input
+with magnitude at most 1024.  It uses a coarse multiplication bound outside
+the interval needed for accurate finite exponential results.  This module
+checks in 2.9 seconds and supplies the arithmetic fact needed to prove zero
+and infinity in the outer input regions.  One failed check arose from
+passing a `2^1023` product bound to a lemma requiring `2^1022`.  Lean reported
+recursion depth while comparing those powers.  Correcting the bound removed
+the failure without changing the recursion limit.
+
 The generated annotation module supplies no matching lemmas for this case.
 The execution proof instead uses the generated instruction definitions and
 shared frame, call, and array-read theorems.  Constant word-valued conditions
