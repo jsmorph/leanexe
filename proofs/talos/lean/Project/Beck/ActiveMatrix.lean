@@ -1,5 +1,6 @@
 import Project.Beck.MinorHistory
 import Project.Beck.RowSwap
+import Project.Beck.EchelonShape
 
 namespace Project.Beck.ActiveMatrix
 
@@ -21,23 +22,31 @@ structure Invariant (width rows rank column : ℕ) (matrix : Array Integer) (pre
     let _ := decidable
     MinorHistory.History (rows := rows) (rank := rank) (column := column)
       blocks selected (fun row col => value matrix[row * width + col]!) (value previous) columns
+  pivots : width ≤ UInt64.size → EchelonShape.Pivots rank column
+    (fun row col => value matrix[row * width + col]!) (columns.map UInt64.toNat)
 
 theorem initial (width rows : ℕ) (matrix : Array Integer)
     (size : matrix.size = rows * width) (valid : ∀ entry ∈ matrix, Valid entry) :
     Invariant width rows 0 0 matrix (Integer.ofWord 1) [] := by
   have one := IntegerOrder.ofWord_correct 1
-  refine ⟨size, valid, one.1, Nat.zero_le _, Nat.zero_le _, by simp [one.2], by omega, ?_⟩
-  refine ⟨Fin 0, inferInstance, inferInstance,
-    MinorState.initial (fun row col => value matrix[row * width + col]!), Fin.elim0, ?_⟩
-  simpa [one.2] using MinorHistory.initial (rows := rows) (width := width)
-    (fun row col => value matrix[row * width + col]!)
+  refine ⟨size, valid, one.1, Nat.zero_le _, Nat.zero_le _, by simp [one.2], by omega, ?_, ?_⟩
+  · refine ⟨Fin 0, inferInstance, inferInstance,
+      MinorState.initial (fun row col => value matrix[row * width + col]!), Fin.elim0, ?_⟩
+    simpa [one.2] using MinorHistory.initial (rows := rows) (width := width)
+      (fun row col => value matrix[row * width + col]!)
+  · intro _
+    exact EchelonShape.initial _
 
 theorem skip (width rows rank column : ℕ) (matrix : Array Integer) (previous : Integer)
     (columns : List UInt64) (invariant : Invariant width rows rank column matrix previous columns)
     (columnBound : column < width)
     (zero : ∀ row, rank ≤ row → row < rows → value matrix[row * width + column]! = 0) :
     Invariant width rows rank (column + 1) matrix previous columns := by
-  refine { invariant with columnBound := by omega, prefixZero := ?_, history := ?_ }
+  refine { invariant with
+    columnBound := by omega
+    prefixZero := ?_
+    history := ?_
+    pivots := fun fits => EchelonShape.skip (invariant.pivots fits) }
   · intro row lower upper col before
     rcases Nat.lt_or_eq_of_le (Nat.le_of_lt_succ before) with lt | rfl
     · exact invariant.prefixZero row lower upper col lt
@@ -61,7 +70,7 @@ theorem swapped (width rows rank column other : ℕ) (matrix : Array Integer) (p
       (by rw [invariant.size]; nlinarith)
   refine ⟨by rw [RowSwap.size_eq, invariant.size],
     RowSwap.valid width rows rank other matrix invariant.size rankBound upper invariant.valid,
-    invariant.previousValid, invariant.rankBound, invariant.columnBound, invariant.nonzero, ?_, ?_⟩
+    invariant.previousValid, invariant.rankBound, invariant.columnBound, invariant.nonzero, ?_, ?_, ?_⟩
   · intro row lo hi col before
     rw [entry row col hi (by have := invariant.columnBound; omega)]
     exact invariant.prefixZero _ (bounds row lo hi).1 (bounds row lo hi).2 col before
@@ -71,6 +80,14 @@ theorem swapped (width rows rank column other : ℕ) (matrix : Array Integer) (p
     refine ⟨ι, finite, decidable, MinorState.swap blocks rank other, selected, ?_⟩
     exact MinorHistory.swapped _ _ _ _ _ _ history other lower upper
       (by intro row inside col; rw [entry row col.val inside col.isLt])
+  · intro fits
+    apply EchelonShape.transfer (invariant.pivots fits)
+    intro row before col inside
+    rw [entry row col (by omega) (by have := invariant.columnBound; omega)]
+    have fixed : Equiv.swap rank other row = row := by
+      simp only [Equiv.swap_apply_def]
+      split_ifs <;> omega
+    rw [fixed]
 
 theorem divides (width rows rank column : ℕ) (matrix : Array Integer) (previous : Integer)
     (columns : List UInt64) (invariant : Invariant width rows rank column matrix previous columns)
@@ -116,7 +133,7 @@ theorem eliminated (width rows rank column : ℕ) (matrix : Array Integer) (prev
     exact model_get width rows rank column row col matrix previous invariant.size rankBound columnBound hr hc
   refine ⟨result, source, by rw [size, invariant.size], related.1,
     get_valid matrix invariant.valid _ (by rw [invariant.size]; nlinarith),
-    by omega, by omega, pivotNonzero, ?_, ?_⟩
+    by omega, by omega, pivotNonzero, ?_, ?_, ?_⟩
   · intro row lower upper col before
     rw [entry row col upper (by omega), ite_eq_left (by omega), ite_eq_right (by omega)]
     split
@@ -143,6 +160,14 @@ theorem eliminated (width rows rank column : ℕ) (matrix : Array Integer) (prev
             invariant.prefixZero row (by omega) upper col.val earlier,
             invariant.prefixZero rank le_rfl rankBound col.val earlier]
           ring
+  · intro fits
+    have encoded : column.toUInt64.toNat = column := by
+      simp [Nat.toUInt64, Nat.mod_eq_of_lt (lt_of_lt_of_le columnBound fits)]
+    simp only [List.map_append, List.map_cons, List.map_nil, encoded]
+    refine EchelonShape.push (invariant.pivots fits) ?_ pivotNonzero ?_
+    · intro row before col inside
+      rw [entry row col (by omega) (by omega), ite_eq_right (by omega)]
+    · exact invariant.prefixZero rank le_rfl rankBound
 
 #print axioms eliminated
 
