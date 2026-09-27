@@ -1,8 +1,31 @@
 import LeanExe.Extract.ScalarBooleanType
+import LeanExe.Extract.ScalarDo
 import LeanExe.Source.ScalarBooleanWrapper
 
 namespace LeanExe.Extract.Core
 open LeanExe.Source.Scalar
+
+/-- A standard word-to-Boolean bind preserves its exact continuation domain. -/
+def booleanRangeBindTypes? (input domain output : Lean.Expr) : Option (ResultType × BooleanType) := do
+  let first ← scalarResultType? input
+  let last ← booleanType? output
+  if input = domain then some (first, last) else none
+
+@[simp] theorem booleanRangeBindTypes_accepts (input : ResultType) (output : BooleanType) :
+    booleanRangeBindTypes? input.expr input.expr output.expr = some (input, output) := by
+  simp [booleanRangeBindTypes?]
+
+theorem booleanRangeBindTypes_sound {input domain output : Lean.Expr}
+    {first : ResultType} {last : BooleanType}
+    (parsed : booleanRangeBindTypes? input domain output = some (first, last)) :
+    input = first.expr ∧ domain = first.expr ∧ output = last.expr := by
+  simp only [booleanRangeBindTypes?, bind, Option.bind_eq_some_iff] at parsed
+  obtain ⟨a, ha, b, hb, accepted⟩ := parsed
+  split at accepted
+  · rename_i same
+    cases accepted
+    exact ⟨scalarResultType_sound ha, same ▸ scalarResultType_sound ha, booleanType_sound hb⟩
+  · contradiction
 
 /-- Exact Boolean Id wrappers and metadata; arbitrary wrapper heads are rejected. -/
 def booleanRangeWrapper? : Lean.Expr → Option (BooleanWrapper × Lean.Expr)

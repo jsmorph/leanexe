@@ -24,8 +24,11 @@ Boolean inputs retain their decoded values as loop locals change. Loop accumulat
 through an explicit UInt64 `let` binding followed by an admitted Boolean body,
 for example `let value := Id.run do ...; value == seed`. This includes yielding,
 break, continue, stride and captured helpers in the bound loop. Metadata and
-standard Boolean Id run/pure wrappers may surround the binding. General
-Boolean-result monadic sequencing around loops remains outside this form. Public parameter
+standard Boolean Id run/pure wrappers may surround the binding. Standard Id monadic binding also admits a word-valued loop action followed by a
+Boolean continuation: `let value ← loop; return value == seed`. The word input
+and Boolean output may retain Id layers, and the continuation's parameter type
+must exactly match the bind input. The full standard Id bind instance is checked.
+Scalar setup before the Boolean loop remains outside these forms. Public parameter
 domains may retain any number of standard Id layers. Declared and lambda domains
 must have the same base scalar kind; differing Id depths preserve their meaning.
 Custom annotation heads, wrong universes and metadata inside parameter domains

@@ -13,6 +13,14 @@ def extractScalarBooleanRangeWith (locals : List ScalarBinding) (slot : Nat)
       let plan ← extractScalarRangeExitWith locals slot value
       let result ← extractScalarExprWith (.word plan.result :: locals) (.app (.const ``Bool.toUInt64 []) body)
       pure { plan with result }
+  | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
+      (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
+        (.const ``Id.instMonad [.zero]))) input) output) value)
+      (.lam _ domain body _) => do
+      let _ ← booleanRangeBindTypes? input domain output
+      let plan ← extractScalarRangeExitWith locals slot value
+      let result ← extractScalarExprWith (.word plan.result :: locals) (.app (.const ``Bool.toUInt64 []) body)
+      pure { plan with result }
   | source =>
       match _wrapped : booleanRangeWrapper? source with
       | some (_, body) => extractScalarBooleanRangeWith locals slot body
@@ -27,6 +35,16 @@ decreasing_by exact booleanRangeWrapper_size _wrapped
       let result ← extractScalarExprWith (.word plan.result :: locals) (.app (.const ``Bool.toUInt64 []) body)
       pure { plan with result }) := by
   rw [extractScalarBooleanRangeWith]
+
+@[simp] theorem extractScalarBooleanRangeWith_bind (locals : List ScalarBinding) (slot : Nat)
+    (name : Lean.Name) (binder : Lean.BinderInfo) (input : ResultType) (output : BooleanType)
+    (value body : Lean.Expr) :
+    extractScalarBooleanRangeWith locals slot (BooleanRange.bind name binder input output value body) = (do
+      let plan ← extractScalarRangeExitWith locals slot value
+      let result ← extractScalarExprWith (.word plan.result :: locals) (.app (.const ``Bool.toUInt64 []) body)
+      pure { plan with result }) := by
+  rw [BooleanRange.bind, BooleanBindingForm.expr, extractScalarBooleanRangeWith, booleanRangeBindTypes_accepts]
+  rfl
 
 @[simp] theorem extractScalarBooleanRangeWith_wrapped (locals : List ScalarBinding) (slot : Nat)
     (wrapper : BooleanWrapper) (body : Lean.Expr) :
@@ -53,6 +71,15 @@ theorem extractScalarBooleanRangeWith_accepts {types : List BindingKind} {source
         · trivial
         · exact total binding member)
     exact ⟨{ plan with result }, by simp [hp, hr]⟩
+  | bindResult input output value body =>
+    obtain ⟨plan, hp⟩ := extractScalarRangeExitWith_accepts value locals slot typed total
+    obtain ⟨result, hr⟩ := extractScalarExprWith_accepts body (.word plan.result :: locals)
+      (by simp [ScalarBinding.kind, typed]) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        · exact total binding member)
+    exact ⟨{ plan with result }, by simp [hp, hr]⟩
   | wrapped wrapper _ ih => simpa using ih locals typed total
 
 theorem extractScalarBooleanRangeWith_supported {source : Lean.Expr} {locals : List ScalarBinding}
@@ -65,9 +92,15 @@ theorem extractScalarBooleanRangeWith_supported {source : Lean.Expr} {locals : L
     obtain ⟨before, hp, result, hr, _⟩ := compiled
     exact .letResult (extractScalarRangeExitWith_supported hp)
       (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hr)
-  | case2 source notLet wrapper body parsed ih =>
+  | case2 input output value name domain body binder =>
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨⟨inputType, outputType⟩, types, before, hp, result, hr, _⟩ := compiled
+    obtain ⟨rfl, rfl, rfl⟩ := booleanRangeBindTypes_sound types
+    exact .bindResult inputType outputType (extractScalarRangeExitWith_supported hp)
+      (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hr)
+  | case3 source notLet notBind wrapper body parsed ih =>
     rw [booleanRangeWrapper_sound parsed]
     exact .wrapped wrapper (ih compiled)
-  | case3 => contradiction
+  | case4 => contradiction
 
 end LeanExe.Extract.Core
