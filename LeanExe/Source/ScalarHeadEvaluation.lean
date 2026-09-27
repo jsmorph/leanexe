@@ -63,11 +63,11 @@ theorem EvalWith.binary_inv {head a b : Lean.Expr} {values : List Value}
     cases meaning with
     | direct operation => cases operation <;> simp_all [classHead, literalExpr, typedLiteralExpr, Comparison.branch,
         CompoundGuard.branch, DecidedGuard.dependentBranch, BooleanIdentity.bind, BooleanLocalGuard.branch,
-        BooleanLocalGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
+        BooleanLocalGuard.dependentBranch, BooleanScopeGuard.branch, BooleanScopeGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
         UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr, predicateInputExpr, booleanInputExpr]
     | canonical operation result left right instanceType => cases operation <;> simp_all [classHead, literalExpr, typedLiteralExpr, Comparison.branch,
         CompoundGuard.branch, DecidedGuard.dependentBranch, BooleanIdentity.bind, BooleanLocalGuard.branch,
-        BooleanLocalGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
+        BooleanLocalGuard.dependentBranch, BooleanScopeGuard.branch, BooleanScopeGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
         UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr, predicateInputExpr, booleanInputExpr]
 
 end LeanExe.Source.Scalar

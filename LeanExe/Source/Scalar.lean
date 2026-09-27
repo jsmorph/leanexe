@@ -1,3 +1,5 @@
+import LeanExe.Source.ScalarBooleanScopeGuard
+import LeanExe.Source.ScalarBooleanHelper
 import LeanExe.Source.ScalarBooleanInput
 import LeanExe.Source.ScalarBooleanConditionInputs
 import LeanExe.Source.ScalarBooleanPropositionChoiceForm
@@ -79,6 +81,15 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       (bound : EvalWith (.app (.const ``Bool.toUInt64 []) action.expr) values (Bool.toUInt64 flag))
       (body : EvalWith b (.boolean flag :: values) value) :
       EvalWith (BooleanIdentity.bind name bi action.expr b type.expr) values value
+  | chooseScope (guard : BooleanScopeGuard) (type : ResultType)
+      (condition : EvalWith guard.operand values (Bool.toUInt64 flag))
+      (branch : EvalWith (if flag then t else e) values value) :
+      EvalWith (guard.branch type.expr t e) values value
+  | chooseScopeDependent (guard : BooleanScopeGuard) (type : ResultType)
+      (trueName falseName : Lean.Name) (trueInfo falseInfo : Lean.BinderInfo)
+      (condition : EvalWith guard.operand values (Bool.toUInt64 flag))
+      (branch : EvalWith (if flag then t else e) (.unit :: values) value) :
+      EvalWith (guard.dependentBranch type.expr trueName falseName trueInfo falseInfo t e) values value
   | chooseBoolean (guard : BooleanLocalGuard) (type : ResultType)
       {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
       (variables : guard.value.VariablesMean values booleans)
@@ -204,6 +215,18 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       EvalWith (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) values value
+  | scopedPredicate (helper : BooleanHelper false)
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+        (.word x :: values) (Bool.toUInt64 (f x)))
+      (body : EvalWith (.app (.const ``Bool.toUInt64 []) helper.continuation)
+        (.predicateFunction f :: values) (Bool.toUInt64 flag)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) helper.expr) values (Bool.toUInt64 flag)
+  | scopedBooleanPredicate (helper : BooleanHelper true)
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) helper.body.expr)
+        (.boolean x :: values) (Bool.toUInt64 (f x)))
+      (body : EvalWith (.app (.const ``Bool.toUInt64 []) helper.continuation)
+        (.booleanPredicateFunction f :: values) (Bool.toUInt64 flag)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) helper.expr) values (Bool.toUInt64 flag)
   | predicateInput (input : ResultType) (result : BooleanType)
       (inner : EvalWith (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep) values outcome) :
       EvalWith (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep) values outcome
@@ -304,6 +327,15 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       (bound : SupportedWith types (.app (.const ``Bool.toUInt64 []) action.expr))
       (body : SupportedWith (.boolean :: types) b) :
       SupportedWith types (BooleanIdentity.bind name bi action.expr b type.expr)
+  | chooseScope (guard : BooleanScopeGuard) (type : ResultType)
+      (condition : SupportedWith types guard.operand)
+      (onTrue : SupportedWith types t) (onFalse : SupportedWith types e) :
+      SupportedWith types (guard.branch type.expr t e)
+  | chooseScopeDependent (guard : BooleanScopeGuard) (type : ResultType)
+      (trueName falseName : Lean.Name) (trueInfo falseInfo : Lean.BinderInfo)
+      (condition : SupportedWith types guard.operand)
+      (onTrue : SupportedWith (.unit :: types) t) (onFalse : SupportedWith (.unit :: types) e) :
+      SupportedWith types (guard.dependentBranch type.expr trueName falseName trueInfo falseInfo t e)
   | chooseBoolean (guard : BooleanLocalGuard) (type : ResultType)
       (variables : guard.value.VariablesTyped types)
       (arguments : ∀ operand, operand ∈ guard.value.operands → SupportedWith types operand)
@@ -411,6 +443,14 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       SupportedWith types (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep)
+  | scopedPredicate (helper : BooleanHelper false)
+      (function : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) helper.body.expr))
+      (body : SupportedWith (.predicateFunction :: types) (.app (.const ``Bool.toUInt64 []) helper.continuation)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) helper.expr)
+  | scopedBooleanPredicate (helper : BooleanHelper true)
+      (function : SupportedWith (.boolean :: types) (.app (.const ``Bool.toUInt64 []) helper.body.expr))
+      (body : SupportedWith (.booleanPredicateFunction :: types) (.app (.const ``Bool.toUInt64 []) helper.continuation)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) helper.expr)
   | predicateInput (input : ResultType) (result : BooleanType)
       (inner : SupportedWith types (predicateInputExpr input result name typeName paramName typeBi paramBi a b nondep)) :
       SupportedWith types (predicateInputExpr (.identity input) result name typeName paramName typeBi paramBi a b nondep)
@@ -463,7 +503,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
   generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
   cases evaluation with
   | booleanWord | booleanBindingWord | wordBindingBooleanWord | booleanWrappedWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord | booleanPropositionWord => exact ⟨_, rfl⟩
-  | applyBooleanPredicateWord => exact ⟨_, rfl⟩
+  | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate => exact ⟨_, rfl⟩
   | complement head _ => cases head <;> simp_all
   | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
   | manyApply call _ _ =>
@@ -475,7 +515,8 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
     simp at root
   | _ =>
     simp_all [literalExpr, typedLiteralExpr, Comparison.branch, CompoundGuard.branch,
-      DecidedGuard.dependentBranch, BooleanIdentity.bind, BooleanLocalGuard.branch,
+      DecidedGuard.dependentBranch, BooleanScopeGuard.branch, BooleanScopeGuard.dependentBranch,
+      BooleanIdentity.bind, BooleanLocalGuard.branch,
       BooleanLocalGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
       UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head,
       idLetExpr, predicateInputExpr, booleanInputExpr]
@@ -566,6 +607,26 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     obtain ⟨flag, rfl⟩ := hv.booleanConversion_result
     obtain ⟨result, hb⟩ := ihb (.boolean flag :: values) (by simp [Value.kind, typed])
     exact ⟨result, .idBindBoolean action type hv hb⟩
+  | chooseScope guard type _ _ _ ihc iht ihe =>
+    obtain ⟨encoded, evaluated⟩ := ihc values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    cases flag with
+    | false =>
+      obtain ⟨value, branch⟩ := ihe values typed
+      exact ⟨value, .chooseScope guard type evaluated branch⟩
+    | true =>
+      obtain ⟨value, branch⟩ := iht values typed
+      exact ⟨value, .chooseScope guard type evaluated branch⟩
+  | chooseScopeDependent guard type tn fn ti fi _ _ _ ihc iht ihe =>
+    obtain ⟨encoded, evaluated⟩ := ihc values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    cases flag with
+    | false =>
+      obtain ⟨value, branch⟩ := ihe (.unit :: values) (by simp [Value.kind, typed])
+      exact ⟨value, .chooseScopeDependent guard type tn fn ti fi evaluated branch⟩
+    | true =>
+      obtain ⟨value, branch⟩ := iht (.unit :: values) (by simp [Value.kind, typed])
+      exact ⟨value, .chooseScopeDependent guard type tn fn ti fi evaluated branch⟩
   | chooseBoolean guard type variables _ _ _ ihArgs iht ihe =>
     obtain ⟨booleans, hbooleans⟩ := variables.evaluates values typed
     let native : Lean.Expr → UInt64 := fun operand =>
@@ -770,6 +831,28 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.booleanPredicateFunction f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letBooleanPredicateFn expression type (fun x => (total x).choose_spec) hv⟩
+  | scopedPredicate helper _ _ ihf ihb =>
+    have total : ∀ x, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) helper.body.expr) (.word x :: values) flag.toUInt64 := by
+      intro x
+      obtain ⟨encoded, evaluated⟩ := ihf (.word x :: values) (by simp [Value.kind, typed])
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x => (total x).choose
+    obtain ⟨encoded, evaluated⟩ := ihb (.predicateFunction f :: values) (by simp [Value.kind, typed])
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    exact ⟨flag.toUInt64, .scopedPredicate helper (fun x => (total x).choose_spec) evaluated⟩
+  | scopedBooleanPredicate helper _ _ ihf ihb =>
+    have total : ∀ x, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) helper.body.expr) (.boolean x :: values) flag.toUInt64 := by
+      intro x
+      obtain ⟨encoded, evaluated⟩ := ihf (.boolean x :: values) (by simp [Value.kind, typed])
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x => (total x).choose
+    obtain ⟨encoded, evaluated⟩ := ihb (.booleanPredicateFunction f :: values) (by simp [Value.kind, typed])
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    exact ⟨flag.toUInt64, .scopedBooleanPredicate helper (fun x => (total x).choose_spec) evaluated⟩
   | predicateInput input result _ ih =>
     obtain ⟨outcome, evaluated⟩ := ih values typed
     exact ⟨outcome, .predicateInput input result evaluated⟩
