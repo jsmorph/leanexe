@@ -1,5 +1,5 @@
 import LeanExe.Examples.Beck
-import Mathlib.Tactic
+import Project.Beck.Bounds
 
 namespace Project.Beck.Arithmetic
 
@@ -87,28 +87,11 @@ theorem update_bounds (D p d speed distance : ℤ)
     (hs : 0 < speed ∧ speed ≤ 120) (hg : 0 ≤ distance ∧ distance ≤ 2 * D) :
     Fits (D * speed) ∧ Fits (p * speed) ∧ Fits (distance * d) ∧
       Fits (p * speed + distance * d) ∧ Fits (distance * speed) := by
-  have ps : |p * speed| ≤ 120 * D := by
-    rw [abs_mul, abs_of_pos hs.1]
-    nlinarith [mul_le_mul hp hs.2 (le_of_lt hs.1) (le_of_lt hD.1)]
-  have gd : |distance * d| ≤ 240 * D := by
-    rw [abs_mul, abs_of_nonneg hg.1]
-    nlinarith [mul_le_mul hg.2 hd (abs_nonneg d) (by linarith : 0 ≤ 2 * D)]
-  have total : |p * speed + distance * d| ≤ 360 * D :=
-    (abs_add_le _ _).trans (by linarith)
-  have ds := mul_le_mul hD.2 hs.2 (le_of_lt hs.1) (by norm_num : (0 : ℤ) ≤ 120 ^ 5)
-  have gs := mul_le_mul hg.2 hs.2 (le_of_lt hs.1) (by linarith : 0 ≤ 2 * D)
-  rw [abs_le] at ps gd total
-  norm_num at hD ds
-  dsimp [Fits]
-  constructor
-  · constructor <;> nlinarith
-  constructor
-  · constructor <;> nlinarith
-  constructor
-  · constructor <;> nlinarith
-  constructor
-  · constructor <;> nlinarith
-  · constructor <;> nlinarith
+  have capacity : 3 * D * 120 < (2 : ℤ) ^ 63 := by
+    norm_num at hD ⊢
+    omega
+  simpa [Fits] using Bounds.update_fits 63 D p d speed distance 120
+    (le_of_lt hD.1) hp hd ⟨le_of_lt hs.1, hs.2⟩ hg capacity
 
 theorem shared_denominator_update (D p d speed distance : ℚ)
     (hD : D ≠ 0) (hs : speed ≠ 0) :
