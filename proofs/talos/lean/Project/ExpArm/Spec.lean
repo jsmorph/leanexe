@@ -1,7 +1,7 @@
 import Project.ExpArm.Execution
 import Project.ExpArm.InitialTable
 import Project.ExpArm.TinyBounds
-import Project.ExpArm.NormalAccuracy
+import Project.ExpArm.FullAccuracy
 import Project.ExpArm.AnnotationMatches
 import Project.ExpArm.ArtifactTranslation
 
@@ -69,6 +69,30 @@ theorem exp_binary_normal_accuracy :
   intro env x hx
   exact exp_normal_accuracy env _ x initial_table hx
 
+theorem exp_accuracy (env : HostEnv Unit) (initial : Store Unit) (x : UInt64)
+    (ht : UInt64Array.At initial 4096 table) (hx : CodeLib.IEEE64.Finite x) :
+    TerminatesWith env Project.ExpArm.module 2 initial [.i64 x]
+      (fun final values => final = initial ∧ ∃ result,
+        values = [.i64 result] ∧ ResultAccuracy x result) := by
+  refine TerminatesWith.mono (exp_exact env initial x ht) ?_
+  rintro final values ⟨rfl, rfl⟩
+  exact ⟨rfl, exp x, rfl, Project.ExpArm.exp_accuracy x hx⟩
+
+def AccuracySpecFor (m : Wasm.Module) : Prop :=
+  ∀ (env : HostEnv Unit) (x : UInt64), CodeLib.IEEE64.Finite x →
+    TerminatesWith env m 2 m.initialStore [.i64 x]
+      (fun final values => final = m.initialStore ∧ ∃ result,
+        values = [.i64 result] ∧ ResultAccuracy x result)
+
+theorem exp_binary_accuracy :
+    ∃ raw validated,
+      Wasm.Binary.decode Artifact.artifactBytes = .ok raw ∧
+      Wasm.Binary.validate raw = .ok validated ∧
+      Wasm.Binary.CoreValid raw ∧ AccuracySpecFor validated.toTalos := by
+  apply Artifact.artifact_correct_of AccuracySpecFor
+  intro env x hx
+  exact exp_accuracy env _ x initial_table hx
+
 #print axioms exp_exact
 #print axioms exp_initial
 #print axioms exp_binary
@@ -76,4 +100,6 @@ theorem exp_binary_normal_accuracy :
 #print axioms exp_nan_result
 #print axioms exp_normal_accuracy
 #print axioms exp_binary_normal_accuracy
+#print axioms exp_accuracy
+#print axioms exp_binary_accuracy
 end Project.ExpArm.Spec

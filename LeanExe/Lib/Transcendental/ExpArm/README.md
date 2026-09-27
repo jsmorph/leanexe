@@ -6,7 +6,11 @@
 
 The [binary theorem](../../../../proofs/talos/lean/Project/ExpArm/Spec.lean), `Project.ExpArm.Spec.exp_binary`, proves that the recorded WASM bytes decode and validate to a module whose exponential terminates for every input word, preserves the complete store, and returns the result of an [exact binary64 computation](../../../../proofs/talos/lean/Project/ExpArm/Model.lean).  The theorem uses Talos's WASM semantics with round-to-nearest, ties-to-even arithmetic.  It includes a proof that instantiation initializes the lookup table.  The more general `exp_exact` theorem applies to any store containing that table, allowing repeated calls.
 
-For every input with `|x| < 512`, `exp_binary_normal_accuracy` proves that the emitted WASM returns a finite result with error below one ulp against the real exponential.  The [error definition](../../../../proofs/talos/lean/Project/ProofKit/F64Accuracy.lean) uses binary64 spacing in the exact result's binade.  For `|x| < 2^-54`, `exp_tiny_error` also proves that the result is one with absolute error below `2^-53`.  The full-range accuracy target remains below one ulp.  The numerical proofs for the large-input reconstruction paths remain outstanding.
+For every finite input, `exp_binary_accuracy` proves that the emitted WASM returns either a finite result with error below one ulp against the real exponential, or positive infinity when the real exponential exceeds the largest finite binary64 value, `2^1024 - 2^971`.  The [error definition](../../../../proofs/talos/lean/Project/ProofKit/F64Accuracy.lean) uses binary64 spacing in the exact result's binade, bounded below by `2^-1074`.  The proof includes subnormal results and underflow to zero.  The more general `exp_accuracy` theorem permits any store containing the table.
+
+The [numerical proof](../../../../proofs/talos/lean/Project/ExpArm/FullAccuracy.lean) combines bounds for integer selection, range reduction, table approximation, polynomial rounding, and reconstruction.  Shared IEEE arithmetic lemmas prove exact power-of-two scaling and bound compensated subnormal rounding.  The implementation can differ from correct rounding.  The precise overflow rounding threshold remains unproved.
+
+The WASM theorems use only Lean's standard axioms `propext`, `Classical.choice`, and `Quot.sound`.  They rely on Lean's proof checker and the formal WASM and IEEE definitions.  The host, WASM engine, operating system, and hardware remain outside the proof.  The composed sigmoid client has execution tests, but no behavior proof.
 
 Execution tests compare WASM with the Lean port, Lean's `Float.exp`, JavaScript's `Math.exp`, and a high-precision decimal reference.
 
@@ -23,7 +27,7 @@ import LeanExe.Lib.Transcendental.ExpArm.Basic
 #eval LeanExe.Lib.Transcendental.exp 0x3FF0000000000000
 ```
 
-The API takes and returns `UInt64` bit patterns, matching LeanExe's binary64 arithmetic interface.  Both signed zeros return one.  Positive infinity returns positive infinity, and negative infinity returns positive zero.  NaNs return the canonical quiet NaN `0x7FF8000000000000`.  Finite results can overflow to positive infinity or underflow through subnormal values to positive zero.  The API specifies result values with round-to-nearest arithmetic.  It has no error-number or floating-point exception-flag interface.
+The API takes and returns `UInt64` bit patterns, matching LeanExe's binary64 arithmetic interface.  Both signed zeros return one.  Positive infinity returns positive infinity, and negative infinity returns positive zero.  NaNs return the canonical quiet NaN `0x7FF8000000000000`.  Finite inputs can produce positive infinity or underflow through subnormal values to positive zero.  The API specifies result values with round-to-nearest arithmetic.  It has no error-number or floating-point exception-flag interface.
 
 The implementation reduces `x` to `k·log(2)/128 + r`.  A split logarithm keeps the reduction error small.  A table supplies the scale and its correction, and a degree-five polynomial approximates the exponential of the small remainder.  Reconstruction handles large positive exponents and rounds small results before scaling them into the subnormal range.
 
@@ -46,6 +50,14 @@ node test/exp.js
 The introductory [degree-six Taylor component](../Exp/README.md) remains available through `tools/seminum exp-taylor6` and `exp-taylor6-bits` on `[-1, 0]`.  The `decay` command continues to demonstrate that component.
 
 ## Tests and references
+
+The independent proof checker checks the recorded binary and all registered behavior theorems:
+
+```sh
+tools/artifact-proof.js check \
+  proofs/artifacts/exp_arm/ad0b534184b314b07b7e7f5fc37b32c48dea078a33c93ef7741a5290f9cebab3/program.wasm \
+  Project.ExpArm.ArtifactTranslation
+```
 
 [The test driver](../../../../test/exp.js) checks bit-for-bit agreement between WASM and the Lean port.  [The native driver](../../../../test/ExpNative.lean) also evaluates Lean's `Float.exp`, which the pinned Lean toolchain implements through the C function `exp`.  [The decimal reference](../../../../test/exp-reference.py) starts at 100 significant digits and increases precision until neighboring decimal bounds round to the same binary64 value.  It measures error in units of binary64 spacing at the exact result's binade, with spacing `2^-1074` for subnormal results.
 

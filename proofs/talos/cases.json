@@ -611,9 +611,11 @@
         "Project.ExpArm.Spec.exp_tiny_error",
         "Project.ExpArm.Spec.exp_nan_result",
         "Project.ExpArm.Spec.exp_normal_accuracy",
-        "Project.ExpArm.Spec.exp_binary_normal_accuracy"
+        "Project.ExpArm.Spec.exp_binary_normal_accuracy",
+        "Project.ExpArm.Spec.exp_accuracy",
+        "Project.ExpArm.Spec.exp_binary_accuracy"
       ],
-      "complete": false
+      "complete": true
     },
     {
       "name": "exp_small",

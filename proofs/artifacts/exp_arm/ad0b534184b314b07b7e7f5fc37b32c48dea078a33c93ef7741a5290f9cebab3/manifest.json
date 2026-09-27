@@ -24,7 +24,9 @@
     "Project.ExpArm.Spec.exp_tiny_error",
     "Project.ExpArm.Spec.exp_nan_result",
     "Project.ExpArm.Spec.exp_normal_accuracy",
-    "Project.ExpArm.Spec.exp_binary_normal_accuracy"
+    "Project.ExpArm.Spec.exp_binary_normal_accuracy",
+    "Project.ExpArm.Spec.exp_accuracy",
+    "Project.ExpArm.Spec.exp_binary_accuracy"
   ],
   "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
   "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",

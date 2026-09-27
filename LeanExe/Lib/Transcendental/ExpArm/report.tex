@@ -13,7 +13,7 @@ The implementation ports Arm's 128-entry, degree-five exponential
 algorithm~\cite{arm,data}.  It selects round-to-nearest, ties-to-even
 arithmetic and separate multiplication and addition.  Arm reports a
 worst-case error of $0.511$ ulp for this configuration without fused
-multiply-add.  The port's target is an error below one ulp.
+multiply-add.
 
 The theorem \texttt{Project.ExpArm.Spec.exp\_binary} proves that the recorded
 WASM bytes decode and validate to a module whose exponential terminates for
@@ -23,13 +23,20 @@ semantics with round-to-nearest, ties-to-even arithmetic and proves that
 instantiation initializes the lookup table.  The theorem \texttt{exp\_exact}
 applies to any store containing that table, supporting repeated calls.
 
-For every input with $|x|<512$, \texttt{exp\_binary\_normal\_accuracy}
-proves that the emitted WASM returns a finite result with error below one ulp
-against the real exponential.  The error definition uses binary64 spacing
-in the exact result's binade.  For $|x|<2^{-54}$,
-\texttt{exp\_tiny\_error} also proves that the result is one with absolute
-error below $2^{-53}$.  Numerical proofs for the large-input reconstruction
-paths remain outstanding.
+For every finite input, \texttt{exp\_binary\_accuracy} proves that the emitted
+WASM returns either a finite result with error below one ulp against the real
+exponential, or positive infinity when $e^x>2^{1024}-2^{971}$, the largest
+finite binary64 value.  The bound includes subnormal results and zero.
+The theorem \texttt{exp\_accuracy} permits any store containing the table.
+The implementation can differ from correct rounding.  The precise overflow
+rounding threshold remains unproved.
+
+The WASM theorems use only \texttt{propext}, \texttt{Classical.choice}, and
+\texttt{Quot.sound}.  They rely on Lean's proof checker and the formal WASM
+and IEEE definitions.  The host, WASM engine, operating system, and hardware
+remain outside the proof.  The sigmoid client has execution tests, but no
+behavior proof.
+
 Development tests compare WASM, the Lean port,
 Lean's \texttt{Float.exp}, JavaScript's \texttt{Math.exp}, and a high-precision
 decimal reference.  The largest measured error for the port on 49,821 inputs
@@ -65,11 +72,32 @@ the corrected result by $2^{-1022}$.  When the corrected value is below one,
 a compensated sum rounds it to the precision required by the subnormal
 result before that multiplication.  This step controls double rounding.
 
+\section{Numerical proof}
+For a finite result $y$, the proved error bound is
+\[
+ |y-e^x|<\max(2^{b-52},2^{-1074}),\qquad 2^b\le e^x<2^{b+1}.
+\]
+The proof uses the exact result's binade, with the minimum subnormal spacing
+as a lower bound on one ulp.  It bounds integer selection and the reduced
+argument, then combines exact rational enclosures of all 128 table entries
+with the real polynomial approximation and the rounding error of each IEEE
+operation.  For $|x|\le800$, reduction error is at most $10^{-18}$ and
+polynomial evaluation error is at most $1.1\cdot10^{-18}$.  The corrected,
+unscaled approximation has error at most $3\cdot10^{-17}$.
+
+Shared arithmetic lemmas handle final rounding across a power-of-two
+boundary and exact multiplication by powers of two.  The compensated
+subnormal result lies on a $2^{-52}$ grid before exact scaling by
+$2^{-1022}$.  Separate bounds justify zero and infinity in the outer input
+regions.  Word-arithmetic proofs match these numerical cases to the WASM
+branch conditions.  The binary theorem combines them with decoding,
+validation, and terminating execution of the recorded bytes.
+
 \section{Input behavior and storage}
 Both signed zeros return one.  Inputs with magnitude below $2^{-54}$ also
 return one.  Positive infinity returns positive infinity.  Negative infinity
 returns positive zero.  All NaNs return the canonical quiet NaN with word
-\texttt{0x7FF8000000000000}.  Finite results can overflow to positive infinity
+\texttt{0x7FF8000000000000}.  Finite inputs can produce positive infinity
 or underflow through subnormal values to positive zero.
 
 The API specifies result values under round-to-nearest arithmetic.  It has
@@ -82,6 +110,7 @@ length and words in a WASM data segment and emits bounds-checked loads for
 direct indexed reads.  The allocation arena begins after the static data,
 and reset preserves the table.
 
+\newpage
 \section{Executable implementation}
 The listing comes from the component's \texttt{Basic.lean}.  The table is in
 the adjacent \texttt{Table.lean}.  The helper \texttt{ExpArm.rescale} implements
@@ -89,7 +118,6 @@ the overflow and subnormal reconstruction described above.
 
 \lstinputlisting[firstline=25,lastline=48]{LeanExe/Lib/Transcendental/ExpArm/Basic.lean}
 
-\newpage
 \section{Commands and a sigmoid client}
 The commands run from the repository root after following the
 \href{https://github.com/jsmorph/leanexe/blob/lib1/DEVELOPING.md}{setup guide}.
@@ -108,6 +136,7 @@ negative inputs and $1/(1+z)$ otherwise.  This form preserves small positive
 results for large negative inputs without an overflowing intermediate
 exponential.  Both clients import and call the library function.
 
+\newpage
 \section{Numerical tests}
 \texttt{node test/exp.js} runs 49,821 cases.  It writes measurements to
 \path{build/seminum/exp-accuracy.json}.  The corpus includes signed zeros,

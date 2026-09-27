@@ -85,7 +85,9 @@ theorem negative_subnormal_accuracy (x : UInt64) (hf : Finite x)
   let p := Wasm.IEEE64.mul s t
   have hs := negative_scale_bounds x hf hx
   have ht := path_correction_bounds x hf (abs_le.mpr ⟨hx.1, by linarith⟩)
-  have hp := scale_product_bound s t hs.1 ht.1 hs.2.2.1 hs.2.2.2 ht.2
+  have hp := scale_product_bound s t hs.1 ht.1
+    ((by norm_num : (2 : ℝ)^(-500 : Int) ≤ 2^(-300 : Int)).trans hs.2.2.1)
+    (hs.2.2.2.trans (by norm_num)) ht.2
   have hsp : 0 < value s := (by positivity : (0 : ℝ) < 2^(-300 : Int)).trans_le hs.2.2.1
   have hs2 := scale_le_two_of_small_sum s p hs.1 hp.1 hsp hs.2.2.2 hp.2.1 hy
   have hr := F64CompensatedSum.scaled_sum_error s p hs.1 hp.1 ⟨hsp, hs2⟩ hp.2.1 hy
