@@ -203,7 +203,7 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨checked, _, hp⟩ := compiled
     have total : ∀ x : UInt64, ∃ flag : Bool,
-        EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.word x :: values) flag.toUInt64 := by
+        EvalWith (.app (.const ``Bool.toUInt64 []) expression) (.word x :: values) flag.toUInt64 := by
       intro x
       obtain ⟨encoded, evaluated⟩ := function.evaluates (.word x :: values)
         (by simp [Value.kind, valuesTyped])
@@ -229,7 +229,7 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨checked, _, hp⟩ := compiled
     have total : ∀ x : Bool, ∃ flag : Bool,
-        EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.boolean x :: values) flag.toUInt64 := by
+        EvalWith (.app (.const ``Bool.toUInt64 []) expression) (.boolean x :: values) flag.toUInt64 := by
       intro x
       obtain ⟨encoded, evaluated⟩ := function.evaluates (.boolean x :: values)
         (by simp [Value.kind, valuesTyped])

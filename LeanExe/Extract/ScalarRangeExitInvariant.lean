@@ -116,8 +116,8 @@ theorem extractScalarRangeExitWith_invariant (P : LeanExe.IR.Expr → Prop)
   | case13 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary rejected type matched notRange ihb =>
     rw [extractScalarRangeExitWith] at compiled
     · simp only [notRange, rejected, matched, bind, Option.bind_eq_some_iff] at compiled
-      obtain ⟨boolean, parsed, checked, hc, ht⟩ := compiled
-      apply ihb boolean ht
+      obtain ⟨checked, hc, ht⟩ := compiled
+      apply ihb ht
       intro binding member
       rcases List.mem_cons.mp member with rfl | member
       · intro argument result ha compiled
@@ -222,8 +222,8 @@ theorem extractScalarRangeExitWith_invariant (P : LeanExe.IR.Expr → Prop)
   | case25 locals name typeName resultType typeBi paramName value paramBi body nondep rejected type matched notRange ihb =>
     rw [extractScalarRangeExitWith] at compiled
     simp only [notRange, rejected, matched, bind, Option.bind_eq_some_iff] at compiled
-    obtain ⟨boolean, parsed, checked, hc, ht⟩ := compiled
-    apply ihb boolean ht
+    obtain ⟨checked, hc, ht⟩ := compiled
+    apply ihb ht
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · intro argument result ha compiled
