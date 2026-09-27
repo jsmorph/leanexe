@@ -1,0 +1,35 @@
+compiler-proof: passed
+Project.Compiler.ArithmeticModule.alloc_valid: propext
+Project.Compiler.ArithmeticModule.retain_valid: propext
+Project.Compiler.ArithmeticModule.release_valid: propext
+LeanExe.Extract.Arithmetic.compileEnvironment_accepts: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Arithmetic.compileEnvironment_success: Classical.choice, Quot.sound, propext
+Project.Compiler.ArithmeticModule.extracted_module_valid: Classical.choice, Quot.sound, propext
+Project.Compiler.ArithmeticModule.extracted_correct: Classical.choice, Quot.sound, propext
+Project.Compiler.ArithmeticModule.compileEnvironment_correct: Classical.choice, Quot.sound, propext
+Project.Compiler.ArithmeticModule.compileEnvironment_sound: Classical.choice, Quot.sound, propext
+LeanExe.Source.Scalar.Reannotates.eval_iff: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Core.reannotation_sound: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Core.reannotation_accepts: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Core.guardDecision_sound: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Core.guardDecision_accepts: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Core.booleanFunctionApplication_sound: Quot.sound, propext
+LeanExe.Extract.Core.booleanFunctionApplication_accepts: Quot.sound, propext
+LeanExe.Extract.Core.predicateInputTypes_sound: Quot.sound, propext
+LeanExe.Extract.Core.predicateInputTypes_accepts: Quot.sound, propext
+LeanExe.Extract.Core.extractScalarFunc_boolean_correct: Classical.choice, Quot.sound, propext
+LeanExe.Source.Scalar.StepMatcher.denote_cases: none
+LeanExe.Extract.Core.findStepMatcher_sound: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Core.findStepMatcher_accepts: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Core.expandStepMatchers_normalizes: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Core.expandStepMatchers_accepts: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Core.extractScalarEnvironmentFunc_accepts: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Core.extractScalarEnvironmentFunc_correct: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Arithmetic.compileEnvironment_environment_accepts: Classical.choice, Quot.sound, propext
+Project.Compiler.ArithmeticModule.environment_extracted_correct: Classical.choice, Quot.sound, propext
+Project.Compiler.ArithmeticModule.compileEnvironment_environment_correct: Classical.choice, Quot.sound, propext
+LeanExe.Source.Scalar.BooleanScopeBindingForm.monadic_apply: none
+LeanExe.Extract.Core.booleanScopeBinding_sound: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Core.booleanScopeBinding_accepts: Classical.choice, Quot.sound, propext
+LeanExe.Source.Scalar.BooleanScopeBindingForm.application_apply: none
+Passed all 33 arithmetic axiom audits.

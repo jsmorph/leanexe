@@ -987,14 +987,21 @@ controls; prior tests pass 62,580 comparisons, 73,152 invalid inputs and 1,152 c
 All six fixed bind probes compile. The corpus contains 1662 declarations.
 Evidence is in [the monadic scope archive](proofs/compiler/boolean-scope-bind-2026-09-27/README.md).
 
-Current capability: directly applied scalar bindings around general Boolean
-helper scopes. All six fixed application probes initially reject. Exact source
-syntax, native beta reduction, recognizer proofs and recursive size bounds pass
-84 targets. General scalar evaluation, acceptance, reconstruction and IR invariant
-proofs pass 140 targets unchanged. Loop/function integration passes 207 targets.
-All six fixed probes compile; new tests pass 16,308 native/IR comparisons, 21,888
-invalid-input checks and 384 admission controls. The complete source-to-WASM
-proof, 33 audits and independent engine checks remain before advancing.
+Direct UInt64 and Bool lambda applications around general helper scopes are
+proved through WASM, including nested captures, unused arguments, conditional
+arguments and standard Id annotations. The complete lambda syntax and scalar
+domain are checked. The complete proof gate passes 3393 targets and all 33 audits;
+native beta reduction has no axioms. Native Lean/V8 agree on 1,389 inputs across
+73 declarations; 63 prior modules retain identical bytes and 0 changed.
+New tests pass 16,308 comparisons, 21,888 invalid-input checks and 384 admission
+controls; prior tests pass 32,832 comparisons, 48,384 invalid inputs and 768 controls.
+All six fixed application probes compile. The corpus contains 1672 declarations.
+Evidence is in [the direct-application archive](proofs/compiler/boolean-scope-application-2026-09-27/README.md).
+
+Current capability: local two-argument UInt64-to-Bool helpers. Preserve the six
+fixed probes, add distinct typed binary predicate bindings and exact declaration
+and call syntax, prove source evaluation and extraction, then complete emitted-WASM
+proofs and independent engine checks before advancing.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
