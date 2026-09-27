@@ -1,0 +1,12 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/boolean-helper-composite-probe.lean:22:33: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq (Id UInt64)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+BooleanHelperCompositeProbe.negated: false
+BooleanHelperCompositeProbe.junction: false
+BooleanHelperCompositeProbe.equality: false
+BooleanHelperCompositeProbe.choice: false
+BooleanHelperCompositeProbe.helperBody: false
+BooleanHelperCompositeProbe.identityInput: false
