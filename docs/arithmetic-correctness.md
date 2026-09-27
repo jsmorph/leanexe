@@ -50,14 +50,18 @@ Bool-to-Bool function may itself contain the loop when its enclosing Boolean
 body makes an admitted direct call. Conditional calls,
 standard Id forwarding, saved call results and wrappers around these calls are
 also admitted. An outer Boolean-result conditional may select two loop plans,
-a loop and a scalar result, or two scalar results. Both arms are checked.
+a loop and a scalar result, or two scalar results. UInt64-result conditionals
+also select among scalar expressions, word loops and Boolean-derived word
+computations. Choices may nest and retain standard Id result annotations;
+metadata and standard Id run/pure wrappers are admitted. Both arms are checked,
+including an arm excluded by a constant condition.
 
 Public parameter domains may retain any number of standard Id layers. Declared
 and lambda domains must have the same base scalar kind; differing Id depths
 preserve their meaning. Custom annotation heads, wrong universes and metadata
 inside parameter domains are rejected. Sequential or nested dynamic loops,
-general local loop-function application, and outer UInt64-result conditionals
-containing loops remain outside this grammar.
+general local loop-function application, and additional setup/helper declarations
+around loop-containing UInt64 conditionals remain outside this grammar.
 
 A UInt64 body may read arguments, contain
 UInt64 literals, metadata, UInt64 `let` bindings, conditionals and pure `Id`

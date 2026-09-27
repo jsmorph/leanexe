@@ -1,4 +1,4 @@
-import LeanExe.Extract.ScalarBooleanWordRange
+import LeanExe.Extract.ScalarWordRange
 import LeanExe.Extract.ScalarRangeCorrectness
 import LeanExe.Extract.ScalarRangeExitCorrectness
 import LeanExe.Extract.ScalarSignature
@@ -38,7 +38,7 @@ def extractScalarFunc (name : Lean.Name) (exportName : Option String)
               match extractScalarRangeExitWith locals arity body with
               | some plan => pure (plan.func name exportName arity)
               | none => do
-                  let plan ← extractScalarBooleanWordRangeWith locals arity body
+                  let plan ← extractScalarWordRangeWith locals arity body
                   pure (plan.func name exportName arity)
 
 /-- Successful extraction selects a pure expression or a checked range result.
@@ -60,7 +60,7 @@ theorem extractScalarFunc_cases {name : Lean.Name} {exportName : Option String}
         (result = .boolean ∧ ∃ plan, extractScalarBooleanRangeWith
           (publicBindings (publicInputs type)) arity body = some plan ∧
           func = plan.func name exportName arity) ∨
-        (result = .word ∧ ∃ plan, extractScalarBooleanWordRangeWith
+        (result = .word ∧ ∃ plan, extractScalarWordRangeWith
           (publicBindings (publicInputs type)) arity body = some plan ∧
           func = plan.func name exportName arity)) := by
   unfold extractScalarFunc at compiled
@@ -241,7 +241,7 @@ theorem extractScalarFunc_accepts {type value : Lean.Expr}
           LeanExe.Source.Scalar.PublicResult.encode, pureCase, compiled, locals] at *⟩
 
   · let locals := publicBindings (publicInputs type)
-    obtain ⟨plan, compiled⟩ := extractScalarBooleanWordRangeWith_accepts supportedBody locals arity
+    obtain ⟨plan, compiled⟩ := extractScalarWordRangeWith_accepts supportedBody locals arity
       (publicBindings_typed _) (publicBindings_total _)
     cases pureCase : extractScalarExprWith locals body with
     | some expression =>
@@ -376,24 +376,24 @@ theorem booleanRangePublic_application {type source body : Lean.Expr} {arity : N
   simpa using evaluated
 
 /-- A public word continuation uses the native result of its Boolean loop. -/
-theorem booleanWordRangePublic_application {type source body : Lean.Expr} {arity : Nat}
+theorem wordRangePublic_application {type source body : Lean.Expr} {arity : Nat}
     {plan : ScalarRangeExitPlan}
     (signature : scalarSignature? type = some (arity, .word))
     (annotations : publicLambdasMatch (publicInputs type) source = true)
     (lambdas : collectLambdas source arity = some body)
-    (compiled : extractScalarBooleanWordRangeWith (publicBindings (publicInputs type)) arity body = some plan)
+    (compiled : extractScalarWordRangeWith (publicBindings (publicInputs type)) arity body = some plan)
     (args : List UInt64) (len : args.length = arity) :
     ∃ value, LeanExe.Source.Scalar.Apply source [] args value ∧ plan.Meaning args value := by
   subst arity
   have inputLen := (scalarSignature_inputs_length signature).symm
-  obtain ⟨value, evaluated, meaning⟩ := extractScalarBooleanWordRangeWith_correct args
+  obtain ⟨value, evaluated, meaning⟩ := extractScalarWordRangeWith_correct args
     (publicValues (publicInputs type) args).reverse compiled (publicValues_bindings_typed inputLen)
     (fun accumulator index stop flag =>
       publicArgumentBindings (publicInputs type) args [accumulator, UInt64.ofNat index, stop, flag] inputLen)
     (publicBindings_total _)
   refine ⟨value, ?_, meaning⟩
   apply LeanExe.Source.Scalar.apply_of_publicLambdas (publicInputs type) args [] inputLen annotations lambdas
-  apply LeanExe.Source.Scalar.Apply.booleanWordRangeDone
+  apply LeanExe.Source.Scalar.Apply.wordRangeDone
   simpa using evaluated
 
 /-- Every successful scalar declaration extraction preserves application of
@@ -419,7 +419,7 @@ theorem extractScalarFunc_correct {name : Lean.Name} {exportName : Option String
     exact ⟨flag.toUInt64, applied, by simpa [hlen] using meaning.func_correct name exportName⟩
 
   · have hlen : args.length = arity := len
-    obtain ⟨value, applied, meaning⟩ := booleanWordRangePublic_application signature annotations hb hp args hlen
+    obtain ⟨value, applied, meaning⟩ := wordRangePublic_application signature annotations hb hp args hlen
     exact ⟨value, applied, by simpa [hlen] using meaning.func_correct name exportName⟩
 
 /-- A public Bool result uses either a scalar conversion or a checked loop continuation. -/

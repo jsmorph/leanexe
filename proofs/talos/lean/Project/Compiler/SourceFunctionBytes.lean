@@ -1,4 +1,4 @@
-import LeanExe.Wasm.ScalarBooleanWordRangeAdmission
+import LeanExe.Wasm.ScalarWordRangeAdmission
 import Project.Compiler.ArithmeticFunctionBytes
 import Project.Compiler.RangeFunctionBytes
 import Project.Compiler.RangeExitFunctionBytes
@@ -100,8 +100,8 @@ theorem extracted_function_body_bytes
     simpa only [countEq] using parsed
   · have hlen : args.length = arity := len
     subst arity
-    obtain ⟨value, applied, meaning⟩ := booleanWordRangePublic_application signature annotations hb hp args rfl
-    obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarBooleanWordRangePublic_admitted hp
+    obtain ⟨value, applied, meaning⟩ := wordRangePublic_application signature annotations hb hp args rfl
+    obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarWordRangePublic_admitted hp
       (scalarSignature_inputs_length signature)
     obtain ⟨raw, next, parsed, executed⟩ := range_exit_function_body_bytes args name exportName releaseIndex
       matched arithmetic reads meaning localBound bodyBound m env store

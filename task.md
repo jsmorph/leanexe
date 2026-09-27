@@ -617,7 +617,17 @@ Prior tests pass 161,280 comparisons, 113,664 invalid-input checks and 8,448 con
 The native corpus contains 1337 declarations. Evidence is in
 [the word-helper archive](proofs/compiler/boolean-loop-word-helpers-2026-09-27/README.md).
 
-Next: broader outer word conditionals, followed by
+Current capability: outer UInt64-result conditionals. A new word-computation
+layer combines proved scalar expressions, word loops and Boolean-to-word loops.
+Nested choices check both arms and preserve the selected native result through
+the shared loop plan. Source totality, acceptance, support recovery, preservation,
+invariants and public WASM admission pass. The public compiler's fifth path uses
+this broader word layer. Ten native examples pass 240 comparisons; syntax checks
+pass 258,048 comparisons, 129,024 invalid-input tests and 9,216 wrapper controls.
+Adjacent checks pass 306,432 comparisons, 154,368 invalid-input tests and
+18,432 controls. The complete source-to-WASM proof and WASM gate are next.
+
+Next: setup/helper declarations around word conditionals, followed by
 retained instances, broader signatures, and composition of multiple loops.
 Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean
