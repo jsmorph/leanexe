@@ -8,8 +8,8 @@ set_option maxRecDepth 4096 in
 set_option maxHeartbeats 2000000 in
 theorem roundsContinue_exact (env : HostEnv Unit) (initial middle : Store Unit) (original heap : Heap)
     (locals : List Value) (fuel : Nat) (input : Input) (point nextPoint : Point)
-    (inputRoot internal : UInt64) (oldNode newNode : FreeNode) (remaining pageLimit : Nat)
-    (state : RoundsLocals locals false point oldNode.root internal)
+    (inputRoot pointOwner internal : UInt64) (oldNode newNode : FreeNode) (remaining pageLimit : Nat)
+    (state : RoundsLocals locals false point pointOwner oldNode.root internal)
     (denRead : locals[22]? = some (.i64 nextPoint.denominator))
     (ownerRead : locals[23]? = some (.i64 newNode.root)) (pointerRead : locals[24]? = some (.i64 newNode.root))
     (valid : heap.At middle) (oldOwned : heap.OwnsWords middle oldNode point.numerators)
@@ -22,11 +22,11 @@ theorem roundsContinue_exact (env : HostEnv Unit) (initial middle : Store Unit) 
     (Q : Assertion Unit)
     (next : ∀ final finalHeap, finalHeap.At final → finalHeap.OwnsWords final newNode nextPoint.numerators →
       original.Frame initial finalHeap final → OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
-      ∀ nextLocals, RoundsLocals nextLocals false nextPoint newNode.root newNode.root →
-      Q (.Fallthrough final { params := roundsParams fuel input nextPoint inputRoot newNode.root, locals := nextLocals })) :
+      ∀ nextLocals, RoundsLocals nextLocals false nextPoint newNode.root newNode.root newNode.root →
+      Q (.Fallthrough final { params := roundsParams fuel input nextPoint inputRoot newNode.root newNode.root, locals := nextLocals })) :
     wp Project.Beck.«module» roundsContinue Q middle
-      { params := roundsParams (fuel + 1) input point inputRoot oldNode.root, locals := locals } env := by
-  let params := roundsParams (fuel + 1) input point inputRoot oldNode.root
+      { params := roundsParams (fuel + 1) input point inputRoot pointOwner oldNode.root, locals := locals } env := by
+  let params := roundsParams (fuel + 1) input point inputRoot pointOwner oldNode.root
   have paramsSize : params.length = 10 := by simp [params, roundsParams, matrixParams, inputValues, pointValues]
   let prepared := roundsContinuePrepared locals input nextPoint inputRoot newNode.root
   have preparedState := roundsContinuePrepared_state state input nextPoint inputRoot newNode.root
@@ -37,7 +37,7 @@ theorem roundsContinue_exact (env : HostEnv Unit) (initial middle : Store Unit) 
     · simpa only [same] using Ne.symm inputDifferent
   rw [rounds_continue_shape]
   refine Sequence.wp_append (P := fun store frame => store = middle ∧ frame = { params := params, locals := prepared }) ?_ ?_
-  · exact roundsContinuePrepare_exact env middle locals (fuel + 1) input point nextPoint inputRoot oldNode.root newNode.root
+  · exact roundsContinuePrepare_exact env middle locals (fuel + 1) input point nextPoint inputRoot pointOwner oldNode.root newNode.root
       state.size denRead ownerRead pointerRead _ ⟨rfl, rfl⟩
   rintro store frame ⟨same, frameSame⟩
   subst store frame
@@ -49,7 +49,7 @@ theorem roundsContinue_exact (env : HostEnv Unit) (initial middle : Store Unit) 
     (by simp [Locals.get, paramsSize, prepared, roundsContinuePrepared, state.size])
     (by simp [Locals.get, paramsSize, prepared, roundsContinuePrepared, state.size])
   intro final finalHeap finalValid finalOwned finalFrame finalBudget
-  apply roundsAdvance_exact env final locals fuel input point nextPoint inputRoot oldNode.root newNode.root internal
+  apply roundsAdvance_exact env final locals fuel input point nextPoint inputRoot pointOwner oldNode.root newNode.root internal
     state.size state.owner state.extra inputNonzero inputInternal
   exact next final finalHeap finalValid finalOwned finalFrame finalBudget _
     (roundsContinued_state preparedState input nextPoint inputRoot newNode.root)
