@@ -415,9 +415,10 @@ Id wrappers. The exact proposition and standard decision expression are checked.
 These guards work in decisions, ordinary/dependent word or Boolean choices,
 helper bodies and loop steps, including break and continue. Boolean relations
 may also be retained directly under proposition lets. These lets bind Bool or
-UInt64 values, may nest, preserve standard Id type annotations and check unused
-bindings. The substituted standard decision must match the retained condition.
-They compose with conjunctions, disjunctions and negation.
+UInt64 values or local UInt64-to-Bool and Bool-to-Bool predicates. They may nest,
+preserve standard Id result annotations and check unused bindings, including
+unused predicate bodies. The substituted standard decision must match the
+retained condition. They compose with conjunctions, disjunctions and negation.
 
 Boolean-to-word conversions and word-valued conditions admit local UInt64-to-Bool
 and Bool-to-Bool declarations followed by repeated calls or nested predicate
@@ -442,7 +443,8 @@ Dependent choices check the proof domains and remove unused proof binders.
 These choices also accept supported propositional guards, including UInt64
 comparisons, negation, compound propositions and proposition lets. Guard operands
 are recursively compiled, and the retained standard evidence is checked before
-compiling either branch. Proposition lets currently bind UInt64 or Bool values.
+compiling either branch. Predicate lets retain their original function binder
+and preserve its scope around every guard operand.
 Direct Boolean Eq/Ne conditions may compare general helper scopes, including
 relations to true or false. Both Boolean operands and both branches are checked;
 the exact standard decision evidence and dependent proof domains are retained.
@@ -461,8 +463,9 @@ Compound Boolean leaves also admit junctions, equality/inequality, choices,
 Boolean and word lets, standard Id binds, wrappers and metadata. The existing
 Boolean conversion checker validates the entire expression. Native Boolean lets
 inside Id.run use this form. Retained proposition lets also admit Bool and UInt64
-bindings with substituted decision operands. Function-valued declarations inside
-the proposition itself remain outside this guard grammar.
+value bindings and UInt64-to-Bool or Bool-to-Bool predicate declarations with
+substituted decision operands. Predicate inputs use bare UInt64 or Bool; their
+bodies use the supported Boolean helper grammar.
 
 Bool.toUInt64 and equivalent dot notation convert admitted Boolean values to
 UInt64. Inputs may be literals, saved flags, comparisons, decisions, negations,
