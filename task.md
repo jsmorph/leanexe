@@ -323,14 +323,16 @@ and 10,752 invalid-input checks. Prior tests pass 82,258 comparisons, 48,911
 rejections and 2,160 controls. Evidence is in
 [the Bool-input annotation archive](proofs/compiler/boolean-input-2026-09-26/README.md).
 
-Current capability: Boolean helper calls as arguments to word- and step-returning
-Bool-input helpers. Source execution/support/totality, extraction acceptance,
-soundness, correctness and invariants pass. New tests pass 57,012
+Boolean calls as arguments to word- and step-returning helpers are complete.
+Source argument evaluation requires an encoded Boolean; application reuses the
+checked conversion path. The general source-to-WASM theorem and eighteen audits
+pass. Native Lean/V8 agree on 509 inputs across 28 declarations, including thirteen
+ranges; eighteen prior modules retain identical bytes. New tests pass 57,012
 native/IR comparisons, 48,384 invalid-input checks and 2,688 controls. Prior tests
-pass 63,666 comparisons, 33,359 rejections and 1,920 controls. The full compiler
-proof and selected native/V8 checks are next.
+pass 63,666 comparisons, 33,359 rejections and 1,920 controls. Evidence is in
+[the Boolean-call argument archive](proofs/compiler/boolean-call-argument-2026-09-26/README.md).
 
-Next: retained instance wrappers and broader signatures. Full-dialect
+Next: public Boolean results, then retained instance wrappers and broader signatures. Full-dialect
 correctness remains unfinished.
 Complete each capability through WASM and commit/push frequently.
 

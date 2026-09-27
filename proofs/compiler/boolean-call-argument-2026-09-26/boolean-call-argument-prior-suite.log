@@ -1,0 +1,12 @@
+scalar_boolean_input 0 180 native/boolean-input IR comparisons passed
+scalar_boolean_input_syntax 0 18944 native/boolean-input syntax comparisons and 10752 invalid-input tests passed
+scalar_boolean_function 0 342 native/Boolean-function IR comparisons, three declaration rejection tests and twelve raw helper rejection tests passed
+scalar_boolean_predicate_nested 0 180 native/Boolean-input predicate nested-call IR comparisons passed
+scalar_boolean_predicate_nested_syntax 0 2688 native/Boolean-input predicate nested-call syntax comparisons and 2688 invalid-input tests and 192 admission controls passed
+scalar_boolean_predicate_nested_step_syntax 0 4608 native/Boolean-input step predicate nested-call syntax comparisons and 2688 invalid-input tests and 192 admission controls passed
+scalar_boolean_predicate_nested_outer_syntax 0 4608 native/outer Boolean-input predicate nested-call syntax comparisons and 2880 invalid-input tests passed
+scalar_boolean_predicate_loop_result 0 192 native/Boolean-input predicate loop result IR comparisons passed
+scalar_boolean_predicate_loop_result_step_syntax 0 12288 native/direct step Boolean helper IR comparisons, 4608 invalid-input tests and 512 admission controls passed
+scalar_boolean_predicate_loop_result_outer_syntax 0 12288 native/direct outer Boolean helper IR comparisons, 4608 invalid-input tests and 512 admission controls passed
+scalar_boolean_predicate_result 0 180 native/Boolean-input predicate helper result IR comparisons passed
+scalar_boolean_predicate_result_syntax 0 7168 native/direct Boolean helper IR comparisons, 5120 invalid-input tests and 512 admission controls passed
