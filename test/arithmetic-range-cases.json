@@ -474,5 +474,9 @@
   "rangeNatAliasStep",
   "rangeNatAliasCondition",
   "rangeNatAliasCapture",
-  "rangeNatAliasPredicateResult"
+  "rangeNatAliasPredicateResult",
+  "rangeBooleanBoundResultStep",
+  "rangeBooleanBoundResultCondition",
+  "rangeBooleanBoundResultOuter",
+  "rangeBooleanBoundResultHelper"
 ]

@@ -206,6 +206,12 @@ source semantics preserve the inner Boolean value; extraction checks that value
 recursively. Wrapped calls compose through conversions, saved flags, scalar and
 loop-step conditions, helper arguments and loop calculations. Custom instances,
 wrong wrapper types/universes and unsupported inner values are rejected.
+Boolean-valued lets, immediate applications and named immediate applications
+can use these calls in the bound value or body. Bound flags preserve captures
+and shadowing, including inside converted helper results and loop conditions.
+Both used and unused values are checked; standard Id annotations and negation
+are retained. UInt64 bindings and monadic binds inside Boolean-valued results
+remain subsequent capabilities.
 Nested converted calls, including negated inner arguments, check each argument
 as a Boolean conversion. Conjunctions and disjunctions can combine these calls
 with flags, word-input predicate calls and other supported Boolean expressions,
