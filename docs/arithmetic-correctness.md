@@ -31,9 +31,13 @@ must exactly match the bind input. The full standard Id bind instance is checked
 Scalar UInt64 let bindings and word-valued Id actions may also precede these
 Boolean loops, with arbitrary nesting of supported setup expressions. Their
 values can supply loop bounds, initial values, step captures and the final
-Boolean computation. Unused setup expressions are checked. Boolean setup and
-local helper declarations outside the Boolean loop binding remain separate
-unsupported forms. Public parameter
+Boolean computation. Unused setup expressions are checked. Bool let bindings and standard Boolean-to-Boolean Id binds may precede the loop
+as well. Each flag action is checked as an admitted Boolean conversion, and its
+normalized value is preserved in loop captures and the final result. Boolean bind
+input/output types may retain Id layers; exact lambda domains and standard
+instances are required. Let domains with Id annotations, outer helper declarations
+and conditional actions that introduce loop-containing local continuations
+remain unsupported forms. Public parameter
 domains may retain any number of standard Id layers. Declared and lambda domains
 must have the same base scalar kind; differing Id depths preserve their meaning.
 Custom annotation heads, wrong universes and metadata inside parameter domains

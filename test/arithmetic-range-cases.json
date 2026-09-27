@@ -566,5 +566,15 @@
   "rangeBoolWordSetupStride",
   "rangeBoolWordSetupCapture",
   "rangeBoolWordSetupFlag",
-  "rangeBoolWordSetupId"
+  "rangeBoolWordSetupId",
+  "rangeBoolFlagSetupLet",
+  "rangeBoolFlagSetupChain",
+  "rangeBoolFlagSetupBind",
+  "rangeBoolFlagSetupCondition",
+  "rangeBoolFlagSetupExit",
+  "rangeBoolFlagSetupContinue",
+  "rangeBoolFlagSetupStride",
+  "rangeBoolFlagSetupCapture",
+  "rangeBoolFlagSetupInput",
+  "rangeBoolFlagSetupId"
 ]

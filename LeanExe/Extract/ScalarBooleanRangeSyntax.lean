@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarBooleanLetTypes
 import LeanExe.Extract.ScalarBooleanType
 import LeanExe.Extract.ScalarDo
 import LeanExe.Source.ScalarBooleanWrapper
@@ -26,6 +27,32 @@ theorem booleanRangeBindTypes_sound {input domain output : Lean.Expr}
     cases accepted
     exact ⟨scalarResultType_sound ha, same ▸ scalarResultType_sound ha, booleanType_sound hb⟩
   · contradiction
+
+/-- A standard Boolean-to-Boolean bind preserves its exact continuation domain. -/
+def booleanRangeFlagBindTypes? (input domain output : Lean.Expr) : Option (BooleanType × BooleanType) := do
+  let first ← booleanType? input
+  let last ← booleanType? output
+  if input = domain then some (first, last) else none
+
+@[simp] theorem booleanRangeFlagBindTypes_accepts (input : BooleanType) (output : BooleanType) :
+    booleanRangeFlagBindTypes? input.expr input.expr output.expr = some (input, output) := by
+  simp [booleanRangeFlagBindTypes?]
+
+theorem booleanRangeFlagBindTypes_sound {input domain output : Lean.Expr}
+    {first : BooleanType} {last : BooleanType}
+    (parsed : booleanRangeFlagBindTypes? input domain output = some (first, last)) :
+    input = first.expr ∧ domain = first.expr ∧ output = last.expr := by
+  simp only [booleanRangeFlagBindTypes?, bind, Option.bind_eq_some_iff] at parsed
+  obtain ⟨a, ha, b, hb, accepted⟩ := parsed
+  split at accepted
+  · rename_i same
+    cases accepted
+    exact ⟨booleanType_sound ha, same ▸ booleanType_sound ha, booleanType_sound hb⟩
+  · contradiction
+
+@[simp] theorem booleanRangeBindTypes_not_boolean (input : BooleanType) (domain output : Lean.Expr) :
+    booleanRangeBindTypes? input.expr domain output = none := by
+  simp [booleanRangeBindTypes?, scalarResultType_boolean]
 
 /-- Exact Boolean Id wrappers and metadata; arbitrary wrapper heads are rejected. -/
 def booleanRangeWrapper? : Lean.Expr → Option (BooleanWrapper × Lean.Expr)

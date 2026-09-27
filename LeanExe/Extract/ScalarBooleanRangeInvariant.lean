@@ -31,13 +31,27 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     · exact tail
     · exact bindings binding member
   | case3 => contradiction
-  | case4 locals input output value name domain body binder types parsed bound matched ih =>
+  | case4 locals name value body nondep bound matched ih =>
     apply ih compiled
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · exact extractScalarExprWith_invariant P literal binary choice matched bindings
     · exact bindings binding member
-  | case5 locals input output value name domain body binder types parsed notPure =>
+  | case5 => contradiction
+  | case6 => contradiction
+  | case7 locals input output value name domain body binder notWord types parsed bound matched ih =>
+    apply ih compiled
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · exact extractScalarExprWith_invariant P literal binary choice matched bindings
+    · exact bindings binding member
+  | case8 locals input output value name domain body binder types parsed bound matched ih =>
+    apply ih compiled
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · exact extractScalarExprWith_invariant P literal binary choice matched bindings
+    · exact bindings binding member
+  | case9 locals input output value name domain body binder types parsed notPure =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hp, result, hr, rfl⟩ := compiled
     obtain ⟨count, initial, step, done, tail⟩ :=
@@ -48,7 +62,7 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact tail
     · exact bindings binding member
-  | case6 locals source notLet notBind wrapper body parsed ih => exact ih compiled bindings
-  | case7 => contradiction
+  | case10 locals source notLet notFlag notBind wrapper body parsed ih => exact ih compiled bindings
+  | case11 => contradiction
 
 end LeanExe.Extract.Core
