@@ -22,8 +22,8 @@ theorem extracted_function_valid
     (user : Code) (parsed : Parses code (LeanExe.Wasm.Binary.CoreWasm.emitFuncBody 4 func) user) :
     Validator.validateFunction (rawModule func entry user) (typeValues func) 0
       (typeValues func).head! user = .ok () := by
-  obtain ⟨arity, body, _, _, branches⟩ := extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, extracted, rfl⟩ | ⟨plan, extracted, rfl⟩ | ⟨plan, extracted, rfl⟩
+  obtain ⟨arity, result, body, _, _, branches⟩ := extractScalarFunc_cases compiled
+  rcases branches with ⟨ir, extracted, rfl⟩ | ⟨rfl, plan, extracted, rfl⟩ | ⟨rfl, plan, extracted, rfl⟩
   · obtain ⟨descriptor, recognized, arithmetic⟩ := extractScalarExpr_arithmetic extracted
     have scratch := scalarFunc_scratch arity name (some entry) recognized
     have format : arity + 1 + descriptor.scratchWidth < 2 ^ 32 := by

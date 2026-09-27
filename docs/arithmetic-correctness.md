@@ -9,7 +9,14 @@ yet covered by this theorem.
 ## Accepted source
 
 A declaration must be safe, total, have an executable body, take zero or more
-`UInt64` arguments and return `UInt64`. Its body may read arguments, contain
+`UInt64` arguments and return `UInt64` or `Bool`. Public Boolean results use
+an `i64` export value: false is zero and true is one. Their supported Boolean
+bodies compile through the same checked conversion as `Bool.toUInt64`, and a
+separate theorem proves the result encoding. Public Boolean parameters, retained
+Id result annotations and Boolean results from loop-containing bodies remain
+outside the supported grammar.
+
+A UInt64 body may read arguments, contain
 UInt64 literals, metadata, UInt64 `let` bindings, conditionals and pure `Id`
 operations, with arbitrary
 nesting of supported expressions:
@@ -67,8 +74,8 @@ and its exact standard decision evidence is checked recursively. The emitted
 condition preserves unsigned comparison semantics. Nested
 conditionals may appear in comparison operands, arithmetic operands, and let
 bindings. Both branches must belong to the supported grammar and satisfy static
-local bounds, even when one branch is never executed. Boolean parameters and results are not yet
-admitted by this source grammar. Boolean `!` may wrap standard UInt64 `==` and
+local bounds, even when one branch is never executed. Public Boolean parameters
+are not yet admitted by this source grammar. Boolean `!` may wrap standard UInt64 `==` and
 `!=` expressions, including repeated `!`. These guards retain their Boolean
 syntax and exact standard equality-decision evidence. Lowering computes their
 polarity and emits the corresponding equality or its negation; it does not
@@ -300,9 +307,8 @@ preserve captures and shadowing, and all unused bodies and call arguments are
 checked. Pure scalar Boolean helpers may surround a loop and supply its bounds,
 initial value and final computation. A conditional Boolean bind before a loop
 can generate a loop-containing helper; that case remains outside this grammar.
-Public Boolean parameters/results, broader Boolean-returning helper signatures, mixed Bool/word
-parameter lists, loops inside helper bodies and propositional combinations
-containing saved Boolean locals remain separate capabilities.
+Public Boolean parameters, broader Boolean-returning helper signatures, mixed Bool/word
+parameter lists and loops inside helper bodies remain separate capabilities.
 
 Explicit `decide` and implicit Prop-to-Bool conversions admit the existing
 closed guard grammar, including all UInt64 comparisons, propositional literals,

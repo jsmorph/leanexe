@@ -5589,6 +5589,41 @@ def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
   return a
 
+def publicBooleanTrue (_x _y : UInt64) : Bool := true
+
+def publicBooleanCompare (x y : UInt64) : Bool := x != y && x + 1 == y
+
+def publicBooleanChoice (x y : UInt64) : Bool :=
+  if x < y then x / y == 0 else !(y % x == 0)
+
+def publicBooleanDependent (x y : UInt64) : Bool :=
+  if _h : x == y then x != 0 else y != 0
+
+def publicBooleanLet (x y : UInt64) : Bool :=
+  let n := x + y
+  let flag := n == 0
+  let other := flag || x < y
+  other && !(n == y)
+
+def publicBooleanDo (x y : UInt64) : Bool := Id.run do
+  let n ← pure (x + y)
+  let flag ← pure (n == 0)
+  return flag || y == 0
+
+def publicBooleanNamed (x y : UInt64) : Bool :=
+  let f : UInt64 → Bool := fun n => n != y
+  f (x + 1)
+
+def publicBooleanCaptured (x y : UInt64) : Bool :=
+  let flag := x == 0
+  (fun b : Bool => b || flag) (y == 0)
+
+def publicBooleanDecision (x y : UInt64) : Bool :=
+  decide ((let b := x == y; b ∨ x < y) ∧ ¬ (y == 0))
+
+def publicBooleanWrapped (x y : UInt64) : Bool :=
+  Id.run (pure (Id.run (pure ((x == y) != (x == 0)))))
+
 def booleanCallArgumentNested (x y : UInt64) : UInt64 :=
   let f : Id (Id Bool) → Id (Id Bool) := fun (b : Id (Id Bool)) => b && x != y
   let g : Id Bool → Id UInt64 := fun (b : Id Bool) => (f b).toUInt64 + y
@@ -8390,6 +8425,16 @@ run_elab do
       `ArithmeticModeTest.rangeLocalNotContinue,
       `ArithmeticModeTest.rangeLocalNotOuter,
       `ArithmeticModeTest.rangeLocalNotHelper,
+      `ArithmeticModeTest.publicBooleanTrue,
+      `ArithmeticModeTest.publicBooleanCompare,
+      `ArithmeticModeTest.publicBooleanChoice,
+      `ArithmeticModeTest.publicBooleanDependent,
+      `ArithmeticModeTest.publicBooleanLet,
+      `ArithmeticModeTest.publicBooleanDo,
+      `ArithmeticModeTest.publicBooleanNamed,
+      `ArithmeticModeTest.publicBooleanCaptured,
+      `ArithmeticModeTest.publicBooleanDecision,
+      `ArithmeticModeTest.publicBooleanWrapped,
       `ArithmeticModeTest.booleanCallArgumentNested,
       `ArithmeticModeTest.booleanCallArgumentWord,
       `ArithmeticModeTest.booleanCallArgumentChoice,

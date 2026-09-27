@@ -29,13 +29,13 @@ theorem extracted_function_body_bytes
       Wasm.wp m (Wasm.Binary.Instr.listToTalos raw)
         (fun outcome => outcome = .Fallthrough store (next.toLocals [.i64 value]))
         store ((ScalarLowering.functionState func args).toLocals []) env := by
-  obtain ⟨arity, body, _, hb, branches⟩ := extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, hi, rfl⟩ | ⟨plan, hp, rfl⟩ | ⟨plan, hp, rfl⟩
+  obtain ⟨arity, result, body, _, hb, branches⟩ := extractScalarFunc_cases compiled
+  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩
   · have hlen : args.length = arity := len
     subst arity
     have supported := extractScalarExpr_supported hi
     obtain ⟨value, semantics⟩ := supported.evaluates args.reverse (by simp)
-    have applied := LeanExe.Source.Scalar.apply_of_collectLambdas args [] hb (by simpa using semantics)
+    have applied := LeanExe.Source.Scalar.apply_encoded_of_collectLambdas result args [] hb (by simpa using semantics)
     have irEval := extractScalarExpr_correct semantics hi (scalarArgumentLocals args [0])
     obtain ⟨descriptor, recognized, arithmetic⟩ := extractScalarExpr_arithmetic hi
     have scratch := scalarFunc_scratch args.length name exportName recognized
