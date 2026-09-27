@@ -70,3 +70,8 @@ import LeanExe.Source.ScalarReannotationEvaluation
 #print axioms LeanExe.Extract.Core.extractScalarBooleanSequenceWith_accepts
 #print axioms LeanExe.Extract.Core.extractScalarBooleanSequenceWith_correct
 #print axioms LeanExe.Extract.Core.extractScalarBooleanSequenceWith_admitted
+
+#print axioms LeanExe.Extract.Core.booleanSequencePrefix_accepts
+#print axioms LeanExe.Extract.Core.booleanSequencePrefix_sound
+#print axioms LeanExe.Extract.Core.booleanSequencePrefix_body_size
+#print axioms LeanExe.Extract.Core.SequenceBindingsMatch.booleanResult

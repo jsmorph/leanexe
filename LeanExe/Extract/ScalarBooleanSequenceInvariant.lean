@@ -20,7 +20,18 @@ theorem extractScalarBooleanSequenceWith_invariant (P : LeanExe.IR.Expr → Prop
     have size : slot + 4 ≤ limit := room
     exact extractScalarBooleanRangeWith_invariant P literal binary choice
       (get slot (by omega)) (get (slot + 1) (by omega)) matched bindings
-  | case2 locals slot name type value body nondep rejected secondIH =>
+  | case2 locals slot source rejected shape parsed ih =>
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨first, compiledFirst, second, compiledSecond, rfl⟩ := compiled
+    have allRoom : slot + (4 + second.width) ≤ limit := room
+    refine ⟨extractScalarBooleanRangeWith_invariant P literal binary choice
+      (get slot (by omega)) (get (slot + 1) (by omega)) compiledFirst bindings,
+      ih compiledSecond (by omega) ?_⟩
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · exact get slot (by omega)
+    · exact bindings binding member
+  | case3 locals slot name type value body nondep rejected noPrefix secondIH =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨input, parsed, first, compiledFirst, second, compiledSecond, rfl⟩ := compiled
     have allRoom : slot + (first.width + second.width) ≤ limit := room
@@ -29,7 +40,7 @@ theorem extractScalarBooleanSequenceWith_invariant (P : LeanExe.IR.Expr → Prop
     rcases List.mem_cons.mp member with rfl | member
     · exact get (first.resultSlot slot) (by have := (first.resultSlot_bounds slot).2; omega)
     · exact bindings binding member
-  | case3 locals slot input output value name domain body binder rejected secondIH =>
+  | case4 locals slot input output value name domain body binder rejected noPrefix secondIH =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨types, parsed, first, compiledFirst, second, compiledSecond, rfl⟩ := compiled
     have allRoom : slot + (first.width + second.width) ≤ limit := room
@@ -38,15 +49,15 @@ theorem extractScalarBooleanSequenceWith_invariant (P : LeanExe.IR.Expr → Prop
     rcases List.mem_cons.mp member with rfl | member
     · exact get (first.resultSlot slot) (by have := (first.resultSlot_bounds slot).2; omega)
     · exact bindings binding member
-  | case4 locals slot type body rejected ih =>
+  | case5 locals slot type body rejected noPrefix ih =>
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨input, parsed, compiled⟩ := compiled
     exact ih compiled room bindings
-  | case5 locals slot type body rejected ih =>
+  | case6 locals slot type body rejected noPrefix ih =>
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨input, parsed, compiled⟩ := compiled
     exact ih compiled room bindings
-  | case6 locals slot data body rejected ih => exact ih compiled room bindings
-  | case7 => contradiction
+  | case7 locals slot data body rejected noPrefix ih => exact ih compiled room bindings
+  | case8 => contradiction
 
 end LeanExe.Extract.Core

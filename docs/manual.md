@@ -86,7 +86,7 @@ Library-mode array and byte-array values use exported memory.  Hosts allocate in
 Use `compile-arithmetic` when the [general compiler theorem](arithmetic-correctness.md)
 is the required guarantee. Its grammar includes supported scalar operations,
 Boolean locals, bindings, conditionals, pure `Id` blocks, local functions, and
-one bounded range loop with supported `continue` and `break` forms. It rejects
+bounded range loops and supported consecutive computations with `continue` and `break` forms. It rejects
 source outside that grammar instead of falling back to broader extraction.
 Ordinary `compile` accepts more of the dialect; compilation success alone does
 not give every such program a general source-to-WASM correctness theorem.

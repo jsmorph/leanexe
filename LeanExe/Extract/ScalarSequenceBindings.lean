@@ -26,4 +26,16 @@ theorem SequenceBindingsMatch.result {locals : List ScalarBinding} {values : Lis
   rw [List.getElem?_append_left (List.getElem?_eq_some_iff.mp present).1]
   exact present
 
+/-- A saved Boolean keeps its native flag and zero/one representation. -/
+theorem SequenceBindingsMatch.booleanResult {locals : List ScalarBinding} {values : List Value}
+    {saved : List UInt64} {index : Nat} {flag : Bool}
+    (matched : SequenceBindingsMatch locals values saved)
+    (present : saved[index]? = some flag.toUInt64) :
+    SequenceBindingsMatch (.boolean (.local index) :: locals) (.boolean flag :: values) saved := by
+  intro suffix
+  apply (matched suffix).cons
+  apply LeanExe.IR.Expr.ScalarEval.local
+  rw [List.getElem?_append_left (List.getElem?_eq_some_iff.mp present).1]
+  exact present
+
 end LeanExe.Extract.Core

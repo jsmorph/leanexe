@@ -1046,5 +1046,13 @@
   "rangeBooleanSequenceThree",
   "rangeBooleanSequenceRetained",
   "rangeBooleanSequenceBoolInput",
-  "rangeBooleanSequenceWordTail"
+  "rangeBooleanSequenceWordTail",
+  "rangeBooleanPrefixWord",
+  "rangeBooleanPrefixBoolean",
+  "rangeBooleanPrefixDependent",
+  "rangeBooleanPrefixExits",
+  "rangeBooleanPrefixUnused",
+  "rangeBooleanPrefixAlternating",
+  "rangeBooleanPrefixRetained",
+  "rangeBooleanPrefixCapture"
 ]
