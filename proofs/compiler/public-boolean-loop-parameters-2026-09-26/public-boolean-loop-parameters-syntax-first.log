@@ -1,0 +1,46 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_public_boolean_loop_parameters_syntax.lean:19:25: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 0
+numerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_public_boolean_loop_parameters_syntax.lean:87:24: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 8064
+numerals are polymorphic in Lean, but the numeral `8064` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_public_boolean_loop_parameters_syntax.lean:87:9: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Lean.MessageData
+
+Hint: Adding the command `deriving instance BEq for Lean.MessageData` may allow Lean to derive the missing instance.
+test/scalar_public_boolean_loop_parameters_syntax.lean:20:22: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 0
+numerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_public_boolean_loop_parameters_syntax.lean:87:44: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 4032
+numerals are polymorphic in Lean, but the numeral `4032` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_public_boolean_loop_parameters_syntax.lean:87:32: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Lean.MessageData
+
+Hint: Adding the command `deriving instance BEq for Lean.MessageData` may allow Lean to derive the missing instance.
+test/scalar_public_boolean_loop_parameters_syntax.lean:70:33: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd Lean.MessageData Nat Lean.MessageData
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_public_boolean_loop_parameters_syntax.lean:86:30: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd Lean.MessageData Nat Lean.MessageData
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
