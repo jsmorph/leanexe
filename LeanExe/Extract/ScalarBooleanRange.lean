@@ -140,16 +140,29 @@ def extractScalarBooleanRangeWith (locals : List ScalarBinding) (slot : Nat)
             (fun flag => extractScalarExprWith (.boolean flag :: locals) (.app (.const ``Bool.toUInt64 []) body))
       | .letE name (.app (.const ``Id [.zero]) type) value body nondep =>
           extractScalarBooleanRangeWith locals slot (.letE name type value body nondep)
-      | .letE _ (.forallE firstTypeName (.const ``UInt64 [])
+      | .letE functionName (.forallE firstTypeName (.const ``UInt64 [])
           (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
-          (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) body _ =>
+          (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) body nondep =>
           match scalarResultType? resultType with
           | none =>
               match scalarManyFunction?
                   (.forallE firstTypeName (.const ``UInt64 [])
                     (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
                   (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) with
-              | none => none
+              | none =>
+                  match _binary : booleanBinaryHelper? (.letE functionName
+                      (.forallE firstTypeName (.const ``UInt64 [])
+                        (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
+                      (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi)
+                      body nondep) with
+                  | none => none
+                  | some helper => do
+                      let _ ← extractScalarExprWith (.word (.u64 0) :: .word (.u64 0) :: locals)
+                        (.app (.const ``Bool.toUInt64 []) helper.body)
+                      let function := ScalarBinding.binaryPredicateFunction fun first second =>
+                        extractScalarExprWith (.word second :: .word first :: locals)
+                          (.app (.const ``Bool.toUInt64 []) helper.body)
+                      extractScalarBooleanRangeWith (function :: locals) slot helper.continuation
               | some shape =>
                   match extractScalarExprWith (List.replicate shape.arity (.word (.u64 0)) ++ locals) shape.body with
                   | none => none
@@ -254,7 +267,46 @@ def extractScalarBooleanRangeWith (locals : List ScalarBinding) (slot : Nat)
           | none => extractScalarBooleanAccumulatorWith locals slot source
 termination_by sizeOf source
 decreasing_by
-  all_goals first | (simp_wf; omega) | exact booleanRangeWrapper_size _wrapped
+  all_goals first
+    | (simp_wf; omega)
+    | exact booleanRangeWrapper_size _wrapped
+    | have bounds := booleanBinaryHelper_sizes _binary
+      simp_wf
+      simp at bounds
+      omega
+
+theorem extractScalarBooleanRangeWith_letBinaryPredicate (locals : List ScalarBinding) (slot : Nat)
+    (helper : BooleanBinaryHelper)
+    (noScalar : extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) helper.expr) = none) :
+    extractScalarBooleanRangeWith locals slot helper.expr = (do
+      let _ ← extractScalarExprWith (.word (.u64 0) :: .word (.u64 0) :: locals)
+        (.app (.const ``Bool.toUInt64 []) helper.body)
+      let function := ScalarBinding.binaryPredicateFunction fun first second =>
+        extractScalarExprWith (.word second :: .word first :: locals)
+          (.app (.const ``Bool.toUInt64 []) helper.body)
+      extractScalarBooleanRangeWith (function :: locals) slot helper.continuation) := by
+  rw [extractScalarBooleanRangeWith.eq_def, noScalar]
+  have noMany := booleanBinaryHelper_not_many helper
+  simp only [Parameter.arrow, Parameter.lambda] at noMany
+  simp only [BooleanBinaryHelper.expr, BooleanBinaryFunctionBinding.expr, Parameter.arrow, Parameter.lambda]
+  rw [scalarResultType_boolean, noMany]
+  change (match found : booleanBinaryHelper? helper.expr with
+    | none => none
+    | some value => do
+        let _ ← extractScalarExprWith (.word (.u64 0) :: .word (.u64 0) :: locals)
+          (.app (.const ``Bool.toUInt64 []) value.body)
+        let function := ScalarBinding.binaryPredicateFunction fun first second =>
+          extractScalarExprWith (.word second :: .word first :: locals)
+            (.app (.const ``Bool.toUInt64 []) value.body)
+        extractScalarBooleanRangeWith (function :: locals) slot value.continuation) = _
+  split
+  · rename_i found
+    rw [booleanBinaryHelper_accepts] at found
+    contradiction
+  · rename_i actual found
+    have equal := Option.some.inj ((booleanBinaryHelper_accepts helper).symm.trans found)
+    subst actual
+    rfl
 
 theorem extractScalarBooleanRangeWith_scalar {locals : List ScalarBinding} {slot : Nat}
     {source : Lean.Expr} {value : LeanExe.IR.Expr}
@@ -618,6 +670,27 @@ theorem extractScalarBooleanRangeWith_accepts {types : List BindingKind} {source
       (range := fun _ => extractScalarBooleanRangeWith locals slot no) (Or.inl (extractScalarExprWith_accepts second locals typed total))
     exact ⟨ScalarRangeExitPlan.choice guard yesPlan noPlan, by
       simp only [extractScalarBooleanRangeWith_choice (notScalar := notScalar), hg, bind, Option.bind_some, ht, he, pure]⟩
+  | letBinaryPredicate helper function _ ihb =>
+    apply extractScalarBooleanRangeWith_accepts_fallback
+    intro notScalar
+    have accepts (first second : LeanExe.IR.Expr) := extractScalarExprWith_accepts function
+      (.word second :: .word first :: locals) (by simp [ScalarBinding.kind, typed]) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        · exact total binding member)
+    obtain ⟨checked, hc⟩ := accepts (.u64 0) (.u64 0)
+    let f := fun first second => extractScalarExprWith (.word second :: .word first :: locals)
+      (.app (.const ``Bool.toUInt64 []) helper.body)
+    obtain ⟨target, ht⟩ := ihb (.binaryPredicateFunction f :: locals)
+      (by simp [ScalarBinding.kind, typed]) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · exact accepts
+        · exact total binding member)
+    exact ⟨target, by rw [extractScalarBooleanRangeWith_letBinaryPredicate locals slot helper notScalar]; simp [hc, ht, f]⟩
   | @letBinaryFn types a b name firstTypeName secondTypeName secondTypeBi firstTypeBi firstName secondName secondBi firstBi nondep type function _ ihb =>
     apply extractScalarBooleanRangeWith_accepts_fallback
     intro notScalar
@@ -882,22 +955,29 @@ theorem extractScalarBooleanRangeWith_supported {source : Lean.Expr} {locals : L
         (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hr)
   | case5 locals name type value body nondep notScalar ih => exact .idLet type (ih compiled)
   | case6 => contradiction
-  | case7 => contradiction
-  | case8 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep notWord shape parsed checked validated notScalar ih =>
+  | case7 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep notWord notMany helper parsed notScalar ih =>
+    rw [booleanBinaryHelper_sound parsed]
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, validated, compiled⟩ := compiled
+    exact .letBinaryPredicate helper
+      (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported validated)
+      (by simpa [ScalarBinding.kind] using ih compiled)
+  | case8 => contradiction
+  | case9 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep notWord shape parsed checked validated notScalar ih =>
     obtain ⟨sameType, sameValue⟩ := scalarManyFunction_sound parsed
     rw [sameType, sameValue]
     exact .letManyFn shape
       (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported validated)
       (by simpa [ScalarBinding.kind] using ih compiled)
-  | case9 => contradiction
-  | case10 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep type parsed checked validated notScalar ih =>
+  | case10 => contradiction
+  | case11 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep type parsed checked validated notScalar ih =>
     have same := scalarResultType_sound parsed
     subst resultType
     exact .letBinaryFn type
       (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported validated)
       (by simpa [ScalarBinding.kind] using ih compiled)
-  | case11 => contradiction
-  | case12 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary notWord type parsed notScalar enclosingIH directIH branchIH =>
+  | case12 => contradiction
+  | case13 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary notWord type parsed notScalar enclosingIH directIH branchIH =>
     have sameType := booleanType_sound parsed
     subst resultType
     rcases scalarBooleanRangeCompleteContinuation_success compiled with previous |
@@ -918,15 +998,15 @@ theorem extractScalarBooleanRangeWith_supported {source : Lean.Expr} {locals : L
         (extractScalarExprWith_supported matched)
         (branchIH view.yes (booleanFunctionChoice_sizes parsedChoice).1 ht)
         (branchIH view.no (booleanFunctionChoice_sizes parsedChoice).2 he)
-  | case13 => contradiction
-  | case14 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary type parsed checked validated notScalar ih =>
+  | case14 => contradiction
+  | case15 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary type parsed checked validated notScalar ih =>
     have same := scalarResultType_sound parsed
     subst resultType
     exact .letFn type
       (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported validated)
       (by simpa [ScalarBinding.kind] using ih compiled)
-  | case15 => contradiction
-  | case16 locals name typeName resultType typeBi paramName value paramBi body nondep notWord type parsed notScalar enclosingIH directIH branchIH =>
+  | case16 => contradiction
+  | case17 locals name typeName resultType typeBi paramName value paramBi body nondep notWord type parsed notScalar enclosingIH directIH branchIH =>
     have sameType := booleanType_sound parsed
     subst resultType
     rcases scalarBooleanRangeCompleteContinuation_success compiled with previous |
@@ -947,53 +1027,53 @@ theorem extractScalarBooleanRangeWith_supported {source : Lean.Expr} {locals : L
         (extractScalarExprWith_supported matched)
         (branchIH view.yes (booleanFunctionChoice_sizes parsedChoice).1 ht)
         (branchIH view.no (booleanFunctionChoice_sizes parsedChoice).2 he)
-  | case17 => contradiction
-  | case18 locals name typeName resultType typeBi paramName value paramBi body nondep type parsed checked validated notScalar ih =>
+  | case18 => contradiction
+  | case19 locals name typeName resultType typeBi paramName value paramBi body nondep type parsed checked validated notScalar ih =>
     have same := scalarResultType_sound parsed
     subst resultType
     exact .letBooleanFn type
       (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported validated)
       (by simpa [ScalarBinding.kind] using ih compiled)
-  | case19 => contradiction
   | case20 => contradiction
-  | case21 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type parsed checked validated notScalar ih =>
+  | case21 => contradiction
+  | case22 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type parsed checked validated notScalar ih =>
     have same := scalarResultType_sound parsed
     subst resultType
     exact .letUnitFn type .unit
       (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported validated)
       (by simpa [ScalarBinding.kind] using ih compiled)
-  | case22 => contradiction
   | case23 => contradiction
-  | case24 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type parsed checked validated notScalar ih =>
+  | case24 => contradiction
+  | case25 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type parsed checked validated notScalar ih =>
     have same := scalarResultType_sound parsed
     subst resultType
     exact .letUnitFn type .punit
       (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported validated)
       (by simpa [ScalarBinding.kind] using ih compiled)
-  | case25 locals name typeName resultType typeBi paramName input value paramBi body nondep notScalar ih =>
+  | case26 locals name typeName resultType typeBi paramName input value paramBi body nondep notScalar ih =>
     exact .idFunctionInput input resultType (ih compiled)
-  | case26 => contradiction
   | case27 => contradiction
-  | case28 locals input output value name domain body binder notWord types parsed notScalar bodyIH valueIH =>
+  | case28 => contradiction
+  | case29 locals input output value name domain body binder notWord types parsed notScalar bodyIH valueIH =>
     obtain ⟨rfl, rfl, rfl⟩ := booleanRangeFlagBindTypes_sound parsed
     rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, result, hp, hr, rfl⟩
     · exact .bindFlagBefore types.1 types.2 (extractScalarExprWith_supported matched)
         (by simpa [ScalarBinding.kind] using bodyIH bound hc)
     · exact .bindFlagResult types.1 types.2 (valueIH hp)
         (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hr)
-  | case29 locals input output value name domain body binder types parsed bound matched notScalar ih =>
+  | case30 locals input output value name domain body binder types parsed bound matched notScalar ih =>
     obtain ⟨rfl, rfl, rfl⟩ := booleanRangeBindTypes_sound parsed
     exact .bindBefore types.1 types.2 (extractScalarExprWith_supported matched)
       (by simpa [ScalarBinding.kind] using ih compiled)
-  | case30 locals input output value name domain body binder types parsed notPure notScalar =>
+  | case31 locals input output value name domain body binder types parsed notPure notScalar =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hp, result, hr, _⟩ := compiled
     obtain ⟨rfl, rfl, rfl⟩ := booleanRangeBindTypes_sound parsed
     exact .bindResult types.1 types.2 (extractScalarRangeExitWith_supported hp)
       (by simpa [ScalarBinding.kind] using extractScalarExprWith_supported hr)
-  | case31 => contradiction
   | case32 => contradiction
-  | case33 locals type condition evidence yes no resultType parsed guard matched notScalar yesIH noIH =>
+  | case33 => contradiction
+  | case34 locals type condition evidence yes no resultType parsed guard matched notScalar yesIH noIH =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨first, ht, second, he, rfl⟩ := compiled
     have same := booleanType_sound parsed
@@ -1005,9 +1085,9 @@ theorem extractScalarBooleanRangeWith_supported {source : Lean.Expr} {locals : L
     · exact .choiceScalarLeft resultType (extractScalarExprWith_supported matched) scalarYes rangeNo
     · exact .choiceScalarRight resultType (extractScalarExprWith_supported matched) rangeYes scalarNo
     · exact .choice resultType (extractScalarExprWith_supported matched) rangeYes rangeNo
-  | case34 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind notIf wrapper body parsed notScalar ih =>
+  | case35 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind notIf wrapper body parsed notScalar ih =>
     rw [booleanRangeWrapper_sound parsed]
     exact .wrapped wrapper (ih compiled)
-  | case35 => exact .accumulator (extractScalarBooleanAccumulatorWith_supported compiled)
+  | case36 => exact .accumulator (extractScalarBooleanAccumulatorWith_supported compiled)
 
 end LeanExe.Extract.Core
