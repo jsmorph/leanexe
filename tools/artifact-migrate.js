@@ -7,7 +7,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { expectedTalosRevision } = require("./artifact-manifest");
 const { verifierSourceSha256 } = require("./artifact-source");
-const { decoderCertificates } = require("./artifact-kernel");
+const { decoderProofs } = require("./artifact-kernel");
 
 const repoRoot = path.resolve(__dirname, "..");
 const proofRoot = path.join(repoRoot, "proofs", "talos", "lean");
@@ -493,9 +493,9 @@ function migrate(item, { kernel = false } = {}) {
   const packageRoot = path.join(artifactRoot, item.name, sha256);
   if (kernel) {
     outputs.push(textOutput(path.join(moduleRoot, "ArtifactByteLookup.lean"), byteLookupModule(item, bytes)));
-    const certificates = decoderCertificates(item.leanModule, bytes.length,
+    const proofs = decoderProofs(item.leanModule, bytes.length,
       runOffsets(wasm, "--nested"), runOffsets(wasm, "--sections"));
-    for (const [name, source] of certificates) {
+    for (const [name, source] of proofs) {
       const output = textOutput(path.join(moduleRoot, `${name}.lean`), source);
       const existing = outputs.findIndex(candidate => candidate.file === output.file);
       if (existing < 0) outputs.push(output);

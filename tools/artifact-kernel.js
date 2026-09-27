@@ -1,6 +1,6 @@
 "use strict";
 
-function decoderCertificates(leanModule, size, nestedText, sectionsText) {
+function decoderProofs(leanModule, size, nestedText, sectionsText) {
   const namespace = `Project.${leanModule}.Artifact`;
   const prefix = `Project.${leanModule}`;
   const outputs = new Map();
@@ -337,4 +337,4 @@ theorem cache_validation_exists : ∃ validated, validate Cache.raw = .ok valida
   return outputs;
 }
 
-module.exports = { decoderCertificates };
+module.exports = { decoderProofs };

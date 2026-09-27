@@ -11,7 +11,7 @@ const {
   textOutput,
 } = require("../tools/artifact-migrate");
 const { makeTemporaryDirectory } = require("../tools/temp-directory");
-const { decoderCertificates } = require("../tools/artifact-kernel");
+const { decoderProofs } = require("../tools/artifact-kernel");
 
 const root = makeTemporaryDirectory("leanexe-migrate-test-");
 try {
@@ -101,28 +101,28 @@ try {
   const sections = ["section,3,9,10,11,17,28",
     ...Array.from({ length: count }, (_, i) => `item,3,${i},${11 + i},${12 + i}`),
     "section,10,196,197,198,1,4096", "item,10,0,198,4096"].join("\n");
-  const certificates = decoderCertificates("PartitionTest", size, nested, sections);
-  const declarations = [...certificates.values()].join("\n");
+  const proofs = decoderProofs("PartitionTest", size, nested, sections);
+  const declarations = [...proofs.values()].join("\n");
   for (let i = 0; i < count; i++) {
     for (const name of [`function${i}_decoded`, `sequence_0_tail${i}`]) {
       if (declarations.split(`theorem ${name} :`).length !== 2) {
-        throw new Error(`partitioned certificates lost or duplicated ${name}`);
+        throw new Error(`partitioned proofs lost or duplicated ${name}`);
       }
     }
   }
-  for (const [name, source] of certificates) {
+  for (const [name, source] of proofs) {
     if (name.includes("Sequences") && (source.match(/@\[cbv_eval\] theorem/g) || []).length > 8) {
-      throw new Error("a function certificate exceeds its declaration bound");
+      throw new Error("a function proof exceeds its declaration bound");
     }
     for (const match of source.matchAll(/^import Project\.PartitionTest\.(\w+)$/gm)) {
-      if (!["ArtifactByteLookup", "ArtifactCache", "ArtifactDecode"].includes(match[1]) && !certificates.has(match[1])) {
-        throw new Error(`missing generated certificate dependency ${match[1]}`);
+      if (!["ArtifactByteLookup", "ArtifactCache", "ArtifactDecode"].includes(match[1]) && !proofs.has(match[1])) {
+        throw new Error(`missing generated proof dependency ${match[1]}`);
       }
     }
   }
 
   process.stdout.write(
-    "checked transactional migration, frozen-file identity, decoder build, and bounded certificate generation\n",
+    "checked transactional migration, frozen-file identity, decoder build, and bounded proof generation\n",
   );
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
