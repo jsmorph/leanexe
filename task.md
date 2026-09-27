@@ -864,7 +864,12 @@ Boolean encoding through the existing word-valued loop plan. Start with a bounde
 step grammar, connect native iteration to the existing range model, and complete
 the public compiler and WASM proof before expanding step composition. Id inputs
 in converted helper scopes, multiple dynamic loops and broader signatures remain
-separate open capabilities.
+separate open capabilities. The Boolean iteration encoding and native strided
+iteration theorems now pass. A source step grammar with yield/done, checked
+choices, standard Id wrappers, metadata and scalar word/Boolean lets has a
+proved totality theorem. Six new fixed probes remain rejected by the public
+compiler. Step extraction, range extraction, public integration and WASM proofs
+are still required; no Boolean-accumulator compilation claim is made yet.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
