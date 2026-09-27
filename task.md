@@ -240,18 +240,19 @@ and 512 controls. Prior tests pass 10,350 comparisons, 6,675 invalid-input check
 and 688 controls. Evidence is in
 [the Boolean bound-result archive](proofs/compiler/boolean-bound-result-2026-09-26/README.md).
 
-UInt64 bindings inside converted Boolean results pass focused proofs and dependent
-loop invariants, 7,348 native/IR comparisons, 4,608 invalid-input checks and 512
-controls. The bound expression retains its word type; Boolean bodies preserve
-captures and shadowing through lets and immediate applications. Prior tests pass
-17,200 comparisons, 10,004 invalid-input checks and 1,024 controls. General compiler
-proof and selected WASM checks are pending.
+UInt64 bindings inside converted Boolean results are complete. The bound expression
+retains its word type; Boolean bodies preserve captures and shadowing through lets
+and immediate applications. The general source-to-WASM theorem and eighteen audits
+pass. Native Lean/V8 agree on 509 inputs across 28 declarations, including thirteen
+ranges; eighteen shared modules retain identical bytes. Focused tests pass 7,348
+native/IR comparisons, 4,608 invalid-input checks and 512 controls. Prior tests pass
+17,200 comparisons, 10,004 invalid-input checks and 1,024 controls. Evidence is in
+[the UInt64 bound-result archive](proofs/compiler/boolean-word-bound-result-2026-09-26/README.md).
 
-Next: finish this increment through WASM, then monadic binds inside converted
-Boolean results. Saved
-Boolean variables in mixed propositional guards, retained instance and Bool-parameter
-Id wrappers, and broader signatures follow. Full-dialect correctness remains
-unfinished. Complete each capability through WASM and commit/push frequently.
+Next: monadic binds inside converted Boolean results, followed by saved Boolean
+variables in mixed propositional guards, retained instance and Bool-parameter Id
+wrappers, and broader signatures. Full-dialect correctness remains unfinished.
+Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
