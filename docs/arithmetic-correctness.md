@@ -218,8 +218,11 @@ word operands can contain converted calls. Dependent branches may bind an unused
 condition proof; both branches are checked. Scalar UInt64-to-Bool and Bool-to-Bool helper declarations can return these
 calls directly, including nested calls, captures and standard Id wrappers.
 The complete helper body is recursively checked even when unused. Declarations
-whose continuation is a loop step or contains a loop, and saved Boolean variables
-inside mixed propositional guards, remain subsequent capabilities. Scalar Boolean do binds admit these calls in
+inside loop steps and around loops use the same checked bodies. Local helpers
+can capture the current accumulator; outer captures retain their original values
+across loop updates. Results can control early exits and continue, supply bounds
+and initial values, and contribute to the final result. Saved Boolean variables
+inside mixed propositional guards remain a subsequent capability. Scalar Boolean do binds admit these calls in
 direct actions or under standard pure/Id.run/metadata wrappers. The complete
 action is recursively checked, including unused results, and its encoded Boolean
 is stored with a distinct binding kind. Captures, shadowing and scalar calculations

@@ -94,22 +94,16 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep) values outcome
   | letPredicateFn (expression : BooleanLocal) (type : BooleanType)
-      {native : UInt64 → Lean.Expr → UInt64} {booleans : UInt64 → BooleanEnvironment}
-      (variables : ∀ x, expression.VariablesMean (.word x :: values.map Value.toScalar) (booleans x))
-      (arguments : ∀ x operand, operand ∈ expression.operands →
-        EvalWith operand (.word x :: values.map Value.toScalar) (native x operand))
-      (body : Eval b (.scalar (.predicateFunction
-        (fun x => expression.denote (native x) (booleans x))) :: values) outcome) :
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr)
+        (.word x :: values.map Value.toScalar) (Bool.toUInt64 (f x)))
+      (body : Eval b (.scalar (.predicateFunction f) :: values) outcome) :
       Eval (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep) values outcome
   | letBooleanPredicateFn (expression : BooleanLocal) (type : BooleanType)
-      {native : Bool → Lean.Expr → UInt64} {booleans : Bool → BooleanEnvironment}
-      (variables : ∀ x, expression.VariablesMean (.boolean x :: values.map Value.toScalar) (booleans x))
-      (arguments : ∀ x operand, operand ∈ expression.operands →
-        EvalWith operand (.boolean x :: values.map Value.toScalar) (native x operand))
-      (body : Eval b (.scalar (.booleanPredicateFunction
-        (fun x => expression.denote (native x) (booleans x))) :: values) outcome) :
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr)
+        (.boolean x :: values.map Value.toScalar) (Bool.toUInt64 (f x)))
+      (body : Eval b (.scalar (.booleanPredicateFunction f) :: values) outcome) :
       Eval (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) values outcome
@@ -291,17 +285,13 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) a paramBi) b nondep)
   | letPredicateFn (expression : BooleanLocal) (type : BooleanType)
-      (variables : expression.VariablesTyped (.word :: types.map BindingKind.toScalar))
-      (arguments : ∀ operand, operand ∈ expression.operands →
-        SupportedWith (.word :: types.map BindingKind.toScalar) operand)
+      (function : SupportedWith (.word :: types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) expression.expr))
       (body : Supported (.scalar .predicateFunction :: types) b) :
       Supported types (.letE name
         (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
         (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep)
   | letBooleanPredicateFn (expression : BooleanLocal) (type : BooleanType)
-      (variables : expression.VariablesTyped (.boolean :: types.map BindingKind.toScalar))
-      (arguments : ∀ operand, operand ∈ expression.operands →
-        SupportedWith (.boolean :: types.map BindingKind.toScalar) operand)
+      (function : SupportedWith (.boolean :: types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) expression.expr))
       (body : Supported (.scalar .booleanPredicateFunction :: types) b) :
       Supported types (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
@@ -565,42 +555,28 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨outcome, evaluated⟩ := ih (.scalar (.function false f) :: values) (by simp [Value.kind, LeanExe.Source.Scalar.Value.kind, typed])
     exact ⟨outcome, .letFn type (fun x => (total x).choose_spec) evaluated⟩
-  | letPredicateFn expression type variables arguments _ ih =>
-    have environments := fun x => variables.evaluates (.word x :: values.map Value.toScalar)
-      (by simpa [Scalar.Value.kind] using typed_projection typed)
-    let booleans := fun x => (environments x).choose
-    have total := fun x operand member => (arguments operand member).evaluates
-      (.word x :: values.map Value.toScalar)
-      (by simpa [Scalar.Value.kind] using typed_projection typed)
-    let native : UInt64 → Lean.Expr → UInt64 := fun x operand =>
-      if member : operand ∈ expression.operands then (total x operand member).choose else 0
-    have meanings : ∀ x operand, operand ∈ expression.operands →
-        EvalWith operand (.word x :: values.map Value.toScalar) (native x operand) := by
-      intro x operand member
-      simpa only [native, dite_eq_left member] using (total x operand member).choose_spec
-    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.predicateFunction
-      (fun x => expression.denote (native x) (booleans x))) :: values)
+  | letPredicateFn expression type function _ ih =>
+    have total : ∀ x : UInt64, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.word x :: values.map Value.toScalar) flag.toUInt64 := by
+      intro x
+      obtain ⟨encoded, evaluated⟩ := function.evaluates (.word x :: values.map Value.toScalar) (by simpa [Scalar.Value.kind] using typed_projection typed)
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x => (total x).choose
+    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.predicateFunction f) :: values)
       (by simp [Value.kind, Scalar.Value.kind, typed])
-    exact ⟨outcome, .letPredicateFn expression type
-      (fun x => (environments x).choose_spec) meanings evaluated⟩
-  | letBooleanPredicateFn expression type variables arguments _ ih =>
-    have environments := fun x => variables.evaluates (.boolean x :: values.map Value.toScalar)
-      (by simpa [Scalar.Value.kind] using typed_projection typed)
-    let booleans := fun x => (environments x).choose
-    have total := fun x operand member => (arguments operand member).evaluates
-      (.boolean x :: values.map Value.toScalar)
-      (by simpa [Scalar.Value.kind] using typed_projection typed)
-    let native : Bool → Lean.Expr → UInt64 := fun x operand =>
-      if member : operand ∈ expression.operands then (total x operand member).choose else 0
-    have meanings : ∀ x operand, operand ∈ expression.operands →
-        EvalWith operand (.boolean x :: values.map Value.toScalar) (native x operand) := by
-      intro x operand member
-      simpa only [native, dite_eq_left member] using (total x operand member).choose_spec
-    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.booleanPredicateFunction
-      (fun x => expression.denote (native x) (booleans x))) :: values)
+    exact ⟨outcome, .letPredicateFn expression type (fun x => (total x).choose_spec) evaluated⟩
+  | letBooleanPredicateFn expression type function _ ih =>
+    have total : ∀ x : Bool, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.boolean x :: values.map Value.toScalar) flag.toUInt64 := by
+      intro x
+      obtain ⟨encoded, evaluated⟩ := function.evaluates (.boolean x :: values.map Value.toScalar) (by simpa [Scalar.Value.kind] using typed_projection typed)
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x => (total x).choose
+    obtain ⟨outcome, evaluated⟩ := ih (.scalar (.booleanPredicateFunction f) :: values)
       (by simp [Value.kind, Scalar.Value.kind, typed])
-    exact ⟨outcome, .letBooleanPredicateFn expression type
-      (fun x => (environments x).choose_spec) meanings evaluated⟩
+    exact ⟨outcome, .letBooleanPredicateFn expression type (fun x => (total x).choose_spec) evaluated⟩
   | predicateInput input result _ ih =>
     obtain ⟨outcome, evaluated⟩ := ih values typed
     exact ⟨outcome, .predicateInput input result evaluated⟩

@@ -5001,6 +5001,92 @@ def booleanPredicateResultWrapped (x y : UInt64) : UInt64 :=
   let h : Id (Id UInt64) → Id Bool := fun n => pure (g ((show UInt64 from n) == y))
   (h x).toUInt64 + (g false).toUInt64
 
+def rangeBooleanPredicateResultLocalBool (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != seed
+    let g := fun b : Bool => !(f b)
+    if g ((UInt64.ofNat i) < seed) then
+      a := a + 7
+      break
+    a := a + (UInt64.ofNat i) + 1
+  return a
+
+def rangeBooleanPredicateResultLocalWord (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b || a == seed
+    let g := fun n : UInt64 => f (n == (UInt64.ofNat i))
+    if g a then
+      a := a + 3
+      continue
+    a := a + (UInt64.ofNat i) + 1
+  return a
+
+def rangeBooleanPredicateResultLocalNested (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != seed
+    let g := fun b : Bool => f (!b)
+    let h := fun n : UInt64 => g (n == (UInt64.ofNat i))
+    if h seed then break
+    a := a + (g (h a)).toUInt64 + 1
+  return a
+
+def rangeBooleanPredicateResultLocalWrapped (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != seed
+    let g : Bool → Id (Id Bool) := fun b => pure (Id.run (pure (f b)))
+    let h : Id (Id UInt64) → Id Bool := fun n => pure (g ((show UInt64 from n) == (UInt64.ofNat i)))
+    if Id.run (h a) then
+      a := a + 9
+      break
+    a := a + (g true).toUInt64 + 1
+  return a
+
+def rangeBooleanPredicateResultOuterBool (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun b : Bool => !(f b)
+  let mut a := seed + (g true).toUInt64
+  for i in [:count.toNat] do
+    if g (a == (UInt64.ofNat i)) then
+      a := a + 5
+      continue
+    a := a + 1
+  return a + (g false).toUInt64
+
+def rangeBooleanPredicateResultOuterWord (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b || seed == 0
+  let g := fun n : UInt64 => f (n == seed)
+  let mut a := seed
+  for i in [:(count + (g 0).toUInt64).toNat] do
+    if g (a + (UInt64.ofNat i)) then break
+    a := a + 1
+  return a + (g seed).toUInt64
+
+def rangeBooleanPredicateResultOuterNested (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun b : Bool => f (!b)
+  let h := fun n : UInt64 => g (n == seed)
+  let mut a := seed
+  for i in [:count.toNat] do
+    let localHelper := fun b : Bool => h (a + b.toUInt64)
+    if localHelper ((UInt64.ofNat i) == seed) then break
+    a := a + (g (h a)).toUInt64 + 1
+  return a + (h seed).toUInt64
+
+def rangeBooleanPredicateResultOuterWrapped (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g : Bool → Id (Id Bool) := fun b => pure (Id.run (pure (f b)))
+  let h : Id (Id UInt64) → Id Bool := fun n => pure (g ((show UInt64 from n) == seed))
+  let unused := fun b : Bool => g (!b)
+  let mut a := seed + (g true).toUInt64
+  for i in [:count.toNat] do
+    if Id.run (h (a + (UInt64.ofNat i))) then break
+    a := a + 1
+  return a + (g false).toUInt64
+
 def rangeBooleanPredicateResultStep (count seed : UInt64) : UInt64 := Id.run do
   let mut a := seed
   for i in [:count.toNat] do
@@ -7448,6 +7534,14 @@ run_elab do
       `ArithmeticModeTest.booleanPredicateResultCapture,
       `ArithmeticModeTest.booleanPredicateResultUnused,
       `ArithmeticModeTest.booleanPredicateResultWrapped,
+      `ArithmeticModeTest.rangeBooleanPredicateResultLocalBool,
+      `ArithmeticModeTest.rangeBooleanPredicateResultLocalWord,
+      `ArithmeticModeTest.rangeBooleanPredicateResultLocalNested,
+      `ArithmeticModeTest.rangeBooleanPredicateResultLocalWrapped,
+      `ArithmeticModeTest.rangeBooleanPredicateResultOuterBool,
+      `ArithmeticModeTest.rangeBooleanPredicateResultOuterWord,
+      `ArithmeticModeTest.rangeBooleanPredicateResultOuterNested,
+      `ArithmeticModeTest.rangeBooleanPredicateResultOuterWrapped,
       `ArithmeticModeTest.rangeBooleanPredicateResultStep,
       `ArithmeticModeTest.rangeBooleanPredicateResultCondition,
       `ArithmeticModeTest.rangeBooleanPredicateResultOuter,

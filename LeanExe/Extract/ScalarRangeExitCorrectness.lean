@@ -198,88 +198,58 @@ theorem scalarRangeExit_correct_of_supported {types : List BindingKind} {source 
             (by simp [ScalarBinding.kind, localsTyped]) (total_word_cons totalBindings argument)
         · exact totalBindings binding member)
     exact ⟨result, .letFn type (fun x => (total x).choose_spec) hs, hm⟩
-  | letPredicateFn expression type variables arguments _ ih =>
+  | letPredicateFn expression type function _ ih =>
     rw [extractScalarRangeExitWith_letPredicateFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨checked, _, hp⟩ := compiled
-    have environments := fun x => variables.evaluates (.word x :: values)
-      (by simp [Value.kind, valuesTyped])
-    let booleans := fun x => (environments x).choose
-    have total := fun x operand member => (arguments operand member).evaluates
-      (.word x :: values) (by simp [Value.kind, valuesTyped])
-    let native : UInt64 → Lean.Expr → UInt64 := fun x operand =>
-      if member : operand ∈ expression.operands then (total x operand member).choose else 0
-    have meanings : ∀ x operand, operand ∈ expression.operands →
-        EvalWith operand (.word x :: values) (native x operand) := by
-      intro x operand member
-      simpa only [native, dite_eq_left member] using (total x operand member).choose_spec
-    obtain ⟨result, hs, hm⟩ := ih (values := .predicateFunction
-      (fun x => expression.denote (native x) (booleans x)) :: values) hp
+    have total : ∀ x : UInt64, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.word x :: values) flag.toUInt64 := by
+      intro x
+      obtain ⟨encoded, evaluated⟩ := function.evaluates (.word x :: values)
+        (by simp [Value.kind, valuesTyped])
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x => (total x).choose
+    obtain ⟨result, hs, hm⟩ := ih (values := .predicateFunction f :: values) hp
       (by simp [ScalarBinding.kind, localsTyped]) (by simp [Value.kind, valuesTyped]) (by
         intro accumulator index stop flag
         apply (bindings accumulator index stop flag).cons
         intro argument x target hx hc
-        simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at hc
-        obtain ⟨condition, hc, rfl⟩ := hc
-        have inner := (bindings accumulator index stop flag).cons
-          (binding := .word argument) (value := .word x) hx
-        exact guardWord_correct (extractBooleanLocalWith_correct expression _ _ _ hc inner
-          (environments x).choose_spec (fun operand member result found =>
-            extractScalarExprWith_correct (meanings x operand member) found inner))) (by
+        exact extractScalarExprWith_correct ((total x).choose_spec) hc
+          ((bindings accumulator index stop flag).cons hx)) (by
         intro binding member
         rcases List.mem_cons.mp member with rfl | member
         · intro argument
-          obtain ⟨condition, found⟩ := extractBooleanLocalWith_accepts
-            (.word argument :: locals) expression _
-            (by simpa [ScalarBinding.kind, localsTyped] using variables)
-            (fun operand member => extractScalarExprWith_accepts (arguments operand member) _
-              (by simp [ScalarBinding.kind, localsTyped]) (total_word_cons totalBindings argument))
-            (total_word_cons totalBindings argument)
-          exact ⟨guardWord condition, by simp [found]⟩
+          exact extractScalarExprWith_accepts function (.word argument :: locals)
+            (by simp [ScalarBinding.kind, localsTyped]) (total_word_cons totalBindings argument)
         · exact totalBindings binding member)
-    exact ⟨result, .letPredicateFn expression type
-      (fun x => (environments x).choose_spec) meanings hs, hm⟩
-  | letBooleanPredicateFn expression type variables arguments _ ih =>
+    exact ⟨result, .letPredicateFn expression type (fun x => (total x).choose_spec) hs, hm⟩
+  | letBooleanPredicateFn expression type function _ ih =>
     rw [extractScalarRangeExitWith_letBooleanPredicateFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨checked, _, hp⟩ := compiled
-    have environments := fun x => variables.evaluates (.boolean x :: values)
-      (by simp [Value.kind, valuesTyped])
-    let booleans := fun x => (environments x).choose
-    have total := fun x operand member => (arguments operand member).evaluates
-      (.boolean x :: values) (by simp [Value.kind, valuesTyped])
-    let native : Bool → Lean.Expr → UInt64 := fun x operand =>
-      if member : operand ∈ expression.operands then (total x operand member).choose else 0
-    have meanings : ∀ x operand, operand ∈ expression.operands →
-        EvalWith operand (.boolean x :: values) (native x operand) := by
-      intro x operand member
-      simpa only [native, dite_eq_left member] using (total x operand member).choose_spec
-    obtain ⟨result, hs, hm⟩ := ih (values := .booleanPredicateFunction
-      (fun x => expression.denote (native x) (booleans x)) :: values) hp
+    have total : ∀ x : Bool, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.boolean x :: values) flag.toUInt64 := by
+      intro x
+      obtain ⟨encoded, evaluated⟩ := function.evaluates (.boolean x :: values)
+        (by simp [Value.kind, valuesTyped])
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x => (total x).choose
+    obtain ⟨result, hs, hm⟩ := ih (values := .booleanPredicateFunction f :: values) hp
       (by simp [ScalarBinding.kind, localsTyped]) (by simp [Value.kind, valuesTyped]) (by
         intro accumulator index stop flag
         apply (bindings accumulator index stop flag).cons
         intro argument x target hx hc
-        simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at hc
-        obtain ⟨condition, hc, rfl⟩ := hc
-        have inner := (bindings accumulator index stop flag).cons
-          (binding := .boolean argument) (value := .boolean x) hx
-        exact guardWord_correct (extractBooleanLocalWith_correct expression _ _ _ hc inner
-          (environments x).choose_spec (fun operand member result found =>
-            extractScalarExprWith_correct (meanings x operand member) found inner))) (by
+        exact extractScalarExprWith_correct ((total x).choose_spec) hc
+          ((bindings accumulator index stop flag).cons hx)) (by
         intro binding member
         rcases List.mem_cons.mp member with rfl | member
         · intro argument
-          obtain ⟨condition, found⟩ := extractBooleanLocalWith_accepts
-            (.boolean argument :: locals) expression _
-            (by simpa [ScalarBinding.kind, localsTyped] using variables)
-            (fun operand member => extractScalarExprWith_accepts (arguments operand member) _
-              (by simp [ScalarBinding.kind, localsTyped]) (total_boolean_cons totalBindings argument))
-            (total_boolean_cons totalBindings argument)
-          exact ⟨guardWord condition, by simp [found]⟩
+          exact extractScalarExprWith_accepts function (.boolean argument :: locals)
+            (by simp [ScalarBinding.kind, localsTyped]) (total_boolean_cons totalBindings argument)
         · exact totalBindings binding member)
-    exact ⟨result, .letBooleanPredicateFn expression type
-      (fun x => (environments x).choose_spec) meanings hs, hm⟩
+    exact ⟨result, .letBooleanPredicateFn expression type (fun x => (total x).choose_spec) hs, hm⟩
   | predicateInput input result _ ih =>
     rw [extractScalarRangeExitWith_predicateInput] at compiled
     obtain ⟨outcome, evaluated, meaning⟩ := ih compiled localsTyped valuesTyped bindings totalBindings

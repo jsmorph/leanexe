@@ -121,14 +121,7 @@ theorem extractScalarRangeExitWith_invariant (P : LeanExe.IR.Expr → Prop)
       intro binding member
       rcases List.mem_cons.mp member with rfl | member
       · intro argument result ha compiled
-        change (extractBooleanLocalWith (.word argument :: locals) boolean
-          (fun operand _ => extractScalarExprWith (.word argument :: locals) operand)).bind
-          (fun condition => some (guardWord condition)) = some result at compiled
-        simp only [Option.bind_eq_some_iff, Option.some.injEq] at compiled
-        obtain ⟨condition, hc, rfl⟩ := compiled
-        exact (extractBooleanLocalWith_choice P literal binary choice boolean _ hc (extend bindings ha)
-          (fun operand member result found => expression found (extend bindings ha)))
-          _ _ (literal 1) (literal 0)
+        exact expression compiled (extend bindings ha)
       · exact bindings binding member
     · exact excludedBinary
   | case14 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary type matched notRange ihb =>
@@ -234,16 +227,8 @@ theorem extractScalarRangeExitWith_invariant (P : LeanExe.IR.Expr → Prop)
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · intro argument result ha compiled
-      change (extractBooleanLocalWith (.boolean argument :: locals) boolean
-        (fun operand _ => extractScalarExprWith (.boolean argument :: locals) operand)).bind
-        (fun condition => some (guardWord condition)) = some result at compiled
-      simp only [Option.bind_eq_some_iff, Option.some.injEq] at compiled
-      obtain ⟨condition, hc, rfl⟩ := compiled
-      have inner : ∀ binding ∈ ScalarBinding.boolean argument :: locals, binding.Holds P := by
-        intro binding member
-        rcases List.mem_cons.mp member with rfl | member
-        · exact ha
-        · exact bindings binding member
+      exact expression compiled (extend bindings ha)
+    · exact bindings binding member
       exact (extractBooleanLocalWith_choice P literal binary choice boolean _ hc inner
         (fun operand member result found => expression found inner))
         _ _ (literal 1) (literal 0)

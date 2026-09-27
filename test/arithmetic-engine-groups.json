@@ -2573,5 +2573,33 @@
     "rangeBooleanPredicateResultCondition",
     "rangeBooleanPredicateResultOuter",
     "rangeBooleanPredicateResultHelper"
+  ],
+  "boolean-predicate-loop-result": [
+    "constant",
+    "compareBEq",
+    "mixedGuardDo",
+    "booleanPredicateResultBool",
+    "booleanPredicateResultWord",
+    "booleanPredicateResultNested",
+    "booleanPredicateResultCapture",
+    "booleanPredicateResultUnused",
+    "booleanPredicateResultWrapped",
+    "rangeBooleanPredicateResultStep",
+    "rangeBooleanPredicateResultCondition",
+    "rangeBooleanPredicateResultOuter",
+    "rangeBooleanPredicateResultHelper",
+    "rangeBooleanPredicateLoopBindBreak",
+    "rangeBooleanPredicateLoopBindContinue",
+    "rangeBooleanPredicateOuterBindBounds",
+    "rangeBooleanPredicateOuterBindCapture",
+    "rangeBooleanPredicateBindOuterCapture",
+    "rangeBooleanPredicateResultLocalBool",
+    "rangeBooleanPredicateResultLocalWord",
+    "rangeBooleanPredicateResultLocalNested",
+    "rangeBooleanPredicateResultLocalWrapped",
+    "rangeBooleanPredicateResultOuterBool",
+    "rangeBooleanPredicateResultOuterWord",
+    "rangeBooleanPredicateResultOuterNested",
+    "rangeBooleanPredicateResultOuterWrapped"
   ]
 }
