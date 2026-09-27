@@ -4,15 +4,20 @@
 \maketitle
 
 \section{Task and interface}
-The task is to compute the greatest common divisor of two nonnegative integers
-represented by \texttt{UInt64}.  This implementation uses Euclid's remainder
-algorithm.  Its intended result is $\gcd(a,b)$, with $\gcd(0,0)=0$.
-All input words are admitted.  The result fits in one word.
+\texttt{LeanExe.Lib.NumberTheory.gcd} computes the greatest common divisor
+of two \texttt{UInt64} values using Euclid's remainder algorithm.  It accepts
+every pair of input words.  The intended result is $\gcd(a,b)$, represented
+as a word, with $\gcd(0,0)=0$.
 
-\texttt{LeanExe.Lib.NumberTheory.gcd} takes two words and returns one word.
-The implementation belongs to the number-theory library.  It has no heap
-arguments and allocates no arrays.  Formal correctness proofs for this
-library component are deferred.
+LeanExe compiles the Lean function and its callers to WebAssembly (WASM).
+The examples run that WASM in Wasmtime.
+
+\section{Verification status}
+Lean checks the source types.  Execution tests pass for selected inputs:
+WASM and native Lean results agree with an arbitrary-precision integer
+reference, and the native test also checks Lean's \texttt{Nat.gcd}.
+Formal correctness and termination proofs for this source function,
+its generated WASM, and its clients remain deferred.
 
 \section{Algorithm and source}
 Each iteration replaces $(x,y)$ with $(y,x\bmod y)$ while $y>0$.
@@ -23,7 +28,7 @@ extends its positive-input description.
 
 \lstinputlisting{LeanExe/Lib/NumberTheory/Gcd/Basic.lean}
 
-The listing is read from the executable source during the document build.
+The listing comes from \texttt{Basic.lean}.
 The loop performs one unsigned remainder per iteration.  For $(48,18)$,
 the successive pairs are $(48,18)$, $(18,12)$, $(12,6)$, and $(6,0)$.
 This gives result $6$ after three iterations.
@@ -33,10 +38,12 @@ The fraction client calls the component and divides both inputs by the returned
 divisor when the denominator is positive.  Its result for $48/18$
 is $8/3$.  A zero numerator yields $0/1$.
 
-The polynomial-ratio client first calls checked Horner evaluation for its
+The polynomial-ratio client calls Horner evaluation with overflow checks for its
 numerator and denominator, then calls fraction reduction.  At $x=2$,
-$(1+3x+2x^2)/(2+2x)=15/6=5/2$.  These clients are compiled together with
-their imported library functions and executed in Wasmtime.
+$(1+3x+2x^2)/(2+2x)=15/6=5/2$.
+
+The commands run from the repository root after following the
+\href{https://github.com/jsmorph/leanexe/blob/lib1/DEVELOPING.md}{setup guide}.
 
 \begin{lstlisting}
 tools/seminum gcd 48 18
@@ -51,16 +58,17 @@ The command-line parser accepts unsigned decimal words through $2^{64}-1$.
 Invalid syntax and a zero fraction denominator produce status 2 and a message
 on standard error.  Successful commands print their result on standard output.
 
-\section{Tests and component discovery}
-\texttt{node test/seminum.js} compares WASM results with native Lean and
-mathematical references.  Cases include zero inputs, maximum words, consecutive
-large Fibonacci numbers, fraction reduction, and polynomial ratios.  The native
-GCD test also compares the component with Lean's \texttt{Nat.gcd}.
+\section{Tests}
+From the repository root, \texttt{node test/seminum.js} runs the comparisons
+described above.  Cases include zero inputs, maximum words, powers of two,
+consecutive large Fibonacci numbers, and generated full-width pairs.
+Client cases check fraction reduction, polynomial ratios, and rejection of
+a zero denominator.  CLI tests check results and invalid-input diagnostics.
+The cases are defined in \texttt{test/seminum.js} and the native reference
+driver \texttt{test/SeminumNative.lean}.
 
-The compiler's existing annotation file records source declarations and WASM
-function indexes.  The example tool joins those records with a small catalog
-to identify this implementation in the compiled program.  This inventory
-provides discovery information.  Proof status is recorded as deferred.
+\texttt{tools/seminum inspect} lists the component declarations found in the
+compiler annotations, with their catalog descriptions and proof status.
 
 \begin{thebibliography}{9}
 \bibitem{euclid} Paul E. Black, ``Euclid's algorithm,'' NIST Dictionary of

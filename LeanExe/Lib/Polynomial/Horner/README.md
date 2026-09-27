@@ -1,8 +1,16 @@
-# Checked Horner evaluation
+# Horner evaluation with overflow checks
 
-This implementation evaluates a polynomial with nonnegative integer coefficients and argument.  It belongs to the polynomial library.  Coefficients appear in ascending degree order: `1,3,2` represents `1 + 3x + 2x²`.  An empty array represents zero.
+`eval` evaluates a polynomial with nonnegative integer coefficients and argument, checking for overflow before each multiply-add step.  Coefficients appear in ascending degree order: `1,3,2` represents `1 + 3x + 2x²`.  An empty array represents zero.
+
+[LeanExe](../../../../README.md) compiles the Lean function and its callers to WebAssembly (WASM).  The [command-line examples](../../../../libraries/README.md#setup-and-commands) run that WASM in Wasmtime.
+
+## Verification status
+
+Lean checks the source types.  Passing execution tests establish agreement between WASM, native Lean, and an arbitrary-precision polynomial reference on the tested inputs, including overflow cases.  Formal proofs of polynomial correctness, overflow detection, termination, and the behavior of the generated WASM and clients remain deferred.
 
 ## Use
+
+The [setup guide](../../../../libraries/README.md#setup-and-commands) lists prerequisites.  From the repository root, these commands build and execute the WASM examples:
 
 ```sh
 tools/seminum polynomial 2 1,3,2
@@ -13,7 +21,7 @@ tools/seminum ratio 2 1,3,2 2,2
 # 5/2
 ```
 
-The [setup guide](../../../../libraries/README.md#setup-and-commands) lists prerequisites.  The command builds and executes the generated WASM.  Every argument and coefficient must fit in `UInt64`.  Invalid input or arithmetic overflow exits with status 2 and a diagnostic on stderr.
+Every argument and coefficient must fit in `UInt64`.  Invalid input or arithmetic overflow exits with status 2 and a diagnostic on stderr.
 
 ```lean
 import LeanExe.Lib.Polynomial.Horner.Basic
@@ -22,15 +30,15 @@ def LeanExe.Examples.quadratic (x : UInt64) : Option UInt64 :=
   LeanExe.Lib.Polynomial.eval #[1, 3, 2] x
 ```
 
-The API is `eval (coefficients : Array UInt64) (x : UInt64) : Option UInt64`.  The [source](Basic.lean) returns `none` before a Horner step would overflow.  At zero, evaluation returns the constant coefficient or zero for an empty array.  Trailing zero coefficients are accepted.
+The API is `eval (coefficients : Array UInt64) (x : UInt64) : Option UInt64`.  The intended successful result is the exact nonnegative integer polynomial value.  The [source](Basic.lean) processes coefficients from highest degree to lowest and returns `none` before a step would exceed `2^64 - 1`.  At zero, evaluation returns the constant coefficient or zero for an empty array.  Trailing zero coefficients are accepted.  The loop reads the input array and keeps constant working storage.
 
-## Specification and tests
+The [polynomial-ratio client](../../../Examples/Seminum.lean) evaluates numerator and denominator polynomials and calls GCD to reduce the fraction.  Either evaluation can report overflow, and a zero denominator is rejected.
 
-The intended successful result is the exact nonnegative integer polynomial value.  The implementation processes coefficients from highest degree to lowest and checks each multiplication and addition against `2^64 - 1`.  It reads the input array and keeps constant working storage.  Correctness proofs are deferred.
+## Tests and report
 
-The [polynomial-ratio client](../../../Examples/Seminum.lean) evaluates numerator and denominator polynomials and calls the number-theory library to reduce the fraction.  Either evaluation can report overflow, and a zero denominator is rejected.
+From the repository root, `node test/seminum.js` compares WASM with native Lean and an arbitrary-precision sum-of-powers reference.  Cases cover empty and constant polynomials, zero arguments, maximum words, exact boundary results, and overflow.  The ratio tests cover successful composition, a zero denominator, and overflow in either polynomial.  CLI tests check results and invalid-input diagnostics.
 
-`node test/seminum.js` compares WASM with native Lean and an arbitrary-precision sum-of-powers reference.  Cases cover empty and constant polynomials, zero, maximum words, exact boundary results, overflow, and composed clients.  The [technical report](report.pdf) includes the executable source and the overflow-check derivation.  Rebuild it with `tools/seminum reports`.
+The [test source](../../../../test/seminum.js) and [native reference driver](../../../../test/SeminumNative.lean) define the cases.  The [technical report](report.pdf) derives the overflow check and includes the executable source.  `tools/seminum reports` rebuilds the PDF from [its LaTeX source](report.tex).
 
 ## Annotated references
 

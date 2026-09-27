@@ -1,3 +1,36 @@
+## 2026-09-27: Component prose and verification status
+
+Each component README and report now explains how LeanExe compiles the source
+to WASM and states its verification status near the start.  The prose separates
+Lean source checking, execution tests on selected inputs, and deferred
+correctness proofs for the library source and compiled clients.  Test sections
+identify the cases, mathematical references, and test drivers.
+
+Review of [the exponential theorem](proofs/talos/lean/Project/ExpSmall/Spec.lean)
+confirmed that its subject is `Project.ExpSmall.module`.  The exponential
+documents name that subject and theorem, state the domain and numerical
+conclusion, and record the deferred proof connection to the library component.
+The measured comparison names JavaScript's `Math.exp` as its reference.
+The [compiler theorem guide](docs/arithmetic-correctness.md) describes the
+`compile-arithmetic` scope.  The library index identifies the examples' use
+of `compile` and their execution-test evidence.
+
+The edit removes category announcements, repeated descriptions, and unrelated
+future-work paragraphs.  Horner's title names the run-time overflow checks.
+Its report now qualifies the operation count by successful evaluation,
+accounting for early return on overflow.  The binary GCD report replaces
+the claim that the result fits within both inputs, which fails for a zero
+input, with the statement that the result fits in `UInt64`.
+
+- [x] Review the READMEs and reports against the sources, tests, and theorem.
+- [x] Rebuild and review the PDFs, and check documentation links.
+
+The prose received two review passes.  All four reports build as two-page PDFs
+without TeX warnings, and every rendered page was reviewed.  The documentation
+checker accepts 188 maintained Markdown files.  This edit changes documentation
+and reports.  The execution-test results cited here come from the preceding
+component-directory test run.
+
 ## 2026-09-27: Component directory layout
 
 Each seminumerical component now keeps its implementation, README, LaTeX

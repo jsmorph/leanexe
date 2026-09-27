@@ -4,8 +4,8 @@
 \maketitle
 
 \section{Task and numerical domain}
-The task is to approximate $e^x$ on $[-1,0]$.  This implementation uses
-the degree-six Taylor polynomial
+\texttt{expTaylor6} approximates $e^x$ on $[-1,0]$ using the degree-six
+Taylor polynomial
 \[
   p_6(x)=1+x+\frac{x^2}{2}+\frac{x^3}{6}
          +\frac{x^4}{24}+\frac{x^5}{120}+\frac{x^6}{720}.
@@ -19,30 +19,40 @@ arithmetic.  The target bound for the binary64 computation is $1/4000$.
 returns a value, and other inputs return \texttt{none}.  Both signed zeros
 return the exact bits of one.  Negative subnormals are admitted.  Infinities
 and NaNs are rejected by the bit-range check.
+LeanExe compiles the Lean function and its callers to WebAssembly (WASM).
+The examples run that WASM in Wasmtime.
+
+\section{Verification status}
+Lean checks the source types.  Execution tests pass for selected inputs:
+WASM and native Lean agree bit for bit, domain checks give the expected status,
+and accepted results lie within $1/4000$ of JavaScript's \texttt{Math.exp}.
+
+A separate Lean theorem, \texttt{Project.ExpSmall.Spec.expSmall\_real\_error},
+proves termination and a finite positive result within $1/4000$ of the real
+exponential for every finite binary64 input in $[-1,0]$~\cite{prior}.
+Its subject is the WASM model \texttt{Project.ExpSmall.module}.
+Formal verification of this library function and its compiled clients,
+including their connection to that theorem, remains deferred.
 
 \section{Implementation and coefficient choices}
 \lstinputlisting{LeanExe/Lib/Transcendental/Exp/Basic.lean}
 
-The listing is read from the executable source.  Each multiplication and
-addition rounds separately.  The hexadecimal literals record the binary64
-coefficient values and keep decimal conversion out of the component.
+The listing comes from \texttt{Basic.lean}.  Each multiplication and addition
+rounds separately.  The hexadecimal literals encode the rounded coefficients.
 \texttt{expTaylor6Polynomial} exposes the unguarded evaluator.
 \texttt{expTaylor6} applies the domain guard before calling it.
-The complete polynomial uses six multiplications and six additions and
-allocates no arrays.
+Evaluation uses six multiplications and six additions.
 
-This implementation follows \texttt{Project.ExpSmall.Model}: its coefficient
-words, evaluation order, and domain are the same.  The earlier numerical
-and execution development proves the $1/4000$ bound for that model~\cite{prior}.
-The new library uses \texttt{LeanExe.Float64} primitives, and its connection
-to the earlier theorem is deferred.  The tests below provide evidence for
-the new integration on their specified inputs.
+The coefficient words, evaluation order, and domain follow
+\texttt{Project.ExpSmall.Model}.  This component expresses the arithmetic
+through \texttt{LeanExe.Float64} primitives.
 
 \section{A decay client}
-For dimensionless time $t\in[0,1]$, the decay client returns an approximation
-to the remaining fraction $e^{-t}$.  It checks $t$, negates its binary64 sign
-bit, and calls the exponential component.  The calculation corresponds to
-unit initial quantity and time measured in units of the decay time constant.
+The decay client approximates the remaining fraction $e^{-t}$ for dimensionless
+time $t\in[0,1]$.  It checks $t$, negates its binary64 sign bit, and calls the
+exponential component.
+The commands run from the repository root after following the
+\href{https://github.com/jsmorph/leanexe/blob/lib1/DEVELOPING.md}{setup guide}.
 
 \begin{lstlisting}
 tools/seminum exp -0.5
@@ -53,33 +63,28 @@ tools/seminum exp-bits bfe0000000000000
 3fe368b60b60b60c
 \end{lstlisting}
 
-The decimal commands convert their inputs to binary64 in the host and display
-decimal representations of returned bits.  The hexadecimal command preserves
-the input and output representations.  Arithmetic runs in the compiled WASM.
-Out-of-domain commands exit with status 2 and a diagnostic on standard error.
+The host converts decimal inputs to binary64 and formats returned values in
+decimal.  The hexadecimal command preserves input and output bits.
+Out-of-domain inputs cause exit status 2 and a diagnostic on standard error.
 
-\section{Tests and next comparisons}
-The execution test compares Wasmtime and native Lean bit results on a uniform
-interval sample, both signed zeros, subnormals, neighboring boundary words,
-infinities, and NaNs.  Accepted outputs are finite and positive in these tests.
-The test also compares them with the host exponential.  The largest sampled
-absolute difference is about $1.7611438411335723\times10^{-4}$ at $x=-1$,
-within the target $1/4000$.  The decay client receives corresponding domain
-and rejection tests.
-
-Further implementations could change the polynomial, evaluation method, or
-range reduction.  Each would state its own domain, error target, and operation
-order.  Their catalog entries would share the exponential task while recording
-their particular algorithm and implementation.
+\section{Tests}
+From the repository root, \texttt{node test/seminum.js} runs the comparisons
+described above at 33 equally spaced points in $[-1,0]$, both signed zeros,
+subnormals, adjacent boundary words, infinities, and NaNs.  Accepted outputs
+are finite and positive on these cases.  The largest sampled absolute
+difference from \texttt{Math.exp} is about $1.7611438411335723\times10^{-4}$
+at $x=-1$, within the target $1/4000$.  The decay client has corresponding
+comparisons on $[0,1]$.  CLI tests check decimal and hexadecimal output and
+rejected input.  The cases are defined in \texttt{test/seminum.js} and the
+native reference driver \texttt{test/SeminumNative.lean}.
 
 \begin{thebibliography}{9}
 \bibitem{series} NIST Digital Library of Mathematical Functions, equation 4.2.19.
 \url{https://dlmf.nist.gov/4.2.E19}.
 The power series supplies the coefficients before rounding and truncation.
-\bibitem{prior} LeanExe, \emph{Verified numerical WASM demonstrations},
-section ``Small exponential.''  The source and proofs are in the repository's
-\texttt{Project.ExpSmall} modules.  This development supplies the coefficient
-words, operation order, and existing model theorem.  The new library integration
-has separate execution tests.
+\bibitem{prior}
+\href{https://github.com/jsmorph/leanexe/blob/lib1/proofs/talos/lean/Project/ExpSmall/Spec.lean}{LeanExe, \emph{Small-exponential execution theorem}.}
+The numerical proof bounds polynomial approximation, coefficient rounding,
+and arithmetic rounding for \texttt{Project.ExpSmall.module}.
 \end{thebibliography}
 \end{document}
