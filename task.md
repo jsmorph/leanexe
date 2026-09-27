@@ -332,7 +332,15 @@ native/IR comparisons, 48,384 invalid-input checks and 2,688 controls. Prior tes
 pass 63,666 comparisons, 33,359 rejections and 1,920 controls. Evidence is in
 [the Boolean-call argument archive](proofs/compiler/boolean-call-argument-2026-09-26/README.md).
 
-Next: public Boolean results, then retained instance wrappers and broader signatures. Full-dialect
+Current capability: public Boolean results with UInt64 parameters. Source
+application, signature admission, extraction correctness and explicit zero/one
+encoding are proved. Emitted-instruction, body-byte and function-validation proofs
+pass. New tests pass 16,652 native/IR comparisons, 7,872 invalid-input checks and
+768 equivalent-word controls. Prior tests pass 120,678 comparisons, 81,743
+rejections and 4,608 controls. The full compiler theorem with nineteen audits and
+independent V8 execution are next.
+
+Next: retained instance/result annotations and broader signatures. Full-dialect
 correctness remains unfinished.
 Complete each capability through WASM and commit/push frequently.
 
