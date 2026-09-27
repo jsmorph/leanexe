@@ -1,0 +1,15 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_proposition_let_relation.lean:12:5: warning: Variable name `h` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _h
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+test/scalar_boolean_proposition_let_relation.lean:22:10: warning: Variable name `unused` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _unused
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+180 native/Boolean proposition-let relation IR comparisons passed

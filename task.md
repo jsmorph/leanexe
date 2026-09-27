@@ -684,13 +684,16 @@ eighteen prior modules retain identical bytes. New tests pass 44,980 comparisons
 declarations. Evidence is in
 [the compound-relation archive](proofs/compiler/boolean-proposition-relation-2026-09-27/README.md).
 
-Current capability: Boolean relations directly under proposition lets. The
-source, parser, lowering, structural termination and scalar/loop correctness
-targets pass. The original conditional and decision fixtures are admitted
-unchanged. New tests pass 80,820 native/IR comparisons, 55,320 invalid-input
-checks and 1,152 controls. Seven adjacent tests pass 137,604 comparisons,
-77,736 invalid-input checks and 2,528 controls. The full source-to-WASM theorem
-and selected V8 checks are next.
+Boolean relations directly under proposition lets are complete. Exact condition
+syntax, substituted decisions, typed bindings, captures and unused values are
+checked. The original conditional and decision fixtures are admitted unchanged.
+The general source-to-WASM theorem and all nineteen audits pass. Native Lean/V8
+agree on 729 inputs across 38 declarations, including 21 ranges; all 28 prior
+modules retain identical bytes. New tests pass 80,820 comparisons, 55,320
+invalid-input checks and 1,152 controls. Seven adjacent tests pass 137,604
+comparisons, 77,736 invalid-input checks and 2,528 controls. The native corpus
+contains 1407 declarations. Evidence is in
+[the proposition-let relation archive](proofs/compiler/boolean-proposition-let-relation-2026-09-27/README.md).
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
