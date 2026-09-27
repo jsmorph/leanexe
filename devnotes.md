@@ -17898,3 +17898,11 @@ The combined execution gate passes 3,763 build jobs with standard logical axioms
 The output header requires a two-word owned array.  `pairWords_resources` proves ownership, caller-memory preservation, allocation freshness, and a 72-byte charge for that array.  Its first axiom audit exposed `Mem.read64_write64_same._native.bv_decide.ax_1_10` through the shared pair-store representation theorem.  The three reads now use the existing kernel-checked memory round-trip theorem.  The shared theorem's statement is unchanged.
 
 The pair-resource target passes 3,504 build jobs.  Its axiom audit lists only `propext`, `Classical.choice`, and `Quot.sound`.  The initial edit needed an explicit import of the memory round-trip module.  The WASM header stores and output append loop remain under development, followed by final cleanup, complete entry composition, the global resource theorem, and independent artifact verification.  Source and binary bytes are unchanged.
+
+### Beck output header and group append
+
+`computeHeader_exact` proves the emitted allocation, header-length store, status and overlap stores, and result-register installation.  It returns ownership of `[0,t]`, preserves caller memory, and charges 72 bytes.  The shared pair-result module also checks with the revised memory lemma.
+
+`computeGroup_exact` proves the checked final-numerator read and sign-to-group conversion.  `computeAppend_exact` composes that calculation with the shared array-push proof and preserves the output-loop registers.  The source prefix is `[0,t]` followed by the first `index` group values.  Its size and successor equations establish the loop's intended array contents.  The result-installation and counter-advance fragments also check, including the increment's overflow guard.
+
+The header and shared pair-result target passes 3,603 build jobs.  The append target passes 3,606, and the advancement target passes 3,613.  New axiom audits list only standard logical axioms.  Diagnostics resolved a structure field shadowing its job-count parameter, constant capacity reduction, and list-append normalization in the final frame.  Complete output iteration and termination, final cleanup, complete entry composition, the global resource theorem, and independent artifact verification remain open.  Source and binary bytes are unchanged.
