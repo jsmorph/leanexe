@@ -5781,6 +5781,102 @@ def rangeBoolBooleanHelperShadow (count seed : UInt64) : Bool :=
     return a
   value == f (initial == seed)
 
+def rangeBoolPredicateHelperRepeat (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x % 2 == seed % 2
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + (f i.toUInt64).toUInt64 + (f a).toUInt64
+    return a
+  f value && f seed
+
+def rangeBoolPredicateHelperCount (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x % 3 == seed % 3
+  let value := Id.run do
+    let mut a := seed
+    for i in [:(if f count then count % 17 else count % 5).toNat] do
+      a := a + i.toUInt64 + 1
+    return a
+  f value
+
+def rangeBoolPredicateHelperNested (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x % 2 == seed % 2
+  let g := fun x : UInt64 => f (x + 1) || f x
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + (g i.toUInt64).toUInt64
+    return a
+  g value
+
+def rangeBoolPredicateHelperExit (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x % 7 == seed % 7
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if f a then break
+    return a
+  f value
+
+def rangeBoolPredicateHelperId (count : Id UInt64) (seed : UInt64) : Id Bool :=
+  let f (x : UInt64) : Id (Id Bool) := pure (pure (x % 3 == seed % 3))
+  let value : Id UInt64 := Id.run do
+    let mut a := seed
+    for i in [:(Id.run count).toNat] do
+      if Id.run (Id.run (f i.toUInt64)) then continue
+      a := a + i.toUInt64 + 1
+    return a
+  pure (Id.run (Id.run (f (Id.run value))))
+
+def rangeBoolBooleanPredicateHelperRepeat (count seed : UInt64) : Bool :=
+  let f := fun flag : Bool => flag || seed % 2 == 0
+  let value := Id.run do
+    let mut a := seed + (f false).toUInt64
+    for i in [:count.toNat] do
+      a := a + (f (i.toUInt64 % 2 == 0)).toUInt64 + (f true).toUInt64
+    return a
+  f (value == seed)
+
+def rangeBoolBooleanPredicateHelperFlag (count : UInt64) (flag : Bool) : Bool :=
+  let f := fun input : Bool => flag && !input
+  let value := Id.run do
+    let mut a := (f false).toUInt64
+    for i in [:count.toNat] do
+      if f (i.toUInt64 % 2 == 0) then continue
+      a := a + i.toUInt64 + 1
+    return a
+  f (value == count)
+
+def rangeBoolBooleanPredicateHelperNested (count seed : UInt64) : Bool :=
+  let f := fun flag : Bool => flag || seed == 0
+  let g := fun flag : Bool => f (!flag) && f flag
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + (g (i.toUInt64 % 3 == 0)).toUInt64
+    return a
+  g (value == seed)
+
+def rangeBoolBooleanPredicateHelperStride (count seed : UInt64) : Bool :=
+  let f := fun flag : Bool => flag && seed % 3 == 0
+  let value := Id.run do
+    let mut a := seed
+    for i in [(f true).toUInt64.toNat:count.toNat:3] do
+      a := a + i.toUInt64 + 1
+      if f (a % 5 == 0) then break
+    return a
+  f (value == seed)
+
+def rangeBoolBooleanPredicateHelperId (count : Id UInt64) (seed : UInt64) : Id Bool :=
+  let f (flag : Bool) : Id (Id Bool) := pure (pure (flag || seed % 2 == 0))
+  let value : Id UInt64 := Id.run do
+    let mut a := seed
+    for i in [:(Id.run count).toNat] do
+      a := a + (Id.run (Id.run (f (i.toUInt64 % 2 == 0)))).toUInt64
+    return a
+  pure (Id.run (Id.run (f (Id.run value == seed))))
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -9315,6 +9411,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolBooleanHelperStride,
       `ArithmeticModeTest.rangeBoolBooleanHelperId,
       `ArithmeticModeTest.rangeBoolBooleanHelperShadow,
+      `ArithmeticModeTest.rangeBoolPredicateHelperRepeat,
+      `ArithmeticModeTest.rangeBoolPredicateHelperCount,
+      `ArithmeticModeTest.rangeBoolPredicateHelperNested,
+      `ArithmeticModeTest.rangeBoolPredicateHelperExit,
+      `ArithmeticModeTest.rangeBoolPredicateHelperId,
+      `ArithmeticModeTest.rangeBoolBooleanPredicateHelperRepeat,
+      `ArithmeticModeTest.rangeBoolBooleanPredicateHelperFlag,
+      `ArithmeticModeTest.rangeBoolBooleanPredicateHelperNested,
+      `ArithmeticModeTest.rangeBoolBooleanPredicateHelperStride,
+      `ArithmeticModeTest.rangeBoolBooleanPredicateHelperId,
       `ArithmeticModeTest.rangeBoolLetIdWord,
       `ArithmeticModeTest.rangeBoolLetIdWordLayers,
       `ArithmeticModeTest.rangeBoolLetIdFlag,

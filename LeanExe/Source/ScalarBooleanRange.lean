@@ -26,6 +26,20 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
       Eval (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) a paramBi) b nondep) values outcome
+  | letPredicateFn (expression : BooleanLocal) (type : BooleanType)
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr)
+        (.word x :: values) (Bool.toUInt64 (f x)))
+      (body : Eval b (.predicateFunction f :: values) outcome) :
+      Eval (.letE name
+        (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
+        (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep) values outcome
+  | letBooleanPredicateFn (expression : BooleanLocal) (type : BooleanType)
+      (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr)
+        (.boolean x :: values) (Bool.toUInt64 (f x)))
+      (body : Eval b (.booleanPredicateFunction f :: values) outcome) :
+      Eval (.letE name
+        (.forallE typeName (.const ``Bool []) type.expr typeBi)
+        (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) values outcome
   | letFlagBefore (value : EvalWith (.app (.const ``Bool.toUInt64 []) a) values flag.toUInt64)
       (body : Eval b (.boolean flag :: values) result) :
       Eval (.letE name (.const ``Bool []) a b nondep) values result
@@ -63,6 +77,18 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       Supported types (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) a paramBi) b nondep)
+  | letPredicateFn (expression : BooleanLocal) (type : BooleanType)
+      (function : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) expression.expr))
+      (body : Supported (.predicateFunction :: types) b) :
+      Supported types (.letE name
+        (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
+        (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep)
+  | letBooleanPredicateFn (expression : BooleanLocal) (type : BooleanType)
+      (function : SupportedWith (.boolean :: types) (.app (.const ``Bool.toUInt64 []) expression.expr))
+      (body : Supported (.booleanPredicateFunction :: types) b) :
+      Supported types (.letE name
+        (.forallE typeName (.const ``Bool []) type.expr typeBi)
+        (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep)
   | letFlagBefore (value : SupportedWith types (.app (.const ``Bool.toUInt64 []) a))
       (body : Supported (.boolean :: types) b) :
       Supported types (.letE name (.const ``Bool []) a b nondep)
@@ -102,6 +128,28 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.booleanFunction f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letBooleanFn type (fun x => (total x).choose_spec) hv⟩
+  | letPredicateFn expression type function _ ih =>
+    have total : ∀ x : UInt64, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.word x :: values) flag.toUInt64 := by
+      intro x
+      obtain ⟨encoded, evaluated⟩ := function.evaluates (.word x :: values) (by simp [Value.kind, typed])
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x => (total x).choose
+    obtain ⟨outcome, evaluated⟩ := ih (.predicateFunction f :: values)
+      (by simp [Value.kind, Scalar.Value.kind, typed])
+    exact ⟨outcome, .letPredicateFn expression type (fun x => (total x).choose_spec) evaluated⟩
+  | letBooleanPredicateFn expression type function _ ih =>
+    have total : ∀ x : Bool, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.boolean x :: values) flag.toUInt64 := by
+      intro x
+      obtain ⟨encoded, evaluated⟩ := function.evaluates (.boolean x :: values) (by simp [Value.kind, typed])
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x => (total x).choose
+    obtain ⟨outcome, evaluated⟩ := ih (.booleanPredicateFunction f :: values)
+      (by simp [Value.kind, Scalar.Value.kind, typed])
+    exact ⟨outcome, .letBooleanPredicateFn expression type (fun x => (total x).choose_spec) evaluated⟩
   | letFlagBefore value _ ih =>
     obtain ⟨encoded, evaluated⟩ := value.evaluates values typed
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
