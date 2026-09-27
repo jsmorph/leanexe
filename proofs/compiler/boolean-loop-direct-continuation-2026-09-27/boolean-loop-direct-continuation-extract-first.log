@@ -1,0 +1,799 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [76/149] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:367:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [119/149] Replayed LeanExe.Extract.ScalarExprCore
+warning: LeanExe/Extract/ScalarExprCore.lean:339:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:347:31: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:347:36: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:347:52: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:356:35: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:356:40: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:356:56: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:411:12: Variable name `bounds` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _bounds
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+⚠ [120/149] Replayed LeanExe.Extract.ScalarExpr
+warning: LeanExe/Extract/ScalarExpr.lean:172:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:173:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:188:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:189:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:220:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:221:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:235:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:236:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:923:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1022:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1238:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1260:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1282:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1304:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1326:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1350:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1374:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1392:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1411:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1430:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [127/149] Replayed LeanExe.Extract.ScalarStepEquations
+warning: LeanExe/Extract/ScalarStepEquations.lean:153:33: This simp argument is unused:
+  BooleanType.expr
+
+Hint: Omit it from the simp argument list.
+  [apply] simp
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [129/149] Replayed LeanExe.Extract.ScalarStepSupported
+warning: LeanExe/Extract/ScalarStepSupported.lean:96:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarStepSupported.lean:437:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [142/149] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [144/149] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [149/149] Building LeanExe.Extract.ScalarBooleanRange (6.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanRange.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanRange.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanRange.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanRange.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanRange.setup.json --json
+error: LeanExe/Extract/ScalarBooleanRange.lean:100:58: Unknown identifier `expression.expr`
+error: LeanExe/Extract/ScalarBooleanRange.lean:101:8: Redundant alternative: Any expression matching
+  some val✝
+will match one of the preceding alternatives
+error: LeanExe/Extract/ScalarBooleanRange.lean:117:58: Unknown identifier `expression.expr`
+error: LeanExe/Extract/ScalarBooleanRange.lean:118:8: Redundant alternative: Any expression matching
+  some val✝
+will match one of the preceding alternatives
+warning: LeanExe/Extract/ScalarBooleanRange.lean:189:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:189:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:189:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:189:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:189:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:189:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:189:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:189:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:189:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:189:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:189:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:189:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:200:50: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:200:50: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:200:50: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:200:50: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:200:50: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:200:50: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:200:50: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:200:50: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:200:50: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:200:50: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:200:50: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:200:50: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:207:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:207:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:207:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:207:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:207:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:207:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:207:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:207:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:207:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:207:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:207:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:207:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:215:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:215:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:215:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:215:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:215:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:215:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:215:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:215:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:215:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:215:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:215:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:215:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:223:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:223:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:223:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:223:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:223:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:223:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:223:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:223:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:223:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:223:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:223:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:223:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:234:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:234:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:234:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:234:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:234:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:234:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:234:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:234:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:234:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:234:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:234:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:234:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:225:16: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:247:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:247:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:247:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:247:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:247:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:247:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:247:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:247:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:247:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:247:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:247:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:247:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:238:16: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:259:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:259:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:259:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:259:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:259:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:259:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:259:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:259:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:259:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:259:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:259:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:259:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:250:8: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:271:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:271:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:271:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:271:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:271:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:271:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:271:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:271:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:271:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:271:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:271:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:271:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:262:8: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:281:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:281:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:281:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:281:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:281:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:281:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:281:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:281:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:281:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:281:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:281:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:281:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:296:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:296:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:296:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:296:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:296:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:296:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:296:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:296:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:296:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:296:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:296:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:296:6: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:307:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:307:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:307:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:307:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:307:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:307:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:307:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:307:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:307:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:307:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:307:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:307:57: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:327:42: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:327:42: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:327:42: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:327:42: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:327:42: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:327:42: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:327:42: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:327:42: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:327:42: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:327:42: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:327:42: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:327:42: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:339:31: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:339:31: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:339:31: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:339:31: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:339:31: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:339:31: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:339:31: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:339:31: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:339:31: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:339:31: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:339:31: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:339:31: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:342:16: declaration uses `sorry`
+error: LeanExe/Extract/ScalarBooleanRange.lean:512:58: Application type mismatch: The argument
+  hc
+has type
+  extractScalarExprWith (ScalarBinding.word (IR.Expr.u64 0) :: locals)
+      ((Lean.Expr.const `Bool.toUInt64 []).app expression.expr) =
+    some checked
+but is expected to have type
+  extractScalarExprWith (booleanRangeInput ?m.1222 (IR.Expr.u64 0) :: ?m.1221)
+      ((Lean.Expr.const `Bool.toUInt64 []).app (BooleanLocal.expr ?m.1223)) =
+    some ?m.1227
+in the application
+  scalarBooleanRangeContinuation_accepts_scalar hc
+error: LeanExe/Extract/ScalarBooleanRange.lean:510:19: unsolved goals
+types : List BindingKind
+source : Lean.Expr
+slot : Nat
+types✝ : List BindingKind
+b✝ : Lean.Expr
+name✝ typeName✝ : Lean.Name
+typeBi✝ : Lean.BinderInfo
+paramName✝ : Lean.Name
+paramBi✝ : Lean.BinderInfo
+nondep✝ : Bool
+expression : BooleanLocal
+type : BooleanType
+function : SupportedWith (BindingKind.word :: types✝) ((Lean.Expr.const `Bool.toUInt64 []).app expression.expr)
+body✝ : BooleanRange.Supported (BindingKind.predicateFunction :: types✝) b✝
+ihb :
+  ∀ (locals : List ScalarBinding),
+    List.map ScalarBinding.kind locals = BindingKind.predicateFunction :: types✝ →
+      (∀ (binding : ScalarBinding), binding ∈ locals → binding.Total) →
+        ∃ plan, extractScalarBooleanRangeWith locals slot b✝ = some plan
+locals : List ScalarBinding
+typed : List.map ScalarBinding.kind locals = types✝
+total : ∀ (binding : ScalarBinding), binding ∈ locals → binding.Total
+accepts :
+  ∀ (argument : IR.Expr),
+    ∃ target,
+      extractScalarExprWith (ScalarBinding.word argument :: locals)
+          ((Lean.Expr.const `Bool.toUInt64 []).app expression.expr) =
+        some target
+checked : IR.Expr
+hc :
+  extractScalarExprWith (ScalarBinding.word (IR.Expr.u64 0) :: locals)
+      ((Lean.Expr.const `Bool.toUInt64 []).app expression.expr) =
+    some checked
+f : IR.Expr → Option IR.Expr := ⋯
+target : ScalarRangeExitPlan
+ht : extractScalarBooleanRangeWith (ScalarBinding.predicateFunction f :: locals) slot b✝ = some target
+⊢ IR.Expr
+error: LeanExe/Extract/ScalarBooleanRange.lean:530:58: Application type mismatch: The argument
+  hc
+has type
+  extractScalarExprWith (ScalarBinding.boolean (IR.Expr.u64 0) :: locals)
+      ((Lean.Expr.const `Bool.toUInt64 []).app expression.expr) =
+    some checked
+but is expected to have type
+  extractScalarExprWith (booleanRangeInput ?m.1356 (IR.Expr.u64 0) :: ?m.1355)
+      ((Lean.Expr.const `Bool.toUInt64 []).app (BooleanLocal.expr ?m.1357)) =
+    some ?m.1361
+in the application
+  scalarBooleanRangeContinuation_accepts_scalar hc
+error: LeanExe/Extract/ScalarBooleanRange.lean:528:19: unsolved goals
+types : List BindingKind
+source : Lean.Expr
+slot : Nat
+types✝ : List BindingKind
+b✝ : Lean.Expr
+name✝ typeName✝ : Lean.Name
+typeBi✝ : Lean.BinderInfo
+paramName✝ : Lean.Name
+paramBi✝ : Lean.BinderInfo
+nondep✝ : Bool
+expression : BooleanLocal
+type : BooleanType
+function : SupportedWith (BindingKind.boolean :: types✝) ((Lean.Expr.const `Bool.toUInt64 []).app expression.expr)
+body✝ : BooleanRange.Supported (BindingKind.booleanPredicateFunction :: types✝) b✝
+ihb :
+  ∀ (locals : List ScalarBinding),
+    List.map ScalarBinding.kind locals = BindingKind.booleanPredicateFunction :: types✝ →
+      (∀ (binding : ScalarBinding), binding ∈ locals → binding.Total) →
+        ∃ plan, extractScalarBooleanRangeWith locals slot b✝ = some plan
+locals : List ScalarBinding
+typed : List.map ScalarBinding.kind locals = types✝
+total : ∀ (binding : ScalarBinding), binding ∈ locals → binding.Total
+accepts :
+  ∀ (argument : IR.Expr),
+    ∃ target,
+      extractScalarExprWith (ScalarBinding.boolean argument :: locals)
+          ((Lean.Expr.const `Bool.toUInt64 []).app expression.expr) =
+        some target
+checked : IR.Expr
+hc :
+  extractScalarExprWith (ScalarBinding.boolean (IR.Expr.u64 0) :: locals)
+      ((Lean.Expr.const `Bool.toUInt64 []).app expression.expr) =
+    some checked
+f : IR.Expr → Option IR.Expr := ⋯
+target : ScalarRangeExitPlan
+ht : extractScalarBooleanRangeWith (ScalarBinding.booleanPredicateFunction f :: locals) slot b✝ = some target
+⊢ IR.Expr
+error: LeanExe/Extract/ScalarBooleanRange.lean:646:14: Tactic `contradiction` failed
+
+case case13
+slot : Nat
+locals✝ : List ScalarBinding
+declName✝ binderName✝¹ : Lean.Name
+resultType✝ : Lean.Expr
+binderInfo✝¹ : Lean.BinderInfo
+binderName✝ : Lean.Name
+value✝ : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+body✝ : Lean.Expr
+nondep✝ : Bool
+x✝¹ :
+  ∀ (secondTypeName : Lean.Name) (resultType : Lean.Expr) (secondTypeBi : Lean.BinderInfo) (secondName : Lean.Name)
+    (value : Lean.Expr) (secondBi : Lean.BinderInfo),
+    resultType✝ = Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi →
+      value✝ = Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi → False
+val✝ : ResultType
+x✝ : scalarResultType? resultType✝ = some val✝
+ih1✝ :
+  ∀ {plan : ScalarRangeExitPlan},
+    extractScalarBooleanRangeWith
+          ((ScalarBinding.predicateFunction fun argument =>
+              extractScalarExprWith (ScalarBinding.word argument :: locals✝)
+                ((Lean.Expr.const `Bool.toUInt64 []).app sorry)) ::
+            locals✝)
+          slot body✝ =
+        some plan →
+      BooleanRange.Supported
+        (List.map ScalarBinding.kind
+          ((ScalarBinding.predicateFunction fun argument =>
+              extractScalarExprWith (ScalarBinding.word argument :: locals✝)
+                ((Lean.Expr.const `Bool.toUInt64 []).app sorry)) ::
+            locals✝))
+        body✝
+plan : ScalarRangeExitPlan
+compiled :
+  extractScalarBooleanRangeWith
+      ((ScalarBinding.predicateFunction fun argument =>
+          extractScalarExprWith (ScalarBinding.word argument :: locals✝)
+            ((Lean.Expr.const `Bool.toUInt64 []).app sorry)) ::
+        locals✝)
+      slot body✝ =
+    some plan
+⊢ BooleanRange.Supported (List.map ScalarBinding.kind locals✝)
+    (Lean.Expr.letE declName✝ (Lean.Expr.forallE binderName✝¹ (Lean.Expr.const `UInt64 []) resultType✝ binderInfo✝¹)
+      (Lean.Expr.lam binderName✝ (Lean.Expr.const `UInt64 []) value✝ binderInfo✝) body✝ nondep✝)
+error: LeanExe/Extract/ScalarBooleanRange.lean:647:2: Too many variable names provided at alternative `case14`: 16 provided, but 15 expected
+error: LeanExe/Extract/ScalarBooleanRange.lean:648:40: Application type mismatch: The argument
+  parsed
+has type
+  False
+but is expected to have type
+  scalarResultType? ?m.491 = some ?m.492
+in the application
+  scalarResultType_sound parsed
+error: LeanExe/Extract/ScalarBooleanRange.lean:654:2: Too many variable names provided at alternative `case16`: 15 provided, but 12 expected
+error: LeanExe/Extract/ScalarBooleanRange.lean:655:39: Unknown identifier `parsed`
+error: LeanExe/Extract/ScalarBooleanRange.lean:667:14: Tactic `contradiction` failed
+
+case case17
+slot : Nat
+locals✝ : List ScalarBinding
+declName✝ binderName✝¹ : Lean.Name
+resultType✝ : Lean.Expr
+binderInfo✝¹ : Lean.BinderInfo
+binderName✝ : Lean.Name
+value✝ : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+body✝ : Lean.Expr
+nondep✝ : Bool
+x✝¹ : scalarResultType? resultType✝ = none
+val✝ : BooleanType
+x✝ : booleanType? resultType✝ = some val✝
+ih2✝ :
+  ∀ (binding : ScalarBinding) {plan : ScalarRangeExitPlan},
+    extractScalarBooleanRangeWith (binding :: locals✝) slot body✝ = some plan →
+      BooleanRange.Supported (List.map ScalarBinding.kind (binding :: locals✝)) body✝
+ih1✝ :
+  ∀ (binding : ScalarBinding) {plan : ScalarRangeExitPlan},
+    extractScalarBooleanRangeWith (binding :: locals✝) slot value✝ = some plan →
+      BooleanRange.Supported (List.map ScalarBinding.kind (binding :: locals✝)) value✝
+plan : ScalarRangeExitPlan
+compiled :
+  (scalarBooleanRangeContinuation locals✝ true value✝ body✝
+      (fun binding => extractScalarBooleanRangeWith (binding :: locals✝) slot body✝) fun binding =>
+      extractScalarBooleanRangeWith (binding :: locals✝) slot value✝) =
+    some plan
+⊢ BooleanRange.Supported (List.map ScalarBinding.kind locals✝)
+    (Lean.Expr.letE declName✝ (Lean.Expr.forallE binderName✝¹ (Lean.Expr.const `Bool []) resultType✝ binderInfo✝¹)
+      (Lean.Expr.lam binderName✝ (Lean.Expr.const `Bool []) value✝ binderInfo✝) body✝ nondep✝)
+error: LeanExe/Extract/ScalarBooleanRange.lean:668:2: Too many variable names provided at alternative `case18`: 15 provided, but 13 expected
+error: LeanExe/Extract/ScalarBooleanRange.lean:672:75: Unknown identifier `validated`
+error: LeanExe/Extract/ScalarBooleanRange.lean:673:43: Unknown identifier `ih`
+error: LeanExe/Extract/ScalarBooleanRange.lean:676:2: Too many variable names provided at alternative `case21`: 19 provided, but 15 expected
+error: LeanExe/Extract/ScalarBooleanRange.lean:677:40: Unknown identifier `parsed`
+error: LeanExe/Extract/ScalarBooleanRange.lean:683:14: Tactic `contradiction` failed
+
+case case23
+slot : Nat
+locals✝ : List ScalarBinding
+declName✝ binderName✝³ binderName✝² : Lean.Name
+resultType✝ : Lean.Expr
+binderInfo✝³ binderInfo✝² : Lean.BinderInfo
+binderName✝¹ binderName✝ : Lean.Name
+value✝ : Lean.Expr
+binderInfo✝¹ binderInfo✝ : Lean.BinderInfo
+body✝ : Lean.Expr
+nondep✝ : Bool
+val✝ : ResultType
+x✝¹ : scalarResultType? resultType✝ = some val✝
+flag✝ : IR.Expr
+x✝ : extractScalarExprWith (ScalarBinding.word (IR.Expr.u64 0) :: ScalarBinding.unit :: locals✝) value✝ = some flag✝
+ih1✝ :
+  ∀ {plan : ScalarRangeExitPlan},
+    extractScalarBooleanRangeWith
+          ((ScalarBinding.function true fun argument =>
+              extractScalarExprWith (ScalarBinding.word argument :: ScalarBinding.unit :: locals✝) value✝) ::
+            locals✝)
+          slot body✝ =
+        some plan →
+      BooleanRange.Supported
+        (List.map ScalarBinding.kind
+          ((ScalarBinding.function true fun argument =>
+              extractScalarExprWith (ScalarBinding.word argument :: ScalarBinding.unit :: locals✝) value✝) ::
+            locals✝))
+        body✝
+plan : ScalarRangeExitPlan
+compiled :
+  extractScalarBooleanRangeWith
+      ((ScalarBinding.function true fun argument =>
+          extractScalarExprWith (ScalarBinding.word argument :: ScalarBinding.unit :: locals✝) value✝) ::
+        locals✝)
+      slot body✝ =
+    some plan
+⊢ BooleanRange.Supported (List.map ScalarBinding.kind locals✝)
+    (Lean.Expr.letE declName✝
+      (Lean.Expr.forallE binderName✝³ (Lean.Expr.const `Unit [])
+        (Lean.Expr.forallE binderName✝² (Lean.Expr.const `UInt64 []) resultType✝ binderInfo✝³) binderInfo✝²)
+      (Lean.Expr.lam binderName✝¹ (Lean.Expr.const `Unit [])
+        (Lean.Expr.lam binderName✝ (Lean.Expr.const `UInt64 []) value✝ binderInfo✝¹) binderInfo✝)
+      body✝ nondep✝)
+error: LeanExe/Extract/ScalarBooleanRange.lean:684:2: Too many variable names provided at alternative `case24`: 19 provided, but 15 expected
+error: LeanExe/Extract/ScalarBooleanRange.lean:685:40: Unknown identifier `parsed`
+error: LeanExe/Extract/ScalarBooleanRange.lean:691:27: Application type mismatch: The argument
+  input
+has type
+  Lean.BinderInfo
+but is expected to have type
+  Lean.Expr
+in the application
+  BooleanRange.Supported.idFunctionInput input
+error: LeanExe/Extract/ScalarBooleanRange.lean:691:45: Function expected at
+  ih
+but this term has type
+  Lean.BinderInfo
+
+Note: Expected a function because this term is being applied to the argument
+  compiled
+error: LeanExe/Extract/ScalarBooleanRange.lean:692:14: Tactic `contradiction` failed
+
+case case26
+slot : Nat
+locals✝ : List ScalarBinding
+declName✝ binderName✝³ binderName✝² : Lean.Name
+resultType✝ : Lean.Expr
+binderInfo✝³ binderInfo✝² : Lean.BinderInfo
+binderName✝¹ binderName✝ : Lean.Name
+value✝ : Lean.Expr
+binderInfo✝¹ binderInfo✝ : Lean.BinderInfo
+body✝ : Lean.Expr
+nondep✝ : Bool
+val✝ : ResultType
+x✝¹ : scalarResultType? resultType✝ = some val✝
+flag✝ : IR.Expr
+x✝ : extractScalarExprWith (ScalarBinding.word (IR.Expr.u64 0) :: ScalarBinding.unit :: locals✝) value✝ = some flag✝
+ih1✝ :
+  ∀ {plan : ScalarRangeExitPlan},
+    extractScalarBooleanRangeWith
+          ((ScalarBinding.function true fun argument =>
+              extractScalarExprWith (ScalarBinding.word argument :: ScalarBinding.unit :: locals✝) value✝) ::
+            locals✝)
+          slot body✝ =
+        some plan →
+      BooleanRange.Supported
+        (List.map ScalarBinding.kind
+          ((ScalarBinding.function true fun argument =>
+              extractScalarExprWith (ScalarBinding.word argument :: ScalarBinding.unit :: locals✝) value✝) ::
+            locals✝))
+        body✝
+plan : ScalarRangeExitPlan
+compiled :
+  extractScalarBooleanRangeWith
+      ((ScalarBinding.function true fun argument =>
+          extractScalarExprWith (ScalarBinding.word argument :: ScalarBinding.unit :: locals✝) value✝) ::
+        locals✝)
+      slot body✝ =
+    some plan
+⊢ BooleanRange.Supported (List.map ScalarBinding.kind locals✝)
+    (Lean.Expr.letE declName✝
+      (Lean.Expr.forallE binderName✝³ (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+        (Lean.Expr.forallE binderName✝² (Lean.Expr.const `UInt64 []) resultType✝ binderInfo✝³) binderInfo✝²)
+      (Lean.Expr.lam binderName✝¹ (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+        (Lean.Expr.lam binderName✝ (Lean.Expr.const `UInt64 []) value✝ binderInfo✝¹) binderInfo✝)
+      body✝ nondep✝)
+error: LeanExe/Extract/ScalarBooleanRange.lean:693:14: Tactic `contradiction` failed
+
+case case27
+slot : Nat
+locals✝ : List ScalarBinding
+name✝ typeName✝ : Lean.Name
+resultType✝ : Lean.Expr
+typeBi✝ : Lean.BinderInfo
+paramName✝ : Lean.Name
+domain✝ value✝ : Lean.Expr
+paramBi✝ : Lean.BinderInfo
+body✝ : Lean.Expr
+nondep✝ : Bool
+ih1✝ :
+  ∀ {plan : ScalarRangeExitPlan},
+    extractScalarBooleanRangeWith locals✝ slot
+          (Lean.Expr.letE name✝ (Lean.Expr.forallE typeName✝ domain✝ resultType✝ typeBi✝)
+            (Lean.Expr.lam paramName✝ domain✝ value✝ paramBi✝) body✝ nondep✝) =
+        some plan →
+      BooleanRange.Supported (List.map ScalarBinding.kind locals✝)
+        (Lean.Expr.letE name✝ (Lean.Expr.forallE typeName✝ domain✝ resultType✝ typeBi✝)
+          (Lean.Expr.lam paramName✝ domain✝ value✝ paramBi✝) body✝ nondep✝)
+plan : ScalarRangeExitPlan
+compiled :
+  extractScalarBooleanRangeWith locals✝ slot
+      (Lean.Expr.letE name✝ (Lean.Expr.forallE typeName✝ domain✝ resultType✝ typeBi✝)
+        (Lean.Expr.lam paramName✝ domain✝ value✝ paramBi✝) body✝ nondep✝) =
+    some plan
+⊢ BooleanRange.Supported (List.map ScalarBinding.kind locals✝)
+    (Lean.Expr.letE name✝
+      (Lean.Expr.forallE typeName✝ ((Lean.Expr.const `Id [Lean.Level.zero]).app domain✝) resultType✝ typeBi✝)
+      (Lean.Expr.lam paramName✝ ((Lean.Expr.const `Id [Lean.Level.zero]).app domain✝) value✝ paramBi✝) body✝ nondep✝)
+error: LeanExe/Extract/ScalarBooleanRange.lean:695:2: Too many variable names provided at alternative `case29`: 14 provided, but 10 expected
+error: LeanExe/Extract/ScalarBooleanRange.lean:696:62: Unknown identifier `parsed`
+error: LeanExe/Extract/ScalarBooleanRange.lean:696:12: Tactic `subst` failed: invalid equality proof, it is not of the form (x = t) or (t = x)
+  ?m.648 = BooleanType.expr ?m.651
+
+case case29
+slot : Nat
+locals : List ScalarBinding
+input output value : Lean.Expr
+name : Lean.Name
+domain body : Lean.Expr
+binder : Lean.BinderInfo
+notWord : booleanRangeBindTypes? input domain output = none
+types : booleanRangeFlagBindTypes? input domain output = none
+plan : ScalarRangeExitPlan
+compiled : none = some plan
+left✝ : ?m.648 = BooleanType.expr ?m.651
+right✝ : ?m.649 = BooleanType.expr ?m.651 ∧ ?m.650 = BooleanType.expr ?m.652
+⊢ BooleanRange.Supported (List.map ScalarBinding.kind locals)
+    (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                  input).app
+              output).app
+          value).app
+      (Lean.Expr.lam name domain body binder))
+error: LeanExe/Extract/ScalarBooleanRange.lean:699:2: Too many variable names provided at alternative `case30`: 13 provided, but 12 expected
+error: LeanExe/Extract/ScalarBooleanRange.lean:700:58: Application type mismatch: The argument
+  parsed
+has type
+  BooleanType × BooleanType
+of sort `Type` but is expected to have type
+  booleanRangeBindTypes? ?m.669 ?m.670 ?m.671 = some (?m.672, ?m.673)
+of sort `Prop` in the application
+  booleanRangeBindTypes_sound parsed
+error: LeanExe/Extract/ScalarBooleanRange.lean:700:12: Tactic `subst` failed: invalid equality proof, it is not of the form (x = t) or (t = x)
+  ?m.669 = ResultType.expr ?m.672
+
+case case30
+slot : Nat
+locals : List ScalarBinding
+input output value : Lean.Expr
+name : Lean.Name
+domain body : Lean.Expr
+binder : Lean.BinderInfo
+types : booleanRangeBindTypes? input domain output = none
+parsed : BooleanType × BooleanType
+bound : booleanRangeFlagBindTypes? input domain output = some parsed
+matched : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app value) = none
+plan : ScalarRangeExitPlan
+compiled : none = some plan
+left✝ : ?m.669 = ResultType.expr ?m.672
+right✝ : ?m.670 = ResultType.expr ?m.672 ∧ ?m.671 = BooleanType.expr ?m.673
+⊢ BooleanRange.Supported (List.map ScalarBinding.kind locals)
+    (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                  input).app
+              output).app
+          value).app
+      (Lean.Expr.lam name domain body binder))
+error: LeanExe/Extract/ScalarBooleanRange.lean:704:4: `simp` made no progress
+error: LeanExe/Extract/ScalarBooleanRange.lean:709:14: Tactic `contradiction` failed
+
+case case32
+slot : Nat
+locals✝ : List ScalarBinding
+input✝ output✝ value✝¹ : Lean.Expr
+binderName✝ : Lean.Name
+domain✝ body✝ : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+val✝ : ResultType × BooleanType
+x✝¹ : booleanRangeBindTypes? input✝ domain✝ output✝ = some val✝
+value✝ : IR.Expr
+x✝ : extractScalarExprWith locals✝ value✝¹ = some value✝
+ih1✝ :
+  ∀ {plan : ScalarRangeExitPlan},
+    extractScalarBooleanRangeWith (ScalarBinding.word value✝ :: locals✝) slot body✝ = some plan →
+      BooleanRange.Supported (List.map ScalarBinding.kind (ScalarBinding.word value✝ :: locals✝)) body✝
+plan : ScalarRangeExitPlan
+compiled : extractScalarBooleanRangeWith (ScalarBinding.word value✝ :: locals✝) slot body✝ = some plan
+⊢ BooleanRange.Supported (List.map ScalarBinding.kind locals✝)
+    (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                  input✝).app
+              output✝).app
+          value✝¹).app
+      (Lean.Expr.lam binderName✝ domain✝ body✝ binderInfo✝))
+error: LeanExe/Extract/ScalarBooleanRange.lean:710:14: Tactic `contradiction` failed
+
+case case33
+slot : Nat
+locals✝ : List ScalarBinding
+input✝ output✝ value✝ : Lean.Expr
+binderName✝ : Lean.Name
+domain✝ body✝ : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+val✝ : ResultType × BooleanType
+x✝¹ : booleanRangeBindTypes? input✝ domain✝ output✝ = some val✝
+x✝ : extractScalarExprWith locals✝ value✝ = none
+plan : ScalarRangeExitPlan
+compiled :
+  (do
+      let plan ← extractScalarRangeExitWith locals✝ slot value✝
+      let result ←
+        extractScalarExprWith (ScalarBinding.word plan.result :: locals✝)
+            ((Lean.Expr.const `Bool.toUInt64 []).app body✝)
+      pure { count := plan.count, initial := plan.initial, step := plan.step, done := plan.done, result := result }) =
+    some plan
+⊢ BooleanRange.Supported (List.map ScalarBinding.kind locals✝)
+    (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                  input✝).app
+              output✝).app
+          value✝).app
+      (Lean.Expr.lam binderName✝ domain✝ body✝ binderInfo✝))
+error: LeanExe/Extract/ScalarBooleanRange.lean:711:2: Too many variable names provided at alternative `case34`: 12 provided, but 7 expected
+error: LeanExe/Extract/ScalarBooleanRange.lean:712:4: `simp` made no progress
+error: LeanExe/Extract/ScalarBooleanRange.lean:723:2: Too many variable names provided at alternative `case35`: 17 provided, but 9 expected
+error: LeanExe/Extract/ScalarBooleanRange.lean:724:34: Unknown identifier `parsed`
+error: LeanExe/Extract/ScalarBooleanRange.lean:726:14: Tactic `contradiction` failed
+
+case case36
+slot : Nat
+locals✝ : List ScalarBinding
+type✝ condition✝ evidence✝ yes✝ no✝ : Lean.Expr
+val✝ : BooleanType
+x✝¹ : booleanType? type✝ = some val✝
+flag✝ : IR.Expr
+x✝ : extractScalarExprWith locals✝ (BooleanRange.decision condition✝ evidence✝) = some flag✝
+ih2✝ :
+  ∀ {plan : ScalarRangeExitPlan},
+    extractScalarBooleanRangeWith locals✝ slot yes✝ = some plan →
+      BooleanRange.Supported (List.map ScalarBinding.kind locals✝) yes✝
+ih1✝ :
+  ∀ {plan : ScalarRangeExitPlan},
+    extractScalarBooleanRangeWith locals✝ slot no✝ = some plan →
+      BooleanRange.Supported (List.map ScalarBinding.kind locals✝) no✝
+plan : ScalarRangeExitPlan
+compiled :
+  (do
+      let first ←
+        scalarBooleanRangeArm (extractScalarExprWith locals✝ ((Lean.Expr.const `Bool.toUInt64 []).app yes✝)) fun x =>
+            extractScalarBooleanRangeWith locals✝ slot yes✝
+      let second ←
+        scalarBooleanRangeArm (extractScalarExprWith locals✝ ((Lean.Expr.const `Bool.toUInt64 []).app no✝)) fun x =>
+            extractScalarBooleanRangeWith locals✝ slot no✝
+      pure (ScalarRangeExitPlan.choice flag✝ first second)) =
+    some plan
+⊢ BooleanRange.Supported (List.map ScalarBinding.kind locals✝)
+    ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type✝).app condition✝).app evidence✝).app yes✝).app no✝)
+error: LeanExe/Extract/ScalarBooleanRange.lean:603:2: Alternative `case37` has not been provided
+error: LeanExe/Extract/ScalarBooleanRange.lean:603:2: Alternative `case38` has not been provided
+warning: LeanExe/Extract/ScalarBooleanRange.lean:603:16: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:603:16: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarBooleanRange.lean:603:16: declaration uses `sorry`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanRange
+error: build failed
