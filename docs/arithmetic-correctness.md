@@ -24,8 +24,9 @@ Boolean inputs retain their decoded values as loop locals change. Loop
 accumulators may be UInt64 or Bool. Word-result computations may compose any
 finite number of consecutive admitted loops through word lets or standard Id
 binds. Each computation may use earlier results in its bound, initial state,
-step and final result. Boolean-result computations currently admit one dynamic
-loop on each path. Boolean state is encoded as zero or one. Boolean
+step and final result. The continuation may return a word or a Boolean and may
+run another admitted loop. Binding a Boolean loop result before another dynamic
+loop is not yet supported. Boolean state is encoded as zero or one. Boolean
 steps admit yield/done constructors, checked conditionals, scalar word and
 Boolean lets, monadic word/Boolean binds, metadata and standard Id run/pure
 wrappers. Bind input and continuation domains must match exactly; the output
@@ -105,9 +106,8 @@ zero loop iterations.
 Public parameter domains may retain any number of standard Id layers. Declared
 and lambda domains must have the same base scalar kind; differing Id depths
 preserve their meaning. Custom annotation heads, wrong universes and metadata
-inside parameter domains are rejected. Nested dynamic loops, Boolean-result
-loop sequences and general local loop-function application remain outside this
-grammar.
+inside parameter domains are rejected. Nested dynamic loops, sequences binding a Boolean loop result before another
+loop, and general local loop-function application remain outside this grammar.
 
 A UInt64 body may read arguments, contain
 UInt64 literals, metadata, UInt64 `let` bindings, conditionals and pure `Id`
@@ -673,7 +673,10 @@ Each component has separate locals, so later loops preserve earlier results and
 lexical captures. Loops may have dependent bounds, early exits and continue.
 Unused computations are still checked and executed in source order. Complete
 source evaluation, IR execution, emitted WASM execution, function-body decoding
-and module validation are proved for the sequence path.
+and module validation are proved for the sequence path. A Boolean-result
+continuation can follow any admitted word sequence, including a final loop with
+a Boolean accumulator or a Boolean test of a word accumulator. The public result
+is proved to encode the source flag as zero or one.
 
 Dynamic bounds still use a supported UInt64 expression followed by `.toNat`.
 Starts may be nonzero, including `[3:8]`, `[1:count.toNat]` and

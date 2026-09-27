@@ -65,3 +65,8 @@ import LeanExe.Source.ScalarReannotationEvaluation
 #print axioms Project.Compiler.ScalarLowering.sequence_function_execution
 #print axioms Project.Compiler.ArithmeticValidation.loop_sequence_function_sequence
 #print axioms Project.Compiler.ArithmeticEncoding.sequence_function_body_bytes
+
+#print axioms LeanExe.Source.Scalar.BooleanSequence.Supported.evaluates
+#print axioms LeanExe.Extract.Core.extractScalarBooleanSequenceWith_accepts
+#print axioms LeanExe.Extract.Core.extractScalarBooleanSequenceWith_correct
+#print axioms LeanExe.Extract.Core.extractScalarBooleanSequenceWith_admitted

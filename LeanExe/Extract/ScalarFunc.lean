@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarBooleanSequenceCorrectness
 import LeanExe.Extract.ScalarSequenceCorrectness
 import LeanExe.Extract.ScalarRangeCorrectness
 import LeanExe.Extract.ScalarRangeExitCorrectness
@@ -27,9 +28,12 @@ def extractScalarFunc (name : Lean.Name) (exportName : Option String)
   | some expression => pure (scalarFunc name exportName arity expression)
   | none =>
       match result with
-      | .boolean => do
-          let plan ← extractScalarBooleanRangeWith (publicBindings (publicInputs type)) arity body
-          pure (plan.func name exportName arity)
+      | .boolean =>
+          match extractScalarBooleanRangeWith (publicBindings (publicInputs type)) arity body with
+          | some plan => pure (plan.func name exportName arity)
+          | none => do
+              let plan ← extractScalarBooleanSequenceWith (publicBindings (publicInputs type)) arity body
+              pure (plan.func name exportName arity)
       | .word => do
           let locals := publicBindings (publicInputs type)
           match extractScalarRangeWith locals arity body with
@@ -68,6 +72,9 @@ theorem extractScalarFunc_cases {name : Lean.Name} {exportName : Option String}
           func = plan.func name exportName arity) ∨
         (result = .word ∧ ∃ plan, extractScalarSequenceWith
           (publicBindings (publicInputs type)) arity body = some plan ∧
+          func = plan.func name exportName arity) ∨
+        (result = .boolean ∧ ∃ plan, extractScalarBooleanSequenceWith
+          (publicBindings (publicInputs type)) arity body = some plan ∧
           func = plan.func name exportName arity)) := by
   unfold extractScalarFunc at compiled
   simp only [bind, Option.bind_eq_some_iff] at compiled
@@ -87,9 +94,14 @@ theorem extractScalarFunc_cases {name : Lean.Name} {exportName : Option String}
       simp only [pureCase] at compiled
       cases result with
       | boolean =>
-        simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
-        obtain ⟨plan, hp, same⟩ := compiled
-        exact .inr (.inr (.inr (.inl ⟨rfl, plan, hp, same.symm⟩)))
+        cases prior : extractScalarBooleanRangeWith (publicBindings (publicInputs type)) arity body with
+        | some plan =>
+          simp only [prior, pure, Option.some.injEq] at compiled
+          exact .inr (.inr (.inr (.inl ⟨rfl, plan, rfl, compiled.symm⟩)))
+        | none =>
+          simp only [prior, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+          obtain ⟨plan, hp, same⟩ := compiled
+          exact .inr (.inr (.inr (.inr (.inr (.inr ⟨rfl, plan, hp, same.symm⟩)))))
       | word =>
         cases rangeCase : extractScalarRangeWith
             (publicBindings (publicInputs type)) arity body with
@@ -111,19 +123,21 @@ theorem extractScalarFunc_cases {name : Lean.Name} {exportName : Option String}
             | none =>
               simp only [wordCase, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
               obtain ⟨plan, hp, same⟩ := compiled
-              exact .inr (.inr (.inr (.inr (.inr ⟨rfl, plan, hp, same.symm⟩))))
+              exact .inr (.inr (.inr (.inr (.inr (.inl ⟨rfl, plan, hp, same.symm⟩)))))
 
 theorem extractScalarFunc_properties {name : Lean.Name} {exportName : Option String}
     {type source : Lean.Expr} {func : LeanExe.IR.Func}
     (compiled : extractScalarFunc name exportName type source = some func) :
     func.exportName = exportName ∧ func.params ≤ func.locals ∧ func.results = [.local func.params] := by
   obtain ⟨arity, result, body, _, _, _, cases⟩ := extractScalarFunc_cases compiled
-  rcases cases with ⟨expression, _, rfl⟩ | ⟨rfl, plan, _, rfl⟩ | ⟨rfl, plan, _, rfl⟩ | ⟨rfl, plan, _, rfl⟩ | ⟨rfl, plan, _, rfl⟩ | ⟨rfl, plan, _, rfl⟩
+  rcases cases with ⟨expression, _, rfl⟩ | ⟨rfl, plan, _, rfl⟩ | ⟨rfl, plan, _, rfl⟩ | ⟨rfl, plan, _, rfl⟩ | ⟨rfl, plan, _, rfl⟩ | ⟨rfl, plan, _, rfl⟩ | ⟨rfl, plan, _, rfl⟩
   · simp [scalarFunc]
   · simp [ScalarRangePlan.func]
   · simp [ScalarRangeExitPlan.func]
   · simp [ScalarRangeExitPlan.func]
   · simp [ScalarRangeExitPlan.func]
+
+  · simp [ScalarSequencePlan.func]
 
   · simp [ScalarSequencePlan.func]
 
@@ -210,7 +224,7 @@ theorem extractScalarFunc_accepts {type value : Lean.Expr}
     (name : Lean.Name) (exportName : Option String) :
     ∃ func, extractScalarFunc name exportName type value = some func := by
   obtain ⟨arity, result, body, signature, annotations, lambdas, supportedBody⟩ := supported
-  rcases supportedBody with supportedBody | ⟨rfl, supportedBody | supportedBody⟩ | ⟨rfl, supportedBody⟩ | ⟨rfl, supportedBody⟩ | ⟨rfl, supportedBody⟩
+  rcases supportedBody with supportedBody | ⟨rfl, supportedBody | supportedBody⟩ | ⟨rfl, supportedBody⟩ | ⟨rfl, supportedBody⟩ | ⟨rfl, supportedBody⟩ | ⟨rfl, supportedBody⟩
   ·
     obtain ⟨expression, compiled⟩ := extractScalarExprWith_accepts supportedBody
       (publicBindings (publicInputs type)) (publicBindings_typed _) (publicBindings_total _)
@@ -308,6 +322,24 @@ theorem extractScalarFunc_accepts {type value : Lean.Expr}
             exact ⟨plan.func name exportName arity, by
               simp [extractScalarFunc, scalarSignature_accepts signature, annotations, lambdas,
                 LeanExe.Source.Scalar.PublicResult.encode, pureCase, rangeCase, exitCase, wordCase, compiled, locals] at *⟩
+  · let locals := publicBindings (publicInputs type)
+    obtain ⟨plan, compiled⟩ := extractScalarBooleanSequenceWith_accepts supportedBody locals arity
+      (publicBindings_typed _) (publicBindings_total _)
+    cases pureCase : extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) body) with
+    | some expression =>
+      exact ⟨scalarFunc name exportName arity expression, by
+        simp [extractScalarFunc, scalarSignature_accepts signature, annotations, lambdas,
+          LeanExe.Source.Scalar.PublicResult.encode, pureCase, locals] at *⟩
+    | none =>
+      cases prior : extractScalarBooleanRangeWith locals arity body with
+      | some original =>
+        exact ⟨original.func name exportName arity, by
+          simp [extractScalarFunc, scalarSignature_accepts signature, annotations, lambdas,
+            LeanExe.Source.Scalar.PublicResult.encode, pureCase, prior, locals] at *⟩
+      | none =>
+        exact ⟨plan.func name exportName arity, by
+          simp [extractScalarFunc, scalarSignature_accepts signature, annotations, lambdas,
+            LeanExe.Source.Scalar.PublicResult.encode, pureCase, prior, compiled, locals] at *⟩
 
 /-- Actual argument locals match the source environment for any trailing locals. -/
 theorem scalarArgumentBindings (args extra : List UInt64) :
@@ -460,6 +492,26 @@ theorem sequencePublic_application {type source body : Lean.Expr} {arity : Nat}
   apply LeanExe.Source.Scalar.Apply.sequenceDone
   simpa using evaluated
 
+/-- A Boolean sequence preserves prior word results and returns an encoded native flag. -/
+theorem booleanSequencePublic_application {type source body : Lean.Expr} {arity : Nat}
+    {plan : ScalarSequencePlan}
+    (signature : scalarSignature? type = some (arity, .boolean))
+    (annotations : publicLambdasMatch (publicInputs type) source = true)
+    (lambdas : collectLambdas source arity = some body)
+    (compiled : extractScalarBooleanSequenceWith (publicBindings (publicInputs type)) arity body = some plan)
+    (args : List UInt64) (len : args.length = arity) :
+    ∃ value : Bool, LeanExe.Source.Scalar.Apply source [] args value.toUInt64 ∧ plan.Meaning args value.toUInt64 := by
+  subst arity
+  have inputLen := (scalarSignature_inputs_length signature).symm
+  obtain ⟨value, evaluated, meaning⟩ := extractScalarBooleanSequenceWith_correct compiled args
+    (publicValues (publicInputs type) args).reverse rfl (publicValues_bindings_typed inputLen)
+    (fun suffix => publicArgumentBindings (publicInputs type) args suffix inputLen)
+    (publicBindings_total _)
+  refine ⟨value, ?_, meaning⟩
+  apply LeanExe.Source.Scalar.apply_of_publicLambdas (publicInputs type) args [] inputLen annotations lambdas
+  apply LeanExe.Source.Scalar.Apply.booleanSequenceDone
+  simpa using evaluated
+
 /-- Every successful scalar declaration extraction preserves application of
 the original source term on every argument list of the declared arity. -/
 theorem extractScalarFunc_correct {name : Lean.Name} {exportName : Option String}
@@ -468,7 +520,7 @@ theorem extractScalarFunc_correct {name : Lean.Name} {exportName : Option String
     (args : List UInt64) (len : args.length = func.params) :
     ∃ value, LeanExe.Source.Scalar.Apply source [] args value ∧ func.ScalarEval args value := by
   obtain ⟨arity, result, body, signature, annotations, hb, cases⟩ := extractScalarFunc_cases compiled
-  rcases cases with ⟨expression, he, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩
+  rcases cases with ⟨expression, he, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩
   · have hlen : args.length = arity := len
     obtain ⟨value, applied, evaluated⟩ := scalarPublic_application signature annotations hb he args [0] hlen
     exact ⟨value, applied, scalarFunc_of_eval hlen evaluated name exportName⟩
@@ -490,6 +542,10 @@ theorem extractScalarFunc_correct {name : Lean.Name} {exportName : Option String
     obtain ⟨value, applied, meaning⟩ := sequencePublic_application signature annotations hb hp args hlen
     exact ⟨value, applied, by simpa [hlen] using meaning.func_correct name exportName⟩
 
+  · have hlen : args.length = arity := len
+    obtain ⟨flag, applied, meaning⟩ := booleanSequencePublic_application signature annotations hb hp args hlen
+    exact ⟨flag.toUInt64, applied, by simpa [hlen] using meaning.func_correct name exportName⟩
+
 /-- A public Bool result uses either a scalar conversion or a checked loop continuation. -/
 theorem extractScalarFunc_boolean_cases {name : Lean.Name} {exportName : Option String}
     {type source : Lean.Expr} {func : LeanExe.IR.Func} {arity : Nat}
@@ -501,18 +557,21 @@ theorem extractScalarFunc_boolean_cases {name : Lean.Name} {exportName : Option 
           (.app (.const ``Bool.toUInt64 []) body) = some expression ∧
           func = scalarFunc name exportName arity expression) ∨
         (∃ plan, extractScalarBooleanRangeWith (publicBindings (publicInputs type)) arity body = some plan ∧
+          func = plan.func name exportName arity) ∨
+        (∃ plan, extractScalarBooleanSequenceWith (publicBindings (publicInputs type)) arity body = some plan ∧
           func = plan.func name exportName arity)) := by
   obtain ⟨foundArity, result, body, parsed, annotations, lambdas, branches⟩ := extractScalarFunc_cases compiled
   have same := Option.some.inj (parsed.symm.trans signature)
   cases same
   refine ⟨body, annotations, lambdas, ?_⟩
-  rcases branches with ⟨expression, extracted, same⟩ | ⟨impossible, _⟩ | ⟨impossible, _⟩ | ⟨_, plan, extracted, same⟩ | ⟨impossible, _⟩ | ⟨impossible, _⟩
+  rcases branches with ⟨expression, extracted, same⟩ | ⟨impossible, _⟩ | ⟨impossible, _⟩ | ⟨_, plan, extracted, same⟩ | ⟨impossible, _⟩ | ⟨impossible, _⟩ | ⟨_, plan, extracted, same⟩
   · exact .inl ⟨expression, extracted, same⟩
   · cases impossible
   · cases impossible
-  · exact .inr ⟨plan, extracted, same⟩
+  · exact .inr (.inl ⟨plan, extracted, same⟩)
   · cases impossible
   · cases impossible
+  · exact .inr (.inr ⟨plan, extracted, same⟩)
 
 /-- Every admitted public Bool function returns the native flag encoded as zero
 or one, for every argument list of the declared arity. -/
@@ -524,7 +583,7 @@ theorem extractScalarFunc_boolean_correct {name : Lean.Name} {exportName : Optio
     ∃ flag : Bool, LeanExe.Source.Scalar.Apply source [] args flag.toUInt64 ∧
       func.ScalarEval args flag.toUInt64 := by
   obtain ⟨body, annotations, lambdas, branches⟩ := extractScalarFunc_boolean_cases compiled signature
-  rcases branches with ⟨expression, extracted, rfl⟩ | ⟨plan, extracted, rfl⟩
+  rcases branches with ⟨expression, extracted, rfl⟩ | ⟨plan, extracted, rfl⟩ | ⟨plan, extracted, rfl⟩
   ·
     have inputLen : args.length = (publicInputs type).length :=
       len.trans (scalarSignature_inputs_length signature).symm
@@ -535,6 +594,8 @@ theorem extractScalarFunc_boolean_correct {name : Lean.Name} {exportName : Optio
       args [] inputLen annotations (by simpa [len] using lambdas)
       (by simpa [LeanExe.Source.Scalar.PublicResult.encode] using semantics)
   · obtain ⟨flag, applied, meaning⟩ := booleanRangePublic_application signature annotations lambdas extracted args len
+    exact ⟨flag, applied, by simpa [len] using meaning.func_correct name exportName⟩
+  · obtain ⟨flag, applied, meaning⟩ := booleanSequencePublic_application signature annotations lambdas extracted args len
     exact ⟨flag, applied, by simpa [len] using meaning.func_correct name exportName⟩
 
 end LeanExe.Extract.Core
