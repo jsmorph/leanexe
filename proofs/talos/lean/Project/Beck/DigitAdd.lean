@@ -104,6 +104,22 @@ theorem add_value (a b : Array UInt64) (ha : Valid a) (hb : Valid b) :
     have wordZero : (scan a b (max a.size b.size)).2 = 0 := by simpa using zero
     simpa [wordZero] using specification.2.2.2
 
+theorem add_valid (a b : Array UInt64) (ha : Valid a) (hb : Valid b) :
+    Valid (Digits.add a b) := by
+  have specification := scan_valid a b ha hb (max a.size b.size)
+  rw [add_eq]
+  dsimp only
+  apply trim_valid
+  split
+  · intro digit member
+    rcases Array.mem_push.mp member with member | equal
+    · exact specification.2.1 digit member
+    · rw [equal]
+      dsimp [LimbArithmetic.Valid]
+      omega
+  · exact specification.2.1
+
 #print axioms add_value
+#print axioms add_valid
 
 end Project.Beck.DigitAdd
