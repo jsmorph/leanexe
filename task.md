@@ -230,17 +230,20 @@ admission/encoding controls. Prior tests pass 24,976 comparisons, 9,225 invalid-
 checks and 1,026 controls. Evidence is in
 [the Nat.toUInt64 archive](proofs/compiler/nat-to-uint64-2026-09-26/README.md).
 
-Boolean-valued bindings containing Bool-input calls pass focused proofs, 7,348
-native/IR comparisons, 4,096 invalid-input checks and 512 controls. Ordinary lets,
-immediate applications and named immediate applications check the bound value and
-body, including unused values, captures and shadowing. Prior tests pass 10,350
-comparisons, 6,675 invalid-input checks and 688 controls. General compiler proof
-and selected WASM checks are pending.
+Boolean-valued bindings containing Bool-input calls are complete. Ordinary lets,
+immediate applications and named immediate applications check the bound value
+and body, including unused values, captures and shadowing. The general source-to-WASM
+theorem and eighteen audits pass. Native Lean/V8 agree on 509 inputs across 28
+declarations, including thirteen ranges; eighteen shared modules retain identical
+bytes. Focused tests pass 7,348 native/IR comparisons, 4,096 invalid-input checks
+and 512 controls. Prior tests pass 10,350 comparisons, 6,675 invalid-input checks
+and 688 controls. Evidence is in
+[the Boolean bound-result archive](proofs/compiler/boolean-bound-result-2026-09-26/README.md).
 
-Next: finish this increment through WASM, then UInt64 bindings and monadic binds
-inside Boolean results. Saved Boolean variables in mixed propositional guards,
-retained instance and Bool-parameter Id wrappers, and broader signatures follow. Full-dialect correctness remains unfinished.
-Complete each capability through WASM and commit/push frequently.
+Next: UInt64 bindings and monadic binds inside converted Boolean results. Saved
+Boolean variables in mixed propositional guards, retained instance and Bool-parameter
+Id wrappers, and broader signatures follow. Full-dialect correctness remains
+unfinished. Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
