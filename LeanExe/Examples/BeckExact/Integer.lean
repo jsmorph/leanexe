@@ -15,16 +15,19 @@ def trim (a : Array UInt64) : Array UInt64 := a.extract 0 (length a)
 def get (a : Array UInt64) (index : Nat) : UInt64 :=
   if index < a.size then a[index]! else 0
 
-def compare (a b : Array UInt64) : UInt64 := Id.run do
+def compareFrom : Nat → Array UInt64 → Array UInt64 → UInt64
+  | 0, _, _ => 0
+  | count + 1, a, b =>
+    if a[count]! < b[count]! then 1
+    else if b[count]! < a[count]! then 2
+    else compareFrom count a b
+
+def compare (a b : Array UInt64) : UInt64 :=
   let an := length a
   let bn := length b
-  if an < bn then return 1
-  if bn < an then return 2
-  for offset in [:an] do
-    let index := an - 1 - offset
-    if a[index]! < b[index]! then return 1
-    if b[index]! < a[index]! then return 2
-  return 0
+  if an < bn then 1
+  else if bn < an then 2
+  else compareFrom an a b
 
 def add (a b : Array UInt64) : Array UInt64 := Id.run do
   let mut result := #[]
