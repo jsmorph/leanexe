@@ -556,14 +556,17 @@ equivalent-binding controls. Prior tests pass 96,768 comparisons, 78,336
 invalid-input checks and 5,760 controls. Evidence is in
 [the conditional-continuation archive](proofs/compiler/boolean-loop-conditional-continuation-2026-09-27/README.md).
 
-Current capability: saved local-call results. Exact call syntax now preserves
-`let result := CALL; result`, including the binding introduced by show, standard
-Id result annotations, name shadowing and nested wrappers. Source, extraction, correctness, invariant, public compiler and WASM admission
-proofs pass. New tests pass 97,008 native/IR comparisons, 76,032 invalid-input
-checks and 3,456 binding controls, including the restored show failure. The
-complete proof and native Lean/WASM checks are next.
+Saved results of local Boolean loop calls are complete, including the binding
+introduced by show, repeated saved results, Id annotations, shadowed names and
+nested wrappers. The saved failure now passes. The complete source-to-WASM theorem
+and nineteen audits pass. Native Lean/V8 agree on 609 inputs across 28 declarations,
+including twenty-three ranges; eighteen prior modules retain identical bytes.
+New tests pass 97,008 native/IR comparisons, 76,032 invalid-input checks and 3,456
+binding controls. Prior tests pass 129,024 comparisons, 69,120 invalid-input checks
+and 3,456 controls. Evidence is in
+[the saved-continuation archive](proofs/compiler/boolean-loop-saved-continuation-2026-09-27/README.md).
 
-Next: saved local-call results and wrappers around conditional calls, followed by
+Next: wrappers and saved results around conditional calls, followed by
 retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
 Also extend UInt64-to-Bool helper bodies to call captured
