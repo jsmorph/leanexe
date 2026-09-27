@@ -23,10 +23,10 @@ def choiceExpr (type : BooleanType) (condition evidence yes no : Lean.Expr) : Le
 
 /-- A word-valued loop followed by a Boolean result computation. -/
 inductive Eval : Lean.Expr → List Value → Bool → Prop where
-  | applyWord (shape : BooleanFunctionBinding) (call : BooleanCall)
+  | applyWord (shape : BooleanFunctionBinding) (call : BooleanCall false)
       (argument : EvalWith a values x) (body : Eval b (.word x :: values) result) :
       Eval (shape.callExpr call parameterName (.const ``UInt64 []) a b) values result
-  | applyBoolean (shape : BooleanFunctionBinding) (call : BooleanCall)
+  | applyBoolean (shape : BooleanFunctionBinding) (call : BooleanCall true)
       (argument : EvalWith (.app (.const ``Bool.toUInt64 []) a) values flag.toUInt64)
       (body : Eval b (.boolean flag :: values) result) :
       Eval (shape.callExpr call parameterName (.const ``Bool []) a b) values result
@@ -117,10 +117,10 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
 
 /-- Source support checks both the loop and its Boolean continuation. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
-  | applyWord (shape : BooleanFunctionBinding) (call : BooleanCall)
+  | applyWord (shape : BooleanFunctionBinding) (call : BooleanCall false)
       (argument : SupportedWith types a) (body : Supported (.word :: types) b) :
       Supported types (shape.callExpr call parameterName (.const ``UInt64 []) a b)
-  | applyBoolean (shape : BooleanFunctionBinding) (call : BooleanCall)
+  | applyBoolean (shape : BooleanFunctionBinding) (call : BooleanCall true)
       (argument : SupportedWith types (.app (.const ``Bool.toUInt64 []) a))
       (body : Supported (.boolean :: types) b) :
       Supported types (shape.callExpr call parameterName (.const ``Bool []) a b)

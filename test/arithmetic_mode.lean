@@ -6714,6 +6714,135 @@ def rangeBoolWrappedCallId (count seed : UInt64) : Id Bool :=
     pure (Id.run (Id.run selected) && value != seed)
   Id.run (run (pure (pure (seed % 2 == 0))))
 
+def rangeBoolForwardedWord (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  Id.run do
+    let argument ← (pure (count % 17) : Id (UInt64))
+    run argument
+
+def rangeBoolForwardedFlag (count : UInt64) (flag : Bool) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := count
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + (if selected then 1 else 3)
+      return a
+    selected && value != count
+  Id.run do
+    let argument ← (pure (!flag) : Id (Bool))
+    run argument
+
+def rangeBoolForwardedBooleanArgument (count seed : UInt64) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if selected then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    selected || value % 5 == 0
+  Id.run do
+    let argument ← (pure (seed % 2 == 0 && count != 0) : Id (Bool))
+    run argument
+
+def rangeBoolForwardedWordCapture (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x * 3 + seed
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := f seed
+      for i in [:limit.toNat] do
+        a := f a + i.toUInt64
+      return a
+    f value == f seed
+  Id.run do
+    let argument ← (pure (count % 19) : Id (UInt64))
+    run argument
+
+def rangeBoolForwardedBooleanCapture (count seed : UInt64) : Bool :=
+  let p := fun flag : Bool => flag || seed == 0
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if p selected then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    p selected && value != seed
+  Id.run do
+    let argument ← (pure (p (count == 0)) : Id (Bool))
+    run argument
+
+def rangeBoolForwardedNested (count seed : UInt64) : Bool :=
+  let outer := fun selected : Bool =>
+    let inner := fun limit : UInt64 =>
+      let value := Id.run do
+        let mut a := seed
+        for i in [:limit.toNat] do
+          a := a + i.toUInt64 + (if selected then 1 else 3)
+        return a
+      selected && value != seed
+    Id.run do
+      let argument ← (pure (count % 17) : Id UInt64)
+      inner argument
+  Id.run do
+    let argument ← (pure (seed % 2 == 0) : Id (Bool))
+    outer argument
+
+def rangeBoolForwardedExit (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+        if a % 7 == 0 then break
+      return a
+    value % 7 == 0
+  Id.run do
+    let argument ← (pure (count % 17) : Id (UInt64))
+    run argument
+
+def rangeBoolForwardedContinue (count seed : UInt64) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if selected && i.toUInt64 % 2 == 0 then continue
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  Id.run do
+    let argument ← (pure (seed % 2 == 0) : Id (Bool))
+    run argument
+
+def rangeBoolForwardedStride (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [(seed % 3).toNat:limit.toNat:3] do
+        a := a + i.toUInt64 + 1
+        if a % 5 == 0 then break
+      return a
+    value % 5 == 0
+  Id.run do
+    let argument ← (pure (count % 23) : Id (UInt64))
+    run argument
+
+def rangeBoolForwardedId (count seed : UInt64) : Id Bool :=
+  let run (selected : Id (Id Bool)) : Id (Id Bool) := do
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if Id.run (Id.run selected) then a := a + i.toUInt64 + 1 else a := a + 3
+      return a)
+    pure (Id.run (Id.run selected) && value != seed)
+  Id.run do
+    let argument ← (pure (pure (pure (seed % 2 == 0))) : Id (Id (Id Bool)))
+    run argument
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -10328,6 +10457,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolWrappedCallContinue,
       `ArithmeticModeTest.rangeBoolWrappedCallStride,
       `ArithmeticModeTest.rangeBoolWrappedCallId,
+      `ArithmeticModeTest.rangeBoolForwardedWord,
+      `ArithmeticModeTest.rangeBoolForwardedFlag,
+      `ArithmeticModeTest.rangeBoolForwardedBooleanArgument,
+      `ArithmeticModeTest.rangeBoolForwardedWordCapture,
+      `ArithmeticModeTest.rangeBoolForwardedBooleanCapture,
+      `ArithmeticModeTest.rangeBoolForwardedNested,
+      `ArithmeticModeTest.rangeBoolForwardedExit,
+      `ArithmeticModeTest.rangeBoolForwardedContinue,
+      `ArithmeticModeTest.rangeBoolForwardedStride,
+      `ArithmeticModeTest.rangeBoolForwardedId,
       `ArithmeticModeTest.rangeBoolLetIdWord,
       `ArithmeticModeTest.rangeBoolLetIdWordLayers,
       `ArithmeticModeTest.rangeBoolLetIdFlag,

@@ -686,5 +686,15 @@
   "rangeBoolWrappedCallExit",
   "rangeBoolWrappedCallContinue",
   "rangeBoolWrappedCallStride",
-  "rangeBoolWrappedCallId"
+  "rangeBoolWrappedCallId",
+  "rangeBoolForwardedWord",
+  "rangeBoolForwardedFlag",
+  "rangeBoolForwardedBooleanArgument",
+  "rangeBoolForwardedWordCapture",
+  "rangeBoolForwardedBooleanCapture",
+  "rangeBoolForwardedNested",
+  "rangeBoolForwardedExit",
+  "rangeBoolForwardedContinue",
+  "rangeBoolForwardedStride",
+  "rangeBoolForwardedId"
 ]
