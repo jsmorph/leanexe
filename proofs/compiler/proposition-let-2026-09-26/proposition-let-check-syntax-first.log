@@ -1,0 +1,6 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_proposition_let_syntax.lean:99:56: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Inhabited Guard
+
+Hint: Adding the command `deriving instance Inhabited for LeanExe.Source.Scalar.Guard` may allow Lean to derive the missing instance.
