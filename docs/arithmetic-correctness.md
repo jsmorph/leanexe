@@ -442,13 +442,16 @@ These guards work in decisions, ordinary/dependent word or Boolean choices,
 helper bodies and loop steps, including break and continue. Boolean relations
 may also be retained directly under proposition lets. These lets bind Bool or
 UInt64 values or local UInt64-to-Bool and Bool-to-Bool predicates. They may nest,
-preserve standard Id result annotations and check unused bindings, including
+preserve standard Id input and result annotations and check unused bindings, including
 unused predicate bodies. The substituted standard decision must match the
 retained condition. They compose with conjunctions, disjunctions and negation.
 
 Boolean-to-word conversions and word-valued conditions admit local UInt64-to-Bool
 and Bool-to-Bool declarations followed by repeated calls or nested predicate
-scopes. In Boolean-to-word conversions, both the body and continuation use the
+scopes. Helper inputs may retain any number of standard Id layers around UInt64
+or Bool. The declared arrow and lambda domains must match exactly; malformed
+universes and unsupported base types are rejected. In Boolean-to-word conversions,
+both the body and continuation use the
 recursive Boolean conversion checker. Bodies may themselves contain predicate
 scopes, wrappers and choices with general helper branches. Each body is validated
 even when the helper is unused. Ordinary scalar word continuations and loop-step

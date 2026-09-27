@@ -8188,6 +8188,62 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def booleanHelperIdInputWord (x y : UInt64) : UInt64 :=
+  (let f := fun n : Id UInt64 => (Id.run n) == y
+   f x && f 0).toUInt64 + x
+
+def booleanHelperIdInputBoolean (x y : UInt64) : UInt64 :=
+  (let f := fun b : Id Bool => (Id.run b) != (x == y)
+   f (x == 0) || f (y == 0)).toUInt64 + y
+
+def booleanHelperIdInputNested (x y : UInt64) : UInt64 :=
+  (let f := fun n : Id (Id UInt64) =>
+    let g := fun b : Id (Id Bool) => (Id.run (Id.run b)) || y == 0
+    g ((Id.run (Id.run n)) == y) && g false
+   f x || f y).toUInt64 + x
+
+def booleanHelperIdInputCapture (x y : UInt64) : UInt64 :=
+  let saved := x + y
+  (let f := fun n : Id UInt64 =>
+     let g := fun b : Id Bool => (Id.run b) != (saved == y)
+     g ((Id.run n) == saved) || g (x == 0)
+   f x && f y).toUInt64 + y
+
+def booleanHelperIdInputUnused (x y : UInt64) : UInt64 :=
+  (let _unused := fun b : Id Bool =>
+     let g := fun n : Id UInt64 => (Id.run n) == y
+     (Id.run b) || g x || g 0
+   x == y).toUInt64 + x
+
+def booleanHelperIdInputProposition (x y : UInt64) : UInt64 :=
+  if x < y ∧ (let f := fun n : Id UInt64 => (Id.run n) == y; f x || f y) then x + 7 else y + 3
+
+def rangeBooleanHelperIdInputStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + (let f := fun n : Id UInt64 => (Id.run n) == a; f i.toUInt64 || f seed).toUInt64
+  return a
+
+def rangeBooleanHelperIdInputExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if (let f := fun b : Id Bool => (Id.run b) != (a == seed); f (decide (a > 7)) && f (i.toUInt64 == seed)) then break
+  return a
+
+def rangeBooleanHelperIdInputContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let f := fun n : Id (Id UInt64) => (Id.run (Id.run n)) == a; f i.toUInt64 || f seed) then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangeBooleanHelperIdInputTail (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+  return a + (let f := fun b : Id Bool => (Id.run b) != (a == seed); f (a == 0) || f (seed == 0)).toUInt64
+
 def stepDispatcher (motive : ForInStep Bool → Sort u) (value : ForInStep Bool)
     (doneBody : ∀ flag, motive (.done flag)) (yieldBody : ∀ flag, motive (.yield flag)) : motive value :=
   ForInStep.casesOn (motive := fun value => motive value) value
@@ -12315,6 +12371,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolRelationExit", (fun (x y : UInt64) => rangeBoolRelationExit x y)),
    ("rangeBoolRelationContinue", (fun (x y : UInt64) => rangeBoolRelationContinue x y)),
    ("rangeBoolRelationTail", (fun (x y : UInt64) => (rangeBoolRelationTail x y).toUInt64)),
+   ("rangeBooleanHelperIdInputStep", (fun (x y : UInt64) => rangeBooleanHelperIdInputStep x y)),
+   ("rangeBooleanHelperIdInputExit", (fun (x y : UInt64) => rangeBooleanHelperIdInputExit x y)),
+   ("rangeBooleanHelperIdInputContinue", (fun (x y : UInt64) => rangeBooleanHelperIdInputContinue x y)),
+   ("rangeBooleanHelperIdInputTail", (fun (x y : UInt64) => rangeBooleanHelperIdInputTail x y)),
    ("rangeBooleanStepMatchDirect", (fun (x y : UInt64) => (rangeBooleanStepMatchDirect x y).toUInt64)),
    ("rangeBooleanStepMatchHelper", (fun (x y : UInt64) => (rangeBooleanStepMatchHelper x y).toUInt64)),
    ("rangeBooleanStepMatchNested", (fun (x y : UInt64) => (rangeBooleanStepMatchNested x y).toUInt64)),
@@ -13098,6 +13158,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("predicateBodyWordCapture", (fun (x y : UInt64) => predicateBodyWordCapture x y)),
    ("predicateBodyWordProposition", (fun (x y : UInt64) => predicateBodyWordProposition x y)),
    ("predicateBodyWordDo", (fun (x y : UInt64) => predicateBodyWordDo x y)),
+   ("booleanHelperIdInputWord", booleanHelperIdInputWord),
+   ("booleanHelperIdInputBoolean", booleanHelperIdInputBoolean),
+   ("booleanHelperIdInputNested", booleanHelperIdInputNested),
+   ("booleanHelperIdInputCapture", booleanHelperIdInputCapture),
+   ("booleanHelperIdInputUnused", booleanHelperIdInputUnused),
+   ("booleanHelperIdInputProposition", booleanHelperIdInputProposition),
    ("booleanHelperBodyNested", (fun (x y : UInt64) => booleanHelperBodyNested x y)),
    ("booleanHelperBodyWrapped", (fun (x y : UInt64) => booleanHelperBodyWrapped x y)),
    ("booleanHelperBodyMixed", (fun (x y : UInt64) => booleanHelperBodyMixed x y)),

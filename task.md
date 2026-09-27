@@ -959,9 +959,12 @@ before implementation. The source helper now retains its exact domain and an
 independent PublicArgument.Domain certificate. Recognition requires matching
 arrow/lambda domains; its acceptance and soundness proofs pass 67 targets.
 The full extractor passes 205 targets. The syntax matrix passes 32,256 native/IR
-comparisons, 48,384 invalid-input checks and 768 admission controls. Eight of ten
-fixed probes compile. Proposition-let input checking also needs extension; its
-independent typed Id case and recognizer proofs now pass 21 targets. A word let
+comparisons, 48,384 invalid-input checks and 768 admission controls. Nine of ten
+fixed probes compile after extending proposition-let input checking; its
+independent typed Id case and recognizer proofs pass 21 targets. The combined
+extractor proofs pass after splitting the final dependency build. New tests pass
+105,012 native/IR comparisons, 123,984 invalid-input checks and 1,344 admission
+controls. A word let
 surrounding the general Boolean helper also fails with bare inputs; that original
 capture probe is preserved for the next increment. The public WASM gate is pending.
 
