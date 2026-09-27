@@ -25,28 +25,41 @@ theorem booleanRangeCallArgument_sound {body argument : Lean.Expr}
     rw [LeanExe.Source.ExprProofBinder.drop_sound value 0 parsed]
   · contradiction
 
-/-- Recognize direct local calls under exact Boolean Id wrappers or metadata. -/
-def booleanRangeWrappedCall? (source : Lean.Expr) : Option (BooleanCall × Lean.Expr) :=
+/-- Recognize local calls and exact Id forwarding under Boolean wrappers or metadata. -/
+def booleanRangeWrappedCall? (boolean : Bool) (source : Lean.Expr) : Option (BooleanCall boolean × Lean.Expr) :=
   match source with
   | .app (.bvar 0) value => do
       let argument ← LeanExe.Source.ExprProofBinder.drop? 0 value
       pure (.direct, argument)
+  | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
+      (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
+        (.const ``Id.instMonad [.zero]))) input) output) value)
+      (.lam name domain (.app (.bvar 1) (.bvar 0)) binder) =>
+      match boolean with
+      | false => do
+          let (input, output) ← booleanRangeBindTypes? input domain output
+          let argument ← LeanExe.Source.ExprProofBinder.drop? 0 value
+          pure (.forwardWord input output name binder, argument)
+      | true => do
+          let (input, output) ← booleanRangeFlagBindTypes? input domain output
+          let argument ← LeanExe.Source.ExprProofBinder.drop? 0 value
+          pure (.forwardBoolean input output name binder, argument)
   | source =>
       match _parsed : booleanRangeWrapper? source with
       | none => none
       | some (wrapper, body) => do
-          let (call, argument) ← booleanRangeWrappedCall? body
+          let (call, argument) ← booleanRangeWrappedCall? boolean body
           pure (.wrapped wrapper call, argument)
 termination_by sizeOf source
 decreasing_by exact booleanRangeWrapper_size _parsed
 
-@[simp] theorem booleanRangeWrappedCall_direct (argument : Lean.Expr) :
-    booleanRangeWrappedCall? (BooleanCall.direct.expr argument) = some (.direct, argument) := by
+@[simp] theorem booleanRangeWrappedCall_direct (boolean : Bool) (argument : Lean.Expr) :
+    booleanRangeWrappedCall? boolean ((BooleanCall.direct (boolean := boolean)).expr argument) = some (.direct, argument) := by
   simp [BooleanCall.expr, booleanRangeWrappedCall?]
 
-theorem booleanRangeWrappedCall_wrapped (wrapper : BooleanWrapper) (body : Lean.Expr) :
-    booleanRangeWrappedCall? (wrapper.expr body) = (do
-      let (call, argument) ← booleanRangeWrappedCall? body
+theorem booleanRangeWrappedCall_wrapped (boolean : Bool) (wrapper : BooleanWrapper) (body : Lean.Expr) :
+    booleanRangeWrappedCall? boolean (wrapper.expr body) = (do
+      let (call, argument) ← booleanRangeWrappedCall? boolean body
       pure (.wrapped wrapper call, argument)) := by
   have parsed := booleanRangeWrapper_accepts wrapper body
   cases wrapper <;> simp only [BooleanWrapper.expr, BooleanIdentity.run, BooleanIdentity.pure] at parsed ⊢
@@ -54,28 +67,51 @@ theorem booleanRangeWrappedCall_wrapped (wrapper : BooleanWrapper) (body : Lean.
   all_goals split <;> simp_all
   all_goals split <;> simp_all
 
-@[simp] theorem booleanRangeWrappedCall_accepts (call : BooleanCall) (argument : Lean.Expr) :
-    booleanRangeWrappedCall? (call.expr argument) = some (call, argument) := by
+@[simp] theorem booleanRangeWrappedCall_accepts (call : BooleanCall boolean) (argument : Lean.Expr) :
+    booleanRangeWrappedCall? boolean (call.expr argument) = some (call, argument) := by
   induction call with
-  | direct => exact booleanRangeWrappedCall_direct argument
+  | direct => exact booleanRangeWrappedCall_direct _ argument
   | wrapped wrapper inner ih =>
     rw [BooleanCall.expr, booleanRangeWrappedCall_wrapped]
     simp [ih]
+  | forwardWord input output name binder =>
+    simp [BooleanCall.expr, BooleanBindingForm.expr, booleanRangeWrappedCall?]
+  | forwardBoolean input output name binder =>
+    simp [BooleanCall.expr, BooleanBindingForm.expr, booleanRangeWrappedCall?]
 
-theorem booleanRangeWrappedCall_sound {source : Lean.Expr} {call : BooleanCall} {argument : Lean.Expr}
-    (parsed : booleanRangeWrappedCall? source = some (call, argument)) : source = call.expr argument := by
-  fun_induction booleanRangeWrappedCall? source generalizing call argument with
-  | case1 value =>
-    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq] at parsed
-    obtain ⟨actual, matched, rfl, rfl⟩ := parsed
-    rw [LeanExe.Source.ExprProofBinder.drop_sound value 0 matched]
-    rfl
-  | case2 => contradiction
-  | case3 source notDirect wrapper body matched ih =>
-    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq] at parsed
-    obtain ⟨⟨inner, actual⟩, found, rfl, rfl⟩ := parsed
-    rw [booleanRangeWrapper_sound matched, ih found]
-    rfl
+theorem booleanRangeWrappedCall_sound {source : Lean.Expr} {call : BooleanCall boolean} {argument : Lean.Expr}
+    (parsed : booleanRangeWrappedCall? boolean source = some (call, argument)) : source = call.expr argument := by
+  induction source using (measure (fun e : Lean.Expr => sizeOf e)).wf.induction generalizing call argument with
+  | h source ih =>
+    rw [booleanRangeWrappedCall?.eq_def] at parsed
+    split at parsed
+    · rename_i value
+      simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq] at parsed
+      obtain ⟨actual, matched, rfl, rfl⟩ := parsed
+      rw [LeanExe.Source.ExprProofBinder.drop_sound value 0 matched]
+      rfl
+    · rename_i input output value name domain binder
+      cases boolean with
+      | false =>
+        simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq] at parsed
+        obtain ⟨⟨inputType, outputType⟩, typed, actual, dropped, rfl, rfl⟩ := parsed
+        obtain ⟨rfl, rfl, rfl⟩ := booleanRangeBindTypes_sound typed
+        rw [LeanExe.Source.ExprProofBinder.drop_sound value 0 dropped]
+        rfl
+      | true =>
+        simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq] at parsed
+        obtain ⟨⟨inputType, outputType⟩, typed, actual, dropped, rfl, rfl⟩ := parsed
+        obtain ⟨rfl, rfl, rfl⟩ := booleanRangeFlagBindTypes_sound typed
+        rw [LeanExe.Source.ExprProofBinder.drop_sound value 0 dropped]
+        rfl
+    · split at parsed
+      · contradiction
+      · rename_i wrapper body matched
+        simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq] at parsed
+        obtain ⟨⟨inner, actual⟩, found, rfl, rfl⟩ := parsed
+        rw [booleanRangeWrapper_sound matched, ih body (booleanRangeWrapper_size matched) found]
+        rfl
+
 
 def booleanRangeInput (boolean : Bool) (value : LeanExe.IR.Expr) : ScalarBinding :=
   if boolean then .boolean value else .word value
@@ -100,7 +136,7 @@ def scalarBooleanRangePredicate (locals : List ScalarBinding) (boolean : Bool)
 /-- Compile a direct application by binding its checked argument in the helper body. -/
 def scalarBooleanRangeDirect (locals : List ScalarBinding) (boolean : Bool)
     (tail : Lean.Expr) (body : ScalarBinding → Option ScalarRangeExitPlan) : Option ScalarRangeExitPlan := do
-  let (_, argument) ← booleanRangeWrappedCall? tail
+  let (_, argument) ← booleanRangeWrappedCall? boolean tail
   let bound ← extractScalarExprWith locals (booleanRangeArgument boolean argument)
   body (booleanRangeInput boolean bound)
 
@@ -119,7 +155,7 @@ theorem scalarBooleanRangeContinuation_success {locals : List ScalarBinding} {bo
       extractScalarExprWith (booleanRangeInput boolean (.u64 0) :: locals)
         (.app (.const ``Bool.toUInt64 []) expression.expr) = some checked ∧
       enclosing (booleanRangePredicate locals boolean expression) = some plan) ∨
-    (∃ (call : BooleanCall), ∃ argument bound, tail = call.expr argument ∧
+    (∃ (call : BooleanCall boolean), ∃ argument bound, tail = call.expr argument ∧
       extractScalarExprWith locals (booleanRangeArgument boolean argument) = some bound ∧
       direct (booleanRangeInput boolean bound) = some plan) := by
   unfold scalarBooleanRangeContinuation at compiled
@@ -148,7 +184,7 @@ theorem scalarBooleanRangeContinuation_accepts_scalar {locals : List ScalarBindi
   simp [scalarBooleanRangeContinuation, scalarBooleanRangePredicate, validated, emitted]
 
 theorem scalarBooleanRangeContinuation_accepts_direct {locals : List ScalarBinding} {boolean : Bool}
-    {value argument : Lean.Expr} {call : BooleanCall} {enclosing direct : ScalarBinding → Option ScalarRangeExitPlan}
+    {value argument : Lean.Expr} {call : BooleanCall boolean} {enclosing direct : ScalarBinding → Option ScalarRangeExitPlan}
     {bound : LeanExe.IR.Expr}
     (validated : extractScalarExprWith locals (booleanRangeArgument boolean argument) = some bound)
     (emitted : ∃ plan, direct (booleanRangeInput boolean bound) = some plan) :

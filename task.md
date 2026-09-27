@@ -533,6 +533,15 @@ modules retain identical bytes. New tests pass 97,008 native/IR comparisons,
 80,640 comparisons, 61,056 invalid-input checks and 5,184 controls. Evidence is in
 [the wrapped-continuation archive](proofs/compiler/boolean-loop-wrapped-continuation-2026-09-27/README.md).
 
+Current capability: standard Id binds forwarding to local loop functions.
+The call syntax distinguishes word and Boolean inputs, checks exact bind domains
+and instances, and preserves the action's captured references. Source, extraction,
+correctness, invariant, public compiler and WASM admission proofs pass. New tests
+pass 32,496 native/IR comparisons, 23,040 invalid-input checks and 1,152 binding
+controls. The complete proof and native Lean/WASM checks are next. A saved native
+fixture records `show` introducing an additional saved-result binding; that form
+remains on the coverage list after conditional forwarding.
+
 Next: Id binds forwarding to local continuations, conditional calls to
 loop-containing continuations, followed by
 retained instances and broader signatures. Conditional Id actions can elaborate

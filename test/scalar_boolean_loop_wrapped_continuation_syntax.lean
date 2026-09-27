@@ -67,7 +67,7 @@ run_elab do
                       else if index % 3 == 0 then BooleanWrapper.metadata {}
                       else if index % 3 == 1 then BooleanWrapper.run resultType
                       else BooleanWrapper.pure resultType
-                    let call := wrappers.foldr BooleanCall.wrapped .direct
+                    let call : BooleanCall booleanInput := wrappers.foldr BooleanCall.wrapped .direct
                     let wrapCall (body : Lean.Expr) := wrappers.foldr BooleanWrapper.expr body
                     let body := shape.callExpr call `selected inputType argument functionBody
                     let some func := extractScalarFunc `directContinuation (some "entry") signature (wrap body) |
