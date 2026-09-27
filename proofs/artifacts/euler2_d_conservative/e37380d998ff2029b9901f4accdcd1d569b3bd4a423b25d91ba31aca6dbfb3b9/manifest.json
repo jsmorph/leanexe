@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 3,
+  "case": "euler2_d_conservative",
+  "sha256": "e37380d998ff2029b9901f4accdcd1d569b3bd4a423b25d91ba31aca6dbfb3b9",
+  "byteLength": 2212,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.Euler2DConservative.ArtifactBytes",
+  "artifactBytesDefinition": "Project.Euler2DConservative.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.Euler2DConservative.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.Euler2DConservative.Program",
+  "cachedProgramDefinition": "Project.Euler2DConservative.module",
+  "specModule": "Project.Euler2DConservative.Spec",
+  "proofTarget": "Project.Euler2DConservative.ArtifactTranslation",
+  "identityTheorem": "Project.Euler2DConservative.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.Euler2DConservative.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.Euler2DConservative.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.Euler2DConservative.Spec.sideCheckedBits_exact",
+    "Project.Euler2DConservative.Spec.sideCheckedBits_wat_safe"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "67016a177b2ebcd226da56bd534fd1a1b227c7eefe3a9e1eafd8f9954af75e18",
+  "hostAssumptions": []
+}

@@ -1,0 +1,11 @@
+compiler-proof: passed
+Project.Compiler.ArithmeticModule.retain_valid: propext
+Project.Compiler.ArithmeticModule.alloc_valid: propext
+Project.Compiler.ArithmeticModule.release_valid: propext
+LeanExe.Extract.Arithmetic.compileEnvironment_accepts: Classical.choice, Quot.sound, propext
+LeanExe.Extract.Arithmetic.compileEnvironment_success: Classical.choice, Quot.sound, propext
+Project.Compiler.ArithmeticModule.extracted_module_valid: Classical.choice, Quot.sound, propext
+Project.Compiler.ArithmeticModule.extracted_correct: Classical.choice, Quot.sound, propext
+Project.Compiler.ArithmeticModule.compileEnvironment_correct: Classical.choice, Quot.sound, propext
+Project.Compiler.ArithmeticModule.compileEnvironment_sound: Classical.choice, Quot.sound, propext
+Passed all 9 arithmetic axiom audits.

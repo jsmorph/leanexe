@@ -1,0 +1,16 @@
+Decision: accept
+
+Accepted.
+
+## Remarks
+
+1. Requirement 12, Register: The abstract’s “Each accepted certificate proves successful execution and equality” is ambiguous beside Section 2.2’s “three certificates.”  Those certificates establish parsing, source equality, and execution separately.  Attribute the combined guarantee to each accepted compilation.
+
+2. Requirement 9: Table 2 names a “conversion adapter” without identifying what it converts.  State its input and output representations.
+
+3. Requirement 12, Throat-clearing and announcements: “Table 2 separates checked statements from premises and external components” announces the table’s contents.  Delete this sentence.
+
+4. Requirement 12, Relevance: Table 2 repeats preceding explanations, including “Per-compilation parsing, source equality, and statement-execution certificates” from Section 2.2 and “Word order, offsets, bias, vocabulary split, and byte equality proved” from Section 3.1.  Consolidate the repeated summaries while retaining the proof explanations.
+
+5. Requirement 12, Vague references: In Section 6, “Its configured Python environment prepares checkpoint assets” follows “The build destination must be fresh.”  Identify the tool whose Python environment prepares the assets.
+

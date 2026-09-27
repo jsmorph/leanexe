@@ -1,0 +1,69 @@
+\section{Assurance, review evidence, and remaining obligations}
+\label{sec:assurance}
+
+\subsection{Logical dependencies and deployment premises}
+
+The proof assistant checks a proposition about specified semantics.  Applying that result to a deployed program requires an association with the executed bytes and an interpretation of the runtime as implementing those semantics.  Table~\ref{tab:assurance} identifies these layers for the two paths.  It also distinguishes assumptions expressed in theorem types from software components trusted when using the theorem on a physical machine.
+
+\begin{longtable}{L{0.20\linewidth}L{0.34\linewidth}L{0.37\linewidth}}
+\caption{Verification status by semantic boundary.}\label{tab:assurance}\\
+\toprule
+Boundary & CPU WebAssembly path & Hybrid Wasm/WGSL path\\
+\midrule
+\endfirsthead
+\toprule Boundary & CPU WebAssembly path & Hybrid Wasm/WGSL path\\\midrule
+\endhead
+Source algorithm & Lean cached-step recurrence with fixed FP32 order. & The same recurrence, reached through checked matrix replacement equalities.\\
+Scalar computation & All-word source/Talos equalities for the arithmetic used by GPT-2. & The same Wasm arithmetic plus strict shader addition and multiplication semantics.\\
+Memory and session & Checked allocation, ownership, release, and 128-token composition. & Controller composition checked under external-call postconditions.\\
+Executable identity & Frozen binary decoding, validation, and Talos-module equality. & Parsed hybrid module declarations and certified shader strings.  Hybrid binary certification remains an obligation.\\
+External calls & The checked inference module has no imports. & \code{PackedBackend.Host} requires completed shader execution, exact transfers, and store preservation.\\
+Physical execution & Wasmtime canonical-NaN mode and native host are trusted. & Native/browser hosts, WebGPU implementation, and strict arithmetic conformance are external premises.\\
+Text interface & Host tokenization, sampling, and decoding surround the proved token/logit interface. & Wasm tokenizer, sampler, and conversion adapter surround the same inference interface.\\
+Current run evidence & Recorded canonical-mode and PyTorch comparisons. & Recorded native CPU WebGPU comparisons and supplied browser images.\\
+\bottomrule
+\end{longtable}
+
+The final CPU artifact theorem uses the three standard logical axioms listed in Section~\ref{sec:boundary}.  The hybrid theorem's recorded audits use the same allowance.  A host-execution hypothesis can appear as an ordinary parameter without adding an axiom declaration.  Auditing both the theorem type and its transitive axiom dependencies is therefore necessary to state the result's meaning~\cite{review,wg-composition,wg-backend}.
+
+The memory-capacity assumptions also require a deployment interpretation.  The formal session derives sufficient modeled capacity through the supported length.  Native process limits, browser memory restrictions, external GPU allocation, and device loss can affect a physical run.  A proof of successful execution in the formal store model supplies its stated semantics under that model's allocation behavior.  Deployments need resources that realize those premises~\cite{budget,wg-host}.
+
+\subsection{Evidence retained from proof review}
+
+The CPU report retains a successful source-driven regeneration and proof check, a focused exact-artifact check, and a separate statement review with seven accepted corollaries and the combined theorem's axiom report.  Source-identity records cover the cited proof and implementation files.  The review also compared the built command-line binary with the frozen artifact byte for byte.  These records support the stated checkpoint result~\cite{cpu-report-evidence}.
+
+The WGSL report retains focused compiler and statement-proof checks from an isolated checkout.  Source equality, static validity, invocation correctness, and shared index and dispatch-geometry theorem audits passed for the split review examples.  The full extracted certificate corpus timed out after 90 seconds on its first positive shader under the one-core resource limit.  A separate token-parser certificate passed, while a lexical certificate exceeded 60 seconds.  The failed attempts remain in the review record and identify a certificate-checking cost that affected reproduction~\cite{wg-review}.
+
+The complete hybrid session result and full-model native comparison come from the branch's integration journal and generation code.  The earlier review inspected those sources and their public theorem requirements.  Full hybrid session and checkpoint reproduction remained pending in that review.  Their generated proof objects and runtime reports reside in ignored build directories.  The current report attributes those outcomes to the recorded integration runs~\cite{wg-journal,wg-review}.
+
+The browser comparison adds user-supplied execution evidence after that review.  Its two source commits extend the host and interface while retaining the inference and shader proof sources.  This report checks the measurement definitions and numerical consistency of the displayed counters.  Its document build and review produce a new report, while the proof and execution records retain the dates and environments in which they were obtained~\cite{browser-source,browser-tests,screenshots}.
+
+\subsection{Runtime arithmetic and exact results}
+
+The CPU exact-result theorem uses one selected word semantics.  The Wasmtime host configures arithmetic NaN canonicalization to support that interpretation.  The WGSL strict semantics also preserves separate multiplication and addition, source reduction order, represented subnormals, and specified exceptional results.  WebGPU implementations have permitted choices that can differ from those conditions.  A successful shader compile establishes acceptance of the program by the implementation, while a runtime correspondence result would establish the required behavior~\cite{wasmtime,wg-wgsl,wg-execution}.
+
+An implementation can produce the same selected token while differing in logit words.  Greedy decoding depends on the largest component and its tie-breaking rule.  Small changes to lower-ranked values can leave the selected token unchanged.  Conversely, a small difference near an argmax tie can change the next token and every subsequent input.  The screenshot comparison therefore records token-sequence agreement.  The native word-comparison tests examine a stronger equality on their tested inputs~\cite{wg-tests,screenshots}.
+
+Future arithmetic work has two distinct targets.  A strict backend could establish or enforce the word semantics used by the existing equality theorem.  A numerical refinement could admit specified fusion, rounding, or approximation behavior and prove a bound relative to the source.  The latter would need explicit domain and stability conditions that keep the bound meaningful through normalization, softmax, and repeated transformer blocks.  The present hybrid theorem retains the strict semantics and states its external execution requirement.
+
+\subsection{Artifact packaging and repeatable checking}
+
+The CPU CLI currently compiles the source it finds and runs that output.  The reviewed output matched the registered artifact.  Preserving the same assurance after source or compiler changes requires another identity check or a new artifact proof.  An integrated CLI check against the proved bytes would make that association part of every run.  The combined GPT-2 artifact theorem's strict three-axiom audit also remains a separate review step rather than the generic package policy used for other artifacts~\cite{driver,artifactgate,review}.
+
+The hybrid source-build gate checks the parent, produces the modified controller and six shaders, checks replacement and composition proofs, and copies files into a bundle.  Later native and browser execution reads those bundle files.  A runtime identity gate would bind the loaded files to the checked strings and module.  Extending binary decoding and translation proofs to the hybrid bytes would close the external-parser boundary.  These are identifiable obligations at the executable-association layer~\cite{wg-build,wg-host}.
+
+Portable retention of generated hybrid certificates and machine-readable execution records would improve independent reproduction.  A source revision and a journal describe the construction, while a preserved checked package allows a reviewer to inspect the exact generated theorem types and inputs without repeating every production step.  The existing CPU artifact package demonstrates that form of association.  The shader compiler already emits declarations intended for separate checking~\cite{artifact,wg-compiler,wg-review}.
+
+\subsection{Extensions supported by the present proof structure}
+
+A larger context changes the cache bound, loop ranges, and session allocation estimate.  A larger architecture changes dimensions, tensor offsets, and the traversal count.  The generic arithmetic and memory lemmas can remain applicable, while concrete loops, generated instruction equalities, and resource calculations need new instances or proofs.  The current result fixes those quantities for GPT-2/128 and quantifies over the data within them~\cite{session,budget}.
+
+An alternative cache layout or a fused kernel would change a proof interface.  The layout relation must identify the new memory representation with source values.  A fused numerical operation must satisfy the arithmetic relation selected by the caller.  The hybrid development illustrates this method for matrix replacement: first establish the new computation and representation result, then prove that its call supplies the old controller's required postcondition.  That decomposition permits reuse where the interface remains valid~\cite{wg-packedsource,wg-backend,wg-transport}.
+
+A proof of equality between cached inference and a separate full-prefix algorithm would establish another algorithmic relation.  The present recurrence is the source specification, and the recorded short-prefix comparison is a test between implementations.  A full-prefix equivalence theorem would need to account for operation ordering, cache content, and the chosen numerical routines.  A theorem about language quality or model behavior would add another property of that source computation.  These extensions have explicit proof targets beyond the completed execution result~\cite{cached,testcode}.
+
+\section{Conclusion}
+
+The development connects a complete GPT-2 cached-inference algorithm in Lean to a frozen WebAssembly binary, with checked termination, exact output bytes, and the memory behavior required across a 128-token session.  Integer-defined floating-point semantics, packed-memory relations, loop invariants, ownership proofs, and whole-module translation equality supply the connection.  Runtime weights remain quantified data, so changing their values within the fixed representation preserves the execution theorem.
+
+The WGSL extension proves selected shader programs implement their Lean kernel definitions and that the packed results equal the matrix operations used by the controller.  Reused helper proofs and rechecked controller composition establish the complete hybrid recurrence under explicit external-execution and transfer premises.  Native comparisons and the supplied browser run document successful executions within the tested conditions.  The browser images record matching 32-token completions and their timing and memory counters.  The literature comparison places these results alongside source-level transformer proofs, implementation-equivalence checks, and cryptographic inference certificates, with the proof subject and assumptions stated for each.

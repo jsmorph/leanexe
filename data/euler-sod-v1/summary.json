@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "artifacts": {
+    "scan": "279a3bca462b4acdeeef840ab0c7c9649070c7595f47de3b7748a986d02f14c9",
+    "step": "bc546b72e740ec6e953dc3c01e88a44c19fd914c109c64a33e8d8edcabfe2297"
+  },
+  "sources": {
+    "euler-sod-data.mjs": "6b48ea7ccf47047dfa2f9a07db37eaef7ad33482fbb62cd7c4b59c9a71e5ce46",
+    "euler-sod-runtime.mjs": "6ecf112582587f74bf1b0e29fd630b182d98cdedad6d39e989465fc32732c3a9",
+    "euler-sod-oracle.mjs": "1e67a363b2135711d83705f3507c22c6d0cfc17148e4baae1db0415c5a1f0545",
+    "euler-sod-riemann.mjs": "9c85ce5c2cdd82375a4c5c9abec24b208256478be438076535fdd7c0e0b1e8ad"
+  },
+  "node": "24.13.0",
+  "referenceSummary": {
+    "pStar": 0.3031301780506468,
+    "uStar": 0.9274526200489501,
+    "waveSpeeds": [
+      -1.1832159566199232,
+      -0.07027281256118312,
+      0.9274526200489501,
+      1.752155732030178
+    ],
+    "pressureResidual": -3.3306690738754696e-16,
+    "shockJumpResidual": [
+      -1.1102230246251565e-16,
+      -1.6653345369377348e-16,
+      -2.220446049250313e-16
+    ],
+    "exactSolutionIntegrals": [
+      0.5624999999999999,
+      0.18000000000000005,
+      1.3750000000000002
+    ]
+  },
+  "rows": [
+    {
+      "evidence": "Exact-byte-verified WASM exports; generic Lean recurrence/call-trace theorem. Host controller, preparation, measurements and oracle are regression evidence.",
+      "n": 100,
+      "steps": 93,
+      "t": 0.2,
+      "maxCfl": 0.4500000000000001,
+      "minRho": 0.125,
+      "minPressure": 0.1,
+      "exactHostWordMatch": true,
+      "inputPointer": 519728,
+      "arenaEnd": 519680,
+      "memoryBytes": 1048576,
+      "allocationsPerStep": 601,
+      "releasesPerStep": 501,
+      "initialIntegrals": [
+        0.5624999999999989,
+        0,
+        1.374999999999997
+      ],
+      "finalIntegrals": [
+        0.5625000000040413,
+        0.17999999999140243,
+        1.3750000000153353
+      ],
+      "boundaryIntegral": [
+        -4.040905128931794e-12,
+        -0.1799999999914024,
+        -1.5334945637817336e-11
+      ],
+      "balanceResidual": [
+        1.5279260308632445e-15,
+        2.7755575615628914e-17,
+        3.451581193976542e-15
+      ],
+      "l1": [
+        0.023762707776387997,
+        0.02171016769622964,
+        0.053128292422751924
+      ]
+    },
+    {
+      "evidence": "Exact-byte-verified WASM exports; generic Lean recurrence/call-trace theorem. Host controller, preparation, measurements and oracle are regression evidence.",
+      "n": 200,
+      "steps": 190,
+      "t": 0.2,
+      "maxCfl": 0.4500000000000001,
+      "minRho": 0.125,
+      "minPressure": 0.1,
+      "exactHostWordMatch": true,
+      "inputPointer": 1994928,
+      "arenaEnd": 1994880,
+      "memoryBytes": 2031616,
+      "allocationsPerStep": 1201,
+      "releasesPerStep": 1001,
+      "initialIntegrals": [
+        0.562499999999999,
+        0,
+        1.374999999999995
+      ],
+      "finalIntegrals": [
+        0.5624999999999997,
+        0.17999999999999997,
+        1.3749999999999993
+      ],
+      "boundaryIntegral": [
+        -7.54175679309055e-21,
+        -0.18000000000000013,
+        -2.6396148775816925e-20
+      ],
+      "balanceResidual": [
+        6.661262730183009e-16,
+        -1.6653345369377348e-16,
+        4.440865702351851e-15
+      ],
+      "l1": [
+        0.016645769363901008,
+        0.01430953901229444,
+        0.033536837286176964
+      ]
+    },
+    {
+      "evidence": "Exact-byte-verified WASM exports; generic Lean recurrence/call-trace theorem. Host controller, preparation, measurements and oracle are regression evidence.",
+      "n": 400,
+      "steps": 385,
+      "t": 0.2,
+      "maxCfl": 0.4500000000000001,
+      "minRho": 0.125,
+      "minPressure": 0.1,
+      "exactHostWordMatch": true,
+      "inputPointer": 7825328,
+      "arenaEnd": 7825280,
+      "memoryBytes": 7864320,
+      "allocationsPerStep": 2401,
+      "releasesPerStep": 2001,
+      "initialIntegrals": [
+        0.5625000000000101,
+        0,
+        1.3750000000000204
+      ],
+      "finalIntegrals": [
+        0.5625000000000021,
+        0.18000000000000005,
+        1.3750000000000056
+      ],
+      "boundaryIntegral": [
+        0,
+        -0.1799999999999999,
+        0
+      ],
+      "balanceResidual": [
+        -7.993605777301127e-15,
+        1.3877787807814457e-16,
+        -1.4876988529977098e-14
+      ],
+      "l1": [
+        0.010889542673173476,
+        0.009046046014894024,
+        0.020408888128049276
+      ]
+    },
+    {
+      "evidence": "Exact-byte-verified WASM exports; generic Lean recurrence/call-trace theorem. Host controller, preparation, measurements and oracle are regression evidence.",
+      "n": 800,
+      "steps": 774,
+      "t": 0.2,
+      "maxCfl": 0.4500000000000001,
+      "minRho": 0.125,
+      "minPressure": 0.1,
+      "exactHostWordMatch": true,
+      "inputPointer": 31006128,
+      "arenaEnd": 31006080,
+      "memoryBytes": 31064064,
+      "allocationsPerStep": 4801,
+      "releasesPerStep": 4001,
+      "initialIntegrals": [
+        0.5624999999999825,
+        0,
+        1.3749999999999845
+      ],
+      "finalIntegrals": [
+        0.5624999999999964,
+        0.18000000000000024,
+        1.3749999999999905
+      ],
+      "boundaryIntegral": [
+        0,
+        -0.18000000000000008,
+        0
+      ],
+      "balanceResidual": [
+        1.3988810110276972e-14,
+        1.6653345369377348e-16,
+        5.995204332975845e-15
+      ],
+      "l1": [
+        0.006977521849557591,
+        0.005680558613296128,
+        0.012175236079616793
+      ]
+    }
+  ],
+  "scope": "WASM step/scan/reset are exact-byte verified. Generic Lean recurrence and call-trace theorem is conditional on accepted outputs and host-prepared memory. Host controller, diagnostics, oracle and rendering are outside the proof. No convergence theorem."
+}

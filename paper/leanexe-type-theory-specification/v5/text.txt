@@ -1,0 +1,738 @@
+The LeanExe Fragment: Types, Extraction, and Execution
+Codex GPT-6, Jamie Stephens
+11 September 2026
+
+Abstract
+LeanExe compiles checked Lean declarations to WebAssembly through a restricted first-order
+extraction path. The LeanExe fragment is specified here by runtime typing and layout rules
+together with an implementation-indexed relation from checked declarations to WebAssembly
+execution. The report separates kernel typing, static specialization, extraction acceptance,
+ownership analysis, binary validity, and artifact behavior. It defines the internal and public
+type domains, proves two layout propositions, and states the numeric, collection, memory, and
+fixed-adapter semantics used by the implementation. A source audit identifies incomplete runtime
+export-name rejection and a child-mask width obligation. The reference IR evaluator has a
+narrower comparison domain than compiled execution. Existing emitter, decoder, validator, and
+artifact theorems support their named boundaries. An independent source operational semantics,
+mechanized acceptance judgments, and a general source-to-WebAssembly refinement theorem
+remain open.
+
+1
+
+Scope and evidence
+
+The LeanExe fragment is specified here by runtime typing and layout rules together with an
+implementation-indexed relation from checked declarations to WebAssembly execution. An
+implementation-indexed relation is the graph of named compiler functions at a fixed source revision,
+composed with a stated target execution relation. The independently stated typing rules describe
+runtime values and first-order code. Shape-sensitive extraction premises still refer to compiler
+recognizers, so the report’s acceptance definition depends on the implementation.
+The source for this account is the specification checkpoint 2f3ec33f6e98ad98ac94df277c91e5
+319763cf9d of LeanExe [1]. The compiler root pins Lean 4.34.0-rc2 at commit 6a10ac8c22bead
+ecabdbb0919c2b50214762f91d. The proof workspace pins Talos revision 87e3aa5e8f6e6f3b3eb
+5e7e4c5aba43071002d47. Source comparison at report preparation found no changes to the two
+specification documents or the inspected extraction, IR, and binary-emission files between that
+checkpoint and 7c7277d1e1ab8bc4ee5b4a014a8b975abb8b8054. The citations identify the fixed
+checkpoint throughout.
+The evidence consists of source inspection, the mathematical arguments in this report, and
+existing theorem declarations cited with their exact scope. Report preparation ran no Lean build,
+compiler, artifact verifier, or runtime reproducer. In particular, the two implementation concerns
+in Section 6 have source evidence and remain untested as compiled examples. The maintained
+language documents contain a fuller source-operation inventory [2, 3]. This report consolidates their
+mathematical objects and assurance boundaries.
+Let E be a checked Lean environment, Γ a Lean local context, ∆ a runtime-variable context,
+and Ξ a first-order function-signature context. The judgment E; Γ ⊢Lean e : A is the pinned Lean
+kernel judgment. Lean supplies dependent functions, universes, inductive formation, recursors, and
+1
+
+definitional equality [4]. LeanExe reads elaborated declaration expressions from E, including static
+arguments and proof-bearing fields.
+Kernel typing and runtime acceptance have separate premises. A source theorem may quantify
+over arbitrary Lean types and unbounded natural numbers. The executable declaration must also
+satisfy LeanExe’s safety, body-availability, type, specialization, recursion, dependency, and ownership
+checks. The default ConstantInfo.value? exposes definition bodies while excluding theorem and
+opaque bodies. The executable signature checks reject unsafe and partial declarations [5, 6].
+
+2
+
+Runtime type discipline
+
+2.1
+
+Recognition and field erasure
+
+Runtime types have the following finite syntax:
+τ ::= Unit | Bool | U8 | U32 | U64 | Nat64 | Bytes
+| Array τ | τ × τ | PSum τ τ
+| Struct(S, τ̄ , ῡ) | Variant(D, τ̄ , [ῡ0 ; . . . ; ῡk−1 ]) | Rec(D, τ̄ ).
+The names S and D identify Lean declarations. The list τ̄ identifies concrete type parameters, and
+the lists ῡi give retained fields. The symbol Nat64 denotes the bounded runtime interpretation of
+Lean Nat. Recognized PUnit sequencing uses Unit. The abbreviations
+Option τ = Variant(Option, [τ ], [[]; [τ ]])
+and
+Except ϵ τ = Variant(Except, [ϵ, τ ], [[ϵ]; [τ ]])
+fix the constructor order and payload areas.
+Fix an implementation revision v. The implemented type-recognition and erasure judgments are
+E ⊢v A ▷ τ
+
+⇐⇒
+
+typeAtom?(E, A) = some(τ ),
+
+E ⊢v A erase
+
+⇐⇒
+
+isProofType?(E, A) = true.
+
+The named functions occur in Extract/Types.lean [5]. These judgments preserve the recognizers’
+syntactic limits. A proof of kernel-definitional equality between two types alone does not establish
+equal recognizer results.
+For a constructor field list, erase a field when the erasure judgment holds. Otherwise retain
+its recognized runtime type, or reject when recognition fails. The erasure test takes priority.
+The implemented proof recognizer consumes metadata, recognizes Sort 0, follows the result of a
+dependent function type, and recognizes sufficiently applied declaration heads with propositionvalued declared results. Completeness for all kernel propositions requires a separate proof.
+A structure application must have concrete recognized parameters, no indices, one constructor,
+and a nonrecursive structure declaration. The recognizer excludes declarations selected by className
+and by nonRuntimeEvidenceTypeNames: Inhabited, Decidable, BEq, LT, LE, OfNat, HAdd, HSub,
+HMul, HDiv, HMod, GetElem, and GetElem?. It substitutes the parameters into field domains, erases
+recognized proof fields, and checks the retained field layouts and metadata counts. A nonrecursive
+inductive has no indices, at least one constructor, and a recognized retained layout for every
+constructor. The predicates structureFieldKindsWithParams? and variantLayoutWithParams?
+implement those checks [5].
+2
+
+A recursive family uses one pointer slot per value. Its members must agree on family membership
+and parameter count, have no indices, and use the same concrete parameters at recursive occurrences.
+The recursive-field recognizer descends through arrays, products, PSum, Option, and Except. Other
+fields use its explicit fallback to ordinary type recognition. The exact fallback controls compound
+fields involving other recursive declarations. A recognized recursive representation still needs an
+accepted recursor shape for traversal.
+
+2.2
+
+Internal and public positions
+
+Let I be the internal-layout domain, A the public array-element domain, and P the public parameter
+and result domain. These are inductively defined by Table 1. All quantification over fields includes
+inactive variant constructors. Empty retained field lists satisfy the field premise.
+Type
+
+I
+
+A
+
+P
+
+Unit
+Bool, U8, U32, U64, Nat64,
+Bytes
+Array τ
+τ × υ, PSum τ υ
+Structure or variant
+Rec(D, τ̄ )
+
+Included
+Included
+
+Excluded
+Included
+
+Excluded
+Included
+
+τ ∈I
+Components in I
+Fields in I
+Included
+
+τ ∈A
+Excluded
+Fields in A
+Excluded
+
+τ ∈A
+Excluded
+Fields in P
+Excluded
+
+Table 1: Position-sensitive runtime type domains.
+The implementation predicates are valueLayout?, arrayElementLayout?, supportedPublic
+ArrayElementType, supportedParamAbiType, and supportedResultAbiType [5]. Internal arrayelement layout and internal value layout admit the same type constructors. Public arrays contain
+internal element layouts in memory, even though the public array value crosses the entry interface
+as one pointer.
+Proposition 2.1 (Public-domain inclusion). For the domains in Table 1, P = A ⊆ I. A type
+in P contains no product, PSum, recursive-pointer type, or runtime Unit at any retained field or
+array-element position.
+Proof. Use induction on the finite type syntax. The scalar and byte cases have identical public
+membership. An array has membership in either public domain exactly when its element belongs to
+A. For structures and variants, the induction hypotheses equate the public membership of each
+field. The other constructors belong to neither public domain. This proves equality. For inclusion
+in I, the scalar and byte cases hold by definition, the array case follows from its element induction
+hypothesis, and the field cases follow componentwise. The exclusion statement follows from the
+same induction because no public introduction rule admits an excluded constructor.
+This proposition concerns the stated domains. Establishing that a mechanized version of these
+rules agrees with the executable predicates remains part of the implementation-equivalence work.
+
+2.3
+
+Slot widths
+
+Write wI (τ ) and wP (τ ) for internal and public slot counts. Each scalar has width one. Internal
+Unit and recursive pointers have width one. Bytes have internal width three and public width two.
+
+3
+
+Arrays have internal width two and public width one. Products concatenate internal layouts, and
+PSum adds one tag slot. For X ∈ {I, P },
+wX (Struct(S, τ̄ , f s)) =
+
+X
+
+wX (υ),
+
+υ∈f s
+
+wX (Variant(D, τ̄ , cs)) = 1 +
+
+X X
+
+wX (υ).
+
+f s∈cs υ∈f s
+
+These equations reserve payload slots for every variant constructor. Public widths apply only on
+the public domain. The total implementation function abiSlots returning a number for another
+type supplies no public-layout derivation [5].
+Define the public owner-slot count h on P by h = 0 for scalars, h(Bytes) = h(Array τ ) = 1, and
+by summing h over structure fields or all variant payload fields. Array contents are excluded from
+that sum because their element owner slots remain in memory in both entry conventions.
+Proposition 2.2 (Owner-slot difference). For every τ ∈ P, wI (τ ) = wP (τ ) + h(τ ).
+Proof. Induct on the public-type derivation. The scalar cases give 1 = 1 + 0. Bytes give 3 = 2 + 1,
+and arrays give 2 = 1 + 1. A structure follows by summing the induction hypotheses over its fields.
+A variant follows by summing over all constructor fields and adding the same tag slot on both
+sides.
+A structure containing one byte array and one array has internal width five, public width three,
+and owner-slot count two. Its optional form has widths six and four. These are consequences of the
+definitions and describe precisely which top-level slots the entry adapter omits.
+
+3
+
+First-order terms and extraction
+
+3.1
+
+Runtime typing rules
+
+A runtime context is well formed when every distinct variable has a type in I. A signature
+context assigns each distinct function name a finite parameter list and result in I. An exported
+signature requires those types in P. The judgment Ξ; ∆ ⊢ e : τ describes the abstract runtime term
+presentation.
+Terms include variables, scalar literals, constructors, projection, let binding, branches, matches,
+direct calls, typed primitive operations, traps, and code bodies for recognized iteration and recursion.
+A code body has explicit local binders that extraction substitutes or turns into first-order helper
+parameters. Runtime arrow types and function-valued fields have no formation rule.
+The variable and direct-call rules are
+x:τ ∈∆
+Ξ; ∆ ⊢ x : τ
+
+Ξ(f ) = (τ1 , . . . , τn ) → τ Ξ; ∆ ⊢ ai : τi (1 ≤ i ≤ n)
+.
+Ξ; ∆ ⊢ f (ā) : τ
+
+Let and branch typing require
+Ξ; ∆ ⊢ a : τ Ξ; ∆, x : τ ⊢ b : υ
+Ξ; ∆ ⊢ let x = a in b : υ
+and
+
+Ξ; ∆ ⊢ c : Bool Ξ; ∆ ⊢ t : τ Ξ; ∆ ⊢ u : τ
+.
+Ξ; ∆ ⊢ if c then t else u : τ
+4
+
+A structure constructor checks its ordered retained field types, and projection returns the designated
+field type. A constructor k of a recognized variant or recursive family Dτ̄ checks its active retained
+field list [υk,1 , . . . , υk,nk ]. Its match rule is
+
+
+Ξ; ∆ ⊢ a : Dτ̄ ρ ∈ I Ξ; ∆, x̄k : ῡk ⊢ ek : ρ k
+.
+Ξ; ∆ ⊢ match a with {k(x̄k ) 7→ ek }k : ρ
+Each arm has fresh local pattern variables. Products use pair construction and the two corresponding
+projection rules. A nonrecursive Nat match extends only its successor arm with a Nat64 predecessor.
+A trap may have any represented result type and denotes terminal machine failure when evaluated.
+These typing rules state necessary runtime shape conditions. Accepted sparse matches, dependent
+conditionals, and generated recursors also require their exact implemented recognizers. The abstract
+rules alone therefore do not decide whether LeanExe accepts a checked Lean expression.
+
+3.2
+
+Primitive and callback signatures
+
+Let Num = {U8, U32, U64, Nat64}. Structural equality applies to scalars and bytes, and to arrays,
+products, sums, structures, and nonrecursive variants whose components admit equality. A custom
+BEq instance requires specialization to its selected body. Recursive-inductive equality has no
+structural-equality case [9, 6].
+Table 2: Runtime primitive signatures after static-argument
+removal.
+Family
+
+Signature or code-body requirement
+
+Numeric arithmetic
+
+ν × ν → ν, ν ∈ Num, for add, subtract, multiply, divide,
+remainder, minimum, and maximum.
+ν × ν → Bool for unsigned comparisons.
+Uw × Uw → Uw for bitwise operations and shifts;
+Uw → Uw for complement, w ∈ {8, 32, 64}.
+Concrete conversions between distinct members of Num;
+also Bool → Nat64.
+Four operations U64 × U64 → U64 and square root
+U64 → U64.
+Size returns Nat64; emptiness returns Bool; indexed read
+returns τ or Option τ ; default read also takes a fallback τ .
+Set and insert take an array, index, and element. Erase
+takes an index. Push, pop, append, extract, swap, and
+reverse return an array of the same element type.
+Body context extends ∆ by x : τ . Map body has type υ
+and returns Array υ; modify body has type τ .
+A body x : τ ⊢ p : Bool supplies filter, find, optional
+find-index, any, and all.
+Sequence operations use Bytes, U8 elements, and Nat64
+indices. Eight-byte endian decoding returns U64.
+A left-fold body extends ∆ by a : α, x : τ and returns α.
+Right array folds bind element then accumulator. Byte
+folds use τ = U8.
+
+Numeric comparison
+Fixed-width bits
+Numeric conversion
+Binary64 intrinsics
+Array reads
+Array updates
+
+Array map and modify
+Array predicates
+Byte operations
+Pure folds
+
+5
+
+Family
+
+Signature or code-body requirement
+
+Monadic folds
+
+The left-fold body returns F α for F = Option or
+F = Except ϵ.
+Constructors, tag tests, maps, binds, defaults, elimination,
+and accepted fallback forms have their specialized payload
+types. Bind bodies return the same selected monadic
+family.
+Counter reads return U64. Explicit release takes an
+accepted array or recursive root and returns U64, subject
+to validateModuleReleases (Section 5.2).
+
+Option and Except
+
+Runtime intrinsics
+
+For a code-bearing operation with ordinary argument types τ̄ , body variables x̄ : ῡ, body result
+α, and final result β, the typing premise is
+(Ξ; ∆ ⊢ ai : τi )i Ξ; ∆, x̄ : ῡ ⊢ b : α
+.
+Ξ; ∆ ⊢ p(ā; x̄ 7→ b) : β
+The body can refer to existing variables in ∆. Specialization must preserve their binding or
+pass them as explicit captured parameters. Optional iteration bounds add Nat64 arguments.
+extractPrimitivePairFrom, extractValueFrom, and the pattern helpers fix the accepted source
+names and argument shapes [6, 7].
+
+3.3
+
+Static specialization and demand
+
+For a helper type (x1 : A1 ) → · · · → (xn : An ) → B applied to ā, specializedInlineCall?
+processes binders in source order. It substitutes preceding arguments into each domain and runs
+betaReduceExpr with fuel 32. A domain recognized in I contributes a runtime binder. Otherwise, a
+successful staticInlineArg test contributes a static input. Static inputs include sorts, recognized
+proofs, class evidence, and direct lambdas in function domains. The substituted result must have a
+supported runtime type [5].
+specializeInlineValue substitutes static inputs and retains runtime binders. Bounded normalization reduces class-method projections and selected transparent applications. blocksTrans
+parentSpecialization protects the primitive, matcher, recursor, and monad families that have
+dedicated lowering. A generic source helper can therefore have accepted concrete inline uses while
+its unspecialized type has no retained runtime signature.
+Demand analysis controls strict materialization of otherwise deferred values. Write MayTrap(a)
+for the executable possible-trap analysis and Must(f, i) for its necessary-demand summary. The
+tests include
+StrictCallSafe(f, ā) =
+
+^
+
+(¬ MayTrap(ai ) ∨ Must(f, i)),
+
+i
+
+MaterializeSafe(τ̄ , ā) =
+
+^
+
+(wI (τi ) = 1 ∨ ¬ MayTrap(ai )).
+
+i
+
+These equations describe the implemented analyses [9]. Their interpretation as sound semantic
+summaries is an open theorem. Lazy bindings can preserve an unused field or branch whose
+evaluation would trap. Strict helper arguments and fixed-width array elements stage multi-slot
+results in locals, so projections reuse one evaluated call result [10, 6].
+
+6
+
+3.4
+
+Recognized control and recursion
+
+The accepted control forms include Id, Option, and concrete Except sequencing, direct matches,
+and ForIn.forIn over byte arrays, fixed-width arrays, legacy ranges, and Lean.Loop. The loop
+accumulator must have a supported internal layout. Generated ForInStep.done, failure tags, and
+accepted branch exits determine termination of the lowered loop [7, 6].
+Recursion recognition has six relevant families: fuel recursion whose first retained function
+parameter has source type Nat and supplies the fuel, direct structural recursion, expression-position
+structural recursion with synthetic helpers, closed list-shaped folds and predicates, array descent
+through the recognized WellFounded.fix shape, and mutual descent through a nested PSum form
+of WellFounded.Nat.fix. Direct structural descent uses recognized generated below projections.
+Array descent uses attached elements and the generated recursive handle. The mutual form
+immediately dispatches to a supported family member [8, 6]. Lean termination checking precedes
+these shape restrictions. Complete independent inference rules for these generated forms remain
+part of the formalization work.
+
+4
+
+Value representation and operational rules
+
+4.1
+
+Memory and ownership
+
+An abstract byte array is a finite byte sequence, an array is a finite sequence of values of its element
+type, and a recursive value is a finite constructor tree. A physical representation may share tree
+subvalues. Let µ be byte-addressed linear memory and load64 (µ, p) a valid little-endian word load.
+Internal bytes have slots [o, p, n], where o is an owner root, p the visible byte pointer, and n the
+length. Public bytes expose [p, n]. Internal arrays have [o, p], and public arrays expose [p].
+For bytes b, the payload relation requires n = |b| and µ[p : p + n] = b. Owner zero permits
+borrowed storage. A nonzero owner requires a live allocation root whose lifetime covers the visible
+range. For an array a : Array τ , the header and elements satisfy
+load64 (µ, p) = |a|,
+
+ai is represented at p + 8 + 8i wI (τ ).
+
+Each element uses its internal layout, including embedded owner slots. Structures concatenate field
+vectors. A variant stores its constructor index and all reserved payload areas. A recursive value
+uses a pointer to a tagged slot object [10, 11, 13].
+The representation relation includes valid ranges, live owners, and alias accounting appropriate
+to the performed operations. These are program-theorem premises. A general representationpreservation theorem must justify them for every accepted operation. Inactive scalar payloads
+have no source value. Inactive owner positions still participate in a type-derived child-mask walk if
+retained in a container, so their contents require explicit heap premises. A public byte-array result
+also omits the owner identity needed to distinguish an allocation root from a slice.
+All address observations require bounds that prevent relevant machine arithmetic from wrapping
+and place each access in linear memory. The emitted code computes addresses with i64 arithmetic
+and converts them with i32.wrap_i64. The complete target relation retains this machine behavior
+on every input. A source-facing theorem states the narrower represented-input and resource premises
+under which the natural-number address formula applies.
+
+4.2
+
+Numeric semantics
+
+Let U = 264 . Fixed-width unsigned addition, subtraction, and multiplication reduce modulo 2w .
+Narrow operations and conversions normalize the result to width w ∈ {8, 32}. Unsigned division
+7
+
+returns zero for a zero divisor, and remainder returns the dividend in that case. Shift counts reduce
+modulo the operand width. Comparisons use unsigned order [6, 13].
+Runtime natural numbers lie in [0, U ). Their subtraction saturates at zero. Addition and
+multiplication return the mathematical result when it lies below U and trap otherwise. Successor
+uses checked addition, and predecessor uses saturating subtraction. The backend implements
+the addition test by detecting wrapped order, and the multiplication test by comparing against
+⌊(U − 1)/b⌋ after handling b = 0 [13].
+The five binary64 operations retain raw U64 arguments and results. Write af = reinterpretf 64 (a)
+and bf = reinterpretf 64 (b). For p ∈ {+, −, ×, /}, let Wasmp,64 (af , bf ) be the set of results permitted
+by the WebAssembly binary64 operation. Define
+Fpp (a, b, r) ⇐⇒ r ∈ {reinterpreti64 (z) | z ∈ Wasmp,64 (af , bf )}.
+Square root has the corresponding unary relation. WebAssembly permits a set of NaN results
+in applicable cases [16]. A statement over all conforming engines must account for that relation.
+Exact-word theorems in the pinned Talos model identify that model’s arithmetic result. The source
+LeanExe.Float64 definitions provide native Lean comparison functions and require a separate
+bridge for an across-engine claim.
+
+4.3
+
+Collections, branches, and loops
+
+Branches execute the selected arm, Boolean conjunction and disjunction short-circuit, and
+Option/Except sequencing skips continuations on failure. The emitted instruction order fixes the
+schedule after demand-based extraction. Direct calls evaluate materialized arguments in order and
+bind their result slots for reuse [6, 13].
+Array operations observe finite-sequence behavior under valid representation and allocation
+premises. Reads return an indexed element or an optional/default result. Bang wrappers trap on
+invalid indices. Set, insert, erase, and swap have their recognized conditional or trapping boundary.
+Push, pop, append, extract, reverse, map, and filter preserve the stated sequence ordering. Updated
+arrays allocate and copy as specified by their emitter. Unchanged conditional results preserve
+their owner. Copying existing child roots retains them, while recognized fresh children can transfer
+ownership [11, 13].
+Find operations stop at the first true predicate result. Any and all stop at their first decisive result.
+Equality checks length before its ordered scan. Forward array and byte folds visit [start, min(stop, n)).
+Reverse array folds begin at min(start, n) and visit the preceding element while that index exceeds
+the exclusive lower bound. Range loops increment through checked natural-number addition. A
+zero step reaching that loop repeats the index until a body exit. Monadic folds and loops stop on
+their first failure tag [13].
+Accumulator replacement stages all new slots before releasing selected previous roots and copying
+the staged slots. The first accumulator value is excluded from this release rule because source aliases
+may retain it. Later release selection depends on fresh-owner and liveness analyses. The emitted
+multi-slot assignment retains a shared fold computation when any result slot remains live [11, 13].
+Byte slicing preserves the owner and adjusts the visible range. Endian conversion to UInt64
+P
+P
+requires exactly eight bytes, returning i bi 28i for little endian or i bi 28(7−i) for big endian. The
+byte-copy-slice operation forms the preserved destination prefix, the available requested source bytes,
+and the remaining destination suffix, with the implemented clamping rules [11, 13]. Compile-time
+string recognition accepts its specified ASCII forms. Runtime ASCII and restricted JSON helpers
+are source libraries over the same bytes and recursive-data rules [3].
+
+8
+
+5
+
+Compilation and target execution
+
+5.1
+
+The exact compilation graph
+
+For a partial implementation function g at revision v, write Gv (g, x, y) when evaluating g on x
+terminates with y. This relation fixes successful and rejected results without asserting totality of
+every compiler function. Let Q = (E, m, f, mode, bounds) identify the checked environment, module,
+entry, compilation mode, and mode bounds.
+For library extraction,
+Extractv (E, m, f, library, M ) ⇐⇒ Gv (compileEnvironment, (E, m, f ), ok(M )).
+The fixed command modes use their corresponding environment-extraction functions. compile
+EnvironmentWithEntryModeDetailed checks the entry, collects the reachable namespace-rooted
+declarations, normalizes with its fixed fuel, and collects synthetic helpers. It extracts once with
+empty fresh-result summaries, derives those summaries, validates explicit releases, and extracts
+again using the summaries [6]. Report classification and complete extraction therefore have different
+result objects.
+Let Emitv (mode, bounds, f, M ) name the selected production serializer. Treat the library serializer’s direct byte result as an ok result for uniform notation. Then
+Compilev (Q, b) ⇐⇒ ∃M. Extractv (E, m, f, mode, M )
+∧ Emitv (mode, bounds, f, M ) = ok(b).
+The serializer lowers IR functions to structured instruction lists and assembles the binary. Library
+moduleBytes calls legacyModuleBytes. The image-emitter experiment has a separate validation
+path [13]. This distinction is relevant to the export-name concern below.
+Define a separate executable-module judgment
+Executablev (Q, b, W ) ⇐⇒ Compilev (Q, b) ∧ Decode(b) = W ∧ Valid(W ).
+Here Decode and Valid belong to the chosen WebAssembly syntax and validation account. Separating
+byte production from validity preserves the possibility of an accepted source that exposes a compiler
+defect. WebAssembly stack typing checks target value types and control shapes [16]. An i64 stack
+slot alone supplies no source Boolean, narrow-integer, or pointer invariant.
+
+5.2
+
+Allocator and fixed entry adapters
+
+Library mode exports memory, the selected entry, allocation and reference-count operations, and
+four counters. Memory starts at 16 pages, and the heap starts at byte offset 4096. Each owned root
+p has a 48-byte header containing magic value, reference count, capacity, kind, width or slot count,
+and child mask. The allocator rounds payloads to eight-byte alignment with a minimum of eight
+bytes, takes the first sufficiently large free block, or advances the heap and grows memory [13].
+Retaining root zero changes no state. Retaining a nonzero root checks magic and positive count,
+increments the retain counter, and increments the stored count. Release of zero is also a no-op.
+Release of a valid nonzero root increments its counter, decrements a count above one, or recursively
+releases marked children before adding the root to the free list. Invalid headers and zero-count
+reuse trap. All counters and reference-count increments use word arithmetic. A natural-number
+accounting theorem therefore needs suitable overflow premises.
+
+9
+
+Explicit source release requires validateModuleReleases. An accepted release consumes a
+direct fresh allocation, a helper root identified as fresh, or a statically owner-zero array at its
+supported final-use position [12]. Automatic cleanup additionally uses result-root, borrowing, and
+liveness analyses. The source definitions of the runtime counters and release all return zero, while
+generated execution reads and updates allocator state. A source refinement statement that observes
+those operations needs their extended semantics.
+The exported reset function restores the heap top, free list, and counters to their initial values. It
+leaves the page count and old payload bytes in memory. Earlier pointers lose their lifetime guarantee
+because allocation can reuse those bytes. A public byte result’s pointer and length should therefore
+be interpreted with its program-specific lifetime premise.
+The five WASI command shapes accept a zero-argument byte result, a bounded stdin byte
+transform, a stdin transform returning Except, an argv transform returning Except, or the combined
+stdin/argv transform. The pure entry retains the corresponding source type. The generated adapter
+supplies the fixed imports and output trace [13, 3].
+For maximum stdin bytes b, maximum user arguments a, and maximum argv-buffer bytes g, the
+source constants give
+b ≤ 16 · 65536 − 4096 − 1,
+
+R(a, g) = 8 + 24a + 4(a + 1) + g.
+
+Argv mode requires R(a, g) ≤ 16 · 65536 − 4096, and combined mode requires b + 8 + R(a, g) ≤
+16 · 65536 − 4096 as well as the stdin bound. Runtime readers enforce their configured counts, skip
+argv[0], and pass borrowed-owner values. A successful result writes stdout. An error result writes
+stderr and exits with status one. Invalid tags, failed imports, exceeded bounds, and short writes
+trap. These statements assume WASI imports implement their specified interface.
+
+5.3
+
+Execution and observations
+
+Let −→W be the selected WebAssembly small-step relation with memory, globals, locals, stack,
+frames, and a host-import relation. Let Init(W, H, ā, c0 ) describe an instantiated module and
+exported call in host state H. An observation includes return slots and relevant memory, a trap, or
+a host exit and byte-output trace. Define
+Runv (Q, H, ā, o) ⇐⇒ ∃b, W, c0 , cn . Executablev (Q, b, W )
+∧ Init(W, H, ā, c0 )
+∧ c0 −→∗W cn ∧ Observe(cn ) = o.
+Infinite reduction defines divergence. An external process limit is a separate operational event. This
+relation covers all emitted instructions through the selected target semantics, including wrapping
+addresses, floating-point special values, and malformed host inputs. Only inputs satisfying a stated
+representation relation acquire source-value interpretations.
+The repository’s program proofs instantiate execution with the pinned Talos model. A claim
+about every conforming engine additionally requires an appropriate relation to the WebAssembly
+standard, or a theorem stated against that standard. Conformance and runtime tests provide finite
+evidence for that relation. Their results do not expand a theorem’s quantified scope.
+
+10
+
+6
+
+Source audit and existing proof boundaries
+
+6.1
+
+Export names and child-mask width
+
+The source reserves only memory, alloc, and reset in Extract.Core.reservedExportNames.
+Production export assembly also introduces retain, release, free, allocCount, retainCount,
+releaseCount, and freeCount [6, 13]. The prose specification reserves all ten names. The production serializer bypasses the image-emitter duplicate-name check. These declarations expose
+a gap between the documented rejection set and its implemented entry-name check. A general
+emitted-validity theorem must resolve that gap. Report preparation changed no acceptance rule
+and ran no example named after an omitted export.
+The inspected layout predicates provide no general 64-slot bound for the ownership mask.
+heapChildMaskFromType constructs a natural-number mask with a set bit at each owner position.
+Binary.i64Const reduces a mask constant modulo 264 . coreReleaseInstrs scans object slots and
+tests the stored mask through i64.shr_u, whose shift count is modulo 64 [11, 13, 16]. Consequently
+a general ownership proof needs a bound connecting the accepted layout to mask representation, or
+a verified wider representation. This is a source-level proof obligation and potential implementation
+defect. A compiled reproducer remains open.
+
+6.2
+
+Reference IR evaluation
+
+The IR reference evaluator has a restricted comparison interpretation. IR.Expr.eval returns zero
+for traps, runtime counter reads, releases, heap allocation, heap loads, and collection cases that
+need memory. Some update cases return an existing pointer expression. Its natAdd and natMul use
+word arithmetic without the backend’s overflow checks. Its loops have a fixed evaluation bound [14].
+Extract.Eval.evalEntry filters calls to scalar arguments, scalar-slot results, and a module
+passing scalarModule [15]. That filter excludes heap operations but admits traps and checked-Nat
+arithmetic. Thus equality with eval-ir supports a comparison only when the execution avoids
+those differences and stays within the evaluator bound. The compiled execution relation above
+instead uses production lowering and target execution.
+
+6.3
+
+Named theorem scope
+
+The existing scalar certificates connect successful descriptor recognition to exact structured emission.
+For example, ScalarDescriptor.Expr.ofIR_emitWithRelease assumes successful expression
+reification and proves equality with the backend expression emitter. The condition, statement,
+loop, and encoded-index certificates make corresponding statements [17]. These theorems establish
+emitter equalities at the named boundary.
+The exact-artifact path embeds bytes, decodes them, validates the restricted module, identifies
+its Talos translation, and proves the package’s behavioral proposition. Wasm.Binary.Proof.decod
+e_sound proves that successful decoding satisfies Grammar.Encodes. Wasm.Binary.Proof.valida
+te_sound proves that successful validation satisfies CoreValid [18]. A package theorem identifies
+the translated decoded module with the model used by its behavioral proof. The artifact format
+also records the external-file comparison and the proof’s stated host assumptions.
+The artifact profile excludes WASI imports, so its current decoder and validator theorems
+give no automatic certificate for the command adapters in this report. Runtime helper theorems,
+including recursive teardown of represented ownership trees, have their own memory and separation
+premises [18]. The compiler’s source and the extraction passes remain outside an artifact-only
+
+11
+
+theorem’s assumptions. Their agreement with the source program requires additional refinement
+evidence.
+
+7
+
+Independent formalization and refinement obligations
+
+An independent formalization must replace the remaining recognizer references with declared syntax
+and judgments and prove their agreement with the implementation. The abstract runtime typing
+rules, domain definitions, and layout propositions above supply part of that specification. The shapesensitive recursion rules, demand semantics, and ownership relation need complete independent
+definitions before a general preservation theorem can be stated precisely.
+Extraction typing would prove that successful extraction produces a well-formed slot program
+with valid local indices, direct-call indices, parameter and result arities, and fixed-width offsets. A
+stronger invariant would connect those slots to represented source values and live owner roots. The
+present IR.Expr and IR.Stmt datatypes have no source-type indices that establish those properties
+by construction [14].
+The remaining semantic obligations concern erasure, static substitution, demand analysis,
+source-operation lowering, ownership transfer, emitted validity, and serialization. A source-to-target
+theorem must state the selected source evaluation relation, trap and divergence behavior, bounded
+arithmetic, representation, resources, and runtime-intrinsic observations. For a nondeterministic
+target relation, it must constrain every allowed target outcome covered by the claim. A source
+termination proof also needs the lowering relation before it establishes compiled termination.
+A reference-evaluator comparison concerns its stated input and evaluator domain. An exactartifact theorem concerns its embedded binary and behavioral premises. The implemented acceptance
+graph, the target execution relation, and the named artifact proofs each identify a concrete subject.
+A complete compiler-correctness result requires proved connections between those subjects under
+explicit premises.
+
+References
+[1] LeanExe contributors. LeanExe source checkpoint. Commit 2f3ec33f6e98ad98ac94df277c91e5319763cf9d,
+2026. https://github.com/jsmorph/leanexe/tree/2f3ec33f6e98ad98ac94df277c91e5319763cf9d.
+[2] LeanExe contributors. Type Theory of the LeanExe Fragment. https://github.com/jsmorph/leanexe
+/blob/2f3ec33f6e98ad98ac94df277c91e5319763cf9d/docs/leanexe-type-theory.md.
+[3] LeanExe contributors. Formal Specification of LeanExe Compilation and Execution. https://github
+.com/jsmorph/leanexe/blob/2f3ec33f6e98ad98ac94df277c91e5319763cf9d/docs/leanexe-forma
+l-specification.md.
+[4] Lean developers. The Lean Language Reference: The Type System. https://lean-lang.org/doc/
+reference/latest/The-Type-System/. Implementation pin in the cited LeanExe checkpoint: Lean
+4.34.0-rc2, commit 6a10ac8c22beadecabdbb0919c2b50214762f91d.
+[5] LeanExe contributors. Type and layout recognition. https://github.com/jsmorph/leanexe/blob/2f
+3ec33f6e98ad98ac94df277c91e5319763cf9d/LeanExe/Extract/Types.lean.
+[6] LeanExe contributors. Expression and module extraction. https://github.com/jsmorph/leanexe/blo
+b/2f3ec33f6e98ad98ac94df277c91e5319763cf9d/LeanExe/Extract/Core.lean.
+[7] LeanExe contributors. Pattern and monad recognition. https://github.com/jsmorph/leanexe/blob/
+2f3ec33f6e98ad98ac94df277c91e5319763cf9d/LeanExe/Extract/Patterns.lean.
+
+12
+
+[8] LeanExe contributors. Structural recursion recognition. https://github.com/jsmorph/leanexe/blob/
+2f3ec33f6e98ad98ac94df277c91e5319763cf9d/LeanExe/Extract/StructuralRec.lean.
+[9] LeanExe contributors. Demand analysis and structural equality. https://github.com/jsmorph/leane
+xe/blob/2f3ec33f6e98ad98ac94df277c91e5319763cf9d/LeanExe/Extract/Demand.lean.
+[10] LeanExe contributors. Storage and parameter lowering. https://github.com/jsmorph/leanexe/blo
+b/2f3ec33f6e98ad98ac94df277c91e5319763cf9d/LeanExe/Extract/Storage.lean.
+[11] LeanExe contributors. Value layouts, owner masks, and liveness. https://github.com/jsmorph/lea
+nexe/blob/2f3ec33f6e98ad98ac94df277c91e5319763cf9d/LeanExe/Extract/Values.lean.
+[12] LeanExe contributors. Explicit release checking. https://github.com/jsmorph/leanexe/blob/2f3e
+c33f6e98ad98ac94df277c91e5319763cf9d/LeanExe/Extract/ReleaseCheck.lean.
+[13] LeanExe contributors. Production WebAssembly lowering and binary emission. https://github.com/j
+smorph/leanexe/blob/2f3ec33f6e98ad98ac94df277c91e5319763cf9d/LeanExe/Wasm/Binary.lea
+n.
+[14] LeanExe contributors. IR syntax and reference evaluation. https://github.com/jsmorph/leanexe/b
+lob/2f3ec33f6e98ad98ac94df277c91e5319763cf9d/LeanExe/IR/Core.lean.
+[15] LeanExe contributors. Reference-evaluator entry restriction. https://github.com/jsmorph/leanexe
+/blob/2f3ec33f6e98ad98ac94df277c91e5319763cf9d/LeanExe/Extract/Eval.lean.
+[16] WebAssembly Community Group. WebAssembly Core Specification. Numeric semantics and validation.
+https://webassembly.github.io/spec/core/exec/numerics.html; https://webassembly.github
+.io/spec/core/valid/instructions.html. Accessed 11 September 2026.
+[17] LeanExe contributors. Scalar emitter certificates. https://github.com/jsmorph/leanexe/blob/2f3e
+c33f6e98ad98ac94df277c91e5319763cf9d/LeanExe/Wasm/ScalarCertificate.lean.
+[18] LeanExe contributors. Artifact Verification Format and Talos proof inventory. https://github.com/j
+smorph/leanexe/blob/2f3ec33f6e98ad98ac94df277c91e5319763cf9d/docs/artifact-format.md;
+https://github.com/jsmorph/leanexe/blob/2f3ec33f6e98ad98ac94df277c91e5319763cf9d/p
+roofs/talos/README.md. Theorem sources: Project/Artifact/Binary/Proof/Decode.lean and
+Validate.lean, namespace Wasm.Binary.Proof.
+
+13
+
+

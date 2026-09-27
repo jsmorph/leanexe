@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "id": "proposal-4f56fd45fe24-d4f7d73b3648",
+  "version": 2,
+  "title": "Singleton fold result from source frame",
+  "summary": "The run repeats the same result-frame getter composition used by two archived fold proofs. The proposed lemma checks that composition once and builds successfully.",
+  "maturity": "promoted",
+  "dependencies": [],
+  "catalogRoot": "catalog",
+  "leanSources": [
+    {
+      "module": "LeanExeGen.Knowledge.Proposal4f56fd45fe24D4f7d73b3648.Proposed",
+      "path": "lean/LeanExeGen/Knowledge/Proposal4f56fd45fe24D4f7d73b3648/Proposed.lean"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "evidence/accepted-proof.lean",
+      "entries": [
+        "fixed-array-singleton-result-from-frame"
+      ]
+    },
+    {
+      "path": "evidence/learning-journal.md",
+      "entries": [
+        "fixed-array-singleton-result-from-frame"
+      ]
+    },
+    {
+      "path": "evidence/ltg-task.json",
+      "entries": [
+        "fixed-array-singleton-result-from-frame"
+      ]
+    },
+    {
+      "path": "evidence/program.annotations.json",
+      "entries": [
+        "fixed-array-singleton-result-from-frame"
+      ]
+    },
+    {
+      "path": "evidence/proof-journal.md",
+      "entries": [
+        "fixed-array-singleton-result-from-frame"
+      ]
+    },
+    {
+      "path": "evidence/proof-recipes.json",
+      "entries": [
+        "fixed-array-singleton-result-from-frame"
+      ]
+    },
+    {
+      "path": "evidence/proof-task-features.json",
+      "entries": [
+        "fixed-array-singleton-result-from-frame"
+      ]
+    },
+    {
+      "path": "evidence/proof-telemetry.json",
+      "entries": [
+        "fixed-array-singleton-result-from-frame"
+      ]
+    },
+    {
+      "path": "evidence/proposal.json",
+      "entries": [
+        "fixed-array-singleton-result-from-frame"
+      ]
+    },
+    {
+      "path": "evidence/run.json",
+      "entries": [
+        "fixed-array-singleton-result-from-frame"
+      ]
+    }
+  ]
+}

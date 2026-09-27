@@ -1,0 +1,9 @@
+checked embeddings 229, milliseconds 352
+checked residuals 768, milliseconds 1229
+checked residuals 1536, milliseconds 2091
+checked residuals 2304, milliseconds 2955
+checked residuals 3072, milliseconds 3820
+checked residuals 3840, milliseconds 4674
+checked residuals 4608, milliseconds 5530
+checked residuals 5376, milliseconds 6387
+Pointwise range check passed: 229 embeddings, 5496 paired residuals, milliseconds 6521

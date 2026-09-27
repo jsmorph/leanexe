@@ -1,0 +1,15 @@
+--- a/proofs/artifacts/registry.json
++++ b/proofs/artifacts/registry.json
+@@ -254,0 +255,6 @@
++    },
++    {
++      "case": "euler_certificate",
++      "sha256": "22696951ce81106990843e19494430292bdde35183058a34ff30133cc47bd981",
++      "manifest": "euler_certificate/22696951ce81106990843e19494430292bdde35183058a34ff30133cc47bd981/manifest.json",
++      "proofTarget": "Project.EulerCertificate.ArtifactTranslation"
+--- a/proofs/talos/lean/Project/Artifact/Binary/CheckFile.lean
++++ b/proofs/talos/lean/Project/Artifact/Binary/CheckFile.lean
+@@ -42,0 +43 @@
++import Project.EulerCertificate.ArtifactBytes
+@@ -86,0 +88 @@
++  | "euler_certificate" => some Project.EulerCertificate.Artifact.artifactBytes

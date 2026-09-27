@@ -1,0 +1,9 @@
+The public interface is Array UInt64 -> Array UInt64.  When the input contains
+at most eight elements, return a singleton array containing the wrapping
+UInt64 sum of the input elements from left to right, starting with zero.  When
+the input contains more than eight elements, return the empty array.
+
+Implement the successful case with `Array.foldl` or one equivalent loop over
+the input elements.  Do not express the sum as eight separately written
+element cases.  The compiled artifact must contain an input-traversal loop
+with a loop-carried sum accumulator.

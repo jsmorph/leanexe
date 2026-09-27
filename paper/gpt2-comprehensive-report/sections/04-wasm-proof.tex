@@ -1,0 +1,100 @@
+\section{CPU artifact theorem and floating-point semantics}
+
+\subsection{Termination and observable results}
+
+For a fixed Talos module $M$, environment $E$, function index $i$, initial store $S$, argument stack $a$, and postcondition $P$, write $\mathsf{TW}(E,M,i,S,a,P)$ for Talos's \code{TerminatesWith}.  Its definition is
+\begin{equation}\label{eq:termination}
+\exists N\;\forall f\geq N\;\exists v,S'.\quad
+\code{run}(f,M,i,S,a,E)=\code{Success}(v,S')\ \land\ P(S',v).
+\end{equation}
+The natural number $f$ is interpreter fuel.  This predicate proves eventual successful execution and the postcondition for every sufficiently large fuel value~\cite{termination}.  The generated GPT-2 module has no imported functions, and the theorem quantifies over the host environment.
+
+\begin{theorem}[Cached GPT-2 artifact execution]\label{thm:main}
+Let $B$ be the frozen 19,083-byte artifact at the CPU proof checkpoint.  Decoding and validation succeed for $B$.  Its decoded module satisfies the formal binary grammar and validation rules of the supported profile.  Let $M$ be its Talos translation, $W$ a byte array of length $497{,}759{,}232$, and $T=[t_0,\ldots,t_{n-1}]$ a list of \code{UInt32} tokens with $n\leq128$ and $t_p<50{,}257$ for every $p<n$.  Starting from $M$'s initial store, reset and weight allocation terminate successfully.  After the specified byte copy of $W$ into the allocated payload, the token calls and releases described below terminate successfully.  At each position $p$, their observable cache and logit bytes equal $C_{p+1}$ and $L_p$ in Equation~\eqref{eq:recurrence}.
+\end{theorem}
+
+The checked declaration for Theorem~\ref{thm:main} is \longcode{Project.Gpt2CachedStep.Artifact.artifact\_gpt2\_128\_exact}~\cite{artifact}.  Its execution component transfers \longcode{Project.Gpt2CachedStep.Spec.gpt2\_128\_exact} to the decoded module~\cite{session}.  The three input conditions in the statement suffice, including for the empty token list.  For a nonempty list, \code{Session.RunsFor} calls \code{cachedStep}, observes the new cache, releases the previous cache when its pointer is nonzero, observes the logits, releases the logit buffer, and continues with the returned cache.  The step theorem preserves ownership of the weights and current cache through those releases.  The source trace specifies the outputs of this call sequence.
+
+The weight-copy step is the pure store update \code{PackedInput.write}.  Its theorem establishes the required byte representation and heap ownership after allocation~\cite{input}.  This specifies the byte I/O boundary used by the execution theorem.  The native host performs the corresponding copy with \code{memcpy}.  The proof's trust boundary includes that implementation.
+
+\subsection{Floating-point extensions to Talos}\label{sec:talosfp}
+
+Our extensions give Talos executable binary32 and binary64 arithmetic definitions over integers and raw words.  The earlier evaluator stored floating-point values as \code{UInt32} and \code{UInt64} words, then called Lean's native \code{Float32} and \code{Float} operations to evaluate arithmetic~\cite{talosbefore}.  We added the \code{Wasm.IEEE32} and \code{Wasm.IEEE64} definitions and changed the interpreter's arithmetic dispatch to use them~\cite{talosfp,talosdispatch}.  These definitions expose the arithmetic computation to Lean proofs.
+
+The models decode sign, exponent, and fraction fields.  Finite binary32 values have the form $z\,2^{-149}$ for an integer $z$, and finite binary64 values have the form $z\,2^{-1074}$.  Addition forms the exact integer sum at that scale.  Multiplication forms an exact dyadic product, and division forms an exact rational quotient.  Output rounding selects the nearest representable value and resolves ties toward an even significand.  The square-root implementation compares the exact radicand with a squared halfway point to choose the rounded result~\cite{talosfp}.  The integer definitions include subnormal values, gradual underflow, overflow, signed zeros, infinities, and canonical arithmetic NaNs.
+
+The extension also gives integer definitions for comparisons, minimum and maximum, sign operations, rounding to an integer, and signed and unsigned integer conversions.  Trapping and saturating conversions have explicit range and exceptional-value branches.  Sign operations preserve the other word bits, including a NaN payload.  The big-step evaluator, small-step evaluator, and weakest-precondition rules use the corresponding arithmetic definitions and NaN classifiers~\cite{talosdispatch,talosfpproofs}.  At the pinned revision, cross-format promotion and demotion use Lean's conversion functions.  The generated GPT-2 module uses scalar binary32 arithmetic and raw-word reinterpretation.
+
+We added operation theorems to Talos's CodeLib proof library for finite arithmetic, exceptional values, comparisons, rounding, and conversions.  For example, in namespace \code{CodeLib.IEEE32}, \code{mul\_finite\_rounder} identifies the product word with the dyadic rounder, and \code{sqrt\_signed\_zero} establishes the sign-preserving zero case.  Total execution theorems connect selected instruction sequences to these word functions, including multiplication, division, square root, conversion, and SIMD examples~\cite{talosfpproofs}.  The extension replaced the legacy \code{IEEE32Exec} compatibility axioms with proved equalities over the integer definitions~\cite{taloscompat}.
+
+The extended library also contains real-error bounds under stated input conditions and proofs that compose rounding errors through Horner evaluation and dot products~\cite{talosnumeric}.  Those results support numerical analyses of floating-point algorithms.  The GPT-2 proof uses the exact operation definitions and execution rules, together with the source-correspondence equalities in the next subsection.  Talos supplies the arithmetic semantics.  The LeanExe proof workspace proves equality with Lean's logical \code{Float32} definitions for the five GPT-2 arithmetic operations on every input word.
+
+\subsection{Arithmetic correspondence}
+
+For each binary operation $\circ\in\{+,-,\times,/\}$, the arithmetic proof establishes
+\[
+\forall a,b:\code{UInt32},\qquad
+\code{LeanExe.Float32.opBits}(a,b)
+=\code{Wasm.IEEE32.op}(a,b).
+\]
+An analogous theorem covers square root.  Here \code{opBits} and \code{op} stand for the corresponding named operation.  The source intrinsics reduce to Lean's logical \code{Float32.Model}, and the proofs compare its encoding and rounding definitions with Talos's \code{IEEE32} operations~\cite{f32,leanfloat}.
+
+The proofs split exceptional values from finite values, including zero and subnormal cases.  Shared lemmas relate encodings, significands, exponents, scaling, and rounding.  Finite multiplication, division, and square root require their respective rounding arguments.  NaN and infinity cases close against the explicit logical definitions.  The resulting equalities quantify over every input word and supply the scalar facts used by the tensor-loop proofs.  The formal source meaning comes from Lean's logical definitions.  Native Lean evaluation appears in separate execution tests.
+
+\subsection{Allocation sufficiency through position 127}
+
+The allocation proof bounds heap-top growth by charging each requested allocation, including alignment and allocator overhead.  A successful free-list reuse preserves the heap top, as does release.  Thus the argument applies to the existing allocator independently of which reusable block it selects~\cite{budget}.
+
+Let $H_p$ be the heap top before token call $p$, and set
+\[
+B_0=536{,}870{,}912,\qquad D=16{,}777{,}216.
+\]
+These are 512 MiB and 16 MiB, respectively.  Initialization proves $H_0\leq B_0$.  The session invariant contains
+\begin{equation}\label{eq:budget}
+H_p\leq B_0+pD.
+\end{equation}
+For $p<128$ and a cache of length $73{,}728p$, \code{Entry.budget} proves every allocation-capacity premise and bounds the resulting heap top by $H_p+D$, provided $H_p+D<2^{32}$.  Equation~\eqref{eq:budget} supplies that premise because
+\[
+B_0+128D=2{,}684{,}354{,}560<2^{32}.
+\]
+The session induction therefore closes all 128 positions~\cite{budget,session}.
+
+The memory invariant requires a 65,536-page capacity and bounds the page count by that capacity.  Each page contains 65,536 bytes, giving a 4 GiB memory bound.  The $2.5$ GiB expression above bounds the charged heap top.  The measured linear-memory size in Section~\ref{sec:tests} is a separate observation.  Host allocation success within the modeled capacity and sufficient native execution resources belong to the runtime assumptions.
+
+\section{Artifact and runtime boundary}\label{sec:boundary}
+
+\subsection{Binary decoding and execution transfer}
+
+The artifact proof embeds all 19,083 bytes as the Lean value \code{artifactBytes}.  Checked parser certificates establish successful decoding of each function body, section, and the complete file.  The decoder soundness theorem connects that result to the declarative binary grammar.  Successful validation then yields \code{CoreValid}, which states section, memory-limit, global, export, and function-typing conditions for the supported binary profile~\cite{binary,artifact}.
+
+The translation proof identifies each of the 43 decoded function bodies with the corresponding function in the execution model.  A whole-module equality also identifies types, exports, globals, memory, and the remaining module fields.  Equality substitution transfers the module-parameterized session specification \code{Spec.ExactSpecFor} to the decoded module~\cite{artifact,session}.  With $B=\code{artifactBytes}$, the final theorem has the form
+\[
+\begin{aligned}
+\exists R,V.\quad
+ &\code{decode}(B)=\code{ok}(R)\ \land\ \code{Grammar.Encodes}(B,R)\\
+ &\land\ \code{validate}(R)=\code{ok}(V)\ \land\ \code{CoreValid}(R)\\
+ &\land\ \code{ExactSpecFor}(V.\code{toTalos}).
+\end{aligned}
+\]
+Here $R$ is the raw decoded module, $V$ is its validated representation, \code{Grammar.Encodes} is the declarative encoding relation, and \code{toTalos} is the formal translation.  \code{ExactSpecFor} states the initialization and session behavior in Theorem~\ref{thm:main}.  The compiler's output is the fixed subject of this proof.
+
+The frozen artifact and the reviewed runtime binary have SHA-256
+\begin{center}\small
+\longcode{e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade}.
+\end{center}
+The package checker compares the external file with both the frozen package and the embedded byte array.  It then builds the artifact and behavior proofs, checks the registered artifact statements, and audits the registered declarations' axiom dependencies~\cite{artifactgate}.  A byte-for-byte comparison also confirmed the identity of the current command-line binary during the statement review~\cite{review}.  File reading and comparison connect the mathematical byte array to the file used for execution.
+
+The source-driven check remains available: it recompiles \code{cachedStep}, renders the binary as WAT, generates a Talos module, and compares that module with the tracked execution model~\cite{gate}.  The recorded focused source check and exact-artifact check passed using the existing build cache~\cite{review}.  The runtime measurements in Section~\ref{sec:tests} retain the saved 18 September canonical-mode test record.
+
+\subsection{Logical foundations}
+
+The Lean kernel checks the proof terms.  The final artifact theorem's axiom report contains exactly \code{propext}, \code{Classical.choice}, and \code{Quot.sound}.  Propositional extensionality identifies logically equivalent propositions.  Choice selects an element from a type whose nonemptiness has been proved and supports classical reasoning.  Quotient soundness identifies quotient values represented by related elements.  These three principles supply the mathematical foundations used by the proof dependencies~\cite{leanaxioms,review}.
+
+Native-evaluation axioms accept the result of a compiled computation and therefore add trust in the compiler and execution machinery used for that computation.  The generic package policy accepts these additional assumptions.  The statement review audited the final GPT-2 theorem against the three mathematical axioms~\cite{artifactgate,review}.
+
+\subsection{Native execution}
+
+WebAssembly permits multiple NaN results for some floating-point operations~\cite{wasmspec}.  Lean and Talos choose a canonical arithmetic NaN word, \code{0x7FC00000} for binary32.  The C host selects Cranelift and enables \longcode{wasmtime\_config\_cranelift\_nan\_canonicalization\_set}~\cite{wasmtime,driver}.  Wasmtime's implementation of that mode remains trusted.  The recorded FP32 tests check its exact NaN words, including signaling inputs and negative or noncanonical payloads~\cite{tests}.  The selected runtime mode is part of the deployment boundary for exact raw-word agreement.
+
+The formal binary grammar, validation rules, translation, and Talos execution definitions specify the modeled WebAssembly behavior.  Applying their result to a native run trusts the correspondence of those definitions with WebAssembly, Wasmtime and its native-code backend, the C host, and the host's byte I/O.  Tokenization and token selection occur outside the proved recurrence.  The theorem accepts vocabulary indices and produces logit bytes, which lets either a user-selected sequence or a generated sequence supply the next valid token.
+

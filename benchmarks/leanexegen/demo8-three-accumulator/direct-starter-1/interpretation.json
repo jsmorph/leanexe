@@ -1,0 +1,22 @@
+{
+  "formalSpecification": {
+    "summary": "Defined the public identity specification and a branch-sensitive bump-heap bound. The required Lean build succeeded twice, including the final unchanged check.",
+    "decisions": [
+      "expected returns its input directly.",
+      "heapReserveBytes returns 64 for singleton input and 0 otherwise."
+    ]
+  },
+  "leanProgram": {
+    "summary": "Generated the required module. The Lean build, LeanExe report, and WebAssembly compilation all succeeded in the final verification.",
+    "decisions": [
+      "Defined a separate scalar helper with the required counters, loop, and updates.",
+      "Called the helper only for singleton arrays and returned every other input unchanged."
+    ]
+  },
+  "artifactProof": {
+    "summary": "The complete deterministic starter passed the artifact-proof checks.",
+    "decisions": [
+      "Used the checked wrapper composition and checked scalar summary without a Codex session."
+    ]
+  }
+}

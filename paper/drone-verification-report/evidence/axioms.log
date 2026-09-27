@@ -1,0 +1,7 @@
+'Project.Drone.Output.compute_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.Drone.Output.compute_invalid' depends on axioms: [propext, Quot.sound]
+'Project.Drone.WholeFlight.compute_safe' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.Drone.Execution.computeCost_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.Drone.Execution.compute_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.Drone.Spec.compute_correct' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.Drone.Spec.compute_safe' depends on axioms: [propext, Classical.choice, Quot.sound]

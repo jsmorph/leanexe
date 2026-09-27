@@ -1,0 +1,23 @@
+{
+  "formalSpecification": {
+    "summary": "Defined the public identity behavior and a branch-sensitive heap bound. The required Lean build succeeded twice, including the final unchanged check.",
+    "decisions": [
+      "Defined expected input as input directly.",
+      "Bound singleton execution by 64 bump-heap bytes and non-singleton execution by zero bytes."
+    ]
+  },
+  "leanProgram": {
+    "summary": "Created the candidate module. SourceCheck, LeanExe report, and LeanExe compilation all succeeded in the final verification cycle.",
+    "decisions": [
+      "Defined `scalarIdentity : UInt64 → UInt64` with the required mutable decrement/increment loop.",
+      "Called the helper for singleton arrays and returned every non-singleton input unchanged."
+    ]
+  },
+  "artifactProof": {
+    "summary": "Proved the exact artifact behavior. The final import check and ArtifactResult build succeeded.",
+    "decisions": [
+      "Used the checked singleton-wrapper composition.",
+      "Proved the scalar loop with a wrapping-sum invariant and decreasing remaining-counter measure."
+    ]
+  }
+}

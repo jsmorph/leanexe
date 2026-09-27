@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "packages": [
+    {
+      "id": "leanexe-core",
+      "path": "packages/leanexe-core"
+    }
+  ]
+}

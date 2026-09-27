@@ -1,0 +1,91 @@
+\section{Related work and literature-search assessment}
+\label{sec:related}
+
+\subsection{Search scope and comparison criteria}
+
+The literature search took place on 19 September 2026.  It covered papers, technical reports, and public repositories concerning formal verification of transformer inference, executable neural networks, verified numerical software, compiler correctness, and cryptographic proofs of language-model evaluation.  Search terms combined GPT-2, transformer, and LLM inference with formal verification, executable, binary, Lean, Coq/Rocq, Isabelle, CompCert, CakeML, and verified compilation.  Follow-up searches and source inspection examined the strongest candidate claims.  The assessment uses primary papers and project sources~\cite{lit-torchlean,lit-hls,lit-gross,lit-rush,lit-somani,lit-zkllm,lit-zkgpt,lit-deepprove,lit-laproof}.
+
+Five questions determine comparability with the present result.  First, what object does the theorem describe: a mathematical network, a source program, an intermediate representation, a shader, a binary, or one execution trace?  Second, what arithmetic does it specify: real, rational, quantized integer, finite-field, or floating-point computation?  Third, which inputs and weights does it quantify over?  Fourth, which translation and execution components remain assumptions?  Fifth, how is the proof checked and associated with the deployed program?  These questions expose differences that a shared use of the word ``verified'' can conceal.
+
+A correctness theorem for the present CPU artifact has the schematic form
+\[
+\forall W,T.\quad \operatorname{Valid}(W,T)
+\Longrightarrow
+\operatorname{Exec}(B,W,T)=\operatorname{Source}(W,T),
+\]
+with successful termination and byte observations represented by the session predicate.  Here $B$ is a fixed executable byte sequence.  A cryptographic inference certificate instead proves an encoded relation for supplied commitments, an input, and an output, subject to the proof system's soundness assumptions.  A robustness theorem can quantify over many perturbed inputs while targeting an output property.  These are distinct propositions with different applications.
+
+The search inspected stated theorem boundaries and selected definitions.  Independent proof rebuilding and full dependency audits remain outside this source review.  Repository pages describe development snapshots and can change after the search date.  Table~\ref{tab:related} records the comparison at the inspected versions.
+
+\begin{longtable}{L{0.20\linewidth}L{0.34\linewidth}L{0.37\linewidth}}
+\caption{Closest related results and their proof subjects.}\label{tab:related}\\
+\toprule
+Work & Established or reported result & Relation to the present proof\\
+\midrule
+\endfirsthead
+\toprule Work & Established or reported result & Relation to the present proof\\\midrule
+\endhead
+TorchLean~\cite{lit-torchlean} & Lean network semantics, FP32 models, and source-to-IR correctness for a forward subset. & Shares source semantics and arithmetic concerns.  Target-runtime correspondence is future work.\\
+HLS transformation verification~\cite{lit-hls} & Equivalence of C/C++ implementations, including a complete optimized BERT layer. & Shares implementation-equivalence goals.  The checked boundary ends before hardware synthesis.\\
+Gross et al.~\cite{lit-gross} & Accuracy lower bounds for small trained Max-of-$K$ transformers. & Proves model behavior.  Floating-point correspondence is a separate future obligation.\\
+Lean Verified Transformers~\cite{lit-rush} & Rational-arithmetic invariants and equivalence of transformer formulations. & Provides algebraic source-level results for simplified operations.\\
+Verifiable Transformers~\cite{lit-somani} & SMT task-property proofs for a modified GPT-2-scale model on a fixed prompt domain. & Targets task decisions on a finite domain with changed numerical and architectural components.\\
+zkLLM and zkGPT~\cite{lit-zkllm,lit-zkgpt} & Cryptographic certificates for complete LLM inference evaluations. & Prove encoded execution relations per evaluation, using quantized arithmetic and cryptographic soundness.\\
+DeepProve~\cite{lit-deepprove} & Implemented complete-model proof generation, including GPT-2. & Supplies a current quantized-inference proving system.\\
+LAProof~\cite{lit-laproof} & Coq numerical error proofs connected to a C sparse matrix-vector implementation. & Establishes a precedent for composing floating-point mathematics and low-level program proofs.\\
+\bottomrule
+\end{longtable}
+
+\subsection{TorchLean and executable network semantics}
+
+TorchLean formalizes neural-network semantics in Lean, with an operator-tagged graph representation, a PyTorch-like model interface, executable arithmetic, and verification machinery.  Its forward-compilation theorem covers a first-order subset and relates source evaluation to graph evaluation.  Its FP32 account distinguishes executable bit-level arithmetic from real-valued rounded models.  Attention and GPT-style examples make it the closest inspected proof-assistant infrastructure to the present inference work~\cite{lit-torchlean}.
+
+The paper's Appendix D.1 identifies target-runtime correspondence as future work.  It requires a fixed arithmetic configuration, including denormal handling, reassociation, fusion, and reduction order, plus a relation between compiled runtime outputs and the selected executable model.  That boundary is decisive for this comparison.  LeanExe's CPU artifact proof covers the emitted WebAssembly instruction and memory computation under Talos semantics.  Its native application still trusts Wasmtime and the host.  The WGSL result states the corresponding external-execution requirement as a theorem premise.  TorchLean and LeanExe thus address related semantic layers with different completed target connections~\cite{lit-torchlean}.
+
+\subsection{Verification of optimized transformer implementations}
+
+Pouchet and coauthors verify equivalence between C/C++ functions used as inputs to high-level synthesis.  Their analysis handles statically interpretable control flow and transformations involving loops, buffers, layouts, and FIFO communication.  The FPGA 2024 evaluation includes a complete BERT layer with twelve attention heads, feature dimension 768, and feed-forward dimension 3072.  The paper states that correctness of the subsequent HLS backend is assumed~\cite{lit-hls}.
+
+This work establishes a close implementation-level precedent.  Its comparison concerns two concrete algorithm implementations and complex storage transformations.  The target boundary and demonstrated model extent distinguish it from the GPT-2 artifact result: C/C++ source precedes hardware synthesis, and the transformer example covers one layer.  The WGSL packed-layout proofs solve a related correspondence problem between tensor views and matrix operations, then use replacement-call postconditions in a full cached controller.  The CPU binary result adds a checked decoding and translation connection to the executable module~\cite{lit-hls}.
+
+\subsection{Properties of trained and algebraic transformer models}
+
+Gross and coauthors derive computer-assisted accuracy lower bounds for small transformers trained on Max-of-$K$.  Their NeurIPS 2024 work studies proof strategies and the relation between mechanistic understanding and compact performance guarantees.  Its Appendix A.7 describes the additional error arguments needed to connect real-number reasoning and floating-point evaluation, and leaves that connection to future work~\cite{lit-gross}.
+
+Their theorem objective concerns what a trained network predicts.  The present source-agreement theorem concerns how an executable realizes a specified computation.  The two kinds of result could compose if a behavioral theorem used the same source semantics, weight values, and input domain.  For example, a proved property of \code{cachedStep}'s logit vector could transfer through its exact artifact execution theorem to the represented output bytes.  That composition would require proving the source property and satisfying its hypotheses in addition to the execution result.
+
+Rush's Lean Verified Transformers development proves invariants and equivalences associated with batching, parallelism, tiled attention, and state-space formulations.  The inspected source represents values by rationals.  Its \code{softmax\_like} definition uses normalized $1+\operatorname{relu}$ weights, and its tiled-attention proof preserves that selected definition.  The file supplies checked source-level algebraic arguments~\cite{lit-rush}.
+
+Algebraic transformations have a separate floating-point obligation when operation order changes.  The present strict dot-product specification resolves that obligation by preserving ordered, separately rounded multiplication and addition.  Parallel execution distributes output coordinates while retaining each coordinate's reduction order.  An optimization that reorders or fuses the reduction would need a different equality or an explicitly numerical relation.  This follows from the specified algorithm and determines which transformations the current exact theorem supports.
+
+The Rocq Transformer repository supplies another source-level comparison.  It encodes transformer architecture through dependent tensor shapes and gives structural properties.  Its documentation distinguishes implemented structural operations from numerical operations represented by parameters, including matrix multiplication.  Its established boundary is therefore shape and architecture reasoning with abstract numerical components~\cite{lit-rocq}.  Connecting such a model to an executable would require implementations of those components and proofs relating the chosen numerical behavior to them.
+
+\subsection{SMT properties for a modified GPT-2-scale model}
+
+Somani's Verifiable Transformers repository reports SMT proofs for a quote-closing task on a fixed 1,280-prompt domain.  The described model uses a GPT-2-scale base modified for the verification method: normalization is removed, GELU is replaced by LeakyReLU, and the task circuit uses synthesized symbolic attention.  The verified decision compares task candidates.  The repository separates this result from another task for which full verification remained unattempted at inspection~\cite{lit-somani}.
+
+The property, data domain, and modified model define the result's scope.  LeanExe's theorem instead fixes the cached FP32 algorithm and proves all its output bytes for arbitrary runtime weight values and valid token lists.  Task accuracy and implementation equality establish different propositions.  Both the property and the quantified domain determine comparability~\cite{lit-somani}.
+
+\subsection{Cryptographic proofs of complete inference}
+
+zkLLM provides zero-knowledge proofs for language-model inference using tensor-oriented protocols, including attention and lookup arguments.  Its soundness account uses cryptographic commitments and randomized algebraic checks.  The paper states the negligible-error conditions and describes numerical tolerances arising from quantization and attention approximation.  Its evaluation covers models up to thirteen billion parameters~\cite{lit-zkllm}.
+
+zkGPT implements a non-interactive proof system for GPT-2 inference.  Its arithmetic relations cover linear and nonlinear layers, and its implementation optimizes their proof cost.  Section 9.3 identifies dependence on quantization as the reason its current construction cannot directly certify floating-point inference.  The paper and artifact provide prior evidence that complete GPT-style model evaluation can produce a checkable cryptographic certificate~\cite{lit-zkgpt}.
+
+DeepProve is a further implemented system in this category.  Its repository documents complete GPT-2, Gemma, and Llama inference proofs, model loading, quantized execution, and proof/verification commands.  The described computation uses calibrated integer arithmetic, with a default 12-bit quantization setting, and proves the computation from embeddings through output selection using its cryptographic protocols~\cite{lit-deepprove}.
+
+These results determine the scope of a priority claim.  Complete inference certificates existed before this report.  A certificate for an evaluation supplies evidence that its encoded input/output relation holds under the proof system's soundness assumptions.  A static program-correctness theorem supplies a reusable result for every input in its domain.  It can cover termination, memory behavior, and correspondence to a particular executable.  A system could combine both approaches: an implementation theorem could justify a proof-producing inference program, while runtime certificates could attest to remote evaluations.  Each layer would retain its own assumptions.
+
+For the present work, the relevant distinction is the proof-assistant-checked relation between an executable inference module and its source recurrence.  A thirteen-billion-parameter cryptographic example can exceed GPT-2 in scale while proving a different proposition.  Likewise, a small source-level formalization can use a proof assistant while leaving compilation and storage implementation to separate work.  The comparison therefore uses the proof subject, arithmetic, quantification, and trusted execution components together.
+
+\subsection{Verified floating-point numerical software}
+
+LAProof provides Coq proofs for linear-algebra accuracy, including inner products, matrix-vector and matrix-matrix operations, and related additions.  It connects that mathematical development to a verified C sparse matrix-vector implementation using compressed sparse rows.  The proof accounts for representation and IEEE floating-point behavior, and the accuracy results include backward or mixed error bounds under their stated conditions~\cite{lit-laproof}.
+
+This precedent shows that low-level numerical implementation proofs and floating-point analysis already have established techniques.  The GPT-2 contribution is their application and extension across a complete cached transformer, including the source-defined nonlinear routines and repeated session state.  The present exact theorem supplies equality with the Lean computation.  A later accuracy analysis could use the exact execution result to transfer a proved source-level bound to artifact outputs.  That would require its own numerical hypotheses and a theorem for the chosen source algorithm.
+
+\subsection{Priority assessment}
+
+The search found no earlier result establishing the same complete binary-to-source guarantee for GPT-style inference.  The supported claim is: to our knowledge, this development is the first proof-assistant-checked functional-correctness verification connecting a complete executable GPT-style inference module to its source algorithm, demonstrated for GPT-2 124M with a 128-token context.  The CPU result includes the frozen WebAssembly bytes and exact cache and logit observations for every permitted session.  This claim remains qualified by the search method and inspection depth stated above.
+
+The WGSL contribution has its own scope: checked compilation of supported kernel definitions, exact packed-result correspondence, and reuse of the controller proof under an explicit host-execution premise.  Its theorem is conditional on strict shader behavior and transfers.  The supplied browser observation establishes a concrete successful comparison and its recorded timings.  The priority assessment for the CPU artifact proof therefore remains separate from any claim about universal correctness of browser or GPU execution.

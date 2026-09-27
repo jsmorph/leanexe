@@ -1,0 +1,8 @@
+'Gpt2CriticalReview.premises_inhabited' depends on axioms: [propext]
+'Gpt2CriticalReview.every_decoding_has_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Gpt2CriticalReview.decoded_export_names' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Gpt2CriticalReview.source_trace_length' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Gpt2CriticalReview.step_sizes' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Gpt2CriticalReview.source_trace_logits' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Gpt2CriticalReview.first_token_observation' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Project.Gpt2CachedStep.Artifact.artifact_gpt2_128_exact' depends on axioms: [propext, Classical.choice, Quot.sound]

@@ -1,0 +1,139 @@
+{
+  "artifact": {
+    "byteLength": 2183
+  },
+  "functions": [
+    {
+      "definedFunction": 0,
+      "exports": [
+        "compute"
+      ],
+      "locals": 23,
+      "parameters": 1,
+      "regions": [
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.ScalarDescriptor.EncodedIndex.ofProgramPrefix",
+            "LeanExe.Wasm.Binary.CoreWasm.annotateEncodedIndicesInList",
+            "LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs"
+          ],
+          "id": "function-0.encoded-index-0",
+          "kind": "leanexe.option.encoded-index.v1",
+          "location": {
+            "endIndex": 8,
+            "listPath": [
+              {
+                "field": "then",
+                "instructionIndex": 7
+              },
+              {
+                "field": "else",
+                "instructionIndex": 20
+              }
+            ],
+            "startIndex": 2
+          },
+          "parameters": {
+            "decodedLocal": 4,
+            "encodedLocal": 2,
+            "encoding": "none-zero-some-index-plus-one-v1",
+            "scratchStart": 8
+          }
+        },
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitCondWithRelease",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+          ],
+          "id": "function-0.length-dispatch-0",
+          "kind": "leanexe.array.length-dispatch.v1",
+          "location": {
+            "endIndex": 8,
+            "listPath": [],
+            "startIndex": 0
+          },
+          "parameters": {
+            "continuation": "fallthrough",
+            "encoding": "le-unsigned-v1",
+            "expectedSize": 8,
+            "inputLocal": 8,
+            "invalidBranch": "else",
+            "validBranch": "then"
+          }
+        },
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitArrayFindIdxSlots",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+          ],
+          "id": "function-0.find-idx-eq-0",
+          "kind": "leanexe.array.find-idx-eq.v1",
+          "location": {
+            "endIndex": 12,
+            "listPath": [
+              {
+                "field": "then",
+                "instructionIndex": 7
+              }
+            ],
+            "startIndex": 0
+          },
+          "parameters": {
+            "continuation": "fallthrough",
+            "inputLocal": 0,
+            "itemLocal": 1,
+            "key": "0",
+            "resultEncoding": "none-zero-some-index-plus-one-v1",
+            "scratchStart": 8,
+            "sourceWidth": 1
+          }
+        },
+        {
+          "generatedBy": [
+            "LeanExe.Wasm.Binary.CoreWasm.emitCopyLoop",
+            "LeanExe.Wasm.Binary.CoreWasm.emitRangeCopyLoop",
+            "LeanExe.Wasm.Binary.CoreWasm.emitArrayEraseIfInBoundsSlots",
+            "LeanExe.Wasm.Binary.CoreWasm.emitStmtAnnotated"
+          ],
+          "id": "function-0.erase-copy-0",
+          "kind": "leanexe.array.erase-copy.v1",
+          "location": {
+            "endIndex": 59,
+            "listPath": [
+              {
+                "field": "then",
+                "instructionIndex": 7
+              },
+              {
+                "field": "else",
+                "instructionIndex": 20
+              },
+              {
+                "field": "then",
+                "instructionIndex": 15
+              },
+              {
+                "field": "then",
+                "instructionIndex": 11
+              }
+            ],
+            "startIndex": 53
+          },
+          "parameters": {
+            "continuation": "fallthrough",
+            "counterLocal": 15,
+            "prefixCellsLocal": 11,
+            "sourceLocal": 8,
+            "sourceWidth": 1,
+            "suffixCellsLocal": 12,
+            "targetLocal": 14
+          }
+        }
+      ],
+      "results": 1,
+      "sourceName": "LeanExeGen.GeneratedRb9ad29e25c8033e5.Source.compute",
+      "wasmIndex": 0
+    }
+  ],
+  "schemaVersion": 1
+}

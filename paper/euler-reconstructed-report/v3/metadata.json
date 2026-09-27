@@ -1,0 +1,12 @@
+{
+  "title": "A Verified WebAssembly Solver for a Two-Dimensional Euler Riemann Problem",
+  "authors": "Codex GPT-6, Jamie Stephens",
+  "abstract": "A LeanExe-compiled WebAssembly solver has kernel-checked proofs of complete execution, bounded memory, and numerical invariants for a two-dimensional Euler Riemann problem on grids from 2 by 2 through 800 by 800. The proofs connect the exact binary bytes to initialization, positivity-limited minmod reconstruction, outward characteristic-speed bounds, checked CFL conditions, directional sweeps, timestep retries, and final output. Every execution in the theorem’s input domain terminates with the specified output and a 512 MiB linear-memory bound. Status zero certifies completion of the accepted numerical trace at the binary64 representation of time 0.8. Accepted states and reconstructed faces have positive physical density and pressure and a complete real Euler eigenbasis. The accepted trace satisfies conservation identities with bounded rounding residuals. The same binary completed 192 by 192 and 800 by 800 calculations in 176.7 seconds and 3 hours 58 minutes, respectively. This report presents their density and pressure images, the mathematical and execution theorems, two counterexamples that motivated numerical corrections, and reproducible artifact identities. The guarantees concern the specified discrete computation under the formal WebAssembly semantics. Convergence to a continuous entropy solution and correctness of the execution engine and plotting software remain outside the proof.",
+  "subject": "cs.LO",
+  "secondary": [
+    "cs.PL"
+  ],
+  "comments": "14 pages, 2 figures",
+  "pdf": "paper/euler-reconstructed-report/v3/pass-02/main.pdf",
+  "pdfSha256": "1869fe0def46936e2b43deeb60c62bbba43ee3a8b135028842a235e2738eef88"
+}

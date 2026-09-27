@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 2,
+  "codexVersions": {
+    "formalSpecification": "codex-cli 0.146.0",
+    "leanProgram": "codex-cli 0.146.0",
+    "artifactProof": "codex-cli 0.147.0"
+  },
+  "maximumAttempts": 1,
+  "tasks": {
+    "formalSpecification": {
+      "task": "formal-specification",
+      "sourceModule": "LeanExeGen.GeneratedRbade8cb1a4e3a423.FormalSpec",
+      "sourceSha256": "528dce8b47e24499c7086de04d3fe03d3ee8e2fae6ba19b9e8731d7b7a1daea8",
+      "reportSha256": "19300f2dc05bfe75dea5b202ac1d48bcfac9b630109fd86253f154bd7998f189",
+      "report": {
+        "summary": "Defined and verified the required singleton prime-factor-count function. The required Lean build succeeds.",
+        "decisions": [
+          "Used `Nat.primeFactorsList.length` to count prime factors with multiplicity.",
+          "Matched on `input.toList` and returned the original array for every non-singleton input."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "528dce8b47e24499c7086de04d3fe03d3ee8e2fae6ba19b9e8731d7b7a1daea8",
+            "diagnosticSha256": "3c2c1fe40c1117b0f3e992ded372abdd3beb1577477402eaa874685f4b6b944e",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRbade8cb1a4e3a423.FormalSpec.expected : Array UInt64 → Array UInt64 and LeanExeGen.GeneratedRbade8cb1a4e3a423.FormalSpec.ArtifactSpec : Wasm.Module → Prop."
+          }
+        ]
+      }
+    },
+    "leanProgram": {
+      "task": "lean-program",
+      "sourceModule": "LeanExeGen.GeneratedRbade8cb1a4e3a423.Source",
+      "sourceSha256": "7d643794bbd1733119a3e4d16106f4ee25a8b0df9b3abf56f9c9d36c6139d8c3",
+      "reportSha256": "b8a712d56f69ed48859c15de11b8ee95bb8f035c47d3372e01bd106ba199cc83",
+      "report": {
+        "summary": "Generated and validated the Lean module and WebAssembly candidate.",
+        "decisions": [
+          "Used fuel-bounded trial division with repeated factor removal.",
+          "Used division for the stopping condition to avoid UInt64 multiplication overflow.",
+          "Returned the original array for every non-singleton input."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "7d643794bbd1733119a3e4d16106f4ee25a8b0df9b3abf56f9c9d36c6139d8c3",
+            "diagnosticSha256": "44efa18b2575a6cdf2a0aa8cef543218bd7cb3de9249cf63d4c33a3c0901887b",
+            "diagnostic": "Lean and LeanExe accepted and compiled LeanExeGen.GeneratedRbade8cb1a4e3a423.Source.compute : Array UInt64 → Array UInt64."
+          }
+        ]
+      }
+    },
+    "artifactProof": {
+      "task": "artifact-proof",
+      "sourceModule": "LeanExeGen.GeneratedRbade8cb1a4e3a423.Behavior",
+      "sourceSha256": "f7be4b0008f482bba8df92f7c20b4d90a4cd23b3ee0ff7114b715cf073af6192",
+      "reportSha256": "98cf3426499b90ea46d719ee90e5392800d8ed86233c13496e2d7d19e86d393a",
+      "report": {
+        "summary": "Proved the exact compiled artifact behavior. The prescribed final ArtifactResult build succeeds.",
+        "decisions": [],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "f7be4b0008f482bba8df92f7c20b4d90a4cd23b3ee0ff7114b715cf073af6192",
+            "diagnosticSha256": "22d090104b0f8b7450abf89e5b603a56cb681933704d5d7e150d04e682b21d27",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRbade8cb1a4e3a423.Behavior.artifact_behavior and LeanExeGen.GeneratedRbade8cb1a4e3a423.Artifact.artifact_correct."
+          }
+        ]
+      }
+    }
+  }
+}

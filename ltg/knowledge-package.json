@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "leanexe-core",
+  "version": 1,
+  "title": "LeanExe core proof knowledge",
+  "summary": "Shared artifact-proof guidance, checked ProofKit declarations, tactics, compiler motifs, and worked examples.",
+  "maturity": "promoted",
+  "dependencies": [],
+  "catalogRoot": ".",
+  "leanSources": [],
+  "evidence": []
+}

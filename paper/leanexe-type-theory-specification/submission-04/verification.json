@@ -1,0 +1,10 @@
+{
+  "paper": "2609.00005v4",
+  "submission": "cfc499017620",
+  "pdf_sha256": "e5e28a951a471c97490cd95a2b1a9c10cac5109db49587d9b8209c0499fbbc2c",
+  "archive_equals_submitted_pdf": true,
+  "archive_title_authors_abstract_match_pdf": true,
+  "page_count": 16,
+  "public_static_export": true,
+  "review": "Decision: accept\n\nAccept.\n\n## Remarks\n\n1. Requirement 9, Section 5.1: \u201cReport classification and complete extraction therefore have different result objects.\u201d  Define the paper-specific term \u201creport classification\u201d and identify the result objects being compared.\n\n2. Requirement 12, Register and Terminology, Section 4.1: \u201ca live allocation root whose lifetime covers the visible range.\u201d  Distinguish allocation bounds from lifetime.  State that the allocation contains the visible byte range and remains live during its use.\n"
+}

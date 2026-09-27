@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "array-fold-prefix",
+  "title": "Array-fold prefix invariant",
+  "summary": "Relates a loop-carried accumulator to an Array.foldl over the consumed input prefix and closes the successor and completed-prefix equations.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["arrays", "loops", "proof-construction"],
+  "scope": "generic-semantics",
+  "evidenceStatus": "provisional",
+  "features": ["accumulator", "array", "fold", "invariant", "prefix", "traversal"],
+  "annotationKinds": ["leanexe.array.fold.v1", "leanexe.loop.fold.v1"],
+  "modules": ["Project.ProofKit.Array"],
+  "declarations": ["Project.ProofKit.ArrayFold.foldPrefix", "Project.ProofKit.ArrayFold.foldPrefix_size", "Project.ProofKit.ArrayFold.foldPrefix_succ"],
+  "premises": ["An array element type", "An accumulator type and step function", "A traversal index below the input size for the successor equation"],
+  "result": "The next accumulator equals one fold step over the indexed element, and the completed prefix equals Array.foldl over the input.",
+  "consumers": ["demo-10", "demo-9"],
+  "relatedEntries": ["array-memory-framing", "fixed-array-allocation", "fixed-array-fold-body", "fixed-array-fold-structure", "fixed-array-length-dispatch", "fixed-array-result", "fixed-array-traversal-input", "local-frame-projection"],
+  "exclusion": null
+}

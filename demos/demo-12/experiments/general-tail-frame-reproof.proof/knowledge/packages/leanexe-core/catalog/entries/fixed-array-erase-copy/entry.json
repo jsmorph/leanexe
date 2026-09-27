@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "fixed-array-erase-copy",
+  "title": "Fixed-array prefix and shifted-suffix copy",
+  "summary": "Executes the compiler's complete raw-cell prefix and shifted-suffix copy loops while preserving source reads and the target header.",
+  "roles": ["annotation-support", "checked-proof-asset", "guidance"],
+  "categories": ["arrays", "compiler-motifs", "loops", "memory", "proof-construction"],
+  "scope": "compiler-runtime-motif",
+  "evidenceStatus": "provisional",
+  "features": ["array", "copy-loop", "erase-index", "frame", "loop", "memory", "prefix-copy", "raw-cell-copy", "shifted-suffix-copy", "source-width"],
+  "annotationKinds": ["leanexe.array.erase-copy.v1"],
+  "modules": ["Project.ProofKit.FixedArrayCopy"],
+  "declarations": ["Project.ProofKit.FixedArrayCopy.cellRead", "Project.ProofKit.FixedArrayCopy.counterFrame", "Project.ProofKit.FixedArrayCopy.counterFrame_get_counter", "Project.ProofKit.FixedArrayCopy.counterFrame_get_ne", "Project.ProofKit.FixedArrayCopy.counterFrame_locals_length", "Project.ProofKit.FixedArrayCopy.counterFrame_params_length", "Project.ProofKit.FixedArrayCopy.counterFrame_validIndex", "Project.ProofKit.FixedArrayCopy.counterFrame_values", "Project.ProofKit.FixedArrayCopy.eraseIdxProgram_spec", "Project.ProofKit.FixedArrayCopy.prefixProgram", "Project.ProofKit.FixedArrayCopy.prefixProgram_spec", "Project.ProofKit.FixedArrayCopy.program", "Project.ProofKit.FixedArrayCopy.program_spec", "Project.ProofKit.FixedArrayCopy.suffixProgram", "Project.ProofKit.FixedArrayCopy.suffixProgram_spec"],
+  "premises": ["A checked leanexe.array.erase-copy.v1 equality or exact decomposition identifying the complete prefix and shifted-suffix programs", "An empty operand stack and exact source, target, prefix-count, suffix-count, and valid distinct counter local facts", "Source and target cell ranges covering the prefix, skipped source cells, and suffix", "Thirty-two-bit and current-memory bounds for the complete source and target regions", "Nonoverlap with either the source before the target or the target before the source", "A continuation that consumes page, target-header, source-read, copied-prefix, shifted-suffix, and final-counter facts"],
+  "result": "The exact block-wrapped loop pair preserves memory pages, the target header, and every source-cell read, establishes the requested target prefix and shifted-suffix reads, and reaches the continuation in the canonical counter frame.",
+  "consumers": ["demo-12"],
+  "relatedEntries": ["array-memory-framing", "fixed-array-allocation", "fixed-array-capacity", "fixed-array-erase-reconstruction", "fixed-array-find-idx-eq", "fixed-array-length-dispatch", "fixed-array-result", "local-frame-projection"],
+  "exclusion": null
+}

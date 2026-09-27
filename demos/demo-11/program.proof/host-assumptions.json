@@ -1,0 +1,7 @@
+{
+  "hostAssumptions": [
+    "`UInt64.xor` implements fixed-width 64-bit bitwise XOR, and `Array.foldl` traverses elements from left to right.",
+    "The artifact ABI represents an output array with a 48-byte allocation header followed by eight-byte words for the array length and each UInt64 element.",
+    "The empty-result branch allocates the fixed-array representation rather than returning a static shared value."
+  ]
+}

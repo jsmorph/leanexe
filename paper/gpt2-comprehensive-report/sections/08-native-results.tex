@@ -1,0 +1,61 @@
+\section{PyTorch comparisons and command-line inference}\label{sec:tests}
+\subsection{CPU WebAssembly comparisons}
+
+The runtime tests use the pinned pretrained checkpoint with CPU PyTorch 2.9.1 and Transformers 4.57.6.  The manifest checks model files by hash and records checkpoint revision \longcode{607a30d783dfa663caf39e06633721c8d4cfcd7e}~\cite{manifest}.  The CPU reference uses FP32, eager attention, and one PyTorch thread.  The WASM driver keeps weights and cached key/value data in a resident Wasmtime instance~\cite{driver}.
+
+The 128-position test starts with the story prompt ``Once upon a time, in a small village'' and appends repetitions of a fixed sentence before taking the first 128 token IDs.  For each prefix length from one to 128, it compares all 50,257 cached WASM logits with the corresponding CPU PyTorch logits~\cite{testcode}.  This gives $128\times50{,}257=6{,}432{,}896$ comparisons.  Every component satisfies the test tolerance
+\[
+|\ell_{\rm wasm}-\ell_{\rm torch}|
+\leq 0.002+10^{-4}|\ell_{\rm torch}|.
+\]
+The maximum observed absolute difference is approximately $0.001450$~\cite{tests}.  The quantified exact-equality theorem concerns the Lean source, while this tolerance test concerns the checkpoint and sequence just described.
+
+The canonical-mode run took 100.2 seconds and reached approximately 1.03 GiB of WASM linear memory.  Its allocation counters recorded 33,025 allocations and 33,023 frees, leaving the weights and current cache.  The allocator reuses whole freed blocks.  The final cache contains $128\times73{,}728=9{,}437{,}184$ payload bytes.  The test also checks the four rejected-input conditions, cache reset and replay, and byte-exact agreement between cached and full-prefix WASM logits for the nine-token story prompt~\cite{tests,testcode}.  These timings describe the recorded local runs and support execution feasibility.  They provide no cross-system speed comparison.
+
+Three recorded completions generated 64, 32, and 16 tokens in 55.6, 27.8, and 15.4 seconds.  The 16-token greedy completion matched PyTorch's token sequence.  The 64-token sampled completion began:
+\begin{quote}
+Once upon a time, in a small village called Hukur. The village is a great expanse of white sand and the winds blow fast
+\end{quote}
+The saved test record includes the complete strings and generation settings~\cite{tests}.  They demonstrate the command-line path from tokenizer output through the resident WASM module and back to text.
+
+\subsection{CPU execution and proof-check commands}
+
+From a prepared repository checkout, the WASM and PyTorch commands are:
+\begin{quote}\small\ttfamily
+\verb|tools/gpt2 --text 'Once upon a time' --generate 32 --seed 42|
+
+\verb|tools/gpt2-pytorch --text 'Once upon a time' --generate 32 --seed 42|
+\end{quote}
+Both use a shared uv project with pinned Python dependencies.  The default generation settings are top-$k$ 40, temperature 0.8, and seed 42.  The WASM client uses the Lean SplitMix64 generator for random draws and Python for sampling probabilities.  PyTorch uses its own seeded generator, so equal seeds produce different draw sequences.  Adding \verb|--top-k 1| to each command selects greedy decoding.  Small logit differences can still change an argmax~\cite{driver}.
+
+The setup command
+\begin{quote}\small\ttfamily
+\verb|uv run --project training/gpt2 training/gpt2/reference.py fetch|
+\end{quote}
+downloads and checks the checkpoint.  The reproduction guide lists the compiler and Wasmtime prerequisites~\cite{guide}.  After a WASM command has produced \longcode{build/gpt2-124m/inference/cachedStep.wasm}, the focused artifact check is
+\begin{quote}\small\ttfamily
+\verb|tools/artifact-proof.js check \|\\
+\verb|  build/gpt2-124m/inference/cachedStep.wasm \|\\
+\verb|  Project.Gpt2CachedStep.ArtifactTranslation|
+\end{quote}
+This check enforces binary identity as well as the registered proof checks.  The separate statement review and final-theorem axiom audit run with
+\begin{quote}\small\ttfamily
+\verb|tools/leanrun --timeout 3m lake -d proofs/talos/lean env lean \|\\
+\verb|  proofs/talos/reviews/gpt2-2026-09-19.lean|
+\end{quote}
+The source-regeneration and numerical-comparison commands are
+\begin{quote}\small\ttfamily
+\verb|tools/talos-proof.js check gpt2_cached_step|
+
+\verb|node test/packed.js --gpt2-cached --gpt2-completions|
+\end{quote}
+
+\subsection{Native hybrid comparisons}
+
+The WGSL integration journal records execution of the pretrained checkpoint on SwiftShader's CPU WebGPU device.  Across a forced 128-token sequence, all 6,432,896 candidate logit words matched the parent Wasm outputs.  Complete cache arrays matched at positions 0, 1, 126, and 127.  Invalid-input tests preserved allocator statistics and memory size, and cache restart tests reproduced the outputs.  The comparison code tests equality of the words~\cite{wg-journal,wg-tests}.
+
+The same record reports agreement with PyTorch of all 128 argmax choices and a maximum absolute logit difference of approximately 0.001541.  Every logit satisfied the tolerance $0.002+0.0001|\text{reference}|$.  The combined parent, hybrid, and reference comparison took approximately 114 seconds.  The CPU-only and hybrid records describe different recorded test runs, so their elapsed times and maximum differences retain their respective provenance~\cite{wg-journal,wg-tests,tests}.
+
+The journal also records greedy text completions and a sampled parent/hybrid pair using the same Wasm tokenizer and sampler, temperature 0.8, and seed 42.  The sampled text and logged logit bytes matched.  The rebuilt source bundle reproduced those traces and passed focused tokenizer, sampler, and invalid-request tests.  These execution checks cover auxiliary components around the formal inference interface~\cite{wg-journal}.
+
+The branch records eleven body-compiler examples with three certificates each and 63 exact CPU WebGPU output checks.  Twenty-four rejection cases cover unsupported source constructs, invalid dimensions and accesses, non-finite constants, changed operations, altered loops, and malformed stores.  These checks examine the dependence of the certificate on source operations and rejection of unsupported or inconsistent programs~\cite{wg-bodytests}.

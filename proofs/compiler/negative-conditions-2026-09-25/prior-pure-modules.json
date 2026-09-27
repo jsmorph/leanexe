@@ -1,0 +1,172 @@
+{
+  "remainder": {
+    "sha256": "c37b7a59619bf3cf59f2c67b5f48595f6d543054e963e5ea9694e4095c23405a",
+    "bytes": 1067,
+    "source": "proofs/compiler/arithmetic-2026-09-24/remainder.wasm"
+  },
+  "order": {
+    "sha256": "1f77c1b08c52fd6c852d69878cb627094448270308f37722515f13c50e2adda5",
+    "bytes": 1044,
+    "source": "proofs/compiler/arithmetic-2026-09-24/order.wasm"
+  },
+  "quotient": {
+    "sha256": "4a342f4d560fe7ff2603ff9580b11d128b67546b1ce7cd3ce53ecfdeab74d475",
+    "bytes": 1066,
+    "source": "proofs/compiler/arithmetic-2026-09-24/quotient.wasm"
+  },
+  "constant": {
+    "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+    "bytes": 1042,
+    "source": "proofs/compiler/arithmetic-2026-09-24/constant.wasm"
+  },
+  "shifts": {
+    "sha256": "6d9cc2edcf505c07c9a0a986019b13c294d8c875c20ddabef2de537f5e24355c",
+    "bytes": 1051,
+    "source": "proofs/compiler/arithmetic-2026-09-24/shifts.wasm"
+  },
+  "wrapping": {
+    "sha256": "296fc8bf83a0bf4388b0f5fb072bfcf694fb7cbfaea33e9dcf6af64a3e76a058",
+    "bytes": 1053,
+    "source": "proofs/compiler/arithmetic-2026-09-24/wrapping.wasm"
+  },
+  "nested": {
+    "sha256": "cc5fca5fa07618f06a6c3a41fcbc711f501b68d731870384f3c42558f5588531",
+    "bytes": 1120,
+    "source": "proofs/compiler/arithmetic-2026-09-24/nested.wasm"
+  },
+  "boundConstant": {
+    "sha256": "849f3852285611b4983188fbb2330ab40c8f9f21b6672fc8150b8e6f0616b83c",
+    "bytes": 1050,
+    "source": "proofs/compiler/let-2026-09-24/boundConstant.wasm"
+  },
+  "unusedBinding": {
+    "sha256": "0122f32de48b2d69206bf1a1cf036177d66c6b7f7fef5b86007d40ba1024cd5c",
+    "bytes": 1052,
+    "source": "proofs/compiler/let-2026-09-24/unusedBinding.wasm"
+  },
+  "nestedBindings": {
+    "sha256": "baf4037bf8d17a5a958be3c886b48ec64f1ed80bf080376b51b4a93251dd34db",
+    "bytes": 1106,
+    "source": "proofs/compiler/let-2026-09-24/nestedBindings.wasm"
+  },
+  "bindings": {
+    "sha256": "cc04b1172176b6553091df075f1d362af66a2b4ce795cbe0f97495e49dc80ff0",
+    "bytes": 1081,
+    "source": "proofs/compiler/let-2026-09-24/bindings.wasm"
+  },
+  "shadowed": {
+    "sha256": "cc752ec97bd34f7d77a20b5c8892527841cccb52cb355c91498986a368d9dc1a",
+    "bytes": 1056,
+    "source": "proofs/compiler/let-2026-09-24/shadowed.wasm"
+  },
+  "nestedChoice": {
+    "sha256": "6c24591b152819eaa72ec426d96f631b5e0f49c47b0d8cce0d58eb31058bd3fd",
+    "bytes": 1111,
+    "source": "proofs/compiler/conditionals-2026-09-25/nestedChoice.wasm"
+  },
+  "compareLe": {
+    "sha256": "167c60fa64e351cdfe3db562a99282924589fe241982a858f7862cd1f829b0db",
+    "bytes": 1062,
+    "source": "proofs/compiler/conditionals-2026-09-25/compareLe.wasm"
+  },
+  "compareBEq": {
+    "sha256": "8b78f34b72461c7b8afac50957add431bc3ea9b0aed671c1d0938d044106605d",
+    "bytes": 1063,
+    "source": "proofs/compiler/conditionals-2026-09-25/compareBEq.wasm"
+  },
+  "compareLt": {
+    "sha256": "2708268886bced65e4ab4018d47e2f5746f662eab5bab4499c9cbc9ffc023eda",
+    "bytes": 1100,
+    "source": "proofs/compiler/conditionals-2026-09-25/compareLt.wasm"
+  },
+  "compareBNe": {
+    "sha256": "641acc1500fe36bbe866b37ce5884fa6b43af2b743397c634d4738a3d9100493",
+    "bytes": 1064,
+    "source": "proofs/compiler/conditionals-2026-09-25/compareBNe.wasm"
+  },
+  "compareEq": {
+    "sha256": "60401595a12431c34306664416eb4f12422b2b762f997c54da3bbc5dd7e9467b",
+    "bytes": 1062,
+    "source": "proofs/compiler/conditionals-2026-09-25/compareEq.wasm"
+  },
+  "choiceBindings": {
+    "sha256": "3a59b71f5e772eb463543a32131f9b2327d7a90125bbeee1698b3ae6f8982835",
+    "bytes": 1141,
+    "source": "proofs/compiler/conditionals-2026-09-25/choiceBindings.wasm"
+  },
+  "choiceOperands": {
+    "sha256": "660e69e3b93ccd145dd4b329f4b9fcf0b38ea772e3a2f74e514158e0ae062b4c",
+    "bytes": 1101,
+    "source": "proofs/compiler/conditionals-2026-09-25/choiceOperands.wasm"
+  },
+  "doReturn": {
+    "sha256": "6aaa649eca6205646ed916431a99424028b8f8372e52a5f17e9fd29dad2dd245",
+    "bytes": 1047,
+    "source": "proofs/compiler/do-2026-09-25/doReturn.wasm"
+  },
+  "doNested": {
+    "sha256": "0ee13f929fb2776ca7065aedece095c2346a74ff89c75e8f1fa880628d8d4e71",
+    "bytes": 1094,
+    "source": "proofs/compiler/do-2026-09-25/doNested.wasm"
+  },
+  "doUpdates": {
+    "sha256": "775cd999f8a0770d323521c1c7b2370c75c8b8ef5fb1483d58960b3f283da4f2",
+    "bytes": 1054,
+    "source": "proofs/compiler/do-2026-09-25/doUpdates.wasm"
+  },
+  "doBind": {
+    "sha256": "fb0d2bd2a1c31be07fcb6e30f7d7132e62dde8a0b2dea438292d7fd5dde5f581",
+    "bytes": 1101,
+    "source": "proofs/compiler/do-2026-09-25/doBind.wasm"
+  },
+  "doEarly": {
+    "sha256": "8e30f2e8eae3593902aac249b29e552ec2a9b0aa42a2e7b411648cde1c7b0b4c",
+    "bytes": 1093,
+    "source": "proofs/compiler/do-2026-09-25/doEarly.wasm"
+  },
+  "doConstant": {
+    "sha256": "f01269cc1545b8a8dc4291406db8efc0a6b923251904ab7036ef043bddca2d7a",
+    "bytes": 1047,
+    "source": "proofs/compiler/do-2026-09-25/doConstant.wasm"
+  },
+  "doBranches": {
+    "sha256": "608960ee70e9ffbd40a6b6346698e74377548ab3f5bff044145964f8c2eb0368",
+    "bytes": 1089,
+    "source": "proofs/compiler/do-2026-09-25/doBranches.wasm"
+  },
+  "doBranchUpdates": {
+    "sha256": "0ecf5202f5e3006b19c5542944b7c65b3832f920e539691cfcc6f7d44536914e",
+    "bytes": 1179,
+    "source": "proofs/compiler/local-functions-2026-09-25/doBranchUpdates.wasm"
+  },
+  "chainedFunctions": {
+    "sha256": "ace261b3c6984f780d0e215324233d37131b1dc9b4129902f43a558b08d3697e",
+    "bytes": 1064,
+    "source": "proofs/compiler/local-functions-2026-09-25/chainedFunctions.wasm"
+  },
+  "doJoined": {
+    "sha256": "8dd4dca30bef01f8a43bd1518703239bdd95db99713daa6409324e3c060fa9ad",
+    "bytes": 1067,
+    "source": "proofs/compiler/local-functions-2026-09-25/doJoined.wasm"
+  },
+  "localFunction": {
+    "sha256": "2c8e3551c06ba0f8ad9e7428cbc9c41cd02cc35c98f543feaf6ec300983d6535",
+    "bytes": 1102,
+    "source": "proofs/compiler/local-functions-2026-09-25/localFunction.wasm"
+  },
+  "unusedFunction": {
+    "sha256": "964862fe91362f5a4e1841d44eef2113207e91014fd47ffb1c357efac1aed84e",
+    "bytes": 1053,
+    "source": "proofs/compiler/local-functions-2026-09-25/unusedFunction.wasm"
+  },
+  "capturedShadow": {
+    "sha256": "c1964cf0f11c4c1e6729649111c3994638c13da04c18a91fd5f4c9c39cc069c1",
+    "bytes": 1062,
+    "source": "proofs/compiler/local-functions-2026-09-25/capturedShadow.wasm"
+  },
+  "nestedFunctions": {
+    "sha256": "fd48c17e03f14f77614051747eca2acffbc2f6f2d2e663043f39af4627a4c015",
+    "bytes": 1072,
+    "source": "proofs/compiler/local-functions-2026-09-25/nestedFunctions.wasm"
+  }
+}

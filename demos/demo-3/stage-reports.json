@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "codexVersion": "codex-cli 0.146.0",
+  "maximumAttempts": 1,
+  "tasks": {
+    "formalSpecification": {
+      "task": "formal-specification",
+      "sourceModule": "LeanExeGen.GeneratedRd1e76d3580ead0d9.FormalSpec",
+      "sourceSha256": "e18782e5f5fe7d974447fc05f576a3a3ecb160c25467ed93f0711f3cc1862ff9",
+      "reportSha256": "6bb139a33f9c1fce9a54918ab33df6d2709df2db416bf42ecb059ae1440d5ef8",
+      "report": {
+        "summary": "Defined the requested seven-node binary-search-tree traversal. The final Lean build succeeded.",
+        "decisions": [
+          "Encoded the traversal directly from the breadth-first array indices.",
+          "Rejected every input whose length is not 15.",
+          "Did not validate binary-search-tree ordering."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "e18782e5f5fe7d974447fc05f576a3a3ecb160c25467ed93f0711f3cc1862ff9",
+            "diagnosticSha256": "8956a3c03c8c1fd59ee8a1baa7ce6d425a3c4c5a671c664f860cc8198fcf0f5e",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRd1e76d3580ead0d9.FormalSpec.expected : Array UInt64 → Array UInt64 and LeanExeGen.GeneratedRd1e76d3580ead0d9.FormalSpec.ArtifactSpec : Wasm.Module → Prop."
+          }
+        ]
+      }
+    },
+    "leanProgram": {
+      "task": "lean-program",
+      "sourceModule": "LeanExeGen.GeneratedRd1e76d3580ead0d9.Source",
+      "sourceSha256": "0ee47764de5f925ba5485acc167883c43359267094eff983c928d33d8a27d288",
+      "reportSha256": "d34a5392f375ac7da4d2a487931f6420cc1da283740955be457246ceb00c2907",
+      "report": {
+        "summary": "Implemented compute and verified that SourceCheck, the LeanExe compatibility report, and WebAssembly compilation all succeed.",
+        "decisions": [
+          "Matched the frozen specification's indexed traversal directly after checking that the input length is 15."
+        ],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "0ee47764de5f925ba5485acc167883c43359267094eff983c928d33d8a27d288",
+            "diagnosticSha256": "bc2368d0ad7645ff8ec2acbb62ffdf917886f0f730fe28fc4b0083022c7b846b",
+            "diagnostic": "Lean and LeanExe accepted and compiled LeanExeGen.GeneratedRd1e76d3580ead0d9.Source.compute : Array UInt64 → Array UInt64."
+          }
+        ]
+      }
+    },
+    "artifactProof": {
+      "task": "artifact-proof",
+      "sourceModule": "LeanExeGen.GeneratedRd1e76d3580ead0d9.Behavior",
+      "sourceSha256": "f9ae613c1065af06e70dd7d8e97e8298e87eeec39b8bfdc8bbd40cf1fd5d28ad",
+      "reportSha256": "ad1aa2fae420cf127b2fab42081541a53361dcd5a7a8d1c64d129a85aab2beb9",
+      "report": {
+        "summary": "Generated and verified the exact compiled-artifact proof.",
+        "decisions": [],
+        "attempts": [
+          {
+            "number": 1,
+            "outcome": "accepted",
+            "sourceSha256": "f9ae613c1065af06e70dd7d8e97e8298e87eeec39b8bfdc8bbd40cf1fd5d28ad",
+            "diagnosticSha256": "a55b08633f81928d0f20853dc24a246db568f292d74dce13bd1314c78305d35c",
+            "diagnostic": "Lean accepted LeanExeGen.GeneratedRd1e76d3580ead0d9.Behavior.artifact_behavior and LeanExeGen.GeneratedRd1e76d3580ead0d9.Artifact.artifact_correct."
+          }
+        ]
+      }
+    }
+  }
+}

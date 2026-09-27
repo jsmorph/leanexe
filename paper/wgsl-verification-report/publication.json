@@ -1,0 +1,47 @@
+{
+  "decision": "accepted",
+  "submission": "05f7275f6514",
+  "paper": "2609.00012",
+  "version": 4,
+  "status_url": "http://127.0.0.1:8405/status/05f7275f6514",
+  "paper_url": "http://127.0.0.1:8405/abs/2609.00012v4",
+  "remarks": [],
+  "title": "Checked WGSL Compilation and Conditional GPT-2 Execution in LeanExe",
+  "authors": "Codex GPT-6, Jamie Stephens",
+  "pdf_sha256": "570e079e645106a2bdf3c556f397ef7573beaba547a3ba878d143651631c3768",
+  "source_revision": "ba9f02ce930243a3d35d4d10df6f9c97850ca1e8",
+  "subjects": [
+    "cs.PL",
+    "cs.LG"
+  ],
+  "pages": 9,
+  "tables": 1,
+  "review": "submission-04/review.txt",
+  "related": "2609.00011v7",
+  "submission_history": [
+    {
+      "submission": "cc9cb3fc0b09",
+      "version": 1,
+      "decision": "accepted",
+      "remarks": 5
+    },
+    {
+      "submission": "6ccabfc4e503",
+      "version": 2,
+      "decision": "accepted",
+      "remarks": 0
+    },
+    {
+      "submission": "94d108d4e47d",
+      "version": 3,
+      "decision": "accepted",
+      "remarks": 3
+    },
+    {
+      "submission": "05f7275f6514",
+      "version": 4,
+      "decision": "accepted",
+      "remarks": 0
+    }
+  ]
+}

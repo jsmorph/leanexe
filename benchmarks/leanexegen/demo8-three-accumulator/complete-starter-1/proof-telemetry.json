@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "metric": "stage-5-start-to-first-accepted-proof",
+  "stage": 5,
+  "stageName": "Direct artifact proof",
+  "stageStartedAt": "2026-08-09T12:55:08.378Z",
+  "firstAcceptedAt": "2026-08-09T13:03:05.558Z",
+  "codexSessionMilliseconds": 329820.587,
+  "outerAcceptanceMilliseconds": 93210.196,
+  "totalMilliseconds": 477179.762,
+  "acceptedSourceSha256": "70fc4600623dc2667d307c78775c0fef56297b4bc93626c599ca7a81be56baa4"
+}

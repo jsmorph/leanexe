@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "proofBoundary": "Talos execution of the decoded generated WAT",
+  "demos": [
+    {
+      "name": "exp-small",
+      "case": "exp_small",
+      "wasm": "proofs/talos/.generated/exp_small/program.wasm",
+      "sha256": "331de6537d47522498fa593afd5a973422c89208c6585c6777c61dfe7f26e877",
+      "export": "expSmall",
+      "fields": [
+        "x_bits"
+      ],
+      "domain": "Finite binary64 input in [-1, 0], including both signed zeros and subnormals",
+      "absoluteErrorBound": {
+        "numerator": "1",
+        "denominator": "4000"
+      },
+      "theorem": "Project.ExpSmall.Spec.expSmall_real_error"
+    },
+    {
+      "name": "exp-wide",
+      "case": "exp_wide",
+      "wasm": "proofs/talos/.generated/exp_wide/program.wasm",
+      "sha256": "598acb47e6983dcd5328f91820160e6eed2c1dd61fc63f2be0adabf15cb71a44",
+      "export": "expWide",
+      "fields": [
+        "x_bits"
+      ],
+      "domain": "Finite binary64 inputs in [-8, 0], including signed zeros and subnormals",
+      "absoluteErrorBound": {
+        "numerator": "1",
+        "denominator": "300000"
+      },
+      "theorem": "Project.ExpWide.Spec.expWide_real_error"
+    },
+    {
+      "name": "softmax",
+      "kind": "softmax",
+      "fields": [
+        "scores_bits"
+      ],
+      "case": "softmax",
+      "wasm": "proofs/talos/.generated/softmax/program.wasm",
+      "export": "softmax",
+      "domain": "One to four finite binary64 scores in [-4, 4]; remaining positions are masked and supplied as zero",
+      "absoluteErrorBound": {
+        "numerator": "1",
+        "denominator": "50000"
+      },
+      "normalizationErrorBound": {
+        "numerator": "1",
+        "denominator": "140737488355328"
+      },
+      "theorem": "Project.Softmax.Spec.softmax_real_error",
+      "sha256": "44e7632e97bbd4ddaf9a3f420ba727896afa4ded542178570e865965468ececd"
+    },
+    {
+      "name": "layernorm",
+      "kind": "layernorm",
+      "fields": [
+        "values_bits",
+        "scale_bits",
+        "bias_bits"
+      ],
+      "case": "layer_norm",
+      "wasm": "proofs/talos/.generated/layer_norm/program.wasm",
+      "export": "layerNorm",
+      "domain": "Four finite binary64 inputs, four scales, and four biases, all in [-4, 4]; real epsilon is 1/100000",
+      "absoluteErrorBound": {
+        "numerator": "1",
+        "denominator": "1000000"
+      },
+      "theorem": "Project.LayerNorm.Spec.layerNorm_real_error",
+      "sha256": "b290d7d3931d40f81c97aaa9a156960e841280e28d10e618719eb0975d3ea76b"
+    },
+    {
+      "name": "gelu",
+      "case": "gelu",
+      "wasm": "proofs/talos/.generated/gelu/program.wasm",
+      "sha256": "6159578dd1662f2bb1df3df0dbd4912734d5de0d16bcdb77f1d395ec085f38fd",
+      "export": "gelu",
+      "fields": [
+        "x_bits"
+      ],
+      "domain": "Finite binary64 input in [-3, 3], including signed zeros and subnormals",
+      "absoluteErrorBound": {
+        "numerator": "1",
+        "denominator": "80000"
+      },
+      "theorem": "Project.Gelu.Spec.gelu_real_error"
+    }
+  ]
+}

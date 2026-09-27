@@ -1,0 +1,19 @@
+\section{Conditional session theorem and deployment boundary}
+\label{sec:hybrid}
+
+Let $W$ be any 497,759,232-byte array and let $t_0,\ldots,t_{n-1}$ satisfy $t_i<50257$ and $n\leq128$.  Define the source trace by
+\[
+C_0=\epsilon,\qquad (C_{i+1},L_i)=\code{cachedStep}(W,C_i,t_i,i).
+\]
+Here $\epsilon$ is the empty cache, and $L_i$ is the complete logit byte array.  Under \code{PackedBackend.Host}, the generated \code{gpt2\_128\_exact} theorem composes reset, weight allocation, the mathematical write of $W$, successive inference calls, logit availability, and releases with this source trace.  Its session predicate observes cache and logit bytes in memory.  Its call predicate, \code{TerminatesWith}, requires success for every sufficiently large interpreter fuel~\cite{wg-composition,wg-session}.
+
+The session derives its heap and buffer preconditions from initialization and preserves them across token calls.  The cached-step proof also covers rejected input lengths, token IDs, and positions.  The algorithm uses arbitrary weight words, including exceptional encodings.  Consequently, the host premise must hold for the corresponding strict word semantics if the theorem is applied on that full domain.  The source theorem supplies no assertion that a particular GPU satisfies this premise on all weight arrays.
+
+Wasmtime is the standalone WebAssembly runtime used by the native host.  The host enables its Cranelift arithmetic NaN canonicalization mode, as in the parent implementation.  Native WebGPU dispatch and readback finish before an import returns to Wasm.  GPU weight views use the matrix offsets passed by Wasm, and the host invalidates cached views after overlapping external writes or reset.  A model session uses fifty matrix views~\cite{wg-host}.
+
+The browser implementation runs Wasm in a worker.  Each import copies input words to shared staging, sends a dispatch request, and waits for completion notification.  The WebGPU host writes result bytes to staging before waking the worker.  Each browser run creates its own host and copies the same weight bytes into Wasm and the host's source buffer.  Section~\ref{sec:browser} describes the supplied browser execution images and the worker test evidence~\cite{wg-host,wg-journal}.
+
+Tokenization, sampling, and the FP32-to-FP64 adapter that presents logit words to the Wasm sampler lie outside the inference theorem~\cite{wg-build}.
+
+The hybrid theorem's axiom audit permits the same three standard logical axioms as the parent.  Its explicit \code{Host} hypothesis is additional to that logical axiom list.  An axiom audit alone cannot discharge the hypothesis~\cite{wg-composition}.
+

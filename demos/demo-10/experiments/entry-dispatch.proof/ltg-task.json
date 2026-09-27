@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "artifactSha256": "a981c7882a51a0660e6dd1e17956b958f7b2e25cbc30618d12458601ef2d4baa",
+  "derivativeGroups": [],
+  "entries": 21,
+  "entryIds": [
+    "array-fold-prefix",
+    "array-memory-framing",
+    "counter-transition",
+    "demo4-map-proof-example",
+    "demo5-filter-proof-example",
+    "demo7-counter-transfer-example",
+    "demo8-counter-transfer-example",
+    "euclidean-gcd-loop",
+    "fixed-array-allocation",
+    "fixed-array-capacity",
+    "fixed-array-filter-lt",
+    "fixed-array-fold-structure",
+    "fixed-array-length-dispatch",
+    "fixed-array-map-add",
+    "fixed-array-result",
+    "fixed-array-singleton-wrapper",
+    "fixed-array-traversal-input",
+    "guarded-back-edge",
+    "local-frame-projection",
+    "residual-specification-normalization",
+    "scalar-post-test-loop"
+  ],
+  "excludedEntries": 0,
+  "excludedEntryIds": [],
+  "sha256": "e8e5af91f6fbf1140d176920fbe64be6572e50395c604a5a06bab97050010b42"
+}

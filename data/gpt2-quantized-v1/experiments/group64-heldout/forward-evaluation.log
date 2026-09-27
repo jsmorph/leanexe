@@ -1,0 +1,7 @@
+Evaluated forward sequence 0, prefixes 10, milliseconds 139
+Evaluated forward sequence 1, prefixes 18, milliseconds 240
+Evaluated forward sequence 2, prefixes 31, milliseconds 450
+Evaluated forward sequence 3, prefixes 47, milliseconds 753
+Evaluated forward sequence 4, prefixes 60, milliseconds 963
+Evaluated forward sequence 5, prefixes 73, milliseconds 1181
+Forward evaluation passed: 73 prefixes, milliseconds 1181

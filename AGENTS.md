@@ -1,0 +1,31 @@
+# Repository Instructions
+
+## Lean Process Limits
+
+- Run every `lean`, `lake`, and Lean compiler command through `tools/leanrun`.  In standard mode the runner enforces `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, and `ionice -c 3`.
+- The runner acquires the same machine-wide lock as `../vq/tools/leanrun` and sets `LEAN_NUM_THREADS=1`.  Never bypass the runner or run Lean or Lake processes concurrently.
+- Add a reasonable `timeout` to diagnostic commands whose runtime is not intrinsically bounded.
+- After a target reaches its timeout without a diagnostic, do not run the unchanged target again.  First divide the proof or module, or add a verified reusable lemma that reduces the elaboration boundary.
+- Pass `--timeout` for a command-specific limit and `--lock-timeout` when the default 900-second lock wait is unsuitable.  Keep `tools/leanrun` as the first command token so one approval covers every Lean target.  If the runner cannot create its user scope or enforce the required cgroup properties, stop and ask the user; the only exception is the explicitly authorized local mode below.
+- Only after the user explicitly authorizes local execution without a systemd cgroup may `LEANRUN_LOCAL=1` be set on the repository driver or `tools/leanrun` invocation.  This opt-in mode retains the pinned toolchain, shared lock, timeout, `LEAN_NUM_THREADS=1`, `nice`, and `ionice`, but it warns that CPU, memory, and swap cgroup limits are absent.  It never activates implicitly.  Invoke runner-calling repository drivers directly with the variable rather than wrapping the driver in `tools/leanrun`; nested local-mode runner calls fail immediately because they would otherwise wait on the same non-reentrant lock.
+- Do not wrap `tools/leanrun` in another resource scope.  Do not substitute an address-space limit such as `ulimit -v` or `prlimit --as`.
+
+The standard command form is:
+
+```bash
+tools/leanrun --timeout <duration> <lean-or-lake-command>
+```
+
+## Approval Boundaries
+
+- Keep the repository tool as the first command token for verification runs: `tools/talos-artifact.js`, `tools/talos-proof.js`, `tools/artifact-proof.js`, `tools/artifact-conformance.js`, or `tools/artifact-release.js`.  Request approval for that tool prefix rather than one subcommand, artifact, corpus file, temporary path, or internal child command.
+- Put repeatable corpus membership and expected results in the tool's checked configuration.  Do not place globs, brace expansions, generated file lists, pipes, or shell wrappers around a repository verification command.
+- Use direct `tools/leanrun` commands only for focused diagnostics that do not belong in an existing repository gate.  Keep `tools/leanrun` as the first token and pass file paths as ordinary arguments without shell expansion.
+
+## Artifact-Proof Iteration
+
+Treat accepted artifact theorems and independent package verification as gates.  Evaluate each iteration across proof-generation time, successful LTG retrieval, agent revisions, proof structure and size, shared abstraction use, compiler-derived evidence use, and applicability beyond the measured program.  No single measurement determines retention or promotion.  Do not treat raw source bytes, word length, or identifier length as proof complexity.  Longer declaration names often record useful shared theorem use.  Consider lines, explicit syntax, local scaffolding, repeated derivations, and shared theorem or tactic use.  After every proof run, review the journal, accepted proof, and telemetry together.  Use that evidence to consider changes to compiler annotations, shared lemmas, tactics, and guidance, as well as the instructions that govern proof generation and journaling.
+
+Keep journals as frequent, natural prose.  They should identify supplied help that worked or failed, explain changes of approach, and note missing general abstractions.  Test changes on fixed artifacts, preserve failures, and use diverse or held-out demos to avoid problem-specific optimization.
+
+Preserve checked narrow or program-specific LTG material as worked examples by default.  Generality and recurring evidence determine importability, automatic selection, and promotion, while specificity alone does not justify deletion.  Remove an example only when it is invalid, stale, unsafe to disclose to a measured proof task, or duplicated without a distinct lesson.

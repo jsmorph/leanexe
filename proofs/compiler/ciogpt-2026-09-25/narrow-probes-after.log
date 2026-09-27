@@ -1,0 +1,50 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+NarrowProbes.byte: fun (bytes : ByteArray) =>
+  UInt8.toUInt32
+    (@GetElem?.getElem!.{0, 0, 0} ByteArray Nat UInt8
+      (fun (xs : ByteArray) (i : Nat) => @LT.lt.{0} Nat instLTNat i (ByteArray.size xs))
+      (@instGetElem?OfGetElemOfDecidable.{0, 0, 0} ByteArray Nat UInt8
+        (fun (xs : ByteArray) (i : Nat) => @LT.lt.{0} Nat instLTNat i (ByteArray.size xs))
+        ByteArray.instGetElemNatUInt8LtSize fun (xs : ByteArray) (i : Nat) => Nat.decLt i (ByteArray.size xs))
+      instInhabitedUInt8 bytes (@OfNat.ofNat.{0} Nat (nat_lit 0) (instOfNatNat (nat_lit 0))))
+compile: ok: true
+NarrowProbes.add: fun (bytes : ByteArray) =>
+  @HAdd.hAdd.{0, 0, 0} UInt32 UInt32 UInt32 (@instHAdd.{0} UInt32 instAddUInt32)
+    (@OfNat.ofNat.{0} UInt32 (nat_lit 2139095040) (@UInt32.instOfNat (nat_lit 2139095040)))
+    (UInt8.toUInt32
+      (@GetElem?.getElem!.{0, 0, 0} ByteArray Nat UInt8
+        (fun (xs : ByteArray) (i : Nat) => @LT.lt.{0} Nat instLTNat i (ByteArray.size xs))
+        (@instGetElem?OfGetElemOfDecidable.{0, 0, 0} ByteArray Nat UInt8
+          (fun (xs : ByteArray) (i : Nat) => @LT.lt.{0} Nat instLTNat i (ByteArray.size xs))
+          ByteArray.instGetElemNatUInt8LtSize fun (xs : ByteArray) (i : Nat) => Nat.decLt i (ByteArray.size xs))
+        instInhabitedUInt8 bytes (@OfNat.ofNat.{0} Nat (nat_lit 0) (instOfNatNat (nat_lit 0)))))
+compile: ok: true
+NarrowProbes.addLocal: fun (bytes : ByteArray) =>
+  have value : UInt32 :=
+    UInt8.toUInt32
+      (@GetElem?.getElem!.{0, 0, 0} ByteArray Nat UInt8
+        (fun (xs : ByteArray) (i : Nat) => @LT.lt.{0} Nat instLTNat i (ByteArray.size xs))
+        (@instGetElem?OfGetElemOfDecidable.{0, 0, 0} ByteArray Nat UInt8
+          (fun (xs : ByteArray) (i : Nat) => @LT.lt.{0} Nat instLTNat i (ByteArray.size xs))
+          ByteArray.instGetElemNatUInt8LtSize fun (xs : ByteArray) (i : Nat) => Nat.decLt i (ByteArray.size xs))
+        instInhabitedUInt8 bytes (@OfNat.ofNat.{0} Nat (nat_lit 0) (instOfNatNat (nat_lit 0))));
+  @HAdd.hAdd.{0, 0, 0} UInt32 UInt32 UInt32 (@instHAdd.{0} UInt32 instAddUInt32)
+    (@OfNat.ofNat.{0} UInt32 (nat_lit 2139095040) (@UInt32.instOfNat (nat_lit 2139095040))) value
+compile: ok: true
+NarrowProbes.word: fun (bytes : ByteArray) =>
+  @HAdd.hAdd.{0, 0, 0} UInt64 UInt64 UInt64 (@instHAdd.{0} UInt64 instAddUInt64)
+    (@OfNat.ofNat.{0} UInt64 (nat_lit 9218868437227405312) (@UInt64.instOfNat (nat_lit 9218868437227405312)))
+    (UInt8.toUInt64
+      (@GetElem?.getElem!.{0, 0, 0} ByteArray Nat UInt8
+        (fun (xs : ByteArray) (i : Nat) => @LT.lt.{0} Nat instLTNat i (ByteArray.size xs))
+        (@instGetElem?OfGetElemOfDecidable.{0, 0, 0} ByteArray Nat UInt8
+          (fun (xs : ByteArray) (i : Nat) => @LT.lt.{0} Nat instLTNat i (ByteArray.size xs))
+          ByteArray.instGetElemNatUInt8LtSize fun (xs : ByteArray) (i : Nat) => Nat.decLt i (ByteArray.size xs))
+        instInhabitedUInt8 bytes (@OfNat.ofNat.{0} Nat (nat_lit 0) (instOfNatNat (nat_lit 0)))))
+compile: ok: true
+NarrowProbes.addByte: fun (x y : UInt8) => @HAdd.hAdd.{0, 0, 0} UInt8 UInt8 UInt8 (@instHAdd.{0} UInt8 instAddUInt8) x y
+compile: ok: true
+NarrowProbes.add32: fun (x y : UInt32) =>
+  @HAdd.hAdd.{0, 0, 0} UInt32 UInt32 UInt32 (@instHAdd.{0} UInt32 instAddUInt32) x y
+compile: ok: true

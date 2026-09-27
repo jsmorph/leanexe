@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "attemptOrder": [
+    "direct",
+    "composition",
+    "tactic",
+    "focused-guidance"
+  ],
+  "compositions": [],
+  "recipes": [
+    {
+      "recipeVersion": 1,
+      "functionIndex": 0,
+      "regionId": "function-0.length-dispatch-0",
+      "regionKind": "leanexe.array.length-dispatch.v1",
+      "applicability": "exact decoded instruction match",
+      "direct": {
+        "module": "Project.ProofKit.FixedArrayLengthDispatch",
+        "theorem": "Project.ProofKit.FixedArrayLengthDispatch.leProgram_spec",
+        "tactic": "wp_fixed_array_length_le_dispatch",
+        "invocation": "wp_fixed_array_length_le_dispatch 7, 8"
+      },
+      "supporting": [
+        {
+          "declaration": "Project.ProofKit.UInt64Array.At.lengthRead",
+          "purpose": "identify the represented input length"
+        },
+        {
+          "declaration": "Project.ProofKit.UInt64Array.At.encodedSize_eq",
+          "purpose": "relate the encoded length word to the fixed logical size"
+        },
+        {
+          "declaration": "Project.ProofKit.FixedArrayEqNode.branchPost",
+          "purpose": "preserve the enclosing branch continuation"
+        }
+      ],
+      "expectedPostcondition": "valid and invalid input-size branch obligations",
+      "guidance": [
+        "strategy.arrays",
+        "strategy.frames"
+      ]
+    }
+  ]
+}

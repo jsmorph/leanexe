@@ -1,0 +1,22 @@
+{
+  "formalSpecification": {
+    "summary": "Defined and verified the requested wrapping fold specification and conservative branch-specific heap bounds.",
+    "decisions": [
+      "The successful branch uses Array.foldl from a zero UInt64 accumulator.",
+      "heapReserveBytes is 64 for a singleton result and 56 for a fresh empty result."
+    ]
+  },
+  "leanProgram": {
+    "summary": "Implemented the guarded wrapping UInt64 sum with Array.foldl. The source check, compiler report, and WebAssembly compilation all succeeded.",
+    "decisions": [
+      "Inputs of at most eight elements produce a singleton array containing the wrapping sum.",
+      "Longer inputs produce an empty array."
+    ]
+  },
+  "artifactProof": {
+    "summary": "Proved artifact_behavior. The import check and ArtifactResult build succeed with no residual goals.",
+    "decisions": [
+      "Used an ArrayFold.foldPrefix loop invariant with a loop-carried wrapping UInt64 accumulator and decreasing input-index measure."
+    ]
+  }
+}

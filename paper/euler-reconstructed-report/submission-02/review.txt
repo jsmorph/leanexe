@@ -1,0 +1,7 @@
+Decision: accept
+
+Accepted.
+
+## Remarks
+
+- Requirement 9 and requirement 12, Terminology (§3.2): “Unlimited minmod reconstruction” leaves “unlimited” ambiguous because the construction already applies the minmod slope limiter.  The intended operation is minmod reconstruction with f = 1/2, before positivity limiting.  Use that description.

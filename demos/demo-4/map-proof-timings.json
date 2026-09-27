@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "metric": "stage-5-start-to-first-accepted-proof",
+  "artifactSha256": "c538d40936b426ba875b3dae1913e62ff00a44b34adff2adcd70922e5a4c95ff",
+  "acceptedSourceSha256": "bf07793985539b6c0a7e9076c97f836050c859b47b13ab3f70a3383270b29d56",
+  "runs": [
+    {
+      "telemetry": "map-proof-telemetry.json",
+      "totalMilliseconds": 103123.112,
+      "codexSessionMilliseconds": 66733.626,
+      "outerAcceptanceMilliseconds": 27687.958,
+      "independentlyVerified": true
+    },
+    {
+      "telemetry": "map-proof-r2-telemetry.json",
+      "totalMilliseconds": 144172.767,
+      "codexSessionMilliseconds": 80807.995,
+      "outerAcceptanceMilliseconds": 28271.969,
+      "independentlyVerified": true
+    },
+    {
+      "telemetry": "map-proof-r3-telemetry.json",
+      "totalMilliseconds": 109165.454,
+      "codexSessionMilliseconds": 69549.041,
+      "outerAcceptanceMilliseconds": 30611.672,
+      "independentlyVerified": true
+    }
+  ],
+  "distribution": {
+    "sampleSize": 3,
+    "medianMilliseconds": 109165.454,
+    "rangeMilliseconds": 41049.655,
+    "codexMedianMilliseconds": 69549.041,
+    "codexRangeMilliseconds": 14074.369,
+    "outerAcceptanceMedianMilliseconds": 28271.969,
+    "outerAcceptanceRangeMilliseconds": 2923.714
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "decision": "accepted",
+  "submission": "c3bded6415ea",
+  "paper": "2609.00011",
+  "version": 8,
+  "status_url": "http://127.0.0.1:8405/status/c3bded6415ea",
+  "paper_url": "http://127.0.0.1:8405/abs/2609.00011v8",
+  "remarks": [
+    "Requirement 12, Terminology and Relevance, \u00a74.2: \u201cPropositional extensionality identifies logically equivalent propositions,\u201d \u201cChoice selects an element from a type whose nonemptiness has been proved and supports classical reasoning,\u201d and \u201cQuotient soundness identifies quotient values represented by related elements\u201d provide textbook definitions of standard concepts.  Omit these definitions while retaining the axiom names, audit results, and comparison with native-evaluation assumptions."
+  ],
+  "title": "Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly",
+  "authors": "Codex GPT-6, Jamie Stephens",
+  "pdf_sha256": "62dacefb0fc5e3ab87e686c51550180c2c1267ce430b561aec24eb23176f3608",
+  "source_revision": "4360920c3060d1c625b1860229b5116804d177c8",
+  "subjects": [
+    "cs.PL",
+    "cs.LG"
+  ],
+  "pages": 13,
+  "review": "submission-08/review.txt",
+  "submission_history": [
+    {
+      "submission": "e1ff23dbf823",
+      "version": 1,
+      "decision": "accepted",
+      "remarks": 5
+    },
+    {
+      "submission": "80c8e0c5558f",
+      "version": 2,
+      "decision": "accepted",
+      "remarks": 1
+    },
+    {
+      "submission": "fe9053899519",
+      "version": 3,
+      "decision": "accepted",
+      "remarks": 1
+    },
+    {
+      "submission": "1660f1657e61",
+      "version": 4,
+      "decision": "accepted",
+      "remarks": 0
+    },
+    {
+      "submission": "53bc6892f7c1",
+      "version": 5,
+      "decision": "accepted",
+      "remarks": 0
+    },
+    {
+      "submission": "784d5d634d21",
+      "version": 6,
+      "decision": "accepted",
+      "remarks": 5
+    },
+    {
+      "submission": "24a492b4058e",
+      "version": 7,
+      "decision": "accepted",
+      "remarks": 1
+    },
+    {
+      "submission": "c3bded6415ea",
+      "version": 8,
+      "decision": "accepted",
+      "remarks": 1
+    }
+  ]
+}

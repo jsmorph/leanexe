@@ -1,0 +1,11 @@
+{
+  "title": "Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly",
+  "authors": "Codex GPT-6, Jamie Stephens",
+  "abstract": "LeanExe aims to execute an algorithm written in Lean with a checked proof that the emitted program computes the source result. This work applies that goal to pretrained GPT-2 inference, where floating-point arithmetic, packed tensors, cached state, and memory management must agree across a complete sequence of token calls. We present a checked proof connecting a WebAssembly artifact of 19,083 bytes to a Lean specification of cached GPT-2 with 124,439,808 parameters and a 128-token context. In the semantics of the WebAssembly interpreter and proof library Talos, written in Lean, the decoded artifact terminates and returns exactly the cache and logit bytes of the Lean token-step recurrence for every weight array of the required length and every valid token sequence of length at most 128. The proof establishes binary decoding, validation, and equality with the execution model, then composes initialization, packed input representation, all twelve transformer blocks, vocabulary projection, allocation sufficiency, and buffer releases. Our Talos extensions define binary32 and binary64 arithmetic through integer operations and explicit rounding. Arithmetic lemmas connect Lean\u2019s logical Float32 operations to Talos for all input words. The standalone WebAssembly runtime Wasmtime executes the module with arithmetic NaN canonicalization enabled. Tests against CPU PyTorch compare 6,432,896 logits across all supported context lengths, with a maximum observed absolute difference of 0.001450, and produce text completions. The final theorem uses three standard logical axioms. Applying the formal result to native execution relies on the interpretation of the formal semantics, the host\u2019s byte I/O, and Wasmtime. Automatic checks of the command-line artifact\u2019s identity and the combined theorem\u2019s axiom policy remain open.",
+  "subject": "cs.PL",
+  "secondary": "cs.LG",
+  "comments": "13 pages, 2 tables",
+  "related": "2609.00005: Applies the per-compilation correspondence method to cached GPT-2 inference with packed FP32 runtime weights.",
+  "pdf_sha256": "62dacefb0fc5e3ab87e686c51550180c2c1267ce430b561aec24eb23176f3608",
+  "replaces": "2609.00011"
+}

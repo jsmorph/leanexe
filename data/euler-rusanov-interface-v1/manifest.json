@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "dataset": "euler-rusanov-interface-v1",
+  "csvSchema": [
+    "case",
+    "rho_l_bits",
+    "u_l_bits",
+    "p_l_bits",
+    "rho_r_bits",
+    "u_r_bits",
+    "p_r_bits",
+    "status_u64",
+    "mass_bits",
+    "momentum_bits",
+    "energy_bits"
+  ],
+  "rowCount": 8,
+  "rowOrder": [
+    "sod_ll",
+    "sod_rr",
+    "sod_lr",
+    "sod_rl",
+    "moving_consistency",
+    "guard_min_to_max",
+    "guard_max_to_min",
+    "nan_rejected"
+  ],
+  "wordEncoding": {
+    "columns": [
+      "rho_l_bits",
+      "u_l_bits",
+      "p_l_bits",
+      "rho_r_bits",
+      "u_r_bits",
+      "p_r_bits",
+      "mass_bits",
+      "momentum_bits",
+      "energy_bits"
+    ],
+    "format": "lowercase fixed-width 16-digit hexadecimal without 0x",
+    "semantics": "raw IEEE 754 binary64 word"
+  },
+  "statusEncoding": {
+    "column": "status_u64",
+    "format": "minimal unsigned base-10 UInt64",
+    "accepted": "0",
+    "rejected": "1"
+  },
+  "registryEntry": "euler_rusanov",
+  "artifactManifest": "proofs/artifacts/euler_rusanov/145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546/manifest.json",
+  "wasmSha256": "145230bc0f956df81283fb37227c303de2c92e68842d38b985325dca467f6546",
+  "wasmByteLength": 1808,
+  "exportedFunction": "rusanovFluxCheckedBits",
+  "parameters": {
+    "gamma": "7/5",
+    "alpha": "7/4"
+  },
+  "roundingSemantics": "IEEE 754 binary64 round-to-nearest, ties-to-even",
+  "formalProofModule": "Project.EulerRusanov.InterfaceData",
+  "formalProofTheorem": "Project.EulerRusanov.InterfaceData.artifact_interfaceV1",
+  "generatorIdentity": {
+    "scheme": "leanexe-euler-rusanov-interface-generator-v1",
+    "sources": [
+      {
+        "path": "tools/euler-rusanov-interface.js",
+        "byteLength": 10125,
+        "sha256": "14d388f5962e944e3b123df790c7b3ff2d871490cba4c85151770408edbb3821"
+      },
+      {
+        "path": "tools/wasmtime-host.js",
+        "byteLength": 2342,
+        "sha256": "8e49c5b75d582f13104bd895edacbe87f41919806186f3df43bc2588b87e83b6"
+      }
+    ],
+    "sha256": "d47e334f8eb8f63bbbc4af87266e6d2465535ad5a51fa81c439d84ffdf43261d"
+  },
+  "generatorRevision": "sha256:d47e334f8eb8f63bbbc4af87266e6d2465535ad5a51fa81c439d84ffdf43261d",
+  "csvFile": "euler-rusanov-interface-v1.csv",
+  "csvByteLength": 1444,
+  "csvSha256": "65ff256da20d19544366083596f20b53c4fb37798209c1e7e16c2cfcee4d3808",
+  "encoding": "UTF-8",
+  "lineEndings": "LF"
+}

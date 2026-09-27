@@ -1,0 +1,652 @@
+{
+  "date": "2026-09-26",
+  "engine": "Wasmtime 44.0.0",
+  "sourceRevision": "820b39589a66732ae76e05cde6ee4ffbd08e1e69",
+  "cases": [
+    {
+      "id": "example",
+      "title": "Five-station example",
+      "terrain": [
+        0,
+        20,
+        80,
+        40,
+        0
+      ],
+      "output": [
+        0,
+        0,
+        145,
+        10,
+        180,
+        15,
+        165,
+        10,
+        0,
+        0
+      ],
+      "nativeOutput": [
+        0,
+        0,
+        145,
+        10,
+        180,
+        15,
+        165,
+        10,
+        0,
+        0
+      ],
+      "nativeMatchesWasm": true,
+      "segments": [
+        {
+          "durationSeconds": 20,
+          "ticks": 16800
+        },
+        {
+          "durationSeconds": 8,
+          "ticks": 6720
+        },
+        {
+          "durationSeconds": 8,
+          "ticks": 6720
+        },
+        {
+          "durationSeconds": 20,
+          "ticks": 16800
+        }
+      ],
+      "totalTicks": 47040,
+      "totalSeconds": 56,
+      "excess": 50
+    },
+    {
+      "id": "flat",
+      "title": "Flat terrain",
+      "terrain": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "output": [
+        0,
+        0,
+        100,
+        10,
+        100,
+        15,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        15,
+        100,
+        10,
+        0,
+        0
+      ],
+      "nativeOutput": [
+        0,
+        0,
+        100,
+        10,
+        100,
+        15,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        20,
+        100,
+        15,
+        100,
+        10,
+        0,
+        0
+      ],
+      "nativeMatchesWasm": true,
+      "segments": [
+        {
+          "durationSeconds": 20,
+          "ticks": 16800
+        },
+        {
+          "durationSeconds": 8,
+          "ticks": 6720
+        },
+        {
+          "durationSeconds": 5.714285714285714,
+          "ticks": 4800
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5.714285714285714,
+          "ticks": 4800
+        },
+        {
+          "durationSeconds": 8,
+          "ticks": 6720
+        },
+        {
+          "durationSeconds": 20,
+          "ticks": 16800
+        }
+      ],
+      "totalTicks": 90240,
+      "totalSeconds": 107.42857142857143,
+      "excess": 0
+    },
+    {
+      "id": "plateau",
+      "title": "Broad plateau",
+      "terrain": [
+        0,
+        0,
+        0,
+        20,
+        60,
+        100,
+        100,
+        100,
+        100,
+        100,
+        60,
+        20,
+        0,
+        0,
+        0
+      ],
+      "output": [
+        0,
+        0,
+        125,
+        10,
+        150,
+        15,
+        170,
+        20,
+        185,
+        20,
+        200,
+        20,
+        200,
+        20,
+        200,
+        20,
+        200,
+        20,
+        200,
+        20,
+        185,
+        20,
+        170,
+        20,
+        150,
+        15,
+        125,
+        10,
+        0,
+        0
+      ],
+      "nativeOutput": [
+        0,
+        0,
+        125,
+        10,
+        150,
+        15,
+        170,
+        20,
+        185,
+        20,
+        200,
+        20,
+        200,
+        20,
+        200,
+        20,
+        200,
+        20,
+        200,
+        20,
+        185,
+        20,
+        170,
+        20,
+        150,
+        15,
+        125,
+        10,
+        0,
+        0
+      ],
+      "nativeMatchesWasm": true,
+      "segments": [
+        {
+          "durationSeconds": 20,
+          "ticks": 16800
+        },
+        {
+          "durationSeconds": 8,
+          "ticks": 6720
+        },
+        {
+          "durationSeconds": 5.714285714285714,
+          "ticks": 4800
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5.714285714285714,
+          "ticks": 4800
+        },
+        {
+          "durationSeconds": 8,
+          "ticks": 6720
+        },
+        {
+          "durationSeconds": 20,
+          "ticks": 16800
+        }
+      ],
+      "totalTicks": 90240,
+      "totalSeconds": 107.42857142857143,
+      "excess": 300
+    },
+    {
+      "id": "hill",
+      "title": "Rounded hill",
+      "terrain": [
+        0,
+        0,
+        10,
+        30,
+        60,
+        100,
+        130,
+        140,
+        130,
+        100,
+        60,
+        30,
+        10,
+        0,
+        0
+      ],
+      "output": [
+        0,
+        0,
+        175,
+        10,
+        210,
+        15,
+        230,
+        20,
+        235,
+        20,
+        250,
+        20,
+        255,
+        20,
+        240,
+        20,
+        255,
+        20,
+        250,
+        20,
+        235,
+        20,
+        230,
+        20,
+        210,
+        15,
+        175,
+        10,
+        0,
+        0
+      ],
+      "nativeOutput": [
+        0,
+        0,
+        175,
+        10,
+        210,
+        15,
+        230,
+        20,
+        235,
+        20,
+        250,
+        20,
+        255,
+        20,
+        240,
+        20,
+        255,
+        20,
+        250,
+        20,
+        235,
+        20,
+        230,
+        20,
+        210,
+        15,
+        175,
+        10,
+        0,
+        0
+      ],
+      "nativeMatchesWasm": true,
+      "segments": [
+        {
+          "durationSeconds": 20,
+          "ticks": 16800
+        },
+        {
+          "durationSeconds": 8,
+          "ticks": 6720
+        },
+        {
+          "durationSeconds": 5.714285714285714,
+          "ticks": 4800
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5.714285714285714,
+          "ticks": 4800
+        },
+        {
+          "durationSeconds": 8,
+          "ticks": 6720
+        },
+        {
+          "durationSeconds": 20,
+          "ticks": 16800
+        }
+      ],
+      "totalTicks": 90240,
+      "totalSeconds": 107.42857142857143,
+      "excess": 850
+    },
+    {
+      "id": "ridges",
+      "title": "Repeated ridges",
+      "terrain": [
+        0,
+        0,
+        50,
+        110,
+        40,
+        0,
+        80,
+        140,
+        70,
+        0,
+        60,
+        120,
+        50,
+        0,
+        0
+      ],
+      "output": [
+        0,
+        0,
+        175,
+        10,
+        200,
+        15,
+        210,
+        20,
+        215,
+        20,
+        225,
+        20,
+        230,
+        20,
+        240,
+        20,
+        245,
+        20,
+        250,
+        20,
+        235,
+        20,
+        220,
+        20,
+        200,
+        15,
+        175,
+        10,
+        0,
+        0
+      ],
+      "nativeOutput": [
+        0,
+        0,
+        175,
+        10,
+        200,
+        15,
+        210,
+        20,
+        215,
+        20,
+        225,
+        20,
+        230,
+        20,
+        240,
+        20,
+        245,
+        20,
+        250,
+        20,
+        235,
+        20,
+        220,
+        20,
+        200,
+        15,
+        175,
+        10,
+        0,
+        0
+      ],
+      "nativeMatchesWasm": true,
+      "segments": [
+        {
+          "durationSeconds": 20,
+          "ticks": 16800
+        },
+        {
+          "durationSeconds": 8,
+          "ticks": 6720
+        },
+        {
+          "durationSeconds": 5.714285714285714,
+          "ticks": 4800
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5,
+          "ticks": 4200
+        },
+        {
+          "durationSeconds": 5.714285714285714,
+          "ticks": 4800
+        },
+        {
+          "durationSeconds": 8,
+          "ticks": 6720
+        },
+        {
+          "durationSeconds": 20,
+          "ticks": 16800
+        }
+      ],
+      "totalTicks": 90240,
+      "totalSeconds": 107.42857142857143,
+      "excess": 800
+    }
+  ]
+}
