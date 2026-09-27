@@ -1,6 +1,6 @@
 import LeanExe.Source.ScalarRangeExitSupported
 import LeanExe.Source.ScalarBooleanLet
-import LeanExe.Source.ScalarBooleanCall
+import LeanExe.Source.ScalarBooleanFunctionChoice
 
 namespace LeanExe.Source.Scalar.BooleanRange
 
@@ -23,6 +23,16 @@ def choiceExpr (type : BooleanType) (condition evidence yes no : Lean.Expr) : Le
 
 /-- A word-valued loop followed by a Boolean result computation. -/
 inductive Eval : Lean.Expr → List Value → Bool → Prop where
+  | wordFunctionChoice (shape : BooleanFunctionBinding) (choice : BooleanFunctionChoice)
+      (condition : EvalWith (decision choice.condition choice.evidence) values (Bool.toUInt64 flag))
+      (branch : Eval (shape.bodyExpr parameterName (.const ``UInt64 []) value
+        (if flag then choice.yes else choice.no)) values result) :
+      Eval (shape.bodyExpr parameterName (.const ``UInt64 []) value choice.expr) values result
+  | booleanFunctionChoice (shape : BooleanFunctionBinding) (choice : BooleanFunctionChoice)
+      (condition : EvalWith (decision choice.condition choice.evidence) values (Bool.toUInt64 flag))
+      (branch : Eval (shape.bodyExpr parameterName (.const ``Bool []) value
+        (if flag then choice.yes else choice.no)) values result) :
+      Eval (shape.bodyExpr parameterName (.const ``Bool []) value choice.expr) values result
   | applyWord (shape : BooleanFunctionBinding) (call : BooleanCall false)
       (argument : EvalWith a values x) (body : Eval b (.word x :: values) result) :
       Eval (shape.callExpr call parameterName (.const ``UInt64 []) a b) values result
@@ -117,6 +127,16 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
 
 /-- Source support checks both the loop and its Boolean continuation. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
+  | wordFunctionChoice (shape : BooleanFunctionBinding) (choice : BooleanFunctionChoice)
+      (condition : SupportedWith types (decision choice.condition choice.evidence))
+      (yesBranch : Supported types (shape.bodyExpr parameterName (.const ``UInt64 []) value choice.yes))
+      (noBranch : Supported types (shape.bodyExpr parameterName (.const ``UInt64 []) value choice.no)) :
+      Supported types (shape.bodyExpr parameterName (.const ``UInt64 []) value choice.expr)
+  | booleanFunctionChoice (shape : BooleanFunctionBinding) (choice : BooleanFunctionChoice)
+      (condition : SupportedWith types (decision choice.condition choice.evidence))
+      (yesBranch : Supported types (shape.bodyExpr parameterName (.const ``Bool []) value choice.yes))
+      (noBranch : Supported types (shape.bodyExpr parameterName (.const ``Bool []) value choice.no)) :
+      Supported types (shape.bodyExpr parameterName (.const ``Bool []) value choice.expr)
   | applyWord (shape : BooleanFunctionBinding) (call : BooleanCall false)
       (argument : SupportedWith types a) (body : Supported (.word :: types) b) :
       Supported types (shape.callExpr call parameterName (.const ``UInt64 []) a b)
@@ -211,6 +231,26 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (supported : Supported types source) (values : List Value)
     (typed : values.map Value.kind = types) : ∃ flag, Eval source values flag := by
   induction supported generalizing values with
+  | wordFunctionChoice shape choice condition _ _ yesIH noIH =>
+    obtain ⟨encoded, evaluated⟩ := condition.evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    cases flag with
+    | false =>
+      obtain ⟨result, branch⟩ := noIH values typed
+      exact ⟨result, .wordFunctionChoice shape choice evaluated branch⟩
+    | true =>
+      obtain ⟨result, branch⟩ := yesIH values typed
+      exact ⟨result, .wordFunctionChoice shape choice evaluated branch⟩
+  | booleanFunctionChoice shape choice condition _ _ yesIH noIH =>
+    obtain ⟨encoded, evaluated⟩ := condition.evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    cases flag with
+    | false =>
+      obtain ⟨result, branch⟩ := noIH values typed
+      exact ⟨result, .booleanFunctionChoice shape choice evaluated branch⟩
+    | true =>
+      obtain ⟨result, branch⟩ := yesIH values typed
+      exact ⟨result, .booleanFunctionChoice shape choice evaluated branch⟩
   | applyWord shape call argument _ ih =>
     obtain ⟨x, hx⟩ := argument.evaluates values typed
     obtain ⟨result, body⟩ := ih (.word x :: values) (by simp [Value.kind, typed])

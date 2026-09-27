@@ -107,50 +107,75 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
         · exact total binding member)
     exact ⟨flag, .letBinaryFn type (fun x y => (native x y).choose_spec) evaluated, meaning⟩
   | case11 => contradiction
-  | case12 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary notWord type parsed enclosingIH directIH =>
-    rcases scalarBooleanRangeContinuation_success compiled with
-      ⟨expression, checked, sameValue, validated, emitted⟩ | ⟨call, argument, bound, sameBody, validated, emitted⟩
+  | case12 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary notWord type parsed enclosingIH directIH branchIH =>
+    rcases scalarBooleanRangeCompleteContinuation_success compiled with previous |
+      ⟨view, parsedChoice, guard, first, second, matched, ht, he, samePlan⟩
+    · rcases scalarBooleanRangeContinuation_success previous with
+        ⟨expression, checked, sameValue, validated, emitted⟩ | ⟨call, argument, bound, sameBody, validated, emitted⟩
+      · have sameType := booleanType_sound parsed
+        subst resultType
+        subst value
+        have supported := extractScalarExprWith_supported validated
+        have native : ∀ x : UInt64, ∃ flag : Bool,
+            EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.word x :: values) flag.toUInt64 := by
+          intro x
+          obtain ⟨encoded, evaluated⟩ := supported.evaluates (.word x :: values)
+            (by simp [Value.kind, booleanRangeInput, ScalarBinding.kind, typed])
+          obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+          exact ⟨flag, evaluated⟩
+        let f := fun x => (native x).choose
+        obtain ⟨flag, evaluated, meaning⟩ := enclosingIH _ (.predicateFunction f :: values) emitted
+          (by simp [Value.kind, booleanRangeInput, booleanRangePredicate, ScalarBinding.kind, typed]) (by
+            intro accumulator index stop exitFlag
+            apply (bindings accumulator index stop exitFlag).cons
+            intro argument x target hx hc
+            exact extractScalarExprWith_correct ((native x).choose_spec) hc
+              ((bindings accumulator index stop exitFlag).cons hx)) (by
+            intro binding member
+            rcases List.mem_cons.mp member with rfl | member
+            · intro argument
+              apply extractScalarExprWith_accepts supported (.word argument :: locals)
+              · rfl
+              · intro binding member
+                rcases List.mem_cons.mp member with rfl | member
+                · trivial
+                · exact total binding member
+            · exact total binding member)
+        exact ⟨flag, .letPredicateFn expression type (fun x => (native x).choose_spec) evaluated, meaning⟩
+      · have sameType := booleanType_sound parsed
+        subst resultType
+        subst body
+        obtain ⟨x, hx⟩ := (extractScalarExprWith_supported validated).evaluates values typed
+        obtain ⟨flag, evaluated, meaning⟩ := directIH _ (.word x :: values) emitted
+          (by simp [Value.kind, booleanRangeInput, ScalarBinding.kind, typed]) (bindings.bind hx validated) (by
+            intro binding member
+            rcases List.mem_cons.mp member with rfl | member
+            · trivial
+            · exact total binding member)
+        exact ⟨flag, .applyWord ⟨name, typeName, typeBi, paramBi, type, nondep⟩ call hx evaluated, meaning⟩
     · have sameType := booleanType_sound parsed
       subst resultType
-      subst value
-      have supported := extractScalarExprWith_supported validated
-      have native : ∀ x : UInt64, ∃ flag : Bool,
-          EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.word x :: values) flag.toUInt64 := by
-        intro x
-        obtain ⟨encoded, evaluated⟩ := supported.evaluates (.word x :: values)
-          (by simp [Value.kind, booleanRangeInput, ScalarBinding.kind, typed])
-        obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
-        exact ⟨flag, evaluated⟩
-      let f := fun x => (native x).choose
-      obtain ⟨flag, evaluated, meaning⟩ := enclosingIH _ (.predicateFunction f :: values) emitted
-        (by simp [Value.kind, booleanRangeInput, booleanRangePredicate, ScalarBinding.kind, typed]) (by
-          intro accumulator index stop exitFlag
-          apply (bindings accumulator index stop exitFlag).cons
-          intro argument x target hx hc
-          exact extractScalarExprWith_correct ((native x).choose_spec) hc
-            ((bindings accumulator index stop exitFlag).cons hx)) (by
-          intro binding member
-          rcases List.mem_cons.mp member with rfl | member
-          · intro argument
-            apply extractScalarExprWith_accepts supported (.word argument :: locals)
-            · rfl
-            · intro binding member
-              rcases List.mem_cons.mp member with rfl | member
-              · trivial
-              · exact total binding member
-          · exact total binding member)
-      exact ⟨flag, .letPredicateFn expression type (fun x => (native x).choose_spec) evaluated, meaning⟩
-    · have sameType := booleanType_sound parsed
-      subst resultType
+      have shape := booleanFunctionChoice_sound parsedChoice
       subst body
-      obtain ⟨x, hx⟩ := (extractScalarExprWith_supported validated).evaluates values typed
-      obtain ⟨flag, evaluated, meaning⟩ := directIH _ (.word x :: values) emitted
-        (by simp [Value.kind, booleanRangeInput, ScalarBinding.kind, typed]) (bindings.bind hx validated) (by
-          intro binding member
-          rcases List.mem_cons.mp member with rfl | member
-          · trivial
-          · exact total binding member)
-      exact ⟨flag, .applyWord ⟨name, typeName, typeBi, paramBi, type, nondep⟩ call hx evaluated, meaning⟩
+      subst plan
+      obtain ⟨encoded, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      have stable : ∀ accumulator index stop done,
+          guard.ScalarEval (LeanExe.IR.rangeExitStore saved accumulator index stop done) flag.toUInt64
+            (LeanExe.IR.rangeExitStore saved accumulator index stop done) := by
+        intro accumulator index stop done
+        exact extractScalarExprWith_correct evaluated matched (bindings accumulator index stop done)
+      cases flag with
+      | false =>
+        obtain ⟨result, branch, meaning⟩ := branchIH view.no (booleanFunctionChoice_sizes parsedChoice).2
+          values he typed bindings total
+        exact ⟨result, .wordFunctionChoice ⟨name, typeName, typeBi, paramBi, type, nondep⟩ view evaluated branch,
+          ScalarRangeExitPlan.choice_meaning stable meaning⟩
+      | true =>
+        obtain ⟨result, branch, meaning⟩ := branchIH view.yes (booleanFunctionChoice_sizes parsedChoice).1
+          values ht typed bindings total
+        exact ⟨result, .wordFunctionChoice ⟨name, typeName, typeBi, paramBi, type, nondep⟩ view evaluated branch,
+          ScalarRangeExitPlan.choice_meaning stable meaning⟩
   | case13 => contradiction
   | case14 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary type parsed checked validated ih =>
     have same := scalarResultType_sound parsed
@@ -178,55 +203,80 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
         · exact total binding member)
     exact ⟨flag, .letFn type (fun x => (native x).choose_spec) evaluated, meaning⟩
   | case15 => contradiction
-  | case16 locals name typeName resultType typeBi paramName value paramBi body nondep notWord type parsed enclosingIH directIH =>
-    rcases scalarBooleanRangeContinuation_success compiled with
-      ⟨expression, checked, sameValue, validated, emitted⟩ | ⟨call, argument, bound, sameBody, validated, emitted⟩
+  | case16 locals name typeName resultType typeBi paramName value paramBi body nondep notWord type parsed enclosingIH directIH branchIH =>
+    rcases scalarBooleanRangeCompleteContinuation_success compiled with previous |
+      ⟨view, parsedChoice, guard, first, second, matched, ht, he, samePlan⟩
+    · rcases scalarBooleanRangeContinuation_success previous with
+        ⟨expression, checked, sameValue, validated, emitted⟩ | ⟨call, argument, bound, sameBody, validated, emitted⟩
+      · have sameType := booleanType_sound parsed
+        subst resultType
+        subst value
+        have supported := extractScalarExprWith_supported validated
+        have native : ∀ x : Bool, ∃ flag : Bool,
+            EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.boolean x :: values) flag.toUInt64 := by
+          intro x
+          obtain ⟨encoded, evaluated⟩ := supported.evaluates (.boolean x :: values)
+            (by simp [Value.kind, booleanRangeInput, ScalarBinding.kind, typed])
+          obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+          exact ⟨flag, evaluated⟩
+        let f := fun x => (native x).choose
+        obtain ⟨flag, evaluated, meaning⟩ := enclosingIH _ (.booleanPredicateFunction f :: values) emitted
+          (by simp [Value.kind, booleanRangeInput, booleanRangePredicate, ScalarBinding.kind, typed]) (by
+            intro accumulator index stop exitFlag
+            apply (bindings accumulator index stop exitFlag).cons
+            intro argument x target hx hc
+            exact extractScalarExprWith_correct ((native x).choose_spec) hc
+              ((bindings accumulator index stop exitFlag).cons hx)) (by
+            intro binding member
+            rcases List.mem_cons.mp member with rfl | member
+            · intro argument
+              apply extractScalarExprWith_accepts supported (.boolean argument :: locals)
+              · rfl
+              · intro binding member
+                rcases List.mem_cons.mp member with rfl | member
+                · trivial
+                · exact total binding member
+            · exact total binding member)
+        exact ⟨flag, .letBooleanPredicateFn expression type (fun x => (native x).choose_spec) evaluated, meaning⟩
+      · have sameType := booleanType_sound parsed
+        subst resultType
+        subst body
+        obtain ⟨encoded, hx⟩ := (extractScalarExprWith_supported validated).evaluates values typed
+        obtain ⟨flag, rfl⟩ := hx.booleanConversion_result
+        have extended : RangeExitBindingsMatch (.boolean bound :: locals) (.boolean flag :: values) saved := by
+          intro accumulator index stop done
+          exact (bindings accumulator index stop done).cons
+            (extractScalarExprWith_correct hx validated (bindings accumulator index stop done))
+        obtain ⟨result, evaluated, meaning⟩ := directIH _ (.boolean flag :: values) emitted
+          (by simp [Value.kind, booleanRangeInput, ScalarBinding.kind, typed]) extended (by
+            intro binding member
+            rcases List.mem_cons.mp member with rfl | member
+            · trivial
+            · exact total binding member)
+        exact ⟨result, .applyBoolean ⟨name, typeName, typeBi, paramBi, type, nondep⟩ call hx evaluated, meaning⟩
     · have sameType := booleanType_sound parsed
       subst resultType
-      subst value
-      have supported := extractScalarExprWith_supported validated
-      have native : ∀ x : Bool, ∃ flag : Bool,
-          EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.boolean x :: values) flag.toUInt64 := by
-        intro x
-        obtain ⟨encoded, evaluated⟩ := supported.evaluates (.boolean x :: values)
-          (by simp [Value.kind, booleanRangeInput, ScalarBinding.kind, typed])
-        obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
-        exact ⟨flag, evaluated⟩
-      let f := fun x => (native x).choose
-      obtain ⟨flag, evaluated, meaning⟩ := enclosingIH _ (.booleanPredicateFunction f :: values) emitted
-        (by simp [Value.kind, booleanRangeInput, booleanRangePredicate, ScalarBinding.kind, typed]) (by
-          intro accumulator index stop exitFlag
-          apply (bindings accumulator index stop exitFlag).cons
-          intro argument x target hx hc
-          exact extractScalarExprWith_correct ((native x).choose_spec) hc
-            ((bindings accumulator index stop exitFlag).cons hx)) (by
-          intro binding member
-          rcases List.mem_cons.mp member with rfl | member
-          · intro argument
-            apply extractScalarExprWith_accepts supported (.boolean argument :: locals)
-            · rfl
-            · intro binding member
-              rcases List.mem_cons.mp member with rfl | member
-              · trivial
-              · exact total binding member
-          · exact total binding member)
-      exact ⟨flag, .letBooleanPredicateFn expression type (fun x => (native x).choose_spec) evaluated, meaning⟩
-    · have sameType := booleanType_sound parsed
-      subst resultType
+      have shape := booleanFunctionChoice_sound parsedChoice
       subst body
-      obtain ⟨encoded, hx⟩ := (extractScalarExprWith_supported validated).evaluates values typed
-      obtain ⟨flag, rfl⟩ := hx.booleanConversion_result
-      have extended : RangeExitBindingsMatch (.boolean bound :: locals) (.boolean flag :: values) saved := by
+      subst plan
+      obtain ⟨encoded, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      have stable : ∀ accumulator index stop done,
+          guard.ScalarEval (LeanExe.IR.rangeExitStore saved accumulator index stop done) flag.toUInt64
+            (LeanExe.IR.rangeExitStore saved accumulator index stop done) := by
         intro accumulator index stop done
-        exact (bindings accumulator index stop done).cons
-          (extractScalarExprWith_correct hx validated (bindings accumulator index stop done))
-      obtain ⟨result, evaluated, meaning⟩ := directIH _ (.boolean flag :: values) emitted
-        (by simp [Value.kind, booleanRangeInput, ScalarBinding.kind, typed]) extended (by
-          intro binding member
-          rcases List.mem_cons.mp member with rfl | member
-          · trivial
-          · exact total binding member)
-      exact ⟨result, .applyBoolean ⟨name, typeName, typeBi, paramBi, type, nondep⟩ call hx evaluated, meaning⟩
+        exact extractScalarExprWith_correct evaluated matched (bindings accumulator index stop done)
+      cases flag with
+      | false =>
+        obtain ⟨result, branch, meaning⟩ := branchIH view.no (booleanFunctionChoice_sizes parsedChoice).2
+          values he typed bindings total
+        exact ⟨result, .booleanFunctionChoice ⟨name, typeName, typeBi, paramBi, type, nondep⟩ view evaluated branch,
+          ScalarRangeExitPlan.choice_meaning stable meaning⟩
+      | true =>
+        obtain ⟨result, branch, meaning⟩ := branchIH view.yes (booleanFunctionChoice_sizes parsedChoice).1
+          values ht typed bindings total
+        exact ⟨result, .booleanFunctionChoice ⟨name, typeName, typeBi, paramBi, type, nondep⟩ view evaluated branch,
+          ScalarRangeExitPlan.choice_meaning stable meaning⟩
   | case17 => contradiction
   | case18 locals name typeName resultType typeBi paramName value paramBi body nondep type parsed checked validated ih =>
     have same := scalarResultType_sound parsed
