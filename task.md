@@ -695,18 +695,21 @@ comparisons, 77,736 invalid-input checks and 2,528 controls. The native corpus
 contains 1407 declarations. Evidence is in
 [the proposition-let relation archive](proofs/compiler/boolean-proposition-let-relation-2026-09-27/README.md).
 
-Current capability: local predicate declarations directly inside Boolean
-conversions and conditions. Source totality, parsing, scalar/step correctness,
-acceptance and IR invariants pass. Public native/IR tests pass 180 comparisons,
-including loop break/continue and final results. Raw scalar and step syntax tests
-pass 3,136 value/exit comparisons, 2,176 invalid-input checks and 64 controls.
-The expanded scalar converter can select the existing scalar fast path for
-previously admitted public Boolean helpers; their explicit range plans still
-produce the same results. The prior plan-identity test now checks execution of
-both paths and unused-helper controls. The general source-to-WASM proof and all nineteen axiom audits pass (3,363
-build targets). Native/V8 execution remains to run; its 54-declaration group
-includes six prior public-helper cases that can change compilation paths. General Id.run-wrapped
-scopes follow this increment.
+Local UInt64-to-Bool and Bool-to-Bool helper declarations directly inside Boolean
+conversions and conditions are complete. Source totality, parsing, scalar/step
+correctness, acceptance, IR invariants and the general source-to-WASM theorem
+pass, with all nineteen audits. Native Lean/V8 agree on 993 inputs across
+54 declarations, including 25 ranges. Evidence is in
+[the inner-helper archive](proofs/compiler/boolean-inner-helper-2026-09-27/README.md).
+The selected group contains 54 declarations; 40 prior modules retain identical
+bytes and 4 changed. New tests pass 3,316 comparisons, 2,176 invalid-input
+checks and 64 controls. Prior tests pass 123,360 comparisons, 78,424 invalid-input
+checks and 4,448 controls. The native corpus contains 1417 declarations.
+
+Current capability: general Id.run/pure wrappers around helper scopes, confirmed
+by the original rejection fixture. Preserve exact wrapper annotations and
+standard instances, then connect recursive Boolean conversion through the
+existing condition and step proofs.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
