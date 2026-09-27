@@ -19,14 +19,19 @@ Checked in Lean:
   call trees. Primitive implementations carry their own correctness premise.
 - `Project.Core.Module.pure_correct`: the pure theorem applies directly to the
   compiler's output module and preserves the entire caller store.
-- `Project.Core.ByteMemory`: native ByteArray reads and writes correspond to
-  Talos byte-memory operations, under address bounds.
+- `Project.Core.Validity`: source variable bounds and call arities imply valid
+  compiler output; the proof permits additional proved runtime functions.
+- `Project.Core.MemoryRuntime`: native StateM ByteArray read, write, size and
+  grow operations have concrete Talos implementations. The compiler invocation
+  theorem uses these implementations, with no assumed primitive correctness.
+  Reads outside memory return zero; writes outside memory leave it unchanged.
+  Growth appends zeros or returns failure without changing memory.
 
 Remaining work:
 
 - Generate kernel-checked native correspondence automatically from ordinary Lean
   definitions, using Lean's equation and functional-induction theorems.
-- Complete the generic typing proof and encoder readiness obligations.
+- Finish automatic source checks and encoder readiness obligations.
 - Connect native data and memory operations, including growth, to the frontend.
 - Check representative recursive and looping programs through the complete path.
 
