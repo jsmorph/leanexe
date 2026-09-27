@@ -9,7 +9,7 @@ saved results and early exits. Unused bodies are checked even in empty ranges.
 - Native Lean/V8 agree on 1,595 inputs across 82 declarations, including 46 ranges.
 - 74 prior modules retain identical bytes; 0 changed.
 - New tests pass 9,408 native/IR comparisons, 17,664 invalid-input checks and 384 admission controls.
-- Prior tests pass 20,042 comparisons, 29,520 invalid-input checks and 288 admission controls.
+- Prior tests pass 20,042 comparisons, 29,524 invalid-input checks and 288 admission controls.
 - All six fixed probes compile; five already compiled before this extension.
 - The native corpus contains 1,691 declarations.
 
