@@ -1,0 +1,12 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+BooleanHelperEqualityProbe.booleanHelperEqualityLeft: true
+BooleanHelperEqualityProbe.booleanHelperEqualityRight: true
+BooleanHelperEqualityProbe.booleanHelperEqualityBoth: true
+BooleanHelperEqualityProbe.booleanHelperEqualityDependent: true
+BooleanHelperEqualityProbe.booleanHelperEqualityNested: true
+BooleanHelperEqualityProbe.booleanHelperEqualityUnused: true
+BooleanHelperEqualityProbe.rangeHelperEqualityStep: true
+BooleanHelperEqualityProbe.rangeHelperEqualityExit: true
+BooleanHelperEqualityProbe.rangeHelperEqualityContinue: true
+BooleanHelperEqualityProbe.rangeHelperEqualityTail: true
