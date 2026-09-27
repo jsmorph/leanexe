@@ -22,7 +22,7 @@ theorem protectedMatrix_exact (env : HostEnv Unit) (initial : Store Unit) (heap 
       (fun final values => ∃ finalHeap node,
         values = [.i64 node.root, .i64 node.root] ∧ finalHeap.At final ∧
         finalHeap.OwnsWords final node (protectedMatrix input point) ∧ heap.Frame initial finalHeap final ∧
-        OutputBudget final finalHeap remaining pageLimit Project.Beck.«module») := by
+        FreshFor heap node ∧ OutputBudget final finalHeap remaining pageLimit Project.Beck.«module») := by
   have space := budget.bump 8 (by change 56 ≤ 56 + 448 * input.jobs * input.categories + remaining; omega)
   have emptyFresh := allocated_fresh heap heap initial initial (Heap.Frame.refl heap initial) 8 (fun h => (space h).1.le)
   refine TerminatesWith.of_wp_entry_for (f := func19Def) rfl ?_
@@ -41,6 +41,10 @@ theorem protectedMatrix_exact (env : HostEnv Unit) (initial : Store Unit) (heap 
     (emptyFrame.words inputProtected inputArray) (emptyFrame.protects _ _ inputProtected)
     pointSize inputSize jobs categories overlap emptyBudget
   intro middle current node currentValid currentOwned currentFrame active currentBudget saved tail after
+  have fresh : FreshFor heap node := by
+    rcases active with rfl | fresh
+    · exact emptyFresh
+    · exact fun lower upper protectedRegion => fresh lower upper (emptyFrame.protects _ _ protectedRegion)
   have separated : node = allocatedNode heap.top 8 heap.nodes ∨
       regionsDisjoint (allocatedNode heap.top 8 heap.nodes).region node.region := by
     rcases active with same | fresh
@@ -56,7 +60,7 @@ theorem protectedMatrix_exact (env : HostEnv Unit) (initial : Store Unit) (heap 
     currentValid (currentFrame.ownsWords currentValid emptyOwned) currentOwned (emptyFrame.trans currentFrame)
     emptyFresh separated currentBudget
   intro final finalHeap finalValid finalOwned finalFrame finalBudget frame values
-  exact ⟨finalHeap, node, by simp [values, func19Def, Wasm.Function.numParams, pointValues, inputValues], finalValid, finalOwned, finalFrame, finalBudget⟩
+  exact ⟨finalHeap, node, by simp [values, func19Def, Wasm.Function.numParams, pointValues, inputValues], finalValid, finalOwned, finalFrame, fresh, finalBudget⟩
 
 #print axioms protectedMatrix_exact
 
