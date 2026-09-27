@@ -8188,6 +8188,101 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def rangePredicateOuterWordFromBoolean (count seed : UInt64) : UInt64 :=
+  let f := fun n : UInt64 => (let g := fun b : Bool => b || n == seed; g (count == 0) && g (n % 3 == 0))
+  let flag := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if f a then break
+      a := a + i.toUInt64 + 1
+    return f a
+  if flag then seed + count else seed * 3
+
+def rangePredicateOuterBooleanFromBoolean (count seed : UInt64) : UInt64 :=
+  let f := fun b : Bool => (let g := fun n : UInt64 => n == seed || b; g count && g 0)
+  let flag := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if f (a == 0) then break
+      a := a + i.toUInt64 + 1
+    return f (a == seed)
+  if flag then seed + count else seed * 3
+
+def rangePredicateOuterWordConditional (count seed : UInt64) : UInt64 :=
+  let f := fun n : UInt64 => (let g := fun b : Bool => b || n == seed; g (count == 0) && g (n % 3 == 0))
+  if f seed then
+    let flag := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if f a then break
+        a := a + i.toUInt64 + 1
+      return f a
+    if flag then seed + count else seed * 3
+  else count + seed
+
+def rangePredicateOuterBooleanConditional (count seed : UInt64) : UInt64 :=
+  let f := fun b : Bool => (let g := fun n : UInt64 => n == seed || b; g count && g 0)
+  if f (seed == 0) then
+    let flag := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if f (a == 0) then break
+        a := a + i.toUInt64 + 1
+      return f (a == seed)
+    if flag then seed + count else seed * 3
+  else count + seed
+
+def rangePredicateOuterDerivedUnused (count seed : UInt64) : UInt64 :=
+  let _unused := fun b : Bool => (let g := fun n : UInt64 => n == seed || b; g count && g 0)
+  let flag := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if a % 7 == 0 then break
+    return a == seed
+  if flag then seed + count else seed * 3
+
+def rangePredicateOuterDerivedWrapped (count seed : UInt64) : Id UInt64 := do
+  let f := fun b : Bool => Id.run do
+    let g := fun n : UInt64 => n == seed || b
+    return g count && g 0
+  let flag ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if f (a == 0) then break
+      a := a + i.toUInt64 + 1
+    return f (a == seed))
+  return if flag then seed + count else seed * 3
+
+def rangePredicateOuterChoiceCapture (count seed : UInt64) : UInt64 :=
+  let p := fun n : UInt64 => n % 5 == 0
+  let f := fun b : Bool => (let g := fun n : UInt64 => p n || b; g count && g seed)
+  if f (seed == 0) then
+    let flag := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if f (i.toUInt64 == 0) then continue
+        a := a + i.toUInt64 + 1
+        if f (a == seed) then break
+      return f (a == seed)
+    if flag then seed + count else seed * 3
+  else count + seed
+
+def rangePredicateOuterChoiceNested (count seed : UInt64) : Id UInt64 := do
+  let f := fun n : Id UInt64 => Id.run do
+    let g := fun b : Bool => (let h := fun k : UInt64 => k == Id.run n || b; h count && h seed)
+    return g (Id.run n % 3 == 0) || g (seed == 0)
+  if f seed then
+    let flag ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if f a then break
+        a := a + i.toUInt64 + 1
+      return f a)
+    return if flag then seed + count else seed * 3
+  else return count + seed
+
+
 def rangePredicateOuterFlagWord (count seed : UInt64) : Bool := Id.run do
   let f := fun n : UInt64 => (let g := fun k : UInt64 => k % 3 == 0; g n || g seed)
   let mut a := seed
@@ -11719,6 +11814,14 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolRelationExit", (fun (x y : UInt64) => rangeBoolRelationExit x y)),
    ("rangeBoolRelationContinue", (fun (x y : UInt64) => rangeBoolRelationContinue x y)),
    ("rangeBoolRelationTail", (fun (x y : UInt64) => (rangeBoolRelationTail x y).toUInt64)),
+   ("rangePredicateOuterWordFromBoolean", (fun (x y : UInt64) => rangePredicateOuterWordFromBoolean x y)),
+   ("rangePredicateOuterBooleanFromBoolean", (fun (x y : UInt64) => rangePredicateOuterBooleanFromBoolean x y)),
+   ("rangePredicateOuterWordConditional", (fun (x y : UInt64) => rangePredicateOuterWordConditional x y)),
+   ("rangePredicateOuterBooleanConditional", (fun (x y : UInt64) => rangePredicateOuterBooleanConditional x y)),
+   ("rangePredicateOuterDerivedUnused", (fun (x y : UInt64) => rangePredicateOuterDerivedUnused x y)),
+   ("rangePredicateOuterDerivedWrapped", (fun (x y : UInt64) => rangePredicateOuterDerivedWrapped x y)),
+   ("rangePredicateOuterChoiceCapture", (fun (x y : UInt64) => rangePredicateOuterChoiceCapture x y)),
+   ("rangePredicateOuterChoiceNested", (fun (x y : UInt64) => rangePredicateOuterChoiceNested x y)),
    ("rangePredicateOuterFlagWord", (fun (x y : UInt64) => (rangePredicateOuterFlagWord x y).toUInt64)),
    ("rangePredicateOuterFlagBoolean", (fun (x y : UInt64) => (rangePredicateOuterFlagBoolean x y).toUInt64)),
    ("rangePredicateOuterFlagWrapped", (fun (x y : UInt64) => (rangePredicateOuterFlagWrapped x y).toUInt64)),

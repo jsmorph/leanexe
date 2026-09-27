@@ -881,5 +881,13 @@
   "rangePredicateOuterFlagCapture",
   "rangePredicateOuterFlagBound",
   "rangePredicateOuterFlagNested",
-  "rangePredicateOuterFlagId"
+  "rangePredicateOuterFlagId",
+  "rangePredicateOuterWordFromBoolean",
+  "rangePredicateOuterBooleanFromBoolean",
+  "rangePredicateOuterWordConditional",
+  "rangePredicateOuterBooleanConditional",
+  "rangePredicateOuterDerivedUnused",
+  "rangePredicateOuterDerivedWrapped",
+  "rangePredicateOuterChoiceCapture",
+  "rangePredicateOuterChoiceNested"
 ]
