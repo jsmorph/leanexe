@@ -8188,6 +8188,83 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def rangeBooleanAccumulatorToggle (count seed : UInt64) : Bool := Id.run do
+  let mut flag := seed == 0
+  for _ in [:count.toNat] do
+    flag := !flag
+  return flag
+
+def rangeBooleanAccumulatorIndex (count seed : UInt64) : Bool := Id.run do
+  let mut flag := seed % 3 == 0
+  for i in [:count.toNat] do
+    flag := flag != (i.toUInt64 % 3 == seed % 3)
+  return flag
+
+def rangeBooleanAccumulatorChoice (count seed : UInt64) : Bool := Id.run do
+  let mut flag := seed == 0
+  for i in [:count.toNat] do
+    if i.toUInt64 % 2 == 0 then flag := !flag
+    else flag := flag || i.toUInt64 == seed
+  return flag
+
+def rangeBooleanAccumulatorBreak (count seed : UInt64) : Bool := Id.run do
+  let mut flag := seed == 0
+  for i in [:count.toNat] do
+    flag := flag != (i.toUInt64 == seed)
+    if flag then break
+  return flag
+
+def rangeBooleanAccumulatorContinue (count seed : UInt64) : Bool := Id.run do
+  let mut flag := seed == 0
+  for i in [:count.toNat] do
+    if i.toUInt64 % 2 == 0 then continue
+    flag := !flag
+  return flag
+
+def rangeBooleanAccumulatorStride (count seed : UInt64) : Id Bool := do
+  let mut flag := seed == 0
+  for i in [1:count.toNat:3] do
+    flag := flag != (i.toUInt64 % 5 == 0)
+  return flag
+
+def rangeBooleanAccumulatorPredicate (count seed : UInt64) : Bool := Id.run do
+  let f := fun b : Bool => (let g := fun n : UInt64 => n % 7 == 0 || b; g count && g seed)
+  let mut flag := seed == 0
+  for i in [:count.toNat] do
+    flag := f flag || i.toUInt64 == seed
+  return flag
+
+def rangeBooleanAccumulatorInitial (count seed : UInt64) : Bool := Id.run do
+  let f := fun b : Bool => (let g := fun n : UInt64 => n % 7 == 0 || b; g count && g seed)
+  let mut flag := f (seed == 0)
+  for i in [:count.toNat] do
+    if f flag then break
+    flag := i.toUInt64 == seed
+  return f flag
+
+def rangeBooleanAccumulatorWordTail (count seed : UInt64) : UInt64 :=
+  let flag := Id.run do
+    let mut a := seed == 0
+    for i in [:count.toNat] do
+      a := a != (i.toUInt64 == seed)
+      if a then break
+    return a
+  if flag then seed + count else seed * 3
+
+def rangeBooleanAccumulatorInput (count : UInt64) (seed : Bool) : Id Bool := do
+  let mut flag := seed
+  for i in [:count.toNat] do
+    flag := flag != (i.toUInt64 % 3 == 0 || seed)
+  return flag
+
+def rangeBooleanAccumulatorHigh (count seed : UInt64) : Bool :=
+  forIn (m := Id) [(18446744073709551615 - count).toNat:18446744073709551615:2] (seed == 0) fun i flag =>
+    .yield (flag != (i.toUInt64 % 3 == seed % 3))
+
+def rangeBooleanAccumulatorHuge (count seed : UInt64) : Bool :=
+  forIn (m := Id) [0:count.toNat:18446744073709551615] (seed == 0) fun i flag =>
+    .done (flag != (i.toUInt64 == seed))
+
 def rangePredicateOuterWordFromBoolean (count seed : UInt64) : UInt64 :=
   let f := fun n : UInt64 => (let g := fun b : Bool => b || n == seed; g (count == 0) && g (n % 3 == 0))
   let flag := Id.run do
@@ -11814,6 +11891,18 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolRelationExit", (fun (x y : UInt64) => rangeBoolRelationExit x y)),
    ("rangeBoolRelationContinue", (fun (x y : UInt64) => rangeBoolRelationContinue x y)),
    ("rangeBoolRelationTail", (fun (x y : UInt64) => (rangeBoolRelationTail x y).toUInt64)),
+   ("rangeBooleanAccumulatorToggle", (fun (x y : UInt64) => (rangeBooleanAccumulatorToggle x y).toUInt64)),
+   ("rangeBooleanAccumulatorIndex", (fun (x y : UInt64) => (rangeBooleanAccumulatorIndex x y).toUInt64)),
+   ("rangeBooleanAccumulatorChoice", (fun (x y : UInt64) => (rangeBooleanAccumulatorChoice x y).toUInt64)),
+   ("rangeBooleanAccumulatorBreak", (fun (x y : UInt64) => (rangeBooleanAccumulatorBreak x y).toUInt64)),
+   ("rangeBooleanAccumulatorContinue", (fun (x y : UInt64) => (rangeBooleanAccumulatorContinue x y).toUInt64)),
+   ("rangeBooleanAccumulatorStride", (fun (x y : UInt64) => (rangeBooleanAccumulatorStride x y).toUInt64)),
+   ("rangeBooleanAccumulatorPredicate", (fun (x y : UInt64) => (rangeBooleanAccumulatorPredicate x y).toUInt64)),
+   ("rangeBooleanAccumulatorInitial", (fun (x y : UInt64) => (rangeBooleanAccumulatorInitial x y).toUInt64)),
+   ("rangeBooleanAccumulatorWordTail", (fun (x y : UInt64) => rangeBooleanAccumulatorWordTail x y)),
+   ("rangeBooleanAccumulatorInput", (fun (x y : UInt64) => (rangeBooleanAccumulatorInput x (y != 0)).toUInt64)),
+   ("rangeBooleanAccumulatorHigh", (fun (x y : UInt64) => (rangeBooleanAccumulatorHigh x y).toUInt64)),
+   ("rangeBooleanAccumulatorHuge", (fun (x y : UInt64) => (rangeBooleanAccumulatorHuge x y).toUInt64)),
    ("rangePredicateOuterWordFromBoolean", (fun (x y : UInt64) => rangePredicateOuterWordFromBoolean x y)),
    ("rangePredicateOuterBooleanFromBoolean", (fun (x y : UInt64) => rangePredicateOuterBooleanFromBoolean x y)),
    ("rangePredicateOuterWordConditional", (fun (x y : UInt64) => rangePredicateOuterWordConditional x y)),

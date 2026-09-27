@@ -225,6 +225,7 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
       (scalarBooleanRangeArm_invariant P literal binary choice ht bindings (fun plan h => yesIH h bindings))
       (scalarBooleanRangeArm_invariant P literal binary choice he bindings (fun plan h => noIH h bindings))
   | case34 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind notIf wrapper body parsed notScalar ih => exact ih compiled bindings
-  | case35 => contradiction
+  | case35 =>
+    exact extractScalarBooleanAccumulatorWith_invariant P literal binary choice accumulator index compiled bindings
 
 end LeanExe.Extract.Core

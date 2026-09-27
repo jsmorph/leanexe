@@ -889,5 +889,17 @@
   "rangePredicateOuterDerivedUnused",
   "rangePredicateOuterDerivedWrapped",
   "rangePredicateOuterChoiceCapture",
-  "rangePredicateOuterChoiceNested"
+  "rangePredicateOuterChoiceNested",
+  "rangeBooleanAccumulatorToggle",
+  "rangeBooleanAccumulatorIndex",
+  "rangeBooleanAccumulatorChoice",
+  "rangeBooleanAccumulatorBreak",
+  "rangeBooleanAccumulatorContinue",
+  "rangeBooleanAccumulatorStride",
+  "rangeBooleanAccumulatorPredicate",
+  "rangeBooleanAccumulatorInitial",
+  "rangeBooleanAccumulatorWordTail",
+  "rangeBooleanAccumulatorInput",
+  "rangeBooleanAccumulatorHigh",
+  "rangeBooleanAccumulatorHuge"
 ]
