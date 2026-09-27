@@ -3,9 +3,10 @@ import LeanExe.Source.ScalarPublicArgument
 
 namespace LeanExe.Source.Scalar
 
-/-- Ordinary lets and the exact standard Id bind share scalar binding semantics. -/
+/-- Scalar lets, direct applications and standard Id binds share binding semantics. -/
 inductive BooleanScopeBindingForm where
   | letE (nondep : Bool)
+  | application (binder : Lean.BinderInfo)
   | monadic (binder : Lean.BinderInfo) (result : BooleanType)
   deriving Repr
 
@@ -13,6 +14,7 @@ namespace BooleanScopeBindingForm
 
 def base : BooleanScopeBindingForm → BooleanBindingForm
   | .letE nondep => .letE nondep
+  | .application binder => .application binder
   | .monadic binder result => .monadic binder result
 
 def expr (form : BooleanScopeBindingForm) (name : Lean.Name)
@@ -22,6 +24,10 @@ theorem binding_size (form : BooleanScopeBindingForm) (name : Lean.Name)
     (domain value body : Lean.Expr) :
     sizeOf (.letE name domain value body form.base.nondep : Lean.Expr) ≤
       sizeOf (form.expr name domain value body) := form.base.binding_size name domain value body
+
+/-- The direct lambda application evaluates the checked body at its argument. -/
+theorem application_apply {α β : Type} (value : α) (body : α → β) :
+    (fun input => body input) value = body value := rfl
 
 /-- The standard Id bind used by the syntax renderer evaluates its continuation. -/
 theorem monadic_apply {α β : Type} (value : Id α) (body : α → Id β) :

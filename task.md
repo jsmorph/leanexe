@@ -988,9 +988,11 @@ All six fixed bind probes compile. The corpus contains 1662 declarations.
 Evidence is in [the monadic scope archive](proofs/compiler/boolean-scope-bind-2026-09-27/README.md).
 
 Current capability: directly applied scalar bindings around general Boolean
-helper scopes. Preserve the six fixed application probes, extend exact source
-syntax and prove native beta reduction, recognition and extraction, then complete
-emitted-WASM proofs and independent engine checks before advancing.
+helper scopes. All six fixed application probes initially reject. Exact source
+syntax, native beta reduction, recognizer proofs and recursive size bounds pass
+84 targets. General scalar evaluation, acceptance, reconstruction and IR invariant
+proofs pass 140 targets unchanged. Loop/function integration, tests, emitted-WASM
+proofs and independent engine checks remain before advancing.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
