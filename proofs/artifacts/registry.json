@@ -254,6 +254,12 @@
       "proofTarget": "Project.EulerReconstructed.ArtifactTranslation"
     },
     {
+      "case": "exp_arm",
+      "sha256": "ad0b534184b314b07b7e7f5fc37b32c48dea078a33c93ef7741a5290f9cebab3",
+      "manifest": "exp_arm/ad0b534184b314b07b7e7f5fc37b32c48dea078a33c93ef7741a5290f9cebab3/manifest.json",
+      "proofTarget": "Project.ExpArm.ArtifactTranslation"
+    },
+    {
       "case": "gpt2_quantized_linear_rows",
       "sha256": "44c390d9605c8eea42b8509dcb7b367a354f2cb62df7158e59c071f87c4e3fc3",
       "manifest": "gpt2_quantized_linear_rows/44c390d9605c8eea42b8509dcb7b367a354f2cb62df7158e59c071f87c4e3fc3/manifest.json",

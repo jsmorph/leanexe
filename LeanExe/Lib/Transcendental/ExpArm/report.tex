@@ -15,14 +15,21 @@ arithmetic and separate multiplication and addition.  Arm reports a
 worst-case error of $0.511$ ulp for this configuration without fused
 multiply-add.  The port's target is an error below one ulp.
 
-The verification target is the emitted WASM: termination, memory behavior,
-and numerical accuracy under stated assumptions.  A proof establishing those
-properties remains outstanding.  Lean checks the source types.
+The theorem \texttt{Project.ExpArm.Spec.exp\_binary} proves that the recorded
+WASM bytes decode and validate to a module whose exponential terminates for
+every input word, preserves the complete store, and returns the result of an
+exact binary64 computation of the algorithm.  The proof uses Talos's WASM
+semantics with round-to-nearest, ties-to-even arithmetic and proves that
+instantiation initializes the lookup table.  The theorem \texttt{exp\_exact}
+applies to any store containing that table, supporting repeated calls.
+
+For $|x|<2^{-54}$, \texttt{exp\_tiny\_error} proves that the WASM returns one
+with absolute error below $2^{-53}$ against the real exponential.
+The full-range numerical error proof remains outstanding.
 Development tests compare WASM, the Lean port,
 Lean's \texttt{Float.exp}, JavaScript's \texttt{Math.exp}, and a high-precision
 decimal reference.  The largest measured error for the port on 49,821 inputs
-is $0.504059$ ulp.  The measured maximum describes the test corpus.  A universal bound
-requires a proof about the WASM computation.
+is $0.504059$ ulp.
 
 \section{Range reduction and evaluation}
 The reduction chooses an integer $k$ near $128x/\log 2$ and writes
@@ -69,8 +76,8 @@ preserves subnormals.
 The source uses a named \texttt{Array UInt64} literal.  LeanExe places its
 length and words in a WASM data segment and emits bounds-checked loads for
 direct indexed reads.  The allocation arena begins after the static data,
-and reset preserves the table.  The exponential's scalar execution allocates
-zero heap objects on the tested calls.  Array updates retain the compiler's
+and reset preserves the table.  The execution theorem proves that an
+exponential call preserves all memory and globals.  Array updates retain the compiler's
 ordinary ownership and allocation behavior.
 
 \section{Executable implementation}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 3,
+  "case": "exp_arm",
+  "sha256": "ad0b534184b314b07b7e7f5fc37b32c48dea078a33c93ef7741a5290f9cebab3",
+  "byteLength": 12733,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.ExpArm.ArtifactBytes",
+  "artifactBytesDefinition": "Project.ExpArm.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.ExpArm.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.ExpArm.Program",
+  "cachedProgramDefinition": "Project.ExpArm.module",
+  "specModule": "Project.ExpArm.Spec",
+  "proofTarget": "Project.ExpArm.ArtifactTranslation",
+  "identityTheorem": "Project.ExpArm.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.ExpArm.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.ExpArm.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.ExpArm.Spec.exp_exact",
+    "Project.ExpArm.Spec.exp_initial",
+    "Project.ExpArm.Spec.exp_binary",
+    "Project.ExpArm.Spec.exp_tiny_error",
+    "Project.ExpArm.Spec.exp_nan_result"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "c95b02738a769c88b0bffd833281fb8203826a2a53070880efdefa092d0db700",
+  "hostAssumptions": []
+}

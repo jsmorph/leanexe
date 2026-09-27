@@ -161,7 +161,10 @@ def memory (raw : RawModule) : Option Wasm.MemDecl :=
         { offset := some (match segment.offset with
             | .i32Const value => UInt32.ofInt value
             | .i64Const value => UInt32.ofInt value)
-          bytes := segment.bytes } }
+          bytes := segment.bytes
+          offsetType := some (match segment.offset with
+            | .i32Const _ => .i32
+            | .i64Const _ => .i64) } }
 
 def globals (raw : RawModule) : List Wasm.GlobalDecl :=
   raw.globals.map fun global =>
