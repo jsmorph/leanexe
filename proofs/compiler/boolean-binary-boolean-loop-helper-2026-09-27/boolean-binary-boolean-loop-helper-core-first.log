@@ -1,0 +1,1002 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+LeanExe.Extract.Core.extractScalarBooleanRangeWith.induct
+  (motive : List LeanExe.Extract.Core.ScalarBinding → Lean.Expr → Prop)
+  (case1 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (source : Lean.Expr) (value : LeanExe.IR.Expr),
+      LeanExe.Extract.Core.extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app source) = some value →
+        motive locals source)
+  (case2 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (declName : Lean.Name) (value body : Lean.Expr) (nondep : Bool)
+      (value_1 : LeanExe.IR.Expr),
+      LeanExe.Extract.Core.extractScalarExprWith locals value = some value_1 →
+        LeanExe.Extract.Core.extractScalarExprWith locals
+              ((Lean.Expr.const `Bool.toUInt64 []).app
+                (Lean.Expr.letE declName (Lean.Expr.const `UInt64 []) value body nondep)) =
+            none →
+          motive (LeanExe.Extract.Core.ScalarBinding.word value_1 :: locals) body →
+            motive locals (Lean.Expr.letE declName (Lean.Expr.const `UInt64 []) value body nondep))
+  (case3 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (declName : Lean.Name) (value body : Lean.Expr)
+      (nondep : Bool),
+      LeanExe.Extract.Core.extractScalarExprWith locals value = none →
+        LeanExe.Extract.Core.extractScalarExprWith locals
+              ((Lean.Expr.const `Bool.toUInt64 []).app
+                (Lean.Expr.letE declName (Lean.Expr.const `UInt64 []) value body nondep)) =
+            none →
+          motive locals (Lean.Expr.letE declName (Lean.Expr.const `UInt64 []) value body nondep))
+  (case4 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (declName : Lean.Name) (value body : Lean.Expr)
+      (nondep : Bool),
+      LeanExe.Extract.Core.extractScalarExprWith locals
+            ((Lean.Expr.const `Bool.toUInt64 []).app
+              (Lean.Expr.letE declName (Lean.Expr.const `Bool []) value body nondep)) =
+          none →
+        (∀ (flag : LeanExe.IR.Expr), motive (LeanExe.Extract.Core.ScalarBinding.boolean flag :: locals) body) →
+          motive locals value → motive locals (Lean.Expr.letE declName (Lean.Expr.const `Bool []) value body nondep))
+  (case5 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (name : Lean.Name) (type value body : Lean.Expr)
+      (nondep : Bool),
+      LeanExe.Extract.Core.extractScalarExprWith locals
+            ((Lean.Expr.const `Bool.toUInt64 []).app
+              (Lean.Expr.letE name ((Lean.Expr.const `Id [Lean.Level.zero]).app type) value body nondep)) =
+          none →
+        motive locals (Lean.Expr.letE name type value body nondep) →
+          motive locals (Lean.Expr.letE name ((Lean.Expr.const `Id [Lean.Level.zero]).app type) value body nondep))
+  (case6 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (functionName firstTypeName secondTypeName : Lean.Name)
+      (resultType : Lean.Expr) (secondTypeBi firstTypeBi : Lean.BinderInfo) (firstName secondName : Lean.Name)
+      (value : Lean.Expr) (secondBi firstBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+      LeanExe.Extract.Core.scalarResultType? resultType = none →
+        LeanExe.Extract.Core.scalarManyFunction?
+              (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+              (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi) =
+            none →
+          LeanExe.Extract.Core.booleanBinaryHelper?
+                (Lean.Expr.letE functionName
+                  (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                    (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+                  (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                    (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                  body nondep) =
+              none →
+            LeanExe.Extract.Core.extractScalarExprWith locals
+                  ((Lean.Expr.const `Bool.toUInt64 []).app
+                    (Lean.Expr.letE functionName
+                      (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                        (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                        firstTypeBi)
+                      (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                        (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                      body nondep)) =
+                none →
+              motive locals
+                (Lean.Expr.letE functionName
+                  (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                    (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+                  (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                    (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                  body nondep))
+  (case7 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (functionName firstTypeName secondTypeName : Lean.Name)
+      (resultType : Lean.Expr) (secondTypeBi firstTypeBi : Lean.BinderInfo) (firstName secondName : Lean.Name)
+      (value : Lean.Expr) (secondBi firstBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+      LeanExe.Extract.Core.scalarResultType? resultType = none →
+        LeanExe.Extract.Core.scalarManyFunction?
+              (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+              (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi) =
+            none →
+          ∀ (helper : LeanExe.Source.Scalar.BooleanBinaryHelper),
+            LeanExe.Extract.Core.booleanBinaryHelper?
+                  (Lean.Expr.letE functionName
+                    (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                      (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                      firstTypeBi)
+                    (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                      (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                    body nondep) =
+                some helper →
+              LeanExe.Extract.Core.extractScalarExprWith locals
+                    ((Lean.Expr.const `Bool.toUInt64 []).app
+                      (Lean.Expr.letE functionName
+                        (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                          (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                          firstTypeBi)
+                        (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                          (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                        body nondep)) =
+                  none →
+                (have function :=
+                    LeanExe.Extract.Core.ScalarBinding.binaryPredicateFunction fun first second =>
+                      LeanExe.Extract.Core.extractScalarExprWith
+                        (LeanExe.Extract.Core.ScalarBinding.word second ::
+                          LeanExe.Extract.Core.ScalarBinding.word first :: locals)
+                        ((Lean.Expr.const `Bool.toUInt64 []).app helper.body);
+                  motive (function :: locals) helper.continuation) →
+                  motive locals
+                    (Lean.Expr.letE functionName
+                      (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                        (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                        firstTypeBi)
+                      (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                        (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                      body nondep))
+  (case8 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (functionName firstTypeName secondTypeName : Lean.Name)
+      (resultType : Lean.Expr) (secondTypeBi firstTypeBi : Lean.BinderInfo) (firstName secondName : Lean.Name)
+      (value : Lean.Expr) (secondBi firstBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+      LeanExe.Extract.Core.scalarResultType? resultType = none →
+        ∀ (shape : LeanExe.Source.Scalar.ManyFunction),
+          LeanExe.Extract.Core.scalarManyFunction?
+                (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                  (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+                (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                  (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi) =
+              some shape →
+            LeanExe.Extract.Core.extractScalarExprWith
+                  (List.replicate shape.arity (LeanExe.Extract.Core.ScalarBinding.word (LeanExe.IR.Expr.u64 0)) ++
+                    locals)
+                  shape.body =
+                none →
+              LeanExe.Extract.Core.extractScalarExprWith locals
+                    ((Lean.Expr.const `Bool.toUInt64 []).app
+                      (Lean.Expr.letE functionName
+                        (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                          (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                          firstTypeBi)
+                        (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                          (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                        body nondep)) =
+                  none →
+                motive locals
+                  (Lean.Expr.letE functionName
+                    (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                      (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                      firstTypeBi)
+                    (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                      (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                    body nondep))
+  (case9 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (functionName firstTypeName secondTypeName : Lean.Name)
+      (resultType : Lean.Expr) (secondTypeBi firstTypeBi : Lean.BinderInfo) (firstName secondName : Lean.Name)
+      (value : Lean.Expr) (secondBi firstBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+      LeanExe.Extract.Core.scalarResultType? resultType = none →
+        ∀ (shape : LeanExe.Source.Scalar.ManyFunction),
+          LeanExe.Extract.Core.scalarManyFunction?
+                (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                  (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+                (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                  (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi) =
+              some shape →
+            ∀ (val : LeanExe.IR.Expr),
+              LeanExe.Extract.Core.extractScalarExprWith
+                    (List.replicate shape.arity (LeanExe.Extract.Core.ScalarBinding.word (LeanExe.IR.Expr.u64 0)) ++
+                      locals)
+                    shape.body =
+                  some val →
+                LeanExe.Extract.Core.extractScalarExprWith locals
+                      ((Lean.Expr.const `Bool.toUInt64 []).app
+                        (Lean.Expr.letE functionName
+                          (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                            (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                            firstTypeBi)
+                          (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                            (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                          body nondep)) =
+                    none →
+                  motive
+                      ((LeanExe.Extract.Core.ScalarBinding.manyFunction shape.arity fun arguments =>
+                          LeanExe.Extract.Core.extractScalarExprWith
+                            (List.map LeanExe.Extract.Core.ScalarBinding.word arguments.reverse ++ locals)
+                            shape.body) ::
+                        locals)
+                      body →
+                    motive locals
+                      (Lean.Expr.letE functionName
+                        (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                          (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                          firstTypeBi)
+                        (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                          (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                        body nondep))
+  (case10 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (functionName firstTypeName secondTypeName : Lean.Name)
+      (resultType : Lean.Expr) (secondTypeBi firstTypeBi : Lean.BinderInfo) (firstName secondName : Lean.Name)
+      (value : Lean.Expr) (secondBi firstBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool)
+      (val : LeanExe.Source.Scalar.ResultType),
+      LeanExe.Extract.Core.scalarResultType? resultType = some val →
+        LeanExe.Extract.Core.extractScalarExprWith
+              (LeanExe.Extract.Core.ScalarBinding.word (LeanExe.IR.Expr.u64 0) ::
+                LeanExe.Extract.Core.ScalarBinding.word (LeanExe.IR.Expr.u64 0) :: locals)
+              value =
+            none →
+          LeanExe.Extract.Core.extractScalarExprWith locals
+                ((Lean.Expr.const `Bool.toUInt64 []).app
+                  (Lean.Expr.letE functionName
+                    (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                      (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                      firstTypeBi)
+                    (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                      (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                    body nondep)) =
+              none →
+            motive locals
+              (Lean.Expr.letE functionName
+                (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                  (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+                (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                  (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                body nondep))
+  (case11 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (functionName firstTypeName secondTypeName : Lean.Name)
+      (resultType : Lean.Expr) (secondTypeBi firstTypeBi : Lean.BinderInfo) (firstName secondName : Lean.Name)
+      (value : Lean.Expr) (secondBi firstBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool)
+      (val : LeanExe.Source.Scalar.ResultType),
+      LeanExe.Extract.Core.scalarResultType? resultType = some val →
+        ∀ (val : LeanExe.IR.Expr),
+          LeanExe.Extract.Core.extractScalarExprWith
+                (LeanExe.Extract.Core.ScalarBinding.word (LeanExe.IR.Expr.u64 0) ::
+                  LeanExe.Extract.Core.ScalarBinding.word (LeanExe.IR.Expr.u64 0) :: locals)
+                value =
+              some val →
+            LeanExe.Extract.Core.extractScalarExprWith locals
+                  ((Lean.Expr.const `Bool.toUInt64 []).app
+                    (Lean.Expr.letE functionName
+                      (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                        (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                        firstTypeBi)
+                      (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                        (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                      body nondep)) =
+                none →
+              motive
+                  ((LeanExe.Extract.Core.ScalarBinding.binaryFunction fun first second =>
+                      LeanExe.Extract.Core.extractScalarExprWith
+                        (LeanExe.Extract.Core.ScalarBinding.word second ::
+                          LeanExe.Extract.Core.ScalarBinding.word first :: locals)
+                        value) ::
+                    locals)
+                  body →
+                motive locals
+                  (Lean.Expr.letE functionName
+                    (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                      (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                      firstTypeBi)
+                    (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                      (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                    body nondep))
+  (case12 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (name typeName : Lean.Name) (resultType : Lean.Expr)
+      (typeBi : Lean.BinderInfo) (paramName : Lean.Name) (value : Lean.Expr) (paramBi : Lean.BinderInfo)
+      (body : Lean.Expr) (nondep : Bool),
+      (∀ (secondTypeName : Lean.Name) (resultType_1 : Lean.Expr) (secondTypeBi : Lean.BinderInfo)
+          (secondName : Lean.Name) (value_1 : Lean.Expr) (secondBi : Lean.BinderInfo),
+          resultType = Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType_1 secondTypeBi →
+            value = Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value_1 secondBi → False) →
+        LeanExe.Extract.Core.scalarResultType? resultType = none →
+          LeanExe.Extract.Core.booleanType? resultType = none →
+            LeanExe.Extract.Core.extractScalarExprWith locals
+                  ((Lean.Expr.const `Bool.toUInt64 []).app
+                    (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+                      (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body nondep)) =
+                none →
+              motive locals
+                (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+                  (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body nondep))
+  (case13 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (name typeName : Lean.Name) (resultType : Lean.Expr)
+      (typeBi : Lean.BinderInfo) (paramName : Lean.Name) (value : Lean.Expr) (paramBi : Lean.BinderInfo)
+      (body : Lean.Expr) (nondep : Bool),
+      (∀ (secondTypeName : Lean.Name) (resultType_1 : Lean.Expr) (secondTypeBi : Lean.BinderInfo)
+          (secondName : Lean.Name) (value_1 : Lean.Expr) (secondBi : Lean.BinderInfo),
+          resultType = Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType_1 secondTypeBi →
+            value = Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value_1 secondBi → False) →
+        LeanExe.Extract.Core.scalarResultType? resultType = none →
+          ∀ (val : LeanExe.Source.Scalar.BooleanType),
+            LeanExe.Extract.Core.booleanType? resultType = some val →
+              LeanExe.Extract.Core.extractScalarExprWith locals
+                    ((Lean.Expr.const `Bool.toUInt64 []).app
+                      (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+                        (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body nondep)) =
+                  none →
+                (∀ (binding : LeanExe.Extract.Core.ScalarBinding), motive (binding :: locals) body) →
+                  (∀ (binding : LeanExe.Extract.Core.ScalarBinding), motive (binding :: locals) value) →
+                    (∀ (arm : Lean.Expr),
+                        sizeOf arm < sizeOf body →
+                          motive locals
+                            (Lean.Expr.letE name
+                              (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+                              (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) arm nondep)) →
+                      motive locals
+                        (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+                          (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body nondep))
+  (case14 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (name typeName : Lean.Name) (resultType : Lean.Expr)
+      (typeBi : Lean.BinderInfo) (paramName : Lean.Name) (value : Lean.Expr) (paramBi : Lean.BinderInfo)
+      (body : Lean.Expr) (nondep : Bool),
+      (∀ (secondTypeName : Lean.Name) (resultType_1 : Lean.Expr) (secondTypeBi : Lean.BinderInfo)
+          (secondName : Lean.Name) (value_1 : Lean.Expr) (secondBi : Lean.BinderInfo),
+          resultType = Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType_1 secondTypeBi →
+            value = Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value_1 secondBi → False) →
+        ∀ (val : LeanExe.Source.Scalar.ResultType),
+          LeanExe.Extract.Core.scalarResultType? resultType = some val →
+            LeanExe.Extract.Core.extractScalarExprWith
+                  (LeanExe.Extract.Core.ScalarBinding.word (LeanExe.IR.Expr.u64 0) :: locals) value =
+                none →
+              LeanExe.Extract.Core.extractScalarExprWith locals
+                    ((Lean.Expr.const `Bool.toUInt64 []).app
+                      (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+                        (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body nondep)) =
+                  none →
+                motive locals
+                  (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+                    (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body nondep))
+  (case15 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (name typeName : Lean.Name) (resultType : Lean.Expr)
+      (typeBi : Lean.BinderInfo) (paramName : Lean.Name) (value : Lean.Expr) (paramBi : Lean.BinderInfo)
+      (body : Lean.Expr) (nondep : Bool),
+      (∀ (secondTypeName : Lean.Name) (resultType_1 : Lean.Expr) (secondTypeBi : Lean.BinderInfo)
+          (secondName : Lean.Name) (value_1 : Lean.Expr) (secondBi : Lean.BinderInfo),
+          resultType = Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType_1 secondTypeBi →
+            value = Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value_1 secondBi → False) →
+        ∀ (val : LeanExe.Source.Scalar.ResultType),
+          LeanExe.Extract.Core.scalarResultType? resultType = some val →
+            ∀ (val : LeanExe.IR.Expr),
+              LeanExe.Extract.Core.extractScalarExprWith
+                    (LeanExe.Extract.Core.ScalarBinding.word (LeanExe.IR.Expr.u64 0) :: locals) value =
+                  some val →
+                LeanExe.Extract.Core.extractScalarExprWith locals
+                      ((Lean.Expr.const `Bool.toUInt64 []).app
+                        (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+                          (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body nondep)) =
+                    none →
+                  motive
+                      ((LeanExe.Extract.Core.ScalarBinding.function false fun argument =>
+                          LeanExe.Extract.Core.extractScalarExprWith
+                            (LeanExe.Extract.Core.ScalarBinding.word argument :: locals) value) ::
+                        locals)
+                      body →
+                    motive locals
+                      (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+                        (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body nondep))
+  (case16 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (name typeName : Lean.Name) (resultType : Lean.Expr)
+      (typeBi : Lean.BinderInfo) (paramName : Lean.Name) (value : Lean.Expr) (paramBi : Lean.BinderInfo)
+      (body : Lean.Expr) (nondep : Bool),
+      LeanExe.Extract.Core.scalarResultType? resultType = none →
+        LeanExe.Extract.Core.booleanType? resultType = none →
+          LeanExe.Extract.Core.extractScalarExprWith locals
+                ((Lean.Expr.const `Bool.toUInt64 []).app
+                  (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+                    (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body nondep)) =
+              none →
+            motive locals
+              (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+                (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body nondep))
+  (case17 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (name typeName : Lean.Name) (resultType : Lean.Expr)
+      (typeBi : Lean.BinderInfo) (paramName : Lean.Name) (value : Lean.Expr) (paramBi : Lean.BinderInfo)
+      (body : Lean.Expr) (nondep : Bool),
+      LeanExe.Extract.Core.scalarResultType? resultType = none →
+        ∀ (val : LeanExe.Source.Scalar.BooleanType),
+          LeanExe.Extract.Core.booleanType? resultType = some val →
+            LeanExe.Extract.Core.extractScalarExprWith locals
+                  ((Lean.Expr.const `Bool.toUInt64 []).app
+                    (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+                      (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body nondep)) =
+                none →
+              (∀ (binding : LeanExe.Extract.Core.ScalarBinding), motive (binding :: locals) body) →
+                (∀ (binding : LeanExe.Extract.Core.ScalarBinding), motive (binding :: locals) value) →
+                  (∀ (arm : Lean.Expr),
+                      sizeOf arm < sizeOf body →
+                        motive locals
+                          (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+                            (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) arm nondep)) →
+                    motive locals
+                      (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+                        (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body nondep))
+  (case18 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (name typeName : Lean.Name) (resultType : Lean.Expr)
+      (typeBi : Lean.BinderInfo) (paramName : Lean.Name) (value : Lean.Expr) (paramBi : Lean.BinderInfo)
+      (body : Lean.Expr) (nondep : Bool) (val : LeanExe.Source.Scalar.ResultType),
+      LeanExe.Extract.Core.scalarResultType? resultType = some val →
+        LeanExe.Extract.Core.extractScalarExprWith
+              (LeanExe.Extract.Core.ScalarBinding.boolean (LeanExe.IR.Expr.u64 0) :: locals) value =
+            none →
+          LeanExe.Extract.Core.extractScalarExprWith locals
+                ((Lean.Expr.const `Bool.toUInt64 []).app
+                  (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+                    (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body nondep)) =
+              none →
+            motive locals
+              (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+                (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body nondep))
+  (case19 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (name typeName : Lean.Name) (resultType : Lean.Expr)
+      (typeBi : Lean.BinderInfo) (paramName : Lean.Name) (value : Lean.Expr) (paramBi : Lean.BinderInfo)
+      (body : Lean.Expr) (nondep : Bool) (val : LeanExe.Source.Scalar.ResultType),
+      LeanExe.Extract.Core.scalarResultType? resultType = some val →
+        ∀ (val : LeanExe.IR.Expr),
+          LeanExe.Extract.Core.extractScalarExprWith
+                (LeanExe.Extract.Core.ScalarBinding.boolean (LeanExe.IR.Expr.u64 0) :: locals) value =
+              some val →
+            LeanExe.Extract.Core.extractScalarExprWith locals
+                  ((Lean.Expr.const `Bool.toUInt64 []).app
+                    (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+                      (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body nondep)) =
+                none →
+              motive
+                  ((LeanExe.Extract.Core.ScalarBinding.booleanFunction fun argument =>
+                      LeanExe.Extract.Core.extractScalarExprWith
+                        (LeanExe.Extract.Core.ScalarBinding.boolean argument :: locals) value) ::
+                    locals)
+                  body →
+                motive locals
+                  (Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+                    (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body nondep))
+  (case20 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (declName binderName binderName_1 : Lean.Name)
+      (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo) (binderName_2 binderName_3 : Lean.Name)
+      (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+      LeanExe.Extract.Core.scalarResultType? resultType = none →
+        LeanExe.Extract.Core.extractScalarExprWith locals
+              ((Lean.Expr.const `Bool.toUInt64 []).app
+                (Lean.Expr.letE declName
+                  (Lean.Expr.forallE binderName (Lean.Expr.const `Unit [])
+                    (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+                  (Lean.Expr.lam binderName_2 (Lean.Expr.const `Unit [])
+                    (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+                  body nondep)) =
+            none →
+          motive locals
+            (Lean.Expr.letE declName
+              (Lean.Expr.forallE binderName (Lean.Expr.const `Unit [])
+                (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+              (Lean.Expr.lam binderName_2 (Lean.Expr.const `Unit [])
+                (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+              body nondep))
+  (case21 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (declName binderName binderName_1 : Lean.Name)
+      (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo) (binderName_2 binderName_3 : Lean.Name)
+      (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool)
+      (val : LeanExe.Source.Scalar.ResultType),
+      LeanExe.Extract.Core.scalarResultType? resultType = some val →
+        LeanExe.Extract.Core.extractScalarExprWith
+              (LeanExe.Extract.Core.ScalarBinding.word (LeanExe.IR.Expr.u64 0) ::
+                LeanExe.Extract.Core.ScalarBinding.unit :: locals)
+              value =
+            none →
+          LeanExe.Extract.Core.extractScalarExprWith locals
+                ((Lean.Expr.const `Bool.toUInt64 []).app
+                  (Lean.Expr.letE declName
+                    (Lean.Expr.forallE binderName (Lean.Expr.const `Unit [])
+                      (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+                    (Lean.Expr.lam binderName_2 (Lean.Expr.const `Unit [])
+                      (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+                    body nondep)) =
+              none →
+            motive locals
+              (Lean.Expr.letE declName
+                (Lean.Expr.forallE binderName (Lean.Expr.const `Unit [])
+                  (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+                (Lean.Expr.lam binderName_2 (Lean.Expr.const `Unit [])
+                  (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+                body nondep))
+  (case22 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (declName binderName binderName_1 : Lean.Name)
+      (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo) (binderName_2 binderName_3 : Lean.Name)
+      (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool)
+      (val : LeanExe.Source.Scalar.ResultType),
+      LeanExe.Extract.Core.scalarResultType? resultType = some val →
+        ∀ (val : LeanExe.IR.Expr),
+          LeanExe.Extract.Core.extractScalarExprWith
+                (LeanExe.Extract.Core.ScalarBinding.word (LeanExe.IR.Expr.u64 0) ::
+                  LeanExe.Extract.Core.ScalarBinding.unit :: locals)
+                value =
+              some val →
+            LeanExe.Extract.Core.extractScalarExprWith locals
+                  ((Lean.Expr.const `Bool.toUInt64 []).app
+                    (Lean.Expr.letE declName
+                      (Lean.Expr.forallE binderName (Lean.Expr.const `Unit [])
+                        (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo)
+                        binderInfo_1)
+                      (Lean.Expr.lam binderName_2 (Lean.Expr.const `Unit [])
+                        (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+                      body nondep)) =
+                none →
+              motive
+                  ((LeanExe.Extract.Core.ScalarBinding.function true fun argument =>
+                      LeanExe.Extract.Core.extractScalarExprWith
+                        (LeanExe.Extract.Core.ScalarBinding.word argument ::
+                          LeanExe.Extract.Core.ScalarBinding.unit :: locals)
+                        value) ::
+                    locals)
+                  body →
+                motive locals
+                  (Lean.Expr.letE declName
+                    (Lean.Expr.forallE binderName (Lean.Expr.const `Unit [])
+                      (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+                    (Lean.Expr.lam binderName_2 (Lean.Expr.const `Unit [])
+                      (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+                    body nondep))
+  (case23 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (declName binderName binderName_1 : Lean.Name)
+      (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo) (binderName_2 binderName_3 : Lean.Name)
+      (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+      LeanExe.Extract.Core.scalarResultType? resultType = none →
+        LeanExe.Extract.Core.extractScalarExprWith locals
+              ((Lean.Expr.const `Bool.toUInt64 []).app
+                (Lean.Expr.letE declName
+                  (Lean.Expr.forallE binderName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                    (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+                  (Lean.Expr.lam binderName_2 (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                    (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+                  body nondep)) =
+            none →
+          motive locals
+            (Lean.Expr.letE declName
+              (Lean.Expr.forallE binderName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+              (Lean.Expr.lam binderName_2 (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+              body nondep))
+  (case24 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (declName binderName binderName_1 : Lean.Name)
+      (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo) (binderName_2 binderName_3 : Lean.Name)
+      (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool)
+      (val : LeanExe.Source.Scalar.ResultType),
+      LeanExe.Extract.Core.scalarResultType? resultType = some val →
+        LeanExe.Extract.Core.extractScalarExprWith
+              (LeanExe.Extract.Core.ScalarBinding.word (LeanExe.IR.Expr.u64 0) ::
+                LeanExe.Extract.Core.ScalarBinding.unit :: locals)
+              value =
+            none →
+          LeanExe.Extract.Core.extractScalarExprWith locals
+                ((Lean.Expr.const `Bool.toUInt64 []).app
+                  (Lean.Expr.letE declName
+                    (Lean.Expr.forallE binderName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                      (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+                    (Lean.Expr.lam binderName_2 (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                      (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+                    body nondep)) =
+              none →
+            motive locals
+              (Lean.Expr.letE declName
+                (Lean.Expr.forallE binderName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                  (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+                (Lean.Expr.lam binderName_2 (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                  (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+                body nondep))
+  (case25 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (declName binderName binderName_1 : Lean.Name)
+      (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo) (binderName_2 binderName_3 : Lean.Name)
+      (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool)
+      (val : LeanExe.Source.Scalar.ResultType),
+      LeanExe.Extract.Core.scalarResultType? resultType = some val →
+        ∀ (val : LeanExe.IR.Expr),
+          LeanExe.Extract.Core.extractScalarExprWith
+                (LeanExe.Extract.Core.ScalarBinding.word (LeanExe.IR.Expr.u64 0) ::
+                  LeanExe.Extract.Core.ScalarBinding.unit :: locals)
+                value =
+              some val →
+            LeanExe.Extract.Core.extractScalarExprWith locals
+                  ((Lean.Expr.const `Bool.toUInt64 []).app
+                    (Lean.Expr.letE declName
+                      (Lean.Expr.forallE binderName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                        (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo)
+                        binderInfo_1)
+                      (Lean.Expr.lam binderName_2 (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                        (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+                      body nondep)) =
+                none →
+              motive
+                  ((LeanExe.Extract.Core.ScalarBinding.function true fun argument =>
+                      LeanExe.Extract.Core.extractScalarExprWith
+                        (LeanExe.Extract.Core.ScalarBinding.word argument ::
+                          LeanExe.Extract.Core.ScalarBinding.unit :: locals)
+                        value) ::
+                    locals)
+                  body →
+                motive locals
+                  (Lean.Expr.letE declName
+                    (Lean.Expr.forallE binderName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                      (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+                    (Lean.Expr.lam binderName_2 (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                      (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+                    body nondep))
+  (case26 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (name typeName : Lean.Name) (resultType : Lean.Expr)
+      (typeBi : Lean.BinderInfo) (paramName : Lean.Name) (domain value : Lean.Expr) (paramBi : Lean.BinderInfo)
+      (body : Lean.Expr) (nondep : Bool),
+      LeanExe.Extract.Core.extractScalarExprWith locals
+            ((Lean.Expr.const `Bool.toUInt64 []).app
+              (Lean.Expr.letE name
+                (Lean.Expr.forallE typeName ((Lean.Expr.const `Id [Lean.Level.zero]).app domain) resultType typeBi)
+                (Lean.Expr.lam paramName ((Lean.Expr.const `Id [Lean.Level.zero]).app domain) value paramBi) body
+                nondep)) =
+          none →
+        motive locals
+            (Lean.Expr.letE name (Lean.Expr.forallE typeName domain resultType typeBi)
+              (Lean.Expr.lam paramName domain value paramBi) body nondep) →
+          motive locals
+            (Lean.Expr.letE name
+              (Lean.Expr.forallE typeName ((Lean.Expr.const `Id [Lean.Level.zero]).app domain) resultType typeBi)
+              (Lean.Expr.lam paramName ((Lean.Expr.const `Id [Lean.Level.zero]).app domain) value paramBi) body nondep))
+  (case27 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (name typeName : Lean.Name) (input resultType : Lean.Expr)
+      (typeBi : Lean.BinderInfo) (paramName : Lean.Name) (domain value : Lean.Expr) (paramBi : Lean.BinderInfo)
+      (body : Lean.Expr) (nondep : Bool),
+      ¬input = domain →
+        LeanExe.Extract.Core.extractScalarExprWith locals
+              ((Lean.Expr.const `Bool.toUInt64 []).app
+                (Lean.Expr.letE name
+                  (Lean.Expr.forallE typeName ((Lean.Expr.const `Id [Lean.Level.zero]).app input) resultType typeBi)
+                  (Lean.Expr.lam paramName ((Lean.Expr.const `Id [Lean.Level.zero]).app domain) value paramBi) body
+                  nondep)) =
+            none →
+          motive locals
+            (Lean.Expr.letE name
+              (Lean.Expr.forallE typeName ((Lean.Expr.const `Id [Lean.Level.zero]).app input) resultType typeBi)
+              (Lean.Expr.lam paramName ((Lean.Expr.const `Id [Lean.Level.zero]).app domain) value paramBi) body nondep))
+  (case28 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (input output value : Lean.Expr) (binderName : Lean.Name)
+      (domain body : Lean.Expr) (binderInfo : Lean.BinderInfo),
+      LeanExe.Extract.Core.booleanRangeBindTypes? input domain output = none →
+        LeanExe.Extract.Core.booleanRangeFlagBindTypes? input domain output = none →
+          LeanExe.Extract.Core.extractScalarExprWith locals
+                ((Lean.Expr.const `Bool.toUInt64 []).app
+                  (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                    (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                                input).app
+                            output).app
+                        value).app
+                    (Lean.Expr.lam binderName domain body binderInfo))) =
+              none →
+            motive locals
+              (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                  (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                            input).app
+                        output).app
+                    value).app
+                (Lean.Expr.lam binderName domain body binderInfo)))
+  (case29 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (input output value : Lean.Expr) (binderName : Lean.Name)
+      (domain body : Lean.Expr) (binderInfo : Lean.BinderInfo),
+      LeanExe.Extract.Core.booleanRangeBindTypes? input domain output = none →
+        ∀ (val : LeanExe.Source.Scalar.BooleanType × LeanExe.Source.Scalar.BooleanType),
+          LeanExe.Extract.Core.booleanRangeFlagBindTypes? input domain output = some val →
+            LeanExe.Extract.Core.extractScalarExprWith locals
+                  ((Lean.Expr.const `Bool.toUInt64 []).app
+                    (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                      (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                                  input).app
+                              output).app
+                          value).app
+                      (Lean.Expr.lam binderName domain body binderInfo))) =
+                none →
+              (∀ (flag : LeanExe.IR.Expr), motive (LeanExe.Extract.Core.ScalarBinding.boolean flag :: locals) body) →
+                motive locals value →
+                  motive locals
+                    (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                      (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                                  input).app
+                              output).app
+                          value).app
+                      (Lean.Expr.lam binderName domain body binderInfo)))
+  (case30 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (input output value : Lean.Expr) (binderName : Lean.Name)
+      (domain body : Lean.Expr) (binderInfo : Lean.BinderInfo)
+      (val : LeanExe.Source.Scalar.ResultType × LeanExe.Source.Scalar.BooleanType),
+      LeanExe.Extract.Core.booleanRangeBindTypes? input domain output = some val →
+        ∀ (value_1 : LeanExe.IR.Expr),
+          LeanExe.Extract.Core.extractScalarExprWith locals value = some value_1 →
+            LeanExe.Extract.Core.extractScalarExprWith locals
+                  ((Lean.Expr.const `Bool.toUInt64 []).app
+                    (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                      (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                                  input).app
+                              output).app
+                          value).app
+                      (Lean.Expr.lam binderName domain body binderInfo))) =
+                none →
+              motive (LeanExe.Extract.Core.ScalarBinding.word value_1 :: locals) body →
+                motive locals
+                  (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                    (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                                input).app
+                            output).app
+                        value).app
+                    (Lean.Expr.lam binderName domain body binderInfo)))
+  (case31 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (input output value : Lean.Expr) (binderName : Lean.Name)
+      (domain body : Lean.Expr) (binderInfo : Lean.BinderInfo)
+      (val : LeanExe.Source.Scalar.ResultType × LeanExe.Source.Scalar.BooleanType),
+      LeanExe.Extract.Core.booleanRangeBindTypes? input domain output = some val →
+        LeanExe.Extract.Core.extractScalarExprWith locals value = none →
+          LeanExe.Extract.Core.extractScalarExprWith locals
+                ((Lean.Expr.const `Bool.toUInt64 []).app
+                  (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                    (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                                input).app
+                            output).app
+                        value).app
+                    (Lean.Expr.lam binderName domain body binderInfo))) =
+              none →
+            motive locals
+              (((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                  (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                            input).app
+                        output).app
+                    value).app
+                (Lean.Expr.lam binderName domain body binderInfo)))
+  (case32 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence yes no : Lean.Expr),
+      LeanExe.Extract.Core.booleanType? type = none →
+        LeanExe.Extract.Core.extractScalarExprWith locals
+              ((Lean.Expr.const `Bool.toUInt64 []).app
+                ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app yes).app
+                  no)) =
+            none →
+          motive locals
+            ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app yes).app no))
+  (case33 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence yes no : Lean.Expr)
+      (val : LeanExe.Source.Scalar.BooleanType),
+      LeanExe.Extract.Core.booleanType? type = some val →
+        LeanExe.Extract.Core.extractScalarExprWith locals
+              (LeanExe.Source.Scalar.BooleanRange.decision condition evidence) =
+            none →
+          LeanExe.Extract.Core.extractScalarExprWith locals
+                ((Lean.Expr.const `Bool.toUInt64 []).app
+                  ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app yes).app
+                    no)) =
+              none →
+            motive locals
+              ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app yes).app
+                no))
+  (case34 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (type condition evidence yes no : Lean.Expr)
+      (val : LeanExe.Source.Scalar.BooleanType),
+      LeanExe.Extract.Core.booleanType? type = some val →
+        ∀ (val : LeanExe.IR.Expr),
+          LeanExe.Extract.Core.extractScalarExprWith locals
+                (LeanExe.Source.Scalar.BooleanRange.decision condition evidence) =
+              some val →
+            LeanExe.Extract.Core.extractScalarExprWith locals
+                  ((Lean.Expr.const `Bool.toUInt64 []).app
+                    ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                          yes).app
+                      no)) =
+                none →
+              motive locals yes →
+                motive locals no →
+                  motive locals
+                    ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                          yes).app
+                      no))
+  (case35 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (source : Lean.Expr),
+      (∀ (declName : Lean.Name) (value body : Lean.Expr) (nondep : Bool),
+          source = Lean.Expr.letE declName (Lean.Expr.const `UInt64 []) value body nondep → False) →
+        (∀ (declName : Lean.Name) (value body : Lean.Expr) (nondep : Bool),
+            source = Lean.Expr.letE declName (Lean.Expr.const `Bool []) value body nondep → False) →
+          (∀ (name : Lean.Name) (type value body : Lean.Expr) (nondep : Bool),
+              source = Lean.Expr.letE name ((Lean.Expr.const `Id [Lean.Level.zero]).app type) value body nondep →
+                False) →
+            (∀ (functionName firstTypeName secondTypeName : Lean.Name) (resultType : Lean.Expr)
+                (secondTypeBi firstTypeBi : Lean.BinderInfo) (firstName secondName : Lean.Name) (value : Lean.Expr)
+                (secondBi firstBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+                source =
+                    Lean.Expr.letE functionName
+                      (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                        (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                        firstTypeBi)
+                      (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                        (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                      body nondep →
+                  False) →
+              (∀ (name typeName : Lean.Name) (resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+                  (value : Lean.Expr) (paramBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+                  source =
+                      Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+                        (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body nondep →
+                    False) →
+                (∀ (name typeName : Lean.Name) (resultType : Lean.Expr) (typeBi : Lean.BinderInfo)
+                    (paramName : Lean.Name) (value : Lean.Expr) (paramBi : Lean.BinderInfo) (body : Lean.Expr)
+                    (nondep : Bool),
+                    source =
+                        Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+                          (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body nondep →
+                      False) →
+                  (∀ (declName binderName binderName_1 : Lean.Name) (resultType : Lean.Expr)
+                      (binderInfo binderInfo_1 : Lean.BinderInfo) (binderName_2 binderName_3 : Lean.Name)
+                      (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo) (body : Lean.Expr)
+                      (nondep : Bool),
+                      source =
+                          Lean.Expr.letE declName
+                            (Lean.Expr.forallE binderName (Lean.Expr.const `Unit [])
+                              (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo)
+                              binderInfo_1)
+                            (Lean.Expr.lam binderName_2 (Lean.Expr.const `Unit [])
+                              (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+                            body nondep →
+                        False) →
+                    (∀ (declName binderName binderName_1 : Lean.Name) (resultType : Lean.Expr)
+                        (binderInfo binderInfo_1 : Lean.BinderInfo) (binderName_2 binderName_3 : Lean.Name)
+                        (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo) (body : Lean.Expr)
+                        (nondep : Bool),
+                        source =
+                            Lean.Expr.letE declName
+                              (Lean.Expr.forallE binderName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                                (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo)
+                                binderInfo_1)
+                              (Lean.Expr.lam binderName_2 (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                                (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2)
+                                binderInfo_3)
+                              body nondep →
+                          False) →
+                      (∀ (name typeName : Lean.Name) (input resultType : Lean.Expr) (typeBi : Lean.BinderInfo)
+                          (paramName : Lean.Name) (domain value : Lean.Expr) (paramBi : Lean.BinderInfo)
+                          (body : Lean.Expr) (nondep : Bool),
+                          source =
+                              Lean.Expr.letE name
+                                (Lean.Expr.forallE typeName ((Lean.Expr.const `Id [Lean.Level.zero]).app input)
+                                  resultType typeBi)
+                                (Lean.Expr.lam paramName ((Lean.Expr.const `Id [Lean.Level.zero]).app domain) value
+                                  paramBi)
+                                body nondep →
+                            False) →
+                        (∀ (input output value : Lean.Expr) (binderName : Lean.Name) (domain body : Lean.Expr)
+                            (binderInfo : Lean.BinderInfo),
+                            source =
+                                ((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                  (((Lean.Expr.const `Monad.toBind
+                                                            [Lean.Level.zero, Lean.Level.zero]).app
+                                                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                                              input).app
+                                          output).app
+                                      value).app
+                                  (Lean.Expr.lam binderName domain body binderInfo) →
+                              False) →
+                          (∀ (type condition evidence yes no : Lean.Expr),
+                              source =
+                                  (((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app
+                                            evidence).app
+                                        yes).app
+                                    no →
+                                False) →
+                            ∀ (fst : LeanExe.Source.Scalar.BooleanWrapper) (body : Lean.Expr),
+                              LeanExe.Extract.Core.booleanRangeWrapper? source = some (fst, body) →
+                                LeanExe.Extract.Core.extractScalarExprWith locals
+                                      ((Lean.Expr.const `Bool.toUInt64 []).app source) =
+                                    none →
+                                  motive locals body → motive locals source)
+  (case36 :
+    ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (source : Lean.Expr),
+      (∀ (declName : Lean.Name) (value body : Lean.Expr) (nondep : Bool),
+          source = Lean.Expr.letE declName (Lean.Expr.const `UInt64 []) value body nondep → False) →
+        (∀ (declName : Lean.Name) (value body : Lean.Expr) (nondep : Bool),
+            source = Lean.Expr.letE declName (Lean.Expr.const `Bool []) value body nondep → False) →
+          (∀ (name : Lean.Name) (type value body : Lean.Expr) (nondep : Bool),
+              source = Lean.Expr.letE name ((Lean.Expr.const `Id [Lean.Level.zero]).app type) value body nondep →
+                False) →
+            (∀ (functionName firstTypeName secondTypeName : Lean.Name) (resultType : Lean.Expr)
+                (secondTypeBi firstTypeBi : Lean.BinderInfo) (firstName secondName : Lean.Name) (value : Lean.Expr)
+                (secondBi firstBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+                source =
+                    Lean.Expr.letE functionName
+                      (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+                        (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi)
+                        firstTypeBi)
+                      (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+                        (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+                      body nondep →
+                  False) →
+              (∀ (name typeName : Lean.Name) (resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+                  (value : Lean.Expr) (paramBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+                  source =
+                      Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+                        (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body nondep →
+                    False) →
+                (∀ (name typeName : Lean.Name) (resultType : Lean.Expr) (typeBi : Lean.BinderInfo)
+                    (paramName : Lean.Name) (value : Lean.Expr) (paramBi : Lean.BinderInfo) (body : Lean.Expr)
+                    (nondep : Bool),
+                    source =
+                        Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+                          (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body nondep →
+                      False) →
+                  (∀ (declName binderName binderName_1 : Lean.Name) (resultType : Lean.Expr)
+                      (binderInfo binderInfo_1 : Lean.BinderInfo) (binderName_2 binderName_3 : Lean.Name)
+                      (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo) (body : Lean.Expr)
+                      (nondep : Bool),
+                      source =
+                          Lean.Expr.letE declName
+                            (Lean.Expr.forallE binderName (Lean.Expr.const `Unit [])
+                              (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo)
+                              binderInfo_1)
+                            (Lean.Expr.lam binderName_2 (Lean.Expr.const `Unit [])
+                              (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+                            body nondep →
+                        False) →
+                    (∀ (declName binderName binderName_1 : Lean.Name) (resultType : Lean.Expr)
+                        (binderInfo binderInfo_1 : Lean.BinderInfo) (binderName_2 binderName_3 : Lean.Name)
+                        (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo) (body : Lean.Expr)
+                        (nondep : Bool),
+                        source =
+                            Lean.Expr.letE declName
+                              (Lean.Expr.forallE binderName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                                (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo)
+                                binderInfo_1)
+                              (Lean.Expr.lam binderName_2 (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+                                (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2)
+                                binderInfo_3)
+                              body nondep →
+                          False) →
+                      (∀ (name typeName : Lean.Name) (input resultType : Lean.Expr) (typeBi : Lean.BinderInfo)
+                          (paramName : Lean.Name) (domain value : Lean.Expr) (paramBi : Lean.BinderInfo)
+                          (body : Lean.Expr) (nondep : Bool),
+                          source =
+                              Lean.Expr.letE name
+                                (Lean.Expr.forallE typeName ((Lean.Expr.const `Id [Lean.Level.zero]).app input)
+                                  resultType typeBi)
+                                (Lean.Expr.lam paramName ((Lean.Expr.const `Id [Lean.Level.zero]).app domain) value
+                                  paramBi)
+                                body nondep →
+                            False) →
+                        (∀ (input output value : Lean.Expr) (binderName : Lean.Name) (domain body : Lean.Expr)
+                            (binderInfo : Lean.BinderInfo),
+                            source =
+                                ((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                                                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                  (((Lean.Expr.const `Monad.toBind
+                                                            [Lean.Level.zero, Lean.Level.zero]).app
+                                                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                                              input).app
+                                          output).app
+                                      value).app
+                                  (Lean.Expr.lam binderName domain body binderInfo) →
+                              False) →
+                          (∀ (type condition evidence yes no : Lean.Expr),
+                              source =
+                                  (((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app
+                                            evidence).app
+                                        yes).app
+                                    no →
+                                False) →
+                            LeanExe.Extract.Core.booleanRangeWrapper? source = none →
+                              LeanExe.Extract.Core.extractScalarExprWith locals
+                                    ((Lean.Expr.const `Bool.toUInt64 []).app source) =
+                                  none →
+                                motive locals source)
+  (locals : List LeanExe.Extract.Core.ScalarBinding) (source : Lean.Expr) : motive locals source
