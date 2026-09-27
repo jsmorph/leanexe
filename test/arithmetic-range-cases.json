@@ -777,5 +777,15 @@
   "rangeWordChooseContinue",
   "rangeWordChooseStride",
   "rangeWordChooseHelpers",
-  "rangeWordChooseId"
+  "rangeWordChooseId",
+  "rangeWordChooseSetupWord",
+  "rangeWordChooseSetupFlag",
+  "rangeWordChooseSetupDo",
+  "rangeWordChooseSetupNested",
+  "rangeWordChooseSavedResult",
+  "rangeWordChooseShowResult",
+  "rangeWordChooseSetupExit",
+  "rangeWordChooseSetupContinue",
+  "rangeWordChooseSetupStride",
+  "rangeWordChooseSetupId"
 ]
