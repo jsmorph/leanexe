@@ -5,7 +5,10 @@ from fractions import Fraction
 import json
 from pathlib import Path
 import struct
-from run import ROOT, Scan, words, wgpu
+if __package__:
+    from .run import ROOT, Scan, words, wgpu, configure_cli
+else:
+    from run import ROOT, Scan, words, wgpu, configure_cli
 
 
 class IntervalScan(Scan):
@@ -112,4 +115,5 @@ def main():
 
 
 if __name__ == '__main__':
+    configure_cli()
     main()

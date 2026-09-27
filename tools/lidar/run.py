@@ -3,23 +3,14 @@
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import struct
-import sys
-from artifacts import checked_artifacts
-
-ROOT = Path(__file__).resolve().parents[2]
-VULKAN = ROOT / 'build/lidar/vulkan'
-if VULKAN.exists() and not os.environ.get('LEANEXE_LIDAR_CONFIGURED'):
-    env = dict(os.environ, LEANEXE_LIDAR_CONFIGURED='1')
-    env['LD_LIBRARY_PATH'] = str(VULKAN / 'usr/lib/x86_64-linux-gnu') + ':' + env.get('LD_LIBRARY_PATH', '')
-    env.setdefault('VK_DRIVER_FILES', str(VULKAN / 'usr/share/vulkan/icd.d/lvp_icd.json'))
-    env.setdefault('XDG_RUNTIME_DIR', '/tmp')
-    cache = ROOT / 'build/lidar/gpu-cache'
-    cache.mkdir(parents=True, exist_ok=True)
-    env.setdefault('XDG_CACHE_HOME', str(cache))
-    os.execve(sys.executable, [sys.executable, *sys.argv], env)
+if __package__:
+    from .artifacts import checked_artifacts
+    from .cli import ROOT, configure_cli
+else:
+    from artifacts import checked_artifacts
+    from cli import ROOT, configure_cli
 
 import wgpu
 import wasmtime
@@ -145,4 +136,5 @@ def main():
 
 
 if __name__ == '__main__':
+    configure_cli()
     main()

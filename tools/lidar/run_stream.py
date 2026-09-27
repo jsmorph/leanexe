@@ -3,8 +3,12 @@
 import argparse
 import json
 from pathlib import Path
-from run import ROOT, Scan
-from run_interval import IntervalScan, expected
+if __package__:
+    from .run import ROOT, Scan, configure_cli
+    from .run_interval import IntervalScan, expected
+else:
+    from run import ROOT, Scan, configure_cli
+    from run_interval import IntervalScan, expected
 
 
 def exercise(mode, bundle):
@@ -78,4 +82,5 @@ def main():
 
 
 if __name__ == '__main__':
+    configure_cli()
     main()

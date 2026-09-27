@@ -358,3 +358,45 @@ small: four rectangles, four fixed unit directions, one exact integer sensor
 position, bounded range, and optional bounded rectangle-endpoint uncertainty.
 Arbitrary directions, moving GPU scenes, floating-point arithmetic, sensor noise,
 and hardware-GPU performance are future extensions rather than current claims.
+
+### Review follow-up — decoded exact summaries and importable runners
+
+Review found a composition gap in the cardinal and oblique pipeline statements:
+they connected emitted WASM to an individual scan result, while the host exposes
+a selected-beam summary. The new shared
+[exact-query theorem](../../proofs/talos/lean/Project/Lidar/ExactQuery.lean)
+connects all four resident results to the actual summary shader and its decoded
+fields. The count equals the number of selected beams with a geometric hit in
+range. A present nearest distance is the first selected hit; an absent distance
+is equivalent to no selected beam hitting within range. The oblique theorem
+keeps the 60-tick interpretation.
+
+```mermaid
+flowchart LR
+  W[Emitted WASM result] --> P[Exact unpacked parameters]
+  P --> B[Four certified beam results]
+  B --> S[Certified requested-summary shader]
+  S --> D[Decode count and optional nearest]
+  D --> G[Selected-beam geometric count and first hit or miss]
+```
+
+Both exact `Application.pipeline` statements now include that entire modeled
+composition. The new shared proof and all three application/reuse certificates
+pass, with only `propext`, `Classical.choice`, and `Quot.sound` in the axiom audits.
+The final artifact-identity checks pass; shader and controller bytes are
+unchanged. The frontend also rejects the deliberately false theorem. Host
+buffer transfers, scheduling and device conformance remain external assumptions.
+
+The second review finding concerned importing the Python runners: optional local
+Vulkan setup could replace the importing process and lose Python's `-c` source
+text. Setup now runs explicitly at CLI entry, and any restart preserves the
+original interpreter invocation. All four runners support script and module
+entry points; imports preserve the caller's process and environment. Embedding
+applications configure their GPU environment before launching Python.
+
+All six runtime regression tests pass, covering import safety, interpreter flags,
+script/module invocations, setup idempotence, caller-supplied driver settings,
+and artifact-boundary rejection. The 38 geometric comparisons and 33 stream
+requests pass again on the same Mesa llvmpipe CPU Vulkan adapter. The README
+now states the decoded-summary proof scope and the distinction between CLI
+startup and embedding. Both review findings are closed within the stated model.

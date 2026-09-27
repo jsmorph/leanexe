@@ -4,7 +4,10 @@ import argparse
 import json
 from pathlib import Path
 
-from run import ROOT, Scan
+if __package__:
+    from .run import ROOT, Scan, configure_cli
+else:
+    from run import ROOT, Scan, configure_cli
 
 
 def main():
@@ -49,4 +52,5 @@ def main():
 
 
 if __name__ == '__main__':
+    configure_cli()
     main()
