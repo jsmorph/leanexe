@@ -36,7 +36,7 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
     exact extractScalarExprWith_correct hy hr
       ((bindings (Range.Exit.iterate step stop.toNat 0 start) stop.toNat stop exitFlag).cons (resultEval exitFlag))
   | case3 locals name value body nondep bodyIH valueIH =>
-    rcases scalarBooleanRangeFlagBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, result, hp, hr, rfl⟩
+    rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, result, hp, hr, rfl⟩
     · obtain ⟨encoded, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
       obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
       have extended : RangeExitBindingsMatch (.boolean bound :: locals) (.boolean flag :: values) saved := by
@@ -377,7 +377,7 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
   | case26 => contradiction
   | case27 locals input output value name domain body binder notWord types parsed bodyIH valueIH =>
     obtain ⟨rfl, rfl, rfl⟩ := booleanRangeFlagBindTypes_sound parsed
-    rcases scalarBooleanRangeFlagBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, result, hp, hr, rfl⟩
+    rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, result, hp, hr, rfl⟩
     · obtain ⟨encoded, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
       obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
       have extended : RangeExitBindingsMatch (.boolean bound :: locals) (.boolean flag :: values) saved := by

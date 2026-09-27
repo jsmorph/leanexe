@@ -6940,6 +6940,136 @@ def rangeWordFromBoolId (count seed : UInt64) : Id (Id UInt64) := do
     pure (pure (pure (value % 7 == seed % 7))))
   pure (pure ((if !(Id.run (Id.run flag)) && seed != 0 then seed + 7 else seed * 3) + count))
 
+def rangeWordBoolSetupWord (count seed : UInt64) : UInt64 :=
+  let limit := count % 17
+  let initial := seed + 7
+  let flag :=
+    let value := Id.run do
+      let mut a := initial
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == initial % 7
+  (if flag then initial + 7 else initial * 3) + limit
+
+def rangeWordBoolSetupFlag (count seed : UInt64) : UInt64 :=
+  let selected := seed % 3 == 0
+  let initial := if selected then seed + 7 else seed * 3
+  let flag :=
+    let value := Id.run do
+      let mut a := initial
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == initial % 7
+  (if flag then initial + 7 else initial * 3) + count
+
+def rangeWordBoolSetupDo (count seed : UInt64) : Id UInt64 :=
+do
+  let limit ← pure (count % 17)
+  let initial ← pure (seed + 7)
+  let flag ← (do
+    let value ← (do
+      let mut a := initial
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a)
+    pure (value % 7 == initial % 7))
+  pure ((if flag then initial + 7 else initial * 3) + limit)
+
+def rangeWordBoolSetupNested (count seed : UInt64) : Id UInt64 :=
+do
+  let selected ← pure (seed % 3 == 0)
+  let limit := count % 17
+  let initial ← pure (if selected then seed + 7 else seed * 3)
+  let flag ← (do
+    let value ← (do
+      let mut a := initial
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a)
+    pure (value % 7 == initial % 7))
+  pure ((if flag then initial + 7 else initial * 3) + limit)
+
+def rangeWordBoolSavedResult (count seed : UInt64) : UInt64 :=
+  let saved :=
+    let flag :=
+      let value := Id.run do
+        let mut a := seed
+        for i in [:count.toNat] do
+          a := a + i.toUInt64 + 1
+        return a
+      value % 7 == seed % 7
+    (if flag then seed + 7 else seed * 3) + count
+  saved + seed * 3
+
+def rangeWordBoolShowResult (count seed : UInt64) : Id UInt64 :=
+  show Id UInt64 from do
+    let flag ← (do
+      let value ← (do
+        let mut a := seed
+        for i in [:count.toNat] do
+          a := a + i.toUInt64 + 1
+        return a)
+      pure (value % 7 == seed % 7))
+    pure ((if flag then seed + 7 else seed * 3) + count)
+
+def rangeWordBoolSetupExit (count seed : UInt64) : UInt64 :=
+  let limit := count % 23
+  let initial := seed + 11
+  let flag :=
+    let value := Id.run do
+      let mut a := initial
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+        if a % 7 == 0 then break
+      return a
+    value % 7 == 0
+  if flag || limit == 0 then initial + 5 else initial * 7
+
+def rangeWordBoolSetupContinue (count seed : UInt64) : Id UInt64 :=
+do
+  let selected ← pure (seed % 2 == 0)
+  let initial := if selected then seed + 5 else seed * 3
+  let flag ← (do
+    let value ← (do
+      let mut a := initial
+      for i in [:count.toNat] do
+        if i.toUInt64 % 2 == 0 then continue
+        a := a + i.toUInt64 + 1
+      return a)
+    pure (value % 7 == initial % 7))
+  pure ((if !flag || initial == 0 then initial + 11 else initial * 3) + count)
+
+def rangeWordBoolSetupStride (count seed : UInt64) : UInt64 :=
+  let limit := count % 23
+  let initial := seed + 11
+  let flag :=
+    let value := Id.run do
+      let mut a := initial
+      for i in [(initial % 3).toNat:limit.toNat:3] do
+        a := a + i.toUInt64 + 1
+        if a % 5 == 0 then break
+      return a
+    value % 5 == 0
+  flag.toUInt64 * 23 + initial
+
+def rangeWordBoolSetupId (count seed : UInt64) : Id (Id UInt64) :=
+do
+  let limit : Id (Id UInt64) ← pure (pure (pure (count % 17)))
+  let selected : Id (Id Bool) ← pure (pure (pure (seed % 2 == 0)))
+  let initial : Id UInt64 := if Id.run (Id.run selected) then seed + 7 else seed * 3
+  let stop := Id.run (Id.run limit)
+  let start := Id.run initial
+  let flag : Id (Id Bool) ← (do
+    let value ← (do
+      let mut a := start
+      for i in [:stop.toNat] do
+        a := a + i.toUInt64 + 1
+      return a)
+    pure (pure (pure (value % 7 == start % 7))))
+  pure (pure ((if !(Id.run (Id.run flag)) && start != 0 then start + 7 else start * 3) + stop))
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -9935,6 +10065,16 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeWordFromBoolContinue", (fun (x y : UInt64) => rangeWordFromBoolContinue x y)),
    ("rangeWordFromBoolStride", (fun (x y : UInt64) => rangeWordFromBoolStride x y)),
    ("rangeWordFromBoolId", (fun (x y : UInt64) => rangeWordFromBoolId x y)),
+   ("rangeWordBoolSetupWord", (fun (x y : UInt64) => rangeWordBoolSetupWord x y)),
+   ("rangeWordBoolSetupFlag", (fun (x y : UInt64) => rangeWordBoolSetupFlag x y)),
+   ("rangeWordBoolSetupDo", (fun (x y : UInt64) => rangeWordBoolSetupDo x y)),
+   ("rangeWordBoolSetupNested", (fun (x y : UInt64) => rangeWordBoolSetupNested x y)),
+   ("rangeWordBoolSavedResult", (fun (x y : UInt64) => rangeWordBoolSavedResult x y)),
+   ("rangeWordBoolShowResult", (fun (x y : UInt64) => rangeWordBoolShowResult x y)),
+   ("rangeWordBoolSetupExit", (fun (x y : UInt64) => rangeWordBoolSetupExit x y)),
+   ("rangeWordBoolSetupContinue", (fun (x y : UInt64) => rangeWordBoolSetupContinue x y)),
+   ("rangeWordBoolSetupStride", (fun (x y : UInt64) => rangeWordBoolSetupStride x y)),
+   ("rangeWordBoolSetupId", (fun (x y : UInt64) => rangeWordBoolSetupId x y)),
    ("rangeBoolLetIdWord", (fun (x y : UInt64) => (rangeBoolLetIdWord x y).toUInt64)),
    ("rangeBoolLetIdWordLayers", (fun (x y : UInt64) => (rangeBoolLetIdWordLayers x y).toUInt64)),
    ("rangeBoolLetIdFlag", (fun (x y : UInt64) => (rangeBoolLetIdFlag x y).toUInt64)),
