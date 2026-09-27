@@ -1,4 +1,5 @@
 import Project.Beck.Elimination
+import Project.Beck.EchelonShape
 
 namespace Project.Beck.BackSubstitution
 
@@ -84,5 +85,131 @@ theorem step_correct (width row column : ℕ) (matrix vector : Array Integer)
     exact Array.getElem!_set!_ne _ _ _ _ (Ne.symm distinct)
 
 #print axioms step_correct
+
+theorem split_sum (width column : ℕ) (f : ℕ → ℤ) (inside : column < width)
+    (zero : ∀ col, col < column → f col = 0) :
+    ((List.range width).map f).sum = f column +
+      ((List.range' (column + 1) (width - (column + 1))).map f).sum := by
+  have range : List.range width = List.range column ++ [column] ++
+      List.range' (column + 1) (width - (column + 1)) := by
+    rw [← List.range_succ, List.range_eq_range', List.range_eq_range']
+    have joined := List.range'_append_1 (s := 0) (m := column + 1)
+      (n := width - (column + 1))
+    simpa only [Nat.zero_add, Nat.add_sub_of_le (by omega : column + 1 ≤ width)] using joined.symm
+  have prefixZero : ((List.range column).map f).sum = 0 := by
+    apply List.sum_eq_zero
+    intro z member
+    obtain ⟨col, inRange, rfl⟩ := List.mem_map.mp member
+    exact zero col (List.mem_range.mp inRange)
+  rw [range, List.map_append, List.sum_append, List.map_append, List.sum_append, prefixZero]
+  simp
+
+def backwardBody (width : ℕ) (matrix : Array Integer) (columns : Array UInt64)
+    (offset : ℕ) (vector : Array Integer) : Option (ForInStep (Array Integer)) := do
+  let row := columns.size - 1 - offset
+  return .yield (← step width row columns[row]!.toNat matrix vector)
+
+def Agrees (width remaining : ℕ) (columns : Array UInt64)
+    (answer : ℕ → ℤ) (vector : Array Integer) : Prop :=
+  ∀ job, job < width → (∀ row, row < remaining → columns[row]!.toNat ≠ job) →
+    value vector[job]! = answer job
+
+theorem backward_step (width offset : ℕ) (matrix vector : Array Integer) (columns : Array UInt64)
+    (answer : ℕ → ℤ)
+    (shape : EchelonShape.Pivots columns.size width
+      (fun row col => value matrix[row * width + col]!) (columns.toList.map UInt64.toNat))
+    (matrixValid : ∀ row, row < columns.size → ∀ col, col < width → Valid matrix[row * width + col]!)
+    (vectorValid : ∀ entry ∈ vector, Valid entry) (vectorSize : vector.size = width)
+    (equations : ∀ row, row < columns.size →
+      ((List.range width).map (fun col => value matrix[row * width + col]! * answer col)).sum = 0)
+    (offsetBound : offset < columns.size)
+    (agrees : Agrees width (columns.size - offset) columns answer vector) :
+    ∃ result, backwardBody width matrix columns offset vector = some (.yield result) ∧
+      (∀ entry ∈ result, Valid entry) ∧ result.size = width ∧
+      Agrees width (columns.size - (offset + 1)) columns answer result := by
+  let row := columns.size - 1 - offset
+  let column := columns[row]!.toNat
+  have rowBound : row < columns.size := by dsimp [row]; omega
+  have columnGet (r : ℕ) (inside : r < columns.size) :
+      (columns.toList.map UInt64.toNat)[r]! = columns[r]!.toNat := by
+    rw [getElem!_pos (columns.toList.map UInt64.toNat) r (by simpa using inside),
+      List.getElem_map, Array.getElem_toList, getElem!_pos columns r inside]
+  have columnBound : column < width := by simpa only [columnGet row rowBound] using shape.before row rowBound
+  have pivotNonzero : value matrix[row * width + column]! ≠ 0 := by
+    simpa only [columnGet row rowBound] using shape.nonzero row rowBound
+  have order (earlier : ℕ) (before : earlier < row) : columns[earlier]!.toNat < column := by
+    simpa only [columnGet row rowBound, columnGet earlier (by omega)] using
+      shape.ordered earlier row before rowBound
+  have later (job : ℕ) (afterColumn : column < job) (inside : job < width) :
+      value vector[job]! = answer job := by
+    apply agrees job inside
+    intro r remaining
+    have before : r ≤ row := by dsimp [row]; omega
+    rcases Nat.lt_or_eq_of_le before with before | rfl
+    · have := order r before
+      omega
+    · exact Nat.ne_of_lt afterColumn
+  have equation : value matrix[row * width + column]! * answer column +
+      ((List.range' (column + 1) (width - (column + 1))).map
+        (fun job => value matrix[row * width + job]! * value vector[job]!)).sum = 0 := by
+    have split := split_sum width column
+      (fun job => value matrix[row * width + job]! * answer job) columnBound (by
+        intro job before
+        have zero := shape.leadingZero row rowBound job (by simpa only [columnGet row rowBound] using before)
+        rw [zero, zero_mul])
+    have equation := equations row rowBound
+    rw [split] at equation
+    convert equation using 2
+    congr 1
+    apply List.map_congr_left
+    intro job member
+    have bounds := List.mem_range'_1.mp member
+    rw [later job (by omega) (by omega)]
+  obtain ⟨result, source, valid, size, recovered, untouched⟩ := step_correct width row column matrix vector
+    columnBound vectorSize (matrixValid row rowBound) vectorValid pivotNonzero (answer column) equation
+  refine ⟨result, ?_, valid, size, ?_⟩
+  · rw [backwardBody]
+    change (step width row column matrix vector >>= _) = _
+    rw [source]
+    rfl
+  · intro job inside absent
+    by_cases same : job = column
+    · simpa only [same] using recovered
+    · rw [untouched job same]
+      apply agrees job inside
+      intro r remaining
+      by_cases before : r < columns.size - (offset + 1)
+      · exact absent r before
+      · have equal : r = row := by dsimp [row]; omega
+        subst r
+        exact Ne.symm same
+
+#print axioms backward_step
+
+theorem backward_loop (width count offset : ℕ) (matrix vector : Array Integer) (columns : Array UInt64)
+    (answer : ℕ → ℤ)
+    (shape : EchelonShape.Pivots columns.size width
+      (fun row col => value matrix[row * width + col]!) (columns.toList.map UInt64.toNat))
+    (matrixValid : ∀ row, row < columns.size → ∀ col, col < width → Valid matrix[row * width + col]!)
+    (vectorValid : ∀ entry ∈ vector, Valid entry) (vectorSize : vector.size = width)
+    (equations : ∀ row, row < columns.size →
+      ((List.range width).map (fun col => value matrix[row * width + col]! * answer col)).sum = 0)
+    (bound : offset + count ≤ columns.size)
+    (agrees : Agrees width (columns.size - offset) columns answer vector) :
+    ∃ result, forIn (List.range' offset count) vector (backwardBody width matrix columns) = some result ∧
+      (∀ entry ∈ result, Valid entry) ∧ result.size = width ∧
+      Agrees width (columns.size - (offset + count)) columns answer result := by
+  induction count generalizing offset vector with
+  | zero => exact ⟨vector, rfl, vectorValid, vectorSize, agrees⟩
+  | succ count ih =>
+    obtain ⟨middle, step, middleValid, middleSize, middleAgrees⟩ := backward_step width offset
+      matrix vector columns answer shape matrixValid vectorValid vectorSize equations (by omega) agrees
+    obtain ⟨result, rest, resultValid, resultSize, resultAgrees⟩ := ih (offset + 1) middle
+      middleValid middleSize (by omega) middleAgrees
+    refine ⟨result, ?_, resultValid, resultSize, ?_⟩
+    · simpa only [List.range'_succ, List.forIn_cons, step, bind, pure, Option.bind] using rest
+    · convert resultAgrees using 1 <;> omega
+
+#print axioms backward_loop
 
 end Project.Beck.BackSubstitution

@@ -17,7 +17,8 @@ The compiler corrections address repeated evaluation of monadic loop bodies and 
 - [x] Prove arbitrary-dimension rounding and integer condensation lemmas.
 - [x] Prove binary long division and signed exact division.
 - [x] Prove the elimination invariant and successful kernel-preserving echelon reduction.
-- [ ] Prove complete exact back substitution and preserving direction construction.
+- [x] Prove complete exact back substitution with a determinant-scaled integer kernel.
+- [ ] Connect protected-matrix construction and free-column availability to the direction theorem.
 - [ ] Connect the implemented rounding step and parser to the universal source theorem.
 - [ ] Derive sufficient indexing, arithmetic-width, fuel, and allocation bounds.
 - [ ] Prove exact-WASM execution and check the independent package.
