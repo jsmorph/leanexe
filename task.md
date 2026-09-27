@@ -556,6 +556,13 @@ equivalent-binding controls. Prior tests pass 96,768 comparisons, 78,336
 invalid-input checks and 5,760 controls. Evidence is in
 [the conditional-continuation archive](proofs/compiler/boolean-loop-conditional-continuation-2026-09-27/README.md).
 
+Current capability: saved local-call results. Exact call syntax now preserves
+`let result := CALL; result`, including the binding introduced by show, standard
+Id result annotations, name shadowing and nested wrappers. Source, extraction, correctness, invariant, public compiler and WASM admission
+proofs pass. New tests pass 97,008 native/IR comparisons, 76,032 invalid-input
+checks and 3,456 binding controls, including the restored show failure. The
+complete proof and native Lean/WASM checks are next.
+
 Next: saved local-call results and wrappers around conditional calls, followed by
 retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.

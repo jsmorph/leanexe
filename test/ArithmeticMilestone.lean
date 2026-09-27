@@ -6488,6 +6488,135 @@ def rangeBoolConditionalCallId (count seed : UInt64) : Id (Id Bool) :=
       return a)
     return pure (Id.run flag && value != seed)
 
+def rangeBoolSavedCallWord (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  show Id Bool from do
+    let argument ← (pure (count % 17) : Id (UInt64))
+    run argument
+
+def rangeBoolSavedCallFlag (count : UInt64) (flag : Bool) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := count
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + (if selected then 1 else 3)
+      return a
+    selected && value != count
+  show Id Bool from do
+    let argument ← (pure (!flag) : Id (Bool))
+    run argument
+
+def rangeBoolSavedCallBooleanArgument (count seed : UInt64) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if selected then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    selected || value % 5 == 0
+  show Id Bool from do
+    let argument ← (pure (seed % 2 == 0 && count != 0) : Id (Bool))
+    run argument
+
+def rangeBoolSavedCallWordCapture (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x * 3 + seed
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := f seed
+      for i in [:limit.toNat] do
+        a := f a + i.toUInt64
+      return a
+    f value == f seed
+  show Id Bool from do
+    let argument ← (pure (count % 19) : Id (UInt64))
+    run argument
+
+def rangeBoolSavedCallBooleanCapture (count seed : UInt64) : Bool :=
+  let p := fun flag : Bool => flag || seed == 0
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if p selected then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    p selected && value != seed
+  show Id Bool from do
+    let argument ← (pure (p (count == 0)) : Id (Bool))
+    run argument
+
+def rangeBoolSavedCallNested (count seed : UInt64) : Bool :=
+  let outer := fun selected : Bool =>
+    let inner := fun limit : UInt64 =>
+      let value := Id.run do
+        let mut a := seed
+        for i in [:limit.toNat] do
+          a := a + i.toUInt64 + (if selected then 1 else 3)
+        return a
+      selected && value != seed
+    show Id Bool from do
+      let argument ← (pure (count % 17) : Id UInt64)
+      inner argument
+  show Id Bool from do
+    let argument ← (pure (seed % 2 == 0) : Id (Bool))
+    outer argument
+
+def rangeBoolSavedCallExit (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+        if a % 7 == 0 then break
+      return a
+    value % 7 == 0
+  show Id Bool from do
+    let argument ← (pure (count % 17) : Id (UInt64))
+    run argument
+
+def rangeBoolSavedCallContinue (count seed : UInt64) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if selected && i.toUInt64 % 2 == 0 then continue
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  show Id Bool from do
+    let argument ← (pure (seed % 2 == 0) : Id (Bool))
+    run argument
+
+def rangeBoolSavedCallStride (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [(seed % 3).toNat:limit.toNat:3] do
+        a := a + i.toUInt64 + 1
+        if a % 5 == 0 then break
+      return a
+    value % 5 == 0
+  show Id Bool from do
+    let argument ← (pure (count % 23) : Id (UInt64))
+    run argument
+
+def rangeBoolSavedCallId (count seed : UInt64) : Id Bool :=
+  let run (selected : Id (Id Bool)) : Id (Id Bool) := do
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if Id.run (Id.run selected) then a := a + i.toUInt64 + 1 else a := a + 3
+      return a)
+    pure (Id.run (Id.run selected) && value != seed)
+  show Id Bool from do
+    let argument ← (pure (pure (pure (seed % 2 == 0))) : Id (Id (Id Bool)))
+    run argument
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -9442,6 +9571,16 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolConditionalCallStride", (fun (x y : UInt64) => (rangeBoolConditionalCallStride x y).toUInt64)),
    ("rangeBoolConditionalCallWord", (fun (x y : UInt64) => (rangeBoolConditionalCallWord x y).toUInt64)),
    ("rangeBoolConditionalCallId", (fun (x y : UInt64) => (rangeBoolConditionalCallId x y).toUInt64)),
+   ("rangeBoolSavedCallWord", (fun (x y : UInt64) => (rangeBoolSavedCallWord x y).toUInt64)),
+   ("rangeBoolSavedCallFlag", (fun (x y : UInt64) => (rangeBoolSavedCallFlag x (y != 0)).toUInt64)),
+   ("rangeBoolSavedCallBooleanArgument", (fun (x y : UInt64) => (rangeBoolSavedCallBooleanArgument x y).toUInt64)),
+   ("rangeBoolSavedCallWordCapture", (fun (x y : UInt64) => (rangeBoolSavedCallWordCapture x y).toUInt64)),
+   ("rangeBoolSavedCallBooleanCapture", (fun (x y : UInt64) => (rangeBoolSavedCallBooleanCapture x y).toUInt64)),
+   ("rangeBoolSavedCallNested", (fun (x y : UInt64) => (rangeBoolSavedCallNested x y).toUInt64)),
+   ("rangeBoolSavedCallExit", (fun (x y : UInt64) => (rangeBoolSavedCallExit x y).toUInt64)),
+   ("rangeBoolSavedCallContinue", (fun (x y : UInt64) => (rangeBoolSavedCallContinue x y).toUInt64)),
+   ("rangeBoolSavedCallStride", (fun (x y : UInt64) => (rangeBoolSavedCallStride x y).toUInt64)),
+   ("rangeBoolSavedCallId", (fun (x y : UInt64) => (rangeBoolSavedCallId x y).toUInt64)),
    ("rangeBoolLetIdWord", (fun (x y : UInt64) => (rangeBoolLetIdWord x y).toUInt64)),
    ("rangeBoolLetIdWordLayers", (fun (x y : UInt64) => (rangeBoolLetIdWordLayers x y).toUInt64)),
    ("rangeBoolLetIdFlag", (fun (x y : UInt64) => (rangeBoolLetIdFlag x y).toUInt64)),
