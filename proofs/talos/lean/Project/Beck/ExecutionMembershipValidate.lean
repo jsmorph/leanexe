@@ -43,7 +43,7 @@ theorem membershipValidate_exact (env : HostEnv Unit) (initial middle : Store Un
     (wordsAt : UInt64Array.At middle wordsPointer words) (positionInside : position < words.size)
     (preserved : original.Frame initial current middle)
     (active : internal = 0 ∨ internal = oldNode.root ∧ FreshFor original oldNode)
-    (inputDifferent : oldNode.root ≠ wordsOwner) (ownerNonzero : wordsOwner ≠ 0)
+    (inputDifferent : oldNode.root ≠ wordsOwner)
     (bound : row.size ≤ 56) (rowSize : row.size = categories)
     (categoryInside : words[position]!.toNat < categories) (freshEntry : row[words[position]!.toNat]! = 0)
     (budget : OutputBudget middle current (48 + 8 * (row.size + 1) + remaining) pageLimit Project.Beck.«module»)
@@ -95,7 +95,7 @@ theorem membershipValidate_exact (env : HostEnv Unit) (initial middle : Store Un
   apply membershipFresh_exact env initial middle original current count position categories words[position].toNat
     wordsOwner wordsPointer internal oldNode (membershipReadSaved words[position] saved)
     (membershipReadTail oldNode.root words[position] tail) row remaining pageLimit
-    valid owned preserved active inputDifferent ownerNonzero bound categoryInside' positionBound
+    valid owned preserved active inputDifferent bound categoryInside' positionBound
     (by simp [membershipReadSaved, Nat.toUInt64]) budget
   intro final finalHeap node finalValid finalOwned finalFrame fresh finalBudget saved' tail'
   simp only [membershipFrame, wp_simp, List.take, List.drop, List.append_nil]

@@ -106,6 +106,7 @@ import Project.Beck.ExecutionMatrixPrefix
 #print axioms Project.Beck.Execution.membershipRelease_owned
 #print axioms Project.Beck.Execution.membershipFresh_exact
 #print axioms Project.Beck.Execution.readMemberships_exact
+#print axioms Project.Beck.Execution.readMemberships_owner_exact
 #print axioms Project.Beck.Execution.jobReplicateCapacity_owned
 #print axioms Project.Beck.Execution.jobAppendCapacity_owned
 #print axioms Project.Beck.Execution.jobCleanup_exact
