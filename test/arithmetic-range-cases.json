@@ -514,5 +514,9 @@
   "rangeBooleanInputStep",
   "rangeBooleanInputContinue",
   "rangeBooleanInputOuter",
-  "rangeBooleanInputHelper"
+  "rangeBooleanInputHelper",
+  "rangeBooleanCallArgumentStep",
+  "rangeBooleanCallArgumentContinue",
+  "rangeBooleanCallArgumentOuter",
+  "rangeBooleanCallArgumentBind"
 ]

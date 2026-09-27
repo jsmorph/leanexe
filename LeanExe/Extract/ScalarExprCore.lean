@@ -235,14 +235,10 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
       | some function => do
           let value ← extractScalarExprWith locals argument
           function value
-      | none =>
-          match _boolean : booleanLocalOperands? argument with
-          | none => none
-          | some expression => do
-              let function ← locals[index]?.bind ScalarBinding.booleanFunction?
-              let c ← extractBooleanLocalWith locals expression
-                (fun operand _member => extractScalarExprWith locals operand)
-              function (guardWord c)
+      | none => do
+          let function ← locals[index]?.bind ScalarBinding.booleanFunction?
+          let value ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) argument)
+          function value
   | .letE _ (.forallE _ (.const ``Bool []) resultType _)
       (.lam _ (.const ``Bool []) value _) body _ =>
       match scalarResultType? resultType with
@@ -938,14 +934,12 @@ theorem extractScalarExprWith_booleanDependentBranch (locals : List ScalarBindin
   rw [LeanExe.Source.Scalar.Identity.bind, extractScalarExprWith, scalarBindTypes_accepts]
 
 theorem extractScalarExprWith_booleanApply (locals : List ScalarBinding) (index : Nat)
-    (expression : LeanExe.Source.Scalar.BooleanLocal)
-    (function : LeanExe.IR.Expr → Option LeanExe.IR.Expr)
+    (argument : Lean.Expr) (function : LeanExe.IR.Expr → Option LeanExe.IR.Expr)
     (found : (locals[index]?.bind ScalarBinding.booleanFunction?) = some function) :
-    extractScalarExprWith locals (.app (.bvar index) expression.expr) = (do
-      let c ← extractBooleanLocalWith locals expression
-        (fun operand _ => extractScalarExprWith locals operand)
-      function (guardWord c)) := by
-  rw [extractScalarExprWith, scalarBooleanFunction_not_word found, booleanLocalOperands_expr]
+    extractScalarExprWith locals (.app (.bvar index) argument) = (do
+      let value ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) argument)
+      function value) := by
+  rw [extractScalarExprWith, scalarBooleanFunction_not_word found]
   simp [found]
 
 theorem extractScalarExprWith_wordApply (locals : List ScalarBinding) (index : Nat)
@@ -967,7 +961,7 @@ theorem extractScalarExprWith_wordApplyOnly (locals : List ScalarBinding) (index
   cases found : locals[index]?.bind (ScalarBinding.function? false) with
   | some function => rfl
   | none =>
-    cases booleanLocalOperands? argument <;> simp [noBoolean]
+    simp [noBoolean]
 
 theorem extractScalarExprWith_letFn (locals : List ScalarBinding)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)

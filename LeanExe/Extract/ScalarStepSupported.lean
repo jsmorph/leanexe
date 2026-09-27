@@ -274,15 +274,8 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
   | case35 locals index argument noWord f found =>
     rw [extractScalarStepWith, noWord, found] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
-    obtain ⟨expression, parsed, condition, hc, _⟩ := compiled
-    have same := booleanLocalOperands_sound parsed
-    subst argument
-    apply Step.Supported.applyBoolean expression (scalarStepBooleanFunction_kind found)
-    · rw [← scalarStepBindings_typed rfl]
-      exact extractBooleanLocalWith_variables hc
-    · intro operand member
-      obtain ⟨target, found⟩ := extractBooleanLocalWith_operands hc operand member
-      exact scalar found
+    obtain ⟨arg, ha, _⟩ := compiled
+    exact .applyBoolean (scalarStepBooleanFunction_kind found) (scalar ha)
   | case36 locals index argument absent noBoolean ih =>
     rw [extractScalarStepWith, absent, noBoolean] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

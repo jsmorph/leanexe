@@ -178,16 +178,13 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     intro first second result hx hy compiled
     exact ihf compiled (extend (extend bindings hx) hy)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
-  | applyBoolean expression present variables arguments =>
+  | applyBoolean present argument =>
     obtain ⟨f, hf⟩ := scalarStepBooleanFunction_lookup (htypes ▸ present)
     rw [extractScalarStepWith] at compiled
-    simp only [hf, Option.bind_some, ScalarStepBinding.function?, ScalarStepBinding.booleanFunction?, booleanLocalOperands_expr] at compiled
-    simp only [bind, Option.bind_some, Option.bind_eq_some_iff] at compiled
-    obtain ⟨condition, hc, ht⟩ := compiled
-    have holds := extractBooleanLocalWith_choice P literal binary choice expression _ hc
-      (scalarStepBindings_holds bindings) (fun operand member expression found => scalar found bindings)
-    exact bindings _ (List.mem_of_getElem? hf) (guardWord condition) target
-      (holds _ _ (literal 1) (literal 0)) ht
+    simp only [hf, Option.bind_some, ScalarStepBinding.function?, ScalarStepBinding.booleanFunction?] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨arg, ha, ht⟩ := compiled
+    exact bindings _ (List.mem_of_getElem? hf) arg target (scalar ha bindings) ht
   | @apply types index a present argument =>
     obtain ⟨f, hf⟩ := scalarStepFunction_lookup (htypes ▸ present)
     have found : locals[index]?.bind (ScalarStepBinding.function? false) = some f := by
