@@ -481,7 +481,7 @@ mutual
       (body : Expr) :
       Except String ExtractedForInStepBody := do
     let resultWidth := internalSlots resultTy
-    match forInStepBody? resultTy body with
+    match forInStepConstructor? body with
     | .ok parsedStep =>
         let bodyResult ← extractValueFrom ctx locals nextLocal parsedStep.value
         let bodyTargets :=
