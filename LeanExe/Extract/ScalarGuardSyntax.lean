@@ -64,11 +64,11 @@ def guardOperands? : Lean.Expr → Option Guard
 
 @[simp] theorem savedBooleanGuard_not_guard (guard : SavedBooleanGuard) :
     guardOperands? guard.condition = none := by
-  obtain ⟨index, negations, propNegations⟩ := guard
+  obtain ⟨index, negations, propNegations, argument⟩ := guard
   induction propNegations with
   | zero =>
     cases negations with
-    | zero => rfl
+    | zero => cases argument <;> rfl
     | succ n =>
       simp [SavedBooleanGuard.condition, SavedBooleanGuard.expr, GuardNegation.condition,
         BooleanGuardNegation.expr, guardOperands?, comparisonOperands?, savedBooleanValue_not_comparison,

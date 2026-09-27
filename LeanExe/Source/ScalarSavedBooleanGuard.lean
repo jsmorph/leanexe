@@ -2,17 +2,22 @@ import LeanExe.Source.ScalarBooleanGuard
 
 namespace LeanExe.Source.Scalar
 
-/-- A saved Boolean used as a proposition, with its exact negation syntax. -/
+/-- A saved Boolean or local helper call used as a proposition. -/
 structure SavedBooleanGuard where
   index : Nat
   boolNegations : Nat := 0
   propNegations : Nat := 0
+  argument : Option Lean.Expr := none
   deriving Repr
 
 namespace SavedBooleanGuard
 
+def reference (index : Nat) : Option Lean.Expr → Lean.Expr
+  | none => .bvar index
+  | some argument => .app (.bvar index) argument
+
 def expr (guard : SavedBooleanGuard) : Lean.Expr :=
-  BooleanGuardNegation.expr guard.boolNegations (.bvar guard.index)
+  BooleanGuardNegation.expr guard.boolNegations (reference guard.index guard.argument)
 
 def operand (guard : SavedBooleanGuard) : Lean.Expr :=
   .app (.const ``Bool.toUInt64 []) guard.expr

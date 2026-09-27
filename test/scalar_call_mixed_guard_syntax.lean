@@ -42,14 +42,19 @@ run_elab do
   let mut controls : Nat := 0
   for depth in [0, 2] do
     let bt := (List.range depth).foldl (fun t _ => BooleanType.identity t) .boolean
-    for (firstFlag, secondFlag) in [(false, false), (false, true), (true, false), (true, true)] do
+    for (nested, flag) in [(false, false), (false, true), (true, false), (true, true)] do
+      let fBody : BooleanLocal := .junction 0 .disjunction (.var 1 0) (.compare .eq (.bvar 2) (.bvar 1))
+      let gBody : BooleanLocal := .compare .ne (.bvar 0) (.bvar 3)
       let wrap (body : Lean.Expr) := Lean.Expr.lam `x word (.lam `y word
-        (.letE `first bt.expr (booleanLiteralExpr firstFlag)
-          (.letE `second bt.expr (booleanLiteralExpr secondFlag) body false) false) .default) .default
+        (.letE `f (.forallE `b boolean bt.expr .default) (.lam `b boolean fBody.expr .default)
+          (.letE `g (.forallE `n word bt.expr .default) (.lam `n word gBody.expr .default)
+            body false) false) .default) .default
       for op in [Junction.conjunction, .disjunction] do
         for (bn, pn, n) in [(0, 0, 0), (1, 0, 1), (0, 1, 2), (2, 2, 3)] do
-          let first : SavedBooleanGuard := ⟨1, bn, pn, none⟩
-          let second : SavedBooleanGuard := ⟨0, bn + 1, pn + 1, none⟩
+          let argument := if nested then Lean.Expr.app (.bvar 1) (booleanLiteralExpr flag) else booleanLiteralExpr flag
+          let first : SavedBooleanGuard := ⟨1, bn, pn, some argument⟩
+          let second : SavedBooleanGuard := ⟨0, bn + 1, pn + 1,
+            some (.app (.app (.const ``UInt64.add []) (.bvar 3)) (.bvar 2))⟩
           let less : Guard := .compare (.lt (.identity .word)) sourceAdd (.bvar 2)
           let equal : Guard := .compare .eq (.bvar 3) (.bvar 2)
           let trees (a b : SavedBooleanGuard) : List Guard :=
@@ -58,9 +63,11 @@ run_elab do
           let valid := trees first second
           let wordLeaves := trees { first with index := 3 } { second with index := 2 }
           let missingLeaves := trees { first with index := 7 } { second with index := 8 }
-          for (guard, badWord, missing) in valid.zip (wordLeaves.zip missingLeaves) do
+          let invalidArguments := trees { first with argument := some (literalExpr 0) }
+            { second with argument := some (booleanLiteralExpr false) }
+          for (guard, badWord, missing, badArgument) in valid.zip (wordLeaves.zip (missingLeaves.zip invalidArguments)) do
             unless (guardOperands? guard.condition).isSome && guardDecision? guard guard.evidence do
-              throwError "saved mixed guard parser rejected"
+              throwError "call mixed guard parser rejected"
             for mode in ([0, 1, 2, 3, 4] : List Nat) do
               let value (condition evidence trueDomain falseDomain : Lean.Expr) : Lean.Expr :=
                 if mode == 0 then
@@ -78,15 +85,15 @@ run_elab do
                   .lam `proof falseDomain (booleanLiteralExpr false) .default])
               let make (guard : Guard) (evidence : Lean.Expr) :=
                 wrap (value guard.condition evidence guard.condition (.app (.const ``Not []) guard.condition))
-              let some func := extractScalarFunc `savedMixed (some "entry") functionType (make guard (decision false guard)) |
-                throwError "saved mixed guard mode {mode} rejected"
+              let some func := extractScalarFunc `callMixed (some "entry") functionType (make guard (decision false guard)) |
+                throwError "call mixed guard mode {mode} rejected"
               let module_ : LeanExe.IR.Module := { funcs := #[func] }
               for (x, y) in inputs do
                 let native (operand : Lean.Expr) : UInt64 :=
                   if LeanExe.Source.ExprEquality.same operand first.operand then
-                    (GuardNegation.denote bn firstFlag).toUInt64
+                    (GuardNegation.denote bn (!(if nested then !flag || x == y else flag) || x == y)).toUInt64
                   else if LeanExe.Source.ExprEquality.same operand second.operand then
-                    (GuardNegation.denote (bn + 1) secondFlag).toUInt64
+                    (GuardNegation.denote (bn + 1) (x + y != x)).toUInt64
                   else if LeanExe.Source.ExprEquality.same operand sourceAdd then x + y
                   else if LeanExe.Source.ExprEquality.same operand (.bvar 3) then x else y
                 let result := guard.denote native
@@ -96,7 +103,7 @@ run_elab do
                 comparisons := comparisons + 1
               for bad in [make guard (.const `customDecision []), make guard (.bvar 0),
                   make guard (.mdata {} guard.evidence), make guard (GuardNegation.evidence 1 guard.condition guard.evidence),
-                  make badWord badWord.evidence, make missing missing.evidence, make guard (decision true guard)] do
+                  make badWord badWord.evidence, make missing missing.evidence, make guard (decision true guard), make badArgument badArgument.evidence] do
                 unless (extractScalarFunc `invalidMixed (some "entry") functionType bad).isNone do
                   throwError "invalid mixed guard admitted"
                 rejected := rejected + 1
@@ -110,6 +117,6 @@ run_elab do
             unless (guardOperands? first.condition).isNone && (guardOperands? second.condition).isNone do
               throwError "saved flag changed the separate Boolean-condition parser"
             controls := controls + 1
-  unless comparisons == 17920 && rejected == 11008 && controls == 256 do
+  unless comparisons == 17920 && rejected == 12288 && controls == 256 do
     throwError "unexpected counts {comparisons}, {rejected}, {controls}"
-  Lean.logInfo m!"{comparisons} native/saved mixed-guard IR comparisons, {rejected} invalid-input tests and {controls} admission controls passed"
+  Lean.logInfo m!"{comparisons} native/call mixed-guard IR comparisons, {rejected} invalid-input tests and {controls} admission controls passed"
