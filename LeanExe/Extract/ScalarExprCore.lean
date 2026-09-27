@@ -63,9 +63,8 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
               match _action : booleanAction? value with
               | none => none
               | some action => do
-                  let c ← extractBooleanLocalWith locals action.leaf
-                    (fun operand _member => extractScalarExprWith locals operand)
-                  extractScalarExprWith (.boolean (guardWord c) :: locals) body
+                  let bound ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) action.expr)
+                  extractScalarExprWith (.boolean bound :: locals) body
       | some _ => do
           let bound ← extractScalarExprWith locals value
           extractScalarExprWith (.word bound :: locals) body
@@ -379,7 +378,9 @@ decreasing_by
     | (have bounds := scalarManyFunction_body_size _function; simp_all; omega)
     | (have bounds := booleanLocalDependentGuard_size _booleanGuard _member; omega)
     | (have bounds := dependentGuard_size _guard _member; omega)
-    | (have bounds := booleanAction_size _action _member; omega)
+    | (have same := booleanAction_sound _action
+       rw [← same]
+       omega)
     | (have bounds := booleanLocalOperands_size _boolean _member; omega)
     | (have bounds := booleanLocalOperands_size (operand := input) _boolean
          (by simp [LeanExe.Source.Scalar.BooleanLocal.operands])
@@ -517,9 +518,8 @@ theorem extractScalarExprWith_booleanBind (locals : List ScalarBinding)
     (action : LeanExe.Source.Scalar.BooleanAction) (type : LeanExe.Source.Scalar.ResultType)
     (name : Lean.Name) (bi : Lean.BinderInfo) (body : Lean.Expr) :
     extractScalarExprWith locals (LeanExe.Source.Scalar.BooleanIdentity.bind name bi action.expr body type.expr) = (do
-      let c ← extractBooleanLocalWith locals action.leaf
-        (fun operand _ => extractScalarExprWith locals operand)
-      extractScalarExprWith (.boolean (guardWord c) :: locals) body) := by
+      let bound ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) action.expr)
+      extractScalarExprWith (.boolean bound :: locals) body) := by
   rw [LeanExe.Source.Scalar.BooleanIdentity.bind, extractScalarExprWith,
     booleanBindType_not_scalar, booleanBindType_accepts _ (scalarResultType_accepts type), booleanAction_accepts]
 

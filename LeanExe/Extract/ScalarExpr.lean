@@ -134,13 +134,11 @@ theorem extractScalarExprWith_correct {source : Lean.Expr} {values : List LeanEx
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨bound, hb, hc⟩ := compiled
     exact ihb hc (bindings.cons (ihv hb bindings))
-  | @idBindBoolean values b value name bi action type native booleans variables arguments body ihArgs ihb =>
+  | idBindBoolean action type _ _ ihv ihb =>
     rw [extractScalarExprWith_booleanBind] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
-    obtain ⟨c, hc, ht⟩ := compiled
-    have meaning := extractBooleanLocalWith_correct action.leaf _ native booleans hc bindings variables
-      (fun operand member target found => ihArgs operand member found bindings)
-    exact ihb ht (bindings.cons (binding := .boolean (guardWord c)) (value := .boolean _) (guardWord_correct meaning))
+    obtain ⟨bound, hb, hc⟩ := compiled
+    exact ihb hc (bindings.cons (ihv hb bindings))
   | @chooseBoolean values t e value guard type native booleans variables arguments branch ihArgs ihb =>
     rw [extractScalarExprWith_booleanBranch (noBoolean :=
       hasBooleanPredicate_false (fun index member => bindings.no_booleanPredicate_of_predicate (variables.functions index member)))] at compiled
@@ -500,17 +498,15 @@ theorem extractScalarExprWith_accepts {source : Lean.Expr} {types : List LeanExe
         · trivial
         · exact total binding member)
     exact ⟨target, by rw [extractScalarExprWith_letBoolean]; simp [hb, ht]⟩
-  | idBindBoolean action type variables _ _ ihArgs ihb =>
-    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals action.leaf
-      (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
-      (fun operand member => ihArgs operand member locals typed total)
-    obtain ⟨target, ht⟩ := ihb (.boolean (guardWord c) :: locals)
+  | idBindBoolean action type _ _ ihv ihb =>
+    obtain ⟨bound, hb⟩ := ihv locals typed total
+    obtain ⟨target, ht⟩ := ihb (.boolean bound :: locals)
       (by simp [ScalarBinding.kind, typed]) (by
         intro binding member
         rcases List.mem_cons.mp member with rfl | member
         · trivial
         · exact total binding member)
-    exact ⟨target, by rw [extractScalarExprWith_booleanBind]; simp [hc, ht]⟩
+    exact ⟨target, by rw [extractScalarExprWith_booleanBind]; simp [hb, ht]⟩
   | chooseBoolean guard type variables _ _ _ ihArgs iht ihe =>
     obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals guard.value
       (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
@@ -835,7 +831,7 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
   | case15 locals input output value name domain body bi rejected type matched rejectedAction =>
     rw [extractScalarExprWith, rejected, matched, rejectedAction] at compiled
     contradiction
-  | case16 locals input output value name domain body bi rejected type matched action parsed ihArgs ihb =>
+  | case16 locals input output value name domain body bi rejected type matched action parsed ihv ihb =>
     obtain ⟨hi, hd, ho⟩ := booleanBindType_sound _ matched
     have outputEq := scalarResultType_sound ho
     have valueEq := booleanAction_sound parsed
@@ -845,12 +841,8 @@ theorem extractScalarExprWith_supported {source : Lean.Expr} {locals : List Scal
     rw [extractScalarExprWith_booleanBind] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨c, hc, ht⟩ := compiled
-    apply LeanExe.Source.Scalar.SupportedWith.idBindBoolean action type
-    · exact extractBooleanLocalWith_variables hc
-    · intro operand member
-      obtain ⟨expression, found⟩ := extractBooleanLocalWith_operands hc operand member
-      exact ihArgs operand member found
-    · simpa [ScalarBinding.kind] using ihb c ht
+    exact .idBindBoolean action type (ihv hc)
+      (by simpa [ScalarBinding.kind] using ihb c ht)
   | case17 locals input output value name domain body bi annotations matched ihv ihb =>
     obtain ⟨inputType, outputType⟩ := annotations
     obtain ⟨hi, hd, ho⟩ := scalarBindTypes_sound matched
@@ -1573,17 +1565,14 @@ theorem extractScalarExprWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact ihv hb bindings htypes
     · exact bindings binding member
-  | idBindBoolean action type variables _ _ ihArgs ihb =>
+  | idBindBoolean action type _ _ ihv ihb =>
     rw [extractScalarExprWith_booleanBind] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
-    obtain ⟨c, hc, ht⟩ := compiled
-    have bound := extractBooleanLocalWith_choice P literal binary choice action.leaf _ hc bindings
-      (fun operand member target found => ihArgs operand member found bindings htypes)
-      _ _ (literal 1) (literal 0)
+    obtain ⟨bound, hb, ht⟩ := compiled
     apply ihb ht _ (by simp [ScalarBinding.kind, htypes])
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
-    · exact bound
+    · exact ihv hb bindings htypes
     · exact bindings binding member
   | chooseBoolean guard type variables _ _ _ ihArgs iht ihe =>
     rw [extractScalarExprWith_booleanBranch (noBoolean :=

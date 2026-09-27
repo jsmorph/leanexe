@@ -180,10 +180,20 @@ native/IR comparisons, 16,716 invalid-input checks and 804 controls. Prior tests
 pass 15,572 comparisons, 11,598 rejections and 828 controls. Evidence is in
 [the Boolean-wrapper archive](proofs/compiler/boolean-predicate-wrapper-2026-09-26/README.md).
 
-Next: Boolean do binds and direct Boolean helper results. Saved Boolean variables
-in mixed propositional guards, retained instance and Bool-parameter Id wrappers,
-and broader signatures follow. Full-dialect correctness remains unfinished.
-Complete each capability through WASM and commit/push frequently.
+Scalar Boolean do binds containing Bool-input calls now pass source totality,
+extraction correctness, acceptance, soundness and invariant proofs. Direct and
+wrapped actions are recursively checked, including unused values. Captures,
+shadowing, choices and scalar calculations inside loops preserve typed flags.
+Focused tests pass 8,244 native/IR comparisons, 9,216 invalid-input checks and 672
+controls. Prior tests pass 6,468 comparisons, 5,608 rejections and 422 controls.
+The general compiler theorem, eighteen audits and native Lean/WASM execution are
+next for this candidate.
+
+Next: finish scalar Boolean binds through WASM, then binds that continue into
+loop-step and outer-loop bodies, followed by direct Boolean helper results. Saved
+Boolean variables in mixed propositional guards, retained instance and
+Bool-parameter Id wrappers, and broader signatures follow. Full-dialect correctness
+remains unfinished. Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 

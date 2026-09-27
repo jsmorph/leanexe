@@ -216,8 +216,13 @@ is a Boolean value, Boolean Eq/Ne relation or an admitted proposition. Propositi
 conditions include UInt64 comparisons, literals, negation and junctions; their
 word operands can contain converted calls. Dependent branches may bind an unused
 condition proof; both branches are checked. Saved Boolean variables inside mixed
-propositional guards, Boolean do binds and direct Boolean helper results containing
-these calls remain subsequent capabilities. Scalar `if` conditions can use these
+propositional guards and direct Boolean helper results containing these calls
+remain subsequent capabilities. Scalar Boolean do binds admit these calls in
+direct actions or under standard pure/Id.run/metadata wrappers. The complete
+action is recursively checked, including unused results, and its encoded Boolean
+is stored with a distinct binding kind. Captures, shadowing and scalar calculations
+inside loops preserve that value. Binds whose continuation is a loop step or
+contains a loop remain subsequent work. Scalar `if` conditions can use these
 calls as truth tests or Boolean Eq/Ne relations, including ordinary and dependent
 branches. Loop-step conditions use the same checked inputs to select both the
 accumulator value and the break/continue flag. Helpers may be declared inside a
