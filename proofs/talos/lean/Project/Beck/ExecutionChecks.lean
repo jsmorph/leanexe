@@ -1,3 +1,4 @@
+import Project.Beck.ExecutionBorderEligible
 import Project.Beck.ExecutionMatrix
 import Project.Beck.ExecutionScan
 import Project.Beck.ExecutionContains
@@ -107,3 +108,5 @@ import Project.Beck.ExecutionMatrixPrefix
 #print axioms Project.Beck.Execution.matrixOuterLoop_exact
 
 #print axioms Project.Beck.Execution.protectedMatrix_exact
+
+#print axioms Project.Beck.Execution.borderEligible_exact
