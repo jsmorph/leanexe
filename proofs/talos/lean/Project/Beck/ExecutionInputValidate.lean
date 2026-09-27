@@ -29,15 +29,15 @@ def inputJoin (Q : Assertion Unit) : Assertion Unit := fun cont => match cont wi
 
 set_option maxRecDepth 2048 in
 set_option maxHeartbeats 1500000 in
-theorem inputValidate_exact (env : HostEnv Unit) (initial : Store Unit)
+theorem inputValidate_exact {wordsOwner : UInt64} (env : HostEnv Unit) (initial : Store Unit)
     (pointer : UInt64) (saved : InputSaved) (tail : InputTail) (words : Array UInt64)
     (wordsAt : UInt64Array.At initial pointer words) (lengthBound : 2 ≤ words.size)
     (countBound : words[0]!.toNat ≤ 6) (categoryBound : words[1]!.toNat ≤ 8)
     (Q : Assertion Unit)
     (next : ∀ saved tail, wp Project.Beck.«module» inputEligible
       (inputJoin (inputJoin Q))
-      initial (inputFrame pointer saved tail) env) :
-    wp Project.Beck.«module» (func6.take 8) Q initial (inputFrame pointer saved tail) env := by
+      initial (inputFrame (wordsOwner := wordsOwner) pointer saved tail) env) :
+    wp Project.Beck.«module» (func6.take 8) Q initial (inputFrame (wordsOwner := wordsOwner) pointer saved tail) env := by
   have headerBound : pointer.toUInt32.toNat + 8 ≤ initial.mem.pages * 65536 := by
     rw [wordsAt.pointerAddress_toNat]
     have := wordsAt.2.1

@@ -20,8 +20,8 @@ abbrev InputTail := Fin 10 → UInt64
 def inputPrefix (saved : InputSaved) : List Value :=
   [saved 0, saved 1, saved 2, saved 3, saved 4, saved 5, saved 6, saved 7, saved 8, saved 9, saved 10, saved 11, saved 12, saved 13, saved 14, saved 15, saved 16, saved 17, saved 18, saved 19, saved 20, saved 21, saved 22, saved 23, saved 24, saved 25, saved 26, saved 27, saved 28, saved 29, saved 30, saved 31, saved 32, saved 33, saved 34, saved 35, saved 36, saved 37, saved 38, saved 39, saved 40, saved 41, saved 42, saved 43, saved 44, saved 45, saved 46, saved 47, saved 48, saved 49]
 
-def inputFrame (pointer : UInt64) (saved : InputSaved) (tail : InputTail) : Locals :=
-  { params := [.i64 pointer, .i64 pointer]
+def inputFrame (pointer : UInt64) (saved : InputSaved) (tail : InputTail) (wordsOwner : UInt64 := pointer) : Locals :=
+  { params := [.i64 wordsOwner, .i64 pointer]
     locals := inputPrefix saved ++
       [.i64 (tail 0), .i64 (tail 1), .i64 (tail 2), .i64 (tail 3), .i64 (tail 4),
         .i64 (tail 5), .i64 (tail 6), .i64 (tail 7), .i64 (tail 8), .i64 (tail 9)] }

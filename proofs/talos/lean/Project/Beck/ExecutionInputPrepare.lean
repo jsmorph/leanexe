@@ -4,11 +4,12 @@ namespace Project.Beck.Execution
 
 open Wasm Project.ProofKit Project.Runtime Project.EulerRiemann.Execution LeanExe.Examples.Beck
 
-def inputPreparedSaved (saved : InputSaved) (pointer : UInt64) (jobs categories : Nat) (index : Fin 50) : Value :=
+def inputPreparedSaved (saved : InputSaved) (owner pointer : UInt64) (jobs categories : Nat) (index : Fin 50) : Value :=
   match index.val with
   | 14 | 16 => .i64 jobs.toUInt64
   | 15 | 19 => .i64 categories.toUInt64
-  | 17 | 18 => .i64 pointer
+  | 17 => .i64 owner
+  | 18 => .i64 pointer
   | 21 => .i64 2
   | 22 => .i64 0
   | _ => saved index
@@ -21,14 +22,14 @@ def inputPreparedTail (tail : InputTail) (pointer : UInt64) (index : Fin 10) : U
 
 set_option maxRecDepth 2048 in
 set_option maxHeartbeats 1500000 in
-theorem inputPrepare_exact (env : HostEnv Unit) (initial : Store Unit)
+theorem inputPrepare_exact {wordsOwner : UInt64} (env : HostEnv Unit) (initial : Store Unit)
     (pointer : UInt64) (saved : InputSaved) (tail : InputTail) (words : Array UInt64)
     (represented : UInt64Array.At initial pointer words) (lengthBound : 2 ≤ words.size)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (next : wp Project.Beck.«module» rest Q initial
-      (inputFrame pointer (inputPreparedSaved saved pointer words[0]!.toNat words[1]!.toNat)
+      (inputFrame (wordsOwner := wordsOwner) pointer (inputPreparedSaved saved wordsOwner pointer words[0]!.toNat words[1]!.toNat)
         (inputPreparedTail tail pointer)) env) :
-    wp Project.Beck.«module» (inputEligible.take 34 ++ rest) Q initial (inputFrame pointer saved tail) env := by
+    wp Project.Beck.«module» (inputEligible.take 34 ++ rest) Q initial (inputFrame (wordsOwner := wordsOwner) pointer saved tail) env := by
   simp only [inputEligible, inputInBounds, func6, List.getElem?_cons_zero, List.getElem?_cons_succ,
     List.take, List.cons_append, List.nil_append, inputFrame, inputPrefix]
   wp_fixed_frame_step

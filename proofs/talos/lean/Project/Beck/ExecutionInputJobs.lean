@@ -13,18 +13,18 @@ structure InputResult (frame : Locals) (input : Input) (owner pointer : UInt64) 
   owner : frame.get 50 = some (.i64 owner)
   pointer : frame.get 51 = some (.i64 pointer)
 
-def inputReadySaved (saved : InputSaved) (wordsPointer owner pointer : UInt64) (jobs categories : Nat) : InputSaved :=
-  inputEmptySaved (inputEmptySaved (inputPreparedSaved saved wordsPointer jobs categories) 25 owner) 26 pointer
+def inputReadySaved (saved : InputSaved) (wordsOwner wordsPointer owner pointer : UInt64) (jobs categories : Nat) : InputSaved :=
+  inputEmptySaved (inputEmptySaved (inputPreparedSaved saved wordsOwner wordsPointer jobs categories) 25 owner) 26 pointer
 
 set_option maxRecDepth 2048 in
 set_option maxHeartbeats 2000000 in
-theorem inputJobs_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
+theorem inputJobs_exact {wordsOwner : UInt64} (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (wordsPointer rowOwner : UInt64) (node : FreeNode) (saved : InputSaved) (tail : InputTail)
     (count categories : Nat) (out : ParseState) (words : Array UInt64) (remaining pageLimit : Nat)
     (valid : heap.At initial) (owned : heap.OwnsWords initial node #[])
     (wordsAt : UInt64Array.At initial wordsPointer words)
     (wordsProtected : heap.Protects wordsPointer.toNat (wordsPointer.toNat + 8 * (words.size + 1)))
-    (different : node.root ≠ wordsPointer) (nonzero : wordsPointer ≠ 0)
+    (different : node.root ≠ wordsPointer) (ownerMode : wordsOwner = 0 ∨ wordsOwner = wordsPointer)
     (countBound : count ≤ 6) (categoryBound : categories ≤ 8) (lengthBound : 2 ≤ words.size)
     (accepted : readJobs count words categories ⟨2, 0, #[]⟩ = some out) (terminal : out.position = words.size)
     (budget : OutputBudget initial heap (1520 * count + remaining) pageLimit Project.Beck.«module»)
@@ -35,12 +35,12 @@ theorem inputJobs_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap
       ∀ frame, InputResult frame ⟨0, count, categories, out.overlap, out.incidence⟩
         (if count = 0 then rowOwner else finalNode.root) finalNode.root → Q (.Fallthrough final frame)) :
     wp Project.Beck.«module» (inputEligible.drop 120) Q initial
-      (inputFrame wordsPointer (inputReadySaved saved wordsPointer rowOwner node.root count categories) tail) env := by
+      (inputFrame (wordsOwner := wordsOwner) wordsPointer (inputReadySaved saved wordsOwner wordsPointer rowOwner node.root count categories) tail) env := by
   have incidenceBound : 0 + count * categories ≤ 48 := by
     have := Nat.mul_le_mul countBound categoryBound
     simpa using this
-  have call := readJobs_exact (rowOwner := rowOwner) env initial heap count categories wordsPointer node
-    ⟨2, 0, #[]⟩ out words remaining pageLimit valid owned wordsAt wordsProtected different nonzero
+  have call := readJobs_owner_exact (rowOwner := rowOwner) (wordsOwner := wordsOwner) env initial heap count categories wordsPointer node
+    ⟨2, 0, #[]⟩ out words remaining pageLimit valid owned wordsAt wordsProtected different ownerMode
     countBound categoryBound lengthBound (by decide) incidenceBound accepted budget
   simp only [inputEligible, inputInBounds, func6, List.getElem?_cons_zero, List.getElem?_cons_succ,
     List.drop, inputFrame, inputPrefix, inputReadySaved, inputEmptySaved, inputPreparedSaved,
