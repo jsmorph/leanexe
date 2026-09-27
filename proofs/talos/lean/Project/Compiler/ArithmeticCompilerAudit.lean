@@ -25,3 +25,14 @@ import LeanExe.Source.ScalarReannotationEvaluation
 #print axioms LeanExe.Extract.Core.predicateInputTypes_accepts
 
 #print axioms LeanExe.Extract.Core.extractScalarFunc_boolean_correct
+
+#print axioms LeanExe.Source.Scalar.StepMatcher.denote_cases
+#print axioms LeanExe.Extract.Core.findStepMatcher_sound
+#print axioms LeanExe.Extract.Core.findStepMatcher_accepts
+#print axioms LeanExe.Extract.Core.expandStepMatchers_normalizes
+#print axioms LeanExe.Extract.Core.expandStepMatchers_accepts
+#print axioms LeanExe.Extract.Core.extractScalarEnvironmentFunc_accepts
+#print axioms LeanExe.Extract.Core.extractScalarEnvironmentFunc_correct
+#print axioms LeanExe.Extract.Arithmetic.compileEnvironment_environment_accepts
+#print axioms Project.Compiler.ArithmeticModule.environment_extracted_correct
+#print axioms Project.Compiler.ArithmeticModule.compileEnvironment_environment_correct

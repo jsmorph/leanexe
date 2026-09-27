@@ -568,6 +568,15 @@ All arguments are checked and evaluated, including ones unused by the body.
 Partial applications, function-valued parameters/results and
 top-level helper calls remain separate capabilities.
 
+Boolean loop steps support explicit `ForInStep.casesOn` and ordinary `match`
+over a `ForInStep Bool` value. Matches may appear in local helpers, nest, capture
+outer values, and retain standard Id result annotations. Both branches are
+checked. The selected branch determines the resulting payload and exit flag:
+a `.done` input can select a `.yield` branch and continue the loop. Matchers
+must have the checked nondependent result motive and Bool branch domains.
+Generated matcher declarations and identically shaped named dispatchers are
+recognized by their actual declaration bodies, types and universe parameters.
+
 A function may also contain one ascending `for i in [first:count.toNat]` loop
 with one UInt64 or Bool accumulator. Both endpoints may be standard Nat literals
 smaller than 2^64 or supported UInt64 expressions followed by `.toNat`. Omitting
@@ -716,7 +725,7 @@ directories for the focused modes.
 
 ## The theorem
 
-`Project.Compiler.ArithmeticModule.Correct` in
+`Project.Compiler.ArithmeticModule.EnvironmentCorrect` in
 `proofs/talos/lean/Project/Compiler/SourceCorrectness.lean` states that the exact
 emitted bytes decode, the entire decoded module validates, the requested export
 resolves to the user function, and every correctly sized UInt64 input list
@@ -725,18 +734,27 @@ host and initial store, leaves the store unchanged, and succeeds for all
 sufficiently large interpreter fuel values. The proof accounts for the actual
 argument-stack order and local-variable ABI.
 
-`compileEnvironment_correct` proves admission and correctness from independent
-source support, safe/total declaration lookup, export availability, and numeric
-format limits. `compileEnvironment_sound` proves correctness from successful
-arithmetic compilation alone. `extracted_correct` connects successful extraction
-to the production `CoreWasm.moduleBytes` emitter. The final theorem is universally
-quantified over admitted source programs, not restricted to the test examples.
+The source relation includes checked expansion of Boolean step matcher declarations.
+Their environment entries must have the exact safe, total, universe-polymorphic
+signature and forwarding body. A declaration's name does not establish its meaning.
+An independent syntax relation describes expansion and expression congruence;
+the executable normalizer is proved sound and complete for its normalization
+grammar. Expanded programs then use the scalar source evaluation relation.
 
-The complete audit is `Project.Compiler.ArithmeticCompilerAudit`. All fourteen
-reported declarations must have only the allowed dependencies. The runtime
-retain/alloc/release proofs use only `propext`; the other audited compiler
-results and the five source-equivalence/recognition results allow `propext`,
-`Classical.choice`, and `Quot.sound`.
+`compileEnvironment_environment_correct` proves admission and correctness from
+independent source support, safe/total declaration lookup, export availability,
+and numeric format limits. `compileEnvironment_sound` proves correctness from
+successful arithmetic compilation alone. `environment_extracted_correct` connects
+successful extraction to the production `CoreWasm.moduleBytes` emitter.
+The pure-source `Correct`, `compileEnvironment_correct` and `extracted_correct`
+theorems also remain available. These theorems quantify over admitted programs
+and inputs; the test examples do not limit their scope.
+
+The complete audit is `Project.Compiler.ArithmeticCompilerAudit`. All twenty-nine
+reported declarations must have only the allowed dependencies. The matcher
+forwarding identity uses no axioms. The runtime retain/alloc/release proofs use
+only `propext`; the remaining audited results allow `propext`, `Classical.choice`,
+and `Quot.sound`.
 
 The trusted boundary includes Lean's kernel, those standard axioms, the source
 semantics tied to native UInt64 operations, and the pinned Wasm decoder,

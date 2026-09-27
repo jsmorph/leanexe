@@ -3,7 +3,7 @@ import Init.Data.ByteArray.Extra
 import LeanExe.Extract.Env
 import LeanExe.Extract.ReleaseCheck
 import LeanExe.Extract.StructuralRec
-import LeanExe.Extract.ScalarFunc
+import LeanExe.Extract.ScalarEnvironmentFunc
 import LeanExe.IR.Core
 import LeanExe.Runtime
 
@@ -7500,7 +7500,7 @@ def extractScalarEntry? (exportEntry : Bool) (env : Environment)
     let candidate := shortExportName entry
     if exportEntry && reservedExportNames.contains candidate then none else do
       let exportName := if exportEntry then some candidate else none
-      let func ← extractScalarFunc entry exportName info.type value
+      let func ← extractScalarEnvironmentFunc env entry exportName info.type value
       pure {
         ctx := {
           env, root := moduleName.getRoot, names := #[entry], synthetics := #[],

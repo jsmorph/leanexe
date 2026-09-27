@@ -8,6 +8,17 @@ ADMISSION = 'LeanExe.Extract.Arithmetic.'
 MODULE = 'Project.Compiler.ArithmeticModule.'
 STANDARD = {'propext', 'Classical.choice', 'Quot.sound'}
 AUDITS = {
+    'LeanExe.Source.Scalar.StepMatcher.denote_cases': set(),
+    'LeanExe.Extract.Core.findStepMatcher_sound': STANDARD,
+    'LeanExe.Extract.Core.findStepMatcher_accepts': STANDARD,
+    'LeanExe.Extract.Core.expandStepMatchers_normalizes': STANDARD,
+    'LeanExe.Extract.Core.expandStepMatchers_accepts': STANDARD,
+    'LeanExe.Extract.Core.extractScalarEnvironmentFunc_accepts': STANDARD,
+    'LeanExe.Extract.Core.extractScalarEnvironmentFunc_correct': STANDARD,
+    'LeanExe.Extract.Arithmetic.compileEnvironment_environment_accepts': STANDARD,
+    'Project.Compiler.ArithmeticModule.environment_extracted_correct': STANDARD,
+    'Project.Compiler.ArithmeticModule.compileEnvironment_environment_correct': STANDARD,
+
     'LeanExe.Extract.Core.extractScalarFunc_boolean_correct': STANDARD,
     'LeanExe.Extract.Core.predicateInputTypes_sound': STANDARD,
     'LeanExe.Extract.Core.predicateInputTypes_accepts': STANDARD,

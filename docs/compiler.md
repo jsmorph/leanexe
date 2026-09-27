@@ -7,7 +7,8 @@ LeanExe loads elaborated declarations from a built Lean module, specializes the 
 `LeanExe.Extract.Env` imports the requested module from `.lake/build/lib/lean` and resolves the fully qualified entry declaration.  `LeanExe.Extract.Core` collects reachable declarations within the accepted dependency boundary, classifies public entries and internal helpers, and lowers their elaborated expressions.  Pattern and structural-recursion modules recognize the specific generated forms used for direct recursion, well-founded recursion, folds, predicates, loops, monadic control, and specialized library calls.
 
 For a single scalar entry, the compiler first attempts the proved
-`ScalarFunc` extraction path. Successful admission lowers to the ordinary IR
+`ScalarEnvironmentFunc` extraction path. It first tries direct scalar extraction,
+then expands checked Boolean step matcher declarations if necessary. Successful admission lowers to the ordinary IR
 and emitter, with source reconstruction and acceptance theorems linking it to
 the [general compiler correctness proof](arithmetic-correctness.md).
 `compile-arithmetic` requires this admission. Ordinary `compile` uses broader
