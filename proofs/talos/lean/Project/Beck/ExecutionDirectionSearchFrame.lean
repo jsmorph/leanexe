@@ -1,4 +1,5 @@
 import Project.Beck.ExecutionDirectionFirstRead
+import Project.Beck.ExecutionWordWindow
 
 namespace Project.Beck.Execution
 
@@ -28,12 +29,32 @@ structure DirectionSearchLocals (locals : List Value) (matrix srOwner srPointer 
   columnOwner : locals[31]? = some (.i64 co)
   columnPointer : locals[32]? = some (.i64 cp)
   determinant : locals[33]? = some (.i64 basis.determinant)
+  words : WordLocals locals
 
 structure DirectionSeedLocals (locals : List Value) (jobs : Nat) (matrix ro rp co cp : UInt64) : Prop
     extends DirectionBasisLocals locals jobs matrix ro rp co cp where
   matrixOriginal : locals[9]? = some (.i64 matrix)
   originalOwner : locals[11]? = some (.i64 matrix)
   originalPointer : locals[12]? = some (.i64 matrix)
+  words : WordLocals locals
+
+theorem directionInitialLocals_words (input : Input) (point : Point) (inputOwner inputPointer pointOwner pointPointer matrix : UInt64) :
+    WordLocals (directionInitialLocals input point inputOwner inputPointer pointOwner pointPointer matrix) := by
+  unfold directionInitialLocals directionMatrixLocals directionPreparedLocals
+  repeat' apply WordLocals.set
+  exact WordLocals.replicate 112 0
+
+theorem directionSeedSaved_words {saved : List Value} (typed : WordLocals saved) (ro rp co cp : UInt64) :
+    WordLocals (directionSeedSaved saved ro rp co cp) := by
+  unfold directionSeedSaved directionEmptySaved
+  repeat' apply WordLocals.set
+  exact typed
+
+theorem directionSeedFrame_words (params locals : List Value) (typed : WordLocals locals)
+    (ro rp co cp previous current capacity afterNode : UInt64) :
+    WordLocals (FixedArraySearch.frame params (directionSeedSaved (locals.take 93) ro rp co cp) (locals.drop 99)
+      8 previous current capacity afterNode cp).locals :=
+  (directionSeedSaved_words (typed.take 93) ro rp co cp).searchFrame (typed.drop 99) params 8 previous current capacity afterNode cp
 
 theorem directionSeed_state (input : Input) (point : Point)
     (inputOwner inputPointer pointOwner pointPointer matrix ro rp co cp : UInt64)
@@ -43,18 +64,28 @@ theorem directionSeed_state (input : Input) (point : Point)
       (directionSeedSaved (initial.take 93) ro rp co cp) (initial.drop 99) 8 previous current capacity afterNode cp).locals
     DirectionSeedLocals seeded input.jobs matrix ro rp co cp := by
   dsimp only
-  refine ⟨direction_seed_basis_state input point inputOwner inputPointer pointOwner pointPointer matrix ro rp co cp previous current capacity afterNode, ?_, ?_, ?_⟩
-  all_goals simp [FixedArraySearch.frame, directionSeedSaved, directionEmptySaved,
+  refine ⟨direction_seed_basis_state input point inputOwner inputPointer pointOwner pointPointer matrix ro rp co cp previous current capacity afterNode, ?_, ?_, ?_, ?_⟩
+  case refine_1 | refine_2 | refine_3 => simp [FixedArraySearch.frame, directionSeedSaved, directionEmptySaved,
       directionInitialLocals, directionMatrixLocals, directionPreparedLocals]
+  exact directionSeedFrame_words (matrixParams input point inputOwner inputPointer pointOwner pointPointer)
+    (directionInitialLocals input point inputOwner inputPointer pointOwner pointPointer matrix)
+    (directionInitialLocals_words input point inputOwner inputPointer pointOwner pointPointer matrix)
+    ro rp co cp previous current capacity afterNode
 
 theorem directionSearch_state (input : Input) (point : Point) (basis : Basis)
     (inputOwner inputPointer pointOwner pointPointer matrix srOwner srPointer scOwner scPointer ro rp co cp : UInt64)
     (locals : List Value) (state : DirectionSeedLocals locals input.jobs matrix srOwner srPointer scOwner scPointer) :
     DirectionSearchLocals (directionFreeLocals (locals.set 23 (.i64 1)) input point basis inputOwner inputPointer pointOwner pointPointer ro rp co cp)
       matrix srOwner srPointer scOwner scPointer basis ro rp co cp := by
-  constructor <;> simp only [directionFreeLocals, List.length_set, List.getElem?_set,
+  constructor
+  all_goals first
+    | (solve | simp only [directionFreeLocals, List.length_set, List.getElem?_set,
     state.size, Nat.reduceLT, Nat.reduceEqDiff, reduceIte, state.matrixOriginal, state.originalOwner, state.originalPointer,
-    state.rowOwner, state.rowPointer, state.columnOwner, state.columnPointer]
+    state.rowOwner, state.rowPointer, state.columnOwner, state.columnPointer])
+    | skip
+  unfold directionFreeLocals
+  repeat' apply WordLocals.set
+  exact state.words
 
 #print axioms directionSearch_state
 
