@@ -650,12 +650,19 @@ comparisons, 186,624 invalid-input checks and 21,120 controls. The native corpus
 contains 1367 declarations. Evidence is in
 [the word-helper archive](proofs/compiler/word-loop-helper-2026-09-27/README.md).
 
-Next: extend UInt64-to-Bool helper bodies to call captured
-Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean
-result conversion. Compound propositions combining Boolean equality with Boolean
-truth guards also need coverage. Then extend retained instances, broader signatures,
-and composition of multiple loops. Native fixtures exposed these grammar gaps. Full-dialect
-correctness remains unfinished.
+Current capability: composition of Boolean helper declarations with scalar tails.
+Nested, repeated and pure-wrapped public Boolean fixtures now pass. Independent
+source totality, acceptance, successful extraction, evaluation and IR invariants
+pass. New syntax tests pass 17,920 native/IR comparisons, 12,160 invalid-input
+checks and 1,280 controls. Native fixtures pass 140 comparisons. Adjacent tests pass 274,176 comparisons,
+147,456 invalid-input checks and 17,280 controls. The complete proof and V8 gates
+remain to be checked before archiving evidence.
+
+Next: extend Boolean helper declarations inside loop-result continuations, then
+compound propositions combining Boolean equality with Boolean truth guards.
+Retained instances, broader signatures, composition of multiple loops and the
+remaining LeanExe dialect also need proofs. Full-dialect correctness remains
+unfinished.
 Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete

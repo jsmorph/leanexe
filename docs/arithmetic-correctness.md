@@ -60,6 +60,13 @@ may precede these word conditionals. Their results may be saved for further pure
 word expressions with ordinary lets, standard Id binds or `show`; annotations
 and captures are preserved.
 
+Boolean program bodies also compose scalar helper declarations with compound
+results, saved Boolean values and standard Id wrappers. Word-to-Bool helpers may
+call captured Bool-to-Bool helpers; repeated calls preserve lexical captures.
+The same admission path checks unused helper definitions before compiling the
+result. Pure Boolean terminals use the proved scalar conversion and a plan with
+zero loop iterations.
+
 Public parameter domains may retain any number of standard Id layers. Declared
 and lambda domains must have the same base scalar kind; differing Id depths
 preserve their meaning. Custom annotation heads, wrong universes and metadata
