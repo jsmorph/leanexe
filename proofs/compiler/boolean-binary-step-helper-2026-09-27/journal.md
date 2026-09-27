@@ -30,4 +30,7 @@ The 82-declaration engine group retains all 74 prior binary-helper declarations
 and adds the eight word-step fixtures. Complete WASM and V8 gates are next.
 
 The complete source-to-WASM gate passes 3396 targets and all 38 audits. Passed 1595 native Lean / independent Wasm engine comparisons across 82 declarations.
-74 prior modules retain identical bytes; 0 changed. All six fixed probes compile; five already compiled before this extension. Prior tests pass 20042 comparisons, 29520 invalid-input checks and 288 admission controls. Boolean-accumulator probes report 0 accepted and 6 rejected before the next increment.
+74 prior modules retain identical bytes; 0 changed. All six fixed probes compile; five already compiled before this extension. Prior tests pass 20042 comparisons, 29524 invalid-input checks and 288 admission controls. Boolean-accumulator probes report 0 accepted and 6 rejected before the next increment.
+
+The prior-test count parser initially omitted four rejection tests whose summary
+spells out the number. The manifest and task count include those four checks.

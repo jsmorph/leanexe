@@ -1016,7 +1016,7 @@ exits are checked. Unused bodies are validated even in empty ranges. The complet
 proof gate passes 3396 targets and all 38 audits. Native Lean/V8 agree on 1,595
 inputs across 82 declarations; 74 prior modules retain identical bytes and
 0 changed. New tests pass 9,408 comparisons, 17,664 invalid-input checks and
-384 admission controls; prior tests pass 20,042 comparisons, 29,520
+384 admission controls; prior tests pass 20,042 comparisons, 29,524
 invalid inputs and 288 controls. All six fixed probes compile; five compiled
 before the extension. The corpus contains 1691 declarations. Evidence is in
 [the word-step archive](proofs/compiler/boolean-binary-step-helper-2026-09-27/README.md).
