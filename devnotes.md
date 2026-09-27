@@ -17597,3 +17597,266 @@ A final fetch confirms main remains at `8dbb8e8a` and remote drone at `b84d577e`
 The merge retains both parents and report histories, includes the checked drone
 proof adaptation, and leaves only the original 12-line drone registration
 addition unstaged. Public proof statements and planner source are unchanged.
+
+## Verified encoding review: 2026-09-27
+
+Fetched origin, fast-forwarded main, and created `encoding` at
+`823008dc156b818d2e10465810e0c68448d3ad20`.  The supplied encoding plan remains
+untracked and unchanged.  This review reads source and proof statements.
+Lean builds and axiom audits remain pending.
+
+The proof dependency checkout is absent.  The interpreter field inventory
+comes from `Interpreter/Wasm/Syntax.lean` in the retained
+[arithmetic proof package](proofs/compiler/arithmetic-2026-09-24/arithmetic-proof.tar.gz).
+Its manifest records the same Talos revision as the current Lake configuration,
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  The inspected source matches its
+manifest SHA-256, `117ca006b734e328a8458e15a14a23f094e369a9bdb8fa7a0ceebedd599e9133`.
+
+### Theorem domain
+
+Numeric field bounds alone are insufficient for exact module equality.
+The [binary translation](proofs/talos/lean/Project/Artifact/Binary/Translate.lean)
+reconstructs eight fields and leaves thirteen at their defaults:
+
+| Fields | Required representation |
+| --- | --- |
+| `funcs`, `types`, `gcTypes` | Function signatures agree with their declared type indices.  Each function has `typeIdx := some index`.  `gcTypes` contains the corresponding function types with default metadata. |
+| `exports`, `globalExports`, `memoryExports` | Encoding preserves each export list's order, names, and indices. |
+| `memory` | An optional 32-bit memory with its minimum and maximum, empty data, and `is64 := false`. |
+| `globals` | Integer initial values, explicit declared types, matching constant `sourceInit`, preserved mutability, and empty `initExpr`. |
+| `extraMemories`, `imports`, `tables`, `elements`, `tags` | Empty lists. |
+| `importedGlobals`, `importedTables`, `importedMemories`, `importedTags`, `tableExports`, `tagExports` | Empty lists. |
+| `dataWithoutMemory`, `startFunc` | `false` and `none`. |
+
+The [decoder](proofs/talos/lean/Project/Artifact/Binary/Decode.lean) accepts the
+six sections already handled by `ModulePayloads`: type, function, memory,
+global, export, and code.  Adding the plan's import section requires a decoder
+extension.  Its accepted value types are `i32`, `i64`, and `f32`.  Structured
+control has zero parameters and at most one result, with explicit type
+annotations reconstructed by translation.  A supported-instruction condition
+must cover these shapes as well as the opcode subset and numeric immediates.
+
+The proposed first increment retains exact equality and adds a decidable
+structural representability condition alongside numeric bounds.  That domain
+choice requires user confirmation before implementation.  Preserving `m.types`
+also preserves duplicate and unused entries.  Deriving a new table from function
+signatures alone can change indices and whole-module equality.
+
+Validation needs separate typing and structural premises.  For example, a
+bounded, encodable function containing `drop` on an empty operand stack fails
+validation.  The [validator](proofs/talos/lean/Project/Artifact/Binary/Validate.lean)
+also requires one memory, valid limits and indices, and unique export names.
+The existing arithmetic theorem obtains validity from successful restricted
+source extraction and the export-name condition as well as numeric bounds.
+
+### Reuse and Drone application
+
+The reusable parser statement is
+[`Parsing.Parses`](proofs/talos/lean/Project/Compiler/Parsing.lean): it quantifies
+over preceding bytes, following bytes, and the enclosing cursor limit.
+[`ContainerParsing`](proofs/talos/lean/Project/Compiler/ContainerParsing.lean)
+already proves bounded payloads, length prefixes, and vectors.
+[`LebParsing`](proofs/talos/lean/Project/Compiler/LebParsing.lean) supplies
+unsigned 32-bit and signed 64-bit encoding proofs.
+[`ModulePayloads.decode`](proofs/talos/lean/Project/Compiler/ModuleSections.lean)
+composes arbitrary payloads for all six sections.  Structured instruction
+proofs also track parser fuel.  The arithmetic translation theorem uses
+`ControlAnnotations.ProgramEq` for control annotations, so its conclusion
+requires attention when reusing it for exact equality.
+
+The [Drone module](proofs/talos/lean/Project/Drone/Program.lean) has thirty
+functions, type indices zero through twenty-nine, six globals, function,
+global, and memory exports, and one memory with minimum sixteen pages.
+Several functions return two or three values.  Its structured controls have
+zero parameters and zero or one result.  A source inventory found thirty-six
+instruction constructors, each represented in the current binary translator.
+This inspection supports using Drone as the first application.  A checked
+representability proof remains necessary.
+
+[`Spec.compute_correct`](proofs/talos/lean/Project/Drone/Spec.lean) proves
+`ExactSpecFor` at function 25, including input preservation and the 64 MiB
+memory bound under its caller-heap and allocation premises.  Exact module
+equality permits transfer of that statement.  The source definition of
+`encode` also needs a connection to the distributed byte file: the
+[artifact format](docs/artifact-format.md) specifies file comparison against
+the Lean byte value.  Committing generated bytes alone supplies no checked
+identity between that file and the theorem's subject.
+
+The documentation check passes all 182 maintained Markdown files.  A separate
+check confirms this journal entry's local links resolve, and `git diff --check`
+passes.  The supplied plan retains SHA-256
+`8dc9e01bd29081e97b58faf32fcca7a50f053fc6f246700c22827fb14e72abbf`.
+
+- [x] Update main and create the requested branch.
+- [x] Review the theorem, interpreter fields, reusable proofs, and Drone subject.
+- [ ] Confirm the representable domain and validation scope with the user.
+- [ ] Implement and prove the encoder, then check the Drone byte-file identity
+  and audit the public theorems under the requested three-axiom policy.
+
+### Revised scope and implementation
+
+The user rejected the preceding decoder-based proposal, the application-driven
+scope, and a separate file-identity requirement.  During implementation the
+user clarified the required domain: WASM emitted by LeanExe.  The
+[encoding plan](encoding.md) now records that scope.  The compiler emits scalar
+integer and floating-point operations, structured control, direct calls,
+globals, exports, 32-bit memory, and function imports for WASI and ByteIO.
+Its heap uses reference counting.  Talos's additional instruction families
+are outside this task's required coverage.
+
+Fetched the existing pinned proof dependencies.  The command
+`tools/leanrun --timeout 15m --lock-timeout 30 lake -d proofs/talos/lean build Interpreter.Wasm.Syntax`
+passes with the standard resource limits.  This checks the existing input
+representation and its dependencies.  The first integer-encoding proof build
+failed on missing tactic and integer-lemma imports.  Those proofs are under
+development.  No encoder correctness theorem has passed yet.
+
+The independent integer grammar follows the recursive unsigned and signed
+rules in the official
+[binary values specification](https://webassembly.github.io/spec/core/binary/values.html).
+The encoder and its proofs use Lean's core library.
+
+The new encoder's soundness and acceptance theorems now pass Lean in the
+`Project.Encoding.Correctness` target.  The acceptance hypothesis `Ready`
+contains representation conditions and numeric bounds, including independently
+computed body and section sizes.  Its instruction condition covers the scalar
+operations emitted by the compiler.  Type tables retain duplicate and unused
+entries.  Each local occupies a one-element declaration group, so the checked
+local count also bounds the total expanded count.
+
+The validity specification follows the official
+[instruction typing rules](https://webassembly.github.io/spec/core/valid/instructions.html)
+and [module rules](https://webassembly.github.io/spec/core/valid/modules.html)
+for this scalar language.  A binary is valid when it represents a module
+satisfying those rules.  `encode_valid_complete` transfers an input validity
+proof, and `encode_behavior` also transfers an arbitrary property of that same
+module.  These theorems assume input validity and behavior.  They do not prove
+that the compiler supplies either property.
+
+The initial acceptance proof builds exposed a record-indentation error,
+well-founded definitions requiring their equation lemmas, a looping UTF-8 size
+simplification, and dependent function-index matching.  The corrected build
+passes with the standard local runner limits in 23 jobs.  Execution tests and
+the public axiom audit remain open at this point.
+
+Wasmtime 44.0.0 already exists in the other checkout at
+`/home/somebody/src/leanexe/build/tools/wasmtime/current/wasmtime`.  The user
+cancelled the proposed installation in `tmp`; tests use that existing binary.
+
+The generated-model test imports the existing Talos prelude, which builds
+`Interpreter.Wasm.SmallStep` on this cold checkout.  Its build remained active
+for over ten minutes under the standard resource limits.  The other checkout
+has an existing build cache.  Both dependency trees are clean at Talos revision
+`87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`, every proof dependency revision
+matches, and the cached Lean compiler commit matches the pin.  The freshly
+built Syntax, Semantics, Float, Continuation, and Locals modules have identical
+Lake dependency hashes and output hashes in both checkouts.  This establishes
+that their cached dependent artifacts can be checked for reuse by Lake without
+changing the source or dependency pins.
+
+The cold dependency build reached its 15-minute limit with exit status 124.
+Copied the matching interpreter and CodeLib build caches into this checkout,
+then started the new `Project.Encoding.Tests` target.  Lake remains responsible
+for checking cached inputs.  The unchanged `SmallStep` source is not being
+submitted for another cold elaboration.
+
+Lake accepted the cached `SmallStep` module and checked the new encoder,
+completeness proofs, and the concrete `constant_ready` and `constant_valid`
+examples.  The test build then reached its three-minute limit while compiling
+additional Mathlib modules imported by Talos's `Wp.Defs`.  That module imports
+`Mathlib.Tactic`; the initial targeted cache download covered its probability
+imports but omitted this umbrella.  Fetching the remaining official cache
+completes dependency preparation before the execution test.
+
+The final test passes: `node test/encoding.js`, with `WASMTIME` set to the
+existing 44.0.0 installation and `WASM_TOOLS` set to the installed 1.251.0
+executable.  The sandbox initially denied execution of Wasmtime with `EPERM`.
+The approved run completed, and a second run passed after tightening the
+axiom-report parser to handle multiline lists and reject missing reports.
+All six audited declarations use only the allowed standard Lean axioms.
+Seven encoded modules pass wasm-tools validation, and 57 Wasmtime executions
+match their expected results, including numeric opcode results and the existing
+GCD, floating-point multiplication, and empty-input ASCII-validator models.
+The WASI fixture exits successfully through its imported `proc_exit` function.
+
+`Project.Encoding.Examples` supplies kernel-checked representation and validity
+premises for a concrete module, then applies `encode_valid_complete`.
+The public import is `Project.Encoding`; `writeModule` emits a Talos module
+through the proved encoder.  The source compiler's existing emission commands
+have not been changed.  Validation and behavioral composition assume the
+corresponding input proofs, and the correspondence of the independent Lean
+specification with the published WASM rules remains part of the trusted basis.
+
+`git diff --check` passes, and `tools/check-docs.js` passes 184 maintained
+Markdown files.  These are the focused encoder checks.  The full compiler,
+artifact, and application-proof suites were not run.  No dependency revisions
+changed, and no Wasmtime installation was performed.
+
+### Binary and typing specification reviews
+
+The user requested detailed reviews of the binary grammar and validity
+predicate before external review.  The
+[binary review](proofs/talos/lean/Project/Encoding/BinaryReview.md) checks the
+integer rules, UTF-8 representation, all 71 instruction forms, section
+composition, and all 21 Talos module fields.  The
+[typing review](proofs/talos/lean/Project/Encoding/ValidityReview.md) checks
+context construction, every instruction-typing constructor, stack order,
+control labels, numeric local initialization, declarations, and exports.
+Both identify the premises needed for the combined theorem and record hashes
+of the reviewed specification sources.
+
+The comparison used the official WebAssembly specification at
+`608711107b7f1edb13efd57b7d79b49477462d36`.  Its Core 3 source contains a strict
+UTF-8 continuation lower bound, a truncated four-byte Unicode upper bound,
+and unsigned aliases for the signed integer-constant encodings.  The review
+records these discrepancies and resolves them against Unicode 17.0, the dated
+Core 2 specification, and the official reference decoder.  The Lean definitions
+follow the resolved meanings.  Core 3's wider memory limit and offset encodings
+contain the encoder's chosen `u32` forms as a subset.
+
+The reviewed rules support the conditional encoding and validity claims.
+Application use still requires proofs of `Ready`, input validity, and the
+application property for its module.  `Project.Encoding` builds, and a fresh
+audit checks the same six public declarations under the standard three-axiom
+policy.  The detailed correspondence arguments are recorded as manual review.
+The specification and theorem sources remain unchanged.
+
+- [x] Review the independent binary grammar against authoritative rules.
+- [x] Review the validity predicate and its composition with the binary grammar.
+
+### Independent GCD encoding example
+
+The new `EncodingGcd` source defines Euclid's loop without importing the older
+GCD examples.  Strong induction on the second operand proves its `UInt64`
+result equals the natural-number GCD, with symmetry and zero corollaries.  The
+compiler-generated Talos module has one GCD function and four runtime
+functions.  A loop invariant preserving `Nat.gcd`, with the second operand as
+measure, proves termination and the same result for every `UInt64` input under
+Talos semantics.  The proof requires an explicit local frame because the
+compiler uses 21 locals.  The first whole-loop tactic attempt timed out;
+splitting the frame and arithmetic lemmas and bounding the instruction steps
+made the proof check.
+
+The first generator passed through a binary and WAT before producing the Talos
+module.  It did not follow the requested source-to-module sequence.  The final
+`GenerateProgram.lean` calls `LeanExe.Extract.Core.compile` to obtain the compiler
+IR, then `Direct.fromIR` translates the compiler's structured instruction trees
+and runtime functions to a Talos module.  It prints `Program.lean` without
+producing intermediate WASM or WAT.  The temporary IR generator, WAT-based case
+registration, and aggregate runtime checks were removed.  A comparison of the
+directly translated module's `Repr` with the initial WAT-derived module's `Repr`
+found them equal; this comparison is a development check, not a Lean theorem.
+
+`Project.EncodingGcd.Spec` rebuilt against the new `Program.lean` and proves
+GCD termination and result for every pair of `UInt64` inputs.  The source proof
+builds separately.  `Encoded.lean` applies the general `encode_correct` theorem
+to any successful encoding of this module.  `writeModule` produced the 1332-byte
+`demos/encoding-gcd/gcd.wasm`; wasm-tools validated the file, and Wasmtime 44.0.0
+returned 21 for inputs 1071 and 462.  No source-to-module compiler correctness
+theorem or Lean theorem about filesystem bytes is claimed.  The source, module,
+and encoding declarations report only `propext`, `Classical.choice`, and
+`Quot.sound` in the final axiom audit.  Regenerating `Program.lean` from the
+source produced byte-for-byte identical Lean text, and regenerating the WASM
+file through `Encoded.lean` produced byte-for-byte identical output.  A focused
+Lean run also compared `Repr` output of the compiler-IR translation with the
+evaluated `Program.lean` module and found the strings equal.
