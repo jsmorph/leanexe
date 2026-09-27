@@ -2,6 +2,7 @@ import CodeLib.Attrs
 import CodeLib.Basic
 import CodeLib.Entry
 import CodeLib.RustStd.Frame
+import Interpreter.Wasm.LeanSyntax
 
 /-!
 # LeanExe's focused Talos surface
