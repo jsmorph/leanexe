@@ -1,4 +1,4 @@
-import LeanExe.Wasm.ScalarBooleanRangeAdmission
+import LeanExe.Wasm.ScalarBooleanWordRangeAdmission
 import Project.Compiler.FunctionState
 import Project.Compiler.RangeFunctionExecution
 import Project.Compiler.RangeExitFunctionExecution
@@ -60,7 +60,7 @@ theorem extracted_function_execution {name : Lean.Name} {exportName : Option Str
       Wasm.wp m code (fun outcome => outcome = .Fallthrough store (next.toLocals [.i64 value]))
         store ((functionState func args).toLocals []) env := by
   obtain ⟨arity, result, body, signature, annotations, hb, branches⟩ := LeanExe.Extract.Core.extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩
+  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩
   · have hlen : args.length = arity := len
     subst arity
     obtain ⟨value, applied, irEval⟩ := LeanExe.Extract.Core.scalarPublic_application
@@ -93,5 +93,13 @@ theorem extracted_function_execution {name : Lean.Name} {exportName : Option Str
     obtain ⟨code, next, emitted, executed⟩ := range_exit_function_execution args name exportName
       releaseIndex matched meaning m env store
     exact ⟨flag.toUInt64, code, next, applied, emitted, executed⟩
+  · have hlen : args.length = arity := len
+    subst arity
+    obtain ⟨value, applied, meaning⟩ := LeanExe.Extract.Core.booleanWordRangePublic_application signature annotations hb hp args rfl
+    obtain ⟨descriptor, matched, _, _⟩ := LeanExe.Extract.Core.extractScalarBooleanWordRangePublic_admitted hp
+      (LeanExe.Extract.Core.scalarSignature_inputs_length signature)
+    obtain ⟨code, next, emitted, executed⟩ := range_exit_function_execution args name exportName
+      releaseIndex matched meaning m env store
+    exact ⟨value, code, next, applied, emitted, executed⟩
 
 end Project.Compiler.ScalarLowering

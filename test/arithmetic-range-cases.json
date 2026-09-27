@@ -736,5 +736,15 @@
   "rangeBoolResultExit",
   "rangeBoolResultContinue",
   "rangeBoolResultStride",
-  "rangeBoolResultId"
+  "rangeBoolResultId",
+  "rangeWordFromBoolLet",
+  "rangeWordFromBoolDo",
+  "rangeWordFromBoolFlag",
+  "rangeWordFromBoolHelper",
+  "rangeWordFromBoolConverted",
+  "rangeWordFromBoolMixed",
+  "rangeWordFromBoolExit",
+  "rangeWordFromBoolContinue",
+  "rangeWordFromBoolStride",
+  "rangeWordFromBoolId"
 ]
