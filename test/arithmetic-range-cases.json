@@ -596,5 +596,15 @@
   "rangeBoolWordHelperContinue",
   "rangeBoolWordHelperStride",
   "rangeBoolWordHelperId",
-  "rangeBoolWordHelperShadow"
+  "rangeBoolWordHelperShadow",
+  "rangeBoolBooleanHelperRepeat",
+  "rangeBoolBooleanHelperCount",
+  "rangeBoolBooleanHelperInitial",
+  "rangeBoolBooleanHelperNested",
+  "rangeBoolBooleanHelperFlag",
+  "rangeBoolBooleanHelperExit",
+  "rangeBoolBooleanHelperContinue",
+  "rangeBoolBooleanHelperStride",
+  "rangeBoolBooleanHelperId",
+  "rangeBoolBooleanHelperShadow"
 ]

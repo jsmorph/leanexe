@@ -437,7 +437,13 @@ controls. Prior tests pass 202,104 comparisons, 161,667 invalid-input checks and
 16,320 controls. Evidence is in
 [the Boolean loop word-helper archive](proofs/compiler/boolean-loop-word-helper-2026-09-27/README.md).
 
-Next: Boolean helper inputs/results and other helper shapes before Boolean loops,
+Current capability: Bool-to-UInt64 local helpers before Boolean loops. Source
+semantics, totality, extraction acceptance/soundness and IR invariants pass.
+New focused tests pass 32,496 native/IR comparisons, 27,648 invalid-input checks
+and 2,304 unused-helper controls. Complete compiler proof, native Lean/V8 checks
+and evidence archive are next.
+
+Next: Boolean helper results and other helper shapes before Boolean loops,
 retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
 Also extend UInt64-to-Bool helper bodies to call captured

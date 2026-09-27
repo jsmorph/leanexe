@@ -53,19 +53,32 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     · exact bindings binding member
   | case9 => contradiction
   | case10 => contradiction
-  | case11 locals input output value name domain body binder notWord types parsed bound matched ih =>
+  | case11 locals name typeName resultType typeBi paramName value paramBi body nondep type parsed checked validated ih =>
+    apply ih compiled
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · intro argument target argumentValid extracted
+      apply extractScalarExprWith_invariant P literal binary choice extracted
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact argumentValid
+      · exact bindings binding member
+    · exact bindings binding member
+  | case12 => contradiction
+  | case13 => contradiction
+  | case14 locals input output value name domain body binder notWord types parsed bound matched ih =>
     apply ih compiled
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · exact extractScalarExprWith_invariant P literal binary choice matched bindings
     · exact bindings binding member
-  | case12 locals input output value name domain body binder types parsed bound matched ih =>
+  | case15 locals input output value name domain body binder types parsed bound matched ih =>
     apply ih compiled
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · exact extractScalarExprWith_invariant P literal binary choice matched bindings
     · exact bindings binding member
-  | case13 locals input output value name domain body binder types parsed notPure =>
+  | case16 locals input output value name domain body binder types parsed notPure =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hp, result, hr, rfl⟩ := compiled
     obtain ⟨count, initial, step, done, tail⟩ :=
@@ -76,7 +89,7 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact tail
     · exact bindings binding member
-  | case14 locals source notLet notFlag notIdLet notFunction notBind wrapper body parsed ih => exact ih compiled bindings
-  | case15 => contradiction
+  | case17 locals source notLet notFlag notIdLet notFunction notBooleanFunction notBind wrapper body parsed ih => exact ih compiled bindings
+  | case18 => contradiction
 
 end LeanExe.Extract.Core
