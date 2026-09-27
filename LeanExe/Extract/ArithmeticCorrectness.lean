@@ -17,6 +17,21 @@ theorem compileEnvironment_of_extracted
   have normal := compileEnvironment_of_scalar_extraction (moduleName := moduleName)
     lookup body safe total exportable extracted
   have available : shortExportName entry ∉ reservedExportNames := by simpa using exportable
+  simp [compileEnvironment, extractScalarEnvironmentFunc, lookup, body, safe, total, available, extracted, fits, normal]
+
+/-- Admission checks preserve the exact existing compiler result. -/
+theorem compileEnvironment_of_environment_extracted
+    {env : Lean.Environment} {moduleName entry : Lean.Name}
+    {info : Lean.ConstantInfo} {source : Lean.Expr} {func : LeanExe.IR.Func}
+    (lookup : env.find? entry = some info) (body : info.value? = some source)
+    (safe : info.isUnsafe = false) (total : info.isPartial = false)
+    (exportable : reservedExportNames.contains (shortExportName entry) = false)
+    (extracted : extractScalarEnvironmentFunc env entry (some (shortExportName entry)) info.type source = some func)
+    (fits : LeanExe.Wasm.ArithmeticBounds.Fits func (shortExportName entry)) :
+    compileEnvironment env moduleName entry = .ok { funcs := #[func] } := by
+  have normal := compileEnvironment_of_scalar_environment_extraction (moduleName := moduleName)
+    lookup body safe total exportable extracted
+  have available : shortExportName entry ∉ reservedExportNames := by simpa using exportable
   simp [compileEnvironment, lookup, body, safe, total, available, extracted, fits, normal]
 
 /-- The independent source grammar, together with only numeric format limits,
@@ -36,6 +51,23 @@ theorem compileEnvironment_accepts
   exact ⟨func, compileEnvironment_of_extracted lookup body safe total exportable extracted
     (limits func extracted), extracted⟩
 
+/-- The independent source grammar, together with only numeric format limits,
+implies that strict arithmetic compilation succeeds. -/
+theorem compileEnvironment_environment_accepts
+    {env : Lean.Environment} {moduleName entry : Lean.Name}
+    {info : Lean.ConstantInfo} {source : Lean.Expr}
+    (lookup : env.find? entry = some info) (body : info.value? = some source)
+    (safe : info.isUnsafe = false) (total : info.isPartial = false)
+    (exportable : reservedExportNames.contains (shortExportName entry) = false)
+    (supported : LeanExe.Source.Scalar.StepMatcher.EnvironmentSupported env info.type source)
+    (limits : ∀ func, extractScalarEnvironmentFunc env entry (some (shortExportName entry)) info.type source = some func →
+      LeanExe.Wasm.ArithmeticBounds.Fits func (shortExportName entry)) :
+    ∃ func, compileEnvironment env moduleName entry = .ok { funcs := #[func] } ∧
+      extractScalarEnvironmentFunc env entry (some (shortExportName entry)) info.type source = some func := by
+  obtain ⟨func, extracted⟩ := extractScalarEnvironmentFunc_accepts supported entry (some (shortExportName entry))
+  exact ⟨func, compileEnvironment_of_environment_extracted lookup body safe total exportable extracted
+    (limits func extracted), extracted⟩
+
 /-- Successful strict admission exposes the original declaration and the
 numeric limits used by the general source-to-bytes proof. -/
 theorem compileEnvironment_success
@@ -45,7 +77,7 @@ theorem compileEnvironment_success
       env.find? entry = some info ∧ info.value? = some source ∧
       info.isUnsafe = false ∧ info.isPartial = false ∧
       reservedExportNames.contains (shortExportName entry) = false ∧
-      extractScalarFunc entry (some (shortExportName entry)) info.type source = some func ∧
+      extractScalarEnvironmentFunc env entry (some (shortExportName entry)) info.type source = some func ∧
       LeanExe.Wasm.ArithmeticBounds.Fits func (shortExportName entry) ∧
       module_ = { funcs := #[func] } := by
   cases lookup : env.find? entry with
@@ -65,12 +97,12 @@ theorem compileEnvironment_success
         simp [present] at compiled
       | false =>
         simp only [exportable, Bool.false_eq_true, if_false] at compiled
-        cases extracted : extractScalarFunc entry (some (shortExportName entry)) info.type source with
+        cases extracted : extractScalarEnvironmentFunc env entry (some (shortExportName entry)) info.type source with
         | none => simp [extracted] at compiled
         | some func =>
           simp only [extracted] at compiled
           by_cases fits : LeanExe.Wasm.ArithmeticBounds.Fits func (shortExportName entry)
-          · have normal := compileEnvironment_of_scalar_extraction (moduleName := moduleName)
+          · have normal := compileEnvironment_of_scalar_environment_extraction (moduleName := moduleName)
               lookup body safe total exportable extracted
             have same : module_ = { funcs := #[func] } := by
               simpa [fits, normal, eq_comm] using compiled

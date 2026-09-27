@@ -951,8 +951,11 @@ sound and complete for that relation (90 targets). Environment-aware extraction
 preserves direct extraction and proves correctness for the original source in its
 environment (210 targets). Four generated-match programs pass 96 native/IR
 comparisons and 20 invalid-input checks. All new audits use only standard axioms.
-Production entry integration, the public source-to-WASM theorem and independent
-V8 checks remain pending. The fixed pure match probe remains unchanged.
+Production entry integration (236 targets) and the public source-to-WASM theorem
+(3387 targets) pass first try. The public result now uses an independent
+environment/source expansion relation. The pure theorem remains available.
+Nine production/native fixtures pass 216 comparisons and require identical
+ordinary/strict compiler bytes. The independent V8 gate is pending. The fixed pure match probe remains unchanged.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

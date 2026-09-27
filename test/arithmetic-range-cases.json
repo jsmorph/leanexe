@@ -959,5 +959,14 @@
   "rangeBooleanStepCasesContinue",
   "rangeBooleanStepCasesNested",
   "rangeBooleanStepCasesFlagInput",
-  "rangeBooleanStepCasesWordTail"
+  "rangeBooleanStepCasesWordTail",
+  "rangeBooleanStepMatchDirect",
+  "rangeBooleanStepMatchHelper",
+  "rangeBooleanStepMatchNested",
+  "rangeBooleanStepMatchRetained",
+  "rangeBooleanStepMatchIdentity",
+  "rangeBooleanStepMatchContinue",
+  "rangeBooleanStepMatchFlagInput",
+  "rangeBooleanStepMatchWordTail",
+  "rangeBooleanStepMatchDispatcher"
 ]

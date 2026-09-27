@@ -28,6 +28,29 @@ theorem compileEnvironment_of_scalar_extraction
         inlineStack := [] }
       module := { funcs := #[func] }
       releaseJudgments := #[] } := by
+    simp [extractScalarEntry?, extractScalarEnvironmentFunc, lookup, body, safe, total, available, extracted]
+  exact compileEnvironment_scalar hentry
+
+/-- Successful environment-aware scalar extraction reaches the unchanged normal compiler entry. -/
+theorem compileEnvironment_of_scalar_environment_extraction
+    {env : Lean.Environment} {moduleName entry : Lean.Name}
+    {info : Lean.ConstantInfo} {source : Lean.Expr} {func : LeanExe.IR.Func}
+    (lookup : env.find? entry = some info) (body : info.value? = some source)
+    (safe : info.isUnsafe = false) (total : info.isPartial = false)
+    (exportable : reservedExportNames.contains (shortExportName entry) = false)
+    (extracted : extractScalarEnvironmentFunc env entry (some (shortExportName entry)) info.type source = some func) :
+    compileEnvironment env moduleName entry = .ok { funcs := #[func] } := by
+  have available : shortExportName entry ∉ reservedExportNames := by simpa using exportable
+  have hentry : extractScalarEntry? true env moduleName entry = some {
+      ctx := {
+        env := env
+        root := moduleName.getRoot
+        names := #[entry]
+        synthetics := #[]
+        freshResultOwnerOffsets := #[[]]
+        inlineStack := [] }
+      module := { funcs := #[func] }
+      releaseJudgments := #[] } := by
     simp [extractScalarEntry?, lookup, body, safe, total, available, extracted]
   exact compileEnvironment_scalar hentry
 
@@ -59,7 +82,7 @@ theorem compileEnvironment_scalar_total_correct
         inlineStack := [] }
       module := { funcs := #[func] }
       releaseJudgments := #[] } := by
-    simp [extractScalarEntry?, lookup, body, safe, total, available, extracted]
+    simp [extractScalarEntry?, extractScalarEnvironmentFunc, lookup, body, safe, total, available, extracted]
   exact compileEnvironment_scalar hentry
 
 end LeanExe.Extract.Core
