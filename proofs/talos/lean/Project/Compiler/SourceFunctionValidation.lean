@@ -1,3 +1,4 @@
+import LeanExe.Wasm.ScalarPublicAdmission
 import Project.Compiler.FunctionTyping
 import Project.Compiler.RangeTyping
 import Project.Compiler.RangeExitTyping
@@ -22,15 +23,14 @@ theorem extracted_function_valid
     (user : Code) (parsed : Parses code (LeanExe.Wasm.Binary.CoreWasm.emitFuncBody 4 func) user) :
     Validator.validateFunction (rawModule func entry user) (typeValues func) 0
       (typeValues func).head! user = .ok () := by
-  obtain ⟨arity, result, body, _, _, branches⟩ := extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, extracted, rfl⟩ | ⟨rfl, plan, extracted, rfl⟩ | ⟨rfl, plan, extracted, rfl⟩
-  · obtain ⟨descriptor, recognized, arithmetic⟩ := extractScalarExpr_arithmetic extracted
+  obtain ⟨arity, result, body, signature, _, _, branches⟩ := extractScalarFunc_cases compiled
+  rcases branches with ⟨ir, extracted, rfl⟩ | ⟨rfl, _, plan, extracted, rfl⟩ | ⟨rfl, _, plan, extracted, rfl⟩
+  · obtain ⟨descriptor, recognized, arithmetic, readBound⟩ := extractScalarPublic_admitted extracted
     have scratch := scalarFunc_scratch arity name (some entry) recognized
     have format : arity + 1 + descriptor.scratchWidth < 2 ^ 32 := by
       rw [scratch] at localBound
       exact localBound
-    have readBound := extractScalarExpr_reads extracted recognized (count := arity)
-      (by intro slot present; simpa using present)
+    have inputLen := scalarSignature_inputs_length signature
     have reads : ∀ index ∈ descriptor.reads, index < arity + 1 + descriptor.scratchWidth := by
       intro index member
       have h := readBound index member

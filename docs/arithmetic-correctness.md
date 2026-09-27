@@ -9,14 +9,18 @@ yet covered by this theorem.
 ## Accepted source
 
 A declaration must be safe, total, have an executable body, take zero or more
-`UInt64` arguments and return `UInt64` or `Bool`. Public Boolean results use
+`UInt64` or `Bool` arguments and return `UInt64` or `Bool`. Public Boolean arguments
+use the `i64` ABI: zero decodes to false and every nonzero value decodes to true.
+The compiler normalizes Boolean inputs before the body uses them, and checks
+that the lambda parameter annotations match the declared input kinds. Public Boolean results use
 an `i64` export value: false is zero and true is one. Their supported Boolean
 bodies compile through the same checked conversion as `Bool.toUInt64`, and a
 separate theorem proves the result encoding. Public result types may retain any
 number of standard Id layers, including metadata between layers. Each Id must wrap a scalar result type; wrapping an
 entire function signature is rejected. The signature extension preserves the
-result encoding and all body checks. Public Boolean parameters and Boolean
-results from loop-containing bodies remain outside the supported grammar.
+result encoding and all body checks. Mixed Boolean/UInt64 parameters are supported
+in scalar bodies. Loop-containing functions currently require UInt64 parameters
+and results. Id annotations on public parameter types are not yet admitted.
 
 A UInt64 body may read arguments, contain
 UInt64 literals, metadata, UInt64 `let` bindings, conditionals and pure `Id`
@@ -371,7 +375,7 @@ the lowering uses the proved zero/one representation. Converted words may be
 used in arithmetic, comparison operands, bindings, bounds, step results and
 post-loop computations. Every operand is checked even when unused. Free
 variables, wrong input kinds, extra universe arguments and unsupported Boolean
-forms are rejected. Public arguments/results remain UInt64.
+forms are rejected. Public arguments and results follow the signature rules above.
 
 Dependent `if h : condition then … else …` admits the same guard trees and
 scalar/step result annotations. The extractor checks the whole standard decision

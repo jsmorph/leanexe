@@ -29,15 +29,13 @@ theorem extracted_function_body_bytes
       Wasm.wp m (Wasm.Binary.Instr.listToTalos raw)
         (fun outcome => outcome = .Fallthrough store (next.toLocals [.i64 value]))
         store ((ScalarLowering.functionState func args).toLocals []) env := by
-  obtain ⟨arity, result, body, _, hb, branches⟩ := extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩
+  obtain ⟨arity, result, body, signature, annotations, hb, branches⟩ := extractScalarFunc_cases compiled
+  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, inputs, plan, hp, rfl⟩ | ⟨rfl, inputs, plan, hp, rfl⟩
   · have hlen : args.length = arity := len
     subst arity
-    have supported := extractScalarExpr_supported hi
-    obtain ⟨value, semantics⟩ := supported.evaluates args.reverse (by simp)
-    have applied := LeanExe.Source.Scalar.apply_encoded_of_collectLambdas result args [] hb (by simpa using semantics)
-    have irEval := extractScalarExpr_correct semantics hi (scalarArgumentLocals args [0])
-    obtain ⟨descriptor, recognized, arithmetic⟩ := extractScalarExpr_arithmetic hi
+    obtain ⟨value, applied, irEval⟩ := scalarPublic_application signature annotations hb hi args [0] rfl
+    obtain ⟨descriptor, recognized, arithmetic, readBound⟩ := extractScalarPublic_admitted hi
+    have inputLen := scalarSignature_inputs_length signature
     have scratch := scalarFunc_scratch args.length name exportName recognized
     have room : args.length + 1 + descriptor.scratchWidth ≤ 2 ^ 32 := by
       rw [scratch] at localBound
@@ -45,8 +43,7 @@ theorem extracted_function_body_bytes
       omega
     have reads : ∀ index ∈ descriptor.reads, index < 2 ^ 32 := by
       intro index member
-      have h := extractScalarExpr_reads hi recognized (count := args.length)
-        (by intro slot present; simpa using present) index member
+      have h := readBound index member
       omega
     obtain ⟨raw, encoded⟩ := scalar_function_encodable name exportName args.length
       releaseIndex recognized arithmetic reads room
@@ -64,7 +61,8 @@ theorem extracted_function_body_bytes
   · have hlen : args.length = arity := len
     subst arity
     obtain ⟨value, semantics, meaning⟩ := rangeFunc_meaning hp rfl
-    have applied := LeanExe.Source.Scalar.apply_of_collectLambdas args [] hb (by simpa using semantics)
+    have applied := LeanExe.Source.Scalar.apply_of_collectLambdas args []
+      (by simpa [inputs] using annotations) hb (by simpa using semantics)
     obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRange_admitted hp
       (by intro index present; simpa using present)
     obtain ⟨raw, next, parsed, executed⟩ := range_function_body_bytes args name exportName releaseIndex
@@ -78,7 +76,8 @@ theorem extracted_function_body_bytes
   · have hlen : args.length = arity := len
     subst arity
     obtain ⟨value, semantics, meaning⟩ := rangeExitFunc_meaning hp rfl
-    have applied := LeanExe.Source.Scalar.apply_exit_of_collectLambdas args [] hb (by simpa using semantics)
+    have applied := LeanExe.Source.Scalar.apply_exit_of_collectLambdas args []
+      (by simpa [inputs] using annotations) hb (by simpa using semantics)
     obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRangeExit_admitted hp
       (by intro index present; simpa using present)
     obtain ⟨raw, next, parsed, executed⟩ := range_exit_function_body_bytes args name exportName releaseIndex

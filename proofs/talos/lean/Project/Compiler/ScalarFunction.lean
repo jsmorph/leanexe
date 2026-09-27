@@ -4,7 +4,7 @@ import Project.Compiler.RangeExitFunctionExecution
 import LeanExe.Wasm.ScalarRangeAdmission
 import LeanExe.Wasm.ScalarRangeExitAdmission
 import LeanExe.Wasm.ScalarScratch
-import LeanExe.Wasm.ScalarAdmission
+import LeanExe.Wasm.ScalarPublicAdmission
 
 namespace Project.Compiler.ScalarLowering
 
@@ -58,23 +58,21 @@ theorem extracted_function_execution {name : Lean.Name} {exportName : Option Str
       program (LeanExe.Wasm.Binary.CoreWasm.emitFuncInstrs releaseIndex func) = some code ∧
       Wasm.wp m code (fun outcome => outcome = .Fallthrough store (next.toLocals [.i64 value]))
         store ((functionState func args).toLocals []) env := by
-  obtain ⟨arity, result, body, _, hb, branches⟩ := LeanExe.Extract.Core.extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, plan, hp, rfl⟩ | ⟨rfl, plan, hp, rfl⟩
+  obtain ⟨arity, result, body, signature, annotations, hb, branches⟩ := LeanExe.Extract.Core.extractScalarFunc_cases compiled
+  rcases branches with ⟨ir, hi, rfl⟩ | ⟨rfl, inputs, plan, hp, rfl⟩ | ⟨rfl, inputs, plan, hp, rfl⟩
   · have hlen : args.length = arity := len
     subst arity
-    have supported := LeanExe.Extract.Core.extractScalarExpr_supported hi
-    obtain ⟨value, semantics⟩ := supported.evaluates args.reverse (by simp)
-    have applied := LeanExe.Source.Scalar.apply_encoded_of_collectLambdas result args [] hb (by simpa using semantics)
-    have irEval := LeanExe.Extract.Core.extractScalarExpr_correct semantics hi
-      (LeanExe.Extract.Core.scalarArgumentLocals args [0])
-    obtain ⟨descriptor, recognized⟩ := LeanExe.Extract.Core.extractScalarExpr_descriptor hi
+    obtain ⟨value, applied, irEval⟩ := LeanExe.Extract.Core.scalarPublic_application
+      signature annotations hb hi args [0] rfl
+    obtain ⟨descriptor, recognized, _, _⟩ := LeanExe.Extract.Core.extractScalarPublic_admitted hi
     obtain ⟨code, next, emitted, executed⟩ := scalar_function_execution args name exportName
       releaseIndex recognized irEval m env store
     exact ⟨value, code, next, applied, emitted, executed⟩
   · have hlen : args.length = arity := len
     subst arity
     obtain ⟨value, semantics, meaning⟩ := LeanExe.Extract.Core.rangeFunc_meaning hp rfl
-    have applied := LeanExe.Source.Scalar.apply_of_collectLambdas args [] hb (by simpa using semantics)
+    have applied := LeanExe.Source.Scalar.apply_of_collectLambdas args []
+      (by simpa [inputs] using annotations) hb (by simpa using semantics)
     obtain ⟨descriptor, matched, _, _⟩ := LeanExe.Extract.Core.extractScalarRange_admitted hp
       (by intro index present; simpa using present)
     obtain ⟨code, next, emitted, executed⟩ := range_function_execution args name exportName
@@ -83,7 +81,8 @@ theorem extracted_function_execution {name : Lean.Name} {exportName : Option Str
   · have hlen : args.length = arity := len
     subst arity
     obtain ⟨value, semantics, meaning⟩ := LeanExe.Extract.Core.rangeExitFunc_meaning hp rfl
-    have applied := LeanExe.Source.Scalar.apply_exit_of_collectLambdas args [] hb (by simpa using semantics)
+    have applied := LeanExe.Source.Scalar.apply_exit_of_collectLambdas args []
+      (by simpa [inputs] using annotations) hb (by simpa using semantics)
     obtain ⟨descriptor, matched, _, _⟩ := LeanExe.Extract.Core.extractScalarRangeExit_admitted hp
       (by intro index present; simpa using present)
     obtain ⟨code, next, emitted, executed⟩ := range_exit_function_execution args name exportName
