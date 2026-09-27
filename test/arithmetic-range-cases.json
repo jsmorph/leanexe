@@ -909,5 +909,15 @@
   "rangeBooleanStepBindUnusedBoolean",
   "rangeBooleanStepBindCaptured",
   "rangeBooleanStepBindContinue",
-  "rangeBooleanStepBindWordTail"
+  "rangeBooleanStepBindWordTail",
+  "rangeBooleanStepFunctionWord",
+  "rangeBooleanStepFunctionBoolean",
+  "rangeBooleanStepFunctionNested",
+  "rangeBooleanStepFunctionRetained",
+  "rangeBooleanStepFunctionChoiceWord",
+  "rangeBooleanStepFunctionChoiceBoolean",
+  "rangeBooleanStepFunctionUnused",
+  "rangeBooleanStepFunctionRepeated",
+  "rangeBooleanStepFunctionFlagInput",
+  "rangeBooleanStepFunctionWordTail"
 ]

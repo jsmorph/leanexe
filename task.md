@@ -880,14 +880,14 @@ step-returning continuations. Eight new probes and six prior accumulator probes
 compile. The corpus contains 1573 declarations. Evidence is in
 [the Boolean step bind archive](proofs/compiler/boolean-step-bind-2026-09-27/README.md).
 
-Current capability: local functions returning Boolean loop steps. Add distinct
-word/Boolean step closures and lexical binding proofs, restore the fixed
-conditional-action probes unchanged, and complete WASM correctness before
-moving on to step-result bindings and further loop composition. The distinct
-source/compiled function bindings and scalar projection lemmas now pass. Existing
-Boolean step semantics, extraction proofs and range/public integration have
-been migrated to those contexts. Function declarations and calls are not enabled
-yet; focused tests check preservation of current behavior first.
+Current capability: local functions returning Boolean loop steps. Distinct
+word/Boolean step closures, lexical matching, source totality, exact annotations,
+acceptance/support, extraction correctness and invariants pass. Public integration
+passes. Both original conditional-action probes and their two new variants now
+compile unchanged. Three new helper probes compile; the fourth retains a `show`
+step-result binding and is fixed for the next capability. Ten native programs
+pass 240 comparisons. Syntax tests pass 20,736 comparisons and 11,232 invalid-input
+checks. The general source-to-WASM proof and independent V8 checks are next.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
