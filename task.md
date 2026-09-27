@@ -595,6 +595,12 @@ comparisons, 46,080 invalid-input checks and 4,608 controls. Prior tests pass 80
 comparisons, 42,624 invalid-input checks and 2,304 controls. Evidence is in
 [the word-result archive](proofs/compiler/boolean-loop-word-result-2026-09-27/README.md).
 
+Current capability: pure bindings around Boolean-to-word loops. Source totality,
+extraction acceptance and recovery, correctness, invariants and public WASM
+admission pass. Mixed word/Boolean setup, saved word results and show now pass
+129,264 native/IR comparisons, 76,800 invalid-input checks and 6,144 controls.
+The complete proof and native Lean/WASM checks are next.
+
 Next: pure bindings and local helper declarations around Boolean-to-word loops, followed by
 retained instances, broader signatures, and composition of multiple loops.
 Also extend UInt64-to-Bool helper bodies to call captured

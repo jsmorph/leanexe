@@ -1,0 +1,174 @@
+import LeanExe.Extract.ScalarFunc
+
+namespace BooleanLoopWordBindingsTest
+
+def rangeWordBoolSetupWord (count seed : UInt64) : UInt64 :=
+  let limit := count % 17
+  let initial := seed + 7
+  let flag :=
+    let value := Id.run do
+      let mut a := initial
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == initial % 7
+  (if flag then initial + 7 else initial * 3) + limit
+
+def rangeWordBoolSetupFlag (count seed : UInt64) : UInt64 :=
+  let selected := seed % 3 == 0
+  let initial := if selected then seed + 7 else seed * 3
+  let flag :=
+    let value := Id.run do
+      let mut a := initial
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == initial % 7
+  (if flag then initial + 7 else initial * 3) + count
+
+def rangeWordBoolSetupDo (count seed : UInt64) : Id UInt64 :=
+do
+  let limit ← pure (count % 17)
+  let initial ← pure (seed + 7)
+  let flag ← (do
+    let value ← (do
+      let mut a := initial
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a)
+    pure (value % 7 == initial % 7))
+  pure ((if flag then initial + 7 else initial * 3) + limit)
+
+def rangeWordBoolSetupNested (count seed : UInt64) : Id UInt64 :=
+do
+  let selected ← pure (seed % 3 == 0)
+  let limit := count % 17
+  let initial ← pure (if selected then seed + 7 else seed * 3)
+  let flag ← (do
+    let value ← (do
+      let mut a := initial
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a)
+    pure (value % 7 == initial % 7))
+  pure ((if flag then initial + 7 else initial * 3) + limit)
+
+def rangeWordBoolSavedResult (count seed : UInt64) : UInt64 :=
+  let saved :=
+    let flag :=
+      let value := Id.run do
+        let mut a := seed
+        for i in [:count.toNat] do
+          a := a + i.toUInt64 + 1
+        return a
+      value % 7 == seed % 7
+    (if flag then seed + 7 else seed * 3) + count
+  saved + seed * 3
+
+def rangeWordBoolShowResult (count seed : UInt64) : Id UInt64 :=
+  show Id UInt64 from do
+    let flag ← (do
+      let value ← (do
+        let mut a := seed
+        for i in [:count.toNat] do
+          a := a + i.toUInt64 + 1
+        return a)
+      pure (value % 7 == seed % 7))
+    pure ((if flag then seed + 7 else seed * 3) + count)
+
+def rangeWordBoolSetupExit (count seed : UInt64) : UInt64 :=
+  let limit := count % 23
+  let initial := seed + 11
+  let flag :=
+    let value := Id.run do
+      let mut a := initial
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+        if a % 7 == 0 then break
+      return a
+    value % 7 == 0
+  if flag || limit == 0 then initial + 5 else initial * 7
+
+def rangeWordBoolSetupContinue (count seed : UInt64) : Id UInt64 :=
+do
+  let selected ← pure (seed % 2 == 0)
+  let initial := if selected then seed + 5 else seed * 3
+  let flag ← (do
+    let value ← (do
+      let mut a := initial
+      for i in [:count.toNat] do
+        if i.toUInt64 % 2 == 0 then continue
+        a := a + i.toUInt64 + 1
+      return a)
+    pure (value % 7 == initial % 7))
+  pure ((if !flag || initial == 0 then initial + 11 else initial * 3) + count)
+
+def rangeWordBoolSetupStride (count seed : UInt64) : UInt64 :=
+  let limit := count % 23
+  let initial := seed + 11
+  let flag :=
+    let value := Id.run do
+      let mut a := initial
+      for i in [(initial % 3).toNat:limit.toNat:3] do
+        a := a + i.toUInt64 + 1
+        if a % 5 == 0 then break
+      return a
+    value % 5 == 0
+  flag.toUInt64 * 23 + initial
+
+def rangeWordBoolSetupId (count seed : UInt64) : Id (Id UInt64) :=
+do
+  let limit : Id (Id UInt64) ← pure (pure (pure (count % 17)))
+  let selected : Id (Id Bool) ← pure (pure (pure (seed % 2 == 0)))
+  let initial : Id UInt64 := if Id.run (Id.run selected) then seed + 7 else seed * 3
+  let stop := Id.run (Id.run limit)
+  let start := Id.run initial
+  let flag : Id (Id Bool) ← (do
+    let value ← (do
+      let mut a := start
+      for i in [:stop.toNat] do
+        a := a + i.toUInt64 + 1
+      return a)
+    pure (pure (pure (value % 7 == start % 7))))
+  pure (pure ((if !(Id.run (Id.run flag)) && start != 0 then start + 7 else start * 3) + stop))
+
+def inputs : List (UInt64 × UInt64) :=
+  [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
+   (0xffffffffffffffff, 1), (0x8000000000000000, 2), (42, 3),
+   (0xffffffffffffffff, 63), (0x8000000000000001, 64), (0xffffffffffffffff, 65),
+   (0x0123456789abcdef, 0xffffffffffffffff), (3, 17), (17, 3)]
+
+end BooleanLoopWordBindingsTest
+
+run_elab do
+  let env ← Lean.getEnv
+  let cases : List (Lean.Name × (UInt64 → UInt64 → UInt64) × Bool) := [
+    (`BooleanLoopWordBindingsTest.rangeWordBoolSetupWord, (fun (x y : UInt64) => BooleanLoopWordBindingsTest.rangeWordBoolSetupWord x y), true),
+    (`BooleanLoopWordBindingsTest.rangeWordBoolSetupFlag, (fun (x y : UInt64) => BooleanLoopWordBindingsTest.rangeWordBoolSetupFlag x y), true),
+    (`BooleanLoopWordBindingsTest.rangeWordBoolSetupDo, (fun (x y : UInt64) => BooleanLoopWordBindingsTest.rangeWordBoolSetupDo x y), true),
+    (`BooleanLoopWordBindingsTest.rangeWordBoolSetupNested, (fun (x y : UInt64) => BooleanLoopWordBindingsTest.rangeWordBoolSetupNested x y), true),
+    (`BooleanLoopWordBindingsTest.rangeWordBoolSavedResult, (fun (x y : UInt64) => BooleanLoopWordBindingsTest.rangeWordBoolSavedResult x y), true),
+    (`BooleanLoopWordBindingsTest.rangeWordBoolShowResult, (fun (x y : UInt64) => BooleanLoopWordBindingsTest.rangeWordBoolShowResult x y), true),
+    (`BooleanLoopWordBindingsTest.rangeWordBoolSetupExit, (fun (x y : UInt64) => BooleanLoopWordBindingsTest.rangeWordBoolSetupExit x y), true),
+    (`BooleanLoopWordBindingsTest.rangeWordBoolSetupContinue, (fun (x y : UInt64) => BooleanLoopWordBindingsTest.rangeWordBoolSetupContinue x y), true),
+    (`BooleanLoopWordBindingsTest.rangeWordBoolSetupStride, (fun (x y : UInt64) => BooleanLoopWordBindingsTest.rangeWordBoolSetupStride x y), true),
+    (`BooleanLoopWordBindingsTest.rangeWordBoolSetupId, (fun (x y : UInt64) => BooleanLoopWordBindingsTest.rangeWordBoolSetupId x y), true)]
+  let mut comparisons : Nat := 0
+  for (name, native, isRange) in cases do
+    let some info := env.find? name | throwError "missing declaration"
+    let some value := info.value? | throwError "missing body"
+    let some func := LeanExe.Extract.Core.extractScalarFunc name (some "entry") info.type value |
+      throwError "{name}: Boolean loop word-bindings extraction failed"
+    let module_ : LeanExe.IR.Module := { funcs := #[func] }
+    let inputs := if isRange then
+      ([0, 1, 2, 7, 16, 31] : List UInt64).flatMap fun n =>
+        ([0, 1, 0x8000000000000000, 0xffffffffffffffff] : List UInt64).map fun seed => (n, seed)
+      else BooleanLoopWordBindingsTest.inputs
+    for (x, y) in inputs do
+      let expected := native x y
+      let actual := module_.evalFunc 0 [x, y]
+      unless actual == expected do
+        throwError "{name}({x}, {y}): native={expected}, IR={actual}"
+      comparisons := comparisons + 1
+  unless comparisons == 240 do throwError "unexpected comparison count {comparisons}"
+  Lean.logInfo m!"{comparisons} native/Boolean loop word-bindings IR comparisons passed"

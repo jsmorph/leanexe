@@ -20,33 +20,41 @@ number of standard Id layers, including metadata between layers. Each Id must wr
 entire function signature is rejected. The signature extension preserves the
 result encoding and all body checks. Mixed Boolean/UInt64 parameters are supported
 in scalar bodies and bounded loops, including early exits and continue. Captured
-Boolean inputs retain their decoded values as loop locals change. Loop accumulators remain UInt64. A loop may produce a public Boolean result
-through an explicit UInt64 `let` binding followed by an admitted Boolean body,
-for example `let value := Id.run do ...; value == seed`. This includes yielding,
-break, continue, stride and captured helpers in the bound loop. Metadata and
-standard Boolean Id run/pure wrappers may surround the binding. Standard Id monadic binding also admits a word-valued loop action followed by a
-Boolean continuation: `let value ← loop; return value == seed`. The word input
-and Boolean output may retain Id layers, and the continuation's parameter type
-must exactly match the bind input. The full standard Id bind instance is checked.
-Scalar UInt64 let bindings and word-valued Id actions may also precede these
-Boolean loops, with arbitrary nesting of supported setup expressions. Their
-values can supply loop bounds, initial values, step captures and the final
-Boolean computation. Unused setup expressions are checked. Bool let bindings and standard Boolean-to-Boolean Id binds may precede the loop
-as well. Each flag action is checked as an admitted Boolean conversion, and its
-normalized value is preserved in loop captures and the final result. Boolean bind
-input/output types may retain Id layers; exact lambda domains and standard
-instances are required. The domains of word/Boolean setup lets and word-loop
-result bindings may retain any number of exact standard Id layers. Their original
-annotations remain in the source semantics; invalid heads, universes and underlying
-types are rejected. Local UInt64-to-UInt64 helpers may be declared before Boolean
-loops, with standard Id result annotations, nested helper captures and repeated
-calls in bounds, initial values, steps and final Boolean computations. Their
-bodies are checked even when unused. Other outer helper shapes and conditional
-actions that introduce loop-containing local continuations remain unsupported. Public parameter
-domains may retain any number of standard Id layers. Declared and lambda domains
-must have the same base scalar kind; differing Id depths preserve their meaning.
-Custom annotation heads, wrong universes and metadata inside parameter domains
-are rejected.
+Boolean inputs retain their decoded values as loop locals change. Loop
+accumulators remain UInt64, with at most one dynamically executed range loop on
+each admitted path.
+
+A word-valued loop may feed a Boolean continuation, for example
+`let value := Id.run do ...; value == seed` or
+`let value ← loop; return value == seed`. A Boolean loop result may in turn be
+bound with `let` or standard Id `bind` and used in a pure Boolean or UInt64
+continuation. Direct `Bool.toUInt64` conversion is also admitted. These paths
+cover early exit, continue, stride, captured values, scalar conditionals and
+local helpers in the pure continuation.
+
+Pure UInt64 and Bool lets and standard Id actions may precede the loop.
+They can supply its bounds, initial value, captures and final computation.
+Word results derived from Boolean loops may be saved and used in further pure
+word expressions, including the saved result introduced by `show`. Both used
+and unused bound values are checked. Input and output annotations may retain
+standard Id layers; a monadic continuation's domain must match its input type
+exactly, and the complete standard instance is checked. Metadata and standard
+Id run/pure wrappers preserve the computation.
+
+Boolean-result loops admit captured scalar local helpers with word or Boolean
+inputs and results, multi-argument word helpers and Unit/PUnit-prefixed word
+helpers. A local word-to-Bool or Bool-to-Bool function may itself contain the
+loop when its enclosing body makes an admitted direct call. Conditional calls,
+standard Id forwarding, saved call results and wrappers around these calls are
+also admitted. An outer Boolean-result conditional may select two loop plans,
+a loop and a scalar result, or two scalar results. Both arms are checked.
+
+Public parameter domains may retain any number of standard Id layers. Declared
+and lambda domains must have the same base scalar kind; differing Id depths
+preserve their meaning. Custom annotation heads, wrong universes and metadata
+inside parameter domains are rejected. Sequential or nested dynamic loops,
+general local loop-function application, and local helper declarations around
+the Boolean-to-word loop path remain outside this grammar.
 
 A UInt64 body may read arguments, contain
 UInt64 literals, metadata, UInt64 `let` bindings, conditionals and pure `Id`
@@ -106,8 +114,7 @@ and its exact standard decision evidence is checked recursively. The emitted
 condition preserves unsigned comparison semantics. Nested
 conditionals may appear in comparison operands, arithmetic operands, and let
 bindings. Both branches must belong to the supported grammar and satisfy static
-local bounds, even when one branch is never executed. Public Boolean parameters
-are not yet admitted by this source grammar. Boolean `!` may wrap standard UInt64 `==` and
+local bounds, even when one branch is never executed. Boolean `!` may wrap standard UInt64 `==` and
 `!=` expressions, including repeated `!`. These guards retain their Boolean
 syntax and exact standard equality-decision evidence. Lowering computes their
 polarity and emits the corresponding equality or its negation; it does not
@@ -164,7 +171,7 @@ retain their exact source syntax and standard decision evidence. Their known
 Boolean results lower through word equality. Both branches and all nested
 operands remain checked even when a literal determines the result; unsupported
 inactive branches, custom decisions and unsupported unused helper bodies are
-rejected. This does not add general Boolean parameters or results.
+rejected.
 
 Ordinary Boolean local bindings admit `let flag := x == y`, aliases, literals,
 standard UInt64 `==`/`!=`, and Boolean `!`, `&&`, and `||`. Boolean and UInt64

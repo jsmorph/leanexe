@@ -747,5 +747,15 @@
   "rangeWordFromBoolContinue",
   "rangeWordFromBoolStride",
   "rangeWordFromBoolId",
-  "rangeLetBool"
+  "rangeLetBool",
+  "rangeWordBoolSetupWord",
+  "rangeWordBoolSetupFlag",
+  "rangeWordBoolSetupDo",
+  "rangeWordBoolSetupNested",
+  "rangeWordBoolSavedResult",
+  "rangeWordBoolShowResult",
+  "rangeWordBoolSetupExit",
+  "rangeWordBoolSetupContinue",
+  "rangeWordBoolSetupStride",
+  "rangeWordBoolSetupId"
 ]

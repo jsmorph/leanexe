@@ -32,7 +32,7 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     · exact tail
     · exact bindings binding member
   | case3 locals name value body nondep bodyIH valueIH =>
-    rcases scalarBooleanRangeFlagBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, result, hp, hr, rfl⟩
+    rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, result, hp, hr, rfl⟩
     · apply bodyIH bound hc
       intro binding member
       rcases List.mem_cons.mp member with rfl | member
@@ -181,7 +181,7 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
   | case25 => contradiction
   | case26 => contradiction
   | case27 locals input output value name domain body binder notWord types parsed bodyIH valueIH =>
-    rcases scalarBooleanRangeFlagBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, result, hp, hr, rfl⟩
+    rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, result, hp, hr, rfl⟩
     · apply bodyIH bound hc
       intro binding member
       rcases List.mem_cons.mp member with rfl | member
