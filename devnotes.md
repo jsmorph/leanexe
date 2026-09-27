@@ -154,6 +154,19 @@ module check to 2.2 seconds.  A fifteen-minute wait for another checkout's
 Lean build delayed these checks.  The shared lock and resource limits stayed
 in force.
 
+The normal reconstruction proof now handles the change in spacing at a
+power of two.  A shared lemma proves exact rounding to that power when the
+unrounded sum lies within the half-spacing interval above it.  The final
+addition theorem uses that result when an approximation crosses the
+boundary.  This establishes an error below one ulp on either side.
+The exponential's complete normal arithmetic path passes for inputs of
+magnitude at most 512, including reduction, table scaling, multiplication,
+and final addition.  Its theorem also locates the real exponential within
+the two adjacent binades used by the error bound.  The checks take about
+two seconds per module and use the standard axioms.  Applying this result
+to the WASM execution theorem and completing the special reconstruction
+paths remain separate steps.
+
 The generated annotation module supplies no matching lemmas for this case.
 The execution proof instead uses the generated instruction definitions and
 shared frame, call, and array-read theorems.  Constant word-valued conditions
