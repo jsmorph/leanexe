@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_extended_mixed_guard.lean:74:0: error: ExtendedMixedGuardTest.extendedMixedLet: reusable Boolean helper extraction failed

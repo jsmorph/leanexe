@@ -1,0 +1,8 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+condition: (have flag := @#0 (#2 == 0);
+  have word := #2 + flag.toUInt64;
+  @#0 (word != #1) = true) ∧
+  #2 < #1
+evidence: instDecidableAnd
+parsed: none
