@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarBooleanRelationSelection
 import LeanExe.Extract.ScalarBooleanGuardedSelection
 import LeanExe.Extract.ScalarBooleanSelected
 import LeanExe.Extract.ScalarBooleanRelated
@@ -326,7 +327,15 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
                                   match _selected : booleanSelected? argument with
                                   | none =>
                                       match _guarded : booleanGuardedSelection? argument with
-                                      | none => none
+                                      | none =>
+                                          match _relation : booleanRelationSelection? argument with
+                                          | none => none
+                                          | some related => do
+                                              let left ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.selection.guard.left)
+                                              let right ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.selection.guard.right)
+                                              let yes ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.selection.yes)
+                                              let no ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.selection.no)
+                                              pure (booleanWordChoice 0 related.selection.guard.unequal left right yes no)
                                       | some guarded => do
                                           let condition ← extractGuard guarded.selection.guard.value
                                             (fun operand _member => extractScalarExprWith locals operand)
@@ -486,6 +495,7 @@ decreasing_by
     | omega
     | (have bound := booleanScopeGuard_size _scope; omega)
     | (have bound := booleanScopeDependentGuard_size _scope; omega)
+    | (have bounds := booleanRelationSelection_sizes _relation; omega)
     | (have bound := booleanGuardedSelection_operand_size _guarded _member; omega)
     | (have bounds := booleanGuardedSelection_branch_sizes _guarded; omega)
     | (have bounds := booleanSelected_sizes _selected; omega)
@@ -620,6 +630,60 @@ theorem extractScalarExprWith_scopeDependentBranch (locals : List ScalarBinding)
   rw [LeanExe.Source.Scalar.BooleanScopeGuard.dependentBranch, extractScalarExprWith]
   rw [scalarResultType_accepts, booleanScopeGuard_not_dependent,
     booleanScopeGuard_not_booleanDependent, booleanScopeDependentGuard_accepts]
+
+theorem extractScalarExprWith_scopedRelationSelection (locals : List ScalarBinding)
+    (related : LeanExe.Source.Scalar.BooleanRelationSelection) :
+    extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.expr) = (do
+      let left ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.selection.guard.left)
+      let right ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.selection.guard.right)
+      let yes ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.selection.yes)
+      let no ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.selection.no)
+      pure (booleanWordChoice 0 related.selection.guard.unequal left right yes no)) := by
+  rw [extractScalarExprWith]
+  split
+  · split
+    · rename_i helper found
+      rw [booleanRelationSelection_not_helper] at found
+      contradiction
+    · split
+      · rename_i helper found
+        rw [booleanRelationSelection_not_helper] at found
+        contradiction
+      · split
+        · split
+          · split
+            · split
+              · split
+                · split
+                  · split
+                    · rename_i absent
+                      rw [booleanRelationSelection_accepts] at absent
+                      contradiction
+                    · rename_i actual found
+                      have equal := Option.some.inj ((booleanRelationSelection_accepts related).symm.trans found)
+                      subst actual
+                      rfl
+                  · rename_i guarded found
+                    rw [booleanRelationSelection_not_guarded] at found
+                    contradiction
+                · rename_i selected found
+                  rw [booleanRelationSelection_not_selected] at found
+                  contradiction
+              · rename_i equality found
+                rw [booleanRelationSelection_not_related] at found
+                contradiction
+            · rename_i joined found
+              rw [booleanRelationSelection_not_joined] at found
+              contradiction
+          · rename_i negated found
+            rw [booleanRelationSelection_not_negated] at found
+            contradiction
+        · rename_i wrapped found
+          rw [booleanRelationSelection_not_wrapped] at found
+          contradiction
+  · rename_i expression found
+    rw [booleanRelationSelection_not_local] at found
+    contradiction
 
 theorem extractScalarExprWith_scopedPropositionSelection (locals : List ScalarBinding)
     (guarded : LeanExe.Source.Scalar.BooleanGuardedSelection) :

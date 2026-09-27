@@ -773,10 +773,14 @@ The first native fixture and diagnostic are retained alongside cases using
 explicit Boolean-to-word guard operands.
 
 Current capability: direct Boolean Eq/Ne conditions in Boolean-valued choices
-with general helper scopes. The original relation and equality-to-false probes
-remain rejected. Preserve exact relation/evidence and dependent binders, compile
-both Boolean operands and both branches, and reuse booleanWordChoice. Function-
-typed proposition lets, nested helper bodies and Id inputs are subsequent gaps.
+with general helper scopes. All ten new probes pass unchanged. Source totality,
+parser acceptance/soundness, scalar correctness and IR invariants pass. New tests
+pass 62,900 comparisons, 97,920 invalid-input checks and 1,280 controls, including
+the existing equality-to-true path. Six adjacent tests pass 53,684 comparisons,
+62,080 invalid-input checks and 1,280 controls. The original relation and
+equality-to-false probes now pass; the function-typed proposition-let probe
+remains rejected. The source-to-WASM gates follow. Function-typed proposition lets, nested helper
+bodies and Id inputs remain subsequent gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarBooleanRelationSelection
 import LeanExe.Source.ScalarBooleanGuardedSelection
 import LeanExe.Source.ScalarBooleanSelected
 import LeanExe.Source.ScalarBooleanRelated
@@ -221,6 +222,12 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       EvalWith (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) values value
+  | scopedRelationSelection (related : BooleanRelationSelection)
+      (left : EvalWith (.app (.const ``Bool.toUInt64 []) related.selection.guard.left) values (Bool.toUInt64 a))
+      (right : EvalWith (.app (.const ``Bool.toUInt64 []) related.selection.guard.right) values (Bool.toUInt64 b))
+      (branch : EvalWith (.app (.const ``Bool.toUInt64 [])
+        (if related.selection.guard.denote a b then related.selection.yes else related.selection.no)) values (Bool.toUInt64 result)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) related.expr) values (Bool.toUInt64 result)
   | scopedPropositionSelection (guarded : BooleanGuardedSelection) {native : Lean.Expr → UInt64}
       (arguments : ∀ operand, operand ∈ guarded.selection.guard.operands → EvalWith operand values (native operand))
       (branch : EvalWith (.app (.const ``Bool.toUInt64 [])
@@ -472,6 +479,12 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       SupportedWith types (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep)
+  | scopedRelationSelection (related : BooleanRelationSelection)
+      (left : SupportedWith types (.app (.const ``Bool.toUInt64 []) related.selection.guard.left))
+      (right : SupportedWith types (.app (.const ``Bool.toUInt64 []) related.selection.guard.right))
+      (yes : SupportedWith types (.app (.const ``Bool.toUInt64 []) related.selection.yes))
+      (no : SupportedWith types (.app (.const ``Bool.toUInt64 []) related.selection.no)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) related.expr)
   | scopedPropositionSelection (guarded : BooleanGuardedSelection)
       (arguments : ∀ operand, operand ∈ guarded.selection.guard.operands → SupportedWith types operand)
       (yes : SupportedWith types (.app (.const ``Bool.toUInt64 []) guarded.selection.yes))
@@ -556,7 +569,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
   generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
   cases evaluation with
   | booleanWord | booleanBindingWord | wordBindingBooleanWord | booleanWrappedWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord | booleanPropositionWord => exact ⟨_, rfl⟩
-  | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate | scopedWrapper | scopedNegation | scopedJunction | scopedEquality | scopedSelection | scopedPropositionSelection => exact ⟨_, rfl⟩
+  | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate | scopedWrapper | scopedNegation | scopedJunction | scopedEquality | scopedSelection | scopedPropositionSelection | scopedRelationSelection => exact ⟨_, rfl⟩
   | complement head _ => cases head <;> simp_all
   | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
   | manyApply call _ _ =>
@@ -884,6 +897,22 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.booleanPredicateFunction f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letBooleanPredicateFn expression type (fun x => (total x).choose_spec) hv⟩
+  | scopedRelationSelection related _ _ _ _ ihl ihr iht ihe =>
+    obtain ⟨left, hl⟩ := ihl values typed
+    obtain ⟨a, rfl⟩ := hl.booleanConversion_result
+    obtain ⟨right, hr⟩ := ihr values typed
+    obtain ⟨b, rfl⟩ := hr.booleanConversion_result
+    cases result : related.selection.guard.denote a b with
+    | false =>
+      obtain ⟨value, evaluated⟩ := ihe values typed
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag.toUInt64, .scopedRelationSelection related hl hr
+        (by simpa only [result, Bool.false_eq_true, ↓reduceIte] using evaluated)⟩
+    | true =>
+      obtain ⟨value, evaluated⟩ := iht values typed
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag.toUInt64, .scopedRelationSelection related hl hr
+        (by simpa only [result, ↓reduceIte] using evaluated)⟩
   | scopedPropositionSelection guarded _ _ _ ihArgs iht ihe =>
     let native : Lean.Expr → UInt64 := fun operand =>
       if member : operand ∈ guarded.selection.guard.operands then (ihArgs operand member values typed).choose else 0
