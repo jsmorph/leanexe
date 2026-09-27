@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/scalar-store-frame.lean:16:8: warning: `if_pos` has been deprecated: Use `ite_eq_left` instead

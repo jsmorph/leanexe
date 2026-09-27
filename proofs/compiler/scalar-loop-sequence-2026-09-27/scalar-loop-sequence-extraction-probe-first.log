@@ -1,0 +1,33 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/scalar-loop-sequence-extraction-probe.lean:63:18: error(lean.invalidDottedIdent): Invalid dotted identifier notation: The expected type of `.word` could not be determined
+
+Hint: Using one of these would be unambiguous:
+  [apply] `Lean.Meta.Hint.DiffGranularity.word`
+  [apply] `Lean.Server.Test.Runner.word`
+  [apply] `LeanExe.Extract.Core.ScalarBinding.word`
+  [apply] `LeanExe.Extract.Core.ScalarBindingsMatch.word`
+  [apply] `LeanExe.Source.Scalar.BindingKind.word`
+  [apply] `LeanExe.Source.Scalar.GuardLetType.word`
+  [apply] `LeanExe.Source.Scalar.PublicArgument.word`
+  [apply] `LeanExe.Source.Scalar.PublicResult.word`
+  [apply] `LeanExe.Source.Scalar.ResultType.word`
+  [apply] `LeanExe.Source.Scalar.TypedLiteralInstance.word`
+  [apply] `LeanExe.Source.Scalar.Value.word`
+  [apply] `LeanExe.Source.Scalar.PublicArgument.Domain.word`
+  [apply] `LeanExe.Source.Scalar.Sequence.Eval.word`
+  [apply] `LeanExe.Source.Scalar.Sequence.Supported.word`
+  [apply] `LeanExe.Source.Scalar.TypedLiteralInstance.below.word`
+  [apply] `LeanExe.Source.Scalar.PublicArgument.Domain.below.word`
+  [apply] `LeanExe.Source.Scalar.Range.Exit.Count.word`
+  [apply] `LeanExe.Source.Scalar.Sequence.Eval.below.word`
+  [apply] `LeanExe.Source.Scalar.Sequence.Supported.below.word`
+  [apply] `LeanExe.Source.Scalar.Range.Exit.Count.Eval.word`
+  [apply] `LeanExe.Source.Scalar.Range.Exit.Count.Supported.word`
+../work/scalar-loop-sequence-extraction-probe.lean:66:11: error(lean.unknownIdentifier): Unknown identifier `LeanExe.Extract.Core.publicBindings`
+../work/scalar-loop-sequence-extraction-probe.lean:68:29: error: Type mismatch
+  accepted.isSome
+has type
+  Bool
+but is expected to have type
+  Lean.MessageData

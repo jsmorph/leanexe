@@ -1,0 +1,11 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [12/12] Building LeanExe.Extract.ScalarSequenceBindings (841ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarSequenceBindings.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarSequenceBindings.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarSequenceBindings.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarSequenceBindings.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarSequenceBindings.setup.json --json
+error: LeanExe/Extract/ScalarSequenceBindings.lean:12:81: unexpected token 'prefix'; expected '_' or identifier
+error: LeanExe/Extract/ScalarSequenceBindings.lean:12:89: unexpected identifier; expected prec
+error: LeanExe/Extract/ScalarSequenceBindings.lean:13:56: unexpected token ')'; expected ':'
+error: LeanExe/Extract/ScalarSequenceBindings.lean:15:54: unexpected token '++'; expected ':'
+Some required targets logged failures:
+- LeanExe.Extract.ScalarSequenceBindings
+error: build failed
