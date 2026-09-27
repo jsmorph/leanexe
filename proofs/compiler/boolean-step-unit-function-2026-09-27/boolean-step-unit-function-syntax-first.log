@@ -1,0 +1,144 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [94/153] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [147/153] Replayed LeanExe.Extract.ScalarExprCore
+warning: LeanExe/Extract/ScalarExprCore.lean:474:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:482:31: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:482:36: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:482:52: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:491:35: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:491:40: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:491:56: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:563:12: Variable name `bounds` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _bounds
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+⚠ [149/153] Replayed LeanExe.Extract.ScalarExpr
+warning: LeanExe/Extract/ScalarExpr.lean:190:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:191:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:206:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:207:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:238:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:239:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:253:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:254:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1187:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1297:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1617:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1639:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1661:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1683:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1705:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1729:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1753:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1771:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1790:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1809:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+✖ [153/153] Building LeanExe.Extract.ScalarBooleanStepSyntax (1.2s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanStepSyntax.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanStepSyntax.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanStepSyntax.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanStepSyntax.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanStepSyntax.setup.json --json
+error: LeanExe/Extract/ScalarBooleanStepSyntax.lean:167:51: Dependent elimination failed: Failed to solve equation
+  some form =
+    match first, second with
+    | Lean.Expr.const `Unit [], Lean.Expr.const `Unit [] => some UnitSyntax.unit
+    | Lean.Expr.const `PUnit [Lean.Level.zero.succ], Lean.Expr.const `PUnit [Lean.Level.zero.succ] =>
+      some UnitSyntax.punit
+    | x, x_1 => none
+error: LeanExe/Extract/ScalarBooleanStepSyntax.lean:164:8: (kernel) declaration has metavariables 'LeanExe.Extract.Core.booleanStepUnitTypes_sound'
+error: LeanExe/Extract/ScalarBooleanStepSyntax.lean:179:45: Dependent elimination failed: Failed to solve equation
+  some form =
+    match source with
+    | Lean.Expr.const `Unit.unit [] => some UnitSyntax.unit
+    | Lean.Expr.const `PUnit.unit [Lean.Level.zero.succ] => some UnitSyntax.punit
+    | x => none
+error: LeanExe/Extract/ScalarBooleanStepSyntax.lean:177:8: (kernel) declaration has metavariables 'LeanExe.Extract.Core.booleanStepUnitValue_sound'
+error: LeanExe/Extract/ScalarBooleanStepSyntax.lean:226:12: Tactic `rfl` failed: The left-hand side
+  booleanBinaryHelper?
+    (Lean.Expr.letE helper.name
+      (Lean.Expr.forallE helper.unitTypeName (Lean.Expr.const `Unit [])
+        (Lean.Expr.forallE helper.typeName helper.input.expr (BooleanStep.resultType helper.output) helper.typeBi)
+        helper.unitTypeBi)
+      (Lean.Expr.lam helper.unitName (Lean.Expr.const `Unit [])
+        (Lean.Expr.lam helper.paramName helper.input.expr helper.body helper.paramBi) helper.unitBi)
+      helper.continuation helper.nondep)
+is not definitionally equal to the right-hand side
+  none
+
+case unit
+helper : BooleanStep.UnitBooleanFunction
+unit : helper.unitForm = UnitSyntax.unit
+⊢ booleanBinaryHelper?
+      (Lean.Expr.letE helper.name
+        (Lean.Expr.forallE helper.unitTypeName (Lean.Expr.const `Unit [])
+          (Lean.Expr.forallE helper.typeName helper.input.expr (BooleanStep.resultType helper.output) helper.typeBi)
+          helper.unitTypeBi)
+        (Lean.Expr.lam helper.unitName (Lean.Expr.const `Unit [])
+          (Lean.Expr.lam helper.paramName helper.input.expr helper.body helper.paramBi) helper.unitBi)
+        helper.continuation helper.nondep) =
+    none
+error: LeanExe/Extract/ScalarBooleanStepSyntax.lean:226:12: Tactic `rfl` failed: The left-hand side
+  booleanBinaryHelper?
+    (Lean.Expr.letE helper.name
+      (Lean.Expr.forallE helper.unitTypeName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+        (Lean.Expr.forallE helper.typeName helper.input.expr (BooleanStep.resultType helper.output) helper.typeBi)
+        helper.unitTypeBi)
+      (Lean.Expr.lam helper.unitName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+        (Lean.Expr.lam helper.paramName helper.input.expr helper.body helper.paramBi) helper.unitBi)
+      helper.continuation helper.nondep)
+is not definitionally equal to the right-hand side
+  none
+
+case punit
+helper : BooleanStep.UnitBooleanFunction
+unit : helper.unitForm = UnitSyntax.punit
+⊢ booleanBinaryHelper?
+      (Lean.Expr.letE helper.name
+        (Lean.Expr.forallE helper.unitTypeName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+          (Lean.Expr.forallE helper.typeName helper.input.expr (BooleanStep.resultType helper.output) helper.typeBi)
+          helper.unitTypeBi)
+        (Lean.Expr.lam helper.unitName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+          (Lean.Expr.lam helper.paramName helper.input.expr helper.body helper.paramBi) helper.unitBi)
+        helper.continuation helper.nondep) =
+    none
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanStepSyntax
+error: build failed
