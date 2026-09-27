@@ -795,16 +795,23 @@ The original compound probe and seven prior controls pass unchanged. The corpus
 contains 1497 declarations. Evidence is in
 [the proposition predicate-let archive](proofs/compiler/boolean-proposition-helper-let-2026-09-27/README.md).
 
-Current capability: general Boolean bodies inside local predicate helpers.
-The converted helper parser now retains the exact raw body. Existing recursive
-Boolean conversion proofs establish source totality, acceptance, correctness and
-IR invariants for nested helpers, wrappers and choices. The focused parser,
-scalar and public compiler builds pass. Three fixed probes pass unchanged.
-New tests pass 37,812 native/IR comparisons, 33,792 invalid-input checks and
-768 controls, including unsupported unused bodies. Prior tests pass 76,252
-comparisons, 77,744 invalid-input checks and 640 controls. The full compiler
-proof and independent WASM checks are next. Ordinary word-continuation helper bodies
-and Id inputs remain separately recorded gaps.
+General Boolean bodies inside converted local helpers are complete. Parser
+acceptance/soundness, source totality, scalar correctness, IR invariants and the
+general source-to-WASM theorem pass with nineteen audits. Native Lean/V8 agree
+on 993 inputs across 54 declarations, including 25 ranges; 44 prior modules
+retain identical bytes and 0 changed. New tests pass 37,812 comparisons,
+33,792 invalid-input checks and 768 controls. Prior tests pass 76,252
+comparisons, 77,744 invalid-input checks and 640 controls. Three
+original probes pass unchanged. The native corpus contains 1507 declarations.
+Evidence is in [the general helper-body archive](proofs/compiler/boolean-helper-general-body-2026-09-27/README.md).
+
+Current capability: general predicate bodies before scalar word continuations.
+The original proposition-let probe still fails at the ordinary scalar helper
+parser, whose body is restricted to BooleanLocal. Generalize the two scalar
+predicate-binding rules and equations to raw bodies, preserving their recursive
+Boolean conversion proof and unused-body validation. Keep loop-step and outer
+helper declarations separate until their own end-to-end checks pass. Id input
+domains remain another recorded gap.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
