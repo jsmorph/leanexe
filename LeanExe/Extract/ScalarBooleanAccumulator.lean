@@ -18,8 +18,8 @@ def extractScalarBooleanAccumulatorWith (locals : List ScalarBinding) (slot : Na
   let count ← extractScalarExprWith locals view.count.scalar
   let initial ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) view.initial)
   let code ← extractBooleanStepWith
-    (booleanAccumulatorBinding slot ::
-      .natural (scalarRangeOffset first (scalarRangeScale view.stride.number (.local (slot + 1)))) :: locals) view.body
+    (.scalar (booleanAccumulatorBinding slot) ::
+      .scalar (.natural (scalarRangeOffset first (scalarRangeScale view.stride.number (.local (slot + 1))))) :: locals.map BooleanStepBinding.scalar) view.body
   pure { count := scalarRangeTrips view.stride.number (scalarRangeDistance first count), initial, step := code.value, done := code.done, result := .local slot }
 
 theorem extractScalarBooleanAccumulatorWith_call (locals : List ScalarBinding) (slot : Nat)
@@ -29,8 +29,8 @@ theorem extractScalarBooleanAccumulatorWith_call (locals : List ScalarBinding) (
       let count ← extractScalarExprWith locals view.count.scalar
       let initial ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) view.initial)
       let code ← extractBooleanStepWith
-        (booleanAccumulatorBinding slot ::
-          .natural (scalarRangeOffset first (scalarRangeScale view.stride.number (.local (slot + 1)))) :: locals) view.body
+        (.scalar (booleanAccumulatorBinding slot) ::
+          .scalar (.natural (scalarRangeOffset first (scalarRangeScale view.stride.number (.local (slot + 1))))) :: locals.map BooleanStepBinding.scalar) view.body
       pure { count := scalarRangeTrips view.stride.number (scalarRangeDistance first count), initial, step := code.value, done := code.done, result := .local slot }) := by
   simp [extractScalarBooleanAccumulatorWith, scalarBooleanAccumulator_accepts]
 
@@ -45,7 +45,7 @@ theorem extractScalarBooleanAccumulatorWith_supported {source : Lean.Expr} {loca
     (Range.Exit.Count.Supported.of_scalar _ (extractScalarExprWith_supported hf))
     (Range.Exit.Count.Supported.of_scalar _ (extractScalarExprWith_supported hc))
     (extractScalarExprWith_supported hi)
-    (by simpa [booleanAccumulatorBinding, ScalarBinding.kind] using extractBooleanStepWith_supported hs)
+    (by simpa [BooleanStepBinding.kind, booleanAccumulatorBinding, ScalarBinding.kind, List.map_map, Function.comp_def] using extractBooleanStepWith_supported hs)
 
 theorem extractScalarBooleanAccumulatorWith_accepts {types : List BindingKind} {source : Lean.Expr}
     (supported : BooleanAccumulator.Supported types source) (locals : List ScalarBinding) (slot : Nat)
@@ -60,15 +60,18 @@ theorem extractScalarBooleanAccumulatorWith_accepts {types : List BindingKind} {
     obtain ⟨countIR, hc⟩ := extractScalarExprWith_accepts count.scalar locals typed total
     obtain ⟨initialIR, hi⟩ := extractScalarExprWith_accepts initial locals typed total
     obtain ⟨code, hs⟩ := extractBooleanStepWith_accepts step
-      (booleanAccumulatorBinding slot ::
-        .natural (scalarRangeOffset firstIR (scalarRangeScale stride.number (.local (slot + 1)))) :: locals)
-      (by simp [booleanAccumulatorBinding, ScalarBinding.kind, typed]) (by
+      (.scalar (booleanAccumulatorBinding slot) ::
+        .scalar (.natural (scalarRangeOffset firstIR (scalarRangeScale stride.number (.local (slot + 1))))) :: locals.map BooleanStepBinding.scalar)
+      (by simpa [BooleanStepBinding.kind, booleanAccumulatorBinding, ScalarBinding.kind, List.map_map, Function.comp_def] using
+        congrArg (fun kinds => BooleanStep.BindingKind.scalar .boolean :: .scalar .natural ::
+          kinds.map BooleanStep.BindingKind.scalar) typed) (by
         intro binding member
         rcases List.mem_cons.mp member with rfl | member
         · trivial
         rcases List.mem_cons.mp member with rfl | member
         · trivial
-        · exact total binding member)
+        · obtain ⟨original, present, rfl⟩ := List.mem_map.mp member
+          exact total original present)
     exact ⟨{ count := scalarRangeTrips stride.number (scalarRangeDistance firstIR countIR), initial := initialIR, step := code.value, done := code.done, result := .local slot },
       by simp [hf, hc, hi, hs]⟩
 
@@ -94,7 +97,8 @@ theorem extractScalarBooleanAccumulatorWith_invariant (P : LeanExe.IR.Expr → P
     rcases List.mem_cons.mp member with rfl | member
     · exact scalarRangeOffset_holds P binary (expression hf bindings)
         (scalarRangeScale_holds P literal binary view.stride.number index)
-    · exact bindings binding member)
+    · obtain ⟨original, present, rfl⟩ := List.mem_map.mp member
+      exact bindings original present)
   exact ⟨scalarRangeTrips_holds P literal binary choice view.stride.number
     (scalarRangeDistance_holds P literal binary choice (expression hf bindings) (expression hc bindings)),
     expression hi bindings, both.1, both.2, accumulator⟩
@@ -115,8 +119,11 @@ theorem extractScalarBooleanAccumulatorWith_correct {source : Lean.Expr} {locals
   obtain ⟨start, rfl⟩ := si.booleanConversion_result
   have supported := extractBooleanStepWith_supported es
   have total (index : Nat) (accumulator : Bool) :=
-    supported.evaluates (.boolean accumulator :: .natural index :: values)
-      (by simp [booleanAccumulatorBinding, ScalarBinding.kind, Value.kind, typed])
+    supported.evaluates (.scalar (.boolean accumulator) :: .scalar (.natural index) :: values.map BooleanStep.Value.scalar)
+      (by simpa [BooleanStepBinding.kind, booleanAccumulatorBinding, ScalarBinding.kind,
+        BooleanStep.Value.kind, Value.kind, List.map_map, Function.comp_def] using
+        congrArg (fun kinds => BooleanStep.BindingKind.scalar .boolean :: .scalar .natural ::
+          kinds.map BooleanStep.BindingKind.scalar) typed)
   let f := fun index accumulator => (total index accumulator).choose
   have distanceSmall : stop.toNat - begin.toNat < UInt64.size :=
     Nat.lt_of_le_of_lt (Nat.sub_le _ _) stop.toNat_lt_size
@@ -138,8 +145,8 @@ theorem extractScalarBooleanAccumulatorWith_correct {source : Lean.Expr} {locals
   · exact extractScalarExprWith_correct si ei (bindings 0 0 bound 0)
   · intro index _below accumulator exitFlag
     apply extractBooleanStepWith_correct ((total (begin.toNat + view.stride.number * index) (accumulator != 0)).choose_spec) es
-    apply ScalarBindingsMatch.cons
-    · apply ScalarBindingsMatch.cons (bindings accumulator index bound exitFlag)
+    apply BooleanStepBindingsMatch.cons
+    · apply BooleanStepBindingsMatch.cons (BooleanStepBindingsMatch.ofScalar (bindings accumulator index bound exitFlag))
       exact scalarRangeOffset_correct (view.stride.number * index)
         (extractScalarExprWith_correct sf ef (bindings accumulator index bound exitFlag))
         (scalarRangeScale_correct view.stride.number index

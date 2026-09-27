@@ -10,7 +10,7 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
       (first : Range.Exit.Count.Eval firstExpr values begin) (count : Range.Exit.Count.Eval countExpr values stop)
       (initial : EvalWith (.app (.const ``Bool.toUInt64 []) initialExpr) values (Bool.toUInt64 start))
       (step : ∀ index accumulator, BooleanStep.Eval body
-        (.boolean accumulator :: .natural index :: values) (stepFn index accumulator)) :
+        (.scalar (.boolean accumulator) :: .scalar (.natural index) :: values.map BooleanStep.Value.scalar) (stepFn index accumulator)) :
       Eval (call indexType stride firstExpr countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
         values (iterate (fun index accumulator => stepFn (begin + stride.number * index) accumulator)
           (Range.Exit.trips (stop - begin) stride.number) 0 start)
@@ -19,7 +19,7 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
   | range (indexType : IndexType) (stride : Stride)
       (first : Range.Exit.Count.Supported types firstExpr) (count : Range.Exit.Count.Supported types countExpr)
       (initial : SupportedWith types (.app (.const ``Bool.toUInt64 []) initialExpr))
-      (step : BooleanStep.Supported (.boolean :: .natural :: types) body) :
+      (step : BooleanStep.Supported (.scalar .boolean :: .scalar .natural :: types.map BooleanStep.BindingKind.scalar) body) :
       Supported types (call indexType stride firstExpr countExpr initialExpr indexName accumulatorName indexBi accumulatorBi body)
 
 theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
@@ -32,8 +32,10 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨stop, countEval⟩ := count.scalar.evaluates values typed
     obtain ⟨encoded, initialEval⟩ := initial.evaluates values typed
     obtain ⟨start, rfl⟩ := initialEval.booleanConversion_result
-    have total := fun index accumulator => step.evaluates (.boolean accumulator :: .natural index :: values)
-      (by simp [Value.kind, typed])
+    have total := fun index accumulator => step.evaluates (.scalar (.boolean accumulator) :: .scalar (.natural index) :: values.map BooleanStep.Value.scalar)
+      (by simpa [BooleanStep.Value.kind, Value.kind, List.map_map, Function.comp_def] using
+        congrArg (fun kinds => BooleanStep.BindingKind.scalar .boolean :: .scalar .natural ::
+          kinds.map BooleanStep.BindingKind.scalar) typed)
     let f := fun index accumulator => (total index accumulator).choose
     exact ⟨_, .range indexType stride (.of_scalar firstEval) (.of_scalar countEval) initialEval
       (fun index accumulator => (total index accumulator).choose_spec)⟩

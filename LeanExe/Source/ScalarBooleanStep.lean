@@ -1,5 +1,6 @@
 import LeanExe.Source.Scalar
 import LeanExe.Source.ScalarBooleanIteration
+import LeanExe.Source.ScalarBooleanStepValues
 
 namespace LeanExe.Source.Scalar.BooleanStep
 
@@ -37,55 +38,55 @@ def bindExpr (input : Lean.Expr) (output : BooleanType) (name : Lean.Name)
 
 /-- Native Boolean step results retain their yield/done distinction. -/
 inductive Eval : Lean.Expr → List Value → ForInStep Bool → Prop where
-  | yieldDirect (value : EvalWith (.app (.const ``Bool.toUInt64 []) source) values (Bool.toUInt64 flag)) :
+  | yieldDirect (value : EvalWith (.app (.const ``Bool.toUInt64 []) source) (values.map Value.toScalar) (Bool.toUInt64 flag)) :
       Eval (yieldDirect source) values (.yield flag)
-  | doneDirect (value : EvalWith (.app (.const ``Bool.toUInt64 []) source) values (Bool.toUInt64 flag)) :
+  | doneDirect (value : EvalWith (.app (.const ``Bool.toUInt64 []) source) (values.map Value.toScalar) (Bool.toUInt64 flag)) :
       Eval (doneDirect source) values (.done flag)
   | idRun (type : BooleanType) (body : Eval source values outcome) : Eval (idRun type source) values outcome
   | idPure (type : BooleanType) (body : Eval source values outcome) : Eval (idPure type source) values outcome
   | metadata (body : Eval source values outcome) : Eval (.mdata data source) values outcome
   | choose (type : BooleanType)
-      (condition : EvalWith (decision test evidence) values (Bool.toUInt64 flag))
+      (condition : EvalWith (decision test evidence) (values.map Value.toScalar) (Bool.toUInt64 flag))
       (body : Eval (if flag then yes else no) values outcome) :
       Eval (choiceExpr type test evidence yes no) values outcome
-  | letWord (type : ResultType) (value : EvalWith a values x)
-      (body : Eval b (.word x :: values) outcome) :
+  | letWord (type : ResultType) (value : EvalWith a (values.map Value.toScalar) x)
+      (body : Eval b (.scalar (.word x) :: values) outcome) :
       Eval (.letE name type.expr a b nondep) values outcome
   | letBoolean (type : BooleanType)
-      (value : EvalWith (.app (.const ``Bool.toUInt64 []) a) values (Bool.toUInt64 flag))
-      (body : Eval b (.boolean flag :: values) outcome) :
+      (value : EvalWith (.app (.const ``Bool.toUInt64 []) a) (values.map Value.toScalar) (Bool.toUInt64 flag))
+      (body : Eval b (.scalar (.boolean flag) :: values) outcome) :
       Eval (.letE name type.expr a b nondep) values outcome
-  | bindWord (input : ResultType) (output : BooleanType) (value : EvalWith a values x)
-      (body : Eval b (.word x :: values) outcome) :
+  | bindWord (input : ResultType) (output : BooleanType) (value : EvalWith a (values.map Value.toScalar) x)
+      (body : Eval b (.scalar (.word x) :: values) outcome) :
       Eval (bindExpr input.expr output name bi a b) values outcome
   | bindBoolean (input output : BooleanType)
-      (value : EvalWith (.app (.const ``Bool.toUInt64 []) a) values (Bool.toUInt64 flag))
-      (body : Eval b (.boolean flag :: values) outcome) :
+      (value : EvalWith (.app (.const ``Bool.toUInt64 []) a) (values.map Value.toScalar) (Bool.toUInt64 flag))
+      (body : Eval b (.scalar (.boolean flag) :: values) outcome) :
       Eval (bindExpr input.expr output name bi a b) values outcome
 
 /-- Support checks both branches and every bound value, including unused ones. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
-  | yieldDirect (value : SupportedWith types (.app (.const ``Bool.toUInt64 []) source)) :
+  | yieldDirect (value : SupportedWith (types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) source)) :
       Supported types (yieldDirect source)
-  | doneDirect (value : SupportedWith types (.app (.const ``Bool.toUInt64 []) source)) :
+  | doneDirect (value : SupportedWith (types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) source)) :
       Supported types (doneDirect source)
   | idRun (type : BooleanType) (body : Supported types source) : Supported types (idRun type source)
   | idPure (type : BooleanType) (body : Supported types source) : Supported types (idPure type source)
   | metadata (body : Supported types source) : Supported types (.mdata data source)
-  | choose (type : BooleanType) (condition : SupportedWith types (decision test evidence))
+  | choose (type : BooleanType) (condition : SupportedWith (types.map BindingKind.toScalar) (decision test evidence))
       (first : Supported types yes) (second : Supported types no) :
       Supported types (choiceExpr type test evidence yes no)
-  | letWord (type : ResultType) (value : SupportedWith types a) (body : Supported (.word :: types) b) :
+  | letWord (type : ResultType) (value : SupportedWith (types.map BindingKind.toScalar) a) (body : Supported (.scalar .word :: types) b) :
       Supported types (.letE name type.expr a b nondep)
-  | letBoolean (type : BooleanType) (value : SupportedWith types (.app (.const ``Bool.toUInt64 []) a))
-      (body : Supported (.boolean :: types) b) : Supported types (.letE name type.expr a b nondep)
+  | letBoolean (type : BooleanType) (value : SupportedWith (types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) a))
+      (body : Supported (.scalar .boolean :: types) b) : Supported types (.letE name type.expr a b nondep)
 
-  | bindWord (input : ResultType) (output : BooleanType) (value : SupportedWith types a)
-      (body : Supported (.word :: types) b) :
+  | bindWord (input : ResultType) (output : BooleanType) (value : SupportedWith (types.map BindingKind.toScalar) a)
+      (body : Supported (.scalar .word :: types) b) :
       Supported types (bindExpr input.expr output name bi a b)
   | bindBoolean (input output : BooleanType)
-      (value : SupportedWith types (.app (.const ``Bool.toUInt64 []) a))
-      (body : Supported (.boolean :: types) b) :
+      (value : SupportedWith (types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) a))
+      (body : Supported (.scalar .boolean :: types) b) :
       Supported types (bindExpr input.expr output name bi a b)
 
 theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
@@ -93,11 +94,11 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (typed : values.map Value.kind = types) : ∃ outcome, Eval source values outcome := by
   induction supported generalizing values with
   | yieldDirect value =>
-    obtain ⟨encoded, evaluated⟩ := value.evaluates values typed
+    obtain ⟨encoded, evaluated⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
     exact ⟨.yield flag, .yieldDirect evaluated⟩
   | doneDirect value =>
-    obtain ⟨encoded, evaluated⟩ := value.evaluates values typed
+    obtain ⟨encoded, evaluated⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
     exact ⟨.done flag, .doneDirect evaluated⟩
   | idRun type _ ih =>
@@ -110,7 +111,7 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨outcome, evaluated⟩ := ih values typed
     exact ⟨outcome, .metadata evaluated⟩
   | choose type condition _ _ yesIH noIH =>
-    obtain ⟨encoded, evaluated⟩ := condition.evaluates values typed
+    obtain ⟨encoded, evaluated⟩ := condition.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
     cases flag with
     | false =>
@@ -120,22 +121,22 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
       obtain ⟨outcome, body⟩ := yesIH values typed
       exact ⟨outcome, .choose type evaluated body⟩
   | letWord type value _ ih =>
-    obtain ⟨x, evaluated⟩ := value.evaluates values typed
-    obtain ⟨outcome, body⟩ := ih (.word x :: values) (by simp [Value.kind, typed])
+    obtain ⟨x, evaluated⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
+    obtain ⟨outcome, body⟩ := ih (.scalar (.word x) :: values) (by simp [Value.kind, Scalar.Value.kind, typed])
     exact ⟨outcome, .letWord type evaluated body⟩
   | letBoolean type value _ ih =>
-    obtain ⟨encoded, evaluated⟩ := value.evaluates values typed
+    obtain ⟨encoded, evaluated⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
-    obtain ⟨outcome, body⟩ := ih (.boolean flag :: values) (by simp [Value.kind, typed])
+    obtain ⟨outcome, body⟩ := ih (.scalar (.boolean flag) :: values) (by simp [Value.kind, Scalar.Value.kind, typed])
     exact ⟨outcome, .letBoolean type evaluated body⟩
   | bindWord input output value _ ih =>
-    obtain ⟨x, evaluated⟩ := value.evaluates values typed
-    obtain ⟨outcome, body⟩ := ih (.word x :: values) (by simp [Value.kind, typed])
+    obtain ⟨x, evaluated⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
+    obtain ⟨outcome, body⟩ := ih (.scalar (.word x) :: values) (by simp [Value.kind, Scalar.Value.kind, typed])
     exact ⟨outcome, .bindWord input output evaluated body⟩
   | bindBoolean input output value _ ih =>
-    obtain ⟨encoded, evaluated⟩ := value.evaluates values typed
+    obtain ⟨encoded, evaluated⟩ := value.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
-    obtain ⟨outcome, body⟩ := ih (.boolean flag :: values) (by simp [Value.kind, typed])
+    obtain ⟨outcome, body⟩ := ih (.scalar (.boolean flag) :: values) (by simp [Value.kind, Scalar.Value.kind, typed])
     exact ⟨outcome, .bindBoolean input output evaluated body⟩
 
 end LeanExe.Source.Scalar.BooleanStep
