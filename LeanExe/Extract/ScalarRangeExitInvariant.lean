@@ -227,11 +227,11 @@ theorem extractScalarRangeExitWith_invariant (P : LeanExe.IR.Expr → Prop)
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · intro argument result ha compiled
-      exact expression compiled (extend bindings ha)
-    · exact bindings binding member
-      exact (extractBooleanLocalWith_choice P literal binary choice boolean _ hc inner
-        (fun operand member result found => expression found inner))
-        _ _ (literal 1) (literal 0)
+      apply expression compiled
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact ha
+      · exact bindings binding member
     · exact bindings binding member
   | case26 locals name typeName resultType typeBi paramName value paramBi body nondep type matched notRange ihb =>
     have typeEq := scalarResultType_sound matched
