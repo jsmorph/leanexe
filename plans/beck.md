@@ -24,7 +24,7 @@ Use integer cofactor directions and signed `UInt64` numerators with a shared den
 - [x] Prove discrepancy and sufficient rounding fuel for supported incidence inputs.
 - [x] Prove input validation establishes the incidence assumptions and exact maximum row count.
 - [x] Prove complete correspondence between accepted inputs and the membership encoding.
-- [ ] Prove allocation and WASM resource bounds.
+- [x] Prove allocation and WASM resource bounds.
 - [ ] Check the identified binary and its independent proof package.
 - [x] Add exhaustive small tests, edge cases, and an overlapping demonstration.
 - [ ] Increase capacity with the complete theorem and execution tests preserved.
