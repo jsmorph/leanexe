@@ -772,15 +772,24 @@ compound probe exposes a function-typed proposition let and remains rejected.
 The first native fixture and diagnostic are retained alongside cases using
 explicit Boolean-to-word guard operands.
 
-Current capability: direct Boolean Eq/Ne conditions in Boolean-valued choices
-with general helper scopes. All ten new probes pass unchanged. Source totality,
-parser acceptance/soundness, scalar correctness and IR invariants pass. New tests
-pass 62,900 comparisons, 97,920 invalid-input checks and 1,280 controls, including
-the existing equality-to-true path. Six adjacent tests pass 53,684 comparisons,
-62,080 invalid-input checks and 1,280 controls. The original relation and
-equality-to-false probes now pass; the function-typed proposition-let probe
-remains rejected. The source-to-WASM gates follow. Function-typed proposition lets, nested helper
-bodies and Id inputs remain subsequent gaps.
+Direct Boolean Eq/Ne conditions in Boolean-valued choices with general helper
+scopes are complete. Source totality, parser acceptance/soundness, scalar
+correctness, IR invariants and the general source-to-WASM theorem pass, with all
+nineteen audits. Native Lean/V8 agree on 993 inputs across 54 declarations,
+including 25 ranges; 44 prior modules retain identical bytes and 0
+changed. New tests pass 62,900 comparisons, 97,920 invalid-input checks and 1,280
+controls. Prior tests pass 53,684 comparisons, 62,080 invalid-input checks and
+1,280 controls. Ten new probes and the original two relation probes pass
+unchanged; five previous positive controls still pass. The native corpus contains
+1487 declarations. Evidence is in
+[the relation-choice archive](proofs/compiler/boolean-helper-relation-choice-2026-09-27/README.md).
+
+Current capability: local predicate function bindings inside propositions.
+The original compound probe remains rejected because the guard let parser admits
+only word/Boolean values. Preserve its exact elaborated helper let and substituted
+decision evidence. Validate the helper even when unused, retain all guard operands'
+lexical scope and use a checked size allowance for the validation operand.
+Nested helper bodies and Id inputs remain subsequent gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

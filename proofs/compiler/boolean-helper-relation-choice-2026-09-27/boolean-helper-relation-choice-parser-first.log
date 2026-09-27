@@ -1,0 +1,20 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [35/80] Built LeanExe.Source.ScalarBooleanRelationSelection (1.1s)
+⚠ [64/80] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [80/80] Building LeanExe.Extract.ScalarBooleanRelationSelection (1.1s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanRelationSelection.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanRelationSelection.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanRelationSelection.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanRelationSelection.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanRelationSelection.setup.json --json
+error: LeanExe/Extract/ScalarBooleanRelationSelection.lean:31:4: Dependent elimination failed: Failed to solve equation
+  some guard =
+    Decidable.rec (fun h => (fun x => none) h)
+      (fun h => (fun x => some { unequal := unequal✝, left := left✝, right := right✝, nontruth := nontruth✝ }) h)
+      (instDecidableEqBool
+        (Source.ExprEquality.same evidence
+          { unequal := unequal✝, left := left✝, right := right✝, nontruth := nontruth✝ }.evidence)
+        true)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanRelationSelection
+error: build failed
