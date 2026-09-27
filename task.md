@@ -276,13 +276,14 @@ thirteen ranges; eighteen shared modules retain identical bytes. New tests pass
 tests pass 28,428 comparisons, 18,633 invalid-input checks and 768 controls.
 Evidence is in [the call mixed-guard archive](proofs/compiler/call-mixed-guard-2026-09-26/README.md).
 
-Compound Boolean expressions in mixed propositional guards pass parser, scalar,
-loop and IR invariant proofs. The source guard retains the exact expression and
-checks it through the existing Boolean conversion rules; closed comparisons keep
-their established lowering. New tests pass 32,436 native/IR comparisons, 16,896
-invalid-input checks and 768 controls. Prior tests pass 46,528 comparisons,
-30,921 invalid-input checks and 1,024 controls. The general theorem, native/V8
-comparisons and evidence archive are next.
+Compound Boolean expressions in mixed propositional guards are complete for
+junctions, relations, choices, Boolean-valued lets, standard Id binds, wrappers
+and metadata. The general source-to-WASM theorem and eighteen audits pass. Native
+Lean/V8 agree on 509 inputs across 28 declarations, including thirteen ranges;
+eighteen shared modules retain identical bytes. New tests pass 32,436 native/IR
+comparisons, 16,896 invalid-input checks and 768 controls. Prior tests pass 46,528
+comparisons, 30,921 invalid-input checks and 1,024 controls. Evidence is in
+[the compound mixed-guard archive](proofs/compiler/extended-mixed-guard-2026-09-26/README.md).
 
 Next capability: bare lets inside propositions. Lean elaborates
 `(let flag := f (x == 0); let word := x + flag.toUInt64; f (word != y)) ∧ x < y`
