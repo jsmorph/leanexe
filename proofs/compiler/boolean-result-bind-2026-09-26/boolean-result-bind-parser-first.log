@@ -1,0 +1,49 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [22/26] Built LeanExe.Source.ScalarBooleanLet (974ms)
+✔ [23/26] Built LeanExe.Source.ScalarBooleanEnvironment (894ms)
+✔ [26/54] Built LeanExe.Source.ScalarBooleanLocal (1.5s)
+⚠ [46/54] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [52/54] Built LeanExe.Extract.ScalarBooleanRelation (1.0s)
+✔ [53/54] Built LeanExe.Extract.ScalarBooleanLocalParser (14s)
+✖ [54/54] Building LeanExe.Extract.ScalarBooleanLocalParserEquations (911ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanLocalParserEquations.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanLocalParserEquations.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanLocalParserEquations.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanLocalParserEquations.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanLocalParserEquations.setup.json --json
+error: LeanExe/Extract/ScalarBooleanLocalParserEquations.lean:69:36: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  booleanType? (BooleanType.expr ?type)
+in the target expression
+  (match none with
+    | some annotation =>
+      (booleanLocalOperands? body).bind fun b =>
+        pure (BooleanLocal.wordBinding 0 name (BooleanBindingForm.monadic binder result) value b annotation)
+    | none =>
+      (booleanLocalOperands? value).bind fun v =>
+        (booleanLocalOperands? body).bind fun b =>
+          pure (BooleanLocal.binding 0 name (BooleanBindingForm.monadic binder result) v b type)) =
+    (booleanLocalOperands? value).bind fun v =>
+      (booleanLocalOperands? body).bind fun b =>
+        pure (BooleanLocal.binding 0 name (BooleanBindingForm.monadic binder result) v b type)
+
+case monadic
+name : Lean.Name
+type : BooleanType
+value body : Lean.Expr
+binder : Lean.BinderInfo
+result : BooleanType
+⊢ (match none with
+    | some annotation =>
+      (booleanLocalOperands? body).bind fun b =>
+        pure (BooleanLocal.wordBinding 0 name (BooleanBindingForm.monadic binder result) value b annotation)
+    | none =>
+      (booleanLocalOperands? value).bind fun v =>
+        (booleanLocalOperands? body).bind fun b =>
+          pure (BooleanLocal.binding 0 name (BooleanBindingForm.monadic binder result) v b type)) =
+    (booleanLocalOperands? value).bind fun v =>
+      (booleanLocalOperands? body).bind fun b =>
+        pure (BooleanLocal.binding 0 name (BooleanBindingForm.monadic binder result) v b type)
+error: LeanExe/Extract/ScalarBooleanLocalParserEquations.lean:100:6: No goals to be solved
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanLocalParserEquations
+error: build failed
