@@ -858,15 +858,21 @@ comparisons, 77,616 invalid-input checks and 9,216 controls. Four original and
 eight new probes pass unchanged. The native corpus contains 1553 declarations.
 Evidence is in [the remaining outer helper-body archive](proofs/compiler/boolean-helper-remaining-outer-body-2026-09-27/README.md).
 
-Current capability: Boolean loop accumulators. Native iteration encoding,
-source totality, acceptance/support, extraction correctness and invariants pass.
-Public integration also passes. All six new fixed probes compile; the three
-previously rejected helper/accumulator probes now compile, and twelve prior
-positive probes remain accepted. Syntax tests pass 13,824 native comparisons
-and 6,912 invalid-input checks. The public candidate now includes twelve native
-programs covering Boolean state, early exits, continue, strides, captures, public
-Boolean inputs and word continuations. The general source-to-WASM proof and
-independent V8 checks are next. Full-dialect correctness remains unfinished.
+Boolean loop accumulators are complete for the initial step grammar: constructors,
+checked choices, scalar lets, standard Id run/pure wrappers and metadata. Source
+totality, extraction and the general source-to-WASM proof pass with nineteen
+compiler audits and two native iteration audits. Native Lean/V8 agree on 1,101
+inputs across 56 declarations; 44 prior modules retain identical bytes and
+0 changed. New tests pass 14,112 comparisons and 6,912 invalid-input checks.
+Prior tests pass 47,856 comparisons, 25,488 invalid-input checks and
+0 controls. Nine fixed rejected probes are restored and twelve prior
+positive controls remain accepted. The corpus contains 1565 declarations.
+Evidence is in [the Boolean accumulator archive](proofs/compiler/boolean-accumulator-2026-09-27/README.md).
+
+Current capability: monadic scalar bindings inside Boolean loop steps. Preserve
+fixed native probes, add exact standard Id bind syntax with checked word/Boolean
+input domains and Boolean step output annotations, and prove the extension
+through WASM before expanding step-result bindings and helper functions.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
