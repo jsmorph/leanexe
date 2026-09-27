@@ -8,6 +8,8 @@ namespace LeanExe.Source.Scalar
 inductive BooleanCall : Bool → Type where
   | direct : BooleanCall boolean
   | wrapped (wrapper : BooleanWrapper) (inner : BooleanCall boolean) : BooleanCall boolean
+  | savedResult (name : Lean.Name) (type : BooleanType) (nondep : Bool)
+      (inner : BooleanCall boolean) : BooleanCall boolean
   | forwardWord (input : ResultType) (output : BooleanType)
       (name : Lean.Name) (binder : Lean.BinderInfo) : BooleanCall false
   | forwardBoolean (input output : BooleanType)
@@ -17,6 +19,8 @@ inductive BooleanCall : Bool → Type where
 def BooleanCall.expr : BooleanCall boolean → Lean.Expr → Lean.Expr
   | .direct, argument => .app (.bvar 0) (LeanExe.Source.ExprProofBinder.lift 0 argument)
   | .wrapped wrapper inner, argument => wrapper.expr (inner.expr argument)
+  | .savedResult name type nondep inner, argument =>
+      .letE name type.expr (inner.expr argument) (.bvar 0) nondep
   | .forwardWord input output name binder, argument =>
       (BooleanBindingForm.monadic binder output).expr name input.expr
         (LeanExe.Source.ExprProofBinder.lift 0 argument) (.app (.bvar 1) (.bvar 0))

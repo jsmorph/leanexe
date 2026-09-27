@@ -706,5 +706,15 @@
   "rangeBoolConditionalCallFlag",
   "rangeBoolConditionalCallStride",
   "rangeBoolConditionalCallWord",
-  "rangeBoolConditionalCallId"
+  "rangeBoolConditionalCallId",
+  "rangeBoolSavedCallWord",
+  "rangeBoolSavedCallFlag",
+  "rangeBoolSavedCallBooleanArgument",
+  "rangeBoolSavedCallWordCapture",
+  "rangeBoolSavedCallBooleanCapture",
+  "rangeBoolSavedCallNested",
+  "rangeBoolSavedCallExit",
+  "rangeBoolSavedCallContinue",
+  "rangeBoolSavedCallStride",
+  "rangeBoolSavedCallId"
 ]

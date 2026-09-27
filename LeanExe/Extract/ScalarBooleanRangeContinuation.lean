@@ -44,6 +44,10 @@ def booleanRangeWrappedCall? (boolean : Bool) (source : Lean.Expr) : Option (Boo
           let (input, output) ← booleanRangeFlagBindTypes? input domain output
           let argument ← LeanExe.Source.ExprProofBinder.drop? 0 value
           pure (.forwardBoolean input output name binder, argument)
+  | .letE name type value (.bvar 0) nondep => do
+      let type ← booleanType? type
+      let (call, argument) ← booleanRangeWrappedCall? boolean value
+      pure (.savedResult name type nondep call, argument)
   | source =>
       match _parsed : booleanRangeWrapper? source with
       | none => none
@@ -51,7 +55,8 @@ def booleanRangeWrappedCall? (boolean : Bool) (source : Lean.Expr) : Option (Boo
           let (call, argument) ← booleanRangeWrappedCall? boolean body
           pure (.wrapped wrapper call, argument)
 termination_by sizeOf source
-decreasing_by exact booleanRangeWrapper_size _parsed
+decreasing_by
+  all_goals first | (simp_wf; omega) | exact booleanRangeWrapper_size _parsed
 
 @[simp] theorem booleanRangeWrappedCall_direct (boolean : Bool) (argument : Lean.Expr) :
     booleanRangeWrappedCall? boolean ((BooleanCall.direct (boolean := boolean)).expr argument) = some (.direct, argument) := by
@@ -74,6 +79,8 @@ theorem booleanRangeWrappedCall_wrapped (boolean : Bool) (wrapper : BooleanWrapp
   | wrapped wrapper inner ih =>
     rw [BooleanCall.expr, booleanRangeWrappedCall_wrapped]
     simp [ih]
+  | savedResult name type nondep inner ih =>
+    simp [BooleanCall.expr, booleanRangeWrappedCall?, ih]
   | forwardWord input output name binder =>
     simp [BooleanCall.expr, BooleanBindingForm.expr, booleanRangeWrappedCall?]
   | forwardBoolean input output name binder =>
@@ -104,6 +111,12 @@ theorem booleanRangeWrappedCall_sound {source : Lean.Expr} {call : BooleanCall b
         obtain ⟨rfl, rfl, rfl⟩ := booleanRangeFlagBindTypes_sound typed
         rw [LeanExe.Source.ExprProofBinder.drop_sound value 0 dropped]
         rfl
+    · rename_i name type value nondep
+      simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq, Prod.mk.injEq] at parsed
+      obtain ⟨output, typed, ⟨inner, actual⟩, found, rfl, rfl⟩ := parsed
+      have smaller : sizeOf value < sizeOf (Lean.Expr.letE name type value (.bvar 0) nondep) := by simp; omega
+      rw [booleanType_sound typed, ih value smaller found]
+      rfl
     · split at parsed
       · contradiction
       · rename_i wrapper body matched
