@@ -29,6 +29,8 @@ import Project.Beck.ExecutionComputePrepare
 import Project.Beck.ExecutionComputeReplicate
 import Project.Beck.ExecutionComputeInitial
 import Project.Beck.ExecutionComputeRounds
+import Project.Beck.ExecutionComputeCleanup
+import Project.Beck.ExecutionComputeAccepted
 import Project.Beck.ExecutionWordSetWindow
 import Project.Beck.ExecutionMatrix
 import Project.Beck.ExecutionScan
@@ -215,3 +217,11 @@ import Project.Beck.ExecutionMatrixPrefix
 #print axioms Project.Beck.Execution.computeSecondPrepare_exact
 #print axioms Project.Beck.Execution.computeInitial_exact
 #print axioms Project.Beck.Execution.computeRounds_exact
+#print axioms Project.Beck.Execution.pairWords_resources
+#print axioms Project.Beck.Execution.computeHeader_exact
+#print axioms Project.Beck.Execution.computeAppend_exact
+#print axioms Project.Beck.Execution.computeStep_exact
+#print axioms Project.Beck.Execution.computeLoop_exact
+#print axioms Project.Beck.Execution.computeOutput_exact
+#print axioms Project.Beck.Execution.computeCleanup_exact
+#print axioms Project.Beck.Execution.computeAccepted_exact
