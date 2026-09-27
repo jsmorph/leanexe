@@ -942,12 +942,16 @@ accepted. Ordinary match still calls an unsupported generated declaration.
 The corpus contains 1623 declarations. Evidence is in
 [the Boolean step inspection archive](proofs/compiler/boolean-step-cases-2026-09-27/README.md).
 
-Current capability: generated Boolean step matcher declarations. Inspect and
-validate the actual environment declaration before expanding a matcher call;
-name-based recognition is insufficient. Prove the expansion against an independent
-source reduction relation and connect the original environment/source to the
-existing source-to-WASM proof. Preserve the pure extraction path and fixed match
-probe, and complete production admission and V8 checks before broadening calls.
+Current capability: generated Boolean step matcher declarations. Exact safe/total
+declaration recognition is proved (69 targets), including the type, forwarding
+body and sole universe parameter. The native forwarding identity has no axioms;
+recognition acceptance/soundness use only the three standard logical axioms.
+Four real generated matcher references and a canonically defined dispatcher with
+an ordinary name are recognized; six unsupported declarations are rejected.
+Lean shares the generated matcher between examples. All four production admission
+probes still reject: the independent source expansion relation, environment-aware
+extraction, public source-to-WASM connection and V8 checks remain to be completed.
+The existing pure extraction path and fixed match probe are preserved.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
