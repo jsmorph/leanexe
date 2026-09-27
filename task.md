@@ -368,8 +368,14 @@ comparisons and 4,032 invalid-input checks. Prior tests pass 154,048 comparisons
 97,920 rejection checks and 5,280 controls. Evidence is in
 [the Boolean loop parameter archive](proofs/compiler/public-boolean-loop-parameters-2026-09-26/README.md).
 
-Next: standard Id annotations on public parameters, followed by Boolean loop
-results, retained instances and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
+Current capability: standard Id annotations on public parameters, preserving
+typed decoding and checked lambda domains in scalar and loop bodies. Source and
+extraction proofs pass. New tests pass 105,012 native/IR comparisons, 53,376
+invalid-input checks and 4,224 controls. Nine prior files pass 105,340 comparisons,
+53,568 invalid-input checks and 2,592 controls. The full compiler and V8 checks
+are next.
+
+Next: Boolean loop results, retained instances and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound helper-let bodies under public Boolean
 result conversion. Compound propositions combining Boolean equality with Boolean
 truth guards also need coverage. Native fixtures exposed these grammar gaps. Full-dialect

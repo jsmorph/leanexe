@@ -532,5 +532,9 @@
   "rangeFlagAlias",
   "rangeFlagBind",
   "rangeFlagCount",
-  "rangeFlagResult"
+  "rangeFlagResult",
+  "rangeInputIdYield",
+  "rangeInputIdExit",
+  "rangeInputIdContinue",
+  "rangeInputIdCapture"
 ]

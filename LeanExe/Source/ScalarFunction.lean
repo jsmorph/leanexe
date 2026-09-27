@@ -28,10 +28,8 @@ inductive Arrow : Lean.Expr → Nat → PublicResult → Prop where
   | result (kind : PublicResult) : Arrow kind.type 0 kind
   | idResult (body : Arrow type 0 kind) :
       Arrow (.app (.const ``Id [.zero]) type) 0 kind
-  | arg (rest : Arrow type arity kind) :
-      Arrow (.forallE name (.const ``UInt64 []) type bi) (arity + 1) kind
-  | booleanArg (rest : Arrow type arity kind) :
-      Arrow (.forallE name (.const ``Bool []) type bi) (arity + 1) kind
+  | arg (input : PublicArgument.Domain kind domain) (rest : Arrow type arity result) :
+      Arrow (.forallE name domain type bi) (arity + 1) result
   | metadata (body : Arrow type arity kind) : Arrow (.mdata data type) arity kind
 
 theorem Arrow.inputs_length {type : Lean.Expr} {arity : Nat} {result : PublicResult}
@@ -39,8 +37,7 @@ theorem Arrow.inputs_length {type : Lean.Expr} {arity : Nat} {result : PublicRes
   induction signature with
   | result kind => cases kind <;> rfl
   | idResult => rfl
-  | arg _ ih => simp [publicInputs, ih]
-  | booleanArg _ ih => simp [publicInputs, ih]
+  | arg input _ ih => simp [publicInputs, PublicArgument.ofType_accepts input, ih]
   | metadata _ ih => exact ih
 
 /-- A source-only syntactic contract: concrete signature, lambda binders, and
@@ -65,8 +62,21 @@ inductive Apply : Lean.Expr → List Value → List UInt64 → UInt64 → Prop w
       Apply (.lam name (.const ``UInt64 []) expr bi) locals (arg :: args) value
   | booleanLam (body : Apply expr (.boolean (arg != 0) :: locals) args value) :
       Apply (.lam name (.const ``Bool []) expr bi) locals (arg :: args) value
+  | idLam (body : Apply (.lam name domain expr bi) locals args value) :
+      Apply (.lam name (.app (.const ``Id [.zero]) domain) expr bi) locals args value
   | metadata (body : Apply expr locals args value) :
       Apply (.mdata data expr) locals args value
+
+theorem Apply.typedLam {input : PublicArgument} {domain expr : Lean.Expr}
+    {name : Lean.Name} {bi : Lean.BinderInfo} {locals : List Value} {arg : UInt64}
+    {args : List UInt64} {value : UInt64}
+    (valid : PublicArgument.Domain input domain)
+    (body : Apply expr (input.decode arg :: locals) args value) :
+    Apply (.lam name domain expr bi) locals (arg :: args) value := by
+  induction valid with
+  | word => exact .lam body
+  | boolean => exact .booleanLam body
+  | identity _ ih => exact .idLam (ih body)
 
 theorem Apply.of_consumeMData {expr : Lean.Expr} {locals : List Value} {args : List UInt64} {value : UInt64}
     (h : Apply expr.consumeMData locals args value) : Apply expr locals args value := by
@@ -104,13 +114,9 @@ theorem apply_of_publicLambdas {expr body : Lean.Expr}
         rw [heq]
         simp only [publicLambdasMatch, heq, Bool.and_eq_true] at annotations
         obtain ⟨domainMatch, annotations⟩ := annotations
-        have same := PublicArgument.matches_type domainMatch
-        subst type
         have next := ih inputs (input.decode arg :: locals) remaining annotations collected
           (by simpa [publicValues, List.reverse_cons, List.append_assoc] using semantics)
-        cases input with
-        | word => exact .lam next
-        | boolean => exact .booleanLam next
+        exact Apply.typedLam (PublicArgument.acceptsType_domain domainMatch) next
       · contradiction
 
 /-- Typed public arguments are decoded before evaluating the original body. -/

@@ -90,7 +90,7 @@ run_elab do
                    (signature domains (.const ``Nat []), wrap body),
                    (signature domains (.const ``Bool [.zero]), wrap body),
                    (signature (domains.set 0 (.const ``Nat [])) boolean, wrap body),
-                   (signature (domains.set 0 (.app (.const ``Id [.zero]) boolean)) boolean, wrap body),
+                   (signature (domains.set 0 (.app (.const ``Id [.succ .zero]) boolean)) boolean, wrap body),
                    (signature (domains.set 0 (.const ``Bool [.zero])) boolean, wrap body),
                    (signature domains boolean, wrap (BooleanLocal.junction 0 .disjunction
                      (.literal 0 true) (.compare .eq badWord (literalExpr 7))).expr),

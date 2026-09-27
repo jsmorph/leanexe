@@ -21,7 +21,11 @@ entire function signature is rejected. The signature extension preserves the
 result encoding and all body checks. Mixed Boolean/UInt64 parameters are supported
 in scalar bodies and bounded loops, including early exits and continue. Captured
 Boolean inputs retain their decoded values as loop locals change. Loop-containing
-functions currently require UInt64 accumulators and results. Id annotations on public parameter types are not yet admitted.
+functions currently require UInt64 accumulators and results. Public parameter
+domains may retain any number of standard Id layers. Declared and lambda domains
+must have the same base scalar kind; differing Id depths preserve their meaning.
+Custom annotation heads, wrong universes and metadata inside parameter domains
+are rejected.
 
 A UInt64 body may read arguments, contain
 UInt64 literals, metadata, UInt64 `let` bindings, conditionals and pure `Id`
