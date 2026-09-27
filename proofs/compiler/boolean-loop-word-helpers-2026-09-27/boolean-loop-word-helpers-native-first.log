@@ -1,0 +1,7 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_loop_word_helpers.lean:98:44: error: Failed to infer universe levels in binder type
+  PUnit.{?u.55}
+test/scalar_boolean_loop_word_helpers.lean:98:13: error: failed to infer universe levels in `let` declaration type
+  PUnit.{?u.55} → UInt64 → UInt64
+test/scalar_boolean_loop_word_helpers.lean:128:0: error: BooleanLoopWordHelpersTest.rangeWordBoolHelperPunit: Boolean loop word-helpers extraction failed
