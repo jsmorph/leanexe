@@ -332,15 +332,16 @@ native/IR comparisons, 48,384 invalid-input checks and 2,688 controls. Prior tes
 pass 63,666 comparisons, 33,359 rejections and 1,920 controls. Evidence is in
 [the Boolean-call argument archive](proofs/compiler/boolean-call-argument-2026-09-26/README.md).
 
-Current capability: public Boolean results with UInt64 parameters. Source
-application, signature admission, extraction correctness and explicit zero/one
-encoding are proved. Emitted-instruction, body-byte and function-validation proofs
-pass. New tests pass 16,652 native/IR comparisons, 7,872 invalid-input checks and
-768 equivalent-word controls. Prior tests pass 120,678 comparisons, 81,743
-rejections and 4,608 controls. The full compiler theorem with nineteen audits and
-independent V8 execution are next.
+Public Boolean results with UInt64 parameters are complete. Source application
+preserves the original lambda term, and the explicit result theorem proves the
+zero/one export encoding. The general source-to-WASM theorem and nineteen audits
+pass. Native Lean/V8 agree on 469 inputs across 28 declarations, including nine
+ranges; eighteen prior modules retain identical bytes. New tests pass 16,652
+native/IR comparisons, 7,872 invalid-input checks and 768 equivalent-word controls.
+Prior tests pass 120,678 comparisons, 81,743 rejections and 4,608 controls.
+Evidence is in [the public Boolean result archive](proofs/compiler/public-boolean-result-2026-09-26/README.md).
 
-Next: retained instance/result annotations and broader signatures. Full-dialect
+Next: standard Id annotations on public results, then Boolean parameters/loop results, retained instances and broader signatures. Full-dialect
 correctness remains unfinished.
 Complete each capability through WASM and commit/push frequently.
 
