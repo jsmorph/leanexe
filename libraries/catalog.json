@@ -50,5 +50,18 @@
     "report": "LeanExe/Lib/Transcendental/Exp/report.pdf",
     "specification": "Approximates exp(x) on [-1, 0] from binary64 bits with a target absolute error of 1/4000. Rejects other inputs with none.",
     "proofStatus": "deferred for this library integration"
+  },
+  {
+    "id": "exp-arm",
+    "task": "exponential",
+    "algorithm": "arm-table-polynomial",
+    "implementation": "128-entry table and degree-five binary64 polynomial",
+    "library": "transcendental",
+    "module": "LeanExe.Lib.Transcendental.ExpArm.Basic",
+    "declaration": "LeanExe.Lib.Transcendental.exp",
+    "readme": "LeanExe/Lib/Transcendental/ExpArm/README.md",
+    "report": "LeanExe/Lib/Transcendental/ExpArm/report.pdf",
+    "specification": "Computes exp(x) across the binary64 input range, with round-to-nearest arithmetic and a target error below one ulp. Handles infinities, canonical NaNs, overflow, and gradual underflow.",
+    "proofStatus": "WASM behavior proof outstanding"
   }
 ]

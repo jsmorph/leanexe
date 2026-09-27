@@ -2,6 +2,7 @@ import LeanExe.Lib.NumberTheory.Gcd.Basic
 import LeanExe.Lib.NumberTheory.BinaryGcd.Basic
 import LeanExe.Lib.Polynomial.Horner.Basic
 import LeanExe.Lib.Transcendental.Exp.Basic
+import LeanExe.Lib.Transcendental.ExpArm.Basic
 
 namespace LeanExe.Examples.Seminum
 
@@ -49,5 +50,14 @@ def decay (timeBits : UInt64) : ScalarResult :=
   if timeBits <= 0x3FF0000000000000 || timeBits == 0x8000000000000000 then
     exponential (timeBits ^^^ 0x8000000000000000)
   else { status := 4 }
+
+def expBatch (inputs : Array UInt64) : Array UInt64 :=
+  inputs.map fun x => Lib.Transcendental.exp x
+
+def sigmoid (x : UInt64) : UInt64 :=
+  let z := Lib.Transcendental.exp (x ||| 0x8000000000000000)
+  let denominator := Float64.addBits 0x3FF0000000000000 z
+  if x >>> 63 != 0 then Float64.divBits z denominator
+  else Float64.divBits 0x3FF0000000000000 denominator
 
 end LeanExe.Examples.Seminum

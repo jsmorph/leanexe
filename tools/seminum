@@ -14,7 +14,8 @@ const annotations = path.join(directory, "examples.annotations.json");
 const sourceModule = "LeanExe.Examples.Seminum";
 const client = `${sourceModule}.`;
 const exports_ = ["LeanExe.Lib.NumberTheory.gcd", "LeanExe.Lib.NumberTheory.gcdBinary",
-  ...["fraction", "fractionBinary", "polynomial", "ratio", "exponential", "decay"].map(name => client + name)];
+  "LeanExe.Lib.Transcendental.exp",
+  ...["fraction", "fractionBinary", "polynomial", "ratio", "exponential", "decay", "expBatch", "sigmoid"].map(name => client + name)];
 const options = { cwd: root, encoding: "utf8", timeout: 120000 };
 const usage = `usage: tools/seminum COMMAND [ARGS]
   gcd A B                  Greatest common divisor
@@ -23,8 +24,11 @@ const usage = `usage: tools/seminum COMMAND [ARGS]
   fraction-binary N D      Reduce N/D using binary GCD
   polynomial X C0,C1,...    Evaluate a polynomial with checked UInt64 arithmetic
   ratio X N0,N1,... D0,D1,...  Evaluate and reduce a polynomial ratio
-  exp X                    Approximate exp(X), -1 <= X <= 0
+  exp X                    Binary64 exponential
   exp-bits HEX             Same operation on 16 hexadecimal binary64 digits
+  sigmoid X                Logistic function 1 / (1 + exp(-X))
+  exp-taylor6 X             Degree-six approximation, -1 <= X <= 0
+  exp-taylor6-bits HEX      Taylor approximation on hexadecimal binary64 bits
   decay T                  Approximate the remaining fraction exp(-T), 0 <= T <= 1
   build                    Build the WASM examples and component inventory
   inspect                  Print components found in compiler annotations
@@ -84,6 +88,16 @@ function invoke(name, count, args) {
   return parseI64SlotsOutput(name, count, result.stdout);
 }
 
+function invokeArray(name, words) {
+  prepare();
+  const output = runChecked([ensureHost(), "call", wasm, name, "array-u64",
+    `array-u64:${words.join(",")}`], options).stdout.trim();
+  if (!/^\[(?:[0-9]+(?:,\s*[0-9]+)*)?\]$/.test(output)) {
+    throw new Error(`invalid array result: ${output}`);
+  }
+  return output === "[]" ? [] : output.slice(1, -1).split(",").map(BigInt);
+}
+
 function success(values) {
   if (values[0] === 1n) throw new RangeError("denominator must be positive");
   if (values[0] === 2n) throw new RangeError("arithmetic overflow");
@@ -95,7 +109,8 @@ function success(values) {
 
 function runExample(command, args) {
   const arity = { gcd: 2, "gcd-binary": 2, fraction: 2, "fraction-binary": 2,
-    polynomial: 2, ratio: 3, exp: 1, "exp-bits": 1, decay: 1 };
+    polynomial: 2, ratio: 3, exp: 1, "exp-bits": 1, sigmoid: 1,
+    "exp-taylor6": 1, "exp-taylor6-bits": 1, decay: 1 };
   if (!(command in arity) || args.length !== arity[command]) throw new RangeError(usage.trim());
   switch (command) {
     case "gcd":
@@ -112,13 +127,19 @@ function runExample(command, args) {
       return success(invoke("ratio", 3,
         [`i64:${word(args[0])}`, array(args[1]), array(args[2])])).join("/");
     case "exp":
+    case "sigmoid":
+      return floatText(invoke(command, 1, [`i64:${floatWord(args[0])}`])[0]);
+    case "exp-taylor6":
     case "decay":
-      return floatText(success(invoke(command === "exp" ? "exponential" : "decay", 2,
+      return floatText(success(invoke(command === "exp-taylor6" ? "exponential" : "decay", 2,
         [`i64:${floatWord(args[0])}`]))[0]);
-    case "exp-bits": {
+    case "exp-bits":
+    case "exp-taylor6-bits": {
       if (!/^[0-9a-fA-F]{16}$/.test(args[0])) throw new RangeError("expected 16 hexadecimal digits");
-      return success(invoke("exponential", 2, [`i64:${BigInt(`0x${args[0]}`)}`]))[0]
-        .toString(16).padStart(16, "0");
+      const input = [`i64:${BigInt(`0x${args[0]}`)}`];
+      const bits = command === "exp-bits" ? invoke("exp", 1, input)[0]
+        : success(invoke("exponential", 2, input))[0];
+      return bits.toString(16).padStart(16, "0");
     }
   }
 }
@@ -162,4 +183,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { prepare, runExample, invoke };
+module.exports = { prepare, runExample, invoke, invokeArray };

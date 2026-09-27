@@ -1,0 +1,153 @@
+\input{libraries/report-preamble.tex}
+\title{A Full-Range Binary64 Exponential}
+\begin{document}
+\maketitle
+
+\section{Task and verification status}
+\texttt{LeanExe.Lib.Transcendental.exp} computes $e^x$ for binary64 inputs.
+The function accepts and returns IEEE 754 bit patterns in \texttt{UInt64}
+words.  LeanExe compiles the Lean implementation and its clients to
+WebAssembly (WASM), which the examples execute in Wasmtime.
+
+The implementation ports Arm's 128-entry, degree-five exponential
+algorithm~\cite{arm,data}.  It selects round-to-nearest, ties-to-even
+arithmetic and separate multiplication and addition.  Arm reports a
+worst-case error of $0.511$ ulp for this configuration without fused
+multiply-add.  The port's target is an error below one ulp.
+
+The verification target is the emitted WASM: termination, memory behavior,
+and numerical accuracy under stated assumptions.  A proof establishing those
+properties remains outstanding.  Lean checks the source types.
+Development tests compare WASM, the Lean port,
+Lean's \texttt{Float.exp}, JavaScript's \texttt{Math.exp}, and a high-precision
+decimal reference.  The largest measured error for the port on 49,821 inputs
+is $0.504059$ ulp.  The measured maximum describes the test corpus.  A universal bound
+requires a proof about the WASM computation.
+
+\section{Range reduction and evaluation}
+The reduction chooses an integer $k$ near $128x/\log 2$ and writes
+\[
+  x=k\log(2)/128+r,\qquad e^x=2^{k/128}e^r.
+\]
+The implementation obtains $k$ through a binary64 addition and subtraction
+of $1.5\cdot2^{52}$.  Splitting $-\log(2)/128$ into two constants reduces
+the rounding error in $r$.  The reduced argument has magnitude near or
+below $\log(2)/256$.
+
+For $j=k\bmod128$, a table supplies a leading value $H_j$ and a correction
+$t_j$ such that $2^{j/128}\approx H_j(1+t_j)$.  Its second word incorporates
+an exponent adjustment, allowing the scale to be formed by integer bit
+operations.  The table has 128 pairs of 64-bit words, totaling 2 KiB.
+
+The polynomial evaluates the correction
+\[
+ t_j+r+r^2(C_2+rC_3)+r^4(C_4+rC_5).
+\]
+The coefficient words and evaluation order follow Arm's source.  Each
+arithmetic operation rounds separately.  Normal reconstruction computes
+\texttt{scale + scale * tmp}.
+
+For large positive inputs, reconstruction first reduces the scale's exponent
+by 1009, evaluates the correction, and multiplies by $2^{1009}$.  For large
+negative inputs, it increases the scale's exponent by 1022 and multiplies
+the corrected result by $2^{-1022}$.  When the corrected value is below one,
+a compensated sum rounds it to the precision required by the subnormal
+result before that multiplication.  This step controls double rounding.
+
+\section{Input behavior and storage}
+Both signed zeros return one.  Inputs with magnitude below $2^{-54}$ also
+return one.  Positive infinity returns positive infinity.  Negative infinity
+returns positive zero.  All NaNs return the canonical quiet NaN with word
+\texttt{0x7FF8000000000000}.  Finite results can overflow to positive infinity
+or underflow through subnormal values to positive zero.
+
+The API specifies result values under round-to-nearest arithmetic.  It has
+no error-number or floating-point exception-flag interface.  Native Lean
+comparisons assume that the host uses round-to-nearest arithmetic and
+preserves subnormals.
+
+The source uses a named \texttt{Array UInt64} literal.  LeanExe places its
+length and words in a WASM data segment and emits bounds-checked loads for
+direct indexed reads.  The allocation arena begins after the static data,
+and reset preserves the table.  The exponential's scalar execution allocates
+zero heap objects on the tested calls.  Array updates retain the compiler's
+ordinary ownership and allocation behavior.
+
+\section{Executable implementation}
+The listing comes from the component's \texttt{Basic.lean}.  The table is in
+the adjacent \texttt{Table.lean}.  The helper \texttt{ExpArm.rescale} implements
+the overflow and subnormal reconstruction described above.
+
+\lstinputlisting[firstline=25,lastline=48]{LeanExe/Lib/Transcendental/ExpArm/Basic.lean}
+
+\newpage
+\section{Commands and a sigmoid client}
+The commands run from the repository root after following the
+\href{https://github.com/jsmorph/leanexe/blob/lib1/DEVELOPING.md}{setup guide}.
+
+\begin{lstlisting}
+tools/seminum exp 1
+2.718281828459045
+tools/seminum sigmoid 0
+0.5
+\end{lstlisting}
+
+The decimal command accepts finite binary64 inputs.  The hexadecimal command
+accepts every input word.  The sigmoid client computes
+$\sigma(x)=1/(1+e^{-x})$ using $z=e^{-|x|}$: its result is $z/(1+z)$ for
+negative inputs and $1/(1+z)$ otherwise.  This form preserves small positive
+results for large negative inputs without an overflowing intermediate
+exponential.  Both clients import and call the library function.
+
+\section{Numerical tests}
+\texttt{node test/exp.js} runs 49,821 cases.  It writes measurements to
+\path{build/seminum/exp-accuracy.json}.  The corpus includes signed zeros,
+infinities, quiet and signaling NaNs, random binary64 words, inputs distributed
+across the finite output range, and neighboring words around reduction,
+overflow, and underflow boundaries.  WASM and the Lean port agree bit for bit
+on every case.  Separate tests cover the sigmoid client, command-line output,
+and allocation counts.
+
+The reference uses Python's standard-library \texttt{Decimal.exp}, which
+rounds to nearest at the requested decimal precision~\cite{decimal}.
+Conversion from the binary64 input is exact.  Calculation starts at 100
+significant digits and increases precision until the neighboring decimal
+bounds round to the same binary64 word.  The error calculation uses those
+bounds.  One ulp is the binary64 spacing in the exact result's binade, with
+spacing $2^{-1074}$ for subnormal results.
+
+\begin{center}
+\begin{tabular}{lrr}
+\hline
+Computation & Maximum error (ulp) & Differently rounded cases\\
+\hline
+LeanExe WASM & 0.504059 & 49\\
+Lean \texttt{Float.exp} & 0.503354 & 36\\
+JavaScript \texttt{Math.exp} & 0.871814 & 4153\\
+\hline
+\end{tabular}
+\end{center}
+The last column counts differences from the reference's rounded binary64
+result, excluding NaN payloads.  Lean 4.34.0-rc2 implements
+\texttt{Float.exp} through the external C function \texttt{exp}~\cite{lean}.
+These measurements used Linux AArch64 and Node.js 24.13.0.  Runtime-library
+comparisons depend on the installed implementations.  Throughput and latency
+have yet to be measured.
+
+\begin{thebibliography}{9}
+\bibitem{arm} Arm,
+\href{https://github.com/ARM-software/optimized-routines/blob/master/math/exp.c}{\emph{Double-precision exponential}}.
+Source of the reduction, evaluation order, and reconstruction.  The port
+retains Arm's copyright notice and uses the MIT license.
+\bibitem{data} Arm,
+\href{https://github.com/ARM-software/optimized-routines/blob/master/math/exp_data.c}{\emph{Shared exponential data}}.
+Source of the table, split logarithm, coefficients, and reported error analysis.
+\bibitem{lean} Lean 4.34.0-rc2,
+\href{https://github.com/leanprover/lean4/blob/v4.34.0-rc2/src/Init/Data/Float/Float.lean}{\emph{Floating-point API}}.
+Documents the external C implementation of \texttt{Float.exp}.
+\bibitem{decimal} Python,
+\href{https://docs.python.org/3/library/decimal.html#decimal.Decimal.exp}{\emph{Decimal arithmetic}}.
+Documents exact conversion from binary floating point and correct rounding
+of the exponential at the selected decimal precision.
+\end{thebibliography}
+\end{document}

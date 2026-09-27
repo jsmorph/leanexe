@@ -15,15 +15,15 @@ A separate Lean theorem, [`Project.ExpSmall.Spec.expSmall_real_error`](../../../
 The [setup guide](../../../../libraries/README.md#setup-and-commands) lists prerequisites.  From the repository root, these commands build and execute the WASM examples:
 
 ```sh
-tools/seminum exp -0.5
+tools/seminum exp-taylor6 -0.5
 # 0.6065321180555556
 tools/seminum decay 0.5
 # 0.6065321180555556
-tools/seminum exp-bits bfe0000000000000
+tools/seminum exp-taylor6-bits bfe0000000000000
 # 3fe368b60b60b60c
 ```
 
-`exp` and `decay` accept decimal numbers, converted by the host to binary64.  `exp-bits` accepts sixteen hexadecimal digits and prints the result bits.  The decay client approximates the remaining fraction `exp(-t)` for dimensionless time `t` in `[0, 1]`.  Inputs outside the admitted interval exit with status 2 and a diagnostic on stderr.
+`exp-taylor6` and `decay` accept decimal numbers, converted by the host to binary64.  `exp-taylor6-bits` accepts sixteen hexadecimal digits and prints the result bits.  The decay client approximates the remaining fraction `exp(-t)` for dimensionless time `t` in `[0, 1]`.  Inputs outside the admitted interval exit with status 2 and a diagnostic on stderr.
 
 ```lean
 import LeanExe.Lib.Transcendental.Exp.Basic
