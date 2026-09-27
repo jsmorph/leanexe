@@ -1,10 +1,10 @@
 # Binary GCD
 
-This implementation computes the greatest common divisor with shifts, comparisons, and subtraction.  It solves the same task as the [Euclidean implementation](../gcd/README.md) through a different algorithm.  Both accept all `UInt64` pairs and use zero for `gcd 0 0`.
+This implementation computes the greatest common divisor with shifts, comparisons, and subtraction.  It solves the same task as the [Euclidean implementation](../Gcd/README.md) through a different algorithm.  Both accept all `UInt64` pairs and use zero for `gcd 0 0`.
 
 ## Use
 
-The [setup guide](../../README.md#setup-and-commands) lists prerequisites.  These commands build and execute the WASM clients:
+The [setup guide](../../../../libraries/README.md#setup-and-commands) lists prerequisites.  These commands build and execute the WASM clients:
 
 ```sh
 tools/seminum gcd-binary 48 18
@@ -14,13 +14,13 @@ tools/seminum fraction-binary 48 18
 ```
 
 ```lean
-import LeanExe.Lib.NumberTheory.BinaryGcd
+import LeanExe.Lib.NumberTheory.BinaryGcd.Basic
 
 def LeanExe.Examples.commonFactorBinary (a b : UInt64) : UInt64 :=
   LeanExe.Lib.NumberTheory.gcdBinary a b
 ```
 
-The API is `gcdBinary (a b : UInt64) : UInt64`.  The [source](../../../LeanExe/Lib/NumberTheory/BinaryGcd.lean) removes common powers of two, reduces odd operands by subtraction, and restores the common power.  The [fraction client](../../../LeanExe/Examples/Seminum.lean) calls this implementation and shares result handling with the Euclidean client.
+The API is `gcdBinary (a b : UInt64) : UInt64`.  The [source](Basic.lean) removes common powers of two, reduces odd operands by subtraction, and restores the common power.  The [fraction client](../../../Examples/Seminum.lean) calls this implementation and shares result handling with the Euclidean client.
 
 ## Specification and tests
 

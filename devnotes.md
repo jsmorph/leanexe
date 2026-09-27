@@ -1,3 +1,20 @@
+## 2026-09-27: Component directory layout
+
+Each seminumerical component now keeps its implementation, README, LaTeX
+source, and PDF in one directory under `LeanExe/Lib`.  The implementation file
+is `Basic.lean`.  The central [library index](libraries/README.md), catalog,
+and shared report preamble remain under `libraries`.  Imports, catalog paths,
+source listings, and relative links follow the new locations.  The documentation
+checker includes the component directories.
+
+- [x] Move the four components and update their references.
+- [x] Rebuild the reports and test the clients and documentation links.
+
+The test suite passes 252 WASM/native comparisons, mathematical references,
+component discovery, and CLI errors.  The documentation checker accepts all
+188 maintained Markdown files.  All four reports rebuild as two-page PDFs
+without TeX warnings.  Review found no remaining references to the old paths.
+
 ## 2026-09-27: Seminumerical library PoC
 
 Work started on branch `lib1`.  The component collection uses ordinary Lean

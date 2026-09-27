@@ -16,6 +16,7 @@ const roots = [
   "benchmarks",
   "ltg",
   "libraries",
+  "LeanExe/Lib",
   "paper",
   "proofs/talos/README.md",
   "proofs/byte-io/README.md",

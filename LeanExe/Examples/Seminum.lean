@@ -1,7 +1,7 @@
-import LeanExe.Lib.NumberTheory.Gcd
-import LeanExe.Lib.NumberTheory.BinaryGcd
-import LeanExe.Lib.Polynomial.Horner
-import LeanExe.Lib.Transcendental.Exp
+import LeanExe.Lib.NumberTheory.Gcd.Basic
+import LeanExe.Lib.NumberTheory.BinaryGcd.Basic
+import LeanExe.Lib.Polynomial.Horner.Basic
+import LeanExe.Lib.Transcendental.Exp.Basic
 
 namespace LeanExe.Examples.Seminum
 

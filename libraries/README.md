@@ -6,10 +6,10 @@ This PoC develops small LeanExe components, runnable clients, and technical repo
 
 | Task | Algorithm | Implementation | Documentation |
 |------|-----------|----------------|---------------|
-| Greatest common divisor | Euclidean remainder algorithm | `UInt64` loop | [GCD](number-theory/gcd/README.md) |
-| Greatest common divisor | Binary GCD | `UInt64` shifts and subtraction | [Binary GCD](number-theory/binary-gcd/README.md) |
-| Polynomial evaluation | Horner's rule | Checked `UInt64` loop | [Horner evaluation](polynomial/horner/README.md) |
-| Exponential | Degree-six Taylor approximation | Binary64 Horner evaluation on `[-1, 0]` | [Bounded exponential](transcendental/exp/README.md) |
+| Greatest common divisor | Euclidean remainder algorithm | `UInt64` loop | [GCD](../LeanExe/Lib/NumberTheory/Gcd/README.md) |
+| Greatest common divisor | Binary GCD | `UInt64` shifts and subtraction | [Binary GCD](../LeanExe/Lib/NumberTheory/BinaryGcd/README.md) |
+| Polynomial evaluation | Horner's rule | Checked `UInt64` loop | [Horner evaluation](../LeanExe/Lib/Polynomial/Horner/README.md) |
+| Exponential | Degree-six Taylor approximation | Binary64 Horner evaluation on `[-1, 0]` | [Bounded exponential](../LeanExe/Lib/Transcendental/Exp/README.md) |
 
 A task may have several algorithms, and an algorithm may have several implementations.  Each catalog entry identifies one implementation and its public Lean declaration.  A library groups related components.  Clients select implementations through ordinary imports and function calls.
 
@@ -36,7 +36,7 @@ Integer commands accept decimal `UInt64` values.  Array arguments use comma-sepa
 
 ## Reports and development
 
-Each implementation has a README, a short PDF report, and editable LaTeX source.  Reports include listings from the executable Lean files.  From the repository root, `tools/seminum reports` builds every report with `pdflatex` and copies the PDFs beside their sources.  Auxiliary files remain under `build/seminum/reports`.  The PDFs can be read without a TeX installation.
+Each component directory under `LeanExe/Lib` contains its implementation in `Basic.lean`, its README, and its report in LaTeX and PDF form.  Reports include listings from the executable Lean files.  From the repository root, `tools/seminum reports` builds every report with `pdflatex` and copies the PDFs into the component directories.  Auxiliary files remain under `build/seminum/reports`.  The PDFs can be read without a TeX installation.
 
 The [development journal](../devnotes.md) records batch reviews and remaining work.  The first batch introduced Euclidean GCD and Horner evaluation.  The second added binary GCD and a bounded exponential.  The combined test suite passes 252 WASM/native comparisons and checks CLI errors, mathematical references, and component discovery.  The reports include the exact commands and scope of the numerical comparison.
 
