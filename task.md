@@ -368,12 +368,14 @@ comparisons and 4,032 invalid-input checks. Prior tests pass 154,048 comparisons
 97,920 rejection checks and 5,280 controls. Evidence is in
 [the Boolean loop parameter archive](proofs/compiler/public-boolean-loop-parameters-2026-09-26/README.md).
 
-Current capability: standard Id annotations on public parameters, preserving
-typed decoding and checked lambda domains in scalar and loop bodies. Source and
-extraction proofs pass. New tests pass 105,012 native/IR comparisons, 53,376
-invalid-input checks and 4,224 controls. Nine prior files pass 105,340 comparisons,
-53,568 invalid-input checks and 2,592 controls. The full compiler and V8 checks
-are next.
+Standard Id annotations on public parameters are complete. Arbitrarily nested
+annotations preserve each argument's base kind and typed source application in
+scalar and loop bodies. The general source-to-WASM theorem and nineteen audits
+pass. Native Lean/V8 agree on 499 inputs across 28 declarations, including twelve
+ranges; eighteen prior modules retain identical bytes. New tests pass 105,012
+native/IR comparisons, 53,376 invalid-input checks and 4,224 controls. Prior tests
+pass 105,340 comparisons, 53,568 rejection checks and 2,592 controls. Evidence is in
+[the public parameter annotation archive](proofs/compiler/public-parameter-id-2026-09-26/README.md).
 
 Next: Boolean loop results, retained instances and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound helper-let bodies under public Boolean
