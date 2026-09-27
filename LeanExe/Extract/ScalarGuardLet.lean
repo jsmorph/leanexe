@@ -7,11 +7,24 @@ open LeanExe.Source.Scalar
 def guardLetType? (type : Lean.Expr) : Option GuardLetType :=
   match scalarResultType? type with
   | some result => some (.word result)
-  | none => (booleanType? type).map GuardLetType.boolean
+  | none =>
+      match booleanType? type with
+      | some result => some (.boolean result)
+      | none =>
+          match type with
+          | .forallE name (.const ``UInt64 []) result info =>
+              (booleanType? result).map (.predicate false name info)
+          | .forallE name (.const ``Bool []) result info =>
+              (booleanType? result).map (.predicate true name info)
+          | _ => none
 
 @[simp] theorem guardLetType_accepts (type : GuardLetType) :
     guardLetType? type.expr = some type := by
-  cases type <;> simp [guardLetType?, GuardLetType.expr, scalarResultType_boolean]
+  cases type with
+  | word type => simp [guardLetType?, GuardLetType.expr]
+  | boolean type => simp [guardLetType?, GuardLetType.expr, scalarResultType_boolean]
+  | predicate booleanInput inputName info result =>
+    cases booleanInput <;> simp [guardLetType?, GuardLetType.expr, scalarResultType?, booleanType?]
 
 theorem guardLetType_sound {type : Lean.Expr} {result : GuardLetType}
     (found : guardLetType? type = some result) : type = result.expr := by
@@ -20,7 +33,14 @@ theorem guardLetType_sound {type : Lean.Expr} {result : GuardLetType}
   · rename_i result parsed
     cases found
     exact scalarResultType_sound parsed
-  · obtain ⟨result, parsed, rfl⟩ := Option.map_eq_some_iff.mp found
-    exact booleanType_sound parsed
+  · split at found
+    · rename_i result parsed
+      cases found
+      exact booleanType_sound parsed
+    · split at found <;> try contradiction
+      all_goals
+        obtain ⟨annotation, parsed, rfl⟩ := Option.map_eq_some_iff.mp found
+        rw [booleanType_sound parsed]
+        rfl
 
 end LeanExe.Extract.Core

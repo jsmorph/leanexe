@@ -4,10 +4,12 @@ import LeanExe.Source.ScalarSavedBooleanGuard
 
 namespace LeanExe.Source.Scalar
 
-/-- Extra syntax needed to convert a Boolean relation operand to a checked word. -/
+/-- Extra syntax for Boolean relation operands and unused predicate validation. -/
 noncomputable def guardOperandOverhead : Nat :=
-  sizeOf (.const ``Bool.toUInt64 [] : Lean.Expr) -
-    sizeOf (.const ``Bool [] : Lean.Expr) - sizeOf (.const ``Ne [.succ .zero] : Lean.Expr) + 1
+  max (sizeOf (.const ``Bool.toUInt64 [] : Lean.Expr) -
+    sizeOf (.const ``Bool [] : Lean.Expr) - sizeOf (.const ``Ne [.succ .zero] : Lean.Expr) + 1)
+    (sizeOf (Lean.Expr.app (.const ``UInt64.ofNat []) (.lit (.natVal 0))) -
+      sizeOf (.const ``True [] : Lean.Expr) + 1)
 
 theorem guardOperandOverhead_ite : guardOperandOverhead ≤ sizeOf ("ite" : String) + sizeOf (.const ``Bool [] : Lean.Expr) := by decide
 theorem guardOperandOverhead_dite : guardOperandOverhead ≤ sizeOf ("dite" : String) + sizeOf (.const ``Bool [] : Lean.Expr) := by decide
@@ -16,6 +18,10 @@ theorem guardOperandOverhead_ite_word : guardOperandOverhead ≤
 theorem guardOperandOverhead_dite_word : guardOperandOverhead ≤
     sizeOf ("dite" : String) + sizeOf (.const ``UInt64 [] : Lean.Expr) := by decide
 theorem guardOperandOverhead_decide : guardOperandOverhead ≤ sizeOf ("decide" : String) := by decide
+
+theorem guardOperandOverhead_predicate :
+    sizeOf (Lean.Expr.app (.const ``UInt64.ofNat []) (.lit (.natVal 0))) <
+      sizeOf (.const ``True [] : Lean.Expr) + guardOperandOverhead := by decide
 
 theorem booleanTruth_min_size (value : Lean.Expr) :
     sizeOf (.const ``True [] : Lean.Expr) ≤
@@ -60,11 +66,14 @@ theorem GuardLiteral.condition_min_size (guard : GuardLiteral) :
 inductive GuardLetType where
   | boolean (type : BooleanType)
   | word (type : ResultType)
+  | predicate (booleanInput : Bool) (inputName : Lean.Name) (info : Lean.BinderInfo) (result : BooleanType)
   deriving Repr
 
 def GuardLetType.expr : GuardLetType → Lean.Expr
   | .boolean type => type.expr
   | .word type => type.expr
+  | .predicate booleanInput inputName info result =>
+      .forallE inputName (if booleanInput then .const ``Bool [] else .const ``UInt64 []) result.expr info
 
 /-- A let binding retained in a proposition and in each checked operand. -/
 structure GuardLet where
@@ -83,6 +92,7 @@ def operand (binding : GuardLet) : Lean.Expr :=
   match binding.type with
   | .boolean _ => .app (.const ``Bool.toUInt64 []) binding.value
   | .word _ => binding.value
+  | .predicate .. => binding.wrap (.app (.const ``UInt64.ofNat []) (.lit (.natVal 0)))
 
 def evidence (binding : GuardLet) (body : Lean.Expr) : Lean.Expr :=
   body.instantiate1 binding.value
@@ -103,6 +113,10 @@ theorem operand_size (binding : GuardLet) (condition : Lean.Expr)
     have constants : sizeOf (.const ``Bool.toUInt64 [] : Lean.Expr) <
         sizeOf (.const ``Bool [] : Lean.Expr) + sizeOf (.const ``True [] : Lean.Expr) + guardOperandOverhead := by decide
     simp [operand, wrap, GuardLetType.expr, BooleanType.expr] at *
+    omega
+  | predicate booleanInput inputName info result =>
+    have constants := guardOperandOverhead_predicate
+    simp [operand, wrap] at *
     omega
 
 end GuardLet

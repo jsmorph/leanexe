@@ -785,11 +785,15 @@ unchanged; five previous positive controls still pass. The native corpus contain
 [the relation-choice archive](proofs/compiler/boolean-helper-relation-choice-2026-09-27/README.md).
 
 Current capability: local predicate function bindings inside propositions.
-The original compound probe remains rejected because the guard let parser admits
-only word/Boolean values. Preserve its exact elaborated helper let and substituted
-decision evidence. Validate the helper even when unused, retain all guard operands'
-lexical scope and use a checked size allowance for the validation operand.
-Nested helper bodies and Id inputs remain subsequent gaps.
+The original compound probe now passes unchanged. Predicate lets preserve exact
+function annotations and substituted standard evidence, retain lexical scope
+around every guard operand, and validate helper bodies even when unused. Source
+and parser proofs and the public compiler target pass. Focused tests pass 72,756
+native/IR comparisons, 75,568 invalid-input checks and 576 admission controls,
+covering scalar decisions, ordinary/dependent choices and loop steps. Prior
+proposition-let and choice tests pass 118,452 comparisons, 106,392 invalid-input
+checks and 1,920 controls. The full compiler proof and independent WASM check
+are next. Nested helper bodies and Id inputs remain subsequent gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

@@ -8640,6 +8640,58 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def propositionHelperLetCompound (x y : UInt64) : UInt64 :=
+  (if x < y ∧ (let f := fun n : UInt64 => n == y; f x || f 0) then
+    (let g := fun b : Bool => b || y == 0; g (x == 0)) else x == y).toUInt64 + x
+
+def propositionHelperLetBoolean (x y : UInt64) : UInt64 :=
+  if (let f := fun b : Bool => b || x == y; f (x == 0) && f (y == 0)) ∨ x < y then
+    x + 7 else y * 3
+
+def propositionHelperLetDecision (x y : UInt64) : UInt64 :=
+  (decide (¬ (let f := fun n : UInt64 => n % 3 == 0; f x = f y) ∧ x ≤ y)).toUInt64 + y
+
+def propositionHelperLetDependent (x y : UInt64) : UInt64 :=
+  (if _h : (let f := fun b : Bool => b && x != y; f (x == 0) ≠ f (y == 0)) ∨ y < x then
+    (let g := fun n : UInt64 => n == x; g y || g 0)
+   else !(x == y)).toUInt64 + x
+
+def propositionHelperLetUnused (x y : UInt64) : UInt64 :=
+  if (let _unused := fun n : UInt64 => n == y; True) ∧
+      (let _unused := fun b : Bool => b || x == y; True) then x + y else 0
+
+def propositionHelperLetNested (x y : UInt64) : UInt64 :=
+  if (let f := fun n : UInt64 => n == y; let word := x + y;
+      let flag := f word; flag = f x) then x + 1 else y + 2
+
+def rangePropositionHelperLetStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let f := fun n : UInt64 => n % 3 == 0; f a || f i.toUInt64) ∧ a ≤ seed then
+      a := a + i.toUInt64 + 7
+    else a := a * 3 + 1
+  return a
+
+def rangePropositionHelperLetExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if _h : (let f := fun b : Bool => b || seed == 0; f (a % 7 == 0) ≠ f (i.toUInt64 == 0)) ∨ a = seed then break
+  return a
+
+def rangePropositionHelperLetContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let f := fun n : UInt64 => n % 3 == 0; let flag := f a; flag = f i.toUInt64) ∧ seed ≤ a then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangePropositionHelperLetTail (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+  return (decide ((let f := fun b : Bool => !b || seed == 0; f (a == seed) && f (a == 0)) ∨ a < seed)).toUInt64 + a
+
 def booleanHelperRelationChoiceLeft (x y : UInt64) : UInt64 :=
   (if (let f := fun n : UInt64 => n == y; f x || f 0) = (x == 0) then
     (let g := fun b : Bool => b || y == 0; g (x == 0) && g (x == y)) else y == 0).toUInt64 + x
@@ -12527,6 +12579,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolRelationExit,
       `ArithmeticModeTest.rangeBoolRelationContinue,
       `ArithmeticModeTest.rangeBoolRelationTail,
+      `ArithmeticModeTest.propositionHelperLetCompound,
+      `ArithmeticModeTest.propositionHelperLetBoolean,
+      `ArithmeticModeTest.propositionHelperLetDecision,
+      `ArithmeticModeTest.propositionHelperLetDependent,
+      `ArithmeticModeTest.propositionHelperLetUnused,
+      `ArithmeticModeTest.propositionHelperLetNested,
+      `ArithmeticModeTest.rangePropositionHelperLetStep,
+      `ArithmeticModeTest.rangePropositionHelperLetExit,
+      `ArithmeticModeTest.rangePropositionHelperLetContinue,
+      `ArithmeticModeTest.rangePropositionHelperLetTail,
       `ArithmeticModeTest.booleanHelperRelationChoiceLeft,
       `ArithmeticModeTest.booleanHelperRelationChoiceRight,
       `ArithmeticModeTest.booleanHelperRelationChoiceFalse,
