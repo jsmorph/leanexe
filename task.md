@@ -943,15 +943,16 @@ The corpus contains 1623 declarations. Evidence is in
 [the Boolean step inspection archive](proofs/compiler/boolean-step-cases-2026-09-27/README.md).
 
 Current capability: generated Boolean step matcher declarations. Exact safe/total
-declaration recognition is proved (69 targets), including the type, forwarding
-body and sole universe parameter. The native forwarding identity has no axioms;
-recognition acceptance/soundness use only the three standard logical axioms.
-Four real generated matcher references and a canonically defined dispatcher with
-an ordinary name are recognized; six unsupported declarations are rejected.
-Lean shares the generated matcher between examples. All four production admission
-probes still reject: the independent source expansion relation, environment-aware
-extraction, public source-to-WASM connection and V8 checks remain to be completed.
-The existing pure extraction path and fixed match probe are preserved.
+recognition is proved (69 targets), including type, forwarding body and universe.
+Four generated matcher references and a normally named dispatcher are recognized;
+six unsupported declarations are rejected. The independent source expansion and
+normalization relations pass (87 targets). Executable normalization is proved
+sound and complete for that relation (90 targets). Environment-aware extraction
+preserves direct extraction and proves correctness for the original source in its
+environment (210 targets). Four generated-match programs pass 96 native/IR
+comparisons and 20 invalid-input checks. All new audits use only standard axioms.
+Production entry integration, the public source-to-WASM theorem and independent
+V8 checks remain pending. The fixed pure match probe remains unchanged.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
