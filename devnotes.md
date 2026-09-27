@@ -17748,3 +17748,9 @@ These proofs represent scratch locals as a list with explicit updates.  The shar
 The column-iteration theorem now composes the candidate call with the checked control flow.  The complete column-loop theorem returns the first successful source candidate, or proves every column unsuccessful.  Its invariant records unsuccessful earlier columns, protected memory, the remaining allocation budget, and the decreasing number of columns.  Successful results retain owned, disjoint row and column arrays and freshness relative to the original caller.  The loop charges at most `width * (208 + determinantBytes(k+1))` bytes for a basis of order `k`.
 
 The iteration and loop each check in about one second with standard logical axioms.  The first-result proof uses prefix properties of list search, without enumerating inputs.  The outer row scan and complete extension call remain open.  Source and binary bytes are unchanged.
+
+### Beck complete row-search loop
+
+The outer loop now composes column search for every matrix row and returns the first successful source extension.  Its invariant records all unsuccessful earlier rows, protected memory, and the remaining allocation budget.  The loop terminates by the decreasing row count and charges at most `(208 + determinantBytes(k+1)) * width * (matrix.size / width)` bytes.  Its result preserves owned, disjoint candidate arrays and their freshness relative to the original caller.
+
+The outer control-flow proof checks its five release guards, result installation, success exit, and checked row increment.  Guard execution checks in about 23 seconds.  Iteration and loop composition check in about two seconds with standard logical axioms.  The complete extension function still needs entry and return composition.  Source and binary bytes remain unchanged.
