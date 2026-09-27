@@ -556,5 +556,15 @@
   "rangeBoolResultBindFlag",
   "rangeBoolResultBindIdInputs",
   "rangeBoolResultBindIdAction",
-  "rangeBoolResultBindNestedResult"
+  "rangeBoolResultBindNestedResult",
+  "rangeBoolWordSetupLet",
+  "rangeBoolWordSetupChain",
+  "rangeBoolWordSetupBind",
+  "rangeBoolWordSetupCount",
+  "rangeBoolWordSetupExit",
+  "rangeBoolWordSetupContinue",
+  "rangeBoolWordSetupStride",
+  "rangeBoolWordSetupCapture",
+  "rangeBoolWordSetupFlag",
+  "rangeBoolWordSetupId"
 ]

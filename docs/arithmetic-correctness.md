@@ -28,7 +28,12 @@ standard Boolean Id run/pure wrappers may surround the binding. Standard Id mona
 Boolean continuation: `let value ← loop; return value == seed`. The word input
 and Boolean output may retain Id layers, and the continuation's parameter type
 must exactly match the bind input. The full standard Id bind instance is checked.
-Scalar setup before the Boolean loop remains outside these forms. Public parameter
+Scalar UInt64 let bindings and word-valued Id actions may also precede these
+Boolean loops, with arbitrary nesting of supported setup expressions. Their
+values can supply loop bounds, initial values, step captures and the final
+Boolean computation. Unused setup expressions are checked. Boolean setup and
+local helper declarations outside the Boolean loop binding remain separate
+unsupported forms. Public parameter
 domains may retain any number of standard Id layers. Declared and lambda domains
 must have the same base scalar kind; differing Id depths preserve their meaning.
 Custom annotation heads, wrong universes and metadata inside parameter domains
