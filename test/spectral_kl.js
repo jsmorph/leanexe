@@ -8,7 +8,7 @@ const host = require('./wasmtime_host');
 const moduleName = 'LeanExe.Examples.SpectralKL';
 const outDir = path.join('.lake', 'build', 'spectral-kl');
 const wasm = path.join(outDir, 'spectral-kl.wasm');
-const entries = ['equalMoments', 'kernel2'];
+const entries = ['equalMoments', 'kernel2', 'kernel40', 'scalarMoments', 'fromSamples'];
 
 function bits(value) {
   const b = Buffer.alloc(8);
@@ -70,6 +70,43 @@ function main() {
     assert.equal(call('kernel2', [bits(d)]).status, 1n);
   }
   console.log(`spectral KL iteration 2: 10 quadrature comparisons and 4 rejections passed; max error ${maxError}`);
+  const deltas = [-0.5, 0.5, -0, 0, -1e-16, 1e-16, -1e-8, 1e-8];
+  for (let i=0; i<=100; i++) deltas.push(i/100-0.5);
+  const oracle = JSON.parse(runChecked(['python3', 'test/spectral_kl_oracle.py'], {
+    input: JSON.stringify(deltas), encoding: 'utf8',
+  }).stdout);
+  maxError = 0;
+  for (let i=0; i<deltas.length; i++) {
+    const result = call('kernel40', [bits(deltas[i])]);
+    assert.equal(result.status, 0n);
+    const error = Math.abs(result.value - Number(oracle[i]));
+    maxError = Math.max(maxError, error);
+    assert.ok(error <= 1e-14, `kernel40(${deltas[i]}) error ${error}`);
+  }
+  for (const [p,q,eta] of [
+    [[0.25,0.5,0.75],[-0.25,0,0.25],1], [[-1,1],[-1,1],1],
+    [[1],[0.9],2], [[-0,0],[0,-0],0.25],
+  ]) {
+    const mean = a => a.reduce((s,x)=>s+x,0)/a.length;
+    const second = a => a.reduce((s,x)=>s+x*x,0)/a.length;
+    const a = second(p)+eta, b = second(q)+eta, d = mean(p)-mean(q);
+    const expected = d*d/b*integral(a/b-1);
+    const result = host.call(wasm, 'fromSamples', 'slots:2',
+      [host.arrayU64(p.map(bits)), host.arrayU64(q.map(bits)), host.i64(bits(eta))])
+      .split(/\s+/).map(x=>BigInt.asUintN(64,BigInt(x)));
+    assert.equal(result[0],0n);
+    assert.ok(Math.abs(number(result[1])-expected) < 1e-13);
+  }
+  for (const [p,q,eta,status] of [
+    [[],[1],1,1n], [[NaN],[1],1,1n], [[17],[1],1,1n],
+    [[0],[0],0,1n], [[1],[0],0.25,2n],
+  ]) {
+    const result = host.call(wasm,'fromSamples','slots:2',
+      [host.arrayU64(p.map(bits)),host.arrayU64(q.map(bits)),host.i64(bits(eta))])
+      .split(/\s+/).map(x=>BigInt.asUintN(64,BigInt(x)));
+    assert.deepEqual(result,[status,0n]);
+  }
+  console.log(`spectral KL iteration 3: ${deltas.length} high-precision kernel checks; max error ${maxError}; sample-to-score and rejection checks passed`);
 }
 if (require.main === module) main();
 module.exports = { bits, number, call, build, wasm };

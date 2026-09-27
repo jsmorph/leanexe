@@ -64,3 +64,24 @@ delta = ±10⁻⁸ and values close to machine epsilon, plus four rejection case
 Largest observed error was 0.009538972213441799, within the proved bound.
 This intentionally coarse approximation provides a checked starting point for
 the next accuracy improvement. GPU decision: still a small scalar kernel.
+
+### Iteration 3 — accurate kernel and observations to scalar score
+
+Replaced the coarse kernel in the estimator with degree 40. The reusable
+`series_error` theorem bounds any truncation length; `horner_error` exploits
+contraction on |delta| ≤ 1/2 to bound rounding independently of polynomial
+length. `kernel40_error` combines these into absolute error ≤ 10⁻¹⁴. Lean
+checks every binary64 coefficient against its exact rational value.
+
+The WASM gate passes 109 comparisons with an independent 100-digit decimal
+logarithm oracle. Maximum observed kernel error: 5.551115123125783e-16. The
+sample-to-score entry also passes quadrature comparisons and rejection tests.
+It accepts bounded scalar samples and regularization, and explicitly rejects
+ratios outside the current kernel interval. The kernel theorem covers the
+pure IEEE model; moment accumulation and the complete score currently have
+execution tests, not a composed numerical theorem. GPU decision: retain CPU
+for this scalar iteration; introduce GPU at the full batch Gram computation.
+
+The compiler rejected a 41-element array literal through `List.toArray`.
+Constructing the coefficient array with `Array.push` compiles successfully and
+preserves the checked coefficient-list equality.
