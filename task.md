@@ -1045,10 +1045,13 @@ probes compile. The corpus contains 1707 declarations. Evidence is in
 [the unit-continuation archive](proofs/compiler/boolean-step-unit-function-2026-09-27/README.md).
 
 Current capability: binary Boolean helper declarations around word-result loops.
-All six fixed probes reject. Preserve them, reuse the scalar binary predicate
-kind, and prove source evaluation, totality, extraction, complete admission and
-IR invariants before full WASM and independent engine checks. Boolean-result
-outer loops, multiple loops and the remaining dialect still need proofs.
+All six fixed probes initially reject. Source evaluation and totality pass 84
+targets. Extraction, termination and the exact declaration equation pass on the
+first isolated check. Complete acceptance, source reconstruction, correctness at
+all loop stores and IR invariants pass 201 targets on the first combined build.
+Function integration, focused tests and full WASM/independent engine checks remain.
+Boolean-result outer loops, multiple loops and the rest of the dialect still need
+proofs.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
