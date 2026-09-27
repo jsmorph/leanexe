@@ -27,7 +27,7 @@ theorem matrixRowStable.refl (saved : MatrixSaved) : matrixRowStable saved saved
 theorem matrixRowStable.trans {a b c : MatrixSaved} (ab : matrixRowStable a b) (bc : matrixRowStable b c) :
     matrixRowStable a c := fun k hk => (bc k hk).trans (ab k hk)
 
-def matrixRowAfter (owner : UInt64) (after : MatrixAfter) (k : Fin 9) : Value :=
+def matrixRowAfter (owner : UInt64) (after : MatrixAfter) (k : Fin 11) : Value :=
   if k.val = 4 then .i64 owner else after k
 
 def matrixTail (tail : MatrixTail) : List Value :=
@@ -62,7 +62,7 @@ def matrixEntryScratch (inputPointer : UInt64) (categories category index : Nat)
     | 14 => index.toUInt64
     | _ => tail k
 
-def matrixEntryAfter (input : Input) (initialOwner : UInt64) (isFrozen : Bool) (after : MatrixAfter) (k : Fin 9) : Value :=
+def matrixEntryAfter (input : Input) (initialOwner : UInt64) (isFrozen : Bool) (after : MatrixAfter) (k : Fin 11) : Value :=
   if !isFrozen && k.val = 0 then .i64 input.categories.toUInt64 else matrixRowAfter initialOwner after k
 
 def matrixEntry (input : Input) (point : Point) (category index : Nat) : UInt64 :=

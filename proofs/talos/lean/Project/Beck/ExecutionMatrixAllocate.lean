@@ -21,13 +21,13 @@ def matrixRowBody : Wasm.Program :=
   | _ => []
 
 abbrev MatrixSaved := Fin 63 → Value
-abbrev MatrixAfter := Fin 9 → Value
+abbrev MatrixAfter := Fin 11 → Value
 
 def matrixPrefix (saved : MatrixSaved) : List Value :=
   [saved 0, saved 1, saved 2, saved 3, saved 4, saved 5, saved 6, saved 7, saved 8, saved 9, saved 10, saved 11, saved 12, saved 13, saved 14, saved 15, saved 16, saved 17, saved 18, saved 19, saved 20, saved 21, saved 22, saved 23, saved 24, saved 25, saved 26, saved 27, saved 28, saved 29, saved 30, saved 31, saved 32, saved 33, saved 34, saved 35, saved 36, saved 37, saved 38, saved 39, saved 40, saved 41, saved 42, saved 43, saved 44, saved 45, saved 46, saved 47, saved 48, saved 49, saved 50, saved 51, saved 52, saved 53, saved 54, saved 55, saved 56, saved 57, saved 58, saved 59, saved 60, saved 61, saved 62]
 
 def matrixSuffix (after : MatrixAfter) : List Value :=
-  [after 0, after 1, after 2, after 3, after 4, after 5, after 6, after 7, after 8]
+  [after 0, after 1, after 2, after 3, after 4, after 5, after 6, after 7, after 8, after 9, after 10]
 
 def matrixPushFrame (params : List Value) (saved : MatrixSaved) (source : UInt64) (size : Nat)
     (target counter value padding79 padding80 need previous current capacity next result : UInt64)

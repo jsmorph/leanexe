@@ -24,7 +24,7 @@ def matrixOuterFinishedSaved (input : Input) (point : Point)
   | 61 => .i64 1
   | _ => matrixBranchSaved input category pointer owner saved k
 
-def matrixOuterFinishedAfter (pointer : UInt64) (after : MatrixAfter) (k : Fin 9) : Value :=
+def matrixOuterFinishedAfter (pointer : UInt64) (after : MatrixAfter) (k : Fin 11) : Value :=
   match k.val with
   | 6 => .i64 0
   | 7 | 8 => .i64 pointer
