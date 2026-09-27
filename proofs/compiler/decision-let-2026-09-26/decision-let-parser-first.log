@@ -1,0 +1,43 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [21/42] Built LeanExe.Source.ScalarGuardDecision (887ms)
+✔ [39/43] Built LeanExe.Source.ScalarCompoundGuard (882ms)
+✖ [43/47] Building LeanExe.Extract.ScalarGuardDecision (963ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarGuardDecision.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuardDecision.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuardDecision.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuardDecision.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuardDecision.setup.json --json
+error: LeanExe/Extract/ScalarGuardDecision.lean:23:9: failed to synthesize instance of type class
+  Decidable (leftProposition ∈ leftChoices)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+error: LeanExe/Extract/ScalarGuardDecision.lean:23:51: failed to synthesize instance of type class
+  Decidable (rightProposition ∈ rightChoices)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+error: LeanExe/Extract/ScalarGuardDecision.lean:38:79: unsolved goals
+n : Nat
+operation : Junction
+left right leftEvidence rightEvidence : Lean.Expr
+leftChoices rightChoices : List Lean.Expr
+leftProposition rightProposition : Lean.Expr
+leftMember : leftProposition ∈ leftChoices
+rightMember : rightProposition ∈ rightChoices
+⊢ sorry () = true
+warning: LeanExe/Extract/ScalarGuardDecision.lean:39:8: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarGuardDecision.lean:39:86: This simp argument is unused:
+  leftMember
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [junctionEvidenceOperands?, stripDecisionNegations_accepts, Junction.evidence, rightMember]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarGuardDecision.lean:39:98: This simp argument is unused:
+  rightMember
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [junctionEvidenceOperands?, stripDecisionNegations_accepts, Junction.evidence, leftMember]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarGuardDecision.lean:49:13: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarGuardDecision.lean:41:8: declaration uses `sorry`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarGuardDecision
+error: build failed

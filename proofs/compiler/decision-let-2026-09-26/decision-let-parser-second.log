@@ -1,0 +1,21 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [45/47] Building LeanExe.Extract.ScalarGuardDecision (916ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarGuardDecision.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuardDecision.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuardDecision.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuardDecision.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuardDecision.setup.json --json
+error: LeanExe/Extract/ScalarGuardDecision.lean:61:6: Type mismatch: After simplification, term
+  h✝¹
+ has type
+  (conditionChoice? leftChoices leftProposition && conditionChoice? rightChoices rightProposition &&
+      Source.ExprEquality.same evidence
+        (GuardNegation.evidence n (operation.condition left right)
+          (operation.evidence leftProposition rightProposition leftEvidence rightEvidence))) =
+    true
+but is expected to have type
+  leftProposition ∈ leftChoices ∧
+    rightProposition ∈ rightChoices ∧
+      evidence =
+        GuardNegation.evidence n (operation.condition left right)
+          (operation.evidence leftProposition rightProposition leftEvidence rightEvidence)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarGuardDecision
+error: build failed

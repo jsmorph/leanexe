@@ -294,14 +294,15 @@ comparisons, 16,152 invalid-input checks and 576 controls. Prior tests pass 78,9
 comparisons, 47,817 invalid-input checks and 1,792 controls. Evidence is in
 [the proposition-let archive](proofs/compiler/proposition-let-2026-09-26/README.md).
 
-Let reduction in conjunction and disjunction decision arguments passes source
-membership, decision acceptance/soundness, parser reconstruction, scalar and loop
-correctness, and both IR invariant checks. Each argument may retain its original
-proposition or reduce a prefix of its leading lets. Original conditions and all
-bound values remain checked. New tests pass 96,948 native/IR comparisons, 50,720
-invalid-input checks and 2,336 controls. Prior tests pass 103,336 comparisons,
-63,969 invalid-input checks and 2,368 controls. The full source-to-WASM and
-independent engine checks are pending.
+Let reduction in conjunction and disjunction decision arguments is complete.
+Retained and reduced arguments are checked against a proved source relation;
+original conditions and all bound values remain checked. The general
+source-to-WASM theorem and eighteen audits pass. Native Lean/V8 agree on 509
+inputs across 28 declarations, including thirteen ranges; eighteen shared
+modules retain identical bytes. New tests pass 96,948 native/IR comparisons,
+50,720 invalid-input checks and 2,336 controls. Prior tests pass 103,336
+comparisons, 63,969 invalid-input checks and 2,368 controls. Evidence is in
+[the decision-let archive](proofs/compiler/decision-let-2026-09-26/README.md).
 
 Next: standalone propositional negation of local Boolean values, retained instance
 and Bool-parameter Id wrappers, and broader signatures. Full-dialect correctness
