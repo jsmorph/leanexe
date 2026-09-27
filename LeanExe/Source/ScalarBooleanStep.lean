@@ -48,6 +48,47 @@ def scalarFunctionExpr (input output : Lean.Expr)
   .letE name (.forallE typeName input output typeBi)
     (.lam paramName input value paramBi) body nondep
 
+/-- A local Boolean-step continuation with an exact leading Unit or PUnit binder. -/
+structure UnitBooleanFunction where
+  name : Lean.Name
+  unitForm : UnitSyntax
+  unitTypeName : Lean.Name
+  unitName : Lean.Name
+  unitTypeBi : Lean.BinderInfo
+  unitBi : Lean.BinderInfo
+  input : BooleanType
+  output : BooleanType
+  typeName : Lean.Name
+  paramName : Lean.Name
+  typeBi : Lean.BinderInfo
+  paramBi : Lean.BinderInfo
+  body : Lean.Expr
+  continuation : Lean.Expr
+  nondep : Bool
+  deriving Repr
+
+namespace UnitBooleanFunction
+
+def expr (shape : UnitBooleanFunction) : Lean.Expr :=
+  .letE shape.name
+    (.forallE shape.unitTypeName shape.unitForm.type
+      (.forallE shape.typeName shape.input.expr (resultType shape.output) shape.typeBi) shape.unitTypeBi)
+    (.lam shape.unitName shape.unitForm.type
+      (.lam shape.paramName shape.input.expr shape.body shape.paramBi) shape.unitBi)
+    shape.continuation shape.nondep
+
+theorem body_size (shape : UnitBooleanFunction) : sizeOf shape.body < sizeOf shape.expr := by
+  simp [expr]; omega
+
+theorem continuation_size (shape : UnitBooleanFunction) : sizeOf shape.continuation < sizeOf shape.expr := by
+  simp [expr]; omega
+
+/-- Native application supplies the leading unit value before the Boolean value. -/
+theorem apply {α : Type} (body : α → Bool → ForInStep Bool) (unit : α) (flag : Bool) :
+    (fun u b => body u b) unit flag = body unit flag := rfl
+
+end UnitBooleanFunction
+
 /-- Nondependent inspection checks the complete result and binds its Boolean payload. -/
 def casesExpr (output : BooleanType) (motiveName doneName yieldName : Lean.Name)
     (motiveBi doneBi yieldBi : Lean.BinderInfo) (value doneBody yieldBody : Lean.Expr) : Lean.Expr :=
@@ -83,6 +124,15 @@ inductive Eval : Lean.Expr → List Value → ForInStep Bool → Prop where
       (value : EvalWith (.app (.const ``Bool.toUInt64 []) a) (values.map Value.toScalar) (Bool.toUInt64 flag))
       (body : Eval b (.scalar (.boolean flag) :: values) outcome) :
       Eval (bindExpr input.expr output name bi a b) values outcome
+
+  | letUnitBooleanFunction (helper : UnitBooleanFunction)
+      (function : ∀ flag, Eval helper.body (.scalar (.boolean flag) :: .scalar .unit :: values) (f flag))
+      (body : Eval helper.continuation (.unitBooleanFunction helper.unitForm f :: values) outcome) :
+      Eval helper.expr values outcome
+  | unitBooleanApply (unitForm : UnitSyntax)
+      (function : values[index]? = some (.unitBooleanFunction unitForm f))
+      (argument : EvalWith (.app (.const ``Bool.toUInt64 []) a) (values.map Value.toScalar) (Bool.toUInt64 flag)) :
+      Eval (.app (.app (.bvar index) unitForm.value) a) values (f flag)
 
   | letWordFunction (input : ResultType) (output : BooleanType)
       (function : ∀ x, Eval a (.scalar (.word x) :: values) (f x))
@@ -169,6 +219,15 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       (value : SupportedWith (types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) a))
       (body : Supported (.scalar .boolean :: types) b) :
       Supported types (bindExpr input.expr output name bi a b)
+
+  | letUnitBooleanFunction (helper : UnitBooleanFunction)
+      (function : Supported (.scalar .boolean :: .scalar .unit :: types) helper.body)
+      (body : Supported (.unitBooleanFunction helper.unitForm :: types) helper.continuation) :
+      Supported types helper.expr
+  | unitBooleanApply (unitForm : UnitSyntax)
+      (function : types[index]? = some (.unitBooleanFunction unitForm))
+      (argument : SupportedWith (types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) a)) :
+      Supported types (.app (.app (.bvar index) unitForm.value) a)
 
   | letWordFunction (input : ResultType) (output : BooleanType)
       (function : Supported (.scalar .word :: types) a)
@@ -277,6 +336,18 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
     obtain ⟨outcome, body⟩ := ih (.scalar (.boolean flag) :: values) (by simp [Value.kind, Scalar.Value.kind, typed])
     exact ⟨outcome, .bindBoolean input output evaluated body⟩
+  | letUnitBooleanFunction helper _ _ ihf ihb =>
+    have total (flag : Bool) := ihf (.scalar (.boolean flag) :: .scalar .unit :: values)
+      (by simp [Value.kind, Scalar.Value.kind, typed])
+    let f := fun flag => (total flag).choose
+    obtain ⟨outcome, evaluated⟩ := ihb (.unitBooleanFunction helper.unitForm f :: values)
+      (by simp [Value.kind, typed])
+    exact ⟨outcome, .letUnitBooleanFunction helper (fun flag => (total flag).choose_spec) evaluated⟩
+  | unitBooleanApply unitForm function argument =>
+    obtain ⟨f, found⟩ := unitBooleanFunction_lookup typed function
+    obtain ⟨encoded, evaluated⟩ := argument.evaluates (values.map Value.toScalar) (typed_projection typed)
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    exact ⟨f flag, .unitBooleanApply unitForm found evaluated⟩
   | letWordFunction input output _ _ ihf ihb =>
     have total := fun x => ihf (.scalar (.word x) :: values) (by simp [Value.kind, Scalar.Value.kind, typed])
     let f := fun x => (total x).choose

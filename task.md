@@ -1034,11 +1034,13 @@ before the extension. The corpus contains 1699 declarations. Evidence is in
 
 Current capability: generated Unit-to-Bool-to-Boolean-step continuations. The
 unchanged branch-command example rejects through both direct and environment
-extraction; Lean introduces this helper when both branches update the flag before
-a shared early-exit condition. Preserve it and prove the distinct function kind,
-source evaluation, totality, extraction, acceptance and IR invariants before the
-full WASM and independent engine checks. Binary predicates around whole loops,
-multiple loops and the remaining dialect still need proofs.
+extraction. Six additional native probes also reject after fixing explicit PUnit
+universe annotations. A distinct function kind retains Unit/PUnit at typed lookup;
+source values, compiled bindings, matching, totality and invariant projections
+pass 21 targets. Source evaluation and totality pass 69 targets. Exact recognition,
+extraction, general compiler proofs, tests and WASM/engine checks remain. Binary
+predicates around whole loops, multiple loops and the remaining dialect still
+need proofs.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

@@ -1,4 +1,5 @@
 import LeanExe.Source.ScalarValues
+import LeanExe.Source.ScalarUnit
 
 namespace LeanExe.Source.Scalar.BooleanStep
 
@@ -8,6 +9,7 @@ inductive BindingKind where
   | result
   | wordFunction
   | booleanFunction
+  | unitBooleanFunction (unitForm : UnitSyntax)
   deriving DecidableEq, Repr
 
 inductive Value where
@@ -16,6 +18,7 @@ inductive Value where
   | result (outcome : ForInStep Bool)
   | wordFunction (apply : UInt64 → ForInStep Bool)
   | booleanFunction (apply : Bool → ForInStep Bool)
+  | unitBooleanFunction (unitForm : UnitSyntax) (apply : Bool → ForInStep Bool)
 
 def Value.kind : Value → BindingKind
   | .scalar value => .scalar value.kind
@@ -23,14 +26,15 @@ def Value.kind : Value → BindingKind
   | .result _ => .result
   | .wordFunction _ => .wordFunction
   | .booleanFunction _ => .booleanFunction
+  | .unitBooleanFunction unitForm _ => .unitBooleanFunction unitForm
 
 def Value.toScalar : Value → Scalar.Value
   | .scalar value => value
-  | .resultFunction _ | .result _ | .wordFunction _ | .booleanFunction _ => .unit
+  | .resultFunction _ | .result _ | .wordFunction _ | .booleanFunction _ | .unitBooleanFunction _ _ => .unit
 
 def BindingKind.toScalar : BindingKind → Scalar.BindingKind
   | .scalar kind => kind
-  | .resultFunction | .result | .wordFunction | .booleanFunction => .unit
+  | .resultFunction | .result | .wordFunction | .booleanFunction | .unitBooleanFunction _ => .unit
 
 @[simp] theorem Value.toScalar_kind (value : Value) :
     value.toScalar.kind = value.kind.toScalar := by cases value <;> rfl
@@ -54,7 +58,7 @@ theorem wordFunction_lookup {values : List Value} {types : List BindingKind} {in
   obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases value with
   | wordFunction f => exact ⟨f, found⟩
-  | scalar _ | resultFunction _ | result _ | booleanFunction _ => cases kind
+  | scalar _ | resultFunction _ | result _ | booleanFunction _ | unitBooleanFunction _ _ => cases kind
 
 theorem booleanFunction_lookup {values : List Value} {types : List BindingKind} {index : Nat}
     (typed : values.map Value.kind = types) (present : types[index]? = some .booleanFunction) :
@@ -63,7 +67,7 @@ theorem booleanFunction_lookup {values : List Value} {types : List BindingKind} 
   obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases value with
   | booleanFunction f => exact ⟨f, found⟩
-  | scalar _ | resultFunction _ | result _ | wordFunction _ => cases kind
+  | scalar _ | resultFunction _ | result _ | wordFunction _ | unitBooleanFunction _ _ => cases kind
 
 theorem result_lookup {values : List Value} {types : List BindingKind} {index : Nat}
     (typed : values.map Value.kind = types) (present : types[index]? = some .result) :
@@ -72,7 +76,7 @@ theorem result_lookup {values : List Value} {types : List BindingKind} {index : 
   obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases value with
   | result outcome => exact ⟨outcome, found⟩
-  | scalar _ | resultFunction _ | wordFunction _ | booleanFunction _ => cases kind
+  | scalar _ | resultFunction _ | wordFunction _ | booleanFunction _ | unitBooleanFunction _ _ => cases kind
 
 theorem resultFunction_lookup {values : List Value} {types : List BindingKind} {index : Nat}
     (typed : values.map Value.kind = types) (present : types[index]? = some .resultFunction) :
@@ -81,6 +85,16 @@ theorem resultFunction_lookup {values : List Value} {types : List BindingKind} {
   obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
   cases value with
   | resultFunction f => exact ⟨f, found⟩
-  | scalar _ | result _ | wordFunction _ | booleanFunction _ => cases kind
+  | scalar _ | result _ | wordFunction _ | booleanFunction _ | unitBooleanFunction _ _ => cases kind
+
+theorem unitBooleanFunction_lookup {values : List Value} {types : List BindingKind} {index : Nat}
+    {unitForm : UnitSyntax} (typed : values.map Value.kind = types)
+    (present : types[index]? = some (.unitBooleanFunction unitForm)) :
+    ∃ f, values[index]? = some (.unitBooleanFunction unitForm f) := by
+  rw [← typed, List.getElem?_map] at present
+  obtain ⟨value, found, kind⟩ := Option.map_eq_some_iff.mp present
+  cases value with
+  | unitBooleanFunction actual f => cases kind; exact ⟨f, found⟩
+  | scalar _ | resultFunction _ | result _ | wordFunction _ | booleanFunction _ => cases kind
 
 end LeanExe.Source.Scalar.BooleanStep
