@@ -478,5 +478,9 @@
   "rangeBooleanBoundResultStep",
   "rangeBooleanBoundResultCondition",
   "rangeBooleanBoundResultOuter",
-  "rangeBooleanBoundResultHelper"
+  "rangeBooleanBoundResultHelper",
+  "rangeBooleanWordBoundResultStep",
+  "rangeBooleanWordBoundResultCondition",
+  "rangeBooleanWordBoundResultOuter",
+  "rangeBooleanWordBoundResultHelper"
 ]
