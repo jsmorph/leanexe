@@ -33,6 +33,11 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
       match naturalLiteral? numeral with
       | some n => some (.u64 n)
       | none => none
+  | .app (.const ``Nat.toUInt64 []) (.bvar index) => locals[index]?.bind ScalarBinding.natural?
+  | .app (.const ``Nat.toUInt64 []) numeral =>
+      match naturalLiteral? numeral with
+      | some n => some (.u64 n)
+      | none => none
   | .app (.app (.app (.const ``OfNat.ofNat [.zero]) sourceType) numeral) evidence =>
       match scalarResultType? sourceType with
       | none => none
@@ -988,6 +993,14 @@ theorem extractScalarExprWith_naturalLiteral (locals : List ScalarBinding) (leve
   | ofNat type => simp [extractScalarExprWith, naturalLiteral?, naturalType_accepts type]
   | metadata literal =>
     simp [extractScalarExprWith, naturalLiteral_accepts (.metadata literal)]
+
+theorem extractScalarExprWith_naturalLiteralToUInt64 (locals : List ScalarBinding)
+    {n : Nat} {numeral : Lean.Expr} (meaning : LeanExe.Source.Scalar.NaturalLiteral n numeral) :
+    extractScalarExprWith locals (.app (.const ``Nat.toUInt64 []) numeral) = some (.u64 n) := by
+  cases meaning with
+  | raw => simp [extractScalarExprWith, naturalLiteral?]
+  | ofNat type => simp [extractScalarExprWith, naturalLiteral?, naturalType_accepts type]
+  | metadata literal => simp [extractScalarExprWith, naturalLiteral_accepts (.metadata literal)]
 
 theorem extractScalarExprWith_idLet (locals : List ScalarBinding)
     (name : Lean.Name) (type value body : Lean.Expr) (nondep : Bool) :

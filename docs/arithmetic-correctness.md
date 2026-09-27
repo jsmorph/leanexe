@@ -36,7 +36,8 @@ checker tracks unapplied arguments and requires the same numeral at the exact
 standard instance leaf. Unknown instance variables, custom instance values,
 unapplied lambdas and extra applications are rejected. This handles elaborator
 wrappers introduced inside captured-helper and dependent-proof scopes. Standard
-Nat numeral expressions are accepted as arguments to `UInt64.ofNat` and in the
+Nat numeral expressions are accepted as arguments to `UInt64.ofNat` or
+`Nat.toUInt64` and in the
 numeric positions of UInt64 OfNat values and instances. The Nat type and value
 may carry metadata, including borrowedness. The source grammar retains that
 syntax and checks the exact standard Nat instance and its matching number.
@@ -361,7 +362,7 @@ smaller than 2^64 or supported UInt64 expressions followed by `.toNat`. Omitting
 the start means zero. The step defaults to one and may be any positive standard
 Nat literal smaller than 2^64, as in `[first:stop:2]`. Steps may yield or finish early with `break`.
 The source index retains its Nat type, including Lean borrowing metadata on
-that type, and may be converted explicitly with `UInt64.ofNat i`. Pure UInt64
+that type, and may be converted with `UInt64.ofNat i` or `i.toUInt64`. Pure UInt64
 bindings and arithmetic may precede and follow the loop. Local scalar helpers
 may also be defined before the loop, using arbitrary finite UInt64 parameter
 lists and the supported Unit-prefixed argument forms. Their calls may appear in endpoints, the initial

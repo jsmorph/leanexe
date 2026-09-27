@@ -4965,6 +4965,64 @@ def rangeBooleanPredicateOuterLetId (count seed : UInt64) : UInt64 := Id.run do
     if next && a % 5 == 0 then break
   return if @Eq Bool flag true then a + next.toUInt64 else a
 
+def natAliasLiteral (x y : UInt64) : UInt64 := x + (5 : Nat).toUInt64 - y
+
+def natAliasOverflow (x y : UInt64) : UInt64 :=
+  x + (18446744073709551621 : Nat).toUInt64 - y
+
+def natAliasChoice (x y : UInt64) : UInt64 :=
+  if x < (7 : Nat).toUInt64 then y + (19 : Nat).toUInt64 else x - (3 : Nat).toUInt64
+
+def natAliasHelper (x y : UInt64) : UInt64 :=
+  let f := fun n : UInt64 => n + (18446744073709551616 : Nat).toUInt64
+  f x + f y
+
+def natAliasDo (x y : UInt64) : UInt64 := Id.run do
+  let a ← pure (x + (11 : Nat).toUInt64)
+  let b ← pure (y + (13 : Nat).toUInt64)
+  return a ^^^ b
+
+def natAliasPredicate (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != (3 : Nat).toUInt64
+  let g := fun n : UInt64 => f (n == (7 : Nat).toUInt64)
+  (g y).toUInt64 + x
+
+def rangeNatAliasStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + (7 : Nat).toUInt64
+  return a
+
+def rangeNatAliasCondition (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [1:count.toNat:2] do
+    if _h : i.toUInt64 == a then
+      a := a + (5 : Nat).toUInt64
+      break
+    a := a + i.toUInt64
+    if a % (3 : Nat).toUInt64 == 0 then continue
+    a := a + 1
+  return a
+
+def rangeNatAliasCapture (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun n : UInt64 => n + (5 : Nat).toUInt64
+  let mut a := seed
+  for i in [:count.toNat] do
+    let g := fun n : UInt64 => f n + i.toUInt64
+    a := g a
+  return f a
+
+def rangeNatAliasPredicateResult (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != seed
+    let g := fun b : Bool => !(f b)
+    if g (i.toUInt64 < seed) then
+      a := a + 7
+      break
+    a := a + i.toUInt64 + 1
+  return a
+
 def booleanPredicateResultBool (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => !b && x != 0
   let g := fun b : Bool => f b
@@ -7528,6 +7586,16 @@ run_elab do
       `ArithmeticModeTest.rangeBooleanApplyContinue,
       `ArithmeticModeTest.rangeBooleanApplyCapture,
       `ArithmeticModeTest.boolFnBooleanResult,
+      `ArithmeticModeTest.natAliasLiteral,
+      `ArithmeticModeTest.natAliasOverflow,
+      `ArithmeticModeTest.natAliasChoice,
+      `ArithmeticModeTest.natAliasHelper,
+      `ArithmeticModeTest.natAliasDo,
+      `ArithmeticModeTest.natAliasPredicate,
+      `ArithmeticModeTest.rangeNatAliasStep,
+      `ArithmeticModeTest.rangeNatAliasCondition,
+      `ArithmeticModeTest.rangeNatAliasCapture,
+      `ArithmeticModeTest.rangeNatAliasPredicateResult,
       `ArithmeticModeTest.booleanPredicateResultBool,
       `ArithmeticModeTest.booleanPredicateResultWord,
       `ArithmeticModeTest.booleanPredicateResultNested,

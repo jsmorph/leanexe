@@ -470,5 +470,9 @@
   "rangeBooleanPredicateResultOuterBool",
   "rangeBooleanPredicateResultOuterWord",
   "rangeBooleanPredicateResultOuterNested",
-  "rangeBooleanPredicateResultOuterWrapped"
+  "rangeBooleanPredicateResultOuterWrapped",
+  "rangeNatAliasStep",
+  "rangeNatAliasCondition",
+  "rangeNatAliasCapture",
+  "rangeNatAliasPredicateResult"
 ]
