@@ -114,13 +114,13 @@ def booleanLocalOperands? : Lean.Expr → Option BooleanLocal
           match scalarResultType? application.input with
           | some annotation => do
               let b ← booleanLocalOperands? application.body
-              pure (.wordBinding 0 application.parameterName (.namedApplication application.shape)
+              pure (.wordBinding 0 application.parameterName (.namedApplication application.shape application.tail)
                 application.argument b annotation)
           | none => do
               let annotation ← booleanType? application.input
               let v ← booleanLocalOperands? application.argument
               let b ← booleanLocalOperands? application.body
-              pure (.binding 0 application.parameterName (.namedApplication application.shape) v b annotation)
+              pure (.binding 0 application.parameterName (.namedApplication application.shape application.tail) v b annotation)
       | none =>
           match scalarResultType? type with
           | some annotation => do

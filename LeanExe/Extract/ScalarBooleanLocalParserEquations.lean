@@ -50,12 +50,12 @@ open LeanExe.Source.Scalar
   | application binder =>
       rw [BooleanBindingForm.expr, booleanLocalOperands?, scalarResultType_boolean, booleanType_accepts]
       rfl
-  | namedApplication shape =>
-      rw [BooleanBindingForm.expr, BooleanFunctionBinding.expr, booleanLocalOperands?]
-      have accepted := booleanFunctionApplication_accepts (⟨shape, name, type.expr, value, body⟩ : BooleanFunctionApplication)
+  | namedApplication shape tail =>
+      rw [BooleanBindingForm.expr, BooleanFunctionBinding.appliedExpr, booleanLocalOperands?]
+      have accepted := booleanFunctionApplication_accepts (⟨shape, name, type.expr, value, body, tail⟩ : BooleanFunctionApplication)
       split
       · rename_i application found
-        have same : application = (⟨shape, name, type.expr, value, body⟩ : BooleanFunctionApplication) :=
+        have same : application = (⟨shape, name, type.expr, value, body, tail⟩ : BooleanFunctionApplication) :=
           Option.some.inj (found.symm.trans accepted)
         subst application
         simp [scalarResultType_boolean, booleanType_accepts]
@@ -79,12 +79,12 @@ open LeanExe.Source.Scalar
         scalarResultType_accepts]
   | application binder =>
       rw [BooleanBindingForm.expr, booleanLocalOperands?, scalarResultType_accepts]
-  | namedApplication shape =>
-      rw [BooleanBindingForm.expr, BooleanFunctionBinding.expr, booleanLocalOperands?]
-      have accepted := booleanFunctionApplication_accepts (⟨shape, name, type.expr, value, body⟩ : BooleanFunctionApplication)
+  | namedApplication shape tail =>
+      rw [BooleanBindingForm.expr, BooleanFunctionBinding.appliedExpr, booleanLocalOperands?]
+      have accepted := booleanFunctionApplication_accepts (⟨shape, name, type.expr, value, body, tail⟩ : BooleanFunctionApplication)
       split
       · rename_i application found
-        have same : application = (⟨shape, name, type.expr, value, body⟩ : BooleanFunctionApplication) :=
+        have same : application = (⟨shape, name, type.expr, value, body, tail⟩ : BooleanFunctionApplication) :=
           Option.some.inj (found.symm.trans accepted)
         subst application
         simp [scalarResultType_accepts]

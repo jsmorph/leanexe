@@ -60,6 +60,12 @@ may precede these word conditionals. Their results may be saved for further pure
 word expressions with ordinary lets, standard Id binds or `show`; annotations
 and captures are preserved.
 
+Direct named Boolean helper calls may retain standard Id run/pure and metadata
+wrappers around the call result, including the pure introduced by `return`.
+The argument must not reference the helper binder. This applies within scalar
+expressions, conditions, loop steps and Boolean continuations after loops. Input,
+result and wrapper annotations and standard wrapper instances are checked.
+
 Boolean program bodies also compose scalar helper declarations with compound
 results, saved Boolean values and standard Id wrappers. Word-to-Bool helpers may
 call captured Bool-to-Bool helpers; repeated calls preserve lexical captures.

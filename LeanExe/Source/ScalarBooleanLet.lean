@@ -7,7 +7,7 @@ namespace LeanExe.Source.Scalar
 inductive BooleanBindingForm where
   | letE (nondep : Bool)
   | application (binder : Lean.BinderInfo)
-  | namedApplication (shape : BooleanFunctionBinding)
+  | namedApplication (shape : BooleanFunctionBinding) (tail : BooleanApplicationTail := .direct)
   | monadic (binder : Lean.BinderInfo) (result : BooleanType)
   deriving Repr
 
@@ -15,14 +15,14 @@ instance : Coe Bool BooleanBindingForm := ⟨BooleanBindingForm.letE⟩
 
 def BooleanBindingForm.nondep : BooleanBindingForm → Bool
   | .letE nondep => nondep
-  | .application _ | .namedApplication _ | .monadic _ _ => false
+  | .application _ | .namedApplication _ _ | .monadic _ _ => false
 
 def BooleanBindingForm.expr (form : BooleanBindingForm) (name : Lean.Name)
     (type value body : Lean.Expr) : Lean.Expr :=
   match form with
   | .letE nondep => .letE name type value body nondep
   | .application binder => .app (.lam name type body binder) value
-  | .namedApplication shape => shape.expr name type value body
+  | .namedApplication shape tail => shape.appliedExpr tail name type value body
   | .monadic binder result =>
       .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
         (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
@@ -36,7 +36,7 @@ theorem BooleanBindingForm.binding_size (form : BooleanBindingForm) (name : Lean
   cases form with
   | letE nondep => exact Nat.le_refl _
   | application binder => simp [expr, nondep]; omega
-  | namedApplication shape => exact shape.binding_size name type value body
+  | namedApplication shape tail => exact shape.applied_binding_size tail name type value body
   | monadic binder result => simp [expr, nondep]; omega
 
 /-- Preserve a Boolean binding around a scalar operand from its body. -/

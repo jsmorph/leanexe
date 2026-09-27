@@ -797,5 +797,9 @@
   "rangeWordChooseHelperManyFive",
   "rangeWordChooseHelperUnit",
   "rangeWordChooseHelperPunit",
-  "rangeWordChooseHelperId"
+  "rangeWordChooseHelperId",
+  "rangeBoolTailHelperCapture",
+  "rangeBoolTailHelperBoolean",
+  "rangeBoolTailHelperNestedId",
+  "rangeWordStepReturnedHelper"
 ]

@@ -8136,6 +8136,82 @@ def rangeFlagResult (flag : Bool) (count : UInt64) : UInt64 := Id.run do
     if flag && a % 7 == 0 then break
   return if flag then a + count else a - count
 
+def booleanHelperReturnWord (x y : UInt64) : UInt64 :=
+  let flag := Id.run do
+    let f := fun n : UInt64 => n == y
+    return f x
+  flag.toUInt64 + x
+
+def booleanHelperReturnBoolean (x y : UInt64) : UInt64 :=
+  let flag := Id.run do
+    let f := fun b : Bool => b && y != 7
+    return f (x != 0)
+  flag.toUInt64 * 13 + y
+
+def booleanHelperReturnNested (x y : UInt64) : UInt64 :=
+  let flag : Id (Id Bool) :=
+    let f := fun n : Id UInt64 => Id.run n != y
+    pure (pure (f x))
+  flag.toUInt64 + y
+
+def booleanHelperReturnCondition (x y : UInt64) : UInt64 :=
+  if (Id.run do
+    let f := fun b : Bool => !b || y == 0
+    return f (x == y)) then x + 3 else y - 5
+
+def booleanHelperReturnCaptured (x y : UInt64) : UInt64 :=
+  let g := fun n : UInt64 =>
+    let flag := Id.run do
+      let f := fun k : UInt64 => k != n && k == x
+      return f y
+    n + flag.toUInt64
+  g x + g y
+
+def booleanHelperReturnIgnored (x y : UInt64) : UInt64 :=
+  let flag := Id.run do
+    let f := fun (_ : Bool) => x != y
+    return f (x == 0)
+  flag.toUInt64 + 7
+
+def rangeBoolTailHelperCapture (count seed : UInt64) : Id Bool := do
+  let value ← (do
+    let f := fun b : Bool => if b then seed + 7 else seed + 3
+    let mut a := f false
+    for i in [:count.toNat] do
+      a := a + f (i.toUInt64 % 2 == 0)
+    return a)
+  let f := fun x : UInt64 => x == seed
+  return f value
+
+def rangeBoolTailHelperBoolean (count seed : UInt64) : Id Bool := do
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if a % 7 == 0 then break
+    return a)
+  let f := fun b : Bool => b || value == seed
+  return f (value % 3 == 0)
+
+def rangeBoolTailHelperNestedId (count seed : UInt64) : Id (Id Bool) := do
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if i.toUInt64 % 2 == 0 then continue
+      a := a * 3 + i.toUInt64
+    return a)
+  let f := fun n : Id (Id UInt64) => Id.run (Id.run n) != seed
+  return pure (f value)
+
+def rangeWordStepReturnedHelper (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let flag := Id.run do
+      let f := fun b : Bool => b && a % 3 != 0
+      return f (i.toUInt64 % 2 == 0)
+    if flag then a := a + i.toUInt64 + 7 else a := a * 3 + 1
+  return a
+
 def publicBoolHelpersNested (flag : Bool) (x : UInt64) : Bool :=
   let f := fun b : Bool => b && flag
   let g := fun n : UInt64 => f (n != x)
@@ -10632,6 +10708,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeWordChooseHelperUnit", (fun (x y : UInt64) => rangeWordChooseHelperUnit x y)),
    ("rangeWordChooseHelperPunit", (fun (x y : UInt64) => rangeWordChooseHelperPunit x y)),
    ("rangeWordChooseHelperId", (fun (x y : UInt64) => rangeWordChooseHelperId x y)),
+   ("rangeBoolTailHelperCapture", (fun (x y : UInt64) => (rangeBoolTailHelperCapture x y).toUInt64)),
+   ("rangeBoolTailHelperBoolean", (fun (x y : UInt64) => (rangeBoolTailHelperBoolean x y).toUInt64)),
+   ("rangeBoolTailHelperNestedId", (fun (x y : UInt64) => (rangeBoolTailHelperNestedId x y).toUInt64)),
+   ("rangeWordStepReturnedHelper", (fun (x y : UInt64) => rangeWordStepReturnedHelper x y)),
    ("rangeBoolLetIdWord", (fun (x y : UInt64) => (rangeBoolLetIdWord x y).toUInt64)),
    ("rangeBoolLetIdWordLayers", (fun (x y : UInt64) => (rangeBoolLetIdWordLayers x y).toUInt64)),
    ("rangeBoolLetIdFlag", (fun (x y : UInt64) => (rangeBoolLetIdFlag x y).toUInt64)),
@@ -11234,6 +11314,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("publicBoolHelpersShadow", (fun (x y : UInt64) => (publicBoolHelpersShadow (x != 0) y).toUInt64)),
    ("publicBoolHelpersSaved", (fun (x y : UInt64) => (publicBoolHelpersSaved (x != 0) y).toUInt64)),
    ("publicBoolHelpersUnused", (fun (x y : UInt64) => (publicBoolHelpersUnused (x != 0) y).toUInt64)),
+   ("booleanHelperReturnWord", (fun (x y : UInt64) => booleanHelperReturnWord x y)),
+   ("booleanHelperReturnBoolean", (fun (x y : UInt64) => booleanHelperReturnBoolean x y)),
+   ("booleanHelperReturnNested", (fun (x y : UInt64) => booleanHelperReturnNested x y)),
+   ("booleanHelperReturnCondition", (fun (x y : UInt64) => booleanHelperReturnCondition x y)),
+   ("booleanHelperReturnCaptured", (fun (x y : UInt64) => booleanHelperReturnCaptured x y)),
+   ("booleanHelperReturnIgnored", (fun (x y : UInt64) => booleanHelperReturnIgnored x y)),
    ("publicFlagWord", (fun x y => publicFlagWord (x != 0) y)),
    ("publicWordFlag", (fun x y => publicWordFlag x (y != 0))),
    ("publicFlagsWord", (fun x y => publicFlagsWord (x != 0) (y != 0))),
