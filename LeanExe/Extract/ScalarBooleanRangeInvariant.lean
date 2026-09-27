@@ -114,24 +114,54 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
       · exact argumentValid
       · exact bindings binding member
     · exact bindings binding member
-  | case23 locals name typeName resultType typeBi paramName input value paramBi body nondep ih =>
-    exact ih compiled bindings
+  | case23 => contradiction
   | case24 => contradiction
-  | case25 => contradiction
+  | case25 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type parsed checked validated ih =>
+    apply ih compiled
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · intro argument target argumentValid extracted
+      apply extractScalarExprWith_invariant P literal binary choice extracted
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact argumentValid
+      rcases List.mem_cons.mp member with rfl | member
+      · trivial
+      · exact bindings binding member
+    · exact bindings binding member
   | case26 => contradiction
-  | case27 locals input output value name domain body binder notWord types parsed bound matched ih =>
+  | case27 => contradiction
+  | case28 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type parsed checked validated ih =>
+    apply ih compiled
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · intro argument target argumentValid extracted
+      apply extractScalarExprWith_invariant P literal binary choice extracted
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact argumentValid
+      rcases List.mem_cons.mp member with rfl | member
+      · trivial
+      · exact bindings binding member
+    · exact bindings binding member
+  | case29 locals name typeName resultType typeBi paramName input value paramBi body nondep ih =>
+    exact ih compiled bindings
+  | case30 => contradiction
+  | case31 => contradiction
+  | case32 => contradiction
+  | case33 locals input output value name domain body binder notWord types parsed bound matched ih =>
     apply ih compiled
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · exact extractScalarExprWith_invariant P literal binary choice matched bindings
     · exact bindings binding member
-  | case28 locals input output value name domain body binder types parsed bound matched ih =>
+  | case34 locals input output value name domain body binder types parsed bound matched ih =>
     apply ih compiled
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · exact extractScalarExprWith_invariant P literal binary choice matched bindings
     · exact bindings binding member
-  | case29 locals input output value name domain body binder types parsed notPure =>
+  | case35 locals input output value name domain body binder types parsed notPure =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hp, result, hr, rfl⟩ := compiled
     obtain ⟨count, initial, step, done, tail⟩ :=
@@ -142,7 +172,7 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact tail
     · exact bindings binding member
-  | case30 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notIdFunction notBind wrapper body parsed ih => exact ih compiled bindings
-  | case31 => contradiction
+  | case36 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind wrapper body parsed ih => exact ih compiled bindings
+  | case37 => contradiction
 
 end LeanExe.Extract.Core

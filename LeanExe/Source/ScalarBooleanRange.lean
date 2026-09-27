@@ -27,6 +27,14 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
         EvalWith shape.body (arguments.reverse.map Scalar.Value.word ++ values) (f arguments))
       (body : Eval b (.manyFunction shape.arity f :: values) outcome) :
       Eval (shape.bind name b nondep) values outcome
+  | letUnitFn (type : ResultType) (unitForm : UnitSyntax)
+      (function : ∀ x, EvalWith a (.word x :: .unit :: values) (f x))
+      (body : Eval b (.function true f :: values) outcome) :
+      Eval (.letE name
+        (.forallE unitTypeName unitForm.type
+          (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
+        (.lam unitName unitForm.type
+          (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep) values outcome
   | letFn (type : ResultType)
       (function : ∀ x, EvalWith a (.word x :: values) (f x))
       (body : Eval b (.function false f :: values) outcome) :
@@ -96,6 +104,13 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       (function : SupportedWith (List.replicate shape.arity .word ++ types) shape.body)
       (body : Supported (.manyFunction shape.arity :: types) b) :
       Supported types (shape.bind name b nondep)
+  | letUnitFn (type : ResultType) (unitForm : UnitSyntax) (function : SupportedWith (.word :: .unit :: types) a)
+      (body : Supported (.function true :: types) b) :
+      Supported types (.letE name
+        (.forallE unitTypeName unitForm.type
+          (.forallE typeName (.const ``UInt64 []) type.expr typeBi) unitTypeBi)
+        (.lam unitName unitForm.type
+          (.lam paramName (.const ``UInt64 []) a paramBi) unitBi) b nondep)
   | letFn (type : ResultType) (function : SupportedWith (.word :: types) a)
       (body : Supported (.function false :: types) b) :
       Supported types (.letE name
@@ -162,6 +177,11 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨value, evaluated⟩ := ihb (.manyFunction shape.arity f :: values)
       (by simp [Scalar.Value.kind, typed])
     exact ⟨value, .letManyFn shape meanings evaluated⟩
+  | letUnitFn type unitForm function _ ihb =>
+    have total := fun x => function.evaluates (.word x :: .unit :: values) (by simp [Value.kind, typed])
+    let f := fun x => (total x).choose
+    obtain ⟨value, hv⟩ := ihb (.function true f :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letUnitFn type unitForm (fun x => (total x).choose_spec) hv⟩
   | letFn type function _ ihb =>
     have total := fun x => function.evaluates (.word x :: values) (by simp [Value.kind, typed])
     let f := fun x => (total x).choose
