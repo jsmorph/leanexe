@@ -1,0 +1,12 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+PredicateOuterFlagTest.rangePredicateOuterFlagWord: false
+PredicateOuterFlagTest.rangePredicateOuterFlagBoolean: false
+PredicateOuterFlagTest.rangePredicateOuterFlagAccumulator: false
+PredicateOuterFlagTest.rangePredicateOuterFlagWrapped: false
+PredicateOuterFlagTest.rangePredicateOuterFlagUnused: false
+PredicateOuterFlagTest.rangePredicateOuterFlagCapture: false
+PredicateOuterFlagTest.rangePredicateOuterFlagBound: false
+PredicateOuterFlagTest.rangePredicateOuterFlagInitial: false
+PredicateOuterFlagTest.rangePredicateOuterFlagNested: false
+PredicateOuterFlagTest.rangePredicateOuterFlagId: false
