@@ -1,0 +1,172 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [94/153] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [147/153] Replayed LeanExe.Extract.ScalarExprCore
+warning: LeanExe/Extract/ScalarExprCore.lean:474:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:482:31: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:482:36: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:482:52: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:491:35: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:491:40: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:491:56: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:563:12: Variable name `bounds` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _bounds
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+⚠ [149/153] Replayed LeanExe.Extract.ScalarExpr
+warning: LeanExe/Extract/ScalarExpr.lean:190:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:191:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:206:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:207:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:238:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:239:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:253:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:254:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1187:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1297:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1617:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1639:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1661:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1683:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1705:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1729:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1753:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1771:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1790:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1809:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+✖ [153/153] Building LeanExe.Extract.ScalarBooleanStep (5.8s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanStep.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanStep.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanStep.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanStep.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanStep.setup.json --json
+error: LeanExe/Extract/ScalarBooleanStep.lean:898:8: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  Lean.Expr.letE name (Lean.Expr.forallE typeName input output typeBi) (Lean.Expr.lam paramName domain value paramBi)
+    body nondep
+in the target expression
+  (do
+      let _ ←
+        extractScalarExprWith
+            (ScalarBinding.word (IR.Expr.u64 0) ::
+              ScalarBinding.word (IR.Expr.u64 0) :: List.map BooleanStepBinding.toScalar locals)
+            ((Lean.Expr.const `Bool.toUInt64 []).app helper.body)
+      have function : ScalarBinding :=
+        ScalarBinding.binaryPredicateFunction fun first second =>
+          extractScalarExprWith
+            (ScalarBinding.word second :: ScalarBinding.word first :: List.map BooleanStepBinding.toScalar locals)
+            ((Lean.Expr.const `Bool.toUInt64 []).app helper.body)
+      extractBooleanStepWith (BooleanStepBinding.scalar function :: locals) helper.continuation) =
+    some code
+
+case case18
+expression :
+  ∀ {locals : List BooleanStepBinding} {source : Lean.Expr} {target : IR.Expr},
+    extractScalarExprWith (List.map BooleanStepBinding.toScalar locals) source = some target →
+      SupportedWith (List.map BooleanStep.BindingKind.toScalar (List.map BooleanStepBinding.kind locals)) source
+locals : List BooleanStepBinding
+name : Lean.Name
+body : Lean.Expr
+nondep : Bool
+typeName : Lean.Name
+input output : Lean.Expr
+typeBi : Lean.BinderInfo
+paramName : Lean.Name
+domain value : Lean.Expr
+paramBi : Lean.BinderInfo
+notWordFunction : booleanStepWordBindTypes? input domain output = none
+notFlagFunction : booleanStepFlagBindTypes? input domain output = none
+notResultFunction : booleanStepResultBindTypes? input domain output = none
+notScalarWord : scalarBindTypes? input domain output = none
+notScalarPredicate : booleanRangeBindTypes? input domain output = none
+notScalarBoolean : booleanStepFlagWordTypes? input domain output = none
+notScalarBooleanPredicate : booleanRangeFlagBindTypes? input domain output = none
+helper : BooleanBinaryHelper
+parsed :
+  booleanBinaryHelper?
+      (Lean.Expr.letE name (Lean.Expr.forallE typeName input output typeBi)
+        (Lean.Expr.lam paramName domain value paramBi) body nondep) =
+    some helper
+notWord : scalarResultType? (Lean.Expr.forallE typeName input output typeBi) = none
+notFlag : booleanType? (Lean.Expr.forallE typeName input output typeBi) = none
+notStep : booleanStepResultType? (Lean.Expr.forallE typeName input output typeBi) = none
+code : ScalarStepCode
+compiled :
+  (do
+      let _ ←
+        extractScalarExprWith
+            (ScalarBinding.word (IR.Expr.u64 0) ::
+              ScalarBinding.word (IR.Expr.u64 0) :: List.map BooleanStepBinding.toScalar locals)
+            ((Lean.Expr.const `Bool.toUInt64 []).app helper.body)
+      have function : ScalarBinding :=
+        ScalarBinding.binaryPredicateFunction fun first second =>
+          extractScalarExprWith
+            (ScalarBinding.word second :: ScalarBinding.word first :: List.map BooleanStepBinding.toScalar locals)
+            ((Lean.Expr.const `Bool.toUInt64 []).app helper.body)
+      extractBooleanStepWith (BooleanStepBinding.scalar function :: locals) helper.continuation) =
+    some code
+ih :
+  ∀ {code : ScalarStepCode},
+    extractBooleanStepWith
+          (BooleanStepBinding.scalar
+              (ScalarBinding.binaryPredicateFunction fun first second =>
+                extractScalarExprWith
+                  (ScalarBinding.word second :: ScalarBinding.word first :: List.map BooleanStepBinding.toScalar locals)
+                  ((Lean.Expr.const `Bool.toUInt64 []).app helper.body)) ::
+            locals)
+          helper.continuation =
+        some code →
+      BooleanStep.Supported
+        (List.map BooleanStepBinding.kind
+          (BooleanStepBinding.scalar
+              (ScalarBinding.binaryPredicateFunction fun first second =>
+                extractScalarExprWith
+                  (ScalarBinding.word second :: ScalarBinding.word first :: List.map BooleanStepBinding.toScalar locals)
+                  ((Lean.Expr.const `Bool.toUInt64 []).app helper.body)) ::
+            locals))
+        helper.continuation
+same :
+  Lean.Expr.letE name (Lean.Expr.forallE typeName input output typeBi) (Lean.Expr.lam paramName domain value paramBi)
+      body nondep =
+    helper.expr
+⊢ BooleanStep.Supported (List.map BooleanStepBinding.kind locals)
+    (Lean.Expr.letE name (Lean.Expr.forallE typeName input output typeBi) (Lean.Expr.lam paramName domain value paramBi)
+      body nondep)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanStep
+error: build failed
