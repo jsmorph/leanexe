@@ -801,5 +801,9 @@
   "rangeBoolTailHelperCapture",
   "rangeBoolTailHelperBoolean",
   "rangeBoolTailHelperNestedId",
-  "rangeWordStepReturnedHelper"
+  "rangeWordStepReturnedHelper",
+  "rangeBoolRelationStep",
+  "rangeBoolRelationExit",
+  "rangeBoolRelationContinue",
+  "rangeBoolRelationTail"
 ]

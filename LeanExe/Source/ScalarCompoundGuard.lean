@@ -9,12 +9,12 @@ inductive CompoundGuard where
   | literal (value : GuardLiteral)
   | proposition (junction : Junction) (left right : Guard) (negations : Nat := 0)
   | boolean (junction : Junction) (left right : BooleanGuard) (negations : Nat := 0) (propNegations : Nat := 0)
-  | savedLeft (junction : Junction) (left : SavedBooleanGuard) (right : Guard) (negations : Nat := 0)
-  | savedRight (junction : Junction) (left : Guard) (right : SavedBooleanGuard) (negations : Nat := 0)
-  | savedBoth (junction : Junction) (left right : SavedBooleanGuard) (negations : Nat := 0)
+  | savedLeft (junction : Junction) (left : BooleanPropositionLeaf) (right : Guard) (negations : Nat := 0)
+  | savedRight (junction : Junction) (left : Guard) (right : BooleanPropositionLeaf) (negations : Nat := 0)
+  | savedBoth (junction : Junction) (left right : BooleanPropositionLeaf) (negations : Nat := 0)
   | letGuard (binding : GuardLet) (body : Guard) (negations : Nat := 0)
   | letSaved (binding : GuardLet) (body : SavedBooleanGuard) (negations : Nat := 0)
-  | localNegation (value : SavedBooleanGuard) (negations : Nat := 0)
+  | localNegation (value : BooleanPropositionLeaf) (negations : Nat := 0)
   deriving Repr
 
 namespace CompoundGuard

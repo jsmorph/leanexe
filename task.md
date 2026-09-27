@@ -3,8 +3,8 @@
 The user resumed compiler work on `correct` from main on 2026-09-26.
 The user requested continued work until compiler correctness covers the entire
 LeanExe dialect, with frequent updates, commits, and pushes. Main through
-`fb8cd5da` is merged into `correct`, including the drone proofs and the call-result
-annotation fix. This compiler-proof task remains active; the completed drone task
+`823008dc` is merged into `correct`, including the drone proofs, the call-result
+annotation fix and the scalar WASM result/type proofs. This compiler-proof task remains active; the completed drone task
 is preserved separately at the end of this file. Lean runs locally through
 `tools/leanrun`. Full-dialect correctness is not yet proved.
 
@@ -671,11 +671,19 @@ invalid-input checks and 2,016 controls. Prior tests and the saved fixture pass
 contains 1387 declarations. Evidence is in
 [the wrapped-helper archive](proofs/compiler/boolean-helper-call-wrappers-2026-09-27/README.md).
 
-Next: compound propositions combining Boolean equality with Boolean truth guards.
-General helper compositions inside scalar Boolean operands also remain open.
-Retained instances, broader signatures, composition of multiple loops and the
-remaining LeanExe dialect also need proofs. Full-dialect correctness remains
-unfinished.
+Current capability: Boolean equality and inequality inside compound propositions.
+Exact condition and decision syntax, Boolean operand conversion, acceptance,
+soundness, evaluation and IR invariants are proved. The public compiler target
+passes. New tests pass 44,980 native/IR comparisons, 21,248 invalid-input checks
+and 672 syntax/routing controls. Native cases include nested Id decisions,
+Boolean inputs/results, helpers, proposition lets and loop steps/exits.
+Adjacent tests pass 92,928 comparisons, 56,532 invalid-input checks and 1,856
+controls. The complete source-to-WASM theorem and V8 checks are next.
+
+Next: bare Boolean relations retained under proposition lets, then general
+helper compositions inside scalar Boolean operands. Retained instances, broader
+signatures, composition of multiple loops and the remaining LeanExe dialect
+also need proofs. Full-dialect correctness remains unfinished.
 Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete

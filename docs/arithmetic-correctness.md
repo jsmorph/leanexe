@@ -407,6 +407,15 @@ inactive branches. This composes through helpers, joined Id updates, loop
 break/continue, bounds and surrounding scalar code. Ordinary Boolean-result
 choices, including dependent Boolean results, also admit these propositions.
 
+Boolean Eq/Ne propositions also appear within propositional conjunctions,
+disjunctions and negations, including mixed conditions such as
+`left = right ∨ ¬ left` and `left ≠ right ∧ x < y`. Both operands use the
+checked Boolean conversion, preserving helper calls, saved values and supported
+Id wrappers. The exact proposition and standard decision expression are checked.
+These guards work in decisions, ordinary/dependent word or Boolean choices,
+helper bodies and loop steps, including break and continue. Bare Boolean
+relations retained directly under a proposition let remain outside this form.
+
 Saved Boolean variables and their negations may appear inside propositional
 conjunctions and disjunctions, such as `flag ∧ x < y` or `x = y ∨ !flag`.
 Both sides may be saved flags, and mixed trees may nest and use propositional
