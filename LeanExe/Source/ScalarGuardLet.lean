@@ -4,13 +4,17 @@ import LeanExe.Source.ScalarSavedBooleanGuard
 
 namespace LeanExe.Source.Scalar
 
-/-- Extra syntax needed to convert a Boolean binding to a checked word operand. -/
+/-- Extra syntax needed to convert a Boolean relation operand to a checked word. -/
 noncomputable def guardOperandOverhead : Nat :=
   sizeOf (.const ``Bool.toUInt64 [] : Lean.Expr) -
-    sizeOf (.const ``Bool [] : Lean.Expr) - sizeOf (.const ``True [] : Lean.Expr) + 1
+    sizeOf (.const ``Bool [] : Lean.Expr) - sizeOf (.const ``Ne [.succ .zero] : Lean.Expr) + 1
 
-theorem guardOperandOverhead_ite : guardOperandOverhead ≤ sizeOf ("ite" : String) := by decide
-theorem guardOperandOverhead_dite : guardOperandOverhead ≤ sizeOf ("dite" : String) := by decide
+theorem guardOperandOverhead_ite : guardOperandOverhead ≤ sizeOf ("ite" : String) + sizeOf (.const ``Bool [] : Lean.Expr) := by decide
+theorem guardOperandOverhead_dite : guardOperandOverhead ≤ sizeOf ("dite" : String) + sizeOf (.const ``Bool [] : Lean.Expr) := by decide
+theorem guardOperandOverhead_ite_word : guardOperandOverhead ≤
+    sizeOf ("ite" : String) + sizeOf (.const ``UInt64 [] : Lean.Expr) := by decide
+theorem guardOperandOverhead_dite_word : guardOperandOverhead ≤
+    sizeOf ("dite" : String) + sizeOf (.const ``UInt64 [] : Lean.Expr) := by decide
 theorem guardOperandOverhead_decide : guardOperandOverhead ≤ sizeOf ("decide" : String) := by decide
 
 theorem booleanTruth_min_size (value : Lean.Expr) :

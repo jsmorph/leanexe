@@ -64,31 +64,26 @@ theorem condition_min_size (value : BooleanPropositionLeaf) :
       sizeOf (.const ``Ne [.succ .zero] : Lean.Expr) + sizeOf (.const ``Bool [] : Lean.Expr) := by decide
     cases unequal <;> simp [condition] at * <;> omega
 
-/-- Compound syntax supplies the extra space needed for Boolean conversion. -/
+/-- The conversion head is bounded against the original Boolean proposition. -/
 theorem operands_size (value : BooleanPropositionLeaf) {operand : Lean.Expr}
     (member : operand ∈ value.operands) :
-    sizeOf operand < sizeOf (Lean.Expr.app (.const ``Not []) value.condition) + guardOperandOverhead := by
+    sizeOf operand < sizeOf value.condition + guardOperandOverhead := by
   cases value with
   | truth value =>
     simp only [operands, List.mem_singleton] at member
     subst operand
-    have bound := value.operand_size
-    simp only [condition]
-    simp at *
-    omega
+    exact Nat.lt_of_lt_of_le value.operand_size (by simp [condition])
   | relation unequal left right _ =>
     simp only [operands, List.mem_cons, List.not_mem_nil, or_false] at member
-    have eqSize : sizeOf (.const ``Bool.toUInt64 [] : Lean.Expr) <
-      sizeOf (.const ``Not [] : Lean.Expr) + sizeOf (.const ``Eq [.succ .zero] : Lean.Expr) +
-        sizeOf (.const ``Bool [] : Lean.Expr) + guardOperandOverhead := by decide
-    have neSize : sizeOf (.const ``Bool.toUInt64 [] : Lean.Expr) <
-      sizeOf (.const ``Not [] : Lean.Expr) + sizeOf (.const ``Ne [.succ .zero] : Lean.Expr) +
-        sizeOf (.const ``Bool [] : Lean.Expr) + guardOperandOverhead := by decide
+    have heads : sizeOf (.const ``Bool.toUInt64 [] : Lean.Expr) <
+      sizeOf (.const ``Ne [.succ .zero] : Lean.Expr) + sizeOf (.const ``Bool [] : Lean.Expr) + guardOperandOverhead := by decide
+    have eqLarger : sizeOf (.const ``Ne [.succ .zero] : Lean.Expr) ≤
+      sizeOf (.const ``Eq [.succ .zero] : Lean.Expr) := by decide
     rcases member with rfl | rfl
     all_goals cases unequal <;> simp [condition] at * <;> omega
 
 theorem operands_junction_left (value : BooleanPropositionLeaf) (op : Junction)
-    (other : Lean.Expr) (minimum : sizeOf (.const ``True [] : Lean.Expr) ≤ sizeOf other)
+    (other : Lean.Expr) (_minimum : sizeOf (.const ``True [] : Lean.Expr) ≤ sizeOf other)
     {operand : Lean.Expr} (member : operand ∈ value.operands) :
     sizeOf operand < sizeOf (op.condition value.condition other) + guardOperandOverhead := by
   have bound := value.operands_size member
@@ -96,7 +91,7 @@ theorem operands_junction_left (value : BooleanPropositionLeaf) (op : Junction)
   cases op <;> simp [Junction.condition] at * <;> omega
 
 theorem operands_junction_right (value : BooleanPropositionLeaf) (op : Junction)
-    (other : Lean.Expr) (minimum : sizeOf (.const ``True [] : Lean.Expr) ≤ sizeOf other)
+    (other : Lean.Expr) (_minimum : sizeOf (.const ``True [] : Lean.Expr) ≤ sizeOf other)
     {operand : Lean.Expr} (member : operand ∈ value.operands) :
     sizeOf operand < sizeOf (op.condition other value.condition) + guardOperandOverhead := by
   have bound := value.operands_size member

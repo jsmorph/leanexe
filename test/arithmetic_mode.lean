@@ -8640,6 +8640,55 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def booleanPropLetRelationWord (x y : UInt64) : UInt64 :=
+  if (let b := x == y; b = (x == 0)) then x + 7 else y + 11
+
+def booleanPropLetRelationDecision (x y : UInt64) : Bool :=
+  decide (let b := x == y; b ≠ (x == 0))
+
+def booleanPropLetRelationDependent (x y : UInt64) : Bool :=
+  if _h : (let b := x == y; b = (y == 0)) then x != 0 else y != 0
+
+def booleanPropLetRelationNested (x y : UInt64) : Id (Id Bool) :=
+  pure (pure (decide (let n := x + y; let b := n == x; b ≠ (y == 0))))
+
+def booleanPropLetRelationHelper (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && y != 0
+  if (let flag := f (x == y); flag = f (x == 0)) then x - 3 else y * 7
+
+def booleanPropLetRelationUnused (x y : UInt64) : UInt64 :=
+  if (let _unused := x + y; (x == 0) ≠ (y == 0)) then x + y else x - y
+
+def rangeBoolLetRelationStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let b := a % 2 == 0; b = (i.toUInt64 % 3 == 0)) then
+      a := a + i.toUInt64 + 7
+    else a := a * 3 + 1
+  return a
+
+def rangeBoolLetRelationExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if (let b := a % 7 == 0; b ≠ (i.toUInt64 % 3 == 0)) then break
+  return a
+
+def rangeBoolLetRelationContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if ¬ (let b := a % 2 == 0; b = (i.toUInt64 % 3 == 0)) then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangeBoolLetRelationTail (count seed : UInt64) : Id Bool := do
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+    return a)
+  return decide (let b := value == seed; b = (seed == 0))
+
 def booleanHelperReturnWord (x y : UInt64) : UInt64 :=
   let flag := Id.run do
     let f := fun n : UInt64 => n == y
@@ -11992,6 +12041,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolRelationExit,
       `ArithmeticModeTest.rangeBoolRelationContinue,
       `ArithmeticModeTest.rangeBoolRelationTail,
+      `ArithmeticModeTest.booleanPropLetRelationWord,
+      `ArithmeticModeTest.booleanPropLetRelationDecision,
+      `ArithmeticModeTest.booleanPropLetRelationDependent,
+      `ArithmeticModeTest.booleanPropLetRelationNested,
+      `ArithmeticModeTest.booleanPropLetRelationHelper,
+      `ArithmeticModeTest.booleanPropLetRelationUnused,
+      `ArithmeticModeTest.rangeBoolLetRelationStep,
+      `ArithmeticModeTest.rangeBoolLetRelationExit,
+      `ArithmeticModeTest.rangeBoolLetRelationContinue,
+      `ArithmeticModeTest.rangeBoolLetRelationTail,
       `ArithmeticModeTest.publicFlagWord,
       `ArithmeticModeTest.publicWordFlag,
       `ArithmeticModeTest.publicFlagsWord,

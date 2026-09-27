@@ -7,7 +7,7 @@ inductive GuardCondition : Guard → Lean.Expr → Prop where
   | retained (guard : Guard) : GuardCondition guard guard.condition
   | letGuard (binding : GuardLet) (body : Guard) (inner : GuardCondition body condition) :
       GuardCondition (.letGuard 0 binding body) (binding.evidence condition)
-  | letSaved (binding : GuardLet) (body : SavedBooleanGuard) :
+  | letSaved (binding : GuardLet) (body : BooleanPropositionLeaf) :
       GuardCondition (.letSaved 0 binding body) (binding.evidence body.condition)
 
 /-- Reducing an inner prefix before substitution preserves its binding scope. -/

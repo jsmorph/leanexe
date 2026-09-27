@@ -684,10 +684,17 @@ eighteen prior modules retain identical bytes. New tests pass 44,980 comparisons
 declarations. Evidence is in
 [the compound-relation archive](proofs/compiler/boolean-proposition-relation-2026-09-27/README.md).
 
-Next: bare Boolean relations retained under proposition lets, then general
-helper compositions inside scalar Boolean operands. Retained instances, broader
-signatures, composition of multiple loops and the remaining LeanExe dialect
-also need proofs. Full-dialect correctness remains unfinished.
+Current capability: Boolean relations directly under proposition lets. The
+source, parser, lowering, structural termination and scalar/loop correctness
+targets pass. The original conditional and decision fixtures are admitted
+unchanged. New tests pass 80,820 native/IR comparisons, 55,320 invalid-input
+checks and 1,152 controls. Seven adjacent tests pass 137,604 comparisons,
+77,736 invalid-input checks and 2,528 controls. The full source-to-WASM theorem
+and selected V8 checks are next.
+
+Next: general helper compositions inside scalar Boolean operands. Retained
+instances, broader signatures, composition of multiple loops and the remaining
+LeanExe dialect also need proofs. Full-dialect correctness remains unfinished.
 Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
