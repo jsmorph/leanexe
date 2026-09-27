@@ -5511,6 +5511,102 @@ def rangeBoolHelperInputIdShadow (count seed : UInt64) : Bool :=
     return a
   value == f (pure (pure initial))
 
+def rangeBoolManyHelperBinaryRepeat (count seed : UInt64) : Bool :=
+  let f := fun x y : UInt64 => x + 3 * y + seed
+  let value := Id.run do
+    let mut a := f seed 1
+    for i in [:count.toNat] do
+      a := f a i.toUInt64 + f i.toUInt64 a
+    return a
+  f value 1 == f seed 1
+
+def rangeBoolManyHelperBinaryCount (count seed : UInt64) : Bool :=
+  let limit := fun x y : UInt64 => (x + y) % 17
+  let value := Id.run do
+    let mut a := seed
+    for i in [:(limit count seed).toNat] do
+      a := a + i.toUInt64 + 1
+    return a
+  value == seed + limit seed count
+
+def rangeBoolManyHelperTernaryInitial (count seed : UInt64) : Bool :=
+  let f := fun x y z : UInt64 => x + y * 3 + z * 5 + seed
+  let value := Id.run do
+    let mut a := f 0 1 2
+    for i in [:count.toNat] do
+      a := f a i.toUInt64 3
+    return a
+  value == f 0 1 2
+
+def rangeBoolManyHelperTernaryNested (count seed : UInt64) : Bool :=
+  let f := fun x y z : UInt64 => x + 3 * y + 5 * z + seed
+  let g := fun x y z : UInt64 => f (x + 1) (y + 2) (z + 3) + f z y x
+  let value := Id.run do
+    let mut a := g 0 1 2
+    for i in [:count.toNat] do
+      a := g a i.toUInt64 1
+    return a
+  value == g seed 1 2
+
+def rangeBoolManyHelperFiveFlag (count : UInt64) (flag : Bool) : Bool :=
+  let f := fun a b c d e : UInt64 => if flag then a + 3*b + 5*c + 7*d + 11*e else a-b-c-d-e
+  let value := Id.run do
+    let mut a := f count 1 2 3 4
+    for i in [:count.toNat] do
+      a := f a i.toUInt64 1 2 count
+    return a
+  flag && value == f count 1 2 3 4
+
+def rangeBoolManyHelperBinaryExit (count seed : UInt64) : Bool :=
+  let f := fun x y : UInt64 => x + 3 * y + seed % 5 + 1
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := f a i.toUInt64
+      if a % 7 == 0 then break
+    return a
+  f value 1 % 7 == 0
+
+def rangeBoolManyHelperTernaryContinue (count seed : UInt64) : Bool :=
+  let f := fun x y z : UInt64 => (x + 3 * y + 5 * z) % 3
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if f i.toUInt64 a seed == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a
+  f value seed 1 == f seed value 1
+
+def rangeBoolManyHelperFiveStride (count seed : UInt64) : Bool :=
+  let f := fun a b c d e : UInt64 => (a + 3*b + 5*c + 7*d + 11*e) % 3
+  let value := Id.run do
+    let mut a := seed
+    for i in [(f seed 1 2 3 4).toNat:count.toNat:3] do
+      a := a + i.toUInt64 + 1
+      if a % 5 == 0 then break
+    return a
+  f value 1 2 3 4 == f seed 1 2 3 4
+
+def rangeBoolManyHelperFiveId (count : Id UInt64) (seed : UInt64) : Id Bool :=
+  let f (a b c d e : UInt64) : Id (Id UInt64) := pure (pure (a + 3*b + 5*c + 7*d + 11*e + seed))
+  let value : Id UInt64 := Id.run do
+    let mut a := Id.run (Id.run (f seed 1 2 3 4))
+    for i in [:(Id.run count).toNat] do
+      a := Id.run (Id.run (f a i.toUInt64 1 2 3))
+    return a
+  pure (Id.run value == Id.run (Id.run (f seed 1 2 3 4)))
+
+def rangeBoolManyHelperBinaryShadow (count seed : UInt64) : Bool :=
+  let f := fun x y : UInt64 => x + 3 * y + seed
+  let initial := f 0 1
+  let f := fun x y : UInt64 => f y x + count
+  let value := Id.run do
+    let mut a := initial
+    for i in [:count.toNat] do
+      a := f a i.toUInt64
+    return a
+  value == f initial 1
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -8385,6 +8481,16 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolHelperInputIdContinue", (fun (x y : UInt64) => (rangeBoolHelperInputIdContinue x y).toUInt64)),
    ("rangeBoolHelperInputIdMixed", (fun (x y : UInt64) => (rangeBoolHelperInputIdMixed x y).toUInt64)),
    ("rangeBoolHelperInputIdShadow", (fun (x y : UInt64) => (rangeBoolHelperInputIdShadow x y).toUInt64)),
+   ("rangeBoolManyHelperBinaryRepeat", (fun (x y : UInt64) => (rangeBoolManyHelperBinaryRepeat x y).toUInt64)),
+   ("rangeBoolManyHelperBinaryCount", (fun (x y : UInt64) => (rangeBoolManyHelperBinaryCount x y).toUInt64)),
+   ("rangeBoolManyHelperTernaryInitial", (fun (x y : UInt64) => (rangeBoolManyHelperTernaryInitial x y).toUInt64)),
+   ("rangeBoolManyHelperTernaryNested", (fun (x y : UInt64) => (rangeBoolManyHelperTernaryNested x y).toUInt64)),
+   ("rangeBoolManyHelperFiveFlag", (fun (x y : UInt64) => (rangeBoolManyHelperFiveFlag x (y != 0)).toUInt64)),
+   ("rangeBoolManyHelperBinaryExit", (fun (x y : UInt64) => (rangeBoolManyHelperBinaryExit x y).toUInt64)),
+   ("rangeBoolManyHelperTernaryContinue", (fun (x y : UInt64) => (rangeBoolManyHelperTernaryContinue x y).toUInt64)),
+   ("rangeBoolManyHelperFiveStride", (fun (x y : UInt64) => (rangeBoolManyHelperFiveStride x y).toUInt64)),
+   ("rangeBoolManyHelperFiveId", (fun (x y : UInt64) => (rangeBoolManyHelperFiveId x y).toUInt64)),
+   ("rangeBoolManyHelperBinaryShadow", (fun (x y : UInt64) => (rangeBoolManyHelperBinaryShadow x y).toUInt64)),
    ("rangeBoolLetIdWord", (fun (x y : UInt64) => (rangeBoolLetIdWord x y).toUInt64)),
    ("rangeBoolLetIdWordLayers", (fun (x y : UInt64) => (rangeBoolLetIdWordLayers x y).toUInt64)),
    ("rangeBoolLetIdFlag", (fun (x y : UInt64) => (rangeBoolLetIdFlag x y).toUInt64)),

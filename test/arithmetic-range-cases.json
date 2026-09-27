@@ -626,5 +626,15 @@
   "rangeBoolHelperInputIdExit",
   "rangeBoolHelperInputIdContinue",
   "rangeBoolHelperInputIdMixed",
-  "rangeBoolHelperInputIdShadow"
+  "rangeBoolHelperInputIdShadow",
+  "rangeBoolManyHelperBinaryRepeat",
+  "rangeBoolManyHelperBinaryCount",
+  "rangeBoolManyHelperTernaryInitial",
+  "rangeBoolManyHelperTernaryNested",
+  "rangeBoolManyHelperFiveFlag",
+  "rangeBoolManyHelperBinaryExit",
+  "rangeBoolManyHelperTernaryContinue",
+  "rangeBoolManyHelperFiveStride",
+  "rangeBoolManyHelperFiveId",
+  "rangeBoolManyHelperBinaryShadow"
 ]

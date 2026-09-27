@@ -14,6 +14,19 @@ def bindBoolean (name : Lean.Name) (binder : Lean.BinderInfo) (input output : Bo
 
 /-- A word-valued loop followed by a Boolean result computation. -/
 inductive Eval : Lean.Expr → List Value → Bool → Prop where
+  | letBinaryFn (type : ResultType)
+      (function : ∀ x y, EvalWith a (.word y :: .word x :: values) (f x y))
+      (body : Eval b (.binaryFunction f :: values) outcome) :
+      Eval (.letE name
+        (.forallE firstTypeName (.const ``UInt64 [])
+          (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
+        (.lam firstName (.const ``UInt64 [])
+          (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) values outcome
+  | letManyFn (shape : ManyFunction)
+      (function : ∀ arguments : List UInt64, arguments.length = shape.arity →
+        EvalWith shape.body (arguments.reverse.map Scalar.Value.word ++ values) (f arguments))
+      (body : Eval b (.manyFunction shape.arity f :: values) outcome) :
+      Eval (shape.bind name b nondep) values outcome
   | letFn (type : ResultType)
       (function : ∀ x, EvalWith a (.word x :: values) (f x))
       (body : Eval b (.function false f :: values) outcome) :
@@ -72,6 +85,17 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
 
 /-- Source support checks both the loop and its Boolean continuation. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
+  | letBinaryFn (type : ResultType) (function : SupportedWith (.word :: .word :: types) a)
+      (body : Supported (.binaryFunction :: types) b) :
+      Supported types (.letE name
+        (.forallE firstTypeName (.const ``UInt64 [])
+          (.forallE secondTypeName (.const ``UInt64 []) type.expr secondTypeBi) firstTypeBi)
+        (.lam firstName (.const ``UInt64 [])
+          (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep)
+  | letManyFn (shape : ManyFunction)
+      (function : SupportedWith (List.replicate shape.arity .word ++ types) shape.body)
+      (body : Supported (.manyFunction shape.arity :: types) b) :
+      Supported types (shape.bind name b nondep)
   | letFn (type : ResultType) (function : SupportedWith (.word :: types) a)
       (body : Supported (.function false :: types) b) :
       Supported types (.letE name
@@ -128,6 +152,16 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (supported : Supported types source) (values : List Value)
     (typed : values.map Value.kind = types) : ∃ flag, Eval source values flag := by
   induction supported generalizing values with
+  | letBinaryFn type function _ ihb =>
+    have total := fun x y => function.evaluates (.word y :: .word x :: values) (by simp [Value.kind, typed])
+    let f := fun x y => (total x y).choose
+    obtain ⟨value, hv⟩ := ihb (.binaryFunction f :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letBinaryFn type (fun x y => (total x y).choose_spec) hv⟩
+  | letManyFn shape function _ ihb =>
+    obtain ⟨f, meanings⟩ := function.manyFunction_evaluates values typed
+    obtain ⟨value, evaluated⟩ := ihb (.manyFunction shape.arity f :: values)
+      (by simp [Scalar.Value.kind, typed])
+    exact ⟨value, .letManyFn shape meanings evaluated⟩
   | letFn type function _ ihb =>
     have total := fun x => function.evaluates (.word x :: values) (by simp [Value.kind, typed])
     let f := fun x => (total x).choose
