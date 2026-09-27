@@ -7,6 +7,8 @@ const roots = ["test", "tools"];
 const blockedIdentifier = ["Web", "Assembly"].join("");
 // The arithmetic theorem has a separately requested independent V8 comparison.
 const arithmeticComparison = path.normalize(path.join("test", "arithmetic_engine.mjs"));
+// The approved Beck browser demo executes the verified binary in a worker.
+const beckBrowserWorker = path.normalize(path.join("tools", "beck-web", "worker.mjs"));
 const self = path.normalize(path.join("test", "no_js_wasm_execution.js"));
 
 function containsBlockedIdentifier(source) {
@@ -115,7 +117,7 @@ function main() {
   roots.forEach((root) => walk(root, files));
   const offenders = [];
   for (const file of files) {
-    if (file === self || file === arithmeticComparison) {
+    if (file === self || file === arithmeticComparison || file === beckBrowserWorker) {
       continue;
     }
     const text = fs.readFileSync(file, "utf8");
