@@ -182,6 +182,22 @@ exponent offsets.  It checks in 1.7 seconds, together with integer-selection
 bounds for inputs in [512, 800] and [-800, -512].  Final power-of-two scaling,
 subnormal compensation, and the outer input regions remain outstanding.
 
+The adjusted paths now have checked final-scaling proofs for finite normal
+results.  The positive path, on [512, 800], either returns a result below one
+ulp or returns positive infinity when the real exponential exceeds the
+largest finite binary64 value.  The negative path on [-800, -512] preserves
+the error bound when its final result remains normal.  These are arithmetic
+theorems awaiting composition with the rescale branch's word conditions.
+They use the standard axioms and check in under three seconds per module.
+
+Subnormal compensation needs exact subtraction of one from a binary64 word
+in [1, 2], and subtraction in the reverse order.  A shared proof establishes
+both from the scaled-integer representation.  Another shared theorem bounds
+addition near that interval, including rounding to its endpoints.  Both
+checks pass in 1.7 seconds.  Broad simplification of a cast containing the
+large integer scale exceeded recursion depth.  Keeping its product explicit
+and distributing the multiplication reduced the proof to integer arithmetic.
+
 The generated annotation module supplies no matching lemmas for this case.
 The execution proof instead uses the generated instruction definitions and
 shared frame, call, and array-read theorems.  Constant word-valued conditions
