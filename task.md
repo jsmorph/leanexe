@@ -660,8 +660,16 @@ pass 274,176 comparisons, 147,456 invalid-input checks and 17,280 controls. The
 native corpus contains 1377 declarations. Evidence is in
 [the Boolean-composition archive](proofs/compiler/boolean-helper-composition-2026-09-27/README.md).
 
-Next: extend Boolean helper declarations inside loop-result continuations, then
-compound propositions combining Boolean equality with Boolean truth guards.
+Current capability: wrapped calls after local Boolean helper declarations.
+The saved loop-bind capture fixture now passes all 240 comparisons. Direct named
+calls retain exact Id run/pure and metadata wrappers, with checked argument scope
+and annotations. Parser proofs and public compiler integration pass. New tests
+pass 14,292 comparisons, 10,080 invalid-input checks and 2,016 controls. Adjacent
+tests, including the restored fixture, pass 20,176 comparisons, 12,880 invalid-input
+checks and 1,280 controls. Complete proof/V8 gates are next.
+
+Next: compound propositions combining Boolean equality with Boolean truth guards.
+General helper compositions inside scalar Boolean operands also remain open.
 Retained instances, broader signatures, composition of multiple loops and the
 remaining LeanExe dialect also need proofs. Full-dialect correctness remains
 unfinished.
