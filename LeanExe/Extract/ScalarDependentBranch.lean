@@ -38,7 +38,7 @@ theorem dependentGuard_sound {condition evidence trueDomain falseDomain : Lean.E
 
 theorem dependentGuard_size {condition evidence trueDomain falseDomain : Lean.Expr} {guard : DecidedGuard}
     (parsed : dependentGuard? condition evidence trueDomain falseDomain = some guard)
-    {operand : Lean.Expr} (member : operand ∈ guard.operands) : sizeOf operand < sizeOf condition := by
+    {operand : Lean.Expr} (member : operand ∈ guard.operands) : sizeOf operand < sizeOf condition + guardOperandOverhead := by
   rw [(dependentGuard_sound parsed).1]
   exact guard.operands_size member
 

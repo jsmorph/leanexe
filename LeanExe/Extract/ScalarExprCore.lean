@@ -398,7 +398,9 @@ decreasing_by
     | (exact scalarManyCall_size _call _member)
     | (have bounds := scalarManyFunction_body_size _function; simp_all; omega)
     | (have bounds := booleanLocalDependentGuard_size _booleanGuard _member; omega)
-    | (have bounds := dependentGuard_size _guard _member; omega)
+    | (have bounds := dependentGuard_size _guard _member
+       have overhead := LeanExe.Source.Scalar.guardOperandOverhead_dite
+       omega)
     | (have same := booleanAction_sound _action
        rw [← same]
        omega)
@@ -477,7 +479,9 @@ decreasing_by
        omega)
     | (have bounds := booleanLocalGuard_size _booleanGuard _member; omega)
     | (have bounds := comparison_size _h; omega)
-    | (have bounds := compoundGuard_size _g _member; omega)
+    | (have bounds := compoundGuard_size _g _member
+       have overhead := LeanExe.Source.Scalar.guardOperandOverhead_ite
+       omega)
     | (have bounds := booleanLocalOperands_size (value := expression) (by assumption) _member; omega)
     | (have bounds : sizeOf input.expr < sizeOf guard.condition := guard.form.inputs_size _member
        first

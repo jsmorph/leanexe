@@ -12,6 +12,8 @@ inductive CompoundGuard where
   | savedLeft (junction : Junction) (left : SavedBooleanGuard) (right : Guard) (negations : Nat := 0)
   | savedRight (junction : Junction) (left : Guard) (right : SavedBooleanGuard) (negations : Nat := 0)
   | savedBoth (junction : Junction) (left right : SavedBooleanGuard) (negations : Nat := 0)
+  | letGuard (binding : GuardLet) (body : Guard) (negations : Nat := 0)
+  | letSaved (binding : GuardLet) (body : SavedBooleanGuard) (negations : Nat := 0)
   deriving Repr
 
 namespace CompoundGuard
@@ -24,6 +26,8 @@ def tree : CompoundGuard → Guard
   | .savedLeft op a b n => .savedLeft n op a b
   | .savedRight op a b n => .savedRight n op a b
   | .savedBoth op a b n => .savedBoth n op a b
+  | .letGuard binding body n => .letGuard n binding body
+  | .letSaved binding body n => .letSaved n binding body
 
 abbrev operands (guard : CompoundGuard) : List Lean.Expr := guard.tree.operands
 abbrev denote (guard : CompoundGuard) (native : Lean.Expr → UInt64) : Bool := guard.tree.denote native
@@ -34,7 +38,7 @@ def evidence : CompoundGuard → Lean.Expr
   | guard => guard.tree.evidence
 
 theorem operands_size (guard : CompoundGuard) {operand : Lean.Expr}
-    (member : operand ∈ guard.operands) : sizeOf operand < sizeOf guard.condition :=
+    (member : operand ∈ guard.operands) : sizeOf operand < sizeOf guard.condition + guardOperandOverhead :=
   guard.tree.operands_size member
 
 def branch (guard : CompoundGuard) (type onTrue onFalse : Lean.Expr) : Lean.Expr :=

@@ -2,6 +2,7 @@ import LeanExe.Source.ScalarCompoundGuard
 import LeanExe.Extract.ScalarBooleanGuardSyntax
 import LeanExe.Extract.ScalarGuardDecision
 import LeanExe.Extract.ScalarSavedBooleanGuard
+import LeanExe.Extract.ScalarGuardLet
 
 namespace LeanExe.Extract.Core
 
@@ -44,7 +45,34 @@ theorem guardJunctionOperands_sound (op : Junction) (left right : Lean.Expr)
       cases parsed
       simp [Guard.condition, GuardNegation.condition, leftMeaning a rfl, rightMeaning b rfl]
 
+def guardLetOperands? (name : Lean.Name) (type value body : Lean.Expr) (nondep : Bool)
+    (parsedBody : Option Guard) : Option Guard := do
+  let type ← guardLetType? type
+  let binding : GuardLet := ⟨name, type, value, nondep⟩
+  match parsedBody with
+  | some body => some (.letGuard 0 binding body)
+  | none => (savedBooleanGuard? body).map fun body => .letSaved 0 binding body
+
+theorem guardLetOperands_sound (name : Lean.Name) (type value body : Lean.Expr) (nondep : Bool)
+    (parsedBody : Option Guard)
+    (bodyMeaning : ∀ guard, parsedBody = some guard → body = guard.condition)
+    {guard : Guard} (parsed : guardLetOperands? name type value body nondep parsedBody = some guard) :
+    Lean.Expr.letE name type value body nondep = guard.condition := by
+  simp only [guardLetOperands?, bind, Option.bind_eq_some_iff] at parsed
+  obtain ⟨bindingType, typeFound, accepted⟩ := parsed
+  have typeSame := guardLetType_sound typeFound
+  subst type
+  cases parsedBody with
+  | none =>
+    obtain ⟨bodyGuard, bodyFound, rfl⟩ := Option.map_eq_some_iff.mp accepted
+    simp [Guard.condition, GuardLet.wrap, GuardNegation.condition, savedBooleanGuard_sound bodyFound]
+  | some bodyGuard =>
+    cases accepted
+    simp [Guard.condition, GuardLet.wrap, GuardNegation.condition, bodyMeaning bodyGuard rfl]
+
 def guardOperands? : Lean.Expr → Option Guard
+  | .letE name type value body nondep =>
+      guardLetOperands? name type value body nondep (guardOperands? body)
   | .app (.app (.const ``And []) left) right =>
       guardJunctionOperands? .conjunction left right (guardOperands? left) (guardOperands? right)
   | .app (.app (.const ``Or []) left) right =>
@@ -149,19 +177,36 @@ def guardOperands? : Lean.Expr → Option Guard
       simpa only [Guard.condition, GuardNegation.condition, guardOperands?, Option.map_some, Guard.negate] using
         congrArg (Option.map Guard.negate) ih
 
+  | letGuard n binding body ihb =>
+    induction n with
+    | zero =>
+      simp [Guard.condition, GuardNegation.condition, GuardLet.wrap, guardOperands?, guardLetOperands?, ihb]
+    | succ n ih =>
+      simpa only [Guard.condition, GuardNegation.condition, guardOperands?, Option.map_some, Guard.negate] using
+        congrArg (Option.map Guard.negate) ih
+  | letSaved n binding body =>
+    induction n with
+    | zero =>
+      simp [Guard.condition, GuardNegation.condition, GuardLet.wrap, guardOperands?, guardLetOperands?]
+    | succ n ih =>
+      simpa only [Guard.condition, GuardNegation.condition, guardOperands?, Option.map_some, Guard.negate] using
+        congrArg (Option.map Guard.negate) ih
+
 theorem guardOperands_sound {expression : Lean.Expr} {guard : Guard}
     (parsed : guardOperands? expression = some guard) : expression = guard.condition := by
   induction expression using guardOperands?.induct generalizing guard with
-  | case1 left right ihl ihr =>
-    exact guardJunctionOperands_sound .conjunction left right _ _ (fun guard => ihl) (fun guard => ihr) parsed
+  | case1 name type value body nondep ih =>
+    exact guardLetOperands_sound name type value body nondep _ (fun guard => ih) parsed
   | case2 left right ihl ihr =>
+    exact guardJunctionOperands_sound .conjunction left right _ _ (fun guard => ihl) (fun guard => ihr) parsed
+  | case3 left right ihl ihr =>
     exact guardJunctionOperands_sound .disjunction left right _ _ (fun guard => ihl) (fun guard => ihr) parsed
-  | case3 inner ih =>
+  | case4 inner ih =>
     rw [guardOperands?] at parsed
     obtain ⟨guard, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
     rw [Guard.negate_condition, ih found]
-  | case4 | case5 => cases parsed; rfl
-  | case6 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse =>
+  | case5 | case6 => cases parsed; rfl
+  | case7 expression excludedLet excludedAnd excludedOr excludedNot excludedTrue excludedFalse =>
     rw [guardOperands?] at parsed
     · split at parsed
       · rename_i op a b found
@@ -175,12 +220,13 @@ theorem guardOperands_sound {expression : Lean.Expr} {guard : Guard}
         | junction n op a b =>
           cases accepted
           exact booleanGuardCondition_sound found
+    · exact excludedLet
     · exact excludedAnd
     · exact excludedOr
     · exact excludedNot
     · exact excludedTrue
     · exact excludedFalse
-  | case7 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse absent =>
+  | case8 expression excludedLet excludedAnd excludedOr excludedNot excludedTrue excludedFalse absent =>
     rw [guardOperands?] at parsed
     · rw [absent] at parsed
       simp only [bind, Option.bind_eq_some_iff] at parsed
@@ -191,6 +237,7 @@ theorem guardOperands_sound {expression : Lean.Expr} {guard : Guard}
       | junction n op a b =>
         cases accepted
         exact booleanGuardCondition_sound found
+    · exact excludedLet
     · exact excludedAnd
     · exact excludedOr
     · exact excludedNot
@@ -242,6 +289,8 @@ def compoundGuardShape? (condition : Lean.Expr) : Option CompoundGuard := do
   | .savedLeft n op a b => some (.savedLeft op a b n)
   | .savedRight n op a b => some (.savedRight op a b n)
   | .savedBoth n op a b => some (.savedBoth op a b n)
+  | .letGuard n binding body => some (.letGuard binding body n)
+  | .letSaved n binding body => some (.letSaved binding body n)
   | .compare .. => none
 
 @[simp] theorem compoundGuardShape_condition (tree : Guard) :
@@ -252,6 +301,8 @@ def compoundGuardShape? (condition : Lean.Expr) : Option CompoundGuard := do
       | .savedLeft n op a b => some (.savedLeft op a b n)
       | .savedRight n op a b => some (.savedRight op a b n)
       | .savedBoth n op a b => some (.savedBoth op a b n)
+      | .letGuard n binding body => some (.letGuard binding body n)
+      | .letSaved n binding body => some (.letSaved binding body n)
       | .compare .. => none) := by
   simp [compoundGuardShape?]
 
@@ -268,6 +319,8 @@ theorem compoundGuardShape_sound {condition : Lean.Expr} {guard : CompoundGuard}
   | savedLeft n op a b => cases accepted; exact guardOperands_sound found
   | savedRight n op a b => cases accepted; exact guardOperands_sound found
   | savedBoth n op a b => cases accepted; exact guardOperands_sound found
+  | letGuard n binding body => cases accepted; exact guardOperands_sound found
+  | letSaved n binding body => cases accepted; exact guardOperands_sound found
 
 private def canonicalCompoundGuard? (condition evidence : Lean.Expr) : Option CompoundGuard := do
   let guard ← compoundGuardShape? condition
@@ -318,7 +371,7 @@ theorem compoundGuard_sound {condition evidence : Lean.Expr} {guard : CompoundGu
 
 theorem compoundGuard_size {condition evidence : Lean.Expr} {guard : CompoundGuard}
     (parsed : compoundGuard? condition evidence = some guard) {operand : Lean.Expr}
-    (member : operand ∈ guard.operands) : sizeOf operand < sizeOf condition := by
+    (member : operand ∈ guard.operands) : sizeOf operand < sizeOf condition + guardOperandOverhead := by
   rw [(compoundGuard_sound parsed).1]
   exact guard.operands_size member
 
@@ -366,6 +419,12 @@ theorem guardLiteral_not_comparison (literal : GuardLiteral) :
     | savedBoth n op a b =>
       simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition,
         junction_not_comparison]
+    | letGuard n binding body =>
+      have absent := negated_not_comparison n (binding.wrap body.condition) (by rfl)
+      simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, absent]
+    | letSaved n binding body =>
+      have absent := negated_not_comparison n (binding.wrap body.condition) (by rfl)
+      simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, absent]
   | literal value =>
     simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, guardLiteral_not_comparison]
   | proposition op a b n =>
@@ -380,5 +439,12 @@ theorem guardLiteral_not_comparison (literal : GuardLiteral) :
     simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, junction_not_comparison]
   | savedBoth op a b n =>
     simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, junction_not_comparison]
+
+  | letGuard binding body n =>
+    have absent := negated_not_comparison n (binding.wrap body.condition) (by rfl)
+    simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, absent]
+  | letSaved binding body n =>
+    have absent := negated_not_comparison n (binding.wrap body.condition) (by rfl)
+    simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, absent]
 
 end LeanExe.Extract.Core

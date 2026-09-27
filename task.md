@@ -285,12 +285,19 @@ comparisons, 16,896 invalid-input checks and 768 controls. Prior tests pass 46,5
 comparisons, 30,921 invalid-input checks and 1,024 controls. Evidence is in
 [the compound mixed-guard archive](proofs/compiler/extended-mixed-guard-2026-09-26/README.md).
 
-Next capability: bare lets inside propositions. Lean elaborates
-`(let flag := f (x == 0); let word := x + flag.toUInt64; f (word != y)) ∧ x < y`
-with the equality-to-true inside the let and substituted decision operands.
-This form is still rejected; Boolean-valued lets inside Id.run are covered by
-this increment. Preserve lexical scope and check all bound values, including
-unused ones, while proving the decision-expression reconstruction.
+Proposition lets pass source/parser reconstruction, lowering correctness, scalar
+and loop extraction proofs, and both IR invariant checks. Used and unused Bool
+and UInt64 values are checked, with lexical scope and standard Id annotations
+preserved. New tests pass 24,372 native/IR comparisons, 16,152 invalid-input checks
+and 576 controls. Prior tests pass 78,964 comparisons, 47,817 invalid-input checks
+and 1,792 controls. The full source-to-WASM and independent engine checks are pending.
+
+Next capability: let reduction in decision type arguments. For example, Lean
+can retain `(let _saved := x == y; True) ∧ (let _word := x + y; False)` as the
+condition while supplying `True` and `False` to its conjunction decision. The
+current recognizer checks the exact enclosing type arguments and rejects that
+form. Add a checked let-reduction relation while continuing to check all bound
+values in the original condition. Canonical substituted leaf evidence is covered.
 
 Then: standalone propositional negation of local Boolean values, retained instance
 and Bool-parameter Id wrappers, and broader signatures. Full-dialect correctness

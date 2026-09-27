@@ -498,5 +498,9 @@
   "rangeExtendedMixedStep",
   "rangeExtendedMixedContinue",
   "rangeExtendedMixedOuter",
-  "rangeExtendedMixedHelper"
+  "rangeExtendedMixedHelper",
+  "rangePropositionLetStep",
+  "rangePropositionLetContinue",
+  "rangePropositionLetOuter",
+  "rangePropositionLetHelper"
 ]
