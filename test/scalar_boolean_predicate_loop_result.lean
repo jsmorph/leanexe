@@ -81,7 +81,7 @@ def rangeBooleanPredicateResultOuterWrapped (count seed : UInt64) : UInt64 := Id
   let f := fun b : Bool => b && seed != 0
   let g : Bool → Id (Id Bool) := fun b => pure (Id.run (pure (f b)))
   let h : Id (Id UInt64) → Id Bool := fun n => pure (g ((show UInt64 from n) == seed))
-  let unused := fun b : Bool => g (!b)
+  let _unused := fun b : Bool => g (!b)
   let mut a := seed + (g true).toUInt64
   for i in [:count.toNat] do
     if Id.run (h (a + (UInt64.ofNat i))) then break
