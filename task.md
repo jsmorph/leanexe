@@ -660,13 +660,16 @@ pass 274,176 comparisons, 147,456 invalid-input checks and 17,280 controls. The
 native corpus contains 1377 declarations. Evidence is in
 [the Boolean-composition archive](proofs/compiler/boolean-helper-composition-2026-09-27/README.md).
 
-Current capability: wrapped calls after local Boolean helper declarations.
-The saved loop-bind capture fixture now passes all 240 comparisons. Direct named
-calls retain exact Id run/pure and metadata wrappers, with checked argument scope
-and annotations. Parser proofs and public compiler integration pass. New tests
-pass 14,292 comparisons, 10,080 invalid-input checks and 2,016 controls. Adjacent
-tests, including the restored fixture, pass 20,176 comparisons, 12,880 invalid-input
-checks and 1,280 controls. Complete proof/V8 gates are next.
+Wrapped calls after local Boolean helper declarations are complete. Standard Id
+run/pure and metadata wrappers preserve the call result, with exact annotation,
+instance and argument-scope checks. The saved loop-bind capture fixture passes
+unchanged. Source-to-WASM correctness and all nineteen audits pass. Native Lean/V8
+agree on 549 inputs across 28 declarations, including seventeen ranges; eighteen
+prior modules retain identical bytes. New tests pass 14,292 comparisons, 10,080
+invalid-input checks and 2,016 controls. Prior tests and the saved fixture pass
+20,176 comparisons, 12,880 invalid-input checks and 1,280 controls. The native corpus
+contains 1387 declarations. Evidence is in
+[the wrapped-helper archive](proofs/compiler/boolean-helper-call-wrappers-2026-09-27/README.md).
 
 Next: compound propositions combining Boolean equality with Boolean truth guards.
 General helper compositions inside scalar Boolean operands also remain open.

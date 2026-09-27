@@ -1,0 +1,11 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [6/7] Building LeanExe.Source.ScalarBooleanFunctionBinding (939ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarBooleanFunctionBinding.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanFunctionBinding.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanFunctionBinding.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanFunctionBinding.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanFunctionBinding.setup.json --json
+error: LeanExe/Source/ScalarBooleanFunctionBinding.lean:23:13: Invalid field `trans`: The environment does not contain `Nat.le.trans`, so it is not possible to project the field `trans` from an expression
+  ih
+of type
+  (sizeOf (direct.expr argument)).le (sizeOf (tail.expr argument))
+Some required targets logged failures:
+- LeanExe.Source.ScalarBooleanFunctionBinding
+error: build failed

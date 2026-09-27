@@ -1,0 +1,120 @@
+import LeanExe.Extract.ScalarFunc
+
+namespace BooleanHelperCallWrappersTest
+
+def booleanHelperReturnWord (x y : UInt64) : UInt64 :=
+  let flag := Id.run do
+    let f := fun n : UInt64 => n == y
+    return f x
+  flag.toUInt64 + x
+
+def booleanHelperReturnBoolean (x y : UInt64) : UInt64 :=
+  let flag := Id.run do
+    let f := fun b : Bool => b && y != 7
+    return f (x != 0)
+  flag.toUInt64 * 13 + y
+
+def booleanHelperReturnNested (x y : UInt64) : UInt64 :=
+  let flag : Id (Id Bool) :=
+    let f := fun n : Id UInt64 => Id.run n != y
+    pure (pure (f x))
+  flag.toUInt64 + y
+
+def booleanHelperReturnCondition (x y : UInt64) : UInt64 :=
+  if (Id.run do
+    let f := fun b : Bool => !b || y == 0
+    return f (x == y)) then x + 3 else y - 5
+
+def booleanHelperReturnCaptured (x y : UInt64) : UInt64 :=
+  let g := fun n : UInt64 =>
+    let flag := Id.run do
+      let f := fun k : UInt64 => k != n && k == x
+      return f y
+    n + flag.toUInt64
+  g x + g y
+
+def booleanHelperReturnIgnored (x y : UInt64) : UInt64 :=
+  let flag := Id.run do
+    let f := fun (_ : Bool) => x != y
+    return f (x == 0)
+  flag.toUInt64 + 7
+
+def rangeBoolTailHelperCapture (count seed : UInt64) : Id Bool := do
+  let value ← (do
+    let f := fun b : Bool => if b then seed + 7 else seed + 3
+    let mut a := f false
+    for i in [:count.toNat] do
+      a := a + f (i.toUInt64 % 2 == 0)
+    return a)
+  let f := fun x : UInt64 => x == seed
+  return f value
+
+def rangeBoolTailHelperBoolean (count seed : UInt64) : Id Bool := do
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if a % 7 == 0 then break
+    return a)
+  let f := fun b : Bool => b || value == seed
+  return f (value % 3 == 0)
+
+def rangeBoolTailHelperNestedId (count seed : UInt64) : Id (Id Bool) := do
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if i.toUInt64 % 2 == 0 then continue
+      a := a * 3 + i.toUInt64
+    return a)
+  let f := fun n : Id (Id UInt64) => Id.run n != seed
+  return pure (f value)
+
+def rangeWordStepReturnedHelper (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let flag := Id.run do
+      let f := fun b : Bool => b && a % 3 != 0
+      return f (i.toUInt64 % 2 == 0)
+    if flag then a := a + i.toUInt64 + 7 else a := a * 3 + 1
+  return a
+
+def inputs : List (UInt64 × UInt64) :=
+  [(0, 0), (1, 0), (0xffffffffffffffff, 0), (0, 1), (1, 1),
+   (0xffffffffffffffff, 1), (0x8000000000000000, 2), (42, 3),
+   (0xffffffffffffffff, 63), (0x8000000000000001, 64), (0xffffffffffffffff, 65),
+   (0x0123456789abcdef, 0xffffffffffffffff), (3, 17), (17, 3)]
+
+end BooleanHelperCallWrappersTest
+
+run_elab do
+  let env ← Lean.getEnv
+  let cases : List (Lean.Name × (UInt64 → UInt64 → UInt64) × Bool) := [
+    (`BooleanHelperCallWrappersTest.booleanHelperReturnWord, (fun (x y : UInt64) => BooleanHelperCallWrappersTest.booleanHelperReturnWord x y), false),
+    (`BooleanHelperCallWrappersTest.booleanHelperReturnBoolean, (fun (x y : UInt64) => BooleanHelperCallWrappersTest.booleanHelperReturnBoolean x y), false),
+    (`BooleanHelperCallWrappersTest.booleanHelperReturnNested, (fun (x y : UInt64) => BooleanHelperCallWrappersTest.booleanHelperReturnNested x y), false),
+    (`BooleanHelperCallWrappersTest.booleanHelperReturnCondition, (fun (x y : UInt64) => BooleanHelperCallWrappersTest.booleanHelperReturnCondition x y), false),
+    (`BooleanHelperCallWrappersTest.booleanHelperReturnCaptured, (fun (x y : UInt64) => BooleanHelperCallWrappersTest.booleanHelperReturnCaptured x y), false),
+    (`BooleanHelperCallWrappersTest.booleanHelperReturnIgnored, (fun (x y : UInt64) => BooleanHelperCallWrappersTest.booleanHelperReturnIgnored x y), false),
+    (`BooleanHelperCallWrappersTest.rangeBoolTailHelperCapture, (fun (x y : UInt64) => (BooleanHelperCallWrappersTest.rangeBoolTailHelperCapture x y).toUInt64), true),
+    (`BooleanHelperCallWrappersTest.rangeBoolTailHelperBoolean, (fun (x y : UInt64) => (BooleanHelperCallWrappersTest.rangeBoolTailHelperBoolean x y).toUInt64), true),
+    (`BooleanHelperCallWrappersTest.rangeBoolTailHelperNestedId, (fun (x y : UInt64) => (BooleanHelperCallWrappersTest.rangeBoolTailHelperNestedId x y).toUInt64), true),
+    (`BooleanHelperCallWrappersTest.rangeWordStepReturnedHelper, (fun (x y : UInt64) => BooleanHelperCallWrappersTest.rangeWordStepReturnedHelper x y), true)]
+  let mut comparisons : Nat := 0
+  for (name, native, isRange) in cases do
+    let some info := env.find? name | throwError "missing declaration"
+    let some value := info.value? | throwError "missing body"
+    let some func := LeanExe.Extract.Core.extractScalarFunc name (some "entry") info.type value |
+      throwError "{name}: wrapped Boolean helper extraction failed"
+    let module_ : LeanExe.IR.Module := { funcs := #[func] }
+    let inputs := if isRange then
+      ([0, 1, 2, 7, 16, 31] : List UInt64).flatMap fun n =>
+        ([0, 1, 0x8000000000000000, 0xffffffffffffffff] : List UInt64).map fun seed => (n, seed)
+      else BooleanHelperCallWrappersTest.inputs
+    for (x, y) in inputs do
+      let expected := native x y
+      let actual := module_.evalFunc 0 [x, y]
+      unless actual == expected do
+        throwError "{name}({x}, {y}): native={expected}, IR={actual}"
+      comparisons := comparisons + 1
+  unless comparisons == 180 do throwError "unexpected comparison count {comparisons}"
+  Lean.logInfo m!"{comparisons} native/wrapped Boolean helper IR comparisons passed"

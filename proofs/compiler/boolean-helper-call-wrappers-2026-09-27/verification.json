@@ -1,0 +1,152 @@
+{
+  "candidate": "52ea98bfe3406fd32da56a837c19ab5260a05566",
+  "branch": "correct",
+  "lean": "4.34.0-rc2",
+  "leanCommit": "6a10ac8c22beadecabdbb0919c2b50214762f91d",
+  "node": "24.13.0",
+  "runner": "tools/leanrun, authorized local mode, serial lock",
+  "proofCommand": "tools/arithmetic-check.js proof",
+  "axiomAudits": 19,
+  "engineCommand": "tools/arithmetic-check.js subset-engine boolean-helper-call-wrappers",
+  "nativeV8Comparisons": 549,
+  "declarations": 28,
+  "rangeDeclarations": 17,
+  "rangeComparisons": 408,
+  "priorModulesByteIdentical": 18,
+  "focusedNativeIRComparisons": 14292,
+  "focusedRejections": 10080,
+  "helperControls": 2016,
+  "priorNativeIRComparisons": 20176,
+  "priorRejections": 12880,
+  "priorAdmissionControls": 1280,
+  "fullCorpusDeclarations": 1387,
+  "deferred": "Broader Boolean propositions and helper compositions, general local loop-function application, composition of loops, retained instances, broader signatures, and full LeanExe dialect compiler correctness.",
+  "sourceHashes": {
+    "LeanExe/Extract/ScalarBooleanFunctionBinding.lean": "fa1c9257b0c84f7a95a2ded2d1e6df25bb534530516ab42f41e6d0a9d1825fb0",
+    "LeanExe/Extract/ScalarBooleanLocalParser.lean": "a21bb6f4f880164151ed66bdff723472f3dacb795ac08c42ce054cbcd109f272",
+    "LeanExe/Extract/ScalarBooleanLocalParserEquations.lean": "314bf0ba2fe1ccd17994aad29f9aa1e86fc5644e7d4166f06c7cb17e18eefbae",
+    "LeanExe/Source/ScalarBooleanFunctionBinding.lean": "72a074c882804d35d3dbeda5dbb145573e9c72f3da15a1c7a52d77a41c258462",
+    "LeanExe/Source/ScalarBooleanLet.lean": "6fc13632a73899dc40739a11b3f1a5b73f2def7ff5e2b7d61170dd3a4f06e07c",
+    "test/ArithmeticMilestone.lean": "6a0fc9fdcd011add8571c2b9d4922e0f012248ceb7c7d1323f809af03db4145d",
+    "test/arithmetic-engine-groups.json": "901ea74b07cc21f6356c8b8749ca5adc875156193f1c583826de82f48ef6afdb",
+    "test/arithmetic-range-cases.json": "044c25c34ea5414c6201a331f2ba72b9c4da0b19707ce194e1c737c6d55fdc05",
+    "test/arithmetic_engine.mjs": "80038309bea50bc5b7db44cbd49b3feacaf1f8d9862280e192c64e69c425999c",
+    "test/arithmetic_mode.lean": "d8a2d109a5d26cbbd609bd7e944835b882f3f810f5bfaa25495641335d26d649",
+    "test/scalar_boolean_helper_call_wrappers.lean": "d8fb029131fba67c7302fd6bec457f20119084125f1c4a70672bdb49437d4ece",
+    "test/scalar_boolean_helper_call_wrappers_syntax.lean": "954c9eb699c50a8203f3b8cc3daf35a3f97ebaf3ff012a16bd4df4cc32112d55"
+  },
+  "modules": {
+    "booleanHelperReturnBoolean": {
+      "sha256": "6fa92a590eb54bf81015034043c7374c4801a3406ace7c3dcd6b9f0a72bb44b5",
+      "bytes": 1129
+    },
+    "booleanHelperReturnCaptured": {
+      "sha256": "b44241e0c90ad973cdfeca6f73dd0789a1f8a699a2d05110cc6ad253c78bfe43",
+      "bytes": 1169
+    },
+    "booleanHelperReturnCondition": {
+      "sha256": "6aad526f48fb4cd5de7527e83bdf3e091f5d041bc2fe4ec665183889e89e691d",
+      "bytes": 1129
+    },
+    "booleanHelperReturnIgnored": {
+      "sha256": "c889a4950db1a839a46acc64cdcb921dc8c25419b9749de75cafe6b32e4109c4",
+      "bytes": 1089
+    },
+    "booleanHelperReturnNested": {
+      "sha256": "3beb75815318818f6af6f0aa81e979eaa98d1627a8257812ca8effd26672b563",
+      "bytes": 1088
+    },
+    "booleanHelperReturnWord": {
+      "sha256": "bb1ebdd72447685a14d6447b545917a9955aec9552df40b056fb3d34587dc474",
+      "bytes": 1085
+    },
+    "constant": {
+      "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "bytes": 1042
+    },
+    "publicFlagResult": {
+      "sha256": "b4255409bb6e98c1b54f3256e01344a6fe033cc4a0f54e3fa5494b0e86f38095",
+      "bytes": 1101
+    },
+    "publicFlagWord": {
+      "sha256": "d239e95b104196c33b596f359e83b3fdb4b6dbd50584efdd7d8c8823f07fb1b7",
+      "bytes": 1079
+    },
+    "publicInputIdResult": {
+      "sha256": "dd5e7cfe6bcf055757b30010da3aef55d8d48fc21579546ddd7a73e3258630e8",
+      "bytes": 1105
+    },
+    "publicInputIdWord": {
+      "sha256": "0dfd7f9a5e0f9c1b004fa914f238b00e8adbe503c54979e8d8127aca5e16f3e2",
+      "bytes": 1056
+    },
+    "rangeBoolTailHelperBoolean": {
+      "sha256": "87bbc204edffc651bfde35e3d958fe4897e2758f14d85c2b4564dd020c233996",
+      "bytes": 1281
+    },
+    "rangeBoolTailHelperCapture": {
+      "sha256": "2f4485e249bbc0ad278c3a1d2cd23aa60253c175551f21fefdacc75d65b0d092",
+      "bytes": 1214
+    },
+    "rangeBoolTailHelperNestedId": {
+      "sha256": "ea1380b7db644aa1a6e45bdfeb30ca6609a0876da9b00b6b9be7401a01f4ebd8",
+      "bytes": 1207
+    },
+    "rangeWordBoolHelperId": {
+      "sha256": "14da36d08edff13ac522065addb9461e9dab82157f9d938d6610e585e22a6c58",
+      "bytes": 1314
+    },
+    "rangeWordChooseHelpers": {
+      "sha256": "d60a2823e9f401431ea8c0e02e9d366f000102fea7ce37de8c06d51ea322b60b",
+      "bytes": 1646
+    },
+    "rangeWordChooseLoops": {
+      "sha256": "c7429e13edd50ec2b0dba662efd29d2c0fcc59cad1dd1a1bb6809cc740b8db9e",
+      "bytes": 1466
+    },
+    "rangeWordChooseSavedResult": {
+      "sha256": "9e34fc3b276c68afd9f2e870e9d68d8912b6a012da76c23db4bd7fe6ed92d019",
+      "bytes": 1554
+    },
+    "rangeWordChooseSetupContinue": {
+      "sha256": "62cf2507f1a1692903b2ea84a9d27ce498b1144ce63b44b9414c1c6d11801ee9",
+      "bytes": 1692
+    },
+    "rangeWordChooseSetupDo": {
+      "sha256": "869fb531bbe7fda8cbf38c4324f261d79b8da07f9b451f5d0760898ccd44111d",
+      "bytes": 1530
+    },
+    "rangeWordChooseSetupExit": {
+      "sha256": "7f1bba88c1e49437e106f9d9e179ab3454d3e3d705ecd65207c97f024776a9b1",
+      "bytes": 1804
+    },
+    "rangeWordChooseSetupFlag": {
+      "sha256": "d71aefc2e27bc554b06ab438b8b59bf1d2456c38ec66721f7897a572aaeb10ee",
+      "bytes": 1625
+    },
+    "rangeWordChooseSetupId": {
+      "sha256": "e9e33a074c6589245a3de8563e37bcc373b8aa6bd3428f19c07e036a73659b91",
+      "bytes": 1619
+    },
+    "rangeWordChooseSetupNested": {
+      "sha256": "4adf5260923d762480f9c9eaf0843fd9fc91bae1045668b3b5ed0205489213bb",
+      "bytes": 1949
+    },
+    "rangeWordChooseSetupStride": {
+      "sha256": "347993eff4c581baa951744f5b09b28adcf590556519ff84e54d21cc4ace4cb0",
+      "bytes": 1645
+    },
+    "rangeWordChooseSetupWord": {
+      "sha256": "b60a0b19a20d3526bbdb3c939f13b845cc25ea867f316f68ec34835dcefdab07",
+      "bytes": 1532
+    },
+    "rangeWordChooseShowResult": {
+      "sha256": "f336ad91903e499dc00ef6517190b2f50bfaf47edc49a00d8fa3bf0e94f22e0b",
+      "bytes": 1474
+    },
+    "rangeWordStepReturnedHelper": {
+      "sha256": "9b11dbea44667a004d359d2a233a32b2db0e8acf1014f39e032e7146d381c673",
+      "bytes": 1219
+    }
+  }
+}
