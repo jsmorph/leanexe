@@ -6,8 +6,8 @@ namespace Project.Beck.Execution
 
 open Wasm Project.ProofKit Project.Runtime Project.EulerRiemann.Execution LeanExe.Examples.Beck
 
-def roundsParams (fuel : Nat) (input : Input) (point : Point) (inputRoot pointOwner pointRoot : UInt64) : List Value :=
-  .i64 fuel.toUInt64 :: matrixParams input point inputRoot inputRoot pointOwner pointRoot
+def roundsParams (fuel : Nat) (input : Input) (point : Point) (inputRoot pointOwner pointRoot : UInt64) (inputOwner : UInt64 := inputRoot) : List Value :=
+  .i64 fuel.toUInt64 :: matrixParams input point inputOwner inputRoot pointOwner pointRoot
 
 def roundsBody : Wasm.Program := match (func34[6]? : Option Wasm.Instruction) with
   | some (.block _ _ [.loop _ _ body _ _] _ _) => body

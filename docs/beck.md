@@ -71,7 +71,7 @@ The complete direction theorem covers protected-matrix construction, basis searc
 
 The complete round execution theorem composes direction construction, boundary selection, numerator-array construction, and cleanup.  It proves that both failure branches are unreachable on supported round states and returns the source round result with ownership, freshness, and preserved caller memory.  Its allocation charge is at most 37,291,120 bytes.
 
-The outer-rounding theorem proves fuel-based termination, the all-frozen exit, replacement-array cleanup, and source-result agreement.  It covers distinct point owner and data pointers and charges the round bound times the supplied fuel.  Entry composition still requires the empty-input incidence-owner case.  The computation entry proof, global resource theorem, and independent artifact package remain open.  These execution proofs check with:
+The outer-rounding theorem proves fuel-based termination, the all-frozen exit, replacement-array cleanup, and source-result agreement.  It covers distinct point owner and data pointers and charges the round bound times the supplied fuel.  The zero-fuel theorem also permits distinct incidence owner and data pointers, covering the empty-input call.  Entry fragments prove the borrowed parser call, accepted-status check, initial register preparation, and zero-array allocation.  The complete computation entry proof, global resource theorem, and independent artifact package remain open.  These execution proofs check with:
 
 ```sh
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.ExecutionChecks
