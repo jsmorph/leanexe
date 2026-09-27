@@ -50,6 +50,19 @@ theorem not_boolean_condition (guard : PropositionGuard) (expression : Lean.Expr
     | zero => simp [Guard.hasBooleanCondition] at nonboolean
     | succ m => simp [condition, DecidedGuard.condition, Guard.condition, GuardNegation.condition]
 
+  | savedLeft n op a b =>
+    cases n with
+    | zero => cases op <;> simp [condition, DecidedGuard.condition, Guard.condition, GuardNegation.condition, Junction.condition]
+    | succ n => simp [condition, DecidedGuard.condition, Guard.condition, GuardNegation.condition]
+  | savedRight n op a b =>
+    cases n with
+    | zero => cases op <;> simp [condition, DecidedGuard.condition, Guard.condition, GuardNegation.condition, Junction.condition]
+    | succ n => simp [condition, DecidedGuard.condition, Guard.condition, GuardNegation.condition]
+  | savedBoth n op a b =>
+    cases n with
+    | zero => cases op <;> simp [condition, DecidedGuard.condition, Guard.condition, GuardNegation.condition, Junction.condition]
+    | succ n => simp [condition, DecidedGuard.condition, Guard.condition, GuardNegation.condition]
+
 def branch (guard : PropositionGuard) (yes no : Lean.Expr) : Lean.Expr :=
   .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) (.const ``Bool []))
     guard.condition) guard.evidence) yes) no

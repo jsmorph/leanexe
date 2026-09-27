@@ -486,5 +486,9 @@
   "rangeBooleanResultBindStep",
   "rangeBooleanResultBindCondition",
   "rangeBooleanResultBindOuter",
-  "rangeBooleanResultBindHelper"
+  "rangeBooleanResultBindHelper",
+  "rangeSavedMixedStep",
+  "rangeSavedMixedContinue",
+  "rangeSavedMixedOuter",
+  "rangeSavedMixedHelper"
 ]
