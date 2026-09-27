@@ -59,4 +59,32 @@ theorem Stmt.ScalarEval.append {statement : Stmt} {store next : ScalarStore}
   | whileFalse condition => exact .whileFalse (condition.append suffix)
   | whileTrue condition _ _ body rest => exact .whileTrue (condition.append suffix) body rest
 
+mutual
+  theorem Expr.ScalarEval.store_length {expression : Expr} {store next : ScalarStore} {value : UInt64}
+      (evaluated : expression.ScalarEval store value next) : next.length = store.length := by
+    cases evaluated with
+    | «local» | const => rfl
+    | bin left right _ => exact right.store_length.trans left.store_length
+    | iteTrue condition branch | iteFalse condition branch => exact branch.store_length.trans condition.store_length
+    | letE value write body => exact body.store_length.trans ((ScalarStore.write_length write).trans value.store_length)
+
+  theorem Cond.ScalarEval.store_length {condition : Cond} {store next : ScalarStore} {value : Bool}
+      (evaluated : condition.ScalarEval store value next) : next.length = store.length := by
+    cases evaluated with
+    | true | false => rfl
+    | eq left right | lt left right | le left right => exact right.store_length.trans left.store_length
+    | not inner | andFalse inner | orTrue inner => exact inner.store_length
+    | andTrue left right | orFalse left right => exact right.store_length.trans left.store_length
+end
+
+theorem Stmt.ScalarEval.store_length {statement : Stmt} {store next : ScalarStore}
+    (evaluated : statement.ScalarEval store next) : next.length = store.length := by
+  induction evaluated with
+  | skip => rfl
+  | assign value write => exact (ScalarStore.write_length write).trans value.store_length
+  | seq _ _ first second => exact second.trans first
+  | iteTrue condition _ branch | iteFalse condition _ branch => exact branch.trans condition.store_length
+  | whileFalse condition => exact condition.store_length
+  | whileTrue condition _ _ body rest => exact rest.trans (body.trans condition.store_length)
+
 end LeanExe.IR
