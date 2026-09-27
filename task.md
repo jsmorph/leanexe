@@ -703,8 +703,9 @@ pass 3,136 value/exit comparisons, 2,176 invalid-input checks and 64 controls.
 The expanded scalar converter can select the existing scalar fast path for
 previously admitted public Boolean helpers; their explicit range plans still
 produce the same results. The prior plan-identity test now checks execution of
-both paths and unused-helper controls. The final compiler-proof and native/V8
-gates remain to run before this capability is complete. General Id.run-wrapped
+both paths and unused-helper controls. The general source-to-WASM proof and all nineteen axiom audits pass (3,363
+build targets). Native/V8 execution remains to run; its 54-declaration group
+includes six prior public-helper cases that can change compilation paths. General Id.run-wrapped
 scopes follow this increment.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
