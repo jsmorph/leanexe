@@ -1,0 +1,21 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [8/9] Building LeanExe.Source.ScalarSavedBooleanGuard (930ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarSavedBooleanGuard.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarSavedBooleanGuard.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarSavedBooleanGuard.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarSavedBooleanGuard.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarSavedBooleanGuard.setup.json --json
+error: LeanExe/Source/ScalarSavedBooleanGuard.lean:41:18: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  e ≥ 0
+  d ≥ 0
+  c ≥ 0
+  b ≥ 0
+  a ≥ 0
+  a - b + d + e ≤ -13
+where
+ a := ↑(sizeOf "Bool")
+ b := ↑(sizeOf "toUInt64")
+ c := ↑(sizeOf guard.expr)
+ d := ↑(sizeOf "Eq")
+ e := ↑(sizeOf "true")
+Some required targets logged failures:
+- LeanExe.Source.ScalarSavedBooleanGuard
+error: build failed

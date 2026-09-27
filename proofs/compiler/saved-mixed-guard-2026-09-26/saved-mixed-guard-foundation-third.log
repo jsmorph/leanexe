@@ -1,0 +1,14 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [20/30] Built LeanExe.Extract.ScalarSavedBooleanGuard (1.1s)
+✔ [29/37] Built LeanExe.Source.ScalarGuardDecision (916ms)
+✔ [34/39] Built LeanExe.Source.ScalarCompoundGuard (914ms)
+✔ [36/39] Built LeanExe.Source.ScalarDecidedGuard (875ms)
+✔ [38/39] Built LeanExe.Source.ScalarPropositionGuard (966ms)
+✖ [39/39] Building LeanExe.Extract.ScalarGuardDecision (938ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarGuardDecision.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuardDecision.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuardDecision.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuardDecision.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuardDecision.setup.json --json
+error: LeanExe/Extract/ScalarGuardDecision.lean:119:19: Unknown constant `Bool.and_eq_true.mp`
+error: LeanExe/Extract/ScalarGuardDecision.lean:127:19: Unknown constant `Bool.and_eq_true.mp`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarGuardDecision
+error: build failed
