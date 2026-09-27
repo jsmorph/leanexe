@@ -5128,6 +5128,104 @@ def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
   return a
 
+def rangeBoolFlagSetupLet (count seed : UInt64) : Bool :=
+  let flag := seed % 3 == 0
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + flag.toUInt64
+    return a
+  flag && value == seed
+
+def rangeBoolFlagSetupChain (count seed : UInt64) : Bool :=
+  let first := seed % 3 == 0
+  let second := !first || count == 0
+  let start := seed + second.toUInt64
+  let value := Id.run do
+    let mut a := start
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + first.toUInt64
+    return a
+  second && value == start
+
+def rangeBoolFlagSetupBind (count seed : UInt64) : Id Bool := do
+  let flag ← pure (seed != 0)
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + flag.toUInt64
+    return a)
+  return flag || value == seed
+
+def rangeBoolFlagSetupCondition (count seed : UInt64) : Id Bool := do
+  let flag ← pure (if count == 0 then seed == 0 else seed % 2 == 0)
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if flag then a := a + i.toUInt64 + 1 else a := a + 3
+    return a)
+  return flag && value != seed
+
+def rangeBoolFlagSetupExit (count seed : UInt64) : Id Bool := do
+  let flag ← pure (seed % 2 != 0)
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if flag && a % 7 == 0 then break
+    return a)
+  return flag || value == 0
+
+def rangeBoolFlagSetupContinue (count seed : UInt64) : Bool := Id.run do
+  let flag := seed % 3 == 0
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if flag && i.toUInt64 % 3 == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a)
+  return flag && value == seed
+
+def rangeBoolFlagSetupStride (count seed : UInt64) : Bool :=
+  let flag := seed % 2 == 0
+  let value := Id.run do
+    let mut a := seed
+    for i in [1:count.toNat:3] do
+      a := a + i.toUInt64 + flag.toUInt64
+      if a % 5 == 0 then break
+    return a
+  flag && decide (value ≤ seed)
+
+def rangeBoolFlagSetupCapture (count seed : UInt64) : Id Bool := do
+  let flag ← pure (seed % 7 == 0)
+  let value ← (do
+    let f := fun b : Bool => if b && flag then seed + 7 else seed + 3
+    let mut a := f false
+    for i in [:count.toNat] do
+      a := a + f (i.toUInt64 % 2 == 0)
+    return a)
+  return flag || value == seed
+
+def rangeBoolFlagSetupInput (count : UInt64) (input : Bool) : Bool :=
+  let flag := !input || count == 0
+  let value := Id.run do
+    let mut a := input.toUInt64
+    for i in [:count.toNat] do
+      if flag && i.toUInt64 % 3 == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a
+  flag && value == input.toUInt64
+
+def rangeBoolFlagSetupId (count : UInt64) (input : Id Bool) : Id (Id Bool) := do
+  let flag : Id Bool ← pure (pure (!Id.run input || count == 0))
+  let value ← (do
+    let mut a := (Id.run input).toUInt64
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if Id.run flag && a % 7 == 0 then break
+    return a)
+  return pure (Id.run flag && value == (Id.run input).toUInt64)
+
 def rangeBoolWordSetupLet (count seed : UInt64) : Bool :=
   let start := seed + 7
   let value := Id.run do
@@ -7767,6 +7865,16 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeLocalNotContinue", rangeLocalNotContinue),
    ("rangeLocalNotOuter", rangeLocalNotOuter),
    ("rangeLocalNotHelper", rangeLocalNotHelper),
+   ("rangeBoolFlagSetupLet", (fun (x y : UInt64) => (rangeBoolFlagSetupLet x y).toUInt64)),
+   ("rangeBoolFlagSetupChain", (fun (x y : UInt64) => (rangeBoolFlagSetupChain x y).toUInt64)),
+   ("rangeBoolFlagSetupBind", (fun (x y : UInt64) => (rangeBoolFlagSetupBind x y).toUInt64)),
+   ("rangeBoolFlagSetupCondition", (fun (x y : UInt64) => (rangeBoolFlagSetupCondition x y).toUInt64)),
+   ("rangeBoolFlagSetupExit", (fun (x y : UInt64) => (rangeBoolFlagSetupExit x y).toUInt64)),
+   ("rangeBoolFlagSetupContinue", (fun (x y : UInt64) => (rangeBoolFlagSetupContinue x y).toUInt64)),
+   ("rangeBoolFlagSetupStride", (fun (x y : UInt64) => (rangeBoolFlagSetupStride x y).toUInt64)),
+   ("rangeBoolFlagSetupCapture", (fun (x y : UInt64) => (rangeBoolFlagSetupCapture x y).toUInt64)),
+   ("rangeBoolFlagSetupInput", (fun (x y : UInt64) => (rangeBoolFlagSetupInput x (y != 0)).toUInt64)),
+   ("rangeBoolFlagSetupId", (fun (x y : UInt64) => (rangeBoolFlagSetupId x (y != 0)).toUInt64)),
    ("rangeBoolWordSetupLet", (fun (x y : UInt64) => (rangeBoolWordSetupLet x y).toUInt64)),
    ("rangeBoolWordSetupChain", (fun (x y : UInt64) => (rangeBoolWordSetupChain x y).toUInt64)),
    ("rangeBoolWordSetupBind", (fun (x y : UInt64) => (rangeBoolWordSetupBind x y).toUInt64)),

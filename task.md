@@ -406,8 +406,17 @@ modules retain identical bytes. New tests pass 24,432 native/IR comparisons,
 153,696 comparisons, 113,280 invalid-input checks and 6,528 controls. Evidence is in
 [the Boolean loop word-setup archive](proofs/compiler/boolean-loop-word-setup-2026-09-27/README.md).
 
-Next: Boolean setup and local helpers before Boolean loops, retained instances
-and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
+Current capability: Boolean let and standard Id bind setup before Boolean loop
+results, preserving normalized flags in loop captures and the final computation.
+Source totality, annotation parsing, acceptance, extraction correctness, public
+application and IR invariant proofs pass. New tests pass 24,432 native/IR
+comparisons, 24,192 invalid-input checks and 3,456 lexical/unused setup controls.
+The complete compiler theorem and V8 gates are next.
+
+Next: Id annotations on loop let domains and local helpers before Boolean loops,
+retained instances and broader signatures. Conditional Id actions can elaborate
+to local continuation functions containing the loop; these need explicit coverage.
+Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean
 result conversion. Compound propositions combining Boolean equality with Boolean
 truth guards also need coverage. Native fixtures exposed these grammar gaps. Full-dialect
