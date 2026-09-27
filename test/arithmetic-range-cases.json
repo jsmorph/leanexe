@@ -825,5 +825,9 @@
   "rangeHelperJunctionStep",
   "rangeHelperJunctionExit",
   "rangeHelperJunctionContinue",
-  "rangeHelperJunctionTail"
+  "rangeHelperJunctionTail",
+  "rangeHelperEqualityStep",
+  "rangeHelperEqualityExit",
+  "rangeHelperEqualityContinue",
+  "rangeHelperEqualityTail"
 ]

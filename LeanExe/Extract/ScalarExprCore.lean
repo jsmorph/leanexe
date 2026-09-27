@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarBooleanRelated
 import LeanExe.Extract.ScalarBooleanJoined
 import LeanExe.Extract.ScalarBooleanNegated
 import LeanExe.Extract.ScalarBooleanWrapped
@@ -317,7 +318,13 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
                       match _negated : booleanNegated? argument with
                       | none =>
                           match _joined : booleanJoined? argument with
-                          | none => none
+                          | none =>
+                              match _related : booleanRelated? argument with
+                              | none => none
+                              | some related => do
+                                  let left ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.relation.left)
+                                  let right ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.relation.right)
+                                  pure (booleanWordEquality 0 related.relation.unequal left right)
                           | some joined => do
                               let left ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) joined.left)
                               let right ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) joined.right)
@@ -462,6 +469,7 @@ decreasing_by
     | omega
     | (have bound := booleanScopeGuard_size _scope; omega)
     | (have bound := booleanScopeDependentGuard_size _scope; omega)
+    | (have bounds := booleanRelated_sizes _related; omega)
     | (have bounds := booleanJoined_sizes _joined; omega)
     | (have bound := booleanNegated_size _negated; omega)
     | (have bound := booleanWrapped_size _wrapper; omega)
@@ -592,6 +600,46 @@ theorem extractScalarExprWith_scopeDependentBranch (locals : List ScalarBinding)
   rw [LeanExe.Source.Scalar.BooleanScopeGuard.dependentBranch, extractScalarExprWith]
   rw [scalarResultType_accepts, booleanScopeGuard_not_dependent,
     booleanScopeGuard_not_booleanDependent, booleanScopeDependentGuard_accepts]
+
+theorem extractScalarExprWith_scopedEquality (locals : List ScalarBinding)
+    (related : LeanExe.Source.Scalar.BooleanRelated) :
+    extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.expr) = (do
+      let left ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.relation.left)
+      let right ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.relation.right)
+      pure (booleanWordEquality 0 related.relation.unequal left right)) := by
+  rw [extractScalarExprWith]
+  split
+  · split
+    · rename_i helper found
+      rw [booleanRelated_not_helper] at found
+      contradiction
+    · split
+      · rename_i helper found
+        rw [booleanRelated_not_helper] at found
+        contradiction
+      · split
+        · split
+          · split
+            · split
+              · rename_i absent
+                rw [booleanRelated_accepts] at absent
+                contradiction
+              · rename_i actual found
+                have equal := Option.some.inj ((booleanRelated_accepts related).symm.trans found)
+                subst actual
+                rfl
+            · rename_i joined found
+              rw [booleanRelated_not_joined] at found
+              contradiction
+          · rename_i negated found
+            rw [booleanRelated_not_negated] at found
+            contradiction
+        · rename_i wrapped found
+          rw [booleanRelated_not_wrapped] at found
+          contradiction
+  · rename_i expression found
+    rw [booleanRelated_not_local] at found
+    contradiction
 
 theorem extractScalarExprWith_scopedJunction (locals : List ScalarBinding)
     (joined : LeanExe.Source.Scalar.BooleanJoined) :
