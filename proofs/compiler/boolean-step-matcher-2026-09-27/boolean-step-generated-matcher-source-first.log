@@ -1,0 +1,9 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [67/67] Building LeanExe.Source.ScalarStepMatcher (833ms)
+trace: .> LEAN_PATH=.lake/build/lib/lean build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean LeanExe/Source/ScalarStepMatcher.lean -o .lake/build/lib/lean/LeanExe/Source/ScalarStepMatcher.olean -i .lake/build/lib/lean/LeanExe/Source/ScalarStepMatcher.ilean -c .lake/build/ir/LeanExe/Source/ScalarStepMatcher.c --setup .lake/build/ir/LeanExe/Source/ScalarStepMatcher.setup.json --json
+error: LeanExe/Source/ScalarStepMatcher.lean:77:2: failed to generate projection `LeanExe.Source.Scalar.StepMatcher.Defined.info` for the 'Prop'-valued type `Defined`, field must be a proof, but it has type
+  Lean.ConstantInfo
+Some required targets logged failures:
+- LeanExe.Source.ScalarStepMatcher
+error: build failed

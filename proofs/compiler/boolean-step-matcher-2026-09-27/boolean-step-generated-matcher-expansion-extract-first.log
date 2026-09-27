@@ -1,0 +1,4 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [90/90] Built LeanExe.Extract.ScalarMatcherExpansion (968ms)
+Build completed successfully (90 jobs).

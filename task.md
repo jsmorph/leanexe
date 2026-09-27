@@ -942,20 +942,22 @@ accepted. Ordinary match still calls an unsupported generated declaration.
 The corpus contains 1623 declarations. Evidence is in
 [the Boolean step inspection archive](proofs/compiler/boolean-step-cases-2026-09-27/README.md).
 
-Current capability: generated Boolean step matcher declarations. Exact safe/total
-recognition is proved (69 targets), including type, forwarding body and universe.
-Four generated matcher references and a normally named dispatcher are recognized;
-six unsupported declarations are rejected. The independent source expansion and
-normalization relations pass (87 targets). Executable normalization is proved
-sound and complete for that relation (90 targets). Environment-aware extraction
-preserves direct extraction and proves correctness for the original source in its
-environment (210 targets). Four generated-match programs pass 96 native/IR
-comparisons and 20 invalid-input checks. All new audits use only standard axioms.
-Production entry integration (236 targets) and the public source-to-WASM theorem
-(3387 targets) pass first try. The public result now uses an independent
-environment/source expansion relation. The pure theorem remains available.
-Nine production/native fixtures pass 216 comparisons and require identical
-ordinary/strict compiler bytes. The independent V8 gate is pending. The fixed pure match probe remains unchanged.
+Ordinary matches over Boolean loop-step results are proved through WASM.
+Exact declaration recognition, expansion and extraction connect the original
+source and environment to decoding, validation and terminating WASM execution.
+The full proof gate passes 3391 targets and all 29 axiom audits. Native Lean/V8
+agree on 1,221 inputs across 61 declarations; all 52 prior modules retain identical
+bytes. New tests pass 312 native/IR comparisons and 20 invalid-input checks;
+recognition accepts five references/dispatchers and rejects six declarations.
+Prior tests pass 32,688 comparisons and 18,816 invalid-input checks. Four fixed
+production probes are restored. The corpus contains 1632 declarations. Evidence is
+in [the generated-matcher archive](proofs/compiler/boolean-step-matcher-2026-09-27/README.md).
+
+Current capability: retained Id input annotations in converted Boolean helper
+scopes. The fixed identityInput probe remains unsupported. Extend exact input
+recognition and the independent source grammar, preserve lexical captures and
+arbitrary supported bodies, and prove the capability through emitted WASM before
+broadening other signatures.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
