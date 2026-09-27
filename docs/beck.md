@@ -2,7 +2,7 @@
 
 ## Current state
 
-The experimental partitioner accepts at most six jobs and eight categories.  It constructs integer cofactor directions and rounds coordinates with a shared denominator.  The executable passes native Lean/WASM comparisons and independent output checks.  The output-correctness theorem covers every input accepted by the parser.  Input validation establishes binary incidence entries, at most six jobs and eight categories, and an overlap equal to the maximum parsed row count.  Validation accepts exactly the well-formed membership encodings within capacity.  The universal WASM execution theorem proves termination, agreement with the source result, and sufficient allocation under explicit heap and memory assumptions.  Independent exact-binary package verification remains open.
+The verified partitioner accepts at most six jobs and eight categories.  It constructs integer cofactor directions and rounds coordinates with a shared denominator.  The executable passes native Lean/WASM comparisons and independent output checks.  The output-correctness theorem covers every input accepted by the parser.  Input validation establishes binary incidence entries, at most six jobs and eight categories, and an overlap equal to the maximum parsed row count.  Validation accepts exactly the well-formed membership encodings within capacity.  The universal WASM execution theorem proves termination, agreement with the source result, and sufficient allocation under explicit heap and memory assumptions.  Independent package verification connects that theorem to the exact binary bytes.
 
 Source proofs establish that the executable constructs a nonzero direction preserving every protected category, gives frozen jobs zero direction, and bounds every coefficient's magnitude by 120.  The boundary scan chooses the first minimum boundary ratio using exact word-sized products.  A round preserves coordinate bounds and protected category sums, keeps frozen jobs fixed, and freezes an additional job.  Starting from zero, the full rounding loop finishes with every job frozen, a nonzero denominator, and denominator at most `120^6`.  The release argument gives final discrepancy at most `2t-1` for positive overlap and zero discrepancy for zero overlap.  `Project.Beck.Source.compute_correct` transfers that result to the returned zero-or-one groups and the category counts specified by the encoded membership lists.  These proofs use counting, determinant bounds, Cramer's identity, a bordered-determinant identity, and interval inequalities.
 
@@ -17,7 +17,13 @@ The runner reads a JSON file with a category count and one membership array per 
 }
 ```
 
-Each job in this example belongs to two categories.  Every category contains four jobs, exceeding the discrepancy bound of three.
+Each job in this example belongs to two categories.  Every category contains four jobs, exceeding the discrepancy bound of three.  The executable returns assignments `[1,0,0,1,1,1]`:
+
+| Category | Group zero | Group one | Difference |
+|----------|------------|-----------|------------|
+| 0 | 2 | 2 | 0 |
+| 1 | 1 | 3 | 2 |
+| 2 | 1 | 3 | 2 |
 
 With the prerequisites from [Developing LeanExe](../DEVELOPING.md) installed:
 
@@ -93,6 +99,16 @@ The caller supplies a represented input array and an allocator state satisfying 
 
 Execution uses the pinned Talos semantics and its modeled memory-growth behavior.  The native host, Wasmtime, operating system, and physical resource availability are outside the Lean theorem.  The universal execution theorem covers valid encodings.  Rejection behavior has source proofs and executable tests.
 
-The independent package for the 27,068-byte binary with SHA-256 `55f407d3f82b34a59e95489f2ed40ea756cb621d780f76ee48eb5a60645d080f` is under verification.  The [development plan](../plans/beck.md) records the remaining proof gate and the approved arithmetic design.
+The independent package identifies the 27,068-byte binary with SHA-256 `55f407d3f82b34a59e95489f2ed40ea756cb621d780f76ee48eb5a60645d080f`.  Its [manifest](../proofs/artifacts/beck/55f407d3f82b34a59e95489f2ed40ea756cb621d780f76ee48eb5a60645d080f/manifest.json) records the pinned tools, theorem names, and assumptions.  `Project.Beck.Artifact.artifact_compute_correct` connects successful binary decoding and validation to the universal discrepancy theorem.  Every audited theorem, including binary decoding and validation, depends only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+The independent check uses the frozen package and proof sources without invoking LeanExe or `wasm-tools`:
+
+```sh
+tools/artifact-proof.js check \
+  proofs/artifacts/beck/55f407d3f82b34a59e95489f2ed40ea756cb621d780f76ee48eb5a60645d080f/program.wasm \
+  Project.Beck.ArtifactTranslation
+```
+
+Both the source-driven gate and independent artifact check pass.  The test corpus passes 732 native/WASM comparisons and independent output checks.  The [development plan](../plans/beck.md) records the completed proof gates and the approved arithmetic design.  Larger capacities remain future work.
 
 The generated annotation equalities pass after correcting result-type metadata in the shared scalar-loop proof representation.  The [development journal](../devnotes.md) records the original failure, its cause, and checks on two other artifacts.

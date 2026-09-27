@@ -276,6 +276,12 @@
       "sha256": "e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade",
       "manifest": "gpt2_cached_step/e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade/manifest.json",
       "proofTarget": "Project.Gpt2CachedStep.ArtifactTranslation"
+    },
+    {
+      "case": "beck",
+      "sha256": "55f407d3f82b34a59e95489f2ed40ea756cb621d780f76ee48eb5a60645d080f",
+      "manifest": "beck/55f407d3f82b34a59e95489f2ed40ea756cb621d780f76ee48eb5a60645d080f/manifest.json",
+      "proofTarget": "Project.Beck.ArtifactTranslation"
     }
   ]
 }
