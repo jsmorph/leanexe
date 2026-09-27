@@ -1,0 +1,95 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [68/74] Built LeanExe.Source.ScalarBooleanAccumulatorSyntax (792ms)
+✖ [71/74] Building LeanExe.Source.ScalarBooleanAccumulator (860ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarBooleanAccumulator.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanAccumulator.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanAccumulator.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanAccumulator.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanAccumulator.setup.json --json
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:10:15: Unknown constant `LeanExe.Source.Scalar.BooleanAccumulator.Count.Eval`
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:10:59: Unknown constant `LeanExe.Source.Scalar.BooleanAccumulator.Count.Eval`
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:15:58: Unknown identifier `begin.toNat`
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:16:29: Unknown identifier `stop.toNat`
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:16:42: Unknown identifier `begin.toNat`
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:20:15: Unknown constant `LeanExe.Source.Scalar.BooleanAccumulator.Count.Supported`
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:20:57: Unknown constant `LeanExe.Source.Scalar.BooleanAccumulator.Count.Supported`
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:26:27: Application type mismatch: The argument
+  types
+has type
+  List BindingKind
+but is expected to have type
+  Nat
+in the application
+  Supported types
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:27:66: Application type mismatch: The argument
+  values
+has type
+  List Value
+but is expected to have type
+  List UInt64
+in the application
+  Eval source values
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:30:2: Invalid alternative name `range`: Expected `var`, `natural`, `naturalToUInt64`, `naturalLiteralToUInt64`, `literal`, `ofNat`, `ofNatInstance`, `naturalLiteral`, `ofNatNatural`, `complement`, `extremum`, `binary`, `choose`, `chooseCompound`, `chooseDependent`, `booleanWord`, `letBoolean`, `idBindBoolean`, `chooseScope`, `chooseScopeDependent`, `chooseBoolean`, `chooseBooleanDependent`, `chooseBooleanPredicate`, `chooseBooleanPredicateDependent`, `letE`, `idRun`, `idPure`, `idBind`, `applyBoolean`, `booleanPropositionWord`, `booleanChoiceWord`, `booleanEqualityWord`, `booleanBindingWord`, `wordBindingBooleanWord`, `booleanWrappedWord`, `booleanJunctionWord`, `applyBooleanPredicateWord`, `apply`, `letFn`, `letPredicateFn`, `letBooleanPredicateFn`, `scopedRelationSelection`, `scopedPropositionSelection`, `scopedSelection`, `scopedEquality`, `scopedJunction`, `scopedNegation`, `scopedWrapper`, `scopedPredicate`, `scopedBooleanPredicate`, `predicateInput`, `booleanInput`, `letBooleanFn`, `unitApply`, `letUnitFn`, `binaryApply`, `letBinaryFn`, `manyApply`, `letManyFn`, `idLet`, `ofNatTyped`, or `metadata`
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `var` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `natural` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `naturalToUInt64` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `naturalLiteralToUInt64` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `literal` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `ofNat` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `ofNatInstance` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `naturalLiteral` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `ofNatNatural` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `complement` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `extremum` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `binary` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `choose` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `chooseCompound` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `chooseDependent` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `booleanWord` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `letBoolean` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `idBindBoolean` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `chooseScope` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `chooseScopeDependent` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `chooseBoolean` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `chooseBooleanDependent` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `chooseBooleanPredicate` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `chooseBooleanPredicateDependent` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `letE` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `idRun` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `idPure` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `idBind` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `applyBoolean` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `booleanPropositionWord` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `booleanChoiceWord` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `booleanEqualityWord` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `booleanBindingWord` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `wordBindingBooleanWord` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `booleanWrappedWord` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `booleanJunctionWord` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `applyBooleanPredicateWord` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `apply` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `letFn` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `letPredicateFn` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `letBooleanPredicateFn` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `scopedRelationSelection` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `scopedPropositionSelection` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `scopedSelection` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `scopedEquality` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `scopedJunction` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `scopedNegation` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `scopedWrapper` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `scopedPredicate` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `scopedBooleanPredicate` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `predicateInput` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `booleanInput` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `letBooleanFn` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `unitApply` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `letUnitFn` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `binaryApply` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `letBinaryFn` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `manyApply` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `letManyFn` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `idLet` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `ofNatTyped` has not been provided
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:29:2: Alternative `metadata` has not been provided
+✔ [74/74] Built LeanExe.Extract.ScalarBooleanAccumulatorSyntax (1.1s)
+Some required targets logged failures:
+- LeanExe.Source.ScalarBooleanAccumulator
+error: build failed

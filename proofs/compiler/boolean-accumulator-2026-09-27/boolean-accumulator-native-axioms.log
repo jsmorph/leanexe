@@ -1,0 +1,4 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+'LeanExe.Source.Scalar.BooleanAccumulator.iterate_encode' depends on axioms: [propext]
+'LeanExe.Source.Scalar.BooleanAccumulator.native_stride' depends on axioms: [propext, Classical.choice, Quot.sound]

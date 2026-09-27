@@ -1,0 +1,215 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [79/185] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [141/185] Replayed LeanExe.Extract.ScalarExprCore
+warning: LeanExe/Extract/ScalarExprCore.lean:432:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:440:31: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:440:36: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:440:52: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:449:35: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:449:40: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:449:56: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:516:12: Variable name `bounds` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _bounds
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+⚠ [142/185] Replayed LeanExe.Extract.ScalarExpr
+warning: LeanExe/Extract/ScalarExpr.lean:190:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:191:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:206:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:207:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:238:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:239:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:253:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:254:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1095:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1205:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1485:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1507:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1529:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1551:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1573:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1597:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1621:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1639:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1658:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1677:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [151/185] Replayed LeanExe.Extract.ScalarStepSupported
+warning: LeanExe/Extract/ScalarStepSupported.lean:106:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarStepSupported.lean:455:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [164/185] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [166/185] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [180/185] Replayed LeanExe.Extract.ScalarStepCorrectness
+warning: LeanExe/Extract/ScalarStepCorrectness.lean:325:23: This simp argument is unused:
+  Option.bind_some
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [bind, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✖ [185/185] Building LeanExe.Extract.ScalarBooleanRange (6.6s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanRange.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanRange.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanRange.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanRange.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanRange.setup.json --json
+error: LeanExe/Extract/ScalarBooleanRange.lean:275:2: Type mismatch: After simplification, term
+  compiled
+ has type
+  @Eq (Option ScalarRangeExitPlan)
+    (extractScalarBooleanAccumulatorWith locals slot
+      (((((((((Lean.Expr.const `ForIn.forIn [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app
+                                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                (Lean.Expr.const `Std.Legacy.Range [])).app
+                            view.indexType.expr).app
+                        ((((((Lean.Expr.const `instForInOfForIn'
+                                              [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app
+                                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                      (Lean.Expr.const `Std.Legacy.Range [])).app
+                                  (Lean.Expr.const `Nat [])).app
+                              (((Lean.Expr.const `inferInstance [Lean.Level.zero.succ]).app
+                                    (((Lean.Expr.const `Membership [Lean.Level.zero, Lean.Level.zero]).app
+                                          (Lean.Expr.const `Nat [])).app
+                                      (Lean.Expr.const `Std.Legacy.Range []))).app
+                                (Lean.Expr.const `Std.Legacy.instMembershipNatRange []))).app
+                          (((Lean.Expr.const `Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad
+                                    [Lean.Level.zero, Lean.Level.zero]).app
+                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                            (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                    (Lean.Expr.const `Bool [])).app
+                (view.count.range view.first view.stride.number view.stride.evidence)).app
+            view.initial).app
+        (Lean.Expr.lam view.indexName view.indexType.expr
+          (Lean.Expr.lam view.accumulatorName (Lean.Expr.const `Bool []) view.body view.accumulatorBi) view.indexBi)))
+    (some plan)
+but is expected to have type
+  @Eq (Option ScalarRangeExitPlan)
+    (match _wrapped :
+      match
+        (((Array.foldl Lean.mkApp
+                      (Lean.Expr.const `ForIn.forIn
+                        [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                      #[Lean.Expr.const `Id [Lean.Level.zero], Lean.Expr.const `Std.Legacy.Range [],
+                        view.indexType.expr,
+                        Array.foldl Lean.mkApp
+                          (Lean.Expr.const `instForInOfForIn'
+                            [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero, Lean.Level.zero])
+                          #[Lean.Expr.const `Id [Lean.Level.zero], Lean.Expr.const `Std.Legacy.Range [],
+                            Lean.Expr.const `Nat [],
+                            Array.foldl Lean.mkApp (Lean.Expr.const `inferInstance [Lean.Level.zero.succ])
+                              #[Array.foldl Lean.mkApp (Lean.Expr.const `Membership [Lean.Level.zero, Lean.Level.zero])
+                                  #[Lean.Expr.const `Nat [], Lean.Expr.const `Std.Legacy.Range []],
+                                Lean.Expr.const `Std.Legacy.instMembershipNatRange []],
+                            Array.foldl Lean.mkApp
+                              (Lean.Expr.const `Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad
+                                [Lean.Level.zero, Lean.Level.zero])
+                              #[Lean.Expr.const `Id [Lean.Level.zero],
+                                Lean.Expr.const `Id.instMonad [Lean.Level.zero]]],
+                        Lean.Expr.const `Bool []]).app
+                  (view.count.range view.first view.stride.number view.stride.evidence)).app
+              view.initial).app
+          (Lean.Expr.lam view.indexName view.indexType.expr
+            (Lean.Expr.lam view.accumulatorName (Lean.Expr.const `Bool []) view.body view.accumulatorBi)
+            view.indexBi) with
+      | ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body =>
+        (booleanType? type).bind fun type => some (BooleanWrapper.run type, body)
+      |
+      ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type).app
+          body =>
+        (booleanType? type).bind fun type => some (BooleanWrapper.pure type, body)
+      | Lean.Expr.mdata data body => some (BooleanWrapper.metadata data, body)
+      | x => none with
+    | some (fst, body) => extractScalarBooleanRangeWith locals slot body
+    | none =>
+      extractScalarBooleanAccumulatorWith locals slot
+        (((((((((Lean.Expr.const `ForIn.forIn [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero, Lean.Level.zero]).app
+                                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                  (Lean.Expr.const `Std.Legacy.Range [])).app
+                              view.indexType.expr).app
+                          ((((((Lean.Expr.const `instForInOfForIn'
+                                                [Lean.Level.zero, Lean.Level.zero, Lean.Level.zero,
+                                                  Lean.Level.zero]).app
+                                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                        (Lean.Expr.const `Std.Legacy.Range [])).app
+                                    (Lean.Expr.const `Nat [])).app
+                                (((Lean.Expr.const `inferInstance [Lean.Level.zero.succ]).app
+                                      (((Lean.Expr.const `Membership [Lean.Level.zero, Lean.Level.zero]).app
+                                            (Lean.Expr.const `Nat [])).app
+                                        (Lean.Expr.const `Std.Legacy.Range []))).app
+                                  (Lean.Expr.const `Std.Legacy.instMembershipNatRange []))).app
+                            (((Lean.Expr.const `Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad
+                                      [Lean.Level.zero, Lean.Level.zero]).app
+                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                              (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                      (Lean.Expr.const `Bool [])).app
+                  (view.count.range view.first view.stride.number view.stride.evidence)).app
+              view.initial).app
+          (Lean.Expr.lam view.indexName view.indexType.expr
+            (Lean.Expr.lam view.accumulatorName (Lean.Expr.const `Bool []) view.body view.accumulatorBi) view.indexBi)))
+    (some plan)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanRange
+error: build failed

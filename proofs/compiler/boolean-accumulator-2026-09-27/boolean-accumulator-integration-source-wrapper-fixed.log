@@ -1,0 +1,518 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [79/185] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [141/185] Replayed LeanExe.Extract.ScalarExprCore
+warning: LeanExe/Extract/ScalarExprCore.lean:432:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:440:31: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:440:36: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:440:52: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:449:35: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:449:40: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:449:56: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:516:12: Variable name `bounds` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _bounds
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+⚠ [142/185] Replayed LeanExe.Extract.ScalarExpr
+warning: LeanExe/Extract/ScalarExpr.lean:190:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:191:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:206:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:207:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:238:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:239:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:253:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:254:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1095:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1205:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1485:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1507:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1529:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1551:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1573:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1597:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1621:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1639:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1658:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1677:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [151/185] Replayed LeanExe.Extract.ScalarStepSupported
+warning: LeanExe/Extract/ScalarStepSupported.lean:106:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarStepSupported.lean:455:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [164/185] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [166/185] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [180/185] Replayed LeanExe.Extract.ScalarStepCorrectness
+warning: LeanExe/Extract/ScalarStepCorrectness.lean:325:23: This simp argument is unused:
+  Option.bind_some
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [bind, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✖ [185/185] Building LeanExe.Extract.ScalarBooleanRange (6.6s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanRange.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanRange.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanRange.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanRange.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanRange.setup.json --json
+error: LeanExe/Extract/ScalarBooleanRange.lean:269:68: unsolved goals
+case x
+locals : List ScalarBinding
+slot : Nat
+source : Lean.Expr
+plan : ScalarRangeExitPlan
+view : ScalarBooleanAccumulatorView
+compiled : extractScalarBooleanAccumulatorWith locals slot view.source = some plan
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.source) = none
+parsed : scalarBooleanAccumulator? source = some view
+right✝ :
+  ∃ a,
+    extractScalarExprWith locals view.first.scalar = some a ∧
+      ∃ a_1,
+        extractScalarExprWith locals view.count.scalar = some a_1 ∧
+          ∃ a_2,
+            extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.initial) = some a_2 ∧
+              ∃ a_3,
+                extractBooleanStepWith
+                      (booleanAccumulatorBinding slot ::
+                        ScalarBinding.natural
+                            (scalarRangeOffset a (scalarRangeScale view.stride.number (IR.Expr.local (slot + 1)))) ::
+                          locals)
+                      view.body =
+                    some a_3 ∧
+                  pure
+                      { count := scalarRangeTrips view.stride.number (scalarRangeDistance a a_1), initial := a_2,
+                        step := a_3.value, done := a_3.done, result := IR.Expr.local slot } =
+                    some plan
+notWrapped : booleanRangeWrapper? view.source = none
+⊢ ∀ (declName : Lean.Name) (value body : Lean.Expr) (nondep : Bool),
+    view.source = Lean.Expr.letE declName (Lean.Expr.const `UInt64 []) value body nondep → False
+
+case x_1
+locals : List ScalarBinding
+slot : Nat
+source : Lean.Expr
+plan : ScalarRangeExitPlan
+view : ScalarBooleanAccumulatorView
+compiled : extractScalarBooleanAccumulatorWith locals slot view.source = some plan
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.source) = none
+parsed : scalarBooleanAccumulator? source = some view
+right✝ :
+  ∃ a,
+    extractScalarExprWith locals view.first.scalar = some a ∧
+      ∃ a_1,
+        extractScalarExprWith locals view.count.scalar = some a_1 ∧
+          ∃ a_2,
+            extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.initial) = some a_2 ∧
+              ∃ a_3,
+                extractBooleanStepWith
+                      (booleanAccumulatorBinding slot ::
+                        ScalarBinding.natural
+                            (scalarRangeOffset a (scalarRangeScale view.stride.number (IR.Expr.local (slot + 1)))) ::
+                          locals)
+                      view.body =
+                    some a_3 ∧
+                  pure
+                      { count := scalarRangeTrips view.stride.number (scalarRangeDistance a a_1), initial := a_2,
+                        step := a_3.value, done := a_3.done, result := IR.Expr.local slot } =
+                    some plan
+notWrapped : booleanRangeWrapper? view.source = none
+⊢ ∀ (declName : Lean.Name) (value body : Lean.Expr) (nondep : Bool),
+    view.source = Lean.Expr.letE declName (Lean.Expr.const `Bool []) value body nondep → False
+
+case x_2
+locals : List ScalarBinding
+slot : Nat
+source : Lean.Expr
+plan : ScalarRangeExitPlan
+view : ScalarBooleanAccumulatorView
+compiled : extractScalarBooleanAccumulatorWith locals slot view.source = some plan
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.source) = none
+parsed : scalarBooleanAccumulator? source = some view
+right✝ :
+  ∃ a,
+    extractScalarExprWith locals view.first.scalar = some a ∧
+      ∃ a_1,
+        extractScalarExprWith locals view.count.scalar = some a_1 ∧
+          ∃ a_2,
+            extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.initial) = some a_2 ∧
+              ∃ a_3,
+                extractBooleanStepWith
+                      (booleanAccumulatorBinding slot ::
+                        ScalarBinding.natural
+                            (scalarRangeOffset a (scalarRangeScale view.stride.number (IR.Expr.local (slot + 1)))) ::
+                          locals)
+                      view.body =
+                    some a_3 ∧
+                  pure
+                      { count := scalarRangeTrips view.stride.number (scalarRangeDistance a a_1), initial := a_2,
+                        step := a_3.value, done := a_3.done, result := IR.Expr.local slot } =
+                    some plan
+notWrapped : booleanRangeWrapper? view.source = none
+⊢ ∀ (name : Lean.Name) (type value body : Lean.Expr) (nondep : Bool),
+    view.source = Lean.Expr.letE name ((Lean.Expr.const `Id [Lean.Level.zero]).app type) value body nondep → False
+
+case x_3
+locals : List ScalarBinding
+slot : Nat
+source : Lean.Expr
+plan : ScalarRangeExitPlan
+view : ScalarBooleanAccumulatorView
+compiled : extractScalarBooleanAccumulatorWith locals slot view.source = some plan
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.source) = none
+parsed : scalarBooleanAccumulator? source = some view
+right✝ :
+  ∃ a,
+    extractScalarExprWith locals view.first.scalar = some a ∧
+      ∃ a_1,
+        extractScalarExprWith locals view.count.scalar = some a_1 ∧
+          ∃ a_2,
+            extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.initial) = some a_2 ∧
+              ∃ a_3,
+                extractBooleanStepWith
+                      (booleanAccumulatorBinding slot ::
+                        ScalarBinding.natural
+                            (scalarRangeOffset a (scalarRangeScale view.stride.number (IR.Expr.local (slot + 1)))) ::
+                          locals)
+                      view.body =
+                    some a_3 ∧
+                  pure
+                      { count := scalarRangeTrips view.stride.number (scalarRangeDistance a a_1), initial := a_2,
+                        step := a_3.value, done := a_3.done, result := IR.Expr.local slot } =
+                    some plan
+notWrapped : booleanRangeWrapper? view.source = none
+⊢ ∀ (declName firstTypeName secondTypeName : Lean.Name) (resultType : Lean.Expr)
+    (secondTypeBi firstTypeBi : Lean.BinderInfo) (firstName secondName : Lean.Name) (value : Lean.Expr)
+    (secondBi firstBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+    view.source =
+        Lean.Expr.letE declName
+          (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+            (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+          (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+            (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+          body nondep →
+      False
+
+case x_4
+locals : List ScalarBinding
+slot : Nat
+source : Lean.Expr
+plan : ScalarRangeExitPlan
+view : ScalarBooleanAccumulatorView
+compiled : extractScalarBooleanAccumulatorWith locals slot view.source = some plan
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.source) = none
+parsed : scalarBooleanAccumulator? source = some view
+right✝ :
+  ∃ a,
+    extractScalarExprWith locals view.first.scalar = some a ∧
+      ∃ a_1,
+        extractScalarExprWith locals view.count.scalar = some a_1 ∧
+          ∃ a_2,
+            extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.initial) = some a_2 ∧
+              ∃ a_3,
+                extractBooleanStepWith
+                      (booleanAccumulatorBinding slot ::
+                        ScalarBinding.natural
+                            (scalarRangeOffset a (scalarRangeScale view.stride.number (IR.Expr.local (slot + 1)))) ::
+                          locals)
+                      view.body =
+                    some a_3 ∧
+                  pure
+                      { count := scalarRangeTrips view.stride.number (scalarRangeDistance a a_1), initial := a_2,
+                        step := a_3.value, done := a_3.done, result := IR.Expr.local slot } =
+                    some plan
+notWrapped : booleanRangeWrapper? view.source = none
+⊢ ∀ (name typeName : Lean.Name) (resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+    (value : Lean.Expr) (paramBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+    view.source =
+        Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+          (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body nondep →
+      False
+
+case x_5
+locals : List ScalarBinding
+slot : Nat
+source : Lean.Expr
+plan : ScalarRangeExitPlan
+view : ScalarBooleanAccumulatorView
+compiled : extractScalarBooleanAccumulatorWith locals slot view.source = some plan
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.source) = none
+parsed : scalarBooleanAccumulator? source = some view
+right✝ :
+  ∃ a,
+    extractScalarExprWith locals view.first.scalar = some a ∧
+      ∃ a_1,
+        extractScalarExprWith locals view.count.scalar = some a_1 ∧
+          ∃ a_2,
+            extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.initial) = some a_2 ∧
+              ∃ a_3,
+                extractBooleanStepWith
+                      (booleanAccumulatorBinding slot ::
+                        ScalarBinding.natural
+                            (scalarRangeOffset a (scalarRangeScale view.stride.number (IR.Expr.local (slot + 1)))) ::
+                          locals)
+                      view.body =
+                    some a_3 ∧
+                  pure
+                      { count := scalarRangeTrips view.stride.number (scalarRangeDistance a a_1), initial := a_2,
+                        step := a_3.value, done := a_3.done, result := IR.Expr.local slot } =
+                    some plan
+notWrapped : booleanRangeWrapper? view.source = none
+⊢ ∀ (name typeName : Lean.Name) (resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+    (value : Lean.Expr) (paramBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+    view.source =
+        Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+          (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body nondep →
+      False
+
+case x_6
+locals : List ScalarBinding
+slot : Nat
+source : Lean.Expr
+plan : ScalarRangeExitPlan
+view : ScalarBooleanAccumulatorView
+compiled : extractScalarBooleanAccumulatorWith locals slot view.source = some plan
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.source) = none
+parsed : scalarBooleanAccumulator? source = some view
+right✝ :
+  ∃ a,
+    extractScalarExprWith locals view.first.scalar = some a ∧
+      ∃ a_1,
+        extractScalarExprWith locals view.count.scalar = some a_1 ∧
+          ∃ a_2,
+            extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.initial) = some a_2 ∧
+              ∃ a_3,
+                extractBooleanStepWith
+                      (booleanAccumulatorBinding slot ::
+                        ScalarBinding.natural
+                            (scalarRangeOffset a (scalarRangeScale view.stride.number (IR.Expr.local (slot + 1)))) ::
+                          locals)
+                      view.body =
+                    some a_3 ∧
+                  pure
+                      { count := scalarRangeTrips view.stride.number (scalarRangeDistance a a_1), initial := a_2,
+                        step := a_3.value, done := a_3.done, result := IR.Expr.local slot } =
+                    some plan
+notWrapped : booleanRangeWrapper? view.source = none
+⊢ ∀ (declName binderName binderName_1 : Lean.Name) (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo)
+    (binderName_2 binderName_3 : Lean.Name) (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo)
+    (body : Lean.Expr) (nondep : Bool),
+    view.source =
+        Lean.Expr.letE declName
+          (Lean.Expr.forallE binderName (Lean.Expr.const `Unit [])
+            (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+          (Lean.Expr.lam binderName_2 (Lean.Expr.const `Unit [])
+            (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+          body nondep →
+      False
+
+case x_7
+locals : List ScalarBinding
+slot : Nat
+source : Lean.Expr
+plan : ScalarRangeExitPlan
+view : ScalarBooleanAccumulatorView
+compiled : extractScalarBooleanAccumulatorWith locals slot view.source = some plan
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.source) = none
+parsed : scalarBooleanAccumulator? source = some view
+right✝ :
+  ∃ a,
+    extractScalarExprWith locals view.first.scalar = some a ∧
+      ∃ a_1,
+        extractScalarExprWith locals view.count.scalar = some a_1 ∧
+          ∃ a_2,
+            extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.initial) = some a_2 ∧
+              ∃ a_3,
+                extractBooleanStepWith
+                      (booleanAccumulatorBinding slot ::
+                        ScalarBinding.natural
+                            (scalarRangeOffset a (scalarRangeScale view.stride.number (IR.Expr.local (slot + 1)))) ::
+                          locals)
+                      view.body =
+                    some a_3 ∧
+                  pure
+                      { count := scalarRangeTrips view.stride.number (scalarRangeDistance a a_1), initial := a_2,
+                        step := a_3.value, done := a_3.done, result := IR.Expr.local slot } =
+                    some plan
+notWrapped : booleanRangeWrapper? view.source = none
+⊢ ∀ (declName binderName binderName_1 : Lean.Name) (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo)
+    (binderName_2 binderName_3 : Lean.Name) (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo)
+    (body : Lean.Expr) (nondep : Bool),
+    view.source =
+        Lean.Expr.letE declName
+          (Lean.Expr.forallE binderName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+            (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+          (Lean.Expr.lam binderName_2 (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+            (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+          body nondep →
+      False
+
+case x_8
+locals : List ScalarBinding
+slot : Nat
+source : Lean.Expr
+plan : ScalarRangeExitPlan
+view : ScalarBooleanAccumulatorView
+compiled : extractScalarBooleanAccumulatorWith locals slot view.source = some plan
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.source) = none
+parsed : scalarBooleanAccumulator? source = some view
+right✝ :
+  ∃ a,
+    extractScalarExprWith locals view.first.scalar = some a ∧
+      ∃ a_1,
+        extractScalarExprWith locals view.count.scalar = some a_1 ∧
+          ∃ a_2,
+            extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.initial) = some a_2 ∧
+              ∃ a_3,
+                extractBooleanStepWith
+                      (booleanAccumulatorBinding slot ::
+                        ScalarBinding.natural
+                            (scalarRangeOffset a (scalarRangeScale view.stride.number (IR.Expr.local (slot + 1)))) ::
+                          locals)
+                      view.body =
+                    some a_3 ∧
+                  pure
+                      { count := scalarRangeTrips view.stride.number (scalarRangeDistance a a_1), initial := a_2,
+                        step := a_3.value, done := a_3.done, result := IR.Expr.local slot } =
+                    some plan
+notWrapped : booleanRangeWrapper? view.source = none
+⊢ ∀ (name typeName : Lean.Name) (input resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+    (domain value : Lean.Expr) (paramBi : Lean.BinderInfo) (body : Lean.Expr) (nondep : Bool),
+    view.source =
+        Lean.Expr.letE name
+          (Lean.Expr.forallE typeName ((Lean.Expr.const `Id [Lean.Level.zero]).app input) resultType typeBi)
+          (Lean.Expr.lam paramName ((Lean.Expr.const `Id [Lean.Level.zero]).app domain) value paramBi) body nondep →
+      False
+
+case x_9
+locals : List ScalarBinding
+slot : Nat
+source : Lean.Expr
+plan : ScalarRangeExitPlan
+view : ScalarBooleanAccumulatorView
+compiled : extractScalarBooleanAccumulatorWith locals slot view.source = some plan
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.source) = none
+parsed : scalarBooleanAccumulator? source = some view
+right✝ :
+  ∃ a,
+    extractScalarExprWith locals view.first.scalar = some a ∧
+      ∃ a_1,
+        extractScalarExprWith locals view.count.scalar = some a_1 ∧
+          ∃ a_2,
+            extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.initial) = some a_2 ∧
+              ∃ a_3,
+                extractBooleanStepWith
+                      (booleanAccumulatorBinding slot ::
+                        ScalarBinding.natural
+                            (scalarRangeOffset a (scalarRangeScale view.stride.number (IR.Expr.local (slot + 1)))) ::
+                          locals)
+                      view.body =
+                    some a_3 ∧
+                  pure
+                      { count := scalarRangeTrips view.stride.number (scalarRangeDistance a a_1), initial := a_2,
+                        step := a_3.value, done := a_3.done, result := IR.Expr.local slot } =
+                    some plan
+notWrapped : booleanRangeWrapper? view.source = none
+⊢ ∀ (input output value : Lean.Expr) (binderName : Lean.Name) (domain body : Lean.Expr) (binderInfo : Lean.BinderInfo),
+    view.source =
+        ((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                          (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                            (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                      input).app
+                  output).app
+              value).app
+          (Lean.Expr.lam binderName domain body binderInfo) →
+      False
+
+case x_10
+locals : List ScalarBinding
+slot : Nat
+source : Lean.Expr
+plan : ScalarRangeExitPlan
+view : ScalarBooleanAccumulatorView
+compiled : extractScalarBooleanAccumulatorWith locals slot view.source = some plan
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.source) = none
+parsed : scalarBooleanAccumulator? source = some view
+right✝ :
+  ∃ a,
+    extractScalarExprWith locals view.first.scalar = some a ∧
+      ∃ a_1,
+        extractScalarExprWith locals view.count.scalar = some a_1 ∧
+          ∃ a_2,
+            extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app view.initial) = some a_2 ∧
+              ∃ a_3,
+                extractBooleanStepWith
+                      (booleanAccumulatorBinding slot ::
+                        ScalarBinding.natural
+                            (scalarRangeOffset a (scalarRangeScale view.stride.number (IR.Expr.local (slot + 1)))) ::
+                          locals)
+                      view.body =
+                    some a_3 ∧
+                  pure
+                      { count := scalarRangeTrips view.stride.number (scalarRangeDistance a a_1), initial := a_2,
+                        step := a_3.value, done := a_3.done, result := IR.Expr.local slot } =
+                    some plan
+notWrapped : booleanRangeWrapper? view.source = none
+⊢ ∀ (type condition evidence yes no : Lean.Expr),
+    view.source =
+        (((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app yes).app no →
+      False
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanRange
+error: build failed

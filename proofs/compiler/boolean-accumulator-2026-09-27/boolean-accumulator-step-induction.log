@@ -1,0 +1,82 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+theorem LeanExe.Extract.Core.extractBooleanStepWith.induct : ∀ (motive : List ScalarBinding → Lean.Expr → Prop),
+  (∀ (locals : List ScalarBinding) (value : Lean.Expr),
+      motive locals (((Lean.Expr.const `ForInStep.yield [Lean.Level.zero]).app (Lean.Expr.const `Bool [])).app value)) →
+    (∀ (locals : List ScalarBinding) (value : Lean.Expr),
+        motive locals
+          (((Lean.Expr.const `ForInStep.done [Lean.Level.zero]).app (Lean.Expr.const `Bool [])).app value)) →
+      (∀ (locals : List ScalarBinding) (type body : Lean.Expr),
+          motive locals body → motive locals (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body)) →
+        (∀ (locals : List ScalarBinding) (type body : Lean.Expr),
+            motive locals body →
+              motive locals
+                (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                          (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                            (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                              (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                      type).app
+                  body)) →
+          (∀ (locals : List ScalarBinding) (data : Lean.MData) (body : Lean.Expr),
+              motive locals body → motive locals (Lean.Expr.mdata data body)) →
+            (∀ (locals : List ScalarBinding) (type condition evidence yes no : Lean.Expr),
+                motive locals yes →
+                  motive locals no →
+                    motive locals
+                      ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app
+                            yes).app
+                        no)) →
+              (∀ (locals : List ScalarBinding) (declName : Lean.Name) (type value body : Lean.Expr) (nondep : Bool)
+                  (val : LeanExe.Source.Scalar.ResultType),
+                  scalarResultType? type = some val →
+                    (∀ (result : LeanExe.IR.Expr), motive (ScalarBinding.word result :: locals) body) →
+                      motive locals (Lean.Expr.letE declName type value body nondep)) →
+                (∀ (locals : List ScalarBinding) (declName : Lean.Name) (type value body : Lean.Expr) (nondep : Bool),
+                    scalarResultType? type = none →
+                      (∀ (result : LeanExe.IR.Expr), motive (ScalarBinding.boolean result :: locals) body) →
+                        motive locals (Lean.Expr.letE declName type value body nondep)) →
+                  (∀ (locals : List ScalarBinding) (x : Lean.Expr),
+                      (∀ (value : Lean.Expr),
+                          x =
+                              ((Lean.Expr.const `ForInStep.yield [Lean.Level.zero]).app (Lean.Expr.const `Bool [])).app
+                                value →
+                            False) →
+                        (∀ (value : Lean.Expr),
+                            x =
+                                ((Lean.Expr.const `ForInStep.done [Lean.Level.zero]).app (Lean.Expr.const `Bool [])).app
+                                  value →
+                              False) →
+                          (∀ (type body : Lean.Expr),
+                              x = ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type).app body → False) →
+                            (∀ (type body : Lean.Expr),
+                                x =
+                                    ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                                                  (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                              (((Lean.Expr.const `Applicative.toPure
+                                                        [Lean.Level.zero, Lean.Level.zero]).app
+                                                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                (((Lean.Expr.const `Monad.toApplicative
+                                                          [Lean.Level.zero, Lean.Level.zero]).app
+                                                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                                                  (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                                          type).app
+                                      body →
+                                  False) →
+                              (∀ (data : Lean.MData) (body : Lean.Expr), x = Lean.Expr.mdata data body → False) →
+                                (∀ (type condition evidence yes no : Lean.Expr),
+                                    x =
+                                        (((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app
+                                                  evidence).app
+                                              yes).app
+                                          no →
+                                      False) →
+                                  (∀ (declName : Lean.Name) (type value body : Lean.Expr) (nondep : Bool),
+                                      x = Lean.Expr.letE declName type value body nondep → False) →
+                                    motive locals x) →
+                    ∀ (locals : List ScalarBinding) (a : Lean.Expr), motive locals a :=
+id fun motive case1 case2 case3 case4 case5 case6 case7 case8 case9 locals a =>
+  extractBooleanStepWith._unary.induct (fun _x => PSigma.casesOn _x fun locals a => motive locals a) case1 case2 case3
+    case4 case5 case6 case7 case8 case9 ⟨locals, a⟩

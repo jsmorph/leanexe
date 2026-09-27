@@ -1,0 +1,17 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [71/74] Building LeanExe.Source.ScalarBooleanAccumulator (899ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarBooleanAccumulator.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanAccumulator.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanAccumulator.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanAccumulator.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanAccumulator.setup.json --json
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:15:64: Invalid field `toNat`: The environment does not contain `Nat.toNat`, so it is not possible to project the field `toNat` from an expression
+  begin
+of type `Nat`
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:16:34: Invalid field `toNat`: The environment does not contain `Nat.toNat`, so it is not possible to project the field `toNat` from an expression
+  stop
+of type `Nat`
+error: LeanExe/Source/ScalarBooleanAccumulator.lean:16:48: Invalid field `toNat`: The environment does not contain `Nat.toNat`, so it is not possible to project the field `toNat` from an expression
+  begin
+of type `Nat`
+warning: LeanExe/Source/ScalarBooleanAccumulator.lean:25:8: declaration uses `sorry`
+Some required targets logged failures:
+- LeanExe.Source.ScalarBooleanAccumulator
+error: build failed

@@ -1,0 +1,30 @@
+{
+  "names": [
+    "rangeBooleanAccumulatorToggle",
+    "rangeBooleanAccumulatorIndex",
+    "rangeBooleanAccumulatorChoice",
+    "rangeBooleanAccumulatorBreak",
+    "rangeBooleanAccumulatorContinue",
+    "rangeBooleanAccumulatorStride",
+    "rangeBooleanAccumulatorPredicate",
+    "rangeBooleanAccumulatorInitial",
+    "rangeBooleanAccumulatorWordTail",
+    "rangeBooleanAccumulatorInput",
+    "rangeBooleanAccumulatorHigh",
+    "rangeBooleanAccumulatorHuge"
+  ],
+  "adapters": {
+    "rangeBooleanAccumulatorToggle": "(fun (x y : UInt64) => (rangeBooleanAccumulatorToggle x y).toUInt64)",
+    "rangeBooleanAccumulatorIndex": "(fun (x y : UInt64) => (rangeBooleanAccumulatorIndex x y).toUInt64)",
+    "rangeBooleanAccumulatorChoice": "(fun (x y : UInt64) => (rangeBooleanAccumulatorChoice x y).toUInt64)",
+    "rangeBooleanAccumulatorBreak": "(fun (x y : UInt64) => (rangeBooleanAccumulatorBreak x y).toUInt64)",
+    "rangeBooleanAccumulatorContinue": "(fun (x y : UInt64) => (rangeBooleanAccumulatorContinue x y).toUInt64)",
+    "rangeBooleanAccumulatorStride": "(fun (x y : UInt64) => (rangeBooleanAccumulatorStride x y).toUInt64)",
+    "rangeBooleanAccumulatorPredicate": "(fun (x y : UInt64) => (rangeBooleanAccumulatorPredicate x y).toUInt64)",
+    "rangeBooleanAccumulatorInitial": "(fun (x y : UInt64) => (rangeBooleanAccumulatorInitial x y).toUInt64)",
+    "rangeBooleanAccumulatorWordTail": "(fun (x y : UInt64) => rangeBooleanAccumulatorWordTail x y)",
+    "rangeBooleanAccumulatorInput": "(fun (x y : UInt64) => (rangeBooleanAccumulatorInput x (y != 0)).toUInt64)",
+    "rangeBooleanAccumulatorHigh": "(fun (x y : UInt64) => (rangeBooleanAccumulatorHigh x y).toUInt64)",
+    "rangeBooleanAccumulatorHuge": "(fun (x y : UInt64) => (rangeBooleanAccumulatorHuge x y).toUInt64)"
+  }
+}
