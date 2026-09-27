@@ -1,0 +1,165 @@
+#!/usr/bin/env node
+"use strict";
+
+const fs = require("node:fs");
+const path = require("node:path");
+const { runChecked } = require("./run-process");
+const { ensureHost, maxUInt64, parseI64SlotsOutput } = require("./wasmtime-host");
+const catalog = require("../libraries/catalog.json");
+
+const root = path.resolve(__dirname, "..");
+const directory = path.join(root, "build/seminum");
+const wasm = path.join(directory, "examples.wasm");
+const annotations = path.join(directory, "examples.annotations.json");
+const sourceModule = "LeanExe.Examples.Seminum";
+const client = `${sourceModule}.`;
+const exports_ = ["LeanExe.Lib.NumberTheory.gcd", "LeanExe.Lib.NumberTheory.gcdBinary",
+  ...["fraction", "fractionBinary", "polynomial", "ratio", "exponential", "decay"].map(name => client + name)];
+const options = { cwd: root, encoding: "utf8", timeout: 120000 };
+const usage = `usage: tools/seminum COMMAND [ARGS]
+  gcd A B                  Greatest common divisor
+  gcd-binary A B           Greatest common divisor using shifts and subtraction
+  fraction N D             Reduce N/D; D must be positive
+  fraction-binary N D      Reduce N/D using binary GCD
+  polynomial X C0,C1,...    Evaluate a polynomial with checked UInt64 arithmetic
+  ratio X N0,N1,... D0,D1,...  Evaluate and reduce a polynomial ratio
+  exp X                    Approximate exp(X), -1 <= X <= 0
+  exp-bits HEX             Same operation on 16 hexadecimal binary64 digits
+  decay T                  Approximate the remaining fraction exp(-T), 0 <= T <= 1
+  build                    Build the WASM examples and component inventory
+  inspect                  Print components found in compiler annotations
+  reports                  Build the component PDF reports
+Coefficients are in ascending degree order. Use [] for the zero polynomial.
+Integer commands use decimal UInt64 values. Arithmetic overflow is an error.
+exp and decay accept decimal binary64 inputs and print decimal approximations.
+`;
+let prepared = false;
+
+function word(text) {
+  if (typeof text !== "string" || !/^[0-9]+$/.test(text) || BigInt(text) > maxUInt64) {
+    throw new RangeError(`expected a decimal UInt64, received ${JSON.stringify(text)}`);
+  }
+  return BigInt(text).toString();
+}
+
+function array(text) {
+  if (text === "[]") return "array-u64:";
+  return `array-u64:${text.split(",").map(word).join(",")}`;
+}
+
+function floatWord(text) {
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text) || !Number.isFinite(Number(text))) {
+    throw new RangeError(`expected a finite decimal number, received ${JSON.stringify(text)}`);
+  }
+  const buffer = Buffer.alloc(8);
+  buffer.writeDoubleLE(Number(text));
+  return buffer.readBigUInt64LE();
+}
+
+function floatText(bits) {
+  const buffer = Buffer.alloc(8);
+  buffer.writeBigUInt64LE(bits);
+  return buffer.readDoubleLE().toString();
+}
+
+function prepare() {
+  if (prepared) return;
+  runChecked(["lake", "build", "lean-wasm", sourceModule], { ...options, timeout: 900000 });
+  fs.mkdirSync(directory, { recursive: true });
+  runChecked([path.join(root, ".lake/build/bin/lean-wasm"), "compile",
+    "--module", sourceModule, "--entries", exports_.join(","),
+    "--out", wasm, "--annotations", annotations], options);
+  const document = JSON.parse(fs.readFileSync(annotations, "utf8"));
+  const components = catalog.flatMap(component => {
+    const functions = document.functions.filter(fn => fn.sourceName === component.declaration);
+    return functions.length ? [{ ...component, wasmIndexes: functions.map(fn => fn.wasmIndex) }] : [];
+  });
+  fs.writeFileSync(path.join(directory, "components.json"), `${JSON.stringify(components, null, 2)}\n`);
+  prepared = true;
+}
+
+function invoke(name, count, args) {
+  prepare();
+  const result = runChecked([ensureHost(), "call", wasm, name, `slots:${count}`, ...args], options);
+  return parseI64SlotsOutput(name, count, result.stdout);
+}
+
+function success(values) {
+  if (values[0] === 1n) throw new RangeError("denominator must be positive");
+  if (values[0] === 2n) throw new RangeError("arithmetic overflow");
+  if (values[0] === 3n) throw new RangeError("exponential argument must be in [-1, 0]");
+  if (values[0] === 4n) throw new RangeError("decay time must be in [0, 1]");
+  if (values[0] !== 0n) throw new Error(`unexpected result status ${values[0]}`);
+  return values.slice(1);
+}
+
+function runExample(command, args) {
+  const arity = { gcd: 2, "gcd-binary": 2, fraction: 2, "fraction-binary": 2,
+    polynomial: 2, ratio: 3, exp: 1, "exp-bits": 1, decay: 1 };
+  if (!(command in arity) || args.length !== arity[command]) throw new RangeError(usage.trim());
+  switch (command) {
+    case "gcd":
+      return invoke("gcd", 1, args.map(value => `i64:${word(value)}`))[0].toString();
+    case "gcd-binary":
+      return invoke("gcdBinary", 1, args.map(value => `i64:${word(value)}`))[0].toString();
+    case "fraction":
+      return success(invoke("fraction", 3, args.map(value => `i64:${word(value)}`))).join("/");
+    case "fraction-binary":
+      return success(invoke("fractionBinary", 3, args.map(value => `i64:${word(value)}`))).join("/");
+    case "polynomial":
+      return success(invoke("polynomial", 2, [`i64:${word(args[0])}`, array(args[1])]))[0].toString();
+    case "ratio":
+      return success(invoke("ratio", 3,
+        [`i64:${word(args[0])}`, array(args[1]), array(args[2])])).join("/");
+    case "exp":
+    case "decay":
+      return floatText(success(invoke(command === "exp" ? "exponential" : "decay", 2,
+        [`i64:${floatWord(args[0])}`]))[0]);
+    case "exp-bits": {
+      if (!/^[0-9a-fA-F]{16}$/.test(args[0])) throw new RangeError("expected 16 hexadecimal digits");
+      return success(invoke("exponential", 2, [`i64:${BigInt(`0x${args[0]}`)}`]))[0]
+        .toString(16).padStart(16, "0");
+    }
+  }
+}
+
+function reports() {
+  for (const component of catalog) {
+    const source = path.dirname(component.report);
+    const output = path.join(directory, "reports", component.id);
+    fs.mkdirSync(output, { recursive: true });
+    for (let pass = 0; pass < 2; pass++) {
+      runChecked(["pdflatex", "-interaction=nonstopmode", "-halt-on-error",
+        "-output-directory", output, `${source}/report.tex`], options);
+    }
+    fs.copyFileSync(path.join(output, "report.pdf"), path.join(root, component.report));
+    process.stdout.write(`${component.report}\n`);
+  }
+}
+
+function main(args) {
+  if (args.length === 1 && args[0] === "--help") {
+    process.stdout.write(usage);
+  } else if (args.length === 1 && args[0] === "reports") {
+    reports();
+  } else if (args.length === 1 && ["build", "inspect"].includes(args[0])) {
+    prepare();
+    if (args[0] === "inspect") {
+      process.stdout.write(fs.readFileSync(path.join(directory, "components.json"), "utf8"));
+    } else {
+      process.stdout.write("build/seminum/examples.wasm\n");
+    }
+  } else {
+    process.stdout.write(`${runExample(args[0], args.slice(1))}\n`);
+  }
+}
+
+if (require.main === module) {
+  try { main(process.argv.slice(2)); }
+  catch (error) {
+    process.stderr.write(`seminum: ${error.message}\n`);
+    process.exitCode = error instanceof RangeError ? 2 : 1;
+  }
+}
+
+module.exports = { prepare, runExample, invoke };

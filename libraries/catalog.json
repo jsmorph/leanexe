@@ -1,0 +1,54 @@
+[
+  {
+    "id": "gcd-euclidean",
+    "task": "greatest-common-divisor",
+    "algorithm": "euclidean",
+    "implementation": "Euclidean remainder loop",
+    "library": "number-theory",
+    "module": "LeanExe.Lib.NumberTheory.Gcd",
+    "declaration": "LeanExe.Lib.NumberTheory.gcd",
+    "readme": "libraries/number-theory/gcd/README.md",
+    "report": "libraries/number-theory/gcd/report.pdf",
+    "specification": "Returns the natural-number GCD of two UInt64 inputs, with gcd(0, 0) = 0.",
+    "proofStatus": "deferred"
+  },
+  {
+    "id": "horner",
+    "task": "polynomial-evaluation",
+    "algorithm": "horner",
+    "implementation": "Checked UInt64 Horner loop",
+    "library": "polynomial",
+    "module": "LeanExe.Lib.Polynomial.Horner",
+    "declaration": "LeanExe.Lib.Polynomial.eval",
+    "readme": "libraries/polynomial/horner/README.md",
+    "report": "libraries/polynomial/horner/report.pdf",
+    "specification": "Evaluates nonnegative integer coefficients in ascending degree order. Returns none if a Horner intermediate exceeds UInt64.",
+    "proofStatus": "deferred"
+  },
+  {
+    "id": "gcd-binary",
+    "task": "greatest-common-divisor",
+    "algorithm": "binary-gcd",
+    "implementation": "UInt64 shift and subtraction loop",
+    "library": "number-theory",
+    "module": "LeanExe.Lib.NumberTheory.BinaryGcd",
+    "declaration": "LeanExe.Lib.NumberTheory.gcdBinary",
+    "readme": "libraries/number-theory/binary-gcd/README.md",
+    "report": "libraries/number-theory/binary-gcd/report.pdf",
+    "specification": "Returns the natural-number GCD of two UInt64 inputs, with gcd(0, 0) = 0.",
+    "proofStatus": "deferred"
+  },
+  {
+    "id": "exp-taylor6",
+    "task": "exponential",
+    "algorithm": "degree-six-taylor",
+    "implementation": "Binary64 Horner evaluation on [-1, 0]",
+    "library": "transcendental",
+    "module": "LeanExe.Lib.Transcendental.Exp",
+    "declaration": "LeanExe.Lib.Transcendental.expTaylor6",
+    "readme": "libraries/transcendental/exp/README.md",
+    "report": "libraries/transcendental/exp/report.pdf",
+    "specification": "Approximates exp(x) on [-1, 0] from binary64 bits with a target absolute error of 1/4000. Rejects other inputs with none.",
+    "proofStatus": "deferred for this library integration"
+  }
+]

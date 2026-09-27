@@ -15,6 +15,7 @@ const roots = [
   "demos",
   "benchmarks",
   "ltg",
+  "libraries",
   "paper",
   "proofs/talos/README.md",
   "proofs/byte-io/README.md",

@@ -1,3 +1,73 @@
+## 2026-09-27: Seminumerical library PoC
+
+Work started on branch `lib1`.  The component collection uses ordinary Lean
+modules, a small JSON catalog, command-line clients, READMEs with annotated
+references, and short PDF reports.  Correctness proofs are deferred at the
+user's request.  The catalog distinguishes a task, an algorithm, and an
+implementation.  Multiple algorithms can solve a task, and multiple
+implementations can use an algorithm.
+
+- [x] Complete the first batch: Euclidean GCD, checked integer Horner evaluation, and composed clients.
+- [x] Test and review the first batch, including rendered reports.
+- [x] Complete a second batch: binary GCD and a bounded exponential with clients.
+- [x] Review the combined API, tests, documentation, and component discovery.
+
+The first batch passes 77 WASM/native comparisons.  The tests compare GCD with
+Lean's `Nat.gcd`, compare polynomial values with an arbitrary-precision
+sum-of-powers reference, and exercise fraction reduction, polynomial ratios,
+overflow, and invalid CLI input.  The combined ratio client imports both
+libraries.  A standard cgroup-limited compiler build passed.  The local
+Wasmtime host was built against the existing C API installation selected
+through `WASMTIME_C_API`.  Sandbox process restrictions required authorized
+execution of the example and test drivers.
+
+Review found that compiler annotations list both internal functions and public
+wrappers under the same source declaration.  Component discovery now groups
+their indexes in one catalog result.  Two README links had incorrect relative
+depths and were corrected.  The first reports build as two-page PDFs without
+TeX warnings.  Their listings read the executable Lean files.  Documentation
+validation accepts all 186 maintained Markdown files.
+
+The current compiler admits helper dependencies within the entry's root
+namespace.  Initial libraries therefore use `LeanExe.Lib`; independently named
+external libraries remain a compiler extension.  The source-name annotation
+join provides component discovery without modifying compiler or proof code.
+The small catalog is a local index for this PoC.  Individual components can
+be imported without the example driver.
+
+Algorithm references are [NIST's Euclidean algorithm entry](https://xlinux.nist.gov/dads/HTML/euclidalgo.html)
+and [DLMF's Horner recurrence](https://dlmf.nist.gov/1.11.i).  Their annotations
+in the component READMEs explain which mathematical definitions they supply.
+The second batch adds binary GCD and a bounded exponential, with fraction and
+decay clients.  Binary GCD and Euclidean GCD share test inputs and agree with
+`Nat.gcd` on them.  The exponential uses the coefficient choices, evaluation
+order, and domain of `Project.ExpSmall.Model`, implemented through the existing
+`LeanExe.Float64` primitives.  The library's proof connection to the earlier
+model remains deferred.  Its README and report identify that boundary.
+
+The combined suite passes 252 WASM/native comparisons and the CLI error tests.
+Exponential and decay cases include 33 interval samples, signed zeros,
+subnormals, adjacent boundary words, infinities, and NaNs.  The largest sampled
+absolute difference from the host exponential is `0.00017611438411335723`,
+within the `1/4000` target.  These are sample comparisons.  The test is included
+in the main test driver.
+
+The compiler initially rejected two private helpers.  A focused `report`
+showed their internal names rooted at `_private`, outside dependency admission.
+The component's polynomial evaluator and the example's result helper are public
+definitions in the accepted namespace.  The library guide records this source
+restriction alongside the external-namespace restriction.
+
+The final review checked code, documentation, and rendered reports.  Catalog
+discovery groups internal and exported function indexes, with one result per
+implementation.  The exponential report's first layout overflowed a line with
+a long Lean name.  Revised wording and the repository's existing Latin Modern
+font package produce four two-page reports with no TeX layout or reference
+warnings.  The reports read their source listings from Lean files.  The
+documentation checker accepts 188 maintained Markdown files.  Full compiler
+and proof-suite gates were not run because the changes add library sources and
+clients while leaving compiler and proof code unchanged.
+
 ## 2026-09-25: Running-sum correctness proof
 
 The requested theorem covers the existing signed-decimal program and its
