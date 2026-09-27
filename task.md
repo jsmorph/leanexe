@@ -210,18 +210,22 @@ invalid-input checks and 512 controls. Prior tests pass 13,924 comparisons, 14,7
 invalid-input checks and 852 controls. Evidence is in
 [the scalar helper-result archive](proofs/compiler/boolean-predicate-result-2026-09-26/README.md).
 
-Direct Boolean helper results in loop-step and outer-loop declarations pass
-focused proofs, 24,768 native/IR comparisons, 9,216 invalid-input checks and 1,024
-admission controls. Both parameter kinds preserve captured accumulator/outer
-values through break/continue, bounds, initialization and final results. General
-compiler proof and selected WASM checks are pending.
+Direct Boolean helper results in loop-step and outer-loop declarations are
+complete. Both parameter kinds preserve captured accumulator/outer values through
+break/continue, bounds, initialization and final results. The general source-to-WASM
+theorem and eighteen audits pass. Native Lean/V8 agree on 521 inputs across 26
+declarations, including seventeen ranges; eighteen shared modules retain identical
+bytes. Focused tests pass 24,768 native/IR comparisons, 9,216 invalid-input checks
+and 1,024 controls. Prior tests pass 18,580 comparisons, 11,792 invalid-input checks
+and 720 controls. Evidence is in
+[the loop helper-result archive](proofs/compiler/boolean-predicate-loop-result-2026-09-26/README.md).
 
-Next: finish this increment through WASM, then admit and prove Nat.toUInt64
-(the elaborated spelling of i.toUInt64), alongside existing UInt64.ofNat support.
-Boolean let/bind expressions inside converted results, saved Boolean variables
-in mixed propositional guards, retained instance and Bool-parameter Id wrappers,
-and broader signatures follow. Full-dialect correctness remains unfinished.
-Complete each capability through WASM and commit/push frequently.
+Next: Nat.toUInt64 (the elaborated spelling of i.toUInt64), alongside existing
+UInt64.ofNat support. Boolean let/bind expressions inside converted results,
+saved Boolean variables in mixed propositional guards, retained instance and
+Bool-parameter Id wrappers, and broader signatures follow. Full-dialect
+correctness remains unfinished. Complete each capability through WASM and
+commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
