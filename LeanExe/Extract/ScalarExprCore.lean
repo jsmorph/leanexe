@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarBooleanSelected
 import LeanExe.Extract.ScalarBooleanRelated
 import LeanExe.Extract.ScalarBooleanJoined
 import LeanExe.Extract.ScalarBooleanNegated
@@ -320,7 +321,14 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
                           match _joined : booleanJoined? argument with
                           | none =>
                               match _related : booleanRelated? argument with
-                              | none => none
+                              | none =>
+                                  match _selected : booleanSelected? argument with
+                                  | none => none
+                                  | some selected => do
+                                      let condition ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) selected.selection.condition)
+                                      let yes ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) selected.selection.yes)
+                                      let no ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) selected.selection.no)
+                                      pure (.ite (wordGuard condition) yes no)
                               | some related => do
                                   let left ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.relation.left)
                                   let right ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.relation.right)
@@ -469,6 +477,7 @@ decreasing_by
     | omega
     | (have bound := booleanScopeGuard_size _scope; omega)
     | (have bound := booleanScopeDependentGuard_size _scope; omega)
+    | (have bounds := booleanSelected_sizes _selected; omega)
     | (have bounds := booleanRelated_sizes _related; omega)
     | (have bounds := booleanJoined_sizes _joined; omega)
     | (have bound := booleanNegated_size _negated; omega)
@@ -600,6 +609,51 @@ theorem extractScalarExprWith_scopeDependentBranch (locals : List ScalarBinding)
   rw [LeanExe.Source.Scalar.BooleanScopeGuard.dependentBranch, extractScalarExprWith]
   rw [scalarResultType_accepts, booleanScopeGuard_not_dependent,
     booleanScopeGuard_not_booleanDependent, booleanScopeDependentGuard_accepts]
+
+theorem extractScalarExprWith_scopedSelection (locals : List ScalarBinding)
+    (selected : LeanExe.Source.Scalar.BooleanSelected) :
+    extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) selected.expr) = (do
+      let condition ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) selected.selection.condition)
+      let yes ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) selected.selection.yes)
+      let no ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) selected.selection.no)
+      pure (.ite (wordGuard condition) yes no)) := by
+  rw [extractScalarExprWith]
+  split
+  · split
+    · rename_i helper found
+      rw [booleanSelected_not_helper] at found
+      contradiction
+    · split
+      · rename_i helper found
+        rw [booleanSelected_not_helper] at found
+        contradiction
+      · split
+        · split
+          · split
+            · split
+              · split
+                · rename_i absent
+                  rw [booleanSelected_accepts] at absent
+                  contradiction
+                · rename_i actual found
+                  have equal := Option.some.inj ((booleanSelected_accepts selected).symm.trans found)
+                  subst actual
+                  rfl
+              · rename_i related found
+                rw [booleanSelected_not_related] at found
+                contradiction
+            · rename_i joined found
+              rw [booleanSelected_not_joined] at found
+              contradiction
+          · rename_i negated found
+            rw [booleanSelected_not_negated] at found
+            contradiction
+        · rename_i wrapped found
+          rw [booleanSelected_not_wrapped] at found
+          contradiction
+  · rename_i expression found
+    rw [booleanSelected_not_local] at found
+    contradiction
 
 theorem extractScalarExprWith_scopedEquality (locals : List ScalarBinding)
     (related : LeanExe.Source.Scalar.BooleanRelated) :

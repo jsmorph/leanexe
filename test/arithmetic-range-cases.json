@@ -829,5 +829,9 @@
   "rangeHelperEqualityStep",
   "rangeHelperEqualityExit",
   "rangeHelperEqualityContinue",
-  "rangeHelperEqualityTail"
+  "rangeHelperEqualityTail",
+  "rangeHelperChoiceStep",
+  "rangeHelperChoiceExit",
+  "rangeHelperChoiceContinue",
+  "rangeHelperChoiceTail"
 ]
