@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarBooleanScopeBinding
 import LeanExe.Extract.ScalarBooleanRelationSelection
 import LeanExe.Extract.ScalarBooleanGuardedSelection
 import LeanExe.Extract.ScalarBooleanSelected
@@ -325,7 +326,17 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
                                       match _guarded : booleanGuardedSelection? argument with
                                       | none =>
                                           match _relation : booleanRelationSelection? argument with
-                                          | none => none
+                                          | none =>
+                                              match _scopeWord : booleanScopeBinding? false argument with
+                                              | some binding => do
+                                                  let value ← extractScalarExprWith locals binding.value
+                                                  extractScalarExprWith (.word value :: locals) (.app (.const ``Bool.toUInt64 []) binding.body)
+                                              | none =>
+                                                  match _scopeBoolean : booleanScopeBinding? true argument with
+                                                  | none => none
+                                                  | some binding => do
+                                                      let value ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) binding.value)
+                                                      extractScalarExprWith (.boolean value :: locals) (.app (.const ``Bool.toUInt64 []) binding.body)
                                           | some related => do
                                               let left ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.selection.guard.left)
                                               let right ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) related.selection.guard.right)
@@ -489,6 +500,8 @@ decreasing_by
   all_goals simp_wf
   all_goals first
     | omega
+    | (have bounds := booleanScopeBinding_sizes _scopeWord; omega)
+    | (have bounds := booleanScopeBinding_sizes _scopeBoolean; omega)
     | (have bound := booleanScopeGuard_size _scope; omega)
     | (have bound := booleanScopeDependentGuard_size _scope; omega)
     | (have bounds := booleanRelationSelection_sizes _relation; omega)
@@ -907,6 +920,122 @@ theorem extractScalarExprWith_scopedWrapper (locals : List ScalarBinding)
           rfl
   · rename_i expression found
     rw [booleanWrapped_not_local] at found
+    contradiction
+
+theorem extractScalarExprWith_scopedWordBinding (locals : List ScalarBinding)
+    (binding : LeanExe.Source.Scalar.BooleanScopeBinding false) :
+    extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) binding.expr) = (do
+      let value ← extractScalarExprWith locals binding.value
+      extractScalarExprWith (.word value :: locals) (.app (.const ``Bool.toUInt64 []) binding.body)) := by
+  rw [extractScalarExprWith]
+  split
+  · split
+    · rename_i actual found
+      rw [booleanScopeBinding_not_helper] at found
+      contradiction
+    · split
+      · rename_i actual found
+        rw [booleanScopeBinding_not_helper] at found
+        contradiction
+      · split
+        · split
+          · split
+            · split
+              · split
+                · split
+                  · split
+                    · split
+                      · rename_i actual found
+                        have equal := Option.some.inj ((booleanScopeBinding_accepts binding).symm.trans found)
+                        subst actual
+                        rfl
+                      · rename_i found
+                        rw [booleanScopeBinding_accepts] at found
+                        contradiction
+                    · rename_i actual found
+                      rw [booleanScopeBinding_not_relation] at found
+                      contradiction
+                  · rename_i actual found
+                    rw [booleanScopeBinding_not_guarded] at found
+                    contradiction
+                · rename_i actual found
+                  rw [booleanScopeBinding_not_selected] at found
+                  contradiction
+              · rename_i actual found
+                rw [booleanScopeBinding_not_related] at found
+                contradiction
+            · rename_i actual found
+              rw [booleanScopeBinding_not_joined] at found
+              contradiction
+          · rename_i actual found
+            rw [booleanScopeBinding_not_negated] at found
+            contradiction
+        · rename_i actual found
+          rw [booleanScopeBinding_not_wrapped] at found
+          contradiction
+  · rename_i actual found
+    rw [booleanScopeBinding_not_local] at found
+    contradiction
+
+theorem extractScalarExprWith_scopedBooleanBinding (locals : List ScalarBinding)
+    (binding : LeanExe.Source.Scalar.BooleanScopeBinding true) :
+    extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) binding.expr) = (do
+      let value ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) binding.value)
+      extractScalarExprWith (.boolean value :: locals) (.app (.const ``Bool.toUInt64 []) binding.body)) := by
+  have other := booleanScopeBinding_other binding
+  change booleanScopeBinding? false binding.expr = none at other
+  rw [extractScalarExprWith]
+  split
+  · split
+    · rename_i actual found
+      rw [booleanScopeBinding_not_helper] at found
+      contradiction
+    · split
+      · rename_i actual found
+        rw [booleanScopeBinding_not_helper] at found
+        contradiction
+      · split
+        · split
+          · split
+            · split
+              · split
+                · split
+                  · split
+                    · split
+                      · rename_i actual found
+                        rw [other] at found
+                        contradiction
+                      · split
+                        · rename_i found
+                          rw [booleanScopeBinding_accepts] at found
+                          contradiction
+                        · rename_i actual found
+                          have equal := Option.some.inj ((booleanScopeBinding_accepts binding).symm.trans found)
+                          subst actual
+                          rfl
+                    · rename_i actual found
+                      rw [booleanScopeBinding_not_relation] at found
+                      contradiction
+                  · rename_i actual found
+                    rw [booleanScopeBinding_not_guarded] at found
+                    contradiction
+                · rename_i actual found
+                  rw [booleanScopeBinding_not_selected] at found
+                  contradiction
+              · rename_i actual found
+                rw [booleanScopeBinding_not_related] at found
+                contradiction
+            · rename_i actual found
+              rw [booleanScopeBinding_not_joined] at found
+              contradiction
+          · rename_i actual found
+            rw [booleanScopeBinding_not_negated] at found
+            contradiction
+        · rename_i actual found
+          rw [booleanScopeBinding_not_wrapped] at found
+          contradiction
+  · rename_i actual found
+    rw [booleanScopeBinding_not_local] at found
     contradiction
 
 theorem extractScalarExprWith_scopedPredicate (locals : List ScalarBinding)
