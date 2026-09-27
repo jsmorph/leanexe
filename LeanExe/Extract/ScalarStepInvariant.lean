@@ -249,6 +249,19 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact ha
     · exact scalarStepBindings_holds bindings binding member
+  | letBinaryPredicate helper function _ ih =>
+    rw [extractScalarStepWith_letBinaryPredicate] at compiled
+    simp only [bind, Option.bind_eq_some_iff] at compiled
+    obtain ⟨checked, _, ht⟩ := compiled
+    apply ih ht (extend bindings ?_) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+    intro first second result hx hy compiled
+    apply expression compiled
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · exact hy
+    rcases List.mem_cons.mp member with rfl | member
+    · exact hx
+    · exact scalarStepBindings_holds bindings binding member
   | letPredicateFn boolean type function _ ih =>
     rw [extractScalarStepWith_letPredicateFn] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled

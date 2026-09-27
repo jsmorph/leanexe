@@ -91,9 +91,9 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
               let e ← extractScalarStepWith locals onFalse
               pure { value := .ite (lowerComparison op a b) t.value e.value
                      done := .ite (lowerComparison op a b) t.done e.done }
-  | .letE _ (.forallE firstTypeName (.const ``UInt64 [])
+  | .letE functionName (.forallE firstTypeName (.const ``UInt64 [])
       (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
-      (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) body _ =>
+      (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) body nondep =>
       match scalarResultType? resultType with
       | none =>
           match scalarStepResultType? resultType with
@@ -107,7 +107,20 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
                       (.forallE firstTypeName (.const ``UInt64 [])
                         (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
                       (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi) with
-                  | none => none
+                  | none =>
+                      match _binaryPredicate : booleanBinaryHelper? (.letE functionName
+                          (.forallE firstTypeName (.const ``UInt64 [])
+                            (.forallE secondTypeName (.const ``UInt64 []) resultType secondTypeBi) firstTypeBi)
+                          (.lam firstName (.const ``UInt64 []) (.lam secondName (.const ``UInt64 []) value secondBi) firstBi)
+                          body nondep) with
+                      | none => none
+                      | some helper => do
+                          let _ ← extractScalarExprWith (.word (.u64 0) :: .word (.u64 0) :: locals.map ScalarStepBinding.toScalar)
+                            (.app (.const ``Bool.toUInt64 []) helper.body)
+                          let function := ScalarBinding.binaryPredicateFunction fun first second =>
+                            extractScalarExprWith (.word second :: .word first :: locals.map ScalarStepBinding.toScalar)
+                              (.app (.const ``Bool.toUInt64 []) helper.body)
+                          extractScalarStepWith (.scalar function :: locals) helper.continuation
                   | some shape => do
                       let _ ← extractScalarStepWith
                         (List.replicate shape.arity (.scalar (.word (.u64 0))) ++ locals) shape.body
@@ -321,6 +334,7 @@ decreasing_by
   all_goals simp_wf
   all_goals first
     | omega
+    | (have bounds := booleanBinaryHelper_sizes _binaryPredicate; simp at bounds; omega)
     | (have bound := scalarManyStepFunction_body_size _stepFunction; simp_all; omega)
     | (obtain ⟨hi, hd, ho⟩ := predicateInputTypes_sound _annotation
        simp_all [LeanExe.Source.Scalar.predicateInputExpr, LeanExe.Source.Scalar.ResultType.expr]

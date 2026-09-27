@@ -238,6 +238,23 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ih (.scalar (.function false f) :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total accepts)
     exact ⟨target, by rw [extractScalarStepWith_letFn]; simp [hc, ht, f]⟩
+  | letBinaryPredicate helper function _ ih =>
+    have accepts (first second : LeanExe.IR.Expr) := extractScalarExprWith_accepts function
+      (.word second :: .word first :: locals.map ScalarStepBinding.toScalar)
+      (by simpa [ScalarBinding.kind] using scalarStepBindings_typed typed) (by
+        intro binding member
+        rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        rcases List.mem_cons.mp member with rfl | member
+        · trivial
+        · exact scalarStepBindings_total total binding member)
+    obtain ⟨checked, hc⟩ := accepts (.u64 0) (.u64 0)
+    let f := fun first second => extractScalarExprWith
+      (.word second :: .word first :: locals.map ScalarStepBinding.toScalar)
+      (.app (.const ``Bool.toUInt64 []) helper.body)
+    obtain ⟨target, ht⟩ := ih (.scalar (.binaryPredicateFunction f) :: locals)
+      (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total accepts)
+    exact ⟨target, by rw [extractScalarStepWith_letBinaryPredicate]; simp [hc, ht, f]⟩
   | letPredicateFn expression type function _ ih =>
     have accepts (argument : LeanExe.IR.Expr) := extractScalarExprWith_accepts function
       (.word argument :: locals.map ScalarStepBinding.toScalar)
