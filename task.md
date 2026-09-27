@@ -930,12 +930,24 @@ result-function controls remain accepted. The corpus contains 1615 declarations.
 Evidence is in
 [the Boolean step scalar-helper archive](proofs/compiler/boolean-step-scalar-function-2026-09-27/README.md).
 
-Current capability: explicit ForInStep.casesOn for Boolean step results. Source
-totality, checked motives/domains, extraction correctness, acceptance/support and
-invariants pass. Direct, captured-helper and retained-Id probes compile; ordinary
-match still uses an unsupported generated matcher declaration. The public compiler
-build passes, and new tests pass 18,624 native/IR comparisons and 10,752 invalid-input
-checks. Source-to-WASM audits and independent V8 comparisons are pending.
+Explicit Boolean step-result inspection with ForInStep.casesOn is proved through
+WASM. Checked nondependent motives, branch domains and Id result annotations
+preserve the selected branch's value and exit status. Both branches are checked.
+The general source-to-WASM theorem and nineteen audits pass. Native Lean/V8 agree
+on 1,005 inputs across 52 declarations; 44 prior modules retain identical bytes
+and 0 changed. New tests pass 18,624 comparisons and 10,752 invalid-input
+checks; prior tests pass 95,760 comparisons and 51,936 invalid-input checks.
+Three explicit casesOn probes are restored; four scalar-helper controls remain
+accepted. Ordinary match still calls an unsupported generated declaration.
+The corpus contains 1623 declarations. Evidence is in
+[the Boolean step inspection archive](proofs/compiler/boolean-step-cases-2026-09-27/README.md).
+
+Current capability: generated Boolean step matcher declarations. Inspect and
+validate the actual environment declaration before expanding a matcher call;
+name-based recognition is insufficient. Prove the expansion against an independent
+source reduction relation and connect the original environment/source to the
+existing source-to-WASM proof. Preserve the pure extraction path and fixed match
+probe, and complete production admission and V8 checks before broadening calls.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
