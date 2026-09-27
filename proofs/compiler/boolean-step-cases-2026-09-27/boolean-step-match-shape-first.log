@@ -1,0 +1,45 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+@ForInStep.casesOn : {α : Type u_2} →
+  {motive : ForInStep α → Sort u_1} →
+    (t : ForInStep α) → ((a : α) → motive (ForInStep.done a)) → ((a : α) → motive (ForInStep.yield a)) → motive t
+@ForInStep.rec : {α : Type u_2} →
+  {motive : ForInStep α → Sort u_1} →
+    ((a : α) → motive (ForInStep.done a)) → ((a : α) → motive (ForInStep.yield a)) → (t : ForInStep α) → motive t
+@[reducible] def ForInStep.casesOn.{u_1, u} : {α : Type u} →
+  {motive : ForInStep α → Sort u_1} →
+    (t : ForInStep α) → ((a : α) → motive (ForInStep.done a)) → ((a : α) → motive (ForInStep.yield a)) → motive t :=
+fun {α} {motive} t done yield => ForInStep.rec (fun a => done a) (fun a => yield a) t
+def inspectStep : (result : ForInStep.{0} Bool) → ForInStep.{0} Bool :=
+fun (result : ForInStep.{0} Bool) =>
+  inspectStep.match_1.{1} (fun (result : ForInStep.{0} Bool) => ForInStep.{0} Bool) result
+    (fun (value : Bool) => @ForInStep.yield.{0} Bool value) fun (value : Bool) => @ForInStep.done.{0} Bool value
+Lean.Expr.lam
+  `result
+  (Lean.Expr.app (Lean.Expr.const `ForInStep [Lean.Level.zero]) (Lean.Expr.const `Bool []))
+  (Lean.Expr.app
+    (Lean.Expr.app
+      (Lean.Expr.app
+        (Lean.Expr.app
+          (Lean.Expr.const `inspectStep.match_1 [Lean.Level.succ (Lean.Level.zero)])
+          (Lean.Expr.lam
+            (Lean.Name.mkNum (Lean.Name.mkStr (Lean.Name.mkStr (Lean.Name.mkNum `result.«_@»._stdin 3857804376) "_hygCtx") "_hyg") 9)
+            (Lean.Expr.app (Lean.Expr.const `ForInStep [Lean.Level.zero]) (Lean.Expr.const `Bool []))
+            (Lean.Expr.app (Lean.Expr.const `ForInStep [Lean.Level.zero]) (Lean.Expr.const `Bool []))
+            (Lean.BinderInfo.default)))
+        (Lean.Expr.bvar 0))
+      (Lean.Expr.lam
+        `value
+        (Lean.Expr.const `Bool [])
+        (Lean.Expr.app
+          (Lean.Expr.app (Lean.Expr.const `ForInStep.yield [Lean.Level.zero]) (Lean.Expr.const `Bool []))
+          (Lean.Expr.bvar 0))
+        (Lean.BinderInfo.default)))
+    (Lean.Expr.lam
+      `value
+      (Lean.Expr.const `Bool [])
+      (Lean.Expr.app
+        (Lean.Expr.app (Lean.Expr.const `ForInStep.done [Lean.Level.zero]) (Lean.Expr.const `Bool []))
+        (Lean.Expr.bvar 0))
+      (Lean.BinderInfo.default)))
+  (Lean.BinderInfo.default)
