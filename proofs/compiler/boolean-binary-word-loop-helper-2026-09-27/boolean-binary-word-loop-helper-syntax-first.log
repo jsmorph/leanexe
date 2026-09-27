@@ -1,0 +1,6 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_binary_word_loop_helper_syntax.lean:72:52: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  HAdd (Id UInt64) UInt64 ?m.415
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.

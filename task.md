@@ -1044,14 +1044,23 @@ prior tests pass 30,384 comparisons, 28,896 invalid inputs and
 probes compile. The corpus contains 1707 declarations. Evidence is in
 [the unit-continuation archive](proofs/compiler/boolean-step-unit-function-2026-09-27/README.md).
 
-Current capability: binary Boolean helper declarations around word-result loops.
-Source totality, extraction, termination, complete acceptance, source
-reconstruction, correctness across loop states and IR invariants pass. Function
-integration passes 211 targets. All six fixed probes compile. New tests pass
-9,408 native/IR comparisons, 17,664 invalid-input checks and 384 admission controls.
-Eight native fixtures are registered. Full WASM and independent engine checks
-remain before advancing to Boolean-result outer loops. Multiple loops and the
-remaining dialect still need proofs.
+Binary Boolean helpers around word-result loop computations are proved through
+WASM. Calls in bounds, initial values, step bodies, early exits and scalar tails
+preserve captured values across every loop state. Unused bodies are validated
+even in empty ranges. The complete proof gate passes 3397 targets and all 45
+audits. Native Lean/V8 agree on 2,171 inputs across 106 declarations; 98 prior
+modules retain identical bytes and 0 changed. New tests pass 9,408
+comparisons, 17,664 invalid-input checks and 384 controls; prior tests pass
+27,264 comparisons, 45,600 invalid inputs and 672 controls.
+All six fixed probes compile. The corpus contains 1715 declarations. Evidence is in
+[the outer word-loop archive](proofs/compiler/boolean-binary-word-loop-helper-2026-09-27/README.md).
+
+Current capability: binary Boolean helper declarations around Boolean-result loops.
+Six fixed probes report 1 accepted and 5
+rejected before this increment. Preserve all six and reuse the scalar binary
+predicate kind. Prove source evaluation, totality, extraction, complete admission,
+correctness and IR invariants before the full WASM and independent engine checks.
+Multiple loops and the remaining dialect still need proofs.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
