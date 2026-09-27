@@ -650,13 +650,15 @@ comparisons, 186,624 invalid-input checks and 21,120 controls. The native corpus
 contains 1367 declarations. Evidence is in
 [the word-helper archive](proofs/compiler/word-loop-helper-2026-09-27/README.md).
 
-Current capability: composition of Boolean helper declarations with scalar tails.
-Nested, repeated and pure-wrapped public Boolean fixtures now pass. Independent
-source totality, acceptance, successful extraction, evaluation and IR invariants
-pass. New syntax tests pass 17,920 native/IR comparisons, 12,160 invalid-input
-checks and 1,280 controls. Native fixtures pass 140 comparisons. Adjacent tests pass 274,176 comparisons,
-147,456 invalid-input checks and 17,280 controls. The complete proof and V8 gates
-remain to be checked before archiving evidence.
+Composition of Boolean helper declarations with scalar tails is complete. Nested,
+repeated and pure-wrapped public Boolean fixtures preserve lexical captures;
+used and unused helpers are checked. Source-to-WASM correctness and all nineteen
+audits pass. Native Lean/V8 agree on 509 inputs across 28 declarations, including
+thirteen ranges; eighteen prior modules retain identical bytes. New tests pass
+18,060 comparisons, 12,160 invalid-input checks and 1,280 controls. Prior tests
+pass 274,176 comparisons, 147,456 invalid-input checks and 17,280 controls. The
+native corpus contains 1377 declarations. Evidence is in
+[the Boolean-composition archive](proofs/compiler/boolean-helper-composition-2026-09-27/README.md).
 
 Next: extend Boolean helper declarations inside loop-result continuations, then
 compound propositions combining Boolean equality with Boolean truth guards.

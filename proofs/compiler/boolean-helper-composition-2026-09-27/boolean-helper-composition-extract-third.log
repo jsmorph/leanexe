@@ -1,0 +1,1000 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case run.x
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body)) =
+    none
+parsed :
+  booleanRangeWrapper? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) =
+    some (BooleanWrapper.run type✝, body)
+⊢ ∀ (declName : Lean.Name) (value body_1 : Lean.Expr) (nondep : Bool),
+    ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body =
+        Lean.Expr.letE declName (Lean.Expr.const `UInt64 []) value body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case run.x_1
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body)) =
+    none
+parsed :
+  booleanRangeWrapper? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) =
+    some (BooleanWrapper.run type✝, body)
+⊢ ∀ (declName : Lean.Name) (value body_1 : Lean.Expr) (nondep : Bool),
+    ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body =
+        Lean.Expr.letE declName (Lean.Expr.const `Bool []) value body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case run.x_2
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body)) =
+    none
+parsed :
+  booleanRangeWrapper? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) =
+    some (BooleanWrapper.run type✝, body)
+⊢ ∀ (name : Lean.Name) (type value body_1 : Lean.Expr) (nondep : Bool),
+    ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body =
+        Lean.Expr.letE name ((Lean.Expr.const `Id [Lean.Level.zero]).app type) value body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case run.x_3
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body)) =
+    none
+parsed :
+  booleanRangeWrapper? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) =
+    some (BooleanWrapper.run type✝, body)
+⊢ ∀ (declName firstTypeName secondTypeName : Lean.Name) (resultType : Lean.Expr)
+    (secondTypeBi firstTypeBi : Lean.BinderInfo) (firstName secondName : Lean.Name) (value : Lean.Expr)
+    (secondBi firstBi : Lean.BinderInfo) (body_1 : Lean.Expr) (nondep : Bool),
+    ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body =
+        Lean.Expr.letE declName
+          (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+            (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+          (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+            (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+          body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case run.x_4
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body)) =
+    none
+parsed :
+  booleanRangeWrapper? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) =
+    some (BooleanWrapper.run type✝, body)
+⊢ ∀ (name typeName : Lean.Name) (resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+    (value : Lean.Expr) (paramBi : Lean.BinderInfo) (body_1 : Lean.Expr) (nondep : Bool),
+    ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body =
+        Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+          (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case run.x_5
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body)) =
+    none
+parsed :
+  booleanRangeWrapper? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) =
+    some (BooleanWrapper.run type✝, body)
+⊢ ∀ (name typeName : Lean.Name) (resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+    (value : Lean.Expr) (paramBi : Lean.BinderInfo) (body_1 : Lean.Expr) (nondep : Bool),
+    ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body =
+        Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+          (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case run.x_6
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body)) =
+    none
+parsed :
+  booleanRangeWrapper? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) =
+    some (BooleanWrapper.run type✝, body)
+⊢ ∀ (declName binderName binderName_1 : Lean.Name) (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo)
+    (binderName_2 binderName_3 : Lean.Name) (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo)
+    (body_1 : Lean.Expr) (nondep : Bool),
+    ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body =
+        Lean.Expr.letE declName
+          (Lean.Expr.forallE binderName (Lean.Expr.const `Unit [])
+            (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+          (Lean.Expr.lam binderName_2 (Lean.Expr.const `Unit [])
+            (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+          body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case run.x_7
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body)) =
+    none
+parsed :
+  booleanRangeWrapper? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) =
+    some (BooleanWrapper.run type✝, body)
+⊢ ∀ (declName binderName binderName_1 : Lean.Name) (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo)
+    (binderName_2 binderName_3 : Lean.Name) (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo)
+    (body_1 : Lean.Expr) (nondep : Bool),
+    ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body =
+        Lean.Expr.letE declName
+          (Lean.Expr.forallE binderName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+            (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+          (Lean.Expr.lam binderName_2 (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+            (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+          body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case run.x_8
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body)) =
+    none
+parsed :
+  booleanRangeWrapper? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) =
+    some (BooleanWrapper.run type✝, body)
+⊢ ∀ (name typeName : Lean.Name) (input resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+    (domain value : Lean.Expr) (paramBi : Lean.BinderInfo) (body_1 : Lean.Expr) (nondep : Bool),
+    ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body =
+        Lean.Expr.letE name
+          (Lean.Expr.forallE typeName ((Lean.Expr.const `Id [Lean.Level.zero]).app input) resultType typeBi)
+          (Lean.Expr.lam paramName ((Lean.Expr.const `Id [Lean.Level.zero]).app domain) value paramBi) body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case run.x_9
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body)) =
+    none
+parsed :
+  booleanRangeWrapper? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) =
+    some (BooleanWrapper.run type✝, body)
+⊢ ∀ (input output value : Lean.Expr) (binderName : Lean.Name) (domain body_1 : Lean.Expr)
+    (binderInfo : Lean.BinderInfo),
+    ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body =
+        ((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                          (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                            (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                      input).app
+                  output).app
+              value).app
+          (Lean.Expr.lam binderName domain body_1 binderInfo) →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case run.x_10
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body)) =
+    none
+parsed :
+  booleanRangeWrapper? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) =
+    some (BooleanWrapper.run type✝, body)
+⊢ ∀ (type condition evidence yes no : Lean.Expr),
+    ((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body =
+        (((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app yes).app no →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case pure.x
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body)) =
+    none
+parsed :
+  booleanRangeWrapper?
+      (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+            type✝.expr).app
+        body) =
+    some (BooleanWrapper.pure type✝, body)
+⊢ ∀ (declName : Lean.Name) (value body_1 : Lean.Expr) (nondep : Bool),
+    ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body =
+        Lean.Expr.letE declName (Lean.Expr.const `UInt64 []) value body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case pure.x_1
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body)) =
+    none
+parsed :
+  booleanRangeWrapper?
+      (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+            type✝.expr).app
+        body) =
+    some (BooleanWrapper.pure type✝, body)
+⊢ ∀ (declName : Lean.Name) (value body_1 : Lean.Expr) (nondep : Bool),
+    ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body =
+        Lean.Expr.letE declName (Lean.Expr.const `Bool []) value body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case pure.x_2
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body)) =
+    none
+parsed :
+  booleanRangeWrapper?
+      (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+            type✝.expr).app
+        body) =
+    some (BooleanWrapper.pure type✝, body)
+⊢ ∀ (name : Lean.Name) (type value body_1 : Lean.Expr) (nondep : Bool),
+    ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body =
+        Lean.Expr.letE name ((Lean.Expr.const `Id [Lean.Level.zero]).app type) value body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case pure.x_3
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body)) =
+    none
+parsed :
+  booleanRangeWrapper?
+      (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+            type✝.expr).app
+        body) =
+    some (BooleanWrapper.pure type✝, body)
+⊢ ∀ (declName firstTypeName secondTypeName : Lean.Name) (resultType : Lean.Expr)
+    (secondTypeBi firstTypeBi : Lean.BinderInfo) (firstName secondName : Lean.Name) (value : Lean.Expr)
+    (secondBi firstBi : Lean.BinderInfo) (body_1 : Lean.Expr) (nondep : Bool),
+    ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body =
+        Lean.Expr.letE declName
+          (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+            (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+          (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+            (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+          body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case pure.x_4
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body)) =
+    none
+parsed :
+  booleanRangeWrapper?
+      (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+            type✝.expr).app
+        body) =
+    some (BooleanWrapper.pure type✝, body)
+⊢ ∀ (name typeName : Lean.Name) (resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+    (value : Lean.Expr) (paramBi : Lean.BinderInfo) (body_1 : Lean.Expr) (nondep : Bool),
+    ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body =
+        Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+          (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case pure.x_5
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body)) =
+    none
+parsed :
+  booleanRangeWrapper?
+      (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+            type✝.expr).app
+        body) =
+    some (BooleanWrapper.pure type✝, body)
+⊢ ∀ (name typeName : Lean.Name) (resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+    (value : Lean.Expr) (paramBi : Lean.BinderInfo) (body_1 : Lean.Expr) (nondep : Bool),
+    ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body =
+        Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+          (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case pure.x_6
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body)) =
+    none
+parsed :
+  booleanRangeWrapper?
+      (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+            type✝.expr).app
+        body) =
+    some (BooleanWrapper.pure type✝, body)
+⊢ ∀ (declName binderName binderName_1 : Lean.Name) (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo)
+    (binderName_2 binderName_3 : Lean.Name) (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo)
+    (body_1 : Lean.Expr) (nondep : Bool),
+    ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body =
+        Lean.Expr.letE declName
+          (Lean.Expr.forallE binderName (Lean.Expr.const `Unit [])
+            (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+          (Lean.Expr.lam binderName_2 (Lean.Expr.const `Unit [])
+            (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+          body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case pure.x_7
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body)) =
+    none
+parsed :
+  booleanRangeWrapper?
+      (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+            type✝.expr).app
+        body) =
+    some (BooleanWrapper.pure type✝, body)
+⊢ ∀ (declName binderName binderName_1 : Lean.Name) (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo)
+    (binderName_2 binderName_3 : Lean.Name) (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo)
+    (body_1 : Lean.Expr) (nondep : Bool),
+    ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body =
+        Lean.Expr.letE declName
+          (Lean.Expr.forallE binderName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+            (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+          (Lean.Expr.lam binderName_2 (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+            (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+          body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case pure.x_8
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body)) =
+    none
+parsed :
+  booleanRangeWrapper?
+      (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+            type✝.expr).app
+        body) =
+    some (BooleanWrapper.pure type✝, body)
+⊢ ∀ (name typeName : Lean.Name) (input resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+    (domain value : Lean.Expr) (paramBi : Lean.BinderInfo) (body_1 : Lean.Expr) (nondep : Bool),
+    ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body =
+        Lean.Expr.letE name
+          (Lean.Expr.forallE typeName ((Lean.Expr.const `Id [Lean.Level.zero]).app input) resultType typeBi)
+          (Lean.Expr.lam paramName ((Lean.Expr.const `Id [Lean.Level.zero]).app domain) value paramBi) body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case pure.x_9
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body)) =
+    none
+parsed :
+  booleanRangeWrapper?
+      (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+            type✝.expr).app
+        body) =
+    some (BooleanWrapper.pure type✝, body)
+⊢ ∀ (input output value : Lean.Expr) (binderName : Lean.Name) (domain body_1 : Lean.Expr)
+    (binderInfo : Lean.BinderInfo),
+    ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body =
+        ((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                          (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                            (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                      input).app
+                  output).app
+              value).app
+          (Lean.Expr.lam binderName domain body_1 binderInfo) →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case pure.x_10
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+type✝ : BooleanType
+notScalar :
+  extractScalarExprWith locals
+      ((Lean.Expr.const `Bool.toUInt64 []).app
+        (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body)) =
+    none
+parsed :
+  booleanRangeWrapper?
+      (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                    (Lean.Expr.const `Id [Lean.Level.zero])).app
+                (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                      (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+            type✝.expr).app
+        body) =
+    some (BooleanWrapper.pure type✝, body)
+⊢ ∀ (type condition evidence yes no : Lean.Expr),
+    ((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app (Lean.Expr.const `Id [Lean.Level.zero])).app
+                  (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+              type✝.expr).app
+          body =
+        (((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app yes).app no →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case metadata.x
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+data✝ : Lean.MData
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app (Lean.Expr.mdata data✝ body)) = none
+parsed : booleanRangeWrapper? (Lean.Expr.mdata data✝ body) = some (BooleanWrapper.metadata data✝, body)
+⊢ ∀ (declName : Lean.Name) (value body_1 : Lean.Expr) (nondep : Bool),
+    Lean.Expr.mdata data✝ body = Lean.Expr.letE declName (Lean.Expr.const `UInt64 []) value body_1 nondep → False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case metadata.x_1
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+data✝ : Lean.MData
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app (Lean.Expr.mdata data✝ body)) = none
+parsed : booleanRangeWrapper? (Lean.Expr.mdata data✝ body) = some (BooleanWrapper.metadata data✝, body)
+⊢ ∀ (declName : Lean.Name) (value body_1 : Lean.Expr) (nondep : Bool),
+    Lean.Expr.mdata data✝ body = Lean.Expr.letE declName (Lean.Expr.const `Bool []) value body_1 nondep → False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case metadata.x_2
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+data✝ : Lean.MData
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app (Lean.Expr.mdata data✝ body)) = none
+parsed : booleanRangeWrapper? (Lean.Expr.mdata data✝ body) = some (BooleanWrapper.metadata data✝, body)
+⊢ ∀ (name : Lean.Name) (type value body_1 : Lean.Expr) (nondep : Bool),
+    Lean.Expr.mdata data✝ body =
+        Lean.Expr.letE name ((Lean.Expr.const `Id [Lean.Level.zero]).app type) value body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case metadata.x_3
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+data✝ : Lean.MData
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app (Lean.Expr.mdata data✝ body)) = none
+parsed : booleanRangeWrapper? (Lean.Expr.mdata data✝ body) = some (BooleanWrapper.metadata data✝, body)
+⊢ ∀ (declName firstTypeName secondTypeName : Lean.Name) (resultType : Lean.Expr)
+    (secondTypeBi firstTypeBi : Lean.BinderInfo) (firstName secondName : Lean.Name) (value : Lean.Expr)
+    (secondBi firstBi : Lean.BinderInfo) (body_1 : Lean.Expr) (nondep : Bool),
+    Lean.Expr.mdata data✝ body =
+        Lean.Expr.letE declName
+          (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+            (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+          (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+            (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+          body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case metadata.x_4
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+data✝ : Lean.MData
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app (Lean.Expr.mdata data✝ body)) = none
+parsed : booleanRangeWrapper? (Lean.Expr.mdata data✝ body) = some (BooleanWrapper.metadata data✝, body)
+⊢ ∀ (name typeName : Lean.Name) (resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+    (value : Lean.Expr) (paramBi : Lean.BinderInfo) (body_1 : Lean.Expr) (nondep : Bool),
+    Lean.Expr.mdata data✝ body =
+        Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `UInt64 []) resultType typeBi)
+          (Lean.Expr.lam paramName (Lean.Expr.const `UInt64 []) value paramBi) body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case metadata.x_5
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+data✝ : Lean.MData
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app (Lean.Expr.mdata data✝ body)) = none
+parsed : booleanRangeWrapper? (Lean.Expr.mdata data✝ body) = some (BooleanWrapper.metadata data✝, body)
+⊢ ∀ (name typeName : Lean.Name) (resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+    (value : Lean.Expr) (paramBi : Lean.BinderInfo) (body_1 : Lean.Expr) (nondep : Bool),
+    Lean.Expr.mdata data✝ body =
+        Lean.Expr.letE name (Lean.Expr.forallE typeName (Lean.Expr.const `Bool []) resultType typeBi)
+          (Lean.Expr.lam paramName (Lean.Expr.const `Bool []) value paramBi) body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case metadata.x_6
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+data✝ : Lean.MData
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app (Lean.Expr.mdata data✝ body)) = none
+parsed : booleanRangeWrapper? (Lean.Expr.mdata data✝ body) = some (BooleanWrapper.metadata data✝, body)
+⊢ ∀ (declName binderName binderName_1 : Lean.Name) (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo)
+    (binderName_2 binderName_3 : Lean.Name) (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo)
+    (body_1 : Lean.Expr) (nondep : Bool),
+    Lean.Expr.mdata data✝ body =
+        Lean.Expr.letE declName
+          (Lean.Expr.forallE binderName (Lean.Expr.const `Unit [])
+            (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+          (Lean.Expr.lam binderName_2 (Lean.Expr.const `Unit [])
+            (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+          body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case metadata.x_7
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+data✝ : Lean.MData
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app (Lean.Expr.mdata data✝ body)) = none
+parsed : booleanRangeWrapper? (Lean.Expr.mdata data✝ body) = some (BooleanWrapper.metadata data✝, body)
+⊢ ∀ (declName binderName binderName_1 : Lean.Name) (resultType : Lean.Expr) (binderInfo binderInfo_1 : Lean.BinderInfo)
+    (binderName_2 binderName_3 : Lean.Name) (value : Lean.Expr) (binderInfo_2 binderInfo_3 : Lean.BinderInfo)
+    (body_1 : Lean.Expr) (nondep : Bool),
+    Lean.Expr.mdata data✝ body =
+        Lean.Expr.letE declName
+          (Lean.Expr.forallE binderName (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+            (Lean.Expr.forallE binderName_1 (Lean.Expr.const `UInt64 []) resultType binderInfo) binderInfo_1)
+          (Lean.Expr.lam binderName_2 (Lean.Expr.const `PUnit [Lean.Level.zero.succ])
+            (Lean.Expr.lam binderName_3 (Lean.Expr.const `UInt64 []) value binderInfo_2) binderInfo_3)
+          body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case metadata.x_8
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+data✝ : Lean.MData
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app (Lean.Expr.mdata data✝ body)) = none
+parsed : booleanRangeWrapper? (Lean.Expr.mdata data✝ body) = some (BooleanWrapper.metadata data✝, body)
+⊢ ∀ (name typeName : Lean.Name) (input resultType : Lean.Expr) (typeBi : Lean.BinderInfo) (paramName : Lean.Name)
+    (domain value : Lean.Expr) (paramBi : Lean.BinderInfo) (body_1 : Lean.Expr) (nondep : Bool),
+    Lean.Expr.mdata data✝ body =
+        Lean.Expr.letE name
+          (Lean.Expr.forallE typeName ((Lean.Expr.const `Id [Lean.Level.zero]).app input) resultType typeBi)
+          (Lean.Expr.lam paramName ((Lean.Expr.const `Id [Lean.Level.zero]).app domain) value paramBi) body_1 nondep →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case metadata.x_9
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+data✝ : Lean.MData
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app (Lean.Expr.mdata data✝ body)) = none
+parsed : booleanRangeWrapper? (Lean.Expr.mdata data✝ body) = some (BooleanWrapper.metadata data✝, body)
+⊢ ∀ (input output value : Lean.Expr) (binderName : Lean.Name) (domain body_1 : Lean.Expr)
+    (binderInfo : Lean.BinderInfo),
+    Lean.Expr.mdata data✝ body =
+        ((((((Lean.Expr.const `Bind.bind [Lean.Level.zero, Lean.Level.zero]).app
+                              (Lean.Expr.const `Id [Lean.Level.zero])).app
+                          (((Lean.Expr.const `Monad.toBind [Lean.Level.zero, Lean.Level.zero]).app
+                                (Lean.Expr.const `Id [Lean.Level.zero])).app
+                            (Lean.Expr.const `Id.instMonad [Lean.Level.zero]))).app
+                      input).app
+                  output).app
+              value).app
+          (Lean.Expr.lam binderName domain body_1 binderInfo) →
+      False
+LeanExe/Extract/ScalarBooleanRange.lean:486:12: error: Tactic `split` failed: Could not split an `if` or `match` expression in the goal
+
+Hint: Use `set_option trace.split.failure true` to display additional diagnostic information
+
+case metadata.x_10
+locals : List ScalarBinding
+slot : Nat
+body : Lean.Expr
+data✝ : Lean.MData
+notScalar : extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app (Lean.Expr.mdata data✝ body)) = none
+parsed : booleanRangeWrapper? (Lean.Expr.mdata data✝ body) = some (BooleanWrapper.metadata data✝, body)
+⊢ ∀ (type condition evidence yes no : Lean.Expr),
+    Lean.Expr.mdata data✝ body =
+        (((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app type).app condition).app evidence).app yes).app no →
+      False
