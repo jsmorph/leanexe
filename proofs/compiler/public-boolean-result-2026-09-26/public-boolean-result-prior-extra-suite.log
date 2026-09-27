@@ -1,0 +1,2 @@
+scalar_boolean_call_argument 0 180 native/Boolean-call-argument IR comparisons passed
+scalar_boolean_call_argument_syntax 0 56832 native/Boolean-call-argument syntax comparisons and 48384 invalid-input tests and 2688 admission controls passed
