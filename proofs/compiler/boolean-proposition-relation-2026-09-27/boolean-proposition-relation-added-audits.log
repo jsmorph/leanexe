@@ -1,0 +1,6 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+'Project.Compiler.ArithmeticModule.scalar_result' depends on axioms: [propext, Classical.choice, Quot.sound]
+'LeanExe.Source.Scalar.BooleanPropositionLeaf.relation_denote' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]

@@ -1,0 +1,44 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [46/53] Built LeanExe.Extract.ScalarBooleanPropositionLeaf (1.0s)
+✔ [50/53] Built LeanExe.Extract.ScalarGuardLowering (901ms)
+✖ [51/53] Building LeanExe.Extract.ScalarGuardSyntax (1.3s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarGuardSyntax.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuardSyntax.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuardSyntax.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuardSyntax.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuardSyntax.setup.json --json
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+error: LeanExe/Extract/ScalarGuardSyntax.lean:460:57: Invalid field `value`: The environment does not contain `LeanExe.Source.Scalar.BooleanPropositionLeaf.value`, so it is not possible to project the field `value` from an expression
+  value
+of type `BooleanPropositionLeaf`
+error: LeanExe/Extract/ScalarGuardSyntax.lean:460:69: Invalid field `extended`: The environment does not contain `LeanExe.Source.Scalar.BooleanPropositionLeaf.extended`, so it is not possible to project the field `extended` from an expression
+  value
+of type `BooleanPropositionLeaf`
+error: LeanExe/Extract/ScalarGuardSyntax.lean:485:55: Invalid field `value`: The environment does not contain `LeanExe.Source.Scalar.BooleanPropositionLeaf.value`, so it is not possible to project the field `value` from an expression
+  value
+of type `BooleanPropositionLeaf`
+error: LeanExe/Extract/ScalarGuardSyntax.lean:485:67: Invalid field `extended`: The environment does not contain `LeanExe.Source.Scalar.BooleanPropositionLeaf.extended`, so it is not possible to project the field `extended` from an expression
+  value
+of type `BooleanPropositionLeaf`
+✔ [52/53] Built LeanExe.Extract.ScalarBooleanGuard (892ms)
+✖ [53/53] Building LeanExe.Extract.ScalarBooleanPropositionLowering (861ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanPropositionLowering.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanPropositionLowering.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanPropositionLowering.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanPropositionLowering.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanPropositionLowering.setup.json --json
+error: LeanExe/Extract/ScalarBooleanPropositionLowering.lean:29:14: unsolved goals
+unequal : Bool
+left right : Lean.Expr
+nontruth : unequal = false → right ≠ Lean.Expr.const `Bool.true []
+compile :
+  (operand : Lean.Expr) →
+    operand ∈ (BooleanPropositionLeaf.relation unequal left right nontruth).operands → Option IR.Expr
+total :
+  ∀ (operand : Lean.Expr) (member : operand ∈ (BooleanPropositionLeaf.relation unequal left right nontruth).operands),
+    ∃ target, compile operand member = some target
+first : IR.Expr
+hf : compile ((Lean.Expr.const `Bool.toUInt64 []).app left) ⋯ = some first
+second : IR.Expr
+hs : compile ((Lean.Expr.const `Bool.toUInt64 []).app right) ⋯ = some second
+⊢ lowerComparison (if unequal = true then Source.Scalar.Comparison.bne else Source.Scalar.Comparison.beq) first second =
+    ?m.95
+Some required targets logged failures:
+- LeanExe.Extract.ScalarGuardSyntax
+- LeanExe.Extract.ScalarBooleanPropositionLowering
+error: build failed

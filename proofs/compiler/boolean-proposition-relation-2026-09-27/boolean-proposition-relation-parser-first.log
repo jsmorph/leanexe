@@ -1,0 +1,23 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [27/46] Built LeanExe.Source.ScalarCompoundGuard (854ms)
+✖ [45/50] Building LeanExe.Extract.ScalarBooleanPropositionLeaf (1.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanPropositionLeaf.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanPropositionLeaf.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanPropositionLeaf.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanPropositionLeaf.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanPropositionLeaf.setup.json --json
+error: LeanExe/Extract/ScalarBooleanPropositionLeaf.lean:22:16: unsolved goals
+case truth
+value : SavedBooleanGuard
+⊢ savedBooleanGuard?
+      ((((Lean.Expr.const `Eq [Lean.Level.zero.succ]).app (Lean.Expr.const `Bool [])).app value.expr).app
+        (Lean.Expr.const `Bool.true [])) =
+    some value
+warning: LeanExe/Extract/ScalarBooleanPropositionLeaf.lean:24:6: This simp argument is unused:
+  savedBooleanGuard_accepts
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [BooleanPropositionLeaf.condition, SavedBooleanGuard.condition, booleanPropositionLeaf?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [48/50] Built LeanExe.Extract.ScalarGuardDecision (970ms)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanPropositionLeaf
+error: build failed

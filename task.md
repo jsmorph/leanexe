@@ -671,14 +671,18 @@ invalid-input checks and 2,016 controls. Prior tests and the saved fixture pass
 contains 1387 declarations. Evidence is in
 [the wrapped-helper archive](proofs/compiler/boolean-helper-call-wrappers-2026-09-27/README.md).
 
-Current capability: Boolean equality and inequality inside compound propositions.
-Exact condition and decision syntax, Boolean operand conversion, acceptance,
-soundness, evaluation and IR invariants are proved. The public compiler target
-passes. New tests pass 44,980 native/IR comparisons, 21,248 invalid-input checks
-and 672 syntax/routing controls. Native cases include nested Id decisions,
-Boolean inputs/results, helpers, proposition lets and loop steps/exits.
-Adjacent tests pass 92,928 comparisons, 56,532 invalid-input checks and 1,856
-controls. The complete source-to-WASM theorem and V8 checks are next.
+Boolean equality and inequality inside compound propositions are complete.
+Exact condition and decision syntax is retained, and both operands use the
+checked Boolean conversion. Decisions, ordinary/dependent word and Boolean
+choices, helpers, lets and loop steps/exits are covered. The general
+source-to-WASM theorem and all nineteen audits pass, as do focused audits of
+the native relation meaning lemma and main's scalar-result theorem. Native
+Lean/V8 agree on 549 inputs across 28 declarations, including seventeen ranges;
+eighteen prior modules retain identical bytes. New tests pass 44,980 comparisons,
+21,248 invalid-input checks and 672 controls. Prior tests pass 92,928 comparisons,
+56,532 invalid-input checks and 1,856 controls. The native corpus contains 1397
+declarations. Evidence is in
+[the compound-relation archive](proofs/compiler/boolean-proposition-relation-2026-09-27/README.md).
 
 Next: bare Boolean relations retained under proposition lets, then general
 helper compositions inside scalar Boolean operands. Retained instances, broader

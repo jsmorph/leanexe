@@ -1,0 +1,39 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [15/15] Building LeanExe.Source.ScalarBooleanPropositionLeaf (1.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarBooleanPropositionLeaf.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanPropositionLeaf.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanPropositionLeaf.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanPropositionLeaf.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanPropositionLeaf.setup.json --json
+error: LeanExe/Source/ScalarBooleanPropositionLeaf.lean:52:51: unsolved goals
+case false.false.true
+left right : Lean.Expr
+native : Lean.Expr → UInt64
+nontruth : false = false → right ≠ Lean.Expr.const `Bool.true []
+first : native ((Lean.Expr.const `Bool.toUInt64 []).app left) = false.toUInt64
+second : native ((Lean.Expr.const `Bool.toUInt64 []).app right) = true.toUInt64
+⊢ ¬false.toUInt64 = true.toUInt64
+
+case false.true.false
+left right : Lean.Expr
+native : Lean.Expr → UInt64
+nontruth : false = false → right ≠ Lean.Expr.const `Bool.true []
+first : native ((Lean.Expr.const `Bool.toUInt64 []).app left) = true.toUInt64
+second : native ((Lean.Expr.const `Bool.toUInt64 []).app right) = false.toUInt64
+⊢ ¬true.toUInt64 = false.toUInt64
+
+case true.false.true
+left right : Lean.Expr
+native : Lean.Expr → UInt64
+nontruth : true = false → right ≠ Lean.Expr.const `Bool.true []
+first : native ((Lean.Expr.const `Bool.toUInt64 []).app left) = false.toUInt64
+second : native ((Lean.Expr.const `Bool.toUInt64 []).app right) = true.toUInt64
+⊢ ¬false.toUInt64 = true.toUInt64
+
+case true.true.false
+left right : Lean.Expr
+native : Lean.Expr → UInt64
+nontruth : true = false → right ≠ Lean.Expr.const `Bool.true []
+first : native ((Lean.Expr.const `Bool.toUInt64 []).app left) = true.toUInt64
+second : native ((Lean.Expr.const `Bool.toUInt64 []).app right) = false.toUInt64
+⊢ ¬true.toUInt64 = false.toUInt64
+Some required targets logged failures:
+- LeanExe.Source.ScalarBooleanPropositionLeaf
+error: build failed
