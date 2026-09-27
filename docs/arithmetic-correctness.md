@@ -462,6 +462,13 @@ retain standard Id layers. Monadic binds require the exact standard instance,
 matching input and continuation domains, and a supported Boolean result type.
 Both the bound value and Boolean continuation are checked; the bound value is
 evaluated before the continuation.
+Local two-argument UInt64-to-Bool helpers are also supported in scalar bodies and
+Boolean expression scopes, including scalar computations in loop steps and
+post-loop results. Both parameter domains must be exactly UInt64; results may
+retain standard Id layers. Helpers can capture outer values, call unary predicates
+and be called repeatedly. Both arguments and unused helper bodies are checked.
+Binary predicates have a distinct function kind, so treating their results as
+unconverted words is rejected.
 Ordinary scalar word continuations and loop-step
 helper declarations use the same recursive body check, including predicate lets
 inside propositions. Helpers declared before word-result and Boolean-result
@@ -761,9 +768,9 @@ The pure-source `Correct`, `compileEnvironment_correct` and `extracted_correct`
 theorems also remain available. These theorems quantify over admitted programs
 and inputs; the test examples do not limit their scope.
 
-The complete audit is `Project.Compiler.ArithmeticCompilerAudit`. All thirty-three
+The complete audit is `Project.Compiler.ArithmeticCompilerAudit`. All thirty-eight
 reported declarations must have only the allowed dependencies. The matcher
-forwarding identity, direct-application equation and standard Id bind equation
+forwarding identity, native application equations and standard Id bind equation
 use no axioms. The runtime retain/alloc/release proofs use
 only `propext`; the remaining audited results allow `propext`, `Classical.choice`,
 and `Quot.sound`.

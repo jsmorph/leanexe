@@ -48,7 +48,8 @@ theorem Count.Eval.of_scalar {count : Count} {values : List Value} {result : UIn
         Identity.run, Identity.pure, Identity.bind, BooleanIdentity.bind,
         Comparison.branch, CompoundGuard.branch, DecidedGuard.dependentBranch, BooleanLocalGuard.branch, BooleanLocalGuard.dependentBranch, BooleanScopeGuard.branch, BooleanScopeGuard.dependentBranch,
         Extremum.expr, Extremum.head,
-        ManyFunction.bind, ManyCall.expr, Range.call, Range.head, Lean.mkAppN, Lean.mkApp]
+        ManyFunction.bind, ManyCall.expr, Range.call, Range.head, Lean.mkAppN, Lean.mkApp,
+        BooleanBinaryHelper.expr, BooleanBinaryFunctionBinding.expr]
     case ofNat =>
       subst number
       simpa only [Nat.mod_eq_of_lt fits] using (Count.Eval.literal (values := values) (number := _) (fits := fits))

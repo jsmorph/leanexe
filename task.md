@@ -1004,8 +1004,9 @@ fixed probes. Exact declaration/call syntax and recognizer/exclusion proofs pass
 proved. Source evaluation and totality pass 63 targets. Compiler dispatch,
 termination, extraction equations, evaluation correctness, acceptance, source
 reconstruction and IR invariants pass 143 targets. Loop/function integration,
-focused tests, the complete WASM proof with 38 audits and independent engine
-checks remain before advancing.
+tests pass: 210 function targets, all six fixed source probes, 16,322 native/IR
+comparisons, 27,072 invalid-input checks and 288 admission controls. The complete
+WASM proof with 38 audits and independent engine checks remain before advancing.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

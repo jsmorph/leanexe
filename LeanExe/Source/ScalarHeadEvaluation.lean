@@ -64,10 +64,12 @@ theorem EvalWith.binary_inv {head a b : Lean.Expr} {values : List Value}
     | direct operation => cases operation <;> simp_all [classHead, literalExpr, typedLiteralExpr, Comparison.branch,
         CompoundGuard.branch, DecidedGuard.dependentBranch, BooleanIdentity.bind, BooleanLocalGuard.branch,
         BooleanLocalGuard.dependentBranch, BooleanScopeGuard.branch, BooleanScopeGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
-        UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr, predicateInputExpr, booleanInputExpr]
+        UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr, predicateInputExpr, booleanInputExpr,
+        BooleanBinaryHelper.expr, BooleanBinaryFunctionBinding.expr]
     | canonical operation result left right instanceType => cases operation <;> simp_all [classHead, literalExpr, typedLiteralExpr, Comparison.branch,
         CompoundGuard.branch, DecidedGuard.dependentBranch, BooleanIdentity.bind, BooleanLocalGuard.branch,
         BooleanLocalGuard.dependentBranch, BooleanScopeGuard.branch, BooleanScopeGuard.dependentBranch, Identity.run, Identity.pure, Identity.bind,
-        UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr, predicateInputExpr, booleanInputExpr]
+        UnitSyntax.value, Extremum.expr, ManyFunction.bind, Range.call, Range.head, idLetExpr, predicateInputExpr, booleanInputExpr,
+        BooleanBinaryHelper.expr, BooleanBinaryFunctionBinding.expr]
 
 end LeanExe.Source.Scalar
