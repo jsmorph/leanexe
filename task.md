@@ -784,16 +784,24 @@ unchanged; five previous positive controls still pass. The native corpus contain
 1487 declarations. Evidence is in
 [the relation-choice archive](proofs/compiler/boolean-helper-relation-choice-2026-09-27/README.md).
 
-Current capability: local predicate function bindings inside propositions.
-The original compound probe now passes unchanged. Predicate lets preserve exact
-function annotations and substituted standard evidence, retain lexical scope
-around every guard operand, and validate helper bodies even when unused. Source
-and parser proofs and the public compiler target pass. Focused tests pass 72,756
-native/IR comparisons, 75,568 invalid-input checks and 576 admission controls,
-covering scalar decisions, ordinary/dependent choices and loop steps. Prior
-proposition-let and choice tests pass 118,452 comparisons, 106,392 invalid-input
-checks and 1,920 controls. The full compiler proof and independent WASM check
-are next. Nested helper bodies and Id inputs remain subsequent gaps.
+Local UInt64-to-Bool and Bool-to-Bool function lets inside propositions are
+complete. Source totality, parser acceptance/soundness, scalar correctness,
+IR invariants and the general source-to-WASM theorem pass with nineteen audits.
+Native Lean/V8 agree on 993 inputs across 54 declarations, including 25 ranges;
+44 prior modules retain identical bytes and 0 changed. New tests pass
+72,756 comparisons, 75,568 invalid-input checks and 576 controls. Prior tests pass
+118,452 comparisons, 106,392 invalid-input checks and 1,920 controls.
+The original compound probe and seven prior controls pass unchanged. The corpus
+contains 1497 declarations. Evidence is in
+[the proposition predicate-let archive](proofs/compiler/boolean-proposition-helper-let-2026-09-27/README.md).
+
+Current capability: general Boolean bodies inside local predicate helpers.
+The converted helper path already recursively compiles its body, but its syntax
+parser restricts that body to BooleanLocal. Retain the exact raw body and prove
+parser soundness and acceptance, allowing the existing recursive conversion and
+source rules to check nested helpers and wrappers. Preserve unused-body checking.
+Use the fixed next probes to distinguish this from ordinary word continuations
+and Id input domains, which may require separate work.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

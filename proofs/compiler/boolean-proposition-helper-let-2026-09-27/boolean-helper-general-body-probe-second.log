@@ -1,0 +1,8 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/boolean-helper-general-body-probe.lean:25:8: error: expected ';' or line break
+BooleanHelperGeneralBodyProbe.nested: false
+BooleanHelperGeneralBodyProbe.wrapped: false
+BooleanHelperGeneralBodyProbe.unused: false
+BooleanHelperGeneralBodyProbe.propLet: false
+BooleanHelperGeneralBodyProbe.identityInput: false
