@@ -42,3 +42,9 @@ import LeanExe.Source.ScalarReannotationEvaluation
 #print axioms LeanExe.Extract.Core.booleanScopeBinding_accepts
 
 #print axioms LeanExe.Source.Scalar.BooleanScopeBindingForm.application_apply
+
+#print axioms LeanExe.Source.Scalar.BooleanBinaryFunctionBinding.apply
+#print axioms LeanExe.Extract.Core.booleanBinaryHelper_sound
+#print axioms LeanExe.Extract.Core.booleanBinaryHelper_accepts
+#print axioms LeanExe.Extract.Core.booleanBinaryCall_sound
+#print axioms LeanExe.Extract.Core.booleanBinaryCall_accepts

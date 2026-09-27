@@ -1001,9 +1001,11 @@ Evidence is in [the direct-application archive](proofs/compiler/boolean-scope-ap
 Current capability: local two-argument UInt64-to-Bool helpers. Preserve the six
 fixed probes. Exact declaration/call syntax and recognizer/exclusion proofs pass
 87 targets. Distinct binary predicate kinds, lookup and semantic relations are
-proved, and existing scalar expression proofs pass with the added kind. Source
-evaluation/support and compiler dispatch still need the new cases, followed by
-emitted-WASM proofs and independent engine checks before advancing.
+proved. Source evaluation and totality pass 63 targets. Compiler dispatch,
+termination, extraction equations, evaluation correctness, acceptance, source
+reconstruction and IR invariants pass 143 targets. Loop/function integration,
+focused tests, the complete WASM proof with 38 audits and independent engine
+checks remain before advancing.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
