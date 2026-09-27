@@ -195,4 +195,16 @@ theorem BooleanStepBindingsMatch.noWordFunction {locals : List BooleanStepBindin
     have matched := bindings index binding _ found source
     cases binding <;> simp_all [BooleanStepBinding.Matches, BooleanStepBinding.wordFunction?]
 
+theorem BooleanStepBindingsMatch.noBooleanFunction {locals : List BooleanStepBinding}
+    {values : List BooleanStep.Value} {store : LeanExe.IR.ScalarStore} {index : Nat}
+    {apply : UInt64 → ForInStep Bool}
+    (bindings : BooleanStepBindingsMatch locals values store)
+    (source : values[index]? = some (.wordFunction apply)) :
+    locals[index]?.bind BooleanStepBinding.booleanFunction? = none := by
+  cases found : locals[index]? with
+  | none => simp
+  | some binding =>
+    have matched := bindings index binding _ found source
+    cases binding <;> simp_all [BooleanStepBinding.Matches, BooleanStepBinding.booleanFunction?]
+
 end LeanExe.Extract.Core
