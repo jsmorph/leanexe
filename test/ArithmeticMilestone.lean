@@ -5703,6 +5703,209 @@ def rangeBoolUnitHelperShadow (count seed : UInt64) : Bool :=
     return a
   f () value == f () initial
 
+def rangeBoolOuterConditionEqual (count seed : UInt64) : Bool :=
+  if seed == 0 then
+      let f := fun x : UInt64 => x + seed + 1
+      let value := Id.run do
+        let mut a := f seed
+        for i in [:count.toNat] do
+          a := f a + f i.toUInt64
+        return a
+      f value == f (f seed)
+  else
+      let f := fun x : UInt64 => x + seed % 5 + 1
+      let value := Id.run do
+        let mut a := seed
+        for i in [:count.toNat] do
+          a := f (a + i.toUInt64)
+          if a % 7 == 0 then break
+        return a
+      f value % 7 == 0
+
+def rangeBoolOuterConditionOrder (count seed : UInt64) : Bool :=
+  if seed < count then
+      let limit := fun x : UInt64 => x % 17
+      let value := Id.run do
+        let mut a := seed
+        for i in [:(limit count).toNat] do
+          a := a + i.toUInt64 + 1
+        return a
+      value == seed + limit count
+  else
+      let f := fun x : UInt64 => x * 3 + seed
+      let value := Id.run do
+        let mut a := f 0
+        for i in [:count.toNat] do
+          a := a + f i.toUInt64
+        return a
+      value == f 0
+
+def rangeBoolOuterConditionFlag (count : UInt64) (flag : Bool) : Bool :=
+  if flag then
+      let f := fun x : UInt64 => if flag then x + 7 else x - 3
+      let value := Id.run do
+        let mut a := f count
+        for i in [:count.toNat] do
+          a := f (a + i.toUInt64)
+        return a
+      flag && value == f count
+  else
+      let f := fun input : Bool => if flag && input then count + 7 else count - 3
+      let value := Id.run do
+        let mut a := f flag
+        for i in [:count.toNat] do
+          a := a + f (i.toUInt64 % 2 == 0)
+        return a
+      flag && value == f flag
+
+def rangeBoolOuterConditionNested (count seed : UInt64) : Bool :=
+  if seed % 3 == 0 then
+    if seed < count then
+        let limit := fun x : UInt64 => x % 17
+        let value := Id.run do
+          let mut a := seed
+          for i in [:(limit count).toNat] do
+            a := a + i.toUInt64 + 1
+          return a
+        value == seed + limit count
+    else
+        let f := fun x : UInt64 => x * 3 + seed
+        let value := Id.run do
+          let mut a := f 0
+          for i in [:count.toNat] do
+            a := a + f i.toUInt64
+          return a
+        value == f 0
+  else
+      let f := fun x : UInt64 => x % 3
+      let value := Id.run do
+        let mut a := seed
+        for i in [:count.toNat] do
+          if f i.toUInt64 == 0 then continue
+          a := a + i.toUInt64 + 1
+        return a
+      f value == f seed
+
+def rangeBoolOuterConditionHelper (count seed : UInt64) : Bool :=
+  let p := fun x : UInt64 => x % 3 == seed % 3
+  if p count then
+      let f := fun x : UInt64 => x + seed + 1
+      let value := Id.run do
+        let mut a := f seed
+        for i in [:count.toNat] do
+          a := f a + f i.toUInt64
+        return a
+      f value == f (f seed)
+  else
+      let f := fun x : UInt64 => x % 3
+      let value := Id.run do
+        let mut a := seed
+        for i in [:count.toNat] do
+          if f i.toUInt64 == 0 then continue
+          a := a + i.toUInt64 + 1
+        return a
+      f value == f seed
+
+def rangeBoolOuterConditionExit (count seed : UInt64) : Bool :=
+  if count != 0 then
+      let f := fun x y : UInt64 => x + 3 * y + seed % 5 + 1
+      let value := Id.run do
+        let mut a := seed
+        for i in [:count.toNat] do
+          a := f a i.toUInt64
+          if a % 7 == 0 then break
+        return a
+      f value 1 % 7 == 0
+  else
+      let f := fun flag : Bool => seed % 5 + flag.toUInt64 + 1
+      let value := Id.run do
+        let mut a := seed
+        for i in [:count.toNat] do
+          a := a + f (i.toUInt64 % 2 == 0)
+          if a % 7 == 0 then break
+        return a
+      f (value % 7 == 0) == f true
+
+def rangeBoolOuterConditionContinue (count seed : UInt64) : Bool :=
+  if seed % 2 == 0 then
+      let f := fun x : UInt64 => x % 3
+      let value := Id.run do
+        let mut a := seed
+        for i in [:count.toNat] do
+          if f i.toUInt64 == 0 then continue
+          a := a + i.toUInt64 + 1
+        return a
+      f value == f seed
+  else
+      let f := fun x y z : UInt64 => (x + 3 * y + 5 * z) % 3
+      let value := Id.run do
+        let mut a := seed
+        for i in [:count.toNat] do
+          if f i.toUInt64 a seed == 0 then continue
+          a := a + i.toUInt64 + 1
+        return a
+      f value seed 1 == f seed value 1
+
+def rangeBoolOuterConditionStride (count seed : UInt64) : Bool :=
+  if seed < count then
+      let f := fun (_unit : Unit) (x : UInt64) => x % 3
+      let value := Id.run do
+        let mut a := seed
+        for i in [(f () seed).toNat:count.toNat:3] do
+          a := a + i.toUInt64 + 1
+          if a % 5 == 0 then break
+        return a
+      f () value == f () seed
+  else
+      let f := fun a b c d e : UInt64 => (a + 3*b + 5*c + 7*d + 11*e) % 3
+      let value := Id.run do
+        let mut a := seed
+        for i in [(f seed 1 2 3 4).toNat:count.toNat:3] do
+          a := a + i.toUInt64 + 1
+          if a % 5 == 0 then break
+        return a
+      f value 1 2 3 4 == f seed 1 2 3 4
+
+def rangeBoolOuterConditionId (count : Id UInt64) (seed : UInt64) : Id Bool :=
+  if Id.run count < seed then
+      let f (x : UInt64) : Id (Id UInt64) := pure (pure (x + seed + 1))
+      let value : Id UInt64 := Id.run do
+        let mut a := Id.run (Id.run (f 0))
+        for i in [:(Id.run count).toNat] do
+          a := Id.run (Id.run (f (a + i.toUInt64)))
+        return a
+      pure (Id.run (Id.run (f (Id.run value))) == seed)
+  else
+      let f (a b c d e : UInt64) : Id (Id UInt64) := pure (pure (a + 3*b + 5*c + 7*d + 11*e + seed))
+      let value : Id UInt64 := Id.run do
+        let mut a := Id.run (Id.run (f seed 1 2 3 4))
+        for i in [:(Id.run count).toNat] do
+          a := Id.run (Id.run (f a i.toUInt64 1 2 3))
+        return a
+      pure (Id.run value == Id.run (Id.run (f seed 1 2 3 4)))
+
+def rangeBoolOuterConditionCapture (count seed : UInt64) : Id Bool :=
+  let threshold := seed + count
+  let selected := threshold % 5 == 0
+  if selected then
+      let f := fun flag : Bool => seed + flag.toUInt64
+      let g := fun flag : Bool => f (!flag) + f flag
+      let value := Id.run do
+        let mut a := g false
+        for i in [:count.toNat] do
+          a := a + g (i.toUInt64 % 3 == 0)
+        return a
+      pure (value == g (seed == 0))
+  else
+      let f := fun x : UInt64 => x + seed
+      let g := fun x : UInt64 => f (x * 3) + f x
+      let value := Id.run do
+        let mut a := g 0
+        for i in [:count.toNat] do
+          a := g (a + i.toUInt64)
+        return a
+      pure (g value == g seed)
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -8597,6 +8800,16 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolUnitHelperStride", (fun (x y : UInt64) => (rangeBoolUnitHelperStride x y).toUInt64)),
    ("rangeBoolUnitHelperId", (fun (x y : UInt64) => (rangeBoolUnitHelperId x y).toUInt64)),
    ("rangeBoolUnitHelperShadow", (fun (x y : UInt64) => (rangeBoolUnitHelperShadow x y).toUInt64)),
+   ("rangeBoolOuterConditionEqual", (fun (x y : UInt64) => (rangeBoolOuterConditionEqual x y).toUInt64)),
+   ("rangeBoolOuterConditionOrder", (fun (x y : UInt64) => (rangeBoolOuterConditionOrder x y).toUInt64)),
+   ("rangeBoolOuterConditionFlag", (fun (x y : UInt64) => (rangeBoolOuterConditionFlag x (y != 0)).toUInt64)),
+   ("rangeBoolOuterConditionNested", (fun (x y : UInt64) => (rangeBoolOuterConditionNested x y).toUInt64)),
+   ("rangeBoolOuterConditionHelper", (fun (x y : UInt64) => (rangeBoolOuterConditionHelper x y).toUInt64)),
+   ("rangeBoolOuterConditionExit", (fun (x y : UInt64) => (rangeBoolOuterConditionExit x y).toUInt64)),
+   ("rangeBoolOuterConditionContinue", (fun (x y : UInt64) => (rangeBoolOuterConditionContinue x y).toUInt64)),
+   ("rangeBoolOuterConditionStride", (fun (x y : UInt64) => (rangeBoolOuterConditionStride x y).toUInt64)),
+   ("rangeBoolOuterConditionId", (fun (x y : UInt64) => (rangeBoolOuterConditionId x y).toUInt64)),
+   ("rangeBoolOuterConditionCapture", (fun (x y : UInt64) => (rangeBoolOuterConditionCapture x y).toUInt64)),
    ("rangeBoolLetIdWord", (fun (x y : UInt64) => (rangeBoolLetIdWord x y).toUInt64)),
    ("rangeBoolLetIdWordLayers", (fun (x y : UInt64) => (rangeBoolLetIdWordLayers x y).toUInt64)),
    ("rangeBoolLetIdFlag", (fun (x y : UInt64) => (rangeBoolLetIdFlag x y).toUInt64)),

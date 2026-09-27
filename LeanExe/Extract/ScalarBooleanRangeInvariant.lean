@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarBooleanRangeChoice
 import LeanExe.Extract.ScalarBooleanRange
 import LeanExe.Extract.ScalarRangeExitInvariant
 
@@ -172,7 +173,15 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact tail
     · exact bindings binding member
-  | case36 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind wrapper body parsed ih => exact ih compiled bindings
+  | case36 => contradiction
   | case37 => contradiction
+  | case38 locals type condition evidence yes no resultType parsed guard matched yesIH noIH =>
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨first, ht, second, he, rfl⟩ := compiled
+    exact ScalarRangeExitPlan.choice_holds P literal choice
+      (extractScalarExprWith_invariant P literal binary choice matched bindings)
+      (yesIH ht bindings) (noIH he bindings)
+  | case39 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind notIf wrapper body parsed ih => exact ih compiled bindings
+  | case40 => contradiction
 
 end LeanExe.Extract.Core

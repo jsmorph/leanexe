@@ -490,7 +490,15 @@ controls. Prior tests pass 40,560 comparisons, 39,168 invalid-input checks and
 2,880 controls. Evidence is in
 [the Unit-prefixed loop-helper archive](proofs/compiler/boolean-loop-unit-helpers-2026-09-27/README.md).
 
-Next: outer conditions and local continuations containing loops, followed by
+Current capability: outer conditions choosing between Boolean-result loops.
+Source evaluation selects one arm; extraction checks both and preserves the
+captured condition through all loop states. Focused source, extraction, plan,
+correctness, invariant and WASM-admission proofs pass. New tests pass 16,368
+native/IR comparisons, 11,520 invalid-input checks and 1,152 wrapper controls.
+Complete compiler proof, native Lean/V8 checks and evidence archive are next.
+
+Next: mixed scalar/loop conditional arms and local continuations containing loops,
+followed by
 retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
 Also extend UInt64-to-Bool helper bodies to call captured

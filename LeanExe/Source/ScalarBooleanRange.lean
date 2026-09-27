@@ -12,8 +12,20 @@ def bindBoolean (name : Lean.Name) (binder : Lean.BinderInfo) (input output : Bo
     (value body : Lean.Expr) : Lean.Expr :=
   (BooleanBindingForm.monadic binder output).expr name input.expr value body
 
+/-- Convert an exactly checked proposition decision to its Boolean word value. -/
+def decision (condition evidence : Lean.Expr) : Lean.Expr :=
+  .app (.const ``Bool.toUInt64 [])
+    (.app (.app (.const ``Decidable.decide []) condition) evidence)
+
+def choiceExpr (type : BooleanType) (condition evidence yes no : Lean.Expr) : Lean.Expr :=
+  .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type.expr) condition) evidence) yes) no
+
 /-- A word-valued loop followed by a Boolean result computation. -/
 inductive Eval : Lean.Expr → List Value → Bool → Prop where
+  | choice (type : BooleanType)
+      (condition : EvalWith (decision test evidence) values (Bool.toUInt64 flag))
+      (body : Eval (if flag then yes else no) values result) :
+      Eval (choiceExpr type test evidence yes no) values result
   | letBinaryFn (type : ResultType)
       (function : ∀ x y, EvalWith a (.word y :: .word x :: values) (f x y))
       (body : Eval b (.binaryFunction f :: values) outcome) :
@@ -93,6 +105,9 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
 
 /-- Source support checks both the loop and its Boolean continuation. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
+  | choice (type : BooleanType) (condition : SupportedWith types (decision test evidence))
+      (yesBranch : Supported types yes) (noBranch : Supported types no) :
+      Supported types (choiceExpr type test evidence yes no)
   | letBinaryFn (type : ResultType) (function : SupportedWith (.word :: .word :: types) a)
       (body : Supported (.binaryFunction :: types) b) :
       Supported types (.letE name
@@ -167,6 +182,16 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (supported : Supported types source) (values : List Value)
     (typed : values.map Value.kind = types) : ∃ flag, Eval source values flag := by
   induction supported generalizing values with
+  | choice type condition _ _ yesIH noIH =>
+    obtain ⟨encoded, evaluated⟩ := condition.evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    cases flag with
+    | false =>
+      obtain ⟨result, body⟩ := noIH values typed
+      exact ⟨result, .choice type evaluated body⟩
+    | true =>
+      obtain ⟨result, body⟩ := yesIH values typed
+      exact ⟨result, .choice type evaluated body⟩
   | letBinaryFn type function _ ihb =>
     have total := fun x y => function.evaluates (.word y :: .word x :: values) (by simp [Value.kind, typed])
     let f := fun x y => (total x y).choose
