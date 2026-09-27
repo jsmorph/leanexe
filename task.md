@@ -1,33 +1,37 @@
-# Current task: complete compiler correctness on correct — in progress
+# Current task: restricted Lean to Talos module correctness — in progress
 
-The user resumed compiler work on `correct` from main on 2026-09-26.
-The user requested continued work until compiler correctness covers the entire
-LeanExe dialect, with frequent updates, commits, and pushes. Main through
-`823008dc` is merged into `correct`, including the drone proofs, the call-result
-annotation fix and the scalar WASM result/type proofs. This compiler-proof task remains active; the completed drone task
-is preserved separately at the end of this file. Lean runs locally through
-`tools/leanrun`. Full-dialect correctness is not yet proved.
+Compile ordinary restricted Lean definitions to Talos `Wasm.Module` values and
+prove that execution preserves their Lean meaning. Retain core expressive power,
+including recursive functions, loops, and memory. Floating point and GPU are
+excluded. I/O is deferred by the user. Do not add source syntax cases, registries,
+or proof-package infrastructure as separate work.
 
-## Completion requirement and current direction
+The `encoding` branch at `91377c65` is merged into `correct`. Its existing encoder
+supplies module-to-binary correctness. Compiler output must have consistent type
+metadata and satisfy its readiness and validity premises.
 
-The language may be reduced while preserving expressive power. The target is a
-small, explicit core with a compiler theorem covering every admitted construct.
-Supporting more elaborated Lean spellings is not a separate workstream. Surface
-forms must either lower to that core with a proved correspondence or be expressed
-using supported core operations. New syntax cases do not count as completion of
-missing calls, memory, numeric operations or I/O.
+Checked in Lean:
 
-The current general theorem covers the scalar admission path. It does not cover
-the general fallback in `compileEnvironmentWithEntryModeDetailed`, general
-multi-function modules, heap operations, floating-point operators or ByteIO
-compilation. Existing program-specific GPT, numerical, drone and WASI proofs are
-reusable evidence and components, not a general compiler theorem for those paths.
+- `LeanExe.Core.Program`: source control, recursive calls, and explicit primitive
+  effects with native UInt64 operations.
+- `Project.Core.Correctness`: preservation of every successful core evaluation
+  and function invocation in Talos, including arbitrary nesting and recursive
+  call trees. Primitive implementations carry their own correctness premise.
+- `Project.Core.Module.pure_correct`: the pure theorem applies directly to the
+  compiler's output module and preserves the entire caller store.
+- `Project.Core.ByteMemory`: native ByteArray reads and writes correspond to
+  Talos byte-memory operations, under address bounds.
 
-Finish the current Boolean-prefix verification and save its evidence. Then map
-actual IR constructors and compiler stages to existing proofs, select the smaller
-expressive core, and build the missing general semantic and lowering proofs. Keep
-verification focused on changed modules and representative existing programs.
-Do not expand the growing syntax-case list as a substitute for this work.
+Remaining work:
+
+- Generate kernel-checked native correspondence automatically from ordinary Lean
+  definitions, using Lean's equation and functional-induction theorems.
+- Complete the generic typing proof and encoder readiness obligations.
+- Connect native data and memory operations, including growth, to the frontend.
+- Check representative recursive and looping programs through the complete path.
+
+The core lowering theorem alone does not establish correctness of the ordinary
+Lean frontend. The compiler is not yet complete.
 
 The detailed milestone record below records completed restricted capabilities;
 it is not a percentage-complete estimate for the full compiler.
