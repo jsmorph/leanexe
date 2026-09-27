@@ -1,0 +1,38 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [55/67] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [66/100] Building LeanExe.Extract.ScalarBooleanHelper (962ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanHelper.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanHelper.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanHelper.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanHelper.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanHelper.setup.json --json
+error: LeanExe/Extract/ScalarBooleanHelper.lean:41:59: unsolved goals
+case h_1
+booleanInput : Bool
+shape : BooleanFunctionBinding
+parameterName : Lean.Name
+body : BooleanLocal
+continuation : Lean.Expr
+resultType✝ : BooleanType
+expression✝ : BooleanLocal
+extended :
+  ∀ (expression : BooleanLocal),
+    booleanHelperExpr booleanInput shape parameterName expression✝.expr continuation ≠ expression.expr
+absent :
+  booleanLocalOperands?
+      (Lean.Expr.letE shape.functionName
+        (Lean.Expr.forallE shape.typeName (Lean.Expr.const (if booleanInput = true then `Bool else `UInt64) [])
+          resultType✝.expr shape.typeInfo)
+        (Lean.Expr.lam parameterName (Lean.Expr.const (if booleanInput = true then `Bool else `UInt64) [])
+          expression✝.expr shape.valueInfo)
+        continuation shape.nondep) =
+    none
+heq✝¹ : shape.result = resultType✝
+heq✝ : body = expression✝
+⊢ { functionName := shape.functionName, typeName := shape.typeName, typeInfo := shape.typeInfo,
+        valueInfo := shape.valueInfo, result := resultType✝, nondep := shape.nondep } =
+      shape ∧
+    True
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanHelper
+error: build failed

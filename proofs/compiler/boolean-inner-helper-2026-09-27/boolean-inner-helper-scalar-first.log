@@ -1,0 +1,400 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [56/121] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [120/121] Built LeanExe.Extract.ScalarExprCore (15s)
+warning: LeanExe/Extract/ScalarExprCore.lean:370:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:378:31: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:378:36: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:378:52: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:387:35: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:387:40: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:387:56: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:444:12: Variable name `bounds` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _bounds
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+✖ [121/121] Building LeanExe.Extract.ScalarExpr (1.5s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExpr.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExpr.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExpr.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExpr.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExpr.setup.json --json
+warning: LeanExe/Extract/ScalarExpr.lean:172:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:173:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:188:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:189:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:220:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:221:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:235:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:236:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:969:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1068:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+error: LeanExe/Extract/ScalarExpr.lean:1260:31: Tactic `rewrite` failed: motive is not type correct:
+  fun _a =>
+    (match _boolean : _a with
+      | none =>
+        match _wordHelper : booleanHelper? false argument with
+        | some helper => do
+          let _ ←
+            extractScalarExprWith (ScalarBinding.word (IR.Expr.u64 0) :: locals)
+                ((Lean.Expr.const `Bool.toUInt64 []).app helper.body.expr)
+          have function : ScalarBinding :=
+            ScalarBinding.predicateFunction fun input =>
+              extractScalarExprWith (ScalarBinding.word input :: locals)
+                ((Lean.Expr.const `Bool.toUInt64 []).app helper.body.expr)
+          extractScalarExprWith (function :: locals) ((Lean.Expr.const `Bool.toUInt64 []).app helper.continuation)
+        | none =>
+          match _booleanHelper : booleanHelper? true argument with
+          | some helper => do
+            let _ ←
+              extractScalarExprWith (ScalarBinding.boolean (IR.Expr.u64 0) :: locals)
+                  ((Lean.Expr.const `Bool.toUInt64 []).app helper.body.expr)
+            have function : ScalarBinding :=
+              ScalarBinding.booleanPredicateFunction fun input =>
+                extractScalarExprWith (ScalarBinding.boolean input :: locals)
+                  ((Lean.Expr.const `Bool.toUInt64 []).app helper.body.expr)
+            extractScalarExprWith (function :: locals) ((Lean.Expr.const `Bool.toUInt64 []).app helper.continuation)
+          | none => none
+      | some expression =>
+        match expression, _boolean with
+        | Source.Scalar.BooleanLocal.predicate negations index input, _boolean =>
+          match locals[index]?.bind ScalarBinding.booleanPredicateFunction? with
+          | some function => do
+            let argument ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app input)
+            let result ← function argument
+            pure (booleanWordNegation negations result)
+          | none => do
+            let condition ←
+              extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+            pure (guardWord condition)
+        | Source.Scalar.BooleanLocal.junction negations op left right, _boolean =>
+          if hasBooleanPredicate locals (left.functions ++ right.functions) = true then do
+            let first ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app left.expr)
+            let second ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app right.expr)
+            pure (booleanWordJunction negations op first second)
+          else do
+            let condition ←
+              extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+            pure (guardWord condition)
+        | Source.Scalar.BooleanLocal.equality negations unequal left right, _boolean =>
+          if hasBooleanPredicate locals (left.functions ++ right.functions) = true then do
+            let first ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app left.expr)
+            let second ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app right.expr)
+            pure (booleanWordEquality negations unequal first second)
+          else do
+            let condition ←
+              extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+            pure (guardWord condition)
+        | Source.Scalar.BooleanLocal.relationDecision negations unequal left right, _boolean =>
+          if hasBooleanPredicate locals (left.functions ++ right.functions) = true then do
+            let first ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app left.expr)
+            let second ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app right.expr)
+            pure (booleanWordEquality negations unequal first second)
+          else do
+            let condition ←
+              extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+            pure (guardWord condition)
+        | Source.Scalar.BooleanLocal.choice negations unequal left right yes no, _boolean =>
+          if
+              hasBooleanPredicate locals (left.functions ++ (right.functions ++ (yes.functions ++ no.functions))) =
+                true then
+            do
+            let first ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app left.expr)
+            let second ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app right.expr)
+            let trueBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app yes.expr)
+            let falseBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app no.expr)
+            pure (booleanWordChoice negations unequal first second trueBranch falseBranch)
+          else do
+            let condition ←
+              extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+            pure (guardWord condition)
+        | Source.Scalar.BooleanLocal.dependentChoice negations _shape unequal left right yes no, _boolean =>
+          if
+              hasBooleanPredicate locals (left.functions ++ (right.functions ++ (yes.functions ++ no.functions))) =
+                true then
+            do
+            let first ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app left.expr)
+            let second ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app right.expr)
+            let trueBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app yes.expr)
+            let falseBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app no.expr)
+            pure (booleanWordChoice negations unequal first second trueBranch falseBranch)
+          else do
+            let condition ←
+              extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+            pure (guardWord condition)
+        | Source.Scalar.BooleanLocal.proposition negations guard yes no, _boolean =>
+          if hasBooleanPredicate locals (yes.functions ++ no.functions) = true then do
+            let test ← extractGuard guard.value.tree fun operand _member => extractScalarExprWith locals operand
+            let trueBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app yes.expr)
+            let falseBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app no.expr)
+            pure (booleanWordConditional negations test trueBranch falseBranch)
+          else do
+            let condition ←
+              extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+            pure (guardWord condition)
+        | Source.Scalar.BooleanLocal.dependentProposition negations _shape guard yes no, _boolean =>
+          if hasBooleanPredicate locals (yes.functions ++ no.functions) = true then do
+            let test ← extractGuard guard.value.tree fun operand _member => extractScalarExprWith locals operand
+            let trueBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app yes.expr)
+            let falseBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app no.expr)
+            pure (booleanWordConditional negations test trueBranch falseBranch)
+          else do
+            let condition ←
+              extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+            pure (guardWord condition)
+        | Source.Scalar.BooleanLocal.wrapped negations wrapper body, _boolean =>
+          if hasBooleanPredicate locals body.functions = true then do
+            let inner ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app body.expr)
+            pure (booleanWordNegation negations inner)
+          else do
+            let condition ←
+              extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+            pure (guardWord condition)
+        | Source.Scalar.BooleanLocal.binding negations name form value body type, _boolean =>
+          if
+              hasBooleanPredicate locals (value.functions ++ Source.Scalar.booleanLetVariables body.functions) =
+                true then
+            do
+            let bound ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app value.expr)
+            let result ←
+              extractScalarExprWith (ScalarBinding.boolean bound :: locals)
+                  ((Lean.Expr.const `Bool.toUInt64 []).app body.expr)
+            pure (booleanWordNegation negations result)
+          else do
+            let condition ←
+              extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+            pure (guardWord condition)
+        | Source.Scalar.BooleanLocal.wordBinding negations name form value body type, _boolean =>
+          if hasBooleanPredicate locals (Source.Scalar.booleanLetVariables body.functions) = true then do
+            let bound ← extractScalarExprWith locals value
+            let result ←
+              extractScalarExprWith (ScalarBinding.word bound :: locals)
+                  ((Lean.Expr.const `Bool.toUInt64 []).app body.expr)
+            pure (booleanWordNegation negations result)
+          else do
+            let condition ←
+              extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+            pure (guardWord condition)
+        | x, _boolean => do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)) =
+      some target
+Error: Application type mismatch: The argument
+  fun expression _boolean => Option IR.Expr
+has type
+  (expression : Source.Scalar.BooleanLocal) → _a = some expression → Type
+but is expected to have type
+  (expression : Source.Scalar.BooleanLocal) → booleanLocalOperands? argument = some expression → Type
+in the application
+  extractScalarExprWith.match_35 argument fun expression _boolean => Option IR.Expr
+
+Explanation: The rewrite tactic rewrites an expression 'e' using an equality 'a = b' by the following process. First, it looks for all 'a' in 'e'. Second, it tries to abstract these occurrences of 'a' to create a function 'm := fun _a => ...', called the *motive*, with the property that 'm a' is definitionally equal to 'e'. Third, we observe that 'congrArg' implies that 'm a = m b', which can be used with lemmas such as 'Eq.mpr' to change the goal. However, if 'e' depends on specific properties of 'a', then the motive 'm' might not typecheck.
+
+Possible solutions: use rewrite's 'occs' configuration option to limit which occurrences are rewritten, or use 'simp' or 'conv' mode, which have strategies for certain kinds of dependencies (these tactics can handle proofs and 'Decidable' instances whose types depend on the rewritten term, and 'simp' can apply user-defined '@[congr]' theorems as well).
+
+case case63
+locals : List ScalarBinding
+argument : Lean.Expr
+rejected : booleanLocalOperands? argument = none
+noWord : booleanHelper? false argument = none
+noBoolean : booleanHelper? true argument = none
+target : IR.Expr
+compiled :
+  (match _boolean : booleanLocalOperands? argument with
+    | none =>
+      match _wordHelper : booleanHelper? false argument with
+      | some helper => do
+        let _ ←
+          extractScalarExprWith (ScalarBinding.word (IR.Expr.u64 0) :: locals)
+              ((Lean.Expr.const `Bool.toUInt64 []).app helper.body.expr)
+        have function : ScalarBinding :=
+          ScalarBinding.predicateFunction fun input =>
+            extractScalarExprWith (ScalarBinding.word input :: locals)
+              ((Lean.Expr.const `Bool.toUInt64 []).app helper.body.expr)
+        extractScalarExprWith (function :: locals) ((Lean.Expr.const `Bool.toUInt64 []).app helper.continuation)
+      | none =>
+        match _booleanHelper : booleanHelper? true argument with
+        | some helper => do
+          let _ ←
+            extractScalarExprWith (ScalarBinding.boolean (IR.Expr.u64 0) :: locals)
+                ((Lean.Expr.const `Bool.toUInt64 []).app helper.body.expr)
+          have function : ScalarBinding :=
+            ScalarBinding.booleanPredicateFunction fun input =>
+              extractScalarExprWith (ScalarBinding.boolean input :: locals)
+                ((Lean.Expr.const `Bool.toUInt64 []).app helper.body.expr)
+          extractScalarExprWith (function :: locals) ((Lean.Expr.const `Bool.toUInt64 []).app helper.continuation)
+        | none => none
+    | some expression =>
+      match expression, _boolean with
+      | Source.Scalar.BooleanLocal.predicate negations index input, _boolean =>
+        match locals[index]?.bind ScalarBinding.booleanPredicateFunction? with
+        | some function => do
+          let argument ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app input)
+          let result ← function argument
+          pure (booleanWordNegation negations result)
+        | none => do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | Source.Scalar.BooleanLocal.junction negations op left right, _boolean =>
+        if hasBooleanPredicate locals (left.functions ++ right.functions) = true then do
+          let first ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app left.expr)
+          let second ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app right.expr)
+          pure (booleanWordJunction negations op first second)
+        else do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | Source.Scalar.BooleanLocal.equality negations unequal left right, _boolean =>
+        if hasBooleanPredicate locals (left.functions ++ right.functions) = true then do
+          let first ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app left.expr)
+          let second ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app right.expr)
+          pure (booleanWordEquality negations unequal first second)
+        else do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | Source.Scalar.BooleanLocal.relationDecision negations unequal left right, _boolean =>
+        if hasBooleanPredicate locals (left.functions ++ right.functions) = true then do
+          let first ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app left.expr)
+          let second ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app right.expr)
+          pure (booleanWordEquality negations unequal first second)
+        else do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | Source.Scalar.BooleanLocal.choice negations unequal left right yes no, _boolean =>
+        if
+            hasBooleanPredicate locals (left.functions ++ (right.functions ++ (yes.functions ++ no.functions))) =
+              true then
+          do
+          let first ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app left.expr)
+          let second ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app right.expr)
+          let trueBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app yes.expr)
+          let falseBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app no.expr)
+          pure (booleanWordChoice negations unequal first second trueBranch falseBranch)
+        else do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | Source.Scalar.BooleanLocal.dependentChoice negations _shape unequal left right yes no, _boolean =>
+        if
+            hasBooleanPredicate locals (left.functions ++ (right.functions ++ (yes.functions ++ no.functions))) =
+              true then
+          do
+          let first ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app left.expr)
+          let second ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app right.expr)
+          let trueBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app yes.expr)
+          let falseBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app no.expr)
+          pure (booleanWordChoice negations unequal first second trueBranch falseBranch)
+        else do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | Source.Scalar.BooleanLocal.proposition negations guard yes no, _boolean =>
+        if hasBooleanPredicate locals (yes.functions ++ no.functions) = true then do
+          let test ← extractGuard guard.value.tree fun operand _member => extractScalarExprWith locals operand
+          let trueBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app yes.expr)
+          let falseBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app no.expr)
+          pure (booleanWordConditional negations test trueBranch falseBranch)
+        else do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | Source.Scalar.BooleanLocal.dependentProposition negations _shape guard yes no, _boolean =>
+        if hasBooleanPredicate locals (yes.functions ++ no.functions) = true then do
+          let test ← extractGuard guard.value.tree fun operand _member => extractScalarExprWith locals operand
+          let trueBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app yes.expr)
+          let falseBranch ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app no.expr)
+          pure (booleanWordConditional negations test trueBranch falseBranch)
+        else do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | Source.Scalar.BooleanLocal.wrapped negations wrapper body, _boolean =>
+        if hasBooleanPredicate locals body.functions = true then do
+          let inner ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app body.expr)
+          pure (booleanWordNegation negations inner)
+        else do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | Source.Scalar.BooleanLocal.binding negations name form value body type, _boolean =>
+        if hasBooleanPredicate locals (value.functions ++ Source.Scalar.booleanLetVariables body.functions) = true then
+          do
+          let bound ← extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app value.expr)
+          let result ←
+            extractScalarExprWith (ScalarBinding.boolean bound :: locals)
+                ((Lean.Expr.const `Bool.toUInt64 []).app body.expr)
+          pure (booleanWordNegation negations result)
+        else do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | Source.Scalar.BooleanLocal.wordBinding negations name form value body type, _boolean =>
+        if hasBooleanPredicate locals (Source.Scalar.booleanLetVariables body.functions) = true then do
+          let bound ← extractScalarExprWith locals value
+          let result ←
+            extractScalarExprWith (ScalarBinding.word bound :: locals)
+                ((Lean.Expr.const `Bool.toUInt64 []).app body.expr)
+          pure (booleanWordNegation negations result)
+        else do
+          let condition ←
+            extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+          pure (guardWord condition)
+      | x, _boolean => do
+        let condition ←
+          extractBooleanLocalWith locals expression fun operand _member => extractScalarExprWith locals operand
+        pure (guardWord condition)) =
+    some target
+⊢ Source.Scalar.SupportedWith (List.map ScalarBinding.kind locals) ((Lean.Expr.const `Bool.toUInt64 []).app argument)
+warning: LeanExe/Extract/ScalarExpr.lean:1298:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1320:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1342:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1364:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1386:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1410:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1434:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1452:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1471:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1490:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExpr
+error: build failed

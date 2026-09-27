@@ -1,0 +1,20 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+constructor LeanExe.Source.Scalar.Step.Eval.chooseScope : ∀ {flag : Bool} {t e : Lean.Expr}
+  {values : List LeanExe.Source.Scalar.Step.Value} {value : ForInStep UInt64}
+  (guard : LeanExe.Source.Scalar.BooleanScopeGuard) (type : LeanExe.Source.Scalar.Step.ResultAnnotation),
+  LeanExe.Source.Scalar.EvalWith guard.operand (List.map LeanExe.Source.Scalar.Step.Value.toScalar values)
+      flag.toUInt64 →
+    LeanExe.Source.Scalar.Step.Eval (if flag = true then t else e) values value →
+      LeanExe.Source.Scalar.Step.Eval (guard.branch (LeanExe.Source.Scalar.Step.resultType type) t e) values value
+constructor LeanExe.Source.Scalar.Step.Eval.chooseScopeDependent : ∀ {flag : Bool} {t e : Lean.Expr}
+  {values : List LeanExe.Source.Scalar.Step.Value} {value : ForInStep UInt64}
+  (guard : LeanExe.Source.Scalar.BooleanScopeGuard) (type : LeanExe.Source.Scalar.Step.ResultAnnotation)
+  (trueName falseName : Lean.Name) (trueInfo falseInfo : Lean.BinderInfo),
+  LeanExe.Source.Scalar.EvalWith guard.operand (List.map LeanExe.Source.Scalar.Step.Value.toScalar values)
+      flag.toUInt64 →
+    LeanExe.Source.Scalar.Step.Eval (if flag = true then t else e)
+        (LeanExe.Source.Scalar.Step.Value.scalar LeanExe.Source.Scalar.Value.unit :: values) value →
+      LeanExe.Source.Scalar.Step.Eval
+        (guard.dependentBranch (LeanExe.Source.Scalar.Step.resultType type) trueName falseName trueInfo falseInfo t e)
+        values value

@@ -1,0 +1,47 @@
+def booleanInnerHelperWord (x y : UInt64) : UInt64 :=
+  (let f := fun n : UInt64 => n == y; f x || f 0).toUInt64 + x
+
+def booleanInnerHelperBoolean (x y : UInt64) : UInt64 :=
+  if (let f := fun b : Bool => !b || y == 0; f (x == y) && f (x == 0)) then x + 7 else y + 11
+
+def booleanInnerHelperDependent (x y : UInt64) : UInt64 :=
+  if _h : (let f := fun n : UInt64 => n == y; f x || f 0) then x - 3 else y * 7
+
+def booleanInnerHelperNested (x y : UInt64) : UInt64 :=
+  (let f := fun n : UInt64 => n == y
+   let g := fun b : Bool => !b || x == 0
+   g (f x) && g (f 0)).toUInt64 + x
+
+def booleanInnerHelperUnused (x y : UInt64) : UInt64 :=
+  (let _unused := fun b : Bool => b && x != 0; x == y).toUInt64 + y
+
+def booleanInnerHelperIdResult (x y : UInt64) : UInt64 :=
+  (let f := fun n : UInt64 => (pure (n == y) : Id Bool); f x || f 0).toUInt64 + x
+
+def rangeInnerHelperStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let f := fun n : UInt64 => n % 2 == 0; f a && f i.toUInt64) then
+      a := a + i.toUInt64 + 7
+    else a := a * 3 + 1
+  return a
+
+def rangeInnerHelperExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if (let f := fun n : UInt64 => n % 7 == 0; f a || f (i.toUInt64 + 1)) then break
+  return a
+
+def rangeInnerHelperContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let f := fun b : Bool => !b || a % 2 == 0; f (i.toUInt64 % 3 == 0) && f (a == seed)) then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangeInnerHelperTail (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+  return (let f := fun n : UInt64 => n == seed; f a || f 0).toUInt64 + a

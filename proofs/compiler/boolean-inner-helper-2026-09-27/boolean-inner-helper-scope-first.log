@@ -1,0 +1,42 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [31/67] Built LeanExe.Source.ScalarBooleanScopeGuard (826ms)
+⚠ [57/67] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [67/67] Building LeanExe.Extract.ScalarBooleanScopeGuard (1.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanScopeGuard.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanScopeGuard.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanScopeGuard.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanScopeGuard.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanScopeGuard.setup.json --json
+error: LeanExe/Extract/ScalarBooleanScopeGuard.lean:22:70: unsolved goals
+case mk
+value✝ : SavedBooleanGuard
+extended✝ : ∀ (expression : BooleanLocal), value✝.expr ≠ expression.expr
+⊢ booleanLocalOperands? value✝.expr = none
+warning: LeanExe/Extract/ScalarBooleanScopeGuard.lean:25:4: This simp argument is unused:
+  booleanScopeGuard_not_local
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [booleanScopeGuard?, BooleanScopeGuard.condition, BooleanScopeGuard.evidence]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarBooleanScopeGuard.lean:46:57: unsolved goals
+guard : BooleanScopeGuard
+⊢ ∀ (a : Comparison) (a_1 b : Lean.Expr),
+    comparisonOperands? guard.value.condition = some (a, a_1, b) → ¬guard.evidence = a.evidence a_1 b
+warning: LeanExe/Extract/ScalarBooleanScopeGuard.lean:48:4: This simp argument is unused:
+  booleanTruth_not_comparison_of_not_closed guard.value.value guard.value.extended
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [comparison?, BooleanScopeGuard.condition]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarBooleanScopeGuard.lean:58:86: This simp argument is unused:
+  absent
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [booleanLocalGuard?, BooleanScopeGuard.condition, SavedBooleanGuard.condition]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanScopeGuard
+error: build failed

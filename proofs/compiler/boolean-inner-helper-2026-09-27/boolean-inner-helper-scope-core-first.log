@@ -1,0 +1,239 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [57/122] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [70/122] Replayed LeanExe.Extract.ScalarBooleanScopeGuard
+warning: LeanExe/Extract/ScalarBooleanScopeGuard.lean:60:86: This simp argument is unused:
+  absent
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [booleanLocalGuard?, BooleanScopeGuard.condition, SavedBooleanGuard.condition]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✖ [122/122] Building LeanExe.Extract.ScalarExprCore (14s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExprCore.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.setup.json --json
+warning: LeanExe/Extract/ScalarExprCore.lean:385:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:393:31: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:393:36: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:393:52: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:402:35: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:402:40: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:402:56: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:461:12: Variable name `bounds` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _bounds
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+error: LeanExe/Extract/ScalarExprCore.lean:558:48: unsolved goals
+locals : List ScalarBinding
+guard : Source.Scalar.BooleanScopeGuard
+type : Source.Scalar.ResultType
+yes no : Lean.Expr
+⊢ (match _resultType : scalarResultType? type.expr with
+    | none => none
+    | some val =>
+      match _h : comparison? guard.condition guard.evidence with
+      | none =>
+        match _g : compoundGuard? guard.condition guard.evidence with
+        | none =>
+          match _booleanGuard : booleanLocalGuard? guard.condition guard.evidence with
+          | none =>
+            match _scope : booleanScopeGuard? guard.condition guard.evidence with
+            | none => none
+            | some guard_1 => do
+              let c ← extractScalarExprWith locals guard_1.operand
+              let t ← extractScalarExprWith locals yes
+              let e ← extractScalarExprWith locals no
+              pure (IR.Expr.ite (wordGuard c) t e)
+          | some guard_1 =>
+            if hasBooleanPredicate locals guard_1.value.functions = true then do
+              let c ←
+                extractBooleanCondition guard_1.form fun input _member =>
+                    extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app input.expr)
+              let t ← extractScalarExprWith locals yes
+              let e ← extractScalarExprWith locals no
+              pure (IR.Expr.ite c t e)
+            else do
+              let c ←
+                extractBooleanLocalWith locals guard_1.value fun operand _member => extractScalarExprWith locals operand
+              let t ← extractScalarExprWith locals yes
+              let e ← extractScalarExprWith locals no
+              pure (IR.Expr.ite c t e)
+        | some guard_1 => do
+          let c ← extractGuard guard_1.tree fun operand _member => extractScalarExprWith locals operand
+          let t ← extractScalarExprWith locals yes
+          let e ← extractScalarExprWith locals no
+          pure (IR.Expr.ite c t e)
+      | some (op, left, right) => do
+        let a ← extractScalarExprWith locals left
+        let b ← extractScalarExprWith locals right
+        let t ← extractScalarExprWith locals yes
+        let e ← extractScalarExprWith locals no
+        pure (IR.Expr.ite (lowerComparison op a b) t e)) =
+    do
+    let c ← extractScalarExprWith locals guard.operand
+    let t ← extractScalarExprWith locals yes
+    let e ← extractScalarExprWith locals no
+    pure (IR.Expr.ite (wordGuard c) t e)
+warning: LeanExe/Extract/ScalarExprCore.lean:560:13: This simp argument is unused:
+  scalarResultType_accepts
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [booleanScopeGuard_not_comparison, booleanScopeGuard_not_compound, booleanScopeGuard_not_boolean,
+    booleanScopeGuard_accepts]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExprCore.lean:560:39: This simp argument is unused:
+  booleanScopeGuard_not_comparison
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [scalarResultType_accepts, booleanScopeGuard_not_compound, booleanScopeGuard_not_boolean,
+    booleanScopeGuard_accepts]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExprCore.lean:561:4: This simp argument is unused:
+  booleanScopeGuard_not_compound
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [scalarResultType_accepts, booleanScopeGuard_not_comparison, booleanScopeGuard_not_boolean,
+    booleanScopeGuard_accepts]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExprCore.lean:561:36: This simp argument is unused:
+  booleanScopeGuard_not_boolean
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [scalarResultType_accepts, booleanScopeGuard_not_comparison, booleanScopeGuard_not_compound,
+    booleanScopeGuard_accepts]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExprCore.lean:561:67: This simp argument is unused:
+  booleanScopeGuard_accepts
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [scalarResultType_accepts, booleanScopeGuard_not_comparison, booleanScopeGuard_not_compound,
+    booleanScopeGuard_not_boolean]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarExprCore.lean:570:48: unsolved goals
+locals : List ScalarBinding
+guard : Source.Scalar.BooleanScopeGuard
+type : Source.Scalar.ResultType
+tn fn : Lean.Name
+ti fi : Lean.BinderInfo
+yes no : Lean.Expr
+⊢ (match _resultType : scalarResultType? type.expr with
+    | none => none
+    | some val =>
+      match _guard :
+        dependentGuard? guard.condition guard.evidence guard.condition
+          ((Lean.Expr.const `Not []).app guard.condition) with
+      | none =>
+        match _booleanGuard :
+          booleanLocalDependentGuard? guard.condition guard.evidence guard.condition
+            ((Lean.Expr.const `Not []).app guard.condition) with
+        | none =>
+          match _scope :
+            booleanScopeDependentGuard? guard.condition guard.evidence guard.condition
+              ((Lean.Expr.const `Not []).app guard.condition) with
+          | none => none
+          | some guard_1 => do
+            let c ← extractScalarExprWith locals guard_1.operand
+            let t ← extractScalarExprWith (ScalarBinding.unit :: locals) yes
+            let e ← extractScalarExprWith (ScalarBinding.unit :: locals) no
+            pure (IR.Expr.ite (wordGuard c) t e)
+        | some guard_1 =>
+          if hasBooleanPredicate locals guard_1.value.functions = true then do
+            let c ←
+              extractBooleanCondition guard_1.form fun input _member =>
+                  extractScalarExprWith locals ((Lean.Expr.const `Bool.toUInt64 []).app input.expr)
+            let t ← extractScalarExprWith (ScalarBinding.unit :: locals) yes
+            let e ← extractScalarExprWith (ScalarBinding.unit :: locals) no
+            pure (IR.Expr.ite c t e)
+          else do
+            let c ←
+              extractBooleanLocalWith locals guard_1.value fun operand _member => extractScalarExprWith locals operand
+            let t ← extractScalarExprWith (ScalarBinding.unit :: locals) yes
+            let e ← extractScalarExprWith (ScalarBinding.unit :: locals) no
+            pure (IR.Expr.ite c t e)
+      | some guard_1 => do
+        let c ← extractGuard guard_1.tree fun operand _member => extractScalarExprWith locals operand
+        let t ← extractScalarExprWith (ScalarBinding.unit :: locals) yes
+        let e ← extractScalarExprWith (ScalarBinding.unit :: locals) no
+        pure (IR.Expr.ite c t e)) =
+    do
+    let c ← extractScalarExprWith locals guard.operand
+    let t ← extractScalarExprWith (ScalarBinding.unit :: locals) yes
+    let e ← extractScalarExprWith (ScalarBinding.unit :: locals) no
+    pure (IR.Expr.ite (wordGuard c) t e)
+warning: LeanExe/Extract/ScalarExprCore.lean:572:13: This simp argument is unused:
+  scalarResultType_accepts
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [booleanScopeGuard_not_dependent, booleanScopeGuard_not_booleanDependent,
+    booleanScopeDependentGuard_accepts]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExprCore.lean:572:39: This simp argument is unused:
+  booleanScopeGuard_not_dependent
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [scalarResultType_accepts, booleanScopeGuard_not_booleanDependent,
+    booleanScopeDependentGuard_accepts]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExprCore.lean:573:4: This simp argument is unused:
+  booleanScopeGuard_not_booleanDependent
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [scalarResultType_accepts, booleanScopeGuard_not_dependent, booleanScopeDependentGuard_accepts]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExprCore.lean:573:44: This simp argument is unused:
+  booleanScopeDependentGuard_accepts
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [scalarResultType_accepts, booleanScopeGuard_not_dependent, booleanScopeGuard_not_booleanDependent]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExprCore
+error: build failed

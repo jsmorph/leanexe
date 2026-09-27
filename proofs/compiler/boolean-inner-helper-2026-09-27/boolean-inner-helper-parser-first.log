@@ -1,0 +1,90 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [31/65] Built LeanExe.Source.ScalarBooleanHelper (839ms)
+⚠ [56/65] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [65/65] Building LeanExe.Extract.ScalarBooleanHelper (908ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanHelper.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanHelper.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanHelper.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanHelper.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanHelper.setup.json --json
+error: LeanExe/Extract/ScalarBooleanHelper.lean:34:70: Application type mismatch: The argument
+  Eq.trans exactSource equal
+has type
+  source = value.expr
+but is expected to have type
+  Lean.Expr.letE functionName (Lean.Expr.forallE typeName input result typeInfo)
+      (Lean.Expr.lam parameterName domain body valueInfo) continuation nondep =
+    value.expr
+in the application
+  booleanLocal_excluded absent value (Eq.trans exactSource equal)
+error: LeanExe/Extract/ScalarBooleanHelper.lean:41:59: unsolved goals
+booleanInput : Bool
+shape : BooleanFunctionBinding
+parameterName : Lean.Name
+body : BooleanLocal
+continuation : Lean.Expr
+extended :
+  ∀ (expression : BooleanLocal),
+    booleanHelperExpr booleanInput shape parameterName body.expr continuation ≠ expression.expr
+absent :
+  booleanLocalOperands?
+      (Lean.Expr.letE shape.functionName
+        (Lean.Expr.forallE shape.typeName (Lean.Expr.const (if booleanInput = true then `Bool else `UInt64) [])
+          shape.result.expr shape.typeInfo)
+        (Lean.Expr.lam parameterName (Lean.Expr.const (if booleanInput = true then `Bool else `UInt64) []) body.expr
+          shape.valueInfo)
+        continuation shape.nondep) =
+    none
+⊢ (match resultFound : booleanType? shape.result.expr, bodyFound : booleanLocalOperands? body.expr with
+    | some resultType, some expression =>
+      some
+        {
+          shape :=
+            { functionName := shape.functionName, typeName := shape.typeName, typeInfo := shape.typeInfo,
+              valueInfo := shape.valueInfo, result := resultType, nondep := shape.nondep },
+          parameterName := parameterName, body := expression, continuation := continuation, extended := ⋯ }
+    | x, x_1 => none) =
+    some
+      { shape := shape, parameterName := parameterName, body := body, continuation := continuation,
+        extended := extended }
+warning: LeanExe/Extract/ScalarBooleanHelper.lean:44:8: declaration uses `sorry`
+error: LeanExe/Extract/ScalarBooleanHelper.lean:60:8: No goals to be solved
+error: LeanExe/Extract/ScalarBooleanHelper.lean:61:8: Tactic `contradiction` failed
+
+case h_1.isFalse
+booleanInput : Bool
+value : BooleanHelper booleanInput
+functionName✝ typeName✝ : Lean.Name
+input✝ result✝ : Lean.Expr
+typeInfo✝ : Lean.BinderInfo
+parameterName✝ : Lean.Name
+domain✝ body✝ : Lean.Expr
+valueInfo✝ : Lean.BinderInfo
+continuation✝ : Lean.Expr
+nondep✝ : Bool
+absent✝¹ absent✝ :
+  booleanLocalOperands?
+      (Lean.Expr.letE functionName✝ (Lean.Expr.forallE typeName✝ input✝ result✝ typeInfo✝)
+        (Lean.Expr.lam parameterName✝ domain✝ body✝ valueInfo✝) continuation✝ nondep✝) =
+    none
+h✝ : ¬booleanInput = true
+parsed :
+  (if h : input✝ = Lean.Expr.const `UInt64 [] ∧ domain✝ = input✝ then
+      match resultFound : booleanType? result✝, bodyFound : booleanLocalOperands? body✝ with
+      | some resultType, some expression =>
+        let shape :=
+          { functionName := functionName✝, typeName := typeName✝, typeInfo := typeInfo✝, valueInfo := valueInfo✝,
+            result := resultType, nondep := nondep✝ };
+        have exactSource := ⋯;
+        some
+          { shape := shape, parameterName := parameterName✝, body := expression, continuation := continuation✝,
+            extended := ⋯ }
+      | x, x_1 => none
+    else none) =
+    some value
+⊢ Lean.Expr.letE functionName✝ (Lean.Expr.forallE typeName✝ input✝ result✝ typeInfo✝)
+      (Lean.Expr.lam parameterName✝ domain✝ body✝ valueInfo✝) continuation✝ nondep✝ =
+    value.expr
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanHelper
+error: build failed
