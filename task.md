@@ -827,16 +827,24 @@ original helper-before-break probe pass unchanged; three prior loop controls
 still pass. The native corpus contains 1527 declarations. Evidence is in
 [the step helper-body archive](proofs/compiler/boolean-helper-step-body-2026-09-27/README.md).
 
-Current capability: general predicate bodies before word-result loops.
-The RangeExit binding rules and equations retain raw bodies and preserve captures,
-unused-body validation, totality and exit semantics. Source, parser, acceptance,
-support, correctness and invariant proofs and the public compiler target pass.
-Ten fixed new probes and both original outer-prefix probes pass unchanged, with
-four prior step controls still passing. New tests pass 10,608 comparisons and
-3,888 invalid-input checks. Prior tests pass 41,136 comparisons, 25,056 invalid-input
-checks and 1,152 controls. The full compiler proof and WASM checks are next. Five Boolean-result loop probes remain rejected; their continuation
-dispatcher is the next separate capability. Other outer grammars and Id inputs
-in converted helper scopes remain recorded gaps.
+General predicate bodies before word-result loops are complete. Source totality,
+acceptance/soundness, prefix and loop correctness and invariants and the general
+source-to-WASM theorem pass with nineteen audits. Native Lean/V8 agree on 1,053
+inputs across 54 declarations, including 31 ranges; 44 prior modules retain
+identical bytes and 0 changed. New tests pass 10,608 comparisons and
+3,888 invalid-input checks. Prior tests pass 41,136 comparisons, 25,056
+invalid-input checks and 1,152 controls. Ten new probes and the original two
+outer-prefix probes pass unchanged; four prior step controls still pass. The
+native corpus contains 1537 declarations. Evidence is in
+[the outer word-loop helper-body archive](proofs/compiler/boolean-helper-outer-word-body-2026-09-27/README.md).
+
+Current capability: general predicate bodies before Boolean-result loops.
+Five fixed probes remain rejected, covering both predicate input kinds, word and
+Boolean accumulators, Id annotations and an unused helper. Generalize the scalar
+predicate path in the BooleanRange continuation dispatcher to raw bodies. Preserve
+its ordering with direct/wrapped loop-valued calls and conditional continuations,
+and update source totality, acceptance, support, correctness and invariants. The
+other outer grammars and Id inputs in converted scopes remain separate gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
