@@ -6829,6 +6829,15 @@ def rangeBoolResultId (count seed : UInt64) : Id (Id Bool) := do
     pure (pure (pure (value % 7 == seed % 7))))
   pure (pure (!(Id.run (Id.run flag)) && seed != 0))
 
+def rangeLetBool (count seed : UInt64) : UInt64 :=
+  let flag := Id.run do
+    let mut a := seed
+    for _ in [:count.toNat] do
+      a := a + 1
+    return a == 0
+  if flag then count else seed
+
+
 def rangeWordFromBoolLet (count seed : UInt64) : UInt64 :=
   let flag :=
     let value := Id.run do
@@ -9915,6 +9924,7 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolResultContinue", (fun (x y : UInt64) => (rangeBoolResultContinue x y).toUInt64)),
    ("rangeBoolResultStride", (fun (x y : UInt64) => (rangeBoolResultStride x y).toUInt64)),
    ("rangeBoolResultId", (fun (x y : UInt64) => (rangeBoolResultId x y).toUInt64)),
+   ("rangeLetBool", rangeLetBool),
    ("rangeWordFromBoolLet", (fun (x y : UInt64) => rangeWordFromBoolLet x y)),
    ("rangeWordFromBoolDo", (fun (x y : UInt64) => rangeWordFromBoolDo x y)),
    ("rangeWordFromBoolFlag", (fun (x y : UInt64) => rangeWordFromBoolFlag x (y != 0))),

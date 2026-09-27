@@ -2,6 +2,15 @@ import LeanExe.Extract.ScalarFunc
 
 namespace BooleanLoopWordResultTest
 
+def rangeLetBool (count seed : UInt64) : UInt64 :=
+  let flag := Id.run do
+    let mut a := seed
+    for _ in [:count.toNat] do
+      a := a + 1
+    return a == 0
+  if flag then count else seed
+
+
 def rangeWordFromBoolLet (count seed : UInt64) : UInt64 :=
   let flag :=
     let value := Id.run do
@@ -115,6 +124,7 @@ end BooleanLoopWordResultTest
 run_elab do
   let env ← Lean.getEnv
   let cases : List (Lean.Name × (UInt64 → UInt64 → UInt64) × Bool) := [
+    (`BooleanLoopWordResultTest.rangeLetBool, BooleanLoopWordResultTest.rangeLetBool, true),
     (`BooleanLoopWordResultTest.rangeWordFromBoolLet, (fun (x y : UInt64) => BooleanLoopWordResultTest.rangeWordFromBoolLet x y), true),
     (`BooleanLoopWordResultTest.rangeWordFromBoolDo, (fun (x y : UInt64) => BooleanLoopWordResultTest.rangeWordFromBoolDo x y), true),
     (`BooleanLoopWordResultTest.rangeWordFromBoolFlag, (fun (x y : UInt64) => BooleanLoopWordResultTest.rangeWordFromBoolFlag x (y != 0)), true),
@@ -142,5 +152,5 @@ run_elab do
       unless actual == expected do
         throwError "{name}({x}, {y}): native={expected}, IR={actual}"
       comparisons := comparisons + 1
-  unless comparisons == 240 do throwError "unexpected comparison count {comparisons}"
+  unless comparisons == 264 do throwError "unexpected comparison count {comparisons}"
   Lean.logInfo m!"{comparisons} native/Boolean loop word-result IR comparisons passed"
