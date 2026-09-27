@@ -5589,6 +5589,54 @@ def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
   return a
 
+def publicIdWord (x y : UInt64) : Id UInt64 := pure (x + y)
+
+def publicIdNested (x y : UInt64) : Id (Id UInt64) :=
+  pure (pure (if x < y then x / y else y % x))
+
+def publicIdBind (x y : UInt64) : Id UInt64 := do
+  let n ← pure (x + y)
+  let flag ← pure (n == 0)
+  return if flag then n + 3 else y - 7
+
+def publicIdBool (x y : UInt64) : Id Bool := pure (x != y && x != 0)
+
+def publicIdBoolNested (x y : UInt64) : Id (Id Bool) :=
+  pure (pure (decide (x < y ∧ ¬ (y == 0))))
+
+def publicIdBoolHelper (x y : UInt64) : Id Bool := pure (
+  let f : UInt64 → Bool := fun n => n != y
+  f (x + 1))
+
+def rangePublicIdYield (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangePublicIdExit (count seed : UInt64) : Id (Id UInt64) := pure (Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if a % 7 == 0 then break
+  return a)
+
+def rangePublicIdContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if i.toUInt64 % 3 == 0 then continue
+    a := a + i.toUInt64
+  return a
+
+def rangePublicIdCapture (count seed : UInt64) : Id UInt64 := do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun b : Bool => if b then seed + 1 else seed
+  let mut a := g (f (count == 0))
+  for i in [:count.toNat] do
+    a := a + g (f (a == seed)) + i.toUInt64
+    if a % 7 == 0 then break
+  return a
+
 def publicBooleanTrue (_x _y : UInt64) : Bool := true
 
 def publicBooleanCompare (x y : UInt64) : Bool := x != y && x + 1 == y
@@ -8425,6 +8473,16 @@ run_elab do
       `ArithmeticModeTest.rangeLocalNotContinue,
       `ArithmeticModeTest.rangeLocalNotOuter,
       `ArithmeticModeTest.rangeLocalNotHelper,
+      `ArithmeticModeTest.publicIdWord,
+      `ArithmeticModeTest.publicIdNested,
+      `ArithmeticModeTest.publicIdBind,
+      `ArithmeticModeTest.publicIdBool,
+      `ArithmeticModeTest.publicIdBoolNested,
+      `ArithmeticModeTest.publicIdBoolHelper,
+      `ArithmeticModeTest.rangePublicIdYield,
+      `ArithmeticModeTest.rangePublicIdExit,
+      `ArithmeticModeTest.rangePublicIdContinue,
+      `ArithmeticModeTest.rangePublicIdCapture,
       `ArithmeticModeTest.publicBooleanTrue,
       `ArithmeticModeTest.publicBooleanCompare,
       `ArithmeticModeTest.publicBooleanChoice,

@@ -64,7 +64,7 @@ run_elab do
                   comparisons := comparisons + 1
               let invalid : List (Lean.Expr × Lean.Expr) :=
                 [(signature word (.const ``Nat []), wrap word body),
-                 (signature word (.app (.const ``Id [.zero]) boolean), wrap word body),
+                 (signature word (.app (.const ``Id [.succ .zero]) boolean), wrap word body),
                  (signature word (.const ``Bool [.zero]), wrap word body),
                  (signature word boolean, wrap word (literalExpr 7)),
                  (signature word boolean, wrap word (.const `unsupportedBooleanBody [])),

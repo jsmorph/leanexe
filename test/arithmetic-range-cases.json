@@ -518,5 +518,9 @@
   "rangeBooleanCallArgumentStep",
   "rangeBooleanCallArgumentContinue",
   "rangeBooleanCallArgumentOuter",
-  "rangeBooleanCallArgumentBind"
+  "rangeBooleanCallArgumentBind",
+  "rangePublicIdYield",
+  "rangePublicIdExit",
+  "rangePublicIdContinue",
+  "rangePublicIdCapture"
 ]
