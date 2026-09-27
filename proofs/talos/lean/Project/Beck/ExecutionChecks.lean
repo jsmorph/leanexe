@@ -11,6 +11,7 @@ import Project.Beck.ExecutionDirectionSearch
 import Project.Beck.ExecutionDirectionZero
 import Project.Beck.ExecutionDirectionVector
 import Project.Beck.ExecutionDirectionStep
+import Project.Beck.ExecutionDirectionLoop
 import Project.Beck.ExecutionWordSetWindow
 import Project.Beck.ExecutionMatrix
 import Project.Beck.ExecutionScan
@@ -154,3 +155,4 @@ import Project.Beck.ExecutionMatrixPrefix
 #print axioms Project.Beck.Execution.directionTemporaryRelease_exact
 #print axioms Project.Beck.Execution.loopArrayCleanup_exact
 #print axioms Project.Beck.Execution.directionStep_exact
+#print axioms Project.Beck.Execution.directionLoop_exact
