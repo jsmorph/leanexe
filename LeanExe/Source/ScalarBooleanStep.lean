@@ -28,6 +28,13 @@ def choiceExpr (type : BooleanType) (condition evidence yes no : Lean.Expr) : Le
 def decision (condition evidence : Lean.Expr) : Lean.Expr :=
   .app (.const ``Bool.toUInt64 []) (.app (.app (.const ``Decidable.decide []) condition) evidence)
 
+def bindExpr (input : Lean.Expr) (output : BooleanType) (name : Lean.Name)
+    (bi : Lean.BinderInfo) (value body : Lean.Expr) : Lean.Expr :=
+  .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
+    (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
+      (.const ``Id.instMonad [.zero]))) input) (resultType output)) value)
+    (.lam name input body bi)
+
 /-- Native Boolean step results retain their yield/done distinction. -/
 inductive Eval : Lean.Expr → List Value → ForInStep Bool → Prop where
   | yieldDirect (value : EvalWith (.app (.const ``Bool.toUInt64 []) source) values (Bool.toUInt64 flag)) :
@@ -48,6 +55,13 @@ inductive Eval : Lean.Expr → List Value → ForInStep Bool → Prop where
       (value : EvalWith (.app (.const ``Bool.toUInt64 []) a) values (Bool.toUInt64 flag))
       (body : Eval b (.boolean flag :: values) outcome) :
       Eval (.letE name type.expr a b nondep) values outcome
+  | bindWord (input : ResultType) (output : BooleanType) (value : EvalWith a values x)
+      (body : Eval b (.word x :: values) outcome) :
+      Eval (bindExpr input.expr output name bi a b) values outcome
+  | bindBoolean (input output : BooleanType)
+      (value : EvalWith (.app (.const ``Bool.toUInt64 []) a) values (Bool.toUInt64 flag))
+      (body : Eval b (.boolean flag :: values) outcome) :
+      Eval (bindExpr input.expr output name bi a b) values outcome
 
 /-- Support checks both branches and every bound value, including unused ones. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
@@ -65,6 +79,14 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       Supported types (.letE name type.expr a b nondep)
   | letBoolean (type : BooleanType) (value : SupportedWith types (.app (.const ``Bool.toUInt64 []) a))
       (body : Supported (.boolean :: types) b) : Supported types (.letE name type.expr a b nondep)
+
+  | bindWord (input : ResultType) (output : BooleanType) (value : SupportedWith types a)
+      (body : Supported (.word :: types) b) :
+      Supported types (bindExpr input.expr output name bi a b)
+  | bindBoolean (input output : BooleanType)
+      (value : SupportedWith types (.app (.const ``Bool.toUInt64 []) a))
+      (body : Supported (.boolean :: types) b) :
+      Supported types (bindExpr input.expr output name bi a b)
 
 theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (supported : Supported types source) (values : List Value)
@@ -106,5 +128,14 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
     obtain ⟨outcome, body⟩ := ih (.boolean flag :: values) (by simp [Value.kind, typed])
     exact ⟨outcome, .letBoolean type evaluated body⟩
+  | bindWord input output value _ ih =>
+    obtain ⟨x, evaluated⟩ := value.evaluates values typed
+    obtain ⟨outcome, body⟩ := ih (.word x :: values) (by simp [Value.kind, typed])
+    exact ⟨outcome, .bindWord input output evaluated body⟩
+  | bindBoolean input output value _ ih =>
+    obtain ⟨encoded, evaluated⟩ := value.evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    obtain ⟨outcome, body⟩ := ih (.boolean flag :: values) (by simp [Value.kind, typed])
+    exact ⟨outcome, .bindBoolean input output evaluated body⟩
 
 end LeanExe.Source.Scalar.BooleanStep

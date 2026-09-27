@@ -8188,6 +8188,71 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def rangeBooleanStepBindWord (count seed : UInt64) : Bool := Id.run do
+  let mut flag := seed == 0
+  for i in [:count.toNat] do
+    let n ← pure (i.toUInt64 + seed)
+    flag := flag != (n % 3 == 0)
+  return flag
+
+def rangeBooleanStepBindBoolean (count seed : UInt64) : Bool := Id.run do
+  let mut flag := seed == 0
+  for i in [:count.toNat] do
+    let b ← pure (i.toUInt64 == seed)
+    flag := flag != b
+  return flag
+
+def rangeBooleanStepBindChain (count seed : UInt64) : Bool := Id.run do
+  let mut flag := seed == 0
+  for i in [:count.toNat] do
+    let n ← pure (i.toUInt64 + seed)
+    let b ← pure (n % 3 == 0 || flag)
+    let k ← pure (n + b.toUInt64)
+    flag := flag != (b && k % 5 == 0)
+  return flag
+
+def rangeBooleanStepBindUnusedWord (count seed : UInt64) : Bool := Id.run do
+  let mut flag := seed == 0
+  for i in [:count.toNat] do
+    let _unused ← pure (i.toUInt64 + seed)
+    flag := !flag
+  return flag
+
+def rangeBooleanStepBindUnusedBoolean (count seed : UInt64) : Bool := Id.run do
+  let mut flag := seed == 0
+  for i in [:count.toNat] do
+    let _unused ← pure (i.toUInt64 == seed)
+    flag := !flag
+  return flag
+
+def rangeBooleanStepBindCaptured (count : UInt64) (seed : Bool) : Id Bool := do
+  let f := fun n : UInt64 => (let g := fun b : Bool => b || seed; g (n % 3 == 0))
+  let mut flag := seed
+  for i in [:count.toNat] do
+    let b ← pure (f i.toUInt64)
+    flag := flag != b
+    if flag then break
+  return flag
+
+def rangeBooleanStepBindContinue (count seed : UInt64) : Bool := Id.run do
+  let mut flag := seed == 0
+  for i in [1:count.toNat:3] do
+    let b ← pure (i.toUInt64 % 2 == 0)
+    if b then continue
+    let n ← pure (i.toUInt64 + seed)
+    flag := flag != (n % 3 == 0)
+  return flag
+
+def rangeBooleanStepBindWordTail (count seed : UInt64) : UInt64 :=
+  let flag := Id.run do
+    let mut a := seed == 0
+    for i in [:count.toNat] do
+      let b ← pure (i.toUInt64 == seed)
+      a := a != b
+      if a then break
+    return a
+  if flag then seed + count else seed * 3
+
 def rangeBooleanAccumulatorToggle (count seed : UInt64) : Bool := Id.run do
   let mut flag := seed == 0
   for _ in [:count.toNat] do
@@ -11891,6 +11956,14 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolRelationExit", (fun (x y : UInt64) => rangeBoolRelationExit x y)),
    ("rangeBoolRelationContinue", (fun (x y : UInt64) => rangeBoolRelationContinue x y)),
    ("rangeBoolRelationTail", (fun (x y : UInt64) => (rangeBoolRelationTail x y).toUInt64)),
+   ("rangeBooleanStepBindWord", (fun (x y : UInt64) => (rangeBooleanStepBindWord x y).toUInt64)),
+   ("rangeBooleanStepBindBoolean", (fun (x y : UInt64) => (rangeBooleanStepBindBoolean x y).toUInt64)),
+   ("rangeBooleanStepBindChain", (fun (x y : UInt64) => (rangeBooleanStepBindChain x y).toUInt64)),
+   ("rangeBooleanStepBindUnusedWord", (fun (x y : UInt64) => (rangeBooleanStepBindUnusedWord x y).toUInt64)),
+   ("rangeBooleanStepBindUnusedBoolean", (fun (x y : UInt64) => (rangeBooleanStepBindUnusedBoolean x y).toUInt64)),
+   ("rangeBooleanStepBindCaptured", (fun (x y : UInt64) => (rangeBooleanStepBindCaptured x (y != 0)).toUInt64)),
+   ("rangeBooleanStepBindContinue", (fun (x y : UInt64) => (rangeBooleanStepBindContinue x y).toUInt64)),
+   ("rangeBooleanStepBindWordTail", (fun (x y : UInt64) => rangeBooleanStepBindWordTail x y)),
    ("rangeBooleanAccumulatorToggle", (fun (x y : UInt64) => (rangeBooleanAccumulatorToggle x y).toUInt64)),
    ("rangeBooleanAccumulatorIndex", (fun (x y : UInt64) => (rangeBooleanAccumulatorIndex x y).toUInt64)),
    ("rangeBooleanAccumulatorChoice", (fun (x y : UInt64) => (rangeBooleanAccumulatorChoice x y).toUInt64)),
