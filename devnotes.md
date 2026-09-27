@@ -21,7 +21,7 @@ memory capacity, the length word, and every element word.  The new proof can
 reuse that theorem rather than repeat its load and bounds-check reasoning.
 
 - [x] Check data-section decoding, validation, and translation proofs.
-- [ ] Prove universal exponential execution and initial table contents.
+- [x] Prove universal exponential execution and initial table contents.
 - [ ] Connect the behavior theorem to the emitted binary.
 - [ ] Establish numerical guarantees and update the component report.
 
@@ -74,6 +74,30 @@ values and bounds for the compiler's word-valued array indices.
 The initial-table proof reached its five-minute limit while reducing a
 single decision over 256 entries.  The next proof splits those entries
 before checking their byte-to-word equalities.
+
+The execution theorem now passes for every input word, assuming the static
+table representation.  It proves termination, the exact IEEE result word,
+and preservation of the complete store.  The rescaling helper includes both
+the overflow path and compensated subnormal reconstruction.  These proofs
+use only `propext`, `Classical.choice`, and `Quot.sound`.  Separate checked
+lemmas bound the tiny-input error and the real polynomial's approximation
+error.  The full floating-point numerical bound remains outstanding.
+
+Splitting the initial-table check into 256 cases exhausted two million
+elaboration heartbeats in 174 seconds.  A shared byte-encoding theorem will
+separate the memory-read argument from the concrete table encoding.  The
+binary translation also omitted the data segment's offset type, preventing
+identity with the generated module.  The translator now preserves that type.
+Its dependency rebuild exceeded a combined three-minute check, so the binary
+proof will have a separate build boundary.
+
+The shared byte-encoding proof and initial-table proof pass.  The latter now
+takes 2.2 seconds.  The first version reused an imported word-reassembly lemma
+whose proof required a native-evaluation axiom.  A bitwise extensionality proof
+removes that dependency.  The initialization theorem now uses only the three
+standard Lean axioms listed above.  Exact rational checks also establish
+128th-power enclosures for every corrected table entry, with radius `2^-104`.
+Those checks take 3.2 seconds and will supply the table's real error bound.
 
 ## 2026-09-27: Static numeric tables
 
