@@ -1,0 +1,60 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [64/64] Building LeanExe.Source.ScalarBooleanRange (1.2s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarBooleanRange.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanRange.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanRange.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanRange.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanRange.setup.json --json
+error: LeanExe/Source/ScalarBooleanRange.lean:27:79: Invalid field notation: Type of
+  flag
+is not known; cannot resolve field `toUInt64`
+
+Hint: Consider replacing the field projection with a call to one of the following:
+  • `Bool.toUInt64`
+  • `Float.toUInt64`
+  • `Float32.toUInt64`
+  • `Int64.toUInt64`
+  • `Nat.toUInt64`
+  • `UInt16.toUInt64`
+  • `UInt32.toUInt64`
+  • `UInt8.toUInt64`
+  • `USize.toUInt64`
+  • `Float.Model.toUInt64`
+  • `Float32.Model.toUInt64`
+  • `Lean.BinderInfo.toUInt64`
+  • `Float.Model.UnpackedFloat.toUInt64`
+  • `Lean.Meta.EtaStructMode.toUInt64`
+  • `Lean.Meta.ProjReductionKind.toUInt64`
+  • `Lean.Meta.TransparencyMode.toUInt64`
+  • `Std.IO.Process.PId.toUInt64`
+error: LeanExe/Source/ScalarBooleanRange.lean:29:9: failed to synthesize instance of type class
+  Decidable flag
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+error: LeanExe/Source/ScalarBooleanRange.lean:32:79: Invalid field notation: Type of
+  flag
+is not known; cannot resolve field `toUInt64`
+
+Hint: Consider replacing the field projection with a call to one of the following:
+  • `Bool.toUInt64`
+  • `Float.toUInt64`
+  • `Float32.toUInt64`
+  • `Int64.toUInt64`
+  • `Nat.toUInt64`
+  • `UInt16.toUInt64`
+  • `UInt32.toUInt64`
+  • `UInt8.toUInt64`
+  • `USize.toUInt64`
+  • `Float.Model.toUInt64`
+  • `Float32.Model.toUInt64`
+  • `Lean.BinderInfo.toUInt64`
+  • `Float.Model.UnpackedFloat.toUInt64`
+  • `Lean.Meta.EtaStructMode.toUInt64`
+  • `Lean.Meta.ProjReductionKind.toUInt64`
+  • `Lean.Meta.TransparencyMode.toUInt64`
+  • `Std.IO.Process.PId.toUInt64`
+error: LeanExe/Source/ScalarBooleanRange.lean:34:9: failed to synthesize instance of type class
+  Decidable flag
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+warning: LeanExe/Source/ScalarBooleanRange.lean:230:8: declaration uses `sorry`
+Some required targets logged failures:
+- LeanExe.Source.ScalarBooleanRange
+error: build failed

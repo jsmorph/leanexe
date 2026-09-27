@@ -545,16 +545,18 @@ invalid-input checks and 3,456 controls. Evidence is in
 A saved native fixture records the additional saved-result binding introduced by
 show; it remains on the coverage list after conditional forwarding.
 
-Current capability: conditional calls to local loop functions. Exact condition
-parsing, independent source evaluation, extraction acceptance/support, correctness,
-IR invariants, public compilation and WASM admission proofs pass. Branches retain
-the original helper declaration; both branches are checked and the native decision
-selects their proved loop plans. New tests pass 97,008 native/IR comparisons, 46,080 invalid-input
-checks and 2,304 equivalent-binding controls, including the saved conditional-do
-failure. The complete proof and native Lean/WASM checks are next.
+Conditional calls to local Boolean loop functions are complete, including the
+saved conditional-do failure, nested conditions, direct calls and standard Id
+forwarding for word/Boolean actions. Conditions/evidence preserve outer captures;
+both helper-let branches are checked. The complete source-to-WASM theorem and
+nineteen audits pass. Native Lean/V8 agree on 609 inputs across 28 declarations,
+including twenty-three ranges; eighteen prior modules retain identical bytes.
+New tests pass 97,008 native/IR comparisons, 46,080 invalid-input checks and 2,304
+equivalent-binding controls. Prior tests pass 96,768 comparisons, 78,336
+invalid-input checks and 5,760 controls. Evidence is in
+[the conditional-continuation archive](proofs/compiler/boolean-loop-conditional-continuation-2026-09-27/README.md).
 
-Next: conditional calls to
-loop-containing continuations, followed by
+Next: saved local-call results and wrappers around conditional calls, followed by
 retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
 Also extend UInt64-to-Bool helper bodies to call captured
