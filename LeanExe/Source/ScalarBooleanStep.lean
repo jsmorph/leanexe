@@ -94,6 +94,14 @@ inductive Eval : Lean.Expr → List Value → ForInStep Bool → Prop where
       (body : Eval b (.result bound :: values) outcome) :
       Eval (bindExpr (resultType input) output name bi a b) values outcome
 
+  | letResultFunction (input output : BooleanType)
+      (function : ∀ result, Eval a (.result result :: values) (f result))
+      (body : Eval b (.resultFunction f :: values) outcome) :
+      Eval (functionExpr (resultType input) output name typeName paramName typeBi paramBi a b nondep) values outcome
+  | resultApply (function : values[index]? = some (.resultFunction f))
+      (argument : Eval a values bound) :
+      Eval (.app (.bvar index) a) values (f bound)
+
 /-- Support checks both branches and every bound value, including unused ones. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
   | yieldDirect (value : SupportedWith (types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) source)) :
@@ -141,6 +149,13 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
   | bindResult (input output : BooleanType) (value : Supported types a)
       (body : Supported (.result :: types) b) :
       Supported types (bindExpr (resultType input) output name bi a b)
+
+  | letResultFunction (input output : BooleanType)
+      (function : Supported (.result :: types) a)
+      (body : Supported (.resultFunction :: types) b) :
+      Supported types (functionExpr (resultType input) output name typeName paramName typeBi paramBi a b nondep)
+  | resultApply (function : types[index]? = some .resultFunction) (argument : Supported types a) :
+      Supported types (.app (.bvar index) a)
 
 theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (supported : Supported types source) (values : List Value)
@@ -222,5 +237,14 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨bound, hv⟩ := ihv values typed
     obtain ⟨outcome, hb⟩ := ihb (.result bound :: values) (by simp [Value.kind, typed])
     exact ⟨outcome, .bindResult input output hv hb⟩
+  | letResultFunction input output _ _ ihf ihb =>
+    have total := fun result => ihf (.result result :: values) (by simp [Value.kind, typed])
+    let f := fun result => (total result).choose
+    obtain ⟨outcome, evaluated⟩ := ihb (.resultFunction f :: values) (by simp [Value.kind, typed])
+    exact ⟨outcome, .letResultFunction input output (fun result => (total result).choose_spec) evaluated⟩
+  | resultApply present _ ih =>
+    obtain ⟨f, found⟩ := resultFunction_lookup typed present
+    obtain ⟨bound, evaluated⟩ := ih values typed
+    exact ⟨f bound, .resultApply found evaluated⟩
 
 end LeanExe.Source.Scalar.BooleanStep

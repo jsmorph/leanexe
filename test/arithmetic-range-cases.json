@@ -929,5 +929,15 @@
   "rangeBooleanStepResultMonadicIgnored",
   "rangeBooleanStepResultNested",
   "rangeBooleanStepResultFlagInput",
-  "rangeBooleanStepResultWordTail"
+  "rangeBooleanStepResultWordTail",
+  "rangeBooleanStepResultFunctionDirect",
+  "rangeBooleanStepResultFunctionIgnored",
+  "rangeBooleanStepResultFunctionNested",
+  "rangeBooleanStepResultFunctionRetained",
+  "rangeBooleanStepResultFunctionJoined",
+  "rangeBooleanStepResultFunctionCapture",
+  "rangeBooleanStepResultFunctionRepeated",
+  "rangeBooleanStepResultFunctionMonadic",
+  "rangeBooleanStepResultFunctionFlagInput",
+  "rangeBooleanStepResultFunctionWordTail"
 ]

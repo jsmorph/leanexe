@@ -8188,6 +8188,61 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def rangeBooleanStepResultFunctionDirect (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f := fun result : ForInStep Bool => result
+    f (if i.toUInt64 == seed then .done (!flag) else .yield flag)
+
+def rangeBooleanStepResultFunctionIgnored (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f := fun _result : ForInStep Bool => ForInStep.yield (flag != (i.toUInt64 == seed))
+    f (.done (!flag))
+
+def rangeBooleanStepResultFunctionNested (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f := fun result : ForInStep Bool => if flag then result else ForInStep.yield true
+    let g := fun result : ForInStep Bool => f result
+    g (if i.toUInt64 == seed then .done (!flag) else .yield flag)
+
+def rangeBooleanStepResultFunctionRetained (count seed : UInt64) : Id Bool :=
+  forIn (m := Id) [1:count.toNat:3] (seed == 0) fun i flag =>
+    let f : Id (ForInStep Bool) → Id (Id (ForInStep Bool)) := fun result => pure result
+    Id.run (Id.run (f (pure (ForInStep.yield (flag != (i.toUInt64 == seed))))))
+
+def rangeBooleanStepResultFunctionJoined (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag => do
+    let result ← if i.toUInt64 == seed then pure (ForInStep.done (!flag)) else pure (ForInStep.yield flag)
+    return result
+
+def rangeBooleanStepResultFunctionCapture (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let saved : ForInStep Bool := .done (!flag)
+    let f := fun result : ForInStep Bool => if i.toUInt64 == seed then saved else result
+    f (.yield flag)
+
+def rangeBooleanStepResultFunctionRepeated (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f := fun result : ForInStep Bool => if i.toUInt64 == seed then result else ForInStep.yield (!flag)
+    let first : ForInStep Bool := f (.done flag)
+    f first
+
+def rangeBooleanStepResultFunctionMonadic (count seed : UInt64) : Bool :=
+  forIn (m := Id) [:count.toNat] (seed == 0) fun i flag => do
+    let f := fun result : ForInStep Bool => pure result
+    let result ← pure (ForInStep.yield (flag != (i.toUInt64 == seed)))
+    f result
+
+def rangeBooleanStepResultFunctionFlagInput (count : UInt64) (seed : Bool) : Id Bool :=
+  forIn (m := Id) [1:count.toNat:3] seed fun i flag =>
+    let f := fun result : ForInStep Bool => if seed then result else ForInStep.yield (!flag)
+    f (.yield (flag != (i.toUInt64 % 3 == 0)))
+
+def rangeBooleanStepResultFunctionWordTail (count seed : UInt64) : UInt64 :=
+  let flag : Bool := forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
+    let f := fun result : ForInStep Bool => result
+    f (if i.toUInt64 == seed then .done (!flag) else .yield flag)
+  if flag then seed + count else seed * 3
+
 def rangeBooleanStepResultSaved (count seed : UInt64) : Bool :=
   forIn (m := Id) [:count.toNat] (seed == 0) fun i flag =>
     let result : ForInStep Bool := if i.toUInt64 == seed then .done (!flag) else .yield flag
@@ -12068,6 +12123,16 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolRelationExit", (fun (x y : UInt64) => rangeBoolRelationExit x y)),
    ("rangeBoolRelationContinue", (fun (x y : UInt64) => rangeBoolRelationContinue x y)),
    ("rangeBoolRelationTail", (fun (x y : UInt64) => (rangeBoolRelationTail x y).toUInt64)),
+   ("rangeBooleanStepResultFunctionDirect", (fun (x y : UInt64) => (rangeBooleanStepResultFunctionDirect x y).toUInt64)),
+   ("rangeBooleanStepResultFunctionIgnored", (fun (x y : UInt64) => (rangeBooleanStepResultFunctionIgnored x y).toUInt64)),
+   ("rangeBooleanStepResultFunctionNested", (fun (x y : UInt64) => (rangeBooleanStepResultFunctionNested x y).toUInt64)),
+   ("rangeBooleanStepResultFunctionRetained", (fun (x y : UInt64) => (rangeBooleanStepResultFunctionRetained x y).toUInt64)),
+   ("rangeBooleanStepResultFunctionJoined", (fun (x y : UInt64) => (rangeBooleanStepResultFunctionJoined x y).toUInt64)),
+   ("rangeBooleanStepResultFunctionCapture", (fun (x y : UInt64) => (rangeBooleanStepResultFunctionCapture x y).toUInt64)),
+   ("rangeBooleanStepResultFunctionRepeated", (fun (x y : UInt64) => (rangeBooleanStepResultFunctionRepeated x y).toUInt64)),
+   ("rangeBooleanStepResultFunctionMonadic", (fun (x y : UInt64) => (rangeBooleanStepResultFunctionMonadic x y).toUInt64)),
+   ("rangeBooleanStepResultFunctionFlagInput", (fun (x y : UInt64) => (rangeBooleanStepResultFunctionFlagInput x (y != 0)).toUInt64)),
+   ("rangeBooleanStepResultFunctionWordTail", (fun (x y : UInt64) => rangeBooleanStepResultFunctionWordTail x y)),
    ("rangeBooleanStepResultSaved", (fun (x y : UInt64) => (rangeBooleanStepResultSaved x y).toUInt64)),
    ("rangeBooleanStepResultBound", (fun (x y : UInt64) => (rangeBooleanStepResultBound x y).toUInt64)),
    ("rangeBooleanStepResultIgnored", (fun (x y : UInt64) => (rangeBooleanStepResultIgnored x y).toUInt64)),

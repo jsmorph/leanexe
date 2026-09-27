@@ -29,16 +29,17 @@ wrappers. Bind input and continuation domains must match exactly; the output
 must be a Boolean step result. These annotations may retain standard Id layers,
 and unused bound actions are checked. The steps cover toggles,
 `break`, `continue`, captured predicates and strided ranges. Local functions
-returning Boolean steps may take one word or Boolean argument, retain standard
+returning Boolean steps may take one word, Boolean or complete step argument, retain standard
 Id input/output annotations, capture values, and make nested or repeated calls.
 Their bodies are checked even when unused. They include the continuations Lean
-generates for conditional word and Boolean actions. Complete Boolean step
+generates for conditional word, Boolean and complete step actions. Complete Boolean step
 results may be saved with ordinary lets, aliases, standard Id binds and `show`,
 then captured by a helper or returned later. Both the Boolean value and exit
 status are preserved. A bound `done` exits only when it becomes the callback
 result; ignoring it continues the loop. Every bound computation is checked.
-Functions taking complete Boolean steps, including continuations for conditional
-step-result binds, remain a separate capability.
+Functions taking complete Boolean steps preserve both result components, including
+through conditional continuations. Ignored step arguments are checked without
+forcing an exit. Step-result pattern matching is not yet admitted.
 
 A word-valued loop may feed a Boolean continuation, for example
 `let value := Id.run do ...; value == seed` or
