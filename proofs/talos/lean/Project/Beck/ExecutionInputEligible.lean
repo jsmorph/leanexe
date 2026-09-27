@@ -6,12 +6,12 @@ open Wasm Project.ProofKit Project.Runtime Project.EulerRiemann.Execution LeanEx
 
 set_option maxRecDepth 2048 in
 set_option maxHeartbeats 1500000 in
-theorem inputEligible_exact (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
+theorem inputEligible_exact {wordsOwner : UInt64} (env : HostEnv Unit) (initial : Store Unit) (heap : Heap)
     (pointer : UInt64) (saved : InputSaved) (tail : InputTail) (words : Array UInt64) (out : ParseState)
     (remaining pageLimit : Nat) (valid : heap.At initial)
     (wordsAt : UInt64Array.At initial pointer words)
     (wordsProtected : heap.Protects pointer.toNat (pointer.toNat + 8 * (words.size + 1)))
-    (nonzero : pointer ≠ 0) (lengthBound : 2 ≤ words.size)
+    (ownerMode : wordsOwner = 0 ∨ wordsOwner = pointer) (lengthBound : 2 ≤ words.size)
     (countBound : words[0]!.toNat ≤ 6) (categoryBound : words[1]!.toNat ≤ 8)
     (accepted : readJobs words[0]!.toNat words words[1]!.toNat ⟨2, 0, #[]⟩ = some out)
     (terminal : out.position = words.size)
@@ -20,9 +20,9 @@ theorem inputEligible_exact (env : HostEnv Unit) (initial : Store Unit) (heap : 
     (next : ∀ final finalHeap node owner,
       finalHeap.At final → finalHeap.OwnsWords final node out.incidence → heap.Frame initial finalHeap final →
       OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
-      ∀ frame, InputResult frame ⟨0, words[0]!.toNat, words[1]!.toNat, out.overlap, out.incidence⟩ owner node.root →
+      (words[0]!.toNat = 0 ∨ owner = node.root) → ∀ frame, InputResult frame ⟨0, words[0]!.toNat, words[1]!.toNat, out.overlap, out.incidence⟩ owner node.root →
         Q (.Fallthrough final frame)) :
-    wp Project.Beck.«module» inputEligible Q initial (inputFrame pointer saved tail) env := by
+    wp Project.Beck.«module» inputEligible Q initial (inputFrame (wordsOwner := wordsOwner) pointer saved tail) env := by
   rw [← List.take_append_drop 34 inputEligible]
   apply inputPrepare_exact env initial pointer saved tail words wordsAt lengthBound
   change wp Project.Beck.«module» ((inputEligible.drop 34).take 43 ++ inputEligible.drop 77) Q initial _ env
@@ -46,9 +46,9 @@ theorem inputEligible_exact (env : HostEnv Unit) (initial : Store Unit) (heap : 
   apply inputJobs_exact env _ ((heap.allocate 8).allocate 8) pointer (allocatedNode heap.top 8 heap.nodes).root
     (allocatedNode (heap.allocate 8).top 8 (heap.allocate 8).nodes) saved _ words[0]!.toNat words[1]!.toNat out words remaining pageLimit
     secondValid secondOwned (preserved.words wordsProtected wordsAt) (preserved.protects _ _ wordsProtected)
-    different nonzero countBound categoryBound lengthBound accepted terminal secondBudget
+    different ownerMode countBound categoryBound lengthBound accepted terminal secondBudget
   intro final finalHeap node finalValid finalOwned finalFrame finalBudget frame result
-  exact next final finalHeap node _ finalValid finalOwned (preserved.trans finalFrame) finalBudget frame result
+  exact next final finalHeap node _ finalValid finalOwned (preserved.trans finalFrame) finalBudget (by by_cases zero : words[0]!.toNat = 0 <;> simp [zero]) frame result
 
 #print axioms inputEligible_exact
 

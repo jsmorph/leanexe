@@ -17870,3 +17870,9 @@ The modified membership modules check with standard logical axioms.  The combine
 `readJobs_owner_exact` extends the job parser to owner zero while retaining a separate represented input pointer.  The proof composes the generalized membership reader, incidence concatenation, intermediate-array releases, and terminating job loop.  Its byte bound remains 1,520 per job.  Existing equal-owner callers use the original theorem as a specialization.
 
 The job-parser target passes 3,576 build jobs.  The direction and outer-rounding dependency targets also pass after the membership change, completing the dependency rebuild interrupted by the earlier combined timeout.  All audited theorems use standard logical axioms.  Complete input parsing, computation entry, the global resource theorem, and independent artifact verification remain open.  Source and binary bytes are unchanged.
+
+### Beck borrowed complete input
+
+`readInput_owner_exact` now covers the owner-zero call emitted by `compute`.  The proof retains separate owner and data registers through header checks, initial allocations, job parsing, and return.  It also records that a positive job count gives equal incidence owner and data pointers.  Zero jobs preserve the emitted distinct initial allocations.  The allocation bound remains `112 + 1520*n` bytes.
+
+The complete parser target passes 3,587 build jobs with standard logical axioms.  A mechanical edit initially inserted a proof expression into an introduction pattern.  Correcting that pattern resolved the diagnostic.  The empty-input rounding call, computation entry, global resource theorem, and independent artifact verification remain open.  Source and binary bytes are unchanged.
