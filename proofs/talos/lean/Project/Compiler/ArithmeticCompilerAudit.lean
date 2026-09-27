@@ -56,3 +56,12 @@ import LeanExe.Source.ScalarReannotationEvaluation
 #print axioms LeanExe.Extract.Core.booleanStepUnitValue_accepts
 #print axioms LeanExe.Extract.Core.booleanUnitStepFunction_sound
 #print axioms LeanExe.Extract.Core.booleanUnitStepFunction_accepts
+
+#print axioms LeanExe.IR.Stmt.ScalarEval.append
+#print axioms LeanExe.Extract.Core.extractScalarSequenceWith_accepts
+#print axioms LeanExe.Extract.Core.extractScalarSequenceWith_correct
+#print axioms Project.ProofKit.ScalarTransition.WhileTrace.program_spec
+#print axioms Project.Compiler.ScalarLowering.program_eval
+#print axioms Project.Compiler.ScalarLowering.sequence_function_execution
+#print axioms Project.Compiler.ArithmeticValidation.loop_sequence_function_sequence
+#print axioms Project.Compiler.ArithmeticEncoding.sequence_function_body_bytes

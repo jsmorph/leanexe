@@ -1079,7 +1079,11 @@ scratch bounds pass 237 targets. Finite-loop trace termination and IR-to-WASM
 trace preservation pass 3069 cached targets. Generic program execution and
 sequence stack typing pass 3286 and 3293 cached targets. Whole-function execution
 passes 3292 targets; byte parsing and execution pass 3337 targets. Public compiler
-and validator integration remain before independent engine checks.
+and validator integration pass 3379 targets. All five word-result probes now
+compile through normal admission; the Boolean-result probe remains deferred.
+Focused tests pass 14,016 native/IR comparisons, 18,432 invalid-input checks and
+576 admission controls. Eight native fixtures and eight additional axiom audits
+are registered. The complete proof gate and independent engine checks are next.
 
 Next: Boolean-result loop combinations and nested loops. Broader helper
 signatures, heap values, floats, imports and global calls remain outside the
