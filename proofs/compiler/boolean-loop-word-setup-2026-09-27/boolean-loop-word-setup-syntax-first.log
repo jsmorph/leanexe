@@ -1,0 +1,14 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_loop_word_setup_syntax.lean:61:21: error: unexpected token 'prefix'; expected '(', ':=', 'rec', '|', identifier or term
+test/scalar_boolean_loop_word_setup_syntax.lean:61:28: error: unexpected token '('; expected ':'
+test/scalar_boolean_loop_word_setup_syntax.lean:70:107: error: unexpected identifier; expected ':'
+test/scalar_boolean_loop_word_setup_syntax.lean:72:110: error: unexpected token; expected ':'
+test/scalar_boolean_loop_word_setup_syntax.lean:96:26: error: unexpected identifier; expected ':'
+test/scalar_boolean_loop_word_setup_syntax.lean:97:26: error: unexpected identifier; expected ':'
+test/scalar_boolean_loop_word_setup_syntax.lean:98:26: error: unexpected identifier; expected ':'
+test/scalar_boolean_loop_word_setup_syntax.lean:99:26: error: unexpected identifier; expected ':'
+test/scalar_boolean_loop_word_setup_syntax.lean:100:26: error: unexpected identifier; expected ':'
+test/scalar_boolean_loop_word_setup_syntax.lean:101:26: error: unexpected identifier; expected ':'
+test/scalar_boolean_loop_word_setup_syntax.lean:102:26: error: unexpected identifier; expected ':'
+test/scalar_boolean_loop_word_setup_syntax.lean:103:26: error: unexpected identifier; expected ':'
