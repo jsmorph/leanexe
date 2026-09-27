@@ -1028,5 +1028,13 @@
   "rangeBinaryBooleanLoopHelperUnused",
   "rangeBinaryBooleanLoopHelperWordTail",
   "rangeBinaryBooleanLoopHelperCapture",
-  "rangeBinaryBooleanLoopHelperNested"
+  "rangeBinaryBooleanLoopHelperNested",
+  "rangeSequenceDirect",
+  "rangeSequenceDependent",
+  "rangeSequenceExits",
+  "rangeSequenceUnused",
+  "rangeSequenceThree",
+  "rangeSequenceShadow",
+  "rangeSequenceIdBind",
+  "rangeSequenceBoolInput"
 ]

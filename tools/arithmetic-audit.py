@@ -8,6 +8,15 @@ ADMISSION = 'LeanExe.Extract.Arithmetic.'
 MODULE = 'Project.Compiler.ArithmeticModule.'
 STANDARD = {'propext', 'Classical.choice', 'Quot.sound'}
 AUDITS = {
+    'LeanExe.IR.Stmt.ScalarEval.append': STANDARD,
+    'LeanExe.Extract.Core.extractScalarSequenceWith_accepts': STANDARD,
+    'LeanExe.Extract.Core.extractScalarSequenceWith_correct': STANDARD,
+    'Project.ProofKit.ScalarTransition.WhileTrace.program_spec': STANDARD,
+    'Project.Compiler.ScalarLowering.program_eval': STANDARD,
+    'Project.Compiler.ScalarLowering.sequence_function_execution': STANDARD,
+    'Project.Compiler.ArithmeticValidation.loop_sequence_function_sequence': STANDARD,
+    'Project.Compiler.ArithmeticEncoding.sequence_function_body_bytes': STANDARD,
+
     'LeanExe.Source.Scalar.BooleanStep.UnitBooleanFunction.apply': set(),
     'LeanExe.Extract.Core.booleanStepUnitTypes_sound': STANDARD,
     'LeanExe.Extract.Core.booleanStepUnitTypes_accepts': STANDARD,
