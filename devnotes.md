@@ -18029,3 +18029,11 @@ The user rejected retaining the six-job product and requested completion of the 
 The main runner and native harness now execute the generalized implementation.  Duplicate runners and tests are consolidated.  The browser uses the same build and checks its readable-path manifest.  Scenarios now exercise 32 overlapping jobs, 65 jobs in an odd category, dependent categories, and a 17-job cycle.  Documentation states the remaining division, elimination, resource, and execution proof obligations.  The complete generalized theorem remains unfinished.
 
 After consolidation, all 609 native/WASM comparisons, 14 worker/Wasmtime comparisons, and the six-scenario Chromium test pass.  The documentation link check covers 180 maintained files, and no source imports a retired proof module.  The demo is running on `0.0.0.0:8091`.  Its page states the incomplete proof status.
+
+### Beck exact division and Bareiss arithmetic
+
+`DigitBits` proves that source bit extraction reads the represented integer's bit, and that setting a quotient bit preserves valid limbs and adds the corresponding power of two.  `DigitDiv.divRem_correct` proves the complete source long-division loop for arbitrary valid arrays with a positive divisor.  Its invariant relates the consumed dividend prefix to the quotient and remainder, keeps the remainder below the divisor, and keeps unprocessed quotient bits zero.  `IntegerDiv.divideExact_correct` proves successful signed exact division whenever the divisor is nonzero and divides the numerator.
+
+`Bareiss.bordered_update` connects the executable multiplication, subtraction, and exact division to the bordered determinant identity.  The row-reduction lemma preserves the zero dot-product condition with a nonzero pivot and previous divisor.  The full matrix-loop minor invariant and back-substitution proof remain open.
+
+All four new targets pass the local Lean runner with standard resource limits.  Their axiom audits contain only `propext`, `Classical.choice`, and `Quot.sound`.  Initial diagnostics concerned list indexing, conditional loop normalization, and multiplication of the subtraction equation by a power of two.  The executable source and WASM bytes are unchanged.

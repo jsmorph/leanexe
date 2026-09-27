@@ -51,15 +51,15 @@ Every coordinate starts at zero with one shared positive denominator.  A categor
 
 The checked mathematics includes the protected-category counting argument, kernel existence, the category-release discrepancy bound, and a rounding-loop theorem over arbitrary finite job and category types.  The loop theorem requires a step preserving the cube, frozen coordinates, and protected sums while freezing an additional coordinate.  It then proves completion in at most the number of jobs.
 
-Checked arithmetic lemmas cover limb validity, normalization, addition, subtraction, comparison, multiplication, signed operations, and the bit shift used by division.  The determinant condensation identity establishes the integer divisibility used by Bareiss elimination.  Connecting the executable division and elimination loops to these statements remains open.
+Checked arithmetic lemmas cover limb validity, normalization, addition, subtraction, comparison, multiplication, signed operations, bit extraction, and binary long division.  Signed exact division succeeds for every valid integer pair with a nonzero divisor dividing the numerator.  The Bareiss update theorem connects that executable arithmetic to determinant condensation.  Establishing the minor invariant through the full elimination loop remains open.
 
 Focused checks run through the required Lean runner:
 
 ```sh
-tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.IntegerMul Project.Beck.DigitShift Project.Beck.GenericLoop Project.Beck.MinorIdentity
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.Bareiss Project.Beck.GenericLoop
 ```
 
-The remaining proof work covers division, elimination invariants and back substitution, the implemented rounding step, source output correctness, resource bounds, and exact-binary execution.  The [development plan](../plans/beck.md) tracks those tasks.  Earlier bounded execution proofs are retired.
+The remaining proof work covers elimination invariants and back substitution, the implemented rounding step, source output correctness, resource bounds, and exact-binary execution.  The [development plan](../plans/beck.md) tracks those tasks.  Earlier bounded execution proofs are retired.
 
 ## Measurements
 

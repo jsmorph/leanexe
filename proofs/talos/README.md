@@ -41,7 +41,7 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 The [Beck–Fiala partitioner](../../docs/beck.md) has checked multiword
 arithmetic lemmas and a rounding theorem over arbitrary finite dimensions.
-The generalized implementation's division, elimination, resource, and
+The generalized implementation's elimination, resource, and
 exact-binary execution proofs remain in progress.
 
 The [GPT guide](../../docs/gpt/README.md) explains the model families and

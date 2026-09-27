@@ -15,7 +15,7 @@ The compiler corrections address repeated evaluation of monadic loop bodies and 
 - [x] Compile and run multiword elimination through the public input interface.
 - [x] Prove multiword normalization, addition, subtraction, comparison, multiplication, signed operations, and bit shifting.
 - [x] Prove arbitrary-dimension rounding and integer condensation lemmas.
-- [ ] Prove binary long division and signed exact division.
+- [x] Prove binary long division and signed exact division.
 - [ ] Prove the elimination invariant, exact back substitution, and preserving direction construction.
 - [ ] Connect the implemented rounding step and parser to the universal source theorem.
 - [ ] Derive sufficient indexing, arithmetic-width, fuel, and allocation bounds.

@@ -68,7 +68,7 @@
 
     <details class="panel proof">
       <summary>Verification status and limits</summary>
-      <p>Lean checks arbitrary-length integer addition, subtraction, multiplication, comparison, and the rounding argument over arbitrary finite job and category sets. Division, the connection from elimination to rounding, resource bounds, and the exact-binary execution theorem remain in progress.</p>
+      <p>Lean checks arbitrary-length integer addition, subtraction, multiplication, comparison, division, and the rounding argument over arbitrary finite job and category sets. The connection from elimination to rounding, resource bounds, and the exact-binary execution theorem remain in progress.</p>
       <p>The page recomputes every category count and checks the discrepancy bound. Native Lean and WASM comparisons include overlapping inputs with up to 128 jobs. Supported resource limits still require a proof. The browser editor allows 128 jobs and 32 categories. Each run has a 30-second timeout.</p>
       <p>The server checks the binary against its build manifest. Each run uses a fresh worker and reports its elapsed time and WASM memory extent.</p>
       <p><a href="/manifest.json">Build manifest</a> · <a href="https://github.com/jsmorph/leanexe/blob/beck/docs/beck.md">Program and proof documentation</a></p>
