@@ -906,10 +906,13 @@ step-result bind is preserved for the next capability. The corpus contains
 1593 declarations. Evidence is in
 [the Boolean step result archive](proofs/compiler/boolean-step-result-2026-09-27/README.md).
 
-Current capability: functions taking complete Boolean step results. Add distinct
-source and compiled closures with lexical proofs for both result projections,
-restore the fixed conditional step-result bind, and prove the extension through
-WASM before adding step-result pattern matching or broader scalar helper forms.
+Current capability: functions taking complete Boolean step results. Distinct
+source and compiled closures preserve value and exit status through captures,
+nested/repeated calls, and exact Id input/output annotations. Source totality,
+extraction correctness, acceptance/support and invariants pass. All four fixed
+function probes and the conditional step-result bind now compile. New tests pass
+14,064 native/IR comparisons and 8,064 invalid-input checks. The public compiler
+build passes; source-to-WASM audits and independent V8 comparisons are pending.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
