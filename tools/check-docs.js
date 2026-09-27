@@ -19,6 +19,8 @@ const roots = [
   "proofs/talos/README.md",
   "proofs/byte-io/README.md",
   "proofs/talos/lean/Project/ProofKit/README.md",
+  "proofs/talos/lean/Project/Encoding",
+  "encoding.md",
 ];
 const excludedNames = new Set([
   "baseline-proof-library.md",
