@@ -406,12 +406,16 @@ modules retain identical bytes. New tests pass 24,432 native/IR comparisons,
 153,696 comparisons, 113,280 invalid-input checks and 6,528 controls. Evidence is in
 [the Boolean loop word-setup archive](proofs/compiler/boolean-loop-word-setup-2026-09-27/README.md).
 
-Current capability: Boolean let and standard Id bind setup before Boolean loop
-results, preserving normalized flags in loop captures and the final computation.
-Source totality, annotation parsing, acceptance, extraction correctness, public
-application and IR invariant proofs pass. New tests pass 24,432 native/IR
-comparisons, 24,192 invalid-input checks and 3,456 lexical/unused setup controls.
-The complete compiler theorem and V8 gates are next.
+Boolean setup before Boolean loop results is complete. Bool lets and standard
+Boolean-to-Boolean Id binds preserve normalized flags across loop states. Input
+and output annotations may retain Id layers; exact continuation domains and
+standard evidence are checked. The complete source-to-WASM theorem and nineteen
+audits pass. Native Lean/V8 agree on 609 inputs across 28 declarations, including
+twenty-three ranges; eighteen prior modules retain identical bytes. New tests
+pass 24,432 native/IR comparisons, 24,192 invalid-input checks and 3,456 controls.
+Prior tests pass 161,760 comparisons, 113,280 invalid-input checks and 8,256 controls.
+Evidence is in
+[the Boolean loop flag-setup archive](proofs/compiler/boolean-loop-flag-setup-2026-09-27/README.md).
 
 Next: Id annotations on loop let domains and local helpers before Boolean loops,
 retained instances and broader signatures. Conditional Id actions can elaborate
