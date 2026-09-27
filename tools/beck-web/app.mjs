@@ -1,7 +1,7 @@
 import { scenarios, invalidScenarios } from "./scenarios.mjs";
 
 const $ = id => document.getElementById(id);
-const categoryName = id => String.fromCharCode(65 + id);
+const categoryName = id => id < 26 ? String.fromCharCode(65 + id) : `C${id + 1}`;
 let input;
 let partitionWorker;
 let validationWorker;
@@ -126,6 +126,7 @@ function showResult(result) {
   table.append(head, body);
   $("counts").replaceChildren(result.counts.length ? table : element("p", "No categories to count.", "subtle"));
   $("result-note").textContent = result.overlap === 0 ? "Zero overlap: all category differences are zero." : "The bound applies to each category. The total group sizes may differ.";
+  $("runtime").textContent = `${result.milliseconds.toFixed(1)} ms; ${(result.memoryBytes / 1048576).toFixed(1)} MiB of WASM memory`;
   $("results").hidden = false;
   status("status", result.counts.length ? "Every category is within the bound. Counts checked." : "All jobs assigned. There are no category constraints.", "passed");
 }
@@ -134,7 +135,7 @@ function run() {
   invalidate();
   $("run").disabled = true;
   document.querySelector(".output").setAttribute("aria-busy", "true");
-  status("status", "Running the verified WASM program.");
+  status("status", "Running the WASM program.");
   partitionWorker = execute(input, result => {
     partitionWorker = undefined;
     $("run").disabled = false;
@@ -158,8 +159,8 @@ for (const scenario of scenarios) $("scenario").add(new Option(scenario.title, s
 const custom = new Option("Custom memberships", "custom");
 custom.disabled = true;
 $("scenario").add(custom);
-for (let count = 0; count <= 6; count++) $("job-count").add(new Option(count, count));
-for (let count = 0; count <= 8; count++) $("category-count").add(new Option(count, count));
+for (let count = 0; count <= 128; count++) $("job-count").add(new Option(count, count));
+for (let count = 0; count <= 32; count++) $("category-count").add(new Option(count, count));
 $("scenario").addEventListener("change", event => loadScenario(event.target.value));
 $("job-count").addEventListener("change", event => {
   input.jobs = Array.from({ length: Number(event.target.value) }, (_, index) => input.jobs[index] || []);
@@ -203,7 +204,7 @@ $("check-input").addEventListener("click", () => {
     $("check-input").disabled = false;
     if (!result.ok) status("validation-status", result.message, "error");
     else if (result.status === 1) status("validation-status", "WASM rejected the input: duplicate membership or invalid category ID (status 1).", "passed");
-    else if (result.status === 2) status("validation-status", "WASM rejected the input: capacity exceeds 6 jobs or 8 categories (status 2).", "passed");
+    else if (result.status === 2) status("validation-status", "WASM rejected the input: the incidence array exceeds the address limit (status 2).", "passed");
     else status("validation-status", `WASM accepted the input. Assignments: ${result.assignments.map(group => group === 0 ? "A" : "B").join(", ") || "none"}. All category differences are within ${result.bound}.`, "passed");
   });
 });

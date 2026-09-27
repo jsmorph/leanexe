@@ -6,16 +6,14 @@ const path = require("node:path");
 const http = require("node:http");
 const crypto = require("node:crypto");
 
-const root = path.resolve(__dirname, "..");
-const digest = "55f407d3f82b34a59e95489f2ed40ea756cb621d780f76ee48eb5a60645d080f";
-const artifact = path.join(root, "proofs/artifacts/beck", digest);
+const { wasm } = require("./beck");
 
 function createServer() {
-  const binary = fs.readFileSync(path.join(artifact, "program.wasm"));
-  const manifest = JSON.parse(fs.readFileSync(path.join(artifact, "manifest.json"), "utf8"));
-  if (crypto.createHash("sha256").update(binary).digest("hex") !== digest ||
-      manifest.sha256 !== digest || binary.length !== manifest.byteLength) {
-    throw new Error("The Beck artifact does not match its verified identity.");
+  const binary = fs.readFileSync(wasm);
+  const manifest = JSON.parse(fs.readFileSync(path.join(path.dirname(wasm), "manifest.json"), "utf8"));
+  if (crypto.createHash("sha256").update(binary).digest("hex") !== manifest.sha256 ||
+      binary.length !== manifest.byteLength || manifest.source !== "LeanExe.Examples.BeckExact.compute") {
+    throw new Error("The Beck binary does not match its build manifest.");
   }
   const files = new Map([
     ["/program.wasm", ["application/wasm", binary]],
@@ -60,4 +58,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { createServer, digest, artifact };
+module.exports = { createServer };

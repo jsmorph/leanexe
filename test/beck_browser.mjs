@@ -93,7 +93,6 @@ try {
       const counts = result.groups.map(jobs => jobs.filter(job => scenario.input.jobs[job].includes(category)).length);
       assert.deepEqual(row, [String(counts[0] + counts[1]), ...counts.map(String), `${Math.abs(counts[0] - counts[1])} ≤ ${bound}`]);
     });
-    if (scenario.id === "cycle") assert.deepEqual(result.groups, [[], [0, 1, 2]]);
   }
   await select("scenario", "overlap");
   await waitFor(passed);

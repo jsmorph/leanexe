@@ -114,7 +114,7 @@ See the [user manual](docs/manual.md#entry-shapes) for entry types and command o
 | [Running sum](docs/manual.md#running-sum) | Interactive, signed decimal input and cumulative output using timed byte I/O and explicit error codes. |
 | [JSON tree command](docs/demo.md) | Typed recursive data, parsing, transformation, and a WASI command interface. |
 | [SplitMix64](docs/prng.md) | A Lean/WASM pseudorandom generator: `tools/prng.js 42 5 100` emits five values modulo 100 from seed 42. |
-| [Beck–Fiala partitioner](docs/beck.md) | Splits up to six jobs with overlapping categories into two groups, with a universal discrepancy theorem for the exact WASM binary. |
+| [Beck–Fiala partitioner](docs/beck.md) | Splits jobs with overlapping categories using exact integer arithmetic. Generalized source and WASM verification are in progress. |
 | [Generated programs](demos/README.md) | Specifications, programs, and independently checked artifact proofs produced through `leanexegen`. |
 
 Byte-I/O programs use the repository's nonblocking WASI host, which provides the

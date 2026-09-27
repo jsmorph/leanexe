@@ -23,11 +23,11 @@ self.onmessage = async ({ data: input }) => {
       throw new Error("WASM returned an invalid output address.");
     }
     const size = Number(view.getBigUint64(output, true));
-    if (size < 1 || size > 8 || output + 8 * (size + 1) > view.byteLength) {
+    if (size < 1 || size > input.jobs.length + 2 || output + 8 * (size + 1) > view.byteLength) {
       throw new Error("WASM returned an invalid output length.");
     }
     const result = Array.from({ length: size }, (_, index) => Number(view.getBigUint64(output + 8 * (index + 1), true)));
-    self.postMessage({ ok: true, ...check(input, result), milliseconds });
+    self.postMessage({ ok: true, ...check(input, result), milliseconds, memoryBytes: wasm.memory.buffer.byteLength });
   } catch (error) {
     self.postMessage({ ok: false, message: error.message });
   }
