@@ -5,7 +5,7 @@ namespace Project.Beck.Execution
 open Wasm Project.ProofKit LeanExe.Examples.Beck
 
 def matrixRowLocal (input : Input) (category index : Nat) (pointer initialOwner : UInt64)
-    (saved : MatrixSaved) (tail : MatrixTail) (after : MatrixAfter) (k : Fin 87) : Value :=
+    (saved : MatrixSaved) (tail : MatrixTail) (after : MatrixAfter) (k : Fin 89) : Value :=
   if h : k.val < 63 then matrixRowSaved input category index pointer saved ⟨k.val, h⟩
   else if h' : k.val < 78 then .i64 (tail ⟨k.val - 63, by omega⟩)
   else matrixRowAfter initialOwner after ⟨k.val - 78, by omega⟩
@@ -17,12 +17,12 @@ theorem matrixRowFrame_locals (input : Input) (point : Point) (inputOwner inputP
       List.ofFn (matrixRowLocal input category index pointer initialOwner saved tail after) := rfl
 
 theorem matrix_local_read (frame : Locals) (index : Nat) (value : Value)
-    (params : frame.params.length = 9) (locals : frame.locals.length = 87)
-    (inside : index < 87) (read : frame.get (index + 9) = some value) : frame.locals[index]! = value := by
+    (params : frame.params.length = 9) (locals : frame.locals.length = 89)
+    (inside : index < 89) (read : frame.get (index + 9) = some value) : frame.locals[index]! = value := by
   have indexBound : index < frame.locals.length := by omega
   have read' : frame.locals[index]? = some value := by
     simpa [Locals.get, params, locals, show ¬index + 9 < 9 by omega,
-      show index + 9 < 9 + 87 by omega, Nat.add_sub_cancel] using read
+      show index + 9 < 9 + 89 by omega, Nat.add_sub_cancel] using read
   simpa only [getElem?_pos frame.locals index indexBound, getElem!_pos frame.locals index indexBound,
     Option.some.injEq] using read'
 
@@ -31,7 +31,7 @@ theorem matrixRowFrame_reconstruct (frame : Locals) (input : Input) (point : Poi
     (inputOwner inputPointer pointOwner pointPointer : UInt64) (category index : Nat)
     (pointer initialOwner : UInt64) (tail : MatrixTail)
     (params : frame.params = matrixParams input point inputOwner inputPointer pointOwner pointPointer)
-    (locals : frame.locals.length = 87) (values : frame.values = [])
+    (locals : frame.locals.length = 89) (values : frame.values = [])
     (r14 : frame.get 14 = some (.i64 category.toUInt64))
     (r27 : frame.get 27 = some (.i64 pointer)) (r28 : frame.get 28 = some (.i64 pointer))
     (r69 : frame.get 69 = some (.i64 index.toUInt64))

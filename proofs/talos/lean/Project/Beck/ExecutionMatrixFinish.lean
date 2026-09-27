@@ -9,7 +9,7 @@ def matrixInstalledSaved (saved : MatrixSaved) (root : UInt64) (k : Fin 63) : Va
   | 29 | 30 | 31 | 32 => .i64 root
   | _ => saved k
 
-def matrixInstalledAfter (after : MatrixAfter) (root : UInt64) (k : Fin 9) : Value :=
+def matrixInstalledAfter (after : MatrixAfter) (root : UInt64) (k : Fin 11) : Value :=
   match k.val with
   | 1 => .i64 0
   | 2 | 3 => .i64 root
@@ -44,7 +44,7 @@ theorem matrixRowFrame_post (store : Store Unit) (frame : Locals) (input : Input
     (next : ∀ saved tail after, Q (.Break 0 store (matrixRowFrame input point inputOwner inputPointer pointOwner pointPointer
       category index pointer initialOwner saved tail after)))
     (params : frame.params = matrixParams input point inputOwner inputPointer pointOwner pointPointer)
-    (locals : frame.locals.length = 87) (values : frame.values = [])
+    (locals : frame.locals.length = 89) (values : frame.values = [])
     (r14 : frame.get 14 = some (.i64 category.toUInt64))
     (r27 : frame.get 27 = some (.i64 pointer)) (r28 : frame.get 28 = some (.i64 pointer))
     (r69 : frame.get 69 = some (.i64 index.toUInt64))
