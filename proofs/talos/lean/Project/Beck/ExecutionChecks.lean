@@ -1,6 +1,7 @@
 import Project.Beck.ExecutionBorderCandidate
 import Project.Beck.ExecutionExtendColumnLoop
 import Project.Beck.ExecutionExtendOuterLoop
+import Project.Beck.ExecutionExtend
 import Project.Beck.ExecutionMatrix
 import Project.Beck.ExecutionScan
 import Project.Beck.ExecutionContains
@@ -121,3 +122,4 @@ import Project.Beck.ExecutionMatrixPrefix
 #print axioms Project.Beck.Execution.extendColumnStep_exact
 #print axioms Project.Beck.Execution.extendColumnLoop_exact
 #print axioms Project.Beck.Execution.extendOuterLoop_exact
+#print axioms Project.Beck.Execution.extend_exact

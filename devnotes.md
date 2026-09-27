@@ -17754,3 +17754,9 @@ The iteration and loop each check in about one second with standard logical axio
 The outer loop now composes column search for every matrix row and returns the first successful source extension.  Its invariant records all unsuccessful earlier rows, protected memory, and the remaining allocation budget.  The loop terminates by the decreasing row count and charges at most `(208 + determinantBytes(k+1)) * width * (matrix.size / width)` bytes.  Its result preserves owned, disjoint candidate arrays and their freshness relative to the original caller.
 
 The outer control-flow proof checks its five release guards, result installation, success exit, and checked row increment.  Guard execution checks in about 23 seconds.  Iteration and loop composition check in about two seconds with standard logical axioms.  The complete extension function still needs entry and return composition.  Source and binary bytes remain unchanged.
+
+### Beck complete basis-extension execution
+
+`extend_exact` now covers the complete emitted extension function.  The entry proof reads the matrix length, proves unsigned division agrees with natural division, and handles zero width without division.  The return proof preserves the initial owner and data pointers when no extension exists.  Successful returns carry fresh owned index arrays and the first source extension.  The allocation charge remains the nested-loop bound.
+
+Entry, return, and complete-call composition each check in about two seconds with standard logical axioms.  Fuel-bounded repeated extension, direction construction, rounding, computation entry, the overall resource bound, and independent artifact verification remain open.  Inspection of repeated extension shows that its three tracked cleanup owners start at zero and remain zero.  The next proof will retain that invariant while composing extension calls.  Source and binary bytes are unchanged.
