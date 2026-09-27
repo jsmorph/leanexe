@@ -11,7 +11,8 @@ def SameKernel (width rows : ℕ) (first second : Array Integer) : Prop :=
       (∀ row : Fin rows, ∑ col, rationalRow width second row.val col * vector col = 0)
 
 def Invariant (width rows column : ℕ) (initial : Array Integer) (state : Echelon) : Prop :=
-  ActiveMatrix.Invariant width rows state.columns.size column state.matrix state.determinant ∧
+  ActiveMatrix.Invariant width rows state.columns.size column state.matrix state.determinant
+    state.columns.toList ∧
     SameKernel width rows state.matrix initial
 
 def body (width rows column : ℕ) (state : Echelon) : Option (ForInStep Echelon) := do
@@ -46,7 +47,7 @@ theorem step_correct (width rows column : ℕ) (initial : Array Integer) (state 
   · have rankBound : rank < rows := by omega
     let swapped := swapRows width rank row state.matrix
     have swappedInv := ActiveMatrix.swapped width rows rank column row state.matrix state.determinant
-      invariant.1 pivotFacts.1 found
+      state.columns.toList invariant.1 pivotFacts.1 found
     have pivotNonzero : value swapped[rank * width + column]! ≠ 0 := by
       have entry := RowSwap.get_eq width rank row rank column state.matrix columnBound
         (by rw [invariant.1.size]; nlinarith)
@@ -54,9 +55,9 @@ theorem step_correct (width rows column : ℕ) (initial : Array Integer) (state 
       rw [entry, ite_eq_left rfl]
       exact pivotFacts.2.2.1 found
     obtain ⟨reduced, source, reducedInv⟩ := ActiveMatrix.eliminated width rows rank column swapped
-      state.determinant swappedInv rankBound columnBound pivotNonzero
+      state.determinant state.columns.toList swappedInv rankBound columnBound pivotNonzero
     have exactDivision := ActiveMatrix.divides width rows rank column swapped state.determinant
-      swappedInv rankBound columnBound
+      state.columns.toList swappedInv rankBound columnBound
     obtain ⟨sameReduced, sameSource, _, _, kernel⟩ := eliminate_preserves width rows rank column swapped
       state.determinant swappedInv.size rankBound columnBound swappedInv.valid swappedInv.previousValid
       swappedInv.nonzero pivotNonzero swappedInv.prefixZero exactDivision
@@ -67,7 +68,7 @@ theorem step_correct (width rows column : ℕ) (initial : Array Integer) (state 
       dsimp only
       rw [source]
       rfl
-    · simpa only [Array.size_push] using reducedInv
+    · simpa only [Array.size_push, Array.toList_push] using reducedInv
     · intro vector
       exact (kernel vector).trans
         ((RowSwap.kernel width rows rank row state.matrix invariant.1.size rankBound found vector).trans
@@ -76,7 +77,7 @@ theorem step_correct (width rows column : ℕ) (initial : Array Integer) (state 
     refine ⟨state, ?_, ?_, invariant.2⟩
     · rw [body, ite_eq_right found]
       rfl
-    · exact ActiveMatrix.skip width rows rank column state.matrix state.determinant invariant.1
+    · exact ActiveMatrix.skip width rows rank column state.matrix state.determinant state.columns.toList invariant.1
         columnBound (by intro r lower upper; exact pivotFacts.2.2.2 r lower (by omega))
 
 theorem loop_correct (width rows count column : ℕ) (initial : Array Integer) (state : Echelon)
@@ -116,6 +117,44 @@ theorem kernel_of_pivot_rows (width rows : ℕ) (initial : Array Integer) (state
     have zero := invariant.1.prefixZero row.val (by omega) row.isLt col.val col.isLt
     simp only [rationalRow, zero, Int.cast_zero, zero_mul]
 
+theorem integer_kernel (width rows : ℕ) (initial : Array Integer) (state : Echelon)
+    (invariant : Invariant width rows width initial state) (free : Fin width)
+    (freeColumn : free.val.toUInt64 ∉ state.columns) :
+    ∃ vector : Fin width → ℤ,
+      vector free = value state.determinant ∧
+      (∀ col, col ≠ free → col.val.toUInt64 ∉ state.columns → vector col = 0) ∧
+      (∀ row, row < state.columns.size →
+        ∑ col, value state.matrix[row * width + col.val]! * vector col = 0) ∧
+      (∀ row : Fin rows, ∑ col, value initial[row.val * width + col.val]! * vector col = 0) := by
+  obtain ⟨ι, finite, decidable, blocks, selected, history⟩ := invariant.1.history
+  let _ := finite
+  let _ := decidable
+  let vector := MinorKernel.direction blocks selected free
+  have distinct (i : ι) : selected i ≠ free := by
+    intro equal
+    apply freeColumn
+    exact Array.mem_def.mpr ((history.chosen _).mpr ⟨i, by rw [equal]⟩)
+  have topInt := MinorKernel.selected_rows blocks selected free history.leading
+  have top (i : ι) : ∑ col, (blocks.top i col.val : ℚ) * (vector col : ℚ) = 0 := by
+    exact_mod_cast topInt i
+  have pivotRows := (history.kernel (fun col => (vector col : ℚ))).mp top
+  refine ⟨vector, ?_, ?_, ?_, ?_⟩
+  · exact (MinorKernel.free_value blocks selected free distinct).trans history.determinant.symm
+  · intro col notFree notSelected
+    apply MinorKernel.other_value _ _ _ _ notFree
+    intro i equal
+    apply notSelected
+    exact Array.mem_def.mpr ((history.chosen _).mpr ⟨i, by rw [← equal]⟩)
+  · intro row before
+    exact_mod_cast pivotRows row before
+  · have original := kernel_of_pivot_rows width rows initial state invariant
+      (fun col => (vector col : ℚ)) pivotRows
+    intro row
+    have equation := original row
+    dsimp only [rationalRow] at equation
+    exact_mod_cast equation
+
 #print axioms echelon_correct
+#print axioms integer_kernel
 
 end Project.Beck.EchelonProof

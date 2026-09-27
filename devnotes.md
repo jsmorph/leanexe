@@ -18085,3 +18085,9 @@ The resulting generalized binary has SHA-256 `b8e5be491442b24828881d936ca4216daf
 | 256 | 4 | 2,875,260,928 | 6,206.0 |
 
 The 256-job fixture previously exhausted the four-GiB address range.  Every measured output now agrees with native Lean and passes independent category-count checks.  Full-partitioner allocation counters still show retained allocations.  Their causes, the sufficient resource bound, and the complete generalized source-to-WASM theorem remain open.
+
+### Beck determinant-scaled integer kernel
+
+The elimination invariant now records the selected columns, their original selected rows, and bordered minors for every active matrix entry.  `MinorHistory.extended` preserves that history through each pivot.  `MinorKernel.row_sum` relates an eliminated row's dot product to the original row when the selected rows annihilate the vector.  The integer Cramer construction then supplies a vector whose free coordinate equals the final determinant and whose other free coordinates vanish.
+
+`EchelonProof.integer_kernel` connects this construction to the executable echelon result and its original matrix.  It assumes a chosen column outside the returned pivot list.  The complete echelon theorem and the new history and kernel targets pass through the local runner with only standard logical axioms.  Diagnostics concerned rational-sum association, reduction of row-swap projections, and normalization of the initial one-word integer.  The complete backward loop still needs pivot-order and coordinate-recovery proofs.  Executable source and binary bytes are unchanged.
