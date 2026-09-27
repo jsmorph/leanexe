@@ -341,11 +341,14 @@ native/IR comparisons, 7,872 invalid-input checks and 768 equivalent-word contro
 Prior tests pass 120,678 comparisons, 81,743 rejections and 4,608 controls.
 Evidence is in [the public Boolean result archive](proofs/compiler/public-boolean-result-2026-09-26/README.md).
 
-Current capability: standard Id annotations on public results. Signature
-admission, extraction correctness and the Boolean encoding theorem pass. New
-tests pass 33,204 native/IR comparisons, 20,352 invalid-input checks and 1,536
-explicit-conversion controls. Prior tests pass 93,130 comparisons, 67,023
-rejections and 3,456 controls. The full source-to-WASM proof and V8 checks are next.
+Standard Id annotations on public scalar results are complete. Arbitrarily
+nested annotations and metadata preserve the word/Boolean result encoding and
+all body checks. The general source-to-WASM theorem and nineteen audits pass.
+Native Lean/V8 agree on 509 inputs across 28 declarations, including thirteen
+ranges; eighteen prior modules retain identical bytes. New tests pass 33,204
+native/IR comparisons, 20,352 invalid-input checks and 1,536 controls. Prior tests
+pass 93,130 comparisons, 67,023 rejections and 3,456 controls. Evidence is in
+[the public result annotation archive](proofs/compiler/public-result-id-2026-09-26/README.md).
 
 Next: Boolean parameters and loop results, retained instances and broader signatures. Full-dialect
 correctness remains unfinished.
