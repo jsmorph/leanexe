@@ -586,5 +586,15 @@
   "rangeBoolLetIdMixed",
   "rangeBoolLetIdExit",
   "rangeBoolLetIdContinue",
-  "rangeBoolLetIdInput"
+  "rangeBoolLetIdInput",
+  "rangeBoolWordHelperRepeat",
+  "rangeBoolWordHelperCount",
+  "rangeBoolWordHelperInitial",
+  "rangeBoolWordHelperNested",
+  "rangeBoolWordHelperFlag",
+  "rangeBoolWordHelperExit",
+  "rangeBoolWordHelperContinue",
+  "rangeBoolWordHelperStride",
+  "rangeBoolWordHelperId",
+  "rangeBoolWordHelperShadow"
 ]
