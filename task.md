@@ -249,9 +249,17 @@ native/IR comparisons, 4,608 invalid-input checks and 512 controls. Prior tests 
 17,200 comparisons, 10,004 invalid-input checks and 1,024 controls. Evidence is in
 [the UInt64 bound-result archive](proofs/compiler/boolean-word-bound-result-2026-09-26/README.md).
 
-Next: monadic binds inside converted Boolean results, followed by saved Boolean
-variables in mixed propositional guards, retained instance and Bool-parameter Id
-wrappers, and broader signatures. Full-dialect correctness remains unfinished.
+Standard Id monadic binds inside converted Boolean results pass the focused
+source, extraction and loop invariant proofs. Bool and UInt64 inputs retain their
+types through nested binds, captures, negation and Id annotations. New tests pass
+3,764 native/IR comparisons, 3,072 invalid-input checks and 256 controls. Prior
+binding and helper-result tests pass 42,768 comparisons, 28,032 invalid-input
+checks and 2,368 controls. The general compiler theorem, WASM comparisons and
+archive are next for this increment.
+
+Next capabilities: saved Boolean variables in mixed propositional guards,
+retained instance and Bool-parameter Id wrappers, and broader signatures.
+Full-dialect correctness remains unfinished.
 Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete

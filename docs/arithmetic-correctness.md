@@ -213,8 +213,11 @@ Both used and unused values are checked; standard Id annotations and negation
 are retained. UInt64 bindings inside Boolean results use the same binding forms,
 with the bound expression checked as a word. Their Boolean bodies may call captured
 helpers, including in loop conditions and helper results. Word and Boolean bindings
-remain distinct. Monadic binds inside Boolean-valued results remain a subsequent
-capability.
+remain distinct. Standard Id monadic binds also admit Bool and UInt64 inputs
+inside Boolean-valued results, including nested binds and retained Id annotations.
+The parser checks the standard Bind instance, matching input and continuation
+types, and the Boolean result type; unsupported actions are rejected even when
+their values are unused.
 Nested converted calls, including negated inner arguments, check each argument
 as a Boolean conversion. Conjunctions and disjunctions can combine these calls
 with flags, word-input predicate calls and other supported Boolean expressions,

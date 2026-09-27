@@ -63,6 +63,11 @@ open LeanExe.Source.Scalar
         have impossible := rejected.symm.trans accepted
         cases impossible
 
+  | monadic binder result =>
+      rw [BooleanBindingForm.expr, booleanLocalOperands?]
+      simp only [↓reduceIte, booleanType_accepts, bind, Option.bind_some]
+      rw [scalarResultType_boolean]
+
 @[simp] theorem booleanLocalOperands_wordBinding (name : Lean.Name) (form : BooleanBindingForm)
     (type : ResultType) (value body : Lean.Expr) :
     booleanLocalOperands? (form.expr name type.expr value body) = (do
@@ -86,6 +91,11 @@ open LeanExe.Source.Scalar
       · rename_i rejected
         have impossible := rejected.symm.trans accepted
         cases impossible
+
+  | monadic binder result =>
+      rw [BooleanBindingForm.expr, booleanLocalOperands?]
+      simp only [↓reduceIte, booleanType_accepts, bind, Option.bind_some]
+      rw [scalarResultType_accepts]
 
 @[simp] theorem booleanLocalOperands_wrapped (wrapper : BooleanWrapper) (body : Lean.Expr) :
     booleanLocalOperands? (wrapper.expr body) =

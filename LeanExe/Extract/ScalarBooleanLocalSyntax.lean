@@ -335,11 +335,29 @@ theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLoca
     obtain ⟨annotation, ht, v, hv, b, hb, rfl⟩ := parsed
     simp [BooleanLocal.expr, BooleanGuardNegation.expr, BooleanBindingForm.expr,
       booleanType_sound ht, ihv hv, ihb hb]
-  | case36 index argument =>
+  | case36 output value name domain body binder ihb ihv =>
+    rw [booleanLocalOperands?] at parsed
+    simp only [↓reduceIte, bind, Option.bind_eq_some_iff] at parsed
+    obtain ⟨result, hr, parsed⟩ := parsed
+    split at parsed
+    next annotation found =>
+      simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
+      obtain ⟨b, hb, rfl⟩ := parsed
+      simp [BooleanLocal.expr, BooleanGuardNegation.expr, BooleanBindingForm.expr,
+        booleanType_sound hr, scalarResultType_sound found, ihb hb]
+    next noWord =>
+      simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
+      obtain ⟨annotation, ht, v, hv, b, hb, rfl⟩ := parsed
+      simp [BooleanLocal.expr, BooleanGuardNegation.expr, BooleanBindingForm.expr,
+        booleanType_sound hr, booleanType_sound ht, ihv hv, ihb hb]
+  | case37 input output value name domain body binder different =>
+    rw [booleanLocalOperands?] at parsed
+    simp [different] at parsed
+  | case38 index argument =>
     simp only [booleanLocalOperands?, Option.some.injEq] at parsed
     subst guard
     rfl
-  | case37 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse excludedVar excludedChoiceEq excludedChoiceNe excludedProposition excludedDependentEq excludedDependentNe excludedDependentProp excludedDecisionEq excludedDecisionNe excludedDecision excludedEq excludedNe excludedBinding excludedRun excludedPure excludedMetadata excludedApplication excludedPredicate =>
+  | case39 expression excludedAnd excludedOr excludedNot excludedTrue excludedFalse excludedVar excludedChoiceEq excludedChoiceNe excludedProposition excludedDependentEq excludedDependentNe excludedDependentProp excludedDecisionEq excludedDecisionNe excludedDecision excludedEq excludedNe excludedBinding excludedRun excludedPure excludedMetadata excludedApplication excludedMonadic excludedPredicate =>
     rw [booleanLocalOperands?] at parsed
     · obtain ⟨⟨op, a, b⟩, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
       exact booleanComparisonOperands_sound found
@@ -365,6 +383,7 @@ theorem booleanLocalOperands_sound {expression : Lean.Expr} {guard : BooleanLoca
     · exact excludedPure
     · exact excludedMetadata
     · exact excludedApplication
+    · exact excludedMonadic
     · exact excludedPredicate
 
 theorem booleanLocalOperands_size {expression : Lean.Expr} {value : BooleanLocal}
