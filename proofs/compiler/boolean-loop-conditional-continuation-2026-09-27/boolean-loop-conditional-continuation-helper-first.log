@@ -1,0 +1,46 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/boolean-loop-conditional-continuation-helper.lean:87:58: error: unsolved goals
+locals : List ScalarBinding
+boolean : Bool
+value : Lean.Expr
+choice : BooleanFunctionChoice
+enclosing direct : ScalarBinding → Option ScalarRangeExitPlan
+branch : (arm : Lean.Expr) → sizeOf arm < sizeOf choice.expr → Option ScalarRangeExitPlan
+guard : IR.Expr
+condition : extractScalarExprWith locals (BooleanRange.decision choice.condition choice.evidence) = some guard
+yes : ∀ (smaller : sizeOf choice.yes < sizeOf choice.expr), ∃ plan, branch choice.yes smaller = some plan
+no : ∀ (smaller : sizeOf choice.no < sizeOf choice.expr), ∃ plan, branch choice.no smaller = some plan
+old : scalarBooleanRangeContinuation locals boolean value choice.expr enclosing direct = none
+first : ScalarRangeExitPlan
+ht : branch choice.yes ⋯ = some first
+second : ScalarRangeExitPlan
+he : branch choice.no ⋯ = some second
+⊢ (match parsed : booleanFunctionChoice? choice.expr with
+    | none => none
+    | some choice_1 =>
+      (extractScalarExprWith locals (BooleanRange.decision choice_1.condition choice_1.evidence)).bind fun guard =>
+        (branch choice_1.yes ⋯).bind fun first =>
+          (branch choice_1.no ⋯).bind fun second => some (ScalarRangeExitPlan.choice guard first second)) =
+    some (ScalarRangeExitPlan.choice guard first second)
+../work/boolean-loop-conditional-continuation-helper.lean:88:57: warning: This simp argument is unused:
+  condition
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [scalarBooleanRangeCompleteContinuation, old, ht, he]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+../work/boolean-loop-conditional-continuation-helper.lean:88:68: warning: This simp argument is unused:
+  ht
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [scalarBooleanRangeCompleteContinuation, old, condition, he]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+../work/boolean-loop-conditional-continuation-helper.lean:88:72: warning: This simp argument is unused:
+  he
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [scalarBooleanRangeCompleteContinuation, old, condition, ht]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
