@@ -1077,8 +1077,9 @@ All five word-result probes are accepted by the sequence extractor; the
 Boolean-result probe remains deferred. Descriptor admission, exact emission and
 scratch bounds pass 237 targets. Finite-loop trace termination and IR-to-WASM
 trace preservation pass 3069 cached targets. Generic program execution and
-sequence stack typing pass 3286 and 3293 cached targets. Whole-function execution,
-byte parsing, validation and public integration remain before independent engine checks.
+sequence stack typing pass 3286 and 3293 cached targets. Whole-function execution
+passes 3292 targets; byte parsing and execution pass 3337 targets. Public compiler
+and validator integration remain before independent engine checks.
 
 Next: Boolean-result loop combinations and nested loops. Broader helper
 signatures, heap values, floats, imports and global calls remain outside the
