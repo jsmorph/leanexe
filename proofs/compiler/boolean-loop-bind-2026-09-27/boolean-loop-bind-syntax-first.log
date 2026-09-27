@@ -1,0 +1,5 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_loop_bind_syntax.lean:64:55: error: unexpected token 'instance'; expected ')', ',' or ':'
+test/scalar_boolean_loop_bind_syntax.lean:64:76: error: unexpected token ')'; expected ':=', 'where' or '|'
+test/scalar_boolean_loop_bind_syntax.lean:65:68: error: unexpected token ','; expected ':'

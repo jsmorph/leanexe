@@ -1,0 +1,8 @@
+cli-build: passed
+admission-test: exit 1
+test/arithmetic_mode.lean:5592:4: error: `ArithmeticModeTest.rangeBoolBindYield` has already been declared
+test/arithmetic_mode.lean:5609:4: error: `ArithmeticModeTest.rangeBoolBindContinue` has already been declared
+test/arithmetic_mode.lean:5637:4: error: `ArithmeticModeTest.rangeBoolBindCapture` has already been declared
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+
