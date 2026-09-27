@@ -359,7 +359,14 @@ native/IR comparisons, 18,432 invalid-input checks and 1,056 controls. Prior tes
 pass 126,334 comparisons, 87,375 rejection checks and 4,992 controls. Evidence is in
 [the public Boolean parameter archive](proofs/compiler/public-boolean-parameters-2026-09-26/README.md).
 
-Next: Boolean parameter captures in loops, Boolean loop results, retained instances
+Current capability: Boolean parameter captures in word-valued loops. Reuse typed
+argument decoding and source application through yielding and early-exit loops.
+Source/IR proofs and the shared WASM read-bound proofs pass. New tests pass
+8,304 comparisons and 4,032 invalid-input checks; nine prior files pass
+154,048 comparisons, 97,920 invalid-input checks and 5,280 controls. The full
+compiler proof and V8 checks are next.
+
+Next: Boolean loop results, retained instances
 and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound helper-let bodies under public Boolean
 result conversion. Compound propositions combining Boolean equality with Boolean

@@ -24,7 +24,7 @@ theorem extracted_function_valid
     Validator.validateFunction (rawModule func entry user) (typeValues func) 0
       (typeValues func).head! user = .ok () := by
   obtain ⟨arity, result, body, signature, _, _, branches⟩ := extractScalarFunc_cases compiled
-  rcases branches with ⟨ir, extracted, rfl⟩ | ⟨rfl, _, plan, extracted, rfl⟩ | ⟨rfl, _, plan, extracted, rfl⟩
+  rcases branches with ⟨ir, extracted, rfl⟩ | ⟨rfl, plan, extracted, rfl⟩ | ⟨rfl, plan, extracted, rfl⟩
   · obtain ⟨descriptor, recognized, arithmetic, readBound⟩ := extractScalarPublic_admitted extracted
     have scratch := scalarFunc_scratch arity name (some entry) recognized
     have format : arity + 1 + descriptor.scratchWidth < 2 ^ 32 := by
@@ -50,8 +50,8 @@ theorem extracted_function_valid
         rw [scratch] at locals
         simpa [scalarFunc, Nat.add_assoc] using locals
       exact typed context localTypes [] 0 0 [] (Nat.le_refl 0)
-  · obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRange_admitted extracted
-      (by intro index present; simpa using present)
+  · obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRangePublic_admitted extracted
+      (scalarSignature_inputs_length signature)
     have scratch := Range.func_scratch matched arity name (some entry)
     have format : arity + 3 + descriptor.scratchWidth < 2 ^ 32 := by
       rw [scratch] at localBound
@@ -71,8 +71,8 @@ theorem extracted_function_valid
         rw [scratch] at locals
         simpa [ScalarRangePlan.func, Nat.add_assoc] using locals
       exact typed context localTypes [] 0 0 [] (Nat.le_refl 0)
-  · obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRangeExit_admitted extracted
-      (by intro index present; simpa using present)
+  · obtain ⟨descriptor, matched, arithmetic, reads⟩ := extractScalarRangeExitPublic_admitted extracted
+      (scalarSignature_inputs_length signature)
     have scratch := RangeExit.func_scratch matched arity name (some entry)
     have format : arity + 4 + descriptor.scratchWidth < 2 ^ 32 := by
       rw [scratch] at localBound

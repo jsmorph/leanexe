@@ -37,6 +37,11 @@ theorem publicBindingsFor_typed {inputs : List PublicArgument} {slots : List Nat
     (publicBindings inputs).map ScalarBinding.kind = inputs.reverse.map PublicArgument.kind :=
   publicBindingsFor_typed (by simp)
 
+theorem publicValues_bindings_typed {inputs : List PublicArgument} {args : List UInt64}
+    (len : args.length = inputs.length) :
+    (publicValues inputs args).reverse.map Value.kind = (publicBindings inputs).map ScalarBinding.kind := by
+  rw [List.map_reverse, publicValues_typed len, publicBindings_typed, List.map_reverse]
+
 theorem publicBindingsFor_words (slots : List Nat) :
     publicBindingsFor (List.replicate slots.length .word) slots =
       slots.map (fun slot => ScalarBinding.word (.local slot)) := by

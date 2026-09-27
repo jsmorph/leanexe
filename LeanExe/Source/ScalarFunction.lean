@@ -50,9 +50,9 @@ def DeclarationSupported (type value : Lean.Expr) : Prop :=
     publicLambdasMatch (publicInputs type) value = true ∧
     LeanExe.Extract.Core.collectLambdas value arity = some body ∧
       (SupportedWith ((publicInputs type).reverse.map PublicArgument.kind) (result.encode body) ∨
-        (publicInputs type = List.replicate arity .word ∧ result = .word ∧
-          (RangeSupportedWith (List.replicate arity .word) body ∨
-            Range.Exit.Supported (List.replicate arity .word) body)))
+        (result = .word ∧
+          (RangeSupportedWith ((publicInputs type).reverse.map PublicArgument.kind) body ∨
+            Range.Exit.Supported ((publicInputs type).reverse.map PublicArgument.kind) body)))
 
 /-- Application of scalar arguments to the original elaborated lambda term.
 The local environment is in de Bruijn order. -/
