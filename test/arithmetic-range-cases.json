@@ -988,5 +988,13 @@
   "rangeBinaryBooleanHelperStep",
   "rangeBinaryBooleanHelperExit",
   "rangeBinaryBooleanHelperContinue",
-  "rangeBinaryBooleanHelperTail"
+  "rangeBinaryBooleanHelperTail",
+  "rangeBinaryStepHelperDirect",
+  "rangeBinaryStepHelperExit",
+  "rangeBinaryStepHelperContinue",
+  "rangeBinaryStepHelperNested",
+  "rangeBinaryStepHelperUnused",
+  "rangeBinaryStepHelperWordTail",
+  "rangeBinaryStepHelperCapturedExit",
+  "rangeBinaryStepHelperChoice"
 ]
