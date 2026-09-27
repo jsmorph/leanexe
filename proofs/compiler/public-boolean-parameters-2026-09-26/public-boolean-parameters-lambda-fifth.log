@@ -1,0 +1,360 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [60/156] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:367:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [113/156] Replayed LeanExe.Extract.ScalarExprCore
+warning: LeanExe/Extract/ScalarExprCore.lean:339:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:347:31: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:347:36: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:347:52: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:356:35: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:356:40: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:356:56: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:411:12: Variable name `bounds` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _bounds
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+⚠ [114/156] Replayed LeanExe.Extract.ScalarExpr
+warning: LeanExe/Extract/ScalarExpr.lean:172:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:173:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:188:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:189:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:220:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:221:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:235:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:236:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:923:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1022:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1238:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1260:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1282:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1304:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1326:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1350:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1374:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1392:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1411:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1430:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [120/156] Replayed LeanExe.IR.ScalarRangeSlots
+warning: LeanExe/IR/ScalarRangeSlots.lean:25:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:29:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/IR/ScalarRangeSlots.lean:33:20: This simp argument is unused:
+  read_suffix
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [rangeStore]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [133/156] Replayed LeanExe.Extract.ScalarStepEquations
+warning: LeanExe/Extract/ScalarStepEquations.lean:153:33: This simp argument is unused:
+  BooleanType.expr
+
+Hint: Omit it from the simp argument list.
+  [apply] simp
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [135/156] Replayed LeanExe.Extract.ScalarStepSupported
+warning: LeanExe/Extract/ScalarStepSupported.lean:96:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarStepSupported.lean:437:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+⚠ [148/156] Replayed LeanExe.IR.ScalarRangeExitSlots
+warning: LeanExe/IR/ScalarRangeExitSlots.lean:18:2: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [150/156] Replayed LeanExe.Extract.ScalarStepCorrectness
+warning: LeanExe/Extract/ScalarStepCorrectness.lean:299:23: This simp argument is unused:
+  Option.bind_some
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [bind, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [153/158] Built LeanExe.Source.ScalarPublicArgument (905ms)
+✔ [155/158] Built LeanExe.Extract.ScalarPublicBindings (913ms)
+✔ [156/158] Built LeanExe.Source.ScalarFunction (1.1s)
+✔ [157/158] Built LeanExe.Extract.ScalarSignature (1.1s)
+✖ [158/158] Building LeanExe.Extract.ScalarFunc (1.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarFunc.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarFunc.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarFunc.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarFunc.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarFunc.setup.json --json
+error: LeanExe/Extract/ScalarFunc.lean:64:37: Application type mismatch: The argument
+  annotations
+has type
+  publicLambdasMatch (publicInputs type) source = true
+but is expected to have type
+  true = true
+in the application
+  And.intro annotations
+warning: LeanExe/Extract/ScalarFunc.lean:62:6: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [annotations, Bool.not_true, Bool.false_eq_true, ↓reduceIte, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarFunc.lean:198:6: Tactic `rfl` failed: The left-hand side
+  if (!publicLambdasMatch (List.replicate arity PublicArgument.word) value) = true then none
+  else
+    match none with
+    | some expression => pure (scalarFunc name exportName arity expression)
+    | none =>
+      match some plan with
+      | some plan => pure (plan.func name exportName arity)
+      | none =>
+        match
+          extractScalarRangeExitWith
+            (List.map (fun slot => ScalarBinding.word (IR.Expr.local slot)) (List.range arity).reverse) arity body,
+          fun plan => pure (plan.func name exportName arity) with
+        | none, x => none
+        | some a, f => f a
+is not definitionally equal to the right-hand side
+  some (plan.func name exportName arity)
+
+type value : Lean.Expr
+name : Lean.Name
+exportName : Option String
+arity : Nat
+body : Lean.Expr
+annotations : publicLambdasMatch (publicInputs type) value = true
+lambdas : collectLambdas value arity = some body
+inputs : publicInputs type = List.replicate arity PublicArgument.word
+signature : Source.Scalar.Arrow type arity Source.Scalar.PublicResult.word
+supportedBody : Source.Scalar.RangeSupportedWith (List.replicate arity Source.Scalar.BindingKind.word) body
+locals : List ScalarBinding := List.map (fun slot => ScalarBinding.word (IR.Expr.local slot)) (List.range arity).reverse
+plan : ScalarRangePlan
+compiled : extractScalarRangeWith locals arity body = some plan
+excluded : extractScalarExprWith locals body = none
+⊢ (if (!publicLambdasMatch (List.replicate arity PublicArgument.word) value) = true then none
+    else
+      match none with
+      | some expression => pure (scalarFunc name exportName arity expression)
+      | none =>
+        match some plan with
+        | some plan => pure (plan.func name exportName arity)
+        | none =>
+          match
+            extractScalarRangeExitWith
+              (List.map (fun slot => ScalarBinding.word (IR.Expr.local slot)) (List.range arity).reverse) arity body,
+            fun plan => pure (plan.func name exportName arity) with
+          | none, x => none
+          | some a, f => f a) =
+    some (plan.func name exportName arity)
+error: LeanExe/Extract/ScalarFunc.lean:211:8: Tactic `rfl` failed: The left-hand side
+  if (!publicLambdasMatch (List.replicate arity PublicArgument.word) value) = true then none
+  else
+    match none with
+    | some expression => pure (scalarFunc name exportName arity expression)
+    | none =>
+      match some yielding with
+      | some plan => pure (plan.func name exportName arity)
+      | none =>
+        match
+          extractScalarRangeExitWith
+            (List.map (fun slot => ScalarBinding.word (IR.Expr.local slot)) (List.range arity).reverse) arity body,
+          fun plan => pure (plan.func name exportName arity) with
+        | none, x => none
+        | some a, f => f a
+is not definitionally equal to the right-hand side
+  some (yielding.func name exportName arity)
+
+type value : Lean.Expr
+name : Lean.Name
+exportName : Option String
+arity : Nat
+body : Lean.Expr
+annotations : publicLambdasMatch (publicInputs type) value = true
+lambdas : collectLambdas value arity = some body
+inputs : publicInputs type = List.replicate arity PublicArgument.word
+signature : Source.Scalar.Arrow type arity Source.Scalar.PublicResult.word
+supportedBody : Source.Scalar.Range.Exit.Supported (List.replicate arity Source.Scalar.BindingKind.word) body
+locals : List ScalarBinding := List.map (fun slot => ScalarBinding.word (IR.Expr.local slot)) (List.range arity).reverse
+plan : ScalarRangeExitPlan
+compiled : extractScalarRangeExitWith locals arity body = some plan
+excluded : extractScalarExprWith locals body = none
+yielding : ScalarRangePlan
+rangeCase : extractScalarRangeWith locals arity body = some yielding
+⊢ (if (!publicLambdasMatch (List.replicate arity PublicArgument.word) value) = true then none
+    else
+      match none with
+      | some expression => pure (scalarFunc name exportName arity expression)
+      | none =>
+        match some yielding with
+        | some plan => pure (plan.func name exportName arity)
+        | none =>
+          match
+            extractScalarRangeExitWith
+              (List.map (fun slot => ScalarBinding.word (IR.Expr.local slot)) (List.range arity).reverse) arity body,
+            fun plan => pure (plan.func name exportName arity) with
+          | none, x => none
+          | some a, f => f a) =
+    some (yielding.func name exportName arity)
+error: LeanExe/Extract/ScalarFunc.lean:217:8: Tactic `rfl` failed: The left-hand side
+  if (!publicLambdasMatch (List.replicate arity PublicArgument.word) value) = true then none
+  else
+    match none with
+    | some expression => pure (scalarFunc name exportName arity expression)
+    | none =>
+      match none with
+      | some plan => pure (plan.func name exportName arity)
+      | none =>
+        match some plan, fun plan => pure (plan.func name exportName arity) with
+        | none, x => none
+        | some a, f => f a
+is not definitionally equal to the right-hand side
+  some (plan.func name exportName arity)
+
+type value : Lean.Expr
+name : Lean.Name
+exportName : Option String
+arity : Nat
+body : Lean.Expr
+annotations : publicLambdasMatch (publicInputs type) value = true
+lambdas : collectLambdas value arity = some body
+inputs : publicInputs type = List.replicate arity PublicArgument.word
+signature : Source.Scalar.Arrow type arity Source.Scalar.PublicResult.word
+supportedBody : Source.Scalar.Range.Exit.Supported (List.replicate arity Source.Scalar.BindingKind.word) body
+locals : List ScalarBinding := List.map (fun slot => ScalarBinding.word (IR.Expr.local slot)) (List.range arity).reverse
+plan : ScalarRangeExitPlan
+compiled : extractScalarRangeExitWith locals arity body = some plan
+excluded : extractScalarExprWith locals body = none
+rangeCase : extractScalarRangeWith locals arity body = none
+⊢ (if (!publicLambdasMatch (List.replicate arity PublicArgument.word) value) = true then none
+    else
+      match none with
+      | some expression => pure (scalarFunc name exportName arity expression)
+      | none =>
+        match none with
+        | some plan => pure (plan.func name exportName arity)
+        | none =>
+          match some plan, fun plan => pure (plan.func name exportName arity) with
+          | none, x => none
+          | some a, f => f a) =
+    some (plan.func name exportName arity)
+warning: LeanExe/Extract/ScalarFunc.lean:194:71: This simp argument is unused:
+  annotations
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [extractScalarFunc, scalarSignature_accepts signature, Bool.not_true, Bool.false_eq_true,
+    ↓reduceIte, lambdas, bind, Option.bind, LeanExe.Source.Scalar.PublicResult.encode, inputs, publicBindings_words,
+    ne_eq, not_true_eq_false, ↓reduceIte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarFunc.lean:194:84: This simp argument is unused:
+  Bool.not_true
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [extractScalarFunc, scalarSignature_accepts signature, annotations, Bool.false_eq_true, ↓reduceIte,
+    lambdas, bind, Option.bind, LeanExe.Source.Scalar.PublicResult.encode, inputs, publicBindings_words, ne_eq,
+    not_true_eq_false, ↓reduceIte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarFunc.lean:194:99: This simp argument is unused:
+  Bool.false_eq_true
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [extractScalarFunc, scalarSignature_accepts signature, annotations, Bool.not_true, ↓reduceIte,
+    lambdas, bind, Option.bind, LeanExe.Source.Scalar.PublicResult.encode, inputs, publicBindings_words, ne_eq,
+    not_true_eq_false, ↓reduceIte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarFunc.lean:208:73: This simp argument is unused:
+  annotations
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [extractScalarFunc, scalarSignature_accepts signature, Bool.not_true, Bool.false_eq_true,
+    ↓reduceIte, lambdas, bind, Option.bind, LeanExe.Source.Scalar.PublicResult.encode, inputs, publicBindings_words,
+    ne_eq, not_true_eq_false, ↓reduceIte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarFunc.lean:208:86: This simp argument is unused:
+  Bool.not_true
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [extractScalarFunc, scalarSignature_accepts signature, annotations, Bool.false_eq_true, ↓reduceIte,
+    lambdas, bind, Option.bind, LeanExe.Source.Scalar.PublicResult.encode, inputs, publicBindings_words, ne_eq,
+    not_true_eq_false, ↓reduceIte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarFunc.lean:208:101: This simp argument is unused:
+  Bool.false_eq_true
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [extractScalarFunc, scalarSignature_accepts signature, annotations, Bool.not_true, ↓reduceIte,
+    lambdas, bind, Option.bind, LeanExe.Source.Scalar.PublicResult.encode, inputs, publicBindings_words, ne_eq,
+    not_true_eq_false, ↓reduceIte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarFunc.lean:214:73: This simp argument is unused:
+  annotations
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [extractScalarFunc, scalarSignature_accepts signature, Bool.not_true, Bool.false_eq_true,
+    ↓reduceIte, lambdas, bind, Option.bind, LeanExe.Source.Scalar.PublicResult.encode, inputs, publicBindings_words,
+    ne_eq, not_true_eq_false, ↓reduceIte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarFunc.lean:214:86: This simp argument is unused:
+  Bool.not_true
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [extractScalarFunc, scalarSignature_accepts signature, annotations, Bool.false_eq_true, ↓reduceIte,
+    lambdas, bind, Option.bind, LeanExe.Source.Scalar.PublicResult.encode, inputs, publicBindings_words, ne_eq,
+    not_true_eq_false, ↓reduceIte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarFunc.lean:214:101: This simp argument is unused:
+  Bool.false_eq_true
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [extractScalarFunc, scalarSignature_accepts signature, annotations, Bool.not_true, ↓reduceIte,
+    lambdas, bind, Option.bind, LeanExe.Source.Scalar.PublicResult.encode, inputs, publicBindings_words, ne_eq,
+    not_true_eq_false, ↓reduceIte]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarFunc
+error: build failed

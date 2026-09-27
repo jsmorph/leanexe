@@ -1,0 +1,101 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [66/66] Building LeanExe.Extract.ScalarSignature (1.2s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarSignature.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarSignature.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarSignature.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarSignature.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarSignature.setup.json --json
+error: LeanExe/Extract/ScalarSignature.lean:34:53: unsolved goals
+case case1
+arity : Nat
+result : Source.Scalar.PublicResult
+parsed : 0 = arity ∧ Source.Scalar.PublicResult.word = result
+⊢ Source.Scalar.Arrow (Lean.Expr.const `UInt64 []) arity result
+
+case case2
+arity : Nat
+result : Source.Scalar.PublicResult
+parsed : 0 = arity ∧ Source.Scalar.PublicResult.boolean = result
+⊢ Source.Scalar.Arrow (Lean.Expr.const `Bool []) arity result
+
+case case3
+inner✝ : Lean.Expr
+result✝ : Source.Scalar.PublicResult
+arity : Nat
+result : Source.Scalar.PublicResult
+x✝ : scalarSignature? inner✝ = some (arity, result)
+ih1✝ :
+  ∀ {arity_1 : Nat} {result_1 : Source.Scalar.PublicResult},
+    arity = arity_1 ∧ result = result_1 → Source.Scalar.Arrow inner✝ arity_1 result_1
+parsed : 0 = arity ∧ result✝ = result
+⊢ Source.Scalar.Arrow ((Lean.Expr.const `Id [Lean.Level.zero]).app inner✝) arity result
+
+case case4
+inner✝ : Lean.Expr
+x✝ : ∀ (result : Source.Scalar.PublicResult), scalarSignature? inner✝ = some (0, result) → False
+ih1✝ :
+  ∀ {arity : Nat} {result : Source.Scalar.PublicResult},
+    scalarSignature? inner✝ = some (arity, result) → Source.Scalar.Arrow inner✝ arity result
+arity : Nat
+result : Source.Scalar.PublicResult
+parsed : none = some (arity, result)
+⊢ Source.Scalar.Arrow ((Lean.Expr.const `Id [Lean.Level.zero]).app inner✝) arity result
+
+case case5
+binderName✝ : Lean.Name
+body✝ : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+ih1✝ :
+  ∀ {arity : Nat} {result : Source.Scalar.PublicResult},
+    scalarSignature? body✝ = some (arity, result) → Source.Scalar.Arrow body✝ arity result
+arity : Nat
+result : Source.Scalar.PublicResult
+parsed : ∃ a, scalarSignature? body✝ = some a ∧ a.fst + 1 = arity ∧ a.snd = result
+⊢ Source.Scalar.Arrow (Lean.Expr.forallE binderName✝ (Lean.Expr.const `UInt64 []) body✝ binderInfo✝) arity result
+
+case case6
+binderName✝ : Lean.Name
+body✝ : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+ih1✝ :
+  ∀ {arity : Nat} {result : Source.Scalar.PublicResult},
+    scalarSignature? body✝ = some (arity, result) → Source.Scalar.Arrow body✝ arity result
+arity : Nat
+result : Source.Scalar.PublicResult
+parsed : ∃ a, scalarSignature? body✝ = some a ∧ a.fst + 1 = arity ∧ a.snd = result
+⊢ Source.Scalar.Arrow (Lean.Expr.forallE binderName✝ (Lean.Expr.const `Bool []) body✝ binderInfo✝) arity result
+
+case case7
+data✝ : Lean.MData
+body✝ : Lean.Expr
+arity : Nat
+result : Source.Scalar.PublicResult
+ih1✝ :
+  ∀ {arity_1 : Nat} {result_1 : Source.Scalar.PublicResult},
+    arity = arity_1 ∧ result = result_1 → Source.Scalar.Arrow body✝ arity_1 result_1
+parsed : scalarSignature? body✝ = some (arity, result)
+⊢ Source.Scalar.Arrow (Lean.Expr.mdata data✝ body✝) arity result
+
+case case8
+t✝ : Lean.Expr
+x✝⁵ : t✝ = Lean.Expr.const `UInt64 [] → False
+x✝⁴ : t✝ = Lean.Expr.const `Bool [] → False
+x✝³ : ∀ (inner : Lean.Expr), t✝ = (Lean.Expr.const `Id [Lean.Level.zero]).app inner → False
+x✝² :
+  ∀ (binderName : Lean.Name) (body : Lean.Expr) (binderInfo : Lean.BinderInfo),
+    t✝ = Lean.Expr.forallE binderName (Lean.Expr.const `UInt64 []) body binderInfo → False
+x✝¹ :
+  ∀ (binderName : Lean.Name) (body : Lean.Expr) (binderInfo : Lean.BinderInfo),
+    t✝ = Lean.Expr.forallE binderName (Lean.Expr.const `Bool []) body binderInfo → False
+x✝ : ∀ (data : Lean.MData) (body : Lean.Expr), t✝ = Lean.Expr.mdata data body → False
+arity : Nat
+result : Source.Scalar.PublicResult
+parsed : none = some (arity, result)
+⊢ Source.Scalar.Arrow t✝ arity result
+warning: LeanExe/Extract/ScalarSignature.lean:36:81: This simp argument is unused:
+  Option.not_mem_none
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all only [Option.map_eq_some_iff, Option.some.injEq, Prod.mk.injEq]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarSignature
+error: build failed

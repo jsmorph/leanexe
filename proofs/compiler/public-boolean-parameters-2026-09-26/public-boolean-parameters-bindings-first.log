@@ -1,0 +1,44 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [31/31] Building LeanExe.Extract.ScalarPublicBindings (784ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarPublicBindings.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarPublicBindings.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarPublicBindings.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarPublicBindings.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarPublicBindings.setup.json --json
+error: LeanExe/Extract/ScalarPublicBindings.lean:81:63: typeclass instance problem is stuck
+  GetElem? (List UInt64) ?m.1 (?m.29 index slot) (?m.32 index slot value)
+
+Note: Lean will not try to resolve this typeclass instance problem because the second type argument to `GetElem?` is a metavariable. This argument must be fully determined before Lean will try to resolve the typeclass.
+
+Hint: Adding type annotations and supplying implicit arguments to functions can give Lean more information for typeclass resolution. For example, if you have a variable `x` that you intend to be a `Nat`, but Lean reports it as having an unresolved type like `?m`, replacing `x` with `(x : Nat)` can get typeclass resolution un-stuck.
+error: LeanExe/Extract/ScalarPublicBindings.lean:116:21: Type mismatch
+  choice Comparison.bne (IR.Expr.local slot) (IR.Expr.u64 0) (IR.Expr.u64 1) (IR.Expr.u64 0)
+has type
+  P (IR.Expr.local slot) →
+    P (IR.Expr.u64 0) →
+      P (IR.Expr.u64 1) →
+        P (IR.Expr.u64 0) →
+          P
+            (IR.Expr.ite (lowerComparison Comparison.bne (IR.Expr.local slot) (IR.Expr.u64 0)) (IR.Expr.u64 1)
+              (IR.Expr.u64 0))
+but is expected to have type
+  ScalarBinding.Holds P (publicBinding PublicArgument.boolean slot)
+error: LeanExe/Extract/ScalarPublicBindings.lean:110:22: unsolved goals
+case cons.cons.inr
+P : IR.Expr → Prop
+literal : ∀ (n : Nat), P (IR.Expr.u64 n)
+choice : ∀ (op : Comparison) (a b t e : IR.Expr), P a → P b → P t → P e → P (IR.Expr.ite (lowerComparison op a b) t e)
+input : PublicArgument
+inputs : List PublicArgument
+ih :
+  ∀ (slots : List Nat),
+    (∀ (slot : Nat), slot ∈ slots → P (IR.Expr.local slot)) →
+      ∀ (binding : ScalarBinding), binding ∈ publicBindingsFor inputs slots → ScalarBinding.Holds P binding
+slot : Nat
+slots : List Nat
+reads : ∀ (slot_1 : Nat), slot_1 ∈ slot :: slots → P (IR.Expr.local slot_1)
+binding : ScalarBinding
+member✝ : binding ∈ publicBinding input slot :: publicBindingsFor inputs slots
+member : binding ∈ publicBindingsFor inputs slots
+⊢ ScalarBinding.Holds P binding
+error: LeanExe/Extract/ScalarPublicBindings.lean:117:12: unexpected token '('; expected command
+Some required targets logged failures:
+- LeanExe.Extract.ScalarPublicBindings
+error: build failed

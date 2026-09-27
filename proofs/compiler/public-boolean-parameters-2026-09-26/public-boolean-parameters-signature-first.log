@@ -1,0 +1,17 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [66/66] Building LeanExe.Extract.ScalarSignature (1.1s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarSignature.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarSignature.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarSignature.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarSignature.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarSignature.setup.json --json
+error: LeanExe/Extract/ScalarSignature.lean:36:4: simp_all made no progress
+error: LeanExe/Extract/ScalarSignature.lean:36:4: simp_all made no progress
+error: LeanExe/Extract/ScalarSignature.lean:31:8: (kernel) declaration has metavariables 'LeanExe.Extract.Core.scalarSignature_sound'
+warning: LeanExe/Extract/ScalarSignature.lean:36:77: This simp argument is unused:
+  Option.not_mem_none
+
+Hint: Omit it from the simp argument list.
+  [apply] simp_all only [Option.map_eq_some_iff, Option.some.injEq, Prod.mk.injEq]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarSignature
+error: build failed

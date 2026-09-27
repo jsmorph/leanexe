@@ -1,0 +1,14 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [4/4] Building LeanExe.Source.ScalarPublicArgument (788ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarPublicArgument.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarPublicArgument.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarPublicArgument.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarPublicArgument.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarPublicArgument.setup.json --json
+error: LeanExe/Source/ScalarPublicArgument.lean:54:24: Type mismatch: After simplification, term
+  congrArg (List.cons (Value.word arg)) ih
+ has type
+  List.zipWith PublicArgument.decode (List.replicate args.length PublicArgument.word) args = List.map Value.word args
+but is expected to have type
+  List.zipWith PublicArgument.decode (List.replicate (args.length + 1) PublicArgument.word) (arg :: args) =
+    Value.word arg :: List.map Value.word args
+Some required targets logged failures:
+- LeanExe.Source.ScalarPublicArgument
+error: build failed
