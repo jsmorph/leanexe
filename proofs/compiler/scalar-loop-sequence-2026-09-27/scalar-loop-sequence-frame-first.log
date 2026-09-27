@@ -1,0 +1,41 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/scalar-store-frame.lean:11:2: error: unsolved goals
+case isTrue.refl
+store : ScalarStore
+index : Nat
+value : UInt64
+suffix : ScalarStore
+bound : index < List.length store
+⊢ index < List.length store + List.length suffix
+../work/scalar-store-frame.lean:13:10: warning: This simp argument is unused:
+  List.set_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [bound, show index < (store ++ suffix).length by simp; omega]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+../work/scalar-store-frame.lean:13:34: warning: This simp argument is unused:
+  show index < (store ++ suffix).length by simp; omega
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [List.set_append, bound]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+../work/scalar-store-frame.lean:22:5: error: unexpected token 'local'; expected '_' or identifier
+../work/scalar-store-frame.lean:22:4: error: Missing alternative name: Expected `local`, `const`, `bin`, `iteTrue`, `iteFalse`, or `letE`
+../work/scalar-store-frame.lean:21:4: error: Alternative `local` has not been provided
+../work/scalar-store-frame.lean:21:4: error: Alternative `const` has not been provided
+../work/scalar-store-frame.lean:21:4: error: Alternative `bin` has not been provided
+../work/scalar-store-frame.lean:21:4: error: Alternative `iteTrue` has not been provided
+../work/scalar-store-frame.lean:21:4: error: Alternative `iteFalse` has not been provided
+../work/scalar-store-frame.lean:21:4: error: Alternative `letE` has not been provided
+../work/scalar-store-frame.lean:22:11: error: unexpected identifier; expected 'binder_predicate', 'builtin_cbv_simproc', 'builtin_dsimproc', 'builtin_simproc', 'cbv_simproc', 'def_eval_config_item', 'dsimproc', 'elab', 'elab_rules', 'grind_pattern', 'infix', 'infixl', 'infixr', 'instance', 'macro', 'macro_rules', 'notation', 'postfix', 'prefix', 'simproc', 'syntax' or 'unif_hint'
+../work/scalar-store-frame.lean:22:35: error: unexpected token '('; expected 'binder_predicate', 'builtin_cbv_simproc', 'builtin_dsimproc', 'builtin_simproc', 'cbv_simproc', 'def_eval_config_item', 'dsimproc', 'elab', 'elab_rules', 'grind_pattern', 'infix', 'infixl', 'infixr', 'instance', 'macro', 'macro_rules', 'notation', 'postfix', 'prefix', 'simproc', 'syntax' or 'unif_hint'
+../work/scalar-store-frame.lean:44:0: error: Missing name after `end`: Expected the current scope name `IR`
+
+Hint: To end the current scope `IR`, specify its name:
+  end ̲I̲R̲
+../work/scalar-store-frame.lean:52:69: error(lean.invalidField): Invalid field `write_append`: The environment does not contain `Eq.write_append`, so it is not possible to project the field `write_append` from an expression
+  write
+of type `s₁✝.write index✝ v✝ = some s₂✝`

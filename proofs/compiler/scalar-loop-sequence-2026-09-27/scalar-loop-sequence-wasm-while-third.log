@@ -1,0 +1,104 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [3033/3069] Replayed Interpreter.Wasm.Mem
+warning: Interpreter/Wasm/Mem.lean:133:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:152:8: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:152:19: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:153:8: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:155:20: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:155:32: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:156:10: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:156:21: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:219:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:222:10: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:226:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:228:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:231:12: `dif_pos` has been deprecated: Use `dite_eq_left` instead
+warning: Interpreter/Wasm/Mem.lean:233:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:236:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:246:10: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:266:12: `dif_neg` has been deprecated: Use `dite_eq_right` instead
+warning: Interpreter/Wasm/Mem.lean:300:44: `if_pos` has been deprecated: Use `ite_eq_left` instead
+⚠ [3044/3069] Replayed Interpreter.Wasm.Semantics.Lemmas
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:162:25: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:166:50: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:168:25: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:172:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:224:40: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:226:38: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:229:38: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:262:40: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:264:38: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:267:38: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:433:15: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:443:15: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Interpreter/Wasm/Semantics/Lemmas.lean:513:66: `if_pos` has been deprecated: Use `ite_eq_left` instead
+ℹ [3050/3069] Replayed Project.TalosCompat
+info: Project/TalosCompat.lean:92:0: 'Wasm.exec_block_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/TalosCompat.lean:93:0: 'Wasm.exec_iff_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/TalosCompat.lean:94:0: 'Wasm.wp_block_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: Project/TalosCompat.lean:95:0: 'Wasm.wp_iff_control_types' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [3051/3069] Replayed Project.ProofKit.ScalarTransition
+warning: Project/ProofKit/ScalarTransition.lean:87:45: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:101:12: `if_false` has been deprecated: Use `ite_false` instead
+warning: Project/ProofKit/ScalarTransition.lean:101:22: `if_true` has been deprecated: Use `ite_true` instead
+warning: Project/ProofKit/ScalarTransition.lean:667:16: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:669:16: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:711:16: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:714:16: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:831:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:842:12: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:863:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:876:12: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:893:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:908:12: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: Project/ProofKit/ScalarTransition.lean:664:25: This simp argument is unused:
+  List.cons_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.nil_append, Wasm.wp_iff_control_types]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ProofKit/ScalarTransition.lean:664:43: This simp argument is unused:
+  List.nil_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.cons_append, Wasm.wp_iff_control_types]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ProofKit/ScalarTransition.lean:708:25: This simp argument is unused:
+  List.cons_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.nil_append, Wasm.wp_iff_control_types]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ProofKit/ScalarTransition.lean:708:43: This simp argument is unused:
+  List.nil_append
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [List.cons_append, Wasm.wp_iff_control_types]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Project/ProofKit/ScalarTransition.lean:968:12: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: Project/ProofKit/ScalarTransition.lean:981:12: `if_pos` has been deprecated: Use `ite_eq_left` instead
+⚠ [3062/3069] Replayed Project.Compiler.ScalarLowering
+warning: Project/Compiler/ScalarLowering.lean:49:50: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+warning: Project/Compiler/ScalarLowering.lean:112:116: This simp argument is unused:
+  LeanExe.Wasm.ScalarDescriptor.instBEqU64Op
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [LeanExe.Wasm.ScalarDescriptor.U64Op.ctorIdx, LeanExe.Wasm.ScalarDescriptor.instBEqU64Op.beq, BEq.beq,
+    LeanExe.Wasm.ScalarDescriptor.Expr.emit, expression, operation, Project.ProofKit.ScalarTransition.Expr.program,
+    LeanExe.Wasm.ScalarDescriptor.U64Op.instruction, Project.ProofKit.ScalarTransition.U64Op.instruction,
+    program_append, program, instruction, expression_program a, expression_program b]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [3064/3069] Replayed Project.Compiler.ScalarEvaluation
+warning: Project/Compiler/ScalarEvaluation.lean:24:6: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [3069/3069] Built Project.Compiler.ScalarWhileExecution (3.5s)
+Build completed successfully (3069 jobs).

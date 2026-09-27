@@ -1066,31 +1066,28 @@ All six fixed probes compile; the word-tail probe already compiled before the
 extension. The corpus contains 1723 declarations. Evidence is in
 [the outer Boolean-loop archive](proofs/compiler/boolean-binary-boolean-loop-helper-2026-09-27/README.md).
 
-Current capability: consecutive bounded loops with word results.
-Six fixed probes report 0 accepted and 6 rejected before the increment.
-The finite-store frame theorem and source totality pass with the factored
-single-loop execution proof (187 targets). Sequence-plan width, result-slot
-bounds, prefix preservation, composition and public-result execution pass
-177 targets. Extraction, complete admission, source reconstruction, captured
-binding preservation, source correctness and IR invariants pass 208 targets.
-All five word-result probes are accepted by the sequence extractor; the
-Boolean-result probe remains deferred. Descriptor admission, exact emission and
-scratch bounds pass 237 targets. Finite-loop trace termination and IR-to-WASM
-trace preservation pass 3069 cached targets. Generic program execution and
-sequence stack typing pass 3286 and 3293 cached targets. Whole-function execution
-passes 3292 targets; byte parsing and execution pass 3337 targets. Public compiler
-and validator integration pass 3379 targets. All five word-result probes now
-compile through normal admission; the Boolean-result probe remains deferred.
-Focused tests pass 14,016 native/IR comparisons, 18,432 invalid-input checks and
-576 admission controls. Ten native fixtures and eight additional axiom audits
-are registered, including the unchanged rangeTwice and rangeLetTwoLoops examples
-previously expected to reject. The complete proof gate passes 3413 targets and all 53 axiom audits.
-Independent engine checks are in progress.
+Consecutive bounded word-result loops are proved through WASM. Word lets and
+standard Id binds compose any finite number of admitted computations. Fresh
+locals preserve earlier results and captures; dependent bounds, early exits,
+continue, unused computations and retained Id annotations are covered. The
+complete proof gate passes 3413 targets and all 53 audits. Native Lean/V8 agree
+on 2,603 inputs across 124 declarations; all 114 prior modules retain identical
+bytes. New tests pass 14,016 comparisons, 18,432 invalid-input checks and 576
+controls. Prior tests pass 18,816 comparisons, 35,328 invalid inputs and 768
+controls. Five fixed word probes now compile; the Boolean-result probe remains
+deferred. The corpus contains 1733 declarations. Evidence is in
+[the sequence archive](proofs/compiler/scalar-loop-sequence-2026-09-27/README.md).
 
-Next: Boolean-result loop combinations and nested loops. Broader helper
-signatures, heap values, floats, imports and global calls remain outside the
-complete compiler theorem. Full-dialect correctness remains unfinished.
-Complete each capability through WASM and commit/push frequently.
+Current capability: word prefixes with Boolean-result loop continuations.
+All six fixed native probes reject before this increment. Reuse sequence plans,
+framing, descriptors, WASM execution, bytes and validation. Prove independent
+Boolean sequence semantics, source totality, exact admission, capture preservation,
+result encoding and invariants, then finish native/IR and V8 checks.
+
+Next: Boolean-result bound prefixes and nested loops. Broader helper signatures,
+heap values, floats, imports and global calls remain outside the complete compiler
+theorem. Full-dialect correctness remains unfinished. Complete each capability
+through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
