@@ -351,9 +351,8 @@ theorem extractScalarStepWith_booleanBind (locals : List ScalarStepBinding)
     (name : Lean.Name) (bi : Lean.BinderInfo) (body : Lean.Expr) :
     extractScalarStepWith locals
       (LeanExe.Source.Scalar.BooleanIdentity.bind name bi action.expr body (Step.resultType type)) = (do
-      let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) action.leaf
-        (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
-      extractScalarStepWith (.scalar (.boolean (guardWord c)) :: locals) body) := by
+      let bound ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) (.app (.const ``Bool.toUInt64 []) action.expr)
+      extractScalarStepWith (.scalar (.boolean bound) :: locals) body) := by
   rw [LeanExe.Source.Scalar.BooleanIdentity.bind, extractScalarStepWith,
     scalarStepResultType_accepts, booleanAction_accepts]
 

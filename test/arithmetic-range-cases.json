@@ -450,5 +450,13 @@
   "rangeBooleanPredicateBindStep",
   "rangeBooleanPredicateBindCondition",
   "rangeBooleanPredicateBindOuter",
-  "rangeBooleanPredicateBindOuterCapture"
+  "rangeBooleanPredicateBindOuterCapture",
+  "rangeBooleanPredicateLoopBindBreak",
+  "rangeBooleanPredicateLoopBindContinue",
+  "rangeBooleanPredicateLoopBindChoice",
+  "rangeBooleanPredicateLoopBindCapture",
+  "rangeBooleanPredicateOuterBindBounds",
+  "rangeBooleanPredicateOuterBindCapture",
+  "rangeBooleanPredicateOuterBindChoice",
+  "rangeBooleanPredicateOuterBindDirect"
 ]

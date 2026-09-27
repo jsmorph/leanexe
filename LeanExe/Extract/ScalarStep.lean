@@ -36,9 +36,8 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
           match booleanAction? value with
           | none => none
           | some action => do
-              let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) action.leaf
-                (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
-              extractScalarStepWith (.scalar (.boolean (guardWord c)) :: locals) body
+              let bound ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) (.app (.const ``Bool.toUInt64 []) action.expr)
+              extractScalarStepWith (.scalar (.boolean bound) :: locals) body
   | .app (.app (.app (.app (.app (.app (.const ``Bind.bind [.zero, .zero]) (.const ``Id [.zero]))
       (.app (.app (.const ``Monad.toBind [.zero, .zero]) (.const ``Id [.zero]))
         (.const ``Id.instMonad [.zero]))) (.const ``UInt64 []))
