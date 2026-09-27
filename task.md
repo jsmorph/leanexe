@@ -267,13 +267,14 @@ thirteen ranges; eighteen shared modules retain identical bytes. New tests pass
 tests pass 10,328 comparisons, 7,625 invalid-input checks and 512 controls.
 Evidence is in [the saved mixed-guard archive](proofs/compiler/saved-mixed-guard-2026-09-26/README.md).
 
-Direct Boolean helper calls in mixed propositional guards pass parser, scalar,
-loop and IR invariant proofs. Bool- and UInt64-input calls preserve arguments,
-captures, negation and Id result annotations, including nested calls. New tests
-pass 18,100 native/IR comparisons, 12,288 invalid-input checks and 256 controls.
-Prior guard, decision, proposition and bind tests pass 28,428 comparisons,
-18,633 invalid-input checks and 768 controls. The general compiler theorem,
-native/V8 comparisons and evidence archive are next for this increment.
+Direct Boolean helper calls in mixed propositional guards are complete. Bool- and
+UInt64-input calls preserve arguments, captures, negation and Id result annotations,
+including nested calls. The general source-to-WASM theorem and eighteen audits
+pass. Native Lean/V8 agree on 509 inputs across 28 declarations, including
+thirteen ranges; eighteen shared modules retain identical bytes. New tests pass
+18,100 native/IR comparisons, 12,288 invalid-input checks and 256 controls. Prior
+tests pass 28,428 comparisons, 18,633 invalid-input checks and 768 controls.
+Evidence is in [the call mixed-guard archive](proofs/compiler/call-mixed-guard-2026-09-26/README.md).
 
 Next capabilities: compound Boolean expressions in mixed propositional guards,
 standalone propositional negation of local Boolean values, retained instance and

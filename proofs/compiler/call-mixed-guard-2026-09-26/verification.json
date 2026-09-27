@@ -1,0 +1,151 @@
+{
+  "candidate": "5b28c84cb756f71eb30922bfede697675e6bc483",
+  "branch": "correct",
+  "lean": "4.34.0-rc2",
+  "leanCommit": "6a10ac8c22beadecabdbb0919c2b50214762f91d",
+  "node": "24.13.0",
+  "runner": "tools/leanrun, authorized local mode, serial lock",
+  "proofCommand": "tools/arithmetic-check.js proof",
+  "axiomAudits": 18,
+  "engineCommand": "tools/arithmetic-check.js subset-engine call-mixed-guard",
+  "nativeV8Comparisons": 509,
+  "declarations": 28,
+  "rangeDeclarations": 13,
+  "rangeComparisons": 312,
+  "priorModulesByteIdentical": 18,
+  "focusedNativeIRComparisons": 18100,
+  "focusedRejections": 12288,
+  "admissionControls": 256,
+  "priorNativeIRComparisons": 28428,
+  "priorRejections": 18633,
+  "priorAdmissionControls": 768,
+  "fullCorpusDeclarations": 996,
+  "deferred": "Compound Boolean expressions in mixed propositions, standalone propositional negation of local Boolean values, retained instance and Bool-parameter Id wrappers, full LeanExe dialect compiler correctness.",
+  "sourceHashes": {
+    "LeanExe/Extract/ScalarGuardSyntax.lean": "aec5d04d9f6b6872e17984400f91d2eccd743ba1695640264e4ed88c30460fcd",
+    "LeanExe/Extract/ScalarSavedBooleanGuard.lean": "b9b259f33be70ea22e6b57fb136d2bb21d0687477d5d34a1f452b90bc05589cf",
+    "LeanExe/Source/ScalarSavedBooleanGuard.lean": "2d96e7357a2412da43708d4c1d3349f1559e80ef59a6f8acacdc1d2fd732b52a",
+    "test/ArithmeticMilestone.lean": "bed0fde78b9850f609276fe33a0440f3109e3cd036f04a7af56136696022f760",
+    "test/arithmetic-engine-groups.json": "00e320157901a722c60c33e212075da5932e01db177d63b9b2976ce4efa6fe3e",
+    "test/arithmetic-range-cases.json": "6d1b4555fc944b8e02d24c113d4473ba6b3b9924be720b30f07c2e3276bb6597",
+    "test/arithmetic_engine.mjs": "db22b5d58a7ab2a39d9af877602a41e3b6f193c81b545401b8e54f83ade7aaa8",
+    "test/arithmetic_mode.lean": "bda9b4560204b2d539afd6520867cdb9c1ec15f9927f9b2cf03520fdb74ec63f",
+    "test/scalar_call_mixed_guard.lean": "685fd9d25228d1c05f2762fe70c8e306ad53ef8e97a42e88afdd667fc52cefee",
+    "test/scalar_call_mixed_guard_syntax.lean": "32071b8f9fd8cdd08cec391c604210287f5254ffcfc13bb900c5176ad9fd5cc6",
+    "test/scalar_saved_mixed_guard_syntax.lean": "14d155d3c6d3fb12d98bded2e1a4ef99b20652d8f4e8fa80489fe0163a8a59b7"
+  },
+  "modules": {
+    "callMixedBool": {
+      "sha256": "9dae63c264121ab1e1a83b4368e572637d552d72577954f98b73cfae6d5886fc",
+      "bytes": 1139
+    },
+    "callMixedDecision": {
+      "sha256": "c08aa9b85ca81ea7547955d5ac67e9a07a14816bea2014efabca3e19f6265e27",
+      "bytes": 1236
+    },
+    "callMixedHelper": {
+      "sha256": "e977225066b2bd309187969ea822e1c7685fcb25c7cfae572f0f52fc3bfc9628",
+      "bytes": 1440
+    },
+    "callMixedNegation": {
+      "sha256": "22c7b4c4200dae8463f8bbbe08782326cdef84a7cf021875961fc50e789989c4",
+      "bytes": 1273
+    },
+    "callMixedPair": {
+      "sha256": "e846138c9b4faa317be1eed8955dc719516a6242e6a9c51d657790791388011b",
+      "bytes": 1174
+    },
+    "callMixedWord": {
+      "sha256": "df0e5e7d03df99a12c3f0e5fc1b742fe5a638afd71082a2ea96908cd0a32ba2b",
+      "bytes": 1137
+    },
+    "compareBEq": {
+      "sha256": "8b78f34b72461c7b8afac50957add431bc3ea9b0aed671c1d0938d044106605d",
+      "bytes": 1063
+    },
+    "constant": {
+      "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "bytes": 1042
+    },
+    "mixedGuardDo": {
+      "sha256": "1f4c92a71bc21ed1f377a29564554caeac842a179c7c3457753296bfa09a960e",
+      "bytes": 1290
+    },
+    "rangeBooleanPredicateResultStep": {
+      "sha256": "f1778f69020a009c27742c986b101bcfe2d3add93ecb61da5225c226e26e0022",
+      "bytes": 1581
+    },
+    "rangeBooleanResultBindCondition": {
+      "sha256": "acb13307754ab29fcd06b095928002ec77fe15548ab7436d255601a5dc5f7da8",
+      "bytes": 1259
+    },
+    "rangeBooleanResultBindHelper": {
+      "sha256": "3c362b303298335fbe5f0f9f92e5b7270167d7a7d62f7153e34b3300a5b19539",
+      "bytes": 1409
+    },
+    "rangeBooleanResultBindOuter": {
+      "sha256": "f5722a21323c6c6b028b23d5755a922b7d36a48ed030fba383137bb96df11b97",
+      "bytes": 1607
+    },
+    "rangeBooleanResultBindStep": {
+      "sha256": "0c17bb4b5148af8df46a5e1d4ed4f86d030ccdc2d80d78055d953150eafbd631",
+      "bytes": 1216
+    },
+    "rangeCallMixedContinue": {
+      "sha256": "73e150df6ff5c9b551844939ec40f08c2a91083e8027d452c8fba5091f24dac9",
+      "bytes": 1178
+    },
+    "rangeCallMixedHelper": {
+      "sha256": "a587ca10cc1b3799a13049e1a4e273bcbfe5cdc5938745ad8a9dfcefebf28c95",
+      "bytes": 1736
+    },
+    "rangeCallMixedOuter": {
+      "sha256": "f1f4d75fd4ecfbd19159afc30725d290c510dc1cb69ebc61bfa378604ccff8f3",
+      "bytes": 1555
+    },
+    "rangeCallMixedStep": {
+      "sha256": "38edaf175c80e88051803c673e2fb771f2756dfa07fac4ee26b5e9582c4ee881",
+      "bytes": 1289
+    },
+    "rangeSavedMixedContinue": {
+      "sha256": "f4cd137d3c3b029316dfc0ace27f7e44abae9aac236d508add5b3a749815e10e",
+      "bytes": 1177
+    },
+    "rangeSavedMixedHelper": {
+      "sha256": "d49f86cadfee983df402f4e4a5b287b8b8a5d7b71fdd8bb970541430f197248e",
+      "bytes": 2016
+    },
+    "rangeSavedMixedOuter": {
+      "sha256": "3da398daf3d3922a4ae1e1e2bccdfbb803ef9f791a103c933bac7ce4348e4cea",
+      "bytes": 1430
+    },
+    "rangeSavedMixedStep": {
+      "sha256": "cb6f265fa4285390fccc5659dadb76954fb251d6a51d0b55f8830e7fff03ef3f",
+      "bytes": 1239
+    },
+    "savedMixedDecision": {
+      "sha256": "57c0d6d08b7cae343298f3eded01d5df33ad1f8d246322abb7c646bf356b92ab",
+      "bytes": 1212
+    },
+    "savedMixedHelper": {
+      "sha256": "6734b8eef47a2ca7a0a97f746ec041fb22235507be63d9a3689cef8c530ab540",
+      "bytes": 1412
+    },
+    "savedMixedLeft": {
+      "sha256": "0e09c64f974d59efa4fe7ef35d8ce76f2798cbf90e1d798b9e47d6a794404f88",
+      "bytes": 1115
+    },
+    "savedMixedNegation": {
+      "sha256": "af6aeeb568a4c145d5e37e1fff1d27d4b240e9c3a628db3c64fb09171282801c",
+      "bytes": 1201
+    },
+    "savedMixedPair": {
+      "sha256": "c7aea62c33ccd94875bef37cbdb31ae1e9900cde6ecdfed6062c552cc830bf84",
+      "bytes": 1148
+    },
+    "savedMixedRight": {
+      "sha256": "2c17e138dc2e0b280f630d561ba83e2e9d58203fb65df8b982780df1cabc5b51",
+      "bytes": 1257
+    }
+  }
+}
