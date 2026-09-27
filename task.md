@@ -918,12 +918,22 @@ the conditional result bind are restored; three result controls remain accepted.
 The corpus contains 1603 declarations. Evidence is in
 [the step result function archive](proofs/compiler/boolean-step-result-function-2026-09-27/README.md).
 
-Current capability: scalar helper declarations within Boolean steps. All four
-word/Boolean input/output combinations now have source totality, exact annotation
-checks, extraction correctness, acceptance/support and invariant proofs. Four
-fixed probes now compile. The public compiler build passes, and new tests pass
-27,936 native/IR comparisons and 16,128 invalid-input checks. Source-to-WASM audits
-and independent V8 comparisons are pending.
+Scalar helper declarations inside Boolean loop steps are proved through WASM.
+All four word/Boolean input/output combinations preserve lexical captures,
+nested/repeated calls and exact standard Id annotations. Unused bodies are
+checked. The general source-to-WASM theorem and nineteen audits pass. Native
+Lean/V8 agree on 1,101 inputs across 56 declarations; 44 prior modules retain
+identical bytes and 0 changed. New tests pass 27,936 comparisons and
+16,128 invalid-input checks; prior tests pass 81,840 comparisons and 43,296
+invalid-input checks. Four fixed scalar-helper probes are restored and four
+result-function controls remain accepted. The corpus contains 1615 declarations.
+Evidence is in
+[the Boolean step scalar-helper archive](proofs/compiler/boolean-step-scalar-function-2026-09-27/README.md).
+
+Current capability: inspecting complete Boolean step results. Preserve fixed
+match/casesOn probes, check exact motives and branch domains, and prove primitive
+casesOn elimination through WASM. Ordinary match uses a generated matcher declaration,
+which needs a separate checked declaration-expansion capability.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
