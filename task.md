@@ -523,14 +523,17 @@ controls. Prior tests pass 161,280 comparisons, 96,768 invalid-input checks and
 8,064 controls. Evidence is in
 [the direct-continuation archive](proofs/compiler/boolean-loop-direct-continuation-2026-09-27/README.md).
 
-Current capability: standard wrappers around local Boolean loop calls. Exact
-source call shapes and the recursive wrapper parser preserve Id.run, pure and
-metadata around calls. Source, extraction, correctness, invariant, public compiler
-and WASM admission proofs pass. New tests pass 97,008 native/IR comparisons, 55,296 invalid-input checks
-and 3,456 equivalent-binding controls, including the saved failing Id.run case.
-The complete compiler proof and native Lean/WASM checks are next.
+Standard wrappers around local Boolean loop calls are complete. Exact source
+call shapes preserve arbitrary finite Id.run, pure and metadata wrappers and
+captured argument references. The saved Id.run failure now passes. The complete
+source-to-WASM theorem and nineteen audits pass. Native Lean/V8 agree on 609
+inputs across 28 declarations, including twenty-three ranges; eighteen prior
+modules retain identical bytes. New tests pass 97,008 native/IR comparisons,
+55,296 invalid-input checks and 3,456 equivalent-binding controls. Prior tests pass
+80,640 comparisons, 61,056 invalid-input checks and 5,184 controls. Evidence is in
+[the wrapped-continuation archive](proofs/compiler/boolean-loop-wrapped-continuation-2026-09-27/README.md).
 
-Next: standard wrappers around local continuation calls, conditional calls to
+Next: Id binds forwarding to local continuations, conditional calls to
 loop-containing continuations, followed by
 retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
