@@ -479,12 +479,16 @@ controls. Prior tests pass 97,008 comparisons, 82,944 invalid-input checks and
 6,912 controls. Evidence is in
 [the multiple-argument loop-helper archive](proofs/compiler/boolean-loop-many-helpers-2026-09-27/README.md).
 
-Current capability: Unit-prefixed word helpers before Boolean loops. Unit and
-PUnit spellings retain the unit binder in source evaluation and captures. The
-focused source, extraction, invariant and WASM-admission proofs pass. New tests
-pass 16,368 native/IR comparisons, 18,432 invalid-input checks and 1,152 unused
-helper controls. Complete compiler proof, native Lean/V8 checks and evidence
-archive are next.
+Unit-prefixed word helpers before Boolean loops are complete for Unit and PUnit
+spellings, including captured functions and standard Id results. The unit binder
+remains in source evaluation; captured values stay fixed across loop states.
+Unused helper bodies are checked. The complete source-to-WASM theorem and nineteen
+audits pass. Native Lean/V8 agree on 609 inputs across 28 declarations, including
+twenty-three ranges; eighteen prior modules retain identical bytes. New tests pass
+16,368 native/IR comparisons, 18,432 invalid-input checks and 1,152 unused helper
+controls. Prior tests pass 40,560 comparisons, 39,168 invalid-input checks and
+2,880 controls. Evidence is in
+[the Unit-prefixed loop-helper archive](proofs/compiler/boolean-loop-unit-helpers-2026-09-27/README.md).
 
 Next: outer conditions and local continuations containing loops, followed by
 retained instances and broader signatures. Conditional Id actions can elaborate
