@@ -29,7 +29,7 @@ button.secondary:hover { background: #eef6f1; }
 .dimensions { display: flex; gap: 22px; margin: 22px 0 18px; }
 .dimensions label { font-size: .88rem; display: flex; align-items: center; gap: 10px; }
 .dimensions select { padding-top: 6px; padding-bottom: 6px; }
-.table-scroll { overflow-x: auto; }
+.table-scroll { overflow: auto; max-height: 560px; }
 table { width: 100%; border-collapse: collapse; font-size: .87rem; }
 caption { text-align: left; color: #596963; margin-bottom: 12px; }
 th { color: #53615a; font-size: .77rem; font-weight: 600; }

@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { once } from "node:events";
-import path from "node:path";
+import fs from "node:fs";
+import beck from "../tools/beck.js";
 import { Worker } from "node:worker_threads";
 import serverModule from "../tools/beck-serve.js";
 import hostModule from "../tools/wasmtime-host.js";
 import processModule from "../tools/run-process.js";
 import { scenarios, invalidScenarios, encode, check } from "../tools/beck-web/scenarios.mjs";
 
-const { createServer, digest, artifact } = serverModule;
+const { createServer } = serverModule;
+const digest = createHash("sha256").update(fs.readFileSync(beck.wasm)).digest("hex");
 const server = createServer();
 server.listen(0, "127.0.0.1");
 await once(server, "listening");
@@ -66,23 +68,23 @@ try {
     { input: { categories: 0, jobs: Array.from({ length: 6 }, () => []) }, status: 0 },
     { input: { categories: 8, jobs: Array.from({ length: 6 }, () => [7, 6, 5, 4, 3, 2, 1, 0]) }, status: 0 },
     { input: { categories: 8, jobs: Array.from({ length: 6 }, () => [7]) }, status: 0 },
-    { input: { categories: 9, jobs: [] }, status: 2 },
+    { input: { categories: 9, jobs: [] }, status: 0 },
   ];
   const host = hostModule.ensureHost();
   for (const test of cases) {
     const result = await execute(test.input);
     assert.equal(result.ok, true, result.message);
     assert.equal(result.status, test.status, JSON.stringify(test.input));
-    const reference = processModule.runChecked([host, "call", path.join(artifact, "program.wasm"), "compute", "array-u64", `array-u64:${encode(test.input).join(",")}`], { encoding: "utf8", timeout: 60_000 });
+    const reference = processModule.runChecked([host, "call", beck.wasm, "compute", "array-u64", `array-u64:${encode(test.input).join(",")}`], { encoding: "utf8", timeout: 60_000 });
     assert.deepEqual(result.result, JSON.parse(reference.stdout), "Browser worker / Wasmtime agreement");
     assert.ok(Number.isFinite(result.milliseconds));
   }
   assert.equal((await execute({ categories: 1, jobs: [[-1]] })).ok, false);
   assert.equal((await execute({ categories: 1, jobs: "wrong type" })).ok, false);
-  assert.throws(() => check(scenarios[1].input, [0, 1, 1, 1, 1, 1, 1]), /exceeds/);
-  assert.throws(() => check(scenarios[1].input, [0, 2, 0, 1, 0, 1, 1]), /overlap/);
-  assert.throws(() => check(scenarios[1].input, [0, 1, 0, 1, 0, 1, 2]), /invalid group/);
-  assert.throws(() => check(scenarios[1].input, [3]), /internal failure/);
+  assert.throws(() => check({ categories: 1, jobs: Array.from({ length: 5 }, () => [0]) }, [0, 1, 1, 1, 1, 1, 1]), /exceeds/);
+  assert.throws(() => check({ categories: 1, jobs: Array.from({ length: 5 }, () => [0]) }, [0, 2, 0, 1, 0, 1, 1]), /overlap/);
+  assert.throws(() => check({ categories: 1, jobs: Array.from({ length: 5 }, () => [0]) }, [0, 1, 0, 1, 0, 1, 2]), /invalid group/);
+  assert.throws(() => check({ categories: 1, jobs: Array.from({ length: 5 }, () => [0]) }, [3]), /internal failure/);
   console.log(`beck web: HTTP identity, ${cases.length} worker/Wasmtime comparisons, validation, and output checks passed`);
 } finally {
   server.closeAllConnections();

@@ -18021,3 +18021,11 @@ A direct multiplication diagnostic exposes function 35 of the prototype in a sep
 The compiler now determines accumulator ownership before adding temporary cleanup.  This prevents conditional cleanup of a temporary from suppressing release of the outer accumulator.  The reduced nested-array test, complete ownership test, 609 Beck native/WASM comparisons, and eight larger memory cases pass.  Direct multiplication now releases every allocation after releasing its inputs and result for each tested size from one through 32 limbs.
 
 The resulting generalized binary has SHA-256 `db621cd72e3af5e4b20e049a33c6165f2016723f9cce75f3196d3fe12f3e9a2b` and 72,991 bytes.  The 32-job, 16-category fixture uses 313,131,008 bytes.  The 64-job fixture uses 2,021,392,384 bytes.  Memory use remains high, and these measurements provide no universal resource guarantee.  The measured executions took longer after the correction.  The cause remains open.
+
+### Retirement of the bounded Beck artifact
+
+The user rejected retaining the six-job product and requested completion of the generalized program.  The retired binary's removal initially left broken registry and demo references.  This correction removes those registrations and 354 obsolete artifact, generated-model, and execution-proof files.  Source mathematics, including the input-name lemmas, remains available for reuse.
+
+The main runner and native harness now execute the generalized implementation.  Duplicate runners and tests are consolidated.  The browser uses the same build and checks its readable-path manifest.  Scenarios now exercise 32 overlapping jobs, 65 jobs in an odd category, dependent categories, and a 17-job cycle.  Documentation states the remaining division, elimination, resource, and execution proof obligations.  The complete generalized theorem remains unfinished.
+
+After consolidation, all 609 native/WASM comparisons, 14 worker/Wasmtime comparisons, and the six-scenario Chromium test pass.  The documentation link check covers 180 maintained files, and no source imports a retired proof module.  The demo is running on `0.0.0.0:8091`.  Its page states the incomplete proof status.

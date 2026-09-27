@@ -39,14 +39,10 @@ Two statement templates cover the artifacts.  Input-generic theorems quantify ov
 
 ## Current Proofs
 
-The [Beck–Fiala partitioner](../../docs/beck.md) has a universal
-[WASM theorem](lean/Project/Beck/Spec.lean) for at most six jobs and eight
-categories.  Every valid input terminates, returns one group per job, and
-has category discrepancy at most `2t-1` for positive maximum overlap `t`.
-The theorem includes exact source agreement, ownership, caller-memory
-preservation, and a sufficient allocation budget.  The
-[exact-binary theorem](lean/Project/Beck/ArtifactTranslation.lean) and
-independent package check pass with standard logical axioms.
+The [Beck–Fiala partitioner](../../docs/beck.md) has checked multiword
+arithmetic lemmas and a rounding theorem over arbitrary finite dimensions.
+The generalized implementation's division, elimination, resource, and
+exact-binary execution proofs remain in progress.
 
 The [GPT guide](../../docs/gpt/README.md) explains the model families and
 execution and numerical goals.  Directory guides describe the

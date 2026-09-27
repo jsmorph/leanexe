@@ -14,7 +14,7 @@
       <p class="eyebrow">LeanExe / Beck–Fiala</p>
       <h1>Split jobs across two groups</h1>
       <p class="intro">A job can belong to several categories. If each job belongs to at most <var>t</var> categories, the two groups’ counts differ by at most <strong>2<var>t</var> − 1</strong> in every category.</p>
-      <p class="subtle">Exact rational rounding, proved in Lean through to this WASM binary. Up to 6 jobs and 8 categories.</p>
+      <p class="subtle">Exact rational rounding with multiword integers. The complete source and WASM proof is in progress.</p>
     </header>
 
     <section class="scenario-panel" aria-labelledby="scenario-heading">
@@ -37,7 +37,7 @@
 
       <section class="panel output" aria-labelledby="output-heading" aria-busy="true">
         <div class="section-title"><h2 id="output-heading">Partition</h2><span class="step">02 / Result</span></div>
-        <p id="status" role="status" aria-live="polite">Loading the verified program.</p>
+        <p id="status" role="status" aria-live="polite">Loading the program.</p>
         <div id="results" hidden>
           <div class="metrics">
             <div><span class="metric-label">Maximum overlap <var>t</var></span><strong id="overlap"></strong></div>
@@ -51,13 +51,14 @@
           <p class="subtle">Recomputed from the memberships and returned assignments.</p>
           <div class="table-scroll" id="counts"></div>
           <p id="result-note" class="subtle"></p>
+          <p id="runtime" class="subtle"></p>
         </div>
       </section>
     </div>
 
     <details class="panel validation">
       <summary>Try an invalid input</summary>
-      <p>Category IDs start at zero. Duplicate memberships and IDs outside the declared range return status 1. More than 6 jobs or 8 categories returns status 2.</p>
+      <p>Category IDs start at zero. Duplicate memberships and IDs outside the declared range return status 1. An incidence array beyond the address limit returns status 2.</p>
       <div id="invalid-presets" class="button-row"></div>
       <label for="raw-input">Input JSON</label>
       <textarea id="raw-input" rows="5" spellcheck="false"></textarea>
@@ -66,12 +67,11 @@
     </details>
 
     <details class="panel proof">
-      <summary>What the proof covers</summary>
-      <p>The universal theorem covers every valid input within the 6-job, 8-category limit. It proves termination, agreement with the source program, and the category discrepancy bound for the identified binary. With no memberships, every category count is zero. Group sizes can differ.</p>
-      <p>The proof assumes a represented input, valid allocator state, and sufficient memory, including a conservative allocation budget of 223,756,952 bytes. The browser, JavaScript adapter, and counts display are outside the Lean proof.</p>
-      <p>The server checks the binary’s SHA-256 before serving it. Each run uses a fresh browser worker. The page independently checks the returned overlap, assignments, and category differences.</p>
-      <dl><dt>Exact binary theorem</dt><dd><code>Project.Beck.Artifact.artifact_compute_correct</code></dd><dt>SHA-256</dt><dd><code class="hash">55f407d3f82b34a59e95489f2ed40ea756cb621d780f76ee48eb5a60645d080f</code></dd></dl>
-      <p><a href="/manifest.json">Artifact manifest</a> · <a href="https://github.com/jsmorph/leanexe/blob/beck/docs/beck.md">Program and proof documentation</a></p>
+      <summary>Verification status and limits</summary>
+      <p>Lean checks arbitrary-length integer addition, subtraction, multiplication, comparison, and the rounding argument over arbitrary finite job and category sets. Division, the connection from elimination to rounding, resource bounds, and the exact-binary execution theorem remain in progress.</p>
+      <p>The page recomputes every category count and checks the discrepancy bound. Native Lean and WASM comparisons include overlapping inputs with up to 128 jobs. Supported resource limits still require a proof. The browser editor allows 128 jobs and 32 categories. Each run has a 30-second timeout.</p>
+      <p>The server checks the binary against its build manifest. Each run uses a fresh worker and reports its elapsed time and WASM memory extent.</p>
+      <p><a href="/manifest.json">Build manifest</a> · <a href="https://github.com/jsmorph/leanexe/blob/beck/docs/beck.md">Program and proof documentation</a></p>
     </details>
     <footer>Beck–Fiala partitioner · Two groups · Unweighted job counts</footer>
   </main>

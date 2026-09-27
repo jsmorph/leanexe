@@ -6,7 +6,6 @@
 -/
 
 import Project.Runtime.Defs
-import Project.Beck.Program
 import Project.Gpt2RowMean.Program
 import Project.Gpt2RowInvStd.Program
 import Project.Gpt2AttentionScore.Program
@@ -443,9 +442,5 @@ example : eraseTypeIdx Project.Gpt2QuantizedCached.func63Def = eraseTypeIdx rese
 example : eraseTypeIdx Project.Gpt2QuantizedCached.func64Def = eraseTypeIdx retainFuncDef := rfl
 example : eraseTypeIdx Project.Gpt2QuantizedCached.func65Def = eraseTypeIdx (releaseFuncDef 65) := rfl
 
-example : eraseTypeIdx Project.Beck.func36Def = eraseTypeIdx allocFuncDef := rfl
-example : eraseTypeIdx Project.Beck.func37Def = eraseTypeIdx resetFuncDef := rfl
-example : eraseTypeIdx Project.Beck.func38Def = eraseTypeIdx retainFuncDef := rfl
-example : eraseTypeIdx Project.Beck.func39Def = eraseTypeIdx (releaseFuncDef 39) := rfl
 
 end Project.Runtime

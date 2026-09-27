@@ -3,11 +3,12 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const { runChecked } = require("./run-process");
 const { ensureHost } = require("./wasmtime-host");
 
 const root = path.resolve(__dirname, "..");
-const moduleName = "LeanExe.Examples.Beck";
+const moduleName = "LeanExe.Examples.BeckExact";
 const wasm = path.join(root, "build/beck/beck.wasm");
 
 function prepare() {
@@ -17,6 +18,11 @@ function prepare() {
   runChecked([path.join(root, ".lake/build/bin/lean-wasm"), "compile",
     "--module", moduleName, "--entry", `${moduleName}.compute`, "--out", wasm],
   { cwd: root, encoding: "utf8", timeout: 120000 });
+  const binary = fs.readFileSync(wasm);
+  fs.writeFileSync(path.join(path.dirname(wasm), "manifest.json"), JSON.stringify({
+    source: `${moduleName}.compute`, sha256: crypto.createHash("sha256").update(binary).digest("hex"),
+    byteLength: binary.length, verification: "in-progress",
+  }, null, 2) + "\n");
   ensureHost();
 }
 

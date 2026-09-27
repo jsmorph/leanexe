@@ -14,7 +14,7 @@ program you want to run, write, or verify.
 | [Running sum](manual.md#running-sum) | Interactive byte input/output, signed decimal arithmetic, errors, and EOF. |
 | [JSON tree command](demo.md) | A typed tree-processing program with a WASI command interface. |
 | [Pseudorandom generator](prng.md) | SplitMix64 source, seed/count/modulus command, and execution tests. |
-| [Beck–Fiala partitioner](beck.md) | Two-group job assignments, overlapping categories, discrepancy guarantees, and universal execution proofs. |
+| [Beck–Fiala partitioner](beck.md) | Two-group job assignments, exact rounding, overlapping categories, and proof progress. |
 | [Numerical kernels](../data/numerical/README.md) | Executable exponential, softmax, LayerNorm, and GELU examples with numerical bounds. |
 | [Euler flow solver](../data/euler-reconstructed-v1/README.md) | Complete 2D WASM calculations, exact-binary theorems, figures, and reproducible data. |
 

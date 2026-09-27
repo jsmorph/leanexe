@@ -1,4 +1,4 @@
-import LeanExe.Examples.Beck
+import LeanExe.Examples.BeckExact
 
 def main : IO UInt32 := do
   let stdin ← IO.getStdin
@@ -14,7 +14,7 @@ def main : IO UInt32 := do
       | some n =>
         if n ≥ 2^64 then throw (IO.userError s!"UInt64 overflow: {field}")
         words := words.push n.toUInt64
-    let result := LeanExe.Examples.Beck.compute words
+    let result := LeanExe.Examples.BeckExact.compute words
     stdout.putStrLn ("[" ++ String.intercalate ","
       (result.toList.map (fun word => toString word.toNat)) ++ "]")
   return 0
