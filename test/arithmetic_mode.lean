@@ -8588,6 +8588,55 @@ def rangeFlagResult (flag : Bool) (count : UInt64) : UInt64 := Id.run do
     if flag && a % 7 == 0 then break
   return if flag then a + count else a - count
 
+def publicBoolHelpersNested (flag : Bool) (x : UInt64) : Bool :=
+  let f := fun b : Bool => b && flag
+  let g := fun n : UInt64 => f (n != x)
+  g (x + 1)
+
+def publicBoolHelpersRepeated (flag : Bool) (x : UInt64) : Bool :=
+  let f := fun b : Bool => b && flag && x != 0
+  f (x != 7) || f (x == 7)
+
+def publicBoolHelpersWrapped (flag : Bool) (x : UInt64) : Id (Id Bool) :=
+  let f := fun b : Bool => b && flag
+  pure (pure (f (x != 0) || f (x == 7)))
+
+def publicBoolHelpersInputId (x : UInt64) (flag : Bool) : Bool :=
+  let f := fun b : Id (Id Bool) => Id.run b && flag
+  let g := fun n : Id UInt64 => f (Id.run n != x)
+  g (x + 1) != g x
+
+def publicBoolHelpersWord (flag : Bool) (x : UInt64) : Bool :=
+  let f := fun n : UInt64 => n * 13 + x
+  let g := fun b : Bool => if b then f (x + 1) else f (x - 1)
+  g flag == f x || g (!flag) != 0
+
+def publicBoolHelpersMany (x y : UInt64) : Bool :=
+  let f := fun a b c : UInt64 => a + b * 7 - c + x
+  f x y 3 == f y x 5 || f 0 1 2 != y
+
+def publicBoolHelpersUnit (flag : Bool) (x : UInt64) : Bool :=
+  let f := fun (_ : Unit) (n : UInt64) => n + x + flag.toUInt64
+  f () 3 != x && f () x != 0
+
+def publicBoolHelpersShadow (flag : Bool) (x : UInt64) : Bool :=
+  let f := fun b : Bool => b != flag
+  let f := fun b : Bool => f b && x != 7
+  let f := fun n : UInt64 => f (n == x)
+  f x || f (x + 7)
+
+def publicBoolHelpersSaved (flag : Bool) (x : UInt64) : Id Bool := do
+  let f := fun b : Bool => b && flag
+  let g := fun n : UInt64 => f (n != x)
+  let saved ← pure (g (x + 1))
+  return if saved then g x else !f saved
+
+def publicBoolHelpersUnused (flag : Bool) (x : UInt64) : Bool :=
+  let _ignored := fun n : UInt64 => n / (x - x)
+  let f := fun b : Bool => b && flag
+  let g := fun n : UInt64 => f (n != x)
+  g x || g (x + 1)
+
 def publicFlagWord (flag : Bool) (x : UInt64) : UInt64 :=
   if flag then x + 7 else x - 3
 
@@ -11785,6 +11834,16 @@ run_elab do
       `ArithmeticModeTest.rangeFlagBind,
       `ArithmeticModeTest.rangeFlagCount,
       `ArithmeticModeTest.rangeFlagResult,
+      `ArithmeticModeTest.publicBoolHelpersNested,
+      `ArithmeticModeTest.publicBoolHelpersRepeated,
+      `ArithmeticModeTest.publicBoolHelpersWrapped,
+      `ArithmeticModeTest.publicBoolHelpersInputId,
+      `ArithmeticModeTest.publicBoolHelpersWord,
+      `ArithmeticModeTest.publicBoolHelpersMany,
+      `ArithmeticModeTest.publicBoolHelpersUnit,
+      `ArithmeticModeTest.publicBoolHelpersShadow,
+      `ArithmeticModeTest.publicBoolHelpersSaved,
+      `ArithmeticModeTest.publicBoolHelpersUnused,
       `ArithmeticModeTest.publicFlagWord,
       `ArithmeticModeTest.publicWordFlag,
       `ArithmeticModeTest.publicFlagsWord,

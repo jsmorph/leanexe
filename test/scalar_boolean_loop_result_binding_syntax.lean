@@ -74,9 +74,14 @@ run_elab do
                   controls := controls + 1
                   if mode == 2 && annotationDepth == 0 then
                     let some bound := extractScalarExprWith (publicBindings kinds) (toWord action) |
-                      throwError "all-scalar choice did not exercise whole-path fallback: {monadic}, {annotationDepth}, {flagFirst}, {kind}, {mode}, {tailForm}, {wrapped}"
-                    if (extractScalarBooleanRangeWith (.boolean bound :: publicBindings kinds) 2 tail.expr).isSome then
-                      throwError "scalar tail unexpectedly contains a loop plan"
+                      throwError "all-scalar choice was rejected: {monadic}, {annotationDepth}, {flagFirst}, {kind}, {mode}, {tailForm}, {wrapped}"
+                    let some result := extractScalarExprWith (.boolean bound :: publicBindings kinds) (toWord tail.expr) |
+                      throwError "scalar Boolean tail rejected"
+                    let some tailPlan := extractScalarBooleanRangeWith (.boolean bound :: publicBindings kinds) 2 tail.expr |
+                      throwError "scalar Boolean tail plan rejected"
+                    unless [tailPlan.count, tailPlan.initial, tailPlan.step, tailPlan.done].all (· == .u64 0)
+                        && tailPlan.result == result do
+                      throwError "scalar Boolean tail did not produce the exact zero-iteration plan"
                   let module_ : LeanExe.IR.Module := { funcs := #[func] }
                   let directModule : LeanExe.IR.Module := { funcs := #[direct] }
                   for (x, y) in inputs do

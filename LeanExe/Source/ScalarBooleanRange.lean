@@ -21,8 +21,10 @@ def decision (condition evidence : Lean.Expr) : Lean.Expr :=
 def choiceExpr (type : BooleanType) (condition evidence yes no : Lean.Expr) : Lean.Expr :=
   .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type.expr) condition) evidence) yes) no
 
-/-- A word-valued loop followed by a Boolean result computation. -/
+/-- Boolean programs compose pure scalar computations and bounded word loops. -/
 inductive Eval : Lean.Expr → List Value → Bool → Prop where
+  | scalar (body : EvalWith (.app (.const ``Bool.toUInt64 []) source) values flag.toUInt64) :
+      Eval source values flag
   | wordFunctionChoice (shape : BooleanFunctionBinding) (choice : BooleanFunctionChoice)
       (condition : EvalWith (decision choice.condition choice.evidence) values (Bool.toUInt64 flag))
       (branch : Eval (shape.bodyExpr parameterName (.const ``UInt64 []) value
@@ -131,8 +133,10 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
   | wrapped (wrapper : BooleanWrapper) (body : Eval source values flag) :
       Eval (wrapper.expr source) values flag
 
-/-- Source support checks both the loop and its Boolean continuation. -/
+/-- Source support checks every helper, scalar expression and loop continuation. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
+  | scalar (body : SupportedWith types (.app (.const ``Bool.toUInt64 []) source)) :
+      Supported types source
   | wordFunctionChoice (shape : BooleanFunctionBinding) (choice : BooleanFunctionChoice)
       (condition : SupportedWith types (decision choice.condition choice.evidence))
       (yesBranch : Supported types (shape.bodyExpr parameterName (.const ``UInt64 []) value choice.yes))
@@ -243,6 +247,10 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (supported : Supported types source) (values : List Value)
     (typed : values.map Value.kind = types) : ∃ flag, Eval source values flag := by
   induction supported generalizing values with
+  | scalar body =>
+    obtain ⟨encoded, evaluated⟩ := body.evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    exact ⟨flag, .scalar evaluated⟩
   | wordFunctionChoice shape choice condition _ _ yesIH noIH =>
     obtain ⟨encoded, evaluated⟩ := condition.evaluates values typed
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result

@@ -14,7 +14,13 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
     (total : ∀ binding ∈ locals, binding.Total) :
     ∃ flag, BooleanRange.Eval source values flag ∧ plan.Meaning saved flag.toUInt64 := by
   fun_induction extractScalarBooleanRangeWith locals saved.length source generalizing values plan with
-  | case1 locals name value body nondep bound matched ih =>
+  | case1 locals source value matched =>
+    cases compiled
+    obtain ⟨encoded, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    exact ⟨flag, .scalar evaluated, ScalarRangeExitPlan.scalar_meaning (fun accumulator index stop done =>
+      extractScalarExprWith_correct evaluated matched (bindings accumulator index stop done))⟩
+  | case2 locals name value body nondep bound matched notScalar ih =>
     obtain ⟨x, hx⟩ := (extractScalarExprWith_supported matched).evaluates values typed
     obtain ⟨flag, evaluated, meaning⟩ := ih (.word x :: values) compiled
       (by simp [Value.kind, ScalarBinding.kind, typed]) (bindings.bind hx matched) (by
@@ -23,7 +29,7 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
         · trivial
         · exact total binding member)
     exact ⟨flag, .letBefore hx evaluated, meaning⟩
-  | case2 locals name value body nondep notPure =>
+  | case3 locals name value body nondep notPure notScalar =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hp, result, hr, rfl⟩ := compiled
     obtain ⟨x, hx, stop, start, step, countEval, initialEval, stepEval, resultEval⟩ :=
@@ -35,7 +41,7 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
     intro exitFlag
     exact extractScalarExprWith_correct hy hr
       ((bindings (Range.Exit.iterate step stop.toNat 0 start) stop.toNat stop exitFlag).cons (resultEval exitFlag))
-  | case3 locals name value body nondep bodyIH valueIH =>
+  | case4 locals name value body nondep notScalar bodyIH valueIH =>
     rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, result, hp, hr, rfl⟩
     · obtain ⟨encoded, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
       obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
@@ -59,12 +65,12 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
       intro exitFlag
       exact extractScalarExprWith_correct continuation hr
         ((bindings (Range.Exit.iterate step stop.toNat 0 start) stop.toNat stop exitFlag).cons (resultEval exitFlag))
-  | case4 locals name type value body nondep ih =>
+  | case5 locals name type value body nondep notScalar ih =>
     obtain ⟨flag, evaluated, meaning⟩ := ih values compiled typed bindings total
     exact ⟨flag, .idLet type evaluated, meaning⟩
-  | case5 => contradiction
   | case6 => contradiction
-  | case7 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep notWord shape parsed checked validated ih =>
+  | case7 => contradiction
+  | case8 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep notWord shape parsed checked validated notScalar ih =>
     obtain ⟨sameType, sameValue⟩ := scalarManyFunction_sound parsed
     have supported := extractScalarExprWith_supported validated
     have function : SupportedWith (List.replicate shape.arity .word ++ locals.map ScalarBinding.kind) shape.body := by
@@ -86,8 +92,8 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
         · exact total binding member)
     rw [sameType, sameValue]
     exact ⟨flag, .letManyFn shape meanings evaluated, meaning⟩
-  | case8 => contradiction
-  | case9 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep type parsed checked validated ih =>
+  | case9 => contradiction
+  | case10 locals name firstTypeName secondTypeName resultType secondTypeBi firstTypeBi firstName secondName value secondBi firstBi body nondep type parsed checked validated notScalar ih =>
     have same := scalarResultType_sound parsed
     subst resultType
     have supported := extractScalarExprWith_supported validated
@@ -115,8 +121,8 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
             · exact total binding member
         · exact total binding member)
     exact ⟨flag, .letBinaryFn type (fun x y => (native x y).choose_spec) evaluated, meaning⟩
-  | case10 => contradiction
-  | case11 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary notWord type parsed enclosingIH directIH branchIH =>
+  | case11 => contradiction
+  | case12 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary notWord type parsed notScalar enclosingIH directIH branchIH =>
     rcases scalarBooleanRangeCompleteContinuation_success compiled with previous |
       ⟨view, parsedChoice, guard, first, second, matched, ht, he, samePlan⟩
     · rcases scalarBooleanRangeContinuation_success previous with
@@ -185,8 +191,8 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
           values ht typed bindings total
         exact ⟨result, .wordFunctionChoice ⟨name, typeName, typeBi, paramBi, type, nondep⟩ view evaluated branch,
           ScalarRangeExitPlan.choice_meaning stable meaning⟩
-  | case12 => contradiction
-  | case13 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary type parsed checked validated ih =>
+  | case13 => contradiction
+  | case14 locals name typeName resultType typeBi paramName value paramBi body nondep notBinary type parsed checked validated notScalar ih =>
     have same := scalarResultType_sound parsed
     subst resultType
     have supported := extractScalarExprWith_supported validated
@@ -211,8 +217,8 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
             · exact total binding member
         · exact total binding member)
     exact ⟨flag, .letFn type (fun x => (native x).choose_spec) evaluated, meaning⟩
-  | case14 => contradiction
-  | case15 locals name typeName resultType typeBi paramName value paramBi body nondep notWord type parsed enclosingIH directIH branchIH =>
+  | case15 => contradiction
+  | case16 locals name typeName resultType typeBi paramName value paramBi body nondep notWord type parsed notScalar enclosingIH directIH branchIH =>
     rcases scalarBooleanRangeCompleteContinuation_success compiled with previous |
       ⟨view, parsedChoice, guard, first, second, matched, ht, he, samePlan⟩
     · rcases scalarBooleanRangeContinuation_success previous with
@@ -286,8 +292,8 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
           values ht typed bindings total
         exact ⟨result, .booleanFunctionChoice ⟨name, typeName, typeBi, paramBi, type, nondep⟩ view evaluated branch,
           ScalarRangeExitPlan.choice_meaning stable meaning⟩
-  | case16 => contradiction
-  | case17 locals name typeName resultType typeBi paramName value paramBi body nondep type parsed checked validated ih =>
+  | case17 => contradiction
+  | case18 locals name typeName resultType typeBi paramName value paramBi body nondep type parsed checked validated notScalar ih =>
     have same := scalarResultType_sound parsed
     subst resultType
     have supported := extractScalarExprWith_supported validated
@@ -312,9 +318,9 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
             · exact total binding member
         · exact total binding member)
     exact ⟨flag, .letBooleanFn type (fun x => (native x).choose_spec) evaluated, meaning⟩
-  | case18 => contradiction
   | case19 => contradiction
-  | case20 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type parsed checked validated ih =>
+  | case20 => contradiction
+  | case21 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type parsed checked validated notScalar ih =>
     have same := scalarResultType_sound parsed
     subst resultType
     have supported := extractScalarExprWith_supported validated
@@ -341,9 +347,9 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
             · exact total binding member
         · exact total binding member)
     exact ⟨flag, .letUnitFn type .unit (fun x => (native x).choose_spec) evaluated, meaning⟩
-  | case21 => contradiction
   | case22 => contradiction
-  | case23 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type parsed checked validated ih =>
+  | case23 => contradiction
+  | case24 locals name unitTypeName typeName resultType typeBi unitTypeBi unitName paramName value paramBi unitBi body nondep type parsed checked validated notScalar ih =>
     have same := scalarResultType_sound parsed
     subst resultType
     have supported := extractScalarExprWith_supported validated
@@ -370,12 +376,12 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
             · exact total binding member
         · exact total binding member)
     exact ⟨flag, .letUnitFn type .punit (fun x => (native x).choose_spec) evaluated, meaning⟩
-  | case24 locals name typeName resultType typeBi paramName input value paramBi body nondep ih =>
+  | case25 locals name typeName resultType typeBi paramName input value paramBi body nondep notScalar ih =>
     obtain ⟨flag, evaluated, meaning⟩ := ih values compiled typed bindings total
     exact ⟨flag, .idFunctionInput input resultType evaluated, meaning⟩
-  | case25 => contradiction
   | case26 => contradiction
-  | case27 locals input output value name domain body binder notWord types parsed bodyIH valueIH =>
+  | case27 => contradiction
+  | case28 locals input output value name domain body binder notWord types parsed notScalar bodyIH valueIH =>
     obtain ⟨rfl, rfl, rfl⟩ := booleanRangeFlagBindTypes_sound parsed
     rcases scalarRangeValueBinding_success compiled with ⟨bound, matched, hc⟩ | ⟨before, result, hp, hr, rfl⟩
     · obtain ⟨encoded, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
@@ -400,7 +406,7 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
       intro exitFlag
       exact extractScalarExprWith_correct continuation hr
         ((bindings (Range.Exit.iterate step stop.toNat 0 start) stop.toNat stop exitFlag).cons (resultEval exitFlag))
-  | case28 locals input output value name domain body binder types parsed bound matched ih =>
+  | case29 locals input output value name domain body binder types parsed bound matched notScalar ih =>
     obtain ⟨rfl, rfl, rfl⟩ := booleanRangeBindTypes_sound parsed
     obtain ⟨x, hx⟩ := (extractScalarExprWith_supported matched).evaluates values typed
     obtain ⟨flag, evaluated, meaning⟩ := ih (.word x :: values) compiled
@@ -410,7 +416,7 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
         · trivial
         · exact total binding member)
     exact ⟨flag, .bindBefore types.1 types.2 hx evaluated, meaning⟩
-  | case29 locals input output value name domain body binder types parsed notPure =>
+  | case30 locals input output value name domain body binder types parsed notPure notScalar =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hp, result, hr, rfl⟩ := compiled
     obtain ⟨rfl, rfl, rfl⟩ := booleanRangeBindTypes_sound parsed
@@ -423,9 +429,9 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
     intro exitFlag
     exact extractScalarExprWith_correct hy hr
       ((bindings (Range.Exit.iterate step stop.toNat 0 start) stop.toNat stop exitFlag).cons (resultEval exitFlag))
-  | case30 => contradiction
   | case31 => contradiction
-  | case32 locals type condition evidence yes no resultType parsed guard matched yesIH noIH =>
+  | case32 => contradiction
+  | case33 locals type condition evidence yes no resultType parsed guard matched notScalar yesIH noIH =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨first, ht, second, he, rfl⟩ := compiled
     have same := booleanType_sound parsed
@@ -454,9 +460,9 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
           ScalarRangeExitPlan.choice_meaning stable yesMeaning⟩
       · exact ⟨yesResult, .choice resultType evaluated range,
           ScalarRangeExitPlan.choice_meaning stable yesMeaning⟩
-  | case33 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind notIf wrapper body parsed ih =>
+  | case34 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind notIf wrapper body parsed notScalar ih =>
     obtain ⟨flag, evaluated, meaning⟩ := ih values compiled typed bindings total
     exact ⟨flag, booleanRangeWrapper_sound parsed ▸ BooleanRange.Eval.wrapped wrapper evaluated, meaning⟩
-  | case34 => contradiction
+  | case35 => contradiction
 
 end LeanExe.Extract.Core
