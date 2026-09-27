@@ -606,5 +606,15 @@
   "rangeBoolBooleanHelperContinue",
   "rangeBoolBooleanHelperStride",
   "rangeBoolBooleanHelperId",
-  "rangeBoolBooleanHelperShadow"
+  "rangeBoolBooleanHelperShadow",
+  "rangeBoolPredicateHelperRepeat",
+  "rangeBoolPredicateHelperCount",
+  "rangeBoolPredicateHelperNested",
+  "rangeBoolPredicateHelperExit",
+  "rangeBoolPredicateHelperId",
+  "rangeBoolBooleanPredicateHelperRepeat",
+  "rangeBoolBooleanPredicateHelperFlag",
+  "rangeBoolBooleanPredicateHelperNested",
+  "rangeBoolBooleanPredicateHelperStride",
+  "rangeBoolBooleanPredicateHelperId"
 ]

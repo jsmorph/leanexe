@@ -40,7 +40,8 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
   | case5 locals name type value body nondep ih => exact ih compiled bindings
   | case6 => contradiction
   | case7 => contradiction
-  | case8 locals name typeName resultType typeBi paramName value paramBi body nondep type parsed checked validated ih =>
+  | case8 => contradiction
+  | case9 locals name typeName resultType typeBi paramName value paramBi body nondep notWord type parsed expression parsedExpression checked validated ih =>
     apply ih compiled
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
@@ -51,7 +52,6 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
       · exact argumentValid
       · exact bindings binding member
     · exact bindings binding member
-  | case9 => contradiction
   | case10 => contradiction
   | case11 locals name typeName resultType typeBi paramName value paramBi body nondep type parsed checked validated ih =>
     apply ih compiled
@@ -66,19 +66,45 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     · exact bindings binding member
   | case12 => contradiction
   | case13 => contradiction
-  | case14 locals input output value name domain body binder notWord types parsed bound matched ih =>
+  | case14 => contradiction
+  | case15 locals name typeName resultType typeBi paramName value paramBi body nondep notWord type parsed expression parsedExpression checked validated ih =>
+    apply ih compiled
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · intro argument target argumentValid extracted
+      apply extractScalarExprWith_invariant P literal binary choice extracted
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact argumentValid
+      · exact bindings binding member
+    · exact bindings binding member
+  | case16 => contradiction
+  | case17 locals name typeName resultType typeBi paramName value paramBi body nondep type parsed checked validated ih =>
+    apply ih compiled
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · intro argument target argumentValid extracted
+      apply extractScalarExprWith_invariant P literal binary choice extracted
+      intro binding member
+      rcases List.mem_cons.mp member with rfl | member
+      · exact argumentValid
+      · exact bindings binding member
+    · exact bindings binding member
+  | case18 => contradiction
+  | case19 => contradiction
+  | case20 locals input output value name domain body binder notWord types parsed bound matched ih =>
     apply ih compiled
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · exact extractScalarExprWith_invariant P literal binary choice matched bindings
     · exact bindings binding member
-  | case15 locals input output value name domain body binder types parsed bound matched ih =>
+  | case21 locals input output value name domain body binder types parsed bound matched ih =>
     apply ih compiled
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · exact extractScalarExprWith_invariant P literal binary choice matched bindings
     · exact bindings binding member
-  | case16 locals input output value name domain body binder types parsed notPure =>
+  | case22 locals input output value name domain body binder types parsed notPure =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hp, result, hr, rfl⟩ := compiled
     obtain ⟨count, initial, step, done, tail⟩ :=
@@ -89,7 +115,7 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact tail
     · exact bindings binding member
-  | case17 locals source notLet notFlag notIdLet notFunction notBooleanFunction notBind wrapper body parsed ih => exact ih compiled bindings
-  | case18 => contradiction
+  | case23 locals source notLet notFlag notIdLet notFunction notBooleanFunction notBind wrapper body parsed ih => exact ih compiled bindings
+  | case24 => contradiction
 
 end LeanExe.Extract.Core
