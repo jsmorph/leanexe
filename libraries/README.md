@@ -10,14 +10,17 @@ These libraries provide Lean functions, runnable clients, and technical reports.
 | Greatest common divisor | Binary GCD | `UInt64` shifts and subtraction | [Binary GCD](../LeanExe/Lib/NumberTheory/BinaryGcd/README.md) |
 | Polynomial evaluation | Horner's rule | `UInt64` loop with overflow checks | [Horner evaluation](../LeanExe/Lib/Polynomial/Horner/README.md) |
 | Exponential | Degree-six Taylor approximation | Binary64 Horner evaluation on `[-1, 0]` | [Bounded exponential](../LeanExe/Lib/Transcendental/Exp/README.md) |
+| Exponential | Table reduction and degree-five polynomial | Full-range binary64, ported from Arm | [Binary64 exponential](../LeanExe/Lib/Transcendental/ExpArm/README.md) |
 
 A task may have several algorithms, and an algorithm may have several implementations.  Each catalog entry identifies one implementation and its public Lean declaration.  A library groups related components.  Clients select implementations through ordinary imports and function calls.
 
 ## Verification status
 
-Formal correctness proofs for these library functions, their generated WASM, and their clients remain deferred.  Lean checks the source types.  The execution tests pass 252 WASM/native comparisons across the four components and their clients.  GCD and polynomial tests use integer references.  Exponential tests compare result bits and check sampled accuracy against JavaScript's `Math.exp`.  The tests also check rejected inputs, CLI diagnostics, and component discovery.  Each component's README and report identify its test cases and intended specification.
+The verification target is the generated WASM and its behavior under stated assumptions.  Proofs for these components and clients remain outstanding.  Lean source checking and execution tests supply development evidence.  The execution tests pass 252 WASM/native comparisons across the GCD, Horner, and Taylor components and their clients.  GCD and polynomial tests use integer references.  Taylor exponential tests compare result bits and check sampled accuracy against JavaScript's `Math.exp`.  The tests also check rejected inputs, CLI diagnostics, and component discovery.  Each component's README and report identify its test cases and intended specification.
 
-The exponential follows a separate development with a [Lean theorem about its WASM model](../proofs/talos/lean/Project/ExpSmall/Spec.lean).  The [exponential component](../LeanExe/Lib/Transcendental/Exp/README.md#verification-status) states that theorem's scope and the proof connection still required for this implementation.
+The Taylor exponential follows a separate development with a [Lean theorem about its WASM model](../proofs/talos/lean/Project/ExpSmall/Spec.lean).  The [exponential component](../LeanExe/Lib/Transcendental/Exp/README.md#verification-status) states that theorem's scope and the proof connection still required for this implementation.
+
+The full-range exponential has [separate accuracy tests](../LeanExe/Lib/Transcendental/ExpArm/README.md#tests-and-references) against Lean's `Float.exp`, JavaScript's `Math.exp`, and a high-precision decimal reference.  `node test/exp.js` runs those comparisons and tests its sigmoid client.  `tools/seminum exp 1` computes the full-range exponential.  `tools/seminum exp-taylor6 -0.5` selects the introductory Taylor approximation.
 
 The examples use the compiler's `compile` command.  The [general compiler correctness theorem](../docs/arithmetic-correctness.md) applies to the restricted `compile-arithmetic` command.  Evidence for these compiled library clients comes from the execution tests described above.
 
@@ -38,7 +41,7 @@ tools/seminum inspect
 
 The outputs of the first six commands are `6`, `8/3`, `15`, `5/2`, `8/3`, and `0.6065321180555556`.  The polynomial-ratio client uses the number-theory and polynomial libraries.  The two fraction clients select different GCD algorithms.  The decay client uses the transcendental library.
 
-Integer commands accept decimal `UInt64` values.  Array arguments use comma-separated coefficients in ascending degree order, with `[]` for an empty array.  `exp` and `decay` accept decimal floating-point values.  `exp-bits` accepts sixteen hexadecimal binary64 digits.  Successful commands write results to stdout.  Invalid inputs, domain errors, and integer overflow exit with status 2 and a diagnostic on stderr.  Build and execution failures exit with status 1.  `tools/seminum --help` lists the commands.
+Integer commands accept decimal `UInt64` values.  Array arguments use comma-separated coefficients in ascending degree order, with `[]` for an empty array.  `exp`, `sigmoid`, `exp-taylor6`, and `decay` accept finite decimal floating-point values.  `exp-bits` and `exp-taylor6-bits` accept sixteen hexadecimal binary64 digits.  Successful commands write results to stdout.  Invalid inputs, domain errors, and integer overflow exit with status 2 and a diagnostic on stderr.  Build and execution failures exit with status 1.  `tools/seminum --help` lists the commands.
 
 `tools/seminum build` creates `build/seminum/examples.wasm`.  It also asks the compiler for its existing source-name and instruction annotations.  The tool matches the source names against the [component catalog](catalog.json) and writes `build/seminum/components.json`.  That generated inventory records which component declarations appear in the program and their WASM indexes.  The catalog supplies intended specifications and documentation references.  `inspect` prints this inventory.
 

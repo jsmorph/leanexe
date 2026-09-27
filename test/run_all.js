@@ -51,6 +51,8 @@ function main() {
   run([process.execPath, path.join("test", "cli_errors.js")]);
   run([process.execPath, path.join("test", "exports.js")]);
   run([process.execPath, path.join("test", "seminum.js")]);
+  run([process.execPath, path.join("test", "static-tables.js")]);
+  run([process.execPath, path.join("test", "exp.js")]);
   run([process.execPath, path.join("test", "heap_loops.js")]);
   run([process.execPath, path.join("test", "core_correctness.js")]);
   run([process.execPath, path.join("test", "f64_bits.js")]);

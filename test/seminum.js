@@ -119,11 +119,11 @@ function main() {
   assert.equal(runChecked([...cli, "fraction", "48", "18"], options).stdout, "8/3\n");
   assert.equal(runChecked([...cli, "fraction-binary", "48", "18"], options).stdout, "8/3\n");
   assert.equal(runChecked([...cli, "decay", "0.5"], options).stdout, "0.6065321180555556\n");
-  assert.equal(runChecked([...cli, "exp-bits", "bfe0000000000000"], options).stdout, "3fe368b60b60b60c\n");
+  assert.equal(runChecked([...cli, "exp-taylor6-bits", "bfe0000000000000"], options).stdout, "3fe368b60b60b60c\n");
   for (const args of [[], ["gcd", "-1", "2"], ["gcd", `${max + 1n}`, "2"],
     ["fraction", "1", "0"], ["polynomial", "2", "1,,2"],
-    ["polynomial", "2", `${max},1`], ["exp", "0.1"], ["exp", "-1.01"],
-    ["exp", "NaN"], ["exp", "1e999"], ["exp-bits", "fff0000000000000"],
+    ["polynomial", "2", `${max},1`], ["exp-taylor6", "0.1"], ["exp-taylor6", "-1.01"],
+    ["exp-taylor6", "NaN"], ["exp-taylor6", "1e999"], ["exp-taylor6-bits", "fff0000000000000"],
     ["decay", "-0.1"], ["decay", "1.01"]]) {
     const result = spawnResult([...cli, ...args], options);
     assert.equal(result.status, 2, args.join(" "));

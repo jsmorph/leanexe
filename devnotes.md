@@ -19,7 +19,8 @@ extraction path.  Both paths now use the same static lookup helper.
 The static-table tests pass.  Existing tests pass for multiple exports and
 ownership, binary64 subtraction/division/square root, and 48 reference-count
 cases with seven allocation-accounting cases.  The module-image integration
-checks build.  These checks supply compiler development evidence.
+checks, arithmetic extraction correctness, and arithmetic admission proofs
+build.  These checks supply compiler development evidence.
 
 ## 2026-09-27: Full-range binary64 exponential
 
@@ -52,9 +53,26 @@ proofs must establish the WASM's behavior under explicit assumptions.  Whether
 the earlier PoC deferral continues to apply is awaiting clarification.
 
 - [x] Port range reduction, polynomial evaluation, and boundary handling.
-- [ ] Test static data storage and existing compiler behavior.
-- [ ] Test numerical accuracy, native Lean agreement, and a sigmoid client.
-- [ ] Review the README, annotated citations, and rendered report.
+- [x] Test static data storage and existing compiler behavior.
+- [x] Test numerical accuracy, native Lean agreement, and a sigmoid client.
+- [x] Review the README, annotated citations, and rendered report.
+- [ ] Prove the emitted WASM behavior.
+
+The 49,821-input corpus passes bit-for-bit WASM/native-port comparisons.
+The measured maximum errors are 0.504059 ulp for the port, 0.503354 ulp for
+Lean's `Float.exp`, and 0.871814 ulp for JavaScript's `Math.exp`.  The counts
+of differences from the reference's rounded result are 49, 36, and 4,153.
+The reference encloses decimal rounding error and uses exact binary64 powers
+of two for its ulp scale.  Tests cover the sigmoid client, CLI output, and
+zero allocations on normal, subnormal, overflow, and exceptional branches.
+The preceding component tests still pass all 252 comparisons.
+
+The new README and three-page report state the outstanding WASM proof near
+the start.  Prose received two review passes, and all rendered report pages
+were reviewed.  The TeX build has no layout warnings.  The documentation
+checker accepts 189 maintained Markdown files.  Throughput and latency remain
+unmeasured.  The Taylor CLI is now `exp-taylor6` / `exp-taylor6-bits`, while
+`exp` / `exp-bits` select the full-range function.
 
 ## 2026-09-27: Component prose and verification status
 
