@@ -1,0 +1,6 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+96 native/expanded IR comparisons and 20 invalid-input tests passed
+'LeanExe.Extract.Core.expandStepMatchers_normalizes' depends on axioms: [propext, Classical.choice, Quot.sound]
+'LeanExe.Extract.Core.expandStepMatchers_accepts' depends on axioms: [propext, Classical.choice, Quot.sound]
+'LeanExe.Extract.Core.extractScalarEnvironmentFunc_correct' depends on axioms: [propext, Classical.choice, Quot.sound]

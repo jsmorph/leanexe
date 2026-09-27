@@ -1,0 +1,37 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_step_matcher.lean:63:0: error: StepMatcherTest.nested: found 1 checked matchers, expected 2; constants [UInt64,
+ ForIn.forIn,
+ Id,
+ Std.Legacy.Range,
+ Nat,
+ instForInOfForIn',
+ inferInstance,
+ Membership,
+ Std.Legacy.instMembershipNatRange,
+ Std.Legacy.Range.instForIn'NatInferInstanceMembershipOfMonad,
+ Id.instMonad,
+ Bool,
+ Std.Legacy.Range.mk,
+ OfNat.ofNat,
+ instOfNatNat,
+ UInt64.toNat,
+ Nat.zero_lt_one,
+ BEq.beq,
+ instBEqOfDecidableEq,
+ instDecidableEqUInt64,
+ UInt64.instOfNat,
+ ForInStep,
+ ite,
+ Eq,
+ Nat.toUInt64,
+ Bool.true,
+ instDecidableEqBool,
+ ForInStep.done,
+ Bool.not,
+ ForInStep.yield,
+ StepMatcherTest.direct.match_1,
+ bne]
+'LeanExe.Source.Scalar.StepMatcher.denote_cases' does not depend on any axioms
+'LeanExe.Extract.Core.findStepMatcher_sound' depends on axioms: [propext, Classical.choice, Quot.sound]
+'LeanExe.Extract.Core.findStepMatcher_accepts' depends on axioms: [propext, Classical.choice, Quot.sound]

@@ -1,0 +1,6 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+4 generated matcher references and one named dispatcher recognized; 6 unsupported declarations rejected
+'LeanExe.Source.Scalar.StepMatcher.denote_cases' does not depend on any axioms
+'LeanExe.Extract.Core.findStepMatcher_sound' depends on axioms: [propext, Classical.choice, Quot.sound]
+'LeanExe.Extract.Core.findStepMatcher_accepts' depends on axioms: [propext, Classical.choice, Quot.sound]

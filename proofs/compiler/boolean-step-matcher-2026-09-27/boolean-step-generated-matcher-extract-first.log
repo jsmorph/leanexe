@@ -1,0 +1,50 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [69/69] Building LeanExe.Extract.ScalarStepMatcher (944ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarStepMatcher.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarStepMatcher.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarStepMatcher.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarStepMatcher.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarStepMatcher.setup.json --json
+error: LeanExe/Extract/ScalarStepMatcher.lean:16:100: unexpected identifier; expected '}'
+error: LeanExe/Extract/ScalarStepMatcher.lean:26:2: Tactic `rfl` failed: The left-hand side
+  stepMatcherShape?
+    ({ motive := motive✝, motiveArgument := motiveArgument✝, scrutinee := scrutinee✝, doneHandler := doneHandler✝,
+          donePayload := donePayload✝, yieldHandler := yieldHandler✝, yieldPayload := yieldPayload✝,
+          forwardMotive := forwardMotive✝, forwardDone := forwardDone✝, forwardYield := forwardYield✝ }.type
+      level)
+    ({ motive := motive✝, motiveArgument := motiveArgument✝, scrutinee := scrutinee✝, doneHandler := doneHandler✝,
+          donePayload := donePayload✝, yieldHandler := yieldHandler✝, yieldPayload := yieldPayload✝,
+          forwardMotive := forwardMotive✝, forwardDone := forwardDone✝, forwardYield := forwardYield✝ }.value
+      level)
+is not definitionally equal to the right-hand side
+  some
+    { motive := motive✝, motiveArgument := motiveArgument✝, scrutinee := scrutinee✝, doneHandler := doneHandler✝,
+      donePayload := donePayload✝, yieldHandler := yieldHandler✝, yieldPayload := yieldPayload✝,
+      forwardMotive := forwardMotive✝, forwardDone := forwardDone✝, forwardYield := forwardYield✝ }
+
+case mk
+level : Lean.Level
+motive✝ motiveArgument✝ scrutinee✝ doneHandler✝ donePayload✝ yieldHandler✝ yieldPayload✝ forwardMotive✝ forwardDone✝ forwardYield✝ :
+  StepMatcher.Binder
+⊢ stepMatcherShape?
+      ({ motive := motive✝, motiveArgument := motiveArgument✝, scrutinee := scrutinee✝, doneHandler := doneHandler✝,
+            donePayload := donePayload✝, yieldHandler := yieldHandler✝, yieldPayload := yieldPayload✝,
+            forwardMotive := forwardMotive✝, forwardDone := forwardDone✝, forwardYield := forwardYield✝ }.type
+        level)
+      ({ motive := motive✝, motiveArgument := motiveArgument✝, scrutinee := scrutinee✝, doneHandler := doneHandler✝,
+            donePayload := donePayload✝, yieldHandler := yieldHandler✝, yieldPayload := yieldPayload✝,
+            forwardMotive := forwardMotive✝, forwardDone := forwardDone✝, forwardYield := forwardYield✝ }.value
+        level) =
+    some
+      { motive := motive✝, motiveArgument := motiveArgument✝, scrutinee := scrutinee✝, doneHandler := doneHandler✝,
+        donePayload := donePayload✝, yieldHandler := yieldHandler✝, yieldPayload := yieldPayload✝,
+        forwardMotive := forwardMotive✝, forwardDone := forwardDone✝, forwardYield := forwardYield✝ }
+error: LeanExe/Extract/ScalarStepMatcher.lean:57:26: Unknown identifier `parameter`
+error: LeanExe/Extract/ScalarStepMatcher.lean:57:36: Unknown identifier `candidate`
+warning: LeanExe/Extract/ScalarStepMatcher.lean:52:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [Option.bind_eq_some_iff] at found
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarStepMatcher
+error: build failed

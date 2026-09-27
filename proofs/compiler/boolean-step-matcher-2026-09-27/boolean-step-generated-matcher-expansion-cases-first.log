@@ -1,0 +1,93 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+theorem LeanExe.Extract.Core.expandStepMatcherHead.fun_cases_unfolding : ∀ (env : Lean.Environment)
+  (motive : Lean.Expr → Lean.Expr → Prop),
+  (∀ (name : Lean.Name) (motive_1 value doneBody yieldBody : Lean.Expr) (val : Lean.Name × StepMatcher.Shape),
+      findStepMatcher? env name = some val →
+        motive (((((Lean.Expr.const name [Lean.Level.zero.succ]).app motive_1).app value).app doneBody).app yieldBody)
+          (StepMatcher.cases Lean.Level.zero.succ motive_1 value doneBody yieldBody)) →
+    (∀ (name : Lean.Name) (motive_1 value doneBody yieldBody : Lean.Expr),
+        findStepMatcher? env name = none →
+          motive (((((Lean.Expr.const name [Lean.Level.zero.succ]).app motive_1).app value).app doneBody).app yieldBody)
+            (StepMatcher.call name motive_1 value doneBody yieldBody)) →
+      (∀ (source : Lean.Expr),
+          (∀ (name : Lean.Name) (motive value doneBody yieldBody : Lean.Expr),
+              source =
+                  ((((Lean.Expr.const name [Lean.Level.zero.succ]).app motive).app value).app doneBody).app yieldBody →
+                False) →
+            motive source source) →
+        ∀ (x : Lean.Expr), motive x (expandStepMatcherHead env x) :=
+fun env motive case1 case2 case3 x =>
+  Eq.mpr (congrArg (motive x) (expandStepMatcherHead.eq_def env x))
+    (expandStepMatcherHead.match_3.splitter
+      (fun x_1 =>
+        x = x_1 →
+          motive x_1
+            (match x_1 with
+            | ((((Lean.Expr.const name [Lean.Level.zero.succ]).app motive).app value).app doneBody).app yieldBody =>
+              match findStepMatcher? env name with
+              | some val => StepMatcher.cases Lean.Level.zero.succ motive value doneBody yieldBody
+              | none => StepMatcher.call name motive value doneBody yieldBody
+            | source => source))
+      x
+      (fun name motive_1 value doneBody yieldBody x =>
+        Eq.mpr
+          (congrArg
+            (motive
+              (((((Lean.Expr.const name [Lean.Level.zero.succ]).app motive_1).app value).app doneBody).app yieldBody))
+            (eq_of_heq
+              (expandStepMatcherHead.match_3.congr_eq_1 (fun x => Lean.Expr)
+                (((((Lean.Expr.const name [Lean.Level.zero.succ]).app motive_1).app value).app doneBody).app yieldBody)
+                (fun name motive value doneBody yieldBody =>
+                  match findStepMatcher? env name with
+                  | some val => StepMatcher.cases Lean.Level.zero.succ motive value doneBody yieldBody
+                  | none => StepMatcher.call name motive value doneBody yieldBody)
+                (fun source => source) name motive_1 value doneBody yieldBody
+                (Eq.refl
+                  (((((Lean.Expr.const name [Lean.Level.zero.succ]).app motive_1).app value).app doneBody).app
+                    yieldBody)))))
+          (expandStepMatcherHead.match_1.splitter
+            (fun x =>
+              findStepMatcher? env name = x →
+                motive
+                  (((((Lean.Expr.const name [Lean.Level.zero.succ]).app motive_1).app value).app doneBody).app
+                    yieldBody)
+                  (match findStepMatcher? env name with
+                  | some val => StepMatcher.cases Lean.Level.zero.succ motive_1 value doneBody yieldBody
+                  | none => StepMatcher.call name motive_1 value doneBody yieldBody))
+            (findStepMatcher? env name)
+            (fun val x =>
+              Eq.mpr
+                (congrArg
+                  (motive
+                    (((((Lean.Expr.const name [Lean.Level.zero.succ]).app motive_1).app value).app doneBody).app
+                      yieldBody))
+                  (eq_of_heq
+                    (expandStepMatcherHead.match_1.congr_eq_1 (fun x => Lean.Expr) (findStepMatcher? env name)
+                      (fun val => StepMatcher.cases Lean.Level.zero.succ motive_1 value doneBody yieldBody)
+                      (fun _ => StepMatcher.call name motive_1 value doneBody yieldBody) val x)))
+                (case1 name motive_1 value doneBody yieldBody val x))
+            (Function.const Unit fun x =>
+              Eq.mpr
+                (congrArg
+                  (motive
+                    (((((Lean.Expr.const name [Lean.Level.zero.succ]).app motive_1).app value).app doneBody).app
+                      yieldBody))
+                  (eq_of_heq
+                    (expandStepMatcherHead.match_1.congr_eq_2 (fun x => Lean.Expr) (findStepMatcher? env name)
+                      (fun val => StepMatcher.cases Lean.Level.zero.succ motive_1 value doneBody yieldBody)
+                      (fun _ => StepMatcher.call name motive_1 value doneBody yieldBody) x)))
+                (case2 name motive_1 value doneBody yieldBody x))
+            (Eq.refl (findStepMatcher? env name))))
+      (fun source x_1 x =>
+        Eq.mpr
+          (congrArg (motive source)
+            (eq_of_heq
+              (expandStepMatcherHead.match_3.congr_eq_2 (fun x => Lean.Expr) source
+                (fun name motive value doneBody yieldBody =>
+                  match findStepMatcher? env name with
+                  | some val => StepMatcher.cases Lean.Level.zero.succ motive value doneBody yieldBody
+                  | none => StepMatcher.call name motive value doneBody yieldBody)
+                (fun source => source) source (Eq.refl source) x_1)))
+          (case3 source x_1))
+      (Eq.refl x))
