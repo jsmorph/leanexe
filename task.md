@@ -1082,9 +1082,9 @@ passes 3292 targets; byte parsing and execution pass 3337 targets. Public compil
 and validator integration pass 3379 targets. All five word-result probes now
 compile through normal admission; the Boolean-result probe remains deferred.
 Focused tests pass 14,016 native/IR comparisons, 18,432 invalid-input checks and
-576 admission controls. Nine native fixtures and eight additional axiom audits
-are registered, including the unchanged rangeTwice example previously expected
-to reject. The complete proof gate passes 3413 targets and all 53 axiom audits.
+576 admission controls. Ten native fixtures and eight additional axiom audits
+are registered, including the unchanged rangeTwice and rangeLetTwoLoops examples
+previously expected to reject. The complete proof gate passes 3413 targets and all 53 axiom audits.
 Independent engine checks are in progress.
 
 Next: Boolean-result loop combinations and nested loops. Broader helper
