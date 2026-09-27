@@ -55,13 +55,15 @@ Checked arithmetic lemmas cover limb validity, normalization, addition, subtract
 
 `ExactDirection.correct` proves successful execution of the complete source direction function.  It assumes binary memberships, the overlap bound, job identifiers representable by `UInt64`, and at least one undecided job.  It proves valid integer output of the correct size, a nonzero coordinate, zeros at frozen jobs, and zero direction sum in every protected category.  The proof covers protected-matrix construction, free-column availability, elimination, and back substitution.
 
+`ExactRound.correct` proves that the executable round succeeds on a valid state with an undecided job.  Exact cross-product comparisons select the minimum positive gap-to-speed ratio.  The returned state stays in the cube, preserves frozen coordinates and protected category sums, and freezes at least one additional job.
+
 Focused checks run through the required Lean runner:
 
 ```sh
-tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.ExactDirection Project.Beck.GenericLoop
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.ExactRound Project.Beck.GenericLoop
 ```
 
-The remaining proof work covers the implemented rounding step, source output correctness, resource bounds, and exact-binary execution.  The [development plan](../plans/beck.md) tracks those tasks.  Earlier bounded execution proofs are retired.
+The remaining proof work connects the executable loop and parser to source output correctness, derives resource bounds, and proves exact-binary execution.  The [development plan](../plans/beck.md) tracks those tasks.  Earlier bounded execution proofs are retired.
 
 ## Measurements
 
