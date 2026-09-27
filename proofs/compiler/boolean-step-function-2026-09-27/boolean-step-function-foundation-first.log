@@ -1,0 +1,73 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [4/20] Built LeanExe.Source.ScalarBooleanStepValues (923ms)
+✖ [20/20] Building LeanExe.Extract.ScalarBooleanStepBindings (920ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanStepBindings.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanStepBindings.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanStepBindings.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanStepBindings.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanStepBindings.setup.json --json
+error: LeanExe/Extract/ScalarBooleanStepBindings.lean:52:87: Invalid field notation: Type of
+  binding
+is not known; cannot resolve field `Matches`
+
+Hint: Consider replacing the field projection with a call to one of the following:
+  • `BooleanStepBinding.Matches`
+  • `ScalarBinding.Matches`
+  • `ScalarStepBinding.Matches`
+  • `String.Slice.Pattern.Model.PatternModel.Matches`
+error: LeanExe/Extract/ScalarBooleanStepBindings.lean:57:8: Tactic `introN` failed: There are no additional binders or `let` bindings in the goal to introduce
+
+locals : List BooleanStepBinding
+values : List BooleanStep.Value
+store : IR.ScalarStore
+binding : BooleanStepBinding
+value : BooleanStep.Value
+tail : BooleanStepBindingsMatch locals values store
+head : BooleanStepBinding.Matches store binding value
+⊢ BooleanStepBindingsMatch (binding :: locals) (value :: values) store
+error: LeanExe/Extract/ScalarBooleanStepBindings.lean:69:18: Function expected at
+  bindings
+but this term has type
+  BooleanStepBindingsMatch locals values store
+
+Note: Expected a function because this term is being applied to the argument
+  index
+error: LeanExe/Extract/ScalarBooleanStepBindings.lean:64:114: unsolved goals
+locals : List BooleanStepBinding
+values : List BooleanStep.Value
+store : IR.ScalarStore
+bindings : BooleanStepBindingsMatch locals values store
+index : Nat
+originalBinding : BooleanStepBinding
+foundBinding : locals[index]? = some originalBinding
+originalValue : BooleanStep.Value
+foundValue : values[index]? = some originalValue
+⊢ ScalarBinding.Matches store originalBinding.toScalar originalValue.toScalar
+error: LeanExe/Extract/ScalarBooleanStepBindings.lean:75:8: Tactic `introN` failed: There are no additional binders or `let` bindings in the goal to introduce
+
+locals : List ScalarBinding
+values : List Value
+store : IR.ScalarStore
+bindings : ScalarBindingsMatch locals values store
+⊢ BooleanStepBindingsMatch (List.map BooleanStepBinding.scalar locals) (List.map BooleanStep.Value.scalar values) store
+error: LeanExe/Extract/ScalarBooleanStepBindings.lean:144:8: Function expected at
+  bindings
+but this term has type
+  BooleanStepBindingsMatch locals values store
+
+Note: Expected a function because this term is being applied to the argument
+  index
+error: LeanExe/Extract/ScalarBooleanStepBindings.lean:183:8: Function expected at
+  bindings
+but this term has type
+  BooleanStepBindingsMatch locals values store
+
+Note: Expected a function because this term is being applied to the argument
+  index
+error: LeanExe/Extract/ScalarBooleanStepBindings.lean:194:20: Function expected at
+  bindings
+but this term has type
+  BooleanStepBindingsMatch locals values store
+
+Note: Expected a function because this term is being applied to the argument
+  index
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanStepBindings
+error: build failed

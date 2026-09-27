@@ -1,0 +1,10 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+@LeanExe.Source.Scalar.BooleanStep.Eval.choose : ∀ {test evidence : Lean.Expr} {flag : Bool} {yes no : Lean.Expr}
+  {values : List LeanExe.Source.Scalar.BooleanStep.Value} {outcome : ForInStep Bool}
+  (type : LeanExe.Source.Scalar.BooleanType),
+  LeanExe.Source.Scalar.EvalWith (LeanExe.Source.Scalar.BooleanStep.decision test evidence)
+      (List.map LeanExe.Source.Scalar.BooleanStep.Value.toScalar values) flag.toUInt64 →
+    LeanExe.Source.Scalar.BooleanStep.Eval (if flag = true then yes else no) values outcome →
+      LeanExe.Source.Scalar.BooleanStep.Eval (LeanExe.Source.Scalar.BooleanStep.choiceExpr type test evidence yes no)
+        values outcome

@@ -1,0 +1,39 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+@LeanExe.Source.Scalar.BooleanStep.Supported.letWordFunction : ∀
+  {types : List LeanExe.Source.Scalar.BooleanStep.BindingKind} {a b : Lean.Expr} {name typeName paramName : Lean.Name}
+  {typeBi paramBi : Lean.BinderInfo} {nondep : Bool} (input : LeanExe.Source.Scalar.ResultType)
+  (output : LeanExe.Source.Scalar.BooleanType),
+  LeanExe.Source.Scalar.BooleanStep.Supported
+      (LeanExe.Source.Scalar.BooleanStep.BindingKind.scalar LeanExe.Source.Scalar.BindingKind.word :: types) a →
+    LeanExe.Source.Scalar.BooleanStep.Supported (LeanExe.Source.Scalar.BooleanStep.BindingKind.wordFunction :: types)
+        b →
+      LeanExe.Source.Scalar.BooleanStep.Supported types
+        (LeanExe.Source.Scalar.BooleanStep.functionExpr input.expr output name typeName paramName typeBi paramBi a b
+          nondep)
+@LeanExe.Source.Scalar.BooleanStep.Supported.letBooleanFunction : ∀
+  {types : List LeanExe.Source.Scalar.BooleanStep.BindingKind} {a b : Lean.Expr} {name typeName paramName : Lean.Name}
+  {typeBi paramBi : Lean.BinderInfo} {nondep : Bool} (input output : LeanExe.Source.Scalar.BooleanType),
+  LeanExe.Source.Scalar.BooleanStep.Supported
+      (LeanExe.Source.Scalar.BooleanStep.BindingKind.scalar LeanExe.Source.Scalar.BindingKind.boolean :: types) a →
+    LeanExe.Source.Scalar.BooleanStep.Supported (LeanExe.Source.Scalar.BooleanStep.BindingKind.booleanFunction :: types)
+        b →
+      LeanExe.Source.Scalar.BooleanStep.Supported types
+        (LeanExe.Source.Scalar.BooleanStep.functionExpr input.expr output name typeName paramName typeBi paramBi a b
+          nondep)
+@LeanExe.Source.Scalar.BooleanStep.Supported.wordApply : ∀ {types : List LeanExe.Source.Scalar.BooleanStep.BindingKind}
+  {index : Nat} {a : Lean.Expr},
+  types[index]? = some LeanExe.Source.Scalar.BooleanStep.BindingKind.wordFunction →
+    LeanExe.Source.Scalar.SupportedWith (List.map LeanExe.Source.Scalar.BooleanStep.BindingKind.toScalar types) a →
+      LeanExe.Source.Scalar.BooleanStep.Supported types ((Lean.Expr.bvar index).app a)
+@LeanExe.Source.Scalar.BooleanStep.Eval.wordApply : ∀ {values : List LeanExe.Source.Scalar.BooleanStep.Value}
+  {index : Nat} {a : Lean.Expr} {x : UInt64} {f : UInt64 → ForInStep Bool},
+  values[index]? = some (LeanExe.Source.Scalar.BooleanStep.Value.wordFunction f) →
+    LeanExe.Source.Scalar.EvalWith a (List.map LeanExe.Source.Scalar.BooleanStep.Value.toScalar values) x →
+      LeanExe.Source.Scalar.BooleanStep.Eval ((Lean.Expr.bvar index).app a) values (f x)
+@LeanExe.Source.Scalar.BooleanStep.Eval.booleanApply : ∀ {values : List LeanExe.Source.Scalar.BooleanStep.Value}
+  {index : Nat} {a : Lean.Expr} {flag : Bool} {f : Bool → ForInStep Bool},
+  values[index]? = some (LeanExe.Source.Scalar.BooleanStep.Value.booleanFunction f) →
+    LeanExe.Source.Scalar.EvalWith ((Lean.Expr.const `Bool.toUInt64 []).app a)
+        (List.map LeanExe.Source.Scalar.BooleanStep.Value.toScalar values) flag.toUInt64 →
+      LeanExe.Source.Scalar.BooleanStep.Eval ((Lean.Expr.bvar index).app a) values (f flag)

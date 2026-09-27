@@ -880,14 +880,23 @@ step-returning continuations. Eight new probes and six prior accumulator probes
 compile. The corpus contains 1573 declarations. Evidence is in
 [the Boolean step bind archive](proofs/compiler/boolean-step-bind-2026-09-27/README.md).
 
-Current capability: local functions returning Boolean loop steps. Distinct
-word/Boolean step closures, lexical matching, source totality, exact annotations,
-acceptance/support, extraction correctness and invariants pass. Public integration
-passes. Both original conditional-action probes and their two new variants now
-compile unchanged. Three new helper probes compile; the fourth retains a `show`
-step-result binding and is fixed for the next capability. Ten native programs
-pass 240 comparisons. Syntax tests pass 20,736 comparisons and 11,232 invalid-input
-checks. The general source-to-WASM proof and independent V8 checks are next.
+Local functions returning Boolean loop steps are complete for unary word and
+Boolean arguments, including retained Id annotations, captures, nested/repeated
+calls and conditional monadic continuations. Source totality, exact annotations,
+extraction and the general source-to-WASM theorem pass with nineteen audits.
+Native Lean/V8 agree on 1,053 inputs across 54 declarations; 44 prior modules
+retain identical bytes and 0 changed. New tests pass 20,976 comparisons
+and 11,232 invalid-input checks. Prior tests pass 44,496 comparisons and 28,224
+invalid-input checks. Four fixed conditional-action probes and three helper
+probes are restored; ten bind and six accumulator controls remain accepted. A
+fixed `show` probe still requires complete step-result bindings. The corpus
+contains 1583 declarations. Evidence is in
+[the Boolean step function archive](proofs/compiler/boolean-step-function-2026-09-27/README.md).
+
+Current capability: complete Boolean step-result bindings, including ordinary
+lets, aliases, standard Id binds and show. Preserve value and exit status;
+ignoring a done result must not exit. Prove exact annotations, source totality,
+extraction and WASM correctness before expanding functions taking step results.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
