@@ -23,9 +23,13 @@ semantics with round-to-nearest, ties-to-even arithmetic and proves that
 instantiation initializes the lookup table.  The theorem \texttt{exp\_exact}
 applies to any store containing that table, supporting repeated calls.
 
-For $|x|<2^{-54}$, \texttt{exp\_tiny\_error} proves that the WASM returns one
-with absolute error below $2^{-53}$ against the real exponential.
-The full-range numerical error proof remains outstanding.
+For every input with $|x|<512$, \texttt{exp\_binary\_normal\_accuracy}
+proves that the emitted WASM returns a finite result with error below one ulp
+against the real exponential.  The error definition uses binary64 spacing
+in the exact result's binade.  For $|x|<2^{-54}$,
+\texttt{exp\_tiny\_error} also proves that the result is one with absolute
+error below $2^{-53}$.  Numerical proofs for the large-input reconstruction
+paths remain outstanding.
 Development tests compare WASM, the Lean port,
 Lean's \texttt{Float.exp}, JavaScript's \texttt{Math.exp}, and a high-precision
 decimal reference.  The largest measured error for the port on 49,821 inputs
@@ -76,9 +80,7 @@ preserves subnormals.
 The source uses a named \texttt{Array UInt64} literal.  LeanExe places its
 length and words in a WASM data segment and emits bounds-checked loads for
 direct indexed reads.  The allocation arena begins after the static data,
-and reset preserves the table.  The execution theorem proves that an
-exponential call preserves all memory and globals.  Array updates retain the compiler's
-ordinary ownership and allocation behavior.
+and reset preserves the table.
 
 \section{Executable implementation}
 The listing comes from the component's \texttt{Basic.lean}.  The table is in

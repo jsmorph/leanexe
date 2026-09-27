@@ -167,6 +167,21 @@ two seconds per module and use the standard axioms.  Applying this result
 to the WASM execution theorem and completing the special reconstruction
 paths remain separate steps.
 
+The emitted-WASM theorem now proves finite output and error below one ulp
+for every input with magnitude below 512.  The proof combines the tiny-input
+bound and normal reconstruction with exact execution, binary decoding, and
+validation.  The shared error definition uses spacing at the exact result's
+binade, bounded below by the minimum subnormal spacing.  Independent package
+verification passes, including both new behavioral declarations and their
+standard-axiom audits.  The component README and three-page report state this
+coverage.  The rebuilt PDF passes visual review, and the documentation check
+passes all 189 maintained Markdown files.
+
+A separate adjusted-path theorem reuses the same arithmetic proof for
+exponent offsets.  It checks in 1.7 seconds, together with integer-selection
+bounds for inputs in [512, 800] and [-800, -512].  Final power-of-two scaling,
+subnormal compensation, and the outer input regions remain outstanding.
+
 The generated annotation module supplies no matching lemmas for this case.
 The execution proof instead uses the generated instruction definitions and
 shared frame, call, and array-read theorems.  Constant word-valued conditions

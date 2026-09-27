@@ -22,6 +22,15 @@ theorem scaleFactor_exp (m : Int) (hm : 0 ≤ 1023+m) :
   congr 1
   ring
 
+theorem scaleFactor_zpow (m : Int) (hm : 0 ≤ 1023+m) : scaleFactor m = (2 : ℝ)^m := by
+  rw [scaleFactor_exp m hm]
+  cases m with
+  | ofNat n => simp [Real.exp_nat_mul, Real.exp_log (by norm_num : (0 : ℝ) < 2)]
+  | negSucc n =>
+    rw [show Int.negSucc n = -((n+1 : Nat) : Int) by omega,
+      Int.cast_neg, Int.cast_natCast, neg_mul, Real.exp_neg, Real.exp_nat_mul,
+      Real.exp_log (by norm_num : (0 : ℝ) < 2), zpow_neg, zpow_natCast]
+
 theorem index_quotient (word : UInt64) :
     ((word &&& 127).toNat : Int) + 128*(shiftInteger word/128) = shiftInteger word := by
   rw [index_remainder]
