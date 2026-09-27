@@ -833,5 +833,9 @@
   "rangeHelperChoiceStep",
   "rangeHelperChoiceExit",
   "rangeHelperChoiceContinue",
-  "rangeHelperChoiceTail"
+  "rangeHelperChoiceTail",
+  "rangeHelperPropositionChoiceStep",
+  "rangeHelperPropositionChoiceExit",
+  "rangeHelperPropositionChoiceContinue",
+  "rangeHelperPropositionChoiceTail"
 ]

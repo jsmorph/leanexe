@@ -439,6 +439,10 @@ conditionals may contain these scopes in their Boolean condition or either
 branch, with ordinary or dependent choices and standard Id result annotations.
 Compilation checks both branches; execution evaluates the selected branch.
 Dependent choices check the proof domains and remove unused proof binders.
+These choices also accept supported propositional guards, including UInt64
+comparisons, negation, compound propositions and proposition lets. Guard operands
+are recursively compiled, and the retained standard evidence is checked before
+compiling either branch. Proposition lets currently bind UInt64 or Bool values.
 
 Saved Boolean variables and their negations may appear inside propositional
 conjunctions and disjunctions, such as `flag ∧ x < y` or `x = y ∨ !flag`.

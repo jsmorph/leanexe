@@ -758,12 +758,16 @@ controls. Prior tests pass 53,684 comparisons, 56,320 invalid-input checks and
 1,280 controls. The native corpus contains 1467 declarations. Evidence is in
 [the helper-choice archive](proofs/compiler/boolean-helper-choice-2026-09-27/README.md).
 
-Current capability: broader propositional conditions in Boolean-valued choices
-with helper scopes. Probes confirm gaps for word comparisons, direct Boolean
-relations/equality to false and compound propositions. Simpler negation and
-proposition-let probes already pass and will serve as positive controls. Preserve
-exact evidence and dependent binders, reusing the checked decision conversion.
-Nested helper bodies and Id inputs remain separately confirmed gaps.
+Current capability: propositional conditions in Boolean-valued choices with helper
+scopes. Source totality, parser acceptance/soundness, scalar correctness and IR
+invariants pass. New tests pass 37,812 comparisons, 51,072 invalid-input checks
+and 768 controls. Six adjacent tests pass 41,140 comparisons, 45,056 invalid-input
+checks and 1,024 controls. The general compiler-proof/WASM checks follow. The original word-comparison probe and repeated-call negation/let probes
+now pass, as do the two original positive controls. The compound probe remains
+rejected because Lean moves its helper into a function-typed proposition let;
+that exact fixture and its diagnostic are retained. Current compound tests use
+explicit Boolean-to-word guard operands. Direct Boolean Eq/Ne conditions,
+function-typed proposition lets, nested helper bodies and Id inputs remain open.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

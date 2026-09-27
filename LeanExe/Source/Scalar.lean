@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarBooleanGuardedSelection
 import LeanExe.Source.ScalarBooleanSelected
 import LeanExe.Source.ScalarBooleanRelated
 import LeanExe.Source.ScalarBooleanJoined
@@ -220,6 +221,11 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       EvalWith (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) values value
+  | scopedPropositionSelection (guarded : BooleanGuardedSelection) {native : Lean.Expr → UInt64}
+      (arguments : ∀ operand, operand ∈ guarded.selection.guard.operands → EvalWith operand values (native operand))
+      (branch : EvalWith (.app (.const ``Bool.toUInt64 [])
+        (if guarded.selection.guard.denote native then guarded.selection.yes else guarded.selection.no)) values (Bool.toUInt64 result)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) guarded.expr) values (Bool.toUInt64 result)
   | scopedSelection (selected : BooleanSelected)
       (condition : EvalWith (.app (.const ``Bool.toUInt64 []) selected.selection.condition) values (Bool.toUInt64 flag))
       (branch : EvalWith (.app (.const ``Bool.toUInt64 []) (if flag then selected.selection.yes else selected.selection.no)) values (Bool.toUInt64 result)) :
@@ -466,6 +472,11 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       SupportedWith types (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep)
+  | scopedPropositionSelection (guarded : BooleanGuardedSelection)
+      (arguments : ∀ operand, operand ∈ guarded.selection.guard.operands → SupportedWith types operand)
+      (yes : SupportedWith types (.app (.const ``Bool.toUInt64 []) guarded.selection.yes))
+      (no : SupportedWith types (.app (.const ``Bool.toUInt64 []) guarded.selection.no)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) guarded.expr)
   | scopedSelection (selected : BooleanSelected)
       (condition : SupportedWith types (.app (.const ``Bool.toUInt64 []) selected.selection.condition))
       (yes : SupportedWith types (.app (.const ``Bool.toUInt64 []) selected.selection.yes))
@@ -545,7 +556,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
   generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
   cases evaluation with
   | booleanWord | booleanBindingWord | wordBindingBooleanWord | booleanWrappedWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord | booleanPropositionWord => exact ⟨_, rfl⟩
-  | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate | scopedWrapper | scopedNegation | scopedJunction | scopedEquality | scopedSelection => exact ⟨_, rfl⟩
+  | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate | scopedWrapper | scopedNegation | scopedJunction | scopedEquality | scopedSelection | scopedPropositionSelection => exact ⟨_, rfl⟩
   | complement head _ => cases head <;> simp_all
   | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
   | manyApply call _ _ =>
@@ -873,6 +884,23 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.booleanPredicateFunction f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letBooleanPredicateFn expression type (fun x => (total x).choose_spec) hv⟩
+  | scopedPropositionSelection guarded _ _ _ ihArgs iht ihe =>
+    let native : Lean.Expr → UInt64 := fun operand =>
+      if member : operand ∈ guarded.selection.guard.operands then (ihArgs operand member values typed).choose else 0
+    have meanings : ∀ operand, operand ∈ guarded.selection.guard.operands → EvalWith operand values (native operand) := by
+      intro operand member
+      simpa only [native, dite_eq_left member] using (ihArgs operand member values typed).choose_spec
+    cases result : guarded.selection.guard.denote native with
+    | false =>
+      obtain ⟨value, evaluated⟩ := ihe values typed
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag.toUInt64, .scopedPropositionSelection guarded meanings
+        (by simpa only [result, Bool.false_eq_true, ↓reduceIte] using evaluated)⟩
+    | true =>
+      obtain ⟨value, evaluated⟩ := iht values typed
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag.toUInt64, .scopedPropositionSelection guarded meanings
+        (by simpa only [result, ↓reduceIte] using evaluated)⟩
   | scopedSelection selected _ _ _ ihc iht ihe =>
     obtain ⟨condition, hc⟩ := ihc values typed
     obtain ⟨flag, rfl⟩ := hc.booleanConversion_result

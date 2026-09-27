@@ -8640,6 +8640,73 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def booleanHelperPropositionChoiceWord (x y : UInt64) : UInt64 :=
+  (if x < y then (let f := fun n : UInt64 => n == y; f x || f 0)
+   else (let g := fun b : Bool => b || y == 0; g (x == 0) && g (x == y))).toUInt64 + x
+
+def booleanHelperPropositionChoiceLe (x y : UInt64) : UInt64 :=
+  (Id.run do
+    if x ≤ y then
+      return (let f := fun b : Bool => !b || y == 0; f (x == y) && f (x == 0))
+    else return !(let f := fun n : UInt64 => n == y; f x || f 0)).toUInt64 + x
+
+def booleanHelperPropositionChoiceCompound (x y : UInt64) : UInt64 :=
+  (if x < y ∧ (let f := fun n : UInt64 => n == y; f x || f 0).toUInt64 = 1 then
+    (let g := fun b : Bool => b || y == 0; g (x == 0) && g (x == y))
+   else (let g := fun n : UInt64 => n % 3 == 0; g x || g y)).toUInt64 + y
+
+def booleanHelperPropositionChoiceDependent (x y : UInt64) : UInt64 :=
+  (if _h : x ≠ y ∨ (let f := fun n : UInt64 => n == y; f x || f 0).toUInt64 = 1 then
+    (let g := fun b : Bool => !b || y == 0; g (x == y) && g (x == 0))
+   else (let h := fun n : UInt64 => n % 3 == 0; h x || h y)).toUInt64 + y
+
+def booleanHelperPropositionChoiceNegated (x y : UInt64) : UInt64 :=
+  (if _h : ¬ x < y then
+    (let g := fun b : Bool => b || y == 0; g (x == 0) && g (x == y)) else x == y).toUInt64 + x
+
+def booleanHelperPropositionChoiceLet (x y : UInt64) : UInt64 :=
+  (if (let k := y + 1; x < k) then
+    (let g := fun b : Bool => b || y == 0; g (x == 0) && g (x == y)) else x == y).toUInt64 + x
+
+def rangeHelperPropositionChoiceStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (if a < seed + i.toUInt64 + 1 then
+        (let f := fun n : UInt64 => n % 2 == 0; f a && f i.toUInt64) else a == seed) then
+      a := a + i.toUInt64 + 7
+    else a := a * 3 + 1
+  return a
+
+def rangeHelperPropositionChoiceExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if _h : (if _h : a ≠ seed ∧ (let f := fun n : UInt64 => n % 7 == 0; f a || f (i.toUInt64 + 1)).toUInt64 = 1 then
+        !(Id.run do
+          let g := fun b : Bool => b || seed == 0
+          return g (a == seed) && g (i.toUInt64 == 0))
+      else a % 11 == 0) then break
+  return a
+
+def rangeHelperPropositionChoiceContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (if a ≤ seed ∨ i.toUInt64 < 4 then
+        (let f := fun b : Bool => !b || a % 2 == 0; f (i.toUInt64 % 3 == 0) && f (a == seed))
+      else false) then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangeHelperPropositionChoiceTail (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+  return (if (let k := seed + 1; a < k) then
+      (let f := fun n : UInt64 => n == seed; f a || f 0)
+    else !(Id.run do
+      let g := fun b : Bool => b || seed == 0
+      return g (a == seed) && g (a == 0))).toUInt64 + a
+
 def booleanHelperChoiceCondition (x y : UInt64) : UInt64 :=
   (if (let f := fun n : UInt64 => n == y; f x || f 0) then x == 0 else y == 0).toUInt64 + x
 
@@ -12389,6 +12456,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolRelationExit,
       `ArithmeticModeTest.rangeBoolRelationContinue,
       `ArithmeticModeTest.rangeBoolRelationTail,
+      `ArithmeticModeTest.booleanHelperPropositionChoiceWord,
+      `ArithmeticModeTest.booleanHelperPropositionChoiceLe,
+      `ArithmeticModeTest.booleanHelperPropositionChoiceCompound,
+      `ArithmeticModeTest.booleanHelperPropositionChoiceDependent,
+      `ArithmeticModeTest.booleanHelperPropositionChoiceNegated,
+      `ArithmeticModeTest.booleanHelperPropositionChoiceLet,
+      `ArithmeticModeTest.rangeHelperPropositionChoiceStep,
+      `ArithmeticModeTest.rangeHelperPropositionChoiceExit,
+      `ArithmeticModeTest.rangeHelperPropositionChoiceContinue,
+      `ArithmeticModeTest.rangeHelperPropositionChoiceTail,
       `ArithmeticModeTest.booleanHelperChoiceCondition,
       `ArithmeticModeTest.booleanHelperChoiceYes,
       `ArithmeticModeTest.booleanHelperChoiceNo,
