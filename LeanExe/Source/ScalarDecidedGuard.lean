@@ -18,7 +18,7 @@ abbrev operands (guard : DecidedGuard) := guard.tree.operands
 abbrev denote (guard : DecidedGuard) (native : Lean.Expr → UInt64) := guard.tree.denote native
 
 theorem operands_size (guard : DecidedGuard) {operand : Lean.Expr}
-    (member : operand ∈ guard.operands) : sizeOf operand < sizeOf guard.condition :=
+    (member : operand ∈ guard.operands) : sizeOf operand < sizeOf guard.condition + guardOperandOverhead :=
   guard.tree.operands_size member
 
 end DecidedGuard

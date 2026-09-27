@@ -4956,6 +4956,64 @@ def rangeExtendedMixedHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + 1
   return a
 
+def propositionLetNested (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  if (let flag := f (x == 0); let word := x + flag.toUInt64; f (word != y)) ∧ x < y then x + y else x - y
+
+def propositionLetWord (x y : UInt64) : UInt64 :=
+  if (let word := x + y; word < x ∨ word = y) then x + 1 else y + 2
+
+def propositionLetDecision (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == y
+  let flag := decide ((let saved := f (x != 0); !saved) ∨ (let word := x + 1; word ≤ y))
+  flag.toUInt64 + x
+
+def propositionLetDependent (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  if _h : (let saved := f (x == 0); saved) ∧ x < y then x + 3 else y + 7
+
+def propositionLetUnused (x y : UInt64) : UInt64 :=
+  if (let _saved := x == y; let _word := x + y; True) then y + 1 else x
+
+def propositionLetHelper (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == y
+  let g := fun b : Bool => if (let saved := f b; !saved) ∧ x < y then f true else f false
+  (g true).toUInt64 + (g false).toUInt64 + y
+
+def rangePropositionLetStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != 0
+    if (let saved := f (i.toUInt64 != seed); saved || f true) ∧ i.toUInt64 < a then break
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangePropositionLetContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun n : UInt64 => n != seed
+    if a = 0 ∨ (let flag := f i.toUInt64; !flag) then
+      a := a + 3
+      continue
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangePropositionLetOuter (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let mut a := if (let saved := f true; saved) ∧ count < seed then seed + 1 else seed
+  for i in [:count.toNat] do
+    if (let word := a + i.toUInt64; word < seed) then a := a + 2 else a := a + 1
+  return a + (decide ((let saved := f true; saved) ∨ a = seed)).toUInt64
+
+def rangePropositionLetHelper (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun b : Bool => if (let flag := f b; !flag) ∧ seed < count then !b else b
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let flag := g (a == 0); flag) ∧ i.toUInt64 < a then break
+    a := a + (f (g true)).toUInt64 + 1
+  return a
+
 def booleanPredicateResultBool (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => !b && x != 0
   let g := fun b : Bool => f b
@@ -6927,6 +6985,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeExtendedMixedContinue", rangeExtendedMixedContinue),
    ("rangeExtendedMixedOuter", rangeExtendedMixedOuter),
    ("rangeExtendedMixedHelper", rangeExtendedMixedHelper),
+   ("rangePropositionLetStep", rangePropositionLetStep),
+   ("rangePropositionLetContinue", rangePropositionLetContinue),
+   ("rangePropositionLetOuter", rangePropositionLetOuter),
+   ("rangePropositionLetHelper", rangePropositionLetHelper),
    ("rangeBooleanPredicateResultLocalBool", rangeBooleanPredicateResultLocalBool),
    ("rangeBooleanPredicateResultLocalWord", rangeBooleanPredicateResultLocalWord),
    ("rangeBooleanPredicateResultLocalNested", rangeBooleanPredicateResultLocalNested),
@@ -7419,6 +7481,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("extendedMixedBind", extendedMixedBind),
    ("extendedMixedWrapped", extendedMixedWrapped),
    ("extendedMixedRelation", extendedMixedRelation),
+   ("propositionLetNested", propositionLetNested),
+   ("propositionLetWord", propositionLetWord),
+   ("propositionLetDecision", propositionLetDecision),
+   ("propositionLetDependent", propositionLetDependent),
+   ("propositionLetUnused", propositionLetUnused),
+   ("propositionLetHelper", propositionLetHelper),
    ("booleanPredicateResultBool", booleanPredicateResultBool),
    ("booleanPredicateResultWord", booleanPredicateResultWord),
    ("booleanPredicateResultNested", booleanPredicateResultNested),

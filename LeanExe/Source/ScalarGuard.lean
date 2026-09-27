@@ -1,5 +1,6 @@
 import LeanExe.Source.ScalarGuardLiteral
 import LeanExe.Source.ScalarSavedBooleanGuard
+import LeanExe.Source.ScalarGuardLet
 
 namespace LeanExe.Source.Scalar
 
@@ -12,6 +13,8 @@ inductive Guard where
   | savedLeft (negations : Nat) (op : Junction) (left : SavedBooleanGuard) (right : Guard)
   | savedRight (negations : Nat) (op : Junction) (left : Guard) (right : SavedBooleanGuard)
   | savedBoth (negations : Nat) (op : Junction) (left right : SavedBooleanGuard)
+  | letGuard (negations : Nat) (binding : GuardLet) (body : Guard)
+  | letSaved (negations : Nat) (binding : GuardLet) (body : SavedBooleanGuard)
   deriving Repr
 
 namespace Guard
@@ -24,6 +27,8 @@ def operands : Guard → List Lean.Expr
   | .savedLeft _ _ a b => [a.operand] ++ b.operands
   | .savedRight _ _ a b => a.operands ++ [b.operand]
   | .savedBoth _ _ a b => [a.operand] ++ [b.operand]
+  | .letGuard _ binding body => binding.operand :: body.operands.map binding.wrap
+  | .letSaved _ binding body => binding.operand :: [binding.wrap body.operand]
 
 def condition : Guard → Lean.Expr
   | .literal value => value.condition
@@ -33,6 +38,8 @@ def condition : Guard → Lean.Expr
   | .savedLeft n op a b => GuardNegation.condition n (op.condition a.condition b.condition)
   | .savedRight n op a b => GuardNegation.condition n (op.condition a.condition b.condition)
   | .savedBoth n op a b => GuardNegation.condition n (op.condition a.condition b.condition)
+  | .letGuard n binding body => GuardNegation.condition n (binding.wrap body.condition)
+  | .letSaved n binding body => GuardNegation.condition n (binding.wrap body.condition)
 
 def evidence : Guard → Lean.Expr
   | .literal value => value.evidence
@@ -47,6 +54,8 @@ def evidence : Guard → Lean.Expr
       (op.evidence a.condition b.condition a.evidence b.evidence)
   | .savedBoth n op a b => GuardNegation.evidence n (op.condition a.condition b.condition)
       (op.evidence a.condition b.condition a.evidence b.evidence)
+  | .letGuard n binding body => GuardNegation.evidence n (binding.wrap body.condition) (binding.evidence body.evidence)
+  | .letSaved n binding body => GuardNegation.evidence n (binding.wrap body.condition) (binding.evidence body.evidence)
 
 def denote (native : Lean.Expr → UInt64) : Guard → Bool
   | .literal value => value.denote
@@ -56,6 +65,8 @@ def denote (native : Lean.Expr → UInt64) : Guard → Bool
   | .savedLeft n op a b => GuardNegation.denote n (op.denote (a.denote native) (b.denote native))
   | .savedRight n op a b => GuardNegation.denote n (op.denote (a.denote native) (b.denote native))
   | .savedBoth n op a b => GuardNegation.denote n (op.denote (a.denote native) (b.denote native))
+  | .letGuard n binding body => GuardNegation.denote n (body.denote (fun operand => native (binding.wrap operand)))
+  | .letSaved n binding body => GuardNegation.denote n (body.denote (fun operand => native (binding.wrap operand)))
 
 def negate : Guard → Guard
   | .literal value => .literal value.negate
@@ -65,6 +76,8 @@ def negate : Guard → Guard
   | .savedLeft n op a b => .savedLeft (n + 1) op a b
   | .savedRight n op a b => .savedRight (n + 1) op a b
   | .savedBoth n op a b => .savedBoth (n + 1) op a b
+  | .letGuard n binding body => .letGuard (n + 1) binding body
+  | .letSaved n binding body => .letSaved (n + 1) binding body
 
 theorem negate_condition (guard : Guard) :
     guard.negate.condition = .app (.const ``Not []) guard.condition := by
@@ -72,53 +85,99 @@ theorem negate_condition (guard : Guard) :
   | literal value => exact value.negate_condition
   | _ => rfl
 
-theorem operands_size (guard : Guard) {operand : Lean.Expr}
-    (member : operand ∈ guard.operands) : sizeOf operand < sizeOf guard.condition := by
+theorem condition_min_size (guard : Guard) :
+    sizeOf (.const ``True [] : Lean.Expr) ≤ sizeOf guard.condition := by
   induction guard with
+  | literal value => exact value.condition_min_size
+  | compare op a b => exact op.condition_min_size a b
+  | boolean m n op a b =>
+    exact Nat.le_trans (BooleanGuard.junction n op a b).condition_min_size (GuardNegation.condition_size m _)
+  | junction n op a b iha ihb =>
+    apply Nat.le_trans _ (GuardNegation.condition_size n _)
+    have bound := iha
+    cases op <;> simp [Junction.condition] at bound ⊢ <;> omega
+  | savedLeft n op a b ihb =>
+    apply Nat.le_trans _ (GuardNegation.condition_size n _)
+    have bound := a.condition_min_size
+    cases op <;> simp [Junction.condition] at bound ⊢ <;> omega
+  | savedRight n op a b iha =>
+    apply Nat.le_trans _ (GuardNegation.condition_size n _)
+    have bound := iha
+    cases op <;> simp [Junction.condition] at bound ⊢ <;> omega
+  | savedBoth n op a b =>
+    apply Nat.le_trans _ (GuardNegation.condition_size n _)
+    have bound := a.condition_min_size
+    cases op <;> simp [Junction.condition] at bound ⊢ <;> omega
+  | letGuard n binding body ih =>
+    apply Nat.le_trans _ (GuardNegation.condition_size n _)
+    have bound := ih
+    simp [GuardLet.wrap] at bound ⊢; omega
+  | letSaved n binding body =>
+    apply Nat.le_trans _ (GuardNegation.condition_size n _)
+    have bound := body.condition_min_size
+    simp [GuardLet.wrap] at bound ⊢; omega
+
+theorem operands_size (guard : Guard) {operand : Lean.Expr}
+    (member : operand ∈ guard.operands) : sizeOf operand < sizeOf guard.condition + guardOperandOverhead := by
+  induction guard generalizing operand with
   | literal => simp [operands] at member
   | compare op a b =>
     simp only [operands, List.mem_cons, List.not_mem_nil, or_false] at member
     have bounds := op.operands_size a b
+    simp only [condition]
     rcases member with rfl | rfl
-    · exact bounds.1
-    · exact bounds.2
+    · exact Nat.lt_of_lt_of_le bounds.1 (by omega)
+    · exact Nat.lt_of_lt_of_le bounds.2 (by omega)
   | junction n op a b iha ihb =>
-    apply Nat.lt_of_lt_of_le _ (GuardNegation.condition_size n _)
+    apply Nat.lt_of_lt_of_le _ (Nat.add_le_add_right (GuardNegation.condition_size n _) guardOperandOverhead)
     simp only [operands, List.mem_append] at member
     cases op <;> simp only [Junction.condition]
     all_goals rcases member with member | member
     all_goals first
-      | (have h := iha member; simp_all; omega)
-      | (have h := ihb member; simp_all; omega)
+      | (have h := iha member; clear iha; simp_all; omega)
+      | (have h := ihb member; clear ihb; simp_all; omega)
   | boolean m n op a b =>
-    apply Nat.lt_of_lt_of_le _ (GuardNegation.condition_size m _)
+    apply Nat.lt_of_lt_of_le _ (Nat.add_le_add_right (GuardNegation.condition_size m _) guardOperandOverhead)
     have bound := (BooleanGuard.junction n op a b).operands_size (operand := operand) member
     simp only [BooleanGuard.condition]
     simp_all; omega
   | savedLeft n op a b ihb =>
-    apply Nat.lt_of_lt_of_le _ (GuardNegation.condition_size n _)
+    apply Nat.lt_of_lt_of_le _ (Nat.add_le_add_right (GuardNegation.condition_size n _) guardOperandOverhead)
     simp only [operands, List.mem_append, List.mem_singleton] at member
     cases op <;> simp only [Junction.condition]
     all_goals rcases member with member | member
     all_goals first
       | (subst operand; have h := a.operand_size; simp_all; omega)
-      | (have h := ihb member; simp_all; omega)
+      | (have h := ihb member; clear ihb; simp_all; omega)
   | savedRight n op a b iha =>
-    apply Nat.lt_of_lt_of_le _ (GuardNegation.condition_size n _)
+    apply Nat.lt_of_lt_of_le _ (Nat.add_le_add_right (GuardNegation.condition_size n _) guardOperandOverhead)
     simp only [operands, List.mem_append, List.mem_singleton] at member
     cases op <;> simp only [Junction.condition]
     all_goals rcases member with member | member
     all_goals first
       | (subst operand; have h := b.operand_size; simp_all; omega)
-      | (have h := iha member; simp_all; omega)
+      | (have h := iha member; clear iha; simp_all; omega)
   | savedBoth n op a b =>
-    apply Nat.lt_of_lt_of_le _ (GuardNegation.condition_size n _)
+    apply Nat.lt_of_lt_of_le _ (Nat.add_le_add_right (GuardNegation.condition_size n _) guardOperandOverhead)
     simp only [operands, List.mem_append, List.mem_singleton] at member
     cases op <;> simp only [Junction.condition]
     all_goals rcases member with member | member
     all_goals first
       | (subst operand; have h := a.operand_size; simp_all; omega)
       | (subst operand; have h := b.operand_size; simp_all; omega)
+  | letGuard n binding body ih =>
+    apply Nat.lt_of_lt_of_le _ (Nat.add_le_add_right (GuardNegation.condition_size n _) guardOperandOverhead)
+    simp only [operands, List.mem_cons, List.mem_map] at member
+    rcases member with rfl | ⟨inner, member, rfl⟩
+    · exact binding.operand_size body.condition body.condition_min_size
+    · have bound := ih member
+      simp [GuardLet.wrap] at *; omega
+  | letSaved n binding body =>
+    apply Nat.lt_of_lt_of_le _ (Nat.add_le_add_right (GuardNegation.condition_size n _) guardOperandOverhead)
+    simp only [operands, List.mem_cons, List.not_mem_nil, or_false] at member
+    rcases member with rfl | rfl
+    · exact binding.operand_size body.condition body.condition_min_size
+    · exact Nat.lt_of_lt_of_le (binding.wrap_size body.operand_size) (by omega)
 
 end Guard
 

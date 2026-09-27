@@ -96,6 +96,21 @@ counts retain Bool.not and propositional Not, with their exact decision evidence
 Every Boolean subtree and compared scalar operand is checked. Custom BEq and
 decision instances, including in unused helper bodies, remain rejected.
 
+Propositional junctions also admit saved flags, calls to local Boolean helpers,
+and supported compound Boolean expressions on either side. Each Boolean leaf
+is checked through the typed Boolean-to-word conversion. Captures, negation,
+choices, Boolean-valued lets, standard Id binds and wrappers preserve their
+source values. Closed Boolean comparison trees retain their existing lowering.
+
+Proposition lets retain the binding name, type, value, body and dependency flag.
+Bool and UInt64 bindings admit standard Id annotations. Each condition operand
+is evaluated under the original let, preserving captures and shadowing. Used
+and unused bound values are checked. The decision expression must match the
+standard evidence with the bound value substituted into its body. Ordinary and
+dependent conditions, saved decisions and Boolean-result choices share this
+rule. This grammar does not yet admit arbitrary local function declarations or
+noncanonical decision annotations inside proposition lets.
+
 Literal `true`/`false` Boolean guards and `True`/`False` propositional guards are
 admitted as whole conditions and inside mixed guard trees. Repeated `!` and `¬`
 retain their exact source syntax and standard decision evidence. Their known
@@ -234,8 +249,7 @@ The complete helper body is recursively checked even when unused. Declarations
 inside loop steps and around loops use the same checked bodies. Local helpers
 can capture the current accumulator; outer captures retain their original values
 across loop updates. Results can control early exits and continue, supply bounds
-and initial values, and contribute to the final result. Saved Boolean variables
-inside mixed propositional guards remain a subsequent capability. Scalar Boolean do binds admit these calls in
+and initial values, and contribute to the final result. Scalar Boolean do binds admit these calls in
 direct actions or under standard pure/Id.run/metadata wrappers. The complete
 action is recursively checked, including unused results, and its encoded Boolean
 is stored with a distinct binding kind. Captures, shadowing and scalar calculations

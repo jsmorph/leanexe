@@ -70,6 +70,8 @@ def guardDecision? : Guard → Lean.Expr → Bool
       | some (leftEvidence, rightEvidence) => guardDecision? left leftEvidence && LeanExe.Source.ExprEquality.same rightEvidence right.evidence
       | none => false
   | guard@(.savedBoth ..), evidence => LeanExe.Source.ExprEquality.same evidence guard.evidence
+  | guard@(.letGuard ..), evidence => LeanExe.Source.ExprEquality.same evidence guard.evidence
+  | guard@(.letSaved ..), evidence => LeanExe.Source.ExprEquality.same evidence guard.evidence
 
 @[simp] theorem guardDecision_accepts {guard : Guard} {evidence : Lean.Expr}
     (meaning : GuardDecision guard evidence) : guardDecision? guard evidence = true := by
@@ -82,6 +84,8 @@ def guardDecision? : Guard → Lean.Expr → Bool
   | savedLeft n op left right meaning ih => simp [guardDecision?, ih]
   | savedRight n op left right meaning ih => simp [guardDecision?, ih]
   | savedBoth => simp [guardDecision?, Guard.evidence]
+  | letGuard => simp [guardDecision?]
+  | letSaved => simp [guardDecision?]
 
 theorem guardDecision_sound {guard : Guard} {evidence : Lean.Expr}
     (accepted : guardDecision? guard evidence = true) : GuardDecision guard evidence := by
@@ -134,6 +138,14 @@ theorem guardDecision_sound {guard : Guard} {evidence : Lean.Expr}
     have same := LeanExe.Source.ExprEquality.same_eq_true.mp accepted
     rw [same]
     exact .savedBoth n op left right
+  | letGuard n binding body _ =>
+    have same := LeanExe.Source.ExprEquality.same_eq_true.mp accepted
+    rw [same]
+    exact .letGuard n binding body
+  | letSaved n binding body =>
+    have same := LeanExe.Source.ExprEquality.same_eq_true.mp accepted
+    rw [same]
+    exact .letSaved n binding body
 
 @[simp] theorem guardDecision_canonical (guard : Guard) : guardDecision? guard guard.evidence = true :=
   guardDecision_accepts (.canonical guard)

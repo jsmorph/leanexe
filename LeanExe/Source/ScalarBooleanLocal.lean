@@ -221,7 +221,9 @@ theorem operands_size (guard : BooleanLocal) {operand : Lean.Expr}
     simp only [operands, List.mem_append] at member
     simp only [PropositionGuard.branch, PropositionGuard.condition]
     rcases member with member | member | member
-    · have h := g.value.operands_size member; clear iht ihe; simp_all <;> omega
+    · have h := g.value.operands_size member
+      have overhead := guardOperandOverhead_ite
+      clear iht ihe; simp_all <;> omega
     · have h := iht member; clear iht ihe; simp_all <;> omega
     · have h := ihe member; clear iht ihe; simp_all <;> omega
 
@@ -239,7 +241,9 @@ theorem operands_size (guard : BooleanLocal) {operand : Lean.Expr}
     apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
     simp only [operands, List.mem_append] at member
     rcases member with member | member | member
-    · exact Nat.lt_trans (g.value.operands_size member) (shape.condition_size _ _ _ _)
+    · have bound := g.value.operands_size member
+      have overhead := guardOperandOverhead_dite
+      simp [BooleanProofBranch.expr, PropositionGuard.condition] at *; omega
     · exact Nat.lt_trans (iht member) (shape.yes_size _ _ _ _)
     · exact Nat.lt_trans (ihe member) (shape.no_size _ _ _ _)
   | binding n name form value body type ihv ihb =>
@@ -274,6 +278,7 @@ theorem operands_size (guard : BooleanLocal) {operand : Lean.Expr}
   | decision n g =>
     apply Nat.lt_of_lt_of_le _ (BooleanGuardNegation.expr_size n _)
     have bound := g.value.operands_size member
+    have overhead := guardOperandOverhead_decide
     simp only [DecidedGuard.decisionExpr]
     simp_all
     omega

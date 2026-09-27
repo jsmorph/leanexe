@@ -36,7 +36,7 @@ theorem propositionGuard_sound {condition evidence : Lean.Expr} {guard : Proposi
 
 theorem propositionGuard_size {condition evidence : Lean.Expr} {guard : PropositionGuard}
     (parsed : propositionGuard? condition evidence = some guard) {operand : Lean.Expr}
-    (member : operand ∈ guard.operands) : sizeOf operand < sizeOf condition := by
+    (member : operand ∈ guard.operands) : sizeOf operand < sizeOf condition + guardOperandOverhead := by
   rw [(propositionGuard_sound parsed).1]
   exact guard.value.operands_size member
 
