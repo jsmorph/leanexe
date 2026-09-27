@@ -254,7 +254,8 @@ def RequiredSections (module_ : RawModule) : Prop :=
   (module_.memories ≠ [] → .memory ∈ module_.sections) ∧
   (module_.globals ≠ [] → .global ∈ module_.sections) ∧
   (module_.exports ≠ [] → .export ∈ module_.sections) ∧
-  (module_.codes ≠ [] → .code ∈ module_.sections)
+  (module_.codes ≠ [] → .code ∈ module_.sections) ∧
+  (module_.data ≠ [] → .data ∈ module_.sections)
 
 def SectionsValid (module_ : RawModule) : Prop :=
   Grammar.OrderedAfter 0 module_.sections ∧ RequiredSections module_
@@ -326,11 +327,18 @@ def FunctionsValid (module_ : RawModule) : Prop :=
     ResolvedTypes module_.types module_.functionTypeIndices functions ∧
     FunctionPairsValid module_ functions functions module_.codes
 
+def DataSegmentValid (segment : DataSegment) : Prop :=
+  ConstType segment.offset = .i32 ∧ ConstInRange segment.offset
+
+def DataValid (segments : List DataSegment) : Prop :=
+  ∀ segment ∈ segments, DataSegmentValid segment
+
 def ModuleValid (module_ : RawModule) : Prop :=
   SectionsValid module_ ∧
   (∃ memory, module_.memories = [memory] ∧ LimitsValid memory.limits) ∧
   GlobalsValid module_.globals ∧
   ExportsValid module_ ∧
+  DataValid module_.data ∧
   FunctionsValid module_
 
 end Wasm.Binary.Validity

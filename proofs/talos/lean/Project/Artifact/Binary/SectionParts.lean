@@ -33,6 +33,13 @@ theorem parseSection_code_eq {before : RawModule} {start finish : Cursor} {value
     parseSection .code before start = .ok ({ before with codes := values }, finish) := by
   simp only [parseSection, Bind.bind, Pure.pure, Except.bind, h]
 
+theorem parseSection_data_eq {before : RawModule} {start finish : Cursor}
+    {values : List DataSegment}
+    (h : sized (vector dataSegment) start = .ok (values, finish)) :
+    parseSection .data before start = .ok ({ before with data := values }, finish) := by
+  simp only [parseSection, Bind.bind, Pure.pure, Except.bind, h]
+
+#print axioms parseSection_data_eq
 #print axioms parseSection_type_eq
 #print axioms parseSection_function_eq
 #print axioms parseSection_memory_eq

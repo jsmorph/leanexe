@@ -389,7 +389,8 @@ def rawModuleEqual (fuel : Nat) (first second : RawModule) : Bool :=
   decide (first.memories = second.memories) &&
   decide (first.globals = second.globals) &&
   decide (first.exports = second.exports) &&
-  codeListEqual fuel first.codes second.codes
+  codeListEqual fuel first.codes second.codes &&
+  decide (first.data = second.data)
 
 theorem rawModule_ext {first second : RawModule}
     (hsections : first.sections = second.sections)
@@ -398,7 +399,8 @@ theorem rawModule_ext {first second : RawModule}
     (hmemories : first.memories = second.memories)
     (hglobals : first.globals = second.globals)
     (hexports : first.exports = second.exports)
-    (hcodes : first.codes = second.codes) : first = second := by
+    (hcodes : first.codes = second.codes)
+    (hdata : first.data = second.data) : first = second := by
   cases first
   cases second
   simp_all
@@ -406,6 +408,7 @@ theorem rawModule_ext {first second : RawModule}
 theorem rawModuleEqual_sound {fuel : Nat} {first second : RawModule}
     (h : rawModuleEqual fuel first second = true) : first = second := by
   simp [rawModuleEqual] at h
+  rcases h with ⟨h, hdata⟩
   have hsections := h.1.1.1.1.1.1
   have htypes := h.1.1.1.1.1.2
   have hindices := h.1.1.1.1.2
@@ -415,6 +418,6 @@ theorem rawModuleEqual_sound {fuel : Nat} {first second : RawModule}
   have hcodes := h.2
   have hcodesEq := codeListEqual_sound fuel first.codes second.codes hcodes
   exact rawModule_ext hsections htypes hindices hmemories hglobals hexports
-    hcodesEq
+    hcodesEq hdata
 
 end Wasm.Binary.Equality

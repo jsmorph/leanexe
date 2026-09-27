@@ -7,6 +7,7 @@ inductive SectionId where
   | global
   | export
   | code
+  | data
   deriving Repr, Inhabited, DecidableEq
 
 def SectionId.byte : SectionId → UInt8
@@ -16,6 +17,7 @@ def SectionId.byte : SectionId → UInt8
   | .global => 6
   | .export => 7
   | .code => 10
+  | .data => 11
 
 def SectionId.rank : SectionId → Nat
   | .type => 1
@@ -24,6 +26,7 @@ def SectionId.rank : SectionId → Nat
   | .global => 4
   | .export => 5
   | .code => 6
+  | .data => 7
 
 inductive ValType where
   | i32
@@ -168,6 +171,11 @@ structure Export where
   desc : ExportDesc
   deriving Repr, Inhabited, DecidableEq
 
+structure DataSegment where
+  offset : ConstExpr
+  bytes : List UInt8
+  deriving Repr, Inhabited, DecidableEq
+
 structure RawModule where
   sections : List SectionId
   types : List FuncType
@@ -176,6 +184,7 @@ structure RawModule where
   globals : List Global
   exports : List Export
   codes : List Code
+  data : List DataSegment := []
   deriving Repr, Inhabited, BEq
 
 end Wasm.Binary

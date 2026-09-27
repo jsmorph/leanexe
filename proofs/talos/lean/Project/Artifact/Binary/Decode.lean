@@ -383,6 +383,13 @@ def exportDesc : Parser ExportDesc := do
 def exportEntry : Parser Export := do
   pure { name := ← name, desc := ← exportDesc }
 
+def dataSegment : Parser DataSegment := do
+  let mode ← Leb.u32
+  if mode = 0 then
+    pure { offset := ← constExpr, bytes := ← byteVector }
+  else
+    fail (.malformed "unsupported data segment mode")
+
 def sectionInfo (byte : UInt8) : Except ErrorKind (SectionId × Nat) :=
   if byte = SectionId.type.byte then .ok (.type, SectionId.type.rank)
   else if byte = SectionId.function.byte then .ok (.function, SectionId.function.rank)
@@ -390,6 +397,7 @@ def sectionInfo (byte : UInt8) : Except ErrorKind (SectionId × Nat) :=
   else if byte = SectionId.global.byte then .ok (.global, SectionId.global.rank)
   else if byte = SectionId.export.byte then .ok (.export, SectionId.export.rank)
   else if byte = SectionId.code.byte then .ok (.code, SectionId.code.rank)
+  else if byte = SectionId.data.byte then .ok (.data, SectionId.data.rank)
   else .error (.unsupportedSection byte)
 
 def parseSection (id : SectionId) (module_ : RawModule) : Parser RawModule :=
@@ -412,6 +420,9 @@ def parseSection (id : SectionId) (module_ : RawModule) : Parser RawModule :=
   | .code => do
       let codes ← sized (vector code)
       pure { module_ with codes }
+  | .data => do
+      let data ← sized (vector dataSegment)
+      pure { module_ with data }
 
 def remainingBytes : Parser Nat :=
   fun cursor => .ok (cursor.remaining, cursor)

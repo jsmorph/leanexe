@@ -1056,6 +1056,43 @@ theorem code_sound :
   unfold code
   exact sized_sound codeBody_sound
 
+theorem dataSegment_sound : Sound dataSegment Grammar.DataSegment := by
+  intro start value finish hstart hrun
+  unfold dataSegment at hrun
+  dsimp [Bind.bind, Monad.toBind, Parser.instMonad, Except.bind] at hrun
+  split at hrun
+  · contradiction
+  · rename_i parsedMode modePair hmodeRun
+    rcases modePair with ⟨mode, afterMode⟩
+    dsimp only at hrun
+    by_cases hmode : mode = 0
+    · simp [hmode] at hrun
+      subst mode
+      split at hrun
+      · contradiction
+      · rename_i parsedOffset offsetPair hoffsetRun
+        rcases offsetPair with ⟨offset, afterOffset⟩
+        split at hrun
+        · contradiction
+        · rename_i parsedBytes bytesPair hbytesRun
+          rcases bytesPair with ⟨bytes, tail⟩
+          cases hrun
+          rcases Leb.Proof.u32_sound start 0 afterMode hstart hmodeRun with
+            ⟨modeBytes, hmodeConsumed, hmodeEncoding⟩
+          rcases constExpr_sound afterMode offset afterOffset
+              (hmodeConsumed.finish_wellFormed hstart) hoffsetRun with
+            ⟨offsetBytes, hoffsetConsumed, hoffsetEncoding⟩
+          rcases byteVector_sound afterOffset bytes tail
+              (hoffsetConsumed.finish_wellFormed
+                (hmodeConsumed.finish_wellFormed hstart)) hbytesRun with
+            ⟨vectorBytes, hbytesConsumed, lengthBytes, hlength, rfl⟩
+          refine ⟨modeBytes ++ offsetBytes ++ lengthBytes ++ bytes, ?_, ?_⟩
+          · simpa [List.append_assoc] using
+              hmodeConsumed.trans (hoffsetConsumed.trans hbytesConsumed)
+          · exact Grammar.DataSegment.active modeBytes offsetBytes lengthBytes bytes
+              offset hmodeEncoding hoffsetEncoding hlength
+    · simp [hmode, fail] at hrun
+
 def SectionUpdate (before : RawModule) (bytes : List UInt8)
     (id : SectionId) (after : RawModule) : Prop :=
   match id with
@@ -1078,6 +1115,10 @@ def SectionUpdate (before : RawModule) (bytes : List UInt8)
   | .code => ∃ values,
       after = { before with codes := values } ∧
       Grammar.Sized (Grammar.Vector Grammar.Code) bytes values
+
+  | .data => ∃ values,
+      after = { before with data := values } ∧
+      Grammar.Sized (Grammar.Vector Grammar.DataSegment) bytes values
 
 theorem parseSection_sound (id : SectionId) (before : RawModule) :
     Sound (parseSection id before) (fun bytes after =>
@@ -1161,6 +1202,19 @@ theorem parseSection_sound (id : SectionId) (before : RawModule) :
             start values middle hstart hparse with
           ⟨bytes, hconsumed, hencoding⟩
         exact ⟨bytes, hconsumed, values, rfl, hencoding⟩
+  | data =>
+      intro start after finish hstart hrun
+      unfold parseSection at hrun
+      dsimp [Bind.bind, Monad.toBind, Parser.instMonad, Except.bind] at hrun
+      split at hrun
+      · contradiction
+      · rename_i parsed pair hparse
+        rcases pair with ⟨values, middle⟩
+        cases hrun
+        rcases sized_sound (vector_sound dataSegment_sound)
+            start values middle hstart hparse with
+          ⟨bytes, hconsumed, hencoding⟩
+        exact ⟨bytes, hconsumed, values, rfl, hencoding⟩
 
 theorem sectionInfo_sound {raw : UInt8} {id : SectionId} {rank : Nat}
     (h : sectionInfo raw = .ok (id, rank)) :
@@ -1184,7 +1238,10 @@ theorem sectionInfo_sound {raw : UInt8} {id : SectionId} {rank : Nat}
           · split at h
             · cases h
               exact ⟨‹raw = SectionId.code.byte›, rfl⟩
-            · contradiction
+            · split at h
+              · cases h
+                exact ⟨‹raw = SectionId.data.byte›, rfl⟩
+              · contradiction
 
 def SameField (id : SectionId) (first second : RawModule) : Prop :=
   match id with
@@ -1194,6 +1251,7 @@ def SameField (id : SectionId) (first second : RawModule) : Prop :=
   | .global => first.globals = second.globals
   | .export => first.exports = second.exports
   | .code => first.codes = second.codes
+  | .data => first.data = second.data
 
 def FieldsAgree (ids : List SectionId) (first second : RawModule) : Prop :=
   ∀ id, id ∈ ids → SameField id first second
@@ -1240,6 +1298,7 @@ theorem SectionUpdate.section {before after final : RawModule}
   · exact Grammar.Section.global bytes (hfield ▸ hencoding)
   · exact Grammar.Section.export bytes (hfield ▸ hencoding)
   · exact Grammar.Section.code bytes (hfield ▸ hencoding)
+  · exact Grammar.Section.data bytes (hfield ▸ hencoding)
 
 theorem SameField.refl (id : SectionId) (module_ : RawModule) :
     SameField id module_ module_ := by
@@ -1467,16 +1526,27 @@ theorem loopDefault_absent {bytes : List UInt8} {module_ : RawModule}
               have hfield := houtside .export hnotIds
               change ([] : List Export) = module_.exports at hfield
               exact hfield.symm
-          · by_cases hpresent : SectionId.code ∈ module_.sections
-            · exact Or.inl hpresent
-            · right
-              have hnotIds : SectionId.code ∉ ids := by
-                intro hin
-                apply hpresent
-                rwa [hids]
-              have hfield := houtside .code hnotIds
-              change ([] : List Code) = module_.codes at hfield
-              exact hfield.symm
+          · constructor
+            · by_cases hpresent : SectionId.code ∈ module_.sections
+              · exact Or.inl hpresent
+              · right
+                have hnotIds : SectionId.code ∉ ids := by
+                  intro hin
+                  apply hpresent
+                  rwa [hids]
+                have hfield := houtside .code hnotIds
+                change ([] : List Code) = module_.codes at hfield
+                exact hfield.symm
+            · by_cases hpresent : SectionId.data ∈ module_.sections
+              · exact Or.inl hpresent
+              · right
+                have hnotIds : SectionId.data ∉ ids := by
+                  intro hin
+                  apply hpresent
+                  rwa [hids]
+                have hfield := houtside .data hnotIds
+                change ([] : List DataSegment) = module_.data at hfield
+                exact hfield.symm
 
 theorem remainingBytes_run {start finish : Cursor} {value : Nat}
     (h : remainingBytes start = .ok (value, finish)) :

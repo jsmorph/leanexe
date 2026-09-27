@@ -1,3 +1,45 @@
+## 2026-09-27: Exponential WASM proof
+
+The proof uses Talos's pure IEEE binary64 operations to describe the exact
+result word for every input.  The generated WASM must terminate, read an
+in-bounds pair from the static table, and preserve the complete store.  A
+second theorem will establish the table representation in the module's
+initial store.  This also supports repeated calls without allocation.
+
+The exact-binary decoder accepts no data section in its current profile.
+The implementation adds the active, implicit-memory-zero encoding used by
+the compiler.  The parser, grammar, validation predicate, soundness proofs,
+and translation must agree on that addition.  Offset typing follows the
+[Core data-segment rule](https://webassembly.github.io/spec/core/valid/modules.html#data-segments),
+and the encoding follows the
+[Core data section](https://webassembly.github.io/spec/core/binary/modules.html#data-section).
+Other data modes remain outside this decoder's admitted profile.
+
+The existing `CheckedArrayGet.checkedGetCore_spec` matches the compiler's
+static-table loads.  Its representation predicate includes address bounds,
+memory capacity, the length word, and every element word.  The new proof can
+reuse that theorem rather than repeat its load and bounds-check reasoning.
+
+- [x] Check data-section decoding, validation, and translation proofs.
+- [ ] Prove universal exponential execution and initial table contents.
+- [ ] Connect the behavior theorem to the emitted binary.
+- [ ] Establish numerical guarantees and update the component report.
+
+The parser and validator soundness proofs accept the added active data
+section.  The data tests check decoding, initial memory contents, truncation,
+unsupported modes, offset typing, and a missing-section error.  Existing
+decoder, validator, and translator tests pass.  Proof construction first
+required reducing a parser pair before splitting its condition.  A direct
+`rfl` proof of the test binary's decoding exhausted elaboration heartbeats.
+Proof-generating `cbv` checks that equality in under a second.
+
+The first combined decoder/execution build reached its ten-minute limit
+while compiling the cold Talos `SmallStep` dependency, before checking the
+exponential lemmas.  The decoder checks now have their own build boundary.
+The independent artifact driver already gives the Talos boundary sixty
+minutes.  Subsequent dependency preparation uses that boundary separately
+from the application proofs.
+
 ## 2026-09-27: Static numeric tables
 
 The exponential port required a constant 2 KiB table.  The user approved static
@@ -49,8 +91,8 @@ until both bounds round to the same binary64 value.
 
 The user clarified that the required verification concerns the emitted WASM's
 behavior.  Source and compiler tests supply development evidence.  The target
-proofs must establish the WASM's behavior under explicit assumptions.  Whether
-the earlier PoC deferral continues to apply is awaiting clarification.
+proofs must establish the WASM's behavior under explicit assumptions.  The user
+directed completion of this exponential, including its WASM proofs.
 
 - [x] Port range reduction, polynomial evaluation, and boundary handling.
 - [x] Test static data storage and existing compiler behavior.

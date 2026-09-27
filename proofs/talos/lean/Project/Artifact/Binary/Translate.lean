@@ -157,7 +157,11 @@ def memoryExports (raw : RawModule) : List (String × Nat) :=
 
 def memory (raw : RawModule) : Option Wasm.MemDecl :=
   raw.memories.head?.map fun memory =>
-    { pagesMin := memory.limits.min, pagesMax := memory.limits.max, data := [] }
+    { pagesMin := memory.limits.min, pagesMax := memory.limits.max, data := raw.data.map fun segment =>
+        { offset := some (match segment.offset with
+            | .i32Const value => UInt32.ofInt value
+            | .i64Const value => UInt32.ofInt value)
+          bytes := segment.bytes } }
 
 def globals (raw : RawModule) : List Wasm.GlobalDecl :=
   raw.globals.map fun global =>

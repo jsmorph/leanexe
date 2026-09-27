@@ -887,7 +887,8 @@ theorem validateSections_sound {module_ : RawModule}
        (.memory, !module_.memories.isEmpty),
        (.global, !module_.globals.isEmpty),
        (.export, !module_.exports.isEmpty),
-       (.code, !module_.codes.isEmpty)]
+       (.code, !module_.codes.isEmpty),
+       (.data, !module_.data.isEmpty)]
     have hrequired : Validator.validateRequiredSections module_ entries = .ok () := by
       simpa [entries] using h
     have hentry := validateRequiredSections_sound module_ entries hrequired
@@ -918,10 +919,15 @@ theorem validateSections_sound {module_ : RawModule}
                 apply hentry .export (!module_.exports.isEmpty)
                 · simp [entries]
                 · simpa using hnonempty
-              · intro hnonempty
-                apply hentry .code (!module_.codes.isEmpty)
-                · simp [entries]
-                · simpa using hnonempty
+              · constructor
+                · intro hnonempty
+                  apply hentry .code (!module_.codes.isEmpty)
+                  · simp [entries]
+                  · simpa using hnonempty
+                · intro hnonempty
+                  apply hentry .data (!module_.data.isEmpty)
+                  · simp [entries]
+                  · simpa using hnonempty
   · contradiction
 
 theorem validateLimits_sound {limits : Limits}
@@ -1212,6 +1218,34 @@ theorem exists_eq_singleton_of_length_eq_one {α : Type} (values : List α)
       | nil => exact ⟨head, rfl⟩
       | cons next rest => simp at h
 
+theorem validateDataSegment_sound {segment : DataSegment}
+    (h : Validator.validateDataSegment segment = .ok ()) :
+    Validity.DataSegmentValid segment := by
+  rcases segment with ⟨offset, bytes⟩
+  cases offset with
+  | i32Const value =>
+      simp only [Validator.validateDataSegment] at h
+      split at h
+      · exact ⟨rfl, inSignedRange_sound (width := 32) (value := value) ‹_›⟩
+      · contradiction
+  | i64Const value => contradiction
+
+theorem validateData_sound (segments : List DataSegment)
+    (h : Validator.validateData segments = .ok ()) :
+    Validity.DataValid segments := by
+  induction segments with
+  | nil => intro segment hmem; contradiction
+  | cons segment rest ih =>
+      unfold Validator.validateData at h
+      dsimp [Bind.bind, Monad.toBind, Except.bind] at h
+      split at h
+      · contradiction
+      · rename_i parsed _ hhead
+        intro entry hmem
+        rcases List.mem_cons.mp hmem with rfl | hmem
+        · exact validateDataSegment_sound hhead
+        · exact ih h entry hmem
+
 theorem validateRaw_sound {module_ : RawModule}
     (h : Validator.validateRaw module_ = .ok ()) :
     CoreValid module_ := by
@@ -1233,20 +1267,24 @@ theorem validateRaw_sound {module_ : RawModule}
           · rename_i parsedExports _ hexports
             split at h
             · contradiction
-            · rename_i parsedTypes functions htypes
-              unfold CoreValid Validity.ModuleValid
-              refine ⟨validateSections_sound (by simpa using hsections), ?_,
-                validateGlobals_sound module_.globals (by simpa using hglobals),
-                validateExports_sound (by simpa using hexports), ?_⟩
-              · rcases exists_eq_singleton_of_length_eq_one
-                    module_.memories hmemoryCount with ⟨memory, hmemory⟩
-                refine ⟨memory, hmemory, ?_⟩
-                apply validateLimits_sound
-                rw [hmemory] at hlimits
-                change Validator.validateLimits memory.limits = .ok _ at hlimits
-                simpa using hlimits
-              · exact ⟨functions, resolveFunctionTypes_sound htypes,
-                  validateFunctions_sound h⟩
+            · rename_i parsedData _ hdata
+              split at h
+              · contradiction
+              · rename_i parsedTypes functions htypes
+                unfold CoreValid Validity.ModuleValid
+                refine ⟨validateSections_sound (by simpa using hsections), ?_,
+                  validateGlobals_sound module_.globals (by simpa using hglobals),
+                  validateExports_sound (by simpa using hexports),
+                  validateData_sound module_.data (by simpa using hdata), ?_⟩
+                · rcases exists_eq_singleton_of_length_eq_one
+                      module_.memories hmemoryCount with ⟨memory, hmemory⟩
+                  refine ⟨memory, hmemory, ?_⟩
+                  apply validateLimits_sound
+                  rw [hmemory] at hlimits
+                  change Validator.validateLimits memory.limits = .ok _ at hlimits
+                  simpa using hlimits
+                · exact ⟨functions, resolveFunctionTypes_sound htypes,
+                    validateFunctions_sound h⟩
     · contradiction
 
 theorem validate_sound {module_ : RawModule} {validated : ValidatedModule}
