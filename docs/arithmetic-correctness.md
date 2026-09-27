@@ -425,9 +425,10 @@ and Bool-to-Bool declarations followed by repeated calls or nested predicate
 scopes. In Boolean-to-word conversions, both the body and continuation use the
 recursive Boolean conversion checker. Bodies may themselves contain predicate
 scopes, wrappers and choices with general helper branches. Each body is validated
-even when the helper is unused. Ordinary scalar word continuations use the same
-recursive body check, including predicate lets inside propositions. Loop-step
-and outer-loop helper declarations retain their supported Boolean helper grammar. Captures, Id result annotations and unused
+even when the helper is unused. Ordinary scalar word continuations and loop-step
+helper declarations use the same recursive body check, including predicate lets
+inside propositions. Outer-loop helper declarations retain their supported
+Boolean helper grammar. Captures, Id result annotations and unused
 helpers are checked. Ordinary and dependent conditions check their standard
 decisions and proof-branch domains. Loop step conditions use the same conversion,
 including break and continue. Standard Id.run, pure and metadata wrappers may

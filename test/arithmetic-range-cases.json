@@ -853,5 +853,15 @@
   "rangePredicateBodyWordStep",
   "rangePredicateBodyWordExit",
   "rangePredicateBodyWordContinue",
-  "rangePredicateBodyWordTail"
+  "rangePredicateBodyWordTail",
+  "rangePredicateBodyBreakWord",
+  "rangePredicateBodyBreakBoolean",
+  "rangePredicateBodyContinueWord",
+  "rangePredicateBodyContinueBoolean",
+  "rangePredicateBodyDependent",
+  "rangePredicateBodyCapture",
+  "rangePredicateBodyUnused",
+  "rangePredicateBodyWrapped",
+  "rangePredicateBodyNested",
+  "rangePredicateBodyId"
 ]

@@ -247,7 +247,7 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
         · exact scalarStepBindings_total total binding member)
     obtain ⟨checked, hc⟩ := accepts (.u64 0)
     let f := fun argument => extractScalarExprWith (.word argument :: locals.map ScalarStepBinding.toScalar)
-      (.app (.const ``Bool.toUInt64 []) expression.expr)
+      (.app (.const ``Bool.toUInt64 []) expression)
     obtain ⟨target, ht⟩ := ih (.scalar (.predicateFunction f) :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total accepts)
     exact ⟨target, by rw [extractScalarStepWith_letPredicateFn]; simp [hc, ht, f]⟩
@@ -260,7 +260,7 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
         · exact scalarStepBindings_total total binding member)
     obtain ⟨checked, hc⟩ := accepts (.u64 0)
     let f := fun argument => extractScalarExprWith (.boolean argument :: locals.map ScalarStepBinding.toScalar)
-      (.app (.const ``Bool.toUInt64 []) expression.expr)
+      (.app (.const ``Bool.toUInt64 []) expression)
     obtain ⟨target, ht⟩ := ih (.scalar (.booleanPredicateFunction f) :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total accepts)
     exact ⟨target, by rw [extractScalarStepWith_letBooleanPredicateFn]; simp [hc, ht, f]⟩

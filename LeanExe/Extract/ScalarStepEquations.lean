@@ -148,32 +148,32 @@ theorem extractScalarStepWith_letFn (locals : List ScalarStepBinding)
 
 theorem extractScalarStepWith_letPredicateFn (locals : List ScalarStepBinding)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
-    (type : BooleanType) (expression : BooleanLocal) (b : Lean.Expr) (nondep : Bool) :
+    (type : BooleanType) (expression : Lean.Expr) (b : Lean.Expr) (nondep : Bool) :
     extractScalarStepWith locals (.letE name
       (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
-      (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep) = (do
+      (.lam paramName (.const ``UInt64 []) expression paramBi) b nondep) = (do
         let _ ← extractScalarExprWith (.word (.u64 0) :: locals.map ScalarStepBinding.toScalar)
-          (.app (.const ``Bool.toUInt64 []) expression.expr)
+          (.app (.const ``Bool.toUInt64 []) expression)
         extractScalarStepWith (.scalar (.predicateFunction (fun argument =>
           extractScalarExprWith (.word argument :: locals.map ScalarStepBinding.toScalar)
-            (.app (.const ``Bool.toUInt64 []) expression.expr))) :: locals) b) := by
+            (.app (.const ``Bool.toUInt64 []) expression))) :: locals) b) := by
   rw [extractScalarStepWith, scalarResultType_boolean, scalarStepResultType_boolean,
-    booleanType_accepts, booleanLocalOperands_expr]
+    booleanType_accepts]
   all_goals cases type <;> simp [BooleanType.expr]
 
 theorem extractScalarStepWith_letBooleanPredicateFn (locals : List ScalarStepBinding)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
-    (type : BooleanType) (expression : BooleanLocal) (b : Lean.Expr) (nondep : Bool) :
+    (type : BooleanType) (expression : Lean.Expr) (b : Lean.Expr) (nondep : Bool) :
     extractScalarStepWith locals (.letE name
       (.forallE typeName (.const ``Bool []) type.expr typeBi)
-      (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) = (do
+      (.lam paramName (.const ``Bool []) expression paramBi) b nondep) = (do
         let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals.map ScalarStepBinding.toScalar)
-          (.app (.const ``Bool.toUInt64 []) expression.expr)
+          (.app (.const ``Bool.toUInt64 []) expression)
         extractScalarStepWith (.scalar (.booleanPredicateFunction (fun argument =>
           extractScalarExprWith (.boolean argument :: locals.map ScalarStepBinding.toScalar)
-            (.app (.const ``Bool.toUInt64 []) expression.expr))) :: locals) b) := by
+            (.app (.const ``Bool.toUInt64 []) expression))) :: locals) b) := by
   rw [extractScalarStepWith, scalarResultType_boolean, scalarStepResultType_boolean,
-    booleanType_accepts, booleanLocalOperands_expr]
+    booleanType_accepts]
   all_goals cases type <;> simp [BooleanType.expr]
 
 theorem extractScalarStepWith_predicateInput (locals : List ScalarStepBinding)
