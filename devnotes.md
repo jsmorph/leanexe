@@ -113,6 +113,24 @@ and retain the outstanding full-range numerical bound.  Both prose review
 passes, all three rendered pages, and the 189-file documentation check pass.
 The data translation tests and the runtime identity checks also pass.  The
 reset identity accounts for the allocation arena beginning after the table.
+
+The range-reduction proof now includes exact addition and multiplication
+lemmas for representable dyadic results.  A separate addition theorem bounds
+rounding error by half the spacing below a supplied power-of-two bound.
+These shared lemmas avoid the excess error from a relative-error estimate
+when adding the large integer-rounding constant.  The word decoder and exact
+subtraction of that constant pass.  The split logarithm has absolute error
+at most `2^-100`, and the reciprocal product differs from one by at most
+`2^-55`.  The logarithm proof uses a 110-term rational series and Mathlib's
+remainder bound.  Each new module checks in under two seconds and uses only
+the standard axioms listed above.
+
+Integer selection now passes for every finite input of magnitude at most
+1,024.  The selected integer differs from the computed reciprocal product
+by at most `1/2 + 2^-35`, and the ideal reduced argument has magnitude at
+most `0.00275`.  The half-unit addition bound and exact subtraction both use
+the same IEEE operations as the WASM execution model.
+
 The generated annotation module supplies no matching lemmas for this case.
 The execution proof instead uses the generated instruction definitions and
 shared frame, call, and array-read theorems.  Constant word-valued conditions
