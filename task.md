@@ -606,7 +606,17 @@ Prior tests pass 161,280 comparisons, 80,640 invalid-input checks and 6,912 cont
 The correctness guide reflects current loop bindings and local calls. Evidence is in
 [the word-binding archive](proofs/compiler/boolean-loop-word-bindings-2026-09-27/README.md).
 
-Next: local helper declarations around Boolean-to-word loops and broader outer word conditionals, followed by
+Current capability: local helper declarations around Boolean-to-word loops.
+The independent source rules, totality, acceptance, support recovery, preservation
+and invariant proofs pass. Pure word-to-word, Bool-to-word, word-to-Bool and
+Bool-to-Bool helpers, binary/many-word helpers, Unit/PUnit prefixes, and nested
+Id input annotations preserve captures through the loop. Ten native examples
+pass 240 comparisons. Syntax checks pass 209,664 native/IR comparisons,
+112,896 invalid-input tests and 14,976 controls. The initial PUnit native fixture
+needed an explicit universe; its failure is retained. Adjacent capability checks pass 161,280 comparisons, 113,664 invalid-input tests
+and 8,448 controls. The complete compiler proof and bounded WASM gate are next.
+
+Next: broader outer word conditionals, followed by
 retained instances, broader signatures, and composition of multiple loops.
 Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean
