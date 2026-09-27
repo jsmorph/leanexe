@@ -51,7 +51,7 @@ def guardLetOperands? (name : Lean.Name) (type value body : Lean.Expr) (nondep :
   let binding : GuardLet := ⟨name, type, value, nondep⟩
   match parsedBody with
   | some body => some (.letGuard 0 binding body)
-  | none => (savedBooleanGuard? body).map fun body => .letSaved 0 binding body
+  | none => (booleanPropositionLeaf? body).map fun body => .letSaved 0 binding body
 
 theorem guardLetOperands_sound (name : Lean.Name) (type value body : Lean.Expr) (nondep : Bool)
     (parsedBody : Option Guard)
@@ -65,7 +65,7 @@ theorem guardLetOperands_sound (name : Lean.Name) (type value body : Lean.Expr) 
   cases parsedBody with
   | none =>
     obtain ⟨bodyGuard, bodyFound, rfl⟩ := Option.map_eq_some_iff.mp accepted
-    simp [Guard.condition, GuardLet.wrap, GuardNegation.condition, savedBooleanGuard_sound bodyFound]
+    simp [Guard.condition, GuardLet.wrap, GuardNegation.condition, booleanPropositionLeaf_sound bodyFound]
   | some bodyGuard =>
     cases accepted
     simp [Guard.condition, GuardLet.wrap, GuardNegation.condition, bodyMeaning bodyGuard rfl]

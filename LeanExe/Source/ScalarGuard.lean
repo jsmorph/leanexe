@@ -14,7 +14,7 @@ inductive Guard where
   | savedRight (negations : Nat) (op : Junction) (left : Guard) (right : BooleanPropositionLeaf)
   | savedBoth (negations : Nat) (op : Junction) (left right : BooleanPropositionLeaf)
   | letGuard (negations : Nat) (binding : GuardLet) (body : Guard)
-  | letSaved (negations : Nat) (binding : GuardLet) (body : SavedBooleanGuard)
+  | letSaved (negations : Nat) (binding : GuardLet) (body : BooleanPropositionLeaf)
   | localNegation (negations : Nat) (value : BooleanPropositionLeaf)
   deriving Repr
 
@@ -29,7 +29,7 @@ def operands : Guard → List Lean.Expr
   | .savedRight _ _ a b => a.operands ++ b.operands
   | .savedBoth _ _ a b => a.operands ++ b.operands
   | .letGuard _ binding body => binding.operand :: body.operands.map binding.wrap
-  | .letSaved _ binding body => binding.operand :: [binding.wrap body.operand]
+  | .letSaved _ binding body => binding.operand :: body.operands.map binding.wrap
   | .localNegation _ value => value.operands
 
 def condition : Guard → Lean.Expr
@@ -175,10 +175,11 @@ theorem operands_size (guard : Guard) {operand : Lean.Expr}
       simp [GuardLet.wrap] at *; omega
   | letSaved n binding body =>
     apply Nat.lt_of_lt_of_le _ (Nat.add_le_add_right (GuardNegation.condition_size n _) guardOperandOverhead)
-    simp only [operands, List.mem_cons, List.not_mem_nil, or_false] at member
-    rcases member with rfl | rfl
+    simp only [operands, List.mem_cons, List.mem_map] at member
+    rcases member with rfl | ⟨inner, member, rfl⟩
     · exact binding.operand_size body.condition body.condition_min_size
-    · exact Nat.lt_of_lt_of_le (binding.wrap_size body.operand_size) (by omega)
+    · have bound := body.operands_size member
+      simp [GuardLet.wrap] at *; omega
   | localNegation n value => exact value.operands_negation n member
 
 end Guard

@@ -42,7 +42,7 @@ inductive GuardDecision : Guard → Lean.Expr → Prop where
 
   | letGuard (negations : Nat) (binding : GuardLet) (body : Guard) :
       GuardDecision (.letGuard negations binding body) (Guard.letGuard negations binding body).evidence
-  | letSaved (negations : Nat) (binding : GuardLet) (body : SavedBooleanGuard) :
+  | letSaved (negations : Nat) (binding : GuardLet) (body : BooleanPropositionLeaf) :
       GuardDecision (.letSaved negations binding body) (Guard.letSaved negations binding body).evidence
   | localNegation (negations : Nat) (value : BooleanPropositionLeaf) :
       GuardDecision (.localNegation negations value) (Guard.localNegation negations value).evidence

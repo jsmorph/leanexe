@@ -805,5 +805,9 @@
   "rangeBoolRelationStep",
   "rangeBoolRelationExit",
   "rangeBoolRelationContinue",
-  "rangeBoolRelationTail"
+  "rangeBoolRelationTail",
+  "rangeBoolLetRelationStep",
+  "rangeBoolLetRelationExit",
+  "rangeBoolLetRelationContinue",
+  "rangeBoolLetRelationTail"
 ]

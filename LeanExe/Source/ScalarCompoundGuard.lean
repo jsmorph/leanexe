@@ -13,7 +13,7 @@ inductive CompoundGuard where
   | savedRight (junction : Junction) (left : Guard) (right : BooleanPropositionLeaf) (negations : Nat := 0)
   | savedBoth (junction : Junction) (left right : BooleanPropositionLeaf) (negations : Nat := 0)
   | letGuard (binding : GuardLet) (body : Guard) (negations : Nat := 0)
-  | letSaved (binding : GuardLet) (body : SavedBooleanGuard) (negations : Nat := 0)
+  | letSaved (binding : GuardLet) (body : BooleanPropositionLeaf) (negations : Nat := 0)
   | localNegation (value : BooleanPropositionLeaf) (negations : Nat := 0)
   deriving Repr
 

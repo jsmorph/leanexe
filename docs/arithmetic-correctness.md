@@ -413,8 +413,11 @@ disjunctions and negations, including mixed conditions such as
 checked Boolean conversion, preserving helper calls, saved values and supported
 Id wrappers. The exact proposition and standard decision expression are checked.
 These guards work in decisions, ordinary/dependent word or Boolean choices,
-helper bodies and loop steps, including break and continue. Bare Boolean
-relations retained directly under a proposition let remain outside this form.
+helper bodies and loop steps, including break and continue. Boolean relations
+may also be retained directly under proposition lets. These lets bind Bool or
+UInt64 values, may nest, preserve standard Id type annotations and check unused
+bindings. The substituted standard decision must match the retained condition.
+They compose with conjunctions, disjunctions and negation.
 
 Saved Boolean variables and their negations may appear inside propositional
 conjunctions and disjunctions, such as `flag ∧ x < y` or `x = y ∨ !flag`.
@@ -429,8 +432,9 @@ call checker validates each argument and rejects value/function confusion.
 Compound Boolean leaves also admit junctions, equality/inequality, choices,
 Boolean and word lets, standard Id binds, wrappers and metadata. The existing
 Boolean conversion checker validates the entire expression. Native Boolean lets
-inside Id.run use this form. Bare lets elaborated inside a proposition, with
-substituted decision operands, remain a separate unsupported form.
+inside Id.run use this form. Retained proposition lets also admit Bool and UInt64
+bindings with substituted decision operands. Function-valued declarations inside
+the proposition itself remain outside this guard grammar.
 
 Bool.toUInt64 and equivalent dot notation convert admitted Boolean values to
 UInt64. Inputs may be literals, saved flags, comparisons, decisions, negations,

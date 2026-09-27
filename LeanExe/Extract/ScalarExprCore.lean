@@ -20,6 +20,20 @@ import LeanExe.Source.Scalar
 
 namespace LeanExe.Extract.Core
 
+private theorem scalarResultType_guard_ite {type : Lean.Expr} {annotation : LeanExe.Source.Scalar.ResultType}
+    (parsed : scalarResultType? type = some annotation) :
+    LeanExe.Source.Scalar.guardOperandOverhead ≤ sizeOf ("ite" : String) + sizeOf type := by
+  rw [scalarResultType_sound parsed]
+  exact Nat.le_trans LeanExe.Source.Scalar.guardOperandOverhead_ite_word
+    (Nat.add_le_add_left annotation.word_size _)
+
+private theorem scalarResultType_guard_dite {type : Lean.Expr} {annotation : LeanExe.Source.Scalar.ResultType}
+    (parsed : scalarResultType? type = some annotation) :
+    LeanExe.Source.Scalar.guardOperandOverhead ≤ sizeOf ("dite" : String) + sizeOf type := by
+  rw [scalarResultType_sound parsed]
+  exact Nat.le_trans LeanExe.Source.Scalar.guardOperandOverhead_dite_word
+    (Nat.add_le_add_left annotation.word_size _)
+
 set_option maxHeartbeats 300000 in
 /-- Compile pure, total scalar expressions with an environment of already
 compiled bindings. Substitution removes source lets without introducing effects.
@@ -75,7 +89,7 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
           extractScalarExprWith (.word bound :: locals) body
   | .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) type)
       condition) evidence) onTrue) onFalse =>
-      match scalarResultType? type with
+      match _resultType : scalarResultType? type with
       | none => none
       | some _ =>
         match _h : comparison? condition evidence with
@@ -134,7 +148,7 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
       pure (lowerExtremum .maximum a b)
   | .app (.app (.app (.app (.app (.const ``dite [.succ .zero]) type)
       condition) evidence) (.lam _ trueDomain onTrue _)) (.lam _ falseDomain onFalse _) =>
-      match scalarResultType? type with
+      match _resultType : scalarResultType? type with
       | none => none
       | some _ =>
           match _guard : dependentGuard? condition evidence trueDomain falseDomain with
@@ -400,7 +414,7 @@ decreasing_by
     | (have bounds := scalarManyFunction_body_size _function; simp_all; omega)
     | (have bounds := booleanLocalDependentGuard_size _booleanGuard _member; omega)
     | (have bounds := dependentGuard_size _guard _member
-       have overhead := LeanExe.Source.Scalar.guardOperandOverhead_dite
+       have overhead := scalarResultType_guard_dite (by assumption)
        omega)
     | (have same := booleanAction_sound _action
        rw [← same]
@@ -481,7 +495,7 @@ decreasing_by
     | (have bounds := booleanLocalGuard_size _booleanGuard _member; omega)
     | (have bounds := comparison_size _h; omega)
     | (have bounds := compoundGuard_size _g _member
-       have overhead := LeanExe.Source.Scalar.guardOperandOverhead_ite
+       have overhead := scalarResultType_guard_ite (by assumption)
        omega)
     | (have bounds := booleanLocalOperands_size (value := expression) (by assumption) _member; omega)
     | (have bounds : sizeOf input.expr < sizeOf guard.condition := guard.form.inputs_size _member
