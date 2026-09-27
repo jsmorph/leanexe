@@ -696,5 +696,15 @@
   "rangeBoolForwardedExit",
   "rangeBoolForwardedContinue",
   "rangeBoolForwardedStride",
-  "rangeBoolForwardedId"
+  "rangeBoolForwardedId",
+  "rangeBoolConditionalCallSaved",
+  "rangeBoolConditionalCallNested",
+  "rangeBoolConditionalCallExit",
+  "rangeBoolConditionalCallContinue",
+  "rangeBoolConditionalCallCapture",
+  "rangeBoolConditionalCallHelper",
+  "rangeBoolConditionalCallFlag",
+  "rangeBoolConditionalCallStride",
+  "rangeBoolConditionalCallWord",
+  "rangeBoolConditionalCallId"
 ]

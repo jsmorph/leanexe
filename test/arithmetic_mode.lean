@@ -6843,6 +6843,112 @@ def rangeBoolForwardedId (count seed : UInt64) : Id Bool :=
     let argument ← (pure (pure (pure (seed % 2 == 0))) : Id (Id (Id Bool)))
     run argument
 
+def rangeBoolConditionalCallSaved (count seed : UInt64) : Id Bool :=
+  do
+    let flag ← if count == 0 then pure (seed == 0) else pure (seed % 2 == 0)
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if flag then a := a + i.toUInt64 + 1 else a := a + 3
+      return a)
+    return flag && value != seed
+
+def rangeBoolConditionalCallNested (count seed : UInt64) : Id Bool :=
+  do
+    let flag ← if count == 0 then pure (seed == 0) else if seed % 3 == 0 then pure true else pure (seed % 2 == 0)
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if flag then a := a + i.toUInt64 + 1 else a := a + 3
+      return a)
+    return flag && value != seed
+
+def rangeBoolConditionalCallExit (count seed : UInt64) : Id Bool :=
+  do
+    let flag ← if count < seed then pure (seed % 2 != 0) else pure (seed % 3 == 0)
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + 1
+        if flag && a % 7 == 0 then break
+      return a)
+    return flag || value == 0
+
+def rangeBoolConditionalCallContinue (count seed : UInt64) : Bool :=
+  Id.run do
+    let flag ← if count == 0 then pure (seed % 3 == 0) else pure (seed % 2 == 0)
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if flag && i.toUInt64 % 3 == 0 then continue
+        a := a + i.toUInt64 + 1
+      return a)
+    return flag && value == seed
+
+def rangeBoolConditionalCallCapture (count seed : UInt64) : Id Bool :=
+  do
+    let flag ← if count < seed then pure (seed % 7 == 0) else pure (seed == 0)
+    let value ← (do
+      let f := fun b : Bool => if b && flag then seed + 7 else seed + 3
+      let mut a := f false
+      for i in [:count.toNat] do
+        a := a + f (i.toUInt64 % 2 == 0)
+      return a)
+    return flag || value == seed
+
+def rangeBoolConditionalCallHelper (count seed : UInt64) : Id Bool :=
+  let p := fun x : UInt64 => x % 3 == seed % 3
+  do
+    let flag ← if p count then pure (p seed) else pure (p (count + 1))
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if flag then a := a + i.toUInt64 + 1 else a := a + 3
+      return a)
+    return flag && value != seed
+
+def rangeBoolConditionalCallFlag (count : UInt64) (input : Bool) : Id Bool :=
+  do
+    let flag ← if input then pure (count % 2 == 0) else pure (!input)
+    let value ← (do
+      let mut a := input.toUInt64
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + flag.toUInt64
+      return a)
+    return flag && value != input.toUInt64
+
+def rangeBoolConditionalCallStride (count seed : UInt64) : Id Bool :=
+  do
+    let limit ← if seed % 2 == 0 then pure (count % 17) else pure (count % 11)
+    let value ← (do
+      let mut a := seed
+      for i in [(seed % 3).toNat:limit.toNat:3] do
+        a := a + i.toUInt64 + 1
+        if a % 7 == 0 then break
+      return a)
+    return value % 7 == 0
+
+def rangeBoolConditionalCallWord (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  if seed % 2 == 0 then run (count % 17) else run (count % 11)
+
+def rangeBoolConditionalCallId (count seed : UInt64) : Id (Id Bool) :=
+  do
+    let flag : Id Bool ← if count < seed then pure (pure (seed % 2 == 0)) else pure (pure (seed % 3 == 0))
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + 1
+        if Id.run flag && a % 7 == 0 then break
+      return a)
+    return pure (Id.run flag && value != seed)
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -10467,6 +10573,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolForwardedContinue,
       `ArithmeticModeTest.rangeBoolForwardedStride,
       `ArithmeticModeTest.rangeBoolForwardedId,
+      `ArithmeticModeTest.rangeBoolConditionalCallSaved,
+      `ArithmeticModeTest.rangeBoolConditionalCallNested,
+      `ArithmeticModeTest.rangeBoolConditionalCallExit,
+      `ArithmeticModeTest.rangeBoolConditionalCallContinue,
+      `ArithmeticModeTest.rangeBoolConditionalCallCapture,
+      `ArithmeticModeTest.rangeBoolConditionalCallHelper,
+      `ArithmeticModeTest.rangeBoolConditionalCallFlag,
+      `ArithmeticModeTest.rangeBoolConditionalCallStride,
+      `ArithmeticModeTest.rangeBoolConditionalCallWord,
+      `ArithmeticModeTest.rangeBoolConditionalCallId,
       `ArithmeticModeTest.rangeBoolLetIdWord,
       `ArithmeticModeTest.rangeBoolLetIdWordLayers,
       `ArithmeticModeTest.rangeBoolLetIdFlag,
