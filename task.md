@@ -171,11 +171,19 @@ controls. Prior tests pass 7,892 comparisons, 6,894 rejections and 500 controls.
 Evidence is in
 [the loop-step condition archive](proofs/compiler/boolean-predicate-step-condition-2026-09-26/README.md).
 
-Next: standard Id/metadata wrappers around Bool-input calls, needed for Boolean
-do binds, then direct Boolean helper results. Saved Boolean variables in mixed
-propositional guards, retained instance and Bool-parameter Id wrappers, and broader
-signatures follow. Full-dialect correctness remains unfinished. Complete each
-capability through WASM and commit/push frequently.
+Standard Id and metadata wrappers around Bool-input calls now pass source totality,
+extraction correctness, acceptance, soundness and invariant proofs. Nested wrappers
+and negation compose through conversions, saved flags, conditions and loops.
+Focused tests pass 23,988 native/IR comparisons, 16,716 invalid-input checks and 804
+controls. Prior tests pass 15,572 comparisons, 11,598 rejections and 828 controls.
+The general compiler theorem, eighteen audits and native Lean/WASM execution are
+next for this candidate.
+
+Next: finish the wrapper increment through WASM, then Boolean do binds and direct
+Boolean helper results. Saved Boolean variables in mixed propositional guards,
+retained instance and Bool-parameter Id wrappers, and broader signatures follow.
+Full-dialect correctness remains unfinished. Complete each capability through
+WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 

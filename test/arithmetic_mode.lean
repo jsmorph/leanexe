@@ -4965,6 +4965,69 @@ def rangeBooleanPredicateOuterLetId (count seed : UInt64) : UInt64 := Id.run do
     if next && a % 5 == 0 then break
   return if @Eq Bool flag true then a + next.toUInt64 else a
 
+def booleanPredicateWrapper (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b && x != 0
+  (Id.run (pure (f (x == y)))).toUInt64
+
+def booleanPredicateWrapperNested (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == y
+  (!(Id.run (pure (Id.run (pure (f true)))))).toUInt64 +
+    (Id.run (pure (!(f false)))).toUInt64
+
+def booleanPredicateWrapperLet (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  let flag := Id.run (pure (f (x != 0)))
+  let saved := flag
+  let flag := Id.run (pure (f (!saved)))
+  if saved then x + flag.toUInt64 else y + flag.toUInt64
+
+def booleanPredicateWrapperCondition (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b
+  if _h : Id.run (pure (f (x == y))) = false then x + 7 else y + 11
+
+def booleanPredicateWrapperArgument (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => !b || x == y
+  (f (Id.run (pure (f (x == 0))))).toUInt64 +
+    (Id.run (pure (f (Id.run (pure (f false)))))).toUInt64
+
+def booleanPredicateWrapperBody (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == 0
+  let g := fun b : Bool => (Id.run (pure (f b))).toUInt64 == 0 && y != 0
+  (Id.run (pure (g (x == y)))).toUInt64
+
+def rangeBooleanPredicateWrapperStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b || a == 0
+    if Id.run (pure (f (UInt64.ofNat i == seed % 7))) then break
+    a := a + UInt64.ofNat i + 1
+  return a
+
+def rangeBooleanPredicateWrapperContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => !b || a == seed
+    if !(Id.run (pure (f (UInt64.ofNat i % 3 == 0)))) then continue
+    a := a + UInt64.ofNat i + 1
+  return a
+
+def rangeBooleanPredicateWrapperOuter (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b || seed == 0
+  let flag := Id.run (pure (f (count == 0)))
+  let stop := count + (Id.run (pure (f false))).toUInt64
+  let mut a := seed + flag.toUInt64
+  for i in [:stop.toNat] do
+    a := a + UInt64.ofNat i + 1
+    if _h : Id.run (pure (f (a % 7 == 0))) ≠ false then break
+  return a + (Id.run (pure (f (a == seed)))).toUInt64
+
+def rangeBooleanPredicateWrapperCapture (count seed : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && seed != 0
+  forIn (m := Id) [:count.toNat] seed fun i a =>
+    let g := fun b : Bool => (Id.run (pure (f b))).toUInt64 == 0
+    let flag := Id.run (pure (g (UInt64.ofNat i % 3 == 0)))
+    if flag then .yield (a + 3) else .done (a + UInt64.ofNat i)
+
 def booleanPredicateCondition (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => b && x != 0
   let g := fun b : Bool => b || y == 0
@@ -7127,6 +7190,16 @@ run_elab do
       `ArithmeticModeTest.rangeBooleanApplyContinue,
       `ArithmeticModeTest.rangeBooleanApplyCapture,
       `ArithmeticModeTest.boolFnBooleanResult,
+      `ArithmeticModeTest.booleanPredicateWrapper,
+      `ArithmeticModeTest.booleanPredicateWrapperNested,
+      `ArithmeticModeTest.booleanPredicateWrapperLet,
+      `ArithmeticModeTest.booleanPredicateWrapperCondition,
+      `ArithmeticModeTest.booleanPredicateWrapperArgument,
+      `ArithmeticModeTest.booleanPredicateWrapperBody,
+      `ArithmeticModeTest.rangeBooleanPredicateWrapperStep,
+      `ArithmeticModeTest.rangeBooleanPredicateWrapperContinue,
+      `ArithmeticModeTest.rangeBooleanPredicateWrapperOuter,
+      `ArithmeticModeTest.rangeBooleanPredicateWrapperCapture,
       `ArithmeticModeTest.booleanPredicateCondition,
       `ArithmeticModeTest.booleanPredicateConditionRelations,
       `ArithmeticModeTest.booleanPredicateConditionDependent,

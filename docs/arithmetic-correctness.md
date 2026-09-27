@@ -199,6 +199,12 @@ the declaration even after accumulator updates. Declarations before a loop are
 also admitted, with converted calls in bounds, initial values, steps, stride
 calculations and final results. Converted calls also admit repeated Boolean
 negation, such as `(!(f flag)).toUInt64`, preserving the Boolean argument check.
+Standard `pure`, `Id.run` and metadata wrappers can surround these calls, with
+nested wrappers, standard Id result annotations and repeated negation. Their
+source semantics preserve the inner Boolean value; extraction checks that value
+recursively. Wrapped calls compose through conversions, saved flags, scalar and
+loop-step conditions, helper arguments and loop calculations. Custom instances,
+wrong wrapper types/universes and unsupported inner values are rejected.
 Nested converted calls, including negated inner arguments, check each argument
 as a Boolean conversion. Conjunctions and disjunctions can combine these calls
 with flags, word-input predicate calls and other supported Boolean expressions,
