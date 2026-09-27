@@ -24,15 +24,15 @@ def booleanHelper? (booleanInput : Bool) (source : Lean.Expr) : Option (BooleanH
     | .letE functionName (.forallE typeName input result typeInfo)
         (.lam parameterName domain body valueInfo) continuation nondep =>
         if inputs : input = .const (if booleanInput then ``Bool else ``UInt64) [] ∧ domain = input then
-          match resultFound : booleanType? result, bodyFound : booleanLocalOperands? body with
-          | some resultType, some expression =>
+          match resultFound : booleanType? result with
+          | some resultType =>
               let shape : BooleanFunctionBinding := ⟨functionName, typeName, typeInfo, valueInfo, resultType, nondep⟩
-              have exactSource : source = booleanHelperExpr booleanInput shape parameterName expression.expr continuation := by
-                rw [same, inputs.2, inputs.1, booleanType_sound resultFound, booleanLocalOperands_sound bodyFound]
+              have exactSource : source = booleanHelperExpr booleanInput shape parameterName body continuation := by
+                rw [same, inputs.2, inputs.1, booleanType_sound resultFound]
                 rfl
-              some ⟨shape, parameterName, expression, continuation,
+              some ⟨shape, parameterName, body, continuation,
                 fun value equal => booleanLocal_excluded absent value (same.symm.trans (exactSource.trans equal))⟩
-          | _, _ => none
+          | none => none
         else none
     | _ => none
   else none
@@ -44,7 +44,7 @@ def booleanHelper? (booleanInput : Bool) (source : Lean.Expr) : Option (BooleanH
   simp [booleanHelper?, BooleanHelper.expr, booleanHelperExpr] at absent ⊢
   simp [absent]
   split <;> simp_all
-  simp_all only [booleanType_accepts, booleanLocalOperands_expr, Option.some.injEq]
+  simp_all only [booleanType_accepts, Option.some.injEq]
   cases shape
   simp_all
 
@@ -63,14 +63,14 @@ theorem booleanHelper_sound {source : Lean.Expr} {value : BooleanHelper booleanI
   all_goals split at parsed <;> try contradiction
   all_goals rename_i inputs
   all_goals split at parsed <;> try contradiction
-  all_goals rename_i resultType expression resultFound bodyFound
+  all_goals rename_i resultType resultFound
   all_goals cases parsed
   all_goals simp only [BooleanHelper.expr, booleanHelperExpr, Bool.false_eq_true, ite_false, ite_true]
-  all_goals rw [inputs.2, inputs.1, booleanType_sound resultFound, booleanLocalOperands_sound bodyFound]
+  all_goals rw [inputs.2, inputs.1, booleanType_sound resultFound]
 
 theorem booleanHelper_sizes {source : Lean.Expr} {value : BooleanHelper booleanInput}
     (parsed : booleanHelper? booleanInput source = some value) :
-    sizeOf value.body.expr < sizeOf source ∧ sizeOf value.continuation < sizeOf source := by
+    sizeOf value.body < sizeOf source ∧ sizeOf value.continuation < sizeOf source := by
   rw [booleanHelper_sound parsed]
   exact ⟨value.body_size, value.continuation_size⟩
 

@@ -845,5 +845,9 @@
   "rangePropositionHelperLetStep",
   "rangePropositionHelperLetExit",
   "rangePropositionHelperLetContinue",
-  "rangePropositionHelperLetTail"
+  "rangePropositionHelperLetTail",
+  "rangeHelperBodyStep",
+  "rangeHelperBodyExit",
+  "rangeHelperBodyContinue",
+  "rangeHelperBodyTail"
 ]

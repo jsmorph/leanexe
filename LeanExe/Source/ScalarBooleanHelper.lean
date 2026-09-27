@@ -13,18 +13,18 @@ def booleanHelperExpr (booleanInput : Bool) (shape : BooleanFunctionBinding)
 structure BooleanHelper (booleanInput : Bool) where
   shape : BooleanFunctionBinding
   parameterName : Lean.Name
-  body : BooleanLocal
+  body : Lean.Expr
   continuation : Lean.Expr
   extended : ∀ expression : BooleanLocal,
-    booleanHelperExpr booleanInput shape parameterName body.expr continuation ≠ expression.expr
+    booleanHelperExpr booleanInput shape parameterName body continuation ≠ expression.expr
   deriving Repr
 
 namespace BooleanHelper
 
 def expr (value : BooleanHelper booleanInput) : Lean.Expr :=
-  booleanHelperExpr booleanInput value.shape value.parameterName value.body.expr value.continuation
+  booleanHelperExpr booleanInput value.shape value.parameterName value.body value.continuation
 
-theorem body_size (value : BooleanHelper booleanInput) : sizeOf value.body.expr < sizeOf value.expr := by
+theorem body_size (value : BooleanHelper booleanInput) : sizeOf value.body < sizeOf value.expr := by
   simp [expr, booleanHelperExpr]; omega
 
 theorem continuation_size (value : BooleanHelper booleanInput) : sizeOf value.continuation < sizeOf value.expr := by
