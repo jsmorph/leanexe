@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Beck–Fiala · Split jobs across two groups</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.mjs"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">LeanExe / Beck–Fiala</p>
+      <h1>Split jobs across two groups</h1>
+      <p class="intro">A job can belong to several categories. If each job belongs to at most <var>t</var> categories, the two groups’ counts differ by at most <strong>2<var>t</var> − 1</strong> in every category.</p>
+      <p class="subtle">Exact rational rounding, proved in Lean through to this WASM binary. Up to 6 jobs and 8 categories.</p>
+    </header>
+
+    <section class="scenario-panel" aria-labelledby="scenario-heading">
+      <label id="scenario-heading" for="scenario">Explore a scenario</label>
+      <select id="scenario"></select>
+      <p id="scenario-note"></p>
+    </section>
+
+    <div class="workspace">
+      <section class="panel memberships" aria-labelledby="memberships-heading">
+        <div class="section-title"><h2 id="memberships-heading">Job memberships</h2><span class="step">01 / Input</span></div>
+        <p class="subtle">Select the categories each job belongs to.</p>
+        <div class="dimensions">
+          <label for="job-count">Jobs <select id="job-count"></select></label>
+          <label for="category-count">Categories <select id="category-count"></select></label>
+        </div>
+        <div class="table-scroll" id="membership-table"></div>
+        <div class="run-row"><button id="run" type="button">Run partition</button><span class="subtle" id="input-summary"></span></div>
+      </section>
+
+      <section class="panel output" aria-labelledby="output-heading" aria-busy="true">
+        <div class="section-title"><h2 id="output-heading">Partition</h2><span class="step">02 / Result</span></div>
+        <p id="status" role="status" aria-live="polite">Loading the verified program.</p>
+        <div id="results" hidden>
+          <div class="metrics">
+            <div><span class="metric-label">Maximum overlap <var>t</var></span><strong id="overlap"></strong></div>
+            <div><span class="metric-label">Allowed difference</span><strong id="bound"></strong></div>
+          </div>
+          <div class="groups">
+            <section class="group group-a" aria-labelledby="group-a-heading"><h3 id="group-a-heading">Group A <span id="group-a-count"></span></h3><ul id="group-a-jobs"></ul></section>
+            <section class="group group-b" aria-labelledby="group-b-heading"><h3 id="group-b-heading">Group B <span id="group-b-count"></span></h3><ul id="group-b-jobs"></ul></section>
+          </div>
+          <h3 class="counts-title">Category counts</h3>
+          <p class="subtle">Recomputed from the memberships and returned assignments.</p>
+          <div class="table-scroll" id="counts"></div>
+          <p id="result-note" class="subtle"></p>
+        </div>
+      </section>
+    </div>
+
+    <details class="panel validation">
+      <summary>Try an invalid input</summary>
+      <p>Category IDs start at zero. Duplicate memberships and IDs outside the declared range return status 1. More than 6 jobs or 8 categories returns status 2.</p>
+      <div id="invalid-presets" class="button-row"></div>
+      <label for="raw-input">Input JSON</label>
+      <textarea id="raw-input" rows="5" spellcheck="false"></textarea>
+      <button type="button" id="check-input" class="secondary">Check input</button>
+      <p id="validation-status" role="status" aria-live="polite">Choose a case or edit the JSON.</p>
+    </details>
+
+    <details class="panel proof">
+      <summary>What the proof covers</summary>
+      <p>The universal theorem covers every valid input within the 6-job, 8-category limit. It proves termination, agreement with the source program, and the category discrepancy bound for the identified binary. With no memberships, every category count is zero. Group sizes can differ.</p>
+      <p>The proof assumes a represented input, valid allocator state, and sufficient memory, including a conservative allocation budget of 223,756,952 bytes. The browser, JavaScript adapter, and counts display are outside the Lean proof.</p>
+      <p>The server checks the binary’s SHA-256 before serving it. Each run uses a fresh browser worker. The page independently checks the returned overlap, assignments, and category differences.</p>
+      <dl><dt>Exact binary theorem</dt><dd><code>Project.Beck.Artifact.artifact_compute_correct</code></dd><dt>SHA-256</dt><dd><code class="hash">55f407d3f82b34a59e95489f2ed40ea756cb621d780f76ee48eb5a60645d080f</code></dd></dl>
+      <p><a href="/manifest.json">Artifact manifest</a> · <a href="https://github.com/jsmorph/leanexe/blob/beck/docs/beck.md">Program and proof documentation</a></p>
+    </details>
+    <footer>Beck–Fiala partitioner · Two groups · Unweighted job counts</footer>
+  </main>
+</body>
+</html>

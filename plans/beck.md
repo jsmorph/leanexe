@@ -34,3 +34,16 @@ Repository references: [source language and ABI](../docs/spec.md), [development 
 ## Approved arithmetic change
 
 The user approved replacing Gaussian elimination on separate reduced fractions with integer cofactor directions and one denominator shared by all coordinates.  With six jobs, a direction can use minors of order at most five.  The elementary determinant bound is `5! = 120`, so a shared denominator grows by at most 120 per rounding round.  These bounds replace the need to bound intermediate rational Gaussian elimination and separately reduced coordinate denominators.  The cost is additional small-determinant computation.
+
+## Approved capacity generalization
+
+The user approved a theorem quantified over job count, category count, and overlap, with arithmetic storage and allocation bounds derived from those dimensions.  The implementation will construct directions by exact elimination and use multiword integer arithmetic.  The executable must check a proved resource condition and return capacity rejection when it fails.  Every accepted valid input must terminate with the discrepancy guarantee in the exact-binary theorem.  Capacity will follow from the resource analysis and performance measurements.
+
+- [ ] Generalize rounding and arithmetic lemmas to symbolic bounds.
+- [ ] Compile and exercise multiword operations through the new partitioner entry as they are introduced.
+- [ ] Implement and prove exact elimination, preserving directions, and rounding.
+- [ ] Derive indexing, helper termination, and allocation bounds from input dimensions.
+- [ ] Check the replacement binary's universal execution theorem and independent package.
+- [ ] Measure larger overlapping cases and update the browser demo to the verified replacement.
+
+The six-job artifact and its proofs remain a checked reference during this work.  The earlier 256-job, 64-category suggestion had no derived resource bound or performance evidence and is superseded by this plan.

@@ -45,6 +45,25 @@ The WASM entry has type `Array UInt64 → Array UInt64`.  Input words are `[n,m,
 
 `[0,m]` is an empty-job input when `m ≤ 8`, and returns `[0,0]`.  Jobs with no memberships enter group one.  Their maximum overlap is zero, and every category count is zero.  Header-capacity rejection precedes membership validation.  The JSON runner also rejects malformed JSON and numbers that are negative or outside JavaScript's exact-integer range before constructing input words.
 
+## Browser demo
+
+The browser demo currently runs the six-job, eight-category artifact.  Capacity generalization is in progress under the [development plan](../plans/beck.md).  Start the server with Node 24 from the repository root:
+
+```sh
+tools/beck-serve.js 8091
+```
+
+The server listens on `0.0.0.0:8091` and serves a fixed file list.  It checks the frozen binary's SHA-256 and manifest before accepting requests.  It requires no compilation or additional dependencies.  Open `http://localhost:8091` on the server machine or use that machine's network address.
+
+The page provides editable memberships and six scenarios: overlapping categories larger than the discrepancy bound, an odd category count, identical category sets, a three-job cycle assigned to one group, jobs with zero memberships, and an empty input.  A separate JSON editor exercises duplicate membership, invalid category IDs, and capacity rejection.  Every partition executes in a fresh browser worker.  JavaScript recomputes category counts and checks the assignments.  The page states the proof assumptions and identifies the binary.  The browser and JavaScript adapter remain outside the Lean theorem.
+
+```sh
+node test/beck_web.mjs
+node test/beck_browser.mjs
+```
+
+The first test checks HTTP responses, artifact identity, 14 worker/Wasmtime comparisons, input validation, and independent output checks.  The second uses an installed Chromium executable, selected by `CHROMIUM` when needed.  It tests all six scenarios, membership edits, empty inputs, rejection controls, browser errors, and mobile overflow.  Screenshots go to `build/beck-web`.
+
 ## Arithmetic
 
 Rows and columns are scanned in ascending order.  The basis search extends a nonsingular minor by the first row and column with a nonzero bordered determinant.  The direction uses that minor and its column-replacement determinants.  Determinants use Laplace expansion with structurally decreasing order.
