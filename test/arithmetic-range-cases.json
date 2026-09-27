@@ -919,5 +919,15 @@
   "rangeBooleanStepFunctionUnused",
   "rangeBooleanStepFunctionRepeated",
   "rangeBooleanStepFunctionFlagInput",
-  "rangeBooleanStepFunctionWordTail"
+  "rangeBooleanStepFunctionWordTail",
+  "rangeBooleanStepResultSaved",
+  "rangeBooleanStepResultBound",
+  "rangeBooleanStepResultIgnored",
+  "rangeBooleanStepResultShow",
+  "rangeBooleanStepResultAlias",
+  "rangeBooleanStepResultCapture",
+  "rangeBooleanStepResultMonadicIgnored",
+  "rangeBooleanStepResultNested",
+  "rangeBooleanStepResultFlagInput",
+  "rangeBooleanStepResultWordTail"
 ]

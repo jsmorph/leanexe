@@ -85,6 +85,15 @@ inductive Eval : Lean.Expr → List Value → ForInStep Bool → Prop where
       (argument : EvalWith (.app (.const ``Bool.toUInt64 []) a) (values.map Value.toScalar) (Bool.toUInt64 flag)) :
       Eval (.app (.bvar index) a) values (f flag)
 
+  | resultVar (present : values[index]? = some (.result outcome)) :
+      Eval (.bvar index) values outcome
+  | letResult (type : BooleanType) (value : Eval a values bound)
+      (body : Eval b (.result bound :: values) outcome) :
+      Eval (.letE name (resultType type) a b nondep) values outcome
+  | bindResult (input output : BooleanType) (value : Eval a values bound)
+      (body : Eval b (.result bound :: values) outcome) :
+      Eval (bindExpr (resultType input) output name bi a b) values outcome
+
 /-- Support checks both branches and every bound value, including unused ones. -/
 inductive Supported : List BindingKind → Lean.Expr → Prop where
   | yieldDirect (value : SupportedWith (types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) source)) :
@@ -124,6 +133,14 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
   | booleanApply (function : types[index]? = some .booleanFunction)
       (argument : SupportedWith (types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) a)) :
       Supported types (.app (.bvar index) a)
+
+  | resultVar (present : types[index]? = some .result) : Supported types (.bvar index)
+  | letResult (type : BooleanType) (value : Supported types a)
+      (body : Supported (.result :: types) b) :
+      Supported types (.letE name (resultType type) a b nondep)
+  | bindResult (input output : BooleanType) (value : Supported types a)
+      (body : Supported (.result :: types) b) :
+      Supported types (bindExpr (resultType input) output name bi a b)
 
 theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     (supported : Supported types source) (values : List Value)
@@ -194,5 +211,16 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨encoded, evaluated⟩ := argument.evaluates (values.map Value.toScalar) (typed_projection typed)
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
     exact ⟨f flag, .booleanApply found evaluated⟩
+  | resultVar present =>
+    obtain ⟨outcome, found⟩ := result_lookup typed present
+    exact ⟨outcome, .resultVar found⟩
+  | letResult type _ _ ihv ihb =>
+    obtain ⟨bound, hv⟩ := ihv values typed
+    obtain ⟨outcome, hb⟩ := ihb (.result bound :: values) (by simp [Value.kind, typed])
+    exact ⟨outcome, .letResult type hv hb⟩
+  | bindResult input output _ _ ihv ihb =>
+    obtain ⟨bound, hv⟩ := ihv values typed
+    obtain ⟨outcome, hb⟩ := ihb (.result bound :: values) (by simp [Value.kind, typed])
+    exact ⟨outcome, .bindResult input output hv hb⟩
 
 end LeanExe.Source.Scalar.BooleanStep

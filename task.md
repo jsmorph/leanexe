@@ -893,10 +893,15 @@ fixed `show` probe still requires complete step-result bindings. The corpus
 contains 1583 declarations. Evidence is in
 [the Boolean step function archive](proofs/compiler/boolean-step-function-2026-09-27/README.md).
 
-Current capability: complete Boolean step-result bindings, including ordinary
-lets, aliases, standard Id binds and show. Preserve value and exit status;
-ignoring a done result must not exit. Prove exact annotations, source totality,
-extraction and WASM correctness before expanding functions taking step results.
+Current capability: complete Boolean step-result bindings. Result kinds, lookup,
+source totality, exact ordinary-let/Id-bind annotations, acceptance/support,
+correctness and invariants pass on their first focused builds. Public integration
+passes. The saved and ignored-done probes and retained/show helper are restored;
+the simple bound probe and three earlier helper probes remain accepted. The
+conditional step-result bind still needs a function taking a complete step and
+is preserved for the next capability. Ten native programs pass 240 comparisons;
+syntax tests pass 18,432 comparisons and 9,600 invalid-input checks. The general
+source-to-WASM proof and independent V8 checks are next.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
