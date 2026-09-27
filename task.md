@@ -706,10 +706,13 @@ bytes and 4 changed. New tests pass 3,316 comparisons, 2,176 invalid-input
 checks and 64 controls. Prior tests pass 123,360 comparisons, 78,424 invalid-input
 checks and 4,448 controls. The native corpus contains 1417 declarations.
 
-Current capability: general Id.run/pure wrappers around helper scopes, confirmed
-by the original rejection fixture. Preserve exact wrapper annotations and
-standard instances, then connect recursive Boolean conversion through the
-existing condition and step proofs.
+Current capability: general Id.run/pure wrappers around helper scopes. The
+original direct-condition probe now passes; its wrapper fixture still fails.
+All five Id.run/pure/nested-wrapper/condition/loop-exit probes now pass.
+Source totality, parsing, scalar acceptance/correctness and IR invariants pass.
+New native/raw tests pass 12,724 value/exit comparisons, 11,264 invalid-input
+checks and 256 controls. Adjacent tests and the final compiler-proof/native-V8
+gates remain before this capability is complete.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
