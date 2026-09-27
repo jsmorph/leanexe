@@ -1,0 +1,22 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [33/84] Built LeanExe.Source.ScalarBooleanScopeBinding (863ms)
+⚠ [67/84] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [84/84] Building LeanExe.Extract.ScalarBooleanScopeBinding (841ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanScopeBinding.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanScopeBinding.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanScopeBinding.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanScopeBinding.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanScopeBinding.setup.json --json
+error: LeanExe/Extract/ScalarBooleanScopeBinding.lean:45:2: Dependent elimination failed: Failed to solve equation
+  some binding =
+    Decidable.rec (fun h => (fun h => none) h)
+      (fun h =>
+        (fun h =>
+            some
+              { name := name✝, domain := domain✝, input := ⋯, value := value✝, body := body✝, nondep := nondep✝,
+                extended := ⋯ })
+          h)
+      ((PublicArgument.ofType? domain✝).instDecidableEq (some PublicArgument.boolean))
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanScopeBinding
+error: build failed

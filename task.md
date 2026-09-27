@@ -966,15 +966,20 @@ The original identityInput probe and nine new fixed probes compile. The corpus
 contains 1642 declarations. Evidence is in
 [the retained helper-input archive](proofs/compiler/boolean-helper-id-input-2026-09-27/README.md).
 
-Current capability: word and Boolean let bindings around general Boolean helper
-scopes. The original capture probe is unchanged and rejects even with bare helper
-inputs. All six new fixed probes reject before the change. The independent
-binding grammar, recognizer and source totality pass 104 targets. Core extraction
-equations pass 139 targets. Reconstruction, acceptance, evaluation correctness
-and generic IR invariants pass 140 targets; function integration passes 207.
-All six fixed scope-binding probes compile, restoring the unchanged capture
-probe too. New tests pass 16,308 native/IR comparisons, 17,280 invalid-input
-checks and 384 admission controls. The complete WASM proof and V8 gates are next.
+Ordinary word and Boolean let bindings around general helper scopes are proved
+through WASM, including nested captures, unused values and standard Id annotations.
+The complete proof gate passes 3393 targets and all 29 audits. Native Lean/V8 agree
+on 1,389 inputs across 73 declarations; 63 prior modules retain identical bytes
+and 0 changed. New tests pass 16,308 comparisons, 17,280 invalid-input checks
+and 384 admission controls; prior tests pass 105,228 comparisons, 123,984 invalid
+inputs and 1,344 controls. All six fixed scope probes and ten prior Id-input probes
+compile, including the unchanged capture probe. The corpus contains 1652 declarations.
+Evidence is in [the scope-binding archive](proofs/compiler/boolean-scope-binding-2026-09-27/README.md).
+
+Current capability: standard Id monadic scalar bindings around general Boolean
+helper scopes. Preserve the fixed bind probes, extend exact source syntax and
+annotation/instance checks, prove native source behavior and extraction, then
+complete emitted-WASM proofs and independent engine checks before advancing.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
