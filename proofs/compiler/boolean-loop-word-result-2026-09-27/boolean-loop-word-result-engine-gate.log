@@ -1,0 +1,6 @@
+cli-build: passed
+admission-test: exit 1
+test/arithmetic_mode.lean:10174:0: error: arithmetic mode accepted excluded source ArithmeticModeTest.rangeLetBool
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+
