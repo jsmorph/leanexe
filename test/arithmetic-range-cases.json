@@ -726,5 +726,15 @@
   "rangeBoolWrappedChoiceExit",
   "rangeBoolWrappedChoiceContinue",
   "rangeBoolWrappedChoiceStride",
-  "rangeBoolWrappedChoiceId"
+  "rangeBoolWrappedChoiceId",
+  "rangeBoolResultLet",
+  "rangeBoolResultDo",
+  "rangeBoolResultFlag",
+  "rangeBoolResultCapture",
+  "rangeBoolResultSaved",
+  "rangeBoolResultMixed",
+  "rangeBoolResultExit",
+  "rangeBoolResultContinue",
+  "rangeBoolResultStride",
+  "rangeBoolResultId"
 ]

@@ -574,6 +574,13 @@ modules retain identical bytes. New tests pass 97,008 native/IR comparisons,
 comparisons, 122,112 invalid-input checks and 5,760 controls. Evidence is in
 [the wrapped conditional archive](proofs/compiler/boolean-loop-wrapped-conditional-2026-09-27/README.md).
 
+Current capability: general Boolean loop-result bindings. The source semantics,
+acceptance, support recovery, correctness, invariant and public WASM admission
+proofs pass. Ordinary lets and standard Id binds preserve the old scalar-value/
+loop-body path, then try a Boolean loop value with a scalar Boolean tail. New
+tests pass 64,752 native/IR comparisons, 34,560 invalid-input checks and 2,304
+binding controls. The complete proof and native Lean/WASM checks are next.
+
 Next: general Boolean loop-result bindings, followed by
 retained instances, broader signatures, and composition of multiple loops.
 Also extend UInt64-to-Bool helper bodies to call captured
