@@ -5224,6 +5224,102 @@ def rangeBoolWordHelperShadow (count seed : UInt64) : Bool :=
     return a
   f value == f initial
 
+def rangeBoolBooleanHelperRepeat (count seed : UInt64) : Bool :=
+  let f := fun flag : Bool => seed + flag.toUInt64 + 1
+  let value := Id.run do
+    let mut a := f true
+    for i in [:count.toNat] do
+      a := a + f (i.toUInt64 % 2 == 0) + f false
+    return a
+  value == f true
+
+def rangeBoolBooleanHelperCount (count seed : UInt64) : Bool :=
+  let limit := fun flag : Bool => if flag then count % 17 else count % 5
+  let value := Id.run do
+    let mut a := seed
+    for i in [:(limit (seed % 2 == 0)).toNat] do
+      a := a + i.toUInt64 + 1
+    return a
+  value == seed + limit true
+
+def rangeBoolBooleanHelperInitial (count seed : UInt64) : Bool :=
+  let f := fun flag : Bool => seed * 3 + flag.toUInt64
+  let value := Id.run do
+    let mut a := f false
+    for i in [:count.toNat] do
+      a := a + f (i.toUInt64 % 2 == 0)
+    return a
+  value == f false
+
+def rangeBoolBooleanHelperNested (count seed : UInt64) : Id Bool :=
+  let f := fun flag : Bool => seed + flag.toUInt64
+  let g := fun flag : Bool => f (!flag) + f flag
+  let value := Id.run do
+    let mut a := g false
+    for i in [:count.toNat] do
+      a := a + g (i.toUInt64 % 3 == 0)
+    return a
+  pure (value == g (seed == 0))
+
+def rangeBoolBooleanHelperFlag (count : UInt64) (flag : Bool) : Bool :=
+  let f := fun input : Bool => if flag && input then count + 7 else count - 3
+  let value := Id.run do
+    let mut a := f flag
+    for i in [:count.toNat] do
+      a := a + f (i.toUInt64 % 2 == 0)
+    return a
+  flag && value == f flag
+
+def rangeBoolBooleanHelperExit (count seed : UInt64) : Bool :=
+  let f := fun flag : Bool => seed % 5 + flag.toUInt64 + 1
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + f (i.toUInt64 % 2 == 0)
+      if a % 7 == 0 then break
+    return a
+  f (value % 7 == 0) == f true
+
+def rangeBoolBooleanHelperContinue (count seed : UInt64) : Bool :=
+  let f := fun flag : Bool => if flag then 0 else seed % 3 + 1
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if f (i.toUInt64 % 2 == 0) == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a
+  f (value == seed) == f true
+
+def rangeBoolBooleanHelperStride (count seed : UInt64) : Bool :=
+  let f := fun flag : Bool => if flag then seed % 3 else 0
+  let value := Id.run do
+    let mut a := seed
+    for i in [(f true).toNat:count.toNat:3] do
+      a := a + i.toUInt64 + 1
+      if a % 5 == 0 then break
+    return a
+  f (value == seed) == f true
+
+def rangeBoolBooleanHelperId (count : Id UInt64) (seed : UInt64) : Id Bool :=
+  let f (flag : Bool) : Id (Id UInt64) := pure (pure (seed + flag.toUInt64 + 1))
+  let value : Id UInt64 := Id.run do
+    let mut a := Id.run (Id.run (f false))
+    for i in [:(Id.run count).toNat] do
+      a := a + Id.run (Id.run (f (i.toUInt64 % 2 == 0)))
+    return a
+  pure (Id.run value == Id.run (Id.run (f false)))
+
+def rangeBoolBooleanHelperShadow (count seed : UInt64) : Bool :=
+  let f := fun flag : Bool => seed + flag.toUInt64
+  let initial := f false
+  let f := fun flag : Bool => f (!flag) + count
+  let value := Id.run do
+    let mut a := initial
+    for i in [:count.toNat] do
+      a := a + f (i.toUInt64 % 2 == 0)
+    return a
+  value == f (initial == seed)
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -8068,6 +8164,16 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolWordHelperStride", (fun (x y : UInt64) => (rangeBoolWordHelperStride x y).toUInt64)),
    ("rangeBoolWordHelperId", (fun (x y : UInt64) => (rangeBoolWordHelperId x y).toUInt64)),
    ("rangeBoolWordHelperShadow", (fun (x y : UInt64) => (rangeBoolWordHelperShadow x y).toUInt64)),
+   ("rangeBoolBooleanHelperRepeat", (fun (x y : UInt64) => (rangeBoolBooleanHelperRepeat x y).toUInt64)),
+   ("rangeBoolBooleanHelperCount", (fun (x y : UInt64) => (rangeBoolBooleanHelperCount x y).toUInt64)),
+   ("rangeBoolBooleanHelperInitial", (fun (x y : UInt64) => (rangeBoolBooleanHelperInitial x y).toUInt64)),
+   ("rangeBoolBooleanHelperNested", (fun (x y : UInt64) => (rangeBoolBooleanHelperNested x y).toUInt64)),
+   ("rangeBoolBooleanHelperFlag", (fun (x y : UInt64) => (rangeBoolBooleanHelperFlag x (y != 0)).toUInt64)),
+   ("rangeBoolBooleanHelperExit", (fun (x y : UInt64) => (rangeBoolBooleanHelperExit x y).toUInt64)),
+   ("rangeBoolBooleanHelperContinue", (fun (x y : UInt64) => (rangeBoolBooleanHelperContinue x y).toUInt64)),
+   ("rangeBoolBooleanHelperStride", (fun (x y : UInt64) => (rangeBoolBooleanHelperStride x y).toUInt64)),
+   ("rangeBoolBooleanHelperId", (fun (x y : UInt64) => (rangeBoolBooleanHelperId x y).toUInt64)),
+   ("rangeBoolBooleanHelperShadow", (fun (x y : UInt64) => (rangeBoolBooleanHelperShadow x y).toUInt64)),
    ("rangeBoolLetIdWord", (fun (x y : UInt64) => (rangeBoolLetIdWord x y).toUInt64)),
    ("rangeBoolLetIdWordLayers", (fun (x y : UInt64) => (rangeBoolLetIdWordLayers x y).toUInt64)),
    ("rangeBoolLetIdFlag", (fun (x y : UInt64) => (rangeBoolLetIdFlag x y).toUInt64)),
