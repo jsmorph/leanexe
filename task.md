@@ -1078,20 +1078,27 @@ controls. Five fixed word probes now compile; the Boolean-result probe remains
 deferred. The corpus contains 1733 declarations. Evidence is in
 [the sequence archive](proofs/compiler/scalar-loop-sequence-2026-09-27/README.md).
 
-Current capability: word prefixes with Boolean-result loop continuations.
-All six fixed native probes rejected before the increment and now compile.
-Independent source semantics, totality, exact admission, reconstruction, capture
-preservation and IR invariants pass (212 targets). Public admission and Boolean
-result encoding pass with descriptor admission (244 targets). Existing sequence
-plans, framing, WASM execution, function bytes and validation are reused; the
-focused byte integration passes 3360 targets. Native fixtures and syntax tests
-pass 14,016 comparisons, 18,432 invalid-input checks and 576 admission controls.
-The complete proof gate and independent engine checks are next.
+Word-result sequences followed by Boolean-result computations are proved through
+WASM. Prefixes may contain several loops and later computations preserve their
+results and captures. Public Boolean results encode the native flag as zero or
+one. The complete proof gate passes 3418 targets and all 57 audits. Native
+Lean/V8 agree on 2,795 inputs across 132 declarations; all 124 prior modules
+retain identical bytes. New tests pass 14,016 comparisons, 18,432 invalid-input
+checks and 576 controls. Prior tests pass 23,424 comparisons, 36,096 invalid
+inputs and 960 controls. All six fixed probes compile. The corpus contains
+1741 declarations. Evidence is in
+[the Boolean-result sequence archive](proofs/compiler/boolean-loop-sequence-2026-09-27/README.md).
 
-Next: Boolean-result bound prefixes and nested loops. Broader helper signatures,
-heap values, floats, imports and global calls remain outside the complete compiler
-theorem. Full-dialect correctness remains unfinished. Complete each capability
-through WASM and commit/push frequently.
+Current capability: Boolean-result prefixes before word or Boolean loop sequences.
+All six fixed probes reject before the increment. Add exact Boolean let/bind
+annotations, saved-flag capture, source totality, admission, reconstruction,
+correctness and bounded reads to both sequence grammars. Reuse the sequence WASM
+proofs and finish focused tests, the complete proof gate and V8 checks.
+
+Next: Boolean bound expressions containing several loops, nested loops and broader
+helper signatures. Heap values, floats, imports and global calls remain outside
+the complete compiler theorem. Full-dialect correctness remains unfinished.
+Complete each capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 

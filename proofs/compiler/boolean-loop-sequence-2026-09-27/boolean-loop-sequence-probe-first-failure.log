@@ -1,0 +1,9 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/boolean-loop-sequence-probe.lean:53:39: error(lean.unknownIdentifier): Unknown constant `UInt64.beq`
+BooleanLoopSequenceProbe.direct: false
+BooleanLoopSequenceProbe.dependent: false
+BooleanLoopSequenceProbe.exits: false
+BooleanLoopSequenceProbe.unused: false
+BooleanLoopSequenceProbe.three: false
+BooleanLoopSequenceProbe.retained: false

@@ -1,0 +1,5 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_loop_sequence_syntax.lean:57:21: error: unexpected token 'prefix'; expected '(', ':=', 'rec', '|', identifier or term
+test/scalar_boolean_loop_sequence_syntax.lean:57:28: error: unexpected token ':='; expected ':'
+test/scalar_boolean_loop_sequence_syntax.lean:58:70: error: unexpected token 'else'; expected ':'
