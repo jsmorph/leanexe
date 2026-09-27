@@ -80,9 +80,9 @@ run_elab do
                     let innerEvidence := Comparison.eq.evidence (modWord (.bvar wordIndex) (literalExpr 5)) (literalExpr 0)
                     let yes := call.expr argument
                     let no := call.expr alternate
-                    let inner : BooleanFunctionChoice := ⟨resultType, innerCondition, innerEvidence, no, yes⟩
+                    let inner : BooleanFunctionChoice := .mk resultType innerCondition innerEvidence no yes
                     let selectedYes := if nested then inner.expr else yes
-                    let selection : BooleanFunctionChoice := ⟨resultType, condition, evidence, selectedYes, no⟩
+                    let selection : BooleanFunctionChoice := .mk resultType condition evidence selectedYes no
                     let make (tail : Lean.Expr) := shape.bodyExpr `selected inputType functionBody tail
                     let body := make selection.expr
                     let some func := extractScalarFunc `directContinuation (some "entry") signature (wrap body) |
