@@ -78,11 +78,12 @@ run_elab do
                     let some control := extractScalarBooleanRangeWith (publicBindings kinds) 2
                         (.letE `selected inputType argument functionBody false) |
                       throwError "direct binding control rejected"
-                    unless direct == control.func `directContinuation (some "entry") 2 do
+                    unless mode == 2 || direct == control.func `directContinuation (some "entry") 2 do
                       throwError "local function call changed its argument binding"
                     controls := controls + 1
                     let module_ : LeanExe.IR.Module := { funcs := #[func] }
                     let directModule : LeanExe.IR.Module := { funcs := #[direct] }
+                    let controlModule : LeanExe.IR.Module := { funcs := #[control.func `directContinuation (some "entry") 2] }
                     for (x, y) in inputs do
                       let rawFlag := if flagFirst then x else y
                       let rawWord := if flagFirst then y else x
@@ -98,7 +99,7 @@ run_elab do
                       let expected := (if mode == 0 then value % 7 == 0 || selected
                         else if selected then (if mode == 2 then !selected else value % 7 == 0 || selected)
                         else rawWord % 5 == 0).toUInt64
-                      for actual in [module_.evalFunc 0 [x, y], directModule.evalFunc 0 [x, y]] do
+                      for actual in [module_.evalFunc 0 [x, y], directModule.evalFunc 0 [x, y], controlModule.evalFunc 0 [x, y]] do
                         unless actual == expected && (actual == 0 || actual == 1) do
                           throwError "direct continuation result {actual}, expected {expected}"
                         comparisons := comparisons + 1
@@ -135,6 +136,6 @@ run_elab do
                       if (extractScalarFunc `invalidDirectContinuation (some "entry") signature (wrap value)).isSome then
                         throwError "invalid direct continuation accepted: {booleanInput}, {inputDepth}, {kind}, {mode}"
                       rejected := rejected + 1
-  unless comparisons == 96768 && rejected == 55296 && controls == 3456 do
+  unless comparisons == 145152 && rejected == 55296 && controls == 3456 do
     throwError "unexpected counts {comparisons}, {rejected}, {controls}"
   Lean.logInfo m!"{comparisons} native/wrapped-continuation syntax comparisons, {rejected} invalid-input tests and {controls} binding controls passed"

@@ -133,18 +133,17 @@ def booleanRangeArgument (boolean : Bool) (value : Lean.Expr) : Lean.Expr :=
   if boolean then .app (.const ``Bool.toUInt64 []) value else value
 
 def booleanRangePredicate (locals : List ScalarBinding) (boolean : Bool)
-    (expression : BooleanLocal) : ScalarBinding :=
+    (expression : Lean.Expr) : ScalarBinding :=
   let function := fun argument => extractScalarExprWith (booleanRangeInput boolean argument :: locals)
-    (.app (.const ``Bool.toUInt64 []) expression.expr)
+    (.app (.const ``Bool.toUInt64 []) expression)
   if boolean then .booleanPredicateFunction function else .predicateFunction function
 
 /-- Check a scalar helper before compiling its enclosing body. -/
 def scalarBooleanRangePredicate (locals : List ScalarBinding) (boolean : Bool)
     (value : Lean.Expr) (body : ScalarBinding → Option ScalarRangeExitPlan) : Option ScalarRangeExitPlan := do
-  let expression ← booleanLocalOperands? value
   let _ ← extractScalarExprWith (booleanRangeInput boolean (.u64 0) :: locals)
-    (.app (.const ``Bool.toUInt64 []) expression.expr)
-  body (booleanRangePredicate locals boolean expression)
+    (.app (.const ``Bool.toUInt64 []) value)
+  body (booleanRangePredicate locals boolean value)
 
 /-- Compile a direct application by binding its checked argument in the helper body. -/
 def scalarBooleanRangeDirect (locals : List ScalarBinding) (boolean : Bool)
@@ -164,9 +163,9 @@ theorem scalarBooleanRangeContinuation_success {locals : List ScalarBinding} {bo
     {value tail : Lean.Expr} {enclosing direct : ScalarBinding → Option ScalarRangeExitPlan}
     {plan : ScalarRangeExitPlan}
     (compiled : scalarBooleanRangeContinuation locals boolean value tail enclosing direct = some plan) :
-    (∃ expression checked, value = expression.expr ∧
+    (∃ (expression : Lean.Expr), ∃ checked, value = expression ∧
       extractScalarExprWith (booleanRangeInput boolean (.u64 0) :: locals)
-        (.app (.const ``Bool.toUInt64 []) expression.expr) = some checked ∧
+        (.app (.const ``Bool.toUInt64 []) expression) = some checked ∧
       enclosing (booleanRangePredicate locals boolean expression) = some plan) ∨
     (∃ (call : BooleanCall boolean), ∃ argument bound, tail = call.expr argument ∧
       extractScalarExprWith locals (booleanRangeArgument boolean argument) = some bound ∧
@@ -177,8 +176,8 @@ theorem scalarBooleanRangeContinuation_success {locals : List ScalarBinding} {bo
     have same : result = plan := by simpa [first] using compiled
     subst result
     simp only [scalarBooleanRangePredicate, bind, Option.bind_eq_some_iff] at first
-    obtain ⟨expression, parsed, checked, validated, emitted⟩ := first
-    exact .inl ⟨expression, checked, booleanLocalOperands_sound parsed, validated, emitted⟩
+    obtain ⟨checked, validated, emitted⟩ := first
+    exact .inl ⟨value, checked, rfl, validated, emitted⟩
   | none =>
     have second : scalarBooleanRangeDirect locals boolean tail direct = some plan := by
       simpa [first] using compiled
@@ -187,13 +186,13 @@ theorem scalarBooleanRangeContinuation_success {locals : List ScalarBinding} {bo
     exact .inr ⟨call, argument, bound, booleanRangeWrappedCall_sound parsed, validated, emitted⟩
 
 theorem scalarBooleanRangeContinuation_accepts_scalar {locals : List ScalarBinding} {boolean : Bool}
-    {expression : BooleanLocal} {tail : Lean.Expr}
+    {expression : Lean.Expr} {tail : Lean.Expr}
     {enclosing direct : ScalarBinding → Option ScalarRangeExitPlan} {checked : LeanExe.IR.Expr}
     {plan : ScalarRangeExitPlan}
     (validated : extractScalarExprWith (booleanRangeInput boolean (.u64 0) :: locals)
-      (.app (.const ``Bool.toUInt64 []) expression.expr) = some checked)
+      (.app (.const ``Bool.toUInt64 []) expression) = some checked)
     (emitted : enclosing (booleanRangePredicate locals boolean expression) = some plan) :
-    scalarBooleanRangeContinuation locals boolean expression.expr tail enclosing direct = some plan := by
+    scalarBooleanRangeContinuation locals boolean expression tail enclosing direct = some plan := by
   simp [scalarBooleanRangeContinuation, scalarBooleanRangePredicate, validated, emitted]
 
 theorem scalarBooleanRangeContinuation_accepts_direct {locals : List ScalarBinding} {boolean : Bool}

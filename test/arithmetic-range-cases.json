@@ -873,5 +873,13 @@
   "rangePredicateOuterBodyCapture",
   "rangePredicateOuterBodyWrapped",
   "rangePredicateOuterBodyNested",
-  "rangePredicateOuterBodyId"
+  "rangePredicateOuterBodyId",
+  "rangePredicateOuterFlagWord",
+  "rangePredicateOuterFlagBoolean",
+  "rangePredicateOuterFlagWrapped",
+  "rangePredicateOuterFlagUnused",
+  "rangePredicateOuterFlagCapture",
+  "rangePredicateOuterFlagBound",
+  "rangePredicateOuterFlagNested",
+  "rangePredicateOuterFlagId"
 ]
