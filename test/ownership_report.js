@@ -208,6 +208,33 @@ function checkArrayMapSharing() {
   }
 }
 
+function checkNestedArrayUpdateLoop() {
+  const name = "nestedArrayUpdateLoop";
+  const output = fs.mkdtempSync(path.join("tmp", "nested-array-update-"));
+  const binary = path.join(output, name + ".wasm");
+  run([leanExe, "compile", "--module", correctnessModule,
+    "--entry", `${correctnessModule}.${name}`, "--out", binary]);
+  for (const rows of [0, 1, 2, 8]) {
+    for (const columns of [0, 1, 4]) {
+      const expected = Array(columns + 1).fill(0);
+      for (let row = 0; row < rows; row++) {
+        let carry = row;
+        for (let column = 0; column < columns; column++) {
+          carry += expected[column] + 1;
+          expected[column] = carry;
+        }
+        expected[columns] = carry;
+      }
+      const [words, stats] = run([ensureHost(), "call-stats", binary, name,
+        "array-u64", `i64:${rows}`, `i64:${columns}`]).trim().split("\n");
+      assert.deepEqual(JSON.parse(words), expected);
+      const [, allocations, , , frees] = stats.split(" ").map(Number);
+      assert.equal(allocations - frees, 1,
+        `${name}(${rows}, ${columns}): only the returned array should remain allocated`);
+    }
+  }
+}
+
 function checkNestedMonadicLoops() {
   const output = fs.mkdtempSync(path.join("tmp", "nested-monadic-loops-"));
   for (const monad of ["Option", "Except"]) {
@@ -231,8 +258,9 @@ function checkNestedMonadicLoops() {
 
 function main() {
   if (process.argv[2] === "--nested") {
+    checkNestedArrayUpdateLoop();
     checkNestedMonadicLoops();
-    process.stdout.write("checked nested Option/Except loop allocation bounds\n");
+    process.stdout.write("checked nested loop results, allocations, and releases\n");
     return;
   }
   checkOptionByteArrayLoop();
@@ -242,6 +270,7 @@ function main() {
   checkHeapBearingArrayFoldAccumulators();
   checkExplicitRecursiveReleaseSuppressesCompilerRelease();
   checkFreshArrayRelease();
+  checkNestedArrayUpdateLoop();
   checkInternalArrayLoop();
   checkTailRelease();
   checkFreshTailResult();

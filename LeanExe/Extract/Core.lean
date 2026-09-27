@@ -113,28 +113,30 @@ def prepareFoldOwnership (ctx : Context) (ty : Ty) (accStart : Nat)
     accStart step.bodyLets step.bodyDone step.bodyTargets
   let owned := foldAccumulatorOwnedOffsets ctx.freshResultOwnerOffsets ty
     accStart step.bodyLets step.bodyDone step.bodyTargets
-  if owned == releases then (initValues, step, releases) else
-    let ownerOffsets := tyReleaseOwnerSlotOffsets ty
-    let initialStart := step.nextLocal
-    let doneSlot := initialStart + initValues.length
-    let releaseSlot := doneSlot + 1
-    let protectedSlots := ownerOffsets.flatMap fun offset =>
-      (initialStart + offset) :: (step.bodyTargets[offset]?.toList)
-    let cleanup := owned.foldl (fun (prior, cleanup) offset =>
-      let slot := accStart + offset
-      let cond := prior.foldl
-        (fun cond other => .and cond (.not (.eqU64 (.local slot) (.local other))))
-        (.not (.eqU64 (.local slot) (.u64 0)))
-      (slot :: prior, cleanup ++ [.branch cond [.expr releaseSlot (.release (.local slot))] []]))
-      (protectedSlots, [])
-    let initValues := (initValues.zipIdx).map fun (value, offset) =>
-      if ownerOffsets.contains offset then
-        .letE (initialStart + offset) value (.local (initialStart + offset)) else value
-    let step := { step with
-      bodyLets := step.bodyLets ++ [.expr doneSlot step.bodyDone] ++ cleanup.snd
-      bodyDone := .local doneSlot
-      nextLocal := releaseSlot + 1 }
-    (initValues, step, [])
+  let (initValues, step, releases) :=
+    if owned == releases then (initValues, step, releases) else
+      let ownerOffsets := tyReleaseOwnerSlotOffsets ty
+      let initialStart := step.nextLocal
+      let doneSlot := initialStart + initValues.length
+      let releaseSlot := doneSlot + 1
+      let protectedSlots := ownerOffsets.flatMap fun offset =>
+        (initialStart + offset) :: (step.bodyTargets[offset]?.toList)
+      let cleanup := owned.foldl (fun (prior, cleanup) offset =>
+        let slot := accStart + offset
+        let cond := prior.foldl
+          (fun cond other => .and cond (.not (.eqU64 (.local slot) (.local other))))
+          (.not (.eqU64 (.local slot) (.u64 0)))
+        (slot :: prior, cleanup ++ [.branch cond [.expr releaseSlot (.release (.local slot))] []]))
+        (protectedSlots, [])
+      let initValues := (initValues.zipIdx).map fun (value, offset) =>
+        if ownerOffsets.contains offset then
+          .letE (initialStart + offset) value (.local (initialStart + offset)) else value
+      let step := { step with
+        bodyLets := step.bodyLets ++ [.expr doneSlot step.bodyDone] ++ cleanup.snd
+        bodyDone := .local doneSlot
+        nextLocal := releaseSlot + 1 }
+      (initValues, step, [])
+  (initValues, releaseForInStepTemporaries ctx ty accStart step, releases)
 
 def valueIteConst
     (cond : IRCond)
@@ -803,8 +805,7 @@ mutual
       | .except _ =>
           extractMonadicForInStepBody ctx nextLocal monad payloadTy accStart []
             itemLocals bodyExpr
-    let accumulatorTy ← forInAccumulatorType monad payloadTy
-    .ok (releaseForInStepTemporaries ctx accumulatorTy accStart step)
+    .ok step
 
   partial def extractMonadicFoldStep
       (ctx : Context)
