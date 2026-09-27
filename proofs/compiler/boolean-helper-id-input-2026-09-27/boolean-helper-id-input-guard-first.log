@@ -1,0 +1,27 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [20/21] Built LeanExe.Source.ScalarGuardLet (1.1s)
+✖ [21/21] Building LeanExe.Extract.ScalarGuardLet (949ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarGuardLet.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuardLet.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuardLet.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuardLet.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuardLet.setup.json --json
+error: LeanExe/Extract/ScalarGuardLet.lean:33:56: unsolved goals
+case predicateId
+kind : PublicArgument
+domain : Lean.Expr
+input : kind.Domain domain
+inputName : Lean.Name
+info : Lean.BinderInfo
+result : BooleanType
+⊢ (match parsed : PublicArgument.ofType? domain with
+    | some kind => some (GuardLetType.predicateId kind domain ⋯ inputName info result)
+    | none => none) =
+    some (GuardLetType.predicateId kind domain input inputName info result)
+warning: LeanExe/Extract/ScalarGuardLet.lean:34:77: This simp argument is unused:
+  PublicArgument.ofType_accepts input
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [guardLetType?, GuardLetType.expr, scalarResultType?, booleanType?]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarGuardLet
+error: build failed
