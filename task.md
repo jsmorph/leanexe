@@ -727,10 +727,12 @@ controls. Prior tests pass 16,692 comparisons, 14,016 invalid-input checks and
 [the helper-negation archive](proofs/compiler/boolean-helper-negation-2026-09-27/README.md).
 
 Current capability: conjunctions and disjunctions around general Boolean helper
-scopes. The conjunction probe remains rejected after negation support. Extend
-recursive conversion of both operands and reuse the proved Boolean conjunction
-and disjunction lowering. Equality, choices, nested helper bodies and Id inputs
-remain separately confirmed gaps.
+scopes. Source totality, parser acceptance/soundness, scalar correctness and IR
+invariants pass. All five original probes pass unchanged. New tests pass 18,996
+comparisons, 18,816 invalid-input checks and 384 controls. Six adjacent tests pass
+25,460 comparisons, 19,456 invalid-input checks and 704 controls. The general
+compiler-proof and independent WASM checks are next. Equality, choices, nested
+helper bodies and Id inputs remain separately confirmed gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

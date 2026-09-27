@@ -8640,6 +8640,67 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def booleanHelperJunctionLeft (x y : UInt64) : UInt64 :=
+  ((let f := fun n : UInt64 => n == y; f x || f 0) && (x == 0)).toUInt64 + x
+
+def booleanHelperJunctionRight (x y : UInt64) : UInt64 :=
+  ((x == 0) || (Id.run do
+    let f := fun b : Bool => !b || y == 0
+    return f (x == y) && f (x == 0))).toUInt64 + x
+
+def booleanHelperJunctionBoth (x y : UInt64) : UInt64 :=
+  ((let f := fun n : UInt64 => n == y; f x || f 0) &&
+    !(let g := fun b : Bool => !b || y == 0; g (x == y) && g (x == 0))).toUInt64 + x
+
+def booleanHelperJunctionDependent (x y : UInt64) : UInt64 :=
+  if _h : ((let f := fun n : UInt64 => n == y; f x || f 0) ||
+    (let g := fun b : Bool => !b || y == 0; g (x == y) && g (x == 0))) then x + 7 else y + 11
+
+def booleanHelperJunctionNested (x y : UInt64) : UInt64 :=
+  (((!(let f := fun n : UInt64 => n == y; f x || f 0)) &&
+    (Id.run do
+      let g := fun b : Bool => b || y != 0
+      return g (x == y) && g (x == 0))) ||
+    (let h := fun n : UInt64 => n % 3 == 0; h x && h y)).toUInt64 + y
+
+def booleanHelperJunctionUnused (x y : UInt64) : UInt64 :=
+  ((let _unused := fun b : Bool => b && x != 0; x == y) ||
+    !(let f := fun n : UInt64 => n == x; f y && f 0)).toUInt64 + y
+
+def rangeHelperJunctionStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if ((let f := fun n : UInt64 => n % 2 == 0; f a && f i.toUInt64) || a == seed) then
+      a := a + i.toUInt64 + 7
+    else a := a * 3 + 1
+  return a
+
+def rangeHelperJunctionExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if _h : ((let f := fun n : UInt64 => n % 7 == 0; f a || f (i.toUInt64 + 1)) &&
+        !(Id.run do
+          let g := fun b : Bool => b || seed == 0
+          return g (a == seed) && g (i.toUInt64 == 0))) then break
+  return a
+
+def rangeHelperJunctionContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (a == seed || (let f := fun b : Bool => !b || a % 2 == 0; f (i.toUInt64 % 3 == 0) && f (a == seed))) then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangeHelperJunctionTail (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+  return ((let f := fun n : UInt64 => n == seed; f a || f 0) &&
+    !(Id.run do
+      let g := fun b : Bool => b || seed == 0
+      return g (a == seed) && g (a == 0))).toUInt64 + a
+
 def booleanHelperNegationWord (x y : UInt64) : UInt64 :=
   (!(let f := fun n : UInt64 => n == y; f x || f 0)).toUInt64 + x
 
@@ -12201,6 +12262,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolRelationExit,
       `ArithmeticModeTest.rangeBoolRelationContinue,
       `ArithmeticModeTest.rangeBoolRelationTail,
+      `ArithmeticModeTest.booleanHelperJunctionLeft,
+      `ArithmeticModeTest.booleanHelperJunctionRight,
+      `ArithmeticModeTest.booleanHelperJunctionBoth,
+      `ArithmeticModeTest.booleanHelperJunctionDependent,
+      `ArithmeticModeTest.booleanHelperJunctionNested,
+      `ArithmeticModeTest.booleanHelperJunctionUnused,
+      `ArithmeticModeTest.rangeHelperJunctionStep,
+      `ArithmeticModeTest.rangeHelperJunctionExit,
+      `ArithmeticModeTest.rangeHelperJunctionContinue,
+      `ArithmeticModeTest.rangeHelperJunctionTail,
       `ArithmeticModeTest.booleanHelperNegationWord,
       `ArithmeticModeTest.booleanHelperNegationBoolean,
       `ArithmeticModeTest.booleanHelperNegationDependent,

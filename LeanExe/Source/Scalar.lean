@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarBooleanJoined
 import LeanExe.Source.ScalarBooleanNegated
 import LeanExe.Source.ScalarBooleanWrapped
 import LeanExe.Source.ScalarBooleanScopeGuard
@@ -217,6 +218,10 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       EvalWith (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) values value
+  | scopedJunction (joined : BooleanJoined)
+      (left : EvalWith (.app (.const ``Bool.toUInt64 []) joined.left) values (Bool.toUInt64 a))
+      (right : EvalWith (.app (.const ``Bool.toUInt64 []) joined.right) values (Bool.toUInt64 b)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) joined.expr) values (Bool.toUInt64 (joined.operation.denote a b))
   | scopedNegation (negated : BooleanNegated)
       (body : EvalWith (.app (.const ``Bool.toUInt64 []) negated.body) values (Bool.toUInt64 flag)) :
       EvalWith (.app (.const ``Bool.toUInt64 []) negated.expr) values (Bool.toUInt64 (!flag))
@@ -451,6 +456,10 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       SupportedWith types (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep)
+  | scopedJunction (joined : BooleanJoined)
+      (left : SupportedWith types (.app (.const ``Bool.toUInt64 []) joined.left))
+      (right : SupportedWith types (.app (.const ``Bool.toUInt64 []) joined.right)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) joined.expr)
   | scopedNegation (negated : BooleanNegated)
       (body : SupportedWith types (.app (.const ``Bool.toUInt64 []) negated.body)) :
       SupportedWith types (.app (.const ``Bool.toUInt64 []) negated.expr)
@@ -517,7 +526,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
   generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
   cases evaluation with
   | booleanWord | booleanBindingWord | wordBindingBooleanWord | booleanWrappedWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord | booleanPropositionWord => exact ⟨_, rfl⟩
-  | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate | scopedWrapper | scopedNegation => exact ⟨_, rfl⟩
+  | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate | scopedWrapper | scopedNegation | scopedJunction => exact ⟨_, rfl⟩
   | complement head _ => cases head <;> simp_all
   | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
   | manyApply call _ _ =>
@@ -845,6 +854,12 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.booleanPredicateFunction f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letBooleanPredicateFn expression type (fun x => (total x).choose_spec) hv⟩
+  | scopedJunction joined _ _ ihl ihr =>
+    obtain ⟨left, hl⟩ := ihl values typed
+    obtain ⟨a, rfl⟩ := hl.booleanConversion_result
+    obtain ⟨right, hr⟩ := ihr values typed
+    obtain ⟨b, rfl⟩ := hr.booleanConversion_result
+    exact ⟨(joined.operation.denote a b).toUInt64, .scopedJunction joined hl hr⟩
   | scopedNegation negated _ ih =>
     obtain ⟨value, evaluated⟩ := ih values typed
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
