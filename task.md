@@ -314,12 +314,14 @@ modules retain identical bytes. New tests pass 33,780 native/IR comparisons,
 114,689 invalid-input checks and 4,704 controls. Evidence is in
 [the standalone-negation archive](proofs/compiler/local-not-2026-09-26/README.md).
 
-Current capability: Id annotations on Bool-input local helpers. Source
-execution/support/totality, extraction acceptance/soundness/correctness and IR
-invariants pass in scalar, loop-step and outer-loop scopes. New tests pass
-19,124 native/IR comparisons and 10,752 invalid-input checks. Prior tests pass
-82,258 comparisons, 48,911 rejection checks and 2,160 admission controls. The full compiler
-theorem, eighteen audits and selected native/V8 execution are next.
+Id annotations on Bool-input local helpers are complete. Scalar, loop-step and
+outer-loop source execution/support/totality, extraction and IR invariants pass,
+as do the general source-to-WASM theorem and eighteen audits. Native Lean/V8
+agree on 509 inputs across 28 declarations, including thirteen ranges; eighteen
+prior modules retain identical bytes. New tests pass 19,124 native/IR comparisons
+and 10,752 invalid-input checks. Prior tests pass 82,258 comparisons, 48,911
+rejections and 2,160 controls. Evidence is in
+[the Bool-input annotation archive](proofs/compiler/boolean-input-2026-09-26/README.md).
 
 Next: Boolean helper calls as arguments to word- and step-returning Bool-input
 helpers, then retained instance wrappers and broader signatures. Full-dialect
