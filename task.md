@@ -350,11 +350,14 @@ native/IR comparisons, 20,352 invalid-input checks and 1,536 controls. Prior tes
 pass 93,130 comparisons, 67,023 rejections and 3,456 controls. Evidence is in
 [the public result annotation archive](proofs/compiler/public-result-id-2026-09-26/README.md).
 
-Current capability: mixed Bool/UInt64 public parameters in scalar functions.
-Boolean i64 inputs decode zero as false and nonzero as true. Source application
-and extraction preserve typed, normalized bindings and check each lambda domain
-against the declared parameter kind. Focused source/IR and WASM proofs pass; final
-compiler, native and V8 checks are next. Existing word-parameter loops remain supported.
+Mixed Bool/UInt64 public parameters are complete for scalar bodies. Every nonzero
+Boolean i64 input decodes to true, with normalized typed bindings and checked
+lambda annotations. The general source-to-WASM theorem and nineteen audits pass.
+Native Lean/V8 agree on 439 inputs across 28 declarations, including six prior
+ranges; eighteen shared modules retain identical bytes. New tests pass 44,492
+native/IR comparisons, 18,432 invalid-input checks and 1,056 controls. Prior tests
+pass 126,334 comparisons, 87,375 rejection checks and 4,992 controls. Evidence is in
+[the public Boolean parameter archive](proofs/compiler/public-boolean-parameters-2026-09-26/README.md).
 
 Next: Boolean parameter captures in loops, Boolean loop results, retained instances
 and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured

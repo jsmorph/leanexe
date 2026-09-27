@@ -1,0 +1,9 @@
+scalar_public_result_id 0 180 native/public result-Id IR comparisons passed
+scalar_public_result_id_syntax 0 33024 native/public result-Id syntax comparisons, 20352 invalid-input tests and 1536 word-result controls passed
+scalar_public_boolean_result 0 140 native/public Boolean-result IR comparisons passed
+scalar_public_boolean_result_syntax 0 16512 native/public result syntax comparisons, 7872 invalid-input tests and 768 word-result controls passed
+scalar_boolean_call_argument 0 180 native/Boolean-call-argument IR comparisons passed
+scalar_boolean_call_argument_syntax 0 56832 native/Boolean-call-argument syntax comparisons and 48384 invalid-input tests and 2688 admission controls passed
+scalar_boolean_input 0 180 native/boolean-input IR comparisons passed
+scalar_boolean_input_syntax 0 18944 native/boolean-input syntax comparisons and 10752 invalid-input tests passed
+scalar_boolean_function 0 342 native/Boolean-function IR comparisons, three declaration rejection tests and twelve raw helper rejection tests passed
