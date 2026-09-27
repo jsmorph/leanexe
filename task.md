@@ -1032,17 +1032,16 @@ invalid inputs and 384 controls. All six fixed probes compile; all rejected
 before the extension. The corpus contains 1699 declarations. Evidence is in
 [the Boolean-step archive](proofs/compiler/boolean-binary-flag-step-helper-2026-09-27/README.md).
 
-Current capability: generated Unit-to-Bool-to-Boolean-step continuations. The
-unchanged branch-command example rejects through both direct and environment
-extraction. Six additional native probes also reject after fixing explicit PUnit
-universe annotations. A distinct function kind retains Unit/PUnit at typed lookup;
-source values, compiled bindings, matching, totality and invariant projections
-pass 21 targets. Source evaluation and totality pass 69 targets. Exact recognition,
-extraction, termination, declaration/call equations, evaluation correctness,
-complete acceptance, reconstruction and IR invariants pass 154 targets. Function
-integration, focused tests and WASM/engine checks remain. Binary
-predicates around whole loops, multiple loops and the remaining dialect still
-need proofs.
+Current capability: generated Unit-to-Bool-to-Boolean-step continuations. Source
+semantics, totality, recognition, extraction, correctness, complete acceptance,
+source reconstruction and IR invariants pass. Function/environment integration
+passes 216 targets. The unchanged generated continuation and all six additional
+fixed probes now compile. New tests pass 18,624 native/IR comparisons, 39,936
+invalid-input checks and 768 admission controls. Eight native fixtures are
+registered. Complete WASM and independent engine checks remain, with 45 axiom
+audits. Binary predicate declarations around whole loops are the next increment;
+all six preserved word-loop probes reject. Multiple loops and the rest of the
+dialect still need proofs.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
