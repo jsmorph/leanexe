@@ -180,7 +180,8 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     obtain ⟨first, ht, second, he, rfl⟩ := compiled
     exact ScalarRangeExitPlan.choice_holds P literal choice
       (extractScalarExprWith_invariant P literal binary choice matched bindings)
-      (yesIH ht bindings) (noIH he bindings)
+      (scalarBooleanRangeArm_invariant P literal binary choice ht bindings (fun plan h => yesIH h bindings))
+      (scalarBooleanRangeArm_invariant P literal binary choice he bindings (fun plan h => noIH h bindings))
   | case39 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind notIf wrapper body parsed ih => exact ih compiled bindings
   | case40 => contradiction
 

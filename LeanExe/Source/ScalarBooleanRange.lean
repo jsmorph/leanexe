@@ -26,6 +26,10 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
       (condition : EvalWith (decision test evidence) values (Bool.toUInt64 flag))
       (body : Eval (if flag then yes else no) values result) :
       Eval (choiceExpr type test evidence yes no) values result
+  | choiceScalar (type : BooleanType)
+      (condition : EvalWith (decision test evidence) values (Bool.toUInt64 flag))
+      (body : EvalWith (.app (.const ``Bool.toUInt64 []) (if flag then yes else no)) values (Bool.toUInt64 result)) :
+      Eval (choiceExpr type test evidence yes no) values result
   | letBinaryFn (type : ResultType)
       (function : ∀ x y, EvalWith a (.word y :: .word x :: values) (f x y))
       (body : Eval b (.binaryFunction f :: values) outcome) :
@@ -107,6 +111,16 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
 inductive Supported : List BindingKind → Lean.Expr → Prop where
   | choice (type : BooleanType) (condition : SupportedWith types (decision test evidence))
       (yesBranch : Supported types yes) (noBranch : Supported types no) :
+      Supported types (choiceExpr type test evidence yes no)
+  | choiceScalarLeft (type : BooleanType) (condition : SupportedWith types (decision test evidence))
+      (yesBranch : SupportedWith types (.app (.const ``Bool.toUInt64 []) yes)) (noBranch : Supported types no) :
+      Supported types (choiceExpr type test evidence yes no)
+  | choiceScalarRight (type : BooleanType) (condition : SupportedWith types (decision test evidence))
+      (yesBranch : Supported types yes) (noBranch : SupportedWith types (.app (.const ``Bool.toUInt64 []) no)) :
+      Supported types (choiceExpr type test evidence yes no)
+  | choiceScalars (type : BooleanType) (condition : SupportedWith types (decision test evidence))
+      (yesBranch : SupportedWith types (.app (.const ``Bool.toUInt64 []) yes))
+      (noBranch : SupportedWith types (.app (.const ``Bool.toUInt64 []) no)) :
       Supported types (choiceExpr type test evidence yes no)
   | letBinaryFn (type : ResultType) (function : SupportedWith (.word :: .word :: types) a)
       (body : Supported (.binaryFunction :: types) b) :
@@ -192,6 +206,40 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     | true =>
       obtain ⟨result, body⟩ := yesIH values typed
       exact ⟨result, .choice type evaluated body⟩
+  | choiceScalarLeft type condition scalar _ noIH =>
+    obtain ⟨encoded, evaluated⟩ := condition.evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    cases flag with
+    | false =>
+      obtain ⟨result, body⟩ := noIH values typed
+      exact ⟨result, .choice type evaluated body⟩
+    | true =>
+      obtain ⟨encoded, body⟩ := scalar.evaluates values typed
+      obtain ⟨result, rfl⟩ := body.booleanConversion_result
+      exact ⟨result, .choiceScalar type evaluated body⟩
+  | choiceScalarRight type condition _ scalar yesIH =>
+    obtain ⟨encoded, evaluated⟩ := condition.evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    cases flag with
+    | false =>
+      obtain ⟨encoded, body⟩ := scalar.evaluates values typed
+      obtain ⟨result, rfl⟩ := body.booleanConversion_result
+      exact ⟨result, .choiceScalar type evaluated body⟩
+    | true =>
+      obtain ⟨result, body⟩ := yesIH values typed
+      exact ⟨result, .choice type evaluated body⟩
+  | choiceScalars type condition first second =>
+    obtain ⟨encoded, evaluated⟩ := condition.evaluates values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    cases flag with
+    | false =>
+      obtain ⟨encoded, body⟩ := second.evaluates values typed
+      obtain ⟨result, rfl⟩ := body.booleanConversion_result
+      exact ⟨result, .choiceScalar type evaluated body⟩
+    | true =>
+      obtain ⟨encoded, body⟩ := first.evaluates values typed
+      obtain ⟨result, rfl⟩ := body.booleanConversion_result
+      exact ⟨result, .choiceScalar type evaluated body⟩
   | letBinaryFn type function _ ihb =>
     have total := fun x y => function.evaluates (.word y :: .word x :: values) (by simp [Value.kind, typed])
     let f := fun x y => (total x y).choose

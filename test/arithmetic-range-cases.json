@@ -656,5 +656,15 @@
   "rangeBoolOuterConditionContinue",
   "rangeBoolOuterConditionStride",
   "rangeBoolOuterConditionId",
-  "rangeBoolOuterConditionCapture"
+  "rangeBoolOuterConditionCapture",
+  "rangeBoolMixedConditionScalarLeft",
+  "rangeBoolMixedConditionScalarRight",
+  "rangeBoolMixedConditionFlag",
+  "rangeBoolMixedConditionNested",
+  "rangeBoolMixedConditionHelper",
+  "rangeBoolMixedConditionBooleanHelper",
+  "rangeBoolMixedConditionContinue",
+  "rangeBoolMixedConditionStride",
+  "rangeBoolMixedConditionId",
+  "rangeBoolMixedConditionCapture"
 ]

@@ -500,8 +500,15 @@ controls. Prior tests pass 40,560 comparisons, 39,168 invalid-input checks and
 2,880 controls. Evidence is in
 [the outer-condition loop archive](proofs/compiler/boolean-loop-outer-condition-2026-09-27/README.md).
 
-Next: mixed scalar/loop conditional arms and local continuations containing loops,
-followed by
+Current capability: mixed scalar/loop arms in outer Boolean conditions. A lazy
+arm selector tries scalar extraction before loop extraction, with both arms
+checked. Scalar arms have proved zero-iteration plans. Focused source, extraction,
+correctness, invariant and WASM-admission proofs pass. New tests pass 97,008
+native/IR comparisons, 41,472 invalid-input checks and 3,456 wrapper controls,
+including direct range-extractor checks for both-scalar arms. Complete compiler
+proof, native Lean/V8 checks and evidence archive are next.
+
+Next: local continuations containing loops, followed by
 retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
 Also extend UInt64-to-Bool helper bodies to call captured

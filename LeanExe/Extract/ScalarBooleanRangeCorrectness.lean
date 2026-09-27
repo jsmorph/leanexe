@@ -339,18 +339,28 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
     subst type
     obtain ⟨encoded, evaluated⟩ := (extractScalarExprWith_supported matched).evaluates values typed
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
-    obtain ⟨yesResult, yesEval, yesMeaning⟩ := yesIH values ht typed bindings total
-    obtain ⟨noResult, noEval, noMeaning⟩ := noIH values he typed bindings total
+    obtain ⟨yesResult, yesEval, yesMeaning⟩ := scalarBooleanRangeArm_correct saved values ht typed bindings
+      (fun plan h => yesIH values h typed bindings total)
+    obtain ⟨noResult, noEval, noMeaning⟩ := scalarBooleanRangeArm_correct saved values he typed bindings
+      (fun plan h => noIH values h typed bindings total)
     have stable : ∀ accumulator index stop done,
         guard.ScalarEval (LeanExe.IR.rangeExitStore saved accumulator index stop done) flag.toUInt64
           (LeanExe.IR.rangeExitStore saved accumulator index stop done) := by
       intro accumulator index stop done
       exact extractScalarExprWith_correct evaluated matched (bindings accumulator index stop done)
     cases flag with
-    | false => exact ⟨noResult, .choice resultType evaluated noEval,
-        ScalarRangeExitPlan.choice_meaning stable noMeaning⟩
-    | true => exact ⟨yesResult, .choice resultType evaluated yesEval,
-        ScalarRangeExitPlan.choice_meaning stable yesMeaning⟩
+    | false =>
+      rcases noEval with scalar | range
+      · exact ⟨noResult, .choiceScalar resultType evaluated scalar,
+          ScalarRangeExitPlan.choice_meaning stable noMeaning⟩
+      · exact ⟨noResult, .choice resultType evaluated range,
+          ScalarRangeExitPlan.choice_meaning stable noMeaning⟩
+    | true =>
+      rcases yesEval with scalar | range
+      · exact ⟨yesResult, .choiceScalar resultType evaluated scalar,
+          ScalarRangeExitPlan.choice_meaning stable yesMeaning⟩
+      · exact ⟨yesResult, .choice resultType evaluated range,
+          ScalarRangeExitPlan.choice_meaning stable yesMeaning⟩
   | case39 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind notIf wrapper body parsed ih =>
     obtain ⟨flag, evaluated, meaning⟩ := ih values compiled typed bindings total
     exact ⟨flag, booleanRangeWrapper_sound parsed ▸ BooleanRange.Eval.wrapped wrapper evaluated, meaning⟩
