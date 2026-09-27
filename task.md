@@ -839,12 +839,21 @@ native corpus contains 1537 declarations. Evidence is in
 [the outer word-loop helper-body archive](proofs/compiler/boolean-helper-outer-word-body-2026-09-27/README.md).
 
 Current capability: general predicate bodies before Boolean-result loops.
-Five fixed probes remain rejected, covering both predicate input kinds, word and
-Boolean accumulators, Id annotations and an unused helper. Generalize the scalar
-predicate path in the BooleanRange continuation dispatcher to raw bodies. Preserve
-its ordering with direct/wrapped loop-valued calls and conditional continuations,
-and update source totality, acceptance, support, correctness and invariants. The
-other outer grammars and Id inputs in converted scopes remain separate gaps.
+The BooleanRange source rules and predicate dispatcher retain raw bodies and use
+the checked scalar conversion. Source totality, acceptance/support, correctness,
+invariants and the public compiler target pass. Four original probes and eight
+new declarations now compile; new tests pass 10,560 native/IR comparisons and
+3,888 invalid-input checks. Existing direct/wrapped/conditional calls and outer
+predicate tests pass 540,144 comparisons, 279,216 invalid-input checks and 15,744
+controls. Scalar-only cases now compare public, helper and direct-binding results
+against native semantics; loop-containing cases retain plan equality checks. The
+full proof and WASM gates are next.
+
+Three fixed Boolean-accumulator probes remain rejected. Those need a separate
+loop-accumulator proof; this change retains UInt64 accumulators. Four probes of
+helpers around Boolean-derived word results and word conditionals also remain
+rejected and identify the remaining outer grammars to extend next. The original
+probes and failed test fixtures are preserved with the evidence.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

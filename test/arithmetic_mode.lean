@@ -8640,6 +8640,76 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def rangePredicateOuterFlagWord (count seed : UInt64) : Bool := Id.run do
+  let f := fun n : UInt64 => (let g := fun k : UInt64 => k % 3 == 0; g n || g seed)
+  let mut a := seed
+  for i in [:count.toNat] do
+    if f a then break
+    a := a + i.toUInt64 + 1
+  return f a
+
+def rangePredicateOuterFlagBoolean (count seed : UInt64) : Bool := Id.run do
+  let f := fun b : Bool => (let g := fun n : UInt64 => n % 7 == 0 || b; g count && g seed)
+  let mut a := seed
+  for i in [:count.toNat] do
+    if f (a == 0) then break
+    a := a + i.toUInt64 + 1
+  return f (a == seed)
+
+def rangePredicateOuterFlagWrapped (count seed : UInt64) : Id Bool := do
+  let f := fun b : Bool => Id.run do
+    let g := fun n : UInt64 => n == seed || b
+    return g count && g 0
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if f (a == 0) then break
+  return f (a == seed)
+
+def rangePredicateOuterFlagUnused (count seed : UInt64) : Bool := Id.run do
+  let _unused := fun n : UInt64 => (let g := fun b : Bool => b || n == seed; g (count == 0) && g (seed == 0))
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if a % 7 == 0 then break
+  return a == seed
+
+def rangePredicateOuterFlagCapture (count seed : UInt64) : Bool := Id.run do
+  let p := fun n : UInt64 => n % 5 == 0
+  let f := fun b : Bool => (let g := fun n : UInt64 => p n || b; g count && g seed)
+  let mut a := seed
+  for i in [:count.toNat] do
+    if f (i.toUInt64 == 0) then continue
+    a := a + i.toUInt64 + 1
+    if f (a == seed) then break
+  return f (a == seed)
+
+def rangePredicateOuterFlagBound (count seed : UInt64) : Bool := Id.run do
+  let f := fun n : UInt64 => (let g := fun b : Bool => b || n == seed; g (n % 3 == 0) && g (count == 0))
+  let mut a := seed
+  for i in [:(count + (f seed).toUInt64).toNat] do
+    if f a then continue
+    a := a * 3 + i.toUInt64 + 1
+  return f a
+
+def rangePredicateOuterFlagNested (count seed : UInt64) : Bool := Id.run do
+  let f := fun n : UInt64 => (let g := fun b : Bool => (let h := fun k : UInt64 => k == n || b; h count && h seed); g (n % 3 == 0) || g (seed == 0))
+  let mut a := seed
+  for i in [:count.toNat] do
+    if f a then break
+    a := a + i.toUInt64 + 1
+  return f a
+
+def rangePredicateOuterFlagId (count seed : UInt64) : Id Bool := do
+  let f := fun n : Id UInt64 => Id.run do
+    let g := fun k : UInt64 => k == seed
+    return g (Id.run n) || g count
+  let mut a := seed
+  for i in [:count.toNat] do
+    if f a && f i.toUInt64 then break
+    a := a + i.toUInt64 + 1
+  return f a
+
 def rangePredicateOuterBodyWord (count seed : UInt64) : Id UInt64 := do
   let f := fun n : UInt64 => (let g := fun k : UInt64 => k % 3 == 0; g n || g seed)
   let mut a := seed
@@ -12873,6 +12943,14 @@ run_elab do
       `ArithmeticModeTest.rangeBoolRelationExit,
       `ArithmeticModeTest.rangeBoolRelationContinue,
       `ArithmeticModeTest.rangeBoolRelationTail,
+      `ArithmeticModeTest.rangePredicateOuterFlagWord,
+      `ArithmeticModeTest.rangePredicateOuterFlagBoolean,
+      `ArithmeticModeTest.rangePredicateOuterFlagWrapped,
+      `ArithmeticModeTest.rangePredicateOuterFlagUnused,
+      `ArithmeticModeTest.rangePredicateOuterFlagCapture,
+      `ArithmeticModeTest.rangePredicateOuterFlagBound,
+      `ArithmeticModeTest.rangePredicateOuterFlagNested,
+      `ArithmeticModeTest.rangePredicateOuterFlagId,
       `ArithmeticModeTest.rangePredicateOuterBodyWord,
       `ArithmeticModeTest.rangePredicateOuterBodyBoolean,
       `ArithmeticModeTest.rangePredicateOuterBodyUnused,

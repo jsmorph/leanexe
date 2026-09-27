@@ -132,7 +132,7 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
         subst value
         have supported := extractScalarExprWith_supported validated
         have native : ∀ x : UInt64, ∃ flag : Bool,
-            EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.word x :: values) flag.toUInt64 := by
+            EvalWith (.app (.const ``Bool.toUInt64 []) expression) (.word x :: values) flag.toUInt64 := by
           intro x
           obtain ⟨encoded, evaluated⟩ := supported.evaluates (.word x :: values)
             (by simp [Value.kind, booleanRangeInput, ScalarBinding.kind, typed])
@@ -228,7 +228,7 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
         subst value
         have supported := extractScalarExprWith_supported validated
         have native : ∀ x : Bool, ∃ flag : Bool,
-            EvalWith (.app (.const ``Bool.toUInt64 []) expression.expr) (.boolean x :: values) flag.toUInt64 := by
+            EvalWith (.app (.const ``Bool.toUInt64 []) expression) (.boolean x :: values) flag.toUInt64 := by
           intro x
           obtain ⟨encoded, evaluated⟩ := supported.evaluates (.boolean x :: values)
             (by simp [Value.kind, booleanRangeInput, ScalarBinding.kind, typed])

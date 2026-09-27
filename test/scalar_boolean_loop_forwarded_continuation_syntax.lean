@@ -75,11 +75,12 @@ run_elab do
                   let some control := extractScalarBooleanRangeWith (publicBindings kinds) 2
                       (.letE `selected inputType argument functionBody false) |
                     throwError "direct binding control rejected"
-                  unless direct == control.func `directContinuation (some "entry") 2 do
+                  unless mode == 2 || direct == control.func `directContinuation (some "entry") 2 do
                     throwError "local function call changed its argument binding"
                   controls := controls + 1
                   let module_ : LeanExe.IR.Module := { funcs := #[func] }
                   let directModule : LeanExe.IR.Module := { funcs := #[direct] }
+                  let controlModule : LeanExe.IR.Module := { funcs := #[control.func `directContinuation (some "entry") 2] }
                   for (x, y) in inputs do
                     let rawFlag := if flagFirst then x else y
                     let rawWord := if flagFirst then y else x
@@ -95,7 +96,7 @@ run_elab do
                     let expected := (if mode == 0 then value % 7 == 0 || selected
                       else if selected then (if mode == 2 then !selected else value % 7 == 0 || selected)
                       else rawWord % 5 == 0).toUInt64
-                    for actual in [module_.evalFunc 0 [x, y], directModule.evalFunc 0 [x, y]] do
+                    for actual in [module_.evalFunc 0 [x, y], directModule.evalFunc 0 [x, y], controlModule.evalFunc 0 [x, y]] do
                       unless actual == expected && (actual == 0 || actual == 1) do
                         throwError "direct continuation result {actual}, expected {expected}"
                       comparisons := comparisons + 1
@@ -111,6 +112,23 @@ run_elab do
                       (.lam `argument domain callback binder)
                   let callback : Lean.Expr := .app (.bvar 1) (.bvar 0)
                   let wrong := if booleanInput then word else boolean
+                  if booleanInput && mode == 2 then
+                    let unused := raw inputType resultType.expr functionBody
+                      (forward inputType inputType resultType.expr lifted (.bvar 0) ``Id.instMonad)
+                    let some unusedFunc := extractScalarFunc `unusedForwarded (some "entry") signature (wrap unused) |
+                      throwError "valid unused scalar helper rejected"
+                    let some unusedPlan := extractScalarBooleanRangeWith (publicBindings kinds) 2 unused |
+                      throwError "valid unused scalar helper plan rejected"
+                    let unusedModule : LeanExe.IR.Module := { funcs := #[unusedFunc] }
+                    let unusedDirect : LeanExe.IR.Module := { funcs := #[unusedPlan.func `unusedForwarded (some "entry") 2] }
+                    for (x, y) in inputs do
+                      let rawFlag := if flagFirst then x else y
+                      let rawWord := if flagFirst then y else x
+                      let expected := (!(rawFlag != 0) || rawWord % 3 == 0).toUInt64
+                      for actual in [unusedModule.evalFunc 0 [x, y], unusedDirect.evalFunc 0 [x, y]] do
+                        unless actual == expected do throwError "unused scalar helper changes forwarded value"
+                        comparisons := comparisons + 1
+                    controls := controls + 1
                   let invalid := [
                     raw inputType resultType.expr functionBody (forward inputType wrong resultType.expr lifted callback ``Id.instMonad),
                     raw inputType resultType.expr functionBody (forward wrong wrong resultType.expr lifted callback ``Id.instMonad),
@@ -118,7 +136,7 @@ run_elab do
                     raw inputType resultType.expr functionBody (forward inputType inputType resultType.expr lifted callback `customMonad),
                     raw inputType resultType.expr functionBody (forward inputType inputType resultType.expr lifted (.app (.bvar 0) (.bvar 0)) ``Id.instMonad),
                     raw inputType resultType.expr functionBody (forward inputType inputType resultType.expr lifted (.app (.bvar 1) (.bvar 1)) ``Id.instMonad),
-                    raw inputType resultType.expr functionBody (forward inputType inputType resultType.expr lifted (.bvar 0) ``Id.instMonad),
+                    raw inputType resultType.expr functionBody (forward inputType inputType resultType.expr lifted (literalExpr 0) ``Id.instMonad),
                     raw inputType resultType.expr functionBody (forward inputType inputType resultType.expr (.bvar 0) callback ``Id.instMonad),
                     raw inputType resultType.expr functionBody (forward inputType inputType resultType.expr bad callback ``Id.instMonad),
                     raw inputType resultType.expr functionBody (forward inputType inputType (.app (.const ``Id [.succ .zero]) boolean) lifted callback ``Id.instMonad),
@@ -136,6 +154,6 @@ run_elab do
                     if (extractScalarFunc `invalidDirectContinuation (some "entry") signature (wrap value)).isSome then
                       throwError "invalid direct continuation accepted: {booleanInput}, {inputDepth}, {kind}, {mode}"
                     rejected := rejected + 1
-  unless comparisons == 32256 && rejected == 23040 && controls == 1152 do
+  unless comparisons == 53760 && rejected == 23040 && controls == 1344 do
     throwError "unexpected counts {comparisons}, {rejected}, {controls}"
   Lean.logInfo m!"{comparisons} native/forwarded-continuation syntax comparisons, {rejected} invalid-input tests and {controls} binding controls passed"

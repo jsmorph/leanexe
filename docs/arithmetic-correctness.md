@@ -427,9 +427,11 @@ recursive Boolean conversion checker. Bodies may themselves contain predicate
 scopes, wrappers and choices with general helper branches. Each body is validated
 even when the helper is unused. Ordinary scalar word continuations and loop-step
 helper declarations use the same recursive body check, including predicate lets
-inside propositions. Helpers declared before word-result loops also use this
-check, preserving captures in bounds, initial values, loop steps and final
-results. Other outer-loop grammars retain their supported Boolean helper forms. Captures, Id result annotations and unused
+inside propositions. Helpers declared before word-result and Boolean-result
+loops also use this check, preserving captures in bounds, initial values, loop
+steps and final results. Boolean-result helper dispatch retains the existing
+direct, wrapped and conditional loop-valued call paths. Other outer-loop
+grammars retain their supported Boolean helper forms. Captures, Id result annotations and unused
 helpers are checked. Ordinary and dependent conditions check their standard
 decisions and proof-branch domains. Loop step conditions use the same conversion,
 including break and continue. Standard Id.run, pure and metadata wrappers may
