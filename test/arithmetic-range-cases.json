@@ -817,5 +817,9 @@
   "rangeInnerWrapperStep",
   "rangeInnerWrapperExit",
   "rangeInnerWrapperContinue",
-  "rangeInnerWrapperTail"
+  "rangeInnerWrapperTail",
+  "rangeHelperNegationStep",
+  "rangeHelperNegationExit",
+  "rangeHelperNegationContinue",
+  "rangeHelperNegationTail"
 ]

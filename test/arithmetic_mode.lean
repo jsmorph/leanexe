@@ -8640,6 +8640,58 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def booleanHelperNegationWord (x y : UInt64) : UInt64 :=
+  (!(let f := fun n : UInt64 => n == y; f x || f 0)).toUInt64 + x
+
+def booleanHelperNegationBoolean (x y : UInt64) : UInt64 :=
+  if !(Id.run do
+    let f := fun b : Bool => !b || y == 0
+    return f (x == y) && f (x == 0)) then x + 7 else y + 11
+
+def booleanHelperNegationDependent (x y : UInt64) : UInt64 :=
+  if _h : !(let f := fun n : UInt64 => n == y; f x || f 0) then x - 3 else y * 7
+
+def booleanHelperNegationNested (x y : UInt64) : UInt64 :=
+  (!(!(!(Id.run (pure (let f := fun n : UInt64 => n == y; f x || f 0) : Id (Id Bool)))))).toUInt64 + x
+
+def booleanHelperNegationUnused (x y : UInt64) : UInt64 :=
+  (!(let _unused := fun b : Bool => b && x != 0; x == y)).toUInt64 + y
+
+def booleanHelperNegationIdResult (x y : UInt64) : UInt64 :=
+  (!(!(pure (let f := fun n : UInt64 => (pure (n == y) : Id Bool); f x || f 0) : Id (Id Bool)))).toUInt64 + x
+
+def rangeHelperNegationStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if !(let f := fun n : UInt64 => n % 2 == 0; f a && f i.toUInt64) then
+      a := a + i.toUInt64 + 7
+    else a := a * 3 + 1
+  return a
+
+def rangeHelperNegationExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if !(Id.run do
+      let f := fun n : UInt64 => n % 7 == 0
+      return f a || f (i.toUInt64 + 1)) then break
+  return a
+
+def rangeHelperNegationContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if !(!(let f := fun b : Bool => !b || a % 2 == 0; f (i.toUInt64 % 3 == 0) && f (a == seed))) then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangeHelperNegationTail (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+  return (!(Id.run do
+    let f := fun n : UInt64 => n == seed
+    return f a || f 0)).toUInt64 + a
+
 def booleanInnerWrapperWord (x y : UInt64) : UInt64 :=
   (Id.run do
     let f := fun n : UInt64 => n == y
@@ -12149,6 +12201,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolRelationExit,
       `ArithmeticModeTest.rangeBoolRelationContinue,
       `ArithmeticModeTest.rangeBoolRelationTail,
+      `ArithmeticModeTest.booleanHelperNegationWord,
+      `ArithmeticModeTest.booleanHelperNegationBoolean,
+      `ArithmeticModeTest.booleanHelperNegationDependent,
+      `ArithmeticModeTest.booleanHelperNegationNested,
+      `ArithmeticModeTest.booleanHelperNegationUnused,
+      `ArithmeticModeTest.booleanHelperNegationIdResult,
+      `ArithmeticModeTest.rangeHelperNegationStep,
+      `ArithmeticModeTest.rangeHelperNegationExit,
+      `ArithmeticModeTest.rangeHelperNegationContinue,
+      `ArithmeticModeTest.rangeHelperNegationTail,
       `ArithmeticModeTest.booleanInnerWrapperWord,
       `ArithmeticModeTest.booleanInnerWrapperBoolean,
       `ArithmeticModeTest.booleanInnerWrapperDependent,

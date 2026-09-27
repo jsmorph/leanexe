@@ -427,7 +427,9 @@ helpers are checked. Ordinary and dependent conditions check their standard
 decisions and proof-branch domains. Loop step conditions use the same conversion,
 including break and continue. Standard Id.run, pure and metadata wrappers may
 surround these scopes, including nested wrappers. The wrapper types and canonical
-pure instance are checked before recursively converting the body.
+pure instance are checked before recursively converting the body. Boolean
+negation may surround these scopes or wrappers and may repeat. Its operand uses
+the checked Boolean conversion in scalar expressions and loop conditions.
 
 Saved Boolean variables and their negations may appear inside propositional
 conjunctions and disjunctions, such as `flag ∧ x < y` or `x = y ∨ !flag`.

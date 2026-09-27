@@ -1,3 +1,4 @@
+import LeanExe.Extract.ScalarBooleanNegated
 import LeanExe.Extract.ScalarBooleanWrapped
 import LeanExe.Extract.ScalarBooleanScopeGuard
 import LeanExe.Extract.ScalarBooleanHelper
@@ -311,7 +312,12 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
                   extractScalarExprWith (function :: locals) (.app (.const ``Bool.toUInt64 []) helper.continuation)
               | none =>
                   match _wrapper : booleanWrapped? argument with
-                  | none => none
+                  | none =>
+                      match _negated : booleanNegated? argument with
+                      | none => none
+                      | some negated => do
+                          let body ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) negated.body)
+                          pure (booleanWordNegation 1 body)
                   | some wrapped =>
                       extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) wrapped.body)
       | some expression =>
@@ -449,6 +455,7 @@ decreasing_by
     | omega
     | (have bound := booleanScopeGuard_size _scope; omega)
     | (have bound := booleanScopeDependentGuard_size _scope; omega)
+    | (have bound := booleanNegated_size _negated; omega)
     | (have bound := booleanWrapped_size _wrapper; omega)
     | (have bounds := booleanHelper_sizes _wordHelper; omega)
     | (have bounds := booleanHelper_sizes _booleanHelper; omega)
@@ -577,6 +584,37 @@ theorem extractScalarExprWith_scopeDependentBranch (locals : List ScalarBinding)
   rw [LeanExe.Source.Scalar.BooleanScopeGuard.dependentBranch, extractScalarExprWith]
   rw [scalarResultType_accepts, booleanScopeGuard_not_dependent,
     booleanScopeGuard_not_booleanDependent, booleanScopeDependentGuard_accepts]
+
+theorem extractScalarExprWith_scopedNegation (locals : List ScalarBinding)
+    (negated : LeanExe.Source.Scalar.BooleanNegated) :
+    extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) negated.expr) = (do
+      let body ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) negated.body)
+      pure (booleanWordNegation 1 body)) := by
+  rw [extractScalarExprWith]
+  split
+  · split
+    · rename_i helper found
+      rw [booleanNegated_not_helper] at found
+      contradiction
+    · split
+      · rename_i helper found
+        rw [booleanNegated_not_helper] at found
+        contradiction
+      · split
+        · split
+          · rename_i absent
+            rw [booleanNegated_accepts] at absent
+            contradiction
+          · rename_i actual found
+            have equal := Option.some.inj ((booleanNegated_accepts negated).symm.trans found)
+            subst actual
+            rfl
+        · rename_i wrapped found
+          rw [booleanNegated_not_wrapped] at found
+          contradiction
+  · rename_i expression found
+    rw [booleanNegated_not_local] at found
+    contradiction
 
 theorem extractScalarExprWith_scopedWrapper (locals : List ScalarBinding)
     (wrapped : LeanExe.Source.Scalar.BooleanWrapped) :
