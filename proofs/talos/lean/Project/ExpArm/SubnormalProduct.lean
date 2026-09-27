@@ -7,24 +7,24 @@ open CodeLib.IEEE64 Project.ProofKit
 set_option exponentiation.threshold 4096
 
 theorem scale_product_bound (scale tmp : UInt64) (hs : Finite scale) (ht : Finite tmp)
-    (hl : (2 : ℝ)^(-300 : Int) ≤ value scale) (hu : value scale ≤ (2 : ℝ)^300)
+    (hl : (2 : ℝ)^(-500 : Int) ≤ value scale) (hu : value scale ≤ (2 : ℝ)^500)
     (hsmall : |value tmp| ≤ 1/250) :
     let p := Wasm.IEEE64.mul scale tmp
     Finite p ∧ |value p| ≤ value scale/200 ∧
       |value p-value scale*value tmp| ≤ value scale/1000000000000000000 := by
-  have hp : 0 < value scale := (by positivity : (0 : ℝ) < 2^(-300 : Int)).trans_le hl
+  have hp : 0 < value scale := (by positivity : (0 : ℝ) < 2^(-500 : Int)).trans_le hl
   have hmul : |value scale*value tmp| ≤ value scale/250 := by
     rw [abs_mul, abs_of_pos hp]
     nlinarith only [hsmall, hp]
   have hb : |value scale*value tmp| < (2 : ℝ)^1022 := by
     apply hmul.trans_lt
     calc
-      _ ≤ (2 : ℝ)^300/250 := div_le_div_of_nonneg_right hu (by norm_num)
+      _ ≤ (2 : ℝ)^500/250 := div_le_div_of_nonneg_right hu (by norm_num)
       _ < _ := by norm_num
   have h := F64MulBounds.mul_real_mixed scale tmp hs ht hb
   have hunder : multiplicationUnderflowEpsilon ≤ value scale/100000000000000000000 := by
     calc
-      _ ≤ (2 : ℝ)^(-300 : Int)/100000000000000000000 := by norm_num [multiplicationUnderflowEpsilon]
+      _ ≤ (2 : ℝ)^(-500 : Int)/100000000000000000000 := by norm_num [multiplicationUnderflowEpsilon]
       _ ≤ _ := div_le_div_of_nonneg_right hl (by norm_num)
   have he : |value (Wasm.IEEE64.mul scale tmp)-value scale*value tmp| ≤
       value scale/1000000000000000000 := by

@@ -120,6 +120,21 @@ theorem scaled_sum_error (s p : UInt64) (hsf : Finite s) (hpf : Finite p)
   apply mul_le_mul_of_nonneg_right _ (by positivity)
   simpa only [hje] using hr.2.1
 
+theorem rounded_sum_zero (s p : UInt64) (hsf : Finite s) (hpf : Finite p)
+    (hs : 0 < value s ∧ value s ≤ 1/(2 : ℝ)^55) (hp : |value p| ≤ value s/200)
+    (hyword : Wasm.IEEE64.add s p < 0x3FF0000000000000) : roundedSum s p = 0 := by
+  have hr := rounded_sum_error s p hsf hpf ⟨hs.1, hs.2.trans (by norm_num)⟩ hp hyword
+  obtain ⟨j, hjl, hju, hje⟩ := hr.2.2
+  have hj := F64OneSubtract.subtract_one_exact j hjl hju
+  have he := (abs_le.mp hr.2.1).2
+  rw [hje, hj.2.1] at he
+  have hpm := (abs_le.mp hp).2
+  have hv : value j < 1+1/(2 : ℝ)^52 := by linarith
+  have hword := F64OneAdd.eq_one_of_small j hjl hju hv
+  rw [hje, hword]
+  decide
+
+#print axioms rounded_sum_zero
 #print axioms rounded_sum_error
 #print axioms scaled_sum_error
 end Project.ProofKit.F64CompensatedSum

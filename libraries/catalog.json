@@ -61,7 +61,7 @@
     "declaration": "LeanExe.Lib.Transcendental.exp",
     "readme": "LeanExe/Lib/Transcendental/ExpArm/README.md",
     "report": "LeanExe/Lib/Transcendental/ExpArm/report.pdf",
-    "specification": "Computes exp(x) across the binary64 input range, with round-to-nearest arithmetic and a target error below one ulp. Handles infinities, canonical NaNs, overflow, and gradual underflow.",
-    "proofStatus": "WASM behavior proof outstanding"
+    "specification": "Computes exp(x) across the binary64 input range with round-to-nearest arithmetic. For finite input, returns a finite result with error below one ulp, or positive infinity when the real exponential exceeds the largest finite binary64 value. Handles infinities, canonical NaNs, and gradual underflow.",
+    "proofStatus": "Recorded WASM binary: proved execution for every input word and numerical guarantees for every finite input. See the component README for theorem names and assumptions."
   }
 ]

@@ -23,7 +23,8 @@ reuse that theorem rather than repeat its load and bounds-check reasoning.
 - [x] Check data-section decoding, validation, and translation proofs.
 - [x] Prove universal exponential execution and initial table contents.
 - [x] Connect the behavior theorem to the emitted binary.
-- [ ] Establish numerical guarantees and update the component report.
+- [x] Establish numerical guarantees for every finite input.
+- [x] Update the component report and check the complete proof package.
 
 The parser and validator soundness proofs accept the added active data
 section.  The data tests check decoding, initial memory contents, truncation,
@@ -216,6 +217,37 @@ and infinity in the outer input regions.  One failed check arose from
 passing a `2^1023` product bound to a lemma requiring `2^1022`.  Lean reported
 recursion depth while comparing those powers.  Correcting the bound removed
 the failure without changing the recursion limit.
+
+The outer reconstruction proofs now establish positive infinity on
+[800, 1024] and positive zero on [-1024, -800].  Real exponential bounds
+justify both results.  A shared lemma proves that sufficiently small
+compensated sums round to the zero word.  Word arithmetic connects the sign
+of the selected integer to the implementation's bit-31 branch condition.
+Combining all branches proves `ResultAccuracy` for every finite input.
+Branch matching initially left multiplication outside a conditional on one
+side of an equality.  Splitting on the decoded core comparison closes both
+cases without expanding IEEE multiplication.
+
+`Spec.exp_binary_accuracy` now connects that numerical theorem to the
+recorded WASM bytes, decoding, validation, and terminating execution.  Every
+finite input returns either a finite value with error below one ulp, or
+positive infinity with real exponential above the largest finite binary64
+value.  The error definition includes the minimum subnormal spacing.
+`Spec.exp_accuracy` retains the arbitrary-store table premise for repeated
+calls.  The complete specification checks in 4.4 seconds.  Both new WASM
+theorems use only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The independent artifact check passes for the complete specification,
+including all nine registered behavior theorems and their axiom audits.
+The final review checked the theorem's finite-input premise, the definition
+of one ulp, the overflow bound, and the connection from decoded bytes to the
+execution module.  The guarantee permits differences from correct rounding.
+The overflow bound uses the largest finite value, and an exact overflow
+rounding threshold remains unproved.  The README and report state these
+limits and distinguish the proved bound from measured errors.  The four-page
+report passes visual review, and the documentation check passes all 189
+maintained Markdown files.  The library index and component catalog now
+identify the completed binary proof and retain the separate status of clients.
 
 The generated annotation module supplies no matching lemmas for this case.
 The execution proof instead uses the generated instruction definitions and

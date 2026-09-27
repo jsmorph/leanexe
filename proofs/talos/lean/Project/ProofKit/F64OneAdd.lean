@@ -106,6 +106,26 @@ theorem add_one (y : UInt64) (hy : Finite y) (hl : 0 < value y) (hu : value y �
       constructor <;> linarith
   exact ⟨h.1, h.2.1, h.2.2.1, hv.1, hv.2, h.2.2.2⟩
 
+theorem eq_one_of_small (a : UInt64) (hl : 0x3FF0000000000000 ≤ a)
+    (hu : a ≤ 0x4000000000000000) (hv : value a < 1+1/(2 : ℝ)^52) :
+    a = 0x3FF0000000000000 := by
+  have hp : positiveBits a = true := by
+    simp only [positiveBits, Bool.and_eq_true_iff, decide_eq_true_eq,
+      UInt64.lt_iff_toNat_lt, UInt64.le_iff_toNat_le] at *
+    change 0 < a.toNat ∧ a.toNat < 0x7FF0000000000000
+    change 0x3FF0000000000000 ≤ a.toNat at hl
+    change a.toNat ≤ 0x4000000000000000 at hu
+    omega
+  have hnext : value 0x3FF0000000000001 = 1+1/(2 : ℝ)^52 := by
+    norm_num [value, Wasm.IEEE64.scaledValue, Wasm.IEEE64.sign,
+      Wasm.IEEE64.scaledMagnitude, Wasm.IEEE64.exponent, Wasm.IEEE64.fraction, UInt64.toNat_ofNat]
+  have hn : a < 0x3FF0000000000001 :=
+    (positive_word_lt_iff _ _ hp (by decide)).mpr (by rwa [hnext])
+  apply UInt64.toNat_inj.mp
+  simp only [UInt64.lt_iff_toNat_lt, UInt64.le_iff_toNat_le,
+    UInt64.toNat_ofNat, Nat.reducePow, Nat.reduceMod] at *
+  omega
+
 #print axioms add_interval
 #print axioms add_one
 end Project.ProofKit.F64OneAdd
