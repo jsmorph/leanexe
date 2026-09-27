@@ -1,0 +1,6 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_loop_mixed_condition_syntax.lean:64:28: error(lean.unknownIdentifier): Unknown constant `LeanExe.Source.Scalar.BooleanComparison.lt`
+
+Note: Inferred this name from the expected resulting type of `.lt`:
+  BooleanComparison
