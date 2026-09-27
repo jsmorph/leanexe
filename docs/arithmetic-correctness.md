@@ -101,6 +101,11 @@ and supported compound Boolean expressions on either side. Each Boolean leaf
 is checked through the typed Boolean-to-word conversion. Captures, negation,
 choices, Boolean-valued lets, standard Id binds and wrappers preserve their
 source values. Closed Boolean comparison trees retain their existing lowering.
+Propositional `¬` may also stand alone around a saved flag, helper call or supported
+compound Boolean expression, with any number of repetitions. Ordinary and
+dependent scalar/loop conditions, saved `decide` values and Boolean-result
+choices share this support. Boolean `!` inside the value remains distinct from
+propositional `¬`; the complete standard decision evidence is checked.
 
 Proposition lets retain the binding name, type, value, body and dependency flag.
 Bool and UInt64 bindings admit standard Id annotations. Each condition operand

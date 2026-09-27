@@ -27,7 +27,7 @@ theorem BooleanGuard.condition_min_size (guard : BooleanGuard) :
 
 theorem SavedBooleanGuard.condition_min_size (guard : SavedBooleanGuard) :
     sizeOf (.const ``True [] : Lean.Expr) ≤ sizeOf guard.condition :=
-  Nat.le_trans (booleanTruth_min_size guard.expr) (GuardNegation.condition_size guard.propNegations _)
+  booleanTruth_min_size guard.expr
 
 theorem Comparison.condition_min_size (op : Comparison) (left right : Lean.Expr) :
     sizeOf (.const ``True [] : Lean.Expr) ≤ sizeOf (op.condition left right) := by

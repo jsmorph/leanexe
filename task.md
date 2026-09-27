@@ -304,8 +304,14 @@ modules retain identical bytes. New tests pass 96,948 native/IR comparisons,
 comparisons, 63,969 invalid-input checks and 2,368 controls. Evidence is in
 [the decision-let archive](proofs/compiler/decision-let-2026-09-26/README.md).
 
-Next: standalone propositional negation of local Boolean values, retained instance
-and Bool-parameter Id wrappers, and broader signatures. Full-dialect correctness
+Standalone propositional negation of local Boolean values passes source/parser
+reconstruction, lowering, scalar and loop correctness, and both IR invariant
+checks. New tests pass 33,780 native/IR comparisons, 23,040 invalid-input checks
+and 480 controls. Prior tests pass 200,284 comparisons, 114,689 rejections and
+4,704 controls. The full source-to-WASM and independent engine checks are pending.
+Direct Boolean truth keeps its separate parser.
+
+Next: retained instance and Bool-parameter Id wrappers, and broader signatures. Full-dialect correctness
 remains unfinished.
 Complete each capability through WASM and commit/push frequently.
 

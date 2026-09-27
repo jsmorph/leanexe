@@ -5,23 +5,22 @@ namespace LeanExe.Extract.Core
 
 open LeanExe.Source.Scalar (Guard CompoundGuard BooleanGuard SavedBooleanGuard)
 
-def lowerSavedBooleanGuard (guard : SavedBooleanGuard) (value : LeanExe.IR.Expr) : LeanExe.IR.Cond :=
-  lowerGuardNegations guard.propNegations (wordGuard value)
+def lowerSavedBooleanGuard (_guard : SavedBooleanGuard) (value : LeanExe.IR.Expr) : LeanExe.IR.Cond :=
+  wordGuard value
 
 theorem lowerSavedBooleanGuard_correct (guard : SavedBooleanGuard)
     {value : LeanExe.IR.Expr} {word : UInt64} {store : LeanExe.IR.ScalarStore}
     (evaluated : value.ScalarEval store word store) :
     (lowerSavedBooleanGuard guard value).ScalarEval store
-      (LeanExe.Source.Scalar.GuardNegation.denote guard.propNegations (word == 1)) store :=
-  lowerGuardNegations_correct _ (.eq evaluated .const)
+      (word == 1) store :=
+  .eq evaluated .const
 
 theorem lowerSavedBooleanGuard_choice (P : LeanExe.IR.Expr → Prop)
     (literal : ∀ n, P (.u64 n))
     (choice : ∀ op a b t e, P a → P b → P t → P e → P (.ite (lowerComparison op a b) t e))
     (guard : SavedBooleanGuard) (value : LeanExe.IR.Expr) (valid : P value) :
     ∀ t e, P t → P e → P (.ite (lowerSavedBooleanGuard guard value) t e) :=
-  lowerGuardNegations_choice P literal choice guard.propNegations _
-    (fun t e ht he => choice .eq _ _ t e valid (literal 1) ht he)
+  fun t e ht he => choice .eq _ _ t e valid (literal 1) ht he
 
 /-- The callback only receives operands of this exact parsed guard. Membership
 allows the surrounding source compiler to prove its recursive calls decrease. -/
@@ -62,6 +61,9 @@ def extractGuard : (guard : Guard) →
       let _ ← compile binding.operand (by simp [Guard.operands])
       let value ← compile (binding.wrap body.operand) (by simp [Guard.operands])
       pure (lowerGuardNegations n (lowerSavedBooleanGuard body value))
+  | .localNegation n value, compile => do
+      let operand ← compile value.operand (by simp [Guard.operands])
+      pure (lowerGuardNegations (n + 1) (lowerSavedBooleanGuard value operand))
 
 theorem extractGuard_accepts (guard : Guard)
     (compile : (operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr)
@@ -108,6 +110,9 @@ theorem extractGuard_accepts (guard : Guard)
     obtain ⟨bound, hb⟩ := total binding.operand (by simp [Guard.operands])
     obtain ⟨value, hv⟩ := total (binding.wrap body.operand) (by simp [Guard.operands])
     exact ⟨lowerGuardNegations n (lowerSavedBooleanGuard body value), by simp [extractGuard, hb, hv]⟩
+  | localNegation n value =>
+    obtain ⟨operand, found⟩ := total value.operand (by simp [Guard.operands])
+    exact ⟨lowerGuardNegations (n + 1) (lowerSavedBooleanGuard value operand), by simp [extractGuard, found]⟩
 
 theorem extractGuard_operands (guard : Guard)
     (compile : (operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr)
@@ -178,6 +183,13 @@ theorem extractGuard_operands (guard : Guard)
     rcases member with rfl | rfl
     · exact ⟨bound, hb⟩
     · exact ⟨value, hv⟩
+  | localNegation n value =>
+    simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨expression, found, _⟩ := compiled
+    intro operand member
+    simp only [Guard.operands, List.mem_singleton] at member
+    subst operand
+    exact ⟨expression, found⟩
 
 theorem extractGuard_correct (guard : Guard)
     (compile : (operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr)
@@ -236,6 +248,10 @@ theorem extractGuard_correct (guard : Guard)
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨bound, hb, value, hv, rfl⟩ := compiled
     exact lowerGuardNegations_correct n (lowerSavedBooleanGuard_correct body (meanings _ _ _ hv))
+  | localNegation n value =>
+    simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨expression, found, rfl⟩ := compiled
+    exact lowerGuardNegations_correct (n + 1) (lowerSavedBooleanGuard_correct value (meanings _ _ _ found))
 
 theorem extractGuard_choice (P : LeanExe.IR.Expr → Prop)
     (literal : ∀ n, P (.u64 n))
@@ -300,5 +316,10 @@ theorem extractGuard_choice (P : LeanExe.IR.Expr → Prop)
     obtain ⟨bound, hb, value, hv, rfl⟩ := compiled
     exact lowerGuardNegations_choice P literal choice n _
       (lowerSavedBooleanGuard_choice P literal choice body value (operands _ _ _ hv))
+  | localNegation n value =>
+    simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨expression, found, rfl⟩ := compiled
+    exact lowerGuardNegations_choice P literal choice (n + 1) _
+      (lowerSavedBooleanGuard_choice P literal choice value expression (operands _ _ _ found))
 
 end LeanExe.Extract.Core

@@ -5067,6 +5067,67 @@ def rangeDecisionLetHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (a == 0)).toUInt64 + 1
   return a
 
+def localNotFlag (x y : UInt64) : UInt64 :=
+  let flag := x == y
+  if ¬ flag then x + 3 else y + 7
+
+def localNotCall (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  if ¬ f (x == 0) then x + 1 else y + 2
+
+def localNotNested (x y : UInt64) : UInt64 :=
+  let f := fun n : UInt64 => n != x
+  if _h : ¬ ¬ ¬ f y then x + y else x - y
+
+def localNotDecision (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == y
+  let flag := decide (¬ (if x < y then f true else f false))
+  flag.toUInt64 + x
+
+def localNotLet (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == y
+  if ¬ (Id.run (let saved := f (x == 0); f (!saved))) then x + 1 else y + 2
+
+def localNotHelper (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  let g := fun b : Bool => if ¬ f b then !b else b
+  (g true).toUInt64 + (g false).toUInt64 + y
+
+def rangeLocalNotStep (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b && a != 0
+    if ¬ f (i.toUInt64 == 0) then break
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeLocalNotContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun n : UInt64 => n != seed
+    if ¬ f a then
+      a := a + 3
+      continue
+    a := a + i.toUInt64 + 1
+  return a
+
+def rangeLocalNotOuter (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let flag := f true
+  let mut a := if ¬ flag then seed + 1 else seed
+  for i in [:count.toNat] do
+    if ¬ (f (a == 0) || f (i.toUInt64 == seed)) then a := a + 2 else a := a + 1
+  return a + (decide (¬ f true)).toUInt64
+
+def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun b : Bool => if ¬ f b then !b else b
+  let mut a := seed
+  for i in [:count.toNat] do
+    if ¬ ¬ g (a == 0) then break
+    a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
+  return a
+
 def booleanPredicateResultBool (x y : UInt64) : UInt64 :=
   let f := fun b : Bool => !b && x != 0
   let g := fun b : Bool => f b
@@ -7046,6 +7107,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeDecisionLetContinue", rangeDecisionLetContinue),
    ("rangeDecisionLetOuter", rangeDecisionLetOuter),
    ("rangeDecisionLetHelper", rangeDecisionLetHelper),
+   ("rangeLocalNotStep", rangeLocalNotStep),
+   ("rangeLocalNotContinue", rangeLocalNotContinue),
+   ("rangeLocalNotOuter", rangeLocalNotOuter),
+   ("rangeLocalNotHelper", rangeLocalNotHelper),
    ("rangeBooleanPredicateResultLocalBool", rangeBooleanPredicateResultLocalBool),
    ("rangeBooleanPredicateResultLocalWord", rangeBooleanPredicateResultLocalWord),
    ("rangeBooleanPredicateResultLocalNested", rangeBooleanPredicateResultLocalNested),
@@ -7550,6 +7615,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("decisionLetDependent", decisionLetDependent),
    ("decisionLetSaved", decisionLetSaved),
    ("decisionLetHelper", decisionLetHelper),
+   ("localNotFlag", localNotFlag),
+   ("localNotCall", localNotCall),
+   ("localNotNested", localNotNested),
+   ("localNotDecision", localNotDecision),
+   ("localNotLet", localNotLet),
+   ("localNotHelper", localNotHelper),
    ("booleanPredicateResultBool", booleanPredicateResultBool),
    ("booleanPredicateResultWord", booleanPredicateResultWord),
    ("booleanPredicateResultNested", booleanPredicateResultNested),

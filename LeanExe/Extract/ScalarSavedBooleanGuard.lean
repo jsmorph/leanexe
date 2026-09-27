@@ -11,46 +11,29 @@ open LeanExe.Source.Scalar
   | some closed => exact False.elim (guard.extended closed (booleanGuardOperands_sound found))
 
 def savedBooleanGuard? : Lean.Expr → Option SavedBooleanGuard
-  | .app (.const ``Not []) value => (savedBooleanGuard? value).map SavedBooleanGuard.negate
   | .app (.app (.app (.const ``Eq [.succ .zero]) (.const ``Bool [])) value) (.const ``Bool.true []) =>
       if excluded : booleanGuardOperands? value = none then
         some ⟨value, fun closed same => by
           rw [same, booleanGuardOperands_expr] at excluded
-          contradiction, 0⟩
+          contradiction⟩
       else none
   | _ => none
 
 @[simp] theorem savedBooleanGuard_accepts (guard : SavedBooleanGuard) :
     savedBooleanGuard? guard.condition = some guard := by
-  obtain ⟨value, extended, propNegations⟩ := guard
-  induction propNegations with
-  | zero =>
-    have excluded := savedBooleanValue_not_closed ⟨value, extended, 0⟩
-    change booleanGuardOperands? value = none at excluded
-    simp [SavedBooleanGuard.condition, SavedBooleanGuard.expr, GuardNegation.condition, savedBooleanGuard?, excluded]
-  | succ n ih =>
-    simpa only [SavedBooleanGuard.condition, GuardNegation.condition, savedBooleanGuard?,
-      Option.map_some, SavedBooleanGuard.negate, SavedBooleanGuard.expr] using congrArg (Option.map SavedBooleanGuard.negate) ih
+  obtain ⟨value, extended⟩ := guard
+  have excluded := savedBooleanValue_not_closed ⟨value, extended⟩
+  change booleanGuardOperands? value = none at excluded
+  simp [SavedBooleanGuard.condition, SavedBooleanGuard.expr, savedBooleanGuard?, excluded]
 
 theorem savedBooleanGuard_sound {condition : Lean.Expr} {guard : SavedBooleanGuard}
     (parsed : savedBooleanGuard? condition = some guard) : condition = guard.condition := by
-  induction condition using savedBooleanGuard?.induct generalizing guard with
-  | case1 value ih =>
-    rw [savedBooleanGuard?] at parsed
-    obtain ⟨inner, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
-    rw [SavedBooleanGuard.negate_condition, ih found]
-  | case2 value =>
-    rw [savedBooleanGuard?] at parsed
-    split at parsed
+  unfold savedBooleanGuard? at parsed
+  split at parsed
+  · split at parsed
     · cases parsed; rfl
     · contradiction
-  | case3 value excluded =>
-    simp [savedBooleanGuard?, excluded] at parsed
-  | case4 value noNot noTruth =>
-    rw [savedBooleanGuard?] at parsed
-    · cases parsed
-    · exact noNot
-    · exact noTruth
+  · contradiction
 
 theorem booleanTruth_not_comparison_of_not_closed (value : Lean.Expr)
     (extended : ∀ guard : BooleanGuard, value ≠ guard.expr) :

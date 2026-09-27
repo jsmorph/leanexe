@@ -14,6 +14,7 @@ inductive CompoundGuard where
   | savedBoth (junction : Junction) (left right : SavedBooleanGuard) (negations : Nat := 0)
   | letGuard (binding : GuardLet) (body : Guard) (negations : Nat := 0)
   | letSaved (binding : GuardLet) (body : SavedBooleanGuard) (negations : Nat := 0)
+  | localNegation (value : SavedBooleanGuard) (negations : Nat := 0)
   deriving Repr
 
 namespace CompoundGuard
@@ -28,6 +29,7 @@ def tree : CompoundGuard → Guard
   | .savedBoth op a b n => .savedBoth n op a b
   | .letGuard binding body n => .letGuard n binding body
   | .letSaved binding body n => .letSaved n binding body
+  | .localNegation value n => .localNegation n value
 
 abbrev operands (guard : CompoundGuard) : List Lean.Expr := guard.tree.operands
 abbrev denote (guard : CompoundGuard) (native : Lean.Expr → UInt64) : Bool := guard.tree.denote native
