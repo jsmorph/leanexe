@@ -479,7 +479,15 @@ controls. Prior tests pass 97,008 comparisons, 82,944 invalid-input checks and
 6,912 controls. Evidence is in
 [the multiple-argument loop-helper archive](proofs/compiler/boolean-loop-many-helpers-2026-09-27/README.md).
 
-Next: Unit-prefixed helpers before Boolean loops, retained instances and broader signatures. Conditional Id actions can elaborate
+Current capability: Unit-prefixed word helpers before Boolean loops. Unit and
+PUnit spellings retain the unit binder in source evaluation and captures. The
+focused source, extraction, invariant and WASM-admission proofs pass. New tests
+pass 16,368 native/IR comparisons, 18,432 invalid-input checks and 1,152 unused
+helper controls. Complete compiler proof, native Lean/V8 checks and evidence
+archive are next.
+
+Next: outer conditions and local continuations containing loops, followed by
+retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
 Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean

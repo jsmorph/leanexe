@@ -636,5 +636,15 @@
   "rangeBoolManyHelperTernaryContinue",
   "rangeBoolManyHelperFiveStride",
   "rangeBoolManyHelperFiveId",
-  "rangeBoolManyHelperBinaryShadow"
+  "rangeBoolManyHelperBinaryShadow",
+  "rangeBoolUnitHelperRepeat",
+  "rangeBoolUnitHelperCount",
+  "rangeBoolUnitHelperInitial",
+  "rangeBoolUnitHelperNested",
+  "rangeBoolUnitHelperFlag",
+  "rangeBoolUnitHelperExit",
+  "rangeBoolUnitHelperContinue",
+  "rangeBoolUnitHelperStride",
+  "rangeBoolUnitHelperId",
+  "rangeBoolUnitHelperShadow"
 ]

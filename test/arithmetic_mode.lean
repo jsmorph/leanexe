@@ -6068,6 +6068,102 @@ def rangeBoolManyHelperBinaryShadow (count seed : UInt64) : Bool :=
     return a
   value == f initial 1
 
+def rangeBoolUnitHelperRepeat (count seed : UInt64) : Bool :=
+  let f := fun (_unit : Unit) (x : UInt64) => x + seed + 1
+  let value := Id.run do
+    let mut a := f () seed
+    for i in [:count.toNat] do
+      a := f () a + f () i.toUInt64
+    return a
+  f () value == f () (f () seed)
+
+def rangeBoolUnitHelperCount (count seed : UInt64) : Bool :=
+  let limit := fun (_unit : PUnit) (x : UInt64) => x % 17
+  let value := Id.run do
+    let mut a := seed
+    for i in [:(limit () count).toNat] do
+      a := a + i.toUInt64 + 1
+    return a
+  value == seed + limit () count
+
+def rangeBoolUnitHelperInitial (count seed : UInt64) : Bool :=
+  let f := fun (_unit : Unit) (x : UInt64) => x * 3 + seed
+  let value := Id.run do
+    let mut a := f () 0
+    for i in [:count.toNat] do
+      a := a + f () i.toUInt64
+    return a
+  value == f () 0
+
+def rangeBoolUnitHelperNested (count seed : UInt64) : Id Bool :=
+  let f := fun (_unit : Unit) (x : UInt64) => x + seed
+  let g := fun (_unit : Unit) (x : UInt64) => f () (x * 3) + f () x
+  let value := Id.run do
+    let mut a := g () 0
+    for i in [:count.toNat] do
+      a := g () (a + i.toUInt64)
+    return a
+  pure (g () value == g () seed)
+
+def rangeBoolUnitHelperFlag (count : UInt64) (flag : Bool) : Bool :=
+  let f := fun (_unit : Unit) (x : UInt64) => if flag then x + 7 else x - 3
+  let value := Id.run do
+    let mut a := f () count
+    for i in [:count.toNat] do
+      a := f () (a + i.toUInt64)
+    return a
+  flag && value == f () count
+
+def rangeBoolUnitHelperExit (count seed : UInt64) : Bool :=
+  let f := fun (_unit : Unit) (x : UInt64) => x + seed % 5 + 1
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := f () (a + i.toUInt64)
+      if a % 7 == 0 then break
+    return a
+  f () value % 7 == 0
+
+def rangeBoolUnitHelperContinue (count seed : UInt64) : Bool :=
+  let f := fun (_unit : Unit) (x : UInt64) => x % 3
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if f () i.toUInt64 == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a
+  f () value == f () seed
+
+def rangeBoolUnitHelperStride (count seed : UInt64) : Bool :=
+  let f := fun (_unit : Unit) (x : UInt64) => x % 3
+  let value := Id.run do
+    let mut a := seed
+    for i in [(f () seed).toNat:count.toNat:3] do
+      a := a + i.toUInt64 + 1
+      if a % 5 == 0 then break
+    return a
+  f () value == f () seed
+
+def rangeBoolUnitHelperId (count : Id UInt64) (seed : UInt64) : Id Bool :=
+  let f (_unit : Unit) (x : UInt64) : Id (Id UInt64) := pure (pure (x + seed + 1))
+  let value : Id UInt64 := Id.run do
+    let mut a := Id.run (Id.run (f () 0))
+    for i in [:(Id.run count).toNat] do
+      a := Id.run (Id.run (f () (a + i.toUInt64)))
+    return a
+  pure (Id.run (Id.run (f () (Id.run value))) == seed)
+
+def rangeBoolUnitHelperShadow (count seed : UInt64) : Bool :=
+  let f := fun (_unit : Unit) (x : UInt64) => x + seed
+  let initial := f () 0
+  let f := fun (_unit : Unit) (x : UInt64) => f () x + count
+  let value := Id.run do
+    let mut a := initial
+    for i in [:count.toNat] do
+      a := f () (a + i.toUInt64)
+    return a
+  f () value == f () initial
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -9632,6 +9728,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolManyHelperFiveStride,
       `ArithmeticModeTest.rangeBoolManyHelperFiveId,
       `ArithmeticModeTest.rangeBoolManyHelperBinaryShadow,
+      `ArithmeticModeTest.rangeBoolUnitHelperRepeat,
+      `ArithmeticModeTest.rangeBoolUnitHelperCount,
+      `ArithmeticModeTest.rangeBoolUnitHelperInitial,
+      `ArithmeticModeTest.rangeBoolUnitHelperNested,
+      `ArithmeticModeTest.rangeBoolUnitHelperFlag,
+      `ArithmeticModeTest.rangeBoolUnitHelperExit,
+      `ArithmeticModeTest.rangeBoolUnitHelperContinue,
+      `ArithmeticModeTest.rangeBoolUnitHelperStride,
+      `ArithmeticModeTest.rangeBoolUnitHelperId,
+      `ArithmeticModeTest.rangeBoolUnitHelperShadow,
       `ArithmeticModeTest.rangeBoolLetIdWord,
       `ArithmeticModeTest.rangeBoolLetIdWordLayers,
       `ArithmeticModeTest.rangeBoolLetIdFlag,
