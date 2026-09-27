@@ -66,6 +66,8 @@ theorem not_boolean_condition (guard : PropositionGuard) (expression : Lean.Expr
     cases n <;> simp [condition, DecidedGuard.condition, Guard.condition, GuardNegation.condition, GuardLet.wrap]
   | letSaved n binding body =>
     cases n <;> simp [condition, DecidedGuard.condition, Guard.condition, GuardNegation.condition, GuardLet.wrap]
+  | localNegation n value =>
+    simp [condition, DecidedGuard.condition, Guard.condition, GuardNegation.condition]
 
 def branch (guard : PropositionGuard) (yes no : Lean.Expr) : Lean.Expr :=
   .app (.app (.app (.app (.app (.const ``ite [.succ .zero]) (.const ``Bool []))

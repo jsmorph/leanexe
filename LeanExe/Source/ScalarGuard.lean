@@ -15,6 +15,7 @@ inductive Guard where
   | savedBoth (negations : Nat) (op : Junction) (left right : SavedBooleanGuard)
   | letGuard (negations : Nat) (binding : GuardLet) (body : Guard)
   | letSaved (negations : Nat) (binding : GuardLet) (body : SavedBooleanGuard)
+  | localNegation (negations : Nat) (value : SavedBooleanGuard)
   deriving Repr
 
 namespace Guard
@@ -29,6 +30,7 @@ def operands : Guard → List Lean.Expr
   | .savedBoth _ _ a b => [a.operand] ++ [b.operand]
   | .letGuard _ binding body => binding.operand :: body.operands.map binding.wrap
   | .letSaved _ binding body => binding.operand :: [binding.wrap body.operand]
+  | .localNegation _ value => [value.operand]
 
 def condition : Guard → Lean.Expr
   | .literal value => value.condition
@@ -40,6 +42,7 @@ def condition : Guard → Lean.Expr
   | .savedBoth n op a b => GuardNegation.condition n (op.condition a.condition b.condition)
   | .letGuard n binding body => GuardNegation.condition n (binding.wrap body.condition)
   | .letSaved n binding body => GuardNegation.condition n (binding.wrap body.condition)
+  | .localNegation n value => GuardNegation.condition (n + 1) value.condition
 
 def evidence : Guard → Lean.Expr
   | .literal value => value.evidence
@@ -56,6 +59,7 @@ def evidence : Guard → Lean.Expr
       (op.evidence a.condition b.condition a.evidence b.evidence)
   | .letGuard n binding body => GuardNegation.evidence n (binding.wrap body.condition) (binding.evidence body.evidence)
   | .letSaved n binding body => GuardNegation.evidence n (binding.wrap body.condition) (binding.evidence body.evidence)
+  | .localNegation n value => GuardNegation.evidence (n + 1) value.condition value.evidence
 
 def denote (native : Lean.Expr → UInt64) : Guard → Bool
   | .literal value => value.denote
@@ -67,6 +71,7 @@ def denote (native : Lean.Expr → UInt64) : Guard → Bool
   | .savedBoth n op a b => GuardNegation.denote n (op.denote (a.denote native) (b.denote native))
   | .letGuard n binding body => GuardNegation.denote n (body.denote (fun operand => native (binding.wrap operand)))
   | .letSaved n binding body => GuardNegation.denote n (body.denote (fun operand => native (binding.wrap operand)))
+  | .localNegation n value => GuardNegation.denote (n + 1) (value.denote native)
 
 def negate : Guard → Guard
   | .literal value => .literal value.negate
@@ -78,6 +83,7 @@ def negate : Guard → Guard
   | .savedBoth n op a b => .savedBoth (n + 1) op a b
   | .letGuard n binding body => .letGuard (n + 1) binding body
   | .letSaved n binding body => .letSaved (n + 1) binding body
+  | .localNegation n value => .localNegation (n + 1) value
 
 theorem negate_condition (guard : Guard) :
     guard.negate.condition = .app (.const ``Not []) guard.condition := by
@@ -116,6 +122,8 @@ theorem condition_min_size (guard : Guard) :
     apply Nat.le_trans _ (GuardNegation.condition_size n _)
     have bound := body.condition_min_size
     simp [GuardLet.wrap] at bound ⊢; omega
+  | localNegation n value =>
+    exact Nat.le_trans value.condition_min_size (GuardNegation.condition_size (n + 1) _)
 
 theorem operands_size (guard : Guard) {operand : Lean.Expr}
     (member : operand ∈ guard.operands) : sizeOf operand < sizeOf guard.condition + guardOperandOverhead := by
@@ -178,6 +186,11 @@ theorem operands_size (guard : Guard) {operand : Lean.Expr}
     rcases member with rfl | rfl
     · exact binding.operand_size body.condition body.condition_min_size
     · exact Nat.lt_of_lt_of_le (binding.wrap_size body.operand_size) (by omega)
+  | localNegation n value =>
+    simp only [operands, List.mem_singleton] at member
+    subst operand
+    exact Nat.lt_of_lt_of_le value.operand_size
+      (Nat.le_trans (GuardNegation.condition_size (n + 1) _) (Nat.le_add_right _ _))
 
 end Guard
 

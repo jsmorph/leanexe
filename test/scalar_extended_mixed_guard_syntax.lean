@@ -3,16 +3,45 @@ import LeanExe.Extract.ScalarFunc
 open LeanExe.Extract.Core
 open LeanExe.Source.Scalar
 
+/-- Keep each fixture's original Boolean and propositional negation counts. -/
+structure NegatedGuardTestLeaf where
+  value : SavedBooleanGuard
+  propNegations : Nat
+
+namespace NegatedGuardTestLeaf
+
+def operand (leaf : NegatedGuardTestLeaf) := leaf.value.operand
+def condition (leaf : NegatedGuardTestLeaf) := GuardNegation.condition leaf.propNegations leaf.value.condition
+
+def left (n : Nat) (op : Junction) (a : NegatedGuardTestLeaf) (b : Guard) : Guard :=
+  match a.propNegations with
+  | 0 => .savedLeft n op a.value b
+  | k + 1 => .junction n op (.localNegation k a.value) b
+
+def right (n : Nat) (op : Junction) (a : Guard) (b : NegatedGuardTestLeaf) : Guard :=
+  match b.propNegations with
+  | 0 => .savedRight n op a b.value
+  | k + 1 => .junction n op a (.localNegation k b.value)
+
+def both (n : Nat) (op : Junction) (a b : NegatedGuardTestLeaf) : Guard :=
+  match a.propNegations, b.propNegations with
+  | 0, 0 => .savedBoth n op a.value b.value
+  | 0, k + 1 => .savedLeft n op a.value (.localNegation k b.value)
+  | k + 1, 0 => .savedRight n op (.localNegation k a.value) b.value
+  | k + 1, m + 1 => .junction n op (.localNegation k a.value) (.localNegation m b.value)
+
+end NegatedGuardTestLeaf
+
 run_elab do
   let word : Lean.Expr := .const ``UInt64 []
   let boolean : Lean.Expr := .const ``Bool []
   let functionType := Lean.Expr.forallE `x word (.forallE `y word word .default) .default
   let toWord (value : Lean.Expr) := Lean.Expr.app (.const ``Bool.toUInt64 []) value
   let truth (value : Lean.Expr) := Lean.Expr.app (.app (.app (.const ``Eq [.succ .zero]) boolean) value) (booleanLiteralExpr true)
-  let makeLeaf (value : Lean.Expr) (bn pn : Nat) : Lean.Elab.Term.TermElabM SavedBooleanGuard := do
-    let some guard := savedBooleanGuard? (GuardNegation.condition pn (truth (BooleanGuardNegation.expr bn value))) |
+  let makeLeaf (value : Lean.Expr) (bn pn : Nat) : Lean.Elab.Term.TermElabM NegatedGuardTestLeaf := do
+    let some guard := savedBooleanGuard? (truth (BooleanGuardNegation.expr bn value)) |
       throwError "extended Boolean leaf rejected"
-    pure guard
+    pure ⟨guard, pn⟩
   let inputs : List (UInt64 × UInt64) :=
     [(0, 0), (1, 0), (0, 1), (1, 1), (42, 3), (3, 17), (17, 3),
      (0xffffffffffffffff, 0), (0xffffffffffffffff, 1),
@@ -54,8 +83,8 @@ run_elab do
             let first ← makeLeaf expression.expr bn pn
             let second ← makeLeaf (.bvar 0) (bn + 1) (pn + 1)
             let less : Guard := .compare .lt (.bvar 3) (.bvar 2)
-            let trees (a : SavedBooleanGuard) : List Guard :=
-              [.savedLeft n op a less, .savedRight n op less a, .savedBoth n op a second]
+            let trees (a : NegatedGuardTestLeaf) : List Guard :=
+              [NegatedGuardTestLeaf.left n op a less, NegatedGuardTestLeaf.right n op less a, NegatedGuardTestLeaf.both n op a second]
             let badWord ← makeLeaf (.bvar 3) bn pn
             let missing ← makeLeaf (.bvar 9) bn pn
             let badArgument ← makeLeaf (.app (.bvar 1) (literalExpr 0)) bn pn
@@ -101,7 +130,7 @@ run_elab do
                         (wrap (value guard.condition guard.evidence yes no))).isNone do
                       throwError "invalid extended proof domain admitted"
                     rejected := rejected + 1
-              unless (guardOperands? first.condition).isNone &&
+              unless ((guardOperands? first.condition).isSome == (pn != 0)) &&
                   (savedBooleanGuard? (BooleanGuard.literal 0 true).condition).isNone do
                 throwError "extended leaf changed the existing Boolean parser"
               controls := controls + 1

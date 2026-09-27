@@ -90,6 +90,7 @@ def guardDecision? : Guard → Lean.Expr → Bool
   | guard@(.savedBoth ..), evidence => LeanExe.Source.ExprEquality.same evidence guard.evidence
   | guard@(.letGuard ..), evidence => LeanExe.Source.ExprEquality.same evidence guard.evidence
   | guard@(.letSaved ..), evidence => LeanExe.Source.ExprEquality.same evidence guard.evidence
+  | guard@(.localNegation ..), evidence => LeanExe.Source.ExprEquality.same evidence guard.evidence
 
 @[simp] theorem guardDecision_accepts {guard : Guard} {evidence : Lean.Expr}
     (meaning : GuardDecision guard evidence) : guardDecision? guard evidence = true := by
@@ -105,6 +106,7 @@ def guardDecision? : Guard → Lean.Expr → Bool
   | savedBoth => simp [guardDecision?, Guard.evidence]
   | letGuard => simp [guardDecision?]
   | letSaved => simp [guardDecision?]
+  | localNegation => simp [guardDecision?]
 
 theorem guardDecision_sound {guard : Guard} {evidence : Lean.Expr}
     (accepted : guardDecision? guard evidence = true) : GuardDecision guard evidence := by
@@ -171,6 +173,10 @@ theorem guardDecision_sound {guard : Guard} {evidence : Lean.Expr}
     have same := LeanExe.Source.ExprEquality.same_eq_true.mp accepted
     rw [same]
     exact .letSaved n binding body
+  | localNegation n value =>
+    have same := LeanExe.Source.ExprEquality.same_eq_true.mp accepted
+    rw [same]
+    exact .localNegation n value
 
 @[simp] theorem guardDecision_canonical (guard : Guard) : guardDecision? guard guard.evidence = true :=
   guardDecision_accepts (.canonical guard)

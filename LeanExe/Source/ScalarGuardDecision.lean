@@ -44,6 +44,8 @@ inductive GuardDecision : Guard → Lean.Expr → Prop where
       GuardDecision (.letGuard negations binding body) (Guard.letGuard negations binding body).evidence
   | letSaved (negations : Nat) (binding : GuardLet) (body : SavedBooleanGuard) :
       GuardDecision (.letSaved negations binding body) (Guard.letSaved negations binding body).evidence
+  | localNegation (negations : Nat) (value : SavedBooleanGuard) :
+      GuardDecision (.localNegation negations value) (Guard.localNegation negations value).evidence
 
 theorem GuardDecision.canonical (guard : Guard) : GuardDecision guard guard.evidence := by
   induction guard with
@@ -57,6 +59,7 @@ theorem GuardDecision.canonical (guard : Guard) : GuardDecision guard guard.evid
   | savedBoth n op left right => exact .savedBoth n op left right
   | letGuard n binding body _ => exact .letGuard n binding body
   | letSaved n binding body => exact .letSaved n binding body
+  | localNegation n value => exact .localNegation n value
 
 /-- Noncanonical decision syntax for an independently supported guard tree. -/
 structure ReannotatedGuard where
