@@ -1,4 +1,5 @@
 import Project.Beck.ExecutionBorderDeterminant
+import Project.Beck.ExecutionFresh
 
 namespace Project.Beck.Execution
 
@@ -22,7 +23,8 @@ theorem borderEligible_exact (env : HostEnv Unit) (initial : Store Unit) (heap :
     (next : ∀ final finalHeap rowsNode columnsNode, finalHeap.At final →
       finalHeap.OwnsWords final rowsNode (basis.rows.push row.toUInt64) →
       finalHeap.OwnsWords final columnsNode (basis.columns.push column.toUInt64) →
-      heap.Frame initial finalHeap final → OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
+      heap.Frame initial finalHeap final → FreshFor heap rowsNode → FreshFor heap columnsNode →
+      regionsDisjoint rowsNode.region columnsNode.region → OutputBudget final finalHeap remaining pageLimit Project.Beck.«module» →
       ∀ frame, BorderResult frame rowsNode.root columnsNode.root
         (determinant (basis.rows.size + 1) width matrix (basis.rows.push row.toUInt64) (basis.columns.push column.toUInt64)) →
         Q (.Fallthrough final frame)) :
@@ -35,6 +37,10 @@ theorem borderEligible_exact (env : HostEnv Unit) (initial : Store Unit) (heap :
     omega
   let rowNeed := UInt64.ofNat (8 * (basis.rows.size + 2))
   let rowsNode := allocatedNode heap.top rowNeed heap.nodes
+  have rowNeedWord : rowNeed.toNat = 8 * (basis.rows.size + 2) := by
+    dsimp [rowNeed]; rw [UInt64.toNat_ofNat']; omega
+  have rowSpace := budget.bump rowNeed (by rw [rowNeedWord]; omega)
+  have rowsFresh := allocated_fresh heap heap initial initial (Heap.Frame.refl heap initial) rowNeed (fun h => (rowSpace h).1.le)
   rw [← List.take_append_drop 18 borderEligible]
   apply borderPrepare_exact env initial width matrixOwner matrixPointer basis rowOwner rowPointer columnOwner columnPointer row column false
     saved tail rowsAt
@@ -65,6 +71,11 @@ theorem borderEligible_exact (env : HostEnv Unit) (initial : Store Unit) (heap :
   intro secondValid columnsOwned secondFrame secondBudget previous' cursor' capacity' afterAllocation'
   let columnNeed := UInt64.ofNat (8 * (basis.columns.size + 2))
   let columnsNode := allocatedNode (heap.allocate rowNeed).top columnNeed (heap.allocate rowNeed).nodes
+  have columnNeedWord : columnNeed.toNat = 8 * (basis.columns.size + 2) := by
+    dsimp [columnNeed]; rw [UInt64.toNat_ofNat']; omega
+  have columnSpace := firstBudget.bump columnNeed (by rw [columnNeedWord]; omega)
+  have columnsFresh := allocated_fresh heap (heap.allocate rowNeed) initial first firstFrame columnNeed (fun h => (columnSpace h).1.le)
+  have separated := rowsOwned.allocation_disjoint columnNeed (fun h => (columnSpace h).1.le)
   change wp Project.Beck.«module» ((borderEligible.drop 148).take 4 ++ borderEligible.drop 152) Q second _ env
   apply borderInstall_exact env second _ rfl _ true columnPointer basis.columns.size columnsNode.root column.toUInt64
     _ _ columnNeed previous' cursor' capacity' afterAllocation'
@@ -80,7 +91,7 @@ theorem borderEligible_exact (env : HostEnv Unit) (initial : Store Unit) (heap :
   intro final finalHeap finalValid finalFrame finalBudget frame result
   exact next final finalHeap rowsNode columnsNode finalValid
     (finalFrame.ownsWords finalValid retainedRows) (finalFrame.ownsWords finalValid columnsOwned)
-    (preserved.trans finalFrame) finalBudget frame (by simpa only [Array.size_push] using result)
+    (preserved.trans finalFrame) rowsFresh columnsFresh separated finalBudget frame (by simpa only [Array.size_push] using result)
 
 #print axioms borderEligible_exact
 
