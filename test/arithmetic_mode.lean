@@ -7185,6 +7185,111 @@ def rangeBoolWrappedChoiceId (count seed : UInt64) : Id Bool :=
     pure (Id.run (Id.run selected) && value != seed)
   Id.run (if count % 2 == 0 then run (pure (pure (seed % 2 == 0))) else run (pure (pure false)))
 
+def rangeBoolResultLet (count seed : UInt64) : Bool :=
+  let flag :=
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  !flag
+
+def rangeBoolResultDo (count seed : UInt64) : Id Bool := do
+  let flag ← (do
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + 1
+      return a)
+    pure (value % 7 == seed % 7))
+  pure (flag && seed != 0)
+
+def rangeBoolResultFlag (count : UInt64) (flag : Bool) : Bool :=
+  let selected :=
+    let value := Id.run do
+      let mut a := count
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + (if flag then 1 else 3)
+      return a
+    value != count
+  selected != flag
+
+def rangeBoolResultCapture (count seed : UInt64) : Bool :=
+  let p := fun flag : Bool => flag || seed == 0
+  let flag :=
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if p (i.toUInt64 == 0) then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    value != seed
+  p (!flag)
+
+def rangeBoolResultSaved (count seed : UInt64) : Bool :=
+  let flag :=
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == 0
+  let saved := !flag
+  saved || seed == 0
+
+def rangeBoolResultMixed (count seed : UInt64) : Bool :=
+  let flag := if seed == 0 then count == 0 else
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == 0
+  !flag && count != 0
+
+def rangeBoolResultExit (count seed : UInt64) : Bool :=
+  let flag :=
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + 1
+        if a % 7 == 0 then break
+      return a
+    value % 7 == 0
+  flag || count == 0
+
+def rangeBoolResultContinue (count seed : UInt64) : Id Bool := do
+  let flag ← (do
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if i.toUInt64 % 2 == 0 then continue
+        a := a + i.toUInt64 + 1
+      return a)
+    pure (value % 7 == seed % 7))
+  pure (!flag || seed == 0)
+
+def rangeBoolResultStride (count seed : UInt64) : Bool :=
+  let flag :=
+    let value := Id.run do
+      let mut a := seed
+      for i in [(seed % 3).toNat:count.toNat:3] do
+        a := a + i.toUInt64 + 1
+        if a % 5 == 0 then break
+      return a
+    value % 5 == 0
+  !flag
+
+def rangeBoolResultId (count seed : UInt64) : Id (Id Bool) := do
+  let flag : Id (Id Bool) ← (do
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + 1
+      return a)
+    pure (pure (pure (value % 7 == seed % 7))))
+  pure (pure (!(Id.run (Id.run flag)) && seed != 0))
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -10839,6 +10944,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolWrappedChoiceContinue,
       `ArithmeticModeTest.rangeBoolWrappedChoiceStride,
       `ArithmeticModeTest.rangeBoolWrappedChoiceId,
+      `ArithmeticModeTest.rangeBoolResultLet,
+      `ArithmeticModeTest.rangeBoolResultDo,
+      `ArithmeticModeTest.rangeBoolResultFlag,
+      `ArithmeticModeTest.rangeBoolResultCapture,
+      `ArithmeticModeTest.rangeBoolResultSaved,
+      `ArithmeticModeTest.rangeBoolResultMixed,
+      `ArithmeticModeTest.rangeBoolResultExit,
+      `ArithmeticModeTest.rangeBoolResultContinue,
+      `ArithmeticModeTest.rangeBoolResultStride,
+      `ArithmeticModeTest.rangeBoolResultId,
       `ArithmeticModeTest.rangeBoolLetIdWord,
       `ArithmeticModeTest.rangeBoolLetIdWordLayers,
       `ArithmeticModeTest.rangeBoolLetIdFlag,
