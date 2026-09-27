@@ -716,5 +716,15 @@
   "rangeBoolSavedCallExit",
   "rangeBoolSavedCallContinue",
   "rangeBoolSavedCallStride",
-  "rangeBoolSavedCallId"
+  "rangeBoolSavedCallId",
+  "rangeBoolWrappedChoiceWord",
+  "rangeBoolWrappedChoiceFlag",
+  "rangeBoolWrappedChoiceBooleanArgument",
+  "rangeBoolWrappedChoiceWordCapture",
+  "rangeBoolWrappedChoiceBooleanCapture",
+  "rangeBoolWrappedChoiceNested",
+  "rangeBoolWrappedChoiceExit",
+  "rangeBoolWrappedChoiceContinue",
+  "rangeBoolWrappedChoiceStride",
+  "rangeBoolWrappedChoiceId"
 ]

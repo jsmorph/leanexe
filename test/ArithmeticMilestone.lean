@@ -6617,6 +6617,113 @@ def rangeBoolSavedCallId (count seed : UInt64) : Id Bool :=
     let argument ← (pure (pure (pure (seed % 2 == 0))) : Id (Id (Id Bool)))
     run argument
 
+def rangeBoolWrappedChoiceWord (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  Id.run (if count % 2 == 0 then run (count % 17) else run (count % 7))
+
+def rangeBoolWrappedChoiceFlag (count : UInt64) (flag : Bool) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := count
+      for i in [:count.toNat] do
+        a := a + i.toUInt64 + (if selected then 1 else 3)
+      return a
+    selected && value != count
+  show Id Bool from if count % 2 == 0 then run (!flag) else run (count % 3 == 0)
+
+def rangeBoolWrappedChoiceBooleanArgument (count seed : UInt64) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if selected then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    selected || value % 5 == 0
+  Id.run (pure (if count % 2 == 0 then run (seed % 2 == 0 && count != 0) else run (count % 3 == 0)) : Id Bool)
+
+def rangeBoolWrappedChoiceWordCapture (count seed : UInt64) : Bool :=
+  let f := fun x : UInt64 => x * 3 + seed
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := f seed
+      for i in [:limit.toNat] do
+        a := f a + i.toUInt64
+      return a
+    f value == f seed
+  Id.run (if count % 2 == 0 then run (count % 19) else run (count % 7))
+
+def rangeBoolWrappedChoiceBooleanCapture (count seed : UInt64) : Bool :=
+  let p := fun flag : Bool => flag || seed == 0
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if p selected then a := a + i.toUInt64 + 1 else a := a + 3
+      return a
+    p selected && value != seed
+  show Id Bool from if count % 2 == 0 then run (p (count == 0)) else run (count % 3 == 0)
+
+def rangeBoolWrappedChoiceNested (count seed : UInt64) : Bool :=
+  let outer := fun selected : Bool =>
+    let inner := fun limit : UInt64 =>
+      let value := Id.run do
+        let mut a := seed
+        for i in [:limit.toNat] do
+          a := a + i.toUInt64 + (if selected then 1 else 3)
+        return a
+      selected && value != seed
+    inner (count % 17)
+  Id.run (pure (if count % 2 == 0 then outer (seed % 2 == 0) else outer (count % 3 == 0)) : Id Bool)
+
+def rangeBoolWrappedChoiceExit (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:limit.toNat] do
+        a := a + i.toUInt64 + 1
+        if a % 7 == 0 then break
+      return a
+    value % 7 == 0
+  Id.run (if count % 2 == 0 then run (count % 17) else run (count % 7))
+
+def rangeBoolWrappedChoiceContinue (count seed : UInt64) : Bool :=
+  let run := fun selected : Bool =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if selected && i.toUInt64 % 2 == 0 then continue
+        a := a + i.toUInt64 + 1
+      return a
+    value % 7 == seed % 7
+  show Id Bool from if count % 2 == 0 then run (seed % 2 == 0) else run (count % 3 == 0)
+
+def rangeBoolWrappedChoiceStride (count seed : UInt64) : Bool :=
+  let run := fun limit : UInt64 =>
+    let value := Id.run do
+      let mut a := seed
+      for i in [(seed % 3).toNat:limit.toNat:3] do
+        a := a + i.toUInt64 + 1
+        if a % 5 == 0 then break
+      return a
+    value % 5 == 0
+  Id.run (pure (if count % 2 == 0 then run (count % 23) else run (count % 7)) : Id Bool)
+
+def rangeBoolWrappedChoiceId (count seed : UInt64) : Id Bool :=
+  let run (selected : Id (Id Bool)) : Id (Id Bool) := do
+    let value ← (do
+      let mut a := seed
+      for i in [:count.toNat] do
+        if Id.run (Id.run selected) then a := a + i.toUInt64 + 1 else a := a + 3
+      return a)
+    pure (Id.run (Id.run selected) && value != seed)
+  Id.run (if count % 2 == 0 then run (pure (pure (seed % 2 == 0))) else run (pure (pure false)))
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -9581,6 +9688,16 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolSavedCallContinue", (fun (x y : UInt64) => (rangeBoolSavedCallContinue x y).toUInt64)),
    ("rangeBoolSavedCallStride", (fun (x y : UInt64) => (rangeBoolSavedCallStride x y).toUInt64)),
    ("rangeBoolSavedCallId", (fun (x y : UInt64) => (rangeBoolSavedCallId x y).toUInt64)),
+   ("rangeBoolWrappedChoiceWord", (fun (x y : UInt64) => (rangeBoolWrappedChoiceWord x y).toUInt64)),
+   ("rangeBoolWrappedChoiceFlag", (fun (x y : UInt64) => (rangeBoolWrappedChoiceFlag x (y != 0)).toUInt64)),
+   ("rangeBoolWrappedChoiceBooleanArgument", (fun (x y : UInt64) => (rangeBoolWrappedChoiceBooleanArgument x y).toUInt64)),
+   ("rangeBoolWrappedChoiceWordCapture", (fun (x y : UInt64) => (rangeBoolWrappedChoiceWordCapture x y).toUInt64)),
+   ("rangeBoolWrappedChoiceBooleanCapture", (fun (x y : UInt64) => (rangeBoolWrappedChoiceBooleanCapture x y).toUInt64)),
+   ("rangeBoolWrappedChoiceNested", (fun (x y : UInt64) => (rangeBoolWrappedChoiceNested x y).toUInt64)),
+   ("rangeBoolWrappedChoiceExit", (fun (x y : UInt64) => (rangeBoolWrappedChoiceExit x y).toUInt64)),
+   ("rangeBoolWrappedChoiceContinue", (fun (x y : UInt64) => (rangeBoolWrappedChoiceContinue x y).toUInt64)),
+   ("rangeBoolWrappedChoiceStride", (fun (x y : UInt64) => (rangeBoolWrappedChoiceStride x y).toUInt64)),
+   ("rangeBoolWrappedChoiceId", (fun (x y : UInt64) => (rangeBoolWrappedChoiceId x y).toUInt64)),
    ("rangeBoolLetIdWord", (fun (x y : UInt64) => (rangeBoolLetIdWord x y).toUInt64)),
    ("rangeBoolLetIdWordLayers", (fun (x y : UInt64) => (rangeBoolLetIdWordLayers x y).toUInt64)),
    ("rangeBoolLetIdFlag", (fun (x y : UInt64) => (rangeBoolLetIdFlag x y).toUInt64)),

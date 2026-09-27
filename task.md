@@ -566,6 +566,13 @@ binding controls. Prior tests pass 129,024 comparisons, 69,120 invalid-input che
 and 3,456 controls. Evidence is in
 [the saved-continuation archive](proofs/compiler/boolean-loop-saved-continuation-2026-09-27/README.md).
 
+Current capability: wrappers and saved results around conditional local calls.
+The source view and parser retain arbitrary nesting of standard Id.run, pure,
+metadata and saved-result lets around the conditional. Source, extraction, correctness, invariant, public compiler and WASM admission
+proofs pass. New tests pass 97,008 native/IR comparisons, 59,904 invalid-input
+checks and 2,304 binding controls. The complete proof and native Lean/WASM checks
+are next.
+
 Next: wrappers and saved results around conditional calls, followed by
 retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.

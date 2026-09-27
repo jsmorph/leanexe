@@ -83,7 +83,10 @@ run_elab do
                     let inner : BooleanFunctionChoice := .mk resultType innerCondition innerEvidence no yes
                     let selectedYes := if nested then inner.expr else yes
                     let selection : BooleanFunctionChoice := .mk resultType condition evidence selectedYes no
-                    let make (tail : Lean.Expr) := shape.bodyExpr `selected inputType functionBody tail
+                    let wrapTail (tail : Lean.Expr) := if wrapped then
+                      Lean.Expr.letE `run resultType.expr (BooleanIdentity.run (BooleanIdentity.pure tail resultType) resultType) (.bvar 0) flagFirst
+                      else (BooleanWrapper.metadata {}).expr (BooleanIdentity.run tail resultType)
+                    let make (tail : Lean.Expr) := shape.bodyExpr `selected inputType functionBody (wrapTail tail)
                     let body := make selection.expr
                     let some func := extractScalarFunc `directContinuation (some "entry") signature (wrap body) |
                       throwError "conditional continuation rejected: {booleanInput}, {inputDepth}, {resultDepth}, {flagFirst}, {kind}, {mode}"
@@ -143,6 +146,12 @@ run_elab do
                     let trueGuard : BooleanLocal := .literal 0 true
                     let falseGuard : BooleanLocal := .literal 0 false
                     let invalid := [
+                      make (.letE `run resultType.expr selection.expr (.bvar 1) flagFirst),
+                      make (.letE `run resultType.expr selection.expr (.bvar 999) flagFirst),
+                      make (.letE `run word selection.expr (.bvar 0) flagFirst),
+                      make (.letE `run (.app (.const ``Id [.succ .zero]) boolean) selection.expr (.bvar 0) flagFirst),
+                      make (.app (.app (.const ``Id.run [.succ .zero]) resultType.expr) selection.expr),
+                      make (.app (.app (.const `customRun [.zero]) resultType.expr) selection.expr),
                       make (choose bad evidence selectedYes no),
                       make (choose condition bad selectedYes no),
                       make (rawChoice ``ite (.succ .zero) resultType.expr
@@ -170,6 +179,6 @@ run_elab do
                       if (extractScalarFunc `invalidDirectContinuation (some "entry") signature (wrap value)).isSome then
                         throwError "invalid conditional continuation accepted: {booleanInput}, {inputDepth}, {kind}, {mode}"
                       rejected := rejected + 1
-  unless comparisons == 96768 && rejected == 46080 && controls == 2304 do
+  unless comparisons == 96768 && rejected == 59904 && controls == 2304 do
     throwError "unexpected counts {comparisons}, {rejected}, {controls}"
-  Lean.logInfo m!"{comparisons} native/conditional-continuation syntax comparisons, {rejected} invalid-input tests and {controls} binding controls passed"
+  Lean.logInfo m!"{comparisons} native/wrapped-conditional syntax comparisons, {rejected} invalid-input tests and {controls} binding controls passed"
