@@ -8419,6 +8419,78 @@ def rangeBooleanSequenceWordTail (count seed : UInt64) : Id Bool := do
   return b % 7 == a % 7
 
 
+def rangeBooleanPrefixWord (count seed : UInt64) : Id UInt64 := do
+  let mut flag := false
+  for i in [:count.toNat] do flag := flag || i.toUInt64 == seed
+  let mut a := seed
+  for i in [:count.toNat] do a := if flag then a + i.toUInt64 else a * 3
+  return a
+
+def rangeBooleanPrefixBoolean (count seed : UInt64) : Id Bool := do
+  let mut flag := false
+  for i in [:count.toNat] do flag := flag || i.toUInt64 == seed
+  let mut result := flag
+  for i in [:count.toNat] do result := result != (i.toUInt64 % 3 == 0)
+  return result
+
+def rangeBooleanPrefixDependent (count seed : UInt64) : Id UInt64 := do
+  let mut flag := seed == 0
+  for i in [:count.toNat] do flag := flag != (i.toUInt64 == seed)
+  let bound := if flag then count else count % 7
+  let mut a := seed + flag.toUInt64
+  for i in [:bound.toNat] do a := a + i.toUInt64
+  return a
+
+def rangeBooleanPrefixExits (count seed : UInt64) : Id Bool := do
+  let mut flag := false
+  for i in [:count.toNat] do
+    if i.toUInt64 % 3 == 0 then continue
+    flag := flag || i.toUInt64 == seed % 7
+    if flag then break
+  let mut result := flag
+  for i in [:count.toNat] do
+    result := result != (i.toUInt64 % 5 == 0)
+    if result then break
+  return result
+
+def rangeBooleanPrefixUnused (count seed : UInt64) : Id UInt64 := do
+  let mut flag := false
+  for i in [:count.toNat] do flag := flag || i.toUInt64 == seed
+  let mut a := seed
+  for i in [:count.toNat] do a := a + i.toUInt64
+  return a
+
+def rangeBooleanPrefixAlternating (count seed : UInt64) : Id Bool := do
+  let mut flag := false
+  for i in [:count.toNat] do flag := flag || i.toUInt64 == seed
+  let mut a := seed + flag.toUInt64
+  for i in [:count.toNat] do a := a + i.toUInt64
+  let mut result := flag
+  for i in [:count.toNat] do result := result || i.toUInt64 == a % 7
+  return result
+
+
+def rangeBooleanPrefixRetained (count seed : UInt64) : Id UInt64 := do
+  let first : Id (Id Bool) := do
+    let mut flag := false
+    for i in [:count.toNat] do flag := flag || i.toUInt64 == seed
+    return flag
+  let flag ← first
+  let mut a := seed + flag.toUInt64
+  for i in [:count.toNat] do a := if Bool.and flag true then a + i.toUInt64 else a * 3
+  return a
+
+def rangeBooleanPrefixCapture (count seed : UInt64) : Id UInt64 := do
+  let mut flag := false
+  for i in [:count.toNat] do flag := flag || i.toUInt64 == seed
+  let captured := flag
+  let f := fun x : UInt64 => if captured then x + seed else x * 3
+  let captured := seed == 0
+  let mut a := seed
+  for i in [:count.toNat] do a := f (a + i.toUInt64)
+  return a + captured.toUInt64
+
+
 def rangeSequenceDirect (count seed : UInt64) : Id UInt64 := do
   let mut a := seed
   for i in [:count.toNat] do a := a + i.toUInt64
@@ -13125,6 +13197,14 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBooleanSequenceRetained", (fun (x y : UInt64) => (rangeBooleanSequenceRetained x y).toUInt64)),
    ("rangeBooleanSequenceBoolInput", (fun (x y : UInt64) => (rangeBooleanSequenceBoolInput x (y != 0)).toUInt64)),
    ("rangeBooleanSequenceWordTail", (fun (x y : UInt64) => (rangeBooleanSequenceWordTail x y).toUInt64)),
+   ("rangeBooleanPrefixWord", (fun (x y : UInt64) => rangeBooleanPrefixWord x y)),
+   ("rangeBooleanPrefixBoolean", (fun (x y : UInt64) => (rangeBooleanPrefixBoolean x y).toUInt64)),
+   ("rangeBooleanPrefixDependent", (fun (x y : UInt64) => rangeBooleanPrefixDependent x y)),
+   ("rangeBooleanPrefixExits", (fun (x y : UInt64) => (rangeBooleanPrefixExits x y).toUInt64)),
+   ("rangeBooleanPrefixUnused", (fun (x y : UInt64) => rangeBooleanPrefixUnused x y)),
+   ("rangeBooleanPrefixAlternating", (fun (x y : UInt64) => (rangeBooleanPrefixAlternating x y).toUInt64)),
+   ("rangeBooleanPrefixRetained", (fun (x y : UInt64) => rangeBooleanPrefixRetained x y)),
+   ("rangeBooleanPrefixCapture", (fun (x y : UInt64) => rangeBooleanPrefixCapture x y)),
    ("rangeSequenceDirect", (fun (x y : UInt64) => rangeSequenceDirect x y)),
    ("rangeSequenceDependent", (fun (x y : UInt64) => rangeSequenceDependent x y)),
    ("rangeSequenceExits", (fun (x y : UInt64) => rangeSequenceExits x y)),

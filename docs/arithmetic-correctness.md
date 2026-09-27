@@ -25,8 +25,8 @@ accumulators may be UInt64 or Bool. Word-result computations may compose any
 finite number of consecutive admitted loops through word lets or standard Id
 binds. Each computation may use earlier results in its bound, initial state,
 step and final result. The continuation may return a word or a Boolean and may
-run another admitted loop. Binding a Boolean loop result before another dynamic
-loop is not yet supported. Boolean state is encoded as zero or one. Boolean
+run another admitted loop. A Boolean-result single-loop computation may also bind its flag before a word
+or Boolean loop sequence. The saved flag retains its zero/one representation. Boolean state is encoded as zero or one. Boolean
 steps admit yield/done constructors, checked conditionals, scalar word and
 Boolean lets, monadic word/Boolean binds, metadata and standard Id run/pure
 wrappers. Bind input and continuation domains must match exactly; the output
@@ -51,8 +51,8 @@ Explicit `ForInStep.casesOn` inspects a Boolean step result, binds its payload,
 and selects the done or yield branch. Nondependent result motives may retain
 standard Id layers. Motive and branch domains are checked, as are both branch
 bodies. Inspecting a done result does not itself stop the loop: the selected
-branch determines the returned result. Ordinary `match` through a generated
-matcher declaration is not yet admitted.
+branch determines the returned result. Generated matcher declarations are admitted when their bodies, types and
+universe parameters match the checked dispatcher shape.
 
 A word-valued loop may feed a Boolean continuation, for example
 `let value := Id.run do ...; value == seed` or
@@ -106,8 +106,8 @@ zero loop iterations.
 Public parameter domains may retain any number of standard Id layers. Declared
 and lambda domains must have the same base scalar kind; differing Id depths
 preserve their meaning. Custom annotation heads, wrong universes and metadata
-inside parameter domains are rejected. Nested dynamic loops, sequences binding a Boolean loop result before another
-loop, and general local loop-function application remain outside this grammar.
+inside parameter domains are rejected. Nested dynamic loops, bound Boolean expressions containing several loops, and
+general local loop-function application remain outside this grammar.
 
 A UInt64 body may read arguments, contain
 UInt64 literals, metadata, UInt64 `let` bindings, conditionals and pure `Id`

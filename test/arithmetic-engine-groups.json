@@ -6449,5 +6449,23 @@
     "rangeBooleanSequenceRetained",
     "rangeBooleanSequenceBoolInput",
     "rangeBooleanSequenceWordTail"
+  ],
+  "boolean-prefix-sequence": [
+    "rangeSequenceDirect",
+    "rangeSequenceDependent",
+    "rangeSequenceExits",
+    "rangeSequenceThree",
+    "rangeBooleanSequenceDirect",
+    "rangeBooleanSequenceDependent",
+    "rangeBooleanSequenceExits",
+    "rangeBooleanSequenceThree",
+    "rangeBooleanPrefixWord",
+    "rangeBooleanPrefixBoolean",
+    "rangeBooleanPrefixDependent",
+    "rangeBooleanPrefixExits",
+    "rangeBooleanPrefixUnused",
+    "rangeBooleanPrefixAlternating",
+    "rangeBooleanPrefixRetained",
+    "rangeBooleanPrefixCapture"
   ]
 }

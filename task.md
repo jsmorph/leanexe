@@ -8,6 +8,30 @@ annotation fix and the scalar WASM result/type proofs. This compiler-proof task 
 is preserved separately at the end of this file. Lean runs locally through
 `tools/leanrun`. Full-dialect correctness is not yet proved.
 
+## Completion requirement and current direction
+
+The language may be reduced while preserving expressive power. The target is a
+small, explicit core with a compiler theorem covering every admitted construct.
+Supporting more elaborated Lean spellings is not a separate workstream. Surface
+forms must either lower to that core with a proved correspondence or be expressed
+using supported core operations. New syntax cases do not count as completion of
+missing calls, memory, numeric operations or I/O.
+
+The current general theorem covers the scalar admission path. It does not cover
+the general fallback in `compileEnvironmentWithEntryModeDetailed`, general
+multi-function modules, heap operations, floating-point operators or ByteIO
+compilation. Existing program-specific GPT, numerical, drone and WASI proofs are
+reusable evidence and components, not a general compiler theorem for those paths.
+
+Finish the current Boolean-prefix verification and save its evidence. Then map
+actual IR constructors and compiler stages to existing proofs, select the smaller
+expressive core, and build the missing general semantic and lowering proofs. Keep
+verification focused on changed modules and representative existing programs.
+Do not expand the growing syntax-case list as a substitute for this work.
+
+The detailed milestone record below records completed restricted capabilities;
+it is not a percentage-complete estimate for the full compiler.
+
 Reusable UInt64-to-Bool local helpers now compile in arbitrary supported scalar
 bodies, with repeated calls and lexical captures. The independent source
 semantics and general source-to-WASM theorem are proved. All sixteen axiom
@@ -1090,10 +1114,16 @@ inputs and 960 controls. All six fixed probes compile. The corpus contains
 [the Boolean-result sequence archive](proofs/compiler/boolean-loop-sequence-2026-09-27/README.md).
 
 Current capability: Boolean-result prefixes before word or Boolean loop sequences.
-All six fixed probes reject before the increment. Add exact Boolean let/bind
-annotations, saved-flag capture, source totality, admission, reconstruction,
-correctness and bounded reads to both sequence grammars. Reuse the sequence WASM
-proofs and finish focused tests, the complete proof gate and V8 checks.
+All six fixed probes reject before the increment. The exact shared Boolean
+let/bind parser, acceptance, reconstruction and body-size theorem pass (201
+targets). Source semantics, totality and saved-flag capture pass (96 targets).
+The word-sequence extension passes exact extraction, complete admission and
+reconstruction (207 targets), then correctness and bounded reads (210 targets).
+Boolean continuation correctness and invariants pass (214 targets); public
+integration passes (227 targets). All six fixed probes compile. Focused tests
+pass 14,016 native/IR comparisons and 18,432 invalid-input checks. The complete
+proof gate and a focused V8 group remain before saving this increment. Further
+syntax expansion is paused in favor of the smaller expressive core.
 
 Next: Boolean bound expressions containing several loops, nested loops and broader
 helper signatures. Heap values, floats, imports and global calls remain outside
