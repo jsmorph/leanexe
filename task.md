@@ -737,10 +737,12 @@ checks and 704 controls. The native corpus contains 1447 declarations. Evidence
 is in [the helper-junction archive](proofs/compiler/boolean-helper-junction-2026-09-27/README.md).
 
 Current capability: Boolean equality and inequality around general helper scopes,
-including exact standard decisions. The composite equality probe remains
-rejected after junction support. Recursively convert both operands and reuse the
-proved Boolean equality lowering. Choices, nested helper bodies and Id inputs
-remain separately confirmed gaps.
+including exact standard decisions. All ten original probes pass unchanged.
+Source totality, parser acceptance/soundness, scalar correctness and IR invariants
+pass. New tests pass 37,812 comparisons, 45,312 invalid-input checks and 768
+controls. Six adjacent tests pass 34,868 comparisons, 29,824 invalid-input checks
+and 896 controls. The general compiler-proof and independent WASM checks follow.
+Choices, nested helper bodies and Id inputs remain separately confirmed gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
