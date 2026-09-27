@@ -1,0 +1,114 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_saved_mixed_guard_syntax.lean:41:25: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 0
+numerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:41:28: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 1
+numerals are polymorphic in Lean, but the numeral `1` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:41:31: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 2
+numerals are polymorphic in Lean, but the numeral `2` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:41:34: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 3
+numerals are polymorphic in Lean, but the numeral `3` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:41:37: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 4
+numerals are polymorphic in Lean, but the numeral `4` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:43:27: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 0
+numerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:43:19: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Lean.MessageData
+
+Hint: Adding the command `deriving instance BEq for Lean.MessageData` may allow Lean to derive the missing instance.
+test/scalar_saved_mixed_guard_syntax.lean:45:32: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 1
+numerals are polymorphic in Lean, but the numeral `1` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:45:24: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Lean.MessageData
+
+Hint: Adding the command `deriving instance BEq for Lean.MessageData` may allow Lean to derive the missing instance.
+test/scalar_saved_mixed_guard_syntax.lean:48:32: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 2
+numerals are polymorphic in Lean, but the numeral `2` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:48:24: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Lean.MessageData
+
+Hint: Adding the command `deriving instance BEq for Lean.MessageData` may allow Lean to derive the missing instance.
+test/scalar_saved_mixed_guard_syntax.lean:50:32: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 3
+numerals are polymorphic in Lean, but the numeral `3` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:50:24: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Lean.MessageData
+
+Hint: Adding the command `deriving instance BEq for Lean.MessageData` may allow Lean to derive the missing instance.
+test/scalar_saved_mixed_guard_syntax.lean:69:42: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 2
+numerals are polymorphic in Lean, but the numeral `2` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:69:35: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  LT Lean.MessageData
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:79:25: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 1
+numerals are polymorphic in Lean, but the numeral `1` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:79:17: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Lean.MessageData
+
+Hint: Adding the command `deriving instance BEq for Lean.MessageData` may allow Lean to derive the missing instance.
+test/scalar_saved_mixed_guard_syntax.lean:79:38: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  OfNat Lean.MessageData 4
+numerals are polymorphic in Lean, but the numeral `4` cannot be used in a context where the expected type is
+  Lean.MessageData
+due to the absence of the instance above
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+test/scalar_saved_mixed_guard_syntax.lean:79:30: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Lean.MessageData
+
+Hint: Adding the command `deriving instance BEq for Lean.MessageData` may allow Lean to derive the missing instance.

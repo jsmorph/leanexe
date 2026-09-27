@@ -258,13 +258,14 @@ comparisons, 3,072 invalid-input checks and 256 controls. Prior tests pass 42,76
 comparisons, 28,032 invalid-input checks and 2,368 controls. Evidence is in
 [the Boolean result-bind archive](proofs/compiler/boolean-result-bind-2026-09-26/README.md).
 
-Saved Boolean variables in mixed propositional guards pass the source, parser,
-scalar extraction, loop proofs and IR invariants. Conjunctions and disjunctions
-admit flags on either side, two flags, nested mixed trees and both kinds of
-negation. New tests pass 18,100 native/IR comparisons, 11,008 invalid-input checks
-and 256 controls. Prior guard, decision, proposition and bind tests pass 10,328
-comparisons, 7,625 invalid-input checks and 512 controls. The general compiler
-theorem, native/V8 comparisons and archive are next for this increment.
+Saved Boolean variables in mixed propositional guards are complete. Conjunctions
+and disjunctions admit flags on either side, two flags, nested mixed trees and
+both kinds of negation. The general source-to-WASM theorem and eighteen audits
+pass. Native Lean/V8 agree on 509 inputs across 28 declarations, including
+thirteen ranges; eighteen shared modules retain identical bytes. New tests pass
+18,100 native/IR comparisons, 11,008 invalid-input checks and 256 controls. Prior
+tests pass 10,328 comparisons, 7,625 invalid-input checks and 512 controls.
+Evidence is in [the saved mixed-guard archive](proofs/compiler/saved-mixed-guard-2026-09-26/README.md).
 
 Next capabilities: direct Boolean helper calls and compound Boolean expressions
 in mixed propositional guards, retained instance and Bool-parameter Id wrappers,
