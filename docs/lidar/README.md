@@ -43,6 +43,13 @@ build/lidar/venv/bin/python tools/lidar/run.py
 python3 tools/lidar/plot.py
 ```
 
+The demonstration CLIs configure an optional repository-local Vulkan bundle
+and restart once when needed, preserving the original Python invocation.
+Importing `tools.lidar.run` or the other runners does not restart the process or
+change its environment. An embedding application should configure its GPU
+library/driver environment before starting Python. Module entry points such as
+`python -m tools.lidar.run` are also supported.
+
 Build and run the oblique slice with the same dependencies:
 
 ```sh
@@ -196,12 +203,18 @@ includes fractional intersections, reflected directions and corner tangency.
   [The return-value theorem](../../tools/lidar/ControllerResult.lean) connects
   the exact decoded WASM call to the native Lean packing/rejection function.
 - [The pipeline theorem](../../tools/lidar/Application.lean) composes that WASM
-  result, the unpacked parameter fields, and the exact scan shader's continuous
-  nearest-hit property in one statement.
+  result, the unpacked parameter fields, all four scan lanes, the exact summary
+  shader and host count/nearest decoding in one statement.
+- [Exact requested summaries](../../proofs/talos/lean/Project/Lidar/ExactQuery.lean)
+  prove that the decoded count equals the number of selected beams intersecting
+  geometry within range. The decoded nearest distance is the first selected
+  geometric hit; `none` (JSON `null`) occurs exactly when no selected beam hits
+  within range. Both exact pipeline theorems use this shared composition.
 - [Oblique geometry](../../proofs/talos/lean/Project/Lidar/Oblique.lean) proves
   unit direction vectors and continuous nearest intersections at the 60-tick
   scale. [Its pipeline theorem](../../tools/lidar/ObliqueApplication.lean)
-  connects the emitted oblique shader and the same emitted WASM controller.
+  connects the emitted oblique scan and summary shaders, decoded results, and
+  the same emitted WASM controller. Distances remain in 60-tick units.
 - [Real-scene enclosure](../../proofs/talos/lean/Project/Lidar/IntervalBounds.lean)
   proves inclusion between the inner, actual, and outer scenes.
   [Interval geometry](../../proofs/talos/lean/Project/Lidar/Interval.lean) proves
@@ -216,6 +229,13 @@ includes fractional intersections, reflected directions and corner tangency.
 
 The artifact checks and the observed runs are separate evidence. Consult the
 journal for which checks have completed at the current development milestone.
+
+Run the import/CLI and artifact-boundary regression checks with the runtime
+dependencies installed:
+
+```sh
+build/lidar/venv/bin/python -m unittest discover -s tools/lidar -p 'test_*.py'
+```
 
 ## Host and arithmetic assumptions
 

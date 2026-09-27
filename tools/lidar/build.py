@@ -260,7 +260,7 @@ def main():
     lean(['lake', '-d', 'proofs/talos/lean', 'build', 'Project.Lidar.Shader',
           'Project.Lidar.Continuous', 'Project.Lidar.Controller', 'Project.Lidar.Summary',
           'Project.Compiler.ScalarResult', 'Project.Lidar.ParserChecks',
-          'Project.Lidar.ObliqueShader', 'Project.Lidar.IntervalQuery'], 'application', env, timeout='10m')
+          'Project.Lidar.ObliqueShader', 'Project.Lidar.ExactQuery', 'Project.Lidar.IntervalQuery'], 'application', env, timeout='10m')
     lean(['lake', 'env', 'lean', '--run', 'tools/lidar/Generate.lean', str(output), args.mode], 'generate', env)
     application = {'cardinal': 'Application.lean', 'oblique': 'ObliqueApplication.lean',
                    'interval': 'IntervalApplication.lean'}[args.mode]
