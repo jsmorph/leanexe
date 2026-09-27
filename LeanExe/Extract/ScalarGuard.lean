@@ -1,5 +1,5 @@
 import LeanExe.Extract.ScalarGuardSyntax
-import LeanExe.Extract.ScalarBooleanGuard
+import LeanExe.Extract.ScalarBooleanPropositionLowering
 
 namespace LeanExe.Extract.Core
 
@@ -40,17 +40,17 @@ def extractGuard : (guard : Guard) →
       pure (lowerGuardNegations m condition)
 
   | .savedLeft n op a b, compile => do
-      let left ← compile a.operand (by simp [Guard.operands])
+      let left ← extractBooleanPropositionLeaf a (fun operand member => compile operand (List.mem_append_left _ member))
       let right ← extractGuard b (fun operand member => compile operand (List.mem_append_right _ member))
-      pure (lowerGuardNegations n (lowerJunction op (lowerSavedBooleanGuard a left) right))
+      pure (lowerGuardNegations n (lowerJunction op left right))
   | .savedRight n op a b, compile => do
       let left ← extractGuard a (fun operand member => compile operand (List.mem_append_left _ member))
-      let right ← compile b.operand (by simp [Guard.operands])
-      pure (lowerGuardNegations n (lowerJunction op left (lowerSavedBooleanGuard b right)))
+      let right ← extractBooleanPropositionLeaf b (fun operand member => compile operand (List.mem_append_right _ member))
+      pure (lowerGuardNegations n (lowerJunction op left right))
   | .savedBoth n op a b, compile => do
-      let left ← compile a.operand (by simp [Guard.operands])
-      let right ← compile b.operand (by simp [Guard.operands])
-      pure (lowerGuardNegations n (lowerJunction op (lowerSavedBooleanGuard a left) (lowerSavedBooleanGuard b right)))
+      let left ← extractBooleanPropositionLeaf a (fun operand member => compile operand (List.mem_append_left _ member))
+      let right ← extractBooleanPropositionLeaf b (fun operand member => compile operand (List.mem_append_right _ member))
+      pure (lowerGuardNegations n (lowerJunction op left right))
 
   | .letGuard n binding body, compile => do
       let _ ← compile binding.operand (by simp [Guard.operands])
@@ -62,8 +62,8 @@ def extractGuard : (guard : Guard) →
       let value ← compile (binding.wrap body.operand) (by simp [Guard.operands])
       pure (lowerGuardNegations n (lowerSavedBooleanGuard body value))
   | .localNegation n value, compile => do
-      let operand ← compile value.operand (by simp [Guard.operands])
-      pure (lowerGuardNegations (n + 1) (lowerSavedBooleanGuard value operand))
+      let condition ← extractBooleanPropositionLeaf value compile
+      pure (lowerGuardNegations (n + 1) condition)
 
 theorem extractGuard_accepts (guard : Guard)
     (compile : (operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr)
@@ -86,19 +86,23 @@ theorem extractGuard_accepts (guard : Guard)
     exact ⟨lowerGuardNegations m condition, by simp [extractGuard, hc]⟩
 
   | savedLeft n op a b ihb =>
-    obtain ⟨left, hl⟩ := total a.operand (by simp [Guard.operands])
+    obtain ⟨left, hl⟩ := extractBooleanPropositionLeaf_accepts a
+      (fun operand member => compile operand (List.mem_append_left _ member)) (fun operand member => total operand _)
     obtain ⟨right, hr⟩ := ihb (fun operand member => compile operand (List.mem_append_right _ member))
       (fun operand member => total operand _)
-    exact ⟨lowerGuardNegations n (lowerJunction op (lowerSavedBooleanGuard a left) right), by simp [extractGuard, hl, hr]⟩
+    exact ⟨lowerGuardNegations n (lowerJunction op left right), by simp [extractGuard, hl, hr]⟩
   | savedRight n op a b iha =>
     obtain ⟨left, hl⟩ := iha (fun operand member => compile operand (List.mem_append_left _ member))
       (fun operand member => total operand _)
-    obtain ⟨right, hr⟩ := total b.operand (by simp [Guard.operands])
-    exact ⟨lowerGuardNegations n (lowerJunction op left (lowerSavedBooleanGuard b right)), by simp [extractGuard, hl, hr]⟩
+    obtain ⟨right, hr⟩ := extractBooleanPropositionLeaf_accepts b
+      (fun operand member => compile operand (List.mem_append_right _ member)) (fun operand member => total operand _)
+    exact ⟨lowerGuardNegations n (lowerJunction op left right), by simp [extractGuard, hl, hr]⟩
   | savedBoth n op a b =>
-    obtain ⟨left, hl⟩ := total a.operand (by simp [Guard.operands])
-    obtain ⟨right, hr⟩ := total b.operand (by simp [Guard.operands])
-    exact ⟨lowerGuardNegations n (lowerJunction op (lowerSavedBooleanGuard a left) (lowerSavedBooleanGuard b right)), by simp [extractGuard, hl, hr]⟩
+    obtain ⟨left, hl⟩ := extractBooleanPropositionLeaf_accepts a
+      (fun operand member => compile operand (List.mem_append_left _ member)) (fun operand member => total operand _)
+    obtain ⟨right, hr⟩ := extractBooleanPropositionLeaf_accepts b
+      (fun operand member => compile operand (List.mem_append_right _ member)) (fun operand member => total operand _)
+    exact ⟨lowerGuardNegations n (lowerJunction op left right), by simp [extractGuard, hl, hr]⟩
 
   | letGuard n binding body ih =>
     obtain ⟨bound, hb⟩ := total binding.operand (by simp [Guard.operands])
@@ -111,8 +115,8 @@ theorem extractGuard_accepts (guard : Guard)
     obtain ⟨value, hv⟩ := total (binding.wrap body.operand) (by simp [Guard.operands])
     exact ⟨lowerGuardNegations n (lowerSavedBooleanGuard body value), by simp [extractGuard, hb, hv]⟩
   | localNegation n value =>
-    obtain ⟨operand, found⟩ := total value.operand (by simp [Guard.operands])
-    exact ⟨lowerGuardNegations (n + 1) (lowerSavedBooleanGuard value operand), by simp [extractGuard, found]⟩
+    obtain ⟨condition, found⟩ := extractBooleanPropositionLeaf_accepts value compile total
+    exact ⟨lowerGuardNegations (n + 1) condition, by simp [extractGuard, found]⟩
 
 theorem extractGuard_operands (guard : Guard)
     (compile : (operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr)
@@ -146,26 +150,23 @@ theorem extractGuard_operands (guard : Guard)
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, _⟩ := compiled
     intro operand member
-    simp only [Guard.operands, List.mem_append, List.mem_singleton] at member
-    rcases member with member | member
-    · subst operand; exact ⟨left, hl⟩
+    rcases List.mem_append.mp member with member | member
+    · exact extractBooleanPropositionLeaf_operands a _ hl operand member
     · exact ihb _ hr operand member
   | savedRight n op a b iha =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, _⟩ := compiled
     intro operand member
-    simp only [Guard.operands, List.mem_append, List.mem_singleton] at member
-    rcases member with member | member
+    rcases List.mem_append.mp member with member | member
     · exact iha _ hl operand member
-    · subst operand; exact ⟨right, hr⟩
+    · exact extractBooleanPropositionLeaf_operands b _ hr operand member
   | savedBoth n op a b =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, _⟩ := compiled
     intro operand member
-    simp only [Guard.operands, List.mem_append, List.mem_singleton] at member
-    rcases member with member | member
-    · subst operand; exact ⟨left, hl⟩
-    · subst operand; exact ⟨right, hr⟩
+    rcases List.mem_append.mp member with member | member
+    · exact extractBooleanPropositionLeaf_operands a _ hl operand member
+    · exact extractBooleanPropositionLeaf_operands b _ hr operand member
 
   | letGuard n binding body ih =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
@@ -185,11 +186,8 @@ theorem extractGuard_operands (guard : Guard)
     · exact ⟨value, hv⟩
   | localNegation n value =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
-    obtain ⟨expression, found, _⟩ := compiled
-    intro operand member
-    simp only [Guard.operands, List.mem_singleton] at member
-    subst operand
-    exact ⟨expression, found⟩
+    obtain ⟨condition, found, _⟩ := compiled
+    exact extractBooleanPropositionLeaf_operands value compile found
 
 theorem extractGuard_correct (guard : Guard)
     (compile : (operand : Lean.Expr) → operand ∈ guard.operands → Option LeanExe.IR.Expr)
@@ -223,20 +221,20 @@ theorem extractGuard_correct (guard : Guard)
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
     exact lowerGuardNegations_correct n (lowerJunction_correct op
-      (lowerSavedBooleanGuard_correct a (meanings _ _ _ hl))
+      (extractBooleanPropositionLeaf_correct a _ native hl (fun operand member expression found => meanings _ _ _ found))
       (ihb _ native hr (fun operand member expression found => meanings _ _ _ found)))
   | savedRight n op a b iha =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
     exact lowerGuardNegations_correct n (lowerJunction_correct op
       (iha _ native hl (fun operand member expression found => meanings _ _ _ found))
-      (lowerSavedBooleanGuard_correct b (meanings _ _ _ hr)))
+      (extractBooleanPropositionLeaf_correct b _ native hr (fun operand member expression found => meanings _ _ _ found)))
   | savedBoth n op a b =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
     exact lowerGuardNegations_correct n (lowerJunction_correct op
-      (lowerSavedBooleanGuard_correct a (meanings _ _ _ hl))
-      (lowerSavedBooleanGuard_correct b (meanings _ _ _ hr)))
+      (extractBooleanPropositionLeaf_correct a _ native hl (fun operand member expression found => meanings _ _ _ found))
+      (extractBooleanPropositionLeaf_correct b _ native hr (fun operand member expression found => meanings _ _ _ found)))
 
   | letGuard n binding body ih =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
@@ -250,8 +248,9 @@ theorem extractGuard_correct (guard : Guard)
     exact lowerGuardNegations_correct n (lowerSavedBooleanGuard_correct body (meanings _ _ _ hv))
   | localNegation n value =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
-    obtain ⟨expression, found, rfl⟩ := compiled
-    exact lowerGuardNegations_correct (n + 1) (lowerSavedBooleanGuard_correct value (meanings _ _ _ found))
+    obtain ⟨condition, found, rfl⟩ := compiled
+    exact lowerGuardNegations_correct (n + 1)
+      (extractBooleanPropositionLeaf_correct value compile native found meanings)
 
 theorem extractGuard_choice (P : LeanExe.IR.Expr → Prop)
     (literal : ∀ n, P (.u64 n))
@@ -288,23 +287,23 @@ theorem extractGuard_choice (P : LeanExe.IR.Expr → Prop)
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
     exact lowerGuardNegations_choice P literal choice n _
-      (lowerJunction_choice P literal binary choice op (lowerSavedBooleanGuard a left) right
-        (lowerSavedBooleanGuard_choice P literal choice a left (operands _ _ _ hl))
+      (lowerJunction_choice P literal binary choice op left right
+        (extractBooleanPropositionLeaf_choice P literal choice a _ hl (fun operand member expression found => operands _ _ _ found))
         (ihb _ hr (fun operand member expression found => operands _ _ _ found)))
   | savedRight n op a b iha =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
     exact lowerGuardNegations_choice P literal choice n _
-      (lowerJunction_choice P literal binary choice op left (lowerSavedBooleanGuard b right)
+      (lowerJunction_choice P literal binary choice op left right
         (iha _ hl (fun operand member expression found => operands _ _ _ found))
-        (lowerSavedBooleanGuard_choice P literal choice b right (operands _ _ _ hr)))
+        (extractBooleanPropositionLeaf_choice P literal choice b _ hr (fun operand member expression found => operands _ _ _ found)))
   | savedBoth n op a b =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨left, hl, right, hr, rfl⟩ := compiled
     exact lowerGuardNegations_choice P literal choice n _
-      (lowerJunction_choice P literal binary choice op (lowerSavedBooleanGuard a left) (lowerSavedBooleanGuard b right)
-        (lowerSavedBooleanGuard_choice P literal choice a left (operands _ _ _ hl))
-        (lowerSavedBooleanGuard_choice P literal choice b right (operands _ _ _ hr)))
+      (lowerJunction_choice P literal binary choice op left right
+        (extractBooleanPropositionLeaf_choice P literal choice a _ hl (fun operand member expression found => operands _ _ _ found))
+        (extractBooleanPropositionLeaf_choice P literal choice b _ hr (fun operand member expression found => operands _ _ _ found)))
 
   | letGuard n binding body ih =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
@@ -318,8 +317,8 @@ theorem extractGuard_choice (P : LeanExe.IR.Expr → Prop)
       (lowerSavedBooleanGuard_choice P literal choice body value (operands _ _ _ hv))
   | localNegation n value =>
     simp only [extractGuard, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
-    obtain ⟨expression, found, rfl⟩ := compiled
+    obtain ⟨condition, found, rfl⟩ := compiled
     exact lowerGuardNegations_choice P literal choice (n + 1) _
-      (lowerSavedBooleanGuard_choice P literal choice value expression (operands _ _ _ found))
+      (extractBooleanPropositionLeaf_choice P literal choice value compile found operands)
 
 end LeanExe.Extract.Core

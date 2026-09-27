@@ -8136,6 +8136,58 @@ def rangeFlagResult (flag : Bool) (count : UInt64) : UInt64 := Id.run do
     if flag && a % 7 == 0 then break
   return if flag then a + count else a - count
 
+def booleanPropRelationDecision (left right : Bool) : Id (Id Bool) :=
+  pure (pure (decide (left = right ∨ ¬ left)))
+
+def booleanPropRelationMixed (left right : Bool) : UInt64 :=
+  if left ≠ right ∧ left then 7 else 11
+
+def booleanPropRelationNegated (left right : Bool) : Bool :=
+  decide (¬ (left = right) ∧ ¬ (left ≠ right ∧ right))
+
+def booleanPropRelationWords (x y : UInt64) : UInt64 :=
+  let left := x == y
+  let right := x != 0
+  if (left ≠ right ∨ x < y) ∧ (right = left ∨ y < x) then x + 7 else y - 3
+
+def booleanPropRelationHelpers (x y : UInt64) : Id Bool := do
+  let f := fun b : Bool => b && x != 0
+  let g := fun n : UInt64 => n == y
+  return decide (f (x == y) = g x ∧ (g y ≠ f false ∨ x < y))
+
+def booleanPropRelationLet (x y : UInt64) : UInt64 :=
+  if (let flag := x == y; flag ≠ (x == 0) ∧ x < y) then x + 3 else y + 7
+
+def rangeBoolRelationStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let first := a % 2 == 0
+    let second := i.toUInt64 % 3 == 0
+    if first = second ∨ ¬ first then a := a + i.toUInt64 + 7 else a := a * 3 + 1
+  return a
+
+def rangeBoolRelationExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if (a % 2 == 0) ≠ (i.toUInt64 % 3 == 0) ∧ a > 7 then break
+  return a
+
+def rangeBoolRelationContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if ¬ ((a % 2 == 0) = (i.toUInt64 % 3 == 0)) then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+    return a)
+  return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
+
 def booleanHelperReturnWord (x y : UInt64) : UInt64 :=
   let flag := Id.run do
     let f := fun n : UInt64 => n == y
@@ -10712,6 +10764,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolTailHelperBoolean", (fun (x y : UInt64) => (rangeBoolTailHelperBoolean x y).toUInt64)),
    ("rangeBoolTailHelperNestedId", (fun (x y : UInt64) => (rangeBoolTailHelperNestedId x y).toUInt64)),
    ("rangeWordStepReturnedHelper", (fun (x y : UInt64) => rangeWordStepReturnedHelper x y)),
+   ("rangeBoolRelationStep", (fun (x y : UInt64) => rangeBoolRelationStep x y)),
+   ("rangeBoolRelationExit", (fun (x y : UInt64) => rangeBoolRelationExit x y)),
+   ("rangeBoolRelationContinue", (fun (x y : UInt64) => rangeBoolRelationContinue x y)),
+   ("rangeBoolRelationTail", (fun (x y : UInt64) => (rangeBoolRelationTail x y).toUInt64)),
    ("rangeBoolLetIdWord", (fun (x y : UInt64) => (rangeBoolLetIdWord x y).toUInt64)),
    ("rangeBoolLetIdWordLayers", (fun (x y : UInt64) => (rangeBoolLetIdWordLayers x y).toUInt64)),
    ("rangeBoolLetIdFlag", (fun (x y : UInt64) => (rangeBoolLetIdFlag x y).toUInt64)),
@@ -11320,6 +11376,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("booleanHelperReturnCondition", (fun (x y : UInt64) => booleanHelperReturnCondition x y)),
    ("booleanHelperReturnCaptured", (fun (x y : UInt64) => booleanHelperReturnCaptured x y)),
    ("booleanHelperReturnIgnored", (fun (x y : UInt64) => booleanHelperReturnIgnored x y)),
+   ("booleanPropRelationDecision", (fun (x y : UInt64) => (booleanPropRelationDecision (x != 0) (y != 0)).toUInt64)),
+   ("booleanPropRelationMixed", (fun (x y : UInt64) => booleanPropRelationMixed (x != 0) (y != 0))),
+   ("booleanPropRelationNegated", (fun (x y : UInt64) => (booleanPropRelationNegated (x != 0) (y != 0)).toUInt64)),
+   ("booleanPropRelationWords", (fun (x y : UInt64) => booleanPropRelationWords x y)),
+   ("booleanPropRelationHelpers", (fun (x y : UInt64) => (booleanPropRelationHelpers x y).toUInt64)),
+   ("booleanPropRelationLet", (fun (x y : UInt64) => booleanPropRelationLet x y)),
    ("publicFlagWord", (fun x y => publicFlagWord (x != 0) y)),
    ("publicWordFlag", (fun x y => publicWordFlag x (y != 0))),
    ("publicFlagsWord", (fun x y => publicFlagsWord (x != 0) (y != 0))),

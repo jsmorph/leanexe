@@ -49,7 +49,7 @@ run_elab do
     let condition := Lean.Expr.app (.app (.app (.const ``Eq [.succ .zero]) boolean) value) (booleanLiteralExpr true)
     let some guard := savedBooleanGuard? condition | throwError "local Boolean leaf rejected"
     pure ⟨guard, pn⟩
-  let wrongLeaf (_guard : SavedBooleanGuard) :=
+  let wrongLeaf (_guard : BooleanPropositionLeaf) :=
     Lean.Expr.app (.app (.const ``instDecidableEqBool []) (.bvar 9)) (booleanLiteralExpr true)
   let sourceAdd := Lean.Expr.app (.app (classHead ScalarPrimitive.add.classNames
     (.identity .word) .word .word .word) (.bvar 3)) (.bvar 2)

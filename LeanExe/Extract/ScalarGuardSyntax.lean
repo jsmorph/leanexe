@@ -1,7 +1,7 @@
 import LeanExe.Source.ScalarCompoundGuard
 import LeanExe.Extract.ScalarBooleanGuardSyntax
 import LeanExe.Extract.ScalarGuardDecision
-import LeanExe.Extract.ScalarSavedBooleanGuard
+import LeanExe.Extract.ScalarBooleanPropositionLeaf
 import LeanExe.Extract.ScalarGuardLet
 
 namespace LeanExe.Extract.Core
@@ -13,11 +13,11 @@ def guardJunctionOperands? (op : Junction) (left right : Lean.Expr)
     (a b : Option Guard) : Option Guard :=
   match a, b with
   | some a, some b => some (.junction 0 op a b)
-  | none, some b => (savedBooleanGuard? left).map fun a => .savedLeft 0 op a b
-  | some a, none => (savedBooleanGuard? right).map fun b => .savedRight 0 op a b
+  | none, some b => (booleanPropositionLeaf? left).map fun a => .savedLeft 0 op a b
+  | some a, none => (booleanPropositionLeaf? right).map fun b => .savedRight 0 op a b
   | none, none => do
-      let a ← savedBooleanGuard? left
-      let b ← savedBooleanGuard? right
+      let a ← booleanPropositionLeaf? left
+      let b ← booleanPropositionLeaf? right
       some (.savedBoth 0 op a b)
 
 theorem guardJunctionOperands_sound (op : Junction) (left right : Lean.Expr)
@@ -32,15 +32,15 @@ theorem guardJunctionOperands_sound (op : Junction) (left right : Lean.Expr)
     | none =>
       simp only [guardJunctionOperands?, bind, Option.bind_eq_some_iff, Option.some.injEq] at parsed
       obtain ⟨a, ha, b, hb, rfl⟩ := parsed
-      simp [Guard.condition, GuardNegation.condition, savedBooleanGuard_sound ha, savedBooleanGuard_sound hb]
+      simp [Guard.condition, GuardNegation.condition, booleanPropositionLeaf_sound ha, booleanPropositionLeaf_sound hb]
     | some b =>
       obtain ⟨a, ha, rfl⟩ := Option.map_eq_some_iff.mp parsed
-      simp [Guard.condition, GuardNegation.condition, savedBooleanGuard_sound ha, rightMeaning b rfl]
+      simp [Guard.condition, GuardNegation.condition, booleanPropositionLeaf_sound ha, rightMeaning b rfl]
   | some a =>
     cases b with
     | none =>
       obtain ⟨b, hb, rfl⟩ := Option.map_eq_some_iff.mp parsed
-      simp [Guard.condition, GuardNegation.condition, leftMeaning a rfl, savedBooleanGuard_sound hb]
+      simp [Guard.condition, GuardNegation.condition, leftMeaning a rfl, booleanPropositionLeaf_sound hb]
     | some b =>
       cases parsed
       simp [Guard.condition, GuardNegation.condition, leftMeaning a rfl, rightMeaning b rfl]
@@ -73,7 +73,7 @@ theorem guardLetOperands_sound (name : Lean.Name) (type value body : Lean.Expr) 
 def guardNegateOperands? (inner : Lean.Expr) (parsedInner : Option Guard) : Option Guard :=
   match parsedInner with
   | some guard => some guard.negate
-  | none => (savedBooleanGuard? inner).map fun value => .localNegation 0 value
+  | none => (booleanPropositionLeaf? inner).map fun value => .localNegation 0 value
 
 theorem guardNegateOperands_sound (inner : Lean.Expr) (parsedInner : Option Guard)
     (innerMeaning : ∀ guard, parsedInner = some guard → inner = guard.condition)
@@ -85,7 +85,7 @@ theorem guardNegateOperands_sound (inner : Lean.Expr) (parsedInner : Option Guar
     rw [Guard.negate_condition, innerMeaning value rfl]
   | none =>
     obtain ⟨value, found, rfl⟩ := Option.map_eq_some_iff.mp parsed
-    rw [savedBooleanGuard_sound found]
+    rw [booleanPropositionLeaf_sound found]
     rfl
 
 def guardOperands? : Lean.Expr → Option Guard
@@ -123,6 +123,23 @@ theorem guardOperands_negate {inner : Lean.Expr} {guard : Guard}
   rw [guardOperands?]
   · simp [booleanTruth_not_comparison_of_not_closed value extended, booleanGuardCondition?, noClosed]
   all_goals simp
+
+@[simp] theorem booleanPropositionLeaf_not_guard (value : BooleanPropositionLeaf) :
+    guardOperands? value.condition = none := by
+  cases value with
+  | truth value => exact savedBooleanGuard_not_guard value
+  | relation unequal left right nontruth =>
+    cases unequal with
+    | true => rfl
+    | false =>
+      have absent : comparisonOperands?
+          (BooleanPropositionLeaf.relation false left right nontruth).condition = none := by
+        simp [BooleanPropositionLeaf.condition, comparisonOperands?, scalarResultType?, nontruth rfl]
+      rw [guardOperands?]
+      · rw [absent]
+        simp only [booleanGuardCondition?, BooleanPropositionLeaf.condition]
+        split <;> simp_all
+      all_goals simp [BooleanPropositionLeaf.condition]
 
 @[simp] theorem guardOperands_compare (op : Comparison) (a b : Lean.Expr) :
     guardOperands? (op.condition a b) = some (.compare op a b) := by
@@ -410,6 +427,17 @@ theorem guardLiteral_not_comparison (literal : GuardLiteral) :
   | boolean m n value =>
     exact negated_not_comparison m _ (booleanLiteral_condition_not_comparison n value)
 
+theorem booleanPropositionLeaf_not_comparison (value : LeanExe.Source.Scalar.BooleanPropositionLeaf) :
+    comparisonOperands? value.condition = none := by
+  cases value with
+  | truth value =>
+    exact booleanTruth_not_comparison_of_not_closed value.value value.extended
+  | relation unequal left right nontruth =>
+    cases unequal with
+    | false => simp [LeanExe.Source.Scalar.BooleanPropositionLeaf.condition,
+        comparisonOperands?, scalarResultType?, nontruth rfl]
+    | true => rfl
+
 @[simp] theorem compoundGuard_not_comparison (guard : CompoundGuard) :
     comparison? guard.condition guard.evidence = none := by
   cases guard with
@@ -440,7 +468,7 @@ theorem guardLiteral_not_comparison (literal : GuardLiteral) :
         junction_not_comparison]
     | localNegation n value =>
       have absent := negated_not_comparison (n + 1) value.condition
-        (booleanTruth_not_comparison_of_not_closed value.value value.extended)
+        (booleanPropositionLeaf_not_comparison value)
       simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, absent]
     | letGuard n binding body =>
       have absent := negated_not_comparison n (binding.wrap body.condition) (by rfl)
@@ -465,7 +493,7 @@ theorem guardLiteral_not_comparison (literal : GuardLiteral) :
 
   | localNegation value n =>
     have absent := negated_not_comparison (n + 1) value.condition
-      (booleanTruth_not_comparison_of_not_closed value.value value.extended)
+      (booleanPropositionLeaf_not_comparison value)
     simp [comparison?, CompoundGuard.condition, CompoundGuard.tree, Guard.condition, absent]
   | letGuard binding body n =>
     have absent := negated_not_comparison n (binding.wrap body.condition) (by rfl)

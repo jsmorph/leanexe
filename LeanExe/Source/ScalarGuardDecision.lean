@@ -23,19 +23,19 @@ inductive GuardDecision : Guard → Lean.Expr → Prop where
   | boolean (propNegations boolNegations : Nat) (operation : Junction) (left right : BooleanGuard) :
       GuardDecision (.boolean propNegations boolNegations operation left right)
         (Guard.boolean propNegations boolNegations operation left right).evidence
-  | savedLeft (negations : Nat) (operation : Junction) (left : SavedBooleanGuard) (right : Guard)
+  | savedLeft (negations : Nat) (operation : Junction) (left : BooleanPropositionLeaf) (right : Guard)
       (rightCondition : GuardCondition right rightProposition)
       (rightMeaning : GuardDecision right rightEvidence) :
       GuardDecision (.savedLeft negations operation left right)
         (GuardNegation.evidence negations (operation.condition left.condition right.condition)
           (operation.evidence left.condition rightProposition left.evidence rightEvidence))
-  | savedRight (negations : Nat) (operation : Junction) (left : Guard) (right : SavedBooleanGuard)
+  | savedRight (negations : Nat) (operation : Junction) (left : Guard) (right : BooleanPropositionLeaf)
       (leftCondition : GuardCondition left leftProposition)
       (leftMeaning : GuardDecision left leftEvidence) :
       GuardDecision (.savedRight negations operation left right)
         (GuardNegation.evidence negations (operation.condition left.condition right.condition)
           (operation.evidence leftProposition right.condition leftEvidence right.evidence))
-  | savedBoth (negations : Nat) (operation : Junction) (left right : SavedBooleanGuard) :
+  | savedBoth (negations : Nat) (operation : Junction) (left right : BooleanPropositionLeaf) :
       GuardDecision (.savedBoth negations operation left right)
         (GuardNegation.evidence negations (operation.condition left.condition right.condition)
           (operation.evidence left.condition right.condition left.evidence right.evidence))
@@ -44,7 +44,7 @@ inductive GuardDecision : Guard → Lean.Expr → Prop where
       GuardDecision (.letGuard negations binding body) (Guard.letGuard negations binding body).evidence
   | letSaved (negations : Nat) (binding : GuardLet) (body : SavedBooleanGuard) :
       GuardDecision (.letSaved negations binding body) (Guard.letSaved negations binding body).evidence
-  | localNegation (negations : Nat) (value : SavedBooleanGuard) :
+  | localNegation (negations : Nat) (value : BooleanPropositionLeaf) :
       GuardDecision (.localNegation negations value) (Guard.localNegation negations value).evidence
 
 theorem GuardDecision.canonical (guard : Guard) : GuardDecision guard guard.evidence := by
