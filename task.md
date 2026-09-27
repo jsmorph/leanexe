@@ -457,8 +457,15 @@ controls. Prior tests pass 64,752 comparisons, 55,296 invalid-input checks and
 4,608 controls. Evidence is in
 [the Boolean-result loop-helper archive](proofs/compiler/boolean-loop-predicate-helpers-2026-09-27/README.md).
 
-Next: retained helper input annotations and other helper shapes before Boolean loops,
-retained instances and broader signatures. Conditional Id actions can elaborate
+Current capability: retained Id input annotations on helpers before Boolean
+loops. A recursive source/extraction rule handles any number of standard Id
+layers across all four word/Boolean input and result combinations. Input domains
+must match. Focused proofs pass; new tests pass 64,752 native/IR comparisons,
+73,728 invalid-input checks and 4,608 unused-helper controls. Complete compiler
+proof, native Lean/V8 checks and evidence archive are next.
+
+Next: helpers with multiple word arguments and Unit arguments before Boolean
+loops, retained instances and broader signatures. Conditional Id actions can elaborate
 to local continuation functions containing the loop; these need explicit coverage.
 Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean

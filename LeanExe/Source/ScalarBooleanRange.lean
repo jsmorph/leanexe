@@ -59,6 +59,11 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
       (value : Range.Exit.Eval a values x)
       (body : EvalWith (.app (.const ``Bool.toUInt64 []) b) (.word x :: values) flag.toUInt64) :
       Eval (bind name binder input output a b) values flag
+  | idFunctionInput (input result : Lean.Expr)
+      (body : Eval (.letE name (.forallE typeName input result typeBi)
+        (.lam paramName input value paramBi) tail nondep) values outcome) :
+      Eval (.letE name (.forallE typeName (.app (.const ``Id [.zero]) input) result typeBi)
+        (.lam paramName (.app (.const ``Id [.zero]) input) value paramBi) tail nondep) values outcome
   | idLet (type : Lean.Expr)
       (body : Eval (.letE name type value tail nondep) values result) :
       Eval (.letE name (.app (.const ``Id [.zero]) type) value tail nondep) values result
@@ -108,6 +113,11 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
       (value : Range.Exit.Supported types a)
       (body : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) b)) :
       Supported types (bind name binder input output a b)
+  | idFunctionInput (input result : Lean.Expr)
+      (body : Supported types (.letE name (.forallE typeName input result typeBi)
+        (.lam paramName input value paramBi) tail nondep)) :
+      Supported types (.letE name (.forallE typeName (.app (.const ``Id [.zero]) input) result typeBi)
+        (.lam paramName (.app (.const ``Id [.zero]) input) value paramBi) tail nondep)
   | idLet (type : Lean.Expr)
       (body : Supported types (.letE name type value tail nondep)) :
       Supported types (.letE name (.app (.const ``Id [.zero]) type) value tail nondep)
@@ -178,6 +188,9 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨result, hr⟩ := body.evaluates (.word x :: values) (by simp [Value.kind, typed])
     obtain ⟨flag, rfl⟩ := hr.booleanConversion_result
     exact ⟨flag, .bindResult input output hx hr⟩
+  | idFunctionInput input result _ ih =>
+    obtain ⟨flag, evaluated⟩ := ih values typed
+    exact ⟨flag, .idFunctionInput input result evaluated⟩
   | idLet type _ ih =>
     obtain ⟨flag, evaluated⟩ := ih values typed
     exact ⟨flag, .idLet type evaluated⟩

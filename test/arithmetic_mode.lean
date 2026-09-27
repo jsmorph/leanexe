@@ -5877,6 +5877,101 @@ def rangeBoolBooleanPredicateHelperId (count : Id UInt64) (seed : UInt64) : Id B
     return a
   pure (Id.run (Id.run (f (Id.run value == seed))))
 
+def rangeBoolHelperInputIdWord (count seed : UInt64) : Bool :=
+  let f (x : Id UInt64) := Id.run x + seed + 1
+  let value := Id.run do
+    let mut a := f (pure seed)
+    for i in [:count.toNat] do
+      a := f (pure (a + i.toUInt64))
+    return a
+  f (pure value) == f (pure seed)
+
+def rangeBoolHelperInputIdBooleanWord (count seed : UInt64) : Bool :=
+  let f (flag : Id Bool) := seed + (Id.run flag).toUInt64
+  let value := Id.run do
+    let mut a := f (pure false)
+    for i in [:count.toNat] do
+      a := a + f (pure (i.toUInt64 % 2 == 0))
+    return a
+  value == f (pure true)
+
+def rangeBoolHelperInputIdPredicate (count seed : UInt64) : Bool :=
+  let f (x : Id UInt64) := Id.run x % 2 == seed % 2
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + (f (pure i.toUInt64)).toUInt64
+    return a
+  f (pure value)
+
+def rangeBoolHelperInputIdBooleanPredicate (count : UInt64) (flag : Bool) : Bool :=
+  let f (input : Id Bool) := Id.run input && flag
+  let value := Id.run do
+    let mut a := (f (pure true)).toUInt64
+    for i in [:count.toNat] do
+      a := a + (f (pure (i.toUInt64 % 2 == 0))).toUInt64
+    return a
+  f (pure (value == count))
+
+def rangeBoolHelperInputIdRepeated (count seed : UInt64) : Id Bool :=
+  let f (x : Id (Id (Id UInt64))) : Id (Id UInt64) := pure (pure (Id.run (Id.run (Id.run x)) + seed))
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := Id.run (Id.run (f (pure (pure (pure (a + i.toUInt64))))))
+    return a
+  pure (value == Id.run (Id.run (f (pure (pure (pure seed))))))
+
+def rangeBoolHelperInputIdBound (count seed : UInt64) : Bool :=
+  let f (flag : Id (Id Bool)) := if Id.run (Id.run flag) then count % 17 else count % 5
+  let value := Id.run do
+    let mut a := seed
+    for i in [:(f (pure (pure (seed % 2 == 0)))).toNat] do
+      a := a + i.toUInt64 + 1
+    return a
+  value == seed + f (pure (pure true))
+
+def rangeBoolHelperInputIdExit (count seed : UInt64) : Bool :=
+  let f (x : Id (Id UInt64)) : Id Bool := pure (Id.run (Id.run x) % 7 == seed % 7)
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if Id.run (f (pure (pure a))) then break
+    return a
+  Id.run (f (pure (pure value)))
+
+def rangeBoolHelperInputIdContinue (count seed : UInt64) : Id Bool :=
+  let f (flag : Id (Id Bool)) : Id (Id Bool) := pure (pure (Id.run (Id.run flag) || seed == 0))
+  let value := Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if Id.run (Id.run (f (pure (pure (i.toUInt64 % 2 == 0))))) then continue
+      a := a + i.toUInt64 + 1
+    return a
+  pure (Id.run (Id.run (f (pure (pure (value == seed))))))
+
+def rangeBoolHelperInputIdMixed (count seed : UInt64) : Bool :=
+  let f (x : Id UInt64) := Id.run x + seed
+  let g (flag : Id Bool) := f (pure (Id.run flag).toUInt64)
+  let value := Id.run do
+    let mut a := g (pure false)
+    for i in [:count.toNat] do
+      a := a + g (pure (i.toUInt64 % 2 == 0))
+    return a
+  value == g (pure true)
+
+def rangeBoolHelperInputIdShadow (count seed : UInt64) : Bool :=
+  let f (x : Id UInt64) := Id.run x + seed
+  let initial := f (pure 0)
+  let f (x : Id (Id UInt64)) := f (pure (Id.run (Id.run x))) + count
+  let value := Id.run do
+    let mut a := initial
+    for i in [:count.toNat] do
+      a := f (pure (pure (a + i.toUInt64)))
+    return a
+  value == f (pure (pure initial))
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -9421,6 +9516,16 @@ run_elab do
       `ArithmeticModeTest.rangeBoolBooleanPredicateHelperNested,
       `ArithmeticModeTest.rangeBoolBooleanPredicateHelperStride,
       `ArithmeticModeTest.rangeBoolBooleanPredicateHelperId,
+      `ArithmeticModeTest.rangeBoolHelperInputIdWord,
+      `ArithmeticModeTest.rangeBoolHelperInputIdBooleanWord,
+      `ArithmeticModeTest.rangeBoolHelperInputIdPredicate,
+      `ArithmeticModeTest.rangeBoolHelperInputIdBooleanPredicate,
+      `ArithmeticModeTest.rangeBoolHelperInputIdRepeated,
+      `ArithmeticModeTest.rangeBoolHelperInputIdBound,
+      `ArithmeticModeTest.rangeBoolHelperInputIdExit,
+      `ArithmeticModeTest.rangeBoolHelperInputIdContinue,
+      `ArithmeticModeTest.rangeBoolHelperInputIdMixed,
+      `ArithmeticModeTest.rangeBoolHelperInputIdShadow,
       `ArithmeticModeTest.rangeBoolLetIdWord,
       `ArithmeticModeTest.rangeBoolLetIdWordLayers,
       `ArithmeticModeTest.rangeBoolLetIdFlag,
