@@ -270,8 +270,8 @@ function checkPrerequisites() {
     "Talos verifier build",
     "20m",
     "lake",
-    ["--no-ansi", "build"],
-    verifierRoot,
+    ["--no-ansi", "build", "Verifier/verifier"],
+    proofRoot,
   );
   try {
     fs.accessSync(verifier, fs.constants.X_OK);

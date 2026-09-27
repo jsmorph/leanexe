@@ -109,7 +109,7 @@ tools/build-wasmtime-host.sh
 node test/run_all.js
 ```
 
-Initialize the proof workspace by running a focused Talos proof from the repository root.  The artifact stage fetches the pinned Talos dependency and builds its verifier when absent, then both stages populate ignored compiler and proof outputs.  A cold run may compile thousands of Lean jobs, while later runs reuse content-identical generated files and Lake outputs.
+Initialize the proof workspace by running a focused Talos proof from the repository root.  The artifact stage fetches the pinned Talos dependency and builds `Verifier/verifier` in the proof workspace.  The verifier, interpreter testsuite, and proofs share that workspace's dependency installation, including Mathlib.  Their executables remain in the respective Talos packages' build directories.  A cold run may compile thousands of Lean jobs, while later runs reuse content-identical generated files and Lake outputs.
 
 ```sh
 tools/talos-proof.js check gcd

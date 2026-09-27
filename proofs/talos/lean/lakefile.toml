@@ -3,6 +3,11 @@ version = "0.1.0"
 defaultTargets = ["Project"]
 
 [[require]]
+name = "Verifier"
+path = ".lake/packages/CodeLib/verifier"
+
+# Lake loads requirements in reverse order, so CodeLib must follow Verifier.
+[[require]]
 name = "CodeLib"
 git = "https://github.com/jsmorph/talos"
 subDir = "codelib"
