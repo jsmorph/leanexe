@@ -32,6 +32,7 @@ Every `leanexegen` artifact-proof task receives this catalog and may import the 
 | `Project.ProofKit.F64NormalScale` | Exact result words for normal binary64 multiplication by a power of two, including overflow. |
 | `Project.ProofKit.F64PowerRounding` | Exact rounding to a power of two for sums within the half-spacing interval above it. |
 | `Project.ProofKit.F64NearBinade` | Addition error below one ulp against a nearby real target, including a crossing of the power-of-two boundary. |
+| `Project.ProofKit.F64Accuracy` | Binary64 error below one ulp, using the exact result's binade and the minimum subnormal spacing. |
 | `Project.ProofKit.ScalarTransition` | Typed scalar expression and statement evaluation, exact Talos instruction generation, weakest-precondition composition, and scratch-local preservation. |
 | `Project.ProofKit.ScalarFrame` | Adapts scalar statement execution and assignment evaluation to arbitrary Locals and result-assignment frames. |
 | `Project.ProofKit.ScalarConditional` | Executes scalar conditional expressions and assignments while retaining decoded control-type metadata. |
