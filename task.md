@@ -858,21 +858,15 @@ comparisons, 77,616 invalid-input checks and 9,216 controls. Four original and
 eight new probes pass unchanged. The native corpus contains 1553 declarations.
 Evidence is in [the remaining outer helper-body archive](proofs/compiler/boolean-helper-remaining-outer-body-2026-09-27/README.md).
 
-Current capability: Boolean loop accumulators. The fixed failing probes from the
-Boolean-result helper archive require a new accumulator source rule and a proved
-Boolean encoding through the existing word-valued loop plan. Start with a bounded
-step grammar, connect native iteration to the existing range model, and complete
-the public compiler and WASM proof before expanding step composition. Id inputs
-in converted helper scopes, multiple dynamic loops and broader signatures remain
-separate open capabilities. The Boolean iteration encoding and native strided
-iteration theorems now pass. A source step grammar with yield/done, checked
-choices, standard Id wrappers, metadata and scalar word/Boolean lets has a
-proved totality theorem. Six new fixed probes remain rejected by the public
-compiler. Step extraction and range extraction now have acceptance, support, correctness
-and invariant proofs. The range proof connects native Boolean iteration to the
-existing word loop plan with normalized accumulator reads. Public integration
-and WASM proofs are still required; no public Boolean-accumulator compilation
-claim is made yet.
+Current capability: Boolean loop accumulators. Native iteration encoding,
+source totality, acceptance/support, extraction correctness and invariants pass.
+Public integration also passes. All six new fixed probes compile; the three
+previously rejected helper/accumulator probes now compile, and twelve prior
+positive probes remain accepted. Syntax tests pass 13,824 native comparisons
+and 6,912 invalid-input checks. The public candidate now includes twelve native
+programs covering Boolean state, early exits, continue, strides, captures, public
+Boolean inputs and word continuations. The general source-to-WASM proof and
+independent V8 checks are next. Full-dialect correctness remains unfinished.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

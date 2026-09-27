@@ -4,6 +4,7 @@ import LeanExe.Extract.ScalarBooleanRangeContinuation
 import LeanExe.Extract.ScalarBooleanFunctionChoice
 import LeanExe.Extract.ScalarBooleanRangeSyntax
 import LeanExe.Source.ScalarBooleanRange
+import LeanExe.Extract.ScalarBooleanAccumulator
 
 namespace LeanExe.Extract.Core
 open LeanExe.Source.Scalar
@@ -250,7 +251,7 @@ def extractScalarBooleanRangeWith (locals : List ScalarBinding) (slot : Nat)
       | source =>
           match _wrapped : booleanRangeWrapper? source with
           | some (_, body) => extractScalarBooleanRangeWith locals slot body
-          | none => none
+          | none => extractScalarBooleanAccumulatorWith locals slot source
 termination_by sizeOf source
 decreasing_by
   all_goals first | (simp_wf; omega) | exact booleanRangeWrapper_size _wrapped
@@ -260,6 +261,22 @@ theorem extractScalarBooleanRangeWith_scalar {locals : List ScalarBinding} {slot
     (compiled : extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) source) = some value) :
     extractScalarBooleanRangeWith locals slot source = some (ScalarRangeExitPlan.scalar value) := by
   rw [extractScalarBooleanRangeWith.eq_def, compiled]
+
+theorem extractScalarBooleanRangeWith_accumulator {locals : List ScalarBinding} {slot : Nat}
+    {source : Lean.Expr} {plan : ScalarRangeExitPlan}
+    (notScalar : extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) source) = none)
+    (compiled : extractScalarBooleanAccumulatorWith locals slot source = some plan) :
+    extractScalarBooleanRangeWith locals slot source = some plan := by
+  have checked := compiled
+  simp only [extractScalarBooleanAccumulatorWith, bind, Option.bind_eq_some_iff] at checked
+  obtain ⟨view, parsed, _⟩ := checked
+  rw [scalarBooleanAccumulator_sound parsed] at notScalar compiled ⊢
+  have notWrapped : booleanRangeWrapper? view.source = none := by rfl
+  rw [extractScalarBooleanRangeWith, notScalar]
+  rw [notWrapped]
+  exact compiled
+  all_goals simp [ScalarBooleanAccumulatorView.source, BooleanAccumulator.call,
+    BooleanAccumulator.head, Lean.mkAppN, Lean.mkApp]
 
 theorem extractScalarBooleanRangeWith_accepts_fallback {locals : List ScalarBinding} {slot : Nat}
     {source : Lean.Expr}
@@ -496,6 +513,11 @@ theorem extractScalarBooleanRangeWith_accepts {types : List BindingKind} {source
   | scalar body =>
     obtain ⟨value, compiled⟩ := extractScalarExprWith_accepts body locals typed total
     exact ⟨_, extractScalarBooleanRangeWith_scalar compiled⟩
+  | accumulator body =>
+    apply extractScalarBooleanRangeWith_accepts_fallback
+    intro notScalar
+    obtain ⟨plan, compiled⟩ := extractScalarBooleanAccumulatorWith_accepts body locals slot typed total
+    exact ⟨plan, extractScalarBooleanRangeWith_accumulator notScalar compiled⟩
   | wordFunctionChoice shape choice condition _ _ yesIH noIH =>
     apply extractScalarBooleanRangeWith_accepts_fallback
     intro notScalar
@@ -986,6 +1008,6 @@ theorem extractScalarBooleanRangeWith_supported {source : Lean.Expr} {locals : L
   | case34 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind notIf wrapper body parsed notScalar ih =>
     rw [booleanRangeWrapper_sound parsed]
     exact .wrapped wrapper (ih compiled)
-  | case35 => contradiction
+  | case35 => exact .accumulator (extractScalarBooleanAccumulatorWith_supported compiled)
 
 end LeanExe.Extract.Core

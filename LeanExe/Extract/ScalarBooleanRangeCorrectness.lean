@@ -463,6 +463,8 @@ theorem extractScalarBooleanRangeWith_correct {source : Lean.Expr} {locals : Lis
   | case34 locals source notLet notFlag notIdLet notBinaryFunction notFunction notBooleanFunction notUnitFunction notPUnitFunction notIdFunction notBind notIf wrapper body parsed notScalar ih =>
     obtain ⟨flag, evaluated, meaning⟩ := ih values compiled typed bindings total
     exact ⟨flag, booleanRangeWrapper_sound parsed ▸ BooleanRange.Eval.wrapped wrapper evaluated, meaning⟩
-  | case35 => contradiction
+  | case35 =>
+    obtain ⟨flag, evaluated, meaning⟩ := extractScalarBooleanAccumulatorWith_correct compiled typed bindings
+    exact ⟨flag, .accumulator evaluated, meaning⟩
 
 end LeanExe.Extract.Core

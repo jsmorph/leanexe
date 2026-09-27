@@ -1,6 +1,7 @@
 import LeanExe.Source.ScalarRangeExitSupported
 import LeanExe.Source.ScalarBooleanLet
 import LeanExe.Source.ScalarBooleanFunctionChoice
+import LeanExe.Source.ScalarBooleanAccumulator
 
 namespace LeanExe.Source.Scalar.BooleanRange
 
@@ -25,6 +26,7 @@ def choiceExpr (type : BooleanType) (condition evidence yes no : Lean.Expr) : Le
 inductive Eval : Lean.Expr → List Value → Bool → Prop where
   | scalar (body : EvalWith (.app (.const ``Bool.toUInt64 []) source) values flag.toUInt64) :
       Eval source values flag
+  | accumulator (body : BooleanAccumulator.Eval source values flag) : Eval source values flag
   | wordFunctionChoice (shape : BooleanFunctionBinding) (choice : BooleanFunctionChoice)
       (condition : EvalWith (decision choice.condition choice.evidence) values (Bool.toUInt64 flag))
       (branch : Eval (shape.bodyExpr parameterName (.const ``UInt64 []) value
@@ -137,6 +139,7 @@ inductive Eval : Lean.Expr → List Value → Bool → Prop where
 inductive Supported : List BindingKind → Lean.Expr → Prop where
   | scalar (body : SupportedWith types (.app (.const ``Bool.toUInt64 []) source)) :
       Supported types source
+  | accumulator (body : BooleanAccumulator.Supported types source) : Supported types source
   | wordFunctionChoice (shape : BooleanFunctionBinding) (choice : BooleanFunctionChoice)
       (condition : SupportedWith types (decision choice.condition choice.evidence))
       (yesBranch : Supported types (shape.bodyExpr parameterName (.const ``UInt64 []) value choice.yes))
@@ -251,6 +254,9 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     obtain ⟨encoded, evaluated⟩ := body.evaluates values typed
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
     exact ⟨flag, .scalar evaluated⟩
+  | accumulator body =>
+    obtain ⟨flag, evaluated⟩ := body.evaluates values typed
+    exact ⟨flag, .accumulator evaluated⟩
   | wordFunctionChoice shape choice condition _ _ yesIH noIH =>
     obtain ⟨encoded, evaluated⟩ := condition.evaluates values typed
     obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
