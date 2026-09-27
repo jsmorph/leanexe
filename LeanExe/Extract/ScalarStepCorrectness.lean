@@ -282,7 +282,7 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
     exact ihf x y hc
       ((bindings.cons (binding := .scalar (.word first)) (value := .scalar (.word x)) hx).cons
         (binding := .scalar (.word second)) (value := .scalar (.word y)) hy)
-  | @applyBoolean values index f expression native booleans function variables arguments =>
+  | @applyBoolean values index f a flag function argument =>
     rw [extractScalarStepWith, bindings.noWordFunctionOfBoolean function] at compiled
     cases found : locals[index]?.bind ScalarStepBinding.booleanFunction? with
     | none =>
@@ -295,12 +295,11 @@ theorem extractScalarStepWith_correct {source : Lean.Expr}
           cases binding <;> simp_all [ScalarStepBinding.Matches, ScalarStepBinding.resultFunction?]
       simp [absent] at compiled
     | some f =>
-      rw [found, booleanLocalOperands_expr] at compiled
+      rw [found] at compiled
       simp only [bind, Option.bind_some, Option.bind_eq_some_iff] at compiled
-      obtain ⟨condition, hc, ht⟩ := compiled
-      have meaning := extractBooleanLocalWith_correct expression _ _ _ hc bindings.toScalar variables
-        (fun operand member expression found => extractScalarExprWith_correct (arguments operand member) found bindings.toScalar)
-      exact bindings.booleanFunction found function _ _ code (guardWord_correct meaning) ht
+      obtain ⟨arg, ha, ht⟩ := compiled
+      exact bindings.booleanFunction found function _ _ code
+        (extractScalarExprWith_correct argument ha bindings.toScalar) ht
   | @apply values index f a x function argument =>
     rw [extractScalarStepWith] at compiled
     cases found : locals[index]?.bind (ScalarStepBinding.function? false) with

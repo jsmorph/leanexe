@@ -169,14 +169,11 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ihb (.binaryFunction f :: locals)
       (by simp [ScalarStepBinding.kind, typed]) (extend total accepts)
     exact ⟨target, by rw [extractScalarStepWith_letBinaryStepFn]; simp [hc, ht, f]⟩
-  | applyBoolean expression present variables arguments =>
+  | applyBoolean present argument =>
     obtain ⟨f, hf⟩ := scalarStepBooleanFunction_lookup (typed ▸ present)
-    obtain ⟨condition, hc⟩ := extractBooleanLocalWith_accepts (total := scalarStepBindings_total total) (locals.map ScalarStepBinding.toScalar) expression _
-      (by simpa only [scalarStepBindings_typed typed] using variables)
-      (fun operand member => extractScalarExprWith_accepts (arguments operand member) _
-        (scalarStepBindings_typed typed) (scalarStepBindings_total total))
-    obtain ⟨target, ht⟩ := total _ (List.mem_of_getElem? hf) (guardWord condition)
-    exact ⟨target, by rw [extractScalarStepWith]; simp [hf, ScalarStepBinding.function?, ScalarStepBinding.booleanFunction?, booleanLocalOperands_expr, hc, ht]⟩
+    obtain ⟨arg, ha⟩ := scalar argument typed total
+    obtain ⟨target, ht⟩ := total _ (List.mem_of_getElem? hf) arg
+    exact ⟨target, by rw [extractScalarStepWith]; simp [hf, ScalarStepBinding.function?, ScalarStepBinding.booleanFunction?, ha, ht]⟩
   | apply present argument =>
     obtain ⟨f, hf⟩ := scalarStepFunction_lookup (typed ▸ present)
     obtain ⟨arg, ha⟩ := scalar argument typed total

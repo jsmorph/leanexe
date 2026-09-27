@@ -5589,6 +5589,79 @@ def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
   return a
 
+def booleanCallArgumentNested (x y : UInt64) : UInt64 :=
+  let f : Id (Id Bool) → Id (Id Bool) := fun (b : Id (Id Bool)) => b && x != y
+  let g : Id Bool → Id UInt64 := fun (b : Id Bool) => (f b).toUInt64 + y
+  Id.run (g (f (x == 0))) + Id.run (g (x != y))
+
+def booleanCallArgumentWord (x y : UInt64) : UInt64 :=
+  let p := fun n : UInt64 => n != y
+  let f := fun b : Bool => !b || x == 0
+  let g := fun b : Bool => if b then x + y else x - y
+  g (f (p x)) + g (p (g (f true)))
+
+def booleanCallArgumentChoice (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b && x != y
+  let g := fun b : Bool => if b then x / y else x % y
+  g (if f (x == 0) then f true else !(f (x != y)))
+
+def booleanCallArgumentBind (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == y
+  let g := fun b : Bool => if b then x + 3 else y + 7
+  g (Id.run do
+    let saved ← pure (f (x == 0))
+    let word := g (f saved)
+    return f (word == y))
+
+def booleanCallArgumentCapture (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b != (x == y)
+  let g := fun b : Bool => if b then x + 1 else y - 1
+  let h := fun b : Bool =>
+    let saved := f b
+    let f := fun other : Bool => other && saved
+    g (f saved) + g (f (x == 0))
+  h (f true) + h (f false)
+
+def booleanCallArgumentDecision (x y : UInt64) : UInt64 :=
+  let f := fun b : Bool => b || x == y
+  let g := fun b : Bool => if b then x + y else y - x
+  g (decide (¬ f (x == 0) ∧ x < y)) + g (decide (f false ∨ y ≤ x))
+
+def rangeBooleanCallArgumentStep (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let f : Id Bool → Id Bool := fun (b : Id Bool) => b && a != 0
+    let g : Id Bool → Id (ForInStep UInt64) := fun (b : Id Bool) =>
+      pure (if Id.run b then .done (a + i.toUInt64) else .yield (a + 1))
+    g (f (f (i.toUInt64 == seed)))
+
+def rangeBooleanCallArgumentContinue (count seed : UInt64) : UInt64 := Id.run do
+  let mut a := seed
+  for i in [:count.toNat] do
+    let f := fun b : Bool => b || a == seed
+    let g := fun b : Bool => if b then a + 3 else a + i.toUInt64
+    if g (f (i.toUInt64 == 0)) % 3 == 0 then
+      a := g (f false)
+      continue
+    a := g (f (a == 0))
+  return a
+
+def rangeBooleanCallArgumentOuter (count seed : UInt64) : UInt64 := Id.run do
+  let f := fun b : Bool => b && seed != 0
+  let g := fun b : Bool => if b then seed + 1 else seed
+  let mut a := g (f (count == 0))
+  for i in [:count.toNat] do
+    if a < g (f (i.toUInt64 == 0)) then break
+    a := a + g (f (a == seed)) + i.toUInt64
+  return a + g (f false)
+
+def rangeBooleanCallArgumentBind (count seed : UInt64) : UInt64 :=
+  forIn (m := Id) [:count.toNat] seed fun i a => do
+    let f := fun b : Bool => b || a == 0
+    let g := fun b : Bool => if b then ForInStep.done (a + 3) else .yield (a + i.toUInt64 + 1)
+    return g (Id.run do
+      let saved ← pure (f (i.toUInt64 == seed))
+      return !(f saved))
+
 def booleanInputWord (x y : UInt64) : UInt64 :=
   let f : Id Bool → UInt64 := fun (b : Id Bool) => if Id.run b then x + y else x - y
   f (x == 0) + f (x != y)
@@ -8317,6 +8390,16 @@ run_elab do
       `ArithmeticModeTest.rangeLocalNotContinue,
       `ArithmeticModeTest.rangeLocalNotOuter,
       `ArithmeticModeTest.rangeLocalNotHelper,
+      `ArithmeticModeTest.booleanCallArgumentNested,
+      `ArithmeticModeTest.booleanCallArgumentWord,
+      `ArithmeticModeTest.booleanCallArgumentChoice,
+      `ArithmeticModeTest.booleanCallArgumentBind,
+      `ArithmeticModeTest.booleanCallArgumentCapture,
+      `ArithmeticModeTest.booleanCallArgumentDecision,
+      `ArithmeticModeTest.rangeBooleanCallArgumentStep,
+      `ArithmeticModeTest.rangeBooleanCallArgumentContinue,
+      `ArithmeticModeTest.rangeBooleanCallArgumentOuter,
+      `ArithmeticModeTest.rangeBooleanCallArgumentBind,
       `ArithmeticModeTest.booleanInputWord,
       `ArithmeticModeTest.booleanInputPredicate,
       `ArithmeticModeTest.booleanInputNested,

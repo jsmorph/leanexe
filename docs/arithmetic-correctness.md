@@ -220,6 +220,13 @@ Bool-, UInt64- and ForInStep UInt64-returning helpers in their supported scalar,
 loop-step and outer-loop scopes. Unsupported unused bodies, wrong argument
 kinds and mismatched annotations are rejected.
 
+Word- and step-returning Bool-input helpers use the same checked Boolean
+conversion for their arguments. Calls may contain nested Boolean helper calls,
+choices, decisions, bindings and Id computations, including captured helpers.
+The source argument evaluates to an encoded Boolean before the helper is applied.
+Wrong argument types, unknown functions and unsupported unused branches are
+rejected.
+
 Reusable Bool-to-Bool helpers are admitted in scalar expressions when calls are
 converted with `Bool.toUInt64`, for example `let f := fun b : Bool => !b;
 (f (x == y)).toUInt64`. Captures, repeated calls, nested closures, shadowing,

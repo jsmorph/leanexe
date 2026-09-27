@@ -188,10 +188,9 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
       | none =>
           match locals[index]?.bind ScalarStepBinding.booleanFunction? with
           | some function => do
-              let expression ← booleanLocalOperands? argument
-              let c ← extractBooleanLocalWith (locals.map ScalarStepBinding.toScalar) expression
-                (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)
-              function (guardWord c)
+              let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar)
+                (.app (.const ``Bool.toUInt64 []) argument)
+              function value
           | none => do
               let function ← locals[index]?.bind ScalarStepBinding.resultFunction?
               let value ← extractScalarStepWith locals argument

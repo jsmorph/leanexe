@@ -149,11 +149,10 @@ inductive Eval : Lean.Expr → List Value → ForInStep UInt64 → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) (resultType type) secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep) values outcome
-  | applyBoolean (expression : BooleanLocal) {native : Lean.Expr → UInt64} {booleans : LeanExe.Source.Scalar.BooleanEnvironment}
-      (function : values[index]? = some (.booleanFunction f))
-      (variables : expression.VariablesMean (values.map Value.toScalar) booleans)
-      (arguments : ∀ operand, operand ∈ expression.operands → EvalWith operand (values.map Value.toScalar) (native operand)) :
-      Eval (.app (.bvar index) expression.expr) values (f (expression.denote native booleans))
+  | applyBoolean (function : values[index]? = some (.booleanFunction f))
+      (argument : EvalWith (.app (.const ``Bool.toUInt64 []) a)
+        (values.map Value.toScalar) (Bool.toUInt64 flag)) :
+      Eval (.app (.bvar index) a) values (f flag)
   | apply (function : values[index]? = some (.function false f))
       (argument : EvalWith a (values.map Value.toScalar) x) :
       Eval (.app (.bvar index) a) values (f x)
@@ -340,11 +339,9 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
           (.forallE secondTypeName (.const ``UInt64 []) (resultType type) secondTypeBi) firstTypeBi)
         (.lam firstName (.const ``UInt64 [])
           (.lam secondName (.const ``UInt64 []) a secondBi) firstBi) b nondep)
-  | applyBoolean (expression : BooleanLocal)
-      (function : types[index]? = some .booleanFunction)
-      (variables : expression.VariablesTyped (types.map BindingKind.toScalar))
-      (arguments : ∀ operand, operand ∈ expression.operands → SupportedWith (types.map BindingKind.toScalar) operand) :
-      Supported types (.app (.bvar index) expression.expr)
+  | applyBoolean (function : types[index]? = some .booleanFunction)
+      (argument : SupportedWith (types.map BindingKind.toScalar) (.app (.const ``Bool.toUInt64 []) a)) :
+      Supported types (.app (.bvar index) a)
   | apply (function : types[index]? = some (.function false))
       (argument : SupportedWith (types.map BindingKind.toScalar) a) :
       Supported types (.app (.bvar index) a)
@@ -635,15 +632,11 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
     let f := fun x y => (total x y).choose
     obtain ⟨outcome, evaluated⟩ := ihb (.binaryFunction f :: values) (by simp [Value.kind, typed])
     exact ⟨outcome, .letBinaryStepFn type (fun x y => (total x y).choose_spec) evaluated⟩
-  | applyBoolean expression present variables arguments =>
+  | applyBoolean present argument =>
     obtain ⟨f, hf⟩ := booleanFunction_lookup typed present
-    obtain ⟨booleans, hbooleans⟩ := variables.evaluates (values.map Value.toScalar) (typed_projection typed)
-    let native : Lean.Expr → UInt64 := fun operand =>
-      if member : operand ∈ expression.operands then ((arguments operand member).evaluates (values.map Value.toScalar) (typed_projection typed)).choose else 0
-    have meanings : ∀ operand, operand ∈ expression.operands → EvalWith operand (values.map Value.toScalar) (native operand) := by
-      intro operand member
-      simpa only [native, dite_eq_left member] using ((arguments operand member).evaluates (values.map Value.toScalar) (typed_projection typed)).choose_spec
-    exact ⟨f (expression.denote native booleans), .applyBoolean expression hf hbooleans meanings⟩
+    obtain ⟨argument, evaluated⟩ := argument.evaluates (values.map Value.toScalar) (typed_projection typed)
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    exact ⟨f flag, .applyBoolean hf evaluated⟩
   | apply present argument =>
     obtain ⟨f, hf⟩ := function_lookup typed present
     obtain ⟨x, hx⟩ := argument.evaluates (values.map Value.toScalar) (typed_projection typed)
