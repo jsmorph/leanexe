@@ -50,3 +50,17 @@ not yet been established for this entry.
 
 GPU decision: two scalar multiplications provide no substantial GPU workload.
 Keep this iteration CPU-only.
+
+### Iteration 2 — unequal moments near ratio one
+
+Added `kernel2`, the cancellation-free degree-two approximation on |delta| ≤
+1/2. `Project.SpectralKL.Kernel2.kernel2_error` proves total absolute error at
+most |delta|³/10 + 71·2⁻⁵² against the defining integral for h(1+delta).
+The proof accounts for coefficient conversion, rounded operations, and the
+analytic remainder. No extra axioms occur.
+
+The WASM test passes ten independent Simpson-quadrature comparisons, including
+delta = ±10⁻⁸ and values close to machine epsilon, plus four rejection cases.
+Largest observed error was 0.009538972213441799, within the proved bound.
+This intentionally coarse approximation provides a checked starting point for
+the next accuracy improvement. GPU decision: still a small scalar kernel.
