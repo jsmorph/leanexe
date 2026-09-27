@@ -472,7 +472,7 @@ unconverted words is rejected. Binary predicate declarations also scope complete
 word-accumulator and Boolean-accumulator loop steps, including early exits, saved
 Boolean results and nested binary predicates. The body captures the current loop environment.
 Unsupported bodies are rejected even when the helper is unused or the range is
-empty. Binary Boolean helpers may also surround a complete word-valued loop
+empty. Binary Boolean helpers may also surround a complete word-valued or Boolean-valued loop
 computation, including bounds, initial values, step bodies and final scalar
 expressions. Captured values remain those present when the helper is declared.
 Ordinary scalar word continuations and loop-step
@@ -730,7 +730,7 @@ execution reference. Wasmtime runs the broader runtime suite.
 
 | Command | Scope |
 |---------|-------|
-| `tools/arithmetic-check.js proof` | Build the general theorem and check all fourteen declared axiom dependencies. |
+| `tools/arithmetic-check.js proof` | Build the general theorem and check all declared axiom dependencies. |
 | `tools/arithmetic-check.js subset-engine <group>` | Compile and execute the fixed group from [the group registry](../test/arithmetic-engine-groups.json). |
 | `tools/arithmetic-check.js range-engine` | Check the [registered range declarations](../test/arithmetic-range-cases.json). |
 | `tools/arithmetic-check.js engine` | Check the complete [native/execution fixture](../test/ArithmeticMilestone.lean). |
@@ -819,7 +819,7 @@ python3 tools/arithmetic-package.py verify .
 ```
 
 Verification checks the inventory and pins before building the bundled general
-proof and auditing all fourteen results. It runs no compiler CLI or generator and
+proof and auditing all declared results. It runs no compiler CLI or generator and
 requires its own `.lake/build` to be absent. It may fetch pinned third-party
 packages, or reuse them with `--dependencies /absolute/path/to/dependencies`.
 Only those third-party libraries may reuse build products; all bundled proof

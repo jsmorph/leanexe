@@ -1057,10 +1057,11 @@ All six fixed probes compile. The corpus contains 1715 declarations. Evidence is
 
 Current capability: binary Boolean helper declarations around Boolean-result loops.
 Five fixed probes rejected before this increment; the word-tail probe already
-compiled. All six are preserved. Source evaluation and totality pass 82 targets.
-Extraction, complete acceptance, source reconstruction, correctness across loop
-states and IR invariants pass 197 targets. Function integration, focused tests,
-full WASM proofs and independent engine checks remain before advancing.
+compiled. All six now compile. Source totality, complete acceptance, source
+reconstruction, correctness across loop states and IR invariants pass. Function
+integration passes 211 targets. New tests pass 9,408 native/IR comparisons,
+17,664 invalid-input checks and 384 admission controls. Eight native fixtures
+are registered. Full WASM and independent engine checks remain before advancing.
 Multiple loops and the remaining dialect still need proofs.
 
 Next: general helper compositions inside scalar Boolean operands. Retained

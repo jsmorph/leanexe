@@ -1020,5 +1020,13 @@
   "rangeBinaryWordLoopHelperUnused",
   "rangeBinaryWordLoopHelperTail",
   "rangeBinaryWordLoopHelperCapture",
-  "rangeBinaryWordLoopHelperNested"
+  "rangeBinaryWordLoopHelperNested",
+  "rangeBinaryBooleanLoopHelperDirect",
+  "rangeBinaryBooleanLoopHelperBound",
+  "rangeBinaryBooleanLoopHelperInitial",
+  "rangeBinaryBooleanLoopHelperExit",
+  "rangeBinaryBooleanLoopHelperUnused",
+  "rangeBinaryBooleanLoopHelperWordTail",
+  "rangeBinaryBooleanLoopHelperCapture",
+  "rangeBinaryBooleanLoopHelperNested"
 ]
