@@ -1,0 +1,46 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+case13: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (declName binderName : Lean.Name) (resultType : Lean.Expr)
+  (binderInfo : Lean.BinderInfo) (binderName_1 : Lean.Name) (value : Lean.Expr) (binderInfo_1 : Lean.BinderInfo)
+  (body : Lean.Expr) (nondep : Bool),
+  (∀ (secondTypeName : Lean.Name) (resultType_1 : Lean.Expr) (secondTypeBi : Lean.BinderInfo) (secondName : Lean.Name)
+      (value_1 : Lean.Expr) (secondBi : Lean.BinderInfo),
+      resultType = Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType_1 secondTypeBi →
+        value = Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value_1 secondBi → False) →
+    LeanExe.Extract.Core.scalarResultType? resultType = none →
+      ∀ (val : LeanExe.Source.Scalar.BooleanType),
+        LeanExe.Extract.Core.booleanType? resultType = some val →
+          LeanExe.Extract.Core.scalarRangeExit?
+                (Lean.Expr.letE declName
+                  (Lean.Expr.forallE binderName (Lean.Expr.const `UInt64 []) resultType binderInfo)
+                  (Lean.Expr.lam binderName_1 (Lean.Expr.const `UInt64 []) value binderInfo_1) body nondep) =
+              none →
+            (have function :=
+                LeanExe.Extract.Core.ScalarBinding.predicateFunction fun argument =>
+                  LeanExe.Extract.Core.extractScalarExprWith
+                    (LeanExe.Extract.Core.ScalarBinding.word argument :: locals)
+                    ((Lean.Expr.const `Bool.toUInt64 []).app value);
+              motive (function :: locals) body) →
+              motive locals
+                (Lean.Expr.letE declName
+                  (Lean.Expr.forallE binderName (Lean.Expr.const `UInt64 []) resultType binderInfo)
+                  (Lean.Expr.lam binderName_1 (Lean.Expr.const `UInt64 []) value binderInfo_1) body nondep)
+case25: ∀ (locals : List LeanExe.Extract.Core.ScalarBinding) (declName binderName : Lean.Name) (resultType : Lean.Expr)
+  (binderInfo : Lean.BinderInfo) (binderName_1 : Lean.Name) (value : Lean.Expr) (binderInfo_1 : Lean.BinderInfo)
+  (body : Lean.Expr) (nondep : Bool),
+  LeanExe.Extract.Core.scalarResultType? resultType = none →
+    ∀ (val : LeanExe.Source.Scalar.BooleanType),
+      LeanExe.Extract.Core.booleanType? resultType = some val →
+        LeanExe.Extract.Core.scalarRangeExit?
+              (Lean.Expr.letE declName (Lean.Expr.forallE binderName (Lean.Expr.const `Bool []) resultType binderInfo)
+                (Lean.Expr.lam binderName_1 (Lean.Expr.const `Bool []) value binderInfo_1) body nondep) =
+            none →
+          (have function :=
+              LeanExe.Extract.Core.ScalarBinding.booleanPredicateFunction fun argument =>
+                LeanExe.Extract.Core.extractScalarExprWith
+                  (LeanExe.Extract.Core.ScalarBinding.boolean argument :: locals)
+                  ((Lean.Expr.const `Bool.toUInt64 []).app value);
+            motive (function :: locals) body) →
+            motive locals
+              (Lean.Expr.letE declName (Lean.Expr.forallE binderName (Lean.Expr.const `Bool []) resultType binderInfo)
+                (Lean.Expr.lam binderName_1 (Lean.Expr.const `Bool []) value binderInfo_1) body nondep)
