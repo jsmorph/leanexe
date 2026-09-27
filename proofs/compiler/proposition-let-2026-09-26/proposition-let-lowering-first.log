@@ -1,0 +1,107 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [45/49] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:348:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [46/49] Built LeanExe.Extract.ScalarGuardLowering (833ms)
+✔ [47/49] Built LeanExe.Extract.ScalarBooleanGuard (889ms)
+✖ [48/52] Building LeanExe.Extract.ScalarGuard (976ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarGuard.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuard.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuard.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuard.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuard.setup.json --json
+error: LeanExe/Extract/ScalarGuard.lean:59:40: unsolved goals
+n : Nat
+binding : Source.Scalar.GuardLet
+body : Guard
+compile : (operand : Lean.Expr) → operand ∈ (Guard.letGuard n binding body).operands → Option IR.Expr
+operand : Lean.Expr
+member : operand ∈ body.operands
+⊢ binding.wrap operand = binding.operand ∨ ∃ a, a ∈ body.operands ∧ binding.wrap a = binding.wrap operand
+warning: LeanExe/Extract/ScalarGuard.lean:59:65: This simp argument is unused:
+  member
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [Guard.operands]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: LeanExe/Extract/ScalarGuard.lean:104:38: unsolved goals
+n : Nat
+binding : Source.Scalar.GuardLet
+body : Guard
+ih :
+  ∀ (compile : (operand : Lean.Expr) → operand ∈ body.operands → Option IR.Expr),
+    (∀ (operand : Lean.Expr) (member : operand ∈ body.operands), ∃ target, compile operand member = some target) →
+      ∃ target, extractGuard body compile = some target
+compile : (operand : Lean.Expr) → operand ∈ (Guard.letGuard n binding body).operands → Option IR.Expr
+total :
+  ∀ (operand : Lean.Expr) (member : operand ∈ (Guard.letGuard n binding body).operands),
+    ∃ target, compile operand member = some target
+bound : IR.Expr
+hb : compile binding.operand ⋯ = some bound
+operand : Lean.Expr
+member : operand ∈ body.operands
+⊢ binding.wrap operand = binding.operand ∨ ∃ a, a ∈ body.operands ∧ binding.wrap a = binding.wrap operand
+warning: LeanExe/Extract/ScalarGuard.lean:75:51: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarGuard.lean:75:51: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarGuard.lean:104:63: This simp argument is unused:
+  member
+
+Hint: Omit it from the simp argument list.
+  [apply] simp [Guard.operands]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarGuard.lean:121:15: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarGuard.lean:121:15: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarGuard.lean:112:8: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarGuard.lean:191:15: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarGuard.lean:191:15: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarGuard.lean:182:8: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarGuard.lean:251:15: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarGuard.lean:251:15: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarGuard.lean:240:8: declaration uses `sorry`
+✔ [49/55] Built LeanExe.Source.ScalarDecidedGuard (891ms)
+✔ [51/57] Built LeanExe.Source.ScalarPropositionGuard (906ms)
+✔ [54/57] Built LeanExe.Extract.ScalarPropositionGuard (884ms)
+✖ [55/66] Building LeanExe.Source.ScalarBooleanLocal (1.4s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarBooleanLocal.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanLocal.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarBooleanLocal.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanLocal.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarBooleanLocal.setup.json --json
+error: LeanExe/Source/ScalarBooleanLocal.lean:246:43: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  q ≥ 0
+  p ≥ 0
+  o ≥ 0
+  m ≥ 0
+  l ≥ 0
+  k ≥ 0
+  j ≥ 0
+  i ≥ 0
+  h ≥ 0
+  f ≥ 0
+  d ≥ 0
+  c ≥ 0
+  c - d - f - 3*h - i - j - k - l - m - o - p - q ≥ 23
+  b ≥ 0
+  b - d ≤ 0
+  a ≥ 0
+  a + b - c ≥ 1
+where
+ a := ↑(sizeOf g.value.condition)
+ b := ↑guardOperandOverhead
+ c := ↑(sizeOf operand)
+ d := ↑(sizeOf "dite")
+ f := ↑(sizeOf "Bool")
+ h := ↑(sizeOf g.condition)
+ i := ↑(sizeOf g.evidence)
+ j := ↑(sizeOf shape.trueName)
+ k := ↑(sizeOf (ExprProofBinder.lift 0 t.expr))
+ l := ↑(sizeOf shape.trueInfo)
+ m := ↑(sizeOf shape.falseName)
+ o := ↑(sizeOf "Not")
+ p := ↑(sizeOf (ExprProofBinder.lift 0 e.expr))
+ q := ↑(sizeOf shape.falseInfo)
+✔ [65/71] Built LeanExe.Extract.ScalarBooleanWordNegation (882ms)
+✔ [69/104] Built LeanExe.Extract.ScalarBooleanChoiceLowering (845ms)
+✔ [101/106] Built LeanExe.Source.ScalarDependentBranch (856ms)
+✔ [104/113] Built LeanExe.Extract.ScalarDependentBranch (870ms)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarGuard
+- LeanExe.Source.ScalarBooleanLocal
+error: build failed

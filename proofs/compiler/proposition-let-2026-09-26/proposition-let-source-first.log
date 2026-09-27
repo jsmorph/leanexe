@@ -1,0 +1,205 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [14/14] Building LeanExe.Source.ScalarGuard (1.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarGuard.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarGuard.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarGuard.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarGuard.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarGuard.setup.json --json
+error: LeanExe/Source/ScalarGuard.lean:98:47: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  g ≥ 0
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  d - e ≤ 0
+  c ≥ 0
+  c - d ≥ 0
+  c + e - f + g ≤ -3
+where
+ c := ↑(sizeOf a.condition)
+ d := ↑(sizeOf (Lean.Expr.const `True []))
+ e := ↑(sizeOf b.condition)
+ f := ↑(sizeOf "True")
+ g := ↑(sizeOf "And")
+error: LeanExe/Source/ScalarGuard.lean:98:47: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  g ≥ 0
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  d - e ≤ 0
+  c ≥ 0
+  c - d ≥ 0
+  c + e - f + g ≤ -3
+where
+ c := ↑(sizeOf a.condition)
+ d := ↑(sizeOf (Lean.Expr.const `True []))
+ e := ↑(sizeOf b.condition)
+ f := ↑(sizeOf "True")
+ g := ↑(sizeOf "Or")
+error: LeanExe/Source/ScalarGuard.lean:102:47: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  g ≥ 0
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  d - e ≤ 0
+  c ≥ 0
+  c - d ≥ 0
+  c + e - f + g ≤ -3
+where
+ c := ↑(sizeOf b.condition)
+ d := ↑(sizeOf (Lean.Expr.const `True []))
+ e := ↑(sizeOf a.condition)
+ f := ↑(sizeOf "True")
+ g := ↑(sizeOf "And")
+error: LeanExe/Source/ScalarGuard.lean:102:47: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  g ≥ 0
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  d - e ≤ 0
+  c ≥ 0
+  c - d ≥ 0
+  c + e - f + g ≤ -3
+where
+ c := ↑(sizeOf b.condition)
+ d := ↑(sizeOf (Lean.Expr.const `True []))
+ e := ↑(sizeOf a.condition)
+ f := ↑(sizeOf "True")
+ g := ↑(sizeOf "Or")
+error: LeanExe/Source/ScalarGuard.lean:106:47: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  g ≥ 0
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  c ≥ 0
+  c - d ≥ 0
+  c - e + f + g ≤ -3
+where
+ c := ↑(sizeOf a.condition)
+ d := ↑(sizeOf (Lean.Expr.const `True []))
+ e := ↑(sizeOf "True")
+ f := ↑(sizeOf "And")
+ g := ↑(sizeOf b.condition)
+error: LeanExe/Source/ScalarGuard.lean:106:47: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  g ≥ 0
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  c ≥ 0
+  c - d ≥ 0
+  c - e + f + g ≤ -3
+where
+ c := ↑(sizeOf a.condition)
+ d := ↑(sizeOf (Lean.Expr.const `True []))
+ e := ↑(sizeOf "True")
+ f := ↑(sizeOf "Or")
+ g := ↑(sizeOf b.condition)
+error: LeanExe/Source/ScalarGuard.lean:110:47: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  g ≥ 0
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  c ≥ 0
+  c - d ≥ 0
+  c - e + f + g ≤ -3
+where
+ c := ↑(sizeOf a.condition)
+ d := ↑(sizeOf (Lean.Expr.const `True []))
+ e := ↑(sizeOf "True")
+ f := ↑(sizeOf "And")
+ g := ↑(sizeOf b.condition)
+error: LeanExe/Source/ScalarGuard.lean:110:47: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  g ≥ 0
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  c ≥ 0
+  c - d ≥ 0
+  c - e + f + g ≤ -3
+where
+ c := ↑(sizeOf a.condition)
+ d := ↑(sizeOf (Lean.Expr.const `True []))
+ e := ↑(sizeOf "True")
+ f := ↑(sizeOf "Or")
+ g := ↑(sizeOf b.condition)
+error: LeanExe/Source/ScalarGuard.lean:114:26: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  c ≥ 0
+  b ≥ 0
+  a ≥ 0
+  a - b ≥ 0
+  a - c + d + e + f ≤ 1
+where
+ a := ↑(sizeOf body.condition)
+ b := ↑(sizeOf (Lean.Expr.const `True []))
+ c := ↑(sizeOf "True")
+ d := ↑(sizeOf binding.name)
+ e := ↑(sizeOf binding.type.expr)
+ f := ↑(sizeOf binding.value)
+error: LeanExe/Source/ScalarGuard.lean:118:26: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  c ≥ 0
+  b ≥ 0
+  a ≥ 0
+  a - b ≥ 0
+  a - c + d + e + f ≤ 1
+where
+ a := ↑(sizeOf body.condition)
+ b := ↑(sizeOf (Lean.Expr.const `True []))
+ c := ↑(sizeOf "True")
+ d := ↑(sizeOf binding.name)
+ e := ↑(sizeOf binding.type.expr)
+ f := ↑(sizeOf binding.value)
+error: LeanExe/Source/ScalarGuard.lean:128:44: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  c ≥ 0
+  a ≥ 0
+  a - c ≥ 1
+  a - d ≥ 1
+  a - e - f ≥ 1
+where
+ a := ↑(sizeOf (op.condition operand b))
+ c := ↑(sizeOf operand)
+ d := ↑(sizeOf b)
+ e := ↑(sizeOf (compare op operand b).condition)
+ f := ↑guardOperandOverhead
+error: LeanExe/Source/ScalarGuard.lean:129:44: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  f ≥ 0
+  e ≥ 0
+  d ≥ 0
+  c ≥ 0
+  b ≥ 0
+  b - c ≥ 1
+  b - d ≥ 1
+  b - e - f ≥ 1
+where
+ b := ↑(sizeOf (op.condition a operand))
+ c := ↑(sizeOf a)
+ d := ↑(sizeOf operand)
+ e := ↑(sizeOf (compare op a operand).condition)
+ f := ↑guardOperandOverhead
+error: LeanExe/Source/ScalarGuard.lean:172:23: Application type mismatch: The argument
+  member
+has type
+  inner ∈ body.operands
+but is expected to have type
+  binding.wrap inner ∈ body.operands
+in the application
+  ih member
+Some required targets logged failures:
+- LeanExe.Source.ScalarGuard
+error: build failed

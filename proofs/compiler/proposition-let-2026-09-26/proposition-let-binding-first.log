@@ -1,0 +1,10 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [7/7] Building LeanExe.Source.ScalarGuardLet (953ms)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarGuardLet.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarGuardLet.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarGuardLet.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarGuardLet.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarGuardLet.setup.json --json
+error: LeanExe/Source/ScalarGuardLet.lean:49:92: Tactic `decide` proved that the proposition
+  sizeOf (Lean.Expr.const `Bool.toUInt64 []) < sizeOf (Lean.Expr.const `Bool []) + sizeOf (Lean.Expr.const `True [])
+is false
+Some required targets logged failures:
+- LeanExe.Source.ScalarGuardLet
+error: build failed

@@ -1,0 +1,35 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [45/49] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:348:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [48/57] Building LeanExe.Extract.ScalarGuard (1.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarGuard.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuard.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarGuard.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuard.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarGuard.setup.json --json
+error: LeanExe/Extract/ScalarGuard.lean:172:26: Application type mismatch: The argument
+  member
+has type
+  binding.wrap inner ∈ (Guard.letGuard n binding body).operands
+but is expected to have type
+  inner ∈ body.operands
+in the application
+  ih (fun operand member => compile (binding.wrap operand) (extractGuard._proof_12 binding body operand member)) hc
+    inner member
+✔ [55/62] Built LeanExe.Source.ScalarBooleanLocal (1.6s)
+✔ [58/62] Built LeanExe.Extract.ScalarBooleanRelation (932ms)
+✔ [59/62] Built LeanExe.Extract.ScalarBooleanLocalParser (14s)
+✔ [60/63] Built LeanExe.Extract.ScalarBooleanLocalParserEquations (974ms)
+✔ [61/63] Built LeanExe.Extract.ScalarBooleanLocalSyntax (1.6s)
+✔ [62/64] Built LeanExe.Source.ScalarBooleanConditionInputs (909ms)
+✔ [63/65] Built LeanExe.Source.ScalarBooleanChoiceForm (1.1s)
+✔ [64/85] Built LeanExe.Source.ScalarBooleanEqualityForm (1.1s)
+✔ [77/88] Built LeanExe.Source.ScalarBooleanLocalValues (863ms)
+✔ [85/88] Built LeanExe.Source.ScalarBooleanAction (885ms)
+✔ [86/92] Built LeanExe.Extract.ScalarBooleanAction (909ms)
+✔ [87/101] Built LeanExe.Extract.ScalarBooleanBind (938ms)
+✔ [99/106] Built LeanExe.Source.ScalarBooleanPropositionChoiceForm (886ms)
+✔ [105/113] Built LeanExe.Extract.ScalarBooleanLocalDependentBranch (905ms)
+✔ [111/113] Built LeanExe.Source.Scalar (1.5s)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarGuard
+error: build failed

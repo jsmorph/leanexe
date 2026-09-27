@@ -285,12 +285,14 @@ comparisons, 16,896 invalid-input checks and 768 controls. Prior tests pass 46,5
 comparisons, 30,921 invalid-input checks and 1,024 controls. Evidence is in
 [the compound mixed-guard archive](proofs/compiler/extended-mixed-guard-2026-09-26/README.md).
 
-Proposition lets pass source/parser reconstruction, lowering correctness, scalar
-and loop extraction proofs, and both IR invariant checks. Used and unused Bool
-and UInt64 values are checked, with lexical scope and standard Id annotations
-preserved. New tests pass 24,372 native/IR comparisons, 16,152 invalid-input checks
-and 576 controls. Prior tests pass 78,964 comparisons, 47,817 invalid-input checks
-and 1,792 controls. The full source-to-WASM and independent engine checks are pending.
+Proposition lets are complete for canonical substituted decision evidence. Bool
+and UInt64 bindings preserve lexical scope, unused-value checks and standard Id
+annotations. The general source-to-WASM theorem and eighteen audits pass. Native
+Lean/V8 agree on 509 inputs across 28 declarations, including thirteen ranges;
+eighteen shared modules retain identical bytes. New tests pass 24,372 native/IR
+comparisons, 16,152 invalid-input checks and 576 controls. Prior tests pass 78,964
+comparisons, 47,817 invalid-input checks and 1,792 controls. Evidence is in
+[the proposition-let archive](proofs/compiler/proposition-let-2026-09-26/README.md).
 
 Next capability: let reduction in decision type arguments. For example, Lean
 can retain `(let _saved := x == y; True) ∧ (let _word := x + y; False)` as the

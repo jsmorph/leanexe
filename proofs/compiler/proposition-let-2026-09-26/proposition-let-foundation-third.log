@@ -1,0 +1,53 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [14/19] Building LeanExe.Source.ScalarGuard (1.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/ScalarGuard.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarGuard.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/ScalarGuard.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarGuard.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/ScalarGuard.setup.json --json
+error: LeanExe/Source/ScalarGuard.lean:144:27: unsolved goals
+case conjunction.inr
+n : Nat
+a : SavedBooleanGuard
+b : Guard
+operand : Lean.Expr
+member : operand ∈ b.operands
+h : sizeOf operand < sizeOf b.condition + guardOperandOverhead
+⊢ sizeOf operand < sizeOf (((Lean.Expr.const `And []).app a.condition).app b.condition) + guardOperandOverhead
+
+case disjunction.inr
+n : Nat
+a : SavedBooleanGuard
+b : Guard
+operand : Lean.Expr
+member : operand ∈ b.operands
+h : sizeOf operand < sizeOf b.condition + guardOperandOverhead
+⊢ sizeOf operand < sizeOf (((Lean.Expr.const `Or []).app a.condition).app b.condition) + guardOperandOverhead
+error: LeanExe/Source/ScalarGuard.lean:152:28: unsolved goals
+case conjunction.inl
+n : Nat
+a : Guard
+b : SavedBooleanGuard
+operand : Lean.Expr
+member : operand ∈ a.operands
+h : sizeOf operand < sizeOf a.condition + guardOperandOverhead
+⊢ sizeOf operand < sizeOf (((Lean.Expr.const `And []).app a.condition).app b.condition) + guardOperandOverhead
+
+case disjunction.inl
+n : Nat
+a : Guard
+b : SavedBooleanGuard
+operand : Lean.Expr
+member : operand ∈ a.operands
+h : sizeOf operand < sizeOf a.condition + guardOperandOverhead
+⊢ sizeOf operand < sizeOf (((Lean.Expr.const `Or []).app a.condition).app b.condition) + guardOperandOverhead
+⚠ [19/45] Built LeanExe.Extract.ScalarGuardLet (830ms)
+warning: LeanExe/Extract/ScalarGuardLet.lean:9:9: Local variable 'word' resembles constructor 'LeanExe.Source.Scalar.ResultType.word' - write '.word' (with a dot) or 'LeanExe.Source.Scalar.ResultType.word' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+warning: LeanExe/Extract/ScalarGuardLet.lean:20:13: Local variable 'word' resembles constructor 'LeanExe.Source.Scalar.ResultType.word' - write '.word' (with a dot) or 'LeanExe.Source.Scalar.ResultType.word' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+warning: LeanExe/Extract/ScalarGuardLet.lean:23:12: Local variable 'boolean' resembles constructor 'LeanExe.Source.Scalar.BooleanType.boolean' - write '.boolean' (with a dot) or 'LeanExe.Source.Scalar.BooleanType.boolean' to use the constructor.
+
+Note: This linter can be disabled with `set_option linter.constructorNameAsVariable false`
+Some required targets logged failures:
+- LeanExe.Source.ScalarGuard
+error: build failed
