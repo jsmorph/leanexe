@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+129024 native/word-bindings syntax comparisons, 76800 invalid-input tests and 6144 binding controls passed

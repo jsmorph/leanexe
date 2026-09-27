@@ -595,13 +595,18 @@ comparisons, 46,080 invalid-input checks and 4,608 controls. Prior tests pass 80
 comparisons, 42,624 invalid-input checks and 2,304 controls. Evidence is in
 [the word-result archive](proofs/compiler/boolean-loop-word-result-2026-09-27/README.md).
 
-Current capability: pure bindings around Boolean-to-word loops. Source totality,
-extraction acceptance and recovery, correctness, invariants and public WASM
-admission pass. Mixed word/Boolean setup, saved word results and show now pass
-129,264 native/IR comparisons, 76,800 invalid-input checks and 6,144 controls.
-The complete proof and native Lean/WASM checks are next.
+Pure bindings around Boolean-to-word loops are complete. Mixed word/Boolean setup,
+saved word results, standard Id binds and show preserve their source computations.
+The shared binding module proves both candidate orders while retaining previous
+successful loop-result choices. Source-to-WASM correctness and nineteen audits
+pass. Native Lean/V8 agree on 609 inputs across 28 declarations, including
+twenty-three ranges; eighteen prior modules retain identical bytes. New tests
+pass 129,264 native/IR comparisons, 76,800 invalid-input checks and 6,144 controls.
+Prior tests pass 161,280 comparisons, 80,640 invalid-input checks and 6,912 controls.
+The correctness guide reflects current loop bindings and local calls. Evidence is in
+[the word-binding archive](proofs/compiler/boolean-loop-word-bindings-2026-09-27/README.md).
 
-Next: pure bindings and local helper declarations around Boolean-to-word loops, followed by
+Next: local helper declarations around Boolean-to-word loops and broader outer word conditionals, followed by
 retained instances, broader signatures, and composition of multiple loops.
 Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean
