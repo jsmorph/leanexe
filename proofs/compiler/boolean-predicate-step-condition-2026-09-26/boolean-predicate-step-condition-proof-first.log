@@ -1,0 +1,358 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [68/122] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+⚠ [112/122] Replayed LeanExe.Extract.ScalarExpr
+warning: LeanExe/Extract/ScalarExpr.lean:160:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:161:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:176:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:177:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:211:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:212:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:226:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:227:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:288:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:301:15: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:866:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:965:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1194:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1216:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1238:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1260:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1282:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1306:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1330:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1662:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarExpr.lean:1681:17: This simp argument is unused:
+  bind
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [119/124] Built LeanExe.Extract.ScalarStep (9.1s)
+⚠ [120/124] Built LeanExe.Extract.ScalarStepEquations (9.5s)
+warning: LeanExe/Extract/ScalarStepEquations.lean:155:33: This simp argument is unused:
+  BooleanType.expr
+
+Hint: Omit it from the simp argument list.
+  [apply] simp
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✖ [121/124] Building LeanExe.Extract.ScalarStepSupported (7.3s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarStepSupported.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarStepSupported.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarStepSupported.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarStepSupported.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarStepSupported.setup.json --json
+error: LeanExe/Extract/ScalarStepSupported.lean:83:11: Tactic `cases` failed with a nested error:
+Dependent elimination failed: Failed to solve equation
+  some target =
+    Decidable.rec
+      (fun h =>
+        (fun x =>
+            (extractBooleanLocalWith (List.map ScalarStepBinding.toScalar locals) guard.value fun operand x =>
+                  extractScalarExprWith (List.map ScalarStepBinding.toScalar locals) operand).bind
+              fun c =>
+              (extractScalarStepWith locals t).bind fun onTrue =>
+                (extractScalarStepWith locals e).bind fun onFalse =>
+                  some
+                    { value := IR.Expr.ite c onTrue.value onFalse.value,
+                      done := IR.Expr.ite c onTrue.done onFalse.done })
+          h)
+      (fun h =>
+        (fun x =>
+            (extractBooleanCondition guard.form fun input x =>
+                  extractScalarExprWith (List.map ScalarStepBinding.toScalar locals)
+                    ((Lean.Expr.const `Bool.toUInt64 []).app input.expr)).bind
+              fun c =>
+              (extractScalarStepWith locals t).bind fun onTrue =>
+                (extractScalarStepWith locals e).bind fun onFalse =>
+                  some
+                    { value := IR.Expr.ite c onTrue.value onFalse.value,
+                      done := IR.Expr.ite c onTrue.done onFalse.done })
+          h)
+      (instDecidableEqBool (hasBooleanPredicate (List.map ScalarStepBinding.toScalar locals) guard.value.functions)
+        true)
+at case `Eq.refl`
+warning: LeanExe/Extract/ScalarStepSupported.lean:99:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+error: LeanExe/Extract/ScalarStepSupported.lean:99:54: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  if
+      hasBooleanPredicate
+          (List.map
+            (fun x =>
+              match x with
+              | ⟨x, h⟩ => x.toScalar)
+            locals.attach)
+          guard.value.functions =
+        true then
+    ?m.772
+  else ?m.773
+in the target expression
+  (have __do_jp := fun c => do
+      let onTrue ← extractScalarStepWith locals t
+      let onFalse ← extractScalarStepWith locals e
+      pure { value := IR.Expr.ite c onTrue.value onFalse.value, done := IR.Expr.ite c onTrue.done onFalse.done };
+    if hasBooleanPredicate (List.map ScalarStepBinding.toScalar locals) guard.value.functions = true then do
+      let c ←
+        extractBooleanCondition guard.form fun input x =>
+            extractScalarExprWith (List.map ScalarStepBinding.toScalar locals)
+              ((Lean.Expr.const `Bool.toUInt64 []).app input.expr)
+      __do_jp c
+    else do
+      let c ←
+        extractBooleanLocalWith (List.map ScalarStepBinding.toScalar locals) guard.value fun operand x =>
+            extractScalarExprWith (List.map ScalarStepBinding.toScalar locals) operand
+      __do_jp c) =
+    some target
+
+case case13
+scalar :
+  ∀ {locals : List ScalarStepBinding} {source : Lean.Expr} {target : IR.Expr},
+    extractScalarExprWith (List.map ScalarStepBinding.toScalar locals) source = some target →
+      SupportedWith (List.map Step.BindingKind.toScalar (List.map ScalarStepBinding.kind locals)) source
+locals : List ScalarStepBinding
+t e : Lean.Expr
+type : Step.ResultAnnotation
+guard : BooleanLocalGuard
+absent :
+  ¬hasBooleanPredicate
+        (List.map
+          (fun x =>
+            match x with
+            | ⟨x, h⟩ => x.toScalar)
+          locals.attach)
+        guard.value.functions =
+      true
+iht :
+  ∀ {target : ScalarStepCode},
+    extractScalarStepWith locals t = some target → Step.Supported (List.map ScalarStepBinding.kind locals) t
+ihe :
+  ∀ {target : ScalarStepCode},
+    extractScalarStepWith locals e = some target → Step.Supported (List.map ScalarStepBinding.kind locals) e
+target : ScalarStepCode
+typeMatched : scalarStepResultType? (Step.resultType type) = some type
+rejected : comparison? guard.condition guard.evidence = none
+rejectedGuard : compoundGuard? guard.condition guard.evidence = none
+matched : booleanLocalGuard? guard.condition guard.evidence = some guard
+compiled :
+  (have __do_jp := fun c => do
+      let onTrue ← extractScalarStepWith locals t
+      let onFalse ← extractScalarStepWith locals e
+      pure { value := IR.Expr.ite c onTrue.value onFalse.value, done := IR.Expr.ite c onTrue.done onFalse.done };
+    if hasBooleanPredicate (List.map ScalarStepBinding.toScalar locals) guard.value.functions = true then do
+      let c ←
+        extractBooleanCondition guard.form fun input x =>
+            extractScalarExprWith (List.map ScalarStepBinding.toScalar locals)
+              ((Lean.Expr.const `Bool.toUInt64 []).app input.expr)
+      __do_jp c
+    else do
+      let c ←
+        extractBooleanLocalWith (List.map ScalarStepBinding.toScalar locals) guard.value fun operand x =>
+            extractScalarExprWith (List.map ScalarStepBinding.toScalar locals) operand
+      __do_jp c) =
+    some target
+⊢ Step.Supported (List.map ScalarStepBinding.kind locals)
+    ((((((Lean.Expr.const `ite [Lean.Level.zero.succ]).app (Step.resultType type)).app guard.condition).app
+              guard.evidence).app
+          t).app
+      e)
+error: LeanExe/Extract/ScalarStepSupported.lean:424:11: Tactic `cases` failed with a nested error:
+Dependent elimination failed: Failed to solve equation
+  some target =
+    Decidable.rec
+      (fun h =>
+        (fun x =>
+            (extractBooleanLocalWith (List.map ScalarStepBinding.toScalar locals) guard.value fun operand x =>
+                  extractScalarExprWith (List.map ScalarStepBinding.toScalar locals) operand).bind
+              fun c =>
+              (extractScalarStepWith (ScalarStepBinding.scalar ScalarBinding.unit :: locals) t).bind fun onTrue =>
+                (extractScalarStepWith (ScalarStepBinding.scalar ScalarBinding.unit :: locals) e).bind fun onFalse =>
+                  some
+                    { value := IR.Expr.ite c onTrue.value onFalse.value,
+                      done := IR.Expr.ite c onTrue.done onFalse.done })
+          h)
+      (fun h =>
+        (fun x =>
+            (extractBooleanCondition guard.form fun input x =>
+                  extractScalarExprWith (List.map ScalarStepBinding.toScalar locals)
+                    ((Lean.Expr.const `Bool.toUInt64 []).app input.expr)).bind
+              fun c =>
+              (extractScalarStepWith (ScalarStepBinding.scalar ScalarBinding.unit :: locals) t).bind fun onTrue =>
+                (extractScalarStepWith (ScalarStepBinding.scalar ScalarBinding.unit :: locals) e).bind fun onFalse =>
+                  some
+                    { value := IR.Expr.ite c onTrue.value onFalse.value,
+                      done := IR.Expr.ite c onTrue.done onFalse.done })
+          h)
+      (instDecidableEqBool (hasBooleanPredicate (List.map ScalarStepBinding.toScalar locals) guard.value.functions)
+        true)
+at case `Eq.refl`
+warning: LeanExe/Extract/ScalarStepSupported.lean:440:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+error: LeanExe/Extract/ScalarStepSupported.lean:440:63: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  if
+      hasBooleanPredicate
+          (List.map
+            (fun x =>
+              match x with
+              | ⟨x, h⟩ => x.toScalar)
+            locals.attach)
+          guard.value.functions =
+        true then
+    ?m.4125
+  else ?m.4126
+in the target expression
+  (have __do_jp := fun c => do
+      let onTrue ← extractScalarStepWith (ScalarStepBinding.scalar ScalarBinding.unit :: locals) t
+      let onFalse ← extractScalarStepWith (ScalarStepBinding.scalar ScalarBinding.unit :: locals) e
+      pure { value := IR.Expr.ite c onTrue.value onFalse.value, done := IR.Expr.ite c onTrue.done onFalse.done };
+    if hasBooleanPredicate (List.map ScalarStepBinding.toScalar locals) guard.value.functions = true then do
+      let c ←
+        extractBooleanCondition guard.form fun input x =>
+            extractScalarExprWith (List.map ScalarStepBinding.toScalar locals)
+              ((Lean.Expr.const `Bool.toUInt64 []).app input.expr)
+      __do_jp c
+    else do
+      let c ←
+        extractBooleanLocalWith (List.map ScalarStepBinding.toScalar locals) guard.value fun operand x =>
+            extractScalarExprWith (List.map ScalarStepBinding.toScalar locals) operand
+      __do_jp c) =
+    some target
+
+case case60
+scalar :
+  ∀ {locals : List ScalarStepBinding} {source : Lean.Expr} {target : IR.Expr},
+    extractScalarExprWith (List.map ScalarStepBinding.toScalar locals) source = some target →
+      SupportedWith (List.map Step.BindingKind.toScalar (List.map ScalarStepBinding.kind locals)) source
+locals : List ScalarStepBinding
+tn : Lean.Name
+t : Lean.Expr
+tb : Lean.BinderInfo
+fn : Lean.Name
+e : Lean.Expr
+fb : Lean.BinderInfo
+type : Step.ResultAnnotation
+guard : BooleanLocalGuard
+absent :
+  ¬hasBooleanPredicate
+        (List.map
+          (fun x =>
+            match x with
+            | ⟨x, h⟩ => x.toScalar)
+          locals.attach)
+        guard.value.functions =
+      true
+iht :
+  ∀ {target : ScalarStepCode},
+    extractScalarStepWith (ScalarStepBinding.scalar ScalarBinding.unit :: locals) t = some target →
+      Step.Supported (List.map ScalarStepBinding.kind (ScalarStepBinding.scalar ScalarBinding.unit :: locals)) t
+ihe :
+  ∀ {target : ScalarStepCode},
+    extractScalarStepWith (ScalarStepBinding.scalar ScalarBinding.unit :: locals) e = some target →
+      Step.Supported (List.map ScalarStepBinding.kind (ScalarStepBinding.scalar ScalarBinding.unit :: locals)) e
+target : ScalarStepCode
+matched : scalarStepResultType? (Step.resultType type) = some type
+rejected :
+  dependentGuard? guard.condition guard.evidence guard.condition ((Lean.Expr.const `Not []).app guard.condition) = none
+parsed :
+  booleanLocalDependentGuard? guard.condition guard.evidence guard.condition
+      ((Lean.Expr.const `Not []).app guard.condition) =
+    some guard
+compiled :
+  (have __do_jp := fun c => do
+      let onTrue ← extractScalarStepWith (ScalarStepBinding.scalar ScalarBinding.unit :: locals) t
+      let onFalse ← extractScalarStepWith (ScalarStepBinding.scalar ScalarBinding.unit :: locals) e
+      pure { value := IR.Expr.ite c onTrue.value onFalse.value, done := IR.Expr.ite c onTrue.done onFalse.done };
+    if hasBooleanPredicate (List.map ScalarStepBinding.toScalar locals) guard.value.functions = true then do
+      let c ←
+        extractBooleanCondition guard.form fun input x =>
+            extractScalarExprWith (List.map ScalarStepBinding.toScalar locals)
+              ((Lean.Expr.const `Bool.toUInt64 []).app input.expr)
+      __do_jp c
+    else do
+      let c ←
+        extractBooleanLocalWith (List.map ScalarStepBinding.toScalar locals) guard.value fun operand x =>
+            extractScalarExprWith (List.map ScalarStepBinding.toScalar locals) operand
+      __do_jp c) =
+    some target
+⊢ Step.Supported (List.map ScalarStepBinding.kind locals)
+    ((((((Lean.Expr.const `dite [Lean.Level.zero.succ]).app (Step.resultType type)).app guard.condition).app
+              guard.evidence).app
+          (Lean.Expr.lam tn guard.condition t tb)).app
+      (Lean.Expr.lam fn ((Lean.Expr.const `Not []).app guard.condition) e fb))
+warning: LeanExe/Extract/ScalarStepSupported.lean:82:15: This simp argument is unused:
+  present
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [↓reduceIte, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarStepSupported.lean:82:24: This simp argument is unused:
+  ↓reduceIte
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [present, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarStepSupported.lean:82:48: This simp argument is unused:
+  Option.bind_eq_some_iff
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [present, ↓reduceIte, bind, pure, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarStepSupported.lean:82:73: This simp argument is unused:
+  Option.some.injEq
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [present, ↓reduceIte, bind, pure, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarStepSupported.lean:423:15: This simp argument is unused:
+  present
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [↓reduceIte, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarStepSupported.lean:423:24: This simp argument is unused:
+  ↓reduceIte
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [present, bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarStepSupported.lean:423:48: This simp argument is unused:
+  Option.bind_eq_some_iff
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [present, ↓reduceIte, bind, pure, Option.some.injEq] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: LeanExe/Extract/ScalarStepSupported.lean:423:73: This simp argument is unused:
+  Option.some.injEq
+
+Hint: Omit it from the simp argument list.
+  [apply] simp only [present, ↓reduceIte, bind, pure, Option.bind_eq_some_iff] at compiled
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [122/124] Built LeanExe.Extract.ScalarStepAcceptance (1.1s)
+✔ [123/124] Built LeanExe.Extract.ScalarStepCorrectness (1.1s)
+Some required targets logged failures:
+- LeanExe.Extract.ScalarStepSupported
+error: build failed

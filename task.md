@@ -161,19 +161,21 @@ modules retain identical bytes. Focused tests pass 5,556 native/IR comparisons,
 5,274 invalid-input checks and 336 controls. Evidence is in
 [the direct-condition archive](proofs/compiler/boolean-predicate-condition-2026-09-26/README.md).
 
-Direct loop-step conditions now pass source totality, extraction correctness,
-acceptance, soundness and IR invariant proofs. Truth tests and Boolean Eq/Ne
-conditions select both the accumulator and break/continue flag, including
-dependent branches and captured helpers. Focused tests cover 9,408 native/IR
-comparisons, 5,736 invalid-input checks and 408 controls. Prior tests pass 7,892
-comparisons, 6,894 rejections and 500 controls. General compiler proofs, eighteen
-audits and native Lean/WASM execution are next for this candidate.
+Direct loop-step conditions containing Bool-input calls are complete. Truth tests
+and Boolean Eq/Ne select the accumulator and break/continue flag together, including
+dependent branches and captured helpers. The general source-to-WASM theorem and
+eighteen audits pass. Native Lean/V8 agree on 521 inputs across 26 declarations,
+including seventeen ranges; eighteen shared modules retain identical bytes.
+Focused tests pass 9,408 native/IR comparisons, 5,736 invalid-input checks and 408
+controls. Prior tests pass 7,892 comparisons, 6,894 rejections and 500 controls.
+Evidence is in
+[the loop-step condition archive](proofs/compiler/boolean-predicate-step-condition-2026-09-26/README.md).
 
-Next: finish direct loop-step conditions through WASM, then Boolean do binds and
-direct Boolean helper results. Saved Boolean variables in mixed propositional
-guards, retained instance and Bool-parameter Id wrappers, and broader signatures
-follow. Full-dialect correctness remains unfinished. Complete each capability
-through WASM and commit/push frequently.
+Next: standard Id/metadata wrappers around Bool-input calls, needed for Boolean
+do binds, then direct Boolean helper results. Saved Boolean variables in mixed
+propositional guards, retained instance and Bool-parameter Id wrappers, and broader
+signatures follow. Full-dialect correctness remains unfinished. Complete each
+capability through WASM and commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 
