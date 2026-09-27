@@ -55,6 +55,26 @@ of the complete 12,733-byte exponential binary also pass.  The proofs use
 `propext`, `Classical.choice`, and `Quot.sound`.  The generated-model execution
 proof remains a separate obligation.
 
+The isolated Talos build reached a resident set of about 4.03 GiB while
+checking `SmallStep`.  Its scope recorded 176,366 memory-high events, no
+out-of-memory events, and a 60-second memory-pressure average of 41.46%.
+That identifies reclamation at the repository's 4 GiB threshold as a source
+of delay.  The user approved raising this build's threshold to 5 GiB.
+The scope now reports that threshold, with its 6 GiB hard limit and
+one-CPU limit preserved.  The repository runner retains its default limits.
+`SmallStep` then completed, followed by the remaining Talos dependencies.
+The isolated dependency build passed.  Application checks use the standard
+repository limits again.
+
+The first execution build found a missing `Interpreter.Wasm.LeanSyntax`
+import in the project prelude.  The generated data segment uses its
+`hexBytes%` syntax.  Adding that import lets the generated module compile.
+The shared `UInt64Array.At.wordElement` lemma passes and supplies read
+values and bounds for the compiler's word-valued array indices.
+The initial-table proof reached its five-minute limit while reducing a
+single decision over 256 entries.  The next proof splits those entries
+before checking their byte-to-word equalities.
+
 ## 2026-09-27: Static numeric tables
 
 The exponential port required a constant 2 KiB table.  The user approved static
