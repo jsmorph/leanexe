@@ -41,8 +41,9 @@ standard Id layers; a monadic continuation's domain must match its input type
 exactly, and the complete standard instance is checked. Metadata and standard
 Id run/pure wrappers preserve the computation.
 
-Boolean-result loops and their UInt64 continuations admit captured scalar local
-helpers with word or Boolean inputs and results, multi-argument word helpers and
+Boolean-result loops, their UInt64 continuations and loop-containing word
+conditionals admit captured scalar local helpers with word or Boolean inputs
+and results, multi-argument word helpers and
 Unit/PUnit-prefixed word helpers. Helper inputs and results may retain standard
 Id annotations. Used and unused helper bodies are checked. Calls may supply
 loop bounds, initial values, steps and final results. A local word-to-Bool or
@@ -62,9 +63,8 @@ and captures are preserved.
 Public parameter domains may retain any number of standard Id layers. Declared
 and lambda domains must have the same base scalar kind; differing Id depths
 preserve their meaning. Custom annotation heads, wrong universes and metadata
-inside parameter domains are rejected. Sequential or nested dynamic loops,
-general local loop-function application, and local helper declarations around
-loop-containing UInt64 conditionals remain outside this grammar.
+inside parameter domains are rejected. Sequential or nested dynamic loops
+and general local loop-function application remain outside this grammar.
 
 A UInt64 body may read arguments, contain
 UInt64 literals, metadata, UInt64 `let` bindings, conditionals and pure `Id`

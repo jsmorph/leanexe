@@ -639,12 +639,20 @@ eighteen prior modules retain identical bytes. New tests pass 129,264 comparison
 declarations. Evidence is in
 [the word-binding archive](proofs/compiler/word-loop-binding-2026-09-27/README.md).
 
-Next: local helper declarations around word conditionals, followed by
-retained instances, broader signatures, and composition of multiple loops.
-Also extend UInt64-to-Bool helper bodies to call captured
+Current capability: local helper declarations around word conditionals. Pure
+word/Boolean inputs/results, binary/many-word arguments, Unit/PUnit prefixes and
+nested Id annotations are admitted. Source totality, acceptance, support recovery,
+preservation, invariants and public WASM admission pass. Ten native examples pass
+240 comparisons. Syntax checks pass 209,664 comparisons, 112,896 invalid-input
+tests and 14,976 controls, with the conditional inside the helpers' enclosing
+body to require the new path. Adjacent checks pass 338,688 comparisons, 186,624
+invalid-input tests and 21,120 controls. The full proof and WASM gates are next.
+
+Next: extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean
 result conversion. Compound propositions combining Boolean equality with Boolean
-truth guards also need coverage. Native fixtures exposed these grammar gaps. Full-dialect
+truth guards also need coverage. Then extend retained instances, broader signatures,
+and composition of multiple loops. Native fixtures exposed these grammar gaps. Full-dialect
 correctness remains unfinished.
 Complete each capability through WASM and commit/push frequently.
 

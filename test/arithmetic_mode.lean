@@ -7855,6 +7855,141 @@ def rangeWordChooseSetupId (count seed : UInt64) : Id (Id UInt64) := do
     return a) else pure (seed * 3))
   pure (Id.run (Id.run saved) + stop)
 
+def rangeWordChooseHelperWord (count seed : UInt64) : UInt64 :=
+  let bump : UInt64 → UInt64 := fun x => x + seed % 7
+  if seed % 2 == 0 then
+    let flag :=
+      let value := Id.run do
+        let mut a := bump seed
+        for i in [:(bump count % 17).toNat] do
+          a := a + bump i.toUInt64 + 1
+        return a
+      value % 7 == seed % 7
+    if flag then bump count else bump seed * 3
+  else seed * 13 + count
+
+def rangeWordChooseHelperBoolean (count seed : UInt64) : UInt64 :=
+  let select : Bool → UInt64 := fun b => if b then seed + 7 else seed * 3
+  if seed % 2 == 0 then
+    let flag :=
+      let value := Id.run do
+        let mut a := select (seed % 2 == 0)
+        for i in [:count.toNat] do
+          if i.toUInt64 % 2 == 0 then continue
+          a := a + select (i.toUInt64 % 3 == 0)
+        return a
+      value % 7 == seed % 7
+    select flag + count
+  else seed * 13 + count
+
+def rangeWordChooseHelperPredicate (count seed : UInt64) : UInt64 :=
+  let pred : UInt64 → Bool := fun x => x % 7 == seed % 7
+  if seed % 2 == 0 then
+    let flag :=
+      let value := Id.run do
+        let mut a := seed
+        for i in [:count.toNat] do
+          a := a + i.toUInt64 + 1
+          if pred a then break
+        return a
+      pred value
+    if flag then seed + count else seed * 3
+  else seed * 13 + count
+
+def rangeWordChooseHelperBooleanPredicate (count seed : UInt64) : UInt64 :=
+  let selected := seed % 3 == 0
+  let flip : Bool → Bool := fun b => b != selected
+  if seed % 2 == 0 then
+    let flag :=
+      let value := Id.run do
+        let mut a := seed
+        for i in [:count.toNat] do
+          if flip (i.toUInt64 % 2 == 0) then a := a + i.toUInt64 + 1
+        return a
+      flip (value % 7 == seed % 7)
+    if flag then seed + count else seed * 3
+  else seed * 13 + count
+
+def rangeWordChooseHelperBinary (count seed : UInt64) : UInt64 :=
+  let combine : UInt64 → UInt64 → UInt64 := fun x y => x * 3 + y + seed
+  if seed % 2 == 0 then
+    let flag :=
+      let value := Id.run do
+        let mut a := combine seed 1
+        for i in [:(combine count 2 % 17).toNat] do
+          a := combine a i.toUInt64
+        return a
+      value % 7 == seed % 7
+    if flag then combine count seed else combine seed count
+  else seed * 13 + count
+
+def rangeWordChooseHelperMany (count seed : UInt64) : UInt64 :=
+  let combine : UInt64 → UInt64 → UInt64 → UInt64 := fun x y z => x * 3 + y * 5 + z + seed
+  if seed % 2 == 0 then
+    let flag :=
+      let value := Id.run do
+        let mut a := combine seed 1 2
+        for i in [:(combine count 2 3 % 17).toNat] do
+          a := combine a i.toUInt64 7
+        return a
+      value % 7 == seed % 7
+    if flag then combine count seed 11 else combine seed count 13
+  else seed * 13 + count
+
+def rangeWordChooseHelperManyFive (count seed : UInt64) : Id UInt64 := do
+  let combine : UInt64 → UInt64 → UInt64 → UInt64 → UInt64 → UInt64 :=
+    fun a b c d e => a * 3 + b * 5 + c * 7 + d * 11 + e + seed
+  if seed % 2 == 0 then
+    let flag ← (do
+      let value ← (do
+        let mut a := combine seed 1 2 3 4
+        for i in [:(combine count 2 3 4 5 % 17).toNat] do
+          a := combine a i.toUInt64 7 11 13
+        return a)
+      pure (value % 7 == seed % 7))
+    pure (if flag then combine count seed 11 13 17 else combine seed count 13 17 19)
+  else pure (seed * 13 + count)
+
+def rangeWordChooseHelperUnit (count seed : UInt64) : UInt64 :=
+  let bump : Unit → UInt64 → UInt64 := fun _ x => x + seed % 7
+  if seed % 2 == 0 then
+    let flag :=
+      let value := Id.run do
+        let mut a := bump () seed
+        for i in [:(bump () count % 17).toNat] do
+          a := a + bump () i.toUInt64 + 1
+        return a
+      value % 7 == seed % 7
+    if flag then bump () count else bump () seed * 3
+  else seed * 13 + count
+
+def rangeWordChooseHelperPunit (count seed : UInt64) : UInt64 :=
+  let bump : PUnit.{1} → UInt64 → UInt64 := fun _ x => x + seed % 7
+  if seed % 2 == 0 then
+    let flag :=
+      let value := Id.run do
+        let mut a := bump PUnit.unit seed
+        for i in [:count.toNat:2] do
+          a := a + bump PUnit.unit i.toUInt64 + 1
+        return a
+      value % 7 == seed % 7
+    if flag then bump PUnit.unit count else bump PUnit.unit seed * 3
+  else seed * 13 + count
+
+def rangeWordChooseHelperId (count seed : UInt64) : Id UInt64 := do
+  let bump : Id (Id UInt64) → Id UInt64 := fun x => Id.run (Id.run x) + seed % 7
+  let flip : Id (Id Bool) → Id Bool := fun b => !(Id.run (Id.run b))
+  if seed % 2 == 0 then
+    let flag ← (do
+      let value ← (do
+        let mut a := Id.run (bump seed)
+        for i in [:count.toNat] do
+          a := a + Id.run (bump i.toUInt64) + 1
+        return a)
+      pure (Id.run (flip (value % 7 == seed % 7))))
+    pure (if flag then Id.run (bump count) else Id.run (bump seed) * 3)
+  else pure (seed * 13 + count)
+
 def rangeBoolLetIdWord (count seed : UInt64) : Bool :=
   let start : Id UInt64 := seed + 7
   let value := Id.run do
@@ -11570,6 +11705,16 @@ run_elab do
       `ArithmeticModeTest.rangeWordChooseSetupContinue,
       `ArithmeticModeTest.rangeWordChooseSetupStride,
       `ArithmeticModeTest.rangeWordChooseSetupId,
+      `ArithmeticModeTest.rangeWordChooseHelperWord,
+      `ArithmeticModeTest.rangeWordChooseHelperBoolean,
+      `ArithmeticModeTest.rangeWordChooseHelperPredicate,
+      `ArithmeticModeTest.rangeWordChooseHelperBooleanPredicate,
+      `ArithmeticModeTest.rangeWordChooseHelperBinary,
+      `ArithmeticModeTest.rangeWordChooseHelperMany,
+      `ArithmeticModeTest.rangeWordChooseHelperManyFive,
+      `ArithmeticModeTest.rangeWordChooseHelperUnit,
+      `ArithmeticModeTest.rangeWordChooseHelperPunit,
+      `ArithmeticModeTest.rangeWordChooseHelperId,
       `ArithmeticModeTest.rangeBoolLetIdWord,
       `ArithmeticModeTest.rangeBoolLetIdWordLayers,
       `ArithmeticModeTest.rangeBoolLetIdFlag,
