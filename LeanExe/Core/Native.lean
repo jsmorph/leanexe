@@ -98,6 +98,11 @@ private partial def proveNativeEval : TacticM Unit := withMainContext do
     evalTactic (← `(tactic| rfl))
     evalTactic (← `(tactic| first | assumption | solve_by_elim))
     evalTactic (← `(tactic| rfl))
+  | some ``LeanExe.Core.Stmt.effect =>
+    evalTactic (← `(tactic| apply LeanExe.Core.Eval.effect))
+    evalTactic (← `(tactic| rfl))
+    evalTactic (← `(tactic| solve_by_elim))
+    evalTactic (← `(tactic| rfl))
   | _ => throwError "Native proof construction does not handle this statement: {statement}"
 
 elab_rules : tactic
@@ -112,4 +117,5 @@ elab_rules : tactic
   evalTactic (← `(tactic| first
     | rfl
     | simp_all [LeanExe.Wasm.ScalarDescriptor.Expr.eval,
-        LeanExe.Wasm.ScalarDescriptor.U64Op.apply]))
+        LeanExe.Wasm.ScalarDescriptor.U64Op.apply, StateT.bind, StateT.pure,
+        Bind.bind, Pure.pure]))
