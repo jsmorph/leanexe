@@ -566,16 +566,16 @@ binding controls. Prior tests pass 129,024 comparisons, 69,120 invalid-input che
 and 3,456 controls. Evidence is in
 [the saved-continuation archive](proofs/compiler/boolean-loop-saved-continuation-2026-09-27/README.md).
 
-Current capability: wrappers and saved results around conditional local calls.
-The source view and parser retain arbitrary nesting of standard Id.run, pure,
-metadata and saved-result lets around the conditional. Source, extraction, correctness, invariant, public compiler and WASM admission
-proofs pass. New tests pass 97,008 native/IR comparisons, 59,904 invalid-input
-checks and 2,304 binding controls. The complete proof and native Lean/WASM checks
-are next.
+Wrappers and saved results around conditional local Boolean loop calls are complete.
+The source-to-WASM theorem and nineteen audits pass. Native Lean/V8 agree on 609
+inputs across 28 declarations, including twenty-three ranges; eighteen prior
+modules retain identical bytes. New tests pass 97,008 native/IR comparisons,
+59,904 invalid-input checks and 2,304 binding controls. Prior tests pass 193,536
+comparisons, 122,112 invalid-input checks and 5,760 controls. Evidence is in
+[the wrapped conditional archive](proofs/compiler/boolean-loop-wrapped-conditional-2026-09-27/README.md).
 
-Next: wrappers and saved results around conditional calls, followed by
-retained instances and broader signatures. Conditional Id actions can elaborate
-to local continuation functions containing the loop; these need explicit coverage.
+Next: general Boolean loop-result bindings, followed by
+retained instances, broader signatures, and composition of multiple loops.
 Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean
 result conversion. Compound propositions combining Boolean equality with Boolean
