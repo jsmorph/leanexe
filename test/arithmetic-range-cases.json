@@ -813,5 +813,9 @@
   "rangeInnerHelperStep",
   "rangeInnerHelperExit",
   "rangeInnerHelperContinue",
-  "rangeInnerHelperTail"
+  "rangeInnerHelperTail",
+  "rangeInnerWrapperStep",
+  "rangeInnerWrapperExit",
+  "rangeInnerWrapperContinue",
+  "rangeInnerWrapperTail"
 ]

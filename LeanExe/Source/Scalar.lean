@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarBooleanWrapped
 import LeanExe.Source.ScalarBooleanScopeGuard
 import LeanExe.Source.ScalarBooleanHelper
 import LeanExe.Source.ScalarBooleanInput
@@ -215,6 +216,9 @@ inductive EvalWith : Lean.Expr → List Value → UInt64 → Prop where
       EvalWith (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) values value
+  | scopedWrapper (wrapped : BooleanWrapped)
+      (body : EvalWith (.app (.const ``Bool.toUInt64 []) wrapped.body) values (Bool.toUInt64 flag)) :
+      EvalWith (.app (.const ``Bool.toUInt64 []) wrapped.expr) values (Bool.toUInt64 (wrapped.wrapper.denote flag))
   | scopedPredicate (helper : BooleanHelper false)
       (function : ∀ x, EvalWith (.app (.const ``Bool.toUInt64 []) helper.body.expr)
         (.word x :: values) (Bool.toUInt64 (f x)))
@@ -443,6 +447,9 @@ inductive SupportedWith : List BindingKind → Lean.Expr → Prop where
       SupportedWith types (.letE name
         (.forallE typeName (.const ``Bool []) type.expr typeBi)
         (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep)
+  | scopedWrapper (wrapped : BooleanWrapped)
+      (body : SupportedWith types (.app (.const ``Bool.toUInt64 []) wrapped.body)) :
+      SupportedWith types (.app (.const ``Bool.toUInt64 []) wrapped.expr)
   | scopedPredicate (helper : BooleanHelper false)
       (function : SupportedWith (.word :: types) (.app (.const ``Bool.toUInt64 []) helper.body.expr))
       (body : SupportedWith (.predicateFunction :: types) (.app (.const ``Bool.toUInt64 []) helper.continuation)) :
@@ -503,7 +510,7 @@ theorem EvalWith.booleanConversion_result {argument : Lean.Expr} {values : List 
   generalize expressionEq : Lean.Expr.app (.const ``Bool.toUInt64 []) argument = expression at evaluation
   cases evaluation with
   | booleanWord | booleanBindingWord | wordBindingBooleanWord | booleanWrappedWord | booleanJunctionWord | booleanEqualityWord | booleanChoiceWord | booleanPropositionWord => exact ⟨_, rfl⟩
-  | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate => exact ⟨_, rfl⟩
+  | applyBooleanPredicateWord | scopedPredicate | scopedBooleanPredicate | scopedWrapper => exact ⟨_, rfl⟩
   | complement head _ => cases head <;> simp_all
   | extremum op _ _ => cases op <;> simp_all [Extremum.expr, Extremum.head]
   | manyApply call _ _ =>
@@ -831,6 +838,10 @@ theorem SupportedWith.evaluates {types : List BindingKind} {expr : Lean.Expr}
     let f := fun x => (total x).choose
     obtain ⟨value, hv⟩ := ihb (.booleanPredicateFunction f :: values) (by simp [Value.kind, typed])
     exact ⟨value, .letBooleanPredicateFn expression type (fun x => (total x).choose_spec) hv⟩
+  | scopedWrapper wrapped _ ih =>
+    obtain ⟨value, evaluated⟩ := ih values typed
+    obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+    exact ⟨(wrapped.wrapper.denote flag).toUInt64, .scopedWrapper wrapped evaluated⟩
   | scopedPredicate helper _ _ ihf ihb =>
     have total : ∀ x, ∃ flag : Bool,
         EvalWith (.app (.const ``Bool.toUInt64 []) helper.body.expr) (.word x :: values) flag.toUInt64 := by

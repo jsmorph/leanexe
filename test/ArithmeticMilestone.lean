@@ -8188,6 +8188,66 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def booleanInnerWrapperWord (x y : UInt64) : UInt64 :=
+  (Id.run do
+    let f := fun n : UInt64 => n == y
+    return f x || f 0).toUInt64 + x
+
+def booleanInnerWrapperBoolean (x y : UInt64) : UInt64 :=
+  if (Id.run do
+    let f := fun b : Bool => !b || y == 0
+    return f (x == y) && f (x == 0)) then x + 7 else y + 11
+
+def booleanInnerWrapperDependent (x y : UInt64) : UInt64 :=
+  if _h : (Id.run do
+    let f := fun n : UInt64 => n == y
+    return f x || f 0) then x - 3 else y * 7
+
+def booleanInnerWrapperNested (x y : UInt64) : UInt64 :=
+  (Id.run (pure (let f := fun n : UInt64 => n == y; f x || f 0) : Id (Id Bool))).toUInt64 + x
+
+def booleanInnerWrapperUnused (x y : UInt64) : UInt64 :=
+  (pure (let _unused := fun b : Bool => b && x != 0; x == y) : Id Bool).toUInt64 + y
+
+def booleanInnerWrapperIdResult (x y : UInt64) : UInt64 :=
+  (pure (let f := fun n : UInt64 => (pure (n == y) : Id Bool); f x || f 0) : Id (Id Bool)).toUInt64 + x
+
+def rangeInnerWrapperStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (Id.run do
+      let f := fun n : UInt64 => n % 2 == 0
+      return f a && f i.toUInt64) then
+      a := a + i.toUInt64 + 7
+    else a := a * 3 + 1
+  return a
+
+def rangeInnerWrapperExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if (Id.run do
+      let f := fun n : UInt64 => n % 7 == 0
+      return f a || f (i.toUInt64 + 1)) then break
+  return a
+
+def rangeInnerWrapperContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (Id.run do
+      let f := fun b : Bool => !b || a % 2 == 0
+      return f (i.toUInt64 % 3 == 0) && f (a == seed)) then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangeInnerWrapperTail (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+  return (Id.run do
+    let f := fun n : UInt64 => n == seed
+    return f a || f 0).toUInt64 + a
+
 def booleanInnerHelperWord (x y : UInt64) : UInt64 :=
   (let f := fun n : UInt64 => n == y; f x || f 0).toUInt64 + x
 
@@ -10865,6 +10925,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolRelationExit", (fun (x y : UInt64) => rangeBoolRelationExit x y)),
    ("rangeBoolRelationContinue", (fun (x y : UInt64) => rangeBoolRelationContinue x y)),
    ("rangeBoolRelationTail", (fun (x y : UInt64) => (rangeBoolRelationTail x y).toUInt64)),
+   ("rangeInnerWrapperStep", (fun (x y : UInt64) => rangeInnerWrapperStep x y)),
+   ("rangeInnerWrapperExit", (fun (x y : UInt64) => rangeInnerWrapperExit x y)),
+   ("rangeInnerWrapperContinue", (fun (x y : UInt64) => rangeInnerWrapperContinue x y)),
+   ("rangeInnerWrapperTail", (fun (x y : UInt64) => rangeInnerWrapperTail x y)),
    ("rangeInnerHelperStep", (fun (x y : UInt64) => rangeInnerHelperStep x y)),
    ("rangeInnerHelperExit", (fun (x y : UInt64) => rangeInnerHelperExit x y)),
    ("rangeInnerHelperContinue", (fun (x y : UInt64) => rangeInnerHelperContinue x y)),
@@ -11487,6 +11551,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("booleanPropRelationWords", (fun (x y : UInt64) => booleanPropRelationWords x y)),
    ("booleanPropRelationHelpers", (fun (x y : UInt64) => (booleanPropRelationHelpers x y).toUInt64)),
    ("booleanPropRelationLet", (fun (x y : UInt64) => booleanPropRelationLet x y)),
+   ("booleanInnerWrapperWord", (fun (x y : UInt64) => booleanInnerWrapperWord x y)),
+   ("booleanInnerWrapperBoolean", (fun (x y : UInt64) => booleanInnerWrapperBoolean x y)),
+   ("booleanInnerWrapperDependent", (fun (x y : UInt64) => booleanInnerWrapperDependent x y)),
+   ("booleanInnerWrapperNested", (fun (x y : UInt64) => booleanInnerWrapperNested x y)),
+   ("booleanInnerWrapperUnused", (fun (x y : UInt64) => booleanInnerWrapperUnused x y)),
+   ("booleanInnerWrapperIdResult", (fun (x y : UInt64) => booleanInnerWrapperIdResult x y)),
    ("booleanInnerHelperWord", (fun (x y : UInt64) => booleanInnerHelperWord x y)),
    ("booleanInnerHelperBoolean", (fun (x y : UInt64) => booleanInnerHelperBoolean x y)),
    ("booleanInnerHelperDependent", (fun (x y : UInt64) => booleanInnerHelperDependent x y)),
