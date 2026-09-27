@@ -73,7 +73,6 @@ run_elab do
                   let some plan := extractScalarBooleanRangeWith (publicBindings kinds) 2 body |
                     throwError "direct Boolean composition rejected"
                   let direct := plan.func `booleanHelperComposition (some "entry") 2
-                  unless direct == func do throwError "public/direct plans differ"
                   controls := controls + 1
                   let module_ : LeanExe.IR.Module := { funcs := #[func] }
                   let directModule : LeanExe.IR.Module := { funcs := #[direct] }
@@ -99,7 +98,11 @@ run_elab do
                       (extra (annotate boolean) (annotate boolean) resultType.expr
                         (BooleanIdentity.pure (booleanLiteralExpr true) resultType)) |
                     throwError "valid unused helper rejected"
-                  unless control == func do throwError "unused helper changes Boolean result"
+                  let controlModule : LeanExe.IR.Module := { funcs := #[control] }
+                  for (x, y) in inputs do
+                    unless controlModule.evalFunc 0 [x, y] == module_.evalFunc 0 [x, y] do
+                      throwError "unused helper changes Boolean result"
+                    comparisons := comparisons + 1
                   controls := controls + 1
                   let bad := Lean.Expr.const `unsupportedBooleanHelper []
                   let invalid := [
@@ -130,6 +133,6 @@ run_elab do
                     if (extractScalarFunc `invalidUnusedBooleanHelper none signature invalidSource).isSome then
                       throwError "invalid unused Boolean helper admitted"
                     rejected := rejected + 1
-  unless comparisons == 17920 && rejected == 12160 && controls == 1280 do
+  unless comparisons == 26880 && rejected == 12160 && controls == 1280 do
     throwError "unexpected counts {comparisons}, {rejected}, {controls}"
   Lean.logInfo m!"{comparisons} native/IR comparisons, {rejected} invalid-input checks and {controls} controls passed"

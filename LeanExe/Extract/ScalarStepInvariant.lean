@@ -101,6 +101,22 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     obtain ⟨value, hv, ht⟩ := compiled
     exact ihb ht (extend bindings (head := .scalar (.boolean value)) (scalar hv bindings))
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+  | chooseScope guard type condition _ _ iht ihe =>
+    rw [extractScalarStepWith_scopeBranch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨c, hc, t, ht, e, he, rfl⟩ := compiled
+    obtain ⟨tv, td⟩ := iht ht bindings htypes
+    obtain ⟨ev, ed⟩ := ihe he bindings htypes
+    exact ⟨choice .eq c (.u64 1) t.value e.value (scalar hc bindings) (literal 1) tv ev,
+      choice .eq c (.u64 1) t.done e.done (scalar hc bindings) (literal 1) td ed⟩
+  | chooseScopeDependent guard type tn fn ti fi condition _ _ iht ihe =>
+    rw [extractScalarStepWith_scopeDependentBranch] at compiled
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨c, hc, t, ht, e, he, rfl⟩ := compiled
+    obtain ⟨tv, td⟩ := iht ht (extend bindings (head := .scalar .unit) trivial) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+    obtain ⟨ev, ed⟩ := ihe he (extend bindings (head := .scalar .unit) trivial) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
+    exact ⟨choice .eq c (.u64 1) t.value e.value (scalar hc bindings) (literal 1) tv ev,
+      choice .eq c (.u64 1) t.done e.done (scalar hc bindings) (literal 1) td ed⟩
   | chooseBoolean guard type variables arguments _ _ iht ihe =>
     rw [extractScalarStepWith_booleanBranch (noBoolean :=
       hasBooleanPredicate_false (fun index member => scalarBooleanPredicate_none_of_predicate ((scalarStepBindings_typed htypes) ▸ variables.functions index member)))] at compiled

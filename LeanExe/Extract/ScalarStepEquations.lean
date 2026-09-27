@@ -3,6 +3,30 @@ import LeanExe.Extract.ScalarStep
 namespace LeanExe.Extract.Core
 open LeanExe.Source.Scalar
 
+theorem extractScalarStepWith_scopeBranch (locals : List ScalarStepBinding)
+    (guard : LeanExe.Source.Scalar.BooleanScopeGuard) (type : LeanExe.Source.Scalar.Step.ResultAnnotation)
+    (yes no : Lean.Expr) :
+    extractScalarStepWith locals (guard.branch (Step.resultType type) yes no) = (do
+      let condition ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) guard.operand
+      let t ← extractScalarStepWith locals yes
+      let e ← extractScalarStepWith locals no
+      pure { value := .ite (wordGuard condition) t.value e.value, done := .ite (wordGuard condition) t.done e.done }) := by
+  rw [LeanExe.Source.Scalar.BooleanScopeGuard.branch, extractScalarStepWith]
+  rw [scalarStepResultType_accepts, booleanScopeGuard_not_comparison,
+    booleanScopeGuard_not_compound, booleanScopeGuard_not_boolean, booleanScopeGuard_accepts]
+
+theorem extractScalarStepWith_scopeDependentBranch (locals : List ScalarStepBinding)
+    (guard : LeanExe.Source.Scalar.BooleanScopeGuard) (type : LeanExe.Source.Scalar.Step.ResultAnnotation)
+    (tn fn : Lean.Name) (ti fi : Lean.BinderInfo) (yes no : Lean.Expr) :
+    extractScalarStepWith locals (guard.dependentBranch (Step.resultType type) tn fn ti fi yes no) = (do
+      let condition ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) guard.operand
+      let t ← extractScalarStepWith (.scalar .unit :: locals) yes
+      let e ← extractScalarStepWith (.scalar .unit :: locals) no
+      pure { value := .ite (wordGuard condition) t.value e.value, done := .ite (wordGuard condition) t.done e.done }) := by
+  rw [LeanExe.Source.Scalar.BooleanScopeGuard.dependentBranch, extractScalarStepWith]
+  rw [scalarStepResultType_accepts, booleanScopeGuard_not_dependent,
+    booleanScopeGuard_not_booleanDependent, booleanScopeDependentGuard_accepts]
+
 theorem extractScalarStepWith_yield (locals : List ScalarStepBinding) (a : Lean.Expr) :
     extractScalarStepWith locals (Range.yieldValue a) = (do
       let value ← extractScalarExprWith (locals.map ScalarStepBinding.toScalar) a

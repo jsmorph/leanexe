@@ -86,6 +86,18 @@ theorem extractScalarStepWith_accepts {source : Lean.Expr}
     obtain ⟨target, ht⟩ := ihb (.scalar (.boolean value) :: locals)
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
     exact ⟨target, by rw [extractScalarStepWith_booleanBind]; simp [hv, ht]⟩
+  | chooseScope guard type condition _ _ iht ihe =>
+    obtain ⟨c, hc⟩ := scalar condition typed total
+    obtain ⟨t, ht⟩ := iht locals typed total
+    obtain ⟨e, he⟩ := ihe locals typed total
+    exact ⟨⟨.ite (wordGuard c) t.value e.value, .ite (wordGuard c) t.done e.done⟩, by
+      rw [extractScalarStepWith_scopeBranch]; simp [hc, ht, he]⟩
+  | chooseScopeDependent guard type tn fn ti fi condition _ _ iht ihe =>
+    obtain ⟨c, hc⟩ := scalar condition typed total
+    obtain ⟨t, ht⟩ := iht (.scalar .unit :: locals) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    obtain ⟨e, he⟩ := ihe (.scalar .unit :: locals) (by simp [ScalarStepBinding.kind, ScalarBinding.kind, typed]) (extend total trivial)
+    exact ⟨⟨.ite (wordGuard c) t.value e.value, .ite (wordGuard c) t.done e.done⟩, by
+      rw [extractScalarStepWith_scopeDependentBranch]; simp [hc, ht, he]⟩
   | chooseBoolean guard type variables arguments _ _ iht ihe =>
     obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := scalarStepBindings_total total) (locals.map ScalarStepBinding.toScalar) guard.value
       (fun operand _ => extractScalarExprWith (locals.map ScalarStepBinding.toScalar) operand)

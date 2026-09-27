@@ -8188,6 +8188,54 @@ def rangeBoolRelationTail (count seed : UInt64) : Id Bool := do
     return a)
   return decide ((value == seed) = (seed == 0) ∨ ¬ (value == 0))
 
+def booleanInnerHelperWord (x y : UInt64) : UInt64 :=
+  (let f := fun n : UInt64 => n == y; f x || f 0).toUInt64 + x
+
+def booleanInnerHelperBoolean (x y : UInt64) : UInt64 :=
+  if (let f := fun b : Bool => !b || y == 0; f (x == y) && f (x == 0)) then x + 7 else y + 11
+
+def booleanInnerHelperDependent (x y : UInt64) : UInt64 :=
+  if _h : (let f := fun n : UInt64 => n == y; f x || f 0) then x - 3 else y * 7
+
+def booleanInnerHelperNested (x y : UInt64) : UInt64 :=
+  (let f := fun n : UInt64 => n == y
+   let g := fun b : Bool => !b || x == 0
+   g (f x) && g (f 0)).toUInt64 + x
+
+def booleanInnerHelperUnused (x y : UInt64) : UInt64 :=
+  (let _unused := fun b : Bool => b && x != 0; x == y).toUInt64 + y
+
+def booleanInnerHelperIdResult (x y : UInt64) : UInt64 :=
+  (let f := fun n : UInt64 => (pure (n == y) : Id Bool); f x || f 0).toUInt64 + x
+
+def rangeInnerHelperStep (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let f := fun n : UInt64 => n % 2 == 0; f a && f i.toUInt64) then
+      a := a + i.toUInt64 + 7
+    else a := a * 3 + 1
+  return a
+
+def rangeInnerHelperExit (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+    if (let f := fun n : UInt64 => n % 7 == 0; f a || f (i.toUInt64 + 1)) then break
+  return a
+
+def rangeInnerHelperContinue (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    if (let f := fun b : Bool => !b || a % 2 == 0; f (i.toUInt64 % 3 == 0) && f (a == seed)) then continue
+    a := a * 3 + i.toUInt64 + 1
+  return a
+
+def rangeInnerHelperTail (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed
+  for i in [:count.toNat] do
+    a := a + i.toUInt64 + 1
+  return (let f := fun n : UInt64 => n == seed; f a || f 0).toUInt64 + a
+
 def booleanPropLetRelationWord (x y : UInt64) : UInt64 :=
   if (let b := x == y; b = (x == 0)) then x + 7 else y + 11
 
@@ -10817,6 +10865,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBoolRelationExit", (fun (x y : UInt64) => rangeBoolRelationExit x y)),
    ("rangeBoolRelationContinue", (fun (x y : UInt64) => rangeBoolRelationContinue x y)),
    ("rangeBoolRelationTail", (fun (x y : UInt64) => (rangeBoolRelationTail x y).toUInt64)),
+   ("rangeInnerHelperStep", (fun (x y : UInt64) => rangeInnerHelperStep x y)),
+   ("rangeInnerHelperExit", (fun (x y : UInt64) => rangeInnerHelperExit x y)),
+   ("rangeInnerHelperContinue", (fun (x y : UInt64) => rangeInnerHelperContinue x y)),
+   ("rangeInnerHelperTail", (fun (x y : UInt64) => rangeInnerHelperTail x y)),
    ("rangeBoolLetRelationStep", (fun (x y : UInt64) => rangeBoolLetRelationStep x y)),
    ("rangeBoolLetRelationExit", (fun (x y : UInt64) => rangeBoolLetRelationExit x y)),
    ("rangeBoolLetRelationContinue", (fun (x y : UInt64) => rangeBoolLetRelationContinue x y)),
@@ -11435,6 +11487,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("booleanPropRelationWords", (fun (x y : UInt64) => booleanPropRelationWords x y)),
    ("booleanPropRelationHelpers", (fun (x y : UInt64) => (booleanPropRelationHelpers x y).toUInt64)),
    ("booleanPropRelationLet", (fun (x y : UInt64) => booleanPropRelationLet x y)),
+   ("booleanInnerHelperWord", (fun (x y : UInt64) => booleanInnerHelperWord x y)),
+   ("booleanInnerHelperBoolean", (fun (x y : UInt64) => booleanInnerHelperBoolean x y)),
+   ("booleanInnerHelperDependent", (fun (x y : UInt64) => booleanInnerHelperDependent x y)),
+   ("booleanInnerHelperNested", (fun (x y : UInt64) => booleanInnerHelperNested x y)),
+   ("booleanInnerHelperUnused", (fun (x y : UInt64) => booleanInnerHelperUnused x y)),
+   ("booleanInnerHelperIdResult", (fun (x y : UInt64) => booleanInnerHelperIdResult x y)),
    ("booleanPropLetRelationWord", (fun (x y : UInt64) => booleanPropLetRelationWord x y)),
    ("booleanPropLetRelationDecision", (fun (x y : UInt64) => (booleanPropLetRelationDecision x y).toUInt64)),
    ("booleanPropLetRelationDependent", (fun (x y : UInt64) => (booleanPropLetRelationDependent x y).toUInt64)),

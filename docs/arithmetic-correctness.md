@@ -419,6 +419,14 @@ UInt64 values, may nest, preserve standard Id type annotations and check unused
 bindings. The substituted standard decision must match the retained condition.
 They compose with conjunctions, disjunctions and negation.
 
+Boolean-to-word conversions and word-valued conditions admit local UInt64-to-Bool
+and Bool-to-Bool declarations followed by repeated calls or nested predicate
+scopes. Each body uses the supported Boolean expression grammar, and each
+continuation is checked recursively. Captures, Id result annotations and unused
+helpers are checked. Ordinary and dependent conditions check their standard
+decisions and proof-branch domains. Loop step conditions use the same conversion,
+including break and continue. General Id.run-wrapped helper scopes remain open.
+
 Saved Boolean variables and their negations may appear inside propositional
 conjunctions and disjunctions, such as `flag ∧ x < y` or `x = y ∨ !flag`.
 Both sides may be saved flags, and mixed trees may nest and use propositional
