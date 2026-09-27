@@ -240,15 +240,13 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
           match booleanType? resultType with
           | none => none
           | some _ =>
-              match _boolean : booleanLocalOperands? value with
-              | none => none
-              | some expression => do
-                  let _ ← extractScalarExprWith (.word (.u64 0) :: locals)
-                    (.app (.const ``Bool.toUInt64 []) expression.expr)
-                  let function := ScalarBinding.predicateFunction fun argument =>
-                    extractScalarExprWith (.word argument :: locals)
-                      (.app (.const ``Bool.toUInt64 []) expression.expr)
-                  extractScalarExprWith (function :: locals) body
+              do
+                let _ ← extractScalarExprWith (.word (.u64 0) :: locals)
+                  (.app (.const ``Bool.toUInt64 []) value)
+                let function := ScalarBinding.predicateFunction fun argument =>
+                  extractScalarExprWith (.word argument :: locals)
+                    (.app (.const ``Bool.toUInt64 []) value)
+                extractScalarExprWith (function :: locals) body
       | some _ => do
           let _ ← extractScalarExprWith (.word (.u64 0) :: locals) value
           let function := ScalarBinding.function false fun argument =>
@@ -283,15 +281,13 @@ def extractScalarExprWith (locals : List ScalarBinding) : Lean.Expr → Option L
           match booleanType? resultType with
           | none => none
           | some _ =>
-              match _boolean : booleanLocalOperands? value with
-              | none => none
-              | some expression => do
-                  let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals)
-                    (.app (.const ``Bool.toUInt64 []) expression.expr)
-                  let function := ScalarBinding.booleanPredicateFunction fun argument =>
-                    extractScalarExprWith (.boolean argument :: locals)
-                      (.app (.const ``Bool.toUInt64 []) expression.expr)
-                  extractScalarExprWith (function :: locals) body
+              do
+                let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals)
+                  (.app (.const ``Bool.toUInt64 []) value)
+                let function := ScalarBinding.booleanPredicateFunction fun argument =>
+                  extractScalarExprWith (.boolean argument :: locals)
+                    (.app (.const ``Bool.toUInt64 []) value)
+                extractScalarExprWith (function :: locals) body
       | some _ => do
           let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals) value
           let function := ScalarBinding.booleanFunction fun argument =>
@@ -1440,34 +1436,32 @@ theorem extractScalarExprWith_letFn (locals : List ScalarBinding)
 
 theorem extractScalarExprWith_letPredicateFn (locals : List ScalarBinding)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
-    (type : LeanExe.Source.Scalar.BooleanType) (expression : LeanExe.Source.Scalar.BooleanLocal)
+    (type : LeanExe.Source.Scalar.BooleanType) (expression : Lean.Expr)
     (b : Lean.Expr) (nondep : Bool) :
     extractScalarExprWith locals (.letE name
       (.forallE typeName (.const ``UInt64 []) type.expr typeBi)
-      (.lam paramName (.const ``UInt64 []) expression.expr paramBi) b nondep) = (do
+      (.lam paramName (.const ``UInt64 []) expression paramBi) b nondep) = (do
         let _ ← extractScalarExprWith (.word (.u64 0) :: locals)
-          (.app (.const ``Bool.toUInt64 []) expression.expr)
+          (.app (.const ``Bool.toUInt64 []) expression)
         extractScalarExprWith (.predicateFunction (fun argument =>
           extractScalarExprWith (.word argument :: locals)
-            (.app (.const ``Bool.toUInt64 []) expression.expr)) :: locals) b) := by
-  rw [extractScalarExprWith, scalarResultType_boolean, booleanType_accepts,
-    booleanLocalOperands_expr]
+            (.app (.const ``Bool.toUInt64 []) expression)) :: locals) b) := by
+  rw [extractScalarExprWith, scalarResultType_boolean, booleanType_accepts]
   cases type <;> simp [LeanExe.Source.Scalar.BooleanType.expr]
 
 theorem extractScalarExprWith_letBooleanPredicateFn (locals : List ScalarBinding)
     (name typeName paramName : Lean.Name) (typeBi paramBi : Lean.BinderInfo)
-    (type : LeanExe.Source.Scalar.BooleanType) (expression : LeanExe.Source.Scalar.BooleanLocal)
+    (type : LeanExe.Source.Scalar.BooleanType) (expression : Lean.Expr)
     (b : Lean.Expr) (nondep : Bool) :
     extractScalarExprWith locals (.letE name
       (.forallE typeName (.const ``Bool []) type.expr typeBi)
-      (.lam paramName (.const ``Bool []) expression.expr paramBi) b nondep) = (do
+      (.lam paramName (.const ``Bool []) expression paramBi) b nondep) = (do
         let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals)
-          (.app (.const ``Bool.toUInt64 []) expression.expr)
+          (.app (.const ``Bool.toUInt64 []) expression)
         extractScalarExprWith (.booleanPredicateFunction (fun argument =>
           extractScalarExprWith (.boolean argument :: locals)
-            (.app (.const ``Bool.toUInt64 []) expression.expr)) :: locals) b) := by
-  rw [extractScalarExprWith, scalarResultType_boolean, booleanType_accepts,
-    booleanLocalOperands_expr]
+            (.app (.const ``Bool.toUInt64 []) expression)) :: locals) b) := by
+  rw [extractScalarExprWith, scalarResultType_boolean, booleanType_accepts]
 
 theorem extractScalarExprWith_predicateInput (locals : List ScalarBinding)
     (input : LeanExe.Source.Scalar.ResultType) (result : LeanExe.Source.Scalar.BooleanType)

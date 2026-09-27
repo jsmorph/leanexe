@@ -806,12 +806,15 @@ original probes pass unchanged. The native corpus contains 1507 declarations.
 Evidence is in [the general helper-body archive](proofs/compiler/boolean-helper-general-body-2026-09-27/README.md).
 
 Current capability: general predicate bodies before scalar word continuations.
-The original proposition-let probe still fails at the ordinary scalar helper
-parser, whose body is restricted to BooleanLocal. Generalize the two scalar
-predicate-binding rules and equations to raw bodies, preserving their recursive
-Boolean conversion proof and unused-body validation. Keep loop-step and outer
-helper declarations separate until their own end-to-end checks pass. Id input
-domains remain another recorded gap.
+The scalar binding rules and equations now retain raw Boolean bodies and preserve
+recursive conversion and unused-body validation. Source/core, scalar correctness
+and the public compiler proofs pass. Ten new probes and the original proposition
+let pass unchanged. New tests pass 88,884 comparisons, 95,152 invalid-input checks
+and 1,728 controls. Prior tests pass 66,888 comparisons, 48,400 invalid-input
+checks and 2,048 controls. The full compiler proof and WASM checks are next.
+The loop probes admit three forms through existing scalar paths; a Boolean-input
+helper before break and two outer-loop helper forms remain rejected. Id input
+domains in converted helper scopes remain another recorded gap.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

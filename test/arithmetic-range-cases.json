@@ -849,5 +849,9 @@
   "rangeHelperBodyStep",
   "rangeHelperBodyExit",
   "rangeHelperBodyContinue",
-  "rangeHelperBodyTail"
+  "rangeHelperBodyTail",
+  "rangePredicateBodyWordStep",
+  "rangePredicateBodyWordExit",
+  "rangePredicateBodyWordContinue",
+  "rangePredicateBodyWordTail"
 ]
