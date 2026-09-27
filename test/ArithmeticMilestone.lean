@@ -8330,6 +8330,69 @@ def rangeBooleanScopeApplicationTail (count seed : UInt64) : Id UInt64 := do
     f (a == 0) || f (seed == 0)) (pure (pure (a == seed)))).toUInt64
 
 
+def rangeBinaryBooleanLoopHelperDirect (count seed : UInt64) : Id Bool := do
+  let f := fun x y : UInt64 => x + 3 * y == seed
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    a := f i.toUInt64 a.toUInt64 || a
+  return a
+
+def rangeBinaryBooleanLoopHelperBound (count seed : UInt64) : Id Bool := do
+  let f := fun x y : UInt64 => x + 3 * y == seed
+  let n := if f count seed then count else count % 7
+  let mut a := seed != 0
+  for i in [:n.toNat] do
+    a := (f i.toUInt64 seed) != a
+  return a
+
+def rangeBinaryBooleanLoopHelperInitial (count seed : UInt64) : Id Bool := do
+  let f := fun x y : UInt64 => x + 3 * y == seed
+  let mut a := f seed count
+  for i in [:count.toNat] do
+    a := (i.toUInt64 == seed) || !a
+  return a
+
+def rangeBinaryBooleanLoopHelperExit (count seed : UInt64) : Id Bool := do
+  let f := fun x y : UInt64 => (x + 3 * y) % 7 == seed % 7
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    a := !a
+    if f i.toUInt64 a.toUInt64 || f seed i.toUInt64 then break
+  return a
+
+def rangeBinaryBooleanLoopHelperUnused (count seed : UInt64) : Id Bool := do
+  let _f := fun x y : UInt64 => x + 3 * y == seed
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    a := (i.toUInt64 == seed) || !a
+  return a
+
+def rangeBinaryBooleanLoopHelperWordTail (count seed : UInt64) : Id UInt64 := do
+  let f := fun x y : UInt64 => x + 3 * y == seed
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    a := (i.toUInt64 == seed) || !a
+  return a.toUInt64 + (f a.toUInt64 seed).toUInt64 + (f seed a.toUInt64).toUInt64
+
+def rangeBinaryBooleanLoopHelperCapture (count seed : UInt64) : Id Bool := do
+  let f := fun x y : UInt64 => (x + 3 * y) % 7 == seed % 7
+  let seed := seed + 1
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    a := (f i.toUInt64 seed) != a
+    if f a.toUInt64 seed then break
+  return a
+
+def rangeBinaryBooleanLoopHelperNested (count seed : UInt64) : Id Bool := do
+  let f := fun x y : UInt64 => x + 3 * y == seed
+  let g := fun x y : UInt64 => (pure (f y x || x == y) : Id Bool)
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    if Id.run (g i.toUInt64 a.toUInt64) then continue
+    a := (i.toUInt64 == seed) || !a
+  return a
+
+
 def rangeBinaryWordLoopHelperDirect (count seed : UInt64) : Id UInt64 := do
   let f := fun x y : UInt64 => x + 3 * y == seed
   let mut a := seed
@@ -12896,6 +12959,14 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBooleanScopeApplicationExit", (fun (x y : UInt64) => rangeBooleanScopeApplicationExit x y)),
    ("rangeBooleanScopeApplicationContinue", (fun (x y : UInt64) => rangeBooleanScopeApplicationContinue x y)),
    ("rangeBooleanScopeApplicationTail", (fun (x y : UInt64) => rangeBooleanScopeApplicationTail x y)),
+   ("rangeBinaryBooleanLoopHelperDirect", (fun (x y : UInt64) => (rangeBinaryBooleanLoopHelperDirect x y).toUInt64)),
+   ("rangeBinaryBooleanLoopHelperBound", (fun (x y : UInt64) => (rangeBinaryBooleanLoopHelperBound x y).toUInt64)),
+   ("rangeBinaryBooleanLoopHelperInitial", (fun (x y : UInt64) => (rangeBinaryBooleanLoopHelperInitial x y).toUInt64)),
+   ("rangeBinaryBooleanLoopHelperExit", (fun (x y : UInt64) => (rangeBinaryBooleanLoopHelperExit x y).toUInt64)),
+   ("rangeBinaryBooleanLoopHelperUnused", (fun (x y : UInt64) => (rangeBinaryBooleanLoopHelperUnused x y).toUInt64)),
+   ("rangeBinaryBooleanLoopHelperWordTail", (fun (x y : UInt64) => rangeBinaryBooleanLoopHelperWordTail x y)),
+   ("rangeBinaryBooleanLoopHelperCapture", (fun (x y : UInt64) => (rangeBinaryBooleanLoopHelperCapture x y).toUInt64)),
+   ("rangeBinaryBooleanLoopHelperNested", (fun (x y : UInt64) => (rangeBinaryBooleanLoopHelperNested x y).toUInt64)),
    ("rangeBinaryWordLoopHelperDirect", (fun (x y : UInt64) => rangeBinaryWordLoopHelperDirect x y)),
    ("rangeBinaryWordLoopHelperBound", (fun (x y : UInt64) => rangeBinaryWordLoopHelperBound x y)),
    ("rangeBinaryWordLoopHelperInitial", (fun (x y : UInt64) => rangeBinaryWordLoopHelperInitial x y)),
