@@ -44,6 +44,7 @@ import Project.Gpt2QuantizedLinearRows.ArtifactBytes
 import Project.Gpt2QuantizedGroupedRows.ArtifactBytes
 import Project.Gpt2QuantizedCached.ArtifactBytes
 import Project.Gpt2CachedStep.ArtifactBytes
+import Project.Beck.ArtifactBytes
 
 private def artifactBytes : String → Option ByteArray
   | "gcd" => some Project.Gcd.Artifact.artifactBytes
@@ -92,6 +93,7 @@ private def artifactBytes : String → Option ByteArray
   | "gpt2_quantized_grouped_rows" => some Project.Gpt2QuantizedGroupedRows.Artifact.artifactBytes
   | "gpt2_quantized_cached" => some Project.Gpt2QuantizedCached.Artifact.artifactBytes
   | "gpt2_cached_step" => some Project.Gpt2CachedStep.Artifact.artifactBytes
+  | "beck" => some Project.Beck.Artifact.artifactBytes
   | _ => none
 
 def main (args : List String) : IO UInt32 := do

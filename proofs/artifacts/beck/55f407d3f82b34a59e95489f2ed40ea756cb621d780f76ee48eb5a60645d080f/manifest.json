@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 3,
+  "case": "beck",
+  "sha256": "55f407d3f82b34a59e95489f2ed40ea756cb621d780f76ee48eb5a60645d080f",
+  "byteLength": 27068,
+  "binaryFormatVersion": 1,
+  "validationProfile": "leanexe-core-v1",
+  "artifactBytesModule": "Project.Beck.ArtifactBytes",
+  "artifactBytesDefinition": "Project.Beck.Artifact.artifactBytes",
+  "rawModuleDefinition": "Project.Beck.Artifact.Cache.raw",
+  "cachedProgramModule": "Project.Beck.Program",
+  "cachedProgramDefinition": "Project.Beck.module",
+  "specModule": "Project.Beck.Spec",
+  "proofTarget": "Project.Beck.ArtifactTranslation",
+  "identityTheorem": "Project.Beck.Artifact.decode_eq_cache",
+  "decodeTheorem": "Wasm.Binary.Proof.decode_sound",
+  "validationTheorem": "Wasm.Binary.Proof.validate_sound",
+  "cacheEqualityTheorem": "Project.Beck.Artifact.translation_cache_eq",
+  "artifactCorrectnessTheorem": "Project.Beck.Artifact.artifact_module_eq_cache",
+  "behaviorTheorems": [
+    "Project.Beck.Spec.compute_source_eq",
+    "Project.Beck.Spec.compute_correct"
+  ],
+  "leanToolchain": "leanprover/lean4:v4.34.0-rc2",
+  "talosRevision": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+  "verifierSourceSha256": "7be51aa0ecdd90a2a87bcb905f43a2b0679a63cbfda9eab41085bea01a98d666",
+  "hostAssumptions": [
+    "The caller supplies a represented UInt64 array with a valid membership encoding for at most six jobs and eight categories.",
+    "The allocator globals and free list satisfy Heap.At. The input array lies below the heap frontier and outside every free allocation.",
+    "OutputBudget reserves 223756952 bytes plus the caller's remaining budget below the 32-bit address limit. The selected page limit covers this frontier, is at most 65536, and does not exceed the modeled memory capacity.",
+    "Execution uses the pinned Talos semantics and its modeled memory-growth behavior. The native host, Wasmtime, operating system, and physical resource availability are outside the Lean theorem."
+  ]
+}
