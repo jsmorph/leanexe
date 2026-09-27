@@ -869,13 +869,21 @@ Prior tests pass 47,856 comparisons, 25,488 invalid-input checks and
 positive controls remain accepted. The corpus contains 1565 declarations.
 Evidence is in [the Boolean accumulator archive](proofs/compiler/boolean-accumulator-2026-09-27/README.md).
 
-Current capability: monadic scalar bindings inside Boolean loop steps. Source
-totality, exact annotation parsers, acceptance/support, correctness and invariants
-pass, followed by the public extractor. Two original direct-bind probes and
-eight native programs compile. The two original conditional-action probes still
-require step-returning local continuations; both remain fixed for the next
-extension. New syntax tests pass 13,824 comparisons and 7,488 invalid-input
-checks. The general source-to-WASM proof and independent V8 checks are next.
+Monadic word and Boolean bindings in Boolean loop steps are complete. Exact
+annotations and instances, source totality, extraction and the general
+source-to-WASM theorem pass with nineteen audits. Native Lean/V8 agree on 1,005
+inputs across 52 declarations; 44 prior modules retain identical bytes and
+0 changed. New tests pass 14,016 comparisons and 7,488 invalid-input checks.
+Prior tests pass 30,480 comparisons and 20,736 invalid-input checks. Two original
+probes are restored; two conditional-action probes still need local
+step-returning continuations. Eight new probes and six prior accumulator probes
+compile. The corpus contains 1573 declarations. Evidence is in
+[the Boolean step bind archive](proofs/compiler/boolean-step-bind-2026-09-27/README.md).
+
+Current capability: local functions returning Boolean loop steps. Add distinct
+word/Boolean step closures and lexical binding proofs, restore the fixed
+conditional-action probes unchanged, and complete WASM correctness before
+moving on to step-result bindings and further loop composition.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

@@ -1,0 +1,22 @@
+{
+  "names": [
+    "rangeBooleanStepBindWord",
+    "rangeBooleanStepBindBoolean",
+    "rangeBooleanStepBindChain",
+    "rangeBooleanStepBindUnusedWord",
+    "rangeBooleanStepBindUnusedBoolean",
+    "rangeBooleanStepBindCaptured",
+    "rangeBooleanStepBindContinue",
+    "rangeBooleanStepBindWordTail"
+  ],
+  "adapters": {
+    "rangeBooleanStepBindWord": "(fun (x y : UInt64) => (rangeBooleanStepBindWord x y).toUInt64)",
+    "rangeBooleanStepBindBoolean": "(fun (x y : UInt64) => (rangeBooleanStepBindBoolean x y).toUInt64)",
+    "rangeBooleanStepBindChain": "(fun (x y : UInt64) => (rangeBooleanStepBindChain x y).toUInt64)",
+    "rangeBooleanStepBindUnusedWord": "(fun (x y : UInt64) => (rangeBooleanStepBindUnusedWord x y).toUInt64)",
+    "rangeBooleanStepBindUnusedBoolean": "(fun (x y : UInt64) => (rangeBooleanStepBindUnusedBoolean x y).toUInt64)",
+    "rangeBooleanStepBindCaptured": "(fun (x y : UInt64) => (rangeBooleanStepBindCaptured x (y != 0)).toUInt64)",
+    "rangeBooleanStepBindContinue": "(fun (x y : UInt64) => (rangeBooleanStepBindContinue x y).toUInt64)",
+    "rangeBooleanStepBindWordTail": "(fun (x y : UInt64) => rangeBooleanStepBindWordTail x y)"
+  }
+}
