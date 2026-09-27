@@ -1,0 +1,28 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [13/17] Built LeanExe.Source.ScalarGuardLet (1.0s)
+⚠ [14/18] Built LeanExe.Source.ScalarBooleanPropositionLeaf (993ms)
+warning: LeanExe/Source/ScalarBooleanPropositionLeaf.lean:86:25: Variable name `minimum` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _minimum
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Source/ScalarBooleanPropositionLeaf.lean:94:25: Variable name `minimum` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _minimum
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+✔ [15/18] Built LeanExe.Source.ScalarGuard (1.1s)
+✔ [17/26] Built LeanExe.Source.ScalarGuardCondition (917ms)
+✔ [24/28] Built LeanExe.Source.ScalarGuardDecision (942ms)
+✔ [25/46] Built LeanExe.Source.ScalarCompoundGuard (916ms)
+✔ [45/50] Built LeanExe.Extract.ScalarBooleanPropositionLeaf (1.1s)
+✔ [47/50] Built LeanExe.Extract.ScalarGuardDecision (965ms)
+✔ [49/50] Built LeanExe.Extract.ScalarGuardLet (873ms)
+⚠ [50/50] Built LeanExe.Extract.ScalarGuardSyntax (1.4s)
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+Build completed successfully (50 jobs).

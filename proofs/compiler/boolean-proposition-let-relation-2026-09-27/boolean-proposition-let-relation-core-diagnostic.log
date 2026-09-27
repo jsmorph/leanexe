@@ -1,0 +1,65 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [15/118] Replayed LeanExe.Source.ScalarBooleanPropositionLeaf
+warning: LeanExe/Source/ScalarBooleanPropositionLeaf.lean:86:25: Variable name `minimum` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _minimum
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Source/ScalarBooleanPropositionLeaf.lean:94:25: Variable name `minimum` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _minimum
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+⚠ [63/118] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [118/118] Building LeanExe.Extract.ScalarExprCore (14s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExprCore.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.setup.json --json
+error: LeanExe/Extract/ScalarExprCore.lean:503:28: Unknown identifier `input.expr`
+error: LeanExe/Extract/ScalarExprCore.lean:503:73: Invalid field `form`: The environment does not contain `LeanExe.Source.Scalar.CompoundGuard.form`, so it is not possible to project the field `form` from an expression
+  guard
+of type `Source.Scalar.CompoundGuard`
+error: LeanExe/Extract/ScalarExprCore.lean:503:28: Unknown identifier `input.expr`
+error: LeanExe/Extract/ScalarExprCore.lean:503:73: Invalid field `form`: The environment does not contain `LeanExe.Source.Scalar.DecidedGuard.form`, so it is not possible to project the field `form` from an expression
+  guard
+of type `Source.Scalar.DecidedGuard`
+info: LeanExe/Extract/ScalarExprCore.lean:417:7: locals : List ScalarBinding
+type condition evidence : Lean.Expr
+binderName✝¹ : Lean.Name
+trueDomain onTrue : Lean.Expr
+binderInfo✝¹ : Lean.BinderInfo
+binderName✝ : Lean.Name
+falseDomain onFalse : Lean.Expr
+binderInfo✝ : Lean.BinderInfo
+guard : Source.Scalar.DecidedGuard
+_guard : dependentGuard? condition evidence trueDomain falseDomain = some guard
+operand : Lean.Expr
+_member : operand ∈ guard.tree.operands
+bounds : sizeOf operand < sizeOf condition + Source.Scalar.guardOperandOverhead
+⊢ sizeOf operand <
+    1 +
+        (1 + (1 + (1 + (1 + (1 + (2 + sizeOf "dite") + 4) + sizeOf type) + sizeOf condition) + sizeOf evidence) +
+          (1 + sizeOf binderName✝¹ + sizeOf trueDomain + sizeOf onTrue + sizeOf binderInfo✝¹)) +
+      (1 + sizeOf binderName✝ + sizeOf falseDomain + sizeOf onFalse + sizeOf binderInfo✝)
+info: LeanExe/Extract/ScalarExprCore.lean:499:7: locals : List ScalarBinding
+type condition evidence onTrue onFalse : Lean.Expr
+_h : comparison? condition evidence = none
+guard : Source.Scalar.CompoundGuard
+_g : compoundGuard? condition evidence = some guard
+operand : Lean.Expr
+_member : operand ∈ guard.tree.operands
+bounds : sizeOf operand < sizeOf condition + Source.Scalar.guardOperandOverhead
+⊢ sizeOf operand <
+    1 +
+        (1 + (1 + (1 + (1 + (1 + (2 + sizeOf "ite") + 4) + sizeOf type) + sizeOf condition) + sizeOf evidence) +
+          sizeOf onTrue) +
+      sizeOf onFalse
+warning: LeanExe/Extract/ScalarExprCore.lean:511:0: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarExprCore.lean:511:0: declaration uses `sorry`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExprCore
+error: build failed
