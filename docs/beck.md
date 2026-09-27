@@ -51,15 +51,17 @@ Every coordinate starts at zero with one shared positive denominator.  A categor
 
 The checked mathematics includes the protected-category counting argument, kernel existence, the category-release discrepancy bound, and a rounding-loop theorem over arbitrary finite job and category types.  The loop theorem requires a step preserving the cube, frozen coordinates, and protected sums while freezing an additional coordinate.  It then proves completion in at most the number of jobs.
 
-Checked arithmetic lemmas cover limb validity, normalization, addition, subtraction, comparison, multiplication, signed operations, bit extraction, and binary long division.  Signed exact division succeeds for every valid integer pair with a nonzero divisor dividing the numerator.  The complete echelon-reduction theorem proves successful execution for arbitrary valid integer matrices with compatible dimensions.  It derives exact divisibility from a bordered-minor invariant, preserves the rational kernel, and keeps the determinant scale nonzero.  Its selected-row history yields an integer kernel vector with the chosen free coordinate equal to the final determinant and every other free coordinate zero.  The complete backward loop recovers this vector, with pivot identifiers represented by `UInt64`.  The remaining direction proof connects the protected incidence matrix and the live-job search to these matrix theorems.
+Checked arithmetic lemmas cover limb validity, normalization, addition, subtraction, comparison, multiplication, signed operations, bit extraction, and binary long division.  Signed exact division succeeds for every valid integer pair with a nonzero divisor dividing the numerator.  The echelon-reduction proof derives exact divisibility from a bordered-minor invariant and preserves the rational kernel.  Its selected-row history supplies a determinant-scaled integer kernel vector, which the complete backward loop recovers.
+
+`ExactDirection.correct` proves successful execution of the complete source direction function.  It assumes binary memberships, the overlap bound, job identifiers representable by `UInt64`, and at least one undecided job.  It proves valid integer output of the correct size, a nonzero coordinate, zeros at frozen jobs, and zero direction sum in every protected category.  The proof covers protected-matrix construction, free-column availability, elimination, and back substitution.
 
 Focused checks run through the required Lean runner:
 
 ```sh
-tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.DirectionSolve Project.Beck.GenericLoop
+tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.ExactDirection Project.Beck.GenericLoop
 ```
 
-The remaining proof work covers protected-matrix construction and free-column availability, the implemented rounding step, source output correctness, resource bounds, and exact-binary execution.  The [development plan](../plans/beck.md) tracks those tasks.  Earlier bounded execution proofs are retired.
+The remaining proof work covers the implemented rounding step, source output correctness, resource bounds, and exact-binary execution.  The [development plan](../plans/beck.md) tracks those tasks.  Earlier bounded execution proofs are retired.
 
 ## Measurements
 

@@ -154,7 +154,33 @@ theorem integer_kernel (width rows : ℕ) (initial : Array Integer) (state : Ech
     dsimp only [rationalRow] at equation
     exact_mod_cast equation
 
+theorem zero_column_not_pivot (width rows : ℕ) (initial : Array Integer) (state : Echelon)
+    (invariant : Invariant width rows width initial state) (fits : width ≤ UInt64.size)
+    (column : Fin width)
+    (zero : ∀ row : Fin rows, value initial[row.val * width + column.val]! = 0) :
+    column.val.toUInt64 ∉ state.columns := by
+  let unit : Fin width → ℚ := fun col => if col = column then 1 else 0
+  have original : ∀ row : Fin rows, ∑ col, rationalRow width initial row.val col * unit col = 0 := by
+    intro row
+    simp [unit, rationalRow, zero row]
+  have reduced := (invariant.2 unit).mpr original
+  have columnZero (row : ℕ) (inside : row < rows) : value state.matrix[row * width + column.val]! = 0 := by
+    have equation := reduced ⟨row, inside⟩
+    have rational : (value state.matrix[row * width + column.val]! : ℚ) = 0 := by
+      simpa [unit, rationalRow] using equation
+    exact_mod_cast rational
+  intro member
+  obtain ⟨row, inside, equal⟩ := Array.mem_iff_getElem.mp member
+  have columnGet : (state.columns.toList.map UInt64.toNat)[row]! = column.val := by
+    rw [getElem!_pos (state.columns.toList.map UInt64.toNat) row (by simpa using inside),
+      List.getElem_map, Array.getElem_toList, equal]
+    simp [Nat.toUInt64, Nat.mod_eq_of_lt (lt_of_lt_of_le column.isLt fits)]
+  have nonzero := (invariant.1.pivots fits).nonzero row inside
+  rw [columnGet] at nonzero
+  exact nonzero (columnZero row (lt_of_lt_of_le inside invariant.1.rankBound))
+
 #print axioms echelon_correct
 #print axioms integer_kernel
+#print axioms zero_column_not_pivot
 
 end Project.Beck.EchelonProof
