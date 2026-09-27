@@ -462,5 +462,13 @@
   "rangeBooleanPredicateResultStep",
   "rangeBooleanPredicateResultCondition",
   "rangeBooleanPredicateResultOuter",
-  "rangeBooleanPredicateResultHelper"
+  "rangeBooleanPredicateResultHelper",
+  "rangeBooleanPredicateResultLocalBool",
+  "rangeBooleanPredicateResultLocalWord",
+  "rangeBooleanPredicateResultLocalNested",
+  "rangeBooleanPredicateResultLocalWrapped",
+  "rangeBooleanPredicateResultOuterBool",
+  "rangeBooleanPredicateResultOuterWord",
+  "rangeBooleanPredicateResultOuterNested",
+  "rangeBooleanPredicateResultOuterWrapped"
 ]

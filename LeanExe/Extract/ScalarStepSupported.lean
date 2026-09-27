@@ -195,10 +195,7 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
       subst value
       simp only [List.attach_map_val] at ihb
       exact .letPredicateFn boolean type
-        (by simpa [ScalarBinding.kind, scalarStepBindings_typed rfl] using extractBooleanLocalWith_variables hc)
-        (fun operand member => by
-          obtain ⟨target, found⟩ := extractBooleanLocalWith_operands hc operand member
-          simpa [ScalarBinding.kind, scalarStepBindings_typed rfl] using extractScalarExprWith_supported found)
+        (by simpa [ScalarBinding.kind, scalarStepBindings_typed rfl] using extractScalarExprWith_supported hc)
         (by simpa [ScalarStepBinding.kind, ScalarBinding.kind] using ihb boolean ht)
     · exact excludedBinary
   | case24 locals name typeName resultType typeBi paramName value paramBi body nondep excludedBinary noScalar type matched ih0 ihf ihb =>
@@ -334,10 +331,7 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
     subst value
     simp only [List.attach_map_val] at ihb
     exact .letBooleanPredicateFn boolean type
-      (by simpa [ScalarBinding.kind, scalarStepBindings_typed rfl] using extractBooleanLocalWith_variables hc)
-      (fun operand member => by
-        obtain ⟨target, found⟩ := extractBooleanLocalWith_operands hc operand member
-        simpa [ScalarBinding.kind, scalarStepBindings_typed rfl] using extractScalarExprWith_supported found)
+      (by simpa [ScalarBinding.kind, scalarStepBindings_typed rfl] using extractScalarExprWith_supported hc)
       (by simpa [ScalarStepBinding.kind, ScalarBinding.kind] using ihb boolean ht)
   | case45 locals name typeName resultType typeBi paramName value paramBi body nondep noScalar type matched ih0 ihf ihb =>
     have typeEq := scalarStepResultType_sound matched

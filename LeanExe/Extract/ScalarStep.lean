@@ -138,12 +138,11 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
               | none => none
               | some _ => do
                   let expression ← booleanLocalOperands? value
-                  let _ ← extractBooleanLocalWith (.word (.u64 0) :: locals.map ScalarStepBinding.toScalar) expression
-                    (fun operand _ => extractScalarExprWith (.word (.u64 0) :: locals.map ScalarStepBinding.toScalar) operand)
-                  let function := ScalarBinding.predicateFunction fun argument => do
-                    let condition ← extractBooleanLocalWith (.word argument :: locals.map ScalarStepBinding.toScalar) expression
-                      (fun operand _ => extractScalarExprWith (.word argument :: locals.map ScalarStepBinding.toScalar) operand)
-                    pure (guardWord condition)
+                  let _ ← extractScalarExprWith (.word (.u64 0) :: locals.map ScalarStepBinding.toScalar)
+                    (.app (.const ``Bool.toUInt64 []) expression.expr)
+                  let function := ScalarBinding.predicateFunction fun argument =>
+                    extractScalarExprWith (.word argument :: locals.map ScalarStepBinding.toScalar)
+                      (.app (.const ``Bool.toUInt64 []) expression.expr)
                   extractScalarStepWith (.scalar function :: locals) body
           | some _ => do
               let _ ← extractScalarStepWith (.scalar (.word (.u64 0)) :: locals) value
@@ -222,12 +221,11 @@ def extractScalarStepWith (locals : List ScalarStepBinding) : Lean.Expr → Opti
               | none => none
               | some _ => do
                   let expression ← booleanLocalOperands? value
-                  let _ ← extractBooleanLocalWith (.boolean (.u64 0) :: locals.map ScalarStepBinding.toScalar) expression
-                    (fun operand _ => extractScalarExprWith (.boolean (.u64 0) :: locals.map ScalarStepBinding.toScalar) operand)
-                  let function := ScalarBinding.booleanPredicateFunction fun argument => do
-                    let condition ← extractBooleanLocalWith (.boolean argument :: locals.map ScalarStepBinding.toScalar) expression
-                      (fun operand _ => extractScalarExprWith (.boolean argument :: locals.map ScalarStepBinding.toScalar) operand)
-                    pure (guardWord condition)
+                  let _ ← extractScalarExprWith (.boolean (.u64 0) :: locals.map ScalarStepBinding.toScalar)
+                    (.app (.const ``Bool.toUInt64 []) expression.expr)
+                  let function := ScalarBinding.booleanPredicateFunction fun argument =>
+                    extractScalarExprWith (.boolean argument :: locals.map ScalarStepBinding.toScalar)
+                      (.app (.const ``Bool.toUInt64 []) expression.expr)
                   extractScalarStepWith (.scalar function :: locals) body
           | some _ => do
               let _ ← extractScalarStepWith (.scalar (.boolean (.u64 0)) :: locals) value
