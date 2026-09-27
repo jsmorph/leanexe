@@ -968,5 +968,9 @@
   "rangeBooleanStepMatchContinue",
   "rangeBooleanStepMatchFlagInput",
   "rangeBooleanStepMatchWordTail",
-  "rangeBooleanStepMatchDispatcher"
+  "rangeBooleanStepMatchDispatcher",
+  "rangeBooleanHelperIdInputStep",
+  "rangeBooleanHelperIdInputExit",
+  "rangeBooleanHelperIdInputContinue",
+  "rangeBooleanHelperIdInputTail"
 ]
