@@ -1,0 +1,13 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [4/11] Built LeanExe.Source.ScalarValues (931ms)
+✖ [11/11] Building LeanExe.Extract.ScalarBindings (1.0s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBindings.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBindings.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBindings.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBindings.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBindings.setup.json --json
+error: LeanExe/Extract/ScalarBindings.lean:575:4: `LeanExe.Extract.Core.ScalarBinding.binaryPredicateFunction?` has already been declared
+error: LeanExe/Extract/ScalarBindings.lean:579:16: `LeanExe.Extract.Core.ScalarBinding.binaryPredicateFunction?_some` has already been declared
+error: LeanExe/Extract/ScalarBindings.lean:584:8: `LeanExe.Extract.Core.ScalarBindingsMatch.binaryPredicateFunction` has already been declared
+error: LeanExe/Extract/ScalarBindings.lean:597:8: `LeanExe.Extract.Core.scalarBinaryPredicateFunction_kind` has already been declared
+error: LeanExe/Extract/ScalarBindings.lean:606:8: `LeanExe.Extract.Core.scalarBinaryPredicateFunction_lookup` has already been declared
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBindings
+error: build failed

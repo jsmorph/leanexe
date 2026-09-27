@@ -1,0 +1,151 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [8/20] Built LeanExe.Source.ScalarPublicArgument (1.0s)
+✔ [15/20] Built LeanExe.Source.ScalarGuardLet (1.1s)
+✔ [17/20] Built LeanExe.Source.ScalarBooleanPropositionLeaf (1.1s)
+✔ [18/28] Built LeanExe.Source.ScalarGuard (1.2s)
+✔ [19/34] Built LeanExe.Source.ScalarGuardCondition (938ms)
+✔ [27/35] Built LeanExe.Source.ScalarGuardDecision (922ms)
+✔ [28/35] Built LeanExe.Source.ScalarDecidedGuard (969ms)
+✔ [29/35] Built LeanExe.Source.ScalarPropositionGuard (997ms)
+✔ [30/37] Built LeanExe.Source.ScalarBooleanLocal (1.6s)
+✔ [31/38] Built LeanExe.Source.ScalarBooleanEqualityForm (1.1s)
+✔ [32/38] Built LeanExe.Source.ScalarBooleanSelected (987ms)
+✔ [33/38] Built LeanExe.Source.ScalarBooleanScopeBinding (972ms)
+✔ [34/38] Built LeanExe.Source.ScalarBooleanRelated (974ms)
+✔ [35/38] Built LeanExe.Source.ScalarBooleanJoined (1.0s)
+✔ [36/39] Built LeanExe.Source.ScalarBooleanGuardedSelection (974ms)
+✔ [37/39] Built LeanExe.Source.ScalarBooleanRelationSelection (1.1s)
+✔ [38/40] Built LeanExe.Source.ScalarBooleanNegated (904ms)
+✔ [39/41] Built LeanExe.Source.ScalarBooleanWrapped (938ms)
+✔ [40/42] Built LeanExe.Source.ScalarBooleanHelper (912ms)
+✔ [41/63] Built LeanExe.Source.ScalarCompoundGuard (961ms)
+✔ [61/70] Built LeanExe.Extract.ScalarBooleanPropositionLeaf (1.1s)
+✔ [64/84] Built LeanExe.Extract.ScalarGuardDecision (997ms)
+✔ [66/84] Built LeanExe.Extract.ScalarGuardLet (1.1s)
+⚠ [69/85] Built LeanExe.Extract.ScalarGuardSyntax (1.5s)
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [70/85] Built LeanExe.Extract.ScalarBooleanRelation (1.1s)
+✔ [71/85] Built LeanExe.Extract.ScalarPropositionGuard (894ms)
+✔ [72/89] Built LeanExe.Source.ScalarBooleanScopeGuard (909ms)
+✔ [73/89] Built LeanExe.Extract.ScalarBooleanLocalParser (14s)
+✔ [74/90] Built LeanExe.Source.ScalarDependentBranch (898ms)
+✔ [75/90] Built LeanExe.Extract.ScalarBooleanLocalParserEquations (923ms)
+✔ [76/90] Built LeanExe.Extract.ScalarDependentBranch (918ms)
+✔ [77/90] Built LeanExe.Source.ScalarBooleanConditionInputs (965ms)
+✔ [78/91] Built LeanExe.Extract.ScalarBooleanLocalSyntax (1.6s)
+✔ [79/91] Built LeanExe.Source.ScalarBooleanChoiceForm (1.1s)
+✔ [80/91] Built LeanExe.Extract.ScalarBooleanLocalDependentBranch (904ms)
+✔ [81/93] Built LeanExe.Extract.ScalarBooleanHelper (982ms)
+✔ [82/93] Built LeanExe.Extract.ScalarBooleanScopeGuard (1.1s)
+✔ [83/93] Built LeanExe.Extract.ScalarBooleanWrapped (1.5s)
+✔ [84/93] Built LeanExe.Extract.ScalarGuardLowering (912ms)
+✔ [85/93] Built LeanExe.Extract.ScalarBooleanNegated (1.0s)
+✔ [86/95] Built LeanExe.Extract.ScalarBooleanWordNegation (884ms)
+✔ [87/95] Built LeanExe.Extract.ScalarBooleanJoined (1000ms)
+✔ [90/95] Built LeanExe.Extract.ScalarBooleanRelated (1.7s)
+✔ [91/99] Built LeanExe.Extract.ScalarBooleanSelected (1.5s)
+✔ [92/99] Built LeanExe.Extract.ScalarBooleanGuard (934ms)
+✔ [93/100] Built LeanExe.Extract.ScalarBooleanGuardedSelection (1.1s)
+✔ [94/100] Built LeanExe.Extract.ScalarBooleanChoiceLowering (894ms)
+✔ [95/103] Built LeanExe.Extract.ScalarBooleanPropositionLowering (939ms)
+✔ [96/103] Built LeanExe.Extract.ScalarBooleanRelationSelection (1.1s)
+✔ [97/103] Built LeanExe.Extract.ScalarBooleanFunctionLookup (882ms)
+✔ [98/103] Built LeanExe.Extract.ScalarGuard (1.1s)
+✔ [99/113] Built LeanExe.Extract.ScalarBooleanScopeBinding (2.6s)
+✔ [100/114] Built LeanExe.Extract.ScalarBooleanLetVariables (903ms)
+✔ [101/114] Built LeanExe.Source.ScalarBooleanLocalValues (941ms)
+✔ [102/114] Built LeanExe.Extract.ScalarBooleanLocalCore (1.1s)
+✔ [104/114] Built LeanExe.Extract.ScalarBooleanLocalFacts (1.5s)
+✔ [105/117] Built LeanExe.Extract.ScalarBooleanLocalAcceptance (1.5s)
+✔ [106/117] Built LeanExe.Extract.ScalarBooleanLocalCorrectness (1.0s)
+✔ [107/117] Built LeanExe.Source.ScalarBooleanAction (883ms)
+✔ [108/117] Built LeanExe.Extract.ScalarBooleanLocal (922ms)
+✔ [109/121] Built LeanExe.Extract.ScalarBooleanAction (869ms)
+✔ [110/122] Built LeanExe.Extract.ScalarBooleanLocalBindings (957ms)
+✔ [111/122] Built LeanExe.Extract.ScalarBooleanBind (924ms)
+✔ [113/124] Built LeanExe.Extract.ScalarBooleanPredicateBindings (916ms)
+✔ [116/126] Built LeanExe.Extract.ScalarBooleanPredicateJunction (923ms)
+✔ [120/128] Built LeanExe.Extract.ScalarBooleanPredicateEquality (942ms)
+✔ [123/130] Built LeanExe.Extract.ScalarBooleanPredicateChoice (903ms)
+✔ [126/130] Built LeanExe.Extract.ScalarBooleanCondition (965ms)
+✔ [128/131] Built LeanExe.Source.ScalarBooleanPropositionChoiceForm (928ms)
+✔ [130/140] Built LeanExe.Extract.ScalarBooleanPredicatePropositionChoice (897ms)
+✔ [138/140] Built LeanExe.Source.Scalar (1.8s)
+⚠ [139/140] Built LeanExe.Extract.ScalarExprCore (17s)
+warning: LeanExe/Extract/ScalarExprCore.lean:443:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:451:31: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:451:36: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:451:52: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:460:35: Variable name `name` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _name
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:460:40: Variable name `form` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _form
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:460:56: Variable name `type` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _type
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: LeanExe/Extract/ScalarExprCore.lean:529:12: Variable name `bounds` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _bounds
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+✖ [140/140] Building LeanExe.Extract.ScalarExpr (1.6s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExpr.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExpr.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExpr.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExpr.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExpr.setup.json --json
+warning: LeanExe/Extract/ScalarExpr.lean:190:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:191:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:206:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:207:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:238:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:239:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:253:54: `if_pos` has been deprecated: Use `ite_eq_left` instead
+warning: LeanExe/Extract/ScalarExpr.lean:254:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1119:54: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1229:63: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1525:47: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1547:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1569:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1591:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1613:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1637:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1661:18: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1679:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1698:46: `if_neg` has been deprecated: Use `ite_eq_right` instead
+warning: LeanExe/Extract/ScalarExpr.lean:1717:50: `if_neg` has been deprecated: Use `ite_eq_right` instead
+error: LeanExe/Extract/ScalarExpr.lean:1812:4: Alternative `binaryPredicateFunction` has not been provided
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExpr
+error: build failed

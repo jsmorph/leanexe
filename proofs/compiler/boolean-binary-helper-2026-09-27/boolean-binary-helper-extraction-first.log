@@ -1,0 +1,23 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [68/96] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✔ [95/141] Built LeanExe.Extract.ScalarBooleanBinaryHelper (1.3s)
+✖ [141/141] Building LeanExe.Extract.ScalarExprCore (15s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExprCore.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.setup.json --json
+error: LeanExe/Extract/ScalarExprCore.lean:639:28: Unknown identifier `input.expr`
+error: LeanExe/Extract/ScalarExprCore.lean:639:48: Unknown constant `guard.condition`
+error: LeanExe/Extract/ScalarExprCore.lean:639:67: Unknown constant `guard.form.inputs_size`
+error: LeanExe/Extract/ScalarExprCore.lean:639:28: Unknown identifier `input.expr`
+error: LeanExe/Extract/ScalarExprCore.lean:639:48: Unknown constant `guard.condition`
+error: LeanExe/Extract/ScalarExprCore.lean:639:67: Unknown constant `guard.form.inputs_size`
+error: LeanExe/Extract/ScalarExprCore.lean:639:28: Unknown identifier `input.expr`
+error: LeanExe/Extract/ScalarExprCore.lean:639:48: Unknown constant `guard.condition`
+error: LeanExe/Extract/ScalarExprCore.lean:639:67: Unknown constant `guard.form.inputs_size`
+warning: LeanExe/Extract/ScalarExprCore.lean:647:0: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarExprCore.lean:647:0: declaration uses `sorry`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExprCore
+error: build failed

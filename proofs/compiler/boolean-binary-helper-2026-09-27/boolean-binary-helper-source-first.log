@@ -1,0 +1,21 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✖ [63/63] Building LeanExe.Source.Scalar (1.5s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Source/Scalar.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/Scalar.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Source/Scalar.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/Scalar.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Source/Scalar.setup.json --json
+error: LeanExe/Source/Scalar.lean:629:6: unsolved goals
+case letBinaryPredicate
+argument : Lean.Expr
+values : List Value
+value : UInt64
+f✝ : UInt64 → UInt64 → Bool
+helper✝ : BooleanBinaryHelper
+expressionEq : (Lean.Expr.const `Bool.toUInt64 []).app argument = helper✝.expr
+function✝ :
+  ∀ (x y : UInt64),
+    EvalWith ((Lean.Expr.const `Bool.toUInt64 []).app helper✝.body) (Value.word y :: Value.word x :: values)
+      (f✝ x y).toUInt64
+body✝ : EvalWith helper✝.continuation (Value.binaryPredicateFunction f✝ :: values) value
+⊢ value = false.toUInt64 ∨ value = true.toUInt64
+Some required targets logged failures:
+- LeanExe.Source.Scalar
+error: build failed

@@ -1,0 +1,274 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [69/141] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [141/141] Building LeanExe.Extract.ScalarExprCore (15s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExprCore.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.setup.json --json
+error: LeanExe/Extract/ScalarExprCore.lean:526:0: unsolved goals
+locals : List ScalarBinding
+functionName firstTypeName secondTypeName : Lean.Name
+resultType : Lean.Expr
+secondTypeBi firstTypeBi : Lean.BinderInfo
+firstName secondName : Lean.Name
+value : Lean.Expr
+secondBi firstBi : Lean.BinderInfo
+body : Lean.Expr
+nondep : Bool
+_function :
+  scalarManyFunction?
+      (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+      (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi) =
+    none
+helper : Source.Scalar.BooleanBinaryHelper
+_binaryOuter :
+  booleanBinaryHelper?
+      (Lean.Expr.letE functionName
+        (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+          (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+        (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+          (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+        body nondep) =
+    some helper
+⊢ sizeOf helper.body <
+    1 + sizeOf functionName +
+            (1 + sizeOf firstTypeName + (1 + (2 + sizeOf "UInt64") + 1) +
+                (1 + sizeOf secondTypeName + (1 + (2 + sizeOf "UInt64") + 1) + sizeOf resultType +
+                  sizeOf secondTypeBi) +
+              sizeOf firstTypeBi) +
+          (1 + sizeOf firstName + (1 + (2 + sizeOf "UInt64") + 1) +
+              (1 + sizeOf secondName + (1 + (2 + sizeOf "UInt64") + 1) + sizeOf value + sizeOf secondBi) +
+            sizeOf firstBi) +
+        sizeOf body +
+      1
+
+locals : List ScalarBinding
+functionName firstTypeName secondTypeName : Lean.Name
+resultType : Lean.Expr
+secondTypeBi firstTypeBi : Lean.BinderInfo
+firstName secondName : Lean.Name
+value : Lean.Expr
+secondBi firstBi : Lean.BinderInfo
+body : Lean.Expr
+nondep : Bool
+_function :
+  scalarManyFunction?
+      (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+      (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi) =
+    none
+helper : Source.Scalar.BooleanBinaryHelper
+_binaryOuter :
+  booleanBinaryHelper?
+      (Lean.Expr.letE functionName
+        (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+          (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+        (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+          (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+        body nondep) =
+    some helper
+first second : IR.Expr
+⊢ sizeOf helper.body <
+    1 + sizeOf functionName +
+            (1 + sizeOf firstTypeName + (1 + (2 + sizeOf "UInt64") + 1) +
+                (1 + sizeOf secondTypeName + (1 + (2 + sizeOf "UInt64") + 1) + sizeOf resultType +
+                  sizeOf secondTypeBi) +
+              sizeOf firstTypeBi) +
+          (1 + sizeOf firstName + (1 + (2 + sizeOf "UInt64") + 1) +
+              (1 + sizeOf secondName + (1 + (2 + sizeOf "UInt64") + 1) + sizeOf value + sizeOf secondBi) +
+            sizeOf firstBi) +
+        sizeOf body +
+      1
+
+locals : List ScalarBinding
+functionName firstTypeName secondTypeName : Lean.Name
+resultType : Lean.Expr
+secondTypeBi firstTypeBi : Lean.BinderInfo
+firstName secondName : Lean.Name
+value : Lean.Expr
+secondBi firstBi : Lean.BinderInfo
+body : Lean.Expr
+nondep : Bool
+x✝ :
+  (y : (_ : List ScalarBinding) ×' Lean.Expr) →
+    InvImage (fun x1 x2 => x1 < x2) (fun x => PSigma.casesOn x fun locals a => scalarExtractionSize a) y
+        ⟨locals,
+          Lean.Expr.letE functionName
+            (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+              (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+            (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+              (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+            body nondep⟩ →
+      Option IR.Expr
+_function :
+  scalarManyFunction?
+      (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+      (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi) =
+    none
+helper : Source.Scalar.BooleanBinaryHelper
+_binaryOuter :
+  booleanBinaryHelper?
+      (Lean.Expr.letE functionName
+        (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+          (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+        (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+          (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+        body nondep) =
+    some helper
+function : ScalarBinding :=
+  ScalarBinding.binaryPredicateFunction fun first second =>
+    x✝
+      ⟨ScalarBinding.word second :: ScalarBinding.word first :: locals,
+        (Lean.Expr.const `Bool.toUInt64 []).app helper.body⟩
+      ⋯
+⊢ sizeOf helper.continuation <
+    1 + sizeOf functionName +
+            (1 + sizeOf firstTypeName + (1 + (2 + sizeOf "UInt64") + 1) +
+                (1 + sizeOf secondTypeName + (1 + (2 + sizeOf "UInt64") + 1) + sizeOf resultType +
+                  sizeOf secondTypeBi) +
+              sizeOf firstTypeBi) +
+          (1 + sizeOf firstName + (1 + (2 + sizeOf "UInt64") + 1) +
+              (1 + sizeOf secondName + (1 + (2 + sizeOf "UInt64") + 1) + sizeOf value + sizeOf secondBi) +
+            sizeOf firstBi) +
+        sizeOf body +
+      1
+info: LeanExe/Extract/ScalarExprCore.lean:644:6: locals : List ScalarBinding
+functionName firstTypeName secondTypeName : Lean.Name
+resultType : Lean.Expr
+secondTypeBi firstTypeBi : Lean.BinderInfo
+firstName secondName : Lean.Name
+value : Lean.Expr
+secondBi firstBi : Lean.BinderInfo
+body : Lean.Expr
+nondep : Bool
+_function :
+  scalarManyFunction?
+      (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+      (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi) =
+    none
+helper : Source.Scalar.BooleanBinaryHelper
+_binaryOuter :
+  booleanBinaryHelper?
+      (Lean.Expr.letE functionName
+        (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+          (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+        (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+          (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+        body nondep) =
+    some helper
+⊢ sizeOf helper.body <
+    1 + sizeOf functionName +
+            (1 + sizeOf firstTypeName + (1 + (2 + sizeOf "UInt64") + 1) +
+                (1 + sizeOf secondTypeName + (1 + (2 + sizeOf "UInt64") + 1) + sizeOf resultType +
+                  sizeOf secondTypeBi) +
+              sizeOf firstTypeBi) +
+          (1 + sizeOf firstName + (1 + (2 + sizeOf "UInt64") + 1) +
+              (1 + sizeOf secondName + (1 + (2 + sizeOf "UInt64") + 1) + sizeOf value + sizeOf secondBi) +
+            sizeOf firstBi) +
+        sizeOf body +
+      1
+locals : List ScalarBinding
+functionName firstTypeName secondTypeName : Lean.Name
+resultType : Lean.Expr
+secondTypeBi firstTypeBi : Lean.BinderInfo
+firstName secondName : Lean.Name
+value : Lean.Expr
+secondBi firstBi : Lean.BinderInfo
+body : Lean.Expr
+nondep : Bool
+_function :
+  scalarManyFunction?
+      (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+      (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi) =
+    none
+helper : Source.Scalar.BooleanBinaryHelper
+_binaryOuter :
+  booleanBinaryHelper?
+      (Lean.Expr.letE functionName
+        (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+          (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+        (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+          (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+        body nondep) =
+    some helper
+first second : IR.Expr
+⊢ sizeOf helper.body <
+    1 + sizeOf functionName +
+            (1 + sizeOf firstTypeName + (1 + (2 + sizeOf "UInt64") + 1) +
+                (1 + sizeOf secondTypeName + (1 + (2 + sizeOf "UInt64") + 1) + sizeOf resultType +
+                  sizeOf secondTypeBi) +
+              sizeOf firstTypeBi) +
+          (1 + sizeOf firstName + (1 + (2 + sizeOf "UInt64") + 1) +
+              (1 + sizeOf secondName + (1 + (2 + sizeOf "UInt64") + 1) + sizeOf value + sizeOf secondBi) +
+            sizeOf firstBi) +
+        sizeOf body +
+      1
+locals : List ScalarBinding
+functionName firstTypeName secondTypeName : Lean.Name
+resultType : Lean.Expr
+secondTypeBi firstTypeBi : Lean.BinderInfo
+firstName secondName : Lean.Name
+value : Lean.Expr
+secondBi firstBi : Lean.BinderInfo
+body : Lean.Expr
+nondep : Bool
+x✝ :
+  (y : (_ : List ScalarBinding) ×' Lean.Expr) →
+    InvImage (fun x1 x2 => x1 < x2) (fun x => PSigma.casesOn x fun locals a => scalarExtractionSize a) y
+        ⟨locals,
+          Lean.Expr.letE functionName
+            (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+              (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+            (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+              (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+            body nondep⟩ →
+      Option IR.Expr
+_function :
+  scalarManyFunction?
+      (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+      (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+        (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi) =
+    none
+helper : Source.Scalar.BooleanBinaryHelper
+_binaryOuter :
+  booleanBinaryHelper?
+      (Lean.Expr.letE functionName
+        (Lean.Expr.forallE firstTypeName (Lean.Expr.const `UInt64 [])
+          (Lean.Expr.forallE secondTypeName (Lean.Expr.const `UInt64 []) resultType secondTypeBi) firstTypeBi)
+        (Lean.Expr.lam firstName (Lean.Expr.const `UInt64 [])
+          (Lean.Expr.lam secondName (Lean.Expr.const `UInt64 []) value secondBi) firstBi)
+        body nondep) =
+    some helper
+function : ScalarBinding :=
+  ScalarBinding.binaryPredicateFunction fun first second =>
+    x✝
+      ⟨ScalarBinding.word second :: ScalarBinding.word first :: locals,
+        (Lean.Expr.const `Bool.toUInt64 []).app helper.body⟩
+      ⋯
+⊢ sizeOf helper.continuation <
+    1 + sizeOf functionName +
+            (1 + sizeOf firstTypeName + (1 + (2 + sizeOf "UInt64") + 1) +
+                (1 + sizeOf secondTypeName + (1 + (2 + sizeOf "UInt64") + 1) + sizeOf resultType +
+                  sizeOf secondTypeBi) +
+              sizeOf firstTypeBi) +
+          (1 + sizeOf firstName + (1 + (2 + sizeOf "UInt64") + 1) +
+              (1 + sizeOf secondName + (1 + (2 + sizeOf "UInt64") + 1) + sizeOf value + sizeOf secondBi) +
+            sizeOf firstBi) +
+        sizeOf body +
+      1
+warning: LeanExe/Extract/ScalarExprCore.lean:648:0: declaration uses `sorry`
+warning: LeanExe/Extract/ScalarExprCore.lean:648:0: declaration uses `sorry`
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExprCore
+error: build failed

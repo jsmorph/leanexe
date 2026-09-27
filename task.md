@@ -998,15 +998,23 @@ controls; prior tests pass 32,832 comparisons, 48,384 invalid inputs and 768 con
 All six fixed application probes compile. The corpus contains 1672 declarations.
 Evidence is in [the direct-application archive](proofs/compiler/boolean-scope-application-2026-09-27/README.md).
 
-Current capability: local two-argument UInt64-to-Bool helpers. Preserve the six
-fixed probes. Exact declaration/call syntax and recognizer/exclusion proofs pass
-87 targets. Distinct binary predicate kinds, lookup and semantic relations are
-proved. Source evaluation and totality pass 63 targets. Compiler dispatch,
-termination, extraction equations, evaluation correctness, acceptance, source
-reconstruction and IR invariants pass 143 targets. Loop/function integration,
-tests pass: 210 function targets, all six fixed source probes, 16,322 native/IR
-comparisons, 27,072 invalid-input checks and 288 admission controls. The complete
-WASM proof with 38 audits and independent engine checks remain before advancing.
+Local two-argument UInt64-to-Bool helpers are proved through WASM in scalar bodies
+and Boolean expression scopes, including scalar computations in loop steps and
+post-loop results. Source values and compiled bindings use a distinct binary
+predicate kind. Both arguments and unused helper bodies are checked, with captures,
+repeated calls, nested unary helpers and standard Id result annotations.
+The complete proof gate passes 3396 targets and all 38 audits. Native Lean/V8 agree
+on 1,403 inputs across 74 declarations; 63 prior modules retain identical bytes
+and 0 changed. New tests pass 16,322 comparisons, 27,072 invalid-input checks
+and 288 admission controls; prior tests pass 32,756 comparisons, 52,995 invalid
+inputs and 768 controls. All six fixed probes compile. The corpus contains 1683
+declarations. Evidence is in [the binary-helper archive](proofs/compiler/boolean-binary-helper-2026-09-27/README.md).
+
+Current capability: binary Boolean helper declarations in loop-step bodies.
+Five fixed probes already compile; the early-exit probe rejects. Preserve all six,
+reuse the scalar binary predicate kind, and prove
+step source evaluation, extraction and invariants before completing WASM proofs
+and independent engine checks. Keep declarations around whole loops separate.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
