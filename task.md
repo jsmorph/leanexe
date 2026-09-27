@@ -816,16 +816,24 @@ original nested proposition let pass unchanged; three prior controls still pass.
 The native corpus contains 1517 declarations. Evidence is in
 [the scalar helper-body archive](proofs/compiler/boolean-helper-word-body-2026-09-27/README.md).
 
-Current capability: general predicate bodies in dedicated loop-step bindings.
-The step binding rules, equations and parser retain raw bodies and use the
-checked scalar Boolean conversion, including unused-body validation. Source,
-acceptance, support, correctness and invariant proofs and the public compiler
-build pass. All ten fixed step probes pass unchanged. New tests pass 32,496
-comparisons, 19,584 invalid-input checks and 1,152 controls. Prior tests pass
-101,136 comparisons, 94,240 invalid-input checks and 1,104 controls. The full
-compiler proof and WASM checks are next. The original loop probe now admits all
-four step forms; both outer-loop declarations remain rejected. Id inputs inside
-converted helper scopes and other outer grammars remain separate gaps.
+General predicate bodies in loop-step bindings are complete. Source totality,
+acceptance/soundness, step correctness and invariants and the general
+source-to-WASM theorem pass with nineteen audits. Native Lean/V8 agree on 1,053
+inputs across 54 declarations, including 31 ranges; 44 prior modules retain
+identical bytes and 0 changed. New tests pass 32,496 comparisons, 19,584
+invalid-input checks and 1,152 controls. Prior tests pass 101,136 comparisons,
+94,240 invalid-input checks and 1,104 controls. Ten new probes and the
+original helper-before-break probe pass unchanged; three prior loop controls
+still pass. The native corpus contains 1527 declarations. Evidence is in
+[the step helper-body archive](proofs/compiler/boolean-helper-step-body-2026-09-27/README.md).
+
+Current capability: general predicate bodies before word-result loops.
+Ten fixed outer-prefix probes remain rejected. Generalize the RangeExit predicate
+binding rules and equations to raw bodies, preserving helper captures before the
+loop, unused-body validation, source totality and loop exit semantics. Test bounds,
+initial values, loop bodies and tails. Keep the BooleanRange continuation
+dispatcher and other outer grammars separate until their own proof and WASM
+checks pass. Id inputs in converted helper scopes remain another gap.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
