@@ -972,5 +972,9 @@
   "rangeBooleanHelperIdInputStep",
   "rangeBooleanHelperIdInputExit",
   "rangeBooleanHelperIdInputContinue",
-  "rangeBooleanHelperIdInputTail"
+  "rangeBooleanHelperIdInputTail",
+  "rangeBooleanScopeBindingStep",
+  "rangeBooleanScopeBindingExit",
+  "rangeBooleanScopeBindingContinue",
+  "rangeBooleanScopeBindingTail"
 ]
