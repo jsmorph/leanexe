@@ -943,9 +943,9 @@
       "entry": "LeanExe.Examples.Beck.compute",
       "leanModule": "Beck",
       "specTarget": "Project.Beck.Spec",
-      "behaviorTheorems": ["Project.Beck.Spec.compute_correct"],
+      "behaviorTheorems": ["Project.Beck.Spec.compute_source_eq", "Project.Beck.Spec.compute_correct"],
       "annotations": true,
-      "complete": false
+      "complete": true
     }
   ]
 }

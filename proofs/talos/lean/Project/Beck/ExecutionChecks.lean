@@ -31,6 +31,7 @@ import Project.Beck.ExecutionComputeInitial
 import Project.Beck.ExecutionComputeRounds
 import Project.Beck.ExecutionComputeCleanup
 import Project.Beck.ExecutionComputeAccepted
+import Project.Beck.ExecutionCompute
 import Project.Beck.ExecutionWordSetWindow
 import Project.Beck.ExecutionMatrix
 import Project.Beck.ExecutionScan
@@ -225,3 +226,5 @@ import Project.Beck.ExecutionMatrixPrefix
 #print axioms Project.Beck.Execution.computeOutput_exact
 #print axioms Project.Beck.Execution.computeCleanup_exact
 #print axioms Project.Beck.Execution.computeAccepted_exact
+#print axioms Project.Beck.Execution.computeBytes_bound
+#print axioms Project.Beck.Execution.compute_exact
