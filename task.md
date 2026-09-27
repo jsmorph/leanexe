@@ -1073,8 +1073,11 @@ single-loop execution proof (187 targets). Sequence-plan width, result-slot
 bounds, prefix preservation, composition and public-result execution pass
 177 targets. Extraction, complete admission, source reconstruction, captured
 binding preservation, source correctness and IR invariants pass 208 targets.
-Descriptor bounds and full WASM integration remain before the independent
-engine checks.
+All five word-result probes are accepted by the sequence extractor; the
+Boolean-result probe remains deferred. Descriptor admission, exact emission and
+scratch bounds pass 237 targets. Finite-loop trace termination and IR-to-WASM
+trace preservation pass 3069 cached targets. Whole-function composition, byte
+parsing, validation and public integration remain before independent engine checks.
 
 Next: Boolean-result loop combinations and nested loops. Broader helper
 signatures, heap values, floats, imports and global calls remain outside the
