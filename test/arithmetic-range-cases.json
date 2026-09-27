@@ -546,5 +546,15 @@
   "rangeBoolFlag",
   "rangeBoolIdInputs",
   "rangeBoolPure",
-  "rangeBoolRun"
+  "rangeBoolRun",
+  "rangeBoolBindYield",
+  "rangeBoolBindExit",
+  "rangeBoolBindContinue",
+  "rangeBoolBindStride",
+  "rangeBoolBindStepHelper",
+  "rangeBoolBindCapture",
+  "rangeBoolBindFlag",
+  "rangeBoolBindIdInputs",
+  "rangeBoolBindIdAction",
+  "rangeBoolBindNestedResult"
 ]

@@ -24,7 +24,18 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact tail
     · exact bindings binding member
-  | case2 source notLet wrapper body parsed ih => exact ih compiled
-  | case3 => contradiction
+  | case2 input output value name domain body binder =>
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
+    obtain ⟨⟨inputType, outputType⟩, types, before, hp, result, hr, rfl⟩ := compiled
+    obtain ⟨count, initial, step, done, tail⟩ :=
+      extractScalarRangeExitWith_invariant P literal binary choice accumulator index hp bindings
+    refine ⟨count, initial, step, done, ?_⟩
+    apply extractScalarExprWith_invariant P literal binary choice hr
+    intro binding member
+    rcases List.mem_cons.mp member with rfl | member
+    · exact tail
+    · exact bindings binding member
+  | case3 source notLet notBind wrapper body parsed ih => exact ih compiled
+  | case4 => contradiction
 
 end LeanExe.Extract.Core

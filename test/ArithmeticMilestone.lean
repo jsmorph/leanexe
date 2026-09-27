@@ -5128,6 +5128,96 @@ def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
   return a
 
+def rangeBoolBindYield (count seed : UInt64) : Id Bool := do
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+    return a)
+  return value == seed
+
+def rangeBoolBindExit (count seed : UInt64) : Id Bool := do
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if a % 7 == 0 then break
+    return a)
+  return value % 7 == 0
+
+def rangeBoolBindContinue (count seed : UInt64) : Id Bool := do
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if i.toUInt64 % 3 == 0 then continue
+      a := a + i.toUInt64
+    return a)
+  return value != seed && value != 0
+
+def rangeBoolBindStride (count seed : UInt64) : Id Bool := do
+  let value ← (do
+    let mut a := seed
+    for i in [1:count.toNat:3] do
+      a := a + i.toUInt64
+      if a % 5 == 0 then break
+    return a)
+  return decide (value ≤ seed)
+
+def rangeBoolBindStepHelper (count seed : UInt64) : Id Bool := do
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      let f := fun x : UInt64 => x + i.toUInt64 + seed
+      a := f a
+      if a % 11 == 0 then break
+    return a)
+  return value == 0 || value == seed
+
+def rangeBoolBindCapture (count seed : UInt64) : Id Bool := do
+  let value ← (do
+    let f := fun b : Bool => if b then seed + 7 else seed + 3
+    let mut a := f false
+    for i in [:count.toNat] do
+      a := a + f (i.toUInt64 % 2 == 0)
+    return a)
+  return value == seed || value == seed + 3
+
+def rangeBoolBindFlag (count : UInt64) (flag : Bool) : Id Bool := do
+  let value ← (do
+    let mut a := flag.toUInt64
+    for i in [:count.toNat] do
+      if flag && i.toUInt64 % 3 == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a)
+  return flag && value != 0
+
+def rangeBoolBindIdInputs (count : Id UInt64) (flag : Id Bool) : Id Bool := do
+  let value ← (do
+    let mut a := (Id.run flag).toUInt64
+    for i in [:(Id.run count).toNat] do
+      a := a + i.toUInt64 + 1
+      if Id.run flag && a % 7 == 0 then break
+    return a)
+  return Id.run flag || value == 0
+
+def rangeBoolBindIdAction (count seed : UInt64) : Id Bool := do
+  let value : Id UInt64 ← pure (Id.run do
+    let mut a := seed
+    for i in [:count.toNat] do
+      a := a + i.toUInt64 + 1
+      if a % 7 == 0 then break
+    return a)
+  return Id.run value != seed
+
+def rangeBoolBindNestedResult (count seed : UInt64) : Id (Id Bool) := do
+  let value ← (do
+    let mut a := seed
+    for i in [:count.toNat] do
+      if i.toUInt64 % 2 == 0 then continue
+      a := a + i.toUInt64 + 1
+    return a)
+  return pure (value == seed)
+
 def rangeBoolYield (count seed : UInt64) : Bool :=
   let value := Id.run do
     let mut a := seed
@@ -7577,6 +7667,16 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeLocalNotContinue", rangeLocalNotContinue),
    ("rangeLocalNotOuter", rangeLocalNotOuter),
    ("rangeLocalNotHelper", rangeLocalNotHelper),
+   ("rangeBoolBindYield", (fun (x y : UInt64) => (rangeBoolBindYield x y).toUInt64)),
+   ("rangeBoolBindExit", (fun (x y : UInt64) => (rangeBoolBindExit x y).toUInt64)),
+   ("rangeBoolBindContinue", (fun (x y : UInt64) => (rangeBoolBindContinue x y).toUInt64)),
+   ("rangeBoolBindStride", (fun (x y : UInt64) => (rangeBoolBindStride x y).toUInt64)),
+   ("rangeBoolBindStepHelper", (fun (x y : UInt64) => (rangeBoolBindStepHelper x y).toUInt64)),
+   ("rangeBoolBindCapture", (fun (x y : UInt64) => (rangeBoolBindCapture x y).toUInt64)),
+   ("rangeBoolBindFlag", (fun (x y : UInt64) => (rangeBoolBindFlag x (y != 0)).toUInt64)),
+   ("rangeBoolBindIdInputs", (fun (x y : UInt64) => (rangeBoolBindIdInputs x (y != 0)).toUInt64)),
+   ("rangeBoolBindIdAction", (fun (x y : UInt64) => (rangeBoolBindIdAction x y).toUInt64)),
+   ("rangeBoolBindNestedResult", (fun (x y : UInt64) => (rangeBoolBindNestedResult x y).toUInt64)),
    ("rangeBoolYield", (fun (x y : UInt64) => (rangeBoolYield x y).toUInt64)),
    ("rangeBoolExit", (fun (x y : UInt64) => (rangeBoolExit x y).toUInt64)),
    ("rangeBoolContinue", (fun (x y : UInt64) => (rangeBoolContinue x y).toUInt64)),

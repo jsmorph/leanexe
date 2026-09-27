@@ -387,8 +387,15 @@ eighteen ranges; eighteen prior modules retain identical bytes. New tests pass
 182,424 comparisons, 92,160 invalid-input checks and 6,816 controls. Evidence is in
 [the Boolean loop-result archive](proofs/compiler/public-boolean-loop-results-2026-09-27/README.md).
 
-Next: Boolean-result Id/do sequencing, retained instances and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
-Bool-to-Bool helpers, and allow compound helper-let bodies under public Boolean
+Current capability: standard Id monadic binding of a word loop into a Boolean
+continuation. Check exact input/continuation annotations and standard instances,
+then reuse the proved loop plan and Boolean result encoding. Source evaluation,
+acceptance, extraction correctness, public application and IR invariant checks
+pass. New tests pass 32,496 native/IR comparisons, 46,080 invalid-input checks and
+2,304 explicit-let controls. The complete compiler theorem and V8 checks are next.
+
+Next: scalar setup before Boolean loops, retained instances and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
+Bool-to-Bool helpers, and allow compound or pure-wrapped helper-let bodies under public Boolean
 result conversion. Compound propositions combining Boolean equality with Boolean
 truth guards also need coverage. Native fixtures exposed these grammar gaps. Full-dialect
 correctness remains unfinished.
