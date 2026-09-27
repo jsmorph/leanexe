@@ -8330,6 +8330,70 @@ def rangeBooleanScopeApplicationTail (count seed : UInt64) : Id UInt64 := do
     f (a == 0) || f (seed == 0)) (pure (pure (a == seed)))).toUInt64
 
 
+def rangeBinaryFlagStepHelperDirect (count seed : UInt64) : Id Bool := do
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    let f := fun x y : UInt64 => x + 3 * y == seed + a.toUInt64
+    a := f i.toUInt64 seed || a
+  return a
+
+def rangeBinaryFlagStepHelperExit (count seed : UInt64) : Id Bool := do
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    let f := fun x y : UInt64 => (x + 3 * y) % 7 == seed % 7
+    a := !a
+    if f i.toUInt64 seed || f seed i.toUInt64 then break
+  return a
+
+def rangeBinaryFlagStepHelperContinue (count seed : UInt64) : Id Bool := do
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    let f := fun x y : UInt64 => (pure (x + 3 * y == seed + a.toUInt64) : Id Bool)
+    if Id.run (f i.toUInt64 seed) then continue
+    a := !a
+  return a
+
+def rangeBinaryFlagStepHelperNested (count seed : UInt64) : Id Bool := do
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    let f := fun x y : UInt64 => x == y
+    let g := fun x y : UInt64 => f (x + 3 * y) seed || a
+    a := g i.toUInt64 seed && g seed i.toUInt64
+  return a
+
+def rangeBinaryFlagStepHelperUnused (count seed : UInt64) : Id Bool := do
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    let _f := fun x y : UInt64 => x + 3 * y == seed + a.toUInt64
+    a := (i.toUInt64 == seed) || !a
+  return a
+
+def rangeBinaryFlagStepHelperWordTail (count seed : UInt64) : Id UInt64 := do
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    let f := fun x y : UInt64 => x + 3 * y == seed + a.toUInt64
+    let saved := f i.toUInt64 seed
+    if f seed i.toUInt64 then a := saved else a := !saved
+  return a.toUInt64 * 3 + seed
+
+def rangeBinaryFlagStepHelperCapturedExit (count seed : UInt64) : Id Bool := do
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    let f := fun x y : UInt64 => (x + 3 * y) % 7 == (seed + a.toUInt64) % 7
+    a := !a
+    if f seed (i.toUInt64 + a.toUInt64) || f i.toUInt64 seed then break
+  return a
+
+def rangeBinaryFlagStepHelperChoice (count seed : UInt64) : Id Bool := do
+  let mut a := seed != 0
+  for i in [:count.toNat] do
+    let f := fun x y : UInt64 => x + 3 * y == seed + a.toUInt64
+    let first := if a then seed else i.toUInt64
+    a := if f first (seed + i.toUInt64) then !a else f seed i.toUInt64
+    if f a.toUInt64 first then break
+  return a
+
+
 def rangeBinaryStepHelperDirect (count seed : UInt64) : Id UInt64 := do
   let mut a := seed
   for i in [:count.toNat] do
@@ -12716,6 +12780,14 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeBooleanScopeApplicationExit", (fun (x y : UInt64) => rangeBooleanScopeApplicationExit x y)),
    ("rangeBooleanScopeApplicationContinue", (fun (x y : UInt64) => rangeBooleanScopeApplicationContinue x y)),
    ("rangeBooleanScopeApplicationTail", (fun (x y : UInt64) => rangeBooleanScopeApplicationTail x y)),
+   ("rangeBinaryFlagStepHelperDirect", (fun (x y : UInt64) => (rangeBinaryFlagStepHelperDirect x y).toUInt64)),
+   ("rangeBinaryFlagStepHelperExit", (fun (x y : UInt64) => (rangeBinaryFlagStepHelperExit x y).toUInt64)),
+   ("rangeBinaryFlagStepHelperContinue", (fun (x y : UInt64) => (rangeBinaryFlagStepHelperContinue x y).toUInt64)),
+   ("rangeBinaryFlagStepHelperNested", (fun (x y : UInt64) => (rangeBinaryFlagStepHelperNested x y).toUInt64)),
+   ("rangeBinaryFlagStepHelperUnused", (fun (x y : UInt64) => (rangeBinaryFlagStepHelperUnused x y).toUInt64)),
+   ("rangeBinaryFlagStepHelperWordTail", (fun (x y : UInt64) => rangeBinaryFlagStepHelperWordTail x y)),
+   ("rangeBinaryFlagStepHelperCapturedExit", (fun (x y : UInt64) => (rangeBinaryFlagStepHelperCapturedExit x y).toUInt64)),
+   ("rangeBinaryFlagStepHelperChoice", (fun (x y : UInt64) => (rangeBinaryFlagStepHelperChoice x y).toUInt64)),
    ("rangeBinaryStepHelperDirect", (fun (x y : UInt64) => rangeBinaryStepHelperDirect x y)),
    ("rangeBinaryStepHelperExit", (fun (x y : UInt64) => rangeBinaryStepHelperExit x y)),
    ("rangeBinaryStepHelperContinue", (fun (x y : UInt64) => rangeBinaryStepHelperContinue x y)),

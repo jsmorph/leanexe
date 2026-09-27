@@ -1022,11 +1022,15 @@ before the extension. The corpus contains 1691 declarations. Evidence is in
 [the word-step archive](proofs/compiler/boolean-binary-step-helper-2026-09-27/README.md).
 
 Current capability: binary Boolean helper declarations in Boolean-accumulator
-loop steps. All six fixed probes initially reject. Source evaluation and totality
-pass 69 targets. Extraction, termination, exact equations, evaluation correctness,
-complete acceptance, source reconstruction and IR invariants pass 153 targets.
-Function integration, native/syntax tests, complete WASM proofs and independent
-engine checks remain. Declarations around whole loops remain separate.
+loop steps. Source totality, extraction, correctness, complete acceptance, source
+reconstruction and IR invariants pass; function integration passes 210 targets.
+All six fixed probes now compile. Focused tests pass 9,408 native/IR comparisons,
+17,664 invalid-input checks and 384 admission controls. Eight native fixtures are
+registered; the full WASM proof gate and independent V8 run are next.
+An additional branch-command fixture exposed a generated Unit-to-Bool-to-Boolean-
+step continuation. Its unchanged failing declaration is preserved for the next
+increment; the current fixture tests the equivalent conditional assignment.
+Declarations around whole loops remain separate.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

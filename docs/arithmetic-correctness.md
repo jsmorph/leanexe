@@ -469,7 +469,7 @@ retain standard Id layers. Helpers can capture outer values, call unary predicat
 and be called repeatedly. Both arguments and unused helper bodies are checked.
 Binary predicates have a distinct function kind, so treating their results as
 unconverted words is rejected. Binary predicate declarations also scope complete
-word-accumulator loop steps, including early exits, saved Boolean results and
+word-accumulator and Boolean-accumulator loop steps, including early exits, saved Boolean results and
 nested binary predicates. The body captures the current loop environment.
 Unsupported bodies are rejected even when the helper is unused or the range is
 empty.
