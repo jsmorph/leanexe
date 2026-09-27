@@ -90,21 +90,24 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
       · exact argumentValid
       · exact bindings binding member
     · exact bindings binding member
-  | case18 => contradiction
+  | case18 locals name typeName resultType typeBi paramName input value paramBi body nondep ih =>
+    exact ih compiled bindings
   | case19 => contradiction
-  | case20 locals input output value name domain body binder notWord types parsed bound matched ih =>
+  | case20 => contradiction
+  | case21 => contradiction
+  | case22 locals input output value name domain body binder notWord types parsed bound matched ih =>
     apply ih compiled
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · exact extractScalarExprWith_invariant P literal binary choice matched bindings
     · exact bindings binding member
-  | case21 locals input output value name domain body binder types parsed bound matched ih =>
+  | case23 locals input output value name domain body binder types parsed bound matched ih =>
     apply ih compiled
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
     · exact extractScalarExprWith_invariant P literal binary choice matched bindings
     · exact bindings binding member
-  | case22 locals input output value name domain body binder types parsed notPure =>
+  | case24 locals input output value name domain body binder types parsed notPure =>
     simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at compiled
     obtain ⟨before, hp, result, hr, rfl⟩ := compiled
     obtain ⟨count, initial, step, done, tail⟩ :=
@@ -115,7 +118,7 @@ theorem extractScalarBooleanRangeWith_invariant (P : LeanExe.IR.Expr → Prop)
     rcases List.mem_cons.mp member with rfl | member
     · exact tail
     · exact bindings binding member
-  | case23 locals source notLet notFlag notIdLet notFunction notBooleanFunction notBind wrapper body parsed ih => exact ih compiled bindings
-  | case24 => contradiction
+  | case25 locals source notLet notFlag notIdLet notFunction notBooleanFunction notIdFunction notBind wrapper body parsed ih => exact ih compiled bindings
+  | case26 => contradiction
 
 end LeanExe.Extract.Core

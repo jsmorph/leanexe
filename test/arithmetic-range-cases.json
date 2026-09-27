@@ -616,5 +616,15 @@
   "rangeBoolBooleanPredicateHelperFlag",
   "rangeBoolBooleanPredicateHelperNested",
   "rangeBoolBooleanPredicateHelperStride",
-  "rangeBoolBooleanPredicateHelperId"
+  "rangeBoolBooleanPredicateHelperId",
+  "rangeBoolHelperInputIdWord",
+  "rangeBoolHelperInputIdBooleanWord",
+  "rangeBoolHelperInputIdPredicate",
+  "rangeBoolHelperInputIdBooleanPredicate",
+  "rangeBoolHelperInputIdRepeated",
+  "rangeBoolHelperInputIdBound",
+  "rangeBoolHelperInputIdExit",
+  "rangeBoolHelperInputIdContinue",
+  "rangeBoolHelperInputIdMixed",
+  "rangeBoolHelperInputIdShadow"
 ]
