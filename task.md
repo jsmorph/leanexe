@@ -304,12 +304,15 @@ modules retain identical bytes. New tests pass 96,948 native/IR comparisons,
 comparisons, 63,969 invalid-input checks and 2,368 controls. Evidence is in
 [the decision-let archive](proofs/compiler/decision-let-2026-09-26/README.md).
 
-Standalone propositional negation of local Boolean values passes source/parser
-reconstruction, lowering, scalar and loop correctness, and both IR invariant
-checks. New tests pass 33,780 native/IR comparisons, 23,040 invalid-input checks
-and 480 controls. Prior tests pass 200,284 comparisons, 114,689 rejections and
-4,704 controls. The full source-to-WASM and independent engine checks are pending.
-Direct Boolean truth keeps its separate parser.
+Standalone propositional negation of local Boolean values is complete. Saved
+flags, helper calls and compound Boolean expressions retain exact decision
+syntax through scalar/loop conditions, Boolean-result choices and saved decisions.
+The general source-to-WASM theorem and eighteen audits pass. Native Lean/V8 agree
+on 537 inputs across 30 declarations, including thirteen ranges; twenty prior
+modules retain identical bytes. New tests pass 33,780 native/IR comparisons,
+23,040 invalid-input checks and 480 controls. Prior tests pass 200,284 comparisons,
+114,689 invalid-input checks and 4,704 controls. Evidence is in
+[the standalone-negation archive](proofs/compiler/local-not-2026-09-26/README.md).
 
 Next: retained instance and Bool-parameter Id wrappers, and broader signatures. Full-dialect correctness
 remains unfinished.
