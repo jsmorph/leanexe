@@ -3032,6 +3032,16 @@ def optionForByteArrayState : Option ByteOutputState := do
     state := { count := state.count + 1, bytes := state.bytes.push byte }
   return state
 
+def nestedArrayUpdateLoop (rows columns : Nat) : Array UInt64 := Id.run do
+  let mut output := Array.replicate (columns + 1) (0 : UInt64)
+  for row in [:rows] do
+    let mut carry := row.toUInt64
+    for column in [:columns] do
+      carry := carry + output[column]! + 1
+      output := output.set! column carry
+    output := output.set! columns carry
+  return output
+
 def nestedOptionArrayLoop (rows columns stop : Nat) : Option (Array UInt64) := do
   let mut output := #[]
   for row in [:rows] do
