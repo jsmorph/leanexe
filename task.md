@@ -868,8 +868,11 @@ separate open capabilities. The Boolean iteration encoding and native strided
 iteration theorems now pass. A source step grammar with yield/done, checked
 choices, standard Id wrappers, metadata and scalar word/Boolean lets has a
 proved totality theorem. Six new fixed probes remain rejected by the public
-compiler. Step extraction, range extraction, public integration and WASM proofs
-are still required; no Boolean-accumulator compilation claim is made yet.
+compiler. Step extraction and range extraction now have acceptance, support, correctness
+and invariant proofs. The range proof connects native Boolean iteration to the
+existing word loop plan with normalized accumulator reads. Public integration
+and WASM proofs are still required; no public Boolean-accumulator compilation
+claim is made yet.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
