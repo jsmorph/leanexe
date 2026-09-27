@@ -12,6 +12,11 @@ metadata and satisfy its readiness and validity premises.
 
 Checked in Lean:
 
+- `LeanExe.Core.Extract`: proof-producing compilation of ordinary UInt64 Lean
+  definitions, including let, conditionals, named helpers and genuine recursion.
+  Generated native certificates pass for Euclidean gcd, non-tail recursion with
+  two calls per step, arithmetic with a local let, and calls combining them.
+
 - `LeanExe.Core.Program`: source control, recursive calls, and explicit primitive
   effects with native UInt64 operations.
 - `Project.Core.Correctness`: preservation of every successful core evaluation
@@ -34,9 +39,7 @@ Checked in Lean:
 
 Remaining work:
 
-- Finish the proof-producing native frontend. Generated certificates for ordinary
-  Euclidean recursion and a function with two recursive calls pass Lean. A
-  conditional using a local let still needs its proof-generation fix.
+- Connect native stateful programs and actual ordinary Lean loops to the frontend.
 - Connect native data and memory operations, including growth, to the frontend.
 - Check representative recursive and looping programs through the complete path.
 
