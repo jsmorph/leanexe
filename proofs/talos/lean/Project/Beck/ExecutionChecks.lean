@@ -13,6 +13,7 @@ import Project.Beck.ExecutionDirectionVector
 import Project.Beck.ExecutionDirectionStep
 import Project.Beck.ExecutionDirectionLoop
 import Project.Beck.ExecutionDirectionAssembly
+import Project.Beck.ExecutionDirectionSupported
 import Project.Beck.ExecutionWordSetWindow
 import Project.Beck.ExecutionMatrix
 import Project.Beck.ExecutionScan
@@ -160,3 +161,7 @@ import Project.Beck.ExecutionMatrixPrefix
 #print axioms Project.Beck.Execution.keptRelease_exact
 #print axioms Project.Beck.Execution.directionFinish_exact
 #print axioms Project.Beck.Execution.directionAssembly_exact
+#print axioms Project.Beck.Execution.releasePlan_exact
+#print axioms Project.Beck.Execution.directionCleanup_exact
+#print axioms Project.Beck.Execution.direction_exact
+#print axioms Project.Beck.Execution.direction_supported_exact
