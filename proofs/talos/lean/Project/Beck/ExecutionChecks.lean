@@ -3,6 +3,7 @@ import Project.Beck.ExecutionExtendColumnLoop
 import Project.Beck.ExecutionExtendOuterLoop
 import Project.Beck.ExecutionExtend
 import Project.Beck.ExecutionFindBasisGuard
+import Project.Beck.ExecutionFindBasis
 import Project.Beck.ExecutionMatrix
 import Project.Beck.ExecutionScan
 import Project.Beck.ExecutionContains
@@ -126,3 +127,4 @@ import Project.Beck.ExecutionMatrixPrefix
 #print axioms Project.Beck.Execution.extend_exact
 #print axioms Project.Beck.Execution.findBasisStep_exact
 #print axioms Project.Beck.Execution.findBasisGuard_exact
+#print axioms Project.Beck.Execution.findBasis_exact

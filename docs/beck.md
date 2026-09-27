@@ -63,7 +63,9 @@ The protected-matrix theorem covers initial allocation, category selection, all 
 
 The bordered-minor candidate theorem covers duplicate-index checks, row and column extension, determinant calculation, and the optional basis result.  It preserves the caller’s protected memory and returns fresh, disjoint owned index arrays when it succeeds.  Its budget is `208 + determinantBytes(k+1)` for an original minor of order `k`, assuming the extended minor meets the determinant theorem’s bounds.
 
-The complete basis-extension theorem proves the nested row and column search, termination, and first-success selection.  It derives the candidate bounds from a well-formed basis and returns either the unchanged basis fields or fresh, disjoint owned index arrays.  It preserves protected memory and charges at most `(208 + determinantBytes(k+1)) * width * (matrix.size / width)` bytes.  The theorem includes the matrix-header read, guarded division, all release guards, and function entry and return.  These execution proofs check with:
+The complete basis-extension theorem proves the nested row and column search, termination, and first-success selection.  It derives the candidate bounds from a well-formed basis and returns either the unchanged basis fields or fresh, disjoint owned index arrays.  It preserves protected memory and charges at most `(208 + determinantBytes(k+1)) * width * (matrix.size / width)` bytes.  The theorem includes the matrix-header read, guarded division, all release guards, and function entry and return.
+
+The complete repeated-extension theorem returns the source `findBasis` result, preserves protected memory, and retains represented index arrays and fresh output ownership when the basis changes.  Its loop terminates by fuel and the stop flag.  It charges `200368 * width * (matrix.size / width) * fuel` bytes for fuel and width at most six and fewer than six matrix rows.  These execution proofs check with:
 
 ```sh
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.ExecutionChecks
