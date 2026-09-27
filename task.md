@@ -1071,8 +1071,10 @@ Six fixed probes report 0 accepted and 6 rejected before the increment.
 The finite-store frame theorem and source totality pass with the factored
 single-loop execution proof (187 targets). Sequence-plan width, result-slot
 bounds, prefix preservation, composition and public-result execution pass
-177 targets. Extraction, complete admission, source correctness, descriptor
-bounds and full WASM integration remain before the independent engine checks.
+177 targets. Extraction, complete admission, source reconstruction, captured
+binding preservation, source correctness and IR invariants pass 208 targets.
+Descriptor bounds and full WASM integration remain before the independent
+engine checks.
 
 Next: Boolean-result loop combinations and nested loops. Broader helper
 signatures, heap values, floats, imports and global calls remain outside the
