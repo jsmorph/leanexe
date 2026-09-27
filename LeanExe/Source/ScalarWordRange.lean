@@ -11,6 +11,11 @@ inductive Eval : Lean.Expr → List Value → UInt64 → Prop where
   | scalar (body : EvalWith source values result) : Eval source values result
   | rangeExit (body : Range.Exit.Eval source values result) : Eval source values result
   | booleanWord (body : BooleanWordRange.Eval source values result) : Eval source values result
+  | letBinaryPredicate (helper : BooleanBinaryHelper)
+      (function : ∀ x y, EvalWith (.app (.const ``Bool.toUInt64 []) helper.body)
+        (.word y :: .word x :: values) (Bool.toUInt64 (f x y)))
+      (body : Eval helper.continuation (.binaryPredicateFunction f :: values) outcome) :
+      Eval helper.expr values outcome
   | letBinaryFn (type : ResultType)
       (function : ∀ x y, EvalWith a (.word y :: .word x :: values) (f x y))
       (body : Eval b (.binaryFunction f :: values) outcome) :
@@ -90,6 +95,10 @@ inductive Supported : List BindingKind → Lean.Expr → Prop where
   | scalar (body : SupportedWith types source) : Supported types source
   | rangeExit (body : Range.Exit.Supported types source) : Supported types source
   | booleanWord (body : BooleanWordRange.Supported types source) : Supported types source
+  | letBinaryPredicate (helper : BooleanBinaryHelper)
+      (function : SupportedWith (.word :: .word :: types) (.app (.const ``Bool.toUInt64 []) helper.body))
+      (body : Supported (.binaryPredicateFunction :: types) helper.continuation) :
+      Supported types helper.expr
   | letBinaryFn (type : ResultType) (function : SupportedWith (.word :: .word :: types) a)
       (body : Supported (.binaryFunction :: types) b) :
       Supported types (.letE name
@@ -169,6 +178,17 @@ theorem Supported.evaluates {types : List BindingKind} {source : Lean.Expr}
   | booleanWord body =>
     obtain ⟨result, evaluated⟩ := body.evaluates values typed
     exact ⟨result, .booleanWord evaluated⟩
+  | letBinaryPredicate helper function _ ihb =>
+    have total : ∀ x y, ∃ flag : Bool,
+        EvalWith (.app (.const ``Bool.toUInt64 []) helper.body) (.word y :: .word x :: values) flag.toUInt64 := by
+      intro x y
+      obtain ⟨encoded, evaluated⟩ := function.evaluates (.word y :: .word x :: values)
+        (by simp [Value.kind, typed])
+      obtain ⟨flag, rfl⟩ := evaluated.booleanConversion_result
+      exact ⟨flag, evaluated⟩
+    let f := fun x y => (total x y).choose
+    obtain ⟨value, evaluated⟩ := ihb (.binaryPredicateFunction f :: values) (by simp [Value.kind, typed])
+    exact ⟨value, .letBinaryPredicate helper (fun x y => (total x y).choose_spec) evaluated⟩
   | letBinaryFn type function _ ihb =>
     have total := fun x y => function.evaluates (.word y :: .word x :: values) (by simp [Value.kind, typed])
     let f := fun x y => (total x y).choose
