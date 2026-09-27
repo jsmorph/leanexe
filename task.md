@@ -838,22 +838,22 @@ outer-prefix probes pass unchanged; four prior step controls still pass. The
 native corpus contains 1537 declarations. Evidence is in
 [the outer word-loop helper-body archive](proofs/compiler/boolean-helper-outer-word-body-2026-09-27/README.md).
 
-Current capability: general predicate bodies before Boolean-result loops.
-The BooleanRange source rules and predicate dispatcher retain raw bodies and use
-the checked scalar conversion. Source totality, acceptance/support, correctness,
-invariants and the public compiler target pass. Four original probes and eight
-new declarations now compile; new tests pass 10,560 native/IR comparisons and
-3,888 invalid-input checks. Existing direct/wrapped/conditional calls and outer
-predicate tests pass 540,144 comparisons, 279,216 invalid-input checks and 15,744
-controls. Scalar-only cases now compare public, helper and direct-binding results
-against native semantics; loop-containing cases retain plan equality checks. The
-full proof and WASM gates are next.
+General predicate bodies before Boolean-result loops with UInt64 accumulators
+are complete. Source totality, acceptance/support, correctness, invariants and
+the general source-to-WASM theorem pass with nineteen audits. Native Lean/V8
+agree on 1,005 inputs across 52 declarations, including 29 ranges; 44 prior
+modules retain identical bytes and 0 changed. New tests pass 10,560
+comparisons and 3,888 invalid-input checks. Prior tests pass 540,144 comparisons,
+279,216 invalid-input checks and 15,744 controls. Four original and eight new
+probes pass unchanged. The native corpus contains 1545 declarations. Evidence is
+in [the outer Boolean-loop helper-body archive](proofs/compiler/boolean-helper-outer-boolean-body-2026-09-27/README.md).
 
-Three fixed Boolean-accumulator probes remain rejected. Those need a separate
-loop-accumulator proof; this change retains UInt64 accumulators. Four probes of
-helpers around Boolean-derived word results and word conditionals also remain
-rejected and identify the remaining outer grammars to extend next. The original
-probes and failed test fixtures are preserved with the evidence.
+Current capability: general predicate bodies around Boolean-derived word results
+and word conditionals. Four fixed probes reject in the remaining outer grammars.
+Generalize their predicate rules to the checked raw body while preserving type
+checks, unused validation, lexical captures, totality and all loop invariants.
+Three fixed Boolean-accumulator probes also remain rejected and require a
+separate loop-accumulator proof. Original probes and failed fixtures are retained.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

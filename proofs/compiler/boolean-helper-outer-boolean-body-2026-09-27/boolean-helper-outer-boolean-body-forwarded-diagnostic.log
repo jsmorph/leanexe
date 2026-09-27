@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+../work/boolean-helper-outer-boolean-body-forwarded-diagnostic.lean:6:0: error: invalid direct continuation accepted at 6: true, 0, 0, 2

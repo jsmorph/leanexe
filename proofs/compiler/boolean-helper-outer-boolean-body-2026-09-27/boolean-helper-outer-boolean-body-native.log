@@ -1,0 +1,3 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+test/scalar_boolean_helper_outer_boolean_body.lean:98:0: error: PredicateOuterFlagTest.rangePredicateOuterFlagAccumulator: Boolean-result outer predicate body extraction failed
