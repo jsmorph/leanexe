@@ -208,7 +208,33 @@ function checkArrayMapSharing() {
   }
 }
 
+function checkNestedMonadicLoops() {
+  const output = fs.mkdtempSync(path.join("tmp", "nested-monadic-loops-"));
+  for (const monad of ["Option", "Except"]) {
+    const name = `nested${monad}ArrayLoopStats`;
+    const binary = path.join(output, name + ".wasm");
+    run([leanExe, "compile", "--module", correctnessModule,
+      "--entry", `${correctnessModule}.${name}`, "--out", binary]);
+    for (const [rows, columns, stop, size, work] of [
+      [0n, 4n, 0n, 0n, 0n],
+      [3n, 4n, 0n, 15n, 15n],
+      [3n, 4n, 1n, 0n, 0n],
+      [3n, 4n, 7n, 0n, 7n],
+    ]) {
+      const [result, allocations] = callI64Slots(binary, name, 2, [rows, columns, stop]);
+      assert.equal(result, monad === "Except" && stop > 0n ? stop : size);
+      assert.equal(allocations, 1n + work,
+        `${name}(${rows}, ${columns}, ${stop}): ${allocations} allocations for ${work} pushes`);
+    }
+  }
+}
+
 function main() {
+  if (process.argv[2] === "--nested") {
+    checkNestedMonadicLoops();
+    process.stdout.write("checked nested Option/Except loop allocation bounds\n");
+    return;
+  }
   checkOptionByteArrayLoop();
   checkExceptByteArrayLoop();
   checkOptionByteArrayStateLoop();
@@ -220,7 +246,8 @@ function main() {
   checkTailRelease();
   checkFreshTailResult();
   checkArrayMapSharing();
-  process.stdout.write("checked 28 ownership report and array-call cases\n");
+  checkNestedMonadicLoops();
+  process.stdout.write("checked ownership reports, array calls, and nested monadic loops\n");
 }
 
 try {

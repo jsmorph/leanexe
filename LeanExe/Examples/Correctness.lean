@@ -3032,6 +3032,42 @@ def optionForByteArrayState : Option ByteOutputState := do
     state := { count := state.count + 1, bytes := state.bytes.push byte }
   return state
 
+def nestedOptionArrayLoop (rows columns stop : Nat) : Option (Array UInt64) := do
+  let mut output := #[]
+  for row in [:rows] do
+    for column in [:columns] do
+      let value := row * columns + column + 1
+      if value == stop then none
+      output := output.push value.toUInt64
+    output := output.push 99
+  return output
+
+structure NestedLoopStats where
+  result : UInt64
+  allocations : UInt64
+
+def nestedOptionArrayLoopStats (rows columns stop : Nat) : NestedLoopStats :=
+  let before := LeanExe.Runtime.allocCount
+  let result := nestedOptionArrayLoop rows columns stop
+  let allocations := LeanExe.Runtime.allocCount - before
+  ⟨(match result with | none => 0 | some values => values.size.toUInt64), allocations⟩
+
+def nestedExceptArrayLoop (rows columns stop : Nat) : Except UInt64 (Array UInt64) := do
+  let mut output := #[]
+  for row in [:rows] do
+    for column in [:columns] do
+      let value := row * columns + column + 1
+      if value == stop then Except.error value.toUInt64
+      output := output.push value.toUInt64
+    output := output.push 99
+  return output
+
+def nestedExceptArrayLoopStats (rows columns stop : Nat) : NestedLoopStats :=
+  let before := LeanExe.Runtime.allocCount
+  let result := nestedExceptArrayLoop rows columns stop
+  let allocations := LeanExe.Runtime.allocCount - before
+  ⟨(match result with | .error value => value | .ok values => values.size.toUInt64), allocations⟩
+
 def optionForByteArrayOutputReleaseStats : UInt64 :=
   let before := LeanExe.Runtime.freeCount
   let releasesBefore := LeanExe.Runtime.releaseCount

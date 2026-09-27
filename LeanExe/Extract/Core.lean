@@ -659,8 +659,20 @@ mutual
         (bodyLocalPrefix ++ [.value payload] ++ bodyLocalSuffix)
         nextLocal
         bodyExpr
+    let bodyParts ← monadFoldAccumulatorParts monad bodyResult.fst
+    let (sourceValue, sourceLets, stepTargetStart) ←
+      match condConst? (.eqU64 bodyParts.fst (.u64 0)) with
+      | some _ => .ok (bodyResult.fst, [], bodyResult.snd)
+      | none => do
+          let monadicStepTy ← monadPayloadResultType monad stepTy
+          let sourceWidth := internalSlots monadicStepTy
+          let sourceTargets := (List.range sourceWidth).map fun offset => bodyResult.snd + offset
+          let sourceLets ← materializeInternalValueLets monadicStepTy bodyResult.fst sourceTargets
+            ctx.freshResultOwnerOffsets
+          let sourceValue := valueFromInternalSlots monadicStepTy
+            (fun offset => .local (bodyResult.snd + offset))
+          .ok (sourceValue, sourceLets, bodyResult.snd + sourceWidth)
     let stepWidth := internalSlots stepTy
-    let stepTargetStart := bodyResult.snd
     let stepTargets :=
       (List.range stepWidth).map fun offset => stepTargetStart + offset
     let bodyTargetStart := stepTargetStart + stepWidth
@@ -673,7 +685,7 @@ mutual
     let computedPair ←
       match monad with
       | .option =>
-          let parts ← optionPartsWithLets bodyResult.fst
+          let parts ← optionPartsWithLets sourceValue
           let bodyTag := parts.snd.fst
           let bodyFailed := .eqU64 bodyTag (.u64 0)
           let rawStepParts ← variantPartsWithLets ``ForInStep parts.snd.snd
@@ -706,7 +718,7 @@ mutual
               (wrapValueLocalLets stepLets
                 (.product nextValue (.scalar doneValue))))
       | .except errorTy =>
-          let parts ← exceptPartsWithLets bodyResult.fst
+          let parts ← exceptPartsWithLets sourceValue
           let bodyTag := parts.snd.fst
           let bodyFailed := .eqU64 bodyTag (.u64 0)
           let errorPayload := parts.snd.snd.fst
@@ -748,7 +760,7 @@ mutual
     .ok {
       bodyTargets := bodyTargets,
       bodyValues := bodyTargets.map fun slot => (.local slot : IRExpr),
-      bodyLets := bodyLets,
+      bodyLets := sourceLets ++ bodyLets,
       bodyDone := .local doneSlot,
       nextLocal := doneSlot + 1
     }

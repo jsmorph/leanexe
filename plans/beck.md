@@ -39,11 +39,13 @@ The user approved replacing Gaussian elimination on separate reduced fractions w
 
 The user approved a theorem quantified over job count, category count, and overlap, with arithmetic storage and allocation bounds derived from those dimensions.  The implementation will construct directions by exact elimination and use multiword integer arithmetic.  The executable must check a proved resource condition and return capacity rejection when it fails.  Every accepted valid input must terminate with the discrepancy guarantee in the exact-binary theorem.  Capacity will follow from the resource analysis and performance measurements.
 
-- [ ] Generalize rounding and arithmetic lemmas to symbolic bounds.
-- [ ] Compile and exercise multiword operations through the new partitioner entry as they are introduced.
+- [x] Generalize rounding and arithmetic lemmas to symbolic bounds.
+- [x] Compile and exercise multiword operations through the new partitioner entry as they are introduced.
 - [ ] Implement and prove exact elimination, preserving directions, and rounding.
 - [ ] Derive indexing, helper termination, and allocation bounds from input dimensions.
 - [ ] Check the replacement binary's universal execution theorem and independent package.
 - [ ] Measure larger overlapping cases and update the browser demo to the verified replacement.
 
 The six-job artifact and its proofs remain a checked reference during this work.  The earlier 256-job, 64-category suggestion had no derived resource bound or performance evidence and is superseded by this plan.
+
+The replacement entry is `LeanExe.Examples.BeckExact.compute`.  It uses base-2^32 integer limbs and fraction-free elimination.  The current 609 native/WASM comparisons pass, including a 64-job, 16-category input with overlap three.  That input exposed repeated evaluation of nested loops in the compiler.  Materializing the monadic loop body before projecting its status and result removed the observed memory failure.  The full ownership-report test passes.  The replacement's arithmetic proofs cover limb operations, normalization, addition, and subtraction.  Its complete source and artifact theorems remain open.
