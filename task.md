@@ -377,15 +377,15 @@ native/IR comparisons, 53,376 invalid-input checks and 4,224 controls. Prior tes
 pass 105,340 comparisons, 53,568 rejection checks and 2,592 controls. Evidence is in
 [the public parameter annotation archive](proofs/compiler/public-parameter-id-2026-09-26/README.md).
 
-Current capability: Boolean results computed after a word-valued loop bound by
-let, with metadata and standard Boolean Id wrappers. Add independent Boolean
-source evaluation and reuse the existing loop plan with a converted result.
-Source totality, exact wrapper parsing, extraction acceptance and support, result
-evaluation, public declaration correctness, and WASM admission/encoding/validation
-proofs pass focused checks. Ten native declarations pass 240 IR comparisons,
-covering yielding, break, continue, stride, captured helpers, mixed public inputs
-and Id wrappers. Raw syntax tests pass 16,128 comparisons and 13,824 invalid-input checks.
-The complete theorem and V8 gates are next.
+Boolean results from explicit word-loop let bindings are complete. Independent
+source evaluation preserves the loop and Boolean continuation, and public results
+are proved to encode false/true as zero/one. Standard Boolean Id run/pure wrappers
+and metadata are supported. The complete source-to-WASM theorem and nineteen
+audits pass. Native Lean/V8 agree on 559 inputs across 28 declarations, including
+eighteen ranges; eighteen prior modules retain identical bytes. New tests pass
+16,368 native/IR comparisons and 13,824 invalid-input checks. Prior tests pass
+182,424 comparisons, 92,160 invalid-input checks and 6,816 controls. Evidence is in
+[the Boolean loop-result archive](proofs/compiler/public-boolean-loop-results-2026-09-27/README.md).
 
 Next: Boolean-result Id/do sequencing, retained instances and broader signatures. Also extend UInt64-to-Bool helper bodies to call captured
 Bool-to-Bool helpers, and allow compound helper-let bodies under public Boolean
