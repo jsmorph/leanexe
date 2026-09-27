@@ -1,0 +1,9 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+16128 native/predicate word-body IR comparisons, 19584 invalid-input tests and 1152 admission controls passed
+test/scalar_boolean_helper_word_body_syntax.lean:32:14: warning: Variable name `shape` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _shape
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`

@@ -1,0 +1,12 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+PredicateBodyWordProbe.predicateBodyWordRepeated: true
+PredicateBodyWordProbe.predicateBodyWordBoolean: true
+PredicateBodyWordProbe.predicateBodyWordUnused: true
+PredicateBodyWordProbe.predicateBodyWordCapture: true
+PredicateBodyWordProbe.predicateBodyWordProposition: true
+PredicateBodyWordProbe.predicateBodyWordDo: true
+PredicateBodyWordProbe.rangePredicateBodyWordStep: true
+PredicateBodyWordProbe.rangePredicateBodyWordExit: true
+PredicateBodyWordProbe.rangePredicateBodyWordContinue: true
+PredicateBodyWordProbe.rangePredicateBodyWordTail: true
