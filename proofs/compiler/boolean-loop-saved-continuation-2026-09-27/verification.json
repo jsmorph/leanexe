@@ -1,0 +1,148 @@
+{
+  "candidate": "d6465e8bbdad44a5e52216190e5a462222a747f0",
+  "branch": "correct",
+  "lean": "4.34.0-rc2",
+  "leanCommit": "6a10ac8c22beadecabdbb0919c2b50214762f91d",
+  "node": "24.13.0",
+  "runner": "tools/leanrun, authorized local mode, serial lock",
+  "proofCommand": "tools/arithmetic-check.js proof",
+  "axiomAudits": 19,
+  "engineCommand": "tools/arithmetic-check.js subset-engine boolean-loop-saved-continuation",
+  "nativeV8Comparisons": 609,
+  "declarations": 28,
+  "rangeDeclarations": 23,
+  "rangeComparisons": 552,
+  "priorModulesByteIdentical": 18,
+  "focusedNativeIRComparisons": 97008,
+  "focusedRejections": 76032,
+  "bindingControls": 3456,
+  "priorNativeIRComparisons": 129024,
+  "priorRejections": 69120,
+  "priorAdmissionControls": 3456,
+  "fullCorpusDeclarations": 1286,
+  "deferred": "Wrappers and saved results around conditional local calls, broader Boolean loop-result bindings, broader helper/proposition bodies, and full LeanExe dialect compiler correctness.",
+  "sourceHashes": {
+    "LeanExe/Extract/ScalarBooleanRangeContinuation.lean": "7434353655fbd6bafab81de17915402da778b994dd7bd156497849ffee2eec16",
+    "LeanExe/Source/ScalarBooleanCall.lean": "cc75a70ce6e457a17e1a36b1e2c05204bae79e9b69847949b7c44e7a17769331",
+    "test/ArithmeticMilestone.lean": "eaecc665f619b2b86ff299bbe670c9bc212192af631c20546c2a1954f002dcc7",
+    "test/arithmetic-engine-groups.json": "1f25a1e757da24f7d264fa96e217662620a1a3088865263c517f7fd290ca2ea4",
+    "test/arithmetic-range-cases.json": "f8628af185e07f4e93dbba8c3204a6d763ab157426be570f5a8957e443dce928",
+    "test/arithmetic_mode.lean": "1113a7ca0b9e1ba711b6c7aa675c47aa303aaff4be25f30e2f921226c06075df",
+    "test/scalar_boolean_loop_saved_continuation.lean": "ac5b68cc22805ffc8e8fc3cb9aa63facb68ee82863854e1aefbe307539d338b2",
+    "test/scalar_boolean_loop_saved_continuation_syntax.lean": "18e456f2b9da980fe2efce6f92f65a638a920e1d28c4528b552f45217684e42e"
+  },
+  "modules": {
+    "constant": {
+      "sha256": "edab4b49d17107e7929af4800cca4a8913264bc9d8e0b1e44f3de3b874ecfe71",
+      "bytes": 1042
+    },
+    "publicFlagResult": {
+      "sha256": "b4255409bb6e98c1b54f3256e01344a6fe033cc4a0f54e3fa5494b0e86f38095",
+      "bytes": 1101
+    },
+    "publicFlagWord": {
+      "sha256": "d239e95b104196c33b596f359e83b3fdb4b6dbd50584efdd7d8c8823f07fb1b7",
+      "bytes": 1079
+    },
+    "publicInputIdResult": {
+      "sha256": "dd5e7cfe6bcf055757b30010da3aef55d8d48fc21579546ddd7a73e3258630e8",
+      "bytes": 1105
+    },
+    "publicInputIdWord": {
+      "sha256": "0dfd7f9a5e0f9c1b004fa914f238b00e8adbe503c54979e8d8127aca5e16f3e2",
+      "bytes": 1056
+    },
+    "rangeBoolConditionalCallExit": {
+      "sha256": "1a5f6448977224a0f0a0b6b790b65016666fcec8dd5a3b4ef4db2f8b50dc6559",
+      "bytes": 1792
+    },
+    "rangeBoolConditionalCallFlag": {
+      "sha256": "9ac107fa84c59a890726512ba08e451be72f8fca6ad71dc0ebadacde7c8b9a9c",
+      "bytes": 1743
+    },
+    "rangeBoolConditionalCallId": {
+      "sha256": "e087069f595432743728f408f2a709483d29a2b3fbdc314e3122d0092abd46ab",
+      "bytes": 1789
+    },
+    "rangeBoolConditionalCallNested": {
+      "sha256": "1c112aa17faa1557ae92600b9da60ce9b6cdf9327eeb9de73948fcf1a296f0de",
+      "bytes": 2055
+    },
+    "rangeBoolConditionalCallSaved": {
+      "sha256": "a329082fbc71ffb09ffafd762fb86df705633021679eba72e165e0765f0c02eb",
+      "bytes": 1618
+    },
+    "rangeBoolConditionalCallWord": {
+      "sha256": "a9136af2fb81bd8d321e54010e8510e47cb91afdc7a2a95c37d984682af144e7",
+      "bytes": 1625
+    },
+    "rangeBoolForwardedFlag": {
+      "sha256": "dc3a5f45504946fdab68d5228d9201c6f879692eb8883c8763bc7fcb70505ad8",
+      "bytes": 1240
+    },
+    "rangeBoolForwardedId": {
+      "sha256": "2fbdd31441366dfb6056849da5a582b6b0d9d46cf1b7013142b5db69283f8fc7",
+      "bytes": 1283
+    },
+    "rangeBoolForwardedWord": {
+      "sha256": "39ac51921a882733f8420d3c10c45df2bcce392441fe8854c5283e6abcc0e285",
+      "bytes": 1201
+    },
+    "rangeBoolLetIdInput": {
+      "sha256": "ddc7fc84209f892ffc8c242fad3a6f465d157da3795446e55f0bc4a6e05619e0",
+      "bytes": 1439
+    },
+    "rangeBoolSavedCallBooleanArgument": {
+      "sha256": "52aba4ad600d3758422e615b2212855f206c77d64d1cf5e5e225b1603e0aa381",
+      "bytes": 1395
+    },
+    "rangeBoolSavedCallBooleanCapture": {
+      "sha256": "f63f7f5d56c19f5ae83fe61c2d09ae590656a4d0f103dd9de8ed56e0845558fa",
+      "bytes": 1456
+    },
+    "rangeBoolSavedCallContinue": {
+      "sha256": "573d4c02caf32515ae598dd716d3a4b2fddb8f1a276964593884afd6e32ef834",
+      "bytes": 1365
+    },
+    "rangeBoolSavedCallExit": {
+      "sha256": "73039494fd7082a4c606bad775f05ee3615a12df53b88300686304174ae894a0",
+      "bytes": 1263
+    },
+    "rangeBoolSavedCallFlag": {
+      "sha256": "e0866ae445b6db2050a0e3f141d4cf2d52fd314a0950bb37c8727b03c9f9dc28",
+      "bytes": 1240
+    },
+    "rangeBoolSavedCallId": {
+      "sha256": "aeebcf961cb02d678f3b86ca6b70da1a37c990be229546ea7c4abe28cb2d2715",
+      "bytes": 1283
+    },
+    "rangeBoolSavedCallNested": {
+      "sha256": "fc2593a04607e8bbc6e3608299b5324aadade79f8d30da9600e4c4bdc40b5d21",
+      "bytes": 1262
+    },
+    "rangeBoolSavedCallStride": {
+      "sha256": "1ab05425da26e7add7ee65671b284e85cba0b1d4ab334056748f35dd53f445cd",
+      "bytes": 1598
+    },
+    "rangeBoolSavedCallWord": {
+      "sha256": "ce8be61bb25bea8279756f377f9a5215b90501578c587a48372ede7823c7e821",
+      "bytes": 1201
+    },
+    "rangeBoolSavedCallWordCapture": {
+      "sha256": "c499952401ecd5ec888649d911940c75874aafdbed7a75ee893586b85bc99e20",
+      "bytes": 1185
+    },
+    "rangeBoolWrappedCallFlag": {
+      "sha256": "fae08fb61b9255d82e94012f0c9ee069f1101a695df1ca7cce837e63af5b62bb",
+      "bytes": 1242
+    },
+    "rangeBoolWrappedCallId": {
+      "sha256": "42bcfe630e472dcc9abd0a1f4f26a301b5b3c1668a4ac9886438cf5b72173062",
+      "bytes": 1285
+    },
+    "rangeBoolWrappedCallWord": {
+      "sha256": "41d12ad01442f75f1c99d9c8826558c5902d01469850a891642a309bdce8d1fd",
+      "bytes": 1203
+    }
+  }
+}
