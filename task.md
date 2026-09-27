@@ -706,13 +706,20 @@ bytes and 4 changed. New tests pass 3,316 comparisons, 2,176 invalid-input
 checks and 64 controls. Prior tests pass 123,360 comparisons, 78,424 invalid-input
 checks and 4,448 controls. The native corpus contains 1417 declarations.
 
-Current capability: general Id.run/pure wrappers around helper scopes. The
-original direct-condition probe now passes; its wrapper fixture still fails.
-All five Id.run/pure/nested-wrapper/condition/loop-exit probes now pass.
-Source totality, parsing, scalar acceptance/correctness and IR invariants pass.
-New native/raw tests pass 12,724 value/exit comparisons, 11,264 invalid-input
-checks and 256 controls. Adjacent tests and the final compiler-proof/native-V8
-gates remain before this capability is complete.
+General Id.run/pure/metadata wrappers around Boolean helper scopes are complete.
+Source totality, parser acceptance/soundness, scalar correctness, IR invariants
+and the general source-to-WASM theorem pass, with all nineteen audits. All five
+original wrapper probes pass unchanged. Native Lean/V8 agree on 993 inputs across
+54 declarations, including 25 ranges; 44 prior modules retain identical bytes
+and 0 changed. New tests pass 12,724 comparisons, 11,264 invalid-input
+checks and 256 controls. Prior tests pass 44,308 comparisons, 24,416 invalid-input
+checks and 3,360 controls. The native corpus contains 1427 declarations.
+Evidence is in [the inner-wrapper archive](proofs/compiler/boolean-inner-wrapper-2026-09-27/README.md).
+
+Next capability: measure and extend Boolean negation and composition around
+helper scopes. Scratch probes cover negation, junctions, equality, choices,
+nested helper bodies and Id input types; run them before selecting the next
+bounded extension.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

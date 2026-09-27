@@ -1,0 +1,25 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [31/67] Built LeanExe.Source.ScalarBooleanWrapped (834ms)
+⚠ [57/67] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [67/67] Building LeanExe.Extract.ScalarBooleanWrapped (1.4s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanWrapped.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanWrapped.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanWrapped.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanWrapped.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanWrapped.setup.json --json
+error: LeanExe/Extract/ScalarBooleanWrapped.lean:56:47: unsolved goals
+wrapper : BooleanWrapper
+body : Lean.Expr
+extended : ∀ (expression : BooleanLocal), wrapper.expr body ≠ expression.expr
+absent : booleanLocalOperands? (wrapper.expr body) = none
+⊢ (match parsed : booleanWrapperParts? (wrapper.expr body) with
+    | some (wrapper_1, body_1) => some { wrapper := wrapper_1, body := body_1, extended := ⋯ }
+    | none => none) =
+    some { wrapper := wrapper, body := body, extended := extended }
+error: LeanExe/Extract/ScalarBooleanWrapped.lean:74:4: Tactic `simp` failed with a nested error:
+maximum recursion depth has been reached
+use `set_option maxRecDepth <num>` to increase limit
+use `set_option diagnostics true` to get diagnostic information
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanWrapped
+error: build failed

@@ -1,0 +1,83 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+⚠ [56/72] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:384:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [69/125] Building LeanExe.Extract.ScalarBooleanWrapped (1.4s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarBooleanWrapped.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanWrapped.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarBooleanWrapped.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanWrapped.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarBooleanWrapped.setup.json --json
+error: LeanExe/Extract/ScalarBooleanWrapped.lean:85:12: `simp` made no progress
+
+Note: The target expression is not type-correct under the `implicit` transparency level, which may have triggered the failure. This is usually caused by unfolding of semireducible definitions in prior tactic steps. Use `set_option linter.tacticCheckInstances true` to investigate the source of the issue.
+Full error:
+  Application type mismatch: The argument
+    (booleanLocalOperands?
+        { wrapper := BooleanWrapper.run type✝, body := body, extended := extended }.expr).decidableEqNone
+  has type
+    Decidable
+      (booleanLocalOperands? { wrapper := BooleanWrapper.run type✝, body := body, extended := extended }.expr = none)
+  but is expected to have type
+    Decidable (booleanLocalOperands? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) = none)
+  in the application
+    @dite (Option (BooleanHelper booleanInput))
+      (booleanLocalOperands? (((Lean.Expr.const `Id.run [Lean.Level.zero]).app type✝.expr).app body) = none)
+      (booleanLocalOperands?
+          { wrapper := BooleanWrapper.run type✝, body := body, extended := extended }.expr).decidableEqNone
+error: LeanExe/Extract/ScalarBooleanWrapped.lean:85:12: `simp` made no progress
+
+Note: The target expression is not type-correct under the `implicit` transparency level, which may have triggered the failure. This is usually caused by unfolding of semireducible definitions in prior tactic steps. Use `set_option linter.tacticCheckInstances true` to investigate the source of the issue.
+Full error:
+  Application type mismatch: The argument
+    (booleanLocalOperands?
+        { wrapper := BooleanWrapper.pure type✝, body := body, extended := extended }.expr).decidableEqNone
+  has type
+    Decidable
+      (booleanLocalOperands? { wrapper := BooleanWrapper.pure type✝, body := body, extended := extended }.expr = none)
+  but is expected to have type
+    Decidable
+      (booleanLocalOperands?
+          (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                type✝.expr).app
+            body) =
+        none)
+  in the application
+    @dite (Option (BooleanHelper booleanInput))
+      (booleanLocalOperands?
+          (((((Lean.Expr.const `Pure.pure [Lean.Level.zero, Lean.Level.zero]).app
+                        (Lean.Expr.const `Id [Lean.Level.zero])).app
+                    (((Lean.Expr.const `Applicative.toPure [Lean.Level.zero, Lean.Level.zero]).app
+                          (Lean.Expr.const `Id [Lean.Level.zero])).app
+                      (((Lean.Expr.const `Monad.toApplicative [Lean.Level.zero, Lean.Level.zero]).app
+                            (Lean.Expr.const `Id [Lean.Level.zero])).app
+                        (Lean.Expr.const `Id.instMonad [Lean.Level.zero])))).app
+                type✝.expr).app
+            body) =
+        none)
+      (booleanLocalOperands?
+          { wrapper := BooleanWrapper.pure type✝, body := body, extended := extended }.expr).decidableEqNone
+error: LeanExe/Extract/ScalarBooleanWrapped.lean:85:12: `simp` made no progress
+
+Note: The target expression is not type-correct under the `implicit` transparency level, which may have triggered the failure. This is usually caused by unfolding of semireducible definitions in prior tactic steps. Use `set_option linter.tacticCheckInstances true` to investigate the source of the issue.
+Full error:
+  Application type mismatch: The argument
+    (booleanLocalOperands?
+        { wrapper := BooleanWrapper.metadata data✝, body := body, extended := extended }.expr).decidableEqNone
+  has type
+    Decidable
+      (booleanLocalOperands? { wrapper := BooleanWrapper.metadata data✝, body := body, extended := extended }.expr =
+        none)
+  but is expected to have type
+    Decidable (booleanLocalOperands? (Lean.Expr.mdata data✝ body) = none)
+  in the application
+    @dite (Option (BooleanHelper booleanInput)) (booleanLocalOperands? (Lean.Expr.mdata data✝ body) = none)
+      (booleanLocalOperands?
+          { wrapper := BooleanWrapper.metadata data✝, body := body, extended := extended }.expr).decidableEqNone
+Some required targets logged failures:
+- LeanExe.Extract.ScalarBooleanWrapped
+error: build failed
