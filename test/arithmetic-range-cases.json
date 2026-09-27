@@ -746,5 +746,6 @@
   "rangeWordFromBoolExit",
   "rangeWordFromBoolContinue",
   "rangeWordFromBoolStride",
-  "rangeWordFromBoolId"
+  "rangeWordFromBoolId",
+  "rangeLetBool"
 ]

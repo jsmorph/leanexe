@@ -588,8 +588,10 @@ Current capability: word results from Boolean loops. Source totality, extraction
 acceptance and recovery, correctness, invariants, public compilation and WASM
 admission pass. The new final word path retains a Boolean loop plan while checking
 a scalar word continuation, including direct Bool.toUInt64 conversion. New tests
-pass 97,008 native/IR comparisons, 46,080 invalid-input checks and 4,608 controls.
-The complete proof and native Lean/WASM checks are next.
+pass 97,032 native/IR comparisons, 46,080 invalid-input checks and 4,608 controls.
+The complete proof and nineteen audits pass. The unchanged rangeLetBool example
+moved from excluded syntax to positive tests; its acceptance follows from this
+extension. Native Lean/WASM checks are next.
 
 Next: word results from Boolean loops and broader helper-result bodies, followed by
 retained instances, broader signatures, and composition of multiple loops.
