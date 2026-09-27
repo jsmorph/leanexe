@@ -61,7 +61,9 @@ The membership-reader theorem covers every accepted membership list within bound
 
 The protected-matrix theorem covers initial allocation, category selection, all row pushes, intermediate releases, the category loop, and final ownership cleanup.  It proves exact source agreement and charges at most `56 + 448*n*m` bytes, or 21,560 bytes within capacity.
 
-The bordered-minor candidate theorem covers duplicate-index checks, row and column extension, determinant calculation, and the optional basis result.  It preserves the caller’s protected memory and returns fresh, disjoint owned index arrays when it succeeds.  Its budget is `208 + determinantBytes(k+1)` for an original minor of order `k`, assuming the extended minor meets the determinant theorem’s bounds.  These execution proofs check with:
+The bordered-minor candidate theorem covers duplicate-index checks, row and column extension, determinant calculation, and the optional basis result.  It preserves the caller’s protected memory and returns fresh, disjoint owned index arrays when it succeeds.  Its budget is `208 + determinantBytes(k+1)` for an original minor of order `k`, assuming the extended minor meets the determinant theorem’s bounds.
+
+The complete basis-extension theorem proves the nested row and column search, termination, and first-success selection.  It derives the candidate bounds from a well-formed basis and returns either the unchanged basis fields or fresh, disjoint owned index arrays.  It preserves protected memory and charges at most `(208 + determinantBytes(k+1)) * width * (matrix.size / width)` bytes.  The theorem includes the matrix-header read, guarded division, all release guards, and function entry and return.  These execution proofs check with:
 
 ```sh
 tools/leanrun --timeout 180 lake -d proofs/talos/lean build Project.Beck.ExecutionChecks
