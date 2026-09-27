@@ -14,15 +14,40 @@ def type : PublicArgument → Lean.Expr
   | .word => .const ``UInt64 []
   | .boolean => .const ``Bool []
 
-def acceptsType : PublicArgument → Lean.Expr → Bool
-  | .word, .const ``UInt64 [] => true
-  | .boolean, .const ``Bool [] => true
-  | _, _ => false
+/-- Parameter annotations preserve the base scalar representation. -/
+inductive Domain : PublicArgument → Lean.Expr → Prop where
+  | word : Domain .word (.const ``UInt64 [])
+  | boolean : Domain .boolean (.const ``Bool [])
+  | identity (inner : Domain input domain) :
+      Domain input (.app (.const ``Id [.zero]) domain)
 
-theorem matches_type {input : PublicArgument} {domain : Lean.Expr}
-    (matched : input.acceptsType domain = true) : domain = input.type := by
-  unfold acceptsType at matched
-  split at matched <;> simp_all [type]
+def ofType? : Lean.Expr → Option PublicArgument
+  | .const ``UInt64 [] => some .word
+  | .const ``Bool [] => some .boolean
+  | .app (.const ``Id [.zero]) inner => ofType? inner
+  | _ => none
+
+theorem ofType_accepts {input : PublicArgument} {domain : Lean.Expr}
+    (valid : Domain input domain) : ofType? domain = some input := by
+  induction valid with
+  | word => rfl
+  | boolean => rfl
+  | identity _ ih => exact ih
+
+theorem ofType_sound {input : PublicArgument} {domain : Lean.Expr}
+    (parsed : ofType? domain = some input) : Domain input domain := by
+  fun_induction ofType? domain with
+  | case1 => cases Option.some.inj parsed; exact .word
+  | case2 => cases Option.some.inj parsed; exact .boolean
+  | case3 inner ih => exact .identity (ih parsed)
+  | case4 => contradiction
+
+def acceptsType (input : PublicArgument) (domain : Lean.Expr) : Bool :=
+  decide (ofType? domain = some input)
+
+theorem acceptsType_domain {input : PublicArgument} {domain : Lean.Expr}
+    (matched : input.acceptsType domain = true) : Domain input domain :=
+  ofType_sound (of_decide_eq_true matched)
 
 def kind : PublicArgument → BindingKind
   | .word => .word
@@ -41,8 +66,10 @@ end PublicArgument
 /-- Input order from the original declared signature. Result annotations contain
 no public inputs. Signature admission independently checks the whole type. -/
 def publicInputs : Lean.Expr → List PublicArgument
-  | .forallE _ (.const ``UInt64 []) body _ => .word :: publicInputs body
-  | .forallE _ (.const ``Bool []) body _ => .boolean :: publicInputs body
+  | .forallE _ domain body _ =>
+      match PublicArgument.ofType? domain with
+      | some input => input :: publicInputs body
+      | none => []
   | .mdata _ body => publicInputs body
   | _ => []
 

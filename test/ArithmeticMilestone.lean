@@ -5128,6 +5128,55 @@ def rangeLocalNotHelper (count seed : UInt64) : UInt64 := Id.run do
     a := a + (f (g true)).toUInt64 + i.toUInt64 + 1
   return a
 
+def publicInputIdWord (x : Id UInt64) (y : UInt64) : UInt64 := Id.run x + y
+
+def publicInputIdFlag (flag : Id Bool) (x : UInt64) : UInt64 :=
+  if Id.run flag then x + 7 else x - 3
+
+def publicInputIdBoth (flag : Id (Id Bool)) (x : Id (Id UInt64)) : Id UInt64 :=
+  pure (Id.run (Id.run x) + (Id.run (Id.run flag)).toUInt64)
+
+def publicInputIdResult (x : Id UInt64) (flag : Id Bool) : Bool :=
+  Id.run flag && Id.run x != 0
+
+def publicInputIdCapture (flag : Id Bool) (x : Id UInt64) : Bool :=
+  let f := fun b : Bool => b && Id.run flag && Id.run x != 0
+  f (Id.run flag)
+
+def publicInputIdBind (flag : Id Bool) (x : Id UInt64) : Id Bool := do
+  let saved ← flag
+  let n ← x
+  return saved && n != 0
+
+def rangeInputIdYield (count : Id UInt64) (flag : Id Bool) : UInt64 := Id.run do
+  let mut a := (Id.run flag).toUInt64
+  for i in [:(Id.run count).toNat] do
+    a := a + i.toUInt64 + (Id.run flag).toUInt64
+  return a
+
+def rangeInputIdExit (count : Id (Id UInt64)) (flag : Id (Id Bool)) : Id UInt64 := do
+  let mut a : UInt64 := 1
+  for i in [:(Id.run (Id.run count)).toNat] do
+    a := a + i.toUInt64 + 1
+    if Id.run (Id.run flag) && a % 7 == 0 then break
+  return a
+
+def rangeInputIdContinue (count : Id UInt64) (flag : Id Bool) : UInt64 := Id.run do
+  let saved ← flag
+  let mut a := Id.run count
+  for i in [:(Id.run count).toNat] do
+    if saved && i.toUInt64 % 3 == 0 then continue
+    a := a + i.toUInt64 + saved.toUInt64
+  return a
+
+def rangeInputIdCapture (count : Id UInt64) (flag : Id Bool) : UInt64 := Id.run do
+  let f := fun b : Bool => if b then Id.run count + (Id.run flag).toUInt64 else Id.run count
+  let mut a := f false
+  for i in [:(Id.run count).toNat] do
+    a := a + f (i.toUInt64 % 2 == 0)
+    if a % 11 == 0 then break
+  return a
+
 def rangeFlagYield (count : UInt64) (flag : Bool) : UInt64 := Id.run do
   let mut a := flag.toUInt64
   for i in [:count.toNat] do
@@ -7437,6 +7486,10 @@ def rangeCases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("rangeLocalNotContinue", rangeLocalNotContinue),
    ("rangeLocalNotOuter", rangeLocalNotOuter),
    ("rangeLocalNotHelper", rangeLocalNotHelper),
+   ("rangeInputIdYield", (fun x y => Id.run (rangeInputIdYield x (y != 0)))),
+   ("rangeInputIdExit", (fun x y => Id.run (rangeInputIdExit x (y != 0)))),
+   ("rangeInputIdContinue", (fun x y => Id.run (rangeInputIdContinue x (y != 0)))),
+   ("rangeInputIdCapture", (fun x y => Id.run (rangeInputIdCapture x (y != 0)))),
    ("rangeFlagYield", (fun x y => rangeFlagYield x (y != 0))),
    ("rangeFlagExit", (fun x y => rangeFlagExit x (y != 0))),
    ("rangeFlagContinue", (fun x y => rangeFlagContinue x (y != 0))),
@@ -7969,6 +8022,12 @@ def cases : List (String × (UInt64 → UInt64 → UInt64)) :=
    ("localNotDecision", localNotDecision),
    ("localNotLet", localNotLet),
    ("localNotHelper", localNotHelper),
+   ("publicInputIdWord", (fun x y => Id.run (publicInputIdWord x y))),
+   ("publicInputIdFlag", (fun x y => Id.run (publicInputIdFlag (x != 0) y))),
+   ("publicInputIdBoth", (fun x y => Id.run (publicInputIdBoth (x != 0) y))),
+   ("publicInputIdResult", (fun x y => (publicInputIdResult x (y != 0)).toUInt64)),
+   ("publicInputIdCapture", (fun x y => (publicInputIdCapture (x != 0) y).toUInt64)),
+   ("publicInputIdBind", (fun x y => (publicInputIdBind (x != 0) y).toUInt64)),
    ("publicFlagWord", (fun x y => publicFlagWord (x != 0) y)),
    ("publicWordFlag", (fun x y => publicWordFlag x (y != 0))),
    ("publicFlagsWord", (fun x y => publicFlagsWord (x != 0) (y != 0))),

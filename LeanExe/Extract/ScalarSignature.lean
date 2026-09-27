@@ -2,7 +2,7 @@ import LeanExe.Source.ScalarFunction
 
 namespace LeanExe.Extract.Core
 
-/-- Exact UInt64 or Bool parameters and either a UInt64 or Bool public result. -/
+/-- UInt64/Bool public parameters and results, with standard Id annotations. -/
 def scalarSignature? : Lean.Expr → Option (Nat × LeanExe.Source.Scalar.PublicResult)
   | .const ``UInt64 [] => some (0, .word)
   | .const ``Bool [] => some (0, .boolean)
@@ -10,10 +10,10 @@ def scalarSignature? : Lean.Expr → Option (Nat × LeanExe.Source.Scalar.Public
       match scalarSignature? inner with
       | some (0, result) => some (0, result)
       | _ => none
-  | .forallE _ (.const ``UInt64 []) body _ =>
-      (scalarSignature? body).map fun signature => (signature.1 + 1, signature.2)
-  | .forallE _ (.const ``Bool []) body _ =>
-      (scalarSignature? body).map fun signature => (signature.1 + 1, signature.2)
+  | .forallE _ domain body _ => do
+      let _ ← LeanExe.Source.Scalar.PublicArgument.ofType? domain
+      let signature ← scalarSignature? body
+      pure (signature.1 + 1, signature.2)
   | .mdata _ body => scalarSignature? body
   | _ => none
 
@@ -24,8 +24,7 @@ theorem scalarSignature_accepts {type : Lean.Expr} {arity : Nat}
   induction h with
   | result kind => cases kind <;> rfl
   | idResult _ ih => simp [scalarSignature?, ih]
-  | arg _ ih => simp [scalarSignature?, ih]
-  | booleanArg _ ih => simp [scalarSignature?, ih]
+  | arg input _ ih => simp [scalarSignature?, LeanExe.Source.Scalar.PublicArgument.ofType_accepts input, ih]
   | metadata _ ih => exact ih
 
 theorem scalarSignature_sound {type : Lean.Expr} {arity : Nat}
@@ -39,16 +38,13 @@ theorem scalarSignature_sound {type : Lean.Expr} {arity : Nat}
     cases Option.some.inj parsed
     exact .idResult (ih found)
   | case4 => contradiction
-  | case5 name body bi ih =>
-    obtain ⟨⟨n, kind⟩, found, same⟩ := Option.map_eq_some_iff.mp parsed
+  | case5 name domain body bi ih =>
+    simp only [bind, pure, Option.bind_eq_some_iff, Option.some.injEq] at parsed
+    obtain ⟨input, valid, ⟨n, kind⟩, found, same⟩ := parsed
     cases same
-    exact .arg (ih found)
-  | case6 name body bi ih =>
-    obtain ⟨⟨n, kind⟩, found, same⟩ := Option.map_eq_some_iff.mp parsed
-    cases same
-    exact .booleanArg (ih found)
-  | case7 data body ih => exact .metadata (ih parsed)
-  | case8 => contradiction
+    exact .arg (LeanExe.Source.Scalar.PublicArgument.ofType_sound valid) (ih found)
+  | case6 data body ih => exact .metadata (ih parsed)
+  | case7 => contradiction
 
 theorem scalarSignature_inputs_length {type : Lean.Expr} {arity : Nat}
     {result : LeanExe.Source.Scalar.PublicResult}
