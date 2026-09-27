@@ -1,5 +1,6 @@
 import Project.Beck.ExecutionDirectionFirstRead
 import Project.Beck.ExecutionWordWindow
+import Project.Beck.ExecutionWordUpdate
 
 namespace Project.Beck.Execution
 
@@ -37,6 +38,27 @@ structure DirectionSeedLocals (locals : List Value) (jobs : Nat) (matrix ro rp c
   originalOwner : locals[11]? = some (.i64 matrix)
   originalPointer : locals[12]? = some (.i64 matrix)
   words : WordLocals locals
+
+theorem DirectionSearchLocals.preserved {before after : List Value} {matrix sro srp sco scp : UInt64}
+    {basis : Basis} {ro rp co cp : UInt64}
+    (state : DirectionSearchLocals before matrix sro srp sco scp basis ro rp co cp)
+    (size : after.length = before.length) (words : WordLocals after)
+    (keeps : ∀ index, index < 34 → after[index]? = before[index]?) :
+    DirectionSearchLocals after matrix sro srp sco scp basis ro rp co cp :=
+  ⟨size.trans state.size, (keeps 9 (by omega)).trans state.matrixOriginal,
+    (keeps 11 (by omega)).trans state.matrixOwner, (keeps 12 (by omega)).trans state.matrixPointer,
+    (keeps 19 (by omega)).trans state.seedRowOwner, (keeps 20 (by omega)).trans state.seedRowPointer,
+    (keeps 21 (by omega)).trans state.seedColumnOwner, (keeps 22 (by omega)).trans state.seedColumnPointer,
+    (keeps 29 (by omega)).trans state.rowOwner, (keeps 30 (by omega)).trans state.rowPointer,
+    (keeps 31 (by omega)).trans state.columnOwner, (keeps 32 (by omega)).trans state.columnPointer,
+    (keeps 33 (by omega)).trans state.determinant, words⟩
+
+theorem DirectionSearchLocals.updated {before after : List Value} {matrix sro srp sco scp : UInt64}
+    {basis : Basis} {ro rp co cp : UInt64} {offset count : Nat}
+    (state : DirectionSearchLocals before matrix sro srp sco scp basis ro rp co cp)
+    (update : WordUpdate before after offset count) (lower : 34 ≤ offset) :
+    DirectionSearchLocals after matrix sro srp sco scp basis ro rp co cp :=
+  state.preserved update.size update.words (fun index bound => update.keeps index (Or.inl (by omega)))
 
 theorem directionInitialLocals_words (input : Input) (point : Point) (inputOwner inputPointer pointOwner pointPointer matrix : UInt64) :
     WordLocals (directionInitialLocals input point inputOwner inputPointer pointOwner pointPointer matrix) := by
