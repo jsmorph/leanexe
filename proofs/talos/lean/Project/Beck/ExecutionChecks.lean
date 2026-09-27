@@ -7,6 +7,7 @@ import Project.Beck.ExecutionFindBasis
 import Project.Beck.ExecutionDirectionInit
 import Project.Beck.ExecutionDirectionGuard
 import Project.Beck.ExecutionDirectionFirstRead
+import Project.Beck.ExecutionDirectionSearch
 import Project.Beck.ExecutionMatrix
 import Project.Beck.ExecutionScan
 import Project.Beck.ExecutionContains
@@ -138,3 +139,4 @@ import Project.Beck.ExecutionMatrixPrefix
 #print axioms Project.Beck.Execution.wordSet_exact
 #print axioms Project.Beck.Execution.directionGuard_exact
 #print axioms Project.Beck.Execution.directionFirstRead_exact
+#print axioms Project.Beck.Execution.directionSearch_exact
