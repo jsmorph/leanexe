@@ -1,3 +1,4 @@
+import LeanExe.Source.ScalarPublicArgument
 import LeanExe.Source.ScalarBooleanLet
 import LeanExe.Source.ScalarGuardLiteral
 import LeanExe.Source.ScalarSavedBooleanGuard
@@ -67,6 +68,8 @@ inductive GuardLetType where
   | boolean (type : BooleanType)
   | word (type : ResultType)
   | predicate (booleanInput : Bool) (inputName : Lean.Name) (info : Lean.BinderInfo) (result : BooleanType)
+  | predicateId (kind : PublicArgument) (domain : Lean.Expr) (input : PublicArgument.Domain kind domain)
+      (inputName : Lean.Name) (info : Lean.BinderInfo) (result : BooleanType)
   deriving Repr
 
 def GuardLetType.expr : GuardLetType → Lean.Expr
@@ -74,6 +77,8 @@ def GuardLetType.expr : GuardLetType → Lean.Expr
   | .word type => type.expr
   | .predicate booleanInput inputName info result =>
       .forallE inputName (if booleanInput then .const ``Bool [] else .const ``UInt64 []) result.expr info
+  | .predicateId _ domain _ inputName info result =>
+      .forallE inputName (.app (.const ``Id [.zero]) domain) result.expr info
 
 /-- A let binding retained in a proposition and in each checked operand. -/
 structure GuardLet where
@@ -92,7 +97,7 @@ def operand (binding : GuardLet) : Lean.Expr :=
   match binding.type with
   | .boolean _ => .app (.const ``Bool.toUInt64 []) binding.value
   | .word _ => binding.value
-  | .predicate .. => binding.wrap (.app (.const ``UInt64.ofNat []) (.lit (.natVal 0)))
+  | .predicate .. | .predicateId .. => binding.wrap (.app (.const ``UInt64.ofNat []) (.lit (.natVal 0)))
 
 def evidence (binding : GuardLet) (body : Lean.Expr) : Lean.Expr :=
   body.instantiate1 binding.value
@@ -114,7 +119,7 @@ theorem operand_size (binding : GuardLet) (condition : Lean.Expr)
         sizeOf (.const ``Bool [] : Lean.Expr) + sizeOf (.const ``True [] : Lean.Expr) + guardOperandOverhead := by decide
     simp [operand, wrap, GuardLetType.expr, BooleanType.expr] at *
     omega
-  | predicate booleanInput inputName info result =>
+  | predicate booleanInput inputName info result | predicateId kind domain input inputName info result =>
     have constants := guardOperandOverhead_predicate
     simp [operand, wrap] at *
     omega

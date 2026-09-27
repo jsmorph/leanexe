@@ -1,11 +1,12 @@
 import LeanExe.Source.ScalarBooleanLocal
+import LeanExe.Source.ScalarPublicArgument
 
 namespace LeanExe.Source.Scalar
 
 /-- Exact local predicate declaration before its Boolean continuation. -/
 def booleanHelperExpr (booleanInput : Bool) (shape : BooleanFunctionBinding)
-    (parameterName : Lean.Name) (body continuation : Lean.Expr) : Lean.Expr :=
-  let input := Lean.Expr.const (if booleanInput then ``Bool else ``UInt64) []
+    (parameterName : Lean.Name) (body continuation : Lean.Expr)
+    (input : Lean.Expr := .const (if booleanInput then ``Bool else ``UInt64) []) : Lean.Expr :=
   .letE shape.functionName (.forallE shape.typeName input shape.result.expr shape.typeInfo)
     (.lam parameterName input body shape.valueInfo) continuation shape.nondep
 
@@ -15,14 +16,16 @@ structure BooleanHelper (booleanInput : Bool) where
   parameterName : Lean.Name
   body : Lean.Expr
   continuation : Lean.Expr
+  domain : Lean.Expr
+  input : PublicArgument.Domain (if booleanInput then .boolean else .word) domain
   extended : ∀ expression : BooleanLocal,
-    booleanHelperExpr booleanInput shape parameterName body continuation ≠ expression.expr
+    booleanHelperExpr booleanInput shape parameterName body continuation domain ≠ expression.expr
   deriving Repr
 
 namespace BooleanHelper
 
 def expr (value : BooleanHelper booleanInput) : Lean.Expr :=
-  booleanHelperExpr booleanInput value.shape value.parameterName value.body value.continuation
+  booleanHelperExpr booleanInput value.shape value.parameterName value.body value.continuation value.domain
 
 theorem body_size (value : BooleanHelper booleanInput) : sizeOf value.body < sizeOf value.expr := by
   simp [expr, booleanHelperExpr]; omega

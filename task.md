@@ -954,10 +954,16 @@ production probes are restored. The corpus contains 1632 declarations. Evidence 
 in [the generated-matcher archive](proofs/compiler/boolean-step-matcher-2026-09-27/README.md).
 
 Current capability: retained Id input annotations in converted Boolean helper
-scopes. The fixed identityInput probe remains unsupported. Extend exact input
-recognition and the independent source grammar, preserve lexical captures and
-arbitrary supported bodies, and prove the capability through emitted WASM before
-broadening other signatures.
+scopes. The unchanged identityInput probe and ten new fixed examples reject
+before implementation. The source helper now retains its exact domain and an
+independent PublicArgument.Domain certificate. Recognition requires matching
+arrow/lambda domains; its acceptance and soundness proofs pass 67 targets.
+The full extractor passes 205 targets. The syntax matrix passes 32,256 native/IR
+comparisons, 48,384 invalid-input checks and 768 admission controls. Eight of ten
+fixed probes compile. Proposition-let input checking also needs extension; its
+independent typed Id case and recognizer proofs now pass 21 targets. A word let
+surrounding the general Boolean helper also fails with bare inputs; that original
+capture probe is preserved for the next increment. The public WASM gate is pending.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
