@@ -1,0 +1,33 @@
+leanrun: LEANRUN_LOCAL=1; macOS has no cgroup CPU/memory/swap limits or ionice
+leanrun: explicitly authorized inherited priority; nice unavailable
+✔ [45/83] Built LeanExe.Source.Scalar (1.5s)
+⚠ [69/83] Replayed LeanExe.Extract.ScalarGuardSyntax
+warning: LeanExe/Extract/ScalarGuardSyntax.lean:219:4: try 'simp' instead of 'simpa'
+
+Note: This linter can be disabled with `set_option linter.unnecessarySimpa false`
+✖ [108/108] Building LeanExe.Extract.ScalarExprCore (13s)
+trace: .> LEAN_PATH=/Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean /Users/jamiestephens/src/leanexe/build/tools/lean-4.34.0-rc2-darwin_aarch64/bin/lean /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/LeanExe/Extract/ScalarExprCore.lean -o /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.olean -i /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/lib/lean/LeanExe/Extract/ScalarExprCore.ilean -c /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.c --setup /Users/jamiestephens/Documents/Codex/2026-09-24/get/leanexe/.lake/build/ir/LeanExe/Extract/ScalarExprCore.setup.json --json
+warning: LeanExe/Extract/ScalarExprCore.lean:341:31: Variable name `wrapper` is not explicitly referenced.
+
+Hint: The binding can be removed (if unused) or named `_` (if used implicitly). Alternatively, prefix the name with `_` to silence this warning:
+  [apply] _wrapper
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+error: LeanExe/Extract/ScalarExprCore.lean:737:9: unsolved goals
+case none
+locals : List ScalarBinding
+negations index : Nat
+input : Lean.Expr
+noPredicate : locals[index]?.bind ScalarBinding.predicateFunction? = none
+found : locals[index]?.bind ScalarBinding.booleanPredicateFunction? = none
+noBoolean :
+  ∀ (n i : Nat) (argument : Lean.Expr),
+    Source.Scalar.BooleanLocal.predicate negations index input = Source.Scalar.BooleanLocal.predicate n i argument →
+      locals[i]?.bind ScalarBinding.booleanPredicateFunction? = none
+⊢ ∀ (negations_1 : Nat) (wrapper : Source.Scalar.BooleanWrapper) (body : Source.Scalar.BooleanLocal),
+    Source.Scalar.BooleanLocal.predicate negations index input =
+        Source.Scalar.BooleanLocal.wrapped negations_1 wrapper body →
+      hasBooleanPredicate locals body.functions = false
+Some required targets logged failures:
+- LeanExe.Extract.ScalarExprCore
+error: build failed
