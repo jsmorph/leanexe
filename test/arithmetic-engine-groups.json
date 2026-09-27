@@ -6313,6 +6313,7 @@
     "rangeSequenceShadow",
     "rangeSequenceIdBind",
     "rangeSequenceBoolInput",
-    "rangeTwice"
+    "rangeTwice",
+    "rangeLetTwoLoops"
   ]
 }
