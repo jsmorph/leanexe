@@ -468,7 +468,11 @@ post-loop results. Both parameter domains must be exactly UInt64; results may
 retain standard Id layers. Helpers can capture outer values, call unary predicates
 and be called repeatedly. Both arguments and unused helper bodies are checked.
 Binary predicates have a distinct function kind, so treating their results as
-unconverted words is rejected.
+unconverted words is rejected. Binary predicate declarations also scope complete
+word-accumulator loop steps, including early exits, saved Boolean results and
+nested binary predicates. The body captures the current loop environment.
+Unsupported bodies are rejected even when the helper is unused or the range is
+empty.
 Ordinary scalar word continuations and loop-step
 helper declarations use the same recursive body check, including predicate lets
 inside propositions. Helpers declared before word-result and Boolean-result
