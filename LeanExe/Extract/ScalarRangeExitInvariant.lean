@@ -201,12 +201,10 @@ theorem extractScalarRangeExitWith_invariant (P : LeanExe.IR.Expr → Prop)
     rw [extractScalarRangeExitWith_booleanBind] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨c, hc, ht⟩ := compiled
-    have bound := extractBooleanLocalWith_choice P literal binary choice action.leaf _ hc bindings
-      (fun operand member target found => expression found bindings) _ _ (literal 1) (literal 0)
     apply ih c ht
     intro binding member
     rcases List.mem_cons.mp member with rfl | member
-    · exact bound
+    · exact expression hc bindings
     · exact bindings binding member
   | case22 locals input output value name domain body bi annotations typesMatched bound matched rejected ih =>
     obtain ⟨inputType, outputType⟩ := annotations

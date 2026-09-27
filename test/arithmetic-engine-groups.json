@@ -2515,5 +2515,33 @@
     "rangeBooleanPredicateBindCondition",
     "rangeBooleanPredicateBindOuter",
     "rangeBooleanPredicateBindOuterCapture"
+  ],
+  "boolean-predicate-loop-bind": [
+    "constant",
+    "compareBEq",
+    "mixedGuardDo",
+    "booleanPredicateBind",
+    "booleanPredicateBindNested",
+    "booleanPredicateBindChoice",
+    "booleanPredicateBindCapture",
+    "booleanPredicateBindUnused",
+    "booleanPredicateBindBody",
+    "rangeBooleanPredicateBindStep",
+    "rangeBooleanPredicateBindCondition",
+    "rangeBooleanPredicateBindOuter",
+    "rangeBooleanPredicateBindOuterCapture",
+    "rangeBooleanPredicateWrapperStep",
+    "rangeBooleanPredicateWrapperContinue",
+    "rangeBooleanPredicateWrapperOuter",
+    "rangeBooleanPredicateWrapperCapture",
+    "rangeBooleanPredicateOuterLetCapture",
+    "rangeBooleanPredicateLoopBindBreak",
+    "rangeBooleanPredicateLoopBindContinue",
+    "rangeBooleanPredicateLoopBindChoice",
+    "rangeBooleanPredicateLoopBindCapture",
+    "rangeBooleanPredicateOuterBindBounds",
+    "rangeBooleanPredicateOuterBindCapture",
+    "rangeBooleanPredicateOuterBindChoice",
+    "rangeBooleanPredicateOuterBindDirect"
   ]
 }

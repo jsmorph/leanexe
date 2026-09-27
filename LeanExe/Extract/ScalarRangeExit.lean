@@ -132,9 +132,8 @@ def extractScalarRangeExitWith (locals : List ScalarBinding) (slot : Nat)
                   match booleanAction? value with
                   | none => none
                   | some action => do
-                      let c ← extractBooleanLocalWith locals action.leaf
-                        (fun operand _ => extractScalarExprWith locals operand)
-                      extractScalarRangeExitWith (.boolean (guardWord c) :: locals) slot body
+                      let bound ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) action.expr)
+                      extractScalarRangeExitWith (.boolean bound :: locals) slot body
           | some _ =>
               match extractScalarExprWith locals value with
               | some bound => extractScalarRangeExitWith (.word bound :: locals) slot body
@@ -194,7 +193,7 @@ theorem rangeExitSupported_excludes_pure {types : List BindingKind} {source : Le
     simp only [bind, Option.bind_eq_none_iff]
     intro condition compiled
     exact ih _
-  | idBindBoolean action type _ _ _ ih =>
+  | idBindBoolean action type _ _ ih =>
     rw [extractScalarExprWith_booleanBind]
     simp only [bind, Option.bind_eq_none_iff]
     intro condition compiled
@@ -264,9 +263,8 @@ theorem extractScalarRangeExitWith_call (locals : List ScalarBinding) (slot : Na
 theorem extractScalarRangeExitWith_booleanBind (locals : List ScalarBinding) (slot : Nat)
     (action : BooleanAction) (type : ResultType) (name : Lean.Name) (bi : Lean.BinderInfo) (body : Lean.Expr) :
     extractScalarRangeExitWith locals slot (BooleanIdentity.bind name bi action.expr body type.expr) = (do
-      let c ← extractBooleanLocalWith locals action.leaf
-        (fun operand _ => extractScalarExprWith locals operand)
-      extractScalarRangeExitWith (.boolean (guardWord c) :: locals) slot body) := by
+      let bound ← extractScalarExprWith locals (.app (.const ``Bool.toUInt64 []) action.expr)
+      extractScalarRangeExitWith (.boolean bound :: locals) slot body) := by
   rw [BooleanIdentity.bind, extractScalarRangeExitWith, booleanBindType_not_scalar,
     booleanBindType_accepts _ (scalarResultType_accepts type), booleanAction_accepts]
   cases type <;> rfl
@@ -469,16 +467,14 @@ theorem extractScalarRangeExitWith_accepts {types : List BindingKind} {source : 
       · trivial
       · exact total binding member)
     exact ⟨plan, by rw [extractScalarRangeExitWith_letBoolean]; simp [hv, hp]⟩
-  | idBindBoolean action type variables arguments _ ih =>
-    obtain ⟨c, hc⟩ := extractBooleanLocalWith_accepts (total := total) locals action.leaf
-      (fun operand _ => extractScalarExprWith locals operand) (by simpa [typed] using variables)
-      (fun operand member => extractScalarExprWith_accepts (arguments operand member) locals typed total)
-    obtain ⟨plan, hp⟩ := ih (.boolean (guardWord c) :: locals) (by simp [ScalarBinding.kind, typed]) (by
+  | idBindBoolean action type bound _ ih =>
+    obtain ⟨value, hv⟩ := extractScalarExprWith_accepts bound locals typed total
+    obtain ⟨plan, hp⟩ := ih (.boolean value :: locals) (by simp [ScalarBinding.kind, typed]) (by
       intro binding member
       rcases List.mem_cons.mp member with rfl | member
       · trivial
       · exact total binding member)
-    exact ⟨plan, by rw [extractScalarRangeExitWith_booleanBind]; simp [hc, hp]⟩
+    exact ⟨plan, by rw [extractScalarRangeExitWith_booleanBind]; simp [hv, hp]⟩
   | letE value _ ih =>
     obtain ⟨bound, hb⟩ := extractScalarExprWith_accepts value locals typed total
     obtain ⟨plan, hp⟩ := ih (.word bound :: locals) (by simp [ScalarBinding.kind, typed]) (extend total bound)
@@ -774,11 +770,8 @@ theorem extractScalarRangeExitWith_supported {source : Lean.Expr} {locals : List
     rw [extractScalarRangeExitWith_booleanBind] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨c, hc, ht⟩ := compiled
-    apply Range.Exit.Supported.idBindBoolean action type (extractBooleanLocalWith_variables hc)
-    · intro operand member
-      obtain ⟨target, found⟩ := extractBooleanLocalWith_operands hc operand member
-      exact extractScalarExprWith_supported found
-    · simpa [ScalarBinding.kind] using ih c ht
+    exact .idBindBoolean action type (extractScalarExprWith_supported hc)
+      (by simpa [ScalarBinding.kind] using ih c ht)
   | case22 locals input output value name domain body bi annotations typesMatched bound matched rejected ih =>
     obtain ⟨inputType, outputType⟩ := annotations
     obtain ⟨hi, hd, ho⟩ := scalarBindTypes_sound typesMatched

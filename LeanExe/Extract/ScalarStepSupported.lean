@@ -48,13 +48,8 @@ theorem extractScalarStepWith_supported {source : Lean.Expr} {locals : List Scal
     rw [extractScalarStepWith_booleanBind] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
     obtain ⟨c, hc, ht⟩ := compiled
-    apply Step.Supported.idBindBoolean action type
-    · rw [← scalarStepBindings_typed rfl]
-      exact extractBooleanLocalWith_variables hc
-    · intro operand member
-      obtain ⟨expression, found⟩ := extractBooleanLocalWith_operands hc operand member
-      exact scalar found
-    · simpa [ScalarStepBinding.kind, ScalarBinding.kind] using ihb c ht
+    exact .idBindBoolean action type (scalar hc)
+      (by simpa [ScalarStepBinding.kind, ScalarBinding.kind] using ihb c ht)
   | case8 locals sourceType value name body bi rejected =>
     rw [extractScalarStepWith, rejected] at compiled
     contradiction

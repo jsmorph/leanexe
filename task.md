@@ -190,11 +190,20 @@ modules retain identical bytes. Focused tests pass 8,244 native/IR comparisons,
 5,608 rejections and 422 controls. Evidence is in
 [the scalar Boolean-bind archive](proofs/compiler/boolean-predicate-bind-2026-09-26/README.md).
 
-Next: Boolean binds that continue into loop-step and outer-loop bodies, followed
-by direct Boolean helper results. Saved Boolean variables in mixed propositional
-guards, retained instance and Bool-parameter Id wrappers, and broader signatures
-follow. Full-dialect correctness remains unfinished. Complete each capability
-through WASM and commit/push frequently.
+Boolean do binds in loop-step and outer-loop bodies now pass source totality,
+extraction correctness, acceptance, soundness and invariant proofs. Direct and
+wrapped actions preserve captures through accumulator/index changes, and saved
+flags can control break/continue, bounds, initial values and post-loop results.
+Focused tests pass 12,480 native/IR comparisons, 6,912 invalid-input checks and
+320 controls. Prior tests pass 11,992 comparisons, 11,102 rejections and 790
+controls. The general compiler theorem, eighteen audits and native Lean/WASM
+execution are next for this candidate.
+
+Next: finish loop Boolean binds through WASM, then direct Boolean helper results.
+Saved Boolean variables in mixed propositional guards, retained instance and
+Bool-parameter Id wrappers, and broader signatures follow. Full-dialect
+correctness remains unfinished. Complete each capability through WASM and
+commit/push frequently.
 
 ## Reusable Boolean functions in scalar expressions — complete
 

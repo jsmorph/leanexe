@@ -95,14 +95,11 @@ theorem extractScalarStepWith_invariant (P : LeanExe.IR.Expr → Prop)
     obtain ⟨value, hv, ht⟩ := compiled
     exact ihb ht (extend bindings (head := .scalar (.boolean value)) (scalar hv bindings))
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
-  | idBindBoolean action type variables arguments _ ihb =>
+  | idBindBoolean action type _ _ ihb =>
     rw [extractScalarStepWith_booleanBind] at compiled
     simp only [bind, Option.bind_eq_some_iff] at compiled
-    obtain ⟨c, hc, ht⟩ := compiled
-    have bound := extractBooleanLocalWith_choice P literal binary choice action.leaf _ hc
-      (scalarStepBindings_holds bindings) (fun operand member target found => scalar found bindings)
-      _ _ (literal 1) (literal 0)
-    exact ihb ht (extend bindings (head := .scalar (.boolean (guardWord c))) bound)
+    obtain ⟨value, hv, ht⟩ := compiled
+    exact ihb ht (extend bindings (head := .scalar (.boolean value)) (scalar hv bindings))
       (by simp [ScalarStepBinding.kind, ScalarBinding.kind, htypes])
   | chooseBoolean guard type variables arguments _ _ iht ihe =>
     rw [extractScalarStepWith_booleanBranch (noBoolean :=

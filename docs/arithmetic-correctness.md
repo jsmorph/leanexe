@@ -221,8 +221,10 @@ remain subsequent capabilities. Scalar Boolean do binds admit these calls in
 direct actions or under standard pure/Id.run/metadata wrappers. The complete
 action is recursively checked, including unused results, and its encoded Boolean
 is stored with a distinct binding kind. Captures, shadowing and scalar calculations
-inside loops preserve that value. Binds whose continuation is a loop step or
-contains a loop remain subsequent work. Scalar `if` conditions can use these
+inside loops preserve that value. These binds also continue into loop-step and
+outer-loop bodies. Bound flags can control break/continue, supply bounds and
+initial values, be captured by helpers and contribute to the result after a loop.
+Their original values are preserved across accumulator and index updates. Scalar `if` conditions can use these
 calls as truth tests or Boolean Eq/Ne relations, including ordinary and dependent
 branches. Loop-step conditions use the same checked inputs to select both the
 accumulator value and the break/continue flag. Helpers may be declared inside a
