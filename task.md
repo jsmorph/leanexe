@@ -805,16 +805,24 @@ comparisons, 77,744 invalid-input checks and 640 controls. Three
 original probes pass unchanged. The native corpus contains 1507 declarations.
 Evidence is in [the general helper-body archive](proofs/compiler/boolean-helper-general-body-2026-09-27/README.md).
 
-Current capability: general predicate bodies before scalar word continuations.
-The scalar binding rules and equations now retain raw Boolean bodies and preserve
-recursive conversion and unused-body validation. Source/core, scalar correctness
-and the public compiler proofs pass. Ten new probes and the original proposition
-let pass unchanged. New tests pass 88,884 comparisons, 95,152 invalid-input checks
-and 1,728 controls. Prior tests pass 66,888 comparisons, 48,400 invalid-input
-checks and 2,048 controls. The full compiler proof and WASM checks are next.
-The loop probes admit three forms through existing scalar paths; a Boolean-input
-helper before break and two outer-loop helper forms remain rejected. Id input
-domains in converted helper scopes remain another recorded gap.
+General predicate bodies before scalar word continuations are complete. Source
+totality, acceptance/soundness, scalar correctness, IR invariants and the general
+source-to-WASM theorem pass with nineteen audits. Native Lean/V8 agree on 993
+inputs across 54 declarations, including 25 ranges; 44 prior modules retain
+identical bytes and 0 changed. New tests pass 88,884 comparisons, 95,152
+invalid-input checks and 1,728 controls. Prior tests pass 66,888 comparisons,
+48,400 invalid-input checks and 2,048 controls. Ten new probes and the
+original nested proposition let pass unchanged; three prior controls still pass.
+The native corpus contains 1517 declarations. Evidence is in
+[the scalar helper-body archive](proofs/compiler/boolean-helper-word-body-2026-09-27/README.md).
+
+Current capability: general predicate bodies in dedicated loop-step bindings.
+The fixed loop probe still rejects a Boolean-input helper before break. Generalize
+the two step binding rules and equations to raw bodies, using the checked scalar
+Boolean conversion for validation, source meaning and IR properties. Preserve
+step values and exit flags, checking dependent branches, captures and unused
+bodies. Three loop probes already pass through scalar paths and remain positive
+controls. Both outer-loop probes and Id input domains remain separate gaps.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining
