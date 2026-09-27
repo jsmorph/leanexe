@@ -999,9 +999,11 @@ All six fixed application probes compile. The corpus contains 1672 declarations.
 Evidence is in [the direct-application archive](proofs/compiler/boolean-scope-application-2026-09-27/README.md).
 
 Current capability: local two-argument UInt64-to-Bool helpers. Preserve the six
-fixed probes, add distinct typed binary predicate bindings and exact declaration
-and call syntax, prove source evaluation and extraction, then complete emitted-WASM
-proofs and independent engine checks before advancing.
+fixed probes. Exact declaration/call syntax and recognizer/exclusion proofs pass
+87 targets. Distinct binary predicate kinds, lookup and semantic relations are
+proved, and existing scalar expression proofs pass with the added kind. Source
+evaluation/support and compiler dispatch still need the new cases, followed by
+emitted-WASM proofs and independent engine checks before advancing.
 
 Next: general helper compositions inside scalar Boolean operands. Retained
 instances, broader signatures, composition of multiple loops and the remaining

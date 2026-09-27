@@ -16,6 +16,7 @@ inductive ScalarBinding where
   | predicateFunction (apply : LeanExe.IR.Expr → Option LeanExe.IR.Expr)
   | booleanPredicateFunction (apply : LeanExe.IR.Expr → Option LeanExe.IR.Expr)
   | binaryFunction (apply : LeanExe.IR.Expr → LeanExe.IR.Expr → Option LeanExe.IR.Expr)
+  | binaryPredicateFunction (apply : LeanExe.IR.Expr → LeanExe.IR.Expr → Option LeanExe.IR.Expr)
   | manyFunction (arity : Nat) (apply : List LeanExe.IR.Expr → Option LeanExe.IR.Expr)
 
 def ScalarBinding.kind : ScalarBinding → LeanExe.Source.Scalar.BindingKind
@@ -28,11 +29,12 @@ def ScalarBinding.kind : ScalarBinding → LeanExe.Source.Scalar.BindingKind
   | .predicateFunction _ => .predicateFunction
   | .booleanPredicateFunction _ => .booleanPredicateFunction
   | .binaryFunction _ => .binaryFunction
+  | .binaryPredicateFunction _ => .binaryPredicateFunction
   | .manyFunction arity _ => .manyFunction arity
 
 def ScalarBinding.word? : ScalarBinding → Option LeanExe.IR.Expr
   | .word expression => some expression
-  | .boolean _ | .natural _ | .unit | .function _ _ | .booleanFunction _ | .predicateFunction _ | .booleanPredicateFunction _ | .binaryFunction _ | .manyFunction _ _ => none
+  | .boolean _ | .natural _ | .unit | .function _ _ | .booleanFunction _ | .predicateFunction _ | .booleanPredicateFunction _ | .binaryPredicateFunction _ | .binaryFunction _ | .manyFunction _ _ => none
 
 def ScalarBinding.boolean? : ScalarBinding → Option LeanExe.IR.Expr
   | .boolean expression => some expression
@@ -64,7 +66,7 @@ def ScalarBinding.function? (withUnit : Bool) : ScalarBinding → Option (LeanEx
     binding.function? withUnit = some f ↔ binding = .function withUnit f := by
   cases binding with
   | booleanPredicateFunction _ | booleanFunction _ | predicateFunction _ => simp [function?]
-  | boolean _ | word _ | natural _ | unit | binaryFunction _ | manyFunction _ _ => simp [function?]
+  | boolean _ | word _ | natural _ | unit | binaryPredicateFunction _ | binaryFunction _ | manyFunction _ _ => simp [function?]
   | function shape g => cases shape <;> cases withUnit <;> simp [function?]
 
 def ScalarBinding.Total : ScalarBinding → Prop
@@ -72,7 +74,7 @@ def ScalarBinding.Total : ScalarBinding → Prop
   | .unit => True
   | .function _ f => ∀ argument, ∃ target, f argument = some target
   | .booleanFunction f | .predicateFunction f | .booleanPredicateFunction f => ∀ argument, ∃ target, f argument = some target
-  | .binaryFunction f => ∀ first second, ∃ target, f first second = some target
+  | .binaryFunction f | .binaryPredicateFunction f => ∀ first second, ∃ target, f first second = some target
   | .manyFunction arity f => ∀ arguments, arguments.length = arity → ∃ target, f arguments = some target
 
 def ScalarBinding.Holds (P : LeanExe.IR.Expr → Prop) : ScalarBinding → Prop
@@ -80,7 +82,7 @@ def ScalarBinding.Holds (P : LeanExe.IR.Expr → Prop) : ScalarBinding → Prop
   | .unit => True
   | .function _ f => ∀ argument target, P argument → f argument = some target → P target
   | .booleanFunction f | .predicateFunction f | .booleanPredicateFunction f => ∀ argument target, P argument → f argument = some target → P target
-  | .binaryFunction f => ∀ first second target, P first → P second → f first second = some target → P target
+  | .binaryFunction f | .binaryPredicateFunction f => ∀ first second target, P first → P second → f first second = some target → P target
   | .manyFunction arity f => ∀ arguments target, arguments.length = arity →
       (∀ argument ∈ arguments, P argument) → f arguments = some target → P target
 
@@ -102,6 +104,9 @@ def ScalarBinding.Matches (store : LeanExe.IR.ScalarStore) :
   | .booleanPredicateFunction compile, .booleanPredicateFunction apply =>
       ∀ argument value target, argument.ScalarEval store (Bool.toUInt64 value) store → compile argument = some target →
         target.ScalarEval store (Bool.toUInt64 (apply value)) store
+  | .binaryPredicateFunction compile, .binaryPredicateFunction apply =>
+      ∀ first x second y target, first.ScalarEval store x store → second.ScalarEval store y store →
+        compile first second = some target → target.ScalarEval store (Bool.toUInt64 (apply x y)) store
   | .binaryFunction compile, .binaryFunction apply =>
       ∀ first x second y target, first.ScalarEval store x store → second.ScalarEval store y store →
         compile first second = some target → target.ScalarEval store (apply x y) store
@@ -207,7 +212,7 @@ theorem scalarWord_lookup {locals : List ScalarBinding} {index : Nat}
   | booleanPredicateFunction _ => cases kind
   | booleanFunction _ | predicateFunction _ => cases kind
   | word target => exact ⟨target, by simp [found, ScalarBinding.word?]⟩
-  | boolean _ | natural _ | unit | function _ _ | binaryFunction _ | manyFunction _ _ => cases kind
+  | boolean _ | natural _ | unit | function _ _ | binaryPredicateFunction _ | binaryFunction _ | manyFunction _ _ => cases kind
 
 theorem scalarBoolean_lookup {locals : List ScalarBinding} {index : Nat}
     (present : (locals.map ScalarBinding.kind)[index]? = some .boolean) :
@@ -218,7 +223,7 @@ theorem scalarBoolean_lookup {locals : List ScalarBinding} {index : Nat}
   | booleanPredicateFunction _ => cases kind
   | booleanFunction _ | predicateFunction _ => cases kind
   | boolean target => exact ⟨target, by simp [found, ScalarBinding.boolean?]⟩
-  | word _ | natural _ | unit | function _ _ | binaryFunction _ | manyFunction _ _ => cases kind
+  | word _ | natural _ | unit | function _ _ | binaryPredicateFunction _ | binaryFunction _ | manyFunction _ _ => cases kind
 
 theorem scalarNatural_lookup {locals : List ScalarBinding} {index : Nat}
     (present : (locals.map ScalarBinding.kind)[index]? = some .natural) :
@@ -229,7 +234,7 @@ theorem scalarNatural_lookup {locals : List ScalarBinding} {index : Nat}
   | booleanPredicateFunction _ => cases kind
   | booleanFunction _ | predicateFunction _ => cases kind
   | natural target => exact ⟨target, by simp [found, ScalarBinding.natural?]⟩
-  | boolean _ | word _ | unit | function _ _ | binaryFunction _ | manyFunction _ _ => cases kind
+  | boolean _ | word _ | unit | function _ _ | binaryPredicateFunction _ | binaryFunction _ | manyFunction _ _ => cases kind
 
 theorem scalarFunction_lookup {locals : List ScalarBinding} {index : Nat} {withUnit : Bool}
     (present : (locals.map ScalarBinding.kind)[index]? = some (.function withUnit)) :
@@ -239,7 +244,7 @@ theorem scalarFunction_lookup {locals : List ScalarBinding} {index : Nat} {withU
   cases binding with
   | booleanPredicateFunction _ => cases kind
   | booleanFunction _ | predicateFunction _ => cases kind
-  | boolean _ | word _ | natural _ | unit | binaryFunction _ | manyFunction _ _ => cases kind
+  | boolean _ | word _ | natural _ | unit | binaryPredicateFunction _ | binaryFunction _ | manyFunction _ _ => cases kind
   | function shape f => cases kind; exact ⟨f, found⟩
 
 def ScalarBinding.booleanFunction? : ScalarBinding → Option (LeanExe.IR.Expr → Option LeanExe.IR.Expr)
@@ -282,7 +287,7 @@ theorem scalarBooleanFunction_lookup {locals : List ScalarBinding} {index : Nat}
   | booleanPredicateFunction _ => cases kind
   | booleanFunction f => exact ⟨f, found⟩
   | predicateFunction _ => cases kind
-  | boolean _ | word _ | natural _ | unit | function _ _ | binaryFunction _ | manyFunction _ _ => cases kind
+  | boolean _ | word _ | natural _ | unit | function _ _ | binaryPredicateFunction _ | binaryFunction _ | manyFunction _ _ => cases kind
 
 def ScalarBinding.predicateFunction? : ScalarBinding → Option (LeanExe.IR.Expr → Option LeanExe.IR.Expr)
   | .predicateFunction f => some f
@@ -324,7 +329,7 @@ theorem scalarPredicateFunction_lookup {locals : List ScalarBinding} {index : Na
   | booleanPredicateFunction _ => cases kind
   | predicateFunction f => exact ⟨f, found⟩
   | booleanFunction _ => cases kind
-  | boolean _ | word _ | natural _ | unit | function _ _ | binaryFunction _ | manyFunction _ _ => cases kind
+  | boolean _ | word _ | natural _ | unit | function _ _ | binaryPredicateFunction _ | binaryFunction _ | manyFunction _ _ => cases kind
 
 def ScalarBinding.booleanPredicateFunction? : ScalarBinding → Option (LeanExe.IR.Expr → Option LeanExe.IR.Expr)
   | .booleanPredicateFunction f => some f
@@ -366,7 +371,7 @@ theorem scalarBooleanPredicateFunction_lookup {locals : List ScalarBinding} {ind
   | predicateFunction _ => cases kind
   | booleanPredicateFunction f => exact ⟨f, found⟩
   | booleanFunction _ => cases kind
-  | boolean _ | word _ | natural _ | unit | function _ _ | binaryFunction _ | manyFunction _ _ => cases kind
+  | boolean _ | word _ | natural _ | unit | function _ _ | binaryPredicateFunction _ | binaryFunction _ | manyFunction _ _ => cases kind
 
 theorem scalarBooleanFunction_not_word {locals : List ScalarBinding} {index : Nat}
     {f : LeanExe.IR.Expr → Option LeanExe.IR.Expr}
@@ -444,6 +449,7 @@ theorem scalarBinaryFunction_lookup {locals : List ScalarBinding} {index : Nat}
   cases binding with
   | booleanPredicateFunction _ => cases kind
   | booleanFunction _ | predicateFunction _ => cases kind
+  | binaryPredicateFunction _ => cases kind
   | binaryFunction f => exact ⟨f, found⟩
   | boolean _ | word _ | natural _ | unit | function _ _ | manyFunction _ _ => cases kind
 
@@ -457,7 +463,7 @@ def ScalarBinding.manyFunction? (arity : Nat) : ScalarBinding → Option (List L
   cases binding with
   | booleanPredicateFunction _ | booleanFunction _ | predicateFunction _ => simp [manyFunction?]
   | manyFunction count g => by_cases same : count = arity <;> simp [manyFunction?, same]
-  | boolean _ | word _ | natural _ | unit | function _ _ | binaryFunction _ => simp [manyFunction?]
+  | boolean _ | word _ | natural _ | unit | function _ _ | binaryPredicateFunction _ | binaryFunction _ => simp [manyFunction?]
 
 theorem ScalarBindingsMatch.manyFunction {locals : List ScalarBinding} {values : List LeanExe.Source.Scalar.Value}
     {store : LeanExe.IR.ScalarStore} {index arity : Nat}
@@ -489,7 +495,7 @@ theorem scalarManyFunction_lookup {locals : List ScalarBinding} {index arity : N
   | booleanPredicateFunction _ => cases kind
   | booleanFunction _ | predicateFunction _ => cases kind
   | manyFunction count f => cases kind; exact ⟨f, found⟩
-  | boolean _ | word _ | natural _ | unit | function _ _ | binaryFunction _ => cases kind
+  | boolean _ | word _ | natural _ | unit | function _ _ | binaryPredicateFunction _ | binaryFunction _ => cases kind
 
 theorem ScalarBindingsMatch.words {locals values store} {arguments : List LeanExe.IR.Expr} {native : List UInt64}
     (tail : ScalarBindingsMatch locals values store)
@@ -499,6 +505,49 @@ theorem ScalarBindingsMatch.words {locals values store} {arguments : List LeanEx
   induction heads with
   | nil => exact tail
   | cons head _ ih => exact ih.cons head
+
+def ScalarBinding.binaryPredicateFunction? : ScalarBinding → Option (LeanExe.IR.Expr → LeanExe.IR.Expr → Option LeanExe.IR.Expr)
+  | .binaryPredicateFunction f => some f
+  | _ => none
+
+@[simp] theorem ScalarBinding.binaryPredicateFunction?_some {binding : ScalarBinding}
+    {f : LeanExe.IR.Expr → LeanExe.IR.Expr → Option LeanExe.IR.Expr} :
+    binding.binaryPredicateFunction? = some f ↔ binding = .binaryPredicateFunction f := by
+  cases binding <;> simp [binaryPredicateFunction?]
+
+theorem ScalarBindingsMatch.binaryPredicateFunction {locals : List ScalarBinding} {values : List LeanExe.Source.Scalar.Value}
+    {store : LeanExe.IR.ScalarStore} {index : Nat}
+    {compile : LeanExe.IR.Expr → LeanExe.IR.Expr → Option LeanExe.IR.Expr}
+    {apply : UInt64 → UInt64 → Bool}
+    (bindings : ScalarBindingsMatch locals values store)
+    (compiled : (locals[index]?.bind ScalarBinding.binaryPredicateFunction?) = some compile)
+    (source : values[index]? = some (.binaryPredicateFunction apply)) :
+    (ScalarBinding.binaryPredicateFunction compile).Matches store (.binaryPredicateFunction apply) := by
+  obtain ⟨binding, found, matched⟩ := Option.bind_eq_some_iff.mp compiled
+  have same := ScalarBinding.binaryPredicateFunction?_some.mp matched
+  subst binding
+  exact bindings index _ _ found source
+
+theorem scalarBinaryPredicateFunction_kind {locals : List ScalarBinding} {index : Nat}
+    {f : LeanExe.IR.Expr → LeanExe.IR.Expr → Option LeanExe.IR.Expr}
+    (found : (locals[index]?.bind ScalarBinding.binaryPredicateFunction?) = some f) :
+    (locals.map ScalarBinding.kind)[index]? = some .binaryPredicateFunction := by
+  obtain ⟨binding, present, matched⟩ := Option.bind_eq_some_iff.mp found
+  have same := ScalarBinding.binaryPredicateFunction?_some.mp matched
+  subst binding
+  simp [List.getElem?_map, present, ScalarBinding.kind]
+
+theorem scalarBinaryPredicateFunction_lookup {locals : List ScalarBinding} {index : Nat}
+    (present : (locals.map ScalarBinding.kind)[index]? = some .binaryPredicateFunction) :
+    ∃ f, locals[index]? = some (.binaryPredicateFunction f) := by
+  rw [List.getElem?_map] at present
+  obtain ⟨binding, found, kind⟩ := Option.map_eq_some_iff.mp present
+  cases binding with
+  | binaryFunction _ => cases kind
+  | booleanPredicateFunction _ => cases kind
+  | booleanFunction _ | predicateFunction _ => cases kind
+  | binaryPredicateFunction f => exact ⟨f, found⟩
+  | boolean _ | word _ | natural _ | unit | function _ _ | manyFunction _ _ => cases kind
 
 end LeanExe.Extract.Core
 
