@@ -17,6 +17,12 @@ def allocationCompiled : MemoryCompiled (arity := 1) allocation :=
 def recursiveWriteCompiled : MemoryCompiled (arity := 3) recursiveWrite :=
   (compileMemory recursiveWriteCertificate).toOption.get (by decide)
 
+def mainCompiled : MemoryCompiled (arity := 0) LeanExe.Core.StateExamples.main :=
+  (compileMemory mainCertificate).toOption.get (by decide)
+
+def updateByteCompiled : MemoryCompiled (arity := 1) updateByte :=
+  (compileMemory updateByteCertificate).toOption.get (by decide)
+
 /-- The result and every accessible output byte agree with the native state computation. -/
 theorem recursiveWrite_correct (count address value : UInt64) (initial : ByteArray)
     (host : Wasm.HostEnv α) (store : Wasm.Store α)
