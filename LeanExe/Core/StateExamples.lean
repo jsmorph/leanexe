@@ -18,6 +18,14 @@ def allocation (delta : UInt64) : StateM ByteArray UInt64 := do
   let current ← Memory.size
   pure (previous + current)
 
+def main : StateM ByteArray UInt64 := Memory.size
+
+def updateByte (address : UInt64) : StateM ByteArray UInt64 := do
+  let value ← Memory.read address
+  let next := if value = 0 then 1 else value - 1
+  let _ ← Memory.write address next
+  pure next
+
 def recursiveWrite (count address value : UInt64) : StateM ByteArray UInt64 :=
   if h : count = 0 then pure value else do
     let _ ← Memory.write address value
@@ -35,5 +43,7 @@ run_elab Extract.certifyMemory ``byteSum `LeanExe.Core.StateExamples.byteSumCert
 run_elab Extract.certifyMemory ``copy `LeanExe.Core.StateExamples.copyCertificate
 run_elab Extract.certifyMemory ``allocation `LeanExe.Core.StateExamples.allocationCertificate
 run_elab Extract.certifyMemory ``recursiveWrite `LeanExe.Core.StateExamples.recursiveWriteCertificate
+run_elab Extract.certifyMemory ``main `LeanExe.Core.StateExamples.mainCertificate
+run_elab Extract.certifyMemory ``updateByte `LeanExe.Core.StateExamples.updateByteCertificate
 
 end LeanExe.Core.StateExamples

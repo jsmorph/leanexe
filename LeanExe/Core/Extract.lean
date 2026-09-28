@@ -1,4 +1,6 @@
 import LeanExe.Core.StateNative
+import LeanExe.Core.NativeLoop
+import LeanExe.Core.NativeRangeFunction
 import Lean.Meta.Eqns
 import Lean.Meta.Tactic.FunInd
 
@@ -10,15 +12,22 @@ open LeanExe.Wasm.ScalarDescriptor (U64Op)
 private abbrev ScalarExpr := LeanExe.Wasm.ScalarDescriptor.Expr
 private abbrev ScalarCond := LeanExe.Wasm.ScalarDescriptor.Cond
 
+private structure RangeInfo where
+  iterationName : Name
+  iterationIndex : Nat
+  savedCount : Nat
+
 private structure Entry where
   name : Name
   equation : Name := .anonymous
   function : Option Function := none
   stateful : Bool := false
+  range : Option RangeInfo := none
 
 private structure ExtractState where
   entries : Array Entry := #[]
   memory : Bool := false
+  namePrefix : Name := .anonymous
 
 private abbrev ExtractM := StateT ExtractState MetaM
 private abbrev Bindings := Array (Expr × ScalarExpr)
@@ -50,6 +59,14 @@ private def operands (expression : Expr) : MetaM (Expr × Expr) := do
   let args := expression.getAppArgs
   if args.size < 2 then throwError "expected two operands: {expression}"
   return (args[args.size - 2]!, args[args.size - 1]!)
+
+private def addNativeDefinition (name : Name) (value : Expr) : MetaM Unit := do
+  let type ← inferType value
+  addAndCompile <| .defnDecl
+    { name, levelParams := [], type, value, hints := .regular 0, safety := .safe }
+  enableRealizationsForConst name
+
+private abbrev rangeFunction := NativeRangeFunction.rangeFunction
 
 mutual
   private partial def ensureFunction (name : Name) : ExtractM Nat := do
@@ -102,6 +119,8 @@ mutual
       return (sequence (sequence first (.assign slot value)) second, result, next)
     let fn := expression.getAppFn
     let args := expression.getAppArgs
+    if fn.isConstOf ``ForIn.forIn then
+      return ← lowerRange bindings expression next false
     if fn.isConstOf ``OfNat.ofNat && args.size == 3 then
       if let .lit (.natVal value) := args[1]! then return (.skip, .const value, next)
     if fn.isConstOf ``UInt64.ofNat && args.size == 1 then
@@ -127,9 +146,14 @@ mutual
         if args.size ≥ 2 then
           let value := args[args.size - 2]!
           let continuation := args[args.size - 1]!
-          let normalized ← whnf (mkApp continuation value)
-          if ← isDefEq (← inferType normalized) (mkConst ``UInt64) then
-            return ← lower bindings normalized next
+          let (first, value, next) ← lower bindings value next
+          let slot := next
+          let state ← get
+          let (second, result, next) ← runScoped <| lambdaTelescope continuation fun parameters body => do
+            unless parameters.size == 1 && (← isDefEq (← inferType parameters[0]!) (mkConst ``UInt64)) do
+              throwError "Pure computation binds must produce one UInt64: {continuation}"
+            (lower (bindings.push (parameters[0]!, .get slot)) body (slot + 1)).run state
+          return (sequence (sequence first (.assign slot value)) second, result, next)
       let callee ← ensureFunction name
       let (code, inputs, next) ← lowerArguments bindings args.toList next
       return (sequence code (.call next callee inputs), .get next, next + 1)
@@ -159,6 +183,8 @@ mutual
       return (sequence (sequence first (.assign slot value)) second, result, next)
     let fn := expression.getAppFn
     let args := expression.getAppArgs
+    if fn.isConstOf ``ForIn.forIn then
+      return ← lowerRange bindings expression next true
     if fn.isConstOf ``Pure.pure then
       return ← lower bindings args.back! next
     if fn.isConstOf ``Bind.bind && args.size ≥ 2 then
@@ -200,6 +226,67 @@ mutual
       runScoped <| lambdaTelescope expression fun _ body => (lowerState bindings body next).run state
     else lowerState bindings expression next
 
+  private partial def lowerRange (bindings : Bindings) (expression : Expr) (next : Nat)
+      (stateful : Bool) : ExtractM (Stmt × ScalarExpr × Nat) := do
+    let args := expression.getAppArgs
+    unless args.size == 8 && (← isDefEq args[4]! (mkConst ``UInt64)) do
+      throwError "A bounded core loop currently requires one UInt64 accumulator"
+    unless ← isDefEq args[1]! (mkConst ``Std.Legacy.Range) do
+      throwError "A bounded core loop requires the ordinary [:bound.toNat] range"
+    let container := args[5]!
+    let concreteContainer ← whnf container
+    unless concreteContainer.isAppOfArity ``Std.Legacy.Range.mk 4 do
+      throwError "The loop range must have statically known start and step"
+    unless (← isDefEq (mkProj ``Std.Legacy.Range 0 container) (mkNatLit 0)) &&
+        (← isDefEq (mkProj ``Std.Legacy.Range 2 container) (mkNatLit 1)) do
+      throwError "A bounded core loop starts at zero and advances by one"
+    let stop := concreteContainer.getAppArgs[1]!
+    unless stop.isAppOfArity ``UInt64.toNat 1 do
+      throwError "The loop bound must be the toNat value of a UInt64"
+    let limit := stop.getAppArgs[0]!
+    let (initialCode, initialValue, next) ← lower bindings args[6]! next
+    let (limitCode, limitValue, next) ← lower bindings limit next
+    let state ← get
+    let helperPrefix := state.namePrefix ++ Name.mkSimple s!"range_{state.entries.size}"
+    let iterationName := helperPrefix ++ `iteration
+    let rangeName := helperPrefix ++ `run
+    let captures := bindings.map (·.1)
+    let iterationValue ← lambdaTelescope args[7]! fun parameters body => do
+      unless parameters.size == 2 do throwError "Expected a range index and accumulator"
+      let index := parameters[0]!
+      let accumulator := parameters[1]!
+      withLocalDeclD `indexWord (mkConst ``UInt64) fun indexWord => do
+        if (body.find? fun item => item.getAppFn.isConstOf ``ForInStep.done).isSome then
+          throwError "Bounded core loops currently require continuing iterations"
+        let converted := mkApp (mkConst ``UInt64.ofNat) index
+        let erased := body.replace fun item =>
+          if item.getAppFn.isConstOf ``ForIn.forIn then some item else
+          if item.isAppOfArity ``ForInStep.yield 2 then some item.getAppArgs[1]! else
+          if item.isAppOfArity ``ForInStep 1 then some (mkConst ``UInt64) else none
+        let erased := erased.replace fun item => if item == converted then some indexWord else none
+        if erased.containsFVar index.fvarId! then
+          throwError "Use UInt64.ofNat for the bounded loop index"
+        mkLambdaFVars (captures ++ #[accumulator, indexWord]) erased
+    addNativeDefinition iterationName iterationValue
+    let iterationIndex ← ensureFunction iterationName
+    let rangeValue ← withLocalDeclD `initialAccumulator (mkConst ``UInt64) fun initial =>
+      withLocalDeclD `limit (mkConst ``UInt64) fun bound => do
+        let newStop := mkApp (mkConst ``UInt64.toNat) bound
+        let newContainer := mkAppN concreteContainer.getAppFn
+          (concreteContainer.getAppArgs.set! 1 newStop)
+        let nativeRange := mkAppN expression.getAppFn ((args.set! 5 newContainer).set! 6 initial)
+        mkLambdaFVars (captures ++ #[initial, bound]) nativeRange
+    addNativeDefinition rangeName rangeValue
+    let index := (← get).entries.size
+    let entry : Entry := {
+      name := rangeName
+      function := some (rangeFunction captures.size iterationIndex)
+      stateful := stateful
+      range := some { iterationName, iterationIndex, savedCount := captures.size } }
+    modify fun state => { state with entries := state.entries.push entry }
+    return (sequence (sequence initialCode limitCode)
+      (.call next index (bindings.toList.map (·.2) ++ [initialValue, limitValue])), .get next, next + 1)
+
   private partial def lowerArguments (bindings : Bindings) (arguments : List Expr) (next : Nat) :
       ExtractM (Stmt × List ScalarExpr × Nat) := do
     match arguments with
@@ -220,7 +307,10 @@ mutual
       let (code, test, next) ← lowerCondition bindings args.back! next
       return (code, .not test, next)
     if fn.isConstOf ``Eq && args.size == 3 && args[0]!.isConstOf ``Bool then
-      return ← lowerCondition bindings args[1]! next
+      let (code, condition, next) ← lowerCondition bindings args[1]! next
+      if args[2]!.isConstOf ``Bool.true then return (code, condition, next)
+      if args[2]!.isConstOf ``Bool.false then return (code, .not condition, next)
+      throwError "Boolean conditions must compare with true or false: {expression}"
     if let .const name _ := fn then
       let (a, b) ← operands expression
       let (first, left, next) ← lower bindings a next
@@ -281,6 +371,24 @@ private def quoteFunction (function : Function) : Expr :=
   mkApp4 (mkConst ``Function.mk) (mkNatLit function.params) (mkNatLit function.locals)
     (quoteStmt function.body) (quoteExpr function.result)
 
+private def calledFunctions : Stmt → List Nat
+  | .seq a b | .branch _ a b => calledFunctions a ++ calledFunctions b
+  | .loop _ body => calledFunctions body
+  | .call _ index _ => [index]
+  | _ => []
+
+private partial def orderDependencies (functions : List Function) (index : Nat)
+    (active : List Nat) (finished : Array Nat) : MetaM (Array Nat) := do
+  if finished.contains index then return finished
+  if active.contains index then
+    throwError "Unsupported call cycle: mutual recursion or recursion from a loop body back to its enclosing function"
+  let some function := functions[index]? | throwError "Unknown compiled callee {index}"
+  let mut finished := finished
+  for callee in calledFunctions function.body do
+    if callee != index then
+      finished ← orderDependencies functions callee (index :: active) finished
+  return finished.push index
+
 private def addDefinition (name : Name) (value : Expr) : TermElabM Unit := do
   let type ← inferType value
   addAndCompile <| .defnDecl
@@ -305,7 +413,7 @@ private partial def listCertificateProof (arguments : Array Ident) (proof : TSyn
 no trusted connection from the metaprogram's output to the original function:
 the generated proof is checked by Lean's kernel. -/
 private def certifyCore (memory : Bool) (sourceName certificateName : Name) : TermElabM Unit := do
-    let (_, state) ← (ensureFunction sourceName).run { memory }
+    let (_, state) ← (ensureFunction sourceName).run { memory, namePrefix := certificateName }
     let functions ← state.entries.toList.mapM fun entry => do
       let some function := entry.function | throwError "Unfinished definition: {entry.name}"
       return function
@@ -313,7 +421,10 @@ private def certifyCore (memory : Bool) (sourceName certificateName : Name) : Te
     let moduleValue := quoteList (mkConst ``Function) (functions.map quoteFunction)
     addDefinition moduleName moduleValue
     let mut proved : Array Name := #[]
-    for index in (List.range state.entries.size).reverse do
+    let mut order := #[]
+    for index in List.range state.entries.size do
+      order ← orderDependencies functions index [] order
+    for index in order do
       let some entry := state.entries[index]? | throwError "Missing source declaration {index}"
       let some function := functions[index]? | throwError "Missing compiled function {index}"
       let proofName := certificateName ++ Name.mkSimple s!"function_{index}"
@@ -343,18 +454,51 @@ private def certifyCore (memory : Bool) (sourceName certificateName : Name) : Te
       let moduleStep ← `(tactic| dsimp only [$(mkIdent moduleName):term])
       let proofGoal ← mkFreshExprSyntheticOpaqueMVar proofType
       let unfinished ← Tactic.run proofGoal.mvarId! do
-        Tactic.evalTactic introductions
+        unless identifiers.isEmpty do Tactic.evalTactic introductions
         for helper in helperFacts do Tactic.evalTactic helper
-        Tactic.evalTactic inductionStep
-        let branches ← Tactic.getGoals
-        let mut remaining := []
-        for goal in branches do
-          Tactic.setGoals [goal]
+        if let some range := entry.range then
           if memory then Tactic.evalTactic (← `(tactic| intro $(mkIdent `initial):ident))
           Tactic.evalTactic moduleStep
-          Tactic.evalTactic (← `(tactic| core_native_invokes))
-          remaining := remaining ++ (← Tactic.getUnsolvedGoals)
-        Tactic.setGoals remaining
+          Tactic.evalTactic (← `(tactic| dsimp only [$(mkIdent entry.name):term]))
+          Tactic.evalTactic (← `(tactic| rw [LeanExe.Core.NativeLoop.legacyRange_forIn_eq]))
+          let captured := identifiers.extract 0 range.savedCount
+          let accumulator := identifiers[range.savedCount]!
+          let limit := identifiers[range.savedCount + 1]!
+          let indexName := mkIdent `index
+          let currentName := mkIdent `current
+          let stateName := mkIdent `state
+          let boundName := mkIdent `below
+          let saved ← `(term| [$captured:ident,*])
+          let body ← `(term| fun ($indexName : Nat) ($currentName : UInt64) =>
+            $(mkIdent range.iterationName) $captured:ident* $currentName
+              (UInt64.ofNat $indexName))
+          let theoremName := if entry.stateful then
+            ``NativeRangeFunction.rangeFunction_state_correct else
+            ``NativeRangeFunction.rangeFunction_pure_correct
+          Tactic.evalTactic (← `(tactic| apply $(mkIdent theoremName)
+            $saved $accumulator $limit $body))
+          Tactic.evalTactic (← `(tactic| rfl))
+          Tactic.evalTactic (← `(tactic| intro $indexName:ident $currentName:ident
+            $stateName:ident $boundName:ident))
+          let iterationProof := certificateName ++ Name.mkSimple s!"function_{range.iterationIndex}"
+          if memory then
+            Tactic.evalTactic (← `(tactic| exact $(mkIdent iterationProof)
+              $captured:ident* $currentName (UInt64.ofNat $indexName) $stateName))
+          else
+            Tactic.evalTactic (← `(tactic| cases $stateName:term))
+            Tactic.evalTactic (← `(tactic| exact $(mkIdent iterationProof)
+              $captured:ident* $currentName (UInt64.ofNat $indexName)))
+        else
+          Tactic.evalTactic inductionStep
+          let branches ← Tactic.getGoals
+          let mut remaining := []
+          for goal in branches do
+            Tactic.setGoals [goal]
+            if memory then Tactic.evalTactic (← `(tactic| intro $(mkIdent `initial):ident))
+            Tactic.evalTactic moduleStep
+            Tactic.evalTactic (← `(tactic| core_native_invokes))
+            remaining := remaining ++ (← Tactic.getUnsolvedGoals)
+          Tactic.setGoals remaining
       unless unfinished.isEmpty do
         for goal in unfinished do
           goal.withContext do logInfo m!"Unresolved native correspondence: {← goal.getType}"

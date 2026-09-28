@@ -45,6 +45,20 @@ structure NativeCertificate {arity : Nat} (function : Native arity) where
   correct : ∀ args, args.length = arity →
     Invokes source noEffects entry () args () (applyNative function args)
 
+/-- Projection form keeps native state computations intact while exposing their continuation. -/
+theorem state_bind_apply (action : StateM σ α) (next : α → StateM σ β) (initial : σ) :
+    (action >>= next) initial = next (action initial).1 (action initial).2 := by
+  change (match action initial with | (value, state) => next value state) = _
+  cases action initial
+  rfl
+
+theorem state_pure_apply (value : α) (initial : σ) :
+    (pure value : StateM σ α) initial = (value, initial) := rfl
+
+theorem pair_first (value : α) (state : σ) : (value, state).1 = value := rfl
+
+theorem pair_second (value : α) (state : σ) : (value, state).2 = state := rfl
+
 end LeanExe.Core
 
 open Lean Elab Tactic
@@ -108,14 +122,92 @@ private partial def proveNativeEval : TacticM Unit := withMainContext do
 elab_rules : tactic
 | `(tactic| core_native_eval) => proveNativeEval
 
+private partial def nativeConditional? (expression : Lean.Expr) : Lean.MetaM (Option Lean.Expr) := do
+  let type ← Lean.Meta.inferType expression
+  if type.isSort || type.isAppOfArity ``Decidable 1 || (← Lean.Meta.isProp type) then
+    return none
+  if expression.isAppOfArity ``ite 5 || expression.isAppOfArity ``dite 5 then
+    return some expression
+  match expression with
+  | .app function argument =>
+      if let some selected ← nativeConditional? function then return some selected
+      nativeConditional? argument
+  | .mdata _ body | .proj _ _ body => nativeConditional? body
+  | .letE _ _ value body _ => nativeConditional? (body.instantiate1 value)
+  | _ => return none
+
+private def knownNativeCondition? (condition : Lean.Expr) : Lean.MetaM (Option (Bool × Lean.Expr)) := do
+  for declaration in ← Lean.getLCtx do
+    unless declaration.isImplementationDetail do
+      if ← Lean.Meta.isDefEq declaration.type condition then
+        return some (true, declaration.toExpr)
+      if ← Lean.Meta.isDefEq declaration.type (Lean.mkNot condition) then
+        return some (false, declaration.toExpr)
+  return none
+
+private def rewriteNativeConditional (goal : Lean.MVarId) (selected : Lean.Expr)
+    (positive : Bool) (hypothesis : Lean.Expr) : Lean.MetaM Lean.MVarId := goal.withContext do
+  let args := selected.getAppArgs
+  let lemma := if selected.isAppOfArity ``ite 5 then
+    if positive then ``ite_eq_left else ``ite_eq_right
+  else if positive then ``dite_eq_left else ``dite_eq_right
+  let equality ← Lean.Meta.mkAppOptM lemma #[some args[1]!, some args[2]!, some hypothesis,
+    some args[0]!, some args[3]!, some args[4]!]
+  let before ← goal.getType
+  let rewritten ← goal.rewrite before equality
+  unless rewritten.mvarIds.isEmpty do
+    throwError "Native conditional rewrite introduced unresolved proof obligations"
+  if rewritten.eNew == before then
+    throwError "Native conditional rewrite made no progress on {args[1]!}"
+  goal.replaceTargetEq rewritten.eNew rewritten.eqProof
+
+/-- Split native result conditions before introducing the source's intermediate
+locals. Each branch can then construct its own evaluation witnesses. -/
+private partial def proveNativeInvokes (normalize : Bool := true) : TacticM Unit := withMainContext do
+  let goal :: remaining ← getGoals | throwError "Expected a native invocation goal"
+  setGoals [goal]
+  if normalize then
+    evalTactic (← `(tactic| simp (config := { proj := false, iota := false, dsimp := false, failIfUnchanged := false }) only
+      [LeanExe.Core.state_bind_apply, LeanExe.Core.state_pure_apply,
+        LeanExe.Core.pair_first, LeanExe.Core.pair_second]))
+  let current ← getMainGoal
+  let target := (← instantiateMVars (← current.getType)).cleanupAnnotations
+  let arguments := target.getAppArgs
+  unless target.getAppFn'.isConstOf ``LeanExe.Core.Invokes && arguments.size ≥ 2 do
+    throwError "Expected a native invocation after state normalization: {target}"
+  let resultCondition ← nativeConditional? arguments[arguments.size - 1]!
+  let selected ← match resultCondition with
+    | some expression => pure (some expression)
+    | none => nativeConditional? arguments[arguments.size - 2]!
+  if let some selected := selected then
+    let args := selected.getAppArgs
+    let condition := args[1]!
+    if let some (positive, hypothesis) ← knownNativeCondition? condition then
+      let next ← rewriteNativeConditional current selected positive hypothesis
+      setGoals [next]
+      proveNativeInvokes false
+      setGoals ((← getUnsolvedGoals) ++ remaining)
+    else
+      let (yes, no) ← current.byCasesDec condition args[2]!
+      let branches := [(yes, true), (no, false)]
+      let mut unfinished := []
+      for (branch, positive) in branches do
+        let next ← rewriteNativeConditional branch.mvarId selected positive (.fvar branch.fvarId)
+        setGoals [next]
+        proveNativeInvokes false
+        unfinished := unfinished ++ (← getUnsolvedGoals)
+      setGoals (unfinished ++ remaining)
+  else
+    evalTactic (← `(tactic| apply LeanExe.Core.Invokes.of_body))
+    evalTactic (← `(tactic| rfl))
+    evalTactic (← `(tactic| rfl))
+    proveNativeEval
+    evalTactic (← `(tactic| first
+      | rfl
+      | simp_all [LeanExe.Wasm.ScalarDescriptor.Expr.eval,
+          LeanExe.Wasm.ScalarDescriptor.U64Op.apply, StateT.bind, StateT.pure,
+          Bind.bind, Pure.pure]))
+    setGoals ((← getUnsolvedGoals) ++ remaining)
+
 elab_rules : tactic
-| `(tactic| core_native_invokes) => withMainContext do
-  evalTactic (← `(tactic| apply LeanExe.Core.Invokes.of_body))
-  evalTactic (← `(tactic| rfl))
-  evalTactic (← `(tactic| rfl))
-  evalTactic (← `(tactic| core_native_eval))
-  evalTactic (← `(tactic| first
-    | rfl
-    | simp_all [LeanExe.Wasm.ScalarDescriptor.Expr.eval,
-        LeanExe.Wasm.ScalarDescriptor.U64Op.apply, StateT.bind, StateT.pure,
-        Bind.bind, Pure.pure]))
+| `(tactic| core_native_invokes) => proveNativeInvokes true

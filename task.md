@@ -36,6 +36,13 @@ through `tools/leanrun` in the user's authorized local mode, one process at a ti
   with an internal loop, given the generated guard and body correspondence.
   Termination follows from the range length, without a separate termination
   assumption.
+- `NativeRangeFunction.lean` proves the concrete generated range helper. The
+  frontend connects ordinary `for` expressions to this helper, including nested
+  loops, recursive helper calls inside loops, and recursion after a loop.
+- `Project/Core/Frontend.lean` exposes `Frontend.compile` and
+  `Frontend.compileState`. Each produces an actual named Talos module and its
+  `entry`, `correct`, `valid`, and `ready` declarations. It requires no source
+  annotations, custom syntax, or registration.
 
 ## Checked examples
 
@@ -45,7 +52,12 @@ composition, shared helpers, Boolean comparison against false, and a constant
 with no arguments.
 
 `LeanExe/Core/StateExamples.lean` generates certificates for byte sums, copying,
-growth with size, recursive writes, and a zero-argument state program.
+growth with size, recursive writes, a zero-argument state program, and a
+read-dependent branch that writes different bytes in its two branches.
+
+`LeanExe/Core/LoopExamples.lean` generates certificates for ordinary pure and
+stateful loops, nested loops, loops calling recursive helpers, and recursion
+after a loop.
 
 `Project/Core/Examples.lean` and `Project/Core/StateExamples.lean` instantiate
 complete native-to-Talos correctness and module acceptance. Recursive writes
@@ -53,17 +65,43 @@ also have a theorem starting from the generated module's actual initial store.
 Their checked axiom dependencies are `propext`, `Classical.choice`, and
 `Quot.sound`; no admitted proof or custom axiom is used.
 
-## Remaining work
+`Project/Core/FrontendExamples.lean` checks the public entry points on original
+recursive and stateful Lean definitions. `Project/Core/LoopExamples.lean` checks
+pure and stateful loops through that interface and checks all three loop/recursion
+compositions through the complete compiler. All generated modules carry native
+correctness, validity, and encoder readiness. These checks pass with the same
+three standard axiom dependencies.
 
-1. Finish native proof generation for conditions depending on a value read from
-   memory. The `updateByte` example currently exposes this missing case.
-2. Connect ordinary bounded `for` loops to the frontend. The generic semantic
-   proof passes, but extraction and generated body proofs are still being added.
-3. Check pure and stateful looping examples through generated certificates,
-   module validity/readiness, and native-to-Talos correctness.
-4. Review the resulting restricted dialect and theorem statements, update this
-   file with the exact supported boundary, and push the finished work.
+## Supported boundary
 
-Do not describe the compiler as complete before the ordinary-loop connection
-and the dynamic state-condition case pass. Do not add source syntax,
-registration mechanisms, proof archives, or unrelated tooling.
+Ordinary monomorphic Lean definitions use UInt64 parameters, runtime bindings,
+and results; stateful definitions return `StateM ByteArray UInt64`. Arithmetic,
+bit operations, conditions, let, do, named helpers, and terminating self-recursion
+are supported. Data can be represented explicitly in words and byte memory.
+
+Ordinary bounded loops use `[:bound.toNat]`, start at zero, advance by one, and
+carry one mutable UInt64 accumulator. There is no early break. Mutual recursive
+groups and calls from a loop body back to its enclosing function are rejected;
+loops may call independently recursive helpers. Unsupported syntax or a failed
+correspondence proof causes compilation to fail.
+
+See `LeanExe/Core/README.md` for usage, memory assumptions, and the precise proof
+boundary. The theorem establishes successful Talos execution with sufficient
+finite fuel; it does not impose a fixed execution budget.
+
+## Status
+
+The restricted compiler is proved from original Lean computation to the emitted
+Talos module. The ordinary-loop connection, dynamic state conditions, and
+complete module checks all pass. No compiler-proof work remains for the subset
+specified above. I/O remains deferred; floating point and GPU remain excluded.
+
+Focused validation:
+
+```sh
+tools/leanrun --timeout 60 lake build LeanExe.Core.StateExamples LeanExe.Core.LoopExamples
+tools/leanrun --timeout 60 lake -d proofs/talos/lean build Project.Core.FrontendExamples Project.Core.LoopExamples Project.Core.StateExamples Project.Core.Examples
+```
+
+The existing verified encoder owns the subsequent binary step. Do not add source
+syntax, registration mechanisms, proof archives, or unrelated tooling.

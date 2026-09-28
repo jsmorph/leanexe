@@ -17,6 +17,15 @@ def nonTailCompiled : Compiled (arity := 1) nonTail :=
 def calledCompiled : Compiled (arity := 2) called :=
   (compileNative calledCertificate).toOption.get (by decide)
 
+def diamondCompiled : Compiled (arity := 1) diamond :=
+  (compileNative diamondCertificate).toOption.get (by decide)
+
+def falseComparisonCompiled : Compiled (arity := 2) falseComparison :=
+  (compileNative falseComparisonCertificate).toOption.get (by decide)
+
+def zeroArgumentsCompiled : Compiled (arity := 0) zeroArguments :=
+  (compileNative zeroArgumentsCertificate).toOption.get (by decide)
+
 /-- The generated module returns the ordinary recursive Lean definition's value. -/
 theorem gcd_correct (a b : UInt64) (host : Wasm.HostEnv α) (store : Wasm.Store α) :
     Wasm.TerminatesWith host gcdCompiled.target gcdCompiled.entry store [.i64 b, .i64 a]
