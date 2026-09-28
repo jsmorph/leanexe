@@ -172,9 +172,18 @@ Use `compile` for heap values and supported recursive helpers.
 with shared helpers and memory. Use `compile-wasi-io` for a `LeanExe.ByteIO UInt32`
 entry with sequenced stdin reads and stdout writes. Pure WASI adapters also
 support bounded stdin, arguments, output, and explicit error results.
-These broader compiler modes are outside the general compiler theorem;
+These broader compiler modes are outside the `compile-arithmetic` theorem;
 individual programs can have separate execution or exact-artifact proofs.
 See the [user manual](docs/manual.md#entry-shapes) for entry types and command options.
+
+The [restricted Lean compiler](LeanExe/Core/README.md) produces a Talos
+`Wasm.Module` directly in Lean, with a proof relating its execution to the
+original Lean definition. It supports UInt64 computations, terminating recursion,
+ordinary bounded loops, and byte memory through `StateM ByteArray UInt64`.
+Each successful compilation also produces module validity and encoder-readiness
+proofs. Use `Project.Core.Frontend.compile` or `compileState` in the Talos proof
+project; the linked guide specifies the accepted subset and memory assumptions.
+I/O is deferred; floating point and GPU operations are excluded.
 
 ## Examples
 
@@ -203,6 +212,7 @@ an application property. The main kinds of proof in this repository are:
 |------------|-----------|-------|
 | Application correctness, such as [drone flight safety](proofs/talos/lean/Project/Drone/WholeFlight.lean) | The specified computation satisfies a mathematical property, such as continuous clearance or a numerical error bound. | The named source computation, admitted inputs, and mathematical model. Physical applicability requires the model's assumptions to hold. |
 | [Compiler correctness](docs/arithmetic-correctness.md) | Emitted bytes decode to a valid module whose exported function terminates with the source result in the WASM model. | Every declaration accepted by `compile-arithmetic`. |
+| [Restricted Lean compiler](LeanExe/Core/README.md) | The emitted Talos module preserves the original Lean computation and satisfies module validity and encoder readiness. | Accepted UInt64 functions with recursion, bounded loops, and optional byte memory. Stateful execution assumes represented memory and the specified capacity. |
 | Generated-model execution, such as [Drone](proofs/talos/lean/Project/Drone/Spec.lean) | A particular WASM module represented in Lean terminates with the specified results and memory properties. | The modeled module and the theorem's input, heap, and host assumptions. Its connection to external binary bytes is a separate obligation. |
 | [Exact-artifact verification](docs/artifact-format.md) | The identified bytes decode and validate as a WASM module. A behavioral proof for that same module establishes its specified behavior. | The binary, the available behavioral theorems, and their input, heap, and host assumptions. Compiler correctness is not assumed. Decoding and validation alone do not prove application correctness. |
 | [Independent core type safety](docs/type-safety.md) | Typed programs preserve their types and cannot become stuck under the core's execution rules. | Only the independent core's syntax and semantics. Coverage does not extend to the whole LeanExe implementation. |
@@ -214,7 +224,8 @@ transfer laws, and concrete echo executions. Running sum has source
 correctness and exact-binary decoding/validation proofs; its universal WASM
 execution and memory theorem remains open.
 
-General compiler correctness is limited to the `compile-arithmetic` grammar.
+Compiler correctness covers the `compile-arithmetic` grammar and the restricted
+Lean-to-Talos interface described above, each under its stated assumptions.
 Tests compare native Lean, supported IR evaluation, and WASM execution where
 those references apply; passing comparisons establishes agreement on the tested
 cases. Formal execution proofs use the pinned Talos WASM semantics and trust
