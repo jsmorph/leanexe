@@ -40,6 +40,11 @@ checker. Recursive calls may occur inside larger expressions. Runtime `let`
 bindings and monadic bind results must also be UInt64; use comparisons directly
 as conditions rather than storing Boolean locals.
 
+The numeric scope is concrete fixed-width signed and unsigned integers; only
+UInt64 is currently implemented. General-purpose arbitrary-precision `Nat` and
+`Int` arithmetic is out of scope. Natural numbers may still appear in proofs
+and the recognized bounded-loop index expressions below.
+
 Bounded loops use `for index in [:bound.toNat]`, with a UInt64 bound and one
 mutable UInt64 accumulator. Convert an index with `UInt64.ofNat`. Loops start
 at zero, advance by one, and complete their finite range. The emitted module

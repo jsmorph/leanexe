@@ -6,6 +6,12 @@ Include recursive functions, ordinary bounded loops, and byte memory. Floating
 point and GPU are excluded. I/O is deferred. The existing verified encoder owns
 the module-to-binary step.
 
+Numeric support is limited to concrete fixed-width signed and unsigned integer
+types, preserving their Lean semantics. General-purpose arbitrary-precision
+`Nat` and `Int` arithmetic is out of scope. Natural numbers may still appear in
+proofs and recognized bounded-loop indexing. Current compiled runtime values
+are UInt64; other fixed-width integer types remain unsupported.
+
 Work on `correct`; commit and push checked increments. Run focused Lean targets
 through `tools/leanrun` in the user's authorized local mode, one process at a time.
 
@@ -95,6 +101,13 @@ The restricted compiler is proved from original Lean computation to the emitted
 Talos module. The ordinary-loop connection, dynamic state conditions, and
 complete module checks all pass. No compiler-proof work remains for the subset
 specified above. I/O remains deferred; floating point and GPU remain excluded.
+
+The broader expressiveness requirement remains unfinished. Known gaps include
+other fixed-width integers, structured data, general loop control and multiple
+loop variables, mutual recursion and recursion back from loop bodies, and
+function values. Manual word/byte encodings are possible for many cases, but no
+general expressiveness-preserving translation has been established. Arbitrary-
+precision Nat/Int support is not a remaining requirement.
 
 Focused validation:
 
