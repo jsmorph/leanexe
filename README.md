@@ -221,6 +221,13 @@ Lean's proof checker and the formal definitions. External file identity and
 loading still depend on the checking tools. The native host, Wasmtime, operating
 system, and hardware are outside the Lean proof.
 
+The [verified binary encoder](proofs/talos/lean/Project/Encoding/README.md) serializes
+Talos modules in LeanExe's emitted scalar language.  Its theorems establish
+representation and acceptance under structural and size bounds, and transfer
+input validity and behavioral proofs to the represented output module.
+The [independent GCD example](demos/encoding-gcd/README.md) proves source and
+Talos-module behavior, then emits WASM with that encoder.
+
 ## Generate a program and its artifact proof
 
 `tools/leanexegen` reads a program request from a text file. Separate Codex tasks

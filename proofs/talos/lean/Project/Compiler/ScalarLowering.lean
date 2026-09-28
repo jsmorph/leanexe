@@ -13,9 +13,12 @@ mutual
   def instruction : LeanExe.Wasm.Instr → Option Wasm.Instruction
     | .constI64 n => some (.constI64 (UInt64.ofNat n))
     | .constI32 n => some (.const (UInt32.ofNat n))
+    | .constI32NegOne => some (.const (UInt32.ofNat (2 ^ 32 - 1)))
     | .localGet n => some (.localGet n)
     | .localSet n => some (.localSet n)
     | .localTee n => some (.localTee n)
+    | .globalGet n => some (.globalGet n)
+    | .globalSet n => some (.globalSet n)
     | .call n => some (.call n)
     | .addI64 => some .addI64
     | .subI64 => some .subI64
@@ -31,7 +34,19 @@ mutual
     | .neI64 => some .neI64
     | .ltUI64 => some .ltUI64
     | .leUI64 => some .leUI64
+    | .geUI64 => some .geUI64
+    | .eqzI64 => some .eqzI64
     | .eqzI32 => some .eqz
+    | .eqI32 => some .eq
+    | .wrapI64 => some .wrapI64
+    | .extendUI32 => some .extendUI32
+    | .load64 => some (.load64 0)
+    | .store64 => some (.store64 0)
+    | .memorySize => some .memorySize
+    | .memoryGrow => some .memoryGrow
+    | .unreachable => some .unreachable
+    | .ret => some .ret
+    | .drop => some .drop
     | .block body => return .block 0 0 (← program body)
     | .loop body => return .loop 0 0 (← program body)
     | .iff result thenBody elseBody =>
