@@ -10,8 +10,8 @@ open Project.Pipeline Project.IR Project.ProofKit
 /-- `axpy` with its three arguments as one tuple. -/
 def axpyTuple (x : Float × Float × Float) : Float := LeanExe.Examples.Axpy.axpy x.1 x.2.1 x.2.2
 
-theorem axpy_implements : Implements axpy.module 0 axpyTuple (fun _ => 0) :=
-  Func.implements axpy.ir "axpy" axpyTuple
+theorem axpy_implements : Implements axpy.module 3 axpyTuple (fun _ => 0) :=
+  Func.implements [(axpy.ir, "axpy")] 0 axpy.ir "axpy" rfl axpyTuple
     (fun _ _ _ _ h => by rw [Scalar.borrowed.mp h]; rfl) fun ⟨a, x, y⟩ _ _ _ _ h =>
     Stmt.skip_spec.mono (fun _ _ ⟨hStore, hState⟩ => ⟨hStore, by
       rw [Scalar.borrowed.mp h] at hState
@@ -24,7 +24,7 @@ theorem axpy_implements : Implements axpy.module 0 axpyTuple (fun _ => 0) :=
 /-- `encode` succeeds on `axpy.module`, and its bytes decode to a module that
 computes `axpy` bit for bit. -/
 theorem axpy_bytes : ∃ bytes, Wasm.Encoding.encode axpy.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 axpyTuple (fun _ => 0) := by
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 3 axpyTuple (fun _ => 0) := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip axpy.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, axpy.module, decoded, axpy_implements⟩

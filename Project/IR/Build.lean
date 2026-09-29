@@ -19,7 +19,7 @@ local `limit`; element `i` is the value of `element` while local `index` holds
 `i`. -/
 def Stmt.build (dst limit index : Nat) (count element : Expr .u64) : Stmt :=
   .seq (.assign limit count) <|
-  .seq (.call 1 [.bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)] (some dst)) <|
+  .seq (.call 0 [.bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)] (some dst)) <|
   .seq (.store (.get dst) (.get limit)) <|
   .seq (.assign index (.const 0)) <|
   .while (.ltU (.get index) (.get limit)) <|
@@ -132,7 +132,7 @@ expression may read any borrowed array. -/
 theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element : Expr .u64}
     {initial : Store Unit} {before : State} {heap : Heap} {n : UInt64} (f : UInt64 → UInt64)
     (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
-    (hFunc : m.funcs[1]? = some (allocFunction typeIdx))
+    (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
     (hLocals : [dst, limit, index].Nodup) (hBelow : ∀ j ∈ [dst, limit, index], j < scratch)
     (hRoom : scratch ≤ before.params.length + before.locals.length)
     (hHeap : heap.At initial) (hSpace : heap.Room initial m (48 + 8 * (n.toNat + 1)))

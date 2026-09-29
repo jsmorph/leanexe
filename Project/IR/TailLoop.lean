@@ -47,16 +47,17 @@ theorem tailState_get_result [Scalar α] {args : α} {n : Nat}
 /-- A function compiled by the tail-recursion template implements `f` when each
 run of the loop body satisfies `TailStep` for some measure.  The arguments must
 be recoverable from their WASM values. -/
-theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α → UInt64)
+theorem Func.tail_implements [Scalar α] (funcs : List (Func × String)) (i : Nat) (func : Func)
+    (name : String) (hFunc : funcs[i]? = some (func, name)) (f : α → UInt64)
     (measure : α → Nat) (step : Stmt)
     (arity : ∀ x : α, (Scalar.values x).length = func.params.length)
     (injective : ∀ x y : α, Scalar.values x = Scalar.values y → x = y)
     {k : Nat} (vars : func.vars = List.replicate (k + 2) .u64)
     (body : func.body = .while (.eq (.get (func.params.length + 1)) (.const 0)) step)
     (results : func.results = [⟨.u64, .get func.params.length⟩])
-    (hStep : TailStep (compile func name) step func.scratch (k + func.width) f measure) :
-    Implements (compile func name) 0 f (fun _ => 0) := by
-  refine Func.implements func name f
+    (hStep : TailStep (compile funcs) step func.scratch (k + func.width) f measure) :
+    Implements (compile funcs) (3 + i) f (fun _ => 0) := by
+  refine Func.implements funcs i func name hFunc f
     (fun _ _ _ x h => (Scalar.borrowed.mp h) ▸ arity x) fun x _ initial params _ h => ?_
   obtain rfl := Scalar.borrowed.mp h
   rw [body, results]
@@ -93,7 +94,7 @@ theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α �
   -- measure.
   have hIteration : ∀ (args : α) resultValue (others : List Value), others.length = width →
       f args = f x →
-      Triple (compile func name) step func.scratch
+      Triple (compile funcs) step func.scratch
         (fun store state => store = initial ∧ state = tailState args resultValue 0 others)
         (fun store state => Inv store state ∧ stateMeasure state < measure args + 1) := by
     intro args resultValue others hLength hSame

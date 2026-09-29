@@ -23,10 +23,10 @@ def allocSize (bytes : UInt64) : UInt64 :=
 /-- `alloc bytes` runs `FixedArrayAllocate.program` for `allocSize bytes` payload
 bytes with element width one and returns the new block's payload pointer. -/
 theorem alloc_spec {m : Module} {typeIdx : Nat} (hMemory32 : m.memIs64 = false)
-    (hImports : m.imports = []) (hFunc : m.funcs[1]? = some (allocFunction typeIdx))
+    (hImports : m.imports = []) (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
     (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (bytes : UInt64)
     (hHeap : heap.At store) (hRoom : heap.Room store m (48 + (allocSize bytes).toNat)) :
-    TerminatesWith env m 1 store [.i64 bytes] fun final out =>
+    TerminatesWith env m 0 store [.i64 bytes] fun final out =>
       final = heap.allocateStore store (allocSize bytes) 1 ∧
       out = [.i64 (FixedArrayAllocate.root heap.top (allocSize bytes) heap.free)] := by
   refine TerminatesWith.of_wp_entry_for (f := allocFunction typeIdx)
@@ -73,10 +73,10 @@ def releaseLocals (ptr pending object : UInt64) : Locals :=
       .i64 0] }
 
 theorem release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
-    (hFunc : m.funcs[3]? = some (releaseFunction typeIdx)) (env : HostEnv Unit) (heap : Heap)
+    (hFunc : m.funcs[2]? = some (releaseFunction typeIdx)) (env : HostEnv Unit) (heap : Heap)
     (store : Store Unit) (ptr : UInt64) (words : Array UInt64) (hHeap : heap.At store)
     (hOwned : heap.Owned store ptr words) :
-    TerminatesWith env m 3 store [.i64 ptr] fun final out =>
+    TerminatesWith env m 2 store [.i64 ptr] fun final out =>
       out = [] ∧ final = heap.releaseStore store ptr := by
   refine TerminatesWith.of_wp_entry_for (f := releaseFunction typeIdx)
     (by simpa [hImports] using hFunc) ?_ (by simp [hImports])

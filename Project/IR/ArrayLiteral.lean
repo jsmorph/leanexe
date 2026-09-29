@@ -23,7 +23,7 @@ def Stmt.storeElements (dst : Nat) : Nat → List (Expr .u64) → Stmt
 
 /-- Local `dst` receives a new array that holds the values of `values`. -/
 def Stmt.arrayLiteral (dst : Nat) (values : List (Expr .u64)) : Stmt :=
-  .seq (.call 1 [.const (UInt64.ofNat (8 * (values.length + 1)))] (some dst))
+  .seq (.call 0 [.const (UInt64.ofNat (8 * (values.length + 1)))] (some dst))
     (.seq (.store (.get dst) (.const (UInt64.ofNat values.length)))
       (Stmt.storeElements dst 0 values))
 
@@ -97,7 +97,7 @@ the elements, and leaves its pointer in `dst`, with the facts of
 theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr .u64)}
     {initial : Store Unit} {before : State} {heap : Heap} {words : List UInt64}
     (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
-    (hFunc : m.funcs[1]? = some (allocFunction typeIdx))
+    (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
     (hDst : dst < scratch) (hRoom : scratch ≤ before.params.length + before.locals.length)
     (hHeap : heap.At initial) (hSpace : heap.Room initial m (48 + 8 * (values.length + 1)))
     (hValues : List.Forall₂ (fun value word => ∀ mem state, State.Frame scratch [dst] before state →

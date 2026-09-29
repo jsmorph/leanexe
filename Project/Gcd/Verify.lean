@@ -48,14 +48,14 @@ theorem gcd_step {m : Module} : TailStep (α := UInt64 × UInt64) m
       intro h
       exact hZero (UInt64.toNat_inj.mp (by simpa using h))
 
-theorem gcd_implements : Implements gcd.module 0 gcdTuple (fun _ => 0) :=
-  Func.tail_implements gcd.ir "gcd" gcdTuple (fun x => x.2.toNat) _ (fun _ => rfl)
+theorem gcd_implements : Implements gcd.module 3 gcdTuple (fun _ => 0) :=
+  Func.tail_implements [(gcd.ir, "gcd")] 0 gcd.ir "gcd" rfl gcdTuple (fun x => x.2.toNat) _ (fun _ => rfl)
     gcdTuple_injective (k := 2) rfl rfl rfl gcd_step
 
 /-- `encode` succeeds on `gcd.module`, and its bytes decode to a module that
 computes `gcd` exactly. -/
 theorem gcd_bytes : ∃ bytes, Wasm.Encoding.encode gcd.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 gcdTuple (fun _ => 0) := by
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 3 gcdTuple (fun _ => 0) := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip gcd.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, gcd.module, decoded, gcd_implements⟩

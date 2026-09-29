@@ -52,14 +52,14 @@ theorem body_run {initial : Store Unit} {pp ps : UInt64} {prices sizes : Array U
   · simp [State.Holds, Scalar.values, step, hParams, hLocals, min]
 
 theorem marketBuy_implements :
-    Implements marketBuy.module 0 marketBuyTuple (fun _ => 72) := by
-  refine Func.implements_heap marketBuy.ir "marketBuy" marketBuyTuple (fun _ => 72)
+    Implements marketBuy.module 3 marketBuyTuple (fun _ => 72) := by
+  refine Func.implements_heap [(marketBuy.ir, "marketBuy")] 0 marketBuy.ir "marketBuy" rfl marketBuyTuple (fun _ => 72)
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, sizes, qty⟩ heap initial _ hHeap
     ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hRoom
-  have hMemory32 : (compile marketBuy.ir "marketBuy").memIs64 = false := rfl
-  have hImports : (compile marketBuy.ir "marketBuy").imports = [] := rfl
-  have hAlloc : (compile marketBuy.ir "marketBuy").funcs[1]? = some (allocFunction 1) := rfl
+  have hMemory32 : (compile [(marketBuy.ir, "marketBuy")]).memIs64 = false := rfl
+  have hImports : (compile [(marketBuy.ir, "marketBuy")]).imports = [] := rfl
+  have hAlloc : (compile [(marketBuy.ir, "marketBuy")]).funcs[0]? = some (allocFunction 0) := rfl
   have hP := hPrices.values
   have hS := hSizes.values
   let start : State :=
@@ -132,7 +132,7 @@ theorem marketBuy_implements :
 /-- `encode` succeeds on `marketBuy.module`, and its bytes decode to a module that
 computes `marketBuy` exactly, returning an array the caller owns. -/
 theorem marketBuy_bytes : ∃ bytes, Encoding.encode marketBuy.module = .ok bytes ∧
-    ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 0 marketBuyTuple (fun _ => 72) := by
+    ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 3 marketBuyTuple (fun _ => 72) := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip marketBuy.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, marketBuy.module, decoded, marketBuy_implements⟩
@@ -144,13 +144,13 @@ def fillTuple (x : Array UInt64 × UInt64 × UInt64) : Array UInt64 :=
 /-- The bytes `fillLevel` may allocate: one array of the input's length. -/
 def fillNeed (x : Array UInt64 × UInt64 × UInt64) : Nat := 48 + 8 * (x.1.size + 1)
 
-theorem fillLevel_implements : Implements fillLevel.module 0 fillTuple fillNeed := by
-  refine Func.implements_heap fillLevel.ir "fillLevel" fillTuple fillNeed
+theorem fillLevel_implements : Implements fillLevel.module 3 fillTuple fillNeed := by
+  refine Func.implements_heap [(fillLevel.ir, "fillLevel")] 0 fillLevel.ir "fillLevel" rfl fillTuple fillNeed
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨sizes, k, amount⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hRoom
-  have hMemory32 : (compile fillLevel.ir "fillLevel").memIs64 = false := rfl
-  have hImports : (compile fillLevel.ir "fillLevel").imports = [] := rfl
-  have hAlloc : (compile fillLevel.ir "fillLevel").funcs[1]? = some (allocFunction 1) := rfl
+  have hMemory32 : (compile [(fillLevel.ir, "fillLevel")]).memIs64 = false := rfl
+  have hImports : (compile [(fillLevel.ir, "fillLevel")]).imports = [] := rfl
+  have hAlloc : (compile [(fillLevel.ir, "fillLevel")]).funcs[0]? = some (allocFunction 0) := rfl
   have hS := hSizes.values
   have hSize64 := hS.size_lt
   let value := sizes[k.toNat]! - amount
@@ -210,7 +210,7 @@ theorem fillLevel_implements : Implements fillLevel.module 0 fillTuple fillNeed 
 /-- `encode` succeeds on `fillLevel.module`, and its bytes decode to a module that
 computes `fillLevel` exactly, returning a new array the caller owns. -/
 theorem fillLevel_bytes : ∃ bytes, Encoding.encode fillLevel.module = .ok bytes ∧
-    ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 0 fillTuple fillNeed := by
+    ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 3 fillTuple fillNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip fillLevel.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, fillLevel.module, decoded, fillLevel_implements⟩
@@ -271,14 +271,14 @@ theorem insert_element {store : Store Unit} {ptr k v : UInt64} {xs : Array UInt6
     · simp [Expr.eval, hIndex, hK, h1, h2, Expr.readValue_at hArray, hArrayGet, hArrayNe,
         State.set?_eq_update, hLength, U64Op.apply]
 
-theorem insertLevel_implements : Implements insertLevel.module 0 insertTuple insertNeed := by
-  refine Func.implements_heap insertLevel.ir "insertLevel" insertTuple insertNeed
+theorem insertLevel_implements : Implements insertLevel.module 3 insertTuple insertNeed := by
+  refine Func.implements_heap [(insertLevel.ir, "insertLevel")] 0 insertLevel.ir "insertLevel" rfl insertTuple insertNeed
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, sizes, k, price, size⟩ heap initial _ hHeap
     ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hRoom
-  have hMemory32 : (compile insertLevel.ir "insertLevel").memIs64 = false := rfl
-  have hImports : (compile insertLevel.ir "insertLevel").imports = [] := rfl
-  have hAlloc : (compile insertLevel.ir "insertLevel").funcs[1]? = some (allocFunction 1) := rfl
+  have hMemory32 : (compile [(insertLevel.ir, "insertLevel")]).memIs64 = false := rfl
+  have hImports : (compile [(insertLevel.ir, "insertLevel")]).imports = [] := rfl
+  have hAlloc : (compile [(insertLevel.ir, "insertLevel")]).funcs[0]? = some (allocFunction 0) := rfl
   change heap.Borrowed initial pp prices at hPrices
   change heap.Borrowed initial ps sizes at hSizes
   have hP := hPrices.values
@@ -318,7 +318,7 @@ theorem insertLevel_implements : Implements insertLevel.module 0 insertTuple ins
       State.set?_eq_update, hParams, hLocals, s1, s2, s3]
   -- The first array.
   have hn1 := insertCount_toNat prices.size k (by omega)
-  have hRoom1 : heap.Room initial (compile insertLevel.ir "insertLevel")
+  have hRoom1 : heap.Room initial (compile [(insertLevel.ir, "insertLevel")])
       (48 + 8 * ((insertCount prices.size k).toNat + 1)) :=
     ⟨by have := hRoom.address; simp only [insertNeed] at this; omega,
       by have := hRoom.cap; simp only [insertNeed] at this; omega⟩
@@ -368,7 +368,7 @@ theorem insertLevel_implements : Implements insertLevel.module 0 insertTuple ins
       State.set?_eq_update, hT1.1, hT1.2, u1, u2, u3]
   have hn2 := insertCount_toNat sizes.size k (by omega)
   have hRoom2 : (heap.allocate (UInt64.ofNat (8 * ((insertCount prices.size k).toNat + 1)))).Room
-      store1 (compile insertLevel.ir "insertLevel")
+      store1 (compile [(insertLevel.ir, "insertLevel")])
       (48 + 8 * ((insertCount sizes.size k).toNat + 1)) := by
     have hNeed : (UInt64.ofNat (8 * ((insertCount prices.size k).toNat + 1))).toNat =
         8 * ((insertCount prices.size k).toNat + 1) :=
@@ -425,7 +425,7 @@ theorem insertLevel_implements : Implements insertLevel.module 0 insertTuple ins
 /-- `encode` succeeds on `insertLevel.module`, and its bytes decode to a module that
 computes `insertLevel` exactly, returning two new arrays the caller owns. -/
 theorem insertLevel_bytes : ∃ bytes, Encoding.encode insertLevel.module = .ok bytes ∧
-    ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 0 insertTuple insertNeed := by
+    ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 3 insertTuple insertNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip insertLevel.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, insertLevel.module, decoded, insertLevel_implements⟩
