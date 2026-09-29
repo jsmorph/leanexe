@@ -51,16 +51,16 @@ theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α �
     (measure : α → Nat) (step : Stmt)
     (arity : ∀ x : α, (Scalar.values x).length = func.params.length)
     (injective : ∀ x y : α, Scalar.values x = Scalar.values y → x = y)
-    (vars : 2 ≤ func.vars)
+    {k : Nat} (vars : func.vars = List.replicate (k + 2) .u64)
     (body : func.body = .while (.eq (.get (func.params.length + 1)) (.const 0)) step)
     (result : func.result = ⟨.u64, .get func.params.length⟩)
-    (hStep : TailStep (compile func name) step func.scratch (func.vars - 2 + func.width) f measure) :
+    (hStep : TailStep (compile func name) step func.scratch (k + func.width) f measure) :
     Implements (compile func name) 0 f (fun _ => 0) := by
   refine Func.implements func name f
     (fun _ _ _ x h => (Scalar.borrowed.mp h) ▸ arity x) fun x _ initial params _ h => ?_
   obtain rfl := Scalar.borrowed.mp h
   rw [body, result]
-  let width := func.vars - 2 + func.width
+  let width := k + func.width
   let Inv : Store Unit → State → Prop := fun store state =>
     store = initial ∧ ∃ (args : α) (resultValue : UInt64) (others : List Value), others.length = width ∧
       ((state = tailState args resultValue 0 others ∧ f args = f x) ∨
@@ -118,9 +118,9 @@ theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α �
       exact hIteration args resultValue others hLength hSame env _ _ values rest Q ⟨rfl, rfl⟩ hPost
     · simp [Expr.eval, tailState_get_done (arity args)] at hCondition
   · rintro store state ⟨rfl, rfl⟩
-    obtain ⟨k, hk⟩ : ∃ k, func.vars = k + 2 := ⟨func.vars - 2, by omega⟩
     refine ⟨rfl, x, 0, List.replicate width (.i64 0), by simp, Or.inl ⟨?_, rfl⟩⟩
-    simp only [Func.state, tailState, width, hk, Nat.add_sub_cancel]
+    simp only [Func.state, Func.locals, tailState, width, vars, List.map_replicate,
+      List.map_append, ScalarType.valueType, ValueType.zero, List.replicate_append_replicate]
     rw [show k + 2 + func.width = (k + func.width) + 1 + 1 by omega]
     rfl
   · rintro store state ⟨before, ⟨rfl, args, resultValue, others, -, ⟨rfl, -⟩ | rfl⟩, hCondition⟩

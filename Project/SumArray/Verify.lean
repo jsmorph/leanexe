@@ -11,7 +11,7 @@ theorem sumArray_implements :
   refine Func.implements sumArray.ir "sumArray" _ (by rintro _ _ _ _ ⟨ptr, rfl, -⟩; rfl) ?_
   rintro xs heap initial _ - ⟨ptr, rfl, hBorrowed⟩
   let start : State := { params := [.i64 ptr], locals := List.replicate 4 (.i64 0) }
-  show Triple _ (.seq (.assign 1 (.const 0)) (.fold 0 1 2 3 4 (.bin .add (.get 1) (.get 4)))) 5
+  show Triple _ (.seq (.assign 1 (.const 0)) (.fold .u64 0 1 2 3 4 (.bin .add (.get 1) (.get 4)))) 5
     (fun store state => store = initial ∧ state = start) _
   refine Stmt.seq_spec (M := fun store state => store = initial ∧ state = start) ?_
     ((Stmt.fold_spec (initial := initial) (before := start) (ptr := ptr) (start := 0) (· + ·)

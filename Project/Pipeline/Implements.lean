@@ -37,6 +37,11 @@ instance : Represent (Array UInt64) where
   borrowed heap store vs xs := ∃ ptr, vs = [.i64 ptr] ∧ heap.Borrowed store ptr xs
   owned heap store vs xs := ∃ ptr, vs = [.i64 ptr] ∧ heap.Owned store ptr xs
 
+/-- A `FloatArray` is stored as the array of its elements' bit patterns. -/
+instance : Represent FloatArray where
+  borrowed heap store vs xs := Represent.borrowed heap store vs (xs.data.map Float.toBits)
+  owned heap store vs xs := Represent.owned heap store vs (xs.data.map Float.toBits)
+
 /-- Entry `entry` of `m` computes `f` exactly.  From any store that satisfies the
 allocator invariant, with arguments `params` (in declaration order) representing
 `x` and room for `need x` bytes, the call terminates and returns values that

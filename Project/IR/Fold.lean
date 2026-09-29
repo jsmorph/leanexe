@@ -15,13 +15,14 @@ open Wasm Project.ProofKit
 variable {m : Module}
 
 /-- Local `length` receives the length of the array at local `array`.  For each
-index from 0, held in local `index`, local `element` receives the element and
-local `acc` receives the value of `body`. -/
-def Stmt.fold (array acc index length element : Nat) (body : Expr .u64) : Stmt :=
-  .seq (.load length (.get array)) <|
+index from 0, held in local `index`, local `element` receives the element as a
+value of `elementType` and local `acc` receives the value of `body`. -/
+def Stmt.fold (elementType : ScalarType) (array acc index length element : Nat)
+    {accType : ScalarType} (body : Expr accType) : Stmt :=
+  .seq (.load .u64 length (.get array)) <|
   .seq (.assign index (.const 0)) <|
   .while (.ltU (.get index) (.get length)) <|
-    .seq (.load element (.bin .add (.get array)
+    .seq (.load elementType element (.bin .add (.get array)
       (.bin .mul (.bin .add (.get index) (.const 1)) (.const 8)))) <|
     .seq (.assign acc body) <|
     .assign index (.bin .add (.get index) (.const 1))
@@ -42,23 +43,24 @@ theorem ofNat_lt_ofNat {a b : Nat} (ha : a < 2 ^ 32) (hb : b < 2 ^ 32) :
 `acc` on entry, provided `body` evaluates to `g a e` whenever `acc` holds `a` and
 `element` holds `e`.  It keeps the store and changes only its four locals and
 scratch locals. -/
-theorem Stmt.fold_spec {scratch array acc index length element : Nat} {body : Expr .u64}
-    {initial : Store Unit} {before : State} {ptr start : UInt64} {xs : Array UInt64}
-    (g : UInt64 → UInt64 → UInt64)
+theorem Stmt.fold_spec {elementType accType : ScalarType}
+    {scratch array acc index length element : Nat} {body : Expr accType}
+    {initial : Store Unit} {before : State} {ptr : UInt64} {start : accType.denote}
+    {xs : Array UInt64} (g : accType.denote → UInt64 → accType.denote)
     (hLocals : [array, acc, index, length, element].Nodup)
     (hBelow : ∀ j ∈ [array, acc, index, length, element], j < scratch)
     (hRoom : scratch ≤ before.params.length + before.locals.length)
     (hArray : UInt64Array.At initial ptr xs)
     (hPtr : before.get array = some (.i64 ptr))
-    (hStart : before.get acc = some (.i64 start))
+    (hStart : before.get acc = some (accType.value start))
     (hBody : ∀ state a e, State.Frame scratch [acc, index, length, element] before state →
-      state.get acc = some (.i64 a) → state.get element = some (.i64 e) →
+      state.get acc = some (accType.value a) → state.get element = some (elementType.ofBits e) →
       ∃ next, body.eval scratch state = some (g a e, next)) :
-    Triple m (.fold array acc index length element body) scratch
+    Triple m (.fold elementType array acc index length element body) scratch
       (fun store state => store = initial ∧ state = before)
       (fun store state => store = initial ∧
         State.Frame scratch [acc, index, length, element] before state ∧
-        state.get acc = some (.i64 (xs.foldl g start))) := by
+        state.get acc = some (accType.value (xs.foldl g start))) := by
   simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
     List.nodup_nil, not_false_eq_true, and_true] at hLocals
   simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hBelow
@@ -74,7 +76,7 @@ theorem Stmt.fold_spec {scratch array acc index length element : Nat} {body : Ex
     store = initial ∧ State.Frame scratch [acc, index, length, element] before state ∧
       ∃ k, k ≤ xs.size ∧ state.get index = some (.i64 (UInt64.ofNat k)) ∧
         state.get length = some (.i64 (UInt64.ofNat xs.size)) ∧
-        state.get acc = some (.i64 (ArrayFold.foldPrefix xs g start k))
+        state.get acc = some (accType.value (ArrayFold.foldPrefix xs g start k))
   let measure : Store Unit → State → Nat := fun _ state =>
     match state.get index with
     | some (.i64 k) => xs.size - k.toNat
@@ -113,14 +115,14 @@ theorem Stmt.fold_spec {scratch array acc index length element : Nat} {body : Ex
     have hPtrHere : current.get array = some (.i64 ptr) :=
       (hFrame.get array hArrayBelow hArrayOut).trans hPtr
     obtain ⟨t1, hSetT1⟩ := State.exists_set? (state := current) (index := element)
-      (.i64 xs[k]) (by have := hFrame.params; have := hFrame.locals; omega)
+      (elementType.ofBits xs[k]) (by have := hFrame.params; have := hFrame.locals; omega)
     have hFrameT1 := hFrame.set? hSetT1 (hWrites _ (by simp))
-    have hAccT1 : t1.get acc = some (.i64 (ArrayFold.foldPrefix xs g start k)) := by
+    have hAccT1 : t1.get acc = some (accType.value (ArrayFold.foldPrefix xs g start k)) := by
       rw [State.get_set?_ne (by omega) hSetT1, hAcc]
     obtain ⟨t2, hBodyEval⟩ := hBody t1 _ _ hFrameT1 hAccT1 (State.get_set?_same hSetT1)
     have hFrameT2 := hFrameT1.trans (Expr.eval_frame _ body scratch t1 t2 _ hBodyEval)
     obtain ⟨t3, hSetT3⟩ := State.exists_set? (state := t2) (index := acc)
-      (.i64 (g (ArrayFold.foldPrefix xs g start k) xs[k]))
+      (accType.value (g (ArrayFold.foldPrefix xs g start k) xs[k]))
       (by have := hFrameT2.params; have := hFrameT2.locals; omega)
     have hFrameT3 := hFrameT2.set? hSetT3 (hWrites _ (by simp))
     have hBodyKeeps : ∀ j, j < scratch → t2.get j = t1.get j := fun j hj =>
@@ -177,7 +179,7 @@ theorem Stmt.fold_spec {scratch array acc index length element : Nat} {body : Ex
     exact ⟨rfl, hFrame, by rw [hAcc, ArrayFold.foldPrefix_size]⟩
 
 /-- Local `dst` receives the length of the array at local `src`. -/
-def Stmt.arraySize (dst src : Nat) : Stmt := .load dst (.get src)
+def Stmt.arraySize (dst src : Nat) : Stmt := .load .u64 dst (.get src)
 
 theorem Stmt.arraySize_spec {scratch dst src : Nat} {initial : Store Unit} {before : State}
     {ptr : UInt64} {xs : Array UInt64} (hArray : UInt64Array.At initial ptr xs)

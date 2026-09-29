@@ -50,7 +50,7 @@ theorem gcd_step {m : Module} : TailStep (α := UInt64 × UInt64) m
 
 theorem gcd_implements : Implements gcd.module 0 gcdTuple (fun _ => 0) :=
   Func.tail_implements gcd.ir "gcd" gcdTuple (fun x => x.2.toNat) _ (fun _ => rfl)
-    gcdTuple_injective (by decide) rfl rfl gcd_step
+    gcdTuple_injective (k := 2) rfl rfl rfl gcd_step
 
 /-- The bytes `encode` produces for `gcd.module` decode to a module that
 computes `gcd` exactly. -/

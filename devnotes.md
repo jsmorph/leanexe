@@ -18741,4 +18741,50 @@ their hashes, and every audited theorem depends only on `propext`,
 `Classical.choice`, and `Quot.sound`.
 
 - [x] Iteration 6c.
-- [ ] Iteration 6d: `FloatArray`, with float locals.
+- [x] Iteration 6d: `FloatArray`, with float locals.
+
+## 2026-09-29: Iteration 6d, FloatArray
+
+`Func.vars` is now the list of the compiler's variable types, and `Func.locals`
+gives the declared types of all locals after the parameters, which the entry
+state zeroes by type.  `Stmt.assign` takes an expression of any type, and
+`Stmt.load` takes the type of the value it produces: an `f64` load appends
+`f64.reinterpret_i64`, and `ScalarType.ofBits` gives the value a loaded word
+becomes.  `Stmt.fold` and `fold_spec` take the element type and an accumulator
+of any type, with the fold function on words.  `Func.tail_implements` now
+requires `func.vars = List.replicate (k + 2) .u64`.  The eight earlier modules
+are byte-identical, and their proofs needed only the fold's type argument,
+`Func.locals` in three `simp` calls, and `k := 2` for `gcd`.
+
+The compiler's fold translation moved to `translateFold`, which handles
+`Array.foldl` and `FloatArray.foldl` and is called from both the `UInt64` and
+the `Float` translators.  The prelude records the type of each variable it
+allocates.  `FloatArray` parameters are `i64` pointers, and
+`Represent FloatArray` states that a `FloatArray` is represented as the
+`Array UInt64` of its elements' `Float.toBits`, so the fold rule and the heap
+specifications apply without change.
+
+Lean core has no lemmas about `FloatArray.foldl`, and the loop of
+`FloatArray.foldlM` is private
+([source](https://github.com/leanprover/lean4/blob/v4.34.0-rc2/src/Init/Data/FloatArray/Basic.lean)).
+`rfl`, even with all definitions unfolded, did not identify it with the loop of
+`Array.foldlM`.  `FloatArrayFold` opens the private loop with `open private`
+and proves `foldl_data`, `xs.foldl f init = xs.data.foldl f init`, following
+core's proof of `Array.foldlM_toList`.  `foldl_toBits` combines it with
+`Array.foldl_map` and `Array.foldl_hom` to turn a fold over bit patterns into
+the bits of the source fold.
+
+`sumSquares xs = xs.foldl (fun acc x => acc + x * x) 0.0` compiles to a fold
+whose accumulator and element locals are `f64`.  `sumSquares_implements` takes
+21 lines including the statement, with a 7-line conversion lemma.  A first
+attempt closed the result with `simp`, which rewrote the size in `Array.foldl`'s
+default `stop` argument so the conversion lemma no longer matched.  `congrArg`
+with the lemma closes it directly.  `sumSquares.wasm` is 1,345 bytes, sha256
+`12d9540c…`, validates, and matches native Lean on 48 arrays, including six
+empty arrays, infinities, NaN, subnormals, and overflow.  All nine `_bytes`
+theorems depend only on `propext`, `Classical.choice`, and `Quot.sound`, and
+the LTG check passes with 12 entries, including the new `float-array-fold`.
+
+- [x] Iteration 6d.
+- [ ] Later: conversions, binary32 comparisons and sign operations, and
+  `Float32` programs.
