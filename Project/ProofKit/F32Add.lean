@@ -1,7 +1,7 @@
 import Project.ProofKit.F32Decoded
 
 namespace Project.ProofKit.F32Add
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32AddFinite F32Decoded
+open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32AddFinite F32Decoded FloatCommon
 
 theorem unpacked_comm (a b : UnpackedFloat) :
     UnpackedFloat.add Format.binary32 a b = UnpackedFloat.add Format.binary32 b a := by

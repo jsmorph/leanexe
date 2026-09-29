@@ -1,6 +1,7 @@
-import Project.ProofKit.F32Source
+import Interpreter.Wasm.IEEE32
+import Mathlib.Tactic
 
-namespace Project.ProofKit.F32Rounding
+namespace Project.ProofKit.FloatRounding
 open Float.Model.UnpackedFloat
 
 theorem shift_zero (em : ExtendedMantissa) : em >>> (0 : Nat) = em := rfl
@@ -76,4 +77,4 @@ theorem round_exact_shift (m n : Nat) :
 
 #print axioms round_exact_shift
 
-end Project.ProofKit.F32Rounding
+end Project.ProofKit.FloatRounding

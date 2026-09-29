@@ -2,7 +2,7 @@ import Project.ProofKit.F32Normalize
 import Project.ProofKit.QuantizedInt32
 
 namespace Project.ProofKit.F32Convert
-open Float.Model Float.Model.UnpackedFloat
+open Float.Model Float.Model.UnpackedFloat FloatCommon
 
 theorem ofInt_eq (value : Int) :
     (Float32.Model.ofInt value).toBits = Wasm.IEEE32.fromInt value := by

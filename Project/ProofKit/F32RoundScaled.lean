@@ -1,8 +1,8 @@
 import Project.ProofKit.F32Packing
-import Project.ProofKit.F32Rounding
+import Project.ProofKit.FloatRounding
 
 namespace Project.ProofKit.F32RoundScaled
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Rounding
+open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing FloatRounding FloatCommon
 open CodeLib.IEEE32
 
 theorem target_scaled (m : Nat) :

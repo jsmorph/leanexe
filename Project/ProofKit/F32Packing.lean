@@ -2,7 +2,7 @@ import Project.ProofKit.F32Encoding
 import CodeLib.IEEE32.SpecialValues
 
 namespace Project.ProofKit.F32Packing
-open Float.Model Float.Model.UnpackedFloat F32Encoding
+open Float.Model Float.Model.UnpackedFloat F32Encoding FloatCommon
 open CodeLib.IEEE32
 
 theorem pack_nan : UInt32.ofBitVec (UnpackedFloat.pack Format.binary32 .notANumber) =

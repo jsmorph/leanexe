@@ -2,7 +2,7 @@ import Project.ProofKit.F32SqrtCore
 import Project.ProofKit.F32RoundFinish
 
 namespace Project.ProofKit.F32SqrtFinite
-open Float.Model Float.Model.UnpackedFloat F32SqrtCore F32SqrtRounding F32RoundFinish
+open Float.Model Float.Model.UnpackedFloat F32SqrtCore F32SqrtRounding F32RoundFinish FloatCommon
 
 theorem pack_sqrt_finite (m : Nat) (e : Int) (hm : 0 < m)
     (hl : m.log2 ≤ 23) (he : -149 ≤ e) :
@@ -25,7 +25,7 @@ theorem pack_sqrt_finite (m : Nat) (e : Int) (hm : 0 < m)
   change UInt32.ofBitVec (UnpackedFloat.pack Format.binary32
     (roundWithAccuracy Format.binary32 .positive n.sqrt t (rootAccuracy n))) = _
   rw [roundWithAccuracy_finish, F32RoundScaled.shift_target _ _ _ 0 htarget]
-  simp only [F32Rounding.shift_zero, Nat.cast_zero, add_zero]
+  simp only [FloatRounding.shift_zero, Nat.cast_zero, add_zero]
   rw [rounded_root, pack_finish_above_min _ _ _ (by omega) (by omega) ht]
   have hmag : m * 2 ^ (e + 149).toNat ≠ 0 := by positivity
   have hrad : (m * 2 ^ (e + 149).toNat) * 2 ^ 149 = n * 2 ^ (2 * k) :=

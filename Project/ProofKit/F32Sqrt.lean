@@ -2,7 +2,7 @@ import Project.ProofKit.F32SqrtFinite
 import Project.ProofKit.F32Add
 
 namespace Project.ProofKit.F32Sqrt
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Decoded F32SqrtFinite
+open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Decoded F32SqrtFinite FloatCommon
 open F32Add (decode_infinite decode_zero exponent_ne)
 
 theorem mantissa_log_le (x : UInt32) (hx : Wasm.IEEE32.scaledMagnitude x ≠ 0) :

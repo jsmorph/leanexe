@@ -1,7 +1,7 @@
 import Project.ProofKit.F32Normalize
 
 namespace Project.ProofKit.F32RoundFinish
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Rounding F32RoundScaled
+open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing FloatRounding F32RoundScaled FloatCommon
 
 def finish (s : Sign) (m : Nat) (e : Int) : UnpackedFloat :=
   let final := shiftToTargetExponent Format.binary32 m e .exact
@@ -90,7 +90,7 @@ theorem finish_eq_round (s : Sign) (m : Nat) (e : Int)
     rw [shift_target _ e .exact 1 (by simpa using ht)]
     have hr : (ExtendedMantissa.ofMantissaAndAccuracy (2 ^ 24) .exact >>> 1).roundedMantissa =
         2 ^ 23 := by
-      rw [show (2 ^ 24 : Nat) = 2 ^ 23 * 2 ^ 1 by norm_num, F32Shift.shift_exact_mul_pow]
+      rw [show (2 ^ 24 : Nat) = 2 ^ 23 * 2 ^ 1 by norm_num, FloatShift.shift_exact_mul_pow]
       rfl
     dsimp only
     rw [hr]

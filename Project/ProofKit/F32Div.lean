@@ -2,7 +2,7 @@ import Project.ProofKit.F32DivCore
 import Project.ProofKit.F32Add
 
 namespace Project.ProofKit.F32Div
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Decoded F32DivCore
+open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Decoded F32DivCore FloatCommon
 open F32Add (decode_infinite decode_zero exponent_ne)
 
 theorem negative_div (a b : Sign) : negative (a / b) = (negative a != negative b) := by

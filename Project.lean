@@ -1,4 +1,6 @@
 import Project.Attr
+import Project.Axpy.Module
+import Project.Axpy.Verify
 import Project.Common
 import Project.Compiler.Command
 import Project.Compiler.Scalar
@@ -64,8 +66,6 @@ import Project.ProofKit.F32RoundDyadic
 import Project.ProofKit.F32RoundFinish
 import Project.ProofKit.F32RoundRational
 import Project.ProofKit.F32RoundScaled
-import Project.ProofKit.F32Rounding
-import Project.ProofKit.F32Shift
 import Project.ProofKit.F32Source
 import Project.ProofKit.F32Sqrt
 import Project.ProofKit.F32SqrtCore
@@ -73,6 +73,20 @@ import Project.ProofKit.F32SqrtFinite
 import Project.ProofKit.F32SqrtRounding
 import Project.ProofKit.F32Sub
 import Project.ProofKit.F32TruncSat
+import Project.ProofKit.F64Add
+import Project.ProofKit.F64AddFinite
+import Project.ProofKit.F64Bits
+import Project.ProofKit.F64Decoded
+import Project.ProofKit.F64Encoding
+import Project.ProofKit.F64Mul
+import Project.ProofKit.F64MulFinite
+import Project.ProofKit.F64Normalize
+import Project.ProofKit.F64Packing
+import Project.ProofKit.F64RoundDyadic
+import Project.ProofKit.F64RoundFinish
+import Project.ProofKit.F64RoundScaled
+import Project.ProofKit.F64Source
+import Project.ProofKit.F64Sub
 import Project.ProofKit.FixedArrayAllocate
 import Project.ProofKit.FixedArrayAllocateNone
 import Project.ProofKit.FixedArrayAllocator
@@ -94,6 +108,9 @@ import Project.ProofKit.FixedArraySearchFit
 import Project.ProofKit.FixedArraySearchFrame
 import Project.ProofKit.FixedArraySearchNone
 import Project.ProofKit.FixedArraySearchRead
+import Project.ProofKit.FloatCommon
+import Project.ProofKit.FloatRounding
+import Project.ProofKit.FloatShift
 import Project.ProofKit.Frame
 import Project.ProofKit.FreeListMemory
 import Project.ProofKit.Memory

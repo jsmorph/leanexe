@@ -1,20 +1,7 @@
 import Project.ProofKit.F32RoundFinish
 
 namespace Project.ProofKit.F32RoundDyadic
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32Rounding F32RoundScaled F32RoundFinish
-
-def rounded (m k : Nat) : Nat := if k = 0 then m else Wasm.IEEE32.roundShift m k
-
-theorem rounded_eq (m k : Nat) :
-    (ExtendedMantissa.ofMantissaAndAccuracy m .exact >>> k).roundedMantissa = rounded m k := by
-  cases k with
-  | zero => rfl
-  | succ k => exact round_exact_shift m k
-
-theorem rounded_bounds (m k : Nat) : m / 2 ^ k ≤ rounded m k ∧ rounded m k ≤ m / 2 ^ k + 1 := by
-  by_cases hk : k = 0
-  · simp [rounded, hk]
-  · simpa [rounded, hk] using CodeLib.IEEE32.roundShift_bounds m k
+open Float.Model Float.Model.UnpackedFloat F32Encoding FloatRounding F32RoundScaled F32RoundFinish FloatCommon
 
 theorem target_dyadic (m f : Nat) :
     Format.binary32.targetExponent (totalExponent m (-149 - (f : Int))) =

@@ -1,5 +1,5 @@
 import Project.ProofKit.F32SqrtRounding
-import Project.ProofKit.F32Shift
+import Project.ProofKit.FloatShift
 
 namespace Project.ProofKit.F32SqrtCore
 open Float.Model Float.Model.UnpackedFloat F32SqrtRounding
@@ -32,7 +32,7 @@ theorem root_log (m : Nat) (e : Int) (hm : m ≠ 0) (hl : m.log2 ≤ 23) (he : -
   let n := m * 2 ^ (e - 2 * coreExponent m e).toNat
   have hn : n ≠ 0 := by dsimp [n]; positivity
   have hlog : n.log2 = m.log2 + (e - 2 * coreExponent m e).toNat :=
-    F32Shift.log2_mul_pow m _ hm
+    FloatShift.log2_mul_pow m _ hm
   have hnl : 2 ^ 46 ≤ n := (Nat.le_log2 hn).mp (by omega)
   have hnu : n < 2 ^ 48 := (Nat.log2_lt hn).mp (by omega)
   have hrl : 2 ^ 23 ≤ n.sqrt := Nat.le_sqrt.mpr (by norm_num at hnl ⊢; exact hnl)

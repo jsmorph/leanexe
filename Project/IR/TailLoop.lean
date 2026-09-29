@@ -49,11 +49,11 @@ run of the loop body satisfies `TailStep` for some measure.  The arguments must
 be recoverable from their WASM values. -/
 theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α → UInt64)
     (measure : α → Nat) (step : Stmt)
-    (arity : ∀ x : α, (Scalar.values x).length = func.params)
+    (arity : ∀ x : α, (Scalar.values x).length = func.params.length)
     (injective : ∀ x y : α, Scalar.values x = Scalar.values y → x = y)
     (vars : 2 ≤ func.vars)
-    (body : func.body = .while (.eq (.get (func.params + 1)) (.const 0)) step)
-    (result : func.result = .get func.params)
+    (body : func.body = .while (.eq (.get (func.params.length + 1)) (.const 0)) step)
+    (result : func.result = ⟨.u64, .get func.params.length⟩)
     (hStep : TailStep (compile func name) step func.scratch (func.vars - 2 + func.width) f measure) :
     Implements (compile func name) 0 f (fun _ => 0) := by
   refine Func.implements func name f
@@ -127,7 +127,7 @@ theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α �
     · simp [Expr.eval, tailState_get_done (arity args)] at hCondition
     · simp [Expr.eval, tailState_get_done (arity args)] at hCondition
       subst hCondition
-      exact ⟨rfl, tailState args (f x) 1 others, by
-        simp [Expr.eval, tailState_get_result (arity args)]⟩
+      exact ⟨rfl, f x, tailState args (f x) 1 others, by
+        simp [Expr.eval, tailState_get_result (arity args)], rfl⟩
 
 end Project.IR

@@ -2,7 +2,7 @@ import Project.ProofKit.F32Decoded
 import Project.ProofKit.F32RoundDyadic
 
 namespace Project.ProofKit.F32MulFinite
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Decoded F32RoundDyadic
+open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Decoded F32RoundDyadic FloatCommon
 
 theorem product_target (a b : UInt32)
     (ha : Wasm.IEEE32.scaledMagnitude a ≠ 0) (hb : Wasm.IEEE32.scaledMagnitude b ≠ 0) :
@@ -36,9 +36,6 @@ theorem product_scaled (a b : UInt32) :
       (exponent a + 149).toNat + (exponent b + 149).toNat := by omega
   rw [he, pow_add, ← scaled_mantissa a, ← scaled_mantissa b]
   ring
-
-theorem negative_mul (a b : Sign) : negative (a * b) = (negative a != negative b) := by
-  cases a <;> cases b <;> rfl
 
 theorem mul_eq_talos_finite (a b : UInt32)
     (hea : Wasm.IEEE32.exponent a ≠ 255) (heb : Wasm.IEEE32.exponent b ≠ 255)

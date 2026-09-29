@@ -2,7 +2,7 @@ import Project.ProofKit.F32MulFinite
 import Project.ProofKit.F32Add
 
 namespace Project.ProofKit.F32Mul
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Decoded F32MulFinite
+open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Decoded F32MulFinite FloatCommon
 open F32Add (decode_infinite decode_zero exponent_ne)
 
 theorem source_nan_right (a b : UInt32) (hb : Wasm.IEEE32.isNaN b = true) :

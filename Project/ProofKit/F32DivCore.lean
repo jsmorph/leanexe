@@ -1,7 +1,7 @@
 import Project.ProofKit.F32RationalNormalize
 
 namespace Project.ProofKit.F32DivCore
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32RationalNormalize
+open Float.Model Float.Model.UnpackedFloat F32Encoding F32RationalNormalize FloatCommon
 
 def coreExponent (m₁ m₂ : Nat) (e : Int) : Int :=
   min e (Format.binary32.targetExponent ((m₁.log2 : Int) - m₂.log2 + e))

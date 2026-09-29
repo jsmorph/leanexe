@@ -27,6 +27,9 @@ theorem Scalar.borrowed [Scalar α] {heap : Heap} {store : Store Unit} {params :
 
 instance : Scalar UInt64 := ⟨fun x => [.i64 x]⟩
 
+/-- A float is passed as an `f64` holding its bit pattern. -/
+instance : Scalar Float := ⟨fun x => [.f64 x.toBits]⟩
+
 instance [Scalar α] [Scalar β] : Scalar (α × β) :=
   ⟨fun p => Scalar.values p.1 ++ Scalar.values p.2⟩
 

@@ -1,7 +1,7 @@
 import Project.ProofKit.F32Normalize
 
 namespace Project.ProofKit.F32AddFinite
-open Float.Model Float.Model.UnpackedFloat F32Normalize
+open Float.Model Float.Model.UnpackedFloat F32Normalize FloatCommon
 
 def scaled (s : Sign) (m : Nat) (e : Int) : Int :=
   s.apply ((m * 2 ^ (e + 149).toNat : Nat) : Int)
@@ -20,17 +20,13 @@ theorem pack_normalize_scaled (z : Int) (e : Int) (he : -149 ≤ e) :
   have hn : z * ((2 ^ (e + 149).toNat : Nat) : Int) < 0 ↔ z < 0 := by
     constructor <;> intro h <;> nlinarith
   simp only [roundedSigned, hz, hn, Int.natAbs_mul, Int.natAbs_natCast,
-    F32Encoding.negative, Wasm.IEEE32.signMask, Bool.false_eq_true, ite_false]
+    FloatCommon.negative, Wasm.IEEE32.signMask, Bool.false_eq_true, ite_false]
 
 theorem decrease_scaled (m : Nat) (e t : Int) (ht : -149 ≤ t) (he : t ≤ e) :
     (decreaseExponent m e t).1 * 2 ^ (t + 149).toNat = m * 2 ^ (e + 149).toNat := by
   have hk : (e - t).toNat + (t + 149).toNat = (e + 149).toNat := by omega
   simp only [decreaseExponent, Nat.shiftLeft_eq]
   rw [Nat.mul_assoc, ← pow_add, hk]
-
-theorem sign_apply_mul (s : Sign) (m n : Nat) :
-    s.apply (m : Int) * (n : Int) = s.apply ((m * n : Nat) : Int) := by
-  cases s <;> simp [Sign.apply]
 
 theorem signed_decrease_scaled (s : Sign) (m : Nat) (e t : Int)
     (ht : -149 ≤ t) (he : t ≤ e) :

@@ -1,7 +1,7 @@
-import Project.ProofKit.F32Rounding
+import Project.ProofKit.FloatRounding
 
 namespace Project.ProofKit.F32RationalRounding
-open Float.Model.UnpackedFloat F32Rounding
+open Float.Model.UnpackedFloat FloatRounding
 
 theorem initial_mantissa (m : Nat) (acc : Accuracy) :
     (ExtendedMantissa.ofMantissaAndAccuracy m acc).mantissa = m := by

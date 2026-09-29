@@ -1,7 +1,7 @@
 import Project.ProofKit.F32AddFinite
 
 namespace Project.ProofKit.F32Decoded
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32AddFinite
+open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32AddFinite FloatCommon
 
 def mantissa (x : UInt32) : Nat :=
   if Wasm.IEEE32.exponent x = 0 then Wasm.IEEE32.fraction x
