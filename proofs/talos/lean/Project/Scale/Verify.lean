@@ -11,11 +11,14 @@ def scaleTuple (x : UInt64 × UInt64 × UInt64) : UInt64 :=
   LeanExe.Examples.Scale.scale x.1 x.2.1 x.2.2
 
 theorem scale_implements : Implements scale.module 0 scaleTuple (fun _ => 0) :=
-  Func.implements scale.ir "scale" scaleTuple (fun _ => rfl) fun ⟨a, b, c⟩ => by
-    simp [scale.ir, Func.state, Expr.eval, Expr.scratchWidth, State.get, State.set?,
-      U64Op.apply, Scalar.values, scaleTuple, LeanExe.Examples.Scale.scale]
-    intro hZero
-    simp [hZero]
+  Func.implements scale.ir "scale" scaleTuple (fun _ => rfl) fun ⟨a, b, c⟩ _ =>
+    Stmt.skip_spec.mono (fun _ _ ⟨hStore, hState⟩ => ⟨hStore, by
+      subst hState
+      simp [scale.ir, Func.state, Func.width, Func.scratch, Expr.eval, Expr.scratchWidth,
+        IR.Stmt.scratchWidth, State.get, State.set?, U64Op.apply, Scalar.values, scaleTuple,
+        LeanExe.Examples.Scale.scale]
+      intro hZero
+      simp [hZero]⟩) fun _ _ h => h
 
 /-- The bytes `encode` produces for `scale.module` decode to a module that
 computes `scale` exactly. -/

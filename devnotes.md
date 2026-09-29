@@ -18331,3 +18331,35 @@ passes `params.reverse`.  Two script modules, `Emit.lean` and `DecodeTest.lean`,
 define `main` and stay out of the generated `Project.lean`.
 
 - [x] Iteration 1.
+
+## 2026-09-28: Iteration 2, tail recursion end to end
+
+The user chose `wp` rules only for statements, after rejecting two
+recommendations of mine (a big-step relation, then a fuel evaluator) that
+added a second semantics against the goal of the smallest system.  `Triple s
+scratch P R` is defined through `wp` of `s`'s compiled code: from a store and
+IR state satisfying `P`, the code ends normally where `R` holds.  It is a
+statement about compiled code, so the IR still has no semantics of its own.
+The rules for skip, assignment, sequence, `if`, and `while` (with an invariant
+and a measure) and `Triple.mono` all proved on the first build, following
+`ScalarTransition`'s proofs; the `while` rule uses Talos's `wp_loop_cons`.
+
+`Func` now has compiler variables, a body statement, and a result expression,
+and `Func.implements` takes a `Triple` for the body that keeps the store.  The
+compiler reads each definition through `getUnfoldEqnFor?`, so a recursive call
+appears as a call of the definition itself.  A definition whose recursive calls
+are all in tail position becomes `while done = 0` over a statement that either
+stores the result and sets `done` or evaluates every argument into a temporary
+and copies the temporaries into the parameters.  Hints now locate each node by
+an instruction path through blocks, loops, and branches, checked by hand for
+`gcd`.
+
+The `gcd` proof took four steps: evaluate the loop condition, show that the
+branch body restores the invariant with a smaller measure, establish the
+invariant from the entry state, and read the result after the loop.  Full `simp`
+evaluated each branch to the invariant and the measure; a first attempt that
+supplied the invariant before `simp` ran failed, and an earlier `simp` that also
+unfolded the invariant and measure exceeded the heartbeat limit.
+
+- [x] Iteration 2 end to end.
+- [ ] Tail-recursion rule lemma and first LTG entry.

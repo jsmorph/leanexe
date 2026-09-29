@@ -1,28 +1,37 @@
-import Project.ProofKit.ScalarTransition
+import Project.IR.Stmt
 
 namespace Project.IR
 
 open Wasm Project.ProofKit.ScalarTransition
 
-/-- A function of `params` 64-bit arguments whose result is one expression.
-Locals `0` to `params - 1` hold the arguments, and the locals after them are
-the expression's scratch space. -/
+/-- A function of `params` 64-bit arguments.  Locals `0` to `params - 1` hold
+the arguments, the next `vars` locals hold the compiler's variables, and the
+locals after them are scratch space.  The function runs `body` and returns the
+value of `result`. -/
 structure Func where
   params : Nat
+  vars : Nat
+  body : Stmt
   result : Expr .u64
   deriving Repr
 
-/-- The local state on entry: the arguments, then zeroed scratch locals. -/
+/-- The first scratch local. -/
+def Func.scratch (func : Func) : Nat := func.params + func.vars
+
+def Func.width (func : Func) : Nat := max func.body.scratchWidth func.result.scratchWidth
+
+/-- The local state on entry: the arguments, then zeroed variables and scratch
+locals. -/
 def Func.state (func : Func) (args : List Value) : State :=
-  { params := args, locals := List.replicate func.result.scratchWidth (.i64 0) }
+  { params := args, locals := List.replicate (func.vars + func.width) (.i64 0) }
 
 def Func.type (func : Func) : FuncType :=
   { params := List.replicate func.params .i64, results := [.i64] }
 
 def Func.function (func : Func) : Wasm.Function :=
   { params := func.type.params
-    locals := List.replicate func.result.scratchWidth .i64
-    body := func.result.program func.params
+    locals := List.replicate (func.vars + func.width) .i64
+    body := func.body.program func.scratch ++ func.result.program func.scratch
     results := func.type.results
     typeIdx := some 0 }
 

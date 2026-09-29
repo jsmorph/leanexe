@@ -21,9 +21,7 @@ def elabLeanexeCompile : CommandElab
       let exportName := sourceName.getString!
       liftTermElabM do
         let (func, hints) ← compileScalar sourceName
-        let result ← irToExpr func.result
-        addDefinition (base ++ `ir) (mkConst ``Func)
-          (mkApp2 (mkConst ``Func.mk) (toExpr func.params) result)
+        addDefinition (base ++ `ir) (mkConst ``Func) (funcToExpr func)
         addDefinition (base ++ `module) (mkConst ``Wasm.Module)
           (mkApp2 (mkConst ``compile) (mkConst (base ++ `ir)) (toExpr exportName))
         addDefinition (base ++ `hints) (mkConst ``Hints) (toExpr hints)
