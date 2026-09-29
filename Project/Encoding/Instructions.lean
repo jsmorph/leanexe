@@ -38,6 +38,7 @@ mutual
     | .f64Lt => .ok ⟨[0x63], .plain _ _ .f64Lt⟩
     | .f64Le => .ok ⟨[0x65], .plain _ _ .f64Le⟩
     | .f64Abs => .ok ⟨[0x99], .plain _ _ .f64Abs⟩
+    | .f64ConvertI64U => .ok ⟨[0xba], .plain _ _ .f64ConvertI64U⟩
     | .geUI64 => .ok ⟨[0x5a], .plain _ _ .geUI64⟩
     | .add => .ok ⟨[0x6a], .plain _ _ .add⟩
     | .and => .ok ⟨[0x71], .plain _ _ .and⟩
@@ -73,6 +74,7 @@ mutual
     | .f64ReinterpretI64 => .ok ⟨[0xbf], .plain _ _ .f64ReinterpretI64⟩
     | .extend8S => .ok ⟨[0xc0], .plain _ _ .extend8S⟩
     | .i32TruncSatF32S => .ok ⟨[0xfc, 0x00], .plain _ _ .i32TruncSatF32S⟩
+    | .i64TruncSatF64U => .ok ⟨[0xfc, 0x07], .plain _ _ .i64TruncSatF64U⟩
     | .memorySize => .ok ⟨[0x3f, 0x00], .plain _ _ .memorySize⟩
     | .memoryGrow => .ok ⟨[0x40, 0x00], .plain _ _ .memoryGrow⟩
     | .br index => indexInstruction 0x0c .br .br index

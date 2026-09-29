@@ -1,6 +1,8 @@
 import Project.Attr
 import Project.Axpy.Module
 import Project.Axpy.Verify
+import Project.Bucket.Module
+import Project.Bucket.Verify
 import Project.Common
 import Project.Compiler.Command
 import Project.Compiler.Scalar
@@ -37,6 +39,8 @@ import Project.IR.Hint
 import Project.IR.Release
 import Project.IR.Stmt
 import Project.IR.TailLoop
+import Project.Mean.Module
+import Project.Mean.Verify
 import Project.PairSum.Module
 import Project.PairSum.Verify
 import Project.Piecewise.Module
@@ -77,6 +81,7 @@ import Project.ProofKit.F64Add
 import Project.ProofKit.F64AddFinite
 import Project.ProofKit.F64Bits
 import Project.ProofKit.F64Compare
+import Project.ProofKit.F64Convert
 import Project.ProofKit.F64Decoded
 import Project.ProofKit.F64Div
 import Project.ProofKit.F64DivCore

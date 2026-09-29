@@ -18826,3 +18826,27 @@ and a general `Ready (compile func name)` theorem remains an option if larger
 programs make evaluation slow.
 
 - [x] Unconditional `_bytes` theorems.
+
+## 2026-09-29: Conversions between UInt64 and Float
+
+Lean models `UInt64.toFloat n` as the packed `normalize` of `n.toNat`, and
+`Float.toUInt64 x` as `UInt64.ofNatClamp` of `x`'s value truncated toward zero,
+with NaN and negative values sent to 0.  Talos defines `f64.convert_i64_u` as
+`IEEE64.fromInt` and `i64.trunc_sat_f64_u` as `truncSatI64U`.
+`F64Convert.toBits_toFloat` and `toUInt64_eq` prove the agreement, adapted from
+the binary32 proofs in `F32Convert` and `F32TruncSat`.  Several cases compare
+closed binary64 terms, where `decide` exceeded the recursion limit and
+`decide +kernel` succeeds.  `Float.exp`, `Float.log`, and the trigonometric
+functions are `opaque` in Lean, so no theorem can state what compiled code for
+them computes.  A program that needs them must define them in Lean, for example
+by range reduction and a polynomial.
+
+The IR gained `Expr.convertU` and `Expr.truncSatU`, and the encoder and decoder
+gained opcodes `0xba` and `0xfc 7`, with the decoder proof extended.  The
+testsuite run still finds 479 valid modules in the subset, all equal and
+round-tripping, and rejects all 670 malformed ones; no testsuite module in the
+subset uses the new opcodes.  Wasmtime running `mean.wasm` and `bucket.wasm`
+with results equal to native Lean on 152 inputs confirms the opcode meanings.
+The compiler also accepts `xs.size.toUInt64` for an `Array Float`.
+
+- [x] Conversions, `mean`, and `bucket`.
