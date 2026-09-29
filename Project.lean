@@ -108,5 +108,7 @@ import Project.Scale.Module
 import Project.Scale.Verify
 import Project.SumArray.Module
 import Project.SumArray.Verify
+import Project.SumCount.Module
+import Project.SumCount.Verify
 import Project.TalosCompat
 import Project.TalosPrelude

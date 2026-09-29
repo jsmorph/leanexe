@@ -61,7 +61,7 @@ theorem pairSum_implements : Implements pairSum.module 0 pairTuple (fun _ => 72)
   refine (Stmt.release_spec hImports hRelease hPtr2 hAt hOwned).mono (fun _ _ h => h) ?_
   rintro store' state' ⟨hs, ht⟩
   subst store' state'
-  refine ⟨_, hAt.release hOwned, rfl, hTop, ?_, s2, ?_⟩
+  refine ⟨_, hAt.release hOwned, rfl, hTop, ?_, _, s2, ?_, rfl⟩
   · simpa [Heap.releaseStore] using hPages
   · simp [pairSum.ir, Func.scratch, Expr.eval, hAcc, pairTuple, LeanExe.Examples.PairSum.pairSum]
 

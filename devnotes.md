@@ -18595,3 +18595,30 @@ the recorded values.
 - [x] Iteration 3b.
 - [ ] Iteration 3c: `sumCount`, with an array result owned by the host,
   `Nat.toUInt64 xs.size`, and a fold result inside an array literal.
+
+## 2026-09-29: Iteration 3c, sumCount
+
+`sumCount xs = #[xs.foldl (· + ·) 0, xs.size.toUInt64]` runs from Lean source
+to proved bytes, and its result is an array that the caller owns and releases.
+`Func.implements_heap` now takes any `Represent` result: the body must end with
+the result expression evaluating to a word that represents `f x` as an owned
+value, which for `UInt64` is the word itself and for `Array UInt64` is a
+pointer to an owned array.  `Func.implements` and the `pairSum` proof adapted
+in one line each.
+
+The compiler gained two rules.  `xs.size.toUInt64` becomes `Stmt.arraySize`, a
+load of the length word into a fresh local, proved by `Stmt.arraySize_spec`.  A
+function whose result type is `Array UInt64` must return an array literal,
+which becomes `Stmt.arrayLiteral` at the end of the prelude with the result
+expression reading its local.  The literal translation moved into
+`translateArrayLiteral`, which serves both fold temporaries and results.
+
+The proof takes 55 lines.  `Stmt.arrayLiteral_spec`'s clause that keeps every
+borrowed array borrowed gives the argument's representation at the end, so the
+proof has no memory reasoning of its own.  In Wasmtime the results match
+native Lean on five inputs, and after the host releases the result and the
+input the counters read two allocations, two releases, and two frees.  The
+axiom audit of all five programs lists only `propext`, `Classical.choice`, and
+`Quot.sound`.
+
+- [x] Iteration 3c.
