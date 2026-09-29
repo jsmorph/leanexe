@@ -189,7 +189,7 @@ starts at `loc`: inside the block and loop of its `while`, after the condition,
 the exit test, the element address, and its wrap to 32 bits. -/
 def buildElementLoc (loc : Loc) (dst limit index : Nat) (count : IRExpr .u64) : Loc :=
   let before : List Project.IR.Stmt := [.assign limit count,
-    .call 1 [.bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)] (some dst),
+    .call 0 [.bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)] (some dst),
     .store (.get dst) (.get limit), .assign index (.const 0)]
   let address : IRExpr .u64 :=
     .bin .add (.get dst) (.bin .mul (.bin .add (.get index) (.const 1)) (.const 8))

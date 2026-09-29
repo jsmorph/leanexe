@@ -18999,3 +18999,18 @@ standard axioms.
 
 - [x] Decision 7: frame clause.
 - [ ] Multi-function modules and the call rule, then `addBid`.
+
+## 2026-09-29: Runtime functions first
+
+`compile` now takes a list of functions and their export names.  The runtime's
+`alloc`, `retain`, and `release` are functions 0, 1, and 2, with types 0, 0, and
+1, and compiled function `i` is function `3 + i` with type `2 + i`.  The templates
+call `alloc` and `release` at fixed indices whatever the number of compiled
+functions.  `Func.implements_heap`, `Func.implements`, and
+`Func.tail_implements` take the list and an index, and conclude `Implements` at
+entry `3 + i`.  Every module's bytes changed and no size did; all 504 recorded
+comparisons and the session checks passed on the new bytes.
+
+- [x] Runtime functions first, `compile` over a list.
+- [ ] Calls with several results, the call rule from `Implements`, and
+  `leanexe_compile p := [f, g, …]`.

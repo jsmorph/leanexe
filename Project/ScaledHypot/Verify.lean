@@ -12,8 +12,8 @@ def scaledHypotTuple (x : Float × Float × Float) : Float :=
   LeanExe.Examples.ScaledHypot.scaledHypot x.1 x.2.1 x.2.2
 
 theorem scaledHypot_implements :
-    Implements scaledHypot.module 0 scaledHypotTuple (fun _ => 0) :=
-  Func.implements scaledHypot.ir "scaledHypot" scaledHypotTuple
+    Implements scaledHypot.module 3 scaledHypotTuple (fun _ => 0) :=
+  Func.implements [(scaledHypot.ir, "scaledHypot")] 0 scaledHypot.ir "scaledHypot" rfl scaledHypotTuple
     (fun _ _ _ _ h => by rw [Scalar.borrowed.mp h]; rfl) fun ⟨x, y, s⟩ _ _ _ _ h =>
     Stmt.skip_spec.mono (fun _ _ ⟨hStore, hState⟩ => ⟨hStore, by
       rw [Scalar.borrowed.mp h] at hState
@@ -27,7 +27,7 @@ theorem scaledHypot_implements :
 /-- `encode` succeeds on `scaledHypot.module`, and its bytes decode to a module that
 computes `scaledHypot` bit for bit. -/
 theorem scaledHypot_bytes : ∃ bytes, Wasm.Encoding.encode scaledHypot.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 scaledHypotTuple (fun _ => 0) := by
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 3 scaledHypotTuple (fun _ => 0) := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip scaledHypot.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, scaledHypot.module, decoded, scaledHypot_implements⟩

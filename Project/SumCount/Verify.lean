@@ -7,13 +7,13 @@ namespace Project.SumCount
 open Wasm Project.Pipeline Project.IR Project.Runtime
 
 theorem sumCount_implements :
-    Implements sumCount.module 0 LeanExe.Examples.SumCount.sumCount (fun _ => 72) := by
-  refine Func.implements_heap sumCount.ir "sumCount" _ (fun _ => 72)
+    Implements sumCount.module 3 LeanExe.Examples.SumCount.sumCount (fun _ => 72) := by
+  refine Func.implements_heap [(sumCount.ir, "sumCount")] 0 sumCount.ir "sumCount" rfl _ (fun _ => 72)
     (by rintro _ _ _ _ ⟨ptr, rfl, -⟩; rfl) ?_
   rintro xs heap initial _ hHeap ⟨ptr, rfl, hBorrowed⟩ hRoom
-  have hMemory32 : (compile sumCount.ir "sumCount").memIs64 = false := rfl
-  have hImports : (compile sumCount.ir "sumCount").imports = [] := rfl
-  have hAlloc : (compile sumCount.ir "sumCount").funcs[1]? = some (allocFunction 1) := rfl
+  have hMemory32 : (compile [(sumCount.ir, "sumCount")]).memIs64 = false := rfl
+  have hImports : (compile [(sumCount.ir, "sumCount")]).imports = [] := rfl
+  have hAlloc : (compile [(sumCount.ir, "sumCount")]).funcs[0]? = some (allocFunction 0) := rfl
   let start : State := { params := [.i64 ptr], locals := List.replicate 6 (.i64 0) }
   show Triple _ (.seq (.assign 1 (.const 0)) (.seq (.fold .u64 0 1 2 3 4 (.bin .add (.get 1) (.get 4)))
     (.seq (.arraySize 5 0) (.arrayLiteral 6 [.get 1, .get 5])))) 7
@@ -67,7 +67,7 @@ theorem sumCount_implements :
 computes `sumCount` exactly, returning an array the caller owns. -/
 theorem sumCount_bytes : ∃ bytes, Wasm.Encoding.encode sumCount.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧
-      Implements m 0 LeanExe.Examples.SumCount.sumCount (fun _ => 72) := by
+      Implements m 3 LeanExe.Examples.SumCount.sumCount (fun _ => 72) := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip sumCount.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, sumCount.module, decoded, sumCount_implements⟩
