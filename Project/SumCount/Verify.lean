@@ -56,8 +56,10 @@ theorem sumCount_implements :
     · have hGet : state.get 5 = some (.i64 (UInt64.ofNat xs.size)) := by
         rw [hFrame.get 5 (by decide) (by decide), State.get_set?_same hSet3]
       simp [Expr.eval, hGet]
-  · rintro store state ⟨result, -, hResult, hAt, hOwned, hTop, hPages, hKeep⟩
-    refine ⟨_, hAt, ⟨ptr, rfl, hKeep ptr xs hBorrowed⟩, hTop, hPages, [.i64 result], state,
+  · rintro store state ⟨result, -, hResult, hNew⟩
+    have hOwned := hNew.owned
+    refine ⟨_, hNew.at_, ⟨ptr, rfl, hNew.borrowed ptr xs hBorrowed⟩, hNew.top, hNew.pages,
+      hNew.borrowed, fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 result], state,
       by simp [sumCount.ir, Func.scratch, Expr.evalResults, Expr.eval, hResult], result, rfl, ?_⟩
     simpa [LeanExe.Examples.SumCount.sumCount] using hOwned
 

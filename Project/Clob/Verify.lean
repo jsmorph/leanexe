@@ -120,9 +120,11 @@ theorem marketBuy_implements :
     · simp [Expr.eval, hFrame.get 2 (by decide) (by decide), hFrame.get 4 (by decide) (by decide),
         h2, h4, U64Op.apply]
     · simp [Expr.eval, hFrame.get 5 (by decide) (by decide), h5]
-  · rintro store state ⟨ptr, -, hPtr, hAt, hOwned, hTop, hPages, hKeep⟩
-    refine ⟨_, hAt, ⟨_, _, rfl, ⟨pp, rfl, hKeep pp prices hPrices⟩, _, _, rfl,
-      ⟨ps, rfl, hKeep ps sizes hSizes⟩, rfl⟩, hTop, hPages, [.i64 ptr], state,
+  · rintro store state ⟨ptr, -, hPtr, hNew⟩
+    have hOwned := hNew.owned
+    refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pp, rfl, hNew.borrowed pp prices hPrices⟩, _, _, rfl,
+      ⟨ps, rfl, hNew.borrowed ps sizes hSizes⟩, rfl⟩, hNew.top, hNew.pages, hNew.borrowed,
+      fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 ptr], state,
       by simp [marketBuy.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
     rw [marketBuyTuple, marketBuy_eq, hResult]
     simpa using hOwned
@@ -195,10 +197,12 @@ theorem fillLevel_implements : Implements fillLevel.module 0 fillTuple fillNeed 
     · simp [Expr.eval, hIndex, h3, h4, hjk]
     · simp [Expr.eval, hIndex, h3, hjk, Expr.readValue_at (hAt ps sizes hSizes), h0,
         State.set?_eq_update, hState.1, hState.2]
-  · rintro store state ⟨ptr, -, hPtr, hAt, hOwned, hTop, hPages, hKeep, -, -⟩
-    refine ⟨_, hAt, ⟨_, _, rfl, ⟨ps, rfl, hKeep ps sizes hSizes⟩, rfl⟩,
-      le_of_le_of_eq hTop (by simp [fillNeed, hn]), le_of_le_of_eq hPages (by simp [fillNeed, hn]),
-      [.i64 ptr], state,
+  · rintro store state ⟨ptr, -, hPtr, hNew⟩
+    have hOwned := hNew.owned
+    refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨ps, rfl, hNew.borrowed ps sizes hSizes⟩, rfl⟩,
+      le_of_le_of_eq hNew.top (by simp [fillNeed, hn]),
+      le_of_le_of_eq hNew.pages (by simp [fillNeed, hn]), hNew.borrowed,
+      fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 ptr], state,
       by simp [fillLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
     rw [fillTuple, LeanExe.Examples.Clob.fillLevel, set!_eq_build sizes k value hSize64]
     exact hOwned
@@ -235,8 +239,8 @@ theorem insertCount_eval (size : Nat) (k : UInt64) (hSize : size + 1 < 2 ^ 64) :
   have hIff : k ≤ UInt64.ofNat size ↔ k.toNat ≤ size := by
     rw [UInt64.le_iff_toNat_le, UInt64.toNat_ofNat_of_lt' (by omega)]
   by_cases h : k.toNat ≤ size
-  · rw [if_pos (hIff.mpr h), if_pos h, UInt64.ofNat_add]; rfl
-  · rw [if_neg (fun h' => h (hIff.mp h')), if_neg h]
+  · simp only [hIff.mpr h, h, ite_true, UInt64.ofNat_add]; rfl
+  · simp only [hIff, h, ite_false]
 
 theorem insertCount_toNat (size : Nat) (k : UInt64) (hSize : size + 1 < 2 ^ 64) :
     (insertCount size k).toNat ≤ size + 1 := by
@@ -263,7 +267,7 @@ theorem insert_element {store : Store Unit} {ptr k v : UInt64} {xs : Array UInt6
   · simp [Expr.eval, hIndex, hK, h1, Expr.readValue_at hArray, hArrayGet, hArrayNe,
       State.set?_eq_update, hLength]
   · by_cases h2 : j = k
-    · simp [Expr.eval, hIndex, hK, hV, h1, h2]
+    · simp [Expr.eval, hIndex, hK, hV, h2]
     · simp [Expr.eval, hIndex, hK, h1, h2, Expr.readValue_at hArray, hArrayGet, hArrayNe,
         State.set?_eq_update, hLength, U64Op.apply]
 
@@ -331,7 +335,13 @@ theorem insertLevel_implements : Implements insertLevel.module 0 insertTuple ins
       hIndex ((hFrame.get 5 (by decide) (by decide)).trans (by simp [s3, s2, s1, hParams, hLocals]))
       ((hFrame.get 6 (by decide) (by decide)).trans (by simp [s3, s2, s1, hParams, hLocals]))
   apply Triple.of_forall
-  rintro store1 t1 ⟨ptr1, hFrame1, hPtr1, hAt1, hOwned1, hTop1, hPages1, hKeep1, -, hCaps1⟩
+  rintro store1 t1 ⟨ptr1, hFrame1, hPtr1, hNew1⟩
+  have hAt1 := hNew1.at_
+  have hOwned1 := hNew1.owned
+  have hTop1 := hNew1.top
+  have hPages1 := hNew1.pages
+  have hKeep1 := hNew1.borrowed
+  have hCaps1 := hNew1.caps
   -- The second array.
   have hS1 := (hKeep1 ps sizes hSizes).values
   have hLengthS := hS1.lengthBound
@@ -378,7 +388,12 @@ theorem insertLevel_implements : Implements insertLevel.module 0 insertTuple ins
       ((hFrame.get 1 (by decide) (by decide)).trans (by simp [u3, u2, u1, h1Get1])) (by decide)
       hIndex ((hFrame.get 11 (by decide) (by decide)).trans (by simp [u3, u2, u1, hT1.1, hT1.2]))
       ((hFrame.get 12 (by decide) (by decide)).trans (by simp [u3, u2, u1, hT1.1, hT1.2]))
-  rintro store2 t2 ⟨ptr2, hFrame2, hPtr2, hAt2, hOwned2, hTop2, hPages2, hKeep2, hOwnedKeep2, -⟩
+  rintro store2 t2 ⟨ptr2, hFrame2, hPtr2, hNew2⟩
+  have hAt2 := hNew2.at_
+  have hOwned2 := hNew2.owned
+  have hTop2 := hNew2.top
+  have hPages2 := hNew2.pages
+  have hKeep2 := hNew2.borrowed
   have hPtr1' : t2.get 8 = some (.i64 ptr1) := by
     rw [hFrame2.get 8 (by decide) (by decide)]; simp [u3, u2, u1, hPtr1]
   have hNeed1 : (UInt64.ofNat (8 * ((insertCount prices.size k).toNat + 1))).toNat =
@@ -386,6 +401,8 @@ theorem insertLevel_implements : Implements insertLevel.module 0 insertTuple ins
     UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
   refine ⟨_, hAt2, ⟨_, _, rfl, ⟨pp, rfl, hKeep2 pp prices (hKeep1 pp prices hPrices)⟩, _, _, rfl,
       ⟨ps, rfl, hKeep2 ps sizes (hKeep1 ps sizes hSizes)⟩, rfl⟩, ?_, ?_,
+    fun p ws h => hKeep2 p ws (hKeep1 p ws h),
+    fun p ws h => (hNew2.ownedKeep p ws (hNew1.ownedKeep p ws h).1).1,
     [.i64 ptr1, .i64 ptr2], t2,
     by simp [insertLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr1', hPtr2],
     [.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ?_⟩, ⟨ptr2, rfl, ?_⟩⟩
@@ -397,7 +414,7 @@ theorem insertLevel_implements : Implements insertLevel.module 0 insertTuple ins
     have hMax1 := Nat.le_max_left initial.mem.pages
       ((heap.top.toNat + (48 + 8 * ((insertCount prices.size k).toNat + 1)) + 65535) / 65536)
     omega
-  · have hOwned := hOwnedKeep2 ptr1 _ hOwned1
+  · have hOwned := (hNew2.ownedKeep ptr1 _ hOwned1).1
     rw [insertTuple, LeanExe.Examples.Clob.insertLevel,
       insertIdx!_eq_build prices k price (by omega)]
     exact hOwned

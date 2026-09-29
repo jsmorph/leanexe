@@ -48,13 +48,6 @@ theorem alloc_spec {m : Module} {typeIdx : Nat} (hMemory32 : m.memIs64 = false)
     exact array_allocation_spec m hMemory32 env store heap [.i64 bytes] [] [] 1 rfl
       (allocSize bytes) 1 0 0 0 0 0 hHeap hRoom _ _ fun _ _ _ _ => by simp [FixedArraySearch.frame, wp_simp]
 
-/-- A header word `k ≤ 48` bytes before a payload pointer inside the 32-bit
-address space. -/
-theorem headerAddress_toNat {ptr k : UInt64} (hk : k.toNat ≤ ptr.toNat)
-    (hFit : ptr.toNat < 4294967296) : (ptr - k).toUInt32.toNat = ptr.toNat - k.toNat := by
-  rw [Memory.toUInt32_toNat, UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le]; omega)]
-  omega
-
 /-- The heap after `release` frees the object at `ptr`, whose header records
 payload capacity `capacity`. -/
 def Heap.release (heap : Heap) (ptr capacity : UInt64) : Heap :=
@@ -176,6 +169,54 @@ theorem Heap.releaseStore_bytes (heap : Heap) (store : Store Unit) {ptr : UInt64
   simp only [Heap.releaseStore]
   rw [Memory.write64_bytes_outside _ _ _ (by omega), Memory.write64_bytes_outside _ _ _ (by omega),
     Memory.write64_bytes_outside _ _ _ (by omega)]
+
+theorem Heap.releaseStore_pages (heap : Heap) (store : Store Unit) (ptr : UInt64) :
+    (heap.releaseStore store ptr).mem.pages = store.mem.pages := by
+  simp [Heap.releaseStore, Wasm.Mem.write64_pages]
+
+/-- An array borrowed outside a freed object stays borrowed after the release. -/
+theorem Heap.Borrowed.release {heap : Heap} {store : Store Unit} {p q : UInt64}
+    {ws qs : Array UInt64} (h : heap.Borrowed store p ws) (hOwned : heap.Owned store q qs)
+    (hDisjoint : regionsDisjoint (p.toNat, 8 * (ws.size + 1))
+      (q.toNat - 48, 48 + capacityAt store q)) :
+    (heap.release q (store.mem.read64 (q - 32).toUInt32)).Borrowed (heap.releaseStore store q) p
+      ws := by
+  have hBase := hOwned.base
+  have hFit := hOwned.address
+  unfold regionsDisjoint at hDisjoint
+  refine ⟨arrayAt_frame h.values (by rw [Heap.releaseStore_pages]) fun address hLow hHigh =>
+      Heap.releaseStore_bytes heap store (by omega) (by omega) (by omega), h.below, ?_⟩
+  intro node hNode
+  simp only [Heap.release, List.mem_cons] at hNode
+  rcases hNode with rfl | hNode
+  · simp only [FreeNode.region, regionsDisjoint]
+    simp only [capacityAt] at hDisjoint
+    omega
+  · exact h.separate node hNode
+
+/-- An object owned outside a freed object stays owned after the release, with its
+capacity word unchanged. -/
+theorem Heap.Owned.release {heap : Heap} {store : Store Unit} {p q : UInt64}
+    {ws qs : Array UInt64} (h : heap.Owned store p ws) (hOwned : heap.Owned store q qs)
+    (hDisjoint : regionsDisjoint (p.toNat - 48, 48 + capacityAt store p)
+      (q.toNat - 48, 48 + capacityAt store q)) :
+    (heap.release q (store.mem.read64 (q - 32).toUInt32)).Owned (heap.releaseStore store q) p ws ∧
+      capacityAt (heap.releaseStore store q) p = capacityAt store p := by
+  have hBase := hOwned.base
+  have hFit := hOwned.address
+  have hpBase := h.base
+  have hpFit := h.address
+  unfold regionsDisjoint at hDisjoint
+  have hBytes : ∀ address, p.toNat - 48 ≤ address → address < p.toNat + capacityAt store p →
+      (heap.releaseStore store q).mem.bytes address = store.mem.bytes address :=
+    fun address hLow hHigh => Heap.releaseStore_bytes heap store (by omega) (by omega) (by omega)
+  refine ⟨h.frame (by rw [Heap.releaseStore_pages]) hBytes h.below fun node hNode => ?_,
+    capacityAt_frame (by omega) (by omega) fun a hl hh => hBytes a hl (by omega)⟩
+  simp only [Heap.release, List.mem_cons] at hNode
+  rcases hNode with rfl | hNode
+  · simp only [FreeNode.region, regionsDisjoint, capacityAt] at hDisjoint ⊢
+    omega
+  · exact h.separate node hNode
 
 /-- Freeing an owned array keeps the allocator invariant, with the object's
 block at the head of the free list. -/
