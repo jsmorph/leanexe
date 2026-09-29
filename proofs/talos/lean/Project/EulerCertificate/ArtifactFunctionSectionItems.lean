@@ -1,1 +1,0 @@
-import Project.EulerCertificate.ArtifactFunctionSectionItemsPart12

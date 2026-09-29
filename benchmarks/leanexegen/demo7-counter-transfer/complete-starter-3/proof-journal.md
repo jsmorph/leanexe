@@ -1,9 +1,0 @@
-# Proof Journal
-
-The initial prescribed build failed in `Behavior.lean` after the starter applied `FixedArraySingletonWrapper.wrapperProgram_spec`.  The supplied composition and `function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity` theorem discharged the decoded wrapper and scalar-loop semantics.  Lean left only the invalid-size equation `input.size ≠ 1 → FormalSpec.expected input = input` and the singleton equation `input.size = 1 → FormalSpec.expected input = #[input[0]]`.
-
-`FormalSpec.expected` is definitionally the identity function.  The invalid-size equation therefore needs only that definition unfolded, while the singleton equation also needs the standard array singleton extensionality fact obtained from `input.size = 1`.  I will retain the complete wrapper composition and add only these two semantic proofs.
-
-After the semantic edit, `PROOF_IMPORT_CHECK.js` accepted the candidate, and the prescribed `ArtifactResult` build succeeded.  The invalid branch closes by reflexivity after the wrapper introduces its size hypothesis.  The valid branch unfolds `FormalSpec.expected`, applies `Array.ext`, derives the sole valid index with `omega`, and proves the element equation by reflexivity.
-
-The final proof uses `AnnotationMatches.function_1_singleton_wrapper_0_eq`, `FixedArraySingletonWrapper.wrapperProgram_spec`, and `AnnotationMatches.function_0_scalar_post_test_loop_0_terminates_with_counter_transfer_identity` exactly as selected by `PROOF_RECIPES.json`.  The complete wrapper theorem handles length dispatch, checked input access, the scalar call, allocation, stores, and the public result representation.  No node-level or instruction-level alternative was needed, and the successful build revealed no missing proof-library declaration or guidance.

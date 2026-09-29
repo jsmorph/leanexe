@@ -18268,3 +18268,31 @@ comparison with native Lean, an axiom audit, and a commit.  The programs are
 scalar arithmetic, a tail-recursive loop, `sumCount`, a program with
 temporaries, a step-function I/O program, a binary64 program, and a program over
 a recursive value.  Each iteration adds only what its program needs.
+
+## 2026-09-28: First deletion stage
+
+The user approved the inventory in `deslop.md` and said the deslop is a clean,
+new development with no concern for legacy code.  The stage deleted 21,914
+tracked files, the untracked `encoding-draft.md` and `work/`, and the old
+uncommitted change to `proofs/artifacts/release.json`.  The kept set is the
+import closure of `Project.SumCount.Verify`, `Pipeline.Emit`,
+`Encoding.DecodeTest`, `ProofKit.ScalarTransition`, `ProofKit.LTGCheck`, the
+binary32 equality files, and the review items (`Runtime/`, `WpScaffold`,
+`FrameAttr`, `BranchPost`, `F32Source`, `IEEE64Source`).
+
+Three findings changed the plan during the stage.  `Runtime/Checks.lean` and
+`InfraTest.lean` import 73 example programs, so they went with the examples.
+`LocalRegion/Calls.lean` and `LocalRegion/Decidable.lean` use
+`AllowsInstruction`, which no file at `HEAD` defined, and
+`LocalRegion/Slots.lean` and `LocalRegion/Layout.lean` both define
+`Project.LocalRegion.Layout.mk`, so `LocalRegion/` and `FunctionRegion/` went
+too.  `Pipeline/Emit.lean` and `Encoding/DecodeTest.lean` define `main`, so the
+generated `Project.lean` leaves them out.
+
+After the stage, both packages build, `Emit.lean` reproduces the module with
+sha256 `19b91985…`, `wasm-tools` validates it, Wasmtime returns the expected
+results on four inputs, and the axiom audit lists only `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+- [x] Delete the first stage.
+- [ ] Run `tools/ltg` and review LTG entries that name deleted artifacts.

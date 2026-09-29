@@ -25,7 +25,7 @@ The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O a
 
 ## Files
 
-Paths other than the first are relative to `proofs/talos/lean`.  `Pipeline/Direct.lean` moved from `EncodingGcd`, and `EncodingGcd/GenerateProgram.lean` now imports it from there.  The Pipeline and Encoding files serve every program, and the SumCount files serve one.
+Paths other than the first are relative to `proofs/talos/lean`.  The Pipeline and Encoding files serve every program, and the SumCount files serve one.
 
 | File | Role |
 |---|---|
@@ -106,9 +106,34 @@ GPU support is on `origin/wgsl` (`9c7c7898`), which is not merged into this bran
 
 The same scheme could cover kernels: a kernel IR with buffer loads and stores, loops, and floats, a small translation to WGSL with one lemma per construct against a WGSL semantics, per-kernel proofs, and rule-by-rule verification of the kernel compiler.  The Wasm program would invoke kernels through host functions and take their results as premises that the per-kernel theorems discharge.  The trusted base would grow by the repository's WGSL semantics, the browser's WGSL compiler, the GPU, and host transfers.  As understood from the WGSL specification, and not yet checked against it, some WGSL operations need not be correctly rounded, subnormals may be flushed, and NaN and infinity behavior is partly unspecified, so exact word equality needs a strict-execution premise.  The user decided that `origin/wgsl` is not merged and stays as a reference branch.  The kernel path is designed under the new design once the Wasm path has proved `sumCount` and one float program, and specific pieces such as the WGSL semantics and the `Profile` move over after review.
 
+## Deletion inventory
+
+The user approved the first stage on 2026-09-28, stating that the deslop is a clean, new development with no concern for legacy code or backward compatibility.  The first stage was carried out with three changes from this table, all in the direction of deleting more: `Project/Compiler/` except `ScalarLowering.lean` went in the first stage; every `LeanExe` module outside the kept closure went, including `CLI.lean` and `Main.lean`, together with the `lean-wasm` executable; and `InfraTest.lean` and `Runtime/Checks.lean` went because they import example programs.  The first full build of the kept tree then found that `LocalRegion/Calls.lean` and `LocalRegion/Decidable.lean` use `AllowsInstruction`, which no file at `HEAD` defined, and that `LocalRegion/Slots.lean` and `LocalRegion/Layout.lean` both define `Project.LocalRegion.Layout.mk`.  No target had built these files before, and no kept root imports them, so `LocalRegion/` and `FunctionRegion/`, which imports it, were deleted.  `Pipeline/Emit.lean` and `Encoding/DecodeTest.lean` define `main` and run with `lean --run`, so `Project.lean` does not import them.  The table below is the inventory as proposed.  The kept roots are `Project.SumCount.Verify`, `Project.Pipeline.Emit`, `Project.Encoding.DecodeTest`, `Project.ProofKit.ScalarTransition`, `Project.ProofKit.LTGCheck`, and the binary32 equality files (`F32Add`, `F32Sub`, `F32Mul`, `F32Div`, `F32Sqrt`, `F32Nearest`, `F32TruncSat`, `F32Convert`).  Their import closure keeps 100 of ProofKit's 332 files, 3 of `Runtime`'s 8, and, until stage 2, the old compiler modules that `Pipeline/Command.lean` and `Pipeline/Direct.lean` use.  Stage 1 deletes nothing in that closure.  Before deleting, `Main.lean`'s closure is also checked, so that the `lean-wasm` executable keeps building until stage 2 removes it.
+
+| Path | Files | Contents | Proposal |
+|---|---|---|---|
+| `proofs/compiler/` | 11,154 | Dated proof packages from the scalar compiler track | Delete, stage 1 |
+| `proofs/artifacts/` | 114 | Artifact registry and per-artifact packages, including `release.json` | Delete, stage 1.  This discards the uncommitted change to `release.json`, which predates the deslop. |
+| `proofs/talos/cases.json`, `conformance.json`, `reviews/`, `README.md`; `proofs/running-sum/`, `proofs/byte-io/` | 8 | Registries, reviews, and old workspace notes | Delete, stage 1 |
+| Example directories under `proofs/talos/lean/Project/` (Euler, CLOB, GPT-2, TinyGpt2, Drone, LebU32, RunningSum, and 60 others), `EncodingGcd/`, `Artifact/`, `Clob.lean`, `FixedArrayAllocation.lean` | about 4,500 | Proofs of example programs and the exact-artifact decoder | Delete, stage 1.  Remove the GPT-2 `lean_exe` entries from `lakefile.toml` and rewrite `Project.lean` to import the kept modules. |
+| `Project/ProofKit/`, 232 files outside the closure | 232 | Lemmas for old compiler patterns and example numerics: `F64` 73, `Packed` 46, `F32` 32, `Real` 16, `Quantized` 12, `Word` 11, `Fixed` 10, others 32 | Delete, stage 1.  The 105 `F32` and `F64` numerical-bound files are possible future LTG material and remain in git history. |
+| `Project/Runtime/` (5 unused of 8), `WpScaffold`, `FrameAttr`, `BranchPost`, `FunctionRegion/`, `LocalRegion/`, `InfraTest`, `F32Source`, `IEEE64Source` | about 30 | Old runtime specifications (including `TreeSpec`) and proof infrastructure | Keep for review during iterations 1–4, then delete what the new pipeline does not use |
+| `Project/Compiler/` | 77 | Scalar compiler track, including `ScalarLowering`, which `Pipeline/Direct.lean` uses | Delete, stage 2 |
+| `LeanExe/Examples/` except `SumCount.lean`, `LeanExe/TypeSafety*`, `LeanExe/Models/`, `LeanExe/Ascii/`, `LeanExe/AsciiString.lean` | about 85 | Old examples, type-safety analysis, JSON and ASCII library | Delete, stage 1, if the closure check allows.  Otherwise stage 2. |
+| `LeanExe/Extract/`, `IR/`, `Wasm/`, `Source/`, `Core.lean`, `CLI.lean`, `Util/`, `ByteIO.lean`, `Packed.lean`, `Runtime.lean`, `Main.lean` | about 170 | The old compiler and CLI | Delete, stage 2 |
+| `LeanExe/Float32.lean`, `Float64.lean`, `Signed32.lean` | 3 | Raw-bit float wrappers used by the binary32 equality proofs | Delete after the equality proofs are restated over Lean's `Float32` |
+| `test/`, `host/` | 172 | Tests of the old compiler | Delete, stage 1 |
+| `demos/`, `benchmarks/`, `training/`, `plans/` | 5,453 | Demos, generator benchmarks, GPT-2 training scripts, and old plans | Delete, stage 1 |
+| `tools/`, except `leanrun`, `leanrun-dev`, `leanrun-dev-scope`, `leanrun-macos.c`, `macos-env.sh`, `bootstrap-macos.sh`, `download-wasmtime.sh`, `build-wasmtime-host.sh`, `wasmtime-host.c`, `check-wasm-tools-version.sh`, and the LTG tools (`ltg`, `ltg-lib.js`, `knowledge`, `knowledge-lib.js`, `check-node-version.js`) | 62 | Artifact, generator, example, and old-host scripts | Delete, stage 1 |
+| `task.md`, `plan.md`, `journal.md`, `encoding.md` | 4 | Old task statements and plans | Delete, stage 1 |
+| `encoding-draft.md`, `work/` (untracked) | 9 | Earlier task statement and unexamined running-sum files | Delete, stage 1.  These are untracked, so git cannot recover them. |
+| `docs/`, except `ltg.md` and `ltg-metrics.md`; `README.md`, `DEVELOPING.md` | 27 | Documentation of the old compiler | Delete or rewrite in stage 2, as the new pipeline gets its own documentation |
+| `ltg/`, `knowledge/` | 93 | The LTG knowledge base | Keep.  Entries tied to deleted artifacts need review later. |
+| `paper/`, `data/` | 804 | Publication records | Keep |
+
 ## Repository state
 
-The CLOB, Euler–Riemann, and other example directories are expected to fail to build after the ProofKit move, and they have not been rebuilt.  The pipeline's import closure contains ProofKit, Runtime, Encoding, LeanExe, `Common`, `Attr`, `TalosCompat`, `TalosPrelude`, and `Compiler.ScalarLowering`, which `Pipeline/Direct.lean` uses.  Unrelated changes predate this work and belong outside the pipeline commits: `proofs/artifacts/release.json` was already modified when the work started, `encoding-draft.md` is an earlier task statement renamed during the merge, `work/` is unexamined, and 87 untracked files are under `paper/` and `data/`.
+The first deletion stage removed 21,896 tracked files, then 18 more in `LocalRegion/` and `FunctionRegion/`, the untracked `encoding-draft.md` and `work/`, and the uncommitted change to `proofs/artifacts/release.json`.  The tracked tree now holds `paper/` (618 files), `data/` (186), `proofs/` (159), `LeanExe/` (142), `ltg/` (92), `docs/` (27), `tools/` (15), and root files.  `LeanExe.lean` and `proofs/talos/lean/Project.lean` import every remaining module, the root package's default target is the `LeanExe` library, and the proof workspace has no executables.  The old compiler modules that `Pipeline/Command.lean` and `Pipeline/Direct.lean` use remain until the second stage, as do `docs/`, `README.md`, and `DEVELOPING.md`.  The LTG catalog may still name deleted artifacts, and `tools/ltg` has not been run since the deletion.  128 untracked files are under `paper/` and `data/`.
 
 ## Scope of the theorem
 
@@ -125,7 +150,7 @@ The user doubted that items 2 and 3 need work, and no work on them is planned.
 
 - [x] Change `need` to a function of the input, `Array UInt64 → Nat`, in `Implements` and `Satisfies`, and prove `sumModule_implements` with `fun _ => 72`.  The build and the axiom audit passed afterward.
 - [x] Commit the proof of concept, the decoder, and these notes as one commit.
-- [ ] Write the deletion inventory for approval, then delete the first stage.
+- [x] Write the deletion inventory for approval, then delete the first stage.  After the deletion, both packages build, `Emit.lean` reproduces the module with sha256 `19b91985…`, `wasm-tools` validates it, Wasmtime returns `[0, 0]`, `[6, 3]`, `[0, 2]`, and `[0, 1]` for the empty array, `[1,2,3]`, `[2^64-1, 1]`, and `[0]`, and the axiom audit is unchanged.
 
 Development is iterative.  Each iteration takes one program from Lean source through the compiler, the IR with hints, `compile`, and `encode` to bytes, proves `Implements` through the IR lemmas, checks the bytes against native Lean in Wasmtime, runs the axiom audit, and ends with a commit.  Each iteration adds only the IR constructs, compiler rules, `wp` lemmas, runtime pieces, and `Implements` generality its program needs.  The IR's value types include `f32` and `f64` from the first iteration, and float operations arrive with the float iteration.
 
