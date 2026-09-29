@@ -18958,3 +18958,18 @@ both inputs ends with four allocations, four releases, and four frees.
 
 - [x] CLOB 3: `insertLevel`.
 - [ ] CLOB 4: `addBid`, a search loop and a conditional result.
+
+## 2026-09-29: addBid compiles
+
+`addBid prices sizes price size` finds the insertion position with a search loop
+and returns either a copy of the prices with the sizes updated by `set!`, or both
+arrays with a new level inserted.  The compiler gained `let` at the result level,
+a conditional result whose branches build arrays (a statement `if` whose
+branches assign the result locals, translated with `withBlock`), and
+`LeanExe.loop` with a single-word state used as a value.  No proof exists yet.
+A direct proof would repeat the reasoning of `fillLevel` and `insertLevel` in
+each branch.  Calls between compiled functions would let it reuse their
+theorems, but composing `Implements` theorems needs a frame clause that the
+current statement lacks; that decision is with the user.
+
+- [ ] CLOB 4: `addBid` proof, after the frame decision.
