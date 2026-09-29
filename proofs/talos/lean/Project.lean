@@ -35,6 +35,7 @@ import Project.IR.Correct
 import Project.IR.Function
 import Project.IR.Hint
 import Project.IR.Stmt
+import Project.IR.TailLoop
 import Project.Pipeline.Allocation
 import Project.Pipeline.Command
 import Project.Pipeline.Direct

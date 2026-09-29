@@ -18363,3 +18363,30 @@ unfolded the invariant and measure exceeded the heartbeat limit.
 
 - [x] Iteration 2 end to end.
 - [ ] Tail-recursion rule lemma and first LTG entry.
+
+## 2026-09-29: Tail-recursion rule lemma and first LTG entry
+
+`Func.tail_implements` in `Project/IR/TailLoop.lean` is the first lemma about a
+compiler rule.  For a function whose body is `while done = 0 do step` and whose
+result is the first compiler variable, it proves `Implements` from `TailStep`:
+from `tailState args result 0 others`, one run of `step` keeps the store and
+either continues at arguments with the same value of `f` and a smaller measure,
+or stores `f args` and sets `done`.  The lemma builds the loop invariant and a
+state measure itself; the measure recovers the arguments with
+`Classical.choose`, which is why the arguments' WASM values must be injective.
+Rewriting a measure whose store argument its body ignored left unassignable
+goals, so the measure takes the state only.
+
+`gcd` now proves through the lemma: `gcd_step` is 29 non-blank, non-comment
+lines, against 63 for the first proof, and after `simp` the base case needs only
+`gcd a 0 = a` and the recursive case needs the step equation and `a % b < b`.
+The entry `ltg/entries/tail-recursion-loop/` was written by hand, and the loop
+hint's rule is now the stable name `tail-recursion-loop` that the entry keys on.
+
+`tools/ltg` does not run.  It imports `tools/leanexegen-lib.js`, which the first
+deletion stage removed; my inventory kept the LTG tools without checking their
+dependencies.  The library also restricts entry modules to a fixed ProofKit
+list, so the tooling needs a decision before it can index entries in `Project.IR`.
+
+- [x] Tail-recursion rule lemma, `gcd` reproved, LTG entry written.
+- [ ] Decide the LTG tooling.
