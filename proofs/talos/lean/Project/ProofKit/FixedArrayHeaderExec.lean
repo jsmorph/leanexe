@@ -3,7 +3,7 @@ import Project.ProofKit.Frame
 import Interpreter.Wasm.Wp.Tactic
 
 namespace Project.ProofKit.FixedArrayHeader
-open Wasm Project.Clob Project.ProofKit.Memory Project.ProofKit.Allocation
+open Wasm Project.ProofKit.Memory Project.ProofKit.Allocation
 
 theorem writeConst_spec (module_ : Wasm.Module) (env : HostEnv Unit)
     (store : Store Unit) (frame : Locals) (pointerLocal : Nat)

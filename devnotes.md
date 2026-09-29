@@ -17860,3 +17860,387 @@ source produced byte-for-byte identical Lean text, and regenerating the WASM
 file through `Encoded.lean` produced byte-for-byte identical output.  A focused
 Lean run also compared `Repr` output of the compiler-IR translation with the
 evaluated `Program.lean` module and found the strings equal.
+
+## 2026-09-28: Direct pipeline proof of concept
+
+The deslop discussion settled on one route from Lean source to proved WASM.  The
+compiler's output becomes a Talos `Wasm.Module` definition during elaboration,
+theorems are stated about that definition, and the bytes are `encode` of the same
+definition.  `Wasm.Encoding.decode` defines what the bytes mean, and a round-trip
+theorem ties the encoder to it.  Instruction-count and stack theorems are out of
+scope.  Memory bounds stay, and the reference-counting allocator stays.  The test
+program is `sumCount : Array UInt64 → Array UInt64`, which returns the wrapping
+sum and the count.  No case registration and no `tools/*.js` script takes part.
+
+| File | Role |
+|------|------|
+| `LeanExe/Examples/SumCount.lean` | The program. |
+| `Project/Pipeline/Direct.lean` | Library-mode Talos module for one compiled function, moved from `EncodingGcd` and renamed. |
+| `Project/Pipeline/ToExpr.lean` | Derived `ToExpr` instances for Talos syntax. |
+| `Project/Pipeline/Command.lean` | `leanexe_module m := f` runs `compileEnvironment` and `fromIR` during elaboration and adds `m : Wasm.Module`. |
+| `Project/Pipeline/Runtime.lean` | Allocator invariant, borrowed input array, owned result array, and allocation room. |
+| `Project/Pipeline/Implements.lean` | `Implements`, `Satisfies`, and `Implements.transfer`. |
+| `Project/Pipeline/Allocation.lean` | What one array allocation guarantees, and frame lemmas for writes into the new block. |
+| `Project/Pipeline/Emit.lean` | Evaluates a named module constant, encodes it, checks that `decode` returns the constant, and writes the bytes. |
+| `Project/Encoding/Decode.lean` | Binary decoder for the encoder's subset, written from the WebAssembly 3.0 binary format. |
+| `Project/Encoding/RoundTrip.lean` | `decode_encode`: every successful encoding decodes to the encoded module. |
+| `Project/Encoding/DecodeCorrect/*.lean` | Parser lemmas behind `decode_encode`. |
+| `Project/Encoding/DecodeTest.lean` | Runs the decoder over the official testsuite. |
+| `Project/SumCount/Module.lean` | `leanexe_module sumModule := sumCount`. |
+| `Project/SumCount/Verify.lean` | The theorem statements. |
+| `Project/SumCount/Execution.lean` | The proof that `sumModule` implements `sumCount`. |
+
+Paths other than the first are relative to `proofs/talos/lean`.  The theorems
+about `sumModule` separate bitwise fidelity from properties of the source.
+`sumModule_implements` states that, from any store satisfying the allocator
+invariant with the input words borrowed and room for 72 bytes, the entry returns
+a new owned array equal to `sumCount xs`, keeps the input, restores the
+invariant, advances `top` by at most 72 bytes, and grows memory only as far as
+`top` requires.  `sumCount_meaning` is a statement about the Lean function: the
+first word read as signed is the mathematical sum whenever that sum fits in the
+signed 64-bit range.  `sumModule_meaning` follows from the two by
+`Implements.transfer`, and `sumModule_bytes` combines `decode_encode` with the
+fidelity theorem.  `sumCount_meaning` is proved by induction over the fold with
+`BitVec.toInt_add` and `Int.bmod_add_bmod`.  All of these theorems are proved.
+`#print axioms` reports `propext`, `Classical.choice`, and `Quot.sound` for
+`sumModule_implements`, `sumModule_meaning`, `sumModule_bytes`, and
+`decode_encode`, and nothing else.  The `word_reads` tactic in
+`ProofKit/Memory.lean` rewrites with Talos's `Mem.read64_write64_same`, whose
+`bv_decide` proof adds the native-code axiom
+`Wasm.Mem.read64_write64_same._native.bv_decide.ax_1_10`, so the proof uses
+`Memory.read64_write64` instead.
+
+`decode_encode` composes two results.  The merged encoder proves
+`encode_correct`, which relates `encode m` to `m` through the `Encodes` relation,
+and `moduleParser_run` in `DecodeCorrect/Modules.lean` shows that the decoder
+reads any bytes related to `m` by `Encodes` back as `m`.  The parser lemmas use
+`Parses p bytes v`, which says that `p` consumes exactly `bytes` from any input
+that begins with them and returns `v`, so lemmas for LEB128 integers, vectors,
+types, instructions, code bodies, and sections compose by concatenation.
+`global`, `code`, and `sections` now call smaller parsers, `mutability`,
+`codeBody`, `customSection`, and `sectionContents`, which the proof treats
+separately.  The testsuite run after that change reproduced the counts below.
+
+The allocation in `sumModule`'s entry, from instruction 18 through the counter
+increment, equals `ProofKit.FixedArrayAllocate.program 11 1`, whose
+`program_spec` covers the first-fit search, the bump path, memory growth, and the
+header.  A first version of the fidelity proof also used store-level lemmas from
+`EulerRiemann` and `Clob.lean` through a translation between the pipeline's `Heap`
+and the Euler–Riemann heap.  The pipeline now imports no Euler–Riemann or CLOB
+module.  ProofKit's allocation files had taken nine generic declarations from CLOB
+files: `FreshFixedArrayAt` and its frame lemma, the header and bump stores, and
+the first-fit stores with their two lemmas.  Those declarations moved into
+`ProofKit/FixedArrayHeader.lean` and `ProofKit/FreeListMemory.lean` under
+`Project.ProofKit`, and the CLOB originals were deleted.  429 modules outside the
+pipeline reached CLOB definitions only through ProofKit's old imports.  By
+decision, CLOB, Euler–Riemann, and other example code was not rebuilt or repaired
+after the move, and it is expected to fail.
+
+`Pipeline/Allocation.lean` proves what one array allocation guarantees, directly
+for the pipeline's `Heap`.  It uses one store function, `Heap.allocateStore`,
+`FixedArrayAllocate.root` for the returned pointer, and
+`FixedArrayBump.requiredPages` for the page count.  After allocation,
+`Heap.allocate` satisfies the invariant, the new block has a fresh header and lies
+below the new `top` and outside every free block, and every borrowed array keeps
+its words.  `WritesWithin` describes a store that differs from another only inside
+the new block, and three frame lemmas carry the invariant, the block, and the
+borrowed array across such a change.  `SumCount/Execution.lean` follows the entry
+function: `pre` computes the payload size 24, `FixedArrayAllocate.program 11 1`
+allocates the block, `postPrefix` writes the length word and reads the input
+length, the loop folds the input, and `afterLoop` writes the sum and the count
+and returns the pointer.  The loop proof uses `wp_loop_cons` with
+`ArrayFold.foldPrefix` at the current index as the invariant and the number of
+remaining elements as the measure.
+
+`Heap.At` gained one hypothesis during the proof: at most 65,536 pages, which
+`FixedArrayAllocate.program_spec` assumes.  The WebAssembly specification limits
+a 32-bit memory to that many pages, so every store that models one satisfies it.
+A second hypothesis, `48 ≤ ptr` with the 48 bytes before the input outside every
+free block, came from reusing `arrayAllocated_bytes_in_region`, which describes
+the preserved region as a block with a header.  After discussion it was removed.
+`arrayAllocated_bytes_outside` now shows that allocation leaves unchanged any
+region below `top` that lies outside every free block, built from the same
+`FreeListMemory.fit_bytes` and `arrayBump_bytes_outside`.
+
+The 72 bytes come from `rcAllocPayload`: an array payload of 8 + 2 × 8 bytes and
+a 48-byte header.  The same code shows that `alloc` traps when `memory.grow`
+returns −1, which settles the earlier question about allocation failure.  The
+Wasmtime host reports two allocations per call, one for the host's input and one
+for the result.  The emitted module is 1,689 bytes; the compiler's own binary for
+the same source is 1,603 bytes because the encoder writes one local per group,
+explicit `else` branches, and empty sections.  wasm-tools validates the emitted
+bytes.  On seven inputs, including the empty array, wrapping sums, and 1,000
+elements, the Wasmtime host returns native Lean's result for both binaries.
+
+`wasm-tools json-from-wast` converted all 257 testsuite scripts in the pinned
+CodeLib checkout.  Of the valid modules, 210 lie in the decoder's subset; all 210
+decode to the module that Talos's WAT decoder reads from `wasm-tools print`, and
+all 210 satisfy `decode (encode m) = m`.  2,004 valid modules lie outside the
+subset.  The decoder rejects all 670 binary `assert_malformed` modules within the
+subset; 41 more fall outside it.  The first run exposed a decoder bug: `return`
+inside the section `match` left the section loop after the first section.
+
+The decoder follows WebAssembly 3.0 for its subset with three deliberate limits.
+It reads memory limits as `u32`, which rejects some forms 3.0 accepts before
+validation, it rejects offsets and alignments that a 32-bit memory cannot use,
+and it caps locals at Wasmtime's 50,000 per function.  `decode_encode` carries
+that cap as a premise.  The `Encodes` relation remains in the tree, but it no
+longer defines the meaning of the bytes.
+
+```sh
+tools/leanrun --timeout 30m lake -d proofs/talos/lean build Project.SumCount.Verify
+tools/leanrun --timeout 10m lake -d proofs/talos/lean env lean --run \
+  proofs/talos/lean/Project/Pipeline/Emit.lean \
+  Project.SumCount.Module Project.SumCount.sumModule build/sumcount/sumModule.wasm
+build/tools/leanexe-wasmtime-host call build/sumcount/sumModule.wasm sumCount \
+  array-u64 array-u64:1,2,3
+tools/leanrun --timeout 60m lake -d proofs/talos/lean env lean --run \
+  proofs/talos/lean/Project/Encoding/DecodeTest.lean "$(command -v wasm-tools)" build/decode-test
+```
+
+The last command expects `build/decode-test` to hold `wasm-tools json-from-wast`
+output for `vendor/testsuite/*.wast`, written with `--wasm-dir build/decode-test`.
+Merging `origin/encoding` required renaming the untracked root `encoding.md`, an
+earlier task statement found in no commit, to `encoding-draft.md`.
+
+`Implements` and `Satisfies` now take `need : Array UInt64 → Nat`, so a function
+whose allocation grows with its input can be stated.  The room premise, the `top`
+bound, and the page bound all use `need xs`.  `sumNeed` returns 72 for every
+input, and `Execution.implements` needed no proof change.  The build and the
+axiom audit passed afterward, with only `propext`, `Classical.choice`, and
+`Quot.sound`.
+
+The pipeline uses no general theorem about the compiler.  The only verified
+compilation in the repository is the scalar track in `Compiler/`, and no theorem
+about the compiler covers arrays, heap objects, or allocation.  `Execution.lean`
+proves this one module against `sumCount` directly, using ProofKit's
+specifications of emitted code patterns such as
+`FixedArrayAllocate.program_spec`.  "2026-09-28: Pipeline design discussion"
+below has the details.
+
+- [x] Merge `origin/encoding` into `deslop`.
+- [x] Compile `sumCount` and generate `sumModule` during elaboration.
+- [x] Emit, validate, and compare with native Lean in Wasmtime.
+- [x] State fidelity, source, transfer, and byte-level theorems.
+- [x] Write the decoder and test it against the testsuite.
+- [x] Prove `sumCount_meaning`.
+- [x] Prove `sumModule_implements`.
+- [x] Prove `decode_encode`.
+- [x] Decide where the decoder lives: in this repository, with the encoder, for
+  now.  It reads only the encoder's subset, and `decode_encode` needs both.
+- [x] Remove the pipeline's dependence on Euler–Riemann and CLOB files.
+- [x] Drop the input-header hypothesis from `Heap.Borrowed`.
+- [x] Make `need` a function of the input.
+- [x] Commit, as one commit with the design notes.
+
+## 2026-09-28: Pipeline design discussion
+
+### Findings
+
+The repository has a verified compiler for scalar functions only.
+`scalar_function_execution` and the range-loop theorems in
+`Compiler/ScalarFunction.lean` prove that the code `emitFuncInstrs` emits
+computes the value `ScalarEval` assigns to an IR expression, and
+`extracted_function_execution` extends this back to the source term.  `Correct`
+and `compileEnvironment_sound` in `Compiler/SourceCorrectness.lean` extend it
+forward through decoding, validation, export lookup, and execution of the
+production bytes from `CoreWasm.moduleBytes`.  The source semantics is `Apply`
+in `LeanExe/Source/ScalarFunction.lean`, an interpreter of `Lean.Expr` defined
+in this repository, and `docs/arithmetic-correctness.md` lists it in the trusted
+boundary at lines 425–427.
+
+No theorem about the compiler covers arrays, heap objects, or allocation.
+ProofKit has reusable specifications of emitted code patterns, such as
+`FixedArrayAllocate.program_spec`, which the `sumCount` proof uses.
+`SumCount/Execution.lean` proves the one module in 335 lines.  About 30 of them
+are generic lemmas that belong in ProofKit, and the rest restate the compiled
+instruction lists and track 20 locals by index.
+
+`LeanExe.IR` has no semantics for heap code that proofs can use: `Expr.eval` and
+`Stmt.eval` are `partial` and return 0 for most heap operations.  Its 50 `Expr`
+constructors include whole library operations and carry layout data (slot
+numbers, widths, `childMask`, `ownedMask`, and `releaseOffsets`) that the
+untrusted extractor computes, and each fold form appears in both `Expr` and
+`Stmt`.  Some constructors were added for a single source pattern, such as
+`heapLinearPredicate` for `List.any` and `List.all`, while other patterns reuse
+existing constructors.
+
+The source intrinsics `LeanExe.Runtime.release` and the four counters are 0 in
+Lean and real values in WASM.  The module also exports the counters as globals
+that the host can read.  The spec states that every array update allocates a new
+array (lines 286 and 292), so n updates to an n-element array copy about n²
+words, but the emitter was not checked.  The repository has two binary decoders,
+`Project/Encoding/Decode.lean` and `Project/Artifact/Binary`, and the first
+skips custom sections at lines 380–405.
+
+The Lean 4.34.0-rc2 sources establish four facts used below.
+`outOfBounds_eq_default` states that an out-of-bounds `a[i]!` is `default`,
+`Array.set!` is `setIfInBounds`, and `panic` prints its message and returns
+`default`.  `Loop.forIn` goes through `repeatM`, which has an unfolding equation
+for monads with a `MonadTail` instance.  `Float.add`, `sub`, `mul`, and `div`
+have a logical model in `Float.Model`.
+
+### Principles set by the user
+
+- The system, meaning the compiler, IR translation, runtime, and trusted base, stays
+  as small as possible.  Per-program proofs may carry more of the burden,
+  because LTG knowledge bases help with them.
+- AI writes the programs, so programmer convenience does not count, but
+  ordinary algorithms must stay easy to express.
+- The compiler starts unverified and is verified incrementally, and each
+  verified part enters the LTG knowledge base.  The user called this a major
+  idea of the project.
+- The compiler tells the prover whatever it can, in any form, and its hints need
+  not be exact.
+- Proving on WASM directly may be wanted later.
+
+### Design direction
+
+Some component must prove that WASM memory represents Lean values: layout,
+allocation, sharing, and freeing.  Under these principles that proof belongs in
+per-program proofs rather than in a translation proved once, so the IR exposes
+memory directly.  The user approved the following design on 2026-09-28, with
+the compiler, reference counting, and hints added afterward.
+
+| Component | Design |
+|---|---|
+| IR | Embedded in Lean: 64- and 32-bit expressions over locals, assignment, `if`, a loop with exit, calls, and loads and stores to linear memory.  It has no arrays, structures, or ownership. |
+| Translation | A small function `compile : IR → Wasm.Module`, with one `wp` lemma per construct proved once against Talos, following `ProofKit/ScalarTransition.lean`.  The IR has no semantics of its own. |
+| Compiler | Lean to IR, unverified at first.  Verifying a rule means proving that its IR template implements the source construct whenever its parts implement theirs, stated in terms of Lean's own functions, so no `Lean.Expr` semantics is trusted.  Each proved rule becomes an LTG entry with a tactic that applies it. |
+| Hints | The compiler emits annotations of any useful kind: the rule behind each IR fragment, which local holds each Lean variable, how each value is represented, what each loop computes, ownership facts, and the LTG entries expected to apply. |
+| Runtime | `alloc`, `retain`, and `release`, specified and proved once.  Reference counting is required because Lean values can be shared.  The compiler emits the `retain` and `release` calls, and per-program proofs check their placement until a rule lemma covers it. |
+| Statement | `Implements` parameterized by a representation relation that includes the reference-count invariant. |
+| Bytes | The encoder, `decode_encode`, and one decoder. |
+
+The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O
+adapter.  When every rule a program uses has a proved lemma, a tactic can
+assemble the whole proof, which gives the guarantee of a verified compiler
+without a proof about the compiler's own code.  The trusted base does not change
+along the way.
+
+Rule lemmas must state what their templates leave unchanged: the locals they do
+not write and the memory outside the blocks they allocate or write.  Without
+these frame conditions, lemmas for nested templates in one program do not
+compose, and this is expected to be the main difficulty.  A rule lemma covers
+one version of its rule, and its LTG entry records that version.
+
+Hints could also go into the WASM in a custom section, keyed to positions in the
+decoded module, with function and local names in the `name` section.  Because
+the IR has no semantics of its own, every IR lemma is a lemma about WASM code.
+A prover starting from a decoded binary can check by `rfl` that a region equals
+`compile` of the fragment a hint names and then apply the same LTG entries.  A
+wrong or stale hint makes that check fail and cannot produce a false theorem.
+The encoder would need to write the section, and `decode_encode` would need to
+show that the decoder skips it.
+
+### Source dialect
+
+| Item | Status |
+|---|---|
+| Runtime integers are fixed-width only. | The user's direction.  Allowing `Nat` only in `toNat` and `toUInt64` conversions at array operations is a proposal. |
+| `panic` compiles to `default`. | The user proposed it.  Lean's definitions were checked for `getElem!` and `Array.set!`, but not for `toUInt64LE!` or `getUInt32LE!`. |
+| Recursive values stay. | The user rejected removing them. |
+| `ByteIO` stays. | The user requires it.  The proposed design is a pure step function, `State → Input → State × Output`, with reading, writing, and timeouts in one fixed adapter. |
+| `LeanExe.Runtime.release` and the counters | Open.  Their values differ between Lean and WASM, and `release` needs the ownership validator.  The user sees possible use during development. |
+
+### Retracted proposals
+
+- Removing recursive values.  It saved one runtime proof and moved proof work
+  into every program that uses trees or lists.
+- Keeping any feature whose removal would add per-program proof work.  That
+  test keeps nearly every feature, and the user then put system simplicity
+  first.
+- A runtime with only `alloc` and `free`.  It fits only programs written by hand
+  in the IR, and a compiler from Lean needs reference counting.
+- Writing the IR by hand with no compiler.  The incrementally verified compiler
+  replaces it, and hand-written IR remains available for constructs the compiler
+  rejects.
+
+### Plan
+
+- [x] Commit the current work as one commit.
+- [ ] Define the IR, `compile`, and one `wp` lemma per construct.
+- [ ] Specify `alloc`, `retain`, and `release`, review the scope of the existing
+  runtime proofs (`docs/arithmetic-correctness.md` line 422), and check whether
+  `release` recurses on the WASM stack.
+- [ ] Generalize `Implements` with a representation relation that includes
+  reference counts.
+- [ ] Decide between a new small compiler and a port of the extractor.  The
+  recommendation is a new compiler.
+- [ ] Check whether the compiler can read unfolding equations (`f.eq_def`)
+  instead of recognizing `brecOn`, `WellFounded.fix`, and `PSum` shapes.
+- [ ] Compile `sumCount` to the IR with hints for the rule, the map from
+  variables to locals, and the loop's meaning.
+- [ ] Prove `sumCount` through the IR lemmas.
+- [ ] Prove the fold rule's lemma, add it to LTG, prove `sumCount` again with
+  it, and compare the two proofs.
+- [ ] Decide whether hints go into a WASM custom section.
+- [ ] Decide the `release` and counter question.
+- [ ] Decide the `ByteIO` design.
+- [ ] Decide the deletions: the extractor, `LeanExe.IR`, the emitter, the CLI
+  compile modes and WASI adapters other than an I/O adapter, the scalar
+  `Compiler/` track, and `Project/Artifact/Binary`.  Review
+  `ProofKit/ScalarTransition.lean` for reuse first.
+
+Connecting the written file to `sumModule_bytes` stays deferred.  Three
+questions remain open.  The cost of a per-program proof over explicit memory is
+unknown, and `Execution.lean` is the only data point.  It is also unknown how
+Talos's semantics is tested against the WebAssembly specification and whether
+Talos bounds call depth.
+
+### Floating point
+
+Lean 4.34 defines `Float` and `Float32` through `Float.Model` and
+`Float32.Model`: IEEE binary64 and binary32 with round-to-nearest, ties to even,
+in which every NaN is the positive quiet NaN `0x7FF8000000000000` or
+`0x7FC00000`.  Talos's `IEEE64` and `IEEE32` return the same constants for every
+NaN result.  ProofKit proves `LeanExe.Float32.xBits = Wasm.IEEE32.x` for `add`,
+`sub`, `mul`, `div`, and `sqrt` in 25 files and 2,101 lines, and no binary64
+counterpart exists.  `LeanExe.Float64` and `LeanExe.Float32` are thin wrappers
+over Lean's `Float` and `Float32`, so the same theorems justify compiling Lean's
+float types directly.
+
+Lean and WASM differ in three places.  Lean's `neg` and `abs` return the
+positive canonical NaN for a NaN input, while WASM `fneg` and `fabs` change only
+the sign bit.  Lean's `ofBits` canonicalizes NaN, while WASM `reinterpret` keeps
+the payload.  Lean's `min` and `max` choose an operand by `≤`, while WASM `fmin`
+and `fmax` return NaN for a NaN operand and order `-0` below `+0`.
+
+The WebAssembly specification makes the sign of a generated NaN nondeterministic
+and its payload canonical only when every NaN input is canonical
+([numerics](https://webassembly.github.io/spec/core/exec/numerics.html)).  Its
+deterministic profile requires that "All NaN values generated by floating-point
+instructions are canonical and positive"
+([profiles](https://webassembly.github.io/spec/core/appendix/profiles.html)),
+and Talos implements that behavior.  On this aarch64 machine, native Lean's
+`toBits` returned `0x7FF8000000000000` for a NaN with a payload, for `0/0`, and
+for `-(0/0)`.
+
+| Decision | Reason |
+|---|---|
+| Theorems describe the deterministic profile, and supported engines must implement it. | Talos already implements it, and Wasmtime with Cranelift NaN canonicalization provides it.  Browsers do not, so NaN bits computed in a browser fall outside the theorem. |
+| The binary64 equality proofs are a copy of the binary32 proofs, adapted to binary64. | Copying adds files and changes nothing existing.  Making Talos's IEEE code generic would change definitions that the existing `F32*` and `F64*` proofs unfold. |
+
+`IEEE64` calls the width-independent helpers `IEEE32.roundShift`,
+`roundQuotient`, and `roundSqrtIntegral`, so lemmas about them are imported, not
+copied.  The binary32 chain states its format constants (2^23, 2^24, 255, 149,
+and others) about 270 times.  Proofs with the larger binary64 constants may
+behave differently under `decide`, `omega`, and `simp`.
+
+Proposed and not decided: compile Lean's `Float` and `Float32` directly and drop
+the raw-bit wrappers, add NaN checks to `neg`, `abs`, and `ofBits`, compile `min`
+and `max` as a comparison and a select, and include `f32` and `f64` in the IR
+from the start.
+
+- [ ] Prove `add_eq`, `sub_eq`, `mul_eq`, `div_eq`, and `sqrt_eq` for binary64.
+
+### GPU
+
+GPU support is on `origin/wgsl` (`9c7c7898`), not merged into this branch, with
+a diff of 536 files and about 99,000 added lines.  Its README files describe a
+separate WGSL compiler that checks a source equality and a statement execution
+theorem per compilation, with strict shader execution and host transfers as
+premises.  The same design could cover kernels through a kernel IR, a small
+translation to WGSL, and per-kernel proofs, at the cost of trusting the
+repository's WGSL semantics, the browser's WGSL compiler, the GPU, and host
+transfers.  `deslop.md` records the details, and the timing is undecided.

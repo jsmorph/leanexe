@@ -520,14 +520,6 @@ theorem fixedArrayBytesU_round (n stride : Nat)
   have h8 : (8 : UInt64).toNat = 8 := rfl
   rw [h8, Nat.mod_eq_of_lt hroundedSize, hrounded, hbytesNat]
 
-def FreshFixedArrayAt (st : Store Unit) (ptr capacity stride : UInt64) : Prop :=
-  st.mem.read64 ((ptr - 48).toUInt32) = 5501223100278326855 ∧
-  st.mem.read64 ((ptr - 40).toUInt32) = 1 ∧
-  st.mem.read64 ((ptr - 32).toUInt32) = capacity ∧
-  st.mem.read64 ((ptr - 24).toUInt32) = 2 ∧
-  st.mem.read64 ((ptr - 16).toUInt32) = stride ∧
-  st.mem.read64 ((ptr - 8).toUInt32) = 0
-
 theorem FreshFixedArrayAt.write64_data {st : Store Unit}
     {ptr capacity stride : UInt64} {ad : UInt32} {value : UInt64}
     (hFresh : FreshFixedArrayAt st ptr capacity stride)
@@ -673,32 +665,6 @@ theorem TradesAt.frame_region {st st' : Store Unit}
       exact h3.2
     · rw [hPages]
       exact h4.2
-
-theorem FreshFixedArrayAt.frame {st st' : Store Unit}
-    {ptr capacity stride base : UInt64}
-    (hPtr32 : ptr.toNat < 4294967296)
-    (hHeader : 48 ≤ ptr.toNat) (hBelow : ptr.toNat ≤ base.toNat)
-    (hBytes : ∀ a : Nat, a < base.toNat →
-      st'.mem.bytes a = st.mem.bytes a)
-    (hFresh : FreshFixedArrayAt st ptr capacity stride) :
-    FreshFixedArrayAt st' ptr capacity stride := by
-  have hRead (offset : UInt64) (hOffset : offset.toNat ≤ 48)
-      (hOffset8 : 8 ≤ offset.toNat) :
-      st'.mem.read64 ((ptr - offset).toUInt32) =
-        st.mem.read64 ((ptr - offset).toUInt32) := by
-    apply Project.Common.read64_congr
-    intro i hi
-    rw [Project.Common.toUInt32_toNat,
-      Project.Common.toNat_sub_le ptr offset (by omega),
-      Nat.mod_eq_of_lt (by omega)]
-    exact hBytes _ (by omega)
-  obtain ⟨h48, h40, h32, h24, h16, h8⟩ := hFresh
-  exact ⟨(hRead 48 (by decide) (by decide)).trans h48,
-    (hRead 40 (by decide) (by decide)).trans h40,
-    (hRead 32 (by decide) (by decide)).trans h32,
-    (hRead 24 (by decide) (by decide)).trans h24,
-    (hRead 16 (by decide) (by decide)).trans h16,
-    (hRead 8 (by decide) (by decide)).trans h8⟩
 
 theorem OrdersAt.frame {st st' : Store Unit} {ptr g0 : UInt64}
     {os : List OrderL}

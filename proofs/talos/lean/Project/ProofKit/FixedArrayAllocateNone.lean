@@ -56,7 +56,7 @@ theorem bump_result (params saved tail : List Wasm.Value)
 theorem allocated_count (store : Store Unit) (base need stride : UInt64) :
     (FixedArrayBump.allocated store base need stride).globals.globals[2]? =
       store.globals.globals[2]? := by
-  unfold FixedArrayBump.allocated Project.Clob.fixedArrayAllocBumpStore MemoryGrowth.ensured
+  unfold FixedArrayBump.allocated fixedArrayAllocBumpStore MemoryGrowth.ensured
   split <;> simp [MemoryGrowth.grown]
 
 theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit)

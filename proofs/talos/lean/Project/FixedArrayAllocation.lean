@@ -13,22 +13,6 @@ namespace Project.Clob
 
 open Wasm Project.Common
 
-def fixedArrayHeaderMem (mem : Mem) (base capacity stride : UInt64) : Mem :=
-  (((((mem.write64
-    (UInt32.ofNat (base.toNat % 4294967296)) 5501223100278326855).write64
-    (UInt32.ofNat ((base.toNat + 8) % 4294967296)) 1).write64
-    (UInt32.ofNat ((base.toNat + 16) % 4294967296)) capacity).write64
-    (UInt32.ofNat ((base.toNat + 24) % 4294967296)) 2).write64
-    (UInt32.ofNat ((base.toNat + 32) % 4294967296)) stride).write64
-    (UInt32.ofNat ((base.toNat + 40) % 4294967296)) 0
-
-def fixedArrayAllocBumpStore (st : Store Unit) (base capacity stride : UInt64) :
-    Store Unit :=
-  { st with
-    globals := { globals :=
-      st.globals.globals.set 0 (.i64 (base + 48 + capacity)) }
-    mem := fixedArrayHeaderMem st.mem base capacity stride }
-
 def fixedArrayMem (mem : Mem) (base capacity stride length : UInt64) : Mem :=
   (fixedArrayHeaderMem mem base capacity stride).write64
     (UInt32.ofNat ((base.toNat + 48) % 4294967296)) length
@@ -83,12 +67,6 @@ theorem fixedArrayAllocBumpStore_spec (st : Store Unit)
   have hHeader := fixedArrayHeaderMem_spec st base capacity stride (by omega)
   unfold FreshFixedArrayAt at hHeader ⊢
   simpa only [fixedArrayAllocBumpStore] using hHeader
-
-theorem fixedArrayAllocBumpStore_pages (st : Store Unit)
-    (base capacity stride : UInt64) :
-    (fixedArrayAllocBumpStore st base capacity stride).mem.pages =
-      st.mem.pages := by
-  simp [fixedArrayAllocBumpStore, fixedArrayHeaderMem, Mem.write64_pages]
 
 theorem fixedArrayAllocBumpStore_global0 (st : Store Unit)
     (base capacity stride : UInt64) (value : Value)
