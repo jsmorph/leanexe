@@ -5,9 +5,6 @@ namespace Project.ProofKit.F32Div
 open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Decoded F32DivCore FloatCommon
 open F32Add (decode_infinite decode_zero exponent_ne)
 
-theorem negative_div (a b : Sign) : negative (a / b) = (negative a != negative b) := by
-  cases a <;> cases b <;> rfl
-
 theorem div_eq_talos_finite (a b : UInt32)
     (hea : Wasm.IEEE32.exponent a ≠ 255) (heb : Wasm.IEEE32.exponent b ≠ 255)
     (ha : Wasm.IEEE32.scaledMagnitude a ≠ 0) (hb : Wasm.IEEE32.scaledMagnitude b ≠ 0) :

@@ -30,7 +30,7 @@ def isFloat (type : Lean.Expr) : MetaM Bool := do
 /-- The source operators on `Float` the compiler translates. -/
 def floatRules : List (Name × F64Op × String) :=
   [(``HAdd.hAdd, .add, "float add"), (``HSub.hSub, .sub, "float sub"),
-   (``HMul.hMul, .mul, "float mul")]
+   (``HMul.hMul, .mul, "float mul"), (``HDiv.hDiv, .div, "float div")]
 
 def isUInt64Array (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
@@ -283,6 +283,10 @@ mutual
       let ir : IRExpr .f64 := .getF index
       return (ir, [hint ir "float variable"])
     match term.getAppFnArgs with
+    | (``Float.sqrt, #[operand]) =>
+        let (x, xHints) ← translateFloat ctx loc operand
+        let ir : IRExpr .f64 := .unF .sqrt x
+        return (ir, hint ir "float sqrt" :: xHints)
     | (fn, #[left, right, out, _, a, b]) =>
         let some (_, op, rule) := floatRules.find? (·.1 == fn)
           | throwError "unsupported float operation {fn} in {source}"
@@ -459,6 +463,7 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
 
 deriving instance ToExpr for U64Op
 deriving instance ToExpr for F64Op
+deriving instance ToExpr for F64UnOp
 deriving instance ToExpr for ScalarType
 
 /-- The Lean term for an IR expression, for the definitions the command adds. -/
@@ -467,6 +472,7 @@ def irToExpr : {type : ScalarType} → IRExpr type → Lean.Expr
   | _, .getF index => mkApp (mkConst ``Project.IR.Expr.getF) (toExpr index)
   | _, .binF op left right =>
       mkApp3 (mkConst ``Project.IR.Expr.binF) (toExpr op) (irToExpr left) (irToExpr right)
+  | _, .unF op operand => mkApp2 (mkConst ``Project.IR.Expr.unF) (toExpr op) (irToExpr operand)
   | _, .const value => mkApp (mkConst ``Project.IR.Expr.const) (toExpr value)
   | _, .bconst value => mkApp (mkConst ``Project.IR.Expr.bconst) (toExpr value)
   | _, .bin op left right => mkApp3 (mkConst ``Project.IR.Expr.bin) (toExpr op) (irToExpr left) (irToExpr right)

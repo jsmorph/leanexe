@@ -196,17 +196,30 @@ inductive F64Op where
   | add
   | sub
   | mul
+  | div
   deriving Repr, DecidableEq
 
 def F64Op.apply : F64Op → UInt64 → UInt64 → UInt64
   | .add, left, right => IEEE64.add left right
   | .sub, left, right => IEEE64.sub left right
   | .mul, left, right => IEEE64.mul left right
+  | .div, left, right => IEEE64.div left right
 
 def F64Op.instruction : F64Op → Instruction
   | .add => .f64Add
   | .sub => .f64Sub
   | .mul => .f64Mul
+  | .div => .f64Div
+
+inductive F64UnOp where
+  | sqrt
+  deriving Repr, DecidableEq
+
+def F64UnOp.apply : F64UnOp → UInt64 → UInt64
+  | .sqrt, value => IEEE64.sqrt value
+
+def F64UnOp.instruction : F64UnOp → Instruction
+  | .sqrt => .f64Sqrt
 
 inductive Expr : ScalarType → Type where
   | get (index : Nat) : Expr .u64
@@ -223,6 +236,7 @@ inductive Expr : ScalarType → Type where
   | ite (condition : Expr .bool) (thenValue elseValue : Expr .u64) : Expr .u64
   | getF (index : Nat) : Expr .f64
   | binF (op : F64Op) (left right : Expr .f64) : Expr .f64
+  | unF (op : F64UnOp) (operand : Expr .f64) : Expr .f64
   deriving Repr
 
 mutual
@@ -241,6 +255,9 @@ mutual
         let (leftValue, afterLeft) ← left.eval scratch state
         let (rightValue, afterRight) ← right.eval scratch afterLeft
         pure (op.apply leftValue rightValue, afterRight)
+    | .f64, .unF op operand, scratch, state => do
+        let (value, next) ← operand.eval scratch state
+        pure (op.apply value, next)
     | .u64, .bin op left right, scratch, state => do
         let childScratch := if op = .divU ∨ op = .remU then scratch + 2 else scratch
         let (leftValue, afterLeft) ← left.eval childScratch state
@@ -292,6 +309,7 @@ mutual
     | .f64, .getF index, _ => [.localGet index]
     | .f64, .binF op left right, scratch =>
         left.program scratch ++ right.program scratch ++ [op.instruction]
+    | .f64, .unF op operand, scratch => operand.program scratch ++ [op.instruction]
     | .bool, .bconst value, _ => [.const (if value then 1 else 0)]
     | .u64, .bin op left right, scratch =>
         if op = .divU ∨ op = .remU then
@@ -326,6 +344,7 @@ end
 def Expr.scratchWidth : {type : ScalarType} → Expr type → Nat
   | _, .get _ | _, .const _ | _, .bconst _ | _, .getF _ => 0
   | _, .binF _ left right => max left.scratchWidth right.scratchWidth
+  | _, .unF _ operand => operand.scratchWidth
   | _, .bin operation left right =>
       let childWidth := max left.scratchWidth right.scratchWidth
       if operation = .divU ∨ operation = .remU then childWidth + 2 else childWidth
@@ -487,6 +506,13 @@ theorem Expr.eval_preserves_below
       obtain ⟨rfl, rfl⟩ := hEval
       exact (rightPreserves scratch afterLeft afterRight rightValue index hRight hIndex).trans
         (leftPreserves scratch state afterLeft leftValue index hLeft hIndex)
+  | unF op operand operandPreserves =>
+      simp only [Expr.eval] at hEval
+      rcases hOperand : operand.eval scratch state with _ | ⟨value, afterOperand⟩
+      · simp [hOperand] at hEval
+      simp [hOperand] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      exact operandPreserves scratch state afterOperand value index hOperand hIndex
 
 set_option maxHeartbeats 1000000 in
 theorem Expr.program_spec
@@ -883,8 +909,20 @@ theorem Expr.program_spec
         (next := afterRight) (result := rightValue)
         (values := .f64 leftValue :: values) (rest := _) (Q := _) hRight
       cases op <;>
-        simpa [F64Op.instruction, F64Op.apply, wp_simp, Wasm.f64Add, Wasm.f64Sub, Wasm.f64Mul]
-          using hNext
+        simpa [F64Op.instruction, F64Op.apply, wp_simp, Wasm.f64Add, Wasm.f64Sub, Wasm.f64Mul,
+          Wasm.f64Div] using hNext
+  | unF op operand operandSpec =>
+      simp only [Expr.eval] at hEval
+      simp only [Expr.program, List.append_assoc]
+      rcases hOperand : operand.eval scratch state with _ | ⟨value, afterOperand⟩
+      · simp [hOperand] at hEval
+      simp [hOperand] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      apply operandSpec (scratch := scratch) (state := state)
+        (next := afterOperand) (result := value) (values := values)
+        (rest := _) (Q := _) hOperand
+      cases op
+      simpa [F64UnOp.instruction, F64UnOp.apply, wp_simp, Wasm.f64Sqrt] using hNext
 
 /-- `after` has as many parameters and locals as `before` and agrees with it at
 every local below `scratch` outside `writes`. -/
@@ -1045,5 +1083,12 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
       exact (hLeftFrame _ _ _ _ hLeft).trans (hRightFrame _ _ _ _ hRight)
+  | unF op operand hOperandFrame =>
+      simp only [Expr.eval] at hEval
+      rcases hOperand : operand.eval scratch state with _ | ⟨value, afterOperand⟩
+      · simp [hOperand] at hEval
+      simp [hOperand] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      exact hOperandFrame _ _ _ _ hOperand
 
 end Project.IR
