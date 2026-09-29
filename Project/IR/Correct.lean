@@ -9,9 +9,10 @@ open Wasm Project.Pipeline
 every `x`, every argument list that represents it, and every heap with room for
 `need x` bytes, its body ends in a store where some heap satisfies the allocator
 invariant, the arguments are still represented, `top` and the page count stay
-within the bound, and the result expression evaluates to `f x`. -/
-theorem Func.implements_heap [Represent α] (func : Func) (name : String) (f : α → UInt64)
-    (need : α → Nat)
+within the bound, and the result expression evaluates to a word that represents
+`f x` as an owned value. -/
+theorem Func.implements_heap [Represent α] [Represent β] (func : Func) (name : String)
+    (f : α → β) (need : α → Nat)
     (arity : ∀ heap store params (x : α), Represent.borrowed heap store params x →
       params.length = func.params)
     (correct : ∀ (x : α) (heap : Heap) (initial : Store Unit) (params : List Value),
@@ -22,7 +23,8 @@ theorem Func.implements_heap [Represent α] (func : Func) (name : String) (f : �
         (fun store state => ∃ heap' : Heap, heap'.At store ∧
           Represent.borrowed heap' store params x ∧ heap'.top.toNat ≤ heap.top.toNat + need x ∧
           store.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
-          ∃ next, func.result.eval func.scratch state = some (f x, next))) :
+          ∃ word next, func.result.eval func.scratch state = some (word, next) ∧
+            Represent.owned heap' store [.i64 word] (f x))) :
     Implements (compile func name) 0 f need := by
   intro env store heap params x hHeap hArgs hRoom
   have hLength := arity heap store params x hArgs
@@ -39,13 +41,13 @@ theorem Func.implements_heap [Represent α] (func : Func) (name : String) (f : �
     func.body.program func.scratch ++ (func.result.program func.scratch ++ []) by
       simp [Func.function]]
   refine correct x heap store params hHeap hArgs hRoom env store _ [] _ _ ⟨rfl, rfl⟩ ?_
-  rintro store' state ⟨heap', hHeap', hArgs', hTop, hPages, next, hEval⟩
-  refine Expr.program_spec func.result func.scratch _ next (f x) [] _ env store' [] _ hEval ?_
+  rintro store' state ⟨heap', hHeap', hArgs', hTop, hPages, word, next, hEval, hResult⟩
+  refine Expr.program_spec func.result func.scratch _ next word [] _ env store' [] _ hEval ?_
   rw [wp_nil]
   have hDrop : params.reverse.drop func.function.numParams = [] := by
     simp [Func.function, Func.type, Function.numParams, hLength]
   simp only [hDrop, List.append_nil]
-  exact ⟨heap', hHeap', rfl, hArgs', hTop, hPages⟩
+  exact ⟨heap', hHeap', hResult, hArgs', hTop, hPages⟩
 
 /-- A compiled function whose body keeps the store implements `f` without
 allocating. -/
@@ -63,6 +65,7 @@ theorem Func.implements [Represent α] (func : Func) (name : String) (f : α →
     (correct x heap initial params hHeap hArgs).mono (fun _ _ h => h)
       fun _ _ ⟨hStore, hResult⟩ => by
         subst hStore
-        exact ⟨heap, hHeap, hArgs, by omega, le_max_left _ _, hResult⟩
+        obtain ⟨next, hEval⟩ := hResult
+        exact ⟨heap, hHeap, hArgs, by omega, le_max_left _ _, f x, next, hEval, rfl⟩
 
 end Project.IR

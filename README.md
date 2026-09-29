@@ -28,7 +28,7 @@ journal.
 | `Project/Pipeline/` | `Implements`, the runtime heap invariant, allocation lemmas, and `Emit.lean`. |
 | `Project/Encoding/` | The encoder, decoder, `decode_encode`, and the testsuite runner. |
 | `Project/ProofKit/` | General lemmas: memory, arrays, allocation, and binary32 arithmetic. |
-| `Project/Scale/`, `Project/Gcd/`, `Project/SumArray/`, `Project/PairSum/` | Compiled programs with their theorems. |
+| `Project/Scale/`, `Project/Gcd/`, `Project/SumArray/`, `Project/PairSum/`, `Project/SumCount/` | Compiled programs with their theorems. |
 | `ltg/` | The LTG knowledge base. |
 | `tools/` | The resource-limited Lean runner and the Wasmtime host builder. |
 

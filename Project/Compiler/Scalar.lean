@@ -132,6 +132,25 @@ mutual
         let (b, bHints) ← translateValue inner (branch.inside (some 1)) elseTerm
         let ir : IRExpr .u64 := .ite c a b
         return (ir, hint ir "conditional value" :: cHints ++ aHints ++ bHints)
+    | (``Nat.toUInt64, #[size]) =>
+        let (``Array.size, #[_, array]) := size.consumeMData.getAppFnArgs
+          | throwError "unsupported term: {source}"
+        unless ctx.foldable do
+          throwError "an array size may not appear in a branch, a fold body, or a recursive definition: {source}"
+        let some arrayLocal := ctx.arrays.lookup array.consumeMData
+          | throwError "the size must be of an array variable: {source}"
+        let before ← get
+        let temp := before.next
+        let stmt := Stmt.arraySize temp arrayLocal
+        set { before with
+          stmts := before.stmts.push stmt
+          hints := before.hints.push
+            (mkHint ⟨[], before.length⟩ (stmtLength stmt) "array-size" source)
+          length := before.length + stmtLength stmt
+          next := temp + 1
+          names := before.names.push ("size", temp) }
+        let ir : IRExpr .u64 := .get temp
+        return (ir, [hint ir "size result"])
     | (``Array.foldl, #[element, acc, f, init, array, start, stop]) =>
         unless ctx.foldable do
           throwError "a fold may not appear in a branch, a fold body, or a recursive definition: {source}"
@@ -149,31 +168,7 @@ mutual
           | none => do
               let some elements := arrayLiteral? array
                 | throwError "a fold must run over an array variable or an array literal: {source}"
-              let mut values : Array (IRExpr .u64) := #[]
-              let mut valueHints : Array (List Hint) := #[]
-              for element in elements do
-                let (value, hints) ← translateValue ctx ⟨[], 0⟩ element
-                values := values.push value
-                valueHints := valueHints.push hints
-              let before ← get
-              let temp := before.next
-              let literal := Stmt.arrayLiteral temp values.toList
-              -- Element `i`'s value follows the call, the length store, the earlier
-              -- element stores, and its own address code.
-              let address : IRExpr .u64 := .bin .add (.get temp) (.const 0)
-              let elementHints := (List.range values.size).flatMap fun i =>
-                (valueHints[i]!).map (Hint.shift (before.length +
-                  stmtLength (Stmt.arrayLiteral temp (values.toList.take i)) +
-                  exprLength address + 1))
-              set { before with
-                stmts := before.stmts.push literal
-                hints := before.hints ++
-                  (mkHint ⟨[], before.length⟩ (stmtLength literal) "array-literal"
-                    (← sourceOf array) :: elementHints).toArray
-                length := before.length + stmtLength literal
-                next := temp + 1
-                names := before.names.push ("array", temp) }
-              pure (temp, true)
+              pure (← translateArrayLiteral ctx array elements, true)
         let (initial, initialHints) ← translateValue ctx ⟨[], 0⟩ init
         let before ← get
         let accLocal := before.next
@@ -266,6 +261,35 @@ mutual
     | (``And, #[a, b]) => connective .and "and" a b
     | (``Or, #[a, b]) => connective .or "or" a b
     | _ => throwError "unsupported condition: {source}"
+
+  /-- Translates the array literal `term` with `elements` to an allocation and
+  stores into a fresh local, which it returns.  Folds in the elements run first. -/
+  partial def translateArrayLiteral (ctx : Ctx) (term : Lean.Expr) (elements : List Lean.Expr) :
+      CompileM Nat := do
+    let mut values : Array (IRExpr .u64) := #[]
+    let mut valueHints : Array (List Hint) := #[]
+    for element in elements do
+      let (value, hints) ← translateValue ctx ⟨[], 0⟩ element
+      values := values.push value
+      valueHints := valueHints.push hints
+    let before ← get
+    let temp := before.next
+    let literal := Stmt.arrayLiteral temp values.toList
+    -- Element `i`'s value follows the call, the length store, the earlier element
+    -- stores, and its own address code.
+    let address : IRExpr .u64 := .bin .add (.get temp) (.const 0)
+    let elementHints := (List.range values.size).flatMap fun i =>
+      (valueHints[i]!).map (Hint.shift (before.length +
+        stmtLength (Stmt.arrayLiteral temp (values.toList.take i)) + exprLength address + 1))
+    set { before with
+      stmts := before.stmts.push literal
+      hints := before.hints ++
+        (mkHint ⟨[], before.length⟩ (stmtLength literal) "array-literal" (← sourceOf term) ::
+          elementHints).toArray
+      length := before.length + stmtLength literal
+      next := temp + 1
+      names := before.names.push ("array", temp) }
+    return temp
 end
 
 /-- `stmts` in sequence, with the code of each placed after the previous. -/
@@ -315,7 +339,8 @@ partial def translateTail (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
         return (stmt, mkHint loc (stmtLength stmt) "base case" source :: valueHints)
 
 /-- Compiles the definition `declName`, whose parameters are `UInt64` or
-`Array UInt64` and whose result is `UInt64`, to an IR function with hints.  The
+`Array UInt64` and whose result is `UInt64` or an `Array UInt64` literal, to an
+IR function with hints.  The
 compiler reads the definition's unfolding equation, so a recursive call appears
 as a call of `declName`.  A definition without recursive calls becomes a prelude
 of folds and a result expression; a definition whose recursive calls are all in
@@ -341,12 +366,13 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
         arrays := (params[i], i) :: arrays
       else
         throwError "parameter {params[i]} of {declName} is neither UInt64 nor Array UInt64"
-    unless ← isUInt64 (← inferType body) do
-      throwError "the result of {declName} is not UInt64"
+    let arrayResult ← isUInt64Array (← inferType body)
+    unless arrayResult || (← isUInt64 (← inferType body)) do
+      throwError "the result of {declName} is neither UInt64 nor Array UInt64"
     let paramNames ← params.toList.mapM fun p => return (← p.fvarId!.getUserName).toString
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
     if recursive then
-      unless arrays.isEmpty do
+      unless arrays.isEmpty && !arrayResult do
         throwError "a recursive definition may not take arrays: {declName}"
       let ctx : Ctx := { self := declName, params, words, arrays, foldable := false }
       -- The loop is the first instruction of the body: a block holding a loop.
@@ -365,8 +391,15 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
         { locals := names, nodes := loopHint :: stepHints ++ [resultHint] })
     else
       let ctx : Ctx := { self := declName, params, words, arrays, foldable := true }
-      let ((result, resultHints), prelude) ←
-        (translateValue ctx { prefix_ := [], index := 0 } body).run { next := params.size }
+      let translate : CompileM (IRExpr .u64 × List Hint) :=
+        if arrayResult then do
+          let some elements := arrayLiteral? body
+            | throwError "an Array UInt64 result must be an array literal: {← sourceOf body}"
+          let array ← translateArrayLiteral ctx body elements
+          let ir : IRExpr .u64 := .get array
+          return (ir, [mkHint ⟨[], 0⟩ (exprLength ir) "array result" (← sourceOf body)])
+        else translateValue ctx { prefix_ := [], index := 0 } body
+      let ((result, resultHints), prelude) ← translate.run { next := params.size }
       let func : Func :=
         { params := params.size, vars := prelude.next - params.size
           body := seqAll prelude.stmts.toList, result }

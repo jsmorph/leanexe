@@ -176,4 +176,23 @@ theorem Stmt.fold_spec {scratch array acc index length element : Nat} {body : Ex
     obtain rfl : k = xs.size := by omega
     exact ⟨rfl, hFrame, by rw [hAcc, ArrayFold.foldPrefix_size]⟩
 
+/-- Local `dst` receives the length of the array at local `src`. -/
+def Stmt.arraySize (dst src : Nat) : Stmt := .load dst (.get src)
+
+theorem Stmt.arraySize_spec {scratch dst src : Nat} {initial : Store Unit} {before : State}
+    {ptr : UInt64} {xs : Array UInt64} (hArray : UInt64Array.At initial ptr xs)
+    (hPtr : before.get src = some (.i64 ptr))
+    (hDst : dst < before.params.length + before.locals.length) :
+    Triple m (.arraySize dst src) scratch (fun store state => store = initial ∧ state = before)
+      (fun store state => store = initial ∧
+        before.set? dst (.i64 (UInt64.ofNat xs.size)) = some state) := by
+  refine Stmt.load_spec.mono ?_ fun _ _ h => h
+  rintro store state ⟨hStore, hState⟩
+  subst store state
+  have ⟨hFit, hPages, hSize, _⟩ := hArray
+  obtain ⟨next, hSet⟩ := State.exists_set? (.i64 (UInt64.ofNat xs.size)) hDst
+  refine ⟨ptr, before, next, by simp [Expr.eval, hPtr], ?_, by rw [hSize]; exact hSet, rfl, hSet⟩
+  rw [UInt64Array.At.pointerAddress_toNat hArray]
+  omega
+
 end Project.IR
