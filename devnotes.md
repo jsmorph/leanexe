@@ -18413,3 +18413,30 @@ deleted code (`proofs/talos/.generated`, a Python environment under
 `training/`) were removed; `tmp/` was left in place.
 
 - [x] Clean house.
+
+## 2026-09-29: Runtime functions and a non-recursive release
+
+After the user moved garbage collection ahead of arrays, every compiled module
+now contains `alloc`, `retain`, and `release` (functions 1 to 3) and exports
+them with the memory and the four counters.  `alloc` rounds the request to a
+multiple of 8, at least 8, and runs the proved `FixedArrayAllocate.program`,
+which reuses the first free block that fits, otherwise bumps `top`, and counts
+the allocation.  `retain` is the old code, rewritten with shared helpers.
+`release` is new and does not recurse: a count that reaches zero puts the object
+on a pending list linked through its count field, and a loop takes each pending
+object, drops the references in its masked slots (records of kind 1, arrays of
+kind 2), and returns its block to the free list after its children, since the
+free-list link overwrites the child mask.
+
+A first version also incremented the allocation counter in `alloc`, so every
+allocation counted twice.  My review had said the inline program leaves the
+counter unchanged, reading only the statement of `allocated_count`; the program
+runs `FixedArrayAllocateNone.countProgram`.  The extra increment is removed.
+
+Host tests through the Wasmtime session mode: an object with a retain needs two
+releases; a freed block is reused at the same address; an array whose masked
+slots hold two children frees three objects; a shared child survives its
+parent's release and is freed by its own; a chain of 200,000 records is freed in
+0.13 s without a trap; and a double release traps in `release`.  The counters
+matched in every case.  `Runtime/Tree.lean` now imports `TalosPrelude`
+instead of `Runtime/Defs.lean`, which removed an import cycle.
