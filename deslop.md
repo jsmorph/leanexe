@@ -1,6 +1,6 @@
 # Deslop status
 
-Last updated 2026-09-28 on branch `deslop`.  The proof of concept, the decoder, and these notes are committed in one commit after `003b653e`, the merge of `origin/encoding`.  `proofs/artifacts/release.json`, `encoding-draft.md`, `work/`, `paper/`, and `data/` remain outside it.
+Last updated 2026-09-28 on branch `deslop`.  The proof of concept and the decoder are in `baa62bc9`, and the design decisions and plan are committed after it.  `proofs/artifacts/release.json`, `encoding-draft.md`, `work/`, `paper/`, and `data/` are outside the deslop commits.
 
 ## Goal
 
@@ -21,7 +21,7 @@ The design approved on 2026-09-28 puts a small IR between Lean and Talos.  An un
 | Bytes | The encoder, `decode_encode`, and one decoder. |
 | Floating point | Theorems describe the WebAssembly deterministic profile, as described under "Floating point". |
 
-The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O adapter.  The source dialect has fixed-width integers and IEEE floats, compiles `panic` to `default`, allows recursive values, and includes `ByteIO`.  Rule lemmas must state what their templates leave unchanged, meaning the locals they do not write and the memory outside the blocks they allocate or write, because lemmas for nested templates do not compose otherwise.
+The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O adapter.  The source dialect has fixed-width integers and IEEE floats, compiles `panic` to `default`, allows recursive values, and does I/O through a pure step function driven by a fixed adapter.  Rule lemmas must state what their templates leave unchanged, meaning the locals they do not write and the memory outside the blocks they allocate or write, because lemmas for nested templates do not compose otherwise.
 
 ## Files
 
@@ -65,14 +65,21 @@ On 2026-09-28, `Emit.lean` produced a 1,689-byte module with sha256 `19b91985ce3
 | `Heap.Borrowed` requires only that the input words lie below `top` and outside every free block. | An earlier 48-byte header condition existed only to fit a reused lemma. |
 | The system stays as small as possible, and per-program IR proofs carry more of the burden. | The user's principle.  LTG knowledge bases help with those proofs. |
 | The compiler starts unverified and is verified rule by rule, and each proved rule enters LTG. | The user's central idea for the project. |
+| Development is iterative.  Each iteration carries one program end to end, from Lean source to bytes, a proved `Implements`, a Wasmtime comparison with native Lean, an axiom audit, and a commit, adding only what that program needs. | The user rejected building whole layers before connecting them. |
 | The compiler emits hints of any useful kind for the prover. | Hints need not be exact, because a wrong hint cannot produce a false theorem. |
 | The runtime keeps reference counting. | Lean values can be shared, so a compiler cannot free them statically. |
 | Runtime integers are fixed-width only. | The user's direction.  Bounded `Nat` traps where Lean returns the exact value. |
 | `panic` compiles to `default`. | The user proposed it.  Lean's logic gives `default` for an out-of-bounds `a[i]!`. |
 | Recursive values stay. | The user rejected removing them. |
-| `ByteIO` stays in the language. | The user requires it. |
+| I/O is required.  A program does I/O through a pure step function, `step : State → Input → State × Output`, driven by a fixed adapter that reads, calls `step`, writes, and stops on a done flag.  `Input` carries the bytes read and a status (data, end of file, error, or timeout), and `Output` carries the bytes to write, the done flag, and optionally the next read's size and timeout.  The `ByteIO` monad and its opaque primitives are dropped.  The adapter is trusted at first and proved later against a model of the WASI calls it uses. | The opaque primitives give a `ByteIO` program no Lean meaning, so no theorem can cover it.  Each `step` call is pure, so `Implements` covers it, and the batch form `ByteArray → ByteArray` is a single call.  An inductive I/O program would need closures, and a trace semantics for the primitives would add axioms. |
 | Floating-point theorems describe the WebAssembly deterministic profile, in which every generated NaN is the positive canonical NaN. | Talos implements it, and it matches Lean's float model.  NaN bits computed by engines outside the profile, such as browsers, fall outside the theorem. |
 | The binary64 equality proofs copy the binary32 proofs in ProofKit. | Copying changes no existing definition or proof. |
+| Programs use Lean's `Float` and `Float32`.  `neg`, `abs`, and `ofBits` get a NaN check, `min` and `max` compile as a comparison and a select, and the IR includes `f32` and `f64` from the start. | Lean's model and WASM differ on those operations, and adding value types to the IR later would force revision of its lemmas.  The raw-bit wrappers add a module without adding meaning. |
+| `LeanExe.Runtime.release` and the four runtime counters leave the source dialect.  The module keeps exporting the counters as globals for hosts and tests to read. | Their values are 0 in Lean and real in WASM, and an explicit `release` frees memory Lean still considers live, which would need a checked compiler rule.  With exact reference counting, the compiler releases each value after its last use. |
+| Hints will also go into a WASM custom section, with names in the `name` section, once proving from the bytes alone becomes a goal.  Until then the compiler emits hints as Lean data keyed to positions in the decoded module (function index and instruction path). | The decoder skips custom sections, so no theorem changes.  The work (encoder support, a `decode_encode` extension, and a byte format) serves only proofs made without the compiler, and the position keys let the Lean data move into the section unchanged. |
+| `origin/wgsl` is not merged and stays as a reference branch.  The GPU kernel path is designed under the new design after the Wasm path proves `sumCount` and one float program, moving reviewed pieces such as the WGSL semantics and `Profile`. | The branch adds about 99,000 lines to a branch meant to shrink, and its GPT-2 runner builds on the old compiler that the second deletion stage removes. |
+| Deletion happens in two stages.  First, after the user approves an inventory with a keep-or-delete proposal and import check per directory, delete what the plan does not use and the current proof does not import: example proof trees, `demos/`, `benchmarks/`, old compiler test fixtures, `tools/` scripts, and `Project/Artifact/Binary`.  Second, after the new pipeline proves `sumCount`, delete the extractor, `LeanExe.IR`, the emitter, the CLI compile modes, the WASI adapters, the scalar `Compiler/` track, `Pipeline/Direct.lean`, and the old `SumCount` proof, moving any reused runtime code and proofs first.  `paper/` and `data/` stay. | The current `sumCount` proof depends on the old compiler through `Pipeline/Direct.lean` and `Compiler/ScalarLowering.lean`, and most directories have not been examined.  Git history keeps everything deleted. |
+| A new, small compiler translates Lean to the new IR, starting with the constructs `sumCount` uses.  Self-contained parts of the extractor move into it when a construct needs them. | The existing compiler (29,862 lines of extractor, 1,240 of `LeanExe.IR`, 9,064 of WASM emitter) traps on panics and `Nat` overflow, supports bounded `Nat`, and places `release` conservatively, all against the new dialect.  A new compiler keeps the system small and builds each rule as a template with a lemma and hints. |
 
 ## Floating point
 
@@ -91,13 +98,13 @@ The user chose to state the theorems for the deterministic profile.  The alterna
 
 The binary64 proofs will copy the binary32 proofs, which adds files and changes no existing definition or proof.  The alternative, making Talos's IEEE code generic over the format, would change definitions that the existing `F32*` and `F64*` proofs unfold.  `IEEE64` has the same functions as `IEEE32` and calls `IEEE32.roundShift`, `roundQuotient`, and `roundSqrtIntegral` directly, so lemmas about those helpers are imported, not copied.  The binary32 chain states its format constants (2^23, 2^24, 255, 149, and others) about 270 times, and proofs with the larger binary64 constants may behave differently under `decide`, `omega`, and `simp`.
 
-Proposed and not decided: compile Lean's `Float` and `Float32` directly and drop the raw-bit wrappers, add NaN checks to `neg`, `abs`, and `ofBits`, compile `min` and `max` as a comparison and a select, and include `f32` and `f64` in the IR from the start.
+Decided: programs use Lean's `Float` and `Float32` directly and the raw-bit wrappers are dropped; the compiler adds a NaN check after `neg`, `abs`, and `ofBits` that replaces a NaN result with the canonical NaN; `min` and `max` compile as a comparison and a select that follow Lean's definition; and the IR includes `f32` and `f64` from the start, because adding value types later would force revision of every IR lemma that analyzes value types.  Each float operation needs its own equality theorem.  They exist for binary32 `add`, `sub`, `mul`, `div`, and `sqrt`, and `neg`, `abs`, the comparisons, and the conversions have not been checked.
 
 ## GPU
 
 GPU support is on `origin/wgsl` (`9c7c7898`), which is not merged into this branch; its diff from here is 536 files and about 99,000 added lines.  Only its README files were read.  They describe a separate compiler, `LeanExe.WGSL.Compile`, that reads a Lean definition of a restricted kernel form and emits WGSL, checking a source equality and a statement execution theorem per compilation.  A WGSL statement semantics and scalar floating-point policies (`Profile`) are defined in the repository, and strict shader execution and host transfers are explicit premises.
 
-The same scheme could cover kernels: a kernel IR with buffer loads and stores, loops, and floats, a small translation to WGSL with one lemma per construct against a WGSL semantics, per-kernel proofs, and rule-by-rule verification of the kernel compiler.  The Wasm program would invoke kernels through host functions and take their results as premises that the per-kernel theorems discharge.  The trusted base would grow by the repository's WGSL semantics, the browser's WGSL compiler, the GPU, and host transfers.  As understood from the WGSL specification, and not yet checked against it, some WGSL operations need not be correctly rounded, subnormals may be flushed, and NaN and infinity behavior is partly unspecified, so exact word equality needs a strict-execution premise.  The recommendation is to bring WGSL into the deslop after the Wasm path works, and the user has not decided.
+The same scheme could cover kernels: a kernel IR with buffer loads and stores, loops, and floats, a small translation to WGSL with one lemma per construct against a WGSL semantics, per-kernel proofs, and rule-by-rule verification of the kernel compiler.  The Wasm program would invoke kernels through host functions and take their results as premises that the per-kernel theorems discharge.  The trusted base would grow by the repository's WGSL semantics, the browser's WGSL compiler, the GPU, and host transfers.  As understood from the WGSL specification, and not yet checked against it, some WGSL operations need not be correctly rounded, subnormals may be flushed, and NaN and infinity behavior is partly unspecified, so exact word equality needs a strict-execution premise.  The user decided that `origin/wgsl` is not merged and stays as a reference branch.  The kernel path is designed under the new design once the Wasm path has proved `sumCount` and one float program, and specific pieces such as the WGSL semantics and the `Profile` move over after review.
 
 ## Repository state
 
@@ -118,24 +125,20 @@ The user doubted that items 2 and 3 need work, and no work on them is planned.
 
 - [x] Change `need` to a function of the input, `Array UInt64 → Nat`, in `Implements` and `Satisfies`, and prove `sumModule_implements` with `fun _ => 72`.  The build and the axiom audit passed afterward.
 - [x] Commit the proof of concept, the decoder, and these notes as one commit.
-- [ ] Define the IR, `compile`, and one `wp` lemma per construct.
-- [ ] Specify `alloc`, `retain`, and `release`, review the existing runtime proofs (`docs/arithmetic-correctness.md` line 422), and check whether `release` recurses on the WASM stack.
-- [ ] Generalize `Implements` with a representation relation that includes reference counts.
-- [ ] Write a compiler for the constructs `sumCount` uses, emitting IR with hints.
-- [ ] Prove that `sumCount`'s IR implements `sumCount` through the IR lemmas.
-- [ ] Prove the fold rule's lemma, add it to LTG, prove `sumCount` again with it, and compare the two proofs.
-- [ ] Prove the binary64 counterparts of `F32Add`, `F32Sub`, `F32Mul`, `F32Div`, and `F32Sqrt` by copying the binary32 proofs.
+- [ ] Write the deletion inventory for approval, then delete the first stage.
 
-Open decisions:
-- A new compiler or a port of the extractor.  The recommendation is a new compiler.
-- The `ByteIO` design.  The proposal is a pure step function, `State → Input → State × Output`, with reading, writing, and timeouts in one fixed adapter.
-- Whether hints also go into a WASM custom section, keyed to positions in the decoded module.
-- Whether `release` and the runtime counters stay in the source dialect.
-- The proposed floating-point compilation rules, and whether `f32` and `f64` enter the IR from the start.
-- When the WGSL backend on `origin/wgsl` joins the deslop.  The recommendation is after the Wasm path works.
-- The deletions: the extractor, `LeanExe.IR`, the emitter, the CLI compile modes and WASI adapters, the scalar `Compiler/` track, and `Project/Artifact/Binary`.
+Development is iterative.  Each iteration takes one program from Lean source through the compiler, the IR with hints, `compile`, and `encode` to bytes, proves `Implements` through the IR lemmas, checks the bytes against native Lean in Wasmtime, runs the axiom audit, and ends with a commit.  Each iteration adds only the IR constructs, compiler rules, `wp` lemmas, runtime pieces, and `Implements` generality its program needs.  The IR's value types include `f32` and `f64` from the first iteration, and float operations arrive with the float iteration.
 
-Unknowns: the cost of a per-program proof over explicit memory, with `Execution.lean` as the only data point; whether rule lemmas compose; how Talos's semantics is tested against the WebAssembly specification; and whether Talos bounds call depth.
+- [ ] Iteration 1, scalar arithmetic: a function such as `fun a b : UInt64 => a * b + 1`.  It needs constants, parameters, binary operations, and a return, `Implements` for scalar arguments and results, and no memory or runtime.
+- [ ] Iteration 2, control flow: `let`, `if`, and a loop from tail recursion, in a program such as GCD over `UInt64`.  It adds assignment, `if`, the loop with exit, and the loop's `wp` lemma, and it proves the tail-recursion rule's lemma as the first LTG entry.
+- [ ] Iteration 3, arrays and allocation: `sumCount`.  It adds loads, stores, and calls, the runtime `alloc` with its specification (after reviewing the existing runtime proofs), a representation relation for `Array UInt64` with reference counts, and compiler rules for `Array.foldl` and array literals.  Prove the fold rule's lemma, add it to LTG, prove `sumCount` again with it, and compare the two proofs.  Then delete the second stage: the old compiler and the old `SumCount` proof.
+- [ ] Iteration 4, reference counting: a program with temporaries, such as `map` followed by `foldl`.  It adds `retain` and `release` with their specifications, the compiler's placement of both, and a check of whether `release` recurses on the WASM stack.
+- [ ] Iteration 5, I/O: a step-function program, such as a byte count over input chunks, with the trusted adapter.
+- [ ] Iteration 6, floating point: a binary64 program, such as a dot product.  It needs the binary64 counterparts of `F32Add`, `F32Sub`, `F32Mul`, `F32Div`, and `F32Sqrt`, copied from the binary32 proofs, and the equality theorems for `neg`, `abs`, the comparisons, and the conversions.  The binary64 proofs can proceed in parallel with earlier iterations.
+- [ ] Iteration 7, recursive values: a program over a list or tree, with recursive `release`.
+- [ ] Then design the GPU kernel path, and prove the I/O adapter once the IR and runtime proofs support it.
+
+No design decisions are open.  Unknowns: the cost of a per-program proof over explicit memory, with `Execution.lean` as the only data point; whether rule lemmas compose; how Talos's semantics is tested against the WebAssembly specification; and whether Talos bounds call depth.
 
 `devnotes.md` has the full plan under "2026-09-28: Pipeline design discussion".
 
