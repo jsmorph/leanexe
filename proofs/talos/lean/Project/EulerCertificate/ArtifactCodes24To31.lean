@@ -1,1 +1,0 @@
-import Project.EulerCertificate.ArtifactCodes24To31Part1
