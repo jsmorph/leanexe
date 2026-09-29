@@ -63,6 +63,26 @@ theorem parses_decodeOther_const64 {bytes : List UInt8} {value : UInt64}
   rw [wrap64_toInt]
   exact Parses.pure' _
 
+theorem parses_fixed64 (value : UInt64) : Parses fixed64 (Spec.littleEndian64 value) value := by
+  have hLength : (Spec.littleEndian64 value).length = 8 := by simp [Spec.littleEndian64]
+  unfold fixed64
+  rw [← hLength]
+  refine Parses.bind_nil (parses_take _) ?_
+  have hValue : UInt64.ofNat ((Spec.littleEndian64 value).foldr
+      (fun b acc => b.toNat + 256 * acc) 0) = value := by
+    apply UInt64.toNat_inj.mp
+    have := value.toNat_lt
+    simp [Spec.littleEndian64, List.range_succ, UInt64.toNat_ofNat']
+    omega
+  rw [hValue]
+  exact Parses.pure' _
+
+theorem parses_decodeOther_constF64 (value : UInt64) :
+    Parses (instructions.decodeOther 0x44) (Spec.littleEndian64 value) (.f64Const value) := by
+  unfold instructions.decodeOther
+  show Parses (do return Wasm.Instruction.f64Const (← fixed64)) _ (Wasm.Instruction.f64Const value)
+  exact Parses.bind_nil (parses_fixed64 value) (Parses.pure' _)
+
 theorem unsigned_zero : Unsigned 32 [0x00] 0 :=
   Unsigned.terminal 32 0 (by decide) (by decide) (by decide)
 
@@ -243,6 +263,8 @@ theorem instr_step {bytes : List UInt8} {instr : Instruction} (h : Instr bytes i
       instructions_other (by decide) (parses_decodeOther_const32 encoding) hTail
   | .const64 immediate value encoding =>
       instructions_other (by decide) (parses_decodeOther_const64 encoding) hTail
+  | .constF64 value =>
+      instructions_other (by decide) (parses_decodeOther_constF64 value) hTail
   | .block typeBytes bodyBytes types body typeEncoding bodyEncoding => by
       have hLength : bodyBytes.length < fuel := by
         simp only [List.length_cons, List.length_append] at hFuel

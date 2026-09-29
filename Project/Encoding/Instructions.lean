@@ -34,6 +34,10 @@ mutual
     | .neI64 => .ok ⟨[0x52], .plain _ _ .neI64⟩
     | .ltUI64 => .ok ⟨[0x54], .plain _ _ .ltUI64⟩
     | .leUI64 => .ok ⟨[0x58], .plain _ _ .leUI64⟩
+    | .f64Eq => .ok ⟨[0x61], .plain _ _ .f64Eq⟩
+    | .f64Lt => .ok ⟨[0x63], .plain _ _ .f64Lt⟩
+    | .f64Le => .ok ⟨[0x65], .plain _ _ .f64Le⟩
+    | .f64Abs => .ok ⟨[0x99], .plain _ _ .f64Abs⟩
     | .geUI64 => .ok ⟨[0x5a], .plain _ _ .geUI64⟩
     | .add => .ok ⟨[0x6a], .plain _ _ .add⟩
     | .and => .ok ⟨[0x71], .plain _ _ .and⟩
@@ -91,6 +95,7 @@ mutual
     | .constI64 value =>
         let encoded := signed64 value
         .ok ⟨0x42 :: encoded.val, .const64 _ _ encoded.property⟩
+    | .f64Const value => .ok ⟨0x44 :: Spec.littleEndian64 value, .constF64 value⟩
     | .block 0 count body [] types =>
         if arity : count = types.length then do
           let typeBytes ← blockType types

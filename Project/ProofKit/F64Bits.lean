@@ -2,6 +2,8 @@ import Project.ProofKit.F64Mul
 import Project.ProofKit.F64Sub
 import Project.ProofKit.F64Div
 import Project.ProofKit.F64Sqrt
+import Project.ProofKit.F64Compare
+import Project.ProofKit.F64Sign
 
 /-!
 Lean's `Float` operations on bit patterns agree with Talos's `IEEE64`
@@ -55,5 +57,68 @@ theorem toBits_div (a b : Float) : (a / b).toBits = Wasm.IEEE64.div a.toBits b.t
 
 theorem toBits_sqrt (a : Float) : a.sqrt.toBits = Wasm.IEEE64.sqrt a.toBits := by
   rw [← F64Sqrt.sqrt_eq, LeanExe.Float64.sqrtBits, ofBits_toBits]
+
+theorem toModel_eq (x : Float) : x.toModel = Float.Model.ofBits x.toBits := by
+  conv_lhs => rw [← ofBits_toBits x]
+  rfl
+
+/-- The bit pattern of a Lean float is canonical: its only NaN is the
+canonical NaN. -/
+theorem toBits_canonical (x : Float) :
+    (if Wasm.IEEE64.isNaN x.toBits then Wasm.IEEE64.canonicalNaN else x.toBits) = x.toBits := by
+  rw [← F64Packing.ofBits_toBits, ← toModel_eq]
+  rfl
+
+theorem decide_lt (a b : Float) : decide (a < b) = Wasm.IEEE64.lt a.toBits b.toBits := by
+  rw [← F64Compare.lt_bits, ← toModel_eq, ← toModel_eq]
+  show decide (a.lt b = true) = _
+  simp only [Float.lt, decide_eq_true_eq]
+  show decide (a.toModel.lt b.toModel = true) = _
+  cases a.toModel.lt b.toModel <;> rfl
+
+theorem decide_le (a b : Float) : decide (a ≤ b) = Wasm.IEEE64.le a.toBits b.toBits := by
+  rw [← F64Compare.le_bits, ← toModel_eq, ← toModel_eq]
+  show decide (a.le b = true) = _
+  simp only [Float.le, decide_eq_true_eq]
+  show decide (a.toModel.le b.toModel = true) = _
+  cases a.toModel.le b.toModel <;> rfl
+
+theorem lt_iff (a b : Float) : a < b ↔ Wasm.IEEE64.lt a.toBits b.toBits = true := by
+  rw [← decide_lt, decide_eq_true_iff]
+
+theorem le_iff (a b : Float) : a ≤ b ↔ Wasm.IEEE64.le a.toBits b.toBits = true := by
+  rw [← decide_le, decide_eq_true_iff]
+
+theorem beq_eq (a b : Float) : (a == b) = Wasm.IEEE64.eq a.toBits b.toBits := by
+  rw [← F64Compare.beq_bits, ← toModel_eq, ← toModel_eq]
+  rfl
+
+theorem toBits_neg (x : Float) : (-x).toBits = Wasm.IEEE64.sub 0x8000000000000000 x.toBits := by
+  rw [F64Sign.sub_negZero]
+  show (Float.Model.neg x.toModel).toBits = _
+  rw [toModel_eq, F64Sign.neg_bits]
+
+theorem toBits_abs (x : Float) : x.abs.toBits = Wasm.IEEE64.abs x.toBits := by
+  show (Float.Model.abs x.toModel).toBits = _
+  rw [toModel_eq, F64Sign.abs_bits]
+  split
+  · rename_i hNaN
+    have h := toBits_canonical x
+    rw [ite_eq_left hNaN] at h
+    rw [← h]
+    decide
+  · rfl
+
+theorem toBits_min (a b : Float) :
+    (min a b).toBits = if Wasm.IEEE64.le a.toBits b.toBits then a.toBits else b.toBits := by
+  rw [← decide_le]
+  show (if a ≤ b then a else b).toBits = _
+  split <;> simp_all
+
+theorem toBits_max (a b : Float) :
+    (max a b).toBits = if Wasm.IEEE64.le a.toBits b.toBits then b.toBits else a.toBits := by
+  rw [← decide_le]
+  show (if a ≤ b then b else a).toBits = _
+  split <;> simp_all
 
 end Project.ProofKit.F64Bits

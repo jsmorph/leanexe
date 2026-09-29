@@ -18,6 +18,10 @@ inductive Plain : Bytes → Wasm.Instruction → Prop
   | neI64 : Plain [0x52] .neI64
   | ltUI64 : Plain [0x54] .ltUI64
   | leUI64 : Plain [0x58] .leUI64
+  | f64Eq : Plain [0x61] .f64Eq
+  | f64Lt : Plain [0x63] .f64Lt
+  | f64Le : Plain [0x65] .f64Le
+  | f64Abs : Plain [0x99] .f64Abs
   | geUI64 : Plain [0x5a] .geUI64
   | add : Plain [0x6a] .add
   | and : Plain [0x71] .and
@@ -81,6 +85,10 @@ inductive MemArg (maxAlignment : Nat) : Bytes → UInt32 → Prop
       (offsetEncoding : Unsigned 32 offsetBytes offset.toNat) :
       MemArg maxAlignment (alignBytes ++ offsetBytes) offset
 
+/-- A 64-bit word as eight bytes, least significant first. -/
+def littleEndian64 (value : UInt64) : Bytes :=
+  (List.range 8).map fun i => UInt8.ofNat (value.toNat / 256 ^ i)
+
 mutual
   inductive Instr : Bytes → Wasm.Instruction → Prop
     | plain (bytes : Bytes) (instr : Wasm.Instruction) (rule : Plain bytes instr) :
@@ -99,6 +107,7 @@ mutual
     | const64 (bytes : Bytes) (value : UInt64)
         (immediate : Signed 64 bytes value.toBitVec.toInt) :
         Instr (0x42 :: bytes) (.constI64 value)
+    | constF64 (value : UInt64) : Instr (0x44 :: littleEndian64 value) (.f64Const value)
     | block (typeBytes bodyBytes : Bytes) (types : List Wasm.ValueType)
         (body : Wasm.Program) (typeEncoding : BlockType typeBytes types)
         (bodyEncoding : Instrs bodyBytes body) :

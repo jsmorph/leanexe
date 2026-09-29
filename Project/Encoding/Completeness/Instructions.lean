@@ -27,7 +27,7 @@ mutual
     cases form with
     | unreachable | nop | ret | drop | eqz | eq
     | ltU | gtU | leU | geU | eqzI64 | eqI64
-    | neI64 | ltUI64 | leUI64 | geUI64 | add | and
+    | neI64 | ltUI64 | leUI64 | geUI64 | add | and | f64Eq | f64Lt | f64Le | f64Abs
     | addI64 | subI64 | mulI64 | divUI64 | remUI64 | andI64
     | orI64 | xorI64 | shlI64 | shrUI64 | f32Nearest | f32Sqrt
     | f32Add | f32Sub | f32Mul | f32Div | f64Sqrt | f64Add
@@ -87,6 +87,10 @@ mutual
         simp only [Produces, instruction]
         refine ⟨_, rfl, ?_⟩
         simp [signed64, Size.instruction, Size.s64, Nat.add_comm]
+    | constF64 value =>
+        simp only [Produces, instruction]
+        refine ⟨_, rfl, ?_⟩
+        simp [Spec.littleEndian64, Size.instruction]
     | block types body typeForm bodyForm =>
         obtain ⟨typeBytes, ht, hts⟩ := blockType_produces types typeForm
         obtain ⟨bodyBytes, hb, hbs⟩ := program_produces body bodyForm
