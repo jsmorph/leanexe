@@ -427,9 +427,40 @@ static bool parse_arg(Runtime *runtime, const char *spec, wasmtime_val_t *out, s
   return false;
 }
 
+/* The kind of result `index` in a `list:K1,K2,...` result spec, copied into `out`. */
+static void list_result_kind(const char *kind, size_t index, char *out, size_t out_len) {
+  const char *start = kind + 5;
+  for (size_t i = 0; i < index; i++) {
+    start = strchr(start, ',');
+    if (start == NULL) {
+      die("result list is too short");
+    }
+    start++;
+  }
+  const char *end = strchr(start, ',');
+  size_t len = end == NULL ? strlen(start) : (size_t)(end - start);
+  if (len + 1 > out_len) {
+    die("result kind is too long");
+  }
+  memcpy(out, start, len);
+  out[len] = 0;
+}
+
 static size_t result_count_from_kind(const char *kind) {
   if (strcmp(kind, "i64") == 0 || strcmp(kind, "f64") == 0) {
     return 1;
+  }
+  if (strncmp(kind, "list:", 5) == 0) {
+    size_t count = 1;
+    for (const char *c = kind + 5; *c != 0; c++) {
+      if (*c == ',') {
+        count++;
+      }
+    }
+    if (count > 128) {
+      die("too many results");
+    }
+    return count;
   }
   if (strcmp(kind, "bytes") == 0) {
     return 2;
@@ -466,9 +497,16 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
   }
 
   size_t nresults = result_count_from_kind(result_kind);
+  bool list = strncmp(result_kind, "list:", 5) == 0;
   wasmtime_val_t results[128];
   for (size_t i = 0; i < nresults; i++) {
-    results[i].kind = strcmp(result_kind, "f64") == 0 ? WASMTIME_F64 : WASMTIME_I64;
+    char kind[32];
+    if (list) {
+      list_result_kind(result_kind, i, kind, sizeof kind);
+    } else {
+      strcpy(kind, result_kind);
+    }
+    results[i].kind = strcmp(kind, "f64") == 0 ? WASMTIME_F64 : WASMTIME_I64;
   }
   wasm_trap_t *trap = NULL;
   wasmtime_error_t *error =
@@ -480,6 +518,43 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
   if (trap != NULL) {
     print_trap(trap);
     exit(2);
+  }
+
+  if (list) {
+    /* One line per result: an i64 or f64 as a decimal word, an array as its elements. */
+    for (size_t i = 0; i < nresults; i++) {
+      char kind[32];
+      list_result_kind(result_kind, i, kind, sizeof kind);
+      if (strcmp(kind, "f64") == 0) {
+        uint64_t bits = 0;
+        memcpy(&bits, &results[i].of.f64, sizeof bits);
+        printf("%" PRIu64 "\n", bits);
+      } else if (strcmp(kind, "i64") == 0) {
+        printf("%" PRIu64 "\n", (uint64_t)results[i].of.i64);
+      } else if (strcmp(kind, "array-u64") == 0) {
+        if (!runtime->has_memory) {
+          die("Array UInt64 result requires exported memory");
+        }
+        uint64_t ptr = (uint64_t)results[i].of.i64;
+        uint64_t len = read_u64_at(runtime, ptr);
+        size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+        if (len > (SIZE_MAX - 8) / 8 || ptr > memory_len ||
+            8 + (size_t)len * 8 > memory_len - (size_t)ptr) {
+          die("Array UInt64 result is outside memory");
+        }
+        printf("[");
+        for (uint64_t j = 0; j < len; j++) {
+          if (j != 0) {
+            printf(", ");
+          }
+          printf("%" PRIu64, read_u64_at(runtime, ptr + 8 + j * 8));
+        }
+        printf("]\n");
+      } else {
+        die("unknown result kind in list");
+      }
+    }
+    return;
   }
 
   if (strcmp(result_kind, "f64") == 0) {
@@ -1068,7 +1143,7 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
 static void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host call|call-stats <module.wasm> <function> "
-          "<i64|f64|bytes|array-u64|slots:N> "
+          "<i64|f64|bytes|array-u64|slots:N|list:K1,K2,...> "
           "[i64:N|f64:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N ...]\n");
   exit(1);
 }
