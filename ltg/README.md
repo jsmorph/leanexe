@@ -1,13 +1,22 @@
-# Lean Artifact-Proof LTG
+# LTG knowledge base
 
-This directory is the `leanexe-core` knowledge package.  It contains checked proof assets, annotation support, proof-generation methods, guidance, and worked examples used for artifact proofs.  Start with `categories.json`, then search the relevant `categories/<category>/tools.jsonl` files by annotation kind, feature, declaration, or summary.
+This directory holds proof knowledge for the pipeline: lemmas, tactics, and
+guidelines that a prover can use on a compiled program.  Each entry is a
+directory under `entries/` with two files.  `entry.json` names the entry's
+modules, declarations, premises, result, and the hint rules (`annotationKinds`)
+that select it, and `README.md` explains when and how to apply it.
 
-Use ordinary file searches before opening entry bodies.  In the repository, a typical search is `rg -n 'scalar-post-test|counter|singleton' ltg/categories`, followed by reading the selected `entry.json` and `README.md`.  In a proof task, `KNOWLEDGE/forest.json` identifies this package's task path, and the proof journal records the query, packages and entries inspected, entries used, and entries rejected.
+A prover finds entries by searching this directory, for example for a hint's
+rule name or a declaration it needs.  The check below imports every module the
+entries list and reports each listed declaration that does not exist.  Run it
+from the repository root:
 
-An entry's prose and metadata provide guidance rather than proof.  Lean checks every imported declaration, while compiler annotations and generated region equalities connect an entry to the exact decoded artifact.  Evidence status records promotion and future selection policy, and checked narrow material remains available as a worked example unless artifact-exclusion rules remove it from a measured task.
+```sh
+tools/leanrun --timeout 10m lake -d proofs/talos/lean env lean --run \
+  proofs/talos/lean/Project/LTG/Check.lean ltg/entries
+```
 
-Each entry has one canonical directory and may appear in several category indexes.  `tools/ltg rebuild` derives the JSONL indexes and the Lean declaration check from `entry.json`; `tools/ltg check` rejects stale generated files or invalid references.  Category indexes therefore provide overlapping views without copying canonical entry content.
-
-Schema-2 entries may contain structured tactic records.  Each record names a command token, defining ProofKit module, goal shape, required premises, applicable annotation kinds, and fallback theorem.  Catalog validation rejects an undefined command, a module or fallback outside the entry, and an annotation kind outside the entry's declared scope.
-
-Schema-3 entries may contain guidance or worked-example records without Lean modules or declarations.  Executable schema-3 entries still require checked modules and declarations, and structured tactics still require a checked fallback declaration.  `knowledge-package.json` supplies this catalog's package identity, version, maturity, dependencies, and package-local content inventory.
+`tail-recursion-loop` covers the compiler's tail-recursion rule and is proved
+for every function the rule produces.  The other entries describe general
+semantics from the earlier proof library and are kept for review as the
+iterations need them.
