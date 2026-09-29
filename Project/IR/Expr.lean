@@ -259,6 +259,11 @@ inductive Expr : ScalarType → Type where
   | eqF (left right : Expr .f64) : Expr .bool
   | ltF (left right : Expr .f64) : Expr .bool
   | leF (left right : Expr .f64) : Expr .bool
+  /-- The float nearest the unsigned word, as `f64.convert_i64_u`. -/
+  | convertU (operand : Expr .u64) : Expr .f64
+  /-- The float truncated toward zero and clamped to an unsigned word, as
+  `i64.trunc_sat_f64_u`. -/
+  | truncSatU (operand : Expr .f64) : Expr .u64
   deriving Repr
 
 mutual
@@ -280,6 +285,12 @@ mutual
     | .f64, .unF op operand, scratch, state => do
         let (value, next) ← operand.eval scratch state
         pure (op.apply value, next)
+    | .f64, .convertU operand, scratch, state => do
+        let (value, next) ← operand.eval scratch state
+        pure (IEEE64.convertI64U value, next)
+    | .u64, .truncSatU operand, scratch, state => do
+        let (value, next) ← operand.eval scratch state
+        pure (IEEE64.truncSatI64U value, next)
     | .f64, .constF bits, _, state => pure (bits, state)
     | .f64, .iteF condition thenValue elseValue, scratch, state => do
         let (conditionValue, afterCondition) ← condition.eval scratch state
@@ -351,6 +362,8 @@ mutual
     | .f64, .binF op left right, scratch =>
         left.program scratch ++ right.program scratch ++ [op.instruction]
     | .f64, .unF op operand, scratch => operand.program scratch ++ [op.instruction]
+    | .f64, .convertU operand, scratch => operand.program scratch ++ [.f64ConvertI64U]
+    | .u64, .truncSatU operand, scratch => operand.program scratch ++ [.i64TruncSatF64U]
     | .f64, .constF bits, _ => [.f64Const bits]
     | .f64, .iteF condition thenValue elseValue, scratch =>
         condition.program scratch ++
@@ -392,7 +405,7 @@ end
 def Expr.scratchWidth : {type : ScalarType} → Expr type → Nat
   | _, .get _ | _, .const _ | _, .bconst _ | _, .getF _ | _, .constF _ => 0
   | _, .binF _ left right => max left.scratchWidth right.scratchWidth
-  | _, .unF _ operand => operand.scratchWidth
+  | _, .unF _ operand | _, .convertU operand | _, .truncSatU operand => operand.scratchWidth
   | _, .eqF left right | _, .ltF left right | _, .leF left right =>
       max left.scratchWidth right.scratchWidth
   | _, .iteF condition thenValue elseValue =>
@@ -588,7 +601,8 @@ theorem Expr.eval_preserves_below
       obtain ⟨rfl, rfl⟩ := hEval
       exact (rightPreserves scratch afterLeft afterRight rightValue index hRight hIndex).trans
         (leftPreserves scratch state afterLeft leftValue index hLeft hIndex)
-  | unF op operand operandPreserves =>
+  | unF _ operand operandPreserves | convertU operand operandPreserves
+  | truncSatU operand operandPreserves =>
       simp only [Expr.eval] at hEval
       rcases hOperand : operand.eval scratch state with _ | ⟨value, afterOperand⟩
       · simp [hOperand] at hEval
@@ -1099,6 +1113,17 @@ theorem Expr.program_spec
         (rest := _) (Q := _) hOperand
       cases op <;>
         simpa [F64UnOp.instruction, F64UnOp.apply, wp_simp, Wasm.f64Sqrt, Wasm.f64Abs] using hNext
+  | convertU operand operandSpec | truncSatU operand operandSpec =>
+      simp only [Expr.eval] at hEval
+      simp only [Expr.program, List.append_assoc]
+      rcases hOperand : operand.eval scratch state with _ | ⟨value, afterOperand⟩
+      · simp [hOperand] at hEval
+      simp [hOperand] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      apply operandSpec (scratch := scratch) (state := state)
+        (next := afterOperand) (result := value) (values := values)
+        (rest := _) (Q := _) hOperand
+      simpa [wp_simp, Wasm.f64ConvertI64U, Wasm.i64TruncSatF64U] using hNext
 
 /-- `after` has as many parameters and locals as `before` and agrees with it at
 every local below `scratch` outside `writes`. -/
@@ -1277,7 +1302,8 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
       exact (hLeftFrame _ _ _ _ hLeft).trans (hRightFrame _ _ _ _ hRight)
-  | unF op operand hOperandFrame =>
+  | unF _ operand hOperandFrame | convertU operand hOperandFrame
+  | truncSatU operand hOperandFrame =>
       simp only [Expr.eval] at hEval
       rcases hOperand : operand.eval scratch state with _ | ⟨value, afterOperand⟩
       · simp [hOperand] at hEval

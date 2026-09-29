@@ -22,6 +22,7 @@ inductive Plain : Bytes → Wasm.Instruction → Prop
   | f64Lt : Plain [0x63] .f64Lt
   | f64Le : Plain [0x65] .f64Le
   | f64Abs : Plain [0x99] .f64Abs
+  | f64ConvertI64U : Plain [0xba] .f64ConvertI64U
   | geUI64 : Plain [0x5a] .geUI64
   | add : Plain [0x6a] .add
   | and : Plain [0x71] .and
@@ -57,6 +58,7 @@ inductive Plain : Bytes → Wasm.Instruction → Prop
   | f64ReinterpretI64 : Plain [0xbf] .f64ReinterpretI64
   | extend8S : Plain [0xc0] .extend8S
   | i32TruncSatF32S : Plain [0xfc, 0x00] .i32TruncSatF32S
+  | i64TruncSatF64U : Plain [0xfc, 0x07] .i64TruncSatF64U
   | memorySize : Plain [0x3f, 0x00] .memorySize
   | memoryGrow : Plain [0x40, 0x00] .memoryGrow
 

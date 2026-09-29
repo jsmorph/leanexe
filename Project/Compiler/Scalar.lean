@@ -156,7 +156,7 @@ mutual
           | throwError "unsupported term: {source}"
         unless ctx.foldable do
           throwError "an array size may not appear in a branch, a fold body, or a recursive definition: {source}"
-        let some arrayLocal := ctx.arrays.lookup array.consumeMData
+        let some arrayLocal := (ctx.arrays ++ ctx.floatArrays).lookup array.consumeMData
           | throwError "the size must be of an array variable: {source}"
         let before ← get
         let temp := before.next
@@ -173,6 +173,10 @@ mutual
     | (``Array.foldl, _) =>
         let ir : IRExpr .u64 := .get (← translateFold ctx term .u64)
         return (ir, [hint ir "fold result"])
+    | (``Float.toUInt64, #[operand]) =>
+        let (x, xHints) ← translateFloat ctx loc operand
+        let ir : IRExpr .u64 := .truncSatU x
+        return (ir, hint ir "float to word" :: xHints)
     | (fn, #[left, right, out, _, a, b]) =>
         let some (_, op, rule) := binaryRules.find? (·.1 == fn)
           | throwError "unsupported operation {fn} in {source}"
@@ -320,6 +324,10 @@ mutual
     | (``Array.foldl, _) =>
         let ir : IRExpr .f64 := .getF (← translateFold ctx term .f64)
         return (ir, [hint ir "fold result"])
+    | (``UInt64.toFloat, #[operand]) =>
+        let (x, xHints) ← translateValue ctx loc operand
+        let ir : IRExpr .f64 := .convertU x
+        return (ir, hint ir "word to float" :: xHints)
     | (fn, #[left, right, out, _, a, b]) =>
         let some (_, op, rule) := floatRules.find? (·.1 == fn)
           | throwError "unsupported float operation {fn} in {source}"
@@ -582,6 +590,8 @@ def irToExpr : {type : ScalarType} → IRExpr type → Lean.Expr
   | _, .binF op left right =>
       mkApp3 (mkConst ``Project.IR.Expr.binF) (toExpr op) (irToExpr left) (irToExpr right)
   | _, .unF op operand => mkApp2 (mkConst ``Project.IR.Expr.unF) (toExpr op) (irToExpr operand)
+  | _, .convertU operand => mkApp (mkConst ``Project.IR.Expr.convertU) (irToExpr operand)
+  | _, .truncSatU operand => mkApp (mkConst ``Project.IR.Expr.truncSatU) (irToExpr operand)
   | _, .constF bits => mkApp (mkConst ``Project.IR.Expr.constF) (toExpr bits)
   | _, .iteF condition thenValue elseValue =>
       mkApp3 (mkConst ``Project.IR.Expr.iteF) (irToExpr condition) (irToExpr thenValue)

@@ -112,8 +112,23 @@ theorem parses_decodeOther_truncSat :
   show Parses (do
       match ← unsigned 32 with
       | 0 => return Wasm.Instruction.i32TruncSatF32S
+      | 7 => return Wasm.Instruction.i64TruncSatF64U
       | _ => unsupported "0xfc instruction") [0x00] Wasm.Instruction.i32TruncSatF32S
   refine Parses.bind_nil (parses_unsigned unsigned_zero 32 (Nat.le_refl _)) ?_
+  exact Parses.pure' _
+
+theorem unsigned_seven : Unsigned 32 [0x07] 7 :=
+  Unsigned.terminal 32 7 (by decide) (by decide) (by decide)
+
+theorem parses_decodeOther_truncSatU :
+    Parses (instructions.decodeOther 0xfc) [0x07] .i64TruncSatF64U := by
+  unfold instructions.decodeOther
+  show Parses (do
+      match ← unsigned 32 with
+      | 0 => return Wasm.Instruction.i32TruncSatF32S
+      | 7 => return Wasm.Instruction.i64TruncSatF64U
+      | _ => unsupported "0xfc instruction") [0x07] Wasm.Instruction.i64TruncSatF64U
+  refine Parses.bind_nil (parses_unsigned unsigned_seven 32 (Nat.le_refl _)) ?_
   exact Parses.pure' _
 
 /-- The default branch of `instructions`: one instruction read by `decodeOther`,
@@ -240,6 +255,8 @@ theorem plain_step {bytes : List UInt8} {instr : Instruction} (rule : Plain byte
     exact instructions_other (by decide) parses_decodeOther_memoryGrow hTail
   case i32TruncSatF32S =>
     exact instructions_other (by decide) parses_decodeOther_truncSat hTail
+  case i64TruncSatF64U =>
+    exact instructions_other (by decide) parses_decodeOther_truncSatU hTail
   all_goals exact instructions_other (by decide) (parses_decodeOther_plain rfl) hTail
 
 mutual

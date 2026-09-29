@@ -21,8 +21,10 @@ inductive Unary : Wasm.Instruction → Wasm.ValueType → Wasm.ValueType → Pro
   | f32Sqrt : Unary .f32Sqrt .f32 .f32
   | f64Sqrt : Unary .f64Sqrt .f64 .f64
   | f64Abs : Unary .f64Abs .f64 .f64
+  | f64ConvertI64U : Unary .f64ConvertI64U .i64 .f64
   | f32ConvertI32S : Unary .f32ConvertI32S .i32 .f32
   | i32TruncSatF32S : Unary .i32TruncSatF32S .f32 .i32
+  | i64TruncSatF64U : Unary .i64TruncSatF64U .f64 .i64
   | extend8S : Unary .extend8S .i32 .i32
   | f32DemoteF64 : Unary .f32DemoteF64 .f64 .f32
   | f64PromoteF32 : Unary .f64PromoteF32 .f32 .f64

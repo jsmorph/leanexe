@@ -24,6 +24,7 @@ mutual
     | f64Lt : InstructionForm .f64Lt
     | f64Le : InstructionForm .f64Le
     | f64Abs : InstructionForm .f64Abs
+    | f64ConvertI64U : InstructionForm .f64ConvertI64U
     | geUI64 : InstructionForm .geUI64
     | add : InstructionForm .add
     | and : InstructionForm .and
@@ -59,6 +60,7 @@ mutual
     | f64ReinterpretI64 : InstructionForm .f64ReinterpretI64
     | extend8S : InstructionForm .extend8S
     | i32TruncSatF32S : InstructionForm .i32TruncSatF32S
+    | i64TruncSatF64U : InstructionForm .i64TruncSatF64U
     | memorySize : InstructionForm .memorySize
     | memoryGrow : InstructionForm .memoryGrow
     | br (index : Nat) (bound : index < 2 ^ 32) : InstructionForm (.br index)
@@ -111,6 +113,7 @@ def name (value : String) : Nat := u32 value.toUTF8.size + value.toUTF8.size
 mutual
   def instruction : Wasm.Instruction → Nat
     | .i32TruncSatF32S => 2
+    | .i64TruncSatF64U => 2
     | .memorySize => 2
     | .memoryGrow => 2
     | .const value => 1 + s32 value

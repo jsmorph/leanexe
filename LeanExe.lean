@@ -1,9 +1,11 @@
 import LeanExe.Examples.Axpy
+import LeanExe.Examples.Bucket
 import LeanExe.Examples.Gcd
+import LeanExe.Examples.Mean
 import LeanExe.Examples.PairSum
 import LeanExe.Examples.Piecewise
-import LeanExe.Examples.ScaledHypot
 import LeanExe.Examples.Scale
+import LeanExe.Examples.ScaledHypot
 import LeanExe.Examples.SumArray
 import LeanExe.Examples.SumCount
 import LeanExe.Examples.SumSquares
