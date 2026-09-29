@@ -1,4 +1,5 @@
 import Project.IR.Stmt
+import Project.Runtime.Defs
 
 namespace Project.IR
 
@@ -42,16 +43,27 @@ def runtimeGlobals : List GlobalDecl :=
     { init := .i64 value, declaredType := some .i64, isMut := true,
       sourceInit := some [.constI64 value] }
 
-/-- The module for `func`, exported as `name`.  Every compiled module has a
-memory and the runtime globals, so the allocator invariant can hold for its
-stores. -/
+/-- Parameter and result types of the runtime functions: `alloc` and `retain`
+take and return a word, and `release` takes a word. -/
+def wordToWord : FuncType := { params := [.i64], results := [.i64] }
+def wordToNone : FuncType := { params := [.i64], results := [] }
+
+/-- The module for `func`, exported as `name`.  Function 0 is `func`; functions
+1, 2, and 3 are the runtime's `alloc`, `retain`, and `release`, exported for
+hosts together with the memory and the four counters.  Every module has a memory
+and the runtime globals, so the allocator invariant can hold for its stores. -/
 def compile (func : Func) (name : String) : Module :=
-  { funcs := [func.function]
-    exports := [{ name, funcIdx := 0 }]
+  let types := [func.type, wordToWord, wordToNone]
+  { funcs := [func.function, Project.Runtime.allocFunction 1,
+      Project.Runtime.retainFunction 1, Project.Runtime.releaseFunction 2]
+    exports := [{ name, funcIdx := 0 }, { name := "alloc", funcIdx := 1 },
+      { name := "retain", funcIdx := 2 }, { name := "release", funcIdx := 3 }]
     memory := some { pagesMin := 16 }
     globals := runtimeGlobals
-    types := [func.type]
-    gcTypes := [{ comp := .func func.type }]
+    types
+    gcTypes := types.map fun type => { comp := .func type }
+    globalExports := [("allocCount", 2), ("retainCount", 3), ("releaseCount", 4),
+      ("freeCount", 5)]
     memoryExports := [("memory", 0)] }
 
 end Project.IR
