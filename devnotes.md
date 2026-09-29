@@ -18901,3 +18901,30 @@ the source names, because the unfolded `match` auxiliary binds its own names.
 - [x] CLOB 1: `marketBuy`.
 - [ ] Hints: keep the source names of pattern variables.
 - [ ] CLOB 2: a limit order with the copying template and `insertIdx`.
+
+## 2026-09-29: CLOB 2, fillLevel
+
+The user chose WebAssembly multi-value results for functions that return several
+values (decision 6, recorded in `deslop.md`); CLOB 3 needs them.
+
+`fillLevel sizes k amount = sizes.set! k.toNat (sizes[k.toNat]! - amount)`
+returns a new array.  `Stmt.build` is the copying template: it evaluates the
+count, allocates `8 * (n + 1)` bytes, stores the length, and stores the element
+expression's value at each index.  `Stmt.build_spec` (198 lines) combines the
+allocation facts of `arrayLiteral_spec` with a loop invariant over
+`UInt64Array.PrefixAt`, and its element premise holds in any store where the
+borrowed arrays are still laid out, which `borrowed_at_after_writes` provides.
+`set!_eq_build` equates `set!` with the template by `Array.ext` and
+`getElem_setIfInBounds`.  The compiler's array translation now covers literals,
+`set!`, `LeanExe.build`, and copies of array parameters.
+
+Two first attempts failed.  `rintro … ⟨rfl, rfl⟩` substituted `initial` and a
+named state away, so later references failed; `subst store state` substitutes
+in the intended direction.  A `let` for the allocated store left two spellings of
+the same term, and `omega` treated them as different; `set` fixed it.
+
+`fillLevel_implements` takes 60 lines.  `fillLevel.wasm` (1,441 bytes) matches
+native Lean on 40 inputs, and a host session that releases the result and the
+input ends with two allocations, two releases, and two frees.
+
+- [x] CLOB 2: `fillLevel`.

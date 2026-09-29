@@ -4,6 +4,7 @@ import Project.IR.Fold
 import Project.IR.Release
 import Project.IR.Function
 import Project.IR.Loop
+import Project.IR.Build
 import Project.IR.Hint
 
 namespace Project.Compiler
@@ -182,6 +183,18 @@ condition, and the exit test. -/
 def loopBodyLoc (loc : Loc) (count : IRExpr .u64) : Loc :=
   (((loc.skip (exprLength count + 3)).inside none).inside none).skip
     (exprLength (.ltU (.get 0) (.get 0) : IRExpr .bool) + 2)
+
+/-- Where the element code of the copying template starts when the template's code
+starts at `loc`: inside the block and loop of its `while`, after the condition,
+the exit test, the element address, and its wrap to 32 bits. -/
+def buildElementLoc (loc : Loc) (dst limit index : Nat) (count : IRExpr .u64) : Loc :=
+  let before : List Project.IR.Stmt := [.assign limit count,
+    .call 1 [.bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)] (some dst),
+    .store (.get dst) (.get limit), .assign index (.const 0)]
+  let address : IRExpr .u64 :=
+    .bin .add (.get dst) (.bin .mul (.bin .add (.get index) (.const 1)) (.const 8))
+  (((loc.skip (before.map stmtLength).sum).inside none).inside none).skip
+    (exprLength (.ltU (.get index) (.get limit) : IRExpr .bool) + 2 + exprLength address + 1)
 
 /-- Pushes `stmt` to the prelude with its hints, which are relative to its start. -/
 def pushStmt (stmt : Project.IR.Stmt) (hints : List Hint) : CompileM Unit :=
@@ -599,6 +612,70 @@ mutual
             here := here.skip (stmtLength stmt)
           return (stmts.toList, hints.toList)
 
+  /-- Pushes the copying template for an array of `count` elements whose element
+  is `element`, a function of the index local, and returns the new array's local. -/
+  partial def emitBuild (ctx : Ctx) (source rule : String) (count : IRExpr .u64)
+      (countHints : List Hint) (element : Nat → Loc → CompileM (IRExpr .u64 × List Hint)) :
+      CompileM Nat := do
+    let dst ← fresh .u64 "array"
+    let limit ← fresh .u64 "limit"
+    let index ← fresh .u64 "index"
+    let (elementIR, elementHints) ← element index (buildElementLoc ⟨[], 0⟩ dst limit index count)
+    let stmt := Stmt.build dst limit index count elementIR
+    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) rule source :: countHints ++ elementHints)
+    return dst
+
+  /-- Translates an `Array UInt64` term to statements that leave a new array, which
+  the caller owns, in a fresh local, and returns the local: an array literal,
+  `set!` on an array variable, `LeanExe.build`, or an array variable, which is
+  copied. -/
+  partial def translateArray (ctx : Ctx) (term : Lean.Expr) : CompileM Nat := do
+    let term := term.consumeMData
+    let source ← sourceOf term
+    unless ctx.foldable do
+      throwError "an array may not be built in a branch, a fold or loop body, or a recursive definition: {source}"
+    if let some elements := arrayLiteral? term then
+      return ← translateArrayLiteral ctx term elements
+    let sizeOf (arrayLocal : Nat) : CompileM Nat := do
+      let size ← fresh .u64 "size"
+      let stmt := Stmt.arraySize size arrayLocal
+      pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "array-size" source]
+      return size
+    if let some arrayLocal := ctx.arrays.lookup term then
+      let size ← sizeOf arrayLocal
+      return ← emitBuild ctx source "array copy" (.get size) [] fun index loc =>
+        let ir : IRExpr .u64 := .read arrayLocal (.get index)
+        return (ir, [mkHint loc (exprLength ir) "array read" source])
+    match term.getAppFnArgs with
+    | (``Array.set!, #[element, array, position, value])
+    | (``Array.setIfInBounds, #[element, array, position, value]) =>
+        unless ← isUInt64 element do throwError "unsupported array element type in {source}"
+        let some arrayLocal := ctx.arrays.lookup array.consumeMData
+          | throwError "`set!` must be applied to an array variable: {source}"
+        let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
+          | throwError "a `set!` position must be `i.toNat` for a UInt64 `i`: {source}"
+        let (kIR, kHints) ← translateValue ctx ⟨[], 0⟩ k
+        let kLocal ← fresh .u64 "set position"
+        let kStmt := Project.IR.Stmt.assign kLocal kIR
+        pushStmt kStmt (mkHint ⟨[], 0⟩ (stmtLength kStmt) "set position" (← sourceOf k) :: kHints)
+        let (vIR, vHints) ← translateValue ctx ⟨[], 0⟩ value
+        let vLocal ← fresh .u64 "set value"
+        let vStmt := Project.IR.Stmt.assign vLocal vIR
+        pushStmt vStmt (mkHint ⟨[], 0⟩ (stmtLength vStmt) "set value" (← sourceOf value) :: vHints)
+        let size ← sizeOf arrayLocal
+        emitBuild ctx source "array set" (.get size) [] fun index loc =>
+          let ir : IRExpr .u64 :=
+            .ite (.eq (.get index) (.get kLocal)) (.get vLocal) (.read arrayLocal (.get index))
+          return (ir, [mkHint loc (exprLength ir) "set element" source])
+    | (``LeanExe.build, #[element, count, f]) =>
+        unless ← isUInt64 element do throwError "unsupported array element type in {source}"
+        let (countIR, countHints) ← translateValue ctx ⟨[], 0⟩ count
+        emitBuild ctx source "array build" countIR countHints fun index loc =>
+          withLocalDeclD `i (mkConst ``UInt64) fun i =>
+            translateValue ({ ctx with foldable := false }.bind i [(index, .u64)]) loc
+              (mkApp f i).headBeta
+    | _ => throwError "unsupported array: {source}"
+
   /-- Translates the array literal `term` with `elements` to an allocation and
   stores into a fresh local, which it returns.  Folds in the elements run first. -/
   partial def translateArrayLiteral (ctx : Ctx) (term : Lean.Expr) (elements : List Lean.Expr) :
@@ -743,9 +820,7 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
       let translate : CompileM ((Σ type, IRExpr type) × List Hint) :=
         peel ctx body fun ctx body =>
         if arrayResult then do
-          let some elements := arrayLiteral? body
-            | throwError "an Array UInt64 result must be an array literal: {← sourceOf body}"
-          let array ← translateArrayLiteral ctx body elements
+          let array ← translateArray ctx body
           let ir : IRExpr .u64 := .get array
           return (⟨.u64, ir⟩,
             [mkHint ⟨[], 0⟩ (exprLength ir) "array result" (← sourceOf body)])

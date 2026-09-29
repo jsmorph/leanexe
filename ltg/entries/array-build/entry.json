@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "array-build",
+  "title": "Copying array template",
+  "summary": "Proves that the compiler's copying template builds LeanExe.build n f as a new owned array, and equates Lean's array operations to the template.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["arrays", "compiler-motifs", "memory", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["allocation", "array", "copy", "ownership", "set!"],
+  "annotationKinds": ["array set", "array build", "array copy", "set element", "set position", "set value"],
+  "modules": ["Project.IR.Build", "LeanExe.Build"],
+  "declarations": ["LeanExe.build", "Project.IR.Stmt.build", "Project.IR.Stmt.build_spec", "Project.IR.set!_eq_build", "Project.IR.build_size", "Project.IR.build_getElem", "Project.IR.borrowed_at_after_writes"],
+  "premises": ["The allocator invariant and room for 48 + 8 * (n + 1) bytes", "The count evaluates to n", "For each index k below n, the element expression evaluates to f k in any store where the borrowed arrays are still laid out"],
+  "result": "A new owned array equal to LeanExe.build n f in dst, the allocator invariant for heap.allocate, the allocation bounds, and every borrowed array still borrowed.",
+  "consumers": ["Project.Clob.fillLevel_implements"],
+  "relatedEntries": ["array-literal", "array-read", "straight-line-run"],
+  "exclusion": null
+}

@@ -12,4 +12,8 @@ def marketBuy (askPrices askSizes : Array UInt64) (qty : UInt64) : Array UInt64 
       (remaining - take, cost + take * askPrices[i.toNat]!)
   #[qty - remaining, cost]
 
+/-- The level sizes after `amount` is taken from level `k`. -/
+def fillLevel (sizes : Array UInt64) (k amount : UInt64) : Array UInt64 :=
+  sizes.set! k.toNat (sizes[k.toNat]! - amount)
+
 end LeanExe.Examples.Clob
