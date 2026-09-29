@@ -52,11 +52,12 @@ theorem gcd_implements : Implements gcd.module 0 gcdTuple (fun _ => 0) :=
   Func.tail_implements gcd.ir "gcd" gcdTuple (fun x => x.2.toNat) _ (fun _ => rfl)
     gcdTuple_injective (k := 2) rfl rfl rfl gcd_step
 
-/-- The bytes `encode` produces for `gcd.module` decode to a module that
+/-- `encode` succeeds on `gcd.module`, and its bytes decode to a module that
 computes `gcd` exactly. -/
-theorem gcd_bytes (bytes : ByteArray) (success : Wasm.Encoding.encode gcd.module = .ok bytes) :
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 gcdTuple (fun _ => 0) :=
-  ⟨gcd.module, Wasm.Encoding.decode_encode gcd.module bytes (by decide) success,
-    gcd_implements⟩
+theorem gcd_bytes : ∃ bytes, Wasm.Encoding.encode gcd.module = .ok bytes ∧
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 gcdTuple (fun _ => 0) := by
+  obtain ⟨bytes, success, decoded⟩ :=
+    Wasm.Encoding.round_trip gcd.module (by decide) (by decide +kernel)
+  exact ⟨bytes, success, gcd.module, decoded, gcd_implements⟩
 
 end Project.Gcd

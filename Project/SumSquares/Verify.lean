@@ -40,13 +40,13 @@ theorem sumSquares_implements :
       simp [sumSquares.ir, Func.scratch, Expr.eval, hAcc],
       congrArg (fun word => [Wasm.Value.f64 word]) (sumSquares_bits xs)⟩
 
-/-- The bytes `encode` produces for `sumSquares.module` decode to a module that
+/-- `encode` succeeds on `sumSquares.module`, and its bytes decode to a module that
 computes `sumSquares` bit for bit. -/
-theorem sumSquares_bytes (bytes : ByteArray)
-    (success : Wasm.Encoding.encode sumSquares.module = .ok bytes) :
+theorem sumSquares_bytes : ∃ bytes, Wasm.Encoding.encode sumSquares.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧
-      Implements m 0 LeanExe.Examples.SumSquares.sumSquares (fun _ => 0) :=
-  ⟨sumSquares.module, Wasm.Encoding.decode_encode sumSquares.module bytes (by decide) success,
-    sumSquares_implements⟩
+      Implements m 0 LeanExe.Examples.SumSquares.sumSquares (fun _ => 0) := by
+  obtain ⟨bytes, success, decoded⟩ :=
+    Wasm.Encoding.round_trip sumSquares.module (by decide) (by decide +kernel)
+  exact ⟨bytes, success, sumSquares.module, decoded, sumSquares_implements⟩
 
 end Project.SumSquares

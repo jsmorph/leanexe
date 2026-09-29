@@ -61,13 +61,13 @@ theorem sumCount_implements :
       by simp [sumCount.ir, Func.scratch, Expr.eval, hResult], result, rfl, ?_⟩
     simpa [LeanExe.Examples.SumCount.sumCount] using hOwned
 
-/-- The bytes `encode` produces for `sumCount.module` decode to a module that
+/-- `encode` succeeds on `sumCount.module`, and its bytes decode to a module that
 computes `sumCount` exactly, returning an array the caller owns. -/
-theorem sumCount_bytes (bytes : ByteArray)
-    (success : Wasm.Encoding.encode sumCount.module = .ok bytes) :
+theorem sumCount_bytes : ∃ bytes, Wasm.Encoding.encode sumCount.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧
-      Implements m 0 LeanExe.Examples.SumCount.sumCount (fun _ => 72) :=
-  ⟨sumCount.module, Wasm.Encoding.decode_encode sumCount.module bytes (by decide) success,
-    sumCount_implements⟩
+      Implements m 0 LeanExe.Examples.SumCount.sumCount (fun _ => 72) := by
+  obtain ⟨bytes, success, decoded⟩ :=
+    Wasm.Encoding.round_trip sumCount.module (by decide) (by decide +kernel)
+  exact ⟨bytes, success, sumCount.module, decoded, sumCount_implements⟩
 
 end Project.SumCount

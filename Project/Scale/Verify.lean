@@ -22,11 +22,12 @@ theorem scale_implements : Implements scale.module 0 scaleTuple (fun _ => 0) :=
       intro hZero
       simp [hZero]⟩) fun _ _ h => h
 
-/-- The bytes `encode` produces for `scale.module` decode to a module that
+/-- `encode` succeeds on `scale.module`, and its bytes decode to a module that
 computes `scale` exactly. -/
-theorem scale_bytes (bytes : ByteArray) (success : Wasm.Encoding.encode scale.module = .ok bytes) :
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 scaleTuple (fun _ => 0) :=
-  ⟨scale.module, Wasm.Encoding.decode_encode scale.module bytes (by decide) success,
-    scale_implements⟩
+theorem scale_bytes : ∃ bytes, Wasm.Encoding.encode scale.module = .ok bytes ∧
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 scaleTuple (fun _ => 0) := by
+  obtain ⟨bytes, success, decoded⟩ :=
+    Wasm.Encoding.round_trip scale.module (by decide) (by decide +kernel)
+  exact ⟨bytes, success, scale.module, decoded, scale_implements⟩
 
 end Project.Scale

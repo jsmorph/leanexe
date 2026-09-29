@@ -14,4 +14,15 @@ theorem decode_encode (m : Wasm.Module) (bytes : ByteArray)
   unfold decode
   rw [Decoder.moduleParser_run hEncodes locals]
 
+/-- `encode` succeeds on `m`, and the decoder reads the bytes back as `m`.  For a
+concrete module, the premise that the encoder's result is `ok` holds by
+evaluation. -/
+theorem round_trip (m : Wasm.Module)
+    (locals : ∀ f ∈ m.funcs, f.locals.length ≤ Decoder.maxLocals)
+    (ok : (encode m).isOk = true) :
+    ∃ bytes, encode m = .ok bytes ∧ decode bytes = .ok m := by
+  cases success : encode m with
+  | error message => simp [success, Except.isOk, Except.toBool] at ok
+  | ok bytes => exact ⟨bytes, rfl, decode_encode m bytes locals success⟩
+
 end Wasm.Encoding

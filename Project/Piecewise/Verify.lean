@@ -40,12 +40,12 @@ theorem piecewise_implements :
           F64Bits.toBits_neg, F64Bits.toBits_abs, F64Bits.toBits_min, F64Bits.toBits_max, h0, h05,
           h15]⟩) fun _ _ h => h
 
-/-- The bytes `encode` produces for `piecewise.module` decode to a module that
+/-- `encode` succeeds on `piecewise.module`, and its bytes decode to a module that
 computes `piecewise` bit for bit. -/
-theorem piecewise_bytes (bytes : ByteArray)
-    (success : Wasm.Encoding.encode piecewise.module = .ok bytes) :
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 piecewiseTuple (fun _ => 0) :=
-  ⟨piecewise.module, Wasm.Encoding.decode_encode piecewise.module bytes (by decide) success,
-    piecewise_implements⟩
+theorem piecewise_bytes : ∃ bytes, Wasm.Encoding.encode piecewise.module = .ok bytes ∧
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 piecewiseTuple (fun _ => 0) := by
+  obtain ⟨bytes, success, decoded⟩ :=
+    Wasm.Encoding.round_trip piecewise.module (by decide) (by decide +kernel)
+  exact ⟨bytes, success, piecewise.module, decoded, piecewise_implements⟩
 
 end Project.Piecewise

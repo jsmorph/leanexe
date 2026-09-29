@@ -18810,3 +18810,19 @@ depends only on the standard three axioms.
 
 - [x] Replace `FloatArray` with `Array Float`.
 - [ ] Float array literals and `xs.size.toUInt64` for `Array Float`.
+
+## 2026-09-29: Unconditional `_bytes` theorems
+
+Each `_bytes` theorem assumed `encode m = .ok bytes`.  The plan was to prove
+`Ready m` for each module and apply `encode_complete`.  Evaluating the encoder
+in the kernel is simpler: `(encode sumSquares.module).isOk = true` holds by
+`decide +kernel` in about half a second, with only the standard axioms, and
+`decide +kernel` adds no axiom.  `round_trip` in `RoundTrip.lean` turns that
+premise and the locals bound into `∃ bytes, encode m = .ok bytes ∧ decode bytes
+= .ok m`.  All nine `_bytes` theorems now state that encoding succeeds and that
+the bytes decode to a module implementing the function.  The full build of the
+nine programs took 32 seconds.  Kernel evaluation time grows with module size,
+and a general `Ready (compile func name)` theorem remains an option if larger
+programs make evaluation slow.
+
+- [x] Unconditional `_bytes` theorems.
