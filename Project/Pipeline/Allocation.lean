@@ -438,8 +438,9 @@ theorem Heap.Block.owned {heap : Heap} {store : Store Unit} {root capacity : UIn
   have hRead : capacityAt store root = capacity.toNat := by
     rw [capacityAt, h.fresh.2.2.1]
   obtain ⟨hMagic, hCount, _, hKind, hWidth, hChild⟩ := h.fresh
-  refine ⟨hValues, h.base, hMagic, hCount, ?_, hKind, hWidth, hChild, ?_, ?_⟩ <;> rw [hRead]
+  refine ⟨hValues, h.base, hMagic, hCount, ?_, hKind, hWidth, hChild, ?_, ?_, ?_⟩ <;> rw [hRead]
   · exact hCapacity
+  · exact h.address
   · exact h.below
   · exact h.separate
 

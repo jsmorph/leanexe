@@ -48,7 +48,8 @@ def capacityAt (store : Store Unit) (ptr : UInt64) : Nat :=
 
 /-- A runtime array object at payload pointer `ptr` holding `words`, with
 reference count one, element width one, and no child pointers.  The object,
-header included, lies below `top` and outside every free block. -/
+header included, lies inside the 32-bit address space, below `top`, and outside
+every free block. -/
 structure Heap.Owned (heap : Heap) (store : Store Unit) (ptr : UInt64)
     (words : Array UInt64) : Prop where
   values : UInt64Array.At store ptr words
@@ -59,6 +60,7 @@ structure Heap.Owned (heap : Heap) (store : Store Unit) (ptr : UInt64)
   kind : store.mem.read64 (ptr - 24).toUInt32 = 2
   width : store.mem.read64 (ptr - 16).toUInt32 = 1
   childMask : store.mem.read64 (ptr - 8).toUInt32 = 0
+  address : ptr.toNat + capacityAt store ptr < 4294967296
   below : ptr.toNat + capacityAt store ptr ≤ heap.top.toNat
   separate : ∀ node ∈ heap.free,
     regionsDisjoint node.region (ptr.toNat - 48, 48 + capacityAt store ptr)

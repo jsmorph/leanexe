@@ -78,29 +78,31 @@ def releaseElement : Nat := 8
 def releaseSlot : Nat := 9
 def releaseChild : Nat := 10
 
-/-- Drops the references held by the object at local `releaseObject`: the masked
-slots of a record (kind 1), or the masked slots of every element of an array
-(kind 2). -/
+/-- Drops the references held by the object at local `releaseObject`: nothing when
+its child mask is zero, and otherwise the masked slots of a record (kind 1) or
+the masked slots of every element of an array (kind 2). -/
 def dropChildren : Program :=
   let q := releaseObject
   let drop (address : Program) :=
     dropMaskedSlot releaseMask releaseSlot releaseChild releaseCount releasePending address
-  headerLoad q 24 ++ [.localSet releaseKind] ++
-  headerLoad q 16 ++ [.localSet releaseWidth] ++
-  headerLoad q 8 ++ [.localSet releaseMask] ++
-  [.localGet releaseKind, .constI64 1, .eqI64,
+  headerLoad q 8 ++ [.localSet releaseMask, .localGet releaseMask, .constI64 0, .neI64,
    .iff 0 0
-     (countedLoop releaseSlot releaseWidth
-       (drop [.localGet q, .localGet releaseSlot, .constI64 8, .mulI64, .addI64]))
-     [],
-   .localGet releaseKind, .constI64 2, .eqI64,
-   .iff 0 0
-     ([.localGet q, .wrapI64, .load64 0, .localSet releaseLength] ++
-       countedLoop releaseElement releaseLength
+     (headerLoad q 24 ++ [.localSet releaseKind] ++
+      headerLoad q 16 ++ [.localSet releaseWidth] ++
+      [.localGet releaseKind, .constI64 1, .eqI64,
+       .iff 0 0
          (countedLoop releaseSlot releaseWidth
-           (drop [.localGet q, .constI64 8, .addI64,
-             .localGet releaseElement, .localGet releaseWidth, .mulI64,
-             .localGet releaseSlot, .addI64, .constI64 8, .mulI64, .addI64])))
+           (drop [.localGet q, .localGet releaseSlot, .constI64 8, .mulI64, .addI64]))
+         [],
+       .localGet releaseKind, .constI64 2, .eqI64,
+       .iff 0 0
+         ([.localGet q, .wrapI64, .load64 0, .localSet releaseLength] ++
+           countedLoop releaseElement releaseLength
+             (countedLoop releaseSlot releaseWidth
+               (drop [.localGet q, .constI64 8, .addI64,
+                 .localGet releaseElement, .localGet releaseWidth, .mulI64,
+                 .localGet releaseSlot, .addI64, .constI64 8, .mulI64, .addI64])))
+         []])
      []]
 
 /-- Returns the block of the object at local `releaseObject` to the free list. -/

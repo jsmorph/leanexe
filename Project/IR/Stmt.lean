@@ -1,8 +1,11 @@
 import Project.IR.Expr
+import Project.ProofKit.CallRemainder
 
 namespace Project.IR
 
 open Wasm
+
+variable {m : Module}
 
 /-- IR statements.  `while` is the only loop; its body runs while the condition
 holds. -/
@@ -14,6 +17,11 @@ inductive Stmt where
   | while (condition : Expr .bool) (body : Stmt)
   /-- Local `index` receives the 64-bit word at `address`, wrapped to 32 bits. -/
   | load (index : Nat) (address : Expr .u64)
+  /-- The 64-bit word at `address`, wrapped to 32 bits, receives `value`. -/
+  | store (address value : Expr .u64)
+  /-- Calls function `func` with the values of `args`, and puts its result in
+  local `index` when `result` is `some index`. -/
+  | call (func : Nat) (args : List (Expr .u64)) (result : Option Nat)
   deriving Repr
 
 def Stmt.program : Stmt → Nat → Program
@@ -28,6 +36,10 @@ def Stmt.program : Stmt → Nat → Program
         (condition.program scratch ++ [.eqz, .br_if 1] ++ body.program scratch ++ [.br 0])]]
   | .load index address, scratch =>
       address.program scratch ++ [.wrapI64, .load64 0, .localSet index]
+  | .store address value, scratch =>
+      address.program scratch ++ [.wrapI64] ++ value.program scratch ++ [.store64 0]
+  | .call func args result, scratch =>
+      args.flatMap (·.program scratch) ++ [.call func] ++ result.toList.map .localSet
 
 def Stmt.scratchWidth : Stmt → Nat
   | .skip => 0
@@ -37,44 +49,46 @@ def Stmt.scratchWidth : Stmt → Nat
       max condition.scratchWidth (max thenStmt.scratchWidth elseStmt.scratchWidth)
   | .while condition body => max condition.scratchWidth body.scratchWidth
   | .load _ address => address.scratchWidth
+  | .store address value => max address.scratchWidth value.scratchWidth
+  | .call _ args _ => (args.map (·.scratchWidth)).foldr max 0
 
 /-- From any store and IR state satisfying `P`, the compiled code of `s` ends
 normally in a store and state satisfying `R`.  This is a statement about the
 compiled code under Talos's semantics; the IR has no semantics of its own. -/
-def Triple (s : Stmt) (scratch : Nat) (P R : Store Unit → State → Prop) : Prop :=
-  ∀ (m : Module) (env : HostEnv Unit) (store : Store Unit) (state : State)
+def Triple (m : Module) (s : Stmt) (scratch : Nat) (P R : Store Unit → State → Prop) : Prop :=
+  ∀ (env : HostEnv Unit) (store : Store Unit) (state : State)
     (values : List Value) (rest : Program) (Q : Assertion Unit),
     P store state →
     (∀ store' state', R store' state' → wp m rest Q store' (state'.toLocals values) env) →
     wp m (s.program scratch ++ rest) Q store (state.toLocals values) env
 
 theorem Triple.mono {s : Stmt} {scratch : Nat} {P P' R R' : Store Unit → State → Prop}
-    (h : Triple s scratch P R) (hP : ∀ store state, P' store state → P store state)
-    (hR : ∀ store state, R store state → R' store state) : Triple s scratch P' R' :=
-  fun m env store state values rest Q hPre hPost =>
-    h m env store state values rest Q (hP _ _ hPre) fun store' state' hR' =>
+    (h : Triple m s scratch P R) (hP : ∀ store state, P' store state → P store state)
+    (hR : ∀ store state, R store state → R' store state) : Triple m s scratch P' R' :=
+  fun env store state values rest Q hPre hPost =>
+    h env store state values rest Q (hP _ _ hPre) fun store' state' hR' =>
       hPost store' state' (hR _ _ hR')
 
 /-- A specification for every start in `P` separately gives one for `P`. -/
 theorem Triple.of_forall {s : Stmt} {scratch : Nat} {P R : Store Unit → State → Prop}
     (h : ∀ store₀ state₀, P store₀ state₀ →
-      Triple s scratch (fun store state => store = store₀ ∧ state = state₀) R) :
-    Triple s scratch P R :=
-  fun m env store state values rest Q hPre hPost =>
-    h store state hPre m env store state values rest Q ⟨rfl, rfl⟩ hPost
+      Triple m s scratch (fun store state => store = store₀ ∧ state = state₀) R) :
+    Triple m s scratch P R :=
+  fun env store state values rest Q hPre hPost =>
+    h store state hPre env store state values rest Q ⟨rfl, rfl⟩ hPost
 
 theorem Stmt.skip_spec {scratch : Nat} {R : Store Unit → State → Prop} :
-    Triple .skip scratch R R :=
-  fun _ _ store state _ _ _ hPre hPost => by
+    Triple m .skip scratch R R :=
+  fun _ store state _ _ _ hPre hPost => by
     simpa [Stmt.program] using hPost store state hPre
 
 theorem Stmt.assign_spec {index scratch : Nat} {value : Expr .u64}
     {R : Store Unit → State → Prop} :
-    Triple (.assign index value) scratch
+    Triple m (.assign index value) scratch
       (fun store state => ∃ result afterValue next,
         value.eval scratch state = some (result, afterValue) ∧
         afterValue.set? index (.i64 result) = some next ∧ R store next) R := by
-  intro m env store state values rest Q hPre hPost
+  intro env store state values rest Q hPre hPost
   obtain ⟨result, afterValue, next, hValue, hSet, hNext⟩ := hPre
   simp only [Stmt.program, List.append_assoc, List.singleton_append]
   apply Expr.program_spec value scratch state afterValue result values m env store
@@ -83,21 +97,21 @@ theorem Stmt.assign_spec {index scratch : Nat} {value : Expr .u64}
 
 theorem Stmt.seq_spec {first second : Stmt} {scratch : Nat}
     {P M R : Store Unit → State → Prop}
-    (hFirst : Triple first scratch P M) (hSecond : Triple second scratch M R) :
-    Triple (.seq first second) scratch P R := by
-  intro m env store state values rest Q hPre hPost
+    (hFirst : Triple m first scratch P M) (hSecond : Triple m second scratch M R) :
+    Triple m (.seq first second) scratch P R := by
+  intro env store state values rest Q hPre hPost
   simp only [Stmt.program, List.append_assoc]
-  exact hFirst m env store state values (second.program scratch ++ rest) Q hPre
-    fun store' state' hMid => hSecond m env store' state' values rest Q hMid hPost
+  exact hFirst env store state values (second.program scratch ++ rest) Q hPre
+    fun store' state' hMid => hSecond env store' state' values rest Q hMid hPost
 
 theorem Stmt.ite_spec {condition : Expr .bool} {thenStmt elseStmt : Stmt} {scratch : Nat}
     {PThen PElse R : Store Unit → State → Prop}
-    (hThen : Triple thenStmt scratch PThen R) (hElse : Triple elseStmt scratch PElse R) :
-    Triple (.ite condition thenStmt elseStmt) scratch
+    (hThen : Triple m thenStmt scratch PThen R) (hElse : Triple m elseStmt scratch PElse R) :
+    Triple m (.ite condition thenStmt elseStmt) scratch
       (fun store state => ∃ result afterCondition,
         condition.eval scratch state = some (result, afterCondition) ∧
         if result then PThen store afterCondition else PElse store afterCondition) R := by
-  intro m env store state values rest Q hPre hPost
+  intro env store state values rest Q hPre hPost
   obtain ⟨result, afterCondition, hCondition, hBranch⟩ := hPre
   simp only [Stmt.program, List.append_assoc, List.singleton_append]
   apply Expr.program_spec condition scratch state afterCondition result values m env store
@@ -107,12 +121,12 @@ theorem Stmt.ite_spec {condition : Expr .bool} {thenStmt elseStmt : Stmt} {scrat
   cases result
   · rw [ite_eq_right (by simp)]
     rw [← List.append_nil (elseStmt.program scratch)]
-    apply hElse m env store afterCondition values [] _ (by simpa using hBranch)
+    apply hElse env store afterCondition values [] _ (by simpa using hBranch)
     intro store' state' hR
     simpa [wp_simp, State.toLocals] using hPost store' state' hR
   · rw [ite_eq_left (by simp)]
     rw [← List.append_nil (thenStmt.program scratch)]
-    apply hThen m env store afterCondition values [] _ (by simpa using hBranch)
+    apply hThen env store afterCondition values [] _ (by simpa using hBranch)
     intro store' state' hR
     simpa [wp_simp, State.toLocals] using hPost store' state' hR
 
@@ -124,14 +138,14 @@ theorem Stmt.while_spec {condition : Expr .bool} {body : Stmt} {scratch : Nat}
     (Inv : Store Unit → State → Prop) (measure : Store Unit → State → Nat)
     (hCondition : ∀ store state, Inv store state →
       ∃ result afterCondition, condition.eval scratch state = some (result, afterCondition))
-    (hBody : ∀ n, Triple body scratch
+    (hBody : ∀ n, Triple m body scratch
       (fun store state => ∃ before, Inv store before ∧ measure store before = n ∧
         condition.eval scratch before = some (true, state))
       (fun store state => Inv store state ∧ measure store state < n)) :
-    Triple (.while condition body) scratch Inv
+    Triple m (.while condition body) scratch Inv
       (fun store state => ∃ before, Inv store before ∧
         condition.eval scratch before = some (false, state)) := by
-  intro m env store state values rest Q hPre hPost
+  intro env store state values rest Q hPre hPost
   let loopInv : AssertionF Unit := fun currentStore locals =>
     ∃ current, locals = current.toLocals values ∧ Inv currentStore current
   let loopMeasure : Store Unit → Locals → Nat := fun currentStore locals =>
@@ -156,7 +170,7 @@ theorem Stmt.while_spec {condition : Expr .bool} {body : Stmt} {scratch : Nat}
         hPost currentStore afterCondition ⟨current, hCurrent, hEval⟩
     · simp only [List.cons_append, List.nil_append, Wasm.wp_eqz_cons,
         Wasm.wp_br_if_cons, ScalarType.value]
-      apply hBody (measure currentStore current) m env currentStore afterCondition values
+      apply hBody (measure currentStore current) env currentStore afterCondition values
         [.br 0] _ ⟨current, hCurrent, rfl, hEval⟩
       intro store' state' ⟨hInv', hDecrease⟩
       simp only [Wasm.wp_br_cons]
@@ -172,13 +186,13 @@ theorem wrap_toUInt32 (a : UInt64) : UInt32.ofNat (a.toNat % 2 ^ 32) = a.toUInt3
 memory. -/
 theorem Stmt.load_spec {index scratch : Nat} {address : Expr .u64}
     {R : Store Unit → State → Prop} :
-    Triple (.load index address) scratch
+    Triple m (.load index address) scratch
       (fun store state => ∃ word afterAddress next,
         address.eval scratch state = some (word, afterAddress) ∧
         word.toUInt32.toNat + 8 ≤ store.mem.pages * 65536 ∧
         afterAddress.set? index (.i64 (store.mem.read64 word.toUInt32)) = some next ∧
         R store next) R := by
-  intro m env store state values rest Q hPre hPost
+  intro env store state values rest Q hPre hPost
   obtain ⟨word, afterAddress, next, hAddress, hBounds, hSet, hNext⟩ := hPre
   simp only [Stmt.program, List.append_assoc, List.cons_append, List.nil_append]
   apply Expr.program_spec address scratch state afterAddress word values m env store
@@ -188,5 +202,103 @@ theorem Stmt.load_spec {index scratch : Nat} {address : Expr .u64}
   rw [ite_eq_right (by omega)]
   simpa using localSet_spec (values := values) (rest := rest) (Q := Q) (module_ := m) (env := env)
     (store := store) hSet (hPost store next hNext)
+
+/-- A store writes the value's word at the address's low 32 bits, which must lie
+inside memory. -/
+theorem Stmt.store_spec {scratch : Nat} {address value : Expr .u64}
+    {R : Store Unit → State → Prop} :
+    Triple m (.store address value) scratch
+      (fun store state => ∃ word afterAddress result afterValue,
+        address.eval scratch state = some (word, afterAddress) ∧
+        value.eval scratch afterAddress = some (result, afterValue) ∧
+        word.toUInt32.toNat + 8 ≤ store.mem.pages * 65536 ∧
+        R { store with mem := store.mem.write64 word.toUInt32 result } afterValue) R := by
+  intro env store state values rest Q hPre hPost
+  obtain ⟨word, afterAddress, result, afterValue, hAddress, hValue, hBounds, hNext⟩ := hPre
+  simp only [Stmt.program, List.append_assoc, List.cons_append, List.nil_append]
+  apply Expr.program_spec address scratch state afterAddress word values m env store _ Q hAddress
+  simp only [Wasm.wp_wrapI64_cons, State.toLocals, ScalarType.value, wrap_toUInt32]
+  apply Expr.program_spec value scratch afterAddress afterValue result (.i32 word.toUInt32 :: values)
+    m env store _ Q hValue
+  simp only [Wasm.wp_store64_cons, State.toLocals, ScalarType.value, UInt32.toNat_zero,
+    Nat.add_zero, add_zero]
+  rw [ite_eq_right (by omega)]
+  simpa using hPost _ afterValue hNext
+
+/-- Evaluates `args` from left to right. -/
+def Expr.evalAll (scratch : Nat) : List (Expr .u64) → State → Option (List UInt64 × State)
+  | [], state => some ([], state)
+  | arg :: rest, state => do
+      let (word, next) ← arg.eval scratch state
+      let (words, final) ← Expr.evalAll scratch rest next
+      pure (word :: words, final)
+
+theorem Expr.evalAll_length {scratch : Nat} {args : List (Expr .u64)} {state next : State}
+    {words : List UInt64} (h : Expr.evalAll scratch args state = some (words, next)) :
+    words.length = args.length := by
+  induction args generalizing state words with
+  | nil => simp [Expr.evalAll] at h; simp [← h.1]
+  | cons arg rest ih =>
+      simp only [Expr.evalAll, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+      obtain ⟨⟨word, afterArg⟩, -, ⟨words', final⟩, hRest, hPure⟩ := h
+      simp only [Option.pure_def, Option.some.injEq, Prod.mk.injEq] at hPure
+      obtain ⟨rfl, rfl⟩ := hPure
+      simp [ih hRest]
+
+/-- The code of `args` pushes their values, the last on top. -/
+theorem Expr.evalAll_program_spec {scratch : Nat} {args : List (Expr .u64)}
+    {state next : State} {words : List UInt64} {values : List Value} {env : HostEnv Unit}
+    {store : Store Unit} {rest : Program} {Q : Assertion Unit}
+    (hEval : Expr.evalAll scratch args state = some (words, next))
+    (hNext : wp m rest Q store (next.toLocals (words.reverse.map .i64 ++ values)) env) :
+    wp m (args.flatMap (·.program scratch) ++ rest) Q store (state.toLocals values) env := by
+  induction args generalizing state words values with
+  | nil =>
+      simp only [Expr.evalAll, Option.some.injEq, Prod.mk.injEq] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      simpa using hNext
+  | cons arg others ih =>
+      simp only [Expr.evalAll, Option.bind_eq_bind, Option.bind_eq_some_iff] at hEval
+      obtain ⟨⟨word, afterArg⟩, hArg, ⟨words', final⟩, hRest, hPure⟩ := hEval
+      simp only [Option.pure_def, Option.some.injEq, Prod.mk.injEq] at hPure
+      obtain ⟨rfl, rfl⟩ := hPure
+      simp only [List.flatMap_cons, List.append_assoc]
+      apply Expr.program_spec arg scratch state afterArg word values m env store _ Q hArg
+      exact ih (values := .i64 word :: values) hRest (by simpa [ScalarType.value] using hNext)
+
+/-- A call evaluates its arguments, runs the callee, whose specification
+`Post` describes the store and results it ends with, and stores the single result
+when `result` names a local.  A call without a result local requires the callee
+to return nothing. -/
+theorem Stmt.call_spec {scratch func : Nat} {args : List (Expr .u64)} {result : Option Nat}
+    {f : Wasm.Function} {R : Store Unit → State → Prop}
+    (hImport : m.imports[func]? = none)
+    (hFunc : m.funcs[func - m.imports.length]? = some f)
+    (hParams : args.length = f.numParams) :
+    Triple m (.call func args result) scratch
+      (fun store state => ∃ words afterArgs, ∃ Post : Store Unit → List Value → Prop,
+        Expr.evalAll scratch args state = some (words, afterArgs) ∧
+        (∀ env, TerminatesWith env m func store (words.reverse.map .i64) Post) ∧
+        ∀ store' out, Post store' out →
+          match result with
+          | none => out = [] ∧ R store' afterArgs
+          | some index => ∃ word next, out = [.i64 word] ∧
+              afterArgs.set? index (.i64 word) = some next ∧ R store' next)
+      R := by
+  intro env store state values rest Q hPre hPost
+  obtain ⟨words, afterArgs, Post, hArgs, hRun, hResult⟩ := hPre
+  simp only [Stmt.program, List.append_assoc]
+  apply Expr.evalAll_program_spec hArgs
+  have hLength : (words.reverse.map Value.i64).length = f.numParams := by
+    simp [Expr.evalAll_length hArgs, hParams]
+  refine wp_call_tw ((hRun env).append_args hImport hFunc hLength values) ?_
+  rintro store' _ ⟨out, rfl, hOut⟩
+  cases result with
+  | none =>
+      obtain ⟨rfl, hR⟩ := hResult store' out hOut
+      simpa using hPost store' afterArgs hR
+  | some index =>
+      obtain ⟨word, next, rfl, hSet, hR⟩ := hResult store' out hOut
+      exact localSet_spec hSet (hPost store' next hR)
 
 end Project.IR

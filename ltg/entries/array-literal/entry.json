@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "array-literal",
+  "title": "Array literal",
+  "summary": "Proves that the compiler's array-literal template allocates an owned Array UInt64 holding the element values, keeps the allocator invariant, and keeps every borrowed array.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["allocation", "arrays", "compiler-motifs", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["alloc", "array", "call", "frame", "owned", "store"],
+  "annotationKinds": ["array-literal"],
+  "modules": ["Project.IR.ArrayLiteral", "Project.Pipeline.RuntimeSpec"],
+  "declarations": ["Project.IR.Stmt.arrayLiteral", "Project.IR.Stmt.arrayLiteral_spec", "Project.IR.Stmt.storeElements", "Project.IR.Stmt.storeElements_spec", "Project.IR.Stmt.call_spec", "Project.IR.Stmt.store_spec", "Project.Pipeline.alloc_spec", "Project.Pipeline.allocSize"],
+  "premises": ["The module has no imports, a 32-bit memory, and alloc at function 1", "The destination local is below scratch and the state covers the scratch index", "Heap.At and Heap.Room for 48 + 8 * (k + 1) bytes", "Each element expression evaluates to its word in every state framed from the start except the destination"],
+  "result": "The destination holds a pointer to an array owned under heap.allocate, the allocator invariant holds, top and the page count stay within the allocation bound, and borrowed arrays stay borrowed.",
+  "consumers": ["Project.PairSum.pairSum_implements"],
+  "relatedEntries": ["array-fold-loop", "release-temporary", "array-memory-framing", "direct-call-stack-tail"],
+  "exclusion": null
+}

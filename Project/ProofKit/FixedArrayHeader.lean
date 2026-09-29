@@ -1,5 +1,5 @@
 import Project.Common
-import Project.ProofKit.MemoryRoundtrip
+import Project.ProofKit.Memory
 import Project.ProofKit.Allocation
 
 namespace Project.ProofKit

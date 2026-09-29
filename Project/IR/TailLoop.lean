@@ -23,11 +23,11 @@ def tailState [Scalar α] (args : α) (result done : UInt64) (others : List Valu
 store and either continues with arguments that have the same value of `f` and a
 smaller measure, or stores `f args` and sets `done`.  `width` is the number of
 locals after `result` and `done`. -/
-def TailStep [Scalar α] (step : Stmt) (scratch width : Nat) (f : α → UInt64)
+def TailStep [Scalar α] (m : Module) (step : Stmt) (scratch width : Nat) (f : α → UInt64)
     (measure : α → Nat) : Prop :=
   ∀ (initial : Store Unit) (args : α) (result : UInt64) (others : List Value),
     others.length = width →
-    Triple step scratch
+    Triple m step scratch
       (fun store state => store = initial ∧ state = tailState args result 0 others)
       (fun store state => store = initial ∧ ∃ result' others', others'.length = width ∧
         ((∃ args', state = tailState args' result' 0 others' ∧ f args' = f args ∧
@@ -54,7 +54,7 @@ theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α �
     (vars : 2 ≤ func.vars)
     (body : func.body = .while (.eq (.get (func.params + 1)) (.const 0)) step)
     (result : func.result = .get func.params)
-    (hStep : TailStep step func.scratch (func.vars - 2 + func.width) f measure) :
+    (hStep : TailStep (compile func name) step func.scratch (func.vars - 2 + func.width) f measure) :
     Implements (compile func name) 0 f (fun _ => 0) := by
   refine Func.implements func name f
     (fun _ _ _ x h => (Scalar.borrowed.mp h) ▸ arity x) fun x _ initial params _ h => ?_
@@ -93,7 +93,7 @@ theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α �
   -- measure.
   have hIteration : ∀ (args : α) resultValue (others : List Value), others.length = width →
       f args = f x →
-      Triple step func.scratch
+      Triple (compile func name) step func.scratch
         (fun store state => store = initial ∧ state = tailState args resultValue 0 others)
         (fun store state => Inv store state ∧ stateMeasure state < measure args + 1) := by
     intro args resultValue others hLength hSame
@@ -108,14 +108,14 @@ theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α �
   refine (Stmt.while_spec Inv (fun _ state => stateMeasure state) ?_ fun n => ?_).mono ?_ ?_
   · rintro store state ⟨-, args, resultValue, others, -, ⟨rfl, -⟩ | rfl⟩ <;>
       simp [Expr.eval, tailState_get_done (arity args)]
-  · intro m env store state values rest Q hPre hPost
+  · intro env store state values rest Q hPre hPost
     obtain ⟨before, ⟨rfl, args, resultValue, others, hLength, ⟨rfl, hSame⟩ | rfl⟩, hMeasure,
       hCondition⟩ := hPre
     · simp [Expr.eval, tailState_get_done (arity args)] at hCondition
       subst hCondition
       rw [hRunning] at hMeasure
       subst hMeasure
-      exact hIteration args resultValue others hLength hSame m env _ _ values rest Q ⟨rfl, rfl⟩ hPost
+      exact hIteration args resultValue others hLength hSame env _ _ values rest Q ⟨rfl, rfl⟩ hPost
     · simp [Expr.eval, tailState_get_done (arity args)] at hCondition
   · rintro store state ⟨rfl, rfl⟩
     obtain ⟨k, hk⟩ : ∃ k, func.vars = k + 2 := ⟨func.vars - 2, by omega⟩

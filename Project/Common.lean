@@ -1,7 +1,6 @@
 import Project.TalosPrelude
 import Project.TalosCompat
 import Project.Attr
-import Std.Tactic.BVDecide
 
 /-!
 # Shared lemmas for artifact proofs
@@ -27,18 +26,6 @@ theorem u64_eq_iff {a b : UInt64} : a = b ↔ a.toNat = b.toNat :=
 
 theorem u32_eq_iff {a b : UInt32} : a = b ↔ a.toNat = b.toNat :=
   ⟨congrArg UInt32.toNat, UInt32.toNat.inj⟩
-
-/-- Adding two modulo-`UInt64` increments and subtracting the original value
-leaves two, including across wraparound. -/
-theorem u64_add_two_sub_self (x : UInt64) :
-    x + 1 + 1 - x = 2 := by
-  bv_decide
-
-/-- Adding three modulo-`UInt64` increments and subtracting the original value
-leaves three, including across wraparound. -/
-theorem u64_add_three_sub_self (x : UInt64) :
-    x + 1 + 1 + 1 - x = 3 := by
-  bv_decide
 
 /-- Close a `UInt64` equality or inequality goal, including negated
 forms, by moving to `toNat` form and calling `omega`.  Bounds needed to
@@ -183,17 +170,6 @@ theorem read64_write8_ne (mm : Wasm.Mem) (ad : UInt32) (v : UInt8)
     (b : UInt32) (h : ad.toNat < b.toNat ∨ b.toNat + 8 ≤ ad.toNat) :
     (mm.write8 ad v).read64 b = mm.read64 b :=
   read64_congr b fun i hi => write8_bytes_ne mm ad v (by omega)
-
-/-- Resolve a word read over a chain of word writes: peel disjoint writes
-outermost-in, discharging separation by `omega` after normalizing the
-`UInt32.ofNat (_ % 2^32)` address forms, and stop at the syntactic hit.
-Address forms must already match at the hit; normalize first if not. -/
-macro "read_frames" : tactic =>
-  `(tactic|
-    repeat first
-      | rw [Wasm.Mem.read64_write64_same]
-      | rw [read64_write64_ne _ _ _ _
-          (by simp only [toUInt32_ofNat_mod_toNat]; omega)])
 
 /-- Subtraction stays within `Nat` when the subtrahend fits. -/
 theorem toNat_sub_le (p q : UInt64) (h : q.toNat ≤ p.toNat) :

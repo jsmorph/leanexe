@@ -27,7 +27,7 @@ theorem gcdTuple_injective (x y : UInt64 × UInt64) (h : Scalar.values x = Scala
 
 /-- One iteration of the compiled loop: at `b = 0` it stores `a`, and otherwise it
 moves to `(b, a % b)`, which has the same gcd and a smaller `b`. -/
-theorem gcd_step : TailStep (α := UInt64 × UInt64)
+theorem gcd_step {m : Module} : TailStep (α := UInt64 × UInt64) m
     (match gcd.ir.body with | .while _ step => step | _ => .skip) gcd.ir.scratch 4 gcdTuple
     (fun x => x.2.toNat) := by
   rintro initial ⟨a, b⟩ result others hLength
