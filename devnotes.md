@@ -18788,3 +18788,25 @@ the LTG check passes with 12 entries, including the new `float-array-fold`.
 - [x] Iteration 6d.
 - [ ] Later: conversions, binary32 comparisons and sign operations, and
   `Float32` programs.
+
+## 2026-09-29: Array Float replaces FloatArray
+
+The user chose `Array Float` over `FloatArray` as the dialect's float array.
+`FloatArray` is a structure over `Array Float` whose operations are replaced at
+run time by C functions on an unboxed buffer of doubles.  Core has no lemmas
+about it, and the proof of its fold depended on the private loop of
+`FloatArray.foldlM` through `open private`.  In WebAssembly both types use the
+same unboxed layout, since the compiler chooses it.  The costs of `Array Float`,
+boxed elements and slower execution, arise only when the Lean program runs
+natively.
+
+`Represent (Array Float)` states that memory holds `xs.map Float.toBits`.  The
+compiler accepts `Array Float` parameters and `Array.foldl` with `Float`
+elements, and it rejects a fold over a `Float` array literal with a specific
+error.  `FloatArrayFold.lean` is deleted, and `sumSquares_bits` uses core's
+`Array.foldl_map` and `Array.foldl_hom`.  `sumSquares.wasm` has the same bytes
+as before, matches native Lean on the same 48 arrays, and `sumSquares_bytes`
+depends only on the standard three axioms.
+
+- [x] Replace `FloatArray` with `Array Float`.
+- [ ] Float array literals and `xs.size.toUInt64` for `Array Float`.

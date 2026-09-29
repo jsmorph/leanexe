@@ -118,7 +118,6 @@ import Project.ProofKit.FixedArraySearchFit
 import Project.ProofKit.FixedArraySearchFrame
 import Project.ProofKit.FixedArraySearchNone
 import Project.ProofKit.FixedArraySearchRead
-import Project.ProofKit.FloatArrayFold
 import Project.ProofKit.FloatCommon
 import Project.ProofKit.FloatRationalRounding
 import Project.ProofKit.FloatRounding

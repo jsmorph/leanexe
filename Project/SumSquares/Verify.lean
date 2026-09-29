@@ -1,6 +1,6 @@
 import Project.SumSquares.Module
 import Project.IR.Correct
-import Project.ProofKit.FloatArrayFold
+import Project.ProofKit.F64Bits
 import Project.Encoding.RoundTrip
 
 namespace Project.SumSquares
@@ -10,13 +10,13 @@ open Project.Pipeline Project.IR Project.ProofKit
 /-- One step of the compiled fold on bit patterns. -/
 def step (a e : UInt64) : UInt64 := Wasm.IEEE64.add a (Wasm.IEEE64.mul e e)
 
-theorem sumSquares_bits (xs : FloatArray) :
-    (xs.data.map Float.toBits).foldl step 0 =
+theorem sumSquares_bits (xs : Array Float) :
+    (xs.map Float.toBits).foldl step 0 =
       (LeanExe.Examples.SumSquares.sumSquares xs).toBits := by
   have hZero : (0.0 : Float).toBits = 0 := by decide
-  rw [← hZero]
-  exact FloatArrayFold.foldl_toBits Float.toBits
-    (fun a x => by simp [step, F64Bits.toBits_add, F64Bits.toBits_mul]) xs 0.0
+  rw [← hZero, Array.foldl_map]
+  exact Array.foldl_hom Float.toBits fun a x => by
+    simp [step, F64Bits.toBits_add, F64Bits.toBits_mul]
 
 theorem sumSquares_implements :
     Implements sumSquares.module 0 LeanExe.Examples.SumSquares.sumSquares (fun _ => 0) := by
@@ -36,7 +36,7 @@ theorem sumSquares_implements :
     subst store state
     exact ⟨0, start, start, rfl, rfl, rfl, rfl⟩
   · rintro store state ⟨hStore, -, hAcc⟩
-    refine ⟨hStore, ((xs.data.map Float.toBits).foldl step 0 : UInt64), state, by
+    refine ⟨hStore, ((xs.map Float.toBits).foldl step 0 : UInt64), state, by
       simp [sumSquares.ir, Func.scratch, Expr.eval, hAcc],
       congrArg (fun word => [Wasm.Value.f64 word]) (sumSquares_bits xs)⟩
 

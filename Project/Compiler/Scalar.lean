@@ -37,7 +37,8 @@ def isUInt64Array (type : Lean.Expr) : MetaM Bool := do
   if type.isAppOfArity ``Array 1 then isUInt64 type.appArg! else return false
 
 def isFloatArray (type : Lean.Expr) : MetaM Bool := do
-  return (← whnfR type).isConstOf ``FloatArray
+  let type ← whnfR type
+  if type.isAppOfArity ``Array 1 then isFloat type.appArg! else return false
 
 /-- The number of instructions in the code of an expression or a statement.  It
 does not depend on the scratch index. -/
@@ -46,7 +47,7 @@ def stmtLength (s : Project.IR.Stmt) : Nat := (s.program 0).length
 
 /-- The compiler's view of the definition being compiled.  `words`, `floats`,
 `arrays`, and `floatArrays` give the local of each `UInt64`, `Float`,
-`Array UInt64`, and `FloatArray` variable in scope.  A recursive definition's
+`Array UInt64`, and `Array Float` variable in scope.  A recursive definition's
 locals are the parameters, then `result`, `done`, and one temporary per
 parameter.  `foldable` says whether a fold may appear: a fold runs
 before the value that contains it, so it may not appear in a branch, in a fold
@@ -169,7 +170,7 @@ mutual
           names := before.names.push ("size", temp) }
         let ir : IRExpr .u64 := .get temp
         return (ir, [hint ir "size result"])
-    | (``Array.foldl, _) | (``FloatArray.foldl, _) =>
+    | (``Array.foldl, _) =>
         let ir : IRExpr .u64 := .get (← translateFold ctx term .u64)
         return (ir, [hint ir "fold result"])
     | (fn, #[left, right, out, _, a, b]) =>
@@ -316,7 +317,7 @@ mutual
         let (x, xHints) ← translateFloat ctx loc operand
         let ir : IRExpr .f64 := .unF .sqrt x
         return (ir, hint ir "float sqrt" :: xHints)
-    | (``Array.foldl, _) | (``FloatArray.foldl, _) =>
+    | (``Array.foldl, _) =>
         let ir : IRExpr .f64 := .getF (← translateFold ctx term .f64)
         return (ir, [hint ir "fold result"])
     | (fn, #[left, right, out, _, a, b]) =>
@@ -346,18 +347,16 @@ mutual
     let source ← sourceOf term
     unless ctx.foldable do
       throwError "a fold may not appear in a branch, a fold body, or a recursive definition: {source}"
-    let (elementType, element, acc, f, init, array, start, stop) ← match term.getAppFnArgs with
-      | (``Array.foldl, #[element, acc, f, init, array, start, stop]) =>
-          unless ← isUInt64 element do throwError "unsupported fold element type in {source}"
-          pure (ScalarType.u64, element, acc, f, init, array, start, stop)
-      | (``FloatArray.foldl, #[acc, f, init, array, start, stop]) =>
-          pure (ScalarType.f64, mkConst ``Float, acc, f, init, array, start, stop)
-      | _ => throwError "unsupported fold: {source}"
+    let (``Array.foldl, #[element, acc, f, init, array, start, stop]) := term.getAppFnArgs
+      | throwError "unsupported fold: {source}"
+    let elementType : ScalarType ← if ← isUInt64 element then pure .u64
+      else if ← isFloat element then pure .f64
+      else throwError "unsupported fold element type in {source}"
     unless ← (if accType == .f64 then isFloat acc else isUInt64 acc) do
       throwError "unsupported fold accumulator type in {source}"
     unless start.nat? == some 0 do throwError "a fold must start at index 0: {source}"
     match stop.consumeMData.getAppFnArgs with
-    | (``Array.size, #[_, sized]) | (``FloatArray.size, #[sized]) =>
+    | (``Array.size, #[_, sized]) =>
         unless sized.consumeMData == array.consumeMData do
           throwError "a fold must stop at the size of its array: {source}"
     | _ => throwError "a fold must stop at the size of its array: {source}"
@@ -367,6 +366,8 @@ mutual
       | none => do
           let some elements := arrayLiteral? array
             | throwError "a fold must run over an array variable or an array literal: {source}"
+          unless elementType == .u64 do
+            throwError "a fold over a Float array literal is not supported: {source}"
           pure (← translateArrayLiteral ctx array elements, true)
     let (⟨_, initial⟩, initialHints) ← translateAs ctx ⟨[], 0⟩ accType init
     let before ← get
@@ -481,7 +482,7 @@ partial def translateTail (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
         return (stmt, mkHint loc (stmtLength stmt) "base case" source :: valueHints)
 
 /-- Compiles the definition `declName`, whose parameters are `UInt64`, `Float`,
-`Array UInt64`, or `FloatArray` and whose result is `UInt64`, `Float`, or an
+`Array UInt64`, or `Array Float` and whose result is `UInt64`, `Float`, or an
 `Array UInt64` literal, to an IR function with hints.  The
 compiler reads the definition's unfolding equation, so a recursive call appears
 as a call of `declName`.  A definition without recursive calls becomes a prelude
@@ -518,7 +519,7 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
         floatArrays := (params[i], i) :: floatArrays
         paramTypes := paramTypes.push .u64
       else
-        throwError "parameter {params[i]} of {declName} is not UInt64, Float, Array UInt64, or FloatArray"
+        throwError "parameter {params[i]} of {declName} is not UInt64, Float, Array UInt64, or Array Float"
     let resultType ← inferType body
     let arrayResult ← isUInt64Array resultType
     let floatResult ← isFloat resultType

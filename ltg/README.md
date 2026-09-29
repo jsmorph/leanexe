@@ -18,8 +18,8 @@ tools/leanrun --timeout 10m lake env lean --run Project/LTG/Check.lean ltg/entri
 `tail-recursion-loop`, `array-fold-loop`, `array-size`, `array-literal`, and
 `release-temporary` cover compiler rules and are proved for every function those
 rules produce.  `float-arithmetic` connects Lean's `Float` operations to the
-IR's `f64` expressions, and `float-array-fold` connects `FloatArray.foldl` to a
-fold over bit patterns.  The other five entries describe general
+IR's `f64` expressions, and `float-array-fold` connects a fold over an `Array Float` to
+a fold over bit patterns.  The other five entries describe general
 lemmas from the earlier proof library.  `array-fold-prefix` supports
 `array-fold-loop`, and the rest cover memory framing, calls, and raw WASM locals
 for the next iterations.
