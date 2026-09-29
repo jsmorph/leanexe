@@ -18390,3 +18390,26 @@ list, so the tooling needs a decision before it can index entries in `Project.IR
 
 - [x] Tail-recursion rule lemma, `gcd` reproved, LTG entry written.
 - [ ] Decide the LTG tooling.
+
+## 2026-09-29: Clean house
+
+The user asked to clean house before iteration 3 and said they do not want
+JavaScript in the repository.  The approved cleanup deleted the old compiler and
+the old `sumCount` proof ahead of iteration 3, 191 Lean files outside the import
+closure of what remains, 31 LTG entries for old compiler patterns, benchmarks,
+and the exact-artifact route, the Node-based LTG and knowledge tools with their
+generated indexes and `LTGCheck.lean`, `docs/`, `DEVELOPING.md`, and the Node
+steps in the macOS scripts.  `Project/LTG/Check.lean` replaces the LTG check: it
+parses each `entry.json` with Lean's JSON support, imports the listed modules,
+and reports listed declarations that do not exist.  A scratch entry with a wrong
+declaration name made it exit with status 1.
+
+The proof workspace moved from `proofs/talos/lean` to the repository root, and
+the root package became the `LeanExe` library of the same package.  The move
+kept `.lake/` (34 GB of dependencies and builds), and the first build at the
+root rebuilt only the project's own modules, none from Mathlib.  Both modules
+kept their hashes, and all theorems kept their axiom lists.  Ignored leftovers of
+deleted code (`proofs/talos/.generated`, a Python environment under
+`training/`) were removed; `tmp/` was left in place.
+
+- [x] Clean house.

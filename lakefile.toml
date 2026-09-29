@@ -1,6 +1,6 @@
 name = "Project"
 version = "0.1.0"
-defaultTargets = ["Project"]
+defaultTargets = ["LeanExe", "Project"]
 
 [[require]]
 name = "Verifier"
@@ -13,9 +13,8 @@ git = "https://github.com/jsmorph/talos"
 subDir = "codelib"
 rev = "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47"
 
-[[require]]
-name = "leanexe"
-path = "../../.."
+[[lean_lib]]
+name = "LeanExe"
 
 [[lean_lib]]
 name = "Project"
