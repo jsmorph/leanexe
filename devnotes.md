@@ -18850,3 +18850,20 @@ with results equal to native Lean on 152 inputs confirms the opcode meanings.
 The compiler also accepts `xs.size.toUInt64` for an `Array Float`.
 
 - [x] Conversions, `mean`, and `bucket`.
+
+## 2026-09-29: Decisions for real programs
+
+The user deferred the GPU path until real programs run end to end, and chose a
+CLOB as the first, then a CPU GPT.  The CLOB needs only `UInt64` arithmetic.
+Four decisions, taken one at a time, are recorded in the decision table of
+`deslop.md`: `LeanExe.loop` with `UInt64` indices; Lean's array operations
+compiled through one copying template, with `LeanExe.build` for arrays computed
+by index; and modules of several functions named in an explicit list, with a
+call rule that uses each callee's theorem.  On the array question, I first
+recommended `build` alone and changed the recommendation when reconsidering:
+the source is the specification, core has lemmas for its own operations, and
+Lean's operations leave room for in-place update later.  An earlier table of
+mine also overstated the CLOB's dependence on sharing, since copying on update
+is correct without `retain`.
+
+- [ ] CLOB 1: `marketBuy`.
