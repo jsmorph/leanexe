@@ -7,18 +7,20 @@ open Wasm
 
 /-- A function whose parameters have the types `params`.  The first locals hold
 the arguments, the next locals hold the compiler's variables, whose types are
-`vars`, and the 64-bit locals after them are scratch space.  The function runs `body` and returns
-the value of `result`, an expression of type `result.1`. -/
+`vars`, and the 64-bit locals after them are scratch space.  The function runs
+`body` and returns the values of `results`, each an expression paired with its
+type. -/
 structure Func where
   params : List ScalarType
   vars : List ScalarType
   body : Stmt
-  result : (type : ScalarType) × Expr type
+  results : List ((type : ScalarType) × Expr type)
 
 /-- The first scratch local. -/
 def Func.scratch (func : Func) : Nat := func.params.length + func.vars.length
 
-def Func.width (func : Func) : Nat := max func.body.scratchWidth func.result.2.scratchWidth
+def Func.width (func : Func) : Nat :=
+  max func.body.scratchWidth ((func.results.map (·.2.scratchWidth)).foldr max 0)
 
 /-- The types of the locals after the parameters: the variables, then scratch. -/
 def Func.locals (func : Func) : List ValueType :=
@@ -30,12 +32,12 @@ def Func.state (func : Func) (args : List Value) : State :=
   { params := args, locals := func.locals.map ValueType.zero }
 
 def Func.type (func : Func) : FuncType :=
-  { params := func.params.map ScalarType.valueType, results := [func.result.1.valueType] }
+  { params := func.params.map ScalarType.valueType, results := func.results.map (·.1.valueType) }
 
 def Func.function (func : Func) : Wasm.Function :=
   { params := func.type.params
     locals := func.locals
-    body := func.body.program func.scratch ++ func.result.2.program func.scratch
+    body := func.body.program func.scratch ++ func.results.flatMap (·.2.program func.scratch)
     results := func.type.results
     typeIdx := some 0 }
 

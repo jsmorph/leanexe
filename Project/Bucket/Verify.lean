@@ -18,7 +18,7 @@ theorem bucket_implements : Implements bucket.module 0 bucketTuple (fun _ => 0) 
       rw [Scalar.borrowed.mp h] at hState
       subst hState
       refine ⟨_, _, rfl, ?_⟩
-      simp [bucket.ir, Func.state, Func.locals, Func.width, Func.scratch, Expr.eval,
+      simp [bucket.ir, Expr.evalResults, Func.state, Func.locals, Func.width, Func.scratch, Expr.eval,
         Expr.scratchWidth, IR.Stmt.scratchWidth, State.get, F64Op.apply, Scalar.values,
         bucketTuple, LeanExe.Examples.Bucket.bucket, F64Bits.toBits_sub, F64Bits.toBits_div,
         F64Convert.toUInt64_eq]⟩) fun _ _ h => h

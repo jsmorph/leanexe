@@ -812,7 +812,7 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
         (paramNames.zipIdx.map fun (name, i) => (s!"next {name}", ctx.temp i))
       let func : Func :=
         { params := paramTypes.toList, vars := List.replicate ctx.vars .u64, body := loop
-          result := ⟨.u64, .get ctx.result⟩ }
+          results := [⟨.u64, .get ctx.result⟩] }
       return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] })
     else
       let ctx : Ctx :=
@@ -828,7 +828,7 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
       let ((result, resultHints), prelude) ← translate.run { base := params.size }
       let func : Func :=
         { params := paramTypes.toList, vars := prelude.vars.toList
-          body := seqAll prelude.stmts.toList, result }
+          body := seqAll prelude.stmts.toList, results := [result] }
       let hints : Hints :=
         { locals := paramNames.zipIdx ++ prelude.names.toList
           nodes := prelude.hints.toList ++ resultHints.map (Hint.shift prelude.length) }
@@ -892,8 +892,12 @@ def stmtToExpr : Project.IR.Stmt → Lean.Expr
         (toExpr result)
 
 def funcToExpr (func : Func) : Lean.Expr :=
-  mkApp4 (mkConst ``Func.mk) (toExpr func.params) (toExpr func.vars) (stmtToExpr func.body)
-    (mkApp4 (mkConst ``Sigma.mk [Level.zero, Level.zero]) (mkConst ``ScalarType)
-      (mkConst ``Project.IR.Expr) (toExpr func.result.1) (irToExpr func.result.2))
+  let resultType := mkApp2 (mkConst ``Sigma [Level.zero, Level.zero]) (mkConst ``ScalarType)
+    (mkConst ``Project.IR.Expr)
+  let results := func.results.foldr (init := mkApp (mkConst ``List.nil [Level.zero]) resultType)
+    fun result list => mkApp3 (mkConst ``List.cons [Level.zero]) resultType
+      (mkApp4 (mkConst ``Sigma.mk [Level.zero, Level.zero]) (mkConst ``ScalarType)
+        (mkConst ``Project.IR.Expr) (toExpr result.1) (irToExpr result.2)) list
+  mkApp4 (mkConst ``Func.mk) (toExpr func.params) (toExpr func.vars) (stmtToExpr func.body) results
 
 end Project.Compiler

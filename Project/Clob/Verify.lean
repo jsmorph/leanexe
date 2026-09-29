@@ -122,8 +122,8 @@ theorem marketBuy_implements :
     · simp [Expr.eval, hFrame.get 5 (by decide) (by decide), h5]
   · rintro store state ⟨ptr, -, hPtr, hAt, hOwned, hTop, hPages, hKeep⟩
     refine ⟨_, hAt, ⟨_, _, rfl, ⟨pp, rfl, hKeep pp prices hPrices⟩, _, _, rfl,
-      ⟨ps, rfl, hKeep ps sizes hSizes⟩, rfl⟩, hTop, hPages, ptr, state,
-      by simp [marketBuy.ir, Func.scratch, Expr.eval, hPtr], ptr, rfl, ?_⟩
+      ⟨ps, rfl, hKeep ps sizes hSizes⟩, rfl⟩, hTop, hPages, [.i64 ptr], state,
+      by simp [marketBuy.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
     rw [marketBuyTuple, marketBuy_eq, hResult]
     simpa using hOwned
 
@@ -198,8 +198,8 @@ theorem fillLevel_implements : Implements fillLevel.module 0 fillTuple fillNeed 
   · rintro store state ⟨ptr, -, hPtr, hAt, hOwned, hTop, hPages, hKeep⟩
     refine ⟨_, hAt, ⟨_, _, rfl, ⟨ps, rfl, hKeep ps sizes hSizes⟩, rfl⟩,
       le_of_le_of_eq hTop (by simp [fillNeed, hn]), le_of_le_of_eq hPages (by simp [fillNeed, hn]),
-      ptr, state,
-      by simp [fillLevel.ir, Func.scratch, Expr.eval, hPtr], ptr, rfl, ?_⟩
+      [.i64 ptr], state,
+      by simp [fillLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
     rw [fillTuple, LeanExe.Examples.Clob.fillLevel, set!_eq_build sizes k value hSize64]
     exact hOwned
 

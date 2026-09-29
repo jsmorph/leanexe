@@ -51,9 +51,9 @@ theorem mean_implements :
   have hSum : s3.get 1 = some (.f64 ((xs.map Float.toBits).foldl IEEE64.add 0)) := by
     rw [State.get_set?_ne (by decide) hSet3, hAcc]
   have hSize := State.get_set?_same hSet3
-  refine ⟨hStore, (IEEE64.div ((xs.map Float.toBits).foldl IEEE64.add 0)
-      (IEEE64.convertI64U (UInt64.ofNat (xs.map Float.toBits).size)) : UInt64), s3, by
-    simp [mean.ir, Func.scratch, Expr.eval, hSum, hSize, F64Op.apply],
+  refine ⟨hStore, [.f64 (IEEE64.div ((xs.map Float.toBits).foldl IEEE64.add 0)
+      (IEEE64.convertI64U (UInt64.ofNat (xs.map Float.toBits).size)))], s3, by
+    simp [mean.ir, Func.scratch, Expr.evalResults, Expr.eval, hSum, hSize, F64Op.apply],
     congrArg (fun word => [Value.f64 word]) (mean_bits xs)⟩
 
 /-- `encode` succeeds on `mean.module`, and its bytes decode to a module that

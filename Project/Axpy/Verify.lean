@@ -17,7 +17,7 @@ theorem axpy_implements : Implements axpy.module 0 axpyTuple (fun _ => 0) :=
       rw [Scalar.borrowed.mp h] at hState
       subst hState
       refine ⟨_, _, rfl, ?_⟩
-      simp [axpy.ir, Func.state, Func.locals, Func.width, Func.scratch, Expr.eval, Expr.scratchWidth,
+      simp [axpy.ir, Expr.evalResults, Func.state, Func.locals, Func.width, Func.scratch, Expr.eval, Expr.scratchWidth,
         IR.Stmt.scratchWidth, State.get, F64Op.apply, Scalar.values, axpyTuple,
         LeanExe.Examples.Axpy.axpy, F64Bits.toBits_add, F64Bits.toBits_mul]⟩) fun _ _ h => h
 

@@ -57,8 +57,8 @@ theorem sumCount_implements :
         rw [hFrame.get 5 (by decide) (by decide), State.get_set?_same hSet3]
       simp [Expr.eval, hGet]
   · rintro store state ⟨result, -, hResult, hAt, hOwned, hTop, hPages, hKeep⟩
-    refine ⟨_, hAt, ⟨ptr, rfl, hKeep ptr xs hBorrowed⟩, hTop, hPages, result, state,
-      by simp [sumCount.ir, Func.scratch, Expr.eval, hResult], result, rfl, ?_⟩
+    refine ⟨_, hAt, ⟨ptr, rfl, hKeep ptr xs hBorrowed⟩, hTop, hPages, [.i64 result], state,
+      by simp [sumCount.ir, Func.scratch, Expr.evalResults, Expr.eval, hResult], result, rfl, ?_⟩
     simpa [LeanExe.Examples.SumCount.sumCount] using hOwned
 
 /-- `encode` succeeds on `sumCount.module`, and its bytes decode to a module that

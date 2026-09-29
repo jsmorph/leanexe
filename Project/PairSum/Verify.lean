@@ -63,7 +63,8 @@ theorem pairSum_implements : Implements pairSum.module 0 pairTuple (fun _ => 72)
   subst store' state'
   refine ⟨_, hAt.release hOwned, rfl, hTop, ?_, _, s2, ?_, rfl⟩
   · simpa [Heap.releaseStore] using hPages
-  · simp [pairSum.ir, Func.scratch, Expr.eval, hAcc, pairTuple, LeanExe.Examples.PairSum.pairSum]
+  · simp [pairSum.ir, Func.scratch, Expr.evalResults, Expr.eval, hAcc, pairTuple,
+      LeanExe.Examples.PairSum.pairSum, Scalar.values]
 
 /-- `encode` succeeds on `pairSum.module`, and its bytes decode to a module that
 computes `pairSum` exactly, allocating at most 72 bytes. -/

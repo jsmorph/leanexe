@@ -23,8 +23,8 @@ theorem sumArray_implements :
     subst store state
     exact ⟨0, start, start, rfl, rfl, rfl, rfl⟩
   · rintro store state ⟨hStore, -, hAcc⟩
-    exact ⟨hStore, (xs.foldl (· + ·) 0 : UInt64), state, by
-      simp [sumArray.ir, Func.scratch, Expr.eval, hAcc], rfl⟩
+    exact ⟨hStore, [.i64 (xs.foldl (· + ·) 0)], state, by
+      simp [sumArray.ir, Func.scratch, Expr.evalResults, Expr.eval, hAcc], rfl⟩
 
 /-- `encode` succeeds on `sumArray.module`, and its bytes decode to a module that
 computes `sumArray` exactly. -/

@@ -36,8 +36,8 @@ theorem sumSquares_implements :
     subst store state
     exact ⟨0, start, start, rfl, rfl, rfl, rfl⟩
   · rintro store state ⟨hStore, -, hAcc⟩
-    refine ⟨hStore, ((xs.map Float.toBits).foldl step 0 : UInt64), state, by
-      simp [sumSquares.ir, Func.scratch, Expr.eval, hAcc],
+    refine ⟨hStore, [.f64 ((xs.map Float.toBits).foldl step 0)], state, by
+      simp [sumSquares.ir, Func.scratch, Expr.evalResults, Expr.eval, hAcc],
       congrArg (fun word => [Wasm.Value.f64 word]) (sumSquares_bits xs)⟩
 
 /-- `encode` succeeds on `sumSquares.module`, and its bytes decode to a module that
