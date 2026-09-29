@@ -18440,3 +18440,68 @@ parent's release and is freed by its own; a chain of 200,000 records is freed in
 0.13 s without a trap; and a double release traps in `release`.  The counters
 matched in every case.  `Runtime/Tree.lean` now imports `TalosPrelude`
 instead of `Runtime/Defs.lean`, which removed an import cycle.
+
+## 2026-09-29: Iteration 3a, sumArray
+
+`sumArray xs = xs.foldl (· + ·) 0` runs from Lean source to proved bytes.  The
+IR gained `load index address`, compiled to the address code, `i32.wrap_i64`,
+`i64.load`, and `local.set`.  Its rule requires the wrapped address plus 8 to lie
+inside memory.  Rule lemmas state what they leave unchanged with
+`State.Frame scratch writes before after`: equal numbers of parameters and
+locals, and equal values at every local below `scratch` outside `writes`.
+`Expr.eval_frame` proves that evaluating an expression preserves it; the
+existing `Expr.eval_preserves_below` did not cover the lengths, which later
+assignments and scratch writes need.  `Triple.of_forall` turns any precondition
+into the fixed form `store = s ∧ state = t` that rule lemmas take.
+
+`Stmt.fold array acc index length element body` is a definition over existing
+statements: load the length word, zero the index, and while the index is below
+the length, load the element at `ptr + (index + 1) * 8`, assign `body` to the
+accumulator, and increment the index.  `Stmt.fold_spec` proves that it leaves
+`xs.foldl g start` in the accumulator, keeps the store, and frames every other
+local below scratch.  Its invariant uses `ArrayFold.foldPrefix`, and its
+premises are `UInt64Array.At` for the array and an obligation that `body`
+evaluates to `g a e`.
+
+`Func.implements` now takes arguments of any `Represent` type, and its body
+`Triple` may use `Heap.At` and the arguments' representation.  `scale` and
+`Func.tail_implements` use it through `Scalar.borrowed`.
+
+The compiler accepts `Array UInt64` parameters and `Array.foldl` with start 0 and
+stop `xs.size` over an array variable.  It runs in a state monad that holds the
+prelude: the statements that run before the result value, the next free local,
+and the locals' names.  A fold adds an accumulator assignment and `Stmt.fold`
+to the prelude and becomes a read of the accumulator.  The fold body is the
+lambda applied to two new variables, translated with them bound to the
+accumulator and element locals.  Folds are rejected in branches, fold bodies, and
+recursive definitions, and recursive definitions reject array parameters.  Hint
+positions come from code lengths, which do not depend on the scratch index, so
+the compiler no longer tracks it.  Expression hints are computed relative to the
+expression's start and shifted by the prelude's length; `foldBodyLoc` finds the
+body's position inside a fold from `Stmt.fold`'s own shape.  I checked the
+emitted hint paths against the instruction layout by hand: the fold starts at
+instruction 2 and the body's `add` at path `[8, 0, 15]`.
+
+The per-program proof is 20 lines: the assignment rule to a named state, then
+`Stmt.fold_spec` with `Heap.Borrowed.values` and a one-line body obligation.
+It states no loop invariant, since `Stmt.fold_spec` carries one.  The LTG entry `array-fold-loop` describes the template and the proof pattern.
+
+`sumArray.wasm` (1,323 bytes) validates, and Wasmtime matches native
+Lean on `[1, 2, 3]`, `[2^64-1, 2]`, `[]`, `[10, 20, 30]`, and a 1,000-element
+array.  The counters show no runtime calls by compiled code, and after the host
+releases its input they read one allocation, one release, and one free.
+`scale` and `gcd` give the recorded values again.  The axiom audit of
+`sumArray_bytes`, `gcd_bytes`, `scale_bytes`, and `Stmt.fold_spec` lists only
+`propext`, `Classical.choice`, and `Quot.sound`.  The earlier journal figure of
+1,338 bytes for `gcd.wasm` predates the removal of the duplicate allocation
+count; the module is 1,331 bytes.
+
+`ProofKit/ScalarTransition.lean` still holds the old IR (its own `Stmt`,
+`Stmt.eval`, and loop programs) beside `Expr`, and `ScalarFrame`,
+`ScalarConditional`, and `ScalarTransitionU64` serve only that old IR.  Moving
+`Expr` into `Project/IR/` and deleting the rest is in the plan.
+
+- [x] Iteration 3a.
+- [ ] Iteration 3b: `pairSum`, calls, stores, and the `alloc` and `release`
+  specifications.
+- [ ] Iteration 3c: `sumCount`.

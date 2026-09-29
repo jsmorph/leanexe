@@ -24,10 +24,11 @@ journal.
 | `LeanExe/` | Source programs and the binary32 wrappers the float proofs use. |
 | `Project/IR/` | The IR, `compile`, the statement rules, and rule lemmas. |
 | `Project/Compiler/` | The compiler and the `leanexe_compile` command. |
+| `Project/Runtime/` | The code of the runtime functions `alloc`, `retain`, and `release`, and the free-list layout. |
 | `Project/Pipeline/` | `Implements`, the runtime heap invariant, allocation lemmas, and `Emit.lean`. |
 | `Project/Encoding/` | The encoder, decoder, `decode_encode`, and the testsuite runner. |
 | `Project/ProofKit/` | General lemmas: memory, arrays, allocation, and binary32 arithmetic. |
-| `Project/Scale/`, `Project/Gcd/` | Compiled programs with their theorems. |
+| `Project/Scale/`, `Project/Gcd/`, `Project/SumArray/` | Compiled programs with their theorems. |
 | `ltg/` | The LTG knowledge base. |
 | `tools/` | The resource-limited Lean runner and the Wasmtime host builder. |
 

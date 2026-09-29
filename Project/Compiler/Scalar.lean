@@ -1,4 +1,5 @@
 import Lean
+import Project.IR.Fold
 import Project.IR.Function
 import Project.IR.Hint
 
@@ -22,12 +23,27 @@ def binaryRules : List (Name × U64Op × String) :=
 def isUInt64 (type : Lean.Expr) : MetaM Bool := do
   return (← whnfR type).isConstOf ``UInt64
 
-/-- The compiler's view of the function being compiled.  Locals are laid out as
-the parameters, then `result`, `done`, one temporary per parameter, and scratch. -/
+def isUInt64Array (type : Lean.Expr) : MetaM Bool := do
+  let type ← whnfR type
+  return type.isAppOfArity ``Array 1 && (← isUInt64 type.appArg!)
+
+/-- The number of instructions in the code of an expression or a statement.  It
+does not depend on the scratch index. -/
+def exprLength (e : IRExpr type) : Nat := (e.program 0).length
+def stmtLength (s : Project.IR.Stmt) : Nat := (s.program 0).length
+
+/-- The compiler's view of the definition being compiled.  `words` and `arrays`
+give the local of each `UInt64` and `Array UInt64` variable in scope.  A
+recursive definition's locals are the parameters, then `result`, `done`, and one
+temporary per parameter.  `foldable` says whether a fold may appear: a fold runs
+before the value that contains it, so it may not appear in a branch, in a fold
+body, or in a recursive definition. -/
 structure Ctx where
   self : Name
   params : Array Lean.Expr
-  scratch : Nat
+  words : List (Lean.Expr × Nat)
+  arrays : List (Lean.Expr × Nat)
+  foldable : Bool
 
 def Ctx.result (ctx : Ctx) : Nat := ctx.params.size
 def Ctx.done (ctx : Ctx) : Nat := ctx.params.size + 1
@@ -50,20 +66,50 @@ def Loc.inside (loc : Loc) (branch : Option Nat) : Loc :=
 def mkHint (loc : Loc) (length : Nat) (rule source : String) : Hint :=
   { func := 0, path := loc.path, length, rule, source }
 
+/-- The hint for code moved `offset` instructions later in the function body. -/
+def Hint.shift (offset : Nat) (hint : Hint) : Hint :=
+  match hint.path with
+  | i :: rest => { hint with path := (i + offset) :: rest }
+  | [] => hint
+
+/-- The start of the body's code in a fold whose code starts at `loc`: inside the
+block and loop of the `while`, after the condition, the exit test, and the
+element load. -/
+def foldBodyLoc (loc : Loc) : Project.IR.Stmt → Loc
+  | .seq first (.seq second (.while condition (.seq load _))) =>
+      (((loc.skip (stmtLength first + stmtLength second)).inside none).inside none).skip
+        (exprLength condition + 2 + stmtLength load)
+  | _ => loc
+
 def sourceOf (term : Lean.Expr) : MetaM String := return toString (← ppExpr term)
 
+/-- Statements that run before the value being translated and become the start
+of the function body, with their hints, their code length, and the compiler's
+variables. -/
+structure Prelude where
+  stmts : Array Project.IR.Stmt := #[]
+  hints : Array Hint := #[]
+  length : Nat := 0
+  next : Nat
+  names : Array (String × Nat) := #[]
+
+abbrev CompileM := StateT Prelude MetaM
+
 mutual
-  /-- Translates a `UInt64` term to an IR expression whose code starts at `loc`
-  and uses scratch locals from `scratch`. -/
-  partial def translateValue (ctx : Ctx) (scratch : Nat) (loc : Loc) (term : Lean.Expr) :
-      MetaM (IRExpr .u64 × List Hint) := do
+  /-- Translates a `UInt64` term to an IR expression whose code starts at `loc`.
+  A fold in the term adds its statements to the prelude, and the expression reads
+  its accumulator. -/
+  partial def translateValue (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
+      CompileM (IRExpr .u64 × List Hint) := do
     let term := term.consumeMData
     let source ← sourceOf term
     let hint (ir : IRExpr .u64) (rule : String) : Hint :=
-      mkHint loc (ir.program scratch).length rule source
-    if let some index := ctx.params.idxOf? term then
+      mkHint loc (exprLength ir) rule source
+    if let some index := ctx.words.lookup term then
       let ir : IRExpr .u64 := .get index
-      return (ir, [hint ir "parameter"])
+      return (ir, [hint ir "variable"])
+    if (ctx.arrays.lookup term).isSome then
+      throwError "the array {source} is used as a value"
     match term.getAppFnArgs with
     | (``OfNat.ofNat, #[type, .lit (.natVal value), _]) =>
         unless ← isUInt64 type do throwError "unsupported literal type: {type}"
@@ -71,51 +117,82 @@ mutual
         return (ir, [hint ir "literal"])
     | (``ite, #[type, condition, _, thenTerm, elseTerm]) =>
         unless ← isUInt64 type do throwError "unsupported conditional type in {source}"
-        let (c, cHints) ← translateCondition ctx scratch loc condition
-        let branch := loc.skip (c.program scratch).length
-        let (a, aHints) ← translateValue ctx scratch (branch.inside (some 0)) thenTerm
-        let (b, bHints) ← translateValue ctx scratch (branch.inside (some 1)) elseTerm
+        let inner := { ctx with foldable := false }
+        let (c, cHints) ← translateCondition inner loc condition
+        let branch := loc.skip (exprLength c)
+        let (a, aHints) ← translateValue inner (branch.inside (some 0)) thenTerm
+        let (b, bHints) ← translateValue inner (branch.inside (some 1)) elseTerm
         let ir : IRExpr .u64 := .ite c a b
         return (ir, hint ir "conditional value" :: cHints ++ aHints ++ bHints)
+    | (``Array.foldl, #[element, acc, f, init, array, start, stop]) =>
+        unless ctx.foldable do
+          throwError "a fold may not appear in a branch, a fold body, or a recursive definition: {source}"
+        unless (← isUInt64 element) && (← isUInt64 acc) do
+          throwError "unsupported fold types in {source}"
+        let some arrayLocal := ctx.arrays.lookup array.consumeMData
+          | throwError "a fold must run over an array variable: {source}"
+        unless start.nat? == some 0 do throwError "a fold must start at index 0: {source}"
+        match stop.consumeMData.getAppFnArgs with
+        | (``Array.size, #[_, sized]) =>
+            unless sized.consumeMData == array.consumeMData do
+              throwError "a fold must stop at the size of its array: {source}"
+        | _ => throwError "a fold must stop at the size of its array: {source}"
+        let (initial, initialHints) ← translateValue ctx ⟨[], 0⟩ init
+        let before ← get
+        let accLocal := before.next
+        let (indexLocal, lengthLocal, elementLocal) := (accLocal + 1, accLocal + 2, accLocal + 3)
+        let assign : Project.IR.Stmt := .assign accLocal initial
+        let foldLoc : Loc := ⟨[], before.length + stmtLength assign⟩
+        let bodyLoc := foldBodyLoc foldLoc
+          (Stmt.fold arrayLocal accLocal indexLocal lengthLocal elementLocal (.const 0))
+        let (body, bodyHints) ← withLocalDeclD `acc acc fun a => withLocalDeclD `element element
+          fun e => translateValue
+            { ctx with words := (a, accLocal) :: (e, elementLocal) :: ctx.words, foldable := false }
+            bodyLoc (mkApp2 f a e).headBeta
+        let fold := Stmt.fold arrayLocal accLocal indexLocal lengthLocal elementLocal body
+        set { before with
+          stmts := before.stmts.push assign |>.push fold
+          hints := before.hints ++
+            (mkHint ⟨[], before.length⟩ (stmtLength assign) "fold start" (← sourceOf init) ::
+              initialHints.map (Hint.shift before.length) ++
+              mkHint foldLoc (stmtLength fold) "array-fold-loop" source :: bodyHints).toArray
+          length := before.length + stmtLength assign + stmtLength fold
+          next := accLocal + 4
+          names := before.names ++ #[("accumulator", accLocal), ("index", indexLocal),
+            ("length", lengthLocal), ("element", elementLocal)] }
+        let ir : IRExpr .u64 := .get accLocal
+        return (ir, [hint ir "fold result"])
     | (fn, #[left, right, out, _, a, b]) =>
         let some (_, op, rule) := binaryRules.find? (·.1 == fn)
           | throwError "unsupported operation {fn} in {source}"
         unless (← isUInt64 left) && (← isUInt64 right) && (← isUInt64 out) do
           throwError "unsupported operand types in {source}"
-        if op = .divU ∨ op = .remU then
-          let childScratch := scratch + 2
-          let (l, lHints) ← translateValue ctx childScratch loc a
-          let (r, rHints) ← translateValue ctx childScratch
-            (loc.skip ((l.program childScratch).length + 1)) b
-          let ir : IRExpr .u64 := .bin op l r
-          return (ir, hint ir rule :: lHints ++ rHints)
-        else
-          let (l, lHints) ← translateValue ctx scratch loc a
-          let (r, rHints) ← translateValue ctx scratch (loc.skip (l.program scratch).length) b
-          let ir : IRExpr .u64 := .bin op l r
-          return (ir, hint ir rule :: lHints ++ rHints)
+        let (l, lHints) ← translateValue ctx loc a
+        let offset := if op = .divU ∨ op = .remU then exprLength l + 1 else exprLength l
+        let (r, rHints) ← translateValue ctx (loc.skip offset) b
+        let ir : IRExpr .u64 := .bin op l r
+        return (ir, hint ir rule :: lHints ++ rHints)
     | _ => throwError "unsupported term: {source}"
 
   /-- Translates a decidable proposition about `UInt64` values to an IR
   condition. -/
-  partial def translateCondition (ctx : Ctx) (scratch : Nat) (loc : Loc)
-      (prop : Lean.Expr) : MetaM (IRExpr .bool × List Hint) := do
+  partial def translateCondition (ctx : Ctx) (loc : Loc) (prop : Lean.Expr) :
+      CompileM (IRExpr .bool × List Hint) := do
     let prop := prop.consumeMData
     let source ← sourceOf prop
     let hint (ir : IRExpr .bool) (rule : String) : Hint :=
-      mkHint loc (ir.program scratch).length rule source
+      mkHint loc (exprLength ir) rule source
     let pair (make : IRExpr .u64 → IRExpr .u64 → IRExpr .bool) (rule : String)
-        (a b : Lean.Expr) : MetaM (IRExpr .bool × List Hint) := do
-      let (l, lHints) ← translateValue ctx scratch loc a
-      let (r, rHints) ← translateValue ctx scratch (loc.skip (l.program scratch).length) b
+        (a b : Lean.Expr) : CompileM (IRExpr .bool × List Hint) := do
+      let (l, lHints) ← translateValue ctx loc a
+      let (r, rHints) ← translateValue ctx (loc.skip (exprLength l)) b
       let ir := make l r
       return (ir, hint ir rule :: lHints ++ rHints)
     let connective (make : IRExpr .bool → IRExpr .bool → IRExpr .bool) (rule : String)
-        (a b : Lean.Expr) : MetaM (IRExpr .bool × List Hint) := do
-      let (l, lHints) ← translateCondition ctx scratch loc a
-      let inner := (loc.skip (l.program scratch).length).inside
-        (some (if rule == "and" then 0 else 1))
-      let (r, rHints) ← translateCondition ctx scratch inner b
+        (a b : Lean.Expr) : CompileM (IRExpr .bool × List Hint) := do
+      let (l, lHints) ← translateCondition ctx loc a
+      let inner := (loc.skip (exprLength l)).inside (some (if rule == "and" then 0 else 1))
+      let (r, rHints) ← translateCondition { ctx with foldable := false } inner b
       let ir := make l r
       return (ir, hint ir rule :: lHints ++ rHints)
     match prop.getAppFnArgs with
@@ -138,7 +215,7 @@ mutual
         unless ← isUInt64 type do throwError "unsupported comparison type in {source}"
         pair .leU "at least" b a
     | (``Not, #[p]) =>
-        let (c, cHints) ← translateCondition ctx scratch loc p
+        let (c, cHints) ← translateCondition ctx loc p
         let ir : IRExpr .bool := .not c
         return (ir, hint ir "not" :: cHints)
     | (``And, #[a, b]) => connective .and "and" a b
@@ -156,18 +233,17 @@ def seqAll : List Project.IR.Stmt → Project.IR.Stmt
 statement that either updates the parameters for the next iteration or stores
 the result and sets `done`. -/
 partial def translateTail (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
-    MetaM (Project.IR.Stmt × List Hint) := do
+    CompileM (Project.IR.Stmt × List Hint) := do
   let term := term.consumeMData
   let source ← sourceOf term
   match term.getAppFnArgs with
   | (``ite, #[_, condition, _, thenTerm, elseTerm]) =>
-      let (c, cHints) ← translateCondition ctx ctx.scratch loc condition
-      let branch := loc.skip (c.program ctx.scratch).length
+      let (c, cHints) ← translateCondition ctx loc condition
+      let branch := loc.skip (exprLength c)
       let (a, aHints) ← translateTail ctx (branch.inside (some 0)) thenTerm
       let (b, bHints) ← translateTail ctx (branch.inside (some 1)) elseTerm
       let stmt : Project.IR.Stmt := .ite c a b
-      return (stmt, mkHint loc (stmt.program ctx.scratch).length "branch" source ::
-        cHints ++ aHints ++ bHints)
+      return (stmt, mkHint loc (stmtLength stmt) "branch" source :: cHints ++ aHints ++ bHints)
   | (fn, args) =>
       if fn == ctx.self then
         unless args.size == ctx.params.size do
@@ -178,28 +254,28 @@ partial def translateTail (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
         let mut hints : List Hint := []
         let mut here := loc
         for i in [:args.size] do
-          let (value, valueHints) ← translateValue ctx ctx.scratch here args[i]!
+          let (value, valueHints) ← translateValue ctx here args[i]!
           let stmt : Project.IR.Stmt := .assign (ctx.temp i) value
           stmts := stmts ++ [stmt]
           hints := hints ++ valueHints
-          here := here.skip (stmt.program ctx.scratch).length
+          here := here.skip (stmtLength stmt)
         for i in [:args.size] do
           stmts := stmts ++ [.assign i (.get (ctx.temp i))]
         let stmt := seqAll stmts
-        return (stmt, mkHint loc (stmt.program ctx.scratch).length "tail call" source :: hints)
+        return (stmt, mkHint loc (stmtLength stmt) "tail call" source :: hints)
       else
-        let (value, valueHints) ← translateValue ctx ctx.scratch loc term
+        let (value, valueHints) ← translateValue ctx loc term
         let stmt : Project.IR.Stmt :=
           .seq (.assign ctx.result value) (.assign ctx.done (.const 1))
-        return (stmt, mkHint loc (stmt.program ctx.scratch).length "base case" source ::
-          valueHints)
+        return (stmt, mkHint loc (stmtLength stmt) "base case" source :: valueHints)
 
-/-- Compiles the definition `declName`, whose parameters and result are all
-`UInt64`, to an IR function with hints.  The compiler reads the definition's
-unfolding equation, so a recursive call appears as a call of `declName`.  A
-definition without recursive calls becomes a result expression; a definition
-whose recursive calls are all in tail position becomes a loop. -/
-def compileScalar (declName : Name) : MetaM (Func × Hints) := do
+/-- Compiles the definition `declName`, whose parameters are `UInt64` or
+`Array UInt64` and whose result is `UInt64`, to an IR function with hints.  The
+compiler reads the definition's unfolding equation, so a recursive call appears
+as a call of `declName`.  A definition without recursive calls becomes a prelude
+of folds and a result expression; a definition whose recursive calls are all in
+tail position becomes a loop. -/
+def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
   let env ← getEnv
   let .defnInfo _ ← getConstInfo declName
     | throwError "{declName} is not a definition"
@@ -210,22 +286,31 @@ def compileScalar (declName : Name) : MetaM (Func × Hints) := do
   forallTelescope (← getConstInfo equation).type fun params eq => do
     let some (_, _, body) := eq.eq?
       | throwError "unexpected unfolding equation for {declName}"
-    for param in params do
-      unless ← isUInt64 (← inferType param) do
-        throwError "parameter {param} of {declName} is not UInt64"
+    let mut words := []
+    let mut arrays := []
+    for h : i in [:params.size] do
+      let type ← inferType params[i]
+      if ← isUInt64 type then
+        words := (params[i], i) :: words
+      else if ← isUInt64Array type then
+        arrays := (params[i], i) :: arrays
+      else
+        throwError "parameter {params[i]} of {declName} is neither UInt64 nor Array UInt64"
     unless ← isUInt64 (← inferType body) do
       throwError "the result of {declName} is not UInt64"
     let paramNames ← params.toList.mapM fun p => return (← p.fvarId!.getUserName).toString
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
     if recursive then
-      let ctx : Ctx := { self := declName, params, scratch := params.size + params.size + 2 }
+      unless arrays.isEmpty do
+        throwError "a recursive definition may not take arrays: {declName}"
+      let ctx : Ctx := { self := declName, params, words, arrays, foldable := false }
       -- The loop is the first instruction of the body: a block holding a loop.
       let loopBody := ((({ prefix_ := [], index := 0 } : Loc).inside none).inside none)
       let condition : IRExpr .bool := .eq (.get ctx.done) (.const 0)
-      let (step, stepHints) ← translateTail ctx
-        (loopBody.skip ((condition.program ctx.scratch).length + 2)) body
+      let (step, stepHints) ← (translateTail ctx
+        (loopBody.skip (exprLength condition + 2)) body).run' { next := ctx.vars }
       let loop : Project.IR.Stmt := .while condition step
-      let loopHint := mkHint { prefix_ := [], index := 0 } (loop.program ctx.scratch).length
+      let loopHint := mkHint { prefix_ := [], index := 0 } (stmtLength loop)
         "tail-recursion-loop" (← sourceOf body)
       let resultHint := mkHint { prefix_ := [], index := 1 } 1 "result" "result"
       let names := paramNames.zipIdx ++
@@ -234,10 +319,16 @@ def compileScalar (declName : Name) : MetaM (Func × Hints) := do
       return ({ params := params.size, vars := ctx.vars, body := loop, result := .get ctx.result },
         { locals := names, nodes := loopHint :: stepHints ++ [resultHint] })
     else
-      let ctx : Ctx := { self := declName, params, scratch := params.size }
-      let (result, nodes) ← translateValue ctx ctx.scratch { prefix_ := [], index := 0 } body
-      return ({ params := params.size, vars := 0, body := .skip, result },
-        { locals := paramNames.zipIdx, nodes })
+      let ctx : Ctx := { self := declName, params, words, arrays, foldable := true }
+      let ((result, resultHints), prelude) ←
+        (translateValue ctx { prefix_ := [], index := 0 } body).run { next := params.size }
+      let func : Func :=
+        { params := params.size, vars := prelude.next - params.size
+          body := seqAll prelude.stmts.toList, result }
+      let hints : Hints :=
+        { locals := paramNames.zipIdx ++ prelude.names.toList
+          nodes := prelude.hints.toList ++ resultHints.map (Hint.shift prelude.length) }
+      return (func, hints)
 
 deriving instance ToExpr for U64Op
 
@@ -266,6 +357,8 @@ def stmtToExpr : Project.IR.Stmt → Lean.Expr
         (stmtToExpr elseStmt)
   | .while condition body =>
       mkApp2 (mkConst ``Project.IR.Stmt.while) (irToExpr condition) (stmtToExpr body)
+  | .load index address =>
+      mkApp2 (mkConst ``Project.IR.Stmt.load) (toExpr index) (irToExpr address)
 
 def funcToExpr (func : Func) : Lean.Expr :=
   mkApp4 (mkConst ``Func.mk) (toExpr func.params) (toExpr func.vars) (stmtToExpr func.body)

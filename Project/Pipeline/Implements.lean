@@ -21,6 +21,10 @@ instance (priority := low) [Scalar α] : Represent α where
   borrowed _ _ vs x := vs = Scalar.values x
   owned _ _ vs x := vs = Scalar.values x
 
+theorem Scalar.borrowed [Scalar α] {heap : Heap} {store : Store Unit} {params : List Value}
+    {x : α} : Represent.borrowed heap store params x ↔ params = Scalar.values x :=
+  Iff.rfl
+
 instance : Scalar UInt64 := ⟨fun x => [.i64 x]⟩
 
 instance [Scalar α] [Scalar β] : Scalar (α × β) :=
