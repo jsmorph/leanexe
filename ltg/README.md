@@ -12,11 +12,10 @@ entries list and reports each listed declaration that does not exist.  Run it
 from the repository root:
 
 ```sh
-tools/leanrun --timeout 10m lake -d proofs/talos/lean env lean --run \
-  proofs/talos/lean/Project/LTG/Check.lean ltg/entries
+tools/leanrun --timeout 10m lake env lean --run Project/LTG/Check.lean ltg/entries
 ```
 
 `tail-recursion-loop` covers the compiler's tail-recursion rule and is proved
-for every function the rule produces.  The other entries describe general
+for every function the rule produces.  The other ten entries describe general
 semantics from the earlier proof library and are kept for review as the
 iterations need them.
