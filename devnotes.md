@@ -18867,3 +18867,37 @@ mine also overstated the CLOB's dependence on sharing, since copying on update
 is correct without `retain`.
 
 - [ ] CLOB 1: `marketBuy`.
+
+## 2026-09-29: CLOB 1, marketBuy
+
+`marketBuy askPrices askSizes qty` walks the ask levels with `LeanExe.loop`,
+defined with `Nat.fold`, and returns `#[filled, cost]`.  The increment added:
+- the memory argument of `Expr.eval` and the read expression `Expr.read`, with
+  `Expr.readValue` holding the memory part so that `simp` does not unfold it;
+- `Stmt.loop` and `Stmt.loop_spec`, over a state of any `Scalar` type held in
+  locals (`State.Holds`);
+- `Stmt.run`, `Stmt.run_spec`, and `State.update`, which let `simp` compute the
+  effect of straight-line statements on a symbolic state;
+- `Represent` for pairs of represented types, at a priority below the `Scalar`
+  instance so pairs of scalars keep their representation;
+- compiler rules for `LeanExe.loop`, pattern matches on pairs (unfolding the
+  `match` auxiliary by delta and beta reduction), `have` in loop bodies, `min`
+  on `UInt64`, and `xs[i.toNat]!`.
+
+The first `simp` attempt on the loop body unfolded reads through `Expr.eval`'s
+equations instead of the read lemma.  Excluding the equation by its generated
+name (`Expr.eval.eq_9`) would break when constructors change, so the memory part
+moved into `Expr.readValue`.  A `repeat (first | exact Frame.refl | refine
+Frame.update ...)` timed out, because the failed `refl` unfolds the whole update
+chain; applying the update steps first fixed it.  The source equals the loop
+over a named `step` function by `rfl`, since the pattern match on the state
+unfolds to projections by structure eta.
+
+`body_run` takes 16 lines and `marketBuy_implements` 75.  `marketBuy.wasm`
+(1,507 bytes) matches native Lean on 45 books, and the eleven earlier modules
+kept their bytes.  Hints name the pattern variables `fst` and `snd` instead of
+the source names, because the unfolded `match` auxiliary binds its own names.
+
+- [x] CLOB 1: `marketBuy`.
+- [ ] Hints: keep the source names of pattern variables.
+- [ ] CLOB 2: a limit order with the copying template and `insertIdx`.

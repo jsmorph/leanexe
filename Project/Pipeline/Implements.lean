@@ -37,6 +37,14 @@ instance : Represent (Array UInt64) where
   borrowed heap store vs xs := ∃ ptr, vs = [.i64 ptr] ∧ heap.Borrowed store ptr xs
   owned heap store vs xs := ∃ ptr, vs = [.i64 ptr] ∧ heap.Owned store ptr xs
 
+/-- A pair is represented by its first component's values followed by its
+second's.  Pairs of scalars use the `Scalar` instance, which comes first. -/
+instance (priority := 50) [Represent α] [Represent β] : Represent (α × β) where
+  borrowed heap store vs p := ∃ first second, vs = first ++ second ∧
+    Represent.borrowed heap store first p.1 ∧ Represent.borrowed heap store second p.2
+  owned heap store vs p := ∃ first second, vs = first ++ second ∧
+    Represent.owned heap store first p.1 ∧ Represent.owned heap store second p.2
+
 /-- An `Array Float` is stored as the array of its elements' bit patterns. -/
 instance : Represent (Array Float) where
   borrowed heap store vs xs := Represent.borrowed heap store vs (xs.map Float.toBits)

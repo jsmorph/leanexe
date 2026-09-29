@@ -55,7 +55,7 @@ theorem Stmt.fold_spec {elementType accType : ScalarType}
     (hStart : before.get acc = some (accType.value start))
     (hBody : ∀ state a e, State.Frame scratch [acc, index, length, element] before state →
       state.get acc = some (accType.value a) → state.get element = some (elementType.ofBits e) →
-      ∃ next, body.eval scratch state = some (g a e, next)) :
+      ∃ next, body.eval initial.mem scratch state = some (g a e, next)) :
     Triple m (.fold elementType array acc index length element body) scratch
       (fun store state => store = initial ∧ state = before)
       (fun store state => store = initial ∧
@@ -120,13 +120,13 @@ theorem Stmt.fold_spec {elementType accType : ScalarType}
     have hAccT1 : t1.get acc = some (accType.value (ArrayFold.foldPrefix xs g start k)) := by
       rw [State.get_set?_ne (by omega) hSetT1, hAcc]
     obtain ⟨t2, hBodyEval⟩ := hBody t1 _ _ hFrameT1 hAccT1 (State.get_set?_same hSetT1)
-    have hFrameT2 := hFrameT1.trans (Expr.eval_frame _ body scratch t1 t2 _ hBodyEval)
+    have hFrameT2 := hFrameT1.trans (Expr.eval_frame _ body initial.mem scratch t1 t2 _ hBodyEval)
     obtain ⟨t3, hSetT3⟩ := State.exists_set? (state := t2) (index := acc)
       (accType.value (g (ArrayFold.foldPrefix xs g start k) xs[k]))
       (by have := hFrameT2.params; have := hFrameT2.locals; omega)
     have hFrameT3 := hFrameT2.set? hSetT3 (hWrites _ (by simp))
     have hBodyKeeps : ∀ j, j < scratch → t2.get j = t1.get j := fun j hj =>
-      (Expr.eval_frame [] body scratch t1 t2 _ hBodyEval).get j hj (by simp)
+      (Expr.eval_frame [] body initial.mem scratch t1 t2 _ hBodyEval).get j hj (by simp)
     have hIndexT3 : t3.get index = some (.i64 (UInt64.ofNat k)) := by
       rw [State.get_set?_ne (by omega) hSetT3, hBodyKeeps index hIndexBelow,
         State.get_set?_ne (by omega) hSetT1, hIndex]

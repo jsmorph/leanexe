@@ -47,8 +47,8 @@ theorem Stmt.storeElements_spec {scratch dst : Nat} {before : State} {ptr : UInt
     {all : Array UInt64} (hDst : dst < scratch) (values : List (Expr .u64)) :
     ∀ (index : Nat) (start : Store Unit) (state : State),
       index + values.length = all.size →
-      List.Forall₂ (fun value word => ∀ st, State.Frame scratch [dst] before st →
-        ∃ next, value.eval scratch st = some (word, next)) values (all.toList.drop index) →
+      List.Forall₂ (fun value word => ∀ mem st, State.Frame scratch [dst] before st →
+        ∃ next, value.eval mem scratch st = some (word, next)) values (all.toList.drop index) →
       UInt64Array.PrefixAt start ptr all index →
       State.Frame scratch [dst] before state → state.get dst = some (.i64 ptr) →
       Triple m (Stmt.storeElements dst index values) scratch
@@ -72,10 +72,10 @@ theorem Stmt.storeElements_spec {scratch dst : Nat} {before : State} {ptr : UInt
       rw [List.drop_eq_getElem_cons (by simpa using hIndex)] at hValues
       obtain ⟨hValue, hRest⟩ := List.forall₂_cons.mp hValues
       simp only [Array.getElem_toList] at hValue
-      obtain ⟨next, hEval⟩ := hValue state hFrame
-      have hNextFrame := hFrame.trans (Expr.eval_frame [dst] value scratch state next _ hEval)
+      obtain ⟨next, hEval⟩ := hValue start.mem state hFrame
+      have hNextFrame := hFrame.trans (Expr.eval_frame [dst] value start.mem scratch state next _ hEval)
       have hNextPtr : next.get dst = some (.i64 ptr) := by
-        rw [Expr.eval_preserves_below value scratch state next _ dst hEval hDst, hPtr]
+        rw [Expr.eval_preserves_below value start.mem scratch state next _ dst hEval hDst, hPtr]
       refine Stmt.seq_spec
         (M := fun s t => s = UInt64Array.writeElement start ptr index all[index] ∧ t = next) ?_
         ((ih (index + 1) _ next (by omega) hRest
@@ -101,8 +101,8 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
     (hFunc : m.funcs[1]? = some (allocFunction typeIdx))
     (hDst : dst < scratch) (hRoom : scratch ≤ before.params.length + before.locals.length)
     (hHeap : heap.At initial) (hSpace : heap.Room initial m (48 + 8 * (values.length + 1)))
-    (hValues : List.Forall₂ (fun value word => ∀ state, State.Frame scratch [dst] before state →
-      ∃ next, value.eval scratch state = some (word, next)) values words) :
+    (hValues : List.Forall₂ (fun value word => ∀ mem state, State.Frame scratch [dst] before state →
+      ∃ next, value.eval mem scratch state = some (word, next)) values words) :
     Triple m (.arrayLiteral dst values) scratch
       (fun store state => store = initial ∧ state = before)
       (fun store state => ∃ ptr, State.Frame scratch [dst] before state ∧

@@ -49,7 +49,7 @@ theorem sumCount_implements :
     (words := [xs.foldl (· + ·) 0, UInt64.ofNat xs.size]) hMemory32 hImports hAlloc (by decide)
     (by rw [hFrame3.params, hFrame3.locals]; omega) hHeap hRoom ?_).mono
       (fun _ _ h => h) ?_
-  · refine .cons (fun state hFrame => ⟨state, ?_⟩) (.cons (fun state hFrame => ⟨state, ?_⟩) .nil)
+  · refine .cons (fun _ state hFrame => ⟨state, ?_⟩) (.cons (fun _ state hFrame => ⟨state, ?_⟩) .nil)
     · have hGet : state.get 1 = some (.i64 (xs.foldl (· + ·) 0)) := by
         rw [hFrame.get 1 (by decide) (by decide), State.get_set?_ne (by decide) hSet3, hAcc]
       simp [Expr.eval, hGet]

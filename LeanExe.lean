@@ -1,5 +1,6 @@
 import LeanExe.Examples.Axpy
 import LeanExe.Examples.Bucket
+import LeanExe.Examples.Clob
 import LeanExe.Examples.Gcd
 import LeanExe.Examples.Mean
 import LeanExe.Examples.PairSum
@@ -10,4 +11,5 @@ import LeanExe.Examples.SumArray
 import LeanExe.Examples.SumCount
 import LeanExe.Examples.SumSquares
 import LeanExe.Float32
+import LeanExe.Loop
 import LeanExe.Signed32

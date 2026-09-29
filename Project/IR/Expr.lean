@@ -264,96 +264,116 @@ inductive Expr : ScalarType → Type where
   /-- The float truncated toward zero and clamped to an unsigned word, as
   `i64.trunc_sat_f64_u`. -/
   | truncSatU (operand : Expr .f64) : Expr .u64
+  /-- Element `position` of the array whose pointer local `array` holds, or 0 when
+  `position` is not below the array's length.  Scratch local `scratch` holds the
+  position. -/
+  | read (array : Nat) (position : Expr .u64) : Expr .u64
   deriving Repr
+
+/-- Element `k` of the array whose pointer local `array` holds, or 0 when `k` is
+not below the array's length word; `none` when a load would leave memory. -/
+def Expr.readValue (mem : Mem) (array : Nat) (k : UInt64) (state : State) :
+    Option (UInt64 × State) := do
+  let .i64 ptr ← state.get array | none
+  if ptr.toUInt32.toNat + 8 ≤ mem.pages * 65536 then
+    if k < mem.read64 ptr.toUInt32 then
+      if (ptr + (k + 1) * 8).toUInt32.toNat + 8 ≤ mem.pages * 65536 then
+        pure (mem.read64 (ptr + (k + 1) * 8).toUInt32, state)
+      else none
+    else pure (0, state)
+  else none
 
 mutual
 
   def Expr.eval : {type : ScalarType} →
-      Expr type → Nat → State → Option (type.denote × State)
-    | .u64, .get index, _, state => do
+      Expr type → Mem → Nat → State → Option (type.denote × State)
+    | .u64, .get index, _, _, state => do
         let .i64 value ← state.get index | none
         pure (value, state)
-    | .u64, .const value, _, state => pure (value, state)
-    | .bool, .bconst value, _, state => pure (value, state)
-    | .f64, .getF index, _, state => do
+    | .u64, .const value, _, _, state => pure (value, state)
+    | .bool, .bconst value, _, _, state => pure (value, state)
+    | .f64, .getF index, _, _, state => do
         let .f64 value ← state.get index | none
         pure (value, state)
-    | .f64, .binF op left right, scratch, state => do
-        let (leftValue, afterLeft) ← left.eval scratch state
-        let (rightValue, afterRight) ← right.eval scratch afterLeft
+    | .f64, .binF op left right, mem, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval mem scratch state
+        let (rightValue, afterRight) ← right.eval mem scratch afterLeft
         pure (op.apply leftValue rightValue, afterRight)
-    | .f64, .unF op operand, scratch, state => do
-        let (value, next) ← operand.eval scratch state
+    | .f64, .unF op operand, mem, scratch, state => do
+        let (value, next) ← operand.eval mem scratch state
         pure (op.apply value, next)
-    | .f64, .convertU operand, scratch, state => do
-        let (value, next) ← operand.eval scratch state
+    | .f64, .convertU operand, mem, scratch, state => do
+        let (value, next) ← operand.eval mem scratch state
         pure (IEEE64.convertI64U value, next)
-    | .u64, .truncSatU operand, scratch, state => do
-        let (value, next) ← operand.eval scratch state
+    | .u64, .truncSatU operand, mem, scratch, state => do
+        let (value, next) ← operand.eval mem scratch state
         pure (IEEE64.truncSatI64U value, next)
-    | .f64, .constF bits, _, state => pure (bits, state)
-    | .f64, .iteF condition thenValue elseValue, scratch, state => do
-        let (conditionValue, afterCondition) ← condition.eval scratch state
+    | .u64, .read array position, mem, scratch, state => do
+        let (k, afterPosition) ← position.eval mem (scratch + 1) state
+        Expr.readValue mem array k (← afterPosition.set? scratch (.i64 k))
+    | .f64, .constF bits, _, _, state => pure (bits, state)
+    | .f64, .iteF condition thenValue elseValue, mem, scratch, state => do
+        let (conditionValue, afterCondition) ← condition.eval mem scratch state
         if conditionValue then
-          thenValue.eval scratch afterCondition
+          thenValue.eval mem scratch afterCondition
         else
-          elseValue.eval scratch afterCondition
-    | .bool, .eqF left right, scratch, state => do
-        let (leftValue, afterLeft) ← left.eval scratch state
-        let (rightValue, afterRight) ← right.eval scratch afterLeft
+          elseValue.eval mem scratch afterCondition
+    | .bool, .eqF left right, mem, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval mem scratch state
+        let (rightValue, afterRight) ← right.eval mem scratch afterLeft
         pure (IEEE64.eq leftValue rightValue, afterRight)
-    | .bool, .ltF left right, scratch, state => do
-        let (leftValue, afterLeft) ← left.eval scratch state
-        let (rightValue, afterRight) ← right.eval scratch afterLeft
+    | .bool, .ltF left right, mem, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval mem scratch state
+        let (rightValue, afterRight) ← right.eval mem scratch afterLeft
         pure (IEEE64.lt leftValue rightValue, afterRight)
-    | .bool, .leF left right, scratch, state => do
-        let (leftValue, afterLeft) ← left.eval scratch state
-        let (rightValue, afterRight) ← right.eval scratch afterLeft
+    | .bool, .leF left right, mem, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval mem scratch state
+        let (rightValue, afterRight) ← right.eval mem scratch afterLeft
         pure (IEEE64.le leftValue rightValue, afterRight)
-    | .u64, .bin op left right, scratch, state => do
+    | .u64, .bin op left right, mem, scratch, state => do
         let childScratch := if op = .divU ∨ op = .remU then scratch + 2 else scratch
-        let (leftValue, afterLeft) ← left.eval childScratch state
+        let (leftValue, afterLeft) ← left.eval mem childScratch state
         let afterLeft ←
           if op = .divU ∨ op = .remU then
             afterLeft.set? scratch (.i64 leftValue)
           else some afterLeft
-        let (rightValue, afterRight) ← right.eval childScratch afterLeft
+        let (rightValue, afterRight) ← right.eval mem childScratch afterLeft
         let afterRight ←
           if op = .divU ∨ op = .remU then
             afterRight.set? (scratch + 1) (.i64 rightValue)
           else some afterRight
         pure (op.apply leftValue rightValue, afterRight)
-    | .bool, .eq left right, scratch, state => do
-        let (leftValue, afterLeft) ← left.eval scratch state
-        let (rightValue, afterRight) ← right.eval scratch afterLeft
+    | .bool, .eq left right, mem, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval mem scratch state
+        let (rightValue, afterRight) ← right.eval mem scratch afterLeft
         pure (leftValue == rightValue, afterRight)
-    | .bool, .ne left right, scratch, state => do
-        let (leftValue, afterLeft) ← left.eval scratch state
-        let (rightValue, afterRight) ← right.eval scratch afterLeft
+    | .bool, .ne left right, mem, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval mem scratch state
+        let (rightValue, afterRight) ← right.eval mem scratch afterLeft
         pure (leftValue != rightValue, afterRight)
-    | .bool, .ltU left right, scratch, state => do
-        let (leftValue, afterLeft) ← left.eval scratch state
-        let (rightValue, afterRight) ← right.eval scratch afterLeft
+    | .bool, .ltU left right, mem, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval mem scratch state
+        let (rightValue, afterRight) ← right.eval mem scratch afterLeft
         pure (decide (leftValue < rightValue), afterRight)
-    | .bool, .leU left right, scratch, state => do
-        let (leftValue, afterLeft) ← left.eval scratch state
-        let (rightValue, afterRight) ← right.eval scratch afterLeft
+    | .bool, .leU left right, mem, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval mem scratch state
+        let (rightValue, afterRight) ← right.eval mem scratch afterLeft
         pure (decide (leftValue ≤ rightValue), afterRight)
-    | .bool, .not condition, scratch, state => do
-        let (value, next) ← condition.eval scratch state
+    | .bool, .not condition, mem, scratch, state => do
+        let (value, next) ← condition.eval mem scratch state
         pure (!value, next)
-    | .bool, .and left right, scratch, state => do
-        let (leftValue, afterLeft) ← left.eval scratch state
-        if leftValue then right.eval scratch afterLeft else pure (false, afterLeft)
-    | .bool, .or left right, scratch, state => do
-        let (leftValue, afterLeft) ← left.eval scratch state
-        if leftValue then pure (true, afterLeft) else right.eval scratch afterLeft
-    | .u64, .ite condition thenValue elseValue, scratch, state => do
-        let (conditionValue, afterCondition) ← condition.eval scratch state
+    | .bool, .and left right, mem, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval mem scratch state
+        if leftValue then right.eval mem scratch afterLeft else pure (false, afterLeft)
+    | .bool, .or left right, mem, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval mem scratch state
+        if leftValue then pure (true, afterLeft) else right.eval mem scratch afterLeft
+    | .u64, .ite condition thenValue elseValue, mem, scratch, state => do
+        let (conditionValue, afterCondition) ← condition.eval mem scratch state
         if conditionValue then
-          thenValue.eval scratch afterCondition
+          thenValue.eval mem scratch afterCondition
         else
-          elseValue.eval scratch afterCondition
+          elseValue.eval mem scratch afterCondition
 
   def Expr.program : {type : ScalarType} → Expr type → Nat → Program
     | .u64, .get index, _ => [.localGet index]
@@ -364,6 +384,11 @@ mutual
     | .f64, .unF op operand, scratch => operand.program scratch ++ [op.instruction]
     | .f64, .convertU operand, scratch => operand.program scratch ++ [.f64ConvertI64U]
     | .u64, .truncSatU operand, scratch => operand.program scratch ++ [.i64TruncSatF64U]
+    | .u64, .read array position, scratch =>
+        position.program (scratch + 1) ++
+          [.localSet scratch, .localGet scratch, .localGet array, .wrapI64, .load64 0, .ltUI64,
+            .iff 0 1 [.localGet array, .localGet scratch, .constI64 1, .addI64, .constI64 8,
+              .mulI64, .addI64, .wrapI64, .load64 0] [.constI64 0] [] [.i64]]
     | .f64, .constF bits, _ => [.f64Const bits]
     | .f64, .iteF condition thenValue elseValue, scratch =>
         condition.program scratch ++
@@ -417,6 +442,7 @@ def Expr.scratchWidth : {type : ScalarType} → Expr type → Nat
   | _, .and left right | _, .or left right =>
       max left.scratchWidth right.scratchWidth
   | _, .not condition => condition.scratchWidth
+  | _, .read _ position => position.scratchWidth + 1
   | _, .ite condition thenValue elseValue =>
       max condition.scratchWidth (max thenValue.scratchWidth elseValue.scratchWidth)
 
@@ -426,10 +452,33 @@ theorem ite_bind {α β : Type} {c : Prop} [Decidable c] (a b : Option α) (f : 
     (if c then a else b).bind f = if c then a.bind f else b.bind f := by
   split <;> rfl
 
+theorem wrap_toUInt32 (a : UInt64) : UInt32.ofNat (a.toNat % 2 ^ 32) = a.toUInt32 := by
+  apply UInt32.toNat_inj.mp
+  simp [UInt64.toNat_toUInt32]
+
+/-- A read changes the state only by evaluating its position and saving the
+position in its scratch local. -/
+theorem Expr.read_state {mem : Mem} {array scratch : Nat} {position : Expr .u64}
+    {state next : State} {result : UInt64}
+    (hEval : (Expr.read array position).eval mem scratch state = some (result, next)) :
+    ∃ k afterPosition, position.eval mem (scratch + 1) state = some (k, afterPosition) ∧
+      afterPosition.set? scratch (.i64 k) = some next := by
+  simp only [Expr.eval] at hEval
+  rcases hPosition : position.eval mem (scratch + 1) state with _ | ⟨k, afterPosition⟩
+  · simp [hPosition] at hEval
+  rcases hSet : afterPosition.set? scratch (.i64 k) with _ | saved
+  · simp [hPosition, hSet] at hEval
+  refine ⟨k, afterPosition, rfl, ?_⟩
+  simp only [hPosition, hSet, Option.bind_eq_bind, Option.bind_some, Expr.readValue] at hEval
+  rcases hPtr : saved.get array with _ | v
+  · simp [hPtr] at hEval
+  cases v <;> simp only [hPtr, Option.bind_some, reduceCtorEq] at hEval
+  split_ifs at hEval <;> simp_all
+
 theorem Expr.eval_preserves_below
-    {type : ScalarType} (expression : Expr type) (scratch : Nat)
+    {type : ScalarType} (expression : Expr type) (mem : Mem) (scratch : Nat)
     (state next : State) (result : type.denote) (index : Nat)
-    (hEval : expression.eval scratch state = some (result, next))
+    (hEval : expression.eval mem scratch state = some (result, next))
     (hIndex : index < scratch) :
     next.get index = state.get index := by
   induction expression generalizing scratch state next index with
@@ -452,9 +501,9 @@ theorem Expr.eval_preserves_below
       cases op with
       | add | sub | mul | bitAnd | bitOr | bitXor | shiftLeft | shiftRight =>
           simp only [Expr.eval] at hEval
-          rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+          rcases hLeft : left.eval mem scratch state with _ | ⟨leftValue, afterLeft⟩
           · simp [hLeft] at hEval
-          rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+          rcases hRight : right.eval mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
           · simp [hLeft, hRight] at hEval
           simp [hLeft, hRight] at hEval
           obtain ⟨rfl, rfl⟩ := hEval
@@ -463,11 +512,11 @@ theorem Expr.eval_preserves_below
               (leftPreserves scratch state afterLeft leftValue index hLeft hIndex)
       | divU | remU =>
           simp only [Expr.eval] at hEval
-          rcases hLeft : left.eval (scratch + 2) state with _ | ⟨leftValue, afterLeft⟩
+          rcases hLeft : left.eval mem (scratch + 2) state with _ | ⟨leftValue, afterLeft⟩
           · simp [hLeft] at hEval
           rcases hSetLeft : afterLeft.set? scratch (.i64 leftValue) with _ | savedLeft
           · simp [hLeft, hSetLeft] at hEval
-          rcases hRight : right.eval (scratch + 2) savedLeft with _ | ⟨rightValue, afterRight⟩
+          rcases hRight : right.eval mem (scratch + 2) savedLeft with _ | ⟨rightValue, afterRight⟩
           · simp [hLeft, hSetLeft, hRight] at hEval
           rcases hSetRight : afterRight.set? (scratch + 1) (.i64 rightValue) with _ | savedRight
           · simp [hLeft, hSetLeft, hRight, hSetRight] at hEval
@@ -483,6 +532,12 @@ theorem Expr.eval_preserves_below
             _ = state.get index :=
               leftPreserves (scratch + 2) state afterLeft leftValue index
                 hLeft (by omega)
+  | read array position positionPreserves =>
+      obtain ⟨k, afterPosition, hPosition, hSet⟩ := Expr.read_state hEval
+      calc
+        next.get index = afterPosition.get index := State.get_set?_ne (by omega) hSet
+        _ = state.get index :=
+          positionPreserves (scratch + 1) state afterPosition k index hPosition (by omega)
   | eq left right leftPreserves rightPreserves
   | ne left right leftPreserves rightPreserves
   | ltU left right leftPreserves rightPreserves
@@ -491,9 +546,9 @@ theorem Expr.eval_preserves_below
   | ltF left right leftPreserves rightPreserves
   | leF left right leftPreserves rightPreserves =>
       simp only [Expr.eval] at hEval
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
-      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      rcases hRight : right.eval mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
       · simp [hLeft, hRight] at hEval
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -502,7 +557,7 @@ theorem Expr.eval_preserves_below
           (leftPreserves scratch state afterLeft leftValue index hLeft hIndex)
   | not condition conditionPreserves =>
       simp only [Expr.eval] at hEval
-      rcases hCondition : condition.eval scratch state with _ | ⟨value, afterCondition⟩
+      rcases hCondition : condition.eval mem scratch state with _ | ⟨value, afterCondition⟩
       · simp [hCondition] at hEval
       have hPreserves := conditionPreserves scratch state afterCondition value
         index hCondition hIndex
@@ -511,13 +566,13 @@ theorem Expr.eval_preserves_below
       exact hPreserves
   | and left right leftPreserves rightPreserves =>
       simp only [Expr.eval] at hEval
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
       cases leftValue
       · simp [hLeft] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
         exact leftPreserves scratch state afterLeft false index hLeft hIndex
-      · rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      · rcases hRight : right.eval mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
         · simp [hLeft, hRight] at hEval
         simp [hLeft, hRight] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -526,10 +581,10 @@ theorem Expr.eval_preserves_below
             (leftPreserves scratch state afterLeft true index hLeft hIndex)
   | or left right leftPreserves rightPreserves =>
       simp only [Expr.eval] at hEval
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
       cases leftValue
-      · rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      · rcases hRight : right.eval mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
         · simp [hLeft, hRight] at hEval
         simp [hLeft, hRight] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -541,10 +596,10 @@ theorem Expr.eval_preserves_below
         exact leftPreserves scratch state afterLeft true index hLeft hIndex
   | ite condition thenValue elseValue conditionPreserves thenPreserves elsePreserves =>
       simp only [Expr.eval] at hEval
-      rcases hCondition : condition.eval scratch state with _ | ⟨conditionValue, afterCondition⟩
+      rcases hCondition : condition.eval mem scratch state with _ | ⟨conditionValue, afterCondition⟩
       · simp [hCondition] at hEval
       cases conditionValue
-      · rcases hElse : elseValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+      · rcases hElse : elseValue.eval mem scratch afterCondition with _ | ⟨value, afterValue⟩
         · simp [hCondition, hElse] at hEval
         simp [hCondition, hElse] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -552,7 +607,7 @@ theorem Expr.eval_preserves_below
           hElse hIndex).trans
             (conditionPreserves scratch state afterCondition false index
               hCondition hIndex)
-      · rcases hThen : thenValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+      · rcases hThen : thenValue.eval mem scratch afterCondition with _ | ⟨value, afterValue⟩
         · simp [hCondition, hThen] at hEval
         simp [hCondition, hThen] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -563,10 +618,10 @@ theorem Expr.eval_preserves_below
 
   | iteF condition thenValue elseValue conditionPreserves thenPreserves elsePreserves =>
       simp only [Expr.eval] at hEval
-      rcases hCondition : condition.eval scratch state with _ | ⟨conditionValue, afterCondition⟩
+      rcases hCondition : condition.eval mem scratch state with _ | ⟨conditionValue, afterCondition⟩
       · simp [hCondition] at hEval
       cases conditionValue
-      · rcases hElse : elseValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+      · rcases hElse : elseValue.eval mem scratch afterCondition with _ | ⟨value, afterValue⟩
         · simp [hCondition, hElse] at hEval
         simp [hCondition, hElse] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -574,7 +629,7 @@ theorem Expr.eval_preserves_below
           hElse hIndex).trans
             (conditionPreserves scratch state afterCondition false index
               hCondition hIndex)
-      · rcases hThen : thenValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+      · rcases hThen : thenValue.eval mem scratch afterCondition with _ | ⟨value, afterValue⟩
         · simp [hCondition, hThen] at hEval
         simp [hCondition, hThen] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -593,9 +648,9 @@ theorem Expr.eval_preserves_below
             rfl
   | binF op left right leftPreserves rightPreserves =>
       simp only [Expr.eval] at hEval
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
-      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      rcases hRight : right.eval mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
       · simp [hLeft, hRight] at hEval
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -604,7 +659,7 @@ theorem Expr.eval_preserves_below
   | unF _ operand operandPreserves | convertU operand operandPreserves
   | truncSatU operand operandPreserves =>
       simp only [Expr.eval] at hEval
-      rcases hOperand : operand.eval scratch state with _ | ⟨value, afterOperand⟩
+      rcases hOperand : operand.eval mem scratch state with _ | ⟨value, afterOperand⟩
       · simp [hOperand] at hEval
       simp [hOperand] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -616,7 +671,7 @@ theorem Expr.program_spec
     (state next : State) (result : type.denote) (values : List Value)
     (module_ : Module) (env : HostEnv α) (store : Store α)
     (rest : Program) (Q : Assertion α)
-    (hEval : expression.eval scratch state = some (result, next))
+    (hEval : expression.eval store.mem scratch state = some (result, next))
     (hNext : wp module_ rest Q store
       (next.toLocals (type.value result :: values)) env) :
     wp module_ (expression.program scratch ++ rest) Q store
@@ -647,9 +702,9 @@ theorem Expr.program_spec
       | add =>
           simp only [Expr.eval, U64Op.apply] at hEval
           simp [Expr.program, U64Op.instruction, List.append_assoc]
-          rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+          rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
           · simp [hLeft] at hEval
-          rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+          rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
           · simp [hLeft, hRight] at hEval
           simp [hLeft, hRight] at hEval
           obtain ⟨rfl, rfl⟩ := hEval
@@ -663,9 +718,9 @@ theorem Expr.program_spec
       | sub =>
           simp only [Expr.eval, U64Op.apply] at hEval
           simp [Expr.program, U64Op.instruction, List.append_assoc]
-          rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+          rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
           · simp [hLeft] at hEval
-          rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+          rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
           · simp [hLeft, hRight] at hEval
           simp [hLeft, hRight] at hEval
           obtain ⟨rfl, rfl⟩ := hEval
@@ -679,9 +734,9 @@ theorem Expr.program_spec
       | mul =>
           simp only [Expr.eval, U64Op.apply] at hEval
           simp [Expr.program, U64Op.instruction, List.append_assoc]
-          rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+          rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
           · simp [hLeft] at hEval
-          rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+          rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
           · simp [hLeft, hRight] at hEval
           simp [hLeft, hRight] at hEval
           obtain ⟨rfl, rfl⟩ := hEval
@@ -695,11 +750,11 @@ theorem Expr.program_spec
       | divU =>
           simp only [Expr.eval, U64Op.apply] at hEval
           simp [Expr.program, U64Op.instruction, List.append_assoc]
-          rcases hLeft : left.eval (scratch + 2) state with _ | ⟨leftValue, afterLeft⟩
+          rcases hLeft : left.eval store.mem (scratch + 2) state with _ | ⟨leftValue, afterLeft⟩
           · simp [hLeft] at hEval
           rcases hSetLeft : afterLeft.set? scratch (.i64 leftValue) with _ | savedLeft
           · simp [hLeft, hSetLeft] at hEval
-          rcases hRight : right.eval (scratch + 2) savedLeft with _ | ⟨rightValue, afterRight⟩
+          rcases hRight : right.eval store.mem (scratch + 2) savedLeft with _ | ⟨rightValue, afterRight⟩
           · simp [hLeft, hSetLeft, hRight] at hEval
           rcases hSetRight : afterRight.set? (scratch + 1) (.i64 rightValue) with _ | savedRight
           · simp [hLeft, hSetLeft, hRight, hSetRight] at hEval
@@ -722,7 +777,7 @@ theorem Expr.program_spec
               savedRight.get scratch = afterRight.get scratch :=
                 State.get_set?_ne (by omega) hSetRight
               _ = savedLeft.get scratch :=
-                Expr.eval_preserves_below right (scratch + 2) savedLeft
+                Expr.eval_preserves_below right store.mem (scratch + 2) savedLeft
                   afterRight rightValue scratch hRight (by omega)
               _ = some (.i64 leftValue) := State.get_set?_same hSetLeft
           simp only [Wasm.wp_localGet_cons, State.toLocals_get, hRightSlot,
@@ -739,11 +794,11 @@ theorem Expr.program_spec
       | remU =>
           simp only [Expr.eval, U64Op.apply] at hEval
           simp [Expr.program, U64Op.instruction, List.append_assoc]
-          rcases hLeft : left.eval (scratch + 2) state with _ | ⟨leftValue, afterLeft⟩
+          rcases hLeft : left.eval store.mem (scratch + 2) state with _ | ⟨leftValue, afterLeft⟩
           · simp [hLeft] at hEval
           rcases hSetLeft : afterLeft.set? scratch (.i64 leftValue) with _ | savedLeft
           · simp [hLeft, hSetLeft] at hEval
-          rcases hRight : right.eval (scratch + 2) savedLeft with _ | ⟨rightValue, afterRight⟩
+          rcases hRight : right.eval store.mem (scratch + 2) savedLeft with _ | ⟨rightValue, afterRight⟩
           · simp [hLeft, hSetLeft, hRight] at hEval
           rcases hSetRight : afterRight.set? (scratch + 1) (.i64 rightValue) with _ | savedRight
           · simp [hLeft, hSetLeft, hRight, hSetRight] at hEval
@@ -766,7 +821,7 @@ theorem Expr.program_spec
               savedRight.get scratch = afterRight.get scratch :=
                 State.get_set?_ne (by omega) hSetRight
               _ = savedLeft.get scratch :=
-                Expr.eval_preserves_below right (scratch + 2) savedLeft
+                Expr.eval_preserves_below right store.mem (scratch + 2) savedLeft
                   afterRight rightValue scratch hRight (by omega)
               _ = some (.i64 leftValue) := State.get_set?_same hSetLeft
           simp only [Wasm.wp_localGet_cons, State.toLocals_get, hRightSlot,
@@ -784,9 +839,9 @@ theorem Expr.program_spec
       | bitAnd | bitOr | bitXor | shiftLeft | shiftRight =>
           simp only [Expr.eval, U64Op.apply] at hEval
           simp [Expr.program, U64Op.instruction, List.append_assoc]
-          rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+          rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
           · simp [hLeft] at hEval
-          rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+          rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
           · simp [hLeft, hRight] at hEval
           simp [hLeft, hRight] at hEval
           obtain ⟨rfl, rfl⟩ := hEval
@@ -800,9 +855,9 @@ theorem Expr.program_spec
   | eq left right leftSpec rightSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
-      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
       · simp [hLeft, hRight] at hEval
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -816,9 +871,9 @@ theorem Expr.program_spec
   | ne left right leftSpec rightSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
-      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
       · simp [hLeft, hRight] at hEval
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -832,9 +887,9 @@ theorem Expr.program_spec
   | ltU left right leftSpec rightSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
-      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
       · simp [hLeft, hRight] at hEval
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -848,9 +903,9 @@ theorem Expr.program_spec
   | leU left right leftSpec rightSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
-      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
       · simp [hLeft, hRight] at hEval
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -864,7 +919,7 @@ theorem Expr.program_spec
   | not condition conditionSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hCondition : condition.eval scratch state with _ | ⟨value, afterCondition⟩
+      rcases hCondition : condition.eval store.mem scratch state with _ | ⟨value, afterCondition⟩
       · simp [hCondition] at hEval
       cases value with
       | false =>
@@ -884,7 +939,7 @@ theorem Expr.program_spec
   | and left right leftSpec rightSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
       cases leftValue
       · simp [hLeft] at hEval
@@ -896,7 +951,7 @@ theorem Expr.program_spec
         refine Wasm.wp_iff_cons rfl ?_
         rw [if_neg (by simp)]
         simpa [wp_simp, ScalarType.value] using hNext
-      · rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      · rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
         · simp [hLeft, hRight] at hEval
         simp [hLeft, hRight] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -914,10 +969,10 @@ theorem Expr.program_spec
   | or left right leftSpec rightSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
       cases leftValue
-      · rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      · rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
         · simp [hLeft, hRight] at hEval
         simp [hLeft, hRight] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -944,10 +999,10 @@ theorem Expr.program_spec
   | ite condition thenValue elseValue conditionSpec thenSpec elseSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hCondition : condition.eval scratch state with _ | ⟨conditionValue, afterCondition⟩
+      rcases hCondition : condition.eval store.mem scratch state with _ | ⟨conditionValue, afterCondition⟩
       · simp [hCondition] at hEval
       cases conditionValue
-      · rcases hElse : elseValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+      · rcases hElse : elseValue.eval store.mem scratch afterCondition with _ | ⟨value, afterValue⟩
         · simp [hCondition, hElse] at hEval
         simp [hCondition, hElse] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -962,7 +1017,7 @@ theorem Expr.program_spec
           (next := afterValue) (result := value) (values := values)
           (rest := []) (Q := _) hElse
         simpa [wp_simp, State.toLocals, ScalarType.value] using hNext
-      · rcases hThen : thenValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+      · rcases hThen : thenValue.eval store.mem scratch afterCondition with _ | ⟨value, afterValue⟩
         · simp [hCondition, hThen] at hEval
         simp [hCondition, hThen] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -981,10 +1036,10 @@ theorem Expr.program_spec
   | iteF condition thenValue elseValue conditionSpec thenSpec elseSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hCondition : condition.eval scratch state with _ | ⟨conditionValue, afterCondition⟩
+      rcases hCondition : condition.eval store.mem scratch state with _ | ⟨conditionValue, afterCondition⟩
       · simp [hCondition] at hEval
       cases conditionValue
-      · rcases hElse : elseValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+      · rcases hElse : elseValue.eval store.mem scratch afterCondition with _ | ⟨value, afterValue⟩
         · simp [hCondition, hElse] at hEval
         simp [hCondition, hElse] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -999,7 +1054,7 @@ theorem Expr.program_spec
           (next := afterValue) (result := value) (values := values)
           (rest := []) (Q := _) hElse
         simpa [wp_simp, State.toLocals, ScalarType.value] using hNext
-      · rcases hThen : thenValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+      · rcases hThen : thenValue.eval store.mem scratch afterCondition with _ | ⟨value, afterValue⟩
         · simp [hCondition, hThen] at hEval
         simp [hCondition, hThen] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -1017,9 +1072,9 @@ theorem Expr.program_spec
   | eqF left right leftSpec rightSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
-      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
       · simp [hLeft, hRight] at hEval
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -1035,9 +1090,9 @@ theorem Expr.program_spec
   | ltF left right leftSpec rightSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
-      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
       · simp [hLeft, hRight] at hEval
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -1053,9 +1108,9 @@ theorem Expr.program_spec
   | leF left right leftSpec rightSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
-      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
       · simp [hLeft, hRight] at hEval
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -1086,9 +1141,9 @@ theorem Expr.program_spec
   | binF op left right leftSpec rightSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval store.mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
-      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      rcases hRight : right.eval store.mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
       · simp [hLeft, hRight] at hEval
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -1104,7 +1159,7 @@ theorem Expr.program_spec
   | unF op operand operandSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hOperand : operand.eval scratch state with _ | ⟨value, afterOperand⟩
+      rcases hOperand : operand.eval store.mem scratch state with _ | ⟨value, afterOperand⟩
       · simp [hOperand] at hEval
       simp [hOperand] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -1116,7 +1171,7 @@ theorem Expr.program_spec
   | convertU operand operandSpec | truncSatU operand operandSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
-      rcases hOperand : operand.eval scratch state with _ | ⟨value, afterOperand⟩
+      rcases hOperand : operand.eval store.mem scratch state with _ | ⟨value, afterOperand⟩
       · simp [hOperand] at hEval
       simp [hOperand] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -1124,6 +1179,51 @@ theorem Expr.program_spec
         (next := afterOperand) (result := value) (values := values)
         (rest := _) (Q := _) hOperand
       simpa [wp_simp, Wasm.f64ConvertI64U, Wasm.i64TruncSatF64U] using hNext
+  | read array position positionSpec =>
+      have hState := Expr.read_state hEval
+      obtain ⟨k, afterPosition, hPosition, hSet⟩ := hState
+      simp only [Expr.eval, hPosition, hSet, Option.bind_eq_bind, Option.bind_some,
+        Expr.readValue] at hEval
+      rcases hPtr : next.get array with _ | v
+      · simp [hPtr] at hEval
+      cases v <;> simp only [hPtr, Option.bind_some, reduceCtorEq] at hEval
+      rename_i ptr
+      simp only [Expr.program, List.append_assoc, List.cons_append, List.nil_append]
+      apply positionSpec (scratch := scratch + 1) (state := state) (next := afterPosition)
+        (result := k) (values := values) (rest := _) (Q := _) hPosition
+      simp only [ScalarType.value]
+      apply localSet_spec hSet
+      apply localGet_spec (State.get_set?_same hSet)
+      apply localGet_spec hPtr
+      simp only [Wasm.wp_wrapI64_cons, Wasm.wp_load64_cons, State.toLocals, wrap_toUInt32,
+        UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+      by_cases hLength : ptr.toUInt32.toNat + 8 ≤ store.mem.pages * 65536
+      · rw [if_pos hLength] at hEval
+        rw [ite_eq_right (by omega)]
+        simp only [Wasm.wp_ltUI64_cons]
+        try simp only [Wasm.wp_iff_control_types]
+        refine Wasm.wp_iff_cons rfl ?_
+        by_cases hk : k < store.mem.read64 ptr.toUInt32
+        · rw [if_pos hk] at hEval
+          by_cases hElement : (ptr + (k + 1) * 8).toUInt32.toNat + 8 ≤ store.mem.pages * 65536
+          · rw [if_pos hElement] at hEval
+            obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj hEval)
+            rw [if_pos (by simp [hk])]
+            apply localGet_spec hPtr
+            apply localGet_spec (State.get_set?_same hSet)
+            simp only [Wasm.wp_constI64_cons, Wasm.wp_addI64_cons, Wasm.wp_mulI64_cons,
+              Wasm.wp_wrapI64_cons, Wasm.wp_load64_cons, State.toLocals, wrap_toUInt32,
+              UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+            rw [ite_eq_right (by omega)]
+            simpa [wp_simp, State.toLocals, ScalarType.value] using hNext
+          · rw [if_neg hElement] at hEval
+            cases hEval
+        · rw [if_neg hk] at hEval
+          obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj hEval)
+          rw [if_neg (by simp [hk])]
+          simpa [wp_simp, State.toLocals, ScalarType.value] using hNext
+      · rw [if_neg hLength] at hEval
+        cases hEval
 
 /-- `after` has as many parameters and locals as `before` and agrees with it at
 every local below `scratch` outside `writes`. -/
@@ -1177,8 +1277,8 @@ theorem State.Frame.set? {scratch index : Nat} {writes : List Nat} {before state
 
 /-- Evaluating an expression changes only scratch locals. -/
 theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Expr type)
-    (scratch : Nat) (state next : State) (result : type.denote)
-    (hEval : expression.eval scratch state = some (result, next)) :
+    (mem : Mem) (scratch : Nat) (state next : State) (result : type.denote)
+    (hEval : expression.eval mem scratch state = some (result, next)) :
     State.Frame scratch writes state next := by
   induction expression generalizing scratch state next with
   | get index =>
@@ -1196,20 +1296,20 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
       cases op with
       | add | sub | mul | bitAnd | bitOr | bitXor | shiftLeft | shiftRight =>
           simp only [Expr.eval] at hEval
-          rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+          rcases hLeft : left.eval mem scratch state with _ | ⟨leftValue, afterLeft⟩
           · simp [hLeft] at hEval
-          rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+          rcases hRight : right.eval mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
           · simp [hLeft, hRight] at hEval
           simp [hLeft, hRight] at hEval
           obtain ⟨rfl, rfl⟩ := hEval
           exact (hLeftFrame _ _ _ _ hLeft).trans (hRightFrame _ _ _ _ hRight)
       | divU | remU =>
           simp only [Expr.eval] at hEval
-          rcases hLeft : left.eval (scratch + 2) state with _ | ⟨leftValue, afterLeft⟩
+          rcases hLeft : left.eval mem (scratch + 2) state with _ | ⟨leftValue, afterLeft⟩
           · simp [hLeft] at hEval
           rcases hSetLeft : afterLeft.set? scratch (.i64 leftValue) with _ | savedLeft
           · simp [hLeft, hSetLeft] at hEval
-          rcases hRight : right.eval (scratch + 2) savedLeft with _ | ⟨rightValue, afterRight⟩
+          rcases hRight : right.eval mem (scratch + 2) savedLeft with _ | ⟨rightValue, afterRight⟩
           · simp [hLeft, hSetLeft, hRight] at hEval
           rcases hSetRight : afterRight.set? (scratch + 1) (.i64 rightValue) with _ | savedRight
           · simp [hLeft, hSetLeft, hRight, hSetRight] at hEval
@@ -1218,6 +1318,9 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
           exact ((((hLeftFrame _ _ _ _ hLeft).mono (by omega)).set? hSetLeft
             (Or.inr (by omega))).trans ((hRightFrame _ _ _ _ hRight).mono (by omega))).set?
               hSetRight (Or.inr (by omega))
+  | read array position hPositionFrame =>
+      obtain ⟨k, afterPosition, hPosition, hSet⟩ := Expr.read_state hEval
+      exact ((hPositionFrame _ _ _ _ hPosition).mono (by omega)).set? hSet (Or.inr (by omega))
   | eq left right hLeftFrame hRightFrame
   | ne left right hLeftFrame hRightFrame
   | ltU left right hLeftFrame hRightFrame
@@ -1226,23 +1329,23 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
   | ltF left right hLeftFrame hRightFrame
   | leF left right hLeftFrame hRightFrame =>
       simp only [Expr.eval] at hEval
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
-      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      rcases hRight : right.eval mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
       · simp [hLeft, hRight] at hEval
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
       exact (hLeftFrame _ _ _ _ hLeft).trans (hRightFrame _ _ _ _ hRight)
   | not condition hConditionFrame =>
       simp only [Expr.eval] at hEval
-      rcases hCondition : condition.eval scratch state with _ | ⟨value, afterCondition⟩
+      rcases hCondition : condition.eval mem scratch state with _ | ⟨value, afterCondition⟩
       · simp [hCondition] at hEval
       simp [hCondition] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
       exact hConditionFrame _ _ _ _ hCondition
   | and left right hLeftFrame hRightFrame | or left right hLeftFrame hRightFrame =>
       simp only [Expr.eval] at hEval
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
       cases leftValue
       all_goals
@@ -1250,37 +1353,37 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
         | (simp [hLeft] at hEval
            obtain ⟨rfl, rfl⟩ := hEval
            exact hLeftFrame _ _ _ _ hLeft)
-        | (rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+        | (rcases hRight : right.eval mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
            · simp [hLeft, hRight] at hEval
            simp [hLeft, hRight] at hEval
            obtain ⟨rfl, rfl⟩ := hEval
            exact (hLeftFrame _ _ _ _ hLeft).trans (hRightFrame _ _ _ _ hRight))
   | ite condition thenValue elseValue hConditionFrame hThenFrame hElseFrame =>
       simp only [Expr.eval] at hEval
-      rcases hCondition : condition.eval scratch state with _ | ⟨conditionValue, afterCondition⟩
+      rcases hCondition : condition.eval mem scratch state with _ | ⟨conditionValue, afterCondition⟩
       · simp [hCondition] at hEval
       cases conditionValue
-      · rcases hElse : elseValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+      · rcases hElse : elseValue.eval mem scratch afterCondition with _ | ⟨value, afterValue⟩
         · simp [hCondition, hElse] at hEval
         simp [hCondition, hElse] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
         exact (hConditionFrame _ _ _ _ hCondition).trans (hElseFrame _ _ _ _ hElse)
-      · rcases hThen : thenValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+      · rcases hThen : thenValue.eval mem scratch afterCondition with _ | ⟨value, afterValue⟩
         · simp [hCondition, hThen] at hEval
         simp [hCondition, hThen] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
         exact (hConditionFrame _ _ _ _ hCondition).trans (hThenFrame _ _ _ _ hThen)
   | iteF condition thenValue elseValue hConditionFrame hThenFrame hElseFrame =>
       simp only [Expr.eval] at hEval
-      rcases hCondition : condition.eval scratch state with _ | ⟨conditionValue, afterCondition⟩
+      rcases hCondition : condition.eval mem scratch state with _ | ⟨conditionValue, afterCondition⟩
       · simp [hCondition] at hEval
       cases conditionValue
-      · rcases hElse : elseValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+      · rcases hElse : elseValue.eval mem scratch afterCondition with _ | ⟨value, afterValue⟩
         · simp [hCondition, hElse] at hEval
         simp [hCondition, hElse] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
         exact (hConditionFrame _ _ _ _ hCondition).trans (hElseFrame _ _ _ _ hElse)
-      · rcases hThen : thenValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+      · rcases hThen : thenValue.eval mem scratch afterCondition with _ | ⟨value, afterValue⟩
         · simp [hCondition, hThen] at hEval
         simp [hCondition, hThen] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
@@ -1295,9 +1398,9 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
           exact .refl _ _ _
   | binF op left right hLeftFrame hRightFrame =>
       simp only [Expr.eval] at hEval
-      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      rcases hLeft : left.eval mem scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
-      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      rcases hRight : right.eval mem scratch afterLeft with _ | ⟨rightValue, afterRight⟩
       · simp [hLeft, hRight] at hEval
       simp [hLeft, hRight] at hEval
       obtain ⟨rfl, rfl⟩ := hEval
@@ -1305,7 +1408,7 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
   | unF _ operand hOperandFrame | convertU operand hOperandFrame
   | truncSatU operand hOperandFrame =>
       simp only [Expr.eval] at hEval
-      rcases hOperand : operand.eval scratch state with _ | ⟨value, afterOperand⟩
+      rcases hOperand : operand.eval mem scratch state with _ | ⟨value, afterOperand⟩
       · simp [hOperand] at hEval
       simp [hOperand] at hEval
       obtain ⟨rfl, rfl⟩ := hEval

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "index-loop",
+  "title": "Index loop",
+  "summary": "Proves that the compiler's loop template leaves LeanExe.loop n init f in the state locals, from one obligation about the loop body.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["compiler-motifs", "loops", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["index", "loop", "state", "tuple"],
+  "annotationKinds": ["loop", "loop start", "next state", "state copy"],
+  "modules": ["Project.IR.Loop", "LeanExe.Loop"],
+  "declarations": ["LeanExe.loop", "Project.IR.Stmt.loop", "Project.IR.Stmt.loop_spec", "Project.IR.loopPrefix", "Project.IR.loopPrefix_succ", "Project.IR.State.Holds", "Project.IR.State.Holds.frame"],
+  "premises": ["limit and index are distinct locals below scratch that the body does not write", "The state locals are among the body's writes", "The count evaluates to n in the state before the loop", "The state locals hold init's Scalar.values before the loop", "For each k below n, the body turns a state holding s into one holding f k s, writing only its writes below scratch"],
+  "result": "A Triple whose postcondition keeps the store, frames every local outside limit, index, and the body's writes, and holds LeanExe.loop n init f in the state locals.",
+  "consumers": ["Project.Clob.marketBuy_implements"],
+  "relatedEntries": ["straight-line-run", "array-read", "array-fold-loop"],
+  "exclusion": null
+}
