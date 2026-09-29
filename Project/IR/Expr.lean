@@ -213,13 +213,16 @@ def F64Op.instruction : F64Op → Instruction
 
 inductive F64UnOp where
   | sqrt
+  | abs
   deriving Repr, DecidableEq
 
 def F64UnOp.apply : F64UnOp → UInt64 → UInt64
   | .sqrt, value => IEEE64.sqrt value
+  | .abs, value => IEEE64.abs value
 
 def F64UnOp.instruction : F64UnOp → Instruction
   | .sqrt => .f64Sqrt
+  | .abs => .f64Abs
 
 inductive Expr : ScalarType → Type where
   | get (index : Nat) : Expr .u64
@@ -237,6 +240,11 @@ inductive Expr : ScalarType → Type where
   | getF (index : Nat) : Expr .f64
   | binF (op : F64Op) (left right : Expr .f64) : Expr .f64
   | unF (op : F64UnOp) (operand : Expr .f64) : Expr .f64
+  | constF (bits : UInt64) : Expr .f64
+  | iteF (condition : Expr .bool) (thenValue elseValue : Expr .f64) : Expr .f64
+  | eqF (left right : Expr .f64) : Expr .bool
+  | ltF (left right : Expr .f64) : Expr .bool
+  | leF (left right : Expr .f64) : Expr .bool
   deriving Repr
 
 mutual
@@ -258,6 +266,25 @@ mutual
     | .f64, .unF op operand, scratch, state => do
         let (value, next) ← operand.eval scratch state
         pure (op.apply value, next)
+    | .f64, .constF bits, _, state => pure (bits, state)
+    | .f64, .iteF condition thenValue elseValue, scratch, state => do
+        let (conditionValue, afterCondition) ← condition.eval scratch state
+        if conditionValue then
+          thenValue.eval scratch afterCondition
+        else
+          elseValue.eval scratch afterCondition
+    | .bool, .eqF left right, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval scratch state
+        let (rightValue, afterRight) ← right.eval scratch afterLeft
+        pure (IEEE64.eq leftValue rightValue, afterRight)
+    | .bool, .ltF left right, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval scratch state
+        let (rightValue, afterRight) ← right.eval scratch afterLeft
+        pure (IEEE64.lt leftValue rightValue, afterRight)
+    | .bool, .leF left right, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval scratch state
+        let (rightValue, afterRight) ← right.eval scratch afterLeft
+        pure (IEEE64.le leftValue rightValue, afterRight)
     | .u64, .bin op left right, scratch, state => do
         let childScratch := if op = .divU ∨ op = .remU then scratch + 2 else scratch
         let (leftValue, afterLeft) ← left.eval childScratch state
@@ -310,6 +337,13 @@ mutual
     | .f64, .binF op left right, scratch =>
         left.program scratch ++ right.program scratch ++ [op.instruction]
     | .f64, .unF op operand, scratch => operand.program scratch ++ [op.instruction]
+    | .f64, .constF bits, _ => [.f64Const bits]
+    | .f64, .iteF condition thenValue elseValue, scratch =>
+        condition.program scratch ++
+          [.iff 0 1 (thenValue.program scratch) (elseValue.program scratch) [] [.f64]]
+    | .bool, .eqF left right, scratch => left.program scratch ++ right.program scratch ++ [.f64Eq]
+    | .bool, .ltF left right, scratch => left.program scratch ++ right.program scratch ++ [.f64Lt]
+    | .bool, .leF left right, scratch => left.program scratch ++ right.program scratch ++ [.f64Le]
     | .bool, .bconst value, _ => [.const (if value then 1 else 0)]
     | .u64, .bin op left right, scratch =>
         if op = .divU ∨ op = .remU then
@@ -342,9 +376,13 @@ mutual
 end
 
 def Expr.scratchWidth : {type : ScalarType} → Expr type → Nat
-  | _, .get _ | _, .const _ | _, .bconst _ | _, .getF _ => 0
+  | _, .get _ | _, .const _ | _, .bconst _ | _, .getF _ | _, .constF _ => 0
   | _, .binF _ left right => max left.scratchWidth right.scratchWidth
   | _, .unF _ operand => operand.scratchWidth
+  | _, .eqF left right | _, .ltF left right | _, .leF left right =>
+      max left.scratchWidth right.scratchWidth
+  | _, .iteF condition thenValue elseValue =>
+      max condition.scratchWidth (max thenValue.scratchWidth elseValue.scratchWidth)
   | _, .bin operation left right =>
       let childWidth := max left.scratchWidth right.scratchWidth
       if operation = .divU ∨ operation = .remU then childWidth + 2 else childWidth
@@ -354,6 +392,12 @@ def Expr.scratchWidth : {type : ScalarType} → Expr type → Nat
   | _, .not condition => condition.scratchWidth
   | _, .ite condition thenValue elseValue =>
       max condition.scratchWidth (max thenValue.scratchWidth elseValue.scratchWidth)
+
+/-- Binding the result of a conditional binds each branch; evaluation of
+`iteF` and `ite` produces this shape. -/
+theorem ite_bind {α β : Type} {c : Prop} [Decidable c] (a b : Option α) (f : α → Option β) :
+    (if c then a else b).bind f = if c then a.bind f else b.bind f := by
+  split <;> rfl
 
 theorem Expr.eval_preserves_below
     {type : ScalarType} (expression : Expr type) (scratch : Nat)
@@ -371,7 +415,7 @@ theorem Expr.eval_preserves_below
           case i64 value =>
             obtain ⟨rfl, rfl⟩ := hEval
             rfl
-  | const value =>
+  | const value | constF value =>
       obtain ⟨rfl, rfl⟩ := Option.some.inj hEval
       rfl
   | bconst value =>
@@ -415,7 +459,10 @@ theorem Expr.eval_preserves_below
   | eq left right leftPreserves rightPreserves
   | ne left right leftPreserves rightPreserves
   | ltU left right leftPreserves rightPreserves
-  | leU left right leftPreserves rightPreserves =>
+  | leU left right leftPreserves rightPreserves
+  | eqF left right leftPreserves rightPreserves
+  | ltF left right leftPreserves rightPreserves
+  | leF left right leftPreserves rightPreserves =>
       simp only [Expr.eval] at hEval
       rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
@@ -487,6 +534,27 @@ theorem Expr.eval_preserves_below
             (conditionPreserves scratch state afterCondition true index
               hCondition hIndex)
 
+  | iteF condition thenValue elseValue conditionPreserves thenPreserves elsePreserves =>
+      simp only [Expr.eval] at hEval
+      rcases hCondition : condition.eval scratch state with _ | ⟨conditionValue, afterCondition⟩
+      · simp [hCondition] at hEval
+      cases conditionValue
+      · rcases hElse : elseValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+        · simp [hCondition, hElse] at hEval
+        simp [hCondition, hElse] at hEval
+        obtain ⟨rfl, rfl⟩ := hEval
+        exact (elsePreserves scratch afterCondition afterValue value index
+          hElse hIndex).trans
+            (conditionPreserves scratch state afterCondition false index
+              hCondition hIndex)
+      · rcases hThen : thenValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+        · simp [hCondition, hThen] at hEval
+        simp [hCondition, hThen] at hEval
+        obtain ⟨rfl, rfl⟩ := hEval
+        exact (thenPreserves scratch afterCondition afterValue value index
+          hThen hIndex).trans
+            (conditionPreserves scratch state afterCondition true index
+              hCondition hIndex)
   | getF localIndex =>
       unfold Expr.eval at hEval
       cases hGet : state.get localIndex with
@@ -882,6 +950,100 @@ theorem Expr.program_spec
           (rest := []) (Q := _) hThen
         simpa [wp_simp, State.toLocals, ScalarType.value] using hNext
 
+  | iteF condition thenValue elseValue conditionSpec thenSpec elseSpec =>
+      simp only [Expr.eval] at hEval
+      simp only [Expr.program, List.append_assoc]
+      rcases hCondition : condition.eval scratch state with _ | ⟨conditionValue, afterCondition⟩
+      · simp [hCondition] at hEval
+      cases conditionValue
+      · rcases hElse : elseValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+        · simp [hCondition, hElse] at hEval
+        simp [hCondition, hElse] at hEval
+        obtain ⟨rfl, rfl⟩ := hEval
+        apply conditionSpec (scratch := scratch) (state := state)
+          (next := afterCondition) (result := false) (values := values)
+          (rest := _) (Q := _) hCondition
+        try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
+        refine Wasm.wp_iff_cons rfl ?_
+        rw [if_neg (by simp)]
+        rw [← List.append_nil (elseValue.program scratch)]
+        apply elseSpec (scratch := scratch) (state := afterCondition)
+          (next := afterValue) (result := value) (values := values)
+          (rest := []) (Q := _) hElse
+        simpa [wp_simp, State.toLocals, ScalarType.value] using hNext
+      · rcases hThen : thenValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+        · simp [hCondition, hThen] at hEval
+        simp [hCondition, hThen] at hEval
+        obtain ⟨rfl, rfl⟩ := hEval
+        apply conditionSpec (scratch := scratch) (state := state)
+          (next := afterCondition) (result := true) (values := values)
+          (rest := _) (Q := _) hCondition
+        try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
+        refine Wasm.wp_iff_cons rfl ?_
+        rw [if_pos (by simp)]
+        rw [← List.append_nil (thenValue.program scratch)]
+        apply thenSpec (scratch := scratch) (state := afterCondition)
+          (next := afterValue) (result := value) (values := values)
+          (rest := []) (Q := _) hThen
+        simpa [wp_simp, State.toLocals, ScalarType.value] using hNext
+  | eqF left right leftSpec rightSpec =>
+      simp only [Expr.eval] at hEval
+      simp only [Expr.program, List.append_assoc]
+      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      · simp [hLeft] at hEval
+      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      · simp [hLeft, hRight] at hEval
+      simp [hLeft, hRight] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      apply leftSpec (scratch := scratch) (state := state)
+        (next := afterLeft) (result := leftValue) (values := values)
+        (rest := _) (Q := _) hLeft
+      apply rightSpec (scratch := scratch) (state := afterLeft)
+        (next := afterRight) (result := rightValue)
+        (values := .f64 leftValue :: values) (rest := _) (Q := _) hRight
+      simp only [List.cons_append, List.nil_append, Wasm.wp_f64Eq_cons, Wasm.wp_f64Lt_cons,
+        Wasm.wp_f64Le_cons, State.toLocals]
+      exact hNext
+  | ltF left right leftSpec rightSpec =>
+      simp only [Expr.eval] at hEval
+      simp only [Expr.program, List.append_assoc]
+      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      · simp [hLeft] at hEval
+      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      · simp [hLeft, hRight] at hEval
+      simp [hLeft, hRight] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      apply leftSpec (scratch := scratch) (state := state)
+        (next := afterLeft) (result := leftValue) (values := values)
+        (rest := _) (Q := _) hLeft
+      apply rightSpec (scratch := scratch) (state := afterLeft)
+        (next := afterRight) (result := rightValue)
+        (values := .f64 leftValue :: values) (rest := _) (Q := _) hRight
+      simp only [List.cons_append, List.nil_append, Wasm.wp_f64Eq_cons, Wasm.wp_f64Lt_cons,
+        Wasm.wp_f64Le_cons, State.toLocals]
+      exact hNext
+  | leF left right leftSpec rightSpec =>
+      simp only [Expr.eval] at hEval
+      simp only [Expr.program, List.append_assoc]
+      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      · simp [hLeft] at hEval
+      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      · simp [hLeft, hRight] at hEval
+      simp [hLeft, hRight] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      apply leftSpec (scratch := scratch) (state := state)
+        (next := afterLeft) (result := leftValue) (values := values)
+        (rest := _) (Q := _) hLeft
+      apply rightSpec (scratch := scratch) (state := afterLeft)
+        (next := afterRight) (result := rightValue)
+        (values := .f64 leftValue :: values) (rest := _) (Q := _) hRight
+      simp only [List.cons_append, List.nil_append, Wasm.wp_f64Eq_cons, Wasm.wp_f64Lt_cons,
+        Wasm.wp_f64Le_cons, State.toLocals]
+      exact hNext
+  | constF bits =>
+      obtain ⟨rfl, rfl⟩ := Option.some.inj hEval
+      simp only [Expr.program, List.cons_append, List.nil_append, Wasm.wp_f64Const_cons]
+      exact hNext
   | getF index =>
       unfold Expr.eval at hEval
       cases hGet : state.get index with
@@ -921,8 +1083,8 @@ theorem Expr.program_spec
       apply operandSpec (scratch := scratch) (state := state)
         (next := afterOperand) (result := value) (values := values)
         (rest := _) (Q := _) hOperand
-      cases op
-      simpa [F64UnOp.instruction, F64UnOp.apply, wp_simp, Wasm.f64Sqrt] using hNext
+      cases op <;>
+        simpa [F64UnOp.instruction, F64UnOp.apply, wp_simp, Wasm.f64Sqrt, Wasm.f64Abs] using hNext
 
 /-- `after` has as many parameters and locals as `before` and agrees with it at
 every local below `scratch` outside `writes`. -/
@@ -988,7 +1150,7 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
           cases value <;> simp [hGet] at hEval
           obtain ⟨rfl, rfl⟩ := hEval
           exact .refl _ _ _
-  | const value | bconst value =>
+  | const value | bconst value | constF value =>
       obtain ⟨rfl, rfl⟩ := Option.some.inj hEval
       exact .refl _ _ _
   | bin op left right hLeftFrame hRightFrame =>
@@ -1020,7 +1182,10 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
   | eq left right hLeftFrame hRightFrame
   | ne left right hLeftFrame hRightFrame
   | ltU left right hLeftFrame hRightFrame
-  | leU left right hLeftFrame hRightFrame =>
+  | leU left right hLeftFrame hRightFrame
+  | eqF left right hLeftFrame hRightFrame
+  | ltF left right hLeftFrame hRightFrame
+  | leF left right hLeftFrame hRightFrame =>
       simp only [Expr.eval] at hEval
       rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
       · simp [hLeft] at hEval
@@ -1052,6 +1217,21 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
            obtain ⟨rfl, rfl⟩ := hEval
            exact (hLeftFrame _ _ _ _ hLeft).trans (hRightFrame _ _ _ _ hRight))
   | ite condition thenValue elseValue hConditionFrame hThenFrame hElseFrame =>
+      simp only [Expr.eval] at hEval
+      rcases hCondition : condition.eval scratch state with _ | ⟨conditionValue, afterCondition⟩
+      · simp [hCondition] at hEval
+      cases conditionValue
+      · rcases hElse : elseValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+        · simp [hCondition, hElse] at hEval
+        simp [hCondition, hElse] at hEval
+        obtain ⟨rfl, rfl⟩ := hEval
+        exact (hConditionFrame _ _ _ _ hCondition).trans (hElseFrame _ _ _ _ hElse)
+      · rcases hThen : thenValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+        · simp [hCondition, hThen] at hEval
+        simp [hCondition, hThen] at hEval
+        obtain ⟨rfl, rfl⟩ := hEval
+        exact (hConditionFrame _ _ _ _ hCondition).trans (hThenFrame _ _ _ _ hThen)
+  | iteF condition thenValue elseValue hConditionFrame hThenFrame hElseFrame =>
       simp only [Expr.eval] at hEval
       rcases hCondition : condition.eval scratch state with _ | ⟨conditionValue, afterCondition⟩
       · simp [hCondition] at hEval

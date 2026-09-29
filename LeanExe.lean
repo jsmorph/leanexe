@@ -1,6 +1,7 @@
 import LeanExe.Examples.Axpy
 import LeanExe.Examples.Gcd
 import LeanExe.Examples.PairSum
+import LeanExe.Examples.Piecewise
 import LeanExe.Examples.ScaledHypot
 import LeanExe.Examples.Scale
 import LeanExe.Examples.SumArray

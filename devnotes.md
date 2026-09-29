@@ -18694,3 +18694,51 @@ depends only on `propext`, `Classical.choice`, and `Quot.sound`.
 - [x] Iteration 6b.
 - [ ] Iteration 6c: float literals, comparisons, `neg`, `abs`, `min`, `max`,
   conversions, float locals and arrays, and `Float32` programs.
+
+## 2026-09-29: Iteration 6c, scalar Float
+
+`piecewise x lo hi` uses `==`, `<`, `≤`, negation, `Float.abs`, `min`, `max`,
+three literals, and nested `if` on `Float`, and compiles to WebAssembly with a
+proof that it computes the same bits as Lean.
+
+The binary32 chain has no comparisons, so `F64Compare` is new.  Decoding a
+non-NaN bit pattern gives a canonical unpacked float (subnormal at the least
+exponent, or normal) whose value in units of 2^-1074 is Talos's `scaledValue`,
+with the infinities at ±2^2098.  `compare_canonical` shows that Lean's
+lexicographic comparison of canonical floats orders them by that value, and
+`lt_bits`, `le_bits`, and `beq_bits` follow.  `F64Sign` proves that negation is
+subtraction from negative zero, using the existing lemma that adding a zero to
+a nonzero finite value returns it, and that `IEEE64.abs` agrees with Lean on
+every Lean float.  `F64Bits` states all of it for `Float`: `decide (a < b) =
+IEEE64.lt a.toBits b.toBits`, `(-x).toBits = IEEE64.sub (-0.0 bits) x.toBits`,
+and `toBits` of `abs`, `min`, and `max`.
+
+The IR gained `constF`, `iteF`, `eqF`, `ltF`, `leF`, and `F64UnOp.abs`, each with
+proof cases copied from its `u64` counterpart.  The compiler translates
+literals by computing their bits, `-x` as `-0.0 - x`, `min` and `max` as a
+comparison and a conditional (evaluating the operands twice), `if` on floats,
+and float conditions, including `(a == b) = true`.
+
+The first emit failed: the encoder did not support `f64.const`, `f64.eq`,
+`f64.lt`, `f64.le`, or `f64.abs`, so `piecewise_bytes` held only vacuously,
+since its hypothesis `encode m = .ok bytes` could not be met.  The encoding
+layer gained the four opcodes and the 8-byte little-endian constant, with the
+decoder lemma `parses_fixed64` proved by `omega` over the byte digits.  The
+decoder testsuite then decoded 479 valid modules in the subset (210 before),
+all equal to the reference and round-tripping, and rejected all 670 malformed
+ones.  `deslop.md` now records that each `_bytes` theorem is conditional on
+encoding succeeding.
+
+The `piecewise` proof needed a different method from `axpy`.  The result
+word's type is `piecewise.ir.result.1.denote`, which `simp` cannot see as
+`UInt64` until `dsimp only [piecewise.ir]` unfolds the IR.  `split_ifs`,
+`simp_all`, and a bind-through-`if` lemma inside the large `simp` call looped or
+timed out; casing on the six IEEE conditions as Booleans, each finished by
+`simp`, checks in about 7 seconds.  The LTG entry records the method.
+
+`piecewise.wasm` matches native Lean on 66 inputs, the earlier modules kept
+their hashes, and every audited theorem depends only on `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+- [x] Iteration 6c.
+- [ ] Iteration 6d: `FloatArray`, with float locals.

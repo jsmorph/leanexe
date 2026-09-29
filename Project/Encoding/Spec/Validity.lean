@@ -20,6 +20,7 @@ inductive Unary : Wasm.Instruction → Wasm.ValueType → Wasm.ValueType → Pro
   | f32Nearest : Unary .f32Nearest .f32 .f32
   | f32Sqrt : Unary .f32Sqrt .f32 .f32
   | f64Sqrt : Unary .f64Sqrt .f64 .f64
+  | f64Abs : Unary .f64Abs .f64 .f64
   | f32ConvertI32S : Unary .f32ConvertI32S .i32 .f32
   | i32TruncSatF32S : Unary .i32TruncSatF32S .f32 .i32
   | extend8S : Unary .extend8S .i32 .i32
@@ -39,6 +40,9 @@ inductive Binary : Wasm.Instruction → Wasm.ValueType → Wasm.ValueType → Pr
   | add : Binary .add .i32 .i32
   | and : Binary .and .i32 .i32
   | eqI64 : Binary .eqI64 .i64 .i32
+  | f64Eq : Binary .f64Eq .f64 .i32
+  | f64Lt : Binary .f64Lt .f64 .i32
+  | f64Le : Binary .f64Le .f64 .i32
   | neI64 : Binary .neI64 .i64 .i32
   | ltUI64 : Binary .ltUI64 .i64 .i32
   | leUI64 : Binary .leUI64 .i64 .i32
@@ -84,6 +88,7 @@ mutual
     | binary (op : Binary instr input output) : Instruction context instr [input, input] [output]
     | const32 (value : UInt32) : Instruction context (.const value) [] [.i32]
     | const64 (value : UInt64) : Instruction context (.constI64 value) [] [.i64]
+    | constF64 (value : UInt64) : Instruction context (.f64Const value) [] [.f64]
     | localGet (index : Nat) (found : context.locals[index]? = some type) :
         Instruction context (.localGet index) [] [type]
     | localSet (index : Nat) (found : context.locals[index]? = some type) :

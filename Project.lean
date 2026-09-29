@@ -39,6 +39,8 @@ import Project.IR.Stmt
 import Project.IR.TailLoop
 import Project.PairSum.Module
 import Project.PairSum.Verify
+import Project.Piecewise.Module
+import Project.Piecewise.Verify
 import Project.Pipeline.Allocation
 import Project.Pipeline.Implements
 import Project.Pipeline.Runtime
@@ -74,6 +76,7 @@ import Project.ProofKit.F32TruncSat
 import Project.ProofKit.F64Add
 import Project.ProofKit.F64AddFinite
 import Project.ProofKit.F64Bits
+import Project.ProofKit.F64Compare
 import Project.ProofKit.F64Decoded
 import Project.ProofKit.F64Div
 import Project.ProofKit.F64DivCore
@@ -88,6 +91,7 @@ import Project.ProofKit.F64RoundDyadic
 import Project.ProofKit.F64RoundFinish
 import Project.ProofKit.F64RoundRational
 import Project.ProofKit.F64RoundScaled
+import Project.ProofKit.F64Sign
 import Project.ProofKit.F64Source
 import Project.ProofKit.F64Sqrt
 import Project.ProofKit.F64SqrtCore

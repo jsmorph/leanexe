@@ -20,6 +20,10 @@ mutual
     | neI64 : InstructionForm .neI64
     | ltUI64 : InstructionForm .ltUI64
     | leUI64 : InstructionForm .leUI64
+    | f64Eq : InstructionForm .f64Eq
+    | f64Lt : InstructionForm .f64Lt
+    | f64Le : InstructionForm .f64Le
+    | f64Abs : InstructionForm .f64Abs
     | geUI64 : InstructionForm .geUI64
     | add : InstructionForm .add
     | and : InstructionForm .and
@@ -73,6 +77,7 @@ mutual
     | store8 (offset : UInt32) : InstructionForm (.store8 offset)
     | const32 (value : UInt32) : InstructionForm (.const value)
     | const64 (value : UInt64) : InstructionForm (.constI64 value)
+    | constF64 (value : UInt64) : InstructionForm (.f64Const value)
     | block (types : List Wasm.ValueType) (body : Wasm.Program)
         (typeForm : BlockForm types) (bodyForm : ProgramForm body) :
         InstructionForm (.block 0 types.length body [] types)
@@ -110,6 +115,7 @@ mutual
     | .memoryGrow => 2
     | .const value => 1 + s32 value
     | .constI64 value => 1 + s64 value
+    | .f64Const _ => 9
     | .br index => 1 + u32 index
     | .br_if index => 1 + u32 index
     | .call index => 1 + u32 index

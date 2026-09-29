@@ -41,6 +41,11 @@ def take (count : Nat) : Parser (List UInt8) := do
     pure (input.take count)
   else malformed "unexpected end"
 
+/-- Eight bytes, least significant first, as a 64-bit word. -/
+def fixed64 : Parser UInt64 := do
+  let bytes ← take 8
+  pure (UInt64.ofNat (bytes.foldr (fun b acc => b.toNat + 256 * acc) 0))
+
 def remaining : Parser Nat := do
   return (← get).length
 
@@ -226,6 +231,9 @@ def plain : UInt8 → Option Instruction
   | 0x52 => some .neI64
   | 0x54 => some .ltUI64
   | 0x58 => some .leUI64
+  | 0x61 => some .f64Eq
+  | 0x63 => some .f64Lt
+  | 0x65 => some .f64Le
   | 0x5a => some .geUI64
   | 0x6a => some .add
   | 0x71 => some .and
@@ -245,6 +253,7 @@ def plain : UInt8 → Option Instruction
   | 0x93 => some .f32Sub
   | 0x94 => some .f32Mul
   | 0x95 => some .f32Div
+  | 0x99 => some .f64Abs
   | 0x9f => some .f64Sqrt
   | 0xa0 => some .f64Add
   | 0xa1 => some .f64Sub
@@ -330,6 +339,7 @@ where
     match opcode with
     | 0x41 => return .const (wrap32 (← signed 32))
     | 0x42 => return .constI64 (wrap64 (← signed 64))
+    | 0x44 => return .f64Const (← fixed64)
     | 0x3f | 0x40 => do
         if (← unsigned 32) ≠ 0 then unsupported "memory index"
         return if opcode = 0x3f then .memorySize else .memoryGrow
