@@ -75,7 +75,7 @@ theorem insertIdx!_eq_build (xs : Array UInt64) (k v : UInt64) (hSize : xs.size 
   by_cases hk : k.toNat ≤ xs.size
   · have hn : (UInt64.ofNat (xs.size + 1)).toNat = xs.size + 1 :=
       UInt64.toNat_ofNat_of_lt' (by omega)
-    simp only [Array.insertIdx!, hk, dite_true, if_true]
+    simp only [Array.insertIdx!, hk, dite_true, ite_true]
     apply Array.ext
     · rw [Array.size_insertIdx hk, build_size, hn]
     · intro j hj _
@@ -89,18 +89,18 @@ theorem insertIdx!_eq_build (xs : Array UInt64) (k v : UInt64) (hSize : xs.size 
         · intro h; rw [← h, hj64]
         · intro h; rw [h, UInt64.ofNat_toNat]
       by_cases h1 : j < k.toNat
-      · simp only [h1, dite_true, hLess.mpr h1, if_true, hj64, getElem!_pos xs j (by omega)]
+      · simp only [h1, dite_true, hLess.mpr h1, ite_true, hj64, getElem!_pos xs j (by omega)]
       · by_cases h2 : j = k.toNat
-        · simp [h2, hLess, hEq]
+        · simp [h2]
         · have hSub : (UInt64.ofNat j - 1).toNat = j - 1 := by
             rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, hj64]; simp; omega),
               hj64]
             simp
           have hn1 : ¬UInt64.ofNat j < k := fun h => h1 (hLess.mp h)
           have hn2 : UInt64.ofNat j ≠ k := fun h => h2 (hEq.mp h)
-          simp only [h1, h2, dite_false, hn1, hn2, if_false, hSub,
+          simp only [h1, h2, dite_false, hn1, hn2, ite_false, hSub,
             getElem!_pos xs (j - 1) (by omega)]
-  · simp only [Array.insertIdx!, hk, dite_false, if_false]
+  · simp only [Array.insertIdx!, hk, dite_false, ite_false]
     apply Array.ext
     · simp [build_size]
       rfl
@@ -126,10 +126,8 @@ theorem borrowed_at_after_writes {heap : Heap} {initial current : Store Unit} {m
   exact (hBorrowed.allocate 1 hHeap hRoomNeed).values.writesRange hWrites (by omega)
 
 /-- The copying template allocates `8 * (n + 1)` bytes, stores the length `n`, and
-stores `f i` at each index `i`, leaving the pointer in `dst`.  The result is an
-owned array equal to `LeanExe.build n f`, the allocator invariant holds for
-`heap.allocate`, every array borrowed before stays borrowed, and the memory limits
-are unchanged.  The element
+stores `f i` at each index `i`, leaving the pointer in `dst`, with the facts of
+`Heap.NewArray` for an array equal to `LeanExe.build n f`.  The element
 expression may read any borrowed array. -/
 theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element : Expr .u64}
     {initial : Store Unit} {before : State} {heap : Heap} {n : UInt64} (f : UInt64 → UInt64)
@@ -148,17 +146,8 @@ theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element :
       (fun store state => store = initial ∧ state = before)
       (fun store state => ∃ ptr, State.Frame scratch [dst, limit, index] before state ∧
         state.get dst = some (.i64 ptr) ∧
-        (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))).At store ∧
-        (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))).Owned store ptr (LeanExe.build n f) ∧
-        (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))).top.toNat ≤
-          heap.top.toNat + (48 + 8 * (n.toNat + 1)) ∧
-        store.mem.pages ≤ max initial.mem.pages
-          ((heap.top.toNat + (48 + 8 * (n.toNat + 1)) + 65535) / 65536) ∧
-        (∀ p ws, heap.Borrowed initial p ws →
-          (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))).Borrowed store p ws) ∧
-        (∀ p ws, heap.Owned initial p ws →
-          (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))).Owned store p ws) ∧
-        store.memoryCaps = initial.memoryCaps) := by
+        heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))) store ptr
+          (LeanExe.build n f) (48 + 8 * (n.toNat + 1))) := by
   simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
     List.nodup_nil, not_false_eq_true, and_true] at hLocals
   simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hBelow
@@ -177,7 +166,6 @@ theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element :
     omega
   generalize hNeedDef : UInt64.ofNat (8 * (n.toNat + 1)) = need at hNeed hSize hNeedValue ⊢
   have hRoomNeed : heap.Room initial m (48 + need.toNat) := by rw [hNeed]; exact hSpace
-  have hHeap1 := hHeap.allocate 1 hRoomNeed
   have hBlock := hHeap.allocate_block 1 hRoomNeed
   have hCapacity := allocated_capacity need heap.free
   generalize hPtrDef : FixedArrayAllocate.root heap.top need heap.free = ptr at hBlock ⊢
@@ -208,7 +196,7 @@ theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element :
   obtain ⟨s3, hSet3⟩ := State.exists_set? (state := s2) (index := index) (.i64 0)
     (by have := hFrame2.params; have := hFrame2.locals; omega)
   have hFrame3 := hFrame2.set? hSet3 (Or.inl (by simp))
-  set storeA := heap.allocateStore initial need 1 with hStoreA
+  set storeA := heap.allocateStore initial need 1
   let store2 : Store Unit := { storeA with mem := storeA.mem.write64 ptr.toUInt32 n }
   have hPrefix2 : UInt64Array.PrefixAt store2 ptr all 0 := by
     refine UInt64Array.PrefixAt.empty _ _ _ ?_ ?_ ?_
@@ -320,39 +308,10 @@ theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element :
     have hWithin : WritesWithin storeA store ptr.toNat (allocatedCapacity need heap.free).toNat := by
       refine ⟨by rw [hWrites.1], hWrites.2.1, fun address hOutside => hWrites.2.2 address ?_⟩
       omega
-    refine ⟨ptr, hFrame, hDstGet, hHeap1.writesWithin hBlock hWithin,
-      (hBlock.writesWithin hWithin).owned hPrefix.complete (by omega), ?_, ?_, ?_, ?_, ?_⟩
-    · have := Heap.allocate_top hRoomNeed
-      omega
-    · have := Heap.allocate_pages heap initial need 1
-      rw [hWrites.2.1]
-      rw [hNeed] at this
-      exact this
-    · intro p ws hBorrowed
-      have hDisjoint := hBorrowed.disjoint_allocated hHeap need
-      rw [hPtrDef] at hDisjoint
-      exact (hBorrowed.allocate 1 hHeap hRoomNeed).writesWithin hDisjoint hWithin
-    · intro p ws hOwned
-      have hDisjoint := hOwned.disjoint_allocated hHeap need
-      rw [hPtrDef] at hDisjoint
-      have hAllocated := hOwned.allocate 1 hHeap hRoomNeed
-      have hSameCapacity : capacityAt storeA p = capacityAt initial p := by
-        have hHeaderBytes := hAllocated.capacity
-        unfold capacityAt
-        congr 1
-        exact Memory.read64_congr _ fun i hi => by
-          have hBase := hOwned.base
-          have hAddress := hOwned.address
-          have h32 : (32 : UInt64).toNat = 32 := rfl
-          rw [header_address 32 (by decide) (by omega) (by omega), h32]
-          exact allocated_bytes_outside initial heap.top need 1 heap.free (p.toNat - 48)
-            (48 + capacityAt initial p) hHeap.freeList (fun node hNode => by
-              have := hOwned.separate node hNode
-              unfold regionsDisjoint at this ⊢
-              omega) (by have := hOwned.below; omega) (fun _ => hRoomNeed.bump.1) _
-            (by omega) (by omega)
-      exact hAllocated.writesWithin (by rw [hSameCapacity]; exact hDisjoint) (by omega) hWithin
-    · rw [hWrites.1]
-      exact heap.allocateStore_memoryCaps initial need 1
+    subst hPtrDef hAllDef
+    have hNew := Heap.newArray_of_writes hHeap hRoomNeed hWithin hPrefix.complete (by omega)
+      (by rw [hWrites.1]; exact heap.allocateStore_memoryCaps initial need 1)
+    rw [hNeed] at hNew
+    exact ⟨_, hFrame, hDstGet, hNew⟩
 
 end Project.IR

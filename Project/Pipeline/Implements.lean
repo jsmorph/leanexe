@@ -54,9 +54,11 @@ instance : Represent (Array Float) where
 allocator invariant, with arguments `params` (in declaration order) representing
 `x` and room for `need x` bytes, the call terminates and returns values that, in
 declaration order, represent `f x` and that the caller owns.  Talos lists
-arguments and results with the top of the stack first, hence the reversals.  The arguments still represent `x`, the
-allocator invariant holds again, `top` advances by at most `need x` bytes, and
-memory grows only as far as the new `top` requires. -/
+arguments and results with the top of the stack first, hence the reversals.  The
+arguments still represent `x`, every array borrowed or owned before the call is
+still borrowed or owned with the same contents, the allocator invariant holds
+again, `top` advances by at most `need x` bytes, and memory grows only as far as
+the new `top` requires. -/
 def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α → β)
     (need : α → Nat) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
@@ -64,7 +66,9 @@ def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α 
     TerminatesWith env m entry store params.reverse fun final values =>
       ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final values.reverse (f x) ∧
         Represent.borrowed heap' final params x ∧ heap'.top.toNat ≤ heap.top.toNat + need x ∧
-        final.mem.pages ≤ max store.mem.pages ((heap.top.toNat + need x + 65535) / 65536)
+        final.mem.pages ≤ max store.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
+        (∀ p ws, heap.Borrowed store p ws → heap'.Borrowed final p ws) ∧
+        (∀ p ws, heap.Owned store p ws → heap'.Owned final p ws)
 
 /-- For every input satisfying `P`, under the premises of `Implements`, the call
 returns an owned result `y` with `Q x y`. -/

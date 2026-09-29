@@ -92,9 +92,8 @@ theorem Stmt.storeElements_spec {scratch dst : Nat} {before : State} {ptr : UInt
             hIndex).trans hWrites⟩
 
 /-- An array literal allocates a block for its elements, stores the length and
-the elements, and leaves its pointer in `dst`.  The result is an owned array,
-the allocator invariant holds for `heap.allocate`, and every array borrowed
-before stays borrowed. -/
+the elements, and leaves its pointer in `dst`, with the facts of
+`Heap.NewArray` for `heap.allocate`. -/
 theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr .u64)}
     {initial : Store Unit} {before : State} {heap : Heap} {words : List UInt64}
     (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
@@ -107,14 +106,8 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
       (fun store state => store = initial ∧ state = before)
       (fun store state => ∃ ptr, State.Frame scratch [dst] before state ∧
         state.get dst = some (.i64 ptr) ∧
-        (heap.allocate (UInt64.ofNat (8 * (values.length + 1)))).At store ∧
-        (heap.allocate (UInt64.ofNat (8 * (values.length + 1)))).Owned store ptr words.toArray ∧
-        (heap.allocate (UInt64.ofNat (8 * (values.length + 1)))).top.toNat ≤
-          heap.top.toNat + (48 + 8 * (values.length + 1)) ∧
-        store.mem.pages ≤ max initial.mem.pages
-          ((heap.top.toNat + (48 + 8 * (values.length + 1)) + 65535) / 65536) ∧
-        ∀ p ws, heap.Borrowed initial p ws →
-          (heap.allocate (UInt64.ofNat (8 * (values.length + 1)))).Borrowed store p ws) := by
+        heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (values.length + 1)))) store ptr
+          words.toArray (48 + 8 * (values.length + 1))) := by
   have hLength : values.length = words.length := hValues.length_eq
   have hAddress := hSpace.address
   have hNeed : (UInt64.ofNat (8 * (values.length + 1))).toNat = 8 * (values.length + 1) :=
@@ -122,7 +115,6 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
   have hSize := allocSize_words values.length (by omega)
   generalize hNeedDef : UInt64.ofNat (8 * (values.length + 1)) = need at hNeed hSize ⊢
   have hRoomNeed : heap.Room initial m (48 + need.toNat) := by rw [hNeed]; exact hSpace
-  have hHeap1 := hHeap.allocate 1 hRoomNeed
   have hBlock := hHeap.allocate_block 1 hRoomNeed
   have hCapacity := allocated_capacity need heap.free
   have hBlockAddress := hBlock.address
@@ -170,18 +162,11 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
       refine ⟨by rw [hAll.1], hAll.2.1, fun address hOutside => hAll.2.2 address ?_⟩
       simp only [List.size_toArray] at hAll ⊢
       omega
-    refine ⟨ptr, hFrame, hPtr, hHeap1.writesWithin hBlock hWithin,
-      (hBlock.writesWithin hWithin).owned hComplete.complete ?_, ?_, ?_, ?_⟩
-    · simp only [List.size_toArray]; omega
-    · have := Heap.allocate_top hRoomNeed
-      omega
-    · have := Heap.allocate_pages heap initial need 1
-      rw [hAll.2.1]
-      rw [hNeed] at this
-      exact this
-    · intro p ws hBorrowed
-      have hDisjoint := hBorrowed.disjoint_allocated hHeap need
-      rw [hPtrDef] at hDisjoint
-      exact (hBorrowed.allocate 1 hHeap hRoomNeed).writesWithin hDisjoint hWithin
+    subst hPtrDef
+    have hNew := Heap.newArray_of_writes hHeap hRoomNeed hWithin hComplete.complete
+      (by simp only [List.size_toArray]; omega)
+      (by rw [hAll.1]; exact heap.allocateStore_memoryCaps initial need 1)
+    rw [hNeed] at hNew
+    exact ⟨_, hFrame, hPtr, hNew⟩
 
 end Project.IR

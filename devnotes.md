@@ -18973,3 +18973,29 @@ theorems, but composing `Implements` theorems needs a frame clause that the
 current statement lacks; that decision is with the user.
 
 - [ ] CLOB 4: `addBid` proof, after the frame decision.
+
+## 2026-09-29: Frame clause in Implements
+
+The user chose option A of decision 7.  `Implements` now also states that every
+array borrowed or owned before the call is still borrowed or owned, with the
+same contents, afterward.  `Func.implements_heap` requires the clause from the
+body, and `Func.implements` supplies it for bodies that keep the store.
+
+Both allocation rules now conclude `Heap.NewArray`, derived once by
+`Heap.newArray_of_writes`: the allocator invariant, the new owned array, the
+bounds, earlier arrays kept (owned ones with their capacity word unchanged) and
+disjoint from the new object, and the memory limits.  New runtime lemmas:
+`Heap.Owned.allocate_within`, `Heap.Borrowed.allocate_within`,
+`capacityAt_frame`, `Heap.Block.capacity_eq`, `Heap.Borrowed.release`, and
+`Heap.Owned.release`.  `pairSum` releases its temporary, and its proof keeps
+earlier arrays through the release with the disjointness facts.  The duplicate
+`header_address` lemma I had added was removed in favor of the existing
+`headerAddress_toNat`, now in `Allocation.lean`.
+
+While removing unused hypotheses, I removed facts that `omega` was using from the
+context and a `simp` argument that was needed; the build caught both, and I
+restored them.  All fourteen `_bytes` theorems still depend only on the three
+standard axioms.
+
+- [x] Decision 7: frame clause.
+- [ ] Multi-function modules and the call rule, then `addBid`.

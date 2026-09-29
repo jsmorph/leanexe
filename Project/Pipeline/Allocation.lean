@@ -453,9 +453,10 @@ theorem Heap.Borrowed.writesWithin {heap : Heap} {store store' : Store Unit}
   simp only [regionsDisjoint] at hDisjoint
   omega
 
-theorem header_address {ptr : UInt64} (k : UInt64) (hk : k.toNat ≤ 48)
-    (hBase : 48 ≤ ptr.toNat) (hFit : ptr.toNat < 4294967296) :
-    (ptr - k).toUInt32.toNat = ptr.toNat - k.toNat := by
+/-- A header word `k` bytes before a payload pointer inside the 32-bit address
+space. -/
+theorem headerAddress_toNat {ptr k : UInt64} (hk : k.toNat ≤ ptr.toNat)
+    (hFit : ptr.toNat < 4294967296) : (ptr - k).toUInt32.toNat = ptr.toNat - k.toNat := by
   rw [Memory.toUInt32_toNat, UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le]; omega)]
   omega
 
@@ -477,7 +478,7 @@ theorem Heap.Owned.frame {heap heap' : Heap} {store store' : Store Unit} {ptr : 
   have hHeader : ∀ k : UInt64, k.toNat ≤ 48 → 8 ≤ k.toNat →
       store'.mem.read64 (ptr - k).toUInt32 = store.mem.read64 (ptr - k).toUInt32 :=
     fun k hk h8 => Memory.read64_congr _ fun i hi => by
-      rw [header_address k hk (by omega) (by omega)]
+      rw [headerAddress_toNat (by omega) (by omega)]
       exact hBytes _ (by omega) (by omega)
   have hCapacity : capacityAt store' ptr = capacityAt store ptr := by
     unfold capacityAt
@@ -551,6 +552,70 @@ theorem Heap.Owned.writesWithin {heap : Heap} {store store' : Store Unit}
   simp only [regionsDisjoint] at hDisjoint
   omega
 
+/-- The capacity word of an object is unchanged when the bytes of its header are. -/
+theorem capacityAt_frame {store store' : Store Unit} {ptr : UInt64} (hBase : 48 ≤ ptr.toNat)
+    (hFit : ptr.toNat < 4294967296)
+    (hBytes : ∀ address, ptr.toNat - 48 ≤ address → address < ptr.toNat →
+      store'.mem.bytes address = store.mem.bytes address) :
+    capacityAt store' ptr = capacityAt store ptr := by
+  have h32 : (32 : UInt64).toNat = 32 := rfl
+  unfold capacityAt
+  congr 1
+  exact Memory.read64_congr (m1 := store'.mem) (m2 := store.mem) _ fun i hi => by
+    rw [headerAddress_toNat (by rw [h32]; omega) hFit, h32]
+    exact hBytes _ (by omega) (by omega)
+
+/-- An owned object survives an allocation followed by writes inside the new
+block, with its capacity word unchanged. -/
+theorem Heap.Owned.allocate_within {heap : Heap} {initial store : Store Unit} {m : Module}
+    {need p : UInt64} {ws : Array UInt64} (h : heap.Owned initial p ws) (hHeap : heap.At initial)
+    (hRoom : heap.Room initial m (48 + need.toNat))
+    (hWithin : WritesWithin (heap.allocateStore initial need 1) store
+      (FixedArrayAllocate.root heap.top need heap.free).toNat
+      (allocatedCapacity need heap.free).toNat) :
+    (heap.allocate need).Owned store p ws ∧ capacityAt store p = capacityAt initial p := by
+  have hBase := h.base
+  have hAddress := h.address
+  have hBlockBase := (hHeap.allocate_block 1 hRoom).base
+  have hDisjoint := h.disjoint_allocated hHeap need
+  have hAllocated := h.allocate 1 hHeap hRoom
+  have hBump : takeFirstFitFrom 0 need heap.free = none →
+      heap.top.toNat + 48 + need.toNat ≤ 4294967296 := fun _ => hRoom.bump.1
+  have hAllocatedBytes : ∀ address, p.toNat - 48 ≤ address → address < p.toNat + capacityAt initial p →
+      (heap.allocateStore initial need 1).mem.bytes address = initial.mem.bytes address :=
+    fun address hLow hHigh => allocated_bytes_outside initial heap.top need 1 heap.free
+      (p.toNat - 48) (48 + capacityAt initial p) hHeap.freeList (fun node hNode => by
+        have := h.separate node hNode
+        unfold regionsDisjoint at this ⊢
+        omega) (by have := h.below; omega) hBump address hLow (by omega)
+  have hStoreBytes : ∀ address, p.toNat - 48 ≤ address → address < p.toNat + capacityAt initial p →
+      store.mem.bytes address = initial.mem.bytes address := fun address hLow hHigh => by
+    rw [hWithin.bytes address (by unfold regionsDisjoint at hDisjoint; omega)]
+    exact hAllocatedBytes address hLow hHigh
+  have hCapacity : capacityAt store p = capacityAt initial p :=
+    capacityAt_frame (by omega) (by omega) fun address hLow hHigh =>
+      hStoreBytes address hLow (by omega)
+  have hSameCapacity : capacityAt (heap.allocateStore initial need 1) p = capacityAt initial p :=
+    capacityAt_frame (by omega) (by omega) fun address hLow hHigh =>
+      hAllocatedBytes address hLow (by omega)
+  exact ⟨hAllocated.writesWithin (by rw [hSameCapacity]; exact hDisjoint) (by omega) hWithin,
+    hCapacity⟩
+
+/-- A borrowed array survives an allocation followed by writes inside the new
+block. -/
+theorem Heap.Borrowed.allocate_within {heap : Heap} {initial store : Store Unit} {m : Module}
+    {need p : UInt64} {ws : Array UInt64} (h : heap.Borrowed initial p ws) (hHeap : heap.At initial)
+    (hRoom : heap.Room initial m (48 + need.toNat))
+    (hWithin : WritesWithin (heap.allocateStore initial need 1) store
+      (FixedArrayAllocate.root heap.top need heap.free).toNat
+      (allocatedCapacity need heap.free).toNat) :
+    (heap.allocate need).Borrowed store p ws :=
+  (h.allocate 1 hHeap hRoom).writesWithin (h.disjoint_allocated hHeap need) hWithin
+
+theorem Heap.Block.capacity_eq {heap : Heap} {store : Store Unit} {root capacity stride : UInt64}
+    (h : heap.Block store root capacity stride) : capacityAt store root = capacity.toNat := by
+  rw [capacityAt, h.fresh.2.2.1]
+
 /-- A block with element width one that holds `words` is an owned array. -/
 theorem Heap.Block.owned {heap : Heap} {store : Store Unit} {root capacity : UInt64}
     {words : Array UInt64} (h : heap.Block store root capacity 1)
@@ -564,5 +629,51 @@ theorem Heap.Block.owned {heap : Heap} {store : Store Unit} {root capacity : UIn
   · exact h.address
   · exact h.below
   · exact h.separate
+
+/-- What allocating a new array at `ptr` holding `words` leaves, with `heap'` the
+heap after the allocation and `bytes` the allocation's bound: the allocator
+invariant, the new owned array, the bounds on `top` and the page count, every
+array borrowed or owned before still borrowed or owned and apart from the new
+object, and the memory limits. -/
+structure Heap.NewArray (heap : Heap) (initial : Store Unit) (heap' : Heap) (store : Store Unit)
+    (ptr : UInt64) (words : Array UInt64) (bytes : Nat) : Prop where
+  at_ : heap'.At store
+  owned : heap'.Owned store ptr words
+  top : heap'.top.toNat ≤ heap.top.toNat + bytes
+  pages : store.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + bytes + 65535) / 65536)
+  borrowed : ∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store p ws
+  ownedKeep : ∀ p ws, heap.Owned initial p ws →
+    heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p
+  borrowedApart : ∀ p ws, heap.Borrowed initial p ws →
+    regionsDisjoint (p.toNat, 8 * (ws.size + 1)) (ptr.toNat - 48, 48 + capacityAt store ptr)
+  ownedApart : ∀ p ws, heap.Owned initial p ws →
+    regionsDisjoint (p.toNat - 48, 48 + capacityAt initial p)
+      (ptr.toNat - 48, 48 + capacityAt store ptr)
+  caps : store.memoryCaps = initial.memoryCaps
+
+/-- An allocation followed by writes that fill the new block with `words` leaves a
+new array. -/
+theorem Heap.newArray_of_writes {heap : Heap} {initial store : Store Unit} {m : Module}
+    {need : UInt64} {words : Array UInt64} (hHeap : heap.At initial)
+    (hRoom : heap.Room initial m (48 + need.toNat))
+    (hWithin : WritesWithin (heap.allocateStore initial need 1) store
+      (FixedArrayAllocate.root heap.top need heap.free).toNat
+      (allocatedCapacity need heap.free).toNat)
+    (hValues : UInt64Array.At store (FixedArrayAllocate.root heap.top need heap.free) words)
+    (hFits : 8 * (words.size + 1) ≤ (allocatedCapacity need heap.free).toNat)
+    (hCaps : store.memoryCaps = initial.memoryCaps) :
+    heap.NewArray initial (heap.allocate need) store
+      (FixedArrayAllocate.root heap.top need heap.free) words (48 + need.toNat) := by
+  have hBlock := (hHeap.allocate_block 1 hRoom).writesWithin hWithin
+  have hCapacity := hBlock.capacity_eq
+  refine ⟨(hHeap.allocate 1 hRoom).writesWithin (hHeap.allocate_block 1 hRoom) hWithin,
+    hBlock.owned hValues hFits, Heap.allocate_top hRoom, ?_,
+    fun p ws h => h.allocate_within hHeap hRoom hWithin,
+    fun p ws h => h.allocate_within hHeap hRoom hWithin, fun p ws h => ?_, fun p ws h => ?_,
+    hCaps⟩
+  · rw [hWithin.pages]
+    exact Heap.allocate_pages heap initial need 1
+  · rw [hCapacity]; exact h.disjoint_allocated hHeap need
+  · rw [hCapacity]; exact h.disjoint_allocated hHeap need
 
 end Project.Pipeline

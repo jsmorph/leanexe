@@ -32,7 +32,9 @@ theorem pairSum_implements : Implements pairSum.module 0 pairTuple (fun _ => 72)
         (hFrame.get 1 (by decide) (by decide)).trans (by simp [start, State.get])
       simp [Expr.eval, hGet]
   apply Triple.of_forall
-  rintro store state ⟨ptr, hFrame, hPtr, hAt, hOwned, hTop, hPages, -⟩
+  rintro store state ⟨ptr, hFrame, hPtr, hNew⟩
+  have hAt := hNew.at_
+  have hOwned := hNew.owned
   have hLength : state.params.length + state.locals.length = 7 := by
     rw [hFrame.params, hFrame.locals]; simp [start]
   obtain ⟨s1, hSet1⟩ := State.exists_set? (state := state) (index := 3) (.i64 0) (by omega)
@@ -61,8 +63,12 @@ theorem pairSum_implements : Implements pairSum.module 0 pairTuple (fun _ => 72)
   refine (Stmt.release_spec hImports hRelease hPtr2 hAt hOwned).mono (fun _ _ h => h) ?_
   rintro store' state' ⟨hs, ht⟩
   subst store' state'
-  refine ⟨_, hAt.release hOwned, rfl, hTop, ?_, _, s2, ?_, rfl⟩
-  · simpa [Heap.releaseStore] using hPages
+  refine ⟨_, hAt.release hOwned, rfl, hNew.top, ?_, fun p ws h =>
+      (hNew.borrowed p ws h).release hOwned (hNew.borrowedApart p ws h), fun p ws h => ?_,
+    _, s2, ?_, rfl⟩
+  · simpa [Heap.releaseStore] using hNew.pages
+  · obtain ⟨hKept, hCapacity⟩ := hNew.ownedKeep p ws h
+    exact (hKept.release hOwned (by rw [hCapacity]; exact hNew.ownedApart p ws h)).1
   · simp [pairSum.ir, Func.scratch, Expr.evalResults, Expr.eval, hAcc, pairTuple,
       LeanExe.Examples.PairSum.pairSum, Scalar.values]
 
