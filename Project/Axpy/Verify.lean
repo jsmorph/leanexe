@@ -21,11 +21,12 @@ theorem axpy_implements : Implements axpy.module 0 axpyTuple (fun _ => 0) :=
         IR.Stmt.scratchWidth, State.get, F64Op.apply, Scalar.values, axpyTuple,
         LeanExe.Examples.Axpy.axpy, F64Bits.toBits_add, F64Bits.toBits_mul]⟩) fun _ _ h => h
 
-/-- The bytes `encode` produces for `axpy.module` decode to a module that
+/-- `encode` succeeds on `axpy.module`, and its bytes decode to a module that
 computes `axpy` bit for bit. -/
-theorem axpy_bytes (bytes : ByteArray) (success : Wasm.Encoding.encode axpy.module = .ok bytes) :
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 axpyTuple (fun _ => 0) :=
-  ⟨axpy.module, Wasm.Encoding.decode_encode axpy.module bytes (by decide) success,
-    axpy_implements⟩
+theorem axpy_bytes : ∃ bytes, Wasm.Encoding.encode axpy.module = .ok bytes ∧
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 axpyTuple (fun _ => 0) := by
+  obtain ⟨bytes, success, decoded⟩ :=
+    Wasm.Encoding.round_trip axpy.module (by decide) (by decide +kernel)
+  exact ⟨bytes, success, axpy.module, decoded, axpy_implements⟩
 
 end Project.Axpy

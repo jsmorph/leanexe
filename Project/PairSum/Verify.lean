@@ -65,12 +65,12 @@ theorem pairSum_implements : Implements pairSum.module 0 pairTuple (fun _ => 72)
   · simpa [Heap.releaseStore] using hPages
   · simp [pairSum.ir, Func.scratch, Expr.eval, hAcc, pairTuple, LeanExe.Examples.PairSum.pairSum]
 
-/-- The bytes `encode` produces for `pairSum.module` decode to a module that
+/-- `encode` succeeds on `pairSum.module`, and its bytes decode to a module that
 computes `pairSum` exactly, allocating at most 72 bytes. -/
-theorem pairSum_bytes (bytes : ByteArray)
-    (success : Wasm.Encoding.encode pairSum.module = .ok bytes) :
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 pairTuple (fun _ => 72) :=
-  ⟨pairSum.module, Wasm.Encoding.decode_encode pairSum.module bytes (by decide) success,
-    pairSum_implements⟩
+theorem pairSum_bytes : ∃ bytes, Wasm.Encoding.encode pairSum.module = .ok bytes ∧
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 pairTuple (fun _ => 72) := by
+  obtain ⟨bytes, success, decoded⟩ :=
+    Wasm.Encoding.round_trip pairSum.module (by decide) (by decide +kernel)
+  exact ⟨bytes, success, pairSum.module, decoded, pairSum_implements⟩
 
 end Project.PairSum

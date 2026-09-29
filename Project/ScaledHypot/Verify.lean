@@ -24,12 +24,12 @@ theorem scaledHypot_implements :
         scaledHypotTuple, LeanExe.Examples.ScaledHypot.scaledHypot, F64Bits.toBits_add,
         F64Bits.toBits_mul, F64Bits.toBits_div, F64Bits.toBits_sqrt]⟩) fun _ _ h => h
 
-/-- The bytes `encode` produces for `scaledHypot.module` decode to a module that
+/-- `encode` succeeds on `scaledHypot.module`, and its bytes decode to a module that
 computes `scaledHypot` bit for bit. -/
-theorem scaledHypot_bytes (bytes : ByteArray)
-    (success : Wasm.Encoding.encode scaledHypot.module = .ok bytes) :
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 scaledHypotTuple (fun _ => 0) :=
-  ⟨scaledHypot.module, Wasm.Encoding.decode_encode scaledHypot.module bytes (by decide) success,
-    scaledHypot_implements⟩
+theorem scaledHypot_bytes : ∃ bytes, Wasm.Encoding.encode scaledHypot.module = .ok bytes ∧
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 scaledHypotTuple (fun _ => 0) := by
+  obtain ⟨bytes, success, decoded⟩ :=
+    Wasm.Encoding.round_trip scaledHypot.module (by decide) (by decide +kernel)
+  exact ⟨bytes, success, scaledHypot.module, decoded, scaledHypot_implements⟩
 
 end Project.ScaledHypot

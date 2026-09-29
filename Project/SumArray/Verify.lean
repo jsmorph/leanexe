@@ -26,13 +26,13 @@ theorem sumArray_implements :
     exact ⟨hStore, (xs.foldl (· + ·) 0 : UInt64), state, by
       simp [sumArray.ir, Func.scratch, Expr.eval, hAcc], rfl⟩
 
-/-- The bytes `encode` produces for `sumArray.module` decode to a module that
+/-- `encode` succeeds on `sumArray.module`, and its bytes decode to a module that
 computes `sumArray` exactly. -/
-theorem sumArray_bytes (bytes : ByteArray)
-    (success : Wasm.Encoding.encode sumArray.module = .ok bytes) :
+theorem sumArray_bytes : ∃ bytes, Wasm.Encoding.encode sumArray.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧
-      Implements m 0 LeanExe.Examples.SumArray.sumArray (fun _ => 0) :=
-  ⟨sumArray.module, Wasm.Encoding.decode_encode sumArray.module bytes (by decide) success,
-    sumArray_implements⟩
+      Implements m 0 LeanExe.Examples.SumArray.sumArray (fun _ => 0) := by
+  obtain ⟨bytes, success, decoded⟩ :=
+    Wasm.Encoding.round_trip sumArray.module (by decide) (by decide +kernel)
+  exact ⟨bytes, success, sumArray.module, decoded, sumArray_implements⟩
 
 end Project.SumArray

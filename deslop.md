@@ -66,7 +66,7 @@ The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O a
 
 `sumSquares_implements` states that `sumSquares.module` computes `sumSquares xs = xs.foldl (fun acc x => acc + x * x) 0.0` bit for bit on every borrowed `Array Float`.  An `Array Float` is stored as the `Array UInt64` of its elements' bit patterns, and the fold's accumulator and element locals have type `f64`.  The proof applies `Stmt.fold_spec` with a step on bit patterns, in 21 lines including the statement, and a 7-line lemma converts the result with core's `Array.foldl_map` and `Array.foldl_hom`.
 
-`scale_bytes`, `gcd_bytes`, `sumArray_bytes`, `pairSum_bytes`, `sumCount_bytes`, `axpy_bytes`, `scaledHypot_bytes`, `piecewise_bytes`, and `sumSquares_bytes` combine these with `decode_encode`.  All of these theorems, the rule lemmas, the runtime specifications, and `decode_encode` depend only on `propext`, `Classical.choice`, and `Quot.sound`.  An audit found that CodeLib's `Mem.read64_write64_same`, a `simp` lemma proved with `bv_decide`, had added an axiom for compiled code to `pairSum_bytes`.  The proofs now use ProofKit's kernel-checked `Memory.read64_write64` and remove CodeLib's lemma from the `simp` set in `RuntimeSpec.lean`.
+`scale_bytes`, `gcd_bytes`, `sumArray_bytes`, `pairSum_bytes`, `sumCount_bytes`, `axpy_bytes`, `scaledHypot_bytes`, `piecewise_bytes`, and `sumSquares_bytes` combine these with `round_trip`: `encode` succeeds on the module, and the decoder reads the bytes back as a module that implements the function.  The kernel checks that encoding succeeds by evaluating the encoder (`decide +kernel`), in about half a second per module.  All of these theorems, the rule lemmas, the runtime specifications, and `decode_encode` depend only on `propext`, `Classical.choice`, and `Quot.sound`.  An audit found that CodeLib's `Mem.read64_write64_same`, a `simp` lemma proved with `bv_decide`, had added an axiom for compiled code to `pairSum_bytes`.  The proofs now use ProofKit's kernel-checked `Memory.read64_write64` and remove CodeLib's lemma from the `simp` set in `RuntimeSpec.lean`.
 
 ## Tested
 
@@ -169,7 +169,7 @@ The tracked tree holds `paper/` and `data/` (publication records), `Project/`, `
 2. The premises `Heap.At`, `Heap.Borrowed`, and `Heap.Room` are assumed.  No theorem covers instantiation or the host.
 3. `Implements` protects only the arguments and the allocator invariant.  It states nothing about other live objects.
 4. `Emit.lean` evaluates `encode` with compiled Lean code, and no theorem connects the written file to the proved bytes.  The user deferred this item.
-5. Each `_bytes` theorem assumes `encode m = .ok bytes`, so it holds vacuously if encoding fails.  The Emit run shows success for each program, and `encode_complete` would prove it from a `Ready m` proof, which no program has yet.  `piecewise_bytes` was vacuous until the encoder gained the float comparison and constant instructions.
+5. Until 2026-09-29, each `_bytes` theorem assumed `encode m = .ok bytes` and held vacuously if encoding failed, as `piecewise_bytes` did until the encoder gained the float comparison and constant instructions.  Each now proves that encoding succeeds.
 
 The user doubted that items 2 and 3 need work, and no work on them is planned.
 
