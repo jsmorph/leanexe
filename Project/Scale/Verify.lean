@@ -4,7 +4,7 @@ import Project.Encoding.RoundTrip
 
 namespace Project.Scale
 
-open Project.Pipeline Project.IR Project.ProofKit.ScalarTransition
+open Project.Pipeline Project.IR
 
 /-- `scale` with its three arguments as one tuple. -/
 def scaleTuple (x : UInt64 × UInt64 × UInt64) : UInt64 :=
@@ -17,7 +17,7 @@ theorem scale_implements : Implements scale.module 0 scaleTuple (fun _ => 0) :=
       rw [Scalar.borrowed.mp h] at hState
       subst hState
       simp [scale.ir, Func.state, Func.width, Func.scratch, Expr.eval, Expr.scratchWidth,
-        IR.Stmt.scratchWidth, State.get, State.set?, U64Op.apply, Scalar.values, scaleTuple,
+        Stmt.scratchWidth, State.get, State.set?, U64Op.apply, Scalar.values, scaleTuple,
         LeanExe.Examples.Scale.scale]
       intro hZero
       simp [hZero]⟩) fun _ _ h => h

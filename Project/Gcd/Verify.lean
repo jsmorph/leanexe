@@ -4,7 +4,7 @@ import Project.Encoding.RoundTrip
 
 namespace Project.Gcd
 
-open Wasm Project.Pipeline Project.IR Project.ProofKit.ScalarTransition
+open Wasm Project.Pipeline Project.IR
 
 /-- `gcd` with its two arguments as one pair. -/
 def gcdTuple (x : UInt64 × UInt64) : UInt64 := LeanExe.Examples.Gcd.gcd x.1 x.2

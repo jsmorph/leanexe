@@ -18505,3 +18505,32 @@ count; the module is 1,331 bytes.
 - [ ] Iteration 3b: `pairSum`, calls, stores, and the `alloc` and `release`
   specifications.
 - [ ] Iteration 3c: `sumCount`.
+
+## 2026-09-29: Expression module and LTG review
+
+`Project/IR/Expr.lean` now holds the parts of `ProofKit/ScalarTransition.lean`
+that the pipeline uses: `ScalarType`, `State` with its get and set lemmas,
+`localSet_spec`, `localGet_spec`, `U64Op`, `Expr`, `Expr.eval`, `Expr.program`,
+`Expr.scratchWidth`, `Expr.eval_preserves_below` (used by `Expr.program_spec`),
+and `Expr.program_spec`.  `State.Frame` and `Expr.eval_frame` moved there from
+`Stmt.lean`, and the namespace is `Project.IR`.  The old IR in that file (its
+`Stmt`, `Stmt.eval`, `Stmt.program_spec`, and the `whileProgram` and
+`postTestProgram` loops) was deleted with `ScalarFrame`, `ScalarConditional`, and
+`ScalarTransitionU64`, which only it used.  The move removed the clash between
+the two `Stmt` types, so the `scale` proof names `Stmt.scratchWidth` without a
+qualifier.  The full build passes, and the three modules have the same hashes.
+
+The LTG review deleted the four entries that listed the deleted modules
+(`counter-transition`, `euclidean-gcd-loop`, `scalar-post-test-loop`,
+`scalar-statement`) and `fixed-array-erase-reconstruction`, whose `eraseIdx!`
+lemma no planned program uses; the lemma stays in ProofKit.  The other five
+entries were rewritten without the old annotation kinds, demo consumers, and
+deleted related entries.  `array-memory-framing` no longer lists
+`FixedArrayPairResult.input_preserved_by_alloc`, which is stated about the old
+bump allocator model `FixedArrayAllocator.allocStore`, not about the runtime
+`alloc`.  Each kept entry names the planned use: the fold rule's invariant,
+array framing across stores and allocation, the call rule's stack suffix, raw
+WASM locals in runtime proofs, and store framing.  The LTG check passes with 7
+entries.
+
+- [x] Expression module and LTG review.

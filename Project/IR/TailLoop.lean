@@ -11,7 +11,7 @@ run of `step`.
 
 namespace Project.IR
 
-open Wasm Project.ProofKit.ScalarTransition Project.Pipeline
+open Wasm Project.Pipeline
 
 /-- The IR state of the loop at arguments `args`, with `result` and `done` in the
 first two compiler variables and `others` in the remaining variables and the

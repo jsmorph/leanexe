@@ -3,7 +3,7 @@ import Project.Pipeline.Implements
 
 namespace Project.IR
 
-open Wasm Project.ProofKit.ScalarTransition Project.Pipeline
+open Wasm Project.Pipeline
 
 /-- A compiled function implements `f` when, for every `x` and every argument
 list that represents it, its body runs from those arguments without changing the
