@@ -1,13 +1,13 @@
-import Project.ProofKit.F32RoundRational
+import Project.ProofKit.F64RoundRational
 import Project.ProofKit.FloatShift
 
-namespace Project.ProofKit.F32RationalScale
-open Float.Model Float.Model.UnpackedFloat FloatRationalRounding F32RoundScaled FloatCommon
+namespace Project.ProofKit.F64RationalScale
+open Float.Model Float.Model.UnpackedFloat FloatRationalRounding F64RoundScaled FloatCommon
 
 theorem target_mul_pow (n d k : Nat) (e : Int) (hd : 0 < d)
-    (he : e ≤ Format.binary32.targetExponent (totalExponent (n / d) e)) :
-    Format.binary32.targetExponent (totalExponent (n * 2 ^ k / d) (e - k)) =
-      Format.binary32.targetExponent (totalExponent (n / d) e) := by
+    (he : e ≤ Format.binary64.targetExponent (totalExponent (n / d) e)) :
+    Format.binary64.targetExponent (totalExponent (n * 2 ^ k / d) (e - k)) =
+      Format.binary64.targetExponent (totalExponent (n / d) e) := by
   by_cases hq : n / d = 0
   · have hl := quotient_log_mul_pow_zero n d k hd hq
     simp only [Format.targetExponent, totalExponent, Format.mantissaBits,
@@ -19,11 +19,11 @@ theorem target_mul_pow (n d k : Nat) (e : Int) (hd : 0 < d)
     omega
 
 theorem first_shift_mul_pow (n d k : Nat) (e : Int) (hd : 0 < d)
-    (he : e ≤ Format.binary32.targetExponent (totalExponent (n / d) e)) :
-    shiftToTargetExponent Format.binary32 (n * 2 ^ k / d) (e - k)
+    (he : e ≤ Format.binary64.targetExponent (totalExponent (n / d) e)) :
+    shiftToTargetExponent Format.binary64 (n * 2 ^ k / d) (e - k)
       (accuracyOfFraction ((n * 2 ^ k) % d) d) =
-      shiftToTargetExponent Format.binary32 (n / d) e (accuracyOfFraction (n % d) d) := by
-  let t := Format.binary32.targetExponent (totalExponent (n / d) e)
+      shiftToTargetExponent Format.binary64 (n / d) e (accuracyOfFraction (n % d) d) := by
+  let t := Format.binary64.targetExponent (totalExponent (n / d) e)
   have hk : (t - (e - k)).toNat = (t - e).toNat + k := by dsimp [t]; omega
   have heq : e - k + (t - (e - k)).toNat = e + (t - e).toNat := by omega
   simp only [shiftToTargetExponent, target_mul_pow n d k e hd he, shiftToExponent]
@@ -32,13 +32,13 @@ theorem first_shift_mul_pow (n d k : Nat) (e : Int) (hd : 0 < d)
   rw [← Nat.mul_assoc, initial_mul _ _ _ (by positivity)]
 
 theorem roundWithAccuracy_mul_pow (s : Sign) (n d k : Nat) (e : Int) (hd : 0 < d)
-    (he : e ≤ Format.binary32.targetExponent (totalExponent (n / d) e)) :
-    roundWithAccuracy Format.binary32 s (n * 2 ^ k / d) (e - k)
+    (he : e ≤ Format.binary64.targetExponent (totalExponent (n / d) e)) :
+    roundWithAccuracy Format.binary64 s (n * 2 ^ k / d) (e - k)
       (accuracyOfFraction ((n * 2 ^ k) % d) d) =
-      roundWithAccuracy Format.binary32 s (n / d) e (accuracyOfFraction (n % d) d) := by
+      roundWithAccuracy Format.binary64 s (n / d) e (accuracyOfFraction (n % d) d) := by
   unfold roundWithAccuracy
   rw [first_shift_mul_pow n d k e hd he]
 
 #print axioms roundWithAccuracy_mul_pow
 
-end Project.ProofKit.F32RationalScale
+end Project.ProofKit.F64RationalScale

@@ -2,7 +2,7 @@ import Project.ProofKit.F32SqrtCore
 import Project.ProofKit.F32RoundFinish
 
 namespace Project.ProofKit.F32SqrtFinite
-open Float.Model Float.Model.UnpackedFloat F32SqrtCore F32SqrtRounding F32RoundFinish FloatCommon
+open Float.Model Float.Model.UnpackedFloat F32SqrtCore FloatSqrtRounding F32RoundFinish FloatCommon
 
 theorem pack_sqrt_finite (m : Nat) (e : Int) (hm : 0 < m)
     (hl : m.log2 ≤ 23) (he : -149 ≤ e) :

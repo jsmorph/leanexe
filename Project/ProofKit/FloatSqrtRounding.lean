@@ -1,8 +1,8 @@
-import Project.ProofKit.F32RationalRounding
+import Project.ProofKit.FloatRationalRounding
 import Mathlib.Data.Nat.Sqrt
 
-namespace Project.ProofKit.F32SqrtRounding
-open Float.Model.UnpackedFloat F32RationalRounding
+namespace Project.ProofKit.FloatSqrtRounding
+open Float.Model.UnpackedFloat FloatRationalRounding
 
 def rootAccuracy (n : Nat) : Accuracy :=
   let r := n.sqrt
@@ -68,4 +68,4 @@ theorem roundSqrtIntegral_scaled (n k : Nat) :
 #print axioms rounded_root
 #print axioms roundSqrtIntegral_scaled
 
-end Project.ProofKit.F32SqrtRounding
+end Project.ProofKit.FloatSqrtRounding

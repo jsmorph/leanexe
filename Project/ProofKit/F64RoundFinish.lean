@@ -118,4 +118,44 @@ theorem pack_finish_above_min (s : Sign) (m : Nat) (e : Int)
 
 #print axioms pack_finish_above_min
 
+theorem roundShift_mul_pow (r k : Nat) (hk : 0 < k) : Wasm.IEEE32.roundShift (r * 2 ^ k) k = r := by
+  obtain ⟨j, rfl⟩ : ∃ j, k = j + 1 := ⟨k - 1, by omega⟩
+  unfold Wasm.IEEE32.roundShift
+  have hhalf : 0 < 2 ^ (j + 1) / 2 := by rw [pow_succ]; simp
+  simp [Nat.mul_div_cancel _ (Nat.two_pow_pos (j + 1)), hhalf]
+
+/-- `roundScaledMagnitude` of an exact `r * 2 ^ k` with `r` in `[2^52, 2^53]`
+encodes `r` with exponent field `k + 1`, carrying into the exponent when
+`r = 2^53`.  Binary64's dyadic rounder reaches this form, where binary32's
+encodes the fields directly. -/
+theorem roundScaled_mul_pow (negative : Bool) (r k : Nat) (hk : 0 < k)
+    (hlo : 2 ^ 52 ≤ r) (hhi : r ≤ 2 ^ 53) :
+    Wasm.IEEE64.roundScaledMagnitude negative (r * 2 ^ k) =
+      if r = 2 ^ 53 then
+        if 2047 ≤ k + 2 then Wasm.IEEE64.infinity negative
+        else Wasm.IEEE64.encodeFinite negative (k + 2) 0
+      else if 2047 ≤ k + 1 then Wasm.IEEE64.infinity negative
+      else Wasm.IEEE64.encodeFinite negative (k + 1) (r - 2 ^ 52) := by
+  have hbig : 2 ^ 53 ≤ r * 2 ^ k :=
+    calc 2 ^ 53 = 2 ^ 52 * 2 ^ 1 := by norm_num
+      _ ≤ r * 2 ^ k := Nat.mul_le_mul hlo (Nat.pow_le_pow_right (by decide) hk)
+  have hlog := FloatShift.log2_mul_pow r k (by omega)
+  unfold Wasm.IEEE64.roundScaledMagnitude
+  rw [ite_eq_right (by omega), ite_eq_right (by omega)]
+  by_cases hr : r = 2 ^ 53
+  · subst hr
+    have hshift : Nat.log2 (2 ^ 53 * 2 ^ k) - 52 = k + 1 := by
+      rw [hlog, Nat.log2_two_pow]; omega
+    have hround : Wasm.IEEE32.roundShift (2 ^ 53 * 2 ^ k) (k + 1) = 2 ^ 52 := by
+      rw [show (2 : Nat) ^ 53 * 2 ^ k = 2 ^ 52 * 2 ^ (k + 1) by rw [pow_succ]; ring]
+      exact roundShift_mul_pow _ _ (by omega)
+    simp only [hshift, hround]
+    simp
+  · have hl : Nat.log2 r = 52 := by
+      rw [Nat.log2_eq_iff (by omega)]
+      omega
+    have hshift : Nat.log2 (r * 2 ^ k) - 52 = k := by rw [hlog, hl]; omega
+    simp only [hshift, roundShift_mul_pow r k hk]
+    simp [show r ≠ 9007199254740992 from hr]
+
 end Project.ProofKit.F64RoundFinish

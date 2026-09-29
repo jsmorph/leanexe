@@ -1,8 +1,8 @@
-import Project.ProofKit.F32SqrtRounding
+import Project.ProofKit.FloatSqrtRounding
 import Project.ProofKit.FloatShift
 
 namespace Project.ProofKit.F32SqrtCore
-open Float.Model Float.Model.UnpackedFloat F32SqrtRounding
+open Float.Model Float.Model.UnpackedFloat FloatSqrtRounding
 
 def coreExponent (m : Nat) (e : Int) : Int := ((m.log2 : Int) + e + 2) / 2 - 24
 

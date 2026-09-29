@@ -1,5 +1,7 @@
 import Project.ProofKit.F64Mul
 import Project.ProofKit.F64Sub
+import Project.ProofKit.F64Div
+import Project.ProofKit.F64Sqrt
 
 /-!
 Lean's `Float` operations on bit patterns agree with Talos's `IEEE64`
@@ -47,5 +49,11 @@ theorem toBits_sub (a b : Float) : (a - b).toBits = Wasm.IEEE64.sub a.toBits b.t
 
 theorem toBits_mul (a b : Float) : (a * b).toBits = Wasm.IEEE64.mul a.toBits b.toBits := by
   rw [← F64Mul.mul_eq, LeanExe.Float64.mulBits, ofBits_toBits, ofBits_toBits]
+
+theorem toBits_div (a b : Float) : (a / b).toBits = Wasm.IEEE64.div a.toBits b.toBits := by
+  rw [← F64Div.div_eq, LeanExe.Float64.divBits, ofBits_toBits, ofBits_toBits]
+
+theorem toBits_sqrt (a : Float) : a.sqrt.toBits = Wasm.IEEE64.sqrt a.toBits := by
+  rw [← F64Sqrt.sqrt_eq, LeanExe.Float64.sqrtBits, ofBits_toBits]
 
 end Project.ProofKit.F64Bits

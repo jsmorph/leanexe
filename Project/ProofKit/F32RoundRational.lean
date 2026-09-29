@@ -1,9 +1,9 @@
 import Project.ProofKit.F32RoundFinish
-import Project.ProofKit.F32RationalRounding
+import Project.ProofKit.FloatRationalRounding
 import CodeLib.IEEE32.Rounders
 
 namespace Project.ProofKit.F32RoundRational
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32RoundScaled F32RoundFinish F32RationalRounding FloatCommon
+open Float.Model Float.Model.UnpackedFloat F32Encoding F32RoundScaled F32RoundFinish FloatRationalRounding FloatCommon
 
 theorem quotient_upper (q : Nat) : q / 2 ^ (q.log2 - 23) < 2 ^ 24 := by
   by_cases hq : q = 0

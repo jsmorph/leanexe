@@ -1,6 +1,6 @@
 import Project.ProofKit.FloatRounding
 
-namespace Project.ProofKit.F32RationalRounding
+namespace Project.ProofKit.FloatRationalRounding
 open Float.Model.UnpackedFloat FloatRounding
 
 theorem initial_mantissa (m : Nat) (acc : Accuracy) :
@@ -85,4 +85,4 @@ theorem rounded_fraction (n d k : Nat) (hd : 0 < d) :
 #print axioms shiftRightOne_fraction
 #print axioms rounded_fraction
 
-end Project.ProofKit.F32RationalRounding
+end Project.ProofKit.FloatRationalRounding

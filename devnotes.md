@@ -18669,3 +18669,28 @@ on `propext`, `Classical.choice`, and `Quot.sound`.
 - [x] Iteration 6a.
 - [ ] Iteration 6b: binary64 `div` and `sqrt`, float literals, comparisons,
   `neg`, `abs`, `min`, `max`, conversions, float locals, and `Float32`.
+
+## 2026-09-29: Iteration 6b, binary64 division and square root
+
+The binary32 division and square-root files translated with the same script,
+with three more constants: 46, 47, and 48, which are 2·23, 2·23 + 1, and 2·24,
+map to 104, 105, and 106.  `F32RationalRounding` and `F32SqrtRounding` contain
+no format constants and became the shared `FloatRationalRounding` and
+`FloatSqrtRounding`.  Binary64's `roundRationalMagnitude` has the same shape as
+its `roundDyadicMagnitude`, so `roundScaled_mul_pow` moved to `F64RoundFinish`,
+where both proofs use it; square root needed no change, because both formats
+route it through `roundScaledMagnitude`.  Five more translated declarations
+were identical to their originals and moved to `FloatCommon`;
+`coreExponent_le` reads the same in both files but refers to each file's own
+format-specific `coreExponent`, so it stays.
+
+`F64Bits` gained `toBits_div` and `toBits_sqrt`, the IR gained `F64Op.div` and
+a unary `Expr.unF` with `F64UnOp.sqrt`, and the compiler translates `/` and
+`Float.sqrt`.  `scaledHypot x y s = (x * x + y * y).sqrt / s` is proved with one
+`simp` call and matches native Lean in Wasmtime on 60 inputs.  The binary64
+chain is now 21 files plus `F64Bits`, 1,831 lines, and every audited theorem
+depends only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+- [x] Iteration 6b.
+- [ ] Iteration 6c: float literals, comparisons, `neg`, `abs`, `min`, `max`,
+  conversions, float locals and arrays, and `Float32` programs.
