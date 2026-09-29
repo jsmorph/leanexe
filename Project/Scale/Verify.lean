@@ -16,7 +16,7 @@ theorem scale_implements : Implements scale.module 0 scaleTuple (fun _ => 0) :=
     Stmt.skip_spec.mono (fun _ _ ⟨hStore, hState⟩ => ⟨hStore, by
       rw [Scalar.borrowed.mp h] at hState
       subst hState
-      simp [scale.ir, Func.state, Func.width, Func.scratch, Expr.eval, Expr.scratchWidth,
+      simp [scale.ir, Func.state, Func.locals, Func.width, Func.scratch, Expr.eval, Expr.scratchWidth,
         Stmt.scratchWidth, State.get, State.set?, U64Op.apply, Scalar.values, scaleTuple,
         LeanExe.Examples.Scale.scale]
       intro hZero

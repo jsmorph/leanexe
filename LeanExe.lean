@@ -6,5 +6,6 @@ import LeanExe.Examples.ScaledHypot
 import LeanExe.Examples.Scale
 import LeanExe.Examples.SumArray
 import LeanExe.Examples.SumCount
+import LeanExe.Examples.SumSquares
 import LeanExe.Float32
 import LeanExe.Signed32

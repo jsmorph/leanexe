@@ -19,7 +19,7 @@ theorem scaledHypot_implements :
       rw [Scalar.borrowed.mp h] at hState
       subst hState
       refine ⟨_, _, rfl, ?_⟩
-      simp [scaledHypot.ir, Func.state, Func.width, Func.scratch, Expr.eval, Expr.scratchWidth,
+      simp [scaledHypot.ir, Func.state, Func.locals, Func.width, Func.scratch, Expr.eval, Expr.scratchWidth,
         IR.Stmt.scratchWidth, State.get, F64Op.apply, F64UnOp.apply, Scalar.values,
         scaledHypotTuple, LeanExe.Examples.ScaledHypot.scaledHypot, F64Bits.toBits_add,
         F64Bits.toBits_mul, F64Bits.toBits_div, F64Bits.toBits_sqrt]⟩) fun _ _ h => h

@@ -31,6 +31,20 @@ def ScalarType.value : {type : ScalarType} → type.denote → Value
   | .bool, value => .i32 (if value then 1 else 0)
   | .f64, value => .f64 value
 
+/-- The value that a 64-bit word read from memory becomes in a local of this
+type: an `f64` keeps the word's bits. -/
+@[simp]
+def ScalarType.ofBits : ScalarType → UInt64 → Value
+  | .u64, word => .i64 word
+  | .bool, word => .i64 word
+  | .f64, word => .f64 word
+
+/-- The instructions that turn a loaded 64-bit word into a value of this type. -/
+def ScalarType.fromBits : ScalarType → Program
+  | .u64 => []
+  | .bool => []
+  | .f64 => [.f64ReinterpretI64]
+
 def ScalarType.valueType : ScalarType → ValueType
   | .u64 => .i64
   | .bool => .i32

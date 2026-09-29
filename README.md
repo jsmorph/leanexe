@@ -27,8 +27,8 @@ journal.
 | `Project/Runtime/` | The code of the runtime functions `alloc`, `retain`, and `release`, and the free-list layout. |
 | `Project/Pipeline/` | `Implements`, the runtime heap invariant, allocation lemmas, and `Emit.lean`. |
 | `Project/Encoding/` | The encoder, decoder, `decode_encode`, and the testsuite runner. |
-| `Project/ProofKit/` | General lemmas: memory, arrays, allocation, and binary32 arithmetic. |
-| `Project/Scale/`, `Project/Gcd/`, `Project/SumArray/`, `Project/PairSum/`, `Project/SumCount/`, `Project/Axpy/`, `Project/ScaledHypot/`, `Project/Piecewise/` | Compiled programs with their theorems. |
+| `Project/ProofKit/` | General lemmas: memory, arrays, allocation, binary32 and binary64 arithmetic, and `FloatArray` folds. |
+| `Project/Scale/`, `Project/Gcd/`, `Project/SumArray/`, `Project/PairSum/`, `Project/SumCount/`, `Project/Axpy/`, `Project/ScaledHypot/`, `Project/Piecewise/`, `Project/SumSquares/` | Compiled programs with their theorems. |
 | `ltg/` | The LTG knowledge base. |
 | `tools/` | The resource-limited Lean runner and the Wasmtime host builder. |
 

@@ -36,7 +36,7 @@ theorem Func.implements_heap [Represent α] [Represent β] (func : Func) (name :
       func.function.toLocals (params.reverse.take func.function.numParams).reverse =
         (func.state params).toLocals [] := by
     simp [Function.toLocals, Func.function, Func.type, Function.numParams, Func.state,
-      hArgsBack, List.map_replicate, ValueType.zero]
+      hArgsBack]
   rw [hLocals, show func.function.body =
     func.body.program func.scratch ++ (func.result.2.program func.scratch ++ []) by
       simp [Func.function]]

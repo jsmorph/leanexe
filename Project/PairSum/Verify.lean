@@ -20,7 +20,7 @@ theorem pairSum_implements : Implements pairSum.module 0 pairTuple (fun _ => 72)
   have hRelease : (compile pairSum.ir "pairSum").funcs[3]? = some (releaseFunction 2) := rfl
   let start : State := { params := [.i64 a, .i64 b], locals := List.replicate 5 (.i64 0) }
   show Triple _ (.seq (.arrayLiteral 2 [.get 0, .get 1]) (.seq (.assign 3 (.const 0))
-    (.seq (.fold 2 3 4 5 6 (.bin .add (.get 3) (.get 6))) (.release 2)))) 7
+    (.seq (.fold .u64 2 3 4 5 6 (.bin .add (.get 3) (.get 6))) (.release 2)))) 7
     (fun store state => store = initial ∧ state = start) _
   refine Stmt.seq_spec (Stmt.arrayLiteral_spec (words := [a, b]) hMemory32 hImports hAlloc
     (by decide) (by simp [start]) hHeap hRoom ?_) ?_

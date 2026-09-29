@@ -1,0 +1,7 @@
+# FloatArray folds
+
+Use this entry when an `array-fold-loop` hint's source folds over a `FloatArray`.  `Represent FloatArray` stores a `FloatArray` as the `Array UInt64` of its elements' bit patterns, so a borrowed argument gives `heap.Borrowed initial ptr (xs.data.map Float.toBits)`, and `Heap.Borrowed.values` gives the layout `Stmt.fold_spec` needs.  Choose the fold function `g` on bit patterns so that each step of the source fold maps to it, for example `g a e = IEEE64.add a (IEEE64.mul e e)` for `fun acc x => acc + x * x`.
+
+`FloatArrayFold.foldl_toBits h hg xs init` states `(xs.data.map Float.toBits).foldl g (h init) = h (xs.foldl f init)`.  Take `h = Float.toBits` for a `Float` accumulator and `h = id` for a `UInt64` accumulator, and prove the step premise `hg` with `simp` and the `F64Bits.toBits_*` lemmas.  A literal starting value such as `0.0` needs its bits first: `(0.0 : Float).toBits = 0` holds by `decide`.  `FloatArrayFold.foldl_data` states `xs.foldl f init = xs.data.foldl f init`.  Lean core declares the loop of `FloatArray.foldlM` private, so the file opens it with `open private` and follows core's proof of `Array.foldlM_toList`.
+
+Close the result equation with `congrArg` and the conversion lemma, not with `simp`.  `simp` rewrites `(xs.data.map Float.toBits).size` to `xs.data.size` inside `Array.foldl`'s default `stop` argument, after which the conversion lemma no longer matches.  `Project.SumSquares.sumSquares_implements` is the worked example: 21 lines including the statement, and a 7-line lemma for the conversion.

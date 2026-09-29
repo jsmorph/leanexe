@@ -11,12 +11,13 @@ variable {m : Module}
 holds. -/
 inductive Stmt where
   | skip
-  | assign (index : Nat) (value : Expr .u64)
+  | assign {type : ScalarType} (index : Nat) (value : Expr type)
   | seq (first second : Stmt)
   | ite (condition : Expr .bool) (thenStmt elseStmt : Stmt)
   | while (condition : Expr .bool) (body : Stmt)
-  /-- Local `index` receives the 64-bit word at `address`, wrapped to 32 bits. -/
-  | load (index : Nat) (address : Expr .u64)
+  /-- Local `index` receives `type.ofBits` of the 64-bit word at `address`,
+  wrapped to 32 bits. -/
+  | load (type : ScalarType) (index : Nat) (address : Expr .u64)
   /-- The 64-bit word at `address`, wrapped to 32 bits, receives `value`. -/
   | store (address value : Expr .u64)
   /-- Calls function `func` with the values of `args`, and puts its result in
@@ -34,8 +35,8 @@ def Stmt.program : Stmt → Nat → Program
   | .while condition body, scratch =>
       [.block 0 0 [.loop 0 0
         (condition.program scratch ++ [.eqz, .br_if 1] ++ body.program scratch ++ [.br 0])]]
-  | .load index address, scratch =>
-      address.program scratch ++ [.wrapI64, .load64 0, .localSet index]
+  | .load type index address, scratch =>
+      address.program scratch ++ [.wrapI64, .load64 0] ++ type.fromBits ++ [.localSet index]
   | .store address value, scratch =>
       address.program scratch ++ [.wrapI64] ++ value.program scratch ++ [.store64 0]
   | .call func args result, scratch =>
@@ -48,7 +49,7 @@ def Stmt.scratchWidth : Stmt → Nat
   | .ite condition thenStmt elseStmt =>
       max condition.scratchWidth (max thenStmt.scratchWidth elseStmt.scratchWidth)
   | .while condition body => max condition.scratchWidth body.scratchWidth
-  | .load _ address => address.scratchWidth
+  | .load _ _ address => address.scratchWidth
   | .store address value => max address.scratchWidth value.scratchWidth
   | .call _ args _ => (args.map (·.scratchWidth)).foldr max 0
 
@@ -82,12 +83,12 @@ theorem Stmt.skip_spec {scratch : Nat} {R : Store Unit → State → Prop} :
   fun _ store state _ _ _ hPre hPost => by
     simpa [Stmt.program] using hPost store state hPre
 
-theorem Stmt.assign_spec {index scratch : Nat} {value : Expr .u64}
+theorem Stmt.assign_spec {type : ScalarType} {index scratch : Nat} {value : Expr type}
     {R : Store Unit → State → Prop} :
     Triple m (.assign index value) scratch
       (fun store state => ∃ result afterValue next,
         value.eval scratch state = some (result, afterValue) ∧
-        afterValue.set? index (.i64 result) = some next ∧ R store next) R := by
+        afterValue.set? index (type.value result) = some next ∧ R store next) R := by
   intro env store state values rest Q hPre hPost
   obtain ⟨result, afterValue, next, hValue, hSet, hNext⟩ := hPre
   simp only [Stmt.program, List.append_assoc, List.singleton_append]
@@ -184,24 +185,25 @@ theorem wrap_toUInt32 (a : UInt64) : UInt32.ofNat (a.toNat % 2 ^ 32) = a.toUInt3
 
 /-- A load reads the word at the address's low 32 bits, which must lie inside
 memory. -/
-theorem Stmt.load_spec {index scratch : Nat} {address : Expr .u64}
+theorem Stmt.load_spec {type : ScalarType} {index scratch : Nat} {address : Expr .u64}
     {R : Store Unit → State → Prop} :
-    Triple m (.load index address) scratch
+    Triple m (.load type index address) scratch
       (fun store state => ∃ word afterAddress next,
         address.eval scratch state = some (word, afterAddress) ∧
         word.toUInt32.toNat + 8 ≤ store.mem.pages * 65536 ∧
-        afterAddress.set? index (.i64 (store.mem.read64 word.toUInt32)) = some next ∧
+        afterAddress.set? index (type.ofBits (store.mem.read64 word.toUInt32)) = some next ∧
         R store next) R := by
   intro env store state values rest Q hPre hPost
   obtain ⟨word, afterAddress, next, hAddress, hBounds, hSet, hNext⟩ := hPre
   simp only [Stmt.program, List.append_assoc, List.cons_append, List.nil_append]
   apply Expr.program_spec address scratch state afterAddress word values m env store
-    (.wrapI64 :: .load64 0 :: .localSet index :: rest) Q hAddress
+    (.wrapI64 :: .load64 0 :: (type.fromBits ++ .localSet index :: rest)) Q hAddress
   simp only [Wasm.wp_wrapI64_cons, Wasm.wp_load64_cons, State.toLocals, ScalarType.value,
     wrap_toUInt32, UInt32.toNat_zero, Nat.add_zero]
   rw [ite_eq_right (by omega)]
-  simpa using localSet_spec (values := values) (rest := rest) (Q := Q) (module_ := m) (env := env)
-    (store := store) hSet (hPost store next hNext)
+  cases type <;>
+    simpa [ScalarType.fromBits] using localSet_spec (values := values) (rest := rest) (Q := Q)
+      (module_ := m) (env := env) (store := store) hSet (hPost store next hNext)
 
 /-- A store writes the value's word at the address's low 32 bits, which must lie
 inside memory. -/

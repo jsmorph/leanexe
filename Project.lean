@@ -118,6 +118,7 @@ import Project.ProofKit.FixedArraySearchFit
 import Project.ProofKit.FixedArraySearchFrame
 import Project.ProofKit.FixedArraySearchNone
 import Project.ProofKit.FixedArraySearchRead
+import Project.ProofKit.FloatArrayFold
 import Project.ProofKit.FloatCommon
 import Project.ProofKit.FloatRationalRounding
 import Project.ProofKit.FloatRounding
@@ -141,5 +142,7 @@ import Project.SumArray.Module
 import Project.SumArray.Verify
 import Project.SumCount.Module
 import Project.SumCount.Verify
+import Project.SumSquares.Module
+import Project.SumSquares.Verify
 import Project.TalosCompat
 import Project.TalosPrelude

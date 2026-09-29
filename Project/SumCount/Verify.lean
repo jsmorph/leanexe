@@ -15,7 +15,7 @@ theorem sumCount_implements :
   have hImports : (compile sumCount.ir "sumCount").imports = [] := rfl
   have hAlloc : (compile sumCount.ir "sumCount").funcs[1]? = some (allocFunction 1) := rfl
   let start : State := { params := [.i64 ptr], locals := List.replicate 6 (.i64 0) }
-  show Triple _ (.seq (.assign 1 (.const 0)) (.seq (.fold 0 1 2 3 4 (.bin .add (.get 1) (.get 4)))
+  show Triple _ (.seq (.assign 1 (.const 0)) (.seq (.fold .u64 0 1 2 3 4 (.bin .add (.get 1) (.get 4)))
     (.seq (.arraySize 5 0) (.arrayLiteral 6 [.get 1, .get 5])))) 7
     (fun store state => store = initial ∧ state = start) _
   refine Stmt.seq_spec (M := fun store state => store = initial ∧ state = start) ?_ ?_
