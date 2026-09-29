@@ -1,6 +1,6 @@
 import Project.ProofKit.Array
 import Project.ProofKit.MemoryFrame
-import Project.ProofKit.MemoryRoundtrip
+import Project.ProofKit.Memory
 
 namespace Project.ProofKit.UInt64Array
 open Wasm Memory

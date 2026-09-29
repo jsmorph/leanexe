@@ -1,0 +1,7 @@
+# Array literal
+
+Use this entry when a hint has rule `array-literal`.  The compiler translates `#[v₀, …, vₖ₋₁]` to `Stmt.arrayLiteral dst values`: a call of `alloc` (function 1) for `8 * (k + 1)` payload bytes into the fresh local `dst`, a store of the length word at the pointer, and a store of element `i` at `pointer + 8 * (i + 1)`.  A hint with rule `variable` or another value rule marks each element's code inside its store.  The template appears at the start of the function body, before the statements that use the array.
+
+`Stmt.arrayLiteral_spec` proves the template from a precondition that fixes the store and the state.  Supply the module facts by `rfl` for a module built by `compile`, the local bounds by `decide` or from `State.Frame` lengths, `Heap.At` and `Heap.Room` from the `Func.implements_heap` premises, and one element obligation per value with `List.Forall₂.cons`.  For an element that reads a local, take the local's value from `State.Frame.get` and the starting state, then evaluate with `simp [Expr.eval, hGet]`.  The postcondition gives the pointer, the owned array, the invariant for `heap.allocate`, the bounds on `top` and pages that `Implements` requires, and the preservation of every borrowed array.
+
+The lemma rests on `alloc_spec`, which proves the runtime `alloc` against the allocation program already in ProofKit, and on `Stmt.storeElements_spec`, which builds the array layout with `UInt64Array.PrefixAt` one store at a time.  `Project.PairSum.pairSum_implements` is the worked example.

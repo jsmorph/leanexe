@@ -18534,3 +18534,64 @@ WASM locals in runtime proofs, and store framing.  The LTG check passes with 7
 entries.
 
 - [x] Expression module and LTG review.
+
+## 2026-09-29: Iteration 3b, pairSum
+
+`pairSum a b = #[a, b].foldl (· + ·) 0` runs from Lean source to proved bytes,
+and its compiled code calls the runtime: it allocates the array, stores the
+length and the elements, folds, and releases the array.  The theorem is
+`Implements pairSum.module 0 pairTuple (fun _ => 72)`.
+
+The IR gained `store address value` and `call func args result`.  `Triple`
+now takes the module, because the call rule consumes the callee's
+`TerminatesWith` in that module through Talos's `wp_call_tw`, extended to the
+operand stack under the arguments by ProofKit's `TerminatesWith.append_args`.
+`Func.implements_heap` replaces the store-preserving theorem as the general
+form: the body may end in any store where some heap satisfies the invariant and
+the bounds of `Implements`.  `Func.implements` is now its corollary.
+
+`alloc_spec` proves the runtime `alloc`: the rounding of the request, then
+`array_allocation_spec` from the existing allocation proof.  `release_run`
+proves `release` for an owned array with count one and a zero child mask,
+stepping through its code: the null, magic, and count checks, the pending-list
+loop with an invariant over its two states, the child-mask check, and the
+free-list update.  `Heap.At.release` shows that the freed block heads a valid
+free list.  `release` now checks the child mask before walking slots; before
+the change, freeing an array of scalars scanned every element.  `Heap.Owned`
+gained the 32-bit bound on the object's end, which the free-list entry needs.
+
+Two `simp` problems cost time in `release_run`.  My rewrite of
+`UInt32.ofNat (x.toNat % 2^32)` back to `x.toUInt32` fought one of Lean's
+`simp` lemmas, and a bounds check left as `pages * 65536 < a + 8` made `simp`
+evaluate `(ptr - 40).toNat` by unfolding and exceed its recursion limit.  The
+proof now rewrites header addresses to `UInt32.ofNat (ptr.toNat - k)` and states
+each bounds check as a negated comparison.
+
+`Stmt.arrayLiteral_spec` is the rule for the array-literal template, proved
+once: the result is an owned array under `heap.allocate`, and every borrowed
+array stays borrowed.  `Stmt.storeElements_spec` builds the layout with
+`UInt64Array.PrefixAt`.  `Stmt.release_spec` is the rule for releasing a
+temporary.  The compiler turns an array literal consumed by a fold into a
+temporary allocated before the fold and released right after it.  Both rules
+have LTG entries.
+
+The axiom audit found `Wasm.Mem.read64_write64_same._native.bv_decide.ax_1_10`
+under `pairSum_bytes`.  CodeLib proves `Mem.read64_write64_same` with
+`bv_decide`, which trusts compiled code, and the lemma is in the default `simp`
+set.  ProofKit already had a kernel proof, `read64_write64`, in
+`MemoryRoundtrip.lean`; it moved into `Memory.lean`, `MemoryRoundtrip.lean` was
+deleted, and `RuntimeSpec.lean` removes CodeLib's lemma from `simp`.
+`Project/Common.lean` had two unused `bv_decide` lemmas and an unused tactic
+that used CodeLib's lemma; they are deleted.  After the change every audited
+theorem depends only on `propext`, `Classical.choice`, and `Quot.sound`.
+Other files importing CodeLib's `simp` set can reintroduce the axiom, so the
+audit must run for every program.
+
+Tests: all four modules validate; `pairSum` matches native Lean on five pairs,
+frees its temporary, and reuses the freed block on the next call; releasing an
+array with a child pointer frees both; and `scale`, `gcd`, and `sumArray` give
+the recorded values.
+
+- [x] Iteration 3b.
+- [ ] Iteration 3c: `sumCount`, with an array result owned by the host,
+  `Nat.toUInt64 xs.size`, and a fold result inside an array literal.

@@ -1,5 +1,7 @@
 import Lean
+import Project.IR.ArrayLiteral
 import Project.IR.Fold
+import Project.IR.Release
 import Project.IR.Function
 import Project.IR.Hint
 
@@ -82,6 +84,13 @@ def foldBodyLoc (loc : Loc) : Project.IR.Stmt → Loc
 
 def sourceOf (term : Lean.Expr) : MetaM String := return toString (← ppExpr term)
 
+/-- The elements of an array literal `#[e₀, …]`, which elaborates to
+`List.toArray [e₀, …]`. -/
+def arrayLiteral? (term : Lean.Expr) : Option (List Lean.Expr) :=
+  match term.consumeMData.getAppFnArgs with
+  | (``List.toArray, #[_, list]) => list.consumeMData.listLit?.map (·.2)
+  | _ => none
+
 /-- Statements that run before the value being translated and become the start
 of the function body, with their hints, their code length, and the compiler's
 variables. -/
@@ -128,14 +137,43 @@ mutual
           throwError "a fold may not appear in a branch, a fold body, or a recursive definition: {source}"
         unless (← isUInt64 element) && (← isUInt64 acc) do
           throwError "unsupported fold types in {source}"
-        let some arrayLocal := ctx.arrays.lookup array.consumeMData
-          | throwError "a fold must run over an array variable: {source}"
         unless start.nat? == some 0 do throwError "a fold must start at index 0: {source}"
         match stop.consumeMData.getAppFnArgs with
         | (``Array.size, #[_, sized]) =>
             unless sized.consumeMData == array.consumeMData do
               throwError "a fold must stop at the size of its array: {source}"
         | _ => throwError "a fold must stop at the size of its array: {source}"
+        -- An array literal becomes a temporary that is released after the fold.
+        let (arrayLocal, temporary) ← match ctx.arrays.lookup array.consumeMData with
+          | some index => pure (index, false)
+          | none => do
+              let some elements := arrayLiteral? array
+                | throwError "a fold must run over an array variable or an array literal: {source}"
+              let mut values : Array (IRExpr .u64) := #[]
+              let mut valueHints : Array (List Hint) := #[]
+              for element in elements do
+                let (value, hints) ← translateValue ctx ⟨[], 0⟩ element
+                values := values.push value
+                valueHints := valueHints.push hints
+              let before ← get
+              let temp := before.next
+              let literal := Stmt.arrayLiteral temp values.toList
+              -- Element `i`'s value follows the call, the length store, the earlier
+              -- element stores, and its own address code.
+              let address : IRExpr .u64 := .bin .add (.get temp) (.const 0)
+              let elementHints := (List.range values.size).flatMap fun i =>
+                (valueHints[i]!).map (Hint.shift (before.length +
+                  stmtLength (Stmt.arrayLiteral temp (values.toList.take i)) +
+                  exprLength address + 1))
+              set { before with
+                stmts := before.stmts.push literal
+                hints := before.hints ++
+                  (mkHint ⟨[], before.length⟩ (stmtLength literal) "array-literal"
+                    (← sourceOf array) :: elementHints).toArray
+                length := before.length + stmtLength literal
+                next := temp + 1
+                names := before.names.push ("array", temp) }
+              pure (temp, true)
         let (initial, initialHints) ← translateValue ctx ⟨[], 0⟩ init
         let before ← get
         let accLocal := before.next
@@ -149,13 +187,21 @@ mutual
             { ctx with words := (a, accLocal) :: (e, elementLocal) :: ctx.words, foldable := false }
             bodyLoc (mkApp2 f a e).headBeta
         let fold := Stmt.fold arrayLocal accLocal indexLocal lengthLocal elementLocal body
+        let arraySource ← sourceOf array
+        let releases : List (Project.IR.Stmt × Hint) := if temporary then
+            [(.release arrayLocal, mkHint ⟨[], before.length + stmtLength assign + stmtLength fold⟩
+              (stmtLength (.release arrayLocal)) "release-temporary" arraySource)]
+          else []
         set { before with
-          stmts := before.stmts.push assign |>.push fold
+          stmts := (before.stmts.push assign |>.push fold) ++
+            (releases.map Prod.fst).toArray
           hints := before.hints ++
             (mkHint ⟨[], before.length⟩ (stmtLength assign) "fold start" (← sourceOf init) ::
               initialHints.map (Hint.shift before.length) ++
-              mkHint foldLoc (stmtLength fold) "array-fold-loop" source :: bodyHints).toArray
-          length := before.length + stmtLength assign + stmtLength fold
+              mkHint foldLoc (stmtLength fold) "array-fold-loop" source :: bodyHints ++
+              releases.map Prod.snd).toArray
+          length := before.length + stmtLength assign + stmtLength fold +
+            (releases.map (stmtLength ∘ Prod.fst)).sum
           next := accLocal + 4
           names := before.names ++ #[("accumulator", accLocal), ("index", indexLocal),
             ("length", lengthLocal), ("element", elementLocal)] }
@@ -358,6 +404,14 @@ def stmtToExpr : Project.IR.Stmt → Lean.Expr
       mkApp2 (mkConst ``Project.IR.Stmt.while) (irToExpr condition) (stmtToExpr body)
   | .load index address =>
       mkApp2 (mkConst ``Project.IR.Stmt.load) (toExpr index) (irToExpr address)
+  | .store address value =>
+      mkApp2 (mkConst ``Project.IR.Stmt.store) (irToExpr address) (irToExpr value)
+  | .call func args result =>
+      mkApp3 (mkConst ``Project.IR.Stmt.call) (toExpr func)
+        (let type := mkApp (mkConst ``Project.IR.Expr) (mkConst ``Project.IR.ScalarType.u64)
+         args.foldr (fun arg list => mkApp3 (mkConst ``List.cons [Level.zero]) type (irToExpr arg) list)
+           (mkApp (mkConst ``List.nil [Level.zero]) type))
+        (toExpr result)
 
 def funcToExpr (func : Func) : Lean.Expr :=
   mkApp4 (mkConst ``Func.mk) (toExpr func.params) (toExpr func.vars) (stmtToExpr func.body)

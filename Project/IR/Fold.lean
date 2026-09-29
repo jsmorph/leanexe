@@ -12,6 +12,8 @@ namespace Project.IR
 
 open Wasm Project.ProofKit
 
+variable {m : Module}
+
 /-- Local `length` receives the length of the array at local `array`.  For each
 index from 0, held in local `index`, local `element` receives the element and
 local `acc` receives the value of `body`. -/
@@ -52,7 +54,7 @@ theorem Stmt.fold_spec {scratch array acc index length element : Nat} {body : Ex
     (hBody : ∀ state a e, State.Frame scratch [acc, index, length, element] before state →
       state.get acc = some (.i64 a) → state.get element = some (.i64 e) →
       ∃ next, body.eval scratch state = some (g a e, next)) :
-    Triple (.fold array acc index length element body) scratch
+    Triple m (.fold array acc index length element body) scratch
       (fun store state => store = initial ∧ state = before)
       (fun store state => store = initial ∧
         State.Frame scratch [acc, index, length, element] before state ∧

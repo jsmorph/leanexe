@@ -1,5 +1,5 @@
 import Project.Runtime.Tree
-import Project.ProofKit.MemoryRoundtrip
+import Project.ProofKit.Memory
 
 namespace Project.Runtime
 

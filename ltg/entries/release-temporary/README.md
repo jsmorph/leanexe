@@ -1,0 +1,7 @@
+# Release of a temporary array
+
+Use this entry when a hint has rule `release-temporary`.  The compiler releases an array literal that it created for a fold right after the fold, with `Stmt.release src`, a call of `release` (function 3) on the pointer in local `src`.  `Stmt.release_spec` proves the call from a precondition that fixes the store and the state, given `Heap.At` for the store and `Heap.Owned` for the array.  The state is unchanged, and the store becomes `heap.releaseStore store ptr`.
+
+`Heap.At.release` then gives the allocator invariant for `heap.release ptr capacity`, whose free list starts with the freed block.  The released heap keeps `top`, and `heap.releaseStore` keeps the page count, so the bounds that `Implements` requires carry over from the allocation.  `Heap.releaseStore_bytes` states that every byte outside the array's header is unchanged, which preserves other objects.
+
+`release_run` proves the runtime `release` for this case directly on its WASM code: the null and magic checks, the reference count, the pending-list loop with one iteration, and the child-mask check that skips the slot scan when the mask is zero.  Its proof keeps header addresses in the form `UInt32.ofNat (ptr.toNat - k)` and states each bounds check as a negated comparison, because `simp` otherwise tries to evaluate `(ptr - k).toNat` and exceeds its recursion limit.  `Project.PairSum.pairSum_implements` is the worked example.
