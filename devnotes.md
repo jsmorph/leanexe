@@ -18296,3 +18296,38 @@ results on four inputs, and the axiom audit lists only `propext`,
 
 - [x] Delete the first stage.
 - [ ] Run `tools/ltg` and review LTG entries that name deleted artifacts.
+
+## 2026-09-28: Iteration 1, scalar arithmetic end to end
+
+Before coding, the user asked for each iteration-1 choice to be reconsidered.
+Four changed.  `ScalarTransition` stays in place and supplies the expressions,
+because moving it would break ten LTG entries.  Float types wait until floats
+arrive, because its proofs never case on `ScalarType`.  `Implements` became one
+general statement over a `Represent` class instead of a separate scalar form.
+The compiler emits the IR as a definition and the module as `compile ir`.
+
+`Implements` now quantifies over the arguments as WASM values in declaration
+order and asks `Represent.borrowed` of them and `Represent.owned` of the
+results.  `Scalar` types represent themselves as values alone, and
+`Array UInt64` keeps the old `Heap.Borrowed` and `Heap.Owned`.  Every compiled
+module has a memory and the six runtime globals, because a module without them
+would make `Heap.At` false and the theorem vacuous.  The `sumCount` proof needed
+three changed lines.
+
+The iteration added `Project/IR/Function.lean` (`Func`, `compile`),
+`Project/IR/Correct.lean` (`Func.implements`, which turns evaluation of the
+result expression into `Implements` through `Expr.program_spec` and
+`TerminatesWith.of_wp_entry_for`), `Project/IR/Hint.lean`,
+`Project/Compiler/Scalar.lean`, and `Project/Compiler/Command.lean`.  The
+compiler reads the definition's value, matches `UInt64` parameters, literals,
+and ten binary operators by head constant, and records for every IR node its
+rule, source term, and instruction range in the function body.  The program
+`scale a b c = a * b / c + 1` compiled to a 124-byte module; `scale_implements`
+needed one `simp` call and Lean's `a * b / 0 = 0`, and Wasmtime matched native
+Lean on six inputs.
+
+Talos's `run` builds locals from the argument list reversed, so `Implements`
+passes `params.reverse`.  Two script modules, `Emit.lean` and `DecodeTest.lean`,
+define `main` and stay out of the generated `Project.lean`.
+
+- [x] Iteration 1.

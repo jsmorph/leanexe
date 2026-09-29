@@ -296,7 +296,9 @@ theorem post_spec (env : HostEnv Unit) (st : Store Unit)
     (xs.foldl (· + ·) 0) v2 v3 v16 v17 hIn2 hRoot hRoot32 Q hQ
 
 theorem implements : Implements sumModule 0 LeanExe.Examples.SumCount.sumCount fun _ => 72 := by
-  intro env store heap input xs hHeap hInput hRoom
+  intro env store heap params xs hHeap hArgs hRoom
+  obtain ⟨input, rfl, hInput⟩ := hArgs
+  show TerminatesWith env sumModule 0 store [.i64 input] _
   have hRoom' : heap.Room store sumModule (48 + (24 : UInt64).toNat) := hRoom
   have hBlock := hHeap.allocate_block 1 hRoom'
   have hAt0 := hHeap.allocate 1 hRoom'
@@ -325,11 +327,11 @@ theorem implements : Implements sumModule 0 LeanExe.Examples.SumCount.sumCount f
     (FixedArrayAllocate.root heap.top 24 heap.free) (xs.foldl (· + ·) 0) (UInt64.ofNat xs.size)
     (allocatedCapacity 24 heap.free).toNat (by omega) hCapacity
   dsimp only
-  exact ⟨FixedArrayAllocate.root heap.top 24 heap.free, heap.allocate 24, rfl,
-    hAt0.writesWithin hBlock hWrites,
-    (hBlock.writesWithin hWrites).owned (resultStore_values _ _ _ _ (by omega) (by omega))
-      (by simpa [LeanExe.Examples.SumCount.sumCount] using hCapacity),
-    hInput0.writesWithin hDisjoint hWrites,
+  exact ⟨heap.allocate 24, hAt0.writesWithin hBlock hWrites,
+    ⟨FixedArrayAllocate.root heap.top 24 heap.free, rfl,
+      (hBlock.writesWithin hWrites).owned (resultStore_values _ _ _ _ (by omega) (by omega))
+        (by simpa [LeanExe.Examples.SumCount.sumCount] using hCapacity)⟩,
+    ⟨input, rfl, hInput0.writesWithin hDisjoint hWrites⟩,
     Heap.allocate_top hRoom', Heap.allocate_pages heap store 24 1⟩
 
 end Project.SumCount.Execution

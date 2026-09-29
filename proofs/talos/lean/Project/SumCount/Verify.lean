@@ -53,7 +53,7 @@ theorem sumCount_meaning (xs : Array UInt64) (hSize : xs.size < 2 ^ 63)
 theorem sumModule_meaning :
     Satisfies sumModule 0 sumNeed
       (fun xs => xs.size < 2 ^ 63 ∧ -2 ^ 63 ≤ signedSum xs ∧ signedSum xs < 2 ^ 63)
-      (fun xs ys => ys[0]!.toBitVec.toInt = signedSum xs ∧ ys[1]!.toNat = xs.size) :=
+      (fun xs (ys : Array UInt64) => ys[0]!.toBitVec.toInt = signedSum xs ∧ ys[1]!.toNat = xs.size) :=
   sumModule_implements.transfer fun xs ⟨hSize, hLow, hHigh⟩ =>
     sumCount_meaning xs hSize ⟨hLow, hHigh⟩
 
