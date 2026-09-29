@@ -18,7 +18,7 @@ theorem piecewise_implements :
     Stmt.skip_spec.mono (fun _ _ ⟨hStore, hState⟩ => ⟨hStore, by
       rw [Scalar.borrowed.mp h] at hState
       subst hState
-      refine ⟨(LeanExe.Examples.Piecewise.piecewise x lo hi).toBits,
+      refine ⟨[.f64 (LeanExe.Examples.Piecewise.piecewise x lo hi).toBits],
         piecewise.ir.state (Scalar.values (x, lo, hi)), ?_, rfl⟩
       have h0 : (0.0 : Float).toBits = 0 := by decide
       have h05 : (0.5 : Float).toBits = 4602678819172646912 := by decide
@@ -27,7 +27,7 @@ theorem piecewise_implements :
           { params := [.f64 x.toBits, .f64 lo.toBits, .f64 hi.toBits], locals := [] } := rfl
       rw [hx]
       dsimp only [piecewise.ir, Func.scratch]
-      simp [Expr.eval, State.get, F64Op.apply, F64UnOp.apply,
+      simp [Expr.evalResults, Expr.eval, State.get, F64Op.apply, F64UnOp.apply,
         LeanExe.Examples.Piecewise.piecewise, F64Bits.beq_eq,
         F64Bits.lt_iff, F64Bits.le_iff]
       cases h1 : Wasm.IEEE64.eq x.toBits lo.toBits <;>

@@ -53,13 +53,13 @@ theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α �
     (injective : ∀ x y : α, Scalar.values x = Scalar.values y → x = y)
     {k : Nat} (vars : func.vars = List.replicate (k + 2) .u64)
     (body : func.body = .while (.eq (.get (func.params.length + 1)) (.const 0)) step)
-    (result : func.result = ⟨.u64, .get func.params.length⟩)
+    (results : func.results = [⟨.u64, .get func.params.length⟩])
     (hStep : TailStep (compile func name) step func.scratch (k + func.width) f measure) :
     Implements (compile func name) 0 f (fun _ => 0) := by
   refine Func.implements func name f
     (fun _ _ _ x h => (Scalar.borrowed.mp h) ▸ arity x) fun x _ initial params _ h => ?_
   obtain rfl := Scalar.borrowed.mp h
-  rw [body, result]
+  rw [body, results]
   let width := k + func.width
   let Inv : Store Unit → State → Prop := fun store state =>
     store = initial ∧ ∃ (args : α) (resultValue : UInt64) (others : List Value), others.length = width ∧
@@ -127,7 +127,7 @@ theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α �
     · simp [Expr.eval, tailState_get_done (arity args)] at hCondition
     · simp [Expr.eval, tailState_get_done (arity args)] at hCondition
       subst hCondition
-      exact ⟨rfl, f x, tailState args (f x) 1 others, by
-        simp [Expr.eval, tailState_get_result (arity args)], rfl⟩
+      exact ⟨rfl, [.i64 (f x)], tailState args (f x) 1 others, by
+        simp [Expr.evalResults, Expr.eval, tailState_get_result (arity args)], rfl⟩
 
 end Project.IR

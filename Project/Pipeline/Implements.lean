@@ -52,8 +52,9 @@ instance : Represent (Array Float) where
 
 /-- Entry `entry` of `m` computes `f` exactly.  From any store that satisfies the
 allocator invariant, with arguments `params` (in declaration order) representing
-`x` and room for `need x` bytes, the call terminates and returns values that
-represent `f x` and that the caller owns.  The arguments still represent `x`, the
+`x` and room for `need x` bytes, the call terminates and returns values that, in
+declaration order, represent `f x` and that the caller owns.  Talos lists
+arguments and results with the top of the stack first, hence the reversals.  The arguments still represent `x`, the
 allocator invariant holds again, `top` advances by at most `need x` bytes, and
 memory grows only as far as the new `top` requires. -/
 def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α → β)
@@ -61,7 +62,7 @@ def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α 
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
     heap.At store → Represent.borrowed heap store params x → heap.Room store m (need x) →
     TerminatesWith env m entry store params.reverse fun final values =>
-      ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final values (f x) ∧
+      ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final values.reverse (f x) ∧
         Represent.borrowed heap' final params x ∧ heap'.top.toNat ≤ heap.top.toNat + need x ∧
         final.mem.pages ≤ max store.mem.pages ((heap.top.toNat + need x + 65535) / 65536)
 
@@ -72,7 +73,8 @@ def Satisfies [Represent α] [Represent β] (m : Module) (entry : Nat) (need : �
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
     P x → heap.At store → Represent.borrowed heap store params x → heap.Room store m (need x) →
     TerminatesWith env m entry store params.reverse fun final values =>
-      ∃ (heap' : Heap) (y : β), heap'.At final ∧ Represent.owned heap' final values y ∧ Q x y
+      ∃ (heap' : Heap) (y : β), heap'.At final ∧ Represent.owned heap' final values.reverse y ∧
+        Q x y
 
 theorem Implements.transfer [Represent α] [Represent β] {m : Module} {entry : Nat}
     {f : α → β} {need : α → Nat} {P : α → Prop} {Q : α → β → Prop}

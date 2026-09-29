@@ -266,6 +266,52 @@ theorem Expr.evalAll_program_spec {scratch : Nat} {args : List (Expr .u64)}
       apply Expr.program_spec arg scratch state afterArg word values m env store _ Q hArg
       exact ih (values := .i64 word :: values) hRest (by simpa [ScalarType.value] using hNext)
 
+/-- Evaluates typed expressions from left to right. -/
+def Expr.evalResults (mem : Mem) (scratch : Nat) :
+    List ((type : ScalarType) × Expr type) → State → Option (List Value × State)
+  | [], state => some ([], state)
+  | ⟨type, e⟩ :: rest, state => do
+      let (value, next) ← e.eval mem scratch state
+      let (values, final) ← Expr.evalResults mem scratch rest next
+      pure (type.value value :: values, final)
+
+theorem Expr.evalResults_length {mem : Mem} {scratch : Nat}
+    {results : List ((type : ScalarType) × Expr type)} {state next : State} {values : List Value}
+    (h : Expr.evalResults mem scratch results state = some (values, next)) :
+    values.length = results.length := by
+  induction results generalizing state values with
+  | nil => simp [Expr.evalResults] at h; simp [← h.1]
+  | cons result rest ih =>
+      obtain ⟨type, e⟩ := result
+      simp only [Expr.evalResults, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+      obtain ⟨⟨value, afterValue⟩, -, ⟨values', final⟩, hRest, hPure⟩ := h
+      simp only [Option.pure_def, Option.some.injEq, Prod.mk.injEq] at hPure
+      obtain ⟨rfl, rfl⟩ := hPure
+      simp [ih hRest]
+
+/-- The code of `results` pushes their values, the last on top. -/
+theorem Expr.evalResults_program_spec {scratch : Nat}
+    {results : List ((type : ScalarType) × Expr type)} {state next : State}
+    {values out : List Value} {env : HostEnv Unit} {store : Store Unit} {rest : Program}
+    {Q : Assertion Unit}
+    (hEval : Expr.evalResults store.mem scratch results state = some (values, next))
+    (hNext : wp m rest Q store (next.toLocals (values.reverse ++ out)) env) :
+    wp m (results.flatMap (·.2.program scratch) ++ rest) Q store (state.toLocals out) env := by
+  induction results generalizing state values out with
+  | nil =>
+      simp only [Expr.evalResults, Option.some.injEq, Prod.mk.injEq] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      simpa using hNext
+  | cons result others ih =>
+      obtain ⟨type, e⟩ := result
+      simp only [Expr.evalResults, Option.bind_eq_bind, Option.bind_eq_some_iff] at hEval
+      obtain ⟨⟨value, afterValue⟩, hValue, ⟨values', final⟩, hRest, hPure⟩ := hEval
+      simp only [Option.pure_def, Option.some.injEq, Prod.mk.injEq] at hPure
+      obtain ⟨rfl, rfl⟩ := hPure
+      simp only [List.flatMap_cons, List.append_assoc]
+      apply Expr.program_spec e scratch state afterValue value out m env store _ Q hValue
+      exact ih (out := type.value value :: out) hRest (by simpa using hNext)
+
 /-- A call evaluates its arguments, runs the callee, whose specification
 `Post` describes the store and results it ends with, and stores the single result
 when `result` names a local.  A call without a result local requires the callee
