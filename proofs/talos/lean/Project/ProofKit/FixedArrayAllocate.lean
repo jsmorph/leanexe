@@ -2,7 +2,7 @@ import Project.ProofKit.FixedArrayAllocateNone
 import Project.ProofKit.FixedArraySearchFit
 
 namespace Project.ProofKit.FixedArrayAllocate
-open Wasm Project.Runtime Project.ClobMatchFuel.BookAllocFit FixedArraySearch
+open Wasm Project.Runtime FixedArraySearch
   FixedArrayAllocateNone
 
 def allocated (store : Store Unit) (base need stride : UInt64) (nodes : List FreeNode) : Store Unit :=

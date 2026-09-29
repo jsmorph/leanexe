@@ -1,10 +1,10 @@
 import Project.ProofKit.FixedArraySearchFrame
 import Project.ProofKit.FixedArrayHeaderExec
-import Project.ClobMatchFuel.BookAllocFitState
+import Project.ProofKit.FreeListMemory
 import Interpreter.Wasm.Wp.Block
 
 namespace Project.ProofKit.FixedArrayReuse
-open Wasm Project.Runtime Project.Clob Project.ClobMatchFuel.BookAllocFit
+open Wasm Project.Runtime
   Project.ProofKit.Memory FixedArraySearch
 
 def unlinkStore (store : Store Unit) (choice : FreeChoice) : Store Unit :=

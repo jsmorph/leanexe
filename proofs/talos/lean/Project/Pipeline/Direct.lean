@@ -1,7 +1,7 @@
 import Project.Compiler.ScalarLowering
 import LeanExe.Wasm.Binary
 
-namespace Project.EncodingGcd
+namespace Project.Pipeline
 
 open Wasm
 open LeanExe.Wasm.Binary.CoreWasm
@@ -12,14 +12,17 @@ private def translate (label : String) (code : List LeanExe.Wasm.Instr) :
   | some result => .ok result
   | none => .error s!"unsupported instruction in {label}"
 
+/-- The library-mode module for one compiled function: the function at index 0,
+then `alloc`, `reset`, `retain`, and `release`, with the runtime globals and a
+16-page memory. -/
 def fromIR (ir : LeanExe.IR.Module) : Except String Wasm.Module := do
   let func ← match ir.funcs.toList with
     | [func] => .ok func
-    | _ => .error "expected one compiled GCD function"
+    | funcs => .error s!"expected one compiled function, found {funcs.length}"
   let exportName ← match func.exportName with
     | some name => .ok name
-    | none => .error "compiled GCD function has no export"
-  let user ← translate "GCD" (emitFuncInstrs 4 func)
+    | none => .error s!"{func.sourceName} has no export"
+  let user ← translate (toString func.sourceName) (emitFuncInstrs 4 func)
   let alloc ← translate "alloc" coreAllocInstrs
   let reset ← translate "reset" coreResetInstrs
   let retain ← translate "retain" coreRetainInstrs
@@ -71,4 +74,4 @@ def fromIR (ir : LeanExe.IR.Module) : Except String Wasm.Module := do
        ("releaseCount", 4), ("freeCount", 5)]
     memoryExports := [("memory", 0)] }
 
-end Project.EncodingGcd
+end Project.Pipeline

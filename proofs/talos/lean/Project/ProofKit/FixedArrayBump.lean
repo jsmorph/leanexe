@@ -3,7 +3,7 @@ import Project.ProofKit.FixedArrayHeaderExec
 import Project.ProofKit.MemoryEnsure
 
 namespace Project.ProofKit.FixedArrayBump
-open Wasm Project.Clob FixedArrayFold MemoryGrowth
+open Wasm FixedArrayFold MemoryGrowth
 
 def requiredPages (base need : UInt64) : Nat :=
   (base.toNat + 48 + need.toNat - 1) / 65536 + 1

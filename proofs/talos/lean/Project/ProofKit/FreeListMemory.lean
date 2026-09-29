@@ -1,7 +1,89 @@
-import Project.ClobMatchFuel.BookAllocFitState
+import Project.Runtime.FreeList
+import Project.ProofKit.FixedArrayHeader
+
+namespace Project.ProofKit
+
+open Wasm Project.Common Project.Runtime
+
+def fixedArrayAllocFitMem (mem : Mem) (choice : FreeChoice)
+    (stride : UInt64) : Mem :=
+  ((((((unlinkFreeChoice mem choice).write64
+      ((choice.node.root - 48).toUInt32) 5501223100278326855).write64
+      ((choice.node.root - 40).toUInt32) 1).write64
+      ((choice.node.root - 32).toUInt32) choice.node.capacity).write64
+      ((choice.node.root - 24).toUInt32) 2).write64
+      ((choice.node.root - 16).toUInt32) stride).write64
+      ((choice.node.root - 8).toUInt32) 0
+
+def fixedArrayAllocFitStore (st : Store Unit) (choice : FreeChoice)
+    (stride : UInt64) : Store Unit :=
+  { st with
+    globals := if choice.previous = 0 then
+      { globals := st.globals.globals.set 1 (.i64 choice.next) }
+    else
+      st.globals
+    mem := fixedArrayAllocFitMem st.mem choice stride }
+
+theorem freeListAt_fixedArrayAllocFitMem
+    {mem : Mem} {nodes : List FreeNode}
+    {need : UInt64} {choice : FreeChoice}
+    (stride : UInt64)
+    (hList : FreeListAt mem nodes)
+    (hTake : takeFirstFitFrom 0 need nodes = some choice) :
+    FreeListAt (fixedArrayAllocFitMem mem choice stride)
+      choice.remaining := by
+  have hChoiceMem : choice.node ∈ nodes :=
+    takeFirstFitFrom_some_mem hTake
+  obtain ⟨hNode48, hNode32, _⟩ := hList.mem_bounds hChoiceMem
+  have hsep := hList.takeFirstFitFrom_node_disjoint hTake
+  have h0 := hList.unlink_takeFirstFitFrom hTake
+  have h1 := h0.frame_write64_disjoint
+    (writer := choice.node) (writeOffset := 48)
+    (value := 5501223100278326855) hNode48 hNode32
+    (by decide) (by decide) hsep
+  have h2 := h1.frame_write64_disjoint
+    (writer := choice.node) (writeOffset := 40) (value := 1)
+    hNode48 hNode32 (by decide) (by decide) hsep
+  have h3 := h2.frame_write64_disjoint
+    (writer := choice.node) (writeOffset := 32)
+    (value := choice.node.capacity) hNode48 hNode32
+    (by decide) (by decide) hsep
+  have h4 := h3.frame_write64_disjoint
+    (writer := choice.node) (writeOffset := 24) (value := 2)
+    hNode48 hNode32 (by decide) (by decide) hsep
+  have h5 := h4.frame_write64_disjoint
+    (writer := choice.node) (writeOffset := 16) (value := stride)
+    hNode48 hNode32 (by decide) (by decide) hsep
+  have h6 := h5.frame_write64_disjoint
+    (writer := choice.node) (writeOffset := 8) (value := 0)
+    hNode48 hNode32 (by decide) (by decide) hsep
+  exact h6
+
+theorem freshFixedArrayAt_fixedArrayAllocFitStore
+    {st : Store Unit} {nodes : List FreeNode} {need : UInt64}
+    {choice : FreeChoice} (stride : UInt64)
+    (hList : FreeListAt st.mem nodes)
+    (hTake : takeFirstFitFrom 0 need nodes = some choice) :
+    FreshFixedArrayAt (fixedArrayAllocFitStore st choice stride)
+      choice.node.root choice.node.capacity stride := by
+  have hChoiceMem : choice.node ∈ nodes :=
+    takeFirstFitFrom_some_mem hTake
+  obtain ⟨hRoot48, hRoot32, _⟩ := hList.mem_bounds hChoiceMem
+  have hBase : (choice.node.root - 48).toNat + 48 ≤ 4294967296 := by
+    rw [Project.ProofKit.Memory.toNat_sub_of_le choice.node.root 48 hRoot48]
+    change choice.node.root.toNat - 48 + 48 ≤ 4294967296
+    omega
+  let unlinked : Store Unit := { st with mem := unlinkFreeChoice st.mem choice }
+  have hFresh := Project.ProofKit.FixedArrayHeader.fresh unlinked
+    (choice.node.root - 48) choice.node.capacity stride hBase
+  rw [Project.ProofKit.FixedArrayHeader.from_root _ _ _ _ hRoot48 (by omega)] at hFresh
+  simpa only [FreshFixedArrayAt, UInt64.sub_add_cancel, unlinked,
+    fixedArrayAllocFitStore, fixedArrayAllocFitMem] using hFresh
+
+end Project.ProofKit
 
 namespace Project.ProofKit.FreeListMemory
-open Wasm Project.Runtime Project.ClobMatchFuel.BookAllocFit Project.ProofKit.Memory
+open Wasm Project.Runtime Project.ProofKit.Memory
 
 theorem previous_mem {need : UInt64} {nodes : List FreeNode} {choice : FreeChoice}
     (hTake : takeFirstFitFrom 0 need nodes = some choice) (hNonzero : choice.previous ≠ 0) :

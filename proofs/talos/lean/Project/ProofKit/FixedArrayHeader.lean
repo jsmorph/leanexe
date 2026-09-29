@@ -1,9 +1,71 @@
-import Project.FixedArrayAllocation
+import Project.Common
 import Project.ProofKit.MemoryRoundtrip
 import Project.ProofKit.Allocation
 
+namespace Project.ProofKit
+
+open Wasm
+
+def FreshFixedArrayAt (st : Store Unit) (ptr capacity stride : UInt64) : Prop :=
+  st.mem.read64 ((ptr - 48).toUInt32) = 5501223100278326855 ∧
+  st.mem.read64 ((ptr - 40).toUInt32) = 1 ∧
+  st.mem.read64 ((ptr - 32).toUInt32) = capacity ∧
+  st.mem.read64 ((ptr - 24).toUInt32) = 2 ∧
+  st.mem.read64 ((ptr - 16).toUInt32) = stride ∧
+  st.mem.read64 ((ptr - 8).toUInt32) = 0
+
+theorem FreshFixedArrayAt.frame {st st' : Store Unit}
+    {ptr capacity stride base : UInt64}
+    (hPtr32 : ptr.toNat < 4294967296)
+    (hHeader : 48 ≤ ptr.toNat) (hBelow : ptr.toNat ≤ base.toNat)
+    (hBytes : ∀ a : Nat, a < base.toNat →
+      st'.mem.bytes a = st.mem.bytes a)
+    (hFresh : FreshFixedArrayAt st ptr capacity stride) :
+    FreshFixedArrayAt st' ptr capacity stride := by
+  have hRead (offset : UInt64) (hOffset : offset.toNat ≤ 48)
+      (hOffset8 : 8 ≤ offset.toNat) :
+      st'.mem.read64 ((ptr - offset).toUInt32) =
+        st.mem.read64 ((ptr - offset).toUInt32) := by
+    apply Project.Common.read64_congr
+    intro i hi
+    rw [Project.Common.toUInt32_toNat,
+      Project.Common.toNat_sub_le ptr offset (by omega),
+      Nat.mod_eq_of_lt (by omega)]
+    exact hBytes _ (by omega)
+  obtain ⟨h48, h40, h32, h24, h16, h8⟩ := hFresh
+  exact ⟨(hRead 48 (by decide) (by decide)).trans h48,
+    (hRead 40 (by decide) (by decide)).trans h40,
+    (hRead 32 (by decide) (by decide)).trans h32,
+    (hRead 24 (by decide) (by decide)).trans h24,
+    (hRead 16 (by decide) (by decide)).trans h16,
+    (hRead 8 (by decide) (by decide)).trans h8⟩
+
+def fixedArrayHeaderMem (mem : Mem) (base capacity stride : UInt64) : Mem :=
+  (((((mem.write64
+    (UInt32.ofNat (base.toNat % 4294967296)) 5501223100278326855).write64
+    (UInt32.ofNat ((base.toNat + 8) % 4294967296)) 1).write64
+    (UInt32.ofNat ((base.toNat + 16) % 4294967296)) capacity).write64
+    (UInt32.ofNat ((base.toNat + 24) % 4294967296)) 2).write64
+    (UInt32.ofNat ((base.toNat + 32) % 4294967296)) stride).write64
+    (UInt32.ofNat ((base.toNat + 40) % 4294967296)) 0
+
+def fixedArrayAllocBumpStore (st : Store Unit) (base capacity stride : UInt64) :
+    Store Unit :=
+  { st with
+    globals := { globals :=
+      st.globals.globals.set 0 (.i64 (base + 48 + capacity)) }
+    mem := fixedArrayHeaderMem st.mem base capacity stride }
+
+theorem fixedArrayAllocBumpStore_pages (st : Store Unit)
+    (base capacity stride : UInt64) :
+    (fixedArrayAllocBumpStore st base capacity stride).mem.pages =
+      st.mem.pages := by
+  simp [fixedArrayAllocBumpStore, fixedArrayHeaderMem, Mem.write64_pages]
+
+end Project.ProofKit
+
 namespace Project.ProofKit.FixedArrayHeader
-open Wasm Project.Clob Project.ProofKit.Memory Project.ProofKit.Allocation
+open Wasm Project.ProofKit.Memory Project.ProofKit.Allocation
 
 theorem reads (mem : Mem) (base capacity stride : UInt64) :
     let written := fixedArrayHeaderMem mem base capacity stride

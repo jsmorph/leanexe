@@ -1,5 +1,5 @@
 import LeanExe.Extract.Core
-import Project.EncodingGcd.Direct
+import Project.Pipeline.Direct
 
 private def inlineRepr {α : Type} [Repr α] (value : α) : String :=
   (repr value).pretty.replace "\n" " "
@@ -32,7 +32,7 @@ def main (args : List String) : IO Unit := do
     | _ => throw (IO.userError "expected a Lean output path")
   let ir ← LeanExe.Extract.Core.compile
     "LeanExe.Examples.EncodingGcd" "LeanExe.Examples.EncodingGcd.gcd"
-  let module_ ← match Project.EncodingGcd.fromIR ir with
+  let module_ ← match Project.Pipeline.fromIR ir with
     | .ok module_ => pure module_
     | .error message => throw (IO.userError message)
   let source ← match module_.funcs with

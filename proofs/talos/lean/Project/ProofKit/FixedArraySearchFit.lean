@@ -3,7 +3,7 @@ import Project.ProofKit.FixedArrayReuse
 import Project.ProofKit.FreeListMemory
 
 namespace Project.ProofKit.FixedArraySearch
-open Wasm Project.Runtime Project.ClobMatchFuel.BookAllocFit Project.ProofKit.Memory
+open Wasm Project.Runtime Project.ProofKit.Memory
 
 theorem choice_previous_bound {mem : Wasm.Mem} {nodes : List FreeNode}
     {need : UInt64} {choice : FreeChoice} (hList : FreeListAt mem nodes)
