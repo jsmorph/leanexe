@@ -35,7 +35,14 @@ Paths other than the first are relative to `proofs/talos/lean`.  The Pipeline an
 | `Project/Pipeline/Command.lean` | `leanexe_module m := f` compiles `f` during elaboration and adds `m : Wasm.Module`. |
 | `Project/Pipeline/Emit.lean` | Evaluates a module constant, encodes it, checks that `decode` returns it, and writes the file. |
 | `Project/Pipeline/Runtime.lean` | `Heap`, `Heap.At`, `Heap.Borrowed`, `Heap.Owned`, and `Heap.Room`. |
-| `Project/Pipeline/Implements.lean` | `Implements`, `Satisfies`, and `Implements.transfer`. |
+| `Project/Pipeline/Implements.lean` | `Represent` (how a value appears as WASM values and heap data), `Scalar`, `Implements`, `Satisfies`, and `Implements.transfer`. |
+| `LeanExe/Examples/Scale.lean` | Iteration 1's program, `scale a b c = a * b / c + 1`. |
+| `Project/IR/Function.lean` | `Func`, a function whose result is one `ScalarTransition` expression, and `compile`, which gives it a memory, the runtime globals, and an export. |
+| `Project/IR/Correct.lean` | `Func.implements`: a function whose expression evaluates to `f x` implements `f`. |
+| `Project/IR/Hint.lean` | Hints: rule, source term, and instruction range per IR node, and the local of each parameter. |
+| `Project/Compiler/Scalar.lean` | The new compiler: `UInt64` parameters, literals, and ten binary operators. |
+| `Project/Compiler/Command.lean` | `leanexe_compile p := f` adds `p.ir`, `p.module := compile p.ir name`, and `p.hints`. |
+| `Project/Scale/Module.lean`, `Project/Scale/Verify.lean` | `scale` compiled, and `scale_implements` and `scale_bytes`. |
 | `Project/Pipeline/Allocation.lean` | What one array allocation guarantees for the pipeline heap, and frame lemmas for writes into the new block. |
 | `Project/Encoding/Decode.lean` | The binary decoder for the encoder's subset. |
 | `Project/Encoding/DecodeCorrect/*.lean` | Parser lemmas behind `decode_encode`. |
@@ -49,9 +56,13 @@ Paths other than the first are relative to `proofs/talos/lean`.  The Pipeline an
 
 `sumModule_implements` states that, from any store that satisfies the allocator invariant, holds the input words, and has 72 bytes of room, the entry function terminates under Talos's semantics and returns a new owned array equal to `sumCount xs`.  It also states that the input is unchanged, the invariant holds again, `top` advances by at most 72 bytes, and memory grows only as far as `top` requires.  `sumCount_meaning` proves that the first result word, read as signed, is the mathematical sum whenever that sum fits in 64 signed bits.  `sumModule_meaning` transfers it to the module by `Implements.transfer`.  `decode_encode` proves that every successful encoding decodes to the encoded module, and `sumModule_bytes` combines it with the fidelity theorem.  `#print axioms` reports only `propext`, `Classical.choice`, and `Quot.sound` for these theorems.
 
+`scale_implements` states that `scale.module`, which the new compiler produced as `compile scale.ir "scale"`, implements `scale` on every triple of `UInt64` arguments with no allocation, under the general `Implements`.  Its proof applies `Func.implements` and shows by `simp` that the IR expression evaluates to `a * b / c + 1`; the only remaining step is Lean's `a * b / 0 = 0`.  `scale_bytes` combines it with `decode_encode`.  Both use only the standard three axioms.
+
 ## Tested
 
 On 2026-09-28, `Emit.lean` produced a 1,689-byte module with sha256 `19b91985ce344cf513beaa78d1baeee9239de25962ac5313df553f2f8225efbf`, identical to the earlier emission, and `wasm-tools` validated it.  Wasmtime returned native Lean's result on seven inputs: the empty array, `[1,2,3]`, three wrapping sums, `[0]`, and the numbers 1 to 1,000.  The decoder testsuite run after the last change to `Decode.lean` found all 210 valid modules in the subset equal to the reference and round-tripping, and it rejected all 670 binary malformed modules in the subset.  2,004 valid and 41 malformed modules fall outside the subset.
+
+For iteration 1, `Emit.lean` wrote a 124-byte `scale.wasm` with sha256 `907fdcf9ecdbbce9e87d4355502b27a1ae97c99ac9db9837c9ea3f617a7f8c1c`, and `wasm-tools` validated it.  Wasmtime and native Lean both returned 9, 1, 6148914691236517205, 1, 1, and 1 for `(6, 7, 5)`, `(6, 7, 0)`, `(2^64-1, 2, 3)`, `(0, 0, 0)`, `(2^32, 2^32, 1)`, and `(2^64-1, 2^64-1, 2^64-1)`, which cover division by zero and wrapping multiplication.
 
 ## Decisions
 
@@ -78,6 +89,11 @@ On 2026-09-28, `Emit.lean` produced a 1,689-byte module with sha256 `19b91985ce3
 | `LeanExe.Runtime.release` and the four runtime counters leave the source dialect.  The module keeps exporting the counters as globals for hosts and tests to read. | Their values are 0 in Lean and real in WASM, and an explicit `release` frees memory Lean still considers live, which would need a checked compiler rule.  With exact reference counting, the compiler releases each value after its last use. |
 | Hints will also go into a WASM custom section, with names in the `name` section, once proving from the bytes alone becomes a goal.  Until then the compiler emits hints as Lean data keyed to positions in the decoded module (function index and instruction path). | The decoder skips custom sections, so no theorem changes.  The work (encoder support, a `decode_encode` extension, and a byte format) serves only proofs made without the compiler, and the position keys let the Lean data move into the section unchanged. |
 | `origin/wgsl` is not merged and stays as a reference branch.  The GPU kernel path is designed under the new design after the Wasm path proves `sumCount` and one float program, moving reviewed pieces such as the WGSL semantics and `Profile`. | The branch adds about 99,000 lines to a branch meant to shrink, and its GPT-2 runner builds on the old compiler that the second deletion stage removes. |
+| Iteration 1 reuses `ProofKit/ScalarTransition.lean` in place for expressions, with its evaluator; `Expr.program_spec` proves that compiled code agrees with `Expr.eval`, so the evaluator adds no trust and per-program proofs can rewrite with it.  Statement semantics for loops is chosen before iteration 2, among an evaluator for loop-free code with `wp` rules for loops, a big-step relation, or `wp` rules only. | `ScalarTransition` has proved expression, assignment, `if`, and loop lemmas, but its loops sit outside `Stmt`, locals are `UInt64` only, and moving it would break ten LTG entries. |
+| `f32` and `f64` enter the IR when floats arrive, which reverses the earlier decision to add them first. | `ScalarTransition`'s proofs use `ScalarType.value` through `simp` and never case on the type, so adding types later changes only `denote` and `value`.  The earlier reason was not checked against the code. |
+| New code goes in the proof workspace.  The root `LeanExe` package merges into it at the second deletion stage. | `compile` needs Talos's `Wasm.Module`, and the proof workspace imports the old compiler from the root package until the second stage. |
+| `Implements` becomes one general statement over a representation class, instantiated for scalars now and for `Array UInt64` in place of the current form.  Every compiled module has memory and the six runtime globals, so the runtime invariant `Heap.At` is satisfiable for scalar functions too. | A separate scalar statement would be restated in iteration 3, and a module without memory would make `Heap.At` false and the theorem vacuous. |
+| The compiler emits the IR as a definition and defines the module as `compile ir`. | The module is then tied to the IR by definition, and a wrong compiler match makes the proof fail rather than produce a false theorem. |
 | Deletion happens in two stages.  First, after the user approves an inventory with a keep-or-delete proposal and import check per directory, delete what the plan does not use and the current proof does not import: example proof trees, `demos/`, `benchmarks/`, old compiler test fixtures, `tools/` scripts, and `Project/Artifact/Binary`.  Second, after the new pipeline proves `sumCount`, delete the extractor, `LeanExe.IR`, the emitter, the CLI compile modes, the WASI adapters, the scalar `Compiler/` track, `Pipeline/Direct.lean`, and the old `SumCount` proof, moving any reused runtime code and proofs first.  `paper/` and `data/` stay. | The current `sumCount` proof depends on the old compiler through `Pipeline/Direct.lean` and `Compiler/ScalarLowering.lean`, and most directories have not been examined.  Git history keeps everything deleted. |
 | A new, small compiler translates Lean to the new IR, starting with the constructs `sumCount` uses.  Self-contained parts of the extractor move into it when a construct needs them. | The existing compiler (29,862 lines of extractor, 1,240 of `LeanExe.IR`, 9,064 of WASM emitter) traps on panics and `Nat` overflow, supports bounded `Nat`, and places `release` conservatively, all against the new dialect.  A new compiler keeps the system small and builds each rule as a template with a lemma and hints. |
 
@@ -154,7 +170,7 @@ The user doubted that items 2 and 3 need work, and no work on them is planned.
 
 Development is iterative.  Each iteration takes one program from Lean source through the compiler, the IR with hints, `compile`, and `encode` to bytes, proves `Implements` through the IR lemmas, checks the bytes against native Lean in Wasmtime, runs the axiom audit, and ends with a commit.  Each iteration adds only the IR constructs, compiler rules, `wp` lemmas, runtime pieces, and `Implements` generality its program needs.  The IR's value types include `f32` and `f64` from the first iteration, and float operations arrive with the float iteration.
 
-- [ ] Iteration 1, scalar arithmetic: a function such as `fun a b : UInt64 => a * b + 1`.  It needs constants, parameters, binary operations, and a return, `Implements` for scalar arguments and results, and no memory or runtime.
+- [x] Iteration 1, scalar arithmetic: `scale a b c = a * b / c + 1`.  It added the general `Implements`, `Func` and `compile`, `Func.implements`, the scalar compiler with hints, and `leanexe_compile`, and it reused `ScalarTransition`'s expressions and `Expr.program_spec`.
 - [ ] Iteration 2, control flow: `let`, `if`, and a loop from tail recursion, in a program such as GCD over `UInt64`.  It adds assignment, `if`, the loop with exit, and the loop's `wp` lemma, and it proves the tail-recursion rule's lemma as the first LTG entry.
 - [ ] Iteration 3, arrays and allocation: `sumCount`.  It adds loads, stores, and calls, the runtime `alloc` with its specification (after reviewing the existing runtime proofs), a representation relation for `Array UInt64` with reference counts, and compiler rules for `Array.foldl` and array literals.  Prove the fold rule's lemma, add it to LTG, prove `sumCount` again with it, and compare the two proofs.  Then delete the second stage: the old compiler and the old `SumCount` proof.
 - [ ] Iteration 4, reference counting: a program with temporaries, such as `map` followed by `foldl`.  It adds `retain` and `release` with their specifications, the compiler's placement of both, and a check of whether `release` recurses on the WASM stack.
@@ -176,6 +192,11 @@ tools/leanrun --timeout 10m lake -d proofs/talos/lean env lean --run \
   proofs/talos/lean/Project/Pipeline/Emit.lean \
   Project.SumCount.Module Project.SumCount.sumModule build/sumcount/sumModule.wasm
 wasm-tools validate build/sumcount/sumModule.wasm
+tools/leanrun --timeout 20m lake -d proofs/talos/lean build Project.Scale.Verify
+tools/leanrun --timeout 10m lake -d proofs/talos/lean env lean --run \
+  proofs/talos/lean/Project/Pipeline/Emit.lean \
+  Project.Scale.Module Project.Scale.scale.module build/scale/scale.wasm
+build/tools/leanexe-wasmtime-host call build/scale/scale.wasm scale i64 i64:6 i64:7 i64:0
 build/tools/leanexe-wasmtime-host call build/sumcount/sumModule.wasm sumCount \
   array-u64 array-u64:1,2,3
 tools/leanrun --timeout 60m lake -d proofs/talos/lean env lean --run \

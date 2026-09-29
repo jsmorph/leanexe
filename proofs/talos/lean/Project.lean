@@ -1,6 +1,8 @@
 import Project.Attr
 import Project.BranchPost
 import Project.Common
+import Project.Compiler.Command
+import Project.Compiler.Scalar
 import Project.Compiler.ScalarLowering
 import Project.Encoding
 import Project.Encoding.Completeness.Basic
@@ -27,6 +29,9 @@ import Project.Encoding.Values
 import Project.F32Source.Checks
 import Project.FrameAttr
 import Project.IEEE64Source.Source
+import Project.IR.Correct
+import Project.IR.Function
+import Project.IR.Hint
 import Project.Pipeline.Allocation
 import Project.Pipeline.Command
 import Project.Pipeline.Direct
@@ -141,6 +146,8 @@ import Project.Runtime.FreeList
 import Project.Runtime.Spec
 import Project.Runtime.Tree
 import Project.Runtime.TreeSpec
+import Project.Scale.Module
+import Project.Scale.Verify
 import Project.SumCount.Execution
 import Project.SumCount.Module
 import Project.SumCount.Verify
