@@ -196,6 +196,19 @@ def buildElementLoc (loc : Loc) (dst limit index : Nat) (count : IRExpr .u64) : 
   (((loc.skip (before.map stmtLength).sum).inside none).inside none).skip
     (exprLength (.ltU (.get index) (.get limit) : IRExpr .bool) + 2 + exprLength address + 1)
 
+/-- The hint for code at `path` inside the code a hint's path is relative to. -/
+def Hint.within (path : List Nat) (hint : Hint) : Hint := { hint with path := path ++ hint.path }
+
+/-- Runs `action` with an empty statement list and returns its statements and
+hints, relative to their own start, while keeping the locals it allocates. -/
+def withBlock (action : CompileM α) : CompileM (α × List Project.IR.Stmt × List Hint) := do
+  let saved ← get
+  set { saved with stmts := #[], hints := #[], length := 0 }
+  let result ← action
+  let inner ← get
+  set { inner with stmts := saved.stmts, hints := saved.hints, length := saved.length }
+  return (result, inner.stmts.toList, inner.hints.toList)
+
 /-- Pushes `stmt` to the prelude with its hints, which are relative to its start. -/
 def pushStmt (stmt : Project.IR.Stmt) (hints : List Hint) : CompileM Unit :=
   modify fun p => { p with
@@ -254,6 +267,11 @@ mutual
     | (``Array.foldl, _) =>
         let ir : IRExpr .u64 := .get (← translateFold ctx term .u64)
         return (ir, [hint ir "fold result"])
+    | (``LeanExe.loop, _) =>
+        let [(state, .u64)] ← translateLoop ctx term
+          | throwError "a loop used as a word must have a word state: {source}"
+        let ir : IRExpr .u64 := .get state
+        return (ir, [hint ir "loop result"])
     | (``Min.min, #[type, _, a, b]) =>
         unless ← isUInt64 type do throwError "unsupported min type in {source}"
         -- `min a b` is `if a ≤ b then a else b`.
@@ -427,6 +445,11 @@ mutual
     | (``Array.foldl, _) =>
         let ir : IRExpr .f64 := .getF (← translateFold ctx term .f64)
         return (ir, [hint ir "fold result"])
+    | (``LeanExe.loop, _) =>
+        let [(state, .f64)] ← translateLoop ctx term
+          | throwError "a loop used as a float must have a float state: {source}"
+        let ir : IRExpr .f64 := .getF state
+        return (ir, [hint ir "loop result"])
     | (``UInt64.toFloat, #[operand]) =>
         let (x, xHints) ← translateValue ctx loc operand
         let ir : IRExpr .f64 := .convertU x
@@ -707,6 +730,18 @@ mutual
       CompileM (List (Σ type, IRExpr type) × List (List Hint)) :=
     peel ctx term fun ctx term => do
       let type ← whnfR type
+      if let .letE name letType value body _ := term then
+        let scalar ← scalarTypeOf letType
+        let (⟨_, v⟩, vHints) ← translateAs ctx ⟨[], 0⟩ scalar value
+        let local_ ← fresh scalar name.toString
+        let stmt := Project.IR.Stmt.assign local_ v
+        pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
+        return ← withLocalDeclD name letType fun x =>
+          translateResults (ctx.bind x [(local_, scalar)]) (body.instantiate1 x) type
+      let branching := type.isAppOfArity ``Prod 2 || (← isUInt64Array type)
+      if let (``ite, #[_, condition, _, thenTerm, elseTerm]) := term.getAppFnArgs then
+        if branching then
+          return ← translateResultBranch ctx term condition thenTerm elseTerm type
       if type.isAppOfArity ``Prod 2 then
         let (``Prod.mk, #[first, second, a, b]) := term.getAppFnArgs
           | throwError "a pair result must be a pair: {← sourceOf term}"
@@ -719,6 +754,37 @@ mutual
         return ([⟨.u64, ir⟩], [[mkHint ⟨[], 0⟩ (exprLength ir) "array result" (← sourceOf term)]])
       let (result, hints) ← translateAs ctx ⟨[], 0⟩ (← scalarTypeOf type) term
       return ([result], [hints])
+
+  /-- Translates a conditional result whose branches build arrays to a statement
+  `if` whose branches leave the results in fresh locals, and returns the locals. -/
+  partial def translateResultBranch (ctx : Ctx) (term condition thenTerm elseTerm type : Lean.Expr) :
+      CompileM (List (Σ type, IRExpr type) × List (List Hint)) := do
+    let source ← sourceOf term
+    let (c, cHints) ← translateCondition ctx ⟨[], 0⟩ condition
+    let branch (resultTerm : Lean.Expr) (locals : List (Nat × ScalarType)) :
+        CompileM (List (Nat × ScalarType)) := do
+      let (results, hints) ← translateResults ctx resultTerm type
+      let mut locals := locals
+      let mut out := #[]
+      for (⟨resultType, ir⟩, own) in results.zip hints do
+        let (local_, rest) ← match locals with
+          | first :: rest => pure (first.1, rest)
+          | [] => do pure (← fresh resultType "result", [])
+        locals := rest
+        let stmt := Project.IR.Stmt.assign local_ ir
+        pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "result" (← sourceOf resultTerm) :: own)
+        out := out.push (local_, resultType)
+      return out.toList
+    let (resultLocals, thenStmts, thenHints) ← withBlock (branch thenTerm [])
+    let (_, elseStmts, elseHints) ← withBlock (branch elseTerm resultLocals)
+    let stmt := Project.IR.Stmt.ite c (seqAll thenStmts) (seqAll elseStmts)
+    let branchAt := exprLength c
+    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "result branch" source :: cHints ++
+      thenHints.map (Hint.within [branchAt, 0]) ++ elseHints.map (Hint.within [branchAt, 1]))
+    return (resultLocals.map fun (local_, resultType) => match resultType with
+        | .f64 => (⟨.f64, .getF local_⟩ : Σ type, IRExpr type)
+        | _ => ⟨.u64, .get local_⟩,
+      resultLocals.map fun _ => [])
 
   /-- Translates the array literal `term` with `elements` to an allocation and
   stores into a fresh local, which it returns.  Folds in the elements run first. -/

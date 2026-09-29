@@ -22,4 +22,16 @@ def insertLevel (prices sizes : Array UInt64) (k price size : UInt64) :
     Array UInt64 × Array UInt64 :=
   (prices.insertIdx! k.toNat price, sizes.insertIdx! k.toNat size)
 
+/-- The bids after adding `size` at `price`: to the level with that price if it
+exists, and otherwise to a new level at its sorted position.  The bids are sorted
+by descending price, so the position is the number of levels with a higher
+price. -/
+def addBid (prices sizes : Array UInt64) (price size : UInt64) : Array UInt64 × Array UInt64 :=
+  let k := LeanExe.loop prices.size.toUInt64 0 fun i k =>
+    if prices[i.toNat]! > price then k + 1 else k
+  if k < prices.size.toUInt64 ∧ prices[k.toNat]! = price then
+    (prices, sizes.set! k.toNat (sizes[k.toNat]! + size))
+  else
+    (prices.insertIdx! k.toNat price, sizes.insertIdx! k.toNat size)
+
 end LeanExe.Examples.Clob
