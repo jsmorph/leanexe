@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "tail-recursion-loop",
+  "title": "Tail-recursion loop",
+  "summary": "Proves a function compiled by the tail-recursion template correct from one obligation about a single iteration of its loop body.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["compiler-motifs", "loops", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["done-flag", "loop", "measure", "tail-recursion", "termination"],
+  "annotationKinds": ["tail-recursion-loop"],
+  "modules": ["Project.IR.TailLoop"],
+  "declarations": ["Project.IR.Func.tail_implements", "Project.IR.TailStep", "Project.IR.tailState"],
+  "premises": ["The compiler's loop shape, checked by rfl", "Injective argument values", "TailStep for the loop body with a measure on the arguments"],
+  "result": "Implements for the compiled module and the source function, with no allocation.",
+  "consumers": ["Project.Gcd.gcd_implements"],
+  "relatedEntries": ["scalar-post-test-loop"],
+  "exclusion": null
+}

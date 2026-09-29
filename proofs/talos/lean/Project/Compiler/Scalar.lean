@@ -226,7 +226,7 @@ def compileScalar (declName : Name) : MetaM (Func × Hints) := do
         (loopBody.skip ((condition.program ctx.scratch).length + 2)) body
       let loop : Project.IR.Stmt := .while condition step
       let loopHint := mkHint { prefix_ := [], index := 0 } (loop.program ctx.scratch).length
-        s!"tail recursion of {declName}: each iteration runs one call" (← sourceOf body)
+        "tail-recursion-loop" (← sourceOf body)
       let resultHint := mkHint { prefix_ := [], index := 1 } 1 "result" "result"
       let names := paramNames.zipIdx ++
         [("result", ctx.result), ("done", ctx.done)] ++

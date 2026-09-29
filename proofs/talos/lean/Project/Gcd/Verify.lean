@@ -1,5 +1,5 @@
 import Project.Gcd.Module
-import Project.IR.Correct
+import Project.IR.TailLoop
 import Project.Encoding.RoundTrip
 
 namespace Project.Gcd
@@ -18,78 +18,39 @@ theorem source_step (a b : UInt64) (h : b ≠ 0) :
   rw [LeanExe.Examples.Gcd.gcd.eq_def]
   simp [h]
 
-/-- The loop's local state: the parameters `a` and `b`, then `result`, `done`,
-the two temporaries, and the two scratch locals of `%`. -/
-def loopState (a b result done t0 t1 s0 s1 : UInt64) : State :=
-  { params := [.i64 a, .i64 b],
-    locals := [.i64 result, .i64 done, .i64 t0, .i64 t1, .i64 s0, .i64 s1] }
+theorem gcdTuple_injective (x y : UInt64 × UInt64) (h : Scalar.values x = Scalar.values y) :
+    x = y := by
+  obtain ⟨a, b⟩ := x
+  obtain ⟨c, d⟩ := y
+  simp [Scalar.values] at h
+  simp [h]
 
-/-- The loop invariant for the call `gcd a₀ b₀`: the store is unchanged, and
-either the loop continues with arguments whose gcd is the answer, or it has
-stored the answer and set `done`. -/
-def Invariant (initial : Store Unit) (a₀ b₀ : UInt64) (store : Store Unit) (state : State) :
-    Prop :=
-  store = initial ∧ ∃ a b result done t0 t1 s0 s1,
-    state = loopState a b result done t0 t1 s0 s1 ∧
-      ((done = 0 ∧ LeanExe.Examples.Gcd.gcd a b = LeanExe.Examples.Gcd.gcd a₀ b₀) ∨
-        (done = 1 ∧ result = LeanExe.Examples.Gcd.gcd a₀ b₀))
-
-def word (state : State) (index : Nat) : UInt64 :=
-  match state.get index with
-  | some (.i64 value) => value
-  | _ => 0
-
-/-- `b + 1` while the loop runs, and 0 once `done` is set. -/
-def measure (_ : Store Unit) (state : State) : Nat :=
-  if word state 3 = 0 then (word state 1).toNat + 1 else 0
-
-theorem gcd_implements : Implements gcd.module 0 gcdTuple (fun _ => 0) := by
-  refine Func.implements gcd.ir "gcd" gcdTuple (fun _ => rfl) fun ⟨a₀, b₀⟩ initial => ?_
-  simp only [gcd.ir, Func.scratch]
-  refine (Stmt.while_spec (Invariant initial a₀ b₀) measure ?_ fun n =>
-    (Stmt.ite_spec (Stmt.seq_spec Stmt.assign_spec Stmt.assign_spec)
+/-- One iteration of the compiled loop: at `b = 0` it stores `a`, and otherwise it
+moves to `(b, a % b)`, which has the same gcd and a smaller `b`. -/
+theorem gcd_step : TailStep (α := UInt64 × UInt64)
+    (match gcd.ir.body with | .while _ step => step | _ => .skip) gcd.ir.scratch 4 gcdTuple
+    (fun x => x.2.toNat) := by
+  rintro initial ⟨a, b⟩ result others hLength
+  match others, hLength with
+  | [v0, v1, v2, v3], _ =>
+    refine (Stmt.ite_spec (Stmt.seq_spec Stmt.assign_spec Stmt.assign_spec)
       (Stmt.seq_spec Stmt.assign_spec (Stmt.seq_spec Stmt.assign_spec
-        (Stmt.seq_spec Stmt.assign_spec Stmt.assign_spec)))).mono ?_ fun _ _ h => h).mono ?_ ?_
-  · rintro store state ⟨-, a, b, result, done, t0, t1, s0, s1, rfl, -⟩
-    simp [loopState, Expr.eval, State.get]
-  · rintro store state ⟨before, ⟨rfl, a, b, result, done, t0, t1, s0, s1, rfl, hInv⟩, hMeasure,
-      hCondition⟩
-    simp [loopState, Expr.eval, State.get] at hCondition
-    obtain ⟨hDone, rfl⟩ := hCondition
-    subst hDone
-    have hContinue : LeanExe.Examples.Gcd.gcd a b = LeanExe.Examples.Gcd.gcd a₀ b₀ := by
-      simpa using hInv
-    subst hMeasure
+        (Stmt.seq_spec Stmt.assign_spec Stmt.assign_spec)))).mono ?_ fun _ _ h => h
+    rintro store state ⟨rfl, rfl⟩
     by_cases hZero : b = 0
     · subst hZero
-      simp [Expr.eval, State.get, State.set?]
-      refine ⟨⟨rfl, a, 0, a, 1, t0, t1, s0, s1, rfl, Or.inr ⟨rfl, ?_⟩⟩, ?_⟩
-      · rw [← hContinue, source_zero]
-      · simp [measure, word, loopState, State.get]
-    · simp [Expr.eval, State.get, State.set?, hZero]
-      have hMod : U64Op.remU.apply a b = a % b := by simp [U64Op.apply, hZero]
-      rw [hMod]
-      refine ⟨⟨rfl, b, a % b, result, 0, b, a % b, a, b, rfl, Or.inl ⟨rfl, ?_⟩⟩, ?_⟩
-      · rw [← hContinue, source_step a b hZero]
-      · have hPositive : 0 < b.toNat := by
-          apply Nat.pos_of_ne_zero
-          intro h
-          exact hZero (UInt64.toNat_inj.mp (by simpa using h))
-        have hLess := Nat.mod_lt a.toNat hPositive
-        simp [measure, word, loopState, State.get, UInt64.toNat_mod]
-        omega
-  · rintro store state ⟨rfl, rfl⟩
-    refine ⟨rfl, a₀, b₀, 0, 0, 0, 0, 0, 0, ?_, Or.inl ⟨rfl, rfl⟩⟩
-    simp [Func.state, Func.width, loopState, IR.Stmt.scratchWidth, Expr.scratchWidth,
-      Scalar.values]
-  · rintro store state ⟨before, ⟨rfl, a, b, result, done, t0, t1, s0, s1, rfl, hInv⟩,
-      hCondition⟩
-    simp [loopState, Expr.eval, State.get] at hCondition
-    obtain ⟨hDone, rfl⟩ := hCondition
-    refine ⟨rfl, ?_⟩
-    rcases hInv with ⟨rfl, -⟩ | ⟨-, rfl⟩
-    · exact absurd rfl hDone
-    · simp [loopState, Expr.eval, State.get, gcdTuple]
+      simp [tailState, Scalar.values, Expr.eval, State.get, State.set?, gcd.ir, Func.scratch,
+        gcdTuple, source_zero]
+    · simp [tailState, Scalar.values, Expr.eval, State.get, State.set?, U64Op.apply, hZero,
+        gcd.ir, Func.scratch]
+      refine ⟨by simp [gcdTuple, source_step a b hZero], Nat.mod_lt _ ?_⟩
+      apply Nat.pos_of_ne_zero
+      intro h
+      exact hZero (UInt64.toNat_inj.mp (by simpa using h))
+
+theorem gcd_implements : Implements gcd.module 0 gcdTuple (fun _ => 0) :=
+  Func.tail_implements gcd.ir "gcd" gcdTuple (fun x => x.2.toNat) _ (fun _ => rfl)
+    gcdTuple_injective (by decide) rfl rfl gcd_step
 
 /-- The bytes `encode` produces for `gcd.module` decode to a module that
 computes `gcd` exactly. -/
