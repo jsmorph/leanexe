@@ -12,7 +12,7 @@ The compiler is not verified at first.  Its rules are verified one at a time, an
 
 | Component | Design | State |
 |---|---|---|
-| IR | Embedded in Lean: expressions over locals, assignment, `if`, `while`, loads, and later calls and stores to linear memory.  It has no arrays, structures, or ownership. | Expressions (reused from `ProofKit/ScalarTransition.lean`) and statements, including `load`, exist. |
+| IR | Embedded in Lean: expressions over locals, assignment, `if`, `while`, loads, and later calls and stores to linear memory.  It has no arrays, structures, or ownership. | Expressions and statements, including `load`, exist. |
 | Translation | `compile : IR → Wasm.Module`, with one `wp` rule per construct proved once against Talos.  The IR means what its compiled code does. | `Expr.program_spec`, a `Triple` rule for each statement, and the frame notion `State.Frame` with `Expr.eval_frame`. |
 | Compiler | Lean to IR, reading each definition's unfolding equation.  Verifying a rule means proving that its template implements its source construct, stated in terms of Lean's own functions, so no `Lean.Expr` semantics is trusted. | `UInt64` arithmetic, comparisons, `if`, tail recursion, `Array UInt64` parameters, and `Array.foldl` over them.  The tail-recursion and fold rules are proved. |
 | Hints | Untrusted annotations: the rule behind each fragment, its source term, its instruction path in the decoded module, and the name of each local.  A wrong hint costs proof time and cannot produce a false theorem. | Emitted for every IR node. |
@@ -29,7 +29,8 @@ The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O a
 |---|---|
 | `LeanExe/Examples/Scale.lean`, `Gcd.lean`, `SumArray.lean`, `SumCount.lean` | Source programs.  `SumCount` waits for iteration 3c. |
 | `LeanExe/Float32.lean`, `Signed32.lean` | Raw-bit wrappers that the binary32 equality proofs state their results about. |
-| `Project/IR/Stmt.lean` | IR statements, their compiled code, `Triple`, one rule per statement, `Triple.mono`, `Triple.of_forall`, and `State.Frame`, which says a state changed only given locals and scratch locals. |
+| `Project/IR/Expr.lean` | IR expressions, the IR state, `Expr.eval`, the expression rule `Expr.program_spec`, and `State.Frame` with `Expr.eval_frame`.  `State.Frame` says a state changed only given locals and scratch locals. |
+| `Project/IR/Stmt.lean` | IR statements, their compiled code, `Triple`, one rule per statement, `Triple.mono`, and `Triple.of_forall`. |
 | `Project/IR/Function.lean` | `Func` (parameters, compiler variables, body, result) and `compile`, which gives each module a memory, the runtime globals, and an export. |
 | `Project/IR/Correct.lean` | `Func.implements`: a body that keeps the store and ends where the result evaluates to `f x` gives `Implements`, for arguments of any `Represent` type. |
 | `Project/IR/TailLoop.lean` | `Func.tail_implements`, the rule lemma for tail recursion, and `TailStep`, its obligation about one loop iteration. |
@@ -42,10 +43,10 @@ The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O a
 | `Project/Runtime/` | `Defs.lean`, the code of `alloc`, `retain`, and `release`; `FreeList.lean`, the free-list layout that `Heap.At` uses; and `Tree.lean`, the old model of the structure a `release` frees. |
 | `Project/Pipeline/Emit.lean` | Script: evaluates a module constant, encodes it, checks that `decode` returns it, and writes the file. |
 | `Project/Encoding/` | The encoder, the decoder, `decode_encode`, and `DecodeTest.lean`, a script that runs the decoder over the testsuite. |
-| `Project/ProofKit/` | 65 modules of general lemmas: memory, arrays, allocation, frames, `ScalarTransition`, and the binary32 equality chain. |
+| `Project/ProofKit/` | 61 modules of general lemmas: memory, arrays, allocation, frames, and the binary32 equality chain. |
 | `Project/Scale/`, `Project/Gcd/`, `Project/SumArray/` | Each program's `leanexe_compile` and theorems. |
 | `Project/LTG/Check.lean` | Script: imports every module the LTG entries list and reports declarations that do not exist. |
-| `ltg/` | The LTG knowledge base: 12 entries, each an `entry.json` and a `README.md`. |
+| `ltg/` | The LTG knowledge base: 7 entries, each an `entry.json` and a `README.md`. |
 
 ## Proved
 
@@ -77,7 +78,7 @@ Every module contains the runtime functions, so the sizes below are mostly runti
 | The compiler emits the IR as a definition and the module as `compile ir`. | The module is tied to the IR by definition, and a wrong compiler match makes the proof fail. |
 | The compiler emits hints of any useful kind, keyed to positions in the decoded module.  They move into a WASM custom section, with names in the `name` section, once proving from the bytes alone becomes a goal. | Hints need not be exact.  The decoder skips custom sections, so no theorem changes. |
 | Statements get `wp` rules only, packaged as `Triple` over the store and IR state.  `while` is the only loop, with a `done` local for several exits. | It keeps one semantics, Talos's, and adds no simulation theorem.  Every IR rule is a lemma about WASM code, which serves proving from bytes later.  A big-step relation and a fuel evaluator, recommended earlier, each added a second semantics. |
-| `Expr.eval` with `Expr.program_spec` from `ScalarTransition` serves as the expression rule. | It is proved, and per-program proofs can rewrite with the evaluator. |
+| `Expr.eval` with `Expr.program_spec`, taken from the old `ProofKit/ScalarTransition.lean`, serves as the expression rule. | It is proved, and per-program proofs can rewrite with the evaluator. |
 | `Implements` is one statement over a `Represent` class.  Every compiled module has a memory and the six runtime globals. | A module without memory would make `Heap.At` false and the theorem vacuous. |
 | The runtime keeps reference counting. | Lean values can be shared, so a compiler cannot free them statically. |
 | Runtime integers are fixed-width only.  `panic` compiles to `default`.  Recursive values stay. | Bounded `Nat` traps where Lean returns the exact value, and Lean's logic gives `default` for an out-of-bounds `a[i]!`. |
@@ -85,12 +86,12 @@ Every module contains the runtime functions, so the sizes below are mostly runti
 | `LeanExe.Runtime.release` and the runtime counters leave the source dialect.  Modules keep the counters as globals. | Their values are 0 in Lean and real in WASM. |
 | Floating-point theorems describe the WebAssembly deterministic profile. | Talos implements it, and it matches Lean's float model. |
 | Programs use Lean's `Float` and `Float32`.  `neg`, `abs`, and `ofBits` get a NaN check, and `min` and `max` compile as a comparison and a select. | Lean's model and WASM differ on those operations. |
-| `f32` and `f64` enter the IR when floats arrive. | `ScalarTransition`'s proofs never case on the value type, so adding types later changes only `denote` and `value`. |
+| `f32` and `f64` enter the IR when floats arrive. | The expression proofs never case on the value type, so adding types later changes only `denote` and `value`. |
 | The binary64 equality proofs copy the binary32 proofs. | Copying changes no existing definition or proof. |
 | `origin/wgsl` stays unmerged as a reference.  The GPU path is designed after the Wasm path proves `sumCount` and one float program. | The branch builds on the old compiler. |
 | The repository is one Lake package at its root.  The old compiler, the JavaScript tools, and the old docs are deleted. | The user asked to clean house before iteration 3. |
 | LTG is entries only, searched directly and checked by a Lean script. | The JavaScript LTG tools depended on the deleted generator library and accepted only ProofKit modules. |
-| Memory access is two IR statements, `load dst address` and `store address value`, with 64-bit words, 32-bit address wrapping, and an in-bounds premise in the load rule; expressions stay pure. | Adding memory to `Expr.eval` would reopen `ScalarTransition`, `Expr.program_spec`, and every proof built on them. |
+| Memory access is two IR statements, `load dst address` and `store address value`, with 64-bit words, 32-bit address wrapping, and an in-bounds premise in the load rule; expressions stay pure. | Adding memory to `Expr.eval` would reopen `Expr.eval`, `Expr.program_spec`, and every proof built on them. |
 | The runtime is three functions in every module, `alloc`, `retain`, and `release`, reached by an IR call statement through Talos's `wp_call_tw`, and exported with the counters for hosts; `reset` is dropped.  `alloc` wraps the proved `FixedArrayAllocate.program`, which also counts the allocation, with size rounding.  `release` is new and non-recursive: a count that reaches zero puts the object on a pending list linked through its count field, and a loop decrements children, adds those that reach zero, and frees each block after its children.  `retain` is copied from the old runtime.  The magic-number check stays. | Garbage collection comes before arrays at the user's direction.  A recursive `release` uses one WASM stack frame per node.  The old `release` proofs cover the old recursive code, so the new `release` is proved from scratch with them as templates. |
 | Reference counts are specified locally: the caller describes the structure reachable from a released pointer, as the old tree model does, and `release`'s specification gives the effect for that description, including `Heap.At`.  No global count invariant. | The host holds references outside the theorem, so a global invariant cannot be established at the call boundary. |
 | A value that needs statements (a load or a loop) compiles to statements before its expression, placed inside the branch that needs them, never hoisted out of an `if`.  `Array.foldl` with a lambda and default bounds becomes a counted loop, `Nat.toUInt64 xs.size` a load of the length word, and an array literal of k elements an allocation of 48 + 8(k + 1) bytes followed by stores. | Hoisting a load out of a guarding branch can trap where Lean returns a value. |
@@ -147,7 +148,7 @@ The user doubted that items 2 and 3 need work, and no work on them is planned.
 - [x] Iteration 3a: `sumArray`, the `load` statement, `State.Frame`, `Func.implements` for `Represent` arguments, the compiler's fold rule, `Stmt.fold_spec`, and the `array-fold-loop` LTG entry.
 - [ ] Iteration 3b: `pairSum`, whose compiled code allocates and releases a temporary.  It adds the call and store statements and the specifications of `alloc` and of `release` for objects without children.
 - [ ] Iteration 3c: `sumCount`, whose result the host owns and releases, with array literals and `Nat.toUInt64 xs.size`.
-- [ ] Move `Expr`, `State`, and their lemmas from `ProofKit/ScalarTransition.lean` into `Project/IR/`, and delete the old IR there (its `Stmt`, `Stmt.eval`, and loop programs) with `ScalarFrame`, `ScalarConditional`, and `ScalarTransitionU64`, which only the old IR uses.  Four LTG entries list those modules, and the ten entries written for the old pipeline need review; `array-fold-prefix` still describes the old annotation checker.
+- [x] Move `Expr`, `State`, and their lemmas into `Project/IR/Expr.lean`, delete the old IR and the three modules that only it used, and review the LTG entries written for the old pipeline.
 - [ ] Iteration 4, sharing: a program that shares a value, with `retain`'s specification.
 - [ ] Iteration 5, I/O: a step-function program with the trusted adapter.
 - [ ] Iteration 6, floating point: a binary64 program, after the binary64 equality proofs and the remaining float operations.  The binary64 proofs can proceed in parallel with earlier iterations.

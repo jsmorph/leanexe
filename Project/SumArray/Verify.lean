@@ -4,7 +4,7 @@ import Project.Encoding.RoundTrip
 
 namespace Project.SumArray
 
-open Project.Pipeline Project.IR Project.ProofKit.ScalarTransition
+open Project.Pipeline Project.IR
 
 theorem sumArray_implements :
     Implements sumArray.module 0 LeanExe.Examples.SumArray.sumArray (fun _ => 0) := by

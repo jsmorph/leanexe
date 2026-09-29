@@ -15,7 +15,8 @@ from the repository root:
 tools/leanrun --timeout 10m lake env lean --run Project/LTG/Check.lean ltg/entries
 ```
 
-`tail-recursion-loop` covers the compiler's tail-recursion rule and is proved
-for every function the rule produces.  The other ten entries describe general
-semantics from the earlier proof library and are kept for review as the
-iterations need them.
+`tail-recursion-loop` and `array-fold-loop` cover compiler rules and are proved
+for every function those rules produce.  The other five entries describe general
+lemmas from the earlier proof library.  `array-fold-prefix` supports
+`array-fold-loop`, and the rest cover memory framing, calls, and raw WASM locals
+for the next iterations.

@@ -27,6 +27,7 @@ import Project.Encoding.Values
 import Project.Gcd.Module
 import Project.Gcd.Verify
 import Project.IR.Correct
+import Project.IR.Expr
 import Project.IR.Fold
 import Project.IR.Function
 import Project.IR.Hint
@@ -96,10 +97,6 @@ import Project.ProofKit.MemoryFrame
 import Project.ProofKit.MemoryGrowth
 import Project.ProofKit.MemoryRoundtrip
 import Project.ProofKit.QuantizedInt32
-import Project.ProofKit.ScalarConditional
-import Project.ProofKit.ScalarFrame
-import Project.ProofKit.ScalarTransition
-import Project.ProofKit.ScalarTransitionU64
 import Project.Runtime.Defs
 import Project.Runtime.FreeList
 import Project.Runtime.Tree

@@ -3,7 +3,7 @@ import Project.Runtime.Defs
 
 namespace Project.IR
 
-open Wasm Project.ProofKit.ScalarTransition
+open Wasm
 
 /-- A function of `params` 64-bit arguments.  Locals `0` to `params - 1` hold
 the arguments, the next `vars` locals hold the compiler's variables, and the

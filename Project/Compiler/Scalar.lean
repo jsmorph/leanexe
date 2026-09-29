@@ -6,9 +6,8 @@ import Project.IR.Hint
 namespace Project.Compiler
 
 open Lean Meta Project.IR
-open Project.ProofKit.ScalarTransition (U64Op ScalarType)
 
-abbrev IRExpr := Project.ProofKit.ScalarTransition.Expr
+abbrev IRExpr := Project.IR.Expr
 
 /-- The source operators on `UInt64` the compiler translates, with the IR
 operation and the rule name for each.  Instance arguments are not checked: a
@@ -334,19 +333,19 @@ deriving instance ToExpr for U64Op
 
 /-- The Lean term for an IR expression, for the definitions the command adds. -/
 def irToExpr : {type : ScalarType} → IRExpr type → Lean.Expr
-  | _, .get index => mkApp (mkConst ``Project.ProofKit.ScalarTransition.Expr.get) (toExpr index)
-  | _, .const value => mkApp (mkConst ``Project.ProofKit.ScalarTransition.Expr.const) (toExpr value)
-  | _, .bconst value => mkApp (mkConst ``Project.ProofKit.ScalarTransition.Expr.bconst) (toExpr value)
-  | _, .bin op left right => mkApp3 (mkConst ``Project.ProofKit.ScalarTransition.Expr.bin) (toExpr op) (irToExpr left) (irToExpr right)
-  | _, .eq left right => mkApp2 (mkConst ``Project.ProofKit.ScalarTransition.Expr.eq) (irToExpr left) (irToExpr right)
-  | _, .ne left right => mkApp2 (mkConst ``Project.ProofKit.ScalarTransition.Expr.ne) (irToExpr left) (irToExpr right)
-  | _, .ltU left right => mkApp2 (mkConst ``Project.ProofKit.ScalarTransition.Expr.ltU) (irToExpr left) (irToExpr right)
-  | _, .leU left right => mkApp2 (mkConst ``Project.ProofKit.ScalarTransition.Expr.leU) (irToExpr left) (irToExpr right)
-  | _, .not condition => mkApp (mkConst ``Project.ProofKit.ScalarTransition.Expr.not) (irToExpr condition)
-  | _, .and left right => mkApp2 (mkConst ``Project.ProofKit.ScalarTransition.Expr.and) (irToExpr left) (irToExpr right)
-  | _, .or left right => mkApp2 (mkConst ``Project.ProofKit.ScalarTransition.Expr.or) (irToExpr left) (irToExpr right)
+  | _, .get index => mkApp (mkConst ``Project.IR.Expr.get) (toExpr index)
+  | _, .const value => mkApp (mkConst ``Project.IR.Expr.const) (toExpr value)
+  | _, .bconst value => mkApp (mkConst ``Project.IR.Expr.bconst) (toExpr value)
+  | _, .bin op left right => mkApp3 (mkConst ``Project.IR.Expr.bin) (toExpr op) (irToExpr left) (irToExpr right)
+  | _, .eq left right => mkApp2 (mkConst ``Project.IR.Expr.eq) (irToExpr left) (irToExpr right)
+  | _, .ne left right => mkApp2 (mkConst ``Project.IR.Expr.ne) (irToExpr left) (irToExpr right)
+  | _, .ltU left right => mkApp2 (mkConst ``Project.IR.Expr.ltU) (irToExpr left) (irToExpr right)
+  | _, .leU left right => mkApp2 (mkConst ``Project.IR.Expr.leU) (irToExpr left) (irToExpr right)
+  | _, .not condition => mkApp (mkConst ``Project.IR.Expr.not) (irToExpr condition)
+  | _, .and left right => mkApp2 (mkConst ``Project.IR.Expr.and) (irToExpr left) (irToExpr right)
+  | _, .or left right => mkApp2 (mkConst ``Project.IR.Expr.or) (irToExpr left) (irToExpr right)
   | _, .ite condition thenValue elseValue =>
-      mkApp3 (mkConst ``Project.ProofKit.ScalarTransition.Expr.ite) (irToExpr condition) (irToExpr thenValue) (irToExpr elseValue)
+      mkApp3 (mkConst ``Project.IR.Expr.ite) (irToExpr condition) (irToExpr thenValue) (irToExpr elseValue)
 
 def stmtToExpr : Project.IR.Stmt → Lean.Expr
   | .skip => mkConst ``Project.IR.Stmt.skip

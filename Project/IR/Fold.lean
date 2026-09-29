@@ -10,7 +10,7 @@ order and assigns the value of `g`'s body to the accumulator.
 
 namespace Project.IR
 
-open Wasm Project.ProofKit Project.ProofKit.ScalarTransition
+open Wasm Project.ProofKit
 
 /-- Local `length` receives the length of the array at local `array`.  For each
 index from 0, held in local `index`, local `element` receives the element and

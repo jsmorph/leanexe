@@ -8,12 +8,12 @@
   "scope": "generic-semantics",
   "evidenceStatus": "provisional",
   "features": ["argument-order", "comparison", "direct-call", "stack-tail"],
-  "annotationKinds": ["leanexe.call.direct.v1"],
+  "annotationKinds": [],
   "modules": ["Project.ProofKit.CallRemainder"],
   "declarations": ["Wasm.TerminatesWith.append_args", "Wasm.run_append_of_success"],
   "premises": ["A terminating callee theorem on exactly its arguments", "The function index is outside the import list", "An exact internal-function lookup", "Argument count equals the function parameter count", "The caller stack is the argument list followed by the identified suffix"],
   "result": "The call terminates with results followed by the unchanged suffix and preserves the callee's store/result postcondition.",
-  "consumers": ["euler-outward-speed-division"],
-  "relatedEntries": ["scalar-statement", "zero-safe-division-remainder"],
+  "consumers": [],
+  "relatedEntries": [],
   "exclusion": null
 }

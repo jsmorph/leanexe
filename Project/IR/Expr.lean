@@ -2,7 +2,13 @@ import Interpreter.Wasm.Wp.Loop
 import Interpreter.Wasm.Wp.Tactic
 import Project.TalosCompat
 
-namespace Project.ProofKit.ScalarTransition
+/-!
+IR expressions over 64-bit words and Booleans, the IR state of locals, and the
+expression rule `Expr.program_spec`: evaluating an expression with `Expr.eval`
+predicts what its compiled code pushes and which locals it changes.
+-/
+
+namespace Project.IR
 
 open Wasm
 
@@ -277,23 +283,6 @@ mutual
 
 end
 
-inductive Stmt where
-  | skip
-  | assign (index : Nat) (value : Expr .u64)
-  | seq (first second : Stmt)
-  | ite (condition : Expr .bool) (thenStmt elseStmt : Stmt)
-  deriving Repr
-
-def Expr.reads : {type : ScalarType} → Expr type → List Nat
-  | _, .get index => [index]
-  | _, .const _ | _, .bconst _ => []
-  | _, .bin _ left right | _, .eq left right | _, .ne left right | _, .ltU left right
-  | _, .leU left right => left.reads ++ right.reads
-  | _, .not condition => condition.reads
-  | _, .and left right | _, .or left right => left.reads ++ right.reads
-  | _, .ite condition thenValue elseValue =>
-      condition.reads ++ thenValue.reads ++ elseValue.reads
-
 def Expr.scratchWidth : {type : ScalarType} → Expr type → Nat
   | _, .get _ | _, .const _ | _, .bconst _ => 0
   | _, .bin operation left right =>
@@ -305,58 +294,6 @@ def Expr.scratchWidth : {type : ScalarType} → Expr type → Nat
   | _, .not condition => condition.scratchWidth
   | _, .ite condition thenValue elseValue =>
       max condition.scratchWidth (max thenValue.scratchWidth elseValue.scratchWidth)
-
-def Stmt.reads : Stmt → List Nat
-  | .skip => []
-  | .assign _ value => value.reads
-  | .seq first second => first.reads ++ second.reads
-  | .ite condition thenStmt elseStmt =>
-      condition.reads ++ thenStmt.reads ++ elseStmt.reads
-
-def Stmt.writes : Stmt → List Nat
-  | .skip => []
-  | .assign index _ => [index]
-  | .seq first second => first.writes ++ second.writes
-  | .ite _ thenStmt elseStmt => thenStmt.writes ++ elseStmt.writes
-
-def Stmt.scratchWidth : Stmt → Nat
-  | .skip => 0
-  | .assign _ value => value.scratchWidth
-  | .seq first second => max first.scratchWidth second.scratchWidth
-  | .ite condition thenStmt elseStmt =>
-      max condition.scratchWidth (max thenStmt.scratchWidth elseStmt.scratchWidth)
-
-def Stmt.eval : Stmt → Nat → State → Option State
-  | .skip, _, state => some state
-  | .assign index value, scratch, state => do
-      let (result, afterValue) ← value.eval scratch state
-      afterValue.set? index (.i64 result)
-  | .seq first second, scratch, state => do
-      let afterFirst ← first.eval scratch state
-      second.eval scratch afterFirst
-  | .ite condition thenStmt elseStmt, scratch, state => do
-      let (result, afterCondition) ← condition.eval scratch state
-      if result then
-        thenStmt.eval scratch afterCondition
-      else
-        elseStmt.eval scratch afterCondition
-
-def Stmt.program : Stmt → Nat → Program
-  | .skip, _ => []
-  | .assign index value, scratch => value.program scratch ++ [.localSet index]
-  | .seq first second, scratch => first.program scratch ++ second.program scratch
-  | .ite condition thenStmt elseStmt, scratch =>
-      condition.program scratch ++
-        [.iff 0 0 (thenStmt.program scratch) (elseStmt.program scratch)]
-
-def whileProgram (scratch : Nat) (condition : Expr .bool) (body : Stmt) : Program :=
-  [.block 0 0 [.loop 0 0
-    (condition.program scratch ++ [.eqz, .br_if 1] ++
-      body.program scratch ++ [.br 0])]]
-
-def postTestProgram (scratch : Nat) (condition : Expr .bool) (body : Stmt) : Program :=
-  [.block 0 0 [.loop 0 0
-    (body.program scratch ++ condition.program scratch ++ [.br_if 1, .br 0])]]
 
 theorem Expr.eval_preserves_below
     {type : ScalarType} (expression : Expr type) (scratch : Nat)
@@ -489,60 +426,6 @@ theorem Expr.eval_preserves_below
           hThen hIndex).trans
             (conditionPreserves scratch state afterCondition true index
               hCondition hIndex)
-
-theorem Stmt.eval_preserves_below
-    (statement : Stmt) (scratch : Nat) (state next : State) (index : Nat)
-    (hEval : statement.eval scratch state = some next)
-    (hIndex : index < scratch) (hNotWritten : index ∉ statement.writes) :
-    next.get index = state.get index := by
-  induction statement generalizing state next with
-  | skip =>
-      obtain rfl := Option.some.inj hEval
-      rfl
-  | assign writeIndex value =>
-      simp only [Stmt.eval] at hEval
-      rcases hValue : value.eval scratch state with _ | ⟨result, afterValue⟩
-      · simp [hValue] at hEval
-      rcases hSet : afterValue.set? writeIndex (.i64 result) with _ | afterSet
-      · simp [hValue, hSet] at hEval
-      simp [hValue, hSet] at hEval
-      subst next
-      have hNe : index ≠ writeIndex := by
-        simpa [Stmt.writes] using hNotWritten
-      calc
-        afterSet.get index = afterValue.get index := State.get_set?_ne hNe hSet
-        _ = state.get index :=
-          Expr.eval_preserves_below value scratch state afterValue result index
-            hValue hIndex
-  | seq first second firstPreserves secondPreserves =>
-      simp only [Stmt.eval] at hEval
-      rcases hFirst : first.eval scratch state with _ | afterFirst
-      · simp [hFirst] at hEval
-      have hSecond : second.eval scratch afterFirst = some next := by
-        simpa [hFirst] using hEval
-      have hNot : index ∉ first.writes ∧ index ∉ second.writes := by
-        simpa [Stmt.writes] using hNotWritten
-      exact (secondPreserves afterFirst next hSecond hNot.2).trans
-        (firstPreserves state afterFirst hFirst hNot.1)
-  | ite condition thenStmt elseStmt thenPreserves elsePreserves =>
-      simp only [Stmt.eval] at hEval
-      rcases hCondition : condition.eval scratch state with
-        _ | ⟨conditionValue, afterCondition⟩
-      · simp [hCondition] at hEval
-      have hConditionPreserves : afterCondition.get index = state.get index :=
-        Expr.eval_preserves_below condition scratch state afterCondition
-          conditionValue index hCondition hIndex
-      have hNot : index ∉ thenStmt.writes ∧ index ∉ elseStmt.writes := by
-        simpa [Stmt.writes] using hNotWritten
-      cases conditionValue
-      · have hElse : elseStmt.eval scratch afterCondition = some next := by
-          simpa [hCondition] using hEval
-        exact (elsePreserves afterCondition next hElse hNot.2).trans
-          hConditionPreserves
-      · have hThen : thenStmt.eval scratch afterCondition = some next := by
-          simpa [hCondition] using hEval
-        exact (thenPreserves afterCondition next hThen hNot.1).trans
-          hConditionPreserves
 
 set_option maxHeartbeats 1000000 in
 theorem Expr.program_spec
@@ -912,176 +795,147 @@ theorem Expr.program_spec
           (rest := []) (Q := _) hThen
         simpa [wp_simp, State.toLocals, ScalarType.value] using hNext
 
-set_option maxHeartbeats 1000000 in
-theorem Stmt.program_spec
-    (statement : Stmt) (scratch : Nat) (state next : State)
-    (values : List Value) (module_ : Module) (env : HostEnv α)
-    (store : Store α) (rest : Program) (Q : Assertion α)
-    (hEval : statement.eval scratch state = some next)
-    (hNext : wp module_ rest Q store (next.toLocals values) env) :
-    wp module_ (statement.program scratch ++ rest) Q store
-      (state.toLocals values) env := by
-  induction statement generalizing state next values rest Q with
-  | skip =>
-      obtain rfl := Option.some.inj hEval
-      simpa [Stmt.program] using hNext
-  | assign index expression =>
-      simp only [Stmt.eval] at hEval
-      rcases hExpression : expression.eval scratch state with
-        _ | ⟨result, afterExpression⟩
-      · simp [hExpression] at hEval
-      rcases hSet : afterExpression.set? index (.i64 result) with _ | afterSet
-      · simp [hExpression, hSet] at hEval
-      simp [hExpression, hSet] at hEval
-      subst next
-      simp only [Stmt.program, List.append_assoc]
-      apply Expr.program_spec expression scratch state afterExpression result values
-        module_ env store (.localSet index :: rest) Q hExpression
-      apply localSet_spec hSet
-      exact hNext
-  | seq first second firstSpec secondSpec =>
-      simp only [Stmt.eval] at hEval
-      rcases hFirst : first.eval scratch state with _ | afterFirst
-      · simp [hFirst] at hEval
-      have hSecond : second.eval scratch afterFirst = some next := by
-        simpa [hFirst] using hEval
-      simp only [Stmt.program, List.append_assoc]
-      apply firstSpec (state := state) (next := afterFirst) (values := values)
-        (rest := second.program scratch ++ rest) (Q := Q) hFirst
-      exact secondSpec (state := afterFirst) (next := next) (values := values)
-        (rest := rest) (Q := Q) hSecond hNext
-  | ite condition thenStmt elseStmt thenSpec elseSpec =>
-      simp only [Stmt.eval] at hEval
-      rcases hCondition : condition.eval scratch state with
-        _ | ⟨conditionValue, afterCondition⟩
+/-- `after` has as many parameters and locals as `before` and agrees with it at
+every local below `scratch` outside `writes`. -/
+structure State.Frame (scratch : Nat) (writes : List Nat) (before after : State) : Prop where
+  params : after.params.length = before.params.length
+  locals : after.locals.length = before.locals.length
+  get : ∀ index, index < scratch → index ∉ writes → after.get index = before.get index
+
+theorem State.Frame.refl (scratch : Nat) (writes : List Nat) (state : State) :
+    State.Frame scratch writes state state :=
+  ⟨rfl, rfl, fun _ _ _ => rfl⟩
+
+theorem State.Frame.trans {scratch : Nat} {writes : List Nat} {a b c : State}
+    (hFirst : State.Frame scratch writes a b) (hSecond : State.Frame scratch writes b c) :
+    State.Frame scratch writes a c :=
+  ⟨hSecond.params.trans hFirst.params, hSecond.locals.trans hFirst.locals,
+    fun index hIndex hWrite => (hSecond.get index hIndex hWrite).trans (hFirst.get index hIndex hWrite)⟩
+
+theorem State.Frame.mono {scratch scratch' : Nat} {writes : List Nat} {before after : State}
+    (h : State.Frame scratch writes before after) (hScratch : scratch' ≤ scratch) :
+    State.Frame scratch' writes before after :=
+  ⟨h.params, h.locals, fun index hIndex hWrite => h.get index (by omega) hWrite⟩
+
+theorem State.exists_set? {state : State} {index : Nat} (value : Value)
+    (hIndex : index < state.params.length + state.locals.length) :
+    ∃ next, state.set? index value = some next := by
+  unfold State.set?
+  split <;> simp
+
+theorem State.Frame.set? {scratch index : Nat} {writes : List Nat} {before state next : State}
+    {value : Value} (hFrame : State.Frame scratch writes before state)
+    (hSet : state.set? index value = some next) (hIndex : index ∈ writes ∨ scratch ≤ index) :
+    State.Frame scratch writes before next := by
+  have hLengths : next.params.length = state.params.length ∧
+      next.locals.length = state.locals.length := by
+    unfold State.set? at hSet
+    split at hSet
+    · cases hSet; simp
+    · split at hSet
+      · cases hSet; simp
+      · contradiction
+  refine ⟨hLengths.1.trans hFrame.params, hLengths.2.trans hFrame.locals,
+    fun j hj hWrite => ?_⟩
+  have hNe : j ≠ index := by
+    rintro rfl
+    rcases hIndex with hIndex | hIndex
+    · exact hWrite hIndex
+    · omega
+  rw [State.get_set?_ne hNe hSet]
+  exact hFrame.get j hj hWrite
+
+/-- Evaluating an expression changes only scratch locals. -/
+theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Expr type)
+    (scratch : Nat) (state next : State) (result : type.denote)
+    (hEval : expression.eval scratch state = some (result, next)) :
+    State.Frame scratch writes state next := by
+  induction expression generalizing scratch state next with
+  | get index =>
+      unfold Expr.eval at hEval
+      cases hGet : state.get index with
+      | none => simp [hGet] at hEval
+      | some value =>
+          cases value <;> simp [hGet] at hEval
+          obtain ⟨rfl, rfl⟩ := hEval
+          exact .refl _ _ _
+  | const value | bconst value =>
+      obtain ⟨rfl, rfl⟩ := Option.some.inj hEval
+      exact .refl _ _ _
+  | bin op left right hLeftFrame hRightFrame =>
+      cases op with
+      | add | sub | mul | bitAnd | bitOr | bitXor | shiftLeft | shiftRight =>
+          simp only [Expr.eval] at hEval
+          rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+          · simp [hLeft] at hEval
+          rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+          · simp [hLeft, hRight] at hEval
+          simp [hLeft, hRight] at hEval
+          obtain ⟨rfl, rfl⟩ := hEval
+          exact (hLeftFrame _ _ _ _ hLeft).trans (hRightFrame _ _ _ _ hRight)
+      | divU | remU =>
+          simp only [Expr.eval] at hEval
+          rcases hLeft : left.eval (scratch + 2) state with _ | ⟨leftValue, afterLeft⟩
+          · simp [hLeft] at hEval
+          rcases hSetLeft : afterLeft.set? scratch (.i64 leftValue) with _ | savedLeft
+          · simp [hLeft, hSetLeft] at hEval
+          rcases hRight : right.eval (scratch + 2) savedLeft with _ | ⟨rightValue, afterRight⟩
+          · simp [hLeft, hSetLeft, hRight] at hEval
+          rcases hSetRight : afterRight.set? (scratch + 1) (.i64 rightValue) with _ | savedRight
+          · simp [hLeft, hSetLeft, hRight, hSetRight] at hEval
+          simp [hLeft, hSetLeft, hRight, hSetRight] at hEval
+          obtain ⟨rfl, rfl⟩ := hEval
+          exact ((((hLeftFrame _ _ _ _ hLeft).mono (by omega)).set? hSetLeft
+            (Or.inr (by omega))).trans ((hRightFrame _ _ _ _ hRight).mono (by omega))).set?
+              hSetRight (Or.inr (by omega))
+  | eq left right hLeftFrame hRightFrame
+  | ne left right hLeftFrame hRightFrame
+  | ltU left right hLeftFrame hRightFrame
+  | leU left right hLeftFrame hRightFrame =>
+      simp only [Expr.eval] at hEval
+      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      · simp [hLeft] at hEval
+      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      · simp [hLeft, hRight] at hEval
+      simp [hLeft, hRight] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      exact (hLeftFrame _ _ _ _ hLeft).trans (hRightFrame _ _ _ _ hRight)
+  | not condition hConditionFrame =>
+      simp only [Expr.eval] at hEval
+      rcases hCondition : condition.eval scratch state with _ | ⟨value, afterCondition⟩
       · simp [hCondition] at hEval
-      simp only [Stmt.program, List.append_assoc]
+      simp [hCondition] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      exact hConditionFrame _ _ _ _ hCondition
+  | and left right hLeftFrame hRightFrame | or left right hLeftFrame hRightFrame =>
+      simp only [Expr.eval] at hEval
+      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      · simp [hLeft] at hEval
+      cases leftValue
+      all_goals
+        first
+        | (simp [hLeft] at hEval
+           obtain ⟨rfl, rfl⟩ := hEval
+           exact hLeftFrame _ _ _ _ hLeft)
+        | (rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+           · simp [hLeft, hRight] at hEval
+           simp [hLeft, hRight] at hEval
+           obtain ⟨rfl, rfl⟩ := hEval
+           exact (hLeftFrame _ _ _ _ hLeft).trans (hRightFrame _ _ _ _ hRight))
+  | ite condition thenValue elseValue hConditionFrame hThenFrame hElseFrame =>
+      simp only [Expr.eval] at hEval
+      rcases hCondition : condition.eval scratch state with _ | ⟨conditionValue, afterCondition⟩
+      · simp [hCondition] at hEval
       cases conditionValue
-      · have hElse : elseStmt.eval scratch afterCondition = some next := by
-          simpa [hCondition] using hEval
-        apply Expr.program_spec condition scratch state afterCondition false values
-          module_ env store
-          (.iff 0 0 (thenStmt.program scratch) (elseStmt.program scratch) :: rest)
-          Q hCondition
-        try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
-        refine Wasm.wp_iff_cons rfl ?_
-        rw [if_neg (by simp)]
-        rw [← List.append_nil (elseStmt.program scratch)]
-        apply elseSpec (state := afterCondition) (next := next) (values := values)
-          (rest := []) (Q := _) hElse
-        simpa [wp_simp, State.toLocals] using hNext
-      · have hThen : thenStmt.eval scratch afterCondition = some next := by
-          simpa [hCondition] using hEval
-        apply Expr.program_spec condition scratch state afterCondition true values
-          module_ env store
-          (.iff 0 0 (thenStmt.program scratch) (elseStmt.program scratch) :: rest)
-          Q hCondition
-        try simp only [List.cons_append, List.nil_append, Wasm.wp_iff_control_types]
-        refine Wasm.wp_iff_cons rfl ?_
-        rw [if_pos (by simp)]
-        rw [← List.append_nil (thenStmt.program scratch)]
-        apply thenSpec (state := afterCondition) (next := next) (values := values)
-          (rest := []) (Q := _) hThen
-        simpa [wp_simp, State.toLocals] using hNext
+      · rcases hElse : elseValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+        · simp [hCondition, hElse] at hEval
+        simp [hCondition, hElse] at hEval
+        obtain ⟨rfl, rfl⟩ := hEval
+        exact (hConditionFrame _ _ _ _ hCondition).trans (hElseFrame _ _ _ _ hElse)
+      · rcases hThen : thenValue.eval scratch afterCondition with _ | ⟨value, afterValue⟩
+        · simp [hCondition, hThen] at hEval
+        simp [hCondition, hThen] at hEval
+        obtain ⟨rfl, rfl⟩ := hEval
+        exact (hConditionFrame _ _ _ _ hCondition).trans (hThenFrame _ _ _ _ hThen)
 
-set_option maxHeartbeats 1000000 in
-theorem whileProgram_spec
-    (condition : Expr .bool) (body : Stmt) (scratch : Nat)
-    (initial : State) (values : List Value)
-    (module_ : Module) (env : HostEnv α) (store : Store α)
-    (rest : Program) (Q : Assertion α)
-    (Inv : State → Prop) (measure : State → Nat)
-    (hInit : Inv initial)
-    (hStep : ∀ current, Inv current →
-      ∃ result afterCondition,
-        condition.eval scratch current = some (result, afterCondition) ∧
-        if result then
-          ∃ afterBody,
-            body.eval scratch afterCondition = some afterBody ∧
-            Inv afterBody ∧ measure afterBody < measure current
-        else
-          wp module_ rest Q store (afterCondition.toLocals values) env) :
-    wp module_ (whileProgram scratch condition body ++ rest) Q store
-      (initial.toLocals values) env := by
-  let loopInv : AssertionF α := fun currentStore locals =>
-    currentStore = store ∧
-      ∃ current, locals = current.toLocals values ∧ Inv current
-  let loopMeasure : Store α → Locals → Nat := fun _ locals =>
-    measure (State.ofLocals locals)
-  simp only [whileProgram, List.singleton_append]
-  apply Wasm.wp_block_cons
-  apply Wasm.wp_loop_cons (Inv := loopInv) (μ := loopMeasure)
-  · exact ⟨rfl, initial, rfl, hInit⟩
-  · intro currentStore locals hInv
-    rcases hInv with ⟨hStore, current, hLocals, hCurrent⟩
-    subst currentStore
-    subst locals
-    rcases hStep current hCurrent with
-      ⟨result, afterCondition, hCondition, hResult⟩
-    simp only [List.append_assoc]
-    refine Expr.program_spec (expression := condition) (scratch := scratch)
-      (state := current) (next := afterCondition) (result := result)
-      (values := values) (module_ := module_) (env := env) (store := store)
-      (rest := [Instruction.eqz, Instruction.br_if 1] ++
-        (body.program scratch ++ [Instruction.br 0]))
-      (Q := _) hCondition ?_
-    cases result
-    · simpa [wp_simp, State.toLocals, ScalarType.value] using hResult
-    · rcases hResult with ⟨afterBody, hBody, hBodyInv, hDecrease⟩
-      simp only [List.cons_append, List.nil_append, Wasm.wp_eqz_cons,
-        Wasm.wp_br_if_cons, ScalarType.value]
-      apply Stmt.program_spec body scratch afterCondition afterBody values
-        module_ env store [.br 0] _ hBody
-      simp only [Wasm.wp_br_cons]
-      constructor
-      · exact ⟨rfl, afterBody, rfl, hBodyInv⟩
-      · simpa [loopMeasure, State.ofLocals, State.toLocals] using hDecrease
-
-set_option maxHeartbeats 1000000 in
-theorem postTestProgram_spec
-    (condition : Expr .bool) (body : Stmt) (scratch : Nat)
-    (initial : State) (values : List Value)
-    (module_ : Module) (env : HostEnv α) (store : Store α)
-    (rest : Program) (Q : Assertion α)
-    (Inv : State → Prop) (measure : State → Nat)
-    (hInit : Inv initial)
-    (hStep : ∀ current, Inv current →
-      ∃ afterBody,
-        body.eval scratch current = some afterBody ∧
-        ∃ result afterCondition,
-          condition.eval scratch afterBody = some (result, afterCondition) ∧
-          if result then
-            wp module_ rest Q store (afterCondition.toLocals values) env
-          else
-            Inv afterCondition ∧ measure afterCondition < measure current) :
-    wp module_ (postTestProgram scratch condition body ++ rest) Q store
-      (initial.toLocals values) env := by
-  let loopInv : AssertionF α := fun currentStore locals =>
-    currentStore = store ∧
-      ∃ current, locals = current.toLocals values ∧ Inv current
-  let loopMeasure : Store α → Locals → Nat := fun _ locals =>
-    measure (State.ofLocals locals)
-  simp only [postTestProgram, List.singleton_append]
-  apply Wasm.wp_block_cons
-  apply Wasm.wp_loop_cons (Inv := loopInv) (μ := loopMeasure)
-  · exact ⟨rfl, initial, rfl, hInit⟩
-  · intro currentStore locals hInv
-    rcases hInv with ⟨hStore, current, hLocals, hCurrent⟩
-    subst currentStore
-    subst locals
-    rcases hStep current hCurrent with
-      ⟨afterBody, hBody, result, afterCondition, hCondition, hResult⟩
-    simp only [List.append_assoc]
-    apply Stmt.program_spec body scratch current afterBody values
-      module_ env store
-        (condition.program scratch ++ [Instruction.br_if 1, Instruction.br 0]) _ hBody
-    apply Expr.program_spec condition scratch afterBody afterCondition result values
-      module_ env store [Instruction.br_if 1, Instruction.br 0] _ hCondition
-    cases result
-    · simp [wp_simp, State.toLocals, ScalarType.value]
-      constructor
-      · exact ⟨rfl, afterCondition, rfl, hResult.1⟩
-      · simpa [loopMeasure, State.ofLocals, State.toLocals] using hResult.2
-    · simpa [wp_simp, State.toLocals, ScalarType.value] using hResult
-
-end Project.ProofKit.ScalarTransition
+end Project.IR
