@@ -18622,3 +18622,50 @@ axiom audit of all five programs lists only `propext`, `Classical.choice`, and
 `Quot.sound`.
 
 - [x] Iteration 3c.
+
+## 2026-09-29: Iteration 6a, binary64 arithmetic and axpy
+
+`axpy a x y = a * x + y` over Lean's `Float` compiles to WebAssembly `f64`
+code with a proof that it computes the same bits for every input, NaN included.
+
+The binary64 equality proofs are translations of the binary32 chain for
+addition, subtraction, and multiplication: 13 files, 1,344 lines.  A script
+mapped `Float32` to `Float`, `binary32` to `binary64`, `IEEE32` to `IEEE64`
+(except the shared rounding helpers), `UInt32` to `UInt64`, and the format
+constants 149, 150, 23, 24, 255, 256, 31, 8, and 2^23 to their binary64
+values; the chain uses no other numerals.  CodeLib has no binary64
+counterparts of five special-value lemmas, so `F64Source` proves them.  One
+proof needed new mathematics: binary64's `roundDyadicMagnitude` sends
+`rounded * 2^shift` through `roundScaledMagnitude`, while binary32's encodes
+the exponent and fraction itself, and `roundScaled_mul_pow` shows the two agree
+for `rounded` between 2^52 and 2^53.  The larger constants caused no trouble
+for `decide`, `omega`, or `simp`.  A comparison of the translated declarations
+with the originals found ten identical ones; they moved, with the
+format-independent files `F32Rounding` and `F32Shift` (renamed `FloatRounding`
+and `FloatShift`), into `FloatCommon`.  `target_mul_pow` was generalized from
+binary32 to any format.
+
+`F64Bits` turns the bit-level theorems into statements about Lean floats:
+`(a + b).toBits = IEEE64.add a.toBits b.toBits`.  It needs
+`Float.ofBits x.toBits = x`, which holds because Lean's `Format.Valid` makes
+every NaN in the model the canonical NaN.
+
+The IR gained `ScalarType.f64`, whose values are bit patterns, `Expr.getF`,
+and `Expr.binF` with `F64Op` (`add`, `sub`, `mul`); the expression proofs
+gained two cases each.  `Func` became typed: `params : List ScalarType` and
+`result : (type : ScalarType) × Expr type`.  `Func.implements` takes any
+`Scalar` result, and `Scalar Float` passes `f64` bits.  The compiler
+translates `Float` parameters, `+`, `-`, `*`, and `Float` results.  A latent
+bug surfaced: `isUInt64Array` evaluated `type.appArg!` through a lifted `←`
+inside `&&`, which does not short-circuit, and panicked on non-application
+types; it now branches first.
+
+The host accepts `f64:BITS` arguments and prints `f64` results as bits.
+`axpy.wasm` matches native Lean on 54 inputs, including infinities, NaN,
+signed zeros, a subnormal result, overflow, and 40 pseudo-random triples.  The
+five earlier modules kept their hashes, and every audited theorem depends only
+on `propext`, `Classical.choice`, and `Quot.sound`.
+
+- [x] Iteration 6a.
+- [ ] Iteration 6b: binary64 `div` and `sqrt`, float literals, comparisons,
+  `neg`, `abs`, `min`, `max`, conversions, float locals, and `Float32`.

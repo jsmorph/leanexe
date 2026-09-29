@@ -1,7 +1,7 @@
-import Project.ProofKit.F32Rounding
+import Project.ProofKit.FloatRounding
 
-namespace Project.ProofKit.F32Shift
-open Float.Model Float.Model.UnpackedFloat F32Rounding
+namespace Project.ProofKit.FloatShift
+open Float.Model Float.Model.UnpackedFloat FloatRounding
 
 theorem shift_add (em : ExtendedMantissa) (a b : Nat) :
     em >>> (a + b) = (em >>> a) >>> b := by
@@ -40,9 +40,9 @@ theorem log2_mul_pow (m k : Nat) (hm : m ≠ 0) :
       Nat.log2_two_mul (Nat.mul_ne_zero hm (by positivity)), ih]
     omega
 
-theorem target_mul_pow (m k : Nat) (e : Int) (hm : m ≠ 0) :
-    Format.binary32.targetExponent (totalExponent (m * 2 ^ k) (e - k)) =
-      Format.binary32.targetExponent (totalExponent m e) := by
+theorem target_mul_pow {format : Format} (m k : Nat) (e : Int) (hm : m ≠ 0) :
+    format.targetExponent (totalExponent (m * 2 ^ k) (e - k)) =
+      format.targetExponent (totalExponent m e) := by
   congr 1
   simp only [totalExponent, log2_mul_pow m k hm, Nat.cast_add]
   omega
@@ -50,4 +50,4 @@ theorem target_mul_pow (m k : Nat) (e : Int) (hm : m ≠ 0) :
 #print axioms shift_exact_mul_pow_add
 #print axioms target_mul_pow
 
-end Project.ProofKit.F32Shift
+end Project.ProofKit.FloatShift

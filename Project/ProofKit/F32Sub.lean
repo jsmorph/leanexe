@@ -1,13 +1,8 @@
 import Project.ProofKit.F32Add
 
 namespace Project.ProofKit.F32Sub
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing
+open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing FloatCommon
 open CodeLib.IEEE32
-
-theorem sign_apply_neg (s : Sign) (z : Int) : (-s).apply z = -(s.apply z) := by
-  cases s with
-  | negative => exact (neg_neg z).symm
-  | positive => rfl
 
 theorem unpacked_sub (a b : UnpackedFloat) :
     UnpackedFloat.sub Format.binary32 a b = UnpackedFloat.add Format.binary32 a b.neg := by

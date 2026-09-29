@@ -1,17 +1,17 @@
-import Project.ProofKit.F32RoundScaled
+import Project.ProofKit.F64RoundScaled
 import Project.ProofKit.FloatShift
 
-namespace Project.ProofKit.F32Normalize
+namespace Project.ProofKit.F64Normalize
 open Float.Model Float.Model.UnpackedFloat FloatRounding FloatShift FloatCommon
 
 theorem first_shift (m : Nat) (e : Int) (hm : m ≠ 0) :
-    (let target := Format.binary32.targetExponent (totalExponent m e)
+    (let target := Format.binary64.targetExponent (totalExponent m e)
      let p := decreaseExponent m e target
-     shiftToTargetExponent Format.binary32 p.1 p.2 .exact) =
-      (aligned m e (Format.binary32.targetExponent (totalExponent m e)),
-       Format.binary32.targetExponent (totalExponent m e)) := by
-  let t := Format.binary32.targetExponent (totalExponent m e)
-  change shiftToTargetExponent Format.binary32
+     shiftToTargetExponent Format.binary64 p.1 p.2 .exact) =
+      (aligned m e (Format.binary64.targetExponent (totalExponent m e)),
+       Format.binary64.targetExponent (totalExponent m e)) := by
+  let t := Format.binary64.targetExponent (totalExponent m e)
+  change shiftToTargetExponent Format.binary64
     (m <<< (e - t).toNat) (e - (e - t).toNat) .exact = (aligned m e t, t)
   rw [Nat.shiftLeft_eq]
   unfold shiftToTargetExponent
@@ -22,54 +22,54 @@ theorem first_shift (m : Nat) (e : Int) (hm : m ≠ 0) :
   simp only [shiftToExponent, hk, he, aligned]
 
 theorem roundWithAccuracy_congr (s : Sign) (m m' : Nat) (e e' : Int)
-    (h : shiftToTargetExponent Format.binary32 m e .exact =
-      shiftToTargetExponent Format.binary32 m' e' .exact) :
-    roundWithAccuracy Format.binary32 s m e .exact =
-      roundWithAccuracy Format.binary32 s m' e' .exact := by
+    (h : shiftToTargetExponent Format.binary64 m e .exact =
+      shiftToTargetExponent Format.binary64 m' e' .exact) :
+    roundWithAccuracy Format.binary64 s m e .exact =
+      roundWithAccuracy Format.binary64 s m' e' .exact := by
   unfold roundWithAccuracy
   rw [h]
 
 theorem round_congr_aligned (s : Sign) (m m' : Nat) (e e' : Int)
     (hm : m ≠ 0) (hm' : m' ≠ 0)
-    (ht : Format.binary32.targetExponent (totalExponent m e) =
-      Format.binary32.targetExponent (totalExponent m' e'))
-    (ha : aligned m e (Format.binary32.targetExponent (totalExponent m e)) =
-      aligned m' e' (Format.binary32.targetExponent (totalExponent m' e'))) :
-    UnpackedFloat.round Format.binary32 s m e = UnpackedFloat.round Format.binary32 s m' e' := by
+    (ht : Format.binary64.targetExponent (totalExponent m e) =
+      Format.binary64.targetExponent (totalExponent m' e'))
+    (ha : aligned m e (Format.binary64.targetExponent (totalExponent m e)) =
+      aligned m' e' (Format.binary64.targetExponent (totalExponent m' e'))) :
+    UnpackedFloat.round Format.binary64 s m e = UnpackedFloat.round Format.binary64 s m' e' := by
   unfold UnpackedFloat.round
   apply roundWithAccuracy_congr
   exact (first_shift m e hm).trans ((Prod.ext ha ht).trans (first_shift m' e' hm').symm)
 
 theorem round_mul_pow (s : Sign) (m k : Nat) (e : Int) (hm : m ≠ 0) :
-    UnpackedFloat.round Format.binary32 s (m * 2 ^ k) (e - k) =
-      UnpackedFloat.round Format.binary32 s m e := by
+    UnpackedFloat.round Format.binary64 s (m * 2 ^ k) (e - k) =
+      UnpackedFloat.round Format.binary64 s m e := by
   apply round_congr_aligned s _ _ _ _ (Nat.mul_ne_zero hm (by positivity)) hm
     (target_mul_pow m k e hm)
   rw [target_mul_pow m k e hm, aligned_mul_pow]
 
 theorem pack_round_above_min (s : Sign) (m : Nat) (e : Int)
-    (hm : m ≠ 0) (he : -149 ≤ e) :
-    UInt32.ofBitVec (UnpackedFloat.pack Format.binary32
-      (UnpackedFloat.round Format.binary32 s m e)) =
-      Wasm.IEEE32.roundScaledMagnitude (FloatCommon.negative s) (m * 2 ^ (e + 149).toNat) := by
-  have he' : e - ((e + 149).toNat : Int) = -149 := by omega
-  have h := round_mul_pow s m (e + 149).toNat e hm
+    (hm : m ≠ 0) (he : -1074 ≤ e) :
+    UInt64.ofBitVec (UnpackedFloat.pack Format.binary64
+      (UnpackedFloat.round Format.binary64 s m e)) =
+      Wasm.IEEE64.roundScaledMagnitude (FloatCommon.negative s) (m * 2 ^ (e + 1074).toNat) := by
+  have he' : e - ((e + 1074).toNat : Int) = -1074 := by omega
+  have h := round_mul_pow s m (e + 1074).toNat e hm
   rw [he'] at h
-  rw [← h, F32RoundScaled.pack_round_scaled]
+  rw [← h, F64RoundScaled.pack_round_scaled]
 
 #print axioms round_mul_pow
 #print axioms pack_round_above_min
 
-theorem pack_normalize (z : Int) (e : Int) (s : Sign) (he : -149 ≤ e) :
-    UInt32.ofBitVec (UnpackedFloat.pack Format.binary32
-      (UnpackedFloat.normalize Format.binary32 z e s)) =
-      if z = 0 then Wasm.IEEE32.signMask (FloatCommon.negative s)
-      else Wasm.IEEE32.roundScaledMagnitude (decide (z < 0))
-        (z.natAbs * 2 ^ (e + 149).toNat) := by
+theorem pack_normalize (z : Int) (e : Int) (s : Sign) (he : -1074 ≤ e) :
+    UInt64.ofBitVec (UnpackedFloat.pack Format.binary64
+      (UnpackedFloat.normalize Format.binary64 z e s)) =
+      if z = 0 then Wasm.IEEE64.signMask (FloatCommon.negative s)
+      else Wasm.IEEE64.roundScaledMagnitude (decide (z < 0))
+        (z.natAbs * 2 ^ (e + 1074).toNat) := by
   cases z with
   | ofNat n =>
     cases n with
-    | zero => simp [UnpackedFloat.normalize, F32Packing.pack_zero]
+    | zero => simp [UnpackedFloat.normalize, F64Packing.pack_zero]
     | succ n =>
       simp only [Int.ofNat_eq_natCast]
       have hc : compare ((n + 1 : Nat) : Int) 0 = .gt := Int.compare_eq_gt.mpr (by omega)
@@ -86,4 +86,4 @@ theorem pack_normalize (z : Int) (e : Int) (s : Sign) (he : -149 ≤ e) :
 
 #print axioms pack_normalize
 
-end Project.ProofKit.F32Normalize
+end Project.ProofKit.F64Normalize

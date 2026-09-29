@@ -2,12 +2,12 @@ import Project.ProofKit.F32Decoded
 import Project.ProofKit.F32Nearest
 
 namespace Project.ProofKit.F32TruncSat
-open Float.Model Float.Model.UnpackedFloat
+open Float.Model Float.Model.UnpackedFloat FloatCommon
 
 theorem roundToInt_eq (s : Sign) (m : Nat) (e : Int) :
     roundToInt s m e = s.apply ((m * 2 ^ e.toNat / 2 ^ (-e).toNat : Nat) : Int) := by
   simp only [roundToInt, decreaseExponent, sub_zero, shiftToExponent]
-  rw [F32Rounding.shift_mantissa]
+  rw [FloatRounding.shift_mantissa]
   have he : (0 - (e - e.toNat)).toNat = (-e).toNat := by omega
   rw [he, Nat.shiftLeft_eq]
   rfl

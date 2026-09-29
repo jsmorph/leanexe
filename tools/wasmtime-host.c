@@ -384,6 +384,13 @@ static bool parse_arg(Runtime *runtime, const char *spec, wasmtime_val_t *out, s
     *out_count = 1;
     return true;
   }
+  if (strncmp(spec, "f64:", 4) == 0) {
+    uint64_t bits = parse_u64(spec + 4);
+    out[0].kind = WASMTIME_F64;
+    memcpy(&out[0].of.f64, &bits, sizeof bits);
+    *out_count = 1;
+    return true;
+  }
   if (strncmp(spec, "bytes:", 6) == 0) {
     size_t len = 0;
     uint8_t *bytes = parse_hex(spec + 6, &len);
@@ -421,7 +428,7 @@ static bool parse_arg(Runtime *runtime, const char *spec, wasmtime_val_t *out, s
 }
 
 static size_t result_count_from_kind(const char *kind) {
-  if (strcmp(kind, "i64") == 0) {
+  if (strcmp(kind, "i64") == 0 || strcmp(kind, "f64") == 0) {
     return 1;
   }
   if (strcmp(kind, "bytes") == 0) {
@@ -461,7 +468,7 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
   size_t nresults = result_count_from_kind(result_kind);
   wasmtime_val_t results[128];
   for (size_t i = 0; i < nresults; i++) {
-    results[i].kind = WASMTIME_I64;
+    results[i].kind = strcmp(result_kind, "f64") == 0 ? WASMTIME_F64 : WASMTIME_I64;
   }
   wasm_trap_t *trap = NULL;
   wasmtime_error_t *error =
@@ -473,6 +480,16 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
   if (trap != NULL) {
     print_trap(trap);
     exit(2);
+  }
+
+  if (strcmp(result_kind, "f64") == 0) {
+    if (results[0].kind != WASMTIME_F64) {
+      die("expected f64 result");
+    }
+    uint64_t bits = 0;
+    memcpy(&bits, &results[0].of.f64, sizeof bits);
+    printf("%" PRIu64 "\n", bits);
+    return;
   }
 
   if (strcmp(result_kind, "bytes") == 0) {
@@ -1051,8 +1068,8 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
 static void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host call|call-stats <module.wasm> <function> "
-          "<i64|bytes|array-u64|slots:N> "
-          "[i64:N|bytes:HEX|bytes-file:PATH|array-u64:N,N ...]\n");
+          "<i64|f64|bytes|array-u64|slots:N> "
+          "[i64:N|f64:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N ...]\n");
   exit(1);
 }
 

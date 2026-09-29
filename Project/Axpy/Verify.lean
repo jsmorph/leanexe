@@ -1,0 +1,31 @@
+import Project.Axpy.Module
+import Project.IR.Correct
+import Project.ProofKit.F64Bits
+import Project.Encoding.RoundTrip
+
+namespace Project.Axpy
+
+open Project.Pipeline Project.IR Project.ProofKit
+
+/-- `axpy` with its three arguments as one tuple. -/
+def axpyTuple (x : Float × Float × Float) : Float := LeanExe.Examples.Axpy.axpy x.1 x.2.1 x.2.2
+
+theorem axpy_implements : Implements axpy.module 0 axpyTuple (fun _ => 0) :=
+  Func.implements axpy.ir "axpy" axpyTuple
+    (fun _ _ _ _ h => by rw [Scalar.borrowed.mp h]; rfl) fun ⟨a, x, y⟩ _ _ _ _ h =>
+    Stmt.skip_spec.mono (fun _ _ ⟨hStore, hState⟩ => ⟨hStore, by
+      rw [Scalar.borrowed.mp h] at hState
+      subst hState
+      refine ⟨_, _, rfl, ?_⟩
+      simp [axpy.ir, Func.state, Func.width, Func.scratch, Expr.eval, Expr.scratchWidth,
+        IR.Stmt.scratchWidth, State.get, F64Op.apply, Scalar.values, axpyTuple,
+        LeanExe.Examples.Axpy.axpy, F64Bits.toBits_add, F64Bits.toBits_mul]⟩) fun _ _ h => h
+
+/-- The bytes `encode` produces for `axpy.module` decode to a module that
+computes `axpy` bit for bit. -/
+theorem axpy_bytes (bytes : ByteArray) (success : Wasm.Encoding.encode axpy.module = .ok bytes) :
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 0 axpyTuple (fun _ => 0) :=
+  ⟨axpy.module, Wasm.Encoding.decode_encode axpy.module bytes (by decide) success,
+    axpy_implements⟩
+
+end Project.Axpy

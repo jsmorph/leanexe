@@ -1,8 +1,8 @@
 import Project.ProofKit.F32RoundRational
-import Project.ProofKit.F32Shift
+import Project.ProofKit.FloatShift
 
 namespace Project.ProofKit.F32RationalScale
-open Float.Model Float.Model.UnpackedFloat F32RationalRounding F32RoundScaled
+open Float.Model Float.Model.UnpackedFloat F32RationalRounding F32RoundScaled FloatCommon
 
 theorem accuracy_mul (n d c : Nat) (hc : 0 < c) :
     accuracyOfFraction (n * c) (d * c) = accuracyOfFraction n d := by

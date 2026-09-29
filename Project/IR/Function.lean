@@ -5,21 +5,20 @@ namespace Project.IR
 
 open Wasm
 
-/-- A function of `params` 64-bit arguments.  Locals `0` to `params - 1` hold
-the arguments, the next `vars` locals hold the compiler's variables, and the
-locals after them are scratch space.  The function runs `body` and returns the
-value of `result`. -/
+/-- A function whose parameters have the types `params`.  The first locals hold
+the arguments, the next `vars` locals hold the compiler's 64-bit variables, and
+the locals after them are scratch space.  The function runs `body` and returns
+the value of `result`, an expression of type `result.1`. -/
 structure Func where
-  params : Nat
+  params : List ScalarType
   vars : Nat
   body : Stmt
-  result : Expr .u64
-  deriving Repr
+  result : (type : ScalarType) × Expr type
 
 /-- The first scratch local. -/
-def Func.scratch (func : Func) : Nat := func.params + func.vars
+def Func.scratch (func : Func) : Nat := func.params.length + func.vars
 
-def Func.width (func : Func) : Nat := max func.body.scratchWidth func.result.scratchWidth
+def Func.width (func : Func) : Nat := max func.body.scratchWidth func.result.2.scratchWidth
 
 /-- The local state on entry: the arguments, then zeroed variables and scratch
 locals. -/
@@ -27,12 +26,12 @@ def Func.state (func : Func) (args : List Value) : State :=
   { params := args, locals := List.replicate (func.vars + func.width) (.i64 0) }
 
 def Func.type (func : Func) : FuncType :=
-  { params := List.replicate func.params .i64, results := [.i64] }
+  { params := func.params.map ScalarType.valueType, results := [func.result.1.valueType] }
 
 def Func.function (func : Func) : Wasm.Function :=
   { params := func.type.params
     locals := List.replicate (func.vars + func.width) .i64
-    body := func.body.program func.scratch ++ func.result.program func.scratch
+    body := func.body.program func.scratch ++ func.result.2.program func.scratch
     results := func.type.results
     typeIdx := some 0 }
 

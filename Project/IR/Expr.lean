@@ -3,27 +3,38 @@ import Interpreter.Wasm.Wp.Tactic
 import Project.TalosCompat
 
 /-!
-IR expressions over 64-bit words and Booleans, the IR state of locals, and the
-expression rule `Expr.program_spec`: evaluating an expression with `Expr.eval`
-predicts what its compiled code pushes and which locals it changes.
+IR expressions over 64-bit words, Booleans, and binary64 floats, the IR state of
+locals, and the expression rule `Expr.program_spec`: evaluating an expression
+with `Expr.eval` predicts what its compiled code pushes and which locals it
+changes.
 -/
 
 namespace Project.IR
 
 open Wasm
 
+/-- The types of IR values.  An `f64` value is its bit pattern. -/
 inductive ScalarType where
   | u64
   | bool
+  | f64
+  deriving Repr, DecidableEq
 
 abbrev ScalarType.denote : ScalarType → Type
   | .u64 => UInt64
   | .bool => Bool
+  | .f64 => UInt64
 
 @[simp]
 def ScalarType.value : {type : ScalarType} → type.denote → Value
   | .u64, value => .i64 value
   | .bool, value => .i32 (if value then 1 else 0)
+  | .f64, value => .f64 value
+
+def ScalarType.valueType : ScalarType → ValueType
+  | .u64 => .i64
+  | .bool => .i32
+  | .f64 => .f64
 
 structure State where
   params : List Value
@@ -180,6 +191,23 @@ def U64Op.instruction : U64Op → Instruction
   | .shiftLeft => .shlI64
   | .shiftRight => .shrUI64
 
+/-- Binary64 arithmetic in the WebAssembly deterministic profile. -/
+inductive F64Op where
+  | add
+  | sub
+  | mul
+  deriving Repr, DecidableEq
+
+def F64Op.apply : F64Op → UInt64 → UInt64 → UInt64
+  | .add, left, right => IEEE64.add left right
+  | .sub, left, right => IEEE64.sub left right
+  | .mul, left, right => IEEE64.mul left right
+
+def F64Op.instruction : F64Op → Instruction
+  | .add => .f64Add
+  | .sub => .f64Sub
+  | .mul => .f64Mul
+
 inductive Expr : ScalarType → Type where
   | get (index : Nat) : Expr .u64
   | const (value : UInt64) : Expr .u64
@@ -193,6 +221,8 @@ inductive Expr : ScalarType → Type where
   | and (left right : Expr .bool) : Expr .bool
   | or (left right : Expr .bool) : Expr .bool
   | ite (condition : Expr .bool) (thenValue elseValue : Expr .u64) : Expr .u64
+  | getF (index : Nat) : Expr .f64
+  | binF (op : F64Op) (left right : Expr .f64) : Expr .f64
   deriving Repr
 
 mutual
@@ -204,6 +234,13 @@ mutual
         pure (value, state)
     | .u64, .const value, _, state => pure (value, state)
     | .bool, .bconst value, _, state => pure (value, state)
+    | .f64, .getF index, _, state => do
+        let .f64 value ← state.get index | none
+        pure (value, state)
+    | .f64, .binF op left right, scratch, state => do
+        let (leftValue, afterLeft) ← left.eval scratch state
+        let (rightValue, afterRight) ← right.eval scratch afterLeft
+        pure (op.apply leftValue rightValue, afterRight)
     | .u64, .bin op left right, scratch, state => do
         let childScratch := if op = .divU ∨ op = .remU then scratch + 2 else scratch
         let (leftValue, afterLeft) ← left.eval childScratch state
@@ -252,6 +289,9 @@ mutual
   def Expr.program : {type : ScalarType} → Expr type → Nat → Program
     | .u64, .get index, _ => [.localGet index]
     | .u64, .const value, _ => [.constI64 value]
+    | .f64, .getF index, _ => [.localGet index]
+    | .f64, .binF op left right, scratch =>
+        left.program scratch ++ right.program scratch ++ [op.instruction]
     | .bool, .bconst value, _ => [.const (if value then 1 else 0)]
     | .u64, .bin op left right, scratch =>
         if op = .divU ∨ op = .remU then
@@ -284,7 +324,8 @@ mutual
 end
 
 def Expr.scratchWidth : {type : ScalarType} → Expr type → Nat
-  | _, .get _ | _, .const _ | _, .bconst _ => 0
+  | _, .get _ | _, .const _ | _, .bconst _ | _, .getF _ => 0
+  | _, .binF _ left right => max left.scratchWidth right.scratchWidth
   | _, .bin operation left right =>
       let childWidth := max left.scratchWidth right.scratchWidth
       if operation = .divU ∨ operation = .remU then childWidth + 2 else childWidth
@@ -426,6 +467,26 @@ theorem Expr.eval_preserves_below
           hThen hIndex).trans
             (conditionPreserves scratch state afterCondition true index
               hCondition hIndex)
+
+  | getF localIndex =>
+      unfold Expr.eval at hEval
+      cases hGet : state.get localIndex with
+      | none => simp [hGet] at hEval
+      | some value =>
+          cases value <;> simp [hGet] at hEval
+          case f64 value =>
+            obtain ⟨rfl, rfl⟩ := hEval
+            rfl
+  | binF op left right leftPreserves rightPreserves =>
+      simp only [Expr.eval] at hEval
+      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      · simp [hLeft] at hEval
+      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      · simp [hLeft, hRight] at hEval
+      simp [hLeft, hRight] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      exact (rightPreserves scratch afterLeft afterRight rightValue index hRight hIndex).trans
+        (leftPreserves scratch state afterLeft leftValue index hLeft hIndex)
 
 set_option maxHeartbeats 1000000 in
 theorem Expr.program_spec
@@ -795,6 +856,36 @@ theorem Expr.program_spec
           (rest := []) (Q := _) hThen
         simpa [wp_simp, State.toLocals, ScalarType.value] using hNext
 
+  | getF index =>
+      unfold Expr.eval at hEval
+      cases hGet : state.get index with
+      | none => simp [hGet] at hEval
+      | some value =>
+          cases value <;> simp [hGet] at hEval
+          case f64 value =>
+            obtain ⟨rfl, rfl⟩ := hEval
+            simp only [Expr.program, List.cons_append, List.nil_append,
+              Wasm.wp_localGet_cons, State.toLocals_get, hGet]
+            exact hNext
+  | binF op left right leftSpec rightSpec =>
+      simp only [Expr.eval] at hEval
+      simp only [Expr.program, List.append_assoc]
+      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      · simp [hLeft] at hEval
+      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      · simp [hLeft, hRight] at hEval
+      simp [hLeft, hRight] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      apply leftSpec (scratch := scratch) (state := state)
+        (next := afterLeft) (result := leftValue) (values := values)
+        (rest := _) (Q := _) hLeft
+      apply rightSpec (scratch := scratch) (state := afterLeft)
+        (next := afterRight) (result := rightValue)
+        (values := .f64 leftValue :: values) (rest := _) (Q := _) hRight
+      cases op <;>
+        simpa [F64Op.instruction, F64Op.apply, wp_simp, Wasm.f64Add, Wasm.f64Sub, Wasm.f64Mul]
+          using hNext
+
 /-- `after` has as many parameters and locals as `before` and agrees with it at
 every local below `scratch` outside `writes`. -/
 structure State.Frame (scratch : Nat) (writes : List Nat) (before after : State) : Prop where
@@ -937,5 +1028,22 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
         simp [hCondition, hThen] at hEval
         obtain ⟨rfl, rfl⟩ := hEval
         exact (hConditionFrame _ _ _ _ hCondition).trans (hThenFrame _ _ _ _ hThen)
+  | getF index =>
+      unfold Expr.eval at hEval
+      cases hGet : state.get index with
+      | none => simp [hGet] at hEval
+      | some value =>
+          cases value <;> simp [hGet] at hEval
+          obtain ⟨rfl, rfl⟩ := hEval
+          exact .refl _ _ _
+  | binF op left right hLeftFrame hRightFrame =>
+      simp only [Expr.eval] at hEval
+      rcases hLeft : left.eval scratch state with _ | ⟨leftValue, afterLeft⟩
+      · simp [hLeft] at hEval
+      rcases hRight : right.eval scratch afterLeft with _ | ⟨rightValue, afterRight⟩
+      · simp [hLeft, hRight] at hEval
+      simp [hLeft, hRight] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      exact (hLeftFrame _ _ _ _ hLeft).trans (hRightFrame _ _ _ _ hRight)
 
 end Project.IR

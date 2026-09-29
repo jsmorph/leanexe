@@ -1,11 +1,8 @@
 import Project.ProofKit.F32Source
+import Project.ProofKit.FloatCommon
 
 namespace Project.ProofKit.F32Encoding
-open Float.Model Float.Model.UnpackedFloat
-
-theorem append_toNat (x : BitVec m) (y : BitVec n) :
-    (x ++ y).toNat = x.toNat * 2 ^ n + y.toNat := by
-  rw [BitVec.toNat_append, ← Nat.shiftLeft_add_eq_or_of_lt y.isLt, Nat.shiftLeft_eq]
+open Float.Model Float.Model.UnpackedFloat FloatCommon
 
 def sourceSign (x : UInt32) : Sign :=
   if Wasm.IEEE32.sign x then .negative else .positive
@@ -71,10 +68,6 @@ theorem unpack_eq (x : UInt32) :
     congr 1
     rw [append_toNat]
     simp [unpackMantissa_eq]
-
-def negative (s : Sign) : Bool := match s with
-  | .negative => true
-  | .positive => false
 
 theorem packComponents_eq (s : Sign) (e f : Nat) (he : e < 256) (hf : f < 2 ^ 23) :
     UInt32.ofBitVec (packComponents Format.binary32 s (BitVec.ofNat 8 e) (BitVec.ofNat 23 f)) =

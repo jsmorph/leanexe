@@ -24,17 +24,26 @@ def binaryRules : List (Name × U64Op × String) :=
 def isUInt64 (type : Lean.Expr) : MetaM Bool := do
   return (← whnfR type).isConstOf ``UInt64
 
+def isFloat (type : Lean.Expr) : MetaM Bool := do
+  return (← whnfR type).isConstOf ``Float
+
+/-- The source operators on `Float` the compiler translates. -/
+def floatRules : List (Name × F64Op × String) :=
+  [(``HAdd.hAdd, .add, "float add"), (``HSub.hSub, .sub, "float sub"),
+   (``HMul.hMul, .mul, "float mul")]
+
 def isUInt64Array (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
-  return type.isAppOfArity ``Array 1 && (← isUInt64 type.appArg!)
+  if type.isAppOfArity ``Array 1 then isUInt64 type.appArg! else return false
 
 /-- The number of instructions in the code of an expression or a statement.  It
 does not depend on the scratch index. -/
 def exprLength (e : IRExpr type) : Nat := (e.program 0).length
 def stmtLength (s : Project.IR.Stmt) : Nat := (s.program 0).length
 
-/-- The compiler's view of the definition being compiled.  `words` and `arrays`
-give the local of each `UInt64` and `Array UInt64` variable in scope.  A
+/-- The compiler's view of the definition being compiled.  `words`, `floats`, and
+`arrays` give the local of each `UInt64`, `Float`, and `Array UInt64` variable in
+scope.  A
 recursive definition's locals are the parameters, then `result`, `done`, and one
 temporary per parameter.  `foldable` says whether a fold may appear: a fold runs
 before the value that contains it, so it may not appear in a branch, in a fold
@@ -43,6 +52,7 @@ structure Ctx where
   self : Name
   params : Array Lean.Expr
   words : List (Lean.Expr × Nat)
+  floats : List (Lean.Expr × Nat)
   arrays : List (Lean.Expr × Nat)
   foldable : Bool
 
@@ -262,6 +272,28 @@ mutual
     | (``Or, #[a, b]) => connective .or "or" a b
     | _ => throwError "unsupported condition: {source}"
 
+  /-- Translates a `Float` term to an IR expression whose code starts at `loc`. -/
+  partial def translateFloat (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
+      CompileM (IRExpr .f64 × List Hint) := do
+    let term := term.consumeMData
+    let source ← sourceOf term
+    let hint (ir : IRExpr .f64) (rule : String) : Hint :=
+      mkHint loc (exprLength ir) rule source
+    if let some index := ctx.floats.lookup term then
+      let ir : IRExpr .f64 := .getF index
+      return (ir, [hint ir "float variable"])
+    match term.getAppFnArgs with
+    | (fn, #[left, right, out, _, a, b]) =>
+        let some (_, op, rule) := floatRules.find? (·.1 == fn)
+          | throwError "unsupported float operation {fn} in {source}"
+        unless (← isFloat left) && (← isFloat right) && (← isFloat out) do
+          throwError "unsupported operand types in {source}"
+        let (l, lHints) ← translateFloat ctx loc a
+        let (r, rHints) ← translateFloat ctx (loc.skip (exprLength l)) b
+        let ir : IRExpr .f64 := .binF op l r
+        return (ir, hint ir rule :: lHints ++ rHints)
+    | _ => throwError "unsupported float term: {source}"
+
   /-- Translates the array literal `term` with `elements` to an allocation and
   stores into a fresh local, which it returns.  Folds in the elements run first. -/
   partial def translateArrayLiteral (ctx : Ctx) (term : Lean.Expr) (elements : List Lean.Expr) :
@@ -357,24 +389,33 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
     let some (_, _, body) := eq.eq?
       | throwError "unexpected unfolding equation for {declName}"
     let mut words := []
+    let mut floats := []
     let mut arrays := []
+    let mut paramTypes : Array ScalarType := #[]
     for h : i in [:params.size] do
       let type ← inferType params[i]
       if ← isUInt64 type then
         words := (params[i], i) :: words
+        paramTypes := paramTypes.push .u64
+      else if ← isFloat type then
+        floats := (params[i], i) :: floats
+        paramTypes := paramTypes.push .f64
       else if ← isUInt64Array type then
         arrays := (params[i], i) :: arrays
+        paramTypes := paramTypes.push .u64
       else
-        throwError "parameter {params[i]} of {declName} is neither UInt64 nor Array UInt64"
-    let arrayResult ← isUInt64Array (← inferType body)
-    unless arrayResult || (← isUInt64 (← inferType body)) do
-      throwError "the result of {declName} is neither UInt64 nor Array UInt64"
+        throwError "parameter {params[i]} of {declName} is not UInt64, Float, or Array UInt64"
+    let resultType ← inferType body
+    let arrayResult ← isUInt64Array resultType
+    let floatResult ← isFloat resultType
+    unless arrayResult || floatResult || (← isUInt64 resultType) do
+      throwError "the result of {declName} is not UInt64, Float, or Array UInt64"
     let paramNames ← params.toList.mapM fun p => return (← p.fvarId!.getUserName).toString
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
     if recursive then
-      unless arrays.isEmpty && !arrayResult do
-        throwError "a recursive definition may not take arrays: {declName}"
-      let ctx : Ctx := { self := declName, params, words, arrays, foldable := false }
+      unless arrays.isEmpty && floats.isEmpty && !arrayResult && !floatResult do
+        throwError "a recursive definition may take and return only UInt64: {declName}"
+      let ctx : Ctx := { self := declName, params, words, floats, arrays, foldable := false }
       -- The loop is the first instruction of the body: a block holding a loop.
       let loopBody := ((({ prefix_ := [], index := 0 } : Loc).inside none).inside none)
       let condition : IRExpr .bool := .eq (.get ctx.done) (.const 0)
@@ -387,21 +428,29 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
       let names := paramNames.zipIdx ++
         [("result", ctx.result), ("done", ctx.done)] ++
         (paramNames.zipIdx.map fun (name, i) => (s!"next {name}", ctx.temp i))
-      return ({ params := params.size, vars := ctx.vars, body := loop, result := .get ctx.result },
-        { locals := names, nodes := loopHint :: stepHints ++ [resultHint] })
+      let func : Func :=
+        { params := paramTypes.toList, vars := ctx.vars, body := loop
+          result := ⟨.u64, .get ctx.result⟩ }
+      return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] })
     else
-      let ctx : Ctx := { self := declName, params, words, arrays, foldable := true }
-      let translate : CompileM (IRExpr .u64 × List Hint) :=
+      let ctx : Ctx := { self := declName, params, words, floats, arrays, foldable := true }
+      let translate : CompileM ((Σ type, IRExpr type) × List Hint) :=
         if arrayResult then do
           let some elements := arrayLiteral? body
             | throwError "an Array UInt64 result must be an array literal: {← sourceOf body}"
           let array ← translateArrayLiteral ctx body elements
           let ir : IRExpr .u64 := .get array
-          return (ir, [mkHint ⟨[], 0⟩ (exprLength ir) "array result" (← sourceOf body)])
-        else translateValue ctx { prefix_ := [], index := 0 } body
+          return (⟨.u64, ir⟩,
+            [mkHint ⟨[], 0⟩ (exprLength ir) "array result" (← sourceOf body)])
+        else if floatResult then do
+          let (ir, hints) ← translateFloat ctx { prefix_ := [], index := 0 } body
+          return (⟨.f64, ir⟩, hints)
+        else do
+          let (ir, hints) ← translateValue ctx { prefix_ := [], index := 0 } body
+          return (⟨.u64, ir⟩, hints)
       let ((result, resultHints), prelude) ← translate.run { next := params.size }
       let func : Func :=
-        { params := params.size, vars := prelude.next - params.size
+        { params := paramTypes.toList, vars := prelude.next - params.size
           body := seqAll prelude.stmts.toList, result }
       let hints : Hints :=
         { locals := paramNames.zipIdx ++ prelude.names.toList
@@ -409,10 +458,15 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
       return (func, hints)
 
 deriving instance ToExpr for U64Op
+deriving instance ToExpr for F64Op
+deriving instance ToExpr for ScalarType
 
 /-- The Lean term for an IR expression, for the definitions the command adds. -/
 def irToExpr : {type : ScalarType} → IRExpr type → Lean.Expr
   | _, .get index => mkApp (mkConst ``Project.IR.Expr.get) (toExpr index)
+  | _, .getF index => mkApp (mkConst ``Project.IR.Expr.getF) (toExpr index)
+  | _, .binF op left right =>
+      mkApp3 (mkConst ``Project.IR.Expr.binF) (toExpr op) (irToExpr left) (irToExpr right)
   | _, .const value => mkApp (mkConst ``Project.IR.Expr.const) (toExpr value)
   | _, .bconst value => mkApp (mkConst ``Project.IR.Expr.bconst) (toExpr value)
   | _, .bin op left right => mkApp3 (mkConst ``Project.IR.Expr.bin) (toExpr op) (irToExpr left) (irToExpr right)
@@ -448,6 +502,7 @@ def stmtToExpr : Project.IR.Stmt → Lean.Expr
 
 def funcToExpr (func : Func) : Lean.Expr :=
   mkApp4 (mkConst ``Func.mk) (toExpr func.params) (toExpr func.vars) (stmtToExpr func.body)
-    (irToExpr func.result)
+    (mkApp4 (mkConst ``Sigma.mk [Level.zero, Level.zero]) (mkConst ``ScalarType)
+      (mkConst ``Project.IR.Expr) (toExpr func.result.1) (irToExpr func.result.2))
 
 end Project.Compiler

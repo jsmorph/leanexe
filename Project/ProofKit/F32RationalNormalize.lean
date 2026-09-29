@@ -1,7 +1,7 @@
 import Project.ProofKit.F32RationalScale
 
 namespace Project.ProofKit.F32RationalNormalize
-open Float.Model Float.Model.UnpackedFloat F32Encoding F32RationalScale F32RoundRational
+open Float.Model Float.Model.UnpackedFloat F32Encoding F32RationalScale F32RoundRational FloatCommon
 
 theorem roundWithAccuracy_mul (s : Sign) (n d c : Nat) (e : Int) (hc : 0 < c) :
     roundWithAccuracy Format.binary32 s (n * c / (d * c)) e

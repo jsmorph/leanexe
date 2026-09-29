@@ -1,3 +1,4 @@
+import LeanExe.Examples.Axpy
 import LeanExe.Examples.Gcd
 import LeanExe.Examples.PairSum
 import LeanExe.Examples.Scale

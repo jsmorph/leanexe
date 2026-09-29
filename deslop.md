@@ -12,14 +12,14 @@ The compiler is not verified at first.  Its rules are verified one at a time, an
 
 | Component | Design | State |
 |---|---|---|
-| IR | Embedded in Lean: expressions over locals, assignment, `if`, `while`, loads, stores, and calls.  It has no arrays, structures, or ownership. | Expressions and statements exist. |
+| IR | Embedded in Lean: expressions over locals, assignment, `if`, `while`, loads, stores, and calls.  Values are 64-bit words, Booleans, or binary64 bit patterns.  It has no arrays, structures, or ownership. | Expressions and statements exist.  `f64` expressions read locals and add, subtract, and multiply. |
 | Translation | `compile : IR → Wasm.Module`, with one `wp` rule per construct proved once against Talos.  The IR means what its compiled code does. | `Expr.program_spec`, a `Triple` rule for each statement, and the frame notion `State.Frame` with `Expr.eval_frame`.  `Triple` takes the module, so the call rule can use the callee's specification. |
-| Compiler | Lean to IR, reading each definition's unfolding equation.  Verifying a rule means proving that its template implements its source construct, stated in terms of Lean's own functions, so no `Lean.Expr` semantics is trusted. | `UInt64` arithmetic, comparisons, `if`, tail recursion, `Array UInt64` parameters, and `Array.foldl` over an array parameter or an array literal, which becomes a temporary released after the fold.  `xs.size.toUInt64` loads the length word, and a function may return an array literal.  The tail-recursion, fold, array-size, array-literal, and release rules are proved. |
+| Compiler | Lean to IR, reading each definition's unfolding equation.  Verifying a rule means proving that its template implements its source construct, stated in terms of Lean's own functions, so no `Lean.Expr` semantics is trusted. | `UInt64` arithmetic, comparisons, `if`, tail recursion, `Array UInt64` parameters, and `Array.foldl` over an array parameter or an array literal, which becomes a temporary released after the fold.  `xs.size.toUInt64` loads the length word, and a function may return an array literal.  `Float` parameters and results, with `+`, `-`, and `*`.  The tail-recursion, fold, array-size, array-literal, release, and float-arithmetic rules are proved. |
 | Hints | Untrusted annotations: the rule behind each fragment, its source term, its instruction path in the decoded module, and the name of each local.  A wrong hint costs proof time and cannot produce a false theorem. | Emitted for every IR node. |
 | Runtime | `alloc`, `retain`, and `release` with reference counting, specified and proved once.  The compiler places `retain` and `release`, and per-program proofs check the placement until a rule lemma covers it. | The three functions are in every module and pass host tests.  `alloc_spec` covers every request, and `release_run` covers an owned array with count one and no child pointers.  `retain` and the release of shared or nested objects are not specified. |
-| Statement | `Implements`, over a `Represent` class that says how a value appears as WASM values and heap data. | Instances for `UInt64`, tuples of scalars, and `Array UInt64`.  `Func.implements_heap` takes arguments and a result of any `Represent` type and a body that may allocate and free. |
+| Statement | `Implements`, over a `Represent` class that says how a value appears as WASM values and heap data. | Instances for `UInt64`, `Float`, tuples of scalars, and `Array UInt64`.  `Func.implements_heap` takes arguments and a result of any `Represent` type and a body that may allocate and free. |
 | Bytes | The encoder, `decode_encode`, and one decoder. | Done. |
-| Floating point | The WebAssembly deterministic profile.  See "Floating point". | Binary32 equality proofs exist. |
+| Floating point | The WebAssembly deterministic profile.  See "Floating point". | Binary32 equality proofs for five operations; binary64 for addition, subtraction, and multiplication. |
 
 The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O adapter.  The source dialect has fixed-width integers and IEEE floats, compiles `panic` to `default`, allows recursive values, and does I/O through a pure step function driven by a fixed adapter.  Rule lemmas must state what their templates leave unchanged, meaning the locals they do not write and the memory outside the blocks they allocate or write, because lemmas for nested templates do not compose otherwise.
 
@@ -28,7 +28,7 @@ The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O a
 | File | Role |
 |---|---|
 | `LeanExe/Examples/Scale.lean`, `Gcd.lean`, `SumArray.lean`, `PairSum.lean`, `SumCount.lean` | Source programs. |
-| `LeanExe/Float32.lean`, `Signed32.lean` | Raw-bit wrappers that the binary32 equality proofs state their results about. |
+| `LeanExe/Float32.lean`, `Float64.lean`, `Signed32.lean` | Raw-bit wrappers that the binary32 equality proofs state their results about. |
 | `Project/IR/Expr.lean` | IR expressions, the IR state, `Expr.eval`, the expression rule `Expr.program_spec`, and `State.Frame` with `Expr.eval_frame`.  `State.Frame` says a state changed only given locals and scratch locals. |
 | `Project/IR/Stmt.lean` | IR statements, their compiled code, `Triple`, one rule per statement, `Triple.mono`, and `Triple.of_forall`. |
 | `Project/IR/Function.lean` | `Func` (parameters, compiler variables, body, result) and `compile`, which gives each module a memory, the runtime globals, and an export. |
@@ -45,10 +45,10 @@ The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O a
 | `Project/Runtime/` | `Defs.lean`, the code of `alloc`, `retain`, and `release`; `FreeList.lean`, the free-list layout that `Heap.At` uses; and `Tree.lean`, the old model of the structure a `release` frees. |
 | `Project/Pipeline/Emit.lean` | Script: evaluates a module constant, encodes it, checks that `decode` returns it, and writes the file. |
 | `Project/Encoding/` | The encoder, the decoder, `decode_encode`, and `DecodeTest.lean`, a script that runs the decoder over the testsuite. |
-| `Project/ProofKit/` | 61 modules of general lemmas: memory, arrays, allocation, frames, and the binary32 equality chain. |
-| `Project/Scale/`, `Project/Gcd/`, `Project/SumArray/`, `Project/PairSum/`, `Project/SumCount/` | Each program's `leanexe_compile` and theorems. |
+| `Project/ProofKit/` | 75 modules of general lemmas: memory, arrays, allocation, frames, and the binary32 and binary64 equality chain. |
+| `Project/Scale/`, `Project/Gcd/`, `Project/SumArray/`, `Project/PairSum/`, `Project/SumCount/`, `Project/Axpy/` | Each program's `leanexe_compile` and theorems. |
 | `Project/LTG/Check.lean` | Script: imports every module the LTG entries list and reports declarations that do not exist. |
-| `ltg/` | The LTG knowledge base: 10 entries, each an `entry.json` and a `README.md`. |
+| `ltg/` | The LTG knowledge base: 11 entries, each an `entry.json` and a `README.md`. |
 
 ## Proved
 
@@ -62,7 +62,9 @@ The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O a
 
 `sumCount_implements` states that `sumCount.module` implements `sumCount xs = #[xs.foldl (· + ·) 0, xs.size.toUInt64]` on every borrowed `Array UInt64`: the result is an array that the caller owns, the argument stays borrowed, and the call allocates at most 72 bytes.  The proof applies `Func.implements_heap`, `Stmt.fold_spec`, `Stmt.arraySize_spec`, and `Stmt.arrayLiteral_spec`, whose preservation clause keeps the argument borrowed, in 55 lines including the statement.
 
-`scale_bytes`, `gcd_bytes`, `sumArray_bytes`, `pairSum_bytes`, and `sumCount_bytes` combine these with `decode_encode`.  All of these theorems, the rule lemmas, the runtime specifications, and `decode_encode` depend only on `propext`, `Classical.choice`, and `Quot.sound`.  An audit found that CodeLib's `Mem.read64_write64_same`, a `simp` lemma proved with `bv_decide`, had added an axiom for compiled code to `pairSum_bytes`.  The proofs now use ProofKit's kernel-checked `Memory.read64_write64` and remove CodeLib's lemma from the `simp` set in `RuntimeSpec.lean`.
+`axpy_implements` states that `axpy.module` computes `axpy a x y = a * x + y` bit for bit on every triple of `Float` arguments, NaN included.  The proof applies `Func.implements` and one `simp` call with `F64Bits.toBits_add` and `toBits_mul`.
+
+`scale_bytes`, `gcd_bytes`, `sumArray_bytes`, `pairSum_bytes`, `sumCount_bytes`, and `axpy_bytes` combine these with `decode_encode`.  All of these theorems, the rule lemmas, the runtime specifications, and `decode_encode` depend only on `propext`, `Classical.choice`, and `Quot.sound`.  An audit found that CodeLib's `Mem.read64_write64_same`, a `simp` lemma proved with `bv_decide`, had added an axiom for compiled code to `pairSum_bytes`.  The proofs now use ProofKit's kernel-checked `Memory.read64_write64` and remove CodeLib's lemma from the `simp` set in `RuntimeSpec.lean`.
 
 ## Tested
 
@@ -74,7 +76,9 @@ Every module contains the runtime functions, so the sizes below are mostly runti
 
 `sumCount.wasm` is 1,380 bytes with sha256 `cc5eb56bc47a099183d389410646164406374490f132c413286a91547b806a0d`.  Wasmtime and native Lean both returned `[6, 3]` for `[1, 2, 3]`, `[1, 2]` for `[2^64-1, 2]`, `[0, 0]` for `[]`, `[60, 3]` for `[10, 20, 30]`, and `[18029489283092536988, 1000]` for the 1,000-element array.  After the host released the result and then the input, the counters read two allocations, two releases, and two frees.
 
-`wasm-tools` validated all five modules, and the other four kept their hashes after the 3c compiler changes.  Host tests of the runtime functions are recorded in `devnotes.md` under 2026-09-29.  The decoder testsuite run found all 210 valid modules in the encoder's subset equal to the reference and round-tripping, and it rejected all 670 binary malformed modules in the subset; 2,004 valid and 41 malformed modules fall outside the subset.
+`axpy.wasm` is 1,265 bytes with sha256 `a4f288ebf1a0d3a154e16495837747a466dd2fdbc898ad37299540eaf5f3f1cd`.  Wasmtime and native Lean returned the same bits for 54 inputs: 14 chosen cases, with infinities, the canonical NaN, signed zeros, a subnormal result, overflow, and two-rounding cases, and 40 pseudo-random triples.  The host passes and prints `f64` values as bit patterns (`f64:BITS`).
+
+`wasm-tools` validated all six modules, and the other five kept their hashes after the typed `Func` change.  Host tests of the runtime functions are recorded in `devnotes.md` under 2026-09-29.  The decoder testsuite run found all 210 valid modules in the encoder's subset equal to the reference and round-tripping, and it rejected all 670 binary malformed modules in the subset; 2,004 valid and 41 malformed modules fall outside the subset.
 
 ## Decisions
 
@@ -117,6 +121,9 @@ Every module contains the runtime functions, so the sizes below are mostly runti
 | An array literal that a fold consumes becomes a temporary: the compiler allocates it before the fold and releases it right after. | The fold is the temporary's only use. |
 | A function may return an `Array UInt64` only as an array literal, which the caller owns.  `xs.size.toUInt64` compiles to a load of the length word into a fresh local. | Returning a borrowed argument would need `retain`, which comes with sharing.  Lean's `Nat.toUInt64` is `UInt64.ofNat`, so the loaded word is the exact value. |
 | Proofs may not use `bv_decide` or `native_decide`. | Both add an axiom that trusts compiled code.  `Project/Common.lean` had two unused lemmas proved with `bv_decide`, now deleted. |
+| IR `f64` values are bit patterns, and `Expr.eval` applies Talos's `IEEE64` functions.  Per-program proofs connect Lean's `Float` through `F64Bits.toBits_add` and its siblings. | The IR means what its compiled code does, and the equality theorems enter once, as `simp` lemmas. |
+| `Func` is typed: `params` lists the parameter types, and `result` pairs a type with an expression of that type.  Compiler variables and scratch locals stay 64-bit words. | `Float` arguments and results use WebAssembly's `f64` type.  A dependent pair keeps equations such as `func.result = ⟨.u64, .get n⟩` free of casts. |
+| Tail recursion and folds stay `UInt64`-only for now. | Float locals need a typed assignment, which comes with the first program that needs one. |
 | Iteration 3 runs in three steps.  3a: `sumArray xs = xs.foldl (· + ·) 0` with the fold rule's lemma, modules carrying the runtime functions for hosts, and no runtime specifications yet.  3b: `pairSum`, where compiled code allocates and releases a temporary, with the call statement and the specifications of `alloc` and of `release` for objects without children.  3c: `sumCount`, whose result the host owns and releases.  `retain`'s specification and the loop over children are proved when first used. | Each specification is proved in the iteration whose program uses it. |
 | `Heap.At` requires at most 65,536 pages, and `Heap.Borrowed` requires only that the input lies below `top` and outside every free block. | A 32-bit memory has at most 65,536 pages, and an earlier header condition existed only to fit a reused lemma. |
 
@@ -124,7 +131,7 @@ Every module contains the runtime functions, so the sizes below are mostly runti
 
 Lean 4.34 defines `Float` and `Float32` through `Float.Model` and `Float32.Model`, IEEE binary64 and binary32 with round-to-nearest, ties to even.  Every NaN in both models is the positive quiet NaN with only the top fraction bit set, `0x7FF8000000000000` or `0x7FC00000`, and `ofBits` converts every NaN input to it.  Talos's `IEEE64` and `IEEE32` return the same constants for every NaN result.
 
-ProofKit proves `LeanExe.Float32.xBits = Wasm.IEEE32.x` for `add`, `sub`, `mul`, `div`, and `sqrt`, for all inputs including NaN, in 25 files and 2,101 lines.  No binary64 counterpart exists.  The wrappers are thin: `LeanExe.Float32.addBits` applies Lean's `Float32` addition to decoded bits, so the theorems also justify compiling Lean's float types directly.
+ProofKit proves `LeanExe.Float32.xBits = Wasm.IEEE32.x` for `add`, `sub`, `mul`, `div`, and `sqrt`, for all inputs including NaN, in 25 files and 2,101 lines.  The binary64 counterparts for `add`, `sub`, and `mul` are 13 files and 1,344 lines in `F64*.lean`, translated from the binary32 files with a script that maps the format constants.  Lemmas that do not depend on the format moved to `FloatRounding`, `FloatShift`, and `FloatCommon`, which both chains import.  One lemma is new: `IEEE64.roundDyadicMagnitude` passes `rounded * 2^shift` to `roundScaledMagnitude` where the binary32 rounder encodes the fields directly, and `roundScaled_mul_pow` bridges the two forms.  `F64Bits` restates the results as `(a + b).toBits = IEEE64.add a.toBits b.toBits` for Lean floats.  The wrappers are thin: `LeanExe.Float32.addBits` applies Lean's `Float32` addition to decoded bits, so the theorems also justify compiling Lean's float types directly.
 
 Lean and WASM differ in three places:
 1. Lean's `neg` and `abs` return the positive canonical NaN for a NaN input.  WASM `fneg` and `fabs` change only the sign bit.
@@ -133,7 +140,7 @@ Lean and WASM differ in three places:
 
 The WebAssembly specification ([numerics](https://webassembly.github.io/spec/core/exec/numerics.html)) makes the sign of a generated NaN nondeterministic and its payload canonical only when every NaN input is canonical.  Its deterministic profile ([profiles](https://webassembly.github.io/spec/core/appendix/profiles.html)) requires that "All NaN values generated by floating-point instructions are canonical and positive," and Talos implements that behavior.  `tools/wasmtime-host.c` enables Cranelift's NaN canonicalization.  Browsers do not implement the profile, and on x86 `0/0` produces a negative NaN.  On this aarch64 machine, native Lean's `toBits` returned `0x7FF8000000000000` for a NaN with a payload, for `0/0`, and for `-(0/0)`.  Modeling the full profile in Talos, with an oracle choosing NaN results and the compiler canonicalizing NaN where bits become observable, remains the route if theorems must cover results computed in a browser.
 
-`IEEE64` has the same functions as `IEEE32` and calls `IEEE32.roundShift`, `roundQuotient`, and `roundSqrtIntegral` directly, so lemmas about those helpers are imported, not copied.  The binary32 chain states its format constants about 270 times, and proofs with the larger binary64 constants may behave differently under `decide`, `omega`, and `simp`.  Equality theorems for `neg`, `abs`, the comparisons, and the conversions have not been checked.
+`IEEE64` has the same functions as `IEEE32` and calls `IEEE32.roundShift`, `roundQuotient`, and `roundSqrtIntegral` directly, so lemmas about those helpers are imported, not copied.  The binary32 chain states its format constants about 270 times, and proofs with the larger binary64 constants may behave differently under `decide`, `omega`, and `simp`.  The binary64 translation needed no changes for `decide`, `omega`, or `simp` behavior with the larger constants.  Equality theorems for binary64 `div` and `sqrt`, and for `neg`, `abs`, the comparisons, and the conversions in either format, do not exist yet.
 
 ## GPU
 
@@ -168,7 +175,8 @@ The user doubted that items 2 and 3 need work, and no work on them is planned.
 - [x] Move `Expr`, `State`, and their lemmas into `Project/IR/Expr.lean`, delete the old IR and the three modules that only it used, and review the LTG entries written for the old pipeline.
 - [ ] Iteration 4, sharing: a program that shares a value, with `retain`'s specification.
 - [ ] Iteration 5, I/O: a step-function program with the trusted adapter.
-- [ ] Iteration 6, floating point: a binary64 program, after the binary64 equality proofs and the remaining float operations.  The binary64 proofs can proceed in parallel with earlier iterations.
+- [x] Iteration 6a, floating point: binary64 `add`, `sub`, and `mul` equality proofs, `f64` in the IR, `Float` in the compiler, and `axpy`.
+- [ ] Iteration 6b: binary64 `div` and `sqrt`, float literals, comparisons, `neg`, `abs`, `min`, `max`, conversions, float locals, and `Float32`.
 - [ ] Iteration 7, recursive values: a program over a list or tree, with recursive `release`.
 - [ ] Then design the GPU kernel path, and prove the I/O adapter.
 
