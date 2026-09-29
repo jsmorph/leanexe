@@ -33,6 +33,7 @@ import Project.Encoding.Values
 import Project.Gcd.Module
 import Project.Gcd.Verify
 import Project.IR.ArrayLiteral
+import Project.IR.Build
 import Project.IR.Correct
 import Project.IR.Expr
 import Project.IR.Fold

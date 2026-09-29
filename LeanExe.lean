@@ -1,3 +1,4 @@
+import LeanExe.Build
 import LeanExe.Examples.Axpy
 import LeanExe.Examples.Bucket
 import LeanExe.Examples.Clob

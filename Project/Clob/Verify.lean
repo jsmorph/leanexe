@@ -2,6 +2,7 @@ import Project.Clob.Module
 import Project.IR.Correct
 import Project.IR.Loop
 import Project.IR.Read
+import Project.IR.Build
 import Project.Encoding.RoundTrip
 
 namespace Project.Clob
@@ -133,5 +134,81 @@ theorem marketBuy_bytes : ∃ bytes, Encoding.encode marketBuy.module = .ok byte
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip marketBuy.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, marketBuy.module, decoded, marketBuy_implements⟩
+
+/-- `fillLevel` with its three arguments as one tuple. -/
+def fillTuple (x : Array UInt64 × UInt64 × UInt64) : Array UInt64 :=
+  LeanExe.Examples.Clob.fillLevel x.1 x.2.1 x.2.2
+
+/-- The bytes `fillLevel` may allocate: one array of the input's length. -/
+def fillNeed (x : Array UInt64 × UInt64 × UInt64) : Nat := 48 + 8 * (x.1.size + 1)
+
+theorem fillLevel_implements : Implements fillLevel.module 0 fillTuple fillNeed := by
+  refine Func.implements_heap fillLevel.ir "fillLevel" fillTuple fillNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨sizes, k, amount⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hRoom
+  have hMemory32 : (compile fillLevel.ir "fillLevel").memIs64 = false := rfl
+  have hImports : (compile fillLevel.ir "fillLevel").imports = [] := rfl
+  have hAlloc : (compile fillLevel.ir "fillLevel").funcs[1]? = some (allocFunction 1) := rfl
+  have hS := hSizes.values
+  have hSize64 := hS.size_lt
+  let value := sizes[k.toNat]! - amount
+  let start : State :=
+    { params := [.i64 ps, .i64 k, .i64 amount], locals := List.replicate 7 (.i64 0) }
+  let s1 := start.update 3 (.i64 k)
+  let s2 := (s1.update 9 (.i64 k)).update 4 (.i64 value)
+  let s3 := s2.update 5 (.i64 (UInt64.ofNat sizes.size))
+  show Triple _ (.seq (.assign 3 (.get 1)) (.seq (.assign 4 (.bin .sub (.read 0 (.get 1)) (.get 2)))
+    (.seq (.arraySize 5 0) (.build 6 7 8 (.get 5)
+      (.ite (.eq (.get 8) (.get 3)) (.get 4) (.read 0 (.get 8))))))) 9
+    (fun store state => store = initial ∧ state = start) _
+  have hParams : start.params.length = 3 := rfl
+  have hLocals : start.locals.length = 7 := rfl
+  have hGet0 : start.get 0 = some (.i64 ps) := rfl
+  have hGet1 : start.get 1 = some (.i64 k) := rfl
+  have hGet2 : start.get 2 = some (.i64 amount) := rfl
+  have hLength := hS.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLength
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s3) ?_) ?_
+  · simp [Stmt.run, Expr.eval, hGet1, State.set?_eq_update, hParams, hLocals, s1]
+  · simp [Stmt.run, Expr.eval, hGet1, hGet2, Expr.readValue_at hS, hGet0, State.set?_eq_update,
+      hParams, hLocals, s1, s2, U64Op.apply, value]
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLength, hS.lengthRead,
+      State.set?_eq_update, hParams, hLocals, s1, s2, s3]
+  have hn : (UInt64.ofNat sizes.size).toNat = sizes.size := UInt64.toNat_ofNat_of_lt' hSize64
+  refine (Stmt.build_spec (n := UInt64.ofNat sizes.size)
+    (fun j => if j = k then value else sizes[j.toNat]!) hMemory32 hImports hAlloc
+    (by decide) (by decide) (by simp [s3, s2, s1, hParams, hLocals]) hHeap
+    (by rw [hn]; exact hRoom) ⟨s3, by simp [Expr.eval, s3, s2, s1, hParams, hLocals]⟩ ?_).mono
+      (fun _ _ h => h) ?_
+  · intro j store state hj hAt hFrame hIndex
+    have hState : state.params.length = 3 ∧ state.locals.length = 7 := by
+      rw [hFrame.params, hFrame.locals]; simp [s3, s2, s1, hParams, hLocals]
+    have h0 : state.get 0 = some (.i64 ps) := (hFrame.get 0 (by decide) (by decide)).trans
+      (by simp [s3, s2, s1, hGet0])
+    have h3 : state.get 3 = some (.i64 k) := (hFrame.get 3 (by decide) (by decide)).trans
+      (by simp [s3, s2, s1, hParams, hLocals])
+    have h4 : state.get 4 = some (.i64 value) := (hFrame.get 4 (by decide) (by decide)).trans
+      (by simp [s3, s2, s1, hParams, hLocals])
+    by_cases hjk : UInt64.ofNat j = k
+    · simp [Expr.eval, hIndex, h3, h4, hjk]
+    · simp [Expr.eval, hIndex, h3, hjk, Expr.readValue_at (hAt ps sizes hSizes), h0,
+        State.set?_eq_update, hState.1, hState.2]
+  · rintro store state ⟨ptr, -, hPtr, hAt, hOwned, hTop, hPages, hKeep⟩
+    refine ⟨_, hAt, ⟨_, _, rfl, ⟨ps, rfl, hKeep ps sizes hSizes⟩, rfl⟩,
+      le_of_le_of_eq hTop (by simp [fillNeed, hn]), le_of_le_of_eq hPages (by simp [fillNeed, hn]),
+      ptr, state,
+      by simp [fillLevel.ir, Func.scratch, Expr.eval, hPtr], ptr, rfl, ?_⟩
+    rw [fillTuple, LeanExe.Examples.Clob.fillLevel, set!_eq_build sizes k value hSize64]
+    exact hOwned
+
+/-- `encode` succeeds on `fillLevel.module`, and its bytes decode to a module that
+computes `fillLevel` exactly, returning a new array the caller owns. -/
+theorem fillLevel_bytes : ∃ bytes, Encoding.encode fillLevel.module = .ok bytes ∧
+    ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 0 fillTuple fillNeed := by
+  obtain ⟨bytes, success, decoded⟩ :=
+    Encoding.round_trip fillLevel.module (by decide) (by decide +kernel)
+  exact ⟨bytes, success, fillLevel.module, decoded, fillLevel_implements⟩
 
 end Project.Clob
