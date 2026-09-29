@@ -667,6 +667,30 @@ mutual
           let ir : IRExpr .u64 :=
             .ite (.eq (.get index) (.get kLocal)) (.get vLocal) (.read arrayLocal (.get index))
           return (ir, [mkHint loc (exprLength ir) "set element" source])
+    | (``Array.insertIdx!, #[element, array, position, value]) =>
+        unless ← isUInt64 element do throwError "unsupported array element type in {source}"
+        let some arrayLocal := ctx.arrays.lookup array.consumeMData
+          | throwError "`insertIdx!` must be applied to an array variable: {source}"
+        let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
+          | throwError "an `insertIdx!` position must be `i.toNat` for a UInt64 `i`: {source}"
+        let (kIR, kHints) ← translateValue ctx ⟨[], 0⟩ k
+        let kLocal ← fresh .u64 "insert position"
+        let kStmt := Project.IR.Stmt.assign kLocal kIR
+        pushStmt kStmt (mkHint ⟨[], 0⟩ (stmtLength kStmt) "insert position" (← sourceOf k) :: kHints)
+        let (vIR, vHints) ← translateValue ctx ⟨[], 0⟩ value
+        let vLocal ← fresh .u64 "insert value"
+        let vStmt := Project.IR.Stmt.assign vLocal vIR
+        pushStmt vStmt (mkHint ⟨[], 0⟩ (stmtLength vStmt) "insert value" (← sourceOf value) :: vHints)
+        let size ← sizeOf arrayLocal
+        -- `insertIdx!` past the end panics and returns the empty array.
+        let count : IRExpr .u64 :=
+          .ite (.leU (.get kLocal) (.get size)) (.bin .add (.get size) (.const 1)) (.const 0)
+        emitBuild ctx source "array insert" count [] fun index loc =>
+          let ir : IRExpr .u64 :=
+            .ite (.ltU (.get index) (.get kLocal)) (.read arrayLocal (.get index))
+              (.ite (.eq (.get index) (.get kLocal)) (.get vLocal)
+                (.read arrayLocal (.bin .sub (.get index) (.const 1))))
+          return (ir, [mkHint loc (exprLength ir) "insert element" source])
     | (``LeanExe.build, #[element, count, f]) =>
         unless ← isUInt64 element do throwError "unsupported array element type in {source}"
         let (countIR, countHints) ← translateValue ctx ⟨[], 0⟩ count
@@ -675,6 +699,26 @@ mutual
             translateValue ({ ctx with foldable := false }.bind i [(index, .u64)]) loc
               (mkApp f i).headBeta
     | _ => throwError "unsupported array: {source}"
+
+  /-- Translates a result term of type `type` to one result expression per
+  component, each with hints relative to its own code: a pair gives the results of
+  its components, an array a new array's pointer, and a scalar its value. -/
+  partial def translateResults (ctx : Ctx) (term type : Lean.Expr) :
+      CompileM (List (Σ type, IRExpr type) × List (List Hint)) :=
+    peel ctx term fun ctx term => do
+      let type ← whnfR type
+      if type.isAppOfArity ``Prod 2 then
+        let (``Prod.mk, #[first, second, a, b]) := term.getAppFnArgs
+          | throwError "a pair result must be a pair: {← sourceOf term}"
+        let (aResults, aHints) ← translateResults ctx a first
+        let (bResults, bHints) ← translateResults ctx b second
+        return (aResults ++ bResults, aHints ++ bHints)
+      if ← isUInt64Array type then
+        let array ← translateArray ctx term
+        let ir : IRExpr .u64 := .get array
+        return ([⟨.u64, ir⟩], [[mkHint ⟨[], 0⟩ (exprLength ir) "array result" (← sourceOf term)]])
+      let (result, hints) ← translateAs ctx ⟨[], 0⟩ (← scalarTypeOf type) term
+      return ([result], [hints])
 
   /-- Translates the array literal `term` with `elements` to an allocation and
   stores into a fresh local, which it returns.  Folds in the elements run first. -/
@@ -788,13 +832,14 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
     let resultType ← inferType body
     let arrayResult ← isUInt64Array resultType
     let floatResult ← isFloat resultType
-    unless arrayResult || floatResult || (← isUInt64 resultType) do
-      throwError "the result of {declName} is not UInt64, Float, or Array UInt64"
+    let pairResult := (← whnfR resultType).isAppOfArity ``Prod 2
+    unless arrayResult || floatResult || pairResult || (← isUInt64 resultType) do
+      throwError "the result of {declName} is not UInt64, Float, Array UInt64, or a pair"
     let paramNames ← params.toList.mapM fun p => return (← p.fvarId!.getUserName).toString
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
     if recursive then
       unless arrays.isEmpty && floatArrays.isEmpty && floats.isEmpty && !arrayResult &&
-          !floatResult do
+          !floatResult && !pairResult do
         throwError "a recursive definition may take and return only UInt64: {declName}"
       let ctx : Ctx :=
         { self := declName, params, words, floats, arrays, floatArrays, foldable := false }
@@ -817,21 +862,18 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
     else
       let ctx : Ctx :=
         { self := declName, params, words, floats, arrays, floatArrays, foldable := true }
-      let translate : CompileM ((Σ type, IRExpr type) × List Hint) :=
-        peel ctx body fun ctx body =>
-        if arrayResult then do
-          let array ← translateArray ctx body
-          let ir : IRExpr .u64 := .get array
-          return (⟨.u64, ir⟩,
-            [mkHint ⟨[], 0⟩ (exprLength ir) "array result" (← sourceOf body)])
-        else translateAs ctx ⟨[], 0⟩ (if floatResult then .f64 else .u64) body
-      let ((result, resultHints), prelude) ← translate.run { base := params.size }
+      let ((results, resultHints), prelude) ←
+        (translateResults ctx body resultType).run { base := params.size }
+      -- Each result's code follows the body and the earlier results.
+      let (_, shifted) := (results.zip resultHints).foldl (init := (prelude.length, []))
+        fun (offset, hints) (⟨_, ir⟩, own) =>
+          (offset + exprLength ir, hints ++ own.map (Hint.shift offset))
       let func : Func :=
         { params := paramTypes.toList, vars := prelude.vars.toList
-          body := seqAll prelude.stmts.toList, results := [result] }
+          body := seqAll prelude.stmts.toList, results }
       let hints : Hints :=
         { locals := paramNames.zipIdx ++ prelude.names.toList
-          nodes := prelude.hints.toList ++ resultHints.map (Hint.shift prelude.length) }
+          nodes := prelude.hints.toList ++ shifted }
       return (func, hints)
 
 deriving instance ToExpr for U64Op

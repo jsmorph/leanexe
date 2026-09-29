@@ -16,4 +16,10 @@ def marketBuy (askPrices askSizes : Array UInt64) (qty : UInt64) : Array UInt64 
 def fillLevel (sizes : Array UInt64) (k amount : UInt64) : Array UInt64 :=
   sizes.set! k.toNat (sizes[k.toNat]! - amount)
 
+/-- The book side with a new level of `size` at `price` inserted at position `k`,
+as its prices and its sizes. -/
+def insertLevel (prices sizes : Array UInt64) (k price size : UInt64) :
+    Array UInt64 × Array UInt64 :=
+  (prices.insertIdx! k.toNat price, sizes.insertIdx! k.toNat size)
+
 end LeanExe.Examples.Clob

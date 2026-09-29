@@ -18928,3 +18928,33 @@ native Lean on 40 inputs, and a host session that releases the result and the
 input ends with two allocations, two releases, and two frees.
 
 - [x] CLOB 2: `fillLevel`.
+
+## 2026-09-29: CLOB 3, insertLevel and several results
+
+`insertLevel prices sizes k price size` returns
+`(prices.insertIdx! k.toNat price, sizes.insertIdx! k.toNat size)`.
+
+Talos returns results with the top of the stack first, so a pair `(a, b)` comes
+back as `[b, a]`.  `Implements` now states the owned result as
+`values.reverse`, in declaration order, as it already did for arguments.  `Func`
+holds a list of result expressions, evaluated by `Expr.evalResults`, and every
+program proof changed in its last step; all modules kept their bytes.
+
+`insertIdx!_eq_build` equates `insertIdx!` with the copying template.  When the
+position is past the end, `insertIdx!` panics and returns the default, the empty
+array, and the compiled count is 0 in that case.  Chaining two templates needed
+runtime lemmas that did not exist: `Heap.Owned.frame`, `.allocate`,
+`.disjoint_allocated`, and `.writesWithin`, adapted from the borrowed-array
+lemmas and extended to the object header, and `Heap.Room.after_allocate` with
+`allocateStore_memoryCaps`.  `build_spec` now also keeps earlier owned arrays and
+the memory limits.  One proof attempt failed because the arguments appeared as
+`(prices, sizes, …).1`, which `omega` did not identify with `prices`; restating
+the borrowed facts with `change` fixed it.
+
+The host gained a `list:K1,K2,…` result kind.  `insertLevel.wasm` (1,672 bytes)
+matches native Lean on 39 inputs, and a session that releases both results and
+both inputs ends with four allocations, four releases, and four frees.
+`insertLevel_implements` takes 137 lines.
+
+- [x] CLOB 3: `insertLevel`.
+- [ ] CLOB 4: `addBid`, a search loop and a conditional result.

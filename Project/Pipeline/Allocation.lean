@@ -386,6 +386,29 @@ theorem Heap.allocate_top {heap : Heap} {store : Store Unit} {m : Module} {need 
   rw [allocatedTop_toNat heap.top need heap.free (fun _ => hRoom.bump.1)]
   split <;> omega
 
+
+theorem Heap.allocateStore_memoryCaps (heap : Heap) (store : Store Unit) (need stride : UInt64) :
+    (heap.allocateStore store need stride).memoryCaps = store.memoryCaps := by
+  unfold Heap.allocateStore FixedArrayAllocateNone.counted FixedArrayAllocate.allocated
+  split <;> simp [fixedArrayAllocFitStore, FixedArrayBump.allocated, fixedArrayAllocBumpStore,
+    MemoryGrowth.ensured] <;> split <;> rfl
+
+/-- Room for an allocation followed by `rest` more bytes leaves room for `rest`
+bytes after the allocation, in any store with the same memory limits. -/
+theorem Heap.Room.after_allocate {heap : Heap} {store store' : Store Unit} {m : Module}
+    {need : UInt64} {rest : Nat} (hRoom : heap.Room store m (48 + need.toNat + rest))
+    (hCaps : store'.memoryCaps = store.memoryCaps) :
+    (heap.allocate need).Room store' m rest := by
+  have hAddress := hRoom.address
+  have hCap := hRoom.cap
+  have hTop := Heap.allocate_top (heap := heap) (store := store) (m := m) (need := need)
+    ⟨by omega, by omega⟩
+  refine ⟨by omega, ?_⟩
+  have hSame : store'.memoryCap m 0 = store.memoryCap m 0 := by
+    unfold Store.memoryCap; rw [hCaps]
+  rw [hSame]
+  omega
+
 theorem Heap.allocate_pages (heap : Heap) (store : Store Unit) (need stride : UInt64) :
     (heap.allocateStore store need stride).mem.pages ≤
       max store.mem.pages ((heap.top.toNat + (48 + need.toNat) + 65535) / 65536) := by
@@ -427,6 +450,104 @@ theorem Heap.Borrowed.writesWithin {heap : Heap} {store store' : Store Unit}
     heap.Borrowed store' ptr words := by
   refine ⟨arrayAt_frame h.values hWrites.pages.ge (fun address hLow hHigh => hWrites.bytes address ?_),
     h.below, h.separate⟩
+  simp only [regionsDisjoint] at hDisjoint
+  omega
+
+theorem header_address {ptr : UInt64} (k : UInt64) (hk : k.toNat ≤ 48)
+    (hBase : 48 ≤ ptr.toNat) (hFit : ptr.toNat < 4294967296) :
+    (ptr - k).toUInt32.toNat = ptr.toNat - k.toNat := by
+  rw [Memory.toUInt32_toNat, UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le]; omega)]
+  omega
+
+/-- An owned object keeps its header, capacity, and words when the page count does
+not shrink and the bytes of its region, header included, are unchanged.  The
+object must lie below the new heap's `top` and outside its free blocks. -/
+theorem Heap.Owned.frame {heap heap' : Heap} {store store' : Store Unit} {ptr : UInt64}
+    {words : Array UInt64} (h : heap.Owned store ptr words)
+    (hPages : store.mem.pages ≤ store'.mem.pages)
+    (hBytes : ∀ address, ptr.toNat - 48 ≤ address → address < ptr.toNat + capacityAt store ptr →
+      store'.mem.bytes address = store.mem.bytes address)
+    (hBelow : ptr.toNat + capacityAt store ptr ≤ heap'.top.toNat)
+    (hSeparate : ∀ node ∈ heap'.free,
+      regionsDisjoint node.region (ptr.toNat - 48, 48 + capacityAt store ptr)) :
+    heap'.Owned store' ptr words := by
+  have hBase := h.base
+  have hAddress := h.address
+  have hWords := h.capacity
+  have hHeader : ∀ k : UInt64, k.toNat ≤ 48 → 8 ≤ k.toNat →
+      store'.mem.read64 (ptr - k).toUInt32 = store.mem.read64 (ptr - k).toUInt32 :=
+    fun k hk h8 => Memory.read64_congr _ fun i hi => by
+      rw [header_address k hk (by omega) (by omega)]
+      exact hBytes _ (by omega) (by omega)
+  have hCapacity : capacityAt store' ptr = capacityAt store ptr := by
+    unfold capacityAt
+    rw [hHeader 32 (by decide) (by decide)]
+  refine ⟨arrayAt_frame h.values hPages fun address hLow hHigh => hBytes address (by omega)
+      (by omega), hBase, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [hHeader 48 (by decide) (by decide)]; exact h.magic
+  · rw [hHeader 40 (by decide) (by decide)]; exact h.count
+  · rw [hCapacity]; exact hWords
+  · rw [hHeader 24 (by decide) (by decide)]; exact h.kind
+  · rw [hHeader 16 (by decide) (by decide)]; exact h.width
+  · rw [hHeader 8 (by decide) (by decide)]; exact h.childMask
+  · rw [hCapacity]; exact hAddress
+  · rw [hCapacity]; exact hBelow
+  · rw [hCapacity]; exact hSeparate
+
+theorem Heap.Owned.allocate {heap : Heap} {store : Store Unit} {m : Module}
+    {need ptr : UInt64} {words : Array UInt64} (stride : UInt64)
+    (h : heap.Owned store ptr words) (hHeap : heap.At store)
+    (hRoom : heap.Room store m (48 + need.toNat)) :
+    (heap.allocate need).Owned (heap.allocateStore store need stride) ptr words := by
+  have hBump : takeFirstFitFrom 0 need heap.free = none →
+      heap.top.toNat + 48 + need.toNat ≤ 4294967296 := fun _ => hRoom.bump.1
+  have hBase := h.base
+  have hBelow := h.below
+  refine h.frame (allocated_pages_ge store heap.top need stride heap.free)
+    (fun address hLow hHigh => allocated_bytes_outside store heap.top need stride heap.free
+      (ptr.toNat - 48) (48 + capacityAt store ptr) hHeap.freeList
+      (fun node hNode => ?_) (by omega) hBump address hLow (by omega)) ?_
+    fun node hNode => h.separate node (allocatedNodes_mem need heap.free node hNode)
+  · have := h.separate node hNode
+    unfold regionsDisjoint at this ⊢
+    omega
+  · show ptr.toNat + capacityAt store ptr ≤ (allocatedTop heap.top need heap.free).toNat
+    rw [allocatedTop_toNat heap.top need heap.free hBump]
+    split <;> omega
+
+/-- An owned object lies outside the block the next allocation returns. -/
+theorem Heap.Owned.disjoint_allocated {heap : Heap} {store : Store Unit} {ptr : UInt64}
+    {words : Array UInt64} (h : heap.Owned store ptr words) (hHeap : heap.At store)
+    (need : UInt64) :
+    regionsDisjoint (ptr.toNat - 48, 48 + capacityAt store ptr)
+      ((FixedArrayAllocate.root heap.top need heap.free).toNat - 48,
+        48 + (allocatedCapacity need heap.free).toNat) := by
+  have hBase := h.base
+  cases hTake : takeFirstFitFrom 0 need heap.free with
+  | some choice =>
+    have := h.separate _ (takeFirstFitFrom_some_mem hTake)
+    simp only [FixedArrayAllocate.root, allocatedCapacity, hTake, FreeNode.region,
+      regionsDisjoint] at this ⊢
+    omega
+  | none =>
+    have h48 : (48 : UInt64).toNat = 48 := rfl
+    have := h.below
+    have := hHeap.top
+    have := hHeap.pages
+    simp only [FixedArrayAllocate.root, allocatedCapacity, hTake, regionsDisjoint,
+      UInt64.toNat_add, h48, Nat.reducePow]
+    omega
+
+theorem Heap.Owned.writesWithin {heap : Heap} {store store' : Store Unit}
+    {ptr root capacity : UInt64} {words : Array UInt64} (h : heap.Owned store ptr words)
+    (hDisjoint : regionsDisjoint (ptr.toNat - 48, 48 + capacityAt store ptr)
+      (root.toNat - 48, 48 + capacity.toNat))
+    (hRoot : 48 ≤ root.toNat)
+    (hWrites : WritesWithin store store' root.toNat capacity.toNat) :
+    heap.Owned store' ptr words := by
+  have hBase := h.base
+  refine h.frame hWrites.pages.ge (fun address hLow hHigh => hWrites.bytes address ?_) h.below
+    h.separate
   simp only [regionsDisjoint] at hDisjoint
   omega
 

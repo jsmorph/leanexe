@@ -64,6 +64,50 @@ theorem set!_eq_build (xs : Array UInt64) (k v : UInt64) (hSize : xs.size < 2 ^ 
     · have : UInt64.ofNat j ≠ k := fun h => hk (by rw [← h, hj64])
       simp [hk, this]
 
+/-- `insertIdx!` is the copying template with one more element, or an empty array
+when the position is past the end, where `insertIdx!` panics and returns the
+default. -/
+theorem insertIdx!_eq_build (xs : Array UInt64) (k v : UInt64) (hSize : xs.size + 1 < 2 ^ 64) :
+    xs.insertIdx! k.toNat v =
+      LeanExe.build (if k.toNat ≤ xs.size then UInt64.ofNat (xs.size + 1) else 0) fun j =>
+        if j < k then xs[j.toNat]! else if j = k then v else xs[(j - 1).toNat]! := by
+  have hU : UInt64.size = 2 ^ 64 := rfl
+  by_cases hk : k.toNat ≤ xs.size
+  · have hn : (UInt64.ofNat (xs.size + 1)).toNat = xs.size + 1 :=
+      UInt64.toNat_ofNat_of_lt' (by omega)
+    simp only [Array.insertIdx!, hk, dite_true, if_true]
+    apply Array.ext
+    · rw [Array.size_insertIdx hk, build_size, hn]
+    · intro j hj _
+      rw [build_getElem, Array.getElem_insertIdx hk]
+      have hj' : j < xs.size + 1 := by simpa [Array.size_insertIdx hk] using hj
+      have hj64 : (UInt64.ofNat j).toNat = j := UInt64.toNat_ofNat_of_lt' (by omega)
+      have hLess : UInt64.ofNat j < k ↔ j < k.toNat := by
+        rw [UInt64.lt_iff_toNat_lt, hj64]
+      have hEq : UInt64.ofNat j = k ↔ j = k.toNat := by
+        constructor
+        · intro h; rw [← h, hj64]
+        · intro h; rw [h, UInt64.ofNat_toNat]
+      by_cases h1 : j < k.toNat
+      · simp only [h1, dite_true, hLess.mpr h1, if_true, hj64, getElem!_pos xs j (by omega)]
+      · by_cases h2 : j = k.toNat
+        · simp [h2, hLess, hEq]
+        · have hSub : (UInt64.ofNat j - 1).toNat = j - 1 := by
+            rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, hj64]; simp; omega),
+              hj64]
+            simp
+          have hn1 : ¬UInt64.ofNat j < k := fun h => h1 (hLess.mp h)
+          have hn2 : UInt64.ofNat j ≠ k := fun h => h2 (hEq.mp h)
+          simp only [h1, h2, dite_false, hn1, hn2, if_false, hSub,
+            getElem!_pos xs (j - 1) (by omega)]
+  · simp only [Array.insertIdx!, hk, dite_false, if_false]
+    apply Array.ext
+    · simp [build_size]
+      rfl
+    · intro j hj
+      have hEmpty : (default : Array UInt64).size = 0 := rfl
+      exact absurd hj (by simp [panicWithPosWithDecl, panic, panicCore, hEmpty])
+
 /-- Borrowed arrays stay laid out while a new block is written: they lie outside
 it. -/
 theorem borrowed_at_after_writes {heap : Heap} {initial current : Store Unit} {m : Module}
@@ -84,7 +128,8 @@ theorem borrowed_at_after_writes {heap : Heap} {initial current : Store Unit} {m
 /-- The copying template allocates `8 * (n + 1)` bytes, stores the length `n`, and
 stores `f i` at each index `i`, leaving the pointer in `dst`.  The result is an
 owned array equal to `LeanExe.build n f`, the allocator invariant holds for
-`heap.allocate`, and every array borrowed before stays borrowed.  The element
+`heap.allocate`, every array borrowed before stays borrowed, and the memory limits
+are unchanged.  The element
 expression may read any borrowed array. -/
 theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element : Expr .u64}
     {initial : Store Unit} {before : State} {heap : Heap} {n : UInt64} (f : UInt64 → UInt64)
@@ -109,8 +154,11 @@ theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element :
           heap.top.toNat + (48 + 8 * (n.toNat + 1)) ∧
         store.mem.pages ≤ max initial.mem.pages
           ((heap.top.toNat + (48 + 8 * (n.toNat + 1)) + 65535) / 65536) ∧
-        ∀ p ws, heap.Borrowed initial p ws →
-          (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))).Borrowed store p ws) := by
+        (∀ p ws, heap.Borrowed initial p ws →
+          (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))).Borrowed store p ws) ∧
+        (∀ p ws, heap.Owned initial p ws →
+          (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))).Owned store p ws) ∧
+        store.memoryCaps = initial.memoryCaps) := by
   simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
     List.nodup_nil, not_false_eq_true, and_true] at hLocals
   simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hBelow
@@ -273,7 +321,7 @@ theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element :
       refine ⟨by rw [hWrites.1], hWrites.2.1, fun address hOutside => hWrites.2.2 address ?_⟩
       omega
     refine ⟨ptr, hFrame, hDstGet, hHeap1.writesWithin hBlock hWithin,
-      (hBlock.writesWithin hWithin).owned hPrefix.complete (by omega), ?_, ?_, ?_⟩
+      (hBlock.writesWithin hWithin).owned hPrefix.complete (by omega), ?_, ?_, ?_, ?_, ?_⟩
     · have := Heap.allocate_top hRoomNeed
       omega
     · have := Heap.allocate_pages heap initial need 1
@@ -284,5 +332,27 @@ theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element :
       have hDisjoint := hBorrowed.disjoint_allocated hHeap need
       rw [hPtrDef] at hDisjoint
       exact (hBorrowed.allocate 1 hHeap hRoomNeed).writesWithin hDisjoint hWithin
+    · intro p ws hOwned
+      have hDisjoint := hOwned.disjoint_allocated hHeap need
+      rw [hPtrDef] at hDisjoint
+      have hAllocated := hOwned.allocate 1 hHeap hRoomNeed
+      have hSameCapacity : capacityAt storeA p = capacityAt initial p := by
+        have hHeaderBytes := hAllocated.capacity
+        unfold capacityAt
+        congr 1
+        exact Memory.read64_congr _ fun i hi => by
+          have hBase := hOwned.base
+          have hAddress := hOwned.address
+          have h32 : (32 : UInt64).toNat = 32 := rfl
+          rw [header_address 32 (by decide) (by omega) (by omega), h32]
+          exact allocated_bytes_outside initial heap.top need 1 heap.free (p.toNat - 48)
+            (48 + capacityAt initial p) hHeap.freeList (fun node hNode => by
+              have := hOwned.separate node hNode
+              unfold regionsDisjoint at this ⊢
+              omega) (by have := hOwned.below; omega) (fun _ => hRoomNeed.bump.1) _
+            (by omega) (by omega)
+      exact hAllocated.writesWithin (by rw [hSameCapacity]; exact hDisjoint) (by omega) hWithin
+    · rw [hWrites.1]
+      exact heap.allocateStore_memoryCaps initial need 1
 
 end Project.IR

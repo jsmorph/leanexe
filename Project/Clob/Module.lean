@@ -5,5 +5,6 @@ namespace Project.Clob
 
 leanexe_compile marketBuy := LeanExe.Examples.Clob.marketBuy
 leanexe_compile fillLevel := LeanExe.Examples.Clob.fillLevel
+leanexe_compile insertLevel := LeanExe.Examples.Clob.insertLevel
 
 end Project.Clob
