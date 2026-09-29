@@ -18243,4 +18243,28 @@ theorem per compilation, with strict shader execution and host transfers as
 premises.  The same design could cover kernels through a kernel IR, a small
 translation to WGSL, and per-kernel proofs, at the cost of trusting the
 repository's WGSL semantics, the browser's WGSL compiler, the GPU, and host
-transfers.  `deslop.md` records the details, and the timing is undecided.
+transfers.  `deslop.md` records the details.
+
+### Decisions on the open items
+
+The user decided the seven open items on 2026-09-28, each as recommended, and
+`deslop.md` records each decision with its reason.  A new, small compiler
+translates Lean to the IR, starting with the constructs `sumCount` uses.
+Deletion happens in two stages: an approved inventory first, and the old
+compiler after the new pipeline proves `sumCount`.  Programs use Lean's `Float`
+and `Float32`, `neg`, `abs`, and `ofBits` get a NaN check, `min` and `max`
+compile as a comparison and a select, and the IR includes `f32` and `f64` from
+the start.  `LeanExe.Runtime.release` and the counters leave the source dialect,
+and the counters stay as exported globals.  Hints go into a WASM custom section
+later, and the Lean hint data is keyed to decoded-module positions now.  I/O
+uses a pure step function with a fixed adapter, and the `ByteIO` monad is
+dropped.  `origin/wgsl` stays unmerged as a reference, and the kernel path waits
+until the Wasm path has proved `sumCount` and one float program.
+
+The user then asked for iterative development with frequent end-to-end results
+and no big bang.  The plan in `deslop.md` is now a sequence of iterations, each
+taking one program from Lean source to bytes, a proved `Implements`, a Wasmtime
+comparison with native Lean, an axiom audit, and a commit.  The programs are
+scalar arithmetic, a tail-recursive loop, `sumCount`, a program with
+temporaries, a step-function I/O program, a binary64 program, and a program over
+a recursive value.  Each iteration adds only what its program needs.
