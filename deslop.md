@@ -12,12 +12,12 @@ The compiler is not verified at first.  Its rules are verified one at a time, an
 
 | Component | Design | State |
 |---|---|---|
-| IR | Embedded in Lean: expressions over locals, assignment, `if`, `while`, and later calls and loads and stores to linear memory.  It has no arrays, structures, or ownership. | Expressions (reused from `ProofKit/ScalarTransition.lean`) and statements exist. |
-| Translation | `compile : IR → Wasm.Module`, with one `wp` rule per construct proved once against Talos.  The IR means what its compiled code does. | `Expr.program_spec`, and a `Triple` rule for each statement. |
-| Compiler | Lean to IR, reading each definition's unfolding equation.  Verifying a rule means proving that its template implements its source construct, stated in terms of Lean's own functions, so no `Lean.Expr` semantics is trusted. | `UInt64` arithmetic, comparisons, `if`, and tail recursion.  The tail-recursion rule is proved. |
+| IR | Embedded in Lean: expressions over locals, assignment, `if`, `while`, loads, and later calls and stores to linear memory.  It has no arrays, structures, or ownership. | Expressions (reused from `ProofKit/ScalarTransition.lean`) and statements, including `load`, exist. |
+| Translation | `compile : IR → Wasm.Module`, with one `wp` rule per construct proved once against Talos.  The IR means what its compiled code does. | `Expr.program_spec`, a `Triple` rule for each statement, and the frame notion `State.Frame` with `Expr.eval_frame`. |
+| Compiler | Lean to IR, reading each definition's unfolding equation.  Verifying a rule means proving that its template implements its source construct, stated in terms of Lean's own functions, so no `Lean.Expr` semantics is trusted. | `UInt64` arithmetic, comparisons, `if`, tail recursion, `Array UInt64` parameters, and `Array.foldl` over them.  The tail-recursion and fold rules are proved. |
 | Hints | Untrusted annotations: the rule behind each fragment, its source term, its instruction path in the decoded module, and the name of each local.  A wrong hint costs proof time and cannot produce a false theorem. | Emitted for every IR node. |
-| Runtime | `alloc`, `retain`, and `release` with reference counting, specified and proved once.  The compiler places `retain` and `release`, and per-program proofs check the placement until a rule lemma covers it. | Not started; every module already carries a memory and the six runtime globals. |
-| Statement | `Implements`, over a `Represent` class that says how a value appears as WASM values and heap data. | Instances for `UInt64`, tuples of scalars, and `Array UInt64`. |
+| Runtime | `alloc`, `retain`, and `release` with reference counting, specified and proved once.  The compiler places `retain` and `release`, and per-program proofs check the placement until a rule lemma covers it. | The three functions are in every module and pass host tests.  No specification is proved, and compiled code does not call them yet. |
+| Statement | `Implements`, over a `Represent` class that says how a value appears as WASM values and heap data. | Instances for `UInt64`, tuples of scalars, and `Array UInt64`.  `Func.implements` takes arguments of any `Represent` type and a `UInt64` result. |
 | Bytes | The encoder, `decode_encode`, and one decoder. | Done. |
 | Floating point | The WebAssembly deterministic profile.  See "Floating point". | Binary32 equality proofs exist. |
 
@@ -27,23 +27,25 @@ The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O a
 
 | File | Role |
 |---|---|
-| `LeanExe/Examples/Scale.lean`, `Gcd.lean`, `SumCount.lean` | Source programs.  `SumCount` waits for iteration 3. |
+| `LeanExe/Examples/Scale.lean`, `Gcd.lean`, `SumArray.lean`, `SumCount.lean` | Source programs.  `SumCount` waits for iteration 3c. |
 | `LeanExe/Float32.lean`, `Signed32.lean` | Raw-bit wrappers that the binary32 equality proofs state their results about. |
-| `Project/IR/Stmt.lean` | IR statements, their compiled code, `Triple`, and one rule per statement plus `Triple.mono`. |
+| `Project/IR/Stmt.lean` | IR statements, their compiled code, `Triple`, one rule per statement, `Triple.mono`, `Triple.of_forall`, and `State.Frame`, which says a state changed only given locals and scratch locals. |
 | `Project/IR/Function.lean` | `Func` (parameters, compiler variables, body, result) and `compile`, which gives each module a memory, the runtime globals, and an export. |
-| `Project/IR/Correct.lean` | `Func.implements`: a body that keeps the store and ends where the result evaluates to `f x` gives `Implements`. |
+| `Project/IR/Correct.lean` | `Func.implements`: a body that keeps the store and ends where the result evaluates to `f x` gives `Implements`, for arguments of any `Represent` type. |
 | `Project/IR/TailLoop.lean` | `Func.tail_implements`, the rule lemma for tail recursion, and `TailStep`, its obligation about one loop iteration. |
+| `Project/IR/Fold.lean` | `Stmt.fold`, the compiler's template for `Array.foldl`, and its rule lemma `Stmt.fold_spec`. |
 | `Project/IR/Hint.lean` | Hint types. |
 | `Project/Compiler/Scalar.lean`, `Command.lean` | The compiler and `leanexe_compile p := f`, which adds `p.ir`, `p.module := compile p.ir name`, and `p.hints`. |
 | `Project/Pipeline/Implements.lean` | `Represent`, `Scalar`, `Implements`, `Satisfies`, and `Implements.transfer`. |
 | `Project/Pipeline/Runtime.lean` | The heap state and the invariants `Heap.At`, `Heap.Borrowed`, `Heap.Owned`, and `Heap.Room`. |
 | `Project/Pipeline/Allocation.lean` | What one array allocation guarantees, kept for iteration 3. |
+| `Project/Runtime/` | `Defs.lean`, the code of `alloc`, `retain`, and `release`; `FreeList.lean`, the free-list layout that `Heap.At` uses; and `Tree.lean`, the old model of the structure a `release` frees. |
 | `Project/Pipeline/Emit.lean` | Script: evaluates a module constant, encodes it, checks that `decode` returns it, and writes the file. |
 | `Project/Encoding/` | The encoder, the decoder, `decode_encode`, and `DecodeTest.lean`, a script that runs the decoder over the testsuite. |
 | `Project/ProofKit/` | 65 modules of general lemmas: memory, arrays, allocation, frames, `ScalarTransition`, and the binary32 equality chain. |
-| `Project/Scale/`, `Project/Gcd/` | Each program's `leanexe_compile` and theorems. |
+| `Project/Scale/`, `Project/Gcd/`, `Project/SumArray/` | Each program's `leanexe_compile` and theorems. |
 | `Project/LTG/Check.lean` | Script: imports every module the LTG entries list and reports declarations that do not exist. |
-| `ltg/` | The LTG knowledge base: 11 entries, each an `entry.json` and a `README.md`. |
+| `ltg/` | The LTG knowledge base: 12 entries, each an `entry.json` and a `README.md`. |
 
 ## Proved
 
@@ -51,15 +53,17 @@ The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O a
 
 `gcd_implements` states that `gcd.module` implements Euclid's algorithm on every pair of `UInt64` arguments.  The compiler produced a `while` loop over a `done` flag whose body branches on `b = 0`.  The proof applies `Func.tail_implements` and proves only `gcd_step`, one iteration, in 29 lines; the first proof, which gave the invariant, state measure, entry, and exit directly to `Stmt.while_spec`, took 63 lines by the same count (non-blank, non-comment).
 
-`scale_bytes` and `gcd_bytes` combine these with `decode_encode`.  All of these theorems, `Func.tail_implements`, and `decode_encode` depend only on `propext`, `Classical.choice`, and `Quot.sound`.
+`sumArray_implements` states that `sumArray.module` implements `sumArray xs = xs.foldl (· + ·) 0` on every borrowed `Array UInt64`.  The compiler produced an assignment of 0 to an accumulator followed by `Stmt.fold`, a loop that loads the length word and then each element.  The proof applies `Func.implements`, the assignment rule, and `Stmt.fold_spec`, and it takes 20 lines including the statement.  `Stmt.fold_spec` needs the array's layout in memory, which `Heap.Borrowed` provides, and an obligation that the fold body evaluates to `g a e`.
+
+`scale_bytes`, `gcd_bytes`, and `sumArray_bytes` combine these with `decode_encode`.  All of these theorems, `Func.tail_implements`, `Stmt.fold_spec`, and `decode_encode` depend only on `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Tested
 
-`scale.wasm` is 124 bytes with sha256 `907fdcf9ecdbbce9e87d4355502b27a1ae97c99ac9db9837c9ea3f617a7f8c1c`.  Wasmtime and native Lean both returned 9, 1, 6148914691236517205, 1, 1, and 1 for `(6, 7, 5)`, `(6, 7, 0)`, `(2^64-1, 2, 3)`, `(0, 0, 0)`, `(2^32, 2^32, 1)`, and `(2^64-1, 2^64-1, 2^64-1)`.
+Every module contains the runtime functions, so the sizes below are mostly runtime code.  `scale.wasm` is 1,283 bytes with sha256 `a63baf80c6b8bfe414659c38a26bbdc7cdf31ade6e92827cc5e635daaad89063`.  Wasmtime returned 9, 1, 6148914691236517205, 1, 1, and 1 for `(6, 7, 5)`, `(6, 7, 0)`, `(2^64-1, 2, 3)`, `(0, 0, 0)`, `(2^32, 2^32, 1)`, and `(2^64-1, 2^64-1, 2^64-1)`, the values native Lean returned.  `gcd.wasm` is 1,331 bytes with sha256 `3c1f9251d03d9c217670c4ba0e49d5e287fa2921022e3da733290e5e6c3e60c2`.  Wasmtime returned 6, 5, 5, 0, 1, 2^62, and 1 for `(48, 18)`, `(0, 5)`, `(5, 0)`, `(0, 0)`, the consecutive Fibonacci numbers `(12200160415121876738, 7540113804746346429)`, `(2^63, 2^62)`, and `(2^64-1, 2^64-59)`, the values native Lean returned.
 
-`gcd.wasm` is 172 bytes with sha256 `4a52c590974d9d3d3c060f3c915e6efdcdca9ca7f5b2f5da4a7e7455bc054011`.  Wasmtime and native Lean both returned 6, 5, 5, 0, 1, 2^62, and 1 for `(48, 18)`, `(0, 5)`, `(5, 0)`, `(0, 0)`, the consecutive Fibonacci numbers `(12200160415121876738, 7540113804746346429)`, `(2^63, 2^62)`, and `(2^64-1, 2^64-59)`.
+`sumArray.wasm` is 1,323 bytes with sha256 `15bbf18fa316ad97d49e7818bd6ed6e2ddee5b03f1f7365052061f6ec68ca4ff`.  With the host allocating the input through `alloc`, Wasmtime and native Lean both returned 6 for `[1, 2, 3]`, 1 for `[2^64-1, 2]`, 0 for `[]`, 60 for `[10, 20, 30]`, and 18029489283092536988 for the 1,000 elements `i * 0x9E3779B97F4A7C15 mod 2^64`.  The counters read one allocation and no retains, releases, or frees after each call, so the compiled code makes no runtime calls.  After the host released the input, they read one allocation, one release, and one free.
 
-`wasm-tools` validated both modules, and both hashes were unchanged after the workspace moved to the root.  The decoder testsuite run found all 210 valid modules in the encoder's subset equal to the reference and round-tripping, and it rejected all 670 binary malformed modules in the subset; 2,004 valid and 41 malformed modules fall outside the subset.
+`wasm-tools` validated all three modules.  Host tests of the runtime functions are recorded in `devnotes.md` under 2026-09-29.  The decoder testsuite run found all 210 valid modules in the encoder's subset equal to the reference and round-tripping, and it rejected all 670 binary malformed modules in the subset; 2,004 valid and 41 malformed modules fall outside the subset.
 
 ## Decisions
 
@@ -90,7 +94,11 @@ The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O a
 | The runtime is three functions in every module, `alloc`, `retain`, and `release`, reached by an IR call statement through Talos's `wp_call_tw`, and exported with the counters for hosts; `reset` is dropped.  `alloc` wraps the proved `FixedArrayAllocate.program`, which also counts the allocation, with size rounding.  `release` is new and non-recursive: a count that reaches zero puts the object on a pending list linked through its count field, and a loop decrements children, adds those that reach zero, and frees each block after its children.  `retain` is copied from the old runtime.  The magic-number check stays. | Garbage collection comes before arrays at the user's direction.  A recursive `release` uses one WASM stack frame per node.  The old `release` proofs cover the old recursive code, so the new `release` is proved from scratch with them as templates. |
 | Reference counts are specified locally: the caller describes the structure reachable from a released pointer, as the old tree model does, and `release`'s specification gives the effect for that description, including `Heap.At`.  No global count invariant. | The host holds references outside the theorem, so a global invariant cannot be established at the call boundary. |
 | A value that needs statements (a load or a loop) compiles to statements before its expression, placed inside the branch that needs them, never hoisted out of an `if`.  `Array.foldl` with a lambda and default bounds becomes a counted loop, `Nat.toUInt64 xs.size` a load of the length word, and an array literal of k elements an allocation of 48 + 8(k + 1) bytes followed by stores. | Hoisting a load out of a guarding branch can trap where Lean returns a value. |
-| A heap version of `Func.implements` takes a body `Triple` that ends with the result represented, the allocator invariant restored, and the arguments still borrowed. | The scalar version is its special case, and the bounds follow from `Heap.allocate_top` and `Heap.allocate_pages`. |
+| For now the compiler places a fold's statements only at the start of the function body, so it rejects a fold in a branch, in a fold body, or in a recursive definition. | Placement inside branches is added when a program needs it. |
+| `Stmt.fold` is a definition built from existing statements, and its rule lemma is stated about that definition.  The fold body is an expression, so a nested fold is rejected. | The IR keeps six constructors, and the lemma needs no new `wp` rule. |
+| Rule lemmas state what they leave unchanged with `State.Frame scratch writes before after`: the same numbers of parameters and locals, and the same value at every local below `scratch` outside `writes`.  A rule lemma takes a precondition that fixes the store and the state, and `Triple.of_forall` reaches that form from any precondition. | `State.Frame` is transitive, expressions preserve it (`Expr.eval_frame`), and the lengths let later assignments and scratch writes succeed. |
+| `Func.implements` takes arguments of any `Represent` type, and its body `Triple` may use `Heap.At` and the arguments' representation in the initial store.  A version whose result is allocated comes with 3b. | The scalar case needed no separate theorem; scalar callers use `Scalar.borrowed`. |
+| The compiler computes hint positions from code lengths, which do not depend on the scratch index, and no longer tracks the scratch index. | The number of compiler variables, and so the scratch index, is known only after translation. |
 | Iteration 3 runs in three steps.  3a: `sumArray xs = xs.foldl (· + ·) 0` with the fold rule's lemma, modules carrying the runtime functions for hosts, and no runtime specifications yet.  3b: `pairSum`, where compiled code allocates and releases a temporary, with the call statement and the specifications of `alloc` and of `release` for objects without children.  3c: `sumCount`, whose result the host owns and releases.  `retain`'s specification and the loop over children are proved when first used. | Each specification is proved in the iteration whose program uses it. |
 | `Heap.At` requires at most 65,536 pages, and `Heap.Borrowed` requires only that the input lies below `top` and outside every free block. | A 32-bit memory has at most 65,536 pages, and an earlier header condition existed only to fit a reused lemma. |
 
@@ -135,8 +143,12 @@ The user doubted that items 2 and 3 need work, and no work on them is planned.
 - [x] Iteration 1, scalar arithmetic: `scale`.
 - [x] Iteration 2, tail recursion: `gcd`, the rule lemma `Func.tail_implements`, `gcd` reproved with it, and the first LTG entry.
 - [x] Clean house: the old compiler, JavaScript tools, and old docs deleted, LTG checked by a Lean script, and one package at the root.
-- [ ] Iteration 3, arrays and allocation: `sumCount`.  It adds loads, stores, and calls, the runtime `alloc` with its specification, reusing `Pipeline/Allocation.lean` and ProofKit's allocation proofs, and compiler rules for `Array.foldl` and array literals.  Prove the fold rule's lemma, add it to LTG, prove `sumCount` again with it, and compare the two proofs.
-- [ ] Iteration 4, reference counting: a program with temporaries, such as `map` followed by `foldl`, with `retain` and `release` and a check of whether `release` recurses on the WASM stack.
+- [x] Runtime functions in every module, with host tests.
+- [x] Iteration 3a: `sumArray`, the `load` statement, `State.Frame`, `Func.implements` for `Represent` arguments, the compiler's fold rule, `Stmt.fold_spec`, and the `array-fold-loop` LTG entry.
+- [ ] Iteration 3b: `pairSum`, whose compiled code allocates and releases a temporary.  It adds the call and store statements and the specifications of `alloc` and of `release` for objects without children.
+- [ ] Iteration 3c: `sumCount`, whose result the host owns and releases, with array literals and `Nat.toUInt64 xs.size`.
+- [ ] Move `Expr`, `State`, and their lemmas from `ProofKit/ScalarTransition.lean` into `Project/IR/`, and delete the old IR there (its `Stmt`, `Stmt.eval`, and loop programs) with `ScalarFrame`, `ScalarConditional`, and `ScalarTransitionU64`, which only the old IR uses.  Four LTG entries list those modules, and the ten entries written for the old pipeline need review; `array-fold-prefix` still describes the old annotation checker.
+- [ ] Iteration 4, sharing: a program that shares a value, with `retain`'s specification.
 - [ ] Iteration 5, I/O: a step-function program with the trusted adapter.
 - [ ] Iteration 6, floating point: a binary64 program, after the binary64 equality proofs and the remaining float operations.  The binary64 proofs can proceed in parallel with earlier iterations.
 - [ ] Iteration 7, recursive values: a program over a list or tree, with recursive `release`.
@@ -153,6 +165,8 @@ tools/leanrun --timeout 10m lake env lean --run Project/Pipeline/Emit.lean \
   Project.Gcd.Module Project.Gcd.gcd.module build/gcd/gcd.wasm
 wasm-tools validate build/gcd/gcd.wasm
 build/tools/leanexe-wasmtime-host call build/gcd/gcd.wasm gcd i64 i64:48 i64:18
+build/tools/leanexe-wasmtime-host call-stats build/sumArray/sumArray.wasm sumArray i64 \
+  array-u64:1,2,3
 tools/leanrun --timeout 10m lake env lean --run Project/LTG/Check.lean ltg/entries
 tools/leanrun --timeout 60m lake env lean --run Project/Encoding/DecodeTest.lean \
   "$(command -v wasm-tools)" build/decode-test

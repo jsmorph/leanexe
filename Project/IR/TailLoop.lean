@@ -56,7 +56,9 @@ theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α �
     (result : func.result = .get func.params)
     (hStep : TailStep step func.scratch (func.vars - 2 + func.width) f measure) :
     Implements (compile func name) 0 f (fun _ => 0) := by
-  refine Func.implements func name f arity fun x initial => ?_
+  refine Func.implements func name f
+    (fun _ _ _ x h => (Scalar.borrowed.mp h) ▸ arity x) fun x _ initial params _ h => ?_
+  obtain rfl := Scalar.borrowed.mp h
   rw [body, result]
   let width := func.vars - 2 + func.width
   let Inv : Store Unit → State → Prop := fun store state =>
@@ -73,7 +75,7 @@ theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α �
       stateMeasure (tailState args resultValue 0 others) = measure args + 1 := by
     intro args resultValue others
     have h : running (tailState args resultValue 0 others) := ⟨args, resultValue, others, rfl⟩
-    simp only [stateMeasure, dif_pos h]
+    simp only [stateMeasure, dite_eq_left h]
     obtain ⟨resultValue', others', hEq⟩ := Classical.choose_spec h
     have hParams := congrArg State.params hEq
     simp only [tailState] at hParams
@@ -86,7 +88,7 @@ theorem Func.tail_implements [Scalar α] (func : Func) (name : String) (f : α �
       rintro ⟨args', resultValue', others', hEq⟩
       have hLocals := congrArg State.locals hEq
       simp [tailState] at hLocals
-    simp only [stateMeasure, dif_neg h]
+    simp only [stateMeasure, dite_eq_right h]
   -- One run of the body from a running state restores the invariant with a smaller
   -- measure.
   have hIteration : ∀ (args : α) resultValue (others : List Value), others.length = width →

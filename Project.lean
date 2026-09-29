@@ -27,6 +27,7 @@ import Project.Encoding.Values
 import Project.Gcd.Module
 import Project.Gcd.Verify
 import Project.IR.Correct
+import Project.IR.Fold
 import Project.IR.Function
 import Project.IR.Hint
 import Project.IR.Stmt
@@ -104,5 +105,7 @@ import Project.Runtime.FreeList
 import Project.Runtime.Tree
 import Project.Scale.Module
 import Project.Scale.Verify
+import Project.SumArray.Module
+import Project.SumArray.Verify
 import Project.TalosCompat
 import Project.TalosPrelude
