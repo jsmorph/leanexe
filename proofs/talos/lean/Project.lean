@@ -28,10 +28,13 @@ import Project.Encoding.Types
 import Project.Encoding.Values
 import Project.F32Source.Checks
 import Project.FrameAttr
+import Project.Gcd.Module
+import Project.Gcd.Verify
 import Project.IEEE64Source.Source
 import Project.IR.Correct
 import Project.IR.Function
 import Project.IR.Hint
+import Project.IR.Stmt
 import Project.Pipeline.Allocation
 import Project.Pipeline.Command
 import Project.Pipeline.Direct

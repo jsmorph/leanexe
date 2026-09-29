@@ -141,3 +141,4 @@ import LeanExe.Wasm.Leb
 import LeanExe.Wasm.ScalarDescriptor
 import LeanExe.Wasm.ScalarSemantics
 import LeanExe.Examples.Scale
+import LeanExe.Examples.Gcd
