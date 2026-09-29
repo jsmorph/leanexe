@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "array-fold-loop",
   "title": "Array fold loop",
-  "summary": "Proves that the compiler's fold statement leaves the fold of an Array UInt64 or a FloatArray in the accumulator local, for a UInt64 or Float accumulator, from one obligation about the fold body's expression.",
+  "summary": "Proves that the compiler's fold statement leaves the fold of an Array UInt64 or an Array Float in the accumulator local, for a UInt64 or Float accumulator, from one obligation about the fold body's expression.",
   "roles": ["checked-proof-asset", "guidance"],
   "categories": ["arrays", "compiler-motifs", "loops", "proof-construction"],
   "scope": "compiler-rule",
