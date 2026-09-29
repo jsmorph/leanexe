@@ -24,7 +24,7 @@ theorem pairSum_implements : Implements pairSum.module 0 pairTuple (fun _ => 72)
     (fun store state => store = initial ∧ state = start) _
   refine Stmt.seq_spec (Stmt.arrayLiteral_spec (words := [a, b]) hMemory32 hImports hAlloc
     (by decide) (by simp [start]) hHeap hRoom ?_) ?_
-  · refine .cons (fun state hFrame => ⟨state, ?_⟩) (.cons (fun state hFrame => ⟨state, ?_⟩) .nil)
+  · refine .cons (fun _ state hFrame => ⟨state, ?_⟩) (.cons (fun _ state hFrame => ⟨state, ?_⟩) .nil)
     · have hGet : state.get 0 = some (.i64 a) :=
         (hFrame.get 0 (by decide) (by decide)).trans (by simp [start, State.get])
       simp [Expr.eval, hGet]

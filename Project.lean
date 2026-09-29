@@ -3,6 +3,8 @@ import Project.Axpy.Module
 import Project.Axpy.Verify
 import Project.Bucket.Module
 import Project.Bucket.Verify
+import Project.Clob.Module
+import Project.Clob.Verify
 import Project.Common
 import Project.Compiler.Command
 import Project.Compiler.Scalar
@@ -36,7 +38,10 @@ import Project.IR.Expr
 import Project.IR.Fold
 import Project.IR.Function
 import Project.IR.Hint
+import Project.IR.Loop
+import Project.IR.Read
 import Project.IR.Release
+import Project.IR.Run
 import Project.IR.Stmt
 import Project.IR.TailLoop
 import Project.Mean.Module

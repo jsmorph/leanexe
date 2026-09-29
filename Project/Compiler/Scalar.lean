@@ -3,6 +3,7 @@ import Project.IR.ArrayLiteral
 import Project.IR.Fold
 import Project.IR.Release
 import Project.IR.Function
+import Project.IR.Loop
 import Project.IR.Hint
 
 namespace Project.Compiler
@@ -47,7 +48,8 @@ def stmtLength (s : Project.IR.Stmt) : Nat := (s.program 0).length
 
 /-- The compiler's view of the definition being compiled.  `words`, `floats`,
 `arrays`, and `floatArrays` give the local of each `UInt64`, `Float`,
-`Array UInt64`, and `Array Float` variable in scope.  A recursive definition's
+`Array UInt64`, and `Array Float` variable in scope, and `tuples` gives the
+locals of each pair-valued variable's components.  A recursive definition's
 locals are the parameters, then `result`, `done`, and one temporary per
 parameter.  `foldable` says whether a fold may appear: a fold runs
 before the value that contains it, so it may not appear in a branch, in a fold
@@ -59,6 +61,7 @@ structure Ctx where
   floats : List (Lean.Expr × Nat)
   arrays : List (Lean.Expr × Nat)
   floatArrays : List (Lean.Expr × Nat)
+  tuples : List (Lean.Expr × List (Nat × ScalarType)) := []
   foldable : Bool
 
 def Ctx.result (ctx : Ctx) : Nat := ctx.params.size
@@ -122,6 +125,71 @@ def Prelude.next (p : Prelude) : Nat := p.base + p.vars.size
 
 abbrev CompileM := StateT Prelude MetaM
 
+/-- `stmts` in sequence, with the code of each placed after the previous. -/
+def seqAll : List Project.IR.Stmt → Project.IR.Stmt
+  | [] => .skip
+  | [s] => s
+  | s :: rest => .seq s (seqAll rest)
+
+/-- The scalar type of a `UInt64` or `Float` type. -/
+def scalarTypeOf (type : Lean.Expr) : MetaM ScalarType := do
+  if ← isUInt64 type then return .u64
+  if ← isFloat type then return .f64
+  throwError "unsupported type {type}"
+
+/-- The components of a loop state: a `UInt64`, a `Float`, or a pair of states,
+flattened from the left. -/
+partial def stateTypes (type : Lean.Expr) : MetaM (List ScalarType) := do
+  let type ← whnfR type
+  if type.isAppOfArity ``Prod 2 then
+    return (← stateTypes type.appFn!.appArg!) ++ (← stateTypes type.appArg!)
+  return [← scalarTypeOf type]
+
+/-- The component terms of `term`, a nest of `Prod.mk` of type `type`. -/
+partial def stateTerms (term type : Lean.Expr) : MetaM (List (Lean.Expr × ScalarType)) := do
+  let type ← whnfR type
+  if type.isAppOfArity ``Prod 2 then
+    let (``Prod.mk, #[first, second, a, b]) := term.consumeMData.getAppFnArgs
+      | throwError "a loop state must be a tuple of components: {← sourceOf term}"
+    return (← stateTerms a first) ++ (← stateTerms b second)
+  return [(term, ← scalarTypeOf type)]
+
+instance : Inhabited (Σ type, IRExpr type) := ⟨⟨.u64, .const 0⟩⟩
+
+/-- A fresh local of type `type`. -/
+def fresh (type : ScalarType) (name : String) : CompileM Nat := do
+  let p ← get
+  set { p with vars := p.vars.push type, names := p.names.push (name, p.next) }
+  return p.next
+
+/-- Binds `x` to the locals `components`: a variable for one component, a tuple
+otherwise. -/
+def Ctx.bind (ctx : Ctx) (x : Lean.Expr) : List (Nat × ScalarType) → Ctx
+  | [(index, .f64)] => { ctx with floats := (x, index) :: ctx.floats }
+  | [(index, _)] => { ctx with words := (x, index) :: ctx.words }
+  | components => { ctx with tuples := (x, components) :: ctx.tuples }
+
+/-- The unfolding of a `match` auxiliary definition applied to its arguments. -/
+def unfoldMatcher? (term : Lean.Expr) : MetaM (Option Lean.Expr) := do
+  let .const name levels := term.getAppFn | return none
+  unless ← isMatcher name do return none
+  let value ← instantiateValueLevelParams (← getConstInfo name) levels
+  return value.beta term.getAppArgs
+
+/-- Where a loop's body code starts when its code starts at `loc`: inside the
+block and loop of the `while`, after the count, the two assignments, the
+condition, and the exit test. -/
+def loopBodyLoc (loc : Loc) (count : IRExpr .u64) : Loc :=
+  (((loc.skip (exprLength count + 3)).inside none).inside none).skip
+    (exprLength (.ltU (.get 0) (.get 0) : IRExpr .bool) + 2)
+
+/-- Pushes `stmt` to the prelude with its hints, which are relative to its start. -/
+def pushStmt (stmt : Project.IR.Stmt) (hints : List Hint) : CompileM Unit :=
+  modify fun p => { p with
+    stmts := p.stmts.push stmt
+    hints := p.hints ++ (hints.map (Hint.shift p.length)).toArray
+    length := p.length + stmtLength stmt }
+
 mutual
   /-- Translates a `UInt64` term to an IR expression whose code starts at `loc`.
   A fold in the term adds its statements to the prelude, and the expression reads
@@ -173,6 +241,28 @@ mutual
     | (``Array.foldl, _) =>
         let ir : IRExpr .u64 := .get (← translateFold ctx term .u64)
         return (ir, [hint ir "fold result"])
+    | (``Min.min, #[type, _, a, b]) =>
+        unless ← isUInt64 type do throwError "unsupported min type in {source}"
+        -- `min a b` is `if a ≤ b then a else b`.
+        let inner := { ctx with foldable := false }
+        let (l, lHints) ← translateValue inner loc a
+        let (r, rHints) ← translateValue inner (loc.skip (exprLength l)) b
+        let condition : IRExpr .bool := .leU l r
+        let branch := loc.skip (exprLength condition)
+        let (x, xHints) ← translateValue inner (branch.inside (some 0)) a
+        let (y, yHints) ← translateValue inner (branch.inside (some 1)) b
+        let ir : IRExpr .u64 := .ite condition x y
+        return (ir, hint ir "min" :: lHints ++ rHints ++ xHints ++ yHints)
+    | (``GetElem?.getElem!, #[collection, _, element, _, _, _, array, position]) =>
+        unless (← isUInt64Array collection) && (← isUInt64 element) do
+          throwError "unsupported array read in {source}"
+        let some arrayLocal := ctx.arrays.lookup array.consumeMData
+          | throwError "a read must be of an array variable: {source}"
+        let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
+          | throwError "a read position must be `i.toNat` for a UInt64 `i`: {source}"
+        let (i, iHints) ← translateValue ctx loc k
+        let ir : IRExpr .u64 := .read arrayLocal i
+        return (ir, hint ir "array read" :: iHints)
     | (``Float.toUInt64, #[operand]) =>
         let (x, xHints) ← translateFloat ctx loc operand
         let ir : IRExpr .u64 := .truncSatU x
@@ -413,6 +503,102 @@ mutual
         ("length", lengthLocal), ("element", elementLocal)] }
     return accLocal
 
+  /-- Removes pattern matches on pairs from `term`, binding each pattern
+  variable to the locals of its components, and continues with `k`. -/
+  partial def peel {γ : Type} [Inhabited γ] (ctx : Ctx) (term : Lean.Expr)
+      (k : Ctx → Lean.Expr → CompileM γ) : CompileM γ := do
+    let term := term.consumeMData
+    if let some unfolded ← unfoldMatcher? term then
+      return ← peel ctx unfolded k
+    match term.getAppFnArgs with
+    | (``Prod.casesOn, #[first, second, _, pair, alternative]) =>
+        let components ← tupleOf ctx pair
+        let split := (← stateTypes first).length
+        withLocalDeclD `fst first fun a => withLocalDeclD `snd second fun b => do
+          peel ((ctx.bind a (components.take split)).bind b (components.drop split))
+            (← Core.betaReduce (mkApp2 alternative a b)) k
+    | _ => k ctx term
+
+  /-- The locals holding the components of the pair-valued `term`: a pair
+  variable, or a loop, whose statements join the prelude. -/
+  partial def tupleOf (ctx : Ctx) (term : Lean.Expr) : CompileM (List (Nat × ScalarType)) := do
+    let term := term.consumeMData
+    if let some components := ctx.tuples.lookup term then return components
+    if term.isAppOf ``LeanExe.loop then return ← translateLoop ctx term
+    throwError "unsupported pair: {← sourceOf term}"
+
+  /-- Translates `LeanExe.loop n init f` to assignments of `init`'s components to
+  fresh state locals and `Stmt.loop`, and returns the state locals. -/
+  partial def translateLoop (ctx : Ctx) (term : Lean.Expr) :
+      CompileM (List (Nat × ScalarType)) := do
+    let source ← sourceOf term
+    let (``LeanExe.loop, #[stateType, n, init, f]) := term.getAppFnArgs
+      | throwError "unsupported loop: {source}"
+    unless ctx.foldable do
+      throwError "a loop may not appear in a branch, a fold or loop body, or a recursive definition: {source}"
+    let (count, countHints) ← translateValue ctx ⟨[], 0⟩ n
+    let initTerms ← stateTerms init stateType
+    let mut inits := #[]
+    for (component, type) in initTerms do
+      inits := inits.push (← translateAs ctx ⟨[], 0⟩ type component, ← sourceOf component)
+    let mut state := #[]
+    for (_, type) in initTerms do
+      state := state.push (← fresh type s!"state {state.size}", type)
+    let limit ← fresh .u64 "limit"
+    let index ← fresh .u64 "index"
+    for (((⟨_, value⟩, hints), componentSource), (local_, _)) in inits.toList.zip state.toList do
+      let stmt := Project.IR.Stmt.assign local_ value
+      pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "loop start" componentSource :: hints)
+    let bodyCtx := { ctx with foldable := false }
+    let (bodyStmts, bodyHints) ← withLocalDeclD `i (mkConst ``UInt64) fun i =>
+      withLocalDeclD `state stateType fun x =>
+        translateLoopBody ((bodyCtx.bind i [(index, .u64)]).bind x state.toList)
+          (loopBodyLoc ⟨[], 0⟩ count) (mkApp2 f i x).headBeta state.toList
+    let loop := Stmt.loop limit index count (seqAll bodyStmts)
+    pushStmt loop (mkHint ⟨[], 0⟩ (stmtLength loop) "loop" source :: countHints ++ bodyHints)
+    return state.toList
+
+  /-- Translates a loop body, which computes the next state, to statements that
+  bind its `have` variables to fresh locals, evaluate the next state's
+  components into fresh temporaries, and copy them to the state locals. -/
+  partial def translateLoopBody (ctx : Ctx) (loc : Loc) (term : Lean.Expr)
+      (state : List (Nat × ScalarType)) : CompileM (List Project.IR.Stmt × List Hint) :=
+    peel ctx term fun ctx term => do
+      match term with
+      | .letE name type value body _ =>
+          let scalar ← scalarTypeOf type
+          let (⟨_, v⟩, vHints) ← translateAs ctx loc scalar value
+          let local_ ← fresh scalar name.toString
+          let stmt := Project.IR.Stmt.assign local_ v
+          let hint := mkHint loc (stmtLength stmt) "let" (← sourceOf value)
+          withLocalDeclD name type fun x => do
+            let (rest, restHints) ← translateLoopBody (ctx.bind x [(local_, scalar)])
+              (loc.skip (stmtLength stmt)) (body.instantiate1 x) state
+            return (stmt :: rest, hint :: vHints ++ restHints)
+      | _ =>
+          let components ← stateTerms term (← inferType term)
+          let mut stmts := #[]
+          let mut hints := #[]
+          let mut temps := #[]
+          let mut here := loc
+          for (component, type) in components do
+            let (⟨_, v⟩, vHints) ← translateAs ctx here type component
+            let temp ← fresh type "next state"
+            let stmt := Project.IR.Stmt.assign temp v
+            hints := hints ++ (mkHint here (stmtLength stmt) "next state" (← sourceOf component) ::
+              vHints).toArray
+            stmts := stmts.push stmt
+            temps := temps.push (temp, type)
+            here := here.skip (stmtLength stmt)
+          for ((temp, type), (local_, _)) in temps.toList.zip state do
+            let stmt : Project.IR.Stmt := match type with
+              | .f64 => .assign local_ (.getF temp)
+              | _ => .assign local_ (.get temp)
+            hints := hints.push (mkHint here (stmtLength stmt) "state copy" "state")
+            stmts := stmts.push stmt
+            here := here.skip (stmtLength stmt)
+          return (stmts.toList, hints.toList)
+
   /-- Translates the array literal `term` with `elements` to an allocation and
   stores into a fresh local, which it returns.  Folds in the elements run first. -/
   partial def translateArrayLiteral (ctx : Ctx) (term : Lean.Expr) (elements : List Lean.Expr) :
@@ -442,12 +628,6 @@ mutual
       names := before.names.push ("array", temp) }
     return temp
 end
-
-/-- `stmts` in sequence, with the code of each placed after the previous. -/
-def seqAll : List Project.IR.Stmt → Project.IR.Stmt
-  | [] => .skip
-  | [s] => s
-  | s :: rest => .seq s (seqAll rest)
 
 /-- Translates the body of a tail-recursive definition, in tail position, to a
 statement that either updates the parameters for the next iteration or stores
@@ -561,6 +741,7 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
       let ctx : Ctx :=
         { self := declName, params, words, floats, arrays, floatArrays, foldable := true }
       let translate : CompileM ((Σ type, IRExpr type) × List Hint) :=
+        peel ctx body fun ctx body =>
         if arrayResult then do
           let some elements := arrayLiteral? body
             | throwError "an Array UInt64 result must be an array literal: {← sourceOf body}"
@@ -592,6 +773,8 @@ def irToExpr : {type : ScalarType} → IRExpr type → Lean.Expr
   | _, .unF op operand => mkApp2 (mkConst ``Project.IR.Expr.unF) (toExpr op) (irToExpr operand)
   | _, .convertU operand => mkApp (mkConst ``Project.IR.Expr.convertU) (irToExpr operand)
   | _, .truncSatU operand => mkApp (mkConst ``Project.IR.Expr.truncSatU) (irToExpr operand)
+  | _, .read array position =>
+      mkApp2 (mkConst ``Project.IR.Expr.read) (toExpr array) (irToExpr position)
   | _, .constF bits => mkApp (mkConst ``Project.IR.Expr.constF) (toExpr bits)
   | _, .iteF condition thenValue elseValue =>
       mkApp3 (mkConst ``Project.IR.Expr.iteF) (irToExpr condition) (irToExpr thenValue)

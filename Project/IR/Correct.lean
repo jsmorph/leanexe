@@ -23,7 +23,7 @@ theorem Func.implements_heap [Represent α] [Represent β] (func : Func) (name :
         (fun store state => ∃ heap' : Heap, heap'.At store ∧
           Represent.borrowed heap' store params x ∧ heap'.top.toNat ≤ heap.top.toNat + need x ∧
           store.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
-          ∃ word next, func.result.2.eval func.scratch state = some (word, next) ∧
+          ∃ word next, func.result.2.eval store.mem func.scratch state = some (word, next) ∧
             Represent.owned heap' store [func.result.1.value word] (f x))) :
     Implements (compile func name) 0 f need := by
   intro env store heap params x hHeap hArgs hRoom
@@ -59,7 +59,7 @@ theorem Func.implements [Represent α] [Scalar β] (func : Func) (name : String)
       Triple (compile func name) func.body func.scratch
         (fun store state => store = initial ∧ state = func.state params)
         (fun store state => store = initial ∧
-          ∃ word next, func.result.2.eval func.scratch state = some (word, next) ∧
+          ∃ word next, func.result.2.eval store.mem func.scratch state = some (word, next) ∧
             [func.result.1.value word] = Scalar.values (f x))) :
     Implements (compile func name) 0 f (fun _ => 0) :=
   Func.implements_heap func name f (fun _ => 0) arity fun x heap initial params hHeap hArgs _ =>

@@ -87,7 +87,7 @@ theorem Stmt.assign_spec {type : ScalarType} {index scratch : Nat} {value : Expr
     {R : Store Unit → State → Prop} :
     Triple m (.assign index value) scratch
       (fun store state => ∃ result afterValue next,
-        value.eval scratch state = some (result, afterValue) ∧
+        value.eval store.mem scratch state = some (result, afterValue) ∧
         afterValue.set? index (type.value result) = some next ∧ R store next) R := by
   intro env store state values rest Q hPre hPost
   obtain ⟨result, afterValue, next, hValue, hSet, hNext⟩ := hPre
@@ -110,7 +110,7 @@ theorem Stmt.ite_spec {condition : Expr .bool} {thenStmt elseStmt : Stmt} {scrat
     (hThen : Triple m thenStmt scratch PThen R) (hElse : Triple m elseStmt scratch PElse R) :
     Triple m (.ite condition thenStmt elseStmt) scratch
       (fun store state => ∃ result afterCondition,
-        condition.eval scratch state = some (result, afterCondition) ∧
+        condition.eval store.mem scratch state = some (result, afterCondition) ∧
         if result then PThen store afterCondition else PElse store afterCondition) R := by
   intro env store state values rest Q hPre hPost
   obtain ⟨result, afterCondition, hCondition, hBranch⟩ := hPre
@@ -138,14 +138,14 @@ iteration restores the invariant with a smaller measure. -/
 theorem Stmt.while_spec {condition : Expr .bool} {body : Stmt} {scratch : Nat}
     (Inv : Store Unit → State → Prop) (measure : Store Unit → State → Nat)
     (hCondition : ∀ store state, Inv store state →
-      ∃ result afterCondition, condition.eval scratch state = some (result, afterCondition))
+      ∃ result afterCondition, condition.eval store.mem scratch state = some (result, afterCondition))
     (hBody : ∀ n, Triple m body scratch
       (fun store state => ∃ before, Inv store before ∧ measure store before = n ∧
-        condition.eval scratch before = some (true, state))
+        condition.eval store.mem scratch before = some (true, state))
       (fun store state => Inv store state ∧ measure store state < n)) :
     Triple m (.while condition body) scratch Inv
       (fun store state => ∃ before, Inv store before ∧
-        condition.eval scratch before = some (false, state)) := by
+        condition.eval store.mem scratch before = some (false, state)) := by
   intro env store state values rest Q hPre hPost
   let loopInv : AssertionF Unit := fun currentStore locals =>
     ∃ current, locals = current.toLocals values ∧ Inv currentStore current
@@ -179,17 +179,13 @@ theorem Stmt.while_spec {condition : Expr .bool} {body : Stmt} {scratch : Nat}
       · exact ⟨state', rfl, hInv'⟩
       · simpa [loopMeasure, State.ofLocals, State.toLocals] using hDecrease
 
-theorem wrap_toUInt32 (a : UInt64) : UInt32.ofNat (a.toNat % 2 ^ 32) = a.toUInt32 := by
-  apply UInt32.toNat_inj.mp
-  simp [UInt64.toNat_toUInt32]
-
 /-- A load reads the word at the address's low 32 bits, which must lie inside
 memory. -/
 theorem Stmt.load_spec {type : ScalarType} {index scratch : Nat} {address : Expr .u64}
     {R : Store Unit → State → Prop} :
     Triple m (.load type index address) scratch
       (fun store state => ∃ word afterAddress next,
-        address.eval scratch state = some (word, afterAddress) ∧
+        address.eval store.mem scratch state = some (word, afterAddress) ∧
         word.toUInt32.toNat + 8 ≤ store.mem.pages * 65536 ∧
         afterAddress.set? index (type.ofBits (store.mem.read64 word.toUInt32)) = some next ∧
         R store next) R := by
@@ -211,8 +207,8 @@ theorem Stmt.store_spec {scratch : Nat} {address value : Expr .u64}
     {R : Store Unit → State → Prop} :
     Triple m (.store address value) scratch
       (fun store state => ∃ word afterAddress result afterValue,
-        address.eval scratch state = some (word, afterAddress) ∧
-        value.eval scratch afterAddress = some (result, afterValue) ∧
+        address.eval store.mem scratch state = some (word, afterAddress) ∧
+        value.eval store.mem scratch afterAddress = some (result, afterValue) ∧
         word.toUInt32.toNat + 8 ≤ store.mem.pages * 65536 ∧
         R { store with mem := store.mem.write64 word.toUInt32 result } afterValue) R := by
   intro env store state values rest Q hPre hPost
@@ -228,15 +224,17 @@ theorem Stmt.store_spec {scratch : Nat} {address value : Expr .u64}
   simpa using hPost _ afterValue hNext
 
 /-- Evaluates `args` from left to right. -/
-def Expr.evalAll (scratch : Nat) : List (Expr .u64) → State → Option (List UInt64 × State)
+def Expr.evalAll (mem : Mem) (scratch : Nat) :
+    List (Expr .u64) → State → Option (List UInt64 × State)
   | [], state => some ([], state)
   | arg :: rest, state => do
-      let (word, next) ← arg.eval scratch state
-      let (words, final) ← Expr.evalAll scratch rest next
+      let (word, next) ← arg.eval mem scratch state
+      let (words, final) ← Expr.evalAll mem scratch rest next
       pure (word :: words, final)
 
-theorem Expr.evalAll_length {scratch : Nat} {args : List (Expr .u64)} {state next : State}
-    {words : List UInt64} (h : Expr.evalAll scratch args state = some (words, next)) :
+theorem Expr.evalAll_length {mem : Mem} {scratch : Nat} {args : List (Expr .u64)}
+    {state next : State} {words : List UInt64}
+    (h : Expr.evalAll mem scratch args state = some (words, next)) :
     words.length = args.length := by
   induction args generalizing state words with
   | nil => simp [Expr.evalAll] at h; simp [← h.1]
@@ -251,7 +249,7 @@ theorem Expr.evalAll_length {scratch : Nat} {args : List (Expr .u64)} {state nex
 theorem Expr.evalAll_program_spec {scratch : Nat} {args : List (Expr .u64)}
     {state next : State} {words : List UInt64} {values : List Value} {env : HostEnv Unit}
     {store : Store Unit} {rest : Program} {Q : Assertion Unit}
-    (hEval : Expr.evalAll scratch args state = some (words, next))
+    (hEval : Expr.evalAll store.mem scratch args state = some (words, next))
     (hNext : wp m rest Q store (next.toLocals (words.reverse.map .i64 ++ values)) env) :
     wp m (args.flatMap (·.program scratch) ++ rest) Q store (state.toLocals values) env := by
   induction args generalizing state words values with
@@ -279,7 +277,7 @@ theorem Stmt.call_spec {scratch func : Nat} {args : List (Expr .u64)} {result : 
     (hParams : args.length = f.numParams) :
     Triple m (.call func args result) scratch
       (fun store state => ∃ words afterArgs, ∃ Post : Store Unit → List Value → Prop,
-        Expr.evalAll scratch args state = some (words, afterArgs) ∧
+        Expr.evalAll store.mem scratch args state = some (words, afterArgs) ∧
         (∀ env, TerminatesWith env m func store (words.reverse.map .i64) Post) ∧
         ∀ store' out, Post store' out →
           match result with
