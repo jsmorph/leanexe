@@ -33,10 +33,6 @@ install_archive https://github.com/leanprover/lean4/releases/download/v4.34.0-rc
   lean-4.34.0-rc2-darwin_aarch64.tar.zst \
   ca79a92a15c56d0270d9cdba936a07933efd14a7de635b55b09801979ce73909 \
   lean-4.34.0-rc2-darwin_aarch64
-install_archive https://nodejs.org/dist/v24.13.0 \
-  node-v24.13.0-darwin-arm64.tar.xz \
-  c59a517e9147f25c6167426875a571432f1478c1d7ee7ecc10baa46b0d0e8545 \
-  node-v24.13.0-darwin-arm64
 install_archive https://github.com/bytecodealliance/wasm-tools/releases/download/v1.251.0 \
   wasm-tools-1.251.0-aarch64-macos.tar.gz \
   ed0fdbdaa80a5c7ef434ac583e1d8df0b8e45d718b08edf28ec27a74e4029897 \
