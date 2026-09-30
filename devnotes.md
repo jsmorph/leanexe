@@ -19537,4 +19537,24 @@ older cases for `mlp`, `attention`, `block`, and `forward` were dropped.  A coun
 per kind confirmed that all 204 new cases ran.
 
 - [x] GPT 6c: biases.
-- [ ] GPT 6d: comparison with Hugging Face in float64.
+
+## 2026-09-30: GPT 6d, comparison with Hugging Face
+
+A virtual environment at `~/.venvs/leanexe-gpt2`, outside the repository, holds
+PyTorch 2.14.1 (CPU) and transformers 5.18.0, as the user approved.  The script
+`hf_compare.py`, in the session's scratch directory, builds
+`GPT2LMHeadModel` from a `GPT2Config` with `activation_function="gelu_new"`,
+`layer_norm_epsilon=1e-5`, no dropout, and `attn_implementation="eager"`, in
+float64.  It draws every parameter from a normal distribution with standard
+deviation 0.5, adds 1 to the layer-norm gains, splits `c_attn` into its `q`,
+`k`, and `v` columns, and passes the same arrays and token ids to `gpt.wasm`'s
+`forward`.
+
+Over 8 configurations and 3 seeds each, the largest difference was 4.4e-15 of
+the largest score, and the configurations with width 1 matched exactly.  The
+host's command line limits the configurations to widths of about 16; real
+weights need the host to load arrays from files.
+
+- [x] GPT 6d: comparison with Hugging Face.
+- [ ] GPT 6e: a loop over layers (design pending).
+- [ ] GPT 6f: real GPT-2 small weights.
