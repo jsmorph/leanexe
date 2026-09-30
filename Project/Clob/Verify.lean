@@ -818,16 +818,100 @@ theorem addBid_implements : Implements clob.module 7 addBidTuple addBidNeed := b
     · rw [addBidTuple, addBid_eq, ite_eq_right hTaken]
       exact hOwned'
 
+/-- `depth` with its three arguments as one tuple. -/
+def depthTuple (x : Array UInt64 × Array UInt64 × UInt64) : UInt64 :=
+  LeanExe.Examples.Clob.depth x.1 x.2.1 x.2.2
+
+/-- One step of `depth`'s loop. -/
+def depthStep (prices sizes : Array UInt64) (limit i total : UInt64) : UInt64 :=
+  if prices[i.toNat]! ≥ limit then total + sizes[i.toNat]! else total
+
+/-- The compiled loop body of `depth`. -/
+def depthBody : Stmt :=
+  .seq (.assign 7 (.ite (.leU (.get 2) (.read 0 (.get 6)))
+    (.bin .add (.get 4) (.read 1 (.get 6))) (.get 4))) (.assign 4 (.get 7))
+
+theorem depthBody_run {initial : Store Unit} {pp ps : UInt64} {prices sizes : Array UInt64}
+    (hP : UInt64Array.At initial pp prices) (hS : UInt64Array.At initial ps sizes)
+    {state : State} {k : Nat} {limit total : UInt64}
+    (hParams : state.params.length = 3) (hLocals : state.locals.length = 6)
+    (h0 : state.get 0 = some (.i64 pp)) (h1 : state.get 1 = some (.i64 ps))
+    (h2 : state.get 2 = some (.i64 limit)) (h4 : state.get 4 = some (.i64 total))
+    (h6 : state.get 6 = some (.i64 (UInt64.ofNat k))) :
+    ∃ final, depthBody.run initial.mem 8 state = some final ∧
+      State.Frame 8 [4, 7] state final ∧
+      final.Holds [4] (Scalar.values (depthStep prices sizes limit (UInt64.ofNat k) total)) := by
+  simp [depthBody, Stmt.run, Expr.eval, h0, h1, h2, h4, h6, Expr.readValue_at hP,
+    Expr.readValue_at hS, State.set?_eq_update, hParams, hLocals, U64Op.apply]
+  constructor
+  · repeat refine State.Frame.update ?_ (by simp)
+    exact State.Frame.refl _ _ _
+  · simp [State.Holds, Scalar.values, depthStep, hParams, hLocals]
+
+theorem depth_implements : Implements clob.module 8 depthTuple (fun _ => 0) := by
+  refine Func.implements clob.funcs 5 clob.depth.ir "depth" rfl depthTuple
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨prices, sizes, limit⟩ heap initial _ -
+    ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩
+  change heap.Borrowed initial pp prices at hPrices
+  change heap.Borrowed initial ps sizes at hSizes
+  have hP := hPrices.values
+  have hS := hSizes.values
+  let start : State :=
+    { params := [.i64 pp, .i64 ps, .i64 limit], locals := List.replicate 6 (.i64 0) }
+  let s1 := start.update 3 (.i64 (UInt64.ofNat prices.size))
+  let s2 := s1.update 4 (.i64 0)
+  show Triple _ (.seq (.arraySize 3 0) (.seq (.assign 4 (.const 0))
+    (.loop 5 6 (.get 3) depthBody))) 8 (fun store state => store = initial ∧ state = start) _
+  have hParams : start.params.length = 3 := rfl
+  have hLocals : start.locals.length = 6 := rfl
+  have hGet0 : start.get 0 = some (.i64 pp) := rfl
+  have hLength := hP.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLength
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) ?_
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLength, hP.lengthRead,
+      State.set?_eq_update, hParams, hLocals, s1]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, s1, s2]
+  refine (Stmt.loop_spec (vars := [4]) (writes := [4, 7]) (init := (0 : UInt64))
+    (n := prices.size.toUInt64) (depthStep prices sizes limit)
+    (by decide) (by decide) (by decide) (by decide) (by decide)
+    (by simp [s2, s1, hParams, hLocals]) ⟨s2, by simp [Expr.eval, s2, s1, hParams, hLocals]⟩
+    (by simp [State.Holds, Scalar.values, s2, s1, hParams, hLocals]) ?_).mono
+      (fun _ _ h => h) ?_
+  · intro k total state hk hFrame hHolds hIndex hLimit
+    have hState : state.params.length = 3 ∧ state.locals.length = 6 := by
+      rw [hFrame.params, hFrame.locals]; simp [s2, s1, hParams, hLocals]
+    have h0 : state.get 0 = some (.i64 pp) :=
+      (hFrame.get 0 (by decide) (by decide)).trans (by simp [s2, s1, hGet0])
+    have h1 : state.get 1 = some (.i64 ps) :=
+      (hFrame.get 1 (by decide) (by decide)).trans (by simp [s2, s1]; rfl)
+    have h2 : state.get 2 = some (.i64 limit) :=
+      (hFrame.get 2 (by decide) (by decide)).trans (by simp [s2, s1]; rfl)
+    have h4 : state.get 4 = some (.i64 total) := by
+      simpa [State.Holds, Scalar.values] using hHolds
+    obtain ⟨final, hRun, hFinalFrame, hFinalHolds⟩ :=
+      depthBody_run hP hS hState.1 hState.2 h0 h1 h2 h4 hIndex
+    refine (Stmt.run_spec hRun).mono (fun _ _ h => h) ?_
+    rintro store st ⟨rfl, rfl⟩
+    exact ⟨rfl, hFinalFrame, hFinalHolds⟩
+  rintro store state ⟨rfl, -, hHolds⟩
+  have h4 : state.get 4 = some (.i64 (depthTuple (prices, sizes, limit))) :=
+    (List.forall₂_cons.mp hHolds).1
+  exact ⟨rfl, [.i64 _], state, by
+    simp [clob.depth.ir, Func.scratch, Expr.evalResults, Expr.eval, h4], rfl⟩
+
 /-- `encode` succeeds on `clob.module`, and its bytes decode to a module whose
 exports compute the CLOB operations exactly. -/
 theorem clob_bytes : ∃ bytes, Encoding.encode clob.module = .ok bytes ∧
     ∃ m, Encoding.decode bytes = .ok m ∧
       Implements m 3 marketBuyTuple (fun _ => 72) ∧ Implements m 4 fillTuple fillNeed ∧
       Implements m 5 insertTuple insertNeed ∧ Implements m 6 addToTuple addToNeed ∧
-      Implements m 7 addBidTuple addBidNeed := by
+      Implements m 7 addBidTuple addBidNeed ∧ Implements m 8 depthTuple (fun _ => 0) := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip clob.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, clob.module, decoded, marketBuy_implements, fillLevel_implements,
-    insertLevel_implements, addToLevel_implements, addBid_implements⟩
+    insertLevel_implements, addToLevel_implements, addBid_implements,
+    depth_implements⟩
 
 end Project.Clob

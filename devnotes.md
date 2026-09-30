@@ -19044,3 +19044,24 @@ their files from `build/clob`.  The LTG gained the `function-call` entry.
 
 - [x] CLOB 4: `addBid`, calls, and one module for the CLOB.
 - [ ] CLOB 5: a cancel and a depth query.
+
+## 2026-09-29: Dropped arrays and CLOB 5a
+
+Can a compiled program allocate an array and drop it without a release?
+`Implements` would not detect such a leak.  Eleven test definitions tried to do
+it: a `let`-bound array, the first component of a call's pair result, a pattern
+match that ignores a component, a call on a call result, and a fold, read, or
+size of a new array.  The compiler rejected all eleven.  It creates owned
+arrays only as results, which pass to the caller, and as array literals that a
+fold consumes and then releases.  This is a finding from tests and from reading
+the compiler's result, call, read, size, and fold paths, and it is not proved.
+
+`depth prices sizes limit` sums the sizes of the levels priced at or above
+`limit`.  It is function 8 of `clob.module`, and `depth_implements` takes 52
+lines.  `clob.wasm` (2,891 bytes) matched native Lean on all 289 inputs, 51 of
+them for `depth`, and the book session gave the same book and counters as
+before.
+
+- [x] CLOB 5a: `depth`.
+- [ ] CLOB 5b: `findLevel` and `removeLevel`.
+- [ ] CLOB 5c: `cancelBid`.

@@ -36,4 +36,9 @@ def addBid (prices sizes : Array UInt64) (price size : UInt64) : Array UInt64 ×
   if k < prices.size.toUInt64 ∧ prices[k.toNat]! = price then addToLevel prices sizes k size
   else insertLevel prices sizes k price size
 
+/-- The total size of the levels priced at or above `limit`. -/
+def depth (prices sizes : Array UInt64) (limit : UInt64) : UInt64 :=
+  LeanExe.loop prices.size.toUInt64 0 fun i total =>
+    if prices[i.toNat]! ≥ limit then total + sizes[i.toNat]! else total
+
 end LeanExe.Examples.Clob
