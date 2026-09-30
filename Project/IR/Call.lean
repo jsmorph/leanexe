@@ -36,6 +36,7 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
         Represent.borrowed heap' store (words.map .i64) x ∧
         heap'.top.toNat ≤ heap.top.toNat + need x ∧
         store.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
+        store.memoryCaps = initial.memoryCaps ∧
         (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store p ws) ∧
         (∀ p ws, heap.Owned initial p ws → heap'.Owned store p ws) ∧
         afterArgs.setAll results.reverse values.reverse = some state) := by
@@ -46,15 +47,17 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
       Represent.owned heap' final values.reverse (g x) ∧
       Represent.borrowed heap' final (words.map .i64) x ∧ heap'.top.toNat ≤ heap.top.toNat + need x ∧
       final.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
+      final.memoryCaps = initial.memoryCaps ∧
       (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed final p ws) ∧
       (∀ p ws, heap.Owned initial p ws → heap'.Owned final p ws), hArgs, fun env => ?_, ?_⟩
   · have hRun := hImpl env initial heap (words.map .i64) x hHeap hBorrowed hRoom
     rw [List.map_reverse]
     exact hRun
-  · rintro store' out ⟨heap', hAt', hOwned', hBorrowed', hTop, hPages, hKeepBorrowed, hKeepOwned⟩
+  · rintro store' out ⟨heap', hAt', hOwned', hBorrowed', hTop, hPages, hCaps, hKeepBorrowed,
+      hKeepOwned⟩
     obtain ⟨next, hNext⟩ := hSet heap' store' out.reverse hOwned'
     rw [List.reverse_reverse] at hNext
-    exact ⟨next, hNext, heap', out.reverse, hAt', hOwned', hBorrowed', hTop, hPages, hKeepBorrowed,
-      hKeepOwned, by rw [List.reverse_reverse]; exact hNext⟩
+    exact ⟨next, hNext, heap', out.reverse, hAt', hOwned', hBorrowed', hTop, hPages, hCaps,
+      hKeepBorrowed, hKeepOwned, by rw [List.reverse_reverse]; exact hNext⟩
 
 end Project.IR

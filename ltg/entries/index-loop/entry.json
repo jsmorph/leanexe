@@ -13,7 +13,7 @@
   "declarations": ["LeanExe.loop", "Project.IR.Stmt.loop", "Project.IR.Stmt.loop_spec", "Project.IR.loopPrefix", "Project.IR.loopPrefix_succ", "Project.IR.State.Holds", "Project.IR.State.Holds.frame"],
   "premises": ["limit and index are distinct locals below scratch that the body does not write", "The state locals are among the body's writes", "The count evaluates to n in the state before the loop", "The state locals hold init's Scalar.values before the loop", "For each k below n, the body turns a state holding s into one holding f k s, writing only its writes below scratch"],
   "result": "A Triple whose postcondition keeps the store, frames every local outside limit, index, and the body's writes, and holds LeanExe.loop n init f in the state locals.",
-  "consumers": ["Project.Clob.marketBuy_implements", "Project.Clob.addBid_implements", "Project.Clob.depth_implements", "Project.Clob.findLevel_implements"],
+  "consumers": ["Project.Clob.marketBuy_implements", "Project.Clob.depth_implements", "Project.Clob.findLevel_implements"],
   "relatedEntries": ["straight-line-run", "array-read", "array-fold-loop"],
   "exclusion": null
 }

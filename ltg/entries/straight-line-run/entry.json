@@ -13,7 +13,7 @@
   "declarations": ["Project.IR.Stmt.run", "Project.IR.Stmt.run_spec", "Project.IR.State.update", "Project.IR.State.set?_eq_update", "Project.IR.State.get_update_same", "Project.IR.State.get_update_ne", "Project.IR.State.update_update_same", "Project.IR.ite_some_pair", "Project.IR.State.Frame.update"],
   "premises": ["The state's parameter and local counts", "The values of the locals the statements read"],
   "result": "A Triple from the starting state to the state Stmt.run computes, keeping the store.",
-  "consumers": ["Project.Clob.marketBuy_implements", "Project.Clob.addBid_implements", "Project.Clob.depth_implements", "Project.Clob.findLevel_implements"],
+  "consumers": ["Project.Clob.marketBuy_implements", "Project.Clob.depth_implements", "Project.Clob.findLevel_implements", "Project.Clob.bid_spec"],
   "relatedEntries": ["index-loop", "array-read", "local-frame-projection"],
   "exclusion": null
 }

@@ -391,7 +391,19 @@ theorem Heap.allocateStore_memoryCaps (heap : Heap) (store : Store Unit) (need s
     (heap.allocateStore store need stride).memoryCaps = store.memoryCaps := by
   unfold Heap.allocateStore FixedArrayAllocateNone.counted FixedArrayAllocate.allocated
   split <;> simp [fixedArrayAllocFitStore, FixedArrayBump.allocated, fixedArrayAllocBumpStore,
-    MemoryGrowth.ensured] <;> split <;> rfl
+    MemoryGrowth.ensured]
+  split <;> rfl
+
+/-- Room for `bytes` bytes leaves room for `rest` bytes after `top` advanced by at
+most `used`, with `used + rest ≤ bytes`, in any store with the same memory
+limits. -/
+theorem Heap.Room.after {heap heap' : Heap} {store store' : Store Unit} {m : Module}
+    {bytes used rest : Nat} (hRoom : heap.Room store m bytes)
+    (hTop : heap'.top.toNat ≤ heap.top.toNat + used) (hLe : used + rest ≤ bytes)
+    (hCaps : store'.memoryCaps = store.memoryCaps) : heap'.Room store' m rest := by
+  have hSame : store'.memoryCap m 0 = store.memoryCap m 0 := by
+    unfold Store.memoryCap; rw [hCaps]
+  exact ⟨by have := hRoom.address; omega, by have := hRoom.cap; rw [hSame]; omega⟩
 
 /-- Room for an allocation followed by `rest` more bytes leaves room for `rest`
 bytes after the allocation, in any store with the same memory limits. -/

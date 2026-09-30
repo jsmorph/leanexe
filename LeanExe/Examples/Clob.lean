@@ -22,24 +22,9 @@ def insertLevel (prices sizes : Array UInt64) (k price size : UInt64) :
     Array UInt64 × Array UInt64 :=
   (prices.insertIdx! k.toNat price, sizes.insertIdx! k.toNat size)
 
-/-- The book side with `size` added to level `k`, as its prices and its sizes. -/
-def addToLevel (prices sizes : Array UInt64) (k size : UInt64) : Array UInt64 × Array UInt64 :=
-  (prices, sizes.set! k.toNat (sizes[k.toNat]! + size))
-
-/-- The bids after adding `size` at `price`: to the level with that price if it
-exists, and otherwise to a new level at its sorted position.  The bids are sorted
-by descending price, so the position is the number of levels with a higher
-price. -/
-def addBid (prices sizes : Array UInt64) (price size : UInt64) : Array UInt64 × Array UInt64 :=
-  let k := LeanExe.loop prices.size.toUInt64 0 fun i k =>
-    if prices[i.toNat]! > price then k + 1 else k
-  if k < prices.size.toUInt64 ∧ prices[k.toNat]! = price then addToLevel prices sizes k size
-  else insertLevel prices sizes k price size
-
-/-- The total size of the levels priced at or above `limit`. -/
-def depth (prices sizes : Array UInt64) (limit : UInt64) : UInt64 :=
-  LeanExe.loop prices.size.toUInt64 0 fun i total =>
-    if prices[i.toNat]! ≥ limit then total + sizes[i.toNat]! else total
+/-- The book side with level `k` holding `size`, as its prices and its sizes. -/
+def setLevel (prices sizes : Array UInt64) (k size : UInt64) : Array UInt64 × Array UInt64 :=
+  (prices, sizes.set! k.toNat size)
 
 /-- The position of `price` among the bids, sorted by descending price: the number
 of levels with a higher price. -/
@@ -50,5 +35,28 @@ def findLevel (prices : Array UInt64) (price : UInt64) : UInt64 :=
 /-- The book side without level `k`, as its prices and its sizes. -/
 def removeLevel (prices sizes : Array UInt64) (k : UInt64) : Array UInt64 × Array UInt64 :=
   (prices.eraseIdxIfInBounds k.toNat, sizes.eraseIdxIfInBounds k.toNat)
+
+/-- The bids after adding `size` at `price`: to the level with that price if it
+exists, and otherwise to a new level at its sorted position. -/
+def addBid (prices sizes : Array UInt64) (price size : UInt64) : Array UInt64 × Array UInt64 :=
+  let k := findLevel prices price
+  if k < prices.size.toUInt64 ∧ prices[k.toNat]! = price then
+    setLevel prices sizes k (sizes[k.toNat]! + size)
+  else insertLevel prices sizes k price size
+
+/-- The bids after cancelling `size` at `price`: the level at that price loses
+`size`, or is removed if it holds no more than `size`.  Without a level at that
+price, the bids are unchanged. -/
+def cancelBid (prices sizes : Array UInt64) (price size : UInt64) : Array UInt64 × Array UInt64 :=
+  let k := findLevel prices price
+  if k < prices.size.toUInt64 ∧ prices[k.toNat]! = price then
+    if sizes[k.toNat]! ≤ size then removeLevel prices sizes k
+    else setLevel prices sizes k (sizes[k.toNat]! - size)
+  else (prices, sizes)
+
+/-- The total size of the levels priced at or above `limit`. -/
+def depth (prices sizes : Array UInt64) (limit : UInt64) : UInt64 :=
+  LeanExe.loop prices.size.toUInt64 0 fun i total =>
+    if prices[i.toNat]! ≥ limit then total + sizes[i.toNat]! else total
 
 end LeanExe.Examples.Clob

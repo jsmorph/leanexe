@@ -9,7 +9,7 @@ open Wasm Project.Pipeline
 every `x`, every argument list that represents it, and every heap with room for
 `need x` bytes, its body ends in a store where some heap satisfies the allocator
 invariant, the arguments are still represented, `top` and the page count stay
-within the bound, every array borrowed or owned before is still borrowed or
+within the bound, the memory's maximum size is unchanged, every array borrowed or owned before is still borrowed or
 owned, and the result expressions evaluate to values that represent `f x` as an
 owned value. -/
 theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func × String))
@@ -25,6 +25,7 @@ theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func �
         (fun store state => ∃ heap' : Heap, heap'.At store ∧
           Represent.borrowed heap' store params x ∧ heap'.top.toNat ≤ heap.top.toNat + need x ∧
           store.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
+          store.memoryCaps = initial.memoryCaps ∧
           (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store p ws) ∧
           (∀ p ws, heap.Owned initial p ws → heap'.Owned store p ws) ∧
           ∃ values next,
@@ -48,8 +49,8 @@ theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func �
     func.body.program func.scratch ++ (func.results.flatMap (·.2.program func.scratch) ++ []) by
       simp [Func.function]]
   refine correct x heap store params hHeap hArgs hRoom env store _ [] _ _ ⟨rfl, rfl⟩ ?_
-  rintro store' state ⟨heap', hHeap', hArgs', hTop, hPages, hBorrowedKeep, hOwnedKeep, values,
-    next, hEval, hResult⟩
+  rintro store' state ⟨heap', hHeap', hArgs', hTop, hPages, hCaps, hBorrowedKeep, hOwnedKeep,
+    values, next, hEval, hResult⟩
   refine Expr.evalResults_program_spec (out := []) hEval ?_
   rw [wp_nil]
   have hDrop : params.reverse.drop (func.function (2 + i)).numParams = [] := by
@@ -60,7 +61,7 @@ theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func �
   simp only [State.toLocals, hDrop, List.append_nil]
   rw [List.append_nil] at hTake
   rw [hTake, List.reverse_reverse]
-  exact ⟨heap', hHeap', hResult, hArgs', hTop, hPages, hBorrowedKeep, hOwnedKeep⟩
+  exact ⟨heap', hHeap', hResult, hArgs', hTop, hPages, hCaps, hBorrowedKeep, hOwnedKeep⟩
 
 /-- A compiled function whose body keeps the store implements `f` without
 allocating. -/
@@ -82,7 +83,7 @@ theorem Func.implements [Represent α] [Scalar β] (funcs : List (Func × String
     (correct x heap initial params hHeap hArgs).mono (fun _ _ h => h)
       fun _ _ ⟨hStore, hResult⟩ => by
         subst hStore
-        exact ⟨heap, hHeap, hArgs, by omega, le_max_left _ _, fun _ _ h => h, fun _ _ h => h,
-          hResult⟩
+        exact ⟨heap, hHeap, hArgs, by omega, le_max_left _ _, rfl, fun _ _ h => h,
+          fun _ _ h => h, hResult⟩
 
 end Project.IR
