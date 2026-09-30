@@ -19154,3 +19154,15 @@ calls from empty arrays ended with the native book and 22 allocations, 22
 releases, and 22 frees.
 
 - [x] CLOB 6: `applyCommand`.
+
+## 2026-09-30: alloc when memory.grow fails
+
+Talos's `memory.grow` succeeds whenever the new page count is within the
+module's maximum, and the theorems rely on that.  The WebAssembly
+specification also allows an engine to refuse growth, for example when the
+host is out of memory.  `alloc` runs `FixedArrayAllocate.program`, whose bump
+path runs `MemoryEnsure.ensureProgram` and then `MemoryGrowth.growProgram`.
+`growProgram` compares the result of `memory.grow` with -1 and executes
+`unreachable` on failure.  On such an engine the call traps and returns no
+result.  The theorems do not describe this path, and no host test exercises it:
+the Wasmtime host sets no limit on growth.
