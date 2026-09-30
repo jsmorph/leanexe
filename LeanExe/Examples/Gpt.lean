@@ -56,4 +56,10 @@ def matVec2 (w1 w2 x : Array Float) (hidden d : UInt64) : Array Float :=
   let h := matVec w1 x hidden d
   matVec w2 h d hidden
 
+/-- The product of the `n × k` matrix `a` and the `k × m` matrix `b`, both stored by
+rows, as an `n × m` matrix stored by rows, with 0 for each missing element. -/
+def matMul (a b : Array Float) (n k m : UInt64) : Array Float :=
+  LeanExe.build (n * m) fun e =>
+    LeanExe.loop k 0.0 fun c acc => acc + a[(e / m * k + c).toNat]! * b[(c * m + e % m).toNat]!
+
 end LeanExe.Examples.Gpt

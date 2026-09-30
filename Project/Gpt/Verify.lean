@@ -997,6 +997,126 @@ theorem matVec2_implements : Implements gpt.module 8 matVec2Tuple matVec2Need :=
       subst hq
       rw [hCapR, ← hC1]; exact hDisjoint⟩
 
+/-- `matMul` with its five arguments as one tuple. -/
+def matMulTuple (x : Array Float × Array Float × UInt64 × UInt64 × UInt64) : Array Float :=
+  LeanExe.Examples.Gpt.matMul x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
+
+/-- The bytes `matMul` may allocate: one array of `n × m` elements. -/
+def matMulNeed (x : Array Float × Array Float × UInt64 × UInt64 × UInt64) : Nat :=
+  48 + 8 * ((x.2.2.1 * x.2.2.2.2).toNat + 1)
+
+/-- One step of the loop for element `e`. -/
+def cellStep (a b : Array Float) (k m e c : UInt64) (acc : Float) : Float :=
+  acc + a[(e / m * k + c).toNat]! * b[(c * m + e % m).toNat]!
+
+/-- Element `e` of the product. -/
+def cell (a b : Array Float) (k m e : UInt64) : Float :=
+  LeanExe.loop k 0.0 (cellStep a b k m e)
+
+theorem matMul_eq (a b : Array Float) (n k m : UInt64) :
+    LeanExe.Examples.Gpt.matMul a b n k m = LeanExe.build (n * m) (cell a b k m) := rfl
+
+/-- The compiled loop body for an element. -/
+def cellBody : Stmt :=
+  .seq (.assign 11 (.binF .add (.getF 8) (.binF .mul
+    (.ofBits (.read 0 (.bin .add (.bin .mul (.bin .divU (.get 7) (.get 4)) (.get 3)) (.get 10))))
+    (.ofBits (.read 1 (.bin .add (.bin .mul (.get 10) (.get 4)) (.bin .remU (.get 7) (.get 4))))))))
+    (.assign 8 (.getF 11))
+
+theorem cellBody_run {initial : Store Unit} {pa pb : UInt64} {a b : Array Float}
+    (hA : UInt64Array.At initial pa (a.map Float.toBits))
+    (hB : UInt64Array.At initial pb (b.map Float.toBits))
+    {state : State} {c : Nat} {k m e : UInt64} {acc : Float}
+    (hParams : state.params.length = 5) (hLocals : state.locals.length = 10)
+    (h0 : state.get 0 = some (.i64 pa)) (h1 : state.get 1 = some (.i64 pb))
+    (h3 : state.get 3 = some (.i64 k)) (h4 : state.get 4 = some (.i64 m))
+    (h7 : state.get 7 = some (.i64 e)) (h8 : state.get 8 = some (.f64 acc.toBits))
+    (h10 : state.get 10 = some (.i64 (UInt64.ofNat c))) :
+    ∃ final, cellBody.run initial.mem 12 state = some final ∧
+      State.Frame 12 [8, 11] state final ∧
+      final.Holds [8] (Scalar.values (cellStep a b k m e (UInt64.ofNat c) acc)) := by
+  simp [cellBody, Stmt.run, Expr.eval, h0, h1, h3, h4, h7, h8, h10, Expr.readValue_at hA,
+    Expr.readValue_at hB, State.set?_eq_update, hParams, hLocals, F64Op.apply, U64Op.apply,
+    getElem!_map_toBits]
+  constructor
+  · repeat refine State.Frame.update ?_ (by simp)
+    exact State.Frame.refl _ _ _
+  · by_cases hm : m = 0 <;> simp [State.Holds, Scalar.values, cellStep, hParams, hLocals,
+      F64Bits.toBits_add, F64Bits.toBits_mul, hm]
+
+theorem matMul_implements : Implements gpt.module 9 matMulTuple matMulNeed := by
+  refine Func.implements_heap gpt.funcs 6 gpt.matMul.ir "matMul" rfl matMulTuple matMulNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨a, b, n, k, m⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨pa, rfl, hAs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hRoom
+  change heap.Borrowed initial pa (a.map Float.toBits) at hAs
+  change heap.Borrowed initial pb (b.map Float.toBits) at hBs
+  change heap.Room initial gpt.module (48 + 8 * ((n * m).toNat + 1)) at hRoom
+  have hMemory32 : gpt.module.memIs64 = false := rfl
+  have hImports : gpt.module.imports = [] := rfl
+  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
+  have hZero : (0.0 : Float).toBits = 0 := by decide +kernel
+  let start : State :=
+    { params := [.i64 pa, .i64 pb, .i64 n, .i64 k, .i64 m]
+      locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .i64 0] }
+  show Triple _ (.buildWith 5 6 7 (.bin .mul (.get 2) (.get 4))
+      (.seq (.assign 8 (.constF 0)) (.loop 9 10 (.get 3) cellBody)) (.toBits (.getF 8))) 12
+    (fun store state => store = initial ∧ state = start) _
+  refine (Stmt.buildWith_spec (writes := [8, 9, 10, 11]) (n := n * m)
+    (fun e => (cell a b k m e).toBits) hMemory32 hImports hAlloc (by decide) (by decide)
+    (by decide) (by simp [start]) hHeap hRoom
+    ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
+  · -- One element: the accumulator, then the loop over the shared dimension.
+    intro e store state he hAt hFrame hIndex
+    have hState : state.params.length = 5 ∧ state.locals.length = 10 :=
+      ⟨hFrame.params, hFrame.locals⟩
+    have hGet : ∀ j, j < 5 → state.get j = start.get j := fun j hj =>
+      hFrame.get j (by omega) (by simp; omega)
+    have hA := hAt pa _ hAs
+    have hB := hAt pb _ hBs
+    let s1 := state.update 8 (.f64 0)
+    have hS1 : s1.params.length = 5 ∧ s1.locals.length = 10 := by
+      simp [s1, hState.1, hState.2]
+    have hS1Get : ∀ j, j ≠ 8 → s1.get j = state.get j := fun j hj => State.get_update_ne hj
+    refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
+      simp [Stmt.run, Expr.eval, State.set?_eq_update, hState.1, hState.2, s1])) ?_
+    refine (Stmt.loop_spec (vars := [8]) (writes := [8, 11]) (init := (0.0 : Float)) (n := k)
+      (cellStep a b k m (UInt64.ofNat e)) (by decide) (by decide) (by decide) (by decide)
+      (by decide) (by simp [hS1.1, hS1.2])
+      ⟨s1, by simp [Expr.eval, hS1Get 3 (by decide), hGet 3 (by decide)]; rfl⟩
+      (by simp [State.Holds, Scalar.values, s1, hState.1, hState.2, hZero]) ?_).mono
+        (fun _ _ h => h) ?_
+    · intro c acc st hc hFrameL hHolds hIdx hLim
+      have hSt : st.params.length = 5 ∧ st.locals.length = 10 :=
+        ⟨hFrameL.params.trans hS1.1, hFrameL.locals.trans hS1.2⟩
+      have hKeep : ∀ j, j < 5 ∨ j = 7 → st.get j = state.get j := fun j hj =>
+        (hFrameL.get j (by omega) (by simp; omega)).trans (hS1Get j (by omega))
+      have g8 : st.get 8 = some (.f64 acc.toBits) := by
+        simpa [State.Holds, Scalar.values] using hHolds
+      obtain ⟨final, hRun, hFinalFrame, hFinalHolds⟩ := cellBody_run hA hB hSt.1 hSt.2
+        ((hKeep 0 (by omega)).trans ((hGet 0 (by decide)).trans rfl))
+        ((hKeep 1 (by omega)).trans ((hGet 1 (by decide)).trans rfl))
+        ((hKeep 3 (by omega)).trans ((hGet 3 (by decide)).trans rfl))
+        ((hKeep 4 (by omega)).trans ((hGet 4 (by decide)).trans rfl))
+        ((hKeep 7 (by omega)).trans hIndex) g8 hIdx
+      refine (Stmt.run_spec hRun).mono (fun _ _ h => h) ?_
+      rintro s' t ⟨rfl, rfl⟩
+      exact ⟨rfl, hFinalFrame, hFinalHolds⟩
+    · rintro s' t ⟨rfl, hFrameL, hHolds⟩
+      have g8 : t.get 8 = some (.f64 (cell a b k m (UInt64.ofNat e)).toBits) :=
+        (List.forall₂_cons.mp hHolds).1
+      exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
+          (hFrameL.weaken (by simp)), t, by simp [Expr.eval, g8]⟩
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pa, rfl, hNew.borrowed pa _ hAs⟩, _, _, rfl,
+      ⟨pb, rfl, hNew.borrowed pb _ hBs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
+    hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.matMul.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+  rw [matMulTuple, matMul_eq, build_map]
+  exact hNew.owned
+
 /-- `encode` succeeds on `gpt.module`, and its bytes decode to a module whose
 exports compute the kernels exactly. -/
 theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
@@ -1004,10 +1124,11 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
       Implements m 4 matVecTuple matVecNeed ∧ Implements m 5 layerTuple layerNeed ∧
       Implements m 6 LeanExe.Examples.Gpt.exp (fun _ => 0) ∧
       Implements m 7 LeanExe.Examples.Gpt.softmax softmaxNeed ∧
-      Implements m 8 matVec2Tuple matVec2Need := by
+      Implements m 8 matVec2Tuple matVec2Need ∧ Implements m 9 matMulTuple matMulNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
-    layerNorm_implements, exp_implements, softmax_implements, matVec2_implements⟩
+    layerNorm_implements, exp_implements, softmax_implements, matVec2_implements,
+    matMul_implements⟩
 
 end Project.Gpt
