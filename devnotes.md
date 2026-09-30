@@ -19414,3 +19414,23 @@ and sessions freed every allocation: 14 for `attention` and 4 for `softmaxRows`.
 
 - [x] GPT 5e: masked attention.
 - [ ] GPT 5f: the block.
+
+## 2026-09-30: GPT 5f, the transformer block
+
+`block` is export 25: two row-wise layer norms, attention, the MLP, and two
+residual sums, with five temporaries.  Its proof built on the first attempt and
+takes 215 lines, most of them argument lists.  The second sum's allocation depends
+on the length of the first sum, which `add_size_le` bounds by the length of `x`,
+so `blockNeed` depends only on `t`, `d`, `f`, and `x.size`.  All 1,513 comparisons
+of `gpt.wasm` match, including 40 for `block`.
+
+The test host's session mode gained `arg-f64 BITS`, which passes a float argument
+by its bit pattern, as `f64:BITS` does in call mode.  Sessions could then test
+the functions with a float parameter: `layerNorm` (4 allocations, releases, and
+frees), `layerNormRows` (6), and `block` (31).  The 5e entry in `deslop.md` had
+counted the result of `attention` twice in its session; the text now says five
+inputs and nine arrays allocated by the call.
+
+- [x] GPT 5f: the block.
+- [ ] Next: decide between a multi-block model, the GPU path, and the pending
+  items in `deslop.md`.

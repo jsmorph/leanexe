@@ -2620,6 +2620,256 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
     by simp [gpt.attention.ir, Func.scratch, Expr.evalResults, Expr.eval, s8,
       State.get_update_same, hS7], hOwned, hOutB, hOutO⟩
 
+/-- The sum of two arrays has at most as many elements as the first. -/
+theorem add_size_le (a b : Array Float) : (addTuple (a, b)).size ≤ a.size := by
+  simp [addTuple, LeanExe.Examples.Gpt.add, LeanExe.build, Nat.mod_le]
+
+/-- `block` with its fifteen arguments as one tuple. -/
+def blockTuple (x : Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
+    Array Float × Array Float × Array Float × Array Float × Array Float × UInt64 × UInt64 ×
+    UInt64 × Float) : Array Float :=
+  LeanExe.Examples.Gpt.block x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2.1
+    x.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2
+
+/-- The bytes `block` may allocate for `t` rows of width `d`, hidden width `f`, and an
+input of `n` elements: two layer norms, attention, two sums, and the MLP. -/
+def blockBytes (t d f : UInt64) (n : Nat) : Nat :=
+  48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * d).toNat + 1)) +
+    (48 + 8 * ((t * d).toNat + 1) + (48 + 8 * ((t * d).toNat + 1)) +
+      (48 + 8 * ((t * d).toNat + 1)) + (48 + 8 * ((t * t).toNat + 1)) +
+      (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * t).toNat + 1))) +
+      (48 + 8 * ((t * d).toNat + 1)) + (48 + 8 * ((t * d).toNat + 1))) +
+    (48 + 8 * (n + 1)) +
+    (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * d).toNat + 1))) +
+    (48 + 8 * ((t * f).toNat + 1) + (48 + 8 * ((t * f).toNat + 1)) +
+      (48 + 8 * ((t * d).toNat + 1))) +
+    (48 + 8 * (n + 1))
+
+/-- The bytes `block` may allocate. -/
+def blockNeed (x : Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
+    Array Float × Array Float × Array Float × Array Float × Array Float × UInt64 × UInt64 ×
+    UInt64 × Float) : Nat :=
+  blockBytes x.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.1
+    x.1.size
+
+theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
+  refine Func.implements_heap gpt.funcs 22 gpt.block.ir "block" rfl blockTuple blockNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨x, g1, b1, wq, wk, wv, wo, g2, b2, w1, w2, t, d, f, eps⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨px, rfl, hX⟩, _, _, rfl, ⟨pg1, rfl, hG1⟩, _, _, rfl, ⟨pb1, rfl, hB1⟩,
+      _, _, rfl, ⟨pwq, rfl, hWq⟩, _, _, rfl, ⟨pwk, rfl, hWk⟩, _, _, rfl, ⟨pwv, rfl, hWv⟩,
+      _, _, rfl, ⟨pwo, rfl, hWo⟩, _, _, rfl, ⟨pg2, rfl, hG2⟩, _, _, rfl, ⟨pb2, rfl, hB2⟩,
+      _, _, rfl, ⟨pw1, rfl, hW1⟩, _, _, rfl, ⟨pw2, rfl, hW2⟩, rfl⟩ hRoom
+  change heap.Borrowed initial px (x.map Float.toBits) at hX
+  change heap.Borrowed initial pg1 (g1.map Float.toBits) at hG1
+  change heap.Borrowed initial pb1 (b1.map Float.toBits) at hB1
+  change heap.Borrowed initial pwq (wq.map Float.toBits) at hWq
+  change heap.Borrowed initial pwk (wk.map Float.toBits) at hWk
+  change heap.Borrowed initial pwv (wv.map Float.toBits) at hWv
+  change heap.Borrowed initial pwo (wo.map Float.toBits) at hWo
+  change heap.Borrowed initial pg2 (g2.map Float.toBits) at hG2
+  change heap.Borrowed initial pb2 (b2.map Float.toBits) at hB2
+  change heap.Borrowed initial pw1 (w1.map Float.toBits) at hW1
+  change heap.Borrowed initial pw2 (w2.map Float.toBits) at hW2
+  change heap.Room initial gpt.module (blockBytes t d f x.size) at hRoom
+  simp only [blockBytes] at hRoom
+  have hImports : gpt.module.imports = [] := rfl
+  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
+  have hNorm : gpt.module.funcs[18 - gpt.module.imports.length]? =
+      some (gpt.layerNormRows.ir.function (2 + 15)) :=
+    compile_funcs (funcs := gpt.funcs) (i := 15) rfl
+  have hAttention : gpt.module.funcs[24 - gpt.module.imports.length]? =
+      some (gpt.attention.ir.function (2 + 21)) := compile_funcs (funcs := gpt.funcs) (i := 21) rfl
+  have hAdd : gpt.module.funcs[10 - gpt.module.imports.length]? =
+      some (gpt.add.ir.function (2 + 7)) := compile_funcs (funcs := gpt.funcs) (i := 7) rfl
+  have hMlp : gpt.module.funcs[14 - gpt.module.imports.length]? =
+      some (gpt.mlp.ir.function (2 + 11)) := compile_funcs (funcs := gpt.funcs) (i := 11) rfl
+  let h1 := layerNormRowsTuple (x, g1, b1, t, d, eps)
+  let a := attentionTuple (h1, wq, wk, wv, wo, t, d)
+  let r := addTuple (x, a)
+  let h2 := layerNormRowsTuple (r, g2, b2, t, d, eps)
+  let m := mlpTuple (h2, w1, w2, t, d, f)
+  have hR : r.size ≤ x.size := add_size_le x a
+  let start : State :=
+    { params := [.i64 px, .i64 pg1, .i64 pb1, .i64 pwq, .i64 pwk, .i64 pwv, .i64 pwo, .i64 pg2,
+        .i64 pb2, .i64 pw1, .i64 pw2, .i64 t, .i64 d, .i64 f, .f64 eps.toBits]
+      locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0] }
+  have hStart : start.params.length + start.locals.length = 22 := rfl
+  have hLen : ∀ (s : State) (j : Nat) (v : Value),
+      (s.update j v).params.length + (s.update j v).locals.length =
+        s.params.length + s.locals.length := fun s j v => by
+    simp [State.update_params_length, State.update_locals_length]
+  have g0 : start.get 0 = some (.i64 px) := rfl
+  have g1' : start.get 1 = some (.i64 pg1) := rfl
+  have g2' : start.get 2 = some (.i64 pb1) := rfl
+  have g3 : start.get 3 = some (.i64 pwq) := rfl
+  have g4 : start.get 4 = some (.i64 pwk) := rfl
+  have g5 : start.get 5 = some (.i64 pwv) := rfl
+  have g6 : start.get 6 = some (.i64 pwo) := rfl
+  have g7 : start.get 7 = some (.i64 pg2) := rfl
+  have g8 : start.get 8 = some (.i64 pb2) := rfl
+  have g9 : start.get 9 = some (.i64 pw1) := rfl
+  have g10 : start.get 10 = some (.i64 pw2) := rfl
+  have g11 : start.get 11 = some (.i64 t) := rfl
+  have g12 : start.get 12 = some (.i64 d) := rfl
+  have g13 : start.get 13 = some (.i64 f) := rfl
+  have g14 : start.get 14 = some (.f64 eps.toBits) := rfl
+  show Triple _
+    (.seq (.call 18 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩, ⟨.u64, .get 11⟩,
+      ⟨.u64, .get 12⟩, ⟨.f64, .getF 14⟩] [15])
+    (.seq (.call 24 [⟨.u64, .get 15⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 5⟩,
+      ⟨.u64, .get 6⟩, ⟨.u64, .get 11⟩, ⟨.u64, .get 12⟩] [16])
+    (.seq (.call 10 [⟨.u64, .get 0⟩, ⟨.u64, .get 16⟩] [17])
+    (.seq (.call 18 [⟨.u64, .get 17⟩, ⟨.u64, .get 7⟩, ⟨.u64, .get 8⟩, ⟨.u64, .get 11⟩,
+      ⟨.u64, .get 12⟩, ⟨.f64, .getF 14⟩] [18])
+    (.seq (.call 14 [⟨.u64, .get 18⟩, ⟨.u64, .get 9⟩, ⟨.u64, .get 10⟩, ⟨.u64, .get 11⟩,
+      ⟨.u64, .get 12⟩, ⟨.u64, .get 13⟩] [19])
+    (.seq (.call 10 [⟨.u64, .get 17⟩, ⟨.u64, .get 19⟩] [20])
+    (.seq (.assign 21 (.get 20))
+    (.seq (.release 19)
+    (.seq (.release 18)
+    (.seq (.release 17)
+    (.seq (.release 16)
+    (.release 15)))))))))))) 22
+    (fun store state => store = initial ∧ state = start) _
+  -- The first layer norm.
+  refine Stmt.seq_spec (Live.call layerNormRows_implements rfl hNorm rfl (Live.start hHeap) hRoom
+    (x := (x, g1, b1, t, d, eps)) (by simp only [layerNormRowsNeed]; omega) (afterArgs := start)
+    (vals := [.i64 px, .i64 pg1, .i64 pb1, .i64 t, .i64 d, .f64 eps.toBits])
+    (by simp [Expr.evalResults, Expr.eval, g0, g1', g2', g11, g12, g14])
+    ⟨[.i64 px], _, rfl, ⟨px, rfl, hX⟩, [.i64 pg1], _, rfl, ⟨pg1, rfl, hG1⟩, [.i64 pb1], _, rfl,
+      ⟨pb1, rfl, hB1⟩, rfl⟩
+    (by rw [hStart]; decide)) ?_
+  apply Triple.of_forall
+  rintro store1 t1 ⟨heap1, ph1, hLive1, rfl⟩
+  let s1 := start.update 15 (.i64 ph1)
+  have hS1 : s1.params.length + s1.locals.length = 22 := by rw [hLen, hStart]
+  -- Attention.
+  refine Stmt.seq_spec (Live.call attention_implements rfl hAttention rfl hLive1 hRoom
+    (x := (h1, wq, wk, wv, wo, t, d)) (by simp only [layerNormRowsNeed, attentionNeed]; omega)
+    (afterArgs := s1) (vals := [.i64 ph1, .i64 pwq, .i64 pwk, .i64 pwv, .i64 pwo, .i64 t, .i64 d])
+    (by simp [Expr.evalResults, Expr.eval, s1, State.get_update_same, hStart, g3, g4, g5, g6,
+      g11, g12])
+    ⟨[.i64 ph1], _, rfl, ⟨ph1, rfl, (hLive1.tempsOwned _ (List.mem_singleton_self _)).borrowed⟩,
+      [.i64 pwq], _, rfl, ⟨pwq, rfl, hLive1.borrowed pwq _ hWq⟩,
+      [.i64 pwk], _, rfl, ⟨pwk, rfl, hLive1.borrowed pwk _ hWk⟩,
+      [.i64 pwv], _, rfl, ⟨pwv, rfl, hLive1.borrowed pwv _ hWv⟩,
+      [.i64 pwo], _, rfl, ⟨pwo, rfl, hLive1.borrowed pwo _ hWo⟩, rfl⟩
+    (by rw [hS1]; decide)) ?_
+  apply Triple.of_forall
+  rintro store2 t2 ⟨heap2, pa, hLive2, rfl⟩
+  let s2 := s1.update 16 (.i64 pa)
+  have hS2 : s2.params.length + s2.locals.length = 22 := by rw [hLen, hS1]
+  -- The first residual sum, `r = x + a`.
+  refine Stmt.seq_spec (Live.call add_implements rfl hAdd rfl hLive2 hRoom
+    (x := (x, a)) (by simp only [layerNormRowsNeed, attentionNeed, addNeed]; omega)
+    (afterArgs := s2) (vals := [.i64 px, .i64 pa])
+    (by simp [Expr.evalResults, Expr.eval, s2, s1, State.get_update_same, hStart, g0])
+    ⟨[.i64 px], _, rfl, ⟨px, rfl, hLive2.borrowed px _ hX⟩,
+      ⟨pa, rfl, (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩⟩
+    (by rw [hS2]; decide)) ?_
+  apply Triple.of_forall
+  rintro store3 t3 ⟨heap3, pr, hLive3, rfl⟩
+  let s3 := s2.update 17 (.i64 pr)
+  have hS3 : s3.params.length + s3.locals.length = 22 := by rw [hLen, hS2]
+  -- The second layer norm.
+  refine Stmt.seq_spec (Live.call layerNormRows_implements rfl hNorm rfl hLive3 hRoom
+    (x := (r, g2, b2, t, d, eps)) (by simp only [layerNormRowsNeed, attentionNeed, addNeed]; omega)
+    (afterArgs := s3) (vals := [.i64 pr, .i64 pg2, .i64 pb2, .i64 t, .i64 d, .f64 eps.toBits])
+    (by simp [Expr.evalResults, Expr.eval, s3, s2, s1, State.get_update_same, hStart, g7, g8, g11,
+      g12, g14])
+    ⟨[.i64 pr], _, rfl, ⟨pr, rfl, (hLive3.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
+      [.i64 pg2], _, rfl, ⟨pg2, rfl, hLive3.borrowed pg2 _ hG2⟩,
+      [.i64 pb2], _, rfl, ⟨pb2, rfl, hLive3.borrowed pb2 _ hB2⟩, rfl⟩
+    (by rw [hS3]; decide)) ?_
+  apply Triple.of_forall
+  rintro store4 t4 ⟨heap4, ph2, hLive4, rfl⟩
+  let s4 := s3.update 18 (.i64 ph2)
+  have hS4 : s4.params.length + s4.locals.length = 22 := by rw [hLen, hS3]
+  -- The MLP.
+  refine Stmt.seq_spec (Live.call mlp_implements rfl hMlp rfl hLive4 hRoom
+    (x := (h2, w1, w2, t, d, f))
+    (by simp only [layerNormRowsNeed, attentionNeed, addNeed, mlpNeed]; omega)
+    (afterArgs := s4) (vals := [.i64 ph2, .i64 pw1, .i64 pw2, .i64 t, .i64 d, .i64 f])
+    (by simp [Expr.evalResults, Expr.eval, s4, s3, s2, s1, State.get_update_same, hStart, g9, g10,
+      g11, g12, g13])
+    ⟨[.i64 ph2], _, rfl, ⟨ph2, rfl, (hLive4.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
+      [.i64 pw1], _, rfl, ⟨pw1, rfl, hLive4.borrowed pw1 _ hW1⟩,
+      [.i64 pw2], _, rfl, ⟨pw2, rfl, hLive4.borrowed pw2 _ hW2⟩, rfl⟩
+    (by rw [hS4]; decide)) ?_
+  apply Triple.of_forall
+  rintro store5 t5 ⟨heap5, pm, hLive5, rfl⟩
+  let s5 := s4.update 19 (.i64 pm)
+  have hS5 : s5.params.length + s5.locals.length = 22 := by rw [hLen, hS4]
+  -- The result, `r + m`.
+  refine Stmt.seq_spec (Live.call add_implements rfl hAdd rfl hLive5 hRoom
+    (x := (r, m)) (by simp only [layerNormRowsNeed, attentionNeed, addNeed, mlpNeed]; omega)
+    (afterArgs := s5) (vals := [.i64 pr, .i64 pm])
+    (by simp [Expr.evalResults, Expr.eval, s5, s4, s3, s2, s1, State.get_update_same, hStart])
+    ⟨[.i64 pr], _, rfl, ⟨pr, rfl, (hLive5.tempsOwned _
+        (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))).borrowed⟩,
+      ⟨pm, rfl, (hLive5.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩⟩
+    (by rw [hS5]; decide)) ?_
+  apply Triple.of_forall
+  rintro store6 t6 ⟨heap6, pres, hLive6, rfl⟩
+  let s6 := s5.update 20 (.i64 pres)
+  let s7 := s6.update 21 (.i64 pres)
+  have hS6 : s6.params.length + s6.locals.length = 22 := by rw [hLen, hS5]
+  refine Stmt.seq_spec (Stmt.run_spec (final := s7) (by
+    simp [Stmt.run, Expr.eval, State.set?_eq_update _ (show 21 < s6.params.length +
+      s6.locals.length by rw [hS6]; decide), s7, s6, State.get_update_same,
+      show 20 < s5.params.length + s5.locals.length by rw [hS5]; decide])) ?_
+  -- The temporaries are released, newest first.
+  have r19 : s7.get 19 = some (.i64 pm) := by
+    simp [s7, s6, s5, State.get_update_same, hS4]
+  have r18 : s7.get 18 = some (.i64 ph2) := by
+    simp [s7, s6, s5, s4, State.get_update_same, hS3]
+  have r17 : s7.get 17 = some (.i64 pr) := by
+    simp [s7, s6, s5, s4, s3, State.get_update_same, hS2]
+  have r16 : s7.get 16 = some (.i64 pa) := by
+    simp [s7, s6, s5, s4, s3, s2, State.get_update_same, hS1]
+  have r15 : s7.get 15 = some (.i64 ph1) := by
+    simp [s7, s6, s5, s4, s3, s2, s1, State.get_update_same, hStart]
+  refine Stmt.seq_spec (hLive6.releaseSecond hImports hRelease r19) ?_
+  apply Triple.of_forall
+  rintro store7 st7 ⟨hLive7, rfl⟩
+  refine Stmt.seq_spec (hLive7.releaseSecond hImports hRelease r18) ?_
+  apply Triple.of_forall
+  rintro store8 st8 ⟨hLive8, rfl⟩
+  refine Stmt.seq_spec (hLive8.releaseSecond hImports hRelease r17) ?_
+  apply Triple.of_forall
+  rintro store9 st9 ⟨hLive9, rfl⟩
+  refine Stmt.seq_spec (hLive9.releaseSecond hImports hRelease r16) ?_
+  apply Triple.of_forall
+  rintro store10 st10 ⟨hLive10, rfl⟩
+  refine (hLive10.releaseSecond hImports hRelease r15).mono (fun _ _ h => h) ?_
+  rintro store11 st11 ⟨hLive11, rfl⟩
+  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
+      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
+      Represent.borrowed heap' store'
+        [.i64 px, .i64 pg1, .i64 pb1, .i64 pwq, .i64 pwk, .i64 pwv, .i64 pwo, .i64 pg2, .i64 pb2,
+          .i64 pw1, .i64 pw2, .i64 t, .i64 d, .i64 f, .f64 eps.toBits]
+        (x, g1, b1, wq, wk, wv, wo, g2, b2, w1, w2, t, d, f, eps) := fun heap' store' hKeep =>
+    ⟨[.i64 px], _, rfl, ⟨px, rfl, hKeep px _ hX⟩, [.i64 pg1], _, rfl, ⟨pg1, rfl, hKeep pg1 _ hG1⟩,
+      [.i64 pb1], _, rfl, ⟨pb1, rfl, hKeep pb1 _ hB1⟩, [.i64 pwq], _, rfl,
+      ⟨pwq, rfl, hKeep pwq _ hWq⟩, [.i64 pwk], _, rfl, ⟨pwk, rfl, hKeep pwk _ hWk⟩,
+      [.i64 pwv], _, rfl, ⟨pwv, rfl, hKeep pwv _ hWv⟩, [.i64 pwo], _, rfl,
+      ⟨pwo, rfl, hKeep pwo _ hWo⟩, [.i64 pg2], _, rfl, ⟨pg2, rfl, hKeep pg2 _ hG2⟩,
+      [.i64 pb2], _, rfl, ⟨pb2, rfl, hKeep pb2 _ hB2⟩, [.i64 pw1], _, rfl,
+      ⟨pw1, rfl, hKeep pw1 _ hW1⟩, [.i64 pw2], _, rfl, ⟨pw2, rfl, hKeep pw2 _ hW2⟩, rfl⟩
+  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLive11.finish (need := blockNeed (x, g1, b1, wq, wk, wv, wo, g2, b2, w1, w2, t, d, f, eps))
+      (by simp only [layerNormRowsNeed, attentionNeed, addNeed, mlpNeed, blockNeed, blockBytes]
+          omega) hParams
+  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pres], s7,
+    by simp [gpt.block.ir, Func.scratch, Expr.evalResults, Expr.eval, s7,
+      State.get_update_same, hS6], hOwned, hOutB, hOutO⟩
+
 /-- `encode` succeeds on `gpt.module`, and its bytes decode to a module whose
 exports compute the kernels exactly. -/
 theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
@@ -2638,7 +2888,7 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
       Implements m 21 rowSumExpTuple rowSumExpNeed ∧
       Implements m 22 softmaxApplyTuple softmaxApplyNeed ∧
       Implements m 23 softmaxRowsTuple softmaxRowsNeed ∧
-      Implements m 24 attentionTuple attentionNeed := by
+      Implements m 24 attentionTuple attentionNeed ∧ Implements m 25 blockTuple blockNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
@@ -2647,6 +2897,6 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
     geluArray_implements, mlp_implements, rowMeans_implements, rowInvStd_implements,
     normalizeRows_implements, layerNormRows_implements, maskedScores_implements,
     rowMax_implements, rowSumExp_implements, softmaxApply_implements, softmaxRows_implements,
-    attention_implements⟩
+    attention_implements, block_implements⟩
 
 end Project.Gpt
