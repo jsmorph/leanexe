@@ -208,13 +208,282 @@ theorem matVec_implements : Implements gpt.module 4 matVecTuple matVecNeed := by
   rw [matVecTuple, matVec_eq, build_map]
   exact hNew.owned
 
+/-- `layerNorm` with its four arguments as one tuple. -/
+def layerTuple (x : Array Float × Array Float × Array Float × Float) : Array Float :=
+  LeanExe.Examples.Gpt.layerNorm x.1 x.2.1 x.2.2.1 x.2.2.2
+
+/-- The bytes `layerNorm` may allocate: one array as long as `xs`. -/
+def layerNeed (x : Array Float × Array Float × Array Float × Float) : Nat :=
+  48 + 8 * (x.1.size + 1)
+
+/-- One step of the sum loop. -/
+def sumStep (xs : Array Float) (i : UInt64) (acc : Float) : Float := acc + xs[i.toNat]!
+
+/-- One step of the variance loop. -/
+def varStep (xs : Array Float) (mean : Float) (i : UInt64) (acc : Float) : Float :=
+  acc + (xs[i.toNat]! - mean) * (xs[i.toNat]! - mean)
+
+/-- Element `i` of the result. -/
+def layerElement (xs g b : Array Float) (mean inv : Float) (i : UInt64) : Float :=
+  (xs[i.toNat]! - mean) * inv * g[i.toNat]! + b[i.toNat]!
+
+theorem layerNorm_eq (xs g b : Array Float) (eps : Float) :
+    LeanExe.Examples.Gpt.layerNorm xs g b eps =
+      LeanExe.build xs.size.toUInt64 (layerElement xs g b
+        (LeanExe.loop xs.size.toUInt64 0.0 (sumStep xs) / xs.size.toUInt64.toFloat)
+        (1.0 / (LeanExe.loop xs.size.toUInt64 0.0 (varStep xs
+          (LeanExe.loop xs.size.toUInt64 0.0 (sumStep xs) / xs.size.toUInt64.toFloat)) /
+            xs.size.toUInt64.toFloat + eps).sqrt)) := rfl
+
+/-- The compiled body of the sum loop. -/
+def sumBody : Stmt :=
+  .seq (.assign 10 (.binF .add (.getF 7) (.ofBits (.read 0 (.get 9))))) (.assign 7 (.getF 10))
+
+/-- The compiled body of the variance loop. -/
+def varBody : Stmt :=
+  .seq (.assign 16 (.binF .add (.getF 13) (.binF .mul
+    (.binF .sub (.ofBits (.read 0 (.get 15))) (.getF 11))
+    (.binF .sub (.ofBits (.read 0 (.get 15))) (.getF 11))))) (.assign 13 (.getF 16))
+
+/-- The compiled element of the result. -/
+def layerElementIR : Expr .u64 :=
+  .toBits (.binF .add (.binF .mul (.binF .mul (.binF .sub (.ofBits (.read 0 (.get 22)))
+    (.getF 11)) (.getF 18)) (.ofBits (.read 1 (.get 22)))) (.ofBits (.read 2 (.get 22))))
+
+theorem sumBody_run {initial : Store Unit} {px : UInt64} {xs : Array Float}
+    (hX : UInt64Array.At initial px (xs.map Float.toBits)) {state : State} {k : Nat}
+    {acc : Float} (hParams : state.params.length = 4) (hLocals : state.locals.length = 20)
+    (h0 : state.get 0 = some (.i64 px)) (h7 : state.get 7 = some (.f64 acc.toBits))
+    (h9 : state.get 9 = some (.i64 (UInt64.ofNat k))) :
+    ∃ final, sumBody.run initial.mem 23 state = some final ∧
+      State.Frame 23 [7, 10] state final ∧
+      final.Holds [7] (Scalar.values (sumStep xs (UInt64.ofNat k) acc)) := by
+  simp [sumBody, Stmt.run, Expr.eval, h0, h7, h9, Expr.readValue_at hX, State.set?_eq_update,
+    hParams, hLocals, F64Op.apply, getElem!_map_toBits]
+  constructor
+  · repeat refine State.Frame.update ?_ (by simp)
+    exact State.Frame.refl _ _ _
+  · simp [State.Holds, Scalar.values, sumStep, hParams, hLocals, F64Bits.toBits_add]
+
+theorem varBody_run {initial : Store Unit} {px : UInt64} {xs : Array Float}
+    (hX : UInt64Array.At initial px (xs.map Float.toBits)) {state : State} {k : Nat}
+    {acc mean : Float} (hParams : state.params.length = 4) (hLocals : state.locals.length = 20)
+    (h0 : state.get 0 = some (.i64 px)) (h11 : state.get 11 = some (.f64 mean.toBits))
+    (h13 : state.get 13 = some (.f64 acc.toBits))
+    (h15 : state.get 15 = some (.i64 (UInt64.ofNat k))) :
+    ∃ final, varBody.run initial.mem 23 state = some final ∧
+      State.Frame 23 [13, 16] state final ∧
+      final.Holds [13] (Scalar.values (varStep xs mean (UInt64.ofNat k) acc)) := by
+  simp [varBody, Stmt.run, Expr.eval, h0, h11, h13, h15, Expr.readValue_at hX,
+    State.set?_eq_update, hParams, hLocals, F64Op.apply, getElem!_map_toBits]
+  constructor
+  · repeat refine State.Frame.update ?_ (by simp)
+    exact State.Frame.refl _ _ _
+  · simp [State.Holds, Scalar.values, varStep, hParams, hLocals, F64Bits.toBits_add,
+      F64Bits.toBits_mul, F64Bits.toBits_sub]
+
+theorem layerNorm_implements : Implements gpt.module 5 layerTuple layerNeed := by
+  refine Func.implements_heap gpt.funcs 2 gpt.layerNorm.ir "layerNorm" rfl layerTuple layerNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      rfl⟩; rfl) ?_
+  rintro ⟨xs, g, b, eps⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pg, rfl, hGs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hRoom
+  change heap.Borrowed initial px (xs.map Float.toBits) at hXs
+  change heap.Borrowed initial pg (g.map Float.toBits) at hGs
+  change heap.Borrowed initial pb (b.map Float.toBits) at hBs
+  change heap.Room initial gpt.module (48 + 8 * (xs.size + 1)) at hRoom
+  have hMemory32 : gpt.module.memIs64 = false := rfl
+  have hImports : gpt.module.imports = [] := rfl
+  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
+  have hZero : (0.0 : Float).toBits = 0 := by decide +kernel
+  have hOne : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
+  have hX := hXs.values
+  have hFit := hX.1
+  simp only [Array.size_map] at hFit
+  have hLength := hX.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLength
+  have hn : (UInt64.ofNat xs.size).toNat = xs.size :=
+    UInt64.toNat_ofNat_of_lt' (by simp only [UInt64.size]; omega)
+  let start : State :=
+    { params := [.i64 px, .i64 pg, .i64 pb, .f64 eps.toBits]
+      locals := [.i64 0, .f64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .f64 0, .i64 0, .f64 0,
+        .i64 0, .i64 0, .f64 0, .f64 0, .f64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0] }
+  show Triple _ (.seq (.arraySize 4 0) (.seq (.assign 5 (.convertU (.get 4)))
+    (.seq (.arraySize 6 0) (.seq (.assign 7 (.constF 0)) (.seq (.loop 8 9 (.get 6) sumBody)
+    (.seq (.assign 11 (.binF .div (.getF 7) (.getF 5))) (.seq (.arraySize 12 0)
+    (.seq (.assign 13 (.constF 0)) (.seq (.loop 14 15 (.get 12) varBody)
+    (.seq (.assign 17 (.binF .div (.getF 13) (.getF 5)))
+    (.seq (.assign 18 (.binF .div (.constF 4607182418800017408)
+      (.unF .sqrt (.binF .add (.getF 17) (.getF 3)))))
+    (.seq (.arraySize 19 0) (.build 20 21 22 (.get 19) layerElementIR))))))))))))) 23
+    (fun store state => store = initial ∧ state = start) _
+  have hParams : start.params.length = 4 := rfl
+  have hLocals : start.locals.length = 20 := rfl
+  have hGet0 : start.get 0 = some (.i64 px) := rfl
+  -- The count as a float, and the sum loop.
+  let n : Float := xs.size.toUInt64.toFloat
+  let s1 := start.update 4 (.i64 (UInt64.ofNat xs.size))
+  let s2 := s1.update 5 (.f64 n.toBits)
+  let s3 := s2.update 6 (.i64 (UInt64.ofNat xs.size))
+  let s4 := s3.update 7 (.f64 0)
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s3) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s4) ?_) ?_
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLength, hX.lengthRead,
+      State.set?_eq_update, hParams, hLocals, s1]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, s1, s2, n,
+      F64Convert.toBits_toFloat]
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLength, hX.lengthRead,
+      State.set?_eq_update, hParams, hLocals, s1, s2, s3]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, s1, s2, s3, s4]
+  have hS4 : s4.params.length = 4 ∧ s4.locals.length = 20 := by
+    simp [s4, s3, s2, s1, hParams, hLocals]
+  refine Stmt.seq_spec (Stmt.loop_spec (vars := [7]) (writes := [7, 10]) (init := (0.0 : Float))
+    (n := xs.size.toUInt64) (sumStep xs)
+    (by decide) (by decide) (by decide) (by decide) (by decide)
+    (by simp [hS4.1, hS4.2]) ⟨s4, by simp [Expr.eval, s4, s3, s2, s1, hParams, hLocals]⟩
+    (by simp [State.Holds, Scalar.values, s4, s3, s2, s1, hParams, hLocals, hZero]) ?_) ?_
+  · intro k acc state hk hFrame hHolds hIndex hLimit
+    have hState : state.params.length = 4 ∧ state.locals.length = 20 :=
+      ⟨hFrame.params.trans hS4.1, hFrame.locals.trans hS4.2⟩
+    have h0 : state.get 0 = some (.i64 px) :=
+      (hFrame.get 0 (by decide) (by decide)).trans (by simp [s4, s3, s2, s1, hGet0])
+    have h7 : state.get 7 = some (.f64 acc.toBits) := by
+      simpa [State.Holds, Scalar.values] using hHolds
+    obtain ⟨final, hRun, hFinalFrame, hFinalHolds⟩ :=
+      sumBody_run hX hState.1 hState.2 h0 h7 hIndex
+    refine (Stmt.run_spec hRun).mono (fun _ _ h => h) ?_
+    rintro store st ⟨rfl, rfl⟩
+    exact ⟨rfl, hFinalFrame, hFinalHolds⟩
+  apply Triple.of_forall
+  rintro store t1 ⟨hStore, hFrame1, hHolds1⟩
+  subst store
+  generalize hSum : LeanExe.loop xs.size.toUInt64 0.0 (sumStep xs) = total at hHolds1
+  have h1Get7 : t1.get 7 = some (.f64 total.toBits) := (List.forall₂_cons.mp hHolds1).1
+  have hT1 : t1.params.length = 4 ∧ t1.locals.length = 20 :=
+    ⟨hFrame1.params.trans hS4.1, hFrame1.locals.trans hS4.2⟩
+  have hT1Get : ∀ j, j < 23 → j ∉ [8, 9, 7, 10] → t1.get j = s4.get j :=
+    fun j hj hOut => hFrame1.get j hj hOut
+  have h1Get0 : t1.get 0 = some (.i64 px) := (hT1Get 0 (by decide) (by decide)).trans rfl
+  have h1Get5 : t1.get 5 = some (.f64 n.toBits) :=
+    (hT1Get 5 (by decide) (by decide)).trans (by simp [s4, s3, s2, s1, hParams, hLocals])
+  -- The mean and the variance loop.
+  let mean := total / n
+  let u1 := t1.update 11 (.f64 mean.toBits)
+  let u2 := u1.update 12 (.i64 (UInt64.ofNat xs.size))
+  let u3 := u2.update 13 (.f64 0)
+  refine Stmt.seq_spec (Stmt.run_spec (final := u1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := u2) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := u3) ?_) ?_
+  · simp [Stmt.run, Expr.eval, h1Get7, h1Get5, State.set?_eq_update, hT1.1, hT1.2, u1, mean,
+      F64Op.apply, F64Bits.toBits_div]
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, h1Get0, hLength, hX.lengthRead,
+      State.set?_eq_update, hT1.1, hT1.2, u1, u2]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hT1.1, hT1.2, u1, u2, u3]
+  have hU3 : u3.params.length = 4 ∧ u3.locals.length = 20 := by simp [u3, u2, u1, hT1.1, hT1.2]
+  refine Stmt.seq_spec (Stmt.loop_spec (vars := [13]) (writes := [13, 16])
+    (init := (0.0 : Float)) (n := xs.size.toUInt64) (varStep xs mean)
+    (by decide) (by decide) (by decide) (by decide) (by decide)
+    (by simp [hU3.1, hU3.2]) ⟨u3, by simp [Expr.eval, u3, u2, u1, hT1.1, hT1.2]⟩
+    (by simp [State.Holds, Scalar.values, u3, u2, u1, hT1.1, hT1.2, hZero]) ?_) ?_
+  · intro k acc state hk hFrame hHolds hIndex hLimit
+    have hState : state.params.length = 4 ∧ state.locals.length = 20 :=
+      ⟨hFrame.params.trans hU3.1, hFrame.locals.trans hU3.2⟩
+    have h0 : state.get 0 = some (.i64 px) :=
+      (hFrame.get 0 (by decide) (by decide)).trans (by simp [u3, u2, u1, h1Get0])
+    have h11 : state.get 11 = some (.f64 mean.toBits) :=
+      (hFrame.get 11 (by decide) (by decide)).trans (by simp [u3, u2, u1, hT1.1, hT1.2])
+    have h13 : state.get 13 = some (.f64 acc.toBits) := by
+      simpa [State.Holds, Scalar.values] using hHolds
+    obtain ⟨final, hRun, hFinalFrame, hFinalHolds⟩ :=
+      varBody_run hX hState.1 hState.2 h0 h11 h13 hIndex
+    refine (Stmt.run_spec hRun).mono (fun _ _ h => h) ?_
+    rintro store st ⟨rfl, rfl⟩
+    exact ⟨rfl, hFinalFrame, hFinalHolds⟩
+  apply Triple.of_forall
+  rintro store t2 ⟨hStore, hFrame2, hHolds2⟩
+  subst store
+  generalize hVar : LeanExe.loop xs.size.toUInt64 0.0 (varStep xs mean) = spread at hHolds2
+  have h2Get13 : t2.get 13 = some (.f64 spread.toBits) := (List.forall₂_cons.mp hHolds2).1
+  have hT2 : t2.params.length = 4 ∧ t2.locals.length = 20 :=
+    ⟨hFrame2.params.trans hU3.1, hFrame2.locals.trans hU3.2⟩
+  have hT2Get : ∀ j, j < 23 → j ∉ [14, 15, 13, 16] → t2.get j = u3.get j :=
+    fun j hj hOut => hFrame2.get j hj hOut
+  have h2Get0 : t2.get 0 = some (.i64 px) :=
+    (hT2Get 0 (by decide) (by decide)).trans (by simp [u3, u2, u1, h1Get0])
+  have h2Get1 : t2.get 1 = some (.i64 pg) :=
+    (hT2Get 1 (by decide) (by decide)).trans
+      (by simp [u3, u2, u1]; exact (hT1Get 1 (by decide) (by decide)).trans rfl)
+  have h2Get2 : t2.get 2 = some (.i64 pb) :=
+    (hT2Get 2 (by decide) (by decide)).trans
+      (by simp [u3, u2, u1]; exact (hT1Get 2 (by decide) (by decide)).trans rfl)
+  have h2Get3 : t2.get 3 = some (.f64 eps.toBits) :=
+    (hT2Get 3 (by decide) (by decide)).trans
+      (by simp [u3, u2, u1]; exact (hT1Get 3 (by decide) (by decide)).trans rfl)
+  have h2Get5 : t2.get 5 = some (.f64 n.toBits) :=
+    (hT2Get 5 (by decide) (by decide)).trans (by simp [u3, u2, u1, h1Get5])
+  have h2Get11 : t2.get 11 = some (.f64 mean.toBits) :=
+    (hT2Get 11 (by decide) (by decide)).trans (by simp [u3, u2, u1, hT1.1, hT1.2])
+  -- The variance, the inverse deviation, and the result.
+  let inv := 1.0 / (spread / n + eps).sqrt
+  let v1 := t2.update 17 (.f64 (spread / n).toBits)
+  let v2 := v1.update 18 (.f64 inv.toBits)
+  let v3 := v2.update 19 (.i64 (UInt64.ofNat xs.size))
+  refine Stmt.seq_spec (Stmt.run_spec (final := v1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := v2) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := v3) ?_) ?_
+  · simp [Stmt.run, Expr.eval, h2Get13, h2Get5, State.set?_eq_update, hT2.1, hT2.2, v1,
+      F64Op.apply, F64Bits.toBits_div]
+  · simp [Stmt.run, Expr.eval, h2Get3, State.set?_eq_update, hT2.1, hT2.2, v1, v2, inv,
+      F64Op.apply, F64UnOp.apply, F64Bits.toBits_div, F64Bits.toBits_sqrt, F64Bits.toBits_add,
+      hOne]
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, h2Get0, hLength, hX.lengthRead,
+      State.set?_eq_update, hT2.1, hT2.2, v1, v2, v3]
+  have hV3 : v3.params.length = 4 ∧ v3.locals.length = 20 := by simp [v3, v2, v1, hT2.1, hT2.2]
+  have hV3Get : ∀ j, j < 17 → v3.get j = t2.get j := fun j hj => by
+    simp only [v3, v2, v1]
+    rw [State.get_update_ne (by omega), State.get_update_ne (by omega),
+      State.get_update_ne (by omega)]
+  have h3Get18 : v3.get 18 = some (.f64 inv.toBits) := by simp [v3, v2, v1, hT2.1, hT2.2]
+  refine (Stmt.build_spec (n := xs.size.toUInt64)
+    (fun i => (layerElement xs g b mean inv i).toBits) hMemory32 hImports hAlloc (by decide)
+    (by decide) (by simp [hV3.1, hV3.2]) hHeap (by rw [show xs.size.toUInt64.toNat = xs.size from hn]; exact hRoom)
+    ⟨v3, by simp [Expr.eval, v3, v2, v1, hT2.1, hT2.2]⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro k store state hk hAt hFrame hIndex
+    have hState : state.params.length = 4 ∧ state.locals.length = 20 :=
+      ⟨hFrame.params.trans hV3.1, hFrame.locals.trans hV3.2⟩
+    have hKeep : ∀ j, j < 20 → state.get j = v3.get j := fun j hj =>
+      hFrame.get j (by omega) (by simp; omega)
+    have g0 := (hKeep 0 (by decide)).trans ((hV3Get 0 (by decide)).trans h2Get0)
+    have g1 := (hKeep 1 (by decide)).trans ((hV3Get 1 (by decide)).trans h2Get1)
+    have g2 := (hKeep 2 (by decide)).trans ((hV3Get 2 (by decide)).trans h2Get2)
+    have g11 := (hKeep 11 (by decide)).trans ((hV3Get 11 (by decide)).trans h2Get11)
+    have g18 := (hKeep 18 (by decide)).trans h3Get18
+    exact ⟨state.update 23 (.i64 (UInt64.ofNat k)), by simp [layerElementIR, Expr.eval, g0, g1,
+      g2, g11, g18, hIndex,
+      Expr.readValue_at (hAt px _ hXs), Expr.readValue_at (hAt pg _ hGs),
+      Expr.readValue_at (hAt pb _ hBs), State.set?_eq_update, hState.1, hState.2, F64Op.apply,
+      getElem!_map_toBits, layerElement, F64Bits.toBits_add, F64Bits.toBits_mul,
+      F64Bits.toBits_sub]⟩
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, _, _, rfl,
+      ⟨pg, rfl, hNew.borrowed pg _ hGs⟩, _, _, rfl, ⟨pb, rfl, hNew.borrowed pb _ hBs⟩, rfl⟩,
+    le_of_le_of_eq hNew.top (by simp [layerNeed, hn]),
+    le_of_le_of_eq hNew.pages (by simp [layerNeed, hn]), hNew.caps, hNew.borrowed,
+    fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 ptr], state,
+    by simp [gpt.layerNorm.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
+  rw [layerTuple, layerNorm_eq, hSum, hVar, build_map]
+  exact hNew.owned
+
 /-- `encode` succeeds on `gpt.module`, and its bytes decode to a module whose
 exports compute the kernels exactly. -/
 theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
     ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 3 dotTuple (fun _ => 0) ∧
-      Implements m 4 matVecTuple matVecNeed := by
+      Implements m 4 matVecTuple matVecNeed ∧ Implements m 5 layerTuple layerNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide) (by decide +kernel)
-  exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements⟩
+  exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
+    layerNorm_implements⟩
 
 end Project.Gpt

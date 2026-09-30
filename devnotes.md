@@ -19216,3 +19216,25 @@ session left equal allocation, release, and free counts.
 
 - [x] GPT 2: `matVec`.
 - [ ] GPT 3: layer norm.
+
+## 2026-09-30: GPT 3, layerNorm
+
+`layerNorm xs g b eps` computes the mean and the variance with two loops, the
+inverse deviation `1.0 / (var + eps).sqrt`, and a new array of
+`(xs[i]! - mean) * inv * g[i]! + b[i]!`.  It needed no compiler or rule changes.
+`layerNorm_implements` takes 190 lines, most of them spent carrying local values
+from one step to the next through the frames of the two loops.  The first
+build failed on a `show` term one parenthesis short, on an `omega` goal that saw
+`(xs.map Float.toBits).size` in place of `xs.size`, and on a final state left
+for `simp` to infer.
+
+`gpt.wasm` (2,167 bytes) matched native Lean on 148 inputs, 43 of them for
+`layerNorm`.  A release session was not run: the host's session mode passes only
+`i64` arguments, and `eps` is a float.
+
+The proof's length points at a missing tool.  Each program proof restates, for
+every step, which locals keep their values, and a lemma or tactic that computes
+those facts from the frames would shorten long straight-line proofs.
+
+- [x] GPT 3: `layerNorm`.
+- [ ] GPT 4: softmax, after the decision on `exp`.
