@@ -322,6 +322,17 @@ theorem block_causal {x x' g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bpr
     (mlp_rows (wfc := wfc) (bfc := bfc) (wproj := wproj) (bproj := bproj) ht32 hnd hf
       (layerNormRows_rows ht32 hnd hr))
 
+/-- Row `i` of `blockAt` depends only on rows `0` to `i` of `x`, for inputs of equal
+length. -/
+theorem blockAt_causal {x x' g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Float}
+    {l t nh dh f : UInt64} {eps : Float} {i : Nat} (ht : t.toNat < 2 ^ 16)
+    (hn : nh.toNat < 2 ^ 16) (hdh : dh.toNat < 2 ^ 16) (hf : f.toNat < 2 ^ 32)
+    (hs : x.size = x'.size) (hx : RowsAgree (nh * dh).toNat i x x') :
+    RowsAgree (nh * dh).toNat i
+      (blockAt x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj l t nh dh f eps)
+      (blockAt x' g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj l t nh dh f eps) :=
+  block_causal ht hn hdh hf hs hx
+
 /-- Row `i` of `forward`, the scores at position `i`, depends only on tokens `0` to `i`. -/
 theorem forward_causal {tokens tokens' : Array UInt64}
     {wte wpe g1a b1a wqa bqa wka bka wva bva woa boa g2a b2a wfca bfca wproja bproja

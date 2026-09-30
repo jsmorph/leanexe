@@ -48,22 +48,10 @@ def mem(pos):
     return m
 
 
-def arg_ir(a):
-    if isinstance(a, tuple):
-        if a[0] == 'mul':
-            return f'⟨.u64, .bin .mul (.get {a[1]}) (.get {a[2]})⟩'
-        if a[0] == 'f':
-            return f'⟨.f64, .getF {a[1]}⟩'
-        if a[0] == 'scale':
-            return (f'⟨.f64, .binF .div (.constF 4607182418800017408) '
-                    f'(.unF .sqrt (.convertU (.get {a[1]})))⟩')
-    return f'⟨.u64, .get {a}⟩'
-
-
 def arg_reads(a):
     if isinstance(a, tuple):
         if a[0] == 'mul':
-            return [a[1], a[2]]
+            return arg_reads(a[1]) + arg_reads(a[2])
         return [a[1]]
     return [a]
 
@@ -102,13 +90,30 @@ def state_fact(r, depth, nparams):
     return term
 
 
+def eval_term(e, depth, nparams):
+    """A proof that the `u64` expression `e`, a local or a product, evaluates."""
+    if isinstance(e, tuple):
+        return (f'Expr.eval_mul ({eval_term(e[1], depth, nparams)}) '
+                f'({eval_term(e[2], depth, nparams)})')
+    return f'Expr.eval_get ({state_fact(e, depth, nparams)})'
+
+
+def value_term(e, names):
+    """The value of the `u64` expression `e` in terms of the parameter names."""
+    if isinstance(e, tuple):
+        right = value_term(e[2], names)
+        if isinstance(e[2], tuple):
+            right = f'({right})'
+        return f'{value_term(e[1], names)} * {right}'
+    return names[e]
+
+
 def eval_lines(args, depth, nparams, ind):
     """The proof that the arguments evaluate, one line per argument."""
     out = []
     for a in args:
         if isinstance(a, tuple) and a[0] == 'mul':
-            out.append(f'Expr.evalResults_mul ({state_fact(a[1], depth, nparams)}) '
-                       f'({state_fact(a[2], depth, nparams)}) <|')
+            out.append(f'Expr.evalResults_u64 ({eval_term(a, depth, nparams)}) <|')
         elif isinstance(a, tuple) and a[0] == 'f':
             out.append(f'Expr.evalResults_getF ({state_fact(a[1], depth, nparams)}) <|')
         else:
@@ -181,19 +186,12 @@ def composite(spec):
     lines.append('    simp [State.update_params_length, State.update_locals_length]')
     for j, v in enumerate(vals):
         lines.append(f'  have sg{j} : start.get {j} = some ({v}) := rfl')
-    # The body.
-    seqs = []
-    for n, c in enumerate(calls):
-        seqs.append(f"(.call {c['fn']} [{', '.join(arg_ir(a) for a in c['args'])}] [{nparams + n}])")
-    seqs.append(f'(.assign {nparams + L} (.get {nparams + L - 1}))')
-    temps_regs = list(range(nparams, nparams + L - 1))[::-1]
-    for reg in temps_regs[:-1]:
-        seqs.append(f'(.release {reg})')
-    last = f'(.release {temps_regs[-1]})'
-    lines.append('  show Triple _')
-    for s in seqs:
-        lines.append('    (.seq ' + wrap(s, '      '))
-    lines.append(f'    {last}' + ')' * len(seqs) + f' {nparams + nlocals}')
+    # The body stays named, and the kernel computes its scratch width: restating the
+    # body, or computing the width in the elaborator, exceeds Lean's recursion depth
+    # for the longer bodies.  Composite bodies need no scratch locals.
+    lines.append(f'  have hWidth : gpt.{name}.ir.width = 0 := by decide +kernel')
+    lines.append('  simp only [Func.state, Func.locals, hWidth, List.replicate_zero, List.append_nil]')
+    lines.append(f'  show Triple _ gpt.{name}.ir.body _')
     lines.append('    (fun store state => store = initial ∧ state = start) _')
     # The calls.
     live = '(Live.start hHeap)'
@@ -204,13 +202,13 @@ def composite(spec):
     for n, c in enumerate(calls):
         k = n + 1
         lines.append(f"  -- {c['comment']}")
-        lines.append(f"  refine Stmt.seq_spec (Live.call {c['impl']} rfl {c['hfunc']} rfl {live} hRoom")
+        lines.append(f"  refine Live.call_seq {c['impl']} rfl {c['hfunc']} rfl {live} hRoom")
         lines.append(f"    (x := {c['x']})")
         lines.append(f"    (by simp only [{', '.join(c['need'])}]; omega) (afterArgs := {state})")
         cvals = []
         for a in c['args']:
             if isinstance(a, tuple) and a[0] == 'mul':
-                cvals.append(f'.i64 ({spec["mul"][(a[1], a[2])]})')
+                cvals.append(f'.i64 ({value_term(a, names)})')
             elif isinstance(a, tuple) and a[0] == 'f':
                 cvals.append(vals[a[1]])
             elif isinstance(a, tuple) and a[0] == 'scale':
@@ -243,10 +241,8 @@ def composite(spec):
             else:
                 items.append((a, f'({live}.tempsOwned _ ({mem(temps.index(a))})).borrowed'))
         lines.append(f"    {wrap(represent(items, c.get('tail', True)), '      ')}")
-        lines.append(f'    (by rw [{hprev}]; decide)) ?_')
-        lines.append('  apply Triple.of_forall')
         p = c['ptr']
-        lines.append(f'  rintro store{k} t{k} ⟨heap{k}, {p}, hLive{k}, rfl⟩')
+        lines.append(f'    (by rw [{hprev}]; decide) fun heap{k} {p} store{k} hLive{k} => ?_')
         lines.append(f'  let s{k} := {state}.update {nparams + n} (.i64 {p})')
         lines.append(f'  have hS{k} : s{k}.params.length + s{k}.locals.length = {total} := by rw [hLen, {hprev}]')
         chain.append(f's{k}')
@@ -321,15 +317,14 @@ mlp_spec = dict(
     funcs=[('hLinear', 30, 27, 'linear'), ('hGelu', 13, 10, 'geluArray')],
     lets=[('h', 'linearTuple (x, wfc, bfc, t, d, f)'), ('g', 'LeanExe.Examples.Gpt.geluArray h')],
     haves=['  have hSize : h.size = (t * f).toNat := linear_size x wfc bfc t d f'],
-    mul={},
     calls=[
-        dict(fn=30, args=[0, 1, 2, 5, 6, 7], impl='linear_implements', hfunc='hLinear',
+        dict(args=[0, 1, 2, 5, 6, 7], impl='linear_implements', hfunc='hLinear',
              x='(x, wfc, bfc, t, d, f)', need=['linearNeed'],
              borrowed=[('P', 'x'), ('P', 'wfc'), ('P', 'bfc')], ptr='ph', comment='`h = x · wfc + bfc`.'),
-        dict(fn=13, args=[8], impl='geluArray_implements', hfunc='hGelu', x='h',
+        dict(args=[8], impl='geluArray_implements', hfunc='hGelu', x='h',
              need=['linearNeed', 'geluNeed', 'hSize'], borrowed=[('T', 'ph')], tail=False, ptr='pg',
              comment='`g = gelu h`.'),
-        dict(fn=30, args=[9, 3, 4, 5, 7, 6], impl='linear_implements', hfunc='hLinear',
+        dict(args=[9, 3, 4, 5, 7, 6], impl='linear_implements', hfunc='hLinear',
              x='(g, wproj, bproj, t, f, d)', need=['linearNeed', 'geluNeed', 'hSize'],
              borrowed=[('T', 'pg'), ('P', 'wproj'), ('P', 'bproj')], ptr='pr',
              comment='The result, `g · wproj + bproj`.'),
@@ -348,7 +343,7 @@ def mlpNeed (x : {tuple_type([k for _, k in MLP])}) : Nat :=
 ATT = [(n, 'A') for n in ['x', 'wq', 'bq', 'wk', 'bk', 'wv', 'bv', 'wo', 'bo']] + [('t', 'u'), ('nh', 'u'), ('dh', 'u')]
 lin_calls = []
 for idx, (w, b, ptrname, reg) in enumerate([('wq', 'bq', 'pq', 1), ('wk', 'bk', 'pk', 3), ('wv', 'bv', 'pv', 5)]):
-    lin_calls.append(dict(fn=30, args=[0, reg, reg + 1, 9, ('mul', 10, 11), ('mul', 10, 11)],
+    lin_calls.append(dict(args=[0, reg, reg + 1, 9, ('mul', 10, 11), ('mul', 10, 11)],
                           impl='linear_implements', hfunc='hLinear', x=f'(x, {w}, {b}, t, nh * dh, nh * dh)',
                           need=['linearNeed'], borrowed=[('P', 'x'), ('P', w), ('P', b)], ptr=ptrname,
                           comment=f'`{ptrname[1]} = x · {w} + {b}`.'))
@@ -363,22 +358,21 @@ att_spec = dict(
           ('v', 'linearTuple (x, wv, bv, t, nh * dh, nh * dh)'),
           ('s', 'maskedTuple (q, k, t, nh, dh, 1.0 / dh.toFloat.sqrt)'),
           ('p', 'softmaxRowsTuple (s, t * nh, t)'),
-          ('o', 'causalMatMulTuple (p, v, t, nh, dh)')],
-    mul={(10, 11): 'nh * dh', (9, 10): 't * nh'}, scaleval='.f64 (1.0 / dh.toFloat.sqrt).toBits',
+          ('o', 'causalMatMulTuple (p, v, t, nh, dh)')], scaleval='.f64 (1.0 / dh.toFloat.sqrt).toBits',
     calls=lin_calls + [
-        dict(fn=19, args=[12, 13, 9, 10, 11, ('scale', 11)], impl='maskedScores_implements',
+        dict(args=[12, 13, 9, 10, 11, ('scale', 11)], impl='maskedScores_implements',
              hfunc='hMasked', x='(q, k, t, nh, dh, 1.0 / dh.toFloat.sqrt)', need=['linearNeed', 'maskedNeed'],
              borrowed=[('T', 'pq'), ('T', 'pk')], ptr='ps',
              simp_extra=['F64Op.apply', 'F64UnOp.apply', 'F64Bits.toBits_div', 'F64Bits.toBits_sqrt',
                          'F64Convert.toBits_toFloat', 'hOne'],
              comment='The masked scores of `q` and `k`, head by head.'),
-        dict(fn=23, args=[15, ('mul', 9, 10), 9], impl='softmaxRows_implements', hfunc='hSoftmax',
+        dict(args=[15, ('mul', 9, 10), 9], impl='softmaxRows_implements', hfunc='hSoftmax',
              x='(s, t * nh, t)', need=['linearNeed', 'maskedNeed', 'softmaxRowsNeed'],
              borrowed=[('T', 'ps')], ptr='pp', comment='The softmax of each of the `t · nh` rows of scores.'),
-        dict(fn=26, args=[16, 14, 9, 10, 11], impl='causalMatMul_implements', hfunc='hCausal',
+        dict(args=[16, 14, 9, 10, 11], impl='causalMatMul_implements', hfunc='hCausal',
              x='(p, v, t, nh, dh)', need=att_need, borrowed=[('T', 'pp'), ('T', 'pv')], ptr='po',
              comment='`o = p · v`, row `i` summing over rows `0` to `i` of `v`.'),
-        dict(fn=30, args=[17, 7, 8, 9, ('mul', 10, 11), ('mul', 10, 11)], impl='linear_implements',
+        dict(args=[17, 7, 8, 9, ('mul', 10, 11), ('mul', 10, 11)], impl='linear_implements',
              hfunc='hLinear', x='(o, wo, bo, t, nh * dh, nh * dh)', need=att_need,
              borrowed=[('T', 'po'), ('P', 'wo'), ('P', 'bo')], ptr='pr', comment='The result, `o · wo + bo`.'),
     ],
@@ -418,26 +412,25 @@ blk_spec = dict(
           ('h2', 'layerNormRowsTuple (r, g2, b2, t, nh * dh, eps)'),
           ('m', 'mlpTuple (h2, wfc, bfc, wproj, bproj, t, nh * dh, f)')],
     haves=['  have hR : r.size ≤ x.size := add_size_le x a'],
-    mul={(18, 19): 'nh * dh'},
     calls=[
-        dict(fn=18, args=[0, 1, 2, 17, ('mul', 18, 19), ('f', 21)], impl='layerNormRows_implements',
+        dict(args=[0, 1, 2, 17, ('mul', 18, 19), ('f', 21)], impl='layerNormRows_implements',
              hfunc='hNorm', x='(x, g1, b1, t, nh * dh, eps)', need=blk_need1,
              borrowed=[('P', 'x'), ('P', 'g1'), ('P', 'b1')], ptr='ph1', comment='The first layer norm.'),
-        dict(fn=24, args=[22, 3, 4, 5, 6, 7, 8, 9, 10, 17, 18, 19], impl='attention_implements',
+        dict(args=[22, 3, 4, 5, 6, 7, 8, 9, 10, 17, 18, 19], impl='attention_implements',
              hfunc='hAttention', x='(h1, wq, bq, wk, bk, wv, bv, wo, bo, t, nh, dh)', need=blk_need2,
              borrowed=[('T', 'ph1')] + [('P', n) for n in ['wq', 'bq', 'wk', 'bk', 'wv', 'bv', 'wo', 'bo']],
              ptr='pa', comment='Attention.'),
-        dict(fn=10, args=[0, 23], impl='add_implements', hfunc='hAdd', x='(x, a)', need=blk_need3,
+        dict(args=[0, 23], impl='add_implements', hfunc='hAdd', x='(x, a)', need=blk_need3,
              borrowed=[('P', 'x'), ('T', 'pa')], tail=False, ptr='pr',
              comment='The first residual sum, `r = x + a`.'),
-        dict(fn=18, args=[24, 11, 12, 17, ('mul', 18, 19), ('f', 21)], impl='layerNormRows_implements',
+        dict(args=[24, 11, 12, 17, ('mul', 18, 19), ('f', 21)], impl='layerNormRows_implements',
              hfunc='hNorm', x='(r, g2, b2, t, nh * dh, eps)', need=blk_need3,
              borrowed=[('T', 'pr'), ('P', 'g2'), ('P', 'b2')], ptr='ph2', comment='The second layer norm.'),
-        dict(fn=14, args=[25, 13, 14, 15, 16, 17, ('mul', 18, 19), 20], impl='mlp_implements', hfunc='hMlp',
+        dict(args=[25, 13, 14, 15, 16, 17, ('mul', 18, 19), 20], impl='mlp_implements', hfunc='hMlp',
              x='(h2, wfc, bfc, wproj, bproj, t, nh * dh, f)', need=blk_need5,
              borrowed=[('T', 'ph2'), ('P', 'wfc'), ('P', 'bfc'), ('P', 'wproj'), ('P', 'bproj')], ptr='pm',
              comment='The MLP.'),
-        dict(fn=10, args=[24, 26], impl='add_implements', hfunc='hAdd', x='(r, m)', need=blk_need5,
+        dict(args=[24, 26], impl='add_implements', hfunc='hAdd', x='(r, m)', need=blk_need5,
              borrowed=[('T', 'pr'), ('T', 'pm')], tail=False, ptr='pres', comment='The result, `r + m`.'),
     ],
     finish=blk_need5 + ['blockNeed', 'blockBytes'])
@@ -480,21 +473,20 @@ fwd_spec = dict(
     haves=['  have hX0 : x0.size = (t * (nh * dh)).toNat := by',
            '    simp [x0, embedTuple, LeanExe.Examples.Gpt.embed, LeanExe.build]',
            '  have hX1 : x1.size ≤ x0.size := block_size_le _'],
-    mul={(38, 39): 'nh * dh'},
     calls=[
-        dict(fn=27, args=[0, 1, 2, 37, ('mul', 38, 39)], impl='embed_implements', hfunc='hEmbed',
+        dict(args=[0, 1, 2, 37, ('mul', 38, 39)], impl='embed_implements', hfunc='hEmbed',
              x='(tokens, wte, wpe, t, nh * dh)', need=['embedNeed'],
              borrowed=[('P', 'tokens'), ('P', 'wte'), ('P', 'wpe')], ptr='px0', comment='The embeddings.'),
-        dict(fn=25, args=[43] + list(range(3, 19)) + [37, 38, 39, 40, ('f', 42)], impl='block_implements',
+        dict(args=[43] + list(range(3, 19)) + [37, 38, 39, 40, ('f', 42)], impl='block_implements',
              hfunc='hBlock', x='(x0, ' + ', '.join(LA) + ', t, nh, dh, f, eps)', need=fwd_need,
              borrowed=[('T', 'px0')] + [('P', n) for n in LA], ptr='px1', comment='The first block.'),
-        dict(fn=25, args=[44] + list(range(19, 35)) + [37, 38, 39, 40, ('f', 42)], impl='block_implements',
+        dict(args=[44] + list(range(19, 35)) + [37, 38, 39, 40, ('f', 42)], impl='block_implements',
              hfunc='hBlock', x='(x1, ' + ', '.join(LB) + ', t, nh, dh, f, eps)', need=fwd_need,
              borrowed=[('T', 'px1')] + [('P', n) for n in LB], ptr='px2', comment='The second block.'),
-        dict(fn=18, args=[45, 35, 36, 37, ('mul', 38, 39), ('f', 42)], impl='layerNormRows_implements',
+        dict(args=[45, 35, 36, 37, ('mul', 38, 39), ('f', 42)], impl='layerNormRows_implements',
              hfunc='hNorm', x='(x2, gf, bf, t, nh * dh, eps)', need=fwd_need + ['layerNormRowsNeed'],
              borrowed=[('T', 'px2'), ('P', 'gf'), ('P', 'bf')], ptr='ph', comment='The final layer norm.'),
-        dict(fn=28, args=[46, 1, 37, ('mul', 38, 39), 41], impl='matMulT_implements', hfunc='hScores',
+        dict(args=[46, 1, 37, ('mul', 38, 39), 41], impl='matMulT_implements', hfunc='hScores',
              x='(h, wte, t, nh * dh, vocab)', need=fwd_need + ['layerNormRowsNeed', 'matMulTNeed'],
              borrowed=[('T', 'ph'), ('P', 'wte')], ptr='pr',
              comment='The scores against every token embedding.'),
@@ -529,6 +521,58 @@ def forwardNeed : ForwardInput → Nat
 
 
 
+# ------------------------------------------------------------------ blockAt
+BAT = [(n, 'A') for n in BARR] + [('l', 'u'), ('t', 'u'), ('nh', 'u'), ('dh', 'u'), ('f', 'u'),
+                                   ('eps', 'f')]
+BAT_NAMES = [n for n, _ in BAT]
+D = ('mul', 19, 20)
+DD = ('mul', D, D)
+DF = ('mul', D, 21)
+FD = ('mul', 21, D)
+SLICES = [('g1', 1, D), ('b1', 2, D), ('wq', 3, DD), ('bq', 4, D), ('wk', 5, DD), ('bk', 6, D),
+          ('wv', 7, DD), ('bv', 8, D), ('wo', 9, DD), ('bo', 10, D), ('g2', 11, D), ('b2', 12, D),
+          ('wfc', 13, DF), ('bfc', 14, 21), ('wproj', 15, FD), ('bproj', 16, D)]
+bat_calls = []
+bat_lets = []
+for nm, reg, size in SLICES:
+    start = ('mul', 17, size)
+    x = f'({nm}, {value_term(start, BAT_NAMES)}, {value_term(size, BAT_NAMES)})'
+    bat_lets.append((nm + 'l', f'sliceTuple {x}'))
+    bat_calls.append(dict(args=[reg, start, size], impl='slice_implements', hfunc='hSlice', x=x,
+                          need=['sliceNeed'], borrowed=[('P', nm)], ptr='l' + cap(nm),
+                          comment=f'Layer `l` of `{nm}`.'))
+bat_need = ['sliceNeed', 'blockNeed', 'blockBytes', 'attentionBytes']
+bat_calls.append(dict(args=[0] + list(range(23, 39)) + [18, 19, 20, 21, ('f', 22)],
+                      impl='block_implements', hfunc='hBlock',
+                      x='(x, ' + ', '.join(nm + 'l' for nm, _, _ in SLICES) + ', t, nh, dh, f, eps)',
+                      need=bat_need,
+                      borrowed=[('P', 'x')] + [('T', 'l' + cap(nm)) for nm, _, _ in SLICES],
+                      ptr='pr', comment="The block with layer `l`'s weights."))
+bat_spec = dict(
+    name='blockAt', entry=32, index=29, tuple='blockAtTuple', need='blockAtNeed', params=BAT, nlocals=18,
+    room='blockAtNeed (' + ', '.join(BAT_NAMES) + ')',
+    room_unfold=['blockAtNeed', 'blockAtBytes', 'blockBytes', 'attentionBytes'],
+    funcs=[('hSlice', 31, 28, 'slice'), ('hBlock', 25, 22, 'block')],
+    lets=bat_lets, calls=bat_calls,
+    finish=bat_need + ['blockAtNeed', 'blockAtBytes'])
+BATT = tuple_type([k for _, k in BAT])
+bat_section = tuple_def('blockAtTuple', 'blockAt', BAT,
+                        '`blockAt` with its twenty-three arguments as one tuple.') + f"""
+/-- The bytes `blockAt` may allocate for an input of `n` elements: the sixteen slices of
+layer `l`'s weights and the block. -/
+def blockAtBytes (t nh dh f : UInt64) (n : Nat) : Nat :=
+  9 * (48 + 8 * ((nh * dh).toNat + 1)) + 4 * (48 + 8 * ((nh * dh * (nh * dh)).toNat + 1)) +
+    (48 + 8 * ((nh * dh * f).toNat + 1)) + (48 + 8 * (f.toNat + 1)) +
+    (48 + 8 * ((f * (nh * dh)).toNat + 1)) + blockBytes t nh dh f n
+
+/-- The bytes `blockAt` may allocate. -/
+def blockAtNeed (x : {BATT}) : Nat :=
+  blockAtBytes {proj(23, 18)} {proj(23, 19)}
+    {proj(23, 20)} {proj(23, 21)} x.1.size
+
+""" + composite(bat_spec) + '\n'
+
+
 def main():
     text = """import Project.Gpt.Verify
 
@@ -540,7 +584,7 @@ namespace Project.Gpt
 
 open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
 
-""" + mlp_section + att_section + blk_section + fwd_section + "end Project.Gpt\n"
+""" + mlp_section + att_section + blk_section + fwd_section + bat_section + "end Project.Gpt\n"
     if sys.argv[1:] == ['--check']:
         if TARGET.read_text() != text:
             raise SystemExit(f'{TARGET} is out of date')

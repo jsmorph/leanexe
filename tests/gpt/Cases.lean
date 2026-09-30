@@ -276,6 +276,33 @@ def linearCases : IO Unit := do
         (A wfc) (A bfc) (A wproj) (A bproj)
         (A g) (A b) t.toUInt64 nh.toUInt64 dh.toUInt64 f.toUInt64 vocab.toUInt64 eps)
 
+def sliceCases : IO Unit := do
+  for i in List.range 30 do
+    let xs := units (i % 11) (3 * i)
+    let start := (i * 7) % 13
+    let n := (i * 5) % 9
+    emit "slice" [arr xs, u start, u n] (slice xs.toArray start.toUInt64 n.toUInt64)
+
+/-- `blockAt` on weights stacked over one to three layers; `l` equal to the number of
+layers reads past the arrays. -/
+def blockAtCases : IO Unit := do
+  for i in List.range 30 do
+    let layers := 1 + i % 3
+    let l := i % (layers + 1)
+    let t := i % 4
+    let nh := 1 + i % 2
+    let dh := (i / 4) % 3
+    let d := nh * dh
+    let f := (i * 7 + 2) % 5
+    let eps : Float := if i % 5 = 0 then 0.0 else 1e-5
+    let x := units (t * d + i % 2) (13 * i)
+    let sizes := [d, d, d * d, d, d * d, d, d * d, d, d * d, d, d, d, d * f, f, f * d, d]
+    let ws := sizes.zipIdx.map fun (n, j) => units (layers * n) (97 * i + 31 * j)
+    let A (j : Nat) : Array Float := (ws[j]!).toArray
+    emit "blockAt" ([arr x] ++ ws.map arr ++ [u l, u t, u nh, u dh, u f, fl eps])
+      (blockAt x.toArray (A 0) (A 1) (A 2) (A 3) (A 4) (A 5) (A 6) (A 7) (A 8) (A 9) (A 10) (A 11)
+        (A 12) (A 13) (A 14) (A 15) l.toUInt64 t.toUInt64 nh.toUInt64 dh.toUInt64 f.toUInt64 eps)
+
 def main : IO Unit := do
   dotCases
   matVecCases
@@ -290,3 +317,5 @@ def main : IO Unit := do
   headCases
   embedCases
   linearCases
+  sliceCases
+  blockAtCases

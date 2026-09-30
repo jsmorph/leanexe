@@ -45,4 +45,7 @@ session attention "4 4 2 4 2 4 2 4 2" "u64:2 u64:2 u64:1"
 layer="2 2 4 2 4 2 4 2 4 2 2 2 6 3 6 2"
 session block "4 $layer" "u64:2 u64:2 u64:1 u64:3 $eps"
 session forward "2 6 4 $layer $layer 2 2" "u64:2 u64:2 u64:1 u64:3 u64:3 $eps"
+# Two layers of stacked weights, layer 1.
+stacked="4 4 8 4 8 4 8 4 8 4 4 4 12 6 12 4"
+session blockAt "4 $stacked" "u64:1 u64:2 u64:2 u64:1 u64:3 $eps"
 [ "$failed" -eq 0 ]

@@ -2735,4 +2735,47 @@ theorem matMulT_implements : Implements gpt.module 28 matMulTTuple matMulTNeed :
   rw [hEq, build_map]
   exact hNew.owned
 
+/-- `slice` with its three arguments as one tuple. -/
+def sliceTuple (x : Array Float × UInt64 × UInt64) : Array Float :=
+  LeanExe.Examples.Gpt.slice x.1 x.2.1 x.2.2
+
+/-- The bytes `slice` may allocate: one array of `n` elements. -/
+def sliceNeed (x : Array Float × UInt64 × UInt64) : Nat := 48 + 8 * (x.2.2.toNat + 1)
+
+theorem slice_implements : Implements gpt.module 31 sliceTuple sliceNeed := by
+  refine Func.implements_heap gpt.funcs 28 gpt.slice.ir "slice" rfl sliceTuple sliceNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨xs, start, n⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hXs⟩, rfl⟩ hRoom
+  change heap.Borrowed initial px (xs.map Float.toBits) at hXs
+  change heap.Room initial gpt.module (48 + 8 * (n.toNat + 1)) at hRoom
+  have hMemory32 : gpt.module.memIs64 = false := rfl
+  have hImports : gpt.module.imports = [] := rfl
+  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
+  let start0 : State :=
+    { params := [.i64 px, .i64 start, .i64 n]
+      locals := [.i64 0, .i64 0, .i64 0, .i64 0] }
+  show Triple _ (.build 3 4 5 (.get 2) (.toBits (.ofBits (.read 0 (.bin .add (.get 1) (.get 5)))))) 6
+    (fun store state => store = initial ∧ state = start0) _
+  refine (Stmt.build_spec (n := n) (fun i => (xs[(start + i).toNat]!).toBits) hMemory32 hImports
+    hAlloc (by decide) (by decide) (by simp [start0]) hHeap hRoom ⟨start0, rfl⟩ ?_).mono
+      (fun _ _ h => h) ?_
+  · intro i store state hi hAt hFrame hIndex
+    have hState : state.params.length = 3 ∧ state.locals.length = 4 :=
+      ⟨hFrame.params, hFrame.locals⟩
+    have hGet : ∀ j, j < 3 → state.get j = start0.get j := fun j hj =>
+      hFrame.get j (by omega) (by simp; omega)
+    have g0 : state.get 0 = some (.i64 px) := (hGet 0 (by decide)).trans rfl
+    have g1 : state.get 1 = some (.i64 start) := (hGet 1 (by decide)).trans rfl
+    simp [Expr.eval, g0, g1, hIndex, Expr.readValue_at (hAt px _ hXs), State.set?_eq_update,
+      hState.1, hState.2, U64Op.apply, getElem!_map_toBits]
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, rfl⟩, hNew.top, hNew.pages,
+    hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.slice.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+  have hEq : sliceTuple (xs, start, n) = LeanExe.build n (fun i => xs[(start + i).toNat]!) := rfl
+  rw [hEq, build_map]
+  exact hNew.owned
+
 end Project.Gpt

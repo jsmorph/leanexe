@@ -191,6 +191,33 @@ def block (x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Flo
   let m := mlp h2 wfc bfc wproj bproj t (nh * dh) f
   add r m
 
+/-- The `n` elements of `xs` from position `start`, with 0 for each missing element. -/
+def slice (xs : Array Float) (start n : UInt64) : Array Float :=
+  LeanExe.build n fun i => xs[(start + i).toNat]!
+
+/-- `block` with the weights of layer `l`, taken from arrays that hold the weights of
+every layer one after another: `g1` holds `d` values per layer, `wq` holds `d × d`,
+`wfc` holds `d × f`, and so on, where `d = nh · dh`. -/
+def blockAt (x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Float)
+    (l t nh dh f : UInt64) (eps : Float) : Array Float :=
+  let g1l := slice g1 (l * (nh * dh)) (nh * dh)
+  let b1l := slice b1 (l * (nh * dh)) (nh * dh)
+  let wql := slice wq (l * (nh * dh * (nh * dh))) (nh * dh * (nh * dh))
+  let bql := slice bq (l * (nh * dh)) (nh * dh)
+  let wkl := slice wk (l * (nh * dh * (nh * dh))) (nh * dh * (nh * dh))
+  let bkl := slice bk (l * (nh * dh)) (nh * dh)
+  let wvl := slice wv (l * (nh * dh * (nh * dh))) (nh * dh * (nh * dh))
+  let bvl := slice bv (l * (nh * dh)) (nh * dh)
+  let wol := slice wo (l * (nh * dh * (nh * dh))) (nh * dh * (nh * dh))
+  let bol := slice bo (l * (nh * dh)) (nh * dh)
+  let g2l := slice g2 (l * (nh * dh)) (nh * dh)
+  let b2l := slice b2 (l * (nh * dh)) (nh * dh)
+  let wfcl := slice wfc (l * (nh * dh * f)) (nh * dh * f)
+  let bfcl := slice bfc (l * f) f
+  let wprojl := slice wproj (l * (f * (nh * dh))) (f * (nh * dh))
+  let bprojl := slice bproj (l * (nh * dh)) (nh * dh)
+  block x g1l b1l wql bql wkl bkl wvl bvl wol bol g2l b2l wfcl bfcl wprojl bprojl t nh dh f eps
+
 /-- The embeddings of `t` tokens as `t` rows of width `d`: row `i` is row
 `tokens[i]` of `wte` plus row `i` of `wpe`, with 0 for each missing element. -/
 def embed (tokens : Array UInt64) (wte wpe : Array Float) (t d : UInt64) : Array Float :=
