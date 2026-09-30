@@ -86,4 +86,48 @@ theorem Func.implements [Represent α] [Scalar β] (funcs : List (Func × String
         exact ⟨heap, hHeap, hArgs, by omega, le_max_left _ _, rfl, fun _ _ h => h,
           fun _ _ h => h, hResult⟩
 
+/-- A compiled function of scalars whose body keeps the store, for every store,
+computes `f` and keeps the store. -/
+theorem Func.implementsPure [Scalar α] [Scalar β] (funcs : List (Func × String)) (i : Nat)
+    (func : Func) (name : String) (hFunc : funcs[i]? = some (func, name)) (f : α → β)
+    (arity : ∀ x : α, (Scalar.values x).length = func.params.length)
+    (correct : ∀ (x : α) (initial : Store Unit),
+      Triple (compile funcs) func.body func.scratch
+        (fun store state => store = initial ∧ state = func.state (Scalar.values x))
+        (fun store state => store = initial ∧ ∃ values next,
+          Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
+          values = Scalar.values (f x))) :
+    ImplementsPure (compile funcs) (3 + i) f := by
+  intro env store x
+  have hLength := arity x
+  have hArgsBack : ((Scalar.values x).reverse.take func.params.length).reverse =
+      Scalar.values x := by
+    rw [List.take_of_length_le (by simp [hLength])]
+    simp
+  have hNoImports : (compile funcs).imports = [] := rfl
+  apply TerminatesWith.of_wp_entry_for (f := func.function (2 + i))
+    (by rw [hNoImports, List.length_nil, Nat.sub_zero]; exact compile_funcs hFunc)
+  have hLocals :
+      (func.function (2 + i)).toLocals
+          ((Scalar.values x).reverse.take (func.function (2 + i)).numParams).reverse =
+        (func.state (Scalar.values x)).toLocals [] := by
+    simp [Function.toLocals, Func.function, Func.type, Function.numParams, Func.state,
+      hArgsBack]
+  rw [hLocals, show (func.function (2 + i)).body =
+    func.body.program func.scratch ++ (func.results.flatMap (·.2.program func.scratch) ++ []) by
+      simp [Func.function]]
+  refine correct x store env store _ [] _ _ ⟨rfl, rfl⟩ ?_
+  rintro store' state ⟨hStore, values, next, hEval, hResult⟩
+  refine Expr.evalResults_program_spec (out := []) hEval ?_
+  rw [wp_nil]
+  have hDrop : (Scalar.values x).reverse.drop (func.function (2 + i)).numParams = [] := by
+    simp [Func.function, Func.type, Function.numParams, hLength]
+  have hTake : (values.reverse ++ []).take (func.function (2 + i)).results.length =
+      values.reverse := by
+    simp [Func.function, Func.type, Expr.evalResults_length hEval]
+  simp only [State.toLocals, hDrop, List.append_nil]
+  rw [List.append_nil] at hTake
+  rw [hTake, List.reverse_reverse]
+  exact ⟨hStore, hResult⟩
+
 end Project.IR

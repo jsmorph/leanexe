@@ -42,4 +42,11 @@ def exp (x : Float) : Float :=
   let y := p * Float.ofBits ((h + 473) <<< 52) * Float.ofBits ((m - h + 473) <<< 52)
   if x == x then (if x > 709.8 then x * 1e308 else if x < -745.2 then 0.0 else y) else x
 
+/-- The softmax of `xs`: `exp (xs[i] - m)` divided by the sum of these values, where
+`m` is the largest element. -/
+def softmax (xs : Array Float) : Array Float :=
+  let mx := LeanExe.loop xs.size.toUInt64 (-(1.0 / 0.0)) fun i acc => max acc xs[i.toNat]!
+  let total := LeanExe.loop xs.size.toUInt64 0.0 fun i acc => acc + exp (xs[i.toNat]! - mx)
+  LeanExe.build xs.size.toUInt64 fun i => exp (xs[i.toNat]! - mx) / total
+
 end LeanExe.Examples.Gpt

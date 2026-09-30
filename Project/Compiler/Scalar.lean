@@ -73,6 +73,9 @@ structure Ctx where
   /-- Whether code may allocate or call: false inside an element of
   `LeanExe.build`, whose statements must keep the store. -/
   allocating : Bool := true
+  /-- Whether calls with scalar arguments and results may appear where code must
+  keep the store: true in loop bodies and elements of `LeanExe.build`. -/
+  pureCalls : Bool := false
 
 def Ctx.result (ctx : Ctx) : Nat := ctx.params.size
 def Ctx.done (ctx : Ctx) : Nat := ctx.params.size + 1
@@ -331,10 +334,6 @@ mutual
         return (ir, hint ir "float to word" :: xHints)
     | (fn, _) =>
       if let some index := ctx.callees.lookup fn then
-        unless ctx.foldable do
-          throwError "a call may not appear in a branch, a fold or loop body, or a recursive definition: {source}"
-        unless ctx.allocating do
-          throwError "a call may not appear in an element of `LeanExe.build`: {source}"
         let [(result, .u64)] ← translateCall ctx term index
           | throwError "a call used as a word must return one word: {source}"
         let ir : IRExpr .u64 := .get result
@@ -432,6 +431,11 @@ mutual
     if let some index := ctx.floats.lookup term then
       let ir : IRExpr .f64 := .getF index
       return (ir, [hint ir "float variable"])
+    if let some index := ctx.callees.lookup term.getAppFn.constName then
+      let [(result, .f64)] ← translateCall ctx term index
+        | throwError "a call used as a float must return one float: {source}"
+      let ir : IRExpr .f64 := .getF result
+      return (ir, [hint ir "call result"])
     match term.getAppFnArgs with
     | (``OfScientific.ofScientific, #[type, _, .lit (.natVal mantissa), sign, .lit (.natVal exponent)]) =>
         unless ← isFloat type do throwError "unsupported literal type in {source}"
@@ -575,7 +579,7 @@ mutual
     let (⟨_, body⟩, bodyHints) ← withLocalDeclD `acc acc fun a =>
       withLocalDeclD `element element fun e =>
         translateAs (bind accType a accLocal <| bind elementType e elementLocal
-          { ctx with foldable := false }) bodyLoc accType (mkApp2 f a e).headBeta
+          { ctx with foldable := false, pureCalls := false }) bodyLoc accType (mkApp2 f a e).headBeta
     let fold := Stmt.fold elementType arrayLocal accLocal indexLocal lengthLocal elementLocal body
     let arraySource ← sourceOf array
     let releases : List (Project.IR.Stmt × Hint) := if temporary then
@@ -643,7 +647,7 @@ mutual
     for (((⟨_, value⟩, hints), componentSource), (local_, _)) in inits.toList.zip state.toList do
       let stmt := Project.IR.Stmt.assign local_ value
       pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "loop start" componentSource :: hints)
-    let bodyCtx := { ctx with foldable := false }
+    let bodyCtx := { ctx with foldable := false, pureCalls := true }
     let (bodyStmts, bodyHints) ← withLocalDeclD `i (mkConst ``UInt64) fun i =>
       withLocalDeclD `state stateType fun x =>
         translateLoopBody ((bodyCtx.bind i [(index, .u64)]).bind x state.toList)
@@ -652,23 +656,36 @@ mutual
     pushStmt loop (mkHint ⟨[], 0⟩ (stmtLength loop) "loop" source :: countHints ++ bodyHints)
     return state.toList
 
+  /-- Translates `term` as a value of `type` whose code starts at `loc`, in a block
+  of its own: the statements its calls need come first, then the value.  Returns
+  those statements, the value, the hints at their places, and the value's place. -/
+  partial def translatePrefixed (ctx : Ctx) (loc : Loc) (type : ScalarType) (term : Lean.Expr) :
+      CompileM (List Project.IR.Stmt × ((type : ScalarType) × IRExpr type) × List Hint × Loc) := do
+    let ((value, valueHints), stmts, stmtHints) ← withBlock (translateAs ctx ⟨[], 0⟩ type term)
+    let relocate (at_ : Loc) (hint : Hint) : Hint :=
+      Hint.within at_.prefix_ (Hint.shift at_.index hint)
+    let here := loc.skip (stmts.map stmtLength).sum
+    return (stmts, value, stmtHints.map (relocate loc) ++ valueHints.map (relocate here), here)
+
   /-- Translates a loop body, which computes the next state, to statements that
   bind its `have` variables to fresh locals, evaluate the next state's
-  components into fresh temporaries, and copy them to the state locals. -/
+  components into fresh temporaries, and copy them to the state locals.  The
+  statements a call in an expression needs precede that expression's
+  assignment. -/
   partial def translateLoopBody (ctx : Ctx) (loc : Loc) (term : Lean.Expr)
       (state : List (Nat × ScalarType)) : CompileM (List Project.IR.Stmt × List Hint) :=
     peel ctx term fun ctx term => do
       match term with
       | .letE name type value body _ =>
           let scalar ← scalarTypeOf type
-          let (⟨_, v⟩, vHints) ← translateAs ctx loc scalar value
+          let (pre, ⟨_, v⟩, vHints, at_) ← translatePrefixed ctx loc scalar value
           let local_ ← fresh scalar name.toString
           let stmt := Project.IR.Stmt.assign local_ v
-          let hint := mkHint loc (stmtLength stmt) "let" (← sourceOf value)
+          let hint := mkHint at_ (stmtLength stmt) "let" (← sourceOf value)
           withLocalDeclD name type fun x => do
             let (rest, restHints) ← translateLoopBody (ctx.bind x [(local_, scalar)])
-              (loc.skip (stmtLength stmt)) (body.instantiate1 x) state
-            return (stmt :: rest, hint :: vHints ++ restHints)
+              (at_.skip (stmtLength stmt)) (body.instantiate1 x) state
+            return (pre ++ stmt :: rest, hint :: vHints ++ restHints)
       | _ =>
           let components ← stateTerms term (← inferType term)
           let mut stmts := #[]
@@ -676,14 +693,14 @@ mutual
           let mut temps := #[]
           let mut here := loc
           for (component, type) in components do
-            let (⟨_, v⟩, vHints) ← translateAs ctx here type component
+            let (pre, ⟨_, v⟩, vHints, at_) ← translatePrefixed ctx here type component
             let temp ← fresh type "next state"
             let stmt := Project.IR.Stmt.assign temp v
-            hints := hints ++ (mkHint here (stmtLength stmt) "next state" (← sourceOf component) ::
+            hints := hints ++ (mkHint at_ (stmtLength stmt) "next state" (← sourceOf component) ::
               vHints).toArray
-            stmts := stmts.push stmt
+            stmts := stmts ++ pre.toArray |>.push stmt
             temps := temps.push (temp, type)
-            here := here.skip (stmtLength stmt)
+            here := at_.skip (stmtLength stmt)
           for ((temp, type), (local_, _)) in temps.toList.zip state do
             let stmt : Project.IR.Stmt := match type with
               | .f64 => .assign local_ (.getF temp)
@@ -814,7 +831,8 @@ mutual
         -- a float element is stored as its bit pattern.
         let ((elementIR, elementHints), bodyStmts, bodyHints) ← withBlock do
           withLocalDeclD `i (mkConst ``UInt64) fun i => do
-            let inner := { ctx with foldable := true, allocating := false }.bind i [(index, .u64)]
+            let inner := { ctx with foldable := true, allocating := false, pureCalls := true }.bind
+              i [(index, .u64)]
             if floatElement then
               let (x, xHints) ← translateFloat inner ⟨[], 0⟩ (mkApp f i).headBeta
               pure ((.toBits x : IRExpr .u64), xHints)
@@ -881,6 +899,19 @@ mutual
   partial def translateCall (ctx : Ctx) (term : Lean.Expr) (index : Nat)
       (dests? : Option (List Nat) := none) : CompileM (List (Nat × ScalarType)) := do
     let source ← sourceOf term
+    -- Any call may appear at the result level.  Where code must keep the store, only
+    -- a call with scalar arguments and results may appear; its proof shows that the
+    -- callee keeps the store.
+    unless ctx.foldable && ctx.allocating do
+      unless ctx.pureCalls do
+        throwError "a call may not appear in a branch, a fold body, or a recursive definition: {source}"
+      for arg in term.getAppArgs do
+        if ← isArray (← inferType arg) then
+          throwError "a call in a loop body or an array element may not take an array: {source}"
+      if ← isArray (← inferType term) then
+        throwError "a call in a loop body or an array element may not return an array: {source}"
+      if (← whnfR (← inferType term)).isAppOfArity ``Prod 2 then
+        throwError "a call in a loop body or an array element must return one value: {source}"
     let mut args : Array ((type : ScalarType) × IRExpr type) := #[]
     let mut hints := #[]
     let mut offset := 0

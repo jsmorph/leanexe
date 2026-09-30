@@ -58,4 +58,29 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
     exact ⟨next, hNext, heap', out.reverse, hAt', hOwned', hBorrowed', hTop, hPages, hCaps,
       hKeepBorrowed, hKeepOwned, by rw [List.reverse_reverse]; exact hNext⟩
 
+/-- A call of entry `idx`, which computes `g` on scalars and keeps the store, from
+arguments that evaluate to the values of `x`, keeps the store and leaves the values
+of `g x` in the locals `results`. -/
+theorem Stmt.callPure_spec [Scalar α] [Scalar β] {idx : Nat} {g : α → β}
+    (hImpl : ImplementsPure m idx g) {f : Wasm.Function}
+    (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
+    {scratch : Nat} {args : List ((type : ScalarType) × Expr type)} {results : List Nat}
+    (hParams : args.length = f.numParams) {initial : Store Unit}
+    {before afterArgs next : State} {x : α}
+    (hArgs : Expr.evalResults initial.mem scratch args before = some (Scalar.values x, afterArgs))
+    (hSet : afterArgs.setAll results.reverse (Scalar.values (g x)).reverse = some next) :
+    Triple m (.call idx args results) scratch
+      (fun store state => store = initial ∧ state = before)
+      (fun store state => store = initial ∧ state = next) := by
+  refine (Stmt.call_spec hImport hFunc hParams).mono ?_ fun _ _ h => h
+  rintro store state ⟨hStore, hState⟩
+  subst store state
+  refine ⟨Scalar.values x, afterArgs,
+    fun final values => final = initial ∧ values.reverse = Scalar.values (g x), hArgs,
+    fun env => hImpl env initial x, ?_⟩
+  rintro store' out ⟨rfl, hOut⟩
+  refine ⟨next, ?_, rfl, rfl⟩
+  rw [show out = (Scalar.values (g x)).reverse by rw [← hOut, List.reverse_reverse]]
+  exact hSet
+
 end Project.IR
