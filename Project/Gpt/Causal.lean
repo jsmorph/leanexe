@@ -1,7 +1,8 @@
 import LeanExe.Examples.Gpt
 import Mathlib.Tactic
 
-/-! Row `i` of `attention` and of `block` depends only on rows `0` to `i` of the input.
+/-! Row `i` of `attention`, `block`, and `forward` depends only on rows `0` to `i` of the
+input.
 The theorems concern the Lean definitions; `Implements` carries them to the bytes.
 Dimensions below `2 ^ 32` exclude overflow in the `UInt64` index arithmetic. -/
 
@@ -10,7 +11,7 @@ namespace Project.Gpt.Causal
 open LeanExe.Examples.Gpt
 
 /-- Rows `0` to `i` of `a` and `b`, in rows of `w` elements stored in order, are equal. -/
-def RowsAgree (w i : Nat) (a b : Array Float) : Prop :=
+def RowsAgree {α : Type} [Inhabited α] (w i : Nat) (a b : Array α) : Prop :=
   ∀ m, m < (i + 1) * w → a[m]! = b[m]!
 
 theorem loop_congr {α : Type} {n : UInt64} {init : α} {f g : UInt64 → α → α}
@@ -198,6 +199,23 @@ theorem mlp_rows {h h' w1 w2 : Array Float} {t d f : UInt64} {i : Nat} (ht : t.t
   matMul_rows ht hf hd (geluArray_rows (by simp [matMul, LeanExe.build])
     (matMul_rows (b := w1) ht hd hf hh))
 
+theorem embed_rows {tokens tokens' : Array UInt64} {wte wpe : Array Float} {t d : UInt64}
+    {i : Nat} (ht : t.toNat < 2 ^ 32) (hd : d.toNat < 2 ^ 32) (h : RowsAgree 1 i tokens tokens') :
+    RowsAgree d.toNat i (embed tokens wte wpe t d) (embed tokens' wte wpe t d) := by
+  unfold embed
+  refine rows_of_build fun e he hlt => ?_
+  obtain ⟨-, hRow, -, hri, -, -⟩ := element_facts ht hd he hlt
+  rw [hRow, h _ (by omega)]
+
+theorem matMulT_rows {a a' b : Array Float} {n k m : UInt64} {i : Nat} (hn : n.toNat < 2 ^ 32)
+    (hk : k.toNat < 2 ^ 32) (hm : m.toNat < 2 ^ 32) (h : RowsAgree k.toNat i a a') :
+    RowsAgree m.toNat i (matMulT a b n k m) (matMulT a' b n k m) := by
+  unfold matMulT
+  refine rows_of_build fun e he hlt => loop_congr fun c hc acc => ?_
+  obtain ⟨-, hRow, -, hri, hrn, -⟩ := element_facts hn hm he hlt
+  rw [read_agree h (R := UInt64.ofNat e / m) (C := UInt64.ofNat c) (by omega) (by omega) hk
+    (by rwa [toNat_ofNat_lt hc])]
+
 /-- Row `i` of `attention` depends only on rows `0` to `i` of `x`. -/
 theorem attention_causal {x x' wq wk wv wo : Array Float} {t d : UInt64} {i : Nat}
     (ht : t.toNat < 2 ^ 32) (hd : d.toNat < 2 ^ 32) (hx : RowsAgree d.toNat i x x') :
@@ -218,5 +236,21 @@ theorem block_causal {x x' g1 b1 wq wk wv wo g2 b2 w1 w2 : Array Float} {t d f :
     (layerNormRows_rows (g := g1) (b := b1) (eps := eps) ht hd hx))
   exact add_rows (by simp [add, LeanExe.build, hs]) hr
     (mlp_rows (w1 := w1) (w2 := w2) ht hd hf (layerNormRows_rows ht hd hr))
+
+/-- Row `i` of `forward`, the scores at position `i`, depends only on tokens `0` to `i`. -/
+theorem forward_causal {tokens tokens' : Array UInt64}
+    {wte wpe g1a b1a wqa wka wva woa g2a b2a w1a w2a g1b b1b wqb wkb wvb wob g2b b2b w1b w2b gf bf :
+      Array Float} {t d f vocab : UInt64} {eps : Float} {i : Nat} (ht : t.toNat < 2 ^ 32)
+    (hd : d.toNat < 2 ^ 32) (hf : f.toNat < 2 ^ 32) (hv : vocab.toNat < 2 ^ 32)
+    (h : RowsAgree 1 i tokens tokens') :
+    RowsAgree vocab.toNat i
+      (forward tokens wte wpe g1a b1a wqa wka wva woa g2a b2a w1a w2a
+        g1b b1b wqb wkb wvb wob g2b b2b w1b w2b gf bf t d f vocab eps)
+      (forward tokens' wte wpe g1a b1a wqa wka wva woa g2a b2a w1a w2a
+        g1b b1b wqb wkb wvb wob g2b b2b w1b w2b gf bf t d f vocab eps) := by
+  unfold forward
+  exact matMulT_rows ht hd hv (layerNormRows_rows ht hd
+    (block_causal ht hd hf (by simp [block, add, embed, LeanExe.build])
+      (block_causal ht hd hf (by simp [embed, LeanExe.build]) (embed_rows ht hd h))))
 
 end Project.Gpt.Causal
