@@ -113,15 +113,17 @@ def layerNormRows (x g b : Array Float) (t d : UInt64) (eps : Float) : Array Flo
   let inv := rowInvStd x means t d eps
   normalizeRows x means inv g b t d
 
-/-- The causally masked attention scores of `t` queries and keys of width `d`, both
-stored by rows, as a `t × t` matrix stored by rows: `scale · (q[i] · k[j])` where
-`j ≤ i`, and `0 · scale` plus negative infinity elsewhere.  A masked element reads
-no key, so row `i` depends only on rows `0` to `i`. -/
-def maskedScores (q k : Array Float) (t d : UInt64) (scale : Float) : Array Float :=
-  LeanExe.build (t * t) fun e =>
-    LeanExe.loop (if e % t ≤ e / t then d else 0) 0.0
-        (fun c acc => acc + q[(e / t * d + c).toNat]! * k[(e % t * d + c).toNat]!) * scale +
-      (if e % t ≤ e / t then 0.0 else -(1.0 / 0.0))
+/-- The causally masked attention scores of `nh` heads of width `dh`, for `t` queries
+and keys stored by rows of width `nh · dh`, as `t` rows of `nh` blocks of `t` scores.
+Element `(i, h, j)` is `scale · (q[i] · k[j])` over the columns of head `h` where
+`j ≤ i`, and `0 · scale` plus negative infinity elsewhere.  A masked element reads no
+key, so row `i` depends only on rows `0` to `i`. -/
+def maskedScores (q k : Array Float) (t nh dh : UInt64) (scale : Float) : Array Float :=
+  LeanExe.build (t * nh * t) fun e =>
+    LeanExe.loop (if e % t ≤ e / (nh * t) then dh else 0) 0.0
+        (fun c acc => acc + q[(e / (nh * t) * (nh * dh) + (e / t % nh * dh + c)).toNat]! *
+          k[(e % t * (nh * dh) + (e / t % nh * dh + c)).toNat]!) * scale +
+      (if e % t ≤ e / (nh * t) then 0.0 else -(1.0 / 0.0))
 
 /-- The largest element of each of the `t` rows of width `w` of `x`. -/
 def rowMax (x : Array Float) (t w : UInt64) : Array Float :=
@@ -143,36 +145,40 @@ def softmaxRows (x : Array Float) (t w : UInt64) : Array Float :=
   let sums := rowSumExp x mx t w
   softmaxApply x mx sums t w
 
-/-- The product of the `t × t` attention weights `p` and the `t × d` values `v`, both
-stored by rows, in which row `i` sums over rows `0` to `i` of `v` only. -/
-def causalMatMul (p v : Array Float) (t d : UInt64) : Array Float :=
-  LeanExe.build (t * d) fun e =>
-    LeanExe.loop (e / d + 1) 0.0 fun j acc =>
-      acc + p[(e / d * t + j).toNat]! * v[(j * d + e % d).toNat]!
+/-- The product of the attention weights `p`, `t` rows of `nh` blocks of `t`, and the
+values `v`, `t` rows of width `nh · dh`: element `(i, c)` sums `p[i][h][j] · v[j][c]`
+over `j ≤ i` only, where `h = c / dh` is the head of column `c`. -/
+def causalMatMul (p v : Array Float) (t nh dh : UInt64) : Array Float :=
+  LeanExe.build (t * (nh * dh)) fun e =>
+    LeanExe.loop (e / (nh * dh) + 1) 0.0 fun j acc =>
+      acc + p[(e / (nh * dh) * (nh * t) + (e % (nh * dh) / dh * t + j)).toNat]! *
+        v[(j * (nh * dh) + e % (nh * dh)).toNat]!
 
-/-- Single-head causal self-attention on `t` rows of width `d`, with `d × d` weight
-matrices stored by rows: `softmax (q kᵀ / √d, masked) · v · wo`, where `q`, `k`, and
-`v` are `x · wq`, `x · wk`, and `x · wv`.  Row `i` depends only on rows `0` to `i` of
-`x`: `maskedScores` reads no later key, and `causalMatMul` reads no later value. -/
-def attention (x wq wk wv wo : Array Float) (t d : UInt64) : Array Float :=
-  let q := matMul x wq t d d
-  let k := matMul x wk t d d
-  let v := matMul x wv t d d
-  let s := maskedScores q k t d (1.0 / d.toFloat.sqrt)
-  let p := softmaxRows s t t
-  let o := causalMatMul p v t d
-  matMul o wo t d d
+/-- Causal self-attention with `nh` heads of width `dh` on `t` rows of width
+`d = nh · dh`, with `d × d` weight matrices stored by rows: for each head,
+`softmax (q kᵀ / √dh, masked) · v` over that head's columns, then the product with
+`wo`, where `q`, `k`, and `v` are `x · wq`, `x · wk`, and `x · wv`.  Row `i` depends
+only on rows `0` to `i` of `x`: `maskedScores` reads no later key, and `causalMatMul`
+reads no later value. -/
+def attention (x wq wk wv wo : Array Float) (t nh dh : UInt64) : Array Float :=
+  let q := matMul x wq t (nh * dh) (nh * dh)
+  let k := matMul x wk t (nh * dh) (nh * dh)
+  let v := matMul x wv t (nh * dh) (nh * dh)
+  let s := maskedScores q k t nh dh (1.0 / dh.toFloat.sqrt)
+  let p := softmaxRows s (t * nh) t
+  let o := causalMatMul p v t nh dh
+  matMul o wo t (nh * dh) (nh * dh)
 
-/-- A transformer block in the form of GPT-2's, with one attention head and no biases
-in its linear layers, on `t` rows of width `d` with hidden width `f`:
+/-- A transformer block in the form of GPT-2's, with no biases in its linear layers,
+on `t` rows of width `nh · dh` with `nh` heads and hidden width `f`:
 `r = x + attention (layerNormRows x g1 b1)`, then `r + mlp (layerNormRows r g2 b2)`. -/
-def block (x g1 b1 wq wk wv wo g2 b2 w1 w2 : Array Float) (t d f : UInt64) (eps : Float) :
+def block (x g1 b1 wq wk wv wo g2 b2 w1 w2 : Array Float) (t nh dh f : UInt64) (eps : Float) :
     Array Float :=
-  let h1 := layerNormRows x g1 b1 t d eps
-  let a := attention h1 wq wk wv wo t d
+  let h1 := layerNormRows x g1 b1 t (nh * dh) eps
+  let a := attention h1 wq wk wv wo t nh dh
   let r := add x a
-  let h2 := layerNormRows r g2 b2 t d eps
-  let m := mlp h2 w1 w2 t d f
+  let h2 := layerNormRows r g2 b2 t (nh * dh) eps
+  let m := mlp h2 w1 w2 t (nh * dh) f
   add r m
 
 /-- The embeddings of `t` tokens as `t` rows of width `d`: row `i` is row
@@ -188,18 +194,17 @@ def matMulT (a b : Array Float) (n k m : UInt64) : Array Float :=
     LeanExe.loop k 0.0 fun c acc => acc + a[(e / m * k + c).toNat]! * b[(e % m * k + c).toNat]!
 
 /-- A two-layer forward pass in the form of GPT-2's, built from `block`, on `t` tokens
-with width `d`, hidden width `f`,
-and `vocab` token embeddings: the embeddings, two blocks, a final layer norm, and
-the scores of each position against every token embedding, as `t` rows of width
-`vocab`. -/
+with `nh` heads of width `dh`, hidden width `f`, and `vocab` token embeddings: the
+embeddings, two blocks, a final layer norm, and the scores of each position against
+every token embedding, as `t` rows of width `vocab`. -/
 def forward (tokens : Array UInt64) (wte wpe : Array Float)
     (g1a b1a wqa wka wva woa g2a b2a w1a w2a : Array Float)
     (g1b b1b wqb wkb wvb wob g2b b2b w1b w2b : Array Float) (gf bf : Array Float)
-    (t d f vocab : UInt64) (eps : Float) : Array Float :=
-  let x0 := embed tokens wte wpe t d
-  let x1 := block x0 g1a b1a wqa wka wva woa g2a b2a w1a w2a t d f eps
-  let x2 := block x1 g1b b1b wqb wkb wvb wob g2b b2b w1b w2b t d f eps
-  let h := layerNormRows x2 gf bf t d eps
-  matMulT h wte t d vocab
+    (t nh dh f vocab : UInt64) (eps : Float) : Array Float :=
+  let x0 := embed tokens wte wpe t (nh * dh)
+  let x1 := block x0 g1a b1a wqa wka wva woa g2a b2a w1a w2a t nh dh f eps
+  let x2 := block x1 g1b b1b wqb wkb wvb wob g2b b2b w1b w2b t nh dh f eps
+  let h := layerNormRows x2 gf bf t (nh * dh) eps
+  matMulT h wte t (nh * dh) vocab
 
 end LeanExe.Examples.Gpt

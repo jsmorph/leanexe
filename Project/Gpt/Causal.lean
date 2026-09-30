@@ -4,7 +4,8 @@ import Mathlib.Tactic
 /-! Row `i` of `attention`, `block`, and `forward` depends only on rows `0` to `i` of the
 input.
 The theorems concern the Lean definitions; `Implements` carries them to the bytes.
-Dimensions below `2 ^ 32` exclude overflow in the `UInt64` index arithmetic. -/
+The bounds on the dimensions (`t`, `nh`, and `dh` below `2 ^ 16`; `f` and `vocab` below
+`2 ^ 32`) exclude overflow in the `UInt64` index arithmetic. -/
 
 namespace Project.Gpt.Causal
 
@@ -53,6 +54,25 @@ theorem read_agree {a b : Array Float} {W : UInt64} {i : Nat} (h : RowsAgree W.t
   calc R.toNat * W.toNat + C.toNat < (R.toNat + 1) * W.toNat := by rw [Nat.succ_mul]; omega
     _ ≤ (i + 1) * W.toNat := Nat.mul_le_mul_right _ (by omega)
 
+theorem small_mul {a b : UInt64} (ha : a.toNat < 2 ^ 16) (hb : b.toNat < 2 ^ 16) :
+    (a * b).toNat < 2 ^ 32 := by
+  rw [mul_toNat (by omega) (by omega)]
+  nlinarith
+
+/-- Rows of `n · w` elements are groups of `n` rows of `w`. -/
+theorem RowsAgree.split {α : Type} [Inhabited α] {a b : Array α} {n w i : Nat} (hn : 0 < n)
+    (h : RowsAgree (n * w) i a b) : RowsAgree w ((i + 1) * n - 1) a b := by
+  intro m hm
+  have hpos : 1 ≤ (i + 1) * n := Nat.one_le_iff_ne_zero.mpr (by positivity)
+  rw [Nat.sub_add_cancel hpos] at hm
+  exact h m (by rw [← Nat.mul_assoc]; exact hm)
+
+theorem RowsAgree.join {α : Type} [Inhabited α] {a b : Array α} {n w i : Nat} (hn : 0 < n)
+    (h : RowsAgree w ((i + 1) * n - 1) a b) : RowsAgree (n * w) i a b := by
+  intro m hm
+  have hpos : 1 ≤ (i + 1) * n := Nat.one_le_iff_ne_zero.mpr (by positivity)
+  exact h m (by rw [Nat.sub_add_cancel hpos, Nat.mul_assoc]; exact hm)
+
 /-- Facts about element `e` of a build over `n × w` elements, in rows of `w`. -/
 theorem element_facts {n w : UInt64} {i e : Nat} (hn : n.toNat < 2 ^ 32) (hw : w.toNat < 2 ^ 32)
     (he : e < (i + 1) * w.toNat) (hlt : e < (n * w).toNat) :
@@ -75,21 +95,41 @@ theorem matMul_rows {a a' b : Array Float} {n k m : UInt64} {i : Nat} (hn : n.to
   rw [read_agree h (R := UInt64.ofNat e / m) (C := UInt64.ofNat c) (by omega) (by omega) hk
     (by rwa [toNat_ofNat_lt hc])]
 
-theorem maskedScores_rows {q q' k k' : Array Float} {t d : UInt64} {scale : Float} {i : Nat}
-    (ht : t.toNat < 2 ^ 32) (hd : d.toNat < 2 ^ 32) (hq : RowsAgree d.toNat i q q')
-    (hk : RowsAgree d.toNat i k k') :
-    RowsAgree t.toNat i (maskedScores q k t d scale) (maskedScores q' k' t d scale) := by
+theorem maskedScores_rows {q q' k k' : Array Float} {t nh dh : UInt64} {scale : Float} {i : Nat}
+    (ht : t.toNat < 2 ^ 16) (hn : nh.toNat < 2 ^ 16) (hdh : dh.toNat < 2 ^ 16)
+    (hq : RowsAgree (nh * dh).toNat i q q') (hk : RowsAgree (nh * dh).toNat i k k') :
+    RowsAgree (nh * t).toNat i (maskedScores q k t nh dh scale)
+      (maskedScores q' k' t nh dh scale) := by
   unfold maskedScores
   refine rows_of_build fun e he hlt => ?_
-  obtain ⟨-, hRow, hCol, hri, hrt, hct⟩ := element_facts ht ht he hlt
+  have hnt := small_mul hn ht
+  have hnd := small_mul hn hdh
+  rw [UInt64.mul_assoc] at hlt
+  obtain ⟨hE, hRow, -, hri, hrt, -⟩ := element_facts (by omega) hnt he hlt
+  have hJ : (UInt64.ofNat e % t).toNat = e % t.toNat := by rw [UInt64.toNat_mod, hE]
+  have hH : (UInt64.ofNat e / t % nh).toNat = e / t.toNat % nh.toNat := by
+    rw [UInt64.toNat_mod, UInt64.toNat_div, hE]
+  rw [mul_toNat (by omega) (by omega)] at hlt
+  have hn0 : 0 < nh.toNat := Nat.pos_of_ne_zero fun h0 => by simp [h0] at hlt
+  have ht0 : 0 < t.toNat := Nat.pos_of_ne_zero fun h0 => by simp [h0] at hlt
+  have hHlt : e / t.toNat % nh.toNat < nh.toNat := Nat.mod_lt _ hn0
+  have hjt : e % t.toNat < t.toNat := Nat.mod_lt _ ht0
   congr 2
   refine loop_congr fun c hc acc => ?_
   split at hc
   · rename_i hle
-    rw [UInt64.le_iff_toNat_le, hRow, hCol] at hle
-    have hC : (UInt64.ofNat c).toNat < d.toNat := by rwa [toNat_ofNat_lt hc]
-    rw [read_agree hq (R := UInt64.ofNat e / t) (C := UInt64.ofNat c) (by omega) (by omega) hd hC,
-      read_agree hk (R := UInt64.ofNat e % t) (C := UInt64.ofNat c) (by omega) (by omega) hd hC]
+    rw [UInt64.le_iff_toNat_le, hJ, hRow] at hle
+    have hc' : (UInt64.ofNat c).toNat < dh.toNat := by rwa [toNat_ofNat_lt hc]
+    have hC : (UInt64.ofNat e / t % nh * dh + UInt64.ofNat c).toNat <
+        (nh * dh).toNat := by
+      rw [index_toNat (by rw [hH]; omega) (by omega) hc', hH, mul_toNat (by omega) (by omega)]
+      calc e / t.toNat % nh.toNat * dh.toNat + (UInt64.ofNat c).toNat
+          < (e / t.toNat % nh.toNat + 1) * dh.toNat := by rw [Nat.succ_mul]; omega
+        _ ≤ nh.toNat * dh.toNat := Nat.mul_le_mul_right _ hHlt
+    rw [read_agree hq (R := UInt64.ofNat e / (nh * t))
+        (C := UInt64.ofNat e / t % nh * dh + UInt64.ofNat c) (by omega) (by omega) hnd hC,
+      read_agree hk (R := UInt64.ofNat e % t)
+        (C := UInt64.ofNat e / t % nh * dh + UInt64.ofNat c) (by omega) (by omega) hnd hC]
   · simp at hc
 
 theorem rowMax_rows {x x' : Array Float} {t w : UInt64} {i : Nat} (ht : t.toNat < 2 ^ 32)
@@ -125,19 +165,32 @@ theorem softmaxRows_rows {x x' : Array Float} {t w : UInt64} {i : Nat} (ht : t.t
     RowsAgree w.toNat i (softmaxRows x t w) (softmaxRows x' t w) :=
   softmaxApply_rows ht hw h (rowMax_rows ht hw h) (rowSumExp_rows ht hw h (rowMax_rows ht hw h))
 
-theorem causalMatMul_rows {p p' v v' : Array Float} {t d : UInt64} {i : Nat}
-    (ht : t.toNat < 2 ^ 32) (hd : d.toNat < 2 ^ 32) (hp : RowsAgree t.toNat i p p')
-    (hv : RowsAgree d.toNat i v v') :
-    RowsAgree d.toNat i (causalMatMul p v t d) (causalMatMul p' v' t d) := by
+theorem causalMatMul_rows {p p' v v' : Array Float} {t nh dh : UInt64} {i : Nat}
+    (ht : t.toNat < 2 ^ 16) (hn : nh.toNat < 2 ^ 16) (hdh : dh.toNat < 2 ^ 16)
+    (hp : RowsAgree (nh * t).toNat i p p') (hv : RowsAgree (nh * dh).toNat i v v') :
+    RowsAgree (nh * dh).toNat i (causalMatMul p v t nh dh) (causalMatMul p' v' t nh dh) := by
   unfold causalMatMul
   refine rows_of_build fun e he hlt => loop_congr fun j hj acc => ?_
-  obtain ⟨-, hRow, hCol, hri, hrt, hcd⟩ := element_facts ht hd he hlt
+  have hnt := small_mul hn ht
+  have hnd := small_mul hn hdh
+  obtain ⟨-, hRow, hCol, hri, hrt, hcd⟩ := element_facts (by omega) hnd he hlt
   have hJ : (UInt64.ofNat j).toNat = j := toNat_ofNat_lt hj
   rw [UInt64.toNat_add, hRow, UInt64.toNat_one, Nat.mod_eq_of_lt (by omega)] at hj
-  rw [read_agree hp (R := UInt64.ofNat e / d) (C := UInt64.ofNat j) (by omega) (by omega) ht
-      (by omega),
-    read_agree hv (R := UInt64.ofNat j) (C := UInt64.ofNat e % d) (by omega) (by omega) hd
-      (by omega)]
+  have hHd : (UInt64.ofNat e % (nh * dh) / dh).toNat = e % (nh * dh).toNat / dh.toNat := by
+    rw [UInt64.toNat_div, hCol]
+  have hND : (nh * dh).toNat = nh.toNat * dh.toNat := mul_toNat (by omega) (by omega)
+  have hHlt : e % (nh * dh).toNat / dh.toNat < nh.toNat :=
+    Nat.div_lt_of_lt_mul (by rw [Nat.mul_comm, ← hND]; exact hcd)
+  have hC : (UInt64.ofNat e % (nh * dh) / dh * t + UInt64.ofNat j).toNat < (nh * t).toNat := by
+    rw [index_toNat (by rw [hHd]; omega) (by omega) (by rw [hJ]; omega), hHd, hJ,
+      mul_toNat (a := nh) (b := t) (by omega) (by omega)]
+    calc e % (nh * dh).toNat / dh.toNat * t.toNat + j
+        < (e % (nh * dh).toNat / dh.toNat + 1) * t.toNat := by rw [Nat.succ_mul]; omega
+      _ ≤ nh.toNat * t.toNat := Nat.mul_le_mul_right _ hHlt
+  rw [read_agree hp (R := UInt64.ofNat e / (nh * dh))
+      (C := UInt64.ofNat e % (nh * dh) / dh * t + UInt64.ofNat j) (by omega) (by omega) hnt hC,
+    read_agree hv (R := UInt64.ofNat j) (C := UInt64.ofNat e % (nh * dh)) (by omega) (by omega)
+      hnd (by rwa [hCol])]
 
 theorem rowMeans_rows {x x' : Array Float} {t d : UInt64} {i : Nat} (ht : t.toNat < 2 ^ 32)
     (hd : d.toNat < 2 ^ 32) (h : RowsAgree d.toNat i x x') :
@@ -217,40 +270,58 @@ theorem matMulT_rows {a a' b : Array Float} {n k m : UInt64} {i : Nat} (hn : n.t
     (by rwa [toNat_ofNat_lt hc])]
 
 /-- Row `i` of `attention` depends only on rows `0` to `i` of `x`. -/
-theorem attention_causal {x x' wq wk wv wo : Array Float} {t d : UInt64} {i : Nat}
-    (ht : t.toNat < 2 ^ 32) (hd : d.toNat < 2 ^ 32) (hx : RowsAgree d.toNat i x x') :
-    RowsAgree d.toNat i (attention x wq wk wv wo t d) (attention x' wq wk wv wo t d) :=
-  matMul_rows ht hd hd (causalMatMul_rows ht hd
-    (softmaxRows_rows ht ht (maskedScores_rows ht hd (matMul_rows ht hd hd hx)
-      (matMul_rows ht hd hd hx)))
-    (matMul_rows ht hd hd hx))
+theorem attention_causal {x x' wq wk wv wo : Array Float} {t nh dh : UInt64} {i : Nat}
+    (ht : t.toNat < 2 ^ 16) (hn : nh.toNat < 2 ^ 16) (hdh : dh.toNat < 2 ^ 16)
+    (hx : RowsAgree (nh * dh).toNat i x x') :
+    RowsAgree (nh * dh).toNat i (attention x wq wk wv wo t nh dh)
+      (attention x' wq wk wv wo t nh dh) := by
+  have ht32 : t.toNat < 2 ^ 32 := by omega
+  have hnd := small_mul hn hdh
+  by_cases hn0 : nh.toNat = 0
+  · intro m hm
+    rw [mul_toNat (by omega) (by omega), hn0] at hm
+    simp at hm
+  have hq := matMul_rows (b := wq) ht32 hnd hnd hx
+  have hk := matMul_rows (b := wk) ht32 hnd hnd hx
+  have hv := matMul_rows (b := wv) ht32 hnd hnd hx
+  have hs := maskedScores_rows (scale := 1.0 / dh.toFloat.sqrt) ht hn hdh hq hk
+  rw [mul_toNat (by omega) ht32] at hs
+  have hp := RowsAgree.join (Nat.pos_of_ne_zero hn0)
+    (softmaxRows_rows (small_mul ht hn) ht32 (RowsAgree.split (Nat.pos_of_ne_zero hn0) hs))
+  rw [← mul_toNat (by omega) ht32] at hp
+  exact matMul_rows ht32 hnd hnd (causalMatMul_rows ht hn hdh hp hv)
 
 /-- Row `i` of `block` depends only on rows `0` to `i` of `x`, for inputs of equal
 length. -/
-theorem block_causal {x x' g1 b1 wq wk wv wo g2 b2 w1 w2 : Array Float} {t d f : UInt64}
-    {eps : Float} {i : Nat} (ht : t.toNat < 2 ^ 32) (hd : d.toNat < 2 ^ 32)
-    (hf : f.toNat < 2 ^ 32) (hs : x.size = x'.size) (hx : RowsAgree d.toNat i x x') :
-    RowsAgree d.toNat i (block x g1 b1 wq wk wv wo g2 b2 w1 w2 t d f eps)
-      (block x' g1 b1 wq wk wv wo g2 b2 w1 w2 t d f eps) := by
-  have hr := add_rows hs hx (attention_causal (wq := wq) (wk := wk) (wv := wv) (wo := wo) ht hd
-    (layerNormRows_rows (g := g1) (b := b1) (eps := eps) ht hd hx))
+theorem block_causal {x x' g1 b1 wq wk wv wo g2 b2 w1 w2 : Array Float} {t nh dh f : UInt64}
+    {eps : Float} {i : Nat} (ht : t.toNat < 2 ^ 16) (hn : nh.toNat < 2 ^ 16)
+    (hdh : dh.toNat < 2 ^ 16) (hf : f.toNat < 2 ^ 32) (hs : x.size = x'.size)
+    (hx : RowsAgree (nh * dh).toNat i x x') :
+    RowsAgree (nh * dh).toNat i (block x g1 b1 wq wk wv wo g2 b2 w1 w2 t nh dh f eps)
+      (block x' g1 b1 wq wk wv wo g2 b2 w1 w2 t nh dh f eps) := by
+  have ht32 : t.toNat < 2 ^ 32 := by omega
+  have hnd := small_mul hn hdh
+  have hr := add_rows hs hx (attention_causal (wq := wq) (wk := wk) (wv := wv) (wo := wo) ht hn
+    hdh (layerNormRows_rows (g := g1) (b := b1) (eps := eps) ht32 hnd hx))
   exact add_rows (by simp [add, LeanExe.build, hs]) hr
-    (mlp_rows (w1 := w1) (w2 := w2) ht hd hf (layerNormRows_rows ht hd hr))
+    (mlp_rows (w1 := w1) (w2 := w2) ht32 hnd hf (layerNormRows_rows ht32 hnd hr))
 
 /-- Row `i` of `forward`, the scores at position `i`, depends only on tokens `0` to `i`. -/
 theorem forward_causal {tokens tokens' : Array UInt64}
     {wte wpe g1a b1a wqa wka wva woa g2a b2a w1a w2a g1b b1b wqb wkb wvb wob g2b b2b w1b w2b gf bf :
-      Array Float} {t d f vocab : UInt64} {eps : Float} {i : Nat} (ht : t.toNat < 2 ^ 32)
-    (hd : d.toNat < 2 ^ 32) (hf : f.toNat < 2 ^ 32) (hv : vocab.toNat < 2 ^ 32)
-    (h : RowsAgree 1 i tokens tokens') :
+      Array Float} {t nh dh f vocab : UInt64} {eps : Float} {i : Nat} (ht : t.toNat < 2 ^ 16)
+    (hn : nh.toNat < 2 ^ 16) (hdh : dh.toNat < 2 ^ 16) (hf : f.toNat < 2 ^ 32)
+    (hv : vocab.toNat < 2 ^ 32) (h : RowsAgree 1 i tokens tokens') :
     RowsAgree vocab.toNat i
       (forward tokens wte wpe g1a b1a wqa wka wva woa g2a b2a w1a w2a
-        g1b b1b wqb wkb wvb wob g2b b2b w1b w2b gf bf t d f vocab eps)
+        g1b b1b wqb wkb wvb wob g2b b2b w1b w2b gf bf t nh dh f vocab eps)
       (forward tokens' wte wpe g1a b1a wqa wka wva woa g2a b2a w1a w2a
-        g1b b1b wqb wkb wvb wob g2b b2b w1b w2b gf bf t d f vocab eps) := by
+        g1b b1b wqb wkb wvb wob g2b b2b w1b w2b gf bf t nh dh f vocab eps) := by
+  have ht32 : t.toNat < 2 ^ 32 := by omega
+  have hnd := small_mul hn hdh
   unfold forward
-  exact matMulT_rows ht hd hv (layerNormRows_rows ht hd
-    (block_causal ht hd hf (by simp [block, add, embed, LeanExe.build])
-      (block_causal ht hd hf (by simp [embed, LeanExe.build]) (embed_rows ht hd h))))
+  exact matMulT_rows ht32 hnd hv (layerNormRows_rows ht32 hnd
+    (block_causal ht hn hdh hf (by simp [block, add, embed, LeanExe.build])
+      (block_causal ht hn hdh hf (by simp [embed, LeanExe.build]) (embed_rows ht32 hnd h))))
 
 end Project.Gpt.Causal
