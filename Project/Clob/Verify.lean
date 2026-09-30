@@ -125,8 +125,10 @@ theorem marketBuy_implements :
     have hOwned := hNew.owned
     refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pp, rfl, hNew.borrowed pp prices hPrices⟩, _, _, rfl,
       ⟨ps, rfl, hNew.borrowed ps sizes hSizes⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
-      fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 ptr], state,
-      by simp [clob.marketBuy.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
+      hNew.ownedKeep, [.i64 ptr], state,
+      by simp [clob.marketBuy.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
     rw [marketBuyTuple, marketBuy_eq, hResult]
     simpa using hOwned
 
@@ -195,8 +197,10 @@ theorem fillLevel_implements : Implements clob.module 4 fillTuple fillNeed := by
     refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨ps, rfl, hNew.borrowed ps sizes hSizes⟩, rfl⟩,
       le_of_le_of_eq hNew.top (by simp [fillNeed, hn]),
       le_of_le_of_eq hNew.pages (by simp [fillNeed, hn]), hNew.caps, hNew.borrowed,
-      fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 ptr], state,
-      by simp [clob.fillLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
+      hNew.ownedKeep, [.i64 ptr], state,
+      by simp [clob.fillLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
     rw [fillTuple, LeanExe.Examples.Clob.fillLevel, set!_eq_build sizes k value hSize64]
     exact hOwned
 
@@ -388,10 +392,14 @@ theorem insertLevel_implements : Implements clob.module 5 insertTuple insertNeed
   refine ⟨_, hAt2, ⟨_, _, rfl, ⟨pp, rfl, hKeep2 pp prices (hKeep1 pp prices hPrices)⟩, _, _, rfl,
       ⟨ps, rfl, hKeep2 ps sizes (hKeep1 ps sizes hSizes)⟩, rfl⟩, ?_, ?_, hNew2.caps.trans hNew1.caps,
     fun p ws h => hKeep2 p ws (hKeep1 p ws h),
-    fun p ws h => (hNew2.ownedKeep p ws (hNew1.ownedKeep p ws h).1).1,
+    (hNew1.two hNew2).1,
     [.i64 ptr1, .i64 ptr2], t2,
     by simp [clob.insertLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr1', hPtr2],
-    [.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ?_⟩, ⟨ptr2, rfl, ?_⟩⟩
+    ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ?_⟩, ⟨ptr2, rfl, ?_⟩⟩,
+    fun p ws h => ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ((hNew1.two hNew2).2.1 p ws h).1⟩,
+      ⟨ptr2, rfl, ((hNew1.two hNew2).2.1 p ws h).2⟩⟩,
+    fun p ws h => ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ((hNew1.two hNew2).2.2 p ws h).1⟩,
+      ⟨ptr2, rfl, ((hNew1.two hNew2).2.2 p ws h).2⟩⟩⟩
   · have hTop := Heap.allocate_top (heap := heap) (store := initial)
       (need := UInt64.ofNat (8 * ((insertCount prices.size k).toNat + 1))) (by rw [hNeed1]; exact hRoom1)
     simp only [insertNeed]
@@ -498,11 +506,15 @@ theorem setLevel_implements : Implements clob.module 6 setTuple setNeed := by
       _, _, rfl, ⟨ps, rfl, hNew2.borrowed ps sizes (hKeep1 ps sizes hSizes)⟩, rfl⟩,
     by simp only [setNeed]; omega, by simp only [setNeed]; omega, hNew2.caps.trans hNew1.caps,
     fun p ws h => hNew2.borrowed p ws (hKeep1 p ws h),
-    fun p ws h => (hNew2.ownedKeep p ws (hNew1.ownedKeep p ws h).1).1,
+    (hNew1.two hNew2).1,
     [.i64 ptr1, .i64 ptr2], t2,
     by simp [clob.setLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr1', hPtr2],
-    [.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, (hNew2.ownedKeep ptr1 _ hNew1.owned).1⟩,
-    ⟨ptr2, rfl, ?_⟩⟩
+    ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, (hNew2.ownedKeep ptr1 _ hNew1.owned).1⟩,
+      ⟨ptr2, rfl, ?_⟩⟩,
+    fun p ws h => ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ((hNew1.two hNew2).2.1 p ws h).1⟩,
+      ⟨ptr2, rfl, ((hNew1.two hNew2).2.1 p ws h).2⟩⟩,
+    fun p ws h => ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ((hNew1.two hNew2).2.2 p ws h).1⟩,
+      ⟨ptr2, rfl, ((hNew1.two hNew2).2.2 p ws h).2⟩⟩⟩
   rw [setTuple, LeanExe.Examples.Clob.setLevel, set!_eq_build sizes k size (by omega)]
   exact hNew2.owned
 
@@ -820,10 +832,14 @@ theorem removeLevel_implements : Implements clob.module 10 removeTuple removeNee
   refine ⟨_, hAt2, ⟨_, _, rfl, ⟨pp, rfl, hKeep2 pp prices (hKeep1 pp prices hPrices)⟩, _, _, rfl,
       ⟨ps, rfl, hKeep2 ps sizes (hKeep1 ps sizes hSizes)⟩, rfl⟩, ?_, ?_, hNew2.caps.trans hNew1.caps,
     fun p ws h => hKeep2 p ws (hKeep1 p ws h),
-    fun p ws h => (hNew2.ownedKeep p ws (hNew1.ownedKeep p ws h).1).1,
+    (hNew1.two hNew2).1,
     [.i64 ptr1, .i64 ptr2], t2,
     by simp [clob.removeLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr1', hPtr2],
-    [.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ?_⟩, ⟨ptr2, rfl, ?_⟩⟩
+    ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ?_⟩, ⟨ptr2, rfl, ?_⟩⟩,
+    fun p ws h => ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ((hNew1.two hNew2).2.1 p ws h).1⟩,
+      ⟨ptr2, rfl, ((hNew1.two hNew2).2.1 p ws h).2⟩⟩,
+    fun p ws h => ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ((hNew1.two hNew2).2.2 p ws h).1⟩,
+      ⟨ptr2, rfl, ((hNew1.two hNew2).2.2 p ws h).2⟩⟩⟩
   · have hTop := Heap.allocate_top (heap := heap) (store := initial)
       (need := UInt64.ofNat (8 * ((eraseCount prices.size k).toNat + 1)))
       (by rw [hNeed1]; exact hRoom1)
@@ -857,11 +873,12 @@ structure Kept (heap : Heap) (initial : Store Unit) (heap1 : Heap) (store1 : Sto
   pages : store1.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + 65535) / 65536)
   caps : store1.memoryCaps = initial.memoryCaps
   borrowed : ∀ p ws, heap.Borrowed initial p ws → heap1.Borrowed store1 p ws
-  owned : ∀ p ws, heap.Owned initial p ws → heap1.Owned store1 p ws
+  owned : ∀ p ws, heap.Owned initial p ws →
+    heap1.Owned store1 p ws ∧ capacityAt store1 p = capacityAt initial p
 
 theorem Kept.refl {heap : Heap} {initial : Store Unit} (hHeap : heap.At initial) :
     Kept heap initial heap initial :=
-  ⟨hHeap, le_refl _, le_max_left _ _, rfl, fun _ _ h => h, fun _ _ h => h⟩
+  ⟨hHeap, le_refl _, le_max_left _ _, rfl, fun _ _ h => h, fun _ _ h => ⟨h, rfl⟩⟩
 
 /-- The postcondition of `Func.implements_heap` for a function whose arguments
 `params` represent `input` and whose result, a pair of arrays, is in locals `a`
@@ -874,10 +891,15 @@ def PairPost [Represent γ] (heap : Heap) (initial : Store Unit) (params : List 
     store.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + need + 65535) / 65536) ∧
     store.memoryCaps = initial.memoryCaps ∧
     (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store p ws) ∧
-    (∀ p ws, heap.Owned initial p ws → heap'.Owned store p ws) ∧
+    (∀ p ws, heap.Owned initial p ws →
+      heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
     ∃ values next,
       Expr.evalResults store.mem scratch [⟨.u64, .get a⟩, ⟨.u64, .get b⟩] state =
-        some (values, next) ∧ Represent.owned heap' store values result
+        some (values, next) ∧ Represent.owned heap' store values result ∧
+      (∀ p ws, heap.Borrowed initial p ws →
+        Represent.outside store values result (p.toNat, 8 * (ws.size + 1))) ∧
+      (∀ p ws, heap.Owned initial p ws →
+        Represent.outside store values result (p.toNat - 48, 48 + capacityAt initial p))
 
 /-- A call of entry `idx`, which implements `g`, that leaves the two arrays of
 `g x = result` in locals `a` and `b` as the caller's result. -/
@@ -913,7 +935,7 @@ theorem pairCall_spec [Represent α] [Represent γ] {idx : Nat}
         State.setAll, State.set?_eq_update _ hB, State.set?_eq_update _ (hA' _),
         Option.bind_eq_bind, Option.bind_some]⟩
   rintro store' st' ⟨heap', values, hAt', hOwned', -, hTop', hPages', hCaps', hKeepB, hKeepO,
-    hSet'⟩
+    hOutsideB, hOutsideO, hSet'⟩
   obtain ⟨p1, p2, rfl, -, -⟩ := owned_pair hOwned'
   simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append,
     State.setAll, State.set?_eq_update _ hB, State.set?_eq_update _ (hA' _),
@@ -925,9 +947,14 @@ theorem pairCall_spec [Represent α] [Represent γ] {idx : Nat}
     rw [State.get_update_ne (Ne.symm hab)]; exact State.get_update_same hB
   exact ⟨heap', hAt', hInput heap' store' fun p ws h => hKeepB p ws (hKept.borrowed p ws h),
     by omega, by omega, hCaps'.trans hKept.caps, fun p ws h => hKeepB p ws (hKept.borrowed p ws h),
-    fun p ws h => hKeepO p ws (hKept.owned p ws h), [.i64 p1, .i64 p2],
+    fun p ws h => ⟨(hKeepO p ws (hKept.owned p ws h).1).1,
+      (hKeepO p ws (hKept.owned p ws h).1).2.trans (hKept.owned p ws h).2⟩, [.i64 p1, .i64 p2],
     (afterArgs.update b (.i64 p2)).update a (.i64 p1),
-    by simp [Expr.evalResults, Expr.eval, hGetA, hGetB], hOwned'⟩
+    by simp [Expr.evalResults, Expr.eval, hGetA, hGetB], hOwned',
+    fun p ws h => hOutsideB p ws (hKept.borrowed p ws h),
+    fun p ws h => by
+      have hOut := hOutsideO p ws (hKept.owned p ws h).1
+      rwa [(hKept.owned p ws h).2] at hOut⟩
 
 /-- Copies of the arrays in locals `src1` and `src2`, left in locals `a` and `b` as
 the caller's result. -/
@@ -984,10 +1011,18 @@ theorem pairCopy_spec [Represent γ] {scratch a b l1 i1 s1 l2 i2 s2 src1 src2 : 
       hNew2.borrowed p ws (hNew1.borrowed p ws (hKept.borrowed p ws h)),
     by omega, by omega, hNew2.caps.trans (hNew1.caps.trans hKept.caps),
     fun p ws h => hNew2.borrowed p ws (hNew1.borrowed p ws (hKept.borrowed p ws h)),
-    fun p ws h => (hNew2.ownedKeep p ws (hNew1.ownedKeep p ws (hKept.owned p ws h)).1).1,
+    fun p ws h => ⟨((hNew1.two hNew2).1 p ws (hKept.owned p ws h).1).1,
+      ((hNew1.two hNew2).1 p ws (hKept.owned p ws h).1).2.trans (hKept.owned p ws h).2⟩,
     [.i64 q1, .i64 q2], t3, by simp [Expr.evalResults, Expr.eval, hPtr1', hPtr2],
-    [.i64 q1], [.i64 q2], rfl, ⟨q1, rfl, (hNew2.ownedKeep q1 _ hNew1.owned).1⟩,
-    ⟨q2, rfl, hNew2.owned⟩⟩
+    ⟨[.i64 q1], [.i64 q2], rfl, ⟨q1, rfl, (hNew2.ownedKeep q1 _ hNew1.owned).1⟩,
+      ⟨q2, rfl, hNew2.owned⟩⟩,
+    fun p ws h => ⟨[.i64 q1], [.i64 q2], rfl,
+      ⟨q1, rfl, ((hNew1.two hNew2).2.1 p ws (hKept.borrowed p ws h)).1⟩,
+      ⟨q2, rfl, ((hNew1.two hNew2).2.1 p ws (hKept.borrowed p ws h)).2⟩⟩,
+    fun p ws h => by
+      have hApart := (hNew1.two hNew2).2.2 p ws (hKept.owned p ws h).1
+      rw [(hKept.owned p ws h).2] at hApart
+      exact ⟨[.i64 q1], [.i64 q2], rfl, ⟨q1, rfl, hApart.1⟩, ⟨q2, rfl, hApart.2⟩⟩⟩
 
 /-- The locals that the branches of `addBid` and `cancelBid` read: the arguments,
 and the position `k` in local 5. -/
@@ -1056,7 +1091,7 @@ theorem bid_spec {n : Nat} (hn : 6 ≤ n) {thenStmt elseStmt : Stmt}
         State.set?_eq_update _ h4, Option.bind_eq_bind, Option.bind_some]⟩) ?_
   apply Triple.of_forall
   rintro store1 t1 ⟨heap1, values, hAt1, hValues, -, hTop1, hPages1, hCaps1, hKeepB1, hKeepO1,
-    hSet1⟩
+    -, -, hSet1⟩
   have hFacts : Kept heap initial heap1 store1 :=
     ⟨hAt1, by simpa using hTop1, by simpa using hPages1, hCaps1, hKeepB1, hKeepO1⟩
   rw [show values = [.i64 K] from hValues] at hSet1

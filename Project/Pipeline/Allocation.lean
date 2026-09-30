@@ -688,4 +688,33 @@ theorem Heap.newArray_of_writes {heap : Heap} {initial store : Store Unit} {m : 
   · rw [hCapacity]; exact h.disjoint_allocated hHeap need
   · rw [hCapacity]; exact h.disjoint_allocated hHeap need
 
+/-- Two new arrays in a row: every array owned before keeps its object and capacity,
+and both new objects lie apart from every array borrowed or owned before. -/
+theorem Heap.NewArray.two {heap heap1 heap2 : Heap} {initial store1 store2 : Store Unit}
+    {ptr1 ptr2 : UInt64} {ws1 ws2 : Array UInt64} {bytes1 bytes2 : Nat}
+    (h1 : heap.NewArray initial heap1 store1 ptr1 ws1 bytes1)
+    (h2 : heap1.NewArray store1 heap2 store2 ptr2 ws2 bytes2) :
+    (∀ p ws, heap.Owned initial p ws →
+      heap2.Owned store2 p ws ∧ capacityAt store2 p = capacityAt initial p) ∧
+    (∀ p ws, heap.Borrowed initial p ws →
+      regionsDisjoint (p.toNat, 8 * (ws.size + 1)) (ptr1.toNat - 48, 48 + capacityAt store2 ptr1) ∧
+      regionsDisjoint (p.toNat, 8 * (ws.size + 1)) (ptr2.toNat - 48, 48 + capacityAt store2 ptr2)) ∧
+    (∀ p ws, heap.Owned initial p ws →
+      regionsDisjoint (p.toNat - 48, 48 + capacityAt initial p)
+        (ptr1.toNat - 48, 48 + capacityAt store2 ptr1) ∧
+      regionsDisjoint (p.toNat - 48, 48 + capacityAt initial p)
+        (ptr2.toNat - 48, 48 + capacityAt store2 ptr2)) := by
+  have hCap1 : capacityAt store2 ptr1 = capacityAt store1 ptr1 := (h2.ownedKeep ptr1 ws1 h1.owned).2
+  refine ⟨fun p ws h => ?_, fun p ws h => ?_, fun p ws h => ?_⟩
+  · obtain ⟨hOwned1, hCapacity1⟩ := h1.ownedKeep p ws h
+    obtain ⟨hOwned2, hCapacity2⟩ := h2.ownedKeep p ws hOwned1
+    exact ⟨hOwned2, hCapacity2.trans hCapacity1⟩
+  · rw [hCap1]
+    exact ⟨h1.borrowedApart p ws h, h2.borrowedApart p ws (h1.borrowed p ws h)⟩
+  · obtain ⟨hOwned1, hCapacity1⟩ := h1.ownedKeep p ws h
+    have hApart2 := h2.ownedApart p ws hOwned1
+    rw [hCapacity1] at hApart2
+    rw [hCap1]
+    exact ⟨h1.ownedApart p ws h, hApart2⟩
+
 end Project.Pipeline
