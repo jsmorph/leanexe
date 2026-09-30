@@ -19558,3 +19558,31 @@ weights need the host to load arrays from files.
 - [x] GPT 6d: comparison with Hugging Face.
 - [ ] GPT 6e: a loop over layers (design pending).
 - [ ] GPT 6f: real GPT-2 small weights.
+
+## 2026-09-30: The GPT tools enter the repository
+
+The user decided the open questions one at a time: the tools enter the
+repository as uv-runnable scripts, always run with `uv run`; the layer count
+becomes a loop parameter, with an array-state `LeanExe.loop` and a `slice`
+kernel for stacked weights; and the build time is profiled and its cause fixed.
+
+`tests/gpt/Cases.lean` replaces the thirteen case generators and their filters
+with one generator whose lines are `export|result type|host arguments|expected`,
+so `run.sh` passes the arguments through without parsing fields per function; a
+wrong field count, the defect I made twice, cannot occur.  It reproduces the
+1,812 comparisons with the same count for every export.  `sessions.sh` runs the
+nine allocation sessions, and `hf_compare.py` pins PyTorch 2.14.1 from its CPU
+index and transformers 5.18.0 in PEP 723 metadata; under `uv run` it gives the
+same 4.4e-15.  The hand-made virtual environment is gone.
+
+`tools/gpt_composites.py` writes `Project/Gpt/Composites.lean`, the proofs of
+`mlp`, `attention`, `block`, and `forward` with their tuple and bound
+definitions; its output equals, byte for byte, the sections it replaced in
+`Verify.lean`, and `--check` reports whether the file is current.  `gpt_bytes`
+moved to `Project/Gpt/Bytes.lean`.  Build times: `Verify.lean` 80 seconds,
+`Composites.lean` 371, `Bytes.lean` 8.  The CLOB's test scripts stay outside the
+repository for now.
+
+- [x] Tools in the repository.
+- [ ] Profile and fix the build time of `Composites.lean`.
+- [ ] The array-state loop and `slice`.
