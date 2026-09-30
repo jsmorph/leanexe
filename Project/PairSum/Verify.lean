@@ -65,10 +65,12 @@ theorem pairSum_implements : Implements pairSum.module 3 pairTuple (fun _ => 72)
   subst store' state'
   refine ⟨_, hAt.release hOwned, rfl, hNew.top, ?_, hNew.caps, fun p ws h =>
       (hNew.borrowed p ws h).release hOwned (hNew.borrowedApart p ws h), fun p ws h => ?_,
-    _, s2, ?_, rfl⟩
+    _, s2, ?_, rfl, fun _ _ _ => trivial, fun _ _ _ => trivial⟩
   · simpa [Heap.releaseStore] using hNew.pages
   · obtain ⟨hKept, hCapacity⟩ := hNew.ownedKeep p ws h
-    exact (hKept.release hOwned (by rw [hCapacity]; exact hNew.ownedApart p ws h)).1
+    obtain ⟨hReleased, hCapacity'⟩ :=
+      hKept.release hOwned (by rw [hCapacity]; exact hNew.ownedApart p ws h)
+    exact ⟨hReleased, hCapacity'.trans hCapacity⟩
   · simp [pairSum.ir, Func.scratch, Expr.evalResults, Expr.eval, hAcc, pairTuple,
       LeanExe.Examples.PairSum.pairSum, Scalar.values]
 

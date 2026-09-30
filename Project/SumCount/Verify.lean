@@ -59,8 +59,10 @@ theorem sumCount_implements :
   · rintro store state ⟨result, -, hResult, hNew⟩
     have hOwned := hNew.owned
     refine ⟨_, hNew.at_, ⟨ptr, rfl, hNew.borrowed ptr xs hBorrowed⟩, hNew.top, hNew.pages,
-      hNew.caps, hNew.borrowed, fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 result], state,
-      by simp [sumCount.ir, Func.scratch, Expr.evalResults, Expr.eval, hResult], result, rfl, ?_⟩
+      hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 result], state,
+      by simp [sumCount.ir, Func.scratch, Expr.evalResults, Expr.eval, hResult], ⟨result, rfl, ?_⟩,
+    fun p ws h => ⟨result, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨result, rfl, hNew.ownedApart p ws h⟩⟩
     simpa [LeanExe.Examples.SumCount.sumCount] using hOwned
 
 /-- `encode` succeeds on `sumCount.module`, and its bytes decode to a module that

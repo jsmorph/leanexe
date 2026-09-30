@@ -38,7 +38,12 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
         store.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
         store.memoryCaps = initial.memoryCaps ∧
         (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store p ws) ∧
-        (∀ p ws, heap.Owned initial p ws → heap'.Owned store p ws) ∧
+        (∀ p ws, heap.Owned initial p ws →
+          heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
+        (∀ p ws, heap.Borrowed initial p ws →
+          Represent.outside store values (g x) (p.toNat, 8 * (ws.size + 1))) ∧
+        (∀ p ws, heap.Owned initial p ws →
+          Represent.outside store values (g x) (p.toNat - 48, 48 + capacityAt initial p)) ∧
         afterArgs.setAll results.reverse values.reverse = some state) := by
   refine (Stmt.call_spec hImport hFunc hParams).mono ?_ fun _ _ h => h
   rintro store state ⟨hStore, hState⟩
@@ -49,14 +54,20 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
       final.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
       final.memoryCaps = initial.memoryCaps ∧
       (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed final p ws) ∧
-      (∀ p ws, heap.Owned initial p ws → heap'.Owned final p ws), hArgs, fun env => ?_, ?_⟩
+      (∀ p ws, heap.Owned initial p ws →
+        heap'.Owned final p ws ∧ capacityAt final p = capacityAt initial p) ∧
+      (∀ p ws, heap.Borrowed initial p ws →
+        Represent.outside final values.reverse (g x) (p.toNat, 8 * (ws.size + 1))) ∧
+      (∀ p ws, heap.Owned initial p ws →
+        Represent.outside final values.reverse (g x) (p.toNat - 48, 48 + capacityAt initial p)),
+    hArgs, fun env => ?_, ?_⟩
   · exact hImpl env initial heap vals x hHeap hBorrowed hRoom
   · rintro store' out ⟨heap', hAt', hOwned', hBorrowed', hTop, hPages, hCaps, hKeepBorrowed,
-      hKeepOwned⟩
+      hKeepOwned, hOutsideB, hOutsideO⟩
     obtain ⟨next, hNext⟩ := hSet heap' store' out.reverse hOwned'
     rw [List.reverse_reverse] at hNext
     exact ⟨next, hNext, heap', out.reverse, hAt', hOwned', hBorrowed', hTop, hPages, hCaps,
-      hKeepBorrowed, hKeepOwned, by rw [List.reverse_reverse]; exact hNext⟩
+      hKeepBorrowed, hKeepOwned, hOutsideB, hOutsideO, by rw [List.reverse_reverse]; exact hNext⟩
 
 /-- A call of entry `idx`, which computes `g` on scalars and keeps the store, from
 arguments that evaluate to the values of `x`, keeps the store and leaves the values

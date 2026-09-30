@@ -205,8 +205,10 @@ theorem matVec_implements : Implements gpt.module 4 matVecTuple matVecNeed := by
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pm, rfl, hNew.borrowed pm _ hMs⟩, _, _, rfl,
       ⟨pv, rfl, hNew.borrowed pv _ hVs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
-    fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 ptr], state,
-    by simp [gpt.matVec.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
+    hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.matVec.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
   rw [matVecTuple, matVec_eq, build_map]
   exact hNew.owned
 
@@ -473,8 +475,10 @@ theorem layerNorm_implements : Implements gpt.module 5 layerTuple layerNeed := b
       ⟨pg, rfl, hNew.borrowed pg _ hGs⟩, _, _, rfl, ⟨pb, rfl, hNew.borrowed pb _ hBs⟩, rfl⟩,
     le_of_le_of_eq hNew.top (by simp [layerNeed, hn]),
     le_of_le_of_eq hNew.pages (by simp [layerNeed, hn]), hNew.caps, hNew.borrowed,
-    fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 ptr], state,
-    by simp [gpt.layerNorm.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
+    hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.layerNorm.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
   rw [layerTuple, layerNorm_eq, hSum, hVar, build_map]
   exact hNew.owned
 
@@ -840,8 +844,10 @@ theorem softmax_implements :
   refine ⟨_, hNew.at_, ⟨px, rfl, hNew.borrowed px _ hXs⟩,
     le_of_le_of_eq hNew.top (by simp [softmaxNeed, hn]),
     le_of_le_of_eq hNew.pages (by simp [softmaxNeed, hn]), hNew.caps, hNew.borrowed,
-    fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 ptr], state,
-    by simp [gpt.softmax.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
+    hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.softmax.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
   rw [softmax_eq, hMax, hSum, build_map]
   exact hNew.owned
 

@@ -3,7 +3,7 @@ import Project.Pipeline.Runtime
 
 namespace Project.Pipeline
 
-open Wasm
+open Wasm Project.Runtime
 
 /-- How a Lean value appears to a compiled function: as WASM values, together
 with any heap data they point to.  `borrowed` describes an argument, which the
@@ -12,6 +12,9 @@ caller owns after the call. -/
 class Represent (α : Type) where
   borrowed : Heap → Store Unit → List Value → α → Prop
   owned : Heap → Store Unit → List Value → α → Prop
+  /-- The objects that the owned values `vs` of `x` occupy lie outside the memory
+  region `region`, given as its start and length. -/
+  outside : Store Unit → List Value → α → Nat × Nat → Prop
 
 /-- A value that occupies WASM values only, with no heap data. -/
 class Scalar (α : Type) where
@@ -20,6 +23,7 @@ class Scalar (α : Type) where
 instance (priority := low) [Scalar α] : Represent α where
   borrowed _ _ vs x := vs = Scalar.values x
   owned _ _ vs x := vs = Scalar.values x
+  outside _ _ _ _ := True
 
 theorem Scalar.borrowed [Scalar α] {heap : Heap} {store : Store Unit} {params : List Value}
     {x : α} : Represent.borrowed heap store params x ↔ params = Scalar.values x :=
@@ -36,6 +40,8 @@ instance [Scalar α] [Scalar β] : Scalar (α × β) :=
 instance : Represent (Array UInt64) where
   borrowed heap store vs xs := ∃ ptr, vs = [.i64 ptr] ∧ heap.Borrowed store ptr xs
   owned heap store vs xs := ∃ ptr, vs = [.i64 ptr] ∧ heap.Owned store ptr xs
+  outside store vs _ region := ∃ ptr, vs = [.i64 ptr] ∧
+    regionsDisjoint region (ptr.toNat - 48, 48 + capacityAt store ptr)
 
 /-- A pair is represented by its first component's values followed by its
 second's.  Pairs of scalars use the `Scalar` instance, which comes first. -/
@@ -44,11 +50,14 @@ instance (priority := 50) [Represent α] [Represent β] : Represent (α × β) w
     Represent.borrowed heap store first p.1 ∧ Represent.borrowed heap store second p.2
   owned heap store vs p := ∃ first second, vs = first ++ second ∧
     Represent.owned heap store first p.1 ∧ Represent.owned heap store second p.2
+  outside store vs p region := ∃ first second, vs = first ++ second ∧
+    Represent.outside store first p.1 region ∧ Represent.outside store second p.2 region
 
 /-- An `Array Float` is stored as the array of its elements' bit patterns. -/
 instance : Represent (Array Float) where
   borrowed heap store vs xs := Represent.borrowed heap store vs (xs.map Float.toBits)
   owned heap store vs xs := Represent.owned heap store vs (xs.map Float.toBits)
+  outside store vs xs region := Represent.outside store vs (xs.map Float.toBits) region
 
 /-- Entry `entry` of `m` computes `f` exactly.  From any store that satisfies the
 allocator invariant, with arguments `params` (in declaration order) representing
@@ -56,9 +65,11 @@ allocator invariant, with arguments `params` (in declaration order) representing
 declaration order, represent `f x` and that the caller owns.  Talos lists
 arguments and results with the top of the stack first, hence the reversals.  The
 arguments still represent `x`, every array borrowed or owned before the call is
-still borrowed or owned with the same contents, the allocator invariant holds
-again, `top` advances by at most `need x` bytes, memory grows only as far as the
-new `top` requires, and the memory's maximum size is unchanged. -/
+still borrowed or owned with the same contents (an owned one with the same
+capacity), the objects of the result lie apart from all of those arrays, the
+allocator invariant holds again, `top` advances by at most `need x` bytes, memory
+grows only as far as the new `top` requires, and the memory's maximum size is
+unchanged. -/
 def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α → β)
     (need : α → Nat) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
@@ -69,7 +80,12 @@ def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α 
         final.mem.pages ≤ max store.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
         final.memoryCaps = store.memoryCaps ∧
         (∀ p ws, heap.Borrowed store p ws → heap'.Borrowed final p ws) ∧
-        (∀ p ws, heap.Owned store p ws → heap'.Owned final p ws)
+        (∀ p ws, heap.Owned store p ws →
+          heap'.Owned final p ws ∧ capacityAt final p = capacityAt store p) ∧
+        (∀ p ws, heap.Borrowed store p ws →
+          Represent.outside final values.reverse (f x) (p.toNat, 8 * (ws.size + 1))) ∧
+        (∀ p ws, heap.Owned store p ws →
+          Represent.outside final values.reverse (f x) (p.toNat - 48, 48 + capacityAt store p))
 
 /-- For every input satisfying `P`, under the premises of `Implements`, the call
 returns an owned result `y` with `Q x y`. -/
@@ -99,7 +115,7 @@ theorem ImplementsPure.implements [Scalar α] [Scalar β] {m : Module} {entry : 
   refine ⟨N, fun fuel hFuel => ?_⟩
   obtain ⟨values, final, hRun, rfl, hValues⟩ := hN fuel hFuel
   exact ⟨values, final, hRun, heap, hHeap, hValues, rfl, by omega, le_max_left _ _, rfl,
-    fun _ _ h => h, fun _ _ h => h⟩
+    fun _ _ h => h, fun _ _ h => ⟨h, rfl⟩, fun _ _ _ => trivial, fun _ _ _ => trivial⟩
 
 theorem Implements.transfer [Represent α] [Represent β] {m : Module} {entry : Nat}
     {f : α → β} {need : α → Nat} {P : α → Prop} {Q : α → β → Prop}
