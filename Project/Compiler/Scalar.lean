@@ -42,6 +42,10 @@ def isFloatArray (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
   if type.isAppOfArity ``Array 1 then isFloat type.appArg! else return false
 
+/-- Whether `type` is `Array UInt64` or `Array Float`, both a pointer word. -/
+def isArray (type : Lean.Expr) : MetaM Bool := do
+  return (← isUInt64Array type) || (← isFloatArray type)
+
 /-- The number of instructions in the code of an expression or a statement.  It
 does not depend on the scratch index. -/
 def exprLength (e : IRExpr type) : Nat := (e.program 0).length
@@ -66,6 +70,9 @@ structure Ctx where
   tuples : List (Lean.Expr × List (Nat × ScalarType)) := []
   callees : List (Name × Nat) := []
   foldable : Bool
+  /-- Whether code may allocate or call: false inside an element of
+  `LeanExe.build`, whose statements must keep the store. -/
+  allocating : Bool := true
 
 def Ctx.result (ctx : Ctx) : Nat := ctx.params.size
 def Ctx.done (ctx : Ctx) : Nat := ctx.params.size + 1
@@ -166,7 +173,7 @@ partial def resultTypes (type : Lean.Expr) : MetaM (List ScalarType) := do
   let type ← whnfR type
   if type.isAppOfArity ``Prod 2 then
     return (← resultTypes type.appFn!.appArg!) ++ (← resultTypes type.appArg!)
-  if ← isUInt64Array type then return [.u64]
+  if ← isArray type then return [.u64]
   return [← scalarTypeOf type]
 
 /-- A fresh local of type `type`. -/
@@ -196,17 +203,24 @@ def loopBodyLoc (loc : Loc) (count : IRExpr .u64) : Loc :=
   (((loc.skip (exprLength count + 3)).inside none).inside none).skip
     (exprLength (.ltU (.get 0) (.get 0) : IRExpr .bool) + 2)
 
-/-- Where the element code of the copying template starts when the template's code
-starts at `loc`: inside the block and loop of its `while`, after the condition,
-the exit test, the element address, and its wrap to 32 bits. -/
-def buildElementLoc (loc : Loc) (dst limit index : Nat) (count : IRExpr .u64) : Loc :=
+/-- Where the per-element statement of the copying template starts when the
+template's code starts at `loc`: inside the block and loop of its `while`, after
+the condition and the exit test. -/
+def buildBodyLoc (loc : Loc) (dst limit index : Nat) (count : IRExpr .u64) : Loc :=
   let before : List Project.IR.Stmt := [.assign limit count,
     .call 0 [.bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)] [dst],
     .store (.get dst) (.get limit), .assign index (.const 0)]
+  (((loc.skip (before.map stmtLength).sum).inside none).inside none).skip
+    (exprLength (.ltU (.get index) (.get limit) : IRExpr .bool) + 2)
+
+/-- Where the element code of the copying template starts: after the per-element
+statement, of `bodyLength` instructions, the element address, and its wrap to 32
+bits. -/
+def buildElementLoc (loc : Loc) (dst limit index : Nat) (count : IRExpr .u64)
+    (bodyLength : Nat := 0) : Loc :=
   let address : IRExpr .u64 :=
     .bin .add (.get dst) (.bin .mul (.bin .add (.get index) (.const 1)) (.const 8))
-  (((loc.skip (before.map stmtLength).sum).inside none).inside none).skip
-    (exprLength (.ltU (.get index) (.get limit) : IRExpr .bool) + 2 + exprLength address + 1)
+  (buildBodyLoc loc dst limit index count).skip (bodyLength + exprLength address + 1)
 
 /-- The hint for code at `path` inside the code a hint's path is relative to. -/
 def Hint.within (path : List Nat) (hint : Hint) : Hint := { hint with path := path ++ hint.path }
@@ -319,6 +333,8 @@ mutual
       if let some index := ctx.callees.lookup fn then
         unless ctx.foldable do
           throwError "a call may not appear in a branch, a fold or loop body, or a recursive definition: {source}"
+        unless ctx.allocating do
+          throwError "a call may not appear in an element of `LeanExe.build`: {source}"
         let [(result, .u64)] ← translateCall ctx term index
           | throwError "a call used as a word must return one word: {source}"
         let ir : IRExpr .u64 := .get result
@@ -536,6 +552,8 @@ mutual
             | throwError "a fold must run over an array variable or an array literal: {source}"
           unless elementType == .u64 do
             throwError "a fold over a Float array literal is not supported: {source}"
+          unless ctx.allocating do
+            throwError "a fold over an array literal may not appear in an element of `LeanExe.build`: {source}"
           pure (← translateArrayLiteral ctx array elements, true)
     let (⟨_, initial⟩, initialHints) ← translateAs ctx ⟨[], 0⟩ accType init
     let before ← get
@@ -694,6 +712,8 @@ mutual
     let source ← sourceOf term
     unless ctx.foldable do
       throwError "an array may not be built in a branch, a fold or loop body, or a recursive definition: {source}"
+    unless ctx.allocating do
+      throwError "an array may not be built in an element of `LeanExe.build`: {source}"
     if let some elements := arrayLiteral? term then
       return ← translateArrayLiteral ctx term elements dst?
     let sizeOf (arrayLocal : Nat) : CompileM Nat := do
@@ -701,7 +721,7 @@ mutual
       let stmt := Stmt.arraySize size arrayLocal
       pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "array-size" source]
       return size
-    if let some arrayLocal := ctx.arrays.lookup term then
+    if let some arrayLocal := (ctx.arrays ++ ctx.floatArrays).lookup term then
       let size ← fresh .u64 "size"
       let dst ← match dst? with
         | some dst => pure dst
@@ -775,12 +795,33 @@ mutual
               (.read arrayLocal (.bin .add (.get index) (.const 1)))
           return (ir, [mkHint loc (exprLength ir) "erase element" source])
     | (``LeanExe.build, #[element, count, f]) =>
-        unless ← isUInt64 element do throwError "unsupported array element type in {source}"
+        let floatElement ← isFloat element
+        unless floatElement || (← isUInt64 element) do
+          throwError "unsupported array element type in {source}"
         let (countIR, countHints) ← translateValue ctx ⟨[], 0⟩ count
-        emitBuild ctx source "array build" countIR countHints (dst? := dst?) fun index loc =>
-          withLocalDeclD `i (mkConst ``UInt64) fun i =>
-            translateValue ({ ctx with foldable := false }.bind i [(index, .u64)]) loc
-              (mkApp f i).headBeta
+        let dst ← match dst? with
+          | some dst => pure dst
+          | none => fresh .u64 "array"
+        let limit ← fresh .u64 "limit"
+        let index ← fresh .u64 "index"
+        -- The element may run loops, whose statements form the per-element statement;
+        -- a float element is stored as its bit pattern.
+        let ((elementIR, elementHints), bodyStmts, bodyHints) ← withBlock do
+          withLocalDeclD `i (mkConst ``UInt64) fun i => do
+            let inner := { ctx with foldable := true, allocating := false }.bind i [(index, .u64)]
+            if floatElement then
+              let (x, xHints) ← translateFloat inner ⟨[], 0⟩ (mkApp f i).headBeta
+              pure ((.toBits x : IRExpr .u64), xHints)
+            else translateValue inner ⟨[], 0⟩ (mkApp f i).headBeta
+        let body := seqAll bodyStmts
+        let relocate (loc : Loc) (hint : Hint) : Hint :=
+          Hint.within loc.prefix_ (Hint.shift loc.index hint)
+        let stmt := Stmt.buildWith dst limit index countIR body elementIR
+        pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "array build" source :: countHints ++
+          bodyHints.map (relocate (buildBodyLoc ⟨[], 0⟩ dst limit index countIR)) ++
+          elementHints.map
+            (relocate (buildElementLoc ⟨[], 0⟩ dst limit index countIR (stmtLength body))))
+        return dst
     | _ => throwError "unsupported array: {source}"
 
   /-- Translates a result term of type `type` to one result expression per
@@ -804,7 +845,7 @@ mutual
       if let some index := ctx.callees.lookup term.getAppFn.constName then
         let results ← translateCall ctx term index dests?
         return (results.map readLocal, results.map fun _ => [])
-      let branching := type.isAppOfArity ``Prod 2 || (← isUInt64Array type)
+      let branching := type.isAppOfArity ``Prod 2 || (← isArray type)
       if let (``ite, #[_, condition, _, thenTerm, elseTerm]) := term.getAppFnArgs then
         if branching then
           return ← translateResultBranch ctx term condition thenTerm elseTerm type dests?
@@ -815,7 +856,7 @@ mutual
         let (aResults, aHints) ← translateResults ctx a first (dests?.map (·.take width))
         let (bResults, bHints) ← translateResults ctx b second (dests?.map (·.drop width))
         return (aResults ++ bResults, aHints ++ bHints)
-      if ← isUInt64Array type then
+      if ← isArray type then
         let array ← translateArray ctx term (dests?.bind (·.head?))
         let ir : IRExpr .u64 := .get array
         return ([⟨.u64, ir⟩], [[mkHint ⟨[], 0⟩ (exprLength ir) "array result" (← sourceOf term)]])
@@ -990,11 +1031,11 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := []) :
       else
         throwError "parameter {params[i]} of {declName} is not UInt64, Float, Array UInt64, or Array Float"
     let resultType ← inferType body
-    let arrayResult ← isUInt64Array resultType
+    let arrayResult ← isArray resultType
     let floatResult ← isFloat resultType
     let pairResult := (← whnfR resultType).isAppOfArity ``Prod 2
     unless arrayResult || floatResult || pairResult || (← isUInt64 resultType) do
-      throwError "the result of {declName} is not UInt64, Float, Array UInt64, or a pair"
+      throwError "the result of {declName} is not UInt64, Float, an array, or a pair"
     let paramNames ← params.toList.mapM fun p => return (← p.fvarId!.getUserName).toString
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
     if recursive then
@@ -1052,6 +1093,7 @@ def irToExpr : {type : ScalarType} → IRExpr type → Lean.Expr
   | _, .convertU operand => mkApp (mkConst ``Project.IR.Expr.convertU) (irToExpr operand)
   | _, .truncSatU operand => mkApp (mkConst ``Project.IR.Expr.truncSatU) (irToExpr operand)
   | _, .ofBits operand => mkApp (mkConst ``Project.IR.Expr.ofBits) (irToExpr operand)
+  | _, .toBits operand => mkApp (mkConst ``Project.IR.Expr.toBits) (irToExpr operand)
   | _, .read array position =>
       mkApp2 (mkConst ``Project.IR.Expr.read) (toExpr array) (irToExpr position)
   | _, .constF bits => mkApp (mkConst ``Project.IR.Expr.constF) (toExpr bits)
