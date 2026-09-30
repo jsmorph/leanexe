@@ -59,7 +59,7 @@ theorem sumCount_implements :
   · rintro store state ⟨result, -, hResult, hNew⟩
     have hOwned := hNew.owned
     refine ⟨_, hNew.at_, ⟨ptr, rfl, hNew.borrowed ptr xs hBorrowed⟩, hNew.top, hNew.pages,
-      hNew.borrowed, fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 result], state,
+      hNew.caps, hNew.borrowed, fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 result], state,
       by simp [sumCount.ir, Func.scratch, Expr.evalResults, Expr.eval, hResult], result, rfl, ?_⟩
     simpa [LeanExe.Examples.SumCount.sumCount] using hOwned
 

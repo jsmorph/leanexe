@@ -228,6 +228,11 @@ def pushStmt (stmt : Project.IR.Stmt) (hints : List Hint) : CompileM Unit :=
     hints := p.hints ++ (hints.map (Hint.shift p.length)).toArray
     length := p.length + stmtLength stmt }
 
+/-- The expression that reads local `local_` of type `type`. -/
+def readLocal : Nat × ScalarType → Σ type, IRExpr type
+  | (local_, .f64) => ⟨.f64, .getF local_⟩
+  | (local_, _) => ⟨.u64, .get local_⟩
+
 mutual
   /-- Translates a `UInt64` term to an IR expression whose code starts at `loc`.
   A fold in the term adds its statements to the prelude, and the expression reads
@@ -659,9 +664,11 @@ mutual
   /-- Pushes the copying template for an array of `count` elements whose element
   is `element`, a function of the index local, and returns the new array's local. -/
   partial def emitBuild (ctx : Ctx) (source rule : String) (count : IRExpr .u64)
-      (countHints : List Hint) (element : Nat → Loc → CompileM (IRExpr .u64 × List Hint)) :
-      CompileM Nat := do
-    let dst ← fresh .u64 "array"
+      (countHints : List Hint) (element : Nat → Loc → CompileM (IRExpr .u64 × List Hint))
+      (dst? : Option Nat := none) : CompileM Nat := do
+    let dst ← match dst? with
+      | some dst => pure dst
+      | none => fresh .u64 "array"
     let limit ← fresh .u64 "limit"
     let index ← fresh .u64 "index"
     let (elementIR, elementHints) ← element index (buildElementLoc ⟨[], 0⟩ dst limit index count)
@@ -670,26 +677,32 @@ mutual
     return dst
 
   /-- Translates an `Array UInt64` term to statements that leave a new array, which
-  the caller owns, in a fresh local, and returns the local: an array literal,
-  `set!`, `insertIdx!`, or `eraseIdxIfInBounds` on an array variable,
-  `LeanExe.build`, or an array variable, which is copied. -/
-  partial def translateArray (ctx : Ctx) (term : Lean.Expr) : CompileM Nat := do
+  the caller owns, in local `dst?` or a fresh local, and returns the local: an
+  array literal, `set!`, `insertIdx!`, or `eraseIdxIfInBounds` on an array
+  variable, `LeanExe.build`, or an array variable, which is copied. -/
+  partial def translateArray (ctx : Ctx) (term : Lean.Expr) (dst? : Option Nat := none) :
+      CompileM Nat := do
     let term := term.consumeMData
     let source ← sourceOf term
     unless ctx.foldable do
       throwError "an array may not be built in a branch, a fold or loop body, or a recursive definition: {source}"
     if let some elements := arrayLiteral? term then
-      return ← translateArrayLiteral ctx term elements
+      return ← translateArrayLiteral ctx term elements dst?
     let sizeOf (arrayLocal : Nat) : CompileM Nat := do
       let size ← fresh .u64 "size"
       let stmt := Stmt.arraySize size arrayLocal
       pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "array-size" source]
       return size
     if let some arrayLocal := ctx.arrays.lookup term then
-      let size ← sizeOf arrayLocal
-      return ← emitBuild ctx source "array copy" (.get size) [] fun index loc =>
-        let ir : IRExpr .u64 := .read arrayLocal (.get index)
-        return (ir, [mkHint loc (exprLength ir) "array read" source])
+      let size ← fresh .u64 "size"
+      let dst ← match dst? with
+        | some dst => pure dst
+        | none => fresh .u64 "array"
+      let limit ← fresh .u64 "limit"
+      let index ← fresh .u64 "index"
+      let stmt := Stmt.copy dst limit index size arrayLocal
+      pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "array copy" source]
+      return dst
     match term.getAppFnArgs with
     | (``Array.set!, #[element, array, position, value])
     | (``Array.setIfInBounds, #[element, array, position, value]) =>
@@ -707,7 +720,7 @@ mutual
         let vStmt := Project.IR.Stmt.assign vLocal vIR
         pushStmt vStmt (mkHint ⟨[], 0⟩ (stmtLength vStmt) "set value" (← sourceOf value) :: vHints)
         let size ← sizeOf arrayLocal
-        emitBuild ctx source "array set" (.get size) [] fun index loc =>
+        emitBuild ctx source "array set" (.get size) [] (dst? := dst?) fun index loc =>
           let ir : IRExpr .u64 :=
             .ite (.eq (.get index) (.get kLocal)) (.get vLocal) (.read arrayLocal (.get index))
           return (ir, [mkHint loc (exprLength ir) "set element" source])
@@ -729,7 +742,7 @@ mutual
         -- `insertIdx!` past the end panics and returns the empty array.
         let count : IRExpr .u64 :=
           .ite (.leU (.get kLocal) (.get size)) (.bin .add (.get size) (.const 1)) (.const 0)
-        emitBuild ctx source "array insert" count [] fun index loc =>
+        emitBuild ctx source "array insert" count [] (dst? := dst?) fun index loc =>
           let ir : IRExpr .u64 :=
             .ite (.ltU (.get index) (.get kLocal)) (.read arrayLocal (.get index))
               (.ite (.eq (.get index) (.get kLocal)) (.get vLocal)
@@ -748,7 +761,7 @@ mutual
         let size ← sizeOf arrayLocal
         let count : IRExpr .u64 :=
           .ite (.ltU (.get kLocal) (.get size)) (.bin .sub (.get size) (.const 1)) (.get size)
-        emitBuild ctx source "array erase" count [] fun index loc =>
+        emitBuild ctx source "array erase" count [] (dst? := dst?) fun index loc =>
           let ir : IRExpr .u64 :=
             .ite (.ltU (.get index) (.get kLocal)) (.read arrayLocal (.get index))
               (.read arrayLocal (.bin .add (.get index) (.const 1)))
@@ -756,7 +769,7 @@ mutual
     | (``LeanExe.build, #[element, count, f]) =>
         unless ← isUInt64 element do throwError "unsupported array element type in {source}"
         let (countIR, countHints) ← translateValue ctx ⟨[], 0⟩ count
-        emitBuild ctx source "array build" countIR countHints fun index loc =>
+        emitBuild ctx source "array build" countIR countHints (dst? := dst?) fun index loc =>
           withLocalDeclD `i (mkConst ``UInt64) fun i =>
             translateValue ({ ctx with foldable := false }.bind i [(index, .u64)]) loc
               (mkApp f i).headBeta
@@ -764,8 +777,11 @@ mutual
 
   /-- Translates a result term of type `type` to one result expression per
   component, each with hints relative to its own code: a pair gives the results of
-  its components, an array a new array's pointer, and a scalar its value. -/
-  partial def translateResults (ctx : Ctx) (term type : Lean.Expr) :
+  its components, an array a new array's pointer, and a scalar its value.  With
+  `dests?`, the code leaves each component in its local there, and the results
+  read those locals. -/
+  partial def translateResults (ctx : Ctx) (term type : Lean.Expr)
+      (dests? : Option (List Nat) := none) :
       CompileM (List (Σ type, IRExpr type) × List (List Hint)) :=
     peel ctx term fun ctx term => do
       let type ← whnfR type
@@ -776,35 +792,39 @@ mutual
         let stmt := Project.IR.Stmt.assign local_ v
         pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
         return ← withLocalDeclD name letType fun x =>
-          translateResults (ctx.bind x [(local_, scalar)]) (body.instantiate1 x) type
+          translateResults (ctx.bind x [(local_, scalar)]) (body.instantiate1 x) type dests?
       if let some index := ctx.callees.lookup term.getAppFn.constName then
-        let results ← translateCall ctx term index
-        return (results.map fun (local_, resultType) => match resultType with
-            | .f64 => (⟨.f64, .getF local_⟩ : Σ type, IRExpr type)
-            | _ => ⟨.u64, .get local_⟩,
-          results.map fun _ => [])
+        let results ← translateCall ctx term index dests?
+        return (results.map readLocal, results.map fun _ => [])
       let branching := type.isAppOfArity ``Prod 2 || (← isUInt64Array type)
       if let (``ite, #[_, condition, _, thenTerm, elseTerm]) := term.getAppFnArgs then
         if branching then
-          return ← translateResultBranch ctx term condition thenTerm elseTerm type
+          return ← translateResultBranch ctx term condition thenTerm elseTerm type dests?
       if type.isAppOfArity ``Prod 2 then
         let (``Prod.mk, #[first, second, a, b]) := term.getAppFnArgs
           | throwError "a pair result must be a pair: {← sourceOf term}"
-        let (aResults, aHints) ← translateResults ctx a first
-        let (bResults, bHints) ← translateResults ctx b second
+        let width := (← resultTypes first).length
+        let (aResults, aHints) ← translateResults ctx a first (dests?.map (·.take width))
+        let (bResults, bHints) ← translateResults ctx b second (dests?.map (·.drop width))
         return (aResults ++ bResults, aHints ++ bHints)
       if ← isUInt64Array type then
-        let array ← translateArray ctx term
+        let array ← translateArray ctx term (dests?.bind (·.head?))
         let ir : IRExpr .u64 := .get array
         return ([⟨.u64, ir⟩], [[mkHint ⟨[], 0⟩ (exprLength ir) "array result" (← sourceOf term)]])
-      let (result, hints) ← translateAs ctx ⟨[], 0⟩ (← scalarTypeOf type) term
-      return ([result], [hints])
+      let scalar ← scalarTypeOf type
+      let (⟨resultType, ir⟩, hints) ← translateAs ctx ⟨[], 0⟩ scalar term
+      let some dest := dests?.bind (·.head?)
+        | return ([⟨resultType, ir⟩], [hints])
+      let stmt := Project.IR.Stmt.assign dest ir
+      pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "result" (← sourceOf term) :: hints)
+      return ([readLocal (dest, scalar)], [[]])
 
   /-- Translates a call of a definition compiled into the same module, at function
-  `index`, to a call statement that leaves the callee's results in fresh locals,
-  which it returns.  Arguments are words or pointers of array variables. -/
-  partial def translateCall (ctx : Ctx) (term : Lean.Expr) (index : Nat) :
-      CompileM (List (Nat × ScalarType)) := do
+  `index`, to a call statement that leaves the callee's results in the locals
+  `dests?` or in fresh locals, which it returns.  Arguments are words or pointers
+  of array variables. -/
+  partial def translateCall (ctx : Ctx) (term : Lean.Expr) (index : Nat)
+      (dests? : Option (List Nat) := none) : CompileM (List (Nat × ScalarType)) := do
     let source ← sourceOf term
     let mut args := #[]
     let mut hints := #[]
@@ -822,48 +842,39 @@ mutual
       args := args.push ir
       hints := hints ++ argHints.toArray
       offset := offset + exprLength ir
-    let mut results := #[]
-    for type in ← resultTypes (← inferType term) do
-      results := results.push (← fresh type "call result", type)
-    let stmt := Project.IR.Stmt.call index args.toList (results.toList.map (·.1))
+    let types ← resultTypes (← inferType term)
+    let results ← match dests? with
+      | some dests => pure (dests.zip types)
+      | none => types.mapM fun type => return (← fresh type "call result", type)
+    let stmt := Project.IR.Stmt.call index args.toList (results.map (·.1))
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "call" source :: hints.toList)
-    return results.toList
+    return results
 
   /-- Translates a conditional result whose branches build arrays to a statement
-  `if` whose branches leave the results in fresh locals, and returns the locals. -/
-  partial def translateResultBranch (ctx : Ctx) (term condition thenTerm elseTerm type : Lean.Expr) :
+  `if` whose branches leave the results in the locals `dests?`, or in fresh
+  locals, and returns expressions that read them. -/
+  partial def translateResultBranch (ctx : Ctx) (term condition thenTerm elseTerm type : Lean.Expr)
+      (dests? : Option (List Nat) := none) :
       CompileM (List (Σ type, IRExpr type) × List (List Hint)) := do
     let source ← sourceOf term
+    let types ← resultTypes type
+    let dests ← match dests? with
+      | some dests => pure dests
+      | none => types.mapM fun type => fresh type "result"
     let (c, cHints) ← translateCondition ctx ⟨[], 0⟩ condition
-    let branch (resultTerm : Lean.Expr) (locals : List (Nat × ScalarType)) :
-        CompileM (List (Nat × ScalarType)) := do
-      let (results, hints) ← translateResults ctx resultTerm type
-      let mut locals := locals
-      let mut out := #[]
-      for (⟨resultType, ir⟩, own) in results.zip hints do
-        let (local_, rest) ← match locals with
-          | first :: rest => pure (first.1, rest)
-          | [] => do pure (← fresh resultType "result", [])
-        locals := rest
-        let stmt := Project.IR.Stmt.assign local_ ir
-        pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "result" (← sourceOf resultTerm) :: own)
-        out := out.push (local_, resultType)
-      return out.toList
-    let (resultLocals, thenStmts, thenHints) ← withBlock (branch thenTerm [])
-    let (_, elseStmts, elseHints) ← withBlock (branch elseTerm resultLocals)
+    let (_, thenStmts, thenHints) ← withBlock (translateResults ctx thenTerm type dests)
+    let (_, elseStmts, elseHints) ← withBlock (translateResults ctx elseTerm type dests)
     let stmt := Project.IR.Stmt.ite c (seqAll thenStmts) (seqAll elseStmts)
     let branchAt := exprLength c
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "result branch" source :: cHints ++
       thenHints.map (Hint.within [branchAt, 0]) ++ elseHints.map (Hint.within [branchAt, 1]))
-    return (resultLocals.map fun (local_, resultType) => match resultType with
-        | .f64 => (⟨.f64, .getF local_⟩ : Σ type, IRExpr type)
-        | _ => ⟨.u64, .get local_⟩,
-      resultLocals.map fun _ => [])
+    return ((dests.zip types).map readLocal, dests.map fun _ => [])
 
   /-- Translates the array literal `term` with `elements` to an allocation and
-  stores into a fresh local, which it returns.  Folds in the elements run first. -/
-  partial def translateArrayLiteral (ctx : Ctx) (term : Lean.Expr) (elements : List Lean.Expr) :
-      CompileM Nat := do
+  stores into local `dst?` or a fresh local, which it returns.  Folds in the
+  elements run first. -/
+  partial def translateArrayLiteral (ctx : Ctx) (term : Lean.Expr) (elements : List Lean.Expr)
+      (dst? : Option Nat := none) : CompileM Nat := do
     let mut values : Array (IRExpr .u64) := #[]
     let mut valueHints : Array (List Hint) := #[]
     for element in elements do
@@ -871,7 +882,7 @@ mutual
       values := values.push value
       valueHints := valueHints.push hints
     let before ← get
-    let temp := before.next
+    let temp := dst?.getD before.next
     let literal := Stmt.arrayLiteral temp values.toList
     -- Element `i`'s value follows the call, the length store, the earlier element
     -- stores, and its own address code.
@@ -885,8 +896,8 @@ mutual
         (mkHint ⟨[], before.length⟩ (stmtLength literal) "array-literal" (← sourceOf term) ::
           elementHints).toArray
       length := before.length + stmtLength literal
-      vars := before.vars.push .u64
-      names := before.names.push ("array", temp) }
+      vars := if dst?.isSome then before.vars else before.vars.push .u64
+      names := if dst?.isSome then before.names else before.names.push ("array", temp) }
     return temp
 end
 

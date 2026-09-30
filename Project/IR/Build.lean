@@ -1,5 +1,6 @@
 import Project.IR.ArrayLiteral
 import Project.IR.Loop
+import Project.IR.Read
 import LeanExe.Build
 
 /-!
@@ -365,5 +366,67 @@ theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element :
       (by rw [hWrites.1]; exact heap.allocateStore_memoryCaps initial need 1)
     rw [hNeed] at hNew
     exact ⟨_, hFrame, hDstGet, hNew⟩
+
+/-- Local `dst` receives a copy of the array in local `src`: its size goes into local
+`size`, and the copying template reads each element. -/
+def Stmt.copy (dst limit index size src : Nat) : Stmt :=
+  .seq (.arraySize size src) (.build dst limit index (.get size) (.read src (.get index)))
+
+/-- The copy in local `dst` is a new array equal to the source. -/
+theorem Stmt.copy_spec {typeIdx scratch src size dst limit index : Nat}
+    {initial : Store Unit} {before : State} {heap : Heap} {ptr : UInt64} {xs : Array UInt64}
+    (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
+    (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
+    (hLocals : [size, dst, limit, index].Nodup)
+    (hBelow : ∀ j ∈ [size, dst, limit, index], j < scratch)
+    (hSrc : src ∉ [size, dst, limit, index]) (hSrcBelow : src < scratch)
+    (hRoom : scratch < before.params.length + before.locals.length)
+    (hHeap : heap.At initial) (hSpace : heap.Room initial m (48 + 8 * (xs.size + 1)))
+    (hPtr : before.get src = some (.i64 ptr)) (hArray : heap.Borrowed initial ptr xs) :
+    Triple m (.copy dst limit index size src) scratch
+      (fun store state => store = initial ∧ state = before)
+      (fun store state => ∃ p, State.Frame scratch [size, dst, limit, index] before state ∧
+        state.get dst = some (.i64 p) ∧
+        heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (xs.size + 1)))) store p xs
+          (48 + 8 * (xs.size + 1))) := by
+  have hA := hArray.values
+  have hFit := hA.1
+  simp only [List.mem_cons, List.not_mem_nil, or_false, not_or] at hSrc
+  have hSizeBelow := hBelow size (by simp)
+  have hn : (UInt64.ofNat xs.size).toNat = xs.size :=
+    UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
+  let s1 := before.update size (.i64 (UInt64.ofNat xs.size))
+  have hS1 : s1.params.length + s1.locals.length = before.params.length + before.locals.length := by
+    simp [s1, State.update_params_length, State.update_locals_length]
+  refine Stmt.seq_spec (M := fun store state => store = initial ∧ state = s1)
+    ((Stmt.arraySize_spec hA hPtr (by omega)).mono (fun _ _ h => h) ?_) ?_
+  · rintro store state ⟨rfl, hSet⟩
+    rw [State.set?_eq_update _ (by omega)] at hSet
+    exact ⟨rfl, (Option.some.inj hSet).symm⟩
+  refine (Stmt.build_spec (n := UInt64.ofNat xs.size) (fun j => xs[j.toNat]!) hMemory32 hImports
+    hFunc (List.nodup_cons.mp hLocals).2 (fun j hj => hBelow j (List.mem_cons_of_mem _ hj))
+    (by omega) hHeap (by rw [hn]; exact hSpace)
+    ⟨s1, by simp [Expr.eval, s1, State.get_update_same (value := .i64 (UInt64.ofNat xs.size))
+      (show size < before.params.length + before.locals.length by omega)]⟩ ?_).mono
+      (fun _ _ h => h) ?_
+  · intro k store state _ hAt hFrame hIndex
+    have hState : state.params.length + state.locals.length =
+        before.params.length + before.locals.length := by
+      rw [hFrame.params, hFrame.locals, hS1]
+    have hSrcState : state.get src = some (.i64 ptr) := by
+      rw [hFrame.get src hSrcBelow (by simp; omega)]
+      simp only [s1]
+      rw [State.get_update_ne (by omega), hPtr]
+    refine ⟨state.update scratch (.i64 (UInt64.ofNat k)), Expr.read_spec (hAt ptr xs hArray)
+      (by simp [Expr.eval, hIndex]) (State.set?_eq_update _ (by omega)) ?_⟩
+    rw [State.get_update_ne (by omega), hSrcState]
+  · rintro store state ⟨p, hFrame, hDst, hNew⟩
+    rw [← copy_eq_build xs (by omega), hn] at hNew
+    refine ⟨p, ⟨?_, ?_, fun j hj hOut => ?_⟩, hDst, hNew⟩
+    · rw [hFrame.params]; simp [s1, State.update_params_length]
+    · rw [hFrame.locals]; simp [s1, State.update_locals_length]
+    · simp only [List.mem_cons, List.not_mem_nil, or_false, not_or] at hOut
+      rw [hFrame.get j hj (by simp; omega)]
+      exact State.get_update_ne hOut.1
 
 end Project.IR

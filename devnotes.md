@@ -19086,3 +19086,43 @@ releases, and 20 frees.
 
 - [x] CLOB 5b: `findLevel` and `removeLevel`.
 - [ ] CLOB 5c: `cancelBid`, and `addBid` calling `findLevel`.
+
+## 2026-09-29: CLOB 5c, cancelBid
+
+`cancelBid prices sizes price size` finds the level with `findLevel`, removes it
+with `removeLevel` if it holds no more than `size`, and otherwise reduces it.
+Without a level at that price, it returns copies of both arrays.  `addToLevel`
+became `setLevel prices sizes k size = (prices, sizes.set! k.toNat size)`, and
+`addBid` and `cancelBid` compute the new size at the call.  One proof now
+serves both, where adding a `reduceLevel` would have repeated a 134-line proof.
+`addBid` calls `findLevel` in place of its inline search.
+
+Three changes came first.
+- The compiler allocates a conditional's result locals before its branches, and
+  a call, array build, or scalar result in a branch writes into them.  Branches
+  no longer copy results between locals, which removed two copies per branch in
+  `addBid` and four in `cancelBid`'s nested branch.
+- A copy of an array variable compiles to one statement, `Stmt.copy`, with the
+  rule `Stmt.copy_spec`.  Before, the size load and the template were separate
+  statements with no rule for the pair.
+- `Implements` states that the memory's maximum size is unchanged (the user's
+  choice among three options).  After `findLevel` returns, the branch call needs
+  room in the store it leaves, and `Heap.Room` depends on that size.
+  `Heap.Room.after` derives the room.  Every `Func.implements_heap` proof gained
+  one term: `Heap.NewArray.caps` for the array rules and `rfl` otherwise.
+
+`bid_spec` proves the code `addBid` and `cancelBid` share, and `bidCall_spec`
+proves a branch that calls a function whose results become the caller's.
+`omega` handles `max` and division by constants, so the page bounds need no
+explicit chains.  The first build of the new proofs failed where I had left
+implicit states for `simp` to infer and where `let` hid `findTuple` from
+`simp`.  `rintro ⟨rfl, rfl⟩` also substituted a branch state in the wrong
+direction.  All were fixed by giving the states explicitly, `set`, and `subst`
+on the named variable.
+
+`clob.wasm` (3,742 bytes) matched native Lean on 458 inputs, and the book
+session, extended with two `cancelBid` calls, ended with 24 allocations, 24
+releases, and 24 frees.  The other eleven modules kept their bytes.
+
+- [x] CLOB 5c: `cancelBid`.
+- [ ] CLOB 6: a function that applies a command, after the decision on structures.
