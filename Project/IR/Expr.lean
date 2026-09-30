@@ -266,6 +266,8 @@ inductive Expr : ScalarType → Type where
   | truncSatU (operand : Expr .f64) : Expr .u64
   /-- The float whose bit pattern is the word, as `f64.reinterpret_i64`. -/
   | ofBits (operand : Expr .u64) : Expr .f64
+  /-- The bit pattern of the float, as `i64.reinterpret_f64`. -/
+  | toBits (operand : Expr .f64) : Expr .u64
   /-- Element `position` of the array whose pointer local `array` holds, or 0 when
   `position` is not below the array's length.  Scratch local `scratch` holds the
   position. -/
@@ -311,6 +313,9 @@ mutual
         let (value, next) ← operand.eval mem scratch state
         pure (IEEE64.truncSatI64U value, next)
     | .f64, .ofBits operand, mem, scratch, state => do
+        let (value, next) ← operand.eval mem scratch state
+        pure (value, next)
+    | .u64, .toBits operand, mem, scratch, state => do
         let (value, next) ← operand.eval mem scratch state
         pure (value, next)
     | .u64, .read array position, mem, scratch, state => do
@@ -390,6 +395,7 @@ mutual
     | .f64, .convertU operand, scratch => operand.program scratch ++ [.f64ConvertI64U]
     | .u64, .truncSatU operand, scratch => operand.program scratch ++ [.i64TruncSatF64U]
     | .f64, .ofBits operand, scratch => operand.program scratch ++ [.f64ReinterpretI64]
+    | .u64, .toBits operand, scratch => operand.program scratch ++ [.i64ReinterpretF64]
     | .u64, .read array position, scratch =>
         position.program (scratch + 1) ++
           [.localSet scratch, .localGet scratch, .localGet array, .wrapI64, .load64 0, .ltUI64,
@@ -436,7 +442,8 @@ end
 def Expr.scratchWidth : {type : ScalarType} → Expr type → Nat
   | _, .get _ | _, .const _ | _, .bconst _ | _, .getF _ | _, .constF _ => 0
   | _, .binF _ left right => max left.scratchWidth right.scratchWidth
-  | _, .unF _ operand | _, .convertU operand | _, .truncSatU operand | _, .ofBits operand =>
+  | _, .unF _ operand | _, .convertU operand | _, .truncSatU operand | _, .ofBits operand
+  | _, .toBits operand =>
       operand.scratchWidth
   | _, .eqF left right | _, .ltF left right | _, .leF left right =>
       max left.scratchWidth right.scratchWidth
@@ -664,7 +671,8 @@ theorem Expr.eval_preserves_below
       exact (rightPreserves scratch afterLeft afterRight rightValue index hRight hIndex).trans
         (leftPreserves scratch state afterLeft leftValue index hLeft hIndex)
   | unF _ operand operandPreserves | convertU operand operandPreserves
-  | truncSatU operand operandPreserves | ofBits operand operandPreserves =>
+  | truncSatU operand operandPreserves | ofBits operand operandPreserves
+  | toBits operand operandPreserves =>
       simp only [Expr.eval] at hEval
       rcases hOperand : operand.eval mem scratch state with _ | ⟨value, afterOperand⟩
       · simp [hOperand] at hEval
@@ -1175,7 +1183,8 @@ theorem Expr.program_spec
         (rest := _) (Q := _) hOperand
       cases op <;>
         simpa [F64UnOp.instruction, F64UnOp.apply, wp_simp, Wasm.f64Sqrt, Wasm.f64Abs] using hNext
-  | convertU operand operandSpec | truncSatU operand operandSpec | ofBits operand operandSpec =>
+  | convertU operand operandSpec | truncSatU operand operandSpec | ofBits operand operandSpec
+  | toBits operand operandSpec =>
       simp only [Expr.eval] at hEval
       simp only [Expr.program, List.append_assoc]
       rcases hOperand : operand.eval store.mem scratch state with _ | ⟨value, afterOperand⟩
@@ -1248,6 +1257,12 @@ theorem State.Frame.trans {scratch : Nat} {writes : List Nat} {a b c : State}
     State.Frame scratch writes a c :=
   ⟨hSecond.params.trans hFirst.params, hSecond.locals.trans hFirst.locals,
     fun index hIndex hWrite => (hSecond.get index hIndex hWrite).trans (hFirst.get index hIndex hWrite)⟩
+
+theorem State.Frame.weaken {scratch : Nat} {writes writes' : List Nat} {before after : State}
+    (h : State.Frame scratch writes before after) (hSub : ∀ j ∈ writes, j ∈ writes') :
+    State.Frame scratch writes' before after :=
+  ⟨h.params, h.locals, fun index hIndex hWrite =>
+    h.get index hIndex fun hIn => hWrite (hSub index hIn)⟩
 
 theorem State.Frame.mono {scratch scratch' : Nat} {writes : List Nat} {before after : State}
     (h : State.Frame scratch writes before after) (hScratch : scratch' ≤ scratch) :
@@ -1413,7 +1428,8 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
       obtain ⟨rfl, rfl⟩ := hEval
       exact (hLeftFrame _ _ _ _ hLeft).trans (hRightFrame _ _ _ _ hRight)
   | unF _ operand hOperandFrame | convertU operand hOperandFrame
-  | truncSatU operand hOperandFrame | ofBits operand hOperandFrame =>
+  | truncSatU operand hOperandFrame | ofBits operand hOperandFrame
+  | toBits operand hOperandFrame =>
       simp only [Expr.eval] at hEval
       rcases hOperand : operand.eval mem scratch state with _ | ⟨value, afterOperand⟩
       · simp [hOperand] at hEval

@@ -19187,3 +19187,32 @@ the first attempt.  `gpt.wasm` (1,400 bytes) matched native Lean bit for bit on
 - [x] GPT 1: `dot`.
 - [ ] GPT 2: matrix-vector product, which needs a loop inside each element of
   `LeanExe.build`; the template does not allow that yet.
+
+## 2026-09-30: GPT 2, matVec
+
+`matVec m v rows cols = LeanExe.build rows fun r => LeanExe.loop cols 0.0 fun c
+acc => acc + m[(r * cols + c).toNat]! * v[c.toNat]!`.  Each element runs a loop,
+which the copying template did not allow, and the user chose option A: a
+statement per element.  `Stmt.buildWith dst limit index count body element`
+runs `body` before it stores `element`.  `Stmt.build` is now `buildWith` with
+`.skip`, which emits no instructions, so every module kept its bytes.
+`buildWith_spec` generalizes the old proof: the invariant's frame covers the
+body's writes, and one iteration runs the body `Triple` before the store.
+`build_spec` became a corollary of about ten lines, and no existing proof
+changed.
+
+The compiler translates the element inside `withBlock`, with loops allowed and
+a new context flag, `allocating := false`, which rejects array builds, array
+literals in folds, and calls.  The body therefore keeps the store, as the rule
+requires.  Hints of the body and the element are moved to their positions with
+`Hint.shift` and `Hint.within`.  A float element is stored through a new IR
+expression, `Expr.toBits` (`i64.reinterpret_f64`), and `Array Float` became a
+valid result type.  `build_map` moves `Float.toBits` out of `LeanExe.build`.
+
+`matVec_implements` (68 lines, plus 20 for the row loop's body) built after one
+fix: a `change` named a heap that exists only as a witness.  `gpt.wasm` (1,637
+bytes) matched native Lean on 105 inputs, 45 of them for `matVec`, and a
+session left equal allocation, release, and free counts.
+
+- [x] GPT 2: `matVec`.
+- [ ] GPT 3: layer norm.
