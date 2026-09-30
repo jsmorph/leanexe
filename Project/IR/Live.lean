@@ -215,6 +215,27 @@ theorem Live.finish [Represent α] {heap0 heap : Heap} {initial store : Store Un
   · exact ⟨ptr, rfl, hLive.apartB _ hMem p ws h⟩
   · exact ⟨ptr, rfl, hLive.apartO _ hMem p ws h⟩
 
+/-- A call followed by `next`: the proof of `next` receives the heap, the result's pointer,
+and the store the call leaves, so the caller does not substitute the new state. -/
+theorem Live.call_seq [Represent α] {idx : Nat} {g : α → Array Float} {gNeed : α → Nat}
+    (hImpl : Implements m idx g gNeed) {f : Wasm.Function}
+    (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
+    {scratch r : Nat} {args : List ((type : ScalarType) × Expr type)}
+    (hParams : args.length = f.numParams) {heap0 heap : Heap} {initial store : Store Unit}
+    {used total : Nat} {temps : List (UInt64 × Array UInt64)}
+    (hLive : Live heap0 initial used heap store temps) (hTotal : heap0.Room initial m total)
+    {x : α} (hNeed : used + gNeed x ≤ total) {before afterArgs : State} {vals : List Value}
+    (hArgs : Expr.evalResults store.mem scratch args before = some (vals, afterArgs))
+    (hBorrowed : Represent.borrowed heap store vals x)
+    (hR : r < afterArgs.params.length + afterArgs.locals.length)
+    {next : Stmt} {Q : Store Unit → State → Prop}
+    (hNext : ∀ heap' ptr s, Live heap0 initial (used + gNeed x) heap' s
+      ((ptr, (g x).map Float.toBits) :: temps) →
+      Triple m next scratch (fun s' st => s' = s ∧ st = afterArgs.update r (.i64 ptr)) Q) :
+    Triple m (.seq (.call idx args [r]) next) scratch (fun s st => s = store ∧ st = before) Q :=
+  Stmt.seq_spec (Live.call hImpl hImport hFunc hParams hLive hTotal hNeed hArgs hBorrowed hR)
+    (Triple.of_forall fun s _ ⟨heap', ptr, hL, hst⟩ => hst ▸ hNext heap' ptr s hL)
+
 /-- A release followed by `next`: the proof of `next` receives the store the release
 leaves, so the caller does not substitute the unchanged state. -/
 theorem Live.releaseSecond_seq {heap0 heap : Heap} {initial store : Store Unit} {used : Nat}
@@ -259,12 +280,21 @@ theorem Expr.evalResults_getF {mem : Mem} {scratch j : Nat} {state next : State}
     Expr.evalResults mem scratch (⟨.f64, .getF j⟩ :: rest) state = some (.f64 v :: vs, next) := by
   simp [Expr.evalResults, Expr.eval, hj, h]
 
-theorem Expr.evalResults_mul {mem : Mem} {scratch a b : Nat} {state next : State}
-    {rest : List ((type : ScalarType) × Expr type)} {vs : List Value} {x y : UInt64}
-    (ha : state.get a = some (.i64 x)) (hb : state.get b = some (.i64 y))
+theorem Expr.evalResults_u64 {mem : Mem} {scratch : Nat} {e : Expr .u64} {state next : State}
+    {rest : List ((type : ScalarType) × Expr type)} {vs : List Value} {v : UInt64}
+    (he : e.eval mem scratch state = some (v, state))
     (h : Expr.evalResults mem scratch rest state = some (vs, next)) :
-    Expr.evalResults mem scratch (⟨.u64, .bin .mul (.get a) (.get b)⟩ :: rest) state =
-      some (.i64 (x * y) :: vs, next) := by
-  simp [Expr.evalResults, Expr.eval, ha, hb, h, U64Op.apply]
+    Expr.evalResults mem scratch (⟨.u64, e⟩ :: rest) state = some (.i64 v :: vs, next) := by
+  simp [Expr.evalResults, he, h]
+
+theorem Expr.eval_get {mem : Mem} {scratch j : Nat} {state : State} {v : UInt64}
+    (hj : state.get j = some (.i64 v)) :
+    (Expr.get j).eval mem scratch state = some (v, state) := by
+  simp [Expr.eval, hj]
+
+theorem Expr.eval_mul {mem : Mem} {scratch : Nat} {a b : Expr .u64} {state : State} {x y : UInt64}
+    (ha : a.eval mem scratch state = some (x, state)) (hb : b.eval mem scratch state = some (y, state)) :
+    (Expr.bin .mul a b).eval mem scratch state = some (x * y, state) := by
+  simp [Expr.eval, ha, hb, U64Op.apply]
 
 end Project.IR

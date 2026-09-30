@@ -69,18 +69,12 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
   have sg5 : start.get 5 = some (.i64 t) := rfl
   have sg6 : start.get 6 = some (.i64 d) := rfl
   have sg7 : start.get 7 = some (.i64 f) := rfl
-  show Triple _
-    (.seq (.call 30 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩, ⟨.u64, .get 5⟩, ⟨.u64,
-      .get 6⟩, ⟨.u64, .get 7⟩] [8])
-    (.seq (.call 13 [⟨.u64, .get 8⟩] [9])
-    (.seq (.call 30 [⟨.u64, .get 9⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 5⟩, ⟨.u64,
-      .get 7⟩, ⟨.u64, .get 6⟩] [10])
-    (.seq (.assign 11 (.get 10))
-    (.seq (.release 9)
-    (.release 8)))))) 12
+  have hWidth : gpt.mlp.ir.width = 0 := by decide +kernel
+  simp only [Func.state, Func.locals, hWidth, List.replicate_zero, List.append_nil]
+  show Triple _ gpt.mlp.ir.body _
     (fun store state => store = initial ∧ state = start) _
   -- `h = x · wfc + bfc`.
-  refine Stmt.seq_spec (Live.call linear_implements rfl hLinear rfl (Live.start hHeap) hRoom
+  refine Live.call_seq linear_implements rfl hLinear rfl (Live.start hHeap) hRoom
     (x := (x, wfc, bfc, t, d, f))
     (by simp only [linearNeed]; omega) (afterArgs := start)
     (vals := [.i64 pX, .i64 pWfc, .i64 pBfc, .i64 t, .i64 d, .i64 f])
@@ -93,26 +87,22 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
       Expr.evalResults_nil)
     ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hX⟩, [.i64 pWfc], _, rfl, ⟨pWfc, rfl, hWfc⟩, [.i64 pBfc],
       _, rfl, ⟨pBfc, rfl, hBfc⟩, rfl⟩
-    (by rw [hStart]; decide)) ?_
-  apply Triple.of_forall
-  rintro store1 t1 ⟨heap1, ph, hLive1, rfl⟩
+    (by rw [hStart]; decide) fun heap1 ph store1 hLive1 => ?_
   let s1 := start.update 8 (.i64 ph)
   have hS1 : s1.params.length + s1.locals.length = 12 := by rw [hLen, hStart]
   -- `g = gelu h`.
-  refine Stmt.seq_spec (Live.call geluArray_implements rfl hGelu rfl hLive1 hRoom
+  refine Live.call_seq geluArray_implements rfl hGelu rfl hLive1 hRoom
     (x := h)
     (by simp only [linearNeed, geluNeed, hSize]; omega) (afterArgs := s1)
     (vals := [.i64 ph])
     (Expr.evalResults_get (State.get_update_same (state := start) (by rw [hStart]; decide)) <|
       Expr.evalResults_nil)
     ⟨ph, rfl, (hLive1.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩
-    (by rw [hS1]; decide)) ?_
-  apply Triple.of_forall
-  rintro store2 t2 ⟨heap2, pg, hLive2, rfl⟩
+    (by rw [hS1]; decide) fun heap2 pg store2 hLive2 => ?_
   let s2 := s1.update 9 (.i64 pg)
   have hS2 : s2.params.length + s2.locals.length = 12 := by rw [hLen, hS1]
   -- The result, `g · wproj + bproj`.
-  refine Stmt.seq_spec (Live.call linear_implements rfl hLinear rfl hLive2 hRoom
+  refine Live.call_seq linear_implements rfl hLinear rfl hLive2 hRoom
     (x := (g, wproj, bproj, t, f, d))
     (by simp only [linearNeed, geluNeed, hSize]; omega) (afterArgs := s2)
     (vals := [.i64 pg, .i64 pWproj, .i64 pBproj, .i64 t, .i64 f, .i64 d])
@@ -126,9 +116,7 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
     ⟨[.i64 pg], _, rfl, ⟨pg, rfl, (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
       [.i64 pWproj], _, rfl, ⟨pWproj, rfl, hLive2.borrowed pWproj _ hWproj⟩, [.i64 pBproj],
       _, rfl, ⟨pBproj, rfl, hLive2.borrowed pBproj _ hBproj⟩, rfl⟩
-    (by rw [hS2]; decide)) ?_
-  apply Triple.of_forall
-  rintro store3 t3 ⟨heap3, pr, hLive3, rfl⟩
+    (by rw [hS2]; decide) fun heap3 pr store3 hLive3 => ?_
   let s3 := s2.update 10 (.i64 pr)
   have hS3 : s3.params.length + s3.locals.length = 12 := by rw [hLen, hS2]
   let s4 := s3.update 11 (.i64 pr)
@@ -252,32 +240,12 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   have sg9 : start.get 9 = some (.i64 t) := rfl
   have sg10 : start.get 10 = some (.i64 nh) := rfl
   have sg11 : start.get 11 = some (.i64 dh) := rfl
-  show Triple _
-    (.seq (.call 30 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩, ⟨.u64, .get 9⟩, ⟨.u64,
-      .bin .mul (.get 10) (.get 11)⟩, ⟨.u64, .bin .mul (.get 10) (.get 11)⟩] [12])
-    (.seq (.call 30 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 9⟩, ⟨.u64,
-      .bin .mul (.get 10) (.get 11)⟩, ⟨.u64, .bin .mul (.get 10) (.get 11)⟩] [13])
-    (.seq (.call 30 [⟨.u64, .get 0⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 6⟩, ⟨.u64, .get 9⟩, ⟨.u64,
-      .bin .mul (.get 10) (.get 11)⟩, ⟨.u64, .bin .mul (.get 10) (.get 11)⟩] [14])
-    (.seq (.call 19 [⟨.u64, .get 12⟩, ⟨.u64, .get 13⟩, ⟨.u64, .get 9⟩, ⟨.u64, .get 10⟩, ⟨.u64,
-      .get 11⟩, ⟨.f64,
-      .binF .div (.constF 4607182418800017408) (.unF .sqrt (.convertU (.get 11)))⟩] [15])
-    (.seq (.call 23 [⟨.u64, .get 15⟩, ⟨.u64, .bin .mul (.get 9) (.get 10)⟩, ⟨.u64,
-      .get 9⟩] [16])
-    (.seq (.call 26 [⟨.u64, .get 16⟩, ⟨.u64, .get 14⟩, ⟨.u64, .get 9⟩, ⟨.u64, .get 10⟩, ⟨.u64,
-      .get 11⟩] [17])
-    (.seq (.call 30 [⟨.u64, .get 17⟩, ⟨.u64, .get 7⟩, ⟨.u64, .get 8⟩, ⟨.u64, .get 9⟩, ⟨.u64,
-      .bin .mul (.get 10) (.get 11)⟩, ⟨.u64, .bin .mul (.get 10) (.get 11)⟩] [18])
-    (.seq (.assign 19 (.get 18))
-    (.seq (.release 17)
-    (.seq (.release 16)
-    (.seq (.release 15)
-    (.seq (.release 14)
-    (.seq (.release 13)
-    (.release 12)))))))))))))) 20
+  have hWidth : gpt.attention.ir.width = 0 := by decide +kernel
+  simp only [Func.state, Func.locals, hWidth, List.replicate_zero, List.append_nil]
+  show Triple _ gpt.attention.ir.body _
     (fun store state => store = initial ∧ state = start) _
   -- `q = x · wq + bq`.
-  refine Stmt.seq_spec (Live.call linear_implements rfl hLinear rfl (Live.start hHeap) hRoom
+  refine Live.call_seq linear_implements rfl hLinear rfl (Live.start hHeap) hRoom
     (x := (x, wq, bq, t, nh * dh, nh * dh))
     (by simp only [linearNeed]; omega) (afterArgs := start)
     (vals := [.i64 pX, .i64 pWq, .i64 pBq, .i64 t, .i64 (nh * dh), .i64 (nh * dh)])
@@ -285,18 +253,16 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
       Expr.evalResults_get (sg1) <|
       Expr.evalResults_get (sg2) <|
       Expr.evalResults_get (sg9) <|
-      Expr.evalResults_mul (sg10) (sg11) <|
-      Expr.evalResults_mul (sg10) (sg11) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get (sg10)) (Expr.eval_get (sg11))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get (sg10)) (Expr.eval_get (sg11))) <|
       Expr.evalResults_nil)
     ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hX⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl, hWq⟩, [.i64 pBq], _,
       rfl, ⟨pBq, rfl, hBq⟩, rfl⟩
-    (by rw [hStart]; decide)) ?_
-  apply Triple.of_forall
-  rintro store1 t1 ⟨heap1, pq, hLive1, rfl⟩
+    (by rw [hStart]; decide) fun heap1 pq store1 hLive1 => ?_
   let s1 := start.update 12 (.i64 pq)
   have hS1 : s1.params.length + s1.locals.length = 20 := by rw [hLen, hStart]
   -- `k = x · wk + bk`.
-  refine Stmt.seq_spec (Live.call linear_implements rfl hLinear rfl hLive1 hRoom
+  refine Live.call_seq linear_implements rfl hLinear rfl hLive1 hRoom
     (x := (x, wk, bk, t, nh * dh, nh * dh))
     (by simp only [linearNeed]; omega) (afterArgs := s1)
     (vals := [.i64 pX, .i64 pWk, .i64 pBk, .i64 t, .i64 (nh * dh), .i64 (nh * dh)])
@@ -304,19 +270,17 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
       Expr.evalResults_get ((State.get_update_ne (state := start) (j := 3) (index := 12) (by decide)).trans (sg3)) <|
       Expr.evalResults_get ((State.get_update_ne (state := start) (j := 4) (index := 12) (by decide)).trans (sg4)) <|
       Expr.evalResults_get ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9)) <|
-      Expr.evalResults_mul ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10)) ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11)) <|
-      Expr.evalResults_mul ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10)) ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11)) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))) (Expr.eval_get ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11)))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))) (Expr.eval_get ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11)))) <|
       Expr.evalResults_nil)
     ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive1.borrowed pX _ hX⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl,
       hLive1.borrowed pWk _ hWk⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl, hLive1.borrowed pBk _ hBk⟩,
       rfl⟩
-    (by rw [hS1]; decide)) ?_
-  apply Triple.of_forall
-  rintro store2 t2 ⟨heap2, pk, hLive2, rfl⟩
+    (by rw [hS1]; decide) fun heap2 pk store2 hLive2 => ?_
   let s2 := s1.update 13 (.i64 pk)
   have hS2 : s2.params.length + s2.locals.length = 20 := by rw [hLen, hS1]
   -- `v = x · wv + bv`.
-  refine Stmt.seq_spec (Live.call linear_implements rfl hLinear rfl hLive2 hRoom
+  refine Live.call_seq linear_implements rfl hLinear rfl hLive2 hRoom
     (x := (x, wv, bv, t, nh * dh, nh * dh))
     (by simp only [linearNeed]; omega) (afterArgs := s2)
     (vals := [.i64 pX, .i64 pWv, .i64 pBv, .i64 t, .i64 (nh * dh), .i64 (nh * dh)])
@@ -324,19 +288,17 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
       Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 5) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 5) (index := 12) (by decide)).trans (sg5))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 6) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 6) (index := 12) (by decide)).trans (sg6))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 9) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9))) <|
-      Expr.evalResults_mul ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))) ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11))) <|
-      Expr.evalResults_mul ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))) ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10)))) (Expr.eval_get ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10)))) (Expr.eval_get ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11))))) <|
       Expr.evalResults_nil)
     ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive2.borrowed pX _ hX⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl,
       hLive2.borrowed pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl, hLive2.borrowed pBv _ hBv⟩,
       rfl⟩
-    (by rw [hS2]; decide)) ?_
-  apply Triple.of_forall
-  rintro store3 t3 ⟨heap3, pv, hLive3, rfl⟩
+    (by rw [hS2]; decide) fun heap3 pv store3 hLive3 => ?_
   let s3 := s2.update 14 (.i64 pv)
   have hS3 : s3.params.length + s3.locals.length = 20 := by rw [hLen, hS2]
   -- The masked scores of `q` and `k`, head by head.
-  refine Stmt.seq_spec (Live.call maskedScores_implements rfl hMasked rfl hLive3 hRoom
+  refine Live.call_seq maskedScores_implements rfl hMasked rfl hLive3 hRoom
     (x := (q, k, t, nh, dh, 1.0 / dh.toFloat.sqrt))
     (by simp only [linearNeed, maskedNeed]; omega) (afterArgs := s3)
     (vals := [.i64 pq, .i64 pk, .i64 t, .i64 nh, .i64 dh, .f64 (1.0 / dh.toFloat.sqrt).toBits])
@@ -347,29 +309,25 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
       (hLive3.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))).borrowed⟩,
       [.i64 pk], _, rfl, ⟨pk, rfl,
       (hLive3.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))).borrowed⟩, rfl⟩
-    (by rw [hS3]; decide)) ?_
-  apply Triple.of_forall
-  rintro store4 t4 ⟨heap4, ps, hLive4, rfl⟩
+    (by rw [hS3]; decide) fun heap4 ps store4 hLive4 => ?_
   let s4 := s3.update 15 (.i64 ps)
   have hS4 : s4.params.length + s4.locals.length = 20 := by rw [hLen, hS3]
   -- The softmax of each of the `t · nh` rows of scores.
-  refine Stmt.seq_spec (Live.call softmaxRows_implements rfl hSoftmax rfl hLive4 hRoom
+  refine Live.call_seq softmaxRows_implements rfl hSoftmax rfl hLive4 hRoom
     (x := (s, t * nh, t))
     (by simp only [linearNeed, maskedNeed, softmaxRowsNeed]; omega) (afterArgs := s4)
     (vals := [.i64 ps, .i64 (t * nh), .i64 t])
     (Expr.evalResults_get (State.get_update_same (state := s3) (by rw [hS3]; decide)) <|
-      Expr.evalResults_mul ((State.get_update_ne (state := s3) (j := 9) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 9) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 9) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9))))) ((State.get_update_ne (state := s3) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s3) (j := 9) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 9) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 9) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9)))))) (Expr.eval_get ((State.get_update_ne (state := s3) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))))))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 9) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 9) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 9) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9))))) <|
       Expr.evalResults_nil)
     ⟨[.i64 ps], _, rfl, ⟨ps, rfl, (hLive4.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
       rfl⟩
-    (by rw [hS4]; decide)) ?_
-  apply Triple.of_forall
-  rintro store5 t5 ⟨heap5, pp, hLive5, rfl⟩
+    (by rw [hS4]; decide) fun heap5 pp store5 hLive5 => ?_
   let s5 := s4.update 16 (.i64 pp)
   have hS5 : s5.params.length + s5.locals.length = 20 := by rw [hLen, hS4]
   -- `o = p · v`, row `i` summing over rows `0` to `i` of `v`.
-  refine Stmt.seq_spec (Live.call causalMatMul_implements rfl hCausal rfl hLive5 hRoom
+  refine Live.call_seq causalMatMul_implements rfl hCausal rfl hLive5 hRoom
     (x := (p, v, t, nh, dh))
     (by simp only [linearNeed, maskedNeed, softmaxRowsNeed, causalMatMulNeed]; omega) (afterArgs := s5)
     (vals := [.i64 pp, .i64 pv, .i64 t, .i64 nh, .i64 dh])
@@ -383,13 +341,11 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
       [.i64 pv], _, rfl, ⟨pv, rfl,
       (hLive5.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))).borrowed⟩,
       rfl⟩
-    (by rw [hS5]; decide)) ?_
-  apply Triple.of_forall
-  rintro store6 t6 ⟨heap6, po, hLive6, rfl⟩
+    (by rw [hS5]; decide) fun heap6 po store6 hLive6 => ?_
   let s6 := s5.update 17 (.i64 po)
   have hS6 : s6.params.length + s6.locals.length = 20 := by rw [hLen, hS5]
   -- The result, `o · wo + bo`.
-  refine Stmt.seq_spec (Live.call linear_implements rfl hLinear rfl hLive6 hRoom
+  refine Live.call_seq linear_implements rfl hLinear rfl hLive6 hRoom
     (x := (o, wo, bo, t, nh * dh, nh * dh))
     (by simp only [linearNeed, maskedNeed, softmaxRowsNeed, causalMatMulNeed]; omega) (afterArgs := s6)
     (vals := [.i64 po, .i64 pWo, .i64 pBo, .i64 t, .i64 (nh * dh), .i64 (nh * dh)])
@@ -397,15 +353,13 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
       Expr.evalResults_get ((State.get_update_ne (state := s5) (j := 7) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 7) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 7) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 7) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 7) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 7) (index := 12) (by decide)).trans (sg7))))))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s5) (j := 8) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 8) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 8) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 8) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 8) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 8) (index := 12) (by decide)).trans (sg8))))))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s5) (j := 9) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 9) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 9) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 9) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 9) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9))))))) <|
-      Expr.evalResults_mul ((State.get_update_ne (state := s5) (j := 10) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 10) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))))))) ((State.get_update_ne (state := s5) (j := 11) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 11) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 11) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 11) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11))))))) <|
-      Expr.evalResults_mul ((State.get_update_ne (state := s5) (j := 10) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 10) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))))))) ((State.get_update_ne (state := s5) (j := 11) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 11) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 11) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 11) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s5) (j := 10) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 10) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10)))))))) (Expr.eval_get ((State.get_update_ne (state := s5) (j := 11) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 11) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 11) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 11) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s5) (j := 10) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 10) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10)))))))) (Expr.eval_get ((State.get_update_ne (state := s5) (j := 11) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 11) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 11) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 11) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11))))))))) <|
       Expr.evalResults_nil)
     ⟨[.i64 po], _, rfl, ⟨po, rfl, (hLive6.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
       [.i64 pWo], _, rfl, ⟨pWo, rfl, hLive6.borrowed pWo _ hWo⟩, [.i64 pBo], _, rfl, ⟨pBo,
       rfl, hLive6.borrowed pBo _ hBo⟩, rfl⟩
-    (by rw [hS6]; decide)) ?_
-  apply Triple.of_forall
-  rintro store7 t7 ⟨heap7, pr, hLive7, rfl⟩
+    (by rw [hS6]; decide) fun heap7 pr store7 hLive7 => ?_
   let s7 := s6.update 18 (.i64 pr)
   have hS7 : s7.params.length + s7.locals.length = 20 := by rw [hLen, hS6]
   let s8 := s7.update 19 (.i64 pr)
@@ -583,28 +537,12 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
   have sg19 : start.get 19 = some (.i64 dh) := rfl
   have sg20 : start.get 20 = some (.i64 f) := rfl
   have sg21 : start.get 21 = some (.f64 eps.toBits) := rfl
-  show Triple _
-    (.seq (.call 18 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩, ⟨.u64, .get 17⟩, ⟨.u64,
-      .bin .mul (.get 18) (.get 19)⟩, ⟨.f64, .getF 21⟩] [22])
-    (.seq (.call 24 [⟨.u64, .get 22⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 5⟩, ⟨.u64,
-      .get 6⟩, ⟨.u64, .get 7⟩, ⟨.u64, .get 8⟩, ⟨.u64, .get 9⟩, ⟨.u64, .get 10⟩, ⟨.u64,
-      .get 17⟩, ⟨.u64, .get 18⟩, ⟨.u64, .get 19⟩] [23])
-    (.seq (.call 10 [⟨.u64, .get 0⟩, ⟨.u64, .get 23⟩] [24])
-    (.seq (.call 18 [⟨.u64, .get 24⟩, ⟨.u64, .get 11⟩, ⟨.u64, .get 12⟩, ⟨.u64, .get 17⟩, ⟨.u64,
-      .bin .mul (.get 18) (.get 19)⟩, ⟨.f64, .getF 21⟩] [25])
-    (.seq (.call 14 [⟨.u64, .get 25⟩, ⟨.u64, .get 13⟩, ⟨.u64, .get 14⟩, ⟨.u64, .get 15⟩, ⟨.u64,
-      .get 16⟩, ⟨.u64, .get 17⟩, ⟨.u64, .bin .mul (.get 18) (.get 19)⟩, ⟨.u64,
-      .get 20⟩] [26])
-    (.seq (.call 10 [⟨.u64, .get 24⟩, ⟨.u64, .get 26⟩] [27])
-    (.seq (.assign 28 (.get 27))
-    (.seq (.release 26)
-    (.seq (.release 25)
-    (.seq (.release 24)
-    (.seq (.release 23)
-    (.release 22)))))))))))) 29
+  have hWidth : gpt.block.ir.width = 0 := by decide +kernel
+  simp only [Func.state, Func.locals, hWidth, List.replicate_zero, List.append_nil]
+  show Triple _ gpt.block.ir.body _
     (fun store state => store = initial ∧ state = start) _
   -- The first layer norm.
-  refine Stmt.seq_spec (Live.call layerNormRows_implements rfl hNorm rfl (Live.start hHeap) hRoom
+  refine Live.call_seq layerNormRows_implements rfl hNorm rfl (Live.start hHeap) hRoom
     (x := (x, g1, b1, t, nh * dh, eps))
     (by simp only [layerNormRowsNeed]; omega) (afterArgs := start)
     (vals := [.i64 pX, .i64 pG1, .i64 pB1, .i64 t, .i64 (nh * dh), .f64 eps.toBits])
@@ -612,18 +550,16 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
       Expr.evalResults_get (sg1) <|
       Expr.evalResults_get (sg2) <|
       Expr.evalResults_get (sg17) <|
-      Expr.evalResults_mul (sg18) (sg19) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get (sg18)) (Expr.eval_get (sg19))) <|
       Expr.evalResults_getF (sg21) <|
       Expr.evalResults_nil)
     ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hX⟩, [.i64 pG1], _, rfl, ⟨pG1, rfl, hG1⟩, [.i64 pB1], _,
       rfl, ⟨pB1, rfl, hB1⟩, rfl⟩
-    (by rw [hStart]; decide)) ?_
-  apply Triple.of_forall
-  rintro store1 t1 ⟨heap1, ph1, hLive1, rfl⟩
+    (by rw [hStart]; decide) fun heap1 ph1 store1 hLive1 => ?_
   let s1 := start.update 22 (.i64 ph1)
   have hS1 : s1.params.length + s1.locals.length = 29 := by rw [hLen, hStart]
   -- Attention.
-  refine Stmt.seq_spec (Live.call attention_implements rfl hAttention rfl hLive1 hRoom
+  refine Live.call_seq attention_implements rfl hAttention rfl hLive1 hRoom
     (x := (h1, wq, bq, wk, bk, wv, bv, wo, bo, t, nh, dh))
     (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes]; omega) (afterArgs := s1)
     (vals := [.i64 ph1, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk, .i64 pWv, .i64 pBv, .i64 pWo,
@@ -649,13 +585,11 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
       hLive1.borrowed pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl, hLive1.borrowed pBv _ hBv⟩,
       [.i64 pWo], _, rfl, ⟨pWo, rfl, hLive1.borrowed pWo _ hWo⟩, [.i64 pBo], _, rfl, ⟨pBo,
       rfl, hLive1.borrowed pBo _ hBo⟩, rfl⟩
-    (by rw [hS1]; decide)) ?_
-  apply Triple.of_forall
-  rintro store2 t2 ⟨heap2, pa, hLive2, rfl⟩
+    (by rw [hS1]; decide) fun heap2 pa store2 hLive2 => ?_
   let s2 := s1.update 23 (.i64 pa)
   have hS2 : s2.params.length + s2.locals.length = 29 := by rw [hLen, hS1]
   -- The first residual sum, `r = x + a`.
-  refine Stmt.seq_spec (Live.call add_implements rfl hAdd rfl hLive2 hRoom
+  refine Live.call_seq add_implements rfl hAdd rfl hLive2 hRoom
     (x := (x, a))
     (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed]; omega) (afterArgs := s2)
     (vals := [.i64 pX, .i64 pa])
@@ -664,13 +598,11 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
       Expr.evalResults_nil)
     ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive2.borrowed pX _ hX⟩, ⟨pa, rfl,
       (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩⟩
-    (by rw [hS2]; decide)) ?_
-  apply Triple.of_forall
-  rintro store3 t3 ⟨heap3, pr, hLive3, rfl⟩
+    (by rw [hS2]; decide) fun heap3 pr store3 hLive3 => ?_
   let s3 := s2.update 24 (.i64 pr)
   have hS3 : s3.params.length + s3.locals.length = 29 := by rw [hLen, hS2]
   -- The second layer norm.
-  refine Stmt.seq_spec (Live.call layerNormRows_implements rfl hNorm rfl hLive3 hRoom
+  refine Live.call_seq layerNormRows_implements rfl hNorm rfl hLive3 hRoom
     (x := (r, g2, b2, t, nh * dh, eps))
     (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed]; omega) (afterArgs := s3)
     (vals := [.i64 pr, .i64 pG2, .i64 pB2, .i64 t, .i64 (nh * dh), .f64 eps.toBits])
@@ -678,19 +610,17 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
       Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 11) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 11) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 22) (by decide)).trans (sg11)))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 12) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 12) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 12) (index := 22) (by decide)).trans (sg12)))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 22) (by decide)).trans (sg17)))) <|
-      Expr.evalResults_mul ((State.get_update_ne (state := s2) (j := 18) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 18) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 18) (index := 22) (by decide)).trans (sg18)))) ((State.get_update_ne (state := s2) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 22) (by decide)).trans (sg19)))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s2) (j := 18) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 18) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 18) (index := 22) (by decide)).trans (sg18))))) (Expr.eval_get ((State.get_update_ne (state := s2) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 22) (by decide)).trans (sg19)))))) <|
       Expr.evalResults_getF ((State.get_update_ne (state := s2) (j := 21) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 21) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 21) (index := 22) (by decide)).trans (sg21)))) <|
       Expr.evalResults_nil)
     ⟨[.i64 pr], _, rfl, ⟨pr, rfl, (hLive3.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
       [.i64 pG2], _, rfl, ⟨pG2, rfl, hLive3.borrowed pG2 _ hG2⟩, [.i64 pB2], _, rfl, ⟨pB2,
       rfl, hLive3.borrowed pB2 _ hB2⟩, rfl⟩
-    (by rw [hS3]; decide)) ?_
-  apply Triple.of_forall
-  rintro store4 t4 ⟨heap4, ph2, hLive4, rfl⟩
+    (by rw [hS3]; decide) fun heap4 ph2 store4 hLive4 => ?_
   let s4 := s3.update 25 (.i64 ph2)
   have hS4 : s4.params.length + s4.locals.length = 29 := by rw [hLen, hS3]
   -- The MLP.
-  refine Stmt.seq_spec (Live.call mlp_implements rfl hMlp rfl hLive4 hRoom
+  refine Live.call_seq mlp_implements rfl hMlp rfl hLive4 hRoom
     (x := (h2, wfc, bfc, wproj, bproj, t, nh * dh, f))
     (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed, mlpNeed]; omega) (afterArgs := s4)
     (vals := [.i64 ph2, .i64 pWfc, .i64 pBfc, .i64 pWproj, .i64 pBproj, .i64 t, .i64 (nh * dh),
@@ -701,7 +631,7 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
       Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 15) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 15) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 15) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 15) (index := 22) (by decide)).trans (sg15))))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 16) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 16) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 16) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 16) (index := 22) (by decide)).trans (sg16))))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 22) (by decide)).trans (sg17))))) <|
-      Expr.evalResults_mul ((State.get_update_ne (state := s3) (j := 18) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 18) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 18) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 18) (index := 22) (by decide)).trans (sg18))))) ((State.get_update_ne (state := s3) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 22) (by decide)).trans (sg19))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s3) (j := 18) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 18) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 18) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 18) (index := 22) (by decide)).trans (sg18)))))) (Expr.eval_get ((State.get_update_ne (state := s3) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 22) (by decide)).trans (sg19))))))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 22) (by decide)).trans (sg20))))) <|
       Expr.evalResults_nil)
     ⟨[.i64 ph2], _, rfl, ⟨ph2, rfl,
@@ -710,13 +640,11 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
       hLive4.borrowed pBfc _ hBfc⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
       hLive4.borrowed pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
       hLive4.borrowed pBproj _ hBproj⟩, rfl⟩
-    (by rw [hS4]; decide)) ?_
-  apply Triple.of_forall
-  rintro store5 t5 ⟨heap5, pm, hLive5, rfl⟩
+    (by rw [hS4]; decide) fun heap5 pm store5 hLive5 => ?_
   let s5 := s4.update 26 (.i64 pm)
   have hS5 : s5.params.length + s5.locals.length = 29 := by rw [hLen, hS4]
   -- The result, `r + m`.
-  refine Stmt.seq_spec (Live.call add_implements rfl hAdd rfl hLive5 hRoom
+  refine Live.call_seq add_implements rfl hAdd rfl hLive5 hRoom
     (x := (r, m))
     (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed, mlpNeed]; omega) (afterArgs := s5)
     (vals := [.i64 pr, .i64 pm])
@@ -726,9 +654,7 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
     ⟨[.i64 pr], _, rfl, ⟨pr, rfl,
       (hLive5.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))).borrowed⟩,
       ⟨pm, rfl, (hLive5.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩⟩
-    (by rw [hS5]; decide)) ?_
-  apply Triple.of_forall
-  rintro store6 t6 ⟨heap6, pres, hLive6, rfl⟩
+    (by rw [hS5]; decide) fun heap6 pres store6 hLive6 => ?_
   let s6 := s5.update 27 (.i64 pres)
   have hS6 : s6.params.length + s6.locals.length = 29 := by rw [hLen, hS5]
   let s7 := s6.update 28 (.i64 pres)
@@ -982,31 +908,12 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
   have sg40 : start.get 40 = some (.i64 f) := rfl
   have sg41 : start.get 41 = some (.i64 vocab) := rfl
   have sg42 : start.get 42 = some (.f64 eps.toBits) := rfl
-  show Triple _
-    (.seq (.call 27 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩, ⟨.u64, .get 37⟩, ⟨.u64,
-      .bin .mul (.get 38) (.get 39)⟩] [43])
-    (.seq (.call 25 [⟨.u64, .get 43⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 5⟩, ⟨.u64,
-      .get 6⟩, ⟨.u64, .get 7⟩, ⟨.u64, .get 8⟩, ⟨.u64, .get 9⟩, ⟨.u64, .get 10⟩, ⟨.u64,
-      .get 11⟩, ⟨.u64, .get 12⟩, ⟨.u64, .get 13⟩, ⟨.u64, .get 14⟩, ⟨.u64, .get 15⟩, ⟨.u64,
-      .get 16⟩, ⟨.u64, .get 17⟩, ⟨.u64, .get 18⟩, ⟨.u64, .get 37⟩, ⟨.u64, .get 38⟩, ⟨.u64,
-      .get 39⟩, ⟨.u64, .get 40⟩, ⟨.f64, .getF 42⟩] [44])
-    (.seq (.call 25 [⟨.u64, .get 44⟩, ⟨.u64, .get 19⟩, ⟨.u64, .get 20⟩, ⟨.u64, .get 21⟩, ⟨.u64,
-      .get 22⟩, ⟨.u64, .get 23⟩, ⟨.u64, .get 24⟩, ⟨.u64, .get 25⟩, ⟨.u64, .get 26⟩, ⟨.u64,
-      .get 27⟩, ⟨.u64, .get 28⟩, ⟨.u64, .get 29⟩, ⟨.u64, .get 30⟩, ⟨.u64, .get 31⟩, ⟨.u64,
-      .get 32⟩, ⟨.u64, .get 33⟩, ⟨.u64, .get 34⟩, ⟨.u64, .get 37⟩, ⟨.u64, .get 38⟩, ⟨.u64,
-      .get 39⟩, ⟨.u64, .get 40⟩, ⟨.f64, .getF 42⟩] [45])
-    (.seq (.call 18 [⟨.u64, .get 45⟩, ⟨.u64, .get 35⟩, ⟨.u64, .get 36⟩, ⟨.u64, .get 37⟩, ⟨.u64,
-      .bin .mul (.get 38) (.get 39)⟩, ⟨.f64, .getF 42⟩] [46])
-    (.seq (.call 28 [⟨.u64, .get 46⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 37⟩, ⟨.u64,
-      .bin .mul (.get 38) (.get 39)⟩, ⟨.u64, .get 41⟩] [47])
-    (.seq (.assign 48 (.get 47))
-    (.seq (.release 46)
-    (.seq (.release 45)
-    (.seq (.release 44)
-    (.release 43)))))))))) 49
+  have hWidth : gpt.forward.ir.width = 0 := by decide +kernel
+  simp only [Func.state, Func.locals, hWidth, List.replicate_zero, List.append_nil]
+  show Triple _ gpt.forward.ir.body _
     (fun store state => store = initial ∧ state = start) _
   -- The embeddings.
-  refine Stmt.seq_spec (Live.call embed_implements rfl hEmbed rfl (Live.start hHeap) hRoom
+  refine Live.call_seq embed_implements rfl hEmbed rfl (Live.start hHeap) hRoom
     (x := (tokens, wte, wpe, t, nh * dh))
     (by simp only [embedNeed]; omega) (afterArgs := start)
     (vals := [.i64 pTokens, .i64 pWte, .i64 pWpe, .i64 t, .i64 (nh * dh)])
@@ -1014,17 +921,15 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
       Expr.evalResults_get (sg1) <|
       Expr.evalResults_get (sg2) <|
       Expr.evalResults_get (sg37) <|
-      Expr.evalResults_mul (sg38) (sg39) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get (sg38)) (Expr.eval_get (sg39))) <|
       Expr.evalResults_nil)
     ⟨[.i64 pTokens], _, rfl, ⟨pTokens, rfl, hTokens⟩, [.i64 pWte], _, rfl, ⟨pWte, rfl,
       hWte⟩, [.i64 pWpe], _, rfl, ⟨pWpe, rfl, hWpe⟩, rfl⟩
-    (by rw [hStart]; decide)) ?_
-  apply Triple.of_forall
-  rintro store1 t1 ⟨heap1, px0, hLive1, rfl⟩
+    (by rw [hStart]; decide) fun heap1 px0 store1 hLive1 => ?_
   let s1 := start.update 43 (.i64 px0)
   have hS1 : s1.params.length + s1.locals.length = 49 := by rw [hLen, hStart]
   -- The first block.
-  refine Stmt.seq_spec (Live.call block_implements rfl hBlock rfl hLive1 hRoom
+  refine Live.call_seq block_implements rfl hBlock rfl hLive1 hRoom
     (x := (x0, g1a, b1a, wqa, bqa, wka, bka, wva, bva, woa, boa, g2a, b2a, wfca, bfca, wproja, bproja, t, nh, dh, f, eps))
     (by simp only [embedNeed, blockNeed, blockBytes, attentionBytes, hX0]; omega) (afterArgs := s1)
     (vals := [.i64 px0, .i64 pG1a, .i64 pB1a, .i64 pWqa, .i64 pBqa, .i64 pWka, .i64 pBka, .i64 pWva,
@@ -1071,13 +976,11 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
       hLive1.borrowed pBfca _ hBfca⟩, [.i64 pWproja], _, rfl, ⟨pWproja, rfl,
       hLive1.borrowed pWproja _ hWproja⟩, [.i64 pBproja], _, rfl, ⟨pBproja, rfl,
       hLive1.borrowed pBproja _ hBproja⟩, rfl⟩
-    (by rw [hS1]; decide)) ?_
-  apply Triple.of_forall
-  rintro store2 t2 ⟨heap2, px1, hLive2, rfl⟩
+    (by rw [hS1]; decide) fun heap2 px1 store2 hLive2 => ?_
   let s2 := s1.update 44 (.i64 px1)
   have hS2 : s2.params.length + s2.locals.length = 49 := by rw [hLen, hS1]
   -- The second block.
-  refine Stmt.seq_spec (Live.call block_implements rfl hBlock rfl hLive2 hRoom
+  refine Live.call_seq block_implements rfl hBlock rfl hLive2 hRoom
     (x := (x1, g1b, b1b, wqb, bqb, wkb, bkb, wvb, bvb, wob, bob, g2b, b2b, wfcb, bfcb, wprojb, bprojb, t, nh, dh, f, eps))
     (by simp only [embedNeed, blockNeed, blockBytes, attentionBytes, hX0]; omega) (afterArgs := s2)
     (vals := [.i64 px1, .i64 pG1b, .i64 pB1b, .i64 pWqb, .i64 pBqb, .i64 pWkb, .i64 pBkb, .i64 pWvb,
@@ -1124,13 +1027,11 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
       hLive2.borrowed pBfcb _ hBfcb⟩, [.i64 pWprojb], _, rfl, ⟨pWprojb, rfl,
       hLive2.borrowed pWprojb _ hWprojb⟩, [.i64 pBprojb], _, rfl, ⟨pBprojb, rfl,
       hLive2.borrowed pBprojb _ hBprojb⟩, rfl⟩
-    (by rw [hS2]; decide)) ?_
-  apply Triple.of_forall
-  rintro store3 t3 ⟨heap3, px2, hLive3, rfl⟩
+    (by rw [hS2]; decide) fun heap3 px2 store3 hLive3 => ?_
   let s3 := s2.update 45 (.i64 px2)
   have hS3 : s3.params.length + s3.locals.length = 49 := by rw [hLen, hS2]
   -- The final layer norm.
-  refine Stmt.seq_spec (Live.call layerNormRows_implements rfl hNorm rfl hLive3 hRoom
+  refine Live.call_seq layerNormRows_implements rfl hNorm rfl hLive3 hRoom
     (x := (x2, gf, bf, t, nh * dh, eps))
     (by simp only [embedNeed, blockNeed, blockBytes, attentionBytes, hX0, layerNormRowsNeed]; omega) (afterArgs := s3)
     (vals := [.i64 px2, .i64 pGf, .i64 pBf, .i64 t, .i64 (nh * dh), .f64 eps.toBits])
@@ -1138,34 +1039,30 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
       Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 35) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 35) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 35) (index := 43) (by decide)).trans (sg35)))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 36) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 36) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 36) (index := 43) (by decide)).trans (sg36)))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 37) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 37) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 37) (index := 43) (by decide)).trans (sg37)))) <|
-      Expr.evalResults_mul ((State.get_update_ne (state := s2) (j := 38) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 38) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 38) (index := 43) (by decide)).trans (sg38)))) ((State.get_update_ne (state := s2) (j := 39) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 39) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 39) (index := 43) (by decide)).trans (sg39)))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s2) (j := 38) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 38) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 38) (index := 43) (by decide)).trans (sg38))))) (Expr.eval_get ((State.get_update_ne (state := s2) (j := 39) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 39) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 39) (index := 43) (by decide)).trans (sg39)))))) <|
       Expr.evalResults_getF ((State.get_update_ne (state := s2) (j := 42) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 42) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 42) (index := 43) (by decide)).trans (sg42)))) <|
       Expr.evalResults_nil)
     ⟨[.i64 px2], _, rfl, ⟨px2, rfl,
       (hLive3.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pGf], _, rfl, ⟨pGf, rfl,
       hLive3.borrowed pGf _ hGf⟩, [.i64 pBf], _, rfl, ⟨pBf, rfl, hLive3.borrowed pBf _ hBf⟩,
       rfl⟩
-    (by rw [hS3]; decide)) ?_
-  apply Triple.of_forall
-  rintro store4 t4 ⟨heap4, ph, hLive4, rfl⟩
+    (by rw [hS3]; decide) fun heap4 ph store4 hLive4 => ?_
   let s4 := s3.update 46 (.i64 ph)
   have hS4 : s4.params.length + s4.locals.length = 49 := by rw [hLen, hS3]
   -- The scores against every token embedding.
-  refine Stmt.seq_spec (Live.call matMulT_implements rfl hScores rfl hLive4 hRoom
+  refine Live.call_seq matMulT_implements rfl hScores rfl hLive4 hRoom
     (x := (h, wte, t, nh * dh, vocab))
     (by simp only [embedNeed, blockNeed, blockBytes, attentionBytes, hX0, layerNormRowsNeed, matMulTNeed]; omega) (afterArgs := s4)
     (vals := [.i64 ph, .i64 pWte, .i64 t, .i64 (nh * dh), .i64 vocab])
     (Expr.evalResults_get (State.get_update_same (state := s3) (by rw [hS3]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 1) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 1) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 1) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 1) (index := 43) (by decide)).trans (sg1))))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 37) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 37) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 37) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 37) (index := 43) (by decide)).trans (sg37))))) <|
-      Expr.evalResults_mul ((State.get_update_ne (state := s3) (j := 38) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 38) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 38) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 38) (index := 43) (by decide)).trans (sg38))))) ((State.get_update_ne (state := s3) (j := 39) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 39) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 39) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 39) (index := 43) (by decide)).trans (sg39))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s3) (j := 38) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 38) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 38) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 38) (index := 43) (by decide)).trans (sg38)))))) (Expr.eval_get ((State.get_update_ne (state := s3) (j := 39) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 39) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 39) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 39) (index := 43) (by decide)).trans (sg39))))))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 41) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 41) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 41) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 41) (index := 43) (by decide)).trans (sg41))))) <|
       Expr.evalResults_nil)
     ⟨[.i64 ph], _, rfl, ⟨ph, rfl, (hLive4.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
       [.i64 pWte], _, rfl, ⟨pWte, rfl, hLive4.borrowed pWte _ hWte⟩, rfl⟩
-    (by rw [hS4]; decide)) ?_
-  apply Triple.of_forall
-  rintro store5 t5 ⟨heap5, pr, hLive5, rfl⟩
+    (by rw [hS4]; decide) fun heap5 pr store5 hLive5 => ?_
   let s5 := s4.update 47 (.i64 pr)
   have hS5 : s5.params.length + s5.locals.length = 49 := by rw [hLen, hS4]
   let s6 := s5.update 48 (.i64 pr)
@@ -1232,5 +1129,497 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
   exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s6,
     by simp [gpt.forward.ir, Func.scratch, Expr.evalResults, Expr.eval, s6,
       State.get_update_same, hS5], hOwned, hOutB, hOutO⟩
+
+/-- `blockAt` with its twenty-three arguments as one tuple. -/
+def blockAtTuple (x : Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
+    Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
+    Array Float × Array Float × Array Float × Array Float × Array Float × UInt64 × UInt64 ×
+    UInt64 × UInt64 × UInt64 × Float) : Array Float :=
+  LeanExe.Examples.Gpt.blockAt x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2.1 x.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2
+
+/-- The bytes `blockAt` may allocate for an input of `n` elements: the sixteen slices of
+layer `l`'s weights and the block. -/
+def blockAtBytes (t nh dh f : UInt64) (n : Nat) : Nat :=
+  9 * (48 + 8 * ((nh * dh).toNat + 1)) + 4 * (48 + 8 * ((nh * dh * (nh * dh)).toNat + 1)) +
+    (48 + 8 * ((nh * dh * f).toNat + 1)) + (48 + 8 * (f.toNat + 1)) +
+    (48 + 8 * ((f * (nh * dh)).toNat + 1)) + blockBytes t nh dh f n
+
+/-- The bytes `blockAt` may allocate. -/
+def blockAtNeed (x : Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
+    Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
+    Array Float × Array Float × Array Float × Array Float × Array Float × UInt64 × UInt64 ×
+    UInt64 × UInt64 × UInt64 × Float) : Nat :=
+  blockAtBytes x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
+    x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.1.size
+
+theorem blockAt_implements : Implements gpt.module 32 blockAtTuple blockAtNeed := by
+  refine Func.implements_heap gpt.funcs 29 gpt.blockAt.ir "blockAt" rfl
+    blockAtTuple blockAtNeed
+    (by
+      rintro _ _ _ ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _⟩ h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain rfl := h
+      rfl) ?_
+  rintro ⟨x, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, t, nh,
+    dh, f, eps⟩ heap initial _ hHeap hArgs hRoom
+  obtain ⟨pX, _, rfl, hX, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pG1, _, rfl, hG1, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pB1, _, rfl, hB1, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWq, _, rfl, hWq, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBq, _, rfl, hBq, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWk, _, rfl, hWk, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBk, _, rfl, hBk, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWv, _, rfl, hWv, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBv, _, rfl, hBv, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWo, _, rfl, hWo, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBo, _, rfl, hBo, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pG2, _, rfl, hG2, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pB2, _, rfl, hB2, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWfc, _, rfl, hWfc, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBfc, _, rfl, hBfc, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWproj, _, rfl, hWproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBproj, _, rfl, hBproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain rfl := hArgs
+  change heap.Room initial gpt.module (blockAtNeed (x, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, t, nh, dh, f, eps)) at hRoom
+  simp only [blockAtNeed, blockAtBytes, blockBytes, attentionBytes] at hRoom
+  have hImports : gpt.module.imports = [] := rfl
+  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
+  have hSlice : gpt.module.funcs[31 - gpt.module.imports.length]? =
+      some (gpt.slice.ir.function (2 + 28)) :=
+    compile_funcs (funcs := gpt.funcs) (i := 28) rfl
+  have hBlock : gpt.module.funcs[25 - gpt.module.imports.length]? =
+      some (gpt.block.ir.function (2 + 22)) :=
+    compile_funcs (funcs := gpt.funcs) (i := 22) rfl
+  let g1l := sliceTuple (g1, l * (nh * dh), nh * dh)
+  let b1l := sliceTuple (b1, l * (nh * dh), nh * dh)
+  let wql := sliceTuple (wq, l * (nh * dh * (nh * dh)), nh * dh * (nh * dh))
+  let bql := sliceTuple (bq, l * (nh * dh), nh * dh)
+  let wkl := sliceTuple (wk, l * (nh * dh * (nh * dh)), nh * dh * (nh * dh))
+  let bkl := sliceTuple (bk, l * (nh * dh), nh * dh)
+  let wvl := sliceTuple (wv, l * (nh * dh * (nh * dh)), nh * dh * (nh * dh))
+  let bvl := sliceTuple (bv, l * (nh * dh), nh * dh)
+  let wol := sliceTuple (wo, l * (nh * dh * (nh * dh)), nh * dh * (nh * dh))
+  let bol := sliceTuple (bo, l * (nh * dh), nh * dh)
+  let g2l := sliceTuple (g2, l * (nh * dh), nh * dh)
+  let b2l := sliceTuple (b2, l * (nh * dh), nh * dh)
+  let wfcl := sliceTuple (wfc, l * (nh * dh * f), nh * dh * f)
+  let bfcl := sliceTuple (bfc, l * f, f)
+  let wprojl := sliceTuple (wproj, l * (f * (nh * dh)), f * (nh * dh))
+  let bprojl := sliceTuple (bproj, l * (nh * dh), nh * dh)
+  let start : State :=
+    { params := [.i64 pX, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk, .i64 pWv,
+        .i64 pBv, .i64 pWo, .i64 pBo, .i64 pG2, .i64 pB2, .i64 pWfc, .i64 pBfc, .i64 pWproj,
+        .i64 pBproj, .i64 l, .i64 t, .i64 nh, .i64 dh, .i64 f, .f64 eps.toBits]
+      locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0] }
+  have hStart : start.params.length + start.locals.length = 41 := rfl
+  have hLen : ∀ (s : State) (j : Nat) (v : Value),
+      (s.update j v).params.length + (s.update j v).locals.length =
+        s.params.length + s.locals.length := fun s j v => by
+    simp [State.update_params_length, State.update_locals_length]
+  have sg0 : start.get 0 = some (.i64 pX) := rfl
+  have sg1 : start.get 1 = some (.i64 pG1) := rfl
+  have sg2 : start.get 2 = some (.i64 pB1) := rfl
+  have sg3 : start.get 3 = some (.i64 pWq) := rfl
+  have sg4 : start.get 4 = some (.i64 pBq) := rfl
+  have sg5 : start.get 5 = some (.i64 pWk) := rfl
+  have sg6 : start.get 6 = some (.i64 pBk) := rfl
+  have sg7 : start.get 7 = some (.i64 pWv) := rfl
+  have sg8 : start.get 8 = some (.i64 pBv) := rfl
+  have sg9 : start.get 9 = some (.i64 pWo) := rfl
+  have sg10 : start.get 10 = some (.i64 pBo) := rfl
+  have sg11 : start.get 11 = some (.i64 pG2) := rfl
+  have sg12 : start.get 12 = some (.i64 pB2) := rfl
+  have sg13 : start.get 13 = some (.i64 pWfc) := rfl
+  have sg14 : start.get 14 = some (.i64 pBfc) := rfl
+  have sg15 : start.get 15 = some (.i64 pWproj) := rfl
+  have sg16 : start.get 16 = some (.i64 pBproj) := rfl
+  have sg17 : start.get 17 = some (.i64 l) := rfl
+  have sg18 : start.get 18 = some (.i64 t) := rfl
+  have sg19 : start.get 19 = some (.i64 nh) := rfl
+  have sg20 : start.get 20 = some (.i64 dh) := rfl
+  have sg21 : start.get 21 = some (.i64 f) := rfl
+  have sg22 : start.get 22 = some (.f64 eps.toBits) := rfl
+  have hWidth : gpt.blockAt.ir.width = 0 := by decide +kernel
+  simp only [Func.state, Func.locals, hWidth, List.replicate_zero, List.append_nil]
+  show Triple _ gpt.blockAt.ir.body _
+    (fun store state => store = initial ∧ state = start) _
+  -- Layer `l` of `g1`.
+  refine Live.call_seq slice_implements rfl hSlice rfl (Live.start hHeap) hRoom
+    (x := (g1, l * (nh * dh), nh * dh))
+    (by simp only [sliceNeed]; omega) (afterArgs := start)
+    (vals := [.i64 pG1, .i64 (l * (nh * dh)), .i64 (nh * dh)])
+    (Expr.evalResults_get (sg1) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get (sg17)) (Expr.eval_mul (Expr.eval_get (sg19)) (Expr.eval_get (sg20)))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get (sg19)) (Expr.eval_get (sg20))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pG1], _, rfl, ⟨pG1, rfl, hG1⟩, rfl⟩
+    (by rw [hStart]; decide) fun heap1 lG1 store1 hLive1 => ?_
+  let s1 := start.update 23 (.i64 lG1)
+  have hS1 : s1.params.length + s1.locals.length = 41 := by rw [hLen, hStart]
+  -- Layer `l` of `b1`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive1 hRoom
+    (x := (b1, l * (nh * dh), nh * dh))
+    (by simp only [sliceNeed]; omega) (afterArgs := s1)
+    (vals := [.i64 pB1, .i64 (l * (nh * dh)), .i64 (nh * dh)])
+    (Expr.evalResults_get ((State.get_update_ne (state := start) (j := 2) (index := 23) (by decide)).trans (sg2)) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))) (Expr.eval_get ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))) (Expr.eval_get ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pB1], _, rfl, ⟨pB1, rfl, hLive1.borrowed pB1 _ hB1⟩, rfl⟩
+    (by rw [hS1]; decide) fun heap2 lB1 store2 hLive2 => ?_
+  let s2 := s1.update 24 (.i64 lB1)
+  have hS2 : s2.params.length + s2.locals.length = 41 := by rw [hLen, hS1]
+  -- Layer `l` of `wq`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive2 hRoom
+    (x := (wq, l * (nh * dh * (nh * dh)), nh * dh * (nh * dh)))
+    (by simp only [sliceNeed]; omega) (afterArgs := s2)
+    (vals := [.i64 pWq, .i64 (l * (nh * dh * (nh * dh))), .i64 (nh * dh * (nh * dh))])
+    (Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 3) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 3) (index := 23) (by decide)).trans (sg3))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17)))) (Expr.eval_mul (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))) (Expr.eval_get ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))) (Expr.eval_get ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))) (Expr.eval_get ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))) (Expr.eval_get ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pWq], _, rfl, ⟨pWq, rfl, hLive2.borrowed pWq _ hWq⟩, rfl⟩
+    (by rw [hS2]; decide) fun heap3 lWq store3 hLive3 => ?_
+  let s3 := s2.update 25 (.i64 lWq)
+  have hS3 : s3.params.length + s3.locals.length = 41 := by rw [hLen, hS2]
+  -- Layer `l` of `bq`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive3 hRoom
+    (x := (bq, l * (nh * dh), nh * dh))
+    (by simp only [sliceNeed]; omega) (afterArgs := s3)
+    (vals := [.i64 pBq, .i64 (l * (nh * dh)), .i64 (nh * dh)])
+    (Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 4) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 4) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 4) (index := 23) (by decide)).trans (sg4)))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))) (Expr.eval_get ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))) (Expr.eval_get ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pBq], _, rfl, ⟨pBq, rfl, hLive3.borrowed pBq _ hBq⟩, rfl⟩
+    (by rw [hS3]; decide) fun heap4 lBq store4 hLive4 => ?_
+  let s4 := s3.update 26 (.i64 lBq)
+  have hS4 : s4.params.length + s4.locals.length = 41 := by rw [hLen, hS3]
+  -- Layer `l` of `wk`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive4 hRoom
+    (x := (wk, l * (nh * dh * (nh * dh)), nh * dh * (nh * dh)))
+    (by simp only [sliceNeed]; omega) (afterArgs := s4)
+    (vals := [.i64 pWk, .i64 (l * (nh * dh * (nh * dh))), .i64 (nh * dh * (nh * dh))])
+    (Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 5) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 5) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 5) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 5) (index := 23) (by decide)).trans (sg5))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s3) (j := 17) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17)))))) (Expr.eval_mul (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))) (Expr.eval_get ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))) (Expr.eval_get ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))) (Expr.eval_get ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))) (Expr.eval_get ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pWk], _, rfl, ⟨pWk, rfl, hLive4.borrowed pWk _ hWk⟩, rfl⟩
+    (by rw [hS4]; decide) fun heap5 lWk store5 hLive5 => ?_
+  let s5 := s4.update 27 (.i64 lWk)
+  have hS5 : s5.params.length + s5.locals.length = 41 := by rw [hLen, hS4]
+  -- Layer `l` of `bk`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive5 hRoom
+    (x := (bk, l * (nh * dh), nh * dh))
+    (by simp only [sliceNeed]; omega) (afterArgs := s5)
+    (vals := [.i64 pBk, .i64 (l * (nh * dh)), .i64 (nh * dh)])
+    (Expr.evalResults_get ((State.get_update_ne (state := s4) (j := 6) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 6) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 6) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 6) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 6) (index := 23) (by decide)).trans (sg6)))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s4) (j := 17) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 17) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))))) (Expr.eval_get ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))))) (Expr.eval_get ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pBk], _, rfl, ⟨pBk, rfl, hLive5.borrowed pBk _ hBk⟩, rfl⟩
+    (by rw [hS5]; decide) fun heap6 lBk store6 hLive6 => ?_
+  let s6 := s5.update 28 (.i64 lBk)
+  have hS6 : s6.params.length + s6.locals.length = 41 := by rw [hLen, hS5]
+  -- Layer `l` of `wv`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive6 hRoom
+    (x := (wv, l * (nh * dh * (nh * dh)), nh * dh * (nh * dh)))
+    (by simp only [sliceNeed]; omega) (afterArgs := s6)
+    (vals := [.i64 pWv, .i64 (l * (nh * dh * (nh * dh))), .i64 (nh * dh * (nh * dh))])
+    (Expr.evalResults_get ((State.get_update_ne (state := s5) (j := 7) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 7) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 7) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 7) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 7) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 7) (index := 23) (by decide)).trans (sg7))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s5) (j := 17) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 17) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 17) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17)))))))) (Expr.eval_mul (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))) (Expr.eval_get ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))) (Expr.eval_get ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))) (Expr.eval_get ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))) (Expr.eval_get ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pWv], _, rfl, ⟨pWv, rfl, hLive6.borrowed pWv _ hWv⟩, rfl⟩
+    (by rw [hS6]; decide) fun heap7 lWv store7 hLive7 => ?_
+  let s7 := s6.update 29 (.i64 lWv)
+  have hS7 : s7.params.length + s7.locals.length = 41 := by rw [hLen, hS6]
+  -- Layer `l` of `bv`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive7 hRoom
+    (x := (bv, l * (nh * dh), nh * dh))
+    (by simp only [sliceNeed]; omega) (afterArgs := s7)
+    (vals := [.i64 pBv, .i64 (l * (nh * dh)), .i64 (nh * dh)])
+    (Expr.evalResults_get ((State.get_update_ne (state := s6) (j := 8) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 8) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 8) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 8) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 8) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 8) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 8) (index := 23) (by decide)).trans (sg8)))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s6) (j := 17) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 17) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 17) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 17) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17))))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))))))) (Expr.eval_get ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))))))) (Expr.eval_get ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pBv], _, rfl, ⟨pBv, rfl, hLive7.borrowed pBv _ hBv⟩, rfl⟩
+    (by rw [hS7]; decide) fun heap8 lBv store8 hLive8 => ?_
+  let s8 := s7.update 30 (.i64 lBv)
+  have hS8 : s8.params.length + s8.locals.length = 41 := by rw [hLen, hS7]
+  -- Layer `l` of `wo`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive8 hRoom
+    (x := (wo, l * (nh * dh * (nh * dh)), nh * dh * (nh * dh)))
+    (by simp only [sliceNeed]; omega) (afterArgs := s8)
+    (vals := [.i64 pWo, .i64 (l * (nh * dh * (nh * dh))), .i64 (nh * dh * (nh * dh))])
+    (Expr.evalResults_get ((State.get_update_ne (state := s7) (j := 9) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 9) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 9) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 9) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 9) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 9) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 9) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 23) (by decide)).trans (sg9))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s7) (j := 17) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 17) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 17) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 17) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 17) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17)))))))))) (Expr.eval_mul (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))))) (Expr.eval_get ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))))) (Expr.eval_get ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))))) (Expr.eval_get ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))))) (Expr.eval_get ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))))))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pWo], _, rfl, ⟨pWo, rfl, hLive8.borrowed pWo _ hWo⟩, rfl⟩
+    (by rw [hS8]; decide) fun heap9 lWo store9 hLive9 => ?_
+  let s9 := s8.update 31 (.i64 lWo)
+  have hS9 : s9.params.length + s9.locals.length = 41 := by rw [hLen, hS8]
+  -- Layer `l` of `bo`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive9 hRoom
+    (x := (bo, l * (nh * dh), nh * dh))
+    (by simp only [sliceNeed]; omega) (afterArgs := s9)
+    (vals := [.i64 pBo, .i64 (l * (nh * dh)), .i64 (nh * dh)])
+    (Expr.evalResults_get ((State.get_update_ne (state := s8) (j := 10) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 10) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 10) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 10) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 10) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 10) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 23) (by decide)).trans (sg10)))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s8) (j := 17) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 17) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 17) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 17) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 17) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 17) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17))))))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))))))))) (Expr.eval_get ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))))))))) (Expr.eval_get ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))))))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pBo], _, rfl, ⟨pBo, rfl, hLive9.borrowed pBo _ hBo⟩, rfl⟩
+    (by rw [hS9]; decide) fun heap10 lBo store10 hLive10 => ?_
+  let s10 := s9.update 32 (.i64 lBo)
+  have hS10 : s10.params.length + s10.locals.length = 41 := by rw [hLen, hS9]
+  -- Layer `l` of `g2`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive10 hRoom
+    (x := (g2, l * (nh * dh), nh * dh))
+    (by simp only [sliceNeed]; omega) (afterArgs := s10)
+    (vals := [.i64 pG2, .i64 (l * (nh * dh)), .i64 (nh * dh)])
+    (Expr.evalResults_get ((State.get_update_ne (state := s9) (j := 11) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 11) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 11) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 11) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 11) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 11) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 11) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 11) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 11) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 23) (by decide)).trans (sg11))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s9) (j := 17) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 17) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 17) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 17) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 17) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 17) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 17) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17)))))))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s9) (j := 19) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))))))) (Expr.eval_get ((State.get_update_ne (state := s9) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s9) (j := 19) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))))))) (Expr.eval_get ((State.get_update_ne (state := s9) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pG2], _, rfl, ⟨pG2, rfl, hLive10.borrowed pG2 _ hG2⟩, rfl⟩
+    (by rw [hS10]; decide) fun heap11 lG2 store11 hLive11 => ?_
+  let s11 := s10.update 33 (.i64 lG2)
+  have hS11 : s11.params.length + s11.locals.length = 41 := by rw [hLen, hS10]
+  -- Layer `l` of `b2`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive11 hRoom
+    (x := (b2, l * (nh * dh), nh * dh))
+    (by simp only [sliceNeed]; omega) (afterArgs := s11)
+    (vals := [.i64 pB2, .i64 (l * (nh * dh)), .i64 (nh * dh)])
+    (Expr.evalResults_get ((State.get_update_ne (state := s10) (j := 12) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 12) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 12) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 12) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 12) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 12) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 12) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 12) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 12) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 12) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 12) (index := 23) (by decide)).trans (sg12)))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s10) (j := 17) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 17) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 17) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 17) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 17) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 17) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 17) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 17) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17))))))))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s10) (j := 19) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 19) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))))))))))) (Expr.eval_get ((State.get_update_ne (state := s10) (j := 20) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s10) (j := 19) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 19) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))))))))))) (Expr.eval_get ((State.get_update_ne (state := s10) (j := 20) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))))))))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pB2], _, rfl, ⟨pB2, rfl, hLive11.borrowed pB2 _ hB2⟩, rfl⟩
+    (by rw [hS11]; decide) fun heap12 lB2 store12 hLive12 => ?_
+  let s12 := s11.update 34 (.i64 lB2)
+  have hS12 : s12.params.length + s12.locals.length = 41 := by rw [hLen, hS11]
+  -- Layer `l` of `wfc`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive12 hRoom
+    (x := (wfc, l * (nh * dh * f), nh * dh * f))
+    (by simp only [sliceNeed]; omega) (afterArgs := s12)
+    (vals := [.i64 pWfc, .i64 (l * (nh * dh * f)), .i64 (nh * dh * f)])
+    (Expr.evalResults_get ((State.get_update_ne (state := s11) (j := 13) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 13) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 13) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 13) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 13) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 13) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 13) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 13) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 13) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 13) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 13) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 13) (index := 23) (by decide)).trans (sg13))))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s11) (j := 17) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 17) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 17) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 17) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 17) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 17) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 17) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 17) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 17) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17)))))))))))))) (Expr.eval_mul (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s11) (j := 19) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 19) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 19) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))))))))) (Expr.eval_get ((State.get_update_ne (state := s11) (j := 20) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 20) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))))))) (Expr.eval_get ((State.get_update_ne (state := s11) (j := 21) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 21) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 21) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 21) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 21) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 21) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 21) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 21) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 21) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 21) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 21) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 21) (index := 23) (by decide)).trans (sg21)))))))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s11) (j := 19) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 19) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 19) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))))))))) (Expr.eval_get ((State.get_update_ne (state := s11) (j := 20) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 20) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))))))) (Expr.eval_get ((State.get_update_ne (state := s11) (j := 21) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 21) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 21) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 21) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 21) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 21) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 21) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 21) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 21) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 21) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 21) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 21) (index := 23) (by decide)).trans (sg21))))))))))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pWfc], _, rfl, ⟨pWfc, rfl, hLive12.borrowed pWfc _ hWfc⟩, rfl⟩
+    (by rw [hS12]; decide) fun heap13 lWfc store13 hLive13 => ?_
+  let s13 := s12.update 35 (.i64 lWfc)
+  have hS13 : s13.params.length + s13.locals.length = 41 := by rw [hLen, hS12]
+  -- Layer `l` of `bfc`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive13 hRoom
+    (x := (bfc, l * f, f))
+    (by simp only [sliceNeed]; omega) (afterArgs := s13)
+    (vals := [.i64 pBfc, .i64 (l * f), .i64 f])
+    (Expr.evalResults_get ((State.get_update_ne (state := s12) (j := 14) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 14) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 14) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 14) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 14) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 14) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 14) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 14) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 14) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 14) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 14) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 14) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 14) (index := 23) (by decide)).trans (sg14)))))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s12) (j := 17) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 17) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 17) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 17) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 17) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 17) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 17) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 17) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 17) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 17) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17))))))))))))))) (Expr.eval_get ((State.get_update_ne (state := s12) (j := 21) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 21) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 21) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 21) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 21) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 21) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 21) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 21) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 21) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 21) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 21) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 21) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 21) (index := 23) (by decide)).trans (sg21)))))))))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s12) (j := 21) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 21) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 21) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 21) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 21) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 21) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 21) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 21) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 21) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 21) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 21) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 21) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 21) (index := 23) (by decide)).trans (sg21)))))))))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pBfc], _, rfl, ⟨pBfc, rfl, hLive13.borrowed pBfc _ hBfc⟩, rfl⟩
+    (by rw [hS13]; decide) fun heap14 lBfc store14 hLive14 => ?_
+  let s14 := s13.update 36 (.i64 lBfc)
+  have hS14 : s14.params.length + s14.locals.length = 41 := by rw [hLen, hS13]
+  -- Layer `l` of `wproj`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive14 hRoom
+    (x := (wproj, l * (f * (nh * dh)), f * (nh * dh)))
+    (by simp only [sliceNeed]; omega) (afterArgs := s14)
+    (vals := [.i64 pWproj, .i64 (l * (f * (nh * dh))), .i64 (f * (nh * dh))])
+    (Expr.evalResults_get ((State.get_update_ne (state := s13) (j := 15) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 15) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 15) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 15) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 15) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 15) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 15) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 15) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 15) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 15) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 15) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 15) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 15) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 15) (index := 23) (by decide)).trans (sg15))))))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s13) (j := 17) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 17) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 17) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 17) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 17) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 17) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 17) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 17) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 17) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 17) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 17) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17)))))))))))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s13) (j := 21) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 21) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 21) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 21) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 21) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 21) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 21) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 21) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 21) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 21) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 21) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 21) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 21) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 21) (index := 23) (by decide)).trans (sg21)))))))))))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s13) (j := 19) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 19) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 19) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 19) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 19) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))))))))))) (Expr.eval_get ((State.get_update_ne (state := s13) (j := 20) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 20) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 20) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 20) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s13) (j := 21) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 21) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 21) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 21) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 21) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 21) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 21) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 21) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 21) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 21) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 21) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 21) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 21) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 21) (index := 23) (by decide)).trans (sg21)))))))))))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s13) (j := 19) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 19) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 19) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 19) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 19) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19)))))))))))))))) (Expr.eval_get ((State.get_update_ne (state := s13) (j := 20) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 20) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 20) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 20) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))))))))))))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pWproj], _, rfl, ⟨pWproj, rfl, hLive14.borrowed pWproj _ hWproj⟩, rfl⟩
+    (by rw [hS14]; decide) fun heap15 lWproj store15 hLive15 => ?_
+  let s15 := s14.update 37 (.i64 lWproj)
+  have hS15 : s15.params.length + s15.locals.length = 41 := by rw [hLen, hS14]
+  -- Layer `l` of `bproj`.
+  refine Live.call_seq slice_implements rfl hSlice rfl hLive15 hRoom
+    (x := (bproj, l * (nh * dh), nh * dh))
+    (by simp only [sliceNeed]; omega) (afterArgs := s15)
+    (vals := [.i64 pBproj, .i64 (l * (nh * dh)), .i64 (nh * dh)])
+    (Expr.evalResults_get ((State.get_update_ne (state := s14) (j := 16) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 16) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 16) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 16) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 16) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 16) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 16) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 16) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 16) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 16) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 16) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 16) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 16) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 16) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 16) (index := 23) (by decide)).trans (sg16)))))))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s14) (j := 17) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 17) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 17) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 17) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 17) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 17) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 17) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 17) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 17) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 17) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 17) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 17) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 23) (by decide)).trans (sg17))))))))))))))))) (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s14) (j := 19) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 19) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 19) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 19) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 19) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 19) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))))))))))))))) (Expr.eval_get ((State.get_update_ne (state := s14) (j := 20) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 20) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 20) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 20) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 20) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))))))))))) <|
+      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s14) (j := 19) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 19) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 19) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 19) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 19) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 19) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))))))))))))))) (Expr.eval_get ((State.get_update_ne (state := s14) (j := 20) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 20) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 20) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 20) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 20) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20)))))))))))))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pBproj], _, rfl, ⟨pBproj, rfl, hLive15.borrowed pBproj _ hBproj⟩, rfl⟩
+    (by rw [hS15]; decide) fun heap16 lBproj store16 hLive16 => ?_
+  let s16 := s15.update 38 (.i64 lBproj)
+  have hS16 : s16.params.length + s16.locals.length = 41 := by rw [hLen, hS15]
+  -- The block with layer `l`'s weights.
+  refine Live.call_seq block_implements rfl hBlock rfl hLive16 hRoom
+    (x := (x, g1l, b1l, wql, bql, wkl, bkl, wvl, bvl, wol, bol, g2l, b2l, wfcl, bfcl, wprojl, bprojl, t, nh, dh, f, eps))
+    (by simp only [sliceNeed, blockNeed, blockBytes, attentionBytes]; omega) (afterArgs := s16)
+    (vals := [.i64 pX, .i64 lG1, .i64 lB1, .i64 lWq, .i64 lBq, .i64 lWk, .i64 lBk, .i64 lWv,
+      .i64 lBv, .i64 lWo, .i64 lBo, .i64 lG2, .i64 lB2, .i64 lWfc, .i64 lBfc, .i64 lWproj,
+      .i64 lBproj, .i64 t, .i64 nh, .i64 dh, .i64 f, .f64 eps.toBits])
+    (Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 0) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 0) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 0) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 0) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 0) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 0) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 0) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 0) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 0) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 0) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 0) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 0) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 0) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 0) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 0) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 0) (index := 23) (by decide)).trans (sg0))))))))))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 23) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 23) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 23) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 23) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 23) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 23) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 23) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 23) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 23) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 23) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 23) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 23) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 23) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 23) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 23) (index := 24) (by decide)).trans (State.get_update_same (state := start) (by rw [hStart]; decide))))))))))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 24) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 24) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 24) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 24) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 24) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 24) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 24) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 24) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 24) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 24) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 24) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 24) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 24) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 24) (index := 25) (by decide)).trans (State.get_update_same (state := s1) (by rw [hS1]; decide)))))))))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 25) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 25) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 25) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 25) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 25) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 25) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 25) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 25) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 25) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 25) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 25) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 25) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 25) (index := 26) (by decide)).trans (State.get_update_same (state := s2) (by rw [hS2]; decide))))))))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 26) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 26) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 26) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 26) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 26) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 26) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 26) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 26) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 26) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 26) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 26) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 26) (index := 27) (by decide)).trans (State.get_update_same (state := s3) (by rw [hS3]; decide)))))))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 27) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 27) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 27) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 27) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 27) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 27) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 27) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 27) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 27) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 27) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 27) (index := 28) (by decide)).trans (State.get_update_same (state := s4) (by rw [hS4]; decide))))))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 28) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 28) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 28) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 28) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 28) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 28) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 28) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 28) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 28) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 28) (index := 29) (by decide)).trans (State.get_update_same (state := s5) (by rw [hS5]; decide)))))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 29) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 29) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 29) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 29) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 29) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 29) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 29) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 29) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 29) (index := 30) (by decide)).trans (State.get_update_same (state := s6) (by rw [hS6]; decide))))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 30) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 30) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 30) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 30) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 30) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 30) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 30) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 30) (index := 31) (by decide)).trans (State.get_update_same (state := s7) (by rw [hS7]; decide)))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 31) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 31) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 31) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 31) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 31) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 31) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 31) (index := 32) (by decide)).trans (State.get_update_same (state := s8) (by rw [hS8]; decide))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 32) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 32) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 32) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 32) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 32) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 32) (index := 33) (by decide)).trans (State.get_update_same (state := s9) (by rw [hS9]; decide)))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 33) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 33) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 33) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 33) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 33) (index := 34) (by decide)).trans (State.get_update_same (state := s10) (by rw [hS10]; decide))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 34) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 34) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 34) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 34) (index := 35) (by decide)).trans (State.get_update_same (state := s11) (by rw [hS11]; decide)))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 35) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 35) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 35) (index := 36) (by decide)).trans (State.get_update_same (state := s12) (by rw [hS12]; decide))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 36) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 36) (index := 37) (by decide)).trans (State.get_update_same (state := s13) (by rw [hS13]; decide)))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 37) (index := 38) (by decide)).trans (State.get_update_same (state := s14) (by rw [hS14]; decide))) <|
+      Expr.evalResults_get (State.get_update_same (state := s15) (by rw [hS15]; decide)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 18) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 18) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 18) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 18) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 18) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 18) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 18) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 18) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 18) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 18) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 18) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 18) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 18) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 18) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 18) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 18) (index := 23) (by decide)).trans (sg18))))))))))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 19) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 19) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 19) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 19) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 19) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 19) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 19) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 19) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 19) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 19) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 19) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 19) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 19) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 23) (by decide)).trans (sg19))))))))))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 20) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 20) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 20) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 20) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 20) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 20) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 23) (by decide)).trans (sg20))))))))))))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s15) (j := 21) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 21) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 21) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 21) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 21) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 21) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 21) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 21) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 21) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 21) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 21) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 21) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 21) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 21) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 21) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 21) (index := 23) (by decide)).trans (sg21))))))))))))))))) <|
+      Expr.evalResults_getF ((State.get_update_ne (state := s15) (j := 22) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 22) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 22) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 22) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 22) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 22) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 22) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 22) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 22) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 22) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 22) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 22) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 22) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 22) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 22) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 22) (index := 23) (by decide)).trans (sg22))))))))))))))))) <|
+      Expr.evalResults_nil)
+    ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive16.borrowed pX _ hX⟩, [.i64 lG1], _, rfl, ⟨lG1, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))))))))))))).borrowed⟩,
+      [.i64 lB1], _, rfl, ⟨lB1, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))))))))))))).borrowed⟩,
+      [.i64 lWq], _, rfl, ⟨lWq, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))))))))))).borrowed⟩,
+      [.i64 lBq], _, rfl, ⟨lBq, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))))))))))).borrowed⟩,
+      [.i64 lWk], _, rfl, ⟨lWk, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))))))))).borrowed⟩,
+      [.i64 lBk], _, rfl, ⟨lBk, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))))))))).borrowed⟩,
+      [.i64 lWv], _, rfl, ⟨lWv, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))))))).borrowed⟩,
+      [.i64 lBv], _, rfl, ⟨lBv, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))))))).borrowed⟩,
+      [.i64 lWo], _, rfl, ⟨lWo, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))))).borrowed⟩,
+      [.i64 lBo], _, rfl, ⟨lBo, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))))).borrowed⟩,
+      [.i64 lG2], _, rfl, ⟨lG2, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))).borrowed⟩,
+      [.i64 lB2], _, rfl, ⟨lB2, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))).borrowed⟩,
+      [.i64 lWfc], _, rfl, ⟨lWfc, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))).borrowed⟩,
+      [.i64 lBfc], _, rfl, ⟨lBfc, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))).borrowed⟩,
+      [.i64 lWproj], _, rfl, ⟨lWproj, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))).borrowed⟩,
+      [.i64 lBproj], _, rfl, ⟨lBproj, rfl,
+      (hLive16.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, rfl⟩
+    (by rw [hS16]; decide) fun heap17 pr store17 hLive17 => ?_
+  let s17 := s16.update 39 (.i64 pr)
+  have hS17 : s17.params.length + s17.locals.length = 41 := by rw [hLen, hS16]
+  let s18 := s17.update 40 (.i64 pr)
+  refine Stmt.seq_spec (Stmt.run_spec (final := s18) (by
+    simp [Stmt.run, Expr.eval, State.set?_eq_update _ (show 40 < s17.params.length +
+      s17.locals.length by rw [hS17]; decide), s18, s17, State.get_update_same,
+      show 39 < s16.params.length + s16.locals.length by rw [hS16]; decide])) ?_
+  -- The temporaries are released, newest first.
+  have r23 : s18.get 23 = some (.i64 lG1) :=
+    (State.get_update_ne (state := s17) (j := 23) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 23) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 23) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 23) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 23) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 23) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 23) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 23) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 23) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 23) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 23) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 23) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 23) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 23) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 23) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 23) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 23) (index := 24) (by decide)).trans (State.get_update_same (state := start) (by rw [hStart]; decide))))))))))))))))))
+  have r24 : s18.get 24 = some (.i64 lB1) :=
+    (State.get_update_ne (state := s17) (j := 24) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 24) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 24) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 24) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 24) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 24) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 24) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 24) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 24) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 24) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 24) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 24) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 24) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 24) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 24) (index := 26) (by decide)).trans ((State.get_update_ne (state := s2) (j := 24) (index := 25) (by decide)).trans (State.get_update_same (state := s1) (by rw [hS1]; decide)))))))))))))))))
+  have r25 : s18.get 25 = some (.i64 lWq) :=
+    (State.get_update_ne (state := s17) (j := 25) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 25) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 25) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 25) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 25) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 25) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 25) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 25) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 25) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 25) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 25) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 25) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 25) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 25) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 25) (index := 26) (by decide)).trans (State.get_update_same (state := s2) (by rw [hS2]; decide))))))))))))))))
+  have r26 : s18.get 26 = some (.i64 lBq) :=
+    (State.get_update_ne (state := s17) (j := 26) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 26) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 26) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 26) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 26) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 26) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 26) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 26) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 26) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 26) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 26) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 26) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 26) (index := 28) (by decide)).trans ((State.get_update_ne (state := s4) (j := 26) (index := 27) (by decide)).trans (State.get_update_same (state := s3) (by rw [hS3]; decide)))))))))))))))
+  have r27 : s18.get 27 = some (.i64 lWk) :=
+    (State.get_update_ne (state := s17) (j := 27) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 27) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 27) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 27) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 27) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 27) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 27) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 27) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 27) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 27) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 27) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 27) (index := 29) (by decide)).trans ((State.get_update_ne (state := s5) (j := 27) (index := 28) (by decide)).trans (State.get_update_same (state := s4) (by rw [hS4]; decide))))))))))))))
+  have r28 : s18.get 28 = some (.i64 lBk) :=
+    (State.get_update_ne (state := s17) (j := 28) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 28) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 28) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 28) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 28) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 28) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 28) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 28) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 28) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 28) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 28) (index := 30) (by decide)).trans ((State.get_update_ne (state := s6) (j := 28) (index := 29) (by decide)).trans (State.get_update_same (state := s5) (by rw [hS5]; decide)))))))))))))
+  have r29 : s18.get 29 = some (.i64 lWv) :=
+    (State.get_update_ne (state := s17) (j := 29) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 29) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 29) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 29) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 29) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 29) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 29) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 29) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 29) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 29) (index := 31) (by decide)).trans ((State.get_update_ne (state := s7) (j := 29) (index := 30) (by decide)).trans (State.get_update_same (state := s6) (by rw [hS6]; decide))))))))))))
+  have r30 : s18.get 30 = some (.i64 lBv) :=
+    (State.get_update_ne (state := s17) (j := 30) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 30) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 30) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 30) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 30) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 30) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 30) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 30) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 30) (index := 32) (by decide)).trans ((State.get_update_ne (state := s8) (j := 30) (index := 31) (by decide)).trans (State.get_update_same (state := s7) (by rw [hS7]; decide)))))))))))
+  have r31 : s18.get 31 = some (.i64 lWo) :=
+    (State.get_update_ne (state := s17) (j := 31) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 31) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 31) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 31) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 31) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 31) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 31) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 31) (index := 33) (by decide)).trans ((State.get_update_ne (state := s9) (j := 31) (index := 32) (by decide)).trans (State.get_update_same (state := s8) (by rw [hS8]; decide))))))))))
+  have r32 : s18.get 32 = some (.i64 lBo) :=
+    (State.get_update_ne (state := s17) (j := 32) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 32) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 32) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 32) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 32) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 32) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 32) (index := 34) (by decide)).trans ((State.get_update_ne (state := s10) (j := 32) (index := 33) (by decide)).trans (State.get_update_same (state := s9) (by rw [hS9]; decide)))))))))
+  have r33 : s18.get 33 = some (.i64 lG2) :=
+    (State.get_update_ne (state := s17) (j := 33) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 33) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 33) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 33) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 33) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 33) (index := 35) (by decide)).trans ((State.get_update_ne (state := s11) (j := 33) (index := 34) (by decide)).trans (State.get_update_same (state := s10) (by rw [hS10]; decide))))))))
+  have r34 : s18.get 34 = some (.i64 lB2) :=
+    (State.get_update_ne (state := s17) (j := 34) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 34) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 34) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 34) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 34) (index := 36) (by decide)).trans ((State.get_update_ne (state := s12) (j := 34) (index := 35) (by decide)).trans (State.get_update_same (state := s11) (by rw [hS11]; decide)))))))
+  have r35 : s18.get 35 = some (.i64 lWfc) :=
+    (State.get_update_ne (state := s17) (j := 35) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 35) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 35) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 35) (index := 37) (by decide)).trans ((State.get_update_ne (state := s13) (j := 35) (index := 36) (by decide)).trans (State.get_update_same (state := s12) (by rw [hS12]; decide))))))
+  have r36 : s18.get 36 = some (.i64 lBfc) :=
+    (State.get_update_ne (state := s17) (j := 36) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 36) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 36) (index := 38) (by decide)).trans ((State.get_update_ne (state := s14) (j := 36) (index := 37) (by decide)).trans (State.get_update_same (state := s13) (by rw [hS13]; decide)))))
+  have r37 : s18.get 37 = some (.i64 lWproj) :=
+    (State.get_update_ne (state := s17) (j := 37) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 37) (index := 39) (by decide)).trans ((State.get_update_ne (state := s15) (j := 37) (index := 38) (by decide)).trans (State.get_update_same (state := s14) (by rw [hS14]; decide))))
+  have r38 : s18.get 38 = some (.i64 lBproj) :=
+    (State.get_update_ne (state := s17) (j := 38) (index := 40) (by decide)).trans ((State.get_update_ne (state := s16) (j := 38) (index := 39) (by decide)).trans (State.get_update_same (state := s15) (by rw [hS15]; decide)))
+  refine hLive17.releaseSecond_seq hImports hRelease r38 fun storeR0 hLiveR0 => ?_
+  refine hLiveR0.releaseSecond_seq hImports hRelease r37 fun storeR1 hLiveR1 => ?_
+  refine hLiveR1.releaseSecond_seq hImports hRelease r36 fun storeR2 hLiveR2 => ?_
+  refine hLiveR2.releaseSecond_seq hImports hRelease r35 fun storeR3 hLiveR3 => ?_
+  refine hLiveR3.releaseSecond_seq hImports hRelease r34 fun storeR4 hLiveR4 => ?_
+  refine hLiveR4.releaseSecond_seq hImports hRelease r33 fun storeR5 hLiveR5 => ?_
+  refine hLiveR5.releaseSecond_seq hImports hRelease r32 fun storeR6 hLiveR6 => ?_
+  refine hLiveR6.releaseSecond_seq hImports hRelease r31 fun storeR7 hLiveR7 => ?_
+  refine hLiveR7.releaseSecond_seq hImports hRelease r30 fun storeR8 hLiveR8 => ?_
+  refine hLiveR8.releaseSecond_seq hImports hRelease r29 fun storeR9 hLiveR9 => ?_
+  refine hLiveR9.releaseSecond_seq hImports hRelease r28 fun storeR10 hLiveR10 => ?_
+  refine hLiveR10.releaseSecond_seq hImports hRelease r27 fun storeR11 hLiveR11 => ?_
+  refine hLiveR11.releaseSecond_seq hImports hRelease r26 fun storeR12 hLiveR12 => ?_
+  refine hLiveR12.releaseSecond_seq hImports hRelease r25 fun storeR13 hLiveR13 => ?_
+  refine hLiveR13.releaseSecond_seq hImports hRelease r24 fun storeR14 hLiveR14 => ?_
+  refine hLiveR14.releaseSecond_last hImports hRelease r23 fun storeR15 hLiveR15 => ?_
+  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
+      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
+      Represent.borrowed heap' store' [.i64 pX, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk, .i64 pWv,
+        .i64 pBv, .i64 pWo, .i64 pBo, .i64 pG2, .i64 pB2, .i64 pWfc, .i64 pBfc, .i64 pWproj,
+        .i64 pBproj, .i64 l, .i64 t, .i64 nh, .i64 dh, .i64 f, .f64 eps.toBits]
+        (x, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, t, nh,
+        dh, f, eps) := fun heap' store' hKeep =>
+    ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hKeep pX _ hX⟩, [.i64 pG1], _, rfl, ⟨pG1, rfl,
+      hKeep pG1 _ hG1⟩, [.i64 pB1], _, rfl, ⟨pB1, rfl, hKeep pB1 _ hB1⟩, [.i64 pWq], _, rfl,
+      ⟨pWq, rfl, hKeep pWq _ hWq⟩, [.i64 pBq], _, rfl, ⟨pBq, rfl, hKeep pBq _ hBq⟩,
+      [.i64 pWk], _, rfl, ⟨pWk, rfl, hKeep pWk _ hWk⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl,
+      hKeep pBk _ hBk⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl, hKeep pWv _ hWv⟩, [.i64 pBv], _, rfl,
+      ⟨pBv, rfl, hKeep pBv _ hBv⟩, [.i64 pWo], _, rfl, ⟨pWo, rfl, hKeep pWo _ hWo⟩,
+      [.i64 pBo], _, rfl, ⟨pBo, rfl, hKeep pBo _ hBo⟩, [.i64 pG2], _, rfl, ⟨pG2, rfl,
+      hKeep pG2 _ hG2⟩, [.i64 pB2], _, rfl, ⟨pB2, rfl, hKeep pB2 _ hB2⟩, [.i64 pWfc], _, rfl,
+      ⟨pWfc, rfl, hKeep pWfc _ hWfc⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl, hKeep pBfc _ hBfc⟩,
+      [.i64 pWproj], _, rfl, ⟨pWproj, rfl, hKeep pWproj _ hWproj⟩, [.i64 pBproj], _, rfl,
+      ⟨pBproj, rfl, hKeep pBproj _ hBproj⟩, rfl⟩
+  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR15.finish (need := blockAtNeed (x, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, t, nh,
+      dh, f, eps))
+      (by simp only [sliceNeed, blockNeed, blockBytes, attentionBytes, blockAtNeed, blockAtBytes]
+          omega) hParams
+  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s18,
+    by simp [gpt.blockAt.ir, Func.scratch, Expr.evalResults, Expr.eval, s18,
+      State.get_update_same, hS17], hOwned, hOutB, hOutO⟩
 
 end Project.Gpt

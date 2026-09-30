@@ -19616,3 +19616,39 @@ emitted bytes, the 1,812 comparisons, the sessions, and the axioms are unchanged
 
 - [x] Profile and fix the build time of `Composites.lean`.
 - [ ] The array-state loop and `slice`.
+
+## 2026-09-30: GPT 6e, one layer of stacked weights
+
+The user decided three questions about the loop.  The loop copies its initial
+array, so its state is always owned.  Its body is one call that returns the next
+state, and a `forward` with the number of layers as a parameter replaces the
+two-layer one.  This entry adds the call that the body will make.
+`slice xs start n` copies `n` elements of `xs` from position `start`, with the
+copying template, and `blockAt` takes the sixteen layer arrays of `block`, each
+holding every layer's weights one after another, cuts out layer `l` with
+sixteen slices, calls `block`, and releases the slices.  The generator writes
+its proof, and `blockAt_causal` is `block_causal` applied to the slices.
+
+The generated proof of `blockAt` exposed two costs that grew with the number
+of calls.  The `rintro … rfl` after each call, which substitutes the new state,
+took about 2.7 times as long at each successive call.  `Live.call_seq` states the call rule for
+`.seq (.call …) next` and passes the new heap, pointer, and store to a
+continuation, so nothing is substituted.  The second cost was the recursion
+depth: `show` over the body made the elaborator compute the scratch width
+through `Func.state`, `Func.locals`, `Func.width`, and `Stmt.scratchWidth`, one
+level per statement, and the 34 statements exceeded the limit.  Every generated
+proof now takes `hWidth : gpt.X.ir.width = 0` from `decide +kernel` and rewrites
+`Func.state` with it, which takes about 8 of the 15.6 seconds of `blockAt`'s
+proof.  For the
+same reason `gpt_bytes` proves `round_trip`'s bound on the number of locals
+with `decide +kernel` instead of `decide`.
+
+`Composites.lean` builds in about 20 seconds.  `gpt.wasm` is 9,164 bytes, all
+1,872 comparisons match, a `blockAt` session on two layers frees all 53
+allocations, and the theorems depend only on `propext`, `Classical.choice`, and
+`Quot.sound`.
+
+- [x] `slice` and `blockAt`.
+- [ ] The array-state loop in the compiler and its rule.
+- [ ] The layer-count `forward`, its proof, `forward_causal` by induction over
+  layers, the tests, and the Hugging Face comparison with more layers.
