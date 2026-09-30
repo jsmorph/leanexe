@@ -671,8 +671,8 @@ mutual
 
   /-- Translates an `Array UInt64` term to statements that leave a new array, which
   the caller owns, in a fresh local, and returns the local: an array literal,
-  `set!` on an array variable, `LeanExe.build`, or an array variable, which is
-  copied. -/
+  `set!`, `insertIdx!`, or `eraseIdxIfInBounds` on an array variable,
+  `LeanExe.build`, or an array variable, which is copied. -/
   partial def translateArray (ctx : Ctx) (term : Lean.Expr) : CompileM Nat := do
     let term := term.consumeMData
     let source ← sourceOf term
@@ -735,6 +735,24 @@ mutual
               (.ite (.eq (.get index) (.get kLocal)) (.get vLocal)
                 (.read arrayLocal (.bin .sub (.get index) (.const 1))))
           return (ir, [mkHint loc (exprLength ir) "insert element" source])
+    | (``Array.eraseIdxIfInBounds, #[element, array, position]) =>
+        unless ← isUInt64 element do throwError "unsupported array element type in {source}"
+        let some arrayLocal := ctx.arrays.lookup array.consumeMData
+          | throwError "`eraseIdxIfInBounds` must be applied to an array variable: {source}"
+        let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
+          | throwError "an `eraseIdxIfInBounds` position must be `i.toNat` for a UInt64 `i`: {source}"
+        let (kIR, kHints) ← translateValue ctx ⟨[], 0⟩ k
+        let kLocal ← fresh .u64 "erase position"
+        let kStmt := Project.IR.Stmt.assign kLocal kIR
+        pushStmt kStmt (mkHint ⟨[], 0⟩ (stmtLength kStmt) "erase position" (← sourceOf k) :: kHints)
+        let size ← sizeOf arrayLocal
+        let count : IRExpr .u64 :=
+          .ite (.ltU (.get kLocal) (.get size)) (.bin .sub (.get size) (.const 1)) (.get size)
+        emitBuild ctx source "array erase" count [] fun index loc =>
+          let ir : IRExpr .u64 :=
+            .ite (.ltU (.get index) (.get kLocal)) (.read arrayLocal (.get index))
+              (.read arrayLocal (.bin .add (.get index) (.const 1)))
+          return (ir, [mkHint loc (exprLength ir) "erase element" source])
     | (``LeanExe.build, #[element, count, f]) =>
         unless ← isUInt64 element do throwError "unsupported array element type in {source}"
         let (countIR, countHints) ← translateValue ctx ⟨[], 0⟩ count

@@ -120,6 +120,46 @@ theorem insertIdx!_eq_build (xs : Array UInt64) (k v : UInt64) (hSize : xs.size 
       have hEmpty : (default : Array UInt64).size = 0 := rfl
       exact absurd hj (by simp [panicWithPosWithDecl, panic, panicCore, hEmpty])
 
+/-- `eraseIdxIfInBounds` is the copying template with one element fewer, or a copy
+when the position is past the end. -/
+theorem eraseIdxIfInBounds_eq_build (xs : Array UInt64) (k : UInt64) (hSize : xs.size < 2 ^ 64) :
+    xs.eraseIdxIfInBounds k.toNat =
+      LeanExe.build (if k < UInt64.ofNat xs.size then UInt64.ofNat xs.size - 1
+        else UInt64.ofNat xs.size) fun j => if j < k then xs[j.toNat]! else xs[(j + 1).toNat]! := by
+  have hn : (UInt64.ofNat xs.size).toNat = xs.size := UInt64.toNat_ofNat_of_lt' hSize
+  have hLt : k < UInt64.ofNat xs.size ↔ k.toNat < xs.size := by
+    rw [UInt64.lt_iff_toNat_lt, hn]
+  by_cases hk : k.toNat < xs.size
+  · simp only [Array.eraseIdxIfInBounds, hk, dite_true, hLt.mpr hk, ite_true]
+    have hCount : (UInt64.ofNat xs.size - 1).toNat = xs.size - 1 := by
+      rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, hn]; simp; omega), hn]
+      simp
+    apply Array.ext
+    · rw [Array.size_eraseIdx, build_size, hCount]
+    · intro j hj _
+      rw [build_getElem, Array.getElem_eraseIdx hk]
+      have hj' : j < xs.size - 1 := by simpa [Array.size_eraseIdx] using hj
+      have hj64 : (UInt64.ofNat j).toNat = j := UInt64.toNat_ofNat_of_lt' (by simp only [UInt64.size]; omega)
+      have hLess : UInt64.ofNat j < k ↔ j < k.toNat := by
+        rw [UInt64.lt_iff_toNat_lt, hj64]
+      by_cases h1 : j < k.toNat
+      · simp only [h1, dite_true, hLess.mpr h1, ite_true, hj64, getElem!_pos xs j (by omega)]
+      · have hAdd : (UInt64.ofNat j + 1).toNat = j + 1 := by
+          rw [UInt64.toNat_add, hj64]
+          simp only [UInt64.reduceToNat]
+          omega
+        simp only [h1, dite_false, (not_congr hLess).mpr h1, ite_false, hAdd,
+          getElem!_pos xs (j + 1) (by omega)]
+  · simp only [Array.eraseIdxIfInBounds, hk, dite_false, (not_congr hLt).mpr hk, ite_false]
+    apply Array.ext
+    · rw [build_size, hn]
+    · intro j hj _
+      rw [build_getElem]
+      have hj' : j < xs.size := by simpa [build_size, hn] using hj
+      have hj64 : (UInt64.ofNat j).toNat = j := UInt64.toNat_ofNat_of_lt' (by simp only [UInt64.size]; omega)
+      have hLess : UInt64.ofNat j < k := by rw [UInt64.lt_iff_toNat_lt, hj64]; omega
+      simp only [hLess, ite_true, hj64, getElem!_pos xs j hj']
+
 /-- Borrowed arrays stay laid out while a new block is written: they lie outside
 it. -/
 theorem borrowed_at_after_writes {heap : Heap} {initial current : Store Unit} {m : Module}
