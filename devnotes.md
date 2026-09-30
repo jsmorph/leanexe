@@ -19327,3 +19327,15 @@ inputs, and a session freed all five allocations.
 
 - [x] GPT 5a: temporaries and `matVec2`.
 - [ ] GPT 5b: one transformer block.
+
+## 2026-09-30: GPT 5b, matMul
+
+`matMul a b n k m` multiplies an `n × k` and a `k × m` matrix stored by rows.  It
+reuses `buildWith` with a loop per element, as `matVec` does, with read positions
+`e / m * k + c` and `c * m + e % m`.  The IR's `divU` and `remU` test for a zero
+divisor and Lean's `/` and `%` on `UInt64` define it (`a / 0 = 0`, `a % 0 = a`), so
+the element lemma splits on `m = 0`.  I first wrote two lemmas equating the
+operations, but `simp` unfolded `U64Op.apply` before using them, and the split
+alone sufficed, so I removed them.  `gpt.wasm` matched native Lean on 40 inputs.
+
+- [x] GPT 5b: `matMul`.
