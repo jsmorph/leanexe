@@ -34,6 +34,7 @@ import Project.Gcd.Module
 import Project.Gcd.Verify
 import Project.Gpt.Module
 import Project.Gpt.Verify
+import Project.Gpt.Causal
 import Project.IR.ArrayLiteral
 import Project.IR.Build
 import Project.IR.Call
