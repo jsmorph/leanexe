@@ -87,4 +87,30 @@ def mlp (x w1 w2 : Array Float) (t d f : UInt64) : Array Float :=
   let g := geluArray h
   matMul g w2 t f d
 
+/-- The mean of each of the `t` rows of width `d` of `x`. -/
+def rowMeans (x : Array Float) (t d : UInt64) : Array Float :=
+  LeanExe.build t fun r =>
+    LeanExe.loop d 0.0 (fun c acc => acc + x[(r * d + c).toNat]!) / d.toFloat
+
+/-- `1 / √(variance + eps)` of each of the `t` rows of width `d` of `x`, given the
+row means. -/
+def rowInvStd (x means : Array Float) (t d : UInt64) (eps : Float) : Array Float :=
+  LeanExe.build t fun r =>
+    1.0 / (LeanExe.loop d 0.0 (fun c acc =>
+      acc + (x[(r * d + c).toNat]! - means[r.toNat]!) * (x[(r * d + c).toNat]! - means[r.toNat]!)) /
+        d.toFloat + eps).sqrt
+
+/-- Each of the `t` rows of width `d` of `x`, normalized with the row means and
+inverse deviations, then scaled by `g` and shifted by `b`. -/
+def normalizeRows (x means invStd g b : Array Float) (t d : UInt64) : Array Float :=
+  LeanExe.build (t * d) fun e =>
+    (x[e.toNat]! - means[(e / d).toNat]!) * invStd[(e / d).toNat]! * g[(e % d).toNat]! +
+      b[(e % d).toNat]!
+
+/-- The layer normalization of each of the `t` rows of width `d` of `x`. -/
+def layerNormRows (x g b : Array Float) (t d : UInt64) (eps : Float) : Array Float :=
+  let means := rowMeans x t d
+  let inv := rowInvStd x means t d eps
+  normalizeRows x means inv g b t d
+
 end LeanExe.Examples.Gpt
