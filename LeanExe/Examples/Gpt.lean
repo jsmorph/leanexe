@@ -62,4 +62,29 @@ def matMul (a b : Array Float) (n k m : UInt64) : Array Float :=
   LeanExe.build (n * m) fun e =>
     LeanExe.loop k 0.0 fun c acc => acc + a[(e / m * k + c).toNat]! * b[(c * m + e % m).toNat]!
 
+/-- The element-wise sum of `a` and `b` over the length of `a`, with 0 for each
+missing element of `b`. -/
+def add (a b : Array Float) : Array Float :=
+  LeanExe.build a.size.toUInt64 fun i => a[i.toNat]! + b[i.toNat]!
+
+/-- `tanh z` as `1 - 2 / (e^(2z) + 1)`, which gives 1 and -1 at the two ends of the
+range.  Near 0 it loses relative accuracy through cancellation. -/
+def tanh (z : Float) : Float := 1.0 - 2.0 / (exp (2.0 * z) + 1.0)
+
+/-- GPT-2's GELU: `0.5 x (1 + tanh (√(2/π) (x + 0.044715 x³)))`. -/
+def gelu (x : Float) : Float :=
+  let u := 0.7978845608028654 * (x + 0.044715 * x * x * x)
+  0.5 * x * (1.0 + tanh u)
+
+/-- `gelu` applied to each element of `xs`. -/
+def geluArray (xs : Array Float) : Array Float :=
+  LeanExe.build xs.size.toUInt64 fun i => gelu xs[i.toNat]!
+
+/-- The MLP of a transformer block on `t` rows of width `d` with hidden width `f`:
+`gelu (x · w1) · w2`, where `x` is `t × d`, `w1` is `d × f`, and `w2` is `f × d`. -/
+def mlp (x w1 w2 : Array Float) (t d f : UInt64) : Array Float :=
+  let h := matMul x w1 t d f
+  let g := geluArray h
+  matMul g w2 t f d
+
 end LeanExe.Examples.Gpt
