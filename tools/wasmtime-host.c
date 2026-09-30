@@ -1057,6 +1057,18 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
       args[nargs].kind = WASMTIME_I64;
       args[nargs].of.i64 = (int64_t)value;
       nargs++;
+    } else if (strcmp(command, "arg-f64") == 0) {
+      char *bits_text = strtok(NULL, " ");
+      if (bits_text == NULL) {
+        die("arg-f64 requires bits");
+      }
+      if (nargs >= 256) {
+        die("too many arguments");
+      }
+      uint64_t bits = parse_u64(bits_text);
+      args[nargs].kind = WASMTIME_F64;
+      memcpy(&args[nargs].of.f64, &bits, sizeof bits);
+      nargs++;
     } else if (strcmp(command, "call") == 0) {
       char *func_name = strtok(NULL, " ");
       char *nresults_text = strtok(NULL, " ");

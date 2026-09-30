@@ -153,4 +153,15 @@ def attention (x wq wk wv wo : Array Float) (t d : UInt64) : Array Float :=
   let o := matMul p v t t d
   matMul o wo t d d
 
+/-- A GPT-2 transformer block on `t` rows of width `d` with hidden width `f`:
+`r = x + attention (layerNormRows x g1 b1)`, then `r + mlp (layerNormRows r g2 b2)`. -/
+def block (x g1 b1 wq wk wv wo g2 b2 w1 w2 : Array Float) (t d f : UInt64) (eps : Float) :
+    Array Float :=
+  let h1 := layerNormRows x g1 b1 t d eps
+  let a := attention h1 wq wk wv wo t d
+  let r := add x a
+  let h2 := layerNormRows r g2 b2 t d eps
+  let m := mlp h2 w1 w2 t d f
+  add r m
+
 end LeanExe.Examples.Gpt
