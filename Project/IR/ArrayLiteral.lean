@@ -23,7 +23,7 @@ def Stmt.storeElements (dst : Nat) : Nat → List (Expr .u64) → Stmt
 
 /-- Local `dst` receives a new array that holds the values of `values`. -/
 def Stmt.arrayLiteral (dst : Nat) (values : List (Expr .u64)) : Stmt :=
-  .seq (.call 0 [.const (UInt64.ofNat (8 * (values.length + 1)))] [dst])
+  .seq (.call 0 [⟨.u64, .const (UInt64.ofNat (8 * (values.length + 1)))⟩] [dst])
     (.seq (.store (.get dst) (.const (UInt64.ofNat values.length)))
       (Stmt.storeElements dst 0 values))
 
@@ -140,7 +140,7 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
       (by simpa [hImports] using hFunc) rfl).mono ?_ fun _ _ h => h
     rintro s t ⟨hs, ht⟩
     subst s t
-    refine ⟨[need], before, _, by rw [← hNeedDef]; rfl,
+    refine ⟨[.i64 need], before, _, by rw [← hNeedDef]; rfl,
       fun env => alloc_spec hMemory32 hImports hFunc env heap initial need hHeap
         (by rw [hSize]; exact hRoomNeed), ?_⟩
     rintro store' out ⟨hStore', hOut⟩

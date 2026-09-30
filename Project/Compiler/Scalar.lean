@@ -208,7 +208,7 @@ template's code starts at `loc`: inside the block and loop of its `while`, after
 the condition and the exit test. -/
 def buildBodyLoc (loc : Loc) (dst limit index : Nat) (count : IRExpr .u64) : Loc :=
   let before : List Project.IR.Stmt := [.assign limit count,
-    .call 0 [.bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)] [dst],
+    .call 0 [⟨.u64, .bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)⟩] [dst],
     .store (.get dst) (.get limit), .assign index (.const 0)]
   (((loc.skip (before.map stmtLength).sum).inside none).inside none).skip
     (exprLength (.ltU (.get index) (.get limit) : IRExpr .bool) + 2)
@@ -881,22 +881,27 @@ mutual
   partial def translateCall (ctx : Ctx) (term : Lean.Expr) (index : Nat)
       (dests? : Option (List Nat) := none) : CompileM (List (Nat × ScalarType)) := do
     let source ← sourceOf term
-    let mut args := #[]
+    let mut args : Array ((type : ScalarType) × IRExpr type) := #[]
     let mut hints := #[]
     let mut offset := 0
     for arg in term.getAppArgs do
       let argType ← inferType arg
-      let (ir, argHints) ← if ← isUInt64Array argType then do
-          let some local_ := ctx.arrays.lookup arg.consumeMData
+      let (typed, argHints) ← if ← isArray argType then do
+          let some local_ := (ctx.arrays ++ ctx.floatArrays).lookup arg.consumeMData
             | throwError "an array argument must be an array variable: {source}"
           let ir : IRExpr .u64 := .get local_
-          pure (ir, [mkHint ⟨[], offset⟩ (exprLength ir) "variable" (← sourceOf arg)])
-        else if ← isUInt64 argType then
-          translateValue ctx ⟨[], offset⟩ arg
-        else throwError "a call argument must be a word or an array: {source}"
-      args := args.push ir
+          pure ((⟨.u64, ir⟩ : (type : ScalarType) × IRExpr type),
+            [mkHint ⟨[], offset⟩ (exprLength ir) "variable" (← sourceOf arg)])
+        else if ← isUInt64 argType then do
+          let (ir, irHints) ← translateValue ctx ⟨[], offset⟩ arg
+          pure (⟨.u64, ir⟩, irHints)
+        else if ← isFloat argType then do
+          let (ir, irHints) ← translateFloat ctx ⟨[], offset⟩ arg
+          pure (⟨.f64, ir⟩, irHints)
+        else throwError "a call argument must be a word, a float, or an array: {source}"
+      args := args.push typed
       hints := hints ++ argHints.toArray
-      offset := offset + exprLength ir
+      offset := offset + exprLength typed.2
     let types ← resultTypes (← inferType term)
     let results ← match dests? with
       | some dests => pure (dests.zip types)
@@ -1122,6 +1127,15 @@ def irToExpr : {type : ScalarType} → IRExpr type → Lean.Expr
   | _, .ite condition thenValue elseValue =>
       mkApp3 (mkConst ``Project.IR.Expr.ite) (irToExpr condition) (irToExpr thenValue) (irToExpr elseValue)
 
+/-- The term of a list of typed IR expressions. -/
+def typedToExpr (list : List ((type : ScalarType) × IRExpr type)) : Lean.Expr :=
+  let entryType := mkApp2 (mkConst ``Sigma [Level.zero, Level.zero]) (mkConst ``ScalarType)
+    (mkConst ``Project.IR.Expr)
+  list.foldr (init := mkApp (mkConst ``List.nil [Level.zero]) entryType)
+    fun entry rest => mkApp3 (mkConst ``List.cons [Level.zero]) entryType
+      (mkApp4 (mkConst ``Sigma.mk [Level.zero, Level.zero]) (mkConst ``ScalarType)
+        (mkConst ``Project.IR.Expr) (toExpr entry.1) (irToExpr entry.2)) rest
+
 def stmtToExpr : Project.IR.Stmt → Lean.Expr
   | .skip => mkConst ``Project.IR.Stmt.skip
   | .assign (type := type) index value =>
@@ -1137,19 +1151,10 @@ def stmtToExpr : Project.IR.Stmt → Lean.Expr
   | .store address value =>
       mkApp2 (mkConst ``Project.IR.Stmt.store) (irToExpr address) (irToExpr value)
   | .call func args results =>
-      mkApp3 (mkConst ``Project.IR.Stmt.call) (toExpr func)
-        (let type := mkApp (mkConst ``Project.IR.Expr) (mkConst ``Project.IR.ScalarType.u64)
-         args.foldr (fun arg list => mkApp3 (mkConst ``List.cons [Level.zero]) type (irToExpr arg) list)
-           (mkApp (mkConst ``List.nil [Level.zero]) type))
-        (toExpr results)
+      mkApp3 (mkConst ``Project.IR.Stmt.call) (toExpr func) (typedToExpr args) (toExpr results)
 
 def funcToExpr (func : Func) : Lean.Expr :=
-  let resultType := mkApp2 (mkConst ``Sigma [Level.zero, Level.zero]) (mkConst ``ScalarType)
-    (mkConst ``Project.IR.Expr)
-  let results := func.results.foldr (init := mkApp (mkConst ``List.nil [Level.zero]) resultType)
-    fun result list => mkApp3 (mkConst ``List.cons [Level.zero]) resultType
-      (mkApp4 (mkConst ``Sigma.mk [Level.zero, Level.zero]) (mkConst ``ScalarType)
-        (mkConst ``Project.IR.Expr) (toExpr result.1) (irToExpr result.2)) list
-  mkApp4 (mkConst ``Func.mk) (toExpr func.params) (toExpr func.vars) (stmtToExpr func.body) results
+  mkApp4 (mkConst ``Func.mk) (toExpr func.params) (toExpr func.vars) (stmtToExpr func.body)
+    (typedToExpr func.results)
 
 end Project.Compiler

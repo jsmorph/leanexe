@@ -22,7 +22,7 @@ inductive Stmt where
   | store (address value : Expr .u64)
   /-- Calls function `func` with the values of `args`, and puts its result in
   local `index` when `result` is `some index`. -/
-  | call (func : Nat) (args : List (Expr .u64)) (results : List Nat)
+  | call (func : Nat) (args : List ((type : ScalarType) × Expr type)) (results : List Nat)
   deriving Repr
 
 def Stmt.program : Stmt → Nat → Program
@@ -40,7 +40,7 @@ def Stmt.program : Stmt → Nat → Program
   | .store address value, scratch =>
       address.program scratch ++ [.wrapI64] ++ value.program scratch ++ [.store64 0]
   | .call func args results, scratch =>
-      args.flatMap (·.program scratch) ++ [.call func] ++ results.reverse.map .localSet
+      args.flatMap (·.2.program scratch) ++ [.call func] ++ results.reverse.map .localSet
 
 def Stmt.scratchWidth : Stmt → Nat
   | .skip => 0
@@ -51,7 +51,7 @@ def Stmt.scratchWidth : Stmt → Nat
   | .while condition body => max condition.scratchWidth body.scratchWidth
   | .load _ _ address => address.scratchWidth
   | .store address value => max address.scratchWidth value.scratchWidth
-  | .call _ args _ => (args.map (·.scratchWidth)).foldr max 0
+  | .call _ args _ => (args.map (·.2.scratchWidth)).foldr max 0
 
 /-- From any store and IR state satisfying `P`, the compiled code of `s` ends
 normally in a store and state satisfying `R`.  This is a statement about the
@@ -223,49 +223,6 @@ theorem Stmt.store_spec {scratch : Nat} {address value : Expr .u64}
   rw [ite_eq_right (by omega)]
   simpa using hPost _ afterValue hNext
 
-/-- Evaluates `args` from left to right. -/
-def Expr.evalAll (mem : Mem) (scratch : Nat) :
-    List (Expr .u64) → State → Option (List UInt64 × State)
-  | [], state => some ([], state)
-  | arg :: rest, state => do
-      let (word, next) ← arg.eval mem scratch state
-      let (words, final) ← Expr.evalAll mem scratch rest next
-      pure (word :: words, final)
-
-theorem Expr.evalAll_length {mem : Mem} {scratch : Nat} {args : List (Expr .u64)}
-    {state next : State} {words : List UInt64}
-    (h : Expr.evalAll mem scratch args state = some (words, next)) :
-    words.length = args.length := by
-  induction args generalizing state words with
-  | nil => simp [Expr.evalAll] at h; simp [← h.1]
-  | cons arg rest ih =>
-      simp only [Expr.evalAll, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
-      obtain ⟨⟨word, afterArg⟩, -, ⟨words', final⟩, hRest, hPure⟩ := h
-      simp only [Option.pure_def, Option.some.injEq, Prod.mk.injEq] at hPure
-      obtain ⟨rfl, rfl⟩ := hPure
-      simp [ih hRest]
-
-/-- The code of `args` pushes their values, the last on top. -/
-theorem Expr.evalAll_program_spec {scratch : Nat} {args : List (Expr .u64)}
-    {state next : State} {words : List UInt64} {values : List Value} {env : HostEnv Unit}
-    {store : Store Unit} {rest : Program} {Q : Assertion Unit}
-    (hEval : Expr.evalAll store.mem scratch args state = some (words, next))
-    (hNext : wp m rest Q store (next.toLocals (words.reverse.map .i64 ++ values)) env) :
-    wp m (args.flatMap (·.program scratch) ++ rest) Q store (state.toLocals values) env := by
-  induction args generalizing state words values with
-  | nil =>
-      simp only [Expr.evalAll, Option.some.injEq, Prod.mk.injEq] at hEval
-      obtain ⟨rfl, rfl⟩ := hEval
-      simpa using hNext
-  | cons arg others ih =>
-      simp only [Expr.evalAll, Option.bind_eq_bind, Option.bind_eq_some_iff] at hEval
-      obtain ⟨⟨word, afterArg⟩, hArg, ⟨words', final⟩, hRest, hPure⟩ := hEval
-      simp only [Option.pure_def, Option.some.injEq, Prod.mk.injEq] at hPure
-      obtain ⟨rfl, rfl⟩ := hPure
-      simp only [List.flatMap_cons, List.append_assoc]
-      apply Expr.program_spec arg scratch state afterArg word values m env store _ Q hArg
-      exact ih (values := .i64 word :: values) hRest (by simpa [ScalarType.value] using hNext)
-
 /-- Evaluates typed expressions from left to right. -/
 def Expr.evalResults (mem : Mem) (scratch : Nat) :
     List ((type : ScalarType) × Expr type) → State → Option (List Value × State)
@@ -343,24 +300,24 @@ theorem State.setAll_spec {state next : State} {indices : List Nat} {vs values :
 `Post` describes the store and results it ends with, and sets the locals
 `results` to the callee's results.  Talos lists the results with the last on
 top, and the code sets the locals from the last. -/
-theorem Stmt.call_spec {scratch func : Nat} {args : List (Expr .u64)} {results : List Nat}
-    {f : Wasm.Function} {R : Store Unit → State → Prop}
+theorem Stmt.call_spec {scratch func : Nat} {args : List ((type : ScalarType) × Expr type)}
+    {results : List Nat} {f : Wasm.Function} {R : Store Unit → State → Prop}
     (hImport : m.imports[func]? = none)
     (hFunc : m.funcs[func - m.imports.length]? = some f)
     (hParams : args.length = f.numParams) :
     Triple m (.call func args results) scratch
-      (fun store state => ∃ words afterArgs, ∃ Post : Store Unit → List Value → Prop,
-        Expr.evalAll store.mem scratch args state = some (words, afterArgs) ∧
-        (∀ env, TerminatesWith env m func store (words.reverse.map .i64) Post) ∧
+      (fun store state => ∃ vals afterArgs, ∃ Post : Store Unit → List Value → Prop,
+        Expr.evalResults store.mem scratch args state = some (vals, afterArgs) ∧
+        (∀ env, TerminatesWith env m func store vals.reverse Post) ∧
         ∀ store' out, Post store' out →
           ∃ next, afterArgs.setAll results.reverse out = some next ∧ R store' next)
       R := by
   intro env store state values rest Q hPre hPost
-  obtain ⟨words, afterArgs, Post, hArgs, hRun, hResult⟩ := hPre
+  obtain ⟨vals, afterArgs, Post, hArgs, hRun, hResult⟩ := hPre
   simp only [Stmt.program, List.append_assoc]
-  apply Expr.evalAll_program_spec hArgs
-  have hLength : (words.reverse.map Value.i64).length = f.numParams := by
-    simp [Expr.evalAll_length hArgs, hParams]
+  apply Expr.evalResults_program_spec hArgs
+  have hLength : vals.reverse.length = f.numParams := by
+    simp [Expr.evalResults_length hArgs, hParams]
   refine wp_call_tw ((hRun env).append_args hImport hFunc hLength values) ?_
   rintro store' _ ⟨out, rfl, hOut⟩
   obtain ⟨next, hSet, hR⟩ := hResult store' out hOut
