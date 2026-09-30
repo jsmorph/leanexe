@@ -4,6 +4,7 @@ import Project.Compiler.Command
 namespace Project.Clob
 
 open LeanExe.Examples.Clob in
-leanexe_compile clob := [marketBuy, fillLevel, insertLevel, addToLevel, addBid, depth]
+leanexe_compile clob := [marketBuy, fillLevel, insertLevel, addToLevel, addBid, depth,
+  findLevel, removeLevel]
 
 end Project.Clob

@@ -41,4 +41,14 @@ def depth (prices sizes : Array UInt64) (limit : UInt64) : UInt64 :=
   LeanExe.loop prices.size.toUInt64 0 fun i total =>
     if prices[i.toNat]! ≥ limit then total + sizes[i.toNat]! else total
 
+/-- The position of `price` among the bids, sorted by descending price: the number
+of levels with a higher price. -/
+def findLevel (prices : Array UInt64) (price : UInt64) : UInt64 :=
+  LeanExe.loop prices.size.toUInt64 0 fun i k =>
+    if prices[i.toNat]! > price then k + 1 else k
+
+/-- The book side without level `k`, as its prices and its sizes. -/
+def removeLevel (prices sizes : Array UInt64) (k : UInt64) : Array UInt64 × Array UInt64 :=
+  (prices.eraseIdxIfInBounds k.toNat, sizes.eraseIdxIfInBounds k.toNat)
+
 end LeanExe.Examples.Clob

@@ -19065,3 +19065,24 @@ before.
 - [x] CLOB 5a: `depth`.
 - [ ] CLOB 5b: `findLevel` and `removeLevel`.
 - [ ] CLOB 5c: `cancelBid`.
+
+## 2026-09-29: CLOB 5b, findLevel and removeLevel
+
+`findLevel prices price` is `addBid`'s search loop as its own function, so that
+`cancelBid` and `addBid` can call it and reuse one theorem.  `removeLevel
+prices sizes k` erases level `k` from both arrays with `eraseIdxIfInBounds`.
+I chose it over `eraseIdx!` because it returns the array unchanged when the
+position is past the end, as `set!` does, instead of panicking.  The compiler
+implements it with the copying template: the count is `size - 1` when the
+position is in bounds and `size` otherwise, and element `j` is `xs[j]` below the
+position and `xs[j + 1]` from it on.  `eraseIdxIfInBounds_eq_build` proves the
+match with core's `getElem_eraseIdx`.
+
+`findLevel_implements` (45 lines) and `removeLevel_implements` (129 lines)
+follow the proofs of `depth` and `insertLevel`, and both built on the first
+attempt.  `clob.wasm` (3,421 bytes) matched native Lean on all 391 inputs.  The
+book session, extended with a `removeLevel` call, ended with 20 allocations, 20
+releases, and 20 frees.
+
+- [x] CLOB 5b: `findLevel` and `removeLevel`.
+- [ ] CLOB 5c: `cancelBid`, and `addBid` calling `findLevel`.
