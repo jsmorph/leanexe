@@ -19652,3 +19652,53 @@ allocations, and the theorems depend only on `propext`, `Classical.choice`, and
 - [ ] The array-state loop in the compiler and its rule.
 - [ ] The layer-count `forward`, its proof, `forward_causal` by induction over
   layers, the tests, and the Hugging Face comparison with more layers.
+
+## 2026-09-30: GPT 6f, the loop over layers
+
+`forward` now takes the number of layers and sixteen weight arrays that stack
+the layers one after another.  Its body is `LeanExe.loop layers x0 fun l x =>
+blockAt x … l …` between the embeddings and the final layer norm.  The compiler
+translates a `LeanExe.loop` with an `Array Float` state to one statement,
+`Stmt.arrayLoop`, when the initial state is an array variable and the body is
+one call of a compiled function.  The statement copies the initial array into
+the state local, then runs `Stmt.loop` over a body that calls the function,
+releases the previous state, and moves the result into the state local.  Like
+`Stmt.fold`, it is a definition built from existing statements, so the IR keeps
+its constructors.  The copy reuses the loop's `limit` and `index` locals and
+needs one scratch local, so `forward`'s scratch width is 1.
+
+`Project/IR/ArrayLoop.lean` proves the rule.  `Live.push` adds a new array to
+the live temporaries from `Heap.NewArray`, `Live.copy` proves the copy with it,
+and `Live.weaken` raises the count of allocated bytes.  `Live.arrayLoop` states
+the rule in the continuation form of `Live.call_seq`.  Its invariant at
+iteration `k` is `Live` with the bytes used before the loop, plus the copy, plus
+`k` times `bound`, and the state after `k` steps at the head of the temporaries,
+together with a frame of the state before the loop and the index and limit
+locals.  `Live` counts allocations and never subtracts releases, so the bound
+grows with the number of layers although the allocator reuses the freed
+blocks.  With GPT-2 small in binary64, the slices of one layer take about 57 MB,
+so the slices alone put about 680 MB into the bound for twelve layers.  A bound that credits releases
+would need `Live` to track the free list.
+
+The generator now models a state as `start`, an update of the previous state,
+or the state after a loop, which frames the previous state, and proves a local's
+value by walking back through them.  Calls name their result registers.  The
+refactored generator reproduced the committed `Composites.lean` exactly before
+the new `forward` replaced the old.  `forward_causal` goes by induction over the
+layers with `loop_rows`, which needs each step to keep equal sizes and rows `0`
+to `i` in agreement.
+
+The first version of the tests set `layers` to `i % 4`, the same expression as
+`t`, so every zero-layer case had no tokens and an empty result.  `layers` is now
+`(i / 2 + 1) % 4`: 24 of the 40 cases have a nonempty result, spread over zero to
+three layers.  `gpt.wasm` is 9,254 bytes.  All 1,872 comparisons match, a
+`forward` session on two layers frees all 99 allocations, and the Hugging Face
+comparison, now with zero to twelve layers, differs by at most 2.7e-15 of the
+largest score.  `gpt_bytes`, `forward_implements`, `forward_causal`, and
+`Live.arrayLoop` depend only on `propext`, `Classical.choice`, and `Quot.sound`,
+and the LTG entry `array-state-loop` records the rule.
+
+- [x] The array-state loop in the compiler and its rule.
+- [x] The layer-count `forward`, its proof, `forward_causal` by induction over
+  layers, the tests, and the Hugging Face comparison with more layers.
+- [ ] Real GPT-2 small weights, loaded from files by the test host.

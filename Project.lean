@@ -38,6 +38,7 @@ import Project.Gpt.Composites
 import Project.Gpt.Bytes
 import Project.Gpt.Causal
 import Project.IR.ArrayLiteral
+import Project.IR.ArrayLoop
 import Project.IR.Build
 import Project.IR.Call
 import Project.IR.Correct
