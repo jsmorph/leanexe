@@ -21,7 +21,7 @@ local `limit`.  For each index `i`, held in local `index`, `body` runs and eleme
 def Stmt.buildWith (dst limit index : Nat) (count : Expr .u64) (body : Stmt)
     (element : Expr .u64) : Stmt :=
   .seq (.assign limit count) <|
-  .seq (.call 0 [.bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)] [dst]) <|
+  .seq (.call 0 [⟨.u64, .bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)⟩] [dst]) <|
   .seq (.store (.get dst) (.get limit)) <|
   .seq (.assign index (.const 0)) <|
   .while (.ltU (.get index) (.get limit)) <|
@@ -301,7 +301,7 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
       (by simpa [hImports] using hFunc) rfl).mono ?_ fun _ _ h => h
     rintro store state ⟨hStore, hState⟩
     subst store state
-    refine ⟨[need], s1, _, by simp [Expr.evalAll, Expr.eval, State.get_set?_same hSet1,
+    refine ⟨[.i64 need], s1, _, by simp [Expr.evalResults, Expr.eval, State.get_set?_same hSet1,
         U64Op.apply, hNeedValue],
       fun env => alloc_spec hMemory32 hImports hFunc env heap initial need hHeap
         (by rw [hSize]; exact hRoomNeed), ?_⟩

@@ -13,7 +13,7 @@ open Wasm Project.Pipeline Project.Runtime
 variable {m : Module}
 
 /-- Calls `release` on the array in local `src`. -/
-def Stmt.release (src : Nat) : Stmt := .call 2 [.get src] []
+def Stmt.release (src : Nat) : Stmt := .call 2 [⟨.u64, .get src⟩] []
 
 /-- Releasing an owned array keeps the state and ends in `heap.releaseStore`;
 `Heap.At.release` gives the allocator invariant there. -/
@@ -28,7 +28,7 @@ theorem Stmt.release_spec {typeIdx scratch src : Nat} {initial : Store Unit} {be
     (by simpa [hImports] using hFunc) rfl).mono ?_ fun _ _ h => h
   rintro store state ⟨hStore, hState⟩
   subst store state
-  exact ⟨[ptr], before, _, by simp [Expr.evalAll, Expr.eval, hPtr],
+  exact ⟨[.i64 ptr], before, _, by simp [Expr.evalResults, Expr.eval, hPtr],
     fun env => release_run hImports hFunc env heap initial ptr words hHeap hOwned,
     fun store' out ⟨hOut, hStore'⟩ => ⟨before, by simp [hOut, State.setAll], hStore', rfl⟩⟩
 

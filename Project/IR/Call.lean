@@ -21,11 +21,11 @@ result locals can hold any represented result. -/
 theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : α → β}
     {need : α → Nat} (hImpl : Implements m idx g need) {f : Wasm.Function}
     (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
-    {scratch : Nat} {args : List (Expr .u64)} {results : List Nat}
+    {scratch : Nat} {args : List ((type : ScalarType) × Expr type)} {results : List Nat}
     (hParams : args.length = f.numParams) {initial : Store Unit} {before afterArgs : State}
-    {heap : Heap} {x : α} {words : List UInt64}
-    (hArgs : Expr.evalAll initial.mem scratch args before = some (words, afterArgs))
-    (hHeap : heap.At initial) (hBorrowed : Represent.borrowed heap initial (words.map .i64) x)
+    {heap : Heap} {x : α} {vals : List Value}
+    (hArgs : Expr.evalResults initial.mem scratch args before = some (vals, afterArgs))
+    (hHeap : heap.At initial) (hBorrowed : Represent.borrowed heap initial vals x)
     (hRoom : heap.Room initial m (need x))
     (hSet : ∀ heap' store values, Represent.owned heap' store values (g x) →
       ∃ next, afterArgs.setAll results.reverse values.reverse = some next) :
@@ -33,7 +33,7 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
       (fun store state => store = initial ∧ state = before)
       (fun store state => ∃ (heap' : Heap) (values : List Value), heap'.At store ∧
         Represent.owned heap' store values (g x) ∧
-        Represent.borrowed heap' store (words.map .i64) x ∧
+        Represent.borrowed heap' store vals x ∧
         heap'.top.toNat ≤ heap.top.toNat + need x ∧
         store.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
         store.memoryCaps = initial.memoryCaps ∧
@@ -43,16 +43,14 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
   refine (Stmt.call_spec hImport hFunc hParams).mono ?_ fun _ _ h => h
   rintro store state ⟨hStore, hState⟩
   subst store state
-  refine ⟨words, afterArgs, fun final values => ∃ heap' : Heap, heap'.At final ∧
+  refine ⟨vals, afterArgs, fun final values => ∃ heap' : Heap, heap'.At final ∧
       Represent.owned heap' final values.reverse (g x) ∧
-      Represent.borrowed heap' final (words.map .i64) x ∧ heap'.top.toNat ≤ heap.top.toNat + need x ∧
+      Represent.borrowed heap' final vals x ∧ heap'.top.toNat ≤ heap.top.toNat + need x ∧
       final.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
       final.memoryCaps = initial.memoryCaps ∧
       (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed final p ws) ∧
       (∀ p ws, heap.Owned initial p ws → heap'.Owned final p ws), hArgs, fun env => ?_, ?_⟩
-  · have hRun := hImpl env initial heap (words.map .i64) x hHeap hBorrowed hRoom
-    rw [List.map_reverse]
-    exact hRun
+  · exact hImpl env initial heap vals x hHeap hBorrowed hRoom
   · rintro store' out ⟨heap', hAt', hOwned', hBorrowed', hTop, hPages, hCaps, hKeepBorrowed,
       hKeepOwned⟩
     obtain ⟨next, hNext⟩ := hSet heap' store' out.reverse hOwned'
