@@ -113,4 +113,44 @@ def layerNormRows (x g b : Array Float) (t d : UInt64) (eps : Float) : Array Flo
   let inv := rowInvStd x means t d eps
   normalizeRows x means inv g b t d
 
+/-- The causally masked attention scores of `t` queries and keys of width `d`, both
+stored by rows, as a `t × t` matrix stored by rows: `scale · (q[i] · k[j])` plus a
+mask that is 0 where `j ≤ i` and negative infinity elsewhere. -/
+def maskedScores (q k : Array Float) (t d : UInt64) (scale : Float) : Array Float :=
+  LeanExe.build (t * t) fun e =>
+    LeanExe.loop d 0.0 (fun c acc => acc + q[(e / t * d + c).toNat]! * k[(e % t * d + c).toNat]!) *
+      scale + (if e % t ≤ e / t then 0.0 else -(1.0 / 0.0))
+
+/-- The largest element of each of the `t` rows of width `w` of `x`. -/
+def rowMax (x : Array Float) (t w : UInt64) : Array Float :=
+  LeanExe.build t fun r => LeanExe.loop w (-(1.0 / 0.0)) fun c acc => max acc x[(r * w + c).toNat]!
+
+/-- The sum of `exp (x[r][c] - mx[r])` over each of the `t` rows of width `w` of `x`. -/
+def rowSumExp (x mx : Array Float) (t w : UInt64) : Array Float :=
+  LeanExe.build t fun r =>
+    LeanExe.loop w 0.0 fun c acc => acc + exp (x[(r * w + c).toNat]! - mx[r.toNat]!)
+
+/-- `exp (x[r][c] - mx[r]) / sums[r]` for each element of the `t` rows of width `w`
+of `x`. -/
+def softmaxApply (x mx sums : Array Float) (t w : UInt64) : Array Float :=
+  LeanExe.build (t * w) fun e => exp (x[e.toNat]! - mx[(e / w).toNat]!) / sums[(e / w).toNat]!
+
+/-- The softmax of each of the `t` rows of width `w` of `x`. -/
+def softmaxRows (x : Array Float) (t w : UInt64) : Array Float :=
+  let mx := rowMax x t w
+  let sums := rowSumExp x mx t w
+  softmaxApply x mx sums t w
+
+/-- Single-head causal self-attention on `t` rows of width `d`, with `d × d` weight
+matrices stored by rows: `softmax (q kᵀ / √d, masked) · v · wo`, where `q`, `k`, and
+`v` are `x · wq`, `x · wk`, and `x · wv`. -/
+def attention (x wq wk wv wo : Array Float) (t d : UInt64) : Array Float :=
+  let q := matMul x wq t d d
+  let k := matMul x wk t d d
+  let v := matMul x wv t d d
+  let s := maskedScores q k t d (1.0 / d.toFloat.sqrt)
+  let p := softmaxRows s t t
+  let o := matMul p v t t d
+  matMul o wo t d d
+
 end LeanExe.Examples.Gpt

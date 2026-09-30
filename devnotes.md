@@ -19393,3 +19393,24 @@ uses `(i * 3 + 1) % 5`, which covers every combination of `t` from 0 to 3 and
 - [x] GPT 5d: row-wise layer norm.
 - [ ] GPT 5e: masked attention.
 - [ ] GPT 5f: the block.
+
+## 2026-09-30: GPT 5e, masked attention
+
+`maskedScores`, `rowMax`, `rowSumExp`, `softmaxApply`, `softmaxRows`, and
+`attention` are exports 19 to 24.  The compiler rejected two forms of the masked
+score: a `let` of the loop inside a build element, and a loop inside a branch.
+The mask is therefore added to the scaled score, `s · scale + (if j ≤ i then 0
+else -∞)`, the form of PyTorch's float `attn_mask`
+(https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html).
+At a masked position whose score is +∞ or NaN the result is NaN, where a
+selection would give -∞, and the NaN then spreads to the whole row of the
+softmax.  Supporting a loop in a branch, or a `let` in an
+element, would be a compiler change for a later decision.
+
+All six proofs built after one fix, a missing parenthesis in the `show` term of
+`attention`.  `attention` holds six temporaries; with `Live`, each call and each
+release is one step, and the proof takes 208 lines.  All 1,473 comparisons match,
+and sessions freed every allocation: 14 for `attention` and 4 for `softmaxRows`.
+
+- [x] GPT 5e: masked attention.
+- [ ] GPT 5f: the block.
