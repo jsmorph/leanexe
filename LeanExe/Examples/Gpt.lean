@@ -163,7 +163,8 @@ def attention (x wq wk wv wo : Array Float) (t d : UInt64) : Array Float :=
   let o := causalMatMul p v t d
   matMul o wo t d d
 
-/-- A GPT-2 transformer block on `t` rows of width `d` with hidden width `f`:
+/-- A transformer block in the form of GPT-2's, with one attention head and no biases
+in its linear layers, on `t` rows of width `d` with hidden width `f`:
 `r = x + attention (layerNormRows x g1 b1)`, then `r + mlp (layerNormRows r g2 b2)`. -/
 def block (x g1 b1 wq wk wv wo g2 b2 w1 w2 : Array Float) (t d f : UInt64) (eps : Float) :
     Array Float :=
@@ -186,7 +187,8 @@ def matMulT (a b : Array Float) (n k m : UInt64) : Array Float :=
   LeanExe.build (n * m) fun e =>
     LeanExe.loop k 0.0 fun c acc => acc + a[(e / m * k + c).toNat]! * b[(e % m * k + c).toNat]!
 
-/-- A two-layer GPT-2 forward pass on `t` tokens with width `d`, hidden width `f`,
+/-- A two-layer forward pass in the form of GPT-2's, built from `block`, on `t` tokens
+with width `d`, hidden width `f`,
 and `vocab` token embeddings: the embeddings, two blocks, a final layer norm, and
 the scores of each position against every token embedding, as `t` rows of width
 `vocab`. -/
