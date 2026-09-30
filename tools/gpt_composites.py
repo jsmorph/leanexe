@@ -73,29 +73,32 @@ def represent(items, tail):
     return '⟨' + ', '.join(parts) + '⟩'
 
 
-def state_fact(r, depth, nparams):
-    """A proof that local `r` of state `s{depth}` holds its value.  State `s{i}` is
-    `s{i-1}` (or `start`) with local `nparams + i - 1` updated."""
-    def base(i):
-        return 'start' if i == 1 else f's{i - 1}'
-    if r < nparams:
-        term, low = f'sg{r}', 1
-    else:
-        m = r - nparams + 1
-        bound = 'hStart' if m == 1 else f'hS{m - 1}'
-        term, low = f'State.get_update_same (state := {base(m)}) (by rw [{bound}]; decide)', m + 1
-    for i in range(low, depth + 1):
-        term = (f'(State.get_update_ne (state := {base(i)}) (j := {r}) (index := {nparams + i - 1}) '
-                f'(by decide)).trans ({term})')
-    return term
+def state_fact(r, states, i=None):
+    """A proof that local `r` of `states[i]`, the last state by default, holds its
+    value.  A state is `start`, the previous state with one local updated, or the
+    state after a loop over an array, which frames the previous state."""
+    if i is None:
+        i = len(states) - 1
+    e = states[i]
+    if e['kind'] == 'start':
+        return f'sg{r}'
+    prev = states[i - 1]
+    if e['kind'] == 'update':
+        if e['reg'] == r:
+            return f"State.get_update_same (state := {prev['name']}) (by rw [{prev['len']}]; decide)"
+        return (f"(State.get_update_ne (state := {prev['name']}) (j := {r}) (index := {e['reg']}) "
+                f"(by decide)).trans ({state_fact(r, states, i - 1)})")
+    if e['reg'] == r:
+        return e['fact']
+    return f"({e['frame']}.get {r} (by decide) (by decide)).trans ({state_fact(r, states, i - 1)})"
 
 
-def eval_term(e, depth, nparams):
-    """A proof that the `u64` expression `e`, a local or a product, evaluates."""
+def eval_term(e, fact):
+    """A proof that the `u64` expression `e`, a local or a product, evaluates; `fact(r)`
+    proves that local `r` holds its value."""
     if isinstance(e, tuple):
-        return (f'Expr.eval_mul ({eval_term(e[1], depth, nparams)}) '
-                f'({eval_term(e[2], depth, nparams)})')
-    return f'Expr.eval_get ({state_fact(e, depth, nparams)})'
+        return f'Expr.eval_mul ({eval_term(e[1], fact)}) ({eval_term(e[2], fact)})'
+    return f'Expr.eval_get ({fact(e)})'
 
 
 def value_term(e, names):
@@ -108,16 +111,16 @@ def value_term(e, names):
     return names[e]
 
 
-def eval_lines(args, depth, nparams, ind):
+def eval_lines(args, fact, ind):
     """The proof that the arguments evaluate, one line per argument."""
     out = []
     for a in args:
         if isinstance(a, tuple) and a[0] == 'mul':
-            out.append(f'Expr.evalResults_u64 ({eval_term(a, depth, nparams)}) <|')
+            out.append(f'Expr.evalResults_u64 ({eval_term(a, fact)}) <|')
         elif isinstance(a, tuple) and a[0] == 'f':
-            out.append(f'Expr.evalResults_getF ({state_fact(a[1], depth, nparams)}) <|')
+            out.append(f'Expr.evalResults_getF ({fact(a[1])}) <|')
         else:
-            out.append(f'Expr.evalResults_get ({state_fact(a, depth, nparams)}) <|')
+            out.append(f'Expr.evalResults_get ({fact(a)}) <|')
     out.append('Expr.evalResults_nil')
     out[0] = '(' + out[0]
     out[-1] = out[-1] + ')'
@@ -130,11 +133,13 @@ def composite(spec):
     params = spec['params']            # list of (name, kind): 'A', 'U', 'u', 'f'
     nparams = len(params)
     nlocals = spec['nlocals']
-    total = nparams + nlocals
+    width = spec.get('width', 0)
+    total = nparams + nlocals + width
     arrays = [n for n, k in params if k in 'AU']
     names = [n for n, _ in params]
     calls = spec['calls']
     L = len(calls)
+    loops = any(c.get('kind') == 'loop' for c in calls)
     lines = []
     if spec.get('heartbeats'):
         lines.append('set_option maxHeartbeats 1000000 in')
@@ -163,6 +168,9 @@ def composite(spec):
         lines.append(f"  simp only [{', '.join(spec['room_unfold'])}] at hRoom")
     lines.append('  have hImports : gpt.module.imports = [] := rfl')
     lines.append('  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl')
+    if loops:
+        lines.append('  have hMemory32 : gpt.module.memIs64 = false := rfl')
+        lines.append('  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl')
     if spec.get('one'):
         lines.append('  have hOne : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel')
     for hname, entry, index, ir in spec['funcs']:
@@ -170,7 +178,7 @@ def composite(spec):
         lines.append(f'      some (gpt.{ir}.ir.function (2 + {index})) :=')
         lines.append(f'    compile_funcs (funcs := gpt.funcs) (i := {index}) rfl')
     for n, term in spec['lets']:
-        lines.append(f'  let {n} := {term}')
+        lines.append(f'  let {n} := {wrap(term, "    ")}')
     for h in spec.get('haves', []):
         lines.append(h)
     vals = []
@@ -178,7 +186,7 @@ def composite(spec):
         vals.append(f'.f64 {n}.toBits' if k == 'f' else (f'.i64 {n}' if k == 'u' else f'.i64 {ptr(n)}'))
     lines.append('  let start : State :=')
     lines.append(f'    {{ params := [{wrap(", ".join(vals), "        ")}]')
-    lines.append(f'      locals := [{", ".join([".i64 0"] * nlocals)}] }}')
+    lines.append(f'      locals := [{", ".join([".i64 0"] * (nlocals + width))}] }}')
     lines.append(f'  have hStart : start.params.length + start.locals.length = {total} := rfl')
     lines.append('  have hLen : ∀ (s : State) (j : Nat) (v : Value),')
     lines.append('      (s.update j v).params.length + (s.update j v).locals.length =')
@@ -188,23 +196,79 @@ def composite(spec):
         lines.append(f'  have sg{j} : start.get {j} = some ({v}) := rfl')
     # The body stays named, and the kernel computes its scratch width: restating the
     # body, or computing the width in the elaborator, exceeds Lean's recursion depth
-    # for the longer bodies.  Composite bodies need no scratch locals.
-    lines.append(f'  have hWidth : gpt.{name}.ir.width = 0 := by decide +kernel')
-    lines.append('  simp only [Func.state, Func.locals, hWidth, List.replicate_zero, List.append_nil]')
+    # for the longer bodies.  Composite bodies need no scratch locals, apart from the
+    # copy that starts a loop over an array, whose bounds need the scratch index.
+    lines.append(f'  have hWidth : gpt.{name}.ir.width = {width} := by decide +kernel')
+    if width == 0:
+        lines.append('  simp only [Func.state, Func.locals, hWidth, List.replicate_zero, List.append_nil]')
+    else:
+        lines.append(f'  have hScratch : gpt.{name}.ir.scratch = {nparams + nlocals} := by decide +kernel')
+        lines.append('  simp only [Func.state, Func.locals, hWidth, hScratch]')
     lines.append(f'  show Triple _ gpt.{name}.ir.body _')
     lines.append('    (fun store state => store = initial ∧ state = start) _')
     # The calls.
     live = '(Live.start hHeap)'
-    state = 'start'
-    chain = []          # s1, s2, ...
+    states = [dict(kind='start', name='start', len='hStart')]
+    chain = []          # the updated states, for `simp`
     temps = []          # newest first: pointers
-    hprev = 'hStart'
+    steps = []          # (register, pointer) of each call's result
+    def fact(r):
+        return state_fact(r, states)
     for n, c in enumerate(calls):
         k = n + 1
+        cur = states[-1]
         lines.append(f"  -- {c['comment']}")
+        if c.get('kind') == 'loop':
+            p = c['ptr']
+            lines.append(f"  refine Live.arrayLoop {c['impl']} rfl {c['hfunc']} rfl hMemory32 hImports hAlloc")
+            lines.append(f"    hRelease (by decide) (by decide) (by decide) (by decide) (by rw [{cur['len']}]; decide)")
+            lines.append(f"    {live} hRoom ({fact(c['src'])})")
+            lines.append(f"    ({live}.tempsOwned _ ({mem(temps.index(c['init_ptr']))})).borrowed (init := {c['init']})")
+            lines.append(f"    (fun _ st hF => ⟨_, Expr.eval_get ((hF.get {c['count']} (by decide) (by decide)).trans")
+            lines.append(f"      ({fact(c['count'])}))⟩)")
+            lines.append(f"    (fun l x => {wrap(c['F'], '      ')})")
+            lines.append(f"    (bound := {c['bound']}) (fun k _ => {c['bound_proof']})")
+            lines.append(f"    (by simp only [{', '.join(c['need'])}]; omega)")
+            def inner(r):
+                if r == c['state']:
+                    return 'hSt'
+                if r == c['index']:
+                    return 'hI'
+                return f"(hF.get {r} (by decide) (by decide)).trans ({fact(r)})"
+            cvals = []
+            for a in c['args']:
+                if a == c['state']:
+                    cvals.append('.i64 p')
+                elif a == c['index']:
+                    cvals.append('.i64 (UInt64.ofNat k)')
+                elif isinstance(a, tuple) and a[0] == 'f':
+                    cvals.append(vals[a[1]])
+                elif isinstance(a, tuple):
+                    cvals.append(f'.i64 ({value_term(a, names)})')
+                else:
+                    cvals.append(vals[a])
+            lines.append(f"    (fun k p _ _ _ st _ hF hI hSt hL =>")
+            lines.append(f"      ⟨[{wrap(', '.join(cvals), '        ')}], st,")
+            body = eval_lines(c['args'], inner, '        ')
+            body[-1] += ','
+            lines.extend(body)
+            items = [('p', '(hL.tempsOwned _ (List.mem_cons_self ..)).borrowed')]
+            items += [(ptr(a), f'hL.borrowed {ptr(a)} _ {hyp(a)}') for kind, a in c['borrowed']]
+            lines.append(f"        {wrap(represent(items, True), '          ')}⟩)")
+            lines.append(f"    fun heap{k} {p} store{k} s{k} hLive{k} hFrame{k} hState{k} => ?_")
+            lines.append(f"  have hS{k} : s{k}.params.length + s{k}.locals.length = {total} := by")
+            lines.append(f"    rw [hFrame{k}.params, hFrame{k}.locals]; exact {cur['len']}")
+            states.append(dict(kind='frame', name=f's{k}', len=f'hS{k}', frame=f'hFrame{k}',
+                               reg=c['state'], fact=f'hState{k}'))
+            live = f'hLive{k}'
+            temps.insert(0, p)
+            temps_by_reg[c['state']] = p
+            steps.append((c['state'], p))
+            continue
+        reg = c.get('reg', nparams + n)
         lines.append(f"  refine Live.call_seq {c['impl']} rfl {c['hfunc']} rfl {live} hRoom")
         lines.append(f"    (x := {c['x']})")
-        lines.append(f"    (by simp only [{', '.join(c['need'])}]; omega) (afterArgs := {state})")
+        lines.append(f"    (by simp only [{', '.join(c['need'])}]; omega) (afterArgs := {cur['name']})")
         cvals = []
         for a in c['args']:
             if isinstance(a, tuple) and a[0] == 'mul':
@@ -232,7 +296,7 @@ def composite(spec):
         else:
             # Each argument's value, from facts about the state; `simp` over the whole
             # argument list costs several seconds for the longer lists.
-            lines.extend(eval_lines(c['args'], len(chain), nparams, '    '))
+            lines.extend(eval_lines(c['args'], fact, '    '))
         items = []
         for kind, a in c['borrowed']:
             if kind == 'P':
@@ -242,33 +306,31 @@ def composite(spec):
                 items.append((a, f'({live}.tempsOwned _ ({mem(temps.index(a))})).borrowed'))
         lines.append(f"    {wrap(represent(items, c.get('tail', True)), '      ')}")
         p = c['ptr']
-        lines.append(f'    (by rw [{hprev}]; decide) fun heap{k} {p} store{k} hLive{k} => ?_')
-        lines.append(f'  let s{k} := {state}.update {nparams + n} (.i64 {p})')
-        lines.append(f'  have hS{k} : s{k}.params.length + s{k}.locals.length = {total} := by rw [hLen, {hprev}]')
+        lines.append(f"    (by rw [{cur['len']}]; decide) fun heap{k} {p} store{k} hLive{k} => ?_")
+        lines.append(f"  let s{k} := {cur['name']}.update {reg} (.i64 {p})")
+        lines.append(f"  have hS{k} : s{k}.params.length + s{k}.locals.length = {total} := by rw [hLen, {cur['len']}]")
+        states.append(dict(kind='update', name=f's{k}', len=f'hS{k}', reg=reg))
         chain.append(f's{k}')
-        state = f's{k}'
-        hprev = f'hS{k}'
         live = f'hLive{k}'
         temps.insert(0, p)
-        temps_by_reg[nparams + n] = p
+        temps_by_reg[reg] = p
+        steps.append((reg, p))
     # The result local and the releases.
-    res = nparams + L
-    sL = f's{L}'
+    res = spec.get('result', nparams + L)
+    last, before_last = states[-1], states[-2]
+    sL = last['name']
     sR = f's{L + 1}'
     lines.append(f'  let {sR} := {sL}.update {res} (.i64 {calls[-1]["ptr"]})')
-    bound_prev = 'hStart' if L == 1 else f'hS{L - 1}'
-    sLm = 'start' if L == 1 else f's{L - 1}'
     lines.append(f'  refine Stmt.seq_spec (Stmt.run_spec (final := {sR}) (by')
     lines.append(f'    simp [Stmt.run, Expr.eval, State.set?_eq_update _ (show {res} < {sL}.params.length +')
-    lines.append(f'      {sL}.locals.length by rw [hS{L}]; decide), {sR}, {sL}, State.get_update_same,')
-    lines.append(f'      show {res - 1} < {sLm}.params.length + {sLm}.locals.length by rw [{bound_prev}]; decide])) ?_')
+    lines.append(f"      {sL}.locals.length by rw [{last['len']}]; decide), {sR}, {sL}, State.get_update_same,")
+    lines.append(f"      show {last['reg']} < {before_last['name']}.params.length + {before_last['name']}.locals.length by rw [{before_last['len']}]; decide])) ?_")
+    states.append(dict(kind='update', name=sR, len=None, reg=res))
     lines.append('  -- The temporaries are released, newest first.')
-    for n in range(L - 1):
-        reg = nparams + n
-        lines.append(f'  have r{reg} : {sR}.get {reg} = some (.i64 {calls[n]["ptr"]}) :=')
-        lines.append(f'    {state_fact(reg, L + 1, nparams)}')
-    live = f'hLive{L}'
-    regs = list(range(nparams + L - 2, nparams - 1, -1))
+    for reg, p in steps[:-1]:
+        lines.append(f'  have r{reg} : {sR}.get {reg} = some (.i64 {p}) :=')
+        lines.append(f'    {fact(reg)}')
+    regs = [reg for reg, _ in steps[:-1]][::-1]
     for idx, reg in enumerate(regs):
         rule = 'releaseSecond_seq' if idx < len(regs) - 1 else 'releaseSecond_last'
         lines.append(f'  refine {live}.{rule} hImports hRelease r{reg} fun storeR{idx} hLiveR{idx} => ?_')
@@ -285,8 +347,9 @@ def composite(spec):
     lines.append(f"      (by simp only [{wrap(', '.join(spec['finish']), '          ')}]")
     lines.append('          omega) hParams')
     lines.append(f"  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 {calls[-1]['ptr']}], {sR},")
-    lines.append(f'    by simp [gpt.{name}.ir, Func.scratch, Expr.evalResults, Expr.eval, {sR},')
-    lines.append(f'      State.get_update_same, hS{L}], hOwned, hOutB, hOutO⟩')
+    scratch = 'Func.scratch, ' if width == 0 else ''
+    lines.append(f'    by simp [gpt.{name}.ir, {scratch}Expr.evalResults, Expr.eval, {sR},')
+    lines.append(f"      State.get_update_same, {last['len']}], hOwned, hOutB, hOutO⟩")
     return '\n'.join(lines) + '\n'
 
 
@@ -453,74 +516,6 @@ def blockNeed (x : {BT}) : Nat :=
 
 ''' + composite(blk_spec) + '\n'
 
-# ------------------------------------------------------------------ forward
-LA = [n + 'a' for n in BARR[1:]]
-LB = [n + 'b' for n in BARR[1:]]
-FARR = ['tokens', 'wte', 'wpe'] + LA + LB + ['gf', 'bf']
-FWD = [('tokens', 'U')] + [(n, 'A') for n in FARR[1:]] + [('t', 'u'), ('nh', 'u'), ('dh', 'u'), ('f', 'u'),
-                                                             ('vocab', 'u'), ('eps', 'f')]
-fwd_need = ['embedNeed', 'blockNeed', 'blockBytes', 'attentionBytes', 'hX0']
-fwd_spec = dict(
-    name='forward', entry=29, index=26, tuple='forwardTuple', need='forwardNeed', params=FWD, nlocals=6,
-    room='forwardNeed (' + ', '.join(n for n, _ in FWD) + ')',
-    room_unfold=['forwardNeed', 'blockBytes', 'attentionBytes'],
-    funcs=[('hEmbed', 27, 24, 'embed'), ('hBlock', 25, 22, 'block'), ('hNorm', 18, 15, 'layerNormRows'),
-           ('hScores', 28, 25, 'matMulT')],
-    lets=[('x0', 'embedTuple (tokens, wte, wpe, t, nh * dh)'),
-          ('x1', 'blockTuple (x0, ' + ', '.join(LA) + ', t, nh, dh, f, eps)'),
-          ('x2', 'blockTuple (x1, ' + ', '.join(LB) + ', t, nh, dh, f, eps)'),
-          ('h', 'layerNormRowsTuple (x2, gf, bf, t, nh * dh, eps)')],
-    haves=['  have hX0 : x0.size = (t * (nh * dh)).toNat := by',
-           '    simp [x0, embedTuple, LeanExe.Examples.Gpt.embed, LeanExe.build]',
-           '  have hX1 : x1.size ≤ x0.size := block_size_le _'],
-    calls=[
-        dict(args=[0, 1, 2, 37, ('mul', 38, 39)], impl='embed_implements', hfunc='hEmbed',
-             x='(tokens, wte, wpe, t, nh * dh)', need=['embedNeed'],
-             borrowed=[('P', 'tokens'), ('P', 'wte'), ('P', 'wpe')], ptr='px0', comment='The embeddings.'),
-        dict(args=[43] + list(range(3, 19)) + [37, 38, 39, 40, ('f', 42)], impl='block_implements',
-             hfunc='hBlock', x='(x0, ' + ', '.join(LA) + ', t, nh, dh, f, eps)', need=fwd_need,
-             borrowed=[('T', 'px0')] + [('P', n) for n in LA], ptr='px1', comment='The first block.'),
-        dict(args=[44] + list(range(19, 35)) + [37, 38, 39, 40, ('f', 42)], impl='block_implements',
-             hfunc='hBlock', x='(x1, ' + ', '.join(LB) + ', t, nh, dh, f, eps)', need=fwd_need,
-             borrowed=[('T', 'px1')] + [('P', n) for n in LB], ptr='px2', comment='The second block.'),
-        dict(args=[45, 35, 36, 37, ('mul', 38, 39), ('f', 42)], impl='layerNormRows_implements',
-             hfunc='hNorm', x='(x2, gf, bf, t, nh * dh, eps)', need=fwd_need + ['layerNormRowsNeed'],
-             borrowed=[('T', 'px2'), ('P', 'gf'), ('P', 'bf')], ptr='ph', comment='The final layer norm.'),
-        dict(args=[46, 1, 37, ('mul', 38, 39), 41], impl='matMulT_implements', hfunc='hScores',
-             x='(h, wte, t, nh * dh, vocab)', need=fwd_need + ['layerNormRowsNeed', 'matMulTNeed'],
-             borrowed=[('T', 'ph'), ('P', 'wte')], ptr='pr',
-             comment='The scores against every token embedding.'),
-    ],
-    finish=fwd_need[:-1] + ['layerNormRowsNeed', 'matMulTNeed', 'forwardNeed', 'hX0'])
-FT = tuple_type([k for _, k in FWD])
-pat = ', '.join(n for n, _ in FWD)
-fwd_section = f'''/-- A block's result is no longer than its input. -/
-theorem block_size_le (x : {BT}) : (blockTuple x).size ≤ x.1.size := by
-  simp [blockTuple, LeanExe.Examples.Gpt.block, LeanExe.Examples.Gpt.add, LeanExe.build,
-    Nat.mod_le]
-
-/-- The input of `forward`: the tokens, the embeddings, the weights of two blocks, the final
-layer norm, and the dimensions. -/
-abbrev ForwardInput := {FT}
-
-/-- `forward` with its forty-three arguments as one tuple. -/
-def forwardTuple : ForwardInput → Array Float
-  | ({wrap(pat, '     ')}) =>
-    LeanExe.Examples.Gpt.forward {wrap(' '.join(n for n, _ in FWD).replace(' ', ', '), '      ', 80).replace(', ', ' ').replace(',', '')}
-
-/-- The bytes `forward` may allocate: the embeddings, two blocks, the final layer norm,
-and the scores. -/
-def forwardNeed : ForwardInput → Nat
-  | ({wrap(', '.join(['_'] * 37), '     ')}, t, nh, dh, f, vocab, _) =>
-    48 + 8 * ((t * (nh * dh)).toNat + 1) + blockBytes t nh dh f (t * (nh * dh)).toNat +
-      blockBytes t nh dh f (t * (nh * dh)).toNat +
-      (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * (nh * dh)).toNat + 1))) +
-      (48 + 8 * ((t * vocab).toNat + 1))
-
-''' + composite(fwd_spec) + '\n'
-
-
-
 # ------------------------------------------------------------------ blockAt
 BAT = [(n, 'A') for n in BARR] + [('l', 'u'), ('t', 'u'), ('nh', 'u'), ('dh', 'u'), ('f', 'u'),
                                    ('eps', 'f')]
@@ -573,6 +568,88 @@ def blockAtNeed (x : {BATT}) : Nat :=
 """ + composite(bat_spec) + '\n'
 
 
+# ------------------------------------------------------------------ forward
+LAYER = BARR[1:]
+FWD = ([('tokens', 'U'), ('wte', 'A'), ('wpe', 'A')] + [(n, 'A') for n in LAYER] +
+       [('gf', 'A'), ('bf', 'A'), ('layers', 'u'), ('t', 'u'), ('nh', 'u'), ('dh', 'u'), ('f', 'u'),
+        ('vocab', 'u'), ('eps', 'f')])
+FWD_NAMES = [n for n, _ in FWD]
+LAYER_F = '(x, ' + ', '.join(LAYER) + ', l, t, nh, dh, f, eps)'
+fwd_need = ['embedNeed', 'hX0']
+fwd_spec = dict(
+    name='forward', entry=29, index=26, tuple='forwardTuple', need='forwardNeed', params=FWD,
+    nlocals=9, width=1, result=36,
+    room='forwardNeed (' + ', '.join(FWD_NAMES) + ')', room_unfold=['forwardNeed'],
+    funcs=[('hEmbed', 27, 24, 'embed'), ('hBlockAt', 32, 29, 'blockAt'),
+           ('hNorm', 18, 15, 'layerNormRows'), ('hScores', 28, 25, 'matMulT')],
+    lets=[('x0', 'embedTuple (tokens, wte, wpe, t, nh * dh)'),
+          ('xl', f'LeanExe.loop layers x0 fun l x => blockAtTuple {LAYER_F}'),
+          ('h', 'layerNormRowsTuple (xl, gf, bf, t, nh * dh, eps)')],
+    haves=['  have hX0 : x0.size = (t * (nh * dh)).toNat := by',
+           '    simp [x0, embedTuple, LeanExe.Examples.Gpt.embed, LeanExe.build]',
+           '  have hSizes : ∀ k,',
+           f'      (loopPrefix (fun l x => blockAtTuple {wrap(LAYER_F, "        ")}) x0 k).size ≤',
+           '      (t * (nh * dh)).toNat := fun k =>',
+           f'    Nat.le_trans (loopPrefix_size_le (fun l x => blockAt_size_le {wrap(LAYER_F, "      ")}) k)',
+           '      hX0.le'],
+    calls=[
+        dict(args=[0, 1, 2, 22, ('mul', 23, 24)], impl='embed_implements', hfunc='hEmbed', reg=28,
+             x='(tokens, wte, wpe, t, nh * dh)', need=['embedNeed'],
+             borrowed=[('P', 'tokens'), ('P', 'wte'), ('P', 'wpe')], ptr='px0', comment='The embeddings.'),
+        dict(kind='loop', impl='blockAt_implements', hfunc='hBlockAt', state=29, index=32, src=28,
+             init='x0', init_ptr='px0', count=21,
+             args=[29] + list(range(3, 19)) + [32, 22, 23, 24, 25, ('f', 27)], F=LAYER_F,
+             bound='blockAtBytes t nh dh f (t * (nh * dh)).toNat',
+             bound_proof='blockAtBytes_le (hSizes k)', need=fwd_need,
+             borrowed=[('P', n) for n in LAYER], ptr='pl', comment='The blocks, one per layer.'),
+        dict(args=[29, 19, 20, 22, ('mul', 23, 24), ('f', 27)], impl='layerNormRows_implements',
+             hfunc='hNorm', reg=34, x='(xl, gf, bf, t, nh * dh, eps)',
+             need=fwd_need + ['layerNormRowsNeed'], borrowed=[('T', 'pl'), ('P', 'gf'), ('P', 'bf')],
+             ptr='ph', comment='The final layer norm.'),
+        dict(args=[34, 1, 22, ('mul', 23, 24), 26], impl='matMulT_implements', hfunc='hScores', reg=35,
+             x='(h, wte, t, nh * dh, vocab)', need=fwd_need + ['layerNormRowsNeed', 'matMulTNeed'],
+             borrowed=[('T', 'ph'), ('P', 'wte')], ptr='pr',
+             comment='The scores against every token embedding.'),
+    ],
+    finish=['embedNeed', 'layerNormRowsNeed', 'matMulTNeed', 'forwardNeed', 'hX0'])
+FT = tuple_type([k for _, k in FWD])
+pat = ', '.join(FWD_NAMES)
+fwd_section = f"""/-- A block's result is no longer than its input. -/
+theorem block_size_le (x : {BT}) : (blockTuple x).size ≤ x.1.size := by
+  simp [blockTuple, LeanExe.Examples.Gpt.block, LeanExe.Examples.Gpt.add, LeanExe.build,
+    Nat.mod_le]
+
+/-- `blockAt`'s result is no longer than its input. -/
+theorem blockAt_size_le (x : {BATT}) : (blockAtTuple x).size ≤ x.1.size := by
+  simp [blockAtTuple, LeanExe.Examples.Gpt.blockAt, LeanExe.Examples.Gpt.block,
+    LeanExe.Examples.Gpt.add, LeanExe.build, Nat.mod_le]
+
+theorem blockAtBytes_le {{t nh dh f : UInt64}} {{n n' : Nat}} (h : n ≤ n') :
+    blockAtBytes t nh dh f n ≤ blockAtBytes t nh dh f n' := by
+  simp only [blockAtBytes, blockBytes]
+  omega
+
+/-- The input of `forward`: the tokens, the embeddings, the stacked weights of the blocks,
+the final layer norm, and the dimensions. -/
+abbrev ForwardInput := {FT}
+
+/-- `forward` with its twenty-eight arguments as one tuple. -/
+def forwardTuple : ForwardInput → Array Float
+  | ({wrap(pat, '     ')}) =>
+    LeanExe.Examples.Gpt.forward {wrap(' '.join(FWD_NAMES).replace(' ', ', '), '      ', 80).replace(', ', ' ').replace(',', '')}
+
+/-- The bytes `forward` may allocate: the embeddings, their copy, `layers` calls of
+`blockAt`, the final layer norm, and the scores. -/
+def forwardNeed : ForwardInput → Nat
+  | ({wrap(', '.join(['_'] * 21), '     ')}, layers, t, nh, dh, f, vocab, _) =>
+    48 + 8 * ((t * (nh * dh)).toNat + 1) + (48 + 8 * ((t * (nh * dh)).toNat + 1)) +
+      layers.toNat * blockAtBytes t nh dh f (t * (nh * dh)).toNat +
+      (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * (nh * dh)).toNat + 1))) +
+      (48 + 8 * ((t * vocab).toNat + 1))
+
+""" + composite(fwd_spec) + '\n'
+
+
 def main():
     text = """import Project.Gpt.Verify
 
@@ -584,7 +661,7 @@ namespace Project.Gpt
 
 open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
 
-""" + mlp_section + att_section + blk_section + fwd_section + bat_section + "end Project.Gpt\n"
+""" + mlp_section + att_section + blk_section + bat_section + fwd_section + "end Project.Gpt\n"
     if sys.argv[1:] == ['--check']:
         if TARGET.read_text() != text:
             raise SystemExit(f'{TARGET} is out of date')

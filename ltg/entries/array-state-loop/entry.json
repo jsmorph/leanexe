@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "array-state-loop",
+  "title": "Loop over an array state",
+  "summary": "Proves the compiler's loop whose state is an Array Float: a copy of the initial array, then one call per index that returns the next state, with the previous state released, inside the Live invariant of a composite function.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["allocation", "compiler-motifs", "loops", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["array-state", "copy", "direct-call", "index", "loop", "owned", "release"],
+  "annotationKinds": ["array loop"],
+  "modules": ["Project.IR.ArrayLoop", "Project.IR.Live", "Project.IR.Loop", "LeanExe.Loop"],
+  "declarations": ["Project.IR.Stmt.arrayLoop", "Project.IR.Live.arrayLoop", "Project.IR.Live.copy", "Project.IR.Live.push", "Project.IR.Live.weaken", "Project.IR.loopPrefix_size_le", "Project.IR.Expr.evalResults_frame", "Project.IR.Live.call_seq", "Project.IR.Live.releaseSecond_seq"],
+  "premises": ["An Implements theorem for the callee, which returns an Array Float", "The five loop locals are distinct, below scratch, and apart from the source local, and scratch is below the number of locals", "Live before the loop, with the initial array borrowed at the source local's pointer", "The count evaluates to n in every state that frames the state before the loop", "The callee's need at each index and prefix state is at most bound, and the bytes used plus the copy plus n times bound fit in the room", "At each index, the arguments evaluate to values that represent F l x, given the Live invariant with the state at its head"],
+  "result": "Live with the bytes used plus the copy plus n times bound, and LeanExe.loop n init (fun l x => g (F l x)) at the head of the live temporaries, whose pointer the state local holds, in a state that frames the one before the loop.",
+  "consumers": ["Project.Gpt.forward_implements"],
+  "relatedEntries": ["index-loop", "function-call", "release-temporary", "array-build"],
+  "exclusion": null
+}

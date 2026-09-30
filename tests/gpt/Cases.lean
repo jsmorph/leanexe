@@ -259,7 +259,6 @@ def linearCases : IO Unit := do
       (attention (A x) (A wq) (A bq) (A wk) (A bk) (A wv) (A bv) (A wo) (A bo) t.toUInt64 nh.toUInt64
         dh.toUInt64)
     let layerA := [g, b, wq, bq, wk, bk, wv, bv, wo, bo, g, b, wfc, bfc, wproj, bproj]
-    let layerB := [b, g, wv, bv, wq, bq, wo, bo, wk, bk, b, g, wfc, bfc, wproj, bproj]
     emit "block" ([arr x] ++ layerA.map arr ++ [u t, u nh, u dh, u f, fl eps])
       (block (A x) (A g) (A b) (A wq) (A bq) (A wk) (A bk) (A wv) (A bv) (A wo) (A bo) (A g) (A b)
         (A wfc) (A bfc) (A wproj) (A bproj) t.toUInt64 nh.toUInt64 dh.toUInt64 f.toUInt64 eps)
@@ -267,14 +266,15 @@ def linearCases : IO Unit := do
       if i % 10 = 9 ∧ j = 0 then 18446744073709551615 else UInt64.ofNat ((i * 7 + j * 3) % (vocab + 2))
     let wte := units (vocab * d + extra) (73 * i + 15)
     let wpe := units (t * d) (79 * i + 16)
-    emit "forward" ([arrU tokens, arr wte, arr wpe] ++ layerA.map arr ++ layerB.map arr ++
-        [arr g, arr b, u t, u nh, u dh, u f, u vocab, fl eps])
-      (forward tokens.toArray (A wte) (A wpe)
-        (A g) (A b) (A wq) (A bq) (A wk) (A bk) (A wv) (A bv) (A wo) (A bo) (A g) (A b)
-        (A wfc) (A bfc) (A wproj) (A bproj)
-        (A b) (A g) (A wv) (A bv) (A wq) (A bq) (A wo) (A bo) (A wk) (A bk) (A b) (A g)
-        (A wfc) (A bfc) (A wproj) (A bproj)
-        (A g) (A b) t.toUInt64 nh.toUInt64 dh.toUInt64 f.toUInt64 vocab.toUInt64 eps)
+    let layers := (i / 2 + 1) % 4
+    let sizes := [d, d, d * d, d, d * d, d, d * d, d, d * d, d, d, d, d * f, f, f * d, d]
+    let ws := sizes.zipIdx.map fun (n, j) => units (layers * n) (83 * i + 31 * j)
+    let W (j : Nat) : Array Float := (ws[j]!).toArray
+    emit "forward" ([arrU tokens, arr wte, arr wpe] ++ ws.map arr ++
+        [arr g, arr b, u layers, u t, u nh, u dh, u f, u vocab, fl eps])
+      (forward tokens.toArray (A wte) (A wpe) (W 0) (W 1) (W 2) (W 3) (W 4) (W 5) (W 6) (W 7)
+        (W 8) (W 9) (W 10) (W 11) (W 12) (W 13) (W 14) (W 15) (A g) (A b) layers.toUInt64
+        t.toUInt64 nh.toUInt64 dh.toUInt64 f.toUInt64 vocab.toUInt64 eps)
 
 def sliceCases : IO Unit := do
   for i in List.range 30 do

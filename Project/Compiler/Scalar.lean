@@ -5,6 +5,7 @@ import Project.IR.Release
 import Project.IR.Function
 import Project.IR.Loop
 import Project.IR.Build
+import Project.IR.ArrayLoop
 import Project.IR.Hint
 
 namespace Project.Compiler
@@ -662,6 +663,47 @@ mutual
     pushStmt loop (mkHint ⟨[], 0⟩ (stmtLength loop) "loop" source :: countHints ++ bodyHints)
     return state.toList
 
+  /-- Translates `LeanExe.loop n init f` with an `Array Float` state to
+  `Stmt.arrayLoop`, which copies `init`, an array variable, into the state local
+  and runs `f i x`, one call of a definition compiled into the same module, for
+  each index.  Returns the state local. -/
+  partial def translateArrayLoop (ctx : Ctx) (term : Lean.Expr) (dst? : Option Nat) :
+      CompileM Nat := do
+    let source ← sourceOf term
+    let (``LeanExe.loop, #[stateType, n, init, f]) := term.getAppFnArgs
+      | throwError "unsupported loop: {source}"
+    unless ← isFloatArray stateType do
+      throwError "a loop over an array must have an `Array Float` state: {source}"
+    let some src := ctx.floatArrays.lookup init.consumeMData
+      | throwError "the initial state of a loop over an array must be an array variable: {source}"
+    let (count, countHints) ← translateValue ctx ⟨[], 0⟩ n
+    let state ← match dst? with
+      | some dst => pure dst
+      | none => fresh .u64 "state"
+    let size ← fresh .u64 "size"
+    let limit ← fresh .u64 "limit"
+    let index ← fresh .u64 "index"
+    let next ← fresh .u64 "next state"
+    let (idx, args, callHints) ← withLocalDeclD `i (mkConst ``UInt64) fun i =>
+      withLocalDeclD `x stateType fun x => do
+        let body := (mkApp2 f i x).headBeta
+        let some idx := ctx.callees.lookup body.getAppFn.constName
+          | throwError "the body of a loop over an array must be one call: {source}"
+        let bodyCtx := { ctx.bind i [(index, .u64)] with
+          floatArrays := (x, state) :: ctx.floatArrays }
+        let (_, stmts, hints) ← withBlock (translateCall bodyCtx body idx (some [next]))
+        let [.call _ args _] := stmts
+          | throwError "the call in a loop over an array must need no statements before it: {source}"
+        return (idx, args, hints)
+    let stmt := Stmt.arrayLoop state size limit index next src idx count args
+    let copyLength := stmtLength (Stmt.copy state limit index size src)
+    let callLoc := loopBodyLoc ⟨[], copyLength⟩ count
+    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "array loop" source ::
+      mkHint ⟨[], 0⟩ copyLength "array copy" (← sourceOf init) ::
+      countHints.map (Hint.shift copyLength) ++
+      callHints.map fun hint => Hint.within callLoc.prefix_ (Hint.shift callLoc.index hint))
+    return state
+
   /-- Translates `term` as a value of `type` whose code starts at `loc`, in a block
   of its own: the statements its calls need come first, then the value.  Returns
   those statements, the value, the hints at their places, and the value's place. -/
@@ -743,6 +785,8 @@ mutual
       throwError "an array may not be built in a branch, a fold or loop body, or a recursive definition: {source}"
     unless ctx.allocating do
       throwError "an array may not be built in an element of `LeanExe.build`: {source}"
+    if term.isAppOf ``LeanExe.loop then
+      return ← translateArrayLoop ctx term dst?
     if let some elements := arrayLiteral? term then
       return ← translateArrayLiteral ctx term elements dst?
     let sizeOf (arrayLocal : Nat) : CompileM Nat := do

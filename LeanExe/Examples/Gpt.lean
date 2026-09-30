@@ -230,20 +230,18 @@ def matMulT (a b : Array Float) (n k m : UInt64) : Array Float :=
   LeanExe.build (n * m) fun e =>
     LeanExe.loop k 0.0 fun c acc => acc + a[(e / m * k + c).toNat]! * b[(e % m * k + c).toNat]!
 
-/-- The forward pass of a two-layer GPT-2 model in binary64 arithmetic on `t` tokens,
-with `nh` heads of width `dh`, hidden width `f`, and `vocab` token embeddings: the
-embeddings, two blocks, a final layer norm, and the scores of each position against
+/-- The forward pass of a GPT-2 model with `layers` blocks in binary64 arithmetic on
+`t` tokens, with `nh` heads of width `dh`, hidden width `f`, and `vocab` token
+embeddings: the embeddings, the blocks, whose weights are stacked layer after layer
+as `blockAt` takes them, a final layer norm, and the scores of each position against
 every token embedding, as `t` rows of width `vocab`. -/
 def forward (tokens : Array UInt64) (wte wpe : Array Float)
-    (g1a b1a wqa bqa wka bka wva bva woa boa g2a b2a wfca bfca wproja bproja : Array Float)
-    (g1b b1b wqb bqb wkb bkb wvb bvb wob bob g2b b2b wfcb bfcb wprojb bprojb : Array Float)
-    (gf bf : Array Float) (t nh dh f vocab : UInt64) (eps : Float) : Array Float :=
+    (g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Float)
+    (gf bf : Array Float) (layers t nh dh f vocab : UInt64) (eps : Float) : Array Float :=
   let x0 := embed tokens wte wpe t (nh * dh)
-  let x1 := block x0 g1a b1a wqa bqa wka bka wva bva woa boa g2a b2a wfca bfca wproja bproja
-    t nh dh f eps
-  let x2 := block x1 g1b b1b wqb bqb wkb bkb wvb bvb wob bob g2b b2b wfcb bfcb wprojb bprojb
-    t nh dh f eps
-  let h := layerNormRows x2 gf bf t (nh * dh) eps
+  let x := LeanExe.loop layers x0 fun l x =>
+    blockAt x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj l t nh dh f eps
+  let h := layerNormRows x gf bf t (nh * dh) eps
   matMulT h wte t (nh * dh) vocab
 
 end LeanExe.Examples.Gpt

@@ -23,6 +23,25 @@ theorem loop_congr {α : Type} {n : UInt64} {init : α} {f g : UInt64 → α →
   funext k hk acc
   exact h k hk acc
 
+/-- A loop whose every step keeps rows `0` to `i` in agreement, for arrays of equal
+size, keeps them in agreement. -/
+theorem loop_rows {n : UInt64} {s s' : Array Float} {step : UInt64 → Array Float → Array Float}
+    {w i : Nat}
+    (hStep : ∀ l x x', x.size = x'.size → RowsAgree w i x x' →
+      (step l x).size = (step l x').size ∧ RowsAgree w i (step l x) (step l x'))
+    (hs : s.size = s'.size) (h : RowsAgree w i s s') :
+    RowsAgree w i (LeanExe.loop n s step) (LeanExe.loop n s' step) := by
+  suffices ∀ k, (Nat.fold k (fun j _ x => step (UInt64.ofNat j) x) s).size =
+      (Nat.fold k (fun j _ x => step (UInt64.ofNat j) x) s').size ∧
+      RowsAgree w i (Nat.fold k (fun j _ x => step (UInt64.ofNat j) x) s)
+        (Nat.fold k (fun j _ x => step (UInt64.ofNat j) x) s') from (this n.toNat).2
+  intro k
+  induction k with
+  | zero => exact ⟨hs, h⟩
+  | succ k ih =>
+      simp only [Nat.fold_succ]
+      exact hStep _ _ _ ih.1 ih.2
+
 theorem rows_of_build {n : UInt64} {f g : UInt64 → Float} {w i : Nat}
     (h : ∀ m, m < (i + 1) * w → m < n.toNat → f (UInt64.ofNat m) = g (UInt64.ofNat m)) :
     RowsAgree w i (LeanExe.build n f) (LeanExe.build n g) := by
@@ -335,22 +354,21 @@ theorem blockAt_causal {x x' g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj b
 
 /-- Row `i` of `forward`, the scores at position `i`, depends only on tokens `0` to `i`. -/
 theorem forward_causal {tokens tokens' : Array UInt64}
-    {wte wpe g1a b1a wqa bqa wka bka wva bva woa boa g2a b2a wfca bfca wproja bproja
-      g1b b1b wqb bqb wkb bkb wvb bvb wob bob g2b b2b wfcb bfcb wprojb bprojb gf bf : Array Float} {t nh dh f vocab : UInt64} {eps : Float} {i : Nat} (ht : t.toNat < 2 ^ 16)
+    {wte wpe g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj gf bf : Array Float}
+    {layers t nh dh f vocab : UInt64} {eps : Float} {i : Nat} (ht : t.toNat < 2 ^ 16)
     (hn : nh.toNat < 2 ^ 16) (hdh : dh.toNat < 2 ^ 16) (hf : f.toNat < 2 ^ 32)
     (hv : vocab.toNat < 2 ^ 32) (h : RowsAgree 1 i tokens tokens') :
     RowsAgree vocab.toNat i
-      (forward tokens wte wpe g1a b1a wqa bqa wka bka wva bva woa boa g2a b2a wfca bfca wproja
-        bproja g1b b1b wqb bqb wkb bkb wvb bvb wob bob g2b b2b wfcb bfcb wprojb bprojb gf bf
-        t nh dh f vocab eps)
-      (forward tokens' wte wpe g1a b1a wqa bqa wka bka wva bva woa boa g2a b2a wfca bfca wproja
-        bproja g1b b1b wqb bqb wkb bkb wvb bvb wob bob g2b b2b wfcb bfcb wprojb bprojb gf bf
-        t nh dh f vocab eps) := by
+      (forward tokens wte wpe g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj gf bf
+        layers t nh dh f vocab eps)
+      (forward tokens' wte wpe g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj gf bf
+        layers t nh dh f vocab eps) := by
   have ht32 : t.toNat < 2 ^ 32 := by omega
   have hnd := small_mul hn hdh
   unfold forward
   exact matMulT_rows ht32 hnd hv (layerNormRows_rows ht32 hnd
-    (block_causal ht hn hdh hf (by simp [block, add, embed, LeanExe.build])
-      (block_causal ht hn hdh hf (by simp [embed, LeanExe.build]) (embed_rows ht32 hnd h))))
+    (loop_rows (fun _ _ _ hs hx => ⟨by simp [blockAt, block, add, LeanExe.build, hs],
+        blockAt_causal ht hn hdh hf hs hx⟩)
+      (by simp [embed, LeanExe.build]) (embed_rows ht32 hnd h)))
 
 end Project.Gpt.Causal
