@@ -5,6 +5,7 @@ import Project.IR.Read
 import Project.IR.Build
 import Project.IR.Run
 import Project.IR.Call
+import Project.IR.Release
 import Project.Encoding.RoundTrip
 
 namespace Project.Gpt
@@ -851,16 +852,162 @@ theorem softmax_implements :
   rw [softmax_eq, hMax, hSum, build_map]
   exact hNew.owned
 
+/-- `matVec2` with its five arguments as one tuple. -/
+def matVec2Tuple (x : Array Float × Array Float × Array Float × UInt64 × UInt64) : Array Float :=
+  LeanExe.Examples.Gpt.matVec2 x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
+
+/-- The bytes `matVec2` may allocate: the temporary and the result. -/
+def matVec2Need (x : Array Float × Array Float × Array Float × UInt64 × UInt64) : Nat :=
+  48 + 8 * (x.2.2.2.1.toNat + 1) + (48 + 8 * (x.2.2.2.2.toNat + 1))
+
+theorem matVec2_implements : Implements gpt.module 8 matVec2Tuple matVec2Need := by
+  refine Func.implements_heap gpt.funcs 5 gpt.matVec2.ir "matVec2" rfl matVec2Tuple matVec2Need
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      rfl⟩; rfl) ?_
+  rintro ⟨w1, w2, x, hidden, d⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨p1, rfl, hW1⟩, _, _, rfl, ⟨p2, rfl, hW2⟩, _, _, rfl, ⟨px, rfl, hX⟩, rfl⟩ hRoom
+  change heap.Borrowed initial p1 (w1.map Float.toBits) at hW1
+  change heap.Borrowed initial p2 (w2.map Float.toBits) at hW2
+  change heap.Borrowed initial px (x.map Float.toBits) at hX
+  change heap.Room initial gpt.module
+    (48 + 8 * (hidden.toNat + 1) + (48 + 8 * (d.toNat + 1))) at hRoom
+  have hImports : gpt.module.imports = [] := rfl
+  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
+  have hNoImports : gpt.module.imports.length = 0 := rfl
+  let start : State :=
+    { params := [.i64 p1, .i64 p2, .i64 px, .i64 hidden, .i64 d]
+      locals := [.i64 0, .i64 0, .i64 0] }
+  have hStart : start.params.length + start.locals.length = 8 := rfl
+  have hGet : start.get 0 = some (.i64 p1) ∧ start.get 1 = some (.i64 p2) ∧
+      start.get 2 = some (.i64 px) ∧ start.get 3 = some (.i64 hidden) ∧
+      start.get 4 = some (.i64 d) := ⟨rfl, rfl, rfl, rfl, rfl⟩
+  show Triple _ (.seq (.call 4 [⟨.u64, .get 0⟩, ⟨.u64, .get 2⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [5])
+    (.seq (.call 4 [⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 3⟩] [6])
+      (.seq (.assign 7 (.get 6)) (.release 5)))) 8
+    (fun store state => store = initial ∧ state = start) _
+  -- The temporary: `w1 · x`.
+  refine Stmt.seq_spec (Stmt.callImplements_spec matVec_implements
+    (f := gpt.matVec.ir.function (2 + 1)) rfl
+    (by rw [hNoImports]; exact compile_funcs (funcs := gpt.funcs) (i := 1) rfl) rfl
+    (vals := [.i64 p1, .i64 px, .i64 hidden, .i64 d]) (x := (w1, x, hidden, d))
+    (afterArgs := start)
+    (by simp [Expr.evalResults, Expr.eval, hGet.1, hGet.2.2.1, hGet.2.2.2.1, hGet.2.2.2.2]) hHeap
+    ⟨[.i64 p1], _, rfl, ⟨p1, rfl, hW1⟩, [.i64 px], _, rfl, ⟨px, rfl, hX⟩, rfl⟩
+    (hRoom.after (used := 0) (by omega) (by simp only [matVecNeed]; omega) rfl)
+    fun _ _ values h => by
+      obtain ⟨q, rfl, -⟩ := h
+      exact ⟨start.update 5 (.i64 q), by
+        simp [State.setAll, State.set?_eq_update _ (show 5 < start.params.length +
+          start.locals.length by rw [hStart]; decide)]⟩) ?_
+  apply Triple.of_forall
+  rintro store1 t1 ⟨heap1, values1, hAt1, hOwnedH, -, hTop1, hPages1, hCaps1, hKeepB1, hKeepO1,
+    hOutB1, hOutO1, hSet1⟩
+  obtain ⟨ph, rfl, hH⟩ := hOwnedH
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, State.setAll,
+    State.set?_eq_update _ (show 5 < start.params.length + start.locals.length by
+      rw [hStart]; decide), Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hSet1
+  subst hSet1
+  let H := matVecTuple (w1, x, hidden, d)
+  have hT1 : (start.update 5 (.i64 ph)).params.length +
+      (start.update 5 (.i64 ph)).locals.length = 8 := by simp [start]
+  have hU : ∀ j, j ≠ 5 → (start.update 5 (.i64 ph)).get j = start.get j :=
+    fun j hj => State.get_update_ne hj
+  have hU5 : (start.update 5 (.i64 ph)).get 5 = some (.i64 ph) :=
+    State.get_update_same (by rw [hStart]; decide)
+  -- The result: `w2 · h`.
+  refine Stmt.seq_spec (Stmt.callImplements_spec matVec_implements
+    (f := gpt.matVec.ir.function (2 + 1)) rfl
+    (by rw [hNoImports]; exact compile_funcs (funcs := gpt.funcs) (i := 1) rfl) rfl
+    (vals := [.i64 p2, .i64 ph, .i64 d, .i64 hidden]) (x := (w2, H, d, hidden))
+    (afterArgs := start.update 5 (.i64 ph))
+    (by simp [Expr.evalResults, Expr.eval, hU 1 (by decide), hU 4 (by decide),
+      hU 3 (by decide), hU5, hGet.2.1, hGet.2.2.2.1, hGet.2.2.2.2])
+    hAt1 ⟨[.i64 p2], _, rfl, ⟨p2, rfl, hKeepB1 p2 _ hW2⟩, [.i64 ph], _, rfl, ⟨ph, rfl, hH.borrowed⟩,
+      rfl⟩
+    (hRoom.after (used := 48 + 8 * (hidden.toNat + 1)) (by simpa [matVecNeed] using hTop1)
+      (by simp only [matVecNeed]; omega) hCaps1)
+    fun _ _ values h => by
+      obtain ⟨q, rfl, -⟩ := h
+      exact ⟨(start.update 5 (.i64 ph)).update 6 (.i64 q), by
+        simp [State.setAll, State.set?_eq_update _ (show 6 < _ by rw [hT1]; decide)]⟩) ?_
+  apply Triple.of_forall
+  rintro store2 t2 ⟨heap2, values2, hAt2, hOwnedR, -, hTop2, hPages2, hCaps2, hKeepB2, hKeepO2,
+    hOutB2, hOutO2, hSet2⟩
+  obtain ⟨pr, rfl, hR⟩ := hOwnedR
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, State.setAll,
+    State.set?_eq_update _ (show 6 < _ by rw [hT1]; decide), Option.bind_eq_bind,
+    Option.bind_some, Option.some.injEq] at hSet2
+  subst hSet2
+  -- The result is stored, and the temporary released.
+  have hH2 := hKeepO2 ph _ hH
+  let t3 := ((start.update 5 (.i64 ph)).update 6 (.i64 pr)).update 7 (.i64 pr)
+  refine Stmt.seq_spec (Stmt.run_spec (final := t3) (by
+    simp [Stmt.run, Expr.eval, State.set?_eq_update, start, t3])) ?_
+  refine (Stmt.release_spec hImports hRelease (by simp [t3, start]) hAt2 hH2.1).mono
+    (fun _ _ h => h) ?_
+  rintro store3 state3 ⟨rfl, rfl⟩
+  -- Every live array lies apart from the temporary.
+  have hApartB : ∀ p ws, heap.Borrowed initial p ws →
+      regionsDisjoint (p.toNat, 8 * (ws.size + 1)) (ph.toNat - 48, 48 + capacityAt store2 ph) := by
+    intro p ws h
+    obtain ⟨q, hq, hDisjoint⟩ := hOutB1 p ws h
+    simp only [List.cons.injEq, Value.i64.injEq, and_true] at hq
+    subst hq
+    rw [hH2.2]; exact hDisjoint
+  have hApartR : regionsDisjoint (pr.toNat - 48, 48 + capacityAt store2 pr)
+      (ph.toNat - 48, 48 + capacityAt store2 ph) := by
+    obtain ⟨q, hq, hDisjoint⟩ := hOutO2 ph _ hH
+    simp only [List.cons.injEq, Value.i64.injEq, and_true] at hq
+    subst hq
+    rw [hH2.2]; exact regionsDisjoint_symm hDisjoint
+  obtain ⟨hR3, hCapR⟩ := hR.release hH2.1 hApartR
+  refine ⟨_, hAt2.release hH2.1,
+    ⟨[.i64 p1], _, rfl, ⟨p1, rfl, (hKeepB2 p1 _ (hKeepB1 p1 _ hW1)).release hH2.1
+        (hApartB p1 _ hW1)⟩,
+      [.i64 p2], _, rfl, ⟨p2, rfl, (hKeepB2 p2 _ (hKeepB1 p2 _ hW2)).release hH2.1
+        (hApartB p2 _ hW2)⟩,
+      [.i64 px], _, rfl, ⟨px, rfl, (hKeepB2 px _ (hKeepB1 px _ hX)).release hH2.1
+        (hApartB px _ hX)⟩, rfl⟩,
+    by simp only [matVec2Need, matVecNeed] at hTop1 hTop2 ⊢; show heap2.top.toNat ≤ _; omega,
+    by simp only [matVec2Need, matVecNeed, Heap.releaseStore_pages] at hPages1 hPages2 hTop1 ⊢
+       omega,
+    hCaps2.trans hCaps1,
+    fun p ws h => (hKeepB2 p ws (hKeepB1 p ws h)).release hH2.1 (hApartB p ws h),
+    fun p ws h => ?_, [.i64 pr], t3, by simp [gpt.matVec2.ir, Func.scratch, Expr.evalResults,
+      Expr.eval, t3, start], ⟨pr, rfl, hR3⟩, fun p ws h => ?_, fun p ws h => ?_⟩
+  · obtain ⟨hO1, hC1⟩ := hKeepO1 p ws h
+    obtain ⟨hO2, hC2⟩ := hKeepO2 p ws hO1
+    have hApart : regionsDisjoint (p.toNat - 48, 48 + capacityAt store2 p)
+        (ph.toNat - 48, 48 + capacityAt store2 ph) := by
+      obtain ⟨q, hq, hDisjoint⟩ := hOutO1 p ws h
+      simp only [List.cons.injEq, Value.i64.injEq, and_true] at hq
+      subst hq
+      rw [hH2.2, hC2, hC1]; exact hDisjoint
+    obtain ⟨hO3, hC3⟩ := hO2.release hH2.1 hApart
+    exact ⟨hO3, hC3.trans (hC2.trans hC1)⟩
+  · obtain ⟨q, hq, hDisjoint⟩ := hOutB2 p ws (hKeepB1 p ws h)
+    exact ⟨q, hq, by
+      simp only [List.cons.injEq, Value.i64.injEq, and_true] at hq
+      subst hq
+      rw [hCapR]; exact hDisjoint⟩
+  · obtain ⟨hO1, hC1⟩ := hKeepO1 p ws h
+    obtain ⟨q, hq, hDisjoint⟩ := hOutO2 p ws hO1
+    exact ⟨q, hq, by
+      simp only [List.cons.injEq, Value.i64.injEq, and_true] at hq
+      subst hq
+      rw [hCapR, ← hC1]; exact hDisjoint⟩
+
 /-- `encode` succeeds on `gpt.module`, and its bytes decode to a module whose
 exports compute the kernels exactly. -/
 theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
     ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 3 dotTuple (fun _ => 0) ∧
       Implements m 4 matVecTuple matVecNeed ∧ Implements m 5 layerTuple layerNeed ∧
       Implements m 6 LeanExe.Examples.Gpt.exp (fun _ => 0) ∧
-      Implements m 7 LeanExe.Examples.Gpt.softmax softmaxNeed := by
+      Implements m 7 LeanExe.Examples.Gpt.softmax softmaxNeed ∧
+      Implements m 8 matVec2Tuple matVec2Need := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
-    layerNorm_implements, exp_implements, softmax_implements⟩
+    layerNorm_implements, exp_implements, softmax_implements, matVec2_implements⟩
 
 end Project.Gpt

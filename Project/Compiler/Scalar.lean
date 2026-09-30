@@ -76,6 +76,9 @@ structure Ctx where
   /-- Whether calls with scalar arguments and results may appear where code must
   keep the store: true in loop bodies and elements of `LeanExe.build`. -/
   pureCalls : Bool := false
+  /-- Whether a `let` may bind an array: true at the top of a function body, false
+  in a branch, since the array is released at the end of the function. -/
+  temporaries : Bool := true
 
 def Ctx.result (ctx : Ctx) : Nat := ctx.params.size
 def Ctx.done (ctx : Ctx) : Nat := ctx.params.size + 1
@@ -132,6 +135,9 @@ structure Prelude where
   base : Nat
   vars : Array ScalarType := #[]
   names : Array (String × Nat) := #[]
+  /-- The locals of the temporary arrays, released at the end of the function, with
+  their sources. -/
+  temporaries : Array (Nat × String) := #[]
 
 /-- The next free local. -/
 def Prelude.next (p : Prelude) : Nat := p.base + p.vars.size
@@ -859,6 +865,23 @@ mutual
     peel ctx term fun ctx term => do
       let type ← whnfR type
       if let .letE name letType value body _ := term then
+        if ← isArray letType then
+          -- A temporary array, from a call or a build, released at the end of the function.
+          let source ← sourceOf value
+          unless ctx.temporaries && ctx.foldable && ctx.allocating do
+            throwError "an array may be bound by `let` only at the top of a function body: {source}"
+          let local_ ← match ctx.callees.lookup value.getAppFn.constName with
+            | some index => do
+                let [(result, .u64)] ← translateCall ctx value index
+                  | throwError "a `let` array must come from a call that returns one array: {source}"
+                pure result
+            | none => translateArray ctx value
+          modify fun p => { p with temporaries := p.temporaries.push (local_, source) }
+          let floatArray ← isFloatArray letType
+          return ← withLocalDeclD name letType fun x =>
+            let inner := if floatArray then { ctx with floatArrays := (x, local_) :: ctx.floatArrays }
+              else { ctx with arrays := (x, local_) :: ctx.arrays }
+            translateResults inner (body.instantiate1 x) type dests?
         let scalar ← scalarTypeOf letType
         let (⟨_, v⟩, vHints) ← translateAs ctx ⟨[], 0⟩ scalar value
         let local_ ← fresh scalar name.toString
@@ -953,8 +976,9 @@ mutual
       | some dests => pure dests
       | none => types.mapM fun type => fresh type "result"
     let (c, cHints) ← translateCondition ctx ⟨[], 0⟩ condition
-    let (_, thenStmts, thenHints) ← withBlock (translateResults ctx thenTerm type dests)
-    let (_, elseStmts, elseHints) ← withBlock (translateResults ctx elseTerm type dests)
+    let branchCtx := { ctx with temporaries := false }
+    let (_, thenStmts, thenHints) ← withBlock (translateResults branchCtx thenTerm type dests)
+    let (_, elseStmts, elseHints) ← withBlock (translateResults branchCtx elseTerm type dests)
     let stmt := Project.IR.Stmt.ite c (seqAll thenStmts) (seqAll elseStmts)
     let branchAt := exprLength c
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "result branch" source :: cHints ++
@@ -1107,7 +1131,22 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := []) :
         { self := declName, params, words, floats, arrays, floatArrays, callees,
           foldable := true }
       let ((results, resultHints), prelude) ←
-        (translateResults ctx body resultType).run { base := params.size }
+        (do
+          let (results, resultHints) ← translateResults ctx body resultType
+          let temporaries := (← get).temporaries
+          if temporaries.isEmpty then return (results, resultHints)
+          -- With temporaries, each result is stored before the releases, so that no
+          -- result reads a released array.
+          let mut stored := #[]
+          for (⟨resultType, ir⟩, own) in results.zip resultHints do
+            let local_ ← fresh resultType "result"
+            let stmt := Project.IR.Stmt.assign local_ ir
+            pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "result" "result" :: own)
+            stored := stored.push (readLocal (local_, resultType))
+          for (local_, source) in temporaries.reverse do
+            let stmt := Project.IR.Stmt.release local_
+            pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "release temporary" source]
+          return (stored.toList, stored.toList.map fun _ => [])).run { base := params.size }
       -- Each result's code follows the body and the earlier results.
       let (_, shifted) := (results.zip resultHints).foldl (init := (prelude.length, []))
         fun (offset, hints) (⟨_, ir⟩, own) =>

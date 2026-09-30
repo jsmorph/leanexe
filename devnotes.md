@@ -19300,3 +19300,30 @@ counts.
 
 - [x] GPT 4b: `softmax`.
 - [ ] GPT 5: one transformer block.
+
+## 2026-09-30: GPT 5a, temporary arrays
+
+The user chose option A for combining kernels: a `let` at the top of a function
+body may bind an array produced by a call or a build.  The compiler records it in
+its state, stores every result in a local, and releases the temporaries at the
+end of the function in reverse order; a `let` of an array inside a branch is
+rejected.  The user also chose release at the end over release after the last
+use.
+
+Releasing a temporary needs every live array to lie apart from it.  `Implements`
+allowed a function to return its own argument as its owned result, so the user
+chose to add freshness: every object the result owns lies apart from each array
+borrowed or owned before the call.  `Represent` gained a method, `outside`, that
+states this for any represented value, and the keep clause for owned arrays now
+keeps their capacity.  `Heap.NewArray` already proved both facts, so each proof
+gained a few terms, and `Heap.NewArray.two` covers two allocations in a row.
+`Heap.Owned.borrowed` lends an owned temporary to a later call.
+
+`matVec2 w1 w2 x hidden d = matVec w2 (matVec w1 x hidden d) d hidden` is the first
+program with a temporary.  Its proof (132 lines) composes two calls and a release,
+using the freshness facts to show that the inputs, the other owned arrays, and the
+result survive the release.  `gpt.wasm` (3,194 bytes) matched native Lean on 863
+inputs, and a session freed all five allocations.
+
+- [x] GPT 5a: temporaries and `matVec2`.
+- [ ] GPT 5b: one transformer block.
