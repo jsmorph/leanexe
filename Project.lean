@@ -42,6 +42,7 @@ import Project.IR.Expr
 import Project.IR.Fold
 import Project.IR.Function
 import Project.IR.Hint
+import Project.IR.Live
 import Project.IR.Loop
 import Project.IR.Read
 import Project.IR.Release

@@ -19339,3 +19339,21 @@ operations, but `simp` unfolded `U64Op.apply` before using them, and the split
 alone sufficed, so I removed them.  `gpt.wasm` matched native Lean on 40 inputs.
 
 - [x] GPT 5b: `matMul`.
+
+## 2026-09-30: The Live invariant for composite functions
+
+A function that combines kernels by calls and releases temporaries repeats one
+argument at every step: the result of a call is fresh, the other arrays stay
+owned with their capacity, and a release keeps everything apart from the
+released block.  `Project/IR/Live.lean` states that once.  `Live heap0 initial
+used heap store temps` holds the allocator invariant, the bounds for `used`
+bytes, the caller's arrays kept, and the live temporaries, newest first, each
+owned and pairwise apart.  `Live.call` adds the fresh result of a call that
+returns an `Array Float`, `Live.releaseSecond` releases the temporary below the
+result, which is the order the compiler emits, and `Live.finish` gives the
+postcondition of `Func.implements_heap`.  Reproved with it, `matVec2` went from
+132 to 68 lines.
+
+The transformer block will consist of kernels, which use loops and builds, and
+composite functions, which only call kernels and release temporaries.  A
+composite that allocated with a build would need a `Live.build` lemma as well.
