@@ -717,4 +717,15 @@ theorem Heap.NewArray.two {heap heap1 heap2 : Heap} {initial store1 store2 : Sto
     rw [hCap1]
     exact ⟨h1.ownedApart p ws h, hApart2⟩
 
+/-- An owned array can be lent: it is also borrowed, in the same heap. -/
+theorem Heap.Owned.borrowed {heap : Heap} {store : Store Unit} {p : UInt64} {ws : Array UInt64}
+    (h : heap.Owned store p ws) : heap.Borrowed store p ws := by
+  have hCapacity := h.capacity
+  have hBelow := h.below
+  have hBase := h.base
+  refine ⟨h.values, by omega, fun node hNode => ?_⟩
+  have hSeparate := h.separate node hNode
+  unfold regionsDisjoint at hSeparate ⊢
+  omega
+
 end Project.Pipeline

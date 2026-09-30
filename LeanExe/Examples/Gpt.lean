@@ -49,4 +49,11 @@ def softmax (xs : Array Float) : Array Float :=
   let total := LeanExe.loop xs.size.toUInt64 0.0 fun i acc => acc + exp (xs[i.toNat]! - mx)
   LeanExe.build xs.size.toUInt64 fun i => exp (xs[i.toNat]! - mx) / total
 
+/-- Two matrix-vector products, `w2 · (w1 · x)`, where `w1` has `hidden` rows and
+`d` columns and `w2` has `d` rows and `hidden` columns.  The intermediate vector
+is a temporary array. -/
+def matVec2 (w1 w2 x : Array Float) (hidden d : UInt64) : Array Float :=
+  let h := matVec w1 x hidden d
+  matVec w2 h d hidden
+
 end LeanExe.Examples.Gpt
