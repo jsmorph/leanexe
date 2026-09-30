@@ -480,6 +480,14 @@ mutual
         let (x, xHints) ← translateValue ctx loc operand
         let ir : IRExpr .f64 := .convertU x
         return (ir, hint ir "word to float" :: xHints)
+    | (``GetElem?.getElem!, #[_, _, _, _, _, _, array, position]) =>
+        let some arrayLocal := ctx.floatArrays.lookup array.consumeMData
+          | throwError "a float read must be of an `Array Float` variable: {source}"
+        let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
+          | throwError "a read position must be `i.toNat` for a UInt64 `i`: {source}"
+        let (i, iHints) ← translateValue ctx loc k
+        let ir : IRExpr .f64 := .ofBits (.read arrayLocal i)
+        return (ir, hint ir "float array read" :: iHints)
     | (fn, #[left, right, out, _, a, b]) =>
         let some (_, op, rule) := floatRules.find? (·.1 == fn)
           | throwError "unsupported float operation {fn} in {source}"
@@ -1043,6 +1051,7 @@ def irToExpr : {type : ScalarType} → IRExpr type → Lean.Expr
   | _, .unF op operand => mkApp2 (mkConst ``Project.IR.Expr.unF) (toExpr op) (irToExpr operand)
   | _, .convertU operand => mkApp (mkConst ``Project.IR.Expr.convertU) (irToExpr operand)
   | _, .truncSatU operand => mkApp (mkConst ``Project.IR.Expr.truncSatU) (irToExpr operand)
+  | _, .ofBits operand => mkApp (mkConst ``Project.IR.Expr.ofBits) (irToExpr operand)
   | _, .read array position =>
       mkApp2 (mkConst ``Project.IR.Expr.read) (toExpr array) (irToExpr position)
   | _, .constF bits => mkApp (mkConst ``Project.IR.Expr.constF) (toExpr bits)
