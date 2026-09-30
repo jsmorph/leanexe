@@ -62,6 +62,14 @@ def matMul (a b : Array Float) (n k m : UInt64) : Array Float :=
   LeanExe.build (n * m) fun e =>
     LeanExe.loop k 0.0 fun c acc => acc + a[(e / m * k + c).toNat]! * b[(c * m + e % m).toNat]!
 
+/-- The product of the `n × k` matrix `x` and the `k × m` matrix `w`, both stored by
+rows, plus the bias `b[c]` in each column `c`: the linear layer `x · w + b`.  Each
+element sums the products first and then adds the bias. -/
+def linear (x w b : Array Float) (n k m : UInt64) : Array Float :=
+  LeanExe.build (n * m) fun e =>
+    LeanExe.loop k 0.0 (fun c acc => acc + x[(e / m * k + c).toNat]! * w[(c * m + e % m).toNat]!) +
+      b[(e % m).toNat]!
+
 /-- The element-wise sum of `a` and `b` over the length of `a`, with 0 for each
 missing element of `b`. -/
 def add (a b : Array Float) : Array Float :=
@@ -81,11 +89,12 @@ def geluArray (xs : Array Float) : Array Float :=
   LeanExe.build xs.size.toUInt64 fun i => gelu xs[i.toNat]!
 
 /-- The MLP of a transformer block on `t` rows of width `d` with hidden width `f`:
-`gelu (x · w1) · w2`, where `x` is `t × d`, `w1` is `d × f`, and `w2` is `f × d`. -/
-def mlp (x w1 w2 : Array Float) (t d f : UInt64) : Array Float :=
-  let h := matMul x w1 t d f
+`gelu (x · wfc + bfc) · wproj + bproj`, where `x` is `t × d`, `wfc` is `d × f`, and
+`wproj` is `f × d`. -/
+def mlp (x wfc bfc wproj bproj : Array Float) (t d f : UInt64) : Array Float :=
+  let h := linear x wfc bfc t d f
   let g := geluArray h
-  matMul g w2 t f d
+  linear g wproj bproj t f d
 
 /-- The mean of each of the `t` rows of width `d` of `x`. -/
 def rowMeans (x : Array Float) (t d : UInt64) : Array Float :=
@@ -156,29 +165,30 @@ def causalMatMul (p v : Array Float) (t nh dh : UInt64) : Array Float :=
 
 /-- Causal self-attention with `nh` heads of width `dh` on `t` rows of width
 `d = nh · dh`, with `d × d` weight matrices stored by rows: for each head,
-`softmax (q kᵀ / √dh, masked) · v` over that head's columns, then the product with
-`wo`, where `q`, `k`, and `v` are `x · wq`, `x · wk`, and `x · wv`.  Row `i` depends
+`softmax (q kᵀ / √dh, masked) · v` over that head's columns, then `· wo + bo`, where
+`q`, `k`, and `v` are `x · wq + bq`, `x · wk + bk`, and `x · wv + bv`.  Row `i` depends
 only on rows `0` to `i` of `x`: `maskedScores` reads no later key, and `causalMatMul`
 reads no later value. -/
-def attention (x wq wk wv wo : Array Float) (t nh dh : UInt64) : Array Float :=
-  let q := matMul x wq t (nh * dh) (nh * dh)
-  let k := matMul x wk t (nh * dh) (nh * dh)
-  let v := matMul x wv t (nh * dh) (nh * dh)
+def attention (x wq bq wk bk wv bv wo bo : Array Float) (t nh dh : UInt64) : Array Float :=
+  let q := linear x wq bq t (nh * dh) (nh * dh)
+  let k := linear x wk bk t (nh * dh) (nh * dh)
+  let v := linear x wv bv t (nh * dh) (nh * dh)
   let s := maskedScores q k t nh dh (1.0 / dh.toFloat.sqrt)
   let p := softmaxRows s (t * nh) t
   let o := causalMatMul p v t nh dh
-  matMul o wo t (nh * dh) (nh * dh)
+  linear o wo bo t (nh * dh) (nh * dh)
 
-/-- A transformer block in the form of GPT-2's, with no biases in its linear layers,
-on `t` rows of width `nh · dh` with `nh` heads and hidden width `f`:
-`r = x + attention (layerNormRows x g1 b1)`, then `r + mlp (layerNormRows r g2 b2)`. -/
-def block (x g1 b1 wq wk wv wo g2 b2 w1 w2 : Array Float) (t nh dh f : UInt64) (eps : Float) :
-    Array Float :=
+/-- A GPT-2 transformer block in binary64 arithmetic on `t` rows of width `nh · dh`,
+with `nh` heads and hidden width `f`: `r = x + attention (layerNormRows x g1 b1)`, then
+`r + mlp (layerNormRows r g2 b2)`.  The weights follow GPT-2's order, with the `q`,
+`k`, and `v` parts of `c_attn` as separate matrices. -/
+def block (x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Float)
+    (t nh dh f : UInt64) (eps : Float) : Array Float :=
   let h1 := layerNormRows x g1 b1 t (nh * dh) eps
-  let a := attention h1 wq wk wv wo t nh dh
+  let a := attention h1 wq bq wk bk wv bv wo bo t nh dh
   let r := add x a
   let h2 := layerNormRows r g2 b2 t (nh * dh) eps
-  let m := mlp h2 w1 w2 t (nh * dh) f
+  let m := mlp h2 wfc bfc wproj bproj t (nh * dh) f
   add r m
 
 /-- The embeddings of `t` tokens as `t` rows of width `d`: row `i` is row
@@ -193,17 +203,19 @@ def matMulT (a b : Array Float) (n k m : UInt64) : Array Float :=
   LeanExe.build (n * m) fun e =>
     LeanExe.loop k 0.0 fun c acc => acc + a[(e / m * k + c).toNat]! * b[(e % m * k + c).toNat]!
 
-/-- A two-layer forward pass in the form of GPT-2's, built from `block`, on `t` tokens
+/-- The forward pass of a two-layer GPT-2 model in binary64 arithmetic on `t` tokens,
 with `nh` heads of width `dh`, hidden width `f`, and `vocab` token embeddings: the
 embeddings, two blocks, a final layer norm, and the scores of each position against
 every token embedding, as `t` rows of width `vocab`. -/
 def forward (tokens : Array UInt64) (wte wpe : Array Float)
-    (g1a b1a wqa wka wva woa g2a b2a w1a w2a : Array Float)
-    (g1b b1b wqb wkb wvb wob g2b b2b w1b w2b : Array Float) (gf bf : Array Float)
-    (t nh dh f vocab : UInt64) (eps : Float) : Array Float :=
+    (g1a b1a wqa bqa wka bka wva bva woa boa g2a b2a wfca bfca wproja bproja : Array Float)
+    (g1b b1b wqb bqb wkb bkb wvb bvb wob bob g2b b2b wfcb bfcb wprojb bprojb : Array Float)
+    (gf bf : Array Float) (t nh dh f vocab : UInt64) (eps : Float) : Array Float :=
   let x0 := embed tokens wte wpe t (nh * dh)
-  let x1 := block x0 g1a b1a wqa wka wva woa g2a b2a w1a w2a t nh dh f eps
-  let x2 := block x1 g1b b1b wqb wkb wvb wob g2b b2b w1b w2b t nh dh f eps
+  let x1 := block x0 g1a b1a wqa bqa wka bka wva bva woa boa g2a b2a wfca bfca wproja bproja
+    t nh dh f eps
+  let x2 := block x1 g1b b1b wqb bqb wkb bkb wvb bvb wob bob g2b b2b wfcb bfcb wprojb bprojb
+    t nh dh f eps
   let h := layerNormRows x2 gf bf t (nh * dh) eps
   matMulT h wte t (nh * dh) vocab
 
