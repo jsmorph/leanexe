@@ -19586,3 +19586,33 @@ repository for now.
 - [x] Tools in the repository.
 - [ ] Profile and fix the build time of `Composites.lean`.
 - [ ] The array-state loop and `slice`.
+
+## 2026-09-30: The build time of the composite proofs
+
+Lean's profiler put 438 of `Composites.lean`'s 371 seconds of wall time (the four
+proofs elaborate in parallel) in tactic execution, most of it in two `rintro`
+steps per theorem that take the argument tuple apart.  Timed alone, the `arity`
+obligation took 0.37 seconds with 9 arrays, 4.5 with 17, and 114 with 37: about
+the fourth power of the number of arrays.  The pattern works on the tuple
+variable `x`, so each level unfolds `Represent.borrowed` through the nested pair
+instances and ever longer projections.  Destructuring `x` first and applying
+`Represent.borrowed_float_pair` (or `_uint_pair`) once per array took 0.40
+seconds for 37 arrays, and the file dropped to 64 seconds.
+
+The next cost was argument evaluation: `simp` with the default set, including
+Mathlib's lemmas, took 8 seconds alone for `forward`'s 21-argument call, and
+`simp only` with the lemmas `simp?` reported took 2.3.  Proving each evaluation
+by `rfl` was far slower, since unfolding the evaluator is expensive.  The
+generator now writes the proof term directly: `Expr.evalResults_get`, `_getF`,
+and `_mul` per argument, applied to facts about the state built from
+`State.get_update_ne` and `State.get_update_same`.  Only the attention scale,
+which involves floating-point operations, keeps `simp`.  Releases use
+`Live.releaseSecond_seq`, which hands the rest of the proof the new store, so no
+`rintro` substitutes the unchanged state after each release.
+
+`Composites.lean` now builds in 19 seconds, down from 371, with no
+`maxHeartbeats` option; the four theorems take 1 to 11 seconds each.  The
+emitted bytes, the 1,812 comparisons, the sessions, and the axioms are unchanged.
+
+- [x] Profile and fix the build time of `Composites.lean`.
+- [ ] The array-state loop and `slice`.

@@ -85,6 +85,40 @@ def represent(items, tail):
     return '⟨' + ', '.join(parts) + '⟩'
 
 
+def state_fact(r, depth, nparams):
+    """A proof that local `r` of state `s{depth}` holds its value.  State `s{i}` is
+    `s{i-1}` (or `start`) with local `nparams + i - 1` updated."""
+    def base(i):
+        return 'start' if i == 1 else f's{i - 1}'
+    if r < nparams:
+        term, low = f'sg{r}', 1
+    else:
+        m = r - nparams + 1
+        bound = 'hStart' if m == 1 else f'hS{m - 1}'
+        term, low = f'State.get_update_same (state := {base(m)}) (by rw [{bound}]; decide)', m + 1
+    for i in range(low, depth + 1):
+        term = (f'(State.get_update_ne (state := {base(i)}) (j := {r}) (index := {nparams + i - 1}) '
+                f'(by decide)).trans ({term})')
+    return term
+
+
+def eval_lines(args, depth, nparams, ind):
+    """The proof that the arguments evaluate, one line per argument."""
+    out = []
+    for a in args:
+        if isinstance(a, tuple) and a[0] == 'mul':
+            out.append(f'Expr.evalResults_mul ({state_fact(a[1], depth, nparams)}) '
+                       f'({state_fact(a[2], depth, nparams)}) <|')
+        elif isinstance(a, tuple) and a[0] == 'f':
+            out.append(f'Expr.evalResults_getF ({state_fact(a[1], depth, nparams)}) <|')
+        else:
+            out.append(f'Expr.evalResults_get ({state_fact(a, depth, nparams)}) <|')
+    out.append('Expr.evalResults_nil')
+    out[0] = '(' + out[0]
+    out[-1] = out[-1] + ')'
+    return [ind + out[0]] + [ind + '  ' + line for line in out[1:]]
+
+
 def composite(spec):
     temps_by_reg = {}
     name = spec['name']
@@ -103,16 +137,22 @@ def composite(spec):
                  f"{spec['tuple']} {spec['need']} := by")
     lines.append(f"  refine Func.implements_heap gpt.funcs {spec['index']} gpt.{name}.ir \"{name}\" rfl")
     lines.append(f"    {spec['tuple']} {spec['need']}")
-    shape = '⟨' + ', '.join('_, _, rfl, ⟨_, rfl, -⟩' for _ in arrays) + ', rfl⟩'
-    lines.append(f'    (by rintro _ _ _ _ {wrap(shape, "      ")}; rfl) ?_')
-    lines.append(f'  rintro ⟨{wrap(", ".join(names), "    ")}⟩ heap initial _ hHeap')
-    destr = '⟨' + ', '.join(f'_, _, rfl, ⟨{ptr(n)}, rfl, {hyp(n)}⟩' for n in arrays) + ', rfl⟩'
-    lines.append(f'    {wrap(destr, "      ")} hRoom')
+    # The arguments are taken apart one array at a time with `Represent.borrowed_float_pair`
+    # and `Represent.borrowed_uint_pair`; `rintro` patterns on the undestructured tuple
+    # grow with about the fourth power of the number of arrays.
+    lemma = {'A': 'Represent.borrowed_float_pair', 'U': 'Represent.borrowed_uint_pair'}
+    lines.append(f'    (by')
+    lines.append(f'      rintro _ _ _ ⟨{wrap(", ".join("_" for _ in names), "        ")}⟩ h')
     for n, k in params:
-        if k == 'A':
-            lines.append(f'  change heap.Borrowed initial {ptr(n)} ({n}.map Float.toBits) at {hyp(n)}')
-        elif k == 'U':
-            lines.append(f'  change heap.Borrowed initial {ptr(n)} {n} at {hyp(n)}')
+        if k in 'AU':
+            lines.append(f'      obtain ⟨_, _, rfl, -, h⟩ := {lemma[k]} h')
+    lines.append('      obtain rfl := h')
+    lines.append('      rfl) ?_')
+    lines.append(f'  rintro ⟨{wrap(", ".join(names), "    ")}⟩ heap initial _ hHeap hArgs hRoom')
+    for n, k in params:
+        if k in 'AU':
+            lines.append(f'  obtain ⟨{ptr(n)}, _, rfl, {hyp(n)}, hArgs⟩ := {lemma[k]} hArgs')
+    lines.append('  obtain rfl := hArgs')
     lines.append(f"  change heap.Room initial gpt.module ({spec['room']}) at hRoom")
     if spec.get('room_unfold'):
         lines.append(f"  simp only [{', '.join(spec['room_unfold'])}] at hRoom")
@@ -181,15 +221,20 @@ def composite(spec):
                 cvals.append(vals[a])
         lines.append(f'    (vals := [{wrap(", ".join(cvals), "      ")}])')
         reads = sorted({r for a in c['args'] for r in arg_reads(a)})
-        simp = ['Expr.evalResults', 'Expr.eval']
-        if any(isinstance(a, tuple) and a[0] == 'mul' for a in c['args']):
-            simp.append('U64Op.apply')
-        simp += list(reversed(chain))
-        if any(r >= nparams for r in reads):
-            simp += ['State.get_update_same', 'hStart']
-        simp += [f'sg{r}' for r in reads if r < nparams]
-        simp += c.get('simp_extra', [])
-        lines.append(f'    (by simp [{wrap(", ".join(simp), "      ")}])')
+        if any(isinstance(a, tuple) and a[0] == 'scale' for a in c['args']):
+            # The scale's floating-point operations need the `F64Bits` lemmas and the
+            # default `simp` set.
+            simp = ['Expr.evalResults', 'Expr.eval']
+            simp += list(reversed(chain))
+            if any(r >= nparams for r in reads):
+                simp += ['State.get_update_same', 'hStart']
+            simp += [f'sg{r}' for r in reads if r < nparams]
+            simp += c.get('simp_extra', [])
+            lines.append(f'    (by simp [{wrap(", ".join(simp), "      ")}])')
+        else:
+            # Each argument's value, from facts about the state; `simp` over the whole
+            # argument list costs several seconds for the longer lists.
+            lines.extend(eval_lines(c['args'], len(chain), nparams, '    '))
         items = []
         for kind, a in c['borrowed']:
             if kind == 'P':
@@ -224,21 +269,13 @@ def composite(spec):
     lines.append('  -- The temporaries are released, newest first.')
     for n in range(L - 1):
         reg = nparams + n
-        k = n + 1
-        states = [f's{j}' for j in range(L + 1, k - 1, -1)]
-        bound = 'hStart' if k == 1 else f'hS{k - 1}'
-        lines.append(f'  have r{reg} : {sR}.get {reg} = some (.i64 {calls[n]["ptr"]}) := by')
-        lines.append(f'    simp [{", ".join(states)}, State.get_update_same, {bound}]')
+        lines.append(f'  have r{reg} : {sR}.get {reg} = some (.i64 {calls[n]["ptr"]}) :=')
+        lines.append(f'    {state_fact(reg, L + 1, nparams)}')
     live = f'hLive{L}'
     regs = list(range(nparams + L - 2, nparams - 1, -1))
     for idx, reg in enumerate(regs):
-        if idx < len(regs) - 1:
-            lines.append(f'  refine Stmt.seq_spec ({live}.releaseSecond hImports hRelease r{reg}) ?_')
-            lines.append('  apply Triple.of_forall')
-            lines.append(f'  rintro storeR{idx} stR{idx} ⟨hLiveR{idx}, rfl⟩')
-        else:
-            lines.append(f'  refine ({live}.releaseSecond hImports hRelease r{reg}).mono (fun _ _ h => h) ?_')
-            lines.append(f'  rintro storeR{idx} stR{idx} ⟨hLiveR{idx}, rfl⟩')
+        rule = 'releaseSecond_seq' if idx < len(regs) - 1 else 'releaseSecond_last'
+        lines.append(f'  refine {live}.{rule} hImports hRelease r{reg} fun storeR{idx} hLiveR{idx} => ?_')
         live = f'hLiveR{idx}'
     items = [(ptr(n), f'hKeep {ptr(n)} _ {hyp(n)}') for n in arrays]
     tup = '(' + ', '.join(names) + ')'
@@ -318,7 +355,7 @@ for idx, (w, b, ptrname, reg) in enumerate([('wq', 'bq', 'pq', 1), ('wk', 'bk', 
 att_need = ['linearNeed', 'maskedNeed', 'softmaxRowsNeed', 'causalMatMulNeed']
 att_spec = dict(
     name='attention', entry=24, index=21, tuple='attentionTuple', need='attentionNeed', params=ATT,
-    nlocals=8, heartbeats=True, one=True, room='attentionBytes t nh dh', room_unfold=['attentionBytes'],
+    nlocals=8, one=True, room='attentionBytes t nh dh', room_unfold=['attentionBytes'],
     funcs=[('hLinear', 30, 27, 'linear'), ('hMasked', 19, 16, 'maskedScores'),
            ('hSoftmax', 23, 20, 'softmaxRows'), ('hCausal', 26, 23, 'causalMatMul')],
     lets=[('q', 'linearTuple (x, wq, bq, t, nh * dh, nh * dh)'),
@@ -372,7 +409,6 @@ blk_need3 = blk_need2 + ['addNeed']
 blk_need5 = blk_need3 + ['mlpNeed']
 blk_spec = dict(
     name='block', entry=25, index=22, tuple='blockTuple', need='blockNeed', params=BLK, nlocals=7,
-    heartbeats=True,
     room='blockBytes t nh dh f x.size', room_unfold=['blockBytes', 'attentionBytes'],
     funcs=[('hNorm', 18, 15, 'layerNormRows'), ('hAttention', 24, 21, 'attention'), ('hAdd', 10, 7, 'add'),
            ('hMlp', 14, 11, 'mlp')],
@@ -433,7 +469,6 @@ FWD = [('tokens', 'U')] + [(n, 'A') for n in FARR[1:]] + [('t', 'u'), ('nh', 'u'
 fwd_need = ['embedNeed', 'blockNeed', 'blockBytes', 'attentionBytes', 'hX0']
 fwd_spec = dict(
     name='forward', entry=29, index=26, tuple='forwardTuple', need='forwardNeed', params=FWD, nlocals=6,
-    heartbeats=True,
     room='forwardNeed (' + ', '.join(n for n, _ in FWD) + ')',
     room_unfold=['forwardNeed', 'blockBytes', 'attentionBytes'],
     funcs=[('hEmbed', 27, 24, 'embed'), ('hBlock', 25, 22, 'block'), ('hNorm', 18, 15, 'layerNormRows'),

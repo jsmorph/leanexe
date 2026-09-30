@@ -42,6 +42,21 @@ structure Live (heap0 : Heap) (initial : Store Unit) (used : Nat) (heap : Heap)
     regionsDisjoint (block initial p) (block store t.1)
   pairwise : temps.Pairwise fun t u => regionsDisjoint (block store t.1) (block store u.1)
 
+/-- Arguments that begin with an `Array Float` begin with its pointer. -/
+theorem Represent.borrowed_float_pair {β : Type} [Represent β] {heap : Heap} {store : Store Unit}
+    {vs : List Value} {a : Array Float} {rest : β} (h : Represent.borrowed heap store vs (a, rest)) :
+    ∃ p vs', vs = .i64 p :: vs' ∧ heap.Borrowed store p (a.map Float.toBits) ∧
+      Represent.borrowed heap store vs' rest := by
+  obtain ⟨_, vs', rfl, ⟨p, rfl, hp⟩, h⟩ := h
+  exact ⟨p, vs', rfl, hp, h⟩
+
+/-- Arguments that begin with an `Array UInt64` begin with its pointer. -/
+theorem Represent.borrowed_uint_pair {β : Type} [Represent β] {heap : Heap} {store : Store Unit}
+    {vs : List Value} {a : Array UInt64} {rest : β} (h : Represent.borrowed heap store vs (a, rest)) :
+    ∃ p vs', vs = .i64 p :: vs' ∧ heap.Borrowed store p a ∧ Represent.borrowed heap store vs' rest := by
+  obtain ⟨_, vs', rfl, ⟨p, rfl, hp⟩, h⟩ := h
+  exact ⟨p, vs', rfl, hp, h⟩
+
 theorem Live.start {heap : Heap} {initial : Store Unit} (hHeap : heap.At initial) :
     Live heap initial 0 heap initial [] :=
   ⟨hHeap, by omega, le_max_left _ _, rfl, fun _ _ h => h, fun _ _ h => ⟨h, rfl⟩,
@@ -199,5 +214,57 @@ theorem Live.finish [Represent α] {heap0 heap : Heap} {initial store : Store Un
   · exact ⟨ptr, rfl, hLive.tempsOwned _ hMem⟩
   · exact ⟨ptr, rfl, hLive.apartB _ hMem p ws h⟩
   · exact ⟨ptr, rfl, hLive.apartO _ hMem p ws h⟩
+
+/-- A release followed by `next`: the proof of `next` receives the store the release
+leaves, so the caller does not substitute the unchanged state. -/
+theorem Live.releaseSecond_seq {heap0 heap : Heap} {initial store : Store Unit} {used : Nat}
+    {r t : UInt64 × Array UInt64} {rest : List (UInt64 × Array UInt64)}
+    (hLive : Live heap0 initial used heap store (r :: t :: rest)) {typeIdx scratch src : Nat}
+    {before : State} {next : Stmt} {Q : Store Unit → State → Prop} (hImports : m.imports = [])
+    (hFunc : m.funcs[2]? = some (releaseFunction typeIdx))
+    (hPtr : before.get src = some (.i64 t.1))
+    (hNext : ∀ s, Live heap0 initial used (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
+      s (r :: rest) → Triple m next scratch (fun s' st => s' = s ∧ st = before) Q) :
+    Triple m (.seq (.release src) next) scratch (fun s st => s = store ∧ st = before) Q :=
+  Stmt.seq_spec (hLive.releaseSecond hImports hFunc hPtr)
+    (Triple.of_forall fun s _ ⟨hL, hst⟩ => hst ▸ hNext s hL)
+
+/-- The last release of a body. -/
+theorem Live.releaseSecond_last {heap0 heap : Heap} {initial store : Store Unit} {used : Nat}
+    {r t : UInt64 × Array UInt64} {rest : List (UInt64 × Array UInt64)}
+    (hLive : Live heap0 initial used heap store (r :: t :: rest)) {typeIdx scratch src : Nat}
+    {before : State} {Q : Store Unit → State → Prop} (hImports : m.imports = [])
+    (hFunc : m.funcs[2]? = some (releaseFunction typeIdx))
+    (hPtr : before.get src = some (.i64 t.1))
+    (hNext : ∀ s, Live heap0 initial used (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
+      s (r :: rest) → Q s before) :
+    Triple m (.release src) scratch (fun s st => s = store ∧ st = before) Q :=
+  (hLive.releaseSecond hImports hFunc hPtr).mono (fun _ _ h => h) fun s _ ⟨hL, hst⟩ =>
+    hst ▸ hNext s hL
+
+theorem Expr.evalResults_nil {mem : Mem} {scratch : Nat} {state : State} :
+    Expr.evalResults mem scratch [] state = some ([], state) := rfl
+
+theorem Expr.evalResults_get {mem : Mem} {scratch j : Nat} {state next : State}
+    {rest : List ((type : ScalarType) × Expr type)} {vs : List Value} {v : UInt64}
+    (hj : state.get j = some (.i64 v))
+    (h : Expr.evalResults mem scratch rest state = some (vs, next)) :
+    Expr.evalResults mem scratch (⟨.u64, .get j⟩ :: rest) state = some (.i64 v :: vs, next) := by
+  simp [Expr.evalResults, Expr.eval, hj, h]
+
+theorem Expr.evalResults_getF {mem : Mem} {scratch j : Nat} {state next : State}
+    {rest : List ((type : ScalarType) × Expr type)} {vs : List Value} {v : UInt64}
+    (hj : state.get j = some (.f64 v))
+    (h : Expr.evalResults mem scratch rest state = some (vs, next)) :
+    Expr.evalResults mem scratch (⟨.f64, .getF j⟩ :: rest) state = some (.f64 v :: vs, next) := by
+  simp [Expr.evalResults, Expr.eval, hj, h]
+
+theorem Expr.evalResults_mul {mem : Mem} {scratch a b : Nat} {state next : State}
+    {rest : List ((type : ScalarType) × Expr type)} {vs : List Value} {x y : UInt64}
+    (ha : state.get a = some (.i64 x)) (hb : state.get b = some (.i64 y))
+    (h : Expr.evalResults mem scratch rest state = some (vs, next)) :
+    Expr.evalResults mem scratch (⟨.u64, .bin .mul (.get a) (.get b)⟩ :: rest) state =
+      some (.i64 (x * y) :: vs, next) := by
+  simp [Expr.evalResults, Expr.eval, ha, hb, h, U64Op.apply]
 
 end Project.IR
