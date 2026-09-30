@@ -19266,3 +19266,37 @@ locals.  `exp_implements` takes 113 lines.
 
 - [x] GPT 4a: `exp`.
 - [ ] GPT 4b: softmax, which needs calls inside loop bodies and array elements.
+
+## 2026-09-30: GPT 4b, softmax and calls that keep the store
+
+The user chose option A: calls to functions of scalars in loop bodies and array
+elements, justified by a new predicate.  `ImplementsPure m entry f` states that,
+from any store, the call returns `f x` and leaves the store unchanged.
+`Func.implementsPure` proves it for a compiled function whose body keeps the
+store, `ImplementsPure.implements` derives `Implements` from it, and
+`Stmt.callPure_spec` proves a call whose postcondition keeps the store, as the
+loop and element rules require.  `exp_pure` replaced the direct proof of `exp`,
+and `exp_implements` is now a corollary.
+
+Two changes came first.
+- `Stmt.call` took only word arguments, and `exp` takes a float.  Arguments
+  are now typed expressions, evaluated with `Expr.evalResults`, and `evalAll`
+  is gone.  The instructions did not change, and every module kept its bytes.
+- The compiler allows calls in loop bodies and elements when every argument
+  and result is a scalar, and float-valued calls in float expressions.  A fold's
+  body is one expression, so calls stay forbidden there.
+
+The first compilation of softmax put the call to `exp` before the sum loop,
+where it ran once with an unset index.  `translateLoopBody` collected its own
+statements, while a call pushed its statement to the enclosing block.  Nothing
+had exposed this before, because no expression in a loop body emitted
+statements.  Each expression of a loop body is now translated in its own block,
+and its statements precede its assignment.  I found the error by reading the
+IR before starting the proof, and the Wasmtime comparison then matched.
+
+`softmax_implements` takes 157 lines.  `gpt.wasm` (3,131 bytes) matched native
+Lean on 833 inputs, 53 of them for `softmax`, and a release session left equal
+counts.
+
+- [x] GPT 4b: `softmax`.
+- [ ] GPT 5: one transformer block.

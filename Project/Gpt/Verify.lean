@@ -4,6 +4,7 @@ import Project.IR.Loop
 import Project.IR.Read
 import Project.IR.Build
 import Project.IR.Run
+import Project.IR.Call
 import Project.Encoding.RoundTrip
 
 namespace Project.Gpt
@@ -477,10 +478,11 @@ theorem layerNorm_implements : Implements gpt.module 5 layerTuple layerNeed := b
   rw [layerTuple, layerNorm_eq, hSum, hVar, build_map]
   exact hNew.owned
 
-theorem exp_implements : Implements gpt.module 6 LeanExe.Examples.Gpt.exp (fun _ => 0) := by
-  refine Func.implements gpt.funcs 3 gpt.exp.ir "exp" rfl LeanExe.Examples.Gpt.exp
-    (fun _ _ _ _ h => by rw [Scalar.borrowed.mp h]; rfl) fun x _ initial _ _ h => ?_
-  rw [Scalar.borrowed.mp h]
+/-- `exp` keeps the store, so calls to it may run in loop bodies and array
+elements. -/
+theorem exp_pure : ImplementsPure gpt.module 6 LeanExe.Examples.Gpt.exp := by
+  refine Func.implementsPure gpt.funcs 3 gpt.exp.ir "exp" rfl LeanExe.Examples.Gpt.exp
+    (fun _ => rfl) fun x initial => ?_
   have k745 : (745.2 : Float).toBits = 4649766064339130778 := by decide +kernel
   have k709 : (709.8 : Float).toBits = 4649454682646144614 := by decide +kernel
   have kInv : (1.4426950408889634 : Float).toBits = 4609176140021203710 := by decide +kernel
@@ -591,15 +593,268 @@ theorem exp_implements : Implements gpt.module 6 LeanExe.Examples.Gpt.exp (fun _
   by_cases h1 : x == x <;> by_cases h2 : x > 709.8 <;> by_cases h3 : x < -745.2 <;>
     simp_all [F64Bits.beq_eq, F64Bits.lt_iff, F64Bits.toBits_mul, F64Bits.toBits_neg]
 
+theorem exp_implements : Implements gpt.module 6 LeanExe.Examples.Gpt.exp (fun _ => 0) :=
+  exp_pure.implements
+
+/-- `softmax` with its argument. -/
+def softmaxNeed (xs : Array Float) : Nat := 48 + 8 * (xs.size + 1)
+
+/-- One step of the maximum loop. -/
+def maxStep (xs : Array Float) (i : UInt64) (acc : Float) : Float := max acc xs[i.toNat]!
+
+/-- One step of the loop that sums the exponentials. -/
+def expSumStep (xs : Array Float) (mx : Float) (i : UInt64) (acc : Float) : Float :=
+  acc + LeanExe.Examples.Gpt.exp (xs[i.toNat]! - mx)
+
+theorem softmax_eq (xs : Array Float) :
+    LeanExe.Examples.Gpt.softmax xs =
+      LeanExe.build xs.size.toUInt64 (fun i =>
+        LeanExe.Examples.Gpt.exp (xs[i.toNat]! -
+            LeanExe.loop xs.size.toUInt64 (-(1.0 / 0.0)) (maxStep xs)) /
+          LeanExe.loop xs.size.toUInt64 0.0
+            (expSumStep xs (LeanExe.loop xs.size.toUInt64 (-(1.0 / 0.0)) (maxStep xs)))) := rfl
+
+/-- The compiled body of the maximum loop. -/
+def maxBody : Stmt :=
+  .seq (.assign 5 (.iteF (.leF (.getF 2) (.ofBits (.read 0 (.get 4))))
+    (.ofBits (.read 0 (.get 4))) (.getF 2))) (.assign 2 (.getF 5))
+
+/-- The compiled body of the loop that sums the exponentials. -/
+def expSumBody : Stmt :=
+  .seq (.call 6 [⟨.f64, .binF .sub (.ofBits (.read 0 (.get 10))) (.getF 6)⟩] [11])
+    (.seq (.assign 12 (.binF .add (.getF 8) (.getF 11))) (.assign 8 (.getF 12)))
+
+theorem maxBody_run {initial : Store Unit} {px : UInt64} {xs : Array Float}
+    (hX : UInt64Array.At initial px (xs.map Float.toBits)) {state : State} {k : Nat}
+    {acc : Float} (hParams : state.params.length = 1) (hLocals : state.locals.length = 19)
+    (h0 : state.get 0 = some (.i64 px)) (h2 : state.get 2 = some (.f64 acc.toBits))
+    (h4 : state.get 4 = some (.i64 (UInt64.ofNat k))) :
+    ∃ final, maxBody.run initial.mem 19 state = some final ∧
+      State.Frame 19 [2, 5] state final ∧
+      final.Holds [2] (Scalar.values (maxStep xs (UInt64.ofNat k) acc)) := by
+  simp [maxBody, Stmt.run, Expr.eval, h0, h2, h4, Expr.readValue_at hX, State.set?_eq_update,
+    hParams, hLocals, getElem!_map_toBits]
+  constructor
+  · repeat refine State.Frame.update ?_ (by simp)
+    exact State.Frame.refl _ _ _
+  · simp [State.Holds, Scalar.values, maxStep, hParams, hLocals, F64Bits.toBits_max]
+
+/-- The call to `exp` in `softmax`, entry 6 of the module. -/
+theorem exp_call {scratch : Nat} {args : List ((type : ScalarType) × Expr type)}
+    {results : List Nat} (hParams : args.length = 1) {initial : Store Unit}
+    {before afterArgs next : State} {d : Float}
+    (hArgs : Expr.evalResults initial.mem scratch args before = some ([.f64 d.toBits], afterArgs))
+    (hSet : afterArgs.setAll results.reverse [.f64 (LeanExe.Examples.Gpt.exp d).toBits] =
+      some next) :
+    Triple gpt.module (.call 6 args results) scratch
+      (fun store state => store = initial ∧ state = before)
+      (fun store state => store = initial ∧ state = next) :=
+  Stmt.callPure_spec exp_pure (f := gpt.exp.ir.function (2 + 3)) rfl
+    (by rw [show gpt.module.imports.length = 0 from rfl]
+        exact compile_funcs (funcs := gpt.funcs) (i := 3) rfl) hParams (x := d) hArgs hSet
+
+theorem expSumBody_spec {initial : Store Unit} {px : UInt64} {xs : Array Float} {mx : Float}
+    (hX : UInt64Array.At initial px (xs.map Float.toBits)) {state : State} {k : Nat}
+    {acc : Float} (hParams : state.params.length = 1) (hLocals : state.locals.length = 19)
+    (h0 : state.get 0 = some (.i64 px)) (h6 : state.get 6 = some (.f64 mx.toBits))
+    (h8 : state.get 8 = some (.f64 acc.toBits))
+    (h10 : state.get 10 = some (.i64 (UInt64.ofNat k))) :
+    Triple gpt.module expSumBody 19 (fun store st => store = initial ∧ st = state)
+      (fun store st => store = initial ∧ State.Frame 19 [8, 11, 12] state st ∧
+        st.Holds [8] (Scalar.values (expSumStep xs mx (UInt64.ofNat k) acc))) := by
+  let d := xs[(UInt64.ofNat k).toNat]! - mx
+  let e := LeanExe.Examples.Gpt.exp d
+  let a := state.update 19 (.i64 (UInt64.ofNat k))
+  let b := a.update 11 (.f64 e.toBits)
+  let c := b.update 12 (.f64 (acc + e).toBits)
+  let f := c.update 8 (.f64 (acc + e).toBits)
+  have hA : a.params.length = 1 ∧ a.locals.length = 19 := by simp [a, hParams, hLocals]
+  have hB : b.params.length = 1 ∧ b.locals.length = 19 := by simp [b, hA.1, hA.2]
+  refine Stmt.seq_spec (exp_call rfl (afterArgs := a) (next := b) (d := d) ?_ ?_) ?_
+  · simp [Expr.evalResults, Expr.eval, h0, h6, h10, Expr.readValue_at hX, State.set?_eq_update,
+      hParams, hLocals, F64Op.apply, getElem!_map_toBits, d, a, F64Bits.toBits_sub]
+  · simp [State.setAll, State.set?_eq_update, b, e, hA.1, hA.2]
+  refine (Stmt.run_spec (final := f) ?_).mono (fun _ _ h => h) ?_
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hB.1, hB.2, b, a, c, f, h8, hParams,
+      hLocals, F64Op.apply, F64Bits.toBits_add]
+  rintro s st ⟨rfl, rfl⟩
+  refine ⟨rfl, ?_, ?_⟩
+  · simp only [f, c, b, a]
+    repeat refine State.Frame.update ?_ (by simp)
+    exact State.Frame.refl _ _ _
+  · simp [State.Holds, Scalar.values, expSumStep, f, c, b, a, hParams, hLocals, d, e]
+
+theorem softmax_implements :
+    Implements gpt.module 7 LeanExe.Examples.Gpt.softmax softmaxNeed := by
+  refine Func.implements_heap gpt.funcs 4 gpt.softmax.ir "softmax" rfl
+    LeanExe.Examples.Gpt.softmax softmaxNeed (by rintro _ _ _ _ ⟨_, rfl, -⟩; rfl) ?_
+  rintro xs heap initial _ hHeap ⟨px, rfl, hXs⟩ hRoom
+  change heap.Borrowed initial px (xs.map Float.toBits) at hXs
+  change heap.Room initial gpt.module (48 + 8 * (xs.size + 1)) at hRoom
+  have hMemory32 : gpt.module.memIs64 = false := rfl
+  have hImports : gpt.module.imports = [] := rfl
+  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
+  have hZero : (0.0 : Float).toBits = 0 := by decide +kernel
+  have hOne : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
+  have hX := hXs.values
+  have hFit := hX.1
+  simp only [Array.size_map] at hFit
+  have hLength := hX.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLength
+  have hn : (UInt64.ofNat xs.size).toNat = xs.size :=
+    UInt64.toNat_ofNat_of_lt' (by simp only [UInt64.size]; omega)
+  let start : State :=
+    { params := [.i64 px]
+      locals := [.i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .f64 0, .i64 0, .f64 0, .i64 0, .i64 0,
+        .f64 0, .f64 0, .f64 0, .i64 0, .i64 0, .i64 0, .i64 0, .f64 0, .i64 0] }
+  show Triple _ (.seq (.arraySize 1 0) (.seq (.assign 2 (.binF .sub (.constF 9223372036854775808)
+    (.binF .div (.constF 4607182418800017408) (.constF 0))))
+    (.seq (.loop 3 4 (.get 1) maxBody) (.seq (.assign 6 (.getF 2)) (.seq (.arraySize 7 0)
+    (.seq (.assign 8 (.constF 0)) (.seq (.loop 9 10 (.get 7) expSumBody)
+    (.seq (.assign 13 (.getF 8)) (.seq (.arraySize 14 0)
+    (.buildWith 15 16 17 (.get 14)
+      (.call 6 [⟨.f64, .binF .sub (.ofBits (.read 0 (.get 17))) (.getF 6)⟩] [18])
+      (.toBits (.binF .div (.getF 18) (.getF 13))))))))))))) 19
+    (fun store state => store = initial ∧ state = start) _
+  have hParams : start.params.length = 1 := rfl
+  have hLocals : start.locals.length = 19 := rfl
+  have hGet0 : start.get 0 = some (.i64 px) := rfl
+  -- The maximum.
+  let s1 := start.update 1 (.i64 (UInt64.ofNat xs.size))
+  let s2 := s1.update 2 (.f64 (-(1.0 / 0.0) : Float).toBits)
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) ?_
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLength, hX.lengthRead,
+      State.set?_eq_update, hParams, hLocals, s1]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, s1, s2, F64Op.apply,
+      F64Bits.toBits_neg, F64Bits.toBits_div, hZero, hOne]
+  have hS2 : s2.params.length = 1 ∧ s2.locals.length = 19 := by
+    simp [s2, s1, hParams, hLocals]
+  refine Stmt.seq_spec (Stmt.loop_spec (vars := [2]) (writes := [2, 5])
+    (init := (-(1.0 / 0.0) : Float)) (n := xs.size.toUInt64) (maxStep xs)
+    (by decide) (by decide) (by decide) (by decide) (by decide)
+    (by simp [hS2.1, hS2.2]) ⟨s2, by simp [Expr.eval, s2, s1, hParams, hLocals]⟩
+    (by simp [State.Holds, Scalar.values, s2, s1, hParams, hLocals]) ?_) ?_
+  · intro k acc state hk hFrame hHolds hIndex hLimit
+    have hState : state.params.length = 1 ∧ state.locals.length = 19 :=
+      ⟨hFrame.params.trans hS2.1, hFrame.locals.trans hS2.2⟩
+    have h0 : state.get 0 = some (.i64 px) :=
+      (hFrame.get 0 (by decide) (by decide)).trans (by simp [s2, s1, hGet0])
+    have h2 : state.get 2 = some (.f64 acc.toBits) := by
+      simpa [State.Holds, Scalar.values] using hHolds
+    obtain ⟨final, hRun, hFinalFrame, hFinalHolds⟩ :=
+      maxBody_run hX hState.1 hState.2 h0 h2 hIndex
+    refine (Stmt.run_spec hRun).mono (fun _ _ h => h) ?_
+    rintro store st ⟨rfl, rfl⟩
+    exact ⟨rfl, hFinalFrame, hFinalHolds⟩
+  apply Triple.of_forall
+  rintro store t1 ⟨hStore, hFrame1, hHolds1⟩
+  subst store
+  generalize hMax : LeanExe.loop xs.size.toUInt64 (-(1.0 / 0.0)) (maxStep xs) = mx at hHolds1
+  have h1Get2 : t1.get 2 = some (.f64 mx.toBits) := (List.forall₂_cons.mp hHolds1).1
+  have hT1 : t1.params.length = 1 ∧ t1.locals.length = 19 :=
+    ⟨hFrame1.params.trans hS2.1, hFrame1.locals.trans hS2.2⟩
+  have h1Get0 : t1.get 0 = some (.i64 px) :=
+    (hFrame1.get 0 (by decide) (by decide)).trans (by simp [s2, s1, hGet0])
+  -- The sum of the exponentials.
+  let u1 := t1.update 6 (.f64 mx.toBits)
+  let u2 := u1.update 7 (.i64 (UInt64.ofNat xs.size))
+  let u3 := u2.update 8 (.f64 0)
+  refine Stmt.seq_spec (Stmt.run_spec (final := u1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := u2) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := u3) ?_) ?_
+  · simp [Stmt.run, Expr.eval, h1Get2, State.set?_eq_update, hT1.1, hT1.2, u1]
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, h1Get0, hLength, hX.lengthRead,
+      State.set?_eq_update, hT1.1, hT1.2, u1, u2]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hT1.1, hT1.2, u1, u2, u3]
+  have hU3 : u3.params.length = 1 ∧ u3.locals.length = 19 := by simp [u3, u2, u1, hT1.1, hT1.2]
+  refine Stmt.seq_spec (Stmt.loop_spec (vars := [8]) (writes := [8, 11, 12])
+    (init := (0.0 : Float)) (n := xs.size.toUInt64) (expSumStep xs mx)
+    (by decide) (by decide) (by decide) (by decide) (by decide)
+    (by simp [hU3.1, hU3.2]) ⟨u3, by simp [Expr.eval, u3, u2, u1, hT1.1, hT1.2]⟩
+    (by simp [State.Holds, Scalar.values, u3, u2, u1, hT1.1, hT1.2, hZero]) ?_) ?_
+  · intro k acc state hk hFrame hHolds hIndex hLimit
+    have hState : state.params.length = 1 ∧ state.locals.length = 19 :=
+      ⟨hFrame.params.trans hU3.1, hFrame.locals.trans hU3.2⟩
+    have h0 : state.get 0 = some (.i64 px) :=
+      (hFrame.get 0 (by decide) (by decide)).trans (by simp [u3, u2, u1, h1Get0])
+    have h6 : state.get 6 = some (.f64 mx.toBits) :=
+      (hFrame.get 6 (by decide) (by decide)).trans (by simp [u3, u2, u1, hT1.1, hT1.2])
+    have h8 : state.get 8 = some (.f64 acc.toBits) := by
+      simpa [State.Holds, Scalar.values] using hHolds
+    exact expSumBody_spec hX hState.1 hState.2 h0 h6 h8 hIndex
+  apply Triple.of_forall
+  rintro store t2 ⟨hStore, hFrame2, hHolds2⟩
+  subst store
+  generalize hSum : LeanExe.loop xs.size.toUInt64 0.0 (expSumStep xs mx) = total at hHolds2
+  have h2Get8 : t2.get 8 = some (.f64 total.toBits) := (List.forall₂_cons.mp hHolds2).1
+  have hT2 : t2.params.length = 1 ∧ t2.locals.length = 19 :=
+    ⟨hFrame2.params.trans hU3.1, hFrame2.locals.trans hU3.2⟩
+  have h2Get0 : t2.get 0 = some (.i64 px) :=
+    (hFrame2.get 0 (by decide) (by decide)).trans (by simp [u3, u2, u1, h1Get0])
+  have h2Get6 : t2.get 6 = some (.f64 mx.toBits) :=
+    (hFrame2.get 6 (by decide) (by decide)).trans (by simp [u3, u2, u1, hT1.1, hT1.2])
+  -- The result.
+  let v1 := t2.update 13 (.f64 total.toBits)
+  let v2 := v1.update 14 (.i64 (UInt64.ofNat xs.size))
+  refine Stmt.seq_spec (Stmt.run_spec (final := v1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := v2) ?_) ?_
+  · simp [Stmt.run, Expr.eval, h2Get8, State.set?_eq_update, hT2.1, hT2.2, v1]
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, h2Get0, hLength, hX.lengthRead,
+      State.set?_eq_update, hT2.1, hT2.2, v1, v2]
+  have hV2 : v2.params.length = 1 ∧ v2.locals.length = 19 := by simp [v2, v1, hT2.1, hT2.2]
+  have hV2Get : ∀ j, j < 13 → v2.get j = t2.get j := fun j hj => by
+    simp only [v2, v1]
+    rw [State.get_update_ne (by omega), State.get_update_ne (by omega)]
+  have h3Get13 : v2.get 13 = some (.f64 total.toBits) := by simp [v2, v1, hT2.1, hT2.2]
+  refine (Stmt.buildWith_spec (writes := [18]) (n := xs.size.toUInt64)
+    (fun i => (LeanExe.Examples.Gpt.exp (xs[i.toNat]! - mx) / total).toBits) hMemory32 hImports
+    hAlloc (by decide) (by decide) (by decide) (by simp [hV2.1, hV2.2]) hHeap
+    (by rw [show xs.size.toUInt64.toNat = xs.size from hn]; exact hRoom)
+    ⟨v2, by simp [Expr.eval, v2, v1, hT2.1, hT2.2]⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro k store state hk hAt hFrame hIndex
+    have hState : state.params.length = 1 ∧ state.locals.length = 19 :=
+      ⟨hFrame.params.trans hV2.1, hFrame.locals.trans hV2.2⟩
+    have hKeep : ∀ j, j < 15 → state.get j = v2.get j := fun j hj =>
+      hFrame.get j (by omega) (by simp; omega)
+    have g0 := (hKeep 0 (by decide)).trans ((hV2Get 0 (by decide)).trans h2Get0)
+    have g6 := (hKeep 6 (by decide)).trans ((hV2Get 6 (by decide)).trans h2Get6)
+    have g13 := (hKeep 13 (by decide)).trans h3Get13
+    let d := xs[(UInt64.ofNat k).toNat]! - mx
+    let a := state.update 19 (.i64 (UInt64.ofNat k))
+    let b := a.update 18 (.f64 (LeanExe.Examples.Gpt.exp d).toBits)
+    have hA : a.params.length = 1 ∧ a.locals.length = 19 := by
+      simp [a, hState.1, hState.2]
+    refine (exp_call rfl (afterArgs := a) (next := b) (d := d) ?_ ?_).mono (fun _ _ h => h) ?_
+    · simp [Expr.evalResults, Expr.eval, g0, g6, hIndex, Expr.readValue_at (hAt px _ hXs),
+        State.set?_eq_update, hState.1, hState.2, F64Op.apply, getElem!_map_toBits, d, a,
+        F64Bits.toBits_sub]
+    · simp [State.setAll, State.set?_eq_update, b, hA.1, hA.2]
+    rintro s st ⟨rfl, rfl⟩
+    refine ⟨rfl, ?_, b, ?_⟩
+    · simp only [b, a]
+      repeat refine State.Frame.update ?_ (by simp)
+      exact State.Frame.refl _ _ _
+    · simp [Expr.eval, g13, b, a, hState.1, hState.2, F64Op.apply, F64Bits.toBits_div, d]
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, ⟨px, rfl, hNew.borrowed px _ hXs⟩,
+    le_of_le_of_eq hNew.top (by simp [softmaxNeed, hn]),
+    le_of_le_of_eq hNew.pages (by simp [softmaxNeed, hn]), hNew.caps, hNew.borrowed,
+    fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 ptr], state,
+    by simp [gpt.softmax.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
+  rw [softmax_eq, hMax, hSum, build_map]
+  exact hNew.owned
+
 /-- `encode` succeeds on `gpt.module`, and its bytes decode to a module whose
 exports compute the kernels exactly. -/
 theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
     ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 3 dotTuple (fun _ => 0) ∧
       Implements m 4 matVecTuple matVecNeed ∧ Implements m 5 layerTuple layerNeed ∧
-      Implements m 6 LeanExe.Examples.Gpt.exp (fun _ => 0) := by
+      Implements m 6 LeanExe.Examples.Gpt.exp (fun _ => 0) ∧
+      Implements m 7 LeanExe.Examples.Gpt.softmax softmaxNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
-    layerNorm_implements, exp_implements⟩
+    layerNorm_implements, exp_implements, softmax_implements⟩
 
 end Project.Gpt

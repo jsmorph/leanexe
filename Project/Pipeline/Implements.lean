@@ -81,6 +81,26 @@ def Satisfies [Represent α] [Represent β] (m : Module) (entry : Nat) (need : �
       ∃ (heap' : Heap) (y : β), heap'.At final ∧ Represent.owned heap' final values.reverse y ∧
         Q x y
 
+/-- Entry `entry` of `m` computes `f` on scalars and keeps the store: from any
+store, with arguments representing `x`, the call terminates, leaves the store
+unchanged, and returns the values of `f x`.  A call to such an entry may run where
+the store must not change, as in a loop body. -/
+def ImplementsPure [Scalar α] [Scalar β] (m : Module) (entry : Nat) (f : α → β) : Prop :=
+  ∀ (env : HostEnv Unit) (store : Store Unit) (x : α),
+    TerminatesWith env m entry store (Scalar.values x).reverse fun final values =>
+      final = store ∧ values.reverse = Scalar.values (f x)
+
+/-- An entry that keeps the store implements its function without allocating. -/
+theorem ImplementsPure.implements [Scalar α] [Scalar β] {m : Module} {entry : Nat} {f : α → β}
+    (h : ImplementsPure m entry f) : Implements m entry f (fun _ => 0) := by
+  intro env store heap params x hHeap hArgs _
+  rw [Scalar.borrowed.mp hArgs]
+  obtain ⟨N, hN⟩ := h env store x
+  refine ⟨N, fun fuel hFuel => ?_⟩
+  obtain ⟨values, final, hRun, rfl, hValues⟩ := hN fuel hFuel
+  exact ⟨values, final, hRun, heap, hHeap, hValues, rfl, by omega, le_max_left _ _, rfl,
+    fun _ _ h => h, fun _ _ h => h⟩
+
 theorem Implements.transfer [Represent α] [Represent β] {m : Module} {entry : Nat}
     {f : α → β} {need : α → Nat} {P : α → Prop} {Q : α → β → Prop}
     (h : Implements m entry f need) (hf : ∀ x, P x → Q x (f x)) :
