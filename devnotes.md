@@ -19372,3 +19372,24 @@ and an `mlp` session freed every allocation.
 
 - [x] GPT 5c: the MLP.
 - [ ] GPT 5d: row-wise layer norm, masked attention, and the block.
+
+## 2026-09-30: GPT 5d, row-wise layer norm
+
+`rowMeans`, `rowInvStd`, `normalizeRows`, and `layerNormRows` are exports 15 to
+18.  A single build over all `t × d` elements could not compute a row's
+statistics without repeating the row's loops for every element, so the two
+statistics are kernels of their own, one element per row, and the composite
+holds them as temporaries.  The proofs follow `matMul`, `add`, and `mlp`.  One
+proof failed at first because `have g : _ := h.trans (rfl : T)` takes the type of
+`rfl`, not `T`, so `simp` could not use the fact; stating the type in the `have`
+fixed it.
+
+The first test cases set `d := (i * 5 + 1) % 5`, which is 1 for every `i`, so no
+row had more than one element and `d = 0` never occurred.  The generator now
+uses `(i * 3 + 1) % 5`, which covers every combination of `t` from 0 to 3 and
+`d` from 0 to 4, and all 1,193 comparisons match.  No session tested
+`layerNormRows`, because the host's session mode passes only integer arguments.
+
+- [x] GPT 5d: row-wise layer norm.
+- [ ] GPT 5e: masked attention.
+- [ ] GPT 5f: the block.

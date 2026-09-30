@@ -1386,6 +1386,450 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
     by simp [gpt.mlp.ir, Func.scratch, Expr.evalResults, Expr.eval, s4, State.get_update_same,
       hS3], hOwned, hOutB, hOutO⟩
 
+/-- `rowMeans` with its three arguments as one tuple. -/
+def rowMeansTuple (x : Array Float × UInt64 × UInt64) : Array Float :=
+  LeanExe.Examples.Gpt.rowMeans x.1 x.2.1 x.2.2
+
+/-- The bytes `rowMeans` may allocate: one array of `t` elements. -/
+def rowMeansNeed (x : Array Float × UInt64 × UInt64) : Nat := 48 + 8 * (x.2.1.toNat + 1)
+
+/-- One step of the sum over row `r`. -/
+def meanStep (x : Array Float) (d r c : UInt64) (acc : Float) : Float :=
+  acc + x[(r * d + c).toNat]!
+
+/-- The compiled loop body of `rowMeans`. -/
+def meanBody : Stmt :=
+  .seq (.assign 9 (.binF .add (.getF 6)
+    (.ofBits (.read 0 (.bin .add (.bin .mul (.get 5) (.get 2)) (.get 8)))))) (.assign 6 (.getF 9))
+
+theorem meanBody_run {initial : Store Unit} {px : UInt64} {x : Array Float}
+    (hX : UInt64Array.At initial px (x.map Float.toBits)) {state : State} {c : Nat}
+    {d r : UInt64} {acc : Float} (hParams : state.params.length = 3)
+    (hLocals : state.locals.length = 8) (h0 : state.get 0 = some (.i64 px))
+    (h2 : state.get 2 = some (.i64 d)) (h5 : state.get 5 = some (.i64 r))
+    (h6 : state.get 6 = some (.f64 acc.toBits)) (h8 : state.get 8 = some (.i64 (UInt64.ofNat c))) :
+    ∃ final, meanBody.run initial.mem 10 state = some final ∧
+      State.Frame 10 [6, 9] state final ∧
+      final.Holds [6] (Scalar.values (meanStep x d r (UInt64.ofNat c) acc)) := by
+  simp [meanBody, Stmt.run, Expr.eval, h0, h2, h5, h6, h8, Expr.readValue_at hX,
+    State.set?_eq_update, hParams, hLocals, F64Op.apply, U64Op.apply, getElem!_map_toBits]
+  constructor
+  · repeat refine State.Frame.update ?_ (by simp)
+    exact State.Frame.refl _ _ _
+  · simp [State.Holds, Scalar.values, meanStep, hParams, hLocals, F64Bits.toBits_add]
+
+theorem rowMeans_implements : Implements gpt.module 15 rowMeansTuple rowMeansNeed := by
+  refine Func.implements_heap gpt.funcs 12 gpt.rowMeans.ir "rowMeans" rfl rowMeansTuple
+    rowMeansNeed (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨x, t, d⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hXs⟩, rfl⟩ hRoom
+  change heap.Borrowed initial px (x.map Float.toBits) at hXs
+  change heap.Room initial gpt.module (48 + 8 * (t.toNat + 1)) at hRoom
+  have hMemory32 : gpt.module.memIs64 = false := rfl
+  have hImports : gpt.module.imports = [] := rfl
+  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
+  have hZero : (0.0 : Float).toBits = 0 := by decide +kernel
+  let start : State :=
+    { params := [.i64 px, .i64 t, .i64 d]
+      locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .i64 0] }
+  show Triple _ (.buildWith 3 4 5 (.get 1)
+      (.seq (.assign 6 (.constF 0)) (.loop 7 8 (.get 2) meanBody))
+      (.toBits (.binF .div (.getF 6) (.convertU (.get 2))))) 10
+    (fun store state => store = initial ∧ state = start) _
+  refine (Stmt.buildWith_spec (writes := [6, 7, 8, 9]) (n := t)
+    (fun r => (LeanExe.loop d 0.0 (meanStep x d r) / d.toFloat).toBits) hMemory32 hImports hAlloc
+    (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom ⟨start, rfl⟩ ?_).mono
+      (fun _ _ h => h) ?_
+  · intro r store state hr hAt hFrame hIndex
+    have hState : state.params.length = 3 ∧ state.locals.length = 8 :=
+      ⟨hFrame.params, hFrame.locals⟩
+    have hGet : ∀ j, j < 3 → state.get j = start.get j := fun j hj =>
+      hFrame.get j (by omega) (by simp; omega)
+    have hX := hAt px _ hXs
+    let s1 := state.update 6 (.f64 0)
+    have hS1 : s1.params.length = 3 ∧ s1.locals.length = 8 := by
+      simp [s1, hState.1, hState.2]
+    have hS1Get : ∀ j, j ≠ 6 → s1.get j = state.get j := fun j hj => State.get_update_ne hj
+    refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
+      simp [Stmt.run, Expr.eval, State.set?_eq_update, hState.1, hState.2, s1])) ?_
+    refine (Stmt.loop_spec (vars := [6]) (writes := [6, 9]) (init := (0.0 : Float)) (n := d)
+      (meanStep x d (UInt64.ofNat r)) (by decide) (by decide) (by decide) (by decide)
+      (by decide) (by simp [hS1.1, hS1.2])
+      ⟨s1, by simp [Expr.eval, hS1Get 2 (by decide), hGet 2 (by decide)]; rfl⟩
+      (by simp [State.Holds, Scalar.values, s1, hState.1, hState.2, hZero]) ?_).mono
+        (fun _ _ h => h) ?_
+    · intro c acc st hc hFrameL hHolds hIdx hLim
+      have hSt : st.params.length = 3 ∧ st.locals.length = 8 :=
+        ⟨hFrameL.params.trans hS1.1, hFrameL.locals.trans hS1.2⟩
+      have hKeep : ∀ j, j < 3 ∨ j = 5 → st.get j = state.get j := fun j hj =>
+        (hFrameL.get j (by omega) (by simp; omega)).trans (hS1Get j (by omega))
+      have g6 : st.get 6 = some (.f64 acc.toBits) := by
+        simpa [State.Holds, Scalar.values] using hHolds
+      obtain ⟨final, hRun, hFinalFrame, hFinalHolds⟩ := meanBody_run hX hSt.1 hSt.2
+        ((hKeep 0 (by omega)).trans ((hGet 0 (by decide)).trans rfl))
+        ((hKeep 2 (by omega)).trans ((hGet 2 (by decide)).trans rfl))
+        ((hKeep 5 (by omega)).trans hIndex) g6 hIdx
+      refine (Stmt.run_spec hRun).mono (fun _ _ h => h) ?_
+      rintro s' u ⟨rfl, rfl⟩
+      exact ⟨rfl, hFinalFrame, hFinalHolds⟩
+    · rintro s' u ⟨rfl, hFrameL, hHolds⟩
+      have g6 : u.get 6 = some (.f64 (LeanExe.loop d 0.0
+          (meanStep x d (UInt64.ofNat r))).toBits) := (List.forall₂_cons.mp hHolds).1
+      have g2 : u.get 2 = some (.i64 d) :=
+        ((hFrameL.get 2 (by decide) (by decide)).trans (hS1Get 2 (by decide))).trans
+          ((hGet 2 (by decide)).trans rfl)
+      exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
+          (hFrameL.weaken (by simp)), u, by
+        simp [Expr.eval, g6, g2, F64Op.apply, F64Bits.toBits_div, F64Convert.toBits_toFloat]⟩
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, rfl⟩, hNew.top, hNew.pages,
+    hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.rowMeans.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+  have hEq : rowMeansTuple (x, t, d) =
+      LeanExe.build t (fun r => LeanExe.loop d 0.0 (meanStep x d r) / d.toFloat) := rfl
+  rw [hEq, build_map]
+  exact hNew.owned
+
+/-- `rowInvStd` with its five arguments as one tuple. -/
+def rowInvStdTuple (x : Array Float × Array Float × UInt64 × UInt64 × Float) : Array Float :=
+  LeanExe.Examples.Gpt.rowInvStd x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
+
+/-- The bytes `rowInvStd` may allocate: one array of `t` elements. -/
+def rowInvStdNeed (x : Array Float × Array Float × UInt64 × UInt64 × Float) : Nat :=
+  48 + 8 * (x.2.2.1.toNat + 1)
+
+/-- One step of the sum of squared deviations over row `r`. -/
+def devStep (x means : Array Float) (d r c : UInt64) (acc : Float) : Float :=
+  acc + (x[(r * d + c).toNat]! - means[r.toNat]!) * (x[(r * d + c).toNat]! - means[r.toNat]!)
+
+/-- The compiled loop body of `rowInvStd`. -/
+def devBody : Stmt :=
+  .seq (.assign 11 (.binF .add (.getF 8) (.binF .mul
+    (.binF .sub (.ofBits (.read 0 (.bin .add (.bin .mul (.get 7) (.get 3)) (.get 10))))
+      (.ofBits (.read 1 (.get 7))))
+    (.binF .sub (.ofBits (.read 0 (.bin .add (.bin .mul (.get 7) (.get 3)) (.get 10))))
+      (.ofBits (.read 1 (.get 7))))))) (.assign 8 (.getF 11))
+
+theorem devBody_run {initial : Store Unit} {px pm : UInt64} {x means : Array Float}
+    (hX : UInt64Array.At initial px (x.map Float.toBits))
+    (hM : UInt64Array.At initial pm (means.map Float.toBits)) {state : State} {c : Nat}
+    {d r : UInt64} {acc : Float} (hParams : state.params.length = 5)
+    (hLocals : state.locals.length = 8) (h0 : state.get 0 = some (.i64 px))
+    (h1 : state.get 1 = some (.i64 pm)) (h3 : state.get 3 = some (.i64 d))
+    (h7 : state.get 7 = some (.i64 r)) (h8 : state.get 8 = some (.f64 acc.toBits))
+    (h10 : state.get 10 = some (.i64 (UInt64.ofNat c))) :
+    ∃ final, devBody.run initial.mem 12 state = some final ∧
+      State.Frame 12 [8, 11] state final ∧
+      final.Holds [8] (Scalar.values (devStep x means d r (UInt64.ofNat c) acc)) := by
+  simp [devBody, Stmt.run, Expr.eval, h0, h1, h3, h7, h8, h10, Expr.readValue_at hX,
+    Expr.readValue_at hM, State.set?_eq_update, hParams, hLocals, F64Op.apply, U64Op.apply,
+    getElem!_map_toBits]
+  constructor
+  · repeat refine State.Frame.update ?_ (by simp)
+    exact State.Frame.refl _ _ _
+  · simp [State.Holds, Scalar.values, devStep, hParams, hLocals, F64Bits.toBits_add,
+      F64Bits.toBits_mul, F64Bits.toBits_sub]
+
+theorem rowInvStd_implements : Implements gpt.module 16 rowInvStdTuple rowInvStdNeed := by
+  refine Func.implements_heap gpt.funcs 13 gpt.rowInvStd.ir "rowInvStd" rfl rowInvStdTuple
+    rowInvStdNeed (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨x, means, t, d, eps⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pm, rfl, hMs⟩, rfl⟩ hRoom
+  change heap.Borrowed initial px (x.map Float.toBits) at hXs
+  change heap.Borrowed initial pm (means.map Float.toBits) at hMs
+  change heap.Room initial gpt.module (48 + 8 * (t.toNat + 1)) at hRoom
+  have hMemory32 : gpt.module.memIs64 = false := rfl
+  have hImports : gpt.module.imports = [] := rfl
+  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
+  have hZero : (0.0 : Float).toBits = 0 := by decide +kernel
+  have hOne : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
+  let start : State :=
+    { params := [.i64 px, .i64 pm, .i64 t, .i64 d, .f64 eps.toBits]
+      locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .i64 0] }
+  show Triple _ (.buildWith 5 6 7 (.get 2)
+      (.seq (.assign 8 (.constF 0)) (.loop 9 10 (.get 3) devBody))
+      (.toBits (.binF .div (.constF 4607182418800017408) (.unF .sqrt
+        (.binF .add (.binF .div (.getF 8) (.convertU (.get 3))) (.getF 4)))))) 12
+    (fun store state => store = initial ∧ state = start) _
+  refine (Stmt.buildWith_spec (writes := [8, 9, 10, 11]) (n := t)
+    (fun r => (1.0 / (LeanExe.loop d 0.0 (devStep x means d r) / d.toFloat + eps).sqrt).toBits)
+    hMemory32 hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    ⟨start, rfl⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro r store state hr hAt hFrame hIndex
+    have hState : state.params.length = 5 ∧ state.locals.length = 8 :=
+      ⟨hFrame.params, hFrame.locals⟩
+    have hGet : ∀ j, j < 5 → state.get j = start.get j := fun j hj =>
+      hFrame.get j (by omega) (by simp; omega)
+    have hX := hAt px _ hXs
+    have hM := hAt pm _ hMs
+    let s1 := state.update 8 (.f64 0)
+    have hS1 : s1.params.length = 5 ∧ s1.locals.length = 8 := by
+      simp [s1, hState.1, hState.2]
+    have hS1Get : ∀ j, j ≠ 8 → s1.get j = state.get j := fun j hj => State.get_update_ne hj
+    refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
+      simp [Stmt.run, Expr.eval, State.set?_eq_update, hState.1, hState.2, s1])) ?_
+    refine (Stmt.loop_spec (vars := [8]) (writes := [8, 11]) (init := (0.0 : Float)) (n := d)
+      (devStep x means d (UInt64.ofNat r)) (by decide) (by decide) (by decide) (by decide)
+      (by decide) (by simp [hS1.1, hS1.2])
+      ⟨s1, by simp [Expr.eval, hS1Get 3 (by decide), hGet 3 (by decide)]; rfl⟩
+      (by simp [State.Holds, Scalar.values, s1, hState.1, hState.2, hZero]) ?_).mono
+        (fun _ _ h => h) ?_
+    · intro c acc st hc hFrameL hHolds hIdx hLim
+      have hSt : st.params.length = 5 ∧ st.locals.length = 8 :=
+        ⟨hFrameL.params.trans hS1.1, hFrameL.locals.trans hS1.2⟩
+      have hKeep : ∀ j, j < 5 ∨ j = 7 → st.get j = state.get j := fun j hj =>
+        (hFrameL.get j (by omega) (by simp; omega)).trans (hS1Get j (by omega))
+      have g8 : st.get 8 = some (.f64 acc.toBits) := by
+        simpa [State.Holds, Scalar.values] using hHolds
+      obtain ⟨final, hRun, hFinalFrame, hFinalHolds⟩ := devBody_run hX hM hSt.1 hSt.2
+        ((hKeep 0 (by omega)).trans ((hGet 0 (by decide)).trans rfl))
+        ((hKeep 1 (by omega)).trans ((hGet 1 (by decide)).trans rfl))
+        ((hKeep 3 (by omega)).trans ((hGet 3 (by decide)).trans rfl))
+        ((hKeep 7 (by omega)).trans hIndex) g8 hIdx
+      refine (Stmt.run_spec hRun).mono (fun _ _ h => h) ?_
+      rintro s' u ⟨rfl, rfl⟩
+      exact ⟨rfl, hFinalFrame, hFinalHolds⟩
+    · rintro s' u ⟨rfl, hFrameL, hHolds⟩
+      have g8 : u.get 8 = some (.f64 (LeanExe.loop d 0.0
+          (devStep x means d (UInt64.ofNat r))).toBits) := (List.forall₂_cons.mp hHolds).1
+      have g3 : u.get 3 = some (.i64 d) :=
+        ((hFrameL.get 3 (by decide) (by decide)).trans (hS1Get 3 (by decide))).trans
+          ((hGet 3 (by decide)).trans rfl)
+      have g4 : u.get 4 = some (.f64 eps.toBits) :=
+        ((hFrameL.get 4 (by decide) (by decide)).trans (hS1Get 4 (by decide))).trans
+          ((hGet 4 (by decide)).trans rfl)
+      exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
+          (hFrameL.weaken (by simp)), u, by
+        simp [Expr.eval, g8, g3, g4, F64Op.apply, F64UnOp.apply, F64Bits.toBits_div,
+          F64Bits.toBits_sqrt, F64Bits.toBits_add, F64Convert.toBits_toFloat, hOne]⟩
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, _, _, rfl,
+      ⟨pm, rfl, hNew.borrowed pm _ hMs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
+    hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.rowInvStd.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+  have hEq : rowInvStdTuple (x, means, t, d, eps) = LeanExe.build t (fun r =>
+      1.0 / (LeanExe.loop d 0.0 (devStep x means d r) / d.toFloat + eps).sqrt) := rfl
+  rw [hEq, build_map]
+  exact hNew.owned
+
+/-- `normalizeRows` with its seven arguments as one tuple. -/
+def normalizeTuple (x : Array Float × Array Float × Array Float × Array Float × Array Float ×
+    UInt64 × UInt64) : Array Float :=
+  LeanExe.Examples.Gpt.normalizeRows x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2.1
+    x.2.2.2.2.2.2
+
+/-- The bytes `normalizeRows` may allocate: one array of `t × d` elements. -/
+def normalizeNeed (x : Array Float × Array Float × Array Float × Array Float × Array Float ×
+    UInt64 × UInt64) : Nat :=
+  48 + 8 * ((x.2.2.2.2.2.1 * x.2.2.2.2.2.2).toNat + 1)
+
+/-- Element `e` of `normalizeRows`. -/
+def normalizeAt (x means inv g b : Array Float) (d e : UInt64) : Float :=
+  (x[e.toNat]! - means[(e / d).toNat]!) * inv[(e / d).toNat]! * g[(e % d).toNat]! +
+    b[(e % d).toNat]!
+
+theorem normalizeRows_implements : Implements gpt.module 17 normalizeTuple normalizeNeed := by
+  refine Func.implements_heap gpt.funcs 14 gpt.normalizeRows.ir "normalizeRows" rfl
+    normalizeTuple normalizeNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨x, means, inv, g, b, t, d⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pm, rfl, hMs⟩, _, _, rfl, ⟨pi, rfl, hIs⟩,
+      _, _, rfl, ⟨pg, rfl, hGs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hRoom
+  change heap.Borrowed initial px (x.map Float.toBits) at hXs
+  change heap.Borrowed initial pm (means.map Float.toBits) at hMs
+  change heap.Borrowed initial pi (inv.map Float.toBits) at hIs
+  change heap.Borrowed initial pg (g.map Float.toBits) at hGs
+  change heap.Borrowed initial pb (b.map Float.toBits) at hBs
+  change heap.Room initial gpt.module (48 + 8 * ((t * d).toNat + 1)) at hRoom
+  have hMemory32 : gpt.module.memIs64 = false := rfl
+  have hImports : gpt.module.imports = [] := rfl
+  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
+  let start : State :=
+    { params := [.i64 px, .i64 pm, .i64 pi, .i64 pg, .i64 pb, .i64 t, .i64 d]
+      locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0] }
+  show Triple _ (.build 7 8 9 (.bin .mul (.get 5) (.get 6)) (.toBits (.binF .add (.binF .mul
+      (.binF .mul (.binF .sub (.ofBits (.read 0 (.get 9)))
+        (.ofBits (.read 1 (.bin .divU (.get 9) (.get 6)))))
+        (.ofBits (.read 2 (.bin .divU (.get 9) (.get 6)))))
+      (.ofBits (.read 3 (.bin .remU (.get 9) (.get 6)))))
+      (.ofBits (.read 4 (.bin .remU (.get 9) (.get 6))))))) 10
+    (fun store state => store = initial ∧ state = start) _
+  refine (Stmt.build_spec (n := t * d) (fun e => (normalizeAt x means inv g b d e).toBits)
+    hMemory32 hImports hAlloc (by decide) (by decide) (by simp [start]) hHeap hRoom
+    ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro e store state he hAt hFrame hIndex
+    have hState : state.params.length = 7 ∧ state.locals.length = 6 :=
+      ⟨hFrame.params, hFrame.locals⟩
+    have hGet : ∀ j, j < 7 → state.get j = start.get j := fun j hj =>
+      hFrame.get j (by omega) (by simp; omega)
+    have g0 : state.get 0 = some (.i64 px) := (hGet 0 (by decide)).trans rfl
+    have g1 : state.get 1 = some (.i64 pm) := (hGet 1 (by decide)).trans rfl
+    have g2 : state.get 2 = some (.i64 pi) := (hGet 2 (by decide)).trans rfl
+    have g3 : state.get 3 = some (.i64 pg) := (hGet 3 (by decide)).trans rfl
+    have g4 : state.get 4 = some (.i64 pb) := (hGet 4 (by decide)).trans rfl
+    have g6 : state.get 6 = some (.i64 d) := (hGet 6 (by decide)).trans rfl
+    by_cases hd : d = 0 <;> simp [Expr.eval, g0, g1, g2, g3, g4, g6, hIndex,
+      Expr.readValue_at (hAt px _ hXs), Expr.readValue_at (hAt pm _ hMs),
+      Expr.readValue_at (hAt pi _ hIs), Expr.readValue_at (hAt pg _ hGs),
+      Expr.readValue_at (hAt pb _ hBs), State.set?_eq_update, hState.1, hState.2, F64Op.apply,
+      U64Op.apply, getElem!_map_toBits, normalizeAt, F64Bits.toBits_add, F64Bits.toBits_mul,
+      F64Bits.toBits_sub, hd]
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, _, _, rfl,
+      ⟨pm, rfl, hNew.borrowed pm _ hMs⟩, _, _, rfl, ⟨pi, rfl, hNew.borrowed pi _ hIs⟩, _, _, rfl,
+      ⟨pg, rfl, hNew.borrowed pg _ hGs⟩, _, _, rfl, ⟨pb, rfl, hNew.borrowed pb _ hBs⟩, rfl⟩,
+    hNew.top, hNew.pages, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.normalizeRows.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
+    ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+  have hEq : normalizeTuple (x, means, inv, g, b, t, d) =
+      LeanExe.build (t * d) (normalizeAt x means inv g b d) := rfl
+  rw [hEq, build_map]
+  exact hNew.owned
+
+/-- `layerNormRows` with its six arguments as one tuple. -/
+def layerNormRowsTuple (x : Array Float × Array Float × Array Float × UInt64 × UInt64 × Float) :
+    Array Float :=
+  LeanExe.Examples.Gpt.layerNormRows x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2
+
+/-- The bytes `layerNormRows` may allocate: the means, the inverse deviations, and the
+`t × d` result. -/
+def layerNormRowsNeed (x : Array Float × Array Float × Array Float × UInt64 × UInt64 × Float) :
+    Nat :=
+  48 + 8 * (x.2.2.2.1.toNat + 1) + (48 + 8 * (x.2.2.2.1.toNat + 1)) +
+    (48 + 8 * ((x.2.2.2.1 * x.2.2.2.2.1).toNat + 1))
+
+theorem layerNormRows_implements :
+    Implements gpt.module 18 layerNormRowsTuple layerNormRowsNeed := by
+  refine Func.implements_heap gpt.funcs 15 gpt.layerNormRows.ir "layerNormRows" rfl
+    layerNormRowsTuple layerNormRowsNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      rfl⟩; rfl) ?_
+  rintro ⟨x, g, b, t, d, eps⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨px, rfl, hX⟩, _, _, rfl, ⟨pg, rfl, hG⟩, _, _, rfl, ⟨pb, rfl, hB⟩, rfl⟩ hRoom
+  change heap.Borrowed initial px (x.map Float.toBits) at hX
+  change heap.Borrowed initial pg (g.map Float.toBits) at hG
+  change heap.Borrowed initial pb (b.map Float.toBits) at hB
+  change heap.Room initial gpt.module (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) +
+    (48 + 8 * ((t * d).toNat + 1))) at hRoom
+  have hImports : gpt.module.imports = [] := rfl
+  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
+  have hMeans : gpt.module.funcs[15 - gpt.module.imports.length]? =
+      some (gpt.rowMeans.ir.function (2 + 12)) := compile_funcs (funcs := gpt.funcs) (i := 12) rfl
+  have hInv : gpt.module.funcs[16 - gpt.module.imports.length]? =
+      some (gpt.rowInvStd.ir.function (2 + 13)) := compile_funcs (funcs := gpt.funcs) (i := 13) rfl
+  have hNormalize : gpt.module.funcs[17 - gpt.module.imports.length]? =
+      some (gpt.normalizeRows.ir.function (2 + 14)) :=
+    compile_funcs (funcs := gpt.funcs) (i := 14) rfl
+  let means := rowMeansTuple (x, t, d)
+  let inv := rowInvStdTuple (x, means, t, d, eps)
+  let start : State :=
+    { params := [.i64 px, .i64 pg, .i64 pb, .i64 t, .i64 d, .f64 eps.toBits]
+      locals := [.i64 0, .i64 0, .i64 0, .i64 0] }
+  have hStart : start.params.length + start.locals.length = 10 := rfl
+  have hLen : ∀ (s : State) (j : Nat) (v : Value),
+      (s.update j v).params.length + (s.update j v).locals.length =
+        s.params.length + s.locals.length := fun s j v => by
+    simp [State.update_params_length, State.update_locals_length]
+  have hGet : start.get 0 = some (.i64 px) ∧ start.get 1 = some (.i64 pg) ∧
+      start.get 2 = some (.i64 pb) ∧ start.get 3 = some (.i64 t) ∧ start.get 4 = some (.i64 d) ∧
+      start.get 5 = some (.f64 eps.toBits) := ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
+  show Triple _ (.seq (.call 15 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [6])
+      (.seq (.call 16 [⟨.u64, .get 0⟩, ⟨.u64, .get 6⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩,
+        ⟨.f64, .getF 5⟩] [7])
+      (.seq (.call 17 [⟨.u64, .get 0⟩, ⟨.u64, .get 6⟩, ⟨.u64, .get 7⟩, ⟨.u64, .get 1⟩,
+        ⟨.u64, .get 2⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [8])
+      (.seq (.assign 9 (.get 8)) (.seq (.release 7) (.release 6)))))) 10
+    (fun store state => store = initial ∧ state = start) _
+  -- The means of the rows.
+  refine Stmt.seq_spec (Live.call rowMeans_implements rfl hMeans rfl (Live.start hHeap) hRoom
+    (x := (x, t, d)) (by simp only [rowMeansNeed]; omega) (afterArgs := start)
+    (vals := [.i64 px, .i64 t, .i64 d])
+    (by simp [Expr.evalResults, Expr.eval, hGet.1, hGet.2.2.2.1, hGet.2.2.2.2.1])
+    ⟨[.i64 px], _, rfl, ⟨px, rfl, hX⟩, rfl⟩ (by rw [hStart]; decide)) ?_
+  apply Triple.of_forall
+  rintro store1 t1 ⟨heap1, pm, hLive1, rfl⟩
+  let s1 := start.update 6 (.i64 pm)
+  have hS1 : s1.params.length + s1.locals.length = 10 := by rw [hLen, hStart]
+  have hGetS1 : ∀ j, j < 6 → s1.get j = start.get j := fun j hj => by
+    simp only [s1]
+    rw [State.get_update_ne (by omega)]
+  -- The inverse standard deviations of the rows.
+  refine Stmt.seq_spec (Live.call rowInvStd_implements rfl hInv rfl hLive1 hRoom
+    (x := (x, means, t, d, eps)) (by simp only [rowMeansNeed, rowInvStdNeed]; omega)
+    (afterArgs := s1) (vals := [.i64 px, .i64 pm, .i64 t, .i64 d, .f64 eps.toBits])
+    (by simp [Expr.evalResults, Expr.eval, s1, State.get_update_same, hStart,
+      hGetS1 0 (by decide), hGetS1 3 (by decide), hGetS1 4 (by decide), hGetS1 5 (by decide),
+      hGet.1, hGet.2.2.2.1, hGet.2.2.2.2.1, hGet.2.2.2.2.2])
+    ⟨[.i64 px], _, rfl, ⟨px, rfl, hLive1.borrowed px _ hX⟩, [.i64 pm], _, rfl,
+      ⟨pm, rfl, (hLive1.tempsOwned _ (List.mem_singleton_self _)).borrowed⟩, rfl⟩
+    (by rw [hS1]; decide)) ?_
+  apply Triple.of_forall
+  rintro store2 t2 ⟨heap2, pi, hLive2, rfl⟩
+  let s2 := s1.update 7 (.i64 pi)
+  have hS2 : s2.params.length + s2.locals.length = 10 := by rw [hLen, hS1]
+  have hGetS2 : ∀ j, j < 6 → s2.get j = start.get j := fun j hj => by
+    simp only [s2, s1]
+    rw [State.get_update_ne (by omega), State.get_update_ne (by omega)]
+  have hS2Get6 : s2.get 6 = some (.i64 pm) := by
+    simp only [s2, s1]
+    rw [State.get_update_ne (by decide)]
+    exact State.get_update_same (by rw [hStart]; decide)
+  -- The normalized rows, scaled and shifted.
+  refine Stmt.seq_spec (Live.call normalizeRows_implements rfl hNormalize rfl hLive2 hRoom
+    (x := (x, means, inv, g, b, t, d))
+    (by simp only [rowMeansNeed, rowInvStdNeed, normalizeNeed]; omega)
+    (afterArgs := s2) (vals := [.i64 px, .i64 pm, .i64 pi, .i64 pg, .i64 pb, .i64 t, .i64 d])
+    (by simp [Expr.evalResults, Expr.eval, s2, State.get_update_same, hS1, hS2Get6,
+      hGetS2 0 (by decide), hGetS2 1 (by decide), hGetS2 2 (by decide), hGetS2 3 (by decide),
+      hGetS2 4 (by decide), hGet.1, hGet.2.1, hGet.2.2.1, hGet.2.2.2.1, hGet.2.2.2.2.1])
+    ⟨[.i64 px], _, rfl, ⟨px, rfl, hLive2.borrowed px _ hX⟩, [.i64 pm], _, rfl,
+      ⟨pm, rfl, (hLive2.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_singleton_self _))).borrowed⟩,
+      [.i64 pi], _, rfl, ⟨pi, rfl, (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
+      [.i64 pg], _, rfl, ⟨pg, rfl, hLive2.borrowed pg _ hG⟩,
+      [.i64 pb], _, rfl, ⟨pb, rfl, hLive2.borrowed pb _ hB⟩, rfl⟩
+    (by rw [hS2]; decide)) ?_
+  apply Triple.of_forall
+  rintro store3 t3 ⟨heap3, pr, hLive3, rfl⟩
+  let s3 := s2.update 8 (.i64 pr)
+  let s4 := s3.update 9 (.i64 pr)
+  have hS3 : s3.params.length + s3.locals.length = 10 := by rw [hLen, hS2]
+  refine Stmt.seq_spec (Stmt.run_spec (final := s4) (by
+    simp [Stmt.run, Expr.eval, State.set?_eq_update _ (show 9 < s3.params.length +
+      s3.locals.length by rw [hS3]; decide), s4, s3, State.get_update_same,
+      show 8 < s2.params.length + s2.locals.length by rw [hS2]; decide])) ?_
+  -- The temporaries are released, the inverse deviations first.
+  have hS4Get7 : s4.get 7 = some (.i64 pi) := by
+    simp only [s4, s3]
+    rw [State.get_update_ne (by decide), State.get_update_ne (by decide)]
+    exact State.get_update_same (by rw [hS1]; decide)
+  have hS4Get6 : s4.get 6 = some (.i64 pm) := by
+    simp only [s4, s3]
+    rw [State.get_update_ne (by decide), State.get_update_ne (by decide)]
+    exact hS2Get6
+  refine Stmt.seq_spec (hLive3.releaseSecond hImports hRelease hS4Get7) ?_
+  apply Triple.of_forall
+  rintro store4 st4 ⟨hLive4, rfl⟩
+  refine (hLive4.releaseSecond hImports hRelease hS4Get6).mono (fun _ _ h => h) ?_
+  rintro store5 st5 ⟨hLive5, rfl⟩
+  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
+      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
+      Represent.borrowed heap' store' [.i64 px, .i64 pg, .i64 pb, .i64 t, .i64 d, .f64 eps.toBits]
+        (x, g, b, t, d, eps) := fun heap' store' hKeep =>
+    ⟨[.i64 px], _, rfl, ⟨px, rfl, hKeep px _ hX⟩, [.i64 pg], _, rfl, ⟨pg, rfl, hKeep pg _ hG⟩,
+      [.i64 pb], _, rfl, ⟨pb, rfl, hKeep pb _ hB⟩, rfl⟩
+  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLive5.finish (need := layerNormRowsNeed (x, g, b, t, d, eps))
+      (by simp only [rowMeansNeed, rowInvStdNeed, normalizeNeed, layerNormRowsNeed]; omega)
+      hParams
+  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+    by simp [gpt.layerNormRows.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,
+      State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
+
 /-- `encode` succeeds on `gpt.module`, and its bytes decode to a module whose
 exports compute the kernels exactly. -/
 theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
@@ -1396,12 +1840,16 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
       Implements m 8 matVec2Tuple matVec2Need ∧ Implements m 9 matMulTuple matMulNeed ∧
       Implements m 10 addTuple addNeed ∧ Implements m 11 LeanExe.Examples.Gpt.tanh (fun _ => 0) ∧
       Implements m 12 LeanExe.Examples.Gpt.gelu (fun _ => 0) ∧
-      Implements m 13 LeanExe.Examples.Gpt.geluArray geluNeed ∧ Implements m 14 mlpTuple mlpNeed := by
+      Implements m 13 LeanExe.Examples.Gpt.geluArray geluNeed ∧ Implements m 14 mlpTuple mlpNeed ∧
+      Implements m 15 rowMeansTuple rowMeansNeed ∧ Implements m 16 rowInvStdTuple rowInvStdNeed ∧
+      Implements m 17 normalizeTuple normalizeNeed ∧
+      Implements m 18 layerNormRowsTuple layerNormRowsNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
     layerNorm_implements, exp_implements, softmax_implements, matVec2_implements,
     matMul_implements, add_implements, tanh_pure.implements, gelu_pure.implements,
-    geluArray_implements, mlp_implements⟩
+    geluArray_implements, mlp_implements, rowMeans_implements, rowInvStd_implements,
+    normalizeRows_implements, layerNormRows_implements⟩
 
 end Project.Gpt
