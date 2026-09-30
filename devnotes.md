@@ -19166,3 +19166,24 @@ path runs `MemoryEnsure.ensureProgram` and then `MemoryGrowth.growProgram`.
 `unreachable` on failure.  On such an engine the call traps and returns no
 result.  The theorems do not describe this path, and no host test exercises it:
 the Wasmtime host sets no limit on growth.
+
+## 2026-09-30: GPT 1, dot
+
+`dot xs ys = LeanExe.loop xs.size.toUInt64 0.0 fun i acc => acc + xs[i.toNat]! *
+ys[i.toNat]!` is the first CPU GPT kernel, in `LeanExe/Examples/Gpt.lean` and
+`Project/Gpt/`.  An `Array Float` is stored as the bit patterns of its elements,
+so a read of one is the word read wrapped in a new IR expression, `Expr.ofBits`.
+It compiles to `f64.reinterpret_i64`, which the encoder and decoder already
+supported, and its value is the word itself, because IR floats are bit patterns.
+Adding it touched each function over `Expr`, in the pattern `convertU` set.
+
+Lean's default float is `UInt64.toFloat 0`, which is +0.0 with bit pattern 0, so
+Lean's out-of-bounds read and the compiled read agree.
+`getElem!_map_toBits` proves it, using `F64Convert.toBits_toFloat` and
+`decide +kernel` for the closed value.  `dot_implements` (50 lines) built on
+the first attempt.  `gpt.wasm` (1,400 bytes) matched native Lean bit for bit on
+60 pairs of arrays, and the other twelve modules kept their bytes.
+
+- [x] GPT 1: `dot`.
+- [ ] GPT 2: matrix-vector product, which needs a loop inside each element of
+  `LeanExe.build`; the template does not allow that yet.
