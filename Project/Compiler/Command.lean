@@ -33,4 +33,38 @@ def elabLeanexeCompile : CommandElab
         addDefinition (base ++ `hints) (mkConst ``Hints) (toExpr hints)
   | _ => throwUnsupportedSyntax
 
+/-- `leanexe_compile p := [f, g, …]` compiles the listed definitions into one
+module.  For each definition `f` with last name component `n`, it adds `p.n.ir`
+and `p.n.hints`; it adds `p.funcs`, the list of IR functions with their export
+names, and `p.module := compile p.funcs`, in which the `i`-th definition is
+function `3 + i`.  A call of a listed definition compiles to a call of its
+function. -/
+syntax (name := leanexeCompileModule) "leanexe_compile " ident " := " "[" ident,* "]" : command
+
+@[command_elab leanexeCompileModule]
+def elabLeanexeCompileModule : CommandElab
+  | `(leanexe_compile $target := [$sources,*]) => do
+      let names ← sources.getElems.mapM fun source =>
+        liftCoreM <| realizeGlobalConstNoOverloadWithInfo source
+      let base := (← getCurrNamespace) ++ target.getId
+      let callees := names.toList.zipIdx.map fun (name, i) => (name, 3 + i)
+      let funcEntry := mkApp2 (mkConst ``Prod [Level.zero, Level.zero]) (mkConst ``Func)
+        (mkConst ``String)
+      liftTermElabM do
+        let mut entries := []
+        for name in names do
+          let short := name.getString!
+          let (func, hints) ← compileDefinition name callees
+          let irName := base ++ Name.mkSimple short ++ `ir
+          addDefinition irName (mkConst ``Func) (funcToExpr func)
+          addDefinition (base ++ Name.mkSimple short ++ `hints) (mkConst ``Hints) (toExpr hints)
+          entries := entries ++ [mkApp4 (mkConst ``Prod.mk [Level.zero, Level.zero])
+            (mkConst ``Func) (mkConst ``String) (mkConst irName) (toExpr short)]
+        let list := entries.foldr (init := mkApp (mkConst ``List.nil [Level.zero]) funcEntry)
+          fun entry rest => mkApp3 (mkConst ``List.cons [Level.zero]) funcEntry entry rest
+        addDefinition (base ++ `funcs) (mkApp (mkConst ``List [Level.zero]) funcEntry) list
+        addDefinition (base ++ `module) (mkConst ``Wasm.Module)
+          (mkApp (mkConst ``compile) (mkConst (base ++ `funcs)))
+  | _ => throwUnsupportedSyntax
+
 end Project.Compiler

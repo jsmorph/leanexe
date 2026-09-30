@@ -49,8 +49,9 @@ def stmtLength (s : Project.IR.Stmt) : Nat := (s.program 0).length
 
 /-- The compiler's view of the definition being compiled.  `words`, `floats`,
 `arrays`, and `floatArrays` give the local of each `UInt64`, `Float`,
-`Array UInt64`, and `Array Float` variable in scope, and `tuples` gives the
-locals of each pair-valued variable's components.  A recursive definition's
+`Array UInt64`, and `Array Float` variable in scope, `tuples` gives the
+locals of each pair-valued variable's components, and `callees` gives the
+function index of each definition compiled into the same module.  A recursive definition's
 locals are the parameters, then `result`, `done`, and one temporary per
 parameter.  `foldable` says whether a fold may appear: a fold runs
 before the value that contains it, so it may not appear in a branch, in a fold
@@ -63,6 +64,7 @@ structure Ctx where
   arrays : List (Lean.Expr × Nat)
   floatArrays : List (Lean.Expr × Nat)
   tuples : List (Lean.Expr × List (Nat × ScalarType)) := []
+  callees : List (Name × Nat) := []
   foldable : Bool
 
 def Ctx.result (ctx : Ctx) : Nat := ctx.params.size
@@ -157,6 +159,16 @@ partial def stateTerms (term type : Lean.Expr) : MetaM (List (Lean.Expr × Scala
 
 instance : Inhabited (Σ type, IRExpr type) := ⟨⟨.u64, .const 0⟩⟩
 
+/-- The WebAssembly value types of a result's components: a word for `UInt64`
+and for an `Array UInt64` pointer, a float for `Float`, and the components of
+each side of a pair. -/
+partial def resultTypes (type : Lean.Expr) : MetaM (List ScalarType) := do
+  let type ← whnfR type
+  if type.isAppOfArity ``Prod 2 then
+    return (← resultTypes type.appFn!.appArg!) ++ (← resultTypes type.appArg!)
+  if ← isUInt64Array type then return [.u64]
+  return [← scalarTypeOf type]
+
 /-- A fresh local of type `type`. -/
 def fresh (type : ScalarType) (name : String) : CompileM Nat := do
   let p ← get
@@ -189,7 +201,7 @@ starts at `loc`: inside the block and loop of its `while`, after the condition,
 the exit test, the element address, and its wrap to 32 bits. -/
 def buildElementLoc (loc : Loc) (dst limit index : Nat) (count : IRExpr .u64) : Loc :=
   let before : List Project.IR.Stmt := [.assign limit count,
-    .call 0 [.bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)] (some dst),
+    .call 0 [.bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)] [dst],
     .store (.get dst) (.get limit), .assign index (.const 0)]
   let address : IRExpr .u64 :=
     .bin .add (.get dst) (.bin .mul (.bin .add (.get index) (.const 1)) (.const 8))
@@ -298,7 +310,16 @@ mutual
         let (x, xHints) ← translateFloat ctx loc operand
         let ir : IRExpr .u64 := .truncSatU x
         return (ir, hint ir "float to word" :: xHints)
-    | (fn, #[left, right, out, _, a, b]) =>
+    | (fn, _) =>
+      if let some index := ctx.callees.lookup fn then
+        unless ctx.foldable do
+          throwError "a call may not appear in a branch, a fold or loop body, or a recursive definition: {source}"
+        let [(result, .u64)] ← translateCall ctx term index
+          | throwError "a call used as a word must return one word: {source}"
+        let ir : IRExpr .u64 := .get result
+        return (ir, [hint ir "call result"])
+      match term.getAppFnArgs with
+      | (fn, #[left, right, out, _, a, b]) =>
         let some (_, op, rule) := binaryRules.find? (·.1 == fn)
           | throwError "unsupported operation {fn} in {source}"
         unless (← isUInt64 left) && (← isUInt64 right) && (← isUInt64 out) do
@@ -308,7 +329,7 @@ mutual
         let (r, rHints) ← translateValue ctx (loc.skip offset) b
         let ir : IRExpr .u64 := .bin op l r
         return (ir, hint ir rule :: lHints ++ rHints)
-    | _ => throwError "unsupported term: {source}"
+      | _ => throwError "unsupported term: {source}"
 
   /-- Translates a decidable proposition about `UInt64` values to an IR
   condition. -/
@@ -738,6 +759,12 @@ mutual
         pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
         return ← withLocalDeclD name letType fun x =>
           translateResults (ctx.bind x [(local_, scalar)]) (body.instantiate1 x) type
+      if let some index := ctx.callees.lookup term.getAppFn.constName then
+        let results ← translateCall ctx term index
+        return (results.map fun (local_, resultType) => match resultType with
+            | .f64 => (⟨.f64, .getF local_⟩ : Σ type, IRExpr type)
+            | _ => ⟨.u64, .get local_⟩,
+          results.map fun _ => [])
       let branching := type.isAppOfArity ``Prod 2 || (← isUInt64Array type)
       if let (``ite, #[_, condition, _, thenTerm, elseTerm]) := term.getAppFnArgs then
         if branching then
@@ -754,6 +781,35 @@ mutual
         return ([⟨.u64, ir⟩], [[mkHint ⟨[], 0⟩ (exprLength ir) "array result" (← sourceOf term)]])
       let (result, hints) ← translateAs ctx ⟨[], 0⟩ (← scalarTypeOf type) term
       return ([result], [hints])
+
+  /-- Translates a call of a definition compiled into the same module, at function
+  `index`, to a call statement that leaves the callee's results in fresh locals,
+  which it returns.  Arguments are words or pointers of array variables. -/
+  partial def translateCall (ctx : Ctx) (term : Lean.Expr) (index : Nat) :
+      CompileM (List (Nat × ScalarType)) := do
+    let source ← sourceOf term
+    let mut args := #[]
+    let mut hints := #[]
+    let mut offset := 0
+    for arg in term.getAppArgs do
+      let argType ← inferType arg
+      let (ir, argHints) ← if ← isUInt64Array argType then do
+          let some local_ := ctx.arrays.lookup arg.consumeMData
+            | throwError "an array argument must be an array variable: {source}"
+          let ir : IRExpr .u64 := .get local_
+          pure (ir, [mkHint ⟨[], offset⟩ (exprLength ir) "variable" (← sourceOf arg)])
+        else if ← isUInt64 argType then
+          translateValue ctx ⟨[], offset⟩ arg
+        else throwError "a call argument must be a word or an array: {source}"
+      args := args.push ir
+      hints := hints ++ argHints.toArray
+      offset := offset + exprLength ir
+    let mut results := #[]
+    for type in ← resultTypes (← inferType term) do
+      results := results.push (← fresh type "call result", type)
+    let stmt := Project.IR.Stmt.call index args.toList (results.toList.map (·.1))
+    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "call" source :: hints.toList)
+    return results.toList
 
   /-- Translates a conditional result whose branches build arrays to a statement
   `if` whose branches leave the results in fresh locals, and returns the locals. -/
@@ -863,7 +919,8 @@ compiler reads the definition's unfolding equation, so a recursive call appears
 as a call of `declName`.  A definition without recursive calls becomes a prelude
 of folds and a result expression; a definition whose recursive calls are all in
 tail position becomes a loop. -/
-def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
+def compileDefinition (declName : Name) (callees : List (Name × Nat) := []) :
+    MetaM (Func × Hints) := do
   let env ← getEnv
   let .defnInfo _ ← getConstInfo declName
     | throwError "{declName} is not a definition"
@@ -927,7 +984,8 @@ def compileDefinition (declName : Name) : MetaM (Func × Hints) := do
       return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] })
     else
       let ctx : Ctx :=
-        { self := declName, params, words, floats, arrays, floatArrays, foldable := true }
+        { self := declName, params, words, floats, arrays, floatArrays, callees,
+          foldable := true }
       let ((results, resultHints), prelude) ←
         (translateResults ctx body resultType).run { base := params.size }
       -- Each result's code follows the body and the earlier results.
@@ -992,12 +1050,12 @@ def stmtToExpr : Project.IR.Stmt → Lean.Expr
       mkApp3 (mkConst ``Project.IR.Stmt.load) (toExpr type) (toExpr index) (irToExpr address)
   | .store address value =>
       mkApp2 (mkConst ``Project.IR.Stmt.store) (irToExpr address) (irToExpr value)
-  | .call func args result =>
+  | .call func args results =>
       mkApp3 (mkConst ``Project.IR.Stmt.call) (toExpr func)
         (let type := mkApp (mkConst ``Project.IR.Expr) (mkConst ``Project.IR.ScalarType.u64)
          args.foldr (fun arg list => mkApp3 (mkConst ``List.cons [Level.zero]) type (irToExpr arg) list)
            (mkApp (mkConst ``List.nil [Level.zero]) type))
-        (toExpr result)
+        (toExpr results)
 
 def funcToExpr (func : Func) : Lean.Expr :=
   let resultType := mkApp2 (mkConst ``Sigma [Level.zero, Level.zero]) (mkConst ``ScalarType)
