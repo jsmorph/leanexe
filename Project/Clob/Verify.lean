@@ -3,6 +3,7 @@ import Project.IR.Correct
 import Project.IR.Loop
 import Project.IR.Read
 import Project.IR.Build
+import Project.IR.Call
 import Project.Encoding.RoundTrip
 
 namespace Project.Clob
@@ -30,7 +31,7 @@ def body : Stmt :=
   .seq (.assign 10 (.bin .add (.get 5) (.bin .mul (.get 8) (.read 0 (.get 7))))) <|
   .seq (.assign 4 (.get 9)) (.assign 5 (.get 10))
 
-example : marketBuy.ir.body = .seq (.arraySize 3 0) (.seq (.assign 4 (.get 2))
+example : clob.marketBuy.ir.body = .seq (.arraySize 3 0) (.seq (.assign 4 (.get 2))
     (.seq (.assign 5 (.const 0)) (.seq (.loop 6 7 (.get 3) body)
       (.arrayLiteral 11 [.bin .sub (.get 2) (.get 4), .get 5])))) := rfl
 
@@ -52,14 +53,14 @@ theorem body_run {initial : Store Unit} {pp ps : UInt64} {prices sizes : Array U
   · simp [State.Holds, Scalar.values, step, hParams, hLocals, min]
 
 theorem marketBuy_implements :
-    Implements marketBuy.module 3 marketBuyTuple (fun _ => 72) := by
-  refine Func.implements_heap [(marketBuy.ir, "marketBuy")] 0 marketBuy.ir "marketBuy" rfl marketBuyTuple (fun _ => 72)
+    Implements clob.module 3 marketBuyTuple (fun _ => 72) := by
+  refine Func.implements_heap clob.funcs 0 clob.marketBuy.ir "marketBuy" rfl marketBuyTuple (fun _ => 72)
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, sizes, qty⟩ heap initial _ hHeap
     ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hRoom
-  have hMemory32 : (compile [(marketBuy.ir, "marketBuy")]).memIs64 = false := rfl
-  have hImports : (compile [(marketBuy.ir, "marketBuy")]).imports = [] := rfl
-  have hAlloc : (compile [(marketBuy.ir, "marketBuy")]).funcs[0]? = some (allocFunction 0) := rfl
+  have hMemory32 : clob.module.memIs64 = false := rfl
+  have hImports : clob.module.imports = [] := rfl
+  have hAlloc : clob.module.funcs[0]? = some (allocFunction 0) := rfl
   have hP := hPrices.values
   have hS := hSizes.values
   let start : State :=
@@ -125,17 +126,9 @@ theorem marketBuy_implements :
     refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pp, rfl, hNew.borrowed pp prices hPrices⟩, _, _, rfl,
       ⟨ps, rfl, hNew.borrowed ps sizes hSizes⟩, rfl⟩, hNew.top, hNew.pages, hNew.borrowed,
       fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 ptr], state,
-      by simp [marketBuy.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
+      by simp [clob.marketBuy.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
     rw [marketBuyTuple, marketBuy_eq, hResult]
     simpa using hOwned
-
-/-- `encode` succeeds on `marketBuy.module`, and its bytes decode to a module that
-computes `marketBuy` exactly, returning an array the caller owns. -/
-theorem marketBuy_bytes : ∃ bytes, Encoding.encode marketBuy.module = .ok bytes ∧
-    ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 3 marketBuyTuple (fun _ => 72) := by
-  obtain ⟨bytes, success, decoded⟩ :=
-    Encoding.round_trip marketBuy.module (by decide) (by decide +kernel)
-  exact ⟨bytes, success, marketBuy.module, decoded, marketBuy_implements⟩
 
 /-- `fillLevel` with its three arguments as one tuple. -/
 def fillTuple (x : Array UInt64 × UInt64 × UInt64) : Array UInt64 :=
@@ -144,13 +137,13 @@ def fillTuple (x : Array UInt64 × UInt64 × UInt64) : Array UInt64 :=
 /-- The bytes `fillLevel` may allocate: one array of the input's length. -/
 def fillNeed (x : Array UInt64 × UInt64 × UInt64) : Nat := 48 + 8 * (x.1.size + 1)
 
-theorem fillLevel_implements : Implements fillLevel.module 3 fillTuple fillNeed := by
-  refine Func.implements_heap [(fillLevel.ir, "fillLevel")] 0 fillLevel.ir "fillLevel" rfl fillTuple fillNeed
+theorem fillLevel_implements : Implements clob.module 4 fillTuple fillNeed := by
+  refine Func.implements_heap clob.funcs 1 clob.fillLevel.ir "fillLevel" rfl fillTuple fillNeed
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨sizes, k, amount⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hRoom
-  have hMemory32 : (compile [(fillLevel.ir, "fillLevel")]).memIs64 = false := rfl
-  have hImports : (compile [(fillLevel.ir, "fillLevel")]).imports = [] := rfl
-  have hAlloc : (compile [(fillLevel.ir, "fillLevel")]).funcs[0]? = some (allocFunction 0) := rfl
+  have hMemory32 : clob.module.memIs64 = false := rfl
+  have hImports : clob.module.imports = [] := rfl
+  have hAlloc : clob.module.funcs[0]? = some (allocFunction 0) := rfl
   have hS := hSizes.values
   have hSize64 := hS.size_lt
   let value := sizes[k.toNat]! - amount
@@ -203,17 +196,9 @@ theorem fillLevel_implements : Implements fillLevel.module 3 fillTuple fillNeed 
       le_of_le_of_eq hNew.top (by simp [fillNeed, hn]),
       le_of_le_of_eq hNew.pages (by simp [fillNeed, hn]), hNew.borrowed,
       fun p ws h => (hNew.ownedKeep p ws h).1, [.i64 ptr], state,
-      by simp [fillLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
+      by simp [clob.fillLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ptr, rfl, ?_⟩
     rw [fillTuple, LeanExe.Examples.Clob.fillLevel, set!_eq_build sizes k value hSize64]
     exact hOwned
-
-/-- `encode` succeeds on `fillLevel.module`, and its bytes decode to a module that
-computes `fillLevel` exactly, returning a new array the caller owns. -/
-theorem fillLevel_bytes : ∃ bytes, Encoding.encode fillLevel.module = .ok bytes ∧
-    ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 3 fillTuple fillNeed := by
-  obtain ⟨bytes, success, decoded⟩ :=
-    Encoding.round_trip fillLevel.module (by decide) (by decide +kernel)
-  exact ⟨bytes, success, fillLevel.module, decoded, fillLevel_implements⟩
 
 /-- `insertLevel` with its five arguments as one tuple. -/
 def insertTuple (x : Array UInt64 × Array UInt64 × UInt64 × UInt64 × UInt64) :
@@ -271,16 +256,17 @@ theorem insert_element {store : Store Unit} {ptr k v : UInt64} {xs : Array UInt6
     · simp [Expr.eval, hIndex, hK, h1, h2, Expr.readValue_at hArray, hArrayGet, hArrayNe,
         State.set?_eq_update, hLength, U64Op.apply]
 
-theorem insertLevel_implements : Implements insertLevel.module 3 insertTuple insertNeed := by
-  refine Func.implements_heap [(insertLevel.ir, "insertLevel")] 0 insertLevel.ir "insertLevel" rfl insertTuple insertNeed
+theorem insertLevel_implements : Implements clob.module 5 insertTuple insertNeed := by
+  refine Func.implements_heap clob.funcs 2 clob.insertLevel.ir "insertLevel" rfl insertTuple insertNeed
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, sizes, k, price, size⟩ heap initial _ hHeap
     ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hRoom
-  have hMemory32 : (compile [(insertLevel.ir, "insertLevel")]).memIs64 = false := rfl
-  have hImports : (compile [(insertLevel.ir, "insertLevel")]).imports = [] := rfl
-  have hAlloc : (compile [(insertLevel.ir, "insertLevel")]).funcs[0]? = some (allocFunction 0) := rfl
+  have hMemory32 : clob.module.memIs64 = false := rfl
+  have hImports : clob.module.imports = [] := rfl
+  have hAlloc : clob.module.funcs[0]? = some (allocFunction 0) := rfl
   change heap.Borrowed initial pp prices at hPrices
   change heap.Borrowed initial ps sizes at hSizes
+  change heap.Room initial clob.module _ at hRoom
   have hP := hPrices.values
   have hS := hSizes.values
   have hPFit := hP.1
@@ -318,7 +304,7 @@ theorem insertLevel_implements : Implements insertLevel.module 3 insertTuple ins
       State.set?_eq_update, hParams, hLocals, s1, s2, s3]
   -- The first array.
   have hn1 := insertCount_toNat prices.size k (by omega)
-  have hRoom1 : heap.Room initial (compile [(insertLevel.ir, "insertLevel")])
+  have hRoom1 : heap.Room initial clob.module
       (48 + 8 * ((insertCount prices.size k).toNat + 1)) :=
     ⟨by have := hRoom.address; simp only [insertNeed] at this; omega,
       by have := hRoom.cap; simp only [insertNeed] at this; omega⟩
@@ -368,7 +354,7 @@ theorem insertLevel_implements : Implements insertLevel.module 3 insertTuple ins
       State.set?_eq_update, hT1.1, hT1.2, u1, u2, u3]
   have hn2 := insertCount_toNat sizes.size k (by omega)
   have hRoom2 : (heap.allocate (UInt64.ofNat (8 * ((insertCount prices.size k).toNat + 1)))).Room
-      store1 (compile [(insertLevel.ir, "insertLevel")])
+      store1 clob.module
       (48 + 8 * ((insertCount sizes.size k).toNat + 1)) := by
     have hNeed : (UInt64.ofNat (8 * ((insertCount prices.size k).toNat + 1))).toNat =
         8 * ((insertCount prices.size k).toNat + 1) :=
@@ -404,7 +390,7 @@ theorem insertLevel_implements : Implements insertLevel.module 3 insertTuple ins
     fun p ws h => hKeep2 p ws (hKeep1 p ws h),
     fun p ws h => (hNew2.ownedKeep p ws (hNew1.ownedKeep p ws h).1).1,
     [.i64 ptr1, .i64 ptr2], t2,
-    by simp [insertLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr1', hPtr2],
+    by simp [clob.insertLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr1', hPtr2],
     [.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ?_⟩, ⟨ptr2, rfl, ?_⟩⟩
   · have hTop := Heap.allocate_top (heap := heap) (store := initial)
       (need := UInt64.ofNat (8 * ((insertCount prices.size k).toNat + 1))) (by rw [hNeed1]; exact hRoom1)
@@ -422,12 +408,426 @@ theorem insertLevel_implements : Implements insertLevel.module 3 insertTuple ins
       insertIdx!_eq_build sizes k size (by omega)]
     exact hOwned2
 
-/-- `encode` succeeds on `insertLevel.module`, and its bytes decode to a module that
-computes `insertLevel` exactly, returning two new arrays the caller owns. -/
-theorem insertLevel_bytes : ∃ bytes, Encoding.encode insertLevel.module = .ok bytes ∧
-    ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 3 insertTuple insertNeed := by
+/-- `addToLevel` with its four arguments as one tuple. -/
+def addToTuple (x : Array UInt64 × Array UInt64 × UInt64 × UInt64) :
+    Array UInt64 × Array UInt64 :=
+  LeanExe.Examples.Clob.addToLevel x.1 x.2.1 x.2.2.1 x.2.2.2
+
+/-- The bytes `addToLevel` may allocate: a copy of each array. -/
+def addToNeed (x : Array UInt64 × Array UInt64 × UInt64 × UInt64) : Nat :=
+  96 + 8 * (x.1.size + 1) + 8 * (x.2.1.size + 1)
+
+theorem addToLevel_implements : Implements clob.module 6 addToTuple addToNeed := by
+  refine Func.implements_heap clob.funcs 3 clob.addToLevel.ir "addToLevel" rfl addToTuple addToNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨prices, sizes, k, size⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hRoom
+  have hMemory32 : clob.module.memIs64 = false := rfl
+  have hImports : clob.module.imports = [] := rfl
+  have hAlloc : clob.module.funcs[0]? = some (allocFunction 0) := rfl
+  change heap.Borrowed initial pp prices at hPrices
+  change heap.Borrowed initial ps sizes at hSizes
+  change heap.Room initial clob.module _ at hRoom
+  have hP := hPrices.values
+  have hS := hSizes.values
+  have hPFit := hP.1
+  have hSFit := hS.1
+  let value := sizes[k.toNat]! + size
+  let start : State :=
+    { params := [.i64 pp, .i64 ps, .i64 k, .i64 size], locals := List.replicate 11 (.i64 0) }
+  let s1 := start.update 4 (.i64 (UInt64.ofNat prices.size))
+  show Triple _ (.seq (.arraySize 4 0) (.seq (.build 5 6 7 (.get 4) (.read 0 (.get 7)))
+    (.seq (.assign 8 (.get 2)) (.seq (.assign 9 (.bin .add (.read 1 (.get 2)) (.get 3)))
+      (.seq (.arraySize 10 1) (.build 11 12 13 (.get 10)
+        (.ite (.eq (.get 13) (.get 8)) (.get 9) (.read 1 (.get 13))))))))) 14
+    (fun store state => store = initial ∧ state = start) _
+  have hParams : start.params.length = 4 := rfl
+  have hLocals : start.locals.length = 11 := rfl
+  have hGet0 : start.get 0 = some (.i64 pp) := rfl
+  have hLengthP := hP.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLengthP
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) ?_
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLengthP, hP.lengthRead,
+      State.set?_eq_update, hParams, hLocals, s1]
+  -- The copy of the prices.
+  have hn1 : (UInt64.ofNat prices.size).toNat = prices.size :=
+    UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
+  have hRoom1 : heap.Room initial clob.module (48 + 8 * ((UInt64.ofNat prices.size).toNat + 1)) :=
+    ⟨by have := hRoom.address; simp only [addToNeed] at this; omega,
+      by have := hRoom.cap; simp only [addToNeed] at this; omega⟩
+  refine Stmt.seq_spec (Stmt.build_spec (n := UInt64.ofNat prices.size)
+    (fun j => prices[j.toNat]!) hMemory32 hImports hAlloc (by decide) (by decide)
+    (by simp [s1, hParams, hLocals]) hHeap hRoom1
+    ⟨s1, by simp [Expr.eval, s1, hParams, hLocals]⟩ ?_) ?_
+  · intro j store state hj hAt hFrame hIndex
+    have hState : state.params.length = 4 ∧ state.locals.length = 11 := by
+      rw [hFrame.params, hFrame.locals]; simp [s1, hParams, hLocals]
+    have h0 : state.get 0 = some (.i64 pp) :=
+      (hFrame.get 0 (by decide) (by decide)).trans (by simp [s1, hGet0])
+    simp [Expr.eval, hIndex, Expr.readValue_at (hAt pp prices hPrices), h0,
+      State.set?_eq_update, hState.1, hState.2]
+  apply Triple.of_forall
+  rintro store1 t1 ⟨ptr1, hFrame1, hPtr1, hNew1⟩
+  -- The sizes with the level updated.
+  have hAt1 := hNew1.at_
+  have hOwned1 := hNew1.owned
+  have hTop1 := hNew1.top
+  have hPages1 := hNew1.pages
+  have hKeep1 := hNew1.borrowed
+  have hS1 := (hKeep1 ps sizes hSizes).values
+  have hLengthS := hS1.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLengthS
+  have hT1 : t1.params.length = 4 ∧ t1.locals.length = 11 := by
+    rw [hFrame1.params, hFrame1.locals]; simp [s1, hParams, hLocals]
+  have h1Get1 : t1.get 1 = some (.i64 ps) :=
+    (hFrame1.get 1 (by decide) (by decide)).trans (by simp [s1]; rfl)
+  have h1Get2 : t1.get 2 = some (.i64 k) :=
+    (hFrame1.get 2 (by decide) (by decide)).trans (by simp [s1]; rfl)
+  have h1Get3 : t1.get 3 = some (.i64 size) :=
+    (hFrame1.get 3 (by decide) (by decide)).trans (by simp [s1]; rfl)
+  let u1 := t1.update 8 (.i64 k)
+  let u2 := (u1.update 14 (.i64 k)).update 9 (.i64 value)
+  let u3 := u2.update 10 (.i64 (UInt64.ofNat sizes.size))
+  refine Stmt.seq_spec (Stmt.run_spec (final := u1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := u2) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := u3) ?_) ?_
+  · simp [Stmt.run, Expr.eval, h1Get2, State.set?_eq_update, hT1.1, hT1.2, u1]
+  · simp [Stmt.run, Expr.eval, h1Get1, h1Get2, h1Get3, Expr.readValue_at hS1,
+      State.set?_eq_update, hT1.1, hT1.2, u1, u2, U64Op.apply, value]
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, h1Get1, hLengthS, hS1.lengthRead,
+      State.set?_eq_update, hT1.1, hT1.2, u1, u2, u3]
+  have hn2 : (UInt64.ofNat sizes.size).toNat = sizes.size :=
+    UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
+  have hRoom2 : (heap.allocate (UInt64.ofNat (8 * ((UInt64.ofNat prices.size).toNat + 1)))).Room
+      store1 clob.module (48 + 8 * ((UInt64.ofNat sizes.size).toNat + 1)) := by
+    have hNeed : (UInt64.ofNat (8 * ((UInt64.ofNat prices.size).toNat + 1))).toNat =
+        8 * ((UInt64.ofNat prices.size).toNat + 1) :=
+      UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
+    refine Heap.Room.after_allocate ⟨?_, ?_⟩ hNew1.caps
+    · have := hRoom.address; simp only [addToNeed] at this; rw [hNeed]; omega
+    · have := hRoom.cap; simp only [addToNeed] at this; rw [hNeed]; omega
+  refine (Stmt.build_spec (n := UInt64.ofNat sizes.size)
+    (fun j => if j = k then value else sizes[j.toNat]!) hMemory32 hImports hAlloc
+    (by decide) (by decide) (by simp [u3, u2, u1, hT1.1, hT1.2]) hAt1 hRoom2
+    ⟨u3, by simp [Expr.eval, u3, u2, u1, hT1.1, hT1.2]⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro j store state hj hAt hFrame hIndex
+    have hState : state.params.length = 4 ∧ state.locals.length = 11 := by
+      rw [hFrame.params, hFrame.locals]; simp [u3, u2, u1, hT1.1, hT1.2]
+    have h1 : state.get 1 = some (.i64 ps) :=
+      (hFrame.get 1 (by decide) (by decide)).trans (by simp [u3, u2, u1, h1Get1])
+    have h8 : state.get 8 = some (.i64 k) :=
+      (hFrame.get 8 (by decide) (by decide)).trans (by simp [u3, u2, u1, hT1.1, hT1.2])
+    have h9 : state.get 9 = some (.i64 value) :=
+      (hFrame.get 9 (by decide) (by decide)).trans (by simp [u3, u2, u1, hT1.1, hT1.2])
+    by_cases hjk : UInt64.ofNat j = k
+    · simp [Expr.eval, hIndex, h8, h9, hjk]
+    · simp [Expr.eval, hIndex, h8, hjk, Expr.readValue_at (hAt ps sizes (hKeep1 ps sizes hSizes)),
+        h1, State.set?_eq_update, hState.1, hState.2]
+  rintro store2 t2 ⟨ptr2, hFrame2, hPtr2, hNew2⟩
+  have hTop2 := hNew2.top
+  have hPages2 := hNew2.pages
+  have hPtr1' : t2.get 5 = some (.i64 ptr1) := by
+    rw [hFrame2.get 5 (by decide) (by decide)]; simp [u3, u2, u1, hPtr1]
+  have hNeed1 : (UInt64.ofNat (8 * ((UInt64.ofNat prices.size).toNat + 1))).toNat =
+      8 * ((UInt64.ofNat prices.size).toNat + 1) :=
+    UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
+  refine ⟨_, hNew2.at_, ⟨_, _, rfl, ⟨pp, rfl, hNew2.borrowed pp prices (hKeep1 pp prices hPrices)⟩,
+      _, _, rfl, ⟨ps, rfl, hNew2.borrowed ps sizes (hKeep1 ps sizes hSizes)⟩, rfl⟩, ?_, ?_,
+    fun p ws h => hNew2.borrowed p ws (hKeep1 p ws h),
+    fun p ws h => (hNew2.ownedKeep p ws (hNew1.ownedKeep p ws h).1).1,
+    [.i64 ptr1, .i64 ptr2], t2,
+    by simp [clob.addToLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr1', hPtr2],
+    [.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ?_⟩, ⟨ptr2, rfl, ?_⟩⟩
+  · have hTop := Heap.allocate_top (heap := heap) (store := initial)
+      (need := UInt64.ofNat (8 * ((UInt64.ofNat prices.size).toNat + 1)))
+      (by rw [hNeed1]; exact hRoom1)
+    simp only [addToNeed]
+    omega
+  · simp only [addToNeed]
+    have hMax1 := Nat.le_max_left initial.mem.pages
+      ((heap.top.toNat + (48 + 8 * ((UInt64.ofNat prices.size).toNat + 1)) + 65535) / 65536)
+    omega
+  · have hOwned := (hNew2.ownedKeep ptr1 _ hOwned1).1
+    rw [addToTuple, LeanExe.Examples.Clob.addToLevel]
+    rw [← copy_eq_build prices (by omega)] at hOwned
+    exact hOwned
+  · rw [addToTuple, LeanExe.Examples.Clob.addToLevel, set!_eq_build sizes k value (by omega)]
+    exact hNew2.owned
+
+/-- `addBid` with its four arguments as one tuple. -/
+def addBidTuple (x : Array UInt64 × Array UInt64 × UInt64 × UInt64) :
+    Array UInt64 × Array UInt64 :=
+  LeanExe.Examples.Clob.addBid x.1 x.2.1 x.2.2.1 x.2.2.2
+
+/-- The bytes `addBid` may allocate: those of `insertLevel`, which bound those of
+`addToLevel`. -/
+def addBidNeed (x : Array UInt64 × Array UInt64 × UInt64 × UInt64) : Nat :=
+  96 + 8 * (x.1.size + 2) + 8 * (x.2.1.size + 2)
+
+/-- One step of `addBid`'s search: count the levels priced above `price`. -/
+def searchStep (prices : Array UInt64) (price : UInt64) (i k : UInt64) : UInt64 :=
+  if prices[i.toNat]! > price then k + 1 else k
+
+/-- The position `addBid` inserts at. -/
+def bidPosition (prices : Array UInt64) (price : UInt64) : UInt64 :=
+  LeanExe.loop prices.size.toUInt64 0 (searchStep prices price)
+
+theorem addBid_eq (prices sizes : Array UInt64) (price size : UInt64) :
+    LeanExe.Examples.Clob.addBid prices sizes price size =
+      if bidPosition prices price < prices.size.toUInt64 ∧
+          prices[(bidPosition prices price).toNat]! = price then
+        LeanExe.Examples.Clob.addToLevel prices sizes (bidPosition prices price) size
+      else LeanExe.Examples.Clob.insertLevel prices sizes (bidPosition prices price) price size :=
+  rfl
+
+/-- The compiled search loop's body. -/
+def searchBody : Stmt :=
+  .seq (.assign 8 (.ite (.ltU (.get 2) (.read 0 (.get 7))) (.bin .add (.get 5) (.const 1))
+    (.get 5))) (.assign 5 (.get 8))
+
+theorem searchBody_run {initial : Store Unit} {pp : UInt64} {prices : Array UInt64}
+    (hP : UInt64Array.At initial pp prices) {state : State} {k : Nat} {c price : UInt64}
+    (hParams : state.params.length = 4) (hLocals : state.locals.length = 14)
+    (h0 : state.get 0 = some (.i64 pp)) (h2 : state.get 2 = some (.i64 price))
+    (h5 : state.get 5 = some (.i64 c)) (h7 : state.get 7 = some (.i64 (UInt64.ofNat k))) :
+    ∃ final, searchBody.run initial.mem 17 state = some final ∧
+      State.Frame 17 [5, 8] state final ∧
+      final.Holds [5] (Scalar.values (searchStep prices price (UInt64.ofNat k) c)) := by
+  simp [searchBody, Stmt.run, Expr.eval, h0, h2, h5, h7, Expr.readValue_at hP,
+    State.set?_eq_update, hParams, hLocals, U64Op.apply]
+  constructor
+  · repeat refine State.Frame.update ?_ (by simp)
+    exact State.Frame.refl _ _ _
+  · simp [State.Holds, Scalar.values, searchStep, hParams, hLocals]
+
+/-- An owned pair of arrays is two pointers, each to an owned array. -/
+theorem owned_pair {heap : Heap} {store : Store Unit} {values : List Value}
+    {xs ys : Array UInt64} (h : Represent.owned heap store values (xs, ys)) :
+    ∃ p1 p2, values = [.i64 p1, .i64 p2] ∧ heap.Owned store p1 xs ∧ heap.Owned store p2 ys := by
+  obtain ⟨_, _, rfl, ⟨p1, rfl, h1⟩, ⟨p2, rfl, h2⟩⟩ := h
+  exact ⟨p1, p2, rfl, h1, h2⟩
+
+theorem addBid_implements : Implements clob.module 7 addBidTuple addBidNeed := by
+  refine Func.implements_heap clob.funcs 4 clob.addBid.ir "addBid" rfl addBidTuple addBidNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨prices, sizes, price, size⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hRoom
+  change heap.Borrowed initial pp prices at hPrices
+  change heap.Borrowed initial ps sizes at hSizes
+  change heap.Room initial clob.module _ at hRoom
+  have hP := hPrices.values
+  have hPFit := hP.1
+  have hSFit := hSizes.values.1
+  let K := bidPosition prices price
+  let start : State :=
+    { params := [.i64 pp, .i64 ps, .i64 price, .i64 size], locals := List.replicate 14 (.i64 0) }
+  let s1 := start.update 4 (.i64 (UInt64.ofNat prices.size))
+  let s2 := s1.update 5 (.i64 0)
+  let condition : Expr .bool := .and (.ltU (.get 9) (.get 10)) (.eq (.read 0 (.get 9)) (.get 2))
+  let thenStmt : Stmt := .seq (.call 6 [.get 0, .get 1, .get 9, .get 3] [11, 12])
+    (.seq (.assign 13 (.get 11)) (.assign 14 (.get 12)))
+  let elseStmt : Stmt := .seq (.call 5 [.get 0, .get 1, .get 9, .get 2, .get 3] [15, 16])
+    (.seq (.assign 13 (.get 15)) (.assign 14 (.get 16)))
+  show Triple _ (.seq (.arraySize 4 0) (.seq (.assign 5 (.const 0))
+    (.seq (.loop 6 7 (.get 4) searchBody) (.seq (.assign 9 (.get 5)) (.seq (.arraySize 10 0)
+      (.ite condition thenStmt elseStmt)))))) 17
+    (fun store state => store = initial ∧ state = start) _
+  have hParams : start.params.length = 4 := rfl
+  have hLocals : start.locals.length = 14 := rfl
+  have hGet0 : start.get 0 = some (.i64 pp) := rfl
+  have hLengthP := hP.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLengthP
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) ?_
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLengthP, hP.lengthRead,
+      State.set?_eq_update, hParams, hLocals, s1]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, s1, s2]
+  -- The search.
+  refine Stmt.seq_spec (Stmt.loop_spec (vars := [5]) (writes := [5, 8]) (init := (0 : UInt64))
+    (n := prices.size.toUInt64) (searchStep prices price)
+    (by decide) (by decide) (by decide) (by decide) (by decide)
+    (by simp [s2, s1, hParams, hLocals]) ⟨s2, by simp [Expr.eval, s2, s1, hParams, hLocals]⟩
+    (by simp [State.Holds, Scalar.values, s2, s1, hParams, hLocals]) ?_) ?_
+  · intro k c state hk hFrame hHolds hIndex hLimit
+    have hState : state.params.length = 4 ∧ state.locals.length = 14 := by
+      rw [hFrame.params, hFrame.locals]; simp [s2, s1, hParams, hLocals]
+    have h0 : state.get 0 = some (.i64 pp) :=
+      (hFrame.get 0 (by decide) (by decide)).trans (by simp [s2, s1, hGet0])
+    have h2 : state.get 2 = some (.i64 price) :=
+      (hFrame.get 2 (by decide) (by decide)).trans (by simp [s2, s1]; rfl)
+    have h5 : state.get 5 = some (.i64 c) := by simpa [State.Holds, Scalar.values] using hHolds
+    obtain ⟨final, hRun, hFinalFrame, hFinalHolds⟩ :=
+      searchBody_run hP hState.1 hState.2 h0 h2 h5 hIndex
+    refine (Stmt.run_spec hRun).mono (fun _ _ h => h) ?_
+    rintro store st ⟨rfl, rfl⟩
+    exact ⟨rfl, hFinalFrame, hFinalHolds⟩
+  apply Triple.of_forall
+  rintro store t1 ⟨hStore, hFrame1, hHolds1⟩
+  subst store
+  have hT1 : t1.params.length = 4 ∧ t1.locals.length = 14 := by
+    rw [hFrame1.params, hFrame1.locals]; simp [s2, s1, hParams, hLocals]
+  have h1Get0 : t1.get 0 = some (.i64 pp) :=
+    (hFrame1.get 0 (by decide) (by decide)).trans (by simp [s2, s1, hGet0])
+  have h1Get1 : t1.get 1 = some (.i64 ps) :=
+    (hFrame1.get 1 (by decide) (by decide)).trans (by simp [s2, s1]; rfl)
+  have h1Get2 : t1.get 2 = some (.i64 price) :=
+    (hFrame1.get 2 (by decide) (by decide)).trans (by simp [s2, s1]; rfl)
+  have h1Get3 : t1.get 3 = some (.i64 size) :=
+    (hFrame1.get 3 (by decide) (by decide)).trans (by simp [s2, s1]; rfl)
+  have hK : t1.get 5 = some (.i64 K) := (List.forall₂_cons.mp hHolds1).1
+  let u1 := t1.update 9 (.i64 K)
+  let u2 := u1.update 10 (.i64 (UInt64.ofNat prices.size))
+  refine Stmt.seq_spec (Stmt.run_spec (final := u1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := u2) ?_) ?_
+  · simp [Stmt.run, Expr.eval, hK, State.set?_eq_update, hT1.1, hT1.2, u1]
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, h1Get0, hLengthP,
+      hP.lengthRead, State.set?_eq_update, hT1.1, hT1.2, u1, u2]
+  -- The condition.
+  have hU2 : u2.params.length = 4 ∧ u2.locals.length = 14 := by simp [u2, u1, hT1.1, hT1.2]
+  let found := decide (K < UInt64.ofNat prices.size) && (prices[K.toNat]! == price)
+  let afterCondition := if K < UInt64.ofNat prices.size then u2.update 17 (.i64 K) else u2
+  have hAC : ∀ j, j ≠ 17 → afterCondition.get j = u2.get j := fun j hj => by
+    by_cases hlt : K < UInt64.ofNat prices.size <;> simp [afterCondition, hlt, hj]
+  have hACLength : afterCondition.params.length = 4 ∧ afterCondition.locals.length = 14 := by
+    by_cases hlt : K < UInt64.ofNat prices.size <;> simp [afterCondition, hlt, hU2.1, hU2.2]
+  have hu : ∀ j, j < 4 → u2.get j = t1.get j := fun j hj => by
+    simp only [u2, u1]
+    rw [State.get_update_ne (by omega), State.get_update_ne (by omega)]
+  have hCondition : condition.eval initial.mem 17 u2 = some (found, afterCondition) := by
+    by_cases hlt : K < UInt64.ofNat prices.size
+    · simp [condition, Expr.eval, u2, u1, hT1.1, hT1.2, hlt, Expr.readValue_at hP, h1Get0,
+        h1Get2, State.set?_eq_update, found, afterCondition]
+    · simp [condition, Expr.eval, u2, u1, hT1.1, hT1.2, hlt, found, afterCondition]
+  have hArgsGet : afterCondition.get 0 = some (.i64 pp) ∧ afterCondition.get 1 = some (.i64 ps) ∧
+      afterCondition.get 2 = some (.i64 price) ∧ afterCondition.get 3 = some (.i64 size) ∧
+      afterCondition.get 9 = some (.i64 K) := by
+    refine ⟨?_, ?_, ?_, ?_, ?_⟩
+    · rw [hAC 0 (by decide), hu 0 (by decide), h1Get0]
+    · rw [hAC 1 (by decide), hu 1 (by decide), h1Get1]
+    · rw [hAC 2 (by decide), hu 2 (by decide), h1Get2]
+    · rw [hAC 3 (by decide), hu 3 (by decide), h1Get3]
+    · rw [hAC 9 (by decide)]; simp [u2, u1, hT1.1, hT1.2]
+  obtain ⟨g0, g1, g2, g3, g9⟩ := hArgsGet
+  have hSetPair : ∀ (a b : Nat), a < 18 → b < 18 → ∀ (values : List Value) (xs ys : Array UInt64)
+      (heap' : Heap) (store' : Store Unit), Represent.owned heap' store' values (xs, ys) →
+      ∃ next, afterCondition.setAll [b, a] values.reverse = some next := by
+    intro a b ha hb values xs ys heap' store' hOwned
+    obtain ⟨p1, p2, rfl, -, -⟩ := owned_pair hOwned
+    have hb' : b < afterCondition.params.length + afterCondition.locals.length := by omega
+    have ha' : a < (afterCondition.update b (.i64 p2)).params.length +
+        (afterCondition.update b (.i64 p2)).locals.length := by simp; omega
+    exact ⟨(afterCondition.update b (.i64 p2)).update a (.i64 p1), by
+      simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append,
+        State.setAll, State.set?_eq_update _ hb', State.set?_eq_update _ ha', Option.bind_eq_bind,
+        Option.bind_some]⟩
+  have hNeedAddTo : addToNeed (prices, sizes, K, size) ≤ addBidNeed (prices, sizes, price, size) := by
+    simp only [addToNeed, addBidNeed]; omega
+  have hNeedInsert : insertNeed (prices, sizes, K, price, size) ≤
+      addBidNeed (prices, sizes, price, size) := by
+    simp only [insertNeed, addBidNeed]; omega
+  have hNoImports : clob.module.imports.length = 0 := rfl
+  refine (Stmt.ite_spec
+    (PThen := fun s st => s = initial ∧ st = afterCondition ∧ found = true)
+    (PElse := fun s st => s = initial ∧ st = afterCondition ∧ found = false) ?_ ?_).mono
+      ?_ fun _ _ h => h
+  rotate_left 2
+  · rintro s st ⟨rfl, rfl⟩
+    exact ⟨found, afterCondition, hCondition, by cases found <;> simp⟩
+  -- A branch calls a function and copies its two results.
+  all_goals
+    apply Triple.of_forall
+    rintro s st ⟨rfl, rfl, hFound⟩
+  · -- An existing level: `addToLevel`.
+    have hTaken : K < prices.size.toUInt64 ∧ prices[K.toNat]! = price := by
+      simpa [found] using hFound
+    refine Stmt.seq_spec (Stmt.callImplements_spec addToLevel_implements
+      (f := clob.addToLevel.ir.function (2 + 3)) rfl
+      (by rw [hNoImports]; exact compile_funcs (funcs := clob.funcs) (i := 3) rfl) rfl
+      (words := [pp, ps, K, size]) (x := (prices, sizes, K, size))
+      (by simp [Expr.evalAll, Expr.eval, g0, g1, g9, g3]) hHeap
+      ⟨[.i64 pp], [.i64 ps, .i64 K, .i64 size], rfl, ⟨pp, rfl, hPrices⟩, [.i64 ps],
+        [.i64 K, .i64 size], rfl, ⟨ps, rfl, hSizes⟩, rfl⟩
+      ⟨by have := hRoom.address; omega, by have := hRoom.cap; omega⟩
+      fun heap' store' values h => hSetPair 11 12 (by decide) (by decide) values _ _ heap' store' h)
+      ?_
+    apply Triple.of_forall
+    rintro store' st' ⟨heap', values, hAt', hOwned', -, hTop', hPages', hKeepB, hKeepO, hSet'⟩
+    obtain ⟨p1, p2, rfl, -, -⟩ := owned_pair hOwned'
+    have hState' : st' = (afterCondition.update 12 (.i64 p2)).update 11 (.i64 p1) := by
+      have hb' : 12 < afterCondition.params.length + afterCondition.locals.length := by omega
+      have ha' : 11 < (afterCondition.update 12 (.i64 p2)).params.length +
+          (afterCondition.update 12 (.i64 p2)).locals.length := by simp; omega
+      simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append,
+        State.setAll, State.set?_eq_update _ hb', State.set?_eq_update _ ha', Option.bind_eq_bind,
+        Option.bind_some, Option.some.injEq] at hSet'
+      exact hSet'.symm
+    subst hState'
+    let final := (((afterCondition.update 12 (.i64 p2)).update 11 (.i64 p1)).update 13
+      (.i64 p1)).update 14 (.i64 p2)
+    refine (Stmt.run_spec (final := final) (by
+      simp [Stmt.run, Expr.eval, State.set?_eq_update, hACLength.1, hACLength.2, final])).mono
+        (fun _ _ h => h) ?_
+    rintro s f ⟨rfl, rfl⟩
+    refine ⟨heap', hAt', ⟨_, _, rfl, ⟨pp, rfl, hKeepB pp prices hPrices⟩, _, _, rfl,
+        ⟨ps, rfl, hKeepB ps sizes hSizes⟩, rfl⟩, by omega, ?_, hKeepB, hKeepO,
+      [.i64 p1, .i64 p2], final,
+      by simp [clob.addBid.ir, Func.scratch, Expr.evalResults, Expr.eval, final,
+        hACLength.1, hACLength.2], ?_⟩
+    · refine le_trans hPages' (max_le_max (le_refl _) (Nat.div_le_div_right ?_))
+      omega
+    · rw [addBidTuple, addBid_eq, ite_eq_left hTaken]
+      exact hOwned'
+  · -- A new level: `insertLevel`.
+    have hTaken : ¬(K < prices.size.toUInt64 ∧ prices[K.toNat]! = price) := by
+      simpa [found] using hFound
+    refine Stmt.seq_spec (Stmt.callImplements_spec insertLevel_implements
+      (f := clob.insertLevel.ir.function (2 + 2)) rfl
+      (by rw [hNoImports]; exact compile_funcs (funcs := clob.funcs) (i := 2) rfl) rfl
+      (words := [pp, ps, K, price, size]) (x := (prices, sizes, K, price, size))
+      (by simp [Expr.evalAll, Expr.eval, g0, g1, g9, g2, g3]) hHeap
+      ⟨[.i64 pp], [.i64 ps, .i64 K, .i64 price, .i64 size], rfl, ⟨pp, rfl, hPrices⟩, [.i64 ps],
+        [.i64 K, .i64 price, .i64 size], rfl, ⟨ps, rfl, hSizes⟩, rfl⟩
+      ⟨by have := hRoom.address; omega, by have := hRoom.cap; omega⟩
+      fun heap' store' values h => hSetPair 15 16 (by decide) (by decide) values _ _ heap' store' h)
+      ?_
+    apply Triple.of_forall
+    rintro store' st' ⟨heap', values, hAt', hOwned', -, hTop', hPages', hKeepB, hKeepO, hSet'⟩
+    obtain ⟨p1, p2, rfl, -, -⟩ := owned_pair hOwned'
+    have hState' : st' = (afterCondition.update 16 (.i64 p2)).update 15 (.i64 p1) := by
+      have hb' : 16 < afterCondition.params.length + afterCondition.locals.length := by omega
+      have ha' : 15 < (afterCondition.update 16 (.i64 p2)).params.length +
+          (afterCondition.update 16 (.i64 p2)).locals.length := by simp; omega
+      simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append,
+        State.setAll, State.set?_eq_update _ hb', State.set?_eq_update _ ha', Option.bind_eq_bind,
+        Option.bind_some, Option.some.injEq] at hSet'
+      exact hSet'.symm
+    subst hState'
+    let final := (((afterCondition.update 16 (.i64 p2)).update 15 (.i64 p1)).update 13
+      (.i64 p1)).update 14 (.i64 p2)
+    refine (Stmt.run_spec (final := final) (by
+      simp [Stmt.run, Expr.eval, State.set?_eq_update, hACLength.1, hACLength.2, final])).mono
+        (fun _ _ h => h) ?_
+    rintro s f ⟨rfl, rfl⟩
+    refine ⟨heap', hAt', ⟨_, _, rfl, ⟨pp, rfl, hKeepB pp prices hPrices⟩, _, _, rfl,
+        ⟨ps, rfl, hKeepB ps sizes hSizes⟩, rfl⟩, by omega, ?_, hKeepB, hKeepO,
+      [.i64 p1, .i64 p2], final,
+      by simp [clob.addBid.ir, Func.scratch, Expr.evalResults, Expr.eval, final,
+        hACLength.1, hACLength.2], ?_⟩
+    · refine le_trans hPages' (max_le_max (le_refl _) (Nat.div_le_div_right ?_))
+      omega
+    · rw [addBidTuple, addBid_eq, ite_eq_right hTaken]
+      exact hOwned'
+
+/-- `encode` succeeds on `clob.module`, and its bytes decode to a module whose
+exports compute the CLOB operations exactly. -/
+theorem clob_bytes : ∃ bytes, Encoding.encode clob.module = .ok bytes ∧
+    ∃ m, Encoding.decode bytes = .ok m ∧
+      Implements m 3 marketBuyTuple (fun _ => 72) ∧ Implements m 4 fillTuple fillNeed ∧
+      Implements m 5 insertTuple insertNeed ∧ Implements m 6 addToTuple addToNeed ∧
+      Implements m 7 addBidTuple addBidNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
-    Encoding.round_trip insertLevel.module (by decide) (by decide +kernel)
-  exact ⟨bytes, success, insertLevel.module, decoded, insertLevel_implements⟩
+    Encoding.round_trip clob.module (by decide) (by decide +kernel)
+  exact ⟨bytes, success, clob.module, decoded, marketBuy_implements, fillLevel_implements,
+    insertLevel_implements, addToLevel_implements, addBid_implements⟩
 
 end Project.Clob

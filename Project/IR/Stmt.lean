@@ -22,7 +22,7 @@ inductive Stmt where
   | store (address value : Expr .u64)
   /-- Calls function `func` with the values of `args`, and puts its result in
   local `index` when `result` is `some index`. -/
-  | call (func : Nat) (args : List (Expr .u64)) (result : Option Nat)
+  | call (func : Nat) (args : List (Expr .u64)) (results : List Nat)
   deriving Repr
 
 def Stmt.program : Stmt → Nat → Program
@@ -39,8 +39,8 @@ def Stmt.program : Stmt → Nat → Program
       address.program scratch ++ [.wrapI64, .load64 0] ++ type.fromBits ++ [.localSet index]
   | .store address value, scratch =>
       address.program scratch ++ [.wrapI64] ++ value.program scratch ++ [.store64 0]
-  | .call func args result, scratch =>
-      args.flatMap (·.program scratch) ++ [.call func] ++ result.toList.map .localSet
+  | .call func args results, scratch =>
+      args.flatMap (·.program scratch) ++ [.call func] ++ results.reverse.map .localSet
 
 def Stmt.scratchWidth : Stmt → Nat
   | .skip => 0
@@ -312,24 +312,48 @@ theorem Expr.evalResults_program_spec {scratch : Nat}
       apply Expr.program_spec e scratch state afterValue value out m env store _ Q hValue
       exact ih (out := type.value value :: out) hRest (by simpa using hNext)
 
+/-- Sets the locals `indices` to `values`, the first index first. -/
+def State.setAll : State → List Nat → List Value → Option State
+  | state, [], [] => some state
+  | state, index :: indices, value :: values => do
+      State.setAll (← state.set? index value) indices values
+  | _, _, _ => none
+
+/-- `local.set` of the locals `indices`, in order, takes `vs` from the stack. -/
+theorem State.setAll_spec {state next : State} {indices : List Nat} {vs values : List Value}
+    {env : HostEnv Unit} {store : Store Unit} {rest : Program} {Q : Assertion Unit}
+    (hSet : state.setAll indices vs = some next)
+    (hNext : wp m rest Q store (next.toLocals values) env) :
+    wp m (indices.map .localSet ++ rest) Q store (state.toLocals (vs ++ values)) env := by
+  induction indices generalizing state vs with
+  | nil =>
+      cases vs with
+      | nil => simp only [State.setAll, Option.some.injEq] at hSet; subst hSet; simpa using hNext
+      | cons _ _ => simp [State.setAll] at hSet
+  | cons index indices ih =>
+      cases vs with
+      | nil => simp [State.setAll] at hSet
+      | cons v vs =>
+          simp only [State.setAll, Option.bind_eq_bind, Option.bind_eq_some_iff] at hSet
+          obtain ⟨middle, hMiddle, hRest⟩ := hSet
+          simp only [List.map_cons, List.cons_append]
+          exact localSet_spec hMiddle (ih hRest)
+
 /-- A call evaluates its arguments, runs the callee, whose specification
-`Post` describes the store and results it ends with, and stores the single result
-when `result` names a local.  A call without a result local requires the callee
-to return nothing. -/
-theorem Stmt.call_spec {scratch func : Nat} {args : List (Expr .u64)} {result : Option Nat}
+`Post` describes the store and results it ends with, and sets the locals
+`results` to the callee's results.  Talos lists the results with the last on
+top, and the code sets the locals from the last. -/
+theorem Stmt.call_spec {scratch func : Nat} {args : List (Expr .u64)} {results : List Nat}
     {f : Wasm.Function} {R : Store Unit → State → Prop}
     (hImport : m.imports[func]? = none)
     (hFunc : m.funcs[func - m.imports.length]? = some f)
     (hParams : args.length = f.numParams) :
-    Triple m (.call func args result) scratch
+    Triple m (.call func args results) scratch
       (fun store state => ∃ words afterArgs, ∃ Post : Store Unit → List Value → Prop,
         Expr.evalAll store.mem scratch args state = some (words, afterArgs) ∧
         (∀ env, TerminatesWith env m func store (words.reverse.map .i64) Post) ∧
         ∀ store' out, Post store' out →
-          match result with
-          | none => out = [] ∧ R store' afterArgs
-          | some index => ∃ word next, out = [.i64 word] ∧
-              afterArgs.set? index (.i64 word) = some next ∧ R store' next)
+          ∃ next, afterArgs.setAll results.reverse out = some next ∧ R store' next)
       R := by
   intro env store state values rest Q hPre hPost
   obtain ⟨words, afterArgs, Post, hArgs, hRun, hResult⟩ := hPre
@@ -339,12 +363,7 @@ theorem Stmt.call_spec {scratch func : Nat} {args : List (Expr .u64)} {result : 
     simp [Expr.evalAll_length hArgs, hParams]
   refine wp_call_tw ((hRun env).append_args hImport hFunc hLength values) ?_
   rintro store' _ ⟨out, rfl, hOut⟩
-  cases result with
-  | none =>
-      obtain ⟨rfl, hR⟩ := hResult store' out hOut
-      simpa using hPost store' afterArgs hR
-  | some index =>
-      obtain ⟨word, next, rfl, hSet, hR⟩ := hResult store' out hOut
-      exact localSet_spec hSet (hPost store' next hR)
+  obtain ⟨next, hSet, hR⟩ := hResult store' out hOut
+  exact State.setAll_spec hSet (hPost store' next hR)
 
 end Project.IR

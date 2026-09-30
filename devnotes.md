@@ -19014,3 +19014,33 @@ comparisons and the session checks passed on the new bytes.
 - [x] Runtime functions first, `compile` over a list.
 - [ ] Calls with several results, the call rule from `Implements`, and
   `leanexe_compile p := [f, g, …]`.
+
+## 2026-09-29: CLOB 4, calls and addBid
+
+`leanexe_compile clob := [marketBuy, fillLevel, insertLevel, addToLevel, addBid]`
+compiles the five CLOB operations into one module, at indices 3 to 7.  A call to
+a listed function compiles to `Stmt.call index args results`, which stores the
+callee's results in fresh locals.  The compiler gives each non-recursive
+definition every listed function as a callee.  A recursive definition gets none,
+and since a Lean definition refers only to earlier declarations, the call graph
+is acyclic.  The compiler also accepts a call whose one-word result is used as a
+value (`call result`), but no program uses that form yet, so it is untested.
+
+`Stmt.callImplements_spec` proves a call from the callee's `Implements` theorem,
+using the frame clause to keep the caller's arrays.  `addBid_implements` applies
+it in each branch, with `addToLevel_implements` and `insertLevel_implements`.
+Two problems came up in the last steps.  The unifier could not recover the
+callee's input tuple from `Scalar.values`, so the proof gives it with
+`(x := …)`, and the existential for the result locals needed its state written
+out.  `addBid_implements` takes 207 lines, of which 80 are the two branches,
+which repeat the same steps around different calls.
+
+`clob.wasm` (2,728 bytes) matched native Lean on 238 inputs over all five
+exports.  A session of eight `addBid` calls that released each superseded array
+built the book native Lean builds and ended with 18 allocations, 18 releases,
+and 18 frees.  The other eleven modules kept their bytes.  The three
+single-function CLOB modules no longer exist as Lean constants, so I removed
+their files from `build/clob`.  The LTG gained the `function-call` entry.
+
+- [x] CLOB 4: `addBid`, calls, and one module for the CLOB.
+- [ ] CLOB 5: a cancel and a depth query.

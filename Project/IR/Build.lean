@@ -19,7 +19,7 @@ local `limit`; element `i` is the value of `element` while local `index` holds
 `i`. -/
 def Stmt.build (dst limit index : Nat) (count element : Expr .u64) : Stmt :=
   .seq (.assign limit count) <|
-  .seq (.call 0 [.bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)] (some dst)) <|
+  .seq (.call 0 [.bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)] [dst]) <|
   .seq (.store (.get dst) (.get limit)) <|
   .seq (.assign index (.const 0)) <|
   .while (.ltU (.get index) (.get limit)) <|
@@ -42,6 +42,18 @@ theorem element_address (ptr : UInt64) (k : Nat) :
   apply UInt64.toNat_inj.mp
   simp only [UInt64.toNat_mul, UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
   omega
+
+/-- An array equals its copy by the copying template. -/
+theorem copy_eq_build (xs : Array UInt64) (hSize : xs.size < 2 ^ 64) :
+    xs = LeanExe.build (UInt64.ofNat xs.size) fun j => xs[j.toNat]! := by
+  have hn : (UInt64.ofNat xs.size).toNat = xs.size := UInt64.toNat_ofNat_of_lt' hSize
+  apply Array.ext
+  · rw [build_size, hn]
+  · intro j hj _
+    rw [build_getElem]
+    have hj64 : (UInt64.ofNat j).toNat = j :=
+      UInt64.toNat_ofNat_of_lt' (by simp only [UInt64.size]; omega)
+    rw [hj64, getElem!_pos xs j hj]
 
 /-- `set!` is the copying template with an element function that replaces one
 position. -/
@@ -234,7 +246,7 @@ theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element :
         (by rw [hSize]; exact hRoomNeed), ?_⟩
     rintro store' out ⟨hStore', hOut⟩
     rw [hSize] at hStore' hOut
-    exact ⟨ptr, s2, by rw [hOut, hPtrDef], hSet2, hStore', rfl⟩
+    exact ⟨s2, by simp [hOut, hPtrDef, State.setAll, hSet2], hStore', rfl⟩
   · refine Stmt.store_spec.mono ?_ fun _ _ h => h
     rintro store state ⟨hStore, hState⟩
     subst store state

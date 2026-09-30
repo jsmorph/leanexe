@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "function-call",
+  "title": "Calls between compiled functions",
+  "summary": "Proves a call statement from the callee's Implements theorem: the results represent the callee's value as owned, and every array the caller borrowed or owned is kept.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["compiler-motifs", "memory", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["direct-call", "multi-value", "ownership", "frame"],
+  "annotationKinds": ["call", "call result"],
+  "modules": ["Project.IR.Call", "Project.IR.Stmt", "Project.IR.Function", "Project.Compiler.Command"],
+  "declarations": ["Project.IR.Stmt.callImplements_spec", "Project.IR.Stmt.call_spec", "Project.IR.State.setAll", "Project.IR.State.setAll_spec", "Project.IR.compile_funcs", "Project.Pipeline.Implements"],
+  "premises": ["An Implements theorem for the callee at its entry index", "The entry is a defined function, not an import, with as many parameters as the call has arguments", "The arguments evaluate to words that represent the callee's input as borrowed", "The allocator invariant and room for the callee's need", "The result locals can hold any value that represents the callee's result"],
+  "result": "The call leaves in the result locals values that represent the callee's result as owned, with the allocator invariant, the arguments still borrowed, every earlier borrowed or owned array kept, and the callee's allocation and memory bounds.",
+  "consumers": ["Project.Clob.addBid_implements"],
+  "relatedEntries": ["array-build", "direct-call-stack-tail", "straight-line-run"],
+  "exclusion": null
+}
