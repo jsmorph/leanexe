@@ -8,6 +8,6 @@ leanexe_compile gpt := [dot, matVec, layerNorm, exp, softmax, matVec2, matMul,
   add, tanh, gelu, geluArray, mlp,
   rowMeans, rowInvStd, normalizeRows, layerNormRows,
   maskedScores, rowMax, rowSumExp, softmaxApply, softmaxRows, attention, block,
-  causalMatMul]
+  causalMatMul, embed, matMulT, forward]
 
 end Project.Gpt

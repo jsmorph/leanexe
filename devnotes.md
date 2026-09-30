@@ -19461,5 +19461,30 @@ and depends only on the standard axioms.  All 1,557 comparisons of `gpt.wasm`
 match, and sessions still free every allocation.
 
 - [x] Causal attention and its theorems.
-- [ ] Next: decide between a multi-block model, the GPU path, and the pending
-  items in `deslop.md`.
+
+## 2026-09-30: GPT 6a, a forward pass
+
+The user agreed to a forward pass with a fixed number of blocks, then
+multi-head attention.  `embed`, `matMulT`, and `forward` are exports 27 to 29.
+`forward` takes the tokens, both embedding tables, ten arrays per block for two
+blocks, the final layer norm's gain and bias, `t`, `d`, `f`, `vocab`, and `eps`:
+thirty arguments.  Its tuple and bound are defined by pattern matching on the
+tuple, since projections thirty deep are unreadable.
+
+`forward_implements` exceeded Lean's default heartbeat budget, which applies to
+a whole declaration, at the second block call.  It builds with
+`set_option maxHeartbeats 1000000`, as `Project/IR/Stmt.lean` and
+`Project/IR/Expr.lean` already do, and the file builds in 164 seconds.
+`forward_causal` extends the causality file; `RowsAgree` became generic over the
+element type so that it covers the token array.
+
+Two defects in my tests appeared before the proofs.  The case script read the
+forward line into one variable too few, so every host call failed and matched
+an empty expectation; all 40 forward comparisons passed without testing
+anything.  After that fix, the output sizes showed that `vocab := (i * 5 + 3) % 5`
+is 3 for every `i`, the same mistake as in the row-wise layer norm cases.  The
+generator now uses `(i / 4) % 5`, and all 1,677 comparisons match with real
+outputs.
+
+- [x] GPT 6a: the forward pass.
+- [ ] GPT 6b: multi-head attention.

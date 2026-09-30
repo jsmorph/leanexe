@@ -174,4 +174,30 @@ def block (x g1 b1 wq wk wv wo g2 b2 w1 w2 : Array Float) (t d f : UInt64) (eps 
   let m := mlp h2 w1 w2 t d f
   add r m
 
+/-- The embeddings of `t` tokens as `t` rows of width `d`: row `i` is row
+`tokens[i]` of `wte` plus row `i` of `wpe`, with 0 for each missing element. -/
+def embed (tokens : Array UInt64) (wte wpe : Array Float) (t d : UInt64) : Array Float :=
+  LeanExe.build (t * d) fun e =>
+    wte[(tokens[(e / d).toNat]! * d + e % d).toNat]! + wpe[e.toNat]!
+
+/-- The product of the `n × k` matrix `a` and the transpose of the `m × k` matrix
+`b`, both stored by rows, as an `n × m` matrix stored by rows. -/
+def matMulT (a b : Array Float) (n k m : UInt64) : Array Float :=
+  LeanExe.build (n * m) fun e =>
+    LeanExe.loop k 0.0 fun c acc => acc + a[(e / m * k + c).toNat]! * b[(e % m * k + c).toNat]!
+
+/-- A two-layer GPT-2 forward pass on `t` tokens with width `d`, hidden width `f`,
+and `vocab` token embeddings: the embeddings, two blocks, a final layer norm, and
+the scores of each position against every token embedding, as `t` rows of width
+`vocab`. -/
+def forward (tokens : Array UInt64) (wte wpe : Array Float)
+    (g1a b1a wqa wka wva woa g2a b2a w1a w2a : Array Float)
+    (g1b b1b wqb wkb wvb wob g2b b2b w1b w2b : Array Float) (gf bf : Array Float)
+    (t d f vocab : UInt64) (eps : Float) : Array Float :=
+  let x0 := embed tokens wte wpe t d
+  let x1 := block x0 g1a b1a wqa wka wva woa g2a b2a w1a w2a t d f eps
+  let x2 := block x1 g1b b1b wqb wkb wvb wob g2b b2b w1b w2b t d f eps
+  let h := layerNormRows x2 gf bf t d eps
+  matMulT h wte t d vocab
+
 end LeanExe.Examples.Gpt

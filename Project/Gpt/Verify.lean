@@ -3004,6 +3004,490 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
     by simp [gpt.block.ir, Func.scratch, Expr.evalResults, Expr.eval, s7,
       State.get_update_same, hS6], hOwned, hOutB, hOutO⟩
 
+/-- `embed` with its five arguments as one tuple. -/
+def embedTuple (x : Array UInt64 × Array Float × Array Float × UInt64 × UInt64) : Array Float :=
+  LeanExe.Examples.Gpt.embed x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
+
+/-- The bytes `embed` may allocate: one array of `t × d` elements. -/
+def embedNeed (x : Array UInt64 × Array Float × Array Float × UInt64 × UInt64) : Nat :=
+  48 + 8 * ((x.2.2.2.1 * x.2.2.2.2).toNat + 1)
+
+theorem embed_implements : Implements gpt.module 27 embedTuple embedNeed := by
+  refine Func.implements_heap gpt.funcs 24 gpt.embed.ir "embed" rfl embedTuple embedNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      rfl⟩; rfl) ?_
+  rintro ⟨tokens, wte, wpe, t, d⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨pk, rfl, hKs⟩, _, _, rfl, ⟨pe, rfl, hEs⟩, _, _, rfl, ⟨pp, rfl, hPs⟩, rfl⟩ hRoom
+  change heap.Borrowed initial pk tokens at hKs
+  change heap.Borrowed initial pe (wte.map Float.toBits) at hEs
+  change heap.Borrowed initial pp (wpe.map Float.toBits) at hPs
+  change heap.Room initial gpt.module (48 + 8 * ((t * d).toNat + 1)) at hRoom
+  have hMemory32 : gpt.module.memIs64 = false := rfl
+  have hImports : gpt.module.imports = [] := rfl
+  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
+  let start : State :=
+    { params := [.i64 pk, .i64 pe, .i64 pp, .i64 t, .i64 d]
+      locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0] }
+  show Triple _ (.build 5 6 7 (.bin .mul (.get 3) (.get 4)) (.toBits (.binF .add
+      (.ofBits (.read 1 (.bin .add (.bin .mul (.read 0 (.bin .divU (.get 7) (.get 4))) (.get 4))
+        (.bin .remU (.get 7) (.get 4)))))
+      (.ofBits (.read 2 (.get 7)))))) 8
+    (fun store state => store = initial ∧ state = start) _
+  refine (Stmt.build_spec (n := t * d)
+    (fun e => (wte[(tokens[(e / d).toNat]! * d + e % d).toNat]! + wpe[e.toNat]!).toBits)
+    hMemory32 hImports hAlloc (by decide) (by decide) (by simp [start]) hHeap hRoom
+    ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro e store state he hAt hFrame hIndex
+    have hd : d ≠ 0 := by rintro rfl; simp at he
+    have hState : state.params.length = 5 ∧ state.locals.length = 7 :=
+      ⟨hFrame.params, hFrame.locals⟩
+    have hGet : ∀ j, j < 5 → state.get j = start.get j := fun j hj =>
+      hFrame.get j (by omega) (by simp; omega)
+    have g0 : state.get 0 = some (.i64 pk) := (hGet 0 (by decide)).trans rfl
+    have g1 : state.get 1 = some (.i64 pe) := (hGet 1 (by decide)).trans rfl
+    have g2 : state.get 2 = some (.i64 pp) := (hGet 2 (by decide)).trans rfl
+    have g4 : state.get 4 = some (.i64 d) := (hGet 4 (by decide)).trans rfl
+    simp [Expr.eval, g0, g1, g2, g4, hIndex, Expr.readValue_at (hAt pk _ hKs),
+      Expr.readValue_at (hAt pe _ hEs), Expr.readValue_at (hAt pp _ hPs), State.set?_eq_update,
+      hState.1, hState.2, F64Op.apply, U64Op.apply, getElem!_map_toBits, F64Bits.toBits_add, hd]
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pk, rfl, hNew.borrowed pk _ hKs⟩, _, _, rfl,
+      ⟨pe, rfl, hNew.borrowed pe _ hEs⟩, _, _, rfl, ⟨pp, rfl, hNew.borrowed pp _ hPs⟩, rfl⟩,
+    hNew.top, hNew.pages, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.embed.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
+    ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+  have hEq : embedTuple (tokens, wte, wpe, t, d) = LeanExe.build (t * d)
+      (fun e => wte[(tokens[(e / d).toNat]! * d + e % d).toNat]! + wpe[e.toNat]!) := rfl
+  rw [hEq, build_map]
+  exact hNew.owned
+
+/-- `matMulT` with its five arguments as one tuple. -/
+def matMulTTuple (x : Array Float × Array Float × UInt64 × UInt64 × UInt64) : Array Float :=
+  LeanExe.Examples.Gpt.matMulT x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
+
+/-- The bytes `matMulT` may allocate: one array of `n × m` elements. -/
+def matMulTNeed (x : Array Float × Array Float × UInt64 × UInt64 × UInt64) : Nat :=
+  48 + 8 * ((x.2.2.1 * x.2.2.2.2).toNat + 1)
+
+/-- One step of the loop for element `e`: row `e / m` of `a` times row `e % m` of `b`. -/
+def cellTStep (a b : Array Float) (k m e c : UInt64) (acc : Float) : Float :=
+  acc + a[(e / m * k + c).toNat]! * b[(e % m * k + c).toNat]!
+
+/-- The compiled loop body of `matMulT`. -/
+def cellTBody : Stmt :=
+  .seq (.assign 11 (.binF .add (.getF 8) (.binF .mul
+    (.ofBits (.read 0 (.bin .add (.bin .mul (.bin .divU (.get 7) (.get 4)) (.get 3)) (.get 10))))
+    (.ofBits (.read 1 (.bin .add (.bin .mul (.bin .remU (.get 7) (.get 4)) (.get 3))
+      (.get 10))))))) (.assign 8 (.getF 11))
+
+theorem cellTBody_run {initial : Store Unit} {pa pb : UInt64} {a b : Array Float}
+    (hA : UInt64Array.At initial pa (a.map Float.toBits))
+    (hB : UInt64Array.At initial pb (b.map Float.toBits)) {state : State} {c : Nat}
+    {k m e : UInt64} {acc : Float} (hm : m ≠ 0) (hParams : state.params.length = 5)
+    (hLocals : state.locals.length = 10) (h0 : state.get 0 = some (.i64 pa))
+    (h1 : state.get 1 = some (.i64 pb)) (h3 : state.get 3 = some (.i64 k))
+    (h4 : state.get 4 = some (.i64 m)) (h7 : state.get 7 = some (.i64 e))
+    (h8 : state.get 8 = some (.f64 acc.toBits))
+    (h10 : state.get 10 = some (.i64 (UInt64.ofNat c))) :
+    ∃ final, cellTBody.run initial.mem 12 state = some final ∧
+      State.Frame 12 [8, 11] state final ∧
+      final.Holds [8] (Scalar.values (cellTStep a b k m e (UInt64.ofNat c) acc)) := by
+  simp [cellTBody, Stmt.run, Expr.eval, h0, h1, h3, h4, h7, h8, h10, Expr.readValue_at hA,
+    Expr.readValue_at hB, State.set?_eq_update, hParams, hLocals, F64Op.apply, U64Op.apply,
+    getElem!_map_toBits, hm]
+  constructor
+  · repeat refine State.Frame.update ?_ (by simp)
+    exact State.Frame.refl _ _ _
+  · simp [State.Holds, Scalar.values, cellTStep, hParams, hLocals, F64Bits.toBits_add,
+      F64Bits.toBits_mul]
+
+theorem matMulT_implements : Implements gpt.module 28 matMulTTuple matMulTNeed := by
+  refine Func.implements_heap gpt.funcs 25 gpt.matMulT.ir "matMulT" rfl matMulTTuple matMulTNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨a, b, n, k, m⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨pa, rfl, hAs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hRoom
+  change heap.Borrowed initial pa (a.map Float.toBits) at hAs
+  change heap.Borrowed initial pb (b.map Float.toBits) at hBs
+  change heap.Room initial gpt.module (48 + 8 * ((n * m).toNat + 1)) at hRoom
+  have hMemory32 : gpt.module.memIs64 = false := rfl
+  have hImports : gpt.module.imports = [] := rfl
+  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
+  have hZero : (0.0 : Float).toBits = 0 := by decide +kernel
+  let start : State :=
+    { params := [.i64 pa, .i64 pb, .i64 n, .i64 k, .i64 m]
+      locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .i64 0] }
+  show Triple _ (.buildWith 5 6 7 (.bin .mul (.get 2) (.get 4))
+      (.seq (.assign 8 (.constF 0)) (.loop 9 10 (.get 3) cellTBody)) (.toBits (.getF 8))) 12
+    (fun store state => store = initial ∧ state = start) _
+  refine (Stmt.buildWith_spec (writes := [8, 9, 10, 11]) (n := n * m)
+    (fun e => (LeanExe.loop k 0.0 (cellTStep a b k m e)).toBits) hMemory32 hImports hAlloc
+    (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro e store state he hAt hFrame hIndex
+    have hm : m ≠ 0 := by rintro rfl; simp at he
+    have hState : state.params.length = 5 ∧ state.locals.length = 10 :=
+      ⟨hFrame.params, hFrame.locals⟩
+    have hGet : ∀ j, j < 5 → state.get j = start.get j := fun j hj =>
+      hFrame.get j (by omega) (by simp; omega)
+    have hA := hAt pa _ hAs
+    have hB := hAt pb _ hBs
+    let s1 := state.update 8 (.f64 0)
+    have hS1 : s1.params.length = 5 ∧ s1.locals.length = 10 := by
+      simp [s1, hState.1, hState.2]
+    have hS1Get : ∀ j, j ≠ 8 → s1.get j = state.get j := fun j hj => State.get_update_ne hj
+    refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
+      simp [Stmt.run, Expr.eval, State.set?_eq_update, hState.1, hState.2, s1])) ?_
+    refine (Stmt.loop_spec (vars := [8]) (writes := [8, 11]) (init := (0.0 : Float)) (n := k)
+      (cellTStep a b k m (UInt64.ofNat e)) (by decide) (by decide) (by decide) (by decide)
+      (by decide) (by simp [hS1.1, hS1.2])
+      ⟨s1, by simp [Expr.eval, hS1Get 3 (by decide), hGet 3 (by decide)]; rfl⟩
+      (by simp [State.Holds, Scalar.values, s1, hState.1, hState.2, hZero]) ?_).mono
+        (fun _ _ h => h) ?_
+    · intro c acc st hc hFrameL hHolds hIdx hLim
+      have hSt : st.params.length = 5 ∧ st.locals.length = 10 :=
+        ⟨hFrameL.params.trans hS1.1, hFrameL.locals.trans hS1.2⟩
+      have hKeep : ∀ j, j < 5 ∨ j = 7 → st.get j = state.get j := fun j hj =>
+        (hFrameL.get j (by omega) (by simp; omega)).trans (hS1Get j (by omega))
+      have g8 : st.get 8 = some (.f64 acc.toBits) := by
+        simpa [State.Holds, Scalar.values] using hHolds
+      obtain ⟨final, hRun, hFinalFrame, hFinalHolds⟩ := cellTBody_run hA hB hm hSt.1 hSt.2
+        ((hKeep 0 (by omega)).trans ((hGet 0 (by decide)).trans rfl))
+        ((hKeep 1 (by omega)).trans ((hGet 1 (by decide)).trans rfl))
+        ((hKeep 3 (by omega)).trans ((hGet 3 (by decide)).trans rfl))
+        ((hKeep 4 (by omega)).trans ((hGet 4 (by decide)).trans rfl))
+        ((hKeep 7 (by omega)).trans hIndex) g8 hIdx
+      refine (Stmt.run_spec hRun).mono (fun _ _ h => h) ?_
+      rintro s' u ⟨rfl, rfl⟩
+      exact ⟨rfl, hFinalFrame, hFinalHolds⟩
+    · rintro s' u ⟨rfl, hFrameL, hHolds⟩
+      have g8 : u.get 8 = some (.f64 (LeanExe.loop k 0.0
+          (cellTStep a b k m (UInt64.ofNat e))).toBits) := (List.forall₂_cons.mp hHolds).1
+      exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
+          (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g8]⟩
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pa, rfl, hNew.borrowed pa _ hAs⟩, _, _, rfl,
+      ⟨pb, rfl, hNew.borrowed pb _ hBs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
+    hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.matMulT.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+  have hEq : matMulTTuple (a, b, n, k, m) =
+      LeanExe.build (n * m) (fun e => LeanExe.loop k 0.0 (cellTStep a b k m e)) := rfl
+  rw [hEq, build_map]
+  exact hNew.owned
+
+/-- A block's result is no longer than its input. -/
+theorem block_size_le (x : Array Float × Array Float × Array Float × Array Float × Array Float ×
+    Array Float × Array Float × Array Float × Array Float × Array Float × Array Float × UInt64 ×
+    UInt64 × UInt64 × Float) : (blockTuple x).size ≤ x.1.size := by
+  simp [blockTuple, LeanExe.Examples.Gpt.block, LeanExe.Examples.Gpt.add, LeanExe.build,
+    Nat.mod_le]
+
+/-- The input of `forward`: the tokens, the embeddings, the weights of two blocks, the final
+layer norm, and the dimensions. -/
+abbrev ForwardInput := Array UInt64 × Array Float × Array Float ×
+    Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
+    Array Float × Array Float × Array Float × Array Float ×
+    Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
+    Array Float × Array Float × Array Float × Array Float ×
+    Array Float × Array Float × UInt64 × UInt64 × UInt64 × UInt64 × Float
+
+/-- `forward` with its thirty arguments as one tuple. -/
+def forwardTuple : ForwardInput → Array Float
+  | (tokens, wte, wpe, g1a, b1a, wqa, wka, wva, woa, g2a, b2a, w1a, w2a, g1b, b1b, wqb, wkb, wvb, wob, g2b, b2b, w1b, w2b, gf, bf, t, d, f, vocab, eps) =>
+    LeanExe.Examples.Gpt.forward tokens wte wpe g1a b1a wqa wka wva woa g2a b2a w1a w2a g1b b1b wqb wkb wvb wob g2b b2b w1b w2b gf bf
+      t d f vocab eps
+
+/-- The bytes `forward` may allocate: the embeddings, two blocks, the final layer norm,
+and the scores. -/
+def forwardNeed : ForwardInput → Nat
+  | (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, t, d, f, vocab, _) =>
+    48 + 8 * ((t * d).toNat + 1) + blockBytes t d f (t * d).toNat + blockBytes t d f (t * d).toNat +
+      (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * d).toNat + 1))) +
+      (48 + 8 * ((t * vocab).toNat + 1))
+
+set_option maxHeartbeats 1000000 in
+theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed := by
+  refine Func.implements_heap gpt.funcs 26 gpt.forward.ir "forward" rfl forwardTuple forwardNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _,
+      rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_,
+      rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _,
+      rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_,
+      rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _,
+      rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨tokens, wte, wpe, g1a, b1a, wqa, wka, wva, woa, g2a, b2a, w1a, w2a, g1b, b1b, wqb, wkb, wvb, wob, g2b, b2b, w1b, w2b, gf, bf, t, d, f, vocab, eps⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨pTokens, rfl, hTokens⟩, _, _, rfl, ⟨pWte, rfl, hWte⟩, _, _, rfl,
+      ⟨pWpe, rfl, hWpe⟩, _, _, rfl, ⟨pG1a, rfl, hG1a⟩, _, _, rfl, ⟨pB1a, rfl, hB1a⟩, _,
+      _, rfl, ⟨pWqa, rfl, hWqa⟩, _, _, rfl, ⟨pWka, rfl, hWka⟩, _, _, rfl, ⟨pWva, rfl,
+      hWva⟩, _, _, rfl, ⟨pWoa, rfl, hWoa⟩, _, _, rfl, ⟨pG2a, rfl, hG2a⟩, _, _, rfl,
+      ⟨pB2a, rfl, hB2a⟩, _, _, rfl, ⟨pW1a, rfl, hW1a⟩, _, _, rfl, ⟨pW2a, rfl, hW2a⟩, _,
+      _, rfl, ⟨pG1b, rfl, hG1b⟩, _, _, rfl, ⟨pB1b, rfl, hB1b⟩, _, _, rfl, ⟨pWqb, rfl,
+      hWqb⟩, _, _, rfl, ⟨pWkb, rfl, hWkb⟩, _, _, rfl, ⟨pWvb, rfl, hWvb⟩, _, _, rfl,
+      ⟨pWob, rfl, hWob⟩, _, _, rfl, ⟨pG2b, rfl, hG2b⟩, _, _, rfl, ⟨pB2b, rfl, hB2b⟩, _,
+      _, rfl, ⟨pW1b, rfl, hW1b⟩, _, _, rfl, ⟨pW2b, rfl, hW2b⟩, _, _, rfl, ⟨pGf, rfl,
+      hGf⟩, _, _, rfl, ⟨pBf, rfl, hBf⟩, rfl⟩ hRoom
+  change heap.Borrowed initial pTokens tokens at hTokens
+  change heap.Borrowed initial pWte (wte.map Float.toBits) at hWte
+  change heap.Borrowed initial pWpe (wpe.map Float.toBits) at hWpe
+  change heap.Borrowed initial pG1a (g1a.map Float.toBits) at hG1a
+  change heap.Borrowed initial pB1a (b1a.map Float.toBits) at hB1a
+  change heap.Borrowed initial pWqa (wqa.map Float.toBits) at hWqa
+  change heap.Borrowed initial pWka (wka.map Float.toBits) at hWka
+  change heap.Borrowed initial pWva (wva.map Float.toBits) at hWva
+  change heap.Borrowed initial pWoa (woa.map Float.toBits) at hWoa
+  change heap.Borrowed initial pG2a (g2a.map Float.toBits) at hG2a
+  change heap.Borrowed initial pB2a (b2a.map Float.toBits) at hB2a
+  change heap.Borrowed initial pW1a (w1a.map Float.toBits) at hW1a
+  change heap.Borrowed initial pW2a (w2a.map Float.toBits) at hW2a
+  change heap.Borrowed initial pG1b (g1b.map Float.toBits) at hG1b
+  change heap.Borrowed initial pB1b (b1b.map Float.toBits) at hB1b
+  change heap.Borrowed initial pWqb (wqb.map Float.toBits) at hWqb
+  change heap.Borrowed initial pWkb (wkb.map Float.toBits) at hWkb
+  change heap.Borrowed initial pWvb (wvb.map Float.toBits) at hWvb
+  change heap.Borrowed initial pWob (wob.map Float.toBits) at hWob
+  change heap.Borrowed initial pG2b (g2b.map Float.toBits) at hG2b
+  change heap.Borrowed initial pB2b (b2b.map Float.toBits) at hB2b
+  change heap.Borrowed initial pW1b (w1b.map Float.toBits) at hW1b
+  change heap.Borrowed initial pW2b (w2b.map Float.toBits) at hW2b
+  change heap.Borrowed initial pGf (gf.map Float.toBits) at hGf
+  change heap.Borrowed initial pBf (bf.map Float.toBits) at hBf
+  simp only [forwardNeed, blockBytes] at hRoom
+  have hImports : gpt.module.imports = [] := rfl
+  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
+  have hEmbed : gpt.module.funcs[27 - gpt.module.imports.length]? =
+      some (gpt.embed.ir.function (2 + 24)) := compile_funcs (funcs := gpt.funcs) (i := 24) rfl
+  have hBlock : gpt.module.funcs[25 - gpt.module.imports.length]? =
+      some (gpt.block.ir.function (2 + 22)) := compile_funcs (funcs := gpt.funcs) (i := 22) rfl
+  have hNorm : gpt.module.funcs[18 - gpt.module.imports.length]? =
+      some (gpt.layerNormRows.ir.function (2 + 15)) :=
+    compile_funcs (funcs := gpt.funcs) (i := 15) rfl
+  have hScores : gpt.module.funcs[28 - gpt.module.imports.length]? =
+      some (gpt.matMulT.ir.function (2 + 25)) := compile_funcs (funcs := gpt.funcs) (i := 25) rfl
+  let x0 := embedTuple (tokens, wte, wpe, t, d)
+  let x1 := blockTuple (x0, g1a, b1a, wqa, wka, wva, woa, g2a, b2a, w1a, w2a, t, d, f, eps)
+  let x2 := blockTuple (x1, g1b, b1b, wqb, wkb, wvb, wob, g2b, b2b, w1b, w2b, t, d, f, eps)
+  let h := layerNormRowsTuple (x2, gf, bf, t, d, eps)
+  have hX0 : x0.size = (t * d).toNat := by
+    simp [x0, embedTuple, LeanExe.Examples.Gpt.embed, LeanExe.build]
+  have hX1 : x1.size ≤ x0.size := block_size_le _
+  let start : State :=
+    { params := [.i64 pTokens, .i64 pWte, .i64 pWpe, .i64 pG1a, .i64 pB1a, .i64 pWqa, .i64 pWka,
+        .i64 pWva, .i64 pWoa, .i64 pG2a, .i64 pB2a, .i64 pW1a, .i64 pW2a, .i64 pG1b,
+        .i64 pB1b, .i64 pWqb, .i64 pWkb, .i64 pWvb, .i64 pWob, .i64 pG2b, .i64 pB2b,
+        .i64 pW1b, .i64 pW2b, .i64 pGf, .i64 pBf, .i64 t, .i64 d, .i64 f, .i64 vocab,
+        .f64 eps.toBits]
+      locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0] }
+  have hStart : start.params.length + start.locals.length = 36 := rfl
+  have hLen : ∀ (s : State) (j : Nat) (v : Value),
+      (s.update j v).params.length + (s.update j v).locals.length =
+        s.params.length + s.locals.length := fun s j v => by
+    simp [State.update_params_length, State.update_locals_length]
+  have g0 : start.get 0 = some (.i64 pTokens) := rfl
+  have g1 : start.get 1 = some (.i64 pWte) := rfl
+  have g2 : start.get 2 = some (.i64 pWpe) := rfl
+  have g3 : start.get 3 = some (.i64 pG1a) := rfl
+  have g4 : start.get 4 = some (.i64 pB1a) := rfl
+  have g5 : start.get 5 = some (.i64 pWqa) := rfl
+  have g6 : start.get 6 = some (.i64 pWka) := rfl
+  have g7 : start.get 7 = some (.i64 pWva) := rfl
+  have g8 : start.get 8 = some (.i64 pWoa) := rfl
+  have g9 : start.get 9 = some (.i64 pG2a) := rfl
+  have g10 : start.get 10 = some (.i64 pB2a) := rfl
+  have g11 : start.get 11 = some (.i64 pW1a) := rfl
+  have g12 : start.get 12 = some (.i64 pW2a) := rfl
+  have g13 : start.get 13 = some (.i64 pG1b) := rfl
+  have g14 : start.get 14 = some (.i64 pB1b) := rfl
+  have g15 : start.get 15 = some (.i64 pWqb) := rfl
+  have g16 : start.get 16 = some (.i64 pWkb) := rfl
+  have g17 : start.get 17 = some (.i64 pWvb) := rfl
+  have g18 : start.get 18 = some (.i64 pWob) := rfl
+  have g19 : start.get 19 = some (.i64 pG2b) := rfl
+  have g20 : start.get 20 = some (.i64 pB2b) := rfl
+  have g21 : start.get 21 = some (.i64 pW1b) := rfl
+  have g22 : start.get 22 = some (.i64 pW2b) := rfl
+  have g23 : start.get 23 = some (.i64 pGf) := rfl
+  have g24 : start.get 24 = some (.i64 pBf) := rfl
+  have g25 : start.get 25 = some (.i64 t) := rfl
+  have g26 : start.get 26 = some (.i64 d) := rfl
+  have g27 : start.get 27 = some (.i64 f) := rfl
+  have g28 : start.get 28 = some (.i64 vocab) := rfl
+  have g29 : start.get 29 = some (.f64 eps.toBits) := rfl
+  show Triple _
+    (.seq (.call 27 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩, ⟨.u64, .get 25⟩,
+      ⟨.u64, .get 26⟩] [30])
+    (.seq (.call 25 [⟨.u64, .get 30⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 5⟩,
+      ⟨.u64, .get 6⟩, ⟨.u64, .get 7⟩, ⟨.u64, .get 8⟩, ⟨.u64, .get 9⟩, ⟨.u64, .get 10⟩,
+      ⟨.u64, .get 11⟩, ⟨.u64, .get 12⟩, ⟨.u64, .get 25⟩, ⟨.u64, .get 26⟩, ⟨.u64,
+      .get 27⟩, ⟨.f64, .getF 29⟩] [31])
+    (.seq (.call 25 [⟨.u64, .get 31⟩, ⟨.u64, .get 13⟩, ⟨.u64, .get 14⟩, ⟨.u64, .get 15⟩,
+      ⟨.u64, .get 16⟩, ⟨.u64, .get 17⟩, ⟨.u64, .get 18⟩, ⟨.u64, .get 19⟩, ⟨.u64,
+      .get 20⟩, ⟨.u64, .get 21⟩, ⟨.u64, .get 22⟩, ⟨.u64, .get 25⟩, ⟨.u64, .get 26⟩,
+      ⟨.u64, .get 27⟩, ⟨.f64, .getF 29⟩] [32])
+    (.seq (.call 18 [⟨.u64, .get 32⟩, ⟨.u64, .get 23⟩, ⟨.u64, .get 24⟩, ⟨.u64, .get 25⟩,
+      ⟨.u64, .get 26⟩, ⟨.f64, .getF 29⟩] [33])
+    (.seq (.call 28 [⟨.u64, .get 33⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 25⟩, ⟨.u64, .get 26⟩,
+      ⟨.u64, .get 28⟩] [34])
+    (.seq (.assign 35 (.get 34))
+    (.seq (.release 33)
+    (.seq (.release 32)
+    (.seq (.release 31)
+    (.release 30)))))))))) 36
+    (fun store state => store = initial ∧ state = start) _
+  -- The embeddings.
+  refine Stmt.seq_spec (Live.call embed_implements rfl hEmbed rfl (Live.start hHeap) hRoom
+    (x := (tokens, wte, wpe, t, d)) (by simp only [embedNeed]; omega) (afterArgs := start)
+    (vals := [.i64 pTokens, .i64 pWte, .i64 pWpe, .i64 t, .i64 d])
+    (by simp [Expr.evalResults, Expr.eval, g0, g1, g2, g25, g26])
+    ⟨[.i64 pTokens], _, rfl, ⟨pTokens, rfl, hTokens⟩, [.i64 pWte], _, rfl, ⟨pWte, rfl, hWte⟩,
+      [.i64 pWpe], _, rfl, ⟨pWpe, rfl, hWpe⟩, rfl⟩
+    (by rw [hStart]; decide)) ?_
+  apply Triple.of_forall
+  rintro store1 t1 ⟨heap1, px0, hLive1, rfl⟩
+  let s1 := start.update 30 (.i64 px0)
+  have hS1 : s1.params.length + s1.locals.length = 36 := by rw [hLen, hStart]
+  -- The first block.
+  refine Stmt.seq_spec (Live.call block_implements rfl hBlock rfl hLive1 hRoom
+    (x := (x0, g1a, b1a, wqa, wka, wva, woa, g2a, b2a, w1a, w2a, t, d, f, eps))
+    (by simp only [embedNeed, blockNeed, blockBytes, hX0]; omega) (afterArgs := s1)
+    (vals := [.i64 px0, .i64 pG1a, .i64 pB1a, .i64 pWqa, .i64 pWka, .i64 pWva, .i64 pWoa,
+      .i64 pG2a, .i64 pB2a, .i64 pW1a, .i64 pW2a, .i64 t, .i64 d, .i64 f,
+      .f64 eps.toBits])
+    (by simp [Expr.evalResults, Expr.eval, s1, State.get_update_same, hStart, g3, g4, g5, g6, g7, g8, g9, g10, g11, g12, g25, g26,
+      g27, g29])
+    ⟨[.i64 px0], _, rfl, ⟨px0, rfl,
+      (hLive1.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pG1a], _, rfl,
+      ⟨pG1a, rfl, hLive1.borrowed pG1a _ hG1a⟩, [.i64 pB1a], _, rfl, ⟨pB1a, rfl,
+      hLive1.borrowed pB1a _ hB1a⟩, [.i64 pWqa], _, rfl, ⟨pWqa, rfl,
+      hLive1.borrowed pWqa _ hWqa⟩, [.i64 pWka], _, rfl, ⟨pWka, rfl,
+      hLive1.borrowed pWka _ hWka⟩, [.i64 pWva], _, rfl, ⟨pWva, rfl,
+      hLive1.borrowed pWva _ hWva⟩, [.i64 pWoa], _, rfl, ⟨pWoa, rfl,
+      hLive1.borrowed pWoa _ hWoa⟩, [.i64 pG2a], _, rfl, ⟨pG2a, rfl,
+      hLive1.borrowed pG2a _ hG2a⟩, [.i64 pB2a], _, rfl, ⟨pB2a, rfl,
+      hLive1.borrowed pB2a _ hB2a⟩, [.i64 pW1a], _, rfl, ⟨pW1a, rfl,
+      hLive1.borrowed pW1a _ hW1a⟩, [.i64 pW2a], _, rfl, ⟨pW2a, rfl,
+      hLive1.borrowed pW2a _ hW2a⟩, rfl⟩
+    (by rw [hS1]; decide)) ?_
+  apply Triple.of_forall
+  rintro store2 t2 ⟨heap2, px1, hLive2, rfl⟩
+  let s2 := s1.update 31 (.i64 px1)
+  have hS2 : s2.params.length + s2.locals.length = 36 := by rw [hLen, hS1]
+  -- The second block.
+  refine Stmt.seq_spec (Live.call block_implements rfl hBlock rfl hLive2 hRoom
+    (x := (x1, g1b, b1b, wqb, wkb, wvb, wob, g2b, b2b, w1b, w2b, t, d, f, eps))
+    (by simp only [embedNeed, blockNeed, blockBytes, hX0]; omega) (afterArgs := s2)
+    (vals := [.i64 px1, .i64 pG1b, .i64 pB1b, .i64 pWqb, .i64 pWkb, .i64 pWvb, .i64 pWob,
+      .i64 pG2b, .i64 pB2b, .i64 pW1b, .i64 pW2b, .i64 t, .i64 d, .i64 f,
+      .f64 eps.toBits])
+    (by simp [Expr.evalResults, Expr.eval, s2, s1, State.get_update_same, hStart, g13, g14, g15, g16, g17, g18, g19, g20, g21, g22, g25,
+      g26, g27, g29])
+    ⟨[.i64 px1], _, rfl, ⟨px1, rfl,
+      (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pG1b], _, rfl,
+      ⟨pG1b, rfl, hLive2.borrowed pG1b _ hG1b⟩, [.i64 pB1b], _, rfl, ⟨pB1b, rfl,
+      hLive2.borrowed pB1b _ hB1b⟩, [.i64 pWqb], _, rfl, ⟨pWqb, rfl,
+      hLive2.borrowed pWqb _ hWqb⟩, [.i64 pWkb], _, rfl, ⟨pWkb, rfl,
+      hLive2.borrowed pWkb _ hWkb⟩, [.i64 pWvb], _, rfl, ⟨pWvb, rfl,
+      hLive2.borrowed pWvb _ hWvb⟩, [.i64 pWob], _, rfl, ⟨pWob, rfl,
+      hLive2.borrowed pWob _ hWob⟩, [.i64 pG2b], _, rfl, ⟨pG2b, rfl,
+      hLive2.borrowed pG2b _ hG2b⟩, [.i64 pB2b], _, rfl, ⟨pB2b, rfl,
+      hLive2.borrowed pB2b _ hB2b⟩, [.i64 pW1b], _, rfl, ⟨pW1b, rfl,
+      hLive2.borrowed pW1b _ hW1b⟩, [.i64 pW2b], _, rfl, ⟨pW2b, rfl,
+      hLive2.borrowed pW2b _ hW2b⟩, rfl⟩
+    (by rw [hS2]; decide)) ?_
+  apply Triple.of_forall
+  rintro store3 t3 ⟨heap3, px2, hLive3, rfl⟩
+  let s3 := s2.update 32 (.i64 px2)
+  have hS3 : s3.params.length + s3.locals.length = 36 := by rw [hLen, hS2]
+  -- The final layer norm.
+  refine Stmt.seq_spec (Live.call layerNormRows_implements rfl hNorm rfl hLive3 hRoom
+    (x := (x2, gf, bf, t, d, eps))
+    (by simp only [embedNeed, blockNeed, blockBytes, layerNormRowsNeed, hX0]; omega)
+    (afterArgs := s3) (vals := [.i64 px2, .i64 pGf, .i64 pBf, .i64 t, .i64 d, .f64 eps.toBits])
+    (by simp [Expr.evalResults, Expr.eval, s3, s2, s1, State.get_update_same, hStart, g23, g24,
+      g25, g26, g29])
+    ⟨[.i64 px2], _, rfl, ⟨px2, rfl, (hLive3.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
+      [.i64 pGf], _, rfl, ⟨pGf, rfl, hLive3.borrowed pGf _ hGf⟩,
+      [.i64 pBf], _, rfl, ⟨pBf, rfl, hLive3.borrowed pBf _ hBf⟩, rfl⟩
+    (by rw [hS3]; decide)) ?_
+  apply Triple.of_forall
+  rintro store4 t4 ⟨heap4, ph, hLive4, rfl⟩
+  let s4 := s3.update 33 (.i64 ph)
+  have hS4 : s4.params.length + s4.locals.length = 36 := by rw [hLen, hS3]
+  -- The scores against every token embedding.
+  refine Stmt.seq_spec (Live.call matMulT_implements rfl hScores rfl hLive4 hRoom
+    (x := (h, wte, t, d, vocab))
+    (by simp only [embedNeed, blockNeed, blockBytes, layerNormRowsNeed, matMulTNeed, hX0]; omega)
+    (afterArgs := s4) (vals := [.i64 ph, .i64 pWte, .i64 t, .i64 d, .i64 vocab])
+    (by simp [Expr.evalResults, Expr.eval, s4, s3, s2, s1, State.get_update_same, hStart, g1,
+      g25, g26, g28])
+    ⟨[.i64 ph], _, rfl, ⟨ph, rfl, (hLive4.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
+      [.i64 pWte], _, rfl, ⟨pWte, rfl, hLive4.borrowed pWte _ hWte⟩, rfl⟩
+    (by rw [hS4]; decide)) ?_
+  apply Triple.of_forall
+  rintro store5 t5 ⟨heap5, pr, hLive5, rfl⟩
+  let s5 := s4.update 34 (.i64 pr)
+  let s6 := s5.update 35 (.i64 pr)
+  have hS5 : s5.params.length + s5.locals.length = 36 := by rw [hLen, hS4]
+  refine Stmt.seq_spec (Stmt.run_spec (final := s6) (by
+    simp [Stmt.run, Expr.eval, State.set?_eq_update _ (show 35 < s5.params.length +
+      s5.locals.length by rw [hS5]; decide), s6, s5, State.get_update_same,
+      show 34 < s4.params.length + s4.locals.length by rw [hS4]; decide])) ?_
+  -- The temporaries are released, newest first.
+  have r33 : s6.get 33 = some (.i64 ph) := by
+    simp [s6, s5, s4, State.get_update_same, hS3]
+  have r32 : s6.get 32 = some (.i64 px2) := by
+    simp [s6, s5, s4, s3, State.get_update_same, hS2]
+  have r31 : s6.get 31 = some (.i64 px1) := by
+    simp [s6, s5, s4, s3, s2, State.get_update_same, hS1]
+  have r30 : s6.get 30 = some (.i64 px0) := by
+    simp [s6, s5, s4, s3, s2, s1, State.get_update_same, hStart]
+  refine Stmt.seq_spec (hLive5.releaseSecond hImports hRelease r33) ?_
+  apply Triple.of_forall
+  rintro store6 st6 ⟨hLive6, rfl⟩
+  refine Stmt.seq_spec (hLive6.releaseSecond hImports hRelease r32) ?_
+  apply Triple.of_forall
+  rintro store7 st7 ⟨hLive7, rfl⟩
+  refine Stmt.seq_spec (hLive7.releaseSecond hImports hRelease r31) ?_
+  apply Triple.of_forall
+  rintro store8 st8 ⟨hLive8, rfl⟩
+  refine (hLive8.releaseSecond hImports hRelease r30).mono (fun _ _ h => h) ?_
+  rintro store9 st9 ⟨hLive9, rfl⟩
+  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
+      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
+      Represent.borrowed heap' store' [.i64 pTokens, .i64 pWte, .i64 pWpe, .i64 pG1a, .i64 pB1a, .i64 pWqa, .i64 pWka,
+        .i64 pWva, .i64 pWoa, .i64 pG2a, .i64 pB2a, .i64 pW1a, .i64 pW2a, .i64 pG1b,
+        .i64 pB1b, .i64 pWqb, .i64 pWkb, .i64 pWvb, .i64 pWob, .i64 pG2b, .i64 pB2b,
+        .i64 pW1b, .i64 pW2b, .i64 pGf, .i64 pBf, .i64 t, .i64 d, .i64 f, .i64 vocab,
+        .f64 eps.toBits]
+        (tokens, wte, wpe, g1a, b1a, wqa, wka, wva, woa, g2a, b2a, w1a, w2a, g1b, b1b, wqb, wkb, wvb, wob, g2b, b2b, w1b, w2b, gf, bf, t, d, f, vocab, eps) := fun heap' store' hKeep =>
+    ⟨[.i64 pTokens], _, rfl, ⟨pTokens, rfl, hKeep pTokens _ hTokens⟩, [.i64 pWte], _,
+      rfl, ⟨pWte, rfl, hKeep pWte _ hWte⟩, [.i64 pWpe], _, rfl, ⟨pWpe, rfl,
+      hKeep pWpe _ hWpe⟩, [.i64 pG1a], _, rfl, ⟨pG1a, rfl, hKeep pG1a _ hG1a⟩,
+      [.i64 pB1a], _, rfl, ⟨pB1a, rfl, hKeep pB1a _ hB1a⟩, [.i64 pWqa], _, rfl, ⟨pWqa,
+      rfl, hKeep pWqa _ hWqa⟩, [.i64 pWka], _, rfl, ⟨pWka, rfl, hKeep pWka _ hWka⟩,
+      [.i64 pWva], _, rfl, ⟨pWva, rfl, hKeep pWva _ hWva⟩, [.i64 pWoa], _, rfl, ⟨pWoa,
+      rfl, hKeep pWoa _ hWoa⟩, [.i64 pG2a], _, rfl, ⟨pG2a, rfl, hKeep pG2a _ hG2a⟩,
+      [.i64 pB2a], _, rfl, ⟨pB2a, rfl, hKeep pB2a _ hB2a⟩, [.i64 pW1a], _, rfl, ⟨pW1a,
+      rfl, hKeep pW1a _ hW1a⟩, [.i64 pW2a], _, rfl, ⟨pW2a, rfl, hKeep pW2a _ hW2a⟩,
+      [.i64 pG1b], _, rfl, ⟨pG1b, rfl, hKeep pG1b _ hG1b⟩, [.i64 pB1b], _, rfl, ⟨pB1b,
+      rfl, hKeep pB1b _ hB1b⟩, [.i64 pWqb], _, rfl, ⟨pWqb, rfl, hKeep pWqb _ hWqb⟩,
+      [.i64 pWkb], _, rfl, ⟨pWkb, rfl, hKeep pWkb _ hWkb⟩, [.i64 pWvb], _, rfl, ⟨pWvb,
+      rfl, hKeep pWvb _ hWvb⟩, [.i64 pWob], _, rfl, ⟨pWob, rfl, hKeep pWob _ hWob⟩,
+      [.i64 pG2b], _, rfl, ⟨pG2b, rfl, hKeep pG2b _ hG2b⟩, [.i64 pB2b], _, rfl, ⟨pB2b,
+      rfl, hKeep pB2b _ hB2b⟩, [.i64 pW1b], _, rfl, ⟨pW1b, rfl, hKeep pW1b _ hW1b⟩,
+      [.i64 pW2b], _, rfl, ⟨pW2b, rfl, hKeep pW2b _ hW2b⟩, [.i64 pGf], _, rfl, ⟨pGf,
+      rfl, hKeep pGf _ hGf⟩, [.i64 pBf], _, rfl, ⟨pBf, rfl, hKeep pBf _ hBf⟩, rfl⟩
+  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLive9.finish (need := forwardNeed (tokens, wte, wpe, g1a, b1a, wqa, wka, wva, woa, g2a, b2a, w1a, w2a, g1b, b1b, wqb, wkb, wvb, wob, g2b, b2b, w1b, w2b, gf, bf, t, d, f, vocab, eps))
+      (by simp only [embedNeed, blockNeed, blockBytes, layerNormRowsNeed, matMulTNeed,
+          forwardNeed, hX0]
+          omega) hParams
+  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s6,
+    by simp [gpt.forward.ir, Func.scratch, Expr.evalResults, Expr.eval, s6,
+      State.get_update_same, hS5], hOwned, hOutB, hOutO⟩
+
 /-- `encode` succeeds on `gpt.module`, and its bytes decode to a module whose
 exports compute the kernels exactly. -/
 theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
@@ -3023,7 +3507,8 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
       Implements m 22 softmaxApplyTuple softmaxApplyNeed ∧
       Implements m 23 softmaxRowsTuple softmaxRowsNeed ∧
       Implements m 24 attentionTuple attentionNeed ∧ Implements m 25 blockTuple blockNeed ∧
-      Implements m 26 causalMatMulTuple causalMatMulNeed := by
+      Implements m 26 causalMatMulTuple causalMatMulNeed ∧ Implements m 27 embedTuple embedNeed ∧
+      Implements m 28 matMulTTuple matMulTNeed ∧ Implements m 29 forwardTuple forwardNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
@@ -3032,6 +3517,7 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
     geluArray_implements, mlp_implements, rowMeans_implements, rowInvStd_implements,
     normalizeRows_implements, layerNormRows_implements, maskedScores_implements,
     rowMax_implements, rowSumExp_implements, softmaxApply_implements, softmaxRows_implements,
-    attention_implements, block_implements, causalMatMul_implements⟩
+    attention_implements, block_implements, causalMatMul_implements, embed_implements,
+    matMulT_implements, forward_implements⟩
 
 end Project.Gpt
