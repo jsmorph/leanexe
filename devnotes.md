@@ -19238,3 +19238,31 @@ those facts from the frames would shorten long straight-line proofs.
 
 - [x] GPT 3: `layerNorm`.
 - [ ] GPT 4: softmax, after the decision on `exp`.
+
+## 2026-09-30: GPT 4a, exp
+
+The user chose option A: `exp` written in Lean and proved exact against that
+definition.  The algorithm reduces `x` to `k·ln 2 + r` with fdlibm's two-part
+`ln 2`, evaluates the degree-13 Taylor polynomial of `e^r` by Horner's rule, and
+multiplies by two powers of two, `2^(h - 550)` and `2^(m - h - 550)`, built as
+`Float.ofBits ((h + 473) <<< 52)`, where `m = k + 1100` and `h = m / 2`.  The
+split keeps both factors normal from the subnormal range to overflow.  The
+input is clamped to [-745.2, 709.8] before the reduction so that the unsigned
+conversion applies, and a final conditional returns `x` for NaN, `x * 1e308` above
+709.8, and 0 below -745.2.  Against the C library's `exp`, the error is at most
+1 unit in the last place on 400,000 points, and every special value matches.
+
+Lean's model replaces every NaN with the canonical NaN, while
+`f64.reinterpret_i64` keeps the payload.  I compile `Float.ofBits` to the plain
+reinterpret, and a proof that uses it must show its argument is not a NaN
+pattern; `shiftLeft_52_not_nan` proves that for `v <<< 52`.  The proof of
+`exp` goes assignment by assignment, unfolding one local at each step; proving
+the whole body at once would have expanded `r` thirteen times inside `p`.  One
+step first failed because unsigned division stores its operands in two scratch
+locals.  `exp_implements` takes 113 lines.
+
+`gpt.wasm` (2,682 bytes) matched native Lean on 780 inputs, 632 of them for
+`exp`.
+
+- [x] GPT 4a: `exp`.
+- [ ] GPT 4b: softmax, which needs calls inside loop bodies and array elements.

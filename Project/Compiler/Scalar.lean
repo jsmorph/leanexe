@@ -496,6 +496,12 @@ mutual
         let (x, xHints) ← translateValue ctx loc operand
         let ir : IRExpr .f64 := .convertU x
         return (ir, hint ir "word to float" :: xHints)
+    | (``Float.ofBits, #[bits]) =>
+        -- The reinterpretation keeps a NaN payload, which Lean's model replaces with the
+        -- canonical NaN, so a proof must show that `bits` is not a NaN pattern.
+        let (w, wHints) ← translateValue ctx loc bits
+        let ir : IRExpr .f64 := .ofBits w
+        return (ir, hint ir "float of bits" :: wHints)
     | (``GetElem?.getElem!, #[_, _, _, _, _, _, array, position]) =>
         let some arrayLocal := ctx.floatArrays.lookup array.consumeMData
           | throwError "a float read must be of an `Array Float` variable: {source}"
