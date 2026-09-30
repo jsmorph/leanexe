@@ -19126,3 +19126,31 @@ releases, and 24 frees.  The other eleven modules kept their bytes.
 
 - [x] CLOB 5c: `cancelBid`.
 - [ ] CLOB 6: a function that applies a command, after the decision on structures.
+
+## 2026-09-30: CLOB 6, applyCommand
+
+The user chose option A: a command is plain words.  `applyCommand prices sizes
+kind price size` calls `addBid` for kind 0 and `cancelBid` for kind 1, and it
+returns copies of both arrays for any other kind.  It is function 12 of
+`clob.module`.
+
+Its result locals are 5 and 6, and its arguments include `kind`.  The branch
+lemma of CLOB 5c was specific to locals 6 and 7 and to four arguments, so I
+generalized it.  `pairCall_spec` now takes any result locals and any caller
+arguments, with a premise that the arguments stay represented when every
+borrowed array is kept.  `pairCopy_spec` proves the two copies once, and
+`cancelBid`'s last branch uses it too, so `cancelBid_implements` went from 118
+to 85 lines.  `applyCommand_implements` takes 77 lines.
+
+The first build failed in three places.  I compared the condition's value with
+`decide (kind = 0)`, but `Expr.eval` gives `kind == 0`.  `rintro ⟨rfl, …⟩`
+replaced `initial` with the new store variable in one branch, which left the
+next branch without `initial`; `subst s` fixed the direction.  A structure
+literal split across lines with a trailing comma did not parse.
+
+`clob.wasm` (4,056 bytes) matched native Lean on 553 inputs, 95 of them for
+`applyCommand`, and those reach every path.  A session of ten `applyCommand`
+calls from empty arrays ended with the native book and 22 allocations, 22
+releases, and 22 frees.
+
+- [x] CLOB 6: `applyCommand`.
