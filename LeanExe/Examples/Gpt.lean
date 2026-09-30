@@ -114,12 +114,14 @@ def layerNormRows (x g b : Array Float) (t d : UInt64) (eps : Float) : Array Flo
   normalizeRows x means inv g b t d
 
 /-- The causally masked attention scores of `t` queries and keys of width `d`, both
-stored by rows, as a `t × t` matrix stored by rows: `scale · (q[i] · k[j])` plus a
-mask that is 0 where `j ≤ i` and negative infinity elsewhere. -/
+stored by rows, as a `t × t` matrix stored by rows: `scale · (q[i] · k[j])` where
+`j ≤ i`, and `0 · scale` plus negative infinity elsewhere.  A masked element reads
+no key, so row `i` depends only on rows `0` to `i`. -/
 def maskedScores (q k : Array Float) (t d : UInt64) (scale : Float) : Array Float :=
   LeanExe.build (t * t) fun e =>
-    LeanExe.loop d 0.0 (fun c acc => acc + q[(e / t * d + c).toNat]! * k[(e % t * d + c).toNat]!) *
-      scale + (if e % t ≤ e / t then 0.0 else -(1.0 / 0.0))
+    LeanExe.loop (if e % t ≤ e / t then d else 0) 0.0
+        (fun c acc => acc + q[(e / t * d + c).toNat]! * k[(e % t * d + c).toNat]!) * scale +
+      (if e % t ≤ e / t then 0.0 else -(1.0 / 0.0))
 
 /-- The largest element of each of the `t` rows of width `w` of `x`. -/
 def rowMax (x : Array Float) (t w : UInt64) : Array Float :=
@@ -141,16 +143,24 @@ def softmaxRows (x : Array Float) (t w : UInt64) : Array Float :=
   let sums := rowSumExp x mx t w
   softmaxApply x mx sums t w
 
+/-- The product of the `t × t` attention weights `p` and the `t × d` values `v`, both
+stored by rows, in which row `i` sums over rows `0` to `i` of `v` only. -/
+def causalMatMul (p v : Array Float) (t d : UInt64) : Array Float :=
+  LeanExe.build (t * d) fun e =>
+    LeanExe.loop (e / d + 1) 0.0 fun j acc =>
+      acc + p[(e / d * t + j).toNat]! * v[(j * d + e % d).toNat]!
+
 /-- Single-head causal self-attention on `t` rows of width `d`, with `d × d` weight
 matrices stored by rows: `softmax (q kᵀ / √d, masked) · v · wo`, where `q`, `k`, and
-`v` are `x · wq`, `x · wk`, and `x · wv`. -/
+`v` are `x · wq`, `x · wk`, and `x · wv`.  Row `i` depends only on rows `0` to `i` of
+`x`: `maskedScores` reads no later key, and `causalMatMul` reads no later value. -/
 def attention (x wq wk wv wo : Array Float) (t d : UInt64) : Array Float :=
   let q := matMul x wq t d d
   let k := matMul x wk t d d
   let v := matMul x wv t d d
   let s := maskedScores q k t d (1.0 / d.toFloat.sqrt)
   let p := softmaxRows s t t
-  let o := matMul p v t t d
+  let o := causalMatMul p v t d
   matMul o wo t d d
 
 /-- A GPT-2 transformer block on `t` rows of width `d` with hidden width `f`:

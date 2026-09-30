@@ -1887,14 +1887,15 @@ theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNee
     { params := [.i64 pq, .i64 pk, .i64 t, .i64 d, .f64 scale.toBits]
       locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .i64 0] }
   show Triple _ (.buildWith 5 6 7 (.bin .mul (.get 2) (.get 2))
-      (.seq (.assign 8 (.constF 0)) (.loop 9 10 (.get 3) scoreBody))
+      (.seq (.assign 8 (.constF 0)) (.loop 9 10 (.ite (.leU (.bin .remU (.get 7) (.get 2))
+        (.bin .divU (.get 7) (.get 2))) (.get 3) (.const 0)) scoreBody))
       (.toBits (.binF .add (.binF .mul (.getF 8) (.getF 4))
         (.iteF (.leU (.bin .remU (.get 7) (.get 2)) (.bin .divU (.get 7) (.get 2)))
           (.constF 0) (.binF .sub (.constF 9223372036854775808)
             (.binF .div (.constF 4607182418800017408) (.constF 0))))))) 12
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.buildWith_spec (writes := [8, 9, 10, 11]) (n := t * t)
-    (fun e => (LeanExe.loop d 0.0 (scoreStep q k t d e) * scale +
+    (fun e => (LeanExe.loop (if e % t ≤ e / t then d else 0) 0.0 (scoreStep q k t d e) * scale +
       (if e % t ≤ e / t then 0.0 else -(1.0 / 0.0))).toBits)
     hMemory32 hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
     ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
@@ -1912,10 +1913,15 @@ theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNee
     have hS1Get : ∀ j, j ≠ 8 → s1.get j = state.get j := fun j hj => State.get_update_ne hj
     refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
       simp [Stmt.run, Expr.eval, State.set?_eq_update, hState.1, hState.2, s1])) ?_
-    refine (Stmt.loop_spec (vars := [8]) (writes := [8, 11]) (init := (0.0 : Float)) (n := d)
+    have g2 : state.get 2 = some (.i64 t) := (hGet 2 (by decide)).trans rfl
+    have g3 : state.get 3 = some (.i64 d) := (hGet 3 (by decide)).trans rfl
+    refine (Stmt.loop_spec (vars := [8]) (writes := [8, 11]) (init := (0.0 : Float))
+      (n := if UInt64.ofNat e % t ≤ UInt64.ofNat e / t then d else 0)
       (scoreStep q k t d (UInt64.ofNat e)) (by decide) (by decide) (by decide) (by decide)
       (by decide) (by simp [hS1.1, hS1.2])
-      ⟨s1, by simp [Expr.eval, hS1Get 3 (by decide), hGet 3 (by decide)]; rfl⟩
+      (by by_cases hc : UInt64.ofNat e % t ≤ UInt64.ofNat e / t <;>
+        simp [Expr.eval, hS1Get 2 (by decide), hS1Get 3 (by decide), hS1Get 7 (by decide), g2,
+          g3, hIndex, State.set?_eq_update, hS1.1, hS1.2, U64Op.apply, ht, hc])
       (by simp [State.Holds, Scalar.values, s1, hState.1, hState.2, hZero]) ?_).mono
         (fun _ _ h => h) ?_
     · intro c acc st hc hFrameL hHolds hIdx hLim
@@ -1935,13 +1941,14 @@ theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNee
       rintro s' u ⟨rfl, rfl⟩
       exact ⟨rfl, hFinalFrame, hFinalHolds⟩
     · rintro s' u ⟨rfl, hFrameL, hHolds⟩
-      have g8 : u.get 8 = some (.f64 (LeanExe.loop d 0.0
+      have g8 : u.get 8 = some (.f64 (LeanExe.loop
+          (if UInt64.ofNat e % t ≤ UInt64.ofNat e / t then d else 0) 0.0
           (scoreStep q k t d (UInt64.ofNat e))).toBits) := (List.forall₂_cons.mp hHolds).1
       have hU : ∀ j, j < 5 ∨ j = 7 → u.get j = state.get j := fun j hj =>
         (hFrameL.get j (by omega) (by simp; omega)).trans (hS1Get j (by omega))
       have hUL : u.params.length = 5 ∧ u.locals.length = 10 :=
         ⟨hFrameL.params.trans hS1.1, hFrameL.locals.trans hS1.2⟩
-      have g2 : u.get 2 = some (.i64 t) := (hU 2 (by omega)).trans ((hGet 2 (by decide)).trans rfl)
+      have g2 : u.get 2 = some (.i64 t) := (hU 2 (by omega)).trans g2
       have g4 : u.get 4 = some (.f64 scale.toBits) :=
         (hU 4 (by omega)).trans ((hGet 4 (by decide)).trans rfl)
       have g7 : u.get 7 = some (.i64 (UInt64.ofNat e)) := (hU 7 (by omega)).trans hIndex
@@ -1959,7 +1966,7 @@ theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNee
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
   have hEq : maskedTuple (q, k, t, d, scale) = LeanExe.build (t * t) (fun e =>
-      LeanExe.loop d 0.0 (scoreStep q k t d e) * scale +
+      LeanExe.loop (if e % t ≤ e / t then d else 0) 0.0 (scoreStep q k t d e) * scale +
         (if e % t ≤ e / t then 0.0 else -(1.0 / 0.0))) := rfl
   rw [hEq, build_map]
   exact hNew.owned
@@ -2269,6 +2276,128 @@ theorem softmaxApply_implements :
   rw [hEq, build_map]
   exact hNew.owned
 
+/-- `causalMatMul` with its four arguments as one tuple. -/
+def causalMatMulTuple (x : Array Float × Array Float × UInt64 × UInt64) : Array Float :=
+  LeanExe.Examples.Gpt.causalMatMul x.1 x.2.1 x.2.2.1 x.2.2.2
+
+/-- The bytes `causalMatMul` may allocate: one array of `t × d` elements. -/
+def causalMatMulNeed (x : Array Float × Array Float × UInt64 × UInt64) : Nat :=
+  48 + 8 * ((x.2.2.1 * x.2.2.2).toNat + 1)
+
+/-- One step of the loop for element `e`: row `e / d` of the weights times row `j` of
+the values. -/
+def mixStep (p v : Array Float) (t d e j : UInt64) (acc : Float) : Float :=
+  acc + p[(e / d * t + j).toNat]! * v[(j * d + e % d).toNat]!
+
+/-- The compiled loop body of `causalMatMul`. -/
+def mixBody : Stmt :=
+  .seq (.assign 10 (.binF .add (.getF 7) (.binF .mul
+    (.ofBits (.read 0 (.bin .add (.bin .mul (.bin .divU (.get 6) (.get 3)) (.get 2)) (.get 9))))
+    (.ofBits (.read 1 (.bin .add (.bin .mul (.get 9) (.get 3)) (.bin .remU (.get 6) (.get 3))))))))
+    (.assign 7 (.getF 10))
+
+theorem mixBody_run {initial : Store Unit} {pp pv : UInt64} {p v : Array Float}
+    (hP : UInt64Array.At initial pp (p.map Float.toBits))
+    (hV : UInt64Array.At initial pv (v.map Float.toBits)) {state : State} {c : Nat}
+    {t d e : UInt64} {acc : Float} (hd : d ≠ 0) (hParams : state.params.length = 4)
+    (hLocals : state.locals.length = 10) (h0 : state.get 0 = some (.i64 pp))
+    (h1 : state.get 1 = some (.i64 pv)) (h2 : state.get 2 = some (.i64 t))
+    (h3 : state.get 3 = some (.i64 d)) (h6 : state.get 6 = some (.i64 e))
+    (h7 : state.get 7 = some (.f64 acc.toBits))
+    (h9 : state.get 9 = some (.i64 (UInt64.ofNat c))) :
+    ∃ final, mixBody.run initial.mem 11 state = some final ∧
+      State.Frame 11 [7, 10] state final ∧
+      final.Holds [7] (Scalar.values (mixStep p v t d e (UInt64.ofNat c) acc)) := by
+  simp [mixBody, Stmt.run, Expr.eval, h0, h1, h2, h3, h6, h7, h9, Expr.readValue_at hP,
+    Expr.readValue_at hV, State.set?_eq_update, hParams, hLocals, F64Op.apply, U64Op.apply,
+    getElem!_map_toBits, hd]
+  constructor
+  · repeat refine State.Frame.update ?_ (by simp)
+    exact State.Frame.refl _ _ _
+  · simp [State.Holds, Scalar.values, mixStep, hParams, hLocals, F64Bits.toBits_add,
+      F64Bits.toBits_mul]
+
+theorem causalMatMul_implements :
+    Implements gpt.module 26 causalMatMulTuple causalMatMulNeed := by
+  refine Func.implements_heap gpt.funcs 23 gpt.causalMatMul.ir "causalMatMul" rfl
+    causalMatMulTuple causalMatMulNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨p, v, t, d⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨pp, rfl, hPs⟩, _, _, rfl, ⟨pv, rfl, hVs⟩, rfl⟩ hRoom
+  change heap.Borrowed initial pp (p.map Float.toBits) at hPs
+  change heap.Borrowed initial pv (v.map Float.toBits) at hVs
+  change heap.Room initial gpt.module (48 + 8 * ((t * d).toNat + 1)) at hRoom
+  have hMemory32 : gpt.module.memIs64 = false := rfl
+  have hImports : gpt.module.imports = [] := rfl
+  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
+  have hZero : (0.0 : Float).toBits = 0 := by decide +kernel
+  let start : State :=
+    { params := [.i64 pp, .i64 pv, .i64 t, .i64 d]
+      locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .i64 0] }
+  show Triple _ (.buildWith 4 5 6 (.bin .mul (.get 2) (.get 3))
+      (.seq (.assign 7 (.constF 0))
+        (.loop 8 9 (.bin .add (.bin .divU (.get 6) (.get 3)) (.const 1)) mixBody))
+      (.toBits (.getF 7))) 11
+    (fun store state => store = initial ∧ state = start) _
+  refine (Stmt.buildWith_spec (writes := [7, 8, 9, 10]) (n := t * d)
+    (fun e => (LeanExe.loop (e / d + 1) 0.0 (mixStep p v t d e)).toBits) hMemory32 hImports
+    hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro e store state he hAt hFrame hIndex
+    have hd : d ≠ 0 := by rintro rfl; simp at he
+    have hState : state.params.length = 4 ∧ state.locals.length = 10 :=
+      ⟨hFrame.params, hFrame.locals⟩
+    have hGet : ∀ j, j < 4 → state.get j = start.get j := fun j hj =>
+      hFrame.get j (by omega) (by simp; omega)
+    have g3 : state.get 3 = some (.i64 d) := (hGet 3 (by decide)).trans rfl
+    have hP := hAt pp _ hPs
+    have hV := hAt pv _ hVs
+    let s1 := state.update 7 (.f64 0)
+    have hS1 : s1.params.length = 4 ∧ s1.locals.length = 10 := by
+      simp [s1, hState.1, hState.2]
+    have hS1Get : ∀ j, j ≠ 7 → s1.get j = state.get j := fun j hj => State.get_update_ne hj
+    refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
+      simp [Stmt.run, Expr.eval, State.set?_eq_update, hState.1, hState.2, s1])) ?_
+    refine (Stmt.loop_spec (vars := [7]) (writes := [7, 10]) (init := (0.0 : Float))
+      (n := UInt64.ofNat e / d + 1) (mixStep p v t d (UInt64.ofNat e)) (by decide) (by decide)
+      (by decide) (by decide) (by decide) (by simp [hS1.1, hS1.2])
+      (by simp [Expr.eval, hS1Get 3 (by decide), hS1Get 6 (by decide), g3, hIndex,
+        State.set?_eq_update, hS1.1, hS1.2, U64Op.apply, hd])
+      (by simp [State.Holds, Scalar.values, s1, hState.1, hState.2, hZero]) ?_).mono
+        (fun _ _ h => h) ?_
+    · intro c acc st hc hFrameL hHolds hIdx hLim
+      have hSt : st.params.length = 4 ∧ st.locals.length = 10 :=
+        ⟨hFrameL.params.trans hS1.1, hFrameL.locals.trans hS1.2⟩
+      have hKeep : ∀ j, j < 4 ∨ j = 6 → st.get j = state.get j := fun j hj =>
+        (hFrameL.get j (by omega) (by simp; omega)).trans (hS1Get j (by omega))
+      have g7 : st.get 7 = some (.f64 acc.toBits) := by
+        simpa [State.Holds, Scalar.values] using hHolds
+      obtain ⟨final, hRun, hFinalFrame, hFinalHolds⟩ := mixBody_run hP hV hd hSt.1 hSt.2
+        ((hKeep 0 (by omega)).trans ((hGet 0 (by decide)).trans rfl))
+        ((hKeep 1 (by omega)).trans ((hGet 1 (by decide)).trans rfl))
+        ((hKeep 2 (by omega)).trans ((hGet 2 (by decide)).trans rfl))
+        ((hKeep 3 (by omega)).trans g3)
+        ((hKeep 6 (by omega)).trans hIndex) g7 hIdx
+      refine (Stmt.run_spec hRun).mono (fun _ _ h => h) ?_
+      rintro s' u ⟨rfl, rfl⟩
+      exact ⟨rfl, hFinalFrame, hFinalHolds⟩
+    · rintro s' u ⟨rfl, hFrameL, hHolds⟩
+      have g7 : u.get 7 = some (.f64 (LeanExe.loop (UInt64.ofNat e / d + 1) 0.0
+          (mixStep p v t d (UInt64.ofNat e))).toBits) := (List.forall₂_cons.mp hHolds).1
+      exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
+          (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g7]⟩
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pp, rfl, hNew.borrowed pp _ hPs⟩, _, _, rfl,
+      ⟨pv, rfl, hNew.borrowed pv _ hVs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
+    hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.causalMatMul.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
+    ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+  have hEq : causalMatMulTuple (p, v, t, d) =
+      LeanExe.build (t * d) (fun e => LeanExe.loop (e / d + 1) 0.0 (mixStep p v t d e)) := rfl
+  rw [hEq, build_map]
+  exact hNew.owned
+
 /-- `softmaxRows` with its three arguments as one tuple. -/
 def softmaxRowsTuple (x : Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.softmaxRows x.1 x.2.1 x.2.2
@@ -2440,12 +2569,15 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   have hSoftmax : gpt.module.funcs[23 - gpt.module.imports.length]? =
       some (gpt.softmaxRows.ir.function (2 + 20)) :=
     compile_funcs (funcs := gpt.funcs) (i := 20) rfl
+  have hCausal : gpt.module.funcs[26 - gpt.module.imports.length]? =
+      some (gpt.causalMatMul.ir.function (2 + 23)) :=
+    compile_funcs (funcs := gpt.funcs) (i := 23) rfl
   let q := matMulTuple (x, wq, t, d, d)
   let k := matMulTuple (x, wk, t, d, d)
   let v := matMulTuple (x, wv, t, d, d)
   let s := maskedTuple (q, k, t, d, 1.0 / d.toFloat.sqrt)
   let p := softmaxRowsTuple (s, t, t)
-  let o := matMulTuple (p, v, t, t, d)
+  let o := causalMatMulTuple (p, v, t, d)
   let start : State :=
     { params := [.i64 px, .i64 pwq, .i64 pwk, .i64 pwv, .i64 pwo, .i64 t, .i64 d]
       locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0] }
@@ -2471,8 +2603,7 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
     (.seq (.call 19 [⟨.u64, .get 7⟩, ⟨.u64, .get 8⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 6⟩,
       ⟨.f64, .binF .div (.constF 4607182418800017408) (.unF .sqrt (.convertU (.get 6)))⟩] [10])
     (.seq (.call 23 [⟨.u64, .get 10⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 5⟩] [11])
-    (.seq (.call 9 [⟨.u64, .get 11⟩, ⟨.u64, .get 9⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 5⟩,
-      ⟨.u64, .get 6⟩] [12])
+    (.seq (.call 26 [⟨.u64, .get 11⟩, ⟨.u64, .get 9⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 6⟩] [12])
     (.seq (.call 9 [⟨.u64, .get 12⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 6⟩,
       ⟨.u64, .get 6⟩] [13])
     (.seq (.assign 14 (.get 13))
@@ -2543,10 +2674,11 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   rintro store5 t5 ⟨heap5, pp, hLive5, rfl⟩
   let s5 := s4.update 11 (.i64 pp)
   have hS5 : s5.params.length + s5.locals.length = 15 := by rw [hLen, hS4]
-  -- `o = p · v`.
-  refine Stmt.seq_spec (Live.call matMul_implements rfl hMatMul rfl hLive5 hRoom
-    (x := (p, v, t, t, d)) (by simp only [matMulNeed, maskedNeed, softmaxRowsNeed]; omega)
-    (afterArgs := s5) (vals := [.i64 pp, .i64 pv, .i64 t, .i64 t, .i64 d])
+  -- `o = p · v`, row `i` summing over rows `0` to `i` of `v`.
+  refine Stmt.seq_spec (Live.call causalMatMul_implements rfl hCausal rfl hLive5 hRoom
+    (x := (p, v, t, d))
+    (by simp only [matMulNeed, maskedNeed, softmaxRowsNeed, causalMatMulNeed]; omega)
+    (afterArgs := s5) (vals := [.i64 pp, .i64 pv, .i64 t, .i64 d])
     (by simp [Expr.evalResults, Expr.eval, s5, s4, s3, s2, s1, State.get_update_same, hStart,
       g5, g6])
     ⟨[.i64 pp], _, rfl, ⟨pp, rfl, (hLive5.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
@@ -2559,7 +2691,8 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   have hS6 : s6.params.length + s6.locals.length = 15 := by rw [hLen, hS5]
   -- The result, `o · wo`.
   refine Stmt.seq_spec (Live.call matMul_implements rfl hMatMul rfl hLive6 hRoom
-    (x := (o, wo, t, d, d)) (by simp only [matMulNeed, maskedNeed, softmaxRowsNeed]; omega)
+    (x := (o, wo, t, d, d))
+    (by simp only [matMulNeed, maskedNeed, softmaxRowsNeed, causalMatMulNeed]; omega)
     (afterArgs := s6) (vals := [.i64 po, .i64 pwo, .i64 t, .i64 d, .i64 d])
     (by simp [Expr.evalResults, Expr.eval, s6, s5, s4, s3, s2, s1, State.get_update_same, hStart,
       g4, g5, g6])
@@ -2615,7 +2748,8 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
       ⟨pwv, rfl, hKeep pwv _ hWv⟩, [.i64 pwo], _, rfl, ⟨pwo, rfl, hKeep pwo _ hWo⟩, rfl⟩
   obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
     hLive13.finish (need := attentionNeed (x, wq, wk, wv, wo, t, d))
-      (by simp only [matMulNeed, maskedNeed, softmaxRowsNeed, attentionNeed]; omega) hParams
+      (by simp only [matMulNeed, maskedNeed, softmaxRowsNeed, causalMatMulNeed, attentionNeed]
+          omega) hParams
   exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s8,
     by simp [gpt.attention.ir, Func.scratch, Expr.evalResults, Expr.eval, s8,
       State.get_update_same, hS7], hOwned, hOutB, hOutO⟩
@@ -2888,7 +3022,8 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
       Implements m 21 rowSumExpTuple rowSumExpNeed ∧
       Implements m 22 softmaxApplyTuple softmaxApplyNeed ∧
       Implements m 23 softmaxRowsTuple softmaxRowsNeed ∧
-      Implements m 24 attentionTuple attentionNeed ∧ Implements m 25 blockTuple blockNeed := by
+      Implements m 24 attentionTuple attentionNeed ∧ Implements m 25 blockTuple blockNeed ∧
+      Implements m 26 causalMatMulTuple causalMatMulNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
@@ -2897,6 +3032,6 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
     geluArray_implements, mlp_implements, rowMeans_implements, rowInvStd_implements,
     normalizeRows_implements, layerNormRows_implements, maskedScores_implements,
     rowMax_implements, rowSumExp_implements, softmaxApply_implements, softmaxRows_implements,
-    attention_implements, block_implements⟩
+    attention_implements, block_implements, causalMatMul_implements⟩
 
 end Project.Gpt

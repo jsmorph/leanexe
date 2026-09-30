@@ -19432,5 +19432,34 @@ counted the result of `attention` twice in its session; the text now says five
 inputs and nine arrays allocated by the call.
 
 - [x] GPT 5f: the block.
+
+## 2026-09-30: Causal attention
+
+The user asked whether to allow loops in value-level branches, which would let
+`maskedScores` select negative infinity instead of adding it.  On reconsidering,
+native Lean showed that the first `attention` was not causal: row 0 on `[1e150]`
+was `1e150`, and on `[1e150, 1e200]` it was NaN.  The masked score `q0 · k1`
+overflowed to +∞, and the additive mask gave `+∞ - ∞ = NaN`.  An infinite later
+input also reached row 0 through `0 · ∞` in the product with `v`, which a
+selecting mask would not have prevented.
+
+The fix changes loop counts and needs no compiler change.  `maskedScores` runs
+its dot product `if e % t ≤ e / t then d else 0` times, so a masked element reads
+no key, and the new kernel `causalMatMul` sums row `i` over rows `0` to `i` of
+`v`, with count `e / d + 1`.  `causalMatMul` is export 26, appended so the other
+entries keep their numbers.  The IR proofs changed in `maskedScores` (the loop
+count) and `attention` (the call), and all built on the first attempt.
+
+`Project/Gpt/Causal.lean` proves `attention_causal` and `block_causal` about the
+Lean definitions: `RowsAgree w i a b` says rows `0` to `i` of width `w` are
+equal, and one lemma per kernel shows that each output row depends only on the
+same or earlier input rows.  The theorems assume dimensions below `2 ^ 32`, since
+the kernels compute indices in `UInt64` and an overflowing index could read a
+later row; `block_causal` also assumes inputs of equal length, since `add` builds
+an array as long as its first argument.  The file checked on the first attempt
+and depends only on the standard axioms.  All 1,557 comparisons of `gpt.wasm`
+match, and sessions still free every allocation.
+
+- [x] Causal attention and its theorems.
 - [ ] Next: decide between a multi-block model, the GPU path, and the pending
   items in `deslop.md`.

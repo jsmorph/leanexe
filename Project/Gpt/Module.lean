@@ -7,6 +7,7 @@ open LeanExe.Examples.Gpt in
 leanexe_compile gpt := [dot, matVec, layerNorm, exp, softmax, matVec2, matMul,
   add, tanh, gelu, geluArray, mlp,
   rowMeans, rowInvStd, normalizeRows, layerNormRows,
-  maskedScores, rowMax, rowSumExp, softmaxApply, softmaxRows, attention, block]
+  maskedScores, rowMax, rowSumExp, softmaxApply, softmaxRows, attention, block,
+  causalMatMul]
 
 end Project.Gpt
