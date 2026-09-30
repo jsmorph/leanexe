@@ -24,16 +24,22 @@ def mlpNeed (x : Array Float × Array Float × Array Float × Array Float × Arr
 theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
   refine Func.implements_heap gpt.funcs 11 gpt.mlp.ir "mlp" rfl
     mlpTuple mlpNeed
-    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_,
-      rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
-  rintro ⟨x, wfc, bfc, wproj, bproj, t, d, f⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨pX, rfl, hX⟩, _, _, rfl, ⟨pWfc, rfl, hWfc⟩, _, _, rfl, ⟨pBfc, rfl, hBfc⟩,
-      _, _, rfl, ⟨pWproj, rfl, hWproj⟩, _, _, rfl, ⟨pBproj, rfl, hBproj⟩, rfl⟩ hRoom
-  change heap.Borrowed initial pX (x.map Float.toBits) at hX
-  change heap.Borrowed initial pWfc (wfc.map Float.toBits) at hWfc
-  change heap.Borrowed initial pBfc (bfc.map Float.toBits) at hBfc
-  change heap.Borrowed initial pWproj (wproj.map Float.toBits) at hWproj
-  change heap.Borrowed initial pBproj (bproj.map Float.toBits) at hBproj
+    (by
+      rintro _ _ _ ⟨_, _, _, _, _, _, _, _⟩ h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain rfl := h
+      rfl) ?_
+  rintro ⟨x, wfc, bfc, wproj, bproj, t, d, f⟩ heap initial _ hHeap hArgs hRoom
+  obtain ⟨pX, _, rfl, hX, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWfc, _, rfl, hWfc, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBfc, _, rfl, hBfc, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWproj, _, rfl, hWproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBproj, _, rfl, hBproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain rfl := hArgs
   change heap.Room initial gpt.module (mlpNeed (x, wfc, bfc, wproj, bproj, t, d, f)) at hRoom
   simp only [mlpNeed] at hRoom
   have hImports : gpt.module.imports = [] := rfl
@@ -78,7 +84,13 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
     (x := (x, wfc, bfc, t, d, f))
     (by simp only [linearNeed]; omega) (afterArgs := start)
     (vals := [.i64 pX, .i64 pWfc, .i64 pBfc, .i64 t, .i64 d, .i64 f])
-    (by simp [Expr.evalResults, Expr.eval, sg0, sg1, sg2, sg5, sg6, sg7])
+    (Expr.evalResults_get (sg0) <|
+      Expr.evalResults_get (sg1) <|
+      Expr.evalResults_get (sg2) <|
+      Expr.evalResults_get (sg5) <|
+      Expr.evalResults_get (sg6) <|
+      Expr.evalResults_get (sg7) <|
+      Expr.evalResults_nil)
     ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hX⟩, [.i64 pWfc], _, rfl, ⟨pWfc, rfl, hWfc⟩, [.i64 pBfc],
       _, rfl, ⟨pBfc, rfl, hBfc⟩, rfl⟩
     (by rw [hStart]; decide)) ?_
@@ -91,7 +103,8 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
     (x := h)
     (by simp only [linearNeed, geluNeed, hSize]; omega) (afterArgs := s1)
     (vals := [.i64 ph])
-    (by simp [Expr.evalResults, Expr.eval, s1, State.get_update_same, hStart])
+    (Expr.evalResults_get (State.get_update_same (state := start) (by rw [hStart]; decide)) <|
+      Expr.evalResults_nil)
     ⟨ph, rfl, (hLive1.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩
     (by rw [hS1]; decide)) ?_
   apply Triple.of_forall
@@ -103,8 +116,13 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
     (x := (g, wproj, bproj, t, f, d))
     (by simp only [linearNeed, geluNeed, hSize]; omega) (afterArgs := s2)
     (vals := [.i64 pg, .i64 pWproj, .i64 pBproj, .i64 t, .i64 f, .i64 d])
-    (by simp [Expr.evalResults, Expr.eval, s2, s1, State.get_update_same, hStart, sg3, sg4, sg5, sg6,
-      sg7])
+    (Expr.evalResults_get (State.get_update_same (state := s1) (by rw [hS1]; decide)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 3) (index := 9) (by decide)).trans ((State.get_update_ne (state := start) (j := 3) (index := 8) (by decide)).trans (sg3))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 4) (index := 9) (by decide)).trans ((State.get_update_ne (state := start) (j := 4) (index := 8) (by decide)).trans (sg4))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 5) (index := 9) (by decide)).trans ((State.get_update_ne (state := start) (j := 5) (index := 8) (by decide)).trans (sg5))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 7) (index := 9) (by decide)).trans ((State.get_update_ne (state := start) (j := 7) (index := 8) (by decide)).trans (sg7))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 6) (index := 9) (by decide)).trans ((State.get_update_ne (state := start) (j := 6) (index := 8) (by decide)).trans (sg6))) <|
+      Expr.evalResults_nil)
     ⟨[.i64 pg], _, rfl, ⟨pg, rfl, (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
       [.i64 pWproj], _, rfl, ⟨pWproj, rfl, hLive2.borrowed pWproj _ hWproj⟩, [.i64 pBproj],
       _, rfl, ⟨pBproj, rfl, hLive2.borrowed pBproj _ hBproj⟩, rfl⟩
@@ -119,15 +137,12 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
       s3.locals.length by rw [hS3]; decide), s4, s3, State.get_update_same,
       show 10 < s2.params.length + s2.locals.length by rw [hS2]; decide])) ?_
   -- The temporaries are released, newest first.
-  have r8 : s4.get 8 = some (.i64 ph) := by
-    simp [s4, s3, s2, s1, State.get_update_same, hStart]
-  have r9 : s4.get 9 = some (.i64 pg) := by
-    simp [s4, s3, s2, State.get_update_same, hS1]
-  refine Stmt.seq_spec (hLive3.releaseSecond hImports hRelease r9) ?_
-  apply Triple.of_forall
-  rintro storeR0 stR0 ⟨hLiveR0, rfl⟩
-  refine (hLiveR0.releaseSecond hImports hRelease r8).mono (fun _ _ h => h) ?_
-  rintro storeR1 stR1 ⟨hLiveR1, rfl⟩
+  have r8 : s4.get 8 = some (.i64 ph) :=
+    (State.get_update_ne (state := s3) (j := 8) (index := 11) (by decide)).trans ((State.get_update_ne (state := s2) (j := 8) (index := 10) (by decide)).trans ((State.get_update_ne (state := s1) (j := 8) (index := 9) (by decide)).trans (State.get_update_same (state := start) (by rw [hStart]; decide))))
+  have r9 : s4.get 9 = some (.i64 pg) :=
+    (State.get_update_ne (state := s3) (j := 9) (index := 11) (by decide)).trans ((State.get_update_ne (state := s2) (j := 9) (index := 10) (by decide)).trans (State.get_update_same (state := s1) (by rw [hS1]; decide)))
+  refine hLive3.releaseSecond_seq hImports hRelease r9 fun storeR0 hLiveR0 => ?_
+  refine hLiveR0.releaseSecond_last hImports hRelease r8 fun storeR1 hLiveR1 => ?_
   have hParams : ∀ (heap' : Heap) (store' : Store Unit),
       (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
       Represent.borrowed heap' store' [.i64 pX, .i64 pWfc, .i64 pBfc, .i64 pWproj, .i64 pBproj, .i64 t, .i64 d, .i64 f]
@@ -166,26 +181,33 @@ def attentionNeed (x : Array Float × Array Float × Array Float × Array Float 
     Array Float × Array Float × Array Float × UInt64 × UInt64 × UInt64) : Nat :=
   attentionBytes x.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2
 
-set_option maxHeartbeats 1000000 in
 theorem attention_implements : Implements gpt.module 24 attentionTuple attentionNeed := by
   refine Func.implements_heap gpt.funcs 21 gpt.attention.ir "attention" rfl
     attentionTuple attentionNeed
-    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_,
-      rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _,
-      rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
-  rintro ⟨x, wq, bq, wk, bk, wv, bv, wo, bo, t, nh, dh⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨pX, rfl, hX⟩, _, _, rfl, ⟨pWq, rfl, hWq⟩, _, _, rfl, ⟨pBq, rfl, hBq⟩, _,
-      _, rfl, ⟨pWk, rfl, hWk⟩, _, _, rfl, ⟨pBk, rfl, hBk⟩, _, _, rfl, ⟨pWv, rfl, hWv⟩, _, _,
-      rfl, ⟨pBv, rfl, hBv⟩, _, _, rfl, ⟨pWo, rfl, hWo⟩, _, _, rfl, ⟨pBo, rfl, hBo⟩, rfl⟩ hRoom
-  change heap.Borrowed initial pX (x.map Float.toBits) at hX
-  change heap.Borrowed initial pWq (wq.map Float.toBits) at hWq
-  change heap.Borrowed initial pBq (bq.map Float.toBits) at hBq
-  change heap.Borrowed initial pWk (wk.map Float.toBits) at hWk
-  change heap.Borrowed initial pBk (bk.map Float.toBits) at hBk
-  change heap.Borrowed initial pWv (wv.map Float.toBits) at hWv
-  change heap.Borrowed initial pBv (bv.map Float.toBits) at hBv
-  change heap.Borrowed initial pWo (wo.map Float.toBits) at hWo
-  change heap.Borrowed initial pBo (bo.map Float.toBits) at hBo
+    (by
+      rintro _ _ _ ⟨_, _, _, _, _, _, _, _, _, _, _, _⟩ h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain rfl := h
+      rfl) ?_
+  rintro ⟨x, wq, bq, wk, bk, wv, bv, wo, bo, t, nh, dh⟩ heap initial _ hHeap hArgs hRoom
+  obtain ⟨pX, _, rfl, hX, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWq, _, rfl, hWq, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBq, _, rfl, hBq, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWk, _, rfl, hWk, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBk, _, rfl, hBk, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWv, _, rfl, hWv, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBv, _, rfl, hBv, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWo, _, rfl, hWo, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBo, _, rfl, hBo, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain rfl := hArgs
   change heap.Room initial gpt.module (attentionBytes t nh dh) at hRoom
   simp only [attentionBytes] at hRoom
   have hImports : gpt.module.imports = [] := rfl
@@ -259,7 +281,13 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
     (x := (x, wq, bq, t, nh * dh, nh * dh))
     (by simp only [linearNeed]; omega) (afterArgs := start)
     (vals := [.i64 pX, .i64 pWq, .i64 pBq, .i64 t, .i64 (nh * dh), .i64 (nh * dh)])
-    (by simp [Expr.evalResults, Expr.eval, U64Op.apply, sg0, sg1, sg2, sg9, sg10, sg11])
+    (Expr.evalResults_get (sg0) <|
+      Expr.evalResults_get (sg1) <|
+      Expr.evalResults_get (sg2) <|
+      Expr.evalResults_get (sg9) <|
+      Expr.evalResults_mul (sg10) (sg11) <|
+      Expr.evalResults_mul (sg10) (sg11) <|
+      Expr.evalResults_nil)
     ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hX⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl, hWq⟩, [.i64 pBq], _,
       rfl, ⟨pBq, rfl, hBq⟩, rfl⟩
     (by rw [hStart]; decide)) ?_
@@ -272,7 +300,13 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
     (x := (x, wk, bk, t, nh * dh, nh * dh))
     (by simp only [linearNeed]; omega) (afterArgs := s1)
     (vals := [.i64 pX, .i64 pWk, .i64 pBk, .i64 t, .i64 (nh * dh), .i64 (nh * dh)])
-    (by simp [Expr.evalResults, Expr.eval, U64Op.apply, s1, sg0, sg3, sg4, sg9, sg10, sg11])
+    (Expr.evalResults_get ((State.get_update_ne (state := start) (j := 0) (index := 12) (by decide)).trans (sg0)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 3) (index := 12) (by decide)).trans (sg3)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 4) (index := 12) (by decide)).trans (sg4)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9)) <|
+      Expr.evalResults_mul ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10)) ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11)) <|
+      Expr.evalResults_mul ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10)) ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11)) <|
+      Expr.evalResults_nil)
     ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive1.borrowed pX _ hX⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl,
       hLive1.borrowed pWk _ hWk⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl, hLive1.borrowed pBk _ hBk⟩,
       rfl⟩
@@ -286,7 +320,13 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
     (x := (x, wv, bv, t, nh * dh, nh * dh))
     (by simp only [linearNeed]; omega) (afterArgs := s2)
     (vals := [.i64 pX, .i64 pWv, .i64 pBv, .i64 t, .i64 (nh * dh), .i64 (nh * dh)])
-    (by simp [Expr.evalResults, Expr.eval, U64Op.apply, s2, s1, sg0, sg5, sg6, sg9, sg10, sg11])
+    (Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 0) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 0) (index := 12) (by decide)).trans (sg0))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 5) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 5) (index := 12) (by decide)).trans (sg5))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 6) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 6) (index := 12) (by decide)).trans (sg6))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 9) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9))) <|
+      Expr.evalResults_mul ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))) ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11))) <|
+      Expr.evalResults_mul ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))) ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11))) <|
+      Expr.evalResults_nil)
     ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive2.borrowed pX _ hX⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl,
       hLive2.borrowed pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl, hLive2.borrowed pBv _ hBv⟩,
       rfl⟩
@@ -317,8 +357,10 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
     (x := (s, t * nh, t))
     (by simp only [linearNeed, maskedNeed, softmaxRowsNeed]; omega) (afterArgs := s4)
     (vals := [.i64 ps, .i64 (t * nh), .i64 t])
-    (by simp [Expr.evalResults, Expr.eval, U64Op.apply, s4, s3, s2, s1, State.get_update_same,
-      hStart, sg9, sg10])
+    (Expr.evalResults_get (State.get_update_same (state := s3) (by rw [hS3]; decide)) <|
+      Expr.evalResults_mul ((State.get_update_ne (state := s3) (j := 9) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 9) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 9) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9))))) ((State.get_update_ne (state := s3) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 9) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 9) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 9) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9))))) <|
+      Expr.evalResults_nil)
     ⟨[.i64 ps], _, rfl, ⟨ps, rfl, (hLive4.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
       rfl⟩
     (by rw [hS4]; decide)) ?_
@@ -331,8 +373,12 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
     (x := (p, v, t, nh, dh))
     (by simp only [linearNeed, maskedNeed, softmaxRowsNeed, causalMatMulNeed]; omega) (afterArgs := s5)
     (vals := [.i64 pp, .i64 pv, .i64 t, .i64 nh, .i64 dh])
-    (by simp [Expr.evalResults, Expr.eval, s5, s4, s3, s2, s1, State.get_update_same, hStart, sg9,
-      sg10, sg11])
+    (Expr.evalResults_get (State.get_update_same (state := s4) (by rw [hS4]; decide)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s4) (j := 14) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 14) (index := 15) (by decide)).trans (State.get_update_same (state := s2) (by rw [hS2]; decide)))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s4) (j := 9) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 9) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 9) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 9) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9)))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s4) (j := 10) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10)))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s4) (j := 11) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 11) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 11) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11)))))) <|
+      Expr.evalResults_nil)
     ⟨[.i64 pp], _, rfl, ⟨pp, rfl, (hLive5.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
       [.i64 pv], _, rfl, ⟨pv, rfl,
       (hLive5.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))).borrowed⟩,
@@ -347,8 +393,13 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
     (x := (o, wo, bo, t, nh * dh, nh * dh))
     (by simp only [linearNeed, maskedNeed, softmaxRowsNeed, causalMatMulNeed]; omega) (afterArgs := s6)
     (vals := [.i64 po, .i64 pWo, .i64 pBo, .i64 t, .i64 (nh * dh), .i64 (nh * dh)])
-    (by simp [Expr.evalResults, Expr.eval, U64Op.apply, s6, s5, s4, s3, s2, s1,
-      State.get_update_same, hStart, sg7, sg8, sg9, sg10, sg11])
+    (Expr.evalResults_get (State.get_update_same (state := s5) (by rw [hS5]; decide)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s5) (j := 7) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 7) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 7) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 7) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 7) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 7) (index := 12) (by decide)).trans (sg7))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s5) (j := 8) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 8) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 8) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 8) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 8) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 8) (index := 12) (by decide)).trans (sg8))))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s5) (j := 9) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 9) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 9) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 9) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 9) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9))))))) <|
+      Expr.evalResults_mul ((State.get_update_ne (state := s5) (j := 10) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 10) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))))))) ((State.get_update_ne (state := s5) (j := 11) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 11) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 11) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 11) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11))))))) <|
+      Expr.evalResults_mul ((State.get_update_ne (state := s5) (j := 10) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 10) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))))))) ((State.get_update_ne (state := s5) (j := 11) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 11) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 11) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 11) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 11) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 12) (by decide)).trans (sg11))))))) <|
+      Expr.evalResults_nil)
     ⟨[.i64 po], _, rfl, ⟨po, rfl, (hLive6.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
       [.i64 pWo], _, rfl, ⟨pWo, rfl, hLive6.borrowed pWo _ hWo⟩, [.i64 pBo], _, rfl, ⟨pBo,
       rfl, hLive6.borrowed pBo _ hBo⟩, rfl⟩
@@ -363,35 +414,24 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
       s7.locals.length by rw [hS7]; decide), s8, s7, State.get_update_same,
       show 18 < s6.params.length + s6.locals.length by rw [hS6]; decide])) ?_
   -- The temporaries are released, newest first.
-  have r12 : s8.get 12 = some (.i64 pq) := by
-    simp [s8, s7, s6, s5, s4, s3, s2, s1, State.get_update_same, hStart]
-  have r13 : s8.get 13 = some (.i64 pk) := by
-    simp [s8, s7, s6, s5, s4, s3, s2, State.get_update_same, hS1]
-  have r14 : s8.get 14 = some (.i64 pv) := by
-    simp [s8, s7, s6, s5, s4, s3, State.get_update_same, hS2]
-  have r15 : s8.get 15 = some (.i64 ps) := by
-    simp [s8, s7, s6, s5, s4, State.get_update_same, hS3]
-  have r16 : s8.get 16 = some (.i64 pp) := by
-    simp [s8, s7, s6, s5, State.get_update_same, hS4]
-  have r17 : s8.get 17 = some (.i64 po) := by
-    simp [s8, s7, s6, State.get_update_same, hS5]
-  refine Stmt.seq_spec (hLive7.releaseSecond hImports hRelease r17) ?_
-  apply Triple.of_forall
-  rintro storeR0 stR0 ⟨hLiveR0, rfl⟩
-  refine Stmt.seq_spec (hLiveR0.releaseSecond hImports hRelease r16) ?_
-  apply Triple.of_forall
-  rintro storeR1 stR1 ⟨hLiveR1, rfl⟩
-  refine Stmt.seq_spec (hLiveR1.releaseSecond hImports hRelease r15) ?_
-  apply Triple.of_forall
-  rintro storeR2 stR2 ⟨hLiveR2, rfl⟩
-  refine Stmt.seq_spec (hLiveR2.releaseSecond hImports hRelease r14) ?_
-  apply Triple.of_forall
-  rintro storeR3 stR3 ⟨hLiveR3, rfl⟩
-  refine Stmt.seq_spec (hLiveR3.releaseSecond hImports hRelease r13) ?_
-  apply Triple.of_forall
-  rintro storeR4 stR4 ⟨hLiveR4, rfl⟩
-  refine (hLiveR4.releaseSecond hImports hRelease r12).mono (fun _ _ h => h) ?_
-  rintro storeR5 stR5 ⟨hLiveR5, rfl⟩
+  have r12 : s8.get 12 = some (.i64 pq) :=
+    (State.get_update_ne (state := s7) (j := 12) (index := 19) (by decide)).trans ((State.get_update_ne (state := s6) (j := 12) (index := 18) (by decide)).trans ((State.get_update_ne (state := s5) (j := 12) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 12) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 12) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 12) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 12) (index := 13) (by decide)).trans (State.get_update_same (state := start) (by rw [hStart]; decide))))))))
+  have r13 : s8.get 13 = some (.i64 pk) :=
+    (State.get_update_ne (state := s7) (j := 13) (index := 19) (by decide)).trans ((State.get_update_ne (state := s6) (j := 13) (index := 18) (by decide)).trans ((State.get_update_ne (state := s5) (j := 13) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 13) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 13) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 13) (index := 14) (by decide)).trans (State.get_update_same (state := s1) (by rw [hS1]; decide)))))))
+  have r14 : s8.get 14 = some (.i64 pv) :=
+    (State.get_update_ne (state := s7) (j := 14) (index := 19) (by decide)).trans ((State.get_update_ne (state := s6) (j := 14) (index := 18) (by decide)).trans ((State.get_update_ne (state := s5) (j := 14) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 14) (index := 16) (by decide)).trans ((State.get_update_ne (state := s3) (j := 14) (index := 15) (by decide)).trans (State.get_update_same (state := s2) (by rw [hS2]; decide))))))
+  have r15 : s8.get 15 = some (.i64 ps) :=
+    (State.get_update_ne (state := s7) (j := 15) (index := 19) (by decide)).trans ((State.get_update_ne (state := s6) (j := 15) (index := 18) (by decide)).trans ((State.get_update_ne (state := s5) (j := 15) (index := 17) (by decide)).trans ((State.get_update_ne (state := s4) (j := 15) (index := 16) (by decide)).trans (State.get_update_same (state := s3) (by rw [hS3]; decide)))))
+  have r16 : s8.get 16 = some (.i64 pp) :=
+    (State.get_update_ne (state := s7) (j := 16) (index := 19) (by decide)).trans ((State.get_update_ne (state := s6) (j := 16) (index := 18) (by decide)).trans ((State.get_update_ne (state := s5) (j := 16) (index := 17) (by decide)).trans (State.get_update_same (state := s4) (by rw [hS4]; decide))))
+  have r17 : s8.get 17 = some (.i64 po) :=
+    (State.get_update_ne (state := s7) (j := 17) (index := 19) (by decide)).trans ((State.get_update_ne (state := s6) (j := 17) (index := 18) (by decide)).trans (State.get_update_same (state := s5) (by rw [hS5]; decide)))
+  refine hLive7.releaseSecond_seq hImports hRelease r17 fun storeR0 hLiveR0 => ?_
+  refine hLiveR0.releaseSecond_seq hImports hRelease r16 fun storeR1 hLiveR1 => ?_
+  refine hLiveR1.releaseSecond_seq hImports hRelease r15 fun storeR2 hLiveR2 => ?_
+  refine hLiveR2.releaseSecond_seq hImports hRelease r14 fun storeR3 hLiveR3 => ?_
+  refine hLiveR3.releaseSecond_seq hImports hRelease r13 fun storeR4 hLiveR4 => ?_
+  refine hLiveR4.releaseSecond_last hImports hRelease r12 fun storeR5 hLiveR5 => ?_
   have hParams : ∀ (heap' : Heap) (store' : Store Unit),
       (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
       Represent.borrowed heap' store' [.i64 pX, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk, .i64 pWv, .i64 pBv, .i64 pWo,
@@ -445,40 +485,50 @@ def blockNeed (x : Array Float × Array Float × Array Float × Array Float × A
   blockBytes x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
     x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.1.size
 
-set_option maxHeartbeats 1000000 in
 theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
   refine Func.implements_heap gpt.funcs 22 gpt.block.ir "block" rfl
     blockTuple blockNeed
-    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_,
-      rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _,
-      rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl,
-      -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl,
-      ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+    (by
+      rintro _ _ _ ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _⟩ h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain rfl := h
+      rfl) ?_
   rintro ⟨x, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, t, nh, dh,
-    f, eps⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨pX, rfl, hX⟩, _, _, rfl, ⟨pG1, rfl, hG1⟩, _, _, rfl, ⟨pB1, rfl, hB1⟩, _,
-      _, rfl, ⟨pWq, rfl, hWq⟩, _, _, rfl, ⟨pBq, rfl, hBq⟩, _, _, rfl, ⟨pWk, rfl, hWk⟩, _, _,
-      rfl, ⟨pBk, rfl, hBk⟩, _, _, rfl, ⟨pWv, rfl, hWv⟩, _, _, rfl, ⟨pBv, rfl, hBv⟩, _, _,
-      rfl, ⟨pWo, rfl, hWo⟩, _, _, rfl, ⟨pBo, rfl, hBo⟩, _, _, rfl, ⟨pG2, rfl, hG2⟩, _, _,
-      rfl, ⟨pB2, rfl, hB2⟩, _, _, rfl, ⟨pWfc, rfl, hWfc⟩, _, _, rfl, ⟨pBfc, rfl, hBfc⟩, _, _,
-      rfl, ⟨pWproj, rfl, hWproj⟩, _, _, rfl, ⟨pBproj, rfl, hBproj⟩, rfl⟩ hRoom
-  change heap.Borrowed initial pX (x.map Float.toBits) at hX
-  change heap.Borrowed initial pG1 (g1.map Float.toBits) at hG1
-  change heap.Borrowed initial pB1 (b1.map Float.toBits) at hB1
-  change heap.Borrowed initial pWq (wq.map Float.toBits) at hWq
-  change heap.Borrowed initial pBq (bq.map Float.toBits) at hBq
-  change heap.Borrowed initial pWk (wk.map Float.toBits) at hWk
-  change heap.Borrowed initial pBk (bk.map Float.toBits) at hBk
-  change heap.Borrowed initial pWv (wv.map Float.toBits) at hWv
-  change heap.Borrowed initial pBv (bv.map Float.toBits) at hBv
-  change heap.Borrowed initial pWo (wo.map Float.toBits) at hWo
-  change heap.Borrowed initial pBo (bo.map Float.toBits) at hBo
-  change heap.Borrowed initial pG2 (g2.map Float.toBits) at hG2
-  change heap.Borrowed initial pB2 (b2.map Float.toBits) at hB2
-  change heap.Borrowed initial pWfc (wfc.map Float.toBits) at hWfc
-  change heap.Borrowed initial pBfc (bfc.map Float.toBits) at hBfc
-  change heap.Borrowed initial pWproj (wproj.map Float.toBits) at hWproj
-  change heap.Borrowed initial pBproj (bproj.map Float.toBits) at hBproj
+    f, eps⟩ heap initial _ hHeap hArgs hRoom
+  obtain ⟨pX, _, rfl, hX, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pG1, _, rfl, hG1, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pB1, _, rfl, hB1, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWq, _, rfl, hWq, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBq, _, rfl, hBq, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWk, _, rfl, hWk, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBk, _, rfl, hBk, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWv, _, rfl, hWv, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBv, _, rfl, hBv, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWo, _, rfl, hWo, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBo, _, rfl, hBo, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pG2, _, rfl, hG2, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pB2, _, rfl, hB2, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWfc, _, rfl, hWfc, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBfc, _, rfl, hBfc, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWproj, _, rfl, hWproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBproj, _, rfl, hBproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain rfl := hArgs
   change heap.Room initial gpt.module (blockBytes t nh dh f x.size) at hRoom
   simp only [blockBytes, attentionBytes] at hRoom
   have hImports : gpt.module.imports = [] := rfl
@@ -558,7 +608,13 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
     (x := (x, g1, b1, t, nh * dh, eps))
     (by simp only [layerNormRowsNeed]; omega) (afterArgs := start)
     (vals := [.i64 pX, .i64 pG1, .i64 pB1, .i64 t, .i64 (nh * dh), .f64 eps.toBits])
-    (by simp [Expr.evalResults, Expr.eval, U64Op.apply, sg0, sg1, sg2, sg17, sg18, sg19, sg21])
+    (Expr.evalResults_get (sg0) <|
+      Expr.evalResults_get (sg1) <|
+      Expr.evalResults_get (sg2) <|
+      Expr.evalResults_get (sg17) <|
+      Expr.evalResults_mul (sg18) (sg19) <|
+      Expr.evalResults_getF (sg21) <|
+      Expr.evalResults_nil)
     ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hX⟩, [.i64 pG1], _, rfl, ⟨pG1, rfl, hG1⟩, [.i64 pB1], _,
       rfl, ⟨pB1, rfl, hB1⟩, rfl⟩
     (by rw [hStart]; decide)) ?_
@@ -572,8 +628,19 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
     (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes]; omega) (afterArgs := s1)
     (vals := [.i64 ph1, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk, .i64 pWv, .i64 pBv, .i64 pWo,
       .i64 pBo, .i64 t, .i64 nh, .i64 dh])
-    (by simp [Expr.evalResults, Expr.eval, s1, State.get_update_same, hStart, sg3, sg4, sg5, sg6,
-      sg7, sg8, sg9, sg10, sg17, sg18, sg19])
+    (Expr.evalResults_get (State.get_update_same (state := start) (by rw [hStart]; decide)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 3) (index := 22) (by decide)).trans (sg3)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 4) (index := 22) (by decide)).trans (sg4)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 5) (index := 22) (by decide)).trans (sg5)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 6) (index := 22) (by decide)).trans (sg6)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 7) (index := 22) (by decide)).trans (sg7)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 8) (index := 22) (by decide)).trans (sg8)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 9) (index := 22) (by decide)).trans (sg9)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 10) (index := 22) (by decide)).trans (sg10)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 17) (index := 22) (by decide)).trans (sg17)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 18) (index := 22) (by decide)).trans (sg18)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 19) (index := 22) (by decide)).trans (sg19)) <|
+      Expr.evalResults_nil)
     ⟨[.i64 ph1], _, rfl, ⟨ph1, rfl,
       (hLive1.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl,
       hLive1.borrowed pWq _ hWq⟩, [.i64 pBq], _, rfl, ⟨pBq, rfl, hLive1.borrowed pBq _ hBq⟩,
@@ -592,7 +659,9 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
     (x := (x, a))
     (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed]; omega) (afterArgs := s2)
     (vals := [.i64 pX, .i64 pa])
-    (by simp [Expr.evalResults, Expr.eval, s2, s1, State.get_update_same, hStart, sg0])
+    (Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 0) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 0) (index := 22) (by decide)).trans (sg0))) <|
+      Expr.evalResults_get (State.get_update_same (state := s1) (by rw [hS1]; decide)) <|
+      Expr.evalResults_nil)
     ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive2.borrowed pX _ hX⟩, ⟨pa, rfl,
       (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩⟩
     (by rw [hS2]; decide)) ?_
@@ -605,8 +674,13 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
     (x := (r, g2, b2, t, nh * dh, eps))
     (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed]; omega) (afterArgs := s3)
     (vals := [.i64 pr, .i64 pG2, .i64 pB2, .i64 t, .i64 (nh * dh), .f64 eps.toBits])
-    (by simp [Expr.evalResults, Expr.eval, U64Op.apply, s3, s2, s1, State.get_update_same, hStart,
-      sg11, sg12, sg17, sg18, sg19, sg21])
+    (Expr.evalResults_get (State.get_update_same (state := s2) (by rw [hS2]; decide)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 11) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 11) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 22) (by decide)).trans (sg11)))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 12) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 12) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 12) (index := 22) (by decide)).trans (sg12)))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 22) (by decide)).trans (sg17)))) <|
+      Expr.evalResults_mul ((State.get_update_ne (state := s2) (j := 18) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 18) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 18) (index := 22) (by decide)).trans (sg18)))) ((State.get_update_ne (state := s2) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 22) (by decide)).trans (sg19)))) <|
+      Expr.evalResults_getF ((State.get_update_ne (state := s2) (j := 21) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 21) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 21) (index := 22) (by decide)).trans (sg21)))) <|
+      Expr.evalResults_nil)
     ⟨[.i64 pr], _, rfl, ⟨pr, rfl, (hLive3.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
       [.i64 pG2], _, rfl, ⟨pG2, rfl, hLive3.borrowed pG2 _ hG2⟩, [.i64 pB2], _, rfl, ⟨pB2,
       rfl, hLive3.borrowed pB2 _ hB2⟩, rfl⟩
@@ -621,8 +695,15 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
     (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed, mlpNeed]; omega) (afterArgs := s4)
     (vals := [.i64 ph2, .i64 pWfc, .i64 pBfc, .i64 pWproj, .i64 pBproj, .i64 t, .i64 (nh * dh),
       .i64 f])
-    (by simp [Expr.evalResults, Expr.eval, U64Op.apply, s4, s3, s2, s1, State.get_update_same,
-      hStart, sg13, sg14, sg15, sg16, sg17, sg18, sg19, sg20])
+    (Expr.evalResults_get (State.get_update_same (state := s3) (by rw [hS3]; decide)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 13) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 13) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 13) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 13) (index := 22) (by decide)).trans (sg13))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 14) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 14) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 14) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 14) (index := 22) (by decide)).trans (sg14))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 15) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 15) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 15) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 15) (index := 22) (by decide)).trans (sg15))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 16) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 16) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 16) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 16) (index := 22) (by decide)).trans (sg16))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 17) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 17) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 17) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 17) (index := 22) (by decide)).trans (sg17))))) <|
+      Expr.evalResults_mul ((State.get_update_ne (state := s3) (j := 18) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 18) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 18) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 18) (index := 22) (by decide)).trans (sg18))))) ((State.get_update_ne (state := s3) (j := 19) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 19) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 19) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 22) (by decide)).trans (sg19))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 20) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 23) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 22) (by decide)).trans (sg20))))) <|
+      Expr.evalResults_nil)
     ⟨[.i64 ph2], _, rfl, ⟨ph2, rfl,
       (hLive4.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pWfc], _, rfl, ⟨pWfc,
       rfl, hLive4.borrowed pWfc _ hWfc⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl,
@@ -639,7 +720,9 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
     (x := (r, m))
     (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed, mlpNeed]; omega) (afterArgs := s5)
     (vals := [.i64 pr, .i64 pm])
-    (by simp [Expr.evalResults, Expr.eval, s5, s4, s3, s2, s1, State.get_update_same, hStart])
+    (Expr.evalResults_get ((State.get_update_ne (state := s4) (j := 24) (index := 26) (by decide)).trans ((State.get_update_ne (state := s3) (j := 24) (index := 25) (by decide)).trans (State.get_update_same (state := s2) (by rw [hS2]; decide)))) <|
+      Expr.evalResults_get (State.get_update_same (state := s4) (by rw [hS4]; decide)) <|
+      Expr.evalResults_nil)
     ⟨[.i64 pr], _, rfl, ⟨pr, rfl,
       (hLive5.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))).borrowed⟩,
       ⟨pm, rfl, (hLive5.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩⟩
@@ -654,30 +737,21 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
       s6.locals.length by rw [hS6]; decide), s7, s6, State.get_update_same,
       show 27 < s5.params.length + s5.locals.length by rw [hS5]; decide])) ?_
   -- The temporaries are released, newest first.
-  have r22 : s7.get 22 = some (.i64 ph1) := by
-    simp [s7, s6, s5, s4, s3, s2, s1, State.get_update_same, hStart]
-  have r23 : s7.get 23 = some (.i64 pa) := by
-    simp [s7, s6, s5, s4, s3, s2, State.get_update_same, hS1]
-  have r24 : s7.get 24 = some (.i64 pr) := by
-    simp [s7, s6, s5, s4, s3, State.get_update_same, hS2]
-  have r25 : s7.get 25 = some (.i64 ph2) := by
-    simp [s7, s6, s5, s4, State.get_update_same, hS3]
-  have r26 : s7.get 26 = some (.i64 pm) := by
-    simp [s7, s6, s5, State.get_update_same, hS4]
-  refine Stmt.seq_spec (hLive6.releaseSecond hImports hRelease r26) ?_
-  apply Triple.of_forall
-  rintro storeR0 stR0 ⟨hLiveR0, rfl⟩
-  refine Stmt.seq_spec (hLiveR0.releaseSecond hImports hRelease r25) ?_
-  apply Triple.of_forall
-  rintro storeR1 stR1 ⟨hLiveR1, rfl⟩
-  refine Stmt.seq_spec (hLiveR1.releaseSecond hImports hRelease r24) ?_
-  apply Triple.of_forall
-  rintro storeR2 stR2 ⟨hLiveR2, rfl⟩
-  refine Stmt.seq_spec (hLiveR2.releaseSecond hImports hRelease r23) ?_
-  apply Triple.of_forall
-  rintro storeR3 stR3 ⟨hLiveR3, rfl⟩
-  refine (hLiveR3.releaseSecond hImports hRelease r22).mono (fun _ _ h => h) ?_
-  rintro storeR4 stR4 ⟨hLiveR4, rfl⟩
+  have r22 : s7.get 22 = some (.i64 ph1) :=
+    (State.get_update_ne (state := s6) (j := 22) (index := 28) (by decide)).trans ((State.get_update_ne (state := s5) (j := 22) (index := 27) (by decide)).trans ((State.get_update_ne (state := s4) (j := 22) (index := 26) (by decide)).trans ((State.get_update_ne (state := s3) (j := 22) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 22) (index := 24) (by decide)).trans ((State.get_update_ne (state := s1) (j := 22) (index := 23) (by decide)).trans (State.get_update_same (state := start) (by rw [hStart]; decide)))))))
+  have r23 : s7.get 23 = some (.i64 pa) :=
+    (State.get_update_ne (state := s6) (j := 23) (index := 28) (by decide)).trans ((State.get_update_ne (state := s5) (j := 23) (index := 27) (by decide)).trans ((State.get_update_ne (state := s4) (j := 23) (index := 26) (by decide)).trans ((State.get_update_ne (state := s3) (j := 23) (index := 25) (by decide)).trans ((State.get_update_ne (state := s2) (j := 23) (index := 24) (by decide)).trans (State.get_update_same (state := s1) (by rw [hS1]; decide))))))
+  have r24 : s7.get 24 = some (.i64 pr) :=
+    (State.get_update_ne (state := s6) (j := 24) (index := 28) (by decide)).trans ((State.get_update_ne (state := s5) (j := 24) (index := 27) (by decide)).trans ((State.get_update_ne (state := s4) (j := 24) (index := 26) (by decide)).trans ((State.get_update_ne (state := s3) (j := 24) (index := 25) (by decide)).trans (State.get_update_same (state := s2) (by rw [hS2]; decide)))))
+  have r25 : s7.get 25 = some (.i64 ph2) :=
+    (State.get_update_ne (state := s6) (j := 25) (index := 28) (by decide)).trans ((State.get_update_ne (state := s5) (j := 25) (index := 27) (by decide)).trans ((State.get_update_ne (state := s4) (j := 25) (index := 26) (by decide)).trans (State.get_update_same (state := s3) (by rw [hS3]; decide))))
+  have r26 : s7.get 26 = some (.i64 pm) :=
+    (State.get_update_ne (state := s6) (j := 26) (index := 28) (by decide)).trans ((State.get_update_ne (state := s5) (j := 26) (index := 27) (by decide)).trans (State.get_update_same (state := s4) (by rw [hS4]; decide)))
+  refine hLive6.releaseSecond_seq hImports hRelease r26 fun storeR0 hLiveR0 => ?_
+  refine hLiveR0.releaseSecond_seq hImports hRelease r25 fun storeR1 hLiveR1 => ?_
+  refine hLiveR1.releaseSecond_seq hImports hRelease r24 fun storeR2 hLiveR2 => ?_
+  refine hLiveR2.releaseSecond_seq hImports hRelease r23 fun storeR3 hLiveR3 => ?_
+  refine hLiveR3.releaseSecond_last hImports hRelease r22 fun storeR4 hLiveR4 => ?_
   have hParams : ∀ (heap' : Heap) (store' : Store Unit),
       (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
       Represent.borrowed heap' store' [.i64 pX, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk, .i64 pWv,
@@ -743,75 +817,92 @@ def forwardNeed : ForwardInput → Nat
       (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * (nh * dh)).toNat + 1))) +
       (48 + 8 * ((t * vocab).toNat + 1))
 
-set_option maxHeartbeats 1000000 in
 theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed := by
   refine Func.implements_heap gpt.funcs 26 gpt.forward.ir "forward" rfl
     forwardTuple forwardNeed
-    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_,
-      rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _,
-      rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl,
-      -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl,
-      ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _,
-      _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_,
-      rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _,
-      rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl,
-      -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl,
-      ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _,
-      _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+    (by
+      rintro _ _ _ ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _⟩ h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_uint_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain rfl := h
+      rfl) ?_
   rintro ⟨tokens, wte, wpe, g1a, b1a, wqa, bqa, wka, bka, wva, bva, woa, boa, g2a, b2a, wfca,
     bfca, wproja, bproja, g1b, b1b, wqb, bqb, wkb, bkb, wvb, bvb, wob, bob, g2b, b2b, wfcb,
-    bfcb, wprojb, bprojb, gf, bf, t, nh, dh, f, vocab, eps⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨pTokens, rfl, hTokens⟩, _, _, rfl, ⟨pWte, rfl, hWte⟩, _, _, rfl, ⟨pWpe,
-      rfl, hWpe⟩, _, _, rfl, ⟨pG1a, rfl, hG1a⟩, _, _, rfl, ⟨pB1a, rfl, hB1a⟩, _, _, rfl,
-      ⟨pWqa, rfl, hWqa⟩, _, _, rfl, ⟨pBqa, rfl, hBqa⟩, _, _, rfl, ⟨pWka, rfl, hWka⟩, _, _,
-      rfl, ⟨pBka, rfl, hBka⟩, _, _, rfl, ⟨pWva, rfl, hWva⟩, _, _, rfl, ⟨pBva, rfl, hBva⟩, _,
-      _, rfl, ⟨pWoa, rfl, hWoa⟩, _, _, rfl, ⟨pBoa, rfl, hBoa⟩, _, _, rfl, ⟨pG2a, rfl, hG2a⟩,
-      _, _, rfl, ⟨pB2a, rfl, hB2a⟩, _, _, rfl, ⟨pWfca, rfl, hWfca⟩, _, _, rfl, ⟨pBfca, rfl,
-      hBfca⟩, _, _, rfl, ⟨pWproja, rfl, hWproja⟩, _, _, rfl, ⟨pBproja, rfl, hBproja⟩, _, _,
-      rfl, ⟨pG1b, rfl, hG1b⟩, _, _, rfl, ⟨pB1b, rfl, hB1b⟩, _, _, rfl, ⟨pWqb, rfl, hWqb⟩, _,
-      _, rfl, ⟨pBqb, rfl, hBqb⟩, _, _, rfl, ⟨pWkb, rfl, hWkb⟩, _, _, rfl, ⟨pBkb, rfl, hBkb⟩,
-      _, _, rfl, ⟨pWvb, rfl, hWvb⟩, _, _, rfl, ⟨pBvb, rfl, hBvb⟩, _, _, rfl, ⟨pWob, rfl,
-      hWob⟩, _, _, rfl, ⟨pBob, rfl, hBob⟩, _, _, rfl, ⟨pG2b, rfl, hG2b⟩, _, _, rfl, ⟨pB2b,
-      rfl, hB2b⟩, _, _, rfl, ⟨pWfcb, rfl, hWfcb⟩, _, _, rfl, ⟨pBfcb, rfl, hBfcb⟩, _, _, rfl,
-      ⟨pWprojb, rfl, hWprojb⟩, _, _, rfl, ⟨pBprojb, rfl, hBprojb⟩, _, _, rfl, ⟨pGf, rfl,
-      hGf⟩, _, _, rfl, ⟨pBf, rfl, hBf⟩, rfl⟩ hRoom
-  change heap.Borrowed initial pTokens tokens at hTokens
-  change heap.Borrowed initial pWte (wte.map Float.toBits) at hWte
-  change heap.Borrowed initial pWpe (wpe.map Float.toBits) at hWpe
-  change heap.Borrowed initial pG1a (g1a.map Float.toBits) at hG1a
-  change heap.Borrowed initial pB1a (b1a.map Float.toBits) at hB1a
-  change heap.Borrowed initial pWqa (wqa.map Float.toBits) at hWqa
-  change heap.Borrowed initial pBqa (bqa.map Float.toBits) at hBqa
-  change heap.Borrowed initial pWka (wka.map Float.toBits) at hWka
-  change heap.Borrowed initial pBka (bka.map Float.toBits) at hBka
-  change heap.Borrowed initial pWva (wva.map Float.toBits) at hWva
-  change heap.Borrowed initial pBva (bva.map Float.toBits) at hBva
-  change heap.Borrowed initial pWoa (woa.map Float.toBits) at hWoa
-  change heap.Borrowed initial pBoa (boa.map Float.toBits) at hBoa
-  change heap.Borrowed initial pG2a (g2a.map Float.toBits) at hG2a
-  change heap.Borrowed initial pB2a (b2a.map Float.toBits) at hB2a
-  change heap.Borrowed initial pWfca (wfca.map Float.toBits) at hWfca
-  change heap.Borrowed initial pBfca (bfca.map Float.toBits) at hBfca
-  change heap.Borrowed initial pWproja (wproja.map Float.toBits) at hWproja
-  change heap.Borrowed initial pBproja (bproja.map Float.toBits) at hBproja
-  change heap.Borrowed initial pG1b (g1b.map Float.toBits) at hG1b
-  change heap.Borrowed initial pB1b (b1b.map Float.toBits) at hB1b
-  change heap.Borrowed initial pWqb (wqb.map Float.toBits) at hWqb
-  change heap.Borrowed initial pBqb (bqb.map Float.toBits) at hBqb
-  change heap.Borrowed initial pWkb (wkb.map Float.toBits) at hWkb
-  change heap.Borrowed initial pBkb (bkb.map Float.toBits) at hBkb
-  change heap.Borrowed initial pWvb (wvb.map Float.toBits) at hWvb
-  change heap.Borrowed initial pBvb (bvb.map Float.toBits) at hBvb
-  change heap.Borrowed initial pWob (wob.map Float.toBits) at hWob
-  change heap.Borrowed initial pBob (bob.map Float.toBits) at hBob
-  change heap.Borrowed initial pG2b (g2b.map Float.toBits) at hG2b
-  change heap.Borrowed initial pB2b (b2b.map Float.toBits) at hB2b
-  change heap.Borrowed initial pWfcb (wfcb.map Float.toBits) at hWfcb
-  change heap.Borrowed initial pBfcb (bfcb.map Float.toBits) at hBfcb
-  change heap.Borrowed initial pWprojb (wprojb.map Float.toBits) at hWprojb
-  change heap.Borrowed initial pBprojb (bprojb.map Float.toBits) at hBprojb
-  change heap.Borrowed initial pGf (gf.map Float.toBits) at hGf
-  change heap.Borrowed initial pBf (bf.map Float.toBits) at hBf
+    bfcb, wprojb, bprojb, gf, bf, t, nh, dh, f, vocab, eps⟩ heap initial _ hHeap hArgs hRoom
+  obtain ⟨pTokens, _, rfl, hTokens, hArgs⟩ := Represent.borrowed_uint_pair hArgs
+  obtain ⟨pWte, _, rfl, hWte, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWpe, _, rfl, hWpe, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pG1a, _, rfl, hG1a, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pB1a, _, rfl, hB1a, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWqa, _, rfl, hWqa, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBqa, _, rfl, hBqa, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWka, _, rfl, hWka, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBka, _, rfl, hBka, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWva, _, rfl, hWva, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBva, _, rfl, hBva, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWoa, _, rfl, hWoa, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBoa, _, rfl, hBoa, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pG2a, _, rfl, hG2a, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pB2a, _, rfl, hB2a, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWfca, _, rfl, hWfca, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBfca, _, rfl, hBfca, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWproja, _, rfl, hWproja, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBproja, _, rfl, hBproja, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pG1b, _, rfl, hG1b, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pB1b, _, rfl, hB1b, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWqb, _, rfl, hWqb, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBqb, _, rfl, hBqb, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWkb, _, rfl, hWkb, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBkb, _, rfl, hBkb, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWvb, _, rfl, hWvb, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBvb, _, rfl, hBvb, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWob, _, rfl, hWob, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBob, _, rfl, hBob, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pG2b, _, rfl, hG2b, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pB2b, _, rfl, hB2b, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWfcb, _, rfl, hWfcb, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBfcb, _, rfl, hBfcb, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pWprojb, _, rfl, hWprojb, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBprojb, _, rfl, hBprojb, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pGf, _, rfl, hGf, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain ⟨pBf, _, rfl, hBf, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  obtain rfl := hArgs
   change heap.Room initial gpt.module (forwardNeed (tokens, wte, wpe, g1a, b1a, wqa, bqa, wka, bka, wva, bva, woa, boa, g2a, b2a, wfca, bfca, wproja, bproja, g1b, b1b, wqb, bqb, wkb, bkb, wvb, bvb, wob, bob, g2b, b2b, wfcb, bfcb, wprojb, bprojb, gf, bf, t, nh, dh, f, vocab, eps)) at hRoom
   simp only [forwardNeed, blockBytes, attentionBytes] at hRoom
   have hImports : gpt.module.imports = [] := rfl
@@ -919,7 +1010,12 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
     (x := (tokens, wte, wpe, t, nh * dh))
     (by simp only [embedNeed]; omega) (afterArgs := start)
     (vals := [.i64 pTokens, .i64 pWte, .i64 pWpe, .i64 t, .i64 (nh * dh)])
-    (by simp [Expr.evalResults, Expr.eval, U64Op.apply, sg0, sg1, sg2, sg37, sg38, sg39])
+    (Expr.evalResults_get (sg0) <|
+      Expr.evalResults_get (sg1) <|
+      Expr.evalResults_get (sg2) <|
+      Expr.evalResults_get (sg37) <|
+      Expr.evalResults_mul (sg38) (sg39) <|
+      Expr.evalResults_nil)
     ⟨[.i64 pTokens], _, rfl, ⟨pTokens, rfl, hTokens⟩, [.i64 pWte], _, rfl, ⟨pWte, rfl,
       hWte⟩, [.i64 pWpe], _, rfl, ⟨pWpe, rfl, hWpe⟩, rfl⟩
     (by rw [hStart]; decide)) ?_
@@ -934,9 +1030,29 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
     (vals := [.i64 px0, .i64 pG1a, .i64 pB1a, .i64 pWqa, .i64 pBqa, .i64 pWka, .i64 pBka, .i64 pWva,
       .i64 pBva, .i64 pWoa, .i64 pBoa, .i64 pG2a, .i64 pB2a, .i64 pWfca, .i64 pBfca,
       .i64 pWproja, .i64 pBproja, .i64 t, .i64 nh, .i64 dh, .i64 f, .f64 eps.toBits])
-    (by simp [Expr.evalResults, Expr.eval, s1, State.get_update_same, hStart, sg3, sg4, sg5, sg6,
-      sg7, sg8, sg9, sg10, sg11, sg12, sg13, sg14, sg15, sg16, sg17, sg18, sg37, sg38, sg39,
-      sg40, sg42])
+    (Expr.evalResults_get (State.get_update_same (state := start) (by rw [hStart]; decide)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 3) (index := 43) (by decide)).trans (sg3)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 4) (index := 43) (by decide)).trans (sg4)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 5) (index := 43) (by decide)).trans (sg5)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 6) (index := 43) (by decide)).trans (sg6)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 7) (index := 43) (by decide)).trans (sg7)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 8) (index := 43) (by decide)).trans (sg8)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 9) (index := 43) (by decide)).trans (sg9)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 10) (index := 43) (by decide)).trans (sg10)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 11) (index := 43) (by decide)).trans (sg11)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 12) (index := 43) (by decide)).trans (sg12)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 13) (index := 43) (by decide)).trans (sg13)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 14) (index := 43) (by decide)).trans (sg14)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 15) (index := 43) (by decide)).trans (sg15)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 16) (index := 43) (by decide)).trans (sg16)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 17) (index := 43) (by decide)).trans (sg17)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 18) (index := 43) (by decide)).trans (sg18)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 37) (index := 43) (by decide)).trans (sg37)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 38) (index := 43) (by decide)).trans (sg38)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 39) (index := 43) (by decide)).trans (sg39)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := start) (j := 40) (index := 43) (by decide)).trans (sg40)) <|
+      Expr.evalResults_getF ((State.get_update_ne (state := start) (j := 42) (index := 43) (by decide)).trans (sg42)) <|
+      Expr.evalResults_nil)
     ⟨[.i64 px0], _, rfl, ⟨px0, rfl,
       (hLive1.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pG1a], _, rfl, ⟨pG1a,
       rfl, hLive1.borrowed pG1a _ hG1a⟩, [.i64 pB1a], _, rfl, ⟨pB1a, rfl,
@@ -967,9 +1083,29 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
     (vals := [.i64 px1, .i64 pG1b, .i64 pB1b, .i64 pWqb, .i64 pBqb, .i64 pWkb, .i64 pBkb, .i64 pWvb,
       .i64 pBvb, .i64 pWob, .i64 pBob, .i64 pG2b, .i64 pB2b, .i64 pWfcb, .i64 pBfcb,
       .i64 pWprojb, .i64 pBprojb, .i64 t, .i64 nh, .i64 dh, .i64 f, .f64 eps.toBits])
-    (by simp [Expr.evalResults, Expr.eval, s2, s1, State.get_update_same, hStart, sg19, sg20, sg21,
-      sg22, sg23, sg24, sg25, sg26, sg27, sg28, sg29, sg30, sg31, sg32, sg33, sg34, sg37,
-      sg38, sg39, sg40, sg42])
+    (Expr.evalResults_get (State.get_update_same (state := s1) (by rw [hS1]; decide)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 19) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 43) (by decide)).trans (sg19))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 20) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 43) (by decide)).trans (sg20))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 21) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 21) (index := 43) (by decide)).trans (sg21))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 22) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 22) (index := 43) (by decide)).trans (sg22))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 23) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 23) (index := 43) (by decide)).trans (sg23))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 24) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 24) (index := 43) (by decide)).trans (sg24))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 25) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 25) (index := 43) (by decide)).trans (sg25))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 26) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 26) (index := 43) (by decide)).trans (sg26))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 27) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 27) (index := 43) (by decide)).trans (sg27))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 28) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 28) (index := 43) (by decide)).trans (sg28))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 29) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 29) (index := 43) (by decide)).trans (sg29))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 30) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 30) (index := 43) (by decide)).trans (sg30))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 31) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 31) (index := 43) (by decide)).trans (sg31))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 32) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 32) (index := 43) (by decide)).trans (sg32))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 33) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 33) (index := 43) (by decide)).trans (sg33))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 34) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 34) (index := 43) (by decide)).trans (sg34))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 37) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 37) (index := 43) (by decide)).trans (sg37))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 38) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 38) (index := 43) (by decide)).trans (sg38))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 39) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 39) (index := 43) (by decide)).trans (sg39))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 40) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 40) (index := 43) (by decide)).trans (sg40))) <|
+      Expr.evalResults_getF ((State.get_update_ne (state := s1) (j := 42) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 42) (index := 43) (by decide)).trans (sg42))) <|
+      Expr.evalResults_nil)
     ⟨[.i64 px1], _, rfl, ⟨px1, rfl,
       (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pG1b], _, rfl, ⟨pG1b,
       rfl, hLive2.borrowed pG1b _ hG1b⟩, [.i64 pB1b], _, rfl, ⟨pB1b, rfl,
@@ -998,8 +1134,13 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
     (x := (x2, gf, bf, t, nh * dh, eps))
     (by simp only [embedNeed, blockNeed, blockBytes, attentionBytes, hX0, layerNormRowsNeed]; omega) (afterArgs := s3)
     (vals := [.i64 px2, .i64 pGf, .i64 pBf, .i64 t, .i64 (nh * dh), .f64 eps.toBits])
-    (by simp [Expr.evalResults, Expr.eval, U64Op.apply, s3, s2, s1, State.get_update_same, hStart,
-      sg35, sg36, sg37, sg38, sg39, sg42])
+    (Expr.evalResults_get (State.get_update_same (state := s2) (by rw [hS2]; decide)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 35) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 35) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 35) (index := 43) (by decide)).trans (sg35)))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 36) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 36) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 36) (index := 43) (by decide)).trans (sg36)))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 37) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 37) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 37) (index := 43) (by decide)).trans (sg37)))) <|
+      Expr.evalResults_mul ((State.get_update_ne (state := s2) (j := 38) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 38) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 38) (index := 43) (by decide)).trans (sg38)))) ((State.get_update_ne (state := s2) (j := 39) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 39) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 39) (index := 43) (by decide)).trans (sg39)))) <|
+      Expr.evalResults_getF ((State.get_update_ne (state := s2) (j := 42) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 42) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 42) (index := 43) (by decide)).trans (sg42)))) <|
+      Expr.evalResults_nil)
     ⟨[.i64 px2], _, rfl, ⟨px2, rfl,
       (hLive3.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pGf], _, rfl, ⟨pGf, rfl,
       hLive3.borrowed pGf _ hGf⟩, [.i64 pBf], _, rfl, ⟨pBf, rfl, hLive3.borrowed pBf _ hBf⟩,
@@ -1014,8 +1155,12 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
     (x := (h, wte, t, nh * dh, vocab))
     (by simp only [embedNeed, blockNeed, blockBytes, attentionBytes, hX0, layerNormRowsNeed, matMulTNeed]; omega) (afterArgs := s4)
     (vals := [.i64 ph, .i64 pWte, .i64 t, .i64 (nh * dh), .i64 vocab])
-    (by simp [Expr.evalResults, Expr.eval, U64Op.apply, s4, s3, s2, s1, State.get_update_same,
-      hStart, sg1, sg37, sg38, sg39, sg41])
+    (Expr.evalResults_get (State.get_update_same (state := s3) (by rw [hS3]; decide)) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 1) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 1) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 1) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 1) (index := 43) (by decide)).trans (sg1))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 37) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 37) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 37) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 37) (index := 43) (by decide)).trans (sg37))))) <|
+      Expr.evalResults_mul ((State.get_update_ne (state := s3) (j := 38) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 38) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 38) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 38) (index := 43) (by decide)).trans (sg38))))) ((State.get_update_ne (state := s3) (j := 39) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 39) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 39) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 39) (index := 43) (by decide)).trans (sg39))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 41) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 41) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 41) (index := 44) (by decide)).trans ((State.get_update_ne (state := start) (j := 41) (index := 43) (by decide)).trans (sg41))))) <|
+      Expr.evalResults_nil)
     ⟨[.i64 ph], _, rfl, ⟨ph, rfl, (hLive4.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
       [.i64 pWte], _, rfl, ⟨pWte, rfl, hLive4.borrowed pWte _ hWte⟩, rfl⟩
     (by rw [hS4]; decide)) ?_
@@ -1029,25 +1174,18 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
       s5.locals.length by rw [hS5]; decide), s6, s5, State.get_update_same,
       show 47 < s4.params.length + s4.locals.length by rw [hS4]; decide])) ?_
   -- The temporaries are released, newest first.
-  have r43 : s6.get 43 = some (.i64 px0) := by
-    simp [s6, s5, s4, s3, s2, s1, State.get_update_same, hStart]
-  have r44 : s6.get 44 = some (.i64 px1) := by
-    simp [s6, s5, s4, s3, s2, State.get_update_same, hS1]
-  have r45 : s6.get 45 = some (.i64 px2) := by
-    simp [s6, s5, s4, s3, State.get_update_same, hS2]
-  have r46 : s6.get 46 = some (.i64 ph) := by
-    simp [s6, s5, s4, State.get_update_same, hS3]
-  refine Stmt.seq_spec (hLive5.releaseSecond hImports hRelease r46) ?_
-  apply Triple.of_forall
-  rintro storeR0 stR0 ⟨hLiveR0, rfl⟩
-  refine Stmt.seq_spec (hLiveR0.releaseSecond hImports hRelease r45) ?_
-  apply Triple.of_forall
-  rintro storeR1 stR1 ⟨hLiveR1, rfl⟩
-  refine Stmt.seq_spec (hLiveR1.releaseSecond hImports hRelease r44) ?_
-  apply Triple.of_forall
-  rintro storeR2 stR2 ⟨hLiveR2, rfl⟩
-  refine (hLiveR2.releaseSecond hImports hRelease r43).mono (fun _ _ h => h) ?_
-  rintro storeR3 stR3 ⟨hLiveR3, rfl⟩
+  have r43 : s6.get 43 = some (.i64 px0) :=
+    (State.get_update_ne (state := s5) (j := 43) (index := 48) (by decide)).trans ((State.get_update_ne (state := s4) (j := 43) (index := 47) (by decide)).trans ((State.get_update_ne (state := s3) (j := 43) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 43) (index := 45) (by decide)).trans ((State.get_update_ne (state := s1) (j := 43) (index := 44) (by decide)).trans (State.get_update_same (state := start) (by rw [hStart]; decide))))))
+  have r44 : s6.get 44 = some (.i64 px1) :=
+    (State.get_update_ne (state := s5) (j := 44) (index := 48) (by decide)).trans ((State.get_update_ne (state := s4) (j := 44) (index := 47) (by decide)).trans ((State.get_update_ne (state := s3) (j := 44) (index := 46) (by decide)).trans ((State.get_update_ne (state := s2) (j := 44) (index := 45) (by decide)).trans (State.get_update_same (state := s1) (by rw [hS1]; decide)))))
+  have r45 : s6.get 45 = some (.i64 px2) :=
+    (State.get_update_ne (state := s5) (j := 45) (index := 48) (by decide)).trans ((State.get_update_ne (state := s4) (j := 45) (index := 47) (by decide)).trans ((State.get_update_ne (state := s3) (j := 45) (index := 46) (by decide)).trans (State.get_update_same (state := s2) (by rw [hS2]; decide))))
+  have r46 : s6.get 46 = some (.i64 ph) :=
+    (State.get_update_ne (state := s5) (j := 46) (index := 48) (by decide)).trans ((State.get_update_ne (state := s4) (j := 46) (index := 47) (by decide)).trans (State.get_update_same (state := s3) (by rw [hS3]; decide)))
+  refine hLive5.releaseSecond_seq hImports hRelease r46 fun storeR0 hLiveR0 => ?_
+  refine hLiveR0.releaseSecond_seq hImports hRelease r45 fun storeR1 hLiveR1 => ?_
+  refine hLiveR1.releaseSecond_seq hImports hRelease r44 fun storeR2 hLiveR2 => ?_
+  refine hLiveR2.releaseSecond_last hImports hRelease r43 fun storeR3 hLiveR3 => ?_
   have hParams : ∀ (heap' : Heap) (store' : Store Unit),
       (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
       Represent.borrowed heap' store' [.i64 pTokens, .i64 pWte, .i64 pWpe, .i64 pG1a, .i64 pB1a, .i64 pWqa, .i64 pBqa,
