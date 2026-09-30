@@ -13,7 +13,7 @@
   "declarations": ["Project.IR.Stmt.callImplements_spec", "Project.IR.Stmt.call_spec", "Project.IR.State.setAll", "Project.IR.State.setAll_spec", "Project.IR.compile_funcs", "Project.Pipeline.Implements", "Project.Pipeline.Heap.Room.after"],
   "premises": ["An Implements theorem for the callee at its entry index", "The entry is a defined function, not an import, with as many parameters as the call has arguments", "The arguments evaluate to words that represent the callee's input as borrowed", "The allocator invariant and room for the callee's need", "The result locals can hold any value that represents the callee's result"],
   "result": "The call leaves in the result locals values that represent the callee's result as owned, with the allocator invariant, the arguments still borrowed, every earlier borrowed or owned array kept, the callee's allocation and memory bounds, and the memory's maximum size unchanged.",
-  "consumers": ["Project.Clob.bid_spec", "Project.Clob.bidCall_spec", "Project.Clob.addBid_implements", "Project.Clob.cancelBid_implements"],
+  "consumers": ["Project.Clob.bid_spec", "Project.Clob.pairCall_spec", "Project.Clob.addBid_implements", "Project.Clob.cancelBid_implements", "Project.Clob.applyCommand_implements"],
   "relatedEntries": ["array-build", "direct-call-stack-tail", "straight-line-run"],
   "exclusion": null
 }

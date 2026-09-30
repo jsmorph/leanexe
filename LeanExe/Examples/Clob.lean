@@ -54,6 +54,14 @@ def cancelBid (prices sizes : Array UInt64) (price size : UInt64) : Array UInt64
     else setLevel prices sizes k (sizes[k.toNat]! - size)
   else (prices, sizes)
 
+/-- The bids after command `kind`: kind 0 adds `size` at `price`, kind 1 cancels
+`size` at `price`, and any other kind leaves the bids unchanged. -/
+def applyCommand (prices sizes : Array UInt64) (kind price size : UInt64) :
+    Array UInt64 × Array UInt64 :=
+  if kind = 0 then addBid prices sizes price size
+  else if kind = 1 then cancelBid prices sizes price size
+  else (prices, sizes)
+
 /-- The total size of the levels priced at or above `limit`. -/
 def depth (prices sizes : Array UInt64) (limit : UInt64) : UInt64 :=
   LeanExe.loop prices.size.toUInt64 0 fun i total =>
