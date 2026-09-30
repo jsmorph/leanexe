@@ -4,6 +4,7 @@ import Project.Compiler.Command
 namespace Project.Gpt
 
 open LeanExe.Examples.Gpt in
-leanexe_compile gpt := [dot, matVec, layerNorm, exp, softmax, matVec2, matMul]
+leanexe_compile gpt := [dot, matVec, layerNorm, exp, softmax, matVec2, matMul,
+  add, tanh, gelu, geluArray, mlp]
 
 end Project.Gpt

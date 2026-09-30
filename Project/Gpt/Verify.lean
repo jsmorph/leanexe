@@ -1053,6 +1053,339 @@ theorem matMul_implements : Implements gpt.module 9 matMulTuple matMulNeed := by
   rw [matMulTuple, matMul_eq, build_map]
   exact hNew.owned
 
+/-- `add` with its two arguments as one pair. -/
+def addTuple (x : Array Float × Array Float) : Array Float :=
+  LeanExe.Examples.Gpt.add x.1 x.2
+
+/-- The bytes `add` may allocate: one array as long as the first argument. -/
+def addNeed (x : Array Float × Array Float) : Nat := 48 + 8 * (x.1.size + 1)
+
+theorem add_implements : Implements gpt.module 10 addTuple addNeed := by
+  refine Func.implements_heap gpt.funcs 7 gpt.add.ir "add" rfl addTuple addNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, ⟨_, rfl, -⟩⟩; rfl) ?_
+  rintro ⟨a, b⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨pa, rfl, hAs⟩, ⟨pb, rfl, hBs⟩⟩ hRoom
+  change heap.Borrowed initial pa (a.map Float.toBits) at hAs
+  change heap.Borrowed initial pb (b.map Float.toBits) at hBs
+  change heap.Room initial gpt.module (48 + 8 * (a.size + 1)) at hRoom
+  have hMemory32 : gpt.module.memIs64 = false := rfl
+  have hImports : gpt.module.imports = [] := rfl
+  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
+  have hA := hAs.values
+  have hFit := hA.1
+  simp only [Array.size_map] at hFit
+  have hLength := hA.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLength
+  have hn : (UInt64.ofNat a.size).toNat = a.size :=
+    UInt64.toNat_ofNat_of_lt' (by simp only [UInt64.size]; omega)
+  let start : State :=
+    { params := [.i64 pa, .i64 pb], locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0] }
+  have hGet0 : start.get 0 = some (.i64 pa) := rfl
+  let s1 := start.update 2 (.i64 (UInt64.ofNat a.size))
+  show Triple _ (.seq (.arraySize 2 0) (.build 3 4 5 (.get 2)
+      (.toBits (.binF .add (.ofBits (.read 0 (.get 5))) (.ofBits (.read 1 (.get 5))))))) 6
+    (fun store state => store = initial ∧ state = start) _
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
+    simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLength, hA.lengthRead,
+      State.set?_eq_update, s1, start])) ?_
+  have hS1 : s1.params.length = 2 ∧ s1.locals.length = 5 := by simp [s1, start]
+  refine (Stmt.build_spec (n := a.size.toUInt64)
+    (fun i => (a[i.toNat]! + b[i.toNat]!).toBits) hMemory32 hImports hAlloc (by decide)
+    (by decide) (by simp [hS1.1, hS1.2]) hHeap
+    (by rw [show a.size.toUInt64.toNat = a.size from hn]; exact hRoom)
+    ⟨s1, by simp [Expr.eval, s1, start]⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro k store state hk hAt hFrame hIndex
+    have hState : state.params.length = 2 ∧ state.locals.length = 5 :=
+      ⟨hFrame.params.trans hS1.1, hFrame.locals.trans hS1.2⟩
+    have g0 : state.get 0 = some (.i64 pa) := (hFrame.get 0 (by decide) (by decide)).trans rfl
+    have g1 : state.get 1 = some (.i64 pb) := (hFrame.get 1 (by decide) (by decide)).trans rfl
+    exact ⟨state.update 6 (.i64 (UInt64.ofNat k)), by simp [Expr.eval, g0, g1, hIndex,
+      Expr.readValue_at (hAt pa _ hAs), Expr.readValue_at (hAt pb _ hBs), State.set?_eq_update,
+      hState.1, hState.2, F64Op.apply, getElem!_map_toBits, F64Bits.toBits_add]⟩
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pa, rfl, hNew.borrowed pa _ hAs⟩,
+      ⟨pb, rfl, hNew.borrowed pb _ hBs⟩⟩,
+    le_of_le_of_eq hNew.top (by simp [addNeed, hn]),
+    le_of_le_of_eq hNew.pages (by simp [addNeed, hn]), hNew.caps, hNew.borrowed,
+    hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.add.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+  have hAdd : LeanExe.Examples.Gpt.add a b =
+      LeanExe.build a.size.toUInt64 (fun i => a[i.toNat]! + b[i.toNat]!) := rfl
+  rw [addTuple, hAdd, build_map]
+  exact hNew.owned
+
+theorem tanh_pure : ImplementsPure gpt.module 11 LeanExe.Examples.Gpt.tanh := by
+  refine Func.implementsPure gpt.funcs 8 gpt.tanh.ir "tanh" rfl LeanExe.Examples.Gpt.tanh
+    (fun _ => rfl) fun z initial => ?_
+  have k2 : (2.0 : Float).toBits = 4611686018427387904 := by decide +kernel
+  have k1 : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
+  let start : State := { params := [.f64 z.toBits], locals := [.f64 0] }
+  let final := start.update 1 (.f64 (LeanExe.Examples.Gpt.exp (2.0 * z)).toBits)
+  show Triple _ (.call 6 [⟨.f64, .binF .mul (.constF 4611686018427387904) (.getF 0)⟩] [1]) 2
+    (fun store state => store = initial ∧ state = start) _
+  have g0 : start.get 0 = some (.f64 z.toBits) := rfl
+  refine (exp_call rfl (afterArgs := start) (next := final) (d := 2.0 * z) ?_ ?_).mono
+    (fun _ _ h => h) ?_
+  · simp [Expr.evalResults, Expr.eval, g0, F64Op.apply, F64Bits.toBits_mul, k2]
+  · simp [State.setAll, State.set?_eq_update, final, start]
+  rintro s st ⟨rfl, rfl⟩
+  have g1 : final.get 1 = some (.f64 (LeanExe.Examples.Gpt.exp (2.0 * z)).toBits) := by
+    simp [final, start]
+  exact ⟨rfl, [.f64 (LeanExe.Examples.Gpt.tanh z).toBits], final, by
+    simp [gpt.tanh.ir, Func.scratch, Expr.evalResults, Expr.eval, g1, F64Op.apply,
+      LeanExe.Examples.Gpt.tanh, F64Bits.toBits_sub, F64Bits.toBits_div, F64Bits.toBits_add, k1,
+      k2], rfl⟩
+
+/-- The call to `tanh`, entry 11 of the module. -/
+theorem tanh_call {scratch : Nat} {args : List ((type : ScalarType) × Expr type)}
+    {results : List Nat} (hParams : args.length = 1) {initial : Store Unit}
+    {before afterArgs next : State} {d : Float}
+    (hArgs : Expr.evalResults initial.mem scratch args before = some ([.f64 d.toBits], afterArgs))
+    (hSet : afterArgs.setAll results.reverse [.f64 (LeanExe.Examples.Gpt.tanh d).toBits] =
+      some next) :
+    Triple gpt.module (.call 11 args results) scratch
+      (fun store state => store = initial ∧ state = before)
+      (fun store state => store = initial ∧ state = next) :=
+  Stmt.callPure_spec tanh_pure (f := gpt.tanh.ir.function (2 + 8)) rfl
+    (by rw [show gpt.module.imports.length = 0 from rfl]
+        exact compile_funcs (funcs := gpt.funcs) (i := 8) rfl) hParams (x := d) hArgs hSet
+
+theorem gelu_pure : ImplementsPure gpt.module 12 LeanExe.Examples.Gpt.gelu := by
+  refine Func.implementsPure gpt.funcs 9 gpt.gelu.ir "gelu" rfl LeanExe.Examples.Gpt.gelu
+    (fun _ => rfl) fun x initial => ?_
+  have kScale : (0.7978845608028654 : Float).toBits = 4605361924766709329 := by decide +kernel
+  have kCube : (0.044715 : Float).toBits = 4586604931670606327 := by decide +kernel
+  have kHalf : (0.5 : Float).toBits = 4602678819172646912 := by decide +kernel
+  have kOne : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
+  let u := 0.7978845608028654 * (x + 0.044715 * x * x * x)
+  let start : State := { params := [.f64 x.toBits], locals := [.f64 0, .f64 0] }
+  let s1 := start.update 1 (.f64 u.toBits)
+  let final := s1.update 2 (.f64 (LeanExe.Examples.Gpt.tanh u).toBits)
+  have g0 : start.get 0 = some (.f64 x.toBits) := rfl
+  show Triple _ (.seq (.assign 1 (.binF .mul (.constF 4605361924766709329) (.binF .add (.getF 0)
+      (.binF .mul (.binF .mul (.binF .mul (.constF 4586604931670606327) (.getF 0)) (.getF 0))
+        (.getF 0))))) (.call 11 [⟨.f64, .getF 1⟩] [2])) 3
+    (fun store state => store = initial ∧ state = start) _
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
+    simp [Stmt.run, Expr.eval, g0, State.set?_eq_update, s1, start, u, F64Op.apply,
+      F64Bits.toBits_mul, F64Bits.toBits_add, kScale, kCube])) ?_
+  have g1 : s1.get 1 = some (.f64 u.toBits) := by simp [s1, start]
+  refine (tanh_call rfl (afterArgs := s1) (next := final) (d := u) ?_ ?_).mono
+    (fun _ _ h => h) ?_
+  · simp [Expr.evalResults, Expr.eval, g1]
+  · simp [State.setAll, State.set?_eq_update, final, s1, start]
+  rintro s st ⟨rfl, rfl⟩
+  have f0 : final.get 0 = some (.f64 x.toBits) := by simp [final, s1, start]; rfl
+  have f2 : final.get 2 = some (.f64 (LeanExe.Examples.Gpt.tanh u).toBits) := by
+    simp [final, s1, start]
+  exact ⟨rfl, [.f64 (LeanExe.Examples.Gpt.gelu x).toBits], final, by
+    simp [gpt.gelu.ir, Func.scratch, Expr.evalResults, Expr.eval, f0, f2, F64Op.apply,
+      LeanExe.Examples.Gpt.gelu, F64Bits.toBits_mul, F64Bits.toBits_add, kHalf, kOne, u], rfl⟩
+
+/-- The call to `gelu`, entry 12 of the module. -/
+theorem gelu_call {scratch : Nat} {args : List ((type : ScalarType) × Expr type)}
+    {results : List Nat} (hParams : args.length = 1) {initial : Store Unit}
+    {before afterArgs next : State} {d : Float}
+    (hArgs : Expr.evalResults initial.mem scratch args before = some ([.f64 d.toBits], afterArgs))
+    (hSet : afterArgs.setAll results.reverse [.f64 (LeanExe.Examples.Gpt.gelu d).toBits] =
+      some next) :
+    Triple gpt.module (.call 12 args results) scratch
+      (fun store state => store = initial ∧ state = before)
+      (fun store state => store = initial ∧ state = next) :=
+  Stmt.callPure_spec gelu_pure (f := gpt.gelu.ir.function (2 + 9)) rfl
+    (by rw [show gpt.module.imports.length = 0 from rfl]
+        exact compile_funcs (funcs := gpt.funcs) (i := 9) rfl) hParams (x := d) hArgs hSet
+
+/-- The bytes `geluArray` may allocate: one array as long as its argument. -/
+def geluNeed (xs : Array Float) : Nat := 48 + 8 * (xs.size + 1)
+
+theorem geluArray_implements :
+    Implements gpt.module 13 LeanExe.Examples.Gpt.geluArray geluNeed := by
+  refine Func.implements_heap gpt.funcs 10 gpt.geluArray.ir "geluArray" rfl
+    LeanExe.Examples.Gpt.geluArray geluNeed (by rintro _ _ _ _ ⟨_, rfl, -⟩; rfl) ?_
+  rintro xs heap initial _ hHeap ⟨px, rfl, hXs⟩ hRoom
+  change heap.Borrowed initial px (xs.map Float.toBits) at hXs
+  change heap.Room initial gpt.module (48 + 8 * (xs.size + 1)) at hRoom
+  have hMemory32 : gpt.module.memIs64 = false := rfl
+  have hImports : gpt.module.imports = [] := rfl
+  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
+  have hX := hXs.values
+  have hFit := hX.1
+  simp only [Array.size_map] at hFit
+  have hLength := hX.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLength
+  have hn : (UInt64.ofNat xs.size).toNat = xs.size :=
+    UInt64.toNat_ofNat_of_lt' (by simp only [UInt64.size]; omega)
+  let start : State :=
+    { params := [.i64 px], locals := [.i64 0, .i64 0, .i64 0, .i64 0, .f64 0, .i64 0] }
+  have hGet0 : start.get 0 = some (.i64 px) := rfl
+  let s1 := start.update 1 (.i64 (UInt64.ofNat xs.size))
+  show Triple _ (.seq (.arraySize 1 0) (.buildWith 2 3 4 (.get 1)
+      (.call 12 [⟨.f64, .ofBits (.read 0 (.get 4))⟩] [5]) (.toBits (.getF 5)))) 6
+    (fun store state => store = initial ∧ state = start) _
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
+    simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLength, hX.lengthRead,
+      State.set?_eq_update, s1, start])) ?_
+  have hS1 : s1.params.length = 1 ∧ s1.locals.length = 6 := by simp [s1, start]
+  refine (Stmt.buildWith_spec (writes := [5]) (n := xs.size.toUInt64)
+    (fun i => (LeanExe.Examples.Gpt.gelu xs[i.toNat]!).toBits) hMemory32 hImports hAlloc
+    (by decide) (by decide) (by decide) (by simp [hS1.1, hS1.2]) hHeap
+    (by rw [show xs.size.toUInt64.toNat = xs.size from hn]; exact hRoom)
+    ⟨s1, by simp [Expr.eval, s1, start]⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro k store state hk hAt hFrame hIndex
+    have hState : state.params.length = 1 ∧ state.locals.length = 6 :=
+      ⟨hFrame.params.trans hS1.1, hFrame.locals.trans hS1.2⟩
+    have g0 : state.get 0 = some (.i64 px) := (hFrame.get 0 (by decide) (by decide)).trans rfl
+    let a := state.update 6 (.i64 (UInt64.ofNat k))
+    let b := a.update 5 (.f64 (LeanExe.Examples.Gpt.gelu xs[(UInt64.ofNat k).toNat]!).toBits)
+    have hA : a.params.length = 1 ∧ a.locals.length = 6 := by simp [a, hState.1, hState.2]
+    refine (gelu_call rfl (afterArgs := a) (next := b) (d := xs[(UInt64.ofNat k).toNat]!) ?_ ?_).mono
+      (fun _ _ h => h) ?_
+    · simp [Expr.evalResults, Expr.eval, g0, hIndex, Expr.readValue_at (hAt px _ hXs),
+        State.set?_eq_update, hState.1, hState.2, getElem!_map_toBits, a]
+    · simp [State.setAll, State.set?_eq_update, b, hA.1, hA.2]
+    rintro s st ⟨rfl, rfl⟩
+    refine ⟨rfl, ?_, b, by simp [Expr.eval, b, a, hState.1, hState.2]⟩
+    simp only [b, a]
+    repeat refine State.Frame.update ?_ (by simp)
+    exact State.Frame.refl _ _ _
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, ⟨px, rfl, hNew.borrowed px _ hXs⟩,
+    le_of_le_of_eq hNew.top (by simp [geluNeed, hn]),
+    le_of_le_of_eq hNew.pages (by simp [geluNeed, hn]), hNew.caps, hNew.borrowed,
+    hNew.ownedKeep, [.i64 ptr], state,
+    by simp [gpt.geluArray.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
+    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+  have hGelu : LeanExe.Examples.Gpt.geluArray xs =
+      LeanExe.build xs.size.toUInt64 (fun i => LeanExe.Examples.Gpt.gelu xs[i.toNat]!) := rfl
+  rw [hGelu, build_map]
+  exact hNew.owned
+
+theorem matMul_size (a b : Array Float) (n k m : UInt64) :
+    (matMulTuple (a, b, n, k, m)).size = (n * m).toNat := by
+  simp [matMulTuple, matMul_eq, LeanExe.build]
+
+/-- `mlp` with its six arguments as one tuple. -/
+def mlpTuple (x : Array Float × Array Float × Array Float × UInt64 × UInt64 × UInt64) :
+    Array Float :=
+  LeanExe.Examples.Gpt.mlp x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2
+
+/-- The bytes `mlp` may allocate: two `t × f` arrays and the `t × d` result. -/
+def mlpNeed (x : Array Float × Array Float × Array Float × UInt64 × UInt64 × UInt64) : Nat :=
+  48 + 8 * ((x.2.2.2.1 * x.2.2.2.2.2).toNat + 1) + (48 + 8 * ((x.2.2.2.1 * x.2.2.2.2.2).toNat + 1)) +
+    (48 + 8 * ((x.2.2.2.1 * x.2.2.2.2.1).toNat + 1))
+
+theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
+  refine Func.implements_heap gpt.funcs 11 gpt.mlp.ir "mlp" rfl mlpTuple mlpNeed
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      rfl⟩; rfl) ?_
+  rintro ⟨x, w1, w2, t, d, f⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨px, rfl, hX⟩, _, _, rfl, ⟨p1, rfl, hW1⟩, _, _, rfl, ⟨p2, rfl, hW2⟩, rfl⟩ hRoom
+  change heap.Borrowed initial px (x.map Float.toBits) at hX
+  change heap.Borrowed initial p1 (w1.map Float.toBits) at hW1
+  change heap.Borrowed initial p2 (w2.map Float.toBits) at hW2
+  change heap.Room initial gpt.module (48 + 8 * ((t * f).toNat + 1) +
+    (48 + 8 * ((t * f).toNat + 1)) + (48 + 8 * ((t * d).toNat + 1))) at hRoom
+  have hImports : gpt.module.imports = [] := rfl
+  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
+  have hMatMul : gpt.module.funcs[9 - gpt.module.imports.length]? =
+      some (gpt.matMul.ir.function (2 + 6)) := compile_funcs (funcs := gpt.funcs) (i := 6) rfl
+  have hGelu : gpt.module.funcs[13 - gpt.module.imports.length]? =
+      some (gpt.geluArray.ir.function (2 + 10)) := compile_funcs (funcs := gpt.funcs) (i := 10) rfl
+  let h := matMulTuple (x, w1, t, d, f)
+  let g := LeanExe.Examples.Gpt.geluArray h
+  have hSize : h.size = (t * f).toNat := matMul_size x w1 t d f
+  let start : State :=
+    { params := [.i64 px, .i64 p1, .i64 p2, .i64 t, .i64 d, .i64 f]
+      locals := [.i64 0, .i64 0, .i64 0, .i64 0] }
+  have hStart : start.params.length + start.locals.length = 10 := rfl
+  have hLen : ∀ (s : State) (j : Nat) (v : Value),
+      (s.update j v).params.length + (s.update j v).locals.length =
+        s.params.length + s.locals.length := fun s j v => by
+    simp [State.update_params_length, State.update_locals_length]
+  have hGet : start.get 0 = some (.i64 px) ∧ start.get 1 = some (.i64 p1) ∧
+      start.get 2 = some (.i64 p2) ∧ start.get 3 = some (.i64 t) ∧ start.get 4 = some (.i64 d) ∧
+      start.get 5 = some (.i64 f) := ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
+  show Triple _ (.seq (.call 9 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩,
+      ⟨.u64, .get 5⟩] [6]) (.seq (.call 13 [⟨.u64, .get 6⟩] [7]) (.seq (.call 9 [⟨.u64, .get 7⟩,
+      ⟨.u64, .get 2⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 4⟩] [8])
+      (.seq (.assign 9 (.get 8)) (.seq (.release 7) (.release 6)))))) 10
+    (fun store state => store = initial ∧ state = start) _
+  -- `h = x · w1`.
+  refine Stmt.seq_spec (Live.call matMul_implements rfl hMatMul rfl (Live.start hHeap) hRoom
+    (x := (x, w1, t, d, f)) (by simp only [matMulNeed]; omega) (afterArgs := start)
+    (vals := [.i64 px, .i64 p1, .i64 t, .i64 d, .i64 f])
+    (by simp [Expr.evalResults, Expr.eval, hGet.1, hGet.2.1, hGet.2.2.2.1, hGet.2.2.2.2.1,
+      hGet.2.2.2.2.2])
+    ⟨[.i64 px], _, rfl, ⟨px, rfl, hX⟩, [.i64 p1], _, rfl, ⟨p1, rfl, hW1⟩, rfl⟩
+    (by rw [hStart]; decide)) ?_
+  apply Triple.of_forall
+  rintro store1 t1 ⟨heap1, ph, hLive1, rfl⟩
+  let s1 := start.update 6 (.i64 ph)
+  have hS1 : s1.params.length + s1.locals.length = 10 := by rw [hLen, hStart]
+  -- `g = gelu h`.
+  refine Stmt.seq_spec (Live.call geluArray_implements rfl hGelu rfl hLive1 hRoom
+    (x := h) (by simp only [matMulNeed, geluNeed, hSize]; omega) (afterArgs := s1)
+    (vals := [.i64 ph]) (by simp [Expr.evalResults, Expr.eval, s1, State.get_update_same,
+      hStart])
+    ⟨ph, rfl, (hLive1.tempsOwned _ (List.mem_singleton_self _)).borrowed⟩
+    (by rw [hS1]; decide)) ?_
+  apply Triple.of_forall
+  rintro store2 t2 ⟨heap2, pg, hLive2, rfl⟩
+  let s2 := s1.update 7 (.i64 pg)
+  have hS2 : s2.params.length + s2.locals.length = 10 := by rw [hLen, hS1]
+  have hGetS2 : ∀ j, j < 6 → s2.get j = start.get j := fun j hj => by
+    simp only [s2, s1]
+    rw [State.get_update_ne (by omega), State.get_update_ne (by omega)]
+  -- The result, `g · w2`.
+  refine Stmt.seq_spec (Live.call matMul_implements rfl hMatMul rfl hLive2 hRoom
+    (x := (g, w2, t, f, d)) (by simp only [matMulNeed, geluNeed, hSize]; omega)
+    (afterArgs := s2) (vals := [.i64 pg, .i64 p2, .i64 t, .i64 f, .i64 d])
+    (by simp [Expr.evalResults, Expr.eval, s2, State.get_update_same, hS1,
+      hGetS2 2 (by decide), hGetS2 3 (by decide), hGetS2 4 (by decide), hGetS2 5 (by decide),
+      hGet.2.2.1, hGet.2.2.2.1, hGet.2.2.2.2.1, hGet.2.2.2.2.2])
+    ⟨[.i64 pg], _, rfl, ⟨pg, rfl, (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
+      [.i64 p2], _, rfl, ⟨p2, rfl, hLive2.borrowed p2 _ hW2⟩, rfl⟩
+    (by rw [hS2]; decide)) ?_
+  apply Triple.of_forall
+  rintro store3 t3 ⟨heap3, pr, hLive3, rfl⟩
+  let s3 := s2.update 8 (.i64 pr)
+  let s4 := s3.update 9 (.i64 pr)
+  have hS3 : s3.params.length + s3.locals.length = 10 := by rw [hLen, hS2]
+  refine Stmt.seq_spec (Stmt.run_spec (final := s4) (by
+    simp [Stmt.run, Expr.eval, State.set?_eq_update _ (show 9 < s3.params.length +
+      s3.locals.length by rw [hS3]; decide), s4, s3, State.get_update_same,
+      show 8 < s2.params.length + s2.locals.length by rw [hS2]; decide])) ?_
+  -- The temporaries are released, `g` first.
+  have hS4Get7 : s4.get 7 = some (.i64 pg) := by
+    simp only [s4, s3]
+    rw [State.get_update_ne (by decide), State.get_update_ne (by decide)]
+    exact State.get_update_same (by rw [hS1]; decide)
+  have hS4Get6 : s4.get 6 = some (.i64 ph) := by
+    simp only [s4, s3, s2]
+    rw [State.get_update_ne (by decide), State.get_update_ne (by decide),
+      State.get_update_ne (by decide)]
+    exact State.get_update_same (by rw [hStart]; decide)
+  refine Stmt.seq_spec (hLive3.releaseSecond hImports hRelease hS4Get7) ?_
+  apply Triple.of_forall
+  rintro store4 st4 ⟨hLive4, rfl⟩
+  refine (hLive4.releaseSecond hImports hRelease hS4Get6).mono (fun _ _ h => h) ?_
+  rintro store5 st5 ⟨hLive5, rfl⟩
+  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
+      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
+      Represent.borrowed heap' store' [.i64 px, .i64 p1, .i64 p2, .i64 t, .i64 d, .i64 f]
+        (x, w1, w2, t, d, f) := fun heap' store' hKeep =>
+    ⟨[.i64 px], _, rfl, ⟨px, rfl, hKeep px _ hX⟩, [.i64 p1], _, rfl, ⟨p1, rfl, hKeep p1 _ hW1⟩,
+      [.i64 p2], _, rfl, ⟨p2, rfl, hKeep p2 _ hW2⟩, rfl⟩
+  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLive5.finish (need := mlpNeed (x, w1, w2, t, d, f))
+      (by simp only [matMulNeed, geluNeed, mlpNeed, hSize]; omega) hParams
+  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+    by simp [gpt.mlp.ir, Func.scratch, Expr.evalResults, Expr.eval, s4, State.get_update_same,
+      hS3], hOwned, hOutB, hOutO⟩
+
 /-- `encode` succeeds on `gpt.module`, and its bytes decode to a module whose
 exports compute the kernels exactly. -/
 theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
@@ -1060,11 +1393,15 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
       Implements m 4 matVecTuple matVecNeed ∧ Implements m 5 layerTuple layerNeed ∧
       Implements m 6 LeanExe.Examples.Gpt.exp (fun _ => 0) ∧
       Implements m 7 LeanExe.Examples.Gpt.softmax softmaxNeed ∧
-      Implements m 8 matVec2Tuple matVec2Need ∧ Implements m 9 matMulTuple matMulNeed := by
+      Implements m 8 matVec2Tuple matVec2Need ∧ Implements m 9 matMulTuple matMulNeed ∧
+      Implements m 10 addTuple addNeed ∧ Implements m 11 LeanExe.Examples.Gpt.tanh (fun _ => 0) ∧
+      Implements m 12 LeanExe.Examples.Gpt.gelu (fun _ => 0) ∧
+      Implements m 13 LeanExe.Examples.Gpt.geluArray geluNeed ∧ Implements m 14 mlpTuple mlpNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
     layerNorm_implements, exp_implements, softmax_implements, matVec2_implements,
-    matMul_implements⟩
+    matMul_implements, add_implements, tanh_pure.implements, gelu_pure.implements,
+    geluArray_implements, mlp_implements⟩
 
 end Project.Gpt

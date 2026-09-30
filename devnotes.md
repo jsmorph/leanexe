@@ -19357,3 +19357,18 @@ postcondition of `Func.implements_heap`.  Reproved with it, `matVec2` went from
 The transformer block will consist of kernels, which use loops and builds, and
 composite functions, which only call kernels and release temporaries.  A
 composite that allocated with a build would need a `Live.build` lemma as well.
+
+## 2026-09-30: GPT 5c, the MLP
+
+`add`, `tanh`, `gelu`, `geluArray`, and `mlp` are exports 10 to 14.  `tanh` uses
+`1 - 2 / (e^(2z) + 1)`, which saturates to 1 and -1 and loses relative accuracy
+near 0 through cancellation; inside GELU, `1 + tanh u` is near 1 there, so the
+loss does not carry into the result.  `tanh` and `gelu` are functions that keep
+the store, so each has an `ImplementsPure` theorem, and calls nest: an element of
+`geluArray` calls `gelu`, which calls `tanh`, which calls `exp`.  All four kernel
+proofs and the `mlp` composite built on the first attempt; `mlp` uses `Live` for
+its three calls and two releases.  All 1,073 comparisons of `gpt.wasm` matched,
+and an `mlp` session freed every allocation.
+
+- [x] GPT 5c: the MLP.
+- [ ] GPT 5d: row-wise layer norm, masked attention, and the block.
