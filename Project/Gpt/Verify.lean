@@ -3,6 +3,7 @@ import Project.IR.Correct
 import Project.IR.Loop
 import Project.IR.Read
 import Project.IR.Build
+import Project.IR.Run
 import Project.Encoding.RoundTrip
 
 namespace Project.Gpt
@@ -476,14 +477,129 @@ theorem layerNorm_implements : Implements gpt.module 5 layerTuple layerNeed := b
   rw [layerTuple, layerNorm_eq, hSum, hVar, build_map]
   exact hNew.owned
 
+theorem exp_implements : Implements gpt.module 6 LeanExe.Examples.Gpt.exp (fun _ => 0) := by
+  refine Func.implements gpt.funcs 3 gpt.exp.ir "exp" rfl LeanExe.Examples.Gpt.exp
+    (fun _ _ _ _ h => by rw [Scalar.borrowed.mp h]; rfl) fun x _ initial _ _ h => ?_
+  rw [Scalar.borrowed.mp h]
+  have k745 : (745.2 : Float).toBits = 4649766064339130778 := by decide +kernel
+  have k709 : (709.8 : Float).toBits = 4649454682646144614 := by decide +kernel
+  have kInv : (1.4426950408889634 : Float).toBits = 4609176140021203710 := by decide +kernel
+  have kHalf : (1100.5 : Float).toBits = 4652554865631821824 := by decide +kernel
+  have kBias : (1100.0 : Float).toBits = 4652552666608566272 := by decide +kernel
+  have kHi : (0.6931471803691238 : Float).toBits = 4604418534311723008 := by decide +kernel
+  have kLo : (1.9082149292705877e-10 : Float).toBits = 4461442080421002358 := by decide +kernel
+  have c0 : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
+  have c2 : (0.5 : Float).toBits = 4602678819172646912 := by decide +kernel
+  have c3 : (0.16666666666666666 : Float).toBits = 4595172819793696085 := by decide +kernel
+  have c4 : (0.041666666666666664 : Float).toBits = 4586165620538955093 := by decide +kernel
+  have c5 : (0.008333333333333333 : Float).toBits = 4575957461383581969 := by decide +kernel
+  have c6 : (0.001388888888888889 : Float).toBits = 4564047942368979991 := by decide +kernel
+  have c7 : (1.984126984126984e-4 : Float).toBits = 4551452160554016794 := by decide +kernel
+  have c8 : (2.48015873015873e-5 : Float).toBits = 4537941361671905306 := by decide +kernel
+  have c9 : (2.7557319223985893e-6 : Float).toBits = 4523617214285662004 := by decide +kernel
+  have c10 : (2.755731922398589e-7 : Float).toBits = 4508805057796939612 := by decide +kernel
+  have c11 : (2.505210838544172e-8 : Float).toBits = 4493156764026750180 := by decide +kernel
+  have c12 : (2.08767569878681e-9 : Float).toBits = 4477122120089393304 := by decide +kernel
+  have c13 : (1.6059043836821613e-10 : Float).toBits = 4460272573143870729 := by decide +kernel
+  have kBig : (1e308 : Float).toBits = 9214871658872686752 := by decide +kernel
+  have kZero : (0.0 : Float).toBits = 0 := by decide +kernel
+  let c := max (-745.2) (min x 709.8)
+  let m := (c * 1.4426950408889634 + 1100.5).toUInt64
+  let kf := m.toFloat - 1100.0
+  let r := c - kf * 0.6931471803691238 - kf * 1.9082149292705877e-10
+  let p := 1.0 + r * (1.0 + r * (0.5 + r * (0.16666666666666666 + r * (0.041666666666666664 +
+    r * (0.008333333333333333 + r * (0.001388888888888889 + r * (1.984126984126984e-4 +
+    r * (2.48015873015873e-5 + r * (2.7557319223985893e-6 + r * (2.755731922398589e-7 +
+    r * (2.505210838544172e-8 + r * (2.08767569878681e-9 + r * 1.6059043836821613e-10))))))))))))
+  let hm := m / 2
+  let y := p * Float.ofBits ((hm + 473) <<< 52) * Float.ofBits ((m - hm + 473) <<< 52)
+  let start : State :=
+    { params := [.f64 x.toBits]
+      locals := [.f64 0, .i64 0, .f64 0, .f64 0, .f64 0, .i64 0, .f64 0, .i64 0, .i64 0] }
+  let s1 := start.update 1 (.f64 c.toBits)
+  let s2 := s1.update 2 (.i64 m)
+  let s3 := s2.update 3 (.f64 kf.toBits)
+  let s4 := s3.update 4 (.f64 r.toBits)
+  let s5 := s4.update 5 (.f64 p.toBits)
+  let s6 := ((s5.update 8 (.i64 m)).update 9 (.i64 2)).update 6 (.i64 hm)
+  let s7 := s6.update 7 (.f64 y.toBits)
+  have hParams : start.params.length = 1 := rfl
+  have hLocals : start.locals.length = 9 := rfl
+  have hGet0 : start.get 0 = some (.f64 x.toBits) := rfl
+  show Triple _ (.seq (.assign 1 (.iteF (.leF (.binF .sub (.constF 9223372036854775808)
+      (.constF 4649766064339130778)) (.iteF (.leF (.getF 0) (.constF 4649454682646144614))
+      (.getF 0) (.constF 4649454682646144614))) (.iteF (.leF (.getF 0)
+      (.constF 4649454682646144614)) (.getF 0) (.constF 4649454682646144614))
+      (.binF .sub (.constF 9223372036854775808) (.constF 4649766064339130778))))
+    (.seq (.assign 2 (.truncSatU (.binF .add (.binF .mul (.getF 1)
+      (.constF 4609176140021203710)) (.constF 4652554865631821824))))
+    (.seq (.assign 3 (.binF .sub (.convertU (.get 2)) (.constF 4652552666608566272)))
+    (.seq (.assign 4 (.binF .sub (.binF .sub (.getF 1) (.binF .mul (.getF 3)
+      (.constF 4604418534311723008))) (.binF .mul (.getF 3) (.constF 4461442080421002358))))
+    (.seq (.assign 5 (.binF .add (.constF 4607182418800017408) (.binF .mul (.getF 4)
+      (.binF .add (.constF 4607182418800017408) (.binF .mul (.getF 4)
+      (.binF .add (.constF 4602678819172646912) (.binF .mul (.getF 4)
+      (.binF .add (.constF 4595172819793696085) (.binF .mul (.getF 4)
+      (.binF .add (.constF 4586165620538955093) (.binF .mul (.getF 4)
+      (.binF .add (.constF 4575957461383581969) (.binF .mul (.getF 4)
+      (.binF .add (.constF 4564047942368979991) (.binF .mul (.getF 4)
+      (.binF .add (.constF 4551452160554016794) (.binF .mul (.getF 4)
+      (.binF .add (.constF 4537941361671905306) (.binF .mul (.getF 4)
+      (.binF .add (.constF 4523617214285662004) (.binF .mul (.getF 4)
+      (.binF .add (.constF 4508805057796939612) (.binF .mul (.getF 4)
+      (.binF .add (.constF 4493156764026750180) (.binF .mul (.getF 4)
+      (.binF .add (.constF 4477122120089393304) (.binF .mul (.getF 4)
+      (.constF 4460272573143870729))))))))))))))))))))))))))))
+    (.seq (.assign 6 (.bin .divU (.get 2) (.const 2)))
+    (.assign 7 (.binF .mul (.binF .mul (.getF 5) (.ofBits (.bin .shiftLeft (.bin .add (.get 6)
+      (.const 473)) (.const 52)))) (.ofBits (.bin .shiftLeft (.bin .add (.bin .sub (.get 2)
+      (.get 6)) (.const 473)) (.const 52))))))))))) 8
+    (fun store state => store = initial ∧ state = start) _
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s3) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s4) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s5) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s6) ?_) <|
+    (Stmt.run_spec (final := s7) ?_).mono (fun _ _ h => h) ?_
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, hGet0, s1, c, F64Op.apply,
+      F64Bits.toBits_max, F64Bits.toBits_min, F64Bits.toBits_neg, k745, k709]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, s1, s2, m, F64Op.apply,
+      F64Convert.toUInt64_eq, F64Bits.toBits_add, F64Bits.toBits_mul, kInv, kHalf]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, s1, s2, s3, kf,
+      F64Op.apply, F64Bits.toBits_sub, F64Convert.toBits_toFloat, kBias]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, s1, s2, s3, s4, r,
+      F64Op.apply, F64Bits.toBits_sub, F64Bits.toBits_mul, kHi, kLo]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, s1, s2, s3, s4, s5, p,
+      F64Op.apply, F64Bits.toBits_add, F64Bits.toBits_mul, c0, c2, c3, c4, c5, c6, c7, c8, c9,
+      c10, c11, c12, c13]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, s1, s2, s3, s4, s5, s6,
+      hm, U64Op.apply]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, s1, s2, s3, s4, s5, s6,
+      s7, y, U64Op.apply, F64Op.apply, F64Bits.toBits_mul, F64Bits.toBits_ofBits,
+      F64Bits.shiftLeft_52_not_nan]
+  rintro store state ⟨rfl, rfl⟩
+  have hExp : LeanExe.Examples.Gpt.exp x =
+      if x == x then (if x > 709.8 then x * 1e308 else if x < -745.2 then 0.0 else y) else x :=
+    rfl
+  refine ⟨rfl, [.f64 (LeanExe.Examples.Gpt.exp x).toBits], s7, ?_, rfl⟩
+  have g0 : s7.get 0 = some (.f64 x.toBits) := by simp [s7, s6, s5, s4, s3, s2, s1]; rfl
+  have g7 : s7.get 7 = some (.f64 y.toBits) := by simp [s7, s6, s5, s4, s3, s2, s1, hParams, hLocals]
+  rw [hExp]
+  simp only [gpt.exp.ir, Func.scratch, Expr.evalResults, Expr.eval, g0, g7, Option.bind_eq_bind,
+    Option.bind_some, Option.pure_def, F64Op.apply]
+  by_cases h1 : x == x <;> by_cases h2 : x > 709.8 <;> by_cases h3 : x < -745.2 <;>
+    simp_all [F64Bits.beq_eq, F64Bits.lt_iff, F64Bits.toBits_mul, F64Bits.toBits_neg]
+
 /-- `encode` succeeds on `gpt.module`, and its bytes decode to a module whose
 exports compute the kernels exactly. -/
 theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
     ∃ m, Encoding.decode bytes = .ok m ∧ Implements m 3 dotTuple (fun _ => 0) ∧
-      Implements m 4 matVecTuple matVecNeed ∧ Implements m 5 layerTuple layerNeed := by
+      Implements m 4 matVecTuple matVecNeed ∧ Implements m 5 layerTuple layerNeed ∧
+      Implements m 6 LeanExe.Examples.Gpt.exp (fun _ => 0) := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
-    layerNorm_implements⟩
+    layerNorm_implements, exp_implements⟩
 
 end Project.Gpt

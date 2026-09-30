@@ -24,4 +24,22 @@ def layerNorm (xs g b : Array Float) (eps : Float) : Array Float :=
   let inv := 1.0 / (var + eps).sqrt
   LeanExe.build xs.size.toUInt64 fun i => (xs[i.toNat]! - mean) * inv * g[i.toNat]! + b[i.toNat]!
 
+/-- `e^x` in binary64.  It writes `x = k·ln 2 + r` with `k` an integer and `|r|` at
+most about `ln 2 / 2`, evaluates the Taylor polynomial of degree 13 for `e^r`, and
+multiplies by `2^k` as a product of two powers of two built from their bits.  NaN
+yields `x`, values above 709.8 yield infinity, and values below -745.2 yield 0.
+Tests compare it with the C library's `exp`; no theorem bounds its error. -/
+def exp (x : Float) : Float :=
+  let c := max (-745.2) (min x 709.8)
+  let m := (c * 1.4426950408889634 + 1100.5).toUInt64
+  let kf := m.toFloat - 1100.0
+  let r := c - kf * 0.6931471803691238 - kf * 1.9082149292705877e-10
+  let p := 1.0 + r * (1.0 + r * (0.5 + r * (0.16666666666666666 + r * (0.041666666666666664 +
+    r * (0.008333333333333333 + r * (0.001388888888888889 + r * (1.984126984126984e-4 +
+    r * (2.48015873015873e-5 + r * (2.7557319223985893e-6 + r * (2.755731922398589e-7 +
+    r * (2.505210838544172e-8 + r * (2.08767569878681e-9 + r * 1.6059043836821613e-10))))))))))))
+  let h := m / 2
+  let y := p * Float.ofBits ((h + 473) <<< 52) * Float.ofBits ((m - h + 473) <<< 52)
+  if x == x then (if x > 709.8 then x * 1e308 else if x < -745.2 then 0.0 else y) else x
+
 end LeanExe.Examples.Gpt

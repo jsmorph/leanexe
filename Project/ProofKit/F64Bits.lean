@@ -121,4 +121,19 @@ theorem toBits_max (a b : Float) :
   show (if a ≤ b then b else a).toBits = _
   split <;> simp_all
 
+/-- Lean's model replaces every NaN with the canonical NaN, so a float built from
+bits keeps them unless they are a NaN pattern. -/
+theorem toBits_ofBits (w : UInt64) :
+    (Float.ofBits w).toBits = if Wasm.IEEE64.isNaN w then Wasm.IEEE64.canonicalNaN else w :=
+  F64Packing.ofBits_toBits w
+
+/-- A word shifted left by 52 has a zero fraction field, so it is not a NaN pattern. -/
+theorem shiftLeft_52_not_nan (v : UInt64) : Wasm.IEEE64.isNaN (v <<< 52) = false := by
+  have hFraction : Wasm.IEEE64.fraction (v <<< 52) = 0 := by
+    unfold Wasm.IEEE64.fraction
+    rw [UInt64.toNat_shiftLeft]
+    simp only [UInt64.reduceToNat, Nat.reduceMod, Nat.shiftLeft_eq]
+    rw [Nat.mod_mod_of_dvd _ (by decide : 2 ^ 52 ∣ 2 ^ 64), Nat.mul_mod_left]
+  simp [Wasm.IEEE64.isNaN, hFraction]
+
 end Project.ProofKit.F64Bits
