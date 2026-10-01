@@ -10,7 +10,9 @@ Usage: `uv run tools/gpt2.py --output-tokens 32 --prompt "It was a dark and stor
 The program tokenizes the prompt with the pinned `openai-community/gpt2` tokenizer, runs
 the compiled `step` on each prompt token in one host session that keeps the weights
 loaded, and then repeatedly takes the token with the highest score from `scores` and
-runs `step` on it.  It prints the prompt and each token as it is chosen.  The weights
+runs `step` on it.  It prints the prompt and each token as it is chosen, and it stops
+after the requested number of tokens or when it chooses `<|endoftext|>`, which it does
+not print.  The weights
 are the binary64 files that `tests/gpt/gpt2_compare.py` writes to build/gpt2-124m/."""
 import argparse
 import array
@@ -109,7 +111,8 @@ def main():
     parser = argparse.ArgumentParser(description='Generate text with GPT-2 124M on gpt.wasm.')
     parser.add_argument('--prompt', required=True, help='the text to continue')
     parser.add_argument('--output-tokens', type=int, default=32,
-                        help='the number of tokens to generate (default 32)')
+                        help='the largest number of tokens to generate (default 32); '
+                        'generation also stops at <|endoftext|>')
     args = parser.parse_args()
     for path, how in [(HOST, 'tools/build-wasmtime-host.sh'),
                       (WASM, 'the Emit.lean command for Project.Gpt.Module in deslop.md'),
@@ -135,6 +138,8 @@ def main():
         print(text, end='', flush=True)
         for n in range(args.output_tokens):
             token = session.next_token(cache)
+            if token == config.eos_token_id:
+                break
             ids.append(token)
             full = tokenizer.decode(ids)
             print(full[len(text):], end='', flush=True)
