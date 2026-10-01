@@ -305,7 +305,7 @@ theorem freeHead_insertFree (root capacity : UInt64) (nodes : List FreeNode) :
   · rename_i p hLast
     obtain ⟨pre, hPre⟩ := List.getLast?_eq_some_iff.mp hLast
     have hNe : belowNodes root nodes ≠ [] := by simp [hPre]
-    rw [if_neg hNe]
+    rw [ite_eq_right hNe]
     conv => rhs; rw [hSplit, hPre]
     rw [hPre]
     cases pre with
