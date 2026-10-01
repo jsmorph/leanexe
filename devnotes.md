@@ -20205,3 +20205,20 @@ and `scores`.  Still trusted are the host's starting store (the weights loaded t
 `alloc` and written by the host), Wasmtime's agreement with Talos, the tokenizer, and the
 CLI's choice of a token from the scores, by Python's `max` for greedy decoding or by
 `sampleTopK`, whose call on the scores array `sampleTopK_implements` covers.
+
+## 2026-10-01: The other modules after the trap-tolerant change
+
+The user set the order of the remaining work: these module tests, then sharing (Iteration
+4), I/O (Iteration 5), recursive values (Iteration 7), and in-place array updates, with
+binary32 programs and the WGSL kernel path after them.  The GPT-2 review items are
+deferred indefinitely, and porting main's Euler solver is set aside.
+
+The trap-tolerant change altered every module's bytes, through the declared maximum of
+65,535 pages and the build template's length check.  The comparisons recorded for the
+other modules were made by scripts that are not in the repository, so
+`tests/modules/Cases.lean` and `tests/modules/run.sh` now hold them, on the pattern of
+`tests/gpt/`.  The cases cover the twelve modules: chosen values with wrapping, zero
+divisors, infinities, NaN, signed zeros, subnormals, and empty arrays, arbitrary bit
+patterns, moderate values, and for the CLOB 36 books with positions and prices at, inside,
+and past their ends.  All twelve modules were emitted again and validated, and all 3,171
+cases matched native Lean.  `deslop.md` records the new sizes and hashes.
