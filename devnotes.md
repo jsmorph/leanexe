@@ -19735,3 +19735,39 @@ as the next step.
 - [x] The GPT-2 124M weights, loaded from files, compared and generating.
 - [ ] Next: a key and value cache for generation.
 - [ ] Near term: `Live` credits released blocks.
+
+## 2026-09-30: The cache design
+
+Without a cache, each generated token recomputes the whole prefix: one call took
+95 seconds at 224 tokens, and generation to 256 tokens would take about 3.8
+hours.  A cached step computes one row through the twelve layers, reading the
+keys and values that earlier steps saved, which should cost about one row of
+`forward`, 0.42 seconds.  The user chose each part of the design in turn.  A
+theorem proves that the cached steps give the same bits as `forward`'s rows.
+For that, `forward`'s softmax reads entries `j ≤ i` only, as `causalMatMul`
+already does, so that a step and `forward` perform the same operations.
+Dropping the masked entries leaves the values unchanged, because −∞ never raises
+a row maximum and contributes exactly +0 to the sum of exponentials.  The proof
+also needs a prefix theorem: row `i` of `forward` does not depend on the number
+of tokens.
+
+The cache stays read-only during a step.  Attention reads positions before `p`
+from the cache and position `p` from the new key and value, in the order
+`forward` uses.  The layer loop carries the row and the new keys and values,
+about 147 KB, and one build appends the new block, so each token copies the
+cache once.  The cache is one block per position, holding that position's key
+and value for every layer and its final hidden row: 19,200 floats, 154 KB.  A
+separate `scores` reads the last block.  Copying 85 million floats of weight
+slices per token would cost an estimated 0.2 to 0.3 seconds, so `linear` and
+the layer norm kernels take offsets into the stacked weights, and `slice` goes
+away.  The test drives the host's session mode, which gains commands to load a
+file into an array and to write an array to a file, so the weights stay loaded.
+In-place updates of arrays with one reference, which would remove the cache
+copy, come later.
+
+- [ ] 7a: `forward`'s softmax over `j ≤ i` only.
+- [ ] 7b: weight offsets in `linear` and the layer norms, and `slice` removed.
+- [ ] 7c: the prefix theorem.
+- [ ] 7d: `step` and `scores` in Lean, and the exactness theorem.
+- [ ] 7e: compiled `step` and `scores`, with proofs and tests.
+- [ ] 7f: host session commands, and generation to 256 tokens.
