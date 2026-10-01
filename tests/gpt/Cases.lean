@@ -304,6 +304,69 @@ def stackedBlockCases : IO Unit := do
       (block x.toArray (A 0) (A 1) (A 2) (A 3) (A 4) (A 5) (A 6) (A 7) (A 8) (A 9) (A 10) (A 11)
         (A 12) (A 13) (A 14) (A 15) l.toUInt64 t.toUInt64 nh.toUInt64 dh.toUInt64 f.toUInt64 eps)
 
+/-- The cached step, `scores`, and the step's kernels, on weights for zero to two layers;
+each `step` case extends the cache of the previous one. -/
+def stepCases : IO Unit := do
+  for i in List.range 30 do
+    let layers := i % 3
+    let nh := 1 + i % 2
+    let dh := 1 + (i / 2) % 2
+    let d := nh * dh
+    let f := 1 + (i * 7) % 3
+    let vocab := 1 + (i * 5) % 4
+    let T := 1 + i % 4
+    let bsize := (2 * layers + 1) * d
+    let sizes := [d, d, d * d, d, d * d, d, d * d, d, d * d, d, d, d, d * f, f, f * d, d]
+    let ws := sizes.zipIdx.map fun (n, j) => units (layers * n) (89 * i + 31 * j)
+    let W (j : Nat) : Array Float := (ws[j]!).toArray
+    let wte := (units (vocab * d) (97 * i + 1)).toArray
+    let wpe := (units (T * d) (101 * i + 2)).toArray
+    let gf := (units d (103 * i + 3)).toArray
+    let bf := (units d (107 * i + 4)).toArray
+    let eps : Float := if i % 5 = 0 then 0.0 else 1e-5
+    let mut cache : Array Float := #[]
+    for p in List.range T do
+      let token := (i * 3 + p * 5) % vocab
+      let next := step cache wte wpe (W 0) (W 1) (W 2) (W 3) (W 4) (W 5) (W 6) (W 7) (W 8) (W 9)
+        (W 10) (W 11) (W 12) (W 13) (W 14) (W 15) token.toUInt64 layers.toUInt64 nh.toUInt64
+        dh.toUInt64 f.toUInt64 eps
+      emit "step" ([arrA cache, arrA wte, arrA wpe] ++ ws.map arr ++
+        [u token, u layers, u nh, u dh, u f, fl eps]) next
+      cache := next
+      emit "scores" [arrA cache, arrA wte, arrA gf, arrA bf, u layers, u nh, u dh, u vocab, fl eps]
+        (scores cache wte gf bf layers.toUInt64 nh.toUInt64 dh.toUInt64 vocab.toUInt64 eps)
+    let p := T
+    let l := i % (layers + 1)
+    let s := (units (bsize + i % 2) (109 * i + 5)).toArray
+    let x := (units d (113 * i + 6)).toArray
+    let q := (units d (127 * i + 7)).toArray
+    let k := (units (d + i % 2) (131 * i + 8)).toArray
+    let v := (units d (137 * i + 9)).toArray
+    let sc := (units (nh * (p + 1) + i % 2) (139 * i + 10)).toArray
+    let scale : Float := 1.0 / dh.toFloat.sqrt
+    emit "firstRow" [arrA s, u d] (firstRow s d.toUInt64)
+    emit "lastHidden" [arrA cache, u d, u bsize] (lastHidden cache d.toUInt64 bsize.toUInt64)
+    emit "embedBlock" [arrA wte, arrA wpe, u (i % vocab), u (i % (T + 1)), u d, u bsize]
+      (embedBlock wte wpe (i % vocab).toUInt64 (i % (T + 1)).toUInt64 d.toUInt64 bsize.toUInt64)
+    emit "stepScores" [arrA q, arrA k, arrA cache, u l, u p, u nh, u dh, u bsize, fl scale]
+      (stepScores q k cache l.toUInt64 p.toUInt64 nh.toUInt64 dh.toUInt64 bsize.toUInt64 scale)
+    let mx := headMax sc nh.toUInt64 (p + 1).toUInt64
+    emit "headMax" [arrA sc, u nh, u (p + 1)] mx
+    emit "headSumExp" [arrA sc, arrA mx, u nh, u (p + 1)]
+      (headSumExp sc mx nh.toUInt64 (p + 1).toUInt64)
+    let pw := stepSoftmax sc nh.toUInt64 (p + 1).toUInt64
+    emit "stepSoftmax" [arrA sc, u nh, u (p + 1)] pw
+    emit "stepMix" [arrA pw, arrA v, arrA cache, u l, u p, u nh, u dh, u bsize]
+      (stepMix pw v cache l.toUInt64 p.toUInt64 nh.toUInt64 dh.toUInt64 bsize.toUInt64)
+    emit "writeBlock" [arrA s, arrA x, arrA k, arrA v, u l, u d]
+      (writeBlock s x k v l.toUInt64 d.toUInt64)
+    emit "appendBlock" [arrA cache, arrA s] (appendBlock cache s)
+    emit "layerStep" ([arrA s, arrA cache] ++ ws.map arr ++
+        [u l, u p, u nh, u dh, u f, u bsize, fl eps])
+      (layerStep s cache (W 0) (W 1) (W 2) (W 3) (W 4) (W 5) (W 6) (W 7) (W 8) (W 9) (W 10)
+        (W 11) (W 12) (W 13) (W 14) (W 15) l.toUInt64 p.toUInt64 nh.toUInt64 dh.toUInt64
+        f.toUInt64 bsize.toUInt64 eps)
+
 def main : IO Unit := do
   dotCases
   matVecCases
@@ -319,3 +382,4 @@ def main : IO Unit := do
   embedCases
   linearCases
   stackedBlockCases
+  stepCases

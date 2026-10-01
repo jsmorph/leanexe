@@ -50,7 +50,7 @@ def mem(pos):
 
 def arg_reads(a):
     if isinstance(a, tuple):
-        if a[0] == 'mul':
+        if a[0] in ('mul', 'add'):
             return arg_reads(a[1]) + arg_reads(a[2])
         if a[0] == 'const':
             return []
@@ -96,20 +96,32 @@ def state_fact(r, states, i=None):
 
 
 def eval_term(e, fact):
-    """A proof that the `u64` expression `e`, a local or a product, evaluates; `fact(r)`
-    proves that local `r` holds its value."""
+    """A proof that the `u64` expression `e`, a local, a constant, a product, or a sum,
+    evaluates; `fact(r)` proves that local `r` holds its value."""
     if isinstance(e, tuple):
-        return f'Expr.eval_mul ({eval_term(e[1], fact)}) ({eval_term(e[2], fact)})'
+        if e[0] == 'const':
+            return 'Expr.eval_const'
+        lemma = 'Expr.eval_mul' if e[0] == 'mul' else 'Expr.eval_add'
+        return f'{lemma} ({eval_term(e[1], fact)}) ({eval_term(e[2], fact)})'
     return f'Expr.eval_get ({fact(e)})'
 
 
 def value_term(e, names):
-    """The value of the `u64` expression `e` in terms of the parameter names."""
+    """The value of the `u64` expression `e` in terms of the names of the locals."""
     if isinstance(e, tuple):
+        if e[0] == 'const':
+            return str(e[1])
+        left = value_term(e[1], names)
         right = value_term(e[2], names)
-        if isinstance(e[2], tuple):
+        if e[0] == 'mul':
+            if isinstance(e[1], tuple) and e[1][0] == 'add':
+                left = f'({left})'
+            if isinstance(e[2], tuple) and e[2][0] != 'const':
+                right = f'({right})'
+            return f'{left} * {right}'
+        if isinstance(e[2], tuple) and e[2][0] == 'add':
             right = f'({right})'
-        return f'{value_term(e[1], names)} * {right}'
+        return f'{left} + {right}'
     return names[e]
 
 
@@ -117,7 +129,7 @@ def eval_lines(args, fact, ind):
     """The proof that the arguments evaluate, one line per argument."""
     out = []
     for a in args:
-        if isinstance(a, tuple) and a[0] == 'mul':
+        if isinstance(a, tuple) and a[0] in ('mul', 'add'):
             out.append(f'Expr.evalResults_u64 ({eval_term(a, fact)}) <|')
         elif isinstance(a, tuple) and a[0] == 'f':
             out.append(f'Expr.evalResults_getF ({fact(a[1])}) <|')
@@ -133,6 +145,7 @@ def eval_lines(args, fact, ind):
 
 def composite(spec):
     temps_by_reg = {}
+    regvals = {}        # values of locals that plain statements assign
     name = spec['name']
     params = spec['params']            # list of (name, kind): 'A', 'U', 'u', 'f'
     nparams = len(params)
@@ -218,10 +231,38 @@ def composite(spec):
     steps = []          # (register, pointer) of each call's result
     def fact(r):
         return state_fact(r, states)
+    rnames = dict(enumerate(names))
     for n, c in enumerate(calls):
         k = n + 1
         cur = states[-1]
         lines.append(f"  -- {c['comment']}")
+        if c.get('kind') == 'run':
+            reg = c['reg']
+            names_r = []
+            for r in c['reads']:
+                v = regvals[r] if r in regvals else vals[r]
+                lines.append(f"  have f{k}_{r} : {cur['name']}.get {r} = some ({v}) :=")
+                lines.append(f"    {fact(r)}")
+                names_r.append(f'f{k}_{r}')
+            # Scratch locals that the statement's expression writes, in order.
+            prev = cur
+            scratch_names = []
+            for r, v in c.get('scratch', []):
+                nm = f's{k}_{r}'
+                lines.append(f"  let {nm} := {prev['name']}.update {r} (.i64 ({v}))")
+                lines.append(f"  have h{nm} : {nm}.params.length + {nm}.locals.length = {total} := by rw [hLen, {prev['len']}]")
+                states.append(dict(kind='update', name=nm, len=f'h{nm}', reg=r))
+                prev = states[-1]
+                scratch_names.append(nm)
+            lines.append(f"  let s{k} := {prev['name']}.update {reg} (.i64 ({c['value']}))")
+            lines.append(f"  have hS{k} : s{k}.params.length + s{k}.locals.length = {total} := by rw [hLen, {prev['len']}]")
+            facts = ', '.join(names_r + scratch_names + [f's{k}'])
+            lines.append(f"  refine Stmt.seq_spec (Stmt.run_spec (final := s{k}) (by")
+            lines.append(f"    {c['proof'].format(facts=facts, cur=cur['name'], curlen=cur['len'], k=k)})) ?_")
+            states.append(dict(kind='update', name=f's{k}', len=f'hS{k}', reg=reg))
+            regvals[reg] = f".i64 ({c['value']})"
+            rnames[reg] = f"({c['value']})"
+            continue
         if c.get('kind') == 'loop':
             p = c['ptr']
             lines.append(f"  refine Live.arrayLoop {c['impl']} rfl {c['hfunc']} rfl hMemory32 hImports hAlloc")
@@ -248,7 +289,9 @@ def composite(spec):
                 elif isinstance(a, tuple) and a[0] == 'f':
                     cvals.append(vals[a[1]])
                 elif isinstance(a, tuple):
-                    cvals.append(f'.i64 ({value_term(a, names)})')
+                    cvals.append(f'.i64 ({value_term(a, rnames)})')
+                elif a in regvals:
+                    cvals.append(regvals[a])
                 else:
                     cvals.append(vals[a])
             lines.append(f"    (fun k p _ _ _ st _ hF hI hSt hL =>")
@@ -275,14 +318,16 @@ def composite(spec):
         lines.append(f"    (by simp only [{', '.join(c['need'])}]; omega) (afterArgs := {cur['name']})")
         cvals = []
         for a in c['args']:
-            if isinstance(a, tuple) and a[0] == 'mul':
-                cvals.append(f'.i64 ({value_term(a, names)})')
+            if isinstance(a, tuple) and a[0] in ('mul', 'add'):
+                cvals.append(f'.i64 ({value_term(a, rnames)})')
             elif isinstance(a, tuple) and a[0] == 'f':
                 cvals.append(vals[a[1]])
             elif isinstance(a, tuple) and a[0] == 'scale':
                 cvals.append(spec['scaleval'])
             elif isinstance(a, tuple) and a[0] == 'const':
                 cvals.append(f'.i64 {a[1]}')
+            elif a in regvals:
+                cvals.append(regvals[a])
             elif a >= nparams:
                 cvals.append(f'.i64 {temps_by_reg[a]}')
             else:
@@ -600,8 +645,253 @@ def forwardNeed : ForwardInput → Nat
 """ + composite(fwd_spec) + '\n'
 
 
+# ------------------------------------------------------------------ layerStep
+LSA = ['s', 'cache'] + BARR[1:]
+LS = [(n, 'A') for n in LSA] + [('l', 'u'), ('p', 'u'), ('nh', 'u'), ('dh', 'u'), ('f', 'u'),
+                                ('bsize', 'u'), ('eps', 'f')]
+LD = ('mul', 20, 21)
+ONE = ('const', 1)
+ls_need1 = ['firstRowNeed', 'layerNormRowsNeed']
+ls_need2 = ls_need1 + ['linearNeed']
+ls_need3 = ls_need2 + ['stepScoresNeed', 'stepSoftmaxNeed', 'stepMixNeed']
+ls_need4 = ls_need3 + ['addNeed', 'hX']
+ls_need5 = ls_need4 + ['mlpNeed']
+ls_spec = dict(
+    name='layerStep', entry=41, index=38, tuple='layerStepTuple', need='layerStepNeed', params=LS,
+    nlocals=15, one=True, room='layerStepBytes nh dh f p s.size',
+    room_unfold=['layerStepBytes'],
+    funcs=[('hFirst', 32, 29, 'firstRow'), ('hNorm', 18, 15, 'layerNormRows'),
+           ('hLinear', 30, 27, 'linear'), ('hScores', 33, 30, 'stepScores'),
+           ('hSoftmax', 36, 33, 'stepSoftmax'), ('hMix', 37, 34, 'stepMix'), ('hAdd', 10, 7, 'add'),
+           ('hMlp', 14, 11, 'mlp'), ('hWrite', 38, 35, 'writeBlock')],
+    lets=[('x', 'firstRowTuple (s, nh * dh)'),
+          ('h1', 'layerNormRowsTuple (x, g1, b1, l, 1, nh * dh, eps)'),
+          ('q', 'linearTuple (h1, wq, bq, l, 1, nh * dh, nh * dh)'),
+          ('k', 'linearTuple (h1, wk, bk, l, 1, nh * dh, nh * dh)'),
+          ('v', 'linearTuple (h1, wv, bv, l, 1, nh * dh, nh * dh)'),
+          ('sc', 'stepScoresTuple (q, k, cache, l, p, nh, dh, bsize, 1.0 / dh.toFloat.sqrt)'),
+          ('pw', 'stepSoftmaxTuple (sc, nh, p + 1)'),
+          ('o', 'stepMixTuple (pw, v, cache, l, p, nh, dh, bsize)'),
+          ('a', 'linearTuple (o, wo, bo, l, 1, nh * dh, nh * dh)'),
+          ('r', 'addTuple (x, a)'),
+          ('h2', 'layerNormRowsTuple (r, g2, b2, l, 1, nh * dh, eps)'),
+          ('m', 'mlpTuple (h2, wfc, bfc, wproj, bproj, l, 1, nh * dh, f)'),
+          ('y', 'addTuple (r, m)')],
+    haves=['  have hX : x.size = (nh * dh).toNat := by',
+           '    simp [x, firstRowTuple, LeanExe.Examples.Gpt.firstRow, LeanExe.build]',
+           '  have hR : r.size ≤ x.size := add_size_le x a'],
+    scaleval='.f64 (1.0 / dh.toFloat.sqrt).toBits',
+    calls=[
+        dict(args=[0, LD], impl='firstRow_implements', hfunc='hFirst', x='(s, nh * dh)',
+             need=['firstRowNeed'], borrowed=[('P', 's')], ptr='px', comment='The hidden row.'),
+        dict(args=[25, 2, 3, 18, ONE, LD, ('f', 24)], impl='layerNormRows_implements',
+             hfunc='hNorm', x='(x, g1, b1, l, 1, nh * dh, eps)', need=ls_need1,
+             borrowed=[('T', 'px'), ('P', 'g1'), ('P', 'b1')], ptr='ph1',
+             comment='The first layer norm.'),
+        dict(args=[26, 4, 5, 18, ONE, LD, LD], impl='linear_implements', hfunc='hLinear',
+             x='(h1, wq, bq, l, 1, nh * dh, nh * dh)', need=ls_need2,
+             borrowed=[('T', 'ph1'), ('P', 'wq'), ('P', 'bq')], ptr='pq', comment='The query.'),
+        dict(args=[26, 6, 7, 18, ONE, LD, LD], impl='linear_implements', hfunc='hLinear',
+             x='(h1, wk, bk, l, 1, nh * dh, nh * dh)', need=ls_need2,
+             borrowed=[('T', 'ph1'), ('P', 'wk'), ('P', 'bk')], ptr='pk', comment='The key.'),
+        dict(args=[26, 8, 9, 18, ONE, LD, LD], impl='linear_implements', hfunc='hLinear',
+             x='(h1, wv, bv, l, 1, nh * dh, nh * dh)', need=ls_need2,
+             borrowed=[('T', 'ph1'), ('P', 'wv'), ('P', 'bv')], ptr='pv', comment='The value.'),
+        dict(args=[27, 28, 1, 18, 19, 20, 21, 23, ('scale', 21)], impl='stepScores_implements',
+             hfunc='hScores', x='(q, k, cache, l, p, nh, dh, bsize, 1.0 / dh.toFloat.sqrt)',
+             need=ls_need2 + ['stepScoresNeed'], borrowed=[('T', 'pq'), ('T', 'pk'), ('P', 'cache')], ptr='psc',
+             simp_extra=['F64Op.apply', 'F64UnOp.apply', 'F64Bits.toBits_div', 'F64Bits.toBits_sqrt',
+                         'F64Convert.toBits_toFloat', 'hOne'],
+             comment='The scores against the cached keys and this key.'),
+        dict(args=[30, 20, ('add', 19, ONE)], impl='stepSoftmax_implements', hfunc='hSoftmax',
+             x='(sc, nh, p + 1)', need=ls_need2 + ['stepScoresNeed', 'stepSoftmaxNeed'],
+             borrowed=[('T', 'psc')], ptr='ppw',
+             comment='The softmax of each head.'),
+        dict(args=[31, 29, 1, 18, 19, 20, 21, 23], impl='stepMix_implements', hfunc='hMix',
+             x='(pw, v, cache, l, p, nh, dh, bsize)', need=ls_need3,
+             borrowed=[('T', 'ppw'), ('T', 'pv'), ('P', 'cache')], ptr='po',
+             comment='The weighted sum of the cached values and this value.'),
+        dict(args=[32, 10, 11, 18, ONE, LD, LD], impl='linear_implements', hfunc='hLinear',
+             x='(o, wo, bo, l, 1, nh * dh, nh * dh)', need=ls_need3,
+             borrowed=[('T', 'po'), ('P', 'wo'), ('P', 'bo')], ptr='pa',
+             comment='The attention output.'),
+        dict(args=[25, 33], impl='add_implements', hfunc='hAdd', x='(x, a)', need=ls_need4,
+             borrowed=[('T', 'px'), ('T', 'pa')], tail=False, ptr='pr',
+             comment='The first residual sum.'),
+        dict(args=[34, 12, 13, 18, ONE, LD, ('f', 24)], impl='layerNormRows_implements',
+             hfunc='hNorm', x='(r, g2, b2, l, 1, nh * dh, eps)', need=ls_need4,
+             borrowed=[('T', 'pr'), ('P', 'g2'), ('P', 'b2')], ptr='ph2',
+             comment='The second layer norm.'),
+        dict(args=[35, 14, 15, 16, 17, 18, ONE, LD, 22], impl='mlp_implements', hfunc='hMlp',
+             x='(h2, wfc, bfc, wproj, bproj, l, 1, nh * dh, f)', need=ls_need4 + ['mlpNeed'],
+             borrowed=[('T', 'ph2'), ('P', 'wfc'), ('P', 'bfc'), ('P', 'wproj'), ('P', 'bproj')],
+             ptr='pm', comment='The MLP.'),
+        dict(args=[34, 36], impl='add_implements', hfunc='hAdd', x='(r, m)', need=ls_need5,
+             borrowed=[('T', 'pr'), ('T', 'pm')], tail=False, ptr='py',
+             comment='The second residual sum, the new hidden row.'),
+        dict(args=[0, 37, 28, 29, 18, LD], impl='writeBlock_implements', hfunc='hWrite',
+             x='(s, y, k, v, l, nh * dh)', need=ls_need5 + ['writeBlockNeed'],
+             borrowed=[('P', 's'), ('T', 'py'), ('T', 'pk'), ('T', 'pv')], ptr='pres',
+             comment='The block with the new row, key, and value.'),
+    ],
+    finish=ls_need5 + ['writeBlockNeed', 'layerStepNeed', 'layerStepBytes'])
+LST = tuple_type([k for _, k in LS])
+ls_section = tuple_def('layerStepTuple', 'layerStep', LS,
+                       '`layerStep` with its twenty-five arguments as one tuple.') + f"""
+/-- The bytes `layerStep` may allocate for position `p` and a block of `n` elements. -/
+def layerStepBytes (nh dh f p : UInt64) (n : Nat) : Nat :=
+  48 + 8 * ((nh * dh).toNat + 1) +
+    (48 + 8 * ((1 : UInt64).toNat + 1) + (48 + 8 * ((1 : UInt64).toNat + 1)) +
+      (48 + 8 * ((1 * (nh * dh)).toNat + 1))) +
+    3 * (48 + 8 * ((1 * (nh * dh)).toNat + 1)) + (48 + 8 * ((nh * (p + 1)).toNat + 1)) +
+    (48 + 8 * (nh.toNat + 1) + (48 + 8 * (nh.toNat + 1)) +
+      (48 + 8 * ((nh * (p + 1)).toNat + 1))) +
+    (48 + 8 * ((nh * dh).toNat + 1)) + (48 + 8 * ((1 * (nh * dh)).toNat + 1)) +
+    (48 + 8 * ((nh * dh).toNat + 1)) +
+    (48 + 8 * ((1 : UInt64).toNat + 1) + (48 + 8 * ((1 : UInt64).toNat + 1)) +
+      (48 + 8 * ((1 * (nh * dh)).toNat + 1))) +
+    (48 + 8 * ((1 * f).toNat + 1) + (48 + 8 * ((1 * f).toNat + 1)) +
+      (48 + 8 * ((1 * (nh * dh)).toNat + 1))) +
+    (48 + 8 * ((nh * dh).toNat + 1)) + (48 + 8 * (n + 1))
+
+/-- The bytes `layerStep` may allocate. -/
+def layerStepNeed (x : {LST}) : Nat :=
+  layerStepBytes {proj(25, 20)} {proj(25, 21)} {proj(25, 22)} {proj(25, 19)} x.1.size
+
+""" + composite(ls_spec) + '\n'
+
+# ------------------------------------------------------------------ scores
+SC = [('cache', 'A'), ('wte', 'A'), ('gf', 'A'), ('bf', 'A'), ('layers', 'u'), ('nh', 'u'), ('dh', 'u'),
+      ('vocab', 'u'), ('eps', 'f')]
+SD = ('mul', 5, 6)
+sc_spec = dict(
+    name='scores', entry=43, index=40, tuple='scoresTuple', need='scoresNeed', params=SC, nlocals=4,
+    room='scoresNeed (cache, wte, gf, bf, layers, nh, dh, vocab, eps)', room_unfold=['scoresNeed'],
+    funcs=[('hLast', 40, 37, 'lastHidden'), ('hNorm', 18, 15, 'layerNormRows'),
+           ('hScores', 28, 25, 'matMulT')],
+    lets=[('x', 'lastHiddenTuple (cache, nh * dh, (2 * layers + 1) * (nh * dh))'),
+          ('h', 'layerNormRowsTuple (x, gf, bf, 0, 1, nh * dh, eps)')],
+    calls=[
+        dict(args=[0, SD, ('mul', ('add', ('mul', ('const', 2), 4), ONE), SD)],
+             impl='lastHidden_implements', hfunc='hLast',
+             x='(cache, nh * dh, (2 * layers + 1) * (nh * dh))', need=['lastHiddenNeed'],
+             borrowed=[('P', 'cache')], ptr='px', comment='The hidden row of the last block.'),
+        dict(args=[9, 2, 3, ('const', 0), ONE, SD, ('f', 8)], impl='layerNormRows_implements',
+             hfunc='hNorm', x='(x, gf, bf, 0, 1, nh * dh, eps)',
+             need=['lastHiddenNeed', 'layerNormRowsNeed'],
+             borrowed=[('T', 'px'), ('P', 'gf'), ('P', 'bf')], ptr='ph',
+             comment='The final layer norm.'),
+        dict(args=[10, 1, ONE, SD, 7], impl='matMulT_implements', hfunc='hScores',
+             x='(h, wte, 1, nh * dh, vocab)',
+             need=['lastHiddenNeed', 'layerNormRowsNeed', 'matMulTNeed'],
+             borrowed=[('T', 'ph'), ('P', 'wte')], ptr='pr',
+             comment='The scores against every token embedding.'),
+    ],
+    finish=['lastHiddenNeed', 'layerNormRowsNeed', 'matMulTNeed', 'scoresNeed'])
+SCT = tuple_type([k for _, k in SC])
+sc_section = tuple_def('scoresTuple', 'scores', SC, '`scores` with its nine arguments as one tuple.') + f"""
+/-- The bytes `scores` may allocate: the hidden row, the layer norm, and the scores. -/
+def scoresNeed (x : {SCT}) : Nat :=
+  48 + 8 * (({proj(9, 5)} * {proj(9, 6)}).toNat + 1) +
+    (48 + 8 * ((1 : UInt64).toNat + 1) + (48 + 8 * ((1 : UInt64).toNat + 1)) +
+      (48 + 8 * ((1 * ({proj(9, 5)} * {proj(9, 6)})).toNat + 1))) +
+    (48 + 8 * ((1 * {proj(9, 7)}).toNat + 1))
+
+""" + composite(sc_spec) + '\n'
+
+
+# ------------------------------------------------------------------ step
+STA = ['cache', 'wte', 'wpe'] + BARR[1:]
+ST = [(n, 'A') for n in STA] + [('token', 'u'), ('layers', 'u'), ('nh', 'u'), ('dh', 'u'), ('f', 'u'),
+                                ('eps', 'f')]
+BS = '(2 * layers + 1) * (nh * dh)'
+POS = f'UInt64.ofNat cache.size / (if {BS} = 0 then 1 else {BS})'
+STEP_F = '(x, cache, ' + ', '.join(BARR[1:]) + f', l, {POS}, nh, dh, f, {BS}, eps)'
+st_need = ['embedBlockNeed', 'hS0']
+st_spec = dict(
+    name='step', entry=42, index=39, tuple='stepTuple', need='stepNeed', params=ST, nlocals=11,
+    width=2, result=35,
+    room='stepNeed (' + ', '.join(n for n, _ in ST) + ')', room_unfold=['stepNeed'],
+    funcs=[('hEmbed', 31, 28, 'embedBlock'), ('hLayer', 41, 38, 'layerStep'),
+           ('hAppend', 39, 36, 'appendBlock')],
+    lets=[('s0', f'embedBlockTuple (wte, wpe, token, {POS}, nh * dh, {BS})'),
+          ('xl', f'LeanExe.loop layers s0 fun l x => layerStepTuple {STEP_F}')],
+    haves=['  have hA := hCache.values',
+           '  have hLength := hA.lengthBound',
+           '  simp only [UInt64.toNat_toUInt32] at hLength',
+           f'  have hS0 : s0.size = ({BS}).toNat := by',
+           '    simp [s0, embedBlockTuple, LeanExe.Examples.Gpt.embedBlock, LeanExe.build]',
+           f'  have hSizes : ∀ k, (loopPrefix (fun l x => layerStepTuple {STEP_F}) s0 k).size ≤',
+           f'      ({BS}).toNat := fun k =>',
+           f'    Nat.le_trans (loopPrefix_size_le (fun l x => layerStep_size_le {STEP_F}) k)',
+           '      hS0.le',
+           f'  have hXl : xl.size ≤ ({BS}).toNat := hSizes layers.toNat',
+           f'  have hApp : (cache.size.toUInt64 + xl.size.toUInt64).toNat ≤ cache.size + ({BS}).toNat := by',
+           '    have h1 := Nat.mod_le cache.size (2 ^ 64)',
+           '    have h2 := Nat.mod_le xl.size (2 ^ 64)',
+           '    show (UInt64.ofNat cache.size + UInt64.ofNat xl.size).toNat ≤ _',
+           "    rw [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.toNat_ofNat']",
+           '    omega'],
+    calls=[
+        dict(kind='run', reg=25, value=BS, reads=[20, 21, 22], comment='The block size.',
+             proof='simp [Stmt.run, Expr.eval, {facts}, State.set?_eq_update _ (show 25 < {cur}.params.length + {cur}.locals.length by rw [{curlen}]; decide), U64Op.apply]'),
+        dict(kind='run', reg=26, value='UInt64.ofNat cache.size', reads=[0],
+             comment='The length of the cache.',
+             proof='simp [Stmt.run, Expr.eval, {facts}, hLength, hA.lengthRead, State.set?_eq_update _ (show 26 < {cur}.params.length + {cur}.locals.length by rw [{curlen}]; decide)]'),
+        dict(kind='run', reg=27, value=POS, reads=[26, 25], comment='The position.',
+             scratch=[(36, 'UInt64.ofNat cache.size'), (37, f'if {BS} = 0 then 1 else {BS}')],
+             proof=f'by_cases hb : {BS} = 0 <;> simp [Stmt.run, Expr.eval, {{facts}}, s2, s1, start, State.set?_eq_update, State.update_params_length, State.update_locals_length, State.get_update_ne, U64Op.apply, hb]'),
+        dict(args=[1, 2, 19, 27, ('mul', 21, 22), 25], impl='embedBlock_implements',
+             hfunc='hEmbed', reg=28, x=f'(wte, wpe, token, {POS}, nh * dh, {BS})',
+             need=['embedBlockNeed'], borrowed=[('P', 'wte'), ('P', 'wpe')], ptr='ps0',
+             comment='The block of the new position, holding its embedding.'),
+        dict(kind='loop', impl='layerStep_implements', hfunc='hLayer', state=29, index=32, src=28,
+             init='s0', init_ptr='ps0', count=20,
+             args=[29, 0] + list(range(3, 19)) + [32, 27, 21, 22, 23, 25, ('f', 24)], F=STEP_F,
+             bound=f'layerStepBytes nh dh f ({POS}) ({BS}).toNat',
+             bound_proof='layerStepBytes_le (hSizes k)', need=st_need,
+             borrowed=[('P', 'cache')] + [('P', n) for n in BARR[1:]], ptr='pl',
+             comment='The layers, each writing its key and value into the block.'),
+        dict(args=[0, 29], impl='appendBlock_implements', hfunc='hAppend', reg=34,
+             x='(cache, xl)', need=st_need + ['appendBlockNeed'],
+             borrowed=[('P', 'cache'), ('T', 'pl')], tail=False, ptr='pr',
+             comment='The cache followed by the new block.'),
+    ],
+    finish=['embedBlockNeed', 'hS0', 'appendBlockNeed', 'stepNeed'])
+STT = tuple_type([k for _, k in ST])
+st_pat = ', '.join(n for n, _ in ST)
+st_section = f"""/-- `layerStep`'s result is no longer than its block. -/
+theorem layerStep_size_le (x : {LST}) : (layerStepTuple x).size ≤ x.1.size := by
+  simp [layerStepTuple, LeanExe.Examples.Gpt.layerStep, LeanExe.Examples.Gpt.writeBlock,
+    LeanExe.build, Nat.mod_le]
+
+theorem layerStepBytes_le {{nh dh f p : UInt64}} {{n n' : Nat}} (h : n ≤ n') :
+    layerStepBytes nh dh f p n ≤ layerStepBytes nh dh f p n' := by
+  simp only [layerStepBytes]
+  omega
+
+/-- The input of `step`: the cache, the embeddings, the stacked weights of the blocks, the
+token, and the dimensions. -/
+abbrev StepInput := {STT}
+
+/-- `step` with its twenty-five arguments as one tuple. -/
+def stepTuple : StepInput → Array Float
+  | ({wrap(st_pat, '     ')}) =>
+    LeanExe.Examples.Gpt.step {wrap(' '.join(n for n, _ in ST).replace(' ', ', '), '      ', 80).replace(', ', ' ').replace(',', '')}
+
+/-- The bytes `step` may allocate: the new block, its copy, `layers` calls of `layerStep`,
+and the longer cache. -/
+def stepNeed : StepInput → Nat
+  | (cache, {wrap(', '.join(['_'] * 19), '     ')}, layers, nh, dh, f, _) =>
+    48 + 8 * (({BS}).toNat + 1) + (48 + 8 * (({BS}).toNat + 1)) +
+      layers.toNat * layerStepBytes nh dh f ({POS}) ({BS}).toNat +
+      (48 + 8 * (cache.size + ({BS}).toNat + 1))
+
+""" + composite(st_spec) + '\n'
+
+
 def main():
-    text = """import Project.Gpt.Verify
+    text = """import Project.Gpt.StepVerify
 
 /-! Generated by `uv run tools/gpt_composites.py`; do not edit.  The `Implements`
 theorems of the GPT functions that call other compiled functions and release their
@@ -611,7 +901,7 @@ namespace Project.Gpt
 
 open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
 
-""" + mlp_section + att_section + blk_section + fwd_section + "end Project.Gpt\n"
+""" + mlp_section + att_section + blk_section + fwd_section + ls_section + sc_section + st_section + "end Project.Gpt\n"
     if sys.argv[1:] == ['--check']:
         if TARGET.read_text() != text:
             raise SystemExit(f'{TARGET} is out of date')
