@@ -19989,3 +19989,8 @@ highest score from `scores` and prints it as it goes.  On the example prompt it 
 Face's float64 greedy continuation of the same prompt.  The prompt and the output must
 fit in the model's 1,024 positions; the tests cover 256.
 
+The program stops when it chooses `<|endoftext|>` (id 50256, the configuration's
+`eos_token_id`) and does not print it; `--output-tokens` is the most it generates.
+"Copyright 2017. All rights reserved." stops after 13 tokens and "Thanks for
+reading!" after 3, where Hugging Face's greedy continuations choose the same token.
+
