@@ -20063,3 +20063,63 @@ deviations.  The allocation bound of `topKBuffer`, `(n + 2) · (56 + 8k)` bytes 
 scores, counts every `insertTop` result although the loop releases each buffer it
 replaces, because `Live` credits no release.
 
+
+## 2026-10-01: Plan: the file theorem, trap-tolerant `Implements`, and the generation theorem
+
+A review of the GPT-2 claims found three gaps.  No theorem connects `build/gpt/gpt.wasm`
+to the bytes of `gpt_bytes`, because `Emit.lean` writes the file with compiled code.  The
+memory premise `Room` holds by proof for a call but not across a generation, because each
+call's bound adds its `need` to `top` and nothing proves that freed blocks are reused:
+the sum passes 4 GiB after about 170 greedy positions, or about seven sampled tokens with
+`k = 1024`.  The chaining of `step`, `release`, and `scores` across host calls is informal.
+
+For the memory premise the user chose a trap-tolerant statement (2026-10-01) over a
+runtime check of `Room` in the CLI and over a proof of a bound across calls, which would
+need a fragmentation bound for `step`'s allocation sequence.  `Implements` will state
+that every run either returns the correct result or traps with `unreachable`, with no
+memory premise.  The compiler emits `unreachable` only in the allocator's growth check
+and in a new length check, so the theorem says that a call returns the correct result or
+stops at one of these deliberate aborts.  It no longer says that a call with enough
+memory completes, and a module that always traps would satisfy it; the claim concerns
+completed calls.  Talos's `wp` passes every continuation, traps included, to its
+assertion, and its `block` and `loop` rules forward traps to the outer assertion, so a
+`Triple` whose assertion accepts that trap composes as before.
+
+Without `Room`, a request such as `(n + 1) · 8` can wrap in 64-bit arithmetic and give a
+small block for a large array.  The build template will trap when `n ≥ 2 ^ 29`, since such
+an array cannot fit in 32-bit memory, and `alloc`'s specification will take a request of
+at most `2 ^ 32` bytes and give a trap or a fresh block.  Copies take their length from an
+existing array, which `Heap.Borrowed` bounds.  `Room`, the `*Need` functions, the bounds
+on `top`, pages, and memory caps in `Implements`, and the byte accounting in `Live`
+disappear, and so does the planned work on crediting releases.
+
+- [x] 1. `binary_file%`, an elaborator that reads a file's bytes as a `ByteArray` term, and
+  `gpt_file`: `encode gpt.module` equals the bytes of `build/gpt/gpt.wasm`, checked by the
+  kernel after the file is written.
+- [ ] 2a. `Triple` accepts the `unreachable` trap and `Implements` states the trap-tolerant
+  result, still with `Room`; every proof and `gpt_bytes` checked again; bytes unchanged.
+- [ ] 2b. `alloc`'s trap branch and the length check; the allocation rules without `Room`;
+  every program ported; `Room` and the `*Need` functions deleted.
+- [ ] 3. The generation theorem: an invariant on stores, with the weights borrowed and the
+  cache of the first `p` tokens owned, and theorems for the empty cache, for `step`
+  followed by the release of the old cache, and for `scores`, which gives `forward`'s row.
+
+## 2026-10-01: The file theorem
+
+`Project/Pipeline/FileBytes.lean` defines `binary_file% "path"`, which reads a file
+relative to the source file's directory, as Lean's `include_str` does, and elaborates to
+`ByteArray.mk` of the bytes as a list literal.  `Project/Gpt/File.lean` proves `gpt_file`:
+`encode gpt.module = .ok (binary_file% "../../build/gpt/gpt.wasm")`.  It is checked with
+`lake env lean Project/Gpt/File.lean` after `Emit.lean` writes the file, and `lake build`
+does not build it, since the build does not depend on the emitted file.
+
+Comparing the two `ByteArray` values with `decide +kernel` did not finish in 30 minutes
+for `gpt.wasm` or in 10 minutes for the 1,698 bytes of `prng.wasm`.  The kernel represents
+an array by a list, so `ByteArray`'s equality, which reads elements by index, costs time
+quadratic in the length.  Comparing `data.toList` took 3.8 seconds for `prng.wasm`, with
+the imports, and 9 seconds for `gpt.wasm`.  `encode_eq_of_toList` turns the list equality
+into the `ByteArray` equality for an arbitrary module and file, because `simp` and `whnf`
+on the 13,837-element literal exceeded the heartbeat limit.  The literal's nested list
+cells need `maxRecDepth 100000`.  `gpt_file` depends only on `propext`,
+`Classical.choice`, and `Quot.sound`, and a copy of the file with one bit changed fails
+the check.
