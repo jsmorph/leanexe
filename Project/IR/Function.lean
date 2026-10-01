@@ -65,7 +65,7 @@ def compile (funcs : List (Func × String)) : Module :=
     exports := [{ name := "alloc", funcIdx := 0 }, { name := "retain", funcIdx := 1 },
       { name := "release", funcIdx := 2 }] ++
       funcs.mapIdx fun i entry => { name := entry.2, funcIdx := 3 + i }
-    memory := some { pagesMin := 16 }
+    memory := some { pagesMin := 16, pagesMax := some 65535 }
     globals := runtimeGlobals
     types
     gcTypes := types.map fun type => { comp := .func type }

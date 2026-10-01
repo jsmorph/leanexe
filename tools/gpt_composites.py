@@ -161,9 +161,9 @@ def composite(spec):
     if spec.get('heartbeats'):
         lines.append('set_option maxHeartbeats 1000000 in')
     lines.append(f"theorem {name}_implements : Implements gpt.module {spec['entry']} "
-                 f"{spec['tuple']} {spec['need']} := by")
+                 f"{spec['tuple']} := by")
     lines.append(f"  refine Func.implements_heap gpt.funcs {spec['index']} gpt.{name}.ir \"{name}\" rfl")
-    lines.append(f"    {spec['tuple']} {spec['need']}")
+    lines.append(f"    {spec['tuple']}")
     # The arguments are taken apart one array at a time with `Represent.borrowed_float_pair`
     # and `Represent.borrowed_uint_pair`; `rintro` patterns on the undestructured tuple
     # grow with about the fourth power of the number of arrays.
@@ -175,14 +175,11 @@ def composite(spec):
             lines.append(f'      obtain ⟨_, _, rfl, -, h⟩ := {lemma[k]} h')
     lines.append('      obtain rfl := h')
     lines.append('      rfl) ?_')
-    lines.append(f'  rintro ⟨{wrap(", ".join(names), "    ")}⟩ heap initial _ hHeap hArgs hRoom')
+    lines.append(f'  rintro ⟨{wrap(", ".join(names), "    ")}⟩ heap initial _ hHeap hArgs hCap')
     for n, k in params:
         if k in 'AU':
             lines.append(f'  obtain ⟨{ptr(n)}, _, rfl, {hyp(n)}, hArgs⟩ := {lemma[k]} hArgs')
     lines.append('  obtain rfl := hArgs')
-    lines.append(f"  change heap.Room initial gpt.module ({spec['room']}) at hRoom")
-    if spec.get('room_unfold'):
-        lines.append(f"  simp only [{', '.join(spec['room_unfold'])}] at hRoom")
     lines.append('  have hImports : gpt.module.imports = [] := rfl')
     lines.append('  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl')
     if loops:
@@ -267,13 +264,11 @@ def composite(spec):
             p = c['ptr']
             lines.append(f"  refine Live.arrayLoop {c['impl']} rfl {c['hfunc']} rfl hMemory32 hImports hAlloc")
             lines.append(f"    hRelease (by decide) (by decide) (by decide) (by decide) (by rw [{cur['len']}]; decide)")
-            lines.append(f"    {live} hRoom ({fact(c['src'])})")
+            lines.append(f"    {live} hCap ({fact(c['src'])})")
             lines.append(f"    ({live}.tempsOwned _ ({mem(temps.index(c['init_ptr']))})).borrowed (init := {c['init']})")
             lines.append(f"    (fun _ st hF => ⟨_, Expr.eval_get ((hF.get {c['count']} (by decide) (by decide)).trans")
             lines.append(f"      ({fact(c['count'])}))⟩)")
             lines.append(f"    (fun l x => {wrap(c['F'], '      ')})")
-            lines.append(f"    (bound := {c['bound']}) (fun k _ => {c['bound_proof']})")
-            lines.append(f"    (by simp only [{', '.join(c['need'])}]; omega)")
             def inner(r):
                 if r == c['state']:
                     return 'hSt'
@@ -294,7 +289,7 @@ def composite(spec):
                     cvals.append(regvals[a])
                 else:
                     cvals.append(vals[a])
-            lines.append(f"    (fun k p _ _ _ st _ hF hI hSt hL =>")
+            lines.append(f"    (fun k p _ _ st _ hF hI hSt hL =>")
             lines.append(f"      ⟨[{wrap(', '.join(cvals), '        ')}], st,")
             body = eval_lines(c['args'], inner, '        ')
             body[-1] += ','
@@ -313,9 +308,8 @@ def composite(spec):
             steps.append((c['state'], p))
             continue
         reg = c.get('reg', nparams + n)
-        lines.append(f"  refine Live.call_seq {c['impl']} rfl {c['hfunc']} rfl {live} hRoom")
-        lines.append(f"    (x := {c['x']})")
-        lines.append(f"    (by simp only [{', '.join(c['need'])}]; omega) (afterArgs := {cur['name']})")
+        lines.append(f"  refine Live.call_seq {c['impl']} rfl {c['hfunc']} rfl {live} hCap")
+        lines.append(f"    (x := {c['x']}) (afterArgs := {cur['name']})")
         cvals = []
         for a in c['args']:
             if isinstance(a, tuple) and a[0] in ('mul', 'add'):
@@ -393,11 +387,9 @@ def composite(spec):
     lines.append(f"      Represent.borrowed heap' store' [{wrap(', '.join(vals), '        ')}]")
     lines.append(f"        {wrap(tup, '        ')} := fun heap' store' hKeep =>")
     lines.append(f"    {wrap(represent(items, True), '      ')}")
-    lines.append("  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=")
-    lines.append(f"    {live}.finish (need := {spec['need']} {wrap(tup, '      ')})")
-    lines.append(f"      (by simp only [{wrap(', '.join(spec['finish']), '          ')}]")
-    lines.append('          omega) hParams')
-    lines.append(f"  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 {calls[-1]['ptr']}], {sR},")
+    lines.append("  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=")
+    lines.append(f"    {live}.finish hParams")
+    lines.append(f"  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 {calls[-1]['ptr']}], {sR},")
     scratch = 'Func.scratch, ' if width == 0 else ''
     lines.append(f'    by simp [gpt.{name}.ir, {scratch}Expr.evalResults, Expr.eval, {sR},')
     lines.append(f"      State.get_update_same, {last['len']}], hOwned, hOutB, hOutO⟩")
@@ -426,31 +418,21 @@ def tuple_def(name, fn, params, doc):
 MLP = [('x', 'A'), ('wfc', 'A'), ('bfc', 'A'), ('wproj', 'A'), ('bproj', 'A'), ('l', 'u'), ('t', 'u'),
        ('d', 'u'), ('f', 'u')]
 mlp_spec = dict(
-    name='mlp', entry=14, index=11, tuple='mlpTuple', need='mlpNeed', params=MLP, nlocals=4,
-    room='mlpNeed (x, wfc, bfc, wproj, bproj, l, t, d, f)', room_unfold=['mlpNeed'],
+    name='mlp', entry=14, index=11, tuple='mlpTuple', params=MLP, nlocals=4,
     funcs=[('hLinear', 30, 27, 'linear'), ('hGelu', 13, 10, 'geluArray')],
     lets=[('h', 'linearTuple (x, wfc, bfc, l, t, d, f)'), ('g', 'LeanExe.Examples.Gpt.geluArray h')],
-    haves=['  have hSize : h.size = (t * f).toNat := linear_size x wfc bfc l t d f'],
     calls=[
         dict(args=[0, 1, 2, 5, 6, 7, 8], impl='linear_implements', hfunc='hLinear',
-             x='(x, wfc, bfc, l, t, d, f)', need=['linearNeed'],
+             x='(x, wfc, bfc, l, t, d, f)',
              borrowed=[('P', 'x'), ('P', 'wfc'), ('P', 'bfc')], ptr='ph', comment='`h = x · wfc + bfc`.'),
-        dict(args=[9], impl='geluArray_implements', hfunc='hGelu', x='h',
-             need=['linearNeed', 'geluNeed', 'hSize'], borrowed=[('T', 'ph')], tail=False, ptr='pg',
+        dict(args=[9], impl='geluArray_implements', hfunc='hGelu', x='h', borrowed=[('T', 'ph')], tail=False, ptr='pg',
              comment='`g = gelu h`.'),
         dict(args=[10, 3, 4, 5, 6, 8, 7], impl='linear_implements', hfunc='hLinear',
-             x='(g, wproj, bproj, l, t, f, d)', need=['linearNeed', 'geluNeed', 'hSize'],
+             x='(g, wproj, bproj, l, t, f, d)',
              borrowed=[('T', 'pg'), ('P', 'wproj'), ('P', 'bproj')], ptr='pr',
              comment='The result, `g · wproj + bproj`.'),
-    ],
-    finish=['linearNeed', 'geluNeed', 'mlpNeed', 'hSize'])
+    ])
 mlp_section = tuple_def('mlpTuple', 'mlp', MLP, '`mlp` with its nine arguments as one tuple.') + f'''
-/-- The bytes `mlp` may allocate: two `t × f` arrays and the `t × d` result. -/
-def mlpNeed (x : {tuple_type([k for _, k in MLP])}) : Nat :=
-  48 + 8 * (({proj(9, 6)} * {proj(9, 8)}).toNat + 1) +
-    (48 + 8 * (({proj(9, 6)} * {proj(9, 8)}).toNat + 1)) +
-    (48 + 8 * (({proj(9, 6)} * {proj(9, 7)}).toNat + 1))
-
 ''' + composite(mlp_spec) + '\n'
 
 # ------------------------------------------------------------------ attention
@@ -459,13 +441,11 @@ ATT = [(n, 'A') for n in ['x', 'wq', 'bq', 'wk', 'bk', 'wv', 'bv', 'wo', 'bo']] 
 lin_calls = []
 for idx, (w, b, ptrname, reg) in enumerate([('wq', 'bq', 'pq', 1), ('wk', 'bk', 'pk', 3), ('wv', 'bv', 'pv', 5)]):
     lin_calls.append(dict(args=[0, reg, reg + 1, 9, 10, ('mul', 11, 12), ('mul', 11, 12)],
-                          impl='linear_implements', hfunc='hLinear', x=f'(x, {w}, {b}, l, t, nh * dh, nh * dh)',
-                          need=['linearNeed'], borrowed=[('P', 'x'), ('P', w), ('P', b)], ptr=ptrname,
+                          impl='linear_implements', hfunc='hLinear', x=f'(x, {w}, {b}, l, t, nh * dh, nh * dh)', borrowed=[('P', 'x'), ('P', w), ('P', b)], ptr=ptrname,
                           comment=f'`{ptrname[1]} = x · {w} + {b}`.'))
-att_need = ['linearNeed', 'maskedNeed', 'softmaxRowsNeed', 'causalMatMulNeed']
 att_spec = dict(
-    name='attention', entry=24, index=21, tuple='attentionTuple', need='attentionNeed', params=ATT,
-    nlocals=8, one=True, room='attentionBytes t nh dh', room_unfold=['attentionBytes'],
+    name='attention', entry=24, index=21, tuple='attentionTuple', params=ATT,
+    nlocals=8, one=True,
     funcs=[('hLinear', 30, 27, 'linear'), ('hMasked', 19, 16, 'maskedScores'),
            ('hSoftmax', 23, 20, 'softmaxRows'), ('hCausal', 26, 23, 'causalMatMul')],
     lets=[('q', 'linearTuple (x, wq, bq, l, t, nh * dh, nh * dh)'),
@@ -476,49 +456,29 @@ att_spec = dict(
           ('o', 'causalMatMulTuple (p, v, t, nh, dh)')], scaleval='.f64 (1.0 / dh.toFloat.sqrt).toBits',
     calls=lin_calls + [
         dict(args=[13, 14, 10, 11, 12, ('scale', 12)], impl='maskedScores_implements',
-             hfunc='hMasked', x='(q, k, t, nh, dh, 1.0 / dh.toFloat.sqrt)', need=['linearNeed', 'maskedNeed'],
+             hfunc='hMasked', x='(q, k, t, nh, dh, 1.0 / dh.toFloat.sqrt)',
              borrowed=[('T', 'pq'), ('T', 'pk')], ptr='ps',
              simp_extra=['F64Op.apply', 'F64UnOp.apply', 'F64Bits.toBits_div', 'F64Bits.toBits_sqrt',
                          'F64Convert.toBits_toFloat', 'hOne'],
              comment='The masked scores of `q` and `k`, head by head.'),
         dict(args=[16, 10, 11], impl='softmaxRows_implements', hfunc='hSoftmax',
-             x='(s, t, nh)', need=['linearNeed', 'maskedNeed', 'softmaxRowsNeed'],
+             x='(s, t, nh)',
              borrowed=[('T', 'ps')], ptr='pp', comment='The softmax of each of the `t · nh` rows of scores.'),
         dict(args=[17, 15, 10, 11, 12], impl='causalMatMul_implements', hfunc='hCausal',
-             x='(p, v, t, nh, dh)', need=att_need, borrowed=[('T', 'pp'), ('T', 'pv')], ptr='po',
+             x='(p, v, t, nh, dh)', borrowed=[('T', 'pp'), ('T', 'pv')], ptr='po',
              comment='`o = p · v`, row `i` summing over rows `0` to `i` of `v`.'),
         dict(args=[18, 7, 8, 9, 10, ('mul', 11, 12), ('mul', 11, 12)], impl='linear_implements',
-             hfunc='hLinear', x='(o, wo, bo, l, t, nh * dh, nh * dh)', need=att_need,
+             hfunc='hLinear', x='(o, wo, bo, l, t, nh * dh, nh * dh)',
              borrowed=[('T', 'po'), ('P', 'wo'), ('P', 'bo')], ptr='pr', comment='The result, `o · wo + bo`.'),
-    ],
-    finish=att_need + ['attentionNeed', 'attentionBytes'])
+    ])
 att_section = tuple_def('attentionTuple', 'attention', ATT, '`attention` with its thirteen arguments as one tuple.') + '''
-/-- The bytes `attention` may allocate for `t` rows and `nh` heads of width `dh`: `q`, `k`,
-and `v`, the scores, the softmax with its two temporaries, the weighted values, and the
-result. -/
-def attentionBytes (t nh dh : UInt64) : Nat :=
-  48 + 8 * ((t * (nh * dh)).toNat + 1) + (48 + 8 * ((t * (nh * dh)).toNat + 1)) +
-    (48 + 8 * ((t * (nh * dh)).toNat + 1)) + (48 + 8 * ((t * nh * t).toNat + 1)) +
-    (48 + 8 * ((t * nh).toNat + 1) + (48 + 8 * ((t * nh).toNat + 1)) +
-      (48 + 8 * ((t * nh * t).toNat + 1))) +
-    (48 + 8 * ((t * (nh * dh)).toNat + 1)) + (48 + 8 * ((t * (nh * dh)).toNat + 1))
-
-/-- The bytes `attention` may allocate. -/
-def attentionNeed (x : ''' + tuple_type([k for _, k in ATT]) + f''') : Nat :=
-  attentionBytes {proj(13, 10)} {proj(13, 11)} {proj(13, 12)}
-
 ''' + composite(att_spec) + '\n'
 
 # ------------------------------------------------------------------ block
 BARR = ['x', 'g1', 'b1', 'wq', 'bq', 'wk', 'bk', 'wv', 'bv', 'wo', 'bo', 'g2', 'b2', 'wfc', 'bfc', 'wproj', 'bproj']
 BLK = [(n, 'A') for n in BARR] + [('l', 'u'), ('t', 'u'), ('nh', 'u'), ('dh', 'u'), ('f', 'u'), ('eps', 'f')]
-blk_need1 = ['layerNormRowsNeed']
-blk_need2 = blk_need1 + ['attentionNeed', 'attentionBytes']
-blk_need3 = blk_need2 + ['addNeed']
-blk_need5 = blk_need3 + ['mlpNeed']
 blk_spec = dict(
-    name='block', entry=25, index=22, tuple='blockTuple', need='blockNeed', params=BLK, nlocals=7,
-    room='blockBytes t nh dh f x.size', room_unfold=['blockBytes', 'attentionBytes'],
+    name='block', entry=25, index=22, tuple='blockTuple', params=BLK, nlocals=7,
     funcs=[('hNorm', 18, 15, 'layerNormRows'), ('hAttention', 24, 21, 'attention'), ('hAdd', 10, 7, 'add'),
            ('hMlp', 14, 11, 'mlp')],
     lets=[('h1', 'layerNormRowsTuple (x, g1, b1, l, t, nh * dh, eps)'),
@@ -526,46 +486,29 @@ blk_spec = dict(
           ('r', 'addTuple (x, a)'),
           ('h2', 'layerNormRowsTuple (r, g2, b2, l, t, nh * dh, eps)'),
           ('m', 'mlpTuple (h2, wfc, bfc, wproj, bproj, l, t, nh * dh, f)')],
-    haves=['  have hR : r.size ≤ x.size := add_size_le x a'],
     calls=[
         dict(args=[0, 1, 2, 17, 18, ('mul', 19, 20), ('f', 22)], impl='layerNormRows_implements',
-             hfunc='hNorm', x='(x, g1, b1, l, t, nh * dh, eps)', need=blk_need1,
+             hfunc='hNorm', x='(x, g1, b1, l, t, nh * dh, eps)',
              borrowed=[('P', 'x'), ('P', 'g1'), ('P', 'b1')], ptr='ph1', comment='The first layer norm.'),
         dict(args=[23, 3, 4, 5, 6, 7, 8, 9, 10, 17, 18, 19, 20], impl='attention_implements',
-             hfunc='hAttention', x='(h1, wq, bq, wk, bk, wv, bv, wo, bo, l, t, nh, dh)', need=blk_need2,
+             hfunc='hAttention', x='(h1, wq, bq, wk, bk, wv, bv, wo, bo, l, t, nh, dh)',
              borrowed=[('T', 'ph1')] + [('P', n) for n in ['wq', 'bq', 'wk', 'bk', 'wv', 'bv', 'wo', 'bo']],
              ptr='pa', comment='Attention.'),
-        dict(args=[0, 24], impl='add_implements', hfunc='hAdd', x='(x, a)', need=blk_need3,
+        dict(args=[0, 24], impl='add_implements', hfunc='hAdd', x='(x, a)',
              borrowed=[('P', 'x'), ('T', 'pa')], tail=False, ptr='pr',
              comment='The first residual sum, `r = x + a`.'),
         dict(args=[25, 11, 12, 17, 18, ('mul', 19, 20), ('f', 22)], impl='layerNormRows_implements',
-             hfunc='hNorm', x='(r, g2, b2, l, t, nh * dh, eps)', need=blk_need3,
+             hfunc='hNorm', x='(r, g2, b2, l, t, nh * dh, eps)',
              borrowed=[('T', 'pr'), ('P', 'g2'), ('P', 'b2')], ptr='ph2', comment='The second layer norm.'),
         dict(args=[26, 13, 14, 15, 16, 17, 18, ('mul', 19, 20), 21], impl='mlp_implements', hfunc='hMlp',
-             x='(h2, wfc, bfc, wproj, bproj, l, t, nh * dh, f)', need=blk_need5,
+             x='(h2, wfc, bfc, wproj, bproj, l, t, nh * dh, f)',
              borrowed=[('T', 'ph2'), ('P', 'wfc'), ('P', 'bfc'), ('P', 'wproj'), ('P', 'bproj')], ptr='pm',
              comment='The MLP.'),
-        dict(args=[25, 27], impl='add_implements', hfunc='hAdd', x='(r, m)', need=blk_need5,
+        dict(args=[25, 27], impl='add_implements', hfunc='hAdd', x='(r, m)',
              borrowed=[('T', 'pr'), ('T', 'pm')], tail=False, ptr='pres', comment='The result, `r + m`.'),
-    ],
-    finish=blk_need5 + ['blockNeed', 'blockBytes'])
+    ])
 BT = tuple_type([k for _, k in BLK])
 blk_section = tuple_def('blockTuple', 'block', BLK, '`block` with its twenty-three arguments as one tuple.') + f'''
-/-- The bytes `block` may allocate for `t` rows, `nh` heads of width `dh`, hidden width `f`,
-and an input of `n` elements: two layer norms, attention, two sums, and the MLP. -/
-def blockBytes (t nh dh f : UInt64) (n : Nat) : Nat :=
-  48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * (nh * dh)).toNat + 1)) +
-    attentionBytes t nh dh + (48 + 8 * (n + 1)) +
-    (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * (nh * dh)).toNat + 1))) +
-    (48 + 8 * ((t * f).toNat + 1) + (48 + 8 * ((t * f).toNat + 1)) +
-      (48 + 8 * ((t * (nh * dh)).toNat + 1))) +
-    (48 + 8 * (n + 1))
-
-/-- The bytes `block` may allocate. -/
-def blockNeed (x : {BT}) : Nat :=
-  blockBytes {proj(23, 18)} {proj(23, 19)}
-    {proj(23, 20)} {proj(23, 21)} x.1.size
-
 ''' + composite(blk_spec) + '\n'
 
 # ------------------------------------------------------------------ forward
@@ -575,56 +518,33 @@ FWD = ([('tokens', 'U'), ('wte', 'A'), ('wpe', 'A')] + [(n, 'A') for n in LAYER]
         ('vocab', 'u'), ('eps', 'f')])
 FWD_NAMES = [n for n, _ in FWD]
 LAYER_F = '(x, ' + ', '.join(LAYER) + ', l, t, nh, dh, f, eps)'
-fwd_need = ['embedNeed', 'hX0']
 fwd_spec = dict(
-    name='forward', entry=29, index=26, tuple='forwardTuple', need='forwardNeed', params=FWD,
+    name='forward', entry=29, index=26, tuple='forwardTuple', params=FWD,
     nlocals=9, width=1, result=36,
-    room='forwardNeed (' + ', '.join(FWD_NAMES) + ')', room_unfold=['forwardNeed'],
     funcs=[('hEmbed', 27, 24, 'embed'), ('hBlock', 25, 22, 'block'),
            ('hNorm', 18, 15, 'layerNormRows'), ('hScores', 28, 25, 'matMulT')],
     lets=[('x0', 'embedTuple (tokens, wte, wpe, t, nh * dh)'),
           ('xl', f'LeanExe.loop layers x0 fun l x => blockTuple {LAYER_F}'),
           ('h', 'layerNormRowsTuple (xl, gf, bf, 0, t, nh * dh, eps)')],
-    haves=['  have hX0 : x0.size = (t * (nh * dh)).toNat := by',
-           '    simp [x0, embedTuple, LeanExe.Examples.Gpt.embed, LeanExe.build]',
-           '  have hSizes : ∀ k,',
-           f'      (loopPrefix (fun l x => blockTuple {wrap(LAYER_F, "        ")}) x0 k).size ≤',
-           '      (t * (nh * dh)).toNat := fun k =>',
-           f'    Nat.le_trans (loopPrefix_size_le (fun l x => block_size_le {wrap(LAYER_F, "      ")}) k)',
-           '      hX0.le'],
     calls=[
         dict(args=[0, 1, 2, 22, ('mul', 23, 24)], impl='embed_implements', hfunc='hEmbed', reg=28,
-             x='(tokens, wte, wpe, t, nh * dh)', need=['embedNeed'],
+             x='(tokens, wte, wpe, t, nh * dh)',
              borrowed=[('P', 'tokens'), ('P', 'wte'), ('P', 'wpe')], ptr='px0', comment='The embeddings.'),
         dict(kind='loop', impl='block_implements', hfunc='hBlock', state=29, index=32, src=28,
              init='x0', init_ptr='px0', count=21,
              args=[29] + list(range(3, 19)) + [32, 22, 23, 24, 25, ('f', 27)], F=LAYER_F,
-             bound='blockBytes t nh dh f (t * (nh * dh)).toNat',
-             bound_proof='blockBytes_le (hSizes k)', need=fwd_need,
              borrowed=[('P', n) for n in LAYER], ptr='pl', comment='The blocks, one per layer.'),
         dict(args=[29, 19, 20, ('const', 0), 22, ('mul', 23, 24), ('f', 27)],
-             impl='layerNormRows_implements', hfunc='hNorm', reg=34, x='(xl, gf, bf, 0, t, nh * dh, eps)',
-             need=fwd_need + ['layerNormRowsNeed'], borrowed=[('T', 'pl'), ('P', 'gf'), ('P', 'bf')],
+             impl='layerNormRows_implements', hfunc='hNorm', reg=34, x='(xl, gf, bf, 0, t, nh * dh, eps)', borrowed=[('T', 'pl'), ('P', 'gf'), ('P', 'bf')],
              ptr='ph', comment='The final layer norm.'),
         dict(args=[34, 1, 22, ('mul', 23, 24), 26], impl='matMulT_implements', hfunc='hScores', reg=35,
-             x='(h, wte, t, nh * dh, vocab)', need=fwd_need + ['layerNormRowsNeed', 'matMulTNeed'],
+             x='(h, wte, t, nh * dh, vocab)',
              borrowed=[('T', 'ph'), ('P', 'wte')], ptr='pr',
              comment='The scores against every token embedding.'),
-    ],
-    finish=['embedNeed', 'layerNormRowsNeed', 'matMulTNeed', 'forwardNeed', 'hX0'])
+    ])
 FT = tuple_type([k for _, k in FWD])
 pat = ', '.join(FWD_NAMES)
-fwd_section = f"""/-- A block's result is no longer than its input. -/
-theorem block_size_le (x : {BT}) : (blockTuple x).size ≤ x.1.size := by
-  simp [blockTuple, LeanExe.Examples.Gpt.block, LeanExe.Examples.Gpt.add, LeanExe.build,
-    Nat.mod_le]
-
-theorem blockBytes_le {{t nh dh f : UInt64}} {{n n' : Nat}} (h : n ≤ n') :
-    blockBytes t nh dh f n ≤ blockBytes t nh dh f n' := by
-  simp only [blockBytes]
-  omega
-
-/-- The input of `forward`: the tokens, the embeddings, the stacked weights of the blocks,
+fwd_section = f"""/-- The input of `forward`: the tokens, the embeddings, the stacked weights of the blocks,
 the final layer norm, and the dimensions. -/
 abbrev ForwardInput := {FT}
 
@@ -632,15 +552,6 @@ abbrev ForwardInput := {FT}
 def forwardTuple : ForwardInput → Array Float
   | ({wrap(pat, '     ')}) =>
     LeanExe.Examples.Gpt.forward {wrap(' '.join(FWD_NAMES).replace(' ', ', '), '      ', 80).replace(', ', ' ').replace(',', '')}
-
-/-- The bytes `forward` may allocate: the embeddings, their copy, `layers` calls of
-`block`, the final layer norm, and the scores. -/
-def forwardNeed : ForwardInput → Nat
-  | ({wrap(', '.join(['_'] * 21), '     ')}, layers, t, nh, dh, f, vocab, _) =>
-    48 + 8 * ((t * (nh * dh)).toNat + 1) + (48 + 8 * ((t * (nh * dh)).toNat + 1)) +
-      layers.toNat * blockBytes t nh dh f (t * (nh * dh)).toNat +
-      (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * (nh * dh)).toNat + 1))) +
-      (48 + 8 * ((t * vocab).toNat + 1))
 
 """ + composite(fwd_spec) + '\n'
 
@@ -651,15 +562,9 @@ LS = [(n, 'A') for n in LSA] + [('l', 'u'), ('p', 'u'), ('nh', 'u'), ('dh', 'u')
                                 ('bsize', 'u'), ('eps', 'f')]
 LD = ('mul', 20, 21)
 ONE = ('const', 1)
-ls_need1 = ['firstRowNeed', 'layerNormRowsNeed']
-ls_need2 = ls_need1 + ['linearNeed']
-ls_need3 = ls_need2 + ['stepScoresNeed', 'stepSoftmaxNeed', 'stepMixNeed']
-ls_need4 = ls_need3 + ['addNeed', 'hX']
-ls_need5 = ls_need4 + ['mlpNeed']
 ls_spec = dict(
-    name='layerStep', entry=41, index=38, tuple='layerStepTuple', need='layerStepNeed', params=LS,
-    nlocals=15, one=True, room='layerStepBytes nh dh f p s.size',
-    room_unfold=['layerStepBytes'],
+    name='layerStep', entry=41, index=38, tuple='layerStepTuple', params=LS,
+    nlocals=15, one=True,
     funcs=[('hFirst', 32, 29, 'firstRow'), ('hNorm', 18, 15, 'layerNormRows'),
            ('hLinear', 30, 27, 'linear'), ('hScores', 33, 30, 'stepScores'),
            ('hSoftmax', 36, 33, 'stepSoftmax'), ('hMix', 37, 34, 'stepMix'), ('hAdd', 10, 7, 'add'),
@@ -677,87 +582,61 @@ ls_spec = dict(
           ('h2', 'layerNormRowsTuple (r, g2, b2, l, 1, nh * dh, eps)'),
           ('m', 'mlpTuple (h2, wfc, bfc, wproj, bproj, l, 1, nh * dh, f)'),
           ('y', 'addTuple (r, m)')],
-    haves=['  have hX : x.size = (nh * dh).toNat := by',
-           '    simp [x, firstRowTuple, LeanExe.Examples.Gpt.firstRow, LeanExe.build]',
-           '  have hR : r.size ≤ x.size := add_size_le x a'],
     scaleval='.f64 (1.0 / dh.toFloat.sqrt).toBits',
     calls=[
-        dict(args=[0, LD], impl='firstRow_implements', hfunc='hFirst', x='(s, nh * dh)',
-             need=['firstRowNeed'], borrowed=[('P', 's')], ptr='px', comment='The hidden row.'),
+        dict(args=[0, LD], impl='firstRow_implements', hfunc='hFirst', x='(s, nh * dh)', borrowed=[('P', 's')], ptr='px', comment='The hidden row.'),
         dict(args=[25, 2, 3, 18, ONE, LD, ('f', 24)], impl='layerNormRows_implements',
-             hfunc='hNorm', x='(x, g1, b1, l, 1, nh * dh, eps)', need=ls_need1,
+             hfunc='hNorm', x='(x, g1, b1, l, 1, nh * dh, eps)',
              borrowed=[('T', 'px'), ('P', 'g1'), ('P', 'b1')], ptr='ph1',
              comment='The first layer norm.'),
         dict(args=[26, 4, 5, 18, ONE, LD, LD], impl='linear_implements', hfunc='hLinear',
-             x='(h1, wq, bq, l, 1, nh * dh, nh * dh)', need=ls_need2,
+             x='(h1, wq, bq, l, 1, nh * dh, nh * dh)',
              borrowed=[('T', 'ph1'), ('P', 'wq'), ('P', 'bq')], ptr='pq', comment='The query.'),
         dict(args=[26, 6, 7, 18, ONE, LD, LD], impl='linear_implements', hfunc='hLinear',
-             x='(h1, wk, bk, l, 1, nh * dh, nh * dh)', need=ls_need2,
+             x='(h1, wk, bk, l, 1, nh * dh, nh * dh)',
              borrowed=[('T', 'ph1'), ('P', 'wk'), ('P', 'bk')], ptr='pk', comment='The key.'),
         dict(args=[26, 8, 9, 18, ONE, LD, LD], impl='linear_implements', hfunc='hLinear',
-             x='(h1, wv, bv, l, 1, nh * dh, nh * dh)', need=ls_need2,
+             x='(h1, wv, bv, l, 1, nh * dh, nh * dh)',
              borrowed=[('T', 'ph1'), ('P', 'wv'), ('P', 'bv')], ptr='pv', comment='The value.'),
         dict(args=[27, 28, 1, 18, 19, 20, 21, 23, ('scale', 21)], impl='stepScores_implements',
-             hfunc='hScores', x='(q, k, cache, l, p, nh, dh, bsize, 1.0 / dh.toFloat.sqrt)',
-             need=ls_need2 + ['stepScoresNeed'], borrowed=[('T', 'pq'), ('T', 'pk'), ('P', 'cache')], ptr='psc',
+             hfunc='hScores', x='(q, k, cache, l, p, nh, dh, bsize, 1.0 / dh.toFloat.sqrt)', borrowed=[('T', 'pq'), ('T', 'pk'), ('P', 'cache')], ptr='psc',
              simp_extra=['F64Op.apply', 'F64UnOp.apply', 'F64Bits.toBits_div', 'F64Bits.toBits_sqrt',
                          'F64Convert.toBits_toFloat', 'hOne'],
              comment='The scores against the cached keys and this key.'),
         dict(args=[30, 20, ('add', 19, ONE)], impl='stepSoftmax_implements', hfunc='hSoftmax',
-             x='(sc, nh, p + 1)', need=ls_need2 + ['stepScoresNeed', 'stepSoftmaxNeed'],
+             x='(sc, nh, p + 1)',
              borrowed=[('T', 'psc')], ptr='ppw',
              comment='The softmax of each head.'),
         dict(args=[31, 29, 1, 18, 19, 20, 21, 23], impl='stepMix_implements', hfunc='hMix',
-             x='(pw, v, cache, l, p, nh, dh, bsize)', need=ls_need3,
+             x='(pw, v, cache, l, p, nh, dh, bsize)',
              borrowed=[('T', 'ppw'), ('T', 'pv'), ('P', 'cache')], ptr='po',
              comment='The weighted sum of the cached values and this value.'),
         dict(args=[32, 10, 11, 18, ONE, LD, LD], impl='linear_implements', hfunc='hLinear',
-             x='(o, wo, bo, l, 1, nh * dh, nh * dh)', need=ls_need3,
+             x='(o, wo, bo, l, 1, nh * dh, nh * dh)',
              borrowed=[('T', 'po'), ('P', 'wo'), ('P', 'bo')], ptr='pa',
              comment='The attention output.'),
-        dict(args=[25, 33], impl='add_implements', hfunc='hAdd', x='(x, a)', need=ls_need4,
+        dict(args=[25, 33], impl='add_implements', hfunc='hAdd', x='(x, a)',
              borrowed=[('T', 'px'), ('T', 'pa')], tail=False, ptr='pr',
              comment='The first residual sum.'),
         dict(args=[34, 12, 13, 18, ONE, LD, ('f', 24)], impl='layerNormRows_implements',
-             hfunc='hNorm', x='(r, g2, b2, l, 1, nh * dh, eps)', need=ls_need4,
+             hfunc='hNorm', x='(r, g2, b2, l, 1, nh * dh, eps)',
              borrowed=[('T', 'pr'), ('P', 'g2'), ('P', 'b2')], ptr='ph2',
              comment='The second layer norm.'),
         dict(args=[35, 14, 15, 16, 17, 18, ONE, LD, 22], impl='mlp_implements', hfunc='hMlp',
-             x='(h2, wfc, bfc, wproj, bproj, l, 1, nh * dh, f)', need=ls_need4 + ['mlpNeed'],
+             x='(h2, wfc, bfc, wproj, bproj, l, 1, nh * dh, f)',
              borrowed=[('T', 'ph2'), ('P', 'wfc'), ('P', 'bfc'), ('P', 'wproj'), ('P', 'bproj')],
              ptr='pm', comment='The MLP.'),
-        dict(args=[34, 36], impl='add_implements', hfunc='hAdd', x='(r, m)', need=ls_need5,
+        dict(args=[34, 36], impl='add_implements', hfunc='hAdd', x='(r, m)',
              borrowed=[('T', 'pr'), ('T', 'pm')], tail=False, ptr='py',
              comment='The second residual sum, the new hidden row.'),
         dict(args=[0, 37, 28, 29, 18, LD], impl='writeBlock_implements', hfunc='hWrite',
-             x='(s, y, k, v, l, nh * dh)', need=ls_need5 + ['writeBlockNeed'],
+             x='(s, y, k, v, l, nh * dh)',
              borrowed=[('P', 's'), ('T', 'py'), ('T', 'pk'), ('T', 'pv')], ptr='pres',
              comment='The block with the new row, key, and value.'),
-    ],
-    finish=ls_need5 + ['writeBlockNeed', 'layerStepNeed', 'layerStepBytes'])
+    ])
 LST = tuple_type([k for _, k in LS])
 ls_section = tuple_def('layerStepTuple', 'layerStep', LS,
                        '`layerStep` with its twenty-five arguments as one tuple.') + f"""
-/-- The bytes `layerStep` may allocate for position `p` and a block of `n` elements. -/
-def layerStepBytes (nh dh f p : UInt64) (n : Nat) : Nat :=
-  48 + 8 * ((nh * dh).toNat + 1) +
-    (48 + 8 * ((1 : UInt64).toNat + 1) + (48 + 8 * ((1 : UInt64).toNat + 1)) +
-      (48 + 8 * ((1 * (nh * dh)).toNat + 1))) +
-    3 * (48 + 8 * ((1 * (nh * dh)).toNat + 1)) + (48 + 8 * ((nh * (p + 1)).toNat + 1)) +
-    (48 + 8 * (nh.toNat + 1) + (48 + 8 * (nh.toNat + 1)) +
-      (48 + 8 * ((nh * (p + 1)).toNat + 1))) +
-    (48 + 8 * ((nh * dh).toNat + 1)) + (48 + 8 * ((1 * (nh * dh)).toNat + 1)) +
-    (48 + 8 * ((nh * dh).toNat + 1)) +
-    (48 + 8 * ((1 : UInt64).toNat + 1) + (48 + 8 * ((1 : UInt64).toNat + 1)) +
-      (48 + 8 * ((1 * (nh * dh)).toNat + 1))) +
-    (48 + 8 * ((1 * f).toNat + 1) + (48 + 8 * ((1 * f).toNat + 1)) +
-      (48 + 8 * ((1 * (nh * dh)).toNat + 1))) +
-    (48 + 8 * ((nh * dh).toNat + 1)) + (48 + 8 * (n + 1))
-
-/-- The bytes `layerStep` may allocate. -/
-def layerStepNeed (x : {LST}) : Nat :=
-  layerStepBytes {proj(25, 20)} {proj(25, 21)} {proj(25, 22)} {proj(25, 19)} x.1.size
-
 """ + composite(ls_spec) + '\n'
 
 # ------------------------------------------------------------------ scores
@@ -765,8 +644,7 @@ SC = [('cache', 'A'), ('wte', 'A'), ('gf', 'A'), ('bf', 'A'), ('layers', 'u'), (
       ('vocab', 'u'), ('eps', 'f')]
 SD = ('mul', 5, 6)
 sc_spec = dict(
-    name='scores', entry=43, index=40, tuple='scoresTuple', need='scoresNeed', params=SC, nlocals=4,
-    room='scoresNeed (cache, wte, gf, bf, layers, nh, dh, vocab, eps)', room_unfold=['scoresNeed'],
+    name='scores', entry=43, index=40, tuple='scoresTuple', params=SC, nlocals=4,
     funcs=[('hLast', 40, 37, 'lastHidden'), ('hNorm', 18, 15, 'layerNormRows'),
            ('hScores', 28, 25, 'matMulT')],
     lets=[('x', 'lastHiddenTuple (cache, nh * dh, (2 * layers + 1) * (nh * dh))'),
@@ -774,29 +652,19 @@ sc_spec = dict(
     calls=[
         dict(args=[0, SD, ('mul', ('add', ('mul', ('const', 2), 4), ONE), SD)],
              impl='lastHidden_implements', hfunc='hLast',
-             x='(cache, nh * dh, (2 * layers + 1) * (nh * dh))', need=['lastHiddenNeed'],
+             x='(cache, nh * dh, (2 * layers + 1) * (nh * dh))',
              borrowed=[('P', 'cache')], ptr='px', comment='The hidden row of the last block.'),
         dict(args=[9, 2, 3, ('const', 0), ONE, SD, ('f', 8)], impl='layerNormRows_implements',
              hfunc='hNorm', x='(x, gf, bf, 0, 1, nh * dh, eps)',
-             need=['lastHiddenNeed', 'layerNormRowsNeed'],
              borrowed=[('T', 'px'), ('P', 'gf'), ('P', 'bf')], ptr='ph',
              comment='The final layer norm.'),
         dict(args=[10, 1, ONE, SD, 7], impl='matMulT_implements', hfunc='hScores',
              x='(h, wte, 1, nh * dh, vocab)',
-             need=['lastHiddenNeed', 'layerNormRowsNeed', 'matMulTNeed'],
              borrowed=[('T', 'ph'), ('P', 'wte')], ptr='pr',
              comment='The scores against every token embedding.'),
-    ],
-    finish=['lastHiddenNeed', 'layerNormRowsNeed', 'matMulTNeed', 'scoresNeed'])
+    ])
 SCT = tuple_type([k for _, k in SC])
 sc_section = tuple_def('scoresTuple', 'scores', SC, '`scores` with its nine arguments as one tuple.') + f"""
-/-- The bytes `scores` may allocate: the hidden row, the layer norm, and the scores. -/
-def scoresNeed (x : {SCT}) : Nat :=
-  48 + 8 * (({proj(9, 5)} * {proj(9, 6)}).toNat + 1) +
-    (48 + 8 * ((1 : UInt64).toNat + 1) + (48 + 8 * ((1 : UInt64).toNat + 1)) +
-      (48 + 8 * ((1 * ({proj(9, 5)} * {proj(9, 6)})).toNat + 1))) +
-    (48 + 8 * ((1 * {proj(9, 7)}).toNat + 1))
-
 """ + composite(sc_spec) + '\n'
 
 
@@ -807,31 +675,16 @@ ST = [(n, 'A') for n in STA] + [('token', 'u'), ('layers', 'u'), ('nh', 'u'), ('
 BS = '(2 * layers + 1) * (nh * dh)'
 POS = f'UInt64.ofNat cache.size / (if {BS} = 0 then 1 else {BS})'
 STEP_F = '(x, cache, ' + ', '.join(BARR[1:]) + f', l, {POS}, nh, dh, f, {BS}, eps)'
-st_need = ['embedBlockNeed', 'hS0']
 st_spec = dict(
-    name='step', entry=42, index=39, tuple='stepTuple', need='stepNeed', params=ST, nlocals=11,
+    name='step', entry=42, index=39, tuple='stepTuple', params=ST, nlocals=11,
     width=2, result=35,
-    room='stepNeed (' + ', '.join(n for n, _ in ST) + ')', room_unfold=['stepNeed'],
     funcs=[('hEmbed', 31, 28, 'embedBlock'), ('hLayer', 41, 38, 'layerStep'),
            ('hAppend', 39, 36, 'appendBlock')],
     lets=[('s0', f'embedBlockTuple (wte, wpe, token, {POS}, nh * dh, {BS})'),
           ('xl', f'LeanExe.loop layers s0 fun l x => layerStepTuple {STEP_F}')],
     haves=['  have hA := hCache.values',
            '  have hLength := hA.lengthBound',
-           '  simp only [UInt64.toNat_toUInt32] at hLength',
-           f'  have hS0 : s0.size = ({BS}).toNat := by',
-           '    simp [s0, embedBlockTuple, LeanExe.Examples.Gpt.embedBlock, LeanExe.build]',
-           f'  have hSizes : ∀ k, (loopPrefix (fun l x => layerStepTuple {STEP_F}) s0 k).size ≤',
-           f'      ({BS}).toNat := fun k =>',
-           f'    Nat.le_trans (loopPrefix_size_le (fun l x => layerStep_size_le {STEP_F}) k)',
-           '      hS0.le',
-           f'  have hXl : xl.size ≤ ({BS}).toNat := hSizes layers.toNat',
-           f'  have hApp : (cache.size.toUInt64 + xl.size.toUInt64).toNat ≤ cache.size + ({BS}).toNat := by',
-           '    have h1 := Nat.mod_le cache.size (2 ^ 64)',
-           '    have h2 := Nat.mod_le xl.size (2 ^ 64)',
-           '    show (UInt64.ofNat cache.size + UInt64.ofNat xl.size).toNat ≤ _',
-           "    rw [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.toNat_ofNat']",
-           '    omega'],
+           '  simp only [UInt64.toNat_toUInt32] at hLength'],
     calls=[
         dict(kind='run', reg=25, value=BS, reads=[20, 21, 22], comment='The block size.',
              proof='simp [Stmt.run, Expr.eval, {facts}, State.set?_eq_update _ (show 25 < {cur}.params.length + {cur}.locals.length by rw [{curlen}]; decide), U64Op.apply]'),
@@ -842,35 +695,21 @@ st_spec = dict(
              scratch=[(36, 'UInt64.ofNat cache.size'), (37, f'if {BS} = 0 then 1 else {BS}')],
              proof=f'by_cases hb : {BS} = 0 <;> simp [Stmt.run, Expr.eval, {{facts}}, s2, s1, start, State.set?_eq_update, State.update_params_length, State.update_locals_length, State.get_update_ne, U64Op.apply, hb]'),
         dict(args=[1, 2, 19, 27, ('mul', 21, 22), 25], impl='embedBlock_implements',
-             hfunc='hEmbed', reg=28, x=f'(wte, wpe, token, {POS}, nh * dh, {BS})',
-             need=['embedBlockNeed'], borrowed=[('P', 'wte'), ('P', 'wpe')], ptr='ps0',
+             hfunc='hEmbed', reg=28, x=f'(wte, wpe, token, {POS}, nh * dh, {BS})', borrowed=[('P', 'wte'), ('P', 'wpe')], ptr='ps0',
              comment='The block of the new position, holding its embedding.'),
         dict(kind='loop', impl='layerStep_implements', hfunc='hLayer', state=29, index=32, src=28,
              init='s0', init_ptr='ps0', count=20,
              args=[29, 0] + list(range(3, 19)) + [32, 27, 21, 22, 23, 25, ('f', 24)], F=STEP_F,
-             bound=f'layerStepBytes nh dh f ({POS}) ({BS}).toNat',
-             bound_proof='layerStepBytes_le (hSizes k)', need=st_need,
              borrowed=[('P', 'cache')] + [('P', n) for n in BARR[1:]], ptr='pl',
              comment='The layers, each writing its key and value into the block.'),
         dict(args=[0, 29], impl='appendBlock_implements', hfunc='hAppend', reg=34,
-             x='(cache, xl)', need=st_need + ['appendBlockNeed'],
+             x='(cache, xl)',
              borrowed=[('P', 'cache'), ('T', 'pl')], tail=False, ptr='pr',
              comment='The cache followed by the new block.'),
-    ],
-    finish=['embedBlockNeed', 'hS0', 'appendBlockNeed', 'stepNeed'])
+    ])
 STT = tuple_type([k for _, k in ST])
 st_pat = ', '.join(n for n, _ in ST)
-st_section = f"""/-- `layerStep`'s result is no longer than its block. -/
-theorem layerStep_size_le (x : {LST}) : (layerStepTuple x).size ≤ x.1.size := by
-  simp [layerStepTuple, LeanExe.Examples.Gpt.layerStep, LeanExe.Examples.Gpt.writeBlock,
-    LeanExe.build, Nat.mod_le]
-
-theorem layerStepBytes_le {{nh dh f p : UInt64}} {{n n' : Nat}} (h : n ≤ n') :
-    layerStepBytes nh dh f p n ≤ layerStepBytes nh dh f p n' := by
-  simp only [layerStepBytes]
-  omega
-
-/-- The input of `step`: the cache, the embeddings, the stacked weights of the blocks, the
+st_section = f"""/-- The input of `step`: the cache, the embeddings, the stacked weights of the blocks, the
 token, and the dimensions. -/
 abbrev StepInput := {STT}
 
@@ -878,14 +717,6 @@ abbrev StepInput := {STT}
 def stepTuple : StepInput → Array Float
   | ({wrap(st_pat, '     ')}) =>
     LeanExe.Examples.Gpt.step {wrap(' '.join(n for n, _ in ST).replace(' ', ', '), '      ', 80).replace(', ', ' ').replace(',', '')}
-
-/-- The bytes `step` may allocate: the new block, its copy, `layers` calls of `layerStep`,
-and the longer cache. -/
-def stepNeed : StepInput → Nat
-  | (cache, {wrap(', '.join(['_'] * 19), '     ')}, layers, nh, dh, f, _) =>
-    48 + 8 * (({BS}).toNat + 1) + (48 + 8 * (({BS}).toNat + 1)) +
-      layers.toNat * layerStepBytes nh dh f ({POS}) ({BS}).toNat +
-      (48 + 8 * (cache.size + ({BS}).toNat + 1))
 
 """ + composite(st_spec) + '\n'
 

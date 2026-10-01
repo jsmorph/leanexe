@@ -63,8 +63,44 @@ theorem growProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit)
   refine wp_iff_cons rfl ?_
   simpa [hNotFailure, grown] using hNext
 
+theorem delta_toNat_of_lt (current required : Nat) (hOrder : current ≤ required)
+    (hCurrent : current ≤ 65536) (hBound : required < 4294967296) :
+    (delta current required).toNat = required - current := by
+  have hRequired : required < UInt64.size := by change required < 18446744073709551616; omega
+  have hCurrent64 : ((UInt32.ofNat current).toUInt64).toNat = current :=
+    Project.ProofKit.Allocation.memoryPages_toNat current hCurrent
+  unfold delta
+  rw [toUInt32_toNat, toNat_sub_of_le _ _ (by
+    rw [UInt64.toNat_ofNat_of_lt' hRequired, hCurrent64]
+    exact hOrder), UInt64.toNat_ofNat_of_lt' hRequired, hCurrent64,
+    Nat.mod_eq_of_lt (by omega)]
+
+/-- Growth to more pages than the memory's cap fails, and the program then traps at
+`unreachable`. -/
+theorem growProgram_abort (module_ : Wasm.Module) (env : HostEnv Unit)
+    (store : Store Unit) (frame : Locals) (required : Nat) (values : List Wasm.Value)
+    (hMemory32 : module_.memIs64 = false)
+    (hValues : frame.values = .i64 (UInt64.ofNat required) :: values)
+    (hOrder : store.mem.pages ≤ required) (hCurrent : store.mem.pages ≤ 65536)
+    (hBound : required < 4294967296) (hOver : store.memoryCap module_ 0 < required)
+    (Q : Assertion Unit) (rest : Wasm.Program) (hTrap : ∀ st, Q (.Trap st "unreachable")) :
+    wp module_ (growProgram ++ rest) Q store frame env := by
+  have hDelta := delta_toNat_of_lt store.mem.pages required hOrder hCurrent hBound
+  have hGrow : store.mem.grow (delta store.mem.pages required) (store.memoryCap module_ 0) =
+      none := by
+    simp only [Mem.grow, hDelta]
+    rw [if_neg (by omega)]
+  simp only [delta] at hGrow
+  unfold growProgram
+  simp only [List.cons_append, List.nil_append]
+  wp_run [hValues, hMemory32, sizeValue, Bool.false_eq_true, reduceIte, Nat.reducePow,
+    UInt64.ofNat_uInt32ToNat, ← toUInt32_eq_ofNat, hGrow]
+  refine wp_iff_cons rfl ?_
+  simpa using hTrap store
+
 #print axioms delta_toNat
 #print axioms grow_exact
 #print axioms growProgram_spec
+#print axioms growProgram_abort
 
 end Project.ProofKit.MemoryGrowth

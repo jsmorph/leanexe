@@ -62,17 +62,17 @@ theorem unitFloat_pure (funcs : List (Func × String)) (i : Nat)
     Expr.eval, Expr.scratchWidth, Stmt.scratchWidth, State.get, U64Op.apply, F64Op.apply, Scalar.values,
     unitFloat, F64Bits.toBits_div, F64Convert.toBits_toFloat, k53]
 
-theorem splitMix_implements : Implements prng.module 3 splitMix (fun _ => 0) :=
+theorem splitMix_implements : Implements prng.module 3 splitMix :=
   (splitMix_pure prng.funcs 0 rfl).implements
 
-theorem unitFloat_implements : Implements prng.module 4 unitFloat (fun _ => 0) :=
+theorem unitFloat_implements : Implements prng.module 4 unitFloat :=
   (unitFloat_pure prng.funcs 1 rfl).implements
 
 /-- `encode` succeeds on `prng.module`, and its bytes decode to a module that computes
 `splitMix` and `unitFloat` exactly. -/
 theorem prng_bytes : ∃ bytes, Wasm.Encoding.encode prng.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 3 splitMix (fun _ => 0) ∧
-      Implements m 4 unitFloat (fun _ => 0) := by
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 3 splitMix ∧
+      Implements m 4 unitFloat := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip prng.module (by decide +kernel) (by decide +kernel)
   exact ⟨bytes, success, prng.module, decoded, splitMix_implements, unitFloat_implements⟩

@@ -24,6 +24,8 @@ inductive Stmt where
   /-- Calls function `func` with the values of `args`, and puts its result in
   local `index` when `result` is `some index`. -/
   | call (func : Nat) (args : List ((type : ScalarType) × Expr type)) (results : List Nat)
+  /-- Traps at `unreachable`. -/
+  | abort
   deriving Repr
 
 def Stmt.program : Stmt → Nat → Program
@@ -42,6 +44,7 @@ def Stmt.program : Stmt → Nat → Program
       address.program scratch ++ [.wrapI64] ++ value.program scratch ++ [.store64 0]
   | .call func args results, scratch =>
       args.flatMap (·.2.program scratch) ++ [.call func] ++ results.reverse.map .localSet
+  | .abort, _ => [.unreachable]
 
 def Stmt.scratchWidth : Stmt → Nat
   | .skip => 0
@@ -53,6 +56,7 @@ def Stmt.scratchWidth : Stmt → Nat
   | .load _ _ address => address.scratchWidth
   | .store address value => max address.scratchWidth value.scratchWidth
   | .call _ args _ => (args.map (·.2.scratchWidth)).foldr max 0
+  | .abort => 0
 
 /-- From any store and IR state satisfying `P`, the compiled code of `s` ends
 normally in a store and state satisfying `R`.  This is a statement about the
@@ -78,6 +82,18 @@ theorem Triple.of_forall {s : Stmt} {scratch : Nat} {P R : Store Unit → State 
     Triple m s scratch P R :=
   fun env store state values rest Q hTrap hPre hPost =>
     h store state hPre env store state values rest Q hTrap ⟨rfl, rfl⟩ hPost
+
+/-- A specification from an unsatisfiable start. -/
+theorem Triple.of_false {s : Stmt} {scratch : Nat} {R : Store Unit → State → Prop} :
+    Triple m s scratch (fun _ _ => False) R :=
+  fun _ _ _ _ _ _ _ hPre _ => hPre.elim
+
+/-- `abort` traps at `unreachable`, which every assertion of a `Triple` accepts. -/
+theorem Stmt.abort_spec {scratch : Nat} {P R : Store Unit → State → Prop} :
+    Triple m .abort scratch P R := by
+  intro env store state values rest Q hTrap hPre hPost
+  simp only [Stmt.program, List.singleton_append, wp_unreachable_cons]
+  exact hTrap store
 
 theorem Stmt.skip_spec {scratch : Nat} {R : Store Unit → State → Prop} :
     Triple m .skip scratch R R :=

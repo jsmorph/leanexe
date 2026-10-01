@@ -21,13 +21,14 @@ def Heap.globals (heap : Heap) : List Value :=
 
 /-- The allocator invariant.  The globals hold `heap`, the free list is laid out
 in memory, every free block lies between the heap base at 4096 and `top`, `top`
-lies inside memory, and memory has at most 65,536 pages. -/
+lies inside memory, and memory has at most 65,535 pages, the maximum every compiled
+module declares, so that every block ends below `2 ^ 32`. -/
 structure Heap.At (heap : Heap) (store : Store Unit) : Prop where
   globals : store.globals.globals = heap.globals
   freeList : FreeListAt store.mem heap.free
   base : 4096 ≤ heap.top.toNat
   top : heap.top.toNat ≤ store.mem.pages * 65536
-  pages : store.mem.pages ≤ 65536
+  pages : store.mem.pages ≤ 65535
   above : ∀ node ∈ heap.free, 4096 + 48 ≤ node.root.toNat
   below : ∀ node ∈ heap.free, node.root.toNat + node.capacity.toNat ≤ heap.top.toNat
 
@@ -64,11 +65,5 @@ structure Heap.Owned (heap : Heap) (store : Store Unit) (ptr : UInt64)
   below : ptr.toNat + capacityAt store ptr ≤ heap.top.toNat
   separate : ∀ node ∈ heap.free,
     regionsDisjoint node.region (ptr.toNat - 48, 48 + capacityAt store ptr)
-
-/-- The allocator can advance `top` by `bytes` without passing the 32-bit address
-limit or the growth cap of memory 0 in module `m`. -/
-structure Heap.Room (heap : Heap) (store : Store Unit) (m : Module) (bytes : Nat) : Prop where
-  address : heap.top.toNat + bytes < 4294967296
-  cap : heap.top.toNat + bytes ≤ store.memoryCap m 0 * 65536
 
 end Project.Pipeline

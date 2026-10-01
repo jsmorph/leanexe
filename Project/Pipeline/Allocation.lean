@@ -57,36 +57,38 @@ structure WritesWithin (store store' : Store Unit) (start size : Nat) : Prop whe
   bytes : ∀ address, address < start ∨ start + size ≤ address →
     store'.mem.bytes address = store.mem.bytes address
 
-theorem Heap.Room.bump {heap : Heap} {store : Store Unit} {m : Module} {need : UInt64}
-    (h : heap.Room store m (48 + need.toNat)) :
-    heap.top.toNat + 48 + need.toNat ≤ 4294967296 ∧
-      FixedArrayBump.requiredPages heap.top need ≤ store.memoryCap m 0 := by
-  have hAddress := h.address
-  have hCap := h.cap
-  unfold FixedArrayBump.requiredPages
-  omega
+/-- An allocation of `need` payload bytes fits in a memory of 65,535 pages: when no free
+block is reused, the new `top` stays within `65535 * 65536`. -/
+def Heap.Fits (heap : Heap) (need : UInt64) : Prop :=
+  takeFirstFitFrom 0 need heap.free = none → heap.top.toNat + 48 + need.toNat ≤ 4294901760
 
-/-- `FixedArrayAllocate.program start stride` in any module with a 32-bit memory,
-stated with the allocator state. -/
-theorem array_allocation_spec (m : Wasm.Module) (hMemory32 : m.memIs64 = false)
+theorem Heap.Fits.fit32 {heap : Heap} {need : UInt64} (h : heap.Fits need) :
+    takeFirstFitFrom 0 need heap.free = none → heap.top.toNat + 48 + need.toNat ≤ 4294967296 :=
+  fun hNone => by have := h hNone; omega
+
+/-- `FixedArrayAllocate.program` for at most `2 ^ 32` bytes, in a memory whose cap is at
+most 65,535 pages: the program traps at `unreachable` or allocates a block that fits. -/
+theorem array_allocation_spec_or_abort (m : Wasm.Module) (hMemory32 : m.memIs64 = false)
     (env : HostEnv Unit) (store : Store Unit) (heap : Heap)
     (params saved tail : List Wasm.Value) (start : Nat)
     (hStart : params.length + saved.length = start)
     (need stride previous current capacity next result : UInt64) (hHeap : heap.At store)
-    (hRoom : heap.Room store m (48 + need.toNat))
-    (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : ∀ previous current capacity next : UInt64,
+    (hNeed : need.toNat ≤ 4294967296) (hCap : store.memoryCap m 0 ≤ 65535)
+    (Q : Assertion Unit) (rest : Wasm.Program) (hTrap : ∀ st, Q (.Trap st "unreachable"))
+    (hNext : heap.Fits need → ∀ previous current capacity next : UInt64,
       wp m rest Q (heap.allocateStore store need stride)
         (FixedArraySearch.frame params saved tail need previous current capacity next
           (FixedArrayAllocate.root heap.top need heap.free)) env) :
     wp m (FixedArrayAllocate.program start stride ++ rest) Q store
-      (FixedArraySearch.frame params saved tail need previous current capacity next result) env :=
-  FixedArrayAllocate.program_spec m env store params saved tail start hStart
+      (FixedArraySearch.frame params saved tail need previous current capacity next result) env := by
+  have hTop := hHeap.top
+  have hPages := hHeap.pages
+  exact FixedArrayAllocate.program_spec_or_abort m env store params saved tail start hStart
     heap.top need stride previous current capacity next result heap.allocs heap.free
     (by simp [hHeap.globals, Heap.globals])
     (by simp [hHeap.globals, Heap.globals])
     (by simp [hHeap.globals, Heap.globals])
-    hHeap.freeList (fun _ => hRoom.bump) hHeap.pages hMemory32 Q rest hNext
+    hHeap.freeList (by omega) hNeed hHeap.pages hMemory32 hCap Q rest hTrap hNext
 
 theorem fitStore_pages (store : Store Unit) (choice : FreeChoice) (stride : UInt64) :
     (fixedArrayAllocFitStore store choice stride).mem.pages = store.mem.pages := by
@@ -320,14 +322,12 @@ theorem Heap.allocateStore_globals {heap : Heap} {store : Store Unit} (h : heap.
       fixedArrayAllocBumpStore, hGlobals, h.globals]
     rfl
 
-theorem Heap.At.allocate_block {heap : Heap} {store : Store Unit} {m : Module} {need : UInt64}
-    (stride : UInt64) (h : heap.At store) (hRoom : heap.Room store m (48 + need.toNat)) :
+theorem Heap.At.allocate_block {heap : Heap} {store : Store Unit} {need : UInt64}
+    (stride : UInt64) (h : heap.At store) (hFits : heap.Fits need) :
     (heap.allocate need).Block (heap.allocateStore store need stride)
       (FixedArrayAllocate.root heap.top need heap.free) (allocatedCapacity need heap.free)
       stride := by
-  have hFit := hRoom.bump.1
-  have hAddress := hRoom.address
-  have hFresh := allocated_fresh store heap.top need stride heap.free h.freeList (fun _ => hFit)
+  have hFresh := allocated_fresh store heap.top need stride heap.free h.freeList hFits.fit32
   have h48 : (48 : UInt64).toNat = 48 := rfl
   cases hTake : takeFirstFitFrom 0 need heap.free with
   | some choice =>
@@ -374,6 +374,7 @@ theorem Heap.At.allocate_block {heap : Heap} {store : Store Unit} {m : Module} {
       simp only [regionsDisjoint, FreeNode.region] at this ⊢
       omega
   | none =>
+    have hFit := hFits hTake
     have hRoot : FixedArrayAllocate.root heap.top need heap.free = heap.top + 48 := by
       simp only [FixedArrayAllocate.root, hTake]
     have hCapacity : allocatedCapacity need heap.free = need := by
@@ -386,7 +387,7 @@ theorem Heap.At.allocate_block {heap : Heap} {store : Store Unit} {m : Module} {
       simp only [Heap.allocateStore, FixedArrayAllocateNone.counted,
         FixedArrayAllocate.allocated, hTake, FixedArrayBump.allocated,
         fixedArrayAllocBumpStore_pages]
-    have hTop := allocatedTop_toNat heap.top need heap.free (fun _ => hFit)
+    have hTop := allocatedTop_toNat heap.top need heap.free hFits.fit32
     have hBase := h.base
     rw [hRoot, hCapacity] at hFresh ⊢
     refine ⟨hFresh, by omega, by omega, ?_, ?_, ?_⟩
@@ -403,21 +404,20 @@ theorem Heap.At.allocate_block {heap : Heap} {store : Store Unit} {m : Module} {
       simp only [regionsDisjoint, FreeNode.region, hRootNat]
       omega
 
-theorem Heap.At.allocate {heap : Heap} {store : Store Unit} {m : Module} {need : UInt64}
-    (stride : UInt64) (h : heap.At store) (hRoom : heap.Room store m (48 + need.toNat)) :
+theorem Heap.At.allocate {heap : Heap} {store : Store Unit} {need : UInt64}
+    (stride : UInt64) (h : heap.At store) (hFits : heap.Fits need) :
     (heap.allocate need).At (heap.allocateStore store need stride) := by
-  have hFit := hRoom.bump.1
-  have hTop := allocatedTop_toNat heap.top need heap.free (fun _ => hFit)
+  have hTop := allocatedTop_toNat heap.top need heap.free hFits.fit32
   have hGrowth : heap.top.toNat ≤ (heap.allocate need).top.toNat := by
     show heap.top.toNat ≤ (allocatedTop heap.top need heap.free).toNat
     rw [hTop]
     split <;> omega
   have h48 : (48 : UInt64).toNat = 48 := rfl
   refine ⟨Heap.allocateStore_globals h need stride,
-    allocated_freeList store heap.top need stride heap.free h.freeList h.below (fun _ => hFit),
+    allocated_freeList store heap.top need stride heap.free h.freeList h.below hFits.fit32,
     h.base.trans hGrowth, ?_,
-    allocated_pages_le store heap.top need stride heap.free 65536 h.pages
-      (fun _ => by show heap.top.toNat + 48 + need.toNat ≤ 65536 * 65536; omega),
+    allocated_pages_le store heap.top need stride heap.free 65535 h.pages
+      (fun hNone => by have := hFits hNone; show heap.top.toNat + 48 + need.toNat ≤ 65535 * 65536; omega),
     fun node hNode => ?_, fun node hNode => ?_⟩
   rotate_left
   · obtain ⟨old, hOld, hRoot, _⟩ := allocatedNodes_sub h.freeList node hNode
@@ -431,7 +431,7 @@ theorem Heap.At.allocate {heap : Heap} {store : Store Unit} {m : Module} {need :
   rw [hTop]
   split
   · rename_i hNone
-    have hMemory := (h.allocate_block stride hRoom).memory
+    have hMemory := (h.allocate_block stride hFits).memory
     simp only [FixedArrayAllocate.root, allocatedCapacity, hNone, UInt64.toNat_add, h48,
       Nat.reducePow] at hMemory
     have := h.top
@@ -452,13 +452,12 @@ theorem arrayAt_frame {initial final : Store Unit} {ptr : UInt64} {words : Array
     rw [h.elementAddress_toNat i hi]
     exact hBytes _ (by omega) (by omega)
 
-theorem Heap.Borrowed.allocate {heap : Heap} {store : Store Unit} {m : Module}
+theorem Heap.Borrowed.allocate {heap : Heap} {store : Store Unit}
     {need ptr : UInt64} {words : Array UInt64} (stride : UInt64)
-    (h : heap.Borrowed store ptr words) (hHeap : heap.At store)
-    (hRoom : heap.Room store m (48 + need.toNat)) :
+    (h : heap.Borrowed store ptr words) (hHeap : heap.At store) (hFits : heap.Fits need) :
     (heap.allocate need).Borrowed (heap.allocateStore store need stride) ptr words := by
   have hBump : takeFirstFitFrom 0 need heap.free = none →
-      heap.top.toNat + 48 + need.toNat ≤ 4294967296 := fun _ => hRoom.bump.1
+      heap.top.toNat + 48 + need.toNat ≤ 4294967296 := fun h => by have := hFits h; omega
   refine ⟨arrayAt_frame h.values (allocated_pages_ge store heap.top need stride heap.free)
     (allocated_bytes_outside store heap.top need stride heap.free ptr.toNat
       (8 * (words.size + 1)) hHeap.freeList h.separate h.below hBump), ?_,
@@ -490,13 +489,6 @@ theorem Heap.Borrowed.disjoint_allocated {heap : Heap} {store : Store Unit} {ptr
       UInt64.toNat_add, h48, Nat.reducePow]
     omega
 
-theorem Heap.allocate_top {heap : Heap} {store : Store Unit} {m : Module} {need : UInt64}
-    (hRoom : heap.Room store m (48 + need.toNat)) :
-    (heap.allocate need).top.toNat ≤ heap.top.toNat + (48 + need.toNat) := by
-  show (allocatedTop heap.top need heap.free).toNat ≤ _
-  rw [allocatedTop_toNat heap.top need heap.free (fun _ => hRoom.bump.1)]
-  split <;> omega
-
 
 theorem Heap.allocateStore_memoryCaps (heap : Heap) (store : Store Unit) (need stride : UInt64) :
     (heap.allocateStore store need stride).memoryCaps = store.memoryCaps := by
@@ -508,42 +500,6 @@ theorem Heap.allocateStore_memoryCaps (heap : Heap) (store : Store Unit) (need s
     · simp [fixedArrayAllocFitStore]
   · simp [FixedArrayBump.allocated, fixedArrayAllocBumpStore, MemoryGrowth.ensured]
     split <;> rfl
-
-/-- Room for `bytes` bytes leaves room for `rest` bytes after `top` advanced by at
-most `used`, with `used + rest ≤ bytes`, in any store with the same memory
-limits. -/
-theorem Heap.Room.after {heap heap' : Heap} {store store' : Store Unit} {m : Module}
-    {bytes used rest : Nat} (hRoom : heap.Room store m bytes)
-    (hTop : heap'.top.toNat ≤ heap.top.toNat + used) (hLe : used + rest ≤ bytes)
-    (hCaps : store'.memoryCaps = store.memoryCaps) : heap'.Room store' m rest := by
-  have hSame : store'.memoryCap m 0 = store.memoryCap m 0 := by
-    unfold Store.memoryCap; rw [hCaps]
-  exact ⟨by have := hRoom.address; omega, by have := hRoom.cap; rw [hSame]; omega⟩
-
-/-- Room for an allocation followed by `rest` more bytes leaves room for `rest`
-bytes after the allocation, in any store with the same memory limits. -/
-theorem Heap.Room.after_allocate {heap : Heap} {store store' : Store Unit} {m : Module}
-    {need : UInt64} {rest : Nat} (hRoom : heap.Room store m (48 + need.toNat + rest))
-    (hCaps : store'.memoryCaps = store.memoryCaps) :
-    (heap.allocate need).Room store' m rest := by
-  have hAddress := hRoom.address
-  have hCap := hRoom.cap
-  have hTop := Heap.allocate_top (heap := heap) (store := store) (m := m) (need := need)
-    ⟨by omega, by omega⟩
-  refine ⟨by omega, ?_⟩
-  have hSame : store'.memoryCap m 0 = store.memoryCap m 0 := by
-    unfold Store.memoryCap; rw [hCaps]
-  rw [hSame]
-  omega
-
-theorem Heap.allocate_pages (heap : Heap) (store : Store Unit) (need stride : UInt64) :
-    (heap.allocateStore store need stride).mem.pages ≤
-      max store.mem.pages ((heap.top.toNat + (48 + need.toNat) + 65535) / 65536) := by
-  apply allocated_pages_le store heap.top need stride heap.free _ (Nat.le_max_left ..)
-  intro _
-  have hMax := Nat.mul_le_mul_right 65536
-    (Nat.le_max_right store.mem.pages ((heap.top.toNat + (48 + need.toNat) + 65535) / 65536))
-  omega
 
 theorem Heap.At.writesWithin {heap : Heap} {store store' : Store Unit}
     {root capacity stride : UInt64} (h : heap.At store)
@@ -622,13 +578,12 @@ theorem Heap.Owned.frame {heap heap' : Heap} {store store' : Store Unit} {ptr : 
   · rw [hCapacity]; exact hBelow
   · rw [hCapacity]; exact hSeparate
 
-theorem Heap.Owned.allocate {heap : Heap} {store : Store Unit} {m : Module}
+theorem Heap.Owned.allocate {heap : Heap} {store : Store Unit}
     {need ptr : UInt64} {words : Array UInt64} (stride : UInt64)
-    (h : heap.Owned store ptr words) (hHeap : heap.At store)
-    (hRoom : heap.Room store m (48 + need.toNat)) :
+    (h : heap.Owned store ptr words) (hHeap : heap.At store) (hFits : heap.Fits need) :
     (heap.allocate need).Owned (heap.allocateStore store need stride) ptr words := by
   have hBump : takeFirstFitFrom 0 need heap.free = none →
-      heap.top.toNat + 48 + need.toNat ≤ 4294967296 := fun _ => hRoom.bump.1
+      heap.top.toNat + 48 + need.toNat ≤ 4294967296 := fun h => by have := hFits h; omega
   have hBase := h.base
   have hBelow := h.below
   refine h.frame (allocated_pages_ge store heap.top need stride heap.free)
@@ -695,20 +650,20 @@ theorem capacityAt_frame {store store' : Store Unit} {ptr : UInt64} (hBase : 48 
 
 /-- An owned object survives an allocation followed by writes inside the new
 block, with its capacity word unchanged. -/
-theorem Heap.Owned.allocate_within {heap : Heap} {initial store : Store Unit} {m : Module}
+theorem Heap.Owned.allocate_within {heap : Heap} {initial store : Store Unit}
     {need p : UInt64} {ws : Array UInt64} (h : heap.Owned initial p ws) (hHeap : heap.At initial)
-    (hRoom : heap.Room initial m (48 + need.toNat))
+    (hFits : heap.Fits need)
     (hWithin : WritesWithin (heap.allocateStore initial need 1) store
       (FixedArrayAllocate.root heap.top need heap.free).toNat
       (allocatedCapacity need heap.free).toNat) :
     (heap.allocate need).Owned store p ws ∧ capacityAt store p = capacityAt initial p := by
   have hBase := h.base
   have hAddress := h.address
-  have hBlockBase := (hHeap.allocate_block 1 hRoom).base
+  have hBlockBase := (hHeap.allocate_block 1 hFits).base
   have hDisjoint := h.disjoint_allocated hHeap need
-  have hAllocated := h.allocate 1 hHeap hRoom
+  have hAllocated := h.allocate 1 hHeap hFits
   have hBump : takeFirstFitFrom 0 need heap.free = none →
-      heap.top.toNat + 48 + need.toNat ≤ 4294967296 := fun _ => hRoom.bump.1
+      heap.top.toNat + 48 + need.toNat ≤ 4294967296 := fun h => by have := hFits h; omega
   have hAllocatedBytes : ∀ address, p.toNat - 48 ≤ address → address < p.toNat + capacityAt initial p →
       (heap.allocateStore initial need 1).mem.bytes address = initial.mem.bytes address :=
     fun address hLow hHigh => allocated_bytes_outside initial heap.top need 1 heap.free
@@ -731,14 +686,14 @@ theorem Heap.Owned.allocate_within {heap : Heap} {initial store : Store Unit} {m
 
 /-- A borrowed array survives an allocation followed by writes inside the new
 block. -/
-theorem Heap.Borrowed.allocate_within {heap : Heap} {initial store : Store Unit} {m : Module}
+theorem Heap.Borrowed.allocate_within {heap : Heap} {initial store : Store Unit}
     {need p : UInt64} {ws : Array UInt64} (h : heap.Borrowed initial p ws) (hHeap : heap.At initial)
-    (hRoom : heap.Room initial m (48 + need.toNat))
+    (hFits : heap.Fits need)
     (hWithin : WritesWithin (heap.allocateStore initial need 1) store
       (FixedArrayAllocate.root heap.top need heap.free).toNat
       (allocatedCapacity need heap.free).toNat) :
     (heap.allocate need).Borrowed store p ws :=
-  (h.allocate 1 hHeap hRoom).writesWithin (h.disjoint_allocated hHeap need) hWithin
+  (h.allocate 1 hHeap hFits).writesWithin (h.disjoint_allocated hHeap need) hWithin
 
 theorem Heap.Block.capacity_eq {heap : Heap} {store : Store Unit} {root capacity stride : UInt64}
     (h : heap.Block store root capacity stride) : capacityAt store root = capacity.toNat := by
@@ -764,11 +719,9 @@ invariant, the new owned array, the bounds on `top` and the page count, every
 array borrowed or owned before still borrowed or owned and apart from the new
 object, and the memory limits. -/
 structure Heap.NewArray (heap : Heap) (initial : Store Unit) (heap' : Heap) (store : Store Unit)
-    (ptr : UInt64) (words : Array UInt64) (bytes : Nat) : Prop where
+    (ptr : UInt64) (words : Array UInt64) : Prop where
   at_ : heap'.At store
   owned : heap'.Owned store ptr words
-  top : heap'.top.toNat ≤ heap.top.toNat + bytes
-  pages : store.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + bytes + 65535) / 65536)
   borrowed : ∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store p ws
   ownedKeep : ∀ p ws, heap.Owned initial p ws →
     heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p
@@ -781,35 +734,33 @@ structure Heap.NewArray (heap : Heap) (initial : Store Unit) (heap' : Heap) (sto
 
 /-- An allocation followed by writes that fill the new block with `words` leaves a
 new array. -/
-theorem Heap.newArray_of_writes {heap : Heap} {initial store : Store Unit} {m : Module}
+theorem Heap.newArray_of_writes {heap : Heap} {initial store : Store Unit}
     {need : UInt64} {words : Array UInt64} (hHeap : heap.At initial)
-    (hRoom : heap.Room initial m (48 + need.toNat))
+    (hFits : heap.Fits need)
     (hWithin : WritesWithin (heap.allocateStore initial need 1) store
       (FixedArrayAllocate.root heap.top need heap.free).toNat
       (allocatedCapacity need heap.free).toNat)
     (hValues : UInt64Array.At store (FixedArrayAllocate.root heap.top need heap.free) words)
-    (hFits : 8 * (words.size + 1) ≤ (allocatedCapacity need heap.free).toNat)
+    (hPayload : 8 * (words.size + 1) ≤ (allocatedCapacity need heap.free).toNat)
     (hCaps : store.memoryCaps = initial.memoryCaps) :
     heap.NewArray initial (heap.allocate need) store
-      (FixedArrayAllocate.root heap.top need heap.free) words (48 + need.toNat) := by
-  have hBlock := (hHeap.allocate_block 1 hRoom).writesWithin hWithin
+      (FixedArrayAllocate.root heap.top need heap.free) words := by
+  have hBlock := (hHeap.allocate_block 1 hFits).writesWithin hWithin
   have hCapacity := hBlock.capacity_eq
-  refine ⟨(hHeap.allocate 1 hRoom).writesWithin (hHeap.allocate_block 1 hRoom) hWithin,
-    hBlock.owned hValues hFits, Heap.allocate_top hRoom, ?_,
-    fun p ws h => h.allocate_within hHeap hRoom hWithin,
-    fun p ws h => h.allocate_within hHeap hRoom hWithin, fun p ws h => ?_, fun p ws h => ?_,
+  refine ⟨(hHeap.allocate 1 hFits).writesWithin (hHeap.allocate_block 1 hFits) hWithin,
+    hBlock.owned hValues hPayload,
+    fun p ws h => h.allocate_within hHeap hFits hWithin,
+    fun p ws h => h.allocate_within hHeap hFits hWithin, fun p ws h => ?_, fun p ws h => ?_,
     hCaps⟩
-  · rw [hWithin.pages]
-    exact Heap.allocate_pages heap initial need 1
   · rw [hCapacity]; exact h.disjoint_allocated hHeap need
   · rw [hCapacity]; exact h.disjoint_allocated hHeap need
 
 /-- Two new arrays in a row: every array owned before keeps its object and capacity,
 and both new objects lie apart from every array borrowed or owned before. -/
 theorem Heap.NewArray.two {heap heap1 heap2 : Heap} {initial store1 store2 : Store Unit}
-    {ptr1 ptr2 : UInt64} {ws1 ws2 : Array UInt64} {bytes1 bytes2 : Nat}
-    (h1 : heap.NewArray initial heap1 store1 ptr1 ws1 bytes1)
-    (h2 : heap1.NewArray store1 heap2 store2 ptr2 ws2 bytes2) :
+    {ptr1 ptr2 : UInt64} {ws1 ws2 : Array UInt64}
+    (h1 : heap.NewArray initial heap1 store1 ptr1 ws1)
+    (h2 : heap1.NewArray store1 heap2 store2 ptr2 ws2) :
     (∀ p ws, heap.Owned initial p ws →
       heap2.Owned store2 p ws ∧ capacityAt store2 p = capacityAt initial p) ∧
     (∀ p ws, heap.Borrowed initial p ws →

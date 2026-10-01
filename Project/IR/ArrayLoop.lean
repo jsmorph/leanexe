@@ -40,33 +40,16 @@ theorem Expr.evalResults_frame (writes : List Nat) {mem : Mem} {scratch : Nat} :
               exact (Expr.eval_frame writes e mem scratch state next value hE).trans
                 (Expr.evalResults_frame writes hR)
 
-/-- `Live` holds for any larger count of allocated bytes. -/
-theorem Live.weaken {heap0 heap : Heap} {initial store : Store Unit} {used used' : Nat}
-    {temps : List (UInt64 × Array UInt64)} (hLive : Live heap0 initial used heap store temps)
-    (hUsed : used ≤ used') : Live heap0 initial used' heap store temps :=
-  { hLive with
-    top := by have := hLive.top; omega
-    pages := le_trans hLive.pages (max_le_max le_rfl (Nat.div_le_div_right (by omega))) }
-
 /-- A new array joins the live temporaries. -/
-theorem Live.push {heap0 heap heap' : Heap} {initial store store' : Store Unit} {used bytes : Nat}
+theorem Live.push {heap0 heap heap' : Heap} {initial store store' : Store Unit}
     {temps : List (UInt64 × Array UInt64)} {ptr : UInt64} {ws : Array UInt64}
-    (hLive : Live heap0 initial used heap store temps)
-    (hNew : heap.NewArray store heap' store' ptr ws bytes) :
-    Live heap0 initial (used + bytes) heap' store' ((ptr, ws) :: temps) := by
-  have hTop := hLive.top
-  have hNewTop := hNew.top
+    (hLive : Live heap0 initial heap store temps)
+    (hNew : heap.NewArray store heap' store' ptr ws) :
+    Live heap0 initial heap' store' ((ptr, ws) :: temps) := by
   have hKeepT : ∀ t ∈ temps, heap'.Owned store' t.1 t.2 ∧ block store' t.1 = block store t.1 :=
     fun t ht => ⟨(hNew.ownedKeep t.1 t.2 (hLive.tempsOwned t ht)).1,
       block_eq (hNew.ownedKeep t.1 t.2 (hLive.tempsOwned t ht)).2⟩
-  have hB : (heap0.top.toNat + used + 65535) / 65536 ≤
-      (heap0.top.toNat + (used + bytes) + 65535) / 65536 := Nat.div_le_div_right (by omega)
-  have hD : (heap.top.toNat + bytes + 65535) / 65536 ≤
-      (heap0.top.toNat + (used + bytes) + 65535) / 65536 := Nat.div_le_div_right (by omega)
-  refine ⟨hNew.at_, by omega,
-    le_trans hNew.pages (max_le (le_trans hLive.pages (max_le_max le_rfl hB))
-      (le_trans hD (le_max_right _ _))),
-    hNew.caps.trans hLive.caps, fun p ws h => hNew.borrowed p ws (hLive.borrowed p ws h),
+  refine ⟨hNew.at_, hNew.caps.trans hLive.caps, fun p ws h => hNew.borrowed p ws (hLive.borrowed p ws h),
     fun p ws h => ⟨(hNew.ownedKeep p ws (hLive.owned p ws h).1).1,
       (hNew.ownedKeep p ws (hLive.owned p ws h).1).2.trans (hLive.owned p ws h).2⟩,
     fun t ht => ?_, fun t ht p ws h => ?_, fun t ht p ws h => ?_, ?_⟩
@@ -95,23 +78,17 @@ theorem Live.copy {typeIdx scratch src size dst limit index : Nat} (hMemory32 : 
     (hBelow : ∀ j ∈ [size, dst, limit, index], j < scratch)
     (hSrc : src ∉ [size, dst, limit, index]) (hSrcBelow : src < scratch) {before : State}
     (hRoom : scratch < before.params.length + before.locals.length) {heap0 heap : Heap}
-    {initial store : Store Unit} {used total : Nat} {temps : List (UInt64 × Array UInt64)}
-    (hLive : Live heap0 initial used heap store temps) (hTotal : heap0.Room initial m total)
-    {ptr : UInt64} {xs : Array UInt64} (hNeed : used + (48 + 8 * (xs.size + 1)) ≤ total)
+    {initial store : Store Unit} {temps : List (UInt64 × Array UInt64)}
+    (hLive : Live heap0 initial heap store temps) (hCap : initial.memoryCap m 0 ≤ 65535)
+    {ptr : UInt64} {xs : Array UInt64}
     (hPtr : before.get src = some (.i64 ptr)) (hArray : heap.Borrowed store ptr xs) :
     Triple m (.copy dst limit index size src) scratch (fun s st => s = store ∧ st = before)
-      (fun s st => ∃ heap' p, Live heap0 initial (used + (48 + 8 * (xs.size + 1))) heap' s
+      (fun s st => ∃ heap' p, Live heap0 initial heap' s
         ((p, xs) :: temps) ∧ State.Frame scratch [size, dst, limit, index] before st ∧
         st.get dst = some (.i64 p)) :=
   (Stmt.copy_spec hMemory32 hImports hFunc hLocals hBelow hSrc hSrcBelow hRoom hLive.at_
-    (hTotal.after hLive.top hNeed hLive.caps) hPtr hArray).mono (fun _ _ h => h)
+    (hLive.cap hCap) hPtr hArray).mono (fun _ _ h => h)
     fun _ _ ⟨p, hFrame, hDst, hNew⟩ => ⟨_, p, hLive.push hNew, hFrame, hDst⟩
-
-/-- A loop whose step never lengthens its array keeps it no longer than the initial one. -/
-theorem loopPrefix_size_le {f : UInt64 → Array α → Array α} {init : Array α}
-    (h : ∀ l x, (f l x).size ≤ x.size) : ∀ k, (loopPrefix f init k).size ≤ init.size
-  | 0 => Nat.le_refl _
-  | k + 1 => by rw [loopPrefix_succ]; exact (h _ _).trans (loopPrefix_size_le h k)
 
 /-- The compiler's loop over an array state: local `state` receives a copy of the
 array at local `src`; for each index below `count`, a call of function `idx`
@@ -124,12 +101,11 @@ def Stmt.arrayLoop (state size limit index next src idx : Nat) (count : Expr .u6
       .seq (.call idx args [next]) (.seq (.release state) (.assign state (.get next)))
 
 /-- The loop leaves `LeanExe.loop n init (fun l x => g (F l x))` in a new array at
-the head of the live temporaries, whose pointer local `state` holds, provided the
-call of `idx`, which implements `g`, receives arguments that represent `F l x` at
-each index `l` and state `x`, and needs at most `bound` bytes.  The copy and the
-calls count toward the allocated bytes; the releases do not. -/
-theorem Live.arrayLoop [Represent α] {idx : Nat} {g : α → Array Float} {gNeed : α → Nat}
-    (hImpl : Implements m idx g gNeed) {f : Wasm.Function}
+the head of the live temporaries, whose pointer local `state` holds, or aborts,
+provided the call of `idx`, which implements `g`, receives arguments that represent
+`F l x` at each index `l` and state `x`. -/
+theorem Live.arrayLoop [Represent α] {idx : Nat} {g : α → Array Float}
+    (hImpl : Implements m idx g) {f : Wasm.Function}
     (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
     {args : List ((type : ScalarType) × Expr type)} (hParams : args.length = f.numParams)
     {allocType releaseType : Nat} (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
@@ -140,29 +116,26 @@ theorem Live.arrayLoop [Represent α] {idx : Nat} {g : α → Array Float} {gNee
     (hBelow : ∀ j ∈ [state, size, limit, index, next], j < scratch)
     (hSrc : src ∉ [state, size, limit, index, next]) (hSrcBelow : src < scratch)
     {before : State} (hRoom : scratch < before.params.length + before.locals.length)
-    {heap0 heap : Heap} {initial store : Store Unit} {used total : Nat}
+    {heap0 heap : Heap} {initial store : Store Unit}
     {temps : List (UInt64 × Array UInt64)}
-    (hLive : Live heap0 initial used heap store temps) (hTotal : heap0.Room initial m total)
+    (hLive : Live heap0 initial heap store temps) (hCap : initial.memoryCap m 0 ≤ 65535)
     {ptr : UInt64} {init : Array Float} (hPtr : before.get src = some (.i64 ptr))
     (hInit : heap.Borrowed store ptr (init.map Float.toBits))
     {count : Expr .u64} {n : UInt64}
     (hCount : ∀ mem st, State.Frame scratch [state, size, limit, index, next] before st →
       ∃ after, count.eval mem scratch st = some (n, after))
-    (F : UInt64 → Array Float → α) {bound : Nat}
-    (hBound : ∀ k < n.toNat,
-      gNeed (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) init k)) ≤ bound)
-    (hNeed : used + (48 + 8 * (init.size + 1)) + n.toNat * bound ≤ total)
-    (hArgs : ∀ (k : Nat) (p : UInt64) (u : Nat) (heap' : Heap) (store' : Store Unit) (st : State),
+    (F : UInt64 → Array Float → α)
+    (hArgs : ∀ (k : Nat) (p : UInt64) (heap' : Heap) (store' : Store Unit) (st : State),
       k < n.toNat → State.Frame scratch [state, size, limit, index, next] before st →
       st.get index = some (.i64 (UInt64.ofNat k)) → st.get state = some (.i64 p) →
-      Live heap0 initial u heap' store'
+      Live heap0 initial heap' store'
         ((p, (loopPrefix (fun l x => g (F l x)) init k).map Float.toBits) :: temps) →
       ∃ vals after, Expr.evalResults store'.mem scratch args st = some (vals, after) ∧
         Represent.borrowed heap' store' vals
           (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) init k)))
     {rest : Stmt} {Q : Store Unit → State → Prop}
     (hRest : ∀ heap' p s st,
-      Live heap0 initial (used + (48 + 8 * (init.size + 1)) + n.toNat * bound) heap' s
+      Live heap0 initial heap' s
         ((p, (LeanExe.loop n init fun l x => g (F l x)).map Float.toBits) :: temps) →
       State.Frame scratch [state, size, limit, index, next] before st →
       st.get state = some (.i64 p) →
@@ -188,7 +161,7 @@ theorem Live.arrayLoop [Represent α] {idx : Nat} {g : α → Array Float} {gNee
     State.Frame scratch [state, size, limit, index, next] before st ∧
       ∃ k, k ≤ n.toNat ∧ st.get index = some (.i64 (UInt64.ofNat k)) ∧
         st.get limit = some (.i64 n) ∧
-        ∃ heap' p, Live heap0 initial (used + (48 + 8 * (init.size + 1)) + k * bound) heap' s
+        ∃ heap' p, Live heap0 initial heap' s
           ((p, (loopPrefix (fun l x => g (F l x)) init k).map Float.toBits) :: temps) ∧
           st.get state = some (.i64 p)
   let measure : Store Unit → State → Nat := fun _ st =>
@@ -196,12 +169,12 @@ theorem Live.arrayLoop [Represent α] {idx : Nat} {g : α → Array Float} {gNee
     | some (.i64 k) => n.toNat - k.toNat
     | _ => 0
   refine Stmt.seq_spec (M := fun s st => ∃ heap' p,
-      Live heap0 initial (used + (48 + 8 * (init.size + 1)) + n.toNat * bound) heap' s
+      Live heap0 initial heap' s
         ((p, (LeanExe.loop n init fun l x => g (F l x)).map Float.toBits) :: temps) ∧
       State.Frame scratch [state, size, limit, index, next] before st ∧
       st.get state = some (.i64 p)) (Stmt.seq_spec (Live.copy hMemory32 hImports hAlloc
-      (by simp; omega) (by simp; omega) (by simp; omega) hSrcBelow hRoom hLive hTotal
-      (by rw [hSize]; have := Nat.zero_le (n.toNat * bound); omega) hPtr hInit) ?_) ?_
+      (by simp; omega) (by simp; omega) (by simp; omega) hSrcBelow hRoom hLive hCap hPtr hInit)
+      ?_) ?_
   · apply Triple.of_forall
     rintro s1 st1 ⟨heap1, p1, hLive1, hFrame1, hState1⟩
     have hFrame1W : State.Frame scratch [state, size, limit, index, next] before st1 :=
@@ -233,20 +206,15 @@ theorem Live.arrayLoop [Represent α] {idx : Nat} {g : α → Array Float} {gNee
       obtain ⟨hLess, rfl⟩ := hCondition
       rw [ofNat_lt_iff hk] at hLess
       obtain ⟨vals, after, hEval, hRep⟩ :=
-        hArgs k p _ heapK s current hLess hFrameCur hIndexGet hStateGet hLiveK
+        hArgs k p heapK s current hLess hFrameCur hIndexGet hStateGet hLiveK
       have hFrameA := Expr.evalResults_frame [] hEval
       have hLenA : scratch < after.params.length + after.locals.length := by
         rw [hFrameA.params, hFrameA.locals]; exact hFrameLen hFrameCur
-      have hStep : (k + 1) * bound ≤ n.toNat * bound := Nat.mul_le_mul_right _ hLess
-      have hk1 : (k + 1) * bound = k * bound + bound := by rw [Nat.add_mul, Nat.one_mul]
-      have hBoundK := hBound k hLess
-      refine Stmt.seq_spec (M := fun s' st' => ∃ heap' q, Live heap0 initial
-          (used + (48 + 8 * (init.size + 1)) + k * bound +
-            gNeed (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) init k))) heap' s'
+      refine Stmt.seq_spec (M := fun s' st' => ∃ heap' q, Live heap0 initial heap' s'
           ((q, (g (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) init k))).map
             Float.toBits) :: temps) ∧
           st' = (after.update next (.i64 q)).update state (.i64 q)) ?_ ?_
-      · refine Live.call_seq hImpl hImport hFunc hParams hLiveK hTotal (by omega) hEval hRep
+      · refine Live.call_seq hImpl hImport hFunc hParams hLiveK hCap hEval hRep
           (by omega) fun heap2 q s2 hLive2 => ?_
         have hPtr2 : (after.update next (.i64 q)).get state = some (.i64 p) := by
           rw [State.get_update_ne hSN, hFrameA.get state hStateB (by simp), hStateGet]
@@ -282,7 +250,7 @@ theorem Live.arrayLoop [Represent α] {idx : Nat} {g : α → Array Float} {gNee
         · rw [State.get_update_ne hLI, hst, State.get_update_ne (Ne.symm hSL),
             State.get_update_ne hLN, hFrameA.get limit hLimitB (by simp), hLimitGet]
         · rw [loopPrefix_succ]
-          exact hLive3.weaken (by omega)
+          exact hLive3
         · rw [State.get_update_ne hSI, hst, State.get_update_same (by rw [hLen]; omega)]
         · simp only [measure, State.get_update_same hLen4, hIndexGet, UInt64.toNat_add,
             UInt64.toNat_ofNat', UInt64.reduceToNat]

@@ -9,10 +9,10 @@ open Wasm Project.Pipeline Project.IR Project.Runtime
 /-- `pairSum` with its two arguments as one pair. -/
 def pairTuple (x : UInt64 × UInt64) : UInt64 := LeanExe.Examples.PairSum.pairSum x.1 x.2
 
-theorem pairSum_implements : Implements pairSum.module 3 pairTuple (fun _ => 72) := by
-  refine Func.implements_heap [(pairSum.ir, "pairSum")] 0 pairSum.ir "pairSum" rfl pairTuple (fun _ => 72)
+theorem pairSum_implements : Implements pairSum.module 3 pairTuple := by
+  refine Func.implements_heap [(pairSum.ir, "pairSum")] 0 pairSum.ir "pairSum" rfl pairTuple
     (fun _ _ _ x h => by rw [Scalar.borrowed.mp h]; rfl) ?_
-  rintro ⟨a, b⟩ heap initial params hHeap hArgs hRoom
+  rintro ⟨a, b⟩ heap initial params hHeap hArgs hCap
   obtain rfl := Scalar.borrowed.mp hArgs
   have hMemory32 : (compile [(pairSum.ir, "pairSum")]).memIs64 = false := rfl
   have hImports : (compile [(pairSum.ir, "pairSum")]).imports = [] := rfl
@@ -23,7 +23,7 @@ theorem pairSum_implements : Implements pairSum.module 3 pairTuple (fun _ => 72)
     (.seq (.fold .u64 2 3 4 5 6 (.bin .add (.get 3) (.get 6))) (.release 2)))) 7
     (fun store state => store = initial ∧ state = start) _
   refine Stmt.seq_spec (Stmt.arrayLiteral_spec (words := [a, b]) hMemory32 hImports hAlloc
-    (by decide) (by simp [start]) hHeap hRoom ?_) ?_
+    (by decide) (by simp [start]) hHeap hCap (by decide) ?_) ?_
   · refine .cons (fun _ state hFrame => ⟨state, ?_⟩) (.cons (fun _ state hFrame => ⟨state, ?_⟩) .nil)
     · have hGet : state.get 0 = some (.i64 a) :=
         (hFrame.get 0 (by decide) (by decide)).trans (by simp [start, State.get])
@@ -63,11 +63,9 @@ theorem pairSum_implements : Implements pairSum.module 3 pairTuple (fun _ => 72)
   refine (Stmt.release_spec hImports hRelease hPtr2 hAt hOwned).mono (fun _ _ h => h) ?_
   rintro store' state' ⟨hs, ht⟩
   subst store' state'
-  refine ⟨_, hAt.release hOwned, rfl, hNew.top, ?_, hNew.caps, fun p ws h =>
+  refine ⟨_, hAt.release hOwned, rfl, hNew.caps, fun p ws h =>
       (hNew.borrowed p ws h).release hAt hOwned (hNew.borrowedApart p ws h), fun p ws h => ?_,
     _, s2, ?_, rfl, fun _ _ _ => trivial, fun _ _ _ => trivial⟩
-  · rw [Heap.releaseStore_pages]
-    exact hNew.pages
   · obtain ⟨hKept, hCapacity⟩ := hNew.ownedKeep p ws h
     obtain ⟨hReleased, hCapacity'⟩ :=
       hKept.release hAt hOwned (by rw [hCapacity]; exact hNew.ownedApart p ws h)
@@ -76,9 +74,9 @@ theorem pairSum_implements : Implements pairSum.module 3 pairTuple (fun _ => 72)
       LeanExe.Examples.PairSum.pairSum, Scalar.values]
 
 /-- `encode` succeeds on `pairSum.module`, and its bytes decode to a module that
-computes `pairSum` exactly, allocating at most 72 bytes. -/
+computes `pairSum` exactly. -/
 theorem pairSum_bytes : ∃ bytes, Wasm.Encoding.encode pairSum.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 3 pairTuple (fun _ => 72) := by
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 3 pairTuple := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip pairSum.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, pairSum.module, decoded, pairSum_implements⟩

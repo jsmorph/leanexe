@@ -20098,9 +20098,9 @@ disappear, and so does the planned work on crediting releases.
   kernel after the file is written.
 - [x] 2a. `Triple` accepts the `unreachable` trap and `Implements` states the trap-tolerant
   result, still with `Room`; every proof and `gpt_bytes` checked again; bytes unchanged.
-- [ ] 2b. `alloc`'s trap branch and the length check; the allocation rules without `Room`;
+- [x] 2b. `alloc`'s trap branch and the length check; the allocation rules without `Room`;
   every program ported; `Room` and the `*Need` functions deleted.
-- [ ] 3. The generation theorem: an invariant on stores, with the weights borrowed and the
+- [x] 3. The generation theorem: an invariant on stores, with the weights borrowed and the
   cache of the first `p` tokens owned, and theorems for the empty cache, for `step`
   followed by the release of the old cache, and for `scores`, which gives `forward`'s row.
 
@@ -20142,3 +20142,66 @@ The change touched `Stmt.lean`, `TailLoop.lean`, `Run.lean`, `Correct.lean`,
 build passed (3,542 jobs), `gpt_bytes` and `prng_bytes` depend only on `propext`,
 `Classical.choice`, and `Quot.sound`, and the emitted `gpt.wasm` has the same sha256 and
 passes `gpt_file`.  `Room` remains until 2b.
+
+## 2026-10-01: `Implements` without a memory premise (2b)
+
+The plan assumed a cap of 65,536 pages.  With it, a successful growth bounds a block's
+end only by `2 ^ 32`, while `Heap.Block`, `Heap.Owned`, and the free-list nodes require
+`root + capacity < 2 ^ 32`, so a block ending exactly at 4 GiB would have forced weaker
+bounds through the free-list and merge proofs.  Every compiled module now declares
+`pagesMax := 65535`, `Heap.At` requires at most 65,535 pages, and `Implements` assumes a
+cap of at most 65,535 pages; a successful growth then ends every block within
+`65535 * 65536`, and the strict bounds hold.  The cost is 64 KiB of the 4 GiB address space.
+
+`growProgram_abort` and `ensureProgram_abort` prove that growth past the cap traps at
+`unreachable`.  The bump prefix needs only a 64-bit no-overflow bound before the growth,
+and `FixedArrayBump.program_spec_or_abort` splits on the growth: success gives
+`top + 48 + need ≤ 65535 * 65536`, failure the trap.  The chain ends in
+`alloc_spec_or_abort`: for a request of at most `2 ^ 32` bytes, `alloc` traps or returns a
+block, with `Heap.Fits`, the bound the post-allocation lemmas now take instead of `Room`.
+A request near `2 ^ 48` bytes would wrap the page delta modulo `2 ^ 32`, so the
+specification bounds the request, and the build template, which computes `(n + 1) * 8`,
+now traps through the new statement `Stmt.abort` when `n ≥ 2 ^ 29`.  An array literal's
+rule takes the bound on its constant length.  `buildWith_spec` splits on the length and on
+`Heap.Fits`: a long array aborts at the check, and a block that does not fit makes
+`alloc`'s postcondition contradictory, which leaves only its trap.
+
+`Implements m entry f` lost its `need` argument, its premise `Room`, and the bounds on
+`top` and pages in its postcondition; it keeps the frame clauses and the unchanged
+memory caps, which carry the cap premise from call to call (`memoryCap_le_of_caps`).
+`Live` lost `used`, `top`, and `pages`, and its rules take the cap premise in place of a
+byte total.  `Heap.NewArray` lost its byte count.  The 41 `*Need` definitions, the byte
+functions and size lemmas of the generator, `Heap.Room` with `after` and
+`after_allocate`, and the allocation lemmas of the old path are deleted.  The
+generator emits the shorter proofs, and the CLOB proofs, whose own invariant `Kept` and
+postcondition `PairPost` carried the same bounds, were ported the same way.
+
+The full build passed (3,542 jobs), and every program's `_bytes` theorem depends only on
+`propext`, `Classical.choice`, and `Quot.sound`.  `gpt.wasm` is 14,275 bytes with sha256
+`8181d2c2…`; it passes `gpt_file`, all 2,733 comparisons with native Lean, the session
+tests, the sampling frequencies, and `gpt2_compare.py`, which again matched Hugging
+Face's choice at every step to 256 tokens, with a largest relative difference of 1.16e-13
+and a session ending at 1,095,368,704 bytes.  In Wasmtime, `negInfs` with `k = 2 ^ 29` and
+with `k = 2 ^ 61 - 1` trapped at the length check, and with `k = 536,870,000`, about
+4.29 GB, at `alloc`'s growth check.
+
+## 2026-10-01: The generation in Talos terms (3)
+
+`Project/Gpt/Generation.lean` states the generation as the host runs it.  `Weights` and
+`Pointers` hold the twenty weight arrays and their pointers, and `Generating store W P
+tokens layers nh dh f eps pc p` says that some heap satisfies `Heap.At`, the cap is at most
+65,535 pages, every weight array is borrowed at its pointer and apart from the object at
+`pc`, and that object is owned and holds `cacheAfter` the first `p` tokens.
+`generating_start` gives it for an owned empty array.  `generating_step` shows that `step`
+on token `p` aborts or returns a pointer `pc'`, and that the release of `pc` then gives
+`Generating … pc' (p + 1)`; the proof combines `step_implements`, `release_run`, and the
+release lemmas for owned and borrowed arrays.  `generating_scores` shows that `scores` on
+the cache of `p + 1` tokens aborts or returns an owned array equal to row `p` of
+`forward`, under the bounds of `steps_exact`.  All three depend only on `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+The theorems cover the CLI's sequence of calls: `step`, the release of the old cache,
+and `scores`.  Still trusted are the host's starting store (the weights loaded through
+`alloc` and written by the host), Wasmtime's agreement with Talos, the tokenizer, and the
+CLI's choice of a token from the scores, by Python's `max` for greedy decoding or by
+`sampleTopK`, whose call on the scores array `sampleTopK_implements` covers.

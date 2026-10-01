@@ -27,7 +27,7 @@ def Stmt.arrayLiteral (dst : Nat) (values : List (Expr .u64)) : Stmt :=
     (.seq (.store (.get dst) (.const (UInt64.ofNat values.length)))
       (Stmt.storeElements dst 0 values))
 
-theorem allocSize_words (k : Nat) (hk : 8 * (k + 1) < 4294967296) :
+theorem allocSize_words (k : Nat) (hk : 8 * (k + 1) ≤ 4294967296) :
     allocSize (UInt64.ofNat (8 * (k + 1))) = UInt64.ofNat (8 * (k + 1)) := by
   have hRound : (UInt64.ofNat (8 * (k + 1)) + 7) / 8 * 8 = UInt64.ofNat (8 * (k + 1)) := by
     apply UInt64.toNat_inj.mp
@@ -99,7 +99,8 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
     (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
     (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
     (hDst : dst < scratch) (hRoom : scratch ≤ before.params.length + before.locals.length)
-    (hHeap : heap.At initial) (hSpace : heap.Room initial m (48 + 8 * (values.length + 1)))
+    (hHeap : heap.At initial) (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hShort : 8 * (values.length + 1) ≤ 4294967296)
     (hValues : List.Forall₂ (fun value word => ∀ mem state, State.Frame scratch [dst] before state →
       ∃ next, value.eval mem scratch state = some (word, next)) values words) :
     Triple m (.arrayLiteral dst values) scratch
@@ -107,15 +108,27 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
       (fun store state => ∃ ptr, State.Frame scratch [dst] before state ∧
         state.get dst = some (.i64 ptr) ∧
         heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (values.length + 1)))) store ptr
-          words.toArray (48 + 8 * (values.length + 1))) := by
+          words.toArray) := by
   have hLength : values.length = words.length := hValues.length_eq
-  have hAddress := hSpace.address
   have hNeed : (UInt64.ofNat (8 * (values.length + 1))).toNat = 8 * (values.length + 1) :=
     UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
   have hSize := allocSize_words values.length (by omega)
   generalize hNeedDef : UInt64.ofNat (8 * (values.length + 1)) = need at hNeed hSize ⊢
-  have hRoomNeed : heap.Room initial m (48 + need.toNat) := by rw [hNeed]; exact hSpace
-  have hBlock := hHeap.allocate_block 1 hRoomNeed
+  by_cases hFitsNeed : heap.Fits need
+  swap
+  · -- The block does not fit, so `alloc` traps.
+    refine Stmt.seq_spec (M := fun _ _ => False) ?_ Triple.of_false
+    refine (Stmt.call_spec (f := allocFunction typeIdx) (by simp [hImports])
+      (by simpa [hImports] using hFunc) rfl).mono ?_ fun _ _ h => h
+    rintro s t ⟨hs, ht⟩
+    subst s t
+    refine ⟨[.i64 need], before, _, by rw [← hNeedDef]; rfl,
+      fun env => alloc_spec_or_abort hMemory32 hImports hFunc env heap initial need hHeap
+        (by omega) hCap, ?_⟩
+    rintro store' out ⟨hFits', -, -⟩
+    rw [hSize] at hFits'
+    exact absurd hFits' hFitsNeed
+  have hBlock := hHeap.allocate_block 1 hFitsNeed
   have hCapacity := allocated_capacity need heap.free
   have hBlockAddress := hBlock.address
   have hBlockMemory := hBlock.memory
@@ -141,9 +154,9 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
     rintro s t ⟨hs, ht⟩
     subst s t
     refine ⟨[.i64 need], before, _, by rw [← hNeedDef]; rfl,
-      fun env => (alloc_spec hMemory32 hImports hFunc env heap initial need hHeap
-        (by rw [hSize]; exact hRoomNeed)).returnsOrAborts, ?_⟩
-    rintro store' out ⟨hStore', hOut⟩
+      fun env => alloc_spec_or_abort hMemory32 hImports hFunc env heap initial need hHeap
+        (by omega) hCap, ?_⟩
+    rintro store' out ⟨-, hStore', hOut⟩
     rw [hSize] at hStore' hOut
     exact ⟨s1, by simp [hOut, hPtrDef, State.setAll, hSet1], hStore', rfl⟩
   · refine Stmt.store_spec.mono ?_ fun _ _ h => h
@@ -163,10 +176,9 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
       simp only [List.size_toArray] at hAll ⊢
       omega
     subst hPtrDef
-    have hNew := Heap.newArray_of_writes hHeap hRoomNeed hWithin hComplete.complete
+    have hNew := Heap.newArray_of_writes hHeap hFitsNeed hWithin hComplete.complete
       (by simp only [List.size_toArray]; omega)
       (by rw [hAll.1]; exact heap.allocateStore_memoryCaps initial need 1)
-    rw [hNeed] at hNew
     exact ⟨_, hFrame, hPtr, hNew⟩
 
 end Project.IR

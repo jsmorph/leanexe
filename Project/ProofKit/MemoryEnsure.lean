@@ -57,22 +57,42 @@ theorem ensureProgram_spec_available (module_ : Wasm.Module) (env : HostEnv Unit
     simpa [ensured, hLess, hValues, hEmpty] using hNext
   · simpa [hCompare, hLess, ensured, hValues, hEmpty] using hNext
 
-theorem ensureProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit)
+/-- When memory has fewer pages than required and the cap is below the requirement, the
+program traps at `unreachable`. -/
+theorem ensureProgram_abort (module_ : Wasm.Module) (env : HostEnv Unit)
     (store : Store Unit) (frame : Locals) (pageLocal required : Nat)
     (hMemory32 : module_.memIs64 = false) (hValues : frame.values = [])
     (hLocal : frame.get pageLocal = some (.i64 (UInt64.ofNat required)))
-    (hCurrent : store.mem.pages ≤ 65536) (hBound : required ≤ 65536)
-    (hCap : required ≤ store.memoryCap module_ 0)
-    (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : wp module_ rest Q (ensured store required) frame env) :
+    (hCurrent : store.mem.pages ≤ 65536) (hBound : required < 4294967296)
+    (hLess : store.mem.pages < required) (hOver : store.memoryCap module_ 0 < required)
+    (Q : Assertion Unit) (rest : Wasm.Program) (hTrap : ∀ st, Q (.Trap st "unreachable")) :
     wp module_ (ensureProgram pageLocal ++ rest) Q store frame env := by
-  exact ensureProgram_spec_available module_ env store frame pageLocal required hMemory32 hValues hLocal hCurrent hBound
-    (fun _ => hCap) Q rest hNext
+  have hLocal' := hLocal
+  simp only [Locals.get] at hLocal'
+  have hCurrentNat := Project.ProofKit.Allocation.memoryPages_toNat store.mem.pages hCurrent
+  have hRequired64 : required < UInt64.size := by
+    change required < 18446744073709551616
+    omega
+  have hCompare : ((UInt32.ofNat store.mem.pages).toUInt64 < UInt64.ofNat required) =
+      (store.mem.pages < required) := by
+    apply propext
+    rw [UInt64.lt_iff_toNat_lt, hCurrentNat, UInt64.toNat_ofNat_of_lt' hRequired64]
+  unfold ensureProgram
+  simp only [List.cons_append, List.nil_append, wp_memorySize_cons, sizeValue,
+    hMemory32, Bool.false_eq_true, reduceIte, wp_extendUI32_cons,
+    UInt64.ofNat_uInt32ToNat, wp_localGet_cons, Frame.withValues_get,
+    hLocal, hValues, wp_ltUI64_cons]
+  refine wp_iff_cons rfl ?_
+  simp [hCompare, hLess, hLocal']
+  apply growProgram_abort module_ env store _ required [] hMemory32 rfl
+    (Nat.le_of_lt hLess) hCurrent hBound hOver _ []
+  intro st
+  simpa using hTrap st
 
 #print axioms ensureProgram_spec_available
+#print axioms ensureProgram_abort
 
 #print axioms ensured_pages
 #print axioms ensured_bytes
-#print axioms ensureProgram_spec
 
 end Project.ProofKit.MemoryGrowth

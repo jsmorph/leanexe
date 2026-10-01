@@ -1269,6 +1269,7 @@ def stmtToExpr : Project.IR.Stmt → Lean.Expr
       mkApp2 (mkConst ``Project.IR.Stmt.store) (irToExpr address) (irToExpr value)
   | .call func args results =>
       mkApp3 (mkConst ``Project.IR.Stmt.call) (toExpr func) (typedToExpr args) (toExpr results)
+  | .abort => mkConst ``Project.IR.Stmt.abort
 
 def funcToExpr (func : Func) : Lean.Expr :=
   mkApp4 (mkConst ``Func.mk) (toExpr func.params) (toExpr func.vars) (stmtToExpr func.body)

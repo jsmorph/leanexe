@@ -21,7 +21,7 @@ theorem mean_bits (xs : Array Float) :
     Array.size_map]
 
 theorem mean_implements :
-    Implements mean.module 3 LeanExe.Examples.Mean.mean (fun _ => 0) := by
+    Implements mean.module 3 LeanExe.Examples.Mean.mean := by
   refine Func.implements [(mean.ir, "mean")] 0 mean.ir "mean" rfl _ (by rintro _ _ _ _ ⟨ptr, rfl, -⟩; rfl) ?_
   rintro xs heap initial _ - ⟨ptr, rfl, hBorrowed⟩
   let start : State :=
@@ -60,7 +60,7 @@ theorem mean_implements :
 computes `mean` bit for bit. -/
 theorem mean_bytes : ∃ bytes, Encoding.encode mean.module = .ok bytes ∧
     ∃ m, Encoding.decode bytes = .ok m ∧
-      Implements m 3 LeanExe.Examples.Mean.mean (fun _ => 0) := by
+      Implements m 3 LeanExe.Examples.Mean.mean := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip mean.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, mean.module, decoded, mean_implements⟩

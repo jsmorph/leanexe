@@ -14,16 +14,9 @@ def mlpTuple (x : Array Float × Array Float × Array Float × Array Float × Ar
   LeanExe.Examples.Gpt.mlp x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2.1 x.2.2.2.2.2.2.1
     x.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2
 
-/-- The bytes `mlp` may allocate: two `t × f` arrays and the `t × d` result. -/
-def mlpNeed (x : Array Float × Array Float × Array Float × Array Float × Array Float × UInt64 × UInt64 ×
-    UInt64 × UInt64) : Nat :=
-  48 + 8 * ((x.2.2.2.2.2.2.1 * x.2.2.2.2.2.2.2.2).toNat + 1) +
-    (48 + 8 * ((x.2.2.2.2.2.2.1 * x.2.2.2.2.2.2.2.2).toNat + 1)) +
-    (48 + 8 * ((x.2.2.2.2.2.2.1 * x.2.2.2.2.2.2.2.1).toNat + 1))
-
-theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
+theorem mlp_implements : Implements gpt.module 14 mlpTuple := by
   refine Func.implements_heap gpt.funcs 11 gpt.mlp.ir "mlp" rfl
-    mlpTuple mlpNeed
+    mlpTuple
     (by
       rintro _ _ _ ⟨_, _, _, _, _, _, _, _, _⟩ h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
@@ -33,15 +26,13 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
       obtain rfl := h
       rfl) ?_
-  rintro ⟨x, wfc, bfc, wproj, bproj, l, t, d, f⟩ heap initial _ hHeap hArgs hRoom
+  rintro ⟨x, wfc, bfc, wproj, bproj, l, t, d, f⟩ heap initial _ hHeap hArgs hCap
   obtain ⟨pX, _, rfl, hX, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pWfc, _, rfl, hWfc, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pBfc, _, rfl, hBfc, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pWproj, _, rfl, hWproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pBproj, _, rfl, hBproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
-  change heap.Room initial gpt.module (mlpNeed (x, wfc, bfc, wproj, bproj, l, t, d, f)) at hRoom
-  simp only [mlpNeed] at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hLinear : gpt.module.funcs[30 - gpt.module.imports.length]? =
@@ -52,7 +43,6 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
     compile_funcs (funcs := gpt.funcs) (i := 10) rfl
   let h := linearTuple (x, wfc, bfc, l, t, d, f)
   let g := LeanExe.Examples.Gpt.geluArray h
-  have hSize : h.size = (t * f).toNat := linear_size x wfc bfc l t d f
   let start : State :=
     { params := [.i64 pX, .i64 pWfc, .i64 pBfc, .i64 pWproj, .i64 pBproj, .i64 l, .i64 t, .i64 d,
         .i64 f]
@@ -76,9 +66,8 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
   show Triple _ gpt.mlp.ir.body _
     (fun store state => store = initial ∧ state = start) _
   -- `h = x · wfc + bfc`.
-  refine Live.call_seq linear_implements rfl hLinear rfl (Live.start hHeap) hRoom
-    (x := (x, wfc, bfc, l, t, d, f))
-    (by simp only [linearNeed]; omega) (afterArgs := start)
+  refine Live.call_seq linear_implements rfl hLinear rfl (Live.start hHeap) hCap
+    (x := (x, wfc, bfc, l, t, d, f)) (afterArgs := start)
     (vals := [.i64 pX, .i64 pWfc, .i64 pBfc, .i64 l, .i64 t, .i64 d, .i64 f])
     (Expr.evalResults_get (sg0) <|
       Expr.evalResults_get (sg1) <|
@@ -94,9 +83,8 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
   let s1 := start.update 9 (.i64 ph)
   have hS1 : s1.params.length + s1.locals.length = 13 := by rw [hLen, hStart]
   -- `g = gelu h`.
-  refine Live.call_seq geluArray_implements rfl hGelu rfl hLive1 hRoom
-    (x := h)
-    (by simp only [linearNeed, geluNeed, hSize]; omega) (afterArgs := s1)
+  refine Live.call_seq geluArray_implements rfl hGelu rfl hLive1 hCap
+    (x := h) (afterArgs := s1)
     (vals := [.i64 ph])
     (Expr.evalResults_get (State.get_update_same (state := start) (by rw [hStart]; decide)) <|
       Expr.evalResults_nil)
@@ -105,9 +93,8 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
   let s2 := s1.update 10 (.i64 pg)
   have hS2 : s2.params.length + s2.locals.length = 13 := by rw [hLen, hS1]
   -- The result, `g · wproj + bproj`.
-  refine Live.call_seq linear_implements rfl hLinear rfl hLive2 hRoom
-    (x := (g, wproj, bproj, l, t, f, d))
-    (by simp only [linearNeed, geluNeed, hSize]; omega) (afterArgs := s2)
+  refine Live.call_seq linear_implements rfl hLinear rfl hLive2 hCap
+    (x := (g, wproj, bproj, l, t, f, d)) (afterArgs := s2)
     (vals := [.i64 pg, .i64 pWproj, .i64 pBproj, .i64 l, .i64 t, .i64 f, .i64 d])
     (Expr.evalResults_get (State.get_update_same (state := s1) (by rw [hS1]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 3) (index := 10) (by decide)).trans ((State.get_update_ne (state := start) (j := 3) (index := 9) (by decide)).trans (sg3))) <|
@@ -144,11 +131,9 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple mlpNeed := by
       hKeep pWfc _ hWfc⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl, hKeep pBfc _ hBfc⟩, [.i64 pWproj],
       _, rfl, ⟨pWproj, rfl, hKeep pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
       hKeep pBproj _ hBproj⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR1.finish (need := mlpNeed (x, wfc, bfc, wproj, bproj, l, t, d, f))
-      (by simp only [linearNeed, geluNeed, mlpNeed, hSize]
-          omega) hParams
-  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR1.finish hParams
+  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
     by simp [gpt.mlp.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,
       State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
 
@@ -159,24 +144,9 @@ def attentionTuple (x : Array Float × Array Float × Array Float × Array Float
     x.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.1
     x.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2
 
-/-- The bytes `attention` may allocate for `t` rows and `nh` heads of width `dh`: `q`, `k`,
-and `v`, the scores, the softmax with its two temporaries, the weighted values, and the
-result. -/
-def attentionBytes (t nh dh : UInt64) : Nat :=
-  48 + 8 * ((t * (nh * dh)).toNat + 1) + (48 + 8 * ((t * (nh * dh)).toNat + 1)) +
-    (48 + 8 * ((t * (nh * dh)).toNat + 1)) + (48 + 8 * ((t * nh * t).toNat + 1)) +
-    (48 + 8 * ((t * nh).toNat + 1) + (48 + 8 * ((t * nh).toNat + 1)) +
-      (48 + 8 * ((t * nh * t).toNat + 1))) +
-    (48 + 8 * ((t * (nh * dh)).toNat + 1)) + (48 + 8 * ((t * (nh * dh)).toNat + 1))
-
-/-- The bytes `attention` may allocate. -/
-def attentionNeed (x : Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
-    Array Float × Array Float × Array Float × UInt64 × UInt64 × UInt64 × UInt64) : Nat :=
-  attentionBytes x.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2
-
-theorem attention_implements : Implements gpt.module 24 attentionTuple attentionNeed := by
+theorem attention_implements : Implements gpt.module 24 attentionTuple := by
   refine Func.implements_heap gpt.funcs 21 gpt.attention.ir "attention" rfl
-    attentionTuple attentionNeed
+    attentionTuple
     (by
       rintro _ _ _ ⟨_, _, _, _, _, _, _, _, _, _, _, _, _⟩ h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
@@ -190,7 +160,7 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
       obtain rfl := h
       rfl) ?_
-  rintro ⟨x, wq, bq, wk, bk, wv, bv, wo, bo, l, t, nh, dh⟩ heap initial _ hHeap hArgs hRoom
+  rintro ⟨x, wq, bq, wk, bk, wv, bv, wo, bo, l, t, nh, dh⟩ heap initial _ hHeap hArgs hCap
   obtain ⟨pX, _, rfl, hX, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pWq, _, rfl, hWq, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pBq, _, rfl, hBq, hArgs⟩ := Represent.borrowed_float_pair hArgs
@@ -201,8 +171,6 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   obtain ⟨pWo, _, rfl, hWo, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pBo, _, rfl, hBo, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
-  change heap.Room initial gpt.module (attentionBytes t nh dh) at hRoom
-  simp only [attentionBytes] at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hOne : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
@@ -251,9 +219,8 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   show Triple _ gpt.attention.ir.body _
     (fun store state => store = initial ∧ state = start) _
   -- `q = x · wq + bq`.
-  refine Live.call_seq linear_implements rfl hLinear rfl (Live.start hHeap) hRoom
-    (x := (x, wq, bq, l, t, nh * dh, nh * dh))
-    (by simp only [linearNeed]; omega) (afterArgs := start)
+  refine Live.call_seq linear_implements rfl hLinear rfl (Live.start hHeap) hCap
+    (x := (x, wq, bq, l, t, nh * dh, nh * dh)) (afterArgs := start)
     (vals := [.i64 pX, .i64 pWq, .i64 pBq, .i64 l, .i64 t, .i64 (nh * dh), .i64 (nh * dh)])
     (Expr.evalResults_get (sg0) <|
       Expr.evalResults_get (sg1) <|
@@ -269,9 +236,8 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   let s1 := start.update 13 (.i64 pq)
   have hS1 : s1.params.length + s1.locals.length = 21 := by rw [hLen, hStart]
   -- `k = x · wk + bk`.
-  refine Live.call_seq linear_implements rfl hLinear rfl hLive1 hRoom
-    (x := (x, wk, bk, l, t, nh * dh, nh * dh))
-    (by simp only [linearNeed]; omega) (afterArgs := s1)
+  refine Live.call_seq linear_implements rfl hLinear rfl hLive1 hCap
+    (x := (x, wk, bk, l, t, nh * dh, nh * dh)) (afterArgs := s1)
     (vals := [.i64 pX, .i64 pWk, .i64 pBk, .i64 l, .i64 t, .i64 (nh * dh), .i64 (nh * dh)])
     (Expr.evalResults_get ((State.get_update_ne (state := start) (j := 0) (index := 13) (by decide)).trans (sg0)) <|
       Expr.evalResults_get ((State.get_update_ne (state := start) (j := 3) (index := 13) (by decide)).trans (sg3)) <|
@@ -288,9 +254,8 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   let s2 := s1.update 14 (.i64 pk)
   have hS2 : s2.params.length + s2.locals.length = 21 := by rw [hLen, hS1]
   -- `v = x · wv + bv`.
-  refine Live.call_seq linear_implements rfl hLinear rfl hLive2 hRoom
-    (x := (x, wv, bv, l, t, nh * dh, nh * dh))
-    (by simp only [linearNeed]; omega) (afterArgs := s2)
+  refine Live.call_seq linear_implements rfl hLinear rfl hLive2 hCap
+    (x := (x, wv, bv, l, t, nh * dh, nh * dh)) (afterArgs := s2)
     (vals := [.i64 pX, .i64 pWv, .i64 pBv, .i64 l, .i64 t, .i64 (nh * dh), .i64 (nh * dh)])
     (Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 0) (index := 14) (by decide)).trans ((State.get_update_ne (state := start) (j := 0) (index := 13) (by decide)).trans (sg0))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 5) (index := 14) (by decide)).trans ((State.get_update_ne (state := start) (j := 5) (index := 13) (by decide)).trans (sg5))) <|
@@ -307,9 +272,8 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   let s3 := s2.update 15 (.i64 pv)
   have hS3 : s3.params.length + s3.locals.length = 21 := by rw [hLen, hS2]
   -- The masked scores of `q` and `k`, head by head.
-  refine Live.call_seq maskedScores_implements rfl hMasked rfl hLive3 hRoom
-    (x := (q, k, t, nh, dh, 1.0 / dh.toFloat.sqrt))
-    (by simp only [linearNeed, maskedNeed]; omega) (afterArgs := s3)
+  refine Live.call_seq maskedScores_implements rfl hMasked rfl hLive3 hCap
+    (x := (q, k, t, nh, dh, 1.0 / dh.toFloat.sqrt)) (afterArgs := s3)
     (vals := [.i64 pq, .i64 pk, .i64 t, .i64 nh, .i64 dh, .f64 (1.0 / dh.toFloat.sqrt).toBits])
     (by simp [Expr.evalResults, Expr.eval, s3, s2, s1, State.get_update_same, hStart, sg10, sg11,
       sg12, F64Op.apply, F64UnOp.apply, F64Bits.toBits_div, F64Bits.toBits_sqrt,
@@ -322,9 +286,8 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   let s4 := s3.update 16 (.i64 ps)
   have hS4 : s4.params.length + s4.locals.length = 21 := by rw [hLen, hS3]
   -- The softmax of each of the `t · nh` rows of scores.
-  refine Live.call_seq softmaxRows_implements rfl hSoftmax rfl hLive4 hRoom
-    (x := (s, t, nh))
-    (by simp only [linearNeed, maskedNeed, softmaxRowsNeed]; omega) (afterArgs := s4)
+  refine Live.call_seq softmaxRows_implements rfl hSoftmax rfl hLive4 hCap
+    (x := (s, t, nh)) (afterArgs := s4)
     (vals := [.i64 ps, .i64 t, .i64 nh])
     (Expr.evalResults_get (State.get_update_same (state := s3) (by rw [hS3]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 10) (index := 16) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 13) (by decide)).trans (sg10))))) <|
@@ -336,9 +299,8 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   let s5 := s4.update 17 (.i64 pp)
   have hS5 : s5.params.length + s5.locals.length = 21 := by rw [hLen, hS4]
   -- `o = p · v`, row `i` summing over rows `0` to `i` of `v`.
-  refine Live.call_seq causalMatMul_implements rfl hCausal rfl hLive5 hRoom
-    (x := (p, v, t, nh, dh))
-    (by simp only [linearNeed, maskedNeed, softmaxRowsNeed, causalMatMulNeed]; omega) (afterArgs := s5)
+  refine Live.call_seq causalMatMul_implements rfl hCausal rfl hLive5 hCap
+    (x := (p, v, t, nh, dh)) (afterArgs := s5)
     (vals := [.i64 pp, .i64 pv, .i64 t, .i64 nh, .i64 dh])
     (Expr.evalResults_get (State.get_update_same (state := s4) (by rw [hS4]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s4) (j := 15) (index := 17) (by decide)).trans ((State.get_update_ne (state := s3) (j := 15) (index := 16) (by decide)).trans (State.get_update_same (state := s2) (by rw [hS2]; decide)))) <|
@@ -354,9 +316,8 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   let s6 := s5.update 18 (.i64 po)
   have hS6 : s6.params.length + s6.locals.length = 21 := by rw [hLen, hS5]
   -- The result, `o · wo + bo`.
-  refine Live.call_seq linear_implements rfl hLinear rfl hLive6 hRoom
-    (x := (o, wo, bo, l, t, nh * dh, nh * dh))
-    (by simp only [linearNeed, maskedNeed, softmaxRowsNeed, causalMatMulNeed]; omega) (afterArgs := s6)
+  refine Live.call_seq linear_implements rfl hLinear rfl hLive6 hCap
+    (x := (o, wo, bo, l, t, nh * dh, nh * dh)) (afterArgs := s6)
     (vals := [.i64 po, .i64 pWo, .i64 pBo, .i64 l, .i64 t, .i64 (nh * dh), .i64 (nh * dh)])
     (Expr.evalResults_get (State.get_update_same (state := s5) (by rw [hS5]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s5) (j := 7) (index := 18) (by decide)).trans ((State.get_update_ne (state := s4) (j := 7) (index := 17) (by decide)).trans ((State.get_update_ne (state := s3) (j := 7) (index := 16) (by decide)).trans ((State.get_update_ne (state := s2) (j := 7) (index := 15) (by decide)).trans ((State.get_update_ne (state := s1) (j := 7) (index := 14) (by decide)).trans ((State.get_update_ne (state := start) (j := 7) (index := 13) (by decide)).trans (sg7))))))) <|
@@ -407,12 +368,9 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
       [.i64 pWv], _, rfl, ⟨pWv, rfl, hKeep pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl,
       hKeep pBv _ hBv⟩, [.i64 pWo], _, rfl, ⟨pWo, rfl, hKeep pWo _ hWo⟩, [.i64 pBo], _, rfl,
       ⟨pBo, rfl, hKeep pBo _ hBo⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR5.finish (need := attentionNeed (x, wq, bq, wk, bk, wv, bv, wo, bo, l, t, nh, dh))
-      (by simp only [linearNeed, maskedNeed, softmaxRowsNeed, causalMatMulNeed, attentionNeed,
-          attentionBytes]
-          omega) hParams
-  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s8,
+  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR5.finish hParams
+  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s8,
     by simp [gpt.attention.ir, Func.scratch, Expr.evalResults, Expr.eval, s8,
       State.get_update_same, hS7], hOwned, hOutB, hOutO⟩
 
@@ -432,27 +390,9 @@ def blockTuple (x : Array Float × Array Float × Array Float × Array Float × 
     x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
     x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2
 
-/-- The bytes `block` may allocate for `t` rows, `nh` heads of width `dh`, hidden width `f`,
-and an input of `n` elements: two layer norms, attention, two sums, and the MLP. -/
-def blockBytes (t nh dh f : UInt64) (n : Nat) : Nat :=
-  48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * (nh * dh)).toNat + 1)) +
-    attentionBytes t nh dh + (48 + 8 * (n + 1)) +
-    (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * (nh * dh)).toNat + 1))) +
-    (48 + 8 * ((t * f).toNat + 1) + (48 + 8 * ((t * f).toNat + 1)) +
-      (48 + 8 * ((t * (nh * dh)).toNat + 1))) +
-    (48 + 8 * (n + 1))
-
-/-- The bytes `block` may allocate. -/
-def blockNeed (x : Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
-    Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
-    Array Float × Array Float × Array Float × Array Float × Array Float × UInt64 × UInt64 ×
-    UInt64 × UInt64 × UInt64 × Float) : Nat :=
-  blockBytes x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
-    x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.1.size
-
-theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
+theorem block_implements : Implements gpt.module 25 blockTuple := by
   refine Func.implements_heap gpt.funcs 22 gpt.block.ir "block" rfl
-    blockTuple blockNeed
+    blockTuple
     (by
       rintro _ _ _ ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _⟩ h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
@@ -475,7 +415,7 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
       obtain rfl := h
       rfl) ?_
   rintro ⟨x, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, t, nh,
-    dh, f, eps⟩ heap initial _ hHeap hArgs hRoom
+    dh, f, eps⟩ heap initial _ hHeap hArgs hCap
   obtain ⟨pX, _, rfl, hX, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pG1, _, rfl, hG1, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pB1, _, rfl, hB1, hArgs⟩ := Represent.borrowed_float_pair hArgs
@@ -494,8 +434,6 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
   obtain ⟨pWproj, _, rfl, hWproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pBproj, _, rfl, hBproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
-  change heap.Room initial gpt.module (blockBytes t nh dh f x.size) at hRoom
-  simp only [blockBytes, attentionBytes] at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hNorm : gpt.module.funcs[18 - gpt.module.imports.length]? =
@@ -515,7 +453,6 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
   let r := addTuple (x, a)
   let h2 := layerNormRowsTuple (r, g2, b2, l, t, nh * dh, eps)
   let m := mlpTuple (h2, wfc, bfc, wproj, bproj, l, t, nh * dh, f)
-  have hR : r.size ≤ x.size := add_size_le x a
   let start : State :=
     { params := [.i64 pX, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk, .i64 pWv,
         .i64 pBv, .i64 pWo, .i64 pBo, .i64 pG2, .i64 pB2, .i64 pWfc, .i64 pBfc, .i64 pWproj,
@@ -554,9 +491,8 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
   show Triple _ gpt.block.ir.body _
     (fun store state => store = initial ∧ state = start) _
   -- The first layer norm.
-  refine Live.call_seq layerNormRows_implements rfl hNorm rfl (Live.start hHeap) hRoom
-    (x := (x, g1, b1, l, t, nh * dh, eps))
-    (by simp only [layerNormRowsNeed]; omega) (afterArgs := start)
+  refine Live.call_seq layerNormRows_implements rfl hNorm rfl (Live.start hHeap) hCap
+    (x := (x, g1, b1, l, t, nh * dh, eps)) (afterArgs := start)
     (vals := [.i64 pX, .i64 pG1, .i64 pB1, .i64 l, .i64 t, .i64 (nh * dh), .f64 eps.toBits])
     (Expr.evalResults_get (sg0) <|
       Expr.evalResults_get (sg1) <|
@@ -572,9 +508,8 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
   let s1 := start.update 23 (.i64 ph1)
   have hS1 : s1.params.length + s1.locals.length = 30 := by rw [hLen, hStart]
   -- Attention.
-  refine Live.call_seq attention_implements rfl hAttention rfl hLive1 hRoom
-    (x := (h1, wq, bq, wk, bk, wv, bv, wo, bo, l, t, nh, dh))
-    (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes]; omega) (afterArgs := s1)
+  refine Live.call_seq attention_implements rfl hAttention rfl hLive1 hCap
+    (x := (h1, wq, bq, wk, bk, wv, bv, wo, bo, l, t, nh, dh)) (afterArgs := s1)
     (vals := [.i64 ph1, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk, .i64 pWv, .i64 pBv, .i64 pWo,
       .i64 pBo, .i64 l, .i64 t, .i64 nh, .i64 dh])
     (Expr.evalResults_get (State.get_update_same (state := start) (by rw [hStart]; decide)) <|
@@ -603,9 +538,8 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
   let s2 := s1.update 24 (.i64 pa)
   have hS2 : s2.params.length + s2.locals.length = 30 := by rw [hLen, hS1]
   -- The first residual sum, `r = x + a`.
-  refine Live.call_seq add_implements rfl hAdd rfl hLive2 hRoom
-    (x := (x, a))
-    (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed]; omega) (afterArgs := s2)
+  refine Live.call_seq add_implements rfl hAdd rfl hLive2 hCap
+    (x := (x, a)) (afterArgs := s2)
     (vals := [.i64 pX, .i64 pa])
     (Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 0) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 0) (index := 23) (by decide)).trans (sg0))) <|
       Expr.evalResults_get (State.get_update_same (state := s1) (by rw [hS1]; decide)) <|
@@ -616,9 +550,8 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
   let s3 := s2.update 25 (.i64 pr)
   have hS3 : s3.params.length + s3.locals.length = 30 := by rw [hLen, hS2]
   -- The second layer norm.
-  refine Live.call_seq layerNormRows_implements rfl hNorm rfl hLive3 hRoom
-    (x := (r, g2, b2, l, t, nh * dh, eps))
-    (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed]; omega) (afterArgs := s3)
+  refine Live.call_seq layerNormRows_implements rfl hNorm rfl hLive3 hCap
+    (x := (r, g2, b2, l, t, nh * dh, eps)) (afterArgs := s3)
     (vals := [.i64 pr, .i64 pG2, .i64 pB2, .i64 l, .i64 t, .i64 (nh * dh), .f64 eps.toBits])
     (Expr.evalResults_get (State.get_update_same (state := s2) (by rw [hS2]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 11) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 11) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 23) (by decide)).trans (sg11)))) <|
@@ -635,9 +568,8 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
   let s4 := s3.update 26 (.i64 ph2)
   have hS4 : s4.params.length + s4.locals.length = 30 := by rw [hLen, hS3]
   -- The MLP.
-  refine Live.call_seq mlp_implements rfl hMlp rfl hLive4 hRoom
-    (x := (h2, wfc, bfc, wproj, bproj, l, t, nh * dh, f))
-    (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed, mlpNeed]; omega) (afterArgs := s4)
+  refine Live.call_seq mlp_implements rfl hMlp rfl hLive4 hCap
+    (x := (h2, wfc, bfc, wproj, bproj, l, t, nh * dh, f)) (afterArgs := s4)
     (vals := [.i64 ph2, .i64 pWfc, .i64 pBfc, .i64 pWproj, .i64 pBproj, .i64 l, .i64 t,
       .i64 (nh * dh), .i64 f])
     (Expr.evalResults_get (State.get_update_same (state := s3) (by rw [hS3]; decide)) <|
@@ -660,9 +592,8 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
   let s5 := s4.update 27 (.i64 pm)
   have hS5 : s5.params.length + s5.locals.length = 30 := by rw [hLen, hS4]
   -- The result, `r + m`.
-  refine Live.call_seq add_implements rfl hAdd rfl hLive5 hRoom
-    (x := (r, m))
-    (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed, mlpNeed]; omega) (afterArgs := s5)
+  refine Live.call_seq add_implements rfl hAdd rfl hLive5 hCap
+    (x := (r, m)) (afterArgs := s5)
     (vals := [.i64 pr, .i64 pm])
     (Expr.evalResults_get ((State.get_update_ne (state := s4) (j := 25) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3) (j := 25) (index := 26) (by decide)).trans (State.get_update_same (state := s2) (by rw [hS2]; decide)))) <|
       Expr.evalResults_get (State.get_update_same (state := s4) (by rw [hS4]; decide)) <|
@@ -712,28 +643,11 @@ theorem block_implements : Implements gpt.module 25 blockTuple blockNeed := by
       ⟨pWfc, rfl, hKeep pWfc _ hWfc⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl, hKeep pBfc _ hBfc⟩,
       [.i64 pWproj], _, rfl, ⟨pWproj, rfl, hKeep pWproj _ hWproj⟩, [.i64 pBproj], _, rfl,
       ⟨pBproj, rfl, hKeep pBproj _ hBproj⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR4.finish (need := blockNeed (x, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, t, nh,
-      dh, f, eps))
-      (by simp only [layerNormRowsNeed, attentionNeed, attentionBytes, addNeed, mlpNeed, blockNeed,
-          blockBytes]
-          omega) hParams
-  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pres], s7,
+  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR4.finish hParams
+  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pres], s7,
     by simp [gpt.block.ir, Func.scratch, Expr.evalResults, Expr.eval, s7,
       State.get_update_same, hS6], hOwned, hOutB, hOutO⟩
-
-/-- A block's result is no longer than its input. -/
-theorem block_size_le (x : Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
-    Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
-    Array Float × Array Float × Array Float × Array Float × Array Float × UInt64 × UInt64 ×
-    UInt64 × UInt64 × UInt64 × Float) : (blockTuple x).size ≤ x.1.size := by
-  simp [blockTuple, LeanExe.Examples.Gpt.block, LeanExe.Examples.Gpt.add, LeanExe.build,
-    Nat.mod_le]
-
-theorem blockBytes_le {t nh dh f : UInt64} {n n' : Nat} (h : n ≤ n') :
-    blockBytes t nh dh f n ≤ blockBytes t nh dh f n' := by
-  simp only [blockBytes]
-  omega
 
 /-- The input of `forward`: the tokens, the embeddings, the stacked weights of the blocks,
 the final layer norm, and the dimensions. -/
@@ -750,18 +664,9 @@ def forwardTuple : ForwardInput → Array Float
     LeanExe.Examples.Gpt.forward tokens wte wpe g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc
       wproj bproj gf bf layers t nh dh f vocab eps
 
-/-- The bytes `forward` may allocate: the embeddings, their copy, `layers` calls of
-`block`, the final layer norm, and the scores. -/
-def forwardNeed : ForwardInput → Nat
-  | (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, layers, t, nh, dh, f, vocab, _) =>
-    48 + 8 * ((t * (nh * dh)).toNat + 1) + (48 + 8 * ((t * (nh * dh)).toNat + 1)) +
-      layers.toNat * blockBytes t nh dh f (t * (nh * dh)).toNat +
-      (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * (nh * dh)).toNat + 1))) +
-      (48 + 8 * ((t * vocab).toNat + 1))
-
-theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed := by
+theorem forward_implements : Implements gpt.module 29 forwardTuple := by
   refine Func.implements_heap gpt.funcs 26 gpt.forward.ir "forward" rfl
-    forwardTuple forwardNeed
+    forwardTuple
     (by
       rintro _ _ _ ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _⟩ h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_uint_pair h
@@ -788,7 +693,7 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
       obtain rfl := h
       rfl) ?_
   rintro ⟨tokens, wte, wpe, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj,
-    bproj, gf, bf, layers, t, nh, dh, f, vocab, eps⟩ heap initial _ hHeap hArgs hRoom
+    bproj, gf, bf, layers, t, nh, dh, f, vocab, eps⟩ heap initial _ hHeap hArgs hCap
   obtain ⟨pTokens, _, rfl, hTokens, hArgs⟩ := Represent.borrowed_uint_pair hArgs
   obtain ⟨pWte, _, rfl, hWte, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pWpe, _, rfl, hWpe, hArgs⟩ := Represent.borrowed_float_pair hArgs
@@ -811,8 +716,6 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
   obtain ⟨pGf, _, rfl, hGf, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pBf, _, rfl, hBf, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
-  change heap.Room initial gpt.module (forwardNeed (tokens, wte, wpe, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, gf, bf, layers, t, nh, dh, f, vocab, eps)) at hRoom
-  simp only [forwardNeed] at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hMemory32 : gpt.module.memIs64 = false := rfl
@@ -833,15 +736,6 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
   let xl := LeanExe.loop layers x0 fun l x => blockTuple (x, g1, b1, wq, bq, wk, bk, wv, bv, wo,
     bo, g2, b2, wfc, bfc, wproj, bproj, l, t, nh, dh, f, eps)
   let h := layerNormRowsTuple (xl, gf, bf, 0, t, nh * dh, eps)
-  have hX0 : x0.size = (t * (nh * dh)).toNat := by
-    simp [x0, embedTuple, LeanExe.Examples.Gpt.embed, LeanExe.build]
-  have hSizes : ∀ k,
-      (loopPrefix (fun l x => blockTuple (x, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, t, nh,
-        dh, f, eps)) x0 k).size ≤
-      (t * (nh * dh)).toNat := fun k =>
-    Nat.le_trans (loopPrefix_size_le (fun l x => block_size_le (x, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, t, nh,
-      dh, f, eps)) k)
-      hX0.le
   let start : State :=
     { params := [.i64 pTokens, .i64 pWte, .i64 pWpe, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk,
         .i64 pBk, .i64 pWv, .i64 pBv, .i64 pWo, .i64 pBo, .i64 pG2, .i64 pB2, .i64 pWfc,
@@ -887,9 +781,8 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
   show Triple _ gpt.forward.ir.body _
     (fun store state => store = initial ∧ state = start) _
   -- The embeddings.
-  refine Live.call_seq embed_implements rfl hEmbed rfl (Live.start hHeap) hRoom
-    (x := (tokens, wte, wpe, t, nh * dh))
-    (by simp only [embedNeed]; omega) (afterArgs := start)
+  refine Live.call_seq embed_implements rfl hEmbed rfl (Live.start hHeap) hCap
+    (x := (tokens, wte, wpe, t, nh * dh)) (afterArgs := start)
     (vals := [.i64 pTokens, .i64 pWte, .i64 pWpe, .i64 t, .i64 (nh * dh)])
     (Expr.evalResults_get (sg0) <|
       Expr.evalResults_get (sg1) <|
@@ -905,15 +798,13 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
   -- The blocks, one per layer.
   refine Live.arrayLoop block_implements rfl hBlock rfl hMemory32 hImports hAlloc
     hRelease (by decide) (by decide) (by decide) (by decide) (by rw [hS1]; decide)
-    hLive1 hRoom (State.get_update_same (state := start) (by rw [hStart]; decide))
+    hLive1 hCap (State.get_update_same (state := start) (by rw [hStart]; decide))
     (hLive1.tempsOwned _ (List.mem_cons_self ..)).borrowed (init := x0)
     (fun _ st hF => ⟨_, Expr.eval_get ((hF.get 21 (by decide) (by decide)).trans
       ((State.get_update_ne (state := start) (j := 21) (index := 28) (by decide)).trans (sg21)))⟩)
     (fun l x => (x, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, t, nh,
       dh, f, eps))
-    (bound := blockBytes t nh dh f (t * (nh * dh)).toNat) (fun k _ => blockBytes_le (hSizes k))
-    (by simp only [embedNeed, hX0]; omega)
-    (fun k p _ _ _ st _ hF hI hSt hL =>
+    (fun k p _ _ st _ hF hI hSt hL =>
       ⟨[.i64 p, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk, .i64 pWv, .i64 pBv,
         .i64 pWo, .i64 pBo, .i64 pG2, .i64 pB2, .i64 pWfc, .i64 pBfc, .i64 pWproj, .i64 pBproj,
         .i64 (UInt64.ofNat k), .i64 t, .i64 nh, .i64 dh, .i64 f, .f64 eps.toBits], st,
@@ -958,9 +849,8 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
   have hS2 : s2.params.length + s2.locals.length = 38 := by
     rw [hFrame2.params, hFrame2.locals]; exact hS1
   -- The final layer norm.
-  refine Live.call_seq layerNormRows_implements rfl hNorm rfl hLive2 hRoom
-    (x := (xl, gf, bf, 0, t, nh * dh, eps))
-    (by simp only [embedNeed, hX0, layerNormRowsNeed]; omega) (afterArgs := s2)
+  refine Live.call_seq layerNormRows_implements rfl hNorm rfl hLive2 hCap
+    (x := (xl, gf, bf, 0, t, nh * dh, eps)) (afterArgs := s2)
     (vals := [.i64 pl, .i64 pGf, .i64 pBf, .i64 0, .i64 t, .i64 (nh * dh), .f64 eps.toBits])
     (Expr.evalResults_get (hState2) <|
       Expr.evalResults_get ((hFrame2.get 19 (by decide) (by decide)).trans ((State.get_update_ne (state := start) (j := 19) (index := 28) (by decide)).trans (sg19))) <|
@@ -977,9 +867,8 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
   let s3 := s2.update 34 (.i64 ph)
   have hS3 : s3.params.length + s3.locals.length = 38 := by rw [hLen, hS2]
   -- The scores against every token embedding.
-  refine Live.call_seq matMulT_implements rfl hScores rfl hLive3 hRoom
-    (x := (h, wte, t, nh * dh, vocab))
-    (by simp only [embedNeed, hX0, layerNormRowsNeed, matMulTNeed]; omega) (afterArgs := s3)
+  refine Live.call_seq matMulT_implements rfl hScores rfl hLive3 hCap
+    (x := (h, wte, t, nh * dh, vocab)) (afterArgs := s3)
     (vals := [.i64 ph, .i64 pWte, .i64 t, .i64 (nh * dh), .i64 vocab])
     (Expr.evalResults_get (State.get_update_same (state := s2) (by rw [hS2]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 1) (index := 34) (by decide)).trans ((hFrame2.get 1 (by decide) (by decide)).trans ((State.get_update_ne (state := start) (j := 1) (index := 28) (by decide)).trans (sg1)))) <|
@@ -1029,12 +918,9 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple forwardNeed :
       hKeep pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl, hKeep pBproj _ hBproj⟩,
       [.i64 pGf], _, rfl, ⟨pGf, rfl, hKeep pGf _ hGf⟩, [.i64 pBf], _, rfl, ⟨pBf, rfl,
       hKeep pBf _ hBf⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR2.finish (need := forwardNeed (tokens, wte, wpe, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj,
-      bproj, gf, bf, layers, t, nh, dh, f, vocab, eps))
-      (by simp only [embedNeed, layerNormRowsNeed, matMulTNeed, forwardNeed, hX0]
-          omega) hParams
-  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s5,
+  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR2.finish hParams
+  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s5,
     by simp [gpt.forward.ir, Expr.evalResults, Expr.eval, s5,
       State.get_update_same, hS4], hOwned, hOutB, hOutO⟩
 
@@ -1056,32 +942,9 @@ def layerStepTuple (x : Array Float × Array Float × Array Float × Array Float
     x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
     x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2
 
-/-- The bytes `layerStep` may allocate for position `p` and a block of `n` elements. -/
-def layerStepBytes (nh dh f p : UInt64) (n : Nat) : Nat :=
-  48 + 8 * ((nh * dh).toNat + 1) +
-    (48 + 8 * ((1 : UInt64).toNat + 1) + (48 + 8 * ((1 : UInt64).toNat + 1)) +
-      (48 + 8 * ((1 * (nh * dh)).toNat + 1))) +
-    3 * (48 + 8 * ((1 * (nh * dh)).toNat + 1)) + (48 + 8 * ((nh * (p + 1)).toNat + 1)) +
-    (48 + 8 * (nh.toNat + 1) + (48 + 8 * (nh.toNat + 1)) +
-      (48 + 8 * ((nh * (p + 1)).toNat + 1))) +
-    (48 + 8 * ((nh * dh).toNat + 1)) + (48 + 8 * ((1 * (nh * dh)).toNat + 1)) +
-    (48 + 8 * ((nh * dh).toNat + 1)) +
-    (48 + 8 * ((1 : UInt64).toNat + 1) + (48 + 8 * ((1 : UInt64).toNat + 1)) +
-      (48 + 8 * ((1 * (nh * dh)).toNat + 1))) +
-    (48 + 8 * ((1 * f).toNat + 1) + (48 + 8 * ((1 * f).toNat + 1)) +
-      (48 + 8 * ((1 * (nh * dh)).toNat + 1))) +
-    (48 + 8 * ((nh * dh).toNat + 1)) + (48 + 8 * (n + 1))
-
-/-- The bytes `layerStep` may allocate. -/
-def layerStepNeed (x : Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
-    Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
-    Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
-    UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Float) : Nat :=
-  layerStepBytes x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1 x.1.size
-
-theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStepNeed := by
+theorem layerStep_implements : Implements gpt.module 41 layerStepTuple := by
   refine Func.implements_heap gpt.funcs 38 gpt.layerStep.ir "layerStep" rfl
-    layerStepTuple layerStepNeed
+    layerStepTuple
     (by
       rintro _ _ _ ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _⟩ h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
@@ -1105,7 +968,7 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
       obtain rfl := h
       rfl) ?_
   rintro ⟨s, cache, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, p,
-    nh, dh, f, bsize, eps⟩ heap initial _ hHeap hArgs hRoom
+    nh, dh, f, bsize, eps⟩ heap initial _ hHeap hArgs hCap
   obtain ⟨pS, _, rfl, hS, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pCache, _, rfl, hCache, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pG1, _, rfl, hG1, hArgs⟩ := Represent.borrowed_float_pair hArgs
@@ -1125,8 +988,6 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   obtain ⟨pWproj, _, rfl, hWproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pBproj, _, rfl, hBproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
-  change heap.Room initial gpt.module (layerStepBytes nh dh f p s.size) at hRoom
-  simp only [layerStepBytes] at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hOne : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
@@ -1170,9 +1031,6 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let h2 := layerNormRowsTuple (r, g2, b2, l, 1, nh * dh, eps)
   let m := mlpTuple (h2, wfc, bfc, wproj, bproj, l, 1, nh * dh, f)
   let y := addTuple (r, m)
-  have hX : x.size = (nh * dh).toNat := by
-    simp [x, firstRowTuple, LeanExe.Examples.Gpt.firstRow, LeanExe.build]
-  have hR : r.size ≤ x.size := add_size_le x a
   let start : State :=
     { params := [.i64 pS, .i64 pCache, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk,
         .i64 pWv, .i64 pBv, .i64 pWo, .i64 pBo, .i64 pG2, .i64 pB2, .i64 pWfc, .i64 pBfc,
@@ -1214,9 +1072,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   show Triple _ gpt.layerStep.ir.body _
     (fun store state => store = initial ∧ state = start) _
   -- The hidden row.
-  refine Live.call_seq firstRow_implements rfl hFirst rfl (Live.start hHeap) hRoom
-    (x := (s, nh * dh))
-    (by simp only [firstRowNeed]; omega) (afterArgs := start)
+  refine Live.call_seq firstRow_implements rfl hFirst rfl (Live.start hHeap) hCap
+    (x := (s, nh * dh)) (afterArgs := start)
     (vals := [.i64 pS, .i64 (nh * dh)])
     (Expr.evalResults_get (sg0) <|
       Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get (sg20)) (Expr.eval_get (sg21))) <|
@@ -1226,9 +1083,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s1 := start.update 25 (.i64 px)
   have hS1 : s1.params.length + s1.locals.length = 40 := by rw [hLen, hStart]
   -- The first layer norm.
-  refine Live.call_seq layerNormRows_implements rfl hNorm rfl hLive1 hRoom
-    (x := (x, g1, b1, l, 1, nh * dh, eps))
-    (by simp only [firstRowNeed, layerNormRowsNeed]; omega) (afterArgs := s1)
+  refine Live.call_seq layerNormRows_implements rfl hNorm rfl hLive1 hCap
+    (x := (x, g1, b1, l, 1, nh * dh, eps)) (afterArgs := s1)
     (vals := [.i64 px, .i64 pG1, .i64 pB1, .i64 l, .i64 1, .i64 (nh * dh), .f64 eps.toBits])
     (Expr.evalResults_get (State.get_update_same (state := start) (by rw [hStart]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := start) (j := 2) (index := 25) (by decide)).trans (sg2)) <|
@@ -1245,9 +1101,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s2 := s1.update 26 (.i64 ph1)
   have hS2 : s2.params.length + s2.locals.length = 40 := by rw [hLen, hS1]
   -- The query.
-  refine Live.call_seq linear_implements rfl hLinear rfl hLive2 hRoom
-    (x := (h1, wq, bq, l, 1, nh * dh, nh * dh))
-    (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed]; omega) (afterArgs := s2)
+  refine Live.call_seq linear_implements rfl hLinear rfl hLive2 hCap
+    (x := (h1, wq, bq, l, 1, nh * dh, nh * dh)) (afterArgs := s2)
     (vals := [.i64 ph1, .i64 pWq, .i64 pBq, .i64 l, .i64 1, .i64 (nh * dh), .i64 (nh * dh)])
     (Expr.evalResults_get (State.get_update_same (state := s1) (by rw [hS1]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 4) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 4) (index := 25) (by decide)).trans (sg4))) <|
@@ -1265,9 +1120,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s3 := s2.update 27 (.i64 pq)
   have hS3 : s3.params.length + s3.locals.length = 40 := by rw [hLen, hS2]
   -- The key.
-  refine Live.call_seq linear_implements rfl hLinear rfl hLive3 hRoom
-    (x := (h1, wk, bk, l, 1, nh * dh, nh * dh))
-    (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed]; omega) (afterArgs := s3)
+  refine Live.call_seq linear_implements rfl hLinear rfl hLive3 hCap
+    (x := (h1, wk, bk, l, 1, nh * dh, nh * dh)) (afterArgs := s3)
     (vals := [.i64 ph1, .i64 pWk, .i64 pBk, .i64 l, .i64 1, .i64 (nh * dh), .i64 (nh * dh)])
     (Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 26) (index := 27) (by decide)).trans (State.get_update_same (state := s1) (by rw [hS1]; decide))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 6) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 6) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 6) (index := 25) (by decide)).trans (sg6)))) <|
@@ -1285,9 +1139,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s4 := s3.update 28 (.i64 pk)
   have hS4 : s4.params.length + s4.locals.length = 40 := by rw [hLen, hS3]
   -- The value.
-  refine Live.call_seq linear_implements rfl hLinear rfl hLive4 hRoom
-    (x := (h1, wv, bv, l, 1, nh * dh, nh * dh))
-    (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed]; omega) (afterArgs := s4)
+  refine Live.call_seq linear_implements rfl hLinear rfl hLive4 hCap
+    (x := (h1, wv, bv, l, 1, nh * dh, nh * dh)) (afterArgs := s4)
     (vals := [.i64 ph1, .i64 pWv, .i64 pBv, .i64 l, .i64 1, .i64 (nh * dh), .i64 (nh * dh)])
     (Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 26) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 26) (index := 27) (by decide)).trans (State.get_update_same (state := s1) (by rw [hS1]; decide)))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 8) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 8) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 8) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 8) (index := 25) (by decide)).trans (sg8))))) <|
@@ -1305,9 +1158,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s5 := s4.update 29 (.i64 pv)
   have hS5 : s5.params.length + s5.locals.length = 40 := by rw [hLen, hS4]
   -- The scores against the cached keys and this key.
-  refine Live.call_seq stepScores_implements rfl hScores rfl hLive5 hRoom
-    (x := (q, k, cache, l, p, nh, dh, bsize, 1.0 / dh.toFloat.sqrt))
-    (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed, stepScoresNeed]; omega) (afterArgs := s5)
+  refine Live.call_seq stepScores_implements rfl hScores rfl hLive5 hCap
+    (x := (q, k, cache, l, p, nh, dh, bsize, 1.0 / dh.toFloat.sqrt)) (afterArgs := s5)
     (vals := [.i64 pq, .i64 pk, .i64 pCache, .i64 l, .i64 p, .i64 nh, .i64 dh, .i64 bsize,
       .f64 (1.0 / dh.toFloat.sqrt).toBits])
     (by simp [Expr.evalResults, Expr.eval, s5, s4, s3, s2, s1, State.get_update_same, hStart, sg1,
@@ -1322,9 +1174,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s6 := s5.update 30 (.i64 psc)
   have hS6 : s6.params.length + s6.locals.length = 40 := by rw [hLen, hS5]
   -- The softmax of each head.
-  refine Live.call_seq stepSoftmax_implements rfl hSoftmax rfl hLive6 hRoom
-    (x := (sc, nh, p + 1))
-    (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed, stepScoresNeed, stepSoftmaxNeed]; omega) (afterArgs := s6)
+  refine Live.call_seq stepSoftmax_implements rfl hSoftmax rfl hLive6 hCap
+    (x := (sc, nh, p + 1)) (afterArgs := s6)
     (vals := [.i64 psc, .i64 nh, .i64 (p + 1)])
     (Expr.evalResults_get (State.get_update_same (state := s5) (by rw [hS5]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s5) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 25) (by decide)).trans (sg20))))))) <|
@@ -1336,9 +1187,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s7 := s6.update 31 (.i64 ppw)
   have hS7 : s7.params.length + s7.locals.length = 40 := by rw [hLen, hS6]
   -- The weighted sum of the cached values and this value.
-  refine Live.call_seq stepMix_implements rfl hMix rfl hLive7 hRoom
-    (x := (pw, v, cache, l, p, nh, dh, bsize))
-    (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed, stepScoresNeed, stepSoftmaxNeed, stepMixNeed]; omega) (afterArgs := s7)
+  refine Live.call_seq stepMix_implements rfl hMix rfl hLive7 hCap
+    (x := (pw, v, cache, l, p, nh, dh, bsize)) (afterArgs := s7)
     (vals := [.i64 ppw, .i64 pv, .i64 pCache, .i64 l, .i64 p, .i64 nh, .i64 dh, .i64 bsize])
     (Expr.evalResults_get (State.get_update_same (state := s6) (by rw [hS6]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s6) (j := 29) (index := 31) (by decide)).trans ((State.get_update_ne (state := s5) (j := 29) (index := 30) (by decide)).trans (State.get_update_same (state := s4) (by rw [hS4]; decide)))) <|
@@ -1357,9 +1207,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s8 := s7.update 32 (.i64 po)
   have hS8 : s8.params.length + s8.locals.length = 40 := by rw [hLen, hS7]
   -- The attention output.
-  refine Live.call_seq linear_implements rfl hLinear rfl hLive8 hRoom
-    (x := (o, wo, bo, l, 1, nh * dh, nh * dh))
-    (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed, stepScoresNeed, stepSoftmaxNeed, stepMixNeed]; omega) (afterArgs := s8)
+  refine Live.call_seq linear_implements rfl hLinear rfl hLive8 hCap
+    (x := (o, wo, bo, l, 1, nh * dh, nh * dh)) (afterArgs := s8)
     (vals := [.i64 po, .i64 pWo, .i64 pBo, .i64 l, .i64 1, .i64 (nh * dh), .i64 (nh * dh)])
     (Expr.evalResults_get (State.get_update_same (state := s7) (by rw [hS7]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s7) (j := 10) (index := 32) (by decide)).trans ((State.get_update_ne (state := s6) (j := 10) (index := 31) (by decide)).trans ((State.get_update_ne (state := s5) (j := 10) (index := 30) (by decide)).trans ((State.get_update_ne (state := s4) (j := 10) (index := 29) (by decide)).trans ((State.get_update_ne (state := s3) (j := 10) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 25) (by decide)).trans (sg10))))))))) <|
@@ -1376,9 +1225,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s9 := s8.update 33 (.i64 pa)
   have hS9 : s9.params.length + s9.locals.length = 40 := by rw [hLen, hS8]
   -- The first residual sum.
-  refine Live.call_seq add_implements rfl hAdd rfl hLive9 hRoom
-    (x := (x, a))
-    (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed, stepScoresNeed, stepSoftmaxNeed, stepMixNeed, addNeed, hX]; omega) (afterArgs := s9)
+  refine Live.call_seq add_implements rfl hAdd rfl hLive9 hCap
+    (x := (x, a)) (afterArgs := s9)
     (vals := [.i64 px, .i64 pa])
     (Expr.evalResults_get ((State.get_update_ne (state := s8) (j := 25) (index := 33) (by decide)).trans ((State.get_update_ne (state := s7) (j := 25) (index := 32) (by decide)).trans ((State.get_update_ne (state := s6) (j := 25) (index := 31) (by decide)).trans ((State.get_update_ne (state := s5) (j := 25) (index := 30) (by decide)).trans ((State.get_update_ne (state := s4) (j := 25) (index := 29) (by decide)).trans ((State.get_update_ne (state := s3) (j := 25) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 25) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 25) (index := 26) (by decide)).trans (State.get_update_same (state := start) (by rw [hStart]; decide)))))))))) <|
       Expr.evalResults_get (State.get_update_same (state := s8) (by rw [hS8]; decide)) <|
@@ -1390,9 +1238,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s10 := s9.update 34 (.i64 pr)
   have hS10 : s10.params.length + s10.locals.length = 40 := by rw [hLen, hS9]
   -- The second layer norm.
-  refine Live.call_seq layerNormRows_implements rfl hNorm rfl hLive10 hRoom
-    (x := (r, g2, b2, l, 1, nh * dh, eps))
-    (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed, stepScoresNeed, stepSoftmaxNeed, stepMixNeed, addNeed, hX]; omega) (afterArgs := s10)
+  refine Live.call_seq layerNormRows_implements rfl hNorm rfl hLive10 hCap
+    (x := (r, g2, b2, l, 1, nh * dh, eps)) (afterArgs := s10)
     (vals := [.i64 pr, .i64 pG2, .i64 pB2, .i64 l, .i64 1, .i64 (nh * dh), .f64 eps.toBits])
     (Expr.evalResults_get (State.get_update_same (state := s9) (by rw [hS9]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s9) (j := 12) (index := 34) (by decide)).trans ((State.get_update_ne (state := s8) (j := 12) (index := 33) (by decide)).trans ((State.get_update_ne (state := s7) (j := 12) (index := 32) (by decide)).trans ((State.get_update_ne (state := s6) (j := 12) (index := 31) (by decide)).trans ((State.get_update_ne (state := s5) (j := 12) (index := 30) (by decide)).trans ((State.get_update_ne (state := s4) (j := 12) (index := 29) (by decide)).trans ((State.get_update_ne (state := s3) (j := 12) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 12) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 12) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 12) (index := 25) (by decide)).trans (sg12))))))))))) <|
@@ -1409,9 +1256,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s11 := s10.update 35 (.i64 ph2)
   have hS11 : s11.params.length + s11.locals.length = 40 := by rw [hLen, hS10]
   -- The MLP.
-  refine Live.call_seq mlp_implements rfl hMlp rfl hLive11 hRoom
-    (x := (h2, wfc, bfc, wproj, bproj, l, 1, nh * dh, f))
-    (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed, stepScoresNeed, stepSoftmaxNeed, stepMixNeed, addNeed, hX, mlpNeed]; omega) (afterArgs := s11)
+  refine Live.call_seq mlp_implements rfl hMlp rfl hLive11 hCap
+    (x := (h2, wfc, bfc, wproj, bproj, l, 1, nh * dh, f)) (afterArgs := s11)
     (vals := [.i64 ph2, .i64 pWfc, .i64 pBfc, .i64 pWproj, .i64 pBproj, .i64 l, .i64 1,
       .i64 (nh * dh), .i64 f])
     (Expr.evalResults_get (State.get_update_same (state := s10) (by rw [hS10]; decide)) <|
@@ -1434,9 +1280,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s12 := s11.update 36 (.i64 pm)
   have hS12 : s12.params.length + s12.locals.length = 40 := by rw [hLen, hS11]
   -- The second residual sum, the new hidden row.
-  refine Live.call_seq add_implements rfl hAdd rfl hLive12 hRoom
-    (x := (r, m))
-    (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed, stepScoresNeed, stepSoftmaxNeed, stepMixNeed, addNeed, hX, mlpNeed]; omega) (afterArgs := s12)
+  refine Live.call_seq add_implements rfl hAdd rfl hLive12 hCap
+    (x := (r, m)) (afterArgs := s12)
     (vals := [.i64 pr, .i64 pm])
     (Expr.evalResults_get ((State.get_update_ne (state := s11) (j := 34) (index := 36) (by decide)).trans ((State.get_update_ne (state := s10) (j := 34) (index := 35) (by decide)).trans (State.get_update_same (state := s9) (by rw [hS9]; decide)))) <|
       Expr.evalResults_get (State.get_update_same (state := s11) (by rw [hS11]; decide)) <|
@@ -1448,9 +1293,8 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
   let s13 := s12.update 37 (.i64 py)
   have hS13 : s13.params.length + s13.locals.length = 40 := by rw [hLen, hS12]
   -- The block with the new row, key, and value.
-  refine Live.call_seq writeBlock_implements rfl hWrite rfl hLive13 hRoom
-    (x := (s, y, k, v, l, nh * dh))
-    (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed, stepScoresNeed, stepSoftmaxNeed, stepMixNeed, addNeed, hX, mlpNeed, writeBlockNeed]; omega) (afterArgs := s13)
+  refine Live.call_seq writeBlock_implements rfl hWrite rfl hLive13 hCap
+    (x := (s, y, k, v, l, nh * dh)) (afterArgs := s13)
     (vals := [.i64 pS, .i64 py, .i64 pk, .i64 pv, .i64 l, .i64 (nh * dh)])
     (Expr.evalResults_get ((State.get_update_ne (state := s12) (j := 0) (index := 37) (by decide)).trans ((State.get_update_ne (state := s11) (j := 0) (index := 36) (by decide)).trans ((State.get_update_ne (state := s10) (j := 0) (index := 35) (by decide)).trans ((State.get_update_ne (state := s9) (j := 0) (index := 34) (by decide)).trans ((State.get_update_ne (state := s8) (j := 0) (index := 33) (by decide)).trans ((State.get_update_ne (state := s7) (j := 0) (index := 32) (by decide)).trans ((State.get_update_ne (state := s6) (j := 0) (index := 31) (by decide)).trans ((State.get_update_ne (state := s5) (j := 0) (index := 30) (by decide)).trans ((State.get_update_ne (state := s4) (j := 0) (index := 29) (by decide)).trans ((State.get_update_ne (state := s3) (j := 0) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 0) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 0) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 0) (index := 25) (by decide)).trans (sg0)))))))))))))) <|
       Expr.evalResults_get (State.get_update_same (state := s12) (by rw [hS12]; decide)) <|
@@ -1533,13 +1377,9 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple layerStep
       [.i64 pBfc], _, rfl, ⟨pBfc, rfl, hKeep pBfc _ hBfc⟩, [.i64 pWproj], _, rfl, ⟨pWproj,
       rfl, hKeep pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
       hKeep pBproj _ hBproj⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR12.finish (need := layerStepNeed (s, cache, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l,
-      p, nh, dh, f, bsize, eps))
-      (by simp only [firstRowNeed, layerNormRowsNeed, linearNeed, stepScoresNeed, stepSoftmaxNeed,
-          stepMixNeed, addNeed, hX, mlpNeed, writeBlockNeed, layerStepNeed, layerStepBytes]
-          omega) hParams
-  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pres], s15,
+  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR12.finish hParams
+  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pres], s15,
     by simp [gpt.layerStep.ir, Func.scratch, Expr.evalResults, Expr.eval, s15,
       State.get_update_same, hS14], hOwned, hOutB, hOutO⟩
 
@@ -1549,17 +1389,9 @@ def scoresTuple (x : Array Float × Array Float × Array Float × Array Float ×
   LeanExe.Examples.Gpt.scores x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2.1 x.2.2.2.2.2.2.1
     x.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2
 
-/-- The bytes `scores` may allocate: the hidden row, the layer norm, and the scores. -/
-def scoresNeed (x : Array Float × Array Float × Array Float × Array Float × UInt64 × UInt64 × UInt64 ×
-    UInt64 × Float) : Nat :=
-  48 + 8 * ((x.2.2.2.2.2.1 * x.2.2.2.2.2.2.1).toNat + 1) +
-    (48 + 8 * ((1 : UInt64).toNat + 1) + (48 + 8 * ((1 : UInt64).toNat + 1)) +
-      (48 + 8 * ((1 * (x.2.2.2.2.2.1 * x.2.2.2.2.2.2.1)).toNat + 1))) +
-    (48 + 8 * ((1 * x.2.2.2.2.2.2.2.1).toNat + 1))
-
-theorem scores_implements : Implements gpt.module 43 scoresTuple scoresNeed := by
+theorem scores_implements : Implements gpt.module 43 scoresTuple := by
   refine Func.implements_heap gpt.funcs 40 gpt.scores.ir "scores" rfl
-    scoresTuple scoresNeed
+    scoresTuple
     (by
       rintro _ _ _ ⟨_, _, _, _, _, _, _, _, _⟩ h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
@@ -1568,14 +1400,12 @@ theorem scores_implements : Implements gpt.module 43 scoresTuple scoresNeed := b
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
       obtain rfl := h
       rfl) ?_
-  rintro ⟨cache, wte, gf, bf, layers, nh, dh, vocab, eps⟩ heap initial _ hHeap hArgs hRoom
+  rintro ⟨cache, wte, gf, bf, layers, nh, dh, vocab, eps⟩ heap initial _ hHeap hArgs hCap
   obtain ⟨pCache, _, rfl, hCache, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pWte, _, rfl, hWte, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pGf, _, rfl, hGf, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pBf, _, rfl, hBf, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
-  change heap.Room initial gpt.module (scoresNeed (cache, wte, gf, bf, layers, nh, dh, vocab, eps)) at hRoom
-  simp only [scoresNeed] at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hLast : gpt.module.funcs[40 - gpt.module.imports.length]? =
@@ -1612,9 +1442,8 @@ theorem scores_implements : Implements gpt.module 43 scoresTuple scoresNeed := b
   show Triple _ gpt.scores.ir.body _
     (fun store state => store = initial ∧ state = start) _
   -- The hidden row of the last block.
-  refine Live.call_seq lastHidden_implements rfl hLast rfl (Live.start hHeap) hRoom
-    (x := (cache, nh * dh, (2 * layers + 1) * (nh * dh)))
-    (by simp only [lastHiddenNeed]; omega) (afterArgs := start)
+  refine Live.call_seq lastHidden_implements rfl hLast rfl (Live.start hHeap) hCap
+    (x := (cache, nh * dh, (2 * layers + 1) * (nh * dh))) (afterArgs := start)
     (vals := [.i64 pCache, .i64 (nh * dh), .i64 ((2 * layers + 1) * (nh * dh))])
     (Expr.evalResults_get (sg0) <|
       Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get (sg5)) (Expr.eval_get (sg6))) <|
@@ -1625,9 +1454,8 @@ theorem scores_implements : Implements gpt.module 43 scoresTuple scoresNeed := b
   let s1 := start.update 9 (.i64 px)
   have hS1 : s1.params.length + s1.locals.length = 13 := by rw [hLen, hStart]
   -- The final layer norm.
-  refine Live.call_seq layerNormRows_implements rfl hNorm rfl hLive1 hRoom
-    (x := (x, gf, bf, 0, 1, nh * dh, eps))
-    (by simp only [lastHiddenNeed, layerNormRowsNeed]; omega) (afterArgs := s1)
+  refine Live.call_seq layerNormRows_implements rfl hNorm rfl hLive1 hCap
+    (x := (x, gf, bf, 0, 1, nh * dh, eps)) (afterArgs := s1)
     (vals := [.i64 px, .i64 pGf, .i64 pBf, .i64 0, .i64 1, .i64 (nh * dh), .f64 eps.toBits])
     (Expr.evalResults_get (State.get_update_same (state := start) (by rw [hStart]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := start) (j := 2) (index := 9) (by decide)).trans (sg2)) <|
@@ -1644,9 +1472,8 @@ theorem scores_implements : Implements gpt.module 43 scoresTuple scoresNeed := b
   let s2 := s1.update 10 (.i64 ph)
   have hS2 : s2.params.length + s2.locals.length = 13 := by rw [hLen, hS1]
   -- The scores against every token embedding.
-  refine Live.call_seq matMulT_implements rfl hScores rfl hLive2 hRoom
-    (x := (h, wte, 1, nh * dh, vocab))
-    (by simp only [lastHiddenNeed, layerNormRowsNeed, matMulTNeed]; omega) (afterArgs := s2)
+  refine Live.call_seq matMulT_implements rfl hScores rfl hLive2 hCap
+    (x := (h, wte, 1, nh * dh, vocab)) (afterArgs := s2)
     (vals := [.i64 ph, .i64 pWte, .i64 1, .i64 (nh * dh), .i64 vocab])
     (Expr.evalResults_get (State.get_update_same (state := s1) (by rw [hS1]; decide)) <|
       Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 1) (index := 10) (by decide)).trans ((State.get_update_ne (state := start) (j := 1) (index := 9) (by decide)).trans (sg1))) <|
@@ -1679,26 +1506,11 @@ theorem scores_implements : Implements gpt.module 43 scoresTuple scoresNeed := b
     ⟨[.i64 pCache], _, rfl, ⟨pCache, rfl, hKeep pCache _ hCache⟩, [.i64 pWte], _, rfl,
       ⟨pWte, rfl, hKeep pWte _ hWte⟩, [.i64 pGf], _, rfl, ⟨pGf, rfl, hKeep pGf _ hGf⟩,
       [.i64 pBf], _, rfl, ⟨pBf, rfl, hKeep pBf _ hBf⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR1.finish (need := scoresNeed (cache, wte, gf, bf, layers, nh, dh, vocab, eps))
-      (by simp only [lastHiddenNeed, layerNormRowsNeed, matMulTNeed, scoresNeed]
-          omega) hParams
-  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR1.finish hParams
+  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
     by simp [gpt.scores.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,
       State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
-
-/-- `layerStep`'s result is no longer than its block. -/
-theorem layerStep_size_le (x : Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
-    Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
-    Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
-    UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Float) : (layerStepTuple x).size ≤ x.1.size := by
-  simp [layerStepTuple, LeanExe.Examples.Gpt.layerStep, LeanExe.Examples.Gpt.writeBlock,
-    LeanExe.build, Nat.mod_le]
-
-theorem layerStepBytes_le {nh dh f p : UInt64} {n n' : Nat} (h : n ≤ n') :
-    layerStepBytes nh dh f p n ≤ layerStepBytes nh dh f p n' := by
-  simp only [layerStepBytes]
-  omega
 
 /-- The input of `step`: the cache, the embeddings, the stacked weights of the blocks, the
 token, and the dimensions. -/
@@ -1714,17 +1526,9 @@ def stepTuple : StepInput → Array Float
     LeanExe.Examples.Gpt.step cache wte wpe g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj
       bproj token layers nh dh f eps
 
-/-- The bytes `step` may allocate: the new block, its copy, `layers` calls of `layerStep`,
-and the longer cache. -/
-def stepNeed : StepInput → Nat
-  | (cache, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, layers, nh, dh, f, _) =>
-    48 + 8 * (((2 * layers + 1) * (nh * dh)).toNat + 1) + (48 + 8 * (((2 * layers + 1) * (nh * dh)).toNat + 1)) +
-      layers.toNat * layerStepBytes nh dh f (UInt64.ofNat cache.size / (if (2 * layers + 1) * (nh * dh) = 0 then 1 else (2 * layers + 1) * (nh * dh))) ((2 * layers + 1) * (nh * dh)).toNat +
-      (48 + 8 * (cache.size + ((2 * layers + 1) * (nh * dh)).toNat + 1))
-
-theorem step_implements : Implements gpt.module 42 stepTuple stepNeed := by
+theorem step_implements : Implements gpt.module 42 stepTuple := by
   refine Func.implements_heap gpt.funcs 39 gpt.step.ir "step" rfl
-    stepTuple stepNeed
+    stepTuple
     (by
       rintro _ _ _ ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _⟩ h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
@@ -1749,7 +1553,7 @@ theorem step_implements : Implements gpt.module 42 stepTuple stepNeed := by
       obtain rfl := h
       rfl) ?_
   rintro ⟨cache, wte, wpe, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj,
-    bproj, token, layers, nh, dh, f, eps⟩ heap initial _ hHeap hArgs hRoom
+    bproj, token, layers, nh, dh, f, eps⟩ heap initial _ hHeap hArgs hCap
   obtain ⟨pCache, _, rfl, hCache, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pWte, _, rfl, hWte, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pWpe, _, rfl, hWpe, hArgs⟩ := Represent.borrowed_float_pair hArgs
@@ -1770,8 +1574,6 @@ theorem step_implements : Implements gpt.module 42 stepTuple stepNeed := by
   obtain ⟨pWproj, _, rfl, hWproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pBproj, _, rfl, hBproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
-  change heap.Room initial gpt.module (stepNeed (cache, wte, wpe, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, token, layers, nh, dh, f, eps)) at hRoom
-  simp only [stepNeed] at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hMemory32 : gpt.module.memIs64 = false := rfl
@@ -1795,19 +1597,6 @@ theorem step_implements : Implements gpt.module 42 stepTuple stepNeed := by
   have hA := hCache.values
   have hLength := hA.lengthBound
   simp only [UInt64.toNat_toUInt32] at hLength
-  have hS0 : s0.size = ((2 * layers + 1) * (nh * dh)).toNat := by
-    simp [s0, embedBlockTuple, LeanExe.Examples.Gpt.embedBlock, LeanExe.build]
-  have hSizes : ∀ k, (loopPrefix (fun l x => layerStepTuple (x, cache, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, UInt64.ofNat cache.size / (if (2 * layers + 1) * (nh * dh) = 0 then 1 else (2 * layers + 1) * (nh * dh)), nh, dh, f, (2 * layers + 1) * (nh * dh), eps)) s0 k).size ≤
-      ((2 * layers + 1) * (nh * dh)).toNat := fun k =>
-    Nat.le_trans (loopPrefix_size_le (fun l x => layerStep_size_le (x, cache, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, UInt64.ofNat cache.size / (if (2 * layers + 1) * (nh * dh) = 0 then 1 else (2 * layers + 1) * (nh * dh)), nh, dh, f, (2 * layers + 1) * (nh * dh), eps)) k)
-      hS0.le
-  have hXl : xl.size ≤ ((2 * layers + 1) * (nh * dh)).toNat := hSizes layers.toNat
-  have hApp : (cache.size.toUInt64 + xl.size.toUInt64).toNat ≤ cache.size + ((2 * layers + 1) * (nh * dh)).toNat := by
-    have h1 := Nat.mod_le cache.size (2 ^ 64)
-    have h2 := Nat.mod_le xl.size (2 ^ 64)
-    show (UInt64.ofNat cache.size + UInt64.ofNat xl.size).toNat ≤ _
-    rw [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.toNat_ofNat']
-    omega
   let start : State :=
     { params := [.i64 pCache, .i64 pWte, .i64 pWpe, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk,
         .i64 pBk, .i64 pWv, .i64 pBv, .i64 pWo, .i64 pBo, .i64 pG2, .i64 pB2, .i64 pWfc,
@@ -1881,9 +1670,8 @@ theorem step_implements : Implements gpt.module 42 stepTuple stepNeed := by
   refine Stmt.seq_spec (Stmt.run_spec (final := s3) (by
     by_cases hb : (2 * layers + 1) * (nh * dh) = 0 <;> simp [Stmt.run, Expr.eval, f3_26, f3_25, s3_36, s3_37, s3, s2, s1, start, State.set?_eq_update, State.update_params_length, State.update_locals_length, State.get_update_ne, U64Op.apply, hb])) ?_
   -- The block of the new position, holding its embedding.
-  refine Live.call_seq embedBlock_implements rfl hEmbed rfl (Live.start hHeap) hRoom
-    (x := (wte, wpe, token, UInt64.ofNat cache.size / (if (2 * layers + 1) * (nh * dh) = 0 then 1 else (2 * layers + 1) * (nh * dh)), nh * dh, (2 * layers + 1) * (nh * dh)))
-    (by simp only [embedBlockNeed]; omega) (afterArgs := s3)
+  refine Live.call_seq embedBlock_implements rfl hEmbed rfl (Live.start hHeap) hCap
+    (x := (wte, wpe, token, UInt64.ofNat cache.size / (if (2 * layers + 1) * (nh * dh) = 0 then 1 else (2 * layers + 1) * (nh * dh)), nh * dh, (2 * layers + 1) * (nh * dh))) (afterArgs := s3)
     (vals := [.i64 pWte, .i64 pWpe, .i64 token,
       .i64 (UInt64.ofNat cache.size / (if (2 * layers + 1) * (nh * dh) = 0 then 1 else (2 * layers + 1) * (nh * dh))),
       .i64 (nh * dh), .i64 ((2 * layers + 1) * (nh * dh))])
@@ -1901,16 +1689,14 @@ theorem step_implements : Implements gpt.module 42 stepTuple stepNeed := by
   -- The layers, each writing its key and value into the block.
   refine Live.arrayLoop layerStep_implements rfl hLayer rfl hMemory32 hImports hAlloc
     hRelease (by decide) (by decide) (by decide) (by decide) (by rw [hS4]; decide)
-    hLive4 hRoom (State.get_update_same (state := s3) (by rw [hS3]; decide))
+    hLive4 hCap (State.get_update_same (state := s3) (by rw [hS3]; decide))
     (hLive4.tempsOwned _ (List.mem_cons_self ..)).borrowed (init := s0)
     (fun _ st hF => ⟨_, Expr.eval_get ((hF.get 20 (by decide) (by decide)).trans
       ((State.get_update_ne (state := s3) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s3_37) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3_36) (j := 20) (index := 37) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 36) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 25) (by decide)).trans (sg20))))))))⟩)
     (fun l x => (x, cache, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l,
       UInt64.ofNat cache.size / (if (2 * layers + 1) * (nh * dh) = 0 then 1 else (2 * layers + 1) * (nh * dh)),
       nh, dh, f, (2 * layers + 1) * (nh * dh), eps))
-    (bound := layerStepBytes nh dh f (UInt64.ofNat cache.size / (if (2 * layers + 1) * (nh * dh) = 0 then 1 else (2 * layers + 1) * (nh * dh))) ((2 * layers + 1) * (nh * dh)).toNat) (fun k _ => layerStepBytes_le (hSizes k))
-    (by simp only [embedBlockNeed, hS0]; omega)
-    (fun k p _ _ _ st _ hF hI hSt hL =>
+    (fun k p _ _ st _ hF hI hSt hL =>
       ⟨[.i64 p, .i64 pCache, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk,
         .i64 pWv, .i64 pBv, .i64 pWo, .i64 pBo, .i64 pG2, .i64 pB2, .i64 pWfc, .i64 pBfc,
         .i64 pWproj, .i64 pBproj, .i64 (UInt64.ofNat k),
@@ -1960,9 +1746,8 @@ theorem step_implements : Implements gpt.module 42 stepTuple stepNeed := by
   have hS5 : s5.params.length + s5.locals.length = 38 := by
     rw [hFrame5.params, hFrame5.locals]; exact hS4
   -- The cache followed by the new block.
-  refine Live.call_seq appendBlock_implements rfl hAppend rfl hLive5 hRoom
-    (x := (cache, xl))
-    (by simp only [embedBlockNeed, hS0, appendBlockNeed]; omega) (afterArgs := s5)
+  refine Live.call_seq appendBlock_implements rfl hAppend rfl hLive5 hCap
+    (x := (cache, xl)) (afterArgs := s5)
     (vals := [.i64 pCache, .i64 pl])
     (Expr.evalResults_get ((hFrame5.get 0 (by decide) (by decide)).trans ((State.get_update_ne (state := s3) (j := 0) (index := 28) (by decide)).trans ((State.get_update_ne (state := s3_37) (j := 0) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3_36) (j := 0) (index := 37) (by decide)).trans ((State.get_update_ne (state := s2) (j := 0) (index := 36) (by decide)).trans ((State.get_update_ne (state := s1) (j := 0) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 0) (index := 25) (by decide)).trans (sg0)))))))) <|
       Expr.evalResults_get (hState5) <|
@@ -2005,12 +1790,9 @@ theorem step_implements : Implements gpt.module 42 stepTuple stepNeed := by
       rfl, ⟨pBfc, rfl, hKeep pBfc _ hBfc⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
       hKeep pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl, hKeep pBproj _ hBproj⟩,
       rfl⟩
-  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR1.finish (need := stepNeed (cache, wte, wpe, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj,
-      bproj, token, layers, nh, dh, f, eps))
-      (by simp only [embedBlockNeed, hS0, appendBlockNeed, stepNeed]
-          omega) hParams
-  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s7,
+  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR1.finish hParams
+  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s7,
     by simp [gpt.step.ir, Expr.evalResults, Expr.eval, s7,
       State.get_update_same, hS6], hOwned, hOutB, hOutO⟩
 

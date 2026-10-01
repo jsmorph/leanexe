@@ -60,26 +60,29 @@ instance : Represent (Array Float) where
   owned heap store vs xs := Represent.owned heap store vs (xs.map Float.toBits)
   outside store vs xs region := Represent.outside store vs (xs.map Float.toBits) region
 
+/-- The cap premise of `Implements` holds in every store with the same memory caps. -/
+theorem memoryCap_le_of_caps {m : Module} {store store' : Store Unit}
+    (h : store'.memoryCaps = store.memoryCaps) (hCap : store.memoryCap m 0 ≤ 65535) :
+    store'.memoryCap m 0 ≤ 65535 := by
+  unfold Store.memoryCap
+  rw [h]
+  exact hCap
+
 /-- Entry `entry` of `m` computes `f` exactly.  From any store that satisfies the
 allocator invariant, with arguments `params` (in declaration order) representing
-`x` and room for `need x` bytes, the call aborts at `unreachable` or returns values
-that, in declaration order, represent `f x` and that the caller owns.  Talos lists
-arguments and results with the top of the stack first, hence the reversals.  The
-arguments still represent `x`, every array borrowed or owned before the call is
-still borrowed or owned with the same contents (an owned one with the same
-capacity), the objects of the result lie apart from all of those arrays, the
-allocator invariant holds again, `top` advances by at most `need x` bytes, memory
-grows only as far as the new `top` requires, and the memory's maximum size is
-unchanged. -/
-def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α → β)
-    (need : α → Nat) : Prop :=
+`x`, in a memory whose cap is at most 65,535 pages, the call aborts at `unreachable`
+or returns values that, in declaration order, represent `f x` and that the caller
+owns.  Talos lists arguments and results with the top of the stack first, hence the
+reversals.  The arguments still represent `x`, every array borrowed or owned before
+the call is still borrowed or owned with the same contents (an owned one with the same
+capacity), the objects of the result lie apart from all of those arrays, the allocator
+invariant holds again, and the memory's maximum size is unchanged. -/
+def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α → β) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
-    heap.At store → Represent.borrowed heap store params x → heap.Room store m (need x) →
+    heap.At store → Represent.borrowed heap store params x → store.memoryCap m 0 ≤ 65535 →
     ReturnsOrAborts env m entry store params.reverse fun final values =>
       ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final values.reverse (f x) ∧
-        Represent.borrowed heap' final params x ∧ heap'.top.toNat ≤ heap.top.toNat + need x ∧
-        final.mem.pages ≤ max store.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
-        final.memoryCaps = store.memoryCaps ∧
+        Represent.borrowed heap' final params x ∧ final.memoryCaps = store.memoryCaps ∧
         (∀ p ws, heap.Borrowed store p ws → heap'.Borrowed final p ws) ∧
         (∀ p ws, heap.Owned store p ws →
           heap'.Owned final p ws ∧ capacityAt final p = capacityAt store p) ∧
@@ -90,10 +93,10 @@ def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α 
 
 /-- For every input satisfying `P`, under the premises of `Implements`, the call
 aborts at `unreachable` or returns an owned result `y` with `Q x y`. -/
-def Satisfies [Represent α] [Represent β] (m : Module) (entry : Nat) (need : α → Nat)
+def Satisfies [Represent α] [Represent β] (m : Module) (entry : Nat)
     (P : α → Prop) (Q : α → β → Prop) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
-    P x → heap.At store → Represent.borrowed heap store params x → heap.Room store m (need x) →
+    P x → heap.At store → Represent.borrowed heap store params x → store.memoryCap m 0 ≤ 65535 →
     ReturnsOrAborts env m entry store params.reverse fun final values =>
       ∃ (heap' : Heap) (y : β), heap'.At final ∧ Represent.owned heap' final values.reverse y ∧
         Q x y
@@ -109,22 +112,22 @@ def ImplementsPure [Scalar α] [Scalar β] (m : Module) (entry : Nat) (f : α �
 
 /-- An entry that keeps the store implements its function without allocating. -/
 theorem ImplementsPure.implements [Scalar α] [Scalar β] {m : Module} {entry : Nat} {f : α → β}
-    (h : ImplementsPure m entry f) : Implements m entry f (fun _ => 0) := by
+    (h : ImplementsPure m entry f) : Implements m entry f := by
   intro env store heap params x hHeap hArgs _
   rw [Scalar.borrowed.mp hArgs]
   obtain ⟨N, hN⟩ := h env store x
   refine ⟨N, fun fuel hFuel => ?_⟩
   rcases hN fuel hFuel with ⟨values, final, hRun, rfl, hValues⟩ | hAbort
-  · exact .inl ⟨values, final, hRun, heap, hHeap, hValues, rfl, by omega, le_max_left _ _, rfl,
+  · exact .inl ⟨values, final, hRun, heap, hHeap, hValues, rfl, rfl,
       fun _ _ h => h, fun _ _ h => ⟨h, rfl⟩, fun _ _ _ => trivial, fun _ _ _ => trivial⟩
   · exact .inr hAbort
 
 theorem Implements.transfer [Represent α] [Represent β] {m : Module} {entry : Nat}
-    {f : α → β} {need : α → Nat} {P : α → Prop} {Q : α → β → Prop}
-    (h : Implements m entry f need) (hf : ∀ x, P x → Q x (f x)) :
-    Satisfies m entry need P Q := by
-  intro env store heap params x hP hHeap hArgs hRoom
-  obtain ⟨N, hN⟩ := h env store heap params x hHeap hArgs hRoom
+    {f : α → β} {P : α → Prop} {Q : α → β → Prop}
+    (h : Implements m entry f) (hf : ∀ x, P x → Q x (f x)) :
+    Satisfies m entry P Q := by
+  intro env store heap params x hP hHeap hArgs hCap
+  obtain ⟨N, hN⟩ := h env store heap params x hHeap hArgs hCap
   refine ⟨N, fun fuel hFuel => ?_⟩
   rcases hN fuel hFuel with ⟨values, final, hRun, heap', hAt, hOwned, -⟩ | hAbort
   · exact .inl ⟨values, final, hRun, heap', f x, hAt, hOwned, hf x hP⟩
