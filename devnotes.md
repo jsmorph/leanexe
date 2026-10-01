@@ -19779,3 +19779,24 @@ record them and build the cache with copies first.
 - [ ] 7d: `step` and `scores` in Lean, and the exactness theorem.
 - [ ] 7e: compiled `step` and `scores`, with proofs and tests.
 - [ ] 7f: host session commands, and generation to 256 tokens.
+
+## 2026-09-30: GPT 7a, the softmax over `j ≤ i`
+
+`rowMax` and `rowSumExp` now take `x t nh` and treat `x` as `t · nh` rows of width
+`t`.  Row `r` holds the scores of position `r / nh`, and both loops run over its
+elements `0` to `r / nh`.  `softmaxRows x t nh` passes the head count through,
+and `maskedScores` no longer adds −∞ to the masked elements, which nothing reads.
+The loop count `r / nh + 1` divides by `nh`, which the code may do only inside
+an element, where `r < t · nh` gives `nh ≠ 0`; the division also takes one more
+scratch local.  The kernel proofs changed in their IR and loop counts, the
+generated attention proof in its call to `softmaxRows`, and the causality
+lemmas gained `causal_col`, which bounds the columns a row reads by `t`.
+
+`gpt.wasm` is 9,219 bytes.  All 1,872 comparisons match, the sessions free every
+allocation, and the Hugging Face comparison printed the same differences as
+before, to three digits.  The new and old `attention` returned the same bits on
+600 generated inputs with NaN, the infinities, ±1e300, and −0 among the inputs
+and weights.  That is evidence for the equality argued in the cache design, not a
+proof, and no proof needs it: `forward` is now defined with the new softmax.
+
+- [x] 7a: the softmax over `j ≤ i`.
