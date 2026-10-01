@@ -19850,3 +19850,43 @@ argument's length, so `block_rows` takes the sizes `t · d` and `t' · d`, and
 depend only on `propext`, `Classical.choice`, and `Quot.sound`.
 
 - [x] 7c: the prefix theorem.
+
+## 2026-09-30: GPT 7e, the compiled cached step
+
+The user chose to compile the cached step and prove its bytes before the exactness
+theorem, since native Lean already showed the steps reproduce `forward`'s rows: on
+60 configurations with zero to three layers and special values in the weights, all
+239 positions gave the same bits.
+
+`step` and `scores` use ten kernels and three composites, all built from existing
+constructs.  A cache holds one block of `(2 · layers + 1) · d` values per position:
+the hidden row, then each layer's key and value.  `step` computes the block size,
+loads the cache's length, and divides it by the block size, written
+`if bsize = 0 then 1 else bsize` because a WebAssembly division by zero traps and
+only `d = 0` makes the block size 0.  It builds the new block with `embedBlock`,
+runs `layerStep` once per layer with the array-state loop, and appends the block
+with `appendBlock`.  `layerStep` makes thirteen calls; its attention kernels
+`stepScores` and `stepMix` read keys and values before `p` from the cache and at
+`p` from the new row with a `Float` `if`, which evaluates only the branch it
+takes.  `headMax` and `headSumExp` are the generic row maximum and sum of
+exponentials from before 7a, and their proofs come from that version.  `embedBlock`
+and `step` take their arrays before their words, as every other function does.
+
+`Project/Gpt/StepVerify.lean` proves the ten kernels and `stepSoftmax`.
+`stepScoreBody_run` needs `maxHeartbeats 400000`, twice the default, for one
+`simp` over three reads with long index expressions; `writeBlock`'s element splits
+into five lemmas, one per branch, which keeps each within the default.  The
+generator gained arguments with sums and constants, and plain statements before the
+calls, each with the scratch locals its expression writes; `layerStep`, `scores`,
+and `step` are generated, `step` with the loop step that `forward` uses.
+`Composites.lean` now imports `StepVerify.lean`.
+
+`gpt.wasm` is 11,970 bytes.  The new exports matched native Lean on 30 inputs each,
+and `step` and `scores` on 73 positions each; all 2,318 comparisons match.  A
+`step` session from an empty cache on two layers frees all 66 allocations and a
+`scores` session all 9.  `gpt_bytes` and `step_implements` depend only on
+`propext`, `Classical.choice`, and `Quot.sound`.
+
+- [x] 7e: the compiled step and `scores`, with proofs and tests.
+- [ ] 7f: host session commands, and generation to 256 tokens with the cache.
+- [ ] 7d: the exactness theorem.

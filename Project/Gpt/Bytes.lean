@@ -26,7 +26,14 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
       Implements m 24 attentionTuple attentionNeed ∧ Implements m 25 blockTuple blockNeed ∧
       Implements m 26 causalMatMulTuple causalMatMulNeed ∧ Implements m 27 embedTuple embedNeed ∧
       Implements m 28 matMulTTuple matMulTNeed ∧ Implements m 29 forwardTuple forwardNeed ∧
-      Implements m 30 linearTuple linearNeed := by
+      Implements m 30 linearTuple linearNeed ∧ Implements m 31 embedBlockTuple embedBlockNeed ∧
+      Implements m 32 firstRowTuple firstRowNeed ∧ Implements m 33 stepScoresTuple stepScoresNeed ∧
+      Implements m 34 headMaxTuple headMaxNeed ∧ Implements m 35 headSumExpTuple headSumExpNeed ∧
+      Implements m 36 stepSoftmaxTuple stepSoftmaxNeed ∧ Implements m 37 stepMixTuple stepMixNeed ∧
+      Implements m 38 writeBlockTuple writeBlockNeed ∧
+      Implements m 39 appendBlockTuple appendBlockNeed ∧
+      Implements m 40 lastHiddenTuple lastHiddenNeed ∧ Implements m 41 layerStepTuple layerStepNeed ∧
+      Implements m 42 stepTuple stepNeed ∧ Implements m 43 scoresTuple scoresNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide +kernel) (by decide +kernel)
   exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
@@ -36,6 +43,9 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
     normalizeRows_implements, layerNormRows_implements, maskedScores_implements,
     rowMax_implements, rowSumExp_implements, softmaxApply_implements, softmaxRows_implements,
     attention_implements, block_implements, causalMatMul_implements, embed_implements,
-    matMulT_implements, forward_implements, linear_implements⟩
+    matMulT_implements, forward_implements, linear_implements, embedBlock_implements,
+    firstRow_implements, stepScores_implements, headMax_implements, headSumExp_implements,
+    stepSoftmax_implements, stepMix_implements, writeBlock_implements, appendBlock_implements,
+    lastHidden_implements, layerStep_implements, step_implements, scores_implements⟩
 
 end Project.Gpt

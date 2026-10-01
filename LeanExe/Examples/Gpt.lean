@@ -230,4 +230,111 @@ def forward (tokens : Array UInt64) (wte wpe : Array Float)
   let h := layerNormRows x gf bf 0 t (nh * dh) eps
   matMulT h wte t (nh * dh) vocab
 
+/-! The cached step.  A cache holds one block of `bsize = (2 · layers + 1) · d` values per
+position: the position's final hidden row, then its key and value for each layer.  `step`
+computes the next position's block from the cache and appends it, and `scores` computes
+the scores of the last position from its hidden row.  Each kernel performs the operations
+of the corresponding row of `forward`, in the same order. -/
+
+/-- The block that `step` starts from for `token` at position `p`: its embedding, row
+`token` of `wte` plus row `p` of `wpe`, followed by zeros up to `bsize`. -/
+def embedBlock (wte wpe : Array Float) (token p d bsize : UInt64) : Array Float :=
+  LeanExe.build bsize fun e =>
+    if e < d then wte[(token * d + e).toNat]! + wpe[(p * d + e).toNat]! else 0.0
+
+/-- The first `d` elements of `s`: the hidden row in a block. -/
+def firstRow (s : Array Float) (d : UInt64) : Array Float :=
+  LeanExe.build d fun c => s[c.toNat]!
+
+/-- The scores of position `p` with `nh` heads of width `dh`, as `nh` rows of `p + 1`:
+score `j` of head `h` is `scale · (q · k_j)` over the head's columns, where `k_j` is the
+key of layer `l` in block `j` of `cache` for `j < p`, and `k` for `j = p`. -/
+def stepScores (q k cache : Array Float) (l p nh dh bsize : UInt64) (scale : Float) :
+    Array Float :=
+  LeanExe.build (nh * (p + 1)) fun e =>
+    LeanExe.loop dh 0.0 (fun c acc => acc + q[(e / (p + 1) * dh + c).toNat]! *
+      (if e % (p + 1) < p then
+        cache[(e % (p + 1) * bsize + (2 * l + 1) * (nh * dh) + (e / (p + 1) * dh + c)).toNat]!
+      else k[(e / (p + 1) * dh + c).toNat]!)) * scale
+
+/-- The largest of the `w` elements of each of the `nh` rows of `s`. -/
+def headMax (s : Array Float) (nh w : UInt64) : Array Float :=
+  LeanExe.build nh fun h => LeanExe.loop w (-(1.0 / 0.0)) fun c acc => max acc s[(h * w + c).toNat]!
+
+/-- The sum of `exp (s[h][c] - mx[h])` over each of the `nh` rows of width `w` of `s`. -/
+def headSumExp (s mx : Array Float) (nh w : UInt64) : Array Float :=
+  LeanExe.build nh fun h =>
+    LeanExe.loop w 0.0 fun c acc => acc + exp (s[(h * w + c).toNat]! - mx[h.toNat]!)
+
+/-- The softmax of each of the `nh` rows of width `w` of `s`. -/
+def stepSoftmax (s : Array Float) (nh w : UInt64) : Array Float :=
+  let mx := headMax s nh w
+  let sums := headSumExp s mx nh w
+  softmaxApply s mx sums nh w
+
+/-- The attention output of position `p`: element `c` sums `pw[h][j] · v_j[c]` over
+`j ≤ p`, where `h = c / dh` and `v_j` is the value of layer `l` in block `j` of `cache` for
+`j < p`, and `v` for `j = p`. -/
+def stepMix (pw v cache : Array Float) (l p nh dh bsize : UInt64) : Array Float :=
+  LeanExe.build (nh * dh) fun c =>
+    LeanExe.loop (p + 1) 0.0 fun j acc => acc + pw[(c / dh * (p + 1) + j).toNat]! *
+      (if j < p then cache[(j * bsize + (2 * l + 2) * (nh * dh) + c).toNat]! else v[c.toNat]!)
+
+/-- `s` with its hidden row replaced by `x` and the key and value of layer `l` by `k` and
+`v`, in blocks of rows of width `d`. -/
+def writeBlock (s x k v : Array Float) (l d : UInt64) : Array Float :=
+  LeanExe.build s.size.toUInt64 fun e =>
+    if e < d then x[e.toNat]!
+    else if e < (2 * l + 1) * d then s[e.toNat]!
+    else if e < (2 * l + 2) * d then k[(e - (2 * l + 1) * d).toNat]!
+    else if e < (2 * l + 3) * d then v[(e - (2 * l + 2) * d).toNat]!
+    else s[e.toNat]!
+
+/-- `cache` followed by `s`. -/
+def appendBlock (cache s : Array Float) : Array Float :=
+  let n := cache.size.toUInt64
+  LeanExe.build (n + s.size.toUInt64) fun e => if e < n then cache[e.toNat]! else s[(e - n).toNat]!
+
+/-- The hidden row of the last block of `cache`. -/
+def lastHidden (cache : Array Float) (d bsize : UInt64) : Array Float :=
+  let n := cache.size.toUInt64
+  LeanExe.build d fun c => cache[(n - bsize + c).toNat]!
+
+/-- Layer `l` of `step`: the row of block `s` through `block`'s computation for position
+`p`, with attention over the keys and values of `cache` and of this position. -/
+def layerStep (s cache g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Float)
+    (l p nh dh f bsize : UInt64) (eps : Float) : Array Float :=
+  let x := firstRow s (nh * dh)
+  let h1 := layerNormRows x g1 b1 l 1 (nh * dh) eps
+  let q := linear h1 wq bq l 1 (nh * dh) (nh * dh)
+  let k := linear h1 wk bk l 1 (nh * dh) (nh * dh)
+  let v := linear h1 wv bv l 1 (nh * dh) (nh * dh)
+  let sc := stepScores q k cache l p nh dh bsize (1.0 / dh.toFloat.sqrt)
+  let pw := stepSoftmax sc nh (p + 1)
+  let o := stepMix pw v cache l p nh dh bsize
+  let a := linear o wo bo l 1 (nh * dh) (nh * dh)
+  let r := add x a
+  let h2 := layerNormRows r g2 b2 l 1 (nh * dh) eps
+  let m := mlp h2 wfc bfc wproj bproj l 1 (nh * dh) f
+  let y := add r m
+  writeBlock s y k v l (nh * dh)
+
+/-- The cache after `token`: `cache` followed by the block of the next position, whose
+number is the number of blocks in `cache`. -/
+def step (cache wte wpe g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Float)
+    (token layers nh dh f : UInt64) (eps : Float) : Array Float :=
+  let bsize := (2 * layers + 1) * (nh * dh)
+  let p := cache.size.toUInt64 / (if bsize = 0 then 1 else bsize)
+  let s0 := embedBlock wte wpe token p (nh * dh) bsize
+  let s := LeanExe.loop layers s0 fun l s =>
+    layerStep s cache g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj l p nh dh f bsize eps
+  appendBlock cache s
+
+/-- The scores of the last position of `cache` against every token embedding. -/
+def scores (cache wte gf bf : Array Float) (layers nh dh vocab : UInt64) (eps : Float) :
+    Array Float :=
+  let x := lastHidden cache (nh * dh) ((2 * layers + 1) * (nh * dh))
+  let h := layerNormRows x gf bf 0 1 (nh * dh) eps
+  matMulT h wte 1 (nh * dh) vocab
+
 end LeanExe.Examples.Gpt

@@ -46,4 +46,7 @@ session attention "4 4 2 4 2 4 2 4 2" "u64:0 u64:2 u64:2 u64:1"
 stacked="4 4 8 4 8 4 8 4 8 4 4 4 12 6 12 4"
 session block "4 $stacked" "u64:1 u64:2 u64:2 u64:1 u64:3 $eps"
 session forward "2 6 4 $stacked 2 2" "u64:2 u64:2 u64:2 u64:1 u64:3 u64:3 $eps"
+# A step from an empty cache, and the scores of a cache of one block of (2 · 2 + 1) · 2.
+session step "0 6 4 $stacked" "u64:1 u64:2 u64:2 u64:1 u64:3 $eps"
+session scores "10 6 2 2" "u64:2 u64:2 u64:1 u64:3 $eps"
 [ "$failed" -eq 0 ]

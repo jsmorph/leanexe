@@ -297,4 +297,12 @@ theorem Expr.eval_mul {mem : Mem} {scratch : Nat} {a b : Expr .u64} {state : Sta
     (Expr.bin .mul a b).eval mem scratch state = some (x * y, state) := by
   simp [Expr.eval, ha, hb, U64Op.apply]
 
+theorem Expr.eval_add {mem : Mem} {scratch : Nat} {a b : Expr .u64} {state : State} {x y : UInt64}
+    (ha : a.eval mem scratch state = some (x, state)) (hb : b.eval mem scratch state = some (y, state)) :
+    (Expr.bin .add a b).eval mem scratch state = some (x + y, state) := by
+  simp [Expr.eval, ha, hb, U64Op.apply]
+
+theorem Expr.eval_const {mem : Mem} {scratch : Nat} {state : State} {v : UInt64} :
+    (Expr.const v).eval mem scratch state = some (v, state) := rfl
+
 end Project.IR
