@@ -19702,3 +19702,36 @@ and the LTG entry `array-state-loop` records the rule.
 - [x] The layer-count `forward`, its proof, `forward_causal` by induction over
   layers, the tests, and the Hugging Face comparison with more layers.
 - [ ] Real GPT-2 small weights, loaded from files by the test host.
+
+## 2026-09-30: GPT 6g, the GPT-2 124M weights
+
+The user chose binary64 arithmetic, prompts of at most 256 tokens, one raw file
+per weight array, and a test of the scores followed by greedy generation.  The
+pinned checkpoint is `openai-community/gpt2` at revision
+`607a30d783dfa663caf39e06633721c8d4cfcd7e`, the revision the earlier FP32 work
+used.  Its float32 parameters widen to binary64 exactly, and the twenty arrays
+take about 1.0 GB, twice the 0.5 GB of the earlier FP32 version.  At 256 tokens
+`forwardNeed` plus the weights is about 2.3 GB, within 4 GiB; at 1,024 tokens it
+is 5.9 GB, because `Live` never credits a release.  Crediting releases is a
+near-term task.
+
+The host gained a `file-u64:PATH` argument kind, which allocates an array of the
+file's little-endian words, and a result kind of the same name, which writes the
+result array's words to a file.  The result-kind loop had copied the kind into a
+32-byte buffer with `strcpy`, which a file path would overflow; it now reads the
+kind in place.  `tests/gpt/gpt2_compare.py` downloads the checkpoint, writes the
+arrays to `build/gpt2-124m/`, and runs the comparisons through the host.
+
+For prompts of 5, 30, and 224 tokens, every score differed from Hugging Face's
+float64 model by at most 6.4e-15 of the largest score; the calls took 2.6, 12.8,
+and 95 seconds.  Greedy generation from "The meaning of life is" to 64 tokens
+chose Hugging Face's token at all 59 steps, with differences of at most 1.1e-13
+of the largest score in each step's last row, in 858 seconds.  The text repeats
+"The meaning of life is not the same as the meaning of death." as Hugging Face's
+greedy output does.  Generation to 256 tokens would take about 3.8 hours, since
+each step recomputes the whole prefix, so the user chose 64 tokens and a cache
+as the next step.
+
+- [x] The GPT-2 124M weights, loaded from files, compared and generating.
+- [ ] Next: a key and value cache for generation.
+- [ ] Near term: `Live` credits released blocks.
