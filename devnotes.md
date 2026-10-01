@@ -19994,3 +19994,39 @@ The program stops when it chooses `<|endoftext|>` (id 50256, the configuration's
 "Copyright 2017. All rights reserved." stops after 13 tokens and "Thanks for
 reading!" after 3, where Hugging Face's greedy continuations choose the same token.
 
+## 2026-10-01: SplitMix64 and top-k sampling
+
+The user chose (one question at a time): sampling in `gpt.wasm` as proved Lean code;
+Hugging Face's rule for ties, keeping every token at or above the k-th largest score
+(`TopKLogitsWarper` removes `scores < topk(scores, k)[-1]`); SplitMix64 from the old
+`Prng` example in its own module and in `gpt.wasm`; a random seed printed to stderr when
+none is given; and a sorted buffer of the k largest scores for the threshold.
+
+`LeanExe/Examples/Prng.lean` defines `splitMix`, one step of Vigna's SplitMix64 written
+as straight-line code, and `unitFloat x = (x >>> 11) / 2 ^ 53`.  `Project/Prng/Verify.lean`
+proves both for any module whose function list holds their compiled forms, so the GPT
+module reuses the proofs; `prng_bytes` covers `prng.wasm` (1,698 bytes).
+`tests/prng/compare.py` matched Vigna's algorithm, written with Python integers, on 106
+seeds and 2,000 successive steps, and `unitFloat` on 40 words.  The LTG entry
+`splitmix64` records the proofs as a library asset.
+
+The compiler accepted a pair from a call only at the result level.
+`let (next, x) := splitMix state` failed with "unsupported pair", so `tupleOf` now
+translates a call of a function compiled into the same module, which yields one call
+statement with two result locals; the call rules already handle several results.
+
+`sampleTopK s k temperature state` uses `topKBuffer`, an array-state loop over the
+scores that inserts each into a descending buffer of `k` entries (`insertTop`; ties go
+after equal entries and NaN never enters), and `sampleFrom`, which takes the threshold
+`buf[k - 1]` and the maximum `buf[0]`, sums `exp ((s - max) / temperature)` over the
+kept scores, draws `u` with one SplitMix64 step, and chooses the first token whose
+running weight exceeds `u` times the total.  `k = 0` is treated as `k = 1`.  The 415 new
+cases in `tests/gpt/Cases.lean` matched native Lean (2,733 in all), and
+`tests/gpt/sample_frequencies.py` found every count within 1.5 standard deviations of
+its expectation over 20,000 draws for each of six cases, with no draw outside the kept
+set.  `run.sh` now joins multi-line host output with commas, for pair results.
+
+The CLI gained `--top-k K` (1 to 1,024, a cap that keeps the proved allocation bound of
+the buffer loop below about 0.5 GB), `--temperature`, and `--seed`.  The same seed gives
+the same text, and `--top-k 1` gives the greedy text.  The proofs of the sampler come next.
+

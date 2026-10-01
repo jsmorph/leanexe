@@ -10,6 +10,8 @@ leanexe_compile gpt := [dot, matVec, layerNorm, exp, softmax, matVec2, matMul,
   maskedScores, rowMax, rowSumExp, softmaxApply, softmaxRows, attention, block,
   causalMatMul, embed, matMulT, forward, linear,
   embedBlock, firstRow, stepScores, headMax, headSumExp, stepSoftmax, stepMix, writeBlock,
-  appendBlock, lastHidden, layerStep, step, scores]
+  appendBlock, lastHidden, layerStep, step, scores,
+  LeanExe.Examples.Prng.splitMix, LeanExe.Examples.Prng.unitFloat, negInfs, insertTop,
+  topKBuffer, sampleFrom, sampleTopK]
 
 end Project.Gpt

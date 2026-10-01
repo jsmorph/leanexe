@@ -367,6 +367,60 @@ def stepCases : IO Unit := do
         (W 11) (W 12) (W 13) (W 14) (W 15) l.toUInt64 p.toUInt64 nh.toUInt64 dh.toUInt64
         f.toUInt64 bsize.toUInt64 eps)
 
+def emitU (name : String) (args : List String) (out : UInt64) : IO Unit :=
+  IO.println s!"{name}|i64|{" ".intercalate args}|{out}"
+
+def emitPair (name : String) (args : List String) (out : UInt64 × UInt64) : IO Unit :=
+  IO.println s!"{name}|list:i64,i64|{" ".intercalate args}|{out.1},{out.2}"
+
+/-- Cases for the generator and top-k sampling: the SplitMix64 step on chosen seeds, the
+conversion to `[0, 1)`, the buffer kernels on ties, infinities, NaN, signed zeros, and
+reads past the end, and the sampler on moderate scores with several `k`, temperatures,
+and states. -/
+def sampleCases : IO Unit := do
+  let seeds : List Nat := [0, 1, 42, 2 ^ 64 - 1, 0x9E3779B97F4A7C15, 2 ^ 64 - 0x9E3779B97F4A7C15,
+    123456789]
+  for seed in seeds do
+    emitPair "splitMix" [u seed] (LeanExe.Examples.Prng.splitMix (UInt64.ofNat seed))
+  for i in List.range 20 do
+    let x := (i * 0x9E3779B97F4A7C15 + 7) % 2 ^ 64
+    emitF "unitFloat" [u x] (LeanExe.Examples.Prng.unitFloat (UInt64.ofNat x))
+  for k in List.range 5 do
+    emit "negInfs" [u k] (negInfs (UInt64.ofNat k))
+  let bufs : List (List Float) := [[], [3.0], [3.0, 1.0], [3.0, 2.0, 2.0, -inf], [inf, 0.0, -0.0],
+    [-inf, -inf, -inf], [nan, 1.0]]
+  let xs : List Float := [2.0, 3.0, -inf, nan, inf, -0.0, 0.0, 5.0, 1.0]
+  for buf in bufs do
+    for x in xs do
+      emit "insertTop" [arr buf, arr [x], u 0, u buf.length]
+        (insertTop buf.toArray #[x] 0 (UInt64.ofNat buf.length))
+    emit "insertTop" [arr buf, arr [7.0], u 3, u buf.length]
+      (insertTop buf.toArray #[7.0] 3 (UInt64.ofNat buf.length))
+    emit "insertTop" [arr buf, arr [7.0], u 0, u (buf.length + 2)]
+      (insertTop buf.toArray #[7.0] 0 (UInt64.ofNat (buf.length + 2)))
+  let scores : List (List Float) := [[], [1.0], [1.0, 2.0, 3.0], [2.0, 2.0, 1.0, 2.0],
+    [nan, 1.0, nan, 0.5], [inf, 1.0, -inf], [-0.0, 0.0, -0.0]] ++
+    (List.range 8).map fun i => smalls (i + 5) (13 * i)
+  for sc in scores do
+    for k in [0, 1, 2, 3, 5, 13] do
+      emit "topKBuffer" [arr sc, u k] (topKBuffer sc.toArray (UInt64.ofNat k))
+  let temps : List Float := [1.0, 0.5, 2.0, 0.001]
+  let states : List Nat := [0, 1, 42, 2 ^ 64 - 1]
+  for i in List.range 8 do
+    let sc := (smalls (i + 3) (17 * i)).toArray
+    for k in [1, 2, 3, 5, 13] do
+      let t := temps[i % 4]!
+      for st in states do
+        emitPair "sampleTopK" [arrA sc, u k, fl t, u st]
+          (sampleTopK sc (UInt64.ofNat k) t (UInt64.ofNat st))
+      let buf := topKBuffer sc (UInt64.ofNat k)
+      emitPair "sampleFrom" [arrA sc, arrA buf, u k, fl t, u (k * 1000003)]
+        (sampleFrom sc buf (UInt64.ofNat k) t (UInt64.ofNat (k * 1000003)))
+  for sc in [[2.0, 2.0, 1.0, 2.0], [nan, 1.0, nan, 0.5], [inf, 1.0, -inf], []] do
+    for k in [0, 1, 2, 4] do
+      emitPair "sampleTopK" [arr sc, u k, fl 1.0, u 7]
+        (sampleTopK sc.toArray (UInt64.ofNat k) 1.0 7)
+
 def main : IO Unit := do
   dotCases
   matVecCases
@@ -383,3 +437,4 @@ def main : IO Unit := do
   linearCases
   stackedBlockCases
   stepCases
+  sampleCases

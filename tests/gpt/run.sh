@@ -13,7 +13,7 @@ declare -A passed
 failed=0
 while IFS='|' read -r name result args expected; do
   read -ra argv <<<"$args"
-  out=$("$host" call "$wasm" "$name" "$result" "${argv[@]}" | tr -d '[] ')
+  out=$("$host" call "$wasm" "$name" "$result" "${argv[@]}" | tr -d '[] ' | paste -sd, -)
   if [ "$out" = "$expected" ]; then
     passed[$name]=$((${passed[$name]:-0} + 1))
   else

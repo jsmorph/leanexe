@@ -5,14 +5,20 @@
 # ///
 """Generates text with GPT-2 124M on gpt.wasm.
 
-Usage: `uv run tools/gpt2.py --output-tokens 32 --prompt "It was a dark and stormy night"`.
+Usage: `uv run tools/gpt2.py --output-tokens 32 --prompt "It was a dark and stormy night"`,
+with `--top-k 40` to sample, and `--temperature` and `--seed` to control the sampling.
 
 The program tokenizes the prompt with the pinned `openai-community/gpt2` tokenizer, runs
 the compiled `step` on each prompt token in one host session that keeps the weights
-loaded, and then repeatedly takes the token with the highest score from `scores` and
-runs `step` on it.  It prints the prompt and each token as it is chosen, and it stops
-after the requested number of tokens or when it chooses `<|endoftext|>`, which it does
-not print.  The weights
+loaded, and then repeatedly chooses a token from the scores of `scores` and runs `step`
+on it.  Without `--top-k` it takes the token with the highest score.  With `--top-k K` it
+calls the compiled `sampleTopK`, which draws from the tokens whose scores are at least the
+K-th largest, with weights `exp ((score - max) / temperature)` and a SplitMix64 state that
+the program passes from one token to the next.  Without `--seed` the state starts from 8
+bytes of `os.urandom`, and the program prints the seed to stderr so that a run can be
+repeated.  It prints the prompt and each token as it is chosen, and it stops after the
+requested number of tokens or when it chooses `<|endoftext|>`, which it does not print.
+The weights
 are the binary64 files that `tests/gpt/gpt2_compare.py` writes to build/gpt2-124m/."""
 import argparse
 import array
@@ -86,13 +92,28 @@ class Session:
         self.release(cache)
         return new
 
+    def scores(self, cache):
+        c = self.config
+        return self.call('scores', [self.arg(cache), 'arg-ptr 1', 'arg-ptr 19', 'arg-ptr 20',
+                                    f'arg-u64 {c.n_layer}', f'arg-u64 {c.n_head}',
+                                    f'arg-u64 {c.n_embd // c.n_head}', f'arg-u64 {c.vocab_size}',
+                                    f'arg-f64 {self.eps}'])
+
+    def sample(self, cache, k, temperature, state):
+        """A token drawn by `sampleTopK` from the scores after the last position of `cache`,
+        and the next generator state."""
+        ptr = self.scores(cache)
+        bits = struct.unpack('<Q', struct.pack('<d', temperature))[0]
+        for a in [f'arg-u64 {ptr}', f'arg-u64 {k}', f'arg-f64 {bits}', f'arg-u64 {state}']:
+            self.send(a)
+        self.send('call sampleTopK 2')
+        token, state = (int(w) for w in self.reply('results')[1:3])
+        self.release(ptr)
+        return token, state
+
     def next_token(self, cache):
         """The token with the highest score after the last position of `cache`."""
-        c = self.config
-        ptr = self.call('scores', [self.arg(cache), 'arg-ptr 1', 'arg-ptr 19', 'arg-ptr 20',
-                                   f'arg-u64 {c.n_layer}', f'arg-u64 {c.n_head}',
-                                   f'arg-u64 {c.n_embd // c.n_head}', f'arg-u64 {c.vocab_size}',
-                                   f'arg-f64 {self.eps}'])
+        ptr = self.scores(cache)
         self.send(f'save-u64 {ptr} {self.scores_path}')
         self.reply('saved')
         self.release(ptr)
@@ -113,7 +134,25 @@ def main():
     parser.add_argument('--output-tokens', type=int, default=32,
                         help='the largest number of tokens to generate (default 32); '
                         'generation also stops at <|endoftext|>')
+    parser.add_argument('--top-k', type=int,
+                        help='sample from the K highest-scoring tokens (1 to 1024); '
+                        'without it, take the highest-scoring token')
+    parser.add_argument('--temperature', type=float, default=1.0,
+                        help='divide the score differences by T before sampling (default 1.0)')
+    parser.add_argument('--seed', type=int,
+                        help='the starting SplitMix64 state, 0 to 2^64 - 1 '
+                        '(default: random, printed to stderr)')
     args = parser.parse_args()
+    if args.top_k is not None and not 1 <= args.top_k <= 1024:
+        raise SystemExit('gpt2: --top-k must be from 1 to 1024')
+    if not (args.temperature > 0 and args.temperature < float('inf')):
+        raise SystemExit('gpt2: --temperature must be positive and finite')
+    if args.seed is not None and not 0 <= args.seed < 2 ** 64:
+        raise SystemExit('gpt2: --seed must be from 0 to 2^64 - 1')
+    state = args.seed
+    if args.top_k is not None and state is None:
+        state = int.from_bytes(os.urandom(8), 'little')
+        print(f'seed {state}', file=sys.stderr)
     for path, how in [(HOST, 'tools/build-wasmtime-host.sh'),
                       (WASM, 'the Emit.lean command for Project.Gpt.Module in deslop.md'),
                       (WEIGHTS / 'revision', 'uv run tests/gpt/gpt2_compare.py')]:
@@ -137,7 +176,10 @@ def main():
         text = tokenizer.decode(ids)
         print(text, end='', flush=True)
         for n in range(args.output_tokens):
-            token = session.next_token(cache)
+            if args.top_k is None:
+                token = session.next_token(cache)
+            else:
+                token, state = session.sample(cache, args.top_k, args.temperature, state)
             if token == config.eos_token_id:
                 break
             ids.append(token)

@@ -625,11 +625,14 @@ mutual
     | _ => k ctx term
 
   /-- The locals holding the components of the pair-valued `term`: a pair
-  variable, or a loop, whose statements join the prelude. -/
+  variable, a loop, or a call of a function compiled into the same module, whose
+  statements join the prelude. -/
   partial def tupleOf (ctx : Ctx) (term : Lean.Expr) : CompileM (List (Nat × ScalarType)) := do
     let term := term.consumeMData
     if let some components := ctx.tuples.lookup term then return components
     if term.isAppOf ``LeanExe.loop then return ← translateLoop ctx term
+    if let some fn := term.getAppFn.constName? then
+      if let some index := ctx.callees.lookup fn then return ← translateCall ctx term index
     throwError "unsupported pair: {← sourceOf term}"
 
   /-- Translates `LeanExe.loop n init f` to assignments of `init`'s components to

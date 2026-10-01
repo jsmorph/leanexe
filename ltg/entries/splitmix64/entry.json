@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "splitmix64",
+  "title": "SplitMix64 generator",
+  "summary": "Proves that the compiled SplitMix64 step and the conversion of its word to a float in [0, 1) compute their Lean definitions and keep the store, in any module whose function list contains them.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["library-functions", "proof-construction", "random"],
+  "scope": "library-function",
+  "evidenceStatus": "promoted",
+  "features": ["bitwise", "pure-call", "straight-line", "word-to-float"],
+  "annotationKinds": [],
+  "modules": ["Project.Prng.Verify", "LeanExe.Examples.Prng"],
+  "declarations": ["LeanExe.Examples.Prng.splitMix", "LeanExe.Examples.Prng.unitFloat", "Project.Prng.splitMix_pure", "Project.Prng.unitFloat_pure", "Project.Prng.prng_bytes"],
+  "premises": ["The module's function list holds the compiled splitMix or unitFloat at index i, as prng.splitMix.ir or prng.unitFloat.ir with its name"],
+  "result": "ImplementsPure at entry 3 + i, which Stmt.callPure_spec turns into a Triple for a call from a loop body or any other code that must keep the store.",
+  "consumers": ["Project.Prng.splitMix_implements", "Project.Prng.unitFloat_implements"],
+  "relatedEntries": ["straight-line-run", "float-arithmetic", "function-call"],
+  "exclusion": null
+}
