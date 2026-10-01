@@ -149,29 +149,31 @@ def layerNormRowsCases : IO Unit := do
     emit "layerNormRows" [arr x, arr g, arr b, u t, u d, fl eps]
       (layerNormRows x.toArray g.toArray b.toArray t.toUInt64 d.toUInt64 eps)
 
-/-- Attention kernels with one head, including special values in `x`. -/
+/-- Attention kernels: scores with one head, and softmax rows of one to three heads with
+special values in `x`. -/
 def softmaxRowsCases : IO Unit := do
   for i in List.range 40 do
     let t := i % 4
     let d := (i * 3 + 1) % 5
+    let nh := 1 + i % 3
     let extra := i % 2
     let special : List Float := [nan, inf, -inf, -0.0, 1e308]
-    let x := (smalls (t * d + extra) (13 * i)).mapIdx fun j v =>
+    let x := (smalls (t * nh * t + extra) (13 * i)).mapIdx fun j v =>
       if i % 10 = 9 ∧ j = 1 then special[(i / 10) % 5]! else v
     let q := smalls (t * d) (17 * i + 1)
     let k := smalls (t * d + extra) (19 * i + 2)
     let scale : Float := if i % 5 = 0 then 1.0 else 1.0 / d.toFloat.sqrt
     let s := maskedScores q.toArray k.toArray t.toUInt64 1 d.toUInt64 scale
     emit "maskedScores" [arr q, arr k, u t, u 1, u d, fl scale] s
-    let mx := rowMax x.toArray t.toUInt64 d.toUInt64
-    let sums := rowSumExp x.toArray mx t.toUInt64 d.toUInt64
-    emit "rowMax" [arr x, u t, u d] mx
-    emit "rowSumExp" [arr x, arrA mx, u t, u d] sums
-    emit "softmaxApply" [arr x, arrA mx, arrA sums, u t, u d]
-      (softmaxApply x.toArray mx sums t.toUInt64 d.toUInt64)
-    emit "softmaxRows" [arrA s, u t, u t] (softmaxRows s t.toUInt64 t.toUInt64)
-    emit "softmaxRows" [arr x, u t, u d] (softmaxRows x.toArray t.toUInt64 d.toUInt64)
-    let p := softmaxRows s t.toUInt64 t.toUInt64
+    let mx := rowMax x.toArray t.toUInt64 nh.toUInt64
+    let sums := rowSumExp x.toArray mx t.toUInt64 nh.toUInt64
+    emit "rowMax" [arr x, u t, u nh] mx
+    emit "rowSumExp" [arr x, arrA mx, u t, u nh] sums
+    emit "softmaxApply" [arr x, arrA mx, arrA sums, u (t * nh), u t]
+      (softmaxApply x.toArray mx sums (t * nh).toUInt64 t.toUInt64)
+    emit "softmaxRows" [arrA s, u t, u 1] (softmaxRows s t.toUInt64 1)
+    emit "softmaxRows" [arr x, u t, u nh] (softmaxRows x.toArray t.toUInt64 nh.toUInt64)
+    let p := softmaxRows s t.toUInt64 1
     let v := smalls (t * d + extra) (41 * i + 7)
     emit "causalMatMul" [arrA p, arr v, u t, u 1, u d] (causalMatMul p v.toArray t.toUInt64 1 d.toUInt64)
 
@@ -188,7 +190,7 @@ def headCases : IO Unit := do
     let scale : Float := 1.0 / dh.toFloat.sqrt
     let s := maskedScores q.toArray k.toArray t.toUInt64 nh.toUInt64 dh.toUInt64 scale
     emit "maskedScores" [arr q, arr k, u t, u nh, u dh, fl scale] s
-    let p := softmaxRows s (t * nh).toUInt64 t.toUInt64
+    let p := softmaxRows s t.toUInt64 nh.toUInt64
     let v := units (t * d + extra) (41 * i + 7)
     emit "causalMatMul" [arrA p, arr v, u t, u nh, u dh]
       (causalMatMul p v.toArray t.toUInt64 nh.toUInt64 dh.toUInt64)

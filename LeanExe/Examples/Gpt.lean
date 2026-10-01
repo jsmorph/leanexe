@@ -125,34 +125,39 @@ def layerNormRows (x g b : Array Float) (t d : UInt64) (eps : Float) : Array Flo
 /-- The causally masked attention scores of `nh` heads of width `dh`, for `t` queries
 and keys stored by rows of width `nh · dh`, as `t` rows of `nh` blocks of `t` scores.
 Element `(i, h, j)` is `scale · (q[i] · k[j])` over the columns of head `h` where
-`j ≤ i`, and `0 · scale` plus negative infinity elsewhere.  A masked element reads no
-key, so row `i` depends only on rows `0` to `i`. -/
+`j ≤ i`, and `0 · scale` elsewhere, which the softmax does not read.  A masked element
+reads no key, so row `i` depends only on rows `0` to `i`. -/
 def maskedScores (q k : Array Float) (t nh dh : UInt64) (scale : Float) : Array Float :=
   LeanExe.build (t * nh * t) fun e =>
     LeanExe.loop (if e % t ≤ e / (nh * t) then dh else 0) 0.0
-        (fun c acc => acc + q[(e / (nh * t) * (nh * dh) + (e / t % nh * dh + c)).toNat]! *
-          k[(e % t * (nh * dh) + (e / t % nh * dh + c)).toNat]!) * scale +
-      (if e % t ≤ e / (nh * t) then 0.0 else -(1.0 / 0.0))
+      (fun c acc => acc + q[(e / (nh * t) * (nh * dh) + (e / t % nh * dh + c)).toNat]! *
+        k[(e % t * (nh * dh) + (e / t % nh * dh + c)).toNat]!) * scale
 
-/-- The largest element of each of the `t` rows of width `w` of `x`. -/
-def rowMax (x : Array Float) (t w : UInt64) : Array Float :=
-  LeanExe.build t fun r => LeanExe.loop w (-(1.0 / 0.0)) fun c acc => max acc x[(r * w + c).toNat]!
+/-- The largest of elements `0` to `r / nh` of each row `r` of the `t · nh` rows of width
+`t` of attention scores `x`: row `r` holds the scores of position `r / nh`, which sees
+positions `0` to `r / nh`. -/
+def rowMax (x : Array Float) (t nh : UInt64) : Array Float :=
+  LeanExe.build (t * nh) fun r =>
+    LeanExe.loop (r / nh + 1) (-(1.0 / 0.0)) fun c acc => max acc x[(r * t + c).toNat]!
 
-/-- The sum of `exp (x[r][c] - mx[r])` over each of the `t` rows of width `w` of `x`. -/
-def rowSumExp (x mx : Array Float) (t w : UInt64) : Array Float :=
-  LeanExe.build t fun r =>
-    LeanExe.loop w 0.0 fun c acc => acc + exp (x[(r * w + c).toNat]! - mx[r.toNat]!)
+/-- The sum of `exp (x[r][c] - mx[r])` over elements `0` to `r / nh` of each row `r` of the
+`t · nh` rows of width `t` of attention scores `x`. -/
+def rowSumExp (x mx : Array Float) (t nh : UInt64) : Array Float :=
+  LeanExe.build (t * nh) fun r =>
+    LeanExe.loop (r / nh + 1) 0.0 fun c acc => acc + exp (x[(r * t + c).toNat]! - mx[r.toNat]!)
 
 /-- `exp (x[r][c] - mx[r]) / sums[r]` for each element of the `t` rows of width `w`
 of `x`. -/
 def softmaxApply (x mx sums : Array Float) (t w : UInt64) : Array Float :=
   LeanExe.build (t * w) fun e => exp (x[e.toNat]! - mx[(e / w).toNat]!) / sums[(e / w).toNat]!
 
-/-- The softmax of each of the `t` rows of width `w` of `x`. -/
-def softmaxRows (x : Array Float) (t w : UInt64) : Array Float :=
-  let mx := rowMax x t w
-  let sums := rowSumExp x mx t w
-  softmaxApply x mx sums t w
+/-- The causal softmax of each of the `t · nh` rows of width `t` of attention scores `x`
+over its elements `0` to `r / nh`.  The later elements of row `r` are computed from
+scores that `causalMatMul` does not read. -/
+def softmaxRows (x : Array Float) (t nh : UInt64) : Array Float :=
+  let mx := rowMax x t nh
+  let sums := rowSumExp x mx t nh
+  softmaxApply x mx sums (t * nh) t
 
 /-- The product of the attention weights `p`, `t` rows of `nh` blocks of `t`, and the
 values `v`, `t` rows of width `nh · dh`: element `(i, c)` sums `p[i][h][j] · v[j][c]`
@@ -174,7 +179,7 @@ def attention (x wq bq wk bk wv bv wo bo : Array Float) (t nh dh : UInt64) : Arr
   let k := linear x wk bk t (nh * dh) (nh * dh)
   let v := linear x wv bv t (nh * dh) (nh * dh)
   let s := maskedScores q k t nh dh (1.0 / dh.toFloat.sqrt)
-  let p := softmaxRows s (t * nh) t
+  let p := softmaxRows s t nh
   let o := causalMatMul p v t nh dh
   linear o wo bo t (nh * dh) (nh * dh)
 

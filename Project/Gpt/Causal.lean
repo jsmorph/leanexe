@@ -144,7 +144,7 @@ theorem maskedScores_rows {q q' k k' : Array Float} {t nh dh : UInt64} {scale : 
   have ht0 : 0 < t.toNat := Nat.pos_of_ne_zero fun h0 => by simp [h0] at hlt
   have hHlt : e / t.toNat % nh.toNat < nh.toNat := Nat.mod_lt _ hn0
   have hjt : e % t.toNat < t.toNat := Nat.mod_lt _ ht0
-  congr 2
+  congr 1
   refine loop_congr fun c hc acc => ?_
   split at hc
   · rename_i hle
@@ -162,24 +162,38 @@ theorem maskedScores_rows {q q' k k' : Array Float} {t nh dh : UInt64} {scale : 
         (C := UInt64.ofNat e / t % nh * dh + UInt64.ofNat c) (by omega) (by omega) hnd hC]
   · simp at hc
 
-theorem rowMax_rows {x x' : Array Float} {t w : UInt64} {i : Nat} (ht : t.toNat < 2 ^ 32)
-    (hw : w.toNat < 2 ^ 32) (h : RowsAgree w.toNat i x x') :
-    RowsAgree 1 i (rowMax x t w) (rowMax x' t w) := by
+/-- Column `c` read for row `r` of the causal softmax over `t · nh` rows of width `t`: `c`
+is at most the row's position `r / nh`, which is below `t`. -/
+theorem causal_col {t nh : UInt64} {r c : Nat} (ht : t.toNat < 2 ^ 16) (hn : nh.toNat < 2 ^ 16)
+    (hlt : r < (t * nh).toNat) (hc : c < (UInt64.ofNat r / nh + 1).toNat) :
+    (UInt64.ofNat r).toNat = r ∧ (UInt64.ofNat c).toNat = c ∧ c < t.toNat := by
+  have hR : (UInt64.ofNat r).toNat = r := toNat_ofNat_lt hlt
+  rw [mul_toNat (by omega) (by omega)] at hlt
+  have hq : r / nh.toNat < t.toNat := Nat.div_lt_of_lt_mul (by rwa [Nat.mul_comm])
+  rw [UInt64.toNat_add, UInt64.toNat_div, hR, UInt64.toNat_one,
+    Nat.mod_eq_of_lt (by omega)] at hc
+  exact ⟨hR, toNat_ofNat_lt (n := t) (by omega), by omega⟩
+
+theorem rowMax_rows {x x' : Array Float} {t nh : UInt64} {i : Nat} (ht : t.toNat < 2 ^ 16)
+    (hn : nh.toNat < 2 ^ 16) (h : RowsAgree t.toNat i x x') :
+    RowsAgree 1 i (rowMax x t nh) (rowMax x' t nh) := by
   unfold rowMax
   refine rows_of_build fun r hr hlt => loop_congr fun c hc acc => ?_
-  have hR := toNat_ofNat_lt hlt
-  rw [read_agree h (R := UInt64.ofNat r) (C := UInt64.ofNat c) (by omega) (by omega) hw
-    (by rwa [toNat_ofNat_lt hc])]
+  obtain ⟨hR, hC, hct⟩ := causal_col ht hn hlt hc
+  have hnt := small_mul ht hn
+  rw [read_agree h (R := UInt64.ofNat r) (C := UInt64.ofNat c) (by omega) (by omega) (by omega)
+    (by rw [hC]; exact hct)]
 
-theorem rowSumExp_rows {x x' mx mx' : Array Float} {t w : UInt64} {i : Nat}
-    (ht : t.toNat < 2 ^ 32) (hw : w.toNat < 2 ^ 32) (h : RowsAgree w.toNat i x x')
+theorem rowSumExp_rows {x x' mx mx' : Array Float} {t nh : UInt64} {i : Nat}
+    (ht : t.toNat < 2 ^ 16) (hn : nh.toNat < 2 ^ 16) (h : RowsAgree t.toNat i x x')
     (hm : RowsAgree 1 i mx mx') :
-    RowsAgree 1 i (rowSumExp x mx t w) (rowSumExp x' mx' t w) := by
+    RowsAgree 1 i (rowSumExp x mx t nh) (rowSumExp x' mx' t nh) := by
   unfold rowSumExp
   refine rows_of_build fun r hr hlt => loop_congr fun c hc acc => ?_
-  have hR := toNat_ofNat_lt hlt
-  rw [read_agree h (R := UInt64.ofNat r) (C := UInt64.ofNat c) (by omega) (by omega) hw
-    (by rwa [toNat_ofNat_lt hc]), hR, hm r (by omega)]
+  obtain ⟨hR, hC, hct⟩ := causal_col ht hn hlt hc
+  have hnt := small_mul ht hn
+  rw [read_agree h (R := UInt64.ofNat r) (C := UInt64.ofNat c) (by omega) (by omega) (by omega)
+    (by rw [hC]; exact hct), hR, hm r (by omega)]
 
 theorem softmaxApply_rows {x x' mx mx' sums sums' : Array Float} {t w : UInt64} {i : Nat}
     (ht : t.toNat < 2 ^ 32) (hw : w.toNat < 2 ^ 32) (h : RowsAgree w.toNat i x x')
@@ -190,10 +204,11 @@ theorem softmaxApply_rows {x x' mx mx' sums sums' : Array Float} {t w : UInt64} 
   obtain ⟨hE, hRow, -, hri, -, -⟩ := element_facts ht hw he hlt
   rw [hE, hRow, h e he, hm _ (by omega), hs _ (by omega)]
 
-theorem softmaxRows_rows {x x' : Array Float} {t w : UInt64} {i : Nat} (ht : t.toNat < 2 ^ 32)
-    (hw : w.toNat < 2 ^ 32) (h : RowsAgree w.toNat i x x') :
-    RowsAgree w.toNat i (softmaxRows x t w) (softmaxRows x' t w) :=
-  softmaxApply_rows ht hw h (rowMax_rows ht hw h) (rowSumExp_rows ht hw h (rowMax_rows ht hw h))
+theorem softmaxRows_rows {x x' : Array Float} {t nh : UInt64} {i : Nat} (ht : t.toNat < 2 ^ 16)
+    (hn : nh.toNat < 2 ^ 16) (h : RowsAgree t.toNat i x x') :
+    RowsAgree t.toNat i (softmaxRows x t nh) (softmaxRows x' t nh) :=
+  softmaxApply_rows (small_mul ht hn) (by omega) h (rowMax_rows ht hn h)
+    (rowSumExp_rows ht hn h (rowMax_rows ht hn h))
 
 theorem causalMatMul_rows {p p' v v' : Array Float} {t nh dh : UInt64} {i : Nat}
     (ht : t.toNat < 2 ^ 16) (hn : nh.toNat < 2 ^ 16) (hdh : dh.toNat < 2 ^ 16)
@@ -318,7 +333,7 @@ theorem attention_causal {x x' wq bq wk bk wv bv wo bo : Array Float} {t nh dh :
   have hs := maskedScores_rows (scale := 1.0 / dh.toFloat.sqrt) ht hn hdh hq hk
   rw [mul_toNat (by omega) ht32] at hs
   have hp := RowsAgree.join (Nat.pos_of_ne_zero hn0)
-    (softmaxRows_rows (small_mul ht hn) ht32 (RowsAgree.split (Nat.pos_of_ne_zero hn0) hs))
+    (softmaxRows_rows ht hn (RowsAgree.split (Nat.pos_of_ne_zero hn0) hs))
   rw [← mul_toNat (by omega) ht32] at hp
   exact linear_rows ht32 hnd hnd (causalMatMul_rows ht hn hdh hp hv)
 

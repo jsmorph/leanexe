@@ -1899,7 +1899,6 @@ theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNee
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
   have hZero : (0.0 : Float).toBits = 0 := by decide +kernel
-  have hOne : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
   let start : State :=
     { params := [.i64 pq, .i64 pk, .i64 t, .i64 nh, .i64 dh, .f64 scale.toBits]
       locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .i64 0,
@@ -1907,14 +1906,11 @@ theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNee
   show Triple _ (.buildWith 6 7 8 (.bin .mul (.bin .mul (.get 2) (.get 3)) (.get 2))
       (.seq (.assign 9 (.constF 0)) (.loop 10 11 (.ite (.leU (.bin .remU (.get 8) (.get 2))
         (.bin .divU (.get 8) (.bin .mul (.get 3) (.get 2)))) (.get 4) (.const 0)) scoreBody))
-      (.toBits (.binF .add (.binF .mul (.getF 9) (.getF 5))
-        (.iteF (.leU (.bin .remU (.get 8) (.get 2)) (.bin .divU (.get 8) (.bin .mul (.get 3) (.get 2))))
-          (.constF 0) (.binF .sub (.constF 9223372036854775808)
-            (.binF .div (.constF 4607182418800017408) (.constF 0))))))) 13
+      (.toBits (.binF .mul (.getF 9) (.getF 5)))) 13
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.buildWith_spec (writes := [9, 10, 11, 12]) (n := t * nh * t)
     (fun e => (LeanExe.loop (if e % t ≤ e / (nh * t) then dh else 0) 0.0 (scoreStep q k t nh dh e) *
-      scale + (if e % t ≤ e / (nh * t) then 0.0 else -(1.0 / 0.0))).toBits)
+      scale).toBits)
     hMemory32 hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
     ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro e store state he hAt hFrame hIndex
@@ -1971,18 +1967,10 @@ theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNee
           (scoreStep q k t nh dh (UInt64.ofNat e))).toBits) := (List.forall₂_cons.mp hHolds).1
       have hU : ∀ j, j < 6 ∨ j = 8 → u.get j = state.get j := fun j hj =>
         (hFrameL.get j (by omega) (by simp; omega)).trans (hS1Get j (by omega))
-      have hUL : u.params.length = 6 ∧ u.locals.length = 12 :=
-        ⟨hFrameL.params.trans hS1.1, hFrameL.locals.trans hS1.2⟩
-      have u2 : u.get 2 = some (.i64 t) := (hU 2 (by omega)).trans g2
-      have u3 : u.get 3 = some (.i64 nh) := (hU 3 (by omega)).trans g3
       have u5 : u.get 5 = some (.f64 scale.toBits) := (hU 5 (by omega)).trans g5
-      have u8 : u.get 8 = some (.i64 (UInt64.ofNat e)) := (hU 8 (by omega)).trans hIndex
       refine ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), ?_⟩
-      by_cases hc : UInt64.ofNat e % t ≤ UInt64.ofNat e / (nh * t) <;>
-        simp [Expr.eval, u2, u3, u5, u8, g9, hUL.1, hUL.2, State.set?_eq_update, F64Op.apply,
-          U64Op.apply, ht, hnt, hc, F64Bits.toBits_add, F64Bits.toBits_mul, F64Bits.toBits_neg,
-          F64Bits.toBits_div, hZero, hOne]
+      simp [Expr.eval, u5, g9, F64Op.apply, F64Bits.toBits_mul]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pq, rfl, hNew.borrowed pq _ hQs⟩, _, _, rfl,
       ⟨pk, rfl, hNew.borrowed pk _ hKs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
@@ -1991,8 +1979,8 @@ theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNee
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
   have hEq : maskedTuple (q, k, t, nh, dh, scale) = LeanExe.build (t * nh * t) (fun e =>
-      LeanExe.loop (if e % t ≤ e / (nh * t) then dh else 0) 0.0 (scoreStep q k t nh dh e) * scale +
-        (if e % t ≤ e / (nh * t) then 0.0 else -(1.0 / 0.0))) := rfl
+      LeanExe.loop (if e % t ≤ e / (nh * t) then dh else 0) 0.0 (scoreStep q k t nh dh e) *
+        scale) := rfl
   rw [hEq, build_map]
   exact hNew.owned
 
@@ -2000,8 +1988,8 @@ theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNee
 def rowMaxTuple (x : Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.rowMax x.1 x.2.1 x.2.2
 
-/-- The bytes `rowMax` may allocate: one array of `t` elements. -/
-def rowMaxNeed (x : Array Float × UInt64 × UInt64) : Nat := 48 + 8 * (x.2.1.toNat + 1)
+/-- The bytes `rowMax` may allocate: one array of `t · nh` elements. -/
+def rowMaxNeed (x : Array Float × UInt64 × UInt64) : Nat := 48 + 8 * ((x.2.1 * x.2.2).toNat + 1)
 
 /-- One step of the maximum over row `r`. -/
 def rowMaxStep (x : Array Float) (w r c : UInt64) (acc : Float) : Float :=
@@ -2010,20 +1998,20 @@ def rowMaxStep (x : Array Float) (w r c : UInt64) (acc : Float) : Float :=
 /-- The compiled loop body of `rowMax`. -/
 def rowMaxBody : Stmt :=
   .seq (.assign 9 (.iteF
-    (.leF (.getF 6) (.ofBits (.read 0 (.bin .add (.bin .mul (.get 5) (.get 2)) (.get 8)))))
-    (.ofBits (.read 0 (.bin .add (.bin .mul (.get 5) (.get 2)) (.get 8)))) (.getF 6)))
+    (.leF (.getF 6) (.ofBits (.read 0 (.bin .add (.bin .mul (.get 5) (.get 1)) (.get 8)))))
+    (.ofBits (.read 0 (.bin .add (.bin .mul (.get 5) (.get 1)) (.get 8)))) (.getF 6)))
     (.assign 6 (.getF 9))
 
 theorem rowMaxBody_run {initial : Store Unit} {px : UInt64} {x : Array Float}
     (hX : UInt64Array.At initial px (x.map Float.toBits)) {state : State} {c : Nat}
     {w r : UInt64} {acc : Float} (hParams : state.params.length = 3)
-    (hLocals : state.locals.length = 8) (h0 : state.get 0 = some (.i64 px))
-    (h2 : state.get 2 = some (.i64 w)) (h5 : state.get 5 = some (.i64 r))
+    (hLocals : state.locals.length = 9) (h0 : state.get 0 = some (.i64 px))
+    (h1 : state.get 1 = some (.i64 w)) (h5 : state.get 5 = some (.i64 r))
     (h6 : state.get 6 = some (.f64 acc.toBits)) (h8 : state.get 8 = some (.i64 (UInt64.ofNat c))) :
     ∃ final, rowMaxBody.run initial.mem 10 state = some final ∧
       State.Frame 10 [6, 9] state final ∧
       final.Holds [6] (Scalar.values (rowMaxStep x w r (UInt64.ofNat c) acc)) := by
-  simp [rowMaxBody, Stmt.run, Expr.eval, h0, h2, h5, h6, h8, Expr.readValue_at hX,
+  simp [rowMaxBody, Stmt.run, Expr.eval, h0, h1, h5, h6, h8, Expr.readValue_at hX,
     State.set?_eq_update, hParams, hLocals, U64Op.apply, getElem!_map_toBits]
   constructor
   · repeat refine State.Frame.update ?_ (by simp)
@@ -2033,47 +2021,51 @@ theorem rowMaxBody_run {initial : Store Unit} {px : UInt64} {x : Array Float}
 theorem rowMax_implements : Implements gpt.module 20 rowMaxTuple rowMaxNeed := by
   refine Func.implements_heap gpt.funcs 17 gpt.rowMax.ir "rowMax" rfl rowMaxTuple rowMaxNeed
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
-  rintro ⟨x, t, w⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hXs⟩, rfl⟩ hRoom
+  rintro ⟨x, t, nh⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hXs⟩, rfl⟩ hRoom
   change heap.Borrowed initial px (x.map Float.toBits) at hXs
-  change heap.Room initial gpt.module (48 + 8 * (t.toNat + 1)) at hRoom
+  change heap.Room initial gpt.module (48 + 8 * ((t * nh).toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
   have hZero : (0.0 : Float).toBits = 0 := by decide +kernel
   have hOne : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
   let start : State :=
-    { params := [.i64 px, .i64 t, .i64 w]
-      locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .i64 0] }
-  show Triple _ (.buildWith 3 4 5 (.get 1)
+    { params := [.i64 px, .i64 t, .i64 nh]
+      locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0] }
+  show Triple _ (.buildWith 3 4 5 (.bin .mul (.get 1) (.get 2))
       (.seq (.assign 6 (.binF .sub (.constF 9223372036854775808)
-        (.binF .div (.constF 4607182418800017408) (.constF 0)))) (.loop 7 8 (.get 2) rowMaxBody))
+        (.binF .div (.constF 4607182418800017408) (.constF 0))))
+        (.loop 7 8 (.bin .add (.bin .divU (.get 5) (.get 2)) (.const 1)) rowMaxBody))
       (.toBits (.getF 6))) 10
     (fun store state => store = initial ∧ state = start) _
-  refine (Stmt.buildWith_spec (writes := [6, 7, 8, 9]) (n := t)
-    (fun r => (LeanExe.loop w (-(1.0 / 0.0)) (rowMaxStep x w r)).toBits) hMemory32 hImports
-    hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom ⟨start, rfl⟩ ?_).mono
-      (fun _ _ h => h) ?_
+  refine (Stmt.buildWith_spec (writes := [6, 7, 8, 9]) (n := t * nh)
+    (fun r => (LeanExe.loop (r / nh + 1) (-(1.0 / 0.0)) (rowMaxStep x t r)).toBits) hMemory32
+    hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro r store state hr hAt hFrame hIndex
-    have hState : state.params.length = 3 ∧ state.locals.length = 8 :=
+    have hn : nh ≠ 0 := by rintro rfl; simp at hr
+    have hState : state.params.length = 3 ∧ state.locals.length = 9 :=
       ⟨hFrame.params, hFrame.locals⟩
     have hGet : ∀ j, j < 3 → state.get j = start.get j := fun j hj =>
       hFrame.get j (by omega) (by simp; omega)
     have hX := hAt px _ hXs
     let s1 := state.update 6 (.f64 (-(1.0 / 0.0) : Float).toBits)
-    have hS1 : s1.params.length = 3 ∧ s1.locals.length = 8 := by
+    have hS1 : s1.params.length = 3 ∧ s1.locals.length = 9 := by
       simp [s1, hState.1, hState.2]
     have hS1Get : ∀ j, j ≠ 6 → s1.get j = state.get j := fun j hj => State.get_update_ne hj
     refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
       simp [Stmt.run, Expr.eval, State.set?_eq_update, hState.1, hState.2, s1, F64Op.apply,
         F64Bits.toBits_neg, F64Bits.toBits_div, hZero, hOne])) ?_
+    have g2 : state.get 2 = some (.i64 nh) := (hGet 2 (by decide)).trans rfl
     refine (Stmt.loop_spec (vars := [6]) (writes := [6, 9]) (init := (-(1.0 / 0.0) : Float))
-      (n := w) (rowMaxStep x w (UInt64.ofNat r)) (by decide) (by decide) (by decide) (by decide)
-      (by decide) (by simp [hS1.1, hS1.2])
-      ⟨s1, by simp [Expr.eval, hS1Get 2 (by decide), hGet 2 (by decide)]; rfl⟩
+      (n := UInt64.ofNat r / nh + 1) (rowMaxStep x t (UInt64.ofNat r)) (by decide) (by decide)
+      (by decide) (by decide) (by decide) (by simp [hS1.1, hS1.2])
+      (by simp [Expr.eval, hS1Get 2 (by decide), hS1Get 5 (by decide), g2, hIndex,
+        State.set?_eq_update, hS1.1, hS1.2, U64Op.apply, hn])
       (by simp [State.Holds, Scalar.values, s1, hState.1, hState.2]) ?_).mono
         (fun _ _ h => h) ?_
     · intro c acc st hc hFrameL hHolds hIdx hLim
-      have hSt : st.params.length = 3 ∧ st.locals.length = 8 :=
+      have hSt : st.params.length = 3 ∧ st.locals.length = 9 :=
         ⟨hFrameL.params.trans hS1.1, hFrameL.locals.trans hS1.2⟩
       have hKeep : ∀ j, j < 3 ∨ j = 5 → st.get j = state.get j := fun j hj =>
         (hFrameL.get j (by omega) (by simp; omega)).trans (hS1Get j (by omega))
@@ -2081,14 +2073,14 @@ theorem rowMax_implements : Implements gpt.module 20 rowMaxTuple rowMaxNeed := b
         simpa [State.Holds, Scalar.values] using hHolds
       obtain ⟨final, hRun, hFinalFrame, hFinalHolds⟩ := rowMaxBody_run hX hSt.1 hSt.2
         ((hKeep 0 (by omega)).trans ((hGet 0 (by decide)).trans rfl))
-        ((hKeep 2 (by omega)).trans ((hGet 2 (by decide)).trans rfl))
+        ((hKeep 1 (by omega)).trans ((hGet 1 (by decide)).trans rfl))
         ((hKeep 5 (by omega)).trans hIndex) g6 hIdx
       refine (Stmt.run_spec hRun).mono (fun _ _ h => h) ?_
       rintro s' u ⟨rfl, rfl⟩
       exact ⟨rfl, hFinalFrame, hFinalHolds⟩
     · rintro s' u ⟨rfl, hFrameL, hHolds⟩
-      have g6 : u.get 6 = some (.f64 (LeanExe.loop w (-(1.0 / 0.0))
-          (rowMaxStep x w (UInt64.ofNat r))).toBits) := (List.forall₂_cons.mp hHolds).1
+      have g6 : u.get 6 = some (.f64 (LeanExe.loop (UInt64.ofNat r / nh + 1) (-(1.0 / 0.0))
+          (rowMaxStep x t (UInt64.ofNat r))).toBits) := (List.forall₂_cons.mp hHolds).1
       exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g6]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
@@ -2097,8 +2089,8 @@ theorem rowMax_implements : Implements gpt.module 20 rowMaxTuple rowMaxNeed := b
     by simp [gpt.rowMax.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
-  have hEq : rowMaxTuple (x, t, w) =
-      LeanExe.build t (fun r => LeanExe.loop w (-(1.0 / 0.0)) (rowMaxStep x w r)) := rfl
+  have hEq : rowMaxTuple (x, t, nh) = LeanExe.build (t * nh)
+      (fun r => LeanExe.loop (r / nh + 1) (-(1.0 / 0.0)) (rowMaxStep x t r)) := rfl
   rw [hEq, build_map]
   exact hNew.owned
 
@@ -2106,9 +2098,9 @@ theorem rowMax_implements : Implements gpt.module 20 rowMaxTuple rowMaxNeed := b
 def rowSumExpTuple (x : Array Float × Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.rowSumExp x.1 x.2.1 x.2.2.1 x.2.2.2
 
-/-- The bytes `rowSumExp` may allocate: one array of `t` elements. -/
+/-- The bytes `rowSumExp` may allocate: one array of `t · nh` elements. -/
 def rowSumExpNeed (x : Array Float × Array Float × UInt64 × UInt64) : Nat :=
-  48 + 8 * (x.2.2.1.toNat + 1)
+  48 + 8 * ((x.2.2.1 * x.2.2.2).toNat + 1)
 
 /-- One step of the sum of exponentials over row `r`. -/
 def sumExpStep (x mx : Array Float) (w r c : UInt64) (acc : Float) : Float :=
@@ -2117,7 +2109,7 @@ def sumExpStep (x mx : Array Float) (w r c : UInt64) (acc : Float) : Float :=
 /-- The compiled loop body of `rowSumExp`. -/
 def sumExpBody : Stmt :=
   .seq (.call 6 [⟨.f64, .binF .sub
-      (.ofBits (.read 0 (.bin .add (.bin .mul (.get 6) (.get 3)) (.get 9))))
+      (.ofBits (.read 0 (.bin .add (.bin .mul (.get 6) (.get 2)) (.get 9))))
       (.ofBits (.read 1 (.get 6)))⟩] [10])
     (.seq (.assign 11 (.binF .add (.getF 7) (.getF 10))) (.assign 7 (.getF 11)))
 
@@ -2125,8 +2117,8 @@ theorem sumExpBody_spec {initial : Store Unit} {px pm : UInt64} {x mx : Array Fl
     (hX : UInt64Array.At initial px (x.map Float.toBits))
     (hM : UInt64Array.At initial pm (mx.map Float.toBits)) {state : State} {c : Nat}
     {w r : UInt64} {acc : Float} (hParams : state.params.length = 4)
-    (hLocals : state.locals.length = 9) (h0 : state.get 0 = some (.i64 px))
-    (h1 : state.get 1 = some (.i64 pm)) (h3 : state.get 3 = some (.i64 w))
+    (hLocals : state.locals.length = 10) (h0 : state.get 0 = some (.i64 px))
+    (h1 : state.get 1 = some (.i64 pm)) (h2 : state.get 2 = some (.i64 w))
     (h6 : state.get 6 = some (.i64 r)) (h7 : state.get 7 = some (.f64 acc.toBits))
     (h9 : state.get 9 = some (.i64 (UInt64.ofNat c))) :
     Triple gpt.module sumExpBody 12 (fun store st => store = initial ∧ st = state)
@@ -2138,9 +2130,9 @@ theorem sumExpBody_spec {initial : Store Unit} {px pm : UInt64} {x mx : Array Fl
   let b := a.update 10 (.f64 e.toBits)
   let s := b.update 11 (.f64 (acc + e).toBits)
   let f := s.update 7 (.f64 (acc + e).toBits)
-  have hA : a.params.length = 4 ∧ a.locals.length = 9 := by simp [a, hParams, hLocals]
+  have hA : a.params.length = 4 ∧ a.locals.length = 10 := by simp [a, hParams, hLocals]
   refine Stmt.seq_spec (exp_call rfl (afterArgs := a) (next := b) (d := dv) ?_ ?_) ?_
-  · simp [Expr.evalResults, Expr.eval, h0, h1, h3, h6, h9, Expr.readValue_at hX,
+  · simp [Expr.evalResults, Expr.eval, h0, h1, h2, h6, h9, Expr.readValue_at hX,
       Expr.readValue_at hM, State.set?_eq_update, hParams, hLocals, F64Op.apply, U64Op.apply,
       getElem!_map_toBits, dv, a, F64Bits.toBits_sub]
   · simp [State.setAll, State.set?_eq_update, b, e, hA.1, hA.2]
@@ -2157,46 +2149,51 @@ theorem sumExpBody_spec {initial : Store Unit} {px pm : UInt64} {x mx : Array Fl
 theorem rowSumExp_implements : Implements gpt.module 21 rowSumExpTuple rowSumExpNeed := by
   refine Func.implements_heap gpt.funcs 18 gpt.rowSumExp.ir "rowSumExp" rfl rowSumExpTuple
     rowSumExpNeed (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
-  rintro ⟨x, mx, t, w⟩ heap initial _ hHeap
+  rintro ⟨x, mx, t, nh⟩ heap initial _ hHeap
     ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pm, rfl, hMs⟩, rfl⟩ hRoom
   change heap.Borrowed initial px (x.map Float.toBits) at hXs
   change heap.Borrowed initial pm (mx.map Float.toBits) at hMs
-  change heap.Room initial gpt.module (48 + 8 * (t.toNat + 1)) at hRoom
+  change heap.Room initial gpt.module (48 + 8 * ((t * nh).toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
   have hZero : (0.0 : Float).toBits = 0 := by decide +kernel
   let start : State :=
-    { params := [.i64 px, .i64 pm, .i64 t, .i64 w]
-      locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .f64 0, .i64 0] }
-  show Triple _ (.buildWith 4 5 6 (.get 2)
-      (.seq (.assign 7 (.constF 0)) (.loop 8 9 (.get 3) sumExpBody)) (.toBits (.getF 7))) 12
+    { params := [.i64 px, .i64 pm, .i64 t, .i64 nh]
+      locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .f64 0, .i64 0, .i64 0] }
+  show Triple _ (.buildWith 4 5 6 (.bin .mul (.get 2) (.get 3))
+      (.seq (.assign 7 (.constF 0))
+        (.loop 8 9 (.bin .add (.bin .divU (.get 6) (.get 3)) (.const 1)) sumExpBody))
+      (.toBits (.getF 7))) 12
     (fun store state => store = initial ∧ state = start) _
-  refine (Stmt.buildWith_spec (writes := [7, 8, 9, 10, 11]) (n := t)
-    (fun r => (LeanExe.loop w 0.0 (sumExpStep x mx w r)).toBits) hMemory32 hImports hAlloc
-    (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom ⟨start, rfl⟩ ?_).mono
-      (fun _ _ h => h) ?_
+  refine (Stmt.buildWith_spec (writes := [7, 8, 9, 10, 11]) (n := t * nh)
+    (fun r => (LeanExe.loop (r / nh + 1) 0.0 (sumExpStep x mx t r)).toBits) hMemory32 hImports
+    hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro r store state hr hAt hFrame hIndex
-    have hState : state.params.length = 4 ∧ state.locals.length = 9 :=
+    have hn : nh ≠ 0 := by rintro rfl; simp at hr
+    have hState : state.params.length = 4 ∧ state.locals.length = 10 :=
       ⟨hFrame.params, hFrame.locals⟩
     have hGet : ∀ j, j < 4 → state.get j = start.get j := fun j hj =>
       hFrame.get j (by omega) (by simp; omega)
     have hX := hAt px _ hXs
     have hM := hAt pm _ hMs
     let s1 := state.update 7 (.f64 0)
-    have hS1 : s1.params.length = 4 ∧ s1.locals.length = 9 := by
+    have hS1 : s1.params.length = 4 ∧ s1.locals.length = 10 := by
       simp [s1, hState.1, hState.2]
     have hS1Get : ∀ j, j ≠ 7 → s1.get j = state.get j := fun j hj => State.get_update_ne hj
     refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
       simp [Stmt.run, Expr.eval, State.set?_eq_update, hState.1, hState.2, s1])) ?_
-    refine (Stmt.loop_spec (vars := [7]) (writes := [7, 10, 11]) (init := (0.0 : Float)) (n := w)
-      (sumExpStep x mx w (UInt64.ofNat r)) (by decide) (by decide) (by decide) (by decide)
-      (by decide) (by simp [hS1.1, hS1.2])
-      ⟨s1, by simp [Expr.eval, hS1Get 3 (by decide), hGet 3 (by decide)]; rfl⟩
+    have g3 : state.get 3 = some (.i64 nh) := (hGet 3 (by decide)).trans rfl
+    refine (Stmt.loop_spec (vars := [7]) (writes := [7, 10, 11]) (init := (0.0 : Float))
+      (n := UInt64.ofNat r / nh + 1) (sumExpStep x mx t (UInt64.ofNat r)) (by decide)
+      (by decide) (by decide) (by decide) (by decide) (by simp [hS1.1, hS1.2])
+      (by simp [Expr.eval, hS1Get 3 (by decide), hS1Get 6 (by decide), g3, hIndex,
+        State.set?_eq_update, hS1.1, hS1.2, U64Op.apply, hn])
       (by simp [State.Holds, Scalar.values, s1, hState.1, hState.2, hZero]) ?_).mono
         (fun _ _ h => h) ?_
     · intro c acc st hc hFrameL hHolds hIdx hLim
-      have hSt : st.params.length = 4 ∧ st.locals.length = 9 :=
+      have hSt : st.params.length = 4 ∧ st.locals.length = 10 :=
         ⟨hFrameL.params.trans hS1.1, hFrameL.locals.trans hS1.2⟩
       have hKeep : ∀ j, j < 4 ∨ j = 6 → st.get j = state.get j := fun j hj =>
         (hFrameL.get j (by omega) (by simp; omega)).trans (hS1Get j (by omega))
@@ -2205,11 +2202,11 @@ theorem rowSumExp_implements : Implements gpt.module 21 rowSumExpTuple rowSumExp
       exact sumExpBody_spec hX hM hSt.1 hSt.2
         ((hKeep 0 (by omega)).trans ((hGet 0 (by decide)).trans rfl))
         ((hKeep 1 (by omega)).trans ((hGet 1 (by decide)).trans rfl))
-        ((hKeep 3 (by omega)).trans ((hGet 3 (by decide)).trans rfl))
+        ((hKeep 2 (by omega)).trans ((hGet 2 (by decide)).trans rfl))
         ((hKeep 6 (by omega)).trans hIndex) g7 hIdx
     · rintro s' u ⟨rfl, hFrameL, hHolds⟩
-      have g7 : u.get 7 = some (.f64 (LeanExe.loop w 0.0
-          (sumExpStep x mx w (UInt64.ofNat r))).toBits) := (List.forall₂_cons.mp hHolds).1
+      have g7 : u.get 7 = some (.f64 (LeanExe.loop (UInt64.ofNat r / nh + 1) 0.0
+          (sumExpStep x mx t (UInt64.ofNat r))).toBits) := (List.forall₂_cons.mp hHolds).1
       exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g7]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
@@ -2219,8 +2216,8 @@ theorem rowSumExp_implements : Implements gpt.module 21 rowSumExpTuple rowSumExp
     by simp [gpt.rowSumExp.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
-  have hEq : rowSumExpTuple (x, mx, t, w) =
-      LeanExe.build t (fun r => LeanExe.loop w 0.0 (sumExpStep x mx w r)) := rfl
+  have hEq : rowSumExpTuple (x, mx, t, nh) = LeanExe.build (t * nh)
+      (fun r => LeanExe.loop (r / nh + 1) 0.0 (sumExpStep x mx t r)) := rfl
   rw [hEq, build_map]
   exact hNew.owned
 
@@ -2439,18 +2436,19 @@ theorem causalMatMul_implements :
 def softmaxRowsTuple (x : Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.softmaxRows x.1 x.2.1 x.2.2
 
-/-- The bytes `softmaxRows` may allocate: the maxima, the sums, and the `t × w` result. -/
+/-- The bytes `softmaxRows` may allocate: the maxima, the sums, and the `t · nh × t`
+result. -/
 def softmaxRowsNeed (x : Array Float × UInt64 × UInt64) : Nat :=
-  48 + 8 * (x.2.1.toNat + 1) + (48 + 8 * (x.2.1.toNat + 1)) +
-    (48 + 8 * ((x.2.1 * x.2.2).toNat + 1))
+  48 + 8 * ((x.2.1 * x.2.2).toNat + 1) + (48 + 8 * ((x.2.1 * x.2.2).toNat + 1)) +
+    (48 + 8 * ((x.2.1 * x.2.2 * x.2.1).toNat + 1))
 
 theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple softmaxRowsNeed := by
   refine Func.implements_heap gpt.funcs 20 gpt.softmaxRows.ir "softmaxRows" rfl softmaxRowsTuple
     softmaxRowsNeed (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
-  rintro ⟨x, t, w⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hX⟩, rfl⟩ hRoom
+  rintro ⟨x, t, nh⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hX⟩, rfl⟩ hRoom
   change heap.Borrowed initial px (x.map Float.toBits) at hX
-  change heap.Room initial gpt.module (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) +
-    (48 + 8 * ((t * w).toNat + 1))) at hRoom
+  change heap.Room initial gpt.module (48 + 8 * ((t * nh).toNat + 1) +
+    (48 + 8 * ((t * nh).toNat + 1)) + (48 + 8 * ((t * nh * t).toNat + 1))) at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hMax : gpt.module.funcs[20 - gpt.module.imports.length]? =
@@ -2460,10 +2458,10 @@ theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple softm
   have hApply : gpt.module.funcs[22 - gpt.module.imports.length]? =
       some (gpt.softmaxApply.ir.function (2 + 19)) :=
     compile_funcs (funcs := gpt.funcs) (i := 19) rfl
-  let mx := rowMaxTuple (x, t, w)
-  let sums := rowSumExpTuple (x, mx, t, w)
+  let mx := rowMaxTuple (x, t, nh)
+  let sums := rowSumExpTuple (x, mx, t, nh)
   let start : State :=
-    { params := [.i64 px, .i64 t, .i64 w]
+    { params := [.i64 px, .i64 t, .i64 nh]
       locals := [.i64 0, .i64 0, .i64 0, .i64 0] }
   have hStart : start.params.length + start.locals.length = 7 := rfl
   have hLen : ∀ (s : State) (j : Nat) (v : Value),
@@ -2471,17 +2469,17 @@ theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple softm
         s.params.length + s.locals.length := fun s j v => by
     simp [State.update_params_length, State.update_locals_length]
   have hGet : start.get 0 = some (.i64 px) ∧ start.get 1 = some (.i64 t) ∧
-      start.get 2 = some (.i64 w) := ⟨rfl, rfl, rfl⟩
+      start.get 2 = some (.i64 nh) := ⟨rfl, rfl, rfl⟩
   show Triple _ (.seq (.call 20 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩] [3])
       (.seq (.call 21 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩] [4])
-      (.seq (.call 22 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 1⟩,
-        ⟨.u64, .get 2⟩] [5])
+      (.seq (.call 22 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩,
+        ⟨.u64, .bin .mul (.get 1) (.get 2)⟩, ⟨.u64, .get 1⟩] [5])
       (.seq (.assign 6 (.get 5)) (.seq (.release 4) (.release 3)))))) 7
     (fun store state => store = initial ∧ state = start) _
   -- The maxima of the rows.
   refine Stmt.seq_spec (Live.call rowMax_implements rfl hMax rfl (Live.start hHeap) hRoom
-    (x := (x, t, w)) (by simp only [rowMaxNeed]; omega) (afterArgs := start)
-    (vals := [.i64 px, .i64 t, .i64 w])
+    (x := (x, t, nh)) (by simp only [rowMaxNeed]; omega) (afterArgs := start)
+    (vals := [.i64 px, .i64 t, .i64 nh])
     (by simp [Expr.evalResults, Expr.eval, hGet.1, hGet.2.1, hGet.2.2])
     ⟨[.i64 px], _, rfl, ⟨px, rfl, hX⟩, rfl⟩ (by rw [hStart]; decide)) ?_
   apply Triple.of_forall
@@ -2493,8 +2491,8 @@ theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple softm
     rw [State.get_update_ne (by omega)]
   -- The sums of the exponentials.
   refine Stmt.seq_spec (Live.call rowSumExp_implements rfl hSum rfl hLive1 hRoom
-    (x := (x, mx, t, w)) (by simp only [rowMaxNeed, rowSumExpNeed]; omega)
-    (afterArgs := s1) (vals := [.i64 px, .i64 pm, .i64 t, .i64 w])
+    (x := (x, mx, t, nh)) (by simp only [rowMaxNeed, rowSumExpNeed]; omega)
+    (afterArgs := s1) (vals := [.i64 px, .i64 pm, .i64 t, .i64 nh])
     (by simp [Expr.evalResults, Expr.eval, s1, State.get_update_same, hStart,
       hGetS1 0 (by decide), hGetS1 1 (by decide), hGetS1 2 (by decide), hGet.1, hGet.2.1,
       hGet.2.2])
@@ -2514,12 +2512,12 @@ theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple softm
     exact State.get_update_same (by rw [hStart]; decide)
   -- The normalized exponentials.
   refine Stmt.seq_spec (Live.call softmaxApply_implements rfl hApply rfl hLive2 hRoom
-    (x := (x, mx, sums, t, w))
+    (x := (x, mx, sums, t * nh, t))
     (by simp only [rowMaxNeed, rowSumExpNeed, softmaxApplyNeed]; omega)
-    (afterArgs := s2) (vals := [.i64 px, .i64 pm, .i64 ps, .i64 t, .i64 w])
+    (afterArgs := s2) (vals := [.i64 px, .i64 pm, .i64 ps, .i64 (t * nh), .i64 t])
     (by simp [Expr.evalResults, Expr.eval, s2, State.get_update_same, hS1, hS2Get3,
       hGetS2 0 (by decide), hGetS2 1 (by decide), hGetS2 2 (by decide), hGet.1, hGet.2.1,
-      hGet.2.2])
+      hGet.2.2, U64Op.apply])
     ⟨[.i64 px], _, rfl, ⟨px, rfl, hLive2.borrowed px _ hX⟩, [.i64 pm], _, rfl,
       ⟨pm, rfl, (hLive2.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_singleton_self _))).borrowed⟩,
       [.i64 ps], _, rfl, ⟨ps, rfl, (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, rfl⟩
@@ -2549,10 +2547,10 @@ theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple softm
   rintro store5 st5 ⟨hLive5, rfl⟩
   have hParams : ∀ (heap' : Heap) (store' : Store Unit),
       (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 px, .i64 t, .i64 w] (x, t, w) :=
+      Represent.borrowed heap' store' [.i64 px, .i64 t, .i64 nh] (x, t, nh) :=
     fun heap' store' hKeep => ⟨[.i64 px], _, rfl, ⟨px, rfl, hKeep px _ hX⟩, rfl⟩
   obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLive5.finish (need := softmaxRowsNeed (x, t, w))
+    hLive5.finish (need := softmaxRowsNeed (x, t, nh))
       (by simp only [rowMaxNeed, rowSumExpNeed, softmaxApplyNeed, softmaxRowsNeed]; omega) hParams
   exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
     by simp [gpt.softmaxRows.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,

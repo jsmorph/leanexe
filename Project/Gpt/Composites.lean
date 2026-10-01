@@ -217,7 +217,7 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   let k := linearTuple (x, wk, bk, t, nh * dh, nh * dh)
   let v := linearTuple (x, wv, bv, t, nh * dh, nh * dh)
   let s := maskedTuple (q, k, t, nh, dh, 1.0 / dh.toFloat.sqrt)
-  let p := softmaxRowsTuple (s, t * nh, t)
+  let p := softmaxRowsTuple (s, t, nh)
   let o := causalMatMulTuple (p, v, t, nh, dh)
   let start : State :=
     { params := [.i64 pX, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk, .i64 pWv, .i64 pBv, .i64 pWo,
@@ -314,12 +314,12 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple attention
   have hS4 : s4.params.length + s4.locals.length = 20 := by rw [hLen, hS3]
   -- The softmax of each of the `t · nh` rows of scores.
   refine Live.call_seq softmaxRows_implements rfl hSoftmax rfl hLive4 hRoom
-    (x := (s, t * nh, t))
+    (x := (s, t, nh))
     (by simp only [linearNeed, maskedNeed, softmaxRowsNeed]; omega) (afterArgs := s4)
-    (vals := [.i64 ps, .i64 (t * nh), .i64 t])
+    (vals := [.i64 ps, .i64 t, .i64 nh])
     (Expr.evalResults_get (State.get_update_same (state := s3) (by rw [hS3]; decide)) <|
-      Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s3) (j := 9) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 9) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 9) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9)))))) (Expr.eval_get ((State.get_update_ne (state := s3) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))))))) <|
       Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 9) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 9) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 9) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 9) (index := 12) (by decide)).trans (sg9))))) <|
+      Expr.evalResults_get ((State.get_update_ne (state := s3) (j := 10) (index := 15) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 14) (by decide)).trans ((State.get_update_ne (state := s1) (j := 10) (index := 13) (by decide)).trans ((State.get_update_ne (state := start) (j := 10) (index := 12) (by decide)).trans (sg10))))) <|
       Expr.evalResults_nil)
     ⟨[.i64 ps], _, rfl, ⟨ps, rfl, (hLive4.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
       rfl⟩
