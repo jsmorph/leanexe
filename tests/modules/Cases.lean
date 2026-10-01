@@ -1,0 +1,176 @@
+import LeanExe.Examples.Scale
+import LeanExe.Examples.Gcd
+import LeanExe.Examples.SumArray
+import LeanExe.Examples.PairSum
+import LeanExe.Examples.SumCount
+import LeanExe.Examples.Axpy
+import LeanExe.Examples.ScaledHypot
+import LeanExe.Examples.Piecewise
+import LeanExe.Examples.SumSquares
+import LeanExe.Examples.Mean
+import LeanExe.Examples.Bucket
+import LeanExe.Examples.Clob
+
+/-! Test cases for the modules other than `gpt.wasm` and `prng.wasm`, computed by native
+Lean.  Each line is `module|export|result kind|host arguments|expected result`, with
+floats given as bit patterns and a pair of arrays as the two arrays' words joined by a
+comma; `tests/modules/run.sh` passes the arguments to the Wasmtime host running
+`build/MODULE/MODULE.wasm` and compares its output.  Run with `lake env lean --run`. -/
+
+def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
+def arrU (xs : List UInt64) : String := s!"array-u64:{words xs}"
+def arrF (xs : List Float) : String := arrU (xs.map Float.toBits)
+def u (n : UInt64) : String := s!"i64:{n}"
+def fl (x : Float) : String := s!"f64:{x.toBits}"
+
+def line (m name kind : String) (args : List String) (expected : String) : IO Unit :=
+  IO.println s!"{m}|{name}|{kind}|{" ".intercalate args}|{expected}"
+
+def pair (r : Array UInt64 × Array UInt64) : String := s!"{words r.1.toList},{words r.2.toList}"
+def pairKind : String := "list:array-u64,array-u64"
+
+def inf : Float := 1.0 / 0.0
+def nan : Float := 0.0 / 0.0
+def maxU : UInt64 := 18446744073709551615
+
+/-- Arbitrary words. -/
+def rw (i : Nat) : UInt64 := UInt64.ofNat ((i * 0x9E3779B97F4A7C15 + 12345) % 2 ^ 64)
+/-- Arbitrary bit patterns as floats. -/
+def rf (i : Nat) : Float := Float.ofBits (rw i)
+/-- Values from -10 to 10 in steps of 0.01. -/
+def small (i : Nat) : Float := (UInt64.ofNat ((i * 2654435761) % 2001)).toFloat / 100.0 - 10.0
+/-- Words below `n`. -/
+def below (n i : Nat) : UInt64 := UInt64.ofNat ((i * 2654435761 + 7) % n)
+
+def specialFloats : List Float :=
+  [0.0, -0.0, 1.0, -1.0, 0.5, inf, -inf, nan, 1e308, -1e308, 5e-324, 2.2250738585072014e-308,
+    1e200, 1e-200, 3.0, 7.25]
+
+def scaleCases : IO Unit := do
+  let chosen : List (UInt64 × UInt64 × UInt64) :=
+    [(6, 7, 5), (6, 7, 0), (maxU, 2, 3), (0, 0, 1), (1, 1, 1), (4294967296, 4294967296, 1),
+     (9223372036854775808, 2, 1), (maxU, maxU, maxU), (5, 0, 0)]
+  let random := (List.range 40).map fun i => (rw (3 * i), rw (3 * i + 1), if i % 5 = 0 then 0 else rw (3 * i + 2) % 1000)
+  for (a, b, c) in chosen ++ random do
+    line "scale" "scale" "i64" [u a, u b, u c] (toString (LeanExe.Examples.Scale.scale a b c))
+
+def gcdCases : IO Unit := do
+  let chosen : List (UInt64 × UInt64) :=
+    [(48, 18), (0, 0), (0, 5), (5, 0), (1, maxU), (maxU, maxU - 1), (9223372036854775808, 3),
+     (12157665459056928801, 7540113804746346429), (1071, 462)]
+  let random := (List.range 40).map fun i => (rw (2 * i + 100), if i % 7 = 0 then 0 else rw (2 * i + 101) % 100000)
+  for (a, b) in chosen ++ random do
+    line "gcd" "gcd" "i64" [u a, u b] (toString (LeanExe.Examples.Gcd.gcd a b))
+
+def wordArrays : List (List UInt64) :=
+  [[], [0], [1, 2, 3], [maxU, 2], [maxU, maxU, maxU]] ++
+    (List.range 30).map fun i => (List.range (i % 12)).map fun k => rw (17 * i + k)
+
+def sumArrayCases : IO Unit := do
+  for xs in wordArrays do
+    line "sumArray" "sumArray" "i64" [arrU xs] (toString (LeanExe.Examples.SumArray.sumArray xs.toArray))
+
+def pairSumCases : IO Unit := do
+  let chosen : List (UInt64 × UInt64) := [(3, 4), (maxU, 2), (0, 0), (maxU, maxU)]
+  let random := (List.range 30).map fun i => (rw (2 * i + 300), rw (2 * i + 301))
+  for (a, b) in chosen ++ random do
+    line "pairSum" "pairSum" "i64" [u a, u b] (toString (LeanExe.Examples.PairSum.pairSum a b))
+
+def sumCountCases : IO Unit := do
+  for xs in wordArrays do
+    line "sumCount" "sumCount" "array-u64" [arrU xs]
+      (words (LeanExe.Examples.SumCount.sumCount xs.toArray).toList)
+
+/-- Triples of special values, arbitrary bit patterns, and moderate values. -/
+def floatTriples : List (Float × Float × Float) :=
+  let sp := specialFloats.toArray
+  let special := (List.range 30).map fun i =>
+    (sp[i % sp.size]!, sp[(i / 3 + 5) % sp.size]!, sp[(7 * i + 1) % sp.size]!)
+  let random := (List.range 30).map fun i => (rf (3 * i + 500), rf (3 * i + 501), rf (3 * i + 502))
+  let moderate := (List.range 20).map fun i => (small (3 * i), small (3 * i + 1), small (3 * i + 2))
+  special ++ random ++ moderate
+
+def axpyCases : IO Unit := do
+  for (a, x, y) in floatTriples do
+    line "axpy" "axpy" "f64" [fl a, fl x, fl y] (toString (LeanExe.Examples.Axpy.axpy a x y).toBits)
+
+def scaledHypotCases : IO Unit := do
+  for (x, y, s) in [(3.0, 4.0, 1.0), (3.0, 4.0, 0.0), (0.0, 0.0, 0.0)] ++ floatTriples do
+    line "scaledHypot" "scaledHypot" "f64" [fl x, fl y, fl s]
+      (toString (LeanExe.Examples.ScaledHypot.scaledHypot x y s).toBits)
+
+def piecewiseCases : IO Unit := do
+  let chosen : List (Float × Float × Float) :=
+    [(1.0, 1.0, 2.0), (0.0, -0.0, 1.0), (0.5, 1.0, 2.0), (3.0, 1.0, 2.0), (2.0, 1.0, 2.0),
+     (1.5, 1.0, 2.0), (1.5, 2.0, 1.0), (nan, 1.0, 2.0), (1.0, nan, 2.0), (1.5, 1.0, nan)]
+  for (x, lo, hi) in chosen ++ floatTriples do
+    line "piecewise" "piecewise" "f64" [fl x, fl lo, fl hi]
+      (toString (LeanExe.Examples.Piecewise.piecewise x lo hi).toBits)
+
+def floatArrays : List (List Float) :=
+  [[], [0.0], [-0.0], [1.0, 2.0, 3.0], [inf], [inf, -inf], [nan, 1.0], [1e200, 1e200], [5e-324, 5e-324],
+    [1.0, 1e-16, 1e-16], [1e-16, 1e-16, 1.0], [1.7976931348623157e308, 1.0]] ++
+    ((List.range 20).map fun i => (List.range (i % 9)).map fun k => rf (13 * i + k + 700)) ++
+    ((List.range 20).map fun i => (List.range (i % 9 + 1)).map fun k => small (11 * i + k))
+
+def sumSquaresCases : IO Unit := do
+  for xs in floatArrays do
+    line "sumSquares" "sumSquares" "f64" [arrF xs]
+      (toString (LeanExe.Examples.SumSquares.sumSquares xs.toArray).toBits)
+
+def meanCases : IO Unit := do
+  for xs in floatArrays do
+    line "mean" "mean" "f64" [arrF xs] (toString (LeanExe.Examples.Mean.mean xs.toArray).toBits)
+
+def bucketCases : IO Unit := do
+  let chosen : List (Float × Float × Float) :=
+    [(5.0, 0.0, 1.0), (5.5, 0.0, 2.0), (-1.0, 0.0, 1.0), (1.0, 0.0, 0.0), (0.0, 0.0, 0.0),
+     (1e300, 0.0, 1e-300), (nan, 0.0, 1.0), (1.8446744073709552e19, 0.0, 1.0), (3.0, 1.0, -1.0)]
+  for (x, lo, width) in chosen ++ floatTriples do
+    line "bucket" "bucket" "i64" [fl x, fl lo, fl width]
+      (toString (LeanExe.Examples.Bucket.bucket x lo width))
+
+/-- A book of `n` levels with descending prices from `top`, and sizes. -/
+def book (n top seed : Nat) : List UInt64 × List UInt64 :=
+  ((List.range n).map fun k => UInt64.ofNat (top - 3 * k - (seed + k) % 3),
+    (List.range n).map fun k => 1 + below 20 (seed + 5 * k))
+
+def books : List (List UInt64 × List UInt64) :=
+  [([], []), ([100], [5]), ([105, 102, 101, 100, 98], [4, 4, 6, 7, 10]), ([100, 98], [5]),
+   ([100], [5, 6]), ([100, 99], [maxU, 2])] ++
+    (List.range 30).map fun i => book (i % 9) (200 + 7 * i) i
+
+def clobCases : IO Unit := do
+  for (i, (ps, ss)) in (List.range books.length).zip books do
+    let p := ps.toArray
+    let s := ss.toArray
+    let n := ps.length
+    let ks : List UInt64 := [0, UInt64.ofNat (n / 2), UInt64.ofNat n, UInt64.ofNat (n + 2)]
+    let prices : List UInt64 :=
+      [0, 99, 100, 150, maxU] ++ (if n > 0 then [ps[0]!, ps[n - 1]!, ps[0]! + 1] else [])
+    line "clob" "marketBuy" "array-u64" [arrU ps, arrU ss, u (below 60 i)]
+      (words (LeanExe.Examples.Clob.marketBuy p s (below 60 i)).toList)
+    for k in ks do
+      line "clob" "fillLevel" "array-u64" [arrU ss, u k, u (below 8 (i + k.toNat))]
+        (words (LeanExe.Examples.Clob.fillLevel s k (below 8 (i + k.toNat))).toList)
+      line "clob" "insertLevel" pairKind [arrU ps, arrU ss, u k, u 97, u 3]
+        (pair (LeanExe.Examples.Clob.insertLevel p s k 97 3))
+      line "clob" "setLevel" pairKind [arrU ps, arrU ss, u k, u 9]
+        (pair (LeanExe.Examples.Clob.setLevel p s k 9))
+      line "clob" "removeLevel" pairKind [arrU ps, arrU ss, u k]
+        (pair (LeanExe.Examples.Clob.removeLevel p s k))
+    for price in prices do
+      line "clob" "findLevel" "i64" [arrU ps, u price] (toString (LeanExe.Examples.Clob.findLevel p price))
+      line "clob" "depth" "i64" [arrU ps, arrU ss, u price]
+        (toString (LeanExe.Examples.Clob.depth p s price))
+      line "clob" "addBid" pairKind [arrU ps, arrU ss, u price, u 4]
+        (pair (LeanExe.Examples.Clob.addBid p s price 4))
+      line "clob" "cancelBid" pairKind [arrU ps, arrU ss, u price, u (below 12 (i + price.toNat))]
+        (pair (LeanExe.Examples.Clob.cancelBid p s price (below 12 (i + price.toNat))))
+      for kind in [0, 1, 2] do
+        line "clob" "applyCommand" pairKind [arrU ps, arrU ss, u kind, u price, u 5]
+          (pair (LeanExe.Examples.Clob.applyCommand p s kind price 5))
+
+def main : IO Unit := do
+  scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
+  piecewiseCases; sumSquaresCases; meanCases; bucketCases; clobCases
