@@ -7,12 +7,12 @@ open Wasm Project.Runtime FixedArraySearch
 
 def allocated (store : Store Unit) (base need stride : UInt64) (nodes : List FreeNode) : Store Unit :=
   match takeFirstFitFrom 0 need nodes with
-  | some choice => fixedArrayAllocFitStore store choice stride
+  | some choice => fixedArrayReuseStore store choice need stride
   | none => FixedArrayBump.allocated store base need stride
 
 def root (base need : UInt64) (nodes : List FreeNode) : UInt64 :=
   match takeFirstFitFrom 0 need nodes with
-  | some choice => choice.node.root
+  | some choice => reuseRoot choice need
   | none => base + 48
 
 def program (start : Nat) (stride : UInt64) : Wasm.Program :=
@@ -23,8 +23,10 @@ theorem allocated_count (store : Store Unit) (base need stride : UInt64)
     (allocated store base need stride nodes).globals.globals[2]? = store.globals.globals[2]? := by
   unfold allocated
   split
-  · unfold fixedArrayAllocFitStore
-    split <;> simp
+  · unfold fixedArrayReuseStore fixedArrayAllocFitStore
+    split
+    · rfl
+    · split <;> simp
   · exact FixedArrayAllocateNone.allocated_count ..
 
 theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit)
@@ -60,7 +62,7 @@ theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store
     simpa only [allocated, root, hTake] using
       hNext previous 0 (base + 48 + need) ((base + 48 + need - 1) / 65536 + 1)
   | some choice =>
-    have hRoot := hList.roots_ne_zero choice.node (takeFirstFitFrom_some_mem hTake)
+    have hRoot := reuseRoot_ne_zero hList hTake
     simp only [program, FixedArrayAllocateNone.program, List.append_assoc]
     apply initializeProgram_spec module_ env store params saved tail _ rfl need previous current
       capacity next result (freeHead nodes) hGlobal1
@@ -69,7 +71,7 @@ theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store
     simp [wp_simp, frame, Nat.add_assoc, hRoot]
     refine wp_iff_cons rfl ?_
     simp [wp_simp]
-    have hCount : (fixedArrayAllocFitStore store choice stride).globals.globals[2]? =
+    have hCount : (fixedArrayReuseStore store choice need stride).globals.globals[2]? =
         some (.i64 count) := by
       simpa only [allocated, hTake] using (allocated_count store base need stride nodes).trans hGlobal2
     apply countProgram_spec module_ env _ _ count rfl hCount Q rest

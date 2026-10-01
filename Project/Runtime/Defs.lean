@@ -12,7 +12,10 @@ release, and free counters.
 `release` does not recurse.  When a count reaches zero, the object joins a
 pending list linked through its count field.  A loop takes each pending object,
 drops the references its masked slots hold, and then returns its block to the
-free list, whose link overwrites the child mask.
+free list, whose link overwrites the child mask.  The free list is in address
+order: the block goes before the first free block above it and merges with the
+free blocks on either side when they touch.  `alloc` takes the first block that
+fits and, when at least 56 bytes would remain, only its upper part.
 -/
 
 namespace Project.Runtime
@@ -77,6 +80,8 @@ def releaseMask : Nat := 7
 def releaseElement : Nat := 8
 def releaseSlot : Nat := 9
 def releaseChild : Nat := 10
+def releasePrevious : Nat := 11
+def releaseCurrent : Nat := 12
 
 /-- Drops the references held by the object at local `releaseObject`: nothing when
 its child mask is zero, and otherwise the masked slots of a record (kind 1) or
@@ -105,11 +110,34 @@ def dropChildren : Program :=
          []])
      []]
 
+/-- Finds the place of the block at local `releaseObject` in the free list:
+`releasePrevious` ends at the last block at or below it, or 0, and
+`releaseCurrent` at the first block above it, or 0. -/
+def findPlace : Program :=
+  [.constI64 0, .localSet releasePrevious, .globalGet 1, .localSet releaseCurrent,
+   .block 0 0 [.loop 0 0
+     ([.localGet releaseCurrent, .constI64 0, .eqI64, .br_if 1,
+       .localGet releaseObject, .localGet releaseCurrent, .ltUI64, .br_if 1,
+       .localGet releaseCurrent, .localSet releasePrevious] ++
+      headerLoad releaseCurrent 8 ++ [.localSet releaseCurrent, .br 0])]]
+
+/-- Merges the block at local `ptr` with the free block at local `next` when that
+block starts where it ends, and otherwise links it to `next`. -/
+def joinProgram (ptr next : Nat) : Program :=
+  [.localGet ptr] ++ headerLoad ptr 32 ++
+  [.addI64, .constI64 48, .addI64, .localGet next, .eqI64,
+   .iff 0 0
+     (headerStore ptr 32
+        (headerLoad ptr 32 ++ [.constI64 48, .addI64] ++ headerLoad next 32 ++ [.addI64]) ++
+       headerStore ptr 8 (headerLoad next 8))
+     (headerStore ptr 8 [.localGet next])]
+
 /-- Returns the block of the object at local `releaseObject` to the free list. -/
 def freeObject : Program :=
-  let q := releaseObject
-  incrementGlobal 5 ++ headerStore q 40 [.constI64 0] ++ headerStore q 8 [.globalGet 1] ++
-  [.localGet q, .globalSet 1]
+  incrementGlobal 5 ++ headerStore releaseObject 40 [.constI64 0] ++ findPlace ++
+  joinProgram releaseObject releaseCurrent ++
+  [.localGet releasePrevious, .constI64 0, .eqI64,
+   .iff 0 0 [.localGet releaseObject, .globalSet 1] (joinProgram releasePrevious releaseObject)]
 
 def releaseBody : Program :=
   [.localGet 0, .constI64 0, .eqI64, .iff 0 0 [.ret] [],
@@ -122,7 +150,7 @@ def releaseBody : Program :=
       dropChildren ++ freeObject ++ [.br 0])]]
 
 def releaseFunction (typeIdx : Nat) : Wasm.Function :=
-  { params := [.i64], locals := List.replicate 10 .i64, body := releaseBody, results := [],
+  { params := [.i64], locals := List.replicate 12 .i64, body := releaseBody, results := [],
     typeIdx := some typeIdx }
 
 /-- `retain` adds one reference to a non-null object and returns it.  It traps on

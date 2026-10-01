@@ -19890,3 +19890,67 @@ and `step` and `scores` on 73 positions each; all 2,318 comparisons match.  A
 - [x] 7e: the compiled step and `scores`, with proofs and tests.
 - [ ] 7f: host session commands, and generation to 256 tokens with the cache.
 - [ ] 7d: the exactness theorem.
+
+## 2026-09-30: The cache exhausts memory; the allocator splits and merges
+
+`gpt2_compare.py` passed the 5- and 30-token prompts, with the cached steps
+giving `forward`'s last row bit for bit, and trapped on the 224-token prompt
+inside `alloc` called from `appendBlock`: `memory.grow` failed at 4 GiB.  The
+allocator takes the first free block that fits and hands over the whole block,
+and `release` pushes the freed block on the list without merging.  Each step
+allocates a cache one block longer than any freed cache, so every append takes
+new memory above `top`, and a session needs the sum of all cache sizes: 32,896
+blocks of 153,600 bytes, 5.05 GB, for 256 positions.  The old pipeline's
+allocator had the same policy, and its 128-token binary32 run used the weights
+plus the sum of its cache sizes, within 0.9 MB.  My cache design counted the
+copy per step and never checked the allocator.
+
+Hugging Face's default cache appends with `torch.cat` (`DynamicLayer.update` in
+`transformers/cache_utils.py`), a new tensor per step, as ours does; it depends on
+an allocator that reuses freed memory of other sizes.  A simulation of the run's
+allocation sequence (`scratchpad/alloc_sim.py`, temporaries approximated from the
+kernels) gave these peaks beyond the weights:
+
+| Policy | Run | Caches only |
+|---|---|---|
+| Current | 5,099 MB | 5,093 MB |
+| Split and merge | 100 MB | 152 MB |
+| Split, merge, and lower `top` | 113 MB | 102 MB |
+
+The user chose (2026-09-30) to fix the allocator before finishing 7f, with
+Knuth's first fit and liberation with a sorted list (TAOCP vol. 1, §2.5,
+Algorithms A and B): `alloc` places the object at the upper end of the first
+block that fits and shrinks the block's size word when at least 56 bytes, one
+header and one word, remain, and `release` inserts the block in address order and
+merges it with free neighbors.  `release` leaves `top` unchanged.  `Heap.At`,
+`FreeListAt`, `Heap.Owned`, `Heap.Borrowed`, and `Heap.Room` keep their
+definitions: safety does not depend on the order of the list, and a merged node's
+region is the union of two free regions.  Memory across a session stays a tested
+property; the proofs bound `top` within one call.
+
+- [x] Split in `alloc`, with `alloc_spec` and the allocation lemmas.
+- [x] Sorted insertion with merging in `release`, with `release_run` and the release lemmas.
+- [x] A session that grows an array 256 times and checks the pages; the existing tests.
+- [x] 7f with the page count, then commit the host and the script.
+
+The split lives in `FixedArrayReuse.program`: the reuse branch checks
+`capacity - need ≥ 56` and either reuses the block whole or lowers its size word
+and writes the object's header at the upper end.  The search loop's proof now
+takes the result pointer as a parameter, since a split object does not start at
+the free block's root.  `release`'s `freeObject` walks the list to the first block
+above the freed one (`findPlace`) and runs `joinProgram` twice, once for the
+freed block and the next block and once for the previous block and the freed
+block; the list model is in `Project/Runtime/Merge.lean`.  `Heap.At` and the
+object invariants are unchanged.  `Heap.Borrowed.release` and `Heap.Owned.release`
+take `Heap.At`, because a release writes the header of the free block below the
+freed one; `Live.lean` and `PairSum/Verify.lean` pass it.
+
+`gpt.wasm` grew from 11,970 to 12,295 bytes.  All 2,318 comparisons and every
+session pass.  A session of 256 appends of a 1,000-word block, releasing each old
+cache, ended with 8,060,928 bytes of memory for a final cache of 2,048,008 bytes.
+`gpt2_compare.py` passed: the three prompts (5, 30, and 224 tokens) gave
+`forward`'s last row bit for bit through the steps, generation to 256 tokens
+matched Hugging Face's choice at every step in 180 seconds, and the session ended
+with 1,095,368,704 bytes of memory, the weights and about 100 MB.  The other
+modules' sizes and hashes in `deslop.md` predate this change; their runtime code
+changed with it.
