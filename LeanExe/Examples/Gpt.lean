@@ -1,5 +1,6 @@
 import LeanExe.Loop
 import LeanExe.Build
+import LeanExe.Examples.Prng
 
 namespace LeanExe.Examples.Gpt
 
@@ -336,5 +337,58 @@ def scores (cache wte gf bf : Array Float) (layers nh dh vocab : UInt64) (eps : 
   let x := lastHidden cache (nh * dh) ((2 * layers + 1) * (nh * dh))
   let h := layerNormRows x gf bf 0 1 (nh * dh) eps
   matMulT h wte 1 (nh * dh) vocab
+
+/-! Top-k sampling.  `sampleTopK` keeps every token whose score is at least the `k`-th
+largest score, counted with repeats, as Hugging Face's `TopKLogitsWarper` does, and draws
+one of them with weight `exp ((score - max) / temperature)`, using one SplitMix64 step. -/
+
+/-- `k` copies of `-∞`: the empty buffer of the `k` largest scores. -/
+def negInfs (k : UInt64) : Array Float :=
+  LeanExe.build k fun _ => -(1.0 / 0.0)
+
+/-- The buffer `buf` of the `k` largest scores, in descending order, with score `i` of `s`
+inserted after the entries at or above it.  A score below every entry, or NaN, leaves the
+buffer unchanged. -/
+def insertTop (buf s : Array Float) (i k : UInt64) : Array Float :=
+  let x := s[i.toNat]!
+  let pos := LeanExe.loop k 0 fun j p => if buf[j.toNat]! < x then p else p + 1
+  LeanExe.build k fun j =>
+    if j < pos then buf[j.toNat]! else if j = pos then x else buf[(j - 1).toNat]!
+
+/-- The `k` largest scores of `s` in descending order, counted with repeats and padded
+with `-∞`. -/
+def topKBuffer (s : Array Float) (k : UInt64) : Array Float :=
+  let init := negInfs k
+  LeanExe.loop s.size.toUInt64 init fun i b => insertTop b s i k
+
+/-- Draws a token from the scores of `s` at or above `buf[k - 1]`, the threshold, with
+weights `exp ((score - buf[0]) / temperature)`: one SplitMix64 step from `state` gives
+`u` in `[0, 1)`, and the token is the first whose running weight exceeds `u` times the
+total, or the last kept token if rounding leaves none.  Returns the token and the next
+state. -/
+def sampleFrom (s buf : Array Float) (k : UInt64) (temperature : Float) (state : UInt64) :
+    UInt64 × UInt64 :=
+  let threshold := buf[(k - 1).toNat]!
+  let m := buf[(0 : UInt64).toNat]!
+  let n := s.size.toUInt64
+  let total := LeanExe.loop n 0.0 fun i acc =>
+    if threshold ≤ s[i.toNat]! then acc + exp ((s[i.toNat]! - m) / temperature) else acc
+  let (next, x) := LeanExe.Examples.Prng.splitMix state
+  let target := LeanExe.Examples.Prng.unitFloat x * total
+  let (_, pick, last) := LeanExe.loop n (0.0, n, n) fun i (acc, pick, last) =>
+    let acc' := if threshold ≤ s[i.toNat]! then acc + exp ((s[i.toNat]! - m) / temperature)
+      else acc
+    (acc', if threshold ≤ s[i.toNat]! then (if pick = n then (if target < acc' then i else pick)
+        else pick) else pick,
+      if threshold ≤ s[i.toNat]! then i else last)
+  (if pick = n then last else pick, next)
+
+/-- Top-k sampling from the scores `s` with `k` at least 1, temperature `temperature`,
+and generator state `state`: the chosen token and the next state. -/
+def sampleTopK (s : Array Float) (k : UInt64) (temperature : Float) (state : UInt64) :
+    UInt64 × UInt64 :=
+  let k1 := if k = 0 then 1 else k
+  let buf := topKBuffer s k1
+  sampleFrom s buf k1 temperature state
 
 end LeanExe.Examples.Gpt
