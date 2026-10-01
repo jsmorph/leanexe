@@ -20028,5 +20028,38 @@ set.  `run.sh` now joins multi-line host output with commas, for pair results.
 
 The CLI gained `--top-k K` (1 to 1,024, a cap that keeps the proved allocation bound of
 the buffer loop below about 0.5 GB), `--temperature`, and `--seed`.  The same seed gives
-the same text, and `--top-k 1` gives the greedy text.  The proofs of the sampler come next.
+the same text, and `--top-k 1` gives the greedy text.
+
+## 2026-10-01: Proofs of the sampler
+
+`Project/Gpt/SampleVerify.lean` proves the five sampler functions, and `gpt_bytes` now
+covers exports 44 to 50.  `negInfs`, `insertTop`, and `sampleFrom` are kernels proved
+with `Func.implements_heap` and `Func.implements`.  Each array read writes the scratch
+local, so the states in the proofs carry those updates.  In `sampleFrom`, `rintro` on a
+let-bound final state made `whnf` expand the whole loop result; proving the frame and
+the result facts first and transporting them with `▸` avoided it, and the body of the
+choosing loop became its own lemma, `pickBody_spec`, to stay within the heartbeat limit.
+
+`topKBuffer` started from the output of `composite` in `tools/gpt_composites.py` and
+needed two changes, because the generator assumes that a statement of kind `run` reads
+the state at the start and that the last step is a call.  Here the size of the scores
+is read after the call of `negInfs`, so the read uses the borrowed fact of the store that
+call leaves, and the result local is assigned from the loop's state.  The proof lives in
+`SampleVerify.lean` rather than in the generated file, since `sampleTopK` needs rules
+that the generator does not produce.
+
+`sampleTopK` needed two `Live` rules.  `Live.callScalar_seq` runs a call whose result is
+a `Scalar` value, assigns it with `setAll`, and keeps every temporary live with its
+block unchanged.  `Live.releaseFirst` releases the head of the list; `releaseSecond`
+releases the element below the head.  After the release no temporary remains, and the
+proof takes the bounds on `top` and memory from `Live` directly instead of from
+`Live.finish`, which requires one array result.
+
+The full build passed (3,540 jobs), `gpt_bytes` and `prng_bytes` depend only on
+`propext`, `Classical.choice`, and `Quot.sound`, and the emitted `gpt.wasm` has the same
+sha256 as before the proofs (`39f9a504…`, 13,837 bytes).  `tests/gpt/run.sh` passed all
+2,733 cases, and `sample_frequencies.py` found every count within 1.5 standard
+deviations.  The allocation bound of `topKBuffer`, `(n + 2) · (56 + 8k)` bytes for `n`
+scores, counts every `insertTop` result although the loop releases each buffer it
+replaces, because `Live` credits no release.
 
