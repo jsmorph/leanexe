@@ -26,8 +26,7 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
       Implements m 24 attentionTuple attentionNeed ∧ Implements m 25 blockTuple blockNeed ∧
       Implements m 26 causalMatMulTuple causalMatMulNeed ∧ Implements m 27 embedTuple embedNeed ∧
       Implements m 28 matMulTTuple matMulTNeed ∧ Implements m 29 forwardTuple forwardNeed ∧
-      Implements m 30 linearTuple linearNeed ∧ Implements m 31 sliceTuple sliceNeed ∧
-      Implements m 32 blockAtTuple blockAtNeed := by
+      Implements m 30 linearTuple linearNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide +kernel) (by decide +kernel)
   exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
@@ -37,7 +36,6 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
     normalizeRows_implements, layerNormRows_implements, maskedScores_implements,
     rowMax_implements, rowSumExp_implements, softmaxApply_implements, softmaxRows_implements,
     attention_implements, block_implements, causalMatMul_implements, embed_implements,
-    matMulT_implements, forward_implements, linear_implements, slice_implements,
-    blockAt_implements⟩
+    matMulT_implements, forward_implements, linear_implements⟩
 
 end Project.Gpt

@@ -136,18 +136,19 @@ def layerNormRowsCases : IO Unit := do
   for i in List.range 30 do
     let t := i % 4
     let d := (i * 3 + 1) % 5
+    let l := i % 3
     let x := smalls (t * d + i % 2) (13 * i)
-    let g := smalls (d + i % 3) (7 * i + 3)
-    let b := smalls d (11 * i + 5)
+    let g := smalls ((l + 1) * d + i % 3) (7 * i + 3)
+    let b := smalls ((l + i % 2) * d) (11 * i + 5)
     let eps : Float := if i % 5 = 0 then 0.0 else 1e-5
     let means := rowMeans x.toArray t.toUInt64 d.toUInt64
     let inv := rowInvStd x.toArray means t.toUInt64 d.toUInt64 eps
     emit "rowMeans" [arr x, u t, u d] means
     emit "rowInvStd" [arr x, arrA means, u t, u d, fl eps] inv
-    emit "normalizeRows" [arr x, arrA means, arrA inv, arr g, arr b, u t, u d]
-      (normalizeRows x.toArray means inv g.toArray b.toArray t.toUInt64 d.toUInt64)
-    emit "layerNormRows" [arr x, arr g, arr b, u t, u d, fl eps]
-      (layerNormRows x.toArray g.toArray b.toArray t.toUInt64 d.toUInt64 eps)
+    emit "normalizeRows" [arr x, arrA means, arrA inv, arr g, arr b, u l, u t, u d]
+      (normalizeRows x.toArray means inv g.toArray b.toArray l.toUInt64 t.toUInt64 d.toUInt64)
+    emit "layerNormRows" [arr x, arr g, arr b, u l, u t, u d, fl eps]
+      (layerNormRows x.toArray g.toArray b.toArray l.toUInt64 t.toUInt64 d.toUInt64 eps)
 
 /-- Attention kernels: scores with one head, and softmax rows of one to three heads with
 special values in `x`. -/
@@ -213,15 +214,16 @@ def embedCases : IO Unit := do
       (matMulT q.toArray k.toArray t.toUInt64 d.toUInt64 vocab.toUInt64)
 
 /-- The functions with linear layers: `linear`, `mlp`, `attention`, `block`, and
-`forward`, with one to three heads. -/
+`forward`, with one to three heads, and weights for one or two layers of which `linear`,
+`mlp`, `attention`, and `block` use layer `l`. -/
 def linearCases : IO Unit := do
   let one := [1.0]
   let zero := [0.0]
   for x in [[1e150], [1e150, 1e200], [1.0, inf], [1.0, 2.0]] do
     let t := x.length
     emit "attention" [arr x, arr one, arr zero, arr one, arr zero, arr one, arr zero, arr one, arr zero,
-      u t, u 1, u 1]
-      (attention x.toArray #[1.0] #[0.0] #[1.0] #[0.0] #[1.0] #[0.0] #[1.0] #[0.0] t.toUInt64 1 1)
+      u 0, u t, u 1, u 1]
+      (attention x.toArray #[1.0] #[0.0] #[1.0] #[0.0] #[1.0] #[0.0] #[1.0] #[0.0] 0 t.toUInt64 1 1)
   for i in List.range 40 do
     let t := i % 4
     let nh := 1 + i % 3
@@ -231,39 +233,43 @@ def linearCases : IO Unit := do
     let vocab := (i / 2) % 5
     let extra := i % 2
     let eps : Float := if i % 5 = 0 then 0.0 else 1e-5
+    let l := i % 2
+    let L := l + 1
     let n := i % 4
     let k := (i * 3 + 1) % 5
     let m := (i / 4) % 5
     let lx := units (n * k + extra) (3 * i)
-    let lw := units (k * m + 1 - extra) (5 * i + 1)
-    let lb := units (m + extra) (7 * i + 2)
-    emit "linear" [arr lx, arr lw, arr lb, u n, u k, u m]
-      (linear lx.toArray lw.toArray lb.toArray n.toUInt64 k.toUInt64 m.toUInt64)
+    let lw := units (L * k * m + 1 - extra) (5 * i + 1)
+    let lb := units (L * m + extra) (7 * i + 2)
+    emit "linear" [arr lx, arr lw, arr lb, u l, u n, u k, u m]
+      (linear lx.toArray lw.toArray lb.toArray l.toUInt64 n.toUInt64 k.toUInt64 m.toUInt64)
     let x := units (t * d + extra) (13 * i)
-    let wq := units (d * d) (17 * i + 1)
-    let bq := units d (19 * i + 2)
-    let wk := units (d * d + extra) (23 * i + 3)
-    let bk := units d (29 * i + 4)
-    let wv := units (d * d) (31 * i + 5)
-    let bv := units (d + extra) (37 * i + 6)
-    let wo := units (d * d + 1 - extra) (41 * i + 7)
-    let bo := units d (43 * i + 8)
-    let g := units d (47 * i + 9)
-    let b := units d (53 * i + 10)
-    let wfc := units (d * f) (59 * i + 11)
-    let bfc := units f (61 * i + 12)
-    let wproj := units (f * d) (67 * i + 13)
-    let bproj := units d (71 * i + 14)
+    let wq := units (L * d * d) (17 * i + 1)
+    let bq := units (L * d) (19 * i + 2)
+    let wk := units (L * d * d + extra) (23 * i + 3)
+    let bk := units (L * d) (29 * i + 4)
+    let wv := units (L * d * d) (31 * i + 5)
+    let bv := units (L * d + extra) (37 * i + 6)
+    let wo := units (L * d * d + 1 - extra) (41 * i + 7)
+    let bo := units (L * d) (43 * i + 8)
+    let g := units (L * d) (47 * i + 9)
+    let b := units (L * d) (53 * i + 10)
+    let wfc := units (L * d * f) (59 * i + 11)
+    let bfc := units (L * f) (61 * i + 12)
+    let wproj := units (L * f * d) (67 * i + 13)
+    let bproj := units (L * d) (71 * i + 14)
     let A (xs : List Float) : Array Float := xs.toArray
-    emit "mlp" [arr x, arr wfc, arr bfc, arr wproj, arr bproj, u t, u d, u f]
-      (mlp (A x) (A wfc) (A bfc) (A wproj) (A bproj) t.toUInt64 d.toUInt64 f.toUInt64)
-    emit "attention" [arr x, arr wq, arr bq, arr wk, arr bk, arr wv, arr bv, arr wo, arr bo, u t, u nh, u dh]
-      (attention (A x) (A wq) (A bq) (A wk) (A bk) (A wv) (A bv) (A wo) (A bo) t.toUInt64 nh.toUInt64
-        dh.toUInt64)
+    emit "mlp" [arr x, arr wfc, arr bfc, arr wproj, arr bproj, u l, u t, u d, u f]
+      (mlp (A x) (A wfc) (A bfc) (A wproj) (A bproj) l.toUInt64 t.toUInt64 d.toUInt64 f.toUInt64)
+    emit "attention"
+      [arr x, arr wq, arr bq, arr wk, arr bk, arr wv, arr bv, arr wo, arr bo, u l, u t, u nh, u dh]
+      (attention (A x) (A wq) (A bq) (A wk) (A bk) (A wv) (A bv) (A wo) (A bo) l.toUInt64 t.toUInt64
+        nh.toUInt64 dh.toUInt64)
     let layerA := [g, b, wq, bq, wk, bk, wv, bv, wo, bo, g, b, wfc, bfc, wproj, bproj]
-    emit "block" ([arr x] ++ layerA.map arr ++ [u t, u nh, u dh, u f, fl eps])
+    emit "block" ([arr x] ++ layerA.map arr ++ [u l, u t, u nh, u dh, u f, fl eps])
       (block (A x) (A g) (A b) (A wq) (A bq) (A wk) (A bk) (A wv) (A bv) (A wo) (A bo) (A g) (A b)
-        (A wfc) (A bfc) (A wproj) (A bproj) t.toUInt64 nh.toUInt64 dh.toUInt64 f.toUInt64 eps)
+        (A wfc) (A bfc) (A wproj) (A bproj) l.toUInt64 t.toUInt64 nh.toUInt64 dh.toUInt64 f.toUInt64
+        eps)
     let tokens : List UInt64 := (List.range (t + extra)).map fun j =>
       if i % 10 = 9 ∧ j = 0 then 18446744073709551615 else UInt64.ofNat ((i * 7 + j * 3) % (vocab + 2))
     let wte := units (vocab * d + extra) (73 * i + 15)
@@ -278,16 +284,9 @@ def linearCases : IO Unit := do
         (W 8) (W 9) (W 10) (W 11) (W 12) (W 13) (W 14) (W 15) (A g) (A b) layers.toUInt64
         t.toUInt64 nh.toUInt64 dh.toUInt64 f.toUInt64 vocab.toUInt64 eps)
 
-def sliceCases : IO Unit := do
-  for i in List.range 30 do
-    let xs := units (i % 11) (3 * i)
-    let start := (i * 7) % 13
-    let n := (i * 5) % 9
-    emit "slice" [arr xs, u start, u n] (slice xs.toArray start.toUInt64 n.toUInt64)
-
-/-- `blockAt` on weights stacked over one to three layers; `l` equal to the number of
+/-- `block` on weights stacked over one to three layers; `l` equal to the number of
 layers reads past the arrays. -/
-def blockAtCases : IO Unit := do
+def stackedBlockCases : IO Unit := do
   for i in List.range 30 do
     let layers := 1 + i % 3
     let l := i % (layers + 1)
@@ -301,8 +300,8 @@ def blockAtCases : IO Unit := do
     let sizes := [d, d, d * d, d, d * d, d, d * d, d, d * d, d, d, d, d * f, f, f * d, d]
     let ws := sizes.zipIdx.map fun (n, j) => units (layers * n) (97 * i + 31 * j)
     let A (j : Nat) : Array Float := (ws[j]!).toArray
-    emit "blockAt" ([arr x] ++ ws.map arr ++ [u l, u t, u nh, u dh, u f, fl eps])
-      (blockAt x.toArray (A 0) (A 1) (A 2) (A 3) (A 4) (A 5) (A 6) (A 7) (A 8) (A 9) (A 10) (A 11)
+    emit "block" ([arr x] ++ ws.map arr ++ [u l, u t, u nh, u dh, u f, fl eps])
+      (block x.toArray (A 0) (A 1) (A 2) (A 3) (A 4) (A 5) (A 6) (A 7) (A 8) (A 9) (A 10) (A 11)
         (A 12) (A 13) (A 14) (A 15) l.toUInt64 t.toUInt64 nh.toUInt64 dh.toUInt64 f.toUInt64 eps)
 
 def main : IO Unit := do
@@ -319,5 +318,4 @@ def main : IO Unit := do
   headCases
   embedCases
   linearCases
-  sliceCases
-  blockAtCases
+  stackedBlockCases

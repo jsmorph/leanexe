@@ -114,9 +114,9 @@ theorem matMul_rows {a a' b : Array Float} {n k m : UInt64} {i : Nat} (hn : n.to
   rw [read_agree h (R := UInt64.ofNat e / m) (C := UInt64.ofNat c) (by omega) (by omega) hk
     (by rwa [toNat_ofNat_lt hc])]
 
-theorem linear_rows {x x' w b : Array Float} {n k m : UInt64} {i : Nat} (hn : n.toNat < 2 ^ 32)
+theorem linear_rows {x x' w b : Array Float} {l n k m : UInt64} {i : Nat} (hn : n.toNat < 2 ^ 32)
     (hk : k.toNat < 2 ^ 32) (hm : m.toNat < 2 ^ 32) (h : RowsAgree k.toNat i x x') :
-    RowsAgree m.toNat i (linear x w b n k m) (linear x' w b n k m) := by
+    RowsAgree m.toNat i (linear x w b l n k m) (linear x' w b l n k m) := by
   unfold linear
   refine rows_of_build fun e he hlt => ?_
   obtain ⟨-, hRow, -, hri, hrn, -⟩ := element_facts hn hm he hlt
@@ -260,19 +260,19 @@ theorem rowInvStd_rows {x x' means means' : Array Float} {t d : UInt64} {eps : F
   rw [read_agree h (R := UInt64.ofNat r) (C := UInt64.ofNat c) (by omega) (by omega) hd
     (by rwa [toNat_ofNat_lt hc]), hR, hm r (by omega)]
 
-theorem normalizeRows_rows {x x' means means' inv inv' g b : Array Float} {t d : UInt64}
+theorem normalizeRows_rows {x x' means means' inv inv' g b : Array Float} {l t d : UInt64}
     {i : Nat} (ht : t.toNat < 2 ^ 32) (hd : d.toNat < 2 ^ 32) (h : RowsAgree d.toNat i x x')
     (hm : RowsAgree 1 i means means') (hv : RowsAgree 1 i inv inv') :
-    RowsAgree d.toNat i (normalizeRows x means inv g b t d)
-      (normalizeRows x' means' inv' g b t d) := by
+    RowsAgree d.toNat i (normalizeRows x means inv g b l t d)
+      (normalizeRows x' means' inv' g b l t d) := by
   unfold normalizeRows
   refine rows_of_build fun e he hlt => ?_
   obtain ⟨hE, hRow, -, hri, -, -⟩ := element_facts ht hd he hlt
   rw [hE, hRow, h e he, hm _ (by omega), hv _ (by omega)]
 
-theorem layerNormRows_rows {x x' g b : Array Float} {t d : UInt64} {eps : Float} {i : Nat}
+theorem layerNormRows_rows {x x' g b : Array Float} {l t d : UInt64} {eps : Float} {i : Nat}
     (ht : t.toNat < 2 ^ 32) (hd : d.toNat < 2 ^ 32) (h : RowsAgree d.toNat i x x') :
-    RowsAgree d.toNat i (layerNormRows x g b t d eps) (layerNormRows x' g b t d eps) :=
+    RowsAgree d.toNat i (layerNormRows x g b l t d eps) (layerNormRows x' g b l t d eps) :=
   normalizeRows_rows ht hd h (rowMeans_rows ht hd h)
     (rowInvStd_rows ht hd h (rowMeans_rows ht hd h))
 
@@ -291,10 +291,11 @@ theorem geluArray_rows {a a' : Array Float} {w i : Nat} (hs : a.size = a'.size)
   refine rows_of_build fun m hm hlt => ?_
   rw [toNat_ofNat_lt hlt, h m hm]
 
-theorem mlp_rows {h h' wfc bfc wproj bproj : Array Float} {t d f : UInt64} {i : Nat}
+theorem mlp_rows {h h' wfc bfc wproj bproj : Array Float} {l t d f : UInt64} {i : Nat}
     (ht : t.toNat < 2 ^ 32) (hd : d.toNat < 2 ^ 32) (hf : f.toNat < 2 ^ 32)
     (hh : RowsAgree d.toNat i h h') :
-    RowsAgree d.toNat i (mlp h wfc bfc wproj bproj t d f) (mlp h' wfc bfc wproj bproj t d f) :=
+    RowsAgree d.toNat i (mlp h wfc bfc wproj bproj l t d f)
+      (mlp h' wfc bfc wproj bproj l t d f) :=
   linear_rows ht hf hd (geluArray_rows (by simp [linear, LeanExe.build])
     (linear_rows (w := wfc) (b := bfc) ht hd hf hh))
 
@@ -316,20 +317,21 @@ theorem matMulT_rows {a a' b : Array Float} {n k m : UInt64} {i : Nat} (hn : n.t
     (by rwa [toNat_ofNat_lt hc])]
 
 /-- Row `i` of `attention` depends only on rows `0` to `i` of `x`. -/
-theorem attention_causal {x x' wq bq wk bk wv bv wo bo : Array Float} {t nh dh : UInt64} {i : Nat}
+theorem attention_causal {x x' wq bq wk bk wv bv wo bo : Array Float} {l t nh dh : UInt64}
+    {i : Nat}
     (ht : t.toNat < 2 ^ 16) (hn : nh.toNat < 2 ^ 16) (hdh : dh.toNat < 2 ^ 16)
     (hx : RowsAgree (nh * dh).toNat i x x') :
-    RowsAgree (nh * dh).toNat i (attention x wq bq wk bk wv bv wo bo t nh dh)
-      (attention x' wq bq wk bk wv bv wo bo t nh dh) := by
+    RowsAgree (nh * dh).toNat i (attention x wq bq wk bk wv bv wo bo l t nh dh)
+      (attention x' wq bq wk bk wv bv wo bo l t nh dh) := by
   have ht32 : t.toNat < 2 ^ 32 := by omega
   have hnd := small_mul hn hdh
   by_cases hn0 : nh.toNat = 0
   · intro m hm
     rw [mul_toNat (by omega) (by omega), hn0] at hm
     simp at hm
-  have hq := linear_rows (w := wq) (b := bq) ht32 hnd hnd hx
-  have hk := linear_rows (w := wk) (b := bk) ht32 hnd hnd hx
-  have hv := linear_rows (w := wv) (b := bv) ht32 hnd hnd hx
+  have hq := linear_rows (w := wq) (b := bq) (l := l) ht32 hnd hnd hx
+  have hk := linear_rows (w := wk) (b := bk) (l := l) ht32 hnd hnd hx
+  have hv := linear_rows (w := wv) (b := bv) (l := l) ht32 hnd hnd hx
   have hs := maskedScores_rows (scale := 1.0 / dh.toFloat.sqrt) ht hn hdh hq hk
   rw [mul_toNat (by omega) ht32] at hs
   have hp := RowsAgree.join (Nat.pos_of_ne_zero hn0)
@@ -340,32 +342,21 @@ theorem attention_causal {x x' wq bq wk bk wv bv wo bo : Array Float} {t nh dh :
 /-- Row `i` of `block` depends only on rows `0` to `i` of `x`, for inputs of equal
 length. -/
 theorem block_causal {x x' g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Float}
-    {t nh dh f : UInt64}
+    {l t nh dh f : UInt64}
     {eps : Float} {i : Nat} (ht : t.toNat < 2 ^ 16) (hn : nh.toNat < 2 ^ 16)
     (hdh : dh.toNat < 2 ^ 16) (hf : f.toNat < 2 ^ 32) (hs : x.size = x'.size)
     (hx : RowsAgree (nh * dh).toNat i x x') :
     RowsAgree (nh * dh).toNat i
-      (block x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj t nh dh f eps)
-      (block x' g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj t nh dh f eps) := by
+      (block x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj l t nh dh f eps)
+      (block x' g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj l t nh dh f eps) := by
   have ht32 : t.toNat < 2 ^ 32 := by omega
   have hnd := small_mul hn hdh
   have hr := add_rows hs hx (attention_causal (wq := wq) (bq := bq) (wk := wk) (bk := bk)
-    (wv := wv) (bv := bv) (wo := wo) (bo := bo) ht hn hdh
-    (layerNormRows_rows (g := g1) (b := b1) (eps := eps) ht32 hnd hx))
+    (wv := wv) (bv := bv) (wo := wo) (bo := bo) (l := l) ht hn hdh
+    (layerNormRows_rows (g := g1) (b := b1) (l := l) (eps := eps) ht32 hnd hx))
   exact add_rows (by simp [add, LeanExe.build, hs]) hr
-    (mlp_rows (wfc := wfc) (bfc := bfc) (wproj := wproj) (bproj := bproj) ht32 hnd hf
+    (mlp_rows (wfc := wfc) (bfc := bfc) (wproj := wproj) (bproj := bproj) (l := l) ht32 hnd hf
       (layerNormRows_rows ht32 hnd hr))
-
-/-- Row `i` of `blockAt` depends only on rows `0` to `i` of `x`, for inputs of equal
-length. -/
-theorem blockAt_causal {x x' g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Float}
-    {l t nh dh f : UInt64} {eps : Float} {i : Nat} (ht : t.toNat < 2 ^ 16)
-    (hn : nh.toNat < 2 ^ 16) (hdh : dh.toNat < 2 ^ 16) (hf : f.toNat < 2 ^ 32)
-    (hs : x.size = x'.size) (hx : RowsAgree (nh * dh).toNat i x x') :
-    RowsAgree (nh * dh).toNat i
-      (blockAt x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj l t nh dh f eps)
-      (blockAt x' g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj l t nh dh f eps) :=
-  block_causal ht hn hdh hf hs hx
 
 /-- Row `i` of `forward`, the scores at position `i`, depends only on tokens `0` to `i`. -/
 theorem forward_causal {tokens tokens' : Array UInt64}
@@ -382,8 +373,8 @@ theorem forward_causal {tokens tokens' : Array UInt64}
   have hnd := small_mul hn hdh
   unfold forward
   exact matMulT_rows ht32 hnd hv (layerNormRows_rows ht32 hnd
-    (loop_rows (fun _ _ _ hs hx => ⟨by simp [blockAt, block, add, LeanExe.build, hs],
-        blockAt_causal ht hn hdh hf hs hx⟩)
+    (loop_rows (fun _ _ _ hs hx => ⟨by simp [block, add, LeanExe.build, hs],
+        block_causal ht hn hdh hf hs hx⟩)
       (by simp [embed, LeanExe.build]) (embed_rows ht32 hnd h)))
 
 end Project.Gpt.Causal
