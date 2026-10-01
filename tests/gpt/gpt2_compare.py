@@ -17,12 +17,15 @@ Run with `uv run tests/gpt/gpt2_compare.py [path/to/gpt.wasm]`.  The script down
 pinned openai-community/gpt2 checkpoint, widens its float32 parameters to float64, and
 writes the arrays `forward` takes to build/gpt2-124m/, one file of little-endian words per
 array, with `c_attn` split into its `q`, `k`, and `v` columns and each of the sixteen
-layer arrays stacked layer after layer.  For each prompt it compares every score; it then
-generates greedily to 64 tokens, running `forward` on the whole prefix for each new token,
-and checks each token against Hugging Face's choice for the same prefix.  Prompts stay
-within 256 tokens, where `forward`'s allocation bound and the weights fit in 4 GiB of
-WebAssembly memory.  The script fails if a score differs from Hugging Face's by more than
-1e-12 of the largest score or if a token differs."""
+layer arrays stacked layer after layer.  For each prompt it compares every score of
+`forward` with Hugging Face's, then runs the prompt through `step` one token at a time and
+checks that the scores of the last position equal `forward`'s last row bit for bit.  It
+then generates greedily to 256 tokens with the cache, in one host session that keeps the
+weights loaded, and checks each token against Hugging Face's choice for the same prefix.
+Prompts stay within 256 tokens, where `forward`'s allocation bound and the weights fit in
+4 GiB of WebAssembly memory.  The script fails if a score differs from Hugging Face's by
+more than 1e-12 of the largest score, if a cached score differs from `forward`'s, or if a
+token differs."""
 import array
 import pathlib
 import struct
@@ -42,7 +45,7 @@ REVISION = '607a30d783dfa663caf39e06633721c8d4cfcd7e'
 NAMES = ['wte', 'wpe', 'g1', 'b1', 'wq', 'bq', 'wk', 'bk', 'wv', 'bv', 'wo', 'bo', 'g2', 'b2',
          'wfc', 'bfc', 'wproj', 'bproj', 'gf', 'bf']
 MAX_TOKENS = 256
-GENERATE_TOKENS = 64
+GENERATE_TOKENS = 256
 LIMIT = 1e-12
 PROMPTS = [
     'Hello, my name is',
@@ -125,6 +128,79 @@ def forward(config, ids):
     return values
 
 
+def bits(x):
+    return struct.unpack('<Q', struct.pack('<d', x))[0]
+
+
+class Session:
+    """A host session on gpt.wasm with the weights loaded once."""
+
+    def __init__(self, config):
+        self.config = config
+        self.proc = subprocess.Popen([str(HOST), 'session', str(WASM)], stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE, text=True)
+        for i, name in enumerate(NAMES):
+            self.send(f'file-u64 {i + 1} {OUT / (name + ".u64")}')
+
+    def send(self, line):
+        self.proc.stdin.write(line + '\n')
+        self.proc.stdin.flush()
+
+    def call(self, name, args):
+        for a in args:
+            self.send(a)
+        self.send(f'call {name} 1')
+        reply = self.proc.stdout.readline().split()
+        if reply[:1] != ['results']:
+            raise SystemExit(f'{name}: unexpected reply {reply}')
+        return int(reply[1])
+
+    @staticmethod
+    def arg(ptr):
+        """The argument line for an array: a pointer, or `None` for the empty cache."""
+        return 'arg-ptr 30' if ptr is None else f'arg-u64 {ptr}'
+
+    def release(self, ptr):
+        self.send(self.arg(ptr))
+        self.send('call release 0')
+        self.proc.stdout.readline()
+
+    def empty(self):
+        """A cache with no blocks, kept as allocation 30."""
+        self.send('alloc 30 8')
+        self.send('write-u64 30 0 0')
+        return None
+
+    def step(self, cache, token):
+        c = self.config
+        eps = bits(c.layer_norm_epsilon)
+        args = [self.arg(cache), 'arg-ptr 1', 'arg-ptr 2']
+        args += [f'arg-ptr {i}' for i in range(3, 19)]
+        args += [f'arg-u64 {token}', f'arg-u64 {c.n_layer}', f'arg-u64 {c.n_head}',
+                 f'arg-u64 {c.n_embd // c.n_head}', f'arg-u64 {c.n_inner or 4 * c.n_embd}',
+                 f'arg-f64 {eps}']
+        new = self.call('step', args)
+        self.release(cache)
+        return new
+
+    def scores(self, cache):
+        c = self.config
+        eps = bits(c.layer_norm_epsilon)
+        ptr = self.call('scores', [self.arg(cache), 'arg-ptr 1', 'arg-ptr 19', 'arg-ptr 20',
+                                   f'arg-u64 {c.n_layer}', f'arg-u64 {c.n_head}',
+                                   f'arg-u64 {c.n_embd // c.n_head}', f'arg-u64 {c.vocab_size}',
+                                   f'arg-f64 {eps}'])
+        path = OUT / 'step-scores.u64'
+        self.send(f'save-u64 {ptr} {path}')
+        self.proc.stdout.readline()
+        self.release(ptr)
+        values = array.array('d')
+        values.frombytes(path.read_bytes())
+        if sys.byteorder != 'little':
+            values.byteswap()
+        return values
+
+
 def argmax(values, start, count):
     best = start
     for i in range(start, start + count):
@@ -142,6 +218,7 @@ def main():
     config = model.config
     vocab = config.vocab_size
     worst = 0.0
+    session = Session(config)
     for prompt in PROMPTS:
         ids = tokenizer(prompt)['input_ids'][:MAX_TOKENS]
         start = time.monotonic()
@@ -152,28 +229,49 @@ def main():
         largest = max(abs(x) for x in theirs)
         diff = max(abs(a - b) for a, b in zip(ours, theirs))
         worst = max(worst, diff / largest)
-        print(f'{len(ids)} tokens: {len(ours)} scores in {seconds:.1f} s, largest {largest:.4g}, '
-              f'largest difference {diff:.3g}')
-    ids = tokenizer(GENERATE_PROMPT)['input_ids']
-    total = 0.0
-    while len(ids) < GENERATE_TOKENS:
         start = time.monotonic()
-        ours = forward(config, ids)
-        total += time.monotonic() - start
-        t = len(ids)
-        last = (t - 1) * vocab
+        cache = session.empty()
+        for token in ids:
+            cache = session.step(cache, token)
+        cached = session.scores(cache)
+        session.release(cache)
+        step_seconds = time.monotonic() - start
+        last = (len(ids) - 1) * vocab
+        if any(bits(cached[j]) != bits(ours[last + j]) for j in range(vocab)):
+            raise SystemExit(f'{len(ids)} tokens: the cached scores differ from forward')
+        print(f'{len(ids)} tokens: {len(ours)} scores in {seconds:.1f} s, largest {largest:.4g}, '
+              f'largest difference {diff:.3g}; the {len(ids)} steps took {step_seconds:.1f} s '
+              f'and gave forward\'s last row bit for bit', flush=True)
+    ids = tokenizer(GENERATE_PROMPT)['input_ids']
+    start = time.monotonic()
+    cache = session.empty()
+    for token in ids[:-1]:
+        cache = session.step(cache, token)
+    while len(ids) < GENERATE_TOKENS:
+        cache = session.step(cache, ids[-1])
+        ours = session.scores(cache)
         with torch.no_grad():
             theirs = flat(model(torch.tensor([ids])).logits[0, -1])
         largest = max(abs(x) for x in theirs)
-        diff = max(abs(ours[last + j] - theirs[j]) for j in range(vocab))
+        diff = max(abs(ours[j] - theirs[j]) for j in range(vocab))
         worst = max(worst, diff / largest)
-        token = argmax(ours, last, vocab)
+        token = argmax(ours, 0, vocab)
         expected = argmax(theirs, 0, vocab)
         if token != expected:
-            raise SystemExit(f'token {t}: forward chose {token}, Hugging Face {expected}')
+            raise SystemExit(f'token {len(ids)}: step chose {token}, Hugging Face {expected}')
         ids.append(token)
-        print(f'{t + 1} tokens in {total:.0f} s: {tokenizer.decode([token])!r}', flush=True)
+        if len(ids) % 32 == 0:
+            print(f'{len(ids)} tokens in {time.monotonic() - start:.0f} s', flush=True)
+    session.release(cache)
+    session.send('stats')
+    stats = session.proc.stdout.readline().split()
+    session.send('memory-size')
+    memory = int(session.proc.stdout.readline().split()[1])
+    session.proc.stdin.close()
+    session.proc.wait()
     print(tokenizer.decode(ids))
+    print(f'generated {len(ids)} tokens in {time.monotonic() - start:.0f} s; host counters '
+          f'{stats[1:]}; memory {memory} bytes')
     print(f'largest relative difference {worst:.3g}')
     if worst > LIMIT:
         raise SystemExit(f'difference above {LIMIT}')

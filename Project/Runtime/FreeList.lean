@@ -610,4 +610,143 @@ theorem FreeListAt.takeFirstFitFrom_node_disjoint {mem : Mem}
 #print axioms FreeListAt.unlink_takeFirstFitFrom
 #print axioms FreeListAt.takeFirstFitFrom_node_disjoint
 
+/-- The free list after the first block with room for `need` bytes gives its
+upper `need + 48` bytes to a new object and keeps the rest. -/
+def shrinkFirstFit (need : UInt64) : List FreeNode → List FreeNode
+  | [] => []
+  | node :: rest =>
+      if need ≤ node.capacity then { node with capacity := node.capacity - need - 48 } :: rest
+      else node :: shrinkFirstFit need rest
+
+theorem shrinkFirstFit_append {need : UInt64} {skipped : List FreeNode} (rest : List FreeNode)
+    (hSmall : ∀ node ∈ skipped, node.capacity < need) :
+    shrinkFirstFit need (skipped ++ rest) = skipped ++ shrinkFirstFit need rest := by
+  induction skipped with
+  | nil => rfl
+  | cons node skipped ih =>
+    have hNot : ¬need ≤ node.capacity := by
+      have := hSmall node List.mem_cons_self
+      rw [UInt64.le_iff_toNat_le]
+      rw [UInt64.lt_iff_toNat_lt] at this
+      omega
+    simp only [List.cons_append, shrinkFirstFit, hNot, ite_false]
+    rw [ih fun n hn => hSmall n (List.mem_cons_of_mem _ hn)]
+
+theorem shrinkFirstFit_decompose {previous need : UInt64} {nodes : List FreeNode}
+    {choice : FreeChoice} (h : takeFirstFitFrom previous need nodes = some choice) :
+    ∃ skipped tail : List FreeNode,
+      nodes = skipped ++ choice.node :: tail ∧
+      shrinkFirstFit need nodes =
+        skipped ++ { choice.node with capacity := choice.node.capacity - need - 48 } :: tail := by
+  obtain ⟨skipped, tail, hNodes, _, _, _, hSmall⟩ := takeFirstFitFrom_some_decompose h
+  refine ⟨skipped, tail, hNodes, ?_⟩
+  rw [hNodes, shrinkFirstFit_append _ hSmall]
+  simp [shrinkFirstFit, takeFirstFitFrom_some_capacity h]
+
+theorem freeHead_shrinkFirstFit (need : UInt64) (nodes : List FreeNode) :
+    freeHead (shrinkFirstFit need nodes) = freeHead nodes := by
+  cases nodes with
+  | nil => rfl
+  | cons node rest =>
+    simp only [shrinkFirstFit]
+    split <;> rfl
+
+theorem FreeListAt.suffix {mem : Mem} {pre rest : List FreeNode}
+    (h : FreeListAt mem (pre ++ rest)) : FreeListAt mem rest := by
+  induction pre with
+  | nil => simpa using h
+  | cons node pre ih =>
+    cases h with
+    | cons _ _ _ _ _ _ _ hTail => exact ih hTail
+
+theorem FreeListAt.pairwise {mem : Mem} {nodes : List FreeNode} (h : FreeListAt mem nodes) :
+    nodes.Pairwise fun a b => regionsDisjoint a.region b.region := by
+  induction h with
+  | nil => exact .nil
+  | cons _ _ _ _ _ _ hSep _ ih => exact .cons hSep ih
+
+/-- A free list keeps its layout in `mem'` when its suffix `old` is replaced by a
+list laid out in `mem'`, provided the nodes before it keep their header words,
+stay apart from the new nodes, and link to a suffix with the same head. -/
+theorem FreeListAt.replace_suffix {mem mem' : Mem} {pre old new : List FreeNode}
+    (h : FreeListAt mem (pre ++ old)) (hNew : FreeListAt mem' new)
+    (hHead : pre ≠ [] → freeHead new = freeHead old)
+    (hApart : ∀ x ∈ pre, ∀ y ∈ new, regionsDisjoint x.region y.region)
+    (hRead : ∀ x ∈ pre, ∀ offset : UInt64, offset = 40 ∨ offset = 32 ∨ offset = 8 →
+      mem'.read64 (x.root - offset).toUInt32 = mem.read64 (x.root - offset).toUInt32)
+    (hPages : mem.pages ≤ mem'.pages) :
+    FreeListAt mem' (pre ++ new) := by
+  induction pre with
+  | nil => simpa using hNew
+  | cons x pre ih =>
+    simp only [List.cons_append] at h ⊢
+    cases h with
+    | cons h48 h32 hFit hRc hCapacity hNext hSep hTail =>
+      refine .cons h48 h32 (hFit.trans (Nat.mul_le_mul_right 65536 hPages)) ?_ ?_ ?_ ?_ ?_
+      · rw [hRead x List.mem_cons_self 40 (by simp)]
+        exact hRc
+      · rw [hRead x List.mem_cons_self 32 (by simp)]
+        exact hCapacity
+      · rw [hRead x List.mem_cons_self 8 (by simp), hNext]
+        cases pre with
+        | nil => simpa using (hHead (List.cons_ne_nil _ _)).symm
+        | cons y pre => rfl
+      · intro other hOther
+        rcases List.mem_append.mp hOther with hPre | hNewMem
+        · exact hSep other (List.mem_append_left _ hPre)
+        · exact hApart x List.mem_cons_self other hNewMem
+      · exact ih hTail (fun _ => hHead (List.cons_ne_nil _ _))
+          (fun a ha => hApart a (List.mem_cons_of_mem _ ha))
+          (fun a ha => hRead a (List.mem_cons_of_mem _ ha))
+
+/-- Lowering a free block's size word to a smaller capacity keeps the list laid
+out, with the block shrunk. -/
+theorem FreeListAt.shrink {mem : Mem} {pre post : List FreeNode} {node : FreeNode}
+    {capacity : UInt64} (h : FreeListAt mem (pre ++ node :: post))
+    (hLe : capacity.toNat ≤ node.capacity.toNat) :
+    FreeListAt (mem.write64 (node.root - 32).toUInt32 capacity)
+      (pre ++ { node with capacity } :: post) := by
+  have hSuffix := h.suffix
+  have hPair := h.pairwise
+  rw [List.pairwise_append] at hPair
+  obtain ⟨_, _, hCross⟩ := hPair
+  obtain ⟨hW48, hW32, _⟩ := h.mem_bounds (List.mem_append_right _ List.mem_cons_self)
+  cases hSuffix with
+  | cons h48 h32 hFit hRc hCapacity hNext hSep hTail =>
+    have hAddr (k : UInt64) (hk : k.toNat ≤ 48) :
+        (node.root - k).toUInt32.toNat = node.root.toNat - k.toNat := by
+      rw [toUInt32_toNat, toNat_sub_le _ _ (by omega), Nat.mod_eq_of_lt (by omega)]
+    have h40 := hAddr 40 (by decide)
+    have h32' := hAddr 32 (by decide)
+    have h8 := hAddr 8 (by decide)
+    simp only [UInt64.reduceToNat] at h40 h32' h8
+    refine FreeListAt.replace_suffix (old := node :: post) h ?_ (fun _ => rfl) ?_ ?_
+      (by simp)
+    · refine .cons h48 (by simp; omega) (by simp; omega) ?_ ?_ ?_ ?_ ?_
+      · rw [read64_write64_ne _ _ _ _ (by simp only at h40 h32' ⊢; omega)]
+        exact hRc
+      · exact Project.ProofKit.Memory.read64_write64 _ _ _
+      · rw [read64_write64_ne _ _ _ _ (by simp only at h8 h32' ⊢; omega)]
+        exact hNext
+      · intro other hOther
+        have := hSep other hOther
+        simp only [regionsDisjoint, FreeNode.region] at this ⊢
+        omega
+      · exact hTail.frame_write64_disjoint hW48 hW32 (by decide) (by decide) hSep
+    · intro x hx y hy
+      have hNode := hCross x hx node List.mem_cons_self
+      rcases List.mem_cons.mp hy with rfl | hy
+      · simp only [regionsDisjoint, FreeNode.region] at hNode ⊢
+        omega
+      · exact hCross x hx y (List.mem_cons_of_mem _ hy)
+    · intro x hx offset hOffset
+      obtain ⟨hX48, hX32, _⟩ := h.mem_bounds (List.mem_append_left _ hx)
+      have hApart := hCross x hx node List.mem_cons_self
+      rcases hOffset with rfl | rfl | rfl <;>
+        exact node.read64_write64_disjoint mem x 32 _ _ hW48 hW32 hX48 hX32 (by decide)
+          (by decide) (by decide) (by decide) (regionsDisjoint_symm hApart)
+
+#print axioms FreeListAt.replace_suffix
+#print axioms FreeListAt.shrink
+
 end Project.Runtime

@@ -33,6 +33,36 @@ session() {
   fi
 }
 
+# growth N B: appends a block of B words to a cache N times with appendBlock,
+# releasing each old cache, and checks that memory stays below eight times the
+# final cache plus 1 MiB and that every allocation was freed.  An allocator that
+# cannot reuse the freed caches needs their sum, N (N + 1) / 2 blocks.
+growth() {
+  local n=$1 b=$2 script="" i old new
+  script+="alloc 1 $((8 * (b + 1)))"$'\n'"write-u64 1 0 $b"$'\n'
+  script+="alloc 2 8"$'\n'"write-u64 2 0 0"$'\n'
+  for ((i = 0; i < n; i++)); do
+    old=$((2 + i % 2))
+    new=$((3 - i % 2))
+    script+="arg-ptr $old"$'\n'"arg-ptr 1"$'\n'"call appendBlock 1"$'\n'"keep $new result:0"$'\n'
+    script+="arg-ptr $old"$'\n'"call release 0"$'\n'
+  done
+  script+="memory-size"$'\n'"arg-ptr $((2 + n % 2))"$'\n'"call release 0"$'\n'
+  script+="arg-ptr 1"$'\n'"call release 0"$'\n'"stats"$'\n'
+  local out size stats cache=$((8 * (n * b + 1)))
+  out=$(printf '%s' "$script" | "$host" session "$wasm")
+  size=$(grep '^memory-size' <<<"$out" | cut -d' ' -f2)
+  stats=$(tail -1 <<<"$out")
+  read -r _ allocs retains releases frees <<<"$stats"
+  if [ "$size" -le $((8 * cache + 1048576)) ] && [ "$allocs" = "$releases" ] &&
+    [ "$allocs" = "$frees" ] && [ "$retains" = 0 ]; then
+    echo "growth: $n appends of $b words, memory $size bytes, final cache $cache bytes, $frees frees"
+  else
+    echo "fail: growth: memory $size bytes, final cache $cache bytes, $stats"
+    failed=$((failed + 1))
+  fi
+}
+
 eps=f64:4532020583610935537  # 1e-5
 # t = 2 rows, nh = 2 heads of width dh = 1, so d = 2; f = 3; vocab = 3.
 session matVec2 "4 4 2" "u64:2 u64:2"
@@ -49,4 +79,5 @@ session forward "2 6 4 $stacked 2 2" "u64:2 u64:2 u64:2 u64:1 u64:3 u64:3 $eps"
 # A step from an empty cache, and the scores of a cache of one block of (2 · 2 + 1) · 2.
 session step "0 6 4 $stacked" "u64:1 u64:2 u64:2 u64:1 u64:3 $eps"
 session scores "10 6 2 2" "u64:2 u64:2 u64:1 u64:3 $eps"
+growth 256 1000
 [ "$failed" -eq 0 ]

@@ -14,13 +14,13 @@ def allocatedTop (base need : UInt64) (nodes : List FreeNode) : UInt64 :=
 /-- The free list after allocating `need` payload bytes. -/
 def allocatedNodes (need : UInt64) (nodes : List FreeNode) : List FreeNode :=
   match takeFirstFitFrom 0 need nodes with
-  | some choice => choice.remaining
+  | some choice => if splitsFit need choice then shrinkFirstFit need nodes else choice.remaining
   | none => nodes
 
 /-- The payload capacity of the block that allocation returns. -/
 def allocatedCapacity (need : UInt64) (nodes : List FreeNode) : UInt64 :=
   match takeFirstFitFrom 0 need nodes with
-  | some choice => choice.node.capacity
+  | some choice => if splitsFit need choice then need else choice.node.capacity
   | none => need
 
 /-- The allocator state after `FixedArrayAllocate.program` allocates `need`
@@ -94,6 +94,13 @@ theorem fitStore_pages (store : Store Unit) (choice : FreeChoice) (stride : UInt
   unfold unlinkFreeChoice
   split <;> rfl
 
+theorem reuseStore_pages (store : Store Unit) (choice : FreeChoice) (need stride : UInt64) :
+    (fixedArrayReuseStore store choice need stride).mem.pages = store.mem.pages := by
+  unfold fixedArrayReuseStore
+  split
+  · simp [fixedArraySplitMem, fixedArrayHeaderMem, Wasm.Mem.write64_pages]
+  · exact fitStore_pages store choice stride
+
 theorem bumpStore_pages (store : Store Unit) (base need stride : UInt64) :
     (FixedArrayBump.allocated store base need stride).mem.pages =
       max store.mem.pages (FixedArrayBump.requiredPages base need) := by
@@ -115,7 +122,7 @@ theorem allocated_pages_ge (store : Store Unit) (base need stride : UInt64)
     store.mem.pages ≤ (FixedArrayAllocate.allocated store base need stride nodes).mem.pages := by
   unfold FixedArrayAllocate.allocated
   split
-  · rw [fitStore_pages]
+  · rw [reuseStore_pages]
   · rw [bumpStore_pages]
     exact Nat.le_max_left ..
 
@@ -126,7 +133,7 @@ theorem allocated_pages_le (store : Store Unit) (base need stride : UInt64)
     (FixedArrayAllocate.allocated store base need stride nodes).mem.pages ≤ pageLimit := by
   unfold FixedArrayAllocate.allocated
   split
-  · rwa [fitStore_pages]
+  · rwa [reuseStore_pages]
   · rw [bumpStore_pages]
     apply max_le hPages
     have hFit := hBump ‹_›
@@ -149,18 +156,68 @@ theorem allocatedTop_toNat (base need : UInt64) (nodes : List FreeNode)
       18446744073709551616 = base.toNat + 48 + need.toNat
     omega
 
-theorem allocatedNodes_mem (need : UInt64) (nodes : List FreeNode) (node : FreeNode)
-    (hNode : node ∈ allocatedNodes need nodes) : node ∈ nodes := by
+/-- Every block on the free list after an allocation starts where a block before
+it started and is no larger. -/
+theorem allocatedNodes_sub {mem : Mem} {need : UInt64} {nodes : List FreeNode}
+    (hList : FreeListAt mem nodes) (node : FreeNode) (hNode : node ∈ allocatedNodes need nodes) :
+    ∃ old ∈ nodes, node.root = old.root ∧ node.capacity.toNat ≤ old.capacity.toNat := by
   unfold allocatedNodes at hNode
   split at hNode
-  · exact takeFirstFitFrom_some_remaining_mem ‹_› hNode
-  · exact hNode
+  · rename_i choice hTake
+    split at hNode
+    · rename_i hSplit
+      obtain ⟨hFits, hLow, -⟩ := split_facts hList hTake hSplit
+      obtain ⟨skipped, tail, hNodes, hShrink⟩ := shrinkFirstFit_decompose hTake
+      rw [hShrink] at hNode
+      rcases List.mem_append.mp hNode with hSkipped | hRest
+      · exact ⟨node, by rw [hNodes]; exact List.mem_append_left _ hSkipped, rfl, Nat.le_refl _⟩
+      · rcases List.mem_cons.mp hRest with rfl | hTail
+        · exact ⟨choice.node, takeFirstFitFrom_some_mem hTake, rfl, by simp only; omega⟩
+        · exact ⟨node, by rw [hNodes]; exact List.mem_append_right _ (List.mem_cons_of_mem _ hTail),
+            rfl, Nat.le_refl _⟩
+    · exact ⟨node, takeFirstFitFrom_some_remaining_mem hTake hNode, rfl, Nat.le_refl _⟩
+  · exact ⟨node, hNode, rfl, Nat.le_refl _⟩
+
+/-- A region apart from every free block stays apart from every free block after
+an allocation. -/
+theorem allocatedNodes_apart {mem : Mem} {need : UInt64} {nodes : List FreeNode}
+    (hList : FreeListAt mem nodes) {region : Nat × Nat}
+    (h : ∀ node ∈ nodes, regionsDisjoint region node.region) :
+    ∀ node ∈ allocatedNodes need nodes, regionsDisjoint region node.region := by
+  intro node hNode
+  obtain ⟨old, hOld, hRoot, hCapacity⟩ := allocatedNodes_sub hList node hNode
+  have hApart := h old hOld
+  have h48 := (hList.mem_bounds hOld).1
+  simp only [regionsDisjoint, FreeNode.region] at hApart ⊢
+  rw [hRoot]
+  omega
+
+/-- A reused block's object lies inside the free block it came from and ends where
+that block ends. -/
+theorem allocated_within {mem : Mem} {base need : UInt64} {nodes : List FreeNode}
+    {choice : FreeChoice} (hList : FreeListAt mem nodes)
+    (hTake : takeFirstFitFrom 0 need nodes = some choice) :
+    choice.node.root.toNat ≤ (FixedArrayAllocate.root base need nodes).toNat ∧
+      (FixedArrayAllocate.root base need nodes).toNat + (allocatedCapacity need nodes).toNat =
+        choice.node.root.toNat + choice.node.capacity.toNat := by
+  simp only [FixedArrayAllocate.root, allocatedCapacity, reuseRoot, hTake]
+  split
+  · rename_i hSplit
+    obtain ⟨hFits, _, _, hRoot, _, h32, _⟩ := split_facts hList hTake hSplit
+    rw [← hRoot, UInt64.toNat_add]
+    have := (split_facts hList hTake hSplit).2.2.1
+    simp only [UInt64.reduceToNat]
+    omega
+  · exact ⟨Nat.le_refl _, rfl⟩
 
 theorem allocated_capacity (need : UInt64) (nodes : List FreeNode) :
     need.toNat ≤ (allocatedCapacity need nodes).toNat := by
   unfold allocatedCapacity
   split
-  · exact UInt64.le_iff_toNat_le.mp (takeFirstFitFrom_some_capacity ‹_›)
+  · rename_i choice hTake
+    split
+    · exact Nat.le_refl _
+    · exact UInt64.le_iff_toNat_le.mp (takeFirstFitFrom_some_capacity hTake)
   · exact Nat.le_refl _
 
 theorem allocated_fresh (store : Store Unit) (base need stride : UInt64) (nodes : List FreeNode)
@@ -171,8 +228,13 @@ theorem allocated_fresh (store : Store Unit) (base need stride : UInt64) (nodes 
       (FixedArrayAllocate.root base need nodes) (allocatedCapacity need nodes) stride := by
   cases hTake : takeFirstFitFrom 0 need nodes with
   | some choice =>
-    simpa only [FixedArrayAllocate.allocated, FixedArrayAllocate.root, allocatedCapacity, hTake]
-      using freshFixedArrayAt_fixedArrayAllocFitStore stride hList hTake
+    by_cases hSplit : splitsFit need choice = true
+    · simpa only [FixedArrayAllocate.allocated, FixedArrayAllocate.root, allocatedCapacity, hTake,
+        fixedArrayReuseStore, reuseRoot, hSplit, ite_true]
+        using freshFixedArrayAt_fixedArraySplitMem stride hList hTake hSplit
+    · simpa only [FixedArrayAllocate.allocated, FixedArrayAllocate.root, allocatedCapacity, hTake,
+        fixedArrayReuseStore, reuseRoot, hSplit, Bool.false_eq_true, ite_false]
+        using freshFixedArrayAt_fixedArrayAllocFitStore stride hList hTake
   | none =>
     simp only [FixedArrayAllocate.allocated, FixedArrayAllocate.root, allocatedCapacity, hTake]
     exact FixedArrayHeader.fresh (MemoryGrowth.ensured store (FixedArrayBump.requiredPages base need))
@@ -187,8 +249,12 @@ theorem allocated_freeList (store : Store Unit) (base need stride : UInt64)
       (allocatedNodes need nodes) := by
   cases hTake : takeFirstFitFrom 0 need nodes with
   | some choice =>
-    simpa only [FixedArrayAllocate.allocated, allocatedNodes, hTake, fixedArrayAllocFitStore]
-      using freeListAt_fixedArrayAllocFitMem stride hList hTake
+    by_cases hSplit : splitsFit need choice = true
+    · simpa only [FixedArrayAllocate.allocated, allocatedNodes, hTake, fixedArrayReuseStore,
+        hSplit, ite_true] using freeListAt_fixedArraySplitMem stride hList hTake hSplit
+    · simpa only [FixedArrayAllocate.allocated, allocatedNodes, hTake, fixedArrayReuseStore,
+        hSplit, Bool.false_eq_true, ite_false, fixedArrayAllocFitStore]
+        using freeListAt_fixedArrayAllocFitMem stride hList hTake
   | none =>
     simp only [FixedArrayAllocate.allocated, allocatedNodes, hTake]
     apply FreeListMemory.frame_headers hList
@@ -211,7 +277,14 @@ theorem allocated_bytes_outside (store : Store Unit) (base need stride : UInt64)
       store.mem.bytes address := by
   cases hTake : takeFirstFitFrom 0 need nodes with
   | some choice =>
-    simp only [FixedArrayAllocate.allocated, hTake]
+    simp only [FixedArrayAllocate.allocated, hTake, fixedArrayReuseStore]
+    split
+    · rename_i hSplit
+      apply split_bytes stride hList hTake hSplit
+      have hDisjoint := hSep choice.node (takeFirstFitFrom_some_mem hTake)
+      have hNode48 := (hList.mem_bounds (takeFirstFitFrom_some_mem hTake)).1
+      simp only [regionsDisjoint, FreeNode.region] at hDisjoint
+      omega
     apply FreeListMemory.fit_bytes stride start (start + size) address hList hTake ?_ hLow hHigh
     intro node hNode
     have hDisjoint := hSep node hNode
@@ -228,8 +301,14 @@ theorem Heap.allocateStore_globals {heap : Heap} {store : Store Unit} (h : heap.
   cases hTake : takeFirstFitFrom 0 need heap.free with
   | some choice =>
     have hHead := FreeListMemory.remaining_head h.freeList hTake
+    by_cases hSplit : splitsFit need choice = true
+    · simp only [Heap.allocateStore, Heap.allocate, FixedArrayAllocateNone.counted,
+        FixedArrayAllocate.allocated, allocatedTop, allocatedNodes, hTake, fixedArrayReuseStore,
+        hSplit, ite_true]
+      simp [Heap.globals, h.globals, freeHead_shrinkFirstFit]
     simp only [Heap.allocateStore, Heap.allocate, FixedArrayAllocateNone.counted,
-      FixedArrayAllocate.allocated, allocatedTop, allocatedNodes, hTake, fixedArrayAllocFitStore]
+      FixedArrayAllocate.allocated, allocatedTop, allocatedNodes, hTake, fixedArrayReuseStore,
+      hSplit, Bool.false_eq_true, ite_false, fixedArrayAllocFitStore]
     split <;> simp_all [Heap.globals, h.globals]
   | none =>
     have hGlobals : (MemoryGrowth.ensured store
@@ -254,23 +333,46 @@ theorem Heap.At.allocate_block {heap : Heap} {store : Store Unit} {m : Module} {
   | some choice =>
     have hMem := takeFirstFitFrom_some_mem hTake
     obtain ⟨_, h32, hMemory⟩ := h.freeList.mem_bounds hMem
-    have hRoot : FixedArrayAllocate.root heap.top need heap.free = choice.node.root := by
-      simp only [FixedArrayAllocate.root, hTake]
-    have hCapacity : allocatedCapacity need heap.free = choice.node.capacity := by
-      simp only [allocatedCapacity, hTake]
     have hPages : (heap.allocateStore store need stride).mem.pages = store.mem.pages := by
       simp only [Heap.allocateStore, FixedArrayAllocateNone.counted,
-        FixedArrayAllocate.allocated, hTake, fitStore_pages]
+        FixedArrayAllocate.allocated, hTake, reuseStore_pages]
     have hTop : (heap.allocate need).top = heap.top := by
       simp only [Heap.allocate, allocatedTop, hTake]
-    have hFree : (heap.allocate need).free = choice.remaining := by
-      simp only [Heap.allocate, allocatedNodes, hTake]
-    rw [hRoot, hCapacity] at hFresh ⊢
-    refine ⟨hFresh, h.above _ hMem, h32, by rw [hPages]; exact hMemory,
-      by rw [hTop]; exact h.below _ hMem, ?_⟩
-    rw [hFree]
+    obtain ⟨hWithinLow, hWithinEnd⟩ := allocated_within (base := heap.top) h.freeList hTake
+    have hAbove := h.above _ hMem
+    have hBelowNode := h.below _ hMem
+    refine ⟨hFresh, by omega, by omega, by rw [hPages]; omega, by rw [hTop]; omega, ?_⟩
     intro node hNode
-    exact Or.symm (h.freeList.takeFirstFitFrom_node_disjoint hTake node hNode)
+    by_cases hSplit : splitsFit need choice = true
+    · have hFree : (heap.allocate need).free = shrinkFirstFit need heap.free := by
+        simp only [Heap.allocate, allocatedNodes, hTake, hSplit, ite_true]
+      have hCapacity : allocatedCapacity need heap.free = need := by
+        simp only [allocatedCapacity, hTake, hSplit, ite_true]
+      obtain ⟨hFits, hLow, hBase, _, _, _, _⟩ := split_facts h.freeList hTake hSplit
+      obtain ⟨skipped, tail, hNodes, hShrink⟩ := shrinkFirstFit_decompose hTake
+      rw [hFree, hShrink] at hNode
+      rw [hCapacity] at hWithinEnd ⊢
+      have hList := h.freeList
+      rw [hNodes] at hList
+      have hPair := hList.pairwise
+      rw [List.pairwise_append] at hPair
+      obtain ⟨_, hTailPair, hCross⟩ := hPair
+      rcases List.mem_append.mp hNode with hSkipped | hRest
+      · have := hCross node hSkipped choice.node List.mem_cons_self
+        simp only [regionsDisjoint, FreeNode.region] at this ⊢
+        omega
+      · rcases List.mem_cons.mp hRest with rfl | hTail
+        · simp only [regionsDisjoint, FreeNode.region]
+          omega
+        · have := List.rel_of_pairwise_cons hTailPair hTail
+          simp only [regionsDisjoint, FreeNode.region] at this ⊢
+          omega
+    · have hFree : (heap.allocate need).free = choice.remaining := by
+        simp only [Heap.allocate, allocatedNodes, hTake, hSplit, Bool.false_eq_true, ite_false]
+      rw [hFree] at hNode
+      have := h.freeList.takeFirstFitFrom_node_disjoint hTake node hNode
+      simp only [regionsDisjoint, FreeNode.region] at this ⊢
+      omega
   | none =>
     have hRoot : FixedArrayAllocate.root heap.top need heap.free = heap.top + 48 := by
       simp only [FixedArrayAllocate.root, hTake]
@@ -316,8 +418,15 @@ theorem Heap.At.allocate {heap : Heap} {store : Store Unit} {m : Module} {need :
     h.base.trans hGrowth, ?_,
     allocated_pages_le store heap.top need stride heap.free 65536 h.pages
       (fun _ => by show heap.top.toNat + 48 + need.toNat ≤ 65536 * 65536; omega),
-    fun node hNode => h.above node (allocatedNodes_mem need heap.free node hNode),
-    fun node hNode => (h.below node (allocatedNodes_mem need heap.free node hNode)).trans hGrowth⟩
+    fun node hNode => ?_, fun node hNode => ?_⟩
+  rotate_left
+  · obtain ⟨old, hOld, hRoot, _⟩ := allocatedNodes_sub h.freeList node hNode
+    rw [hRoot]
+    exact h.above old hOld
+  · obtain ⟨old, hOld, hRoot, hCapacity⟩ := allocatedNodes_sub h.freeList node hNode
+    have := h.below old hOld
+    rw [hRoot]
+    omega
   show (allocatedTop heap.top need heap.free).toNat ≤ _
   rw [hTop]
   split
@@ -353,7 +462,7 @@ theorem Heap.Borrowed.allocate {heap : Heap} {store : Store Unit} {m : Module}
   refine ⟨arrayAt_frame h.values (allocated_pages_ge store heap.top need stride heap.free)
     (allocated_bytes_outside store heap.top need stride heap.free ptr.toNat
       (8 * (words.size + 1)) hHeap.freeList h.separate h.below hBump), ?_,
-    fun node hNode => h.separate node (allocatedNodes_mem need heap.free node hNode)⟩
+    allocatedNodes_apart hHeap.freeList h.separate⟩
   show ptr.toNat + 8 * (words.size + 1) ≤ (allocatedTop heap.top need heap.free).toNat
   have := h.below
   rw [allocatedTop_toNat heap.top need heap.free hBump]
@@ -368,8 +477,10 @@ theorem Heap.Borrowed.disjoint_allocated {heap : Heap} {store : Store Unit} {ptr
         48 + (allocatedCapacity need heap.free).toNat) := by
   cases hTake : takeFirstFitFrom 0 need heap.free with
   | some choice =>
-    simpa only [FixedArrayAllocate.root, allocatedCapacity, hTake, FreeNode.region] using
-      h.separate _ (takeFirstFitFrom_some_mem hTake)
+    have := h.separate _ (takeFirstFitFrom_some_mem hTake)
+    have hWithin := allocated_within (base := heap.top) hHeap.freeList hTake
+    simp only [regionsDisjoint, FreeNode.region] at this ⊢
+    omega
   | none =>
     have h48 : (48 : UInt64).toNat = 48 := rfl
     have := h.below
@@ -390,9 +501,13 @@ theorem Heap.allocate_top {heap : Heap} {store : Store Unit} {m : Module} {need 
 theorem Heap.allocateStore_memoryCaps (heap : Heap) (store : Store Unit) (need stride : UInt64) :
     (heap.allocateStore store need stride).memoryCaps = store.memoryCaps := by
   unfold Heap.allocateStore FixedArrayAllocateNone.counted FixedArrayAllocate.allocated
-  split <;> simp [fixedArrayAllocFitStore, FixedArrayBump.allocated, fixedArrayAllocBumpStore,
-    MemoryGrowth.ensured]
-  split <;> rfl
+  split
+  · simp only [fixedArrayReuseStore]
+    split
+    · rfl
+    · simp [fixedArrayAllocFitStore]
+  · simp [FixedArrayBump.allocated, fixedArrayAllocBumpStore, MemoryGrowth.ensured]
+    split <;> rfl
 
 /-- Room for `bytes` bytes leaves room for `rest` bytes after `top` advanced by at
 most `used`, with `used + rest ≤ bytes`, in any store with the same memory
@@ -520,7 +635,8 @@ theorem Heap.Owned.allocate {heap : Heap} {store : Store Unit} {m : Module}
     (fun address hLow hHigh => allocated_bytes_outside store heap.top need stride heap.free
       (ptr.toNat - 48) (48 + capacityAt store ptr) hHeap.freeList
       (fun node hNode => ?_) (by omega) hBump address hLow (by omega)) ?_
-    fun node hNode => h.separate node (allocatedNodes_mem need heap.free node hNode)
+    fun node hNode => regionsDisjoint_symm (allocatedNodes_apart hHeap.freeList
+      (fun n hn => regionsDisjoint_symm (h.separate n hn)) node hNode)
   · have := h.separate node hNode
     unfold regionsDisjoint at this ⊢
     omega
@@ -539,8 +655,8 @@ theorem Heap.Owned.disjoint_allocated {heap : Heap} {store : Store Unit} {ptr : 
   cases hTake : takeFirstFitFrom 0 need heap.free with
   | some choice =>
     have := h.separate _ (takeFirstFitFrom_some_mem hTake)
-    simp only [FixedArrayAllocate.root, allocatedCapacity, hTake, FreeNode.region,
-      regionsDisjoint] at this ⊢
+    have hWithin := allocated_within (base := heap.top) hHeap.freeList hTake
+    simp only [FreeNode.region, regionsDisjoint] at this ⊢
     omega
   | none =>
     have h48 : (48 : UInt64).toNat = 48 := rfl

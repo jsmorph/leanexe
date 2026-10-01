@@ -377,6 +377,35 @@ static uint64_t alloc_u64_array(Runtime *runtime, U64List values) {
   return ptr;
 }
 
+/* Writes the elements of the array at `ptr`, as little-endian words, to the file at `path`,
+   and returns the number of elements. */
+static uint64_t save_u64_array(Runtime *runtime, uint64_t ptr, const char *path) {
+  if (!runtime->has_memory) {
+    die("Array UInt64 result requires exported memory");
+  }
+  uint64_t len = read_u64_at(runtime, ptr);
+  size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+  if (len > (SIZE_MAX - 8) / 8 || ptr > memory_len ||
+      8 + (size_t)len * 8 > memory_len - (size_t)ptr) {
+    die("Array UInt64 result is outside memory");
+  }
+  uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
+  FILE *file = fopen(path, "wb");
+  if (file == NULL) {
+    perror(path);
+    exit(1);
+  }
+  if (len != 0 && fwrite(memory + ptr + 8, 8, (size_t)len, file) != (size_t)len) {
+    perror("fwrite");
+    exit(1);
+  }
+  if (fclose(file) != 0) {
+    perror("fclose");
+    exit(1);
+  }
+  return len;
+}
+
 /* An array whose elements are the little-endian words of the file at `path`. */
 static uint64_t alloc_u64_file(Runtime *runtime, const char *path) {
   size_t len = 0;
@@ -636,31 +665,7 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
   }
 
   if (strncmp(result_kind, "file-u64:", 9) == 0) {
-    /* The result array's elements, as little-endian words, in the file at the path. */
-    if (!runtime->has_memory) {
-      die("Array UInt64 result requires exported memory");
-    }
-    uint64_t ptr = (uint64_t)results[0].of.i64;
-    uint64_t len = read_u64_at(runtime, ptr);
-    size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
-    if (len > (SIZE_MAX - 8) / 8 || ptr > memory_len ||
-        8 + (size_t)len * 8 > memory_len - (size_t)ptr) {
-      die("Array UInt64 result is outside memory");
-    }
-    uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
-    FILE *file = fopen(result_kind + 9, "wb");
-    if (file == NULL) {
-      perror(result_kind + 9);
-      exit(1);
-    }
-    if (len != 0 && fwrite(memory + ptr + 8, 8, (size_t)len, file) != (size_t)len) {
-      perror("fwrite");
-      exit(1);
-    }
-    if (fclose(file) != 0) {
-      perror("fclose");
-      exit(1);
-    }
+    save_u64_array(runtime, (uint64_t)results[0].of.i64, result_kind + 9);
     return;
   }
 
@@ -1039,6 +1044,36 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
       uint8_t *bytes = read_file(path, &byte_len);
       ids[id] = alloc_bytes(runtime, bytes, byte_len);
       free(bytes);
+    } else if (strcmp(command, "file-u64") == 0) {
+      char *id_text = strtok(NULL, " ");
+      char *path = strtok(NULL, "");
+      if (id_text == NULL || path == NULL) {
+        die("file-u64 requires id and path");
+      }
+      uint64_t id = parse_u64(id_text);
+      if (id >= 4096) {
+        die("allocation id is too large");
+      }
+      ids[id] = alloc_u64_file(runtime, path);
+    } else if (strcmp(command, "keep") == 0) {
+      char *id_text = strtok(NULL, " ");
+      char *value_text = strtok(NULL, " ");
+      if (id_text == NULL || value_text == NULL) {
+        die("keep requires id and value");
+      }
+      uint64_t id = parse_u64(id_text);
+      if (id >= 4096) {
+        die("allocation id is too large");
+      }
+      ids[id] = resolve_script_value(value_text, results, nresults, vars);
+    } else if (strcmp(command, "save-u64") == 0) {
+      char *value_text = strtok(NULL, " ");
+      char *path = strtok(NULL, "");
+      if (value_text == NULL || path == NULL) {
+        die("save-u64 requires a pointer and a path");
+      }
+      uint64_t ptr = resolve_script_value(value_text, results, nresults, vars);
+      printf("saved %" PRIu64 "\n", save_u64_array(runtime, ptr, path));
     } else if (strcmp(command, "bytes") == 0) {
       char *id_text = strtok(NULL, " ");
       char *hex = strtok(NULL, " ");
