@@ -1,4 +1,5 @@
 import Project.Gpt.Composites
+import Project.Gpt.SampleVerify
 import Project.Encoding.RoundTrip
 
 namespace Project.Gpt
@@ -33,7 +34,14 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
       Implements m 38 writeBlockTuple writeBlockNeed ∧
       Implements m 39 appendBlockTuple appendBlockNeed ∧
       Implements m 40 lastHiddenTuple lastHiddenNeed ∧ Implements m 41 layerStepTuple layerStepNeed ∧
-      Implements m 42 stepTuple stepNeed ∧ Implements m 43 scoresTuple scoresNeed := by
+      Implements m 42 stepTuple stepNeed ∧ Implements m 43 scoresTuple scoresNeed ∧
+      Implements m 44 LeanExe.Examples.Prng.splitMix (fun _ => 0) ∧
+      Implements m 45 LeanExe.Examples.Prng.unitFloat (fun _ => 0) ∧
+      Implements m 46 LeanExe.Examples.Gpt.negInfs negInfsNeed ∧
+      Implements m 47 insertTopTuple insertTopNeed ∧
+      Implements m 48 topKBufferTuple topKBufferNeed ∧
+      Implements m 49 sampleFromTuple (fun _ => 0) ∧
+      Implements m 50 sampleTopKTuple sampleTopKNeed := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip gpt.module (by decide +kernel) (by decide +kernel)
   exact ⟨bytes, success, gpt.module, decoded, dot_implements, matVec_implements,
@@ -46,6 +54,8 @@ theorem gpt_bytes : ∃ bytes, Encoding.encode gpt.module = .ok bytes ∧
     matMulT_implements, forward_implements, linear_implements, embedBlock_implements,
     firstRow_implements, stepScores_implements, headMax_implements, headSumExp_implements,
     stepSoftmax_implements, stepMix_implements, writeBlock_implements, appendBlock_implements,
-    lastHidden_implements, layerStep_implements, step_implements, scores_implements⟩
+    lastHidden_implements, layerStep_implements, step_implements, scores_implements,
+    splitMix_gpt.implements, unitFloat_gpt.implements, negInfs_implements, insertTop_implements,
+    topKBuffer_implements, sampleFrom_implements, sampleTopK_implements⟩
 
 end Project.Gpt

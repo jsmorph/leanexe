@@ -7,7 +7,8 @@ The invariant of a function body that combines calls and releases temporary
 arrays.  `Live` records the allocator invariant, the bounds on `top` and memory,
 the arrays of the caller kept, and the live temporaries: each owned, apart from
 the caller's arrays, and apart from each other.  `Live.call` adds the fresh result
-of a call, `Live.releaseSecond` releases the temporary below the head of the list,
+of a call, `Live.callScalar_seq` runs a call that returns scalars, `Live.releaseFirst`
+and `Live.releaseSecond` release the head of the list and the temporary below it,
 and `Live.finish` gives the postcondition of `Func.implements_heap`.
 -/
 
@@ -262,6 +263,87 @@ theorem Live.releaseSecond_last {heap0 heap : Heap} {initial store : Store Unit}
     Triple m (.release src) scratch (fun s st => s = store ∧ st = before) Q :=
   (hLive.releaseSecond hImports hFunc hPtr).mono (fun _ _ h => h) fun s _ ⟨hL, hst⟩ =>
     hst ▸ hNext s hL
+
+/-- A call to entry `idx`, which implements `g` with a scalar result, followed by `next`:
+the result goes to the locals `results`, and the temporaries stay live. -/
+theorem Live.callScalar_seq [Represent α] [Scalar β] {idx : Nat} {g : α → β} {gNeed : α → Nat}
+    (hImpl : Implements m idx g gNeed) {f : Wasm.Function}
+    (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
+    {scratch : Nat} {args : List ((type : ScalarType) × Expr type)} {results : List Nat}
+    (hParams : args.length = f.numParams) {heap0 heap : Heap} {initial store : Store Unit}
+    {used total : Nat} {temps : List (UInt64 × Array UInt64)}
+    (hLive : Live heap0 initial used heap store temps) (hTotal : heap0.Room initial m total)
+    {x : α} (hNeed : used + gNeed x ≤ total) {before afterArgs after : State} {vals : List Value}
+    (hArgs : Expr.evalResults store.mem scratch args before = some (vals, afterArgs))
+    (hBorrowed : Represent.borrowed heap store vals x)
+    (hSet : afterArgs.setAll results.reverse (Scalar.values (g x)).reverse = some after)
+    {next : Stmt} {Q : Store Unit → State → Prop}
+    (hNext : ∀ heap' s, Live heap0 initial (used + gNeed x) heap' s temps →
+      Triple m next scratch (fun s' st => s' = s ∧ st = after) Q) :
+    Triple m (.seq (.call idx args results) next) scratch (fun s st => s = store ∧ st = before) Q := by
+  have hTop := hLive.top
+  have hPages := hLive.pages
+  refine Stmt.seq_spec (Stmt.callImplements_spec hImpl hImport hFunc hParams hArgs hLive.at_
+    hBorrowed (hTotal.after (used := used) hTop (by omega) hLive.caps)
+    fun _ _ values h => ⟨after, (show values = Scalar.values (g x) from h) ▸ hSet⟩)
+    (Triple.of_forall fun s st h => ?_)
+  obtain ⟨heap', values, hAt', hOwned', -, hTop', hPages', hCaps', hKeepB, hKeepO, -, -, hSet'⟩ := h
+  rw [show values = Scalar.values (g x) from hOwned', hSet, Option.some.injEq] at hSet'
+  subst hSet'
+  have hKeepT : ∀ t ∈ temps, heap'.Owned s t.1 t.2 ∧ block s t.1 = block store t.1 := fun t ht =>
+    ⟨(hKeepO t.1 t.2 (hLive.tempsOwned t ht)).1, block_eq (hKeepO t.1 t.2 (hLive.tempsOwned t ht)).2⟩
+  refine hNext heap' s ⟨hAt', by omega, by omega, hCaps'.trans hLive.caps,
+    fun p ws h => hKeepB p ws (hLive.borrowed p ws h),
+    fun p ws h => ⟨(hKeepO p ws (hLive.owned p ws h).1).1,
+      (hKeepO p ws (hLive.owned p ws h).1).2.trans (hLive.owned p ws h).2⟩,
+    fun t ht => (hKeepT t ht).1, fun t ht p ws h => ?_, fun t ht p ws h => ?_, ?_⟩
+  · rw [(hKeepT t ht).2]; exact hLive.apartB t ht p ws h
+  · rw [(hKeepT t ht).2]; exact hLive.apartO t ht p ws h
+  · refine List.Pairwise.imp_of_mem (fun {t u} ht hu h => ?_) hLive.pairwise
+    rw [(hKeepT t ht).2, (hKeepT u hu).2]
+    exact h
+
+/-- Releasing the newest temporary keeps the rest live. -/
+theorem Live.releaseFirst {heap0 heap : Heap} {initial store : Store Unit} {used : Nat}
+    {t : UInt64 × Array UInt64} {rest : List (UInt64 × Array UInt64)}
+    (hLive : Live heap0 initial used heap store (t :: rest)) {typeIdx scratch src : Nat}
+    {before : State} (hImports : m.imports = [])
+    (hFunc : m.funcs[2]? = some (releaseFunction typeIdx))
+    (hPtr : before.get src = some (.i64 t.1)) :
+    Triple m (.release src) scratch (fun s st => s = store ∧ st = before)
+      (fun s st => Live heap0 initial used (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
+        s rest ∧ st = before) := by
+  have hT : heap.Owned store t.1 t.2 := hLive.tempsOwned t (by simp)
+  have hPair := hLive.pairwise
+  simp only [List.pairwise_cons] at hPair
+  obtain ⟨hTRest, hRest⟩ := hPair
+  refine (Stmt.release_spec hImports hFunc hPtr hLive.at_ hT).mono (fun _ _ h => h) ?_
+  rintro s st ⟨rfl, rfl⟩
+  have hKeep : ∀ u ∈ rest,
+      (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32)).Owned
+        (heap.releaseStore store t.1) u.1 u.2 ∧
+      block (heap.releaseStore store t.1) u.1 = block store u.1 := fun u hu => by
+    obtain ⟨hOwned, hCapacity⟩ := (hLive.tempsOwned u (List.mem_cons_of_mem _ hu)).release
+      hLive.at_ hT (regionsDisjoint_symm (hTRest u hu))
+    exact ⟨hOwned, block_eq hCapacity⟩
+  refine ⟨⟨hLive.at_.release hT, hLive.top, by rw [Heap.releaseStore_pages]; exact hLive.pages,
+    hLive.caps, fun p ws h => (hLive.borrowed p ws h).release hLive.at_ hT (hLive.apartB t (by simp) p ws h),
+    fun p ws h => ?_, fun u hu => (hKeep u hu).1, fun u hu p ws h => ?_, fun u hu p ws h => ?_,
+    ?_⟩, rfl⟩
+  · obtain ⟨hOwned, hCapacity⟩ := hLive.owned p ws h
+    have hApart : regionsDisjoint (p.toNat - 48, 48 + capacityAt store p)
+        (t.1.toNat - 48, 48 + capacityAt store t.1) := by
+      have hDisjoint := hLive.apartO t (by simp) p ws h
+      simp only [block] at hDisjoint
+      rw [hCapacity]
+      exact hDisjoint
+    obtain ⟨hOwned', hCapacity'⟩ := hOwned.release hLive.at_ hT hApart
+    exact ⟨hOwned', hCapacity'.trans hCapacity⟩
+  · rw [(hKeep u hu).2]; exact hLive.apartB u (List.mem_cons_of_mem _ hu) p ws h
+  · rw [(hKeep u hu).2]; exact hLive.apartO u (List.mem_cons_of_mem _ hu) p ws h
+  · refine List.Pairwise.imp_of_mem (fun {a b} ha hb h => ?_) hRest
+    rw [(hKeep a ha).2, (hKeep b hb).2]
+    exact h
 
 theorem Expr.evalResults_nil {mem : Mem} {scratch : Nat} {state : State} :
     Expr.evalResults mem scratch [] state = some ([], state) := rfl
