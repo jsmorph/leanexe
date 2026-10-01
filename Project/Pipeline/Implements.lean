@@ -1,5 +1,6 @@
 import Project.TalosPrelude
 import Project.Pipeline.Runtime
+import Project.Pipeline.Aborts
 
 namespace Project.Pipeline
 
@@ -61,8 +62,8 @@ instance : Represent (Array Float) where
 
 /-- Entry `entry` of `m` computes `f` exactly.  From any store that satisfies the
 allocator invariant, with arguments `params` (in declaration order) representing
-`x` and room for `need x` bytes, the call terminates and returns values that, in
-declaration order, represent `f x` and that the caller owns.  Talos lists
+`x` and room for `need x` bytes, the call aborts at `unreachable` or returns values
+that, in declaration order, represent `f x` and that the caller owns.  Talos lists
 arguments and results with the top of the stack first, hence the reversals.  The
 arguments still represent `x`, every array borrowed or owned before the call is
 still borrowed or owned with the same contents (an owned one with the same
@@ -74,7 +75,7 @@ def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α 
     (need : α → Nat) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
     heap.At store → Represent.borrowed heap store params x → heap.Room store m (need x) →
-    TerminatesWith env m entry store params.reverse fun final values =>
+    ReturnsOrAborts env m entry store params.reverse fun final values =>
       ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final values.reverse (f x) ∧
         Represent.borrowed heap' final params x ∧ heap'.top.toNat ≤ heap.top.toNat + need x ∧
         final.mem.pages ≤ max store.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
@@ -88,22 +89,22 @@ def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α 
           Represent.outside final values.reverse (f x) (p.toNat - 48, 48 + capacityAt store p))
 
 /-- For every input satisfying `P`, under the premises of `Implements`, the call
-returns an owned result `y` with `Q x y`. -/
+aborts at `unreachable` or returns an owned result `y` with `Q x y`. -/
 def Satisfies [Represent α] [Represent β] (m : Module) (entry : Nat) (need : α → Nat)
     (P : α → Prop) (Q : α → β → Prop) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
     P x → heap.At store → Represent.borrowed heap store params x → heap.Room store m (need x) →
-    TerminatesWith env m entry store params.reverse fun final values =>
+    ReturnsOrAborts env m entry store params.reverse fun final values =>
       ∃ (heap' : Heap) (y : β), heap'.At final ∧ Represent.owned heap' final values.reverse y ∧
         Q x y
 
 /-- Entry `entry` of `m` computes `f` on scalars and keeps the store: from any
-store, with arguments representing `x`, the call terminates, leaves the store
-unchanged, and returns the values of `f x`.  A call to such an entry may run where
+store, with arguments representing `x`, the call aborts at `unreachable` or leaves the
+store unchanged and returns the values of `f x`.  A call to such an entry may run where
 the store must not change, as in a loop body. -/
 def ImplementsPure [Scalar α] [Scalar β] (m : Module) (entry : Nat) (f : α → β) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (x : α),
-    TerminatesWith env m entry store (Scalar.values x).reverse fun final values =>
+    ReturnsOrAborts env m entry store (Scalar.values x).reverse fun final values =>
       final = store ∧ values.reverse = Scalar.values (f x)
 
 /-- An entry that keeps the store implements its function without allocating. -/
@@ -113,9 +114,10 @@ theorem ImplementsPure.implements [Scalar α] [Scalar β] {m : Module} {entry : 
   rw [Scalar.borrowed.mp hArgs]
   obtain ⟨N, hN⟩ := h env store x
   refine ⟨N, fun fuel hFuel => ?_⟩
-  obtain ⟨values, final, hRun, rfl, hValues⟩ := hN fuel hFuel
-  exact ⟨values, final, hRun, heap, hHeap, hValues, rfl, by omega, le_max_left _ _, rfl,
-    fun _ _ h => h, fun _ _ h => ⟨h, rfl⟩, fun _ _ _ => trivial, fun _ _ _ => trivial⟩
+  rcases hN fuel hFuel with ⟨values, final, hRun, rfl, hValues⟩ | hAbort
+  · exact .inl ⟨values, final, hRun, heap, hHeap, hValues, rfl, by omega, le_max_left _ _, rfl,
+      fun _ _ h => h, fun _ _ h => ⟨h, rfl⟩, fun _ _ _ => trivial, fun _ _ _ => trivial⟩
+  · exact .inr hAbort
 
 theorem Implements.transfer [Represent α] [Represent β] {m : Module} {entry : Nat}
     {f : α → β} {need : α → Nat} {P : α → Prop} {Q : α → β → Prop}
@@ -124,7 +126,8 @@ theorem Implements.transfer [Represent α] [Represent β] {m : Module} {entry : 
   intro env store heap params x hP hHeap hArgs hRoom
   obtain ⟨N, hN⟩ := h env store heap params x hHeap hArgs hRoom
   refine ⟨N, fun fuel hFuel => ?_⟩
-  obtain ⟨values, final, hRun, heap', hAt, hOwned, -⟩ := hN fuel hFuel
-  exact ⟨values, final, hRun, heap', f x, hAt, hOwned, hf x hP⟩
+  rcases hN fuel hFuel with ⟨values, final, hRun, heap', hAt, hOwned, -⟩ | hAbort
+  · exact .inl ⟨values, final, hRun, heap', f x, hAt, hOwned, hf x hP⟩
+  · exact .inr hAbort
 
 end Project.Pipeline

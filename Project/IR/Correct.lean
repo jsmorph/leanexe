@@ -43,7 +43,7 @@ theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func �
     rw [List.take_of_length_le (by simp [hLength])]
     simp
   have hNoImports : (compile funcs).imports = [] := rfl
-  apply TerminatesWith.of_wp_entry_for (f := func.function (2 + i))
+  apply ReturnsOrAborts.of_wp_entry_for (f := func.function (2 + i))
     (by rw [hNoImports, List.length_nil, Nat.sub_zero]; exact compile_funcs hFunc)
   have hLocals :
       (func.function (2 + i)).toLocals (params.reverse.take (func.function (2 + i)).numParams).reverse =
@@ -53,7 +53,8 @@ theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func �
   rw [hLocals, show (func.function (2 + i)).body =
     func.body.program func.scratch ++ (func.results.flatMap (·.2.program func.scratch) ++ []) by
       simp [Func.function]]
-  refine correct x heap store params hHeap hArgs hRoom env store _ [] _ _ ⟨rfl, rfl⟩ ?_
+  refine correct x heap store params hHeap hArgs hRoom env store _ [] _ _ ?_ ⟨rfl, rfl⟩ ?_
+  · exact fun _ => rfl
   rintro store' state ⟨heap', hHeap', hArgs', hTop, hPages, hCaps, hBorrowedKeep, hOwnedKeep,
     values, next, hEval, hResult, hOutsideB, hOutsideO⟩
   refine Expr.evalResults_program_spec (out := []) hEval ?_
@@ -113,7 +114,7 @@ theorem Func.implementsPure [Scalar α] [Scalar β] (funcs : List (Func × Strin
     rw [List.take_of_length_le (by simp [hLength])]
     simp
   have hNoImports : (compile funcs).imports = [] := rfl
-  apply TerminatesWith.of_wp_entry_for (f := func.function (2 + i))
+  apply ReturnsOrAborts.of_wp_entry_for (f := func.function (2 + i))
     (by rw [hNoImports, List.length_nil, Nat.sub_zero]; exact compile_funcs hFunc)
   have hLocals :
       (func.function (2 + i)).toLocals
@@ -124,7 +125,8 @@ theorem Func.implementsPure [Scalar α] [Scalar β] (funcs : List (Func × Strin
   rw [hLocals, show (func.function (2 + i)).body =
     func.body.program func.scratch ++ (func.results.flatMap (·.2.program func.scratch) ++ []) by
       simp [Func.function]]
-  refine correct x store env store _ [] _ _ ⟨rfl, rfl⟩ ?_
+  refine correct x store env store _ [] _ _ ?_ ⟨rfl, rfl⟩ ?_
+  · exact fun _ => rfl
   rintro store' state ⟨hStore, values, next, hEval, hResult⟩
   refine Expr.evalResults_program_spec (out := []) hEval ?_
   rw [wp_nil]

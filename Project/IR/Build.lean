@@ -303,8 +303,8 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
     subst store state
     refine ⟨[.i64 need], s1, _, by simp [Expr.evalResults, Expr.eval, State.get_set?_same hSet1,
         U64Op.apply, hNeedValue],
-      fun env => alloc_spec hMemory32 hImports hFunc env heap initial need hHeap
-        (by rw [hSize]; exact hRoomNeed), ?_⟩
+      fun env => (alloc_spec hMemory32 hImports hFunc env heap initial need hHeap
+        (by rw [hSize]; exact hRoomNeed)).returnsOrAborts, ?_⟩
     rintro store' out ⟨hStore', hOut⟩
     rw [hSize] at hStore' hOut
     exact ⟨s2, by simp [hOut, hPtrDef, State.setAll, hSet2], hStore', rfl⟩
