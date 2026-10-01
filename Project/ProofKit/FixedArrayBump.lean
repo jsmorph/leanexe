@@ -90,7 +90,7 @@ theorem prepareProgram_spec_available (needLocal topLocal pagesLocal resultLocal
       resultFrame_locals_length] using hOrder.2.2.2.2
   simp only [prepareProgram, List.append_assoc]
   apply prefixProgram_spec needLocal topLocal pagesLocal module_ env store frame base need hValues
-    hNeed (by omega) hTopValid (by omega) hPagesValid hGlobal hFit32
+    hNeed (by omega) hTopValid (by omega) hPagesValid hGlobal (by omega)
   apply ensureProgram_spec_available module_ env store prepared pagesLocal (requiredPages base need)
     hMemory32 rfl hPreparedPages hPages (requiredPages_le base need hFit32) hCap
   apply installProgram_spec resultLocal topLocal module_ env _ prepared base (base + 48 + need)
@@ -101,23 +101,6 @@ theorem prepareProgram_spec_available (needLocal topLocal pagesLocal resultLocal
   · unfold ensured
     split <;> exact hGlobal
   simpa only [preparedStore, result] using hNext
-
-theorem prepareProgram_spec (needLocal topLocal pagesLocal resultLocal : Nat)
-    (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
-    (base need : UInt64) (hValues : frame.values = [])
-    (hNeed : frame.get needLocal = some (.i64 need))
-    (hOrder : frame.params.length ≤ needLocal ∧ needLocal < topLocal ∧
-      topLocal < pagesLocal ∧ pagesLocal < resultLocal ∧ frame.validIndex resultLocal)
-    (hGlobal : store.globals.globals[0]? = some (.i64 base))
-    (hFit32 : base.toNat + 48 + need.toNat ≤ 4294967296)
-    (hPages : store.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
-    (hCap : requiredPages base need ≤ store.memoryCap module_ 0)
-    (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : wp module_ rest Q (preparedStore store base need)
-      (result frame topLocal pagesLocal resultLocal base need) env) :
-    wp module_ (prepareProgram needLocal topLocal pagesLocal resultLocal ++ rest) Q store frame env := by
-  exact prepareProgram_spec_available needLocal topLocal pagesLocal resultLocal module_ env store frame base need
-    hValues hNeed hOrder hGlobal hFit32 hPages hMemory32 (fun _ => hCap) Q rest hNext
 
 theorem program_spec_of_grow (needLocal topLocal pagesLocal resultLocal : Nat)
     (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
@@ -171,26 +154,76 @@ theorem program_spec_of_grow (needLocal topLocal pagesLocal resultLocal : Nat)
   · simpa only [allocated, preparedStore, fixedArrayAllocBumpStore]
       using hNext
 
-theorem program_spec (needLocal topLocal pagesLocal resultLocal : Nat)
+theorem requiredPages_word_of_lt (base need : UInt64)
+    (hNo : base.toNat + 48 + need.toNat < 18446744073709551616) :
+    UInt64.ofNat (requiredPages base need) = (base + 48 + need - 1) / 65536 + 1 := by
+  have h64 : requiredPages base need < UInt64.size := by
+    change requiredPages base need < 18446744073709551616
+    unfold requiredPages
+    omega
+  apply UInt64.toNat.inj
+  rw [UInt64.toNat_ofNat_of_lt' h64, Allocation.pagesNeeded_toNat_of_lt base need hNo]
+  rfl
+
+/-- The bump allocation of at most `2 ^ 32` bytes from a `top` inside 32-bit memory, in a
+memory of at most 65,535 pages whose cap is at most 65,535 pages: the program traps at
+`unreachable`, or the block ends within `65535 * 65536` and the program allocates it. -/
+theorem program_spec_or_abort (needLocal topLocal pagesLocal resultLocal : Nat)
     (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
     (base need stride : UInt64) (hValues : frame.values = [])
     (hNeed : frame.get needLocal = some (.i64 need))
     (hOrder : frame.params.length ≤ needLocal ∧ needLocal < topLocal ∧
       topLocal < pagesLocal ∧ pagesLocal < resultLocal ∧ frame.validIndex resultLocal)
     (hGlobal : store.globals.globals[0]? = some (.i64 base))
-    (hFit32 : base.toNat + 48 + need.toNat ≤ 4294967296)
-    (hPages : store.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
-    (hCap : requiredPages base need ≤ store.memoryCap module_ 0)
-    (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : wp module_ rest Q (allocated store base need stride)
-      (result frame topLocal pagesLocal resultLocal base need) env) :
+    (hBase : base.toNat ≤ 4294967296) (hNeedBound : need.toNat ≤ 4294967296)
+    (hPages : store.mem.pages ≤ 65535) (hMemory32 : module_.memIs64 = false)
+    (hCapBound : store.memoryCap module_ 0 ≤ 65535)
+    (Q : Assertion Unit) (rest : Wasm.Program) (hTrap : ∀ st, Q (.Trap st "unreachable"))
+    (hNext : base.toNat + 48 + need.toNat ≤ 4294901760 →
+      wp module_ rest Q (allocated store base need stride)
+        (result frame topLocal pagesLocal resultLocal base need) env) :
     wp module_ (program needLocal topLocal pagesLocal resultLocal stride ++ rest) Q store frame env := by
-  exact program_spec_of_grow needLocal topLocal pagesLocal resultLocal module_ env store frame base need stride
-    hValues hNeed hOrder hGlobal hFit32 hPages hMemory32 (fun _ => hCap) Q rest hNext
+  by_cases hOk : base.toNat + 48 + need.toNat ≤ 4294967296 ∧
+      (store.mem.pages < requiredPages base need →
+        requiredPages base need ≤ store.memoryCap module_ 0)
+  · have hTight : base.toNat + 48 + need.toNat ≤ 4294901760 := by
+      have hRequired : requiredPages base need ≤ 65535 := by
+        by_cases hLess : store.mem.pages < requiredPages base need
+        · exact (hOk.2 hLess).trans hCapBound
+        · omega
+      unfold requiredPages at hRequired
+      omega
+    exact program_spec_of_grow needLocal topLocal pagesLocal resultLocal module_ env store frame
+      base need stride hValues hNeed hOrder hGlobal hOk.1 (by omega) hMemory32 hOk.2 Q rest
+      (hNext hTight)
+  have hAbort : store.mem.pages < requiredPages base need ∧
+      store.memoryCap module_ 0 < requiredPages base need := by
+    by_cases hFit : base.toNat + 48 + need.toNat ≤ 4294967296
+    · have hGrow := (not_and.mp hOk) hFit
+      exact ⟨by omega, by omega⟩
+    · unfold requiredPages
+      omega
+  have hNo : base.toNat + 48 + need.toNat < 18446744073709551616 := by omega
+  have hResultBound : resultLocal < frame.params.length + frame.locals.length := hOrder.2.2.2.2
+  obtain ⟨hO1, hO2, hO3, hO4, -⟩ := hOrder
+  have hTopValid : frame.validIndex topLocal := by unfold Locals.validIndex; omega
+  have hPagesValid : frame.validIndex pagesLocal := by unfold Locals.validIndex; omega
+  let prepared := prefixFrame frame topLocal pagesLocal base need
+  have hPreparedPages : prepared.get pagesLocal =
+      some (.i64 (UInt64.ofNat (requiredPages base need))) := by
+    rw [requiredPages_word_of_lt base need hNo]
+    apply resultFrame_get_result
+    · exact le_trans hO1 (by omega)
+    · simpa only [Locals.validIndex, resultFrame_params, resultFrame_locals_length] using hPagesValid
+  simp only [program, prepareProgram, List.append_assoc]
+  apply prefixProgram_spec needLocal topLocal pagesLocal module_ env store frame base need hValues
+    hNeed (by omega) hTopValid (by omega) hPagesValid hGlobal hNo
+  exact ensureProgram_abort module_ env store prepared pagesLocal (requiredPages base need)
+    hMemory32 rfl hPreparedPages (by omega) (by unfold requiredPages; omega) hAbort.1 hAbort.2
+    _ _ hTrap
 
 #print axioms requiredPages_word
+#print axioms program_spec_or_abort
 #print axioms requiredPages_fit
-#print axioms prepareProgram_spec
-#print axioms program_spec
 
 end Project.ProofKit.FixedArrayBump

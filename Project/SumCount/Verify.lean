@@ -7,10 +7,10 @@ namespace Project.SumCount
 open Wasm Project.Pipeline Project.IR Project.Runtime
 
 theorem sumCount_implements :
-    Implements sumCount.module 3 LeanExe.Examples.SumCount.sumCount (fun _ => 72) := by
-  refine Func.implements_heap [(sumCount.ir, "sumCount")] 0 sumCount.ir "sumCount" rfl _ (fun _ => 72)
+    Implements sumCount.module 3 LeanExe.Examples.SumCount.sumCount := by
+  refine Func.implements_heap [(sumCount.ir, "sumCount")] 0 sumCount.ir "sumCount" rfl _
     (by rintro _ _ _ _ ⟨ptr, rfl, -⟩; rfl) ?_
-  rintro xs heap initial _ hHeap ⟨ptr, rfl, hBorrowed⟩ hRoom
+  rintro xs heap initial _ hHeap ⟨ptr, rfl, hBorrowed⟩ hCap
   have hMemory32 : (compile [(sumCount.ir, "sumCount")]).memIs64 = false := rfl
   have hImports : (compile [(sumCount.ir, "sumCount")]).imports = [] := rfl
   have hAlloc : (compile [(sumCount.ir, "sumCount")]).funcs[0]? = some (allocFunction 0) := rfl
@@ -47,7 +47,7 @@ theorem sumCount_implements :
   have hFrame3 := (State.Frame.refl 7 [5] s2).set? hSet3 (Or.inl (by simp))
   refine (Stmt.arrayLiteral_spec (values := [.get 1, .get 5])
     (words := [xs.foldl (· + ·) 0, UInt64.ofNat xs.size]) hMemory32 hImports hAlloc (by decide)
-    (by rw [hFrame3.params, hFrame3.locals]; omega) hHeap hRoom ?_).mono
+    (by rw [hFrame3.params, hFrame3.locals]; omega) hHeap hCap (by decide) ?_).mono
       (fun _ _ h => h) ?_
   · refine .cons (fun _ state hFrame => ⟨state, ?_⟩) (.cons (fun _ state hFrame => ⟨state, ?_⟩) .nil)
     · have hGet : state.get 1 = some (.i64 (xs.foldl (· + ·) 0)) := by
@@ -58,7 +58,7 @@ theorem sumCount_implements :
       simp [Expr.eval, hGet]
   · rintro store state ⟨result, -, hResult, hNew⟩
     have hOwned := hNew.owned
-    refine ⟨_, hNew.at_, ⟨ptr, rfl, hNew.borrowed ptr xs hBorrowed⟩, hNew.top, hNew.pages,
+    refine ⟨_, hNew.at_, ⟨ptr, rfl, hNew.borrowed ptr xs hBorrowed⟩,
       hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 result], state,
       by simp [sumCount.ir, Func.scratch, Expr.evalResults, Expr.eval, hResult], ⟨result, rfl, ?_⟩,
     fun p ws h => ⟨result, rfl, hNew.borrowedApart p ws h⟩,
@@ -69,7 +69,7 @@ theorem sumCount_implements :
 computes `sumCount` exactly, returning an array the caller owns. -/
 theorem sumCount_bytes : ∃ bytes, Wasm.Encoding.encode sumCount.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧
-      Implements m 3 LeanExe.Examples.SumCount.sumCount (fun _ => 72) := by
+      Implements m 3 LeanExe.Examples.SumCount.sumCount := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip sumCount.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, sumCount.module, decoded, sumCount_implements⟩

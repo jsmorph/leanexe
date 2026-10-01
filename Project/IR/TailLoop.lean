@@ -56,7 +56,7 @@ theorem Func.tail_implements [Scalar α] (funcs : List (Func × String)) (i : Na
     (body : func.body = .while (.eq (.get (func.params.length + 1)) (.const 0)) step)
     (results : func.results = [⟨.u64, .get func.params.length⟩])
     (hStep : TailStep (compile funcs) step func.scratch (k + func.width) f measure) :
-    Implements (compile funcs) (3 + i) f (fun _ => 0) := by
+    Implements (compile funcs) (3 + i) f := by
   refine Func.implements funcs i func name hFunc f
     (fun _ _ _ x h => (Scalar.borrowed.mp h) ▸ arity x) fun x _ initial params _ h => ?_
   obtain rfl := Scalar.borrowed.mp h

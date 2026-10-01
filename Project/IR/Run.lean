@@ -140,7 +140,7 @@ theorem Stmt.run_spec {s : Stmt} {scratch : Nat} {initial : Store Unit} :
         rintro store st ⟨rfl, rfl⟩
         exact ⟨word, after, final, hEval, by assumption, hLoad, rfl, rfl⟩
       · cases hLoad
-  | «while» | store | call =>
+  | «while» | store | call | abort =>
       intro state final hRun
       simp [Stmt.run] at hRun
 

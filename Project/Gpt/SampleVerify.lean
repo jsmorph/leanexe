@@ -8,15 +8,11 @@ namespace Project.Gpt
 
 open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
 
-/-- The bytes `negInfs` may allocate: one array of `k` elements. -/
-def negInfsNeed (k : UInt64) : Nat := 48 + 8 * (k.toNat + 1)
-
 theorem negInfs_implements :
-    Implements gpt.module 46 LeanExe.Examples.Gpt.negInfs negInfsNeed := by
+    Implements gpt.module 46 LeanExe.Examples.Gpt.negInfs := by
   refine Func.implements_heap gpt.funcs 43 gpt.negInfs.ir "negInfs" rfl
-    LeanExe.Examples.Gpt.negInfs negInfsNeed (by rintro _ _ _ _ rfl; rfl) ?_
-  rintro k heap initial _ hHeap rfl hRoom
-  change heap.Room initial gpt.module (48 + 8 * (k.toNat + 1)) at hRoom
+    LeanExe.Examples.Gpt.negInfs (by rintro _ _ _ _ rfl; rfl) ?_
+  rintro k heap initial _ hHeap rfl hCap
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -27,12 +23,12 @@ theorem negInfs_implements :
       (.binF .div (.constF 4607182418800017408) (.constF 0))))) 4
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.build_spec (n := k) (fun _ => (-(1.0 / 0.0) : Float).toBits) hMemory32 hImports
-    hAlloc (by decide) (by decide) (by simp [start]) hHeap hRoom ⟨start, rfl⟩ ?_).mono
+    hAlloc (by decide) (by decide) (by simp [start]) hHeap hCap ⟨start, rfl⟩ ?_).mono
       (fun _ _ h => h) ?_
   · intro i store state hi hAt hFrame hIndex
     simp [Expr.eval, F64Op.apply, F64Bits.toBits_neg, F64Bits.toBits_div, hZero, hOne]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, rfl, hNew.top, hNew.pages, hNew.caps, hNew.borrowed, hNew.ownedKeep,
+  refine ⟨_, hNew.at_, rfl, hNew.caps, hNew.borrowed, hNew.ownedKeep,
     [.i64 ptr], state, by simp [gpt.negInfs.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -43,10 +39,6 @@ theorem negInfs_implements :
 /-- `insertTop` with its four arguments as one tuple. -/
 def insertTopTuple (x : Array Float × Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.insertTop x.1 x.2.1 x.2.2.1 x.2.2.2
-
-/-- The bytes `insertTop` may allocate: one array of `k` elements. -/
-def insertTopNeed (x : Array Float × Array Float × UInt64 × UInt64) : Nat :=
-  48 + 8 * (x.2.2.2.toNat + 1)
 
 /-- One step of the loop that finds the insertion position: the count of the entries not
 below `x`. -/
@@ -62,19 +54,17 @@ theorem insertTop_eq (buf s : Array Float) (i k : UInt64) :
       LeanExe.build k (insertElem buf s[i.toNat]! (LeanExe.loop k 0 (posStep buf s[i.toNat]!))) :=
   rfl
 
-theorem insertTop_implements : Implements gpt.module 47 insertTopTuple insertTopNeed := by
-  refine Func.implements_heap gpt.funcs 44 gpt.insertTop.ir "insertTop" rfl insertTopTuple
-    insertTopNeed (by
+theorem insertTop_implements : Implements gpt.module 47 insertTopTuple := by
+  refine Func.implements_heap gpt.funcs 44 gpt.insertTop.ir "insertTop" rfl insertTopTuple (by
       rintro _ _ _ ⟨_, _, _, _⟩ h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
       obtain rfl := h
       rfl) ?_
-  rintro ⟨buf, s, i, k⟩ heap initial _ hHeap hArgs hRoom
+  rintro ⟨buf, s, i, k⟩ heap initial _ hHeap hArgs hCap
   obtain ⟨pb, _, rfl, hBuf, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨ps, _, rfl, hS, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
-  change heap.Room initial gpt.module (48 + 8 * (k.toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -158,7 +148,7 @@ theorem insertTop_implements : Implements gpt.module 47 insertTopTuple insertTop
     rw [State.get_update_ne (by omega)]
   have hU1Get9 : u1.get 9 = some (.i64 pos) := by simp [u1, hT1.1, hT1.2]
   refine (Stmt.build_spec (n := k) (fun j => (insertElem buf x pos j).toBits) hMemory32 hImports
-    hAlloc (by decide) (by decide) (by simp [hU1.1, hU1.2]) hHeap hRoom
+    hAlloc (by decide) (by decide) (by simp [hU1.1, hU1.2]) hHeap hCap
     ⟨u1, by simp [Expr.eval, hU1Get 3 (by decide), h1Get3]⟩ ?_).mono (fun _ _ h => h) ?_
   · intro j store state hj hAt hFrame hIndex
     have hKeep : ∀ m, m < 10 → state.get m = u1.get m := fun m hm =>
@@ -179,7 +169,7 @@ theorem insertTop_implements : Implements gpt.module 47 insertTopTuple insertTop
           insertElem, hlt, heq, U64Op.apply, State.set?_eq_update, hState.1, hState.2]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨[.i64 pb], _, rfl, ⟨pb, rfl, hNew.borrowed pb _ hBuf⟩, [.i64 ps], _, rfl,
-    ⟨ps, rfl, hNew.borrowed ps _ hS⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed, hNew.ownedKeep,
+    ⟨ps, rfl, hNew.borrowed ps _ hS⟩, rfl⟩, hNew.caps, hNew.borrowed, hNew.ownedKeep,
     [.i64 ptr], state, by simp [gpt.insertTop.ir, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -323,7 +313,7 @@ theorem unitFloat_gpt : ImplementsPure gpt.module 45 LeanExe.Examples.Prng.unitF
   Project.Prng.unitFloat_pure gpt.funcs 42 rfl
 
 set_option maxHeartbeats 2000000 in
-theorem sampleFrom_implements : Implements gpt.module 49 sampleFromTuple (fun _ => 0) := by
+theorem sampleFrom_implements : Implements gpt.module 49 sampleFromTuple := by
   refine Func.implements gpt.funcs 46 gpt.sampleFrom.ir "sampleFrom" rfl sampleFromTuple
     (by
       rintro _ _ _ ⟨_, _, _, _, _⟩ h
@@ -546,26 +536,17 @@ theorem sampleFrom_implements : Implements gpt.module 49 sampleFromTuple (fun _ 
 def topKBufferTuple (x : Array Float × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.topKBuffer x.1 x.2
 
-/-- The bytes `topKBuffer` may allocate: the buffer of negative infinities, its copy, and
-one call of `insertTop` per score. -/
-def topKBufferNeed : Array Float × UInt64 → Nat
-  | (s, top) =>
-    48 + 8 * (top.toNat + 1) + (48 + 8 * (top.toNat + 1)) +
-      (UInt64.ofNat s.size).toNat * (48 + 8 * (top.toNat + 1))
-
-theorem topKBuffer_implements : Implements gpt.module 48 topKBufferTuple topKBufferNeed := by
+theorem topKBuffer_implements : Implements gpt.module 48 topKBufferTuple := by
   refine Func.implements_heap gpt.funcs 45 gpt.topKBuffer.ir "topKBuffer" rfl
-    topKBufferTuple topKBufferNeed
+    topKBufferTuple
     (by
       rintro _ _ _ ⟨_, _⟩ h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
       obtain rfl := h
       rfl) ?_
-  rintro ⟨s, top⟩ heap initial _ hHeap hArgs hRoom
+  rintro ⟨s, top⟩ heap initial _ hHeap hArgs hCap
   obtain ⟨pS, _, rfl, hS, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
-  change heap.Room initial gpt.module (topKBufferNeed (s, top)) at hRoom
-  simp only [topKBufferNeed] at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hMemory32 : gpt.module.memIs64 = false := rfl
@@ -577,8 +558,6 @@ theorem topKBuffer_implements : Implements gpt.module 48 topKBufferTuple topKBuf
       some (gpt.insertTop.ir.function (2 + 44)) :=
     compile_funcs (funcs := gpt.funcs) (i := 44) rfl
   let init := LeanExe.Examples.Gpt.negInfs top
-  have hInit : init.size = top.toNat := by
-    simp [init, LeanExe.Examples.Gpt.negInfs, LeanExe.build]
   let start : State :=
     { params := [.i64 pS, .i64 top]
       locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0] }
@@ -595,9 +574,8 @@ theorem topKBuffer_implements : Implements gpt.module 48 topKBufferTuple topKBuf
   show Triple _ gpt.topKBuffer.ir.body _
     (fun store state => store = initial ∧ state = start) _
   -- The buffer of negative infinities.
-  refine Live.call_seq negInfs_implements rfl hNeg rfl (Live.start hHeap) hRoom
-    (x := top)
-    (by simp only [negInfsNeed]; omega) (afterArgs := start)
+  refine Live.call_seq negInfs_implements rfl hNeg rfl (Live.start hHeap) hCap
+    (x := top) (afterArgs := start)
     (vals := [.i64 top])
     (Expr.evalResults_get sg1 Expr.evalResults_nil) rfl
     (by rw [hStart]; decide) fun heap1 pInit store1 hLive1 => ?_
@@ -624,14 +602,12 @@ theorem topKBuffer_implements : Implements gpt.module 48 topKBufferTuple topKBuf
   -- Each score inserted into the buffer.
   refine Live.arrayLoop insertTop_implements rfl hInsert rfl hMemory32 hImports hAlloc
     hRelease (by decide) (by decide) (by decide) (by decide) (by rw [hS2]; decide)
-    hLive1 hRoom ((f2 2 (by decide)).trans f1_2)
+    hLive1 hCap ((f2 2 (by decide)).trans f1_2)
     (hLive1.tempsOwned _ (List.mem_cons_self ..)).borrowed (init := init)
     (fun _ st hF => ⟨_, Expr.eval_get ((hF.get 3 (by decide) (by decide)).trans
       (State.get_update_same (state := s1) (by rw [hS1]; decide)))⟩)
     (fun l x => (x, s, l, top))
-    (bound := 48 + 8 * (top.toNat + 1)) (fun k _ => le_rfl)
-    (by simp only [negInfsNeed, hInit]; omega)
-    (fun k p _ _ _ st _ hF hI hSt hL =>
+    (fun k p _ _ st _ hF hI hSt hL =>
       ⟨[.i64 p, .i64 pS, .i64 (UInt64.ofNat k), .i64 top], st,
         (Expr.evalResults_get hSt <|
           Expr.evalResults_get ((hF.get 0 (by decide) (by decide)).trans ((f2 0 (by decide)).trans f1_0)) <|
@@ -657,11 +633,9 @@ theorem topKBuffer_implements : Implements gpt.module 48 topKBufferTuple topKBuf
       Represent.borrowed heap' store' [.i64 pS, .i64 top]
         (s, top) := fun heap' store' hKeep =>
     ⟨[.i64 pS], _, rfl, ⟨pS, rfl, hKeep pS _ hS⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR0.finish (need := topKBufferNeed (s, top))
-      (by simp only [negInfsNeed, hInit, topKBufferNeed]
-          omega) hParams
-  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pl], s4,
+  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR0.finish hParams
+  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pl], s4,
     by simp [gpt.topKBuffer.ir, Expr.evalResults, Expr.eval, s4,
       State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
 
@@ -670,26 +644,19 @@ theorem topKBuffer_implements : Implements gpt.module 48 topKBufferTuple topKBuf
 def sampleTopKTuple (x : Array Float × UInt64 × Float × UInt64) : UInt64 × UInt64 :=
   LeanExe.Examples.Gpt.sampleTopK x.1 x.2.1 x.2.2.1 x.2.2.2
 
-/-- The bytes `sampleTopK` may allocate: those of `topKBuffer`, with `k` raised to 1 if it
-is 0. -/
-def sampleTopKNeed : Array Float × UInt64 × Float × UInt64 → Nat
-  | (s, top, _, _) => topKBufferNeed (s, if top = 0 then 1 else top)
-
-theorem sampleTopK_implements : Implements gpt.module 50 sampleTopKTuple sampleTopKNeed := by
+theorem sampleTopK_implements : Implements gpt.module 50 sampleTopKTuple := by
   refine Func.implements_heap gpt.funcs 47 gpt.sampleTopK.ir "sampleTopK" rfl sampleTopKTuple
-    sampleTopKNeed
     (by
       rintro _ _ _ ⟨_, _, _, _⟩ h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
       obtain rfl := h
       rfl) ?_
-  rintro ⟨s, top, t, seed⟩ heap initial _ hHeap hArgs hRoom
+  rintro ⟨s, top, t, seed⟩ heap initial _ hHeap hArgs hCap
   obtain ⟨pS, _, rfl, hS, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
   let k1 : UInt64 := if top = 0 then 1 else top
   let buf := topKBufferTuple (s, k1)
   let r := sampleFromTuple (s, buf, k1, t, seed)
-  change heap.Room initial gpt.module (topKBufferNeed (s, k1)) at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hBuffer : gpt.module.funcs[48 - gpt.module.imports.length]? =
@@ -726,8 +693,8 @@ theorem sampleTopK_implements : Implements gpt.module 50 sampleTopKTuple sampleT
     (State.get_update_ne (state := start) (j := 0) (index := 4) (by decide)).trans sg0
   have f1_4 : s1.get 4 = some (.i64 k1) :=
     State.get_update_same (state := start) (by rw [hStart]; decide)
-  refine Live.call_seq topKBuffer_implements rfl hBuffer rfl (Live.start hHeap) hRoom
-    (x := (s, k1)) (by omega) (afterArgs := s1) (vals := [.i64 pS, .i64 k1])
+  refine Live.call_seq topKBuffer_implements rfl hBuffer rfl (Live.start hHeap) hCap
+    (x := (s, k1)) (afterArgs := s1) (vals := [.i64 pS, .i64 k1])
     (Expr.evalResults_get f1_0 <| Expr.evalResults_get f1_4 <| Expr.evalResults_nil)
     ⟨[.i64 pS], _, rfl, ⟨pS, rfl, hS⟩, rfl⟩
     (by rw [hS1]; decide) fun heap2 pBuf store2 hLive2 => ?_
@@ -740,8 +707,8 @@ theorem sampleTopK_implements : Implements gpt.module 50 sampleTopKTuple sampleT
     State.get_update_ne (state := start) (j := j) (index := 4) hj
   let s3 := (s2.update 7 (.i64 r.2)).update 6 (.i64 r.1)
   have hS3 : s3.params.length + s3.locals.length = 10 := by rw [hLen, hLen, hS2]
-  refine Live.callScalar_seq sampleFrom_implements rfl hSample rfl hLive2 hRoom
-    (x := (s, buf, k1, t, seed)) (by simp) (afterArgs := s2) (after := s3)
+  refine Live.callScalar_seq sampleFrom_implements rfl hSample rfl hLive2 hCap
+    (x := (s, buf, k1, t, seed)) (afterArgs := s2) (after := s3)
     (vals := [.i64 pS, .i64 pBuf, .i64 k1, .f64 t.toBits, .i64 seed])
     (Expr.evalResults_get ((f2 0 (by decide)).trans f1_0) <|
       Expr.evalResults_get (State.get_update_same (state := s1) (by rw [hS1]; decide)) <|
@@ -788,15 +755,9 @@ theorem sampleTopK_implements : Implements gpt.module 50 sampleTopKTuple sampleT
   refine (hLive3.releaseFirst hImports hRelease f5_5).mono (fun _ _ h => h) ?_
   intro store4 st h
   obtain ⟨hL, hst⟩ := h
-  have hTop := hL.top
-  have hPages := hL.pages
-  have hNeed : sampleTopKNeed (s, top, t, seed) = topKBufferNeed (s, k1) := rfl
-  refine ⟨_, hL.at_, ⟨[.i64 pS], _, rfl, ⟨pS, rfl, hL.borrowed pS _ hS⟩, rfl⟩,
-    by rw [hNeed]; omega, ?_, hL.caps, hL.borrowed, hL.owned, [.i64 r.1, .i64 r.2], s5, ?_, rfl,
-    fun _ _ _ => trivial, fun _ _ _ => trivial⟩
-  · rw [hNeed]
-    refine le_trans hPages (max_le_max le_rfl (Nat.div_le_div_right ?_))
-    omega
+  refine ⟨_, hL.at_, ⟨[.i64 pS], _, rfl, ⟨pS, rfl, hL.borrowed pS _ hS⟩, rfl⟩, hL.caps,
+    hL.borrowed, hL.owned, [.i64 r.1, .i64 r.2], s5, ?_, rfl, fun _ _ _ => trivial,
+    fun _ _ _ => trivial⟩
   · rw [hst]
     exact Expr.evalResults_get f5_8 <| Expr.evalResults_get f5_9 <| Expr.evalResults_nil
 

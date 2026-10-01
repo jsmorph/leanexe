@@ -91,6 +91,35 @@ theorem pagesNeeded_toNat (base capacity : UInt64)
   have hSize : UInt64.size = 18446744073709551616 := rfl
   omega
 
+theorem top_toNat_of_lt (base capacity : UInt64)
+    (hNo : base.toNat + 48 + capacity.toNat < 18446744073709551616) :
+    (base + 48 + capacity).toNat = base.toNat + 48 + capacity.toNat := by
+  rw [UInt64.toNat_add, UInt64.toNat_add]
+  have h48 : (48 : UInt64).toNat = 48 := rfl
+  have hSize : UInt64.size = 18446744073709551616 := rfl
+  rw [h48]
+  omega
+
+theorem top_not_lt_base_of_lt (base capacity : UInt64)
+    (hNo : base.toNat + 48 + capacity.toNat < 18446744073709551616) :
+    ¬(base + 48 + capacity < base) := by
+  rw [UInt64.lt_iff_toNat_lt, top_toNat_of_lt base capacity hNo]
+  omega
+
+theorem pagesNeeded_toNat_of_lt (base capacity : UInt64)
+    (hNo : base.toNat + 48 + capacity.toNat < 18446744073709551616) :
+    ((base + 48 + capacity - 1) / 65536 + 1).toNat =
+      (base.toNat + 48 + capacity.toNat - 1) / 65536 + 1 := by
+  have hOne : (1 : UInt64).toNat = 1 := rfl
+  have hTop := top_toNat_of_lt base capacity hNo
+  have hSub : (base + 48 + capacity - 1).toNat = base.toNat + 48 + capacity.toNat - 1 := by
+    rw [toNat_sub_of_le _ _ (by rw [hTop, hOne]; omega), hTop, hOne]
+  rw [UInt64.toNat_add, UInt64.toNat_div, hSub]
+  have h65536 : (65536 : UInt64).toNat = 65536 := rfl
+  rw [h65536, hOne]
+  have hSize : UInt64.size = 18446744073709551616 := rfl
+  omega
+
 theorem memoryPages_toNat (pages : Nat) (hPages : pages ≤ 65536) :
     ((UInt32.ofNat pages).toUInt64).toNat = pages := by
   have hlt : pages < UInt32.size := by

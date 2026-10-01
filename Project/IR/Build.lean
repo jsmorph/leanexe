@@ -16,11 +16,13 @@ open Wasm Project.ProofKit Project.Pipeline Project.Runtime
 variable {m : Module}
 
 /-- Local `dst` receives a new array of `count` elements, with the count held in
-local `limit`.  For each index `i`, held in local `index`, `body` runs and element
-`i` is then the value of `element`. -/
+local `limit`.  The code traps when the count is `2 ^ 29` or more, since such an array
+does not fit in 32-bit memory.  For each index `i`, held in local `index`, `body` runs
+and element `i` is then the value of `element`. -/
 def Stmt.buildWith (dst limit index : Nat) (count : Expr .u64) (body : Stmt)
     (element : Expr .u64) : Stmt :=
   .seq (.assign limit count) <|
+  .seq (.ite (.ltU (.get limit) (.const 536870912)) .skip .abort) <|
   .seq (.call 0 [⟨.u64, .bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)⟩] [dst]) <|
   .seq (.store (.get dst) (.get limit)) <|
   .seq (.assign index (.const 0)) <|
@@ -175,9 +177,9 @@ theorem eraseIdxIfInBounds_eq_build (xs : Array UInt64) (k : UInt64) (hSize : xs
 
 /-- Borrowed arrays stay laid out while a new block is written: they lie outside
 it. -/
-theorem borrowed_at_after_writes {heap : Heap} {initial current : Store Unit} {m : Module}
+theorem borrowed_at_after_writes {heap : Heap} {initial current : Store Unit}
     {need ptr : UInt64} {p : UInt64} {ws : Array UInt64} {size : Nat}
-    (hHeap : heap.At initial) (hRoomNeed : heap.Room initial m (48 + need.toNat))
+    (hHeap : heap.At initial) (hFitsNeed : heap.Fits need)
     (hPtrDef : FixedArrayAllocate.root heap.top need heap.free = ptr)
     (hBase : 4096 + 48 ≤ ptr.toNat)
     (hFits : 8 * (size + 1) ≤ (allocatedCapacity need heap.free).toNat)
@@ -188,7 +190,7 @@ theorem borrowed_at_after_writes {heap : Heap} {initial current : Store Unit} {m
   have hDisjoint := hBorrowed.disjoint_allocated hHeap need
   rw [hPtrDef] at hDisjoint
   unfold regionsDisjoint at hDisjoint
-  exact (hBorrowed.allocate 1 hHeap hRoomNeed).values.writesRange hWrites (by omega)
+  exact (hBorrowed.allocate 1 hHeap hFitsNeed).values.writesRange hWrites (by omega)
 
 /-- The copying template allocates `8 * (n + 1)` bytes, stores the length `n`, and
 stores `f i` at each index `i`, leaving the pointer in `dst`, with the facts of
@@ -203,7 +205,7 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
     (hLocals : [dst, limit, index].Nodup) (hBelow : ∀ j ∈ [dst, limit, index], j < scratch)
     (hApart : ∀ j ∈ writes, j ∉ [dst, limit, index])
     (hRoom : scratch ≤ before.params.length + before.locals.length)
-    (hHeap : heap.At initial) (hSpace : heap.Room initial m (48 + 8 * (n.toNat + 1)))
+    (hHeap : heap.At initial) (hCap : initial.memoryCap m 0 ≤ 65535)
     (hCount : ∃ next, count.eval initial.mem scratch before = some (n, next))
     (hBody : ∀ (k : Nat) (store : Store Unit) (state : State), k < n.toNat →
       (∀ p ws, heap.Borrowed initial p ws → UInt64Array.At store p ws) →
@@ -217,7 +219,7 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
       (fun store state => ∃ ptr, State.Frame scratch ([dst, limit, index] ++ writes) before state ∧
         state.get dst = some (.i64 ptr) ∧
         heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))) store ptr
-          (LeanExe.build n f) (48 + 8 * (n.toNat + 1))) := by
+          (LeanExe.build n f)) := by
   simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
     List.nodup_nil, not_false_eq_true, and_true] at hLocals
   simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hBelow
@@ -226,9 +228,36 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
   have hDstOut : dst ∉ writes := fun h => hApart dst h (by simp)
   have hLimitOut : limit ∉ writes := fun h => hApart limit h (by simp)
   have hIndexOut : index ∉ writes := fun h => hApart index h (by simp)
-  have hAddress := hSpace.address
   have hAllSize : (LeanExe.build n f).size = n.toNat := build_size n f
   generalize hAllDef : LeanExe.build n f = all at hAllSize ⊢
+  -- The count, and the check of the length.
+  obtain ⟨c1, hCountEval⟩ := hCount
+  have hFrameC := Expr.eval_frame [dst, limit, index] count initial.mem scratch before c1 _
+    hCountEval
+  obtain ⟨s1, hSet1⟩ := State.exists_set? (state := c1) (index := limit) (.i64 n)
+    (by have := hFrameC.params; have := hFrameC.locals; omega)
+  have hFrame1 := hFrameC.set? hSet1 (Or.inl (by simp))
+  refine Stmt.seq_spec (M := fun store state => store = initial ∧ state = s1) ?_ <|
+    Stmt.seq_spec (M := fun store state => store = initial ∧ state = s1 ∧ n.toNat < 536870912)
+      ?_ ?_
+  · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+    rintro store state ⟨hStore, hState⟩
+    subst store state
+    exact ⟨n, c1, s1, hCountEval, hSet1, rfl, rfl⟩
+  · refine (Stmt.ite_spec
+      (PThen := fun store state => store = initial ∧ state = s1 ∧ n.toNat < 536870912)
+      (PElse := fun _ _ => True) Stmt.skip_spec Stmt.abort_spec).mono ?_ fun _ _ h => h
+    rintro store state ⟨hStore, hState⟩
+    subst store state
+    by_cases hn : n < 536870912
+    · refine ⟨true, s1, by simp [Expr.eval, State.get_set?_same hSet1, hn], ?_⟩
+      exact ⟨rfl, rfl, by rw [UInt64.lt_iff_toNat_lt] at hn; exact hn⟩
+    · exact ⟨false, s1, by simp [Expr.eval, State.get_set?_same hSet1, hn], trivial⟩
+  by_cases hn : n.toNat < 536870912
+  swap
+  · exact Triple.of_false.mono (fun _ _ h => absurd h.2.2 hn) fun _ _ h => h
+  refine (?_ : Triple m _ scratch (fun store state => store = initial ∧ state = s1) _).mono
+    (fun _ _ h => ⟨h.1, h.2.1⟩) fun _ _ h => h
   have hNeed : (UInt64.ofNat (8 * (n.toNat + 1))).toNat = 8 * (n.toNat + 1) :=
     UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
   have hSize := allocSize_words n.toNat (by omega)
@@ -238,8 +267,22 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
     simp only [UInt64.toNat_mul, UInt64.toNat_add, UInt64.reduceToNat]
     omega
   generalize hNeedDef : UInt64.ofNat (8 * (n.toNat + 1)) = need at hNeed hSize hNeedValue ⊢
-  have hRoomNeed : heap.Room initial m (48 + need.toNat) := by rw [hNeed]; exact hSpace
-  have hBlock := hHeap.allocate_block 1 hRoomNeed
+  by_cases hFitsNeed : heap.Fits need
+  swap
+  · -- The block does not fit, so `alloc` traps.
+    refine Stmt.seq_spec (M := fun _ _ => False) ?_ Triple.of_false
+    refine (Stmt.call_spec (f := allocFunction typeIdx) (by simp [hImports])
+      (by simpa [hImports] using hFunc) rfl).mono ?_ fun _ _ h => h
+    rintro store state ⟨hStore, hState⟩
+    subst store state
+    refine ⟨[.i64 need], s1, _, by simp [Expr.evalResults, Expr.eval, State.get_set?_same hSet1,
+        U64Op.apply, hNeedValue],
+      fun env => alloc_spec_or_abort hMemory32 hImports hFunc env heap initial need hHeap
+        (by omega) hCap, ?_⟩
+    rintro store' out ⟨hFits', -, -⟩
+    rw [hSize] at hFits'
+    exact absurd hFits' hFitsNeed
+  have hBlock := hHeap.allocate_block 1 hFitsNeed
   have hCapacity := allocated_capacity need heap.free
   generalize hPtrDef : FixedArrayAllocate.root heap.top need heap.free = ptr at hBlock ⊢
   have hBlockAddress := hBlock.address
@@ -251,15 +294,9 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
       Memory.WritesRange (heap.allocateStore initial need 1) current ptr.toNat
         (ptr.toNat + 8 * (all.size + 1)) →
       ∀ p ws, heap.Borrowed initial p ws → UInt64Array.At current p ws :=
-    fun current hWrites p ws hBorrowed => borrowed_at_after_writes hHeap hRoomNeed hPtrDef
+    fun current hWrites p ws hBorrowed => borrowed_at_after_writes hHeap hFitsNeed hPtrDef
       hBlockBase (by rw [hAllSize, ← hNeed]; exact hCapacity) hBorrowed hWrites
-  -- The count, the allocation, the length word, and the first index.
-  obtain ⟨c1, hCountEval⟩ := hCount
-  have hFrameC := Expr.eval_frame [dst, limit, index] count initial.mem scratch before c1 _
-    hCountEval
-  obtain ⟨s1, hSet1⟩ := State.exists_set? (state := c1) (index := limit) (.i64 n)
-    (by have := hFrameC.params; have := hFrameC.locals; omega)
-  have hFrame1 := hFrameC.set? hSet1 (Or.inl (by simp))
+  -- The allocation, the length word, and the first index.
   obtain ⟨s2, hSet2⟩ := State.exists_set? (state := s1) (index := dst) (.i64 ptr)
     (by have := hFrame1.params; have := hFrame1.locals; omega)
   have hFrame2 := hFrame1.set? hSet2 (Or.inl (by simp))
@@ -288,24 +325,19 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
     match state.get index with
     | some (.i64 k) => all.size - k.toNat
     | _ => 0
-  refine Stmt.seq_spec (M := fun store state => store = initial ∧ state = s1) ?_ <|
-    Stmt.seq_spec (M := fun store state => store = storeA ∧ state = s2) ?_ <|
+  refine Stmt.seq_spec (M := fun store state => store = storeA ∧ state = s2) ?_ <|
     Stmt.seq_spec (M := fun store state => store = store2 ∧ state = s2) ?_ <|
     Stmt.seq_spec (M := fun store state => store = store2 ∧ state = s3) ?_ <|
     (Stmt.while_spec Inv measure ?_ fun bound => ?_).mono ?_ ?_
-  · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
-    rintro store state ⟨hStore, hState⟩
-    subst store state
-    exact ⟨n, c1, s1, hCountEval, hSet1, rfl, rfl⟩
   · refine (Stmt.call_spec (f := allocFunction typeIdx) (by simp [hImports])
       (by simpa [hImports] using hFunc) rfl).mono ?_ fun _ _ h => h
     rintro store state ⟨hStore, hState⟩
     subst store state
     refine ⟨[.i64 need], s1, _, by simp [Expr.evalResults, Expr.eval, State.get_set?_same hSet1,
         U64Op.apply, hNeedValue],
-      fun env => (alloc_spec hMemory32 hImports hFunc env heap initial need hHeap
-        (by rw [hSize]; exact hRoomNeed)).returnsOrAborts, ?_⟩
-    rintro store' out ⟨hStore', hOut⟩
+      fun env => alloc_spec_or_abort hMemory32 hImports hFunc env heap initial need hHeap
+        (by omega) hCap, ?_⟩
+    rintro store' out ⟨-, hStore', hOut⟩
     rw [hSize] at hStore' hOut
     exact ⟨s2, by simp [hOut, hPtrDef, State.setAll, hSet2], hStore', rfl⟩
   · refine Stmt.store_spec.mono ?_ fun _ _ h => h
@@ -393,9 +425,8 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
       refine ⟨by rw [hWrites.1], hWrites.2.1, fun address hOutside => hWrites.2.2 address ?_⟩
       omega
     subst hPtrDef hAllDef
-    have hNew := Heap.newArray_of_writes hHeap hRoomNeed hWithin hPrefix.complete (by omega)
+    have hNew := Heap.newArray_of_writes hHeap hFitsNeed hWithin hPrefix.complete (by omega)
       (by rw [hWrites.1]; exact heap.allocateStore_memoryCaps initial need 1)
-    rw [hNeed] at hNew
     exact ⟨_, hFrame, hDstGet, hNew⟩
 
 /-- `Stmt.buildWith_spec` for the template with no statement per element: the
@@ -407,7 +438,7 @@ theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element :
     (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
     (hLocals : [dst, limit, index].Nodup) (hBelow : ∀ j ∈ [dst, limit, index], j < scratch)
     (hRoom : scratch ≤ before.params.length + before.locals.length)
-    (hHeap : heap.At initial) (hSpace : heap.Room initial m (48 + 8 * (n.toNat + 1)))
+    (hHeap : heap.At initial) (hCap : initial.memoryCap m 0 ≤ 65535)
     (hCount : ∃ next, count.eval initial.mem scratch before = some (n, next))
     (hElement : ∀ (k : Nat) (store : Store Unit) (state : State), k < n.toNat →
       (∀ p ws, heap.Borrowed initial p ws → UInt64Array.At store p ws) →
@@ -419,9 +450,9 @@ theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element :
       (fun store state => ∃ ptr, State.Frame scratch [dst, limit, index] before state ∧
         state.get dst = some (.i64 ptr) ∧
         heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))) store ptr
-          (LeanExe.build n f) (48 + 8 * (n.toNat + 1))) := by
+          (LeanExe.build n f)) := by
   refine (Stmt.buildWith_spec (writes := []) f hMemory32 hImports hFunc hLocals hBelow
-    (by simp) hRoom hHeap hSpace hCount fun k store state hk hAt hFrame hIndex => ?_).mono
+    (by simp) hRoom hHeap hCap hCount fun k store state hk hAt hFrame hIndex => ?_).mono
       (fun _ _ h => h) fun _ _ h => by simpa using h
   obtain ⟨next, hEval⟩ := hElement k store state hk hAt (by simpa using hFrame) hIndex
   refine Stmt.skip_spec.mono ?_ fun _ _ h => h
@@ -442,14 +473,13 @@ theorem Stmt.copy_spec {typeIdx scratch src size dst limit index : Nat}
     (hBelow : ∀ j ∈ [size, dst, limit, index], j < scratch)
     (hSrc : src ∉ [size, dst, limit, index]) (hSrcBelow : src < scratch)
     (hRoom : scratch < before.params.length + before.locals.length)
-    (hHeap : heap.At initial) (hSpace : heap.Room initial m (48 + 8 * (xs.size + 1)))
+    (hHeap : heap.At initial) (hCap : initial.memoryCap m 0 ≤ 65535)
     (hPtr : before.get src = some (.i64 ptr)) (hArray : heap.Borrowed initial ptr xs) :
     Triple m (.copy dst limit index size src) scratch
       (fun store state => store = initial ∧ state = before)
       (fun store state => ∃ p, State.Frame scratch [size, dst, limit, index] before state ∧
         state.get dst = some (.i64 p) ∧
-        heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (xs.size + 1)))) store p xs
-          (48 + 8 * (xs.size + 1))) := by
+        heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (xs.size + 1)))) store p xs) := by
   have hA := hArray.values
   have hFit := hA.1
   simp only [List.mem_cons, List.not_mem_nil, or_false, not_or] at hSrc
@@ -466,7 +496,7 @@ theorem Stmt.copy_spec {typeIdx scratch src size dst limit index : Nat}
     exact ⟨rfl, (Option.some.inj hSet).symm⟩
   refine (Stmt.build_spec (n := UInt64.ofNat xs.size) (fun j => xs[j.toNat]!) hMemory32 hImports
     hFunc (List.nodup_cons.mp hLocals).2 (fun j hj => hBelow j (List.mem_cons_of_mem _ hj))
-    (by omega) hHeap (by rw [hn]; exact hSpace)
+    (by omega) hHeap hCap
     ⟨s1, by simp [Expr.eval, s1, State.get_update_same (value := .i64 (UInt64.ofNat xs.size))
       (show size < before.params.length + before.locals.length by omega)]⟩ ?_).mono
       (fun _ _ h => h) ?_

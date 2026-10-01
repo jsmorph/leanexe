@@ -45,7 +45,7 @@ theorem dotBody_run {initial : Store Unit} {px py : UInt64} {xs ys : Array Float
   · simp [State.Holds, Scalar.values, dotStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul]
 
-theorem dot_implements : Implements gpt.module 3 dotTuple (fun _ => 0) := by
+theorem dot_implements : Implements gpt.module 3 dotTuple := by
   refine Func.implements gpt.funcs 0 gpt.dot.ir "dot" rfl dotTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, ⟨_, rfl, -⟩⟩; rfl) ?_
   rintro ⟨xs, ys⟩ heap initial _ - ⟨_, _, rfl, ⟨px, rfl, hXs⟩, ⟨py, rfl, hYs⟩⟩
@@ -100,10 +100,6 @@ theorem dot_implements : Implements gpt.module 3 dotTuple (fun _ => 0) := by
 def matVecTuple (x : Array Float × Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.matVec x.1 x.2.1 x.2.2.1 x.2.2.2
 
-/-- The bytes `matVec` may allocate: one array of `rows` elements. -/
-def matVecNeed (x : Array Float × Array Float × UInt64 × UInt64) : Nat :=
-  48 + 8 * (x.2.2.1.toNat + 1)
-
 /-- One step of the loop over row `r`. -/
 def rowStep (m v : Array Float) (cols r c : UInt64) (acc : Float) : Float :=
   acc + m[(r * cols + c).toNat]! * v[c.toNat]!
@@ -142,14 +138,13 @@ theorem rowBody_run {initial : Store Unit} {pm pv : UInt64} {m v : Array Float}
   · simp [State.Holds, Scalar.values, rowStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul]
 
-theorem matVec_implements : Implements gpt.module 4 matVecTuple matVecNeed := by
-  refine Func.implements_heap gpt.funcs 1 gpt.matVec.ir "matVec" rfl matVecTuple matVecNeed
+theorem matVec_implements : Implements gpt.module 4 matVecTuple := by
+  refine Func.implements_heap gpt.funcs 1 gpt.matVec.ir "matVec" rfl matVecTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨m, v, rows, cols⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨pm, rfl, hMs⟩, _, _, rfl, ⟨pv, rfl, hVs⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨pm, rfl, hMs⟩, _, _, rfl, ⟨pv, rfl, hVs⟩, rfl⟩ hCap
   change heap.Borrowed initial pm (m.map Float.toBits) at hMs
   change heap.Borrowed initial pv (v.map Float.toBits) at hVs
-  change heap.Room initial gpt.module (48 + 8 * (rows.toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -162,7 +157,7 @@ theorem matVec_implements : Implements gpt.module 4 matVecTuple matVecNeed := by
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.buildWith_spec (writes := [7, 8, 9, 10]) (n := rows)
     (fun r => (row m v cols r).toBits) hMemory32 hImports hAlloc (by decide) (by decide)
-    (by decide) (by simp [start]) hHeap hRoom ⟨start, rfl⟩ ?_).mono (fun _ _ h => h) ?_
+    (by decide) (by simp [start]) hHeap hCap ⟨start, rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · -- One element: the accumulator, then the loop over the row.
     intro k store state hk hAt hFrame hIndex
     have hState : state.params.length = 4 ∧ state.locals.length = 8 :=
@@ -205,7 +200,7 @@ theorem matVec_implements : Implements gpt.module 4 matVecTuple matVecNeed := by
           (hFrameL.weaken (by simp)), t, by simp [Expr.eval, g7]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pm, rfl, hNew.borrowed pm _ hMs⟩, _, _, rfl,
-      ⟨pv, rfl, hNew.borrowed pv _ hVs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
+      ⟨pv, rfl, hNew.borrowed pv _ hVs⟩, rfl⟩, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.matVec.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -216,10 +211,6 @@ theorem matVec_implements : Implements gpt.module 4 matVecTuple matVecNeed := by
 /-- `layerNorm` with its four arguments as one tuple. -/
 def layerTuple (x : Array Float × Array Float × Array Float × Float) : Array Float :=
   LeanExe.Examples.Gpt.layerNorm x.1 x.2.1 x.2.2.1 x.2.2.2
-
-/-- The bytes `layerNorm` may allocate: one array as long as `xs`. -/
-def layerNeed (x : Array Float × Array Float × Array Float × Float) : Nat :=
-  48 + 8 * (x.1.size + 1)
 
 /-- One step of the sum loop. -/
 def sumStep (xs : Array Float) (i : UInt64) (acc : Float) : Float := acc + xs[i.toNat]!
@@ -287,16 +278,15 @@ theorem varBody_run {initial : Store Unit} {px : UInt64} {xs : Array Float}
   · simp [State.Holds, Scalar.values, varStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul, F64Bits.toBits_sub]
 
-theorem layerNorm_implements : Implements gpt.module 5 layerTuple layerNeed := by
-  refine Func.implements_heap gpt.funcs 2 gpt.layerNorm.ir "layerNorm" rfl layerTuple layerNeed
+theorem layerNorm_implements : Implements gpt.module 5 layerTuple := by
+  refine Func.implements_heap gpt.funcs 2 gpt.layerNorm.ir "layerNorm" rfl layerTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
       rfl⟩; rfl) ?_
   rintro ⟨xs, g, b, eps⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pg, rfl, hGs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pg, rfl, hGs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hCap
   change heap.Borrowed initial px (xs.map Float.toBits) at hXs
   change heap.Borrowed initial pg (g.map Float.toBits) at hGs
   change heap.Borrowed initial pb (b.map Float.toBits) at hBs
-  change heap.Room initial gpt.module (48 + 8 * (xs.size + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -453,7 +443,7 @@ theorem layerNorm_implements : Implements gpt.module 5 layerTuple layerNeed := b
   have h3Get18 : v3.get 18 = some (.f64 inv.toBits) := by simp [v3, v2, v1, hT2.1, hT2.2]
   refine (Stmt.build_spec (n := xs.size.toUInt64)
     (fun i => (layerElement xs g b mean inv i).toBits) hMemory32 hImports hAlloc (by decide)
-    (by decide) (by simp [hV3.1, hV3.2]) hHeap (by rw [show xs.size.toUInt64.toNat = xs.size from hn]; exact hRoom)
+    (by decide) (by simp [hV3.1, hV3.2]) hHeap hCap
     ⟨v3, by simp [Expr.eval, v3, v2, v1, hT2.1, hT2.2]⟩ ?_).mono (fun _ _ h => h) ?_
   · intro k store state hk hAt hFrame hIndex
     have hState : state.params.length = 4 ∧ state.locals.length = 20 :=
@@ -474,8 +464,7 @@ theorem layerNorm_implements : Implements gpt.module 5 layerTuple layerNeed := b
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, _, _, rfl,
       ⟨pg, rfl, hNew.borrowed pg _ hGs⟩, _, _, rfl, ⟨pb, rfl, hNew.borrowed pb _ hBs⟩, rfl⟩,
-    le_of_le_of_eq hNew.top (by simp [layerNeed, hn]),
-    le_of_le_of_eq hNew.pages (by simp [layerNeed, hn]), hNew.caps, hNew.borrowed,
+    hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.layerNorm.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -598,11 +587,8 @@ theorem exp_pure : ImplementsPure gpt.module 6 LeanExe.Examples.Gpt.exp := by
   by_cases h1 : x == x <;> by_cases h2 : x > 709.8 <;> by_cases h3 : x < -745.2 <;>
     simp_all [F64Bits.beq_eq, F64Bits.lt_iff, F64Bits.toBits_mul, F64Bits.toBits_neg]
 
-theorem exp_implements : Implements gpt.module 6 LeanExe.Examples.Gpt.exp (fun _ => 0) :=
+theorem exp_implements : Implements gpt.module 6 LeanExe.Examples.Gpt.exp :=
   exp_pure.implements
-
-/-- `softmax` with its argument. -/
-def softmaxNeed (xs : Array Float) : Nat := 48 + 8 * (xs.size + 1)
 
 /-- One step of the maximum loop. -/
 def maxStep (xs : Array Float) (i : UInt64) (acc : Float) : Float := max acc xs[i.toNat]!
@@ -690,12 +676,11 @@ theorem expSumBody_spec {initial : Store Unit} {px : UInt64} {xs : Array Float} 
   · simp [State.Holds, Scalar.values, expSumStep, f, c, b, a, hParams, hLocals, d, e]
 
 theorem softmax_implements :
-    Implements gpt.module 7 LeanExe.Examples.Gpt.softmax softmaxNeed := by
+    Implements gpt.module 7 LeanExe.Examples.Gpt.softmax := by
   refine Func.implements_heap gpt.funcs 4 gpt.softmax.ir "softmax" rfl
-    LeanExe.Examples.Gpt.softmax softmaxNeed (by rintro _ _ _ _ ⟨_, rfl, -⟩; rfl) ?_
-  rintro xs heap initial _ hHeap ⟨px, rfl, hXs⟩ hRoom
+    LeanExe.Examples.Gpt.softmax (by rintro _ _ _ _ ⟨_, rfl, -⟩; rfl) ?_
+  rintro xs heap initial _ hHeap ⟨px, rfl, hXs⟩ hCap
   change heap.Borrowed initial px (xs.map Float.toBits) at hXs
-  change heap.Room initial gpt.module (48 + 8 * (xs.size + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -815,7 +800,7 @@ theorem softmax_implements :
   refine (Stmt.buildWith_spec (writes := [18]) (n := xs.size.toUInt64)
     (fun i => (LeanExe.Examples.Gpt.exp (xs[i.toNat]! - mx) / total).toBits) hMemory32 hImports
     hAlloc (by decide) (by decide) (by decide) (by simp [hV2.1, hV2.2]) hHeap
-    (by rw [show xs.size.toUInt64.toNat = xs.size from hn]; exact hRoom)
+    hCap
     ⟨v2, by simp [Expr.eval, v2, v1, hT2.1, hT2.2]⟩ ?_).mono (fun _ _ h => h) ?_
   · intro k store state hk hAt hFrame hIndex
     have hState : state.params.length = 1 ∧ state.locals.length = 19 :=
@@ -843,8 +828,7 @@ theorem softmax_implements :
     · simp [Expr.eval, g13, b, a, hState.1, hState.2, F64Op.apply, F64Bits.toBits_div, d]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨px, rfl, hNew.borrowed px _ hXs⟩,
-    le_of_le_of_eq hNew.top (by simp [softmaxNeed, hn]),
-    le_of_le_of_eq hNew.pages (by simp [softmaxNeed, hn]), hNew.caps, hNew.borrowed,
+    hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.softmax.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -856,21 +840,15 @@ theorem softmax_implements :
 def matVec2Tuple (x : Array Float × Array Float × Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.matVec2 x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
 
-/-- The bytes `matVec2` may allocate: the temporary and the result. -/
-def matVec2Need (x : Array Float × Array Float × Array Float × UInt64 × UInt64) : Nat :=
-  48 + 8 * (x.2.2.2.1.toNat + 1) + (48 + 8 * (x.2.2.2.2.toNat + 1))
-
-theorem matVec2_implements : Implements gpt.module 8 matVec2Tuple matVec2Need := by
-  refine Func.implements_heap gpt.funcs 5 gpt.matVec2.ir "matVec2" rfl matVec2Tuple matVec2Need
+theorem matVec2_implements : Implements gpt.module 8 matVec2Tuple := by
+  refine Func.implements_heap gpt.funcs 5 gpt.matVec2.ir "matVec2" rfl matVec2Tuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
       rfl⟩; rfl) ?_
   rintro ⟨w1, w2, x, hidden, d⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨p1, rfl, hW1⟩, _, _, rfl, ⟨p2, rfl, hW2⟩, _, _, rfl, ⟨px, rfl, hX⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨p1, rfl, hW1⟩, _, _, rfl, ⟨p2, rfl, hW2⟩, _, _, rfl, ⟨px, rfl, hX⟩, rfl⟩ hCap
   change heap.Borrowed initial p1 (w1.map Float.toBits) at hW1
   change heap.Borrowed initial p2 (w2.map Float.toBits) at hW2
   change heap.Borrowed initial px (x.map Float.toBits) at hX
-  change heap.Room initial gpt.module
-    (48 + 8 * (hidden.toNat + 1) + (48 + 8 * (d.toNat + 1))) at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hMatVec : gpt.module.funcs[4 - gpt.module.imports.length]? =
@@ -887,8 +865,8 @@ theorem matVec2_implements : Implements gpt.module 8 matVec2Tuple matVec2Need :=
       (.seq (.assign 7 (.get 6)) (.release 5)))) 8
     (fun store state => store = initial ∧ state = start) _
   -- The temporary: `w1 · x`.
-  refine Stmt.seq_spec (Live.call matVec_implements rfl hMatVec rfl (Live.start hHeap) hRoom
-    (x := (w1, x, hidden, d)) (by simp only [matVecNeed]; omega) (afterArgs := start)
+  refine Stmt.seq_spec (Live.call matVec_implements rfl hMatVec rfl (Live.start hHeap) hCap
+    (x := (w1, x, hidden, d)) (afterArgs := start)
     (vals := [.i64 p1, .i64 px, .i64 hidden, .i64 d])
     (by simp [Expr.evalResults, Expr.eval, hGet.1, hGet.2.2.1, hGet.2.2.2.1, hGet.2.2.2.2])
     ⟨[.i64 p1], _, rfl, ⟨p1, rfl, hW1⟩, [.i64 px], _, rfl, ⟨px, rfl, hX⟩, rfl⟩
@@ -902,8 +880,8 @@ theorem matVec2_implements : Implements gpt.module 8 matVec2Tuple matVec2Need :=
   have hU5 : (start.update 5 (.i64 ph)).get 5 = some (.i64 ph) :=
     State.get_update_same (by rw [hStart]; decide)
   -- The result: `w2 · h`.
-  refine Stmt.seq_spec (Live.call matVec_implements rfl hMatVec rfl hLive1 hRoom
-    (x := (w2, matVecTuple (w1, x, hidden, d), d, hidden)) (by simp only [matVecNeed]; omega)
+  refine Stmt.seq_spec (Live.call matVec_implements rfl hMatVec rfl hLive1 hCap
+    (x := (w2, matVecTuple (w1, x, hidden, d), d, hidden))
     (afterArgs := start.update 5 (.i64 ph)) (vals := [.i64 p2, .i64 ph, .i64 d, .i64 hidden])
     (by simp [Expr.evalResults, Expr.eval, hU 1 (by decide), hU 4 (by decide),
       hU 3 (by decide), hU5, hGet.2.1, hGet.2.2.2.1, hGet.2.2.2.2])
@@ -925,20 +903,15 @@ theorem matVec2_implements : Implements gpt.module 8 matVec2Tuple matVec2Need :=
         (w1, w2, x, hidden, d) := fun heap' store' hKeep =>
     ⟨[.i64 p1], _, rfl, ⟨p1, rfl, hKeep p1 _ hW1⟩, [.i64 p2], _, rfl, ⟨p2, rfl, hKeep p2 _ hW2⟩,
       [.i64 px], _, rfl, ⟨px, rfl, hKeep px _ hX⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLive3.finish (need := matVec2Need (w1, w2, x, hidden, d))
-      (by simp only [matVecNeed, matVec2Need]; omega) hParams
-  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], t3,
+  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLive3.finish hParams
+  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], t3,
     by simp [gpt.matVec2.ir, Func.scratch, Expr.evalResults, Expr.eval, t3, start], hOwned,
     hOutB, hOutO⟩
 
 /-- `matMul` with its five arguments as one tuple. -/
 def matMulTuple (x : Array Float × Array Float × UInt64 × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.matMul x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
-
-/-- The bytes `matMul` may allocate: one array of `n × m` elements. -/
-def matMulNeed (x : Array Float × Array Float × UInt64 × UInt64 × UInt64) : Nat :=
-  48 + 8 * ((x.2.2.1 * x.2.2.2.2).toNat + 1)
 
 /-- One step of the loop for element `e`. -/
 def cellStep (a b : Array Float) (k m e c : UInt64) (acc : Float) : Float :=
@@ -979,14 +952,13 @@ theorem cellBody_run {initial : Store Unit} {pa pb : UInt64} {a b : Array Float}
   · by_cases hm : m = 0 <;> simp [State.Holds, Scalar.values, cellStep, hParams, hLocals,
       F64Bits.toBits_add, F64Bits.toBits_mul, hm]
 
-theorem matMul_implements : Implements gpt.module 9 matMulTuple matMulNeed := by
-  refine Func.implements_heap gpt.funcs 6 gpt.matMul.ir "matMul" rfl matMulTuple matMulNeed
+theorem matMul_implements : Implements gpt.module 9 matMulTuple := by
+  refine Func.implements_heap gpt.funcs 6 gpt.matMul.ir "matMul" rfl matMulTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨a, b, n, k, m⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨pa, rfl, hAs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨pa, rfl, hAs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hCap
   change heap.Borrowed initial pa (a.map Float.toBits) at hAs
   change heap.Borrowed initial pb (b.map Float.toBits) at hBs
-  change heap.Room initial gpt.module (48 + 8 * ((n * m).toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -999,7 +971,7 @@ theorem matMul_implements : Implements gpt.module 9 matMulTuple matMulNeed := by
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.buildWith_spec (writes := [8, 9, 10, 11]) (n := n * m)
     (fun e => (cell a b k m e).toBits) hMemory32 hImports hAlloc (by decide) (by decide)
-    (by decide) (by simp [start]) hHeap hRoom
+    (by decide) (by simp [start]) hHeap hCap
     ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · -- One element: the accumulator, then the loop over the shared dimension.
     intro e store state he hAt hFrame hIndex
@@ -1044,7 +1016,7 @@ theorem matMul_implements : Implements gpt.module 9 matMulTuple matMulNeed := by
           (hFrameL.weaken (by simp)), t, by simp [Expr.eval, g8]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pa, rfl, hNew.borrowed pa _ hAs⟩, _, _, rfl,
-      ⟨pb, rfl, hNew.borrowed pb _ hBs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
+      ⟨pb, rfl, hNew.borrowed pb _ hBs⟩, rfl⟩, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.matMul.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -1056,16 +1028,12 @@ theorem matMul_implements : Implements gpt.module 9 matMulTuple matMulNeed := by
 def addTuple (x : Array Float × Array Float) : Array Float :=
   LeanExe.Examples.Gpt.add x.1 x.2
 
-/-- The bytes `add` may allocate: one array as long as the first argument. -/
-def addNeed (x : Array Float × Array Float) : Nat := 48 + 8 * (x.1.size + 1)
-
-theorem add_implements : Implements gpt.module 10 addTuple addNeed := by
-  refine Func.implements_heap gpt.funcs 7 gpt.add.ir "add" rfl addTuple addNeed
+theorem add_implements : Implements gpt.module 10 addTuple := by
+  refine Func.implements_heap gpt.funcs 7 gpt.add.ir "add" rfl addTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, ⟨_, rfl, -⟩⟩; rfl) ?_
-  rintro ⟨a, b⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨pa, rfl, hAs⟩, ⟨pb, rfl, hBs⟩⟩ hRoom
+  rintro ⟨a, b⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨pa, rfl, hAs⟩, ⟨pb, rfl, hBs⟩⟩ hCap
   change heap.Borrowed initial pa (a.map Float.toBits) at hAs
   change heap.Borrowed initial pb (b.map Float.toBits) at hBs
-  change heap.Room initial gpt.module (48 + 8 * (a.size + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -1090,7 +1058,7 @@ theorem add_implements : Implements gpt.module 10 addTuple addNeed := by
   refine (Stmt.build_spec (n := a.size.toUInt64)
     (fun i => (a[i.toNat]! + b[i.toNat]!).toBits) hMemory32 hImports hAlloc (by decide)
     (by decide) (by simp [hS1.1, hS1.2]) hHeap
-    (by rw [show a.size.toUInt64.toNat = a.size from hn]; exact hRoom)
+    hCap
     ⟨s1, by simp [Expr.eval, s1, start]⟩ ?_).mono (fun _ _ h => h) ?_
   · intro k store state hk hAt hFrame hIndex
     have hState : state.params.length = 2 ∧ state.locals.length = 5 :=
@@ -1103,8 +1071,7 @@ theorem add_implements : Implements gpt.module 10 addTuple addNeed := by
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pa, rfl, hNew.borrowed pa _ hAs⟩,
       ⟨pb, rfl, hNew.borrowed pb _ hBs⟩⟩,
-    le_of_le_of_eq hNew.top (by simp [addNeed, hn]),
-    le_of_le_of_eq hNew.pages (by simp [addNeed, hn]), hNew.caps, hNew.borrowed,
+    hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.add.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -1196,16 +1163,12 @@ theorem gelu_call {scratch : Nat} {args : List ((type : ScalarType) × Expr type
     (by rw [show gpt.module.imports.length = 0 from rfl]
         exact compile_funcs (funcs := gpt.funcs) (i := 9) rfl) hParams (x := d) hArgs hSet
 
-/-- The bytes `geluArray` may allocate: one array as long as its argument. -/
-def geluNeed (xs : Array Float) : Nat := 48 + 8 * (xs.size + 1)
-
 theorem geluArray_implements :
-    Implements gpt.module 13 LeanExe.Examples.Gpt.geluArray geluNeed := by
+    Implements gpt.module 13 LeanExe.Examples.Gpt.geluArray := by
   refine Func.implements_heap gpt.funcs 10 gpt.geluArray.ir "geluArray" rfl
-    LeanExe.Examples.Gpt.geluArray geluNeed (by rintro _ _ _ _ ⟨_, rfl, -⟩; rfl) ?_
-  rintro xs heap initial _ hHeap ⟨px, rfl, hXs⟩ hRoom
+    LeanExe.Examples.Gpt.geluArray (by rintro _ _ _ _ ⟨_, rfl, -⟩; rfl) ?_
+  rintro xs heap initial _ hHeap ⟨px, rfl, hXs⟩ hCap
   change heap.Borrowed initial px (xs.map Float.toBits) at hXs
-  change heap.Room initial gpt.module (48 + 8 * (xs.size + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -1230,7 +1193,7 @@ theorem geluArray_implements :
   refine (Stmt.buildWith_spec (writes := [5]) (n := xs.size.toUInt64)
     (fun i => (LeanExe.Examples.Gpt.gelu xs[i.toNat]!).toBits) hMemory32 hImports hAlloc
     (by decide) (by decide) (by decide) (by simp [hS1.1, hS1.2]) hHeap
-    (by rw [show xs.size.toUInt64.toNat = xs.size from hn]; exact hRoom)
+    hCap
     ⟨s1, by simp [Expr.eval, s1, start]⟩ ?_).mono (fun _ _ h => h) ?_
   · intro k store state hk hAt hFrame hIndex
     have hState : state.params.length = 1 ∧ state.locals.length = 6 :=
@@ -1251,8 +1214,7 @@ theorem geluArray_implements :
     exact State.Frame.refl _ _ _
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨px, rfl, hNew.borrowed px _ hXs⟩,
-    le_of_le_of_eq hNew.top (by simp [geluNeed, hn]),
-    le_of_le_of_eq hNew.pages (by simp [geluNeed, hn]), hNew.caps, hNew.borrowed,
+    hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.geluArray.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -1270,11 +1232,6 @@ theorem matMul_size (a b : Array Float) (n k m : UInt64) :
 def linearTuple (x : Array Float × Array Float × Array Float × UInt64 × UInt64 × UInt64 × UInt64) :
     Array Float :=
   LeanExe.Examples.Gpt.linear x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2.1 x.2.2.2.2.2.2
-
-/-- The bytes `linear` may allocate: one array of `n × m` elements. -/
-def linearNeed (x : Array Float × Array Float × Array Float × UInt64 × UInt64 × UInt64 × UInt64) :
-    Nat :=
-  48 + 8 * ((x.2.2.2.2.1 * x.2.2.2.2.2.2).toNat + 1)
 
 theorem linear_size (x w b : Array Float) (l n k m : UInt64) :
     (linearTuple (x, w, b, l, n, k, m)).size = (n * m).toNat := by
@@ -1313,16 +1270,15 @@ theorem linBody_run {initial : Store Unit} {px pw : UInt64} {x w : Array Float}
   · simp [State.Holds, Scalar.values, linStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul]
 
-theorem linear_implements : Implements gpt.module 30 linearTuple linearNeed := by
-  refine Func.implements_heap gpt.funcs 27 gpt.linear.ir "linear" rfl linearTuple linearNeed
+theorem linear_implements : Implements gpt.module 30 linearTuple := by
+  refine Func.implements_heap gpt.funcs 27 gpt.linear.ir "linear" rfl linearTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
       rfl⟩; rfl) ?_
   rintro ⟨x, w, b, l, n, k, m⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pw, rfl, hWs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pw, rfl, hWs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hCap
   change heap.Borrowed initial px (x.map Float.toBits) at hXs
   change heap.Borrowed initial pw (w.map Float.toBits) at hWs
   change heap.Borrowed initial pb (b.map Float.toBits) at hBs
-  change heap.Room initial gpt.module (48 + 8 * ((n * m).toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -1337,7 +1293,7 @@ theorem linear_implements : Implements gpt.module 30 linearTuple linearNeed := b
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.buildWith_spec (writes := [10, 11, 12, 13]) (n := n * m)
     (fun e => (LeanExe.loop k 0.0 (linStep x w l k m e) + b[(l * m + e % m).toNat]!).toBits)
-    hMemory32 hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    hMemory32 hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hCap
     ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro e store state he hAt hFrame hIndex
     have hm : m ≠ 0 := by rintro rfl; simp at he
@@ -1397,7 +1353,7 @@ theorem linear_implements : Implements gpt.module 30 linearTuple linearNeed := b
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, _, _, rfl,
       ⟨pw, rfl, hNew.borrowed pw _ hWs⟩, _, _, rfl, ⟨pb, rfl, hNew.borrowed pb _ hBs⟩, rfl⟩,
-    hNew.top, hNew.pages, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+    hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.linear.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -1409,9 +1365,6 @@ theorem linear_implements : Implements gpt.module 30 linearTuple linearNeed := b
 /-- `rowMeans` with its three arguments as one tuple. -/
 def rowMeansTuple (x : Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.rowMeans x.1 x.2.1 x.2.2
-
-/-- The bytes `rowMeans` may allocate: one array of `t` elements. -/
-def rowMeansNeed (x : Array Float × UInt64 × UInt64) : Nat := 48 + 8 * (x.2.1.toNat + 1)
 
 /-- One step of the sum over row `r`. -/
 def meanStep (x : Array Float) (d r c : UInt64) (acc : Float) : Float :=
@@ -1438,12 +1391,11 @@ theorem meanBody_run {initial : Store Unit} {px : UInt64} {x : Array Float}
     exact State.Frame.refl _ _ _
   · simp [State.Holds, Scalar.values, meanStep, hParams, hLocals, F64Bits.toBits_add]
 
-theorem rowMeans_implements : Implements gpt.module 15 rowMeansTuple rowMeansNeed := by
+theorem rowMeans_implements : Implements gpt.module 15 rowMeansTuple := by
   refine Func.implements_heap gpt.funcs 12 gpt.rowMeans.ir "rowMeans" rfl rowMeansTuple
-    rowMeansNeed (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
-  rintro ⟨x, t, d⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hXs⟩, rfl⟩ hRoom
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨x, t, d⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hXs⟩, rfl⟩ hCap
   change heap.Borrowed initial px (x.map Float.toBits) at hXs
-  change heap.Room initial gpt.module (48 + 8 * (t.toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -1457,7 +1409,7 @@ theorem rowMeans_implements : Implements gpt.module 15 rowMeansTuple rowMeansNee
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.buildWith_spec (writes := [6, 7, 8, 9]) (n := t)
     (fun r => (LeanExe.loop d 0.0 (meanStep x d r) / d.toFloat).toBits) hMemory32 hImports hAlloc
-    (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom ⟨start, rfl⟩ ?_).mono
+    (by decide) (by decide) (by decide) (by simp [start]) hHeap hCap ⟨start, rfl⟩ ?_).mono
       (fun _ _ h => h) ?_
   · intro r store state hr hAt hFrame hIndex
     have hState : state.params.length = 3 ∧ state.locals.length = 8 :=
@@ -1501,8 +1453,7 @@ theorem rowMeans_implements : Implements gpt.module 15 rowMeansTuple rowMeansNee
           (hFrameL.weaken (by simp)), u, by
         simp [Expr.eval, g6, g2, F64Op.apply, F64Bits.toBits_div, F64Convert.toBits_toFloat]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, rfl⟩, hNew.top, hNew.pages,
-    hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, rfl⟩, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.rowMeans.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -1514,10 +1465,6 @@ theorem rowMeans_implements : Implements gpt.module 15 rowMeansTuple rowMeansNee
 /-- `rowInvStd` with its five arguments as one tuple. -/
 def rowInvStdTuple (x : Array Float × Array Float × UInt64 × UInt64 × Float) : Array Float :=
   LeanExe.Examples.Gpt.rowInvStd x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
-
-/-- The bytes `rowInvStd` may allocate: one array of `t` elements. -/
-def rowInvStdNeed (x : Array Float × Array Float × UInt64 × UInt64 × Float) : Nat :=
-  48 + 8 * (x.2.2.1.toNat + 1)
 
 /-- One step of the sum of squared deviations over row `r`. -/
 def devStep (x means : Array Float) (d r c : UInt64) (acc : Float) : Float :=
@@ -1551,14 +1498,13 @@ theorem devBody_run {initial : Store Unit} {px pm : UInt64} {x means : Array Flo
   · simp [State.Holds, Scalar.values, devStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul, F64Bits.toBits_sub]
 
-theorem rowInvStd_implements : Implements gpt.module 16 rowInvStdTuple rowInvStdNeed := by
+theorem rowInvStd_implements : Implements gpt.module 16 rowInvStdTuple := by
   refine Func.implements_heap gpt.funcs 13 gpt.rowInvStd.ir "rowInvStd" rfl rowInvStdTuple
-    rowInvStdNeed (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨x, means, t, d, eps⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pm, rfl, hMs⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pm, rfl, hMs⟩, rfl⟩ hCap
   change heap.Borrowed initial px (x.map Float.toBits) at hXs
   change heap.Borrowed initial pm (means.map Float.toBits) at hMs
-  change heap.Room initial gpt.module (48 + 8 * (t.toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -1574,7 +1520,7 @@ theorem rowInvStd_implements : Implements gpt.module 16 rowInvStdTuple rowInvStd
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.buildWith_spec (writes := [8, 9, 10, 11]) (n := t)
     (fun r => (1.0 / (LeanExe.loop d 0.0 (devStep x means d r) / d.toFloat + eps).sqrt).toBits)
-    hMemory32 hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    hMemory32 hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hCap
     ⟨start, rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro r store state hr hAt hFrame hIndex
     have hState : state.params.length = 5 ∧ state.locals.length = 8 :=
@@ -1625,7 +1571,7 @@ theorem rowInvStd_implements : Implements gpt.module 16 rowInvStdTuple rowInvStd
           F64Bits.toBits_sqrt, F64Bits.toBits_add, F64Convert.toBits_toFloat, hOne]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, _, _, rfl,
-      ⟨pm, rfl, hNew.borrowed pm _ hMs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
+      ⟨pm, rfl, hNew.borrowed pm _ hMs⟩, rfl⟩, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.rowInvStd.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -1641,30 +1587,24 @@ def normalizeTuple (x : Array Float × Array Float × Array Float × Array Float
   LeanExe.Examples.Gpt.normalizeRows x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2.1
     x.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2
 
-/-- The bytes `normalizeRows` may allocate: one array of `t × d` elements. -/
-def normalizeNeed (x : Array Float × Array Float × Array Float × Array Float × Array Float ×
-    UInt64 × UInt64 × UInt64) : Nat :=
-  48 + 8 * ((x.2.2.2.2.2.2.1 * x.2.2.2.2.2.2.2).toNat + 1)
-
 /-- Element `e` of `normalizeRows`, with layer `l` of the gains and biases. -/
 def normalizeAt (x means inv g b : Array Float) (l d e : UInt64) : Float :=
   (x[e.toNat]! - means[(e / d).toNat]!) * inv[(e / d).toNat]! * g[(l * d + e % d).toNat]! +
     b[(l * d + e % d).toNat]!
 
-theorem normalizeRows_implements : Implements gpt.module 17 normalizeTuple normalizeNeed := by
+theorem normalizeRows_implements : Implements gpt.module 17 normalizeTuple := by
   refine Func.implements_heap gpt.funcs 14 gpt.normalizeRows.ir "normalizeRows" rfl
-    normalizeTuple normalizeNeed
+    normalizeTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
       _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨x, means, inv, g, b, l, t, d⟩ heap initial _ hHeap
     ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pm, rfl, hMs⟩, _, _, rfl, ⟨pi, rfl, hIs⟩,
-      _, _, rfl, ⟨pg, rfl, hGs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hRoom
+      _, _, rfl, ⟨pg, rfl, hGs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hCap
   change heap.Borrowed initial px (x.map Float.toBits) at hXs
   change heap.Borrowed initial pm (means.map Float.toBits) at hMs
   change heap.Borrowed initial pi (inv.map Float.toBits) at hIs
   change heap.Borrowed initial pg (g.map Float.toBits) at hGs
   change heap.Borrowed initial pb (b.map Float.toBits) at hBs
-  change heap.Room initial gpt.module (48 + 8 * ((t * d).toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -1679,7 +1619,7 @@ theorem normalizeRows_implements : Implements gpt.module 17 normalizeTuple norma
       (.ofBits (.read 4 (.bin .add (.bin .mul (.get 5) (.get 7)) (.bin .remU (.get 10) (.get 7)))))))) 11
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.build_spec (n := t * d) (fun e => (normalizeAt x means inv g b l d e).toBits)
-    hMemory32 hImports hAlloc (by decide) (by decide) (by simp [start]) hHeap hRoom
+    hMemory32 hImports hAlloc (by decide) (by decide) (by simp [start]) hHeap hCap
     ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro e store state he hAt hFrame hIndex
     have hState : state.params.length = 8 ∧ state.locals.length = 6 :=
@@ -1703,7 +1643,7 @@ theorem normalizeRows_implements : Implements gpt.module 17 normalizeTuple norma
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, _, _, rfl,
       ⟨pm, rfl, hNew.borrowed pm _ hMs⟩, _, _, rfl, ⟨pi, rfl, hNew.borrowed pi _ hIs⟩, _, _, rfl,
       ⟨pg, rfl, hNew.borrowed pg _ hGs⟩, _, _, rfl, ⟨pb, rfl, hNew.borrowed pb _ hBs⟩, rfl⟩,
-    hNew.top, hNew.pages, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+    hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.normalizeRows.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -1718,26 +1658,17 @@ def layerNormRowsTuple (x : Array Float × Array Float × Array Float × UInt64 
   LeanExe.Examples.Gpt.layerNormRows x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2.1
     x.2.2.2.2.2.2
 
-/-- The bytes `layerNormRows` may allocate: the means, the inverse deviations, and the
-`t × d` result. -/
-def layerNormRowsNeed (x : Array Float × Array Float × Array Float × UInt64 × UInt64 × UInt64 ×
-    Float) : Nat :=
-  48 + 8 * (x.2.2.2.2.1.toNat + 1) + (48 + 8 * (x.2.2.2.2.1.toNat + 1)) +
-    (48 + 8 * ((x.2.2.2.2.1 * x.2.2.2.2.2.1).toNat + 1))
-
 theorem layerNormRows_implements :
-    Implements gpt.module 18 layerNormRowsTuple layerNormRowsNeed := by
+    Implements gpt.module 18 layerNormRowsTuple := by
   refine Func.implements_heap gpt.funcs 15 gpt.layerNormRows.ir "layerNormRows" rfl
-    layerNormRowsTuple layerNormRowsNeed
+    layerNormRowsTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
       rfl⟩; rfl) ?_
   rintro ⟨x, g, b, l, t, d, eps⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨px, rfl, hX⟩, _, _, rfl, ⟨pg, rfl, hG⟩, _, _, rfl, ⟨pb, rfl, hB⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨px, rfl, hX⟩, _, _, rfl, ⟨pg, rfl, hG⟩, _, _, rfl, ⟨pb, rfl, hB⟩, rfl⟩ hCap
   change heap.Borrowed initial px (x.map Float.toBits) at hX
   change heap.Borrowed initial pg (g.map Float.toBits) at hG
   change heap.Borrowed initial pb (b.map Float.toBits) at hB
-  change heap.Room initial gpt.module (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) +
-    (48 + 8 * ((t * d).toNat + 1))) at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hMeans : gpt.module.funcs[15 - gpt.module.imports.length]? =
@@ -1772,8 +1703,8 @@ theorem layerNormRows_implements :
       (.seq (.assign 10 (.get 9)) (.seq (.release 8) (.release 7)))))) 11
     (fun store state => store = initial ∧ state = start) _
   -- The means of the rows.
-  refine Stmt.seq_spec (Live.call rowMeans_implements rfl hMeans rfl (Live.start hHeap) hRoom
-    (x := (x, t, d)) (by simp only [rowMeansNeed]; omega) (afterArgs := start)
+  refine Stmt.seq_spec (Live.call rowMeans_implements rfl hMeans rfl (Live.start hHeap) hCap
+    (x := (x, t, d)) (afterArgs := start)
     (vals := [.i64 px, .i64 t, .i64 d])
     (by simp [Expr.evalResults, Expr.eval, sg0, sg4, sg5])
     ⟨[.i64 px], _, rfl, ⟨px, rfl, hX⟩, rfl⟩ (by rw [hStart]; decide)) ?_
@@ -1785,8 +1716,8 @@ theorem layerNormRows_implements :
     simp only [s1]
     rw [State.get_update_ne (by omega)]
   -- The inverse standard deviations of the rows.
-  refine Stmt.seq_spec (Live.call rowInvStd_implements rfl hInv rfl hLive1 hRoom
-    (x := (x, means, t, d, eps)) (by simp only [rowMeansNeed, rowInvStdNeed]; omega)
+  refine Stmt.seq_spec (Live.call rowInvStd_implements rfl hInv rfl hLive1 hCap
+    (x := (x, means, t, d, eps))
     (afterArgs := s1) (vals := [.i64 px, .i64 pm, .i64 t, .i64 d, .f64 eps.toBits])
     (by simp [Expr.evalResults, Expr.eval, s1, State.get_update_same, hStart,
       hGetS1 0 (by decide), hGetS1 4 (by decide), hGetS1 5 (by decide), hGetS1 6 (by decide),
@@ -1806,9 +1737,8 @@ theorem layerNormRows_implements :
     rw [State.get_update_ne (by decide)]
     exact State.get_update_same (by rw [hStart]; decide)
   -- The normalized rows, scaled and shifted.
-  refine Stmt.seq_spec (Live.call normalizeRows_implements rfl hNormalize rfl hLive2 hRoom
+  refine Stmt.seq_spec (Live.call normalizeRows_implements rfl hNormalize rfl hLive2 hCap
     (x := (x, means, inv, g, b, l, t, d))
-    (by simp only [rowMeansNeed, rowInvStdNeed, normalizeNeed]; omega)
     (afterArgs := s2)
     (vals := [.i64 px, .i64 pm, .i64 pi, .i64 pg, .i64 pb, .i64 l, .i64 t, .i64 d])
     (by simp [Expr.evalResults, Expr.eval, s2, State.get_update_same, hS1, hS2Get7,
@@ -1850,21 +1780,15 @@ theorem layerNormRows_implements :
         (x, g, b, l, t, d, eps) := fun heap' store' hKeep =>
     ⟨[.i64 px], _, rfl, ⟨px, rfl, hKeep px _ hX⟩, [.i64 pg], _, rfl, ⟨pg, rfl, hKeep pg _ hG⟩,
       [.i64 pb], _, rfl, ⟨pb, rfl, hKeep pb _ hB⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLive5.finish (need := layerNormRowsNeed (x, g, b, l, t, d, eps))
-      (by simp only [rowMeansNeed, rowInvStdNeed, normalizeNeed, layerNormRowsNeed]; omega)
-      hParams
-  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLive5.finish hParams
+  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
     by simp [gpt.layerNormRows.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,
       State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
 
 /-- `maskedScores` with its six arguments as one tuple. -/
 def maskedTuple (x : Array Float × Array Float × UInt64 × UInt64 × UInt64 × Float) : Array Float :=
   LeanExe.Examples.Gpt.maskedScores x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2
-
-/-- The bytes `maskedScores` may allocate: one array of `t × nh × t` elements. -/
-def maskedNeed (x : Array Float × Array Float × UInt64 × UInt64 × UInt64 × Float) : Nat :=
-  48 + 8 * ((x.2.2.1 * x.2.2.2.1 * x.2.2.1).toNat + 1)
 
 /-- One step of the dot product of query row `e / (nh · t)` and key row `e % t` over the
 columns of head `e / t % nh`. -/
@@ -1905,14 +1829,13 @@ theorem scoreBody_run {initial : Store Unit} {pq pk : UInt64} {q k : Array Float
   · simp [State.Holds, Scalar.values, scoreStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul]
 
-theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNeed := by
+theorem maskedScores_implements : Implements gpt.module 19 maskedTuple := by
   refine Func.implements_heap gpt.funcs 16 gpt.maskedScores.ir "maskedScores" rfl maskedTuple
-    maskedNeed (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨q, k, t, nh, dh, scale⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨pq, rfl, hQs⟩, _, _, rfl, ⟨pk, rfl, hKs⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨pq, rfl, hQs⟩, _, _, rfl, ⟨pk, rfl, hKs⟩, rfl⟩ hCap
   change heap.Borrowed initial pq (q.map Float.toBits) at hQs
   change heap.Borrowed initial pk (k.map Float.toBits) at hKs
-  change heap.Room initial gpt.module (48 + 8 * ((t * nh * t).toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -1929,7 +1852,7 @@ theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNee
   refine (Stmt.buildWith_spec (writes := [9, 10, 11, 12]) (n := t * nh * t)
     (fun e => (LeanExe.loop (if e % t ≤ e / (nh * t) then dh else 0) 0.0 (scoreStep q k t nh dh e) *
       scale).toBits)
-    hMemory32 hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    hMemory32 hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hCap
     ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro e store state he hAt hFrame hIndex
     have ht : t ≠ 0 := by rintro rfl; simp at he
@@ -1991,7 +1914,7 @@ theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNee
       simp [Expr.eval, u5, g9, F64Op.apply, F64Bits.toBits_mul]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pq, rfl, hNew.borrowed pq _ hQs⟩, _, _, rfl,
-      ⟨pk, rfl, hNew.borrowed pk _ hKs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
+      ⟨pk, rfl, hNew.borrowed pk _ hKs⟩, rfl⟩, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.maskedScores.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -2005,9 +1928,6 @@ theorem maskedScores_implements : Implements gpt.module 19 maskedTuple maskedNee
 /-- `rowMax` with its three arguments as one tuple. -/
 def rowMaxTuple (x : Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.rowMax x.1 x.2.1 x.2.2
-
-/-- The bytes `rowMax` may allocate: one array of `t · nh` elements. -/
-def rowMaxNeed (x : Array Float × UInt64 × UInt64) : Nat := 48 + 8 * ((x.2.1 * x.2.2).toNat + 1)
 
 /-- One step of the maximum over row `r`. -/
 def rowMaxStep (x : Array Float) (w r c : UInt64) (acc : Float) : Float :=
@@ -2036,12 +1956,11 @@ theorem rowMaxBody_run {initial : Store Unit} {px : UInt64} {x : Array Float}
     exact State.Frame.refl _ _ _
   · simp [State.Holds, Scalar.values, rowMaxStep, hParams, hLocals, F64Bits.toBits_max]
 
-theorem rowMax_implements : Implements gpt.module 20 rowMaxTuple rowMaxNeed := by
-  refine Func.implements_heap gpt.funcs 17 gpt.rowMax.ir "rowMax" rfl rowMaxTuple rowMaxNeed
+theorem rowMax_implements : Implements gpt.module 20 rowMaxTuple := by
+  refine Func.implements_heap gpt.funcs 17 gpt.rowMax.ir "rowMax" rfl rowMaxTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
-  rintro ⟨x, t, nh⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hXs⟩, rfl⟩ hRoom
+  rintro ⟨x, t, nh⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hXs⟩, rfl⟩ hCap
   change heap.Borrowed initial px (x.map Float.toBits) at hXs
-  change heap.Room initial gpt.module (48 + 8 * ((t * nh).toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -2058,7 +1977,7 @@ theorem rowMax_implements : Implements gpt.module 20 rowMaxTuple rowMaxNeed := b
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.buildWith_spec (writes := [6, 7, 8, 9]) (n := t * nh)
     (fun r => (LeanExe.loop (r / nh + 1) (-(1.0 / 0.0)) (rowMaxStep x t r)).toBits) hMemory32
-    hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hCap
     ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro r store state hr hAt hFrame hIndex
     have hn : nh ≠ 0 := by rintro rfl; simp at hr
@@ -2102,8 +2021,7 @@ theorem rowMax_implements : Implements gpt.module 20 rowMaxTuple rowMaxNeed := b
       exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g6]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, rfl⟩, hNew.top, hNew.pages,
-    hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, rfl⟩, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.rowMax.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -2115,10 +2033,6 @@ theorem rowMax_implements : Implements gpt.module 20 rowMaxTuple rowMaxNeed := b
 /-- `rowSumExp` with its four arguments as one tuple. -/
 def rowSumExpTuple (x : Array Float × Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.rowSumExp x.1 x.2.1 x.2.2.1 x.2.2.2
-
-/-- The bytes `rowSumExp` may allocate: one array of `t · nh` elements. -/
-def rowSumExpNeed (x : Array Float × Array Float × UInt64 × UInt64) : Nat :=
-  48 + 8 * ((x.2.2.1 * x.2.2.2).toNat + 1)
 
 /-- One step of the sum of exponentials over row `r`. -/
 def sumExpStep (x mx : Array Float) (w r c : UInt64) (acc : Float) : Float :=
@@ -2164,14 +2078,13 @@ theorem sumExpBody_spec {initial : Store Unit} {px pm : UInt64} {x mx : Array Fl
     exact State.Frame.refl _ _ _
   · simp [State.Holds, Scalar.values, sumExpStep, f, s, b, a, hParams, hLocals, dv, e]
 
-theorem rowSumExp_implements : Implements gpt.module 21 rowSumExpTuple rowSumExpNeed := by
+theorem rowSumExp_implements : Implements gpt.module 21 rowSumExpTuple := by
   refine Func.implements_heap gpt.funcs 18 gpt.rowSumExp.ir "rowSumExp" rfl rowSumExpTuple
-    rowSumExpNeed (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨x, mx, t, nh⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pm, rfl, hMs⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pm, rfl, hMs⟩, rfl⟩ hCap
   change heap.Borrowed initial px (x.map Float.toBits) at hXs
   change heap.Borrowed initial pm (mx.map Float.toBits) at hMs
-  change heap.Room initial gpt.module (48 + 8 * ((t * nh).toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -2186,7 +2099,7 @@ theorem rowSumExp_implements : Implements gpt.module 21 rowSumExpTuple rowSumExp
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.buildWith_spec (writes := [7, 8, 9, 10, 11]) (n := t * nh)
     (fun r => (LeanExe.loop (r / nh + 1) 0.0 (sumExpStep x mx t r)).toBits) hMemory32 hImports
-    hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hCap
     ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro r store state hr hAt hFrame hIndex
     have hn : nh ≠ 0 := by rintro rfl; simp at hr
@@ -2229,7 +2142,7 @@ theorem rowSumExp_implements : Implements gpt.module 21 rowSumExpTuple rowSumExp
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g7]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, _, _, rfl,
-      ⟨pm, rfl, hNew.borrowed pm _ hMs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
+      ⟨pm, rfl, hNew.borrowed pm _ hMs⟩, rfl⟩, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.rowSumExp.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -2244,22 +2157,17 @@ def softmaxApplyTuple (x : Array Float × Array Float × Array Float × UInt64 �
     Array Float :=
   LeanExe.Examples.Gpt.softmaxApply x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
 
-/-- The bytes `softmaxApply` may allocate: one array of `t × w` elements. -/
-def softmaxApplyNeed (x : Array Float × Array Float × Array Float × UInt64 × UInt64) : Nat :=
-  48 + 8 * ((x.2.2.2.1 * x.2.2.2.2).toNat + 1)
-
 theorem softmaxApply_implements :
-    Implements gpt.module 22 softmaxApplyTuple softmaxApplyNeed := by
+    Implements gpt.module 22 softmaxApplyTuple := by
   refine Func.implements_heap gpt.funcs 19 gpt.softmaxApply.ir "softmaxApply" rfl
-    softmaxApplyTuple softmaxApplyNeed
+    softmaxApplyTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
       rfl⟩; rfl) ?_
   rintro ⟨x, mx, sums, t, w⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pm, rfl, hMs⟩, _, _, rfl, ⟨ps, rfl, hSs⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨px, rfl, hXs⟩, _, _, rfl, ⟨pm, rfl, hMs⟩, _, _, rfl, ⟨ps, rfl, hSs⟩, rfl⟩ hCap
   change heap.Borrowed initial px (x.map Float.toBits) at hXs
   change heap.Borrowed initial pm (mx.map Float.toBits) at hMs
   change heap.Borrowed initial ps (sums.map Float.toBits) at hSs
-  change heap.Room initial gpt.module (48 + 8 * ((t * w).toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -2274,7 +2182,7 @@ theorem softmaxApply_implements :
   refine (Stmt.buildWith_spec (writes := [8]) (n := t * w)
     (fun e => (LeanExe.Examples.Gpt.exp (x[e.toNat]! - mx[(e / w).toNat]!) /
       sums[(e / w).toNat]!).toBits)
-    hMemory32 hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    hMemory32 hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hCap
     ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro k store state hk hAt hFrame hIndex
     have hw : w ≠ 0 := by rintro rfl; simp at hk
@@ -2307,7 +2215,7 @@ theorem softmaxApply_implements :
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, _, _, rfl,
       ⟨pm, rfl, hNew.borrowed pm _ hMs⟩, _, _, rfl, ⟨ps, rfl, hNew.borrowed ps _ hSs⟩, rfl⟩,
-    hNew.top, hNew.pages, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+    hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.softmaxApply.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -2319,10 +2227,6 @@ theorem softmaxApply_implements :
 /-- `causalMatMul` with its five arguments as one tuple. -/
 def causalMatMulTuple (x : Array Float × Array Float × UInt64 × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.causalMatMul x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
-
-/-- The bytes `causalMatMul` may allocate: one array of `t × (nh · dh)` elements. -/
-def causalMatMulNeed (x : Array Float × Array Float × UInt64 × UInt64 × UInt64) : Nat :=
-  48 + 8 * ((x.2.2.1 * (x.2.2.2.1 * x.2.2.2.2)).toNat + 1)
 
 /-- One step of the loop for element `e`: the weight of row `j` in row `e / (nh · dh)`
 for the head of column `e % (nh · dh)`, times that column of row `j` of the values. -/
@@ -2363,15 +2267,14 @@ theorem mixBody_run {initial : Store Unit} {pp pv : UInt64} {p v : Array Float}
       F64Bits.toBits_mul]
 
 theorem causalMatMul_implements :
-    Implements gpt.module 26 causalMatMulTuple causalMatMulNeed := by
+    Implements gpt.module 26 causalMatMulTuple := by
   refine Func.implements_heap gpt.funcs 23 gpt.causalMatMul.ir "causalMatMul" rfl
-    causalMatMulTuple causalMatMulNeed
+    causalMatMulTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨p, v, t, nh, dh⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨pp, rfl, hPs⟩, _, _, rfl, ⟨pv, rfl, hVs⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨pp, rfl, hPs⟩, _, _, rfl, ⟨pv, rfl, hVs⟩, rfl⟩ hCap
   change heap.Borrowed initial pp (p.map Float.toBits) at hPs
   change heap.Borrowed initial pv (v.map Float.toBits) at hVs
-  change heap.Room initial gpt.module (48 + 8 * ((t * (nh * dh)).toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -2388,7 +2291,7 @@ theorem causalMatMul_implements :
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.buildWith_spec (writes := [8, 9, 10, 11]) (n := t * (nh * dh))
     (fun e => (LeanExe.loop (e / (nh * dh) + 1) 0.0 (mixStep p v t nh dh e)).toBits) hMemory32
-    hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    hImports hAlloc (by decide) (by decide) (by decide) (by simp [start]) hHeap hCap
     ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro e store state he hAt hFrame hIndex
     have hnd : nh * dh ≠ 0 := by
@@ -2440,7 +2343,7 @@ theorem causalMatMul_implements :
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g8]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pp, rfl, hNew.borrowed pp _ hPs⟩, _, _, rfl,
-      ⟨pv, rfl, hNew.borrowed pv _ hVs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
+      ⟨pv, rfl, hNew.borrowed pv _ hVs⟩, rfl⟩, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.causalMatMul.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -2454,19 +2357,11 @@ theorem causalMatMul_implements :
 def softmaxRowsTuple (x : Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.softmaxRows x.1 x.2.1 x.2.2
 
-/-- The bytes `softmaxRows` may allocate: the maxima, the sums, and the `t · nh × t`
-result. -/
-def softmaxRowsNeed (x : Array Float × UInt64 × UInt64) : Nat :=
-  48 + 8 * ((x.2.1 * x.2.2).toNat + 1) + (48 + 8 * ((x.2.1 * x.2.2).toNat + 1)) +
-    (48 + 8 * ((x.2.1 * x.2.2 * x.2.1).toNat + 1))
-
-theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple softmaxRowsNeed := by
+theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple := by
   refine Func.implements_heap gpt.funcs 20 gpt.softmaxRows.ir "softmaxRows" rfl softmaxRowsTuple
-    softmaxRowsNeed (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
-  rintro ⟨x, t, nh⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hX⟩, rfl⟩ hRoom
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨x, t, nh⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hX⟩, rfl⟩ hCap
   change heap.Borrowed initial px (x.map Float.toBits) at hX
-  change heap.Room initial gpt.module (48 + 8 * ((t * nh).toNat + 1) +
-    (48 + 8 * ((t * nh).toNat + 1)) + (48 + 8 * ((t * nh * t).toNat + 1))) at hRoom
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
   have hMax : gpt.module.funcs[20 - gpt.module.imports.length]? =
@@ -2495,8 +2390,8 @@ theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple softm
       (.seq (.assign 6 (.get 5)) (.seq (.release 4) (.release 3)))))) 7
     (fun store state => store = initial ∧ state = start) _
   -- The maxima of the rows.
-  refine Stmt.seq_spec (Live.call rowMax_implements rfl hMax rfl (Live.start hHeap) hRoom
-    (x := (x, t, nh)) (by simp only [rowMaxNeed]; omega) (afterArgs := start)
+  refine Stmt.seq_spec (Live.call rowMax_implements rfl hMax rfl (Live.start hHeap) hCap
+    (x := (x, t, nh)) (afterArgs := start)
     (vals := [.i64 px, .i64 t, .i64 nh])
     (by simp [Expr.evalResults, Expr.eval, hGet.1, hGet.2.1, hGet.2.2])
     ⟨[.i64 px], _, rfl, ⟨px, rfl, hX⟩, rfl⟩ (by rw [hStart]; decide)) ?_
@@ -2508,8 +2403,8 @@ theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple softm
     simp only [s1]
     rw [State.get_update_ne (by omega)]
   -- The sums of the exponentials.
-  refine Stmt.seq_spec (Live.call rowSumExp_implements rfl hSum rfl hLive1 hRoom
-    (x := (x, mx, t, nh)) (by simp only [rowMaxNeed, rowSumExpNeed]; omega)
+  refine Stmt.seq_spec (Live.call rowSumExp_implements rfl hSum rfl hLive1 hCap
+    (x := (x, mx, t, nh))
     (afterArgs := s1) (vals := [.i64 px, .i64 pm, .i64 t, .i64 nh])
     (by simp [Expr.evalResults, Expr.eval, s1, State.get_update_same, hStart,
       hGetS1 0 (by decide), hGetS1 1 (by decide), hGetS1 2 (by decide), hGet.1, hGet.2.1,
@@ -2529,9 +2424,8 @@ theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple softm
     rw [State.get_update_ne (by decide)]
     exact State.get_update_same (by rw [hStart]; decide)
   -- The normalized exponentials.
-  refine Stmt.seq_spec (Live.call softmaxApply_implements rfl hApply rfl hLive2 hRoom
+  refine Stmt.seq_spec (Live.call softmaxApply_implements rfl hApply rfl hLive2 hCap
     (x := (x, mx, sums, t * nh, t))
-    (by simp only [rowMaxNeed, rowSumExpNeed, softmaxApplyNeed]; omega)
     (afterArgs := s2) (vals := [.i64 px, .i64 pm, .i64 ps, .i64 (t * nh), .i64 t])
     (by simp [Expr.evalResults, Expr.eval, s2, State.get_update_same, hS1, hS2Get3,
       hGetS2 0 (by decide), hGetS2 1 (by decide), hGetS2 2 (by decide), hGet.1, hGet.2.1,
@@ -2567,35 +2461,25 @@ theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple softm
       (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
       Represent.borrowed heap' store' [.i64 px, .i64 t, .i64 nh] (x, t, nh) :=
     fun heap' store' hKeep => ⟨[.i64 px], _, rfl, ⟨px, rfl, hKeep px _ hX⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLive5.finish (need := softmaxRowsNeed (x, t, nh))
-      (by simp only [rowMaxNeed, rowSumExpNeed, softmaxApplyNeed, softmaxRowsNeed]; omega) hParams
-  exact ⟨heap', hAt', hArgs', hTop', hPages', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLive5.finish hParams
+  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
     by simp [gpt.softmaxRows.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,
       State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
-
-/-- The sum of two arrays has at most as many elements as the first. -/
-theorem add_size_le (a b : Array Float) : (addTuple (a, b)).size ≤ a.size := by
-  simp [addTuple, LeanExe.Examples.Gpt.add, LeanExe.build, Nat.mod_le]
 
 /-- `embed` with its five arguments as one tuple. -/
 def embedTuple (x : Array UInt64 × Array Float × Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.embed x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
 
-/-- The bytes `embed` may allocate: one array of `t × d` elements. -/
-def embedNeed (x : Array UInt64 × Array Float × Array Float × UInt64 × UInt64) : Nat :=
-  48 + 8 * ((x.2.2.2.1 * x.2.2.2.2).toNat + 1)
-
-theorem embed_implements : Implements gpt.module 27 embedTuple embedNeed := by
-  refine Func.implements_heap gpt.funcs 24 gpt.embed.ir "embed" rfl embedTuple embedNeed
+theorem embed_implements : Implements gpt.module 27 embedTuple := by
+  refine Func.implements_heap gpt.funcs 24 gpt.embed.ir "embed" rfl embedTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
       rfl⟩; rfl) ?_
   rintro ⟨tokens, wte, wpe, t, d⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨pk, rfl, hKs⟩, _, _, rfl, ⟨pe, rfl, hEs⟩, _, _, rfl, ⟨pp, rfl, hPs⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨pk, rfl, hKs⟩, _, _, rfl, ⟨pe, rfl, hEs⟩, _, _, rfl, ⟨pp, rfl, hPs⟩, rfl⟩ hCap
   change heap.Borrowed initial pk tokens at hKs
   change heap.Borrowed initial pe (wte.map Float.toBits) at hEs
   change heap.Borrowed initial pp (wpe.map Float.toBits) at hPs
-  change heap.Room initial gpt.module (48 + 8 * ((t * d).toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -2609,7 +2493,7 @@ theorem embed_implements : Implements gpt.module 27 embedTuple embedNeed := by
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.build_spec (n := t * d)
     (fun e => (wte[(tokens[(e / d).toNat]! * d + e % d).toNat]! + wpe[e.toNat]!).toBits)
-    hMemory32 hImports hAlloc (by decide) (by decide) (by simp [start]) hHeap hRoom
+    hMemory32 hImports hAlloc (by decide) (by decide) (by simp [start]) hHeap hCap
     ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro e store state he hAt hFrame hIndex
     have hd : d ≠ 0 := by rintro rfl; simp at he
@@ -2627,7 +2511,7 @@ theorem embed_implements : Implements gpt.module 27 embedTuple embedNeed := by
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pk, rfl, hNew.borrowed pk _ hKs⟩, _, _, rfl,
       ⟨pe, rfl, hNew.borrowed pe _ hEs⟩, _, _, rfl, ⟨pp, rfl, hNew.borrowed pp _ hPs⟩, rfl⟩,
-    hNew.top, hNew.pages, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+    hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.embed.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -2639,10 +2523,6 @@ theorem embed_implements : Implements gpt.module 27 embedTuple embedNeed := by
 /-- `matMulT` with its five arguments as one tuple. -/
 def matMulTTuple (x : Array Float × Array Float × UInt64 × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.matMulT x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
-
-/-- The bytes `matMulT` may allocate: one array of `n × m` elements. -/
-def matMulTNeed (x : Array Float × Array Float × UInt64 × UInt64 × UInt64) : Nat :=
-  48 + 8 * ((x.2.2.1 * x.2.2.2.2).toNat + 1)
 
 /-- One step of the loop for element `e`: row `e / m` of `a` times row `e % m` of `b`. -/
 def cellTStep (a b : Array Float) (k m e c : UInt64) (acc : Float) : Float :=
@@ -2676,14 +2556,13 @@ theorem cellTBody_run {initial : Store Unit} {pa pb : UInt64} {a b : Array Float
   · simp [State.Holds, Scalar.values, cellTStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul]
 
-theorem matMulT_implements : Implements gpt.module 28 matMulTTuple matMulTNeed := by
-  refine Func.implements_heap gpt.funcs 25 gpt.matMulT.ir "matMulT" rfl matMulTTuple matMulTNeed
+theorem matMulT_implements : Implements gpt.module 28 matMulTTuple := by
+  refine Func.implements_heap gpt.funcs 25 gpt.matMulT.ir "matMulT" rfl matMulTTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨a, b, n, k, m⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨pa, rfl, hAs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hRoom
+    ⟨_, _, rfl, ⟨pa, rfl, hAs⟩, _, _, rfl, ⟨pb, rfl, hBs⟩, rfl⟩ hCap
   change heap.Borrowed initial pa (a.map Float.toBits) at hAs
   change heap.Borrowed initial pb (b.map Float.toBits) at hBs
-  change heap.Room initial gpt.module (48 + 8 * ((n * m).toNat + 1)) at hRoom
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -2696,7 +2575,7 @@ theorem matMulT_implements : Implements gpt.module 28 matMulTTuple matMulTNeed :
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.buildWith_spec (writes := [8, 9, 10, 11]) (n := n * m)
     (fun e => (LeanExe.loop k 0.0 (cellTStep a b k m e)).toBits) hMemory32 hImports hAlloc
-    (by decide) (by decide) (by decide) (by simp [start]) hHeap hRoom
+    (by decide) (by decide) (by decide) (by simp [start]) hHeap hCap
     ⟨start, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
   · intro e store state he hAt hFrame hIndex
     have hm : m ≠ 0 := by rintro rfl; simp at he
@@ -2741,7 +2620,7 @@ theorem matMulT_implements : Implements gpt.module 28 matMulTTuple matMulTNeed :
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g8]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pa, rfl, hNew.borrowed pa _ hAs⟩, _, _, rfl,
-      ⟨pb, rfl, hNew.borrowed pb _ hBs⟩, rfl⟩, hNew.top, hNew.pages, hNew.caps, hNew.borrowed,
+      ⟨pb, rfl, hNew.borrowed pb _ hBs⟩, rfl⟩, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.matMulT.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,

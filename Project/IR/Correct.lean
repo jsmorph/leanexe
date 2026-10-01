@@ -5,27 +5,24 @@ namespace Project.IR
 
 open Wasm Project.Pipeline
 
-/-- A compiled function implements `f` with allocation bound `need` when, for
-every `x`, every argument list that represents it, and every heap with room for
-`need x` bytes, its body ends in a store where some heap satisfies the allocator
-invariant, the arguments are still represented, `top` and the page count stay
-within the bound, the memory's maximum size is unchanged, every array borrowed or owned before is still borrowed or
-owned, and the result expressions evaluate to values that represent `f x` as an
-owned value. -/
+/-- A compiled function implements `f` when, for every `x`, every argument list that
+represents it, and every memory whose cap is at most 65,535 pages, its body aborts or
+ends in a store where some heap satisfies the allocator invariant, the arguments are
+still represented, the memory's maximum size is unchanged, every array borrowed or
+owned before is still borrowed or owned, and the result expressions evaluate to values
+that represent `f x` as an owned value. -/
 theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func × String))
     (i : Nat) (func : Func) (name : String) (hFunc : funcs[i]? = some (func, name))
-    (f : α → β) (need : α → Nat)
+    (f : α → β)
     (arity : ∀ heap store params (x : α), Represent.borrowed heap store params x →
       params.length = func.params.length)
     (correct : ∀ (x : α) (heap : Heap) (initial : Store Unit) (params : List Value),
       heap.At initial → Represent.borrowed heap initial params x →
-      heap.Room initial (compile funcs) (need x) →
+      initial.memoryCap (compile funcs) 0 ≤ 65535 →
       Triple (compile funcs) func.body func.scratch
         (fun store state => store = initial ∧ state = func.state params)
         (fun store state => ∃ heap' : Heap, heap'.At store ∧
-          Represent.borrowed heap' store params x ∧ heap'.top.toNat ≤ heap.top.toNat + need x ∧
-          store.mem.pages ≤ max initial.mem.pages ((heap.top.toNat + need x + 65535) / 65536) ∧
-          store.memoryCaps = initial.memoryCaps ∧
+          Represent.borrowed heap' store params x ∧ store.memoryCaps = initial.memoryCaps ∧
           (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store p ws) ∧
           (∀ p ws, heap.Owned initial p ws →
             heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
@@ -36,8 +33,8 @@ theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func �
               Represent.outside store values (f x) (p.toNat, 8 * (ws.size + 1))) ∧
             (∀ p ws, heap.Owned initial p ws →
               Represent.outside store values (f x) (p.toNat - 48, 48 + capacityAt initial p)))) :
-    Implements (compile funcs) (3 + i) f need := by
-  intro env store heap params x hHeap hArgs hRoom
+    Implements (compile funcs) (3 + i) f := by
+  intro env store heap params x hHeap hArgs hCap
   have hLength := arity heap store params x hArgs
   have hArgsBack : (params.reverse.take func.params.length).reverse = params := by
     rw [List.take_of_length_le (by simp [hLength])]
@@ -53,9 +50,9 @@ theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func �
   rw [hLocals, show (func.function (2 + i)).body =
     func.body.program func.scratch ++ (func.results.flatMap (·.2.program func.scratch) ++ []) by
       simp [Func.function]]
-  refine correct x heap store params hHeap hArgs hRoom env store _ [] _ _ ?_ ⟨rfl, rfl⟩ ?_
+  refine correct x heap store params hHeap hArgs hCap env store _ [] _ _ ?_ ⟨rfl, rfl⟩ ?_
   · exact fun _ => rfl
-  rintro store' state ⟨heap', hHeap', hArgs', hTop, hPages, hCaps, hBorrowedKeep, hOwnedKeep,
+  rintro store' state ⟨heap', hHeap', hArgs', hCaps, hBorrowedKeep, hOwnedKeep,
     values, next, hEval, hResult, hOutsideB, hOutsideO⟩
   refine Expr.evalResults_program_spec (out := []) hEval ?_
   rw [wp_nil]
@@ -67,7 +64,7 @@ theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func �
   simp only [State.toLocals, hDrop, List.append_nil]
   rw [List.append_nil] at hTake
   rw [hTake, List.reverse_reverse]
-  exact ⟨heap', hHeap', hResult, hArgs', hTop, hPages, hCaps, hBorrowedKeep, hOwnedKeep,
+  exact ⟨heap', hHeap', hResult, hArgs', hCaps, hBorrowedKeep, hOwnedKeep,
     hOutsideB, hOutsideO⟩
 
 /-- A compiled function whose body keeps the store implements `f` without
@@ -84,14 +81,14 @@ theorem Func.implements [Represent α] [Scalar β] (funcs : List (Func × String
           ∃ values next,
             Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
             values = Scalar.values (f x))) :
-    Implements (compile funcs) (3 + i) f (fun _ => 0) :=
-  Func.implements_heap funcs i func name hFunc f (fun _ => 0) arity
+    Implements (compile funcs) (3 + i) f :=
+  Func.implements_heap funcs i func name hFunc f arity
     fun x heap initial params hHeap hArgs _ =>
     (correct x heap initial params hHeap hArgs).mono (fun _ _ h => h)
       fun _ _ ⟨hStore, hResult⟩ => by
         subst hStore
         obtain ⟨values, next, hEval, hValues⟩ := hResult
-        exact ⟨heap, hHeap, hArgs, by omega, le_max_left _ _, rfl, fun _ _ h => h,
+        exact ⟨heap, hHeap, hArgs, rfl, fun _ _ h => h,
           fun _ _ h => ⟨h, rfl⟩, values, next, hEval, hValues, fun _ _ _ => trivial,
           fun _ _ _ => trivial⟩
 

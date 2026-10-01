@@ -22,7 +22,7 @@ theorem prefixProgram_spec (needLocal topLocal pagesLocal : Nat)
     (hTopLower : frame.params.length ≤ topLocal) (hTopValid : frame.validIndex topLocal)
     (hPagesLower : frame.params.length ≤ pagesLocal) (hPagesValid : frame.validIndex pagesLocal)
     (hGlobal : store.globals.globals[0]? = some (.i64 base))
-    (hFit32 : base.toNat + 48 + need.toNat ≤ 4294967296)
+    (hNo : base.toNat + 48 + need.toNat < 18446744073709551616)
     (Q : Assertion Unit) (rest : Wasm.Program)
     (hNext : wp module_ rest Q store (prefixFrame frame topLocal pagesLocal base need) env) :
     wp module_ (prefixProgram needLocal topLocal pagesLocal ++ rest) Q store frame env := by
@@ -31,7 +31,7 @@ theorem prefixProgram_spec (needLocal topLocal pagesLocal : Nat)
   have hTopIndex : topLocal - frame.params.length < frame.locals.length := by omega
   have hPagesNotParam : ¬pagesLocal < frame.params.length := by omega
   have hPagesBound : pagesLocal < frame.params.length + frame.locals.length := hPagesValid
-  have hNoOverflow := Allocation.top_not_lt_base base need hFit32
+  have hNoOverflow := Allocation.top_not_lt_base_of_lt base need hNo
   unfold prefixProgram
   simp only [List.cons_append, List.nil_append, wp_globalGet_cons, wp_constI64_cons,
     wp_addI64_cons, wp_localGet_cons, Frame.withValues_get, hNeed, hGlobal,

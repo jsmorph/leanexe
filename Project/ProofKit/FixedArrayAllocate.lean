@@ -29,7 +29,10 @@ theorem allocated_count (store : Store Unit) (base need stride : UInt64)
     · split <;> simp
   · exact FixedArrayAllocateNone.allocated_count ..
 
-theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit)
+/-- `program_spec` for a request of at most `2 ^ 32` bytes, in a memory of at most 65,535
+pages whose cap is at most 65,535 pages: the program traps at `unreachable` or allocates
+the block, which ends within `65535 * 65536` when no free block is reused. -/
+theorem program_spec_or_abort (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit)
     (params saved tail : List Wasm.Value) (start : Nat)
     (hStart : params.length + saved.length = start)
     (base need stride previous current capacity next result count : UInt64)
@@ -38,12 +41,13 @@ theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store
     (hGlobal1 : store.globals.globals[1]? = some (.i64 (freeHead nodes)))
     (hGlobal2 : store.globals.globals[2]? = some (.i64 count))
     (hList : FreeListAt store.mem nodes)
-    (hBump : takeFirstFitFrom 0 need nodes = none →
-      base.toNat + 48 + need.toNat ≤ 4294967296 ∧
-      FixedArrayBump.requiredPages base need ≤ store.memoryCap module_ 0)
-    (hPages : store.mem.pages ≤ 65536) (hMemory32 : module_.memIs64 = false)
-    (Q : Assertion Unit) (rest : Wasm.Program)
-    (hNext : ∀ previous current capacity next : UInt64, wp module_ rest Q
+    (hBase : base.toNat ≤ 4294967296) (hNeedBound : need.toNat ≤ 4294967296)
+    (hPages : store.mem.pages ≤ 65535) (hMemory32 : module_.memIs64 = false)
+    (hCapBound : store.memoryCap module_ 0 ≤ 65535)
+    (Q : Assertion Unit) (rest : Wasm.Program) (hTrap : ∀ st, Q (.Trap st "unreachable"))
+    (hNext : (takeFirstFitFrom 0 need nodes = none →
+        base.toNat + 48 + need.toNat ≤ 4294901760) →
+      ∀ previous current capacity next : UInt64, wp module_ rest Q
       (counted (allocated store base need stride nodes) count)
       (frame params saved tail need previous current capacity next (root base need nodes)) env) :
     wp module_ (program start stride ++ rest) Q store
@@ -54,13 +58,14 @@ theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store
     have hNone : takeFirstFit need nodes = none := by
       rw [← takeFirstFitFrom_project 0 need nodes, hTake]
       rfl
-    apply FixedArrayAllocateNone.program_spec module_ env store params saved tail _ rfl
+    apply FixedArrayAllocateNone.program_spec_or_abort module_ env store params saved tail _ rfl
       (FixedArrayReuse.program (params.length + saved.length) stride)
       base need stride previous current capacity next result count nodes
-      hGlobal0 hGlobal1 hGlobal2 hList hNone (hBump hTake).1 hPages hMemory32 (hBump hTake).2
-    intro previous
+      hGlobal0 hGlobal1 hGlobal2 hList hNone hBase hNeedBound hPages hMemory32 hCapBound Q rest
+      hTrap
+    intro hFit previous
     simpa only [allocated, root, hTake] using
-      hNext previous 0 (base + 48 + need) ((base + 48 + need - 1) / 65536 + 1)
+      hNext (fun _ => hFit) previous 0 (base + 48 + need) ((base + 48 + need - 1) / 65536 + 1)
   | some choice =>
     have hRoot := reuseRoot_ne_zero hList hTake
     simp only [program, FixedArrayAllocateNone.program, List.append_assoc]
@@ -76,9 +81,9 @@ theorem program_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store
       simpa only [allocated, hTake] using (allocated_count store base need stride nodes).trans hGlobal2
     apply countProgram_spec module_ env _ _ count rfl hCount Q rest
     simpa only [allocated, root, hTake, frame, List.cons_append, List.nil_append] using
-      hNext choice.previous choice.node.root choice.node.capacity choice.next
+      hNext (fun h => by simp [hTake] at h) choice.previous choice.node.root choice.node.capacity choice.next
 
 #print axioms allocated_count
-#print axioms program_spec
+#print axioms program_spec_or_abort
 
 end Project.ProofKit.FixedArrayAllocate
