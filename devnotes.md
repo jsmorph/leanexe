@@ -19976,3 +19976,16 @@ attention to row `p` of `maskedScores`, `softmaxRows`, and `causalMatMul`.
 `step_cache` adds the block to the cache, and `cacheAfter_cache` inducts over the
 positions.  The file is 959 lines.
 
+## 2026-10-01: A command-line program
+
+`tools/gpt2.py` generates text with `gpt.wasm`:
+`uv run tools/gpt2.py --output-tokens 32 --prompt "It was a dark and stormy night"`.
+It depends only on `transformers`, pinned as in the tests, for the tokenizer and the
+model's configuration; it reads the weight files that `gpt2_compare.py` writes and
+stops with the command to run when they, the host, or `gpt.wasm` are missing.  It runs
+`step` on each prompt token in one host session, then chooses each token by the
+highest score from `scores` and prints it as it goes.  On the example prompt it printed
+32 tokens in 18 seconds, including loading the weights, and the text equals Hugging
+Face's float64 greedy continuation of the same prompt.  The prompt and the output must
+fit in the model's 1,024 positions; the tests cover 256.
+
