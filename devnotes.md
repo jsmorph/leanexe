@@ -19826,3 +19826,27 @@ measurably: 3.1, 12.8, and 96.0 seconds for 5, 30, and 224 tokens, against 2.6,
 the slice copies; that estimate was too high.
 
 - [x] 7b: weight offsets, and `slice` and `blockAt` removed.
+
+## 2026-09-30: GPT 7c, the prefix theorem
+
+`Causal.lean` now compares a run on `t` tokens with a run on `t'` tokens, both
+above `i`, in every lemma; the earlier lemmas were the case `t = t'`.
+`forward_prefix` proves that row `i` of the scores depends only on tokens `0` to
+`i` whatever the number of tokens, and `layers_rows` proves the same for the input
+of every layer, with its size, which the cache's exactness proof needs.
+`forward_causal` follows for equal numbers of tokens and any `i`: for `i ≥ t` it
+uses row `t - 1` and the elements past the end, which read as 0 in both runs.
+
+Rows of `x` have width `d` whatever `t`, so `RowsAgree` still serves them, but the
+attention scores are stored in rows of `nh · t` and so sit at different places in
+the two runs.  `ScoresAgree t t' nh i` compares score `j` of block `r`, at
+`r · t + j` and `r · t' + j`, for blocks of positions `0` to `i` and `j` up to the
+block's position; the causal softmax reads only those scores, and
+`causalMatMul` only those weights.  `maskedScores_at` and `softmaxApply_at`
+evaluate one score and one weight in terms of the position, head, and key, without
+`t`.  Sizes enter through `add` and `geluArray`, which build over their first
+argument's length, so `block_rows` takes the sizes `t · d` and `t' · d`, and
+`block_size` shows that `block` keeps them.  The file is 587 lines; the theorems
+depend only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+- [x] 7c: the prefix theorem.
