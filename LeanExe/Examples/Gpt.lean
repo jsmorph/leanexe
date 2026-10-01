@@ -62,13 +62,16 @@ def matMul (a b : Array Float) (n k m : UInt64) : Array Float :=
   LeanExe.build (n * m) fun e =>
     LeanExe.loop k 0.0 fun c acc => acc + a[(e / m * k + c).toNat]! * b[(c * m + e % m).toNat]!
 
-/-- The product of the `n × k` matrix `x` and the `k × m` matrix `w`, both stored by
-rows, plus the bias `b[c]` in each column `c`: the linear layer `x · w + b`.  Each
-element sums the products first and then adds the bias. -/
-def linear (x w b : Array Float) (n k m : UInt64) : Array Float :=
+/-- The linear layer `x · w + b` for the `n × k` matrix `x` stored by rows, with layer
+`l` of the weights: `w` holds one `k × m` matrix stored by rows for each layer, one after
+another, and `b` one `m`-element bias for each layer, so layer `l` starts at `l · k · m`
+in `w` and at `l · m` in `b`.  Each element sums the products first and then adds the
+bias. -/
+def linear (x w b : Array Float) (l n k m : UInt64) : Array Float :=
   LeanExe.build (n * m) fun e =>
-    LeanExe.loop k 0.0 (fun c acc => acc + x[(e / m * k + c).toNat]! * w[(c * m + e % m).toNat]!) +
-      b[(e % m).toNat]!
+    LeanExe.loop k 0.0 (fun c acc =>
+        acc + x[(e / m * k + c).toNat]! * w[(l * (k * m) + (c * m + e % m)).toNat]!) +
+      b[(l * m + e % m).toNat]!
 
 /-- The element-wise sum of `a` and `b` over the length of `a`, with 0 for each
 missing element of `b`. -/
@@ -88,13 +91,13 @@ def gelu (x : Float) : Float :=
 def geluArray (xs : Array Float) : Array Float :=
   LeanExe.build xs.size.toUInt64 fun i => gelu xs[i.toNat]!
 
-/-- The MLP of a transformer block on `t` rows of width `d` with hidden width `f`:
-`gelu (x · wfc + bfc) · wproj + bproj`, where `x` is `t × d`, `wfc` is `d × f`, and
-`wproj` is `f × d`. -/
-def mlp (x wfc bfc wproj bproj : Array Float) (t d f : UInt64) : Array Float :=
-  let h := linear x wfc bfc t d f
+/-- The MLP of a transformer block on `t` rows of width `d` with hidden width `f` and
+layer `l` of the weights: `gelu (x · wfc + bfc) · wproj + bproj`, where `x` is `t × d`,
+`wfc` is `d × f`, and `wproj` is `f × d`. -/
+def mlp (x wfc bfc wproj bproj : Array Float) (l t d f : UInt64) : Array Float :=
+  let h := linear x wfc bfc l t d f
   let g := geluArray h
-  linear g wproj bproj t f d
+  linear g wproj bproj l t f d
 
 /-- The mean of each of the `t` rows of width `d` of `x`. -/
 def rowMeans (x : Array Float) (t d : UInt64) : Array Float :=
@@ -110,17 +113,19 @@ def rowInvStd (x means : Array Float) (t d : UInt64) (eps : Float) : Array Float
         d.toFloat + eps).sqrt
 
 /-- Each of the `t` rows of width `d` of `x`, normalized with the row means and
-inverse deviations, then scaled by `g` and shifted by `b`. -/
-def normalizeRows (x means invStd g b : Array Float) (t d : UInt64) : Array Float :=
+inverse deviations, then scaled by layer `l` of `g` and shifted by layer `l` of `b`,
+which hold `d` values for each layer. -/
+def normalizeRows (x means invStd g b : Array Float) (l t d : UInt64) : Array Float :=
   LeanExe.build (t * d) fun e =>
-    (x[e.toNat]! - means[(e / d).toNat]!) * invStd[(e / d).toNat]! * g[(e % d).toNat]! +
-      b[(e % d).toNat]!
+    (x[e.toNat]! - means[(e / d).toNat]!) * invStd[(e / d).toNat]! * g[(l * d + e % d).toNat]! +
+      b[(l * d + e % d).toNat]!
 
-/-- The layer normalization of each of the `t` rows of width `d` of `x`. -/
-def layerNormRows (x g b : Array Float) (t d : UInt64) (eps : Float) : Array Float :=
+/-- The layer normalization of each of the `t` rows of width `d` of `x`, with layer `l`
+of the gains `g` and biases `b`. -/
+def layerNormRows (x g b : Array Float) (l t d : UInt64) (eps : Float) : Array Float :=
   let means := rowMeans x t d
   let inv := rowInvStd x means t d eps
-  normalizeRows x means inv g b t d
+  normalizeRows x means inv g b l t d
 
 /-- The causally masked attention scores of `nh` heads of width `dh`, for `t` queries
 and keys stored by rows of width `nh · dh`, as `t` rows of `nh` blocks of `t` scores.
@@ -174,54 +179,30 @@ def causalMatMul (p v : Array Float) (t nh dh : UInt64) : Array Float :=
 `q`, `k`, and `v` are `x · wq + bq`, `x · wk + bk`, and `x · wv + bv`.  Row `i` depends
 only on rows `0` to `i` of `x`: `maskedScores` reads no later key, and `causalMatMul`
 reads no later value. -/
-def attention (x wq bq wk bk wv bv wo bo : Array Float) (t nh dh : UInt64) : Array Float :=
-  let q := linear x wq bq t (nh * dh) (nh * dh)
-  let k := linear x wk bk t (nh * dh) (nh * dh)
-  let v := linear x wv bv t (nh * dh) (nh * dh)
+def attention (x wq bq wk bk wv bv wo bo : Array Float) (l t nh dh : UInt64) : Array Float :=
+  let q := linear x wq bq l t (nh * dh) (nh * dh)
+  let k := linear x wk bk l t (nh * dh) (nh * dh)
+  let v := linear x wv bv l t (nh * dh) (nh * dh)
   let s := maskedScores q k t nh dh (1.0 / dh.toFloat.sqrt)
   let p := softmaxRows s t nh
   let o := causalMatMul p v t nh dh
-  linear o wo bo t (nh * dh) (nh * dh)
+  linear o wo bo l t (nh * dh) (nh * dh)
 
 /-- A GPT-2 transformer block in binary64 arithmetic on `t` rows of width `nh · dh`,
-with `nh` heads and hidden width `f`: `r = x + attention (layerNormRows x g1 b1)`, then
-`r + mlp (layerNormRows r g2 b2)`.  The weights follow GPT-2's order, with the `q`,
-`k`, and `v` parts of `c_attn` as separate matrices. -/
+with `nh` heads, hidden width `f`, and layer `l` of the weights:
+`r = x + attention (layerNormRows x g1 b1)`, then `r + mlp (layerNormRows r g2 b2)`.  The
+weights follow GPT-2's order, with the `q`, `k`, and `v` parts of `c_attn` as separate
+matrices, and each array holds the weights of every layer one after another: `g1` holds
+`d` values per layer, `wq` holds `d × d`, `wfc` holds `d × f`, and so on, where
+`d = nh · dh`. -/
 def block (x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Float)
-    (t nh dh f : UInt64) (eps : Float) : Array Float :=
-  let h1 := layerNormRows x g1 b1 t (nh * dh) eps
-  let a := attention h1 wq bq wk bk wv bv wo bo t nh dh
-  let r := add x a
-  let h2 := layerNormRows r g2 b2 t (nh * dh) eps
-  let m := mlp h2 wfc bfc wproj bproj t (nh * dh) f
-  add r m
-
-/-- The `n` elements of `xs` from position `start`, with 0 for each missing element. -/
-def slice (xs : Array Float) (start n : UInt64) : Array Float :=
-  LeanExe.build n fun i => xs[(start + i).toNat]!
-
-/-- `block` with the weights of layer `l`, taken from arrays that hold the weights of
-every layer one after another: `g1` holds `d` values per layer, `wq` holds `d × d`,
-`wfc` holds `d × f`, and so on, where `d = nh · dh`. -/
-def blockAt (x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Float)
     (l t nh dh f : UInt64) (eps : Float) : Array Float :=
-  let g1l := slice g1 (l * (nh * dh)) (nh * dh)
-  let b1l := slice b1 (l * (nh * dh)) (nh * dh)
-  let wql := slice wq (l * (nh * dh * (nh * dh))) (nh * dh * (nh * dh))
-  let bql := slice bq (l * (nh * dh)) (nh * dh)
-  let wkl := slice wk (l * (nh * dh * (nh * dh))) (nh * dh * (nh * dh))
-  let bkl := slice bk (l * (nh * dh)) (nh * dh)
-  let wvl := slice wv (l * (nh * dh * (nh * dh))) (nh * dh * (nh * dh))
-  let bvl := slice bv (l * (nh * dh)) (nh * dh)
-  let wol := slice wo (l * (nh * dh * (nh * dh))) (nh * dh * (nh * dh))
-  let bol := slice bo (l * (nh * dh)) (nh * dh)
-  let g2l := slice g2 (l * (nh * dh)) (nh * dh)
-  let b2l := slice b2 (l * (nh * dh)) (nh * dh)
-  let wfcl := slice wfc (l * (nh * dh * f)) (nh * dh * f)
-  let bfcl := slice bfc (l * f) f
-  let wprojl := slice wproj (l * (f * (nh * dh))) (f * (nh * dh))
-  let bprojl := slice bproj (l * (nh * dh)) (nh * dh)
-  block x g1l b1l wql bql wkl bkl wvl bvl wol bol g2l b2l wfcl bfcl wprojl bprojl t nh dh f eps
+  let h1 := layerNormRows x g1 b1 l t (nh * dh) eps
+  let a := attention h1 wq bq wk bk wv bv wo bo l t nh dh
+  let r := add x a
+  let h2 := layerNormRows r g2 b2 l t (nh * dh) eps
+  let m := mlp h2 wfc bfc wproj bproj l t (nh * dh) f
+  add r m
 
 /-- The embeddings of `t` tokens as `t` rows of width `d`: row `i` is row
 `tokens[i]` of `wte` plus row `i` of `wpe`, with 0 for each missing element. -/
@@ -238,15 +219,15 @@ def matMulT (a b : Array Float) (n k m : UInt64) : Array Float :=
 /-- The forward pass of a GPT-2 model with `layers` blocks in binary64 arithmetic on
 `t` tokens, with `nh` heads of width `dh`, hidden width `f`, and `vocab` token
 embeddings: the embeddings, the blocks, whose weights are stacked layer after layer
-as `blockAt` takes them, a final layer norm, and the scores of each position against
+as `block` takes them, a final layer norm, and the scores of each position against
 every token embedding, as `t` rows of width `vocab`. -/
 def forward (tokens : Array UInt64) (wte wpe : Array Float)
     (g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Float)
     (gf bf : Array Float) (layers t nh dh f vocab : UInt64) (eps : Float) : Array Float :=
   let x0 := embed tokens wte wpe t (nh * dh)
   let x := LeanExe.loop layers x0 fun l x =>
-    blockAt x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj l t nh dh f eps
-  let h := layerNormRows x gf bf t (nh * dh) eps
+    block x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj l t nh dh f eps
+  let h := layerNormRows x gf bf 0 t (nh * dh) eps
   matMulT h wte t (nh * dh) vocab
 
 end LeanExe.Examples.Gpt

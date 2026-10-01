@@ -52,6 +52,8 @@ def arg_reads(a):
     if isinstance(a, tuple):
         if a[0] == 'mul':
             return arg_reads(a[1]) + arg_reads(a[2])
+        if a[0] == 'const':
+            return []
         return [a[1]]
     return [a]
 
@@ -119,6 +121,8 @@ def eval_lines(args, fact, ind):
             out.append(f'Expr.evalResults_u64 ({eval_term(a, fact)}) <|')
         elif isinstance(a, tuple) and a[0] == 'f':
             out.append(f'Expr.evalResults_getF ({fact(a[1])}) <|')
+        elif isinstance(a, tuple) and a[0] == 'const':
+            out.append('Expr.evalResults_u64 rfl <|')
         else:
             out.append(f'Expr.evalResults_get ({fact(a)}) <|')
     out.append('Expr.evalResults_nil')
@@ -277,6 +281,8 @@ def composite(spec):
                 cvals.append(vals[a[1]])
             elif isinstance(a, tuple) and a[0] == 'scale':
                 cvals.append(spec['scaleval'])
+            elif isinstance(a, tuple) and a[0] == 'const':
+                cvals.append(f'.i64 {a[1]}')
             elif a >= nparams:
                 cvals.append(f'.i64 {temps_by_reg[a]}')
             else:
@@ -372,42 +378,43 @@ def tuple_def(name, fn, params, doc):
 
 
 # ------------------------------------------------------------------ mlp
-MLP = [('x', 'A'), ('wfc', 'A'), ('bfc', 'A'), ('wproj', 'A'), ('bproj', 'A'), ('t', 'u'), ('d', 'u'),
-       ('f', 'u')]
+MLP = [('x', 'A'), ('wfc', 'A'), ('bfc', 'A'), ('wproj', 'A'), ('bproj', 'A'), ('l', 'u'), ('t', 'u'),
+       ('d', 'u'), ('f', 'u')]
 mlp_spec = dict(
     name='mlp', entry=14, index=11, tuple='mlpTuple', need='mlpNeed', params=MLP, nlocals=4,
-    room='mlpNeed (x, wfc, bfc, wproj, bproj, t, d, f)', room_unfold=['mlpNeed'],
+    room='mlpNeed (x, wfc, bfc, wproj, bproj, l, t, d, f)', room_unfold=['mlpNeed'],
     funcs=[('hLinear', 30, 27, 'linear'), ('hGelu', 13, 10, 'geluArray')],
-    lets=[('h', 'linearTuple (x, wfc, bfc, t, d, f)'), ('g', 'LeanExe.Examples.Gpt.geluArray h')],
-    haves=['  have hSize : h.size = (t * f).toNat := linear_size x wfc bfc t d f'],
+    lets=[('h', 'linearTuple (x, wfc, bfc, l, t, d, f)'), ('g', 'LeanExe.Examples.Gpt.geluArray h')],
+    haves=['  have hSize : h.size = (t * f).toNat := linear_size x wfc bfc l t d f'],
     calls=[
-        dict(args=[0, 1, 2, 5, 6, 7], impl='linear_implements', hfunc='hLinear',
-             x='(x, wfc, bfc, t, d, f)', need=['linearNeed'],
+        dict(args=[0, 1, 2, 5, 6, 7, 8], impl='linear_implements', hfunc='hLinear',
+             x='(x, wfc, bfc, l, t, d, f)', need=['linearNeed'],
              borrowed=[('P', 'x'), ('P', 'wfc'), ('P', 'bfc')], ptr='ph', comment='`h = x · wfc + bfc`.'),
-        dict(args=[8], impl='geluArray_implements', hfunc='hGelu', x='h',
+        dict(args=[9], impl='geluArray_implements', hfunc='hGelu', x='h',
              need=['linearNeed', 'geluNeed', 'hSize'], borrowed=[('T', 'ph')], tail=False, ptr='pg',
              comment='`g = gelu h`.'),
-        dict(args=[9, 3, 4, 5, 7, 6], impl='linear_implements', hfunc='hLinear',
-             x='(g, wproj, bproj, t, f, d)', need=['linearNeed', 'geluNeed', 'hSize'],
+        dict(args=[10, 3, 4, 5, 6, 8, 7], impl='linear_implements', hfunc='hLinear',
+             x='(g, wproj, bproj, l, t, f, d)', need=['linearNeed', 'geluNeed', 'hSize'],
              borrowed=[('T', 'pg'), ('P', 'wproj'), ('P', 'bproj')], ptr='pr',
              comment='The result, `g · wproj + bproj`.'),
     ],
     finish=['linearNeed', 'geluNeed', 'mlpNeed', 'hSize'])
-mlp_section = tuple_def('mlpTuple', 'mlp', MLP, '`mlp` with its eight arguments as one tuple.') + f'''
+mlp_section = tuple_def('mlpTuple', 'mlp', MLP, '`mlp` with its nine arguments as one tuple.') + f'''
 /-- The bytes `mlp` may allocate: two `t × f` arrays and the `t × d` result. -/
 def mlpNeed (x : {tuple_type([k for _, k in MLP])}) : Nat :=
-  48 + 8 * (({proj(8, 5)} * {proj(8, 7)}).toNat + 1) +
-    (48 + 8 * (({proj(8, 5)} * {proj(8, 7)}).toNat + 1)) +
-    (48 + 8 * (({proj(8, 5)} * {proj(8, 6)}).toNat + 1))
+  48 + 8 * (({proj(9, 6)} * {proj(9, 8)}).toNat + 1) +
+    (48 + 8 * (({proj(9, 6)} * {proj(9, 8)}).toNat + 1)) +
+    (48 + 8 * (({proj(9, 6)} * {proj(9, 7)}).toNat + 1))
 
 ''' + composite(mlp_spec) + '\n'
 
 # ------------------------------------------------------------------ attention
-ATT = [(n, 'A') for n in ['x', 'wq', 'bq', 'wk', 'bk', 'wv', 'bv', 'wo', 'bo']] + [('t', 'u'), ('nh', 'u'), ('dh', 'u')]
+ATT = [(n, 'A') for n in ['x', 'wq', 'bq', 'wk', 'bk', 'wv', 'bv', 'wo', 'bo']] + [('l', 'u'), ('t', 'u'), ('nh', 'u'),
+                                                                                ('dh', 'u')]
 lin_calls = []
 for idx, (w, b, ptrname, reg) in enumerate([('wq', 'bq', 'pq', 1), ('wk', 'bk', 'pk', 3), ('wv', 'bv', 'pv', 5)]):
-    lin_calls.append(dict(args=[0, reg, reg + 1, 9, ('mul', 10, 11), ('mul', 10, 11)],
-                          impl='linear_implements', hfunc='hLinear', x=f'(x, {w}, {b}, t, nh * dh, nh * dh)',
+    lin_calls.append(dict(args=[0, reg, reg + 1, 9, 10, ('mul', 11, 12), ('mul', 11, 12)],
+                          impl='linear_implements', hfunc='hLinear', x=f'(x, {w}, {b}, l, t, nh * dh, nh * dh)',
                           need=['linearNeed'], borrowed=[('P', 'x'), ('P', w), ('P', b)], ptr=ptrname,
                           comment=f'`{ptrname[1]} = x · {w} + {b}`.'))
 att_need = ['linearNeed', 'maskedNeed', 'softmaxRowsNeed', 'causalMatMulNeed']
@@ -416,31 +423,31 @@ att_spec = dict(
     nlocals=8, one=True, room='attentionBytes t nh dh', room_unfold=['attentionBytes'],
     funcs=[('hLinear', 30, 27, 'linear'), ('hMasked', 19, 16, 'maskedScores'),
            ('hSoftmax', 23, 20, 'softmaxRows'), ('hCausal', 26, 23, 'causalMatMul')],
-    lets=[('q', 'linearTuple (x, wq, bq, t, nh * dh, nh * dh)'),
-          ('k', 'linearTuple (x, wk, bk, t, nh * dh, nh * dh)'),
-          ('v', 'linearTuple (x, wv, bv, t, nh * dh, nh * dh)'),
+    lets=[('q', 'linearTuple (x, wq, bq, l, t, nh * dh, nh * dh)'),
+          ('k', 'linearTuple (x, wk, bk, l, t, nh * dh, nh * dh)'),
+          ('v', 'linearTuple (x, wv, bv, l, t, nh * dh, nh * dh)'),
           ('s', 'maskedTuple (q, k, t, nh, dh, 1.0 / dh.toFloat.sqrt)'),
           ('p', 'softmaxRowsTuple (s, t, nh)'),
           ('o', 'causalMatMulTuple (p, v, t, nh, dh)')], scaleval='.f64 (1.0 / dh.toFloat.sqrt).toBits',
     calls=lin_calls + [
-        dict(args=[12, 13, 9, 10, 11, ('scale', 11)], impl='maskedScores_implements',
+        dict(args=[13, 14, 10, 11, 12, ('scale', 12)], impl='maskedScores_implements',
              hfunc='hMasked', x='(q, k, t, nh, dh, 1.0 / dh.toFloat.sqrt)', need=['linearNeed', 'maskedNeed'],
              borrowed=[('T', 'pq'), ('T', 'pk')], ptr='ps',
              simp_extra=['F64Op.apply', 'F64UnOp.apply', 'F64Bits.toBits_div', 'F64Bits.toBits_sqrt',
                          'F64Convert.toBits_toFloat', 'hOne'],
              comment='The masked scores of `q` and `k`, head by head.'),
-        dict(args=[15, 9, 10], impl='softmaxRows_implements', hfunc='hSoftmax',
+        dict(args=[16, 10, 11], impl='softmaxRows_implements', hfunc='hSoftmax',
              x='(s, t, nh)', need=['linearNeed', 'maskedNeed', 'softmaxRowsNeed'],
              borrowed=[('T', 'ps')], ptr='pp', comment='The softmax of each of the `t · nh` rows of scores.'),
-        dict(args=[16, 14, 9, 10, 11], impl='causalMatMul_implements', hfunc='hCausal',
+        dict(args=[17, 15, 10, 11, 12], impl='causalMatMul_implements', hfunc='hCausal',
              x='(p, v, t, nh, dh)', need=att_need, borrowed=[('T', 'pp'), ('T', 'pv')], ptr='po',
              comment='`o = p · v`, row `i` summing over rows `0` to `i` of `v`.'),
-        dict(args=[17, 7, 8, 9, ('mul', 10, 11), ('mul', 10, 11)], impl='linear_implements',
-             hfunc='hLinear', x='(o, wo, bo, t, nh * dh, nh * dh)', need=att_need,
+        dict(args=[18, 7, 8, 9, 10, ('mul', 11, 12), ('mul', 11, 12)], impl='linear_implements',
+             hfunc='hLinear', x='(o, wo, bo, l, t, nh * dh, nh * dh)', need=att_need,
              borrowed=[('T', 'po'), ('P', 'wo'), ('P', 'bo')], ptr='pr', comment='The result, `o · wo + bo`.'),
     ],
     finish=att_need + ['attentionNeed', 'attentionBytes'])
-att_section = tuple_def('attentionTuple', 'attention', ATT, '`attention` with its twelve arguments as one tuple.') + '''
+att_section = tuple_def('attentionTuple', 'attention', ATT, '`attention` with its thirteen arguments as one tuple.') + '''
 /-- The bytes `attention` may allocate for `t` rows and `nh` heads of width `dh`: `q`, `k`,
 and `v`, the scores, the softmax with its two temporaries, the weighted values, and the
 result. -/
@@ -453,13 +460,13 @@ def attentionBytes (t nh dh : UInt64) : Nat :=
 
 /-- The bytes `attention` may allocate. -/
 def attentionNeed (x : ''' + tuple_type([k for _, k in ATT]) + f''') : Nat :=
-  attentionBytes {proj(12, 9)} {proj(12, 10)} {proj(12, 11)}
+  attentionBytes {proj(13, 10)} {proj(13, 11)} {proj(13, 12)}
 
 ''' + composite(att_spec) + '\n'
 
 # ------------------------------------------------------------------ block
 BARR = ['x', 'g1', 'b1', 'wq', 'bq', 'wk', 'bk', 'wv', 'bv', 'wo', 'bo', 'g2', 'b2', 'wfc', 'bfc', 'wproj', 'bproj']
-BLK = [(n, 'A') for n in BARR] + [('t', 'u'), ('nh', 'u'), ('dh', 'u'), ('f', 'u'), ('eps', 'f')]
+BLK = [(n, 'A') for n in BARR] + [('l', 'u'), ('t', 'u'), ('nh', 'u'), ('dh', 'u'), ('f', 'u'), ('eps', 'f')]
 blk_need1 = ['layerNormRowsNeed']
 blk_need2 = blk_need1 + ['attentionNeed', 'attentionBytes']
 blk_need3 = blk_need2 + ['addNeed']
@@ -469,36 +476,36 @@ blk_spec = dict(
     room='blockBytes t nh dh f x.size', room_unfold=['blockBytes', 'attentionBytes'],
     funcs=[('hNorm', 18, 15, 'layerNormRows'), ('hAttention', 24, 21, 'attention'), ('hAdd', 10, 7, 'add'),
            ('hMlp', 14, 11, 'mlp')],
-    lets=[('h1', 'layerNormRowsTuple (x, g1, b1, t, nh * dh, eps)'),
-          ('a', 'attentionTuple (h1, wq, bq, wk, bk, wv, bv, wo, bo, t, nh, dh)'),
+    lets=[('h1', 'layerNormRowsTuple (x, g1, b1, l, t, nh * dh, eps)'),
+          ('a', 'attentionTuple (h1, wq, bq, wk, bk, wv, bv, wo, bo, l, t, nh, dh)'),
           ('r', 'addTuple (x, a)'),
-          ('h2', 'layerNormRowsTuple (r, g2, b2, t, nh * dh, eps)'),
-          ('m', 'mlpTuple (h2, wfc, bfc, wproj, bproj, t, nh * dh, f)')],
+          ('h2', 'layerNormRowsTuple (r, g2, b2, l, t, nh * dh, eps)'),
+          ('m', 'mlpTuple (h2, wfc, bfc, wproj, bproj, l, t, nh * dh, f)')],
     haves=['  have hR : r.size ≤ x.size := add_size_le x a'],
     calls=[
-        dict(args=[0, 1, 2, 17, ('mul', 18, 19), ('f', 21)], impl='layerNormRows_implements',
-             hfunc='hNorm', x='(x, g1, b1, t, nh * dh, eps)', need=blk_need1,
+        dict(args=[0, 1, 2, 17, 18, ('mul', 19, 20), ('f', 22)], impl='layerNormRows_implements',
+             hfunc='hNorm', x='(x, g1, b1, l, t, nh * dh, eps)', need=blk_need1,
              borrowed=[('P', 'x'), ('P', 'g1'), ('P', 'b1')], ptr='ph1', comment='The first layer norm.'),
-        dict(args=[22, 3, 4, 5, 6, 7, 8, 9, 10, 17, 18, 19], impl='attention_implements',
-             hfunc='hAttention', x='(h1, wq, bq, wk, bk, wv, bv, wo, bo, t, nh, dh)', need=blk_need2,
+        dict(args=[23, 3, 4, 5, 6, 7, 8, 9, 10, 17, 18, 19, 20], impl='attention_implements',
+             hfunc='hAttention', x='(h1, wq, bq, wk, bk, wv, bv, wo, bo, l, t, nh, dh)', need=blk_need2,
              borrowed=[('T', 'ph1')] + [('P', n) for n in ['wq', 'bq', 'wk', 'bk', 'wv', 'bv', 'wo', 'bo']],
              ptr='pa', comment='Attention.'),
-        dict(args=[0, 23], impl='add_implements', hfunc='hAdd', x='(x, a)', need=blk_need3,
+        dict(args=[0, 24], impl='add_implements', hfunc='hAdd', x='(x, a)', need=blk_need3,
              borrowed=[('P', 'x'), ('T', 'pa')], tail=False, ptr='pr',
              comment='The first residual sum, `r = x + a`.'),
-        dict(args=[24, 11, 12, 17, ('mul', 18, 19), ('f', 21)], impl='layerNormRows_implements',
-             hfunc='hNorm', x='(r, g2, b2, t, nh * dh, eps)', need=blk_need3,
+        dict(args=[25, 11, 12, 17, 18, ('mul', 19, 20), ('f', 22)], impl='layerNormRows_implements',
+             hfunc='hNorm', x='(r, g2, b2, l, t, nh * dh, eps)', need=blk_need3,
              borrowed=[('T', 'pr'), ('P', 'g2'), ('P', 'b2')], ptr='ph2', comment='The second layer norm.'),
-        dict(args=[25, 13, 14, 15, 16, 17, ('mul', 18, 19), 20], impl='mlp_implements', hfunc='hMlp',
-             x='(h2, wfc, bfc, wproj, bproj, t, nh * dh, f)', need=blk_need5,
+        dict(args=[26, 13, 14, 15, 16, 17, 18, ('mul', 19, 20), 21], impl='mlp_implements', hfunc='hMlp',
+             x='(h2, wfc, bfc, wproj, bproj, l, t, nh * dh, f)', need=blk_need5,
              borrowed=[('T', 'ph2'), ('P', 'wfc'), ('P', 'bfc'), ('P', 'wproj'), ('P', 'bproj')], ptr='pm',
              comment='The MLP.'),
-        dict(args=[24, 26], impl='add_implements', hfunc='hAdd', x='(r, m)', need=blk_need5,
+        dict(args=[25, 27], impl='add_implements', hfunc='hAdd', x='(r, m)', need=blk_need5,
              borrowed=[('T', 'pr'), ('T', 'pm')], tail=False, ptr='pres', comment='The result, `r + m`.'),
     ],
     finish=blk_need5 + ['blockNeed', 'blockBytes'])
 BT = tuple_type([k for _, k in BLK])
-blk_section = tuple_def('blockTuple', 'block', BLK, '`block` with its twenty-two arguments as one tuple.') + f'''
+blk_section = tuple_def('blockTuple', 'block', BLK, '`block` with its twenty-three arguments as one tuple.') + f'''
 /-- The bytes `block` may allocate for `t` rows, `nh` heads of width `dh`, hidden width `f`,
 and an input of `n` elements: two layer norms, attention, two sums, and the MLP. -/
 def blockBytes (t nh dh f : UInt64) (n : Nat) : Nat :=
@@ -511,62 +518,10 @@ def blockBytes (t nh dh f : UInt64) (n : Nat) : Nat :=
 
 /-- The bytes `block` may allocate. -/
 def blockNeed (x : {BT}) : Nat :=
-  blockBytes {proj(22, 17)} {proj(22, 18)}
-    {proj(22, 19)} {proj(22, 20)} x.1.size
-
-''' + composite(blk_spec) + '\n'
-
-# ------------------------------------------------------------------ blockAt
-BAT = [(n, 'A') for n in BARR] + [('l', 'u'), ('t', 'u'), ('nh', 'u'), ('dh', 'u'), ('f', 'u'),
-                                   ('eps', 'f')]
-BAT_NAMES = [n for n, _ in BAT]
-D = ('mul', 19, 20)
-DD = ('mul', D, D)
-DF = ('mul', D, 21)
-FD = ('mul', 21, D)
-SLICES = [('g1', 1, D), ('b1', 2, D), ('wq', 3, DD), ('bq', 4, D), ('wk', 5, DD), ('bk', 6, D),
-          ('wv', 7, DD), ('bv', 8, D), ('wo', 9, DD), ('bo', 10, D), ('g2', 11, D), ('b2', 12, D),
-          ('wfc', 13, DF), ('bfc', 14, 21), ('wproj', 15, FD), ('bproj', 16, D)]
-bat_calls = []
-bat_lets = []
-for nm, reg, size in SLICES:
-    start = ('mul', 17, size)
-    x = f'({nm}, {value_term(start, BAT_NAMES)}, {value_term(size, BAT_NAMES)})'
-    bat_lets.append((nm + 'l', f'sliceTuple {x}'))
-    bat_calls.append(dict(args=[reg, start, size], impl='slice_implements', hfunc='hSlice', x=x,
-                          need=['sliceNeed'], borrowed=[('P', nm)], ptr='l' + cap(nm),
-                          comment=f'Layer `l` of `{nm}`.'))
-bat_need = ['sliceNeed', 'blockNeed', 'blockBytes', 'attentionBytes']
-bat_calls.append(dict(args=[0] + list(range(23, 39)) + [18, 19, 20, 21, ('f', 22)],
-                      impl='block_implements', hfunc='hBlock',
-                      x='(x, ' + ', '.join(nm + 'l' for nm, _, _ in SLICES) + ', t, nh, dh, f, eps)',
-                      need=bat_need,
-                      borrowed=[('P', 'x')] + [('T', 'l' + cap(nm)) for nm, _, _ in SLICES],
-                      ptr='pr', comment="The block with layer `l`'s weights."))
-bat_spec = dict(
-    name='blockAt', entry=32, index=29, tuple='blockAtTuple', need='blockAtNeed', params=BAT, nlocals=18,
-    room='blockAtNeed (' + ', '.join(BAT_NAMES) + ')',
-    room_unfold=['blockAtNeed', 'blockAtBytes', 'blockBytes', 'attentionBytes'],
-    funcs=[('hSlice', 31, 28, 'slice'), ('hBlock', 25, 22, 'block')],
-    lets=bat_lets, calls=bat_calls,
-    finish=bat_need + ['blockAtNeed', 'blockAtBytes'])
-BATT = tuple_type([k for _, k in BAT])
-bat_section = tuple_def('blockAtTuple', 'blockAt', BAT,
-                        '`blockAt` with its twenty-three arguments as one tuple.') + f"""
-/-- The bytes `blockAt` may allocate for an input of `n` elements: the sixteen slices of
-layer `l`'s weights and the block. -/
-def blockAtBytes (t nh dh f : UInt64) (n : Nat) : Nat :=
-  9 * (48 + 8 * ((nh * dh).toNat + 1)) + 4 * (48 + 8 * ((nh * dh * (nh * dh)).toNat + 1)) +
-    (48 + 8 * ((nh * dh * f).toNat + 1)) + (48 + 8 * (f.toNat + 1)) +
-    (48 + 8 * ((f * (nh * dh)).toNat + 1)) + blockBytes t nh dh f n
-
-/-- The bytes `blockAt` may allocate. -/
-def blockAtNeed (x : {BATT}) : Nat :=
-  blockAtBytes {proj(23, 18)} {proj(23, 19)}
+  blockBytes {proj(23, 18)} {proj(23, 19)}
     {proj(23, 20)} {proj(23, 21)} x.1.size
 
-""" + composite(bat_spec) + '\n'
-
+''' + composite(blk_spec) + '\n'
 
 # ------------------------------------------------------------------ forward
 LAYER = BARR[1:]
@@ -580,30 +535,30 @@ fwd_spec = dict(
     name='forward', entry=29, index=26, tuple='forwardTuple', need='forwardNeed', params=FWD,
     nlocals=9, width=1, result=36,
     room='forwardNeed (' + ', '.join(FWD_NAMES) + ')', room_unfold=['forwardNeed'],
-    funcs=[('hEmbed', 27, 24, 'embed'), ('hBlockAt', 32, 29, 'blockAt'),
+    funcs=[('hEmbed', 27, 24, 'embed'), ('hBlock', 25, 22, 'block'),
            ('hNorm', 18, 15, 'layerNormRows'), ('hScores', 28, 25, 'matMulT')],
     lets=[('x0', 'embedTuple (tokens, wte, wpe, t, nh * dh)'),
-          ('xl', f'LeanExe.loop layers x0 fun l x => blockAtTuple {LAYER_F}'),
-          ('h', 'layerNormRowsTuple (xl, gf, bf, t, nh * dh, eps)')],
+          ('xl', f'LeanExe.loop layers x0 fun l x => blockTuple {LAYER_F}'),
+          ('h', 'layerNormRowsTuple (xl, gf, bf, 0, t, nh * dh, eps)')],
     haves=['  have hX0 : x0.size = (t * (nh * dh)).toNat := by',
            '    simp [x0, embedTuple, LeanExe.Examples.Gpt.embed, LeanExe.build]',
            '  have hSizes : ∀ k,',
-           f'      (loopPrefix (fun l x => blockAtTuple {wrap(LAYER_F, "        ")}) x0 k).size ≤',
+           f'      (loopPrefix (fun l x => blockTuple {wrap(LAYER_F, "        ")}) x0 k).size ≤',
            '      (t * (nh * dh)).toNat := fun k =>',
-           f'    Nat.le_trans (loopPrefix_size_le (fun l x => blockAt_size_le {wrap(LAYER_F, "      ")}) k)',
+           f'    Nat.le_trans (loopPrefix_size_le (fun l x => block_size_le {wrap(LAYER_F, "      ")}) k)',
            '      hX0.le'],
     calls=[
         dict(args=[0, 1, 2, 22, ('mul', 23, 24)], impl='embed_implements', hfunc='hEmbed', reg=28,
              x='(tokens, wte, wpe, t, nh * dh)', need=['embedNeed'],
              borrowed=[('P', 'tokens'), ('P', 'wte'), ('P', 'wpe')], ptr='px0', comment='The embeddings.'),
-        dict(kind='loop', impl='blockAt_implements', hfunc='hBlockAt', state=29, index=32, src=28,
+        dict(kind='loop', impl='block_implements', hfunc='hBlock', state=29, index=32, src=28,
              init='x0', init_ptr='px0', count=21,
              args=[29] + list(range(3, 19)) + [32, 22, 23, 24, 25, ('f', 27)], F=LAYER_F,
-             bound='blockAtBytes t nh dh f (t * (nh * dh)).toNat',
-             bound_proof='blockAtBytes_le (hSizes k)', need=fwd_need,
+             bound='blockBytes t nh dh f (t * (nh * dh)).toNat',
+             bound_proof='blockBytes_le (hSizes k)', need=fwd_need,
              borrowed=[('P', n) for n in LAYER], ptr='pl', comment='The blocks, one per layer.'),
-        dict(args=[29, 19, 20, 22, ('mul', 23, 24), ('f', 27)], impl='layerNormRows_implements',
-             hfunc='hNorm', reg=34, x='(xl, gf, bf, t, nh * dh, eps)',
+        dict(args=[29, 19, 20, ('const', 0), 22, ('mul', 23, 24), ('f', 27)],
+             impl='layerNormRows_implements', hfunc='hNorm', reg=34, x='(xl, gf, bf, 0, t, nh * dh, eps)',
              need=fwd_need + ['layerNormRowsNeed'], borrowed=[('T', 'pl'), ('P', 'gf'), ('P', 'bf')],
              ptr='ph', comment='The final layer norm.'),
         dict(args=[34, 1, 22, ('mul', 23, 24), 26], impl='matMulT_implements', hfunc='hScores', reg=35,
@@ -619,14 +574,9 @@ theorem block_size_le (x : {BT}) : (blockTuple x).size ≤ x.1.size := by
   simp [blockTuple, LeanExe.Examples.Gpt.block, LeanExe.Examples.Gpt.add, LeanExe.build,
     Nat.mod_le]
 
-/-- `blockAt`'s result is no longer than its input. -/
-theorem blockAt_size_le (x : {BATT}) : (blockAtTuple x).size ≤ x.1.size := by
-  simp [blockAtTuple, LeanExe.Examples.Gpt.blockAt, LeanExe.Examples.Gpt.block,
-    LeanExe.Examples.Gpt.add, LeanExe.build, Nat.mod_le]
-
-theorem blockAtBytes_le {{t nh dh f : UInt64}} {{n n' : Nat}} (h : n ≤ n') :
-    blockAtBytes t nh dh f n ≤ blockAtBytes t nh dh f n' := by
-  simp only [blockAtBytes, blockBytes]
+theorem blockBytes_le {{t nh dh f : UInt64}} {{n n' : Nat}} (h : n ≤ n') :
+    blockBytes t nh dh f n ≤ blockBytes t nh dh f n' := by
+  simp only [blockBytes]
   omega
 
 /-- The input of `forward`: the tokens, the embeddings, the stacked weights of the blocks,
@@ -639,11 +589,11 @@ def forwardTuple : ForwardInput → Array Float
     LeanExe.Examples.Gpt.forward {wrap(' '.join(FWD_NAMES).replace(' ', ', '), '      ', 80).replace(', ', ' ').replace(',', '')}
 
 /-- The bytes `forward` may allocate: the embeddings, their copy, `layers` calls of
-`blockAt`, the final layer norm, and the scores. -/
+`block`, the final layer norm, and the scores. -/
 def forwardNeed : ForwardInput → Nat
   | ({wrap(', '.join(['_'] * 21), '     ')}, layers, t, nh, dh, f, vocab, _) =>
     48 + 8 * ((t * (nh * dh)).toNat + 1) + (48 + 8 * ((t * (nh * dh)).toNat + 1)) +
-      layers.toNat * blockAtBytes t nh dh f (t * (nh * dh)).toNat +
+      layers.toNat * blockBytes t nh dh f (t * (nh * dh)).toNat +
       (48 + 8 * (t.toNat + 1) + (48 + 8 * (t.toNat + 1)) + (48 + 8 * ((t * (nh * dh)).toNat + 1))) +
       (48 + 8 * ((t * vocab).toNat + 1))
 
@@ -661,7 +611,7 @@ namespace Project.Gpt
 
 open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
 
-""" + mlp_section + att_section + blk_section + bat_section + fwd_section + "end Project.Gpt\n"
+""" + mlp_section + att_section + blk_section + fwd_section + "end Project.Gpt\n"
     if sys.argv[1:] == ['--check']:
         if TARGET.read_text() != text:
             raise SystemExit(f'{TARGET} is out of date')

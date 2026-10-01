@@ -38,14 +38,12 @@ eps=f64:4532020583610935537  # 1e-5
 session matVec2 "4 4 2" "u64:2 u64:2"
 session softmax "4" ""
 session layerNorm "4 4 4" "$eps"
-session layerNormRows "4 2 2" "u64:2 u64:2 $eps"
+session layerNormRows "4 2 2" "u64:0 u64:2 u64:2 $eps"
 session softmaxRows "8" "u64:2 u64:2"
-session mlp "4 6 3 6 2" "u64:2 u64:2 u64:3"
-session attention "4 4 2 4 2 4 2 4 2" "u64:2 u64:2 u64:1"
-layer="2 2 4 2 4 2 4 2 4 2 2 2 6 3 6 2"
-session block "4 $layer" "u64:2 u64:2 u64:1 u64:3 $eps"
-# Two layers of stacked weights; `blockAt` runs layer 1.
+session mlp "4 6 3 6 2" "u64:0 u64:2 u64:2 u64:3"
+session attention "4 4 2 4 2 4 2 4 2" "u64:0 u64:2 u64:2 u64:1"
+# Two layers of stacked weights; `block` runs layer 1.
 stacked="4 4 8 4 8 4 8 4 8 4 4 4 12 6 12 4"
-session blockAt "4 $stacked" "u64:1 u64:2 u64:2 u64:1 u64:3 $eps"
+session block "4 $stacked" "u64:1 u64:2 u64:2 u64:1 u64:3 $eps"
 session forward "2 6 4 $stacked 2 2" "u64:2 u64:2 u64:2 u64:1 u64:3 u64:3 $eps"
 [ "$failed" -eq 0 ]

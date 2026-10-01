@@ -19800,3 +19800,29 @@ and weights.  That is evidence for the equality argued in the cache design, not 
 proof, and no proof needs it: `forward` is now defined with the new softmax.
 
 - [x] 7a: the softmax over `j ≤ i`.
+
+## 2026-09-30: GPT 7b, weight offsets
+
+`linear x w b l n k m` reads `w[l · k · m + c · m + j]` and `b[l · m + j]`, and
+`normalizeRows` reads layer `l` of its gains and biases; `layerNormRows`, `mlp`,
+`attention`, and `block` pass `l` through.  Stacked weights hold the same number
+of values in each layer, so one index serves every array.  `block` with the layer
+index replaces `blockAt`, and `slice` is gone, along with sixteen weight copies
+per layer, 680 MB per pass for GPT-2 124M.  The values do not change: every read
+stays inside its layer, since the column is below `k` and `e % m` below `m`, reads
+past the end give 0 in both forms, and the index sums wrap the same way.
+`forward`'s final layer norm passes layer 0, which the generator writes as a
+constant argument.  `forwardNeed` with the GPT-2 124M weights drops from about
+2.3 to 1.6 GB at 256 tokens and from 5.9 to 5.2 GB at 1,024.
+
+`gpt.wasm` is 8,588 bytes, and all 1,842 comparisons match; the 30 `slice` cases
+are gone and the 30 `blockAt` cases now test `block`.  The sessions free every
+allocation, 67 for a two-layer `forward`, and the Hugging Face comparison prints
+the same differences as before.  On the GPT-2 124M weights the scores differ from
+Hugging Face's by the same amounts as before, and generation to 64 tokens again
+chose Hugging Face's token at all 59 steps.  The call times did not change
+measurably: 3.1, 12.8, and 96.0 seconds for 5, 30, and 224 tokens, against 2.6,
+12.8, and 95.3 before.  The cache design estimated 0.2 to 0.3 seconds per call for
+the slice copies; that estimate was too high.
+
+- [x] 7b: weight offsets, and `slice` and `blockAt` removed.
