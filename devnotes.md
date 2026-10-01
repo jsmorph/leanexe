@@ -19954,3 +19954,25 @@ matched Hugging Face's choice at every step in 180 seconds, and the session ende
 with 1,095,368,704 bytes of memory, the weights and about 100 MB.  The other
 modules' sizes and hashes in `deslop.md` predate this change; their runtime code
 changed with it.
+
+## 2026-10-01: GPT 7d, the cached steps equal `forward`'s rows
+
+`Project/Gpt/Exact.lean` proves `steps_exact`: `scores (cacheAfter … (p + 1))` equals
+`(forward … T …).extract (p · vocab) ((p + 1) · vocab)` for every `p < T`, bit for bit.
+`cacheAfter n` folds `step` over tokens `0` to `n - 1` from `#[]`.  The hypotheses bound
+`T`, `nh`, `dh`, and `layers` below `2 ^ 16`, `f` and `vocab` below `2 ^ 32`, require
+`nh` and `dh` positive, and bound the whole cache, `T · (2 · layers + 1) · nh · dh`,
+below `2 ^ 32`, so that no `UInt64` index wraps.  The theorem depends only on
+`propext`, `Classical.choice`, and `Quot.sound`.
+
+The proof does not use the causality theorems.  Its invariant, `CacheIs`, relates the
+cache to `forward` on all `T` tokens: block `j` holds row `j` of the last layer's
+input and rows `j` of each layer's keys and values.  `RowIs w p x X` states that `x` is
+row `p` of `X`; one lemma per kernel carries it from input to output for the kernels
+`layerStep` runs on one row (`linear`, the layer norms, `add`, `geluArray`, `mlp`,
+`matMulT`).  `stepScores_at`, `stepSoftmax_at`, and `stepMix_row` relate the cached
+attention to row `p` of `maskedScores`, `softmaxRows`, and `causalMatMul`.
+`layerStep_row` combines them for one layer, `layerLoop` iterates over the layers,
+`step_cache` adds the block to the cache, and `cacheAfter_cache` inducts over the
+positions.  The file is 959 lines.
+
