@@ -19,7 +19,7 @@ theorem sumSquares_bits (xs : Array Float) :
     simp [step, F64Bits.toBits_add, F64Bits.toBits_mul]
 
 theorem sumSquares_implements :
-    Implements sumSquares.module 3 LeanExe.Examples.SumSquares.sumSquares := by
+    Implements sumSquares.module 2 LeanExe.Examples.SumSquares.sumSquares := by
   refine Func.implements [(sumSquares.ir, "sumSquares")] 0 sumSquares.ir "sumSquares" rfl _ (by rintro _ _ _ _ ⟨ptr, rfl, -⟩; rfl) ?_
   rintro xs heap initial _ - ⟨ptr, rfl, hBorrowed⟩
   let start : State := { params := [.i64 ptr], locals := [.f64 0, .i64 0, .i64 0, .f64 0] }
@@ -44,7 +44,7 @@ theorem sumSquares_implements :
 computes `sumSquares` bit for bit. -/
 theorem sumSquares_bytes : ∃ bytes, Wasm.Encoding.encode sumSquares.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧
-      Implements m 3 LeanExe.Examples.SumSquares.sumSquares := by
+      Implements m 2 LeanExe.Examples.SumSquares.sumSquares := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip sumSquares.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, sumSquares.module, decoded, sumSquares_implements⟩

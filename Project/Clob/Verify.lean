@@ -53,7 +53,7 @@ theorem body_run {initial : Store Unit} {pp ps : UInt64} {prices sizes : Array U
   · simp [State.Holds, Scalar.values, step, hParams, hLocals, min]
 
 theorem marketBuy_implements :
-    Implements clob.module 3 marketBuyTuple := by
+    Implements clob.module 2 marketBuyTuple := by
   refine Func.implements_heap clob.funcs 0 clob.marketBuy.ir "marketBuy" rfl marketBuyTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, sizes, qty⟩ heap initial _ hHeap
@@ -136,7 +136,7 @@ theorem marketBuy_implements :
 def fillTuple (x : Array UInt64 × UInt64 × UInt64) : Array UInt64 :=
   LeanExe.Examples.Clob.fillLevel x.1 x.2.1 x.2.2
 
-theorem fillLevel_implements : Implements clob.module 4 fillTuple := by
+theorem fillLevel_implements : Implements clob.module 3 fillTuple := by
   refine Func.implements_heap clob.funcs 1 clob.fillLevel.ir "fillLevel" rfl fillTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨sizes, k, amount⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hCap
@@ -252,7 +252,7 @@ theorem insert_element {store : Store Unit} {ptr k v : UInt64} {xs : Array UInt6
     · simp [Expr.eval, hIndex, hK, h1, h2, Expr.readValue_at hArray, hArrayGet, hArrayNe,
         State.set?_eq_update, hLength, U64Op.apply]
 
-theorem insertLevel_implements : Implements clob.module 5 insertTuple := by
+theorem insertLevel_implements : Implements clob.module 4 insertTuple := by
   refine Func.implements_heap clob.funcs 2 clob.insertLevel.ir "insertLevel" rfl insertTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, sizes, k, price, size⟩ heap initial _ hHeap
@@ -384,7 +384,7 @@ def setTuple (x : Array UInt64 × Array UInt64 × UInt64 × UInt64) :
     Array UInt64 × Array UInt64 :=
   LeanExe.Examples.Clob.setLevel x.1 x.2.1 x.2.2.1 x.2.2.2
 
-theorem setLevel_implements : Implements clob.module 6 setTuple := by
+theorem setLevel_implements : Implements clob.module 5 setTuple := by
   refine Func.implements_heap clob.funcs 3 clob.setLevel.ir "setLevel" rfl setTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, sizes, k, size⟩ heap initial _ hHeap
@@ -494,7 +494,7 @@ theorem depthBody_run {initial : Store Unit} {pp ps : UInt64} {prices sizes : Ar
     exact State.Frame.refl _ _ _
   · simp [State.Holds, Scalar.values, depthStep, hParams, hLocals]
 
-theorem depth_implements : Implements clob.module 8 depthTuple := by
+theorem depth_implements : Implements clob.module 7 depthTuple := by
   refine Func.implements clob.funcs 5 clob.depth.ir "depth" rfl depthTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, sizes, limit⟩ heap initial _ -
@@ -575,7 +575,7 @@ theorem findBody_run {initial : Store Unit} {pp : UInt64} {prices : Array UInt64
     exact State.Frame.refl _ _ _
   · simp [State.Holds, Scalar.values, searchStep, hParams, hLocals]
 
-theorem findLevel_implements : Implements clob.module 9 findTuple := by
+theorem findLevel_implements : Implements clob.module 8 findTuple := by
   refine Func.implements clob.funcs 6 clob.findLevel.ir "findLevel" rfl findTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, price⟩ heap initial _ - ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, rfl⟩
@@ -663,7 +663,7 @@ theorem erase_element {store : Store Unit} {ptr k : UInt64} {xs : Array UInt64}
   · simp [Expr.eval, hIndex, hK, h1, Expr.readValue_at hArray, hArrayGet, hArrayNe,
       State.set?_eq_update, hLength, U64Op.apply]
 
-theorem removeLevel_implements : Implements clob.module 10 removeTuple := by
+theorem removeLevel_implements : Implements clob.module 9 removeTuple := by
   refine Func.implements_heap clob.funcs 7 clob.removeLevel.ir "removeLevel" rfl removeTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, sizes, k⟩ heap initial _ hHeap
@@ -942,7 +942,7 @@ def bidStart (pp ps price size : UInt64) (n : Nat) : State :=
 /-- The code of `addBid` and `cancelBid`: the search, the number of levels, and a
 branch on whether the level at the position has the price. -/
 def bidBody (thenStmt elseStmt : Stmt) : Stmt :=
-  .seq (.call 9 [⟨.u64, .get 0⟩, ⟨.u64, .get 2⟩] [4]) (.seq (.assign 5 (.get 4))
+  .seq (.call 8 [⟨.u64, .get 0⟩, ⟨.u64, .get 2⟩] [4]) (.seq (.assign 5 (.get 4))
     (.seq (.arraySize 8 0)
       (.ite (.and (.ltU (.get 5) (.get 8)) (.eq (.read 0 (.get 5)) (.get 2))) thenStmt elseStmt)))
 
@@ -1072,7 +1072,7 @@ def addBidTuple (x : Array UInt64 × Array UInt64 × UInt64 × UInt64) :
     Array UInt64 × Array UInt64 :=
   LeanExe.Examples.Clob.addBid x.1 x.2.1 x.2.2.1 x.2.2.2
 
-theorem addBid_implements : Implements clob.module 7 addBidTuple := by
+theorem addBid_implements : Implements clob.module 6 addBidTuple := by
   refine Func.implements_heap clob.funcs 4 clob.addBid.ir "addBid" rfl addBidTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, sizes, price, size⟩ heap initial _ hHeap
@@ -1085,9 +1085,9 @@ theorem addBid_implements : Implements clob.module 7 addBidTuple := by
         (prices, sizes, price, size) := fun _ _ hKeep =>
     ⟨_, _, rfl, ⟨pp, rfl, hKeep pp prices hPrices⟩, _, _, rfl, ⟨ps, rfl, hKeep ps sizes hSizes⟩, rfl⟩
   show Triple _ (bidBody
-    (.call 6 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩,
+    (.call 5 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩,
       ⟨.u64, .bin .add (.read 1 (.get 5)) (.get 3)⟩] [6, 7])
-    (.call 5 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 2⟩, ⟨.u64, .get 3⟩]
+    (.call 4 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 2⟩, ⟨.u64, .get 3⟩]
       [6, 7])) (6 + 3)
     (fun store state => store = initial ∧ state = bidStart pp ps price size 6)
     (PairPost heap initial [.i64 pp, .i64 ps, .i64 price, .i64 size] (prices, sizes, price, size)
@@ -1131,7 +1131,7 @@ def cancelTuple (x : Array UInt64 × Array UInt64 × UInt64 × UInt64) :
     Array UInt64 × Array UInt64 :=
   LeanExe.Examples.Clob.cancelBid x.1 x.2.1 x.2.2.1 x.2.2.2
 
-theorem cancelBid_implements : Implements clob.module 11 cancelTuple := by
+theorem cancelBid_implements : Implements clob.module 10 cancelTuple := by
   refine Func.implements_heap clob.funcs 8 clob.cancelBid.ir "cancelBid" rfl cancelTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, sizes, price, size⟩ heap initial _ hHeap
@@ -1145,8 +1145,8 @@ theorem cancelBid_implements : Implements clob.module 11 cancelTuple := by
     ⟨_, _, rfl, ⟨pp, rfl, hKeep pp prices hPrices⟩, _, _, rfl, ⟨ps, rfl, hKeep ps sizes hSizes⟩, rfl⟩
   show Triple _ (bidBody
     (.ite (.leU (.read 1 (.get 5)) (.get 3))
-      (.call 10 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩] [6, 7])
-      (.call 6 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩,
+      (.call 9 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩] [6, 7])
+      (.call 5 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩,
         ⟨.u64, .bin .sub (.read 1 (.get 5)) (.get 3)⟩] [6, 7]))
     (.seq (.copy 6 10 11 9 0) (.copy 7 13 14 12 1))) (12 + 3)
     (fun store state => store = initial ∧ state = bidStart pp ps price size 12)
@@ -1223,7 +1223,7 @@ def applyTuple (x : Array UInt64 × Array UInt64 × UInt64 × UInt64 × UInt64) 
     Array UInt64 × Array UInt64 :=
   LeanExe.Examples.Clob.applyCommand x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
 
-theorem applyCommand_implements : Implements clob.module 12 applyTuple := by
+theorem applyCommand_implements : Implements clob.module 11 applyTuple := by
   refine Func.implements_heap clob.funcs 9 clob.applyCommand.ir "applyCommand" rfl applyTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨prices, sizes, kind, price, size⟩ heap initial _ hHeap
@@ -1244,9 +1244,9 @@ theorem applyCommand_implements : Implements clob.module 12 applyTuple := by
       start.get 4 = some (.i64 size) := ⟨rfl, rfl, rfl, rfl, rfl⟩
   have hLength : start.params.length + start.locals.length = 14 := rfl
   show Triple _ (.ite (.eq (.get 2) (.const 0))
-      (.call 7 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [5, 6])
+      (.call 6 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [5, 6])
       (.ite (.eq (.get 2) (.const 1))
-        (.call 11 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [5, 6])
+        (.call 10 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [5, 6])
         (.seq (.copy 5 8 9 7 0) (.copy 6 11 12 10 1)))) 13
     (fun store state => store = initial ∧ state = start)
     (PairPost heap initial [.i64 pp, .i64 ps, .i64 kind, .i64 price, .i64 size]
@@ -1305,11 +1305,11 @@ theorem applyCommand_implements : Implements clob.module 12 applyTuple := by
 exports compute the CLOB operations exactly. -/
 theorem clob_bytes : ∃ bytes, Encoding.encode clob.module = .ok bytes ∧
     ∃ m, Encoding.decode bytes = .ok m ∧
-      Implements m 3 marketBuyTuple ∧ Implements m 4 fillTuple ∧
-      Implements m 5 insertTuple ∧ Implements m 6 setTuple ∧
-      Implements m 7 addBidTuple ∧ Implements m 8 depthTuple ∧
-      Implements m 9 findTuple ∧ Implements m 10 removeTuple ∧
-      Implements m 11 cancelTuple ∧ Implements m 12 applyTuple := by
+      Implements m 2 marketBuyTuple ∧ Implements m 3 fillTuple ∧
+      Implements m 4 insertTuple ∧ Implements m 5 setTuple ∧
+      Implements m 6 addBidTuple ∧ Implements m 7 depthTuple ∧
+      Implements m 8 findTuple ∧ Implements m 9 removeTuple ∧
+      Implements m 10 cancelTuple ∧ Implements m 11 applyTuple := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip clob.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, clob.module, decoded, marketBuy_implements, fillLevel_implements,

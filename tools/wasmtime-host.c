@@ -700,10 +700,7 @@ static uint64_t read_global_u64(Runtime *runtime, const char *name) {
 }
 
 static void print_stats(Runtime *runtime) {
-  printf("stats %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
-         read_global_u64(runtime, "allocCount"),
-         read_global_u64(runtime, "retainCount"),
-         read_global_u64(runtime, "releaseCount"),
+  printf("stats %" PRIu64 " %" PRIu64 "\n", read_global_u64(runtime, "allocCount"),
          read_global_u64(runtime, "freeCount"));
 }
 
@@ -778,32 +775,6 @@ static void command_release_reuse(Runtime *runtime, int argc, char **argv) {
   call_void_i64_func(runtime, &release, ptr);
   uint64_t reused = call_alloc(runtime, alloc_size);
   expect_eq_u64("release reuse", ptr, reused);
-}
-
-static void command_retain_delay(Runtime *runtime, int argc, char **argv) {
-  if (argc != 4) {
-    die("usage: retain-delay <module.wasm> <function> <nresults> <ptr-index> <alloc-size>");
-  }
-  size_t nresults = (size_t)parse_u64(argv[1]);
-  size_t ptr_index = (size_t)parse_u64(argv[2]);
-  uint64_t alloc_size = parse_u64(argv[3]);
-  if (nresults > 128 || ptr_index >= nresults) {
-    die("invalid result index");
-  }
-  wasmtime_val_t results[128];
-  invoke_noarg(runtime, argv[0], results, nresults);
-  uint64_t ptr = (uint64_t)results[ptr_index].of.i64;
-  wasmtime_func_t retain = required_runtime_func(runtime, "retain");
-  wasmtime_func_t release = required_runtime_func(runtime, "release");
-  (void)call_i64_func(runtime, &retain, ptr);
-  call_void_i64_func(runtime, &release, ptr);
-  uint64_t after_one = call_alloc(runtime, alloc_size);
-  if (after_one == ptr) {
-    die("retain did not preserve the block after one release");
-  }
-  call_void_i64_func(runtime, &release, ptr);
-  uint64_t after_two = call_alloc(runtime, alloc_size);
-  expect_eq_u64("second release reuse", ptr, after_two);
 }
 
 static void command_free_alias(Runtime *runtime, int argc, char **argv) {
@@ -1270,9 +1241,6 @@ int main(int argc, char **argv) {
   } else if (strcmp(argv[1], "release-reuse") == 0) {
     init_runtime(&runtime, argv[2]);
     command_release_reuse(&runtime, argc - 3, argv + 3);
-  } else if (strcmp(argv[1], "retain-delay") == 0) {
-    init_runtime(&runtime, argv[2]);
-    command_retain_delay(&runtime, argc - 3, argv + 3);
   } else if (strcmp(argv[1], "free-alias") == 0) {
     init_runtime(&runtime, argv[2]);
     command_free_alias(&runtime, argc - 3, argv + 3);

@@ -9,7 +9,7 @@ namespace Project.Gpt
 open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
 
 theorem negInfs_implements :
-    Implements gpt.module 46 LeanExe.Examples.Gpt.negInfs := by
+    Implements gpt.module 45 LeanExe.Examples.Gpt.negInfs := by
   refine Func.implements_heap gpt.funcs 43 gpt.negInfs.ir "negInfs" rfl
     LeanExe.Examples.Gpt.negInfs (by rintro _ _ _ _ rfl; rfl) ?_
   rintro k heap initial _ hHeap rfl hCap
@@ -54,7 +54,7 @@ theorem insertTop_eq (buf s : Array Float) (i k : UInt64) :
       LeanExe.build k (insertElem buf s[i.toNat]! (LeanExe.loop k 0 (posStep buf s[i.toNat]!))) :=
   rfl
 
-theorem insertTop_implements : Implements gpt.module 47 insertTopTuple := by
+theorem insertTop_implements : Implements gpt.module 46 insertTopTuple := by
   refine Func.implements_heap gpt.funcs 44 gpt.insertTop.ir "insertTop" rfl insertTopTuple (by
       rintro _ _ _ ⟨_, _, _, _⟩ h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
@@ -220,7 +220,7 @@ theorem sampleFrom_eq (s buf : Array Float) (k : UInt64) (t : Float) (state : UI
 
 /-- The compiled body of the loop that chooses the token. -/
 def pickBody : Stmt :=
-  .seq (.call 6 [⟨.f64, .binF .div (.binF .sub (.ofBits (.read 0 (.get 23))) (.getF 6)) (.getF 3)⟩]
+  .seq (.call 5 [⟨.f64, .binF .div (.binF .sub (.ofBits (.read 0 (.get 23))) (.getF 6)) (.getF 3)⟩]
     [24])
   (.seq (.assign 25 (.iteF (.leF (.getF 5) (.ofBits (.read 0 (.get 23))))
     (.binF .add (.getF 19) (.getF 24)) (.getF 19)))
@@ -306,14 +306,14 @@ theorem pickBody_spec {initial : Store Unit} {ps : UInt64} {s : Array Float}
         c4, c5, c6, f, g0, g5, g19, g20, g21, hIndex, Expr.readValue_at hS,
         getElem!_map_toBits, F64Op.apply, r, pickStep, x, hle, hJ, ← F64Bits.le_iff]
 
-theorem splitMix_gpt : ImplementsPure gpt.module 44 LeanExe.Examples.Prng.splitMix :=
+theorem splitMix_gpt : ImplementsPure gpt.module 43 LeanExe.Examples.Prng.splitMix :=
   Project.Prng.splitMix_pure gpt.funcs 41 rfl
 
-theorem unitFloat_gpt : ImplementsPure gpt.module 45 LeanExe.Examples.Prng.unitFloat :=
+theorem unitFloat_gpt : ImplementsPure gpt.module 44 LeanExe.Examples.Prng.unitFloat :=
   Project.Prng.unitFloat_pure gpt.funcs 42 rfl
 
 set_option maxHeartbeats 2000000 in
-theorem sampleFrom_implements : Implements gpt.module 49 sampleFromTuple := by
+theorem sampleFrom_implements : Implements gpt.module 48 sampleFromTuple := by
   refine Func.implements gpt.funcs 46 gpt.sampleFrom.ir "sampleFrom" rfl sampleFromTuple
     (by
       rintro _ _ _ ⟨_, _, _, _, _⟩ h
@@ -536,7 +536,7 @@ theorem sampleFrom_implements : Implements gpt.module 49 sampleFromTuple := by
 def topKBufferTuple (x : Array Float × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.topKBuffer x.1 x.2
 
-theorem topKBuffer_implements : Implements gpt.module 48 topKBufferTuple := by
+theorem topKBuffer_implements : Implements gpt.module 47 topKBufferTuple := by
   refine Func.implements_heap gpt.funcs 45 gpt.topKBuffer.ir "topKBuffer" rfl
     topKBufferTuple
     (by
@@ -548,13 +548,13 @@ theorem topKBuffer_implements : Implements gpt.module 48 topKBufferTuple := by
   obtain ⟨pS, _, rfl, hS, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
-  have hNeg : gpt.module.funcs[46 - gpt.module.imports.length]? =
+  have hNeg : gpt.module.funcs[45 - gpt.module.imports.length]? =
       some (gpt.negInfs.ir.function (2 + 43)) :=
     compile_funcs (funcs := gpt.funcs) (i := 43) rfl
-  have hInsert : gpt.module.funcs[47 - gpt.module.imports.length]? =
+  have hInsert : gpt.module.funcs[46 - gpt.module.imports.length]? =
       some (gpt.insertTop.ir.function (2 + 44)) :=
     compile_funcs (funcs := gpt.funcs) (i := 44) rfl
   let init := LeanExe.Examples.Gpt.negInfs top
@@ -644,7 +644,7 @@ theorem topKBuffer_implements : Implements gpt.module 48 topKBufferTuple := by
 def sampleTopKTuple (x : Array Float × UInt64 × Float × UInt64) : UInt64 × UInt64 :=
   LeanExe.Examples.Gpt.sampleTopK x.1 x.2.1 x.2.2.1 x.2.2.2
 
-theorem sampleTopK_implements : Implements gpt.module 50 sampleTopKTuple := by
+theorem sampleTopK_implements : Implements gpt.module 49 sampleTopKTuple := by
   refine Func.implements_heap gpt.funcs 47 gpt.sampleTopK.ir "sampleTopK" rfl sampleTopKTuple
     (by
       rintro _ _ _ ⟨_, _, _, _⟩ h
@@ -658,11 +658,11 @@ theorem sampleTopK_implements : Implements gpt.module 50 sampleTopKTuple := by
   let buf := topKBufferTuple (s, k1)
   let r := sampleFromTuple (s, buf, k1, t, seed)
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
-  have hBuffer : gpt.module.funcs[48 - gpt.module.imports.length]? =
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
+  have hBuffer : gpt.module.funcs[47 - gpt.module.imports.length]? =
       some (gpt.topKBuffer.ir.function (2 + 45)) :=
     compile_funcs (funcs := gpt.funcs) (i := 45) rfl
-  have hSample : gpt.module.funcs[49 - gpt.module.imports.length]? =
+  have hSample : gpt.module.funcs[48 - gpt.module.imports.length]? =
       some (gpt.sampleFrom.ir.function (2 + 46)) :=
     compile_funcs (funcs := gpt.funcs) (i := 46) rfl
   let start : State :=

@@ -113,9 +113,9 @@ then leaves a store of the generation after `p + 1` tokens. -/
 theorem generating_step {store : Store Unit} {W : Weights} {P : Pointers}
     {tokens : Array UInt64} {layers nh dh f : UInt64} {eps : Float} {pc : UInt64} {p : Nat}
     (env : HostEnv Unit) (h : Generating store W P tokens layers nh dh f eps pc p) :
-    ReturnsOrAborts env gpt.module 42 store (stepArgs pc P tokens[p]! layers nh dh f eps).reverse
+    ReturnsOrAborts env gpt.module 41 store (stepArgs pc P tokens[p]! layers nh dh f eps).reverse
       fun final values => ∃ pc', values = [.i64 pc'] ∧
-        TerminatesWith env gpt.module 2 final [.i64 pc] fun final' _ =>
+        TerminatesWith env gpt.module 1 final [.i64 pc] fun final' _ =>
           Generating final' W P tokens layers nh dh f eps pc' (p + 1) := by
   obtain ⟨heap, hAt, hCap, hW, hC⟩ := h
   have b : ∀ q a, (q, a) ∈ W.pairs P → heap.Borrowed store q (a.map Float.toBits) :=
@@ -169,7 +169,7 @@ theorem generating_scores {store : Store Unit} {W : Weights} {P : Pointers}
     (hn0 : 0 < nh.toNat) (hdh0 : 0 < dh.toNat) (hf : f.toNat < 2 ^ 32)
     (hv : vocab.toNat < 2 ^ 32) (hL : layers.toNat < 2 ^ 16)
     (hall : T.toNat * ((2 * layers.toNat + 1) * (nh.toNat * dh.toNat)) < 2 ^ 32) :
-    ReturnsOrAborts env gpt.module 43 store (scoresArgs pc P layers nh dh vocab eps).reverse
+    ReturnsOrAborts env gpt.module 42 store (scoresArgs pc P layers nh dh vocab eps).reverse
       fun final values => ∃ r, values = [.i64 r] ∧ ∃ heap' : Heap, heap'.At final ∧
         heap'.Owned final r (((LeanExe.Examples.Gpt.forward tokens W.wte W.wpe W.g1 W.b1 W.wq W.bq W.wk W.bk W.wv W.bv W.wo W.bo W.g2 W.b2 W.wfc W.bfc W.wproj
           W.bproj W.gf W.bf layers T nh dh f vocab

@@ -9,7 +9,7 @@ open Wasm Project.Pipeline Project.IR Project.Runtime
 /-- `pairSum` with its two arguments as one pair. -/
 def pairTuple (x : UInt64 × UInt64) : UInt64 := LeanExe.Examples.PairSum.pairSum x.1 x.2
 
-theorem pairSum_implements : Implements pairSum.module 3 pairTuple := by
+theorem pairSum_implements : Implements pairSum.module 2 pairTuple := by
   refine Func.implements_heap [(pairSum.ir, "pairSum")] 0 pairSum.ir "pairSum" rfl pairTuple
     (fun _ _ _ x h => by rw [Scalar.borrowed.mp h]; rfl) ?_
   rintro ⟨a, b⟩ heap initial params hHeap hArgs hCap
@@ -17,7 +17,7 @@ theorem pairSum_implements : Implements pairSum.module 3 pairTuple := by
   have hMemory32 : (compile [(pairSum.ir, "pairSum")]).memIs64 = false := rfl
   have hImports : (compile [(pairSum.ir, "pairSum")]).imports = [] := rfl
   have hAlloc : (compile [(pairSum.ir, "pairSum")]).funcs[0]? = some (allocFunction 0) := rfl
-  have hRelease : (compile [(pairSum.ir, "pairSum")]).funcs[2]? = some (releaseFunction 1) := rfl
+  have hRelease : (compile [(pairSum.ir, "pairSum")]).funcs[1]? = some (releaseFunction 1) := rfl
   let start : State := { params := [.i64 a, .i64 b], locals := List.replicate 5 (.i64 0) }
   show Triple _ (.seq (.arrayLiteral 2 [.get 0, .get 1]) (.seq (.assign 3 (.const 0))
     (.seq (.fold .u64 2 3 4 5 6 (.bin .add (.get 3) (.get 6))) (.release 2)))) 7
@@ -76,7 +76,7 @@ theorem pairSum_implements : Implements pairSum.module 3 pairTuple := by
 /-- `encode` succeeds on `pairSum.module`, and its bytes decode to a module that
 computes `pairSum` exactly. -/
 theorem pairSum_bytes : ∃ bytes, Wasm.Encoding.encode pairSum.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 3 pairTuple := by
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 pairTuple := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip pairSum.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, pairSum.module, decoded, pairSum_implements⟩

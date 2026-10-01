@@ -3,14 +3,14 @@ import Project.ProofKit.FixedArrayAllocate
 /-!
 # Runtime functions
 
-Every compiled module contains `alloc`, `retain`, and `release`.  An object is a
-payload preceded by a 48-byte header: the magic number, the reference count, the
-payload capacity, the kind, the element width, and the child mask.  Globals 0 to
-5 hold the bump pointer `top`, the free-list head, and the allocation, retain,
-release, and free counters.
+Every compiled module contains `alloc` and `release`.  An object is a payload
+preceded by a 48-byte header: the magic number, the count, the payload capacity,
+the kind, the element width, and the child mask.  Every live object has one owner,
+so its count is 1.  Globals 0 to 3 hold the bump pointer `top`, the free-list head,
+and the allocation and free counters.
 
-`release` does not recurse.  When a count reaches zero, the object joins a
-pending list linked through its count field.  A loop takes each pending object,
+`release` does not recurse.  The released object joins a pending list linked
+through its count field.  A loop takes each pending object,
 drops the references its masked slots hold, and then returns its block to the
 free list, whose link overwrites the child mask.  The free list is in address
 order: the block goes before the first free block above it and merges with the
@@ -40,17 +40,14 @@ def incrementGlobal (index : Nat) : Program :=
 def checkMagic (ptr : Nat) : Program :=
   headerLoad ptr 48 ++ [.constI64 magic, .neI64, .iff 0 0 [.unreachable] []]
 
-/-- Drops one reference to the object at local `ptr`, using local `count`.  It
-traps on a missing magic number or a zero count and counts the release.  A count
-above one is decremented; a count of one links the object onto the pending list
-in local `pending` through its count field. -/
+/-- Drops the one reference to the object at local `ptr`, using local `count`.  It
+traps on a missing magic number or a count other than 1, which a second release of
+the object would read, and links the object onto the pending list in local
+`pending` through its count field. -/
 def dropReference (ptr count pending : Nat) : Program :=
   checkMagic ptr ++ headerLoad ptr 40 ++
-  [.localSet count, .localGet count, .constI64 0, .eqI64, .iff 0 0 [.unreachable] []] ++
-  incrementGlobal 4 ++
-  [.constI64 1, .localGet count, .ltUI64,
-   .iff 0 0 (headerStore ptr 40 [.localGet count, .constI64 1, .subI64])
-     (headerStore ptr 40 [.localGet pending] ++ [.localGet ptr, .localSet pending])]
+  [.localSet count, .localGet count, .constI64 1, .neI64, .iff 0 0 [.unreachable] []] ++
+  headerStore ptr 40 [.localGet pending] ++ [.localGet ptr, .localSet pending]
 
 /-- Runs `body` with local `index` from 0 while it is below local `bound`. -/
 def countedLoop (index bound : Nat) (body : Program) : Program :=
@@ -134,7 +131,7 @@ def joinProgram (ptr next : Nat) : Program :=
 
 /-- Returns the block of the object at local `releaseObject` to the free list. -/
 def freeObject : Program :=
-  incrementGlobal 5 ++ headerStore releaseObject 40 [.constI64 0] ++ findPlace ++
+  incrementGlobal 3 ++ headerStore releaseObject 40 [.constI64 0] ++ findPlace ++
   joinProgram releaseObject releaseCurrent ++
   [.localGet releasePrevious, .constI64 0, .eqI64,
    .iff 0 0 [.localGet releaseObject, .globalSet 1] (joinProgram releasePrevious releaseObject)]
@@ -151,21 +148,6 @@ def releaseBody : Program :=
 
 def releaseFunction (typeIdx : Nat) : Wasm.Function :=
   { params := [.i64], locals := List.replicate 12 .i64, body := releaseBody, results := [],
-    typeIdx := some typeIdx }
-
-/-- `retain` adds one reference to a non-null object and returns it.  It traps on
-a missing magic number or a zero count. -/
-def retainBody : Program :=
-  [.localGet 0, .constI64 0, .neI64,
-   .iff 0 0
-     (checkMagic 0 ++ headerLoad 0 40 ++
-       [.localSet 1, .localGet 1, .constI64 0, .eqI64, .iff 0 0 [.unreachable] []] ++
-       incrementGlobal 3 ++ headerStore 0 40 [.localGet 1, .constI64 1, .addI64])
-     [],
-   .localGet 0]
-
-def retainFunction (typeIdx : Nat) : Wasm.Function :=
-  { params := [.i64], locals := [.i64], body := retainBody, results := [.i64],
     typeIdx := some typeIdx }
 
 /-- `alloc bytes` returns a fresh object with count one whose payload holds at

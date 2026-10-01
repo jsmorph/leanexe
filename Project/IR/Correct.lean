@@ -33,7 +33,7 @@ theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func �
               Represent.outside store values (f x) (p.toNat, 8 * (ws.size + 1))) ∧
             (∀ p ws, heap.Owned initial p ws →
               Represent.outside store values (f x) (p.toNat - 48, 48 + capacityAt initial p)))) :
-    Implements (compile funcs) (3 + i) f := by
+    Implements (compile funcs) (2 + i) f := by
   intro env store heap params x hHeap hArgs hCap
   have hLength := arity heap store params x hArgs
   have hArgsBack : (params.reverse.take func.params.length).reverse = params := by
@@ -81,7 +81,7 @@ theorem Func.implements [Represent α] [Scalar β] (funcs : List (Func × String
           ∃ values next,
             Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
             values = Scalar.values (f x))) :
-    Implements (compile funcs) (3 + i) f :=
+    Implements (compile funcs) (2 + i) f :=
   Func.implements_heap funcs i func name hFunc f arity
     fun x heap initial params hHeap hArgs _ =>
     (correct x heap initial params hHeap hArgs).mono (fun _ _ h => h)
@@ -103,7 +103,7 @@ theorem Func.implementsPure [Scalar α] [Scalar β] (funcs : List (Func × Strin
         (fun store state => store = initial ∧ ∃ values next,
           Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
           values = Scalar.values (f x))) :
-    ImplementsPure (compile funcs) (3 + i) f := by
+    ImplementsPure (compile funcs) (2 + i) f := by
   intro env store x
   have hLength := arity x
   have hArgsBack : ((Scalar.values x).reverse.take func.params.length).reverse =

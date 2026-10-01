@@ -45,7 +45,7 @@ theorem dotBody_run {initial : Store Unit} {px py : UInt64} {xs ys : Array Float
   · simp [State.Holds, Scalar.values, dotStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul]
 
-theorem dot_implements : Implements gpt.module 3 dotTuple := by
+theorem dot_implements : Implements gpt.module 2 dotTuple := by
   refine Func.implements gpt.funcs 0 gpt.dot.ir "dot" rfl dotTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, ⟨_, rfl, -⟩⟩; rfl) ?_
   rintro ⟨xs, ys⟩ heap initial _ - ⟨_, _, rfl, ⟨px, rfl, hXs⟩, ⟨py, rfl, hYs⟩⟩
@@ -138,7 +138,7 @@ theorem rowBody_run {initial : Store Unit} {pm pv : UInt64} {m v : Array Float}
   · simp [State.Holds, Scalar.values, rowStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul]
 
-theorem matVec_implements : Implements gpt.module 4 matVecTuple := by
+theorem matVec_implements : Implements gpt.module 3 matVecTuple := by
   refine Func.implements_heap gpt.funcs 1 gpt.matVec.ir "matVec" rfl matVecTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨m, v, rows, cols⟩ heap initial _ hHeap
@@ -278,7 +278,7 @@ theorem varBody_run {initial : Store Unit} {px : UInt64} {xs : Array Float}
   · simp [State.Holds, Scalar.values, varStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul, F64Bits.toBits_sub]
 
-theorem layerNorm_implements : Implements gpt.module 5 layerTuple := by
+theorem layerNorm_implements : Implements gpt.module 4 layerTuple := by
   refine Func.implements_heap gpt.funcs 2 gpt.layerNorm.ir "layerNorm" rfl layerTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
       rfl⟩; rfl) ?_
@@ -474,7 +474,7 @@ theorem layerNorm_implements : Implements gpt.module 5 layerTuple := by
 
 /-- `exp` keeps the store, so calls to it may run in loop bodies and array
 elements. -/
-theorem exp_pure : ImplementsPure gpt.module 6 LeanExe.Examples.Gpt.exp := by
+theorem exp_pure : ImplementsPure gpt.module 5 LeanExe.Examples.Gpt.exp := by
   refine Func.implementsPure gpt.funcs 3 gpt.exp.ir "exp" rfl LeanExe.Examples.Gpt.exp
     (fun _ => rfl) fun x initial => ?_
   have k745 : (745.2 : Float).toBits = 4649766064339130778 := by decide +kernel
@@ -587,7 +587,7 @@ theorem exp_pure : ImplementsPure gpt.module 6 LeanExe.Examples.Gpt.exp := by
   by_cases h1 : x == x <;> by_cases h2 : x > 709.8 <;> by_cases h3 : x < -745.2 <;>
     simp_all [F64Bits.beq_eq, F64Bits.lt_iff, F64Bits.toBits_mul, F64Bits.toBits_neg]
 
-theorem exp_implements : Implements gpt.module 6 LeanExe.Examples.Gpt.exp :=
+theorem exp_implements : Implements gpt.module 5 LeanExe.Examples.Gpt.exp :=
   exp_pure.implements
 
 /-- One step of the maximum loop. -/
@@ -612,7 +612,7 @@ def maxBody : Stmt :=
 
 /-- The compiled body of the loop that sums the exponentials. -/
 def expSumBody : Stmt :=
-  .seq (.call 6 [⟨.f64, .binF .sub (.ofBits (.read 0 (.get 10))) (.getF 6)⟩] [11])
+  .seq (.call 5 [⟨.f64, .binF .sub (.ofBits (.read 0 (.get 10))) (.getF 6)⟩] [11])
     (.seq (.assign 12 (.binF .add (.getF 8) (.getF 11))) (.assign 8 (.getF 12)))
 
 theorem maxBody_run {initial : Store Unit} {px : UInt64} {xs : Array Float}
@@ -637,7 +637,7 @@ theorem exp_call {scratch : Nat} {args : List ((type : ScalarType) × Expr type)
     (hArgs : Expr.evalResults initial.mem scratch args before = some ([.f64 d.toBits], afterArgs))
     (hSet : afterArgs.setAll results.reverse [.f64 (LeanExe.Examples.Gpt.exp d).toBits] =
       some next) :
-    Triple gpt.module (.call 6 args results) scratch
+    Triple gpt.module (.call 5 args results) scratch
       (fun store state => store = initial ∧ state = before)
       (fun store state => store = initial ∧ state = next) :=
   Stmt.callPure_spec exp_pure (f := gpt.exp.ir.function (2 + 3)) rfl
@@ -676,7 +676,7 @@ theorem expSumBody_spec {initial : Store Unit} {px : UInt64} {xs : Array Float} 
   · simp [State.Holds, Scalar.values, expSumStep, f, c, b, a, hParams, hLocals, d, e]
 
 theorem softmax_implements :
-    Implements gpt.module 7 LeanExe.Examples.Gpt.softmax := by
+    Implements gpt.module 6 LeanExe.Examples.Gpt.softmax := by
   refine Func.implements_heap gpt.funcs 4 gpt.softmax.ir "softmax" rfl
     LeanExe.Examples.Gpt.softmax (by rintro _ _ _ _ ⟨_, rfl, -⟩; rfl) ?_
   rintro xs heap initial _ hHeap ⟨px, rfl, hXs⟩ hCap
@@ -703,7 +703,7 @@ theorem softmax_implements :
     (.seq (.assign 8 (.constF 0)) (.seq (.loop 9 10 (.get 7) expSumBody)
     (.seq (.assign 13 (.getF 8)) (.seq (.arraySize 14 0)
     (.buildWith 15 16 17 (.get 14)
-      (.call 6 [⟨.f64, .binF .sub (.ofBits (.read 0 (.get 17))) (.getF 6)⟩] [18])
+      (.call 5 [⟨.f64, .binF .sub (.ofBits (.read 0 (.get 17))) (.getF 6)⟩] [18])
       (.toBits (.binF .div (.getF 18) (.getF 13))))))))))))) 19
     (fun store state => store = initial ∧ state = start) _
   have hParams : start.params.length = 1 := rfl
@@ -840,7 +840,7 @@ theorem softmax_implements :
 def matVec2Tuple (x : Array Float × Array Float × Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.matVec2 x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
 
-theorem matVec2_implements : Implements gpt.module 8 matVec2Tuple := by
+theorem matVec2_implements : Implements gpt.module 7 matVec2Tuple := by
   refine Func.implements_heap gpt.funcs 5 gpt.matVec2.ir "matVec2" rfl matVec2Tuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
       rfl⟩; rfl) ?_
@@ -850,8 +850,8 @@ theorem matVec2_implements : Implements gpt.module 8 matVec2Tuple := by
   change heap.Borrowed initial p2 (w2.map Float.toBits) at hW2
   change heap.Borrowed initial px (x.map Float.toBits) at hX
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
-  have hMatVec : gpt.module.funcs[4 - gpt.module.imports.length]? =
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
+  have hMatVec : gpt.module.funcs[3 - gpt.module.imports.length]? =
       some (gpt.matVec.ir.function (2 + 1)) := compile_funcs (funcs := gpt.funcs) (i := 1) rfl
   let start : State :=
     { params := [.i64 p1, .i64 p2, .i64 px, .i64 hidden, .i64 d]
@@ -860,8 +860,8 @@ theorem matVec2_implements : Implements gpt.module 8 matVec2Tuple := by
   have hGet : start.get 0 = some (.i64 p1) ∧ start.get 1 = some (.i64 p2) ∧
       start.get 2 = some (.i64 px) ∧ start.get 3 = some (.i64 hidden) ∧
       start.get 4 = some (.i64 d) := ⟨rfl, rfl, rfl, rfl, rfl⟩
-  show Triple _ (.seq (.call 4 [⟨.u64, .get 0⟩, ⟨.u64, .get 2⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [5])
-    (.seq (.call 4 [⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 3⟩] [6])
+  show Triple _ (.seq (.call 3 [⟨.u64, .get 0⟩, ⟨.u64, .get 2⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [5])
+    (.seq (.call 3 [⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 3⟩] [6])
       (.seq (.assign 7 (.get 6)) (.release 5)))) 8
     (fun store state => store = initial ∧ state = start) _
   -- The temporary: `w1 · x`.
@@ -952,7 +952,7 @@ theorem cellBody_run {initial : Store Unit} {pa pb : UInt64} {a b : Array Float}
   · by_cases hm : m = 0 <;> simp [State.Holds, Scalar.values, cellStep, hParams, hLocals,
       F64Bits.toBits_add, F64Bits.toBits_mul, hm]
 
-theorem matMul_implements : Implements gpt.module 9 matMulTuple := by
+theorem matMul_implements : Implements gpt.module 8 matMulTuple := by
   refine Func.implements_heap gpt.funcs 6 gpt.matMul.ir "matMul" rfl matMulTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨a, b, n, k, m⟩ heap initial _ hHeap
@@ -1028,7 +1028,7 @@ theorem matMul_implements : Implements gpt.module 9 matMulTuple := by
 def addTuple (x : Array Float × Array Float) : Array Float :=
   LeanExe.Examples.Gpt.add x.1 x.2
 
-theorem add_implements : Implements gpt.module 10 addTuple := by
+theorem add_implements : Implements gpt.module 9 addTuple := by
   refine Func.implements_heap gpt.funcs 7 gpt.add.ir "add" rfl addTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, ⟨_, rfl, -⟩⟩; rfl) ?_
   rintro ⟨a, b⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨pa, rfl, hAs⟩, ⟨pb, rfl, hBs⟩⟩ hCap
@@ -1081,14 +1081,14 @@ theorem add_implements : Implements gpt.module 10 addTuple := by
   rw [addTuple, hAdd, build_map]
   exact hNew.owned
 
-theorem tanh_pure : ImplementsPure gpt.module 11 LeanExe.Examples.Gpt.tanh := by
+theorem tanh_pure : ImplementsPure gpt.module 10 LeanExe.Examples.Gpt.tanh := by
   refine Func.implementsPure gpt.funcs 8 gpt.tanh.ir "tanh" rfl LeanExe.Examples.Gpt.tanh
     (fun _ => rfl) fun z initial => ?_
   have k2 : (2.0 : Float).toBits = 4611686018427387904 := by decide +kernel
   have k1 : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
   let start : State := { params := [.f64 z.toBits], locals := [.f64 0] }
   let final := start.update 1 (.f64 (LeanExe.Examples.Gpt.exp (2.0 * z)).toBits)
-  show Triple _ (.call 6 [⟨.f64, .binF .mul (.constF 4611686018427387904) (.getF 0)⟩] [1]) 2
+  show Triple _ (.call 5 [⟨.f64, .binF .mul (.constF 4611686018427387904) (.getF 0)⟩] [1]) 2
     (fun store state => store = initial ∧ state = start) _
   have g0 : start.get 0 = some (.f64 z.toBits) := rfl
   refine (exp_call rfl (afterArgs := start) (next := final) (d := 2.0 * z) ?_ ?_).mono
@@ -1110,14 +1110,14 @@ theorem tanh_call {scratch : Nat} {args : List ((type : ScalarType) × Expr type
     (hArgs : Expr.evalResults initial.mem scratch args before = some ([.f64 d.toBits], afterArgs))
     (hSet : afterArgs.setAll results.reverse [.f64 (LeanExe.Examples.Gpt.tanh d).toBits] =
       some next) :
-    Triple gpt.module (.call 11 args results) scratch
+    Triple gpt.module (.call 10 args results) scratch
       (fun store state => store = initial ∧ state = before)
       (fun store state => store = initial ∧ state = next) :=
   Stmt.callPure_spec tanh_pure (f := gpt.tanh.ir.function (2 + 8)) rfl
     (by rw [show gpt.module.imports.length = 0 from rfl]
         exact compile_funcs (funcs := gpt.funcs) (i := 8) rfl) hParams (x := d) hArgs hSet
 
-theorem gelu_pure : ImplementsPure gpt.module 12 LeanExe.Examples.Gpt.gelu := by
+theorem gelu_pure : ImplementsPure gpt.module 11 LeanExe.Examples.Gpt.gelu := by
   refine Func.implementsPure gpt.funcs 9 gpt.gelu.ir "gelu" rfl LeanExe.Examples.Gpt.gelu
     (fun _ => rfl) fun x initial => ?_
   have kScale : (0.7978845608028654 : Float).toBits = 4605361924766709329 := by decide +kernel
@@ -1131,7 +1131,7 @@ theorem gelu_pure : ImplementsPure gpt.module 12 LeanExe.Examples.Gpt.gelu := by
   have g0 : start.get 0 = some (.f64 x.toBits) := rfl
   show Triple _ (.seq (.assign 1 (.binF .mul (.constF 4605361924766709329) (.binF .add (.getF 0)
       (.binF .mul (.binF .mul (.binF .mul (.constF 4586604931670606327) (.getF 0)) (.getF 0))
-        (.getF 0))))) (.call 11 [⟨.f64, .getF 1⟩] [2])) 3
+        (.getF 0))))) (.call 10 [⟨.f64, .getF 1⟩] [2])) 3
     (fun store state => store = initial ∧ state = start) _
   refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
     simp [Stmt.run, Expr.eval, g0, State.set?_eq_update, s1, start, u, F64Op.apply,
@@ -1156,7 +1156,7 @@ theorem gelu_call {scratch : Nat} {args : List ((type : ScalarType) × Expr type
     (hArgs : Expr.evalResults initial.mem scratch args before = some ([.f64 d.toBits], afterArgs))
     (hSet : afterArgs.setAll results.reverse [.f64 (LeanExe.Examples.Gpt.gelu d).toBits] =
       some next) :
-    Triple gpt.module (.call 12 args results) scratch
+    Triple gpt.module (.call 11 args results) scratch
       (fun store state => store = initial ∧ state = before)
       (fun store state => store = initial ∧ state = next) :=
   Stmt.callPure_spec gelu_pure (f := gpt.gelu.ir.function (2 + 9)) rfl
@@ -1164,7 +1164,7 @@ theorem gelu_call {scratch : Nat} {args : List ((type : ScalarType) × Expr type
         exact compile_funcs (funcs := gpt.funcs) (i := 9) rfl) hParams (x := d) hArgs hSet
 
 theorem geluArray_implements :
-    Implements gpt.module 13 LeanExe.Examples.Gpt.geluArray := by
+    Implements gpt.module 12 LeanExe.Examples.Gpt.geluArray := by
   refine Func.implements_heap gpt.funcs 10 gpt.geluArray.ir "geluArray" rfl
     LeanExe.Examples.Gpt.geluArray (by rintro _ _ _ _ ⟨_, rfl, -⟩; rfl) ?_
   rintro xs heap initial _ hHeap ⟨px, rfl, hXs⟩ hCap
@@ -1184,7 +1184,7 @@ theorem geluArray_implements :
   have hGet0 : start.get 0 = some (.i64 px) := rfl
   let s1 := start.update 1 (.i64 (UInt64.ofNat xs.size))
   show Triple _ (.seq (.arraySize 1 0) (.buildWith 2 3 4 (.get 1)
-      (.call 12 [⟨.f64, .ofBits (.read 0 (.get 4))⟩] [5]) (.toBits (.getF 5)))) 6
+      (.call 11 [⟨.f64, .ofBits (.read 0 (.get 4))⟩] [5]) (.toBits (.getF 5)))) 6
     (fun store state => store = initial ∧ state = start) _
   refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
     simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLength, hX.lengthRead,
@@ -1270,7 +1270,7 @@ theorem linBody_run {initial : Store Unit} {px pw : UInt64} {x w : Array Float}
   · simp [State.Holds, Scalar.values, linStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul]
 
-theorem linear_implements : Implements gpt.module 30 linearTuple := by
+theorem linear_implements : Implements gpt.module 29 linearTuple := by
   refine Func.implements_heap gpt.funcs 27 gpt.linear.ir "linear" rfl linearTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
       rfl⟩; rfl) ?_
@@ -1391,7 +1391,7 @@ theorem meanBody_run {initial : Store Unit} {px : UInt64} {x : Array Float}
     exact State.Frame.refl _ _ _
   · simp [State.Holds, Scalar.values, meanStep, hParams, hLocals, F64Bits.toBits_add]
 
-theorem rowMeans_implements : Implements gpt.module 15 rowMeansTuple := by
+theorem rowMeans_implements : Implements gpt.module 14 rowMeansTuple := by
   refine Func.implements_heap gpt.funcs 12 gpt.rowMeans.ir "rowMeans" rfl rowMeansTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨x, t, d⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hXs⟩, rfl⟩ hCap
@@ -1498,7 +1498,7 @@ theorem devBody_run {initial : Store Unit} {px pm : UInt64} {x means : Array Flo
   · simp [State.Holds, Scalar.values, devStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul, F64Bits.toBits_sub]
 
-theorem rowInvStd_implements : Implements gpt.module 16 rowInvStdTuple := by
+theorem rowInvStd_implements : Implements gpt.module 15 rowInvStdTuple := by
   refine Func.implements_heap gpt.funcs 13 gpt.rowInvStd.ir "rowInvStd" rfl rowInvStdTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨x, means, t, d, eps⟩ heap initial _ hHeap
@@ -1592,7 +1592,7 @@ def normalizeAt (x means inv g b : Array Float) (l d e : UInt64) : Float :=
   (x[e.toNat]! - means[(e / d).toNat]!) * inv[(e / d).toNat]! * g[(l * d + e % d).toNat]! +
     b[(l * d + e % d).toNat]!
 
-theorem normalizeRows_implements : Implements gpt.module 17 normalizeTuple := by
+theorem normalizeRows_implements : Implements gpt.module 16 normalizeTuple := by
   refine Func.implements_heap gpt.funcs 14 gpt.normalizeRows.ir "normalizeRows" rfl
     normalizeTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
@@ -1659,7 +1659,7 @@ def layerNormRowsTuple (x : Array Float × Array Float × Array Float × UInt64 
     x.2.2.2.2.2.2
 
 theorem layerNormRows_implements :
-    Implements gpt.module 18 layerNormRowsTuple := by
+    Implements gpt.module 17 layerNormRowsTuple := by
   refine Func.implements_heap gpt.funcs 15 gpt.layerNormRows.ir "layerNormRows" rfl
     layerNormRowsTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
@@ -1670,12 +1670,12 @@ theorem layerNormRows_implements :
   change heap.Borrowed initial pg (g.map Float.toBits) at hG
   change heap.Borrowed initial pb (b.map Float.toBits) at hB
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
-  have hMeans : gpt.module.funcs[15 - gpt.module.imports.length]? =
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
+  have hMeans : gpt.module.funcs[14 - gpt.module.imports.length]? =
       some (gpt.rowMeans.ir.function (2 + 12)) := compile_funcs (funcs := gpt.funcs) (i := 12) rfl
-  have hInv : gpt.module.funcs[16 - gpt.module.imports.length]? =
+  have hInv : gpt.module.funcs[15 - gpt.module.imports.length]? =
       some (gpt.rowInvStd.ir.function (2 + 13)) := compile_funcs (funcs := gpt.funcs) (i := 13) rfl
-  have hNormalize : gpt.module.funcs[17 - gpt.module.imports.length]? =
+  have hNormalize : gpt.module.funcs[16 - gpt.module.imports.length]? =
       some (gpt.normalizeRows.ir.function (2 + 14)) :=
     compile_funcs (funcs := gpt.funcs) (i := 14) rfl
   let means := rowMeansTuple (x, t, d)
@@ -1695,10 +1695,10 @@ theorem layerNormRows_implements :
   have sg4 : start.get 4 = some (.i64 t) := rfl
   have sg5 : start.get 5 = some (.i64 d) := rfl
   have sg6 : start.get 6 = some (.f64 eps.toBits) := rfl
-  show Triple _ (.seq (.call 15 [⟨.u64, .get 0⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 5⟩] [7])
-      (.seq (.call 16 [⟨.u64, .get 0⟩, ⟨.u64, .get 7⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 5⟩,
+  show Triple _ (.seq (.call 14 [⟨.u64, .get 0⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 5⟩] [7])
+      (.seq (.call 15 [⟨.u64, .get 0⟩, ⟨.u64, .get 7⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 5⟩,
         ⟨.f64, .getF 6⟩] [8])
-      (.seq (.call 17 [⟨.u64, .get 0⟩, ⟨.u64, .get 7⟩, ⟨.u64, .get 8⟩, ⟨.u64, .get 1⟩,
+      (.seq (.call 16 [⟨.u64, .get 0⟩, ⟨.u64, .get 7⟩, ⟨.u64, .get 8⟩, ⟨.u64, .get 1⟩,
         ⟨.u64, .get 2⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 5⟩] [9])
       (.seq (.assign 10 (.get 9)) (.seq (.release 8) (.release 7)))))) 11
     (fun store state => store = initial ∧ state = start) _
@@ -1829,7 +1829,7 @@ theorem scoreBody_run {initial : Store Unit} {pq pk : UInt64} {q k : Array Float
   · simp [State.Holds, Scalar.values, scoreStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul]
 
-theorem maskedScores_implements : Implements gpt.module 19 maskedTuple := by
+theorem maskedScores_implements : Implements gpt.module 18 maskedTuple := by
   refine Func.implements_heap gpt.funcs 16 gpt.maskedScores.ir "maskedScores" rfl maskedTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨q, k, t, nh, dh, scale⟩ heap initial _ hHeap
@@ -1956,7 +1956,7 @@ theorem rowMaxBody_run {initial : Store Unit} {px : UInt64} {x : Array Float}
     exact State.Frame.refl _ _ _
   · simp [State.Holds, Scalar.values, rowMaxStep, hParams, hLocals, F64Bits.toBits_max]
 
-theorem rowMax_implements : Implements gpt.module 20 rowMaxTuple := by
+theorem rowMax_implements : Implements gpt.module 19 rowMaxTuple := by
   refine Func.implements_heap gpt.funcs 17 gpt.rowMax.ir "rowMax" rfl rowMaxTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨x, t, nh⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hXs⟩, rfl⟩ hCap
@@ -2040,7 +2040,7 @@ def sumExpStep (x mx : Array Float) (w r c : UInt64) (acc : Float) : Float :=
 
 /-- The compiled loop body of `rowSumExp`. -/
 def sumExpBody : Stmt :=
-  .seq (.call 6 [⟨.f64, .binF .sub
+  .seq (.call 5 [⟨.f64, .binF .sub
       (.ofBits (.read 0 (.bin .add (.bin .mul (.get 6) (.get 2)) (.get 9))))
       (.ofBits (.read 1 (.get 6)))⟩] [10])
     (.seq (.assign 11 (.binF .add (.getF 7) (.getF 10))) (.assign 7 (.getF 11)))
@@ -2078,7 +2078,7 @@ theorem sumExpBody_spec {initial : Store Unit} {px pm : UInt64} {x mx : Array Fl
     exact State.Frame.refl _ _ _
   · simp [State.Holds, Scalar.values, sumExpStep, f, s, b, a, hParams, hLocals, dv, e]
 
-theorem rowSumExp_implements : Implements gpt.module 21 rowSumExpTuple := by
+theorem rowSumExp_implements : Implements gpt.module 20 rowSumExpTuple := by
   refine Func.implements_heap gpt.funcs 18 gpt.rowSumExp.ir "rowSumExp" rfl rowSumExpTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨x, mx, t, nh⟩ heap initial _ hHeap
@@ -2158,7 +2158,7 @@ def softmaxApplyTuple (x : Array Float × Array Float × Array Float × UInt64 �
   LeanExe.Examples.Gpt.softmaxApply x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
 
 theorem softmaxApply_implements :
-    Implements gpt.module 22 softmaxApplyTuple := by
+    Implements gpt.module 21 softmaxApplyTuple := by
   refine Func.implements_heap gpt.funcs 19 gpt.softmaxApply.ir "softmaxApply" rfl
     softmaxApplyTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
@@ -2175,7 +2175,7 @@ theorem softmaxApply_implements :
     { params := [.i64 px, .i64 pm, .i64 ps, .i64 t, .i64 w]
       locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .i64 0] }
   show Triple _ (.buildWith 5 6 7 (.bin .mul (.get 3) (.get 4))
-      (.call 6 [⟨.f64, .binF .sub (.ofBits (.read 0 (.get 7)))
+      (.call 5 [⟨.f64, .binF .sub (.ofBits (.read 0 (.get 7)))
         (.ofBits (.read 1 (.bin .divU (.get 7) (.get 4))))⟩] [8])
       (.toBits (.binF .div (.getF 8) (.ofBits (.read 2 (.bin .divU (.get 7) (.get 4))))))) 9
     (fun store state => store = initial ∧ state = start) _
@@ -2267,7 +2267,7 @@ theorem mixBody_run {initial : Store Unit} {pp pv : UInt64} {p v : Array Float}
       F64Bits.toBits_mul]
 
 theorem causalMatMul_implements :
-    Implements gpt.module 26 causalMatMulTuple := by
+    Implements gpt.module 25 causalMatMulTuple := by
   refine Func.implements_heap gpt.funcs 23 gpt.causalMatMul.ir "causalMatMul" rfl
     causalMatMulTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
@@ -2357,18 +2357,18 @@ theorem causalMatMul_implements :
 def softmaxRowsTuple (x : Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.softmaxRows x.1 x.2.1 x.2.2
 
-theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple := by
+theorem softmaxRows_implements : Implements gpt.module 22 softmaxRowsTuple := by
   refine Func.implements_heap gpt.funcs 20 gpt.softmaxRows.ir "softmaxRows" rfl softmaxRowsTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨x, t, nh⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hX⟩, rfl⟩ hCap
   change heap.Borrowed initial px (x.map Float.toBits) at hX
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
-  have hMax : gpt.module.funcs[20 - gpt.module.imports.length]? =
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
+  have hMax : gpt.module.funcs[19 - gpt.module.imports.length]? =
       some (gpt.rowMax.ir.function (2 + 17)) := compile_funcs (funcs := gpt.funcs) (i := 17) rfl
-  have hSum : gpt.module.funcs[21 - gpt.module.imports.length]? =
+  have hSum : gpt.module.funcs[20 - gpt.module.imports.length]? =
       some (gpt.rowSumExp.ir.function (2 + 18)) := compile_funcs (funcs := gpt.funcs) (i := 18) rfl
-  have hApply : gpt.module.funcs[22 - gpt.module.imports.length]? =
+  have hApply : gpt.module.funcs[21 - gpt.module.imports.length]? =
       some (gpt.softmaxApply.ir.function (2 + 19)) :=
     compile_funcs (funcs := gpt.funcs) (i := 19) rfl
   let mx := rowMaxTuple (x, t, nh)
@@ -2383,9 +2383,9 @@ theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple := by
     simp [State.update_params_length, State.update_locals_length]
   have hGet : start.get 0 = some (.i64 px) ∧ start.get 1 = some (.i64 t) ∧
       start.get 2 = some (.i64 nh) := ⟨rfl, rfl, rfl⟩
-  show Triple _ (.seq (.call 20 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩] [3])
-      (.seq (.call 21 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩] [4])
-      (.seq (.call 22 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩,
+  show Triple _ (.seq (.call 19 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩] [3])
+      (.seq (.call 20 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩] [4])
+      (.seq (.call 21 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩,
         ⟨.u64, .bin .mul (.get 1) (.get 2)⟩, ⟨.u64, .get 1⟩] [5])
       (.seq (.assign 6 (.get 5)) (.seq (.release 4) (.release 3)))))) 7
     (fun store state => store = initial ∧ state = start) _
@@ -2471,7 +2471,7 @@ theorem softmaxRows_implements : Implements gpt.module 23 softmaxRowsTuple := by
 def embedTuple (x : Array UInt64 × Array Float × Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.embed x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2
 
-theorem embed_implements : Implements gpt.module 27 embedTuple := by
+theorem embed_implements : Implements gpt.module 26 embedTuple := by
   refine Func.implements_heap gpt.funcs 24 gpt.embed.ir "embed" rfl embedTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
       rfl⟩; rfl) ?_
@@ -2556,7 +2556,7 @@ theorem cellTBody_run {initial : Store Unit} {pa pb : UInt64} {a b : Array Float
   · simp [State.Holds, Scalar.values, cellTStep, hParams, hLocals, F64Bits.toBits_add,
       F64Bits.toBits_mul]
 
-theorem matMulT_implements : Implements gpt.module 28 matMulTTuple := by
+theorem matMulT_implements : Implements gpt.module 27 matMulTTuple := by
   refine Func.implements_heap gpt.funcs 25 gpt.matMulT.ir "matMulT" rfl matMulTTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨a, b, n, k, m⟩ heap initial _ hHeap

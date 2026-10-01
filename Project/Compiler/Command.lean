@@ -37,7 +37,7 @@ def elabLeanexeCompile : CommandElab
 module.  For each definition `f` with last name component `n`, it adds `p.n.ir`
 and `p.n.hints`; it adds `p.funcs`, the list of IR functions with their export
 names, and `p.module := compile p.funcs`, in which the `i`-th definition is
-function `3 + i`.  A call of a listed definition compiles to a call of its
+function `2 + i`.  A call of a listed definition compiles to a call of its
 function. -/
 syntax (name := leanexeCompileModule) "leanexe_compile " ident " := " "[" ident,* "]" : command
 
@@ -47,7 +47,7 @@ def elabLeanexeCompileModule : CommandElab
       let names ← sources.getElems.mapM fun source =>
         liftCoreM <| realizeGlobalConstNoOverloadWithInfo source
       let base := (← getCurrNamespace) ++ target.getId
-      let callees := names.toList.zipIdx.map fun (name, i) => (name, 3 + i)
+      let callees := names.toList.zipIdx.map fun (name, i) => (name, 2 + i)
       let funcEntry := mkApp2 (mkConst ``Prod [Level.zero, Level.zero]) (mkConst ``Func)
         (mkConst ``String)
       liftTermElabM do
