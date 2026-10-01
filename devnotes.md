@@ -19746,8 +19746,11 @@ keys and values that earlier steps saved, which should cost about one row of
 theorem proves that the cached steps give the same bits as `forward`'s rows.
 For that, `forward`'s softmax reads entries `j ≤ i` only, as `causalMatMul`
 already does, so that a step and `forward` perform the same operations.
-Dropping the masked entries leaves the values unchanged, because −∞ never raises
-a row maximum and contributes exactly +0 to the sum of exponentials.  The proof
+Dropping the masked entries leaves attention's output unchanged: Lean's `max` on
+`Float` is `if x ≤ y then y else x`, so `max acc (−∞)` is `acc`, our `exp`
+returns +0.0 below −745.2, and the running sum starts at +0.0 and adds terms
+that are at least +0, so adding +0 leaves it unchanged.  The score and weight
+arrays change at the masked positions.  The proof
 also needs a prefix theorem: row `i` of `forward` does not depend on the number
 of tokens.
 
@@ -19763,7 +19766,12 @@ the layer norm kernels take offsets into the stacked weights, and `slice` goes
 away.  The test drives the host's session mode, which gains commands to load a
 file into an array and to write an array to a file, so the weights stay loaded.
 In-place updates of arrays with one reference, which would remove the cache
-copy, come later.
+copy, come later.  They follow Lean's model: an array stays a value in the
+source, and the compiled code writes in place when it owns the only reference
+and the old array is not used afterwards.  They need owned parameters, a
+last-use check, a rule lemma for in-place writes, and in-place append within a
+block's capacity, and they change no Lean-level theorem.  The user chose to
+record them and build the cache with copies first.
 
 - [ ] 7a: `forward`'s softmax over `j ≤ i` only.
 - [ ] 7b: weight offsets in `linear` and the layer norms, and `slice` removed.
