@@ -141,8 +141,8 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
     rintro s t ⟨hs, ht⟩
     subst s t
     refine ⟨[.i64 need], before, _, by rw [← hNeedDef]; rfl,
-      fun env => alloc_spec hMemory32 hImports hFunc env heap initial need hHeap
-        (by rw [hSize]; exact hRoomNeed), ?_⟩
+      fun env => (alloc_spec hMemory32 hImports hFunc env heap initial need hHeap
+        (by rw [hSize]; exact hRoomNeed)).returnsOrAborts, ?_⟩
     rintro store' out ⟨hStore', hOut⟩
     rw [hSize] at hStore' hOut
     exact ⟨s1, by simp [hOut, hPtrDef, State.setAll, hSet1], hStore', rfl⟩

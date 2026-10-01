@@ -20096,7 +20096,7 @@ disappear, and so does the planned work on crediting releases.
 - [x] 1. `binary_file%`, an elaborator that reads a file's bytes as a `ByteArray` term, and
   `gpt_file`: `encode gpt.module` equals the bytes of `build/gpt/gpt.wasm`, checked by the
   kernel after the file is written.
-- [ ] 2a. `Triple` accepts the `unreachable` trap and `Implements` states the trap-tolerant
+- [x] 2a. `Triple` accepts the `unreachable` trap and `Implements` states the trap-tolerant
   result, still with `Room`; every proof and `gpt_bytes` checked again; bytes unchanged.
 - [ ] 2b. `alloc`'s trap branch and the length check; the allocation rules without `Room`;
   every program ported; `Room` and the `*Need` functions deleted.
@@ -20123,3 +20123,22 @@ on the 13,837-element literal exceeded the heartbeat limit.  The literal's neste
 cells need `maxRecDepth 100000`.  `gpt_file` depends only on `propext`,
 `Classical.choice`, and `Quot.sound`, and a copy of the file with one bit changed fails
 the check.
+
+## 2026-10-01: Trap-tolerant `Triple` and `Implements` (2a)
+
+`Project/Pipeline/Aborts.lean` defines `ReturnsOrAborts env m id initial args P`: every
+run with enough fuel returns values satisfying `P` or ends in `.Trap st "unreachable"`.
+It proves the entry rule `ReturnsOrAborts.of_wp_entry_for`, whose assertion accepts that
+trap, the call rule `wp_call_returnsOrAborts`, which needs the caller's assertion to
+accept it, `append_args`, and the conversion from `TerminatesWith`.  `Triple` gains the
+hypothesis `∀ st, Q (.Trap st "unreachable")`; the rules pass it on, and the branches and
+loop bodies receive it unchanged, because Talos's `iff`, `block`, and `loop` rules give a
+trap to the outer assertion.  `Implements`, `Satisfies`, and `ImplementsPure` now use
+`ReturnsOrAborts`, and `Stmt.call_spec` takes a callee in that form; the runtime's
+`alloc_spec` and `release_run` keep `TerminatesWith` and convert at their call sites.
+
+The change touched `Stmt.lean`, `TailLoop.lean`, `Run.lean`, `Correct.lean`,
+`Release.lean`, `Build.lean`, and `ArrayLiteral.lean`.  No program proof changed.  The full
+build passed (3,542 jobs), `gpt_bytes` and `prng_bytes` depend only on `propext`,
+`Classical.choice`, and `Quot.sound`, and the emitted `gpt.wasm` has the same sha256 and
+passes `gpt_file`.  `Room` remains until 2b.

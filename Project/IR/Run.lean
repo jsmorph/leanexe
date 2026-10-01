@@ -124,11 +124,11 @@ theorem Stmt.run_spec {s : Stmt} {scratch : Nat} {initial : Store Unit} :
         (PElse := fun store st => result = false ∧ store = initial ∧ st = after) ?_ ?_).mono
           ?_ fun _ _ h => h
       · cases result
-        · exact fun _ _ _ _ _ _ h => absurd h.1 (by simp)
+        · exact fun _ _ _ _ _ _ _ h => absurd h.1 (by simp)
         · exact (ihThen (by simpa using hBranch)).mono (fun _ _ h => h.2) fun _ _ h => h
       · cases result
         · exact (ihElse (by simpa using hBranch)).mono (fun _ _ h => h.2) fun _ _ h => h
-        · exact fun _ _ _ _ _ _ h => absurd h.1 (by simp)
+        · exact fun _ _ _ _ _ _ _ h => absurd h.1 (by simp)
       · rintro store st ⟨rfl, rfl⟩
         exact ⟨result, after, hEval, by cases result <;> simp⟩
   | load type index address =>

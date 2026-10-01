@@ -109,14 +109,14 @@ theorem Func.tail_implements [Scalar α] (funcs : List (Func × String)) (i : Na
   refine (Stmt.while_spec Inv (fun _ state => stateMeasure state) ?_ fun n => ?_).mono ?_ ?_
   · rintro store state ⟨-, args, resultValue, others, -, ⟨rfl, -⟩ | rfl⟩ <;>
       simp [Expr.eval, tailState_get_done (arity args)]
-  · intro env store state values rest Q hPre hPost
+  · intro env store state values rest Q hTrap hPre hPost
     obtain ⟨before, ⟨rfl, args, resultValue, others, hLength, ⟨rfl, hSame⟩ | rfl⟩, hMeasure,
       hCondition⟩ := hPre
     · simp [Expr.eval, tailState_get_done (arity args)] at hCondition
       subst hCondition
       rw [hRunning] at hMeasure
       subst hMeasure
-      exact hIteration args resultValue others hLength hSame env _ _ values rest Q ⟨rfl, rfl⟩ hPost
+      exact hIteration args resultValue others hLength hSame env _ _ values rest Q hTrap ⟨rfl, rfl⟩ hPost
     · simp [Expr.eval, tailState_get_done (arity args)] at hCondition
   · rintro store state ⟨rfl, rfl⟩
     refine ⟨rfl, x, 0, List.replicate width (.i64 0), by simp, Or.inl ⟨?_, rfl⟩⟩

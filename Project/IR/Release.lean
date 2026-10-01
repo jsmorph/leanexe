@@ -29,7 +29,7 @@ theorem Stmt.release_spec {typeIdx scratch src : Nat} {initial : Store Unit} {be
   rintro store state ⟨hStore, hState⟩
   subst store state
   exact ⟨[.i64 ptr], before, _, by simp [Expr.evalResults, Expr.eval, hPtr],
-    fun env => release_run hImports hFunc env heap initial ptr words hHeap hOwned,
+    fun env => (release_run hImports hFunc env heap initial ptr words hHeap hOwned).returnsOrAborts,
     fun store' out ⟨hOut, hStore'⟩ => ⟨before, by simp [hOut, State.setAll], hStore', rfl⟩⟩
 
 end Project.IR
