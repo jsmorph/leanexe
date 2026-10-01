@@ -377,6 +377,25 @@ static uint64_t alloc_u64_array(Runtime *runtime, U64List values) {
   return ptr;
 }
 
+/* An array whose elements are the little-endian words of the file at `path`. */
+static uint64_t alloc_u64_file(Runtime *runtime, const char *path) {
+  size_t len = 0;
+  uint8_t *bytes = read_file(path, &len);
+  if (len % 8 != 0) {
+    die("file-u64 file length is not a multiple of 8");
+  }
+  uint64_t ptr = call_alloc(runtime, 8 + (uint64_t)len);
+  write_u64_at(runtime, ptr, len / 8);
+  size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+  if (ptr > memory_len || 8 + len > memory_len - (size_t)ptr) {
+    die("allocation is outside memory");
+  }
+  uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
+  memcpy(memory + ptr + 8, bytes, len);
+  free(bytes);
+  return ptr;
+}
+
 static bool parse_arg(Runtime *runtime, const char *spec, wasmtime_val_t *out, size_t *out_count) {
   if (strncmp(spec, "i64:", 4) == 0) {
     out[0].kind = WASMTIME_I64;
@@ -413,6 +432,12 @@ static bool parse_arg(Runtime *runtime, const char *spec, wasmtime_val_t *out, s
     out[1].kind = WASMTIME_I64;
     out[1].of.i64 = (int64_t)len;
     *out_count = 2;
+    return true;
+  }
+  if (strncmp(spec, "file-u64:", 9) == 0) {
+    out[0].kind = WASMTIME_I64;
+    out[0].of.i64 = (int64_t)alloc_u64_file(runtime, spec + 9);
+    *out_count = 1;
     return true;
   }
   if (strncmp(spec, "array-u64:", 10) == 0) {
@@ -465,7 +490,7 @@ static size_t result_count_from_kind(const char *kind) {
   if (strcmp(kind, "bytes") == 0) {
     return 2;
   }
-  if (strcmp(kind, "array-u64") == 0) {
+  if (strcmp(kind, "array-u64") == 0 || strncmp(kind, "file-u64:", 9) == 0) {
     return 1;
   }
   if (strncmp(kind, "slots:", 6) == 0) {
@@ -500,11 +525,11 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
   bool list = strncmp(result_kind, "list:", 5) == 0;
   wasmtime_val_t results[128];
   for (size_t i = 0; i < nresults; i++) {
-    char kind[32];
+    const char *kind = result_kind;
+    char item[32];
     if (list) {
-      list_result_kind(result_kind, i, kind, sizeof kind);
-    } else {
-      strcpy(kind, result_kind);
+      list_result_kind(result_kind, i, item, sizeof item);
+      kind = item;
     }
     results[i].kind = strcmp(kind, "f64") == 0 ? WASMTIME_F64 : WASMTIME_I64;
   }
@@ -607,6 +632,35 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
       printf("%" PRIu64, read_u64_at(runtime, ptr + 8 + i * 8));
     }
     printf("]\n");
+    return;
+  }
+
+  if (strncmp(result_kind, "file-u64:", 9) == 0) {
+    /* The result array's elements, as little-endian words, in the file at the path. */
+    if (!runtime->has_memory) {
+      die("Array UInt64 result requires exported memory");
+    }
+    uint64_t ptr = (uint64_t)results[0].of.i64;
+    uint64_t len = read_u64_at(runtime, ptr);
+    size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+    if (len > (SIZE_MAX - 8) / 8 || ptr > memory_len ||
+        8 + (size_t)len * 8 > memory_len - (size_t)ptr) {
+      die("Array UInt64 result is outside memory");
+    }
+    uint8_t *memory = wasmtime_memory_data(runtime->context, &runtime->memory);
+    FILE *file = fopen(result_kind + 9, "wb");
+    if (file == NULL) {
+      perror(result_kind + 9);
+      exit(1);
+    }
+    if (len != 0 && fwrite(memory + ptr + 8, 8, (size_t)len, file) != (size_t)len) {
+      perror("fwrite");
+      exit(1);
+    }
+    if (fclose(file) != 0) {
+      perror("fclose");
+      exit(1);
+    }
     return;
   }
 
@@ -1155,8 +1209,8 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
 static void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host call|call-stats <module.wasm> <function> "
-          "<i64|f64|bytes|array-u64|slots:N|list:K1,K2,...> "
-          "[i64:N|f64:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N ...]\n");
+          "<i64|f64|bytes|array-u64|file-u64:PATH|slots:N|list:K1,K2,...> "
+          "[i64:N|f64:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|file-u64:PATH ...]\n");
   exit(1);
 }
 
