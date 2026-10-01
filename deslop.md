@@ -265,7 +265,7 @@ The tracked tree holds `paper/` and `data/` (publication records), `Project/`, `
 1. The claim is about Talos's semantics.  Wasmtime appears only in tests, and the Talos interpreter and the decoder are trusted.
 2. The premises `Heap.At`, `Heap.Borrowed`, and `Heap.Room` are assumed.  No theorem covers instantiation or the host.  Talos's `memory.grow` succeeds whenever the new page count is within the maximum, while the WebAssembly specification lets an engine refuse growth for its own reasons.  `alloc` checks the result of `memory.grow` and executes `unreachable` on failure (`MemoryGrowth.growProgram`), so on such an engine the call traps and returns no result, a path the theorems do not describe.
 3. `Implements` protects only the arguments and the allocator invariant.  It states nothing about other live objects.  Decision 7 (2026-09-29) adds a frame clause for borrowed and owned arrays, which calls between compiled functions need, and later decisions add that the memory's maximum size is unchanged and that a result's objects are fresh.
-4. `Emit.lean` evaluates `encode` with compiled Lean code, and no theorem connects the written file to the proved bytes.  The user deferred this item.
+4. `Emit.lean` evaluates `encode` with compiled Lean code.  For `gpt.wasm`, `gpt_file` in `Project/Gpt/File.lean`, checked after the file is written, proves that the file holds `encode gpt.module`; the elaborator `binary_file%` that reads the file is trusted.  No theorem covers the other modules' files.
 5. Until 2026-09-29, each `_bytes` theorem assumed `encode m = .ok bytes` and held vacuously if encoding failed, as `piecewise_bytes` did until the encoder gained the float comparison and constant instructions.  Each now proves that encoding succeeds.
 
 The user doubted that items 2 and 3 need work, and no work on them is planned.
@@ -350,6 +350,7 @@ tools/leanrun --timeout 60m lake env lean --run Project/Encoding/DecodeTest.lean
 uv run tools/gpt_composites.py            # regenerates Project/Gpt/Composites.lean
 tools/leanrun --timeout 10m lake env lean --run Project/Pipeline/Emit.lean \
   Project.Gpt.Module Project.Gpt.gpt.module build/gpt/gpt.wasm
+tools/leanrun --timeout 20m lake env lean Project/Gpt/File.lean   # the file holds the proved bytes
 tests/gpt/run.sh                          # every export against native Lean
 tests/gpt/sessions.sh                     # every allocation freed
 uv run tests/gpt/hf_compare.py            # forward against Hugging Face in float64
