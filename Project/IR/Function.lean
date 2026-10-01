@@ -41,42 +41,40 @@ def Func.function (func : Func) (typeIdx : Nat) : Wasm.Function :=
     results := func.type.results
     typeIdx := some typeIdx }
 
-/-- Globals 0 through 5 hold the allocator state: the bump pointer, which starts
-at the heap base 4096, the free-list head, and four counters. -/
+/-- Globals 0 through 3 hold the allocator state: the bump pointer, which starts
+at the heap base 4096, the free-list head, and the allocation and free counters. -/
 def runtimeGlobals : List GlobalDecl :=
-  (4096 :: List.replicate 5 0).map fun value =>
+  (4096 :: List.replicate 3 0).map fun value =>
     { init := .i64 value, declaredType := some .i64, isMut := true,
       sourceInit := some [.constI64 value] }
 
-/-- Parameter and result types of the runtime functions: `alloc` and `retain`
-take and return a word, and `release` takes a word. -/
+/-- Parameter and result types of the runtime functions: `alloc` takes and
+returns a word, and `release` takes a word. -/
 def wordToWord : FuncType := { params := [.i64], results := [.i64] }
 def wordToNone : FuncType := { params := [.i64], results := [] }
 
 /-- The module for the functions `funcs`, each exported under its name.
-Functions 0, 1, and 2 are the runtime's `alloc`, `retain`, and `release`,
-exported for hosts together with the memory and the four counters, and function
-`3 + i` is `funcs[i]`, with type `2 + i`.  Every module has a memory and the
+Functions 0 and 1 are the runtime's `alloc` and `release`, exported for hosts
+together with the memory and the two counters, and function `2 + i` is `funcs[i]`,
+with type `2 + i`.  Every module has a memory and the
 runtime globals, so the allocator invariant can hold for its stores. -/
 def compile (funcs : List (Func × String)) : Module :=
   let types := [wordToWord, wordToNone] ++ funcs.map (·.1.type)
-  { funcs := [Project.Runtime.allocFunction 0, Project.Runtime.retainFunction 0,
-      Project.Runtime.releaseFunction 1] ++ funcs.mapIdx fun i entry => entry.1.function (2 + i)
-    exports := [{ name := "alloc", funcIdx := 0 }, { name := "retain", funcIdx := 1 },
-      { name := "release", funcIdx := 2 }] ++
-      funcs.mapIdx fun i entry => { name := entry.2, funcIdx := 3 + i }
+  { funcs := [Project.Runtime.allocFunction 0, Project.Runtime.releaseFunction 1] ++
+      funcs.mapIdx fun i entry => entry.1.function (2 + i)
+    exports := [{ name := "alloc", funcIdx := 0 }, { name := "release", funcIdx := 1 }] ++
+      funcs.mapIdx fun i entry => { name := entry.2, funcIdx := 2 + i }
     memory := some { pagesMin := 16, pagesMax := some 65535 }
     globals := runtimeGlobals
     types
     gcTypes := types.map fun type => { comp := .func type }
-    globalExports := [("allocCount", 2), ("retainCount", 3), ("releaseCount", 4),
-      ("freeCount", 5)]
+    globalExports := [("allocCount", 2), ("freeCount", 3)]
     memoryExports := [("memory", 0)] }
 
 theorem compile_funcs {funcs : List (Func × String)} {i : Nat} {func : Func} {name : String}
     (h : funcs[i]? = some (func, name)) :
-    (compile funcs).funcs[3 + i]? = some (func.function (2 + i)) := by
-  rw [show 3 + i = i + 1 + 1 + 1 by omega]
+    (compile funcs).funcs[2 + i]? = some (func.function (2 + i)) := by
+  conv_lhs => rw [show 2 + i = i + 1 + 1 by omega]
   simp [compile, List.getElem?_mapIdx, h]
 
 end Project.IR

@@ -6,18 +6,16 @@ namespace Project.Pipeline
 open Wasm Project.Runtime Project.ProofKit
 
 /-- The allocator state held in globals 0 through 5: the bump pointer `top`, the
-free list, and the allocation, retain, release, and free counters. -/
+free list, and the allocation and free counters. -/
 structure Heap where
   top : UInt64
   free : List FreeNode
   allocs : UInt64
-  retains : UInt64
   releases : UInt64
   frees : UInt64
 
 def Heap.globals (heap : Heap) : List Value :=
-  [.i64 heap.top, .i64 (freeHead heap.free), .i64 heap.allocs, .i64 heap.retains,
-    .i64 heap.releases, .i64 heap.frees]
+  [.i64 heap.top, .i64 (freeHead heap.free), .i64 heap.allocs, .i64 heap.frees]
 
 /-- The allocator invariant.  The globals hold `heap`, the free list is laid out
 in memory, every free block lies between the heap base at 4096 and `top`, `top`

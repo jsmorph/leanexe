@@ -12,7 +12,7 @@ def piecewiseTuple (x : Float × Float × Float) : Float :=
   LeanExe.Examples.Piecewise.piecewise x.1 x.2.1 x.2.2
 
 theorem piecewise_implements :
-    Implements piecewise.module 3 piecewiseTuple :=
+    Implements piecewise.module 2 piecewiseTuple :=
   Func.implements [(piecewise.ir, "piecewise")] 0 piecewise.ir "piecewise" rfl piecewiseTuple
     (fun _ _ _ _ h => by rw [Scalar.borrowed.mp h]; rfl) fun ⟨x, lo, hi⟩ _ _ _ _ h =>
     Stmt.skip_spec.mono (fun _ _ ⟨hStore, hState⟩ => ⟨hStore, by
@@ -43,7 +43,7 @@ theorem piecewise_implements :
 /-- `encode` succeeds on `piecewise.module`, and its bytes decode to a module that
 computes `piecewise` bit for bit. -/
 theorem piecewise_bytes : ∃ bytes, Wasm.Encoding.encode piecewise.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 3 piecewiseTuple := by
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 piecewiseTuple := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip piecewise.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, piecewise.module, decoded, piecewise_implements⟩

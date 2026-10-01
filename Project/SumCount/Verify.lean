@@ -7,7 +7,7 @@ namespace Project.SumCount
 open Wasm Project.Pipeline Project.IR Project.Runtime
 
 theorem sumCount_implements :
-    Implements sumCount.module 3 LeanExe.Examples.SumCount.sumCount := by
+    Implements sumCount.module 2 LeanExe.Examples.SumCount.sumCount := by
   refine Func.implements_heap [(sumCount.ir, "sumCount")] 0 sumCount.ir "sumCount" rfl _
     (by rintro _ _ _ _ ⟨ptr, rfl, -⟩; rfl) ?_
   rintro xs heap initial _ hHeap ⟨ptr, rfl, hBorrowed⟩ hCap
@@ -69,7 +69,7 @@ theorem sumCount_implements :
 computes `sumCount` exactly, returning an array the caller owns. -/
 theorem sumCount_bytes : ∃ bytes, Wasm.Encoding.encode sumCount.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧
-      Implements m 3 LeanExe.Examples.SumCount.sumCount := by
+      Implements m 2 LeanExe.Examples.SumCount.sumCount := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip sumCount.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, sumCount.module, decoded, sumCount_implements⟩

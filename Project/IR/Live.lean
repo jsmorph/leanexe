@@ -141,7 +141,7 @@ theorem Live.releaseSecond {heap0 heap : Heap} {initial store : Store Unit}
     {r t : UInt64 × Array UInt64} {rest : List (UInt64 × Array UInt64)}
     (hLive : Live heap0 initial heap store (r :: t :: rest)) {typeIdx scratch src : Nat}
     {before : State} (hImports : m.imports = [])
-    (hFunc : m.funcs[2]? = some (releaseFunction typeIdx))
+    (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
     (hPtr : before.get src = some (.i64 t.1)) :
     Triple m (.release src) scratch (fun s st => s = store ∧ st = before)
       (fun s st => Live heap0 initial (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
@@ -237,7 +237,7 @@ theorem Live.releaseSecond_seq {heap0 heap : Heap} {initial store : Store Unit}
     {r t : UInt64 × Array UInt64} {rest : List (UInt64 × Array UInt64)}
     (hLive : Live heap0 initial heap store (r :: t :: rest)) {typeIdx scratch src : Nat}
     {before : State} {next : Stmt} {Q : Store Unit → State → Prop} (hImports : m.imports = [])
-    (hFunc : m.funcs[2]? = some (releaseFunction typeIdx))
+    (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
     (hPtr : before.get src = some (.i64 t.1))
     (hNext : ∀ s, Live heap0 initial (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
       s (r :: rest) → Triple m next scratch (fun s' st => s' = s ∧ st = before) Q) :
@@ -250,7 +250,7 @@ theorem Live.releaseSecond_last {heap0 heap : Heap} {initial store : Store Unit}
     {r t : UInt64 × Array UInt64} {rest : List (UInt64 × Array UInt64)}
     (hLive : Live heap0 initial heap store (r :: t :: rest)) {typeIdx scratch src : Nat}
     {before : State} {Q : Store Unit → State → Prop} (hImports : m.imports = [])
-    (hFunc : m.funcs[2]? = some (releaseFunction typeIdx))
+    (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
     (hPtr : before.get src = some (.i64 t.1))
     (hNext : ∀ s, Live heap0 initial (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
       s (r :: rest) → Q s before) :
@@ -300,7 +300,7 @@ theorem Live.releaseFirst {heap0 heap : Heap} {initial store : Store Unit}
     {t : UInt64 × Array UInt64} {rest : List (UInt64 × Array UInt64)}
     (hLive : Live heap0 initial heap store (t :: rest)) {typeIdx scratch src : Nat}
     {before : State} (hImports : m.imports = [])
-    (hFunc : m.funcs[2]? = some (releaseFunction typeIdx))
+    (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
     (hPtr : before.get src = some (.i64 t.1)) :
     Triple m (.release src) scratch (fun s st => s = store ∧ st = before)
       (fun s st => Live heap0 initial (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))

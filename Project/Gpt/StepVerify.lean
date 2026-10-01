@@ -10,7 +10,7 @@ open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
 def firstRowTuple (x : Array Float × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.firstRow x.1 x.2
 
-theorem firstRow_implements : Implements gpt.module 32 firstRowTuple := by
+theorem firstRow_implements : Implements gpt.module 31 firstRowTuple := by
   refine Func.implements_heap gpt.funcs 29 gpt.firstRow.ir "firstRow" rfl firstRowTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨s, d⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨ps, rfl, hSs⟩, rfl⟩ hCap
@@ -46,7 +46,7 @@ theorem firstRow_implements : Implements gpt.module 32 firstRowTuple := by
 def lastHiddenTuple (x : Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.lastHidden x.1 x.2.1 x.2.2
 
-theorem lastHidden_implements : Implements gpt.module 40 lastHiddenTuple := by
+theorem lastHidden_implements : Implements gpt.module 39 lastHiddenTuple := by
   refine Func.implements_heap gpt.funcs 37 gpt.lastHidden.ir "lastHidden" rfl lastHiddenTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨cache, d, bsize⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨pc, rfl, hCs⟩, rfl⟩ hCap
@@ -101,7 +101,7 @@ def embedBlockTuple (x : Array Float × Array Float × UInt64 × UInt64 × UInt6
     Array Float :=
   LeanExe.Examples.Gpt.embedBlock x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2
 
-theorem embedBlock_implements : Implements gpt.module 31 embedBlockTuple := by
+theorem embedBlock_implements : Implements gpt.module 30 embedBlockTuple := by
   refine Func.implements_heap gpt.funcs 28 gpt.embedBlock.ir "embedBlock" rfl embedBlockTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨wte, wpe, token, p, d, bsize⟩ heap initial _ hHeap
@@ -181,7 +181,7 @@ theorem headMaxBody_run {initial : Store Unit} {px : UInt64} {x : Array Float}
     exact State.Frame.refl _ _ _
   · simp [State.Holds, Scalar.values, headMaxStep, hParams, hLocals, F64Bits.toBits_max]
 
-theorem headMax_implements : Implements gpt.module 34 headMaxTuple := by
+theorem headMax_implements : Implements gpt.module 33 headMaxTuple := by
   refine Func.implements_heap gpt.funcs 31 gpt.headMax.ir "headMax" rfl headMaxTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨x, t, w⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hXs⟩, rfl⟩ hCap
@@ -261,7 +261,7 @@ def headSumStep (x mx : Array Float) (w r c : UInt64) (acc : Float) : Float :=
 
 /-- The compiled loop body of `rowSumExp`. -/
 def headSumBody : Stmt :=
-  .seq (.call 6 [⟨.f64, .binF .sub
+  .seq (.call 5 [⟨.f64, .binF .sub
       (.ofBits (.read 0 (.bin .add (.bin .mul (.get 6) (.get 3)) (.get 9))))
       (.ofBits (.read 1 (.get 6)))⟩] [10])
     (.seq (.assign 11 (.binF .add (.getF 7) (.getF 10))) (.assign 7 (.getF 11)))
@@ -299,7 +299,7 @@ theorem headSumBody_spec {initial : Store Unit} {px pm : UInt64} {x mx : Array F
     exact State.Frame.refl _ _ _
   · simp [State.Holds, Scalar.values, headSumStep, f, s, b, a, hParams, hLocals, dv, e]
 
-theorem headSumExp_implements : Implements gpt.module 35 headSumExpTuple := by
+theorem headSumExp_implements : Implements gpt.module 34 headSumExpTuple := by
   refine Func.implements_heap gpt.funcs 32 gpt.headSumExp.ir "headSumExp" rfl headSumExpTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨x, mx, t, w⟩ heap initial _ hHeap
@@ -371,18 +371,18 @@ theorem headSumExp_implements : Implements gpt.module 35 headSumExpTuple := by
 def stepSoftmaxTuple (x : Array Float × UInt64 × UInt64) : Array Float :=
   LeanExe.Examples.Gpt.stepSoftmax x.1 x.2.1 x.2.2
 
-theorem stepSoftmax_implements : Implements gpt.module 36 stepSoftmaxTuple := by
+theorem stepSoftmax_implements : Implements gpt.module 35 stepSoftmaxTuple := by
   refine Func.implements_heap gpt.funcs 33 gpt.stepSoftmax.ir "stepSoftmax" rfl stepSoftmaxTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
   rintro ⟨x, t, w⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨px, rfl, hX⟩, rfl⟩ hCap
   change heap.Borrowed initial px (x.map Float.toBits) at hX
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
-  have hMax : gpt.module.funcs[34 - gpt.module.imports.length]? =
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
+  have hMax : gpt.module.funcs[33 - gpt.module.imports.length]? =
       some (gpt.headMax.ir.function (2 + 31)) := compile_funcs (funcs := gpt.funcs) (i := 31) rfl
-  have hSum : gpt.module.funcs[35 - gpt.module.imports.length]? =
+  have hSum : gpt.module.funcs[34 - gpt.module.imports.length]? =
       some (gpt.headSumExp.ir.function (2 + 32)) := compile_funcs (funcs := gpt.funcs) (i := 32) rfl
-  have hApply : gpt.module.funcs[22 - gpt.module.imports.length]? =
+  have hApply : gpt.module.funcs[21 - gpt.module.imports.length]? =
       some (gpt.softmaxApply.ir.function (2 + 19)) :=
     compile_funcs (funcs := gpt.funcs) (i := 19) rfl
   let mx := headMaxTuple (x, t, w)
@@ -397,9 +397,9 @@ theorem stepSoftmax_implements : Implements gpt.module 36 stepSoftmaxTuple := by
     simp [State.update_params_length, State.update_locals_length]
   have hGet : start.get 0 = some (.i64 px) ∧ start.get 1 = some (.i64 t) ∧
       start.get 2 = some (.i64 w) := ⟨rfl, rfl, rfl⟩
-  show Triple _ (.seq (.call 34 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩] [3])
-      (.seq (.call 35 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩] [4])
-      (.seq (.call 22 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 1⟩,
+  show Triple _ (.seq (.call 33 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩] [3])
+      (.seq (.call 34 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩] [4])
+      (.seq (.call 21 [⟨.u64, .get 0⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩, ⟨.u64, .get 1⟩,
         ⟨.u64, .get 2⟩] [5])
       (.seq (.assign 6 (.get 5)) (.seq (.release 4) (.release 3)))))) 7
     (fun store state => store = initial ∧ state = start) _
@@ -537,7 +537,7 @@ theorem stepScoreBody_run {initial : Store Unit} {pq pk pc : UInt64} {q k cache 
     · simp [State.Holds, Scalar.values, stepScoreStep, hParams, hLocals, F64Bits.toBits_add,
         F64Bits.toBits_mul, hc]
 
-theorem stepScores_implements : Implements gpt.module 33 stepScoresTuple := by
+theorem stepScores_implements : Implements gpt.module 32 stepScoresTuple := by
   refine Func.implements_heap gpt.funcs 30 gpt.stepScores.ir "stepScores" rfl stepScoresTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl,
       ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
@@ -682,7 +682,7 @@ theorem stepMixBody_run {initial : Store Unit} {pp pv pc : UInt64} {pw v cache :
     · simp [State.Holds, Scalar.values, stepMixStep, hParams, hLocals, F64Bits.toBits_add,
         F64Bits.toBits_mul, hc]
 
-theorem stepMix_implements : Implements gpt.module 37 stepMixTuple := by
+theorem stepMix_implements : Implements gpt.module 36 stepMixTuple := by
   refine Func.implements_heap gpt.funcs 34 gpt.stepMix.ir "stepMix" rfl stepMixTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
       rfl⟩; rfl) ?_
@@ -851,7 +851,7 @@ theorem writeElem_after {ps : UInt64} {s x k v : Array Float} {store : Store Uni
   simp [writeElem, writeAt, Expr.eval, g0, g4, g5, hIndex, h1, h2, h3, h4, Expr.readValue_at hS,
     State.set?_eq_update, hParams, hLocals, U64Op.apply, getElem!_map_toBits]
 
-theorem writeBlock_implements : Implements gpt.module 38 writeBlockTuple := by
+theorem writeBlock_implements : Implements gpt.module 37 writeBlockTuple := by
   refine Func.implements_heap gpt.funcs 35 gpt.writeBlock.ir "writeBlock" rfl writeBlockTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl,
       ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
@@ -925,7 +925,7 @@ theorem writeBlock_implements : Implements gpt.module 38 writeBlockTuple := by
 def appendBlockTuple (x : Array Float × Array Float) : Array Float :=
   LeanExe.Examples.Gpt.appendBlock x.1 x.2
 
-theorem appendBlock_implements : Implements gpt.module 39 appendBlockTuple := by
+theorem appendBlock_implements : Implements gpt.module 38 appendBlockTuple := by
   refine Func.implements_heap gpt.funcs 36 gpt.appendBlock.ir "appendBlock" rfl appendBlockTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, ⟨_, rfl, -⟩⟩; rfl) ?_
   rintro ⟨cache, s⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨pc, rfl, hCs⟩, ⟨ps, rfl, hSs⟩⟩ hCap

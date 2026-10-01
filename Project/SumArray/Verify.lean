@@ -7,7 +7,7 @@ namespace Project.SumArray
 open Project.Pipeline Project.IR
 
 theorem sumArray_implements :
-    Implements sumArray.module 3 LeanExe.Examples.SumArray.sumArray := by
+    Implements sumArray.module 2 LeanExe.Examples.SumArray.sumArray := by
   refine Func.implements [(sumArray.ir, "sumArray")] 0 sumArray.ir "sumArray" rfl _ (by rintro _ _ _ _ ⟨ptr, rfl, -⟩; rfl) ?_
   rintro xs heap initial _ - ⟨ptr, rfl, hBorrowed⟩
   let start : State := { params := [.i64 ptr], locals := List.replicate 4 (.i64 0) }
@@ -30,7 +30,7 @@ theorem sumArray_implements :
 computes `sumArray` exactly. -/
 theorem sumArray_bytes : ∃ bytes, Wasm.Encoding.encode sumArray.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧
-      Implements m 3 LeanExe.Examples.SumArray.sumArray := by
+      Implements m 2 LeanExe.Examples.SumArray.sumArray := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip sumArray.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, sumArray.module, decoded, sumArray_implements⟩

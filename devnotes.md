@@ -20222,3 +20222,61 @@ divisors, infinities, NaN, signed zeros, subnormals, and empty arrays, arbitrary
 patterns, moderate values, and for the CLOB 36 books with positions and prices at, inside,
 and past their ends.  All twelve modules were emitted again and validated, and all 3,171
 cases matched native Lean.  `deslop.md` records the new sizes and hashes.
+
+## 2026-10-01: Plan: unique ownership with moves (Iteration 4 and in-place updates)
+
+The user chose unique ownership with moves after three rounds of analysis.  Main counts
+references at run time, leaves ownership to an unverified analysis, and proves each
+program at the instruction level, with no theorem tying a count to the live references.
+The deslop proofs compose through `Implements` and `Live`, so sharing in the general
+statement would need that theorem.  Under moves, an array parameter is borrowed, as now, or
+owned: the callee consumes an owned argument by updating it in place, returning it, or
+releasing it.  A value's last use moves it and an earlier use copies, so counts stay 1 and
+proofs stay local to each function; programs that keep old versions pay copies.
+
+The user also chose that the compiler infers each mode (owned exactly when some path
+returns the parameter, passes it at its last use to an owned parameter, or updates it in
+place), that exported functions keep their inferred modes so that the host hands over
+consumed arrays, and that `retain` and the branch of `release` that only lowers a count
+are removed now.  For later decisions the user asked for a provisional answer, an
+independent review, and then the recommended course, with questions only for major design
+decisions.
+
+- [x] 4a. Remove `retain` and the count-lowering branch of `release`; compiled function `i`
+  moves from index `3 + i` to `2 + i`; `release_run` proved for the shorter body.
+- [ ] 4b. Owned parameters in `Implements`: a consumed argument is handed over, and the frame
+  and freshness clauses leave it out; `Live` lets a call consume a temporary.
+- [ ] 4c. The compiler infers modes in list order, moves at last uses, copies at earlier uses
+  into owned parameters, and releases owned parameters that a path does not consume.
+- [ ] 4d. In-place writes: `set!`, appends within capacity, and growth into a larger block.
+- [ ] 4e. GPT: `step` consumes the cache and appends in place; the CLI and `generating_step`
+  follow.
+
+## 2026-10-01: The runtime without `retain` (4a)
+
+Two smaller questions came up, each settled with a provisional answer and an independent
+review.  The retain counter goes with `retain`, since nothing would raise it.  The review
+added that, once every release frees its object, the release counter always equals the
+free counter, so it goes too: the globals are now `top`, the free-list head, and the
+allocation and free counters.  `release` traps unless the count is exactly 1.  The pending
+list links objects through the count word, and `freeObject` writes 0 there, so a second
+release of a pending or freed object reads a value other than 1; without the check it would
+link the block again and could put it in the free list twice.
+
+`compile` places `alloc` at 0, `release` at 1, and compiled function `i` at `2 + i`, and
+`compile_funcs` and the compiler's callee table follow.  A script shifted the entry numbers
+in the theorem statements, the `funcs[N - imports.length]` facts, the IR `.call` literals,
+and the generator's specifications; type indices such as `(2 + 3)` keep their values.
+`release_run` loses one branch, and `releaseEntry` keeps the store's globals, which `Heap.At`
+gives, until `freeObject` counts the free.  The host prints two counters, its
+`retain-delay` command is gone, and `tests/gpt/sessions.sh` checks that allocations equal
+frees.
+
+The full build passed (3,543 jobs).  All modules were emitted again: `gpt.wasm` is 14,052
+bytes, and every module is 223 bytes smaller.  `gpt_file` passes, and the tests pass: 2,733
+GPT cases, the sessions, 3,171 module cases, the PRNG comparison, and the sampling
+frequencies.  A second release of one object traps at `unreachable` in Wasmtime.
+`gpt2_compare.py` again matched Hugging Face's choice at every step to 256 tokens, with a
+largest relative difference of 1.16e-13; its session ended with 138,532 allocations and
+138,512 frees, the 20 live arrays being the weights and the cache, and 1,095,368,704 bytes
+of memory, as before.

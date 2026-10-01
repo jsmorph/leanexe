@@ -24,9 +24,9 @@ session() {
   script+="stats"$'\n'
   local stats
   stats=$(printf '%s' "$script" | "$host" session "$wasm" | tail -1)
-  read -r _ allocs retains releases frees <<<"$stats"
-  if [ "$allocs" = "$releases" ] && [ "$allocs" = "$frees" ] && [ "$retains" = 0 ]; then
-    echo "$name: $allocs allocations, $releases releases, $frees frees"
+  read -r _ allocs frees <<<"$stats"
+  if [ "$allocs" = "$frees" ]; then
+    echo "$name: $allocs allocations, $frees frees"
   else
     echo "fail: $name: $stats"
     failed=$((failed + 1))
@@ -53,9 +53,8 @@ growth() {
   out=$(printf '%s' "$script" | "$host" session "$wasm")
   size=$(grep '^memory-size' <<<"$out" | cut -d' ' -f2)
   stats=$(tail -1 <<<"$out")
-  read -r _ allocs retains releases frees <<<"$stats"
-  if [ "$size" -le $((8 * cache + 1048576)) ] && [ "$allocs" = "$releases" ] &&
-    [ "$allocs" = "$frees" ] && [ "$retains" = 0 ]; then
+  read -r _ allocs frees <<<"$stats"
+  if [ "$size" -le $((8 * cache + 1048576)) ] && [ "$allocs" = "$frees" ]; then
     echo "growth: $n appends of $b words, memory $size bytes, final cache $cache bytes, $frees frees"
   else
     echo "fail: growth: memory $size bytes, final cache $cache bytes, $stats"

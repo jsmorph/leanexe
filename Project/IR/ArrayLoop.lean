@@ -110,7 +110,7 @@ theorem Live.arrayLoop [Represent α] {idx : Nat} {g : α → Array Float}
     {args : List ((type : ScalarType) × Expr type)} (hParams : args.length = f.numParams)
     {allocType releaseType : Nat} (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
     (hAlloc : m.funcs[0]? = some (allocFunction allocType))
-    (hRelease : m.funcs[2]? = some (releaseFunction releaseType))
+    (hRelease : m.funcs[1]? = some (releaseFunction releaseType))
     {scratch state size limit index next src : Nat}
     (hLocals : [state, size, limit, index, next].Nodup)
     (hBelow : ∀ j ∈ [state, size, limit, index, next], j < scratch)

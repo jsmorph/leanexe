@@ -181,7 +181,7 @@ def composite(spec):
             lines.append(f'  obtain ⟨{ptr(n)}, _, rfl, {hyp(n)}, hArgs⟩ := {lemma[k]} hArgs')
     lines.append('  obtain rfl := hArgs')
     lines.append('  have hImports : gpt.module.imports = [] := rfl')
-    lines.append('  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl')
+    lines.append('  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl')
     if loops:
         lines.append('  have hMemory32 : gpt.module.memIs64 = false := rfl')
         lines.append('  have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl')
@@ -418,8 +418,8 @@ def tuple_def(name, fn, params, doc):
 MLP = [('x', 'A'), ('wfc', 'A'), ('bfc', 'A'), ('wproj', 'A'), ('bproj', 'A'), ('l', 'u'), ('t', 'u'),
        ('d', 'u'), ('f', 'u')]
 mlp_spec = dict(
-    name='mlp', entry=14, index=11, tuple='mlpTuple', params=MLP, nlocals=4,
-    funcs=[('hLinear', 30, 27, 'linear'), ('hGelu', 13, 10, 'geluArray')],
+    name='mlp', entry=13, index=11, tuple='mlpTuple', params=MLP, nlocals=4,
+    funcs=[('hLinear', 29, 27, 'linear'), ('hGelu', 12, 10, 'geluArray')],
     lets=[('h', 'linearTuple (x, wfc, bfc, l, t, d, f)'), ('g', 'LeanExe.Examples.Gpt.geluArray h')],
     calls=[
         dict(args=[0, 1, 2, 5, 6, 7, 8], impl='linear_implements', hfunc='hLinear',
@@ -444,10 +444,10 @@ for idx, (w, b, ptrname, reg) in enumerate([('wq', 'bq', 'pq', 1), ('wk', 'bk', 
                           impl='linear_implements', hfunc='hLinear', x=f'(x, {w}, {b}, l, t, nh * dh, nh * dh)', borrowed=[('P', 'x'), ('P', w), ('P', b)], ptr=ptrname,
                           comment=f'`{ptrname[1]} = x · {w} + {b}`.'))
 att_spec = dict(
-    name='attention', entry=24, index=21, tuple='attentionTuple', params=ATT,
+    name='attention', entry=23, index=21, tuple='attentionTuple', params=ATT,
     nlocals=8, one=True,
-    funcs=[('hLinear', 30, 27, 'linear'), ('hMasked', 19, 16, 'maskedScores'),
-           ('hSoftmax', 23, 20, 'softmaxRows'), ('hCausal', 26, 23, 'causalMatMul')],
+    funcs=[('hLinear', 29, 27, 'linear'), ('hMasked', 18, 16, 'maskedScores'),
+           ('hSoftmax', 22, 20, 'softmaxRows'), ('hCausal', 25, 23, 'causalMatMul')],
     lets=[('q', 'linearTuple (x, wq, bq, l, t, nh * dh, nh * dh)'),
           ('k', 'linearTuple (x, wk, bk, l, t, nh * dh, nh * dh)'),
           ('v', 'linearTuple (x, wv, bv, l, t, nh * dh, nh * dh)'),
@@ -478,9 +478,9 @@ att_section = tuple_def('attentionTuple', 'attention', ATT, '`attention` with it
 BARR = ['x', 'g1', 'b1', 'wq', 'bq', 'wk', 'bk', 'wv', 'bv', 'wo', 'bo', 'g2', 'b2', 'wfc', 'bfc', 'wproj', 'bproj']
 BLK = [(n, 'A') for n in BARR] + [('l', 'u'), ('t', 'u'), ('nh', 'u'), ('dh', 'u'), ('f', 'u'), ('eps', 'f')]
 blk_spec = dict(
-    name='block', entry=25, index=22, tuple='blockTuple', params=BLK, nlocals=7,
-    funcs=[('hNorm', 18, 15, 'layerNormRows'), ('hAttention', 24, 21, 'attention'), ('hAdd', 10, 7, 'add'),
-           ('hMlp', 14, 11, 'mlp')],
+    name='block', entry=24, index=22, tuple='blockTuple', params=BLK, nlocals=7,
+    funcs=[('hNorm', 17, 15, 'layerNormRows'), ('hAttention', 23, 21, 'attention'), ('hAdd', 9, 7, 'add'),
+           ('hMlp', 13, 11, 'mlp')],
     lets=[('h1', 'layerNormRowsTuple (x, g1, b1, l, t, nh * dh, eps)'),
           ('a', 'attentionTuple (h1, wq, bq, wk, bk, wv, bv, wo, bo, l, t, nh, dh)'),
           ('r', 'addTuple (x, a)'),
@@ -519,10 +519,10 @@ FWD = ([('tokens', 'U'), ('wte', 'A'), ('wpe', 'A')] + [(n, 'A') for n in LAYER]
 FWD_NAMES = [n for n, _ in FWD]
 LAYER_F = '(x, ' + ', '.join(LAYER) + ', l, t, nh, dh, f, eps)'
 fwd_spec = dict(
-    name='forward', entry=29, index=26, tuple='forwardTuple', params=FWD,
+    name='forward', entry=28, index=26, tuple='forwardTuple', params=FWD,
     nlocals=9, width=1, result=36,
-    funcs=[('hEmbed', 27, 24, 'embed'), ('hBlock', 25, 22, 'block'),
-           ('hNorm', 18, 15, 'layerNormRows'), ('hScores', 28, 25, 'matMulT')],
+    funcs=[('hEmbed', 26, 24, 'embed'), ('hBlock', 24, 22, 'block'),
+           ('hNorm', 17, 15, 'layerNormRows'), ('hScores', 27, 25, 'matMulT')],
     lets=[('x0', 'embedTuple (tokens, wte, wpe, t, nh * dh)'),
           ('xl', f'LeanExe.loop layers x0 fun l x => blockTuple {LAYER_F}'),
           ('h', 'layerNormRowsTuple (xl, gf, bf, 0, t, nh * dh, eps)')],
@@ -563,12 +563,12 @@ LS = [(n, 'A') for n in LSA] + [('l', 'u'), ('p', 'u'), ('nh', 'u'), ('dh', 'u')
 LD = ('mul', 20, 21)
 ONE = ('const', 1)
 ls_spec = dict(
-    name='layerStep', entry=41, index=38, tuple='layerStepTuple', params=LS,
+    name='layerStep', entry=40, index=38, tuple='layerStepTuple', params=LS,
     nlocals=15, one=True,
-    funcs=[('hFirst', 32, 29, 'firstRow'), ('hNorm', 18, 15, 'layerNormRows'),
-           ('hLinear', 30, 27, 'linear'), ('hScores', 33, 30, 'stepScores'),
-           ('hSoftmax', 36, 33, 'stepSoftmax'), ('hMix', 37, 34, 'stepMix'), ('hAdd', 10, 7, 'add'),
-           ('hMlp', 14, 11, 'mlp'), ('hWrite', 38, 35, 'writeBlock')],
+    funcs=[('hFirst', 31, 29, 'firstRow'), ('hNorm', 17, 15, 'layerNormRows'),
+           ('hLinear', 29, 27, 'linear'), ('hScores', 32, 30, 'stepScores'),
+           ('hSoftmax', 35, 33, 'stepSoftmax'), ('hMix', 36, 34, 'stepMix'), ('hAdd', 9, 7, 'add'),
+           ('hMlp', 13, 11, 'mlp'), ('hWrite', 37, 35, 'writeBlock')],
     lets=[('x', 'firstRowTuple (s, nh * dh)'),
           ('h1', 'layerNormRowsTuple (x, g1, b1, l, 1, nh * dh, eps)'),
           ('q', 'linearTuple (h1, wq, bq, l, 1, nh * dh, nh * dh)'),
@@ -644,9 +644,9 @@ SC = [('cache', 'A'), ('wte', 'A'), ('gf', 'A'), ('bf', 'A'), ('layers', 'u'), (
       ('vocab', 'u'), ('eps', 'f')]
 SD = ('mul', 5, 6)
 sc_spec = dict(
-    name='scores', entry=43, index=40, tuple='scoresTuple', params=SC, nlocals=4,
-    funcs=[('hLast', 40, 37, 'lastHidden'), ('hNorm', 18, 15, 'layerNormRows'),
-           ('hScores', 28, 25, 'matMulT')],
+    name='scores', entry=42, index=40, tuple='scoresTuple', params=SC, nlocals=4,
+    funcs=[('hLast', 39, 37, 'lastHidden'), ('hNorm', 17, 15, 'layerNormRows'),
+           ('hScores', 27, 25, 'matMulT')],
     lets=[('x', 'lastHiddenTuple (cache, nh * dh, (2 * layers + 1) * (nh * dh))'),
           ('h', 'layerNormRowsTuple (x, gf, bf, 0, 1, nh * dh, eps)')],
     calls=[
@@ -676,10 +676,10 @@ BS = '(2 * layers + 1) * (nh * dh)'
 POS = f'UInt64.ofNat cache.size / (if {BS} = 0 then 1 else {BS})'
 STEP_F = '(x, cache, ' + ', '.join(BARR[1:]) + f', l, {POS}, nh, dh, f, {BS}, eps)'
 st_spec = dict(
-    name='step', entry=42, index=39, tuple='stepTuple', params=ST, nlocals=11,
+    name='step', entry=41, index=39, tuple='stepTuple', params=ST, nlocals=11,
     width=2, result=35,
-    funcs=[('hEmbed', 31, 28, 'embedBlock'), ('hLayer', 41, 38, 'layerStep'),
-           ('hAppend', 39, 36, 'appendBlock')],
+    funcs=[('hEmbed', 30, 28, 'embedBlock'), ('hLayer', 40, 38, 'layerStep'),
+           ('hAppend', 38, 36, 'appendBlock')],
     lets=[('s0', f'embedBlockTuple (wte, wpe, token, {POS}, nh * dh, {BS})'),
           ('xl', f'LeanExe.loop layers s0 fun l x => layerStepTuple {STEP_F}')],
     haves=['  have hA := hCache.values',

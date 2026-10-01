@@ -14,7 +14,7 @@ def mlpTuple (x : Array Float × Array Float × Array Float × Array Float × Ar
   LeanExe.Examples.Gpt.mlp x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2.1 x.2.2.2.2.2.2.1
     x.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2
 
-theorem mlp_implements : Implements gpt.module 14 mlpTuple := by
+theorem mlp_implements : Implements gpt.module 13 mlpTuple := by
   refine Func.implements_heap gpt.funcs 11 gpt.mlp.ir "mlp" rfl
     mlpTuple
     (by
@@ -34,11 +34,11 @@ theorem mlp_implements : Implements gpt.module 14 mlpTuple := by
   obtain ⟨pBproj, _, rfl, hBproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
-  have hLinear : gpt.module.funcs[30 - gpt.module.imports.length]? =
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
+  have hLinear : gpt.module.funcs[29 - gpt.module.imports.length]? =
       some (gpt.linear.ir.function (2 + 27)) :=
     compile_funcs (funcs := gpt.funcs) (i := 27) rfl
-  have hGelu : gpt.module.funcs[13 - gpt.module.imports.length]? =
+  have hGelu : gpt.module.funcs[12 - gpt.module.imports.length]? =
       some (gpt.geluArray.ir.function (2 + 10)) :=
     compile_funcs (funcs := gpt.funcs) (i := 10) rfl
   let h := linearTuple (x, wfc, bfc, l, t, d, f)
@@ -144,7 +144,7 @@ def attentionTuple (x : Array Float × Array Float × Array Float × Array Float
     x.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.1
     x.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2.2.2.2.2
 
-theorem attention_implements : Implements gpt.module 24 attentionTuple := by
+theorem attention_implements : Implements gpt.module 23 attentionTuple := by
   refine Func.implements_heap gpt.funcs 21 gpt.attention.ir "attention" rfl
     attentionTuple
     (by
@@ -172,18 +172,18 @@ theorem attention_implements : Implements gpt.module 24 attentionTuple := by
   obtain ⟨pBo, _, rfl, hBo, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
   have hOne : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
-  have hLinear : gpt.module.funcs[30 - gpt.module.imports.length]? =
+  have hLinear : gpt.module.funcs[29 - gpt.module.imports.length]? =
       some (gpt.linear.ir.function (2 + 27)) :=
     compile_funcs (funcs := gpt.funcs) (i := 27) rfl
-  have hMasked : gpt.module.funcs[19 - gpt.module.imports.length]? =
+  have hMasked : gpt.module.funcs[18 - gpt.module.imports.length]? =
       some (gpt.maskedScores.ir.function (2 + 16)) :=
     compile_funcs (funcs := gpt.funcs) (i := 16) rfl
-  have hSoftmax : gpt.module.funcs[23 - gpt.module.imports.length]? =
+  have hSoftmax : gpt.module.funcs[22 - gpt.module.imports.length]? =
       some (gpt.softmaxRows.ir.function (2 + 20)) :=
     compile_funcs (funcs := gpt.funcs) (i := 20) rfl
-  have hCausal : gpt.module.funcs[26 - gpt.module.imports.length]? =
+  have hCausal : gpt.module.funcs[25 - gpt.module.imports.length]? =
       some (gpt.causalMatMul.ir.function (2 + 23)) :=
     compile_funcs (funcs := gpt.funcs) (i := 23) rfl
   let q := linearTuple (x, wq, bq, l, t, nh * dh, nh * dh)
@@ -390,7 +390,7 @@ def blockTuple (x : Array Float × Array Float × Array Float × Array Float × 
     x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
     x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2
 
-theorem block_implements : Implements gpt.module 25 blockTuple := by
+theorem block_implements : Implements gpt.module 24 blockTuple := by
   refine Func.implements_heap gpt.funcs 22 gpt.block.ir "block" rfl
     blockTuple
     (by
@@ -435,17 +435,17 @@ theorem block_implements : Implements gpt.module 25 blockTuple := by
   obtain ⟨pBproj, _, rfl, hBproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
-  have hNorm : gpt.module.funcs[18 - gpt.module.imports.length]? =
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
+  have hNorm : gpt.module.funcs[17 - gpt.module.imports.length]? =
       some (gpt.layerNormRows.ir.function (2 + 15)) :=
     compile_funcs (funcs := gpt.funcs) (i := 15) rfl
-  have hAttention : gpt.module.funcs[24 - gpt.module.imports.length]? =
+  have hAttention : gpt.module.funcs[23 - gpt.module.imports.length]? =
       some (gpt.attention.ir.function (2 + 21)) :=
     compile_funcs (funcs := gpt.funcs) (i := 21) rfl
-  have hAdd : gpt.module.funcs[10 - gpt.module.imports.length]? =
+  have hAdd : gpt.module.funcs[9 - gpt.module.imports.length]? =
       some (gpt.add.ir.function (2 + 7)) :=
     compile_funcs (funcs := gpt.funcs) (i := 7) rfl
-  have hMlp : gpt.module.funcs[14 - gpt.module.imports.length]? =
+  have hMlp : gpt.module.funcs[13 - gpt.module.imports.length]? =
       some (gpt.mlp.ir.function (2 + 11)) :=
     compile_funcs (funcs := gpt.funcs) (i := 11) rfl
   let h1 := layerNormRowsTuple (x, g1, b1, l, t, nh * dh, eps)
@@ -664,7 +664,7 @@ def forwardTuple : ForwardInput → Array Float
     LeanExe.Examples.Gpt.forward tokens wte wpe g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc
       wproj bproj gf bf layers t nh dh f vocab eps
 
-theorem forward_implements : Implements gpt.module 29 forwardTuple := by
+theorem forward_implements : Implements gpt.module 28 forwardTuple := by
   refine Func.implements_heap gpt.funcs 26 gpt.forward.ir "forward" rfl
     forwardTuple
     (by
@@ -717,19 +717,19 @@ theorem forward_implements : Implements gpt.module 29 forwardTuple := by
   obtain ⟨pBf, _, rfl, hBf, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
-  have hEmbed : gpt.module.funcs[27 - gpt.module.imports.length]? =
+  have hEmbed : gpt.module.funcs[26 - gpt.module.imports.length]? =
       some (gpt.embed.ir.function (2 + 24)) :=
     compile_funcs (funcs := gpt.funcs) (i := 24) rfl
-  have hBlock : gpt.module.funcs[25 - gpt.module.imports.length]? =
+  have hBlock : gpt.module.funcs[24 - gpt.module.imports.length]? =
       some (gpt.block.ir.function (2 + 22)) :=
     compile_funcs (funcs := gpt.funcs) (i := 22) rfl
-  have hNorm : gpt.module.funcs[18 - gpt.module.imports.length]? =
+  have hNorm : gpt.module.funcs[17 - gpt.module.imports.length]? =
       some (gpt.layerNormRows.ir.function (2 + 15)) :=
     compile_funcs (funcs := gpt.funcs) (i := 15) rfl
-  have hScores : gpt.module.funcs[28 - gpt.module.imports.length]? =
+  have hScores : gpt.module.funcs[27 - gpt.module.imports.length]? =
       some (gpt.matMulT.ir.function (2 + 25)) :=
     compile_funcs (funcs := gpt.funcs) (i := 25) rfl
   let x0 := embedTuple (tokens, wte, wpe, t, nh * dh)
@@ -942,7 +942,7 @@ def layerStepTuple (x : Array Float × Array Float × Array Float × Array Float
     x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.1
     x.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2
 
-theorem layerStep_implements : Implements gpt.module 41 layerStepTuple := by
+theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
   refine Func.implements_heap gpt.funcs 38 gpt.layerStep.ir "layerStep" rfl
     layerStepTuple
     (by
@@ -989,33 +989,33 @@ theorem layerStep_implements : Implements gpt.module 41 layerStepTuple := by
   obtain ⟨pBproj, _, rfl, hBproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
   have hOne : (1.0 : Float).toBits = 4607182418800017408 := by decide +kernel
-  have hFirst : gpt.module.funcs[32 - gpt.module.imports.length]? =
+  have hFirst : gpt.module.funcs[31 - gpt.module.imports.length]? =
       some (gpt.firstRow.ir.function (2 + 29)) :=
     compile_funcs (funcs := gpt.funcs) (i := 29) rfl
-  have hNorm : gpt.module.funcs[18 - gpt.module.imports.length]? =
+  have hNorm : gpt.module.funcs[17 - gpt.module.imports.length]? =
       some (gpt.layerNormRows.ir.function (2 + 15)) :=
     compile_funcs (funcs := gpt.funcs) (i := 15) rfl
-  have hLinear : gpt.module.funcs[30 - gpt.module.imports.length]? =
+  have hLinear : gpt.module.funcs[29 - gpt.module.imports.length]? =
       some (gpt.linear.ir.function (2 + 27)) :=
     compile_funcs (funcs := gpt.funcs) (i := 27) rfl
-  have hScores : gpt.module.funcs[33 - gpt.module.imports.length]? =
+  have hScores : gpt.module.funcs[32 - gpt.module.imports.length]? =
       some (gpt.stepScores.ir.function (2 + 30)) :=
     compile_funcs (funcs := gpt.funcs) (i := 30) rfl
-  have hSoftmax : gpt.module.funcs[36 - gpt.module.imports.length]? =
+  have hSoftmax : gpt.module.funcs[35 - gpt.module.imports.length]? =
       some (gpt.stepSoftmax.ir.function (2 + 33)) :=
     compile_funcs (funcs := gpt.funcs) (i := 33) rfl
-  have hMix : gpt.module.funcs[37 - gpt.module.imports.length]? =
+  have hMix : gpt.module.funcs[36 - gpt.module.imports.length]? =
       some (gpt.stepMix.ir.function (2 + 34)) :=
     compile_funcs (funcs := gpt.funcs) (i := 34) rfl
-  have hAdd : gpt.module.funcs[10 - gpt.module.imports.length]? =
+  have hAdd : gpt.module.funcs[9 - gpt.module.imports.length]? =
       some (gpt.add.ir.function (2 + 7)) :=
     compile_funcs (funcs := gpt.funcs) (i := 7) rfl
-  have hMlp : gpt.module.funcs[14 - gpt.module.imports.length]? =
+  have hMlp : gpt.module.funcs[13 - gpt.module.imports.length]? =
       some (gpt.mlp.ir.function (2 + 11)) :=
     compile_funcs (funcs := gpt.funcs) (i := 11) rfl
-  have hWrite : gpt.module.funcs[38 - gpt.module.imports.length]? =
+  have hWrite : gpt.module.funcs[37 - gpt.module.imports.length]? =
       some (gpt.writeBlock.ir.function (2 + 35)) :=
     compile_funcs (funcs := gpt.funcs) (i := 35) rfl
   let x := firstRowTuple (s, nh * dh)
@@ -1389,7 +1389,7 @@ def scoresTuple (x : Array Float × Array Float × Array Float × Array Float ×
   LeanExe.Examples.Gpt.scores x.1 x.2.1 x.2.2.1 x.2.2.2.1 x.2.2.2.2.1 x.2.2.2.2.2.1 x.2.2.2.2.2.2.1
     x.2.2.2.2.2.2.2.1 x.2.2.2.2.2.2.2.2
 
-theorem scores_implements : Implements gpt.module 43 scoresTuple := by
+theorem scores_implements : Implements gpt.module 42 scoresTuple := by
   refine Func.implements_heap gpt.funcs 40 gpt.scores.ir "scores" rfl
     scoresTuple
     (by
@@ -1407,14 +1407,14 @@ theorem scores_implements : Implements gpt.module 43 scoresTuple := by
   obtain ⟨pBf, _, rfl, hBf, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
-  have hLast : gpt.module.funcs[40 - gpt.module.imports.length]? =
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
+  have hLast : gpt.module.funcs[39 - gpt.module.imports.length]? =
       some (gpt.lastHidden.ir.function (2 + 37)) :=
     compile_funcs (funcs := gpt.funcs) (i := 37) rfl
-  have hNorm : gpt.module.funcs[18 - gpt.module.imports.length]? =
+  have hNorm : gpt.module.funcs[17 - gpt.module.imports.length]? =
       some (gpt.layerNormRows.ir.function (2 + 15)) :=
     compile_funcs (funcs := gpt.funcs) (i := 15) rfl
-  have hScores : gpt.module.funcs[28 - gpt.module.imports.length]? =
+  have hScores : gpt.module.funcs[27 - gpt.module.imports.length]? =
       some (gpt.matMulT.ir.function (2 + 25)) :=
     compile_funcs (funcs := gpt.funcs) (i := 25) rfl
   let x := lastHiddenTuple (cache, nh * dh, (2 * layers + 1) * (nh * dh))
@@ -1526,7 +1526,7 @@ def stepTuple : StepInput → Array Float
     LeanExe.Examples.Gpt.step cache wte wpe g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj
       bproj token layers nh dh f eps
 
-theorem step_implements : Implements gpt.module 42 stepTuple := by
+theorem step_implements : Implements gpt.module 41 stepTuple := by
   refine Func.implements_heap gpt.funcs 39 gpt.step.ir "step" rfl
     stepTuple
     (by
@@ -1575,16 +1575,16 @@ theorem step_implements : Implements gpt.module 42 stepTuple := by
   obtain ⟨pBproj, _, rfl, hBproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
   have hImports : gpt.module.imports = [] := rfl
-  have hRelease : gpt.module.funcs[2]? = some (releaseFunction 1) := rfl
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
-  have hEmbed : gpt.module.funcs[31 - gpt.module.imports.length]? =
+  have hEmbed : gpt.module.funcs[30 - gpt.module.imports.length]? =
       some (gpt.embedBlock.ir.function (2 + 28)) :=
     compile_funcs (funcs := gpt.funcs) (i := 28) rfl
-  have hLayer : gpt.module.funcs[41 - gpt.module.imports.length]? =
+  have hLayer : gpt.module.funcs[40 - gpt.module.imports.length]? =
       some (gpt.layerStep.ir.function (2 + 38)) :=
     compile_funcs (funcs := gpt.funcs) (i := 38) rfl
-  have hAppend : gpt.module.funcs[39 - gpt.module.imports.length]? =
+  have hAppend : gpt.module.funcs[38 - gpt.module.imports.length]? =
       some (gpt.appendBlock.ir.function (2 + 36)) :=
     compile_funcs (funcs := gpt.funcs) (i := 36) rfl
   let s0 := embedBlockTuple (wte, wpe, token,

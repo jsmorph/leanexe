@@ -16,7 +16,7 @@ open Project.Pipeline Project.IR Project.ProofKit LeanExe.Examples.Prng
 function `i` is its compiled form. -/
 theorem splitMix_pure (funcs : List (Func × String)) (i : Nat)
     (hFunc : funcs[i]? = some (prng.splitMix.ir, "splitMix")) :
-    ImplementsPure (compile funcs) (3 + i) splitMix := by
+    ImplementsPure (compile funcs) (2 + i) splitMix := by
   refine Func.implementsPure funcs i prng.splitMix.ir "splitMix" hFunc splitMix (fun _ => rfl)
     fun x initial => ?_
   let s := x + 0x9e3779b97f4a7c15
@@ -51,7 +51,7 @@ theorem splitMix_pure (funcs : List (Func × String)) (i : Nat)
 is its compiled form. -/
 theorem unitFloat_pure (funcs : List (Func × String)) (i : Nat)
     (hFunc : funcs[i]? = some (prng.unitFloat.ir, "unitFloat")) :
-    ImplementsPure (compile funcs) (3 + i) unitFloat := by
+    ImplementsPure (compile funcs) (2 + i) unitFloat := by
   refine Func.implementsPure funcs i prng.unitFloat.ir "unitFloat" hFunc unitFloat
     (fun _ => rfl) fun x initial => ?_
   have k53 : (9007199254740992.0 : Float).toBits = 4845873199050653696 := by decide +kernel
@@ -62,17 +62,17 @@ theorem unitFloat_pure (funcs : List (Func × String)) (i : Nat)
     Expr.eval, Expr.scratchWidth, Stmt.scratchWidth, State.get, U64Op.apply, F64Op.apply, Scalar.values,
     unitFloat, F64Bits.toBits_div, F64Convert.toBits_toFloat, k53]
 
-theorem splitMix_implements : Implements prng.module 3 splitMix :=
+theorem splitMix_implements : Implements prng.module 2 splitMix :=
   (splitMix_pure prng.funcs 0 rfl).implements
 
-theorem unitFloat_implements : Implements prng.module 4 unitFloat :=
+theorem unitFloat_implements : Implements prng.module 3 unitFloat :=
   (unitFloat_pure prng.funcs 1 rfl).implements
 
 /-- `encode` succeeds on `prng.module`, and its bytes decode to a module that computes
 `splitMix` and `unitFloat` exactly. -/
 theorem prng_bytes : ∃ bytes, Wasm.Encoding.encode prng.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 3 splitMix ∧
-      Implements m 4 unitFloat := by
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 splitMix ∧
+      Implements m 3 unitFloat := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip prng.module (by decide +kernel) (by decide +kernel)
   exact ⟨bytes, success, prng.module, decoded, splitMix_implements, unitFloat_implements⟩
