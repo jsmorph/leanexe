@@ -21261,3 +21261,60 @@ without updating the entries.
   at indices 0 to 2 with compiled functions from 3; the `splitmix64` entry also gave entry
   `3 + i`.  The entries now describe the memory cap premise, `alloc_spec_or_abort`, and the
   runtime's `alloc` and `release` at 0 and 1, and the check reports nothing.
+
+## 2026-10-02: Plan: Iteration 7c2, releasing a tree of records
+
+7c1 is done: `lists.wasm` holds `listSum` and `listRange`, proved and tested.  7c2 proves
+that `release` frees a tree of records and compiles `sumRange n = (listRange n).foldl
+(· + ·) 0`, which releases the list it builds.  The plan's question 4 chose a specification
+for any tree of records, so that 7c3's trees reuse it.  No trusted text changes:
+`Implements` already states everything a caller needs, and the release specification is a
+lemma about the runtime.
+
+`release_run` covers an object whose child mask is 0, for which the pending loop runs once.
+For a tree the loop runs once per record: it takes the head of the pending list, links the
+non-null children of its masked slots onto the front of the pending list through their
+count words (`dropChildren`), and frees the record (`freeObject`), which writes the
+record's header and the headers of the free blocks beside it.
+
+Choices:
+
+1. The postcondition.  Options: (a) the exact final heap and store, as `Heap.release` and
+   `Heap.releaseStore` give for one object; (b) an abstract postcondition: the allocator
+   invariant for some heap with the same `top`, the memory limits and pages unchanged, and
+   every region of the old heap that lies apart from the tree's blocks keeping its bytes
+   and staying a region.  Recommendation: (b).  Every caller needs only the frame facts and
+   the invariant, and the exact free list depends on the order of the frees and on merges.
+2. The loop invariant.  The state is a list of pending records, each with its slots and
+   its owned subtrees, linked through count words from the pending local; the blocks of
+   the pending records and their subtrees are pairwise disjoint and apart from the free
+   blocks; the freed blocks lie in free blocks of the current heap; and every region of
+   the starting heap apart from the tree keeps its bytes and stays a region.  The measure
+   is the number of records still to free, computed from the free counter (global 3): the
+   starting count plus the tree's records minus the current count.
+3. One object predicate.  `freeObject_spec`, `Heap.At.release`, and the frame lemmas after
+   a release take `Heap.Owned`, but they use only the block facts: the magic number, the
+   capacity, the address bound, `top`, and separation from free blocks.  Restate them over
+   a predicate `Heap.Block`-like object fact that both `Heap.Owned` and `RecordHeader` give,
+   so that one proof serves arrays and records.  The existing callers keep their
+   statements.
+4. `dropChildren` for a record: a counted loop over the slots that tests mask bit `i` with a
+   shift, loads the slot, and, when it is not null, checks the child's magic number and
+   count and links it onto the pending list.  Its proof needs `maskOf`'s bit `i` equal to
+   the slot's bit, for at most 64 slots.  Only records (kind 1) appear in a tree; the kind 2
+   branch runs only for an array whose mask is nonzero, which no compiled code creates.
+5. `sumRange`: the compiler translates a fold over a list-valued call to the call into a
+   temporary, `Stmt.listFold` over it, and `Stmt.release` of the temporary after the fold.
+   The proof composes `Stmt.callImplements_spec` with `listRange_implements`, the fold rule
+   (with `NodeOwned.listAt`, the owned counterpart of `NodeBorrowed.listAt`), and the tree
+   release rule.
+
+Steps, each built, tested, committed, and pushed:
+
+- [ ] The object predicate, with `freeObject_spec`, `Heap.At.release`, and the frame lemmas
+  restated over it.
+- [ ] `dropChildren` for a record whose children are owned.
+- [ ] The tree release theorem, and its IR rule for `Stmt.release` of an owned value.
+- [ ] Compiler: a fold over a temporary list from a call, released after the fold.
+- [ ] `sumRange` with its theorem; host tests, including `call-stats`, which should show as
+  many frees as allocations.
