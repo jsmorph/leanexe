@@ -23,7 +23,7 @@ def elabLeanexeCompile : CommandElab
       let funcEntry := mkApp2 (mkConst ``Prod [Level.zero, Level.zero]) (mkConst ``Func)
         (mkConst ``String)
       liftTermElabM do
-        let (func, hints, _) ← compileDefinition sourceName
+        let (func, hints, _, _) ← compileDefinition sourceName
         addDefinition (base ++ `ir) (mkConst ``Func) (funcToExpr func)
         let entry := mkApp4 (mkConst ``Prod.mk [Level.zero, Level.zero]) (mkConst ``Func)
           (mkConst ``String) (mkConst (base ++ `ir)) (toExpr exportName)
@@ -39,7 +39,9 @@ and `p.n.hints`; it adds `p.funcs`, the list of IR functions with their export
 names, and `p.module := compile p.funcs`, in which the `i`-th definition is
 function `2 + i`.  A call of a listed definition compiles to a call of its
 function, and a definition's owned parameters, inferred in list order, may receive only
-moved array parameters of the caller. -/
+moved array parameters of the caller.  A definition that calls itself other than in tail
+position also gets an internal function with a depth parameter, `p.n.rec.ir`, exported as
+`n.rec`; the internal functions follow the listed ones, in list order. -/
 syntax (name := leanexeCompileModule) "leanexe_compile " ident " := " "[" ident,* "]" : command
 
 @[command_elab leanexeCompileModule]
@@ -53,16 +55,31 @@ def elabLeanexeCompileModule : CommandElab
         (mkConst ``String)
       liftTermElabM do
         let mut entries := []
+        let mut internals := []
         let mut owners := []
+        let mut nextInternal := 2 + names.size
         for name in names do
           let short := name.getString!
-          let (func, hints, owned) ← compileDefinition name callees owners
+          let internal ← if ← needsInternal name then
+              let index := nextInternal
+              nextInternal := nextInternal + 1
+              pure (some index)
+            else pure none
+          let (func, hints, owned, rec_) ← compileDefinition name callees owners internal
           owners := (name, owned) :: owners
           let irName := base ++ Name.mkSimple short ++ `ir
           addDefinition irName (mkConst ``Func) (funcToExpr func)
           addDefinition (base ++ Name.mkSimple short ++ `hints) (mkConst ``Hints) (toExpr hints)
           entries := entries ++ [mkApp4 (mkConst ``Prod.mk [Level.zero, Level.zero])
             (mkConst ``Func) (mkConst ``String) (mkConst irName) (toExpr short)]
+          if let some (recFunc, recHints) := rec_ then
+            let recName := base ++ Name.mkSimple short ++ `rec ++ `ir
+            addDefinition recName (mkConst ``Func) (funcToExpr recFunc)
+            addDefinition (base ++ Name.mkSimple short ++ `rec ++ `hints) (mkConst ``Hints)
+              (toExpr recHints)
+            internals := internals ++ [mkApp4 (mkConst ``Prod.mk [Level.zero, Level.zero])
+              (mkConst ``Func) (mkConst ``String) (mkConst recName) (toExpr (short ++ ".rec"))]
+        entries := entries ++ internals
         let list := entries.foldr (init := mkApp (mkConst ``List.nil [Level.zero]) funcEntry)
           fun entry rest => mkApp3 (mkConst ``List.cons [Level.zero]) funcEntry entry rest
         addDefinition (base ++ `funcs) (mkApp (mkConst ``List [Level.zero]) funcEntry) list

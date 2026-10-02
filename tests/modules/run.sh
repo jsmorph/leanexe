@@ -64,4 +64,19 @@ for n in 0 1 2 64 300; do
   fi
 done
 echo "release counts: 16 cases, $stats_failed failed"
-[ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$stats_failed" -eq 0 ]
+# The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
+# chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
+depth_failed=0
+chain() { printf 'tree-u64:'; i=0; while [ "$i" -lt "$1" ]; do printf '1,.,'; i=$((i + 1)); done; printf '.'; }
+out=$("$host" call "$build/trees/trees.wasm" size i64 "$(chain 999)" 2>&1) || true
+if [ "$out" != "999" ]; then
+  depth_failed=$((depth_failed + 1))
+  echo "fail: trees size on a chain of 999: $out"
+fi
+out=$("$host" call "$build/trees/trees.wasm" size i64 "$(chain 1000)" 2>&1) || true
+case "$out" in
+  *"wasm \`unreachable\` instruction executed"*) ;;
+  *) depth_failed=$((depth_failed + 1)); echo "fail: trees size on a chain of 1000: $out" ;;
+esac
+echo "depth guard: 2 cases, $depth_failed failed"
+[ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$stats_failed" -eq 0 ] && [ "$depth_failed" -eq 0 ]

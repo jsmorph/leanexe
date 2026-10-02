@@ -14,6 +14,7 @@ import LeanExe.Examples.Calc
 import LeanExe.Examples.Shape
 import LeanExe.Examples.Lists
 import LeanExe.Examples.Words
+import LeanExe.Examples.Trees
 
 /-! Test cases for the modules other than `gpt.wasm` and `prng.wasm`, computed by native
 Lean.  Each line is `module|export|result kind|host arguments|expected result`, with
@@ -311,7 +312,40 @@ def wordsCases : IO Unit := do
   for n in [0, 1, 2, 7, 64, 300] do
     line "words" "range" "chain-u64" [u n] (words (Words.toList (Words.range n)))
 
+open LeanExe.Examples.Trees in
+/-- The host's preorder description of a tree: `.` for a leaf, and a node's key followed by
+its subtrees. -/
+def Tree.describe : Tree → String
+  | .leaf => "."
+  | .node l k r => s!"{k},{Tree.describe l},{Tree.describe r}"
+
+open LeanExe.Examples.Trees in
+/-- A tree of `n` nodes whose shape and keys follow the arbitrary words from `seed`. -/
+def Tree.arbitrary : Nat → Nat → Tree
+  | 0, _ => .leaf
+  | n + 1, seed =>
+    let left := (rw seed).toNat % (n + 1)
+    .node (Tree.arbitrary left (2 * seed + 1)) (rw (seed + 7)) (Tree.arbitrary (n - left) (2 * seed + 2))
+termination_by n => n
+decreasing_by
+  all_goals
+    have := Nat.mod_lt (rw seed).toNat (Nat.succ_pos n)
+    omega
+
+open LeanExe.Examples.Trees in
+/-- A chain of `n` nodes, each with a leaf on the left. -/
+def Tree.chain : Nat → Tree
+  | 0 => .leaf
+  | n + 1 => .node .leaf (UInt64.ofNat n) (Tree.chain n)
+
+open LeanExe.Examples.Trees in
+def treeCases : IO Unit := do
+  let trees : List Tree := [.leaf, .node .leaf 5 .leaf, .node (.node .leaf 1 .leaf) maxU .leaf,
+    Tree.chain 999] ++ (List.range 20).map fun i => Tree.arbitrary (i * 3) i
+  for t in trees do
+    line "trees" "size" "i64" [s!"tree-u64:{Tree.describe t}"] (toString t.size)
+
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
   piecewiseCases; sumSquaresCases; meanCases; bucketCases; clobCases; runCases
-  calculatorCases; shapeCases; listCases; wordsCases
+  calculatorCases; shapeCases; listCases; wordsCases; treeCases

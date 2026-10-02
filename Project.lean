@@ -39,6 +39,9 @@ import Project.Lists.Verify
 import Project.Words.Module
 import Project.Words.Encode
 import Project.Words.Verify
+import Project.Trees.Module
+import Project.Trees.Encode
+import Project.Trees.Verify
 import Project.Gpt.Module
 import Project.Gpt.StepVerify
 import Project.Gpt.Verify
@@ -64,6 +67,7 @@ import Project.IR.Hint
 import Project.IR.Live
 import Project.IR.Loop
 import Project.IR.Read
+import Project.IR.Recursion
 import Project.IR.Record
 import Project.IR.Release
 import Project.IR.Run
