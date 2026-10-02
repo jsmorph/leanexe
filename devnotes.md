@@ -21135,3 +21135,31 @@ Questions:
    loops only; no `Moved` list.
 
 Question 1 changes the trusted statement and goes to the user after review.
+
+The review of the 7c plan wrote a sketch of option (a) that compiles against the project
+(`Slot` and `Node` as a nested inductive, `maskOf`, `slotAddress`, a `RecordHeader`
+structure, `NodeOwned` and `Node.blocks` by mutual structural recursion on the node, the
+class, the generic instance, and `Encode (List UInt64)`); instance resolution leaves every
+existing type's instance unchanged.  Its findings, checked against the sketch and the code:
+
+- The trusted text is about 70 lines (the record model, the class, and the generic
+  instance), not "one generic instance".  It must state the bound of 64 slots, since the
+  runtime tests mask bit `slot` with a shift taken modulo 64.  `borrowed` should follow
+  `Heap.Borrowed`: slot words, bounds, below `top`, and apart from free blocks, without
+  header or disjointness facts.  A type with both a `Flat` and an `Encode` instance would
+  silently take the `Encode` one.
+- `alloc` writes kind 2, width 1, and mask 0, so a cell needs three header stores, which
+  invalidate `Heap.Block.fresh`; a record allocation rule and frame lemmas for records are
+  needed.  An untrusted object predicate under both `Heap.Owned` and the record header
+  would let the frame lemmas be proved once.
+- `listSum`'s loop has no measure in the store; it needs a `while` rule with a ghost
+  argument or a length that follows tail pointers with fuel.  `listRange` fits
+  `Stmt.loop_inv`.
+- The tree specification of `release` must accept any count word and pending head, and
+  its measure can be the free counter.  `sumRange` releases a chain, so no 7c2 program
+  would exercise a forest of pending objects; a `List (List UInt64)` program would.
+- The layout rule's wording needs five corrections (the only constructor without fields;
+  a tag when more than one constructor is a record; each constructor's own fields; a field
+  of a pointer-represented type; the 64-slot limit), and 7c3 needs `List α` for other
+  element types.  The 7c steps omitted host support and tests, and the cons template in
+  7c1.
