@@ -21401,7 +21401,18 @@ Revised steps:
   child's count word or of another one; `pairwise_of_ne` turns the pairwise disjointness of
   the groups into disjointness for any two different records.  `ReleaseTree.lean` is 1,241
   lines.
-- [ ] Compiler: a fold over a list from a call, released after the fold, with its hint and
-  LTG entry; the `release-temporary` entry updated.
-- [ ] `sumRange` with its theorem; host tests, including `sumRange 0` and `call-stats`,
-  which should show as many frees as allocations.
+- [x] Compiler: a fold over a list from a call, released after the fold, with its hint and
+  LTG entry; the `release-temporary` entry updated.  `translateFold` takes the call's result
+  into a fresh local and pushes `Stmt.release` after the fold, with hint `release-list`, and
+  `componentTypes` gives a list result one word.  The LTG entry is `release-list`.
+- [x] `sumRange` with its theorem; host tests, including `sumRange 0` and `call-stats`,
+  which should show as many frees as allocations.  `sumRange_implements` (57 lines) composes
+  `callImplements_spec` with `listRange_implements`, `listFold_spec` with
+  `NodeOwned.listAt`, and `Stmt.releaseNode_spec`; `Heap.Borrowed.keep` and
+  `Heap.Owned.keep` carry the caller's arrays through the release.  `lists.wasm` is 1,648
+  bytes with sha256 `fe24ea1b471661df…`.  `sumRange` matched native Lean on nine counts from
+  0 to 1,000, and `call-stats` showed `n` allocations and `n` frees for `n` in 0, 1, 2, 64,
+  and 300.  All 5,121 module comparisons pass.
+
+7c2 is done.  7c3, user recursive types, comes next: constructors as record allocations,
+matches as loads, a user list type, then a tree.

@@ -54,5 +54,14 @@ applyCommand|i64:1 i64:102 i64:4|4 2
 applyCommand|i64:1 i64:102 i64:1|3 1
 applyCommand|i64:2 i64:102 i64:1|2 0
 CASES
-echo "release counts: 11 cases, $stats_failed failed"
+# sumRange releases the list of n cells that it builds, so the counters show n allocations and
+# n frees.
+for n in 0 1 2 64 300; do
+  out=$("$host" call-stats "$build/lists/lists.wasm" sumRange i64 "i64:$n" | tail -1)
+  if [ "$out" != "stats $n $n" ]; then
+    stats_failed=$((stats_failed + 1))
+    echo "fail: lists sumRange i64:$n: $out, expected stats $n $n"
+  fi
+done
+echo "release counts: 16 cases, $stats_failed failed"
 [ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$stats_failed" -eq 0 ]
