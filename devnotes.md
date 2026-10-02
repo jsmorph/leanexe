@@ -21009,3 +21009,41 @@ type.
   them for the calculator: `apply` on every operation with 16 operand pairs, `ofWord` on
   seven words, `inverse`, `step` and `undo` on 16 states with five operands, and `calcRun` on
   15 instruction arrays, some with a trailing odd word.
+
+## 2026-10-02: Plan: Iteration 7b, sums with fields
+
+A sum is an inductive type without parameters, indices, or recursion that has at least two
+constructors, at least one with fields.  Lean gives `T.casesOn x alt₁ … altₙ` with each
+alternative a function of its constructor's fields, and a wildcard match as
+`_sparseCasesOn`, which unfolds to `T.rec` whose minor premise for a constructor takes the
+fields first and then the wildcard's argument.  `T.ctorIdx` exists for sums too.
+
+Questions:
+
+1. The slot layout behind "flattened with a tag", which the user agreed to on 2026-10-02.
+   Options: (a) the tag word, then every constructor's fields in declaration order, each in
+   its own slot, with the slots of the other constructors zero (`main`'s layout); (b) the
+   tag, then as many slots as the widest constructor, shared by all constructors; (c) a heap
+   record.  Recommendation: (a).  Each field has a fixed slot of a fixed type, so a float
+   field never shares a local with a word field, constructing writes constants into the
+   other slots, and matching binds fixed locals.  (b) saves slots but must give a shared
+   slot one type, and (c) allocates for every value, which 7c needs only for recursion.  The
+   per-type `Flat` map is a `match` that lists each constructor's slots, for example
+   `Flat Shape (UInt64 × UInt64 × UInt64 × UInt64)` with `circle r ↦ (0, r, 0, 0)`,
+   `rect w h ↦ (1, 0, w, h)`, and `point ↦ (2, 0, 0, 0)`.  This follows the `Flat` rule the
+   user chose, so it is not put to the user.
+2. Compiler rules.  `userType?` gains a sum kind with each constructor's field types;
+   `componentTypes` gives the tag and every constructor's components.  A constructor
+   application gives the tag constant, its fields' components, and zeros elsewhere.  The
+   case split generalizes `enumCases?`: each alternative is applied to fresh variables bound
+   to its constructor's slots, and to the wildcard's argument for the `rec` form.  The
+   dispatch reads the tag, which is the value's first component.  As before, the split is a
+   chain of conditionals for a word result and a chain of `if` statements for a tuple
+   result.
+3. Programs, in `LeanExe/Examples/Shape.lean`: `inductive Shape | circle (r : UInt64) |
+   rect (w h : UInt64) | point`; `Shape.area` (a match binding fields, word result);
+   `Shape.ofWords k a b` (constructors in conditionals, sum result); `Shape.scale s f` (a
+   match with a sum result); `Shape.isRect` (a wildcard); and `totalArea words`, a loop over
+   an array of three-word shapes whose body calls `area` on a call of `ofWords`.
+4. Proofs: as in 7a, `Func.implementsPure` for the four functions of words and
+   `Func.implements` for `totalArea`, by cases on the constructor.
