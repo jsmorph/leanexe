@@ -81,6 +81,14 @@ theorem Scalar.borrowed [Scalar α] {heap : Heap} {store : Store Unit} {params :
     {x : α} : Represent.borrowed heap store params x ↔ params = Scalar.values x :=
   Iff.rfl
 
+/-- A type represented as another: a value `x` is represented as `Flat.flat x`.  An
+enumeration maps to its constructor index, and a structure to the tuple of its fields in
+declaration order. -/
+class Flat (α : Type) (β : outParam Type) where
+  flat : α → β
+
+instance [Flat α β] [Scalar β] : Scalar α := ⟨fun x => Scalar.values (Flat.flat x)⟩
+
 instance : Scalar UInt64 := ⟨fun x => [.i64 x]⟩
 
 /-- A float is passed as an `f64` holding its bit pattern. -/

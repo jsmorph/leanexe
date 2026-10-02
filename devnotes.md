@@ -20979,9 +20979,23 @@ and one generic `Scalar` instance in `Implements.lean`, with a one-line `Flat` i
 type.
 
 - [ ] `Flat` and its `Scalar` instance; `Flat Op` and `Flat Calc` with checked examples.
-- [ ] Compiler: enumeration and structure types in parameters, results, and loop states;
+- [x] Compiler: enumeration and structure types in parameters, results, and loop states;
   enumeration constructors; structure constructors and projections; `casesOn`, `rec`, and
   `_sparseCasesOn` of an enumeration as a word and as a structure result; `casesOn` of a
-  structure; calls with structure arguments and results, in a loop body too.
-- [ ] `LeanExe/Examples/Calc.lean`, the module, and the six theorems.
-- [ ] Tests against native Lean.
+  structure; calls with structure arguments and results, in a loop body too.  `userType?`
+  classifies a type; `componentTypes` replaces `stateTypes` and `resultTypes`; `peel`
+  binds the fields of a pair or a structure through `bindFields`; `enumCases?` reads all
+  three forms of a case split on an enumeration; `translateCases` builds the `if` chain for a
+  structure result.  A structure parameter becomes one WebAssembly parameter per
+  component.  Two defects were found by compiling: `Expr.headBeta` reduces one redex, so the
+  alternatives of a sparse case split, two redexes deep, needed `headBetaAll`; and the
+  prefix of `ite` was looked up as an inductive type, so `userType?` now reads the
+  environment with `find?`.  All fourteen other modules emit the bytes they emitted before.
+- [x] `LeanExe/Examples/Calc.lean` and the module `calculator.wasm`, 1,913 bytes.  `Calc.undo`
+  matches on a structure pattern instead of on `c.last`, as the plan's text above shows, so
+  that a 7a program exercises a structure's `casesOn`.
+- [ ] The six theorems.
+- [x] Tests against native Lean: `tests/modules/run.sh` passed all 4,840 comparisons, 490 of
+  them for the calculator: `apply` on every operation with 16 operand pairs, `ofWord` on
+  seven words, `inverse`, `step` and `undo` on 16 states with five operands, and `calcRun` on
+  15 instruction arrays, some with a trailing odd word.
