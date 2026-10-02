@@ -23,7 +23,7 @@ def elabLeanexeCompile : CommandElab
       let funcEntry := mkApp2 (mkConst ``Prod [Level.zero, Level.zero]) (mkConst ``Func)
         (mkConst ``String)
       liftTermElabM do
-        let (func, hints) ← compileDefinition sourceName
+        let (func, hints, _) ← compileDefinition sourceName
         addDefinition (base ++ `ir) (mkConst ``Func) (funcToExpr func)
         let entry := mkApp4 (mkConst ``Prod.mk [Level.zero, Level.zero]) (mkConst ``Func)
           (mkConst ``String) (mkConst (base ++ `ir)) (toExpr exportName)
@@ -38,7 +38,8 @@ module.  For each definition `f` with last name component `n`, it adds `p.n.ir`
 and `p.n.hints`; it adds `p.funcs`, the list of IR functions with their export
 names, and `p.module := compile p.funcs`, in which the `i`-th definition is
 function `2 + i`.  A call of a listed definition compiles to a call of its
-function. -/
+function, and a definition's owned parameters, inferred in list order, may receive only
+moved array parameters of the caller. -/
 syntax (name := leanexeCompileModule) "leanexe_compile " ident " := " "[" ident,* "]" : command
 
 @[command_elab leanexeCompileModule]
@@ -52,9 +53,11 @@ def elabLeanexeCompileModule : CommandElab
         (mkConst ``String)
       liftTermElabM do
         let mut entries := []
+        let mut owners := []
         for name in names do
           let short := name.getString!
-          let (func, hints) ← compileDefinition name callees
+          let (func, hints, owned) ← compileDefinition name callees owners
+          owners := (name, owned) :: owners
           let irName := base ++ Name.mkSimple short ++ `ir
           addDefinition irName (mkConst ``Func) (funcToExpr func)
           addDefinition (base ++ Name.mkSimple short ++ `hints) (mkConst ``Hints) (toExpr hints)

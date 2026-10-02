@@ -15,6 +15,16 @@ open Wasm Project.ProofKit Project.Pipeline Project.Runtime
 
 variable {m : Module}
 
+/-- The loop of the array templates: for each index `i` from the value of local `index`
+below the value of local `limit`, `body` runs and the value of `element` is stored as
+element `i` of the array at local `dst`. -/
+def Stmt.fill (dst limit index : Nat) (body : Stmt) (element : Expr .u64) : Stmt :=
+  .while (.ltU (.get index) (.get limit)) <|
+    .seq body <|
+    .seq (.store (.bin .add (.get dst) (.bin .mul (.bin .add (.get index) (.const 1)) (.const 8)))
+        element)
+      (.assign index (.bin .add (.get index) (.const 1)))
+
 /-- Local `dst` receives a new array of `count` elements, with the count held in
 local `limit`.  The code traps when the count is `2 ^ 29` or more, since such an array
 does not fit in 32-bit memory.  For each index `i`, held in local `index`, `body` runs
@@ -26,11 +36,7 @@ def Stmt.buildWith (dst limit index : Nat) (count : Expr .u64) (body : Stmt)
   .seq (.call 0 [⟨.u64, .bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)⟩] [dst]) <|
   .seq (.store (.get dst) (.get limit)) <|
   .seq (.assign index (.const 0)) <|
-  .while (.ltU (.get index) (.get limit)) <|
-    .seq body <|
-    .seq (.store (.bin .add (.get dst) (.bin .mul (.bin .add (.get index) (.const 1)) (.const 8)))
-        element)
-      (.assign index (.bin .add (.get index) (.const 1)))
+  .fill dst limit index body element
 
 /-- The template with no statement per element: element `i` is the value of
 `element` while local `index` holds `i`.  Its code is that of `buildWith` with
@@ -192,6 +198,121 @@ theorem borrowed_at_after_writes {heap : Heap} {initial current : Store Unit}
   unfold regionsDisjoint at hDisjoint
   exact (hBorrowed.allocate 1 hHeap hFitsNeed).values.writesRange hWrites (by omega)
 
+/-- The fill loop, entered with the array's length word and its first `k0` elements in
+place, where `k0` is the value of local `index`, stores the remaining elements of `all`.  It
+writes memory only in the array's words, and locals only among `dst`, `limit`, `index`,
+and `body`'s `writes`. -/
+theorem Stmt.fill_spec {scratch dst limit index : Nat} {element : Expr .u64} {body : Stmt}
+    {writes : List Nat} {before : State} {base start : Store Unit} {ptr : UInt64}
+    {all : Array UInt64} {k0 : Nat}
+    (hLocals : [dst, limit, index].Nodup) (hBelow : ∀ j ∈ [dst, limit, index], j < scratch)
+    (hApart : ∀ j ∈ writes, j ∉ [dst, limit, index])
+    (hRoom : scratch ≤ before.params.length + before.locals.length) (hSize : all.size < 536870912)
+    (hk0 : k0 ≤ all.size) (hPrefix : UInt64Array.PrefixAt start ptr all k0)
+    (hWrites : Memory.WritesRange base start ptr.toNat (ptr.toNat + 8 * (all.size + 1)))
+    (hDst : before.get dst = some (.i64 ptr))
+    (hLimit : before.get limit = some (.i64 (UInt64.ofNat all.size)))
+    (hIndex : before.get index = some (.i64 (UInt64.ofNat k0)))
+    (hBody : ∀ (k : Nat) (hk : k < all.size) (store : Store Unit) (state : State), k0 ≤ k →
+      Memory.WritesRange base store ptr.toNat (ptr.toNat + 8 * (all.size + 1)) →
+      State.Frame scratch ([dst, limit, index] ++ writes) before state →
+      state.get index = some (.i64 (UInt64.ofNat k)) →
+      Triple m body scratch (fun s st => s = store ∧ st = state)
+        (fun s st => s = store ∧ State.Frame scratch writes state st ∧
+          ∃ next, element.eval s.mem scratch st = some (all[k], next))) :
+    Triple m (.fill dst limit index body element) scratch
+      (fun store state => store = start ∧ state = before)
+      (fun store state => UInt64Array.At store ptr all ∧
+        Memory.WritesRange base store ptr.toNat (ptr.toNat + 8 * (all.size + 1)) ∧
+        State.Frame scratch ([dst, limit, index] ++ writes) before state ∧
+        state.get dst = some (.i64 ptr)) := by
+  simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
+    List.nodup_nil, not_false_eq_true, and_true] at hLocals
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hBelow
+  obtain ⟨⟨hDstLimit, hDstIndex⟩, hLimitIndex⟩ := hLocals
+  obtain ⟨hDstBelow, hLimitBelow, hIndexBelow⟩ := hBelow
+  have hDstOut : dst ∉ writes := fun h => hApart dst h (by simp)
+  have hLimitOut : limit ∉ writes := fun h => hApart limit h (by simp)
+  have hIndexOut : index ∉ writes := fun h => hApart index h (by simp)
+  let n : UInt64 := UInt64.ofNat all.size
+  have hN : n.toNat = all.size := UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
+  let Inv : Store Unit → State → Prop := fun store state =>
+    ∃ k, k0 ≤ k ∧ k ≤ all.size ∧ UInt64Array.PrefixAt store ptr all k ∧
+      Memory.WritesRange base store ptr.toNat (ptr.toNat + 8 * (all.size + 1)) ∧
+      State.Frame scratch ([dst, limit, index] ++ writes) before state ∧
+      state.get dst = some (.i64 ptr) ∧ state.get limit = some (.i64 n) ∧
+      state.get index = some (.i64 (UInt64.ofNat k))
+  let measure : Store Unit → State → Nat := fun _ state =>
+    match state.get index with
+    | some (.i64 k) => all.size - k.toNat
+    | _ => 0
+  refine (Stmt.while_spec Inv measure ?_ fun bound => ?_).mono ?_ ?_
+  · rintro store state ⟨k, -, -, -, -, -, -, hLimitGet, hIndexGet⟩
+    exact ⟨decide (UInt64.ofNat k < n), state, by simp [Expr.eval, hIndexGet, hLimitGet]⟩
+  · apply Triple.of_forall
+    rintro store state ⟨current, ⟨k, hkLow, hk, hPrefix, hWrites, hFrame, hDstGet, hLimitGet,
+      hIndexGet⟩, rfl, hCondition⟩
+    simp only [Expr.eval, hIndexGet, hLimitGet, Option.pure_def, Option.bind_eq_bind,
+      Option.bind_some, Option.some.injEq, Prod.mk.injEq, decide_eq_true_eq] at hCondition
+    obtain ⟨hLess, rfl⟩ := hCondition
+    rw [ofNat_lt_iff (by omega), hN] at hLess
+    refine Stmt.seq_spec (hBody k hLess store current hkLow hWrites hFrame hIndexGet) ?_
+    apply Triple.of_forall
+    rintro s b ⟨hs, hFrameB, t1, hElementEval⟩
+    subst s
+    have hFrameBW : State.Frame scratch ([dst, limit, index] ++ writes) before b :=
+      hFrame.trans (hFrameB.weaken fun j hj => List.mem_append_right _ hj)
+    have hDstB : b.get dst = some (.i64 ptr) := (hFrameB.get dst hDstBelow hDstOut).trans hDstGet
+    have hLimitB : b.get limit = some (.i64 n) :=
+      (hFrameB.get limit hLimitBelow hLimitOut).trans hLimitGet
+    have hIndexB : b.get index = some (.i64 (UInt64.ofNat k)) :=
+      (hFrameB.get index hIndexBelow hIndexOut).trans hIndexGet
+    have hFrameT1 := hFrameBW.trans (Expr.eval_frame _ element store.mem scratch b t1 _
+      hElementEval)
+    have hKeep : ∀ j, j < scratch → t1.get j = b.get j := fun j hj =>
+      (Expr.eval_frame [] element store.mem scratch b t1 _ hElementEval).get j hj (by simp)
+    obtain ⟨t2, hSetT2⟩ := State.exists_set? (state := t1) (index := index)
+      (.i64 (UInt64.ofNat k + 1))
+      (by have := hFrameT1.params; have := hFrameT1.locals; omega)
+    refine Stmt.seq_spec (M := fun s st => s = UInt64Array.writeElement store ptr k all[k] ∧
+        st = t1) ?_ ?_
+    · refine Stmt.store_spec.mono ?_ fun _ _ h => h
+      rintro s st ⟨hs, hst⟩
+      subst s st
+      refine ⟨ptr + (UInt64.ofNat k + 1) * 8, b, all[k], t1,
+        by simp [Expr.eval, hDstB, hIndexB, U64Op.apply], hElementEval, ?_, ?_, rfl⟩
+      · rw [element_address]; exact hPrefix.elementBound k hLess
+      · rw [element_address]; rfl
+    · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+      rintro s st ⟨hs, hst⟩
+      subst s st
+      refine ⟨UInt64.ofNat k + 1, t1, t2,
+        by simp [Expr.eval, hKeep index hIndexBelow, hIndexB, U64Op.apply], hSetT2,
+        ⟨k + 1, by omega, hLess, hPrefix.write_next hLess,
+          hWrites.trans (UInt64Array.writeElement_frame store ptr all.size k all[k] hPrefix.1 hLess),
+          hFrameT1.set? hSetT2 (Or.inl (by simp)), ?_, ?_, ?_⟩, ?_⟩
+      · rw [State.get_set?_ne hDstIndex hSetT2, hKeep dst hDstBelow, hDstB]
+      · rw [State.get_set?_ne hLimitIndex hSetT2, hKeep limit hLimitBelow, hLimitB]
+      · rw [State.get_set?_same hSetT2]
+        congr 2
+        apply UInt64.toNat_inj.mp
+        simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
+        omega
+      · simp only [measure, State.get_set?_same hSetT2, hIndexGet, UInt64.toNat_add,
+          UInt64.toNat_ofNat', UInt64.reduceToNat]
+        rw [Nat.mod_eq_of_lt (a := k) (by omega), Nat.mod_eq_of_lt (by omega)]
+        omega
+  · rintro store state ⟨rfl, rfl⟩
+    exact ⟨k0, le_rfl, hk0, hPrefix, hWrites, State.Frame.refl _ _ _, hDst, hLimit, hIndex⟩
+  · rintro store state ⟨current, ⟨k, -, hk, hPrefix, hWrites, hFrame, hDstGet, hLimitGet,
+      hIndexGet⟩, hCondition⟩
+    simp only [Expr.eval, hIndexGet, hLimitGet, Option.pure_def, Option.bind_eq_bind,
+      Option.bind_some, Option.some.injEq, Prod.mk.injEq, decide_eq_false_iff_not] at hCondition
+    obtain ⟨hNotLess, rfl⟩ := hCondition
+    rw [ofNat_lt_iff (by omega), hN] at hNotLess
+    obtain rfl : k = all.size := by omega
+    exact ⟨hPrefix.complete, hWrites, hFrame, hDstGet⟩
+
 /-- The copying template allocates `8 * (n + 1)` bytes, stores the length `n`, and
 stores `f i` at each index `i`, leaving the pointer in `dst`, with the facts of
 `Heap.NewArray` for an array equal to `LeanExe.build n f`.  For each index, `body`
@@ -220,6 +341,8 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
         state.get dst = some (.i64 ptr) ∧
         heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))) store ptr
           (LeanExe.build n f)) := by
+  have hLocals0 := hLocals
+  have hBelow0 := hBelow
   simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
     List.nodup_nil, not_false_eq_true, and_true] at hLocals
   simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hBelow
@@ -306,6 +429,9 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
   obtain ⟨s3, hSet3⟩ := State.exists_set? (state := s2) (index := index) (.i64 0)
     (by have := hFrame2.params; have := hFrame2.locals; omega)
   have hFrame3 := hFrame2.set? hSet3 (Or.inl (by simp))
+  have hPtr3 : s3.get dst = some (.i64 ptr) := by rw [State.get_set?_ne hDstIndex hSet3, hPtr2]
+  have hLimit3 : s3.get limit = some (.i64 n) := by
+    rw [State.get_set?_ne hLimitIndex hSet3, hLimit2]
   set storeA := heap.allocateStore initial need 1
   let store2 : Store Unit := { storeA with mem := storeA.mem.write64 ptr.toUInt32 n }
   have hPrefix2 : UInt64Array.PrefixAt store2 ptr all 0 := by
@@ -315,20 +441,19 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
     · rw [hAllSize, UInt64.ofNat_toNat]; exact Memory.read64_write64 ..
   have hWrites2 : Memory.WritesRange storeA store2 ptr.toNat (ptr.toNat + 8 * (all.size + 1)) :=
     Memory.WritesRange.write64 _ ptr.toUInt32 _ _ _ (by omega) (by omega)
-  let Inv : Store Unit → State → Prop := fun store state =>
-    ∃ k, k ≤ all.size ∧ UInt64Array.PrefixAt store ptr all k ∧
-      Memory.WritesRange storeA store ptr.toNat (ptr.toNat + 8 * (all.size + 1)) ∧
-      State.Frame scratch ([dst, limit, index] ++ writes) before state ∧
-      state.get dst = some (.i64 ptr) ∧ state.get limit = some (.i64 n) ∧
-      state.get index = some (.i64 (UInt64.ofNat k))
-  let measure : Store Unit → State → Nat := fun _ state =>
-    match state.get index with
-    | some (.i64 k) => all.size - k.toNat
-    | _ => 0
+  have hValue : ∀ k (hk : k < all.size), all[k] = f (UInt64.ofNat k) := fun k hk => by
+    subst hAllDef; exact build_getElem n f k hk
   refine Stmt.seq_spec (M := fun store state => store = storeA ∧ state = s2) ?_ <|
     Stmt.seq_spec (M := fun store state => store = store2 ∧ state = s2) ?_ <|
     Stmt.seq_spec (M := fun store state => store = store2 ∧ state = s3) ?_ <|
-    (Stmt.while_spec Inv measure ?_ fun bound => ?_).mono ?_ ?_
+    ((Stmt.fill_spec (base := storeA) (ptr := ptr) (all := all) hLocals0 hBelow0 hApart
+      (by rw [hFrame3.params, hFrame3.locals]; exact hRoom) (by omega) (Nat.zero_le _) hPrefix2
+      hWrites2 hPtr3 (by rw [hLimit3, hAllSize, UInt64.ofNat_toNat]) (State.get_set?_same hSet3)
+      fun k hk store state _ hWrites hFrame hIndex =>
+        (hBody k store state (by omega) (hBorrowedAt store hWrites)
+          (hFrame3.weaken (fun j hj => List.mem_append_left _ hj) |>.trans hFrame) hIndex).mono
+          (fun _ _ h => h) fun s st ⟨hs, hF, next, hEval⟩ =>
+            ⟨hs, hF, next, by rw [hValue k hk]; exact hEval⟩).mono (fun _ _ h => h) ?_)
   · refine (Stmt.call_spec (f := allocFunction typeIdx) (by simp [hImports])
       (by simpa [hImports] using hFunc) rfl).mono ?_ fun _ _ h => h
     rintro store state ⟨hStore, hState⟩
@@ -349,85 +474,15 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
     rintro store state ⟨hStore, hState⟩
     subst store state
     exact ⟨0, s2, s3, rfl, hSet3, rfl, rfl⟩
-  · rintro store state ⟨k, -, -, -, -, -, hLimitGet, hIndexGet⟩
-    exact ⟨decide (UInt64.ofNat k < n), state, by simp [Expr.eval, hIndexGet, hLimitGet]⟩
-  · apply Triple.of_forall
-    rintro store state ⟨current, ⟨k, hk, hPrefix, hWrites, hFrame, hDstGet, hLimitGet,
-      hIndexGet⟩, rfl, hCondition⟩
-    simp only [Expr.eval, hIndexGet, hLimitGet, Option.pure_def, Option.bind_eq_bind,
-      Option.bind_some, Option.some.injEq, Prod.mk.injEq, decide_eq_true_eq] at hCondition
-    obtain ⟨hLess, rfl⟩ := hCondition
-    rw [ofNat_lt_iff (by omega)] at hLess
-    rw [← hAllSize] at hLess
-    refine Stmt.seq_spec (hBody k store current (by omega) (hBorrowedAt store hWrites) hFrame
-      hIndexGet) ?_
-    apply Triple.of_forall
-    rintro s b ⟨hs, hFrameB, t1, hElementEval⟩
-    subst s
-    have hFrameBW : State.Frame scratch ([dst, limit, index] ++ writes) before b :=
-      hFrame.trans (hFrameB.weaken fun j hj => List.mem_append_right _ hj)
-    have hDstB : b.get dst = some (.i64 ptr) := (hFrameB.get dst hDstBelow hDstOut).trans hDstGet
-    have hLimitB : b.get limit = some (.i64 n) :=
-      (hFrameB.get limit hLimitBelow hLimitOut).trans hLimitGet
-    have hIndexB : b.get index = some (.i64 (UInt64.ofNat k)) :=
-      (hFrameB.get index hIndexBelow hIndexOut).trans hIndexGet
-    have hFrameT1 := hFrameBW.trans (Expr.eval_frame _ element store.mem scratch b t1 _
-      hElementEval)
-    have hKeep : ∀ j, j < scratch → t1.get j = b.get j := fun j hj =>
-      (Expr.eval_frame [] element store.mem scratch b t1 _ hElementEval).get j hj (by simp)
-    have hValue : all[k] = f (UInt64.ofNat k) := by
-      subst hAllDef; exact build_getElem n f k hLess
-    obtain ⟨t2, hSetT2⟩ := State.exists_set? (state := t1) (index := index)
-      (.i64 (UInt64.ofNat k + 1))
-      (by have := hFrameT1.params; have := hFrameT1.locals; omega)
-    refine Stmt.seq_spec (M := fun s st => s = UInt64Array.writeElement store ptr k all[k] ∧
-        st = t1) ?_ ?_
-    · refine Stmt.store_spec.mono ?_ fun _ _ h => h
-      rintro s st ⟨hs, hst⟩
-      subst s st
-      refine ⟨ptr + (UInt64.ofNat k + 1) * 8, b, f (UInt64.ofNat k), t1,
-        by simp [Expr.eval, hDstB, hIndexB, U64Op.apply], hElementEval, ?_, ?_, rfl⟩
-      · rw [element_address]; exact hPrefix.elementBound k hLess
-      · rw [element_address, hValue]; rfl
-    · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
-      rintro s st ⟨hs, hst⟩
-      subst s st
-      refine ⟨UInt64.ofNat k + 1, t1, t2,
-        by simp [Expr.eval, hKeep index hIndexBelow, hIndexB, U64Op.apply], hSetT2,
-        ⟨k + 1, hLess, hPrefix.write_next hLess,
-          hWrites.trans (UInt64Array.writeElement_frame store ptr all.size k all[k] hPrefix.1 hLess),
-          hFrameT1.set? hSetT2 (Or.inl (by simp)), ?_, ?_, ?_⟩, ?_⟩
-      · rw [State.get_set?_ne hDstIndex hSetT2, hKeep dst hDstBelow, hDstB]
-      · rw [State.get_set?_ne hLimitIndex hSetT2, hKeep limit hLimitBelow, hLimitB]
-      · rw [State.get_set?_same hSetT2]
-        congr 2
-        apply UInt64.toNat_inj.mp
-        simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
-        omega
-      · simp only [measure, State.get_set?_same hSetT2, hIndexGet, UInt64.toNat_add,
-          UInt64.toNat_ofNat', UInt64.reduceToNat]
-        rw [Nat.mod_eq_of_lt (a := k) (by omega), Nat.mod_eq_of_lt (by omega)]
-        omega
-  · rintro store state ⟨hStore, hState⟩
-    subst store state
-    refine ⟨0, Nat.zero_le _, hPrefix2, hWrites2,
-      hFrame3.weaken fun j hj => List.mem_append_left _ hj, ?_, ?_, State.get_set?_same hSet3⟩
-    · rw [State.get_set?_ne hDstIndex hSet3, hPtr2]
-    · rw [State.get_set?_ne hLimitIndex hSet3, hLimit2]
-  · rintro store state ⟨current, ⟨k, hk, hPrefix, hWrites, hFrame, hDstGet, hLimitGet,
-      hIndexGet⟩, hCondition⟩
-    simp only [Expr.eval, hIndexGet, hLimitGet, Option.pure_def, Option.bind_eq_bind,
-      Option.bind_some, Option.some.injEq, Prod.mk.injEq, decide_eq_false_iff_not] at hCondition
-    obtain ⟨hNotLess, rfl⟩ := hCondition
-    rw [ofNat_lt_iff (by omega)] at hNotLess
-    obtain rfl : k = all.size := by omega
+  · rintro store state ⟨hAt, hWrites, hFrame, hDstGet⟩
     have hWithin : WritesWithin storeA store ptr.toNat (allocatedCapacity need heap.free).toNat := by
       refine ⟨by rw [hWrites.1], hWrites.2.1, fun address hOutside => hWrites.2.2 address ?_⟩
       omega
     subst hPtrDef hAllDef
-    have hNew := Heap.newArray_of_writes hHeap hFitsNeed hWithin hPrefix.complete (by omega)
+    have hNew := Heap.newArray_of_writes hHeap hFitsNeed hWithin hAt (by omega)
       (by rw [hWrites.1]; exact heap.allocateStore_memoryCaps initial need 1)
-    exact ⟨_, hFrame, hDstGet, hNew⟩
+    exact ⟨_, hFrame3.weaken (fun j hj => List.mem_append_left _ hj) |>.trans hFrame, hDstGet,
+      hNew⟩
 
 /-- `Stmt.buildWith_spec` for the template with no statement per element: the
 element expression evaluates to `f i` in any state that keeps `dst`, `limit`, and

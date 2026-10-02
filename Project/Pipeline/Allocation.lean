@@ -635,6 +635,50 @@ theorem Heap.Owned.writesWithin {heap : Heap} {store store' : Store Unit}
   simp only [regionsDisjoint] at hDisjoint
   omega
 
+/-- Writes inside the payload of an owned object keep the allocator invariant. -/
+theorem Heap.At.writesOwned {heap : Heap} {store store' : Store Unit} {ptr : UInt64}
+    {words : Array UInt64} (h : heap.At store) (hOwned : heap.Owned store ptr words)
+    (hWrites : WritesWithin store store' ptr.toNat (capacityAt store ptr)) : heap.At store' := by
+  refine ⟨by rw [hWrites.globals]; exact h.globals, ?_, h.base, by rw [hWrites.pages]; exact h.top,
+    by rw [hWrites.pages]; exact h.pages, h.above, h.below⟩
+  apply FreeListMemory.frame_headers h.freeList hWrites.pages.ge
+  intro node hNode address hLow hHigh
+  apply hWrites.bytes
+  have hSeparate := hOwned.separate node hNode
+  have := hOwned.base
+  have := h.above node hNode
+  simp only [regionsDisjoint, FreeNode.region] at hSeparate
+  omega
+
+/-- An owned object whose payload changes, inside its capacity, to hold `words'` is owned
+with the new words and the same capacity. -/
+theorem Heap.Owned.rewrite {heap : Heap} {store store' : Store Unit} {ptr : UInt64}
+    {words words' : Array UInt64} (h : heap.Owned store ptr words)
+    (hWrites : WritesWithin store store' ptr.toNat (capacityAt store ptr))
+    (hValues : UInt64Array.At store' ptr words')
+    (hFit : 8 * (words'.size + 1) ≤ capacityAt store ptr) :
+    heap.Owned store' ptr words' ∧ capacityAt store' ptr = capacityAt store ptr := by
+  have hBase := h.base
+  have hAddress := h.address
+  have hHeader : ∀ k : UInt64, k.toNat ≤ 48 → 8 ≤ k.toNat →
+      store'.mem.read64 (ptr - k).toUInt32 = store.mem.read64 (ptr - k).toUInt32 :=
+    fun k hk h8 => Memory.read64_congr _ fun i hi => by
+      rw [headerAddress_toNat (by omega) (by omega)]
+      exact hWrites.bytes _ (Or.inl (by omega))
+  have hCapacity : capacityAt store' ptr = capacityAt store ptr := by
+    unfold capacityAt
+    rw [hHeader 32 (by decide) (by decide)]
+  refine ⟨⟨hValues, hBase, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, hCapacity⟩
+  · rw [hHeader 48 (by decide) (by decide)]; exact h.magic
+  · rw [hHeader 40 (by decide) (by decide)]; exact h.count
+  · rw [hCapacity]; exact hFit
+  · rw [hHeader 24 (by decide) (by decide)]; exact h.kind
+  · rw [hHeader 16 (by decide) (by decide)]; exact h.width
+  · rw [hHeader 8 (by decide) (by decide)]; exact h.childMask
+  · rw [hCapacity]; exact hAddress
+  · rw [hCapacity]; exact h.below
+  · rw [hCapacity]; exact h.separate
+
 /-- The capacity word of an object is unchanged when the bytes of its header are. -/
 theorem capacityAt_frame {store store' : Store Unit} {ptr : UInt64} (hBase : 48 ≤ ptr.toNat)
     (hFit : ptr.toNat < 4294967296)

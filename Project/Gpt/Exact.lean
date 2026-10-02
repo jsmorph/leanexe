@@ -608,32 +608,15 @@ theorem cache_index {i k Bn D : Nat} {B nd Y c : UInt64} {a : Nat} (hB : B.toNat
     Nat.mod_eq_of_lt (by omega)]
   ring
 
-theorem appendBlock_size {C s : Array Float} (h : C.size + s.size < 2 ^ 64) :
-    (appendBlock C s).size = C.size + s.size := by
-  have hC : C.size.toUInt64.toNat = C.size :=
-    UInt64.toNat_ofNat_of_lt' (show C.size < 2 ^ 64 by omega)
-  have hs : s.size.toUInt64.toNat = s.size :=
-    UInt64.toNat_ofNat_of_lt' (show s.size < 2 ^ 64 by omega)
-  simp only [appendBlock, LeanExe.build, Array.size_ofFn]
-  rw [UInt64.toNat_add, hC, hs, Nat.mod_eq_of_lt h]
+theorem appendBlock_size {C s : Array Float} : (appendBlock C s).size = C.size + s.size :=
+  Array.size_append ..
 
-theorem appendBlock_get {C s : Array Float} {e : Nat} (h : C.size + s.size < 2 ^ 64)
-    (he : e < C.size + s.size) :
+theorem appendBlock_get {C s : Array Float} {e : Nat} (he : e < C.size + s.size) :
     (appendBlock C s)[e]! = if e < C.size then C[e]! else s[e - C.size]! := by
-  have hC : C.size.toUInt64.toNat = C.size :=
-    UInt64.toNat_ofNat_of_lt' (show C.size < 2 ^ 64 by omega)
-  have hs : s.size.toUInt64.toNat = s.size :=
-    UInt64.toNat_ofNat_of_lt' (show s.size < 2 ^ 64 by omega)
-  have hN : (C.size.toUInt64 + s.size.toUInt64).toNat = C.size + s.size := by
-    rw [UInt64.toNat_add, hC, hs, Nat.mod_eq_of_lt h]
-  have hE : (UInt64.ofNat e).toNat = e := toNat_ofNat_lt (n := C.size.toUInt64 + s.size.toUInt64)
-    (by rw [hN]; exact he)
-  unfold appendBlock
-  rw [build_get (by rw [hN]; exact he)]
-  simp only [UInt64.lt_iff_toNat_lt, hE, hC]
-  split_ifs with h1
-  · rfl
-  · rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, hE, hC]; omega), hE, hC]
+  rw [appendBlock, getElem!_pos (C ++ s) e (by simp; omega), Array.getElem_append]
+  by_cases h : e < C.size
+  · simp only [h, dite_true, ite_true, getElem!_pos C e h]
+  · simp only [h, dite_false, ite_false, getElem!_pos s (e - C.size) (by omega)]
 
 theorem embedBlock_row {tokens : Array UInt64} {wte wpe : Array Float} {T d bsize : UInt64}
     {p c : Nat} (hp : p < T.toNat) (hT : T.toNat < 2 ^ 16) (hd : d.toNat < 2 ^ 32)
@@ -810,13 +793,12 @@ theorem step_cache {C : Array Float} {tokens : Array UInt64}
   set sL := Nat.fold layers.toNat (fun i _ s => layerStep s C g1 b1 wq bq wk bk wv bv wo bo g2 b2
     wfc bfc wproj bproj (UInt64.ofNat i) (UInt64.ofNat p) nh dh f ((2 * layers + 1) * (nh * dh))
     eps) (embedBlock wte wpe tokens[p]! (UInt64.ofNat p) (nh * dh) ((2 * layers + 1) * (nh * dh)))
-  have hsum : C.size + sL.size < 2 ^ 64 := by omega
   have hread : ∀ j, j < p + 1 → ∀ x, x < Bn →
       (appendBlock C sL)[j * Bn + x]! = if j < p then C[j * Bn + x]! else sL[x]! := by
     intro j hj x hx
     have hjB : j * Bn + x < (j + 1) * Bn := by rw [Nat.succ_mul]; omega
     have hjle : (j + 1) * Bn ≤ (p + 1) * Bn := Nat.mul_le_mul_right _ hj
-    rw [appendBlock_get hsum (by omega)]
+    rw [appendBlock_get (by omega)]
     by_cases hjp : j < p
     · have : (j + 1) * Bn ≤ p * Bn := Nat.mul_le_mul_right _ hjp
       rw [ite_eq_left (by omega), ite_eq_left hjp]
@@ -829,7 +811,7 @@ theorem step_cache {C : Array Float} {tokens : Array UInt64}
       rw [hBn, ← Nat.succ_mul]; exact Nat.mul_le_mul_right _ (by omega)
     omega
   have hDB : (nh * dh).toNat ≤ Bn := Nat.le_mul_of_pos_left _ (by omega)
-  refine ⟨by rw [appendBlock_size hsum, hsize, hCsize, hpB], fun j hj c hc => ?_,
+  refine ⟨by rw [appendBlock_size, hsize, hCsize, hpB], fun j hj c hc => ?_,
     fun l hl j hj c hc => ?_, fun l hl j hj c hc => ?_⟩
   · rw [hread j hj c (by omega)]
     split_ifs with hjp

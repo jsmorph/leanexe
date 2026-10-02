@@ -31,6 +31,20 @@ structure Moved (α : Type) where
 /-- The block of the object at `p`: its header and its payload capacity. -/
 def block (store : Store Unit) (p : UInt64) : Nat × Nat := (p.toNat - 48, 48 + capacityAt store p)
 
+theorem block_eq {store store' : Store Unit} {p : UInt64}
+    (h : capacityAt store' p = capacityAt store p) : block store' p = block store p := by
+  simp [block, h]
+
+/-- The words of an owned array lie inside its block. -/
+theorem Heap.Owned.region_apart {heap : Heap} {store : Store Unit} {p : UInt64}
+    {ws : Array UInt64} {region : Nat × Nat} (h : heap.Owned store p ws)
+    (hApart : regionsDisjoint (block store p) region) :
+    regionsDisjoint (p.toNat, 8 * (ws.size + 1)) region := by
+  have := h.capacity
+  have := h.base
+  simp only [block, regionsDisjoint] at hApart ⊢
+  omega
+
 /-- The region `r` lies apart from the blocks of the objects at `moved`. -/
 def Apart (store : Store Unit) (moved : List UInt64) (r : Nat × Nat) : Prop :=
   ∀ q ∈ moved, regionsDisjoint r (block store q)

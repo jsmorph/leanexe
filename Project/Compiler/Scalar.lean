@@ -4,6 +4,7 @@ import Project.IR.Fold
 import Project.IR.Release
 import Project.IR.Function
 import Project.IR.Loop
+import Project.IR.Append
 import Project.IR.Build
 import Project.IR.ArrayLoop
 import Project.IR.Hint
@@ -80,6 +81,11 @@ structure Ctx where
   /-- Whether a `let` may bind an array: true at the top of a function body, false
   in a branch, since the array is released at the end of the function. -/
   temporaries : Bool := true
+  /-- The positions of the owned parameters of each definition in `callees`. -/
+  owners : List (Name × List Nat) := []
+  /-- The array parameters that this code may move: those whose last use, in the
+  result term, is the left operand of `++` or an owned parameter of a callee. -/
+  owned : List Lean.Expr := []
 
 def Ctx.result (ctx : Ctx) : Nat := ctx.params.size
 def Ctx.done (ctx : Ctx) : Nat := ctx.params.size + 1
@@ -693,7 +699,7 @@ mutual
         let some idx := ctx.callees.lookup body.getAppFn.constName
           | throwError "the body of a loop over an array must be one call: {source}"
         let bodyCtx := { ctx.bind i [(index, .u64)] with
-          floatArrays := (x, state) :: ctx.floatArrays }
+          floatArrays := (x, state) :: ctx.floatArrays, owned := [] }
         let (_, stmts, hints) ← withBlock (translateCall bodyCtx body idx (some [next]))
         let [.call _ args _] := stmts
           | throwError "the call in a loop over an array must need no statements before it: {source}"
@@ -870,6 +876,28 @@ mutual
             .ite (.ltU (.get index) (.get kLocal)) (.read arrayLocal (.get index))
               (.read arrayLocal (.bin .add (.get index) (.const 1)))
           return (ir, [mkHint loc (exprLength ir) "erase element" source])
+    | (``HAppend.hAppend, #[leftType, rightType, _, _, left, right]) =>
+        unless (← isArray leftType) && (← isDefEq leftType rightType) do
+          throwError "unsupported append in {source}"
+        let left := left.consumeMData
+        let right := right.consumeMData
+        let some src1 := (ctx.arrays ++ ctx.floatArrays).lookup left
+          | throwError "the left operand of `++` must be an array parameter at its last use: {source}"
+        unless ctx.owned.contains left do
+          throwError "the left operand of `++` must be an array parameter at its last use: {source}"
+        let some src2 := (ctx.arrays ++ ctx.floatArrays).lookup right
+          | throwError "the right operand of `++` must be an array variable: {source}"
+        let dst ← match dst? with
+          | some dst => pure dst
+          | none => fresh .u64 "array"
+        let size1 ← fresh .u64 "size"
+        let size2 ← fresh .u64 "size"
+        let limit ← fresh .u64 "limit"
+        let index ← fresh .u64 "index"
+        let cap ← fresh .u64 "capacity"
+        let stmt := Stmt.append dst size1 size2 limit index cap src1 src2
+        pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "array append" source]
+        return dst
     | (``LeanExe.build, #[element, count, f]) =>
         let floatElement ← isFloat element
         unless floatElement || (← isUInt64 element) do
@@ -917,12 +945,13 @@ mutual
           let source ← sourceOf value
           unless ctx.temporaries && ctx.foldable && ctx.allocating do
             throwError "an array may be bound by `let` only at the top of a function body: {source}"
+          let valueCtx := { ctx with owned := [] }
           let local_ ← match ctx.callees.lookup value.getAppFn.constName with
             | some index => do
-                let [(result, .u64)] ← translateCall ctx value index
+                let [(result, .u64)] ← translateCall valueCtx value index
                   | throwError "a `let` array must come from a call that returns one array: {source}"
                 pure result
-            | none => translateArray ctx value
+            | none => translateArray valueCtx value
           modify fun p => { p with temporaries := p.temporaries.push (local_, source) }
           let floatArray ← isFloatArray letType
           return ← withLocalDeclD name letType fun x =>
@@ -930,7 +959,7 @@ mutual
               else { ctx with arrays := (x, local_) :: ctx.arrays }
             translateResults inner (body.instantiate1 x) type dests?
         let scalar ← scalarTypeOf letType
-        let (⟨_, v⟩, vHints) ← translateAs ctx ⟨[], 0⟩ scalar value
+        let (⟨_, v⟩, vHints) ← translateAs { ctx with owned := [] } ⟨[], 0⟩ scalar value
         let local_ ← fresh scalar name.toString
         let stmt := Project.IR.Stmt.assign local_ v
         pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
@@ -982,6 +1011,12 @@ mutual
         throwError "a call in a loop body or an array element may not return an array: {source}"
       if (← whnfR (← inferType term)).isAppOfArity ``Prod 2 then
         throwError "a call in a loop body or an array element must return one value: {source}"
+    let owners := (ctx.owners.lookup term.getAppFn.constName).getD []
+    for position in owners do
+      let some arg := term.getAppArgs[position]?
+        | throwError "a call must supply every argument: {source}"
+      unless ctx.owned.contains arg.consumeMData do
+        throwError "an owned parameter must receive an array parameter at its last use: {source}"
     let mut args : Array ((type : ScalarType) × IRExpr type) := #[]
     let mut hints := #[]
     let mut offset := 0
@@ -1023,7 +1058,7 @@ mutual
       | some dests => pure dests
       | none => types.mapM fun type => fresh type "result"
     let (c, cHints) ← translateCondition ctx ⟨[], 0⟩ condition
-    let branchCtx := { ctx with temporaries := false }
+    let branchCtx := { ctx with temporaries := false, owned := [] }
     let (_, thenStmts, thenHints) ← withBlock (translateResults branchCtx thenTerm type dests)
     let (_, elseStmts, elseHints) ← withBlock (translateResults branchCtx elseTerm type dests)
     let stmt := Project.IR.Stmt.ite c (seqAll thenStmts) (seqAll elseStmts)
@@ -1103,15 +1138,40 @@ partial def translateTail (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
           .seq (.assign ctx.result value) (.assign ctx.done (.const 1))
         return (stmt, mkHint loc (stmtLength stmt) "base case" source :: valueHints)
 
+/-- The term a definition returns, after its `let`s. -/
+partial def resultTerm : Lean.Expr → Lean.Expr
+  | .letE _ _ _ body _ => resultTerm body
+  | .mdata _ e => resultTerm e
+  | e => e
+
+/-- The arguments that `term` moves: the left operand of `++`, and the arguments at the
+owned positions of a callee. -/
+def movedArguments (owners : List (Name × List Nat)) (term : Lean.Expr) : List Lean.Expr :=
+  match term.getAppFnArgs with
+  | (``HAppend.hAppend, #[_, _, _, _, left, _]) => [left.consumeMData]
+  | (fn, args) => ((owners.lookup fn).getD []).filterMap fun i => args[i]?.map (·.consumeMData)
+
+/-- The number of occurrences of the free variable `x` in `term`. -/
+partial def occurrences (x : FVarId) : Lean.Expr → Nat
+  | .fvar y => if y == x then 1 else 0
+  | .app f a => occurrences x f + occurrences x a
+  | .lam _ t b _ | .forallE _ t b _ => occurrences x t + occurrences x b
+  | .letE _ t v b _ => occurrences x t + occurrences x v + occurrences x b
+  | .mdata _ e | .proj _ _ e => occurrences x e
+  | _ => 0
+
 /-- Compiles the definition `declName`, whose parameters are `UInt64`, `Float`,
 `Array UInt64`, or `Array Float` and whose result is `UInt64`, `Float`, or an
 `Array UInt64` literal, to an IR function with hints.  The
 compiler reads the definition's unfolding equation, so a recursive call appears
 as a call of `declName`.  A definition without recursive calls becomes a prelude
 of folds and a result expression; a definition whose recursive calls are all in
-tail position becomes a loop. -/
-def compileDefinition (declName : Name) (callees : List (Name × Nat) := []) :
-    MetaM (Func × Hints) := do
+tail position becomes a loop.  An array parameter is owned when the result term, after
+the `let`s, moves it, as the left operand of `++` or as an argument at an owned position
+of a callee in `owners`, and contains it nowhere else; the compiler returns the
+positions of the owned parameters. -/
+def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
+    (owners : List (Name × List Nat) := []) : MetaM (Func × Hints × List Nat) := do
   let env ← getEnv
   let .defnInfo _ ← getConstInfo declName
     | throwError "{declName} is not a definition"
@@ -1172,10 +1232,15 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := []) :
       let func : Func :=
         { params := paramTypes.toList, vars := List.replicate ctx.vars .u64, body := loop
           results := [⟨.u64, .get ctx.result⟩] }
-      return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] })
+      return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] }, [])
     else
+      let result := resultTerm body
+      let moved := movedArguments owners result
+      let owned := (arrays ++ floatArrays).filterMap fun (param, _) =>
+        if moved.contains param && occurrences param.fvarId! result == 1 then some param
+        else none
       let ctx : Ctx :=
-        { self := declName, params, words, floats, arrays, floatArrays, callees,
+        { self := declName, params, words, floats, arrays, floatArrays, callees, owners, owned,
           foldable := true }
       let ((results, resultHints), prelude) ←
         (do
@@ -1204,7 +1269,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := []) :
       let hints : Hints :=
         { locals := paramNames.zipIdx ++ prelude.names.toList
           nodes := prelude.hints.toList ++ shifted }
-      return (func, hints)
+      let positions := (List.range params.size).filter fun i => owned.contains params[i]!
+      return (func, hints, positions)
 
 deriving instance ToExpr for U64Op
 deriving instance ToExpr for F64Op

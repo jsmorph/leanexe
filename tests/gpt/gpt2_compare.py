@@ -179,9 +179,7 @@ class Session:
         args += [f'arg-u64 {token}', f'arg-u64 {c.n_layer}', f'arg-u64 {c.n_head}',
                  f'arg-u64 {c.n_embd // c.n_head}', f'arg-u64 {c.n_inner or 4 * c.n_embd}',
                  f'arg-f64 {eps}']
-        new = self.call('step', args)
-        self.release(cache)
-        return new
+        return self.call('step', args)
 
     def scores(self, cache):
         c = self.config
