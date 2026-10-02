@@ -302,7 +302,7 @@ The user doubted that items 2 and 3 need work, and no work on them is planned.
 - [x] CLOB 5c: `cancelBid`, `setLevel` in place of `addToLevel`, and `addBid` calling `findLevel`.
 - [x] CLOB 6: `applyCommand`, with a command as plain words.
 - [ ] Later: `Array Float` literals, binary32 comparisons and sign operations, and `Float32` programs.
-- [ ] Iteration 7, user inductives, in steps 7a, 7b, and 7c (user, 2026-10-02).  7a, enumerations and structures without recursion, is done: `calculator.wasm`, with `Flat` instances that represent an enumeration as its constructor index and a structure as its fields.  7b, sums with fields and no recursion, is next; 7c covers recursive types as heap records, with recursive `release`.
+- [ ] Iteration 7, user inductives, in steps 7a, 7b, and 7c (user, 2026-10-02).  7a, enumerations and structures without recursion, is done: `calculator.wasm`, with `Flat` instances that represent an enumeration as its constructor index and a structure as its fields.  7b, sums with fields and no recursion, is done: `shapes.wasm`, with a tag word followed by every constructor's fields, one slot each.  7c, recursive types as heap records with recursive `release`, is next.
 - [x] GPT 1: `dot`, with reads of `Array Float`.
 - [x] GPT 2: `matVec`, with a statement per element in the copying template and `Array Float` results.
 - [x] GPT 3: `layerNorm`.

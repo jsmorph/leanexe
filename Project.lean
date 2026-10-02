@@ -166,6 +166,7 @@ import Project.Scale.Verify
 import Project.ScaledHypot.Module
 import Project.ScaledHypot.Verify
 import Project.Shape.Module
+import Project.Shape.Verify
 import Project.SumArray.Module
 import Project.SumArray.Verify
 import Project.SumCount.Module
