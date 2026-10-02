@@ -214,7 +214,7 @@ def scalarTypeOf (type : Lean.Expr) : MetaM ScalarType := do
   throwError "unsupported type {type}"
 
 /-- The WebAssembly value types of a value of type `type`: a word for `UInt64`, for an
-enumeration, and, when `arrays`, for an array pointer; a float for `Float`; the components of
+enumeration, and, when `arrays`, for an array or list pointer; a float for `Float`; the components of
 each side of a pair and of each field of a structure, in order; and for a sum, a word for the
 constructor index followed by the components of every constructor's fields.  The fields of a
 structure or sum may not be arrays. -/
@@ -222,7 +222,7 @@ partial def componentTypes (type : Lean.Expr) (arrays : Bool) : MetaM (List Scal
   let type ← whnfR type
   if type.isAppOfArity ``Prod 2 then
     return (← componentTypes type.appFn!.appArg! arrays) ++ (← componentTypes type.appArg! arrays)
-  if arrays && (← isArray type) then return [.u64]
+  if arrays && ((← isArray type) || (← isUInt64List type)) then return [.u64]
   match ← userType? type with
   | some (.struct _ fields) => return (← fields.mapM fun field => componentTypes field false).flatten
   | some (.sum ctors) =>
@@ -969,8 +969,15 @@ mutual
       unless ← isUInt64 element do throwError "unsupported fold element type in {source}"
       unless ← (if accType == .f64 then isFloat acc else isUInt64 acc) do
         throwError "unsupported fold accumulator type in {source}"
-      let some listLocal := ctx.lists.lookup list.consumeMData
-        | throwError "a list fold must run over a list variable: {source}"
+      -- A list from a call is a temporary that the fold's code releases after the fold.
+      let (listLocal, temporary) ← match ctx.lists.lookup list.consumeMData with
+        | some index => pure (index, false)
+        | none => do
+            let some index := ctx.callees.lookup list.consumeMData.getAppFn.constName
+              | throwError "a list fold must run over a list variable or a call: {source}"
+            let [(local_, .u64)] ← translateCall ctx list.consumeMData index
+              | throwError "the call in a list fold must return one list: {source}"
+            pure (local_, true)
       let (⟨_, initial⟩, initialHints) ← translateAs ctx ⟨[], 0⟩ accType init
       let before ← get
       let accLocal := before.next
@@ -988,13 +995,20 @@ mutual
             words := (e, elementLocal) :: ctx.words, foldable := false, pureCalls := false })
             bodyLoc accType (mkApp2 f a e).headBeta
       let fold := Stmt.listFold listLocal accLocal cursorLocal elementLocal body
+      let listSource ← sourceOf list
+      let releases : List (Project.IR.Stmt × Hint) := if temporary then
+          [(.release listLocal, mkHint ⟨[], before.length + stmtLength assign + stmtLength fold⟩
+            (stmtLength (.release listLocal)) "release-list" listSource)]
+        else []
       set { before with
-        stmts := before.stmts.push assign |>.push fold
+        stmts := (before.stmts.push assign |>.push fold) ++ (releases.map Prod.fst).toArray
         hints := before.hints ++
           (mkHint ⟨[], before.length⟩ (stmtLength assign) "fold start" (← sourceOf init) ::
             initialHints.map (Hint.shift before.length) ++
-            mkHint foldLoc (stmtLength fold) "list-fold-loop" source :: bodyHints).toArray
-        length := before.length + stmtLength assign + stmtLength fold
+            mkHint foldLoc (stmtLength fold) "list-fold-loop" source :: bodyHints ++
+            releases.map Prod.snd).toArray
+        length := before.length + stmtLength assign + stmtLength fold +
+          (releases.map (stmtLength ∘ Prod.fst)).sum
         vars := before.vars ++ #[accType, .u64, .u64]
         names := before.names ++ #[("accumulator", accLocal), ("cursor", cursorLocal),
           ("element", elementLocal)] }

@@ -377,4 +377,44 @@ theorem NodeBorrowed.listAt {heap : Heap} {store : Store Unit} (hHeap : heap.At 
       simp only [List.length_cons, List.length_nil] at *
       exact ⟨hSlots.nonzero, by omega, by omega, hx, NodeBorrowed.listAt hHeap hChild⟩
 
+/-- An owned list of words heads a list in memory. -/
+theorem NodeOwned.listAt {heap : Heap} {store : Store Unit} (hHeap : heap.At store) :
+    ∀ {p : UInt64} {xs : List UInt64}, NodeOwned heap store p (encodeList xs) →
+      ListAt store.mem p xs
+  | _, [], h => h
+  | _, _ :: _, ⟨hHead, hx, hChild, _⟩ => by
+      have hBase := hHead.base
+      have := hHead.address
+      have := hHead.below
+      have := hHead.capacity
+      have := hHeap.top
+      simp only [List.length_cons, List.length_nil] at *
+      exact ⟨fun h => by rw [h] at hBase; simp at hBase, by omega, by omega, hx,
+        NodeOwned.listAt hHeap hChild⟩
+
+/-- A borrowed array whose region keeps its bytes and is a region of the new heap stays
+borrowed. -/
+theorem Heap.Borrowed.keep {heap heap' : Heap} {store store' : Store Unit} {q : UInt64}
+    {ws : Array UInt64} (h : heap.Borrowed store q ws) (hPages : store.mem.pages ≤ store'.mem.pages)
+    (hBytes : ∀ a, q.toNat ≤ a → a < q.toNat + 8 * (ws.size + 1) →
+      store'.mem.bytes a = store.mem.bytes a)
+    (hRegion : heap'.Region (q.toNat, 8 * (ws.size + 1))) : heap'.Borrowed store' q ws :=
+  ⟨arrayAt_frame h.values hPages hBytes, hRegion.below,
+    fun node hNode => regionsDisjoint_symm (hRegion.separate node hNode)⟩
+
+/-- An owned array whose block keeps its bytes and is a region of the new heap stays owned,
+with the same capacity. -/
+theorem Heap.Owned.keep {heap heap' : Heap} {store store' : Store Unit} {q : UInt64}
+    {ws : Array UInt64} (h : heap.Owned store q ws) (hPages : store.mem.pages ≤ store'.mem.pages)
+    (hBytes : ∀ a, (block store q).1 ≤ a → a < (block store q).1 + (block store q).2 →
+      store'.mem.bytes a = store.mem.bytes a)
+    (hRegion : heap'.Region (block store q)) :
+    heap'.Owned store' q ws ∧ capacityAt store' q = capacityAt store q := by
+  have := h.base
+  have := h.address
+  simp only [block] at hBytes hRegion
+  exact ⟨h.frame hPages (fun a hl hh => hBytes a hl (by omega)) (by
+      have := hRegion.below; simp only at this; omega) hRegion.separate,
+    capacityAt_frame (by omega) (by omega) fun a hl hh => hBytes a hl (by omega)⟩
+
 end Project.Pipeline
