@@ -658,6 +658,16 @@ mutual
           let ir : IRExpr .u64 := .get local_
           return (ir, [hint ir "field"])
       | .inr _ => throwError "a field used as a word must be one word: {source}"
+    -- A `let` of a word: the value is assigned to a fresh local before the body's value.
+    -- The value is pure, so its statement may run whenever the body's statements run.
+    if let .letE name type value body _ := term then
+      unless ← isWordType type do throwError "a `let` in a word value must bind a word: {source}"
+      let (v, vHints) ← translateValue ctx ⟨[], 0⟩ value
+      let local_ ← fresh .u64 name.eraseMacroScopes.toString
+      let stmt := Project.IR.Stmt.assign local_ v
+      pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
+      return ← withLocalDeclD name type fun x =>
+        translateValue (ctx.bind x [(local_, .u64)]) loc (body.instantiate1 x)
     if let some (discriminant, alternatives) ← userCases? term then
       if let some ptr := ctx.nodes.lookup discriminant.consumeMData then
         let ir : IRExpr .u64 := .get (← translateNodeCases ctx source ptr .u64 alternatives)
@@ -724,6 +734,21 @@ mutual
         let (y, yHints) ← translateValue inner (branch.inside (some 1)) b
         let ir : IRExpr .u64 := .ite condition x y
         return (ir, hint ir "min" :: lHints ++ rHints ++ xHints ++ yHints)
+    | (``Max.max, #[type, _, a, b]) =>
+        unless ← isUInt64 type do throwError "unsupported max type in {source}"
+        -- `max a b` is `if a ≤ b then b else a`.  Each operand is translated once, its
+        -- statements first, and its value is assigned to a fresh local, so that a call in an
+        -- operand runs once.
+        let (l, lHints) ← translateValue ctx ⟨[], 0⟩ a
+        let (r, rHints) ← translateValue ctx ⟨[], 0⟩ b
+        let x ← fresh .u64 "max operand"
+        let xStmt := Project.IR.Stmt.assign x l
+        pushStmt xStmt (mkHint ⟨[], 0⟩ (stmtLength xStmt) "max operand" (← sourceOf a) :: lHints)
+        let y ← fresh .u64 "max operand"
+        let yStmt := Project.IR.Stmt.assign y r
+        pushStmt yStmt (mkHint ⟨[], 0⟩ (stmtLength yStmt) "max operand" (← sourceOf b) :: rHints)
+        let ir : IRExpr .u64 := .ite (.leU (.get x) (.get y)) (.get y) (.get x)
+        return (ir, [hint ir "max"])
     | (``GetElem?.getElem!, #[collection, _, element, _, _, _, array, position]) =>
         unless (← isUInt64Array collection) && (← isUInt64 element) do
           throwError "unsupported array read in {source}"

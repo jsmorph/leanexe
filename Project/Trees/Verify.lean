@@ -4,29 +4,58 @@ import Project.IR.Recursion
 import Project.Pipeline.Records
 import Project.Encoding.RoundTrip
 
-/-! The compiled functions over `Tree` compute their Lean definitions exactly.  Each is an
+/-! The compiled functions over `KeyTree` compute their Lean definitions exactly.  Each is an
 entry function and an internal function that recurses with a depth parameter. -/
 
 namespace Project.Trees
 
 open Wasm Project.Pipeline Project.IR LeanExe.Examples.Trees
 
-/-- The internal function of `size`, at any depth, aborts or returns the size and keeps the
-store. -/
-theorem size_rec : ∀ t, Keeps (compile trees.funcs) (2 + 1) Tree.size t :=
-  Func.recursion trees.funcs 1 trees.size.rec.ir "size.rec" rfl Tree.size (fun t => sizeOf t)
-    (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) fun t ih heap initial vs d hHeap hB => by
-  obtain ⟨p, rfl, hNode⟩ := hB
-  let start : State := { params := [.i64 p, .i64 d], locals := List.replicate 6 (.i64 0) }
-  show Triple _ (.seq (.ite (.ltU (.const 999) (.get 1)) .abort .skip)
-      (.ite (.eq (.get 0) (.const 0)) (.assign 2 (.const 0))
+/-- The internal function of a recursion over `KeyTree` whose body is the depth guard and a
+match: a leaf assigns `c` to the result, and a node loads its fields, calls the function on
+both subtrees into locals 6 and 7, and runs `combine`, which leaves `g (f l) k (f r)` in the
+result.  At any depth, a call aborts or keeps the store and returns `f t`. -/
+theorem treeRec {i : Nat} {func : Func} {name : String} (hFunc : trees.funcs[i]? = some (func, name))
+    (f : KeyTree → UInt64) (c : UInt64) (g : UInt64 → UInt64 → UInt64 → UInt64)
+    (hLeaf : f .leaf = c) (hNode : ∀ l k r, f (.node l k r) = g (f l) k (f r))
+    (extra : Nat) (combine : Stmt)
+    (hBody : func.body = .seq (.ite (.ltU (.const 999) (.get 1)) .abort .skip)
+      (.ite (.eq (.get 0) (.const 0)) (.assign 2 (.const c))
         (.seq (.load .u64 3 (.bin .add (.get 0) (.const 0)))
           (.seq (.load .u64 4 (.bin .add (.get 0) (.const 8)))
             (.seq (.load .u64 5 (.bin .add (.get 0) (.const 16)))
-              (.seq (.call 3 [⟨.u64, .get 3⟩, ⟨.u64, .bin .add (.get 1) (.const 1)⟩] [6])
-                (.seq (.call 3 [⟨.u64, .get 5⟩, ⟨.u64, .bin .add (.get 1) (.const 1)⟩] [7])
-                  (.assign 2 (.bin .add (.bin .add (.get 6) (.const 1)) (.get 7)))))))))) 8
-    (fun store state => store = initial ∧ state = start) _
+              (.seq (.call (2 + i) [⟨.u64, .get 3⟩, ⟨.u64, .bin .add (.get 1) (.const 1)⟩] [6])
+                (.seq (.call (2 + i) [⟨.u64, .get 5⟩, ⟨.u64, .bin .add (.get 1) (.const 1)⟩]
+                  [7]) combine)))))))
+    (hParams : func.params = [.u64, .u64]) (hVars : func.vars = List.replicate (6 + extra) .u64)
+    (hWidth : func.width = 0) (hResults : func.results = [⟨.u64, .get 2⟩])
+    (hCombine : ∀ (initial : Store Unit) (p d pl k pr a b : UInt64),
+      Triple (compile trees.funcs) combine (8 + extra)
+        (fun store state => store = initial ∧ state =
+          { params := [.i64 p, .i64 d]
+            locals := [.i64 0, .i64 pl, .i64 k, .i64 pr, .i64 a, .i64 b] ++
+              List.replicate extra (.i64 0) })
+        (fun store state => store = initial ∧ ∃ next,
+          Expr.evalResults store.mem (8 + extra) [⟨.u64, .get 2⟩] state =
+            some ([.i64 (g a k b)], next))) :
+    ∀ t, Keeps (compile trees.funcs) (2 + i) f t := by
+  have hScratch : func.scratch = 8 + extra := by
+    simp only [Func.scratch, hParams, hVars, List.length_cons, List.length_nil,
+      List.length_replicate]
+    omega
+  refine Func.recursion trees.funcs i func name hFunc f (fun t => sizeOf t)
+    (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [hParams]) fun t ih heap initial vs d hHeap hB => ?_
+  obtain ⟨p, rfl, hNode'⟩ := hB
+  have hCallee : (compile trees.funcs).funcs[2 + i - (compile trees.funcs).imports.length]? =
+      some (func.function (2 + i)) := compile_funcs hFunc
+  let zeros := List.replicate extra (Value.i64 0)
+  let start : State :=
+    { params := [.i64 p, .i64 d]
+      locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0] ++ zeros }
+  have hStart : func.state ([.i64 p] ++ [.i64 d]) = start := by
+    simp [Func.state, Func.locals, hVars, hWidth, start, zeros, List.replicate_add,
+      ScalarType.valueType, ValueType.zero]
+  rw [hStart, hBody, hResults, hScratch]
   refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = start)
     ((Stmt.ite_spec (PThen := fun _ _ => True) (PElse := fun s st => s = initial ∧ st = start)
       Stmt.abort_spec (Stmt.skip_spec.mono (fun _ _ h => h) fun _ _ h => h)).mono ?_
@@ -34,23 +63,22 @@ theorem size_rec : ∀ t, Keeps (compile trees.funcs) (2 + 1) Tree.size t :=
   · rintro s st ⟨rfl, rfl⟩
     refine ⟨decide ((999 : UInt64) < d), start, by simp [Expr.eval, start, State.get], ?_⟩
     split <;> trivial
-  have hCallee : (compile trees.funcs).funcs[3 - (compile trees.funcs).imports.length]? =
-      some (trees.size.rec.ir.function (2 + 1)) := compile_funcs (i := 1) rfl
   cases t with
   | leaf =>
-    obtain rfl : p = 0 := hNode
-    let s1 : State := { params := [.i64 0, .i64 d], locals := List.replicate 6 (.i64 0) }
+    obtain rfl : p = 0 := hNode'
+    let s1 : State :=
+      { params := [.i64 0, .i64 d]
+        locals := [.i64 c, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0] ++ zeros }
     refine (Stmt.ite_spec (PThen := fun s st => s = initial ∧ st = start)
       (PElse := fun _ _ => False) (Stmt.assign_spec.mono ?_ fun _ _ h => h)
       Triple.of_false).mono ?_ fun _ _ h => h
     · rintro s st ⟨rfl, rfl⟩
-      exact ⟨0, start, s1, rfl, rfl, rfl, s1,
-        by simp [trees.size.rec.ir, Func.scratch, Expr.evalResults, Expr.eval, s1, State.get,
-          Tree.size]⟩
+      exact ⟨c, start, s1, rfl, rfl, rfl, s1,
+        by simp [Expr.evalResults, Expr.eval, s1, State.get, hLeaf]⟩
     · rintro s st ⟨rfl, rfl⟩
       exact ⟨true, start, by simp [Expr.eval, start, State.get], rfl, rfl⟩
   | node l k r =>
-    obtain ⟨hSlots, hl, hk, hr, -⟩ := hNode
+    obtain ⟨hSlots, hl, hk, hr, -⟩ := hNode'
     simp only [Nat.zero_add, Nat.reduceAdd] at hk hr
     have hNonzero := hSlots.nonzero
     have hAddress := hSlots.address
@@ -66,17 +94,18 @@ theorem size_rec : ∀ t, Keeps (compile trees.funcs) (2 + 1) Tree.size t :=
     let pl := initial.mem.read64 (slotAddress p 0)
     let pr := initial.mem.read64 (slotAddress p 2)
     let ps : List Value := [.i64 p, .i64 d]
-    let s1 : State := { params := ps, locals := [.i64 0, .i64 pl, .i64 0, .i64 0, .i64 0, .i64 0] }
-    let s2 : State := { params := ps, locals := [.i64 0, .i64 pl, .i64 k, .i64 0, .i64 0, .i64 0] }
-    let s3 : State := { params := ps, locals := [.i64 0, .i64 pl, .i64 k, .i64 pr, .i64 0, .i64 0] }
+    let s1 : State :=
+      { params := ps, locals := [.i64 0, .i64 pl, .i64 0, .i64 0, .i64 0, .i64 0] ++ zeros }
+    let s2 : State :=
+      { params := ps, locals := [.i64 0, .i64 pl, .i64 k, .i64 0, .i64 0, .i64 0] ++ zeros }
+    let s3 : State :=
+      { params := ps, locals := [.i64 0, .i64 pl, .i64 k, .i64 pr, .i64 0, .i64 0] ++ zeros }
     let s4 : State :=
-      { params := ps, locals := [.i64 0, .i64 pl, .i64 k, .i64 pr, .i64 l.size, .i64 0] }
-    let s5 : State :=
-      { params := ps, locals := [.i64 0, .i64 pl, .i64 k, .i64 pr, .i64 l.size, .i64 r.size] }
-    let s6 : State :=
       { params := ps
-        locals := [.i64 (l.size + 1 + r.size), .i64 pl, .i64 k, .i64 pr, .i64 l.size,
-          .i64 r.size] }
+        locals := [.i64 0, .i64 pl, .i64 k, .i64 pr, .i64 (f l), .i64 0] ++ zeros }
+    let s5 : State :=
+      { params := ps
+        locals := [.i64 0, .i64 pl, .i64 k, .i64 pr, .i64 (f l), .i64 (f r)] ++ zeros }
     refine (Stmt.ite_spec (PThen := fun _ _ => False)
       (PElse := fun s st => s = initial ∧ st = start) Triple.of_false ?_).mono ?_ fun _ _ h => h
     · refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = s1) ?_ <|
@@ -95,22 +124,73 @@ theorem size_rec : ∀ t, Keeps (compile trees.funcs) (2 + 1) Tree.size t :=
       · refine Stmt.load_spec.mono ?_ fun _ _ h => h
         rintro s st ⟨rfl, rfl⟩
         exact ⟨p + 16, s2, s3, rfl, by rw [h2, hs2]; omega, by rw [h2]; rfl, rfl, rfl⟩
-      · exact Stmt.selfCall_spec rfl hCallee rfl (ih l (by simp; omega)) hHeap ⟨pl, rfl, hl⟩
-          (d := d + 1) rfl rfl
-      · exact Stmt.selfCall_spec rfl hCallee rfl (ih r (by simp)) hHeap ⟨pr, rfl, hr⟩
-          (d := d + 1) rfl rfl
-      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
-        rintro s st ⟨rfl, rfl⟩
-        exact ⟨l.size + 1 + r.size, s5, s6, rfl, rfl, rfl, s6,
-          by simp [trees.size.rec.ir, Func.scratch, Expr.evalResults, Expr.eval, s6, ps,
-            State.get, Tree.size]⟩
+      · exact Stmt.selfCall_spec rfl hCallee (by simp [Func.function, Func.type,
+          Function.numParams, hParams]) (ih l (by simp; omega)) hHeap ⟨pl, rfl, hl⟩
+          (d := d + 1) rfl (by simp [State.setAll, State.set?, s3, s4, ps, zeros]; omega)
+      · exact Stmt.selfCall_spec rfl hCallee (by simp [Func.function, Func.type,
+          Function.numParams, hParams]) (ih r (by simp)) hHeap ⟨pr, rfl, hr⟩
+          (d := d + 1) rfl (by simp [State.setAll, State.set?, s4, s5, ps, zeros]; omega)
+      · refine (hCombine initial p d pl k pr (f l) (f r)).mono (fun _ _ h => h) ?_
+        rintro s st ⟨rfl, next, hEval⟩
+        exact ⟨rfl, next, by rw [hNode]; exact hEval⟩
     · rintro s st ⟨rfl, rfl⟩
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
-theorem size_implements : Implements trees.module 2 Tree.size :=
-  Func.entry_implements trees.funcs 0 trees.size.ir "size" rfl Tree.size
-    (g := trees.size.rec.ir.function (2 + 1)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
-    (compile_funcs (i := 1) rfl) rfl
+theorem size_rec : ∀ t, Keeps (compile trees.funcs) (2 + 3) KeyTree.size t :=
+  treeRec (i := 3) rfl KeyTree.size 0 (fun a _ b => a + 1 + b) rfl (fun _ _ _ => rfl) 0 _ rfl
+    rfl rfl rfl rfl fun initial p d pl k pr a b => by
+      refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+      rintro s st ⟨rfl, rfl⟩
+      let next : State :=
+        { params := [.i64 p, .i64 d]
+          locals := [.i64 (a + 1 + b), .i64 pl, .i64 k, .i64 pr, .i64 a, .i64 b] }
+      exact ⟨a + 1 + b, _, next, rfl, rfl, rfl, next,
+        by simp [Expr.evalResults, Expr.eval, State.get, next]⟩
+
+theorem sum_rec : ∀ t, Keeps (compile trees.funcs) (2 + 4) KeyTree.sum t :=
+  treeRec (i := 4) rfl KeyTree.sum 0 (fun a k b => a + k + b) rfl (fun _ _ _ => rfl) 0 _ rfl
+    rfl rfl rfl rfl fun initial p d pl k pr a b => by
+      refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+      rintro s st ⟨rfl, rfl⟩
+      let next : State :=
+        { params := [.i64 p, .i64 d]
+          locals := [.i64 (a + k + b), .i64 pl, .i64 k, .i64 pr, .i64 a, .i64 b] }
+      exact ⟨a + k + b, _, next, rfl, rfl, rfl, next,
+        by simp [Expr.evalResults, Expr.eval, State.get, next]⟩
+
+theorem height_rec : ∀ t, Keeps (compile trees.funcs) (2 + 5) KeyTree.height t :=
+  treeRec (i := 5) rfl KeyTree.height 0 (fun a _ b => max a b + 1) rfl (fun _ _ _ => rfl) 2 _
+    rfl rfl rfl rfl rfl fun initial p d pl k pr a b => by
+      let s1 : State :=
+        { params := [.i64 p, .i64 d]
+          locals := [.i64 0, .i64 pl, .i64 k, .i64 pr, .i64 a, .i64 b, .i64 a, .i64 0] }
+      let s2 : State :=
+        { params := [.i64 p, .i64 d]
+          locals := [.i64 0, .i64 pl, .i64 k, .i64 pr, .i64 a, .i64 b, .i64 a, .i64 b] }
+      let s3 : State :=
+        { params := [.i64 p, .i64 d]
+          locals := [.i64 (max a b + 1), .i64 pl, .i64 k, .i64 pr, .i64 a, .i64 b, .i64 a,
+            .i64 b] }
+      refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = s1) ?_ <|
+        Stmt.seq_spec (M := fun s st => s = initial ∧ st = s2) ?_ ?_
+      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨rfl, rfl⟩
+        exact ⟨a, _, s1, rfl, rfl, rfl, rfl⟩
+      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨rfl, rfl⟩
+        exact ⟨b, s1, s2, rfl, rfl, rfl, rfl⟩
+      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨rfl, rfl⟩
+        refine ⟨max a b + 1, s2, s3, ?_, rfl, rfl, s3,
+          by simp [Expr.evalResults, Expr.eval, State.get, s3]⟩
+        simp only [Expr.eval, State.get, s2, U64Op.apply]
+        rw [show max a b = if a ≤ b then b else a from rfl]
+        by_cases h : a ≤ b <;> simp [h]
+
+theorem size_implements : Implements trees.module 2 KeyTree.size :=
+  Func.entry_implements trees.funcs 0 trees.size.ir "size" rfl KeyTree.size
+    (g := trees.size.rec.ir.function (2 + 3)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
+    (compile_funcs (i := 3) rfl) rfl
     (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
     (by
       intro params v hLen
@@ -118,13 +198,37 @@ theorem size_implements : Implements trees.module 2 Tree.size :=
       | [a], _ => exact ⟨_, rfl, by simp [State.get, Func.state, trees.size.ir, Func.locals]⟩)
     size_rec
 
+theorem sum_implements : Implements trees.module 3 KeyTree.sum :=
+  Func.entry_implements trees.funcs 1 trees.sum.ir "sum" rfl KeyTree.sum
+    (g := trees.sum.rec.ir.function (2 + 4)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
+    (compile_funcs (i := 4) rfl) rfl
+    (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
+    (by
+      intro params v hLen
+      match params, hLen with
+      | [a], _ => exact ⟨_, rfl, by simp [State.get, Func.state, trees.sum.ir, Func.locals]⟩)
+    sum_rec
+
+theorem height_implements : Implements trees.module 4 KeyTree.height :=
+  Func.entry_implements trees.funcs 2 trees.height.ir "height" rfl KeyTree.height
+    (g := trees.height.rec.ir.function (2 + 5)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
+    (compile_funcs (i := 5) rfl) rfl
+    (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
+    (by
+      intro params v hLen
+      match params, hLen with
+      | [a], _ => exact ⟨_, rfl, by simp [State.get, Func.state, trees.height.ir, Func.locals]⟩)
+    height_rec
+
 /-- `encode` succeeds on `trees.module`, and its bytes decode to a module that computes
-`Tree.size` exactly. -/
+`KeyTree.size`, `KeyTree.sum`, and `KeyTree.height` exactly. -/
 theorem trees_bytes : ∃ bytes, Wasm.Encoding.encode trees.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 Tree.size := by
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 KeyTree.size ∧
+      Implements m 3 KeyTree.sum ∧ Implements m 4 KeyTree.height := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip trees.module (by decide) (by decide +kernel)
-  exact ⟨bytes, success, trees.module, decoded, size_implements⟩
+  exact ⟨bytes, success, trees.module, decoded, size_implements, sum_implements,
+    height_implements⟩
 
 #print axioms trees_bytes
 
