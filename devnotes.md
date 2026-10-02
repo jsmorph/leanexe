@@ -21416,3 +21416,54 @@ Revised steps:
 
 7c2 is done.  7c3, user recursive types, comes next: constructors as record allocations,
 matches as loads, a user list type, then a tree.
+
+## 2026-10-02: Plan: Iteration 7c3, user recursive types
+
+7c1 and 7c2 compile `List UInt64` as records and prove `release` on any tree of records.
+7c3 compiles recursive inductive types that the program declares.  Today `userType?`
+rejects any recursive inductive, and tail recursion takes only `UInt64` parameters.
+
+Steps:
+
+- 7c3a, a user list: `inductive Words | nil | cons (head : UInt64) (tail : Words)`, with a
+  per-type `Encode Words` instance beside the program, as the `Flat` instances are.
+  Programs: a match on a borrowed `Words` (`head`, with `nil` giving 0); a tail-recursive
+  sum with an accumulator (`sumAcc acc w`); and `range n`, a loop whose state is a
+  `Words` and whose step applies `cons`.
+- 7c3b, a tree: `inductive Tree | leaf | node (left : Tree) (key : UInt64) (right :
+  Tree)`.  Functions over a tree are not tail recursive in their natural form.
+
+Questions:
+
+1. The layout rule, which each per-type `encode` follows and the compiler implements.  The
+   7c plan recommended, with the review's corrections: the only constructor without fields
+   is the null pointer; a constructor with fields is a record; the record starts with a
+   tag slot holding the constructor index when more than one constructor is a record; the
+   constructor's own fields follow in declaration order, a word or a float in one slot
+   (flattened by the 7a and 7b rules for structures and sums without recursion), and a
+   field of the type itself, or of `List UInt64`, a child slot; at most 64 slots.  Several
+   constructors without fields in a recursive type become tag-only records.
+   Recommendation: adopt it as stated; `Words` and `Tree` need only the first, second, and
+   fourth clauses.
+2. The source forms of 7c3a.  Recommendation: a parameter of a recursive type, borrowed,
+   held as a pointer word; `match` on such a variable, compiled as a test of the pointer
+   against 0 (or a load of the tag) followed by loads of the fields the alternative uses;
+   tail recursion whose parameters include such a variable; a constructor as the next state
+   of a loop, compiled with `Stmt.record`; a function result of a recursive type, owned.
+   A constructor elsewhere stays rejected, as list cells are, since its allocation would
+   run on every path.
+3. The proof rules.  Recommendation: generalize the 7c1 and 7c2 rules from `encodeList` to
+   any `Encode` instance whose `encode` follows the layout rule: a memory predicate for a
+   node (the counterpart of `ListAt`, with uniqueness), the match rule, the constructor
+   rule (`Heap.Built.cell` for any slots), and a tail-recursion rule over `Represent`
+   arguments that the store determines, with the store fixed and the measure recovered by
+   `Classical.choose` from a uniqueness premise, as `Func.tail_implements` does for
+   scalars.  The release rule needs no change.
+4. Recursion that is not tail recursion, for 7c3b.  Options: (a) compile a recursive call
+   as a WebAssembly call of the function itself, and prove `Implements` by induction on a
+   measure of the argument, which needs a call rule for a function whose own theorem is the
+   induction hypothesis; (b) require tail-recursive sources with an explicit stack, which
+   users would write as a `List` of subtrees; (c) restrict trees to folds that the compiler
+   turns into loops over an explicit stack.  This question changes what programs the system
+   accepts and how deep a call may go (Talos's semantics and Wasmtime bound the stack), so it
+   goes to the user after review, before 7c3b starts.
