@@ -21911,3 +21911,36 @@ Proofs:
 
 Tests: `incr` against native Lean, with zero allocations and frees inside the call, and the depth
 guard on chains of 999 and 1,000 nodes.  An LTG entry for consumed recursion.
+
+### Review of the step 3 plan
+
+One reviewer checked the plan and wrote its proof structure in Lean.  I verified the review by
+running the reviewer's files: `Rebuild.lean` defines `Heap.Rebuilt`, `Rebuilds`,
+`Func.returns`, `Func.rebuildRecursion`, `Stmt.selfCall_rebuilds`, `Func.entry_rebuilds`, and
+`Heap.Rebuilt.node`, with `KeyTree` instances of the node case, all with complete proofs and
+axioms `propext`, `Classical.choice`, and `Quot.sound`; `Sites.lean` runs `moveSites` on copies
+of the definitions.  The cited compiler lines say what the report says.
+
+- The greatest fixed point is sound and terminates, but a definition returning a word can
+  break under it.  `odd (node l _ r) = match r with | leaf => odd l | node .. => odd l + odd r`
+  makes its parameter owned (the self-call `odd l` is a branch value), and
+  `translateNodeCases` then rejects it, where the present compiler accepts it as a borrowed
+  recursion.  A word result cannot consume a tree in any case, since releasing a tree is not
+  supported.  Revision: the fixed point applies only to a definition returning a tree, and each
+  round is intersected with the previous positions.
+- Two checks were missing: the internal function must reject an owned parameter that some path
+  does not move, as the non-recursive path does, and `translateSelfCall` must require each
+  owned argument to occur once and mark it moved, so that `f l l` cannot pass one value twice.
+- The internal function's context needs `owned` and `owners`.
+- `Heap.Rebuilt` as planned suffices.  `Func.entry_rebuilds` derives every clause of
+  `Implements` through `Heap.Rebuilt.keepBorrowed` and `keepOwned`.  `0 < r.2` costs nothing,
+  since every region used has positive size (`Node.blocks_pos`).  `Rebuilds` keeps `Separate`,
+  which adds two lines per self-call now and is needed once a function consumes two trees or
+  reads an array.  `Heap.Built.rebuilt` will serve `insert`'s leaf.
+- `Stmt.selfCall_rebuilds` takes a state function `next`, since the call's result is not known
+  before the call.
+
+Revised steps for step 3: `Heap.Rebuilt` and its lemmas in `Project/Pipeline/Rebuilt.lean`;
+`Func.returns` in `Correct.lean`, with `Func.implements_moves` and `Func.keeps` derived from
+it; the consumed recursion rule in `Recursion.lean`; the compiler changes with the revisions
+above; `incr` and its theorem.
