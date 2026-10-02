@@ -21204,13 +21204,32 @@ Steps of 7c1, each built, tested, committed, and pushed:
   `Heap.At.writesApart`.  Left: the borrowed frame and ownership of a new cons cell.
 - [ ] IR: the cons template and its rule; the loop over a borrowed list, with a measure that
   the store and state determine; the loop with a list state, through `Stmt.loop_inv`.  The
+  loop over a borrowed list is `Stmt.listFold` in `Project/IR/ListFold.lean`, with its rule
+  `Stmt.listFold_spec`.  Its premise `ListAt mem p xs` states the list in memory alone;
+  `NodeBorrowed.listAt` derives it from a borrowed argument and the allocator invariant.  The
+  measure is `listLength mem p`, the length of the list at the cursor, defined by
+  `Classical.choose` and fixed by `ListAt.unique`.  The
   template `Stmt.record` and its rule `Stmt.record_spec` are in `Project/IR/Record.lean`.
   The rule ends in `Heap.NewRecord`: the allocator invariant, the header for any slots of
   the right length and mask, the words in the slots, and every region of the old heap with
   its bytes, still a region, and apart from the new block.
 - [ ] Compiler: `List UInt64` as a pointer word, `[]`, `x :: xs` in a loop step that
-  consumes the state, and `List.foldl` over a list variable.
-- [ ] Programs `listSum` and `listRange`, with their theorems.
+  consumes the state, and `List.foldl` over a list variable.  Done: a `List UInt64`
+  parameter and `List.foldl` over it, with hint rule `list-fold-loop` and its LTG entry.
+- [ ] Programs `listSum` and `listRange`, with their theorems.  `listSum` is done:
+  `listSum_implements` and `lists_bytes` in `Project/Lists/Verify.lean`, with axioms
+  `propext`, `Classical.choice`, and `Quot.sound`.  Its proof is 20 lines, the length of
+  `sumArray_implements`.
 - [ ] Host: a list argument that allocates records and writes their headers, and a list
   result that walks the records and checks their headers; tests against native Lean,
-  including `[]` and `listRange 0`.
+  including `[]` and `listRange 0`.  The kind is `chain-u64`, since `list:` already names a
+  list of results.  Both directions are in `tools/wasmtime-host.c`; `listSum` matched
+  native Lean on 37 lists, and all 5,103 module comparisons pass.
+
+The LTG check reports five declarations that no longer exist, in the entries
+`array-state-loop`, `array-literal`, `array-build`, and `function-call`: `Live.weaken`,
+`loopPrefix_size_le`, `alloc_spec`, `Heap.Room.after_allocate`, and `Heap.Room.after`.
+Commit `704849fd` (2026-10-01), which dropped the memory premise, removed or renamed them
+without updating the entries.
+
+- [ ] Update the four LTG entries to the current declarations.

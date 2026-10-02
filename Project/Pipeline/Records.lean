@@ -180,4 +180,41 @@ structure Heap.NewRecord (heap : Heap) (initial : Store Unit) (heap' : Heap) (st
   pages : initial.mem.pages ≤ store.mem.pages
   caps : store.memoryCaps = initial.memoryCaps
 
+/-- The list of words `xs` at `p` in `mem`: the null pointer for `[]`, and for `x :: xs` a
+nonzero pointer to two words inside memory and the 32-bit address space, the first `x` and
+the second a pointer to `xs`. -/
+def ListAt (mem : Mem) : UInt64 → List UInt64 → Prop
+  | p, [] => p = 0
+  | p, x :: xs => p ≠ 0 ∧ p.toNat + 16 < 4294967296 ∧ p.toNat + 16 ≤ mem.pages * 65536 ∧
+      mem.read64 (slotAddress p 0) = x ∧ ListAt mem (mem.read64 (slotAddress p 1)) xs
+
+theorem ListAt.unique {mem : Mem} : ∀ {p : UInt64} {xs ys : List UInt64},
+    ListAt mem p xs → ListAt mem p ys → xs = ys
+  | _, [], [], _, _ => rfl
+  | _, [], _ :: _, h, ⟨h0, _⟩ => absurd h h0
+  | _, _ :: _, [], ⟨h0, _⟩, h => absurd h h0
+  | _, _ :: _, _ :: _, ⟨_, _, _, hx, hxs⟩, ⟨_, _, _, hy, hys⟩ => by
+      rw [← hx, ← hy, ListAt.unique hxs hys]
+
+/-- The length of the list of words at `p` in `mem`, or 0 when `p` heads none. -/
+noncomputable def listLength (mem : Mem) (p : UInt64) : Nat :=
+  open Classical in if h : ∃ xs, ListAt mem p xs then (Classical.choose h).length else 0
+
+theorem ListAt.listLength {mem : Mem} {p : UInt64} {xs : List UInt64} (h : ListAt mem p xs) :
+    listLength mem p = xs.length := by
+  have hExists : ∃ xs, ListAt mem p xs := ⟨xs, h⟩
+  rw [Pipeline.listLength, dif_pos hExists, ListAt.unique (Classical.choose_spec hExists) h]
+
+/-- A borrowed list of words heads a list in memory. -/
+theorem NodeBorrowed.listAt {heap : Heap} {store : Store Unit} (hHeap : heap.At store) :
+    ∀ {p : UInt64} {xs : List UInt64}, NodeBorrowed heap store p (encodeList xs) →
+      ListAt store.mem p xs
+  | _, [], h => h
+  | _, _ :: _, ⟨hSlots, hx, hChild, _⟩ => by
+      have := hSlots.address
+      have := hSlots.below
+      have := hHeap.top
+      simp only [List.length_cons, List.length_nil] at *
+      exact ⟨hSlots.nonzero, by omega, by omega, hx, NodeBorrowed.listAt hHeap hChild⟩
+
 end Project.Pipeline

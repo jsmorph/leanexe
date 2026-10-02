@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "list-fold-loop",
+  "title": "List fold loop",
+  "summary": "Proves that the compiler's list fold statement leaves the fold of a List UInt64 in the accumulator local, for a UInt64 or Float accumulator, from one obligation about the fold body's expression.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["lists", "compiler-motifs", "loops", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["accumulator", "list", "record", "fold", "frame", "load", "loop"],
+  "annotationKinds": ["list-fold-loop", "fold start", "fold result"],
+  "modules": ["Project.IR.ListFold", "Project.Pipeline.Records"],
+  "declarations": ["Project.IR.Stmt.listFold", "Project.IR.Stmt.listFold_spec", "Project.Pipeline.ListAt", "Project.Pipeline.NodeBorrowed.listAt", "Project.Pipeline.listLength", "Project.IR.State.Frame", "Project.IR.Expr.eval_frame"],
+  "premises": ["Four distinct fold locals below the scratch index", "ListAt for the list in the initial memory, which NodeBorrowed.listAt gives for a borrowed argument", "The body evaluates to g a e whenever the accumulator holds accType.value a and the element local holds .i64 e"],
+  "result": "A Triple whose postcondition keeps the store, frames every other local below scratch, and puts accType.value (xs.foldl g start) in the accumulator.",
+  "consumers": ["Project.Lists.listSum_implements"],
+  "relatedEntries": ["array-fold-loop"],
+  "exclusion": null
+}
