@@ -20924,3 +20924,52 @@ recursive ones included, remain the goal.  On 2026-10-02 the user kept the order
 7c, with programs that I choose for each step, since each step builds the constructor
 dispatch and field binding that the next reuses.  The representation and compiler rules
 above stand; 7a's program changes.
+
+The review of the 7a plan, checked here: Lean 4.34 generates `PC.ctorIdx : PC → Nat`, not
+`toCtorIdx`; `Flat` needs `β` as an `outParam`, or the generic instance has no synthesis
+order; the generic `Represent` path through `Flat` agrees by `rfl` with the one through
+`Scalar`, but no 7a program uses it, and structures that a call consumes would also need a
+`Moved` instance, so it waits; the compiler rejects pair parameters, `let`s of pair type,
+and pair projections today (`compileDefinition`, `translateResults`), so "as pairs are now"
+holds only for results and loop states; and a wildcard alternative elaborates to
+`f._sparseCasesOn_1`, which is `PC.rec` whose minor premises are the explicit alternatives or
+the wildcard applied to a proof.  The loop restriction is in the compiler only:
+`Stmt.callPure_spec` already writes several results, and `Stmt.loop_spec` takes any `Scalar`
+state.
+
+Revised 7a.  The programs, in `LeanExe/Examples/Calc.lean`:
+
+```lean
+inductive Op | add | sub | mul | div
+structure Calc where
+  value : UInt64
+  steps : UInt64
+  last : Op
+
+def Op.apply (op : Op) (a b : UInt64) : UInt64 := match op with
+  | .add => a + b | .sub => a - b | .mul => a * b | .div => a / b
+def Op.ofWord (w : UInt64) : Op :=
+  if w = 0 then .add else if w = 1 then .sub else if w = 2 then .mul else .div
+def Op.inverse : Op → Op
+  | .add => .sub | .sub => .add | op => op
+def Calc.step (c : Calc) (op : Op) (x : UInt64) : Calc :=
+  { c with value := op.apply c.value x, steps := c.steps + 1, last := op }
+def Calc.undo (c : Calc) (x : UInt64) : Calc := match c.last with
+  | .add | .sub => { c with value := c.last.inverse.apply c.value x }
+  | _ => c
+def calcRun (words : Array UInt64) : Calc :=
+  LeanExe.loop (words.size.toUInt64 / 2) { value := 0, steps := 0, last := .add } fun i c =>
+    c.step (Op.ofWord words[(2 * i).toNat]!) words[(2 * i + 1).toNat]!
+```
+
+They use an enumeration as parameter, result, and field; a match on an enumeration as a
+word and as a structure result; a wildcard; a structure as parameter, result, and loop
+state; a structure update; projections of a structure variable; and a call that returns a
+structure inside a loop body.  Compiler rules that no program uses (`let`s of structure
+type, nested structures) are left out.  The theorems are `ImplementsPure` for the five
+scalar functions and `Implements` for `calcRun`.
+
+Trusted text under question 1's option (a): the class `Flat α (β : outParam Type)`, one
+generic `Scalar` instance, `Flat Op UInt64 := ⟨fun op => op.ctorIdx.toUInt64⟩`, and
+`Flat Calc (UInt64 × UInt64 × Op) := ⟨fun c => (c.value, c.steps, c.last)⟩`, each followed by
+an `example` that evaluates one value by `rfl`.  Question 1 goes to the user.
