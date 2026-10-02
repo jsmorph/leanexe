@@ -21189,3 +21189,21 @@ width 1 whose `owned` adds that the blocks are pairwise disjoint, with empty `re
 instance would take the `Encode` one; its theorems would then describe a layout the
 compiler does not emit and could not be proved, so the overlap cannot yield a false theorem.
 Each type gets one instance, by whether it is recursive.
+
+On 2026-10-02 the user chose option (a), the generic `Encode`.
+
+Steps of 7c1, each built, tested, committed, and pushed:
+
+- [ ] The trusted definitions in `Implements.lean`, and `Encode (List UInt64)` beside the
+  programs.
+- [ ] Heap facts: a record allocated and given its header and slots is owned; owned and
+  borrowed nodes are kept by allocation and by writes outside their blocks; a new record
+  lies apart from existing ones.
+- [ ] IR: the cons template and its rule; the loop over a borrowed list, with a measure that
+  the store and state determine; the loop with a list state, through `Stmt.loop_inv`.
+- [ ] Compiler: `List UInt64` as a pointer word, `[]`, `x :: xs` in a loop step that
+  consumes the state, and `List.foldl` over a list variable.
+- [ ] Programs `listSum` and `listRange`, with their theorems.
+- [ ] Host: a list argument that allocates records and writes their headers, and a list
+  result that walks the records and checks their headers; tests against native Lean,
+  including `[]` and `listRange 0`.
