@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "recursive-calls",
+  "title": "Recursion with calls and a depth guard",
+  "summary": "Proves a definition that calls itself other than in tail position: its internal function, with a depth parameter, by strong induction on a measure, and its entry function from one call at depth 0.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["records", "recursion", "calls", "compiler-motifs", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["recursion", "call", "depth-guard", "induction"],
+  "annotationKinds": ["recursive entry", "depth guard", "recursive call", "recursive call result", "max", "max operand", "let"],
+  "modules": ["Project.IR.Recursion", "Project.Trees.Verify"],
+  "declarations": ["Project.IR.Keeps", "Project.IR.Func.keeps", "Project.IR.Func.recursion", "Project.IR.Stmt.selfCall_spec", "Project.IR.Func.entry_implements", "Project.IR.Stmt.abort_spec", "Project.Trees.treeRec"],
+  "premises": ["For the internal function: its body keeps the store and returns f x, given Keeps for every argument with a smaller measure", "For the entry: its body is one call of the internal function with the parameters and depth 0"],
+  "result": "Keeps for the internal function at every depth, and Implements for the entry.",
+  "consumers": ["Project.Trees.size_implements", "Project.Trees.sum_implements", "Project.Trees.height_implements"],
+  "relatedEntries": ["node-match", "tail-recursion-records"],
+  "exclusion": null
+}

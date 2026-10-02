@@ -78,5 +78,18 @@ case "$out" in
   *"wasm \`unreachable\` instruction executed"*) ;;
   *) depth_failed=$((depth_failed + 1)); echo "fail: trees size on a chain of 1000: $out" ;;
 esac
-echo "depth guard: 2 cases, $depth_failed failed"
+for module_name in trees:height treeFrame:wide; do
+  module=${module_name%%:*}
+  name=${module_name##*:}
+  out=$("$host" call "$build/$module/$module.wasm" "$name" i64 "$(chain 999)" 2>&1) || true
+  case "$out" in
+    *trap*|*error*) depth_failed=$((depth_failed + 1)); echo "fail: $module $name on a chain of 999: $out" ;;
+  esac
+  out=$("$host" call "$build/$module/$module.wasm" "$name" i64 "$(chain 1000)" 2>&1) || true
+  case "$out" in
+    *"wasm \`unreachable\` instruction executed"*) ;;
+    *) depth_failed=$((depth_failed + 1)); echo "fail: $module $name on a chain of 1000: $out" ;;
+  esac
+done
+echo "depth guard: 6 cases, $depth_failed failed"
 [ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$stats_failed" -eq 0 ] && [ "$depth_failed" -eq 0 ]

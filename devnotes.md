@@ -21665,8 +21665,13 @@ Revised steps for 7c3b, each built, tested, committed, and pushed:
   (`translateSelfCall`) requires `ctx.foldable`, so it may appear at the top of the body or
   in a node match's branch, which now keeps its parent's `foldable` because its statements
   stay inside the conditional; expression-level conditionals still clear it.
-- [ ] The recursion rule (`Func.keeps` for any parameter values, induction on a measure)
-  and `size`; then `sum`; then `max` on words and `height`.  `Project/IR/Recursion.lean`
+- [x] The recursion rule (`Func.keeps` for any parameter values, induction on a measure)
+  and `size`; then `sum`; then `max` on words and `height`.  The type is now `KeyTree`:
+  Mathlib declares a root-namespace `Tree` with a `height`, and `Tree.height` in the module
+  list resolved to it.  `treeRec` (120 lines) proves the internal function of any fold of
+  this shape from one premise about its combining statement; `size_rec` and `sum_rec` take
+  10 lines each and `height_rec` 28.  `max a b` on words compiles to locals for both
+  operands, after their statements, and `if a ≤ b then b else a`, Lean's definition.  `Project/IR/Recursion.lean`
   holds `Func.keeps`, `Keeps`, `Func.recursion`, `Stmt.selfCall_spec` (from the reviewer's
   sketch), and `Func.entry_implements`.  `size_rec` (93 lines) and `size_implements` are in
   `Project/Trees/Verify.lean`, and `trees_bytes` has axioms `propext`, `Classical.choice`,
@@ -21674,9 +21679,18 @@ Revised steps for 7c3b, each built, tested, committed, and pushed:
   host's `tree-u64:` argument kind takes a preorder description; `size` matched native Lean
   on 24 trees, a chain of 999 nodes returned 999, and a chain of 1,000 trapped at
   `unreachable`.  All 5,171 module comparisons pass.
-- [ ] Host: a tree argument kind; tests against native Lean; a depth section that expects
+- [x] Host: a tree argument kind; tests against native Lean; a depth section that expects
   `unreachable` at depth 1,001 and success at 1,000 with the widest accepted frame; hints
-  and LTG entries.
+  and LTG entries.  `translateValue` now compiles a `let` of a word, which lets
+  `KeyTree.wide` keep sixteen words live across its calls; its internal function holds 24
+  values, the most accepted.  It lives in `Project/Trees/Frame.lean`, a module for the depth
+  test without theorems (`treeFrame.wasm`, 1,686 bytes).  `trees.wasm` is 1,822 bytes with
+  sha256 `1289bdb94e5bacdd…`.  `size`, `sum`, and `height` matched native Lean on 24 trees
+  each and `wide` on 10; on a chain of 999 nodes `size`, `height`, and `wide` return, and on
+  a chain of 1,000 each traps at `unreachable`.  All 5,229 module comparisons pass.  The LTG
+  entry is `recursive-calls`.
+
+7c3b is done, and with it Iteration 7.  Next: moves of recursive values.
 
 ### Agenda after 7c3b
 

@@ -315,17 +315,17 @@ def wordsCases : IO Unit := do
 open LeanExe.Examples.Trees in
 /-- The host's preorder description of a tree: `.` for a leaf, and a node's key followed by
 its subtrees. -/
-def Tree.describe : Tree → String
+def KeyTree.describe : KeyTree → String
   | .leaf => "."
-  | .node l k r => s!"{k},{Tree.describe l},{Tree.describe r}"
+  | .node l k r => s!"{k},{KeyTree.describe l},{KeyTree.describe r}"
 
 open LeanExe.Examples.Trees in
 /-- A tree of `n` nodes whose shape and keys follow the arbitrary words from `seed`. -/
-def Tree.arbitrary : Nat → Nat → Tree
+def KeyTree.arbitrary : Nat → Nat → KeyTree
   | 0, _ => .leaf
   | n + 1, seed =>
     let left := (rw seed).toNat % (n + 1)
-    .node (Tree.arbitrary left (2 * seed + 1)) (rw (seed + 7)) (Tree.arbitrary (n - left) (2 * seed + 2))
+    .node (KeyTree.arbitrary left (2 * seed + 1)) (rw (seed + 7)) (KeyTree.arbitrary (n - left) (2 * seed + 2))
 termination_by n => n
 decreasing_by
   all_goals
@@ -334,16 +334,20 @@ decreasing_by
 
 open LeanExe.Examples.Trees in
 /-- A chain of `n` nodes, each with a leaf on the left. -/
-def Tree.chain : Nat → Tree
+def KeyTree.chain : Nat → KeyTree
   | 0 => .leaf
-  | n + 1 => .node .leaf (UInt64.ofNat n) (Tree.chain n)
+  | n + 1 => .node .leaf (UInt64.ofNat n) (KeyTree.chain n)
 
 open LeanExe.Examples.Trees in
 def treeCases : IO Unit := do
-  let trees : List Tree := [.leaf, .node .leaf 5 .leaf, .node (.node .leaf 1 .leaf) maxU .leaf,
-    Tree.chain 999] ++ (List.range 20).map fun i => Tree.arbitrary (i * 3) i
+  let trees : List KeyTree := [.leaf, .node .leaf 5 .leaf, .node (.node .leaf 1 .leaf) maxU .leaf,
+    KeyTree.chain 999] ++ (List.range 20).map fun i => KeyTree.arbitrary (i * 3) i
   for t in trees do
-    line "trees" "size" "i64" [s!"tree-u64:{Tree.describe t}"] (toString t.size)
+    line "trees" "size" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.size)
+    line "trees" "sum" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.sum)
+    line "trees" "height" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.height)
+  for t in trees.take 10 do
+    line "treeFrame" "wide" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.wide)
 
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
