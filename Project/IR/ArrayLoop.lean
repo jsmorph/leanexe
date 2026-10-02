@@ -1,4 +1,4 @@
-import Project.IR.Live
+import Project.IR.Tuple
 import Project.IR.Loop
 import Project.IR.Build
 
@@ -7,8 +7,8 @@ The rule lemmas for the compiler's loops over array states.  The compiler transl
 `LeanExe.loop n init f`, where `init` is an `Array Float` variable and `f l x` is one call
 of a compiled function, to a copy of `init` into the state local and `Stmt.loop`, whose
 body calls the function, releases the previous state, and moves the call's result into the
-state local.  It translates a loop over a pair of arrays that the called function
-consumes, started from two owned arrays, to `Stmt.pairLoop`, whose body is the call alone.
+state local.  It translates a loop over a nest of arrays that the called function consumes,
+started from owned arrays, to `Stmt.tupleLoop`, whose body is the call alone.
 -/
 
 namespace Project.IR
@@ -279,124 +279,139 @@ theorem Live.arrayLoop [Represent α] {idx : Nat} {g : α → Array Float}
     rintro s st ⟨heap', p, hLive', hFrame, hState⟩
     exact hRest heap' p s st hLive' hFrame hState
 
-/-- The loop over a pair of arrays that the callee consumes: locals `s1` and `s2` receive the
-arrays at locals `src1` and `src2`, and for each index below `count` a call of function `idx`
-consumes the pair and leaves the next one in `s1` and `s2`. -/
-def Stmt.pairLoop (s1 s2 limit index src1 src2 idx : Nat) (count : Expr .u64)
-    (args : List ((type : ScalarType) × Expr type)) : Stmt :=
-  .seq (.assign s1 (.get src1)) <| .seq (.assign s2 (.get src2)) <|
-    .loop limit index count (.call idx args [s1, s2])
+/-- The assignments of the locals `srcs` to the locals `states`, in order, before `next`. -/
+def Stmt.copies (states srcs : List Nat) (next : Stmt) : Stmt :=
+  (states.zip srcs).foldr (fun c rest => .seq (.assign c.1 (.get c.2)) rest) next
 
-/-- The pair loop leaves `LeanExe.loop n (xs, ys) fun l x => g (F l x)` in two new
-temporaries at the head of the list, in place of the two it starts from, or aborts.  The call
-of `idx`, which implements `g`, must receive arguments that represent `F l x` at index `l` and
-state `x`, consume exactly the two state arrays, and read only arrays apart from them. -/
-theorem Live.pairLoop [Represent α] {idx : Nat} {g : α → Array UInt64 × Array UInt64}
+/-- The loop over a nest of arrays that the callee consumes: the locals `states` receive the
+arrays at the locals `srcs`, and for each index below `count` a call of function `idx`
+consumes the arrays and leaves the next ones in `states`. -/
+def Stmt.tupleLoop (states : List Nat) (limit index : Nat) (srcs : List Nat) (idx : Nat)
+    (count : Expr .u64) (args : List ((type : ScalarType) × Expr type)) : Stmt :=
+  Stmt.copies states srcs (.loop limit index count (.call idx args states))
+
+/-- The copies leave the words at `srcs` in the distinct locals `states`, which `srcs`
+avoids, and `next` runs from there. -/
+theorem Stmt.copies_spec {scratch : Nat} {next : Stmt} {initial : Store Unit}
+    {Q : Store Unit → State → Prop} :
+    ∀ {states srcs : List Nat} {ps : List UInt64} {before : State},
+      states.Nodup → (∀ j ∈ srcs, j ∉ states) → (∀ j ∈ states, j < scratch) →
+      scratch ≤ before.params.length + before.locals.length →
+      before.Holds srcs (ps.map .i64) → states.length = srcs.length →
+      (∀ b, State.Frame scratch states before b → b.Holds states (ps.map .i64) →
+        Triple m next scratch (fun s st => s = initial ∧ st = b) Q) →
+      Triple m (Stmt.copies states srcs next) scratch (fun s st => s = initial ∧ st = before) Q
+  | [], [], [], before, _, _, _, _, _, _, hNext => hNext before (.refl _ _ _) .nil
+  | s :: states, src :: srcs, p :: ps, before, hNodup, hFresh, hBelow, hRoom, hHolds, hLength,
+      hNext => by
+      have hSrc : before.get src = some (.i64 p) := (List.forall₂_cons.mp hHolds).1
+      have hS : s < before.params.length + before.locals.length := by
+        have := hBelow s List.mem_cons_self; omega
+      have hSrcs : s ∉ srcs := fun h => hFresh s (List.mem_cons_of_mem _ h) List.mem_cons_self
+      have hOut : s ∉ states := (List.nodup_cons.mp hNodup).1
+      have hRoom1 : scratch ≤ (before.update s (.i64 p)).params.length +
+          (before.update s (.i64 p)).locals.length := by
+        simp only [State.update_params_length, State.update_locals_length]; exact hRoom
+      refine Stmt.seq_spec (Stmt.run_spec (final := before.update s (.i64 p))
+        (by simp [Stmt.run, Expr.eval, hSrc, State.set?_eq_update _ hS])) ?_
+      refine Stmt.copies_spec (List.nodup_cons.mp hNodup).2
+        (fun j hj hjs => hFresh j (List.mem_cons_of_mem _ hj) (List.mem_cons_of_mem _ hjs))
+        (fun j hj => hBelow j (List.mem_cons_of_mem _ hj)) hRoom1
+        (State.Holds.set? (State.set?_eq_update _ hS) hSrcs (List.forall₂_cons.mp hHolds).2)
+        (by simpa using hLength) fun b hFrame hHoldsB => hNext b ?_ (.cons ?_ hHoldsB)
+      · exact ((State.Frame.refl _ _ _).update (Or.inl List.mem_cons_self)).trans
+          (hFrame.weaken fun j hj => List.mem_cons_of_mem _ hj)
+      · rw [hFrame.get s (hBelow s List.mem_cons_self) hOut]
+        exact State.get_update_same hS
+  | [], _ :: _, _, _, _, _, _, _, _, h, _ => by simp at h
+  | _ :: _, [], _, _, _, _, _, _, _, h, _ => by simp at h
+  | _, [], _ :: _, _, _, _, _, _, h, _, _ => nomatch h
+  | _, _ :: _, [], _, _, _, _, _, h, _, _ => nomatch h
+
+/-- The tuple loop leaves `LeanExe.loop n x0 fun l x => g (F l x)` in new temporaries at the
+head of the list, in place of the arrays of `x0`, or aborts.  The call of `idx`, which
+implements `g`, must receive arguments that represent `F l x` at index `l` and state `x`,
+consume exactly the state's arrays, and read only arrays apart from them. -/
+theorem Live.tupleLoop [Represent α] [Represent β] [Arrays β] {idx : Nat} {g : α → β}
     (hImpl : Implements m idx g) {f : Wasm.Function}
     (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
     {args : List ((type : ScalarType) × Expr type)} (hParams : args.length = f.numParams)
-    {moved : List UInt64} {scratch s1 s2 limit index src1 src2 : Nat}
-    (hLocals : [s1, s2, limit, index].Nodup) (hBelow : ∀ j ∈ [s1, s2, limit, index], j < scratch)
+    {moved : List UInt64} {scratch limit index : Nat} {states srcs : List Nat}
+    (hLocals : (limit :: index :: states).Nodup)
+    (hBelow : ∀ j ∈ limit :: index :: states, j < scratch)
+    (hSrcs : ∀ j ∈ srcs, j ∉ states) (hLength : states.length = srcs.length)
     {before : State} (hRoom : scratch ≤ before.params.length + before.locals.length)
-    {heap0 heap : Heap} {initial store : Store Unit} {rest : List (UInt64 × Array UInt64)}
-    {p1 p2 : UInt64} {xs ys : Array UInt64}
-    (hLive : Live heap0 initial moved heap store ((p1, xs) :: (p2, ys) :: rest))
-    (hCap : initial.memoryCap m 0 ≤ 65535)
-    (hSrc1 : before.get src1 = some (.i64 p1)) (hSrc2 : before.get src2 = some (.i64 p2))
-    (hSrcs : src2 ≠ s1) {count : Expr .u64} {n : UInt64}
-    (hCount : ∀ mem st, State.Frame scratch [s1, s2] before st →
+    {heap0 heap : Heap} {initial store : Store Unit} {ts rest : List (UInt64 × Array UInt64)}
+    {x0 : β} (hTs : ts.map (·.2) = Arrays.arrays x0)
+    (hLive : Live heap0 initial moved heap store (ts ++ rest))
+    (hCap : initial.memoryCap m 0 ≤ 65535) (hSrcValues : before.Holds srcs (pointers ts))
+    {count : Expr .u64} {n : UInt64}
+    (hCount : ∀ mem st, State.Frame scratch states before st →
       ∃ after, count.eval mem scratch st = some (n, after))
-    (F : UInt64 → Array UInt64 × Array UInt64 → α)
-    (hArgs : ∀ (k : Nat) (q1 q2 : UInt64) (heap' : Heap) (store' : Store Unit) (st : State),
-      k < n.toNat → State.Frame scratch [s1, s2, limit, index] before st →
-      st.get index = some (.i64 (UInt64.ofNat k)) →
-      st.get s1 = some (.i64 q1) → st.get s2 = some (.i64 q2) →
-      Live heap0 initial moved heap' store'
-        ((q1, (loopPrefix (fun l x => g (F l x)) (xs, ys) k).1) ::
-          (q2, (loopPrefix (fun l x => g (F l x)) (xs, ys) k).2) :: rest) →
+    (F : UInt64 → β → α)
+    (hArgs : ∀ (k : Nat) (us : List (UInt64 × Array UInt64)) (heap' : Heap)
+        (store' : Store Unit) (st : State),
+      k < n.toNat → State.Frame scratch (limit :: index :: states) before st →
+      st.get index = some (.i64 (UInt64.ofNat k)) → st.Holds states (pointers us) →
+      us.map (·.2) = Arrays.arrays (loopPrefix (fun l x => g (F l x)) x0 k) →
+      Live heap0 initial moved heap' store' (us ++ rest) →
       ∃ vals after, Expr.evalResults store'.mem scratch args st = some (vals, after) ∧
         Represent.borrowed heap' store' vals
-          (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) (xs, ys) k)) ∧
-        Represent.moves vals (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) (xs, ys) k)) =
-          [q1, q2] ∧
-        ∀ q ∈ Represent.reads vals
-            (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) (xs, ys) k)),
-          regionsDisjoint q (block store' q1) ∧ regionsDisjoint q (block store' q2)) :
-    Triple m (.pairLoop s1 s2 limit index src1 src2 idx count args) scratch
+          (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) x0 k)) ∧
+        Represent.moves vals (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) x0 k)) =
+          us.map (·.1) ∧
+        ∀ q ∈ Represent.reads vals (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) x0 k)),
+          ∀ t ∈ us, regionsDisjoint q (block store' t.1)) :
+    Triple m (.tupleLoop states limit index srcs idx count args) scratch
       (fun s st => s = store ∧ st = before)
-      (fun s st => ∃ heap' q1 q2, Live heap0 initial moved heap' s
-          ((q1, (LeanExe.loop n (xs, ys) fun l x => g (F l x)).1) ::
-            (q2, (LeanExe.loop n (xs, ys) fun l x => g (F l x)).2) :: rest) ∧
-        State.Frame scratch [s1, s2, limit, index] before st ∧
-        st.get s1 = some (.i64 q1) ∧ st.get s2 = some (.i64 q2)) := by
-  simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
-    List.nodup_nil, not_false_eq_true, and_true] at hLocals
-  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hBelow
-  obtain ⟨⟨h12, h1L, h1I⟩, ⟨h2L, h2I⟩, hLI⟩ := hLocals
-  obtain ⟨hB1, hB2, hBL, hBI⟩ := hBelow
-  let b2 := (before.update s1 (.i64 p1)).update s2 (.i64 p2)
-  have hFrameB2 : State.Frame scratch [s1, s2] before b2 :=
-    ((State.Frame.refl _ _ _).update (Or.inl (by simp))).update (Or.inl (by simp))
-  have hLenU : ∀ (s : State) (j : Nat) (v : Value),
-      (s.update j v).params.length + (s.update j v).locals.length =
-        s.params.length + s.locals.length := fun s j v => by
-    simp [State.update_params_length, State.update_locals_length]
-  have hLenB1 : (before.update s1 (.i64 p1)).params.length +
-      (before.update s1 (.i64 p1)).locals.length = before.params.length + before.locals.length := by
-    simp [State.update_params_length, State.update_locals_length]
-  have hHoldsB2 : b2.Holds [s1, s2] [.i64 p1, .i64 p2] := by
-    refine .cons ?_ (.cons ?_ .nil)
-    · rw [State.get_update_ne h12]
-      exact State.get_update_same (by omega)
-    · exact State.get_update_same (by rw [hLenB1]; omega)
-  have hRoomB2 : scratch ≤ b2.params.length + b2.locals.length := by
-    simp only [b2, State.update_params_length, State.update_locals_length]; exact hRoom
-  have hFrameAll : ∀ st, State.Frame scratch (limit :: index :: [s1, s2]) b2 st →
-      State.Frame scratch [s1, s2, limit, index] before st := fun st h =>
-    (hFrameB2.weaken fun j hj => by simp at hj ⊢; omega).trans
-      (h.weaken fun j hj => by simp at hj ⊢; omega)
-  refine Stmt.seq_spec (Stmt.run_spec (final := (before.update s1 (.i64 p1))) ?_) <|
-    Stmt.seq_spec (Stmt.run_spec (final := b2) ?_) ?_
-  · simp [Stmt.run, Expr.eval, hSrc1, State.set?_eq_update _ (show s1 < before.params.length +
-      before.locals.length by omega)]
-  · have hSrc2' : (before.update s1 (.i64 p1)).get src2 = some (.i64 p2) := by
-      rw [State.get_update_ne hSrcs, hSrc2]
-    have hS2 : s2 < (before.update s1 (.i64 p1)).params.length +
-        (before.update s1 (.i64 p1)).locals.length := by
-      rw [hLenB1]; omega
-    simp [Stmt.run, Expr.eval, hSrc2', b2, State.set?_eq_update _ hS2]
-  refine (Stmt.loop_inv (vars := [s1, s2]) (writes := [s1, s2]) (vals0 := [.i64 p1, .i64 p2])
-    (fun k s vals => ∃ heap' q1 q2, vals = [.i64 q1, .i64 q2] ∧ Live heap0 initial moved heap' s
-      ((q1, (loopPrefix (fun l x => g (F l x)) (xs, ys) k).1) ::
-        (q2, (loopPrefix (fun l x => g (F l x)) (xs, ys) k).2) :: rest))
-    hLI hBL hBI ⟨by simp; omega, by simp; omega⟩ (by simp; omega) hRoomB2
-    (hCount store.mem b2 hFrameB2) hHoldsB2 ⟨heap, p1, p2, rfl, hLive⟩ ?_).mono
+      (fun s st => ∃ heap' us,
+        us.map (·.2) = Arrays.arrays (LeanExe.loop n x0 fun l x => g (F l x)) ∧
+        Live heap0 initial moved heap' s (us ++ rest) ∧
+        State.Frame scratch (limit :: index :: states) before st ∧
+        st.Holds states (pointers us)) := by
+  obtain ⟨hL, hI, hNodup⟩ : limit ∉ index :: states ∧ index ∉ states ∧ states.Nodup := by
+    simp only [List.nodup_cons] at hLocals
+    exact ⟨hLocals.1, hLocals.2.1, hLocals.2.2⟩
+  have hBL := hBelow limit List.mem_cons_self
+  have hBI := hBelow index (List.mem_cons_of_mem _ List.mem_cons_self)
+  have hBS : ∀ j ∈ states, j < scratch := fun j hj =>
+    hBelow j (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ hj))
+  have hSize : states.length = Arrays.size β := by
+    rw [hLength, hSrcValues.length_eq, List.length_map, ← Arrays.length_arrays x0, ← hTs,
+      List.length_map]
+  have hSrcWords : before.Holds srcs ((ts.map (·.1)).map .i64) := by
+    rw [List.map_map]; exact hSrcValues
+  refine Stmt.copies_spec hNodup hSrcs hBS hRoom hSrcWords hLength fun b hFrameB hHoldsB => ?_
+  rw [List.map_map] at hHoldsB
+  have hRoomB : scratch ≤ b.params.length + b.locals.length := by
+    rw [hFrameB.params, hFrameB.locals]; exact hRoom
+  have hFrameAll : ∀ st, State.Frame scratch (limit :: index :: states) b st →
+      State.Frame scratch (limit :: index :: states) before st := fun st h =>
+    (hFrameB.weaken fun j hj => List.mem_cons_of_mem _ (List.mem_cons_of_mem _ hj)).trans h
+  refine (Stmt.loop_inv (vars := states) (writes := states) (vals0 := pointers ts)
+    (fun k s vals => ∃ heap' us, vals = pointers us ∧
+      us.map (·.2) = Arrays.arrays (loopPrefix (fun l x => g (F l x)) x0 k) ∧
+      Live heap0 initial moved heap' s (us ++ rest))
+    (fun h => hL (List.mem_cons.mpr (.inl h))) hBL hBI
+    ⟨fun h => hL (List.mem_cons_of_mem _ h), hI⟩ (fun j hj => ⟨hj, hBS j hj⟩) hRoomB
+    (hCount store.mem b hFrameB) hHoldsB ⟨heap, ts, rfl, hTs, hLive⟩ ?_).mono
       (fun _ _ h => h) ?_
-  · rintro k s vals st hk ⟨heap', q1, q2, rfl, hL⟩ hFrame hHolds hIndexGet -
-    have g1 : st.get s1 = some (.i64 q1) := (List.forall₂_cons.mp hHolds).1
-    have g2 : st.get s2 = some (.i64 q2) :=
-      (List.forall₂_cons.mp (List.forall₂_cons.mp hHolds).2).1
+  · rintro k s vals st hk ⟨heap', us, rfl, hUs, hLiveK⟩ hFrame hHolds hIndexGet -
     obtain ⟨vals, after, hEval, hBorrowed, hMoves, hReads⟩ :=
-      hArgs k q1 q2 heap' s st hk (hFrameAll st hFrame) hIndexGet g1 g2 hL
-    have hFrameAfter := Expr.evalResults_frame [s1, s2] hEval
+      hArgs k us heap' s st hk (hFrameAll st hFrame) hIndexGet hHolds hUs hLiveK
+    have hFrameAfter := Expr.evalResults_frame states hEval
     have hLen : scratch ≤ after.params.length + after.locals.length := by
-      rw [hFrameAfter.params, hFrameAfter.locals, hFrame.params, hFrame.locals]; exact hRoomB2
-    refine (Live.callPair hImpl hImport hFunc hParams (consumed := [(q1, _), (q2, _)])
-      (rest := rest) hL hCap hEval hBorrowed hMoves (fun q hq t ht => by
-        simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
-        rcases ht with rfl | rfl
-        exacts [(hReads q hq).1, (hReads q hq).2])
-      (by omega) (by omega)).mono (fun _ _ h => h) ?_
-    rintro s' st' ⟨heap'', r1, r2, hL', rfl⟩
-    refine ⟨(hFrameAfter.update (Or.inl (by simp))).update (Or.inl (by simp)),
-      [.i64 r1, .i64 r2], .cons ?_ (.cons ?_ .nil), heap'', r1, r2, rfl, ?_⟩
-    · exact State.get_update_same (by rw [hLenU]; omega)
-    · rw [State.get_update_ne (Ne.symm h12)]
-      exact State.get_update_same (by omega)
-    · rw [loopPrefix_succ]
-      exact hL'
-  · rintro s st ⟨hFrame, vals, hHolds, heap', q1, q2, rfl, hL⟩
-    exact ⟨heap', q1, q2, hL, hFrameAll st hFrame, (List.forall₂_cons.mp hHolds).1,
-      (List.forall₂_cons.mp (List.forall₂_cons.mp hHolds).2).1⟩
+      rw [hFrameAfter.params, hFrameAfter.locals, hFrame.params, hFrame.locals]; exact hRoomB
+    refine (Live.callTuple hImpl hImport hFunc (results := states) hParams hLiveK hCap hEval
+      hBorrowed hMoves hReads hSize fun r hr => by have := hBS r hr; omega).mono
+        (fun _ _ h => h) ?_
+    rintro s' st' ⟨heap'', us', hUs', hLive', hSet⟩
+    refine ⟨hFrameAfter.setAll (fun j hj => .inl (List.mem_reverse.mp hj)) hSet, pointers us',
+      State.Holds.reverse (State.setAll_holds (List.nodup_reverse.mpr hNodup) hSet), heap'', us',
+      rfl, ?_, hLive'⟩
+    rw [loopPrefix_succ]
+    exact hUs'
+  · rintro s st ⟨hFrame, vals, hHolds, heap', us, rfl, hUs, hLiveN⟩
+    exact ⟨heap', us, hUs, hLiveN, hFrameAll st hFrame, hHolds⟩
 
 end Project.IR

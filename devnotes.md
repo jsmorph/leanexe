@@ -20656,12 +20656,26 @@ and `outside` of a nest of arrays into a list of owned, pairwise disjoint arrays
 `Live.callTuple`, `Live.tupleLoop`, and `Live.finish_tuple`, with the pair rules as their
 case of two arrays.
 
-- [ ] Arrays of a tuple: the class and its instances, with the facts for `owned` and
-  `outside`.
-- [ ] `Live.callTuple`, `Live.finish_tuple`, and a `Live` rule for `Stmt.append`.
-- [ ] Compiler: `peel` on a pair of arrays; arrays bound from a call's result as owned
-  temporaries, moved or released; the loop over a tuple of arrays.
-- [ ] `Live.tupleLoop`.
+- [x] Arrays of a tuple: the class and its instances, with the facts for `owned` and
+  `outside`.  `Arrays` in `Project/IR/Tuple.lean` has instances for `Array UInt64` and for
+  `Array UInt64 × β`.  Its fields list the arrays, fix their number, and state `owned` and
+  `outside` for a value whose pointers are `pointers ts`.
+- [x] `Live.callTuple`, `Live.finish_tuple`, and a `Live` rule for `Stmt.append`.
+  `Live.callPair` and `Live.finish_pair` moved to `Tuple.lean` as their case of two arrays,
+  so the CLOB proofs that use them did not change.  `Live.finish_results` adds the result
+  locals, and `Live.append` in `Append.lean` consumes the temporary that `++` extends.
+- [x] Compiler: `peel` on a pair of arrays; arrays bound from a call's result as owned
+  temporaries, moved or released; the loop over a tuple of arrays.  `peel` splits a pair by
+  `resultTypes`, which counts an array as one local.  The components of a call's result are
+  owned temporaries: the code may move them, and the end of the function releases the rest.
+  An array bound by `let` is now the same kind of temporary, so returning one moves it
+  instead of copying it.  `moveSites` follows `match` into the discriminant and the
+  alternative.  `translateTupleLoop` replaces `translatePairLoop` for any nest of word arrays
+  started from distinct owned arrays.  All fourteen modules emit the bytes they emitted
+  before.
+- [x] `Live.tupleLoop`, over `Stmt.tupleLoop`, which is `Stmt.copies` of the initial arrays
+  followed by the loop.  For two arrays it is the former `Stmt.pairLoop` term, so
+  `runCommands_implements` changed only in how it names the arrays.
 - [ ] `stepCommand`, `runOut`, their theorems, and the chunk lemma
   `runOut p s o cs = (runCommands p s cs, o ++ outputs p s cs)`.
 - [ ] Tests.
