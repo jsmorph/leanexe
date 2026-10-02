@@ -21232,4 +21232,8 @@ The LTG check reports five declarations that no longer exist, in the entries
 Commit `704849fd` (2026-10-01), which dropped the memory premise, removed or renamed them
 without updating the entries.
 
-- [ ] Update the four LTG entries to the current declarations.
+- [x] Update the four LTG entries to the current declarations.  Their text also described
+  the removed `Room` premise, the allocation bounds, `alloc` at function 1, and the runtime
+  at indices 0 to 2 with compiled functions from 3; the `splitmix64` entry also gave entry
+  `3 + i`.  The entries now describe the memory cap premise, `alloc_spec_or_abort`, and the
+  runtime's `alloc` and `release` at 0 and 1, and the check reports nothing.
