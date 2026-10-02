@@ -21163,3 +21163,29 @@ existing type's instance unchanged.  Its findings, checked against the sketch an
   of a pointer-represented type; the 64-slot limit), and 7c3 needs `List α` for other
   element types.  The 7c steps omitted host support and tests, and the cons template in
   7c1.
+
+Verified before putting question 1 to the user: the sketch compiles in 3 seconds, and
+`#synth` gives the existing instances for `Array UInt64`, `UInt64`, pairs, `Calc`, and
+`Moved (Array UInt64)`, and the new one for `List UInt64`.  `alloc` writes kind 2, width 1,
+and mask 0 (`FreeListMemory.lean`, `fixedArrayAllocFitMem`), and `FreshFixedArrayAt`
+requires them (`FixedArrayHeader.lean`).  The `while` rule's measure is a function of the
+store and state (`Stmt.while_spec`), and `release_run`'s measure is the pending pointer.
+`release` tests mask bit `slot` with `i64.shr_u`, whose shift count WebAssembly takes modulo
+64, so a record of more than 64 slots would be released wrongly.
+
+Revised recommendation for question 1, option (a), with this trusted text in
+`Implements.lean`, about 75 lines: `Slot` and `Node`; `RecordHeader` (magic, count 1, kind 1,
+width equal to the slot count and at most 64, mask of the child slots, capacity for the
+slots, inside the 32-bit space, below `top`, apart from free blocks); `NodeOwned` (the
+header, each word slot holding its word, each child slot pointing to an owned node);
+`NodeBorrowed` (each word slot holding its word, each child slot pointing to a borrowed
+node, each record inside the 32-bit space, below `top`, and apart from free blocks, as
+`Heap.Borrowed` states for arrays, without header facts or disjointness); `Node.blocks`
+(each record's header and payload, following child pointers in memory, guided by the node);
+the class `Encode α` with `encode : α → Node`; and the instance `[Encode α] : Represent α` of
+width 1 whose `owned` adds that the blocks are pairwise disjoint, with empty `reads` and
+`moves`.  Per type, an `encode`: for `List UInt64`, `[] ↦ null` and
+`x :: xs ↦ record [word x, child (encode xs)]`.  A type with both a `Flat` and an `Encode`
+instance would take the `Encode` one; its theorems would then describe a layout the
+compiler does not emit and could not be proved, so the overlap cannot yield a false theorem.
+Each type gets one instance, by whether it is recursive.
