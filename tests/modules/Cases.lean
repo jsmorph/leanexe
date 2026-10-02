@@ -301,6 +301,8 @@ def wordsCases : IO Unit := do
   let lists : List (List UInt64) := [[], [0], [maxU], [7, 8, 9], (List.range 50).map rw]
   for xs in lists do
     line "words" "first" "i64" [chain xs] (toString (Words.ofList xs).first)
+    for acc in [0, 5, maxU] do
+      line "words" "sumAcc" "i64" [u acc, chain xs] (toString (Words.sumAcc acc (Words.ofList xs)))
 
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases

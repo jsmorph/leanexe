@@ -1840,7 +1840,36 @@ the result and sets `done`. -/
 partial def translateTail (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
     CompileM (Project.IR.Stmt × List Hint) := do
   let term := term.consumeMData
+  if let some unfolded ← unfoldMatcher? term then
+    return ← translateTail ctx loc unfolded
   let source ← sourceOf term
+  -- A match on a value of a recursive type: the pointer is tested against 0, and the
+  -- record's branch loads its fields into fresh locals.
+  if let some (discriminant, alternatives) ← userCases? term then
+    if let some ptr := ctx.nodes.lookup discriminant.consumeMData then
+      let [first, second] := alternatives
+        | throwError "a match on a recursive type must have two constructors: {source}"
+      let (nullAlt, recordAlt, nullFirst) ← match first.fields, second.fields with
+        | [], _ :: _ => pure (first, second, true)
+        | _ :: _, [] => pure (second, first, false)
+        | _, _ => throwError "a match on a recursive type needs one constructor without fields and one with fields: {source}"
+      let condition : IRExpr .bool := if nullFirst then .eq (.get ptr) (.const 0)
+        else .ne (.get ptr) (.const 0)
+      let branch := loc.skip (exprLength condition)
+      let nullLoc := branch.inside (some (if nullFirst then 0 else 1))
+      let recordLoc := branch.inside (some (if nullFirst then 1 else 0))
+      let (nullStmt, nHints) ← translateTail ctx nullLoc (nullAlt.body [])
+      let (recordStmt, rHints) ← bindRecordFields ctx ptr (fun ctx xs loads => do
+          let here := recordLoc.skip (loads.map stmtLength).sum
+          let (s, hs) ← translateTail ctx here (recordAlt.body xs)
+          let loadHints := (List.range loads.length).zip loads |>.map fun (j, load) =>
+            mkHint (recordLoc.skip ((loads.take j).map stmtLength).sum) (stmtLength load)
+              "field load" source
+          return (seqAll (loads ++ [s]), loadHints ++ hs))
+        0 recordAlt.fields [] []
+      let (a, b) := if nullFirst then (nullStmt, recordStmt) else (recordStmt, nullStmt)
+      let stmt : Project.IR.Stmt := .ite condition a b
+      return (stmt, mkHint loc (stmtLength stmt) "node match" source :: nHints ++ rHints)
   match term.getAppFnArgs with
   | (``ite, #[_, condition, _, thenTerm, elseTerm]) =>
       let (c, cHints) ← translateCondition ctx loc condition
@@ -1859,7 +1888,9 @@ partial def translateTail (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
         let mut hints : List Hint := []
         let mut here := loc
         for i in [:args.size] do
-          let (value, valueHints) ← translateValue ctx here args[i]!
+          let (value, valueHints) ← match ctx.nodes.lookup args[i]!.consumeMData with
+            | some local_ => pure (.get local_, [])
+            | none => translateValue ctx here args[i]!
           let stmt : Project.IR.Stmt := .assign (ctx.temp i) value
           stmts := stmts ++ [stmt]
           hints := hints ++ valueHints
@@ -1952,28 +1983,31 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       throwError "the result of {declName} is not UInt64, Float, an array, a list of words, a pair, or a user type"
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
     if recursive then
-      unless arrays.isEmpty && floatArrays.isEmpty && lists.isEmpty && nodes.isEmpty &&
-          floats.isEmpty &&
+      unless arrays.isEmpty && floatArrays.isEmpty && lists.isEmpty && floats.isEmpty &&
           tuples.isEmpty &&
           !arrayResult && !floatResult && !pairResult && !listResult do
-        throwError "a recursive definition may take and return only UInt64: {declName}"
+        throwError "a recursive definition may take only UInt64 and values of recursive types, and return only UInt64: {declName}"
       let ctx : Ctx :=
-        { self := declName, params, words, floats, arrays, floatArrays, foldable := false }
+        { self := declName, params, words, floats, arrays, floatArrays, nodes, foldable := false }
       -- The loop is the first instruction of the body: a block holding a loop.
       let loopBody := ((({ prefix_ := [], index := 0 } : Loc).inside none).inside none)
       let condition : IRExpr .bool := .eq (.get ctx.done) (.const 0)
-      let (step, stepHints) ← (translateTail ctx
-        (loopBody.skip (exprLength condition + 2)) body).run' { base := ctx.vars }
+      let ((step, stepHints), prelude) ← (translateTail ctx
+        (loopBody.skip (exprLength condition + 2)) body).run
+          { base := ctx.params.size + ctx.vars }
+      unless prelude.stmts.isEmpty do
+        throwError "a recursive definition may not contain a value that needs statements before it: {declName}"
       let loop : Project.IR.Stmt := .while condition step
       let loopHint := mkHint { prefix_ := [], index := 0 } (stmtLength loop)
         "tail-recursion-loop" (← sourceOf body)
       let resultHint := mkHint { prefix_ := [], index := 1 } 1 "result" "result"
       let names := paramNames.toList ++
         [("result", ctx.result), ("done", ctx.done)] ++
-        (paramNames.toList.map fun (name, i) => (s!"next {name}", ctx.temp i))
+        (paramNames.toList.map fun (name, i) => (s!"next {name}", ctx.temp i)) ++
+        prelude.names.toList
       let func : Func :=
-        { params := paramTypes.toList, vars := List.replicate ctx.vars .u64, body := loop
-          results := [⟨.u64, .get ctx.result⟩] }
+        { params := paramTypes.toList, vars := List.replicate ctx.vars .u64 ++ prelude.vars.toList,
+          body := loop, results := [⟨.u64, .get ctx.result⟩] }
       return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] }, [])
     else
       let arrayParams := (arrays ++ floatArrays).map (·.1)

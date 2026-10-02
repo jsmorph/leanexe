@@ -15,4 +15,9 @@ def Words.first : Words → UInt64
   | .nil => 0
   | .cons x _ => x
 
+/-- `acc` plus the sum of the words modulo 2^64, by tail recursion. -/
+def Words.sumAcc (acc : UInt64) : Words → UInt64
+  | .nil => acc
+  | .cons x w => Words.sumAcc (acc + x) w
+
 end LeanExe.Examples.Words

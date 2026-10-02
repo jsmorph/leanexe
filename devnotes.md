@@ -21535,8 +21535,20 @@ Revised steps for 7c3a, each built, tested, committed, and pushed:
   and `Stmt.load_spec` (52 lines); a general rule waits for `sumAcc`, which matches inside
   a loop.  `words.wasm` is 1,408 bytes with sha256 `1e6b1a06ae21f349…`; `first` matched
   native Lean on 5 lists, and all 5,126 module comparisons pass.
-- [ ] Tail recursion over it (`sumAcc`): the `match` branch of `translateTail`, fields in
+- [x] Tail recursion over it (`sumAcc`): the `match` branch of `translateTail`, fields in
   fresh locals, and a tail rule over `Represent` arguments through `Stmt.while_ghost`.
+  `translateTail` unfolds matchers and compiles a match on a node variable to a test of
+  the pointer with the fields loaded in the record's branch; a self-call passes a node
+  variable's pointer.  The recursive branch of `compileDefinition` keeps the fresh locals
+  as variables, starts them after the parameters and the compiler variables (its base was
+  the variable count alone, which was harmless while no fresh local was allocated), and
+  rejects a body that needs prelude statements, which it used to drop.
+  `Func.tailIn_implements` in `TailLoop.lean` takes `TailStepIn`, a step over arguments
+  that the fixed store represents, and proves the loop with `Stmt.while_ghost` (index
+  `measure + 1` while running, 0 when done), with no uniqueness premise.
+  `sumAcc_step` (89 lines) and `sumAcc_implements` are in `Project/Words/Verify.lean`.
+  `words.wasm` is 1,515 bytes with sha256 `c1f0af3235266a3f…`; `sumAcc` matched native Lean
+  on 15 cases, and all 5,141 module comparisons pass.
 - [ ] `range n` with `cons` as a loop's next state, through `Stmt.record` and
   `Heap.Built.cell`.
 - [ ] Host support (the `chain-u64` layout), tests, hints, and LTG entries.
