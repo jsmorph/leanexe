@@ -450,6 +450,35 @@ static void print_u64_chain(Runtime *runtime, uint64_t ptr) {
   printf("]\n");
 }
 
+/* Prints the tree of records at `ptr` in preorder, `.` for a leaf and a node's key followed
+   by its subtrees, separated by commas, after checking that each record's header holds the
+   magic number, count 1, kind 1, width 3, and mask 5.  `count` bounds the records visited. */
+static void print_u64_tree_at(Runtime *runtime, uint64_t ptr, uint64_t *count) {
+  if (ptr == 0) {
+    printf(".");
+    return;
+  }
+  size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+  if (++*count > memory_len / 72) {
+    die("tree result does not end");
+  }
+  if (ptr < 48 || read_u64_at(runtime, ptr - 48) != OBJECT_MAGIC ||
+      read_u64_at(runtime, ptr - 40) != 1 || read_u64_at(runtime, ptr - 24) != 1 ||
+      read_u64_at(runtime, ptr - 16) != 3 || read_u64_at(runtime, ptr - 8) != 5) {
+    die("tree result has a wrong record header");
+  }
+  printf("%" PRIu64 ",", read_u64_at(runtime, ptr + 8));
+  print_u64_tree_at(runtime, read_u64_at(runtime, ptr), count);
+  printf(",");
+  print_u64_tree_at(runtime, read_u64_at(runtime, ptr + 16), count);
+}
+
+static void print_u64_tree(Runtime *runtime, uint64_t ptr) {
+  uint64_t count = 0;
+  print_u64_tree_at(runtime, ptr, &count);
+  printf("\n");
+}
+
 /* Writes the elements of the array at `ptr`, as little-endian words, to the file at `path`,
    and returns the number of elements. */
 static uint64_t save_u64_array(Runtime *runtime, uint64_t ptr, const char *path) {
@@ -613,7 +642,7 @@ static size_t result_count_from_kind(const char *kind) {
     return 2;
   }
   if (strcmp(kind, "array-u64") == 0 || strcmp(kind, "chain-u64") == 0 ||
-      strncmp(kind, "file-u64:", 9) == 0) {
+      strcmp(kind, "tree-u64") == 0 || strncmp(kind, "file-u64:", 9) == 0) {
     return 1;
   }
   if (strncmp(kind, "slots:", 6) == 0) {
@@ -763,6 +792,14 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
       die("List UInt64 result requires exported memory");
     }
     print_u64_chain(runtime, (uint64_t)results[0].of.i64);
+    return;
+  }
+
+  if (strcmp(result_kind, "tree-u64") == 0) {
+    if (!runtime->has_memory) {
+      die("tree result requires exported memory");
+    }
+    print_u64_tree(runtime, (uint64_t)results[0].of.i64);
     return;
   }
 
@@ -1317,7 +1354,7 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
 static void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host call|call-stats <module.wasm> <function> "
-          "<i64|f64|bytes|array-u64|chain-u64|file-u64:PATH|slots:N|list:K1,K2,...> "
+          "<i64|f64|bytes|array-u64|chain-u64|tree-u64|file-u64:PATH|slots:N|list:K1,K2,...> "
           "[i64:N|f64:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|chain-u64:N,N|tree-u64:K,.,.|"
           "file-u64:PATH ...]\n");
   exit(1);

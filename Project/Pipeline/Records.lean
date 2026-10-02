@@ -59,14 +59,15 @@ theorem slotAddress_toNat {p : UInt64} {i : Nat} (h : p.toNat + 8 * i < 42949672
   rw [Memory.toUInt32_toNat, UInt64.toNat_add, UInt64.toNat_ofNat']
   omega
 
-/-- A record keeps its header and capacity when the bytes of its block do, and it stays
-owned in any heap whose free blocks and `top` leave its block alone. -/
-theorem RecordHeader.frame {heap heap' : Heap} {store store' : Store Unit} {p : UInt64}
-    {slots : List Slot} (h : RecordHeader heap store p slots)
-    (hBytes : ∀ a, p.toNat - 48 ≤ a → a < p.toNat + capacityAt store p →
-      store'.mem.bytes a = store.mem.bytes a)
+/-- A record keeps its header and capacity when the bytes of its header do, and it may hold
+any slots of the same number and child mask; it stays owned in any heap whose free blocks and
+`top` leave its block alone. -/
+theorem RecordHeader.rewrite {heap heap' : Heap} {store store' : Store Unit} {p : UInt64}
+    {slots slots' : List Slot} (h : RecordHeader heap store p slots)
+    (hBytes : ∀ a, p.toNat - 48 ≤ a → a < p.toNat → store'.mem.bytes a = store.mem.bytes a)
+    (hLength : slots'.length = slots.length) (hMask : maskOf slots' = maskOf slots)
     (hRegion : heap'.Region (block store p)) :
-    RecordHeader heap' store' p slots ∧ capacityAt store' p = capacityAt store p := by
+    RecordHeader heap' store' p slots' ∧ capacityAt store' p = capacityAt store p := by
   have hBase := h.base
   have hAddress := h.address
   have hHeader : ∀ k : UInt64, k.toNat ≤ 48 → 8 ≤ k.toNat →
@@ -79,17 +80,29 @@ theorem RecordHeader.frame {heap heap' : Heap} {store store' : Store Unit} {p : 
     rw [hHeader 32 (by decide) (by decide)]
   have hBelow := hRegion.below
   have hSeparate := hRegion.separate
+  have hShort := h.short
+  have hRoom := h.capacity
   simp only [block] at hBelow hSeparate
-  refine ⟨⟨hBase, ?_, ?_, ?_, ?_, ?_, h.short, ?_, ?_, ?_, ?_⟩, hCapacity⟩
+  refine ⟨⟨hBase, ?_, ?_, ?_, ?_, ?_, by omega, ?_, ?_, ?_, ?_⟩, hCapacity⟩
   · rw [hHeader 48 (by decide) (by decide)]; exact h.magic
   · rw [hHeader 40 (by decide) (by decide)]; exact h.count
   · rw [hHeader 24 (by decide) (by decide)]; exact h.kind
-  · rw [hHeader 16 (by decide) (by decide)]; exact h.width
-  · rw [hHeader 8 (by decide) (by decide)]; exact h.mask
-  · rw [hCapacity]; exact h.capacity
+  · rw [hHeader 16 (by decide) (by decide), hLength]; exact h.width
+  · rw [hHeader 8 (by decide) (by decide), hMask]; exact h.mask
+  · rw [hCapacity]; omega
   · rw [hCapacity]; exact hAddress
   · rw [hCapacity]; omega
   · rw [hCapacity]; exact hSeparate
+
+/-- A record keeps its header and capacity when the bytes of its block do, and it stays
+owned in any heap whose free blocks and `top` leave its block alone. -/
+theorem RecordHeader.frame {heap heap' : Heap} {store store' : Store Unit} {p : UInt64}
+    {slots : List Slot} (h : RecordHeader heap store p slots)
+    (hBytes : ∀ a, p.toNat - 48 ≤ a → a < p.toNat + capacityAt store p →
+      store'.mem.bytes a = store.mem.bytes a)
+    (hRegion : heap'.Region (block store p)) :
+    RecordHeader heap' store' p slots ∧ capacityAt store' p = capacityAt store p :=
+  h.rewrite (fun a hLow hHigh => hBytes a hLow (by omega)) rfl rfl hRegion
 
 mutual
 /-- An owned value keeps its records and their blocks when the bytes of those blocks are
@@ -118,7 +131,7 @@ of the record's payload and of the children's blocks are unchanged. -/
 theorem SlotsOwned.frame {heap heap' : Heap} {store store' : Store Unit} :
     ∀ (p : UInt64) (i : Nat) (slots : List Slot), SlotsOwned heap store p i slots →
       p.toNat + 8 * (i + slots.length) < 4294967296 →
-      (∀ a, p.toNat ≤ a → a < p.toNat + 8 * (i + slots.length) →
+      (∀ a, p.toNat + 8 * i ≤ a → a < p.toNat + 8 * (i + slots.length) →
         store'.mem.bytes a = store.mem.bytes a) →
       (∀ b ∈ slotsBlocks store p i slots, (∀ a, b.1 ≤ a → a < b.1 + b.2 →
         store'.mem.bytes a = store.mem.bytes a) ∧ heap'.Region b) →
@@ -131,7 +144,7 @@ theorem SlotsOwned.frame {heap heap' : Heap} {store store' : Store Unit} :
           rw [slotAddress_toNat (by omega)]
           exact hBytes _ (by omega) (by omega)
       obtain ⟨hRest', hBlocks'⟩ := SlotsOwned.frame p (i + 1) rest hRest (by omega)
-        (fun a hLow hHigh => hBytes a hLow (by omega)) hBlocks
+        (fun a hLow hHigh => hBytes a (by omega) (by omega)) hBlocks
       exact ⟨⟨hRead.trans hWord, hRest'⟩, hBlocks'⟩
   | p, i, .child n :: rest, ⟨hChild, hRest⟩, hAddress, hBytes, hBlocks => by
       simp only [List.length_cons] at hAddress hBytes
@@ -143,7 +156,7 @@ theorem SlotsOwned.frame {heap heap' : Heap} {store store' : Store Unit} :
       obtain ⟨hChild', hChildBlocks⟩ := NodeOwned.frame _ n hChild
         (fun b hb => hBlocks b (.inl hb))
       obtain ⟨hRest', hRestBlocks⟩ := SlotsOwned.frame p (i + 1) rest hRest (by omega)
-        (fun a hLow hHigh => hBytes a hLow (by omega)) (fun b hb => hBlocks b (.inr hb))
+        (fun a hLow hHigh => hBytes a (by omega) (by omega)) (fun b hb => hBlocks b (.inr hb))
       refine ⟨⟨by rw [hRead]; exact hChild', hRest'⟩, ?_⟩
       simp only [slotsBlocks, hRead, hChildBlocks, hRestBlocks]
 end
@@ -416,5 +429,143 @@ theorem Heap.Owned.keep {heap heap' : Heap} {store store' : Store Unit} {q : UIn
   exact ⟨h.frame hPages (fun a hl hh => hBytes a hl (by omega)) (by
       have := hRegion.below; simp only at this; omega) hRegion.separate,
     capacityAt_frame (by omega) (by omega) fun a hl hh => hBytes a hl (by omega)⟩
+
+/-- Replacing a word slot by a word keeps the child mask. -/
+theorem maskOf_set_word : ∀ (slots : List Slot) (i : Nat) (v w : UInt64),
+    slots[i]? = some (.word v) → maskOf (slots.set i (.word w)) = maskOf slots
+  | [], _, _, _, h => nomatch h
+  | _ :: _, 0, _, _, h => by
+      simp only [List.getElem?_cons_zero, Option.some.injEq] at h
+      subst h
+      rfl
+  | _ :: rest, i + 1, v, w, h => by
+      simp only [List.getElem?_cons_succ] at h
+      simp only [List.set_cons_succ, maskOf_cons, maskOf_set_word rest i v w h]
+
+/-- Slots `j` on of an owned record with a word in slot `i` hold `w` there and keep their other
+slots and blocks in a store that holds `w` in slot `i` and keeps every other byte of the slots
+and every byte of the children's blocks. -/
+theorem SlotsOwned.writeWord {heap : Heap} {store store' : Store Unit} {p w : UInt64} {i : Nat}
+    (hWritten : store'.mem.read64 (slotAddress p i) = w) :
+    ∀ (j : Nat) (slots : List Slot), SlotsOwned heap store p j slots → j ≤ i →
+      (∃ v, slots[i - j]? = some (.word v)) →
+      p.toNat + 8 * (j + slots.length) < 4294967296 →
+      (∀ a, p.toNat + 8 * j ≤ a → a < p.toNat + 8 * (j + slots.length) →
+        a < p.toNat + 8 * i ∨ p.toNat + 8 * i + 8 ≤ a → store'.mem.bytes a = store.mem.bytes a) →
+      (∀ b ∈ slotsBlocks store p j slots, ∀ a, b.1 ≤ a → a < b.1 + b.2 →
+        store'.mem.bytes a = store.mem.bytes a) →
+      SlotsOwned heap store' p j (slots.set (i - j) (.word w)) ∧
+        slotsBlocks store' p j (slots.set (i - j) (.word w)) = slotsBlocks store p j slots
+  | _, [], _, _, ⟨_, hv⟩, _, _, _ => by simp at hv
+  | j, .word u :: rest, ⟨hWord, hRest⟩, hj, ⟨v, hv⟩, hAddress, hBytes, hBlocks => by
+      simp only [List.length_cons] at hAddress hBytes
+      by_cases hij : i = j
+      · subst hij
+        rw [Nat.sub_self, List.set_cons_zero]
+        have hRegions := SlotsOwned.regions p (i + 1) rest hRest
+        obtain ⟨hRest', hBlocks'⟩ := SlotsOwned.frame p (i + 1) rest hRest (by omega)
+          (fun a hLow hHigh => hBytes a (by omega) (by omega) (by omega))
+          (fun b hb => ⟨hBlocks b hb, hRegions b hb⟩)
+        exact ⟨⟨hWritten, hRest'⟩, hBlocks'⟩
+      · have hk : i - j = (i - (j + 1)) + 1 := by omega
+        rw [hk, List.set_cons_succ]
+        rw [hk, List.getElem?_cons_succ] at hv
+        have hRead : store'.mem.read64 (slotAddress p j) = store.mem.read64 (slotAddress p j) :=
+          Memory.read64_congr _ fun k hk => by
+            rw [slotAddress_toNat (by omega)]
+            exact hBytes _ (by omega) (by omega) (by omega)
+        obtain ⟨hRest', hBlocks'⟩ := SlotsOwned.writeWord hWritten (j + 1) rest hRest (by omega)
+          ⟨v, hv⟩ (by omega) (fun a hLow hHigh hOut => hBytes a (by omega) (by omega) hOut) hBlocks
+        exact ⟨⟨hRead.trans hWord, hRest'⟩, hBlocks'⟩
+  | j, .child n :: rest, ⟨hChild, hRest⟩, hj, ⟨v, hv⟩, hAddress, hBytes, hBlocks => by
+      simp only [List.length_cons] at hAddress hBytes
+      have hij : i ≠ j := by
+        rintro rfl
+        simp at hv
+      have hk : i - j = (i - (j + 1)) + 1 := by omega
+      rw [hk, List.set_cons_succ]
+      rw [hk, List.getElem?_cons_succ] at hv
+      have hRead : store'.mem.read64 (slotAddress p j) = store.mem.read64 (slotAddress p j) :=
+        Memory.read64_congr _ fun k hk => by
+          rw [slotAddress_toNat (by omega)]
+          exact hBytes _ (by omega) (by omega) (by omega)
+      simp only [slotsBlocks, List.mem_append] at hBlocks
+      obtain ⟨hChild', hChildBlocks⟩ := NodeOwned.frame _ n hChild fun b hb =>
+        ⟨hBlocks b (.inl hb), NodeOwned.regions _ n hChild b hb⟩
+      obtain ⟨hRest', hRestBlocks⟩ := SlotsOwned.writeWord hWritten (j + 1) rest hRest (by omega)
+        ⟨v, hv⟩ (by omega) (fun a hLow hHigh hOut => hBytes a (by omega) (by omega) hOut)
+        (fun b hb => hBlocks b (.inr hb))
+      refine ⟨⟨by rw [hRead]; exact hChild', hRest'⟩, ?_⟩
+      simp only [slotsBlocks, hRead, hChildBlocks, hRestBlocks]
+
+/-- Writing the word `w` into slot `i` of an owned record that holds a word there, whose blocks
+are pairwise disjoint, changes only the slot's bytes, keeps the allocator invariant, and gives
+the record with `w` in slot `i` and the same blocks. -/
+theorem NodeOwned.writeWord {heap : Heap} {store : Store Unit} {p w : UInt64}
+    {slots : List Slot} {i : Nat} (hHeap : heap.At store)
+    (h : NodeOwned heap store p (.record slots))
+    (hDisjoint : (Node.blocks store p (.record slots)).Pairwise regionsDisjoint)
+    (hWord : ∃ v, slots[i]? = some (.word v)) :
+    Memory.WritesRange store { store with mem := store.mem.write64 (slotAddress p i) w }
+        (p.toNat + 8 * i) (p.toNat + 8 * i + 8) ∧
+      heap.At { store with mem := store.mem.write64 (slotAddress p i) w } ∧
+      NodeOwned heap { store with mem := store.mem.write64 (slotAddress p i) w } p
+        (.record (slots.set i (.word w))) ∧
+      Node.blocks { store with mem := store.mem.write64 (slotAddress p i) w } p
+        (.record (slots.set i (.word w))) = Node.blocks store p (.record slots) := by
+  obtain ⟨hHead, hSlots⟩ := h
+  obtain ⟨v, hv⟩ := hWord
+  have hi : i < slots.length := (List.getElem?_eq_some_iff.mp hv).1
+  have hRoom := hHead.capacity
+  have hAddress := hHead.address
+  have hBase := hHead.base
+  have hSlot := slotAddress_toNat (p := p) (i := i) (by omega)
+  have hWrites := Memory.WritesRange.write64 store (slotAddress p i) w (p.toNat + 8 * i)
+    (p.toNat + 8 * i + 8) (by omega) (by omega)
+  obtain ⟨hHead', hCapacity⟩ := hHead.rewrite
+    (store' := { store with mem := store.mem.write64 (slotAddress p i) w })
+    (fun a hLow hHigh => hWrites.2.2 a (.inl (by omega))) List.length_set
+    (maskOf_set_word slots i v w hv) hHead.region
+  have hApart := (List.pairwise_cons.mp hDisjoint).1
+  obtain ⟨hSlots', hBlocks⟩ := SlotsOwned.writeWord
+    (store' := { store with mem := store.mem.write64 (slotAddress p i) w })
+    (Memory.read64_write64 store.mem (slotAddress p i) w) 0 slots hSlots
+    (Nat.zero_le _) ⟨v, by rw [Nat.sub_zero]; exact hv⟩ (by omega)
+    (fun a _ _ hOut => hWrites.2.2 a (by omega))
+    (fun b hb a hLow hHigh => hWrites.2.2 a (by
+      have := hApart b hb
+      simp only [regionsDisjoint, block] at this
+      omega))
+  rw [Nat.sub_zero] at hSlots' hBlocks
+  refine ⟨hWrites, hHeap.writesApart hWrites fun node hNode => ?_, ⟨hHead', hSlots'⟩, ?_⟩
+  · have := hHead.separate node hNode
+    simp only [regionsDisjoint] at this ⊢
+    omega
+  · simp only [Node.blocks, block_eq hCapacity, hBlocks]
+
+mutual
+/-- The blocks of a value's records are the blocks at its record pointers. -/
+theorem Node.pointers_blocks (store : Store Unit) : ∀ (p : UInt64) (n : Node),
+    (Node.pointers store p n).map (block store) = Node.blocks store p n
+  | _, .null => rfl
+  | p, .record slots => by
+      simp only [Node.pointers, Node.blocks, List.map_cons, slotsPointers_blocks store p 0 slots]
+
+theorem slotsPointers_blocks (store : Store Unit) : ∀ (p : UInt64) (i : Nat) (slots : List Slot),
+    (slotsPointers store p i slots).map (block store) = slotsBlocks store p i slots
+  | _, _, [] => rfl
+  | p, i, .word _ :: rest => by
+      simp only [slotsPointers, slotsBlocks, slotsPointers_blocks store p (i + 1) rest]
+  | p, i, .child n :: rest => by
+      simp only [slotsPointers, slotsBlocks, List.map_append, Node.pointers_blocks store _ n,
+        slotsPointers_blocks store p (i + 1) rest]
+end
+
+/-- A region lies apart from the records of a value exactly when it lies apart from each of
+the value's blocks. -/
+theorem apart_pointers {store : Store Unit} {p : UInt64} {n : Node} {r : Nat × Nat} :
+    Apart store (Node.pointers store p n) r ↔ ∀ b ∈ Node.blocks store p n, regionsDisjoint r b := by
+  rw [← Node.pointers_blocks]
+  simp [Apart]
 
 end Project.Pipeline
