@@ -21399,7 +21399,7 @@ Revised steps:
   freed, the invariant holds for the children, in reverse order, followed by the rest.  The
   frame argument splits on whether a region lies in the block group of the same record as a
   child's count word or of another one; `pairwise_of_ne` turns the pairwise disjointness of
-  the groups into disjointness for any two different records.  `ReleaseTree.lean` is 1,250
+  the groups into disjointness for any two different records.  `ReleaseTree.lean` is 1,241
   lines.
 - [ ] Compiler: a fold over a list from a call, released after the fold, with its hint and
   LTG entry; the `release-temporary` entry updated.
