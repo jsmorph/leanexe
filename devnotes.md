@@ -22148,3 +22148,51 @@ Steps, each built, tested, committed, and pushed:
 - [ ] 9b: `eraseIdxIfInBounds` in place; `removeLevel` and `cancelBid`.
 - [ ] 9c: `insertIdx!` in place with growth; `insertLevel` and `addBid`.
 - [ ] LTG entries for the three templates.
+
+### Review of the Iteration 9 plan
+
+One reviewer checked the plan.  I verified the review by running the reviewer's files: `Sem.lean`
+prints Lean's definitions (`set!` is `setIfInBounds`; `insertIdx!` panics past the size, and the
+panic value is `#[]`; `eraseIdxIfInBounds` leaves the array unchanged out of range); `Model.lean`
+runs word-level models of the three templates against Lean on every array of length 0 to 4 and
+every position 0 to 6 and finds them equal; `CallRule.lean`, `Order.lean`, and `LetSet.lean` run
+the compiler on test programs.  The cited lines say what the report says.
+
+- The templates must write the length word last, since `Expr.read` checks a position against
+  the length in memory; an erase that writes the shorter length first returns `#[8, 0]` for
+  `#[7, 8, 9].eraseIdxIfInBounds 0`.
+- No loop rule applies to the shifts.  `Stmt.fill_spec` fixes the length word at the result's
+  size and knows nothing about which words still hold old elements, and every IR loop counts up.
+  The insert can run forward like the erase, carrying the displaced element in a local, so one
+  generalization of `Stmt.fill_spec` serves both.
+- The room test for an insert is `8 * (n + 2) ≤ capacityAt`, as in `Stmt.append`.
+  `Stmt.buildWith` allocates exactly `8 * (count + 1)` bytes, so the present insert template
+  cannot fill a doubled block.  Decision: reserve, then shift; the growth path copies into a
+  block of twice the capacity, releases the old block, and then inserts in place, so that one
+  insert path remains, and the grow rule of `Stmt.append` is generalized over its element.
+- `translateCall` requires an owned argument to occur once in the call, so
+  `setLevel prices sizes k (sizes[k.toNat]! + size)` in `addBid` fails once `sizes` is owned;
+  `translateSelfCall` has the same check.  Word and float arguments run before the call, so they
+  may read an owned array.
+- An existing bug: word components of a result are evaluated after the whole body, so
+  `(xs[0]!, xs ++ ys)` reads `xs` after `Stmt.append` may have released it.  The moved check does
+  not see it.  Fix: an array that an earlier result component reads may not move later in the
+  result.
+- Decision: an update that is not its array's last use copies, as today
+  (`let ys := xs.set! k 1; (xs, ys)`); only an update at a move site writes in place.
+- `applyCommand` belongs to 9a, since its kind-0 path loses a release.  The host allocates input
+  arrays with exact capacity, so a single-call insert always grows; an in-place insert needs a
+  case where an earlier insert left room, such as `runCommands` with two inserts.
+  `tests/modules/chunks.py` may need its counts changed after 9c, as its docstring says for
+  `runOut`.  After the iteration the `array-build` LTG entry and the three `*_eq_build` lemmas
+  have no CLOB consumer.  About 830 of the 1,900 lines of `Project/Clob/Verify.lean` change.
+
+Revised steps:
+
+- [ ] 9-0, compiler only, with CLOB's bytes unchanged: word and float arguments of a call may
+  read an owned array; an array that an earlier result component reads may not move later.
+- [ ] 9a: `set!` in place; `fillLevel`, `setLevel`, `addBid`, `cancelBid`, and `applyCommand`.
+- [ ] The generalized fill rule for in-place shifts.
+- [ ] 9b: `eraseIdxIfInBounds` in place; `removeLevel` and `cancelBid`.
+- [ ] 9c: the generalized grow rule, then `insertIdx!` in place; `insertLevel` and `addBid`.
+- [ ] Count cases, `chunks.py`, LTG entries, and `deslop.md`.
