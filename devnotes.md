@@ -20590,6 +20590,9 @@ allocation or free beyond those of its commands.
   `Stmt.pairLoop` around one call of `applyCommand`.  A `do` block runs `(← …)` actions
   before `&&` short-circuits, so the first version called `appArg!` on non-applications and
   panicked during the build; `isArrayPair` now checks the shape first.
-- [ ] `runCommands`, its theorem, the chunk lemma, and `clob_bytes`.
+- [x] `runCommands`, its theorem, and `clob_bytes`.  `runTuple` equals the loop over
+  `applyTuple (runStep commands l x)` by `rfl`, and `runCommands_implements` is `Live.start_moved`,
+  the size load, `Live.pairLoop` with `applyCommand_implements`, and `movesPost_of_live`.
+- [ ] The chunk lemma.
 - [ ] Tests: comparisons, a chunked session, release counts; emit; other modules unchanged.
 - [ ] 5b: per-step outputs.
