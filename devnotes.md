@@ -21749,3 +21749,58 @@ Steps, each built, tested, committed, and pushed:
 - [ ] A function that releases part of a consumed tree.
 - [ ] Host: a tree result kind that walks the records and checks their headers; tests
   against native Lean; allocation and free counts; LTG entries.
+
+### Review of the Iteration 8 plan
+
+One reviewer checked the plan.  I verified the findings by running the reviewer's sketch
+(`Node.pointers` with `(Node.pointers store p n).map (block store) = Node.blocks store p n`,
+`Heap.Rebuilt`, `Heap.Rebuilt.keepNode`, and `built_excludes_reuse`) and by reading the
+cited lines.
+
+- `Represent.moves` takes no store (`Implements.lean`, line 25), so it cannot follow child
+  pointers.  The trusted change must give `moves` a store, which touches every statement
+  that mentions `Represent.moves`, `Apart`, or `Separate`: 271 mentions in 23 files and the
+  GPT generator.  The array instances ignore the store, so their proofs change only in the
+  added argument.  `moves` must list every record of a consumed tree: with the root alone,
+  the outside clause of `Implements` would require the returned children to lie apart from
+  owned arrays that only the root is known to avoid, and even `setKey` would be unprovable.
+- `Separate` ignores a borrowed tree, whose `reads` is empty and has no store.  No planned
+  program takes a consumed value and a borrowed tree together; the compiler rejects that
+  combination until a program needs it.
+- `Heap.Built` cannot describe reuse, since a reused block would have to lie apart from
+  itself.  `Heap.Rebuilt` generalizes it with the consumed blocks.  The frame is limited to
+  regions of positive size, and the specification adds `pages ≤` and the memory-cap
+  premise.  `Keeps`, `Func.keeps`, `Func.recursion`, `Stmt.selfCall_spec`, and
+  `Func.entry_implements` all keep the store and return a word, so each needs a consumed
+  version; `RecordHeader.frame` needs a version for slot writes.
+- A matched record whose children moved out cannot be released with `release`, which
+  follows the mask: the compiler stores 0 in the moved child slots first, and
+  `Stmt.releaseNode_spec` then applies unchanged.
+- Mode inference needs more: `moveSites` has no case for an `if` of a node type, for
+  constructors, or for a node match's fields; the recursive path never runs it; node
+  lookups skip the moved check, so `node (insert x l) (size l) r` would compile wrongly;
+  `releaseUnmoved` handles arrays only.  A self-call's position is owned exactly when the
+  other sites make it owned.
+- `insert` needs an `if` whose branches are statements with self-calls and allocation.  A
+  smaller program reaches bytes and a theorem sooner: `incr`, which adds 1 to every key,
+  with reuse and two self-calls per level and no allocation, `if`, or release.
+- Reuse is sound for the present types, where a recursive type has one record constructor.
+  The rule is "the same constructor".
+
+Revised question 1, the trusted change.  Options: (a) `moves` takes the store and still
+returns pointers, and a new trusted `Node.pointers` lists a tree's record pointers;
+(b) `moves` takes the store and returns the consumed blocks themselves, `Apart` and
+`Separate` take blocks, an array's `moves` is `[block store ptr]`, and a tree's is the
+existing `Node.blocks`.  Both add the store argument everywhere `moves` appears.
+Recommendation: (b).  It adds no new traversal to the trusted text, and `Apart` then states
+disjointness from the consumed blocks directly.  It goes to the user.
+
+Revised steps:
+
+- [ ] The trusted change, after the user's decision, with every proof updated.
+- [ ] The mode rule for node parameters and fields, the moved check for node lookups, reuse
+  of the same constructor, and zeroing moved child slots before a release; `setKey`.
+- [ ] `Heap.Rebuilt`, the consumed specification and its recursion rule; `incr`.
+- [ ] Statement-level `if` with self-calls and allocation in branches; `insert`.
+- [ ] A function that releases part of a consumed tree.
+- [ ] Host: a tree result kind; tests; allocation and free counts; LTG entries.
