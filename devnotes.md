@@ -20595,5 +20595,13 @@ allocation or free beyond those of its commands.
   the size load, `Live.pairLoop` with `applyCommand_implements`, and `movesPost_of_live`.
 - [x] The chunk lemma `runCommands_append`: two runs, the first over whole commands, give the
   book of one run over both chunks, for inputs below `2 ^ 62` words.
-- [ ] Tests: comparisons, a chunked session, release counts; emit; other modules unchanged.
+- [x] Tests: comparisons, a chunked session, release counts; emit; other modules unchanged.
+  `clob.wasm` is 3,947 bytes with sha256 `9159adecfb72ba8f…`, and the thirteen other modules emit the
+  same bytes.  `tests/modules/run.sh` passed all 3,351 comparisons, 180 of them
+  `runCommands` over books from `books` with 0, 1, 4, and 13 commands and a trailing partial
+  command, and the 11 release counts.  `tests/modules/chunks.py` runs 40 random streams of
+  up to 59 commands three ways in host sessions: one call, three chunkings, and one
+  `applyCommand` per command.  All 160 cases gave the same book.  The chunked sessions
+  allocated one array per extra chunk and freed exactly what one call frees, and the
+  step-by-step session one array fewer, so the loop allocates and frees nothing of its own.
 - [ ] 5b: per-step outputs.
