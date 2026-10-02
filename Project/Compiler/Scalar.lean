@@ -142,9 +142,9 @@ structure Prelude where
   base : Nat
   vars : Array ScalarType := #[]
   names : Array (String × Nat) := #[]
-  /-- The locals of the temporary arrays, released at the end of the function, with
-  their sources. -/
-  temporaries : Array (Nat × String) := #[]
+  /-- The variables and locals of the temporary arrays, with their sources.  The end of the
+  function releases those that the code has not moved. -/
+  temporaries : Array (Lean.Expr × Nat × String) := #[]
   /-- The owned parameters that the code has moved on the current path. -/
   consumed : List Lean.Expr := []
 
@@ -219,11 +219,21 @@ def Ctx.bindTyped (ctx : Ctx) (x type : Lean.Expr) (components : List (Nat × Sc
     return { ctx with floatArrays := (x, index) :: ctx.floatArrays }
   return ctx.bind x components
 
-/-- Whether `type` is a pair of arrays. -/
-def isArrayPair (type : Lean.Expr) : MetaM Bool := do
+/-- Whether `type` is a nest of at least two word arrays, `Array UInt64 × (… × Array UInt64)`. -/
+partial def isArrayNest (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
   unless type.isAppOfArity ``Prod 2 do return false
-  return (← isArray type.appFn!.appArg!) && (← isArray type.appArg!)
+  unless ← isUInt64Array type.appFn!.appArg! do return false
+  if ← isUInt64Array type.appArg! then return true
+  isArrayNest type.appArg!
+
+/-- The components of `term`, a nest of `Prod.mk` of the nest type `type`, or `none` when
+`term` is not such a nest. -/
+partial def nestTerms? (term type : Lean.Expr) : MetaM (Option (List Lean.Expr)) := do
+  let type ← whnfR type
+  unless type.isAppOfArity ``Prod 2 do return some [term.consumeMData]
+  let (``Prod.mk, #[_, _, a, b]) := term.consumeMData.getAppFnArgs | return none
+  return (a.consumeMData :: ·) <$> (← nestTerms? b type.appArg!)
 
 /-- The unfolding of a `match` auxiliary definition applied to its arguments. -/
 def unfoldMatcher? (term : Lean.Expr) : MetaM (Option Lean.Expr) := do
@@ -299,14 +309,18 @@ partial def occurrences (x : FVarId) : Lean.Expr → Nat
   | _ => 0
 
 /-- The array parameters among `params` that the result term `term` moves on some path,
-through its `let`s, branches, and pairs: those it returns, passes as the left operand of
-`++`, or passes at an owned position of a callee in `owners`. -/
+through its `let`s, matches, branches, and pairs: those it returns, passes as the left
+operand of `++`, or passes at an owned position of a callee in `owners`. -/
 partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Expr)
     (term : Lean.Expr) : MetaM (List Lean.Expr) := do
   let term := term.consumeMData
   if let .letE _ _ _ body _ := term then return ← moveSites owners params body
   if params.contains term then return [term]
+  if let some unfolded ← unfoldMatcher? term then return ← moveSites owners params unfolded
   match term.getAppFnArgs with
+  | (``Prod.casesOn, #[_, _, _, pair, alternative]) =>
+      return (← moveSites owners params pair) ++
+        (← lambdaTelescope alternative fun _ body => moveSites owners params body)
   | (``ite, #[type, _, _, a, b]) =>
       if (← whnfR type).isAppOfArity ``Prod 2 || (← isArray type) then
         return (← moveSites owners params a) ++ (← moveSites owners params b)
@@ -314,10 +328,10 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
   | (``Prod.mk, #[_, _, a, b]) =>
       return (← moveSites owners params a) ++ (← moveSites owners params b)
   | (``LeanExe.loop, #[stateType, _, init, _]) =>
-      -- A loop over a pair of arrays moves its initial components.
-      unless ← isArrayPair stateType do return []
-      let (``Prod.mk, #[_, _, a, b]) := init.consumeMData.getAppFnArgs | return []
-      return [a.consumeMData, b.consumeMData].filter params.contains
+      -- A loop over a nest of arrays moves its initial components.
+      unless ← isArrayNest stateType do return []
+      let some terms ← nestTerms? init stateType | return []
+      return terms.filter params.contains
   | (``HAppend.hAppend, #[_, _, _, _, left, _]) =>
       return if params.contains left.consumeMData then [left.consumeMData] else []
   | (fn, args) =>
@@ -333,6 +347,24 @@ def releaseUnmoved (ctx : Ctx) : CompileM Unit := do
       let stmt := Project.IR.Stmt.release local_
       pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "release owned parameter" (← sourceOf param)]
       markMoved param
+
+/-- Makes the arrays among `xs`, the components of a call's result or of an owned pair,
+owned temporaries, which the code may move and the function releases otherwise, and marks
+the pairs among them as owned pairs. -/
+def ownComponents (ctx : Ctx) (source : String) (xs : List (Lean.Expr × Lean.Expr)) :
+    CompileM Ctx := do
+  let mut ctx := ctx
+  for (x, type) in xs do
+    if ← isArray type then
+      unless ctx.temporaries && ctx.foldable && ctx.allocating do
+        throwError "an array may be bound from a call's result only at the top of a function body: {source}"
+      let some local_ := (ctx.arrays ++ ctx.floatArrays).lookup x
+        | throwError "an array component has no local: {source}"
+      modify fun p => { p with temporaries := p.temporaries.push (x, local_, source) }
+      ctx := { ctx with owned := x :: ctx.owned }
+    else if (← whnfR type).isAppOfArity ``Prod 2 then
+      ctx := { ctx with owned := x :: ctx.owned }
+  return ctx
 
 /-- The expression that reads local `local_` of type `type`. -/
 def readLocal : Nat × ScalarType → Σ type, IRExpr type
@@ -699,11 +731,16 @@ mutual
       return ← peel ctx unfolded k
     match term.getAppFnArgs with
     | (``Prod.casesOn, #[first, second, _, pair, alternative]) =>
+        let pair := pair.consumeMData
+        -- The components of a call's result, or of an owned pair, are owned.
+        let owned := (ctx.tuples.lookup pair).isNone || ctx.owned.contains pair
+        let source ← sourceOf pair
         let components ← tupleOf ctx pair
-        let split ← if ← isArray first then pure 1 else pure (← stateTypes first).length
+        let split := (← resultTypes first).length
         withLocalDeclD `fst first fun a => withLocalDeclD `snd second fun b => do
           let ctx ← ctx.bindTyped a first (components.take split)
           let ctx ← ctx.bindTyped b second (components.drop split)
+          let ctx ← if owned then ownComponents ctx source [(a, first), (b, second)] else pure ctx
           peel ctx (← Core.betaReduce (mkApp2 alternative a b)) k
     | _ => k ctx term
 
@@ -790,62 +827,59 @@ mutual
       callHints.map fun hint => Hint.within callLoc.prefix_ (Hint.shift callLoc.index hint))
     return state
 
-  /-- Translates `LeanExe.loop n (a, b) f`, whose state is a pair of arrays started from
-  the owned parameters `a` and `b`, to `Stmt.pairLoop`: the state locals receive `a` and
-  `b`, and `f i x` is one call of a definition compiled into the same module that consumes
-  both arrays of the state and leaves the next state in the state locals.  Returns the state
-  locals. -/
-  partial def translatePairLoop (ctx : Ctx) (term : Lean.Expr) (dests? : Option (List Nat)) :
+  /-- Translates `LeanExe.loop n init f`, whose state is a nest of word arrays started from
+  distinct owned arrays, to `Stmt.tupleLoop`: the state locals receive the initial arrays, and
+  `f i x` is one call of a definition compiled into the same module that consumes every array
+  of the state and leaves the next state in the state locals.  Returns the state locals. -/
+  partial def translateTupleLoop (ctx : Ctx) (term : Lean.Expr) (dests? : Option (List Nat)) :
       CompileM (List Nat) := do
     let source ← sourceOf term
     let (``LeanExe.loop, #[stateType, n, init, f]) := term.getAppFnArgs
       | throwError "unsupported loop: {source}"
     unless ctx.foldable && ctx.allocating do
       throwError "a loop may not appear in a branch, a fold or loop body, or a recursive definition: {source}"
-    let (``Prod.mk, #[_, _, a, b]) := init.consumeMData.getAppFnArgs
-      | throwError "a loop over a pair of arrays must start from a pair of owned parameters: {source}"
-    let a := a.consumeMData
-    let b := b.consumeMData
-    unless ctx.owned.contains a && ctx.owned.contains b && a != b do
-      throwError "a loop over a pair of arrays must start from a pair of owned parameters: {source}"
-    let some src1 ← lookupArray (ctx.arrays ++ ctx.floatArrays) a
-      | throwError "a loop over a pair of arrays must start from a pair of owned parameters: {source}"
-    let some src2 ← lookupArray (ctx.arrays ++ ctx.floatArrays) b
-      | throwError "a loop over a pair of arrays must start from a pair of owned parameters: {source}"
-    markMoved a
-    markMoved b
+    let some inits ← nestTerms? init stateType
+      | throwError "a loop over arrays must start from distinct owned arrays: {source}"
+    let mut srcs := #[]
+    for a in inits do
+      unless ctx.owned.contains a && (inits.filter (· == a)).length == 1 do
+        throwError "a loop over arrays must start from distinct owned arrays: {source}"
+      let some src ← lookupArray ctx.arrays a
+        | throwError "a loop over arrays must start from distinct owned arrays: {source}"
+      srcs := srcs.push src
+    inits.forM markMoved
     let (count, countHints) ← translateValue ctx ⟨[], 0⟩ n
-    let (s1, s2) ← match dests? with
-      | some [d1, d2] => pure (d1, d2)
-      | _ => pure (← fresh .u64 "state 0", ← fresh .u64 "state 1")
+    let states ← match dests? with
+      | some dests => pure dests
+      | none => (List.range inits.length).mapM fun i => fresh .u64 s!"state {i}"
     let limit ← fresh .u64 "limit"
     let index ← fresh .u64 "index"
     let (idx, args, callHints) ← withLocalDeclD `i (mkConst ``UInt64) fun i =>
       withLocalDeclD `x stateType fun x => do
         let bodyCtx := { ctx.bind i [(index, .u64)] with
-          tuples := (x, [(s1, .u64), (s2, .u64)]) :: ctx.tuples, owned := [] }
+          tuples := (x, states.map (·, .u64)) :: ctx.tuples, owned := [] }
         peel bodyCtx (mkApp2 f i x).headBeta fun inner body => do
           let known := ctx.arrays ++ ctx.floatArrays
           let state := (inner.arrays ++ inner.floatArrays).filterMap fun (e, _) =>
             if known.any (·.1 == e) then none else some e
           let some idx := ctx.callees.lookup body.getAppFn.constName
-            | throwError "the body of a loop over a pair of arrays must be one call: {source}"
+            | throwError "the body of a loop over arrays must be one call: {source}"
           let (_, stmts, hints) ← withBlock
-            (translateCall { inner with owned := state } body idx (some [s1, s2]))
+            (translateCall { inner with owned := state } body idx (some states))
           let [.call _ args _] := stmts
-            | throwError "the call in a loop over a pair of arrays must need no statements before it: {source}"
+            | throwError "the call in a loop over arrays must need no statements before it: {source}"
           let consumed := (← get).consumed
-          unless state.length == 2 && state.all consumed.contains do
-            throwError "the call in a loop over a pair of arrays must consume both arrays: {source}"
+          unless state.length == states.length && state.all consumed.contains do
+            throwError "the call in a loop over arrays must consume every array of the state: {source}"
           return (idx, args, hints)
-    let stmt := Stmt.pairLoop s1 s2 limit index src1 src2 idx count args
-    let assignLength := stmtLength (Project.IR.Stmt.assign s1 (.get src1)) +
-      stmtLength (Project.IR.Stmt.assign s2 (.get src2))
+    let stmt := Stmt.tupleLoop states limit index srcs.toList idx count args
+    let assignLength := ((states.zip srcs.toList).map fun (s, src) =>
+      stmtLength (Project.IR.Stmt.assign s (.get src))).sum
     let callLoc := loopBodyLoc ⟨[], assignLength⟩ count
-    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "pair loop" source ::
+    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "tuple loop" source ::
       countHints.map (Hint.shift assignLength) ++
       callHints.map fun hint => Hint.within callLoc.prefix_ (Hint.shift callLoc.index hint))
-    return [s1, s2]
+    return states
 
   /-- Translates `term` as a value of `type` whose code starts at `loc`, in a block
   of its own: the statements its calls need come first, then the value.  Returns
@@ -1083,7 +1117,8 @@ mutual
       let type ← whnfR type
       if let .letE name letType value body _ := term then
         if ← isArray letType then
-          -- A temporary array, from a call or a build, released at the end of the function.
+          -- A temporary array, from a call or a build, which the code may move and the
+          -- function releases otherwise.
           let source ← sourceOf value
           unless ctx.temporaries && ctx.foldable && ctx.allocating do
             throwError "an array may be bound by `let` only at the top of a function body: {source}"
@@ -1094,12 +1129,13 @@ mutual
                   | throwError "a `let` array must come from a call that returns one array: {source}"
                 pure result
             | none => translateArray valueCtx value
-          modify fun p => { p with temporaries := p.temporaries.push (local_, source) }
           let floatArray ← isFloatArray letType
-          return ← withLocalDeclD name letType fun x =>
+          return ← withLocalDeclD name letType fun x => do
+            modify fun p => { p with temporaries := p.temporaries.push (x, local_, source) }
             let inner := if floatArray then { ctx with floatArrays := (x, local_) :: ctx.floatArrays }
               else { ctx with arrays := (x, local_) :: ctx.arrays }
-            translateResults inner (body.instantiate1 x) type dests?
+            translateResults { inner with owned := x :: inner.owned } (body.instantiate1 x) type
+              dests?
         let scalar ← scalarTypeOf letType
         let (⟨_, v⟩, vHints) ← translateAs { ctx with owned := [] } ⟨[], 0⟩ scalar value
         let local_ ← fresh scalar name.toString
@@ -1115,8 +1151,8 @@ mutual
         if branching then
           return ← translateResultBranch ctx term condition thenTerm elseTerm type dests?
       if term.isAppOf ``LeanExe.loop then
-        if ← isArrayPair type then
-          let states ← translatePairLoop ctx term dests?
+        if ← isArrayNest type then
+          let states ← translateTupleLoop ctx term dests?
           return (states.map fun s => readLocal (s, .u64), states.map fun _ => [])
       if type.isAppOfArity ``Prod 2 then
         let (``Prod.mk, #[first, second, a, b]) := term.getAppFnArgs
@@ -1381,8 +1417,9 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let ((results, resultHints), prelude) ←
         (do
           let (results, resultHints) ← translateResults ctx body resultType
-          let temporaries := (← get).temporaries
           let consumed := (← get).consumed
+          let temporaries := (← get).temporaries.filter
+            fun (t : Lean.Expr × Nat × String) => !consumed.contains t.1
           if temporaries.isEmpty && owned.all consumed.contains then
             return (results, resultHints)
           -- With temporaries or owned parameters to release, each result is stored before
@@ -1394,7 +1431,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
             pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "result" "result" :: own)
             stored := stored.push (readLocal (local_, resultType))
           releaseUnmoved ctx
-          for (local_, source) in temporaries.reverse do
+          for (_, local_, source) in temporaries.reverse do
             let stmt := Project.IR.Stmt.release local_
             pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "release temporary" source]
           return (stored.toList, stored.toList.map fun _ => [])).run { base := params.size }

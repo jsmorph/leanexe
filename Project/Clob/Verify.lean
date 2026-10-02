@@ -4,6 +4,7 @@ import Project.IR.Loop
 import Project.IR.Read
 import Project.IR.Build
 import Project.IR.Call
+import Project.IR.ArrayLoop
 import Project.Encoding.RoundTrip
 
 namespace Project.Clob
@@ -1435,7 +1436,7 @@ theorem runCommands_implements : Implements clob.module 12 runTuple := by
     { params := [.i64 pp, .i64 ps, .i64 pc], locals := List.replicate 7 (.i64 0) }
   have hStartLen : start.params.length + start.locals.length = 10 := rfl
   show Triple _ (.seq (.arraySize 3 2)
-      (Stmt.pairLoop 4 5 6 7 0 1 11 (.bin .divU (.get 3) (.const 3)) runArgs)) 8
+      (Stmt.tupleLoop [4, 5] 6 7 [0, 1] 11 (.bin .divU (.get 3) (.const 3)) runArgs)) 8
     (fun store state => store = initial ∧ state = start)
     (MovesPost heap initial [pp, ps] 8 4 5 (runTuple (⟨prices⟩, ⟨sizes⟩, commands)))
   have hL := Live.start_moved hHeap (temps := [(pp, prices), (ps, sizes)])
@@ -1467,13 +1468,21 @@ theorem runCommands_implements : Implements clob.module 12 runTuple := by
       rw [State.set?_eq_update _ (by omega), Option.some.injEq] at hm1; subst hm1
       rw [hLenU]; omega)
     exact ⟨m2, by simp [Expr.eval, g3, hm1, hm2, U64Op.apply]⟩
-  refine (Live.pairLoop applyCommand_implements (f := clob.applyCommand.ir.function (2 + 9)) rfl
+  refine (Live.tupleLoop applyCommand_implements (f := clob.applyCommand.ir.function (2 + 9)) rfl
     (by rw [hNoImports]; exact compile_funcs (funcs := clob.funcs) (i := 9) rfl) rfl
-    (s1 := 4) (s2 := 5) (limit := 6) (index := 7) (src1 := 0) (src2 := 1)
-    (by decide) (by decide) (by rw [hSt0Len]; decide) hL hCap rfl rfl (by decide) hCount
-    (runStep commands) fun k q1 q2 heap' store' st hk hF hIdx g4 g5 hL' => ?_).mono
-      (fun _ _ h => h) ?_
-  · have hC' := (hL'.borrowed pc commands hCmds hAC).values
+    (states := [4, 5]) (limit := 6) (index := 7) (srcs := [0, 1])
+    (ts := [(pp, prices), (ps, sizes)]) (rest := []) (x0 := (prices, sizes))
+    (by decide) (by decide) (by decide) rfl (by rw [hSt0Len]; decide) rfl hL hCap
+    (.cons rfl (.cons rfl .nil)) hCount (runStep commands)
+    fun k us heap' store' st hk hF hIdx hHolds hUs hL' => ?_).mono (fun _ _ h => h) ?_
+  · obtain ⟨⟨q1, _⟩, us, rfl, rfl, hUs1⟩ := List.map_eq_cons_iff.mp hUs
+    obtain ⟨⟨q2, _⟩, us, rfl, rfl, hUs2⟩ := List.map_eq_cons_iff.mp hUs1
+    obtain rfl := List.map_eq_nil_iff.mp hUs2
+    simp only [List.append_nil] at hL'
+    have g4 : st.get 4 = some (.i64 q1) := (List.forall₂_cons.mp hHolds).1
+    have g5 : st.get 5 = some (.i64 q2) :=
+      (List.forall₂_cons.mp (List.forall₂_cons.mp hHolds).2).1
+    have hC' := (hL'.borrowed pc commands hCmds hAC).values
     have hLen : st.params.length + st.locals.length = 10 := by
       rw [hF.params, hF.locals]; exact hSt0Len
     have g2 : st.get 2 = some (.i64 pc) := (hF.get 2 (by decide) (by decide)).trans rfl
@@ -1503,9 +1512,14 @@ theorem runCommands_implements : Implements clob.module 12 runTuple := by
       Expr.evalResults_cons (Expr.read_spec hC'
         (by simp [Expr.eval, k2 7 (by decide), hIdx, U64Op.apply]) hm3
         (by rw [k3 2 (by decide), g2])) Expr.evalResults_nil
-  · rintro s' st' ⟨heap', q1, q2, hL', -, g4, g5⟩
+  · rintro s' st' ⟨heap', us, hUs, hL', -, hHolds⟩
+    obtain ⟨⟨q1, _⟩, us, rfl, rfl, hUs1⟩ := List.map_eq_cons_iff.mp hUs
+    obtain ⟨⟨q2, _⟩, us, rfl, rfl, hUs2⟩ := List.map_eq_cons_iff.mp hUs1
+    obtain rfl := List.map_eq_nil_iff.mp hUs2
+    simp only [List.append_nil] at hL'
     rw [runTuple_eq]
-    exact movesPost_of_live hL' g4 g5
+    exact movesPost_of_live hL' (List.forall₂_cons.mp hHolds).1
+      (List.forall₂_cons.mp (List.forall₂_cons.mp hHolds).2).1
 
 /-- `encode` succeeds on `clob.module`, and its bytes decode to a module whose
 exports compute the CLOB operations exactly. -/

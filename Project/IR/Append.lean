@@ -1,5 +1,5 @@
 import Project.IR.Build
-import Project.IR.Release
+import Project.IR.Live
 import Project.Pipeline.Implements
 
 /-!
@@ -7,7 +7,7 @@ The template for `xs ++ ys` when the caller hands over `xs`.  When the block of 
 has room for both arrays, the template stores the new length and the elements of `ys`
 in place.  Otherwise it allocates a block of twice the old capacity, or of the size
 needed when that is larger, at most `2 ^ 32` bytes, copies both arrays into it, and
-releases the old block.
+releases the old block.  `Live.append` states the template for a body's live temporaries.
 -/
 
 namespace Project.IR
@@ -648,5 +648,80 @@ theorem Stmt.append_spec {typeIdx releaseType scratch dst size1 size2 limit inde
       (State.get_set?_same hG3)
       (by rw [State.get_set?_ne hS1I hG3, State.get_set?_ne hS1D hG2, State.get_set?_ne hS1C hG1,
         hSize1_5])
+
+/-- `Stmt.append` with the temporary `t` at local `src1`, which it consumes, and a borrowed
+array `ys` at local `src2`, apart from `t`'s block, leaves `t.2 ++ ys` in a new temporary at
+the head of the list, in place of `t`. -/
+theorem Live.append {typeIdx releaseType scratch dst size1 size2 limit index cap src1 src2 : Nat}
+    {moved : List UInt64} (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
+    (hAlloc : m.funcs[0]? = some (allocFunction typeIdx))
+    (hRelease : m.funcs[1]? = some (releaseFunction releaseType))
+    (hLocals : [dst, size1, size2, limit, index, cap].Nodup)
+    (hBelow : ∀ j ∈ [dst, size1, size2, limit, index, cap], j < scratch)
+    (hSrc1 : src1 ∉ [dst, size1, size2, limit, index, cap])
+    (hSrc2 : src2 ∉ [dst, size1, size2, limit, index, cap])
+    (hSrcBelow1 : src1 < scratch) (hSrcBelow2 : src2 < scratch) {before : State}
+    (hRoom : scratch < before.params.length + before.locals.length)
+    {heap0 heap : Heap} {initial store : Store Unit} {pre post : List (UInt64 × Array UInt64)}
+    {t : UInt64 × Array UInt64} (hLive : Live heap0 initial moved heap store (pre ++ t :: post))
+    (hCap : initial.memoryCap m 0 ≤ 65535) {p2 : UInt64} {ys : Array UInt64}
+    (hYs : heap.Borrowed store p2 ys)
+    (hApart : regionsDisjoint (p2.toNat, 8 * (ys.size + 1)) (block store t.1))
+    (hP1 : before.get src1 = some (.i64 t.1)) (hP2 : before.get src2 = some (.i64 p2)) :
+    Triple m (.append dst size1 size2 limit index cap src1 src2) scratch
+      (fun s st => s = store ∧ st = before)
+      (fun s st => ∃ heap' p, Live heap0 initial moved heap' s ((p, t.2 ++ ys) :: (pre ++ post)) ∧
+        State.Frame scratch [dst, size1, size2, limit, index, cap] before st ∧
+        st.get dst = some (.i64 p)) := by
+  have hT : t ∈ pre ++ t :: post := by simp
+  have hRest : ∀ u ∈ pre ++ post, u ∈ pre ++ t :: post := fun u hu => by
+    simp only [List.mem_append, List.mem_cons] at hu ⊢
+    tauto
+  have hPair := hLive.pairwise
+  rw [List.pairwise_append, List.pairwise_cons] at hPair
+  obtain ⟨hPre, ⟨hTPost, hPost⟩, hCross⟩ := hPair
+  have hApartT : ∀ u ∈ pre ++ post, regionsDisjoint (block store u.1) (block store t.1) :=
+    fun u hu => by
+      rcases List.mem_append.mp hu with hu | hu
+      · exact hCross u hu t List.mem_cons_self
+      · exact regionsDisjoint_symm (hTPost u hu)
+  refine (Stmt.append_spec hMemory32 hImports hAlloc hRelease hLocals hBelow hSrc1 hSrc2
+    hSrcBelow1 hSrcBelow2 hRoom hLive.at_ (hLive.cap hCap) (hLive.tempsOwned t hT) hYs hApart
+    hP1 hP2).mono (fun _ _ h => h) ?_
+  rintro s st ⟨heap', p, hFrame, hDst, hAt', hOwnedP, hCaps', hKeepB, hKeepO⟩
+  have hKeepT : ∀ u ∈ pre ++ post, heap'.Owned s u.1 u.2 ∧ block s u.1 = block store u.1 ∧
+      regionsDisjoint (block store u.1) (block s p) := fun u hu =>
+    have h := hKeepO u.1 u.2 (hLive.tempsOwned u (hRest u hu)) (hApartT u hu)
+    ⟨h.1, block_eq h.2.1, h.2.2⟩
+  have hOwnedKeep : ∀ q ws, heap0.Owned initial q ws → Apart initial moved (block initial q) →
+      heap'.Owned s q ws ∧ capacityAt s q = capacityAt initial q ∧
+        regionsDisjoint (block initial q) (block s p) := fun q ws h hA => by
+    obtain ⟨hOwned, hCapacity⟩ := hLive.owned q ws h hA
+    have hD := hLive.apartO t hT q ws h hA
+    rw [← block_eq hCapacity] at hD
+    obtain ⟨hOwned', hCapacity', hNew⟩ := hKeepO q ws hOwned hD
+    rw [block_eq hCapacity] at hNew
+    exact ⟨hOwned', hCapacity'.trans hCapacity, hNew⟩
+  refine ⟨heap', p, ⟨hAt', hCaps'.trans hLive.caps,
+    fun q ws h hA => (hKeepB q ws (hLive.borrowed q ws h hA) (hLive.apartB t hT q ws h hA)).1,
+    fun q ws h hA => ⟨(hOwnedKeep q ws h hA).1, (hOwnedKeep q ws h hA).2.1⟩,
+    fun u hu => ?_, fun u hu q ws h hA => ?_, fun u hu q ws h hA => ?_, ?_⟩, hFrame, hDst⟩
+  · rcases List.mem_cons.mp hu with rfl | hu
+    · exact hOwnedP
+    · exact (hKeepT u hu).1
+  · rcases List.mem_cons.mp hu with rfl | hu
+    · exact (hKeepB q ws (hLive.borrowed q ws h hA) (hLive.apartB t hT q ws h hA)).2
+    · rw [(hKeepT u hu).2.1]; exact hLive.apartB u (hRest u hu) q ws h hA
+  · rcases List.mem_cons.mp hu with rfl | hu
+    · exact (hOwnedKeep q ws h hA).2.2
+    · rw [(hKeepT u hu).2.1]; exact hLive.apartO u (hRest u hu) q ws h hA
+  · refine List.pairwise_cons.mpr ⟨fun u hu => ?_, ?_⟩
+    · rw [(hKeepT u hu).2.1]
+      exact regionsDisjoint_symm (hKeepT u hu).2.2
+    refine List.Pairwise.imp_of_mem (fun {u v} hu hv h => ?_)
+      (List.pairwise_append.mpr ⟨hPre, hPost, fun a ha b hb => hCross a ha b
+        (List.mem_cons_of_mem _ hb)⟩)
+    rw [(hKeepT u hu).2.1, (hKeepT v hv).2.1]
+    exact h
 
 end Project.IR
