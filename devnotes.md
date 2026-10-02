@@ -20585,8 +20585,11 @@ allocation or free beyond those of its commands.
 - [x] The counting-loop lemma with a store-changing invariant: `Stmt.loop_inv`, from which
   `Stmt.loop_spec` now follows.
 - [x] `Stmt.pairLoop` and its rule `Live.pairLoop`, over `Stmt.loop_inv` and `Live.callPair`.
-- [ ] Compiler: the matcher's array components, the loop result, and a pair state that the
-  callee consumes.
+- [x] Compiler: the matcher's array components, the loop result, and a pair state that the
+  callee consumes.  `runCommands` owns both arrays; its body is the size load and
+  `Stmt.pairLoop` around one call of `applyCommand`.  A `do` block runs `(← …)` actions
+  before `&&` short-circuits, so the first version called `appArg!` on non-applications and
+  panicked during the build; `isArrayPair` now checks the shape first.
 - [ ] `runCommands`, its theorem, the chunk lemma, and `clob_bytes`.
 - [ ] Tests: comparisons, a chunked session, release counts; emit; other modules unchanged.
 - [ ] 5b: per-step outputs.

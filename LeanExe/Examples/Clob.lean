@@ -62,6 +62,13 @@ def applyCommand (prices sizes : Array UInt64) (kind price size : UInt64) :
   else if kind = 1 then cancelBid prices sizes price size
   else (prices, sizes)
 
+/-- The bids after the commands in `commands`, three words each: the kind, the price, and
+the size, as `applyCommand` takes them. -/
+def runCommands (prices sizes commands : Array UInt64) : Array UInt64 × Array UInt64 :=
+  LeanExe.loop (commands.size.toUInt64 / 3) (prices, sizes) fun i (p, s) =>
+    applyCommand p s commands[(3 * i).toNat]! commands[(3 * i + 1).toNat]!
+      commands[(3 * i + 2).toNat]!
+
 /-- The total size of the levels priced at or above `limit`. -/
 def depth (prices sizes : Array UInt64) (limit : UInt64) : UInt64 :=
   LeanExe.loop prices.size.toUInt64 0 fun i total =>
