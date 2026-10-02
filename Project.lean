@@ -47,6 +47,7 @@ import Project.IR.ArrayLiteral
 import Project.IR.ArrayLoop
 import Project.IR.Build
 import Project.IR.Call
+import Project.IR.Append
 import Project.IR.Correct
 import Project.IR.Expr
 import Project.IR.Fold

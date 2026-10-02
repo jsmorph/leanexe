@@ -20334,3 +20334,92 @@ CLOB `PairPost` loses its parameters and `hInput`, and every kernel proof loses 
 `Moved (Array Float)` at the front and at the back of a tuple, and that a tuple of plain
 arrays and scalars moves nothing by `rfl`.  The full build passed (3,543 jobs) and
 `gpt_file` still checks; no compiled byte changed, so the module tests were not rerun.
+
+## 2026-10-01: In-place append, the first consumed argument (4c–4e, first increment)
+
+GPT's `step` calls `appendBlock cache s`, which builds a new array of `cache.size + s.size`
+elements, so a session copies the whole cache once per token.  The provisional plan, which an
+independent review accepted with additions: `appendBlock` becomes `cache ++ s`, the first
+in-place operation, whose left operand is consumed; a new template `Stmt.append` checks
+`size1 + size2 < 2 ^ 29` or aborts, writes in place when `8 * (size1 + size2 + 1)` fits the
+capacity word of the left operand, and otherwise allocates `min (max need (2 * capacity))
+(2 ^ 32)` bytes, copies, and releases the old block.  The `2 ^ 29` check keeps `need` at most
+`2 ^ 32`, which `alloc_spec_or_abort` requires, so the minimum never falls below `need`; the
+minimum is needed because `2 * capacity` can exceed `2 ^ 32`, and it blocks no allocation that
+could succeed, since a live block of more than `2 ^ 31` bytes and a larger new one cannot both
+fit.  Doubling makes the copies of a session of `n` tokens total `O(n)` blocks instead of
+`O(n ^ 2)`.
+
+The compiler marks a parameter owned when its last use, with no other occurrence in the same
+operation, is the left operand of `++` or an argument to an owned parameter of a compiled
+callee; callees compile first.  Until the next increment adds releases on paths that do not
+consume an owned parameter, the compiler rejects `++` whose left operand is anything else, a
+move inside a branch or a loop body, and an array loop whose callee has an owned parameter,
+since `Stmt.arrayLoop` releases the previous state after each call.  The rule that a
+returned parameter is owned, and in-place `set!`, `insertIdx!`, and `eraseIdxIfInBounds`,
+come in the next increment with the CLOB example, whose `applyCommand` returns its
+parameters on one path.
+
+The host needs no mode metadata.  A theorem that declares a parameter `Moved` where the
+compiler infers borrowed is provable and leaks; one that declares borrowed where the compiler
+infers owned is unprovable; neither gives a false theorem.  Scripts encode the caller's
+behavior, and the review found four sites that release the consumed cache: `tools/gpt2.py`,
+`tests/gpt/gpt2_compare.py`, and in `tests/gpt/sessions.sh` the `session` helper and the
+`growth` session.  When the append fits, the result is the old pointer, so a leftover release
+would free the live cache without a trap, and later allocations would overwrite it.
+
+The review added that the append spec must state that every kept owned array keeps its
+capacity, since `Live.owned` and `block_eq` depend on it, and that the moving call rule must
+remove the consumed temporary at any position: at `step`'s call of `appendBlock` the
+temporaries are the loop result, the embedding block, and the cache, newest first.  A `Live`
+rule for `Stmt.append` is unnecessary while `appendBlock`'s body is the template alone.
+
+- [x] `appendBlock` as `cache ++ s`, with `appendBlock_size` and `appendBlock_get` re-proved.
+- [x] `Stmt.append` and its spec.
+- [x] Mode inference, moves, and the three rejections in the compiler.
+- [x] `Live.start` for consumed parameters, the moving call rule, and the general finish.
+- [x] `appendBlock_implements` and `step_implements` with `Moved`; `generating_step` without
+  the release.
+- [x] The four script sites; emit; tests; the GPT-2 comparison.
+
+The loop of the copying template became `Stmt.fill`, with `Stmt.fill_spec`, which starts at
+any index and asks for the element only from there on; `Stmt.buildWith_spec` now uses it,
+and the template's code is unchanged.  `Stmt.append` runs one fill loop on both paths: in
+place it starts at the length of `xs`, and after growth it starts at 0 with an element that
+reads `xs` below its length and `ys` after it, so the old block is released only after the
+loop, when `dst` differs from `src1`.  The in-place path rests on two new lemmas in
+`Allocation.lean`: `Heap.At.writesOwned`, that writes inside an owned block keep the
+allocator invariant, and `Heap.Owned.rewrite`, that the block is owned with its new words and
+capacity.  The proof is in `Project/IR/Append.lean`, in four parts: the element and request
+lemmas, the in-place path, the growth path, and the composition with the length check and
+the capacity load.
+
+The compiler finds the result term after the `let`s and marks an array parameter owned when
+that term moves it, as the left operand of `++` or at an owned position of a callee, and
+contains it once.  Only the result term may move: `let` values, branches, and loop bodies
+translate with no movable parameter, so `++` there, or a call that would move there, is an
+error.  The inference gives `appendBlock` and `step` an owned first parameter and no other
+GPT function an owned parameter; `step`'s code is unchanged, since it never released its
+parameters, and every other module emits the same bytes.
+
+`Live.start_moved` makes the consumed parameters the first temporaries, `Live.callMove`
+consumes a temporary at any position and puts the result at the head, and `Live.finish_moved`
+gives the obligation of `Func.implements_moves`.  The generator gained the kind `M` for a
+consumed `Array Float`.  Its first version split the separation premise with `simp`, which
+took 167 of the 172 seconds of `step_implements`; one membership proof per argument, checked
+by unfolding `Represent.reads`, brought the theorem to 13 seconds.  `generating_step` no
+longer releases the old cache: `step` consumes it, and the weights stay borrowed because
+`Generating` keeps them apart from the cache's block.
+
+The full build passed (3,544 jobs).  `gpt.wasm` is 14,141 bytes, with sha256
+`b7160351006582c1…`, 89 bytes more than before, and `gpt_file` checks it.  All 2,733 GPT
+comparisons with native Lean passed, and every session freed all its allocations.  The growth
+session of 256 appends of 1,000 words now ends with 4,128,768 bytes of memory and 11 frees:
+nine when the cache outgrew its block, at appends 1, 2, 3, 5, 9, 17, 33, 65, and 129, and
+two at the end.  Before, it freed every old cache and ended with 8,060,928 bytes.
+`gpt2_compare.py` gave `forward`'s last row bit for bit after the steps for the prompts of 5,
+30, and 224 tokens, and chose Hugging Face's token at every step to 256 tokens, with a largest
+relative difference of 1.16e-13, as before.  Its session ended with 138,046 allocations and
+138,026 frees, 486 fewer allocations than before, and 1,079,705,600 bytes of memory, 15.7 MB
+less.  It ran in 323 seconds against 189 before, while a full build ran on the same
+machine, so the time does not measure the change.

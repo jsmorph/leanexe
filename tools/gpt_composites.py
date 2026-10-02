@@ -147,7 +147,9 @@ def composite(spec):
     temps_by_reg = {}
     regvals = {}        # values of locals that plain statements assign
     name = spec['name']
-    params = spec['params']            # list of (name, kind): 'A', 'U', 'u', 'f'
+    params = spec['params']            # list of (name, kind): 'A', 'U', 'M', 'u', 'f'
+    moved = [n for n, k in params if k == 'M']
+    borrowed_arrays = [n for n, k in params if k in 'AU']
     nparams = len(params)
     nlocals = spec['nlocals']
     width = spec.get('width', 0)
@@ -161,24 +163,39 @@ def composite(spec):
         lines.append('set_option maxHeartbeats 1000000 in')
     lines.append(f"theorem {name}_implements : Implements gpt.module {spec['entry']} "
                  f"{spec['tuple']} := by")
-    lines.append(f"  refine Func.implements_heap gpt.funcs {spec['index']} gpt.{name}.ir \"{name}\" rfl")
+    rule = 'implements_moves' if moved else 'implements_heap'
+    lines.append(f"  refine Func.{rule} gpt.funcs {spec['index']} gpt.{name}.ir \"{name}\" rfl")
     lines.append(f"    {spec['tuple']}")
     # The arguments are taken apart one array at a time with `Represent.borrowed_float_pair`
     # and `Represent.borrowed_uint_pair`; `rintro` patterns on the undestructured tuple
     # grow with about the fourth power of the number of arrays.
-    lemma = {'A': 'Represent.borrowed_float_pair', 'U': 'Represent.borrowed_uint_pair'}
+    lemma = {'A': 'Represent.borrowed_float_pair', 'U': 'Represent.borrowed_uint_pair',
+             'M': 'Represent.borrowed_moved_pair'}
     lines.append(f'    (by')
     lines.append(f'      rintro _ _ _ ⟨{wrap(", ".join("_" for _ in names), "        ")}⟩ h')
     for n, k in params:
-        if k in 'AU':
+        if k in 'AUM':
             lines.append(f'      obtain ⟨_, _, rfl, -, h⟩ := {lemma[k]} h')
     lines.append('      obtain rfl := h')
     lines.append('      rfl) ?_')
-    lines.append(f'  rintro ⟨{wrap(", ".join(names), "    ")}⟩ heap initial _ hHeap hArgs hCap')
+    separate = ' hSep' if moved else ''
+    patterns = [f'⟨{n}⟩' if k == 'M' else n for n, k in params]
+    lines.append(f'  rintro ⟨{wrap(", ".join(patterns), "    ")}⟩ heap initial _ hHeap hArgs{separate} hCap')
     for n, k in params:
-        if k in 'AU':
+        if k in 'AUM':
             lines.append(f'  obtain ⟨{ptr(n)}, _, rfl, {hyp(n)}, hArgs⟩ := {lemma[k]} hArgs')
     lines.append('  obtain rfl := hArgs')
+    # Each borrowed array lies apart from the consumed blocks.
+    apart = {n: 'Apart.nil' for n in borrowed_arrays}
+    if moved:
+        # The arguments' regions, in order, are the list `Represent.reads` of the arguments.
+        lines.append('  obtain ⟨-, hSep⟩ := hSep')
+        apart = {n: f'hA{cap(n)}' for n in borrowed_arrays}
+        moved_ptrs = ', '.join(ptr(n) for n in moved)
+        for i, (n, k) in enumerate([(n, k) for n, k in params if k in 'AU']):
+            words = f'({n}.map Float.toBits)' if k == 'A' else n
+            lines.append(f'  have {apart[n]} : Apart initial [{moved_ptrs}]')
+            lines.append(f'      ({ptr(n)}.toNat, 8 * ({words}.size + 1)) := hSep _ ({mem(i)})')
     lines.append('  have hImports : gpt.module.imports = [] := rfl')
     lines.append('  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl')
     if loops:
@@ -220,10 +237,16 @@ def composite(spec):
     lines.append(f'  show Triple _ gpt.{name}.ir.body _')
     lines.append('    (fun store state => store = initial ∧ state = start) _')
     # The calls.
-    live = '(Live.start hHeap)'
+    if moved:
+        m = moved[0]
+        live = (f'(Live.start_moved hHeap (temps := [({ptr(m)}, {m}.map Float.toBits)])\n'
+                f'      (fun _ ht => (List.mem_singleton.mp ht) ▸ {hyp(m)}) (List.pairwise_singleton _ _))')
+    else:
+        live = '(Live.start hHeap)'
+    at_start = True
     states = [dict(kind='start', name='start', len='hStart')]
     chain = []          # the updated states, for `simp`
-    temps = []          # newest first: pointers
+    temps = [ptr(n) for n in moved]          # newest first: pointers
     steps = []          # (register, pointer) of each call's result
     def fact(r):
         return state_fact(r, states)
@@ -294,7 +317,11 @@ def composite(spec):
             body[-1] += ','
             lines.extend(body)
             items = [('p', '(hL.tempsOwned _ (List.mem_cons_self ..)).borrowed')]
-            items += [(ptr(a), f'hL.borrowed {ptr(a)} _ {hyp(a)} Apart.nil') for kind, a in c['borrowed']]
+            for kind, a in c['borrowed']:
+                if kind == 'P':
+                    items.append((ptr(a), f'hL.borrowed {ptr(a)} _ {hyp(a)} {apart[a]}'))
+                else:
+                    items.append((a, f'(hL.tempsOwned _ ({mem(1 + temps.index(a))})).borrowed'))
             lines.append(f"        {wrap(represent(items, True), '          ')}⟩)")
             lines.append(f"    fun heap{k} {p} store{k} s{k} hLive{k} hFrame{k} hState{k} => ?_")
             lines.append(f"  have hS{k} : s{k}.params.length + s{k}.locals.length = {total} := by")
@@ -302,12 +329,20 @@ def composite(spec):
             states.append(dict(kind='frame', name=f's{k}', len=f'hS{k}', frame=f'hFrame{k}',
                                reg=c['state'], fact=f'hState{k}'))
             live = f'hLive{k}'
+            at_start = False
             temps.insert(0, p)
             temps_by_reg[c['state']] = p
             steps.append((c['state'], p))
             continue
         reg = c.get('reg', nparams + n)
-        lines.append(f"  refine Live.call_seq {c['impl']} rfl {c['hfunc']} rfl {live} hCap")
+        if c.get('move'):
+            i = temps.index(c['move'])
+            pre = '[' + ', '.join('_' for _ in temps[:i]) + ']'
+            post = '[' + ', '.join('_' for _ in temps[i + 1:]) + ']'
+            lines.append(f"  refine Live.callMove_seq {c['impl']} rfl {c['hfunc']} rfl (pre := {pre})")
+            lines.append(f"    (post := {post}) {live} hCap")
+        else:
+            lines.append(f"  refine Live.call_seq {c['impl']} rfl {c['hfunc']} rfl {live} hCap")
         lines.append(f"    (x := {c['x']}) (afterArgs := {cur['name']})")
         cvals = []
         for a in c['args']:
@@ -344,11 +379,16 @@ def composite(spec):
         items = []
         for kind, a in c['borrowed']:
             if kind == 'P':
-                src = hyp(a) if live == '(Live.start hHeap)' else f'{live}.borrowed {ptr(a)} _ {hyp(a)} Apart.nil'
+                src = hyp(a) if at_start else f'{live}.borrowed {ptr(a)} _ {hyp(a)} {apart[a]}'
                 items.append((ptr(a), src))
+            elif kind == 'M':
+                items.append((a, f'({live}.tempsOwned _ ({mem(temps.index(a))}))'))
             else:
                 items.append((a, f'({live}.tempsOwned _ ({mem(temps.index(a))})).borrowed'))
         lines.append(f"    {wrap(represent(items, c.get('tail', True)), '      ')}")
+        if c.get('move'):
+            lines.append('    rfl')
+            lines.append(f"    {c['reads_proof'].format(live=live)}")
         p = c['ptr']
         lines.append(f"    (by rw [{cur['len']}]; decide) fun heap{k} {p} store{k} hLive{k} => ?_")
         lines.append(f"  let s{k} := {cur['name']}.update {reg} (.i64 {p})")
@@ -356,6 +396,9 @@ def composite(spec):
         states.append(dict(kind='update', name=f's{k}', len=f'hS{k}', reg=reg))
         chain.append(f's{k}')
         live = f'hLive{k}'
+        at_start = False
+        if c.get('move'):
+            temps.remove(c['move'])
         temps.insert(0, p)
         temps_by_reg[reg] = p
         steps.append((reg, p))
@@ -380,7 +423,7 @@ def composite(spec):
         lines.append(f'  refine {live}.{rule} hImports hRelease r{reg} fun storeR{idx} hLiveR{idx} => ?_')
         live = f'hLiveR{idx}'
     lines.append("  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=")
-    lines.append(f"    {live}.finish")
+    lines.append(f"    {live}.{'finish_moved' if moved else 'finish'}")
     lines.append(f"  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 {calls[-1]['ptr']}], {sR},")
     scratch = 'Func.scratch, ' if width == 0 else ''
     lines.append(f'    by simp [gpt.{name}.ir, {scratch}Expr.evalResults, Expr.eval, {sR},')
@@ -393,7 +436,8 @@ def proj(n, k):
 
 
 def tuple_type(kinds):
-    m = {'A': 'Array Float', 'U': 'Array UInt64', 'u': 'UInt64', 'f': 'Float'}
+    m = {'A': 'Array Float', 'U': 'Array UInt64', 'M': 'Moved (Array Float)', 'u': 'UInt64',
+         'f': 'Float'}
     return wrap(' × '.join(m[k] for k in kinds).replace(' × ', ', '), '    ', 80).replace(', ', ' × ').replace(',\n', ' ×\n')
 
 
@@ -662,8 +706,8 @@ sc_section = tuple_def('scoresTuple', 'scores', SC, '`scores` with its nine argu
 
 # ------------------------------------------------------------------ step
 STA = ['cache', 'wte', 'wpe'] + BARR[1:]
-ST = [(n, 'A') for n in STA] + [('token', 'u'), ('layers', 'u'), ('nh', 'u'), ('dh', 'u'), ('f', 'u'),
-                                ('eps', 'f')]
+ST = [('cache', 'M')] + [(n, 'A') for n in STA[1:]] + [('token', 'u'), ('layers', 'u'), ('nh', 'u'),
+                                                         ('dh', 'u'), ('f', 'u'), ('eps', 'f')]
 BS = '(2 * layers + 1) * (nh * dh)'
 POS = f'UInt64.ofNat cache.size / (if {BS} = 0 then 1 else {BS})'
 STEP_F = '(x, cache, ' + ', '.join(BARR[1:]) + f', l, {POS}, nh, dh, f, {BS}, eps)'
@@ -692,12 +736,13 @@ st_spec = dict(
         dict(kind='loop', impl='layerStep_implements', hfunc='hLayer', state=29, index=32, src=28,
              init='s0', init_ptr='ps0', count=20,
              args=[29, 0] + list(range(3, 19)) + [32, 27, 21, 22, 23, 25, ('f', 24)], F=STEP_F,
-             borrowed=[('P', 'cache')] + [('P', n) for n in BARR[1:]], ptr='pl',
+             borrowed=[('T', 'pCache')] + [('P', n) for n in BARR[1:]], ptr='pl',
              comment='The layers, each writing its key and value into the block.'),
         dict(args=[0, 29], impl='appendBlock_implements', hfunc='hAppend', reg=34,
-             x='(cache, xl)',
-             borrowed=[('P', 'cache'), ('T', 'pl')], tail=False, ptr='pr',
-             comment='The cache followed by the new block.'),
+             x='(⟨cache⟩, xl)', move='pCache',
+             reads_proof='(fun _ hq => (List.mem_singleton.mp hq) ▸ ({live}.tempsOwned _ (List.mem_cons_self ..)).region_apart ((List.pairwise_cons.mp {live}.pairwise).1 _ (by simp)))',
+             borrowed=[('M', 'pCache'), ('T', 'pl')], tail=False, ptr='pr',
+             comment='The cache, consumed, followed by the new block.'),
     ])
 STT = tuple_type([k for _, k in ST])
 st_pat = ', '.join(n for n, _ in ST)
@@ -707,7 +752,7 @@ abbrev StepInput := {STT}
 
 /-- `step` with its twenty-five arguments as one tuple. -/
 def stepTuple : StepInput → Array Float
-  | ({wrap(st_pat, '     ')}) =>
+  | (⟨{wrap(st_pat.replace('cache, ', 'cache⟩, ', 1), '     ')}) =>
     LeanExe.Examples.Gpt.step {wrap(' '.join(n for n, _ in ST).replace(' ', ', '), '      ', 80).replace(', ', ' ').replace(',', '')}
 
 """ + composite(st_spec) + '\n'

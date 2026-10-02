@@ -908,72 +908,39 @@ theorem writeBlock_implements : Implements gpt.module 37 writeBlockTuple := by
   rw [hEq, build_map]
   exact hNew.owned
 
-/-- `appendBlock` with its two arguments as one pair. -/
-def appendBlockTuple (x : Array Float × Array Float) : Array Float :=
-  LeanExe.Examples.Gpt.appendBlock x.1 x.2
+/-- `appendBlock` with its two arguments as one pair: the call consumes the cache. -/
+def appendBlockTuple (x : Moved (Array Float) × Array Float) : Array Float :=
+  LeanExe.Examples.Gpt.appendBlock x.1.val x.2
 
 theorem appendBlock_implements : Implements gpt.module 38 appendBlockTuple := by
-  refine Func.implements_heap gpt.funcs 36 gpt.appendBlock.ir "appendBlock" rfl appendBlockTuple
+  refine Func.implements_moves gpt.funcs 36 gpt.appendBlock.ir "appendBlock" rfl appendBlockTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, ⟨_, rfl, -⟩⟩; rfl) ?_
-  rintro ⟨cache, s⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨pc, rfl, hCs⟩, ⟨ps, rfl, hSs⟩⟩ hCap
-  change heap.Borrowed initial pc (cache.map Float.toBits) at hCs
+  rintro ⟨⟨cache⟩, s⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨pc, rfl, hCs⟩, ⟨ps, rfl, hSs⟩⟩ ⟨-, hSep⟩
+    hCap
+  change heap.Owned initial pc (cache.map Float.toBits) at hCs
   change heap.Borrowed initial ps (s.map Float.toBits) at hSs
+  have hMoves : ∀ r, Apart initial [pc] r → regionsDisjoint r (block initial pc) :=
+    fun r h => h pc (List.mem_singleton_self _)
+  have hApart := hMoves _ (hSep _ (List.mem_singleton_self _))
   have hMemory32 : gpt.module.memIs64 = false := rfl
   have hImports : gpt.module.imports = [] := rfl
   have hAlloc : gpt.module.funcs[0]? = some (allocFunction 0) := rfl
-  have hA := hCs.values
-  have hLength := hA.lengthBound
-  simp only [UInt64.toNat_toUInt32] at hLength
-  have hB := hSs.values
-  have hLengthB := hB.lengthBound
-  simp only [UInt64.toNat_toUInt32] at hLengthB
-  let start : State :=
-    { params := [.i64 pc, .i64 ps]
-      locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0] }
-  have hGet0 : start.get 0 = some (.i64 pc) := rfl
-  let s1 := start.update 2 (.i64 (UInt64.ofNat cache.size))
-  let s2 := s1.update 3 (.i64 (UInt64.ofNat cache.size))
-  let s3 := s2.update 4 (.i64 (UInt64.ofNat s.size))
-  have hGet1 : s2.get 1 = some (.i64 ps) := rfl
-  show Triple _ (.seq (.arraySize 2 0) (.seq (.assign 3 (.get 2)) (.seq (.arraySize 4 1)
-      (.build 5 6 7 (.bin .add (.get 3) (.get 4)) (.toBits (.iteF (.ltU (.get 7) (.get 3))
-        (.ofBits (.read 0 (.get 7))) (.ofBits (.read 1 (.bin .sub (.get 7) (.get 3)))))))))) 8
-    (fun store state => store = initial ∧ state = start) _
-  refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
-    simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLength, hA.lengthRead,
-      State.set?_eq_update, s1, start])) ?_
-  refine Stmt.seq_spec (Stmt.run_spec (final := s2) (by
-    simp [Stmt.run, Expr.eval, State.set?_eq_update, s2, s1, start])) ?_
-  refine Stmt.seq_spec (Stmt.run_spec (final := s3) (by
-    simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet1, hLengthB, hB.lengthRead,
-      State.set?_eq_update, s3, s2, s1, start])) ?_
-  have hS3 : s3.params.length = 2 ∧ s3.locals.length = 7 := by simp [s3, s2, s1, start]
-  refine (Stmt.build_spec (n := cache.size.toUInt64 + s.size.toUInt64)
-    (fun e => (if e < cache.size.toUInt64 then cache[e.toNat]!
-      else s[(e - cache.size.toUInt64).toNat]!).toBits) hMemory32 hImports hAlloc (by decide)
-    (by decide) (by simp [hS3.1, hS3.2]) hHeap hCap
-    ⟨s3, by simp [Expr.eval, U64Op.apply]; rfl⟩ ?_).mono (fun _ _ h => h) ?_
-  · intro i store state hi hAt hFrame hIndex
-    have hState : state.params.length = 2 ∧ state.locals.length = 7 :=
-      ⟨hFrame.params.trans hS3.1, hFrame.locals.trans hS3.2⟩
-    have g0 : state.get 0 = some (.i64 pc) := (hFrame.get 0 (by decide) (by decide)).trans rfl
-    have g1 : state.get 1 = some (.i64 ps) := (hFrame.get 1 (by decide) (by decide)).trans rfl
-    have g3 : state.get 3 = some (.i64 (UInt64.ofNat cache.size)) :=
-      (hFrame.get 3 (by decide) (by decide)).trans rfl
-    by_cases hc : UInt64.ofNat i < UInt64.ofNat cache.size <;>
-    simp [Expr.eval, g0, g1, g3, hIndex, hc, Expr.readValue_at (hAt pc _ hCs),
-      Expr.readValue_at (hAt ps _ hSs), State.set?_eq_update, hState.1, hState.2, U64Op.apply,
-      getElem!_map_toBits]
-  rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-    hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.appendBlock.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
-  have hEq : appendBlockTuple (cache, s) = LeanExe.build (cache.size.toUInt64 + s.size.toUInt64)
-      (fun e => if e < cache.size.toUInt64 then cache[e.toNat]!
-        else s[(e - cache.size.toUInt64).toNat]!) := rfl
-  rw [hEq, build_map]
-  exact hNew.owned
+  have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
+  show Triple _ (Stmt.append 2 3 4 5 6 7 0 1) 8
+    (fun store state => store = initial ∧ state = gpt.appendBlock.ir.state [.i64 pc, .i64 ps]) _
+  refine (Stmt.append_spec hMemory32 hImports hAlloc hRelease (by decide) (by decide) (by decide)
+    (by decide) (by decide) (by decide)
+    (by simp only [Func.state, List.length_cons, List.length_nil, List.length_map]; decide)
+    hHeap hCap hCs hSs hApart rfl rfl).mono
+    (fun _ _ h => h) ?_
+  rintro store state ⟨heap', p, -, hDst, hAt, hOwned, hCaps, hB, hO⟩
+  refine ⟨heap', hAt, hCaps, fun q ws hq hA => (hB q ws hq (hMoves _ hA)).1,
+    fun q ws hq hA => ⟨(hO q ws hq (hMoves _ hA)).1, (hO q ws hq (hMoves _ hA)).2.1⟩, [.i64 p],
+    state, by simp [gpt.appendBlock.ir, Func.scratch, Expr.evalResults, Expr.eval, hDst],
+    ⟨p, rfl, ?_⟩, fun q ws hq hA => ⟨p, rfl, (hB q ws hq (hMoves _ hA)).2⟩,
+    fun q ws hq hA => ⟨p, rfl, (hO q ws hq (hMoves _ hA)).2.2⟩⟩
+  show heap'.Owned store p ((cache ++ s).map Float.toBits)
+  rw [Array.map_append]
+  exact hOwned
 
 end Project.Gpt

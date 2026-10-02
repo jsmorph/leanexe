@@ -2,12 +2,12 @@ import Project.Gpt.Composites
 import Project.Gpt.Exact
 
 /-! The generation as the host runs it, in Talos terms.  The host calls `step` once per
-token, each time with the cache that the previous call returned, releases that previous
-cache, and calls `scores` on the last cache.  `Generating` describes a store between these
-calls.  `generating_start` gives it for the empty cache, `generating_step` shows that
-`step` followed by the release gives it for one more token, and `generating_scores` shows
-that `scores` then returns row `p` of `forward`.  Each call may abort at `unreachable`, as
-`Implements` allows, and nothing bounds the memory the generation uses. -/
+token, each time handing over the cache that the previous call returned, which `step`
+consumes, and calls `scores` on the last cache.  `Generating` describes a store between
+these calls.  `generating_start` gives it for the empty cache, `generating_step` shows that
+`step` gives it for one more token, and `generating_scores` shows that `scores` then returns
+row `p` of `forward`.  Each call may abort at `unreachable`, as `Implements` allows, and
+nothing bounds the memory the generation uses. -/
 
 namespace Project.Gpt
 
@@ -108,23 +108,47 @@ theorem generating_start {store : Store Unit} {heap : Heap} {W : Weights} {P : P
     Generating store W P tokens layers nh dh f eps pc 0 :=
   ⟨heap, hAt, hCap, hW, by simpa [Weights.cache, cacheAfter] using hC⟩
 
-/-- `step` on token `p` aborts or returns a new cache, and the release of the old cache
-then leaves a store of the generation after `p + 1` tokens. -/
+/-- The regions of the arrays that `step` reads: the weights of the blocks and the
+embeddings, the first eighteen weight arrays. -/
+theorem step_reads (pc : UInt64) (P : Pointers) (W : Weights) (cache : Array Float)
+    (token layers nh dh f : UInt64) (eps : Float) :
+    Represent.reads (stepArgs pc P token layers nh dh f eps)
+      ((⟨cache⟩ : Moved (Array Float)), W.wte, W.wpe, W.g1, W.b1, W.wq, W.bq, W.wk, W.bk, W.wv,
+        W.bv, W.wo, W.bo, W.g2, W.b2, W.wfc, W.bfc, W.wproj, W.bproj, token, layers, nh, dh, f,
+        eps) =
+      ((W.pairs P).take 18).map fun w => (w.1.toNat, 8 * ((w.2.map Float.toBits).size + 1)) :=
+  rfl
+
+/-- `step` on token `p` consumes the cache at `pc` and aborts or returns the cache of the
+first `p + 1` tokens, leaving a store of the generation after `p + 1` tokens. -/
 theorem generating_step {store : Store Unit} {W : Weights} {P : Pointers}
     {tokens : Array UInt64} {layers nh dh f : UInt64} {eps : Float} {pc : UInt64} {p : Nat}
     (env : HostEnv Unit) (h : Generating store W P tokens layers nh dh f eps pc p) :
     ReturnsOrAborts env gpt.module 41 store (stepArgs pc P tokens[p]! layers nh dh f eps).reverse
       fun final values => ∃ pc', values = [.i64 pc'] ∧
-        TerminatesWith env gpt.module 1 final [.i64 pc] fun final' _ =>
-          Generating final' W P tokens layers nh dh f eps pc' (p + 1) := by
+        Generating final W P tokens layers nh dh f eps pc' (p + 1) := by
   obtain ⟨heap, hAt, hCap, hW, hC⟩ := h
   have b : ∀ q a, (q, a) ∈ W.pairs P → heap.Borrowed store q (a.map Float.toBits) :=
     fun q a h => (hW _ h).1
+  have hApart : ∀ w ∈ W.pairs P,
+      Apart store [pc] (w.1.toNat, 8 * ((w.2.map Float.toBits).size + 1)) := fun w hw q hq => by
+    rw [List.mem_singleton] at hq
+    subst hq
+    rw [Array.size_map]
+    exact (hW w hw).2
+  have hReads : ∀ r ∈ Represent.reads (stepArgs pc P tokens[p]! layers nh dh f eps)
+      ((⟨W.cache tokens layers nh dh f eps p⟩ : Moved (Array Float)), W.wte, W.wpe, W.g1, W.b1,
+        W.wq, W.bq, W.wk, W.bk, W.wv, W.bv, W.wo, W.bo, W.g2, W.b2, W.wfc, W.bfc, W.wproj,
+        W.bproj, tokens[p]!, layers, nh, dh, f, eps), Apart store [pc] r := by
+    rw [step_reads]
+    intro r hr
+    obtain ⟨w, hw, rfl⟩ := List.mem_map.mp hr
+    exact hApart w (List.mem_of_mem_take hw)
   refine (step_implements env store heap (stepArgs pc P tokens[p]! layers nh dh f eps)
-    (W.cache tokens layers nh dh f eps p, W.wte, W.wpe, W.g1, W.b1, W.wq, W.bq, W.wk, W.bk, W.wv,
-      W.bv, W.wo, W.bo, W.g2, W.b2, W.wfc, W.bfc, W.wproj, W.bproj, tokens[p]!, layers, nh, dh, f,
-      eps) hAt
-    ⟨[.i64 pc], _, rfl, ⟨pc, rfl, hC.borrowed⟩, [.i64 P.wte], _, rfl, ⟨P.wte, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64
+    (⟨W.cache tokens layers nh dh f eps p⟩, W.wte, W.wpe, W.g1, W.b1, W.wq, W.bq, W.wk, W.bk,
+      W.wv, W.bv, W.wo, W.bo, W.g2, W.b2, W.wfc, W.bfc, W.wproj, W.bproj, tokens[p]!, layers, nh,
+      dh, f, eps) hAt
+    ⟨[.i64 pc], _, rfl, ⟨pc, rfl, hC⟩, [.i64 P.wte], _, rfl, ⟨P.wte, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64
       P.wpe], _, rfl, ⟨P.wpe, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.g1], _, rfl, ⟨P.g1, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.b1], _,
       rfl, ⟨P.b1, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.wq], _, rfl, ⟨P.wq, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bq], _, rfl, ⟨P.bq,
       rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.wk], _, rfl, ⟨P.wk, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bk], _, rfl, ⟨P.bk, rfl, b _ _ (by simp [Weights.pairs])⟩,
@@ -132,32 +156,17 @@ theorem generating_step {store : Store Unit} {W : Weights} {P : Pointers}
       _, rfl, ⟨P.wo, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bo], _, rfl, ⟨P.bo, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.g2], _, rfl,
       ⟨P.g2, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.b2], _, rfl, ⟨P.b2, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.wfc], _, rfl, ⟨P.wfc,
       rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bfc], _, rfl, ⟨P.bfc, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.wproj], _, rfl, ⟨P.wproj, rfl,
-      b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bproj], _, rfl, ⟨P.bproj, rfl, b _ _ (by simp [Weights.pairs])⟩, rfl⟩ Separate.nil hCap).mono ?_
-  rintro final values ⟨heap', hAt', ⟨pc', hValues, hNew⟩, hCaps, hKeepB, hKeepO, hOutB, hOutO⟩
+      b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bproj], _, rfl, ⟨P.bproj, rfl, b _ _ (by simp [Weights.pairs])⟩, rfl⟩
+    ⟨List.pairwise_singleton _ _, hReads⟩ hCap).mono ?_
+  rintro final values ⟨heap', hAt', ⟨pc', hValues, hNew⟩, hCaps, hKeepB, -, hOutB, -⟩
   have hValues' : values = [.i64 pc'] := by
     rw [← List.reverse_reverse values, hValues]; rfl
-  refine ⟨pc', hValues', ?_⟩
-  obtain ⟨hOld, hOldCap⟩ := hKeepO pc _ hC Apart.nil
-  refine (release_run rfl rfl env heap' final pc _ hAt' hOld).mono ?_
-  rintro final' out ⟨-, rfl⟩
-  have hApartOld : regionsDisjoint (pc'.toNat - 48, 48 + capacityAt final pc')
-      (pc.toNat - 48, 48 + capacityAt final pc) := by
-    obtain ⟨q, hq, hDisjoint⟩ := hOutO pc _ hC Apart.nil
+  refine ⟨pc', hValues', heap', hAt', memoryCap_le_of_caps hCaps hCap, fun w hw => ⟨?_, ?_⟩, hNew⟩
+  · exact hKeepB w.1 _ (hW w hw).1 (hApart w hw)
+  · obtain ⟨q, hq, hDisjoint⟩ := hOutB w.1 _ (hW w hw).1 (hApart w hw)
     rw [hValues] at hq
     simp only [List.cons.injEq, Value.i64.injEq, and_true] at hq
     subst hq
-    rw [hOldCap]
-    exact regionsDisjoint_symm hDisjoint
-  obtain ⟨hNewR, hNewCap⟩ := hNew.release hAt' hOld hApartOld
-  refine ⟨_, hAt'.release hOld, memoryCap_le_of_caps hCaps hCap, fun w hw => ⟨?_, ?_⟩, hNewR⟩
-  · refine (hKeepB w.1 _ (hW w hw).1 Apart.nil).release hAt' hOld ?_
-    rw [Array.size_map, hOldCap]
-    exact (hW w hw).2
-  · obtain ⟨q, hq, hDisjoint⟩ := hOutB w.1 _ (hW w hw).1 Apart.nil
-    rw [hValues] at hq
-    simp only [List.cons.injEq, Value.i64.injEq, and_true] at hq
-    subst hq
-    rw [hNewCap]
     simpa only [Array.size_map] using hDisjoint
 
 /-- `scores` on the cache of the first `p + 1` tokens aborts or returns a new array that holds

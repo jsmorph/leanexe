@@ -8,11 +8,12 @@ wasm=${1:-$root/build/gpt/gpt.wasm}
 host=$root/build/tools/leanexe-wasmtime-host
 failed=0
 
-# session NAME "LENGTHS" "SCALARS": allocates one zero-filled array per length,
-# calls NAME with the arrays and then the scalar arguments (u64:N or f64:BITS),
-# and releases the result and the arrays.
+# session NAME "LENGTHS" "SCALARS" [CONSUMED]: allocates one zero-filled array per
+# length, calls NAME with the arrays and then the scalar arguments (u64:N or f64:BITS),
+# and releases the result and the arrays other than the first CONSUMED, which the call
+# consumes.
 session() {
-  local name=$1 lengths=$2 scalars=$3 script="" i=1 n
+  local name=$1 lengths=$2 scalars=$3 consumed=${4:-0} script="" i=1 n
   for n in $lengths; do
     script+="alloc $i $((8 * (n + 1)))"$'\n'"write-u64 $i 0 $n"$'\n'
     i=$((i + 1))
@@ -20,7 +21,7 @@ session() {
   for ((j = 1; j < i; j++)); do script+="arg-ptr $j"$'\n'; done
   for s in $scalars; do script+="arg-${s%%:*} ${s#*:}"$'\n'; done
   script+="call $name 1"$'\n'"arg-u64 result:0"$'\n'"call release 0"$'\n'
-  for ((j = 1; j < i; j++)); do script+="arg-ptr $j"$'\n'"call release 0"$'\n'; done
+  for ((j = 1 + consumed; j < i; j++)); do script+="arg-ptr $j"$'\n'"call release 0"$'\n'; done
   script+="stats"$'\n'
   local stats
   stats=$(printf '%s' "$script" | "$host" session "$wasm" | tail -1)
@@ -33,10 +34,10 @@ session() {
   fi
 }
 
-# growth N B: appends a block of B words to a cache N times with appendBlock,
-# releasing each old cache, and checks that memory stays below eight times the
-# final cache plus 1 MiB and that every allocation was freed.  An allocator that
-# cannot reuse the freed caches needs their sum, N (N + 1) / 2 blocks.
+# growth N B: appends a block of B words to a cache N times with appendBlock, which
+# consumes each old cache, and checks that memory stays below eight times the final
+# cache plus 1 MiB and that every allocation was freed.  An allocator that cannot reuse
+# the freed blocks, or an append that copies on every call, needs far more.
 growth() {
   local n=$1 b=$2 script="" i old new
   script+="alloc 1 $((8 * (b + 1)))"$'\n'"write-u64 1 0 $b"$'\n'
@@ -45,7 +46,6 @@ growth() {
     old=$((2 + i % 2))
     new=$((3 - i % 2))
     script+="arg-ptr $old"$'\n'"arg-ptr 1"$'\n'"call appendBlock 1"$'\n'"keep $new result:0"$'\n'
-    script+="arg-ptr $old"$'\n'"call release 0"$'\n'
   done
   script+="memory-size"$'\n'"arg-ptr $((2 + n % 2))"$'\n'"call release 0"$'\n'
   script+="arg-ptr 1"$'\n'"call release 0"$'\n'"stats"$'\n'
@@ -76,7 +76,7 @@ stacked="4 4 8 4 8 4 8 4 8 4 4 4 12 6 12 4"
 session block "4 $stacked" "u64:1 u64:2 u64:2 u64:1 u64:3 $eps"
 session forward "2 6 4 $stacked 2 2" "u64:2 u64:2 u64:2 u64:1 u64:3 u64:3 $eps"
 # A step from an empty cache, and the scores of a cache of one block of (2 · 2 + 1) · 2.
-session step "0 6 4 $stacked" "u64:1 u64:2 u64:2 u64:1 u64:3 $eps"
+session step "0 6 4 $stacked" "u64:1 u64:2 u64:2 u64:1 u64:3 $eps" 1
 session scores "10 6 2 2" "u64:2 u64:2 u64:1 u64:3 $eps"
 growth 256 1000
 [ "$failed" -eq 0 ]

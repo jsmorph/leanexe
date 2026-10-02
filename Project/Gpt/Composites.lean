@@ -1433,24 +1433,24 @@ theorem scores_implements : Implements gpt.module 42 scoresTuple := by
 
 /-- The input of `step`: the cache, the embeddings, the stacked weights of the blocks, the
 token, and the dimensions. -/
-abbrev StepInput := Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
+abbrev StepInput := Moved (Array Float) × Array Float × Array Float × Array Float × Array Float ×
     Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
     Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
-    Array Float × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Float
+    Array Float × Array Float × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Float
 
 /-- `step` with its twenty-five arguments as one tuple. -/
 def stepTuple : StepInput → Array Float
-  | (cache, wte, wpe, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj,
+  | (⟨cache⟩, wte, wpe, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj,
      bproj, token, layers, nh, dh, f, eps) =>
     LeanExe.Examples.Gpt.step cache wte wpe g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj
       bproj token layers nh dh f eps
 
 theorem step_implements : Implements gpt.module 41 stepTuple := by
-  refine Func.implements_heap gpt.funcs 39 gpt.step.ir "step" rfl
+  refine Func.implements_moves gpt.funcs 39 gpt.step.ir "step" rfl
     stepTuple
     (by
       rintro _ _ _ ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _⟩ h
-      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
+      obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_moved_pair h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
@@ -1471,9 +1471,9 @@ theorem step_implements : Implements gpt.module 41 stepTuple := by
       obtain ⟨_, _, rfl, -, h⟩ := Represent.borrowed_float_pair h
       obtain rfl := h
       rfl) ?_
-  rintro ⟨cache, wte, wpe, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj,
-    bproj, token, layers, nh, dh, f, eps⟩ heap initial _ hHeap hArgs hCap
-  obtain ⟨pCache, _, rfl, hCache, hArgs⟩ := Represent.borrowed_float_pair hArgs
+  rintro ⟨⟨cache⟩, wte, wpe, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj,
+    bproj, token, layers, nh, dh, f, eps⟩ heap initial _ hHeap hArgs hSep hCap
+  obtain ⟨pCache, _, rfl, hCache, hArgs⟩ := Represent.borrowed_moved_pair hArgs
   obtain ⟨pWte, _, rfl, hWte, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pWpe, _, rfl, hWpe, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pG1, _, rfl, hG1, hArgs⟩ := Represent.borrowed_float_pair hArgs
@@ -1493,6 +1493,43 @@ theorem step_implements : Implements gpt.module 41 stepTuple := by
   obtain ⟨pWproj, _, rfl, hWproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain ⟨pBproj, _, rfl, hBproj, hArgs⟩ := Represent.borrowed_float_pair hArgs
   obtain rfl := hArgs
+  obtain ⟨-, hSep⟩ := hSep
+  have hAWte : Apart initial [pCache]
+      (pWte.toNat, 8 * ((wte.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_self ..)
+  have hAWpe : Apart initial [pCache]
+      (pWpe.toNat, 8 * ((wpe.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))
+  have hAG1 : Apart initial [pCache]
+      (pG1.toNat, 8 * ((g1.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))
+  have hAB1 : Apart initial [pCache]
+      (pB1.toNat, 8 * ((b1.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))
+  have hAWq : Apart initial [pCache]
+      (pWq.toNat, 8 * ((wq.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))
+  have hABq : Apart initial [pCache]
+      (pBq.toNat, 8 * ((bq.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))
+  have hAWk : Apart initial [pCache]
+      (pWk.toNat, 8 * ((wk.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))))
+  have hABk : Apart initial [pCache]
+      (pBk.toNat, 8 * ((bk.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))))
+  have hAWv : Apart initial [pCache]
+      (pWv.toNat, 8 * ((wv.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))))))
+  have hABv : Apart initial [pCache]
+      (pBv.toNat, 8 * ((bv.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))))))
+  have hAWo : Apart initial [pCache]
+      (pWo.toNat, 8 * ((wo.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))))))))
+  have hABo : Apart initial [pCache]
+      (pBo.toNat, 8 * ((bo.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))))))))
+  have hAG2 : Apart initial [pCache]
+      (pG2.toNat, 8 * ((g2.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))))))))))
+  have hAB2 : Apart initial [pCache]
+      (pB2.toNat, 8 * ((b2.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))))))))))
+  have hAWfc : Apart initial [pCache]
+      (pWfc.toNat, 8 * ((wfc.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))))))))))))
+  have hABfc : Apart initial [pCache]
+      (pBfc.toNat, 8 * ((bfc.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))))))))))))
+  have hAWproj : Apart initial [pCache]
+      (pWproj.toNat, 8 * ((wproj.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))))))))))))))
+  have hABproj : Apart initial [pCache]
+      (pBproj.toNat, 8 * ((bproj.map Float.toBits).size + 1)) := hSep _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))))))))))))))
   have hImports : gpt.module.imports = [] := rfl
   have hRelease : gpt.module.funcs[1]? = some (releaseFunction 1) := rfl
   have hMemory32 : gpt.module.memIs64 = false := rfl
@@ -1589,7 +1626,8 @@ theorem step_implements : Implements gpt.module 41 stepTuple := by
   refine Stmt.seq_spec (Stmt.run_spec (final := s3) (by
     by_cases hb : (2 * layers + 1) * (nh * dh) = 0 <;> simp [Stmt.run, Expr.eval, f3_26, f3_25, s3_36, s3_37, s3, s2, s1, start, State.set?_eq_update, State.update_params_length, State.update_locals_length, State.get_update_ne, U64Op.apply, hb])) ?_
   -- The block of the new position, holding its embedding.
-  refine Live.call_seq embedBlock_implements rfl hEmbed rfl (Live.start hHeap) hCap
+  refine Live.call_seq embedBlock_implements rfl hEmbed rfl (Live.start_moved hHeap (temps := [(pCache, cache.map Float.toBits)])
+      (fun _ ht => (List.mem_singleton.mp ht) ▸ hCache) (List.pairwise_singleton _ _)) hCap
     (x := (wte, wpe, token, UInt64.ofNat cache.size / (if (2 * layers + 1) * (nh * dh) = 0 then 1 else (2 * layers + 1) * (nh * dh)), nh * dh, (2 * layers + 1) * (nh * dh))) (afterArgs := s3)
     (vals := [.i64 pWte, .i64 pWpe, .i64 token,
       .i64 (UInt64.ofNat cache.size / (if (2 * layers + 1) * (nh * dh) = 0 then 1 else (2 * layers + 1) * (nh * dh))),
@@ -1648,35 +1686,40 @@ theorem step_implements : Implements gpt.module 41 stepTuple := by
           Expr.evalResults_getF ((hF.get 24 (by decide) (by decide)).trans ((State.get_update_ne (state := s3) (j := 24) (index := 28) (by decide)).trans ((State.get_update_ne (state := s3_37) (j := 24) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3_36) (j := 24) (index := 37) (by decide)).trans ((State.get_update_ne (state := s2) (j := 24) (index := 36) (by decide)).trans ((State.get_update_ne (state := s1) (j := 24) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 24) (index := 25) (by decide)).trans (sg24)))))))) <|
           Expr.evalResults_nil),
         ⟨[.i64 p], _, rfl, ⟨p, rfl, (hL.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-          [.i64 pCache], _, rfl, ⟨pCache, rfl, hL.borrowed pCache _ hCache Apart.nil⟩,
-          [.i64 pG1], _, rfl, ⟨pG1, rfl, hL.borrowed pG1 _ hG1 Apart.nil⟩, [.i64 pB1], _, rfl,
-          ⟨pB1, rfl, hL.borrowed pB1 _ hB1 Apart.nil⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl,
-          hL.borrowed pWq _ hWq Apart.nil⟩, [.i64 pBq], _, rfl, ⟨pBq, rfl,
-          hL.borrowed pBq _ hBq Apart.nil⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl,
-          hL.borrowed pWk _ hWk Apart.nil⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl,
-          hL.borrowed pBk _ hBk Apart.nil⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl,
-          hL.borrowed pWv _ hWv Apart.nil⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl,
-          hL.borrowed pBv _ hBv Apart.nil⟩, [.i64 pWo], _, rfl, ⟨pWo, rfl,
-          hL.borrowed pWo _ hWo Apart.nil⟩, [.i64 pBo], _, rfl, ⟨pBo, rfl,
-          hL.borrowed pBo _ hBo Apart.nil⟩, [.i64 pG2], _, rfl, ⟨pG2, rfl,
-          hL.borrowed pG2 _ hG2 Apart.nil⟩, [.i64 pB2], _, rfl, ⟨pB2, rfl,
-          hL.borrowed pB2 _ hB2 Apart.nil⟩, [.i64 pWfc], _, rfl, ⟨pWfc, rfl,
-          hL.borrowed pWfc _ hWfc Apart.nil⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl,
-          hL.borrowed pBfc _ hBfc Apart.nil⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
-          hL.borrowed pWproj _ hWproj Apart.nil⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
-          hL.borrowed pBproj _ hBproj Apart.nil⟩, rfl⟩⟩)
+          [.i64 pCache], _, rfl, ⟨pCache, rfl,
+          (hL.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))).borrowed⟩,
+          [.i64 pG1], _, rfl, ⟨pG1, rfl, hL.borrowed pG1 _ hG1 hAG1⟩, [.i64 pB1], _, rfl, ⟨pB1,
+          rfl, hL.borrowed pB1 _ hB1 hAB1⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl,
+          hL.borrowed pWq _ hWq hAWq⟩, [.i64 pBq], _, rfl, ⟨pBq, rfl,
+          hL.borrowed pBq _ hBq hABq⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl,
+          hL.borrowed pWk _ hWk hAWk⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl,
+          hL.borrowed pBk _ hBk hABk⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl,
+          hL.borrowed pWv _ hWv hAWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl,
+          hL.borrowed pBv _ hBv hABv⟩, [.i64 pWo], _, rfl, ⟨pWo, rfl,
+          hL.borrowed pWo _ hWo hAWo⟩, [.i64 pBo], _, rfl, ⟨pBo, rfl,
+          hL.borrowed pBo _ hBo hABo⟩, [.i64 pG2], _, rfl, ⟨pG2, rfl,
+          hL.borrowed pG2 _ hG2 hAG2⟩, [.i64 pB2], _, rfl, ⟨pB2, rfl,
+          hL.borrowed pB2 _ hB2 hAB2⟩, [.i64 pWfc], _, rfl, ⟨pWfc, rfl,
+          hL.borrowed pWfc _ hWfc hAWfc⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl,
+          hL.borrowed pBfc _ hBfc hABfc⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
+          hL.borrowed pWproj _ hWproj hAWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
+          hL.borrowed pBproj _ hBproj hABproj⟩, rfl⟩⟩)
     fun heap5 pl store5 s5 hLive5 hFrame5 hState5 => ?_
   have hS5 : s5.params.length + s5.locals.length = 38 := by
     rw [hFrame5.params, hFrame5.locals]; exact hS4
-  -- The cache followed by the new block.
-  refine Live.call_seq appendBlock_implements rfl hAppend rfl hLive5 hCap
-    (x := (cache, xl)) (afterArgs := s5)
+  -- The cache, consumed, followed by the new block.
+  refine Live.callMove_seq appendBlock_implements rfl hAppend rfl (pre := [_, _])
+    (post := []) hLive5 hCap
+    (x := (⟨cache⟩, xl)) (afterArgs := s5)
     (vals := [.i64 pCache, .i64 pl])
     (Expr.evalResults_get ((hFrame5.get 0 (by decide) (by decide)).trans ((State.get_update_ne (state := s3) (j := 0) (index := 28) (by decide)).trans ((State.get_update_ne (state := s3_37) (j := 0) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3_36) (j := 0) (index := 37) (by decide)).trans ((State.get_update_ne (state := s2) (j := 0) (index := 36) (by decide)).trans ((State.get_update_ne (state := s1) (j := 0) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 0) (index := 25) (by decide)).trans (sg0)))))))) <|
       Expr.evalResults_get (hState5) <|
       Expr.evalResults_nil)
-    ⟨[.i64 pCache], _, rfl, ⟨pCache, rfl, hLive5.borrowed pCache _ hCache Apart.nil⟩, ⟨pl,
-      rfl, (hLive5.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩⟩
+    ⟨[.i64 pCache], _, rfl, ⟨pCache, rfl,
+      (hLive5.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))⟩,
+      ⟨pl, rfl, (hLive5.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩⟩
+    rfl
+    (fun _ hq => (List.mem_singleton.mp hq) ▸ (hLive5.tempsOwned _ (List.mem_cons_self ..)).region_apart ((List.pairwise_cons.mp hLive5.pairwise).1 _ (by simp)))
     (by rw [hS5]; decide) fun heap6 pr store6 hLive6 => ?_
   let s6 := s5.update 34 (.i64 pr)
   have hS6 : s6.params.length + s6.locals.length = 38 := by rw [hLen, hS5]
@@ -1693,7 +1736,7 @@ theorem step_implements : Implements gpt.module 41 stepTuple := by
   refine hLive6.releaseSecond_seq hImports hRelease r29 fun storeR0 hLiveR0 => ?_
   refine hLiveR0.releaseSecond_last hImports hRelease r28 fun storeR1 hLiveR1 => ?_
   obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR1.finish
+    hLiveR1.finish_moved
   exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s7,
     by simp [gpt.step.ir, Expr.evalResults, Expr.eval, s7,
       State.get_update_same, hS6], hOwned, hOutB, hOutO⟩

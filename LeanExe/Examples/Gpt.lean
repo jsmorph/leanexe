@@ -293,8 +293,7 @@ def writeBlock (s x k v : Array Float) (l d : UInt64) : Array Float :=
 
 /-- `cache` followed by `s`. -/
 def appendBlock (cache s : Array Float) : Array Float :=
-  let n := cache.size.toUInt64
-  LeanExe.build (n + s.size.toUInt64) fun e => if e < n then cache[e.toNat]! else s[(e - n).toNat]!
+  cache ++ s
 
 /-- The hidden row of the last block of `cache`. -/
 def lastHidden (cache : Array Float) (d bsize : UInt64) : Array Float :=
