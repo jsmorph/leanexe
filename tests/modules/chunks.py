@@ -5,7 +5,12 @@
 """Runs a stream of CLOB commands through `clob.wasm` three ways in host sessions: one call of
 `runCommands` over the whole stream, calls over chunks that pass the book back in, and one call
 of `applyCommand` per command.  Checks that the three books agree and that `runCommands`
-allocates and frees exactly what the commands do, plus its own arguments.
+allocates and frees exactly what the commands do, plus its own arguments.  Does the same for
+`runOut` and `stepCommand`, which also append the best bid after each command to an output
+array, and checks that `runOut` leaves the book of `runCommands`.  Whether an append grows the
+output array depends on the capacity the allocator gave its block, which differs between
+sessions, so for `runOut` the counts are checked only to leave the results and the command
+arrays allocated.
 
 Usage: uv run tests/modules/chunks.py [build directory]"""
 
@@ -48,42 +53,51 @@ def book_and_commands(rng, levels, count):
     return prices, sizes, commands
 
 
-def run(directory, prices, sizes, commands, cuts):
-    """The book after the commands, passed in chunks that end at the word offsets `cuts`, and the
-    session's allocation and free counts."""
+def run(directory, arrays, commands, cuts):
+    """The arrays after the commands, passed in chunks that end at the word offsets `cuts`, and
+    the session's allocation and free counts.  `arrays` is the book, for `runCommands`, or the
+    book and an output array, for `runOut`."""
     d = Path(directory)
-    write_words(d / 'prices', prices)
-    write_words(d / 'sizes', sizes)
+    n = len(arrays)
+    name = 'runCommands' if n == 2 else 'runOut'
+    script = ''
+    for k, words in enumerate(arrays):
+        write_words(d / f'in{k}', words)
+        script += f'file-u64 {10 + k} {d / f"in{k}"}\n'
+    state = [10 + k for k in range(n)]
     bounds = [0] + cuts + [len(commands)]
-    script = f'file-u64 10 {d / "prices"}\nfile-u64 11 {d / "sizes"}\n'
-    book = (10, 11)
-    for n, (a, b) in enumerate(zip(bounds, bounds[1:])):
-        write_words(d / f'chunk{n}', commands[a:b])
-        script += f'file-u64 {100 + n} {d / f"chunk{n}"}\n'
-        script += f'arg-ptr {book[0]}\narg-ptr {book[1]}\narg-ptr {100 + n}\ncall runCommands 2\n'
-        script += f'keep {20 + 2 * n} result:0\nkeep {21 + 2 * n} result:1\n'
-        book = (20 + 2 * n, 21 + 2 * n)
-    script += f'save-u64 result:0 {d / "out-prices"}\nsave-u64 result:1 {d / "out-sizes"}\nstats\n'
+    for c, (a, b) in enumerate(zip(bounds, bounds[1:])):
+        write_words(d / f'chunk{c}', commands[a:b])
+        script += f'file-u64 {100 + c} {d / f"chunk{c}"}\n'
+        script += ''.join(f'arg-ptr {s}\n' for s in state)
+        script += f'arg-ptr {100 + c}\ncall {name} {n}\n'
+        state = [1000 + n * c + k for k in range(n)]
+        script += ''.join(f'keep {s} result:{k}\n' for k, s in enumerate(state))
+    script += ''.join(f'save-u64 result:{k} {d / f"out{k}"}\n' for k in range(n)) + 'stats\n'
     counts = session(script)
-    return (read_words(d / 'out-prices'), read_words(d / 'out-sizes')), counts
+    return [read_words(d / f'out{k}') for k in range(n)], counts
 
 
-def run_steps(directory, prices, sizes, commands):
-    """The book after one `applyCommand` call per command, and the session's counts."""
+def run_steps(directory, arrays, commands):
+    """The arrays after one `applyCommand` call per command, or one `stepCommand` call when
+    `arrays` holds an output array, and the session's counts."""
     d = Path(directory)
-    write_words(d / 'prices', prices)
-    write_words(d / 'sizes', sizes)
-    script = f'file-u64 10 {d / "prices"}\nfile-u64 11 {d / "sizes"}\n'
-    book = (10, 11)
-    for n in range(len(commands) // 3):
-        kind, price, size = commands[3 * n:3 * n + 3]
-        script += (f'arg-ptr {book[0]}\narg-ptr {book[1]}\narg-u64 {kind}\narg-u64 {price}\n'
-                   f'arg-u64 {size}\ncall applyCommand 2\n'
-                   f'keep {20 + 2 * n} result:0\nkeep {21 + 2 * n} result:1\n')
-        book = (20 + 2 * n, 21 + 2 * n)
-    script += f'save-u64 result:0 {d / "out-prices"}\nsave-u64 result:1 {d / "out-sizes"}\nstats\n'
+    n = len(arrays)
+    name = 'applyCommand' if n == 2 else 'stepCommand'
+    script = ''
+    for k, words in enumerate(arrays):
+        write_words(d / f'in{k}', words)
+        script += f'file-u64 {10 + k} {d / f"in{k}"}\n'
+    state = [10 + k for k in range(n)]
+    for c in range(len(commands) // 3):
+        kind, price, size = commands[3 * c:3 * c + 3]
+        script += ''.join(f'arg-ptr {s}\n' for s in state)
+        script += f'arg-u64 {kind}\narg-u64 {price}\narg-u64 {size}\ncall {name} {n}\n'
+        state = [1000 + n * c + k for k in range(n)]
+        script += ''.join(f'keep {s} result:{k}\n' for k, s in enumerate(state))
+    script += ''.join(f'save-u64 result:{k} {d / f"out{k}"}\n' for k in range(n)) + 'stats\n'
     counts = session(script)
-    return (read_words(d / 'out-prices'), read_words(d / 'out-sizes')), counts
+    return [read_words(d / f'out{k}') for k in range(n)], counts
 
 
 def main():
@@ -95,24 +109,40 @@ def main():
         whole = len(commands) // 3
         splits = [[], [3 * k for k in range(1, whole)],
                   sorted(3 * k for k in rng.sample(range(1, whole), min(3, whole - 1)))]
+        out = [rng.randrange(2 ** 64) for _ in range(rng.randrange(0, 4))]
         with tempfile.TemporaryDirectory() as directory:
-            one, (allocs, frees) = run(directory, prices, sizes, commands, [])
-            steps, step_counts = run_steps(directory, prices, sizes, commands)
-            for cuts in splits:
+            for arrays in ([prices, sizes], [prices, sizes, out]):
+                one, (allocs, frees) = run(directory, arrays, commands, [])
+                steps, step_counts = run_steps(directory, arrays, commands)
+                exact = len(arrays) == 2
+                for cuts in splits:
+                    cases += 1
+                    chunked, (c_allocs, c_frees) = run(directory, arrays, commands, cuts)
+                    # Each chunk adds its commands array; the frees are those of the commands.
+                    counted = (c_allocs == allocs + len(cuts) and c_frees == frees if exact else
+                               c_allocs - c_frees == len(arrays) + len(cuts) + 1)
+                    if chunked != one or not counted:
+                        failed += 1
+                        print(f'fail: trial {trial}, {len(arrays)} arrays, cuts {cuts}: {chunked} '
+                              f'with {c_allocs} allocations and {c_frees} frees, against {one} '
+                              f'with {allocs} and {frees}')
                 cases += 1
-                chunked, (c_allocs, c_frees) = run(directory, prices, sizes, commands, cuts)
-                # Each chunk adds its commands array; the frees are those of the commands.
-                if chunked != one or c_allocs != allocs + len(cuts) or c_frees != frees:
+                # One call allocates its commands array beyond what the steps do.
+                counted = (step_counts == (allocs - 1, frees) if exact else
+                           step_counts[0] - step_counts[1] == len(arrays) and
+                           allocs - frees == len(arrays) + 1)
+                if steps != one or not counted:
                     failed += 1
-                    print(f'fail: trial {trial}, cuts {cuts}: {chunked} with {c_allocs} '
-                          f'allocations and {c_frees} frees, expected {one} with '
-                          f'{allocs + len(cuts)} and {frees}')
-            cases += 1
-            # One `runCommands` call allocates its commands array beyond what the steps do.
-            if steps != one or step_counts != (allocs - 1, frees):
-                failed += 1
-                print(f'fail: trial {trial}, steps: {steps} with counts {step_counts}, '
-                      f'expected {one} with {(allocs - 1, frees)}')
+                    print(f'fail: trial {trial}, {len(arrays)} arrays, steps: {steps} with counts '
+                          f'{step_counts}, against {one} with {(allocs, frees)}')
+                if len(arrays) == 2:
+                    book = one
+                else:
+                    cases += 1
+                    if one[:2] != book or len(one[2]) != len(out) + 2 * whole:
+                        failed += 1
+                        print(f'fail: trial {trial}: runOut left {one}, expected the book {book} '
+                              f'and {len(out) + 2 * whole} output words')
     print(f'chunks: {cases} cases, {failed} failed')
     sys.exit(1 if failed else 0)
 

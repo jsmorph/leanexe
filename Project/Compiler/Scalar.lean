@@ -313,7 +313,7 @@ through its `let`s, matches, branches, and pairs: those it returns, passes as th
 operand of `++`, or passes at an owned position of a callee in `owners`. -/
 partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Expr)
     (term : Lean.Expr) : MetaM (List Lean.Expr) := do
-  let term := term.consumeMData
+  let term := term.consumeMData.headBeta
   if let .letE _ _ _ body _ := term then return ← moveSites owners params body
   if params.contains term then return [term]
   if let some unfolded ← unfoldMatcher? term then return ← moveSites owners params unfolded

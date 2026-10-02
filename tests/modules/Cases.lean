@@ -28,6 +28,9 @@ def line (m name kind : String) (args : List String) (expected : String) : IO Un
 
 def pair (r : Array UInt64 × Array UInt64) : String := s!"{words r.1.toList},{words r.2.toList}"
 def pairKind : String := "list:array-u64,array-u64"
+def triple (r : Array UInt64 × Array UInt64 × Array UInt64) : String :=
+  s!"{words r.1.toList},{words r.2.1.toList},{words r.2.2.toList}"
+def tripleKind : String := "list:array-u64,array-u64,array-u64"
 
 def inf : Float := 1.0 / 0.0
 def nan : Float := 0.0 / 0.0
@@ -140,6 +143,9 @@ def books : List (List UInt64 × List UInt64) :=
    ([100], [5, 6]), ([100, 99], [maxU, 2])] ++
     (List.range 30).map fun i => book (i % 9) (200 + 7 * i) i
 
+/-- An output array of up to two words, to which `stepCommand` and `runOut` append. -/
+def outputs (i : Nat) : List UInt64 := (List.range (i % 3)).map fun k => UInt64.ofNat (7 + k)
+
 def clobCases : IO Unit := do
   for (i, (ps, ss)) in (List.range books.length).zip books do
     let p := ps.toArray
@@ -170,6 +176,8 @@ def clobCases : IO Unit := do
       for kind in [0, 1, 2] do
         line "clob" "applyCommand" pairKind [arrU ps, arrU ss, u kind, u price, u 5]
           (pair (LeanExe.Examples.Clob.applyCommand p s kind price 5))
+        line "clob" "stepCommand" tripleKind [arrU ps, arrU ss, arrU (outputs i), u kind, u price, u 5]
+          (triple (LeanExe.Examples.Clob.stepCommand p s (outputs i).toArray kind price 5))
 
 /-- Commands of the three kinds against prices near the book `ps`, three words each. -/
 def commandList (ps : List UInt64) (count seed : Nat) : List UInt64 :=
@@ -185,10 +193,14 @@ def runCases : IO Unit := do
       let cs := commandList ps count i
       line "clob" "runCommands" pairKind [arrU ps, arrU ss, arrU cs]
         (pair (LeanExe.Examples.Clob.runCommands ps.toArray ss.toArray cs.toArray))
+      line "clob" "runOut" tripleKind [arrU ps, arrU ss, arrU (outputs i), arrU cs]
+        (triple (LeanExe.Examples.Clob.runOut ps.toArray ss.toArray (outputs i).toArray cs.toArray))
     -- A trailing partial command is ignored.
     let cs := commandList ps 2 i ++ [0, 5]
     line "clob" "runCommands" pairKind [arrU ps, arrU ss, arrU cs]
       (pair (LeanExe.Examples.Clob.runCommands ps.toArray ss.toArray cs.toArray))
+    line "clob" "runOut" tripleKind [arrU ps, arrU ss, arrU (outputs i), arrU cs]
+      (triple (LeanExe.Examples.Clob.runOut ps.toArray ss.toArray (outputs i).toArray cs.toArray))
 
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
