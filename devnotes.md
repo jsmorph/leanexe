@@ -22205,9 +22205,9 @@ the statements of later parts of the same value are pushed before it; any `Expr.
 earlier part then runs after those statements.  Besides result tuples, the earlier part can be
 the left operand of an arithmetic operation or a comparison, an earlier call argument, an
 earlier element of an array literal, or an earlier field of a record.  A later part moves an
-array only through a call with an owned position, which `moveSites` reaches only at result
-positions, or through an owned temporary, so `xs[0]! + g ys` with `ys` a temporary that `g`
-consumes is reachable.
+array only through a call with an owned position or an array operation, and such a callee
+returns an array, which a word value cannot contain; I found no reachable case other than the
+reviewer's result tuple, and the check covers the other sites so that none can arise later.
 
 `Prelude.pendingReads` holds the arrays that already translated parts of the current value
 read.  `afterReads` adds the arrays an expression reads (`readArrays`) while the translator
