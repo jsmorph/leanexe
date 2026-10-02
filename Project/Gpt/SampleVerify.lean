@@ -28,7 +28,7 @@ theorem negInfs_implements :
   · intro i store state hi hAt hFrame hIndex
     simp [Expr.eval, F64Op.apply, F64Bits.toBits_neg, F64Bits.toBits_div, hZero, hOne]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, rfl, hNew.caps, hNew.borrowed, hNew.ownedKeep,
+  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep,
     [.i64 ptr], state, by simp [gpt.negInfs.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -168,8 +168,7 @@ theorem insertTop_implements : Implements gpt.module 46 insertTopTuple := by
       · simp [Expr.eval, g0, g9, hIndex, Expr.readValue_at hBs, getElem!_map_toBits,
           insertElem, hlt, heq, U64Op.apply, State.set?_eq_update, hState.1, hState.2]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, ⟨[.i64 pb], _, rfl, ⟨pb, rfl, hNew.borrowed pb _ hBuf⟩, [.i64 ps], _, rfl,
-    ⟨ps, rfl, hNew.borrowed ps _ hS⟩, rfl⟩, hNew.caps, hNew.borrowed, hNew.ownedKeep,
+  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep,
     [.i64 ptr], state, by simp [gpt.insertTop.ir, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -588,7 +587,7 @@ theorem topKBuffer_implements : Implements gpt.module 47 topKBufferTuple := by
   have f1_2 : s1.get 2 = some (.i64 pInit) :=
     State.get_update_same (state := start) (by rw [hStart]; decide)
   -- The number of scores.
-  have hA1 := (hLive1.borrowed pS _ hS).values
+  have hA1 := (hLive1.borrowed pS _ hS Apart.nil).values
   have hLength1 := hA1.lengthBound
   simp only [UInt64.toNat_toUInt32] at hLength1
   let s2 := s1.update 3 (.i64 (UInt64.ofNat s.size))
@@ -615,7 +614,7 @@ theorem topKBuffer_implements : Implements gpt.module 47 topKBufferTuple := by
           Expr.evalResults_get ((hF.get 1 (by decide) (by decide)).trans ((f2 1 (by decide)).trans f1_1)) <|
           Expr.evalResults_nil),
         ⟨[.i64 p], _, rfl, ⟨p, rfl, (hL.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-          [.i64 pS], _, rfl, ⟨pS, rfl, hL.borrowed pS _ hS⟩, rfl⟩⟩)
+          [.i64 pS], _, rfl, ⟨pS, rfl, hL.borrowed pS _ hS Apart.nil⟩, rfl⟩⟩)
     fun heap3 pl store3 s3 hLive3 hFrame3 hState3 => ?_
   have hS3 : s3.params.length + s3.locals.length = 11 := by
     rw [hFrame3.params, hFrame3.locals]; exact hS2
@@ -628,14 +627,9 @@ theorem topKBuffer_implements : Implements gpt.module 47 topKBufferTuple := by
     (State.get_update_ne (state := s3) (j := 2) (index := 9) (by decide)).trans
       ((hFrame3.get 2 (by decide) (by decide)).trans ((f2 2 (by decide)).trans f1_2))
   refine hLive3.releaseSecond_last hImports hRelease r2 fun storeR0 hLiveR0 => ?_
-  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
-      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 pS, .i64 top]
-        (s, top) := fun heap' store' hKeep =>
-    ⟨[.i64 pS], _, rfl, ⟨pS, rfl, hKeep pS _ hS⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR0.finish hParams
-  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pl], s4,
+  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR0.finish
+  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pl], s4,
     by simp [gpt.topKBuffer.ir, Expr.evalResults, Expr.eval, s4,
       State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
 
@@ -716,7 +710,7 @@ theorem sampleTopK_implements : Implements gpt.module 49 sampleTopKTuple := by
       Expr.evalResults_getF (((f2 2 (by decide)).trans (f1 2 (by decide))).trans sg2) <|
       Expr.evalResults_get (((f2 3 (by decide)).trans (f1 3 (by decide))).trans sg3) <|
       Expr.evalResults_nil)
-    ⟨[.i64 pS], _, rfl, ⟨pS, rfl, hLive2.borrowed pS _ hS⟩, [.i64 pBuf], _, rfl,
+    ⟨[.i64 pS], _, rfl, ⟨pS, rfl, hLive2.borrowed pS _ hS Apart.nil⟩, [.i64 pBuf], _, rfl,
       ⟨pBuf, rfl, (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, rfl⟩
     (by
       show s2.setAll [7, 6] [.i64 r.2, .i64 r.1] = some s3
@@ -755,8 +749,9 @@ theorem sampleTopK_implements : Implements gpt.module 49 sampleTopKTuple := by
   refine (hLive3.releaseFirst hImports hRelease f5_5).mono (fun _ _ h => h) ?_
   intro store4 st h
   obtain ⟨hL, hst⟩ := h
-  refine ⟨_, hL.at_, ⟨[.i64 pS], _, rfl, ⟨pS, rfl, hL.borrowed pS _ hS⟩, rfl⟩, hL.caps,
-    hL.borrowed, hL.owned, [.i64 r.1, .i64 r.2], s5, ?_, rfl, fun _ _ _ => trivial,
+  refine ⟨_, hL.at_, hL.caps,
+    fun p ws h => hL.borrowed p ws h Apart.nil, fun p ws h => hL.owned p ws h Apart.nil,
+    [.i64 r.1, .i64 r.2], s5, ?_, rfl, fun _ _ _ => trivial,
     fun _ _ _ => trivial⟩
   · rw [hst]
     exact Expr.evalResults_get f5_8 <| Expr.evalResults_get f5_9 <| Expr.evalResults_nil

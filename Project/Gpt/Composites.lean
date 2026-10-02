@@ -105,8 +105,8 @@ theorem mlp_implements : Implements gpt.module 13 mlpTuple := by
       Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 7) (index := 10) (by decide)).trans ((State.get_update_ne (state := start) (j := 7) (index := 9) (by decide)).trans (sg7))) <|
       Expr.evalResults_nil)
     ⟨[.i64 pg], _, rfl, ⟨pg, rfl, (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-      [.i64 pWproj], _, rfl, ⟨pWproj, rfl, hLive2.borrowed pWproj _ hWproj⟩, [.i64 pBproj],
-      _, rfl, ⟨pBproj, rfl, hLive2.borrowed pBproj _ hBproj⟩, rfl⟩
+      [.i64 pWproj], _, rfl, ⟨pWproj, rfl, hLive2.borrowed pWproj _ hWproj Apart.nil⟩,
+      [.i64 pBproj], _, rfl, ⟨pBproj, rfl, hLive2.borrowed pBproj _ hBproj Apart.nil⟩, rfl⟩
     (by rw [hS2]; decide) fun heap3 pr store3 hLive3 => ?_
   let s3 := s2.update 11 (.i64 pr)
   have hS3 : s3.params.length + s3.locals.length = 13 := by rw [hLen, hS2]
@@ -122,18 +122,9 @@ theorem mlp_implements : Implements gpt.module 13 mlpTuple := by
     (State.get_update_ne (state := s3) (j := 10) (index := 12) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 11) (by decide)).trans (State.get_update_same (state := s1) (by rw [hS1]; decide)))
   refine hLive3.releaseSecond_seq hImports hRelease r10 fun storeR0 hLiveR0 => ?_
   refine hLiveR0.releaseSecond_last hImports hRelease r9 fun storeR1 hLiveR1 => ?_
-  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
-      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 pX, .i64 pWfc, .i64 pBfc, .i64 pWproj, .i64 pBproj, .i64 l, .i64 t, .i64 d,
-        .i64 f]
-        (x, wfc, bfc, wproj, bproj, l, t, d, f) := fun heap' store' hKeep =>
-    ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hKeep pX _ hX⟩, [.i64 pWfc], _, rfl, ⟨pWfc, rfl,
-      hKeep pWfc _ hWfc⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl, hKeep pBfc _ hBfc⟩, [.i64 pWproj],
-      _, rfl, ⟨pWproj, rfl, hKeep pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
-      hKeep pBproj _ hBproj⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR1.finish hParams
-  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR1.finish
+  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
     by simp [gpt.mlp.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,
       State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
 
@@ -247,9 +238,9 @@ theorem attention_implements : Implements gpt.module 23 attentionTuple := by
       Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := start) (j := 11) (index := 13) (by decide)).trans (sg11))) (Expr.eval_get ((State.get_update_ne (state := start) (j := 12) (index := 13) (by decide)).trans (sg12)))) <|
       Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := start) (j := 11) (index := 13) (by decide)).trans (sg11))) (Expr.eval_get ((State.get_update_ne (state := start) (j := 12) (index := 13) (by decide)).trans (sg12)))) <|
       Expr.evalResults_nil)
-    ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive1.borrowed pX _ hX⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl,
-      hLive1.borrowed pWk _ hWk⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl, hLive1.borrowed pBk _ hBk⟩,
-      rfl⟩
+    ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive1.borrowed pX _ hX Apart.nil⟩, [.i64 pWk], _, rfl,
+      ⟨pWk, rfl, hLive1.borrowed pWk _ hWk Apart.nil⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl,
+      hLive1.borrowed pBk _ hBk Apart.nil⟩, rfl⟩
     (by rw [hS1]; decide) fun heap2 pk store2 hLive2 => ?_
   let s2 := s1.update 14 (.i64 pk)
   have hS2 : s2.params.length + s2.locals.length = 21 := by rw [hLen, hS1]
@@ -265,9 +256,9 @@ theorem attention_implements : Implements gpt.module 23 attentionTuple := by
       Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s1) (j := 11) (index := 14) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 13) (by decide)).trans (sg11)))) (Expr.eval_get ((State.get_update_ne (state := s1) (j := 12) (index := 14) (by decide)).trans ((State.get_update_ne (state := start) (j := 12) (index := 13) (by decide)).trans (sg12))))) <|
       Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s1) (j := 11) (index := 14) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 13) (by decide)).trans (sg11)))) (Expr.eval_get ((State.get_update_ne (state := s1) (j := 12) (index := 14) (by decide)).trans ((State.get_update_ne (state := start) (j := 12) (index := 13) (by decide)).trans (sg12))))) <|
       Expr.evalResults_nil)
-    ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive2.borrowed pX _ hX⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl,
-      hLive2.borrowed pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl, hLive2.borrowed pBv _ hBv⟩,
-      rfl⟩
+    ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive2.borrowed pX _ hX Apart.nil⟩, [.i64 pWv], _, rfl,
+      ⟨pWv, rfl, hLive2.borrowed pWv _ hWv Apart.nil⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl,
+      hLive2.borrowed pBv _ hBv Apart.nil⟩, rfl⟩
     (by rw [hS2]; decide) fun heap3 pv store3 hLive3 => ?_
   let s3 := s2.update 15 (.i64 pv)
   have hS3 : s3.params.length + s3.locals.length = 21 := by rw [hLen, hS2]
@@ -328,8 +319,8 @@ theorem attention_implements : Implements gpt.module 23 attentionTuple := by
       Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s5) (j := 11) (index := 18) (by decide)).trans ((State.get_update_ne (state := s4) (j := 11) (index := 17) (by decide)).trans ((State.get_update_ne (state := s3) (j := 11) (index := 16) (by decide)).trans ((State.get_update_ne (state := s2) (j := 11) (index := 15) (by decide)).trans ((State.get_update_ne (state := s1) (j := 11) (index := 14) (by decide)).trans ((State.get_update_ne (state := start) (j := 11) (index := 13) (by decide)).trans (sg11)))))))) (Expr.eval_get ((State.get_update_ne (state := s5) (j := 12) (index := 18) (by decide)).trans ((State.get_update_ne (state := s4) (j := 12) (index := 17) (by decide)).trans ((State.get_update_ne (state := s3) (j := 12) (index := 16) (by decide)).trans ((State.get_update_ne (state := s2) (j := 12) (index := 15) (by decide)).trans ((State.get_update_ne (state := s1) (j := 12) (index := 14) (by decide)).trans ((State.get_update_ne (state := start) (j := 12) (index := 13) (by decide)).trans (sg12))))))))) <|
       Expr.evalResults_nil)
     ⟨[.i64 po], _, rfl, ⟨po, rfl, (hLive6.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-      [.i64 pWo], _, rfl, ⟨pWo, rfl, hLive6.borrowed pWo _ hWo⟩, [.i64 pBo], _, rfl, ⟨pBo,
-      rfl, hLive6.borrowed pBo _ hBo⟩, rfl⟩
+      [.i64 pWo], _, rfl, ⟨pWo, rfl, hLive6.borrowed pWo _ hWo Apart.nil⟩, [.i64 pBo], _,
+      rfl, ⟨pBo, rfl, hLive6.borrowed pBo _ hBo Apart.nil⟩, rfl⟩
     (by rw [hS6]; decide) fun heap7 pr store7 hLive7 => ?_
   let s7 := s6.update 19 (.i64 pr)
   have hS7 : s7.params.length + s7.locals.length = 21 := by rw [hLen, hS6]
@@ -357,20 +348,9 @@ theorem attention_implements : Implements gpt.module 23 attentionTuple := by
   refine hLiveR2.releaseSecond_seq hImports hRelease r15 fun storeR3 hLiveR3 => ?_
   refine hLiveR3.releaseSecond_seq hImports hRelease r14 fun storeR4 hLiveR4 => ?_
   refine hLiveR4.releaseSecond_last hImports hRelease r13 fun storeR5 hLiveR5 => ?_
-  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
-      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 pX, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk, .i64 pWv, .i64 pBv, .i64 pWo,
-        .i64 pBo, .i64 l, .i64 t, .i64 nh, .i64 dh]
-        (x, wq, bq, wk, bk, wv, bv, wo, bo, l, t, nh, dh) := fun heap' store' hKeep =>
-    ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hKeep pX _ hX⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl,
-      hKeep pWq _ hWq⟩, [.i64 pBq], _, rfl, ⟨pBq, rfl, hKeep pBq _ hBq⟩, [.i64 pWk], _, rfl,
-      ⟨pWk, rfl, hKeep pWk _ hWk⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl, hKeep pBk _ hBk⟩,
-      [.i64 pWv], _, rfl, ⟨pWv, rfl, hKeep pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl,
-      hKeep pBv _ hBv⟩, [.i64 pWo], _, rfl, ⟨pWo, rfl, hKeep pWo _ hWo⟩, [.i64 pBo], _, rfl,
-      ⟨pBo, rfl, hKeep pBo _ hBo⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR5.finish hParams
-  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s8,
+  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR5.finish
+  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s8,
     by simp [gpt.attention.ir, Func.scratch, Expr.evalResults, Expr.eval, s8,
       State.get_update_same, hS7], hOwned, hOutB, hOutO⟩
 
@@ -528,12 +508,14 @@ theorem block_implements : Implements gpt.module 24 blockTuple := by
       Expr.evalResults_nil)
     ⟨[.i64 ph1], _, rfl, ⟨ph1, rfl,
       (hLive1.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl,
-      hLive1.borrowed pWq _ hWq⟩, [.i64 pBq], _, rfl, ⟨pBq, rfl, hLive1.borrowed pBq _ hBq⟩,
-      [.i64 pWk], _, rfl, ⟨pWk, rfl, hLive1.borrowed pWk _ hWk⟩, [.i64 pBk], _, rfl, ⟨pBk,
-      rfl, hLive1.borrowed pBk _ hBk⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl,
-      hLive1.borrowed pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl, hLive1.borrowed pBv _ hBv⟩,
-      [.i64 pWo], _, rfl, ⟨pWo, rfl, hLive1.borrowed pWo _ hWo⟩, [.i64 pBo], _, rfl, ⟨pBo,
-      rfl, hLive1.borrowed pBo _ hBo⟩, rfl⟩
+      hLive1.borrowed pWq _ hWq Apart.nil⟩, [.i64 pBq], _, rfl, ⟨pBq, rfl,
+      hLive1.borrowed pBq _ hBq Apart.nil⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl,
+      hLive1.borrowed pWk _ hWk Apart.nil⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl,
+      hLive1.borrowed pBk _ hBk Apart.nil⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl,
+      hLive1.borrowed pWv _ hWv Apart.nil⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl,
+      hLive1.borrowed pBv _ hBv Apart.nil⟩, [.i64 pWo], _, rfl, ⟨pWo, rfl,
+      hLive1.borrowed pWo _ hWo Apart.nil⟩, [.i64 pBo], _, rfl, ⟨pBo, rfl,
+      hLive1.borrowed pBo _ hBo Apart.nil⟩, rfl⟩
     (by rw [hS1]; decide) fun heap2 pa store2 hLive2 => ?_
   let s2 := s1.update 24 (.i64 pa)
   have hS2 : s2.params.length + s2.locals.length = 30 := by rw [hLen, hS1]
@@ -544,7 +526,7 @@ theorem block_implements : Implements gpt.module 24 blockTuple := by
     (Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 0) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 0) (index := 23) (by decide)).trans (sg0))) <|
       Expr.evalResults_get (State.get_update_same (state := s1) (by rw [hS1]; decide)) <|
       Expr.evalResults_nil)
-    ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive2.borrowed pX _ hX⟩, ⟨pa, rfl,
+    ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hLive2.borrowed pX _ hX Apart.nil⟩, ⟨pa, rfl,
       (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩⟩
     (by rw [hS2]; decide) fun heap3 pr store3 hLive3 => ?_
   let s3 := s2.update 25 (.i64 pr)
@@ -562,8 +544,8 @@ theorem block_implements : Implements gpt.module 24 blockTuple := by
       Expr.evalResults_getF ((State.get_update_ne (state := s2) (j := 22) (index := 25) (by decide)).trans ((State.get_update_ne (state := s1) (j := 22) (index := 24) (by decide)).trans ((State.get_update_ne (state := start) (j := 22) (index := 23) (by decide)).trans (sg22)))) <|
       Expr.evalResults_nil)
     ⟨[.i64 pr], _, rfl, ⟨pr, rfl, (hLive3.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-      [.i64 pG2], _, rfl, ⟨pG2, rfl, hLive3.borrowed pG2 _ hG2⟩, [.i64 pB2], _, rfl, ⟨pB2,
-      rfl, hLive3.borrowed pB2 _ hB2⟩, rfl⟩
+      [.i64 pG2], _, rfl, ⟨pG2, rfl, hLive3.borrowed pG2 _ hG2 Apart.nil⟩, [.i64 pB2], _,
+      rfl, ⟨pB2, rfl, hLive3.borrowed pB2 _ hB2 Apart.nil⟩, rfl⟩
     (by rw [hS3]; decide) fun heap4 ph2 store4 hLive4 => ?_
   let s4 := s3.update 26 (.i64 ph2)
   have hS4 : s4.params.length + s4.locals.length = 30 := by rw [hLen, hS3]
@@ -584,10 +566,10 @@ theorem block_implements : Implements gpt.module 24 blockTuple := by
       Expr.evalResults_nil)
     ⟨[.i64 ph2], _, rfl, ⟨ph2, rfl,
       (hLive4.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pWfc], _, rfl, ⟨pWfc,
-      rfl, hLive4.borrowed pWfc _ hWfc⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl,
-      hLive4.borrowed pBfc _ hBfc⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
-      hLive4.borrowed pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
-      hLive4.borrowed pBproj _ hBproj⟩, rfl⟩
+      rfl, hLive4.borrowed pWfc _ hWfc Apart.nil⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl,
+      hLive4.borrowed pBfc _ hBfc Apart.nil⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
+      hLive4.borrowed pWproj _ hWproj Apart.nil⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
+      hLive4.borrowed pBproj _ hBproj Apart.nil⟩, rfl⟩
     (by rw [hS4]; decide) fun heap5 pm store5 hLive5 => ?_
   let s5 := s4.update 27 (.i64 pm)
   have hS5 : s5.params.length + s5.locals.length = 30 := by rw [hLen, hS4]
@@ -625,27 +607,9 @@ theorem block_implements : Implements gpt.module 24 blockTuple := by
   refine hLiveR1.releaseSecond_seq hImports hRelease r25 fun storeR2 hLiveR2 => ?_
   refine hLiveR2.releaseSecond_seq hImports hRelease r24 fun storeR3 hLiveR3 => ?_
   refine hLiveR3.releaseSecond_last hImports hRelease r23 fun storeR4 hLiveR4 => ?_
-  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
-      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 pX, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk, .i64 pWv,
-        .i64 pBv, .i64 pWo, .i64 pBo, .i64 pG2, .i64 pB2, .i64 pWfc, .i64 pBfc, .i64 pWproj,
-        .i64 pBproj, .i64 l, .i64 t, .i64 nh, .i64 dh, .i64 f, .f64 eps.toBits]
-        (x, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l, t, nh,
-        dh, f, eps) := fun heap' store' hKeep =>
-    ⟨[.i64 pX], _, rfl, ⟨pX, rfl, hKeep pX _ hX⟩, [.i64 pG1], _, rfl, ⟨pG1, rfl,
-      hKeep pG1 _ hG1⟩, [.i64 pB1], _, rfl, ⟨pB1, rfl, hKeep pB1 _ hB1⟩, [.i64 pWq], _, rfl,
-      ⟨pWq, rfl, hKeep pWq _ hWq⟩, [.i64 pBq], _, rfl, ⟨pBq, rfl, hKeep pBq _ hBq⟩,
-      [.i64 pWk], _, rfl, ⟨pWk, rfl, hKeep pWk _ hWk⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl,
-      hKeep pBk _ hBk⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl, hKeep pWv _ hWv⟩, [.i64 pBv], _, rfl,
-      ⟨pBv, rfl, hKeep pBv _ hBv⟩, [.i64 pWo], _, rfl, ⟨pWo, rfl, hKeep pWo _ hWo⟩,
-      [.i64 pBo], _, rfl, ⟨pBo, rfl, hKeep pBo _ hBo⟩, [.i64 pG2], _, rfl, ⟨pG2, rfl,
-      hKeep pG2 _ hG2⟩, [.i64 pB2], _, rfl, ⟨pB2, rfl, hKeep pB2 _ hB2⟩, [.i64 pWfc], _, rfl,
-      ⟨pWfc, rfl, hKeep pWfc _ hWfc⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl, hKeep pBfc _ hBfc⟩,
-      [.i64 pWproj], _, rfl, ⟨pWproj, rfl, hKeep pWproj _ hWproj⟩, [.i64 pBproj], _, rfl,
-      ⟨pBproj, rfl, hKeep pBproj _ hBproj⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR4.finish hParams
-  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pres], s7,
+  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR4.finish
+  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pres], s7,
     by simp [gpt.block.ir, Func.scratch, Expr.evalResults, Expr.eval, s7,
       State.get_update_same, hS6], hOwned, hOutB, hOutO⟩
 
@@ -833,18 +797,22 @@ theorem forward_implements : Implements gpt.module 28 forwardTuple := by
           Expr.evalResults_getF ((hF.get 27 (by decide) (by decide)).trans ((State.get_update_ne (state := start) (j := 27) (index := 28) (by decide)).trans (sg27))) <|
           Expr.evalResults_nil),
         ⟨[.i64 p], _, rfl, ⟨p, rfl, (hL.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-          [.i64 pG1], _, rfl, ⟨pG1, rfl, hL.borrowed pG1 _ hG1⟩, [.i64 pB1], _, rfl, ⟨pB1, rfl,
-          hL.borrowed pB1 _ hB1⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl, hL.borrowed pWq _ hWq⟩,
-          [.i64 pBq], _, rfl, ⟨pBq, rfl, hL.borrowed pBq _ hBq⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl,
-          hL.borrowed pWk _ hWk⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl, hL.borrowed pBk _ hBk⟩,
-          [.i64 pWv], _, rfl, ⟨pWv, rfl, hL.borrowed pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl,
-          hL.borrowed pBv _ hBv⟩, [.i64 pWo], _, rfl, ⟨pWo, rfl, hL.borrowed pWo _ hWo⟩,
-          [.i64 pBo], _, rfl, ⟨pBo, rfl, hL.borrowed pBo _ hBo⟩, [.i64 pG2], _, rfl, ⟨pG2, rfl,
-          hL.borrowed pG2 _ hG2⟩, [.i64 pB2], _, rfl, ⟨pB2, rfl, hL.borrowed pB2 _ hB2⟩,
-          [.i64 pWfc], _, rfl, ⟨pWfc, rfl, hL.borrowed pWfc _ hWfc⟩, [.i64 pBfc], _, rfl, ⟨pBfc,
-          rfl, hL.borrowed pBfc _ hBfc⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
-          hL.borrowed pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
-          hL.borrowed pBproj _ hBproj⟩, rfl⟩⟩)
+          [.i64 pG1], _, rfl, ⟨pG1, rfl, hL.borrowed pG1 _ hG1 Apart.nil⟩, [.i64 pB1], _, rfl,
+          ⟨pB1, rfl, hL.borrowed pB1 _ hB1 Apart.nil⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl,
+          hL.borrowed pWq _ hWq Apart.nil⟩, [.i64 pBq], _, rfl, ⟨pBq, rfl,
+          hL.borrowed pBq _ hBq Apart.nil⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl,
+          hL.borrowed pWk _ hWk Apart.nil⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl,
+          hL.borrowed pBk _ hBk Apart.nil⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl,
+          hL.borrowed pWv _ hWv Apart.nil⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl,
+          hL.borrowed pBv _ hBv Apart.nil⟩, [.i64 pWo], _, rfl, ⟨pWo, rfl,
+          hL.borrowed pWo _ hWo Apart.nil⟩, [.i64 pBo], _, rfl, ⟨pBo, rfl,
+          hL.borrowed pBo _ hBo Apart.nil⟩, [.i64 pG2], _, rfl, ⟨pG2, rfl,
+          hL.borrowed pG2 _ hG2 Apart.nil⟩, [.i64 pB2], _, rfl, ⟨pB2, rfl,
+          hL.borrowed pB2 _ hB2 Apart.nil⟩, [.i64 pWfc], _, rfl, ⟨pWfc, rfl,
+          hL.borrowed pWfc _ hWfc Apart.nil⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl,
+          hL.borrowed pBfc _ hBfc Apart.nil⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
+          hL.borrowed pWproj _ hWproj Apart.nil⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
+          hL.borrowed pBproj _ hBproj Apart.nil⟩, rfl⟩⟩)
     fun heap2 pl store2 s2 hLive2 hFrame2 hState2 => ?_
   have hS2 : s2.params.length + s2.locals.length = 38 := by
     rw [hFrame2.params, hFrame2.locals]; exact hS1
@@ -861,8 +829,8 @@ theorem forward_implements : Implements gpt.module 28 forwardTuple := by
       Expr.evalResults_getF ((hFrame2.get 27 (by decide) (by decide)).trans ((State.get_update_ne (state := start) (j := 27) (index := 28) (by decide)).trans (sg27))) <|
       Expr.evalResults_nil)
     ⟨[.i64 pl], _, rfl, ⟨pl, rfl, (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-      [.i64 pGf], _, rfl, ⟨pGf, rfl, hLive2.borrowed pGf _ hGf⟩, [.i64 pBf], _, rfl, ⟨pBf,
-      rfl, hLive2.borrowed pBf _ hBf⟩, rfl⟩
+      [.i64 pGf], _, rfl, ⟨pGf, rfl, hLive2.borrowed pGf _ hGf Apart.nil⟩, [.i64 pBf], _,
+      rfl, ⟨pBf, rfl, hLive2.borrowed pBf _ hBf Apart.nil⟩, rfl⟩
     (by rw [hS2]; decide) fun heap3 ph store3 hLive3 => ?_
   let s3 := s2.update 34 (.i64 ph)
   have hS3 : s3.params.length + s3.locals.length = 38 := by rw [hLen, hS2]
@@ -877,7 +845,7 @@ theorem forward_implements : Implements gpt.module 28 forwardTuple := by
       Expr.evalResults_get ((State.get_update_ne (state := s2) (j := 26) (index := 34) (by decide)).trans ((hFrame2.get 26 (by decide) (by decide)).trans ((State.get_update_ne (state := start) (j := 26) (index := 28) (by decide)).trans (sg26)))) <|
       Expr.evalResults_nil)
     ⟨[.i64 ph], _, rfl, ⟨ph, rfl, (hLive3.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-      [.i64 pWte], _, rfl, ⟨pWte, rfl, hLive3.borrowed pWte _ hWte⟩, rfl⟩
+      [.i64 pWte], _, rfl, ⟨pWte, rfl, hLive3.borrowed pWte _ hWte Apart.nil⟩, rfl⟩
     (by rw [hS3]; decide) fun heap4 pr store4 hLive4 => ?_
   let s4 := s3.update 35 (.i64 pr)
   have hS4 : s4.params.length + s4.locals.length = 38 := by rw [hLen, hS3]
@@ -896,31 +864,9 @@ theorem forward_implements : Implements gpt.module 28 forwardTuple := by
   refine hLive4.releaseSecond_seq hImports hRelease r34 fun storeR0 hLiveR0 => ?_
   refine hLiveR0.releaseSecond_seq hImports hRelease r29 fun storeR1 hLiveR1 => ?_
   refine hLiveR1.releaseSecond_last hImports hRelease r28 fun storeR2 hLiveR2 => ?_
-  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
-      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 pTokens, .i64 pWte, .i64 pWpe, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk,
-        .i64 pBk, .i64 pWv, .i64 pBv, .i64 pWo, .i64 pBo, .i64 pG2, .i64 pB2, .i64 pWfc,
-        .i64 pBfc, .i64 pWproj, .i64 pBproj, .i64 pGf, .i64 pBf, .i64 layers, .i64 t, .i64 nh,
-        .i64 dh, .i64 f, .i64 vocab, .f64 eps.toBits]
-        (tokens, wte, wpe, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj,
-        bproj, gf, bf, layers, t, nh, dh, f, vocab, eps) := fun heap' store' hKeep =>
-    ⟨[.i64 pTokens], _, rfl, ⟨pTokens, rfl, hKeep pTokens _ hTokens⟩, [.i64 pWte], _, rfl,
-      ⟨pWte, rfl, hKeep pWte _ hWte⟩, [.i64 pWpe], _, rfl, ⟨pWpe, rfl, hKeep pWpe _ hWpe⟩,
-      [.i64 pG1], _, rfl, ⟨pG1, rfl, hKeep pG1 _ hG1⟩, [.i64 pB1], _, rfl, ⟨pB1, rfl,
-      hKeep pB1 _ hB1⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl, hKeep pWq _ hWq⟩, [.i64 pBq], _, rfl,
-      ⟨pBq, rfl, hKeep pBq _ hBq⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl, hKeep pWk _ hWk⟩,
-      [.i64 pBk], _, rfl, ⟨pBk, rfl, hKeep pBk _ hBk⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl,
-      hKeep pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl, hKeep pBv _ hBv⟩, [.i64 pWo], _, rfl,
-      ⟨pWo, rfl, hKeep pWo _ hWo⟩, [.i64 pBo], _, rfl, ⟨pBo, rfl, hKeep pBo _ hBo⟩,
-      [.i64 pG2], _, rfl, ⟨pG2, rfl, hKeep pG2 _ hG2⟩, [.i64 pB2], _, rfl, ⟨pB2, rfl,
-      hKeep pB2 _ hB2⟩, [.i64 pWfc], _, rfl, ⟨pWfc, rfl, hKeep pWfc _ hWfc⟩, [.i64 pBfc], _,
-      rfl, ⟨pBfc, rfl, hKeep pBfc _ hBfc⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
-      hKeep pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl, hKeep pBproj _ hBproj⟩,
-      [.i64 pGf], _, rfl, ⟨pGf, rfl, hKeep pGf _ hGf⟩, [.i64 pBf], _, rfl, ⟨pBf, rfl,
-      hKeep pBf _ hBf⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR2.finish hParams
-  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s5,
+  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR2.finish
+  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s5,
     by simp [gpt.forward.ir, Expr.evalResults, Expr.eval, s5,
       State.get_update_same, hS4], hOwned, hOutB, hOutO⟩
 
@@ -1095,8 +1041,8 @@ theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
       Expr.evalResults_getF ((State.get_update_ne (state := start) (j := 24) (index := 25) (by decide)).trans (sg24)) <|
       Expr.evalResults_nil)
     ⟨[.i64 px], _, rfl, ⟨px, rfl, (hLive1.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-      [.i64 pG1], _, rfl, ⟨pG1, rfl, hLive1.borrowed pG1 _ hG1⟩, [.i64 pB1], _, rfl, ⟨pB1,
-      rfl, hLive1.borrowed pB1 _ hB1⟩, rfl⟩
+      [.i64 pG1], _, rfl, ⟨pG1, rfl, hLive1.borrowed pG1 _ hG1 Apart.nil⟩, [.i64 pB1], _,
+      rfl, ⟨pB1, rfl, hLive1.borrowed pB1 _ hB1 Apart.nil⟩, rfl⟩
     (by rw [hS1]; decide) fun heap2 ph1 store2 hLive2 => ?_
   let s2 := s1.update 26 (.i64 ph1)
   have hS2 : s2.params.length + s2.locals.length = 40 := by rw [hLen, hS1]
@@ -1114,8 +1060,8 @@ theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
       Expr.evalResults_nil)
     ⟨[.i64 ph1], _, rfl, ⟨ph1, rfl,
       (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl,
-      hLive2.borrowed pWq _ hWq⟩, [.i64 pBq], _, rfl, ⟨pBq, rfl, hLive2.borrowed pBq _ hBq⟩,
-      rfl⟩
+      hLive2.borrowed pWq _ hWq Apart.nil⟩, [.i64 pBq], _, rfl, ⟨pBq, rfl,
+      hLive2.borrowed pBq _ hBq Apart.nil⟩, rfl⟩
     (by rw [hS2]; decide) fun heap3 pq store3 hLive3 => ?_
   let s3 := s2.update 27 (.i64 pq)
   have hS3 : s3.params.length + s3.locals.length = 40 := by rw [hLen, hS2]
@@ -1133,8 +1079,8 @@ theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
       Expr.evalResults_nil)
     ⟨[.i64 ph1], _, rfl, ⟨ph1, rfl,
       (hLive3.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))).borrowed⟩,
-      [.i64 pWk], _, rfl, ⟨pWk, rfl, hLive3.borrowed pWk _ hWk⟩, [.i64 pBk], _, rfl, ⟨pBk,
-      rfl, hLive3.borrowed pBk _ hBk⟩, rfl⟩
+      [.i64 pWk], _, rfl, ⟨pWk, rfl, hLive3.borrowed pWk _ hWk Apart.nil⟩, [.i64 pBk], _,
+      rfl, ⟨pBk, rfl, hLive3.borrowed pBk _ hBk Apart.nil⟩, rfl⟩
     (by rw [hS3]; decide) fun heap4 pk store4 hLive4 => ?_
   let s4 := s3.update 28 (.i64 pk)
   have hS4 : s4.params.length + s4.locals.length = 40 := by rw [hLen, hS3]
@@ -1152,8 +1098,8 @@ theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
       Expr.evalResults_nil)
     ⟨[.i64 ph1], _, rfl, ⟨ph1, rfl,
       (hLive4.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))).borrowed⟩,
-      [.i64 pWv], _, rfl, ⟨pWv, rfl, hLive4.borrowed pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv,
-      rfl, hLive4.borrowed pBv _ hBv⟩, rfl⟩
+      [.i64 pWv], _, rfl, ⟨pWv, rfl, hLive4.borrowed pWv _ hWv Apart.nil⟩, [.i64 pBv], _,
+      rfl, ⟨pBv, rfl, hLive4.borrowed pBv _ hBv Apart.nil⟩, rfl⟩
     (by rw [hS4]; decide) fun heap5 pv store5 hLive5 => ?_
   let s5 := s4.update 29 (.i64 pv)
   have hS5 : s5.params.length + s5.locals.length = 40 := by rw [hLen, hS4]
@@ -1169,7 +1115,7 @@ theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
       (hLive5.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))).borrowed⟩,
       [.i64 pk], _, rfl, ⟨pk, rfl,
       (hLive5.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))).borrowed⟩,
-      [.i64 pCache], _, rfl, ⟨pCache, rfl, hLive5.borrowed pCache _ hCache⟩, rfl⟩
+      [.i64 pCache], _, rfl, ⟨pCache, rfl, hLive5.borrowed pCache _ hCache Apart.nil⟩, rfl⟩
     (by rw [hS5]; decide) fun heap6 psc store6 hLive6 => ?_
   let s6 := s5.update 30 (.i64 psc)
   have hS6 : s6.params.length + s6.locals.length = 40 := by rw [hLen, hS5]
@@ -1202,7 +1148,7 @@ theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
     ⟨[.i64 ppw], _, rfl, ⟨ppw, rfl,
       (hLive7.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pv], _, rfl, ⟨pv, rfl,
       (hLive7.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))).borrowed⟩,
-      [.i64 pCache], _, rfl, ⟨pCache, rfl, hLive7.borrowed pCache _ hCache⟩, rfl⟩
+      [.i64 pCache], _, rfl, ⟨pCache, rfl, hLive7.borrowed pCache _ hCache Apart.nil⟩, rfl⟩
     (by rw [hS7]; decide) fun heap8 po store8 hLive8 => ?_
   let s8 := s7.update 32 (.i64 po)
   have hS8 : s8.params.length + s8.locals.length = 40 := by rw [hLen, hS7]
@@ -1219,8 +1165,8 @@ theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
       Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s7) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 25) (by decide)).trans (sg20)))))))))) (Expr.eval_get ((State.get_update_ne (state := s7) (j := 21) (index := 32) (by decide)).trans ((State.get_update_ne (state := s6) (j := 21) (index := 31) (by decide)).trans ((State.get_update_ne (state := s5) (j := 21) (index := 30) (by decide)).trans ((State.get_update_ne (state := s4) (j := 21) (index := 29) (by decide)).trans ((State.get_update_ne (state := s3) (j := 21) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 21) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 21) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 21) (index := 25) (by decide)).trans (sg21))))))))))) <|
       Expr.evalResults_nil)
     ⟨[.i64 po], _, rfl, ⟨po, rfl, (hLive8.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-      [.i64 pWo], _, rfl, ⟨pWo, rfl, hLive8.borrowed pWo _ hWo⟩, [.i64 pBo], _, rfl, ⟨pBo,
-      rfl, hLive8.borrowed pBo _ hBo⟩, rfl⟩
+      [.i64 pWo], _, rfl, ⟨pWo, rfl, hLive8.borrowed pWo _ hWo Apart.nil⟩, [.i64 pBo], _,
+      rfl, ⟨pBo, rfl, hLive8.borrowed pBo _ hBo Apart.nil⟩, rfl⟩
     (by rw [hS8]; decide) fun heap9 pa store9 hLive9 => ?_
   let s9 := s8.update 33 (.i64 pa)
   have hS9 : s9.params.length + s9.locals.length = 40 := by rw [hLen, hS8]
@@ -1250,8 +1196,8 @@ theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
       Expr.evalResults_getF ((State.get_update_ne (state := s9) (j := 24) (index := 34) (by decide)).trans ((State.get_update_ne (state := s8) (j := 24) (index := 33) (by decide)).trans ((State.get_update_ne (state := s7) (j := 24) (index := 32) (by decide)).trans ((State.get_update_ne (state := s6) (j := 24) (index := 31) (by decide)).trans ((State.get_update_ne (state := s5) (j := 24) (index := 30) (by decide)).trans ((State.get_update_ne (state := s4) (j := 24) (index := 29) (by decide)).trans ((State.get_update_ne (state := s3) (j := 24) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 24) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 24) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 24) (index := 25) (by decide)).trans (sg24))))))))))) <|
       Expr.evalResults_nil)
     ⟨[.i64 pr], _, rfl, ⟨pr, rfl, (hLive10.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-      [.i64 pG2], _, rfl, ⟨pG2, rfl, hLive10.borrowed pG2 _ hG2⟩, [.i64 pB2], _, rfl, ⟨pB2,
-      rfl, hLive10.borrowed pB2 _ hB2⟩, rfl⟩
+      [.i64 pG2], _, rfl, ⟨pG2, rfl, hLive10.borrowed pG2 _ hG2 Apart.nil⟩, [.i64 pB2], _,
+      rfl, ⟨pB2, rfl, hLive10.borrowed pB2 _ hB2 Apart.nil⟩, rfl⟩
     (by rw [hS10]; decide) fun heap11 ph2 store11 hLive11 => ?_
   let s11 := s10.update 35 (.i64 ph2)
   have hS11 : s11.params.length + s11.locals.length = 40 := by rw [hLen, hS10]
@@ -1272,10 +1218,10 @@ theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
       Expr.evalResults_nil)
     ⟨[.i64 ph2], _, rfl, ⟨ph2, rfl,
       (hLive11.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pWfc], _, rfl, ⟨pWfc,
-      rfl, hLive11.borrowed pWfc _ hWfc⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl,
-      hLive11.borrowed pBfc _ hBfc⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
-      hLive11.borrowed pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
-      hLive11.borrowed pBproj _ hBproj⟩, rfl⟩
+      rfl, hLive11.borrowed pWfc _ hWfc Apart.nil⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl,
+      hLive11.borrowed pBfc _ hBfc Apart.nil⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
+      hLive11.borrowed pWproj _ hWproj Apart.nil⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
+      hLive11.borrowed pBproj _ hBproj Apart.nil⟩, rfl⟩
     (by rw [hS11]; decide) fun heap12 pm store12 hLive12 => ?_
   let s12 := s11.update 36 (.i64 pm)
   have hS12 : s12.params.length + s12.locals.length = 40 := by rw [hLen, hS11]
@@ -1303,8 +1249,9 @@ theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
       Expr.evalResults_get ((State.get_update_ne (state := s12) (j := 18) (index := 37) (by decide)).trans ((State.get_update_ne (state := s11) (j := 18) (index := 36) (by decide)).trans ((State.get_update_ne (state := s10) (j := 18) (index := 35) (by decide)).trans ((State.get_update_ne (state := s9) (j := 18) (index := 34) (by decide)).trans ((State.get_update_ne (state := s8) (j := 18) (index := 33) (by decide)).trans ((State.get_update_ne (state := s7) (j := 18) (index := 32) (by decide)).trans ((State.get_update_ne (state := s6) (j := 18) (index := 31) (by decide)).trans ((State.get_update_ne (state := s5) (j := 18) (index := 30) (by decide)).trans ((State.get_update_ne (state := s4) (j := 18) (index := 29) (by decide)).trans ((State.get_update_ne (state := s3) (j := 18) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 18) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 18) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 18) (index := 25) (by decide)).trans (sg18)))))))))))))) <|
       Expr.evalResults_u64 (Expr.eval_mul (Expr.eval_get ((State.get_update_ne (state := s12) (j := 20) (index := 37) (by decide)).trans ((State.get_update_ne (state := s11) (j := 20) (index := 36) (by decide)).trans ((State.get_update_ne (state := s10) (j := 20) (index := 35) (by decide)).trans ((State.get_update_ne (state := s9) (j := 20) (index := 34) (by decide)).trans ((State.get_update_ne (state := s8) (j := 20) (index := 33) (by decide)).trans ((State.get_update_ne (state := s7) (j := 20) (index := 32) (by decide)).trans ((State.get_update_ne (state := s6) (j := 20) (index := 31) (by decide)).trans ((State.get_update_ne (state := s5) (j := 20) (index := 30) (by decide)).trans ((State.get_update_ne (state := s4) (j := 20) (index := 29) (by decide)).trans ((State.get_update_ne (state := s3) (j := 20) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 20) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 20) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 20) (index := 25) (by decide)).trans (sg20))))))))))))))) (Expr.eval_get ((State.get_update_ne (state := s12) (j := 21) (index := 37) (by decide)).trans ((State.get_update_ne (state := s11) (j := 21) (index := 36) (by decide)).trans ((State.get_update_ne (state := s10) (j := 21) (index := 35) (by decide)).trans ((State.get_update_ne (state := s9) (j := 21) (index := 34) (by decide)).trans ((State.get_update_ne (state := s8) (j := 21) (index := 33) (by decide)).trans ((State.get_update_ne (state := s7) (j := 21) (index := 32) (by decide)).trans ((State.get_update_ne (state := s6) (j := 21) (index := 31) (by decide)).trans ((State.get_update_ne (state := s5) (j := 21) (index := 30) (by decide)).trans ((State.get_update_ne (state := s4) (j := 21) (index := 29) (by decide)).trans ((State.get_update_ne (state := s3) (j := 21) (index := 28) (by decide)).trans ((State.get_update_ne (state := s2) (j := 21) (index := 27) (by decide)).trans ((State.get_update_ne (state := s1) (j := 21) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 21) (index := 25) (by decide)).trans (sg21)))))))))))))))) <|
       Expr.evalResults_nil)
-    ⟨[.i64 pS], _, rfl, ⟨pS, rfl, hLive13.borrowed pS _ hS⟩, [.i64 py], _, rfl, ⟨py, rfl,
-      (hLive13.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pk], _, rfl, ⟨pk, rfl,
+    ⟨[.i64 pS], _, rfl, ⟨pS, rfl, hLive13.borrowed pS _ hS Apart.nil⟩, [.i64 py], _, rfl,
+      ⟨py, rfl, (hLive13.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, [.i64 pk], _, rfl,
+      ⟨pk, rfl,
       (hLive13.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..))))))))))).borrowed⟩,
       [.i64 pv], _, rfl, ⟨pv, rfl,
       (hLive13.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_self ..)))))))))).borrowed⟩,
@@ -1357,29 +1304,9 @@ theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
   refine hLiveR9.releaseSecond_seq hImports hRelease r27 fun storeR10 hLiveR10 => ?_
   refine hLiveR10.releaseSecond_seq hImports hRelease r26 fun storeR11 hLiveR11 => ?_
   refine hLiveR11.releaseSecond_last hImports hRelease r25 fun storeR12 hLiveR12 => ?_
-  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
-      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 pS, .i64 pCache, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk, .i64 pBk,
-        .i64 pWv, .i64 pBv, .i64 pWo, .i64 pBo, .i64 pG2, .i64 pB2, .i64 pWfc, .i64 pBfc,
-        .i64 pWproj, .i64 pBproj, .i64 l, .i64 p, .i64 nh, .i64 dh, .i64 f, .i64 bsize,
-        .f64 eps.toBits]
-        (s, cache, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj, bproj, l,
-        p, nh, dh, f, bsize, eps) := fun heap' store' hKeep =>
-    ⟨[.i64 pS], _, rfl, ⟨pS, rfl, hKeep pS _ hS⟩, [.i64 pCache], _, rfl, ⟨pCache, rfl,
-      hKeep pCache _ hCache⟩, [.i64 pG1], _, rfl, ⟨pG1, rfl, hKeep pG1 _ hG1⟩, [.i64 pB1], _,
-      rfl, ⟨pB1, rfl, hKeep pB1 _ hB1⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl, hKeep pWq _ hWq⟩,
-      [.i64 pBq], _, rfl, ⟨pBq, rfl, hKeep pBq _ hBq⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl,
-      hKeep pWk _ hWk⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl, hKeep pBk _ hBk⟩, [.i64 pWv], _, rfl,
-      ⟨pWv, rfl, hKeep pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl, hKeep pBv _ hBv⟩,
-      [.i64 pWo], _, rfl, ⟨pWo, rfl, hKeep pWo _ hWo⟩, [.i64 pBo], _, rfl, ⟨pBo, rfl,
-      hKeep pBo _ hBo⟩, [.i64 pG2], _, rfl, ⟨pG2, rfl, hKeep pG2 _ hG2⟩, [.i64 pB2], _, rfl,
-      ⟨pB2, rfl, hKeep pB2 _ hB2⟩, [.i64 pWfc], _, rfl, ⟨pWfc, rfl, hKeep pWfc _ hWfc⟩,
-      [.i64 pBfc], _, rfl, ⟨pBfc, rfl, hKeep pBfc _ hBfc⟩, [.i64 pWproj], _, rfl, ⟨pWproj,
-      rfl, hKeep pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
-      hKeep pBproj _ hBproj⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR12.finish hParams
-  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pres], s15,
+  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR12.finish
+  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pres], s15,
     by simp [gpt.layerStep.ir, Func.scratch, Expr.evalResults, Expr.eval, s15,
       State.get_update_same, hS14], hOwned, hOutB, hOutO⟩
 
@@ -1466,8 +1393,8 @@ theorem scores_implements : Implements gpt.module 42 scoresTuple := by
       Expr.evalResults_getF ((State.get_update_ne (state := start) (j := 8) (index := 9) (by decide)).trans (sg8)) <|
       Expr.evalResults_nil)
     ⟨[.i64 px], _, rfl, ⟨px, rfl, (hLive1.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-      [.i64 pGf], _, rfl, ⟨pGf, rfl, hLive1.borrowed pGf _ hGf⟩, [.i64 pBf], _, rfl, ⟨pBf,
-      rfl, hLive1.borrowed pBf _ hBf⟩, rfl⟩
+      [.i64 pGf], _, rfl, ⟨pGf, rfl, hLive1.borrowed pGf _ hGf Apart.nil⟩, [.i64 pBf], _,
+      rfl, ⟨pBf, rfl, hLive1.borrowed pBf _ hBf Apart.nil⟩, rfl⟩
     (by rw [hS1]; decide) fun heap2 ph store2 hLive2 => ?_
   let s2 := s1.update 10 (.i64 ph)
   have hS2 : s2.params.length + s2.locals.length = 13 := by rw [hLen, hS1]
@@ -1482,7 +1409,7 @@ theorem scores_implements : Implements gpt.module 42 scoresTuple := by
       Expr.evalResults_get ((State.get_update_ne (state := s1) (j := 7) (index := 10) (by decide)).trans ((State.get_update_ne (state := start) (j := 7) (index := 9) (by decide)).trans (sg7))) <|
       Expr.evalResults_nil)
     ⟨[.i64 ph], _, rfl, ⟨ph, rfl, (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-      [.i64 pWte], _, rfl, ⟨pWte, rfl, hLive2.borrowed pWte _ hWte⟩, rfl⟩
+      [.i64 pWte], _, rfl, ⟨pWte, rfl, hLive2.borrowed pWte _ hWte Apart.nil⟩, rfl⟩
     (by rw [hS2]; decide) fun heap3 pr store3 hLive3 => ?_
   let s3 := s2.update 11 (.i64 pr)
   have hS3 : s3.params.length + s3.locals.length = 13 := by rw [hLen, hS2]
@@ -1498,17 +1425,9 @@ theorem scores_implements : Implements gpt.module 42 scoresTuple := by
     (State.get_update_ne (state := s3) (j := 10) (index := 12) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 11) (by decide)).trans (State.get_update_same (state := s1) (by rw [hS1]; decide)))
   refine hLive3.releaseSecond_seq hImports hRelease r10 fun storeR0 hLiveR0 => ?_
   refine hLiveR0.releaseSecond_last hImports hRelease r9 fun storeR1 hLiveR1 => ?_
-  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
-      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 pCache, .i64 pWte, .i64 pGf, .i64 pBf, .i64 layers, .i64 nh, .i64 dh, .i64 vocab,
-        .f64 eps.toBits]
-        (cache, wte, gf, bf, layers, nh, dh, vocab, eps) := fun heap' store' hKeep =>
-    ⟨[.i64 pCache], _, rfl, ⟨pCache, rfl, hKeep pCache _ hCache⟩, [.i64 pWte], _, rfl,
-      ⟨pWte, rfl, hKeep pWte _ hWte⟩, [.i64 pGf], _, rfl, ⟨pGf, rfl, hKeep pGf _ hGf⟩,
-      [.i64 pBf], _, rfl, ⟨pBf, rfl, hKeep pBf _ hBf⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR1.finish hParams
-  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR1.finish
+  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
     by simp [gpt.scores.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,
       State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
 
@@ -1729,19 +1648,23 @@ theorem step_implements : Implements gpt.module 41 stepTuple := by
           Expr.evalResults_getF ((hF.get 24 (by decide) (by decide)).trans ((State.get_update_ne (state := s3) (j := 24) (index := 28) (by decide)).trans ((State.get_update_ne (state := s3_37) (j := 24) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3_36) (j := 24) (index := 37) (by decide)).trans ((State.get_update_ne (state := s2) (j := 24) (index := 36) (by decide)).trans ((State.get_update_ne (state := s1) (j := 24) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 24) (index := 25) (by decide)).trans (sg24)))))))) <|
           Expr.evalResults_nil),
         ⟨[.i64 p], _, rfl, ⟨p, rfl, (hL.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩,
-          [.i64 pCache], _, rfl, ⟨pCache, rfl, hL.borrowed pCache _ hCache⟩, [.i64 pG1], _, rfl,
-          ⟨pG1, rfl, hL.borrowed pG1 _ hG1⟩, [.i64 pB1], _, rfl, ⟨pB1, rfl,
-          hL.borrowed pB1 _ hB1⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl, hL.borrowed pWq _ hWq⟩,
-          [.i64 pBq], _, rfl, ⟨pBq, rfl, hL.borrowed pBq _ hBq⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl,
-          hL.borrowed pWk _ hWk⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl, hL.borrowed pBk _ hBk⟩,
-          [.i64 pWv], _, rfl, ⟨pWv, rfl, hL.borrowed pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl,
-          hL.borrowed pBv _ hBv⟩, [.i64 pWo], _, rfl, ⟨pWo, rfl, hL.borrowed pWo _ hWo⟩,
-          [.i64 pBo], _, rfl, ⟨pBo, rfl, hL.borrowed pBo _ hBo⟩, [.i64 pG2], _, rfl, ⟨pG2, rfl,
-          hL.borrowed pG2 _ hG2⟩, [.i64 pB2], _, rfl, ⟨pB2, rfl, hL.borrowed pB2 _ hB2⟩,
-          [.i64 pWfc], _, rfl, ⟨pWfc, rfl, hL.borrowed pWfc _ hWfc⟩, [.i64 pBfc], _, rfl, ⟨pBfc,
-          rfl, hL.borrowed pBfc _ hBfc⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
-          hL.borrowed pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
-          hL.borrowed pBproj _ hBproj⟩, rfl⟩⟩)
+          [.i64 pCache], _, rfl, ⟨pCache, rfl, hL.borrowed pCache _ hCache Apart.nil⟩,
+          [.i64 pG1], _, rfl, ⟨pG1, rfl, hL.borrowed pG1 _ hG1 Apart.nil⟩, [.i64 pB1], _, rfl,
+          ⟨pB1, rfl, hL.borrowed pB1 _ hB1 Apart.nil⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl,
+          hL.borrowed pWq _ hWq Apart.nil⟩, [.i64 pBq], _, rfl, ⟨pBq, rfl,
+          hL.borrowed pBq _ hBq Apart.nil⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl,
+          hL.borrowed pWk _ hWk Apart.nil⟩, [.i64 pBk], _, rfl, ⟨pBk, rfl,
+          hL.borrowed pBk _ hBk Apart.nil⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl,
+          hL.borrowed pWv _ hWv Apart.nil⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl,
+          hL.borrowed pBv _ hBv Apart.nil⟩, [.i64 pWo], _, rfl, ⟨pWo, rfl,
+          hL.borrowed pWo _ hWo Apart.nil⟩, [.i64 pBo], _, rfl, ⟨pBo, rfl,
+          hL.borrowed pBo _ hBo Apart.nil⟩, [.i64 pG2], _, rfl, ⟨pG2, rfl,
+          hL.borrowed pG2 _ hG2 Apart.nil⟩, [.i64 pB2], _, rfl, ⟨pB2, rfl,
+          hL.borrowed pB2 _ hB2 Apart.nil⟩, [.i64 pWfc], _, rfl, ⟨pWfc, rfl,
+          hL.borrowed pWfc _ hWfc Apart.nil⟩, [.i64 pBfc], _, rfl, ⟨pBfc, rfl,
+          hL.borrowed pBfc _ hBfc Apart.nil⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
+          hL.borrowed pWproj _ hWproj Apart.nil⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl,
+          hL.borrowed pBproj _ hBproj Apart.nil⟩, rfl⟩⟩)
     fun heap5 pl store5 s5 hLive5 hFrame5 hState5 => ?_
   have hS5 : s5.params.length + s5.locals.length = 38 := by
     rw [hFrame5.params, hFrame5.locals]; exact hS4
@@ -1752,8 +1675,8 @@ theorem step_implements : Implements gpt.module 41 stepTuple := by
     (Expr.evalResults_get ((hFrame5.get 0 (by decide) (by decide)).trans ((State.get_update_ne (state := s3) (j := 0) (index := 28) (by decide)).trans ((State.get_update_ne (state := s3_37) (j := 0) (index := 27) (by decide)).trans ((State.get_update_ne (state := s3_36) (j := 0) (index := 37) (by decide)).trans ((State.get_update_ne (state := s2) (j := 0) (index := 36) (by decide)).trans ((State.get_update_ne (state := s1) (j := 0) (index := 26) (by decide)).trans ((State.get_update_ne (state := start) (j := 0) (index := 25) (by decide)).trans (sg0)))))))) <|
       Expr.evalResults_get (hState5) <|
       Expr.evalResults_nil)
-    ⟨[.i64 pCache], _, rfl, ⟨pCache, rfl, hLive5.borrowed pCache _ hCache⟩, ⟨pl, rfl,
-      (hLive5.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩⟩
+    ⟨[.i64 pCache], _, rfl, ⟨pCache, rfl, hLive5.borrowed pCache _ hCache Apart.nil⟩, ⟨pl,
+      rfl, (hLive5.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩⟩
     (by rw [hS5]; decide) fun heap6 pr store6 hLive6 => ?_
   let s6 := s5.update 34 (.i64 pr)
   have hS6 : s6.params.length + s6.locals.length = 38 := by rw [hLen, hS5]
@@ -1769,30 +1692,9 @@ theorem step_implements : Implements gpt.module 41 stepTuple := by
     (State.get_update_ne (state := s6) (j := 29) (index := 35) (by decide)).trans ((State.get_update_ne (state := s5) (j := 29) (index := 34) (by decide)).trans (hState5))
   refine hLive6.releaseSecond_seq hImports hRelease r29 fun storeR0 hLiveR0 => ?_
   refine hLiveR0.releaseSecond_last hImports hRelease r28 fun storeR1 hLiveR1 => ?_
-  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
-      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 pCache, .i64 pWte, .i64 pWpe, .i64 pG1, .i64 pB1, .i64 pWq, .i64 pBq, .i64 pWk,
-        .i64 pBk, .i64 pWv, .i64 pBv, .i64 pWo, .i64 pBo, .i64 pG2, .i64 pB2, .i64 pWfc,
-        .i64 pBfc, .i64 pWproj, .i64 pBproj, .i64 token, .i64 layers, .i64 nh, .i64 dh, .i64 f,
-        .f64 eps.toBits]
-        (cache, wte, wpe, g1, b1, wq, bq, wk, bk, wv, bv, wo, bo, g2, b2, wfc, bfc, wproj,
-        bproj, token, layers, nh, dh, f, eps) := fun heap' store' hKeep =>
-    ⟨[.i64 pCache], _, rfl, ⟨pCache, rfl, hKeep pCache _ hCache⟩, [.i64 pWte], _, rfl,
-      ⟨pWte, rfl, hKeep pWte _ hWte⟩, [.i64 pWpe], _, rfl, ⟨pWpe, rfl, hKeep pWpe _ hWpe⟩,
-      [.i64 pG1], _, rfl, ⟨pG1, rfl, hKeep pG1 _ hG1⟩, [.i64 pB1], _, rfl, ⟨pB1, rfl,
-      hKeep pB1 _ hB1⟩, [.i64 pWq], _, rfl, ⟨pWq, rfl, hKeep pWq _ hWq⟩, [.i64 pBq], _, rfl,
-      ⟨pBq, rfl, hKeep pBq _ hBq⟩, [.i64 pWk], _, rfl, ⟨pWk, rfl, hKeep pWk _ hWk⟩,
-      [.i64 pBk], _, rfl, ⟨pBk, rfl, hKeep pBk _ hBk⟩, [.i64 pWv], _, rfl, ⟨pWv, rfl,
-      hKeep pWv _ hWv⟩, [.i64 pBv], _, rfl, ⟨pBv, rfl, hKeep pBv _ hBv⟩, [.i64 pWo], _, rfl,
-      ⟨pWo, rfl, hKeep pWo _ hWo⟩, [.i64 pBo], _, rfl, ⟨pBo, rfl, hKeep pBo _ hBo⟩,
-      [.i64 pG2], _, rfl, ⟨pG2, rfl, hKeep pG2 _ hG2⟩, [.i64 pB2], _, rfl, ⟨pB2, rfl,
-      hKeep pB2 _ hB2⟩, [.i64 pWfc], _, rfl, ⟨pWfc, rfl, hKeep pWfc _ hWfc⟩, [.i64 pBfc], _,
-      rfl, ⟨pBfc, rfl, hKeep pBfc _ hBfc⟩, [.i64 pWproj], _, rfl, ⟨pWproj, rfl,
-      hKeep pWproj _ hWproj⟩, [.i64 pBproj], _, rfl, ⟨pBproj, rfl, hKeep pBproj _ hBproj⟩,
-      rfl⟩
-  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLiveR1.finish hParams
-  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s7,
+  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLiveR1.finish
+  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s7,
     by simp [gpt.step.ir, Expr.evalResults, Expr.eval, s7,
       State.get_update_same, hS6], hOwned, hOutB, hOutO⟩
 

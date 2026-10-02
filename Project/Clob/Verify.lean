@@ -123,8 +123,7 @@ theorem marketBuy_implements :
     · simp [Expr.eval, hFrame.get 5 (by decide) (by decide), h5]
   · rintro store state ⟨ptr, -, hPtr, hNew⟩
     have hOwned := hNew.owned
-    refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pp, rfl, hNew.borrowed pp prices hPrices⟩, _, _, rfl,
-      ⟨ps, rfl, hNew.borrowed ps sizes hSizes⟩, rfl⟩, hNew.caps, hNew.borrowed,
+    refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
       hNew.ownedKeep, [.i64 ptr], state,
       by simp [clob.marketBuy.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -191,8 +190,7 @@ theorem fillLevel_implements : Implements clob.module 3 fillTuple := by
         State.set?_eq_update, hState.1, hState.2]
   · rintro store state ⟨ptr, -, hPtr, hNew⟩
     have hOwned := hNew.owned
-    refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨ps, rfl, hNew.borrowed ps sizes hSizes⟩, rfl⟩,
-      hNew.caps, hNew.borrowed,
+    refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
       hNew.ownedKeep, [.i64 ptr], state,
       by simp [clob.fillLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -360,8 +358,7 @@ theorem insertLevel_implements : Implements clob.module 4 insertTuple := by
   have hKeep2 := hNew2.borrowed
   have hPtr1' : t2.get 8 = some (.i64 ptr1) := by
     rw [hFrame2.get 8 (by decide) (by decide)]; simp [u3, u2, u1, hPtr1]
-  refine ⟨_, hAt2, ⟨_, _, rfl, ⟨pp, rfl, hKeep2 pp prices (hKeep1 pp prices hPrices)⟩, _, _, rfl,
-      ⟨ps, rfl, hKeep2 ps sizes (hKeep1 ps sizes hSizes)⟩, rfl⟩, hNew2.caps.trans hNew1.caps,
+  refine ⟨_, hAt2, hNew2.caps.trans hNew1.caps,
     fun p ws h => hKeep2 p ws (hKeep1 p ws h),
     (hNew1.two hNew2).1,
     [.i64 ptr1, .i64 ptr2], t2,
@@ -448,9 +445,7 @@ theorem setLevel_implements : Implements clob.module 5 setTuple := by
   rintro store2 t2 ⟨ptr2, hFrame2, hPtr2, hNew2⟩
   have hPtr1' : t2.get 5 = some (.i64 ptr1) := by
     rw [hFrame2.get 5 (by decide) (by decide)]; simp [u3, u2, u1, hPtr1]
-  refine ⟨_, hNew2.at_, ⟨_, _, rfl, ⟨pp, rfl, hNew2.borrowed pp prices (hKeep1 pp prices hPrices)⟩,
-      _, _, rfl, ⟨ps, rfl, hNew2.borrowed ps sizes (hKeep1 ps sizes hSizes)⟩, rfl⟩,
-    hNew2.caps.trans hNew1.caps,
+  refine ⟨_, hNew2.at_, hNew2.caps.trans hNew1.caps,
     fun p ws h => hNew2.borrowed p ws (hKeep1 p ws h),
     (hNew1.two hNew2).1,
     [.i64 ptr1, .i64 ptr2], t2,
@@ -755,8 +750,7 @@ theorem removeLevel_implements : Implements clob.module 9 removeTuple := by
   have hKeep2 := hNew2.borrowed
   have hPtr1' : t2.get 5 = some (.i64 ptr1) := by
     rw [hFrame2.get 5 (by decide) (by decide)]; simp [u2, u1, hPtr1]
-  refine ⟨_, hAt2, ⟨_, _, rfl, ⟨pp, rfl, hKeep2 pp prices (hKeep1 pp prices hPrices)⟩, _, _, rfl,
-      ⟨ps, rfl, hKeep2 ps sizes (hKeep1 ps sizes hSizes)⟩, rfl⟩, hNew2.caps.trans hNew1.caps,
+  refine ⟨_, hAt2, hNew2.caps.trans hNew1.caps,
     fun p ws h => hKeep2 p ws (hKeep1 p ws h),
     (hNew1.two hNew2).1,
     [.i64 ptr1, .i64 ptr2], t2,
@@ -798,11 +792,9 @@ theorem Kept.refl {heap : Heap} {initial : Store Unit} (hHeap : heap.At initial)
 /-- The postcondition of `Func.implements_heap` for a function whose arguments
 `params` represent `input` and whose result, a pair of arrays, is in locals `a`
 and `b`. -/
-def PairPost [Represent γ] (heap : Heap) (initial : Store Unit) (params : List Value)
-    (input : γ) (scratch a b : Nat) (result : Array UInt64 × Array UInt64)
+def PairPost (heap : Heap) (initial : Store Unit) (scratch a b : Nat) (result : Array UInt64 × Array UInt64)
     (store : Store Unit) (state : State) : Prop :=
-  ∃ heap' : Heap, heap'.At store ∧ Represent.borrowed heap' store params input ∧
-    store.memoryCaps = initial.memoryCaps ∧
+  ∃ heap' : Heap, heap'.At store ∧ store.memoryCaps = initial.memoryCaps ∧
     (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store p ws) ∧
     (∀ p ws, heap.Owned initial p ws →
       heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
@@ -816,37 +808,39 @@ def PairPost [Represent γ] (heap : Heap) (initial : Store Unit) (params : List 
 
 /-- A call of entry `idx`, which implements `g`, that leaves the two arrays of
 `g x = result` in locals `a` and `b` as the caller's result. -/
-theorem pairCall_spec [Represent α] [Represent γ] {idx : Nat}
+theorem pairCall_spec [Represent α] {idx : Nat}
     {g : α → Array UInt64 × Array UInt64}
     (hImpl : Implements clob.module idx g) {f : Wasm.Function}
     (hFunc : clob.module.funcs[idx]? = some f) {scratch a b : Nat} (hab : a ≠ b)
     {args : List ((type : ScalarType) × Expr type)} (hParams : args.length = f.numParams) {heap heap1 : Heap}
-    {initial store1 : Store Unit} {params : List Value} {input : γ}
+    {initial store1 : Store Unit}
     {state afterArgs : State} {x : α} {vals : List Value}
     {result : Array UInt64 × Array UInt64} (hKept : Kept heap initial heap1 store1)
-    (hInput : ∀ heap' store', (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' params input)
     (hCap : initial.memoryCap clob.module 0 ≤ 65535)
     (hArgs : Expr.evalResults store1.mem scratch args state = some (vals, afterArgs))
     (hBorrowed : Represent.borrowed heap1 store1 vals x)
     (hA : a < afterArgs.params.length + afterArgs.locals.length)
-    (hB : b < afterArgs.params.length + afterArgs.locals.length) (hResult : g x = result) :
+    (hB : b < afterArgs.params.length + afterArgs.locals.length) (hResult : g x = result)
+    (hNoMoves : ∀ (vs : List Value) (y : α), Represent.moves vs y = [] := by intro _ _; rfl) :
     Triple clob.module (.call idx args [a, b]) scratch (fun s st => s = store1 ∧ st = state)
-      (PairPost heap initial params input scratch a b result) := by
+      (PairPost heap initial scratch a b result) := by
+  have hNone : ∀ region, Apart store1 (Represent.moves vals x) region := fun _ => by
+    rw [hNoMoves]; exact Apart.nil
   have hA' : ∀ v : Value,
       a < (afterArgs.update b v).params.length + (afterArgs.update b v).locals.length := by
     intro v; simp only [State.update_params_length, State.update_locals_length]; exact hA
   refine (Stmt.callImplements_spec hImpl (f := f) rfl
     (by rw [show clob.module.imports.length = 0 from rfl]; exact hFunc) hParams hArgs
-    hKept.at_ hBorrowed (memoryCap_le_of_caps hKept.caps hCap)
+    hKept.at_ hBorrowed ⟨by rw [hNoMoves]; exact .nil, fun r _ => hNone r⟩
+    (memoryCap_le_of_caps hKept.caps hCap)
     fun heap' store' values h => ?_).mono (fun _ _ h => h) ?_
   · obtain ⟨p1, p2, rfl, -, -⟩ := owned_pair h
     exact ⟨(afterArgs.update b (.i64 p2)).update a (.i64 p1), by
       simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append,
         State.setAll, State.set?_eq_update _ hB, State.set?_eq_update _ (hA' _),
         Option.bind_eq_bind, Option.bind_some]⟩
-  rintro store' st' ⟨heap', values, hAt', hOwned', -, hCaps', hKeepB, hKeepO,
-    hOutsideB, hOutsideO, hSet'⟩
+  rintro store' st' ⟨heap', values, hAt', hOwned', hCaps', hKeepB, hKeepO, hOutsideB, hOutsideO,
+    hSet'⟩
   obtain ⟨p1, p2, rfl, -, -⟩ := owned_pair hOwned'
   simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append,
     State.setAll, State.set?_eq_update _ hB, State.set?_eq_update _ (hA' _),
@@ -856,36 +850,34 @@ theorem pairCall_spec [Represent α] [Represent γ] {idx : Nat}
     State.get_update_same (hA' _)
   have hGetB : ((afterArgs.update b (.i64 p2)).update a (.i64 p1)).get b = some (.i64 p2) := by
     rw [State.get_update_ne (Ne.symm hab)]; exact State.get_update_same hB
-  exact ⟨heap', hAt', hInput heap' store' fun p ws h => hKeepB p ws (hKept.borrowed p ws h),
-    hCaps'.trans hKept.caps, fun p ws h => hKeepB p ws (hKept.borrowed p ws h),
-    fun p ws h => ⟨(hKeepO p ws (hKept.owned p ws h).1).1,
-      (hKeepO p ws (hKept.owned p ws h).1).2.trans (hKept.owned p ws h).2⟩, [.i64 p1, .i64 p2],
-    (afterArgs.update b (.i64 p2)).update a (.i64 p1),
+  exact ⟨heap', hAt', hCaps'.trans hKept.caps, fun p ws h => hKeepB p ws (hKept.borrowed p ws h) (hNone _),
+    fun p ws h => ⟨(hKeepO p ws (hKept.owned p ws h).1 (hNone _)).1,
+      (hKeepO p ws (hKept.owned p ws h).1 (hNone _)).2.trans (hKept.owned p ws h).2⟩,
+    [.i64 p1, .i64 p2], (afterArgs.update b (.i64 p2)).update a (.i64 p1),
     by simp [Expr.evalResults, Expr.eval, hGetA, hGetB], hOwned',
-    fun p ws h => hOutsideB p ws (hKept.borrowed p ws h),
+    fun p ws h => hOutsideB p ws (hKept.borrowed p ws h) (hNone _),
     fun p ws h => by
-      have hOut := hOutsideO p ws (hKept.owned p ws h).1
-      rwa [(hKept.owned p ws h).2] at hOut⟩
+      have hOut := hOutsideO p ws (hKept.owned p ws h).1 (hNone _)
+      rw [block_eq (hKept.owned p ws h).2] at hOut
+      exact hOut⟩
 
 /-- Copies of the arrays in locals `src1` and `src2`, left in locals `a` and `b` as
 the caller's result. -/
-theorem pairCopy_spec [Represent γ] {scratch a b l1 i1 s1 l2 i2 s2 src1 src2 : Nat}
+theorem pairCopy_spec {scratch a b l1 i1 s1 l2 i2 s2 src1 src2 : Nat}
     (h1 : [s1, a, l1, i1].Nodup) (h2 : [s2, b, l2, i2].Nodup)
     (hBelow1 : ∀ j ∈ [s1, a, l1, i1], j < scratch) (hBelow2 : ∀ j ∈ [s2, b, l2, i2], j < scratch)
     (hSrc1 : src1 ∉ [s1, a, l1, i1]) (hSrc2 : src2 ∉ [s1, a, l1, i1])
     (hSrc2' : src2 ∉ [s2, b, l2, i2]) (hAKept : a ∉ [s2, b, l2, i2])
     (hSrcBelow : src1 < scratch ∧ src2 < scratch) {heap heap1 : Heap}
-    {initial store1 : Store Unit} {state : State} {params : List Value} {input : γ}
+    {initial store1 : Store Unit} {state : State}
     {p1 p2 : UInt64} {xs ys : Array UInt64} (hKept : Kept heap initial heap1 store1)
-    (hInput : ∀ heap' store', (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' params input)
     (hCap : initial.memoryCap clob.module 0 ≤ 65535)
     (hLength : scratch < state.params.length + state.locals.length)
     (hGet1 : state.get src1 = some (.i64 p1)) (hGet2 : state.get src2 = some (.i64 p2))
     (hXs : heap.Borrowed initial p1 xs) (hYs : heap.Borrowed initial p2 ys) :
     Triple clob.module (.seq (.copy a l1 i1 s1 src1) (.copy b l2 i2 s2 src2)) scratch
       (fun s st => s = store1 ∧ st = state)
-      (PairPost heap initial params input scratch a b (xs, ys)) := by
+      (PairPost heap initial scratch a b (xs, ys)) := by
   have hMemory32 : clob.module.memIs64 = false := rfl
   have hImports : clob.module.imports = [] := rfl
   have hAlloc : clob.module.funcs[0]? = some (allocFunction 0) := rfl
@@ -906,9 +898,7 @@ theorem pairCopy_spec [Represent γ] {scratch a b l1 i1 s1 l2 i2 s2 src1 src2 : 
   rintro store3 t3 ⟨q2, hFrame3, hPtr2, hNew2⟩
   have hPtr1' : t3.get a = some (.i64 q1) :=
     (hFrame3.get a (hBelow1 a (by simp)) hAKept).trans hPtr1
-  exact ⟨_, hNew2.at_, hInput _ _ fun p ws h =>
-      hNew2.borrowed p ws (hNew1.borrowed p ws (hKept.borrowed p ws h)),
-    hNew2.caps.trans (hNew1.caps.trans hKept.caps),
+  exact ⟨_, hNew2.at_, hNew2.caps.trans (hNew1.caps.trans hKept.caps),
     fun p ws h => hNew2.borrowed p ws (hNew1.borrowed p ws (hKept.borrowed p ws h)),
     fun p ws h => ⟨((hNew1.two hNew2).1 p ws (hKept.owned p ws h).1).1,
       ((hNew1.two hNew2).1 p ws (hKept.owned p ws h).1).2.trans (hKept.owned p ws h).2⟩,
@@ -982,22 +972,21 @@ theorem bid_spec {n : Nat} (hn : 6 ≤ n) {thenStmt elseStmt : Stmt}
     (by rw [hNoImports]; exact compile_funcs (funcs := clob.funcs) (i := 6) rfl) rfl
     (vals := [.i64 pp, .i64 price]) (x := (prices, price)) (afterArgs := start)
     (by simp [Expr.evalResults, Expr.eval, hs0, hs2]) hHeap
-    ⟨[.i64 pp], [.i64 price], rfl, ⟨pp, rfl, hPrices⟩, rfl⟩
+    ⟨[.i64 pp], [.i64 price], rfl, ⟨pp, rfl, hPrices⟩, rfl⟩ Separate.nil
     hCap
     fun _ _ values h => ⟨start.update 4 (.i64 K), by
       rw [show values = [.i64 K] from h]
       simp only [List.reverse_cons, List.reverse_nil, List.nil_append, State.setAll,
         State.set?_eq_update _ h4, Option.bind_eq_bind, Option.bind_some]⟩) ?_
   apply Triple.of_forall
-  rintro store1 t1 ⟨heap1, values, hAt1, hValues, -, hCaps1, hKeepB1, hKeepO1,
-    -, -, hSet1⟩
+  rintro store1 t1 ⟨heap1, values, hAt1, hValues, hCaps1, hKeepB1, hKeepO1, -, -, hSet1⟩
   have hFacts : Kept heap initial heap1 store1 :=
-    ⟨hAt1, hCaps1, hKeepB1, hKeepO1⟩
+    ⟨hAt1, hCaps1, fun p ws h => hKeepB1 p ws h Apart.nil, fun p ws h => hKeepO1 p ws h Apart.nil⟩
   rw [show values = [.i64 K] from hValues] at hSet1
   simp only [List.reverse_cons, List.reverse_nil, List.nil_append, State.setAll,
     State.set?_eq_update _ h4, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hSet1
   subst hSet1
-  have hP1 := (hKeepB1 pp prices hPrices).values
+  have hP1 := (hKeepB1 pp prices hPrices Apart.nil).values
   have hLengthP := hP1.lengthBound
   simp only [UInt64.toNat_toUInt32] at hLengthP
   let u1 := (start.update 4 (.i64 K)).update 5 (.i64 K)
@@ -1079,19 +1068,13 @@ theorem addBid_implements : Implements clob.module 6 addBidTuple := by
     ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hCap
   change heap.Borrowed initial pp prices at hPrices
   change heap.Borrowed initial ps sizes at hSizes
-  have hInput : ∀ (heap' : Heap) (store' : Store Unit),
-      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 pp, .i64 ps, .i64 price, .i64 size]
-        (prices, sizes, price, size) := fun _ _ hKeep =>
-    ⟨_, _, rfl, ⟨pp, rfl, hKeep pp prices hPrices⟩, _, _, rfl, ⟨ps, rfl, hKeep ps sizes hSizes⟩, rfl⟩
   show Triple _ (bidBody
     (.call 5 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩,
       ⟨.u64, .bin .add (.read 1 (.get 5)) (.get 3)⟩] [6, 7])
     (.call 4 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 2⟩, ⟨.u64, .get 3⟩]
       [6, 7])) (6 + 3)
     (fun store state => store = initial ∧ state = bidStart pp ps price size 6)
-    (PairPost heap initial [.i64 pp, .i64 ps, .i64 price, .i64 size] (prices, sizes, price, size)
-      9 6 7 (addBidTuple (prices, sizes, price, size)))
+    (PairPost heap initial 9 6 7 (addBidTuple (prices, sizes, price, size)))
   refine bid_spec (by decide) hHeap hPrices hCap ?_ ?_
   · -- An existing level: `setLevel` with the size increased.
     intro heap1 store1 state hKept hL hFound
@@ -1103,7 +1086,7 @@ theorem addBid_implements : Implements clob.module 6 addBidTuple := by
         (state.update 9 (.i64 K)).locals.length = 10 := by
       simp only [State.update_params_length, State.update_locals_length, hL.params, hL.locals]
     exact pairCall_spec setLevel_implements (compile_funcs (funcs := clob.funcs) (i := 3) rfl)
-      (by decide) rfl hKept hInput hCap
+      (by decide) rfl hKept hCap
       (vals := [.i64 pp, .i64 ps, .i64 K, .i64 (sizes[K.toNat]! + size)])
       (x := (prices, sizes, K, sizes[K.toNat]! + size)) (afterArgs := state.update 9 (.i64 K))
       (by simp [Expr.evalResults, Expr.eval, hL.get0, hL.get1, hL.get3, hL.get5, U64Op.apply,
@@ -1117,7 +1100,7 @@ theorem addBid_implements : Implements clob.module 6 addBidTuple := by
     intro heap1 store1 state hKept hL hFound
     set K := findTuple (prices, price) with hK
     exact pairCall_spec insertLevel_implements (compile_funcs (funcs := clob.funcs) (i := 2) rfl)
-      (by decide) rfl hKept hInput hCap (vals := [.i64 pp, .i64 ps, .i64 K, .i64 price, .i64 size])
+      (by decide) rfl hKept hCap (vals := [.i64 pp, .i64 ps, .i64 K, .i64 price, .i64 size])
       (x := (prices, sizes, K, price, size)) (afterArgs := state)
       (by simp [Expr.evalResults, Expr.eval, hL.get0, hL.get1, hL.get2, hL.get3, hL.get5])
       ⟨[.i64 pp], _, rfl, ⟨pp, rfl, hKept.borrowed pp prices hPrices⟩, [.i64 ps], _, rfl,
@@ -1138,11 +1121,6 @@ theorem cancelBid_implements : Implements clob.module 10 cancelTuple := by
     ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hCap
   change heap.Borrowed initial pp prices at hPrices
   change heap.Borrowed initial ps sizes at hSizes
-  have hInput : ∀ (heap' : Heap) (store' : Store Unit),
-      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 pp, .i64 ps, .i64 price, .i64 size]
-        (prices, sizes, price, size) := fun _ _ hKeep =>
-    ⟨_, _, rfl, ⟨pp, rfl, hKeep pp prices hPrices⟩, _, _, rfl, ⟨ps, rfl, hKeep ps sizes hSizes⟩, rfl⟩
   show Triple _ (bidBody
     (.ite (.leU (.read 1 (.get 5)) (.get 3))
       (.call 9 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩] [6, 7])
@@ -1150,8 +1128,7 @@ theorem cancelBid_implements : Implements clob.module 10 cancelTuple := by
         ⟨.u64, .bin .sub (.read 1 (.get 5)) (.get 3)⟩] [6, 7]))
     (.seq (.copy 6 10 11 9 0) (.copy 7 13 14 12 1))) (12 + 3)
     (fun store state => store = initial ∧ state = bidStart pp ps price size 12)
-    (PairPost heap initial [.i64 pp, .i64 ps, .i64 price, .i64 size] (prices, sizes, price, size)
-      15 6 7 (cancelTuple (prices, sizes, price, size)))
+    (PairPost heap initial 15 6 7 (cancelTuple (prices, sizes, price, size)))
   refine bid_spec (by decide) hHeap hPrices hCap ?_ ?_
   · -- An existing level: removed, or reduced by `size`.
     intro heap1 store1 state hFacts hL hFound
@@ -1181,7 +1158,7 @@ theorem cancelBid_implements : Implements clob.module 10 cancelTuple := by
       apply Triple.of_forall
       rintro s st ⟨rfl, rfl, hLe⟩
     · exact pairCall_spec removeLevel_implements (compile_funcs (funcs := clob.funcs) (i := 7) rfl)
-        (by decide) rfl hFacts hInput hCap (vals := [.i64 pp, .i64 ps, .i64 K])
+        (by decide) rfl hFacts hCap (vals := [.i64 pp, .i64 ps, .i64 K])
         (x := (prices, sizes, K))
         (afterArgs := read)
         (by simp [Expr.evalResults, Expr.eval, hReadGet 0 (by decide), hReadGet 1 (by decide),
@@ -1195,7 +1172,7 @@ theorem cancelBid_implements : Implements clob.module 10 cancelTuple := by
     · have hRead1' : (read.update 15 (.i64 K)).get 1 = some (.i64 ps) := by
         rw [State.get_update_ne (by decide), hRead1]
       exact pairCall_spec setLevel_implements (compile_funcs (funcs := clob.funcs) (i := 3) rfl)
-        (by decide) rfl hFacts hInput hCap
+        (by decide) rfl hFacts hCap
         (vals := [.i64 pp, .i64 ps, .i64 K, .i64 (sizes[K.toNat]! - size)])
         (x := (prices, sizes, K, sizes[K.toNat]! - size)) (afterArgs := read.update 15 (.i64 K))
         (by simp [Expr.evalResults, Expr.eval, hReadGet 0 (by decide), hReadGet 1 (by decide),
@@ -1216,7 +1193,7 @@ theorem cancelBid_implements : Implements clob.module 10 cancelTuple := by
     rw [show cancelTuple (prices, sizes, price, size) = (prices, sizes) by
       unfold cancelTuple LeanExe.Examples.Clob.cancelBid; exact ite_eq_right hFound]
     exact pairCopy_spec (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
-      (by decide) (by decide) (by decide) hKept hInput hCap (by rw [hL.params, hL.locals]; decide) hL.get0 hL.get1 hPrices hSizes
+      (by decide) (by decide) (by decide) hKept hCap (by rw [hL.params, hL.locals]; decide) hL.get0 hL.get1 hPrices hSizes
 
 /-- `applyCommand` with its five arguments as one tuple. -/
 def applyTuple (x : Array UInt64 × Array UInt64 × UInt64 × UInt64 × UInt64) :
@@ -1230,11 +1207,6 @@ theorem applyCommand_implements : Implements clob.module 11 applyTuple := by
     ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hCap
   change heap.Borrowed initial pp prices at hPrices
   change heap.Borrowed initial ps sizes at hSizes
-  have hInput : ∀ (heap' : Heap) (store' : Store Unit),
-      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 pp, .i64 ps, .i64 kind, .i64 price, .i64 size]
-        (prices, sizes, kind, price, size) := fun _ _ hKeep =>
-    ⟨_, _, rfl, ⟨pp, rfl, hKeep pp prices hPrices⟩, _, _, rfl, ⟨ps, rfl, hKeep ps sizes hSizes⟩, rfl⟩
   have hKept := Kept.refl hHeap
   let start : State :=
     { params := [.i64 pp, .i64 ps, .i64 kind, .i64 price, .i64 size]
@@ -1249,8 +1221,7 @@ theorem applyCommand_implements : Implements clob.module 11 applyTuple := by
         (.call 10 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [5, 6])
         (.seq (.copy 5 8 9 7 0) (.copy 6 11 12 10 1)))) 13
     (fun store state => store = initial ∧ state = start)
-    (PairPost heap initial [.i64 pp, .i64 ps, .i64 kind, .i64 price, .i64 size]
-      (prices, sizes, kind, price, size) 13 5 6
+    (PairPost heap initial 13 5 6
       (applyTuple (prices, sizes, kind, price, size)))
   have hArgs : Expr.evalResults initial.mem 13
       [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] start =
@@ -1273,7 +1244,7 @@ theorem applyCommand_implements : Implements clob.module 11 applyTuple := by
     subst s
   · -- Kind 0: add a bid.
     exact pairCall_spec addBid_implements (compile_funcs (funcs := clob.funcs) (i := 4) rfl)
-      (by decide) rfl hKept hInput hCap hArgs hBorrowed (by rw [hLength]; decide) (by rw [hLength]; decide)
+      (by decide) rfl hKept hCap hArgs hBorrowed (by rw [hLength]; decide) (by rw [hLength]; decide)
       (by unfold applyTuple LeanExe.Examples.Clob.applyCommand; exact (ite_eq_left hKind).symm)
   refine (Stmt.ite_spec
     (PThen := fun s st => s = initial ∧ st = start ∧ kind = 1)
@@ -1289,7 +1260,7 @@ theorem applyCommand_implements : Implements clob.module 11 applyTuple := by
     subst s
   · -- Kind 1: cancel a bid.
     exact pairCall_spec cancelBid_implements (compile_funcs (funcs := clob.funcs) (i := 8) rfl)
-      (by decide) rfl hKept hInput hCap hArgs hBorrowed
+      (by decide) rfl hKept hCap hArgs hBorrowed
       (by rw [hLength]; decide)
       (by rw [hLength]; decide)
       (by unfold applyTuple LeanExe.Examples.Clob.applyCommand
@@ -1299,7 +1270,7 @@ theorem applyCommand_implements : Implements clob.module 11 applyTuple := by
       unfold applyTuple LeanExe.Examples.Clob.applyCommand
       exact (ite_eq_right hKind).trans (ite_eq_right hKind1)]
     exact pairCopy_spec (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
-      (by decide) (by decide) (by decide) hKept hInput hCap (by rw [hLength]; decide) hGet.1 hGet.2.1 hPrices hSizes
+      (by decide) (by decide) (by decide) hKept hCap (by rw [hLength]; decide) hGet.1 hGet.2.1 hPrices hSizes
 
 /-- `encode` succeeds on `clob.module`, and its bytes decode to a module whose
 exports compute the CLOB operations exactly. -/
