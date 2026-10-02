@@ -21375,7 +21375,16 @@ Revised steps:
   statement through `Heap.Object.clearCount`.  `wp_loop_ghost` is in
   `Project/Pipeline/ReleaseTree.lean`, and `maskOf_test` in `Records.lean`.  The
   `release-temporary` LTG entry now names the new lemmas and gives `release` as function 1.
-- [ ] `dropReference` for a child and `dropChildren` for a record whose children are owned.
+- [x] `dropReference` for a child and `dropChildren` for a record whose children are owned.
+  In `Project/Pipeline/ReleaseTree.lean`: `dropReference_spec`, `dropSlot_spec` (one slot:
+  a word, a null child, or a record child), `slotLoop_spec`, and `dropChildren_spec`.  The
+  model is `childRecords mem p i slots`, the non-null children of the slots with their own
+  slots, and `linkChildren mem pending kids`, the memory and pending head after linking
+  them in order through their count words.  The specifications take only memory facts:
+  each child's `ChildHeader` (magic number, count 1, bounds), the children's headers
+  pairwise apart and apart from the record's slots, and null slots holding 0; step 3
+  derives them from `NodeOwned` and the disjoint blocks.  A zero mask gives no children
+  (`childRecords_of_mask`), and the kind-2 branch does not run for a record.
 - [ ] The tree release theorem with the postcondition above, the null root included, and
   its IR rule for `Stmt.release` of an owned value.
 - [ ] Compiler: a fold over a list from a call, released after the fold, with its hint and
