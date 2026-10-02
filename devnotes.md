@@ -22107,3 +22107,44 @@ function with a tree argument, which `translateCall` rejects; releasing an owned
 that does not move it; a consumed tree together with a borrowed tree; and the caller's other
 trees in `Implements`, which says nothing about them.
 
+
+## 2026-10-02: Plan: Iteration 9, in-place `set!`, `insertIdx!`, and `eraseIdxIfInBounds`
+
+Today each of the three operations copies its array into a new block (`Stmt.build` with the
+elements of `set!_eq_build`, `insertIdx!_eq_build`, and `eraseIdxIfInBounds_eq_build`), even
+when the caller hands the array over.  With unique ownership, an update whose array is owned and
+at its last use can write the old block.  Lean's semantics stay the same, and each function's
+`Implements` changes only where an array argument becomes `Moved`.
+
+Templates, each with a rule lemma from `Heap.Owned initial p xs` to `Heap.Owned` of the result,
+the capacity unchanged when the block is kept, and writes only inside the block:
+
+1. `set!`: the length, then a store into element `k` when `k` is below it.  The result is the
+   same pointer.
+2. `eraseIdxIfInBounds`: when `k` is below the length, a loop that copies element `i + 1` to `i`
+   for `i` from `k` up, then the length less one.
+3. `insertIdx!`: when `k` exceeds the length, the length set to 0, Lean's `default`.  Otherwise,
+   when the block has room for one more element, a loop that copies element `i - 1` to `i` for
+   `i` from the length down to `k + 1`, then `v` into element `k` and the length plus one.
+   Otherwise the growth path of `Stmt.append`: a block of twice the capacity, or the size
+   needed, at most `2 ^ 32` bytes, filled by the present insert template, and the old block
+   released.
+
+Compiler: the array argument of `set!`, `setIfInBounds`, `insertIdx!`, or `eraseIdxIfInBounds`
+at a result position is a move site.  An update of an owned array uses the in-place template,
+after its position and value are computed into locals, which may read the array; an update of a
+borrowed array copies as now.  The moved check rejects any use after the update.
+
+Programs: the CLOB functions.  `fillLevel` and `setLevel` (`set!`), `removeLevel` (erase), and
+`insertLevel` (insert) change templates; `sizes` becomes `Moved` in `fillLevel`, `setLevel`, and
+`addBid`, and `prices` in `insertLevel` and `removeLevel` where it is not already.  `addBid`,
+`cancelBid`, and `applyCommand` change at their call sites; `runCommands`, `stepCommand`, and
+`runOut` should not change.  The CLOB count cases in `tests/modules/run.sh` change with the
+copies the templates no longer make.
+
+Steps, each built, tested, committed, and pushed:
+
+- [ ] 9a: `set!` in place; `fillLevel`, `setLevel`, and their callers.
+- [ ] 9b: `eraseIdxIfInBounds` in place; `removeLevel` and `cancelBid`.
+- [ ] 9c: `insertIdx!` in place with growth; `insertLevel` and `addBid`.
+- [ ] LTG entries for the three templates.
