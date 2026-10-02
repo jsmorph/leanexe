@@ -20496,3 +20496,13 @@ of `setLevel`, `addBid`, `cancelBid`, and `applyCommand`, and each case's alloca
 free counts match the counts predicted from the code.  For example, `applyCommand` adding a
 new level allocates the two arguments and the two results and frees the prices in `addBid`
 and the sizes in `applyCommand`.
+
+## 2026-10-01: Iteration 4 done; one plan item open
+
+With returned parameters, Iteration 4's mode rule is complete: a parameter is owned when some
+path returns it, passes it at its last use to an owned parameter, or updates it in place, the
+last so far only through `++`.  One item of the plan stays open: a copy into an owned
+parameter at a use that is not the last.  The compiler rejects that form, since no present
+program has it, and the copy, with `Live.copy` and `Live.callMove`, comes with the first
+program that needs it.  In-place `set!`, `insertIdx!`, and `eraseIdxIfInBounds` belong to the
+agenda item for in-place updates, after Iteration 5 (I/O) and Iteration 7 (recursive values).
