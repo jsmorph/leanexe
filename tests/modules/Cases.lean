@@ -297,12 +297,19 @@ def Words.ofList : List UInt64 → Words
   | x :: xs => .cons x (Words.ofList xs)
 
 open LeanExe.Examples.Words in
+def Words.toList : Words → List UInt64
+  | .nil => []
+  | .cons x w => x :: Words.toList w
+
+open LeanExe.Examples.Words in
 def wordsCases : IO Unit := do
   let lists : List (List UInt64) := [[], [0], [maxU], [7, 8, 9], (List.range 50).map rw]
   for xs in lists do
     line "words" "first" "i64" [chain xs] (toString (Words.ofList xs).first)
     for acc in [0, 5, maxU] do
       line "words" "sumAcc" "i64" [u acc, chain xs] (toString (Words.sumAcc acc (Words.ofList xs)))
+  for n in [0, 1, 2, 7, 64, 300] do
+    line "words" "range" "chain-u64" [u n] (words (Words.toList (Words.range n)))
 
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases

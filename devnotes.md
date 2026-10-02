@@ -21549,6 +21549,11 @@ Revised steps for 7c3a, each built, tested, committed, and pushed:
   `sumAcc_step` (89 lines) and `sumAcc_implements` are in `Project/Words/Verify.lean`.
   `words.wasm` is 1,515 bytes with sha256 `c1f0af3235266a3f…`; `sumAcc` matched native Lean
   on 15 cases, and all 5,141 module comparisons pass.
-- [ ] `range n` with `cons` as a loop's next state, through `Stmt.record` and
-  `Heap.Built.cell`.
+- [x] `range n` with `cons` as a loop's next state, through `Stmt.record` and
+  `Heap.Built.cell`.  `recordCell?` gives the fields and child mask of a list cell or of a
+  record constructor of a recursive type whose other constructor has none, and
+  `translateCell` takes any fields; the fieldless constructor is the constant 0
+  (`isNullCtor`).  `range_implements` is `listRange_implements` with `encode` in place of
+  `encodeList`.  `words.wasm` is 1,648 bytes with sha256 `9ffa90bab8d5a4c6…`; `range`
+  matched native Lean on 6 counts, and all 5,147 module comparisons pass.
 - [ ] Host support (the `chain-u64` layout), tests, hints, and LTG entries.

@@ -1,3 +1,5 @@
+import LeanExe.Loop
+
 /-!
 A list of words declared by the program, held on the heap as records: the empty list is the
 null pointer, and `cons x w` a record of two slots, the word `x` and the pointer to `w`.
@@ -19,5 +21,9 @@ def Words.first : Words → UInt64
 def Words.sumAcc (acc : UInt64) : Words → UInt64
   | .nil => acc
   | .cons x w => Words.sumAcc (acc + x) w
+
+/-- The words below `n` in increasing order, built from the last: step `i` puts `n - 1 - i` in
+front. -/
+def Words.range (n : UInt64) : Words := LeanExe.loop n .nil fun i w => .cons (n - 1 - i) w
 
 end LeanExe.Examples.Words
