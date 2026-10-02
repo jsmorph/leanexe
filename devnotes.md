@@ -22008,3 +22008,31 @@ The count cases show one allocation for a new key and none for a present key, 27
 in all, and the depth cases cover `insert` on chains of 999 and 1,000 nodes, 10 in all.  The
 full build passed, and `trees`, `treeFrame`, `words`, and `lists` emit the same bytes.
 
+
+### Plan: Iteration 8, step 5, releasing part of a consumed tree
+
+Programs: `KeyTree.dropRight` (`node l k r ↦ node l k leaf`) rebuilds the root and releases the
+right subtree; `KeyTree.leftChild` (`node l _ _ ↦ l`) returns the left subtree and releases the
+root's record with the right subtree.  Both map a leaf to a leaf.
+
+Compiler, in the record branch of a match on an owned value `t` with children `cs`:
+
+1. `t` counts as moved from the start of the branch, so no code in the branch reads or moves `t`
+   itself; a new field of `Prelude`, `rebuilt`, records which matched values a constructor has
+   rewritten, in place of the moved set that `translateReuse` uses now.  Branches save and
+   restore it with the moved set.
+2. A constructor that rewrites the record (`translateReuse`) computes its values, then releases
+   each child that is still unmoved (`Stmt.release`, hint `release child`) and marks it moved,
+   then stores.  Releasing before the stores matches `Heap.Rebuilt.node`, whose second input is
+   then the release.
+3. A branch that does not rebuild the record but moves some children stores 0 into each moved
+   child's slot (hint `clear slot`), then releases the record (hint `release record`), which
+   releases the unmoved children through the mask.
+4. A branch that neither rebuilds nor moves only reads; `t` stays unmoved after it.
+5. Both branches of the match must move the same owned values, as now.
+
+Proofs: `Heap.Rebuilt.released`, the release rule's postcondition as `Heap.Rebuilt` to the null
+pointer; `dropRight` by `Heap.Rebuilt.node` with `Heap.Rebuilt.refl` for the kept child and the
+release for the dropped one; `leftChild` by a lemma for the cleared slot and the record's
+release, then `NodeOwned.frame` for the returned child.  Tests against native Lean, with free
+counts equal to the released records.
