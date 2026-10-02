@@ -20280,3 +20280,57 @@ frequencies.  A second release of one object traps at `unreachable` in Wasmtime.
 largest relative difference of 1.16e-13; its session ended with 138,532 allocations and
 138,512 frees, the 20 live arrays being the weights and the cache, and 1,095,368,704 bytes
 of memory, as before.
+
+## 2026-10-01: The statement of a consumed argument (4b)
+
+The provisional design wrapped a consumed argument's type, gave `Represent` a field for what
+holds of the arguments after the call and a field for the blocks the call consumes, and
+limited the frame and freshness clauses of `Implements` to arrays apart from those blocks.
+The independent review accepted the wrapper and the limit and required four changes, each
+of which holds against the code.  `Heap.Owned` and `Heap.Borrowed` describe memory
+contents only, so nothing stops a caller from passing one pointer both as a consumed and as
+a borrowed argument; an in-place write would then change the borrowed one, so `Implements`
+needs a premise that the consumed blocks are pairwise disjoint and apart from the arrays the
+call reads.  A list-valued field cannot follow the pair instance's existential split of the
+values, so `Represent` gains `width`, the number of values of `x`, and pairs split with
+`take` and `drop`.  `Live` must limit its kept arrays in the same way, or a body could not
+pass its own consumed parameter on.  The wrapper is named `Moved`, since `Owned` already
+names `Heap.Owned` and the result clause.
+
+Two simplifications follow.  The clause that the arguments still represent `x` after the call
+follows from the frame clause and the separation premise, and no consumer uses it (`Live.call`
+and `generating_step` discard it), so it leaves `Implements`, and with it the need for a field
+describing the arguments after the call.  A function without consumed arguments has no
+consumed blocks, so `Func.implements_heap` keeps its present obligation for such functions as
+a corollary of a general rule.  The existential split of `outside` for pairs admits a witness
+that places an array's pointer in a scalar's slot when a scalar follows an array inside a
+nested pair; no result type of a present program has that shape, so the clause stays as it
+is.
+
+The design: `Represent` has `width`, `borrowed`, `owned`, `outside`, `reads` (the regions of
+the borrowed arrays among the values), and `moves` (the pointers of the consumed arrays).
+`Moved (Array UInt64)` and `Moved (Array Float)` are borrowed as owned arrays, read nothing,
+and move their pointer.  `Implements` adds the premise `Separate store moves reads`, and its
+frame and freshness clauses take the hypothesis that the array lies apart from every
+consumed block.  `Live` takes the caller's consumed pointers, limits `borrowed`, `owned`,
+`apartB`, and `apartO` to arrays apart from their blocks, and starts with the consumed
+parameters as temporaries.
+
+- [x] Change `Represent`, `Implements`, `Satisfies`, and `Func.implements_heap`.
+- [x] Change `Stmt.callImplements_spec` and `Live`.
+- [x] Adapt `Generation.lean`, the CLOB and GPT proofs, and the generated composites; build.
+- [ ] The start rule for consumed parameters and the rule for a call that consumes a
+  temporary, with their first use in 4d.
+
+`Func.implements_moves` is the general rule, and `Func.implements_heap` derives from it for a
+body that keeps every array; the second needs no hypothesis that the argument type has no
+`Moved` component, since its obligation keeps every array unconditionally.  `Live.call`,
+`Live.call_seq`, `Live.callScalar_seq`, `Live.arrayLoop`, and the CLOB `pairCall_spec` take
+`hNoMoves`, that the callee's argument type consumes nothing, with `rfl` as its default; the
+callee then has no consumed blocks, and its frame clauses apply to every array.  With the
+argument clause gone from every obligation, `Live.finish` loses its `hParams` premise, the
+CLOB `PairPost` loses its parameters and `hInput`, and every kernel proof loses one component.
+`example`s confirmed that `moves` and `reads` give the intended pointers and regions for a
+`Moved (Array Float)` at the front and at the back of a tuple, and that a tuple of plain
+arrays and scalars moves nothing by `rfl`.  The full build passed (3,543 jobs) and
+`gpt_file` still checks; no compiled byte changed, so the module tests were not rerun.

@@ -34,7 +34,7 @@ theorem firstRow_implements : Implements gpt.module 31 firstRowTuple := by
     simp [Expr.eval, g0, hIndex, Expr.readValue_at (hAt ps _ hSs), State.set?_eq_update,
       hState.1, hState.2, getElem!_map_toBits]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨ps, rfl, hNew.borrowed ps _ hSs⟩, rfl⟩, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.firstRow.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -87,7 +87,7 @@ theorem lastHidden_implements : Implements gpt.module 39 lastHiddenTuple := by
     simp [Expr.eval, g0, g2, g4, hIndex, Expr.readValue_at (hAt pc _ hCs), State.set?_eq_update,
       hState.1, hState.2, U64Op.apply, getElem!_map_toBits]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pc, rfl, hNew.borrowed pc _ hCs⟩, rfl⟩, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.lastHidden.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -139,8 +139,7 @@ theorem embedBlock_implements : Implements gpt.module 30 embedBlockTuple := by
       hState.1, hState.2, F64Op.apply, U64Op.apply, getElem!_map_toBits, F64Bits.toBits_add,
       hZero]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pt, rfl, hNew.borrowed pt _ hTs⟩, _, _, rfl,
-      ⟨pp, rfl, hNew.borrowed pp _ hPs⟩, rfl⟩, hNew.caps, hNew.borrowed,
+  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.embedBlock.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -242,7 +241,7 @@ theorem headMax_implements : Implements gpt.module 33 headMaxTuple := by
       exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g6]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, rfl⟩, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.headMax.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -357,8 +356,7 @@ theorem headSumExp_implements : Implements gpt.module 34 headSumExpTuple := by
       exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g7]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨px, rfl, hNew.borrowed px _ hXs⟩, _, _, rfl,
-      ⟨pm, rfl, hNew.borrowed pm _ hMs⟩, rfl⟩, hNew.caps, hNew.borrowed,
+  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.headSumExp.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
     fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -423,7 +421,7 @@ theorem stepSoftmax_implements : Implements gpt.module 35 stepSoftmaxTuple := by
     (by simp [Expr.evalResults, Expr.eval, s1, State.get_update_same, hStart,
       hGetS1 0 (by decide), hGetS1 1 (by decide), hGetS1 2 (by decide), hGet.1, hGet.2.1,
       hGet.2.2])
-    ⟨[.i64 px], _, rfl, ⟨px, rfl, hLive1.borrowed px _ hX⟩, [.i64 pm], _, rfl,
+    ⟨[.i64 px], _, rfl, ⟨px, rfl, hLive1.borrowed px _ hX Apart.nil⟩, [.i64 pm], _, rfl,
       ⟨pm, rfl, (hLive1.tempsOwned _ (List.mem_singleton_self _)).borrowed⟩, rfl⟩
     (by rw [hS1]; decide)) ?_
   apply Triple.of_forall
@@ -444,7 +442,7 @@ theorem stepSoftmax_implements : Implements gpt.module 35 stepSoftmaxTuple := by
     (by simp [Expr.evalResults, Expr.eval, s2, State.get_update_same, hS1, hS2Get3,
       hGetS2 0 (by decide), hGetS2 1 (by decide), hGetS2 2 (by decide), hGet.1, hGet.2.1,
       hGet.2.2])
-    ⟨[.i64 px], _, rfl, ⟨px, rfl, hLive2.borrowed px _ hX⟩, [.i64 pm], _, rfl,
+    ⟨[.i64 px], _, rfl, ⟨px, rfl, hLive2.borrowed px _ hX Apart.nil⟩, [.i64 pm], _, rfl,
       ⟨pm, rfl, (hLive2.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_singleton_self _))).borrowed⟩,
       [.i64 ps], _, rfl, ⟨ps, rfl, (hLive2.tempsOwned _ (List.mem_cons_self ..)).borrowed⟩, rfl⟩
     (by rw [hS2]; decide)) ?_
@@ -471,13 +469,9 @@ theorem stepSoftmax_implements : Implements gpt.module 35 stepSoftmaxTuple := by
   rintro store4 st4 ⟨hLive4, rfl⟩
   refine (hLive4.releaseSecond hImports hRelease hS4Get3).mono (fun _ _ h => h) ?_
   rintro store5 st5 ⟨hLive5, rfl⟩
-  have hParams : ∀ (heap' : Heap) (store' : Store Unit),
-      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →
-      Represent.borrowed heap' store' [.i64 px, .i64 t, .i64 w] (x, t, w) :=
-    fun heap' store' hKeep => ⟨[.i64 px], _, rfl, ⟨px, rfl, hKeep px _ hX⟩, rfl⟩
-  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
-    hLive5.finish hParams
-  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+    hLive5.finish
+  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
     by simp [gpt.stepSoftmax.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,
       State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
 
@@ -620,9 +614,7 @@ theorem stepScores_implements : Implements gpt.module 32 stepScoresTuple := by
           (hFrameL.weaken (by simp)), ?_⟩
       simp [Expr.eval, u8, g12, F64Op.apply, F64Bits.toBits_mul]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pq, rfl, hNew.borrowed pq _ hQs⟩, _, _, rfl,
-      ⟨pk, rfl, hNew.borrowed pk _ hKs⟩, _, _, rfl, ⟨pc, rfl, hNew.borrowed pc _ hCs⟩, rfl⟩,
-    hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.stepScores.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -756,9 +748,7 @@ theorem stepMix_implements : Implements gpt.module 36 stepMixTuple := by
       exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g11]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pp, rfl, hNew.borrowed pp _ hPs⟩, _, _, rfl,
-      ⟨pv, rfl, hNew.borrowed pv _ hVs⟩, _, _, rfl, ⟨pc, rfl, hNew.borrowed pc _ hCs⟩, rfl⟩,
-    hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.stepMix.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
@@ -908,10 +898,7 @@ theorem writeBlock_implements : Implements gpt.module 37 writeBlockTuple := by
     · exact writeElem_value hState.1 hState.2 g4 g5 hIndex (hAt pv _ hVs) g3 h1 h2 h3 h4
     · exact writeElem_after hState.1 hState.2 g4 g5 hIndex (hAt ps _ hSs) g0 h1 h2 h3 h4
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨ps, rfl, hNew.borrowed ps _ hSs⟩, _, _, rfl,
-      ⟨px, rfl, hNew.borrowed px _ hXs⟩, _, _, rfl, ⟨pk, rfl, hNew.borrowed pk _ hKs⟩, _, _, rfl,
-      ⟨pv, rfl, hNew.borrowed pv _ hVs⟩, rfl⟩,
-    hNew.caps, hNew.borrowed,
+  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.writeBlock.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
@@ -978,8 +965,7 @@ theorem appendBlock_implements : Implements gpt.module 38 appendBlockTuple := by
       Expr.readValue_at (hAt ps _ hSs), State.set?_eq_update, hState.1, hState.2, U64Op.apply,
       getElem!_map_toBits]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, ⟨_, _, rfl, ⟨pc, rfl, hNew.borrowed pc _ hCs⟩,
-      ⟨ps, rfl, hNew.borrowed ps _ hSs⟩⟩, hNew.caps, hNew.borrowed,
+  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.appendBlock.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,

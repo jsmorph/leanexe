@@ -58,8 +58,7 @@ theorem sumCount_implements :
       simp [Expr.eval, hGet]
   · rintro store state ⟨result, -, hResult, hNew⟩
     have hOwned := hNew.owned
-    refine ⟨_, hNew.at_, ⟨ptr, rfl, hNew.borrowed ptr xs hBorrowed⟩,
-      hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 result], state,
+    refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 result], state,
       by simp [sumCount.ir, Func.scratch, Expr.evalResults, Expr.eval, hResult], ⟨result, rfl, ?_⟩,
     fun p ws h => ⟨result, rfl, hNew.borrowedApart p ws h⟩,
     fun p ws h => ⟨result, rfl, hNew.ownedApart p ws h⟩⟩

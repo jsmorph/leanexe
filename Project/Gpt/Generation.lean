@@ -132,17 +132,17 @@ theorem generating_step {store : Store Unit} {W : Weights} {P : Pointers}
       _, rfl, ⟨P.wo, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bo], _, rfl, ⟨P.bo, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.g2], _, rfl,
       ⟨P.g2, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.b2], _, rfl, ⟨P.b2, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.wfc], _, rfl, ⟨P.wfc,
       rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bfc], _, rfl, ⟨P.bfc, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.wproj], _, rfl, ⟨P.wproj, rfl,
-      b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bproj], _, rfl, ⟨P.bproj, rfl, b _ _ (by simp [Weights.pairs])⟩, rfl⟩ hCap).mono ?_
-  rintro final values ⟨heap', hAt', ⟨pc', hValues, hNew⟩, -, hCaps, hKeepB, hKeepO, hOutB, hOutO⟩
+      b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bproj], _, rfl, ⟨P.bproj, rfl, b _ _ (by simp [Weights.pairs])⟩, rfl⟩ Separate.nil hCap).mono ?_
+  rintro final values ⟨heap', hAt', ⟨pc', hValues, hNew⟩, hCaps, hKeepB, hKeepO, hOutB, hOutO⟩
   have hValues' : values = [.i64 pc'] := by
     rw [← List.reverse_reverse values, hValues]; rfl
   refine ⟨pc', hValues', ?_⟩
-  obtain ⟨hOld, hOldCap⟩ := hKeepO pc _ hC
+  obtain ⟨hOld, hOldCap⟩ := hKeepO pc _ hC Apart.nil
   refine (release_run rfl rfl env heap' final pc _ hAt' hOld).mono ?_
   rintro final' out ⟨-, rfl⟩
   have hApartOld : regionsDisjoint (pc'.toNat - 48, 48 + capacityAt final pc')
       (pc.toNat - 48, 48 + capacityAt final pc) := by
-    obtain ⟨q, hq, hDisjoint⟩ := hOutO pc _ hC
+    obtain ⟨q, hq, hDisjoint⟩ := hOutO pc _ hC Apart.nil
     rw [hValues] at hq
     simp only [List.cons.injEq, Value.i64.injEq, and_true] at hq
     subst hq
@@ -150,10 +150,10 @@ theorem generating_step {store : Store Unit} {W : Weights} {P : Pointers}
     exact regionsDisjoint_symm hDisjoint
   obtain ⟨hNewR, hNewCap⟩ := hNew.release hAt' hOld hApartOld
   refine ⟨_, hAt'.release hOld, memoryCap_le_of_caps hCaps hCap, fun w hw => ⟨?_, ?_⟩, hNewR⟩
-  · refine (hKeepB w.1 _ (hW w hw).1).release hAt' hOld ?_
+  · refine (hKeepB w.1 _ (hW w hw).1 Apart.nil).release hAt' hOld ?_
     rw [Array.size_map, hOldCap]
     exact (hW w hw).2
-  · obtain ⟨q, hq, hDisjoint⟩ := hOutB w.1 _ (hW w hw).1
+  · obtain ⟨q, hq, hDisjoint⟩ := hOutB w.1 _ (hW w hw).1 Apart.nil
     rw [hValues] at hq
     simp only [List.cons.injEq, Value.i64.injEq, and_true] at hq
     subst hq
@@ -181,7 +181,7 @@ theorem generating_scores {store : Store Unit} {W : Weights} {P : Pointers}
     (W.cache tokens layers nh dh f eps (p + 1), W.wte, W.gf, W.bf, layers, nh, dh, vocab, eps) hAt
     ⟨[.i64 pc], _, rfl, ⟨pc, rfl, hC.borrowed⟩, [.i64 P.wte], _, rfl, ⟨P.wte, rfl, b _ _ (by simp [Weights.pairs])⟩,
       [.i64 P.gf], _, rfl, ⟨P.gf, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bf], _, rfl, ⟨P.bf, rfl, b _ _ (by simp [Weights.pairs])⟩, rfl⟩
-    hCap).mono ?_
+    Separate.nil hCap).mono ?_
   rintro final values ⟨heap', hAt', ⟨r, hValues, hOwned⟩, -⟩
   refine ⟨r, by rw [← List.reverse_reverse values, hValues]; rfl, heap', hAt', ?_⟩
   have hExact := steps_exact (tokens := tokens) (wte := W.wte) (wpe := W.wpe) (g1 := W.g1)

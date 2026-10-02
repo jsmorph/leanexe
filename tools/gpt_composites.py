@@ -152,7 +152,6 @@ def composite(spec):
     nlocals = spec['nlocals']
     width = spec.get('width', 0)
     total = nparams + nlocals + width
-    arrays = [n for n, k in params if k in 'AU']
     names = [n for n, _ in params]
     calls = spec['calls']
     L = len(calls)
@@ -295,7 +294,7 @@ def composite(spec):
             body[-1] += ','
             lines.extend(body)
             items = [('p', '(hL.tempsOwned _ (List.mem_cons_self ..)).borrowed')]
-            items += [(ptr(a), f'hL.borrowed {ptr(a)} _ {hyp(a)}') for kind, a in c['borrowed']]
+            items += [(ptr(a), f'hL.borrowed {ptr(a)} _ {hyp(a)} Apart.nil') for kind, a in c['borrowed']]
             lines.append(f"        {wrap(represent(items, True), '          ')}⟩)")
             lines.append(f"    fun heap{k} {p} store{k} s{k} hLive{k} hFrame{k} hState{k} => ?_")
             lines.append(f"  have hS{k} : s{k}.params.length + s{k}.locals.length = {total} := by")
@@ -345,7 +344,7 @@ def composite(spec):
         items = []
         for kind, a in c['borrowed']:
             if kind == 'P':
-                src = hyp(a) if live == '(Live.start hHeap)' else f'{live}.borrowed {ptr(a)} _ {hyp(a)}'
+                src = hyp(a) if live == '(Live.start hHeap)' else f'{live}.borrowed {ptr(a)} _ {hyp(a)} Apart.nil'
                 items.append((ptr(a), src))
             else:
                 items.append((a, f'({live}.tempsOwned _ ({mem(temps.index(a))})).borrowed'))
@@ -380,16 +379,9 @@ def composite(spec):
         rule = 'releaseSecond_seq' if idx < len(regs) - 1 else 'releaseSecond_last'
         lines.append(f'  refine {live}.{rule} hImports hRelease r{reg} fun storeR{idx} hLiveR{idx} => ?_')
         live = f'hLiveR{idx}'
-    items = [(ptr(n), f'hKeep {ptr(n)} _ {hyp(n)}') for n in arrays]
-    tup = '(' + ', '.join(names) + ')'
-    lines.append("  have hParams : ∀ (heap' : Heap) (store' : Store Unit),")
-    lines.append("      (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store' p ws) →")
-    lines.append(f"      Represent.borrowed heap' store' [{wrap(', '.join(vals), '        ')}]")
-    lines.append(f"        {wrap(tup, '        ')} := fun heap' store' hKeep =>")
-    lines.append(f"    {wrap(represent(items, True), '      ')}")
-    lines.append("  obtain ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=")
-    lines.append(f"    {live}.finish hParams")
-    lines.append(f"  exact ⟨heap', hAt', hArgs', hCaps', hKeepB, hKeepO, [.i64 {calls[-1]['ptr']}], {sR},")
+    lines.append("  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=")
+    lines.append(f"    {live}.finish")
+    lines.append(f"  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 {calls[-1]['ptr']}], {sR},")
     scratch = 'Func.scratch, ' if width == 0 else ''
     lines.append(f'    by simp [gpt.{name}.ir, {scratch}Expr.evalResults, Expr.eval, {sR},')
     lines.append(f"      State.get_update_same, {last['len']}], hOwned, hOutB, hOutO⟩")
