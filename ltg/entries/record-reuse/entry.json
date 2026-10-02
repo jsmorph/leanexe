@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "record-reuse",
+  "title": "Record reuse",
+  "summary": "Shows how to prove the compiler's in-place rewrite of a consumed record: in the record branch of a match on an owned value, a constructor of the same type stores each changed field into the matched record's slot and returns the record's pointer.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["records", "compiler-motifs", "ownership", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["record", "store", "move", "frame", "ownership"],
+  "annotationKinds": ["slot store", "record reuse", "move"],
+  "modules": ["Project.Pipeline.Records", "Project.Pipeline.Implements", "Project.IR.Correct", "Project.IR.Stmt"],
+  "declarations": ["Project.Pipeline.NodeOwned.writeWord", "Project.Pipeline.SlotsOwned.writeWord", "Project.Pipeline.RecordHeader.rewrite", "Project.Pipeline.maskOf_set_word", "Project.Pipeline.Node.pointers_blocks", "Project.Pipeline.apart_pointers", "Project.Pipeline.Heap.Borrowed.keep", "Project.Pipeline.Heap.Owned.keep", "Project.IR.Func.implements_moves", "Project.IR.Stmt.store_spec"],
+  "premises": ["A consumed argument of type Moved α, whose Represent instance gives NodeOwned and pairwise disjoint blocks", "Heap.At, whose top bounds the record's slots inside memory", "The rewritten slot holds a word"],
+  "result": "The write changes only the slot's bytes, the allocator invariant holds, the record holds the new word with the same header and blocks, every array apart from the consumed records keeps its contents, and the result's blocks are the consumed blocks.",
+  "consumers": ["Project.Trees.setKey_implements"],
+  "relatedEntries": ["node-match", "list-cell"],
+  "exclusion": null
+}

@@ -96,8 +96,14 @@ structure Ctx where
   /-- The positions of the owned parameters of each definition in `callees`. -/
   owners : List (Name × List Nat) := []
   /-- The array parameters that this code may move: those whose last use, in the
-  result term, is the left operand of `++` or an owned parameter of a callee. -/
+  result term, is the left operand of `++` or an owned parameter of a callee.  Also the owned
+  values of recursive types: parameters that the result moves, and the children of an owned
+  record that a match examines. -/
   owned : List Lean.Expr := []
+  /-- In the record branch of a match on an owned value of a recursive type: the value, the
+  local of its pointer, and the field variables.  A constructor of the same type rewrites the
+  record in place. -/
+  reuse : Option (Lean.Expr × Nat × List Lean.Expr) := none
 
 def Ctx.result (ctx : Ctx) : Nat := ctx.params.size
 def Ctx.done (ctx : Ctx) : Nat := ctx.params.size + 1
@@ -505,6 +511,14 @@ def lookupArray (vars : List (Lean.Expr × Nat)) (term : Lean.Expr) : CompileM (
     throwError "the array {← sourceOf term} is used after the code moved it"
   return some local_
 
+/-- The local of the variable `term` of a recursive type, which the code must not have
+moved. -/
+def lookupNode (ctx : Ctx) (term : Lean.Expr) : CompileM (Option Nat) := do
+  let some local_ := ctx.nodes.lookup term | return none
+  if (← get).consumed.contains term then
+    throwError "the value {← sourceOf term} is used after the code moved it"
+  return some local_
+
 /-- Records that the code has moved the owned parameter `param`. -/
 def markMoved (param : Lean.Expr) : CompileM Unit :=
   modify fun p => { p with consumed := param :: p.consumed }
@@ -518,15 +532,36 @@ partial def occurrences (x : FVarId) : Lean.Expr → Nat
   | .mdata _ e | .proj _ _ e => occurrences x e
   | _ => 0
 
-/-- The array parameters among `params` that the result term `term` moves on some path,
-through its `let`s, matches, branches, and pairs: those it returns, passes as the left
-operand of `++`, or passes at an owned position of a callee in `owners`. -/
+/-- Runs `k` with a fresh variable of each type in `types`. -/
+def withVars {γ : Type} : List Lean.Expr → (List Lean.Expr → MetaM γ) → MetaM γ
+  | [], k => k []
+  | type :: types, k => withLocalDeclD `field type fun x => withVars types fun xs => k (x :: xs)
+
+/-- The array parameters and parameters of recursive types among `params` that the result
+term `term` moves on some path, through its `let`s, matches, branches, and pairs: those it
+returns, passes as the left operand of `++`, passes at an owned position of a callee in
+`owners`, or places in a constructor of a recursive type.  A match on a value of a recursive
+type moves the value when its record branch moves one of the record's children. -/
 partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Expr)
     (term : Lean.Expr) : MetaM (List Lean.Expr) := do
   let term := term.consumeMData.headBeta
   if let .letE _ _ _ body _ := term then return ← moveSites owners params body
   if params.contains term then return [term]
   if let some unfolded ← unfoldMatcher? term then return ← moveSites owners params unfolded
+  if let some (discriminant, alternatives) ← userCases? term then
+    if ← isNodeType (← inferType discriminant) then
+      let discriminant := discriminant.consumeMData
+      let mut sites := []
+      for alternative in alternatives do
+        sites := sites ++ (← withVars alternative.fields fun xs => do
+          let children ← xs.filterM fun x => do isNodeType (← inferType x)
+          let inner ← moveSites owners (params ++ children) (alternative.body xs)
+          let outer := inner.filter (!children.contains ·)
+          return if params.contains discriminant && inner.any children.contains
+            then discriminant :: outer else outer)
+      return sites
+  if let some (fields, _) ← recordCell? term then
+    return (← fields.mapM (moveSites owners params)).flatten
   match term.getAppFnArgs with
   | (``Prod.casesOn, #[_, _, _, pair, alternative]) =>
       return (← moveSites owners params pair) ++
@@ -552,6 +587,8 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
 def releaseUnmoved (ctx : Ctx) : CompileM Unit := do
   for param in ctx.owned do
     unless (← get).consumed.contains param do
+      if (ctx.nodes.lookup param).isSome then
+        throwError "the owned value {← sourceOf param} must move on every path; releasing it is not supported yet"
       let some local_ := (ctx.arrays ++ ctx.floatArrays).lookup param
         | throwError "an owned parameter has no local"
       let stmt := Project.IR.Stmt.release local_
@@ -644,6 +681,16 @@ mutual
       return (ir, [hint ir "variable"])
     if (ctx.arrays.lookup term).isSome || (ctx.floatArrays.lookup term).isSome then
       throwError "the array {source} is used as a value"
+    -- An owned value of a recursive type moves into the value that uses it.
+    if let some local_ ← lookupNode ctx term then
+      unless ctx.owned.contains term do
+        throwError "a borrowed value of a recursive type may not be returned or stored: {source}"
+      markMoved term
+      let ir : IRExpr .u64 := .get local_
+      return (ir, [hint ir "move"])
+    if let some (fields, _) ← recordCell? term then
+      unless term.isAppOf ``List.cons do
+        return ← translateReuse ctx loc term fields
     if let .const name _ := term then
       if let some index ← enumIndex? name then
         let ir : IRExpr .u64 := .const (UInt64.ofNat index)
@@ -669,8 +716,9 @@ mutual
       return ← withLocalDeclD name type fun x =>
         translateValue (ctx.bind x [(local_, .u64)]) loc (body.instantiate1 x)
     if let some (discriminant, alternatives) ← userCases? term then
-      if let some ptr := ctx.nodes.lookup discriminant.consumeMData then
-        let ir : IRExpr .u64 := .get (← translateNodeCases ctx source ptr .u64 alternatives)
+      if let some ptr ← lookupNode ctx discriminant.consumeMData then
+        let ir : IRExpr .u64 := .get
+          (← translateNodeCases ctx source discriminant.consumeMData ptr .u64 alternatives)
         return (ir, [hint ir "match result"])
       let (ctx, d, slots, dHints) ← caseDiscriminant ctx loc discriminant alternatives
       let (ir, hints) ← translateWordCases { ctx with foldable := false } loc d 0 (slots.zip alternatives)
@@ -1410,13 +1458,16 @@ mutual
             here := here.skip (stmtLength stmt)
           return (stmts.toList, hints.toList)
 
-  /-- Translates a case split on the value of a recursive type at local `ptr`, whose type has
-  one constructor without fields, the null pointer, and one with fields, a record.  Pushes a
-  conditional statement that tests the pointer against 0; the record's branch loads the
-  fields into fresh locals.  Each branch assigns the alternative's value, of type `type`, to
-  a fresh local, which the function returns. -/
-  partial def translateNodeCases (ctx : Ctx) (source : String) (ptr : Nat) (type : ScalarType)
-      (alternatives : List CaseAlt) : CompileM Nat := do
+  /-- Translates a case split on the value `discriminant` of a recursive type at local `ptr`,
+  whose type has one constructor without fields, the null pointer, and one with fields, a
+  record.  Pushes a conditional statement that tests the pointer against 0; the record's
+  branch loads the fields into fresh locals.  Each branch assigns the alternative's value, of
+  type `type`, to a fresh local, which the function returns.  The record's branch of a match on
+  an owned value either only reads the record or consumes it: a constructor of the same type
+  rewrites the record in place, and every child moves into the result.  Both branches must
+  move the same owned values. -/
+  partial def translateNodeCases (ctx : Ctx) (source : String) (discriminant : Lean.Expr)
+      (ptr : Nat) (type : ScalarType) (alternatives : List CaseAlt) : CompileM Nat := do
     let [first, second] := alternatives
       | throwError "a match on a recursive type must have two constructors: {source}"
     let (nullAlt, recordAlt, nullFirst) ← match first.fields, second.fields with
@@ -1426,19 +1477,32 @@ mutual
     let result ← fresh type "match result"
     -- The branches' statements stay inside the conditional, so they run only on their
     -- branch whenever the match's own statement runs only when needed.
-    let inner := ctx
+    let inner := { ctx with reuse := none }
+    let owned := ctx.owned.contains discriminant
     let condition : IRExpr .bool := if nullFirst then .eq (.get ptr) (.const 0)
       else .ne (.get ptr) (.const 0)
     let branchLoc (branch : Nat) : Loc :=
       ((⟨[], 0⟩ : Loc).skip (exprLength condition)).inside (some branch)
     let nullLoc := branchLoc (if nullFirst then 0 else 1)
     let recordLoc := branchLoc (if nullFirst then 1 else 0)
+    let saved := (← get).consumed
     let (nPre, ⟨_, nv⟩, nHints, nAt) ← translatePrefixed inner nullLoc type (nullAlt.body [])
     let nullStmt : Project.IR.Stmt := .assign result nv
     let nullStmts := nPre ++ [nullStmt]
+    let nullMoves := (← get).consumed.filter fun x => ctx.owned.contains x && !saved.contains x
+    modify fun p => { p with consumed := saved }
     let (recordStmts, rHints) ← bindRecordFields inner ptr (fun ctx xs loads => do
+        let children ← xs.filterM fun x => do isNodeType (← inferType x)
+        let ctx := if owned then
+          { ctx with owned := children ++ ctx.owned, reuse := some (discriminant, ptr, xs) }
+          else ctx
         let here := recordLoc.skip (loads.map stmtLength).sum
         let (rPre, ⟨_, rv⟩, rHints, rAt) ← translatePrefixed ctx here type (recordAlt.body xs)
+        let consumed := (← get).consumed
+        let moved := children.filter consumed.contains
+        unless (consumed.contains discriminant && moved.length == children.length) ||
+            (!consumed.contains discriminant && moved.isEmpty) do
+          throwError "the record branch of a match on an owned value must either only read the record or rebuild it with its constructor, moving every child into the result; releasing part of a value is not supported yet: {source}"
         let recordStmt : Project.IR.Stmt := .assign result rv
         let loadHints := (List.range loads.length).zip loads |>.map fun (j, load) =>
           mkHint (recordLoc.skip ((loads.take j).map stmtLength).sum) (stmtLength load)
@@ -1446,12 +1510,52 @@ mutual
         return (loads ++ rPre ++ [recordStmt], loadHints ++ rHints ++
           [mkHint rAt (stmtLength recordStmt) "match value" source]))
       0 recordAlt.fields [] []
+    let recordMoves := (← get).consumed.filter fun x => ctx.owned.contains x && !saved.contains x
+    -- A null value needs no release, so the null branch consumes the value exactly when the
+    -- record's branch does.
+    let nullMoves := if recordMoves.contains discriminant then discriminant :: nullMoves
+      else nullMoves
+    unless nullMoves.all recordMoves.contains && recordMoves.all nullMoves.contains do
+      throwError "both branches of a match must move the same owned values: {source}"
     let (thenStmts, elseStmts) := if nullFirst then (nullStmts, recordStmts)
       else (recordStmts, nullStmts)
     let stmt : Project.IR.Stmt := .ite condition (seqAll thenStmts) (seqAll elseStmts)
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "node match" source :: nHints ++
       mkHint nAt (stmtLength nullStmt) "match value" source :: rHints)
     return result
+
+  /-- Translates the constructor application `term` of a recursive type, with fields `fields`,
+  in the record branch of a match on an owned value of the same type: the value of every field
+  other than the matched record's own field in the same slot, then a store of each such value
+  into the record's slot.  The value is the record's pointer, and the matched value and its
+  children that stay in their slots move into it. -/
+  partial def translateReuse (ctx : Ctx) (loc : Loc) (term : Lean.Expr) (fields : List Lean.Expr) :
+      CompileM (IRExpr .u64 × List Hint) := do
+    let source ← sourceOf term
+    let some (matched, ptr, xs) := ctx.reuse
+      | throwError "a constructor of a recursive type outside a loop must rebuild the record of a matched owned value; allocating a record here is not supported yet: {source}"
+    unless ← isDefEq (← inferType term) (← inferType matched) do
+      throwError "a constructor may rebuild only a record of its own type: {source}"
+    if (← get).consumed.contains matched then
+      throwError "the record of {← sourceOf matched} is rebuilt twice: {source}"
+    markMoved matched
+    let mut stores := #[]
+    for h : i in [:fields.length] do
+      let field := fields[i].consumeMData
+      if xs[i]? == some field then continue
+      let address : IRExpr .u64 := .bin .add (.get ptr) (.const (UInt64.ofNat (8 * i)))
+      let (value, valueHints) ← translateValue ctx ⟨[], exprLength address + 1⟩ field
+      stores := stores.push (address, value, valueHints)
+    for h : i in [:fields.length] do
+      let field := fields[i].consumeMData
+      if xs[i]? == some field && (← isNodeType (← inferType field)) then
+        discard <| lookupNode ctx field
+        markMoved field
+    for (address, value, valueHints) in stores do
+      let stmt := Project.IR.Stmt.store address value
+      pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "slot store" source :: valueHints)
+    let ir : IRExpr .u64 := .get ptr
+    return (ir, [mkHint loc (exprLength ir) "record reuse" source])
 
   /-- Translates a record cell with fields `fields` and child mask `mask`, a list cell or a
   constructor of a recursive type, whose code starts at `loc`, to the statements that its
@@ -1812,7 +1916,7 @@ mutual
     let mut hints := #[]
     let mut offset := 0
     for arg in term.getAppArgs do
-      let (ir, argHints) ← match ctx.nodes.lookup arg.consumeMData with
+      let (ir, argHints) ← match ← lookupNode ctx arg.consumeMData with
         | some local_ => pure ((.get local_ : IRExpr .u64),
             [mkHint ⟨[], offset⟩ 1 "variable" (← sourceOf arg)])
         | none => do
@@ -1951,7 +2055,7 @@ partial def translateTail (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
   -- A match on a value of a recursive type: the pointer is tested against 0, and the
   -- record's branch loads its fields into fresh locals.
   if let some (discriminant, alternatives) ← userCases? term then
-    if let some ptr := ctx.nodes.lookup discriminant.consumeMData then
+    if let some ptr ← lookupNode ctx discriminant.consumeMData then
       let [first, second] := alternatives
         | throwError "a match on a recursive type must have two constructors: {source}"
       let (nullAlt, recordAlt, nullFirst) ← match first.fields, second.fields with
@@ -1993,7 +2097,7 @@ partial def translateTail (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
         let mut hints : List Hint := []
         let mut here := loc
         for i in [:args.size] do
-          let (value, valueHints) ← match ctx.nodes.lookup args[i]!.consumeMData with
+          let (value, valueHints) ← match ← lookupNode ctx args[i]!.consumeMData with
             | some local_ => pure (.get local_, [])
             | none => translateValue ctx here args[i]!
           let stmt : Project.IR.Stmt := .assign (ctx.temp i) value
@@ -2069,8 +2173,9 @@ as a call of `declName`.  A definition without recursive calls becomes a prelude
 of folds and a result expression; a definition whose recursive calls are all in
 tail position becomes a loop.  An array parameter is owned when the result term, after
 the `let`s, moves it, as the left operand of `++` or as an argument at an owned position
-of a callee in `owners`, and contains it nowhere else; the compiler returns the
-positions of the owned parameters. -/
+of a callee in `owners`, and contains it nowhere else.  A parameter of a recursive type is
+owned when the result term returns it or places it or one of its children in a constructor.
+The compiler returns the positions of the owned parameters. -/
 def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
     (owners : List (Name × List Nat) := []) (internal : Option Nat := none) :
     MetaM (Func × Hints × List Nat × Option (Func × Hints)) := do
@@ -2207,9 +2312,9 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
           body := loop, results := [⟨.u64, .get ctx.result⟩] }
       return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] }, [], none)
     else
-      let arrayParams := (arrays ++ floatArrays).map (·.1)
-      let sites ← moveSites owners arrayParams body
-      let owned := arrayParams.filter sites.contains
+      let movable := (arrays ++ floatArrays ++ nodes).map (·.1)
+      let sites ← moveSites owners movable body
+      let owned := movable.filter sites.contains
       let ctx : Ctx :=
         { self := declName, params, words, floats, arrays, floatArrays, lists, nodes, tuples,
           callees, owners, owned, foldable := true }

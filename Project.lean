@@ -43,6 +43,8 @@ import Project.Trees.Module
 import Project.Trees.Encode
 import Project.Trees.Verify
 import Project.Trees.Frame
+import Project.Trees.Moves
+import Project.Trees.MovesVerify
 import Project.Gpt.Module
 import Project.Gpt.StepVerify
 import Project.Gpt.Verify

@@ -21804,8 +21804,9 @@ Revised steps:
   `instance [Encode α] : Represent (Moved α)` hands over a value as owned and moves every
   record.  Instance resolution picks it for `Moved (List UInt64)` and keeps
   `Moved (Array UInt64)` and `List UInt64` as before.
-- [ ] The mode rule for node parameters and fields, the moved check for node lookups, reuse
-  of the same constructor, and zeroing moved child slots before a release; `setKey`.
+- [x] The mode rule for node parameters and fields, the moved check for node lookups, reuse
+  of the same constructor; `setKey`.  Zeroing moved child slots before a release moves to
+  the step that releases part of a consumed tree, the first program that needs it.
 - [ ] `Heap.Rebuilt`, the consumed specification and its recursion rule; `incr`.
 - [ ] Statement-level `if` with self-calls and allocation in branches; `insert`.
 - [ ] A function that releases part of a consumed tree.
@@ -21815,3 +21816,50 @@ On 2026-10-02 the user chose A for question 1: `Represent.moves` takes the store
 `Node.pointers` lists a tree's record pointers, and a `Represent (Moved α)` instance states a
 consumed value of a recursive type.  `Apart` and `Separate` keep their form, and every
 existing theorem keeps its meaning.
+
+### Iteration 8, step 2: reuse and `setKey`
+
+`moveSites` now covers parameters of recursive types.  A match on such a value moves it when
+its record branch moves one of the record's children, and a constructor moves the values in
+its fields; `compileDefinition` runs the rule over array and node parameters together.  A node
+lookup fails once the value has moved (`lookupNode`), in values, matches, recursive calls, and
+tail calls.  An owned node variable used as a value moves (hint `move`), and a borrowed one used
+as a value is an error, since the result would share its records with the caller.
+
+In the record branch of a match on an owned value, `Ctx.reuse` names the matched value, the
+local of its pointer, and its field variables.  A constructor of the same type there
+(`translateReuse`) computes every field that differs from the record's own field in the same
+slot, then stores each into its slot (`slot store`), and its value is the record's pointer
+(`record reuse`).  `translateNodeCases` saves and restores the moved set across its branches
+and requires both branches to move the same owned values; the null branch counts as consuming
+the discriminant whenever the record branch does, since a null value needs no release.  The
+record branch must either only read the record or rebuild it with every child moved into the
+result.  Everything else is rejected with an error that names it: a constructor outside a
+loop that cannot reuse a record, which needs allocation outside loops; a branch that drops a
+child or does not rebuild the record, which needs a partial release; and an owned node value
+not moved on some path.
+
+`KeyTree.setKey k t` compiles into a new module, `treeMoves`, so that the indices of the
+`trees` module and its proofs stay as they are.  The compiled body tests the pointer, loads
+the three fields, stores `k` into slot 1, and returns the pointer; it allocates and frees
+nothing.  `setKey_implements` states it over `UInt64 × Moved KeyTree`, and `treeMoves_bytes`
+ties it to the bytes, with axioms `propext`, `Classical.choice`, and `Quot.sound`.  The
+proof rests on new lemmas in `Records.lean`: `RecordHeader.rewrite` (a header keeps its
+fields when its bytes do, for slots of the same number and mask; `RecordHeader.frame` now
+follows from it), `maskOf_set_word`, `SlotsOwned.writeWord` and `NodeOwned.writeWord` (a
+word written into a word slot of an owned record with disjoint blocks), and
+`Node.pointers_blocks` with `apart_pointers` (the reviewer's lemma relating the moved pointers
+to the blocks).  `SlotsOwned.frame` now needs unchanged bytes only from its own slot on.  A
+first version of `NodeOwned.writeWord` passed `Memory.read64_write64 _ _ _` with the store
+left to unification and timed out in `whnf`; naming the new store fixed it.
+
+The host gained a result kind `tree-u64`, which prints a tree in the preorder form of the
+`tree-u64:` argument after checking each record's header (magic, count 1, kind 1, width 3,
+mask 5).  `tests/modules/run.sh` compares `setKey` with native Lean on 72 cases and checks that
+it allocates and frees nothing beyond the host's records of the argument.  The LTG entry
+`record-reuse` describes the template and the proof.
+
+`Implements` keeps the caller's arrays apart from the consumed records; it says nothing about
+other trees the caller holds.  No present program passes a tree and holds another, so this
+is recorded for the step that composes calls on trees.
+
