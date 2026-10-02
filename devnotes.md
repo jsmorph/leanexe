@@ -20459,8 +20459,40 @@ disjointness of two arrays allocated in turn.  `Live.perm` reorders the temporar
 The full build passed (3,544 jobs) with no compiled byte changed.
 
 - [x] `blocks`, `outside` from `blocks`, and disjoint pair components.
-- [ ] Returned parameters, branch moves, and releases in the compiler.
-- [ ] The `Live` rules for a call that returns a pair and consumes temporaries, and for the
+- [x] Returned parameters, branch moves, and releases in the compiler.
+- [x] The `Live` rules for a call that returns a pair and consumes temporaries, and for the
   end of a body that returns a pair.
-- [ ] CLOB: `setLevel` directly, and `addBid`, `cancelBid`, and `applyCommand` on `Live`.
-- [ ] `call-stats` cases for the releases; emit; tests.
+- [x] CLOB: `setLevel` directly, and `addBid`, `cancelBid`, and `applyCommand` on `Live`.
+- [x] `call-stats` cases for the releases; emit; tests.
+
+The compiler keeps the owned parameters that the code has moved on the current path in its
+state.  Every lookup of an array variable goes through `lookupArray`, which rejects a
+parameter after its move, so a second move, a use after a move, and a pair that both returns
+a parameter and uses it later are errors.  A call or `++` that moves a parameter must contain
+it once.  `moveSites` finds the parameters that the result term moves on some path, through
+`let`s, branches, and pairs.  Each branch of a result releases the owned parameters it does
+not move, and a top-level result releases them after the results are stored.  After a branch
+nested inside a pair, every owned parameter counts as moved, so a later use is an error
+rather than a read of a released array.  The inferred modes are the ones the review
+predicted: `setLevel` owns `prices`, `addBid` owns `prices`, and `cancelBid` and
+`applyCommand` own both arrays.  No other module changes a byte.
+
+`Live.callPair` runs a call that returns a pair of word arrays and consumes the temporaries
+at the front of the list.  `Live.finish_pair` gives the obligation for a pair result.  The
+CLOB file's `movesPost_of_live` turns two live results into the obligation of
+`Func.implements_moves`.  `bid_spec` now runs over `Live`, with `findLevel` through
+`Live.callScalar_seq`.  `setLevel_implements` is direct and shorter, since the copy of
+`prices` is gone.  `Kept`, `PairPost`, `pairCall_spec`, `pairCopy_spec`, and `owned_pair` are
+deleted.  The review estimated that the `Live` route would come out smaller.  In fact the
+CLOB file grew by 35 lines to 1,313, and `Live.lean` gained about 170 lines for the two pair
+rules, which later pair-returning functions can reuse.
+
+The full build passed (3,544 jobs), and `clob_bytes`, `gpt_bytes`, and `generating_step`
+depend only on `propext`, `Classical.choice`, and `Quot.sound`.  `clob.wasm` is 3,706 bytes,
+609 fewer than before, with sha256 `a8f8b6eaa5f19f25…`, and every other module, `gpt.wasm`
+included, emits the same bytes; `gpt_file` checks.  All 3,171 module comparisons with
+native Lean passed.  Eleven `call-stats` cases in `tests/modules/run.sh` cover every path
+of `setLevel`, `addBid`, `cancelBid`, and `applyCommand`, and each case's allocation and
+free counts match the counts predicted from the code.  For example, `applyCommand` adding a
+new level allocates the two arguments and the two results and frees the prices in `addBid`
+and the sizes in `applyCommand`.

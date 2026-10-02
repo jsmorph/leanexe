@@ -145,6 +145,8 @@ structure Prelude where
   /-- The locals of the temporary arrays, released at the end of the function, with
   their sources. -/
   temporaries : Array (Nat × String) := #[]
+  /-- The owned parameters that the code has moved on the current path. -/
+  consumed : List Lean.Expr := []
 
 /-- The next free local. -/
 def Prelude.next (p : Prelude) : Nat := p.base + p.vars.size
@@ -258,6 +260,57 @@ def pushStmt (stmt : Project.IR.Stmt) (hints : List Hint) : CompileM Unit :=
     hints := p.hints ++ (hints.map (Hint.shift p.length)).toArray
     length := p.length + stmtLength stmt }
 
+/-- The local of the array variable `term` in `vars`, which the code must not have moved. -/
+def lookupArray (vars : List (Lean.Expr × Nat)) (term : Lean.Expr) : CompileM (Option Nat) := do
+  let some local_ := vars.lookup term | return none
+  if (← get).consumed.contains term then
+    throwError "the array {← sourceOf term} is used after the code moved it"
+  return some local_
+
+/-- Records that the code has moved the owned parameter `param`. -/
+def markMoved (param : Lean.Expr) : CompileM Unit :=
+  modify fun p => { p with consumed := param :: p.consumed }
+
+/-- The number of occurrences of the free variable `x` in `term`. -/
+partial def occurrences (x : FVarId) : Lean.Expr → Nat
+  | .fvar y => if y == x then 1 else 0
+  | .app f a => occurrences x f + occurrences x a
+  | .lam _ t b _ | .forallE _ t b _ => occurrences x t + occurrences x b
+  | .letE _ t v b _ => occurrences x t + occurrences x v + occurrences x b
+  | .mdata _ e | .proj _ _ e => occurrences x e
+  | _ => 0
+
+/-- The array parameters among `params` that the result term `term` moves on some path,
+through its `let`s, branches, and pairs: those it returns, passes as the left operand of
+`++`, or passes at an owned position of a callee in `owners`. -/
+partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Expr)
+    (term : Lean.Expr) : MetaM (List Lean.Expr) := do
+  let term := term.consumeMData
+  if let .letE _ _ _ body _ := term then return ← moveSites owners params body
+  if params.contains term then return [term]
+  match term.getAppFnArgs with
+  | (``ite, #[type, _, _, a, b]) =>
+      if (← whnfR type).isAppOfArity ``Prod 2 || (← isArray type) then
+        return (← moveSites owners params a) ++ (← moveSites owners params b)
+      return []
+  | (``Prod.mk, #[_, _, a, b]) =>
+      return (← moveSites owners params a) ++ (← moveSites owners params b)
+  | (``HAppend.hAppend, #[_, _, _, _, left, _]) =>
+      return if params.contains left.consumeMData then [left.consumeMData] else []
+  | (fn, args) =>
+      return ((owners.lookup fn).getD []).filterMap fun i =>
+        args[i]?.bind fun arg => if params.contains arg.consumeMData then some arg.consumeMData else none
+
+/-- Releases the owned parameters that the code has not moved on the current path. -/
+def releaseUnmoved (ctx : Ctx) : CompileM Unit := do
+  for param in ctx.owned do
+    unless (← get).consumed.contains param do
+      let some local_ := (ctx.arrays ++ ctx.floatArrays).lookup param
+        | throwError "an owned parameter has no local"
+      let stmt := Project.IR.Stmt.release local_
+      pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "release owned parameter" (← sourceOf param)]
+      markMoved param
+
 /-- The expression that reads local `local_` of type `type`. -/
 def readLocal : Nat × ScalarType → Σ type, IRExpr type
   | (local_, .f64) => ⟨.f64, .getF local_⟩
@@ -297,7 +350,7 @@ mutual
           | throwError "unsupported term: {source}"
         unless ctx.foldable do
           throwError "an array size may not appear in a branch, a fold body, or a recursive definition: {source}"
-        let some arrayLocal := (ctx.arrays ++ ctx.floatArrays).lookup array.consumeMData
+        let some arrayLocal ← lookupArray (ctx.arrays ++ ctx.floatArrays) array.consumeMData
           | throwError "the size must be of an array variable: {source}"
         let before ← get
         let temp := before.next
@@ -334,7 +387,7 @@ mutual
     | (``GetElem?.getElem!, #[collection, _, element, _, _, _, array, position]) =>
         unless (← isUInt64Array collection) && (← isUInt64 element) do
           throwError "unsupported array read in {source}"
-        let some arrayLocal := ctx.arrays.lookup array.consumeMData
+        let some arrayLocal ← lookupArray ctx.arrays array.consumeMData
           | throwError "a read must be of an array variable: {source}"
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "a read position must be `i.toNat` for a UInt64 `i`: {source}"
@@ -520,7 +573,7 @@ mutual
         let ir : IRExpr .f64 := .ofBits w
         return (ir, hint ir "float of bits" :: wHints)
     | (``GetElem?.getElem!, #[_, _, _, _, _, _, array, position]) =>
-        let some arrayLocal := ctx.floatArrays.lookup array.consumeMData
+        let some arrayLocal ← lookupArray ctx.floatArrays array.consumeMData
           | throwError "a float read must be of an `Array Float` variable: {source}"
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "a read position must be `i.toNat` for a UInt64 `i`: {source}"
@@ -568,7 +621,7 @@ mutual
           throwError "a fold must stop at the size of its array: {source}"
     | _ => throwError "a fold must stop at the size of its array: {source}"
     let arrays := if elementType == .f64 then ctx.floatArrays else ctx.arrays
-    let (arrayLocal, temporary) ← match arrays.lookup array.consumeMData with
+    let (arrayLocal, temporary) ← match ← lookupArray arrays array.consumeMData with
       | some index => pure (index, false)
       | none => do
           let some elements := arrayLiteral? array
@@ -683,7 +736,7 @@ mutual
       | throwError "unsupported loop: {source}"
     unless ← isFloatArray stateType do
       throwError "a loop over an array must have an `Array Float` state: {source}"
-    let some src := ctx.floatArrays.lookup init.consumeMData
+    let some src ← lookupArray ctx.floatArrays init.consumeMData
       | throwError "the initial state of a loop over an array must be an array variable: {source}"
     let (count, countHints) ← translateValue ctx ⟨[], 0⟩ n
     let state ← match dst? with
@@ -803,7 +856,14 @@ mutual
       let stmt := Stmt.arraySize size arrayLocal
       pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "array-size" source]
       return size
-    if let some arrayLocal := (ctx.arrays ++ ctx.floatArrays).lookup term then
+    if let some arrayLocal ← lookupArray (ctx.arrays ++ ctx.floatArrays) term then
+      -- An owned parameter is returned as it is; any other array variable is copied.
+      if ctx.owned.contains term then
+        markMoved term
+        let some dst := dst? | return arrayLocal
+        let stmt := Project.IR.Stmt.assign dst (.get arrayLocal)
+        pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "array move" source]
+        return dst
       let size ← fresh .u64 "size"
       let dst ← match dst? with
         | some dst => pure dst
@@ -817,7 +877,7 @@ mutual
     | (``Array.set!, #[element, array, position, value])
     | (``Array.setIfInBounds, #[element, array, position, value]) =>
         unless ← isUInt64 element do throwError "unsupported array element type in {source}"
-        let some arrayLocal := ctx.arrays.lookup array.consumeMData
+        let some arrayLocal ← lookupArray ctx.arrays array.consumeMData
           | throwError "`set!` must be applied to an array variable: {source}"
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "a `set!` position must be `i.toNat` for a UInt64 `i`: {source}"
@@ -836,7 +896,7 @@ mutual
           return (ir, [mkHint loc (exprLength ir) "set element" source])
     | (``Array.insertIdx!, #[element, array, position, value]) =>
         unless ← isUInt64 element do throwError "unsupported array element type in {source}"
-        let some arrayLocal := ctx.arrays.lookup array.consumeMData
+        let some arrayLocal ← lookupArray ctx.arrays array.consumeMData
           | throwError "`insertIdx!` must be applied to an array variable: {source}"
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "an `insertIdx!` position must be `i.toNat` for a UInt64 `i`: {source}"
@@ -860,7 +920,7 @@ mutual
           return (ir, [mkHint loc (exprLength ir) "insert element" source])
     | (``Array.eraseIdxIfInBounds, #[element, array, position]) =>
         unless ← isUInt64 element do throwError "unsupported array element type in {source}"
-        let some arrayLocal := ctx.arrays.lookup array.consumeMData
+        let some arrayLocal ← lookupArray ctx.arrays array.consumeMData
           | throwError "`eraseIdxIfInBounds` must be applied to an array variable: {source}"
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "an `eraseIdxIfInBounds` position must be `i.toNat` for a UInt64 `i`: {source}"
@@ -881,12 +941,13 @@ mutual
           throwError "unsupported append in {source}"
         let left := left.consumeMData
         let right := right.consumeMData
-        let some src1 := (ctx.arrays ++ ctx.floatArrays).lookup left
+        let some src1 ← lookupArray (ctx.arrays ++ ctx.floatArrays) left
           | throwError "the left operand of `++` must be an array parameter at its last use: {source}"
-        unless ctx.owned.contains left do
+        unless ctx.owned.contains left && occurrences left.fvarId! right == 0 do
           throwError "the left operand of `++` must be an array parameter at its last use: {source}"
-        let some src2 := (ctx.arrays ++ ctx.floatArrays).lookup right
+        let some src2 ← lookupArray (ctx.arrays ++ ctx.floatArrays) right
           | throwError "the right operand of `++` must be an array variable: {source}"
+        markMoved left
         let dst ← match dst? with
           | some dst => pure dst
           | none => fresh .u64 "array"
@@ -1012,18 +1073,21 @@ mutual
       if (← whnfR (← inferType term)).isAppOfArity ``Prod 2 then
         throwError "a call in a loop body or an array element must return one value: {source}"
     let owners := (ctx.owners.lookup term.getAppFn.constName).getD []
+    let mut moved := []
     for position in owners do
       let some arg := term.getAppArgs[position]?
         | throwError "a call must supply every argument: {source}"
-      unless ctx.owned.contains arg.consumeMData do
+      let arg := arg.consumeMData
+      unless ctx.owned.contains arg && occurrences arg.fvarId! term == 1 do
         throwError "an owned parameter must receive an array parameter at its last use: {source}"
+      moved := arg :: moved
     let mut args : Array ((type : ScalarType) × IRExpr type) := #[]
     let mut hints := #[]
     let mut offset := 0
     for arg in term.getAppArgs do
       let argType ← inferType arg
       let (typed, argHints) ← if ← isArray argType then do
-          let some local_ := (ctx.arrays ++ ctx.floatArrays).lookup arg.consumeMData
+          let some local_ ← lookupArray (ctx.arrays ++ ctx.floatArrays) arg.consumeMData
             | throwError "an array argument must be an array variable: {source}"
           let ir : IRExpr .u64 := .get local_
           pure ((⟨.u64, ir⟩ : (type : ScalarType) × IRExpr type),
@@ -1044,6 +1108,7 @@ mutual
       | none => types.mapM fun type => return (← fresh type "call result", type)
     let stmt := Project.IR.Stmt.call index args.toList (results.map (·.1))
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "call" source :: hints.toList)
+    moved.forM markMoved
     return results
 
   /-- Translates a conditional result whose branches build arrays to a statement
@@ -1058,9 +1123,19 @@ mutual
       | some dests => pure dests
       | none => types.mapM fun type => fresh type "result"
     let (c, cHints) ← translateCondition ctx ⟨[], 0⟩ condition
-    let branchCtx := { ctx with temporaries := false, owned := [] }
-    let (_, thenStmts, thenHints) ← withBlock (translateResults branchCtx thenTerm type dests)
-    let (_, elseStmts, elseHints) ← withBlock (translateResults branchCtx elseTerm type dests)
+    let branchCtx := { ctx with temporaries := false }
+    -- Each branch releases the owned parameters that it does not move.
+    let saved := (← get).consumed
+    let (_, thenStmts, thenHints) ← withBlock do
+      let results ← translateResults branchCtx thenTerm type dests
+      releaseUnmoved ctx
+      return results
+    modify fun p => { p with consumed := saved }
+    let (_, elseStmts, elseHints) ← withBlock do
+      let results ← translateResults branchCtx elseTerm type dests
+      releaseUnmoved ctx
+      return results
+    modify fun p => { p with consumed := saved ++ ctx.owned }
     let stmt := Project.IR.Stmt.ite c (seqAll thenStmts) (seqAll elseStmts)
     let branchAt := exprLength c
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "result branch" source :: cHints ++
@@ -1138,28 +1213,6 @@ partial def translateTail (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
           .seq (.assign ctx.result value) (.assign ctx.done (.const 1))
         return (stmt, mkHint loc (stmtLength stmt) "base case" source :: valueHints)
 
-/-- The term a definition returns, after its `let`s. -/
-partial def resultTerm : Lean.Expr → Lean.Expr
-  | .letE _ _ _ body _ => resultTerm body
-  | .mdata _ e => resultTerm e
-  | e => e
-
-/-- The arguments that `term` moves: the left operand of `++`, and the arguments at the
-owned positions of a callee. -/
-def movedArguments (owners : List (Name × List Nat)) (term : Lean.Expr) : List Lean.Expr :=
-  match term.getAppFnArgs with
-  | (``HAppend.hAppend, #[_, _, _, _, left, _]) => [left.consumeMData]
-  | (fn, args) => ((owners.lookup fn).getD []).filterMap fun i => args[i]?.map (·.consumeMData)
-
-/-- The number of occurrences of the free variable `x` in `term`. -/
-partial def occurrences (x : FVarId) : Lean.Expr → Nat
-  | .fvar y => if y == x then 1 else 0
-  | .app f a => occurrences x f + occurrences x a
-  | .lam _ t b _ | .forallE _ t b _ => occurrences x t + occurrences x b
-  | .letE _ t v b _ => occurrences x t + occurrences x v + occurrences x b
-  | .mdata _ e | .proj _ _ e => occurrences x e
-  | _ => 0
-
 /-- Compiles the definition `declName`, whose parameters are `UInt64`, `Float`,
 `Array UInt64`, or `Array Float` and whose result is `UInt64`, `Float`, or an
 `Array UInt64` literal, to an IR function with hints.  The
@@ -1234,11 +1287,9 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
           results := [⟨.u64, .get ctx.result⟩] }
       return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] }, [])
     else
-      let result := resultTerm body
-      let moved := movedArguments owners result
-      let owned := (arrays ++ floatArrays).filterMap fun (param, _) =>
-        if moved.contains param && occurrences param.fvarId! result == 1 then some param
-        else none
+      let arrayParams := (arrays ++ floatArrays).map (·.1)
+      let sites ← moveSites owners arrayParams body
+      let owned := arrayParams.filter sites.contains
       let ctx : Ctx :=
         { self := declName, params, words, floats, arrays, floatArrays, callees, owners, owned,
           foldable := true }
@@ -1246,15 +1297,18 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
         (do
           let (results, resultHints) ← translateResults ctx body resultType
           let temporaries := (← get).temporaries
-          if temporaries.isEmpty then return (results, resultHints)
-          -- With temporaries, each result is stored before the releases, so that no
-          -- result reads a released array.
+          let consumed := (← get).consumed
+          if temporaries.isEmpty && owned.all consumed.contains then
+            return (results, resultHints)
+          -- With temporaries or owned parameters to release, each result is stored before
+          -- the releases, so that no result reads a released array.
           let mut stored := #[]
           for (⟨resultType, ir⟩, own) in results.zip resultHints do
             let local_ ← fresh resultType "result"
             let stmt := Project.IR.Stmt.assign local_ ir
             pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "result" "result" :: own)
             stored := stored.push (readLocal (local_, resultType))
+          releaseUnmoved ctx
           for (local_, source) in temporaries.reverse do
             let stmt := Project.IR.Stmt.release local_
             pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "release temporary" source]

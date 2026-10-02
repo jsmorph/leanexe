@@ -27,4 +27,32 @@ for name in $(printf '%s\n' "${!passed[@]}" | sort); do
   total=$((total + ${passed[$name]}))
 done
 echo "passed $total failed $failed"
-[ "$total" -gt 0 ] && [ "$failed" -eq 0 ]
+# The CLOB functions that consume their arrays release them inside the call on the paths that
+# do not return them.  The host releases nothing, so the counters show those frees.  Each line
+# is an export, its arguments, and the expected allocations and frees.
+stats_failed=0
+prices=array-u64:105,102,101
+sizes=array-u64:4,4,6
+while IFS='|' read -r name args expected; do
+  read -ra argv <<<"$args"
+  out=$("$host" call-stats "$build/clob/clob.wasm" "$name" list:array-u64,array-u64 \
+    $prices $sizes "${argv[@]}" | tail -1)
+  if [ "$out" != "stats $expected" ]; then
+    stats_failed=$((stats_failed + 1))
+    echo "fail: clob $name $args: $out, expected stats $expected"
+  fi
+done <<'CASES'
+setLevel|i64:1 i64:9|3 0
+addBid|i64:103 i64:5|4 1
+addBid|i64:102 i64:5|3 0
+cancelBid|i64:102 i64:4|4 2
+cancelBid|i64:102 i64:1|3 1
+cancelBid|i64:103 i64:1|2 0
+applyCommand|i64:0 i64:103 i64:5|4 2
+applyCommand|i64:0 i64:102 i64:5|3 1
+applyCommand|i64:1 i64:102 i64:4|4 2
+applyCommand|i64:1 i64:102 i64:1|3 1
+applyCommand|i64:2 i64:102 i64:1|2 0
+CASES
+echo "release counts: 11 cases, $stats_failed failed"
+[ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$stats_failed" -eq 0 ]
