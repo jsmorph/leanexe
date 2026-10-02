@@ -1294,6 +1294,131 @@ theorem applyCommand_implements : Implements clob.module 11 applyTuple := by
       (by rw [State.get_update_ne (by decide)]; exact State.get_update_same (by omega))
       (State.get_update_same (by rw [hLenU, hLength]; decide))
 
+/-- `runCommands` with its three arguments as one tuple: the call consumes the book. -/
+def runTuple (x : Moved (Array UInt64) × Moved (Array UInt64) × Array UInt64) :
+    Array UInt64 × Array UInt64 :=
+  LeanExe.Examples.Clob.runCommands x.1.val x.2.1.val x.2.2
+
+/-- The arguments of the call in `runCommands`'s loop: the book, and the command at the
+loop index. -/
+def runArgs : List ((type : ScalarType) × Expr type) :=
+  [⟨.u64, .get 4⟩, ⟨.u64, .get 5⟩, ⟨.u64, .read 2 (.bin .mul (.const 3) (.get 7))⟩,
+    ⟨.u64, .read 2 (.bin .add (.bin .mul (.const 3) (.get 7)) (.const 1))⟩,
+    ⟨.u64, .read 2 (.bin .add (.bin .mul (.const 3) (.get 7)) (.const 2))⟩]
+
+/-- The step of `runCommands` as `applyCommand`'s input: the book, and command `l`. -/
+def runStep (commands : Array UInt64) (l : UInt64) (book : Array UInt64 × Array UInt64) :
+    Moved (Array UInt64) × Moved (Array UInt64) × UInt64 × UInt64 × UInt64 :=
+  (⟨book.1⟩, ⟨book.2⟩, commands[(3 * l).toNat]!, commands[(3 * l + 1).toNat]!,
+    commands[(3 * l + 2).toNat]!)
+
+theorem runTuple_eq (prices sizes commands : Array UInt64) :
+    runTuple (⟨prices⟩, ⟨sizes⟩, commands) =
+      LeanExe.loop (UInt64.ofNat commands.size / 3) (prices, sizes)
+        fun l x => applyTuple (runStep commands l x) := rfl
+
+theorem Expr.evalResults_cons {mem : Mem} {scratch : Nat} {e : Expr .u64} {state mid next : State}
+    {rest : List ((type : ScalarType) × Expr type)} {vs : List Value} {v : UInt64}
+    (he : e.eval mem scratch state = some (v, mid))
+    (h : Expr.evalResults mem scratch rest mid = some (vs, next)) :
+    Expr.evalResults mem scratch (⟨.u64, e⟩ :: rest) state = some (.i64 v :: vs, next) := by
+  simp [Expr.evalResults, he, h]
+
+theorem runCommands_implements : Implements clob.module 12 runTuple := by
+  refine Func.implements_moves clob.funcs 10 clob.runCommands.ir "runCommands" rfl runTuple
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, ⟨_, rfl, -⟩⟩; rfl) ?_
+  rintro ⟨⟨prices⟩, ⟨sizes⟩, commands⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, ⟨pc, rfl, hCmds⟩⟩
+    ⟨hSepPair, hSep⟩ hCap
+  change heap.Owned initial pp prices at hPrices
+  change heap.Owned initial ps sizes at hSizes
+  change heap.Borrowed initial pc commands at hCmds
+  change ([pp, ps].map (block initial)).Pairwise regionsDisjoint at hSepPair
+  have hAC : Apart initial [pp, ps] (pc.toNat, 8 * (commands.size + 1)) :=
+    hSep _ (List.mem_singleton_self _)
+  have hPS : regionsDisjoint (block initial pp) (block initial ps) :=
+    (List.pairwise_cons.mp hSepPair).1 _ (List.mem_singleton_self _)
+  have hNoImports : clob.module.imports.length = 0 := rfl
+  have hLenU : ∀ (s : State) (j : Nat) (v : Value),
+      (s.update j v).params.length + (s.update j v).locals.length =
+        s.params.length + s.locals.length := fun s j v => by
+    simp [State.update_params_length, State.update_locals_length]
+  let start : State :=
+    { params := [.i64 pp, .i64 ps, .i64 pc], locals := List.replicate 7 (.i64 0) }
+  have hStartLen : start.params.length + start.locals.length = 10 := rfl
+  show Triple _ (.seq (.arraySize 3 2)
+      (Stmt.pairLoop 4 5 6 7 0 1 11 (.bin .divU (.get 3) (.const 3)) runArgs)) 8
+    (fun store state => store = initial ∧ state = start)
+    (MovesPost heap initial [pp, ps] 8 4 5 (runTuple (⟨prices⟩, ⟨sizes⟩, commands)))
+  have hL := Live.start_moved hHeap (temps := [(pp, prices), (ps, sizes)])
+    (fun t ht => by
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+      rcases ht with rfl | rfl
+      exacts [hPrices, hSizes])
+    (List.pairwise_pair.mpr hPS)
+  have hCv := hCmds.values
+  let st0 := start.update 3 (.i64 (UInt64.ofNat commands.size))
+  have hSt0Len : st0.params.length + st0.locals.length = 10 := by rw [hLenU, hStartLen]
+  refine Stmt.seq_spec (Stmt.arraySize_spec (before := start) hCv rfl (by rw [hStartLen]; decide))
+    ?_
+  apply Triple.of_forall
+  rintro s st ⟨rfl, hSet⟩
+  rw [State.set?_eq_update _ (show 3 < start.params.length + start.locals.length by
+    rw [hStartLen]; decide), Option.some.injEq] at hSet
+  subst hSet
+  have hCount : ∀ (mem : Mem) (st : State), State.Frame 8 [4, 5] st0 st →
+      ∃ after, (Expr.bin .divU (.get 3) (.const 3)).eval mem 8 st =
+        some (UInt64.ofNat commands.size / 3, after) := fun mem st hF => by
+    have g3 : st.get 3 = some (.i64 (UInt64.ofNat commands.size)) :=
+      (hF.get 3 (by decide) (by decide)).trans (State.get_update_same (by rw [hStartLen]; decide))
+    have hLen : 9 < st.params.length + st.locals.length := by
+      rw [hF.params, hF.locals]; omega
+    obtain ⟨m1, hm1⟩ := State.exists_set? (state := st) (index := 8)
+      (.i64 (UInt64.ofNat commands.size)) (by omega)
+    obtain ⟨m2, hm2⟩ := State.exists_set? (state := m1) (index := 9) (.i64 3) (by
+      rw [State.set?_eq_update _ (by omega), Option.some.injEq] at hm1; subst hm1
+      rw [hLenU]; omega)
+    exact ⟨m2, by simp [Expr.eval, g3, hm1, hm2, U64Op.apply]⟩
+  refine (Live.pairLoop applyCommand_implements (f := clob.applyCommand.ir.function (2 + 9)) rfl
+    (by rw [hNoImports]; exact compile_funcs (funcs := clob.funcs) (i := 9) rfl) rfl
+    (s1 := 4) (s2 := 5) (limit := 6) (index := 7) (src1 := 0) (src2 := 1)
+    (by decide) (by decide) (by rw [hSt0Len]; decide) hL hCap rfl rfl (by decide) hCount
+    (runStep commands) fun k q1 q2 heap' store' st hk hF hIdx g4 g5 hL' => ?_).mono
+      (fun _ _ h => h) ?_
+  · have hC' := (hL'.borrowed pc commands hCmds hAC).values
+    have hLen : st.params.length + st.locals.length = 10 := by
+      rw [hF.params, hF.locals]; exact hSt0Len
+    have g2 : st.get 2 = some (.i64 pc) := (hF.get 2 (by decide) (by decide)).trans rfl
+    obtain ⟨m1, hm1⟩ := State.exists_set? (state := st) (index := 8) (.i64 (3 * UInt64.ofNat k)) (by omega)
+    have hm1Len : m1.params.length + m1.locals.length = 10 := by
+      rw [State.set?_eq_update _ (by omega), Option.some.injEq] at hm1; subst hm1; rw [hLenU, hLen]
+    obtain ⟨m2, hm2⟩ := State.exists_set? (state := m1) (index := 8) (.i64 (3 * UInt64.ofNat k + 1)) (by omega)
+    have hm2Len : m2.params.length + m2.locals.length = 10 := by
+      rw [State.set?_eq_update _ (by omega), Option.some.injEq] at hm2; subst hm2; rw [hLenU, hm1Len]
+    obtain ⟨m3, hm3⟩ := State.exists_set? (state := m2) (index := 8) (.i64 (3 * UInt64.ofNat k + 2)) (by omega)
+    have k1 : ∀ j, j ≠ 8 → m1.get j = st.get j := fun j hj => State.get_set?_ne hj hm1
+    have k2 : ∀ j, j ≠ 8 → m2.get j = st.get j := fun j hj =>
+      (State.get_set?_ne hj hm2).trans (k1 j hj)
+    have k3 : ∀ j, j ≠ 8 → m3.get j = st.get j := fun j hj =>
+      (State.get_set?_ne hj hm3).trans (k2 j hj)
+    refine ⟨[.i64 q1, .i64 q2, .i64 commands[(3 * UInt64.ofNat k).toNat]!, .i64 commands[(3 * UInt64.ofNat k + 1).toNat]!,
+      .i64 commands[(3 * UInt64.ofNat k + 2).toNat]!], m3, ?_,
+      ⟨[.i64 q1], _, rfl, ⟨q1, rfl, hL'.tempsOwned _ (List.mem_cons_self ..)⟩, [.i64 q2], _, rfl,
+        ⟨q2, rfl, hL'.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_singleton_self _))⟩, rfl⟩,
+      rfl, fun _ hq => absurd hq List.not_mem_nil⟩
+    refine Expr.evalResults_get g4 <| Expr.evalResults_get g5 <|
+      Expr.evalResults_cons (Expr.read_spec hC' (by simp [Expr.eval, hIdx, U64Op.apply]) hm1
+        (by rw [k1 2 (by decide), g2])) <|
+      Expr.evalResults_cons (Expr.read_spec hC'
+        (by simp [Expr.eval, k1 7 (by decide), hIdx, U64Op.apply]) hm2
+        (by rw [k2 2 (by decide), g2])) <|
+      Expr.evalResults_cons (Expr.read_spec hC'
+        (by simp [Expr.eval, k2 7 (by decide), hIdx, U64Op.apply]) hm3
+        (by rw [k3 2 (by decide), g2])) Expr.evalResults_nil
+  · rintro s' st' ⟨heap', q1, q2, hL', -, g4, g5⟩
+    rw [runTuple_eq]
+    exact movesPost_of_live hL' g4 g5
+
 /-- `encode` succeeds on `clob.module`, and its bytes decode to a module whose
 exports compute the CLOB operations exactly. -/
 theorem clob_bytes : ∃ bytes, Encoding.encode clob.module = .ok bytes ∧
@@ -1302,12 +1427,12 @@ theorem clob_bytes : ∃ bytes, Encoding.encode clob.module = .ok bytes ∧
       Implements m 4 insertTuple ∧ Implements m 5 setTuple ∧
       Implements m 6 addBidTuple ∧ Implements m 7 depthTuple ∧
       Implements m 8 findTuple ∧ Implements m 9 removeTuple ∧
-      Implements m 10 cancelTuple ∧ Implements m 11 applyTuple := by
+      Implements m 10 cancelTuple ∧ Implements m 11 applyTuple ∧ Implements m 12 runTuple := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip clob.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, clob.module, decoded, marketBuy_implements, fillLevel_implements,
     insertLevel_implements, setLevel_implements, addBid_implements,
     depth_implements, findLevel_implements, removeLevel_implements, cancelBid_implements,
-    applyCommand_implements⟩
+    applyCommand_implements, runCommands_implements⟩
 
 end Project.Clob
