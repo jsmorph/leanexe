@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "tail-recursion-records",
+  "title": "Tail recursion over represented arguments",
+  "summary": "Proves that the compiler's tail-recursion loop implements a function whose arguments include values of recursive types, from one obligation about a single run of the loop body, with a ghost measure.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["loops", "records", "compiler-motifs", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["tail-recursion", "loop", "record", "ghost-measure"],
+  "annotationKinds": ["tail-recursion-loop", "node match", "tail call", "base case"],
+  "modules": ["Project.IR.TailLoop"],
+  "declarations": ["Project.IR.Func.tailIn_implements", "Project.IR.TailStepIn", "Project.IR.tailStateIn", "Project.IR.Stmt.while_ghost"],
+  "premises": ["The function's variables start with result and done, and its body is the while loop on done", "TailStepIn: one run of the body from parameter values that represent the arguments either continues with values that represent arguments with the same result and a smaller measure, or keeps the parameters and stores the result"],
+  "result": "Implements for the function, for arguments of any type with a Represent instance, with the store unchanged.",
+  "consumers": ["Project.Words.sumAcc_implements"],
+  "relatedEntries": ["node-match"],
+  "exclusion": null
+}
