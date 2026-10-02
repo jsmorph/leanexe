@@ -20584,7 +20584,7 @@ allocation or free beyond those of its commands.
 
 - [x] The counting-loop lemma with a store-changing invariant: `Stmt.loop_inv`, from which
   `Stmt.loop_spec` now follows.
-- [ ] `Stmt.pairLoop` and its rule over `Live.callPair`.
+- [x] `Stmt.pairLoop` and its rule `Live.pairLoop`, over `Stmt.loop_inv` and `Live.callPair`.
 - [ ] Compiler: the matcher's array components, the loop result, and a pair state that the
   callee consumes.
 - [ ] `runCommands`, its theorem, the chunk lemma, and `clob_bytes`.
