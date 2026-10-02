@@ -20582,7 +20582,8 @@ host choose the chunk size.  The release counts cannot show that the book is nev
 since `set!`, `insertIdx!`, and `eraseIdxIfInBounds` copy.  They show that the loop adds no
 allocation or free beyond those of its commands.
 
-- [ ] The counting-loop lemma with a store-changing invariant.
+- [x] The counting-loop lemma with a store-changing invariant: `Stmt.loop_inv`, from which
+  `Stmt.loop_spec` now follows.
 - [ ] `Stmt.pairLoop` and its rule over `Live.callPair`.
 - [ ] Compiler: the matcher's array components, the loop result, and a pair state that the
   callee consumes.

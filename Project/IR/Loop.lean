@@ -64,6 +64,122 @@ theorem ofNat_lt_iff {k : Nat} {n : UInt64} (hk : k ≤ n.toNat) :
   have hSize : UInt64.size = 2 ^ 64 := rfl
   rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat_of_lt' (by omega)]
 
+/-- The counting loop with an invariant `Inv k store vals` over the store and the values
+`vals` of the locals `vars`, which may change the store: if each run of `body` at index
+`k < n` takes the invariant at `k` to the invariant at `k + 1`, writing only `writes` below
+scratch, then the loop takes the invariant at 0 to the invariant at `n`.  It changes only
+`limit`, `index`, `writes`, and scratch locals. -/
+theorem Stmt.loop_inv {scratch limit index : Nat} {count : Expr .u64} {body : Stmt}
+    {vars writes : List Nat} {initial : Store Unit} {before : State} {n : UInt64}
+    {vals0 : List Value} (Inv : Nat → Store Unit → List Value → Prop)
+    (hDistinct : limit ≠ index) (hLimit : limit < scratch) (hIndex : index < scratch)
+    (hOutside : limit ∉ writes ∧ index ∉ writes)
+    (hVars : ∀ j ∈ vars, j ∈ writes ∧ j < scratch)
+    (hRoom : scratch ≤ before.params.length + before.locals.length)
+    (hCount : ∃ next, count.eval initial.mem scratch before = some (n, next))
+    (hInit : before.Holds vars vals0) (hInv0 : Inv 0 initial vals0)
+    (hBody : ∀ (k : Nat) (store : Store Unit) (vals : List Value) (state : State), k < n.toNat →
+      Inv k store vals → State.Frame scratch (limit :: index :: writes) before state →
+      state.Holds vars vals →
+      state.get index = some (.i64 (UInt64.ofNat k)) → state.get limit = some (.i64 n) →
+      Triple m body scratch (fun s st => s = store ∧ st = state)
+        (fun s st => State.Frame scratch writes state st ∧
+          ∃ vals', st.Holds vars vals' ∧ Inv (k + 1) s vals')) :
+    Triple m (.loop limit index count body) scratch
+      (fun store state => store = initial ∧ state = before)
+      (fun store state => State.Frame scratch (limit :: index :: writes) before state ∧
+        ∃ vals, state.Holds vars vals ∧ Inv n.toNat store vals) := by
+  obtain ⟨hLimitOut, hIndexOut⟩ := hOutside
+  have hVarsOut : ∀ j ∈ vars, j < scratch ∧ j ∉ [limit, index] := fun j hj => by
+    have := hVars j hj
+    refine ⟨this.2, ?_⟩
+    simp only [List.mem_cons, List.not_mem_nil, or_false, not_or]
+    exact ⟨fun h => hLimitOut (h ▸ this.1), fun h => hIndexOut (h ▸ this.1)⟩
+  have hIndexVars : index ∉ vars := fun h => hIndexOut (hVars index h).1
+  have hn := n.toNat_lt
+  let LoopInv : Store Unit → State → Prop := fun store state =>
+    State.Frame scratch (limit :: index :: writes) before state ∧
+      ∃ k, k ≤ n.toNat ∧ state.get index = some (.i64 (UInt64.ofNat k)) ∧
+        state.get limit = some (.i64 n) ∧ ∃ vals, state.Holds vars vals ∧ Inv k store vals
+  let measure : Store Unit → State → Nat := fun _ state =>
+    match state.get index with
+    | some (.i64 k) => n.toNat - k.toNat
+    | _ => 0
+  obtain ⟨c1, hCountEval⟩ := hCount
+  have hFrameC := Expr.eval_frame (limit :: index :: writes) count initial.mem scratch before c1
+    _ hCountEval
+  obtain ⟨s1, hSet1⟩ := State.exists_set? (state := c1) (index := limit) (.i64 n)
+    (by have := hFrameC.params; have := hFrameC.locals; omega)
+  have hFrame1 := hFrameC.set? hSet1 (Or.inl (by simp))
+  obtain ⟨s2, hSet2⟩ := State.exists_set? (state := s1) (index := index) (.i64 0)
+    (by have := hFrame1.params; have := hFrame1.locals; omega)
+  have hFrame2 := hFrame1.set? hSet2 (Or.inl (by simp))
+  have hKeep2 : State.Frame scratch [limit, index] before s2 :=
+    ((Expr.eval_frame [limit, index] count initial.mem scratch before c1 _ hCountEval).set?
+      hSet1 (Or.inl (by simp))).set? hSet2 (Or.inl (by simp))
+  refine Stmt.seq_spec (M := fun store state => store = initial ∧ state = s1) ?_ <|
+    Stmt.seq_spec (M := fun store state => store = initial ∧ state = s2) ?_ <|
+    (Stmt.while_spec LoopInv measure ?_ fun bound => ?_).mono ?_ ?_
+  · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+    rintro store state ⟨hStore, hState⟩
+    subst store state
+    exact ⟨n, c1, s1, hCountEval, hSet1, rfl, rfl⟩
+  · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+    rintro store state ⟨hStore, hState⟩
+    subst store state
+    exact ⟨0, s1, s2, rfl, hSet2, rfl, rfl⟩
+  · rintro store state ⟨-, k, -, hIndexGet, hLimitGet, -⟩
+    exact ⟨decide (UInt64.ofNat k < n), state, by simp [Expr.eval, hIndexGet, hLimitGet]⟩
+  · apply Triple.of_forall
+    rintro store state ⟨current, ⟨hFrame, k, hk, hIndexGet, hLimitGet, vals, hHolds, hInvK⟩, rfl,
+      hCondition⟩
+    simp only [Expr.eval, hIndexGet, hLimitGet, Option.pure_def, Option.bind_eq_bind,
+      Option.bind_some, Option.some.injEq, Prod.mk.injEq, decide_eq_true_eq] at hCondition
+    obtain ⟨hLess, rfl⟩ := hCondition
+    rw [ofNat_lt_iff hk] at hLess
+    refine Stmt.seq_spec (hBody k store vals current hLess hInvK hFrame hHolds hIndexGet
+      hLimitGet) ?_
+    apply Triple.of_forall
+    rintro s1' t1 ⟨hFrameBody, vals', hHoldsT1, hInvT1⟩
+    have hIndexT1 : t1.get index = some (.i64 (UInt64.ofNat k)) :=
+      (hFrameBody.get index hIndex hIndexOut).trans hIndexGet
+    have hLimitT1 : t1.get limit = some (.i64 n) :=
+      (hFrameBody.get limit hLimit hLimitOut).trans hLimitGet
+    obtain ⟨t2, hSetT2⟩ := State.exists_set? (state := t1) (index := index)
+      (.i64 (UInt64.ofNat k + 1))
+      (by have := hFrameBody.params; have := hFrameBody.locals; have := hFrame.params;
+          have := hFrame.locals; omega)
+    have hFrameT1 : State.Frame scratch (limit :: index :: writes) before t1 :=
+      hFrame.trans ⟨hFrameBody.params, hFrameBody.locals, fun j hj hOut =>
+        hFrameBody.get j hj (fun h => hOut (by simp [h]))⟩
+    refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+    rintro store' state' ⟨hStore, hState⟩
+    subst store' state'
+    refine ⟨UInt64.ofNat k + 1, t1, t2, by simp [Expr.eval, hIndexT1, U64Op.apply], hSetT2,
+      ⟨hFrameT1.set? hSetT2 (Or.inl (by simp)), k + 1, hLess, ?_, ?_, vals',
+        hHoldsT1.set? hSetT2 hIndexVars, hInvT1⟩, ?_⟩
+    · rw [State.get_set?_same hSetT2]
+      congr 2
+      apply UInt64.toNat_inj.mp
+      simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
+      omega
+    · rw [State.get_set?_ne hDistinct hSetT2, hLimitT1]
+    · simp only [measure, State.get_set?_same hSetT2, hIndexGet, UInt64.toNat_add,
+        UInt64.toNat_ofNat', UInt64.reduceToNat]
+      rw [Nat.mod_eq_of_lt (a := k) (by omega), Nat.mod_eq_of_lt (by omega)]
+      omega
+  · rintro store state ⟨rfl, rfl⟩
+    refine ⟨hFrame2, 0, Nat.zero_le _, State.get_set?_same hSet2, ?_, vals0,
+      hInit.frame hKeep2 hVarsOut, hInv0⟩
+    rw [State.get_set?_ne hDistinct hSet2, State.get_set?_same hSet1]
+  · rintro store state ⟨current, ⟨hFrame, k, hk, hIndexGet, hLimitGet, hHolds⟩, hCondition⟩
+    simp only [Expr.eval, hIndexGet, hLimitGet, Option.pure_def, Option.bind_eq_bind,
+      Option.bind_some, Option.some.injEq, Prod.mk.injEq, decide_eq_false_iff_not] at hCondition
+    obtain ⟨hNotLess, rfl⟩ := hCondition
+    rw [ofNat_lt_iff hk] at hNotLess
+    obtain rfl : k = n.toNat := by omega
+    exact ⟨hFrame, hHolds⟩
+
 /-- The loop leaves `LeanExe.loop n init f` in the state locals `vars`, provided
 each run of `body` at index `k` turns a state holding `s` into one holding
 `f k s`, writing only `writes` below scratch.  It keeps the store and changes only
@@ -89,104 +205,16 @@ theorem Stmt.loop_spec [Scalar α] {scratch limit index : Nat} {count : Expr .u6
       (fun store state => store = initial ∧
         State.Frame scratch (limit :: index :: writes) before state ∧
         state.Holds vars (Scalar.values (LeanExe.loop n init f))) := by
-  obtain ⟨hLimitOut, hIndexOut⟩ := hOutside
-  have hVarsOut : ∀ j ∈ vars, j < scratch ∧ j ∉ [limit, index] := fun j hj => by
-    have := hVars j hj
-    refine ⟨this.2, ?_⟩
-    simp only [List.mem_cons, List.not_mem_nil, or_false, not_or]
-    exact ⟨fun h => hLimitOut (h ▸ this.1), fun h => hIndexOut (h ▸ this.1)⟩
-  have hIndexVars : index ∉ vars := fun h => hIndexOut (hVars index h).1
-  have hWrites : ∀ j ∈ [limit, index], j ∈ limit :: index :: writes := by simp
-  have hn := n.toNat_lt
-  let Inv : Store Unit → State → Prop := fun store state =>
-    store = initial ∧ State.Frame scratch (limit :: index :: writes) before state ∧
-      ∃ k, k ≤ n.toNat ∧ state.get index = some (.i64 (UInt64.ofNat k)) ∧
-        state.get limit = some (.i64 n) ∧
-        state.Holds vars (Scalar.values (loopPrefix f init k))
-  let measure : Store Unit → State → Nat := fun _ state =>
-    match state.get index with
-    | some (.i64 k) => n.toNat - k.toNat
-    | _ => 0
-  obtain ⟨c1, hCountEval⟩ := hCount
-  have hFrameC := Expr.eval_frame (limit :: index :: writes) count initial.mem scratch before c1
-    _ hCountEval
-  obtain ⟨s1, hSet1⟩ := State.exists_set? (state := c1) (index := limit) (.i64 n)
-    (by have := hFrameC.params; have := hFrameC.locals; omega)
-  have hFrame1 := hFrameC.set? hSet1 (Or.inl (by simp))
-  obtain ⟨s2, hSet2⟩ := State.exists_set? (state := s1) (index := index) (.i64 0)
-    (by have := hFrame1.params; have := hFrame1.locals; omega)
-  have hFrame2 := hFrame1.set? hSet2 (Or.inl (by simp))
-  have hKeep2 : State.Frame scratch [limit, index] before s2 :=
-    ((Expr.eval_frame [limit, index] count initial.mem scratch before c1 _ hCountEval).set?
-      hSet1 (Or.inl (by simp))).set? hSet2 (Or.inl (by simp))
-  refine Stmt.seq_spec (M := fun store state => store = initial ∧ state = s1) ?_ <|
-    Stmt.seq_spec (M := fun store state => store = initial ∧ state = s2) ?_ <|
-    (Stmt.while_spec Inv measure ?_ fun bound => ?_).mono ?_ ?_
-  · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
-    rintro store state ⟨hStore, hState⟩
-    subst store state
-    exact ⟨n, c1, s1, hCountEval, hSet1, rfl, rfl⟩
-  · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
-    rintro store state ⟨hStore, hState⟩
-    subst store state
-    exact ⟨0, s1, s2, rfl, hSet2, rfl, rfl⟩
-  · rintro store state ⟨-, -, k, -, hIndexGet, hLimitGet, -⟩
-    exact ⟨decide (UInt64.ofNat k < n), state, by simp [Expr.eval, hIndexGet, hLimitGet]⟩
-  · apply Triple.of_forall
-    rintro store state ⟨current, ⟨hStore, hFrame, k, hk, hIndexGet, hLimitGet, hHolds⟩, rfl,
-      hCondition⟩
-    subst store
-    simp only [Expr.eval, hIndexGet, hLimitGet, Option.pure_def, Option.bind_eq_bind,
-      Option.bind_some, Option.some.injEq, Prod.mk.injEq, decide_eq_true_eq] at hCondition
-    obtain ⟨hLess, rfl⟩ := hCondition
-    rw [ofNat_lt_iff hk] at hLess
-    refine Stmt.seq_spec (M := fun store st => store = initial ∧
-        State.Frame scratch writes current st ∧
-        st.Holds vars (Scalar.values (f (UInt64.ofNat k) (loopPrefix f init k))))
-      (hBody k _ current hLess hFrame hHolds hIndexGet hLimitGet) ?_
-    · apply Triple.of_forall
-      rintro store t1 ⟨hStore, hFrameBody, hHoldsT1⟩
-      subst store
-      have hIndexT1 : t1.get index = some (.i64 (UInt64.ofNat k)) :=
-        (hFrameBody.get index hIndex hIndexOut).trans hIndexGet
-      have hLimitT1 : t1.get limit = some (.i64 n) :=
-        (hFrameBody.get limit hLimit hLimitOut).trans hLimitGet
-      obtain ⟨t2, hSetT2⟩ := State.exists_set? (state := t1) (index := index)
-        (.i64 (UInt64.ofNat k + 1))
-        (by have := hFrameBody.params; have := hFrameBody.locals; have := hFrame.params;
-            have := hFrame.locals; omega)
-      have hFrameT1 : State.Frame scratch (limit :: index :: writes) before t1 :=
-        hFrame.trans ⟨hFrameBody.params, hFrameBody.locals, fun j hj hOut =>
-          hFrameBody.get j hj (fun h => hOut (by simp [h]))⟩
-      refine Stmt.assign_spec.mono ?_ fun _ _ h => h
-      rintro store state ⟨hStore, hState⟩
-      subst store state
-      refine ⟨UInt64.ofNat k + 1, t1, t2, by simp [Expr.eval, hIndexT1, U64Op.apply], hSetT2,
-        ⟨rfl, hFrameT1.set? hSetT2 (Or.inl (by simp)), k + 1, hLess, ?_, ?_, ?_⟩, ?_⟩
-      · rw [State.get_set?_same hSetT2]
-        congr 2
-        apply UInt64.toNat_inj.mp
-        simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
-        omega
-      · rw [State.get_set?_ne hDistinct hSetT2, hLimitT1]
-      · rw [loopPrefix_succ]
-        exact hHoldsT1.set? hSetT2 hIndexVars
-      · simp only [measure, State.get_set?_same hSetT2, hIndexGet, UInt64.toNat_add,
-          UInt64.toNat_ofNat', UInt64.reduceToNat]
-        rw [Nat.mod_eq_of_lt (a := k) (by omega), Nat.mod_eq_of_lt (by omega)]
-        omega
-  · rintro store state ⟨rfl, rfl⟩
-    refine ⟨rfl, hFrame2, 0, Nat.zero_le _, State.get_set?_same hSet2, ?_, ?_⟩
-    · rw [State.get_set?_ne hDistinct hSet2, State.get_set?_same hSet1]
-    · exact hInit.frame hKeep2 hVarsOut
-  · rintro store state ⟨current, ⟨hStore, hFrame, k, hk, hIndexGet, hLimitGet, hHolds⟩,
-      hCondition⟩
-    subst store
-    simp only [Expr.eval, hIndexGet, hLimitGet, Option.pure_def, Option.bind_eq_bind,
-      Option.bind_some, Option.some.injEq, Prod.mk.injEq, decide_eq_false_iff_not] at hCondition
-    obtain ⟨hNotLess, rfl⟩ := hCondition
-    rw [ofNat_lt_iff hk] at hNotLess
-    obtain rfl : k = n.toNat := by omega
-    exact ⟨rfl, hFrame, hHolds⟩
+  refine (Stmt.loop_inv (vals0 := Scalar.values init)
+    (fun k store vals => store = initial ∧ vals = Scalar.values (loopPrefix f init k))
+    hDistinct hLimit hIndex hOutside hVars hRoom hCount hInit ⟨rfl, rfl⟩
+    fun k store vals state hk ⟨hStore, hVals⟩ hFrame hHolds hIndexGet hLimitGet => ?_).mono
+      (fun _ _ h => h) ?_
+  · subst hStore hVals
+    refine (hBody k _ state hk hFrame hHolds hIndexGet hLimitGet).mono (fun _ _ h => h) ?_
+    rintro s st ⟨hs, hFrameBody, hHolds'⟩
+    exact ⟨hFrameBody, _, hHolds', hs, by rw [loopPrefix_succ]⟩
+  · rintro s st ⟨hFrame, vals, hHolds, hs, rfl⟩
+    exact ⟨hs, hFrame, hHolds⟩
 
 end Project.IR
