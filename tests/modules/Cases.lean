@@ -171,6 +171,25 @@ def clobCases : IO Unit := do
         line "clob" "applyCommand" pairKind [arrU ps, arrU ss, u kind, u price, u 5]
           (pair (LeanExe.Examples.Clob.applyCommand p s kind price 5))
 
+/-- Commands of the three kinds against prices near the book `ps`, three words each. -/
+def commandList (ps : List UInt64) (count seed : Nat) : List UInt64 :=
+  (List.range count).flatMap fun j =>
+    let kind := below 3 (seed + 7 * j)
+    let near := if ps.isEmpty then 100 else ps[(seed + j) % ps.length]!
+    let price := if (seed + j) % 4 = 0 then near + 1 else near
+    [kind, price, 1 + below 9 (seed + 3 * j)]
+
+def runCases : IO Unit := do
+  for (i, (ps, ss)) in (List.range books.length).zip books do
+    for count in [0, 1, 4, 13] do
+      let cs := commandList ps count i
+      line "clob" "runCommands" pairKind [arrU ps, arrU ss, arrU cs]
+        (pair (LeanExe.Examples.Clob.runCommands ps.toArray ss.toArray cs.toArray))
+    -- A trailing partial command is ignored.
+    let cs := commandList ps 2 i ++ [0, 5]
+    line "clob" "runCommands" pairKind [arrU ps, arrU ss, arrU cs]
+      (pair (LeanExe.Examples.Clob.runCommands ps.toArray ss.toArray cs.toArray))
+
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
-  piecewiseCases; sumSquaresCases; meanCases; bucketCases; clobCases
+  piecewiseCases; sumSquaresCases; meanCases; bucketCases; clobCases; runCases
