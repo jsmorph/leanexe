@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "consumed-recursion",
+  "title": "Consumed recursion",
+  "summary": "Proves an internal recursive function that consumes its tree and returns a tree rebuilt in the consumed records: strong induction on a measure with Rebuilds as the specification, self-calls whose results are Heap.Rebuilt, and the entry's Implements from Rebuilds.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["records", "recursion", "ownership", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["recursion", "record", "store", "move", "frame", "ownership", "depth"],
+  "annotationKinds": ["recursive call", "recursive call result", "slot store", "record reuse", "depth guard", "recursive entry"],
+  "modules": ["Project.IR.Recursion", "Project.Pipeline.Rebuilt", "Project.IR.Correct"],
+  "declarations": ["Project.Pipeline.Heap.Rebuilt", "Project.Pipeline.Heap.Rebuilt.null", "Project.Pipeline.Heap.Built.rebuilt", "Project.Pipeline.Heap.Rebuilt.keepNode", "Project.Pipeline.Heap.Rebuilt.keepBorrowed", "Project.Pipeline.Heap.Rebuilt.keepOwned", "Project.Pipeline.Heap.Rebuilt.node", "Project.Pipeline.Node.blocks_pos", "Project.IR.Rebuilds", "Project.IR.Func.returns", "Project.IR.Func.rebuildRecursion", "Project.IR.Stmt.selfCall_rebuilds", "Project.IR.Func.entry_rebuilds", "Project.IR.Triple.of_forall"],
+  "premises": ["Heap.At, a memory cap of at most 65,535 pages, and arguments that represent the input as borrowed, a Moved tree as owned with pairwise disjoint blocks", "Separate over the moved record pointers", "A measure that each self-call's argument decreases"],
+  "result": "Rebuilds: at any depth the internal function aborts or returns one pointer q with Heap.Rebuilt over the consumed blocks, and Func.entry_rebuilds turns it into the entry's Implements.",
+  "consumers": ["Project.Trees.incr_rec", "Project.Trees.incr_implements"],
+  "relatedEntries": ["record-reuse", "recursive-calls", "node-match"],
+  "exclusion": null
+}

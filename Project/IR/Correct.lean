@@ -5,6 +5,50 @@ namespace Project.IR
 
 open Wasm Project.Pipeline
 
+/-- A body's triple gives `ReturnsOrAborts` with any postcondition on the final store and the
+results. -/
+theorem Func.returns (funcs : List (Func × String)) (i : Nat) (func : Func) (name : String)
+    (hFunc : funcs[i]? = some (func, name)) {initial : Store Unit} {params : List Value}
+    {P : Store Unit → List Value → Prop}
+    (hLength : params.length = func.params.length)
+    (correct : Triple (compile funcs) func.body func.scratch
+        (fun store state => store = initial ∧ state = func.state params)
+        (fun store state => ∃ out next,
+          Expr.evalResults store.mem func.scratch func.results state = some (out, next) ∧
+            P store out))
+    (env : HostEnv Unit) :
+    ReturnsOrAborts env (compile funcs) (2 + i) initial params.reverse
+      (fun final values => P final values.reverse) := by
+  have hArgsBack : (params.reverse.take func.params.length).reverse = params := by
+    rw [List.take_of_length_le (by simp [hLength])]
+    simp
+  have hNoImports : (compile funcs).imports = [] := rfl
+  apply ReturnsOrAborts.of_wp_entry_for (f := func.function (2 + i))
+    (by rw [hNoImports, List.length_nil, Nat.sub_zero]; exact compile_funcs hFunc)
+  have hLocals :
+      (func.function (2 + i)).toLocals
+          (params.reverse.take (func.function (2 + i)).numParams).reverse =
+        (func.state params).toLocals [] := by
+    simp [Function.toLocals, Func.function, Func.type, Function.numParams, Func.state,
+      hArgsBack]
+  rw [hLocals, show (func.function (2 + i)).body =
+    func.body.program func.scratch ++ (func.results.flatMap (·.2.program func.scratch) ++ []) by
+      simp [Func.function]]
+  refine correct env initial _ [] _ _ ?_ ⟨rfl, rfl⟩ ?_
+  · exact fun _ => rfl
+  rintro store' state ⟨out, next, hEval, hP⟩
+  refine Expr.evalResults_program_spec (out := []) hEval ?_
+  rw [wp_nil]
+  have hDrop : params.reverse.drop (func.function (2 + i)).numParams = [] := by
+    simp [Func.function, Func.type, Function.numParams, hLength]
+  have hTake : (out.reverse ++ []).take (func.function (2 + i)).results.length =
+      out.reverse := by
+    simp [Func.function, Func.type, Expr.evalResults_length hEval]
+  simp only [State.toLocals, hDrop, List.append_nil]
+  rw [List.append_nil] at hTake
+  rw [hTake, List.reverse_reverse]
+  exact hP
+
 /-- A compiled function implements `f` when, for every `x`, every argument list that
 represents it with separate consumed blocks, and every memory whose cap is at most 65,535
 pages, its body aborts or ends in a store where some heap satisfies the allocator
@@ -41,37 +85,21 @@ theorem Func.implements_moves [Represent α] [Represent β] (funcs : List (Func 
               Represent.outside store values (f x) (block initial p)))) :
     Implements (compile funcs) (2 + i) f := by
   intro env store heap params x hHeap hArgs hSeparate hCap
-  have hLength := arity heap store params x hArgs
-  have hArgsBack : (params.reverse.take func.params.length).reverse = params := by
-    rw [List.take_of_length_le (by simp [hLength])]
-    simp
-  have hNoImports : (compile funcs).imports = [] := rfl
-  apply ReturnsOrAborts.of_wp_entry_for (f := func.function (2 + i))
-    (by rw [hNoImports, List.length_nil, Nat.sub_zero]; exact compile_funcs hFunc)
-  have hLocals :
-      (func.function (2 + i)).toLocals (params.reverse.take (func.function (2 + i)).numParams).reverse =
-        (func.state params).toLocals [] := by
-    simp [Function.toLocals, Func.function, Func.type, Function.numParams, Func.state,
-      hArgsBack]
-  rw [hLocals, show (func.function (2 + i)).body =
-    func.body.program func.scratch ++ (func.results.flatMap (·.2.program func.scratch) ++ []) by
-      simp [Func.function]]
-  refine correct x heap store params hHeap hArgs hSeparate hCap env store _ [] _ _ ?_
-    ⟨rfl, rfl⟩ ?_
-  · exact fun _ => rfl
-  rintro store' state ⟨heap', hHeap', hCaps, hBorrowedKeep, hOwnedKeep,
-    values, next, hEval, hResult, hOutsideB, hOutsideO⟩
-  refine Expr.evalResults_program_spec (out := []) hEval ?_
-  rw [wp_nil]
-  have hDrop : params.reverse.drop (func.function (2 + i)).numParams = [] := by
-    simp [Func.function, Func.type, Function.numParams, hLength]
-  have hTake : (values.reverse ++ []).take (func.function (2 + i)).results.length =
-      values.reverse := by
-    simp [Func.function, Func.type, Expr.evalResults_length hEval]
-  simp only [State.toLocals, hDrop, List.append_nil]
-  rw [List.append_nil] at hTake
-  rw [hTake, List.reverse_reverse]
-  exact ⟨heap', hHeap', hResult, hCaps, hBorrowedKeep, hOwnedKeep, hOutsideB, hOutsideO⟩
+  let moves := Represent.moves store params x
+  exact Func.returns funcs i func name hFunc (arity heap store params x hArgs)
+    (P := fun final out => ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final out (f x) ∧
+      final.memoryCaps = store.memoryCaps ∧
+      (∀ p ws, heap.Borrowed store p ws → Apart store moves (p.toNat, 8 * (ws.size + 1)) →
+        heap'.Borrowed final p ws) ∧
+      (∀ p ws, heap.Owned store p ws → Apart store moves (block store p) →
+        heap'.Owned final p ws ∧ capacityAt final p = capacityAt store p) ∧
+      (∀ p ws, heap.Borrowed store p ws → Apart store moves (p.toNat, 8 * (ws.size + 1)) →
+        Represent.outside final out (f x) (p.toNat, 8 * (ws.size + 1))) ∧
+      (∀ p ws, heap.Owned store p ws → Apart store moves (block store p) →
+        Represent.outside final out (f x) (block store p)))
+    ((correct x heap store params hHeap hArgs hSeparate hCap).mono (fun _ _ h => h)
+      fun _ _ ⟨heap', hAt, hCaps, hB, hO, values, next, hEval, hResult, hOB, hOO⟩ =>
+        ⟨values, next, hEval, heap', hAt, hResult, hCaps, hB, hO, hOB, hOO⟩) env
 
 /-- `Func.implements_moves` for a function that consumes no argument, whose body keeps
 every array. -/

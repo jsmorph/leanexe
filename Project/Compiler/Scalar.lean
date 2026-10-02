@@ -1912,6 +1912,15 @@ mutual
     let source ← sourceOf term
     unless ctx.foldable do
       throwError "a recursive call may appear only at the top of the body or in a branch of a match on a value of a recursive type: {source}"
+    -- An owned position receives an owned value at its last use, which the call moves.
+    let mut moved := []
+    for position in (ctx.owners.lookup ctx.self).getD [] do
+      let some arg := term.getAppArgs[position]?
+        | throwError "a recursive call must pass every parameter: {source}"
+      let arg := arg.consumeMData
+      unless arg.isFVar && ctx.owned.contains arg && occurrences arg.fvarId! term == 1 do
+        throwError "an owned parameter of a recursive call must receive an owned value at its last use: {source}"
+      moved := arg :: moved
     let mut args : Array ((type : ScalarType) × IRExpr type) := #[]
     let mut hints := #[]
     let mut offset := 0
@@ -1931,6 +1940,7 @@ mutual
     let result ← fresh .u64 "recursive call result"
     let stmt := Project.IR.Stmt.call index args.toList [result]
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "recursive call" source :: hints.toList)
+    moved.forM markMoved
     return result
 
   /-- The results read from `components`, or copied into the locals `dests?` first. -/
@@ -2247,18 +2257,35 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
     if recursive && !(← tailOnly declName body) then
       let some index := internal
         | throwError "{declName} calls itself other than in tail position; compile it in a module list, which adds its internal function"
+      let treeResult ← isNodeType resultType
       unless arrays.isEmpty && floatArrays.isEmpty && lists.isEmpty && floats.isEmpty &&
-          tuples.isEmpty && (← isWordType resultType) do
-        throwError "a recursive definition may take only UInt64 and values of recursive types, and return only UInt64: {declName}"
+          tuples.isEmpty && ((← isWordType resultType) || treeResult) do
+        throwError "a recursive definition may take only UInt64 and values of recursive types, and return only UInt64 or a value of a recursive type: {declName}"
+      -- A definition that returns a tree owns the parameters in the greatest fixed point of the
+      -- mode rule: every parameter of a recursive type starts owned at the self-calls, and each
+      -- round keeps those that the body still moves.  A definition that returns a word owns
+      -- none, since it could not release them.
+      let positionsOf (owned : List Lean.Expr) : List Nat :=
+        (List.range params.size).filter fun i => owned.contains params[i]!
+      let nodeParams := nodes.map (·.1)
+      let mut owned := if treeResult then nodeParams else []
+      for _ in [:nodeParams.length + 1] do
+        let sites ← moveSites ((declName, positionsOf owned) :: owners) nodeParams body
+        let next := owned.filter sites.contains
+        if next.length == owned.length then break
+        owned := next
       -- The internal function: the parameters and the depth, a guard, and the body.
       let depth := paramTypes.size
       let ctx : Ctx :=
         { self := declName, params, words, floats, arrays, floatArrays, nodes, foldable := true,
-          selfCall := some (index, depth) }
+          selfCall := some (index, depth), owned,
+          owners := (declName, positionsOf owned) :: owners }
       let guard : Project.IR.Stmt :=
         .ite (.ltU (.const (recursionDepthLimit - 1)) (.get depth)) .abort .skip
       let ((results, resultHints), prelude) ←
         (translateResults ctx body resultType).run { base := depth + 1 }
+      unless owned.all prelude.consumed.contains do
+        throwError "an owned parameter of {declName} must move on every path; releasing it is not supported yet"
       let stmts := guard :: prelude.stmts.toList
       let bodyLength := (stmts.map stmtLength).sum
       let (_, shifted) := (results.zip resultHints).foldl (init := (bodyLength, []))
@@ -2283,7 +2310,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let entryHints : Hints :=
         { locals := paramNames.toList ++ [("result", paramTypes.size)]
           nodes := [mkHint ⟨[], 0⟩ (stmtLength entryCall) "recursive entry" (← sourceOf body)] }
-      return (entry, entryHints, [], some (rec_, recHints))
+      return (entry, entryHints, positionsOf owned, some (rec_, recHints))
     if recursive then
       unless arrays.isEmpty && floatArrays.isEmpty && lists.isEmpty && floats.isEmpty &&
           tuples.isEmpty &&

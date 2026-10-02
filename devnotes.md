@@ -21807,7 +21807,7 @@ Revised steps:
 - [x] The mode rule for node parameters and fields, the moved check for node lookups, reuse
   of the same constructor; `setKey`.  Zeroing moved child slots before a release moves to
   the step that releases part of a consumed tree, the first program that needs it.
-- [ ] `Heap.Rebuilt`, the consumed specification and its recursion rule; `incr`.
+- [x] `Heap.Rebuilt`, the consumed specification and its recursion rule; `incr`.
 - [ ] Statement-level `if` with self-calls and allocation in branches; `insert`.
 - [ ] A function that releases part of a consumed tree.
 - [ ] Host: a tree result kind; tests; allocation and free counts; LTG entries.
@@ -21944,3 +21944,36 @@ Revised steps for step 3: `Heap.Rebuilt` and its lemmas in `Project/Pipeline/Reb
 `Func.returns` in `Correct.lean`, with `Func.implements_moves` and `Func.keeps` derived from
 it; the consumed recursion rule in `Recursion.lean`; the compiler changes with the revisions
 above; `incr` and its theorem.
+
+### Iteration 8, step 3: consumed recursion and `incr`
+
+`Project/Pipeline/Rebuilt.lean` holds `Heap.Rebuilt` and its lemmas, taken from the reviewer's
+checked file: `Heap.Rebuilt.null`, `Heap.Built.rebuilt`, `block_pos`, `Node.blocks_pos`,
+`keepNode`, `keepBorrowed`, `keepOwned`, and `Heap.Rebuilt.node`.  `Func.returns` is in
+`Correct.lean`, and `Func.implements_moves` and `Func.keeps` now follow from it in a few lines
+each.  `Recursion.lean` adds `Rebuilds`, `Func.rebuildRecursion`, `Stmt.selfCall_rebuilds`, and
+`Func.entry_rebuilds`.
+
+The compiler's recursive path accepts a tree result.  For such a definition the owned
+parameters are the greatest fixed point of the mode rule, each round intersected with the
+previous one; a definition returning a word owns no parameter.  The internal function's
+context carries `owned` and the definition's own owned positions, `translateSelfCall` requires
+each owned argument to be an owned variable that occurs once in the call and marks it moved
+after the call, and the internal function rejects an owned parameter that some path does not
+move.  The entry reports the internal function's owned positions.
+
+`KeyTree.incr` compiles into `treeMoves` (entry 3, internal function 4).  The internal function
+loads the three fields, calls itself on both children, stores the two results and `k + 1`, and
+returns the record's pointer.  `incr_rec` proves it with `Func.rebuildRecursion`, using the
+reviewer's `KeyTree` lemmas (`incr_call1`, `incr_call2`, `incr_node`, `incr_leaf`, `writes3`);
+`incr_implements` follows by `Func.entry_rebuilds`, and `treeMoves_bytes` covers both
+functions, with axioms `propext`, `Classical.choice`, and `Quot.sound`.  One mistake cost a
+round: a single `hNumParams` fact named the first call's argument list, which fixed the second
+call's arguments to the wrong local; passing `(by rfl)` at each call fixed it.
+
+`tests/modules/run.sh` passed 5,325 comparisons with native Lean, including 24 for `incr`; the
+count cases show that `setKey` and `incr` allocate and free nothing inside the call (22 cases),
+and `incr` returns on a chain of 999 nodes and traps at `unreachable` on 1,000 (8 depth cases in
+all).  The full build passed, and `trees`, `treeFrame`, `words`, and `lists` emit the same
+bytes as before.  The LTG entry `consumed-recursion` describes the proof.
+
