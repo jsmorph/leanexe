@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "node-match",
+  "title": "Match on a value of a recursive type",
+  "summary": "Shows how to prove the compiler's conditional for a match on a borrowed value of a recursive type: a test of the pointer against 0, field loads in the record's branch, and an assignment of each alternative's value.",
+  "roles": ["guidance"],
+  "categories": ["records", "compiler-motifs", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["match", "record", "load", "branch"],
+  "annotationKinds": ["node match", "field load", "match value", "match result", "null constructor"],
+  "modules": ["Project.IR.Stmt", "Project.Pipeline.Records"],
+  "declarations": ["Project.IR.Stmt.ite_spec", "Project.IR.Stmt.load_spec", "Project.IR.Stmt.assign_spec", "Project.Pipeline.NodeBorrowed", "Project.Pipeline.RecordSlots", "Project.Pipeline.slotAddress_toNat"],
+  "premises": ["NodeBorrowed for the argument, which Represent.borrowed gives", "Heap.At, whose top bounds the record's slots inside memory"],
+  "result": "The conditional assigns the value of the alternative that the value's constructor selects.",
+  "consumers": ["Project.Words.first_implements", "Project.Words.sumAcc_step"],
+  "relatedEntries": ["tail-recursion-records", "list-cell"],
+  "exclusion": null
+}

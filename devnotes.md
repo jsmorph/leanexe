@@ -21556,4 +21556,9 @@ Revised steps for 7c3a, each built, tested, committed, and pushed:
   (`isNullCtor`).  `range_implements` is `listRange_implements` with `encode` in place of
   `encodeList`.  `words.wasm` is 1,648 bytes with sha256 `9ffa90bab8d5a4c6…`; `range`
   matched native Lean on 6 counts, and all 5,147 module comparisons pass.
-- [ ] Host support (the `chain-u64` layout), tests, hints, and LTG entries.
+- [x] Host support (the `chain-u64` layout), tests, hints, and LTG entries.  `Words` has the
+  layout of `List UInt64`, so the host's `chain-u64` kinds serve it unchanged.  The LTG
+  entries `node-match` and `tail-recursion-records` are new, and `list-cell` covers
+  constructors of recursive types.
+
+7c3a is done.  7c3b, trees with recursive calls guarded by a depth counter, is next.
