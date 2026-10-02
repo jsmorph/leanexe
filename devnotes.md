@@ -20506,3 +20506,32 @@ parameter at a use that is not the last.  The compiler rejects that form, since 
 program has it, and the copy, with `Live.copy` and `Live.callMove`, comes with the first
 program that needs it.  In-place `set!`, `insertIdx!`, and `eraseIdxIfInBounds` belong to the
 agenda item for in-place updates, after Iteration 5 (I/O) and Iteration 7 (recursive values).
+
+## 2026-10-01: Iteration 5, the I/O adapter
+
+The question was where the adapter that drives a pure step function lives.  The options were
+a driver in the host (C now, JavaScript in a browser), an adapter in the module over Talos's
+`stdio.read` and `stdio.write` with the contract `StdIO.Runs`, an adapter in the module that
+works on arrays in memory, and a WASI adapter.  The provisional answer was the array adapter.
+The independent review confirmed it and corrected three of my claims.  A host loop is
+partly provable, as `Generation.lean` proves an invariant between calls.  The array adapter
+needs new loop work: today an array loop must have an `Array Float` state copied from a
+variable, its body must be one call, and the body allows no moves (281 lines in
+`ArrayLoop.lean`).  And the `StdIO` route's cost is narrower than I stated, since
+`ReturnsOrAborts` and Talos's `wp` are generic in the host state and only `Triple`,
+`Implements`, `Represent`, and the heap predicates fix it to `Unit`, but Talos has no lemma
+that moves a run between host states, so the size of that lift is unknown.
+
+The review's other findings decided the question.  Packed little-endian words are the payload of
+an `Array UInt64`, which the host already writes through `alloc`, so the array adapter needs
+no decoder or new buffer format.  With the state passed in and returned, the host chooses the
+chunk size, and a host loop is the case of one input per call.  `StdIO`'s trusted part is no
+smaller, since its host `read` and `write` also copy bytes.  `StdIO.Runs` fixes the whole input
+at the start, so it cannot state an interactive program, and a browser would need
+asynchronous imports.  The browser and WGSL path copies buffers in and out, which is the
+shape of the array adapter.
+
+The outcome is the array adapter: a compiled Lean function that folds the step function over
+an array of input words, proved by `Implements` from the start.  I asked the user instead of
+proceeding.  The user restated the process: work up the answers and a recommendation, review
+them, and proceed unless the user must be involved.
