@@ -21562,3 +21562,47 @@ Revised steps for 7c3a, each built, tested, committed, and pushed:
   constructors of recursive types.
 
 7c3a is done.  7c3b, trees with recursive calls guarded by a depth counter, is next.
+
+## 2026-10-02: Plan: Iteration 7c3b, trees and recursive calls
+
+7c3b compiles recursion that is not tail recursion over a tree,
+`inductive Tree | leaf | node (left : Tree) (key : UInt64) (right : Tree)`, as calls of the
+function itself with a depth guard (the user's choice).  First programs: `size`, `sum`, and
+`height` (with `max`), read-only recursion over a borrowed tree with a word result.
+
+Questions:
+
+1. Where the depth counter lives.  Options: (a) a fifth global, as the option put to the
+   user said; the trusted `Heap.At` requires the store's globals to equal `Heap.globals`,
+   the allocator's four values, so this changes trusted text; (b) a hidden parameter: the
+   compiler emits, beside the exported function `f t`, an internal function `f.rec t d`
+   that traps at `unreachable` when `d` reaches the limit, calls itself with `d + 1`, and is
+   called by `f` with `d = 0`.  Recommendation: (b).  It leaves the trusted text and every
+   other module unchanged, keeps the counter out of the heap invariant, and traps at
+   `unreachable` as (a) would.  This changes how the user's choice is carried out, so it
+   goes to the user after review.
+2. The proof.  `Implements` allows a trap at `unreachable` anywhere, so the guard needs no
+   bound in the proof: the internal function's specification, for every `d`, is that a
+   call returns or aborts, and when it returns it keeps the store and returns `f t`.  It is
+   proved by induction on `sizeOf t`, with `Stmt.call_spec` taking the induction
+   hypothesis for the calls on the subtrees.  `f`'s `Implements` follows from one call.
+   Recommendation: a rule lemma for this shape, stated once for any recursive type.
+3. The limit.  Wasmtime bounds the stack (Talos does not), so the limit is chosen below the
+   depth at which a chain of `node`s overflows Wasmtime's default stack, checked by a test
+   that runs a chain of the limit's depth and one deeper, which must trap at
+   `unreachable`.  Recommendation: measure the frame depth Wasmtime allows for the internal
+   function and take half of it, rounded down to a power of ten.
+4. The module layout.  Recommendation: the internal functions follow the listed functions,
+   so the index of every listed function is unchanged, and they are exported under the name
+   `f.rec` for tests.
+5. Scope.  A function that builds a tree from a borrowed one, such as `insert`, would share
+   unchanged subtrees, which the owned result cannot contain; it needs moves of recursive
+   values and waits.
+
+Steps, each built, tested, committed, and pushed:
+
+- [ ] `Tree` with its `Encode` instance; the compiler's internal functions, the self-call
+  in a node match's record branch, and the depth guard.
+- [ ] The recursion rule and `size`; then `sum` and `height`.
+- [ ] Host: a tree argument kind; tests against native Lean; the depth tests; hints and LTG
+  entries.
