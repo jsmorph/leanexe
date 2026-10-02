@@ -22036,3 +22036,35 @@ pointer; `dropRight` by `Heap.Rebuilt.node` with `Heap.Rebuilt.refl` for the kep
 release for the dropped one; `leftChild` by a lemma for the cleared slot and the record's
 release, then `NodeOwned.frame` for the returned child.  Tests against native Lean, with free
 counts equal to the released records.
+
+### Review of the step 5 plan
+
+One reviewer checked the plan.  I verified the review by running the reviewer's files:
+`Released.lean` proves `Heap.Rebuilt.released`, `Stmt.releaseNode_rebuilt`,
+`NodeOwned.clearLeft`, `Heap.Rebuilt.leftChild`, `Heap.Rebuilt.dropRight`, and a `KeyTree` form
+of the `leftChild` case, with no `sorry` and axioms `propext`, `Classical.choice`, and
+`Quot.sound`; `Sites.lean` and `Mixed.lean` run the compiler on copies of test programs.  The
+cited compiler lines say what the report says.
+
+- Rule 1 hides a difference between branches.  Today the moved set records a rewrite, so
+  `translateNodeIf` rejects an `if` whose branches disagree about rewriting the record.  With `t`
+  moved from the start of the branch, an `if` that rewrites `t` in one branch and moves its
+  children elsewhere in the other would pass, and rule 3 would then free the record that the
+  first path returns.  Revision: every branching compares the `rebuilt` sets as it compares the
+  moved sets.  Case splits on words with tuple or array results give their branches no record
+  to rewrite.
+- `rebuilt` receives the matched value before `translateReuse` computes the values, and the
+  reuse test reads `rebuilt`; the children kept in their slots are marked moved before rule 2
+  finds the unmoved ones.  Rule 4 reads "moves none of the record's children".
+- Rule 2's order fits `dropRight`.  A program whose call on slot 2's child precedes slot 0's
+  release needs a form of `Heap.Rebuilt.node` with slot 2 first; it waits for such a program.
+  Rule 3 emits the clears and the release after the branch value's assignment.
+- My record of the Iteration 8 review said the compiler rejects a consumed tree together with a
+  borrowed tree.  No code did; the recursive path accepts such a definition, and `Separate`
+  does not keep a borrowed tree apart from the consumed one.  Revision: both paths reject a
+  definition that consumes one tree parameter and borrows another.
+- `dropRight` and `leftChild` join `treeMoves` as entries 5 and 6, which moves the internal
+  functions of `incr` and `insert` to 7 and 8.  The part of `Func.entry_rebuilds` that derives
+  `Implements` from `Heap.Rebuilt` becomes its own lemma for non-recursive functions.  The
+  count cases use the reviewer's table, with a four-node right subtree that shows which child
+  each function releases.
