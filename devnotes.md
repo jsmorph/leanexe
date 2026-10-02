@@ -21385,8 +21385,22 @@ Revised steps:
   pairwise apart and apart from the record's slots, and null slots holding 0; step 3
   derives them from `NodeOwned` and the disjoint blocks.  A zero mask gives no children
   (`childRecords_of_mask`), and the kind-2 branch does not run for a record.
-- [ ] The tree release theorem with the postcondition above, the null root included, and
-  its IR rule for `Stmt.release` of an owned value.
+- [x] The tree release theorem with the postcondition above, the null root included, and
+  its IR rule for `Stmt.release` of an owned value.  `release_tree_run` in
+  `ReleaseTree.lean` and `Stmt.releaseNode_spec` in `Project/IR/Release.lean`, with axioms
+  `propext`, `Classical.choice`, and `Quot.sound`.  The loop invariant is `Releasing`: the
+  allocator invariant; the pending records, linked through count words (`PendingAt`), each
+  a `RecordBody` (the header facts without the count word) with its subtree owned
+  (`SlotsOwned`); their blocks (`forestBlocks`) pairwise disjoint; every region of the
+  starting heap apart from the tree keeping its bytes, staying a region, and lying apart
+  from the pending blocks; and the pages and memory caps unchanged.  The ghost index is
+  `forestRecords`, the number of records still to free.  `Releasing.next` proves one
+  iteration without reference to the code: after the head `q` links its children and is
+  freed, the invariant holds for the children, in reverse order, followed by the rest.  The
+  frame argument splits on whether a region lies in the block group of the same record as a
+  child's count word or of another one; `pairwise_of_ne` turns the pairwise disjointness of
+  the groups into disjointness for any two different records.  `ReleaseTree.lean` is 1,250
+  lines.
 - [ ] Compiler: a fold over a list from a call, released after the fold, with its hint and
   LTG entry; the `release-temporary` entry updated.
 - [ ] `sumRange` with its theorem; host tests, including `sumRange 0` and `call-stats`,
