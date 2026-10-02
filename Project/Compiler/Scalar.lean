@@ -203,6 +203,41 @@ def userType? (type : Lean.Expr) : MetaM (Option UserType) := do
 def isNodeType (type : Lean.Expr) : MetaM Bool :=
   return (← userType? type) matches some (.recursive _)
 
+/-- Whether `type` is `UInt64` or an enumeration, held as one word. -/
+def isWordType (type : Lean.Expr) : MetaM Bool := do
+  if ← isUInt64 type then return true
+  return (← userType? type) matches some (.enum _)
+
+/-- Whether `name` is the constructor without fields of a recursive type, the null pointer. -/
+def isNullCtor (name : Name) : MetaM Bool := do
+  let some (.ctorInfo info) := (← getEnv).find? name | return false
+  unless info.numFields == 0 do return false
+  return (← userType? (.const info.induct [])) matches some (.recursive _)
+
+/-- The fields of `term`, a list cell `x :: xs` of words or a constructor application with
+fields of a recursive type whose other constructor has none, with the child mask of its
+record: bit `i` is set when field `i` is a value of a recursive type.  A type with more than
+one constructor with fields needs a tag, which is not supported yet. -/
+def recordCell? (term : Lean.Expr) : MetaM (Option (List Lean.Expr × UInt64)) := do
+  let term := term.consumeMData
+  if let (``List.cons, #[element, head, tail]) := term.getAppFnArgs then
+    unless ← isUInt64 element do return none
+    return some ([head, tail], 2)
+  let .const name _ := term.getAppFn | return none
+  let some (.ctorInfo info) := (← getEnv).find? name | return none
+  let some (.recursive ctors) ← userType? (.const info.induct []) | return none
+  let some (_, fields) := ctors.find? (·.1 == name) | return none
+  unless !fields.isEmpty && term.getAppNumArgs == fields.length do return none
+  unless ctors.length == 2 && (ctors.filter (!·.2.isEmpty)).length == 1 do
+    throwError "a recursive type must have one constructor without fields and one with fields: {info.induct}"
+  let mut mask : Nat := 0
+  for h : i in [:fields.length] do
+    if ← isNodeType fields[i] then
+      mask := mask + 2 ^ i
+    else unless ← isWordType fields[i] do
+      throwError "a field of a record built by the compiler must be a word or a value of a recursive type: {fields[i]}"
+  return some (term.getAppArgs.toList, UInt64.ofNat mask)
+
 /-- Whether `type` is a pair, a structure, or a sum, whose values have several components. -/
 def isTupleType (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
@@ -281,7 +316,7 @@ def constructorParts? (term type : Lean.Expr) : MetaM (Option (List (Lean.Expr �
 
 /-- The component terms of `term`, a nest of constructor applications of type `type`. -/
 partial def stateTerms (term type : Lean.Expr) : MetaM (List (Lean.Expr × ScalarType)) := do
-  if ← isUInt64List type then return [(term, .u64)]
+  if (← isUInt64List type) || (← isNodeType type) then return [(term, .u64)]
   if ← isTupleType type then
     let some parts ← constructorParts? term type
       | throwError "a loop state must be a tuple of components: {← sourceOf term}"
@@ -561,11 +596,6 @@ def caseBody {γ : Type} (ctx : Ctx) (slots : List (Nat × ScalarType)) (alterna
   let widths ← alternative.fields.mapM fun field => return (← stateTypes field).length
   bindFields ctx (fun ctx xs => k ctx (alternative.body xs)) alternative.fields widths slots []
 
-/-- Whether `type` is `UInt64` or an enumeration, held as one word. -/
-def isWordType (type : Lean.Expr) : MetaM Bool := do
-  if ← isUInt64 type then return true
-  return (← userType? type) matches some (.enum _)
-
 /-- Binds the fields `fields`, from slot `i` on, of the record at local `ptr` to fresh locals,
 and continues with `k` given the field variables and the loads that fill the locals.  A word
 or float field is loaded as its value, and a field of a recursive type as its pointer. -/
@@ -615,6 +645,9 @@ mutual
       if let some index ← enumIndex? name then
         let ir : IRExpr .u64 := .const (UInt64.ofNat index)
         return (ir, [hint ir "constructor"])
+      if ← isNullCtor name then
+        let ir : IRExpr .u64 := .const 0
+        return (ir, [hint ir "null constructor"])
     if let some field ← projectionField? ctx term then
       match field with
       | .inl reduced => return ← translateValue ctx loc reduced
@@ -1318,11 +1351,9 @@ mutual
           let mut temps := #[]
           let mut here := loc
           for (component, type) in components do
-            if let (``List.cons, #[element, head, tail]) := component.consumeMData.getAppFnArgs then
-              unless ← isUInt64 element do
-                throwError "unsupported list element type in {← sourceOf component}"
+            if let some (fields, mask) ← recordCell? component then
               let temp ← fresh .u64 "next state"
-              let (cell, cellHints, after) ← translateCell ctx here head tail temp
+              let (cell, cellHints, after) ← translateCell ctx here fields mask temp
               stmts := stmts ++ cell.toArray
               hints := hints ++ (mkHint here (cell.map stmtLength).sum "list cell"
                 (← sourceOf component) :: cellHints).toArray
@@ -1387,23 +1418,30 @@ mutual
       mkHint nAt (stmtLength nullStmt) "match value" source :: rHints)
     return result
 
-  /-- Translates the list cell `head :: tail`, whose code starts at `loc`, to the statements
-  that its parts need followed by `Stmt.record dst [head, tail] 2`, a record of two slots
-  whose second holds a child.  Returns the statements, their hints, and where they end. -/
-  partial def translateCell (ctx : Ctx) (loc : Loc) (head tail : Lean.Expr) (dst : Nat) :
-      CompileM (List Project.IR.Stmt × List Hint × Loc) := do
-    let ((h, hHints), hStmts, hStmtHints) ← withBlock (translateValue ctx ⟨[], 0⟩ head)
-    let ((t, tHints), tStmts, tStmtHints) ← withBlock (translateValue ctx ⟨[], 0⟩ tail)
+  /-- Translates a record cell with fields `fields` and child mask `mask`, a list cell or a
+  constructor of a recursive type, whose code starts at `loc`, to the statements that its
+  fields need followed by `Stmt.record dst values mask`.  Returns the statements, their
+  hints, and where they end. -/
+  partial def translateCell (ctx : Ctx) (loc : Loc) (fields : List Lean.Expr) (mask : UInt64)
+      (dst : Nat) : CompileM (List Project.IR.Stmt × List Hint × Loc) := do
     let relocate (at_ : Loc) (hint : Hint) : Hint :=
       Hint.within at_.prefix_ (Hint.shift at_.index hint)
-    let tailStart := loc.skip (hStmts.map stmtLength).sum
-    let recordStart := tailStart.skip (tStmts.map stmtLength).sum
-    let stmt := Stmt.record dst [h, t] 2
-    return (hStmts ++ tStmts ++ [stmt],
-      hStmtHints.map (relocate loc) ++ tStmtHints.map (relocate tailStart) ++
-        hHints.map (relocate (recordValueLoc recordStart dst [h, t] 2 0)) ++
-        tHints.map (relocate (recordValueLoc recordStart dst [h, t] 2 1)),
-      recordStart.skip (stmtLength stmt))
+    let mut stmts := []
+    let mut stmtHints := []
+    let mut values := []
+    let mut valueHints := []
+    let mut here := loc
+    for field in fields do
+      let ((v, vHints), fStmts, fStmtHints) ← withBlock (translateValue ctx ⟨[], 0⟩ field)
+      stmts := stmts ++ fStmts
+      stmtHints := stmtHints ++ fStmtHints.map (relocate here)
+      here := here.skip (fStmts.map stmtLength).sum
+      values := values ++ [v]
+      valueHints := valueHints ++ [vHints]
+    let stmt := Stmt.record dst values mask
+    let fieldHints := (List.range values.length).zip valueHints |>.flatMap fun (k, hs) =>
+      hs.map (relocate (recordValueLoc here dst values mask k))
+    return (stmts ++ [stmt], stmtHints ++ fieldHints, here.skip (stmtLength stmt))
 
   /-- Pushes the copying template for an array of `count` elements whose element
   is `element`, a function of the index local, and returns the new array's local. -/
@@ -1649,7 +1687,8 @@ mutual
         let array ← translateArray ctx term (dests?.bind (·.head?))
         let ir : IRExpr .u64 := .get array
         return ([⟨.u64, ir⟩], [[mkHint ⟨[], 0⟩ (exprLength ir) "array result" (← sourceOf term)]])
-      let scalar ← if ← isUInt64List type then pure .u64 else scalarTypeOf type
+      let scalar ← if (← isUInt64List type) || (← isNodeType type) then pure .u64
+        else scalarTypeOf type
       let (⟨resultType, ir⟩, hints) ← translateAs ctx ⟨[], 0⟩ scalar term
       let some dest := dests?.bind (·.head?)
         | return ([⟨resultType, ir⟩], [hints])
@@ -1978,7 +2017,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
     let arrayResult ← isArray resultType
     let floatResult ← isFloat resultType
     let pairResult ← isTupleType resultType
-    let listResult ← isUInt64List resultType
+    let listResult := (← isUInt64List resultType) || (← isNodeType resultType)
     unless arrayResult || floatResult || pairResult || listResult || (← isWordType resultType) do
       throwError "the result of {declName} is not UInt64, Float, an array, a list of words, a pair, or a user type"
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
