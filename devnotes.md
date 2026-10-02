@@ -21318,3 +21318,61 @@ Steps, each built, tested, committed, and pushed:
 - [ ] Compiler: a fold over a temporary list from a call, released after the fold.
 - [ ] `sumRange` with its theorem; host tests, including `call-stats`, which should show as
   many frees as allocations.
+
+### Review of the 7c2 plan
+
+One reviewer checked the plan against the code.  I verified the findings by running the
+reviewer's two sketches and reading the cited lines.
+
+- `findPlace_spec` and `freeObject_spec` hold only for the locals of the one-object case:
+  the parameter equal to the object, count 1, and locals 4 to 10 zero
+  (`RuntimeSpec.lean`, lines 185 to 192 and 267 to 272).  In the tree loop the parameter
+  is the root, `dropChildren` leaves its locals nonzero, and the object's count word holds
+  the pending link.  Both specifications must be restated for any locals whose object
+  local is `ptr`, and for any count word, which `freeObject` overwrites with 0 before
+  reading it.  `joinProgram_spec` already takes any locals.
+- The free counter wraps (`incrementGlobal 3`), and `Heap.At` does not bound it, so a
+  measure computed from it fails.  The reviewer's `wp_loop_ghost` derives a loop rule whose
+  invariant carries a ghost index, by `Nat.find`; it compiles.  The index is the number of
+  records in the pending forest, which falls by one per iteration.
+- The shared object predicate cannot follow from `RecordHeader`, whose `count` field fails
+  once the count word holds a pending link.  `freeObject_spec` and `Heap.At.release` use
+  only `base`, `address`, `below`, and `separate`.  `Heap.Block` is taken (a fresh block
+  after an allocation, `Allocation.lean`, line 42).  The predicate becomes `Heap.Object`,
+  with `base`, `address`, and `region : heap.Region (block store p)`.  A pending record is
+  `RecordHeader` without `count`, with `SlotsOwned`.  The callers of the three release
+  lemmas are `Append.lean`, `Live.lean`, and `PairSum/Verify.lean`.
+- The exact postcondition for choice 1(b): some `heap'` with `heap'.At final`, the same
+  pages and memory caps, and every region `r` of the old heap apart from the tree's blocks
+  keeping its bytes and staying a region of `heap'`.  `Func.implements_heap` for `sumRange`
+  needs nothing more: the keep and outside clauses of `callImplements_spec` place every
+  caller array apart from the list, `arrayAt_frame` and `Heap.Owned.frame` rebuild the
+  arrays, and `memoryCap_le_of_caps` serves later allocations.  Neither the same `top` nor
+  the location of the freed blocks is needed.
+- Missing lemmas: a specification of `dropReference` for a child (magic, count 1, the count
+  word set to the old pending head, pending set to the child); the counted loop of
+  `dropChildren` for kind 1, whose measure `width - slot` fits `wp_loop_cons`;
+  `NodeOwned.listAt`; and the null root, for which `release` returns at once.  `sumRange 0`
+  takes that path.
+- The mask test reads the slot's bit: `maskOf_test` states
+  `(maskOf slots >>> (UInt64.ofNat i % 64)) &&& 1 = slots[i].bit` for at most 64 slots, and
+  the reviewer's 35-line proof compiles.
+- `translateFold` accepts only a list variable, and a `let` that binds a list takes the
+  arrays-only path and fails.  `sumRange` folds over the call directly, so the `let` waits.
+  The `release-temporary` LTG entry names the lemmas that step 1 restates, and the list
+  release needs its own hint and entry.
+- Correction: `freeObject` writes the freed record's header and the header of the free
+  block below it.  It reads the block above without writing it.
+
+Revised steps:
+
+- [ ] `Heap.Object`; `findPlace_spec`, `freeObject_spec`, `Heap.At.release`, and the frame
+  lemmas after a release restated over it and over any locals; `wp_loop_ghost`;
+  `maskOf_test`.
+- [ ] `dropReference` for a child and `dropChildren` for a record whose children are owned.
+- [ ] The tree release theorem with the postcondition above, the null root included, and
+  its IR rule for `Stmt.release` of an owned value.
+- [ ] Compiler: a fold over a list from a call, released after the fold, with its hint and
+  LTG entry; the `release-temporary` entry updated.
+- [ ] `sumRange` with its theorem; host tests, including `sumRange 0` and `call-stats`,
+  which should show as many frees as allocations.
