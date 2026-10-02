@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "partial-release",
+  "title": "Partial release of a consumed tree",
+  "summary": "Proves the compiler's release of the records a function drops from a consumed tree: a child released before the matched record is rewritten, or the moved children's slots cleared and the matched record released after the result is taken.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["records", "release", "ownership", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["release", "record", "store", "move", "frame", "ownership"],
+  "annotationKinds": ["release child", "clear slot", "release record"],
+  "modules": ["Project.Pipeline.Rebuilt", "Project.IR.Release", "Project.IR.Recursion"],
+  "declarations": ["Project.Pipeline.Heap.Rebuilt.released", "Project.IR.Stmt.releaseNode_rebuilt", "Project.IR.Stmt.releaseNode_spec", "Project.Pipeline.NodeOwned.clearLeft", "Project.Pipeline.Heap.Rebuilt.leftChild", "Project.Pipeline.Heap.Rebuilt.dropRight", "Project.Pipeline.Heap.Rebuilt.node", "Project.Pipeline.Heap.Rebuilt.refl", "Project.IR.Func.implements_rebuilt"],
+  "premises": ["A consumed tree argument, owned with pairwise disjoint blocks", "Heap.At and a memory cap of at most 65,535 pages", "The release function at index 1"],
+  "result": "Heap.Rebuilt over the consumed blocks for the value the function returns, from which Func.implements_rebuilt gives Implements.",
+  "consumers": ["Project.Trees.dropRight_implements", "Project.Trees.leftChild_implements"],
+  "relatedEntries": ["record-reuse", "consumed-recursion", "release-list"],
+  "exclusion": null
+}

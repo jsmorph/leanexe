@@ -199,6 +199,39 @@ theorem Stmt.selfCall_rebuilds [Represent α] [Encode β] {m : Module} {idx : Na
   · rintro store' out ⟨heap', q, rfl, hR⟩
     exact ⟨next q, by simpa using hSet q, heap', q, rfl, hR⟩
 
+/-- A function whose body leaves one pointer to a value rebuilt from the consumed blocks
+implements `f`. -/
+theorem Func.implements_rebuilt [Represent α] [Encode β] (funcs : List (Func × String)) (i : Nat)
+    (func : Func) (name : String) (hFunc : funcs[i]? = some (func, name)) (f : α → β)
+    (arity : ∀ heap store params (x : α), Represent.borrowed heap store params x →
+      params.length = func.params.length)
+    (correct : ∀ (x : α) (heap : Heap) (initial : Store Unit) (params : List Value),
+      heap.At initial → Represent.borrowed heap initial params x →
+      Separate initial (Represent.moves initial params x) (Represent.reads params x) →
+      initial.memoryCap (compile funcs) 0 ≤ 65535 →
+      Triple (compile funcs) func.body func.scratch
+        (fun store state => store = initial ∧ state = func.state params)
+        (fun store state => ∃ (heap' : Heap) (q : UInt64) (next : State),
+          Expr.evalResults store.mem func.scratch func.results state = some ([.i64 q], next) ∧
+          heap.Rebuilt initial ((Represent.moves initial params x).map (block initial)) heap'
+            store q (Encode.encode (f x)))) :
+    Implements (compile funcs) (2 + i) f :=
+  Func.implements_moves funcs i func name hFunc f arity
+    fun x heap initial params hHeap hB hSeparate hCap =>
+      (correct x heap initial params hHeap hB hSeparate hCap).mono (fun _ _ h => h)
+        fun _ _ ⟨heap', q, next, hEval, hR⟩ => by
+          have hApart : ∀ r, Apart initial (Represent.moves initial params x) r →
+              ∀ b ∈ (Represent.moves initial params x).map (block initial),
+                regionsDisjoint r b := by
+            intro r hr b hb
+            obtain ⟨q', hq', rfl⟩ := List.mem_map.mp hb
+            exact hr q' hq'
+          exact ⟨heap', hR.at_, hR.caps, fun p ws hp ha => (hR.keepBorrowed hp (hApart _ ha)).1,
+            fun p ws hp ha => (hR.keepOwned hp (hApart _ ha)).1, [.i64 q], next, hEval,
+            ⟨q, rfl, hR.owned, hR.disjoint⟩,
+            fun p ws hp ha => (hR.keepBorrowed hp (hApart _ ha)).2,
+            fun p ws hp ha => (hR.keepOwned hp (hApart _ ha)).2⟩
+
 /-- The entry of a consumed recursion: one call of the internal function at depth 0. -/
 theorem Func.entry_rebuilds [Represent α] [Encode β] (funcs : List (Func × String)) (i : Nat)
     (func : Func) (name : String) (hFunc : funcs[i]? = some (func, name)) (f : α → β)
@@ -218,7 +251,7 @@ theorem Func.entry_rebuilds [Represent α] [Encode β] (funcs : List (Func × St
         next.get func.params.length = some (.i64 v))
     (hSpec : ∀ x, Rebuilds (compile funcs) index f x) :
     Implements (compile funcs) (2 + i) f := by
-  refine Func.implements_moves funcs i func name hFunc f arity
+  refine Func.implements_rebuilt funcs i func name hFunc f arity
     fun x heap initial params hHeap hB hSeparate hCap => ?_
   rw [hBody, hResults]
   refine (Stmt.call_spec hImport hCallee hParams).mono ?_ fun _ _ h => h
@@ -231,17 +264,7 @@ theorem Func.entry_rebuilds [Represent α] [Encode β] (funcs : List (Func × St
     fun env => by simpa using hSpec x env store heap params 0 hHeap hB hSeparate hCap, ?_⟩
   rintro store' out ⟨heap', q, rfl, hR⟩
   obtain ⟨next, hNext, hGet⟩ := hSet params q (arity _ _ _ _ hB)
-  have hApart : ∀ r, Apart store (Represent.moves store params x) r →
-      ∀ b ∈ (Represent.moves store params x).map (block store), regionsDisjoint r b := by
-    intro r hr b hb
-    obtain ⟨q', hq', rfl⟩ := List.mem_map.mp hb
-    exact hr q' hq'
-  exact ⟨next, by simpa using hNext, heap', hR.at_, hR.caps,
-    fun p ws hp ha => (hR.keepBorrowed hp (hApart _ ha)).1,
-    fun p ws hp ha => (hR.keepOwned hp (hApart _ ha)).1,
-    [.i64 q], next, by simp [Expr.evalResults, Expr.eval, hGet],
-    ⟨q, rfl, hR.owned, hR.disjoint⟩,
-    fun p ws hp ha => (hR.keepBorrowed hp (hApart _ ha)).2,
-    fun p ws hp ha => (hR.keepOwned hp (hApart _ ha)).2⟩
+  exact ⟨next, by simpa using hNext, heap', q, next, by simp [Expr.evalResults, Expr.eval, hGet],
+    hR⟩
 
 end Project.IR

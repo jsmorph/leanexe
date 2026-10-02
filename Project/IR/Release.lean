@@ -1,5 +1,6 @@
 import Project.IR.Stmt
 import Project.Pipeline.ReleaseTree
+import Project.Pipeline.Rebuilt
 
 /-!
 The rule lemmas for releasing a temporary: `release` called on the owned array, or on the
@@ -56,5 +57,20 @@ theorem Stmt.releaseNode_spec {typeIdx scratch src : Nat} {initial : Store Unit}
     fun env => (release_tree_run hImports hFunc env heap initial ptr n hHeap hOwned
       hDisjoint).returnsOrAborts,
     fun store' out ⟨hOut, hRest⟩ => ⟨before, by simp [hOut, State.setAll], rfl, hRest⟩⟩
+
+/-- The release rule for a value of a recursive type, with its postcondition as a rebuild to
+the null pointer. -/
+theorem Stmt.releaseNode_rebuilt {typeIdx scratch src : Nat} {initial : Store Unit}
+    {before : State} {heap : Heap} {ptr : UInt64} {n : Node} (hImports : m.imports = [])
+    (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
+    (hPtr : before.get src = some (.i64 ptr)) (hHeap : heap.At initial)
+    (hOwned : NodeOwned heap initial ptr n)
+    (hDisjoint : (n.blocks initial ptr).Pairwise regionsDisjoint) :
+    Triple m (.release src) scratch (fun store state => store = initial ∧ state = before)
+      (fun store state => state = before ∧ ∃ heap' : Heap,
+        heap.Rebuilt initial (n.blocks initial ptr) heap' store 0 .null) :=
+  (Stmt.releaseNode_spec hImports hFunc hPtr hHeap hOwned hDisjoint).mono (fun _ _ h => h)
+    fun _ _ ⟨hState, heap', hAt, hPages, hCaps, hRegion⟩ =>
+      ⟨hState, heap', Heap.Rebuilt.released hAt hPages hCaps hRegion⟩
 
 end Project.IR
