@@ -21808,7 +21808,7 @@ Revised steps:
   of the same constructor; `setKey`.  Zeroing moved child slots before a release moves to
   the step that releases part of a consumed tree, the first program that needs it.
 - [x] `Heap.Rebuilt`, the consumed specification and its recursion rule; `incr`.
-- [ ] Statement-level `if` with self-calls and allocation in branches; `insert`.
+- [x] Statement-level `if` with self-calls and allocation in branches; `insert`.
 - [ ] A function that releases part of a consumed tree.
 - [ ] Host: a tree result kind; tests; allocation and free counts; LTG entries.
 
@@ -21976,4 +21976,35 @@ count cases show that `setKey` and `incr` allocate and free nothing inside the c
 and `incr` returns on a chain of 999 nodes and traps at `unreachable` on 1,000 (8 depth cases in
 all).  The full build passed, and `trees`, `treeFrame`, `words`, and `lists` emit the same
 bytes as before.  The LTG entry `consumed-recursion` describes the proof.
+
+### Iteration 8, step 4: `insert`
+
+`KeyTree.insert x t` puts `x` in a search tree: a leaf becomes `node leaf x leaf`, and a node
+recurses into the left or right child or, for a key already present, stays as it is.  Two
+compiler additions serve it.  A constructor of a recursive type with no free matched record of
+its type now allocates a record at the top of a body or in a branch (`translateNewRecord`,
+hint `new record`), where it was an error.  An `if` whose value is a tree is a conditional
+statement whose branches assign a fresh local (`translateNodeIf`, hints `node branch`, `branch
+value`, `if result`); it saves and restores the moved set and requires both branches to move
+the same owned values, and `moveSites` now looks into such an `if`.  The compiled internal
+function allocates one record at a leaf; at a node it loads the fields and, by the comparisons,
+calls itself on one child and stores the result into that child's slot, or changes nothing; in
+every case it returns the record's pointer.  The compiler writes no store for a slot whose
+value is the record's own field.
+
+`insert` joined `treeMoves`, which moved `incr`'s internal function from index 4 to 5; its proof
+changed in the indices only.  `insert_rec` uses `Heap.Rebuilt.refl` (new in `Rebuilt.lean`: an
+owned value with disjoint blocks is rebuilt from its own blocks by code that leaves it) for the
+child a path leaves alone, with the reviewer's `Heap.Rebuilt.node`, and for the path that changes
+nothing.  The leaf goes through `Stmt.record_spec`, `newLeafNode` (a new record holding a null
+pointer, `x`, and a null pointer is the one-node tree), and `Heap.Built.rebuilt`.
+`treeMoves_bytes` covers `setKey`, `incr`, and `insert`, with axioms `propext`,
+`Classical.choice`, and `Quot.sound`.  One mistake: after `Triple.of_forall`, `subst hs` with
+`hs : s = initial` eliminated `initial`, which later statements still named; `subst s st`
+fixed it.
+
+`tests/modules/run.sh` passed 5,445 comparisons with native Lean, 120 of them for `insert`.
+The count cases show one allocation for a new key and none for a present key, 27 count cases
+in all, and the depth cases cover `insert` on chains of 999 and 1,000 nodes, 10 in all.  The
+full build passed, and `trees`, `treeFrame`, `words`, and `lists` emit the same bytes.
 

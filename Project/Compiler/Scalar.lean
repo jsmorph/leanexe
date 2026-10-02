@@ -567,7 +567,7 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
       return (← moveSites owners params pair) ++
         (← lambdaTelescope alternative fun _ body => moveSites owners params body)
   | (``ite, #[type, _, _, a, b]) =>
-      if (← whnfR type).isAppOfArity ``Prod 2 || (← isArray type) then
+      if (← whnfR type).isAppOfArity ``Prod 2 || (← isArray type) || (← isNodeType type) then
         return (← moveSites owners params a) ++ (← moveSites owners params b)
       return []
   | (``Prod.mk, #[_, _, a, b]) =>
@@ -688,9 +688,15 @@ mutual
       markMoved term
       let ir : IRExpr .u64 := .get local_
       return (ir, [hint ir "move"])
-    if let some (fields, _) ← recordCell? term then
+    -- A constructor of a recursive type rewrites the matched owned record when one is free and
+    -- of its type, and allocates a record otherwise.
+    if let some (fields, mask) ← recordCell? term then
       unless term.isAppOf ``List.cons do
-        return ← translateReuse ctx loc term fields
+        if let some (matched, _, _) := ctx.reuse then
+          if !(← get).consumed.contains matched &&
+              (← isDefEq (← inferType term) (← inferType matched)) then
+            return ← translateReuse ctx loc term fields
+        return ← translateNewRecord ctx loc term fields mask
     if let .const name _ := term then
       if let some index ← enumIndex? name then
         let ir : IRExpr .u64 := .const (UInt64.ofNat index)
@@ -729,6 +735,9 @@ mutual
         let ir : IRExpr .u64 := .const (UInt64.ofNat value)
         return (ir, [hint ir "literal"])
     | (``ite, #[type, condition, _, thenTerm, elseTerm]) =>
+        if ← isNodeType type then
+          let ir : IRExpr .u64 := .get (← translateNodeIf ctx source condition thenTerm elseTerm)
+          return (ir, [hint ir "if result"])
         unless ← isWordType type do throwError "unsupported conditional type in {source}"
         let inner := { ctx with foldable := false }
         let (c, cHints) ← translateCondition inner loc condition
@@ -1556,6 +1565,49 @@ mutual
       pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "slot store" source :: valueHints)
     let ir : IRExpr .u64 := .get ptr
     return (ir, [mkHint loc (exprLength ir) "record reuse" source])
+
+  /-- Translates the constructor application `term` of a recursive type, with fields `fields` and
+  child mask `mask`, to a new record in a fresh local: the statements of its fields, then
+  `Stmt.record`.  The value is the record's pointer. -/
+  partial def translateNewRecord (ctx : Ctx) (loc : Loc) (term : Lean.Expr)
+      (fields : List Lean.Expr) (mask : UInt64) : CompileM (IRExpr .u64 × List Hint) := do
+    let source ← sourceOf term
+    unless ctx.foldable && ctx.allocating do
+      throwError "a record may be allocated only at the top of a body or in a branch of a match or an `if` on values of a recursive type: {source}"
+    let dst ← fresh .u64 "record"
+    let (stmts, hints, _) ← translateCell ctx ⟨[], 0⟩ fields mask dst
+    let stmt := seqAll stmts
+    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "new record" source :: hints)
+    let ir : IRExpr .u64 := .get dst
+    return (ir, [mkHint loc (exprLength ir) "new record value" source])
+
+  /-- Translates `if condition then thenTerm else elseTerm`, whose value is of a recursive type,
+  to a conditional statement whose branches assign their value to a fresh local, which the
+  function returns.  Both branches must move the same owned values. -/
+  partial def translateNodeIf (ctx : Ctx) (source : String) (condition thenTerm elseTerm : Lean.Expr) :
+      CompileM Nat := do
+    let result ← fresh .u64 "if result"
+    let (c, cHints) ← translateCondition ctx ⟨[], 0⟩ condition
+    let branchLoc (branch : Nat) : Loc :=
+      ((⟨[], 0⟩ : Loc).skip (exprLength c)).inside (some branch)
+    let saved := (← get).consumed
+    let moves : CompileM (List Lean.Expr) := do
+      return (← get).consumed.filter fun x => ctx.owned.contains x && !saved.contains x
+    let (tPre, ⟨_, tv⟩, tHints, tAt) ← translatePrefixed ctx (branchLoc 0) .u64 thenTerm
+    let thenStmt : Project.IR.Stmt := .assign result tv
+    let thenMoves ← moves
+    modify fun p => { p with consumed := saved }
+    let (ePre, ⟨_, ev⟩, eHints, eAt) ← translatePrefixed ctx (branchLoc 1) .u64 elseTerm
+    let elseStmt : Project.IR.Stmt := .assign result ev
+    let elseMoves ← moves
+    unless thenMoves.all elseMoves.contains && elseMoves.all thenMoves.contains do
+      throwError "both branches of an `if` must move the same owned values: {source}"
+    let stmt : Project.IR.Stmt :=
+      .ite c (seqAll (tPre ++ [thenStmt])) (seqAll (ePre ++ [elseStmt]))
+    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "node branch" source :: cHints ++ tHints ++
+      mkHint tAt (stmtLength thenStmt) "branch value" source :: eHints ++
+      [mkHint eAt (stmtLength elseStmt) "branch value" source])
+    return result
 
   /-- Translates a record cell with fields `fields` and child mask `mask`, a list cell or a
   constructor of a recursive type, whose code starts at `loc`, to the statements that its
