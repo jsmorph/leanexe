@@ -180,6 +180,119 @@ structure Heap.NewRecord (heap : Heap) (initial : Store Unit) (heap' : Heap) (st
   pages : initial.mem.pages ≤ store.mem.pages
   caps : store.memoryCaps = initial.memoryCaps
 
+/-- A borrowed array occupies a region of the heap. -/
+theorem Heap.Borrowed.region {heap : Heap} {store : Store Unit} {p : UInt64}
+    {ws : Array UInt64} (h : heap.Borrowed store p ws) :
+    heap.Region (p.toNat, 8 * (ws.size + 1)) :=
+  ⟨h.below, fun node hNode => regionsDisjoint_symm (h.separate node hNode)⟩
+
+/-- An owned array's block is a region of the heap. -/
+theorem Heap.Owned.region {heap : Heap} {store : Store Unit} {p : UInt64} {ws : Array UInt64}
+    (h : heap.Owned store p ws) : heap.Region (block store p) := by
+  have := h.below
+  have := h.base
+  exact ⟨by simp only [block]; omega, h.separate⟩
+
+/-- An owned record's block is a region of the heap. -/
+theorem RecordHeader.region {heap : Heap} {store : Store Unit} {p : UInt64} {slots : List Slot}
+    (h : RecordHeader heap store p slots) : heap.Region (block store p) := by
+  have := h.below
+  have := h.base
+  exact ⟨by simp only [block]; omega, h.separate⟩
+
+mutual
+/-- Every block of an owned value is a region of the heap. -/
+theorem NodeOwned.regions {heap : Heap} {store : Store Unit} :
+    ∀ (p : UInt64) (n : Node), NodeOwned heap store p n → ∀ b ∈ n.blocks store p, heap.Region b
+  | _, .null, _, _, hb => nomatch hb
+  | p, .record slots, ⟨hHead, hSlots⟩, b, hb => by
+      rcases List.mem_cons.mp hb with rfl | hb
+      · exact hHead.region
+      · exact SlotsOwned.regions p 0 slots hSlots b hb
+
+theorem SlotsOwned.regions {heap : Heap} {store : Store Unit} :
+    ∀ (p : UInt64) (i : Nat) (slots : List Slot), SlotsOwned heap store p i slots →
+      ∀ b ∈ slotsBlocks store p i slots, heap.Region b
+  | _, _, [], _, _, hb => nomatch hb
+  | p, i, .word _ :: rest, ⟨_, hRest⟩, b, hb => SlotsOwned.regions p (i + 1) rest hRest b hb
+  | p, i, .child n :: rest, ⟨hChild, hRest⟩, b, hb => by
+      rcases List.mem_append.mp hb with hb | hb
+      · exact NodeOwned.regions _ n hChild b hb
+      · exact SlotsOwned.regions p (i + 1) rest hRest b hb
+end
+
+/-- The value `n`, owned at `p` in `heap'` and `store`, built from `heap` and `initial`: the
+allocator invariant holds, the value's blocks are pairwise disjoint, every region of `heap`
+keeps its bytes, stays a region, and lies apart from the value's blocks, memory has not
+shrunk, and the memory limits are unchanged. -/
+structure Heap.Built (heap : Heap) (initial : Store Unit) (heap' : Heap) (store : Store Unit)
+    (p : UInt64) (n : Node) : Prop where
+  at_ : heap'.At store
+  owned : NodeOwned heap' store p n
+  disjoint : (n.blocks store p).Pairwise regionsDisjoint
+  region : ∀ r, heap.Region r →
+    (∀ a, r.1 ≤ a → a < r.1 + r.2 → store.mem.bytes a = initial.mem.bytes a) ∧
+      heap'.Region r ∧ ∀ b ∈ n.blocks store p, regionsDisjoint r b
+  pages : initial.mem.pages ≤ store.mem.pages
+  caps : store.memoryCaps = initial.memoryCaps
+
+/-- The null pointer is the empty value, built from any heap. -/
+theorem Heap.Built.null {heap : Heap} {initial : Store Unit} (h : heap.At initial) :
+    heap.Built initial heap initial 0 .null :=
+  ⟨h, rfl, .nil, fun _ hr => ⟨fun _ _ _ => rfl, hr, fun _ hb => nomatch hb⟩, le_refl _, rfl⟩
+
+/-- A record allocated and filled with the word `x` and the pointer `p` to a built value
+`n` holds the list cell of `x` and `n`. -/
+theorem Heap.Built.cell {heap heap1 heap2 : Heap} {initial store1 store2 : Store Unit}
+    {p ptr x : UInt64} {n : Node} (h : heap.Built initial heap1 store1 p n)
+    (hNew : heap1.NewRecord store1 heap2 store2 ptr [x, p] 2) :
+    heap.Built initial heap2 store2 ptr (.record [.word x, .child n]) := by
+  have hOld := NodeOwned.regions p n h.owned
+  obtain ⟨hOwned, hBlocks⟩ := NodeOwned.frame p n h.owned fun b hb =>
+    ⟨(hNew.region b (hOld b hb)).1, (hNew.region b (hOld b hb)).2.1⟩
+  have hx : store2.mem.read64 (slotAddress ptr 0) = x := hNew.slots 0 (by simp)
+  have hp : store2.mem.read64 (slotAddress ptr 1) = p := hNew.slots 1 (by simp)
+  have hNewBlocks : Node.blocks store2 ptr (.record [.word x, .child n]) =
+      block store2 ptr :: n.blocks store1 p := by
+    simp only [Node.blocks, slotsBlocks, hp, hBlocks, List.append_nil]
+  refine ⟨hNew.at_, ⟨hNew.header _ rfl rfl, hx, by rw [hp]; exact hOwned, trivial⟩, ?_,
+    fun r hr => ?_, h.pages.trans hNew.pages, hNew.caps.trans h.caps⟩
+  · rw [hNewBlocks]
+    exact .cons (fun b hb => regionsDisjoint_symm (hNew.region b (hOld b hb)).2.2) h.disjoint
+  · obtain ⟨hBytes, hRegion, hApart⟩ := h.region r hr
+    obtain ⟨hBytes', hRegion', hNewApart⟩ := hNew.region r hRegion
+    refine ⟨fun a hLow hHigh => (hBytes' a hLow hHigh).trans (hBytes a hLow hHigh), hRegion',
+      fun b hb => ?_⟩
+    rw [hNewBlocks] at hb
+    rcases List.mem_cons.mp hb with rfl | hb
+    · exact hNewApart
+    · exact hApart b hb
+
+/-- A value built from `heap` keeps every array that `heap` lends or owns, and lies apart
+from it. -/
+theorem Heap.Built.keepBorrowed {heap heap' : Heap} {initial store : Store Unit} {p q : UInt64}
+    {n : Node} {ws : Array UInt64} (h : heap.Built initial heap' store p n)
+    (hq : heap.Borrowed initial q ws) :
+    heap'.Borrowed store q ws ∧ ∀ b ∈ n.blocks store p,
+      regionsDisjoint (q.toNat, 8 * (ws.size + 1)) b := by
+  obtain ⟨hBytes, hRegion, hApart⟩ := h.region _ hq.region
+  exact ⟨⟨arrayAt_frame hq.values h.pages hBytes, hRegion.below,
+    fun node hNode => regionsDisjoint_symm (hRegion.separate node hNode)⟩, hApart⟩
+
+theorem Heap.Built.keepOwned {heap heap' : Heap} {initial store : Store Unit} {p q : UInt64}
+    {n : Node} {ws : Array UInt64} (h : heap.Built initial heap' store p n)
+    (hq : heap.Owned initial q ws) :
+    (heap'.Owned store q ws ∧ capacityAt store q = capacityAt initial q) ∧
+      ∀ b ∈ n.blocks store p, regionsDisjoint (q.toNat - 48, 48 + capacityAt initial q) b := by
+  obtain ⟨hBytes, hRegion, hApart⟩ := h.region _ hq.region
+  have := hq.base
+  have := hq.address
+  simp only [block] at hBytes hRegion hApart
+  refine ⟨⟨Heap.Owned.frame hq h.pages (fun a hLow hHigh => hBytes a hLow (by omega))
+      (by have := hRegion.below; simp only at this; omega) hRegion.separate,
+    capacityAt_frame (by omega) (by omega) fun a hLow hHigh => hBytes a hLow (by omega)⟩,
+    hApart⟩
+
 /-- The list of words `xs` at `p` in `mem`: the null pointer for `[]`, and for `x :: xs` a
 nonzero pointer to two words inside memory and the 32-bit address space, the first `x` and
 the second a pointer to `xs`. -/
@@ -203,7 +316,8 @@ noncomputable def listLength (mem : Mem) (p : UInt64) : Nat :=
 theorem ListAt.listLength {mem : Mem} {p : UInt64} {xs : List UInt64} (h : ListAt mem p xs) :
     listLength mem p = xs.length := by
   have hExists : ∃ xs, ListAt mem p xs := ⟨xs, h⟩
-  rw [Pipeline.listLength, dif_pos hExists, ListAt.unique (Classical.choose_spec hExists) h]
+  simp only [Pipeline.listLength, hExists, ↓reduceDIte]
+  rw [ListAt.unique (Classical.choose_spec hExists) h]
 
 /-- A borrowed list of words heads a list in memory. -/
 theorem NodeBorrowed.listAt {heap : Heap} {store : Store Unit} (hHeap : heap.At store) :

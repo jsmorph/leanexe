@@ -286,6 +286,8 @@ def listCases : IO Unit := do
   let random := (List.range 30).map fun i => (List.range (i % 13)).map fun k => rw (13 * i + k)
   for xs in chosen ++ random do
     line "lists" "listSum" "i64" [chain xs] (toString (LeanExe.Examples.Lists.listSum xs))
+  for n in [0, 1, 2, 3, 7, 64, 65, 300, 1000] do
+    line "lists" "listRange" "chain-u64" [u n] (words (LeanExe.Examples.Lists.listRange n))
 
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
