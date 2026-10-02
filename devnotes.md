@@ -21091,3 +21091,47 @@ discriminant, a sum as a loop state, literal sub-patterns (`| .rect 0 h`, which 
   `normalize` (109 lines) proves the run of its `if` chain once for any slot values, and
   `totalArea` (160 lines) follows `calcRun`'s proof with two `setAll` lemmas, so no `simp`
   call reshapes a state.  `ofWords` takes 30 lines.
+
+## 2026-10-02: Plan: Iteration 7c, recursive types
+
+7a and 7b represent types without recursion as words through `Flat`.  A recursive type
+needs pointers.  This plan revises the section "Revision: Iteration 7 generic over inductive
+types" in the light of 7a and 7b; that section's questions were never reviewed.
+
+Questions:
+
+1. How the trusted statement represents a recursive type.  Options: (a) a class
+   `Encode α` with `encode : α → Node`, where `Node` is the null pointer or a record whose
+   slots hold words or child nodes, and one generic instance `[Encode α] : Represent α`:
+   `owned` says the pointer heads a tree of records matching the node, each record owned,
+   in its own block, pairwise disjoint, below `top`, and apart from free blocks; `borrowed`
+   says the same without ownership of the blocks; `blocks` lists the records' blocks by
+   following the pointers in memory; `reads` and `moves` are empty, as the reviewed plan
+   chose; (b) a hand-written `Represent` instance per type.  Recommendation: (a), the record
+   counterpart of `Flat`: one generic instance in `Implements.lean`, and per type a short
+   `encode`.  `List UInt64` gets `encode [] = null` and `encode (x :: xs) = record [word x,
+   child (encode xs)]`, the layout the user chose.
+2. The layout rule for user types, which each `encode` follows: a constructor without fields
+   is the null pointer when it is the only one; a tag slot holding the constructor index
+   comes first when more than one constructor has fields; other fields follow in declaration
+   order, flattened by the 7a and 7b rules, and a recursive field is a child pointer.  Open:
+   several constructors without fields in a recursive type (tag-only records, which
+   allocate, or rejected).  Recommendation: tag-only records, so no ordinary type is
+   rejected; decided when the first such type is compiled.
+3. Steps, each ending with bytes and a theorem:
+   - 7c1, lists of words: `Encode (List UInt64)`; the heap facts for a record; `listSum`, a
+     loop over a borrowed list that the host builds; and `listRange`, a loop that conses onto
+     a list it owns.  No compiled code releases a list.
+   - 7c2, recursive `release`: the specification of `release` for a tree of records, and
+     `sumRange n = (listRange n).foldl (· + ·) 0`, which releases its temporary list.
+   - 7c3, user recursive types: constructors as record allocations and matches as loads,
+     with a user list type and then a tree, where recursion that is not tail recursion
+     needs its own decision.
+4. The `release` specification in 7c2: any tree of records, so that 7c3's trees reuse it.
+   The pending list then holds several objects, and the invariant describes a forest of
+   pending subtrees and the records already freed.
+5. The limits found in the review of the first plan stay: `Implements` preserves only word
+   arrays across a call, so a list may cross a call as a result but not as a held value;
+   loops only; no `Moved` list.
+
+Question 1 changes the trusted statement and goes to the user after review.
