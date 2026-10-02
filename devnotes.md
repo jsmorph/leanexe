@@ -20866,3 +20866,55 @@ separate decision when a tree program needs it; the first programs `listRange`, 
 and `sumRange n = (listRange n).foldl (· + ·) 0`; and host support for list arguments and
 results.  Question 1 changes the trusted statement and goes to the user after review;
 question 2 goes to the user when the first user type is compiled.
+
+## 2026-10-02: Iteration 7 reordered
+
+The user showed the kinds of code the language must eventually cover: an enumeration
+`PC` with a state-machine `step : State → State` over a structure, and a `Terminator` sum and
+`BasicBlock` structure whose fields include an expression type and a `List Statement`.  On
+2026-10-02 the user agreed to split Iteration 7 into steps that each end with bytes and a
+theorem: 7a, enumerations and structures without recursion, as words and flattened fields,
+with `step` as the program; 7b, sums with fields and no recursion, flattened with a tag; 7c,
+recursive types as records, lists first, then lists of user types and trees, with recursive
+`release`.  The decision on recursion that is not tail recursion comes when the first tree is
+evaluated.  The record design of the two sections above is kept for 7c.
+
+## 2026-10-02: Plan: Iteration 7a, enumerations and flat structures
+
+The program is the user's `step : State → State` over `inductive PC | E1 | E2 | E3 | E4`
+and `structure State where pc : PC; r m n : UInt64`.  Lean's unfolding equation for `step`
+is a matcher that unfolds to `State.casesOn x fun pc r m n => PC.casesOn pc a₁ a₂ a₃ a₄`, where
+each alternative receives the rebuilt value `{ pc := PC.Eᵢ, r := r, m := m, n := n }` as the
+named pattern `s`.  Each `{ s with … }` is a full `State.mk` whose other fields are
+projections such as `s.m`, and `State.m` is the primitive projection `self.3`.
+
+Questions:
+
+1. How the trusted statement represents these types.  Options: (a) a class
+   `Flat α β` with `flat : α → β`, where `β` is a type that already has an instance, and
+   generic instances `[Flat α β] [Scalar β] : Scalar α` and `[Flat α β] [Represent β] :
+   Represent α` that represent `x` as `flat x`; per type, `Flat PC UInt64` maps a
+   constructor to its index (`PC.toCtorIdx`), and `Flat State (PC × UInt64 × UInt64 ×
+   UInt64)` lists the fields in declaration order; the maps are written by hand now and
+   derived by a command later; (b) a hand-written `Scalar` instance per type.
+   Recommendation: (a).  The trusted text is two generic instances and one short map per
+   type, the same pattern as `Encode` for 7c, and a structure with array fields gets the
+   pair instance's ownership facts through the same map.
+2. What the compiler accepts.  An enumeration is one word, and a constructor is its index.
+   A structure is its fields' components in order, in parameters, results, `let`s, and loop
+   states, as pairs are now; parameters of a structure type become several WASM parameters
+   bound as a tuple.  A structure constructor is translated as `Prod.mk` is.  A projection
+   of a tuple variable reads the component's local, and a projection of a constructor
+   application reduces to the field.  `casesOn` of a structure binds the fields, as `peel`
+   does for `Prod.casesOn`.  `casesOn` of an enumeration becomes a chain of conditionals on
+   the word, as a value for a scalar result and as `translateResultBranch` statements for a
+   tuple result.  Field types are words, floats, enumerations, and structures of these;
+   array fields wait for a program that needs them.
+3. The theorem.  `step` takes and returns words only, so its theorem is `ImplementsPure`,
+   through `Func.implementsPure`, by cases on the constructor and on `s.r = 0`.
+4. Scope.  A loop that runs `step` would need a call in a loop body that returns several
+   words, which `translateCall` rejects today ("must return one value").  It is left out of
+   7a unless the rule is small; the I/O adapter would add it when a program runs `step` over
+   input.
+5. Tests: `step` in every constructor, with `r` zero and nonzero and `n` zero, compared with
+   native Lean through the host's word arguments and results.
