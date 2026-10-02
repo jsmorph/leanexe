@@ -20703,3 +20703,61 @@ case of two arrays.
   free block when a split would leave less than 56 bytes, so that capacity depends on the
   session's earlier frees.  For `runOut` the test checks that the blocks left at the end are
   the results and the command arrays.
+
+## 2026-10-01: Plan: Iteration 7, recursive values
+
+`deslop.md` states the goal as a program over a list or tree, with recursive `release`.  The
+runtime already lays out records: `release` reads a header's kind, width, and child mask,
+drops the reference in each masked non-null slot of a record (kind 1) through a pending list
+linked by count fields, and frees each object after its children.  `release_run` covers only
+an array without child pointers, and `Heap.Owned` describes only such arrays.  `Tree.lean`
+holds the model of the old recursive `release`; outside that file only its region
+lemmas, such as `regionsDisjoint`, are used.
+
+The questions, in dependency order:
+
+1. What `Represent` needs.  `blocks` takes the store, but `reads` and `moves` take only the
+   values and the Lean value.  A list's cells sit at addresses that only memory gives, so a
+   borrowed list's `reads` and a consumed list's `moves` need the store.  Options: (a) add a
+   `Store Unit` argument to `reads` and `moves`, which leaves the meaning of every existing
+   instance unchanged and touches about 50 uses in `Implements.lean`, `Correct.lean`,
+   `Call.lean`, `Live.lean`, `Tuple.lean`, `ArrayLoop.lean`, `Gpt/Generation.lean`, and
+   `tools/gpt_composites.py`; (b) give lists empty `reads` and no `Moved` instance, which
+   keeps the class but makes every function that reads a list and consumes another value
+   unprovable.  Recommendation: (a).  It changes the trusted definition of `Implements`.
+2. How a `List UInt64` is laid out.  Options: (a) `[]` is the null pointer and `x :: xs` a
+   record of two slots, the head and the tail pointer, with child mask `0b10`; (b) every
+   value is a record whose slot 0 holds the constructor tag, followed by the payload slots of
+   every constructor, as `main` did.  Option (a) allocates nothing for `[]`, and the
+   runtime's `release` already returns at once for 0 and skips null slots.  A general rule
+   for user inductives would map one nullary constructor to null and add a tag slot when
+   more than one constructor carries fields.  Recommendation: (a).  The layout is what the
+   trusted `Represent` instance and the host see.
+3. How compiled code traverses a recursive value.  Options: (a) loops only: `List.foldl`
+   over a borrowed list, and `LeanExe.loop` with a list state, whose step conses onto the
+   list it consumes; (b) native WASM recursion for structural recursion.  Talos skips the
+   testsuite's `assert_exhaustion` cases, so it does not model call-stack exhaustion, and a
+   deep recursion that traps in Wasmtime would be a behavior the theorems do not describe.
+   Recommendation: (a) now, and (b) as its own decision when a tree program needs it.
+4. The first programs.  `listRange n`, the list `[n-1, …, 0]` built by a loop;
+   `listSum xs = xs.foldl (· + ·) 0`; and `sumRange n`, which sums `listRange n`, a
+   temporary that it then releases.  `sumRange` is the first compiled call of `release` on
+   an object with children.
+5. The specification of `release` for objects with children.  Options: (a) a chain of
+   two-slot records whose second slot is the only masked one, which keeps the pending list
+   at one object; (b) any tree of records and arrays, as `Tree.lean` modeled for the old
+   code.  Recommendation: (a), generalized when a tree program arrives.
+6. Temporaries that are lists.  `Live` holds word arrays only.  Options: (a) prove
+   `sumRange` directly from the template rules; (b) generalize `Live`'s temporaries to
+   objects with a predicate and a list of blocks.  Recommendation: (a), since one program
+   needs it; (b) when a second does.
+
+New pieces under these recommendations: `Heap.Record` (a kind-1 object with given slots and
+mask) and `Heap.ListOwned` and `Heap.ListBorrowed`; the `Represent (List UInt64)` instance;
+the cons template (`alloc` of 16 bytes, header stores of kind, width, and mask, and the two
+slot stores) with a `NewArray`-like fact; the list fold loop and its rule; the release
+specification for chains; compiler support for `[]`, `::`, `List.foldl`, a loop with a list
+state, and a `let`-bound list temporary; and tests that compare with native Lean and count
+allocations and frees.
+
+Questions 1 and 2 change the trusted statement, so they go to the user after the review.
