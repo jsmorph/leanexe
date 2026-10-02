@@ -21863,3 +21863,51 @@ it allocates and frees nothing beyond the host's records of the argument.  The L
 other trees the caller holds.  No present program passes a tree and holds another, so this
 is recorded for the step that composes calls on trees.
 
+
+### Plan: Iteration 8, step 3, consumed recursion and `incr`
+
+`KeyTree.incr` adds 1 to every key: `leaf ↦ leaf`, `node l k r ↦ node l.incr (k + 1) r.incr`.
+It compiles into `treeMoves` after `setKey` (entry 3, internal function 4).  The internal
+function takes the tree and the depth, aborts when `999 < d`, returns 0 for a leaf, and for a
+node loads the three fields, calls itself on `l` and on `r` at depth `d + 1`, stores the two
+results and `k + 1` into the record's slots, and returns the record's pointer.  It allocates
+and frees nothing.
+
+Compiler:
+
+1. The mode rule on the recursive path is a greatest fixed point.  Every node parameter's
+   position at a self-call starts as owned; `moveSites` runs with `owners` extended by the
+   definition's own positions; the owned positions become those of the node parameters among
+   the sites; the run repeats until the positions stop changing.  The earlier review's rule,
+   "a self-call's position is owned exactly when the other sites make it owned", leaves `incr`
+   borrowed, since only the self-calls move the children, and `incr` would then need to copy
+   every record.
+2. `translateSelfCall` passes an owned position's argument as a move: the argument must be an
+   owned node variable, which the call marks as moved.
+3. A recursive definition may return a value of a recursive type, one word.
+4. Reuse in the internal function works as in step 2.  The entry's owned positions are the
+   internal function's.
+
+Proofs:
+
+1. `Heap.Rebuilt heap initial gone heap' store p n`, the earlier reviewer's structure with a
+   `pages` field: the allocator invariant; `n` owned at `p` with pairwise disjoint blocks; every
+   region of `heap` of positive size apart from the blocks `gone` keeps its bytes, stays a
+   region of `heap'`, and lies apart from the result's blocks; memory not smaller; caps the same.
+2. `Rebuilds m idx f x`: for every depth word, from `Heap.At`, arguments that represent `x` as
+   borrowed (for a `Moved` tree, owned with disjoint blocks), and the cap premise, the call
+   aborts or returns one pointer `q` with
+   `heap.Rebuilt store (moved blocks) heap' final q (encode (f x))`.
+3. `Func.returns`, the general step from a body's triple to `ReturnsOrAborts` with any
+   postcondition on the final store and the results; `Func.rebuildRecursion`, strong induction
+   on a measure as in `Func.recursion`; `Stmt.selfCall_rebuilds`; `Func.entry_rebuilds`, which
+   gives `Implements` from `Rebuilds`.
+4. `Heap.Rebuilt.null`, `Heap.Rebuilt.keepNode` (a sibling owned before a call stays owned with
+   the same blocks and lies apart from the call's result), `Heap.Rebuilt.keepRegion`, and a lemma
+   for a record whose header stays, whose children were rebuilt by consecutive calls, and whose
+   slots the code then writes.
+5. `incr_implements : Implements treeMoves.module 3 (fun t : Moved KeyTree => t.val.incr)`, and
+   `treeMoves_bytes` for both functions.
+
+Tests: `incr` against native Lean, with zero allocations and frees inside the call, and the depth
+guard on chains of 999 and 1,000 nodes.  An LTG entry for consumed recursion.
