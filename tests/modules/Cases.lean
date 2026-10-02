@@ -13,6 +13,7 @@ import LeanExe.Examples.Clob
 import LeanExe.Examples.Calc
 import LeanExe.Examples.Shape
 import LeanExe.Examples.Lists
+import LeanExe.Examples.Words
 
 /-! Test cases for the modules other than `gpt.wasm` and `prng.wasm`, computed by native
 Lean.  Each line is `module|export|result kind|host arguments|expected result`, with
@@ -290,7 +291,18 @@ def listCases : IO Unit := do
     line "lists" "listRange" "chain-u64" [u n] (words (LeanExe.Examples.Lists.listRange n))
     line "lists" "sumRange" "i64" [u n] (toString (LeanExe.Examples.Lists.sumRange n))
 
+open LeanExe.Examples.Words in
+def Words.ofList : List UInt64 → Words
+  | [] => .nil
+  | x :: xs => .cons x (Words.ofList xs)
+
+open LeanExe.Examples.Words in
+def wordsCases : IO Unit := do
+  let lists : List (List UInt64) := [[], [0], [maxU], [7, 8, 9], (List.range 50).map rw]
+  for xs in lists do
+    line "words" "first" "i64" [chain xs] (toString (Words.ofList xs).first)
+
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
   piecewiseCases; sumSquaresCases; meanCases; bucketCases; clobCases; runCases
-  calculatorCases; shapeCases; listCases
+  calculatorCases; shapeCases; listCases; wordsCases
