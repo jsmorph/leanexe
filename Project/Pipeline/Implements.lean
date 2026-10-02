@@ -22,7 +22,7 @@ class Represent (α : Type) where
   reads : List Value → α → List (Nat × Nat)
   /-- The pointers of the arrays among the arguments `vs` of `x` that the call
   consumes. -/
-  moves : List Value → α → List UInt64
+  moves : Store Unit → List Value → α → List UInt64
 
 /-- The objects that the owned values `vs` of `x` occupy lie outside the memory region
 `region`, given as its start and length. -/
@@ -75,7 +75,7 @@ instance (priority := low) [Scalar α] : Represent α where
   owned _ _ vs x := vs = Scalar.values x
   blocks _ _ _ := []
   reads _ _ := []
-  moves _ _ := []
+  moves _ _ _ := []
 
 theorem Scalar.borrowed [Scalar α] {heap : Heap} {store : Store Unit} {params : List Value}
     {x : α} : Represent.borrowed heap store params x ↔ params = Scalar.values x :=
@@ -107,7 +107,7 @@ instance : Represent (Array UInt64) where
   reads vs xs := match vs with
     | [.i64 ptr] => [(ptr.toNat, 8 * (xs.size + 1))]
     | _ => []
-  moves _ _ := []
+  moves _ _ _ := []
 
 /-- A pair is represented by its first component's values followed by its
 second's, and an owned pair's components occupy disjoint blocks.  Pairs of scalars use the
@@ -123,8 +123,8 @@ instance (priority := 50) [Represent α] [Represent β] : Represent (α × β) w
     Represent.blocks store (vs.drop (Represent.width p.1)) p.2
   reads vs p := Represent.reads (vs.take (Represent.width p.1)) p.1 ++
     Represent.reads (vs.drop (Represent.width p.1)) p.2
-  moves vs p := Represent.moves (vs.take (Represent.width p.1)) p.1 ++
-    Represent.moves (vs.drop (Represent.width p.1)) p.2
+  moves store vs p := Represent.moves store (vs.take (Represent.width p.1)) p.1 ++
+    Represent.moves store (vs.drop (Represent.width p.1)) p.2
 
 /-- An `Array Float` is stored as the array of its elements' bit patterns. -/
 instance : Represent (Array Float) where
@@ -133,7 +133,7 @@ instance : Represent (Array Float) where
   owned heap store vs xs := Represent.owned heap store vs (xs.map Float.toBits)
   blocks store vs xs := Represent.blocks store vs (xs.map Float.toBits)
   reads vs xs := Represent.reads vs (xs.map Float.toBits)
-  moves _ _ := []
+  moves _ _ _ := []
 
 /-- An array that the caller hands over: the call receives it as owned, reads
 nothing else of it, and consumes its block. -/
@@ -143,7 +143,7 @@ instance : Represent (Moved (Array UInt64)) where
   owned heap store vs xs := Represent.owned heap store vs xs.val
   blocks store vs xs := Represent.blocks store vs xs.val
   reads _ _ := []
-  moves vs _ := match vs with
+  moves _ vs _ := match vs with
     | [.i64 ptr] => [ptr]
     | _ => []
 
@@ -153,7 +153,7 @@ instance : Represent (Moved (Array Float)) where
   owned heap store vs xs := Represent.owned heap store vs (Moved.mk (xs.val.map Float.toBits))
   blocks store vs xs := Represent.blocks store vs (Moved.mk (xs.val.map Float.toBits))
   reads _ _ := []
-  moves vs xs := Represent.moves vs (Moved.mk (xs.val.map Float.toBits))
+  moves store vs xs := Represent.moves store vs (Moved.mk (xs.val.map Float.toBits))
 
 mutual
 /-- A slot of a record: a word, or a child value held by its pointer. -/
@@ -252,6 +252,21 @@ def slotsBlocks (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → List
       Node.blocks store (store.mem.read64 (slotAddress p i)) n ++ slotsBlocks store p (i + 1) rest
 end
 
+mutual
+/-- The pointers of the records of `n` at `p`, found by following its child pointers. -/
+def Node.pointers (store : Store Unit) (p : UInt64) : Node → List UInt64
+  | .null => []
+  | .record slots => p :: slotsPointers store p 0 slots
+
+/-- The pointers of the records of the children in slots `i` on of the record at `p`. -/
+def slotsPointers (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → List UInt64
+  | [] => []
+  | .word _ :: rest => slotsPointers store p (i + 1) rest
+  | .child n :: rest =>
+      Node.pointers store (store.mem.read64 (slotAddress p i)) n ++
+        slotsPointers store p (i + 1) rest
+end
+
 /-- A type whose values are records on the heap: `encode x` gives the records that hold
 `x`. -/
 class Encode (α : Type) where
@@ -269,7 +284,19 @@ instance [Encode α] : Represent α where
     | [.i64 p] => Node.blocks store p (Encode.encode x)
     | _ => []
   reads _ _ := []
-  moves _ _ := []
+  moves _ _ _ := []
+
+/-- A value of a recursive type that the caller hands over: the call receives its records as
+owned, reads nothing else of it, and consumes every record. -/
+instance [Encode α] : Represent (Moved α) where
+  width _ := 1
+  borrowed heap store vs x := Represent.owned heap store vs x.val
+  owned heap store vs x := Represent.owned heap store vs x.val
+  blocks store vs x := Represent.blocks store vs x.val
+  reads _ _ := []
+  moves store vs x := match vs with
+    | [.i64 p] => Node.pointers store p (Encode.encode x.val)
+    | _ => []
 
 /-- A list of words: the empty list is the null pointer, and `x :: xs` a record of two slots,
 the word `x` and the pointer to `xs`. -/
@@ -339,20 +366,20 @@ invariant holds again, and the memory's maximum size is unchanged. -/
 def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α → β) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
     heap.At store → Represent.borrowed heap store params x →
-    Separate store (Represent.moves params x) (Represent.reads params x) →
+    Separate store (Represent.moves store params x) (Represent.reads params x) →
     store.memoryCap m 0 ≤ 65535 →
     ReturnsOrAborts env m entry store params.reverse fun final values =>
       ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final values.reverse (f x) ∧
         final.memoryCaps = store.memoryCaps ∧
         (∀ p ws, heap.Borrowed store p ws →
-          Apart store (Represent.moves params x) (p.toNat, 8 * (ws.size + 1)) →
+          Apart store (Represent.moves store params x) (p.toNat, 8 * (ws.size + 1)) →
           heap'.Borrowed final p ws) ∧
-        (∀ p ws, heap.Owned store p ws → Apart store (Represent.moves params x) (block store p) →
+        (∀ p ws, heap.Owned store p ws → Apart store (Represent.moves store params x) (block store p) →
           heap'.Owned final p ws ∧ capacityAt final p = capacityAt store p) ∧
         (∀ p ws, heap.Borrowed store p ws →
-          Apart store (Represent.moves params x) (p.toNat, 8 * (ws.size + 1)) →
+          Apart store (Represent.moves store params x) (p.toNat, 8 * (ws.size + 1)) →
           Represent.outside final values.reverse (f x) (p.toNat, 8 * (ws.size + 1))) ∧
-        (∀ p ws, heap.Owned store p ws → Apart store (Represent.moves params x) (block store p) →
+        (∀ p ws, heap.Owned store p ws → Apart store (Represent.moves store params x) (block store p) →
           Represent.outside final values.reverse (f x) (block store p))
 
 /-- For every input satisfying `P`, under the premises of `Implements`, the call
@@ -361,7 +388,7 @@ def Satisfies [Represent α] [Represent β] (m : Module) (entry : Nat)
     (P : α → Prop) (Q : α → β → Prop) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
     P x → heap.At store → Represent.borrowed heap store params x →
-    Separate store (Represent.moves params x) (Represent.reads params x) →
+    Separate store (Represent.moves store params x) (Represent.reads params x) →
     store.memoryCap m 0 ≤ 65535 →
     ReturnsOrAborts env m entry store params.reverse fun final values =>
       ∃ (heap' : Heap) (y : β), heap'.At final ∧ Represent.owned heap' final values.reverse y ∧

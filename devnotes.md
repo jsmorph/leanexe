@@ -21797,10 +21797,21 @@ disjointness from the consumed blocks directly.  It goes to the user.
 
 Revised steps:
 
-- [ ] The trusted change, after the user's decision, with every proof updated.
+- [x] The change to the specification, after the user's decision, with every proof
+  updated.  `Represent.moves` takes the store; the existing instances ignore it, and 39
+  mentions in 6 files gained the argument with no other proof change.  `Node.pointers` and
+  `slotsPointers` follow child pointers as `Node.blocks` does, and
+  `instance [Encode α] : Represent (Moved α)` hands over a value as owned and moves every
+  record.  Instance resolution picks it for `Moved (List UInt64)` and keeps
+  `Moved (Array UInt64)` and `List UInt64` as before.
 - [ ] The mode rule for node parameters and fields, the moved check for node lookups, reuse
   of the same constructor, and zeroing moved child slots before a release; `setKey`.
 - [ ] `Heap.Rebuilt`, the consumed specification and its recursion rule; `incr`.
 - [ ] Statement-level `if` with self-calls and allocation in branches; `insert`.
 - [ ] A function that releases part of a consumed tree.
 - [ ] Host: a tree result kind; tests; allocation and free counts; LTG entries.
+
+On 2026-10-02 the user chose A for question 1: `Represent.moves` takes the store, a new
+`Node.pointers` lists a tree's record pointers, and a `Represent (Moved α)` instance states a
+consumed value of a recursive type.  `Apart` and `Separate` keep their form, and every
+existing theorem keeps its meaning.

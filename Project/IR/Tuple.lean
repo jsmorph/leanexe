@@ -182,7 +182,7 @@ theorem Live.callTuple [Represent α] [Represent β] [Arrays β] {idx : Nat} {g 
     {x : α} {before afterArgs : State} {vals : List Value}
     (hArgs : Expr.evalResults store.mem scratch args before = some (vals, afterArgs))
     (hBorrowed : Represent.borrowed heap store vals x)
-    (hMoves : Represent.moves vals x = consumed.map (·.1))
+    (hMoves : Represent.moves store vals x = consumed.map (·.1))
     (hReads : ∀ q ∈ Represent.reads vals x, ∀ t ∈ consumed, regionsDisjoint q (block store t.1))
     (hResults : results.length = Arrays.size β)
     (hRoom : ∀ r ∈ results, r < afterArgs.params.length + afterArgs.locals.length) :
@@ -196,11 +196,11 @@ theorem Live.callTuple [Represent α] [Represent β] [Arrays β] {idx : Nat} {g 
   rw [List.pairwise_append] at hPair
   obtain ⟨hPairC, hPairR, hCross⟩ := hPair
   have hKeep : ∀ region, (∀ t ∈ consumed, regionsDisjoint region (block store t.1)) →
-      Apart store (Represent.moves vals x) region := fun region h q hq => by
+      Apart store (Represent.moves store vals x) region := fun region h q hq => by
     rw [hMoves, List.mem_map] at hq
     obtain ⟨t, ht, rfl⟩ := hq
     exact h t ht
-  have hSep : Separate store (Represent.moves vals x) (Represent.reads vals x) := by
+  have hSep : Separate store (Represent.moves store vals x) (Represent.reads vals x) := by
     refine ⟨?_, fun q hq => hKeep q (hReads q hq)⟩
     rw [hMoves]
     simpa [List.pairwise_map] using hPairC
@@ -221,7 +221,7 @@ theorem Live.callTuple [Represent α] [Represent β] [Arrays β] {idx : Nat} {g 
     have h := hKeepO u.1 u.2 (hLive.tempsOwned u (hMemR u hu)) (hKeep _ (hApartRest u hu))
     ⟨h.1, block_eq h.2⟩
   have hOwnedKeep : ∀ p ws, heap0.Owned initial p ws → Apart initial moved (block initial p) →
-      Apart store (Represent.moves vals x) (block store p) := fun p ws h hA => by
+      Apart store (Represent.moves store vals x) (block store p) := fun p ws h hA => by
     refine hKeep _ fun t ht => ?_
     rw [block_eq (hLive.owned p ws h hA).2]
     exact hLive.apartO t (hMemC t ht) p ws h hA
@@ -275,7 +275,7 @@ theorem Live.callPair [Represent α] {idx : Nat} {g : α → Array UInt64 × Arr
     {x : α} {before afterArgs : State} {vals : List Value}
     (hArgs : Expr.evalResults store.mem scratch args before = some (vals, afterArgs))
     (hBorrowed : Represent.borrowed heap store vals x)
-    (hMoves : Represent.moves vals x = consumed.map (·.1))
+    (hMoves : Represent.moves store vals x = consumed.map (·.1))
     (hReads : ∀ q ∈ Represent.reads vals x, ∀ t ∈ consumed, regionsDisjoint q (block store t.1))
     (hR1 : r1 < afterArgs.params.length + afterArgs.locals.length)
     (hR2 : r2 < afterArgs.params.length + afterArgs.locals.length) :
