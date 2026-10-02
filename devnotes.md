@@ -20676,6 +20676,30 @@ case of two arrays.
 - [x] `Live.tupleLoop`, over `Stmt.tupleLoop`, which is `Stmt.copies` of the initial arrays
   followed by the loop.  For two arrays it is the former `Stmt.pairLoop` term, so
   `runCommands_implements` changed only in how it names the arrays.
-- [ ] `stepCommand`, `runOut`, their theorems, and the chunk lemma
-  `runOut p s o cs = (runCommands p s cs, o ++ outputs p s cs)`.
-- [ ] Tests.
+- [x] `stepCommand`, `runOut`, their theorems, and the chunk lemma.  `stepCommand` binds the
+  first price and size with `let` before the literal, because `Stmt.arrayLiteral_spec` covers
+  elements that do not read memory: the literal allocates before it stores its elements.
+  `moveSites` had to reduce the beta-redex that a matcher's alternative becomes after
+  unfolding, `(fun p s => …) fst snd`, to find `out` at `++`.  The proofs are
+  `stepCommand_implements` (about 150 lines: the pair call, two reads, `Live.push`,
+  `Live.append`, three result copies, `Live.releaseAt`, and `Live.finish_results`) and
+  `runOut_implements` (about 110 lines, the `runCommands` proof with three arrays).  In place
+  of the planned statement with `outputs`, `runOut_append` states the chunk property for the
+  book and the outputs together, and `runOut_book` states that the book is that of
+  `runCommands`.  Both rest on `foldCommands_append` and `foldCommands_map`, generic in the
+  step; `runCommands_append` now uses the first, and `command` replaced the reads that
+  `runStep` repeated.  `clob_bytes` adds `Implements m 13 stepTuple` and
+  `Implements m 14 outTuple`; its axioms are `propext`, `Classical.choice`, and `Quot.sound`.
+- [x] Tests.  `clob.wasm` is 4,679 bytes with sha256 `ec0d12ec8ab71316…`, and the thirteen
+  other modules emit the same bytes.  `tests/modules/run.sh` passed all 4,350 comparisons,
+  819 of them `stepCommand` and 180 `runOut`, and the 11 release counts.
+  `tests/modules/chunks.py` now also runs `runOut` one-shot, in chunks, and as one
+  `stepCommand` per command, and checks that its book equals that of `runCommands`; all 360
+  cases passed.  The first version expected `runOut` to allocate exactly as `runCommands`
+  does, and one trial failed: the one-shot session did one more allocation and free than the
+  others, with the same arrays.  The literal and `applyCommand` allocate the same in every
+  session, so the extra pair is a growth of the output array.  Whether `++` grows depends on
+  the capacity of the output's block, and the allocator's first-fit reuse hands out a whole
+  free block when a split would leave less than 56 bytes, so that capacity depends on the
+  session's earlier frees.  For `runOut` the test checks that the blocks left at the end are
+  the results and the command arrays.

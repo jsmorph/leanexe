@@ -69,6 +69,23 @@ def runCommands (prices sizes commands : Array UInt64) : Array UInt64 × Array U
     applyCommand p s commands[(3 * i).toNat]! commands[(3 * i + 1).toNat]!
       commands[(3 * i + 2).toNat]!
 
+/-- `applyCommand`, with the best bid afterward, its price and size, appended to `out`.  An
+empty book gives zeros. -/
+def stepCommand (prices sizes out : Array UInt64) (kind price size : UInt64) :
+    Array UInt64 × Array UInt64 × Array UInt64 :=
+  let (p, s) := applyCommand prices sizes kind price size
+  let bestPrice := p[(0 : UInt64).toNat]!
+  let bestSize := s[(0 : UInt64).toNat]!
+  let best := #[bestPrice, bestSize]
+  (p, s, out ++ best)
+
+/-- `runCommands`, with the best bid after each command appended to `out`. -/
+def runOut (prices sizes out commands : Array UInt64) :
+    Array UInt64 × Array UInt64 × Array UInt64 :=
+  LeanExe.loop (commands.size.toUInt64 / 3) (prices, sizes, out) fun i (p, s, o) =>
+    stepCommand p s o commands[(3 * i).toNat]! commands[(3 * i + 1).toNat]!
+      commands[(3 * i + 2).toNat]!
+
 /-- The total size of the levels priced at or above `limit`. -/
 def depth (prices sizes : Array UInt64) (limit : UInt64) : UInt64 :=
   LeanExe.loop prices.size.toUInt64 0 fun i total =>

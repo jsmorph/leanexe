@@ -1307,11 +1307,19 @@ def runArgs : List ((type : ScalarType) × Expr type) :=
     ⟨.u64, .read 2 (.bin .add (.bin .mul (.const 3) (.get 7)) (.const 1))⟩,
     ⟨.u64, .read 2 (.bin .add (.bin .mul (.const 3) (.get 7)) (.const 2))⟩]
 
+/-- Command `l` of `commands`: its kind, price, and size. -/
+def command (commands : Array UInt64) (l : UInt64) : UInt64 × UInt64 × UInt64 :=
+  (commands[(3 * l).toNat]!, commands[(3 * l + 1).toNat]!, commands[(3 * l + 2).toNat]!)
+
+/-- A fold of `step` over the whole commands of `commands`. -/
+def foldCommands (step : UInt64 × UInt64 × UInt64 → σ → σ) (commands : Array UInt64)
+    (x : σ) : σ :=
+  Nat.fold (commands.size / 3) (fun i _ x => step (command commands (UInt64.ofNat i)) x) x
+
 /-- The step of `runCommands` as `applyCommand`'s input: the book, and command `l`. -/
 def runStep (commands : Array UInt64) (l : UInt64) (book : Array UInt64 × Array UInt64) :
     Moved (Array UInt64) × Moved (Array UInt64) × UInt64 × UInt64 × UInt64 :=
-  (⟨book.1⟩, ⟨book.2⟩, commands[(3 * l).toNat]!, commands[(3 * l + 1).toNat]!,
-    commands[(3 * l + 2).toNat]!)
+  (⟨book.1⟩, ⟨book.2⟩, command commands l)
 
 theorem runTuple_eq (prices sizes commands : Array UInt64) :
     runTuple (⟨prices⟩, ⟨sizes⟩, commands) =
@@ -1320,8 +1328,7 @@ theorem runTuple_eq (prices sizes commands : Array UInt64) :
 
 theorem runCommands_eq_fold (prices sizes cs : Array UInt64) (hs : cs.size < 2 ^ 64) :
     LeanExe.Examples.Clob.runCommands prices sizes cs =
-      Nat.fold (cs.size / 3) (fun i _ book => applyTuple (runStep cs (UInt64.ofNat i) book))
-        (prices, sizes) := by
+      foldCommands (fun c book => applyTuple (⟨book.1⟩, ⟨book.2⟩, c)) cs (prices, sizes) := by
   have hn : (UInt64.ofNat cs.size / 3).toNat = cs.size / 3 := by
     rw [UInt64.toNat_div, UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)]
     rfl
@@ -1329,9 +1336,9 @@ theorem runCommands_eq_fold (prices sizes cs : Array UInt64) (hs : cs.size < 2 ^
   rw [runTuple_eq]
   exact Nat.fold_congr hn _ _
 
-theorem runStep_append_left {c1 c2 : Array UInt64} {i : Nat} (hi : i < c1.size / 3)
-    (hs : (c1 ++ c2).size < 2 ^ 62) (book : Array UInt64 × Array UInt64) :
-    runStep (c1 ++ c2) (UInt64.ofNat i) book = runStep c1 (UInt64.ofNat i) book := by
+theorem command_append_left {c1 c2 : Array UInt64} {i : Nat} (hi : i < c1.size / 3)
+    (hs : (c1 ++ c2).size < 2 ^ 62) :
+    command (c1 ++ c2) (UInt64.ofNat i) = command c1 (UInt64.ofNat i) := by
   rw [Array.size_append] at hs
   have hj : ∀ j : Nat, j < 3 → (3 * UInt64.ofNat i + UInt64.ofNat j).toNat = 3 * i + j := by
     intro j hj
@@ -1345,16 +1352,15 @@ theorem runStep_append_left {c1 c2 : Array UInt64} {i : Nat} (hi : i < c1.size /
   have h1 := hj 1 (by decide)
   have h2 := hj 2 (by decide)
   simp only [UInt64.reduceOfNat, add_zero] at h0
-  simp only [runStep, Nat.cast_ofNat] at *
+  simp only [command] at *
   rw [show (3 * UInt64.ofNat i).toNat = 3 * i + 0 by simpa using h0,
     show (3 * UInt64.ofNat i + 1).toNat = 3 * i + 1 from h1,
     show (3 * UInt64.ofNat i + 2).toNat = 3 * i + 2 from h2,
     hRead 0 (by decide), hRead 1 (by decide), hRead 2 (by decide)]
 
-theorem runStep_append_right {c1 c2 : Array UInt64} {i : Nat} (h3 : c1.size % 3 = 0)
-    (hi : i < c2.size / 3) (hs : (c1 ++ c2).size < 2 ^ 62) (book : Array UInt64 × Array UInt64) :
-    runStep (c1 ++ c2) (UInt64.ofNat (c1.size / 3 + i)) book =
-      runStep c2 (UInt64.ofNat i) book := by
+theorem command_append_right {c1 c2 : Array UInt64} {i : Nat} (h3 : c1.size % 3 = 0)
+    (hi : i < c2.size / 3) (hs : (c1 ++ c2).size < 2 ^ 62) :
+    command (c1 ++ c2) (UInt64.ofNat (c1.size / 3 + i)) = command c2 (UInt64.ofNat i) := by
   rw [Array.size_append] at hs
   have hj : ∀ (a j : Nat), a < 2 ^ 61 → j < 3 →
       (3 * UInt64.ofNat a + UInt64.ofNat j).toNat = 3 * a + j := by
@@ -1374,7 +1380,7 @@ theorem runStep_append_right {c1 c2 : Array UInt64} {i : Nat} (h3 : c1.size % 3 
   have g1 := hj i 1 (by omega) (by decide)
   have g2 := hj i 2 (by omega) (by decide)
   simp only [UInt64.reduceOfNat, add_zero] at h0 g0
-  simp only [runStep, Nat.cast_ofNat] at *
+  simp only [command] at *
   rw [show (3 * UInt64.ofNat (c1.size / 3 + i)).toNat = 3 * (c1.size / 3 + i) + 0 by
       simpa using h0,
     show (3 * UInt64.ofNat (c1.size / 3 + i) + 1).toNat = 3 * (c1.size / 3 + i) + 1 from h1,
@@ -1383,6 +1389,32 @@ theorem runStep_append_right {c1 c2 : Array UInt64} {i : Nat} (h3 : c1.size % 3 
     show (3 * UInt64.ofNat i + 1).toNat = 3 * i + 1 from g1,
     show (3 * UInt64.ofNat i + 2).toNat = 3 * i + 2 from g2,
     hRead 0 (by decide), hRead 1 (by decide), hRead 2 (by decide)]
+
+/-- A fold over two chunks of commands, the first of whole commands, is the fold over both. -/
+theorem foldCommands_append (step : UInt64 × UInt64 × UInt64 → σ → σ) (x : σ)
+    {c1 c2 : Array UInt64} (h3 : c1.size % 3 = 0) (hs : (c1 ++ c2).size < 2 ^ 62) :
+    foldCommands step c2 (foldCommands step c1 x) = foldCommands step (c1 ++ c2) x := by
+  unfold foldCommands
+  rw [Nat.fold_congr (show (c1 ++ c2).size / 3 = c1.size / 3 + c2.size / 3 by
+    rw [Array.size_append]; omega), Nat.fold_add]
+  congr 1
+  · funext i hi y
+    rw [command_append_right h3 hi hs]
+  · exact Nat.fold_congr rfl _ _ |>.trans (by
+      congr 1
+      funext i hi y
+      rw [command_append_left hi hs])
+
+/-- A map that commutes with each step commutes with the fold. -/
+theorem foldCommands_map {step : UInt64 × UInt64 × UInt64 → σ → σ}
+    {step' : UInt64 × UInt64 × UInt64 → τ → τ} (π : σ → τ)
+    (h : ∀ c x, π (step c x) = step' c (π x)) (cs : Array UInt64) (x : σ) :
+    π (foldCommands step cs x) = foldCommands step' cs (π x) := by
+  unfold foldCommands
+  generalize cs.size / 3 = n
+  induction n with
+  | zero => rfl
+  | succ n ih => simp only [Nat.fold_succ, h, ih]
 
 /-- Running the commands in two chunks, the first of whole commands, gives the book of one
 run over both chunks.  This is what lets a host pass the commands in chunks of any size. -/
@@ -1396,15 +1428,7 @@ theorem runCommands_append (prices sizes c1 c2 : Array UInt64) (h3 : c1.size % 3
   rw [Array.size_append] at hs'
   rw [runCommands_eq_fold _ _ c2 (by omega), runCommands_eq_fold _ _ (c1 ++ c2) (by omega),
     runCommands_eq_fold _ _ c1 (by omega), Prod.mk.eta]
-  rw [Nat.fold_congr (show (c1 ++ c2).size / 3 = c1.size / 3 + c2.size / 3 by
-    rw [Array.size_append]; omega), Nat.fold_add]
-  congr 1
-  · funext i hi book
-    exact (congrArg applyTuple (runStep_append_right h3 hi hs book)).symm
-  · exact Nat.fold_congr rfl _ _ |>.trans (by
-      congr 1
-      funext i hi book
-      exact (congrArg applyTuple (runStep_append_left hi hs book)).symm)
+  exact foldCommands_append _ _ h3 hs
 
 theorem Expr.evalResults_cons {mem : Mem} {scratch : Nat} {e : Expr .u64} {state mid next : State}
     {rest : List ((type : ScalarType) × Expr type)} {vs : List Value} {v : UInt64}
@@ -1521,6 +1545,347 @@ theorem runCommands_implements : Implements clob.module 12 runTuple := by
     exact movesPost_of_live hL' (List.forall₂_cons.mp hHolds).1
       (List.forall₂_cons.mp (List.forall₂_cons.mp hHolds).2).1
 
+/-- `stepCommand` with its six arguments as one tuple: the call consumes the book and the
+output array. -/
+def stepTuple (x : Moved (Array UInt64) × Moved (Array UInt64) × Moved (Array UInt64) ×
+    UInt64 × UInt64 × UInt64) : Array UInt64 × Array UInt64 × Array UInt64 :=
+  LeanExe.Examples.Clob.stepCommand x.1.val x.2.1.val x.2.2.1.val x.2.2.2.1 x.2.2.2.2.1
+    x.2.2.2.2.2
+
+theorem stepTuple_eq (prices sizes out : Array UInt64) (kind price size : UInt64) :
+    stepTuple (⟨prices⟩, ⟨sizes⟩, ⟨out⟩, kind, price, size) =
+      ((applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size)).1,
+        (applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size)).2,
+        out ++ #[(applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size)).1[(0 : UInt64).toNat]!,
+          (applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size)).2[(0 : UInt64).toNat]!]) := rfl
+
+theorem stepCommand_implements : Implements clob.module 13 stepTuple := by
+  refine Func.implements_moves clob.funcs 11 clob.stepCommand.ir "stepCommand" rfl stepTuple
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      rfl⟩; rfl) ?_
+  rintro ⟨⟨prices⟩, ⟨sizes⟩, ⟨out⟩, kind, price, size⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, _, _, rfl, ⟨po, rfl, hOut⟩,
+      rfl⟩ ⟨hSepAll, -⟩ hCap
+  change heap.Owned initial pp prices at hPrices
+  change heap.Owned initial ps sizes at hSizes
+  change heap.Owned initial po out at hOut
+  change ([pp, ps, po].map (block initial)).Pairwise regionsDisjoint at hSepAll
+  have hNoImports : clob.module.imports.length = 0 := rfl
+  have hImports : clob.module.imports = [] := rfl
+  have hMemory32 : clob.module.memIs64 = false := rfl
+  have hAlloc : clob.module.funcs[0]? = some (allocFunction 0) := rfl
+  have hRelease : clob.module.funcs[1]? = some (releaseFunction 1) := rfl
+  have hLenU : ∀ (s : State) (j : Nat) (v : Value),
+      (s.update j v).params.length + (s.update j v).locals.length =
+        s.params.length + s.locals.length := fun s j v => by
+    simp [State.update_params_length, State.update_locals_length]
+  let start : State :=
+    { params := [.i64 pp, .i64 ps, .i64 po, .i64 kind, .i64 price, .i64 size]
+      locals := List.replicate 15 (.i64 0) }
+  have hStartLen : start.params.length + start.locals.length = 21 := rfl
+  show Triple _ (.seq (.call 11 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩,
+        ⟨.u64, .get 5⟩] [6, 7]) <|
+      .seq (.assign 8 (.read 6 (.const 0))) <| .seq (.assign 9 (.read 7 (.const 0))) <|
+      .seq (Stmt.arrayLiteral 10 [.get 8, .get 9]) <|
+      .seq (Stmt.append 11 12 13 14 15 16 2 10) <|
+      .seq (.assign 17 (.get 6)) <| .seq (.assign 18 (.get 7)) <|
+      .seq (.assign 19 (.get 11)) (.release 10)) 20
+    (fun store state => store = initial ∧ state = start) _
+  have hL := Live.start_moved hHeap (temps := [(pp, prices), (ps, sizes), (po, out)])
+    (fun t ht => by
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+      rcases ht with rfl | rfl | rfl
+      exacts [hPrices, hSizes, hOut])
+    (by
+      have h := List.pairwise_map.mp hSepAll
+      exact (List.pairwise_map (f := Prod.fst) (l := [(pp, prices), (ps, sizes), (po, out)])).mp h)
+  -- `applyCommand` consumes the book.
+  refine Stmt.seq_spec (Live.callPair applyCommand_implements rfl
+    (by rw [hNoImports]; exact compile_funcs (funcs := clob.funcs) (i := 9) rfl) rfl
+    (consumed := [(pp, prices), (ps, sizes)]) (rest := [(po, out)]) hL hCap
+    (x := (⟨prices⟩, ⟨sizes⟩, kind, price, size)) (before := start) rfl
+    ⟨[.i64 pp], _, rfl, ⟨pp, rfl, hPrices⟩, [.i64 ps], _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩
+    rfl (fun _ hq => absurd hq List.not_mem_nil) (by rw [hStartLen]; decide)
+    (by rw [hStartLen]; decide)) ?_
+  apply Triple.of_forall
+  rintro s1 st1 ⟨heap1, p1, p2, hL1, hst1⟩
+  generalize hA : applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size) = A at hL1
+  obtain ⟨P, S⟩ := A
+  have hLen1 : st1.params.length + st1.locals.length = 21 := by rw [hst1, hLenU, hLenU, hStartLen]
+  have g1 : ∀ j, j ≠ 6 → j ≠ 7 → st1.get j = start.get j := fun j h6 h7 => by
+    rw [hst1, State.get_update_ne h6, State.get_update_ne h7]
+  have g16 : st1.get 6 = some (.i64 p1) := by
+    rw [hst1]; exact State.get_update_same (by rw [hLenU, hStartLen]; decide)
+  have g17 : st1.get 7 = some (.i64 p2) := by
+    rw [hst1, State.get_update_ne (by decide)]; exact State.get_update_same (by rw [hStartLen]; decide)
+  have hP := hL1.tempsOwned (p1, P) List.mem_cons_self
+  have hS := hL1.tempsOwned (p2, S) (List.mem_cons_of_mem _ List.mem_cons_self)
+  -- The best bid: the first price and size.
+  obtain ⟨st2, hst2⟩ : ∃ st2, st2 = (st1.update 20 (.i64 0)).update 8 (.i64 P[(0 : UInt64).toNat]!) :=
+    ⟨_, rfl⟩
+  have hLen2 : st2.params.length + st2.locals.length = 21 := by rw [hst2, hLenU, hLenU, hLen1]
+  refine Stmt.seq_spec (Stmt.run_spec (final := st2) ?_) ?_
+  · have hRead := Expr.read_spec (scratch := 20) (array := 6) (position := .const 0) (state := st1)
+      hP.values rfl (State.set?_eq_update _ (by rw [hLen1]; decide))
+      (by rw [State.get_update_ne (by decide)]; exact g16)
+    rw [hst2]
+    simp only [Stmt.run, hRead, Option.bind_eq_bind, Option.bind_some]
+    exact State.set?_eq_update _ (by rw [hLenU, hLen1]; decide)
+  obtain ⟨st3, hst3⟩ : ∃ st3, st3 = (st2.update 20 (.i64 0)).update 9 (.i64 S[(0 : UInt64).toNat]!) :=
+    ⟨_, rfl⟩
+  have hLen3 : st3.params.length + st3.locals.length = 21 := by rw [hst3, hLenU, hLenU, hLen2]
+  refine Stmt.seq_spec (Stmt.run_spec (final := st3) ?_) ?_
+  · have hRead := Expr.read_spec (scratch := 20) (array := 7) (position := .const 0) (state := st2)
+      hS.values rfl (State.set?_eq_update _ (by rw [hLen2]; decide))
+      (by rw [State.get_update_ne (by decide), hst2, State.get_update_ne (by decide),
+        State.get_update_ne (by decide)]; exact g17)
+    rw [hst3]
+    simp only [Stmt.run, hRead, Option.bind_eq_bind, Option.bind_some]
+    exact State.set?_eq_update _ (by rw [hLenU, hLen2]; decide)
+  have g3 : ∀ j, j ≠ 8 → j ≠ 9 → j ≠ 20 → st3.get j = st1.get j := fun j h8 h9 h20 => by
+    rw [hst3, State.get_update_ne h9, State.get_update_ne h20, hst2, State.get_update_ne h8,
+      State.get_update_ne h20]
+  have g36 : st3.get 6 = some (.i64 p1) := by rw [g3 6 (by decide) (by decide) (by decide), g16]
+  have g37 : st3.get 7 = some (.i64 p2) := by rw [g3 7 (by decide) (by decide) (by decide), g17]
+  have g38 : st3.get 8 = some (.i64 P[(0 : UInt64).toNat]!) := by
+    rw [hst3, State.get_update_ne (by decide), State.get_update_ne (by decide), hst2]
+    exact State.get_update_same (by rw [hLenU, hLen1]; decide)
+  have g39 : st3.get 9 = some (.i64 S[(0 : UInt64).toNat]!) := by
+    rw [hst3]; exact State.get_update_same (by rw [hLenU, hLen2]; decide)
+  -- The literal of the best bid.
+  refine Stmt.seq_spec (Stmt.arrayLiteral_spec (values := [.get 8, .get 9])
+    (words := [P[(0 : UInt64).toNat]!, S[(0 : UInt64).toNat]!]) (before := st3) hMemory32 hImports
+    hAlloc (by decide) (by rw [hLen3]; decide) hL1.at_ (hL1.cap hCap) (by decide)
+    (.cons (fun _ state hF => ⟨state, by simp [Expr.eval, hF.get 8 (by decide) (by decide), g38]⟩)
+      (.cons (fun _ state hF => ⟨state, by simp [Expr.eval, hF.get 9 (by decide) (by decide), g39]⟩)
+        .nil))) ?_
+  apply Triple.of_forall
+  rintro s4 st4 ⟨pw, hF4, g4w, hNew⟩
+  have hL4 := hL1.push hNew
+  -- `out ++ best` consumes the output array.
+  have hW := hL4.tempsOwned _ List.mem_cons_self
+  have hWO : regionsDisjoint (block s4 pw) (block s4 po) :=
+    (List.pairwise_cons.mp hL4.pairwise).1 (po, out) (by simp)
+  have g42 : st4.get 2 = some (.i64 po) := by
+    rw [hF4.get 2 (by decide) (by decide), g3 2 (by decide) (by decide) (by decide),
+      g1 2 (by decide) (by decide)]; rfl
+  refine Stmt.seq_spec (Live.append (pre := [(pw, _), (p1, P), (p2, S)]) (t := (po, out))
+    (post := []) hMemory32 hImports hAlloc hRelease (by decide) (by decide) (by decide)
+    (by decide) (by decide) (by decide) (by rw [hF4.params, hF4.locals, hLen3]; decide) hL4 hCap
+    hW.borrowed (hW.region_apart hWO) g42 g4w) ?_
+  apply Triple.of_forall
+  rintro s5 st5 ⟨heap5, pd, hL5, hF5, g5d⟩
+  have hLen5 : st5.params.length + st5.locals.length = 21 := by
+    rw [hF5.params, hF5.locals, hF4.params, hF4.locals, hLen3]
+  have g510 : st5.get 10 = some (.i64 pw) := by
+    rw [hF5.get 10 (by decide) (by decide), g4w]
+  -- The results, then the release of the literal.
+  have g56 : st5.get 6 = some (.i64 p1) := by
+    rw [hF5.get 6 (by decide) (by decide), hF4.get 6 (by decide) (by decide), g36]
+  have g57 : st5.get 7 = some (.i64 p2) := by
+    rw [hF5.get 7 (by decide) (by decide), hF4.get 7 (by decide) (by decide), g37]
+  refine Stmt.seq_spec (Stmt.run_spec (final := st5.update 17 (.i64 p1))
+    (by simp [Stmt.run, Expr.eval, g56, State.set?_eq_update (state := st5) (index := 17) _
+      (by rw [hLen5]; decide), ScalarType.value])) ?_
+  refine Stmt.seq_spec (Stmt.run_spec (final := (st5.update 17 (.i64 p1)).update 18 (.i64 p2))
+    (by simp [Stmt.run, Expr.eval, State.get_update_ne, g57,
+      State.set?_eq_update (state := st5.update 17 (.i64 p1)) (index := 18) _
+        (by rw [hLenU, hLen5]; decide), ScalarType.value])) ?_
+  refine Stmt.seq_spec (Stmt.run_spec
+    (final := ((st5.update 17 (.i64 p1)).update 18 (.i64 p2)).update 19 (.i64 pd))
+    (by simp [Stmt.run, Expr.eval, State.get_update_ne, g5d,
+      State.set?_eq_update (state := (st5.update 17 (.i64 p1)).update 18 (.i64 p2)) (index := 19) _
+        (by rw [hLenU, hLenU, hLen5]; decide), ScalarType.value])) ?_
+  refine (Live.releaseAt
+    (pre := [(pd, out ++ #[P[(0 : UInt64).toNat]!, S[(0 : UInt64).toNat]!])])
+    (t := (pw, #[P[(0 : UInt64).toNat]!, S[(0 : UInt64).toNat]!])) (post := [(p1, P), (p2, S)])
+    hL5 hImports hRelease (by simp [State.get_update_ne, g510])).mono (fun _ _ h => h) ?_
+  rintro s7 st7 ⟨hL7, rfl⟩
+  have hHolds : (((st5.update 17 (.i64 p1)).update 18 (.i64 p2)).update 19 (.i64 pd)).Holds
+      [17, 18, 19] (pointers [(p1, P), (p2, S),
+        (pd, out ++ #[P[(0 : UInt64).toNat]!, S[(0 : UInt64).toNat]!])]) :=
+    .cons (by simp [State.get_update_ne, State.get_update_same, hLen5])
+      (.cons (by simp [State.get_update_ne, State.get_update_same, hLen5])
+        (.cons (by simp [State.get_update_same, hLen5]) .nil))
+  rw [stepTuple_eq, hA]
+  exact Live.finish_results (y := (P, S, out ++ #[P[(0 : UInt64).toNat]!, S[(0 : UInt64).toNat]!]))
+    rfl (hL7.perm List.perm_append_comm) hHolds
+
+/-- `runOut` with its four arguments as one tuple: the call consumes the book and the output
+array. -/
+def outTuple (x : Moved (Array UInt64) × Moved (Array UInt64) × Moved (Array UInt64) ×
+    Array UInt64) : Array UInt64 × Array UInt64 × Array UInt64 :=
+  LeanExe.Examples.Clob.runOut x.1.val x.2.1.val x.2.2.1.val x.2.2.2
+
+/-- The arguments of the call in `runOut`'s loop: the book, the output array, and the command
+at the loop index. -/
+def outArgs : List ((type : ScalarType) × Expr type) :=
+  [⟨.u64, .get 5⟩, ⟨.u64, .get 6⟩, ⟨.u64, .get 7⟩,
+    ⟨.u64, .read 3 (.bin .mul (.const 3) (.get 9))⟩,
+    ⟨.u64, .read 3 (.bin .add (.bin .mul (.const 3) (.get 9)) (.const 1))⟩,
+    ⟨.u64, .read 3 (.bin .add (.bin .mul (.const 3) (.get 9)) (.const 2))⟩]
+
+/-- The step of `runOut` as `stepCommand`'s input: the book, the output array, and command
+`l`. -/
+def outStep (commands : Array UInt64) (l : UInt64)
+    (x : Array UInt64 × Array UInt64 × Array UInt64) :
+    Moved (Array UInt64) × Moved (Array UInt64) × Moved (Array UInt64) × UInt64 × UInt64 ×
+      UInt64 :=
+  (⟨x.1⟩, ⟨x.2.1⟩, ⟨x.2.2⟩, command commands l)
+
+theorem outTuple_eq (prices sizes out commands : Array UInt64) :
+    outTuple (⟨prices⟩, ⟨sizes⟩, ⟨out⟩, commands) =
+      LeanExe.loop (UInt64.ofNat commands.size / 3) (prices, sizes, out)
+        fun l x => stepTuple (outStep commands l x) := rfl
+
+theorem runOut_implements : Implements clob.module 14 outTuple := by
+  refine Func.implements_moves clob.funcs 12 clob.runOut.ir "runOut" rfl outTuple
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩,
+      ⟨_, rfl, -⟩⟩; rfl) ?_
+  rintro ⟨⟨prices⟩, ⟨sizes⟩, ⟨out⟩, commands⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, _, _, rfl, ⟨po, rfl, hOut⟩,
+      ⟨pc, rfl, hCmds⟩⟩ ⟨hSepAll, hSep⟩ hCap
+  change heap.Owned initial pp prices at hPrices
+  change heap.Owned initial ps sizes at hSizes
+  change heap.Owned initial po out at hOut
+  change heap.Borrowed initial pc commands at hCmds
+  change ([pp, ps, po].map (block initial)).Pairwise regionsDisjoint at hSepAll
+  have hAC : Apart initial [pp, ps, po] (pc.toNat, 8 * (commands.size + 1)) :=
+    hSep _ (List.mem_singleton_self _)
+  have hNoImports : clob.module.imports.length = 0 := rfl
+  have hLenU : ∀ (s : State) (j : Nat) (v : Value),
+      (s.update j v).params.length + (s.update j v).locals.length =
+        s.params.length + s.locals.length := fun s j v => by
+    simp [State.update_params_length, State.update_locals_length]
+  let start : State :=
+    { params := [.i64 pp, .i64 ps, .i64 po, .i64 pc], locals := List.replicate 8 (.i64 0) }
+  have hStartLen : start.params.length + start.locals.length = 12 := rfl
+  show Triple _ (.seq (.arraySize 4 3)
+      (Stmt.tupleLoop [5, 6, 7] 8 9 [0, 1, 2] 13 (.bin .divU (.get 4) (.const 3)) outArgs)) 10
+    (fun store state => store = initial ∧ state = start) _
+  have hL := Live.start_moved hHeap (temps := [(pp, prices), (ps, sizes), (po, out)])
+    (fun t ht => by
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+      rcases ht with rfl | rfl | rfl
+      exacts [hPrices, hSizes, hOut])
+    (by
+      have h := List.pairwise_map.mp hSepAll
+      exact (List.pairwise_map (f := Prod.fst) (l := [(pp, prices), (ps, sizes), (po, out)])).mp h)
+  have hCv := hCmds.values
+  let st0 := start.update 4 (.i64 (UInt64.ofNat commands.size))
+  have hSt0Len : st0.params.length + st0.locals.length = 12 := by rw [hLenU, hStartLen]
+  refine Stmt.seq_spec (Stmt.arraySize_spec (before := start) hCv rfl (by rw [hStartLen]; decide))
+    ?_
+  apply Triple.of_forall
+  rintro s st ⟨rfl, hSet⟩
+  rw [State.set?_eq_update _ (show 4 < start.params.length + start.locals.length by
+    rw [hStartLen]; decide), Option.some.injEq] at hSet
+  subst hSet
+  have hCount : ∀ (mem : Mem) (st : State), State.Frame 10 [5, 6, 7] st0 st →
+      ∃ after, (Expr.bin .divU (.get 4) (.const 3)).eval mem 10 st =
+        some (UInt64.ofNat commands.size / 3, after) := fun mem st hF => by
+    have g4 : st.get 4 = some (.i64 (UInt64.ofNat commands.size)) :=
+      (hF.get 4 (by decide) (by decide)).trans (State.get_update_same (by rw [hStartLen]; decide))
+    have hLen : 11 < st.params.length + st.locals.length := by
+      rw [hF.params, hF.locals]; omega
+    obtain ⟨m1, hm1⟩ := State.exists_set? (state := st) (index := 10)
+      (.i64 (UInt64.ofNat commands.size)) (by omega)
+    obtain ⟨m2, hm2⟩ := State.exists_set? (state := m1) (index := 11) (.i64 3) (by
+      rw [State.set?_eq_update _ (by omega), Option.some.injEq] at hm1; subst hm1
+      rw [hLenU]; omega)
+    exact ⟨m2, by simp [Expr.eval, g4, hm1, hm2, U64Op.apply]⟩
+  refine (Live.tupleLoop stepCommand_implements (f := clob.stepCommand.ir.function (2 + 11)) rfl
+    (by rw [hNoImports]; exact compile_funcs (funcs := clob.funcs) (i := 11) rfl) rfl
+    (states := [5, 6, 7]) (limit := 8) (index := 9) (srcs := [0, 1, 2])
+    (ts := [(pp, prices), (ps, sizes), (po, out)]) (rest := []) (x0 := (prices, sizes, out))
+    (by decide) (by decide) (by decide) rfl (by rw [hSt0Len]; decide) rfl hL hCap
+    (.cons rfl (.cons rfl (.cons rfl .nil))) hCount (outStep commands)
+    fun k us heap' store' st hk hF hIdx hHolds hUs hL' => ?_).mono (fun _ _ h => h) ?_
+  · obtain ⟨⟨q1, _⟩, us, rfl, rfl, hUs1⟩ := List.map_eq_cons_iff.mp hUs
+    obtain ⟨⟨q2, _⟩, us, rfl, rfl, hUs2⟩ := List.map_eq_cons_iff.mp hUs1
+    obtain ⟨⟨q3, _⟩, us, rfl, rfl, hUs3⟩ := List.map_eq_cons_iff.mp hUs2
+    obtain rfl := List.map_eq_nil_iff.mp hUs3
+    simp only [List.append_nil] at hL'
+    have g5 : st.get 5 = some (.i64 q1) := (List.forall₂_cons.mp hHolds).1
+    have g6 : st.get 6 = some (.i64 q2) :=
+      (List.forall₂_cons.mp (List.forall₂_cons.mp hHolds).2).1
+    have g7 : st.get 7 = some (.i64 q3) :=
+      (List.forall₂_cons.mp (List.forall₂_cons.mp (List.forall₂_cons.mp hHolds).2).2).1
+    have hC' := (hL'.borrowed pc commands hCmds hAC).values
+    have hLen : st.params.length + st.locals.length = 12 := by
+      rw [hF.params, hF.locals]; exact hSt0Len
+    have g3 : st.get 3 = some (.i64 pc) := (hF.get 3 (by decide) (by decide)).trans rfl
+    obtain ⟨m1, hm1⟩ := State.exists_set? (state := st) (index := 10)
+      (.i64 (3 * UInt64.ofNat k)) (by omega)
+    have hm1Len : m1.params.length + m1.locals.length = 12 := by
+      rw [State.set?_eq_update _ (by omega), Option.some.injEq] at hm1; subst hm1; rw [hLenU, hLen]
+    obtain ⟨m2, hm2⟩ := State.exists_set? (state := m1) (index := 10)
+      (.i64 (3 * UInt64.ofNat k + 1)) (by omega)
+    have hm2Len : m2.params.length + m2.locals.length = 12 := by
+      rw [State.set?_eq_update _ (by omega), Option.some.injEq] at hm2; subst hm2; rw [hLenU, hm1Len]
+    obtain ⟨m3, hm3⟩ := State.exists_set? (state := m2) (index := 10)
+      (.i64 (3 * UInt64.ofNat k + 2)) (by omega)
+    have k1 : ∀ j, j ≠ 10 → m1.get j = st.get j := fun j hj => State.get_set?_ne hj hm1
+    have k2 : ∀ j, j ≠ 10 → m2.get j = st.get j := fun j hj =>
+      (State.get_set?_ne hj hm2).trans (k1 j hj)
+    have k3 : ∀ j, j ≠ 10 → m3.get j = st.get j := fun j hj =>
+      (State.get_set?_ne hj hm3).trans (k2 j hj)
+    refine ⟨[.i64 q1, .i64 q2, .i64 q3, .i64 commands[(3 * UInt64.ofNat k).toNat]!,
+      .i64 commands[(3 * UInt64.ofNat k + 1).toNat]!,
+      .i64 commands[(3 * UInt64.ofNat k + 2).toNat]!], m3, ?_,
+      ⟨[.i64 q1], _, rfl, ⟨q1, rfl, hL'.tempsOwned _ List.mem_cons_self⟩, [.i64 q2], _, rfl,
+        ⟨q2, rfl, hL'.tempsOwned _ (List.mem_cons_of_mem _ List.mem_cons_self)⟩, [.i64 q3], _, rfl,
+        ⟨q3, rfl, hL'.tempsOwned _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _
+          List.mem_cons_self))⟩, rfl⟩,
+      rfl, fun _ hq => absurd hq List.not_mem_nil⟩
+    refine Expr.evalResults_get g5 <| Expr.evalResults_get g6 <| Expr.evalResults_get g7 <|
+      Expr.evalResults_cons (Expr.read_spec hC' (by simp [Expr.eval, hIdx, U64Op.apply]) hm1
+        (by rw [k1 3 (by decide), g3])) <|
+      Expr.evalResults_cons (Expr.read_spec hC'
+        (by simp [Expr.eval, k1 9 (by decide), hIdx, U64Op.apply]) hm2
+        (by rw [k2 3 (by decide), g3])) <|
+      Expr.evalResults_cons (Expr.read_spec hC'
+        (by simp [Expr.eval, k2 9 (by decide), hIdx, U64Op.apply]) hm3
+        (by rw [k3 3 (by decide), g3])) Expr.evalResults_nil
+  · rintro s' st' ⟨heap', us, hUs, hL', -, hHolds⟩
+    simp only [List.append_nil] at hL'
+    rw [outTuple_eq]
+    exact Live.finish_results hUs hL' hHolds
+
+theorem runOut_eq_fold (prices sizes out cs : Array UInt64) (hs : cs.size < 2 ^ 64) :
+    LeanExe.Examples.Clob.runOut prices sizes out cs =
+      foldCommands (fun c x => stepTuple (⟨x.1⟩, ⟨x.2.1⟩, ⟨x.2.2⟩, c)) cs
+        (prices, sizes, out) := by
+  have hn : (UInt64.ofNat cs.size / 3).toNat = cs.size / 3 := by
+    rw [UInt64.toNat_div, UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)]
+    rfl
+  show outTuple (⟨prices⟩, ⟨sizes⟩, ⟨out⟩, cs) = _
+  rw [outTuple_eq]
+  exact Nat.fold_congr hn _ _
+
+/-- Running the commands in two chunks, the first of whole commands, gives the book and the
+outputs of one run over both chunks. -/
+theorem runOut_append (prices sizes out c1 c2 : Array UInt64) (h3 : c1.size % 3 = 0)
+    (hs : (c1 ++ c2).size < 2 ^ 62) :
+    LeanExe.Examples.Clob.runOut (LeanExe.Examples.Clob.runOut prices sizes out c1).1
+        (LeanExe.Examples.Clob.runOut prices sizes out c1).2.1
+        (LeanExe.Examples.Clob.runOut prices sizes out c1).2.2 c2 =
+      LeanExe.Examples.Clob.runOut prices sizes out (c1 ++ c2) := by
+  have hs' := hs
+  rw [Array.size_append] at hs'
+  rw [runOut_eq_fold _ _ _ c2 (by omega), runOut_eq_fold _ _ _ (c1 ++ c2) (by omega),
+    runOut_eq_fold _ _ _ c1 (by omega)]
+  exact foldCommands_append _ _ h3 hs
+
+/-- The book that `runOut` leaves is the book of `runCommands`. -/
+theorem runOut_book (prices sizes out cs : Array UInt64) (hs : cs.size < 2 ^ 64) :
+    ((LeanExe.Examples.Clob.runOut prices sizes out cs).1,
+        (LeanExe.Examples.Clob.runOut prices sizes out cs).2.1) =
+      LeanExe.Examples.Clob.runCommands prices sizes cs := by
+  rw [runOut_eq_fold _ _ _ _ hs, runCommands_eq_fold _ _ _ hs]
+  exact foldCommands_map (fun x : Array UInt64 × Array UInt64 × Array UInt64 => (x.1, x.2.1))
+    (fun _ _ => rfl) cs _
+
 /-- `encode` succeeds on `clob.module`, and its bytes decode to a module whose
 exports compute the CLOB operations exactly. -/
 theorem clob_bytes : ∃ bytes, Encoding.encode clob.module = .ok bytes ∧
@@ -1529,12 +1894,14 @@ theorem clob_bytes : ∃ bytes, Encoding.encode clob.module = .ok bytes ∧
       Implements m 4 insertTuple ∧ Implements m 5 setTuple ∧
       Implements m 6 addBidTuple ∧ Implements m 7 depthTuple ∧
       Implements m 8 findTuple ∧ Implements m 9 removeTuple ∧
-      Implements m 10 cancelTuple ∧ Implements m 11 applyTuple ∧ Implements m 12 runTuple := by
+      Implements m 10 cancelTuple ∧ Implements m 11 applyTuple ∧ Implements m 12 runTuple ∧
+      Implements m 13 stepTuple ∧ Implements m 14 outTuple := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip clob.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, clob.module, decoded, marketBuy_implements, fillLevel_implements,
     insertLevel_implements, setLevel_implements, addBid_implements,
     depth_implements, findLevel_implements, removeLevel_implements, cancelBid_implements,
-    applyCommand_implements, runCommands_implements⟩
+    applyCommand_implements, runCommands_implements, stepCommand_implements,
+    runOut_implements⟩
 
 end Project.Clob
