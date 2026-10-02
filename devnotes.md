@@ -21517,6 +21517,8 @@ stays inside the trusted claim but accepts only the recursion shapes the compile
 recognizes.  Recommendation: (d).  It accepts natural recursion, keeps the trusted claim
 exact, and costs one global and a guard per call.
 
+On 2026-10-02 the user chose (d): recursive calls with a depth guard.
+
 Revised steps for 7c3a, each built, tested, committed, and pushed:
 
 - [ ] `userType?` and the layout rule for a recursive type with one record constructor and
