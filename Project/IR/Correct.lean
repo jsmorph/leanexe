@@ -18,26 +18,26 @@ theorem Func.implements_moves [Represent α] [Represent β] (funcs : List (Func 
       params.length = func.params.length)
     (correct : ∀ (x : α) (heap : Heap) (initial : Store Unit) (params : List Value),
       heap.At initial → Represent.borrowed heap initial params x →
-      Separate initial (Represent.moves params x) (Represent.reads params x) →
+      Separate initial (Represent.moves initial params x) (Represent.reads params x) →
       initial.memoryCap (compile funcs) 0 ≤ 65535 →
       Triple (compile funcs) func.body func.scratch
         (fun store state => store = initial ∧ state = func.state params)
         (fun store state => ∃ heap' : Heap, heap'.At store ∧
           store.memoryCaps = initial.memoryCaps ∧
           (∀ p ws, heap.Borrowed initial p ws →
-            Apart initial (Represent.moves params x) (p.toNat, 8 * (ws.size + 1)) →
+            Apart initial (Represent.moves initial params x) (p.toNat, 8 * (ws.size + 1)) →
             heap'.Borrowed store p ws) ∧
           (∀ p ws, heap.Owned initial p ws →
-            Apart initial (Represent.moves params x) (block initial p) →
+            Apart initial (Represent.moves initial params x) (block initial p) →
             heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
           ∃ values next,
             Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
             Represent.owned heap' store values (f x) ∧
             (∀ p ws, heap.Borrowed initial p ws →
-              Apart initial (Represent.moves params x) (p.toNat, 8 * (ws.size + 1)) →
+              Apart initial (Represent.moves initial params x) (p.toNat, 8 * (ws.size + 1)) →
               Represent.outside store values (f x) (p.toNat, 8 * (ws.size + 1))) ∧
             (∀ p ws, heap.Owned initial p ws →
-              Apart initial (Represent.moves params x) (block initial p) →
+              Apart initial (Represent.moves initial params x) (block initial p) →
               Represent.outside store values (f x) (block initial p)))) :
     Implements (compile funcs) (2 + i) f := by
   intro env store heap params x hHeap hArgs hSeparate hCap

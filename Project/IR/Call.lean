@@ -26,7 +26,7 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
     {heap : Heap} {x : α} {vals : List Value}
     (hArgs : Expr.evalResults initial.mem scratch args before = some (vals, afterArgs))
     (hHeap : heap.At initial) (hBorrowed : Represent.borrowed heap initial vals x)
-    (hSeparate : Separate initial (Represent.moves vals x) (Represent.reads vals x))
+    (hSeparate : Separate initial (Represent.moves initial vals x) (Represent.reads vals x))
     (hCap : initial.memoryCap m 0 ≤ 65535)
     (hSet : ∀ heap' store values, Represent.owned heap' store values (g x) →
       ∃ next, afterArgs.setAll results.reverse values.reverse = some next) :
@@ -36,14 +36,14 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
         Represent.owned heap' store values (g x) ∧
         store.memoryCaps = initial.memoryCaps ∧
         (∀ p ws, heap.Borrowed initial p ws →
-          Apart initial (Represent.moves vals x) (p.toNat, 8 * (ws.size + 1)) →
+          Apart initial (Represent.moves initial vals x) (p.toNat, 8 * (ws.size + 1)) →
           heap'.Borrowed store p ws) ∧
-        (∀ p ws, heap.Owned initial p ws → Apart initial (Represent.moves vals x) (block initial p) →
+        (∀ p ws, heap.Owned initial p ws → Apart initial (Represent.moves initial vals x) (block initial p) →
           heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
         (∀ p ws, heap.Borrowed initial p ws →
-          Apart initial (Represent.moves vals x) (p.toNat, 8 * (ws.size + 1)) →
+          Apart initial (Represent.moves initial vals x) (p.toNat, 8 * (ws.size + 1)) →
           Represent.outside store values (g x) (p.toNat, 8 * (ws.size + 1))) ∧
-        (∀ p ws, heap.Owned initial p ws → Apart initial (Represent.moves vals x) (block initial p) →
+        (∀ p ws, heap.Owned initial p ws → Apart initial (Represent.moves initial vals x) (block initial p) →
           Represent.outside store values (g x) (block initial p)) ∧
         afterArgs.setAll results.reverse values.reverse = some state) := by
   refine (Stmt.call_spec hImport hFunc hParams).mono ?_ fun _ _ h => h
@@ -53,14 +53,14 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
       Represent.owned heap' final values.reverse (g x) ∧
       final.memoryCaps = initial.memoryCaps ∧
       (∀ p ws, heap.Borrowed initial p ws →
-        Apart initial (Represent.moves vals x) (p.toNat, 8 * (ws.size + 1)) →
+        Apart initial (Represent.moves initial vals x) (p.toNat, 8 * (ws.size + 1)) →
         heap'.Borrowed final p ws) ∧
-      (∀ p ws, heap.Owned initial p ws → Apart initial (Represent.moves vals x) (block initial p) →
+      (∀ p ws, heap.Owned initial p ws → Apart initial (Represent.moves initial vals x) (block initial p) →
         heap'.Owned final p ws ∧ capacityAt final p = capacityAt initial p) ∧
       (∀ p ws, heap.Borrowed initial p ws →
-        Apart initial (Represent.moves vals x) (p.toNat, 8 * (ws.size + 1)) →
+        Apart initial (Represent.moves initial vals x) (p.toNat, 8 * (ws.size + 1)) →
         Represent.outside final values.reverse (g x) (p.toNat, 8 * (ws.size + 1))) ∧
-      (∀ p ws, heap.Owned initial p ws → Apart initial (Represent.moves vals x) (block initial p) →
+      (∀ p ws, heap.Owned initial p ws → Apart initial (Represent.moves initial vals x) (block initial p) →
         Represent.outside final values.reverse (g x) (block initial p)),
     hArgs, fun env => ?_, ?_⟩
   · exact hImpl env initial heap vals x hHeap hBorrowed hSeparate hCap

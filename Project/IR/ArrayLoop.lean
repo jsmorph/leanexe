@@ -141,7 +141,8 @@ theorem Live.arrayLoop [Represent α] {idx : Nat} {g : α → Array Float}
       State.Frame scratch [state, size, limit, index, next] before st →
       st.get state = some (.i64 p) →
       Triple m rest scratch (fun s' st' => s' = s ∧ st' = st) Q)
-    (hNoMoves : ∀ (vs : List Value) (y : α), Represent.moves vs y = [] := by intro _ _; rfl) :
+    (hNoMoves : ∀ (s : Store Unit) (vs : List Value) (y : α), Represent.moves s vs y = [] := by
+      intro _ _ _; rfl) :
     Triple m (.seq (Stmt.arrayLoop state size limit index next src idx count args) rest) scratch
       (fun s st => s = store ∧ st = before) Q := by
   simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hBelow
@@ -358,7 +359,7 @@ theorem Live.tupleLoop [Represent α] [Represent β] [Arrays β] {idx : Nat} {g 
       ∃ vals after, Expr.evalResults store'.mem scratch args st = some (vals, after) ∧
         Represent.borrowed heap' store' vals
           (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) x0 k)) ∧
-        Represent.moves vals (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) x0 k)) =
+        Represent.moves store' vals (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) x0 k)) =
           us.map (·.1) ∧
         ∀ q ∈ Represent.reads vals (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) x0 k)),
           ∀ t ∈ us, regionsDisjoint q (block store' t.1)) :

@@ -96,11 +96,12 @@ theorem Live.call [Represent α] {idx : Nat} {g : α → Array Float}
     (hArgs : Expr.evalResults store.mem scratch args before = some (vals, afterArgs))
     (hBorrowed : Represent.borrowed heap store vals x)
     (hR : r < afterArgs.params.length + afterArgs.locals.length)
-    (hNoMoves : ∀ (vs : List Value) (y : α), Represent.moves vs y = [] := by intro _ _; rfl) :
+    (hNoMoves : ∀ (s : Store Unit) (vs : List Value) (y : α), Represent.moves s vs y = [] := by
+      intro _ _ _; rfl) :
     Triple m (.call idx args [r]) scratch (fun s st => s = store ∧ st = before)
       (fun s st => ∃ heap' ptr, Live heap0 initial moved heap' s
         ((ptr, (g x).map Float.toBits) :: temps) ∧ st = afterArgs.update r (.i64 ptr)) := by
-  have hNone : ∀ region, Apart store (Represent.moves vals x) region := fun _ => by
+  have hNone : ∀ region, Apart store (Represent.moves store vals x) region := fun _ => by
     rw [hNoMoves]; exact Apart.nil
   refine (Stmt.callImplements_spec hImpl hImport hFunc hParams hArgs hLive.at_ hBorrowed
     ⟨by rw [hNoMoves]; exact .nil, fun r _ => hNone r⟩ (hLive.cap hCap)
@@ -239,7 +240,7 @@ theorem Live.callMove [Represent α] {idx : Nat} {g : α → Array Float}
     {x : α} {before afterArgs : State} {vals : List Value}
     (hArgs : Expr.evalResults store.mem scratch args before = some (vals, afterArgs))
     (hBorrowed : Represent.borrowed heap store vals x)
-    (hMoves : Represent.moves vals x = [t.1])
+    (hMoves : Represent.moves store vals x = [t.1])
     (hReads : ∀ q ∈ Represent.reads vals x, regionsDisjoint q (block store t.1))
     (hR : r < afterArgs.params.length + afterArgs.locals.length) :
     Triple m (.call idx args [r]) scratch (fun s st => s = store ∧ st = before)
@@ -259,7 +260,7 @@ theorem Live.callMove [Represent α] {idx : Nat} {g : α → Array Float}
       · exact hCross u hu t (List.mem_cons_self ..)
       · exact regionsDisjoint_symm (hTPost u hu)
   have hKeep : ∀ region, regionsDisjoint region (block store t.1) →
-      Apart store (Represent.moves vals x) region := fun region h q hq => by
+      Apart store (Represent.moves store vals x) region := fun region h q hq => by
     rw [hMoves, List.mem_singleton] at hq
     subst hq
     exact h
@@ -279,7 +280,7 @@ theorem Live.callMove [Represent α] {idx : Nat} {g : α → Array Float}
       have h := hKeepO u.1 u.2 (hLive.tempsOwned u (hRest u hu)) (hKeep _ (hApartT u hu))
       ⟨h.1, block_eq h.2⟩
   have hOwnedKeep : ∀ p ws, heap0.Owned initial p ws → Apart initial moved (block initial p) →
-      Apart store (Represent.moves vals x) (block store p) := fun p ws h hA => by
+      Apart store (Represent.moves store vals x) (block store p) := fun p ws h hA => by
     refine hKeep _ ?_
     rw [block_eq (hLive.owned p ws h hA).2]
     exact hLive.apartO t hT p ws h hA
@@ -333,7 +334,7 @@ theorem Live.callMove_seq [Represent α] {idx : Nat} {g : α → Array Float}
     {x : α} {before afterArgs : State} {vals : List Value}
     (hArgs : Expr.evalResults store.mem scratch args before = some (vals, afterArgs))
     (hBorrowed : Represent.borrowed heap store vals x)
-    (hMoves : Represent.moves vals x = [t.1])
+    (hMoves : Represent.moves store vals x = [t.1])
     (hReads : ∀ q ∈ Represent.reads vals x, regionsDisjoint q (block store t.1))
     (hR : r < afterArgs.params.length + afterArgs.locals.length)
     {next : Stmt} {Q : Store Unit → State → Prop}
@@ -407,7 +408,8 @@ theorem Live.call_seq [Represent α] {idx : Nat} {g : α → Array Float}
     (hNext : ∀ heap' ptr s, Live heap0 initial moved heap' s
       ((ptr, (g x).map Float.toBits) :: temps) →
       Triple m next scratch (fun s' st => s' = s ∧ st = afterArgs.update r (.i64 ptr)) Q)
-    (hNoMoves : ∀ (vs : List Value) (y : α), Represent.moves vs y = [] := by intro _ _; rfl) :
+    (hNoMoves : ∀ (s : Store Unit) (vs : List Value) (y : α), Represent.moves s vs y = [] := by
+      intro _ _ _; rfl) :
     Triple m (.seq (.call idx args [r]) next) scratch (fun s st => s = store ∧ st = before) Q :=
   Stmt.seq_spec (Live.call hImpl hImport hFunc hParams hLive hCap hArgs hBorrowed hR hNoMoves)
     (Triple.of_forall fun s _ ⟨heap', ptr, hL, hst⟩ => hst ▸ hNext heap' ptr s hL)
@@ -455,9 +457,10 @@ theorem Live.callScalar_seq [Represent α] [Scalar β] {idx : Nat} {g : α → �
     {next : Stmt} {Q : Store Unit → State → Prop}
     (hNext : ∀ heap' s, Live heap0 initial moved heap' s temps →
       Triple m next scratch (fun s' st => s' = s ∧ st = after) Q)
-    (hNoMoves : ∀ (vs : List Value) (y : α), Represent.moves vs y = [] := by intro _ _; rfl) :
+    (hNoMoves : ∀ (s : Store Unit) (vs : List Value) (y : α), Represent.moves s vs y = [] := by
+      intro _ _ _; rfl) :
     Triple m (.seq (.call idx args results) next) scratch (fun s st => s = store ∧ st = before) Q := by
-  have hNone : ∀ region, Apart store (Represent.moves vals x) region := fun _ => by
+  have hNone : ∀ region, Apart store (Represent.moves store vals x) region := fun _ => by
     rw [hNoMoves]; exact Apart.nil
   refine Stmt.seq_spec (Stmt.callImplements_spec hImpl hImport hFunc hParams hArgs hLive.at_
     hBorrowed ⟨by rw [hNoMoves]; exact .nil, fun r _ => hNone r⟩ (hLive.cap hCap)
