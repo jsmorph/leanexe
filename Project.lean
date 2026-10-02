@@ -4,6 +4,7 @@ import Project.Axpy.Verify
 import Project.Bucket.Module
 import Project.Bucket.Verify
 import Project.Calc.Module
+import Project.Calc.Verify
 import Project.Clob.Module
 import Project.Clob.Verify
 import Project.Common

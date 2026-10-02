@@ -20978,7 +20978,8 @@ On 2026-10-02 the user chose option (a) for question 1: the class `Flat α (β :
 and one generic `Scalar` instance in `Implements.lean`, with a one-line `Flat` instance per
 type.
 
-- [ ] `Flat` and its `Scalar` instance; `Flat Op` and `Flat Calc` with checked examples.
+- [x] `Flat` and its `Scalar` instance; `Flat Op` and `Flat Calc` with checked examples, in
+  `Project/Calc/Flat.lean`.
 - [x] Compiler: enumeration and structure types in parameters, results, and loop states;
   enumeration constructors; structure constructors and projections; `casesOn`, `rec`, and
   `_sparseCasesOn` of an enumeration as a word and as a structure result; `casesOn` of a
@@ -20994,7 +20995,16 @@ type.
 - [x] `LeanExe/Examples/Calc.lean` and the module `calculator.wasm`, 1,913 bytes.  `Calc.undo`
   matches on a structure pattern instead of on `c.last`, as the plan's text above shows, so
   that a 7a program exercises a structure's `casesOn`.
-- [ ] The six theorems.
+- [x] The six theorems, in `Project/Calc/Verify.lean`, and `calculator_bytes`, whose axioms
+  are `propext`, `Classical.choice`, and `Quot.sound`.  `apply`, `ofWord`, and `inverse`
+  have bodies of `skip` and one result expression; each proof evaluates the expression by
+  `simp` after a case split on the operation or on the conditions, in 9 to 11 lines.
+  `step` is one pure call of `apply` (14 lines) and `undo` an `if` chain run by
+  `Stmt.run_spec` (21 lines).  `calcRun` takes 106 lines: the size load and state
+  initialization, `Stmt.loop_spec` with the state `Calc`, and per iteration two pure calls
+  whose arguments read the array.  `Expr.evalResults_cons` moved from the CLOB proofs to
+  `Live.lean` beside the other `evalResults` lemmas.  `calculator.wasm` is 1,913 bytes
+  with sha256 `dc861e91b638ed50…`.
 - [x] Tests against native Lean: `tests/modules/run.sh` passed all 4,840 comparisons, 490 of
   them for the calculator: `apply` on every operation with 16 operand pairs, `ofWord` on
   seven words, `inverse`, `step` and `undo` on 16 states with five operands, and `calcRun` on

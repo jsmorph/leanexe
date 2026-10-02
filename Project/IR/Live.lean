@@ -504,6 +504,13 @@ theorem Expr.evalResults_u64 {mem : Mem} {scratch : Nat} {e : Expr .u64} {state 
     Expr.evalResults mem scratch (⟨.u64, e⟩ :: rest) state = some (.i64 v :: vs, next) := by
   simp [Expr.evalResults, he, h]
 
+theorem Expr.evalResults_cons {mem : Mem} {scratch : Nat} {e : Expr .u64} {state mid next : State}
+    {rest : List ((type : ScalarType) × Expr type)} {vs : List Value} {v : UInt64}
+    (he : e.eval mem scratch state = some (v, mid))
+    (h : Expr.evalResults mem scratch rest mid = some (vs, next)) :
+    Expr.evalResults mem scratch (⟨.u64, e⟩ :: rest) state = some (.i64 v :: vs, next) := by
+  simp [Expr.evalResults, he, h]
+
 theorem Expr.eval_get {mem : Mem} {scratch j : Nat} {state : State} {v : UInt64}
     (hj : state.get j = some (.i64 v)) :
     (Expr.get j).eval mem scratch state = some (v, state) := by
