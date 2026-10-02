@@ -377,6 +377,48 @@ static uint64_t alloc_u64_array(Runtime *runtime, U64List values) {
   return ptr;
 }
 
+/* Allocates the list `values` as a chain of records of two slots, the element and the pointer
+   to the rest, each with kind 1, width 2, and mask 2, and returns the pointer to the first
+   record, or 0 for the empty list. */
+static uint64_t alloc_u64_chain(Runtime *runtime, U64List values) {
+  uint64_t ptr = 0;
+  for (size_t i = values.len; i > 0; i--) {
+    uint64_t cell = call_alloc(runtime, 16);
+    write_u64_at(runtime, cell - 24, 1);
+    write_u64_at(runtime, cell - 16, 2);
+    write_u64_at(runtime, cell - 8, 2);
+    write_u64_at(runtime, cell, values.items[i - 1]);
+    write_u64_at(runtime, cell + 8, ptr);
+    ptr = cell;
+  }
+  return ptr;
+}
+
+#define OBJECT_MAGIC UINT64_C(5501223100278326855)
+
+/* Prints the chain of records at `ptr` as `[x, y, ...]`, after checking that each record's
+   header holds the magic number, count 1, kind 1, width 2, and mask 2. */
+static void print_u64_chain(Runtime *runtime, uint64_t ptr) {
+  size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+  printf("[");
+  for (uint64_t k = 0; ptr != 0; k++) {
+    if (k > memory_len / 16) {
+      die("list result does not end");
+    }
+    if (ptr < 48 || read_u64_at(runtime, ptr - 48) != OBJECT_MAGIC ||
+        read_u64_at(runtime, ptr - 40) != 1 || read_u64_at(runtime, ptr - 24) != 1 ||
+        read_u64_at(runtime, ptr - 16) != 2 || read_u64_at(runtime, ptr - 8) != 2) {
+      die("list result has a wrong record header");
+    }
+    if (k != 0) {
+      printf(", ");
+    }
+    printf("%" PRIu64, read_u64_at(runtime, ptr));
+    ptr = read_u64_at(runtime, ptr + 8);
+  }
+  printf("]\n");
+}
+
 /* Writes the elements of the array at `ptr`, as little-endian words, to the file at `path`,
    and returns the number of elements. */
 static uint64_t save_u64_array(Runtime *runtime, uint64_t ptr, const char *path) {
@@ -478,6 +520,15 @@ static bool parse_arg(Runtime *runtime, const char *spec, wasmtime_val_t *out, s
     *out_count = 1;
     return true;
   }
+  if (strncmp(spec, "chain-u64:", 10) == 0) {
+    U64List values = parse_u64_list(spec + 10);
+    uint64_t ptr = alloc_u64_chain(runtime, values);
+    free_u64_list(values);
+    out[0].kind = WASMTIME_I64;
+    out[0].of.i64 = (int64_t)ptr;
+    *out_count = 1;
+    return true;
+  }
   return false;
 }
 
@@ -519,7 +570,8 @@ static size_t result_count_from_kind(const char *kind) {
   if (strcmp(kind, "bytes") == 0) {
     return 2;
   }
-  if (strcmp(kind, "array-u64") == 0 || strncmp(kind, "file-u64:", 9) == 0) {
+  if (strcmp(kind, "array-u64") == 0 || strcmp(kind, "chain-u64") == 0 ||
+      strncmp(kind, "file-u64:", 9) == 0) {
     return 1;
   }
   if (strncmp(kind, "slots:", 6) == 0) {
@@ -661,6 +713,14 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
       printf("%" PRIu64, read_u64_at(runtime, ptr + 8 + i * 8));
     }
     printf("]\n");
+    return;
+  }
+
+  if (strcmp(result_kind, "chain-u64") == 0) {
+    if (!runtime->has_memory) {
+      die("List UInt64 result requires exported memory");
+    }
+    print_u64_chain(runtime, (uint64_t)results[0].of.i64);
     return;
   }
 
@@ -1215,8 +1275,9 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
 static void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host call|call-stats <module.wasm> <function> "
-          "<i64|f64|bytes|array-u64|file-u64:PATH|slots:N|list:K1,K2,...> "
-          "[i64:N|f64:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|file-u64:PATH ...]\n");
+          "<i64|f64|bytes|array-u64|chain-u64|file-u64:PATH|slots:N|list:K1,K2,...> "
+          "[i64:N|f64:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|chain-u64:N,N|"
+          "file-u64:PATH ...]\n");
   exit(1);
 }
 

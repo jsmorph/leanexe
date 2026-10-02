@@ -12,6 +12,7 @@ import LeanExe.Examples.Bucket
 import LeanExe.Examples.Clob
 import LeanExe.Examples.Calc
 import LeanExe.Examples.Shape
+import LeanExe.Examples.Lists
 
 /-! Test cases for the modules other than `gpt.wasm` and `prng.wasm`, computed by native
 Lean.  Each line is `module|export|result kind|host arguments|expected result`, with
@@ -22,6 +23,7 @@ comma; `tests/modules/run.sh` passes the arguments to the Wasmtime host running
 def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
 def arrU (xs : List UInt64) : String := s!"array-u64:{words xs}"
 def arrF (xs : List Float) : String := arrU (xs.map Float.toBits)
+def chain (xs : List UInt64) : String := s!"chain-u64:{words xs}"
 def u (n : UInt64) : String := s!"i64:{n}"
 def fl (x : Float) : String := s!"f64:{x.toBits}"
 
@@ -278,7 +280,14 @@ def shapeCases : IO Unit := do
         if k % 3 = 0 then UInt64.ofNat ((seed + k) % 4) else rw (seed * 17 + k) % 1000
       line "shapes" "totalArea" "f64" [arrU ws] (toString (totalArea ws.toArray).toBits)
 
+def listCases : IO Unit := do
+  let chosen : List (List UInt64) :=
+    [[], [0], [maxU], [maxU, 1], [1, 2, 3], [maxU, maxU, maxU], (List.range 200).map rw]
+  let random := (List.range 30).map fun i => (List.range (i % 13)).map fun k => rw (13 * i + k)
+  for xs in chosen ++ random do
+    line "lists" "listSum" "i64" [chain xs] (toString (LeanExe.Examples.Lists.listSum xs))
+
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
   piecewiseCases; sumSquaresCases; meanCases; bucketCases; clobCases; runCases
-  calculatorCases; shapeCases
+  calculatorCases; shapeCases; listCases

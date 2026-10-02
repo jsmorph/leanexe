@@ -34,6 +34,8 @@ import Project.Encoding.Types
 import Project.Encoding.Values
 import Project.Gcd.Module
 import Project.Gcd.Verify
+import Project.Lists.Module
+import Project.Lists.Verify
 import Project.Gpt.Module
 import Project.Gpt.StepVerify
 import Project.Gpt.Verify
@@ -53,6 +55,7 @@ import Project.IR.Append
 import Project.IR.Correct
 import Project.IR.Expr
 import Project.IR.Fold
+import Project.IR.ListFold
 import Project.IR.Function
 import Project.IR.Hint
 import Project.IR.Live

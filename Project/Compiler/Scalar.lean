@@ -1,6 +1,7 @@
 import Lean
 import Project.IR.ArrayLiteral
 import Project.IR.Fold
+import Project.IR.ListFold
 import Project.IR.Release
 import Project.IR.Function
 import Project.IR.Loop
@@ -44,6 +45,10 @@ def isFloatArray (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
   if type.isAppOfArity ``Array 1 then isFloat type.appArg! else return false
 
+def isUInt64List (type : Lean.Expr) : MetaM Bool := do
+  let type ← whnfR type
+  if type.isAppOfArity ``List 1 then isUInt64 type.appArg! else return false
+
 /-- Whether `type` is `Array UInt64` or `Array Float`, both a pointer word. -/
 def isArray (type : Lean.Expr) : MetaM Bool := do
   return (← isUInt64Array type) || (← isFloatArray type)
@@ -54,8 +59,8 @@ def exprLength (e : IRExpr type) : Nat := (e.program 0).length
 def stmtLength (s : Project.IR.Stmt) : Nat := (s.program 0).length
 
 /-- The compiler's view of the definition being compiled.  `words`, `floats`,
-`arrays`, and `floatArrays` give the local of each `UInt64`, `Float`,
-`Array UInt64`, and `Array Float` variable in scope, `tuples` gives the
+`arrays`, `floatArrays`, and `lists` give the local of each `UInt64`, `Float`,
+`Array UInt64`, `Array Float`, and `List UInt64` variable in scope, `tuples` gives the
 locals of each pair-valued variable's components, and `callees` gives the
 function index of each definition compiled into the same module.  A recursive definition's
 locals are the parameters, then `result`, `done`, and one temporary per
@@ -69,6 +74,7 @@ structure Ctx where
   floats : List (Lean.Expr × Nat)
   arrays : List (Lean.Expr × Nat)
   floatArrays : List (Lean.Expr × Nat)
+  lists : List (Lean.Expr × Nat) := []
   tuples : List (Lean.Expr × List (Nat × ScalarType)) := []
   callees : List (Name × Nat) := []
   foldable : Bool
@@ -114,12 +120,15 @@ def Hint.shift (offset : Nat) (hint : Hint) : Hint :=
   | i :: rest => { hint with path := (i + offset) :: rest }
   | [] => hint
 
-/-- The start of the body's code in a fold whose code starts at `loc`: inside the
-block and loop of the `while`, after the condition, the exit test, and the
+/-- The start of the body's code in an array or list fold whose code starts at `loc`:
+inside the block and loop of the `while`, after the condition, the exit test, and the
 element load. -/
 def foldBodyLoc (loc : Loc) : Project.IR.Stmt → Loc
   | .seq first (.seq second (.while condition (.seq load _))) =>
       (((loc.skip (stmtLength first + stmtLength second)).inside none).inside none).skip
+        (exprLength condition + 2 + stmtLength load)
+  | .seq first (.while condition (.seq load _)) =>
+      (((loc.skip (stmtLength first)).inside none).inside none).skip
         (exprLength condition + 2 + stmtLength load)
   | _ => loc
 
@@ -596,7 +605,7 @@ mutual
           names := before.names.push ("size", temp) }
         let ir : IRExpr .u64 := .get temp
         return (ir, [hint ir "size result"])
-    | (``Array.foldl, _) =>
+    | (``Array.foldl, _) | (``List.foldl, _) =>
         let ir : IRExpr .u64 := .get (← translateFold ctx term .u64)
         return (ir, [hint ir "fold result"])
     | (``LeanExe.loop, _) =>
@@ -797,7 +806,7 @@ mutual
         let (x, xHints) ← translateFloat ctx loc operand
         let ir : IRExpr .f64 := .unF .sqrt x
         return (ir, hint ir "float sqrt" :: xHints)
-    | (``Array.foldl, _) =>
+    | (``Array.foldl, _) | (``List.foldl, _) =>
         let ir : IRExpr .f64 := .getF (← translateFold ctx term .f64)
         return (ir, [hint ir "fold result"])
     | (``LeanExe.loop, _) =>
@@ -940,6 +949,40 @@ mutual
     let source ← sourceOf term
     unless ctx.foldable do
       throwError "a fold may not appear in a branch, a fold body, or a recursive definition: {source}"
+    if let (``List.foldl, #[acc, element, f, init, list]) := term.getAppFnArgs then
+      unless ← isUInt64 element do throwError "unsupported fold element type in {source}"
+      unless ← (if accType == .f64 then isFloat acc else isUInt64 acc) do
+        throwError "unsupported fold accumulator type in {source}"
+      let some listLocal := ctx.lists.lookup list.consumeMData
+        | throwError "a list fold must run over a list variable: {source}"
+      let (⟨_, initial⟩, initialHints) ← translateAs ctx ⟨[], 0⟩ accType init
+      let before ← get
+      let accLocal := before.next
+      let (cursorLocal, elementLocal) := (accLocal + 1, accLocal + 2)
+      let assign : Project.IR.Stmt := .assign accLocal initial
+      let foldLoc : Loc := ⟨[], before.length + stmtLength assign⟩
+      let bodyLoc := foldBodyLoc foldLoc
+        (Stmt.listFold listLocal accLocal cursorLocal elementLocal (.const 0))
+      let bind (x : Lean.Expr) (index : Nat) (ctx : Ctx) : Ctx :=
+        if accType == .f64 then { ctx with floats := (x, index) :: ctx.floats }
+        else { ctx with words := (x, index) :: ctx.words }
+      let (⟨_, body⟩, bodyHints) ← withLocalDeclD `acc acc fun a =>
+        withLocalDeclD `element element fun e =>
+          translateAs (bind a accLocal { ctx with
+            words := (e, elementLocal) :: ctx.words, foldable := false, pureCalls := false })
+            bodyLoc accType (mkApp2 f a e).headBeta
+      let fold := Stmt.listFold listLocal accLocal cursorLocal elementLocal body
+      set { before with
+        stmts := before.stmts.push assign |>.push fold
+        hints := before.hints ++
+          (mkHint ⟨[], before.length⟩ (stmtLength assign) "fold start" (← sourceOf init) ::
+            initialHints.map (Hint.shift before.length) ++
+            mkHint foldLoc (stmtLength fold) "list-fold-loop" source :: bodyHints).toArray
+        length := before.length + stmtLength assign + stmtLength fold
+        vars := before.vars ++ #[accType, .u64, .u64]
+        names := before.names ++ #[("accumulator", accLocal), ("cursor", cursorLocal),
+          ("element", elementLocal)] }
+      return accLocal
     let (``Array.foldl, #[element, acc, f, init, array, start, stop]) := term.getAppFnArgs
       | throwError "unsupported fold: {source}"
     let elementType : ScalarType ← if ← isUInt64 element then pure .u64
@@ -1710,6 +1753,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
     let mut floats := []
     let mut arrays := []
     let mut floatArrays := []
+    let mut lists := []
     let mut tuples := []
     -- The WebAssembly parameters: one per word, float, or array, and one per component of a
     -- structure, in order.
@@ -1731,6 +1775,9 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       else if ← isFloatArray type then
         floatArrays := (params[i], index) :: floatArrays
         paramTypes := paramTypes.push .u64
+      else if ← isUInt64List type then
+        lists := (params[i], index) :: lists
+        paramTypes := paramTypes.push .u64
       else if ← isWordType type then
         words := (params[i], index) :: words
         paramTypes := paramTypes.push .u64
@@ -1743,7 +1790,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
         paramNames := paramNames.push (s!"{name}.{types.length - 1}", index + types.length - 1)
         continue
       else
-        throwError "parameter {params[i]} of {declName} is not UInt64, Float, an array, or a user type"
+        throwError "parameter {params[i]} of {declName} is not UInt64, Float, an array, a list of words, or a user type"
       paramNames := paramNames.push (name, index)
     let resultType ← inferType body
     let arrayResult ← isArray resultType
@@ -1753,7 +1800,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       throwError "the result of {declName} is not UInt64, Float, an array, a pair, or a user type"
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
     if recursive then
-      unless arrays.isEmpty && floatArrays.isEmpty && floats.isEmpty && tuples.isEmpty &&
+      unless arrays.isEmpty && floatArrays.isEmpty && lists.isEmpty && floats.isEmpty &&
+          tuples.isEmpty &&
           !arrayResult && !floatResult && !pairResult do
         throwError "a recursive definition may take and return only UInt64: {declName}"
       let ctx : Ctx :=
@@ -1779,8 +1827,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let sites ← moveSites owners arrayParams body
       let owned := arrayParams.filter sites.contains
       let ctx : Ctx :=
-        { self := declName, params, words, floats, arrays, floatArrays, tuples, callees, owners,
-          owned, foldable := true }
+        { self := declName, params, words, floats, arrays, floatArrays, lists, tuples, callees,
+          owners, owned, foldable := true }
       let ((results, resultHints), prelude) ←
         (do
           let (results, resultHints) ← translateResults ctx body resultType
