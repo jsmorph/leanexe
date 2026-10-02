@@ -21197,14 +21197,18 @@ Steps of 7c1, each built, tested, committed, and pushed:
 - [x] The trusted definitions in `Implements.lean`: 83 lines of definitions and 25 of
   documentation.  `Encode (List UInt64)` sits there too, beside the `Represent` instances
   for arrays, since `List UInt64` is a library type.
-- [ ] Heap facts: a record allocated and given its header and slots is owned; owned and
+- [x] Heap facts: a record allocated and given its header and slots is owned; owned and
   borrowed nodes are kept by allocation and by writes outside their blocks; a new record
   lies apart from existing ones.  Done in `Project/Pipeline/Records.lean`: `Heap.Region`
   and `Heap.Region.allocate`, `RecordHeader.frame`, `NodeOwned.frame`, and
-  `Heap.At.writesApart`.  Left: the borrowed frame and ownership of a new cons cell.
-- [ ] IR: the cons template and its rule; the loop over a borrowed list, with a measure that
+  `Heap.At.writesApart`; `Heap.Built`, a value built from a starting heap by allocations,
+  with `Heap.Built.null`, `Heap.Built.cell` for a new cons cell, and `keepBorrowed` and
+  `keepOwned` for the frame clauses of `Implements`.  No 7c1 program needs a borrowed list
+  to survive an allocation, so the borrowed frame waits for one.
+- [x] IR: the cons template and its rule; the loop over a borrowed list, with a measure that
   the store and state determine; the loop with a list state, through `Stmt.loop_inv`.  The
-  loop over a borrowed list is `Stmt.listFold` in `Project/IR/ListFold.lean`, with its rule
+  loop with a list state needs no rule of its own: `listRange_implements` applies
+  `Stmt.loop_inv` with `Heap.Built` in the invariant.  The loop over a borrowed list is `Stmt.listFold` in `Project/IR/ListFold.lean`, with its rule
   `Stmt.listFold_spec`.  Its premise `ListAt mem p xs` states the list in memory alone;
   `NodeBorrowed.listAt` derives it from a borrowed argument and the allocator invariant.  The
   measure is `listLength mem p`, the length of the list at the cursor, defined by
@@ -21213,18 +21217,25 @@ Steps of 7c1, each built, tested, committed, and pushed:
   The rule ends in `Heap.NewRecord`: the allocator invariant, the header for any slots of
   the right length and mask, the words in the slots, and every region of the old heap with
   its bytes, still a region, and apart from the new block.
-- [ ] Compiler: `List UInt64` as a pointer word, `[]`, `x :: xs` in a loop step that
+- [x] Compiler: `List UInt64` as a pointer word, `[]`, `x :: xs` in a loop step that
   consumes the state, and `List.foldl` over a list variable.  Done: a `List UInt64`
-  parameter and `List.foldl` over it, with hint rule `list-fold-loop` and its LTG entry.
-- [ ] Programs `listSum` and `listRange`, with their theorems.  `listSum` is done:
-  `listSum_implements` and `lists_bytes` in `Project/Lists/Verify.lean`, with axioms
-  `propext`, `Classical.choice`, and `Quot.sound`.  Its proof is 20 lines, the length of
-  `sumArray_implements`.
-- [ ] Host: a list argument that allocates records and writes their headers, and a list
+  parameter and `List.foldl` over it, with hint rule `list-fold-loop` and its LTG entry;
+  `[]` as 0, with hint `empty list`; and a cell as a loop's next state, compiled to
+  `Stmt.record` into a fresh local, with hint `list cell` and the LTG entry `list-cell`.
+  A cell elsewhere is rejected: inside a branch its allocation would run on both paths, as
+  the prelude of a fold does.
+- [x] Programs `listSum` and `listRange`, with their theorems.  `listSum_implements`,
+  `listRange_implements`, and `lists_bytes` are in `Project/Lists/Verify.lean`, with axioms
+  `propext`, `Classical.choice`, and `Quot.sound`.  The `listSum` proof is 20 lines, the
+  length of `sumArray_implements`, and the `listRange` proof 57.  `listRange n` is
+  `LeanExe.loop n [] fun i xs => (n - 1 - i) :: xs`, the words below `n` in increasing
+  order.
+- [x] Host: a list argument that allocates records and writes their headers, and a list
   result that walks the records and checks their headers; tests against native Lean,
   including `[]` and `listRange 0`.  The kind is `chain-u64`, since `list:` already names a
-  list of results.  Both directions are in `tools/wasmtime-host.c`; `listSum` matched
-  native Lean on 37 lists, and all 5,103 module comparisons pass.
+  list of results.  Both directions are in `tools/wasmtime-host.c`.  `listSum` matched
+  native Lean on 37 lists and `listRange` on nine counts from 0 to 1,000, and all 5,112
+  module comparisons pass.  `lists.wasm` is 1,558 bytes with sha256 `d7ea4bb84a427a05…`.
 
 The LTG check reports five declarations that no longer exist, in the entries
 `array-state-loop`, `array-literal`, `array-build`, and `function-call`: `Live.weaken`,

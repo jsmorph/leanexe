@@ -4,6 +4,6 @@ import Project.Compiler.Command
 namespace Project.Lists
 
 open LeanExe.Examples.Lists in
-leanexe_compile lists := [listSum]
+leanexe_compile lists := [listSum, listRange]
 
 end Project.Lists

@@ -2,6 +2,7 @@ import Lean
 import Project.IR.ArrayLiteral
 import Project.IR.Fold
 import Project.IR.ListFold
+import Project.IR.Record
 import Project.IR.Release
 import Project.IR.Function
 import Project.IR.Loop
@@ -268,6 +269,7 @@ def constructorParts? (term type : Lean.Expr) : MetaM (Option (List (Lean.Expr �
 
 /-- The component terms of `term`, a nest of constructor applications of type `type`. -/
 partial def stateTerms (term type : Lean.Expr) : MetaM (List (Lean.Expr × ScalarType)) := do
+  if ← isUInt64List type then return [(term, .u64)]
   if ← isTupleType type then
     let some parts ← constructorParts? term type
       | throwError "a loop state must be a tuple of components: {← sourceOf term}"
@@ -410,6 +412,14 @@ def buildElementLoc (loc : Loc) (dst limit index : Nat) (count : IRExpr .u64)
   let address : IRExpr .u64 :=
     .bin .add (.get dst) (.bin .mul (.bin .add (.get index) (.const 1)) (.const 8))
   (buildBodyLoc loc dst limit index count).skip (bodyLength + exprLength address + 1)
+
+/-- Where the value of slot `k` starts in `Stmt.record dst values mask` when the record's code
+starts at `loc`: after the allocation, the header stores, the earlier slots' stores, and the
+slot's address. -/
+def recordValueLoc (loc : Loc) (dst : Nat) (values : List (IRExpr .u64)) (mask : UInt64)
+    (k : Nat) : Loc :=
+  loc.skip (stmtLength (Stmt.record dst (values.take k) mask) +
+    exprLength (.bin .add (.get dst) (.const 0) : IRExpr .u64) + 1)
 
 /-- The hint for code at `path` inside the code a hint's path is relative to. -/
 def Hint.within (path : List Nat) (hint : Hint) : Hint := { hint with path := path ++ hint.path }
@@ -608,6 +618,12 @@ mutual
     | (``Array.foldl, _) | (``List.foldl, _) =>
         let ir : IRExpr .u64 := .get (← translateFold ctx term .u64)
         return (ir, [hint ir "fold result"])
+    | (``List.nil, #[element]) =>
+        unless ← isUInt64 element do throwError "unsupported list element type in {source}"
+        let ir : IRExpr .u64 := .const 0
+        return (ir, [hint ir "empty list"])
+    | (``List.cons, _) =>
+        throwError "a list cell may appear only as the next state of a loop: {source}"
     | (``LeanExe.loop, _) =>
         let [(state, .u64)] ← translateLoop ctx term
           | throwError "a loop used as a word must have a word state: {source}"
@@ -1241,6 +1257,17 @@ mutual
           let mut temps := #[]
           let mut here := loc
           for (component, type) in components do
+            if let (``List.cons, #[element, head, tail]) := component.consumeMData.getAppFnArgs then
+              unless ← isUInt64 element do
+                throwError "unsupported list element type in {← sourceOf component}"
+              let temp ← fresh .u64 "next state"
+              let (cell, cellHints, after) ← translateCell ctx here head tail temp
+              stmts := stmts ++ cell.toArray
+              hints := hints ++ (mkHint here (cell.map stmtLength).sum "list cell"
+                (← sourceOf component) :: cellHints).toArray
+              temps := temps.push (temp, .u64)
+              here := after
+              continue
             let (pre, ⟨_, v⟩, vHints, at_) ← translatePrefixed ctx here type component
             let temp ← fresh type "next state"
             let stmt := Project.IR.Stmt.assign temp v
@@ -1257,6 +1284,24 @@ mutual
             stmts := stmts.push stmt
             here := here.skip (stmtLength stmt)
           return (stmts.toList, hints.toList)
+
+  /-- Translates the list cell `head :: tail`, whose code starts at `loc`, to the statements
+  that its parts need followed by `Stmt.record dst [head, tail] 2`, a record of two slots
+  whose second holds a child.  Returns the statements, their hints, and where they end. -/
+  partial def translateCell (ctx : Ctx) (loc : Loc) (head tail : Lean.Expr) (dst : Nat) :
+      CompileM (List Project.IR.Stmt × List Hint × Loc) := do
+    let ((h, hHints), hStmts, hStmtHints) ← withBlock (translateValue ctx ⟨[], 0⟩ head)
+    let ((t, tHints), tStmts, tStmtHints) ← withBlock (translateValue ctx ⟨[], 0⟩ tail)
+    let relocate (at_ : Loc) (hint : Hint) : Hint :=
+      Hint.within at_.prefix_ (Hint.shift at_.index hint)
+    let tailStart := loc.skip (hStmts.map stmtLength).sum
+    let recordStart := tailStart.skip (tStmts.map stmtLength).sum
+    let stmt := Stmt.record dst [h, t] 2
+    return (hStmts ++ tStmts ++ [stmt],
+      hStmtHints.map (relocate loc) ++ tStmtHints.map (relocate tailStart) ++
+        hHints.map (relocate (recordValueLoc recordStart dst [h, t] 2 0)) ++
+        tHints.map (relocate (recordValueLoc recordStart dst [h, t] 2 1)),
+      recordStart.skip (stmtLength stmt))
 
   /-- Pushes the copying template for an array of `count` elements whose element
   is `element`, a function of the index local, and returns the new array's local. -/
@@ -1502,7 +1547,7 @@ mutual
         let array ← translateArray ctx term (dests?.bind (·.head?))
         let ir : IRExpr .u64 := .get array
         return ([⟨.u64, ir⟩], [[mkHint ⟨[], 0⟩ (exprLength ir) "array result" (← sourceOf term)]])
-      let scalar ← scalarTypeOf type
+      let scalar ← if ← isUInt64List type then pure .u64 else scalarTypeOf type
       let (⟨resultType, ir⟩, hints) ← translateAs ctx ⟨[], 0⟩ scalar term
       let some dest := dests?.bind (·.head?)
         | return ([⟨resultType, ir⟩], [hints])
@@ -1796,13 +1841,14 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
     let arrayResult ← isArray resultType
     let floatResult ← isFloat resultType
     let pairResult ← isTupleType resultType
-    unless arrayResult || floatResult || pairResult || (← isWordType resultType) do
-      throwError "the result of {declName} is not UInt64, Float, an array, a pair, or a user type"
+    let listResult ← isUInt64List resultType
+    unless arrayResult || floatResult || pairResult || listResult || (← isWordType resultType) do
+      throwError "the result of {declName} is not UInt64, Float, an array, a list of words, a pair, or a user type"
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
     if recursive then
       unless arrays.isEmpty && floatArrays.isEmpty && lists.isEmpty && floats.isEmpty &&
           tuples.isEmpty &&
-          !arrayResult && !floatResult && !pairResult do
+          !arrayResult && !floatResult && !pairResult && !listResult do
         throwError "a recursive definition may take and return only UInt64: {declName}"
       let ctx : Ctx :=
         { self := declName, params, words, floats, arrays, floatArrays, foldable := false }
