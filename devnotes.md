@@ -20973,3 +20973,15 @@ Trusted text under question 1's option (a): the class `Flat α (β : outParam Ty
 generic `Scalar` instance, `Flat Op UInt64 := ⟨fun op => op.ctorIdx.toUInt64⟩`, and
 `Flat Calc (UInt64 × UInt64 × Op) := ⟨fun c => (c.value, c.steps, c.last)⟩`, each followed by
 an `example` that evaluates one value by `rfl`.  Question 1 goes to the user.
+
+On 2026-10-02 the user chose option (a) for question 1: the class `Flat α (β : outParam Type)`
+and one generic `Scalar` instance in `Implements.lean`, with a one-line `Flat` instance per
+type.
+
+- [ ] `Flat` and its `Scalar` instance; `Flat Op` and `Flat Calc` with checked examples.
+- [ ] Compiler: enumeration and structure types in parameters, results, and loop states;
+  enumeration constructors; structure constructors and projections; `casesOn`, `rec`, and
+  `_sparseCasesOn` of an enumeration as a word and as a structure result; `casesOn` of a
+  structure; calls with structure arguments and results, in a loop body too.
+- [ ] `LeanExe/Examples/Calc.lean`, the module, and the six theorems.
+- [ ] Tests against native Lean.
