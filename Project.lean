@@ -36,6 +36,9 @@ import Project.Gcd.Module
 import Project.Gcd.Verify
 import Project.Lists.Module
 import Project.Lists.Verify
+import Project.Words.Module
+import Project.Words.Encode
+import Project.Words.Verify
 import Project.Gpt.Module
 import Project.Gpt.StepVerify
 import Project.Gpt.Verify

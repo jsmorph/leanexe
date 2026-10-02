@@ -76,6 +76,8 @@ structure Ctx where
   arrays : List (Lean.Expr × Nat)
   floatArrays : List (Lean.Expr × Nat)
   lists : List (Lean.Expr × Nat) := []
+  /-- The local of each variable of a recursive user type in scope, a borrowed pointer. -/
+  nodes : List (Lean.Expr × Nat) := []
   tuples : List (Lean.Expr × List (Nat × ScalarType)) := []
   callees : List (Name × Nat) := []
   foldable : Bool
@@ -176,21 +178,30 @@ inductive UserType where
   | enum (ctors : List Name)
   | struct (ctor : Name) (fields : List Lean.Expr)
   | sum (ctors : List (Name × List Lean.Expr))
+  | recursive (ctors : List (Name × List Lean.Expr))
 
-/-- `type` as a user type: an inductive type without parameters, indices, or recursion that
-is an enumeration, whose constructors have no fields, a structure, or a sum. -/
+/-- `type` as a user type: an inductive type without parameters or indices that is an
+enumeration, whose constructors have no fields, a structure, or a sum, or a recursive type
+that is neither nested nor mutual, whose values are records on the heap. -/
 def userType? (type : Lean.Expr) : MetaM (Option UserType) := do
   let .const name _ ← whnfR type | return none
   if name == ``UInt64 || name == ``Float then return none
   let some (.inductInfo info) := (← getEnv).find? name | return none
-  unless info.numParams == 0 && info.numIndices == 0 && !info.isRec do return none
+  unless info.numParams == 0 && info.numIndices == 0 do return none
   let fields ← info.ctors.mapM fun ctor => do
     forallTelescope (← getConstInfoCtor ctor).type fun xs _ => xs.toList.mapM inferType
+  if info.isRec then
+    unless info.numNested == 0 && info.all.length == 1 do return none
+    return some (.recursive (info.ctors.zip fields))
   if fields.all (·.isEmpty) then return some (.enum info.ctors)
   if let [ctor] := info.ctors then
     if isStructure (← getEnv) name then return some (.struct ctor fields[0]!)
     return none
   return some (.sum (info.ctors.zip fields))
+
+/-- Whether `type` is a recursive user type, whose values are pointers to records. -/
+def isNodeType (type : Lean.Expr) : MetaM Bool :=
+  return (← userType? type) matches some (.recursive _)
 
 /-- Whether `type` is a pair, a structure, or a sum, whose values have several components. -/
 def isTupleType (type : Lean.Expr) : MetaM Bool := do
@@ -222,7 +233,8 @@ partial def componentTypes (type : Lean.Expr) (arrays : Bool) : MetaM (List Scal
   let type ← whnfR type
   if type.isAppOfArity ``Prod 2 then
     return (← componentTypes type.appFn!.appArg! arrays) ++ (← componentTypes type.appArg! arrays)
-  if arrays && ((← isArray type) || (← isUInt64List type)) then return [.u64]
+  if arrays && ((← isArray type) || (← isUInt64List type) || (← isNodeType type)) then
+    return [.u64]
   match ← userType? type with
   | some (.struct _ fields) => return (← fields.mapM fun field => componentTypes field false).flatten
   | some (.sum ctors) =>
@@ -317,6 +329,10 @@ partial def userCases? (term : Lean.Expr) : MetaM (Option (Lean.Expr × List Cas
   let ctorFields ← match ← userType? (.const induct []) with
     | some (.enum ctors) => pure (ctors.map fun _ => [])
     | some (.sum ctors) => pure (ctors.map (·.2))
+    -- The alternatives of `rec` on a recursive type also take induction hypotheses.
+    | some (.recursive ctors) =>
+        unless kind == "casesOn" do return none
+        pure (ctors.map (·.2))
     | _ => return none
   let n := ctorFields.length
   if kind == "casesOn" && args.size == 2 + n then
@@ -362,6 +378,9 @@ def Ctx.bindTyped (ctx : Ctx) (x type : Lean.Expr) (components : List (Nat × Sc
   if ← isFloatArray type then
     let [(index, _)] := components | throwError "an array takes one local"
     return { ctx with floatArrays := (x, index) :: ctx.floatArrays }
+  if ← isNodeType type then
+    let [(index, _)] := components | throwError "a value of a recursive type takes one local"
+    return { ctx with nodes := (x, index) :: ctx.nodes }
   return ctx.bind x components
 
 /-- Whether `type` is a nest of at least two word arrays, `Array UInt64 × (… × Array UInt64)`. -/
@@ -547,6 +566,31 @@ def isWordType (type : Lean.Expr) : MetaM Bool := do
   if ← isUInt64 type then return true
   return (← userType? type) matches some (.enum _)
 
+/-- Binds the fields `fields`, from slot `i` on, of the record at local `ptr` to fresh locals,
+and continues with `k` given the field variables and the loads that fill the locals.  A word
+or float field is loaded as its value, and a field of a recursive type as its pointer. -/
+partial def bindRecordFields {γ : Type} (ctx : Ctx) (ptr : Nat)
+    (k : Ctx → List Lean.Expr → List Project.IR.Stmt → CompileM γ) :
+    Nat → List Lean.Expr → List Lean.Expr → List Project.IR.Stmt → CompileM γ
+  | _, [], xs, loads => k ctx xs loads
+  | i, field :: fields, xs, loads => do
+      let address : IRExpr .u64 := .bin .add (.get ptr) (.const (UInt64.ofNat (8 * i)))
+      withLocalDeclD `field field fun x => do
+        if ← isFloat field then
+          let local_ ← fresh .f64 "field"
+          bindRecordFields { ctx with floats := (x, local_) :: ctx.floats } ptr k (i + 1) fields
+            (xs ++ [x]) (loads ++ [.load .f64 local_ address])
+        else if ← isWordType field then
+          let local_ ← fresh .u64 "field"
+          bindRecordFields { ctx with words := (x, local_) :: ctx.words } ptr k (i + 1) fields
+            (xs ++ [x]) (loads ++ [.load .u64 local_ address])
+        else if ← isNodeType field then
+          let local_ ← fresh .u64 "field"
+          bindRecordFields { ctx with nodes := (x, local_) :: ctx.nodes } ptr k (i + 1) fields
+            (xs ++ [x]) (loads ++ [.load .u64 local_ address])
+        else
+          throwError "a field of a recursive type must be a word, a float, or a value of a recursive type: {field}"
+
 /-- The expression that reads local `local_` of type `type`. -/
 def readLocal : Nat × ScalarType → Σ type, IRExpr type
   | (local_, .f64) => ⟨.f64, .getF local_⟩
@@ -579,6 +623,9 @@ mutual
           return (ir, [hint ir "field"])
       | .inr _ => throwError "a field used as a word must be one word: {source}"
     if let some (discriminant, alternatives) ← userCases? term then
+      if let some ptr := ctx.nodes.lookup discriminant.consumeMData then
+        let ir : IRExpr .u64 := .get (← translateNodeCases ctx source ptr .u64 alternatives)
+        return (ir, [hint ir "match result"])
       let (ctx, d, slots, dHints) ← caseDiscriminant ctx loc discriminant alternatives
       let (ir, hints) ← translateWordCases { ctx with foldable := false } loc d 0 (slots.zip alternatives)
       return (ir, hint ir "case split" :: dHints ++ hints)
@@ -1299,6 +1346,47 @@ mutual
             here := here.skip (stmtLength stmt)
           return (stmts.toList, hints.toList)
 
+  /-- Translates a case split on the value of a recursive type at local `ptr`, whose type has
+  one constructor without fields, the null pointer, and one with fields, a record.  Pushes a
+  conditional statement that tests the pointer against 0; the record's branch loads the
+  fields into fresh locals.  Each branch assigns the alternative's value, of type `type`, to
+  a fresh local, which the function returns. -/
+  partial def translateNodeCases (ctx : Ctx) (source : String) (ptr : Nat) (type : ScalarType)
+      (alternatives : List CaseAlt) : CompileM Nat := do
+    let [first, second] := alternatives
+      | throwError "a match on a recursive type must have two constructors: {source}"
+    let (nullAlt, recordAlt, nullFirst) ← match first.fields, second.fields with
+      | [], _ :: _ => pure (first, second, true)
+      | _ :: _, [] => pure (second, first, false)
+      | _, _ => throwError "a match on a recursive type needs one constructor without fields and one with fields: {source}"
+    let result ← fresh type "match result"
+    let inner := { ctx with foldable := false }
+    let condition : IRExpr .bool := if nullFirst then .eq (.get ptr) (.const 0)
+      else .ne (.get ptr) (.const 0)
+    let branchLoc (branch : Nat) : Loc :=
+      ((⟨[], 0⟩ : Loc).skip (exprLength condition)).inside (some branch)
+    let nullLoc := branchLoc (if nullFirst then 0 else 1)
+    let recordLoc := branchLoc (if nullFirst then 1 else 0)
+    let (nPre, ⟨_, nv⟩, nHints, nAt) ← translatePrefixed inner nullLoc type (nullAlt.body [])
+    let nullStmt : Project.IR.Stmt := .assign result nv
+    let nullStmts := nPre ++ [nullStmt]
+    let (recordStmts, rHints) ← bindRecordFields inner ptr (fun ctx xs loads => do
+        let here := recordLoc.skip (loads.map stmtLength).sum
+        let (rPre, ⟨_, rv⟩, rHints, rAt) ← translatePrefixed ctx here type (recordAlt.body xs)
+        let recordStmt : Project.IR.Stmt := .assign result rv
+        let loadHints := (List.range loads.length).zip loads |>.map fun (j, load) =>
+          mkHint (recordLoc.skip ((loads.take j).map stmtLength).sum) (stmtLength load)
+            "field load" source
+        return (loads ++ rPre ++ [recordStmt], loadHints ++ rHints ++
+          [mkHint rAt (stmtLength recordStmt) "match value" source]))
+      0 recordAlt.fields [] []
+    let (thenStmts, elseStmts) := if nullFirst then (nullStmts, recordStmts)
+      else (recordStmts, nullStmts)
+    let stmt : Project.IR.Stmt := .ite condition (seqAll thenStmts) (seqAll elseStmts)
+    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "node match" source :: nHints ++
+      mkHint nAt (stmtLength nullStmt) "match value" source :: rHints)
+    return result
+
   /-- Translates the list cell `head :: tail`, whose code starts at `loc`, to the statements
   that its parts need followed by `Stmt.record dst [head, tail] 2`, a record of two slots
   whose second holds a child.  Returns the statements, their hints, and where they end. -/
@@ -1813,6 +1901,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
     let mut arrays := []
     let mut floatArrays := []
     let mut lists := []
+    let mut nodes := []
     let mut tuples := []
     -- The WebAssembly parameters: one per word, float, or array, and one per component of a
     -- structure, in order.
@@ -1820,7 +1909,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
     let mut paramNames : Array (String × Nat) := #[]
     for h : i in [:params.size] do
       let type ← inferType params[i]
-      let name := (← params[i].fvarId!.getUserName).toString
+      let name := (← params[i].fvarId!.getUserName).eraseMacroScopes.toString
       let index := paramTypes.size
       if ← isUInt64 type then
         words := (params[i], index) :: words
@@ -1836,6 +1925,9 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
         paramTypes := paramTypes.push .u64
       else if ← isUInt64List type then
         lists := (params[i], index) :: lists
+        paramTypes := paramTypes.push .u64
+      else if ← isNodeType type then
+        nodes := (params[i], index) :: nodes
         paramTypes := paramTypes.push .u64
       else if ← isWordType type then
         words := (params[i], index) :: words
@@ -1860,7 +1952,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       throwError "the result of {declName} is not UInt64, Float, an array, a list of words, a pair, or a user type"
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
     if recursive then
-      unless arrays.isEmpty && floatArrays.isEmpty && lists.isEmpty && floats.isEmpty &&
+      unless arrays.isEmpty && floatArrays.isEmpty && lists.isEmpty && nodes.isEmpty &&
+          floats.isEmpty &&
           tuples.isEmpty &&
           !arrayResult && !floatResult && !pairResult && !listResult do
         throwError "a recursive definition may take and return only UInt64: {declName}"
@@ -1887,8 +1980,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let sites ← moveSites owners arrayParams body
       let owned := arrayParams.filter sites.contains
       let ctx : Ctx :=
-        { self := declName, params, words, floats, arrays, floatArrays, lists, tuples, callees,
-          owners, owned, foldable := true }
+        { self := declName, params, words, floats, arrays, floatArrays, lists, nodes, tuples,
+          callees, owners, owned, foldable := true }
       let ((results, resultHints), prelude) ←
         (do
           let (results, resultHints) ← translateResults ctx body resultType

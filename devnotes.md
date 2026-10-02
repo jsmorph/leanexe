@@ -21521,9 +21521,20 @@ On 2026-10-02 the user chose (d): recursive calls with a depth guard.
 
 Revised steps for 7c3a, each built, tested, committed, and pushed:
 
-- [ ] `userType?` and the layout rule for a recursive type with one record constructor and
+- [x] `userType?` and the layout rule for a recursive type with one record constructor and
   one null constructor; a recursive-type parameter as a borrowed pointer word.
-- [ ] `match` on such a variable in a non-recursive function (`head`), with a rule.
+  `UserType.recursive` holds a recursive inductive that is neither nested nor mutual; a
+  parameter of such a type is held in `Ctx.nodes`.  The `Encode Words` instance is in
+  `Project/Words/Encode.lean`, beside the program, as the `Flat` instances are.
+- [x] `match` on such a variable in a non-recursive function (`head`), with a rule.
+  `Words.first` (named so to avoid the constructor's field name) compiles through
+  `translateNodeCases` to a conditional statement that tests the pointer against 0; the
+  record's branch loads every field into a fresh local (`bindRecordFields`), and each
+  branch assigns its value to a fresh local.  Hints: `node match`, `field load`, `match
+  value`, and `match result`.  `first_implements` proves it directly with `Stmt.ite_spec`
+  and `Stmt.load_spec` (52 lines); a general rule waits for `sumAcc`, which matches inside
+  a loop.  `words.wasm` is 1,408 bytes with sha256 `1e6b1a06ae21f349…`; `first` matched
+  native Lean on 5 lists, and all 5,126 module comparisons pass.
 - [ ] Tail recursion over it (`sumAcc`): the `match` branch of `translateTail`, fields in
   fresh locals, and a tail rule over `Represent` arguments through `Stmt.while_ghost`.
 - [ ] `range n` with `cons` as a loop's next state, through `Stmt.record` and
