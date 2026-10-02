@@ -20563,3 +20563,29 @@ Questions and provisional answers, before review:
 6. Tests: comparisons of `runCommands` with native Lean, and a session that feeds a command
    stream in chunks and compares the book with one call over the whole stream.  Release
    counts check that the book is never copied.
+
+The review accepted items 1, 4, and 5 and changed the rest, and each change holds against the
+code.  `runCommands` goes last in the module list, so `applyCommand`'s modes are known and
+functions 2 to 11 keep their indices.  My reason for deferring outputs was wrong: `++` already
+appends in place, so an output array that each step extends needs a three-array state and a
+call rule for three arrays, not the in-place item.  Outputs therefore become 5b, the next part
+of Iteration 5.  As planned, the compiler rejects `runCommands` in three places: a pair result
+that is not `Prod.mk`, the matcher's components bound as words, and a loop body that allows
+no moves.  It also should accept only what the proof covers: a pair state that the callee
+consumes in both positions, started from owned parameters.  Without a release, the template is
+the two initial assignments and `Stmt.loop limit index count (.call idx args [s1, s2])`, and
+each iteration is one `Live.callPair`.  The counting loop, which `Live.arrayLoop` proves inline,
+becomes one lemma whose invariant may change the store, for this rule and the three-array
+rule of 5b.  The fold lemma becomes chunk composition: `runCommands` on the result of a first
+chunk whose size is a multiple of 3 equals one call over both chunks, which is what lets the
+host choose the chunk size.  The release counts cannot show that the book is never copied,
+since `set!`, `insertIdx!`, and `eraseIdxIfInBounds` copy.  They show that the loop adds no
+allocation or free beyond those of its commands.
+
+- [ ] The counting-loop lemma with a store-changing invariant.
+- [ ] `Stmt.pairLoop` and its rule over `Live.callPair`.
+- [ ] Compiler: the matcher's array components, the loop result, and a pair state that the
+  callee consumes.
+- [ ] `runCommands`, its theorem, the chunk lemma, and `clob_bytes`.
+- [ ] Tests: comparisons, a chunked session, release counts; emit; other modules unchanged.
+- [ ] 5b: per-step outputs.
