@@ -21084,7 +21084,20 @@ discriminant, a sum as a loop state, literal sub-patterns (`| .rect 0 h`, which 
   `59f98a656141e2e3…`.  The proofs differ from 7a's in one way.  `simp` with its default set
   ran for minutes, without reaching the heartbeat limit, on the evaluation of `area` for a
   rectangle; `simp only` with the same lemmas finished.  I did not find the lemma or
-  procedure that stalls.  The proofs instead evaluate the IR by `rfl` where the state is
+  procedure that stalls.  Later diagnosis (2026-10-02) located the time in the kernel.  The
+  smallest slow goal evaluates
+  `iteF (get 0 == 0) (constF 7) (iteF (get 0 == 1) (convertU (get 2 * get 3)) (constF 0))`
+  on the parameters `[.i64 1, .f64 0, .i64 w, .i64 h]`.  With
+  `set_option debug.skipKernelTC true` its `simp` call takes 2 seconds, and without it more
+  than 10 minutes; `set_option profiler true` produced nothing in 10 minutes.  `simp?`
+  reports 29 lemmas and simprocs, and `simp only` with 13 of them (`Expr.eval`,
+  `State.get`, `List.length_cons`, `List.length_nil`, `zero_add`, `Nat.reduceAdd`,
+  `Nat.ofNat_pos`, `↓reduceIte`, `getElem?_pos`, `List.getElem_cons_zero`,
+  `Option.pure_def`, `Option.bind_eq_bind`, and `Option.bind_some`), followed by `sorry`,
+  still takes more than 90 seconds.  Leaving out any one of them except `zero_add` brings
+  it to 2 seconds, so the slow check needs the evaluation to run to the end and does not
+  come from one lemma.  The next step is to take the proof term that `simp` builds with
+  the kernel check skipped and check its closed subterms one at a time.  The proofs instead evaluate the IR by `rfl` where the state is
   concrete, as in `area` (20 lines), `width` (9), `grow` (7), and `scale` (19), and rewrite
   float results with `F64Bits.toBits_mul`, `toBits_add`, and `F64Convert.toBits_toFloat`.
   Where `rfl` timed out, on states built by several updates, they use the update lemmas:
