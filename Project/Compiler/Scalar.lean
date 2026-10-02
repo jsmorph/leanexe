@@ -168,6 +168,8 @@ structure Prelude where
   temporaries : Array (Lean.Expr × Nat × String) := #[]
   /-- The owned parameters that the code has moved on the current path. -/
   consumed : List Lean.Expr := []
+  /-- The matched owned values whose records a constructor has rewritten on the current path. -/
+  rebuilt : List Lean.Expr := []
 
 /-- The next free local. -/
 def Prelude.next (p : Prelude) : Nat := p.base + p.vars.size
@@ -693,7 +695,7 @@ mutual
     if let some (fields, mask) ← recordCell? term then
       unless term.isAppOf ``List.cons do
         if let some (matched, _, _) := ctx.reuse then
-          if !(← get).consumed.contains matched &&
+          if !(← get).rebuilt.contains matched &&
               (← isDefEq (← inferType term) (← inferType matched)) then
             return ← translateReuse ctx loc term fields
         return ← translateNewRecord ctx loc term fields mask
@@ -1471,10 +1473,12 @@ mutual
   whose type has one constructor without fields, the null pointer, and one with fields, a
   record.  Pushes a conditional statement that tests the pointer against 0; the record's
   branch loads the fields into fresh locals.  Each branch assigns the alternative's value, of
-  type `type`, to a fresh local, which the function returns.  The record's branch of a match on
-  an owned value either only reads the record or consumes it: a constructor of the same type
-  rewrites the record in place, and every child moves into the result.  Both branches must
-  move the same owned values. -/
+  type `type`, to a fresh local, which the function returns.  In the record's branch of a match
+  on an owned value, the value itself counts as moved: a constructor of the same type rewrites
+  the record in place, releasing the children it drops; a branch that moves some children
+  without rewriting the record stores 0 into their slots and releases the record; and a branch
+  that moves none of them only reads the record, which stays owned.  Both branches must move the
+  same owned values and rewrite the same records. -/
   partial def translateNodeCases (ctx : Ctx) (source : String) (discriminant : Lean.Expr)
       (ptr : Nat) (type : ScalarType) (alternatives : List CaseAlt) : CompileM Nat := do
     let [first, second] := alternatives
@@ -1495,37 +1499,58 @@ mutual
     let nullLoc := branchLoc (if nullFirst then 0 else 1)
     let recordLoc := branchLoc (if nullFirst then 1 else 0)
     let saved := (← get).consumed
+    let savedRebuilt := (← get).rebuilt
+    let changes : CompileM (List Lean.Expr × List Lean.Expr) := do
+      let p ← get
+      return (p.consumed.filter fun x => ctx.owned.contains x && !saved.contains x,
+        p.rebuilt.filter fun x => x != discriminant && !savedRebuilt.contains x)
     let (nPre, ⟨_, nv⟩, nHints, nAt) ← translatePrefixed inner nullLoc type (nullAlt.body [])
     let nullStmt : Project.IR.Stmt := .assign result nv
     let nullStmts := nPre ++ [nullStmt]
-    let nullMoves := (← get).consumed.filter fun x => ctx.owned.contains x && !saved.contains x
-    modify fun p => { p with consumed := saved }
+    let (nullMoves, nullRebuilt) ← changes
+    modify fun p => { p with consumed := saved, rebuilt := savedRebuilt }
     let (recordStmts, rHints) ← bindRecordFields inner ptr (fun ctx xs loads => do
         let children ← xs.filterM fun x => do isNodeType (← inferType x)
         let ctx := if owned then
           { ctx with owned := children ++ ctx.owned, reuse := some (discriminant, ptr, xs) }
           else ctx
+        if owned then markMoved discriminant
         let here := recordLoc.skip (loads.map stmtLength).sum
         let (rPre, ⟨_, rv⟩, rHints, rAt) ← translatePrefixed ctx here type (recordAlt.body xs)
-        let consumed := (← get).consumed
-        let moved := children.filter consumed.contains
-        unless (consumed.contains discriminant && moved.length == children.length) ||
-            (!consumed.contains discriminant && moved.isEmpty) do
-          throwError "the record branch of a match on an owned value must either only read the record or rebuild it with its constructor, moving every child into the result; releasing part of a value is not supported yet: {source}"
         let recordStmt : Project.IR.Stmt := .assign result rv
+        -- A record that a branch does not rewrite but takes children from loses those children
+        -- to the result: their slots get 0, and the record's release frees the rest.
+        let mut drops := []
+        if owned && !(← get).rebuilt.contains discriminant then
+          let moved := children.filter (← get).consumed.contains
+          if moved.isEmpty then
+            modify fun p => { p with consumed := p.consumed.erase discriminant }
+          else
+            for h : i in [:xs.length] do
+              if moved.contains xs[i] then
+                drops := drops ++ [Project.IR.Stmt.store
+                  (.bin .add (.get ptr) (.const (UInt64.ofNat (8 * i)))) (.const 0)]
+            drops := drops ++ [Project.IR.Stmt.release ptr]
+            for child in children do
+              unless moved.contains child do markMoved child
+        let dropAt := rAt.skip (stmtLength recordStmt)
+        let dropHints := (List.range drops.length).zip drops |>.map fun (j, drop) =>
+          mkHint (dropAt.skip ((drops.take j).map stmtLength).sum) (stmtLength drop)
+            (if j + 1 == drops.length then "release record" else "clear slot") source
         let loadHints := (List.range loads.length).zip loads |>.map fun (j, load) =>
           mkHint (recordLoc.skip ((loads.take j).map stmtLength).sum) (stmtLength load)
             "field load" source
-        return (loads ++ rPre ++ [recordStmt], loadHints ++ rHints ++
-          [mkHint rAt (stmtLength recordStmt) "match value" source]))
+        return (loads ++ rPre ++ [recordStmt] ++ drops, loadHints ++ rHints ++
+          mkHint rAt (stmtLength recordStmt) "match value" source :: dropHints))
       0 recordAlt.fields [] []
-    let recordMoves := (← get).consumed.filter fun x => ctx.owned.contains x && !saved.contains x
+    let (recordMoves, recordRebuilt) ← changes
     -- A null value needs no release, so the null branch consumes the value exactly when the
     -- record's branch does.
     let nullMoves := if recordMoves.contains discriminant then discriminant :: nullMoves
       else nullMoves
-    unless nullMoves.all recordMoves.contains && recordMoves.all nullMoves.contains do
-      throwError "both branches of a match must move the same owned values: {source}"
+    unless nullMoves.all recordMoves.contains && recordMoves.all nullMoves.contains &&
+        nullRebuilt.all recordRebuilt.contains && recordRebuilt.all nullRebuilt.contains do
+      throwError "both branches of a match must move the same owned values and rewrite the same records: {source}"
     let (thenStmts, elseStmts) := if nullFirst then (nullStmts, recordStmts)
       else (recordStmts, nullStmts)
     let stmt : Project.IR.Stmt := .ite condition (seqAll thenStmts) (seqAll elseStmts)
@@ -1535,19 +1560,19 @@ mutual
 
   /-- Translates the constructor application `term` of a recursive type, with fields `fields`,
   in the record branch of a match on an owned value of the same type: the value of every field
-  other than the matched record's own field in the same slot, then a store of each such value
-  into the record's slot.  The value is the record's pointer, and the matched value and its
-  children that stay in their slots move into it. -/
+  other than the matched record's own field in the same slot, then the release of every child
+  of the record that is still unmoved, then a store of each value into its slot.  The value is
+  the record's pointer, and the children that stay in their slots move into it. -/
   partial def translateReuse (ctx : Ctx) (loc : Loc) (term : Lean.Expr) (fields : List Lean.Expr) :
       CompileM (IRExpr .u64 × List Hint) := do
     let source ← sourceOf term
     let some (matched, ptr, xs) := ctx.reuse
-      | throwError "a constructor of a recursive type outside a loop must rebuild the record of a matched owned value; allocating a record here is not supported yet: {source}"
+      | throwError "no record to rewrite: {source}"
     unless ← isDefEq (← inferType term) (← inferType matched) do
       throwError "a constructor may rebuild only a record of its own type: {source}"
-    if (← get).consumed.contains matched then
+    if (← get).rebuilt.contains matched then
       throwError "the record of {← sourceOf matched} is rebuilt twice: {source}"
-    markMoved matched
+    modify fun p => { p with rebuilt := matched :: p.rebuilt }
     let mut stores := #[]
     for h : i in [:fields.length] do
       let field := fields[i].consumeMData
@@ -1560,6 +1585,12 @@ mutual
       if xs[i]? == some field && (← isNodeType (← inferType field)) then
         discard <| lookupNode ctx field
         markMoved field
+    for x in xs do
+      if (← isNodeType (← inferType x)) && !(← get).consumed.contains x then
+        let some local_ := ctx.nodes.lookup x | throwError "a child has no local: {source}"
+        let stmt := Project.IR.Stmt.release local_
+        pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "release child" source]
+        markMoved x
     for (address, value, valueHints) in stores do
       let stmt := Project.IR.Stmt.store address value
       pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "slot store" source :: valueHints)
@@ -1583,7 +1614,8 @@ mutual
 
   /-- Translates `if condition then thenTerm else elseTerm`, whose value is of a recursive type,
   to a conditional statement whose branches assign their value to a fresh local, which the
-  function returns.  Both branches must move the same owned values. -/
+  function returns.  Both branches must move the same owned values and rewrite the same
+  records. -/
   partial def translateNodeIf (ctx : Ctx) (source : String) (condition thenTerm elseTerm : Lean.Expr) :
       CompileM Nat := do
     let result ← fresh .u64 "if result"
@@ -1591,17 +1623,21 @@ mutual
     let branchLoc (branch : Nat) : Loc :=
       ((⟨[], 0⟩ : Loc).skip (exprLength c)).inside (some branch)
     let saved := (← get).consumed
-    let moves : CompileM (List Lean.Expr) := do
-      return (← get).consumed.filter fun x => ctx.owned.contains x && !saved.contains x
+    let savedRebuilt := (← get).rebuilt
+    let changes : CompileM (List Lean.Expr × List Lean.Expr) := do
+      let p ← get
+      return (p.consumed.filter fun x => ctx.owned.contains x && !saved.contains x,
+        p.rebuilt.filter fun x => !savedRebuilt.contains x)
     let (tPre, ⟨_, tv⟩, tHints, tAt) ← translatePrefixed ctx (branchLoc 0) .u64 thenTerm
     let thenStmt : Project.IR.Stmt := .assign result tv
-    let thenMoves ← moves
-    modify fun p => { p with consumed := saved }
+    let (thenMoves, thenRebuilt) ← changes
+    modify fun p => { p with consumed := saved, rebuilt := savedRebuilt }
     let (ePre, ⟨_, ev⟩, eHints, eAt) ← translatePrefixed ctx (branchLoc 1) .u64 elseTerm
     let elseStmt : Project.IR.Stmt := .assign result ev
-    let elseMoves ← moves
-    unless thenMoves.all elseMoves.contains && elseMoves.all thenMoves.contains do
-      throwError "both branches of an `if` must move the same owned values: {source}"
+    let (elseMoves, elseRebuilt) ← changes
+    unless thenMoves.all elseMoves.contains && elseMoves.all thenMoves.contains &&
+        thenRebuilt.all elseRebuilt.contains && elseRebuilt.all thenRebuilt.contains do
+      throwError "both branches of an `if` must move the same owned values and rewrite the same records: {source}"
     let stmt : Project.IR.Stmt :=
       .ite c (seqAll (tPre ++ [thenStmt])) (seqAll (ePre ++ [elseStmt]))
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "node branch" source :: cHints ++ tHints ++
@@ -2033,7 +2069,7 @@ mutual
         modify fun p => { p with consumed := saved }
         let (_, stmts, hints) ← withBlock do
           let results ← caseBody ctx slots alternative fun ctx body =>
-            translateResults { ctx with temporaries := false } body type dests
+            translateResults { ctx with temporaries := false, reuse := none } body type dests
           releaseUnmoved ctx
           return results
         if rest.isEmpty then return (seqAll stmts, hints)
@@ -2055,7 +2091,7 @@ mutual
       | some dests => pure dests
       | none => types.mapM fun type => fresh type "result"
     let (c, cHints) ← translateCondition ctx ⟨[], 0⟩ condition
-    let branchCtx := { ctx with temporaries := false }
+    let branchCtx := { ctx with temporaries := false, reuse := none }
     -- Each branch releases the owned parameters that it does not move.
     let saved := (← get).consumed
     let (_, thenStmts, thenHints) ← withBlock do
@@ -2227,6 +2263,14 @@ def recursiveFrameLimit : Nat := 24
 /-- The depth at which an internal function traps at `unreachable`. -/
 def recursionDepthLimit : UInt64 := 1000
 
+/-- Rejects a definition that consumes one parameter of a recursive type and borrows another:
+`Separate` keeps the consumed records apart from the arrays a call reads, but not from a
+borrowed tree. -/
+def checkOwnedNodes (declName : Name) (nodeParams owned : List Lean.Expr) : MetaM Unit := do
+  let ownedNodes := nodeParams.filter owned.contains
+  unless ownedNodes.isEmpty || ownedNodes.length == nodeParams.length do
+    throwError "{declName} consumes a value of a recursive type and borrows another, which is not supported"
+
 /-- Compiles the definition `declName`, whose parameters are `UInt64`, `Float`,
 `Array UInt64`, or `Array Float` and whose result is `UInt64`, `Float`, or an
 `Array UInt64` literal, to an IR function with hints.  The
@@ -2326,6 +2370,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
         let next := owned.filter sites.contains
         if next.length == owned.length then break
         owned := next
+      checkOwnedNodes declName nodeParams owned
       -- The internal function: the parameters and the depth, a guard, and the body.
       let depth := paramTypes.size
       let ctx : Ctx :=
@@ -2394,6 +2439,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let movable := (arrays ++ floatArrays ++ nodes).map (·.1)
       let sites ← moveSites owners movable body
       let owned := movable.filter sites.contains
+      checkOwnedNodes declName (nodes.map (·.1)) owned
       let ctx : Ctx :=
         { self := declName, params, words, floats, arrays, floatArrays, lists, nodes, tuples,
           callees, owners, owned, foldable := true }

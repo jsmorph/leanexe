@@ -91,7 +91,22 @@ for case in "i64:7 .:1 0" "i64:7 5,.,.:2 0" "i64:7 5,1,.,.,9,.,.:4 0" "i64:5 5,1
     echo "fail: treeMoves insert $key tree-u64:$tree: $out, expected stats $expected"
   fi
 done
-echo "release counts: 27 cases, $stats_failed failed"
+# dropRight frees the right subtree's records, and leftChild frees the root's record and the
+# right subtree's.  Each case is a tree, then the expected counts for dropRight and leftChild.
+for case in ".|0 0|0 0" "5,.,.|1 0|1 1" "5,1,.,.,9,.,.|3 1|3 2" "5,1,.,.,9,7,.,.,8,.,.|5 3|5 4"; do
+  IFS='|' read -r tree drop left <<<"$case"
+  for call in "dropRight:$drop" "leftChild:$left"; do
+    name=${call%%:*}
+    expected=${call#*:}
+    out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" "$name" tree-u64 \
+      "tree-u64:$tree" | tail -1)
+    if [ "$out" != "stats $expected" ]; then
+      stats_failed=$((stats_failed + 1))
+      echo "fail: treeMoves $name tree-u64:$tree: $out, expected stats $expected"
+    fi
+  done
+done
+echo "release counts: 35 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0
@@ -128,5 +143,16 @@ case "$out" in
   *"wasm \`unreachable\` instruction executed"*) ;;
   *) depth_failed=$((depth_failed + 1)); echo "fail: treeMoves insert on a chain of 1000: $out" ;;
 esac
-echo "depth guard: 10 cases, $depth_failed failed"
+# Releasing a long chain: dropRight on a chain of 999 nodes frees the 998 records of its right
+# subtree, and leftChild frees all 999.
+for call in "dropRight:999 998" "leftChild:999 999"; do
+  name=${call%%:*}
+  expected=${call#*:}
+  out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" "$name" tree-u64 "$(chain 999)" 2>&1 | tail -1) || true
+  if [ "$out" != "stats $expected" ]; then
+    depth_failed=$((depth_failed + 1))
+    echo "fail: treeMoves $name on a chain of 999: $out, expected stats $expected"
+  fi
+done
+echo "depth guard: 12 cases, $depth_failed failed"
 [ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$stats_failed" -eq 0 ] && [ "$depth_failed" -eq 0 ]

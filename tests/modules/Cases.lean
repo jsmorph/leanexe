@@ -357,6 +357,10 @@ def treeCases : IO Unit := do
     for x in [0, 1, 7, 500, maxU] do
       line "treeMoves" "insert" "tree-u64" [u x, s!"tree-u64:{KeyTree.describe t}"]
         (KeyTree.describe (t.insert x))
+    line "treeMoves" "dropRight" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
+      (KeyTree.describe t.dropRight)
+    line "treeMoves" "leftChild" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
+      (KeyTree.describe t.leftChild)
 
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases

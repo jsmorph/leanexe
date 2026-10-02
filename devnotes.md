@@ -21809,8 +21809,8 @@ Revised steps:
   the step that releases part of a consumed tree, the first program that needs it.
 - [x] `Heap.Rebuilt`, the consumed specification and its recursion rule; `incr`.
 - [x] Statement-level `if` with self-calls and allocation in branches; `insert`.
-- [ ] A function that releases part of a consumed tree.
-- [ ] Host: a tree result kind; tests; allocation and free counts; LTG entries.
+- [x] A function that releases part of a consumed tree.
+- [x] Host: a tree result kind; tests; allocation and free counts; LTG entries.
 
 On 2026-10-02 the user chose A for question 1: `Represent.moves` takes the store, a new
 `Node.pointers` lists a tree's record pointers, and a `Represent (Moved α)` instance states a
@@ -22066,5 +22066,44 @@ cited compiler lines say what the report says.
 - `dropRight` and `leftChild` join `treeMoves` as entries 5 and 6, which moves the internal
   functions of `incr` and `insert` to 7 and 8.  The part of `Func.entry_rebuilds` that derives
   `Implements` from `Heap.Rebuilt` becomes its own lemma for non-recursive functions.  The
-  count cases use the reviewer's table, with a four-node right subtree that shows which child
+  count cases use the reviewer's table, with a three-node right subtree that shows which child
   each function releases.
+
+### Iteration 8, step 5: `dropRight` and `leftChild`
+
+The compiler follows the revised plan.  `Prelude.rebuilt` records the matched values whose
+records a constructor has rewritten; the reuse test reads it, and `translateReuse` adds the
+matched value before computing any field.  In the record branch of a match on an owned value the
+value counts as moved from the start.  `translateReuse` marks the children kept in their slots,
+releases every other child still unmoved (`release child`), then stores.  A branch that takes
+children without rewriting the record assigns its value, stores 0 into the taken children's
+slots (`clear slot`), and releases the record (`release record`); a branch that takes none only
+reads, and the value stays owned.  `translateNodeCases` and `translateNodeIf` compare the
+rewritten records of their branches as they compare the moved values, and case splits on words
+with tuple or array results give their branches no record to rewrite.  `checkOwnedNodes`
+rejects, on both paths, a definition that consumes one tree parameter and borrows another.
+
+`dropRight` and `leftChild` are entries 5 and 6 of `treeMoves`; the internal functions of `incr`
+and `insert` moved to 7 and 8, and their proofs changed in the indices only.
+`Func.implements_rebuilt` derives `Implements` from a body that ends in `Heap.Rebuilt`, and
+`Func.entry_rebuilds` now goes through it.  `Rebuilt.lean` gained the reviewer's
+`Heap.Rebuilt.released`, `NodeOwned.clearLeft`, `Heap.Rebuilt.leftChild`, and
+`Heap.Rebuilt.dropRight`, and `Release.lean` gained `Stmt.releaseNode_rebuilt`.
+`dropRight_implements` and `leftChild_implements` are proved, and `treeMoves_bytes` covers all
+five functions, with axioms `propext`, `Classical.choice`, and `Quot.sound`.  One mistake: I
+first gave the release function type index 0; it has type index 1, as in the other modules.
+
+`tests/modules/run.sh` passed 5,493 comparisons with native Lean, 48 of them for the two new
+functions; 35 count cases, among them the reviewer's table, in which `dropRight` frees the right
+subtree's records and `leftChild` frees those and the root's; and 12 depth and chain cases, among
+them a 999-node chain where `dropRight` frees 998 records and `leftChild` 999.  The full build
+passed, and `trees`, `treeFrame`, `words`, and `lists` emit the same bytes.  The LTG entry
+`partial-release` describes the proofs.
+
+Iteration 8 is complete.  A function can consume a tree and rewrite, allocate, or release its
+records, singly or by recursion, with a theorem tied to the bytes.  Open items, each waiting for a
+program that needs it: a form of `Heap.Rebuilt.node` with slot 2's call first; a call of another
+function with a tree argument, which `translateCall` rejects; releasing an owned tree on a path
+that does not move it; a consumed tree together with a borrowed tree; and the caller's other
+trees in `Implements`, which says nothing about them.
+
