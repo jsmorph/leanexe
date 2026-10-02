@@ -63,18 +63,22 @@ for n in 0 1 2 64 300; do
     echo "fail: lists sumRange i64:$n: $out, expected stats $n $n"
   fi
 done
-# setKey rewrites the root's record in place, so the counters show only the host's allocations
-# of the argument's records.
+# setKey and incr rewrite the argument's records in place, so the counters show only the host's
+# allocations of those records.
 for case in .:0 5,.,.:1 5,1,.,.,9,.,.:3; do
   tree=${case%:*}
   nodes=${case#*:}
-  out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" setKey tree-u64 i64:7 "tree-u64:$tree" | tail -1)
-  if [ "$out" != "stats $nodes 0" ]; then
-    stats_failed=$((stats_failed + 1))
-    echo "fail: treeMoves setKey tree-u64:$tree: $out, expected stats $nodes 0"
-  fi
+  for call in "setKey i64:7" incr; do
+    read -ra argv <<<"$call"
+    out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" "${argv[0]}" tree-u64 \
+      "${argv[@]:1}" "tree-u64:$tree" | tail -1)
+    if [ "$out" != "stats $nodes 0" ]; then
+      stats_failed=$((stats_failed + 1))
+      echo "fail: treeMoves $call tree-u64:$tree: $out, expected stats $nodes 0"
+    fi
+  done
 done
-echo "release counts: 19 cases, $stats_failed failed"
+echo "release counts: 22 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0
@@ -89,18 +93,17 @@ case "$out" in
   *"wasm \`unreachable\` instruction executed"*) ;;
   *) depth_failed=$((depth_failed + 1)); echo "fail: trees size on a chain of 1000: $out" ;;
 esac
-for module_name in trees:height treeFrame:wide; do
-  module=${module_name%%:*}
-  name=${module_name##*:}
-  out=$("$host" call "$build/$module/$module.wasm" "$name" i64 "$(chain 999)" 2>&1) || true
+for module_name in trees:height:i64 treeFrame:wide:i64 treeMoves:incr:tree-u64; do
+  IFS=: read -r module name kind <<<"$module_name"
+  out=$("$host" call "$build/$module/$module.wasm" "$name" "$kind" "$(chain 999)" 2>&1) || true
   case "$out" in
     *trap*|*error*) depth_failed=$((depth_failed + 1)); echo "fail: $module $name on a chain of 999: $out" ;;
   esac
-  out=$("$host" call "$build/$module/$module.wasm" "$name" i64 "$(chain 1000)" 2>&1) || true
+  out=$("$host" call "$build/$module/$module.wasm" "$name" "$kind" "$(chain 1000)" 2>&1) || true
   case "$out" in
     *"wasm \`unreachable\` instruction executed"*) ;;
     *) depth_failed=$((depth_failed + 1)); echo "fail: $module $name on a chain of 1000: $out" ;;
   esac
 done
-echo "depth guard: 6 cases, $depth_failed failed"
+echo "depth guard: 8 cases, $depth_failed failed"
 [ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$stats_failed" -eq 0 ] && [ "$depth_failed" -eq 0 ]
