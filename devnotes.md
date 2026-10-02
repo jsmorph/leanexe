@@ -21606,3 +21606,46 @@ Steps, each built, tested, committed, and pushed:
 - [ ] The recursion rule and `size`; then `sum` and `height`.
 - [ ] Host: a tree argument kind; tests against native Lean; the depth tests; hints and LTG
   entries.
+
+### Review of the 7c3b plan
+
+One reviewer checked the plan.  I verified the findings by running the reviewer's Lean
+sketch (`Func.keeps`, `Func.recursion`, `selfCall`, with axioms `propext`,
+`Classical.choice`, and `Quot.sound`), by rerunning two of its depth measurements, and by
+reading the cited lines.
+
+- The depth that Wasmtime allows depends on the frame.  The host sets no stack size
+  (`tools/wasmtime-host.c`, lines 167 to 173), and the default allows 512 KiB.  A model of
+  `size.rec` overflows at 10,918 calls; with 4, 8, 16, 32, and 64 values live across the
+  call, at 6,551, 4,679, 2,977, 1,723, and 935, about 48 + 8n bytes per frame on aarch64.
+  The runs are deterministic.  One limit for every function fails for wide frames, and a
+  hidden parameter that restarts at 0 in each wrapper lets nested recursion through two
+  functions reach the sum of their limits.
+- Self-calls fit in the record branch of a node match, whose `withBlock` keeps their
+  statements inside the branch; they must stay rejected in expression-level `ite`, `min`,
+  and `max`, which push statements before the expression (and `min` translates each
+  operand twice).
+- Compiler steps the plan omitted: a syntactic test that separates tail recursion from
+  other recursion (`compileDefinition` sends every recursive definition to the tail loop);
+  node-variable arguments, the internal index, and `d + 1` in `translateCall`; `max` on
+  words for `height`; and the single-form `leanexe_compile`.
+- The proof works: `Stmt.call_spec` takes any `ReturnsOrAborts`, so the induction
+  hypothesis discharges a self-call.  The lemma to generalize is `Func.implementsPure`,
+  which keeps the store but takes only scalars; `Func.implements` loses `final = store`,
+  which the second self-call needs.  The specification assumes `heap.At` and the borrowed
+  argument, and the measure is a parameter of the rule.
+- The layout works: appended internal functions leave the listed indices unchanged.  An
+  exported `f.rec` has no `Implements` theorem; the depth tests can run through `f`.
+- `tests/modules/run.sh` stops at the first trap (`set -e`), so the depth tests need their
+  own section that expects the `unreachable` message, distinct from "call stack
+  exhausted".
+
+Revised question 1, the guard.  Options: (a) a hidden depth parameter with a fixed limit of
+1,000, the compiler rejecting a recursive function whose frame holds more than 24 values,
+so that every accepted frame overflows only beyond 2,000 calls on this platform, and the
+depth passed on to other recursive functions' internal functions; (b) a hidden parameter
+that carries a stack budget in bytes, each internal function subtracting a frame bound that
+the compiler computes from its locals by the measured formula; (c) a fifth global, which
+changes the trusted `Heap.At` and still needs (a)'s restriction.  Recommendation: (a).  It
+keeps the proof and the trusted text unchanged and relies on one measured fact, checked by a
+test with the widest accepted frame.  It goes to the user.
