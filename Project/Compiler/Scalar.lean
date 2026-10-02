@@ -159,40 +159,128 @@ def seqAll : List Project.IR.Stmt → Project.IR.Stmt
   | [s] => s
   | s :: rest => .seq s (seqAll rest)
 
-/-- The scalar type of a `UInt64` or `Float` type. -/
+/-- The user types the compiler accepts: an enumeration, held as the word of its constructor
+index, and a structure, held as its fields' components in order. -/
+inductive UserType where
+  | enum (ctors : List Name)
+  | struct (ctor : Name) (fields : List Lean.Expr)
+
+/-- `type` as a user type: an inductive type without parameters, indices, or recursion that
+is an enumeration, whose constructors have no fields, or a structure. -/
+def userType? (type : Lean.Expr) : MetaM (Option UserType) := do
+  let .const name _ ← whnfR type | return none
+  if name == ``UInt64 || name == ``Float then return none
+  let some (.inductInfo info) := (← getEnv).find? name | return none
+  unless info.numParams == 0 && info.numIndices == 0 && !info.isRec do return none
+  let fields ← info.ctors.mapM fun ctor => do
+    forallTelescope (← getConstInfoCtor ctor).type fun xs _ => xs.toList.mapM inferType
+  if fields.all (·.isEmpty) then return some (.enum info.ctors)
+  if let [ctor] := info.ctors then
+    if isStructure (← getEnv) name then return some (.struct ctor fields[0]!)
+  return none
+
+/-- Whether `type` is a pair or a structure, whose values have several components. -/
+def isTupleType (type : Lean.Expr) : MetaM Bool := do
+  let type ← whnfR type
+  if type.isAppOfArity ``Prod 2 then return true
+  return (← userType? type) matches some (.struct ..)
+
+/-- The index of the enumeration constructor `name`. -/
+def enumIndex? (name : Name) : MetaM (Option Nat) := do
+  let some (.ctorInfo info) := (← getEnv).find? name | return none
+  let some (.enum _) ← userType? (.const info.induct []) | return none
+  return some info.cidx
+
+/-- The scalar type of a `UInt64`, `Float`, or enumeration type. -/
 def scalarTypeOf (type : Lean.Expr) : MetaM ScalarType := do
   if ← isUInt64 type then return .u64
   if ← isFloat type then return .f64
+  if (← userType? type) matches some (.enum _) then return .u64
   throwError "unsupported type {type}"
 
-/-- The components of a loop state: a `UInt64`, a `Float`, or a pair of states,
-flattened from the left. -/
-partial def stateTypes (type : Lean.Expr) : MetaM (List ScalarType) := do
+/-- The WebAssembly value types of a value of type `type`: a word for `UInt64`, for an
+enumeration, and, when `arrays`, for an array pointer; a float for `Float`; and the
+components of each side of a pair and of each field of a structure, in order.  A structure's
+fields may not be arrays. -/
+partial def componentTypes (type : Lean.Expr) (arrays : Bool) : MetaM (List ScalarType) := do
   let type ← whnfR type
   if type.isAppOfArity ``Prod 2 then
-    return (← stateTypes type.appFn!.appArg!) ++ (← stateTypes type.appArg!)
+    return (← componentTypes type.appFn!.appArg! arrays) ++ (← componentTypes type.appArg! arrays)
+  if arrays && (← isArray type) then return [.u64]
+  if let some (.struct _ fields) ← userType? type then
+    return (← fields.mapM fun field => componentTypes field false).flatten
   return [← scalarTypeOf type]
 
-/-- The component terms of `term`, a nest of `Prod.mk` of type `type`. -/
-partial def stateTerms (term type : Lean.Expr) : MetaM (List (Lean.Expr × ScalarType)) := do
+/-- The components of a loop state: words and floats. -/
+def stateTypes (type : Lean.Expr) : MetaM (List ScalarType) := componentTypes type false
+
+/-- The parts of `term`, a constructor application of the pair or structure type `type`,
+with their types. -/
+def constructorParts? (term type : Lean.Expr) : MetaM (Option (List (Lean.Expr × Lean.Expr))) := do
   let type ← whnfR type
+  let term := term.consumeMData
   if type.isAppOfArity ``Prod 2 then
-    let (``Prod.mk, #[first, second, a, b]) := term.consumeMData.getAppFnArgs
+    let (``Prod.mk, #[first, second, a, b]) := term.getAppFnArgs | return none
+    return some [(a, first), (b, second)]
+  let some (.struct ctor fields) ← userType? type | return none
+  unless term.isAppOfArity ctor fields.length do return none
+  return some (term.getAppArgs.toList.zip fields)
+
+/-- The component terms of `term`, a nest of constructor applications of type `type`. -/
+partial def stateTerms (term type : Lean.Expr) : MetaM (List (Lean.Expr × ScalarType)) := do
+  if ← isTupleType type then
+    let some parts ← constructorParts? term type
       | throwError "a loop state must be a tuple of components: {← sourceOf term}"
-    return (← stateTerms a first) ++ (← stateTerms b second)
+    return (← parts.mapM fun (part, partType) => stateTerms part partType).flatten
   return [(term, ← scalarTypeOf type)]
 
 instance : Inhabited (Σ type, IRExpr type) := ⟨⟨.u64, .const 0⟩⟩
 
-/-- The WebAssembly value types of a result's components: a word for `UInt64`
-and for an `Array UInt64` pointer, a float for `Float`, and the components of
-each side of a pair. -/
-partial def resultTypes (type : Lean.Expr) : MetaM (List ScalarType) := do
-  let type ← whnfR type
-  if type.isAppOfArity ``Prod 2 then
-    return (← resultTypes type.appFn!.appArg!) ++ (← resultTypes type.appArg!)
-  if ← isArray type then return [.u64]
-  return [← scalarTypeOf type]
+/-- The WebAssembly value types of a result's components, array pointers included. -/
+def resultTypes (type : Lean.Expr) : MetaM (List ScalarType) := componentTypes type true
+
+/-- `term` with every redex at its head reduced, including those that a reduction exposes. -/
+partial def headBetaAll (term : Lean.Expr) : Lean.Expr :=
+  if term.isHeadBetaTarget then headBetaAll term.headBeta else term
+
+/-- Whether the sparse case split `name`, which Lean generates for a match with a wildcard,
+is an auxiliary `_sparseCasesOn` definition. -/
+def isSparseCasesOn : Name → Bool
+  | .str _ s => s.startsWith "_sparseCasesOn"
+  | _ => false
+
+/-- The discriminant and the alternatives, one per constructor in order, of a case split on
+an enumeration: `T.casesOn`, `T.rec` applied to further arguments, or an auxiliary
+`_sparseCasesOn` definition, which unfolds to `T.rec`. -/
+partial def enumCases? (term : Lean.Expr) : MetaM (Option (Lean.Expr × List Lean.Expr)) := do
+  let term := headBetaAll term.consumeMData
+  let .const name _ := term.getAppFn | return none
+  let args := term.getAppArgs
+  if isSparseCasesOn name then
+    let some unfolded ← unfoldDefinition? term | return none
+    return ← enumCases? unfolded
+  let .str induct kind := name | return none
+  unless kind == "casesOn" || kind == "rec" do return none
+  let some (.enum ctors) ← userType? (.const induct []) | return none
+  let n := ctors.length
+  if kind == "casesOn" && args.size == 2 + n then
+    return some (args[1]!, (args.extract 2 args.size).toList.map headBetaAll)
+  if kind == "rec" && args.size ≥ 2 + n then
+    let extra := args.extract (2 + n) args.size
+    return some (args[1 + n]!,
+      (args.extract 1 (1 + n)).toList.map fun minor => headBetaAll (mkAppN minor extra))
+  return none
+
+/-- The field types and the alternative of a `casesOn` on a pair or a structure, with its
+discriminant. -/
+def tupleCases? (term : Lean.Expr) : MetaM (Option (Lean.Expr × List Lean.Expr × Lean.Expr)) := do
+  match term.getAppFnArgs with
+  | (``Prod.casesOn, #[first, second, _, pair, alternative]) =>
+      return some (pair, [first, second], alternative)
+  | (.str induct "casesOn", #[_, value, alternative]) =>
+      let some (.struct _ fields) ← userType? (.const induct []) | return none
+      return some (value, fields, alternative)
+  | _ => return none
 
 /-- A fresh local of type `type`. -/
 def fresh (type : ScalarType) (name : String) : CompileM Nat := do
@@ -362,9 +450,31 @@ def ownComponents (ctx : Ctx) (source : String) (xs : List (Lean.Expr × Lean.Ex
         | throwError "an array component has no local: {source}"
       modify fun p => { p with temporaries := p.temporaries.push (x, local_, source) }
       ctx := { ctx with owned := x :: ctx.owned }
-    else if (← whnfR type).isAppOfArity ``Prod 2 then
+    else if ← isTupleType type then
       ctx := { ctx with owned := x :: ctx.owned }
   return ctx
+
+/-- Binds a fresh variable for each field type in `fields` to its slice of `components`, of
+the lengths `widths`, in order, and continues with the variables. -/
+def bindFields {γ : Type} (ctx : Ctx) (k : Ctx → List Lean.Expr → CompileM γ) :
+    List Lean.Expr → List Nat → List (Nat × ScalarType) → List Lean.Expr → CompileM γ
+  | field :: fields, width :: widths, components, xs =>
+      withLocalDeclD `field field fun x => do
+        let ctx ← ctx.bindTyped x field (components.take width)
+        bindFields ctx k fields widths (components.drop width) (xs ++ [x])
+  | _, _, _, xs => k ctx xs
+
+/-- The field types of the pair or structure type `type`. -/
+def tupleFields? (type : Lean.Expr) : MetaM (Option (List Lean.Expr)) := do
+  let type ← whnfR type
+  if type.isAppOfArity ``Prod 2 then return some [type.appFn!.appArg!, type.appArg!]
+  let some (.struct _ fields) ← userType? type | return none
+  return some fields
+
+/-- Whether `type` is `UInt64` or an enumeration, held as one word. -/
+def isWordType (type : Lean.Expr) : MetaM Bool := do
+  if ← isUInt64 type then return true
+  return (← userType? type) matches some (.enum _)
 
 /-- The expression that reads local `local_` of type `type`. -/
 def readLocal : Nat × ScalarType → Σ type, IRExpr type
@@ -386,13 +496,28 @@ mutual
       return (ir, [hint ir "variable"])
     if (ctx.arrays.lookup term).isSome || (ctx.floatArrays.lookup term).isSome then
       throwError "the array {source} is used as a value"
+    if let .const name _ := term then
+      if let some index ← enumIndex? name then
+        let ir : IRExpr .u64 := .const (UInt64.ofNat index)
+        return (ir, [hint ir "constructor"])
+    if let some field ← projectionField? ctx term then
+      match field with
+      | .inl reduced => return ← translateValue ctx loc reduced
+      | .inr [(local_, .u64)] =>
+          let ir : IRExpr .u64 := .get local_
+          return (ir, [hint ir "field"])
+      | .inr _ => throwError "a field used as a word must be one word: {source}"
+    if let some (discriminant, alternatives) ← enumCases? term then
+      let (d, dHints) ← translateValue ctx loc discriminant
+      let (ir, hints) ← translateWordCases { ctx with foldable := false } loc d 0 alternatives
+      return (ir, hint ir "case split" :: dHints ++ hints)
     match term.getAppFnArgs with
     | (``OfNat.ofNat, #[type, .lit (.natVal value), _]) =>
         unless ← isUInt64 type do throwError "unsupported literal type: {type}"
         let ir : IRExpr .u64 := .const (UInt64.ofNat value)
         return (ir, [hint ir "literal"])
     | (``ite, #[type, condition, _, thenTerm, elseTerm]) =>
-        unless ← isUInt64 type do throwError "unsupported conditional type in {source}"
+        unless ← isWordType type do throwError "unsupported conditional type in {source}"
         let inner := { ctx with foldable := false }
         let (c, cHints) ← translateCondition inner loc condition
         let branch := loc.skip (exprLength c)
@@ -552,6 +677,13 @@ mutual
     if let some index := ctx.floats.lookup term then
       let ir : IRExpr .f64 := .getF index
       return (ir, [hint ir "float variable"])
+    if let some field ← projectionField? ctx term then
+      match field with
+      | .inl reduced => return ← translateFloat ctx loc reduced
+      | .inr [(local_, .f64)] =>
+          let ir : IRExpr .f64 := .getF local_
+          return (ir, [hint ir "field"])
+      | .inr _ => throwError "a field used as a float must be one float: {source}"
     if let some index := ctx.callees.lookup term.getAppFn.constName then
       let [(result, .f64)] ← translateCall ctx term index
         | throwError "a call used as a float must return one float: {source}"
@@ -654,6 +786,58 @@ mutual
     | .f64 => let (ir, hints) ← translateFloat ctx loc term; return (⟨.f64, ir⟩, hints)
     | .bool => throwError "a Bool value is not supported: {← sourceOf term}"
 
+  /-- The field that `term` projects from a pair or structure: the field term itself when
+  the projection applies to a constructor, which `whnfR` exposes, and otherwise the field's
+  component locals.  `none` when `term` is not a projection. -/
+  partial def projectionField? (ctx : Ctx) (term : Lean.Expr) :
+      CompileM (Option (Lean.Expr ⊕ List (Nat × ScalarType))) := do
+    let projection ← match term.getAppFn with
+      | .const fn _ => pure ((← getProjectionFnInfo? fn).any (!·.fromClass))
+      | .proj .. => pure true
+      | _ => pure false
+    unless projection do return none
+    let reduced ← whnfR term
+    let .proj _ index value := reduced | return some (.inl reduced)
+    let some fields ← tupleFields? (← inferType value)
+      | throwError "unsupported projection: {← sourceOf term}"
+    let components ← tupleOf ctx value.consumeMData
+    let widths ← fields.mapM fun field => return (← resultTypes field).length
+    return some (.inr ((components.drop (widths.take index).sum).take widths[index]!))
+
+  /-- Translates a case split on the enumeration word `d` to a chain of conditionals whose
+  last alternative is unguarded. -/
+  partial def translateWordCases (ctx : Ctx) (loc : Loc) (d : IRExpr .u64) (index : Nat) :
+      List Lean.Expr → CompileM (IRExpr .u64 × List Hint)
+    | [] => throwError "a case split needs an alternative"
+    | [last] => translateValue ctx loc last
+    | alternative :: rest => do
+        let condition : IRExpr .bool := .eq d (.const (UInt64.ofNat index))
+        let branch := loc.skip (exprLength condition)
+        let (a, aHints) ← translateValue ctx (branch.inside (some 0)) alternative
+        let (b, bHints) ← translateWordCases ctx (branch.inside (some 1)) d (index + 1) rest
+        return (.ite condition a b, aHints ++ bHints)
+
+  /-- The values of the components of `term`, of type `type`: the value of a word or float,
+  and for a pair or structure, those of a constructor application's parts, or the locals of a
+  tuple variable, call, or loop. -/
+  partial def translateComponents (ctx : Ctx) (loc : Loc) (term type : Lean.Expr) :
+      CompileM (List ((type : ScalarType) × IRExpr type) × List Hint) := do
+    let term := term.consumeMData
+    unless ← isTupleType type do
+      let (value, hints) ← translateAs ctx loc (← scalarTypeOf type) term
+      return ([value], hints)
+    if let some parts ← constructorParts? term type then
+      let mut values := []
+      let mut hints := []
+      let mut here := loc
+      for (part, partType) in parts do
+        let (vs, hs) ← translateComponents ctx here part partType
+        values := values ++ vs
+        hints := hints ++ hs
+        here := here.skip (vs.map fun v => exprLength v.2).sum
+      return (values, hints)
+    return ((← tupleOf ctx term).map readLocal, [])
+
   /-- Translates the fold `term`, whose accumulator has type `accType`, to
   statements in the prelude and returns the local of the accumulator.  An array
   literal becomes a temporary that is released after the fold. -/
@@ -729,20 +913,17 @@ mutual
     let term := term.consumeMData
     if let some unfolded ← unfoldMatcher? term then
       return ← peel ctx unfolded k
-    match term.getAppFnArgs with
-    | (``Prod.casesOn, #[first, second, _, pair, alternative]) =>
-        let pair := pair.consumeMData
-        -- The components of a call's result, or of an owned pair, are owned.
-        let owned := (ctx.tuples.lookup pair).isNone || ctx.owned.contains pair
-        let source ← sourceOf pair
-        let components ← tupleOf ctx pair
-        let split := (← resultTypes first).length
-        withLocalDeclD `fst first fun a => withLocalDeclD `snd second fun b => do
-          let ctx ← ctx.bindTyped a first (components.take split)
-          let ctx ← ctx.bindTyped b second (components.drop split)
-          let ctx ← if owned then ownComponents ctx source [(a, first), (b, second)] else pure ctx
-          peel ctx (← Core.betaReduce (mkApp2 alternative a b)) k
-    | _ => k ctx term
+    let some (value, fields, alternative) ← tupleCases? term | k ctx term
+    let value := value.consumeMData
+    -- The components of a call's result, or of an owned pair, are owned.
+    let owned := (ctx.tuples.lookup value).isNone || ctx.owned.contains value
+    let source ← sourceOf value
+    let components ← tupleOf ctx value
+    let widths ← fields.mapM fun field => return (← resultTypes field).length
+    bindFields ctx (fun ctx xs => do
+        let ctx ← if owned then ownComponents ctx source (xs.zip fields) else pure ctx
+        peel ctx (← Core.betaReduce (mkAppN alternative xs.toArray)) k)
+      fields widths components []
 
   /-- The locals holding the components of the pair-valued `term`: a pair
   variable, a loop, or a call of a function compiled into the same module, whose
@@ -912,6 +1093,11 @@ mutual
               (at_.skip (stmtLength stmt)) (body.instantiate1 x) state
             return (pre ++ stmt :: rest, hint :: vHints ++ restHints)
       | _ =>
+          if let some index := ctx.callees.lookup term.getAppFn.constName then
+            if ← isTupleType (← inferType term) then
+              -- The call reads the state's locals before it writes the next state into them.
+              let (_, stmts, hints) ← withBlock (translateCall ctx term index (some (state.map (·.1))))
+              return (stmts, hints.map fun hint => Hint.within loc.prefix_ (Hint.shift loc.index hint))
           let components ← stateTerms term (← inferType term)
           let mut stmts := #[]
           let mut hints := #[]
@@ -1146,7 +1332,7 @@ mutual
       if let some index := ctx.callees.lookup term.getAppFn.constName then
         let results ← translateCall ctx term index dests?
         return (results.map readLocal, results.map fun _ => [])
-      let branching := type.isAppOfArity ``Prod 2 || (← isArray type)
+      let branching := (← isTupleType type) || (← isArray type)
       if let (``ite, #[_, condition, _, thenTerm, elseTerm]) := term.getAppFnArgs then
         if branching then
           return ← translateResultBranch ctx term condition thenTerm elseTerm type dests?
@@ -1154,13 +1340,25 @@ mutual
         if ← isArrayNest type then
           let states ← translateTupleLoop ctx term dests?
           return (states.map fun s => readLocal (s, .u64), states.map fun _ => [])
-      if type.isAppOfArity ``Prod 2 then
-        let (``Prod.mk, #[first, second, a, b]) := term.getAppFnArgs
-          | throwError "a pair result must be a pair: {← sourceOf term}"
-        let width := (← resultTypes first).length
-        let (aResults, aHints) ← translateResults ctx a first (dests?.map (·.take width))
-        let (bResults, bHints) ← translateResults ctx b second (dests?.map (·.drop width))
-        return (aResults ++ bResults, aHints ++ bHints)
+        if ← isTupleType type then
+          return ← resultsIn (← translateLoop ctx term) dests? (← sourceOf term)
+      if ← isTupleType type then
+        if let some components := ctx.tuples.lookup term then
+          return ← resultsIn components dests? (← sourceOf term)
+        if let some (discriminant, alternatives) ← enumCases? term then
+          return ← translateCases ctx term discriminant alternatives type dests?
+        let some parts ← constructorParts? term type
+          | throwError "a pair or structure result must be a constructor, a variable, a call, a loop, or a case split: {← sourceOf term}"
+        let mut results := []
+        let mut hints := []
+        let mut remaining := dests?
+        for (part, partType) in parts do
+          let width := (← resultTypes partType).length
+          let (r, h) ← translateResults ctx part partType (remaining.map (·.take width))
+          results := results ++ r
+          hints := hints ++ h
+          remaining := remaining.map (·.drop width)
+        return (results, hints)
       if ← isArray type then
         let array ← translateArray ctx term (dests?.bind (·.head?))
         let ir : IRExpr .u64 := .get array
@@ -1191,8 +1389,9 @@ mutual
           throwError "a call in a loop body or an array element may not take an array: {source}"
       if ← isArray (← inferType term) then
         throwError "a call in a loop body or an array element may not return an array: {source}"
-      if (← whnfR (← inferType term)).isAppOfArity ``Prod 2 then
-        throwError "a call in a loop body or an array element must return one value: {source}"
+      let scalars ← try (do let _ ← stateTypes (← inferType term); pure true) catch _ => pure false
+      unless scalars do
+        throwError "a call in a loop body or an array element must return words and floats: {source}"
     let owners := (ctx.owners.lookup term.getAppFn.constName).getD []
     let mut moved := []
     for position in owners do
@@ -1219,7 +1418,14 @@ mutual
         else if ← isFloat argType then do
           let (ir, irHints) ← translateFloat ctx ⟨[], offset⟩ arg
           pure (⟨.f64, ir⟩, irHints)
-        else throwError "a call argument must be a word, a float, or an array: {source}"
+        else if (← isWordType argType) || (← isTupleType argType) then do
+          let (values, valueHints) ← translateComponents ctx ⟨[], offset⟩ arg argType
+          let some last := values.getLast? | throwError "an argument has no components: {source}"
+          for value in values.dropLast do
+            args := args.push value
+            offset := offset + exprLength value.2
+          pure (last, valueHints)
+        else throwError "a call argument must be a word, a float, an array, or a user type: {source}"
       args := args.push typed
       hints := hints ++ argHints.toArray
       offset := offset + exprLength typed.2
@@ -1231,6 +1437,52 @@ mutual
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "call" source :: hints.toList)
     moved.forM markMoved
     return results
+
+  /-- The results read from `components`, or copied into the locals `dests?` first. -/
+  partial def resultsIn (components : List (Nat × ScalarType)) (dests? : Option (List Nat))
+      (source : String) : CompileM (List (Σ type, IRExpr type) × List (List Hint)) := do
+    let some dests := dests? | return (components.map readLocal, components.map fun _ => [])
+    for ((component, type), dest) in components.zip dests do
+      let ⟨_, ir⟩ := readLocal (component, type)
+      let stmt := Project.IR.Stmt.assign dest ir
+      pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "result copy" source]
+    return ((dests.zip (components.map (·.2))).map readLocal, dests.map fun _ => [])
+
+  /-- Translates a case split on an enumeration with a pair or structure result to a chain
+  of `if` statements whose branches leave the result in the locals `dests?`, or in fresh
+  locals, and returns expressions that read them. -/
+  partial def translateCases (ctx : Ctx) (term discriminant : Lean.Expr)
+      (alternatives : List Lean.Expr) (type : Lean.Expr) (dests? : Option (List Nat)) :
+      CompileM (List (Σ type, IRExpr type) × List (List Hint)) := do
+    let source ← sourceOf term
+    let types ← resultTypes type
+    let dests ← match dests? with
+      | some dests => pure dests
+      | none => types.mapM fun type => fresh type "result"
+    let (d, dHints) ← translateValue ctx ⟨[], 0⟩ discriminant
+    let saved := (← get).consumed
+    let (stmt, hints) ← caseChain ctx saved d 0 alternatives type dests
+    modify fun p => { p with consumed := saved ++ ctx.owned }
+    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "case split" source :: dHints ++ hints)
+    return ((dests.zip types).map readLocal, dests.map fun _ => [])
+
+  /-- The `if` chain of `translateCases` from alternative `index` on.  Each branch releases
+  the owned parameters that it does not move. -/
+  partial def caseChain (ctx : Ctx) (saved : List Lean.Expr) (d : IRExpr .u64) (index : Nat) :
+      List Lean.Expr → Lean.Expr → List Nat → CompileM (Project.IR.Stmt × List Hint)
+    | [], _, _ => throwError "a case split needs an alternative"
+    | alternative :: rest, type, dests => do
+        modify fun p => { p with consumed := saved }
+        let (_, stmts, hints) ← withBlock do
+          let results ← translateResults { ctx with temporaries := false } alternative type dests
+          releaseUnmoved ctx
+          return results
+        if rest.isEmpty then return (seqAll stmts, hints)
+        let condition : IRExpr .bool := .eq d (.const (UInt64.ofNat index))
+        let (elseStmt, elseHints) ← caseChain ctx saved d (index + 1) rest type dests
+        let branchAt := exprLength condition
+        return (.ite condition (seqAll stmts) elseStmt,
+          hints.map (Hint.within [branchAt, 0]) ++ elseHints.map (Hint.within [branchAt, 1]))
 
   /-- Translates a conditional result whose branches build arrays to a statement
   `if` whose branches leave the results in the locals `dests?`, or in fresh
@@ -1360,34 +1612,51 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
     let mut floats := []
     let mut arrays := []
     let mut floatArrays := []
+    let mut tuples := []
+    -- The WebAssembly parameters: one per word, float, or array, and one per component of a
+    -- structure, in order.
     let mut paramTypes : Array ScalarType := #[]
+    let mut paramNames : Array (String × Nat) := #[]
     for h : i in [:params.size] do
       let type ← inferType params[i]
+      let name := (← params[i].fvarId!.getUserName).toString
+      let index := paramTypes.size
       if ← isUInt64 type then
-        words := (params[i], i) :: words
+        words := (params[i], index) :: words
         paramTypes := paramTypes.push .u64
       else if ← isFloat type then
-        floats := (params[i], i) :: floats
+        floats := (params[i], index) :: floats
         paramTypes := paramTypes.push .f64
       else if ← isUInt64Array type then
-        arrays := (params[i], i) :: arrays
+        arrays := (params[i], index) :: arrays
         paramTypes := paramTypes.push .u64
       else if ← isFloatArray type then
-        floatArrays := (params[i], i) :: floatArrays
+        floatArrays := (params[i], index) :: floatArrays
         paramTypes := paramTypes.push .u64
+      else if ← isWordType type then
+        words := (params[i], index) :: words
+        paramTypes := paramTypes.push .u64
+      else if ← isTupleType type then
+        let types ← stateTypes type
+        tuples := (params[i], types.zipIdx.map fun (type, k) => (index + k, type)) :: tuples
+        paramTypes := paramTypes ++ types.toArray
+        paramNames := paramNames ++ (List.range (types.length - 1)).toArray.map
+          fun k => (s!"{name}.{k}", index + k)
+        paramNames := paramNames.push (s!"{name}.{types.length - 1}", index + types.length - 1)
+        continue
       else
-        throwError "parameter {params[i]} of {declName} is not UInt64, Float, Array UInt64, or Array Float"
+        throwError "parameter {params[i]} of {declName} is not UInt64, Float, an array, or a user type"
+      paramNames := paramNames.push (name, index)
     let resultType ← inferType body
     let arrayResult ← isArray resultType
     let floatResult ← isFloat resultType
-    let pairResult := (← whnfR resultType).isAppOfArity ``Prod 2
-    unless arrayResult || floatResult || pairResult || (← isUInt64 resultType) do
-      throwError "the result of {declName} is not UInt64, Float, an array, or a pair"
-    let paramNames ← params.toList.mapM fun p => return (← p.fvarId!.getUserName).toString
+    let pairResult ← isTupleType resultType
+    unless arrayResult || floatResult || pairResult || (← isWordType resultType) do
+      throwError "the result of {declName} is not UInt64, Float, an array, a pair, or a user type"
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
     if recursive then
-      unless arrays.isEmpty && floatArrays.isEmpty && floats.isEmpty && !arrayResult &&
-          !floatResult && !pairResult do
+      unless arrays.isEmpty && floatArrays.isEmpty && floats.isEmpty && tuples.isEmpty &&
+          !arrayResult && !floatResult && !pairResult do
         throwError "a recursive definition may take and return only UInt64: {declName}"
       let ctx : Ctx :=
         { self := declName, params, words, floats, arrays, floatArrays, foldable := false }
@@ -1400,9 +1669,9 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let loopHint := mkHint { prefix_ := [], index := 0 } (stmtLength loop)
         "tail-recursion-loop" (← sourceOf body)
       let resultHint := mkHint { prefix_ := [], index := 1 } 1 "result" "result"
-      let names := paramNames.zipIdx ++
+      let names := paramNames.toList ++
         [("result", ctx.result), ("done", ctx.done)] ++
-        (paramNames.zipIdx.map fun (name, i) => (s!"next {name}", ctx.temp i))
+        (paramNames.toList.map fun (name, i) => (s!"next {name}", ctx.temp i))
       let func : Func :=
         { params := paramTypes.toList, vars := List.replicate ctx.vars .u64, body := loop
           results := [⟨.u64, .get ctx.result⟩] }
@@ -1412,8 +1681,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let sites ← moveSites owners arrayParams body
       let owned := arrayParams.filter sites.contains
       let ctx : Ctx :=
-        { self := declName, params, words, floats, arrays, floatArrays, callees, owners, owned,
-          foldable := true }
+        { self := declName, params, words, floats, arrays, floatArrays, tuples, callees, owners,
+          owned, foldable := true }
       let ((results, resultHints), prelude) ←
         (do
           let (results, resultHints) ← translateResults ctx body resultType
@@ -1434,7 +1703,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
           for (_, local_, source) in temporaries.reverse do
             let stmt := Project.IR.Stmt.release local_
             pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "release temporary" source]
-          return (stored.toList, stored.toList.map fun _ => [])).run { base := params.size }
+          return (stored.toList, stored.toList.map fun _ => [])).run { base := paramTypes.size }
       -- Each result's code follows the body and the earlier results.
       let (_, shifted) := (results.zip resultHints).foldl (init := (prelude.length, []))
         fun (offset, hints) (⟨_, ir⟩, own) =>
@@ -1443,7 +1712,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
         { params := paramTypes.toList, vars := prelude.vars.toList
           body := seqAll prelude.stmts.toList, results }
       let hints : Hints :=
-        { locals := paramNames.zipIdx ++ prelude.names.toList
+        { locals := paramNames.toList ++ prelude.names.toList
           nodes := prelude.hints.toList ++ shifted }
       let positions := (List.range params.size).filter fun i => owned.contains params[i]!
       return (func, hints, positions)

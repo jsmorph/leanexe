@@ -1,6 +1,7 @@
 import LeanExe.Build
 import LeanExe.Examples.Axpy
 import LeanExe.Examples.Bucket
+import LeanExe.Examples.Calc
 import LeanExe.Examples.Clob
 import LeanExe.Examples.Gcd
 import LeanExe.Examples.Mean
