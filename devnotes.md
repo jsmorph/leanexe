@@ -20709,7 +20709,8 @@ case of two arrays.
 `deslop.md` states the goal as a program over a list or tree, with recursive `release`.  The
 runtime already lays out records: `release` reads a header's kind, width, and child mask,
 drops the reference in each masked non-null slot of a record (kind 1) through a pending list
-linked by count fields, and frees each object after its children.  `release_run` covers only
+linked by count fields, and frees each object right after it links the object's children onto
+that list.  `release_run` covers only
 an array without child pointers, and `Heap.Owned` describes only such arrays.  `Tree.lean`
 holds the model of the old recursive `release`; outside that file only its region
 lemmas, such as `regionsDisjoint`, are used.
@@ -20761,3 +20762,40 @@ state, and a `let`-bound list temporary; and tests that compare with native Lean
 allocations and frees.
 
 Questions 1 and 2 change the trusted statement, so they go to the user after the review.
+
+The review confirmed the factual claims but one: `release` frees an object right after it
+links the object's children onto the pending list, so a parent is freed before its children
+(`Defs.lean`, `releaseBody`).  The plan and `deslop.md` said the opposite and are corrected.
+The review's other findings, each checked in the code:
+
+- `Implements` preserves only word arrays: its frame clauses quantify over `heap.Borrowed`
+  and `heap.Owned`, which describe arrays.  A list that a caller holds across a call is not
+  known to survive it.  `sumRange` is therefore `(listRange n).foldl (· + ·) 0`, so the list
+  crosses no call as an argument.  Extending the frame to other objects changes the trusted
+  statement and waits for a program that needs it.
+- None of the three programs consumes a value while it reads a list, so question 1's option
+  (b) suffices now: lists have empty `reads` and no `Moved` instance.  This changes no
+  trusted definition, and it is sound, since empty `reads` only weakens the premise.
+  Option (a) becomes necessary when a program consumes a value while it reads a list.  The
+  review also noted that `moves` repeats the `blocks` of the consumed arguments, so a later
+  change may need a store only in `reads`.
+- The cons template's header stores fall outside what `Heap.newArray_of_writes` allows, and
+  `Heap.Block.fresh` and `freeObject_spec` assume an array header, so records need their own
+  allocation and free facts.  Every frame lemma of `Heap.Owned` would need a record
+  counterpart unless one object predicate (header, bounds, apart from free blocks) underlies
+  both; that choice is made when the code is written.
+- The release specification for a chain needs the chain's remaining length as the loop
+  measure and an invariant of a freed prefix and a remaining chain, and it must cover the
+  empty list.  Its precondition gives every cell the magic number and count 1.
+- A loop whose state is a list allocates in each iteration and needs its own rule.  A cons
+  consumes its tail, since a tail with two owners would trap at the second release.
+- The host needs a list argument, which allocates the cells and writes their headers, and
+  a list result, which walks the cells and checks their headers.  The host is outside the
+  trusted base.
+- Question 3 has two further options for later: tail recursion over a list through
+  `TailLoop`, and native recursion with a depth counter that traps above a fixed bound.
+
+Revised plan: question 1 takes option (b); question 2 goes to the user, since the
+`Represent (List UInt64)` instance fixes what every list theorem means and the layout is what
+hosts see; questions 3 to 6 take the recommendations above.
+
