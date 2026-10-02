@@ -93,6 +93,59 @@ def releaseLocals (ptr pending object previous current : UInt64) : Locals :=
     locals := [.i64 1, .i64 pending, .i64 object, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0, .i64 0,
       .i64 0, .i64 previous, .i64 current] }
 
+/-- The parameter and locals of `release`, by name. -/
+structure ReleaseVars where
+  root : UInt64
+  count : UInt64
+  pending : UInt64
+  object : UInt64
+  kind : UInt64
+  length : UInt64
+  width : UInt64
+  mask : UInt64
+  element : UInt64
+  slot : UInt64
+  child : UInt64
+  previous : UInt64
+  current : UInt64
+
+/-- The locals of `release` holding `v`. -/
+def ReleaseVars.toLocals (v : ReleaseVars) : Locals :=
+  { params := [.i64 v.root]
+    locals := [.i64 v.count, .i64 v.pending, .i64 v.object, .i64 v.kind, .i64 v.length,
+      .i64 v.width, .i64 v.mask, .i64 v.element, .i64 v.slot, .i64 v.child, .i64 v.previous,
+      .i64 v.current] }
+
+/-- `v` with `previous` and `current` holding the free blocks around the object's place in
+the free list. -/
+def ReleaseVars.atPlace (v : ReleaseVars) (previous current : UInt64) : ReleaseVars :=
+  { v with previous := previous, current := current }
+
+theorem releaseLocals_eq (ptr pending object previous current : UInt64) :
+    releaseLocals ptr pending object previous current =
+      ReleaseVars.toLocals ⟨ptr, 1, pending, object, 0, 0, 0, 0, 0, 0, 0, previous, current⟩ :=
+  rfl
+
+/-- The block facts of an object that `release` frees: its header lies above the reserved
+area, and its block lies inside the 32-bit address space, below `top`, and outside every
+free block. -/
+structure Heap.Object (heap : Heap) (store : Store Unit) (ptr : UInt64) : Prop where
+  base : 4096 + 48 ≤ ptr.toNat
+  address : ptr.toNat + capacityAt store ptr < 4294967296
+  below : ptr.toNat + capacityAt store ptr ≤ heap.top.toNat
+  separate : ∀ node ∈ heap.free,
+    regionsDisjoint node.region (ptr.toNat - 48, 48 + capacityAt store ptr)
+
+theorem Heap.Owned.object {heap : Heap} {store : Store Unit} {ptr : UInt64}
+    {words : Array UInt64} (h : heap.Owned store ptr words) : heap.Object store ptr :=
+  ⟨h.base, h.address, h.below, h.separate⟩
+
+theorem write64_write64_same (mem : Mem) (address : UInt32) (value : UInt64) :
+    (mem.write64 address value).write64 address value = mem.write64 address value := by
+  simp only [Wasm.Mem.write64, Wasm.Mem.mk.injEq, true_and]
+  funext i
+  split_ifs <;> rfl
+
 theorem Locals.get_with_values (s : Locals) (vs : List Value) (i : Nat) :
     ({ s with values := vs } : Locals).get i = s.get i := rfl
 
@@ -183,21 +236,25 @@ theorem joinProgram_spec {m : Module} (env : HostEnv Unit) (store : Store Unit) 
 last block at or below it in `releasePrevious` and that first block in
 `releaseCurrent`. -/
 theorem findPlace_spec {m : Module} (env : HostEnv Unit) (store : Store Unit)
-    (nodes : List FreeNode) (ptr pending previous current : UInt64)
+    (nodes : List FreeNode) (v : ReleaseVars)
     (hList : FreeListAt store.mem nodes)
     (hHead : store.globals.globals[1]? = some (.i64 (freeHead nodes)))
     (Q : Assertion Unit) (after : Program)
-    (hNext : wp m after Q store (releaseLocals ptr pending ptr
-      (previousRoot 0 (belowNodes ptr nodes)) (freeHead (aboveNodes ptr nodes))) env) :
-    wp m (findPlace ++ after) Q store (releaseLocals ptr pending ptr previous current) env := by
+    (hNext : wp m after Q store (v.atPlace (previousRoot 0 (belowNodes v.object nodes))
+      (freeHead (aboveNodes v.object nodes))).toLocals env) :
+    wp m (findPlace ++ after) Q store v.toLocals env := by
   obtain ⟨hHeadLength, hHeadRead⟩ := List.getElem_of_getElem? hHead
+  obtain ⟨root, count, pending, ptr, kind, length, width, mask, element, slot, child, previous0,
+    current0⟩ := v
+  simp only [ReleaseVars.atPlace] at hNext
   simp only [findPlace, headerLoad, List.cons_append, List.nil_append]
-  simp [wp_simp, releaseLocals, releasePrevious, releaseCurrent, hHeadLength, hHeadRead]
+  simp [wp_simp, ReleaseVars.toLocals, releasePrevious, releaseCurrent, hHeadLength, hHeadRead]
   apply wp_block_cons
   apply wp_loop_cons
     (Inv := fun st s => st = store ∧ ∃ visited remaining, nodes = visited ++ remaining ∧
       (∀ n ∈ visited, n.root ≤ ptr) ∧
-      s = releaseLocals ptr pending ptr (previousRoot 0 visited) (freeHead remaining))
+      s = ReleaseVars.toLocals ⟨root, count, pending, ptr, kind, length, width, mask, element,
+        slot, child, previousRoot 0 visited, freeHead remaining⟩)
     (μ := fun _ s => match s.get releaseCurrent with
       | some (.i64 c) => scanRemaining nodes c
       | _ => 0)
@@ -210,8 +267,8 @@ theorem findPlace_spec {m : Module} (env : HostEnv Unit) (store : Store Unit)
         hVisited (by simp)
       simp only [List.append_nil] at hBelow hAbove
       rw [hSplit, List.append_nil] at hNext
-      simp [wp_simp, releaseLocals, releaseCurrent, freeHead]
-      simpa [hBelow, hAbove, releaseLocals, freeHead] using hNext
+      simp [wp_simp, ReleaseVars.toLocals, releaseCurrent, freeHead]
+      simpa [hBelow, hAbove, ReleaseVars.toLocals, freeHead] using hNext
     | cons n rest =>
       have hSuffix : FreeListAt store.mem (n :: rest) := by
         rw [hSplit] at hList
@@ -227,8 +284,8 @@ theorem findPlace_spec {m : Module} (env : HostEnv Unit) (store : Store Unit)
         · obtain ⟨hBelow, hAbove⟩ := belowNodes_append (root := ptr) (remaining := n :: rest)
             hVisited (fun n' h => by simp at h; subst h; exact hLt)
           rw [hSplit] at hNext
-          simp [wp_simp, releaseLocals, releaseCurrent, releaseObject, freeHead, hRoot, hLt]
-          simpa [hBelow, hAbove, releaseLocals, freeHead] using hNext
+          simp [wp_simp, ReleaseVars.toLocals, releaseCurrent, releaseObject, freeHead, hRoot, hLt]
+          simpa [hBelow, hAbove, ReleaseVars.toLocals, freeHead] using hNext
         · have hn8 : (n.root - 8).toNat % 4294967296 = n.root.toNat - 8 := by
             rw [Project.Common.toNat_sub_le _ _ (by simp; omega), Nat.mod_eq_of_lt (by simp; omega)]
             rfl
@@ -242,7 +299,7 @@ theorem findPlace_spec {m : Module} (env : HostEnv Unit) (store : Store Unit)
           have hScanAfter := hList.scanRemaining_suffix (visited := visited ++ [n])
             (remaining := rest) (by rw [hSplit]; simp)
           simp only [freeHead, List.length_cons] at hScanBefore
-          simp [wp_simp, releaseLocals, releaseCurrent, releaseObject, releasePrevious, freeHead,
+          simp [wp_simp, ReleaseVars.toLocals, releaseCurrent, releaseObject, releasePrevious, freeHead,
             hRoot, hLt, hn8, hnm8, hnc8, hLink]
           refine ⟨⟨visited ++ [n], rest, by rw [hSplit]; simp, ?_, ?_⟩, ?_⟩
           · intro x hx
@@ -253,7 +310,7 @@ theorem findPlace_spec {m : Module} (env : HostEnv Unit) (store : Store Unit)
               rw [UInt64.le_iff_toNat_le]
               rw [UInt64.lt_iff_toNat_lt] at hLt
               omega
-          · simp [releaseLocals, previousRoot_append_singleton]
+          · simp [ReleaseVars.toLocals, previousRoot_append_singleton]
           · simp only [freeHead] at hScanAfter
             omega
 
@@ -262,20 +319,23 @@ theorem findPlace_spec {m : Module} (env : HostEnv Unit) (store : Store Unit)
 def releaseEntry (store : Store Unit) (ptr : UInt64) : Store Unit :=
   { store with mem := store.mem.write64 (UInt32.ofNat (ptr.toNat - 40)) 0 }
 
-/-- `freeObject` returns the block of an owned object to the free list, as
-`Heap.releaseStore` describes. -/
+/-- `freeObject` returns the block of the object in local `object` to the free list, as
+`Heap.releaseStore` describes, whatever its count word and the other locals hold. -/
 theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store : Store Unit)
-    (ptr : UInt64) (words : Array UInt64) (hHeap : heap.At store)
-    (hOwned : heap.Owned store ptr words) (Q : Assertion Unit) (after : Program)
-    (hNext : ∀ previous current, wp m after Q (heap.releaseStore store ptr)
-      (releaseLocals ptr 0 ptr previous current) env) :
-    wp m (freeObject ++ after) Q (releaseEntry store ptr) (releaseLocals ptr 0 ptr 0 0) env := by
+    (v : ReleaseVars) (hHeap : heap.At store) (hObject : heap.Object store v.object)
+    (Q : Assertion Unit) (after : Program)
+    (hNext : ∀ previous current, wp m after Q (heap.releaseStore store v.object)
+      (v.atPlace previous current).toLocals env) :
+    wp m (freeObject ++ after) Q store v.toLocals env := by
+  obtain ⟨root, count, pending, ptr, kind, length, width, mask, element, slot, child, previous0,
+    current0⟩ := v
+  simp only [ReleaseVars.atPlace] at hNext hObject
   set capacity := store.mem.read64 (ptr - 32).toUInt32 with hCapacityDef
-  have hBase := hOwned.base
-  have hAddress := hOwned.address
-  have hBelow := hOwned.below
+  have hBase := hObject.base
+  have hAddress := hObject.address
+  have hBelow := hObject.below
   have hTop := hHeap.top
-  have hSeparate := hOwned.separate
+  have hSeparate := hObject.separate
   simp only [capacityAt] at hAddress hBelow hSeparate
   rw [← hCapacityDef] at hAddress hBelow hSeparate
   have hA (k : UInt64) (hk : k.toNat ≤ 48) :
@@ -290,9 +350,8 @@ theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store :
     rfl
   have hm40 : (ptr.toNat - 40) % 4294967296 = ptr.toNat - 40 := Nat.mod_eq_of_lt (by omega)
   have hc40 : ¬ store.mem.pages * 65536 < ptr.toNat - 40 + 8 := by omega
-  -- The store after the free counter and the second write of the count word.
-  set mem1 := (store.mem.write64 (UInt32.ofNat (ptr.toNat - 40)) 0).write64
-    (UInt32.ofNat (ptr.toNat - 40)) 0 with hMem1
+  -- The store after the free counter and the write of the count word.
+  set mem1 := store.mem.write64 (UInt32.ofNat (ptr.toNat - 40)) 0 with hMem1
   have hw40 : (UInt32.ofNat (ptr.toNat - 40)).toNat = ptr.toNat - 40 := by
     simp only [UInt32.toNat_ofNat', Nat.reducePow, hm40]
   have hw32 : (UInt32.ofNat (ptr.toNat - 32)).toNat = ptr.toNat - 32 := by
@@ -300,8 +359,7 @@ theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store :
     exact Nat.mod_eq_of_lt (by omega)
   have hBytes1 : ∀ a, a < ptr.toNat - 48 ∨ ptr.toNat ≤ a → mem1.bytes a = store.mem.bytes a :=
     fun a ha => by
-      rw [hMem1, Memory.write64_bytes_outside _ _ _ (by rw [hw40]; omega),
-        Memory.write64_bytes_outside _ _ _ (by rw [hw40]; omega)]
+      rw [hMem1, Memory.write64_bytes_outside _ _ _ (by rw [hw40]; omega)]
   have hFree : ∀ n ∈ heap.free, ∀ a, n.root.toNat - 48 ≤ a → a < n.root.toNat →
       a < ptr.toNat - 48 ∨ ptr.toNat ≤ a := fun n hn a hLow hHigh => by
     have := hSeparate n hn
@@ -311,8 +369,7 @@ theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store :
     FreeListMemory.frame_headers hHeap.freeList (by simp [hMem1, Wasm.Mem.write64_pages])
       fun n hn a hLow hHigh => hBytes1 a (hFree n hn a hLow hHigh)
   have hCapacity1 : mem1.read64 (ptr - 32).toUInt32 = capacity := by
-    rw [hA32, hMem1, Memory.read64_write64_disjoint _ _ _ _ (by rw [hw40, hw32]; omega),
-      Memory.read64_write64_disjoint _ _ _ _ (by rw [hw40, hw32]; omega), ← hA32]
+    rw [hA32, hMem1, Memory.read64_write64_disjoint _ _ _ _ (by rw [hw40, hw32]; omega), ← hA32]
   have hPages1 : mem1.pages = store.mem.pages := by simp [hMem1, Wasm.Mem.write64_pages]
   have hSplit := nodes_split ptr heap.free
   have hAboveMem : ∀ n ∈ aboveNodes ptr heap.free, n ∈ heap.free := fun n hn => by
@@ -328,11 +385,14 @@ theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store :
   have hGlobals := hHeap.globals
   simp only [freeObject, incrementGlobal, headerStore, releaseObject, List.cons_append,
     List.nil_append, List.append_assoc]
-  simp [wp_simp, releaseEntry, releaseLocals, hs40, hm40, hc40, hGlobals, Heap.globals]
-  refine findPlace_spec env _ heap.free ptr 0 0 0 (by simpa [hMem1] using hList1) (by simp) _ _ ?_
+  simp [wp_simp, ReleaseVars.toLocals, hs40, hm40, hc40, hGlobals, Heap.globals]
+  refine findPlace_spec env _ heap.free
+    ⟨root, count, pending, ptr, kind, length, width, mask, element, slot, child, previous0,
+      current0⟩ (by simpa [hMem1] using hList1) (by simp) _ _ ?_
+  simp only [ReleaseVars.atPlace]
   refine joinProgram_spec env _ _ releaseObject releaseCurrent { root := ptr, capacity }
-    (aboveNodes ptr heap.free) rfl (by simp [releaseLocals, releaseObject])
-    (by simp [releaseLocals, releaseCurrent]) (by simpa [hMem1] using hAbove1) (by simp; omega)
+    (aboveNodes ptr heap.free) rfl (by simp [ReleaseVars.toLocals, releaseObject])
+    (by simp [ReleaseVars.toLocals, releaseCurrent]) (by simpa [hMem1] using hAbove1) (by simp; omega)
     (by simp; omega) (by simp [Wasm.Mem.write64_pages]; omega)
     (by simpa [hMem1] using hCapacity1) hApartQ _ _ ?_
   set mem2 := joinMem mem1 { root := ptr, capacity } (aboveNodes ptr heap.free) with hMem2
@@ -343,7 +403,7 @@ theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store :
         rw [hA40, hMem1]
         exact Memory.read64_write64 _ _ _)
       hCapacity1 hApartQ
-  simp [wp_simp, releaseLocals, releasePrevious]
+  simp [wp_simp, ReleaseVars.toLocals, releasePrevious]
   refine wp_iff_cons rfl ?_
   have hGlobals : (heap.release ptr capacity).globals =
       [.i64 heap.top, .i64 (if belowNodes ptr heap.free = [] then ptr else freeHead heap.free),
@@ -352,15 +412,16 @@ theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store :
   cases hLast : (belowNodes ptr heap.free).getLast? with
   | none =>
     have hNil : belowNodes ptr heap.free = [] := List.getLast?_eq_none_iff.mp hLast
-    have hStore : { releaseEntry store ptr with
+    have hStore : { store with
         globals := { globals := [.i64 heap.top, .i64 ptr, .i64 heap.allocs,
           .i64 (heap.frees + 1)] }
         mem := mem2 } = heap.releaseStore store ptr := by
-      simp only [releaseEntry, Heap.releaseStore]
+      simp only [Heap.releaseStore]
       congr 1
       · rw [hGlobals]
         simp [hNil]
-      · simp only [releaseMem, hLast, hMem2, hMem1, hA40, ← hCapacityDef]
+      · simp only [releaseMem, hLast, hMem2, hMem1, hA40, write64_write64_same,
+          ← hCapacityDef]
     simp [hNil, previousRoot, wp_simp, releaseObject]
     have h := hNext 0 (freeHead (aboveNodes ptr heap.free))
     rw [← hStore] at h
@@ -389,16 +450,17 @@ theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store :
     have hpCapacity : mem2.read64 (p.root - 32).toUInt32 = p.capacity :=
       (read64_header (by decide) (by decide) hp48 (by omega) hBytes2).trans hpHeader.2
     have hNe : belowNodes ptr heap.free ≠ [] := by simp [hPre]
-    have hStore : { releaseEntry store ptr with
+    have hStore : { store with
         globals := { globals := [.i64 heap.top, .i64 (freeHead heap.free), .i64 heap.allocs,
           .i64 (heap.frees + 1)] }
         mem := joinMem mem2 p (joinNodes { root := ptr, capacity } (aboveNodes ptr heap.free)) } =
         heap.releaseStore store ptr := by
-      simp only [releaseEntry, Heap.releaseStore]
+      simp only [Heap.releaseStore]
       congr 1
       · rw [hGlobals]
         simp [hNe]
-      · simp only [releaseMem, hLast, hMem2, hMem1, hA40, ← hCapacityDef]
+      · simp only [releaseMem, hLast, hMem2, hMem1, hA40, write64_write64_same,
+          ← hCapacityDef]
     simp only [hPrevious, hpRoot, if_false, ne_eq, not_true_eq_false, ite_false]
     have hpFit2 : p.root.toNat + p.capacity.toNat ≤ mem2.pages * 65536 := by
       rw [hMem2, joinMem_pages, hPages1]
@@ -407,8 +469,8 @@ theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store :
     refine joinProgram_spec env _ _ releasePrevious releaseObject p
       (joinNodes { root := ptr, capacity } (aboveNodes ptr heap.free)) rfl ?_ ?_ ?_ hp48 hp32
       ?_ ?_ ?_ _ _ ?_
-    · simp [releaseLocals, releasePrevious, hPrevious]
-    · simp [releaseLocals, releaseObject, freeHead_joinNodes]
+    · simp [ReleaseVars.toLocals, releasePrevious, hPrevious]
+    · simp [ReleaseVars.toLocals, releaseObject, freeHead_joinNodes]
     · exact hBlock
     · exact hpFit2
     · exact hpCapacity
@@ -422,6 +484,46 @@ theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store :
     rw [← hStore] at h
     simp [wp_simp]
     exact h
+
+/-- Clearing the count word of an object keeps the allocator invariant and the object's
+block facts, and `release` then reaches the same store. -/
+theorem Heap.Object.clearCount {heap : Heap} {store : Store Unit} {ptr : UInt64}
+    (hHeap : heap.At store) (h : heap.Object store ptr) :
+    heap.At (releaseEntry store ptr) ∧ heap.Object (releaseEntry store ptr) ptr ∧
+      heap.releaseStore (releaseEntry store ptr) ptr = heap.releaseStore store ptr := by
+  have hBase := h.base
+  have hFit := h.address
+  have hSeparate := h.separate
+  simp only [capacityAt] at hFit
+  have h40 := headerAddress_toNat (ptr := ptr) (k := 40) (by simp; omega) (by omega)
+  have h32 := headerAddress_toNat (ptr := ptr) (k := 32) (by simp; omega) (by omega)
+  simp only [UInt64.reduceToNat] at h40 h32
+  have hw : UInt32.ofNat (ptr.toNat - 40) = (ptr - 40).toUInt32 :=
+    UInt32.toNat_inj.mp (by rw [h40, UInt32.toNat_ofNat']; omega)
+  have hCapacity : capacityAt (releaseEntry store ptr) ptr = capacityAt store ptr := by
+    simp only [capacityAt, releaseEntry, hw]
+    rw [Memory.read64_write64_disjoint _ _ _ _ (by rw [h40, h32]; omega)]
+  have hPages : (releaseEntry store ptr).mem.pages = store.mem.pages := by
+    simp [releaseEntry, Wasm.Mem.write64_pages]
+  refine ⟨⟨hHeap.globals, ?_, hHeap.base, by rw [hPages]; exact hHeap.top,
+      by rw [hPages]; exact hHeap.pages, hHeap.above, hHeap.below⟩,
+    ⟨hBase, by rw [hCapacity]; exact h.address, by rw [hCapacity]; exact h.below,
+      by rw [hCapacity]; exact hSeparate⟩, ?_⟩
+  · refine FreeListMemory.frame_headers hHeap.freeList hPages.ge
+      fun node hNode address hLow hHigh => ?_
+    simp only [releaseEntry, hw]
+    refine Memory.write64_bytes_outside _ _ _ ?_
+    have hNodeSeparate := hSeparate node hNode
+    have := hHeap.above node hNode
+    simp only [regionsDisjoint, FreeNode.region] at hNodeSeparate
+    rw [h40]
+    omega
+  · have hRead : (releaseEntry store ptr).mem.read64 (ptr - 32).toUInt32 =
+        store.mem.read64 (ptr - 32).toUInt32 := by
+      simp only [capacityAt] at hCapacity
+      exact UInt64.toNat_inj.mp hCapacity
+    simp only [Heap.releaseStore, hRead]
+    simp only [releaseEntry, hw, write64_write64_same]
 
 theorem release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
     (hFunc : m.funcs[1]? = some (releaseFunction typeIdx)) (env : HostEnv Unit) (heap : Heap)
@@ -496,10 +598,13 @@ theorem release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
     simp [hs8, hm8, hc8, hMask]
     refine wp_iff_cons rfl ?_
     simp only [ite_true, ne_eq, not_true_eq_false, ite_false, List.nil_append, wp_nil]
+    obtain ⟨hHeap1, hObject1, hRelease1⟩ := hOwned.object.clearCount hHeap
     change wp m (freeObject ++ [.br 0]) _ (releaseEntry store ptr)
-      (releaseLocals ptr 0 ptr 0 0) env
-    refine freeObject_spec env heap store ptr words hHeap hOwned _ _ fun previous current => ?_
-    simp [wp_simp, releaseLocals, releasePending]
+      (ReleaseVars.toLocals ⟨ptr, 1, 0, ptr, 0, 0, 0, 0, 0, 0, 0, 0, 0⟩) env
+    refine freeObject_spec env heap _ _ hHeap1 hObject1 _ _ fun previous current => ?_
+    dsimp only
+    rw [hRelease1]
+    simp [wp_simp, ReleaseVars.atPlace, ReleaseVars.toLocals, releaseLocals, releasePending]
     omega
   · simp [releaseLocals, wp_simp]
 
@@ -528,8 +633,8 @@ theorem Heap.At.free_bounds {heap : Heap} {store : Store Unit} (hHeap : heap.At 
 
 /-- An array borrowed outside a freed object stays borrowed after the release. -/
 theorem Heap.Borrowed.release {heap : Heap} {store : Store Unit} {p q : UInt64}
-    {ws qs : Array UInt64} (h : heap.Borrowed store p ws) (hHeap : heap.At store)
-    (hOwned : heap.Owned store q qs)
+    {ws : Array UInt64} (h : heap.Borrowed store p ws) (hHeap : heap.At store)
+    (hOwned : heap.Object store q)
     (hDisjoint : regionsDisjoint (p.toNat, 8 * (ws.size + 1))
       (q.toNat - 48, 48 + capacityAt store q)) :
     (heap.release q (store.mem.read64 (q - 32).toUInt32)).Borrowed (heap.releaseStore store q) p
@@ -552,8 +657,8 @@ theorem Heap.Borrowed.release {heap : Heap} {store : Store Unit} {p q : UInt64}
 /-- An object owned outside a freed object stays owned after the release, with its
 capacity word unchanged. -/
 theorem Heap.Owned.release {heap : Heap} {store : Store Unit} {p q : UInt64}
-    {ws qs : Array UInt64} (h : heap.Owned store p ws) (hHeap : heap.At store)
-    (hOwned : heap.Owned store q qs)
+    {ws : Array UInt64} (h : heap.Owned store p ws) (hHeap : heap.At store)
+    (hOwned : heap.Object store q)
     (hDisjoint : regionsDisjoint (p.toNat - 48, 48 + capacityAt store p)
       (q.toNat - 48, 48 + capacityAt store q)) :
     (heap.release q (store.mem.read64 (q - 32).toUInt32)).Owned (heap.releaseStore store q) p ws ∧
@@ -579,10 +684,10 @@ theorem Heap.Owned.release {heap : Heap} {store : Store Unit} {p q : UInt64}
     (by simp only; omega) hDisjoint (fun n hn => regionsDisjoint_symm (h.separate n hn)) node ?_)
   exact hNode
 
-/-- Freeing an owned array keeps the allocator invariant, with the object's block
-inserted in the free list. -/
+/-- Freeing an object keeps the allocator invariant, with the object's block inserted in
+the free list. -/
 theorem Heap.At.release {heap : Heap} {store : Store Unit} {ptr : UInt64}
-    {words : Array UInt64} (hHeap : heap.At store) (hOwned : heap.Owned store ptr words) :
+    (hHeap : heap.At store) (hOwned : heap.Object store ptr) :
     (heap.release ptr (store.mem.read64 (ptr - 32).toUInt32)).At (heap.releaseStore store ptr) := by
   have hBase := hOwned.base
   have hFit := hOwned.address

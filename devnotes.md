@@ -21366,9 +21366,15 @@ reviewer's two sketches and reading the cited lines.
 
 Revised steps:
 
-- [ ] `Heap.Object`; `findPlace_spec`, `freeObject_spec`, `Heap.At.release`, and the frame
+- [x] `Heap.Object`; `findPlace_spec`, `freeObject_spec`, `Heap.At.release`, and the frame
   lemmas after a release restated over it and over any locals; `wp_loop_ghost`;
-  `maskOf_test`.
+  `maskOf_test`.  `ReleaseVars` names the parameter and twelve locals of `release`, and
+  `ReleaseVars.toLocals` lists them; `releaseLocals` is one instance.  `freeObject_spec`
+  starts from any store and ends in `heap.releaseStore store ptr`, which writes the count
+  word twice; `write64_write64_same` equates that with one write.  `release_run` keeps its
+  statement through `Heap.Object.clearCount`.  `wp_loop_ghost` is in
+  `Project/Pipeline/ReleaseTree.lean`, and `maskOf_test` in `Records.lean`.  The
+  `release-temporary` LTG entry now names the new lemmas and gives `release` as function 1.
 - [ ] `dropReference` for a child and `dropChildren` for a record whose children are owned.
 - [ ] The tree release theorem with the postcondition above, the null root included, and
   its IR rule for `Stmt.release` of an owned value.

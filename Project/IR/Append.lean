@@ -394,21 +394,21 @@ theorem Stmt.appendGrow_spec {releaseType scratch dst size1 size2 limit index ca
       have := hNew.ownedApart p1 xs hXs
       rw [hBlockP1]
       exact regionsDisjoint_symm this
-    obtain ⟨hOwnedNew, hCapNew⟩ := hNew.owned.release hNew.at_ hOwnedP1 hApartNew
+    obtain ⟨hOwnedNew, hCapNew⟩ := hNew.owned.release hNew.at_ hOwnedP1.object hApartNew
     have hBlockNew : block ((heap.allocate need).releaseStore s p1) ptr = block s ptr :=
       block_eq hCapNew
     refine ⟨_, ptr, hFrame0.trans (hFk.weaken fun j hj => by simp at hj ⊢; omega), hD,
-      hNew.at_.release hOwnedP1, hOwnedNew, hNew.caps, fun q ws hq hDisjoint => ?_,
+      hNew.at_.release hOwnedP1.object, hOwnedNew, hNew.caps, fun q ws hq hDisjoint => ?_,
       fun q ws hq hDisjoint => ?_⟩
     · rw [hBlockNew]
-      refine ⟨(hNew.borrowed q ws hq).release hNew.at_ hOwnedP1 ?_, hNew.borrowedApart q ws hq⟩
+      refine ⟨(hNew.borrowed q ws hq).release hNew.at_ hOwnedP1.object ?_, hNew.borrowedApart q ws hq⟩
       rw [← hBlockP1] at hDisjoint
       exact hDisjoint
     · rw [hBlockNew]
       obtain ⟨hqOwned, hqCap⟩ := hNew.ownedKeep q ws hq
       have hqApart : regionsDisjoint (block s q) (block s p1) := by
         rw [block_eq hqCap, hBlockP1]; exact hDisjoint
-      obtain ⟨hqOwned', hqCap'⟩ := hqOwned.release hNew.at_ hOwnedP1 hqApart
+      obtain ⟨hqOwned', hqCap'⟩ := hqOwned.release hNew.at_ hOwnedP1.object hqApart
       exact ⟨hqOwned', hqCap'.trans hqCap, hNew.ownedApart q ws hq⟩
 
 theorem le_allocSize {bytes : UInt64} (h : bytes.toNat ≤ 4294967296) :
