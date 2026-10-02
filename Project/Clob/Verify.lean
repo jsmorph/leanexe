@@ -1317,6 +1317,94 @@ theorem runTuple_eq (prices sizes commands : Array UInt64) :
       LeanExe.loop (UInt64.ofNat commands.size / 3) (prices, sizes)
         fun l x => applyTuple (runStep commands l x) := rfl
 
+theorem runCommands_eq_fold (prices sizes cs : Array UInt64) (hs : cs.size < 2 ^ 64) :
+    LeanExe.Examples.Clob.runCommands prices sizes cs =
+      Nat.fold (cs.size / 3) (fun i _ book => applyTuple (runStep cs (UInt64.ofNat i) book))
+        (prices, sizes) := by
+  have hn : (UInt64.ofNat cs.size / 3).toNat = cs.size / 3 := by
+    rw [UInt64.toNat_div, UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)]
+    rfl
+  show runTuple (⟨prices⟩, ⟨sizes⟩, cs) = _
+  rw [runTuple_eq]
+  exact Nat.fold_congr hn _ _
+
+theorem runStep_append_left {c1 c2 : Array UInt64} {i : Nat} (hi : i < c1.size / 3)
+    (hs : (c1 ++ c2).size < 2 ^ 62) (book : Array UInt64 × Array UInt64) :
+    runStep (c1 ++ c2) (UInt64.ofNat i) book = runStep c1 (UInt64.ofNat i) book := by
+  rw [Array.size_append] at hs
+  have hj : ∀ j : Nat, j < 3 → (3 * UInt64.ofNat i + UInt64.ofNat j).toNat = 3 * i + j := by
+    intro j hj
+    simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat', UInt64.reduceToNat]
+    omega
+  have hRead : ∀ j : Nat, j < 3 →
+      (c1 ++ c2)[3 * i + j]! = c1[3 * i + j]! := fun j hj' => by
+    rw [getElem!_pos (c1 ++ c2) _ (by simp; omega), getElem!_pos c1 _ (by omega),
+      Array.getElem_append_left (by omega)]
+  have h0 := hj 0 (by decide)
+  have h1 := hj 1 (by decide)
+  have h2 := hj 2 (by decide)
+  simp only [UInt64.reduceOfNat, add_zero] at h0
+  simp only [runStep, Nat.cast_ofNat] at *
+  rw [show (3 * UInt64.ofNat i).toNat = 3 * i + 0 by simpa using h0,
+    show (3 * UInt64.ofNat i + 1).toNat = 3 * i + 1 from h1,
+    show (3 * UInt64.ofNat i + 2).toNat = 3 * i + 2 from h2,
+    hRead 0 (by decide), hRead 1 (by decide), hRead 2 (by decide)]
+
+theorem runStep_append_right {c1 c2 : Array UInt64} {i : Nat} (h3 : c1.size % 3 = 0)
+    (hi : i < c2.size / 3) (hs : (c1 ++ c2).size < 2 ^ 62) (book : Array UInt64 × Array UInt64) :
+    runStep (c1 ++ c2) (UInt64.ofNat (c1.size / 3 + i)) book =
+      runStep c2 (UInt64.ofNat i) book := by
+  rw [Array.size_append] at hs
+  have hj : ∀ (a j : Nat), a < 2 ^ 61 → j < 3 →
+      (3 * UInt64.ofNat a + UInt64.ofNat j).toNat = 3 * a + j := by
+    intro a j ha hj
+    simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat', UInt64.reduceToNat]
+    omega
+  have hRead : ∀ j : Nat, j < 3 →
+      (c1 ++ c2)[3 * (c1.size / 3 + i) + j]! = c2[3 * i + j]! := fun j hj' => by
+    rw [getElem!_pos (c1 ++ c2) _ (by simp; omega), getElem!_pos c2 _ (by omega),
+      Array.getElem_append_right (by omega)]
+    congr 1
+    omega
+  have h0 := hj (c1.size / 3 + i) 0 (by omega) (by decide)
+  have h1 := hj (c1.size / 3 + i) 1 (by omega) (by decide)
+  have h2 := hj (c1.size / 3 + i) 2 (by omega) (by decide)
+  have g0 := hj i 0 (by omega) (by decide)
+  have g1 := hj i 1 (by omega) (by decide)
+  have g2 := hj i 2 (by omega) (by decide)
+  simp only [UInt64.reduceOfNat, add_zero] at h0 g0
+  simp only [runStep, Nat.cast_ofNat] at *
+  rw [show (3 * UInt64.ofNat (c1.size / 3 + i)).toNat = 3 * (c1.size / 3 + i) + 0 by
+      simpa using h0,
+    show (3 * UInt64.ofNat (c1.size / 3 + i) + 1).toNat = 3 * (c1.size / 3 + i) + 1 from h1,
+    show (3 * UInt64.ofNat (c1.size / 3 + i) + 2).toNat = 3 * (c1.size / 3 + i) + 2 from h2,
+    show (3 * UInt64.ofNat i).toNat = 3 * i + 0 by simpa using g0,
+    show (3 * UInt64.ofNat i + 1).toNat = 3 * i + 1 from g1,
+    show (3 * UInt64.ofNat i + 2).toNat = 3 * i + 2 from g2,
+    hRead 0 (by decide), hRead 1 (by decide), hRead 2 (by decide)]
+
+/-- Running the commands in two chunks, the first of whole commands, gives the book of one
+run over both chunks.  This is what lets a host pass the commands in chunks of any size. -/
+theorem runCommands_append (prices sizes c1 c2 : Array UInt64) (h3 : c1.size % 3 = 0)
+    (hs : (c1 ++ c2).size < 2 ^ 62) :
+    LeanExe.Examples.Clob.runCommands
+        (LeanExe.Examples.Clob.runCommands prices sizes c1).1
+        (LeanExe.Examples.Clob.runCommands prices sizes c1).2 c2 =
+      LeanExe.Examples.Clob.runCommands prices sizes (c1 ++ c2) := by
+  have hs' := hs
+  rw [Array.size_append] at hs'
+  rw [runCommands_eq_fold _ _ c2 (by omega), runCommands_eq_fold _ _ (c1 ++ c2) (by omega),
+    runCommands_eq_fold _ _ c1 (by omega), Prod.mk.eta]
+  rw [Nat.fold_congr (show (c1 ++ c2).size / 3 = c1.size / 3 + c2.size / 3 by
+    rw [Array.size_append]; omega), Nat.fold_add]
+  congr 1
+  · funext i hi book
+    exact (congrArg applyTuple (runStep_append_right h3 hi hs book)).symm
+  · exact Nat.fold_congr rfl _ _ |>.trans (by
+      congr 1
+      funext i hi book
+      exact (congrArg applyTuple (runStep_append_left hi hs book)).symm)
+
 theorem Expr.evalResults_cons {mem : Mem} {scratch : Nat} {e : Expr .u64} {state mid next : State}
     {rest : List ((type : ScalarType) × Expr type)} {vs : List Value} {v : UInt64}
     (he : e.eval mem scratch state = some (v, mid))

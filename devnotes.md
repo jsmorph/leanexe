@@ -20593,6 +20593,7 @@ allocation or free beyond those of its commands.
 - [x] `runCommands`, its theorem, and `clob_bytes`.  `runTuple` equals the loop over
   `applyTuple (runStep commands l x)` by `rfl`, and `runCommands_implements` is `Live.start_moved`,
   the size load, `Live.pairLoop` with `applyCommand_implements`, and `movesPost_of_live`.
-- [ ] The chunk lemma.
+- [x] The chunk lemma `runCommands_append`: two runs, the first over whole commands, give the
+  book of one run over both chunks, for inputs below `2 ^ 62` words.
 - [ ] Tests: comparisons, a chunked session, release counts; emit; other modules unchanged.
 - [ ] 5b: per-step outputs.
