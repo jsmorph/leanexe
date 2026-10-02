@@ -22136,8 +22136,8 @@ after its position and value are computed into locals, which may read the array;
 borrowed array copies as now.  The moved check rejects any use after the update.
 
 Programs: the CLOB functions.  `fillLevel` and `setLevel` (`set!`), `removeLevel` (erase), and
-`insertLevel` (insert) change templates; `sizes` becomes `Moved` in `fillLevel`, `setLevel`, and
-`addBid`, and `prices` in `insertLevel` and `removeLevel` where it is not already.  `addBid`,
+`insertLevel` (insert) change templates; both arrays become `Moved` in `insertLevel` and
+`removeLevel`, and `sizes` in `fillLevel`, `setLevel`, and `addBid`.  `addBid`,
 `cancelBid`, and `applyCommand` change at their call sites; `runCommands`, `stepCommand`, and
 `runOut` should not change.  The CLOB count cases in `tests/modules/run.sh` change with the
 copies the templates no longer make.
