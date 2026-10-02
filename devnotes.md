@@ -20535,3 +20535,31 @@ The outcome is the array adapter: a compiled Lean function that folds the step f
 an array of input words, proved by `Implements` from the start.  I asked the user instead of
 proceeding.  The user restated the process: work up the answers and a recommendation, review
 them, and proceed unless the user must be involved.
+
+## 2026-10-01: Plan: Iteration 5a, the CLOB command fold
+
+Questions and provisional answers, before review:
+
+1. The program.  `runCommands prices sizes commands` folds `applyCommand` over the commands,
+   three words each (`kind`, `price`, `size`), with `LeanExe.loop` over
+   `commands.size.toUInt64 / 3` and the book as the state.  It returns the final book.  The
+   host passes a chunk of commands and the book, and gets the book back.
+2. Per-step outputs (`State → Input → State × Output`) are deferred.  An output channel needs
+   either an output array that each step extends, with in-place writes from the later agenda
+   item, or `++` of a fresh array inside a loop body, which the compiler does not allow.
+   The book is the output of this increment.
+3. The compiler generalizes the array loop.  The state may be a pair of arrays.  The body is
+   one call.  A state component at an owned position of the callee is moved, and the previous
+   state is not released.  A component at a borrowed position is released after the call, as
+   now.  An initial component that is an owned parameter at its last use is moved into the
+   state.  Any other array variable is copied, as now.  `moveSites` counts the initial
+   components of a loop in the result term whose callee owns the matching positions.
+4. The proof rule is a loop rule for a pair-of-arrays state that the callee consumes.  Its
+   invariant is a `Live` whose first two temporaries are the state after `k` steps, and each
+   iteration is a `Live.callPair` that consumes them.  The old `Live.arrayLoop`, with a copied
+   `Array Float` state and a release per step, stays for GPT.
+5. The theorem is `Implements` of `runCommands` with `Moved` prices and sizes and borrowed
+   commands, added to `clob_bytes`.  A Lean lemma states the fold over the command list.
+6. Tests: comparisons of `runCommands` with native Lean, and a session that feeds a command
+   stream in chunks and compares the book with one call over the whole stream.  Release
+   counts check that the book is never copied.
