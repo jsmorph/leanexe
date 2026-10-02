@@ -58,6 +58,7 @@ import Project.IR.Hint
 import Project.IR.Live
 import Project.IR.Loop
 import Project.IR.Read
+import Project.IR.Record
 import Project.IR.Release
 import Project.IR.Run
 import Project.IR.Stmt
@@ -70,6 +71,7 @@ import Project.Piecewise.Module
 import Project.Piecewise.Verify
 import Project.Pipeline.Allocation
 import Project.Pipeline.Implements
+import Project.Pipeline.Records
 import Project.Pipeline.Runtime
 import Project.Pipeline.RuntimeSpec
 import Project.ProofKit.Allocation
