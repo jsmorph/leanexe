@@ -21668,7 +21668,7 @@ Revised steps for 7c3b, each built, tested, committed, and pushed:
 - [ ] The recursion rule (`Func.keeps` for any parameter values, induction on a measure)
   and `size`; then `sum`; then `max` on words and `height`.  `Project/IR/Recursion.lean`
   holds `Func.keeps`, `Keeps`, `Func.recursion`, `Stmt.selfCall_spec` (from the reviewer's
-  sketch), and `Func.entry_implements`.  `size_rec` (79 lines) and `size_implements` are in
+  sketch), and `Func.entry_implements`.  `size_rec` (93 lines) and `size_implements` are in
   `Project/Trees/Verify.lean`, and `trees_bytes` has axioms `propext`, `Classical.choice`,
   and `Quot.sound`.  `trees.wasm` is 1,496 bytes with sha256 `510ce5ee4c696eb8…`.  The
   host's `tree-u64:` argument kind takes a preorder description; `size` matched native Lean
