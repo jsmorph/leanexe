@@ -20918,3 +20918,9 @@ Questions:
    input.
 5. Tests: `step` in every constructor, with `r` zero and nonzero and `n` zero, compared with
    native Lean through the host's word arguments and results.
+
+The user then withdrew the `step` example as the case to build for: user inductives,
+recursive ones included, remain the goal.  On 2026-10-02 the user kept the order 7a, 7b,
+7c, with programs that I choose for each step, since each step builds the constructor
+dispatch and field binding that the next reuses.  The representation and compiler rules
+above stand; 7a's program changes.
