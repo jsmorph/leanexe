@@ -21078,4 +21078,16 @@ discriminant, a sum as a loop state, literal sub-patterns (`| .rect 0 h`, which 
 - [x] `LeanExe/Examples/Shape.lean` and `shapes.wasm`, 2,232 bytes.
 - [x] Tests: `tests/modules/run.sh` passed all 5,066 comparisons, 226 of them for the
   shapes, with radii that include `-0`, infinity, NaN, and a subnormal.
-- [ ] The theorems.
+- [x] The theorems, in `Project/Shape/Verify.lean`, with the `Flat Shape` instance in
+  `Project/Shape/Flat.lean`, and `shapes_bytes`, whose axioms are `propext`,
+  `Classical.choice`, and `Quot.sound`.  `shapes.wasm` is 2,232 bytes with sha256
+  `59f98a656141e2e3…`.  The proofs differ from 7a's in one way.  `simp` with its default set
+  ran for minutes, without reaching the heartbeat limit, on the evaluation of `area` for a
+  rectangle; `simp only` with the same lemmas finished.  I did not find the lemma or
+  procedure that stalls.  The proofs instead evaluate the IR by `rfl` where the state is
+  concrete, as in `area` (20 lines), `width` (9), `grow` (7), and `scale` (19), and rewrite
+  float results with `F64Bits.toBits_mul`, `toBits_add`, and `F64Convert.toBits_toFloat`.
+  Where `rfl` timed out, on states built by several updates, they use the update lemmas:
+  `normalize` (109 lines) proves the run of its `if` chain once for any slot values, and
+  `totalArea` (160 lines) follows `calcRun`'s proof with two `setAll` lemmas, so no `simp`
+  call reshapes a state.  `ofWords` takes 30 lines.
