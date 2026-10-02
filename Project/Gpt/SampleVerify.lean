@@ -30,8 +30,8 @@ theorem negInfs_implements :
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep,
     [.i64 ptr], state, by simp [gpt.negInfs.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+    ⟨ptr, rfl, ?_⟩, fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
   have hEq : LeanExe.Examples.Gpt.negInfs k = LeanExe.build k (fun _ => -(1.0 / 0.0)) := rfl
   rw [hEq, build_map]
   exact hNew.owned
@@ -170,8 +170,8 @@ theorem insertTop_implements : Implements gpt.module 46 insertTopTuple := by
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep,
     [.i64 ptr], state, by simp [gpt.insertTop.ir, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+    ⟨ptr, rfl, ?_⟩, fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
   have hEq : insertTopTuple (buf, s, i, k) = LeanExe.build k (insertElem buf x pos) := by
     rw [← hPos]; rfl
   rw [hEq, build_map]
@@ -751,8 +751,8 @@ theorem sampleTopK_implements : Implements gpt.module 49 sampleTopKTuple := by
   obtain ⟨hL, hst⟩ := h
   refine ⟨_, hL.at_, hL.caps,
     fun p ws h => hL.borrowed p ws h Apart.nil, fun p ws h => hL.owned p ws h Apart.nil,
-    [.i64 r.1, .i64 r.2], s5, ?_, rfl, fun _ _ _ => trivial,
-    fun _ _ _ => trivial⟩
+    [.i64 r.1, .i64 r.2], s5, ?_, rfl, fun _ _ _ => Represent.outside_scalar,
+    fun _ _ _ => Represent.outside_scalar⟩
   · rw [hst]
     exact Expr.evalResults_get f5_8 <| Expr.evalResults_get f5_9 <| Expr.evalResults_nil
 

@@ -828,6 +828,16 @@ theorem Heap.NewArray.two {heap heap1 heap2 : Heap} {initial store1 store2 : Sto
     rw [hCap1]
     exact ⟨h1.ownedApart p ws h, hApart2⟩
 
+/-- The blocks of two arrays allocated one after the other are disjoint. -/
+theorem Heap.NewArray.two_apart {heap heap1 heap2 : Heap} {initial store1 store2 : Store Unit}
+    {ptr1 ptr2 : UInt64} {ws1 ws2 : Array UInt64}
+    (h1 : heap.NewArray initial heap1 store1 ptr1 ws1)
+    (h2 : heap1.NewArray store1 heap2 store2 ptr2 ws2) :
+    regionsDisjoint (ptr1.toNat - 48, 48 + capacityAt store2 ptr1)
+      (ptr2.toNat - 48, 48 + capacityAt store2 ptr2) := by
+  rw [(h2.ownedKeep ptr1 ws1 h1.owned).2]
+  exact h2.ownedApart ptr1 ws1 h1.owned
+
 /-- An owned array can be lent: it is also borrowed, in the same heap. -/
 theorem Heap.Owned.borrowed {heap : Heap} {store : Store Unit} {p : UInt64} {ws : Array UInt64}
     (h : heap.Owned store p ws) : heap.Borrowed store p ws := by

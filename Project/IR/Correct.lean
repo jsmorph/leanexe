@@ -126,7 +126,8 @@ theorem Func.implements [Represent α] [Scalar β] (funcs : List (Func × String
         subst hStore
         obtain ⟨values, next, hEval, hValues⟩ := hResult
         exact ⟨heap, hHeap, rfl, fun _ _ h _ => h, fun _ _ h _ => ⟨h, rfl⟩, values, next,
-          hEval, hValues, fun _ _ _ _ => trivial, fun _ _ _ _ => trivial⟩
+          hEval, hValues, fun _ _ _ _ => Represent.outside_scalar,
+          fun _ _ _ _ => Represent.outside_scalar⟩
 
 /-- A compiled function of scalars whose body keeps the store, for every store,
 computes `f` and keeps the store. -/

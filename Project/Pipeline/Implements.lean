@@ -14,15 +14,21 @@ class Represent (α : Type) where
   width : α → Nat
   borrowed : Heap → Store Unit → List Value → α → Prop
   owned : Heap → Store Unit → List Value → α → Prop
-  /-- The objects that the owned values `vs` of `x` occupy lie outside the memory
-  region `region`, given as its start and length. -/
-  outside : Store Unit → List Value → α → Nat × Nat → Prop
+  /-- The blocks of the objects that the owned values `vs` of `x` occupy, each given as
+  its start and length. -/
+  blocks : Store Unit → List Value → α → List (Nat × Nat)
   /-- The regions of the arrays among the arguments `vs` of `x` that the call reads
   and leaves intact. -/
   reads : List Value → α → List (Nat × Nat)
   /-- The pointers of the arrays among the arguments `vs` of `x` that the call
   consumes. -/
   moves : List Value → α → List UInt64
+
+/-- The objects that the owned values `vs` of `x` occupy lie outside the memory region
+`region`, given as its start and length. -/
+def Represent.outside [Represent α] (store : Store Unit) (vs : List Value) (x : α)
+    (region : Nat × Nat) : Prop :=
+  ∀ b ∈ Represent.blocks store vs x, regionsDisjoint region b
 
 /-- An argument that the caller hands over to the call. -/
 structure Moved (α : Type) where
@@ -67,7 +73,7 @@ instance (priority := low) [Scalar α] : Represent α where
   width x := (Scalar.values x).length
   borrowed _ _ vs x := vs = Scalar.values x
   owned _ _ vs x := vs = Scalar.values x
-  outside _ _ _ _ := True
+  blocks _ _ _ := []
   reads _ _ := []
   moves _ _ := []
 
@@ -87,23 +93,26 @@ instance : Represent (Array UInt64) where
   width _ := 1
   borrowed heap store vs xs := ∃ ptr, vs = [.i64 ptr] ∧ heap.Borrowed store ptr xs
   owned heap store vs xs := ∃ ptr, vs = [.i64 ptr] ∧ heap.Owned store ptr xs
-  outside store vs _ region := ∃ ptr, vs = [.i64 ptr] ∧
-    regionsDisjoint region (ptr.toNat - 48, 48 + capacityAt store ptr)
+  blocks store vs _ := match vs with
+    | [.i64 ptr] => [block store ptr]
+    | _ => []
   reads vs xs := match vs with
     | [.i64 ptr] => [(ptr.toNat, 8 * (xs.size + 1))]
     | _ => []
   moves _ _ := []
 
 /-- A pair is represented by its first component's values followed by its
-second's.  Pairs of scalars use the `Scalar` instance, which comes first. -/
+second's, and an owned pair's components occupy disjoint blocks.  Pairs of scalars use the
+`Scalar` instance, which comes first. -/
 instance (priority := 50) [Represent α] [Represent β] : Represent (α × β) where
   width p := Represent.width p.1 + Represent.width p.2
   borrowed heap store vs p := ∃ first second, vs = first ++ second ∧
     Represent.borrowed heap store first p.1 ∧ Represent.borrowed heap store second p.2
   owned heap store vs p := ∃ first second, vs = first ++ second ∧
-    Represent.owned heap store first p.1 ∧ Represent.owned heap store second p.2
-  outside store vs p region := ∃ first second, vs = first ++ second ∧
-    Represent.outside store first p.1 region ∧ Represent.outside store second p.2 region
+    Represent.owned heap store first p.1 ∧ Represent.owned heap store second p.2 ∧
+    ∀ b ∈ Represent.blocks store first p.1, Represent.outside store second p.2 b
+  blocks store vs p := Represent.blocks store (vs.take (Represent.width p.1)) p.1 ++
+    Represent.blocks store (vs.drop (Represent.width p.1)) p.2
   reads vs p := Represent.reads (vs.take (Represent.width p.1)) p.1 ++
     Represent.reads (vs.drop (Represent.width p.1)) p.2
   moves vs p := Represent.moves (vs.take (Represent.width p.1)) p.1 ++
@@ -114,7 +123,7 @@ instance : Represent (Array Float) where
   width _ := 1
   borrowed heap store vs xs := Represent.borrowed heap store vs (xs.map Float.toBits)
   owned heap store vs xs := Represent.owned heap store vs (xs.map Float.toBits)
-  outside store vs xs region := Represent.outside store vs (xs.map Float.toBits) region
+  blocks store vs xs := Represent.blocks store vs (xs.map Float.toBits)
   reads vs xs := Represent.reads vs (xs.map Float.toBits)
   moves _ _ := []
 
@@ -124,7 +133,7 @@ instance : Represent (Moved (Array UInt64)) where
   width _ := 1
   borrowed heap store vs xs := Represent.owned heap store vs xs.val
   owned heap store vs xs := Represent.owned heap store vs xs.val
-  outside store vs xs region := Represent.outside store vs xs.val region
+  blocks store vs xs := Represent.blocks store vs xs.val
   reads _ _ := []
   moves vs _ := match vs with
     | [.i64 ptr] => [ptr]
@@ -134,10 +143,46 @@ instance : Represent (Moved (Array Float)) where
   width _ := 1
   borrowed heap store vs xs := Represent.borrowed heap store vs (Moved.mk (xs.val.map Float.toBits))
   owned heap store vs xs := Represent.owned heap store vs (Moved.mk (xs.val.map Float.toBits))
-  outside store vs xs region :=
-    Represent.outside store vs (Moved.mk (xs.val.map Float.toBits)) region
+  blocks store vs xs := Represent.blocks store vs (Moved.mk (xs.val.map Float.toBits))
   reads _ _ := []
   moves vs xs := Represent.moves vs (Moved.mk (xs.val.map Float.toBits))
+
+/-- An array at `p` lies outside a region exactly when its block does. -/
+theorem Represent.outside_array {store : Store Unit} {p : UInt64} {xs : Array UInt64}
+    {region : Nat × Nat} :
+    Represent.outside store [.i64 p] xs region ↔ regionsDisjoint region (block store p) := by
+  simp [Represent.outside, Represent.blocks]
+
+theorem Represent.outside_float {store : Store Unit} {p : UInt64} {xs : Array Float}
+    {region : Nat × Nat} :
+    Represent.outside store [.i64 p] xs region ↔ regionsDisjoint region (block store p) :=
+  Represent.outside_array (xs := xs.map Float.toBits)
+
+/-- A pair of arrays at `p1` and `p2` lies outside a region exactly when both blocks do. -/
+theorem Represent.outside_pair {store : Store Unit} {p1 p2 : UInt64} {xs ys : Array UInt64}
+    {region : Nat × Nat} :
+    Represent.outside store [.i64 p1, .i64 p2] (xs, ys) region ↔
+      regionsDisjoint region (block store p1) ∧ regionsDisjoint region (block store p2) := by
+  simp [Represent.outside, Represent.blocks, Represent.width, List.take, List.drop]
+
+/-- An owned pair of arrays at `p1` and `p2`: each array owned, in disjoint blocks. -/
+theorem Represent.owned_pair {heap : Heap} {store : Store Unit} {p1 p2 : UInt64}
+    {xs ys : Array UInt64} :
+    Represent.owned heap store [.i64 p1, .i64 p2] (xs, ys) ↔
+      heap.Owned store p1 xs ∧ heap.Owned store p2 ys ∧
+        regionsDisjoint (block store p1) (block store p2) := by
+  constructor
+  · rintro ⟨first, second, hValues, ⟨q1, rfl, h1⟩, ⟨q2, rfl, h2⟩, hApart⟩
+    simp only [List.singleton_append, List.cons.injEq, Value.i64.injEq, and_true] at hValues
+    obtain ⟨rfl, rfl⟩ := hValues
+    exact ⟨h1, h2, Represent.outside_array.mp (hApart _ (List.mem_singleton_self _))⟩
+  · rintro ⟨h1, h2, hApart⟩
+    exact ⟨[.i64 p1], [.i64 p2], rfl, ⟨p1, rfl, h1⟩, ⟨p2, rfl, h2⟩,
+      fun b hb => (List.mem_singleton.mp hb) ▸ Represent.outside_array.mpr hApart⟩
+
+theorem Represent.outside_scalar [Scalar α] {store : Store Unit} {vs : List Value} {x : α}
+    {region : Nat × Nat} : Represent.outside store vs x region :=
+  fun _ h => nomatch h
 
 /-- The cap premise of `Implements` holds in every store with the same memory caps. -/
 theorem memoryCap_le_of_caps {m : Module} {store store' : Store Unit}
@@ -206,7 +251,8 @@ theorem ImplementsPure.implements [Scalar α] [Scalar β] {m : Module} {entry : 
   refine ⟨N, fun fuel hFuel => ?_⟩
   rcases hN fuel hFuel with ⟨values, final, hRun, rfl, hValues⟩ | hAbort
   · exact .inl ⟨values, final, hRun, heap, hHeap, hValues, rfl,
-      fun _ _ h _ => h, fun _ _ h _ => ⟨h, rfl⟩, fun _ _ _ _ => trivial, fun _ _ _ _ => trivial⟩
+      fun _ _ h _ => h, fun _ _ h _ => ⟨h, rfl⟩, fun _ _ _ _ => Represent.outside_scalar,
+      fun _ _ _ _ => Represent.outside_scalar⟩
   · exact .inr hAbort
 
 theorem Implements.transfer [Represent α] [Represent β] {m : Module} {entry : Nat}

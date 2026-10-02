@@ -20423,3 +20423,44 @@ relative difference of 1.16e-13, as before.  Its session ended with 138,046 allo
 138,026 frees, 486 fewer allocations than before, and 1,079,705,600 bytes of memory, 15.7 MB
 less.  It ran in 323 seconds against 189 before, while a full build ran on the same
 machine, so the time does not measure the change.
+
+## 2026-10-01: Returned parameters, and disjoint pair results
+
+The plan for the rest of Iteration 4, under review: an array parameter that the result term
+returns on some path is owned, moves may occur inside result branches, and a path releases
+the owned parameters it does not move.  The review accepted the plan with three changes:
+branch conditions count as earlier occurrences, so the test of a single occurrence must be
+per path, since the conditions of `addBid` and `cancelBid` read both arrays; the exception
+for a moved parameter read in a scalar argument of the same call goes, since no program
+uses it; and the CLOB functions `addBid`, `cancelBid`, and `applyCommand` move onto `Live`
+instead of extending `Kept`, `PairPost`, and `pairCall_spec` with consumed blocks, since
+`Kept` is `Live` without temporaries and `PairPost` is the obligation of
+`Live.finish_moved` for a pair.  It also asked for `call-stats` cases that count the frees
+of the new releases, which neither the module tests nor the theorems observe.  The compiler
+does not check that callees compile before their callers (`addBid` calls `findLevel`, listed
+after it); a forward call to a callee that owns a parameter would make the theorem
+unprovable, and no program has one.
+
+Checking the `Live` route exposed a gap in the statement, which a second review confirmed:
+the pair instance of `Represent.owned` said that each component is owned and nothing about
+their blocks, so `(a, a)` for one fresh `a` satisfied `Implements`, and a pair result could
+not become two `Live` temporaries.  The uses that need the fact are the step program of
+Iteration 5, whose consumed state is the previous step's pair, the release of both arrays of
+a pair, in-place updates that consume one component and read the other, and recursive
+values.  `Represent` now has `blocks`, the blocks of the owned values, and the pair instance's
+`owned` requires every block of the first component to lie outside the second.  `outside` is
+now defined from `blocks` instead of being a field, which removes the weakness recorded in
+the 4b entry, where a witness could place an array's pointer in a scalar's slot.  The lemmas
+`Represent.outside_array`, `outside_float`, `outside_scalar`, `outside_pair`, and `owned_pair`
+turn the facts into the forms the proofs use, and `Heap.NewArray.two_apart` gives the
+disjointness of two arrays allocated in turn.  `Live.perm` reorders the temporaries, and
+`Live.releaseAt` releases one at any position; `Live.releaseSecond` is now its case.
+
+The full build passed (3,544 jobs) with no compiled byte changed.
+
+- [x] `blocks`, `outside` from `blocks`, and disjoint pair components.
+- [ ] Returned parameters, branch moves, and releases in the compiler.
+- [ ] The `Live` rules for a call that returns a pair and consumes temporaries, and for the
+  end of a body that returns a pair.
+- [ ] CLOB: `setLevel` directly, and `addBid`, `cancelBid`, and `applyCommand` on `Live`.
+- [ ] `call-stats` cases for the releases; emit; tests.

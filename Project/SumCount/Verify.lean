@@ -60,8 +60,8 @@ theorem sumCount_implements :
     have hOwned := hNew.owned
     refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 result], state,
       by simp [sumCount.ir, Func.scratch, Expr.evalResults, Expr.eval, hResult], ⟨result, rfl, ?_⟩,
-    fun p ws h => ⟨result, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨result, rfl, hNew.ownedApart p ws h⟩⟩
+    fun p ws h => Represent.outside_array.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_array.mpr (hNew.ownedApart p ws h)⟩
     simpa [LeanExe.Examples.SumCount.sumCount] using hOwned
 
 /-- `encode` succeeds on `sumCount.module`, and its bytes decode to a module that
