@@ -20634,3 +20634,34 @@ step returns.  The new pieces are general: a call that returns arrays and words,
 in-place append of words, which a later `Array.push` would reuse.  A instead threads the
 output array through every step function, which then must own it, and it needs three-array
 versions of the pair rules.
+
+The review found that the plan undercounted B, and its claims hold against the code.  B's
+loop state, the book and the output array, is three arrays, so B needs the three-array pieces
+too.  `peel` splits a first component that is a pair of arrays with `stateTypes`, which
+throws on arrays.  A step that reports the book after `applyCommand` must match on the
+call's result, and `peel` binds those arrays as ordinary variables.  `translateArray` then
+copies them when they are returned, and nothing releases the originals.  No present program
+binds an array from a call this way, but the compiler as written would leak.  B also needs a
+loop body of a call followed by an append, which serves only this adapter.  The review
+estimated A at about 100 lines fewer than B, with its new rules generalizing `Live.callPair`
+and `Live.pairLoop`.  It also named an "emit" option, a body of `applyCommand`, a scalar
+`bestBid`, and an append, as the cheapest, but it limits outputs to functions of the state.
+
+Decision: A.  The step owns the output array and returns the book and the extended output:
+`stepCommand prices sizes out kind price size` matches on `applyCommand`'s result and
+returns `(p, s, out ++ w)` with `let w := #[p[0]!, s[0]!]`.  The literal costs one
+allocation and one release per step, and it needs no new form of `++`.  The rules are
+written once for a tuple of any number of word arrays: a class that turns `Represent.owned`
+and `outside` of a nest of arrays into a list of owned, pairwise disjoint arrays, then
+`Live.callTuple`, `Live.tupleLoop`, and `Live.finish_tuple`, with the pair rules as their
+case of two arrays.
+
+- [ ] Arrays of a tuple: the class and its instances, with the facts for `owned` and
+  `outside`.
+- [ ] `Live.callTuple`, `Live.finish_tuple`, and a `Live` rule for `Stmt.append`.
+- [ ] Compiler: `peel` on a pair of arrays; arrays bound from a call's result as owned
+  temporaries, moved or released; the loop over a tuple of arrays.
+- [ ] `Live.tupleLoop`.
+- [ ] `stepCommand`, `runOut`, their theorems, and the chunk lemma
+  `runOut p s o cs = (runCommands p s cs, o ++ outputs p s cs)`.
+- [ ] Tests.
