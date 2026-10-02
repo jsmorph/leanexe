@@ -1430,13 +1430,6 @@ theorem runCommands_append (prices sizes c1 c2 : Array UInt64) (h3 : c1.size % 3
     runCommands_eq_fold _ _ c1 (by omega), Prod.mk.eta]
   exact foldCommands_append _ _ h3 hs
 
-theorem Expr.evalResults_cons {mem : Mem} {scratch : Nat} {e : Expr .u64} {state mid next : State}
-    {rest : List ((type : ScalarType) × Expr type)} {vs : List Value} {v : UInt64}
-    (he : e.eval mem scratch state = some (v, mid))
-    (h : Expr.evalResults mem scratch rest mid = some (vs, next)) :
-    Expr.evalResults mem scratch (⟨.u64, e⟩ :: rest) state = some (.i64 v :: vs, next) := by
-  simp [Expr.evalResults, he, h]
-
 theorem runCommands_implements : Implements clob.module 12 runTuple := by
   refine Func.implements_moves clob.funcs 10 clob.runCommands.ir "runCommands" rfl runTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, ⟨_, rfl, -⟩⟩; rfl) ?_
