@@ -21701,3 +21701,51 @@ of recursive values come first because they complete user recursive types (a fun
 builds a tree from one it consumes, such as `insert`, needs them, and 7c3b defers it) and
 reuse the record, `Heap.Built`, and release machinery that 7c built.  In-place array updates
 are independent of them and smaller.
+
+## 2026-10-02: Plan: Iteration 8, moves of recursive values
+
+Iteration 7 reads trees and lists that a caller lends and builds new ones in loops.  A
+function that builds a tree from one it consumes, such as
+`insert x : KeyTree → KeyTree`, needs the argument's records handed over, so that the result
+can reuse them instead of sharing them with a borrowed argument.  Iteration 4 did this for
+arrays: a parameter is owned when its last use moves it, and `Represent (Moved (Array
+UInt64))` states a consumed argument, whose `moves` lists the blocks the call consumes.
+
+Questions:
+
+1. The trusted statement of a consumed value of a recursive type.  Recommendation: a
+   definition `Node.pointers store p n`, the pointers of the records of `n` at `p`, found by
+   following child pointers in memory as `Node.blocks` does, and an instance
+   `[Encode α] : Represent (Moved α)` in which the caller hands over the value as owned
+   (`NodeOwned` with pairwise disjoint blocks), the call reads nothing else of it, and
+   `moves` lists the record pointers, so that the frame clauses of `Implements` leave the
+   records out.  About 25 lines in `Implements.lean`, mirroring `Moved (Array UInt64)`.
+   This changes trusted text and goes to the user after review.
+2. The mode rule.  Recommendation: Iteration 4's rule, extended: a parameter of a recursive
+   type is owned when some path returns it, returns a constructor application that contains
+   it or one of its fields, or passes it at its last use to an owned parameter of a callee;
+   otherwise it is borrowed.  An owned parameter, or a field of one, that a path does not
+   consume is released at the end of the path with the tree release of 7c2.
+3. Reuse.  Recommendation: in a branch of a match on an owned value, a constructor of the
+   same type with the same number of slots reuses the matched record: the compiler writes
+   the slots that change and yields the record's pointer, with no allocation or free.  The
+   record's other children move into the result.  A constructor in any other position
+   allocates, as in 7c.
+4. The proofs.  Recommendation: a specification for a function that consumes its argument:
+   from the allocator invariant and an owned argument, a call aborts at `unreachable` or
+   returns an owned result, the allocator invariant holds, and every region of the starting
+   heap apart from the argument's blocks keeps its bytes, stays a region, and lies apart from
+   the result's blocks, with the memory caps unchanged.  The recursion rule of 7c3b gets a
+   version for it, and `Heap.Built` gets lemmas for a record rewritten in place.
+5. Programs, in order: `KeyTree.setKey k t`, which replaces the root's key (reuse, no
+   recursion); `KeyTree.insert x t`, a search-tree insert (recursion, reuse on the path,
+   one allocation at the leaf); and a function that drops a subtree, which releases it.
+
+Steps, each built, tested, committed, and pushed:
+
+- [ ] The trusted definitions, after the user's decision.
+- [ ] The mode rule and reuse in the compiler; `setKey` with its theorem.
+- [ ] The specification for consumed arguments, the recursion rule for it, and `insert`.
+- [ ] A function that releases part of a consumed tree.
+- [ ] Host: a tree result kind that walks the records and checks their headers; tests
+  against native Lean; allocation and free counts; LTG entries.
