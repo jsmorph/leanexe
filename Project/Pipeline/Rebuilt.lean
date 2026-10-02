@@ -29,6 +29,15 @@ theorem Heap.Rebuilt.null {heap : Heap} {initial : Store Unit} {gone : List (Nat
     (h : heap.At initial) : heap.Rebuilt initial gone heap initial 0 .null :=
   ⟨h, rfl, .nil, fun _ hr _ _ => ⟨fun _ _ _ => rfl, hr, fun _ hb => nomatch hb⟩, le_refl _, rfl⟩
 
+/-- An owned value with disjoint blocks is rebuilt from its own blocks by code that leaves it
+as it is. -/
+theorem Heap.Rebuilt.refl {heap : Heap} {store : Store Unit} {p : UInt64} {n : Node}
+    (hHeap : heap.At store) (h : NodeOwned heap store p n)
+    (hd : (n.blocks store p).Pairwise regionsDisjoint) :
+    heap.Rebuilt store (n.blocks store p) heap store p n :=
+  ⟨hHeap, h, hd, fun _ hr _ hGone => ⟨fun _ _ _ => rfl, hr, fun b hb => hGone b hb⟩, le_refl _,
+    rfl⟩
+
 /-- A value built without consuming anything is rebuilt from any blocks. -/
 theorem Heap.Built.rebuilt {heap heap' : Heap} {initial store : Store Unit} {p : UInt64}
     {n : Node} (h : heap.Built initial heap' store p n) (gone : List (Nat × Nat)) :

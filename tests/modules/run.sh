@@ -78,7 +78,20 @@ for case in .:0 5,.,.:1 5,1,.,.,9,.,.:3; do
     fi
   done
 done
-echo "release counts: 22 cases, $stats_failed failed"
+# insert allocates one record for a new key and none for a key already present.
+for case in "i64:7 .:1 0" "i64:7 5,.,.:2 0" "i64:7 5,1,.,.,9,.,.:4 0" "i64:5 5,1,.,.,9,.,.:3 0" \
+    "i64:9 5,1,.,.,9,.,.:3 0"; do
+  read -r key rest <<<"$case"
+  tree=${rest%%:*}
+  expected=${rest#*:}
+  out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" insert tree-u64 "$key" \
+    "tree-u64:$tree" | tail -1)
+  if [ "$out" != "stats $expected" ]; then
+    stats_failed=$((stats_failed + 1))
+    echo "fail: treeMoves insert $key tree-u64:$tree: $out, expected stats $expected"
+  fi
+done
+echo "release counts: 27 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0
@@ -105,5 +118,15 @@ for module_name in trees:height:i64 treeFrame:wide:i64 treeMoves:incr:tree-u64; 
     *) depth_failed=$((depth_failed + 1)); echo "fail: $module $name on a chain of 1000: $out" ;;
   esac
 done
-echo "depth guard: 8 cases, $depth_failed failed"
+# insert of a key larger than every key of a chain recurses to its end.
+out=$("$host" call "$build/treeMoves/treeMoves.wasm" insert tree-u64 i64:2 "$(chain 999)" 2>&1) || true
+case "$out" in
+  *trap*|*error*) depth_failed=$((depth_failed + 1)); echo "fail: treeMoves insert on a chain of 999: $out" ;;
+esac
+out=$("$host" call "$build/treeMoves/treeMoves.wasm" insert tree-u64 i64:2 "$(chain 1000)" 2>&1) || true
+case "$out" in
+  *"wasm \`unreachable\` instruction executed"*) ;;
+  *) depth_failed=$((depth_failed + 1)); echo "fail: treeMoves insert on a chain of 1000: $out" ;;
+esac
+echo "depth guard: 10 cases, $depth_failed failed"
 [ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$stats_failed" -eq 0 ] && [ "$depth_failed" -eq 0 ]

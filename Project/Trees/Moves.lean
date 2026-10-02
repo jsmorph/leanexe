@@ -6,6 +6,6 @@ import Project.Compiler.Command
 namespace Project.Trees
 
 open LeanExe.Examples.Trees in
-leanexe_compile treeMoves := [KeyTree.setKey, KeyTree.incr]
+leanexe_compile treeMoves := [KeyTree.setKey, KeyTree.incr, KeyTree.insert]
 
 end Project.Trees

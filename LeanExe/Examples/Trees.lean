@@ -1,8 +1,8 @@
 /-!
 Binary trees of words declared by the program, held on the heap as records: a leaf is the
 null pointer, and `node l k r` a record of three slots, the pointer to `l`, the word `k`, and
-the pointer to `r`.  The functions recurse into both subtrees, except `setKey`.  `setKey` and
-`incr` consume their tree and rewrite its records in place.
+the pointer to `r`.  `setKey`, `incr`, and `insert` consume their tree and rewrite its records
+in place; `insert` allocates one record when the key is new.
 -/
 
 namespace LeanExe.Examples.Trees
@@ -36,6 +36,15 @@ def KeyTree.setKey (k : UInt64) : KeyTree → KeyTree
 def KeyTree.incr : KeyTree → KeyTree
   | .leaf => .leaf
   | .node l k r => .node l.incr (k + 1) r.incr
+
+/-- The search tree `t` with the key `x`: a smaller key goes left, a larger key right, and a
+key already present leaves the tree as it is. -/
+def KeyTree.insert (x : UInt64) : KeyTree → KeyTree
+  | .leaf => .node .leaf x .leaf
+  | .node l k r =>
+    if x < k then .node (KeyTree.insert x l) k r
+    else if k < x then .node l k (KeyTree.insert x r)
+    else .node l k r
 
 /-- A test of the depth limit: sixteen words computed before the recursive calls and used after
 them, so that the internal function holds 24 values in its frame, the most the compiler
