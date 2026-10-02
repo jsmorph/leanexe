@@ -63,12 +63,12 @@ theorem pairSum_implements : Implements pairSum.module 2 pairTuple := by
   refine (Stmt.release_spec hImports hRelease hPtr2 hAt hOwned).mono (fun _ _ h => h) ?_
   rintro store' state' ⟨hs, ht⟩
   subst store' state'
-  refine ⟨_, hAt.release hOwned, hNew.caps, fun p ws h =>
-      (hNew.borrowed p ws h).release hAt hOwned (hNew.borrowedApart p ws h), fun p ws h => ?_,
+  refine ⟨_, hAt.release hOwned.object, hNew.caps, fun p ws h =>
+      (hNew.borrowed p ws h).release hAt hOwned.object (hNew.borrowedApart p ws h), fun p ws h => ?_,
     _, s2, ?_, rfl, fun _ _ _ => Represent.outside_scalar, fun _ _ _ => Represent.outside_scalar⟩
   · obtain ⟨hKept, hCapacity⟩ := hNew.ownedKeep p ws h
     obtain ⟨hReleased, hCapacity'⟩ :=
-      hKept.release hAt hOwned (by rw [hCapacity]; exact hNew.ownedApart p ws h)
+      hKept.release hAt hOwned.object (by rw [hCapacity]; exact hNew.ownedApart p ws h)
     exact ⟨hReleased, hCapacity'.trans hCapacity⟩
   · simp [pairSum.ir, Func.scratch, Expr.evalResults, Expr.eval, hAcc, pairTuple,
       LeanExe.Examples.PairSum.pairSum, Scalar.values]

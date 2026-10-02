@@ -293,6 +293,52 @@ theorem Heap.Built.keepOwned {heap heap' : Heap} {initial store : Store Unit} {p
     capacityAt_frame (by omega) (by omega) fun a hLow hHigh => hBytes a hLow (by omega)⟩,
     hApart⟩
 
+theorem maskOf_cons (s : Slot) (rest : List Slot) :
+    maskOf (s :: rest) = 2 * maskOf rest + s.bit := rfl
+
+theorem Slot.bit_le (s : Slot) : s.bit.toNat ≤ 1 := by cases s <;> simp [Slot.bit]
+
+/-- The mask of at most 64 slots is below `2 ^ length`, and its bit `i` is slot `i`'s bit. -/
+theorem maskOf_toNat : ∀ (slots : List Slot), slots.length ≤ 64 →
+    (maskOf slots).toNat < 2 ^ slots.length ∧
+    ∀ i (h : i < slots.length), (maskOf slots).toNat / 2 ^ i % 2 = (slots[i].bit).toNat
+  | [], _ => ⟨by decide, fun i h => absurd h (by simp)⟩
+  | s :: rest, hLen => by
+      simp only [List.length_cons] at hLen
+      obtain ⟨hLt, hBits⟩ := maskOf_toNat rest (by omega)
+      have hb := Slot.bit_le s
+      have hPow : 2 ^ rest.length ≤ 2 ^ 63 := Nat.pow_le_pow_right (by decide) (by omega)
+      have hEq : (maskOf (s :: rest)).toNat = 2 * (maskOf rest).toNat + s.bit.toNat := by
+        rw [maskOf_cons, UInt64.toNat_add, UInt64.toNat_mul]
+        have : (2 : UInt64).toNat = 2 := rfl
+        rw [this, Nat.mod_eq_of_lt (by omega), Nat.mod_eq_of_lt (by omega)]
+      refine ⟨by rw [hEq, List.length_cons, Nat.pow_succ]; omega, fun i h => ?_⟩
+      rw [hEq]
+      cases i with
+      | zero => simp; omega
+      | succ j =>
+        simp only [List.getElem_cons_succ]
+        rw [← hBits j (by simp at h; omega), Nat.pow_succ', ← Nat.div_div_eq_div_mul]
+        congr 2
+        omega
+
+/-- The runtime's mask test for slot `i`, a shift by `i` modulo 64 and a mask of the low
+bit, reads the slot's bit. -/
+theorem maskOf_test (slots : List Slot) (hLen : slots.length ≤ 64) (i : Nat)
+    (h : i < slots.length) :
+    ((maskOf slots >>> (UInt64.ofNat i % 64)) &&& 1) = slots[i].bit := by
+  obtain ⟨-, hBits⟩ := maskOf_toNat slots hLen
+  apply UInt64.toNat_inj.mp
+  rw [UInt64.toNat_and, UInt64.toNat_shiftRight]
+  have hi : (UInt64.ofNat i % 64).toNat % 64 = i := by
+    rw [UInt64.toNat_mod, UInt64.toNat_ofNat']
+    have : (64 : UInt64).toNat = 64 := rfl
+    rw [this]
+    omega
+  rw [hi, Nat.shiftRight_eq_div_pow]
+  have : (1 : UInt64).toNat = 1 := rfl
+  rw [this, Nat.and_one_is_mod, hBits i h]
+
 /-- The list of words `xs` at `p` in `mem`: the null pointer for `[]`, and for `x :: xs` a
 nonzero pointer to two words inside memory and the 32-bit address space, the first `x` and
 the second a pointer to `xs`. -/

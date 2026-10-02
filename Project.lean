@@ -75,6 +75,7 @@ import Project.Piecewise.Verify
 import Project.Pipeline.Allocation
 import Project.Pipeline.Implements
 import Project.Pipeline.Records
+import Project.Pipeline.ReleaseTree
 import Project.Pipeline.Runtime
 import Project.Pipeline.RuntimeSpec
 import Project.ProofKit.Allocation

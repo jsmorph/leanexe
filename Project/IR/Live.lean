@@ -180,9 +180,9 @@ theorem Live.releaseFirst {heap0 heap : Heap} {initial store : Store Unit}
         (heap.releaseStore store t.1) u.1 u.2 ∧
       block (heap.releaseStore store t.1) u.1 = block store u.1 := fun u hu => by
     obtain ⟨hOwned, hCapacity⟩ := (hLive.tempsOwned u (List.mem_cons_of_mem _ hu)).release
-      hLive.at_ hT (regionsDisjoint_symm (hTRest u hu))
+      hLive.at_ hT.object (regionsDisjoint_symm (hTRest u hu))
     exact ⟨hOwned, block_eq hCapacity⟩
-  refine ⟨⟨hLive.at_.release hT, hLive.caps, fun p ws h hA => (hLive.borrowed p ws h hA).release hLive.at_ hT (hLive.apartB t (by simp) p ws h hA),
+  refine ⟨⟨hLive.at_.release hT.object, hLive.caps, fun p ws h hA => (hLive.borrowed p ws h hA).release hLive.at_ hT.object (hLive.apartB t (by simp) p ws h hA),
     fun p ws h hA => ?_, fun u hu => (hKeep u hu).1, fun u hu p ws h hA => ?_, fun u hu p ws h hA => ?_,
     ?_⟩, rfl⟩
   · obtain ⟨hOwned, hCapacity⟩ := hLive.owned p ws h hA
@@ -192,7 +192,7 @@ theorem Live.releaseFirst {heap0 heap : Heap} {initial store : Store Unit}
       simp only [block] at hDisjoint
       rw [hCapacity]
       exact hDisjoint
-    obtain ⟨hOwned', hCapacity'⟩ := hOwned.release hLive.at_ hT hApart
+    obtain ⟨hOwned', hCapacity'⟩ := hOwned.release hLive.at_ hT.object hApart
     exact ⟨hOwned', hCapacity'.trans hCapacity⟩
   · rw [(hKeep u hu).2]; exact hLive.apartB u (List.mem_cons_of_mem _ hu) p ws h hA
   · rw [(hKeep u hu).2]; exact hLive.apartO u (List.mem_cons_of_mem _ hu) p ws h hA
