@@ -21649,3 +21649,18 @@ the compiler computes from its locals by the measured formula; (c) a fifth globa
 changes the trusted `Heap.At` and still needs (a)'s restriction.  Recommendation: (a).  It
 keeps the proof and the trusted text unchanged and relies on one measured fact, checked by a
 test with the widest accepted frame.  It goes to the user.
+
+On 2026-10-02 the user chose (a): a hidden depth parameter, limit 1,000, and at most 24
+values in a recursive function's frame.
+
+Revised steps for 7c3b, each built, tested, committed, and pushed:
+
+- [ ] `Tree` with its `Encode` instance; `compileDefinition` separates tail recursion from
+  other recursion; the internal function `f.rec t d` with the guard `d ≥ 1000 → unreachable`,
+  appended after the listed functions; the entry `f t` calling it with 0; self-calls with
+  `d + 1` only in a node match's record branch; the frame bound of 24 values.
+- [ ] The recursion rule (`Func.keeps` for any parameter values, induction on a measure)
+  and `size`; then `sum`; then `max` on words and `height`.
+- [ ] Host: a tree argument kind; tests against native Lean; a depth section that expects
+  `unreachable` at depth 1,001 and success at 1,000 with the widest accepted frame; hints
+  and LTG entries.
