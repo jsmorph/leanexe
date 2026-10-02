@@ -20799,3 +20799,22 @@ Revised plan: question 1 takes option (b); question 2 goes to the user, since th
 `Represent (List UInt64)` instance fixes what every list theorem means and the layout is what
 hosts see; questions 3 to 6 take the recommendations above.
 
+On 2026-10-02 the user chose layout (a) for question 2: `[]` is the null pointer, and
+`x :: xs` is a record of kind 1, width 2, and child mask `0b10` whose slot 0 holds `x` and
+slot 1 the tail pointer.
+
+Steps, each built, tested, committed, and pushed:
+
+- [ ] Heap facts for a list cell: the header and slots, the bounds, and the separation from
+  free blocks, kept by allocation, by writes elsewhere, and by the release of other objects.
+  Whether `Heap.Owned` and the cell share one object predicate is settled here, by what
+  the frame lemmas of `Allocation.lean` and `RuntimeSpec.lean` need.
+- [ ] `Heap.ListOwned` and `Heap.ListBorrowed` by recursion on the Lean list, and the
+  `Represent (List UInt64)` instance, with empty `reads` and `moves`.
+- [ ] The cons template, `alloc` of 16 bytes followed by the header and slot stores, and its
+  rule.
+- [ ] The list fold loop over a borrowed list and its rule; `listSum` compiled and proved.
+- [ ] The loop with a list state and its rule; `listRange` compiled and proved.
+- [ ] The release specification for a chain of cells; `sumRange` compiled and proved.
+- [ ] Host support for list arguments and results; tests against native Lean and counts of
+  allocations and frees.
