@@ -20605,3 +20605,32 @@ allocation or free beyond those of its commands.
   allocated one array per extra chunk and freed exactly what one call frees, and the
   step-by-step session one array fewer, so the loop allocates and frees nothing of its own.
 - [ ] 5b: per-step outputs.
+
+## 2026-10-01: Plan: Iteration 5b, per-step outputs
+
+The recorded design is `step : State → Input → State × Output`.  5a dropped the output, and the
+book was the program's only result.  The question is how a compiled fold collects one output
+per step.  The CLOB example would output the best bid, its price and size, after each command.
+
+Options worked up:
+
+- A. The output array becomes part of the state.  The step takes the book and the output
+  array and returns all three, appending its output with `++`.  This needs a loop state of
+  three arrays, `Live` rules for a call that returns three arrays, the components of a call's
+  result bound by a `match` and moved to the result without a copy, and `++` whose right
+  operand is an array literal.
+- B. The step returns its new state and its output as words, `(prices, sizes) × (UInt64 ×
+  UInt64)`, and the adapter appends the words to an output array that it owns.  The loop body
+  becomes the call followed by an in-place append of the words.  This needs a call rule for a
+  result of two arrays and some words, a template that appends words in place (the growth
+  path of `Stmt.append`, with words in place of a source array), a loop body of two
+  statements, and a loop state of the book and the output array.
+- C. Leave outputs to the in-place agenda item.  The review of 5a rejected this, since `++`
+  already appends in place.
+
+Provisional recommendation: B.  The step keeps the recorded shape, with its output as words
+and no knowledge of the output array.  The adapter stays generic: it appends whatever words a
+step returns.  The new pieces are general: a call that returns arrays and words, and an
+in-place append of words, which a later `Array.push` would reuse.  A instead threads the
+output array through every step function, which then must own it, and it needs three-array
+versions of the pair rules.
