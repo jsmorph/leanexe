@@ -1,6 +1,7 @@
 import Project.Words.Module
 import Project.Words.Encode
 import Project.IR.Correct
+import Project.IR.TailLoop
 import Project.Pipeline.Records
 import Project.Encoding.RoundTrip
 
@@ -64,13 +65,115 @@ theorem first_implements : Implements words.module 2 Words.first := by
     · rintro s st ⟨rfl, rfl⟩
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
+/-- `sumAcc` with its two arguments as one pair. -/
+def sumAccTuple (x : UInt64 × Words) : UInt64 := Words.sumAcc x.1 x.2
+
+/-- One iteration of the compiled loop: on `nil` it stores the accumulator, and on `cons x r`
+it moves to `(acc + x, r)`, which has the same sum and a smaller list. -/
+theorem sumAcc_step : TailStepIn (α := UInt64 × Words) (compile words.funcs)
+    (match words.sumAcc.ir.body with | .while _ step => step | _ => .skip)
+    words.sumAcc.ir.scratch 4 sumAccTuple (fun x => sizeOf x.2) := by
+  rintro heap initial ⟨acc, w⟩ vs result others hHeap ⟨first, second, rfl, rfl, p, rfl, hNode⟩
+    hLength
+  rw [show Scalar.values acc ++ [Value.i64 p] = [.i64 acc, .i64 p] from rfl]
+  match others, hLength with
+  | [v0, v1, v2, v3], _ =>
+  show Triple _ (.ite (.eq (.get 1) (.const 0)) (.seq (.assign 2 (.get 0)) (.assign 3 (.const 1)))
+      (.seq (.load .u64 6 (.bin .add (.get 1) (.const 0)))
+        (.seq (.load .u64 7 (.bin .add (.get 1) (.const 8)))
+          (.seq (.assign 4 (.bin .add (.get 0) (.get 6)))
+            (.seq (.assign 5 (.get 7)) (.seq (.assign 0 (.get 4)) (.assign 1 (.get 5)))))))) 8 _ _
+  let start := tailStateIn [.i64 acc, .i64 p] result 0 [v0, v1, v2, v3]
+  cases w with
+  | nil =>
+    obtain rfl : p = 0 := hNode
+    let s1 : State := { params := [.i64 acc, .i64 0], locals := [.i64 acc, .i64 0, v0, v1, v2, v3] }
+    refine (Stmt.ite_spec (PThen := fun s st => s = initial ∧ st = start)
+      (PElse := fun _ _ => False)
+      (Stmt.seq_spec (M := fun s st => s = initial ∧ st = s1) ?_ ?_) Triple.of_false).mono ?_
+        fun _ _ h => h
+    · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+      rintro s st ⟨rfl, rfl⟩
+      exact ⟨acc, start, s1, rfl, rfl, rfl, rfl⟩
+    · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+      rintro s st ⟨rfl, rfl⟩
+      refine ⟨1, s1, tailStateIn [.i64 acc, .i64 0] acc 1 [v0, v1, v2, v3], rfl, rfl, rfl,
+        acc, [v0, v1, v2, v3], rfl, Or.inr ?_⟩
+      simp only [sumAccTuple, Words.sumAcc]
+    · rintro s st ⟨rfl, rfl⟩
+      exact ⟨true, start, rfl, rfl, rfl⟩
+  | cons x rest =>
+    obtain ⟨hSlots, hx, hChild, -⟩ := hNode
+    have hNonzero := hSlots.nonzero
+    have hAddress := hSlots.address
+    have hBelow := hSlots.below
+    have hTop := hHeap.top
+    simp only [List.length_cons, List.length_nil] at hAddress hBelow
+    have h0 : (p + 0).toUInt32 = slotAddress p 0 := by simp [slotAddress]
+    have h1 : (p + 8).toUInt32 = slotAddress p 1 := by simp [slotAddress]
+    have hs0 := slotAddress_toNat (p := p) (i := 0) (by omega)
+    have hs1 := slotAddress_toNat (p := p) (i := 1) (by omega)
+    let c := initial.mem.read64 (slotAddress p 1)
+    let ps : List Value := [.i64 acc, .i64 p]
+    let s1 : State := { params := ps, locals := [.i64 result, .i64 0, v0, v1, .i64 x, v3] }
+    let s2 : State := { params := ps, locals := [.i64 result, .i64 0, v0, v1, .i64 x, .i64 c] }
+    let s3 : State :=
+      { params := ps, locals := [.i64 result, .i64 0, .i64 (acc + x), v1, .i64 x, .i64 c] }
+    let s4 : State :=
+      { params := ps, locals := [.i64 result, .i64 0, .i64 (acc + x), .i64 c, .i64 x, .i64 c] }
+    let s5 : State :=
+      { params := [.i64 (acc + x), .i64 p]
+        locals := [.i64 result, .i64 0, .i64 (acc + x), .i64 c, .i64 x, .i64 c] }
+    let s6 := tailStateIn [.i64 (acc + x), .i64 c] result 0
+      [.i64 (acc + x), .i64 c, .i64 x, .i64 c]
+    refine (Stmt.ite_spec (PThen := fun _ _ => False)
+      (PElse := fun s st => s = initial ∧ st = start) Triple.of_false ?_).mono ?_ fun _ _ h => h
+    · refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = s1) ?_ <|
+        Stmt.seq_spec (M := fun s st => s = initial ∧ st = s2) ?_ <|
+        Stmt.seq_spec (M := fun s st => s = initial ∧ st = s3) ?_ <|
+        Stmt.seq_spec (M := fun s st => s = initial ∧ st = s4) ?_ <|
+        Stmt.seq_spec (M := fun s st => s = initial ∧ st = s5) ?_ ?_
+      · refine Stmt.load_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨rfl, rfl⟩
+        refine ⟨p + 0, start, s1, rfl, by rw [h0, hs0]; omega, ?_, rfl, rfl⟩
+        rw [h0, hx]
+        rfl
+      · refine Stmt.load_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨rfl, rfl⟩
+        exact ⟨p + 8, s1, s2, rfl, by rw [h1, hs1]; omega, by rw [h1]; rfl, rfl, rfl⟩
+      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨rfl, rfl⟩
+        exact ⟨acc + x, s2, s3, rfl, rfl, rfl, rfl⟩
+      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨rfl, rfl⟩
+        exact ⟨c, s3, s4, rfl, rfl, rfl, rfl⟩
+      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨rfl, rfl⟩
+        exact ⟨acc + x, s4, s5, rfl, rfl, rfl, rfl⟩
+      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨rfl, rfl⟩
+        refine ⟨c, s5, s6, rfl, rfl, rfl, result, [.i64 (acc + x), .i64 c, .i64 x, .i64 c],
+          rfl, Or.inl ⟨(acc + x, rest), [.i64 (acc + x), .i64 c],
+            ⟨[.i64 (acc + x)], [.i64 c], rfl, rfl, c, rfl, hChild⟩, rfl, ?_, ?_⟩⟩
+        · simp [sumAccTuple, Words.sumAcc]
+        · simp
+    · rintro s st ⟨rfl, rfl⟩
+      exact ⟨false, start, by simp [Expr.eval, start, tailStateIn, State.get, hNonzero], rfl, rfl⟩
+
+theorem sumAcc_implements : Implements words.module 3 sumAccTuple :=
+  Func.tailIn_implements words.funcs 1 words.sumAcc.ir "sumAcc" rfl sumAccTuple
+    (fun x => sizeOf x.2) _
+    (by rintro _ _ _ _ ⟨first, second, rfl, rfl, p, rfl, -⟩; rfl)
+    (rest := [.u64, .u64, .u64, .u64]) rfl rfl rfl sumAcc_step
+
 /-- `encode` succeeds on `words.module`, and its bytes decode to a module that computes
-`Words.first` exactly. -/
+`Words.first` and `Words.sumAcc` exactly. -/
 theorem words_bytes : ∃ bytes, Wasm.Encoding.encode words.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 Words.first := by
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 Words.first ∧
+      Implements m 3 sumAccTuple := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip words.module (by decide) (by decide +kernel)
-  exact ⟨bytes, success, words.module, decoded, first_implements⟩
+  exact ⟨bytes, success, words.module, decoded, first_implements, sumAcc_implements⟩
 
 #print axioms words_bytes
 
