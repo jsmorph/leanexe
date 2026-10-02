@@ -21467,3 +21467,63 @@ Questions:
    turns into loops over an explicit stack.  This question changes what programs the system
    accepts and how deep a call may go (Talos's semantics and Wasmtime bound the stack), so it
    goes to the user after review, before 7c3b starts.
+
+### Review of the 7c3 plan
+
+One reviewer checked the plan.  I verified the findings by running the reviewer's four
+files (the unfolding equations of `head` and `sumAcc`, a wildcard match on a recursive
+type, `nodeBorrowed_not_unique`, `Words.unique`, `Stmt.while_ghost`, and instance
+synthesis for `UInt64 × Words`) and by reading the cited lines.
+
+- Question 4 understated option (a).  `Implements` and `callImplements_spec` keep only
+  arrays across a call, so after a first recursive call nothing says that the store is
+  unchanged or that the argument's records are still borrowed; the induction hypothesis
+  must be stronger than `Implements`.  A self-call needs per-argument call rules, and the
+  compiler rejects calls in recursive definitions (`Scalar.lean`, line 1584).  Talos does
+  not bound the call depth: a call runs with fuel only.  Wasmtime does, and traps with a
+  stack overflow, which is not `unreachable`, so the trusted claim that every run returns
+  or traps at `unreachable` would not describe deep recursion under Wasmtime.
+- Option (b) breaks ownership: cells of a `List Tree` stack would hold child slots into the
+  borrowed argument, and `release` would free the caller's subtrees.  It is dropped.
+- Memory does not determine a node: `RecordSlots` has no width or mask, and
+  `NodeBorrowed p (.record [.word 0]) ↔ NodeBorrowed p (.record [.child .null])` holds.
+  Uniqueness holds per type (`Words.unique`, 9 lines), but the tail rule needs none:
+  `Stmt.while_ghost`, a `while` rule with a ghost index, compiles, and the generalized tail
+  rule can carry `Represent.borrowed heap initial vs args` in its invariant.
+- Compiler gaps for `sumAcc`: the unfolding equation is a `match`, whose matcher unfolds to
+  `Words.casesOn`; `translateTail` handles only `ite` and self-calls; `userType?` rejects
+  recursive types; a wildcard match unfolds through `_sparseCasesOn` to `rec`, whose
+  alternatives take induction hypotheses, which `userCases?` would bind as extra
+  arguments; the IR has no load expression, so fields need fresh locals; and the tail
+  rule's locals are all words, which excludes float fields.
+- The layout rule needs: a child slot for any field whose type has an `Encode` instance;
+  `Array` fields and nested or mutual inductives rejected; a float stored as its bits; the
+  tag equal to the constructor index; a match that tests the pointer against 0 and then
+  loads the tag when a type has a null constructor and several records.
+- Ownership in question 2: a result or a constructor's child must not be a borrowed
+  parameter or one of its fields, and the recursive argument of a tail call must be a
+  variable or a field.  An accumulator of a recursive type (`reverse`) is out of scope.
+  `Heap.Built.cell` takes only `[word, child]`; two children need two `Built` facts.
+- Missing steps: host support and tests against native Lean, hints, and LTG entries.
+
+Revised question 4.  Options: (a) a recursive call compiled as a call of the function
+itself, proved by induction with a hypothesis that keeps the store and the borrowed
+argument, with the depth unbounded in Talos and bounded by Wasmtime's stack; (d) as (a),
+with a depth counter in a global that traps at `unreachable` above a fixed depth chosen
+below Wasmtime's limit, so that the trusted claim describes every run (the choice of depth
+is checked by tests, since nothing proves Wasmtime's frame sizes); (c) tree folds that the
+compiler turns into loops over an explicit stack of pointer words in a heap array, which
+stays inside the trusted claim but accepts only the recursion shapes the compiler
+recognizes.  Recommendation: (d).  It accepts natural recursion, keeps the trusted claim
+exact, and costs one global and a guard per call.
+
+Revised steps for 7c3a, each built, tested, committed, and pushed:
+
+- [ ] `userType?` and the layout rule for a recursive type with one record constructor and
+  one null constructor; a recursive-type parameter as a borrowed pointer word.
+- [ ] `match` on such a variable in a non-recursive function (`head`), with a rule.
+- [ ] Tail recursion over it (`sumAcc`): the `match` branch of `translateTail`, fields in
+  fresh locals, and a tail rule over `Represent` arguments through `Stmt.while_ghost`.
+- [ ] `range n` with `cons` as a loop's next state, through `Stmt.record` and
+  `Heap.Built.cell`.
+- [ ] Host support (the `chain-u64` layout), tests, hints, and LTG entries.
