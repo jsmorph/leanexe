@@ -21677,3 +21677,13 @@ Revised steps for 7c3b, each built, tested, committed, and pushed:
 - [ ] Host: a tree argument kind; tests against native Lean; a depth section that expects
   `unreachable` at depth 1,001 and success at 1,000 with the widest accepted frame; hints
   and LTG entries.
+
+### Agenda after 7c3b
+
+On 2026-10-02 the user moved moves of recursive values ahead of the binary32 and WGSL path,
+and possibly ahead of in-place array updates.  Order: 7c3b, then moves of recursive values,
+then in-place `set!`, `insertIdx!`, and `eraseIdxIfInBounds`, then binary32 and WGSL.  Moves
+of recursive values come first because they complete user recursive types (a function that
+builds a tree from one it consumes, such as `insert`, needs them, and 7c3b defers it) and
+reuse the record, `Heap.Built`, and release machinery that 7c built.  In-place array updates
+are independent of them and smaller.
