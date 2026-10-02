@@ -78,6 +78,9 @@ structure Ctx where
   lists : List (Lean.Expr × Nat) := []
   /-- The local of each variable of a recursive user type in scope, a borrowed pointer. -/
   nodes : List (Lean.Expr × Nat) := []
+  /-- In the internal function of a recursive definition that is not tail recursive: the
+  function's index and the local of its depth parameter. -/
+  selfCall : Option (Nat × Nat) := none
   tuples : List (Lean.Expr × List (Nat × ScalarType)) := []
   callees : List (Name × Nat) := []
   foldable : Bool
@@ -736,6 +739,11 @@ mutual
         let ir : IRExpr .u64 := .truncSatU x
         return (ir, hint ir "float to word" :: xHints)
     | (fn, _) =>
+      if fn == ctx.self then
+        if let some (index, depth) := ctx.selfCall then
+          let result ← translateSelfCall ctx term index depth
+          let ir : IRExpr .u64 := .get result
+          return (ir, [hint ir "recursive call result"])
       if let some index := ctx.callees.lookup fn then
         let [(result, .u64)] ← translateCall ctx term index
           | throwError "a call used as a word must return one word: {source}"
@@ -1391,7 +1399,9 @@ mutual
       | _ :: _, [] => pure (second, first, false)
       | _, _ => throwError "a match on a recursive type needs one constructor without fields and one with fields: {source}"
     let result ← fresh type "match result"
-    let inner := { ctx with foldable := false }
+    -- The branches' statements stay inside the conditional, so they run only on their
+    -- branch whenever the match's own statement runs only when needed.
+    let inner := ctx
     let condition : IRExpr .bool := if nullFirst then .eq (.get ptr) (.const 0)
       else .ne (.get ptr) (.const 0)
     let branchLoc (branch : Nat) : Loc :=
@@ -1763,6 +1773,37 @@ mutual
     moved.forM markMoved
     return results
 
+  /-- Translates a recursive call `term` in the internal function of a definition that is
+  not tail recursive to a call of the internal function, at `index`, with the depth local
+  plus one as the last argument, which leaves the word result in a fresh local.  A recursive
+  call may appear only where its statement runs exactly when its value is needed: at the top
+  of the body or in a branch of a match on a value of a recursive type. -/
+  partial def translateSelfCall (ctx : Ctx) (term : Lean.Expr) (index depth : Nat) :
+      CompileM Nat := do
+    let source ← sourceOf term
+    unless ctx.foldable do
+      throwError "a recursive call may appear only at the top of the body or in a branch of a match on a value of a recursive type: {source}"
+    let mut args : Array ((type : ScalarType) × IRExpr type) := #[]
+    let mut hints := #[]
+    let mut offset := 0
+    for arg in term.getAppArgs do
+      let (ir, argHints) ← match ctx.nodes.lookup arg.consumeMData with
+        | some local_ => pure ((.get local_ : IRExpr .u64),
+            [mkHint ⟨[], offset⟩ 1 "variable" (← sourceOf arg)])
+        | none => do
+            unless ← isWordType (← inferType arg) do
+              throwError "a recursive call's argument must be a word or a field of a recursive type: {source}"
+            translateValue ctx ⟨[], offset⟩ arg
+      args := args.push ⟨.u64, ir⟩
+      hints := hints ++ argHints.toArray
+      offset := offset + exprLength ir
+    let next : IRExpr .u64 := .bin .add (.get depth) (.const 1)
+    args := args.push ⟨.u64, next⟩
+    let result ← fresh .u64 "recursive call result"
+    let stmt := Project.IR.Stmt.call index args.toList [result]
+    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "recursive call" source :: hints.toList)
+    return result
+
   /-- The results read from `components`, or copied into the locals `dests?` first. -/
   partial def resultsIn (components : List (Nat × ScalarType)) (dests? : Option (List Nat))
       (source : String) : CompileM (List (Σ type, IRExpr type) × List (List Hint)) := do
@@ -1944,6 +1985,57 @@ partial def translateTail (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
           .seq (.assign ctx.result value) (.assign ctx.done (.const 1))
         return (stmt, mkHint loc (stmtLength stmt) "base case" source :: valueHints)
 
+/-- Whether every call of `self` in `term` is in tail position: the whole term, a branch of
+an `if` or of a case split, or the body of a `let`, with arguments that do not call `self`. -/
+partial def tailOnly (self : Name) (term : Lean.Expr) : MetaM Bool := do
+  let term := term.consumeMData
+  let mentions (e : Lean.Expr) : Bool := (e.find? fun x => x.isConstOf self).isSome
+  if let some unfolded ← unfoldMatcher? term then return ← tailOnly self unfolded
+  if let (``ite, #[_, condition, _, a, b]) := term.getAppFnArgs then
+    return !mentions condition && (← tailOnly self a) && (← tailOnly self b)
+  if let some (discriminant, alternatives) ← userCases? term then
+    if mentions discriminant then return false
+    for alternative in alternatives do
+      let ok ← withFieldVars alternative.fields [] fun xs => tailOnly self (alternative.body xs)
+      unless ok do return false
+    return true
+  if let .letE name type value body _ := term then
+    if mentions value then return false
+    return ← withLocalDeclD name type fun x => tailOnly self (body.instantiate1 x)
+  if term.getAppFn.isConstOf self then
+    return !term.getAppArgs.any mentions
+  return !mentions term
+where
+  withFieldVars {γ : Type} : List Lean.Expr → List Lean.Expr → (List Lean.Expr → MetaM γ) →
+      MetaM γ
+    | [], xs, k => k xs
+    | field :: fields, xs, k => withLocalDeclD `field field fun x => withFieldVars fields (xs ++ [x]) k
+
+/-- The unfolding equation's parameters and right side for `declName`. -/
+def unfoldedBody {γ : Type} (declName : Name) (k : Array Lean.Expr → Lean.Expr → MetaM γ) :
+    MetaM γ := do
+  let some equation ← getUnfoldEqnFor? declName (nonRec := true)
+    | throwError "{declName} has no unfolding equation"
+  forallTelescope (← getConstInfo equation).type fun params eq => do
+    let some (_, _, body) := eq.eq?
+      | throwError "unexpected unfolding equation for {declName}"
+    k params body
+
+/-- Whether `declName` calls itself other than in tail position, so that it compiles to an
+entry function and an internal function with a depth parameter. -/
+def needsInternal (declName : Name) : MetaM Bool :=
+  unfoldedBody declName fun _ body => do
+    unless (body.find? fun e => e.isConstOf declName).isSome do return false
+    return !(← tailOnly declName body)
+
+/-- The most values a recursive internal function may hold in its frame: parameters, locals,
+and scratch.  With the depth limit of 1,000, every accepted frame overflows Wasmtime's default
+512 KiB stack only beyond 2,000 calls, measured on aarch64 with Wasmtime 44. -/
+def recursiveFrameLimit : Nat := 24
+
+/-- The depth at which an internal function traps at `unreachable`. -/
+def recursionDepthLimit : UInt64 := 1000
+
 /-- Compiles the definition `declName`, whose parameters are `UInt64`, `Float`,
 `Array UInt64`, or `Array Float` and whose result is `UInt64`, `Float`, or an
 `Array UInt64` literal, to an IR function with hints.  The
@@ -1955,7 +2047,8 @@ the `let`s, moves it, as the left operand of `++` or as an argument at an owned 
 of a callee in `owners`, and contains it nowhere else; the compiler returns the
 positions of the owned parameters. -/
 def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
-    (owners : List (Name × List Nat) := []) : MetaM (Func × Hints × List Nat) := do
+    (owners : List (Name × List Nat) := []) (internal : Option Nat := none) :
+    MetaM (Func × Hints × List Nat × Option (Func × Hints)) := do
   let env ← getEnv
   let .defnInfo _ ← getConstInfo declName
     | throwError "{declName} is not a definition"
@@ -2021,6 +2114,46 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
     unless arrayResult || floatResult || pairResult || listResult || (← isWordType resultType) do
       throwError "the result of {declName} is not UInt64, Float, an array, a list of words, a pair, or a user type"
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
+    if recursive && !(← tailOnly declName body) then
+      let some index := internal
+        | throwError "{declName} calls itself other than in tail position; compile it in a module list, which adds its internal function"
+      unless arrays.isEmpty && floatArrays.isEmpty && lists.isEmpty && floats.isEmpty &&
+          tuples.isEmpty && (← isWordType resultType) do
+        throwError "a recursive definition may take only UInt64 and values of recursive types, and return only UInt64: {declName}"
+      -- The internal function: the parameters and the depth, a guard, and the body.
+      let depth := paramTypes.size
+      let ctx : Ctx :=
+        { self := declName, params, words, floats, arrays, floatArrays, nodes, foldable := true,
+          selfCall := some (index, depth) }
+      let guard : Project.IR.Stmt :=
+        .ite (.ltU (.const (recursionDepthLimit - 1)) (.get depth)) .abort .skip
+      let ((results, resultHints), prelude) ←
+        (translateResults ctx body resultType).run { base := depth + 1 }
+      let stmts := guard :: prelude.stmts.toList
+      let bodyLength := (stmts.map stmtLength).sum
+      let (_, shifted) := (results.zip resultHints).foldl (init := (bodyLength, []))
+        fun (offset, hints) (⟨_, ir⟩, own) =>
+          (offset + exprLength ir, hints ++ own.map (Hint.shift offset))
+      let rec_ : Func :=
+        { params := paramTypes.toList ++ [.u64], vars := prelude.vars.toList
+          body := seqAll stmts, results }
+      if rec_.params.length + rec_.vars.length + rec_.width > recursiveFrameLimit then
+        throwError "the internal function of {declName} holds more than {recursiveFrameLimit} values in its frame"
+      let recHints : Hints :=
+        { locals := paramNames.toList ++ [("depth", depth)] ++ prelude.names.toList
+          nodes := mkHint ⟨[], 0⟩ (stmtLength guard) "depth guard" (← sourceOf body) ::
+            prelude.hints.toList.map (Hint.shift (stmtLength guard)) ++ shifted }
+      -- The entry: one call of the internal function at depth 0.
+      let entryArgs : List ((type : ScalarType) × IRExpr type) :=
+        (List.range paramTypes.size).map (fun i => ⟨.u64, .get i⟩) ++ [⟨.u64, .const 0⟩]
+      let entryCall : Project.IR.Stmt := .call index entryArgs [paramTypes.size]
+      let entry : Func :=
+        { params := paramTypes.toList, vars := [.u64], body := entryCall
+          results := [⟨.u64, .get paramTypes.size⟩] }
+      let entryHints : Hints :=
+        { locals := paramNames.toList ++ [("result", paramTypes.size)]
+          nodes := [mkHint ⟨[], 0⟩ (stmtLength entryCall) "recursive entry" (← sourceOf body)] }
+      return (entry, entryHints, [], some (rec_, recHints))
     if recursive then
       unless arrays.isEmpty && floatArrays.isEmpty && lists.isEmpty && floats.isEmpty &&
           tuples.isEmpty &&
@@ -2047,7 +2180,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let func : Func :=
         { params := paramTypes.toList, vars := List.replicate ctx.vars .u64 ++ prelude.vars.toList,
           body := loop, results := [⟨.u64, .get ctx.result⟩] }
-      return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] }, [])
+      return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] }, [], none)
     else
       let arrayParams := (arrays ++ floatArrays).map (·.1)
       let sites ← moveSites owners arrayParams body
@@ -2087,7 +2220,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
         { locals := paramNames.toList ++ prelude.names.toList
           nodes := prelude.hints.toList ++ shifted }
       let positions := (List.range params.size).filter fun i => owned.contains params[i]!
-      return (func, hints, positions)
+      return (func, hints, positions, none)
 
 deriving instance ToExpr for U64Op
 deriving instance ToExpr for F64Op

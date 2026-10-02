@@ -394,6 +394,37 @@ static uint64_t alloc_u64_chain(Runtime *runtime, U64List values) {
   return ptr;
 }
 
+/* Allocates the tree whose preorder description starts at `*text`: `.` for a leaf, and for a
+   node its key followed by its left and right subtrees, separated by commas.  A node is a
+   record of three slots, the pointer to the left subtree, the key, and the pointer to the
+   right subtree, with kind 1, width 3, and mask 5.  Returns the pointer, 0 for a leaf. */
+static uint64_t alloc_u64_tree(Runtime *runtime, const char **text) {
+  const char *start = *text;
+  const char *comma = strchr(start, ',');
+  size_t len = comma == NULL ? strlen(start) : (size_t)(comma - start);
+  *text = comma == NULL ? start + len : comma + 1;
+  if (len == 1 && start[0] == '.') {
+    return 0;
+  }
+  char token[32];
+  if (len == 0 || len >= sizeof token) {
+    die("bad tree description");
+  }
+  memcpy(token, start, len);
+  token[len] = 0;
+  uint64_t key = parse_u64(token);
+  uint64_t left = alloc_u64_tree(runtime, text);
+  uint64_t right = alloc_u64_tree(runtime, text);
+  uint64_t cell = call_alloc(runtime, 24);
+  write_u64_at(runtime, cell - 24, 1);
+  write_u64_at(runtime, cell - 16, 3);
+  write_u64_at(runtime, cell - 8, 5);
+  write_u64_at(runtime, cell, left);
+  write_u64_at(runtime, cell + 8, key);
+  write_u64_at(runtime, cell + 16, right);
+  return cell;
+}
+
 #define OBJECT_MAGIC UINT64_C(5501223100278326855)
 
 /* Prints the chain of records at `ptr` as `[x, y, ...]`, after checking that each record's
@@ -515,6 +546,17 @@ static bool parse_arg(Runtime *runtime, const char *spec, wasmtime_val_t *out, s
     U64List values = parse_u64_list(spec + 10);
     uint64_t ptr = alloc_u64_array(runtime, values);
     free_u64_list(values);
+    out[0].kind = WASMTIME_I64;
+    out[0].of.i64 = (int64_t)ptr;
+    *out_count = 1;
+    return true;
+  }
+  if (strncmp(spec, "tree-u64:", 9) == 0) {
+    const char *text = spec + 9;
+    uint64_t ptr = alloc_u64_tree(runtime, &text);
+    if (*text != 0) {
+      die("bad tree description");
+    }
     out[0].kind = WASMTIME_I64;
     out[0].of.i64 = (int64_t)ptr;
     *out_count = 1;
@@ -1276,7 +1318,7 @@ static void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host call|call-stats <module.wasm> <function> "
           "<i64|f64|bytes|array-u64|chain-u64|file-u64:PATH|slots:N|list:K1,K2,...> "
-          "[i64:N|f64:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|chain-u64:N,N|"
+          "[i64:N|f64:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|chain-u64:N,N|tree-u64:K,.,.|"
           "file-u64:PATH ...]\n");
   exit(1);
 }

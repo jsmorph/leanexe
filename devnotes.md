@@ -21655,12 +21655,25 @@ values in a recursive function's frame.
 
 Revised steps for 7c3b, each built, tested, committed, and pushed:
 
-- [ ] `Tree` with its `Encode` instance; `compileDefinition` separates tail recursion from
+- [x] `Tree` with its `Encode` instance; `compileDefinition` separates tail recursion from
   other recursion; the internal function `f.rec t d` with the guard `d ≥ 1000 → unreachable`,
   appended after the listed functions; the entry `f t` calling it with 0; self-calls with
   `d + 1` only in a node match's record branch; the frame bound of 24 values.
+  `tailOnly` decides whether every self-call is in tail position; `needsInternal` lets the
+  list command give each internal function its index after the listed ones and export it as
+  `f.rec`; the single form rejects such a definition.  A self-call
+  (`translateSelfCall`) requires `ctx.foldable`, so it may appear at the top of the body or
+  in a node match's branch, which now keeps its parent's `foldable` because its statements
+  stay inside the conditional; expression-level conditionals still clear it.
 - [ ] The recursion rule (`Func.keeps` for any parameter values, induction on a measure)
-  and `size`; then `sum`; then `max` on words and `height`.
+  and `size`; then `sum`; then `max` on words and `height`.  `Project/IR/Recursion.lean`
+  holds `Func.keeps`, `Keeps`, `Func.recursion`, `Stmt.selfCall_spec` (from the reviewer's
+  sketch), and `Func.entry_implements`.  `size_rec` (79 lines) and `size_implements` are in
+  `Project/Trees/Verify.lean`, and `trees_bytes` has axioms `propext`, `Classical.choice`,
+  and `Quot.sound`.  `trees.wasm` is 1,496 bytes with sha256 `510ce5ee4c696eb8…`.  The
+  host's `tree-u64:` argument kind takes a preorder description; `size` matched native Lean
+  on 24 trees, a chain of 999 nodes returned 999, and a chain of 1,000 trapped at
+  `unreachable`.  All 5,171 module comparisons pass.
 - [ ] Host: a tree argument kind; tests against native Lean; a depth section that expects
   `unreachable` at depth 1,001 and success at 1,000 with the widest accepted frame; hints
   and LTG entries.
