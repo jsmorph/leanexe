@@ -36,8 +36,8 @@ theorem firstRow_implements : Implements gpt.module 31 firstRowTuple := by
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.firstRow.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
   have hEq : firstRowTuple (s, d) = LeanExe.build d (fun c => s[c.toNat]!) := rfl
   rw [hEq, build_map]
   exact hNew.owned
@@ -89,8 +89,8 @@ theorem lastHidden_implements : Implements gpt.module 39 lastHiddenTuple := by
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.lastHidden.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+    ⟨ptr, rfl, ?_⟩, fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
   have hEq : lastHiddenTuple (cache, d, bsize) =
       LeanExe.build d (fun c => cache[(UInt64.ofNat cache.size - bsize + c).toNat]!) := rfl
   rw [hEq, build_map]
@@ -142,8 +142,8 @@ theorem embedBlock_implements : Implements gpt.module 30 embedBlockTuple := by
   refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.embedBlock.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+    ⟨ptr, rfl, ?_⟩, fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
   have hEq : embedBlockTuple (wte, wpe, token, p, d, bsize) = LeanExe.build bsize (fun e =>
       if e < d then wte[(token * d + e).toNat]! + wpe[(p * d + e).toNat]! else 0.0) := rfl
   rw [hEq, build_map]
@@ -243,8 +243,8 @@ theorem headMax_implements : Implements gpt.module 33 headMaxTuple := by
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.headMax.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
   have hEq : headMaxTuple (x, t, w) =
       LeanExe.build t (fun r => LeanExe.loop w (-(1.0 / 0.0)) (headMaxStep x w r)) := rfl
   rw [hEq, build_map]
@@ -359,8 +359,8 @@ theorem headSumExp_implements : Implements gpt.module 34 headSumExpTuple := by
   refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.headSumExp.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
   have hEq : headSumExpTuple (x, mx, t, w) =
       LeanExe.build t (fun r => LeanExe.loop w 0.0 (headSumStep x mx w r)) := rfl
   rw [hEq, build_map]
@@ -616,8 +616,8 @@ theorem stepScores_implements : Implements gpt.module 32 stepScoresTuple := by
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.stepScores.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+    ⟨ptr, rfl, ?_⟩, fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
   have hEq : stepScoresTuple (q, k, cache, l, p, nh, dh, bsize, scale) =
       LeanExe.build (nh * (p + 1)) (fun e =>
         LeanExe.loop dh 0.0 (stepScoreStep q k cache l p nh dh bsize e) * scale) := rfl
@@ -750,8 +750,8 @@ theorem stepMix_implements : Implements gpt.module 36 stepMixTuple := by
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.stepMix.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+    ⟨ptr, rfl, ?_⟩, fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
   have hEq : stepMixTuple (pw, v, cache, l, p, nh, dh, bsize) = LeanExe.build (nh * dh)
       (fun c => LeanExe.loop (p + 1) 0.0 (stepMixStep pw v cache l p nh dh bsize c)) := rfl
   rw [hEq, build_map]
@@ -901,8 +901,8 @@ theorem writeBlock_implements : Implements gpt.module 37 writeBlockTuple := by
   refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
     hNew.ownedKeep, [.i64 ptr], state,
     by simp [gpt.writeBlock.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+    ⟨ptr, rfl, ?_⟩, fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
   have hEq : writeBlockTuple (s, x, k, v, l, d) =
       LeanExe.build s.size.toUInt64 (writeAt s x k v l d) := rfl
   rw [hEq, build_map]
@@ -937,8 +937,8 @@ theorem appendBlock_implements : Implements gpt.module 38 appendBlockTuple := by
   refine ⟨heap', hAt, hCaps, fun q ws hq hA => (hB q ws hq (hMoves _ hA)).1,
     fun q ws hq hA => ⟨(hO q ws hq (hMoves _ hA)).1, (hO q ws hq (hMoves _ hA)).2.1⟩, [.i64 p],
     state, by simp [gpt.appendBlock.ir, Func.scratch, Expr.evalResults, Expr.eval, hDst],
-    ⟨p, rfl, ?_⟩, fun q ws hq hA => ⟨p, rfl, (hB q ws hq (hMoves _ hA)).2⟩,
-    fun q ws hq hA => ⟨p, rfl, (hO q ws hq (hMoves _ hA)).2.2⟩⟩
+    ⟨p, rfl, ?_⟩, fun q ws hq hA => Represent.outside_float.mpr (hB q ws hq (hMoves _ hA)).2,
+    fun q ws hq hA => Represent.outside_float.mpr (hO q ws hq (hMoves _ hA)).2.2⟩
   show heap'.Owned store p ((cache ++ s).map Float.toBits)
   rw [Array.map_append]
   exact hOwned

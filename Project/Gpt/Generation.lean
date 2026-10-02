@@ -163,11 +163,11 @@ theorem generating_step {store : Store Unit} {W : Weights} {P : Pointers}
     rw [← List.reverse_reverse values, hValues]; rfl
   refine ⟨pc', hValues', heap', hAt', memoryCap_le_of_caps hCaps hCap, fun w hw => ⟨?_, ?_⟩, hNew⟩
   · exact hKeepB w.1 _ (hW w hw).1 (hApart w hw)
-  · obtain ⟨q, hq, hDisjoint⟩ := hOutB w.1 _ (hW w hw).1 (hApart w hw)
-    rw [hValues] at hq
-    simp only [List.cons.injEq, Value.i64.injEq, and_true] at hq
-    subst hq
-    simpa only [Array.size_map] using hDisjoint
+  · have hDisjoint := hOutB w.1 _ (hW w hw).1 (hApart w hw)
+    rw [hValues] at hDisjoint
+    have h := Represent.outside_float.mp hDisjoint
+    rw [Array.size_map] at h
+    exact h
 
 /-- `scores` on the cache of the first `p + 1` tokens aborts or returns a new array that holds
 row `p` of `forward` on any `T > p` tokens, under the bounds of `steps_exact`. -/

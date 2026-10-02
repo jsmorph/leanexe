@@ -126,8 +126,8 @@ theorem marketBuy_implements :
     refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
       hNew.ownedKeep, [.i64 ptr], state,
       by simp [clob.marketBuy.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+    fun p ws h => Represent.outside_array.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_array.mpr (hNew.ownedApart p ws h)⟩
     rw [marketBuyTuple, marketBuy_eq, hResult]
     simpa using hOwned
 
@@ -193,8 +193,8 @@ theorem fillLevel_implements : Implements clob.module 3 fillTuple := by
     refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
       hNew.ownedKeep, [.i64 ptr], state,
       by simp [clob.fillLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.borrowedApart p ws h⟩,
-    fun p ws h => ⟨ptr, rfl, hNew.ownedApart p ws h⟩⟩
+    fun p ws h => Represent.outside_array.mpr (hNew.borrowedApart p ws h),
+    fun p ws h => Represent.outside_array.mpr (hNew.ownedApart p ws h)⟩
     rw [fillTuple, LeanExe.Examples.Clob.fillLevel, set!_eq_build sizes k value hSize64]
     exact hOwned
 
@@ -363,17 +363,13 @@ theorem insertLevel_implements : Implements clob.module 4 insertTuple := by
     (hNew1.two hNew2).1,
     [.i64 ptr1, .i64 ptr2], t2,
     by simp [clob.insertLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr1', hPtr2],
-    ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ?_⟩, ⟨ptr2, rfl, ?_⟩⟩,
-    fun p ws h => ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ((hNew1.two hNew2).2.1 p ws h).1⟩,
-      ⟨ptr2, rfl, ((hNew1.two hNew2).2.1 p ws h).2⟩⟩,
-    fun p ws h => ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ((hNew1.two hNew2).2.2 p ws h).1⟩,
-      ⟨ptr2, rfl, ((hNew1.two hNew2).2.2 p ws h).2⟩⟩⟩
+    Represent.owned_pair.mpr ⟨?_, ?_, hNew1.two_apart hNew2⟩,
+    fun p ws h => Represent.outside_pair.mpr ((hNew1.two hNew2).2.1 p ws h),
+    fun p ws h => Represent.outside_pair.mpr ((hNew1.two hNew2).2.2 p ws h)⟩
   · have hOwned := (hNew2.ownedKeep ptr1 _ hOwned1).1
-    rw [insertTuple, LeanExe.Examples.Clob.insertLevel,
-      insertIdx!_eq_build prices k price (by omega)]
+    rw [insertIdx!_eq_build prices k price (by omega)]
     exact hOwned
-  · rw [insertTuple, LeanExe.Examples.Clob.insertLevel,
-      insertIdx!_eq_build sizes k size (by omega)]
+  · rw [insertIdx!_eq_build sizes k size (by omega)]
     exact hOwned2
 
 /-- `setLevel` with its four arguments as one tuple. -/
@@ -450,13 +446,10 @@ theorem setLevel_implements : Implements clob.module 5 setTuple := by
     (hNew1.two hNew2).1,
     [.i64 ptr1, .i64 ptr2], t2,
     by simp [clob.setLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr1', hPtr2],
-    ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, (hNew2.ownedKeep ptr1 _ hNew1.owned).1⟩,
-      ⟨ptr2, rfl, ?_⟩⟩,
-    fun p ws h => ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ((hNew1.two hNew2).2.1 p ws h).1⟩,
-      ⟨ptr2, rfl, ((hNew1.two hNew2).2.1 p ws h).2⟩⟩,
-    fun p ws h => ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ((hNew1.two hNew2).2.2 p ws h).1⟩,
-      ⟨ptr2, rfl, ((hNew1.two hNew2).2.2 p ws h).2⟩⟩⟩
-  rw [setTuple, LeanExe.Examples.Clob.setLevel, set!_eq_build sizes k size (by omega)]
+    Represent.owned_pair.mpr ⟨(hNew2.ownedKeep ptr1 _ hNew1.owned).1, ?_, hNew1.two_apart hNew2⟩,
+    fun p ws h => Represent.outside_pair.mpr ((hNew1.two hNew2).2.1 p ws h),
+    fun p ws h => Represent.outside_pair.mpr ((hNew1.two hNew2).2.2 p ws h)⟩
+  rw [set!_eq_build sizes k size (by omega)]
   exact hNew2.owned
 
 /-- `depth` with its three arguments as one tuple. -/
@@ -755,24 +748,20 @@ theorem removeLevel_implements : Implements clob.module 9 removeTuple := by
     (hNew1.two hNew2).1,
     [.i64 ptr1, .i64 ptr2], t2,
     by simp [clob.removeLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr1', hPtr2],
-    ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ?_⟩, ⟨ptr2, rfl, ?_⟩⟩,
-    fun p ws h => ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ((hNew1.two hNew2).2.1 p ws h).1⟩,
-      ⟨ptr2, rfl, ((hNew1.two hNew2).2.1 p ws h).2⟩⟩,
-    fun p ws h => ⟨[.i64 ptr1], [.i64 ptr2], rfl, ⟨ptr1, rfl, ((hNew1.two hNew2).2.2 p ws h).1⟩,
-      ⟨ptr2, rfl, ((hNew1.two hNew2).2.2 p ws h).2⟩⟩⟩
+    Represent.owned_pair.mpr ⟨?_, ?_, hNew1.two_apart hNew2⟩,
+    fun p ws h => Represent.outside_pair.mpr ((hNew1.two hNew2).2.1 p ws h),
+    fun p ws h => Represent.outside_pair.mpr ((hNew1.two hNew2).2.2 p ws h)⟩
   · have hOwned := (hNew2.ownedKeep ptr1 _ hOwned1).1
-    rw [removeTuple, LeanExe.Examples.Clob.removeLevel,
-      eraseIdxIfInBounds_eq_build prices k (by omega)]
+    rw [eraseIdxIfInBounds_eq_build prices k (by omega)]
     exact hOwned
-  · rw [removeTuple, LeanExe.Examples.Clob.removeLevel,
-      eraseIdxIfInBounds_eq_build sizes k (by omega)]
+  · rw [eraseIdxIfInBounds_eq_build sizes k (by omega)]
     exact hOwned2
 
 /-- An owned pair of arrays is two pointers, each to an owned array. -/
 theorem owned_pair {heap : Heap} {store : Store Unit} {values : List Value}
     {xs ys : Array UInt64} (h : Represent.owned heap store values (xs, ys)) :
     ∃ p1 p2, values = [.i64 p1, .i64 p2] ∧ heap.Owned store p1 xs ∧ heap.Owned store p2 ys := by
-  obtain ⟨_, _, rfl, ⟨p1, rfl, h1⟩, ⟨p2, rfl, h2⟩⟩ := h
+  obtain ⟨_, _, rfl, ⟨p1, rfl, h1⟩, ⟨p2, rfl, h2⟩, -⟩ := h
   exact ⟨p1, p2, rfl, h1, h2⟩
 
 /-- What a call that allocates nothing leaves: a heap over `store1` that keeps every
@@ -903,15 +892,13 @@ theorem pairCopy_spec {scratch a b l1 i1 s1 l2 i2 s2 src1 src2 : Nat}
     fun p ws h => ⟨((hNew1.two hNew2).1 p ws (hKept.owned p ws h).1).1,
       ((hNew1.two hNew2).1 p ws (hKept.owned p ws h).1).2.trans (hKept.owned p ws h).2⟩,
     [.i64 q1, .i64 q2], t3, by simp [Expr.evalResults, Expr.eval, hPtr1', hPtr2],
-    ⟨[.i64 q1], [.i64 q2], rfl, ⟨q1, rfl, (hNew2.ownedKeep q1 _ hNew1.owned).1⟩,
-      ⟨q2, rfl, hNew2.owned⟩⟩,
-    fun p ws h => ⟨[.i64 q1], [.i64 q2], rfl,
-      ⟨q1, rfl, ((hNew1.two hNew2).2.1 p ws (hKept.borrowed p ws h)).1⟩,
-      ⟨q2, rfl, ((hNew1.two hNew2).2.1 p ws (hKept.borrowed p ws h)).2⟩⟩,
+    Represent.owned_pair.mpr ⟨(hNew2.ownedKeep q1 _ hNew1.owned).1, hNew2.owned,
+      hNew1.two_apart hNew2⟩,
+    fun p ws h => Represent.outside_pair.mpr ((hNew1.two hNew2).2.1 p ws (hKept.borrowed p ws h)),
     fun p ws h => by
       have hApart := (hNew1.two hNew2).2.2 p ws (hKept.owned p ws h).1
       rw [(hKept.owned p ws h).2] at hApart
-      exact ⟨[.i64 q1], [.i64 q2], rfl, ⟨q1, rfl, hApart.1⟩, ⟨q2, rfl, hApart.2⟩⟩⟩
+      exact Represent.outside_pair.mpr hApart⟩
 
 /-- The locals that the branches of `addBid` and `cancelBid` read: the arguments,
 and the position `k` in local 5. -/
