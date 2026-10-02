@@ -22189,10 +22189,33 @@ the compiler on test programs.  The cited lines say what the report says.
 
 Revised steps:
 
-- [ ] 9-0, compiler only, with CLOB's bytes unchanged: word and float arguments of a call may
+- [x] 9-0, compiler only, with CLOB's bytes unchanged: word and float arguments of a call may
   read an owned array; an array that an earlier result component reads may not move later.
 - [ ] 9a: `set!` in place; `fillLevel`, `setLevel`, `addBid`, `cancelBid`, and `applyCommand`.
 - [ ] The generalized fill rule for in-place shifts.
 - [ ] 9b: `eraseIdxIfInBounds` in place; `removeLevel` and `cancelBid`.
 - [ ] 9c: the generalized grow rule, then `insertIdx!` in place; `insertLevel` and `addBid`.
 - [ ] Count cases, `chunks.py`, LTG entries, and `deslop.md`.
+
+### Iteration 9, step 9-0: the call rule and pending reads
+
+The reviewer's result-order case is one instance of a general fault.  The translator returns
+word and float values as expressions that run when the statement that holds them runs, while
+the statements of later parts of the same value are pushed before it; any `Expr.read` in an
+earlier part then runs after those statements.  Besides result tuples, the earlier part can be
+the left operand of an arithmetic operation or a comparison, an earlier call argument, an
+earlier element of an array literal, or an earlier field of a record.  A later part moves an
+array only through a call with an owned position, which `moveSites` reaches only at result
+positions, or through an owned temporary, so `xs[0]! + g ys` with `ys` a temporary that `g`
+consumes is reachable.
+
+`Prelude.pendingReads` holds the arrays that already translated parts of the current value
+read.  `afterReads` adds the arrays an expression reads (`readArrays`) while the translator
+translates the later parts, at every site above, and `markMoved` rejects a move of a pending
+array.  The reviewer's `(xs[0]!, xs ++ ys)` now fails with "the array xs moves before an earlier
+part of the same value reads it".  `translateCall` counts an owned argument's occurrences among
+the array arguments only, since word and float arguments run before the call, and
+`translateSelfCall` counts among the tree arguments; `setLevel prices sizes k
+(sizes[k.toNat]! + size)` with `sizes` owned compiles.  The full build passed, and all 21
+modules emit the bytes they emitted before.
+

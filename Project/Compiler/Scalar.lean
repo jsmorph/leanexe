@@ -170,6 +170,9 @@ structure Prelude where
   consumed : List Lean.Expr := []
   /-- The matched owned values whose records a constructor has rewritten on the current path. -/
   rebuilt : List Lean.Expr := []
+  /-- The arrays that already translated parts of a value read.  Those parts run after the
+  statements of the parts translated now, which therefore may not move these arrays. -/
+  pendingReads : List Lean.Expr := []
 
 /-- The next free local. -/
 def Prelude.next (p : Prelude) : Nat := p.base + p.vars.size
@@ -522,8 +525,46 @@ def lookupNode (ctx : Ctx) (term : Lean.Expr) : CompileM (Option Nat) := do
   return some local_
 
 /-- Records that the code has moved the owned parameter `param`. -/
-def markMoved (param : Lean.Expr) : CompileM Unit :=
+def markMoved (param : Lean.Expr) : CompileM Unit := do
+  if (← get).pendingReads.contains param then
+    throwError "the array {← sourceOf param} moves before an earlier part of the same value reads it"
   modify fun p => { p with consumed := param :: p.consumed }
+
+/-- The pointer locals of the arrays that `e` reads. -/
+def readArrays : {type : ScalarType} → IRExpr type → List Nat
+  | _, .read array position => array :: readArrays position
+  | _, .bin _ l r => readArrays l ++ readArrays r
+  | _, .eq l r => readArrays l ++ readArrays r
+  | _, .ne l r => readArrays l ++ readArrays r
+  | _, .ltU l r => readArrays l ++ readArrays r
+  | _, .leU l r => readArrays l ++ readArrays r
+  | _, .and l r => readArrays l ++ readArrays r
+  | _, .or l r => readArrays l ++ readArrays r
+  | _, .binF _ l r => readArrays l ++ readArrays r
+  | _, .eqF l r => readArrays l ++ readArrays r
+  | _, .ltF l r => readArrays l ++ readArrays r
+  | _, .leF l r => readArrays l ++ readArrays r
+  | _, .not c => readArrays c
+  | _, .unF _ x => readArrays x
+  | _, .convertU x => readArrays x
+  | _, .truncSatU x => readArrays x
+  | _, .ofBits x => readArrays x
+  | _, .toBits x => readArrays x
+  | _, .ite c a b => readArrays c ++ readArrays a ++ readArrays b
+  | _, .iteF c a b => readArrays c ++ readArrays a ++ readArrays b
+  | _, _ => []
+
+/-- Runs `action`, which translates a later part of a value, while the arrays at the pointer
+locals `reads`, which earlier parts read, count as pending reads: the earlier parts run after
+`action`'s statements. -/
+def afterReads {γ : Type} (ctx : Ctx) (reads : List Nat) (action : CompileM γ) : CompileM γ := do
+  let arrays := (ctx.arrays ++ ctx.floatArrays).filterMap fun (x, local_) =>
+    if reads.contains local_ then some x else none
+  let saved := (← get).pendingReads
+  modify fun p => { p with pendingReads := arrays ++ p.pendingReads }
+  let result ← action
+  modify fun p => { p with pendingReads := saved }
+  return result
 
 /-- The number of occurrences of the free variable `x` in `term`. -/
 partial def occurrences (x : FVarId) : Lean.Expr → Nat
@@ -841,7 +882,7 @@ mutual
           throwError "unsupported operand types in {source}"
         let (l, lHints) ← translateValue ctx loc a
         let offset := if op = .divU ∨ op = .remU then exprLength l + 1 else exprLength l
-        let (r, rHints) ← translateValue ctx (loc.skip offset) b
+        let (r, rHints) ← afterReads ctx (readArrays l) (translateValue ctx (loc.skip offset) b)
         let ir : IRExpr .u64 := .bin op l r
         return (ir, hint ir rule :: lHints ++ rHints)
       | _ => throwError "unsupported term: {source}"
@@ -857,20 +898,23 @@ mutual
     let floatPair (make : IRExpr .f64 → IRExpr .f64 → IRExpr .bool) (rule : String)
         (a b : Lean.Expr) : CompileM (IRExpr .bool × List Hint) := do
       let (l, lHints) ← translateFloat ctx loc a
-      let (r, rHints) ← translateFloat ctx (loc.skip (exprLength l)) b
+      let (r, rHints) ← afterReads ctx (readArrays l)
+        (translateFloat ctx (loc.skip (exprLength l)) b)
       let ir := make l r
       return (ir, hint ir rule :: lHints ++ rHints)
     let pair (make : IRExpr .u64 → IRExpr .u64 → IRExpr .bool) (rule : String)
         (a b : Lean.Expr) : CompileM (IRExpr .bool × List Hint) := do
       let (l, lHints) ← translateValue ctx loc a
-      let (r, rHints) ← translateValue ctx (loc.skip (exprLength l)) b
+      let (r, rHints) ← afterReads ctx (readArrays l)
+        (translateValue ctx (loc.skip (exprLength l)) b)
       let ir := make l r
       return (ir, hint ir rule :: lHints ++ rHints)
     let connective (make : IRExpr .bool → IRExpr .bool → IRExpr .bool) (rule : String)
         (a b : Lean.Expr) : CompileM (IRExpr .bool × List Hint) := do
       let (l, lHints) ← translateCondition ctx loc a
       let inner := (loc.skip (exprLength l)).inside (some (if rule == "and" then 0 else 1))
-      let (r, rHints) ← translateCondition { ctx with foldable := false } inner b
+      let (r, rHints) ← afterReads ctx (readArrays l)
+        (translateCondition { ctx with foldable := false } inner b)
       let ir := make l r
       return (ir, hint ir rule :: lHints ++ rHints)
     match prop.getAppFnArgs with
@@ -1026,7 +1070,8 @@ mutual
         unless (← isFloat left) && (← isFloat right) && (← isFloat out) do
           throwError "unsupported operand types in {source}"
         let (l, lHints) ← translateFloat ctx loc a
-        let (r, rHints) ← translateFloat ctx (loc.skip (exprLength l)) b
+        let (r, rHints) ← afterReads ctx (readArrays l)
+          (translateFloat ctx (loc.skip (exprLength l)) b)
         let ir : IRExpr .f64 := .binF op l r
         return (ir, hint ir rule :: lHints ++ rHints)
     | _ => throwError "unsupported float term: {source}"
@@ -1578,7 +1623,8 @@ mutual
       let field := fields[i].consumeMData
       if xs[i]? == some field then continue
       let address : IRExpr .u64 := .bin .add (.get ptr) (.const (UInt64.ofNat (8 * i)))
-      let (value, valueHints) ← translateValue ctx ⟨[], exprLength address + 1⟩ field
+      let (value, valueHints) ← afterReads ctx (stores.toList.flatMap fun s => readArrays s.2.1)
+        (translateValue ctx ⟨[], exprLength address + 1⟩ field)
       stores := stores.push (address, value, valueHints)
     for h : i in [:fields.length] do
       let field := fields[i].consumeMData
@@ -1659,7 +1705,8 @@ mutual
     let mut valueHints := []
     let mut here := loc
     for field in fields do
-      let ((v, vHints), fStmts, fStmtHints) ← withBlock (translateValue ctx ⟨[], 0⟩ field)
+      let ((v, vHints), fStmts, fStmtHints) ← afterReads ctx (values.flatMap readArrays)
+        (withBlock (translateValue ctx ⟨[], 0⟩ field))
       stmts := stmts ++ fStmts
       stmtHints := stmtHints ++ fStmtHints.map (relocate here)
       here := here.skip (fStmts.map stmtLength).sum
@@ -1905,7 +1952,9 @@ mutual
         let mut remaining := dests?
         for (part, partType) in parts do
           let width := (← resultTypes partType).length
-          let (r, h) ← translateResults ctx part partType (remaining.map (·.take width))
+          -- The earlier components run after this part's statements.
+          let (r, h) ← afterReads ctx (results.flatMap fun result => readArrays result.2)
+            (translateResults ctx part partType (remaining.map (·.take width)))
           results := results ++ r
           hints := hints ++ h
           remaining := remaining.map (·.drop width)
@@ -1945,12 +1994,16 @@ mutual
       unless scalars do
         throwError "a call in a loop body or an array element must return words and floats: {source}"
     let owners := (ctx.owners.lookup term.getAppFn.constName).getD []
+    -- An owned position receives an owned array that no other array argument names.  Word and
+    -- float arguments run before the call, so they may read it.
+    let arrayArgs ← term.getAppArgs.toList.filterM fun arg => do isArray (← inferType arg)
     let mut moved := []
     for position in owners do
       let some arg := term.getAppArgs[position]?
         | throwError "a call must supply every argument: {source}"
       let arg := arg.consumeMData
-      unless ctx.owned.contains arg && occurrences arg.fvarId! term == 1 do
+      unless arg.isFVar && ctx.owned.contains arg &&
+          (arrayArgs.map (occurrences arg.fvarId! ·)).sum == 1 do
         throwError "an owned parameter must receive an array parameter at its last use: {source}"
       moved := arg :: moved
     let mut args : Array ((type : ScalarType) × IRExpr type) := #[]
@@ -1958,29 +2011,29 @@ mutual
     let mut offset := 0
     for arg in term.getAppArgs do
       let argType ← inferType arg
-      let (typed, argHints) ← if ← isArray argType then do
+      -- The earlier arguments run after this argument's statements.
+      let earlier := args.toList.flatMap fun value => readArrays value.2
+      let (values, argHints) ← afterReads ctx earlier do
+        if ← isArray argType then
           let some local_ ← lookupArray (ctx.arrays ++ ctx.floatArrays) arg.consumeMData
             | throwError "an array argument must be an array variable: {source}"
           let ir : IRExpr .u64 := .get local_
-          pure ((⟨.u64, ir⟩ : (type : ScalarType) × IRExpr type),
+          pure ([(⟨.u64, ir⟩ : (type : ScalarType) × IRExpr type)],
             [mkHint ⟨[], offset⟩ (exprLength ir) "variable" (← sourceOf arg)])
-        else if ← isUInt64 argType then do
+        else if ← isUInt64 argType then
           let (ir, irHints) ← translateValue ctx ⟨[], offset⟩ arg
-          pure (⟨.u64, ir⟩, irHints)
-        else if ← isFloat argType then do
+          pure ([⟨.u64, ir⟩], irHints)
+        else if ← isFloat argType then
           let (ir, irHints) ← translateFloat ctx ⟨[], offset⟩ arg
-          pure (⟨.f64, ir⟩, irHints)
-        else if (← isWordType argType) || (← isTupleType argType) then do
-          let (values, valueHints) ← translateComponents ctx ⟨[], offset⟩ arg argType
-          let some last := values.getLast? | throwError "an argument has no components: {source}"
-          for value in values.dropLast do
-            args := args.push value
-            offset := offset + exprLength value.2
-          pure (last, valueHints)
+          pure ([⟨.f64, ir⟩], irHints)
+        else if (← isWordType argType) || (← isTupleType argType) then
+          translateComponents ctx ⟨[], offset⟩ arg argType
         else throwError "a call argument must be a word, a float, an array, or a user type: {source}"
-      args := args.push typed
+      if values.isEmpty then throwError "an argument has no components: {source}"
+      for value in values do
+        args := args.push value
+        offset := offset + exprLength value.2
       hints := hints ++ argHints.toArray
-      offset := offset + exprLength typed.2
     let types ← resultTypes (← inferType term)
     let results ← match dests? with
       | some dests => pure (dests.zip types)
@@ -2002,11 +2055,13 @@ mutual
       throwError "a recursive call may appear only at the top of the body or in a branch of a match on a value of a recursive type: {source}"
     -- An owned position receives an owned value at its last use, which the call moves.
     let mut moved := []
+    let nodeArgs ← term.getAppArgs.toList.filterM fun arg => do isNodeType (← inferType arg)
     for position in (ctx.owners.lookup ctx.self).getD [] do
       let some arg := term.getAppArgs[position]?
         | throwError "a recursive call must pass every parameter: {source}"
       let arg := arg.consumeMData
-      unless arg.isFVar && ctx.owned.contains arg && occurrences arg.fvarId! term == 1 do
+      unless arg.isFVar && ctx.owned.contains arg &&
+          (nodeArgs.map (occurrences arg.fvarId! ·)).sum == 1 do
         throwError "an owned parameter of a recursive call must receive an owned value at its last use: {source}"
       moved := arg :: moved
     let mut args : Array ((type : ScalarType) × IRExpr type) := #[]
@@ -2118,7 +2173,8 @@ mutual
     let mut values : Array (IRExpr .u64) := #[]
     let mut valueHints : Array (List Hint) := #[]
     for element in elements do
-      let (value, hints) ← translateValue ctx ⟨[], 0⟩ element
+      let (value, hints) ← afterReads ctx (values.toList.flatMap readArrays)
+        (translateValue ctx ⟨[], 0⟩ element)
       values := values.push value
       valueHints := valueHints.push hints
     let before ← get
