@@ -155,6 +155,132 @@ instance : Represent (Moved (Array Float)) where
   reads _ _ := []
   moves vs xs := Represent.moves vs (Moved.mk (xs.val.map Float.toBits))
 
+mutual
+/-- A slot of a record: a word, or a child value held by its pointer. -/
+inductive Slot where
+  | word (w : UInt64)
+  | child (n : Node)
+
+/-- How a value of a recursive type sits in memory: the null pointer, or a record whose slots
+hold words and child values. -/
+inductive Node where
+  | null
+  | record (slots : List Slot)
+end
+
+/-- 1 for a child slot and 0 for a word. -/
+def Slot.bit : Slot → UInt64
+  | .word _ => 0
+  | .child _ => 1
+
+/-- The child mask of a record: bit `i` is set when slot `i` holds a child. -/
+def maskOf (slots : List Slot) : UInt64 := slots.foldr (fun slot acc => 2 * acc + slot.bit) 0
+
+/-- The address of slot `i` of the record at `p`. -/
+def slotAddress (p : UInt64) (i : Nat) : UInt32 := (p + UInt64.ofNat (8 * i)).toUInt32
+
+/-- An owned record at `p` with `slots`: its header holds the magic number, count one, kind 1,
+the number of slots, at most 64, and the mask of its child slots; its block has room for the
+slots, lies inside the 32-bit address space and below `top`, and is outside every free
+block. -/
+structure RecordHeader (heap : Heap) (store : Store Unit) (p : UInt64) (slots : List Slot) :
+    Prop where
+  base : 4096 + 48 ≤ p.toNat
+  magic : store.mem.read64 (p - 48).toUInt32 = objectMagic
+  count : store.mem.read64 (p - 40).toUInt32 = 1
+  kind : store.mem.read64 (p - 24).toUInt32 = 1
+  width : store.mem.read64 (p - 16).toUInt32 = UInt64.ofNat slots.length
+  mask : store.mem.read64 (p - 8).toUInt32 = maskOf slots
+  short : slots.length ≤ 64
+  capacity : 8 * slots.length ≤ capacityAt store p
+  address : p.toNat + capacityAt store p < 4294967296
+  below : p.toNat + capacityAt store p ≤ heap.top.toNat
+  separate : ∀ node ∈ heap.free,
+    regionsDisjoint node.region (p.toNat - 48, 48 + capacityAt store p)
+
+/-- The slots of a borrowed record at `p`, at a nonzero address, inside the 32-bit address
+space, below `top`, and outside every free block. -/
+structure RecordSlots (heap : Heap) (p : UInt64) (slots : List Slot) : Prop where
+  nonzero : p ≠ 0
+  address : p.toNat + 8 * slots.length < 4294967296
+  below : p.toNat + 8 * slots.length ≤ heap.top.toNat
+  separate : ∀ node ∈ heap.free, regionsDisjoint (p.toNat, 8 * slots.length) node.region
+
+mutual
+/-- The value at `p` is `n`, and every record of it is owned. -/
+def NodeOwned (heap : Heap) (store : Store Unit) (p : UInt64) : Node → Prop
+  | .null => p = 0
+  | .record slots => RecordHeader heap store p slots ∧ SlotsOwned heap store p 0 slots
+
+/-- Slots `i` on of the record at `p` hold `slots`, with every child owned. -/
+def SlotsOwned (heap : Heap) (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → Prop
+  | [] => True
+  | .word w :: rest =>
+      store.mem.read64 (slotAddress p i) = w ∧ SlotsOwned heap store p (i + 1) rest
+  | .child n :: rest =>
+      NodeOwned heap store (store.mem.read64 (slotAddress p i)) n ∧
+        SlotsOwned heap store p (i + 1) rest
+end
+
+mutual
+/-- The value at `p` is `n`, which the call may read. -/
+def NodeBorrowed (heap : Heap) (store : Store Unit) (p : UInt64) : Node → Prop
+  | .null => p = 0
+  | .record slots => RecordSlots heap p slots ∧ SlotsBorrowed heap store p 0 slots
+
+/-- Slots `i` on of the record at `p` hold `slots`, with every child borrowed. -/
+def SlotsBorrowed (heap : Heap) (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → Prop
+  | [] => True
+  | .word w :: rest =>
+      store.mem.read64 (slotAddress p i) = w ∧ SlotsBorrowed heap store p (i + 1) rest
+  | .child n :: rest =>
+      NodeBorrowed heap store (store.mem.read64 (slotAddress p i)) n ∧
+        SlotsBorrowed heap store p (i + 1) rest
+end
+
+mutual
+/-- The blocks of the records of `n` at `p`, found by following its child pointers. -/
+def Node.blocks (store : Store Unit) (p : UInt64) : Node → List (Nat × Nat)
+  | .null => []
+  | .record slots => block store p :: slotsBlocks store p 0 slots
+
+/-- The blocks of the children in slots `i` on of the record at `p`. -/
+def slotsBlocks (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → List (Nat × Nat)
+  | [] => []
+  | .word _ :: rest => slotsBlocks store p (i + 1) rest
+  | .child n :: rest =>
+      Node.blocks store (store.mem.read64 (slotAddress p i)) n ++ slotsBlocks store p (i + 1) rest
+end
+
+/-- A type whose values are records on the heap: `encode x` gives the records that hold
+`x`. -/
+class Encode (α : Type) where
+  encode : α → Node
+
+/-- A value of a type with `Encode` is a pointer to the records that `encode` gives.  The
+caller lends records that hold the right words and pointers; a result's records are owned
+and occupy pairwise disjoint blocks.  The arguments' records take no part in `Separate`. -/
+instance [Encode α] : Represent α where
+  width _ := 1
+  borrowed heap store vs x := ∃ p, vs = [.i64 p] ∧ NodeBorrowed heap store p (Encode.encode x)
+  owned heap store vs x := ∃ p, vs = [.i64 p] ∧ NodeOwned heap store p (Encode.encode x) ∧
+    (Node.blocks store p (Encode.encode x)).Pairwise regionsDisjoint
+  blocks store vs x := match vs with
+    | [.i64 p] => Node.blocks store p (Encode.encode x)
+    | _ => []
+  reads _ _ := []
+  moves _ _ := []
+
+/-- A list of words: the empty list is the null pointer, and `x :: xs` a record of two slots,
+the word `x` and the pointer to `xs`. -/
+def encodeList : List UInt64 → Node
+  | [] => .null
+  | x :: xs => .record [.word x, .child (encodeList xs)]
+
+instance : Encode (List UInt64) := ⟨encodeList⟩
+
+example : maskOf [.word 5, .child .null] = 2 := rfl
+
 /-- An array at `p` lies outside a region exactly when its block does. -/
 theorem Represent.outside_array {store : Store Unit} {p : UInt64} {xs : Array UInt64}
     {region : Nat × Nat} :

@@ -21194,13 +21194,20 @@ On 2026-10-02 the user chose option (a), the generic `Encode`.
 
 Steps of 7c1, each built, tested, committed, and pushed:
 
-- [ ] The trusted definitions in `Implements.lean`, and `Encode (List UInt64)` beside the
-  programs.
+- [x] The trusted definitions in `Implements.lean`: 83 lines of definitions and 25 of
+  documentation.  `Encode (List UInt64)` sits there too, beside the `Represent` instances
+  for arrays, since `List UInt64` is a library type.
 - [ ] Heap facts: a record allocated and given its header and slots is owned; owned and
   borrowed nodes are kept by allocation and by writes outside their blocks; a new record
-  lies apart from existing ones.
+  lies apart from existing ones.  Done in `Project/Pipeline/Records.lean`: `Heap.Region`
+  and `Heap.Region.allocate`, `RecordHeader.frame`, `NodeOwned.frame`, and
+  `Heap.At.writesApart`.  Left: the borrowed frame and ownership of a new cons cell.
 - [ ] IR: the cons template and its rule; the loop over a borrowed list, with a measure that
-  the store and state determine; the loop with a list state, through `Stmt.loop_inv`.
+  the store and state determine; the loop with a list state, through `Stmt.loop_inv`.  The
+  template `Stmt.record` and its rule `Stmt.record_spec` are in `Project/IR/Record.lean`.
+  The rule ends in `Heap.NewRecord`: the allocator invariant, the header for any slots of
+  the right length and mask, the words in the slots, and every region of the old heap with
+  its bytes, still a region, and apart from the new block.
 - [ ] Compiler: `List UInt64` as a pointer word, `[]`, `x :: xs` in a loop step that
   consumes the state, and `List.foldl` over a list variable.
 - [ ] Programs `listSum` and `listRange`, with their theorems.
