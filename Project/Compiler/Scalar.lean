@@ -160,13 +160,15 @@ def seqAll : List Project.IR.Stmt → Project.IR.Stmt
   | s :: rest => .seq s (seqAll rest)
 
 /-- The user types the compiler accepts: an enumeration, held as the word of its constructor
-index, and a structure, held as its fields' components in order. -/
+index; a structure, held as its fields' components in order; and a sum, held as the word of
+its constructor index followed by every constructor's fields, in order. -/
 inductive UserType where
   | enum (ctors : List Name)
   | struct (ctor : Name) (fields : List Lean.Expr)
+  | sum (ctors : List (Name × List Lean.Expr))
 
 /-- `type` as a user type: an inductive type without parameters, indices, or recursion that
-is an enumeration, whose constructors have no fields, or a structure. -/
+is an enumeration, whose constructors have no fields, a structure, or a sum. -/
 def userType? (type : Lean.Expr) : MetaM (Option UserType) := do
   let .const name _ ← whnfR type | return none
   if name == ``UInt64 || name == ``Float then return none
@@ -177,13 +179,16 @@ def userType? (type : Lean.Expr) : MetaM (Option UserType) := do
   if fields.all (·.isEmpty) then return some (.enum info.ctors)
   if let [ctor] := info.ctors then
     if isStructure (← getEnv) name then return some (.struct ctor fields[0]!)
-  return none
+    return none
+  return some (.sum (info.ctors.zip fields))
 
-/-- Whether `type` is a pair or a structure, whose values have several components. -/
+/-- Whether `type` is a pair, a structure, or a sum, whose values have several components. -/
 def isTupleType (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
   if type.isAppOfArity ``Prod 2 then return true
-  return (← userType? type) matches some (.struct ..)
+  match ← userType? type with
+  | some (.struct ..) | some (.sum _) => return true
+  | _ => return false
 
 /-- The index of the enumeration constructor `name`. -/
 def enumIndex? (name : Name) : MetaM (Option Nat) := do
@@ -199,32 +204,58 @@ def scalarTypeOf (type : Lean.Expr) : MetaM ScalarType := do
   throwError "unsupported type {type}"
 
 /-- The WebAssembly value types of a value of type `type`: a word for `UInt64`, for an
-enumeration, and, when `arrays`, for an array pointer; a float for `Float`; and the
-components of each side of a pair and of each field of a structure, in order.  A structure's
-fields may not be arrays. -/
+enumeration, and, when `arrays`, for an array pointer; a float for `Float`; the components of
+each side of a pair and of each field of a structure, in order; and for a sum, a word for the
+constructor index followed by the components of every constructor's fields.  The fields of a
+structure or sum may not be arrays. -/
 partial def componentTypes (type : Lean.Expr) (arrays : Bool) : MetaM (List ScalarType) := do
   let type ← whnfR type
   if type.isAppOfArity ``Prod 2 then
     return (← componentTypes type.appFn!.appArg! arrays) ++ (← componentTypes type.appArg! arrays)
   if arrays && (← isArray type) then return [.u64]
-  if let some (.struct _ fields) ← userType? type then
-    return (← fields.mapM fun field => componentTypes field false).flatten
-  return [← scalarTypeOf type]
+  match ← userType? type with
+  | some (.struct _ fields) => return (← fields.mapM fun field => componentTypes field false).flatten
+  | some (.sum ctors) =>
+      return .u64 :: (← ctors.mapM fun (_, fields) => return (← fields.mapM fun field =>
+        componentTypes field false).flatten).flatten
+  | _ => return [← scalarTypeOf type]
 
 /-- The components of a loop state: words and floats. -/
 def stateTypes (type : Lean.Expr) : MetaM (List ScalarType) := componentTypes type false
 
-/-- The parts of `term`, a constructor application of the pair or structure type `type`,
-with their types. -/
+/-- The zero of the field type `type`, held in the slots of a sum's inactive constructors:
+0 for a word or float, and the first constructor of an enumeration. -/
+def zeroOf (type : Lean.Expr) : MetaM Lean.Expr := do
+  if (← isUInt64 type) || (← isFloat type) then return ← mkNumeral type 0
+  if let some (.enum (ctor :: _)) ← userType? type then return mkConst ctor
+  throwError "a field of a sum must be a word, a float, or an enumeration: {type}"
+
+/-- The parts of `term`, a constructor application of the pair, structure, or sum type
+`type`, with their types.  The parts of a sum's constructor are its index, then each
+constructor's fields: the applied constructor's arguments, and zeros for the others. -/
 def constructorParts? (term type : Lean.Expr) : MetaM (Option (List (Lean.Expr × Lean.Expr))) := do
   let type ← whnfR type
   let term := term.consumeMData
   if type.isAppOfArity ``Prod 2 then
     let (``Prod.mk, #[first, second, a, b]) := term.getAppFnArgs | return none
     return some [(a, first), (b, second)]
-  let some (.struct ctor fields) ← userType? type | return none
-  unless term.isAppOfArity ctor fields.length do return none
-  return some (term.getAppArgs.toList.zip fields)
+  match ← userType? type with
+  | some (.struct ctor fields) =>
+      unless term.isAppOfArity ctor fields.length do return none
+      return some (term.getAppArgs.toList.zip fields)
+  | some (.sum ctors) =>
+      let some index := ctors.findIdx? fun (ctor, fields) => term.isAppOfArity ctor fields.length
+        | return none
+      let word := mkConst ``UInt64
+      let mut parts := [(← mkNumeral word index, word)]
+      for h : i in [:ctors.length] do
+        let fields := ctors[i].2
+        if i == index then
+          parts := parts ++ term.getAppArgs.toList.zip fields
+        else
+          parts := parts ++ (← fields.mapM fun field => return (← zeroOf field, field))
+      return some parts
+  | _ => return none
 
 /-- The component terms of `term`, a nest of constructor applications of type `type`. -/
 partial def stateTerms (term type : Lean.Expr) : MetaM (List (Lean.Expr × ScalarType)) := do
@@ -249,26 +280,41 @@ def isSparseCasesOn : Name → Bool
   | .str _ s => s.startsWith "_sparseCasesOn"
   | _ => false
 
+/-- An alternative of a case split: the field types of its constructor, and the function
+that takes the fields and then the further arguments `extra`. -/
+structure CaseAlt where
+  fields : List Lean.Expr
+  fn : Lean.Expr
+  extra : Array Lean.Expr
+
+/-- The alternative's body for the field variables `xs`. -/
+def CaseAlt.body (alt : CaseAlt) (xs : List Lean.Expr) : Lean.Expr :=
+  headBetaAll (mkAppN alt.fn (xs.toArray ++ alt.extra))
+
 /-- The discriminant and the alternatives, one per constructor in order, of a case split on
-an enumeration: `T.casesOn`, `T.rec` applied to further arguments, or an auxiliary
+an enumeration or a sum: `T.casesOn`, `T.rec` applied to further arguments, or an auxiliary
 `_sparseCasesOn` definition, which unfolds to `T.rec`. -/
-partial def enumCases? (term : Lean.Expr) : MetaM (Option (Lean.Expr × List Lean.Expr)) := do
+partial def userCases? (term : Lean.Expr) : MetaM (Option (Lean.Expr × List CaseAlt)) := do
   let term := headBetaAll term.consumeMData
   let .const name _ := term.getAppFn | return none
   let args := term.getAppArgs
   if isSparseCasesOn name then
     let some unfolded ← unfoldDefinition? term | return none
-    return ← enumCases? unfolded
+    return ← userCases? unfolded
   let .str induct kind := name | return none
   unless kind == "casesOn" || kind == "rec" do return none
-  let some (.enum ctors) ← userType? (.const induct []) | return none
-  let n := ctors.length
+  let ctorFields ← match ← userType? (.const induct []) with
+    | some (.enum ctors) => pure (ctors.map fun _ => [])
+    | some (.sum ctors) => pure (ctors.map (·.2))
+    | _ => return none
+  let n := ctorFields.length
   if kind == "casesOn" && args.size == 2 + n then
-    return some (args[1]!, (args.extract 2 args.size).toList.map headBetaAll)
+    return some (args[1]!, ((args.extract 2 args.size).toList.zip ctorFields).map
+      fun (alt, fields) => ⟨fields, alt, #[]⟩)
   if kind == "rec" && args.size ≥ 2 + n then
     let extra := args.extract (2 + n) args.size
-    return some (args[1 + n]!,
-      (args.extract 1 (1 + n)).toList.map fun minor => headBetaAll (mkAppN minor extra))
+    return some (args[1 + n]!, ((args.extract 1 (1 + n)).toList.zip ctorFields).map
+      fun (minor, fields) => ⟨fields, minor, extra⟩)
   return none
 
 /-- The field types and the alternative of a `casesOn` on a pair or a structure, with its
@@ -471,6 +517,12 @@ def tupleFields? (type : Lean.Expr) : MetaM (Option (List Lean.Expr)) := do
   let some (.struct _ fields) ← userType? type | return none
   return some fields
 
+/-- Runs `k` on the body of `alternative` with its fields bound to `slots`. -/
+def caseBody {γ : Type} (ctx : Ctx) (slots : List (Nat × ScalarType)) (alternative : CaseAlt)
+    (k : Ctx → Lean.Expr → CompileM γ) : CompileM γ := do
+  let widths ← alternative.fields.mapM fun field => return (← stateTypes field).length
+  bindFields ctx (fun ctx xs => k ctx (alternative.body xs)) alternative.fields widths slots []
+
 /-- Whether `type` is `UInt64` or an enumeration, held as one word. -/
 def isWordType (type : Lean.Expr) : MetaM Bool := do
   if ← isUInt64 type then return true
@@ -507,9 +559,9 @@ mutual
           let ir : IRExpr .u64 := .get local_
           return (ir, [hint ir "field"])
       | .inr _ => throwError "a field used as a word must be one word: {source}"
-    if let some (discriminant, alternatives) ← enumCases? term then
-      let (d, dHints) ← translateValue ctx loc discriminant
-      let (ir, hints) ← translateWordCases { ctx with foldable := false } loc d 0 alternatives
+    if let some (discriminant, alternatives) ← userCases? term then
+      let (ctx, d, slots, dHints) ← caseDiscriminant ctx loc discriminant alternatives
+      let (ir, hints) ← translateWordCases { ctx with foldable := false } loc d 0 (slots.zip alternatives)
       return (ir, hint ir "case split" :: dHints ++ hints)
     match term.getAppFnArgs with
     | (``OfNat.ofNat, #[type, .lit (.natVal value), _]) =>
@@ -684,6 +736,10 @@ mutual
           let ir : IRExpr .f64 := .getF local_
           return (ir, [hint ir "field"])
       | .inr _ => throwError "a field used as a float must be one float: {source}"
+    if let some (discriminant, alternatives) ← userCases? term then
+      let (ctx, d, slots, dHints) ← caseDiscriminant ctx loc discriminant alternatives
+      let (ir, hints) ← translateFloatCases { ctx with foldable := false } loc d 0 (slots.zip alternatives)
+      return (ir, hint ir "case split" :: dHints ++ hints)
     if let some index := ctx.callees.lookup term.getAppFn.constName then
       let [(result, .f64)] ← translateCall ctx term index
         | throwError "a call used as a float must return one float: {source}"
@@ -804,18 +860,56 @@ mutual
     let widths ← fields.mapM fun field => return (← resultTypes field).length
     return some (.inr ((components.drop (widths.take index).sum).take widths[index]!))
 
-  /-- Translates a case split on the enumeration word `d` to a chain of conditionals whose
-  last alternative is unguarded. -/
+  /-- The constructor index of the discriminant of a case split, and for each alternative,
+  the locals of its constructor's fields: none for an enumeration, whose value is the index,
+  and for a sum, the slots that follow the index in its components.  A sum discriminant
+  that is not a variable, such as a call, is bound as a tuple in the returned context, so
+  that an alternative that refers to it reads its locals instead of computing it again. -/
+  partial def caseDiscriminant (ctx : Ctx) (loc : Loc) (discriminant : Lean.Expr)
+      (alternatives : List CaseAlt) :
+      CompileM (Ctx × IRExpr .u64 × List (List (Nat × ScalarType)) × List Hint) := do
+    if ← isWordType (← inferType discriminant) then
+      let (d, hints) ← translateValue ctx loc discriminant
+      return (ctx, d, alternatives.map fun _ => [], hints)
+    let discriminant := discriminant.consumeMData
+    let components ← tupleOf ctx discriminant
+    let some (tag, _) := components.head?
+      | throwError "a sum has no components: {← sourceOf discriminant}"
+    let mut slots := []
+    let mut rest := components.drop 1
+    for alternative in alternatives do
+      let width := (← alternative.fields.mapM fun field => return (← stateTypes field).length).sum
+      slots := slots ++ [rest.take width]
+      rest := rest.drop width
+    return ({ ctx with tuples := (discriminant, components) :: ctx.tuples }, .get tag, slots, [])
+
+  /-- Translates a case split on the constructor index `d` to a chain of conditionals whose
+  last alternative is unguarded.  Each alternative's fields are bound to its slots. -/
   partial def translateWordCases (ctx : Ctx) (loc : Loc) (d : IRExpr .u64) (index : Nat) :
-      List Lean.Expr → CompileM (IRExpr .u64 × List Hint)
+      List (List (Nat × ScalarType) × CaseAlt) → CompileM (IRExpr .u64 × List Hint)
     | [] => throwError "a case split needs an alternative"
-    | [last] => translateValue ctx loc last
-    | alternative :: rest => do
+    | [(slots, last)] => caseBody ctx slots last fun ctx body => translateValue ctx loc body
+    | (slots, alternative) :: rest => do
         let condition : IRExpr .bool := .eq d (.const (UInt64.ofNat index))
         let branch := loc.skip (exprLength condition)
-        let (a, aHints) ← translateValue ctx (branch.inside (some 0)) alternative
+        let (a, aHints) ← caseBody ctx slots alternative fun ctx body =>
+          translateValue ctx (branch.inside (some 0)) body
         let (b, bHints) ← translateWordCases ctx (branch.inside (some 1)) d (index + 1) rest
         return (.ite condition a b, aHints ++ bHints)
+
+
+  /-- `translateWordCases` for a float result. -/
+  partial def translateFloatCases (ctx : Ctx) (loc : Loc) (d : IRExpr .u64) (index : Nat) :
+      List (List (Nat × ScalarType) × CaseAlt) → CompileM (IRExpr .f64 × List Hint)
+    | [] => throwError "a case split needs an alternative"
+    | [(slots, last)] => caseBody ctx slots last fun ctx body => translateFloat ctx loc body
+    | (slots, alternative) :: rest => do
+        let condition : IRExpr .bool := .eq d (.const (UInt64.ofNat index))
+        let branch := loc.skip (exprLength condition)
+        let (a, aHints) ← caseBody ctx slots alternative fun ctx body =>
+          translateFloat ctx (branch.inside (some 0)) body
+        let (b, bHints) ← translateFloatCases ctx (branch.inside (some 1)) d (index + 1) rest
+        return (.iteF condition a b, aHints ++ bHints)
 
   /-- The values of the components of `term`, of type `type`: the value of a word or float,
   and for a pair or structure, those of a constructor application's parts, or the locals of a
@@ -1329,6 +1423,10 @@ mutual
         pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
         return ← withLocalDeclD name letType fun x =>
           translateResults (ctx.bind x [(local_, scalar)]) (body.instantiate1 x) type dests?
+      -- A tuple variable, or a term already computed into locals, such as a call that a
+      -- case split examines.
+      if let some components := ctx.tuples.lookup term then
+        return ← resultsIn components dests? (← sourceOf term)
       if let some index := ctx.callees.lookup term.getAppFn.constName then
         let results ← translateCall ctx term index dests?
         return (results.map readLocal, results.map fun _ => [])
@@ -1343,9 +1441,7 @@ mutual
         if ← isTupleType type then
           return ← resultsIn (← translateLoop ctx term) dests? (← sourceOf term)
       if ← isTupleType type then
-        if let some components := ctx.tuples.lookup term then
-          return ← resultsIn components dests? (← sourceOf term)
-        if let some (discriminant, alternatives) ← enumCases? term then
+        if let some (discriminant, alternatives) ← userCases? term then
           return ← translateCases ctx term discriminant alternatives type dests?
         let some parts ← constructorParts? term type
           | throwError "a pair or structure result must be a constructor, a variable, a call, a loop, or a case split: {← sourceOf term}"
@@ -1452,16 +1548,16 @@ mutual
   of `if` statements whose branches leave the result in the locals `dests?`, or in fresh
   locals, and returns expressions that read them. -/
   partial def translateCases (ctx : Ctx) (term discriminant : Lean.Expr)
-      (alternatives : List Lean.Expr) (type : Lean.Expr) (dests? : Option (List Nat)) :
+      (alternatives : List CaseAlt) (type : Lean.Expr) (dests? : Option (List Nat)) :
       CompileM (List (Σ type, IRExpr type) × List (List Hint)) := do
     let source ← sourceOf term
     let types ← resultTypes type
     let dests ← match dests? with
       | some dests => pure dests
       | none => types.mapM fun type => fresh type "result"
-    let (d, dHints) ← translateValue ctx ⟨[], 0⟩ discriminant
+    let (ctx, d, slots, dHints) ← caseDiscriminant ctx ⟨[], 0⟩ discriminant alternatives
     let saved := (← get).consumed
-    let (stmt, hints) ← caseChain ctx saved d 0 alternatives type dests
+    let (stmt, hints) ← caseChain ctx saved d 0 (slots.zip alternatives) type dests
     modify fun p => { p with consumed := saved ++ ctx.owned }
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "case split" source :: dHints ++ hints)
     return ((dests.zip types).map readLocal, dests.map fun _ => [])
@@ -1469,12 +1565,14 @@ mutual
   /-- The `if` chain of `translateCases` from alternative `index` on.  Each branch releases
   the owned parameters that it does not move. -/
   partial def caseChain (ctx : Ctx) (saved : List Lean.Expr) (d : IRExpr .u64) (index : Nat) :
-      List Lean.Expr → Lean.Expr → List Nat → CompileM (Project.IR.Stmt × List Hint)
+      List (List (Nat × ScalarType) × CaseAlt) → Lean.Expr → List Nat →
+        CompileM (Project.IR.Stmt × List Hint)
     | [], _, _ => throwError "a case split needs an alternative"
-    | alternative :: rest, type, dests => do
+    | (slots, alternative) :: rest, type, dests => do
         modify fun p => { p with consumed := saved }
         let (_, stmts, hints) ← withBlock do
-          let results ← translateResults { ctx with temporaries := false } alternative type dests
+          let results ← caseBody ctx slots alternative fun ctx body =>
+            translateResults { ctx with temporaries := false } body type dests
           releaseUnmoved ctx
           return results
         if rest.isEmpty then return (seqAll stmts, hints)

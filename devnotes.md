@@ -21047,3 +21047,35 @@ Questions:
    an array of three-word shapes whose body calls `area` on a call of `ofWords`.
 4. Proofs: as in 7a, `Func.implementsPure` for the four functions of words and
    `Func.implements` for `totalArea`, by cases on the constructor.
+
+The review confirmed the elaboration claims, including for a `Float` field, a wildcard that
+binds only some constructors, and nested matches; `_sparseCasesOn` auxiliaries are shared
+across functions, and the name test still finds them.  It found that the planned programs
+did not test the reason for option (a): with only word fields, option (b) has no type
+conflict.  It also found that a wildcard alternative receives the discriminant term itself,
+so a call as the discriminant would be compiled again in that branch; that `translateFloat`
+had no case split; and that my first edit admitted single-constructor inductive types as
+sums.  It named a further option, slots shared within each type, which has fixed types
+and less width, at the cost of splitting a structure field across two pools.  Option (a)
+stands.  Changes made, each checked by compiling and running:
+
+- The programs: `circle` holds a `Float`; `area` returns a `Float`; `width` uses a field in
+  the sparse form (`| .rect w _ => w | _ => 0`); `grow` has a wildcard that returns its
+  variable; `normalize` matches on a call; and `totalArea` sums floats in a loop.
+- `caseDiscriminant` binds a sum discriminant that is not a variable as a tuple, and
+  `translateResults` looks up tuple bindings before calls, so `normalize` calls `ofWords`
+  once.  `translateFloatCases` handles a case split with a float result.
+- `userType?` treats an inductive type with one constructor as a structure only when it is
+  registered as one, and rejects it otherwise.
+
+Not covered, and left for a program that needs them: a projection or a constructor as the
+discriminant, a sum as a loop state, literal sub-patterns (`| .rect 0 h`, which elaborate to
+`dite`), and fields of structure or sum type inside a sum.
+
+- [x] Compiler rules: the sum kind, `componentTypes`, constructor parts with zeros,
+  `userCases?` with `CaseAlt`, `caseDiscriminant`, and the word, float, and statement
+  chains.  All fifteen other modules emit the same bytes.
+- [x] `LeanExe/Examples/Shape.lean` and `shapes.wasm`, 2,232 bytes.
+- [x] Tests: `tests/modules/run.sh` passed all 5,066 comparisons, 226 of them for the
+  shapes, with radii that include `-0`, infinity, NaN, and a subnormal.
+- [ ] The theorems.
