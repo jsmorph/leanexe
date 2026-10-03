@@ -40,6 +40,7 @@ import Project.Words.Module
 import Project.Words.Encode
 import Project.Words.Verify
 import Project.Updates.Module
+import Project.Updates.Verify
 import Project.Trees.Module
 import Project.Trees.Encode
 import Project.Trees.Node

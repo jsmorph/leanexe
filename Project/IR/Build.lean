@@ -575,4 +575,79 @@ theorem Stmt.copy_spec {typeIdx scratch src size dst limit index : Nat}
       rw [hFrame.get j hj (by simp; omega)]
       exact State.get_update_ne hOut.1
 
+/-- A pushed array is the build of its size plus one elements: the old ones, then `v`. -/
+theorem push_eq_build (xs : Array UInt64) (v : UInt64) (hSize : xs.size + 1 < 2 ^ 64) :
+    xs.push v =
+      LeanExe.build (UInt64.ofNat xs.size + 1) fun j =>
+        if j < UInt64.ofNat xs.size then xs[j.toNat]! else v := by
+  have hU : UInt64.size = 2 ^ 64 := rfl
+  have hn : (UInt64.ofNat xs.size).toNat = xs.size := UInt64.toNat_ofNat_of_lt' (by omega)
+  have hn1 : (UInt64.ofNat xs.size + 1).toNat = xs.size + 1 := by
+    rw [UInt64.toNat_add, hn]; simp only [UInt64.reduceToNat]; omega
+  apply Array.ext
+  · rw [Array.size_push, build_size, hn1]
+  · intro j hj _
+    rw [build_getElem]
+    have hj' : j < xs.size + 1 := by simpa [build_size, hn1] using hj
+    have hj64 : (UInt64.ofNat j).toNat = j := UInt64.toNat_ofNat_of_lt' (by omega)
+    have hLess : UInt64.ofNat j < UInt64.ofNat xs.size ↔ j < xs.size := by
+      rw [UInt64.lt_iff_toNat_lt, hj64, hn]
+    rw [Array.getElem_push]
+    by_cases h : j < xs.size
+    · simp only [h, dite_true, hLess.mpr h, ite_true, hj64, getElem!_pos xs j h]
+    · simp only [h, dite_false, (not_congr hLess).mpr h, ite_false]
+
+/-- The build statement of a borrowed `push`, after the size load: local `dst` receives a new
+array equal to `xs.push w`. -/
+theorem Stmt.pushBuild_spec {typeIdx scratch src size v dst limit index : Nat}
+    {initial : Store Unit} {before : State} {heap : Heap} {ptr w : UInt64} {xs : Array UInt64}
+    (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
+    (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
+    (hLocals : [dst, limit, index].Nodup) (hBelow : ∀ j ∈ [dst, limit, index], j < scratch)
+    (hApart : ∀ j ∈ [src, size, v], j ∉ [dst, limit, index] ∧ j < scratch)
+    (hRoom : scratch < before.params.length + before.locals.length)
+    (hHeap : heap.At initial) (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hPtr : before.get src = some (.i64 ptr))
+    (hSize : before.get size = some (.i64 (UInt64.ofNat xs.size)))
+    (hV : before.get v = some (.i64 w)) (hArray : heap.Borrowed initial ptr xs) :
+    Triple m (.build dst limit index (.bin .add (.get size) (.const 1))
+        (.ite (.ltU (.get index) (.get size)) (.read src (.get index)) (.get v))) scratch
+      (fun store state => store = initial ∧ state = before)
+      (fun store state => ∃ p, State.Frame scratch [dst, limit, index] before state ∧
+        state.get dst = some (.i64 p) ∧
+        heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (xs.size + 1 + 1)))) store p
+          (xs.push w)) := by
+  have hA := hArray.values
+  have hFit := hA.1
+  have hU : UInt64.size = 2 ^ 64 := rfl
+  have hn1 : (UInt64.ofNat xs.size + 1).toNat = xs.size + 1 := by
+    rw [UInt64.toNat_add, UInt64.toNat_ofNat_of_lt' (by omega)]
+    simp only [UInt64.reduceToNat]; omega
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hApart
+  obtain ⟨⟨hSrcOut, hSrcBelow⟩, ⟨hSizeOut, hSizeBelow⟩, ⟨hVOut, hVBelow⟩⟩ := hApart
+  refine (Stmt.build_spec (n := UInt64.ofNat xs.size + 1)
+    (fun j => if j < UInt64.ofNat xs.size then xs[j.toNat]! else w) hMemory32 hImports hFunc
+    hLocals hBelow (by omega) hHeap hCap
+    ⟨before, by simp [Expr.eval, hSize, U64Op.apply]⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro k store state hk hAt hFrame hIndex
+    have hSrcState : state.get src = some (.i64 ptr) := by
+      rw [hFrame.get src hSrcBelow (by simpa using hSrcOut), hPtr]
+    have hSizeState : state.get size = some (.i64 (UInt64.ofNat xs.size)) := by
+      rw [hFrame.get size hSizeBelow (by simpa using hSizeOut), hSize]
+    have hVState : state.get v = some (.i64 w) := by
+      rw [hFrame.get v hVBelow (by simpa using hVOut), hV]
+    have hState : scratch < state.params.length + state.locals.length := by
+      rw [hFrame.params, hFrame.locals]; omega
+    by_cases hLess : UInt64.ofNat k < UInt64.ofNat xs.size
+    · have hRead := Expr.read_spec (array := src) (position := .get index) (scratch := scratch)
+        (state := state) (k := UInt64.ofNat k)
+        (hAt ptr xs hArray) (by simp [Expr.eval, hIndex]) (State.set?_eq_update _ hState)
+        (by rw [State.get_update_ne (by omega), hSrcState])
+      exact ⟨state.update scratch (.i64 (UInt64.ofNat k)), by
+        simpa [Expr.eval, hIndex, hSizeState, hLess] using hRead⟩
+    · exact ⟨state, by simp [Expr.eval, hIndex, hSizeState, hLess, hVState]⟩
+  · rintro store state ⟨p, hFrame, hDst, hNew⟩
+    rw [← push_eq_build xs w (by omega), hn1] at hNew
+    exact ⟨p, hFrame, hDst, hNew⟩
+
 end Project.IR
