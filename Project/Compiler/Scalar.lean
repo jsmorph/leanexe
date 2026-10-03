@@ -709,6 +709,12 @@ partial def bindRecordFields {γ : Type} (ctx : Ctx) (ptr : Nat)
         else
           throwError "a field of a recursive type must be a word, a float, or a value of a recursive type: {field}"
 
+/-- Hints for the statements `stmts`, which follow one another from `loc`, each with its rule. -/
+def settleHints (loc : Loc) (source : String) (stmts : List (Project.IR.Stmt × String)) :
+    List Hint :=
+  (List.range stmts.length).zip stmts |>.map fun (j, (stmt, rule)) =>
+    mkHint (loc.skip ((stmts.take j).map (stmtLength ·.1)).sum) (stmtLength stmt) rule source
+
 /-- The expression that reads local `local_` of type `type`. -/
 def readLocal : Nat × ScalarType → Σ type, IRExpr type
   | (local_, .f64) => ⟨.f64, .getF local_⟩
@@ -1558,6 +1564,7 @@ mutual
     let nullStmt : Project.IR.Stmt := .assign result nv
     let nullStmts := nPre ++ [nullStmt]
     let (nullMoves, nullRebuilt) ← changes
+    let nullState := ((← get).consumed, (← get).rebuilt)
     modify fun p => { p with consumed := saved, rebuilt := savedRebuilt }
     let (recordStmts, rHints) ← bindRecordFields inner ptr (fun ctx xs loads => do
         let children ← xs.filterM fun x => do isNodeType (← inferType x)
@@ -1594,19 +1601,61 @@ mutual
           mkHint rAt (stmtLength recordStmt) "match value" source :: dropHints))
       0 recordAlt.fields [] []
     let (recordMoves, recordRebuilt) ← changes
-    -- A null value needs no release, so the null branch consumes the value exactly when the
-    -- record's branch does.
-    let nullMoves := if recordMoves.contains discriminant then discriminant :: nullMoves
-      else nullMoves
+    -- Each branch releases the owned values that the other consumes and it does not.  A null
+    -- value needs no release, so the null branch consumes the value whenever the record's
+    -- branch does.
+    let moves := recordMoves ++ nullMoves.filter (!recordMoves.contains ·)
+    let rebuilt := recordRebuilt ++ nullRebuilt.filter (!recordRebuilt.contains ·)
+    let recordSettle ← settleBranch inner source moves rebuilt
+    let (recordMoves, recordRebuilt) ← changes
+    let recordState := ((← get).consumed, (← get).rebuilt)
+    modify fun p => { p with consumed := nullState.1, rebuilt := nullState.2 }
+    if recordMoves.contains discriminant then markMoved discriminant
+    let nullSettle ← settleBranch inner source moves rebuilt
+    let (nullMoves, nullRebuilt) ← changes
     unless nullMoves.all recordMoves.contains && recordMoves.all nullMoves.contains &&
         nullRebuilt.all recordRebuilt.contains && recordRebuilt.all nullRebuilt.contains do
       throwError "both branches of a match must move the same owned values and rewrite the same records: {source}"
-    let (thenStmts, elseStmts) := if nullFirst then (nullStmts, recordStmts)
-      else (recordStmts, nullStmts)
+    -- The discriminant's record belongs to this match: outside it, no rewrite of it remains.
+    let kept := recordState.2.filter (· != discriminant)
+    modify fun p => { p with consumed := recordState.1, rebuilt := kept }
+    let nullAll := nullStmts ++ nullSettle.map (·.1)
+    let recordAll := recordStmts ++ recordSettle.map (·.1)
+    let (thenStmts, elseStmts) := if nullFirst then (nullAll, recordAll) else (recordAll, nullAll)
     let stmt : Project.IR.Stmt := .ite condition (seqAll thenStmts) (seqAll elseStmts)
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "node match" source :: nHints ++
-      mkHint nAt (stmtLength nullStmt) "match value" source :: rHints)
+      mkHint nAt (stmtLength nullStmt) "match value" source :: rHints ++
+      settleHints (nullLoc.skip (nullStmts.map stmtLength).sum) source nullSettle ++
+      settleHints (recordLoc.skip (recordStmts.map stmtLength).sum) source recordSettle)
     return result
+
+  /-- The statements that bring a branch of a join to the join's target, which consumes the
+  owned values `moves` and rewrites the records `rebuilt`, each with its hint rule.  When
+  another branch rewrites the record in `ctx.reuse` and this one has not, 0 goes into the slots
+  of the children this branch moved, and the record is released, which frees the other
+  children.  Then each other value of a recursive type in `moves` that the branch has not
+  consumed is released.  The released values become consumed and the record rewritten. -/
+  partial def settleBranch (ctx : Ctx) (source : String) (moves rebuilt : List Lean.Expr) :
+      CompileM (List (Project.IR.Stmt × String)) := do
+    let mut stmts := []
+    if let some (record, ptr, xs) := ctx.reuse then
+      if rebuilt.contains record && !(← get).rebuilt.contains record then
+        let consumed := (← get).consumed
+        for h : i in [:xs.length] do
+          if (← isNodeType (← inferType xs[i])) && consumed.contains xs[i] then
+            stmts := stmts ++ [(Project.IR.Stmt.store
+              (.bin .add (.get ptr) (.const (UInt64.ofNat (8 * i)))) (.const 0), "clear slot")]
+        stmts := stmts ++ [(Project.IR.Stmt.release ptr, "release record")]
+        for x in xs do
+          if (← isNodeType (← inferType x)) && !consumed.contains x then markMoved x
+        modify fun p => { p with rebuilt := record :: p.rebuilt }
+    for x in moves do
+      unless (← get).consumed.contains x do
+        let some local_ := ctx.nodes.lookup x
+          | throwError "both branches must move the same owned arrays: {source}"
+        stmts := stmts ++ [(Project.IR.Stmt.release local_, "release unmoved")]
+        markMoved x
+    return stmts
 
   /-- Translates the constructor application `term` of a recursive type, with fields `fields`,
   in the record branch of a match on an owned value of the same type: the value of every field
@@ -1682,18 +1731,31 @@ mutual
     let (tPre, ⟨_, tv⟩, tHints, tAt) ← translatePrefixed ctx (branchLoc 0) .u64 thenTerm
     let thenStmt : Project.IR.Stmt := .assign result tv
     let (thenMoves, thenRebuilt) ← changes
+    let thenState := ((← get).consumed, (← get).rebuilt)
     modify fun p => { p with consumed := saved, rebuilt := savedRebuilt }
     let (ePre, ⟨_, ev⟩, eHints, eAt) ← translatePrefixed ctx (branchLoc 1) .u64 elseTerm
     let elseStmt : Project.IR.Stmt := .assign result ev
     let (elseMoves, elseRebuilt) ← changes
+    -- Each branch releases the owned values that the other consumes and it does not.
+    let moves := thenMoves ++ elseMoves.filter (!thenMoves.contains ·)
+    let rebuilt := thenRebuilt ++ elseRebuilt.filter (!thenRebuilt.contains ·)
+    let elseSettle ← settleBranch ctx source moves rebuilt
+    let (elseMoves, elseRebuilt) ← changes
+    modify fun p => { p with consumed := thenState.1, rebuilt := thenState.2 }
+    let thenSettle ← settleBranch ctx source moves rebuilt
+    let (thenMoves, thenRebuilt) ← changes
     unless thenMoves.all elseMoves.contains && elseMoves.all thenMoves.contains &&
         thenRebuilt.all elseRebuilt.contains && elseRebuilt.all thenRebuilt.contains do
       throwError "both branches of an `if` must move the same owned values and rewrite the same records: {source}"
-    let stmt : Project.IR.Stmt :=
-      .ite c (seqAll (tPre ++ [thenStmt])) (seqAll (ePre ++ [elseStmt]))
+    let thenStmts := tPre ++ [thenStmt]
+    let elseStmts := ePre ++ [elseStmt]
+    let stmt : Project.IR.Stmt := .ite c (seqAll (thenStmts ++ thenSettle.map (·.1)))
+      (seqAll (elseStmts ++ elseSettle.map (·.1)))
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "node branch" source :: cHints ++ tHints ++
       mkHint tAt (stmtLength thenStmt) "branch value" source :: eHints ++
-      [mkHint eAt (stmtLength elseStmt) "branch value" source])
+      mkHint eAt (stmtLength elseStmt) "branch value" source ::
+      settleHints ((branchLoc 0).skip (thenStmts.map stmtLength).sum) source thenSettle ++
+      settleHints ((branchLoc 1).skip (elseStmts.map stmtLength).sum) source elseSettle)
     return result
 
   /-- Translates a record cell with fields `fields` and child mask `mask`, a list cell or a

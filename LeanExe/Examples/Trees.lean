@@ -57,6 +57,15 @@ def KeyTree.leftChild : KeyTree → KeyTree
   | .leaf => .leaf
   | .node l _ _ => l
 
+/-- The tree when `c` is 0, and otherwise a leaf. -/
+def KeyTree.keepIf (c : UInt64) (t : KeyTree) : KeyTree := if c = 0 then t else .leaf
+
+/-- The root's left subtree when the root's key is 0, and otherwise the tree with the root's
+right subtree replaced by a leaf. -/
+def KeyTree.trim : KeyTree → KeyTree
+  | .leaf => .leaf
+  | .node l k r => if k = 0 then l else .node l k .leaf
+
 /-- A test of the depth limit: sixteen words computed before the recursive calls and used after
 them, so that the internal function holds 24 values in its frame, the most the compiler
 accepts, and keeps them live across its calls. -/

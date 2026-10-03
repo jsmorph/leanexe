@@ -7,6 +7,6 @@ namespace Project.Trees
 
 open LeanExe.Examples.Trees in
 leanexe_compile treeMoves := [KeyTree.setKey, KeyTree.incr, KeyTree.insert, KeyTree.dropRight,
-  KeyTree.leftChild]
+  KeyTree.leftChild, KeyTree.keepIf, KeyTree.trim]
 
 end Project.Trees

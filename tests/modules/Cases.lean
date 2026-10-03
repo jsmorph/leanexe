@@ -362,6 +362,15 @@ def treeCases : IO Unit := do
       (KeyTree.describe t.dropRight)
     line "treeMoves" "leftChild" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
       (KeyTree.describe t.leftChild)
+  -- Trees whose root's key is 0, for `trim`'s other path.
+  let zeroRoots : List KeyTree := [.node .leaf 0 .leaf, .node (.node .leaf 1 .leaf) 0 (.node .leaf 2 .leaf),
+    .node (KeyTree.arbitrary 5 1) 0 (KeyTree.arbitrary 6 2)]
+  for t in trees ++ zeroRoots do
+    for c in [0, 1, maxU] do
+      line "treeMoves" "keepIf" "tree-u64" [u c, s!"tree-u64:{KeyTree.describe t}"]
+        (KeyTree.describe (t.keepIf c))
+    line "treeMoves" "trim" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
+      (KeyTree.describe t.trim)
 
 /-- Chains of updates and a borrowed `push`, at positions inside and past the end of each array. -/
 def updatesCases : IO Unit := do

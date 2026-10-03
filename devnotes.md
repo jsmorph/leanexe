@@ -22476,7 +22476,7 @@ Revised steps:
 
 - [x] 10a: the shared rule for updates, `Stmt.reserve`, `Stmt.pushInPlace`, the `Live`
   conversion; `stepCommand`.
-- [ ] 10b: `rebuilt` scoped to its match; settling at joins for trees; `keepIf` and `trim`.
+- [x] 10b: `rebuilt` scoped to its match; settling at joins for trees; `keepIf` and `trim`.
 - [ ] 10c: tree arguments in calls; `Func.entry_keeps` and its call rule; `insertTwo` and
   `sizeSum`.
 - [ ] LTG entries and the count cases in `tests/modules/run.sh`.
@@ -22520,4 +22520,41 @@ growth of the output by `++`.  `tests/modules/run.sh`
 passed 6,893 comparisons, 38 count cases, and 12 depth cases; `chunks.py` passed 360 cases; the
 full build passed (3,576 jobs).  `clob_bytes` and `Stmt.pushInPlace_spec` depend on
 `propext`, `Classical.choice`, and `Quot.sound`.
+
+### Iteration 10, step 10b: releases at joins
+
+`translateNodeCases` now drops its discriminant from `rebuilt` when it returns, so an enclosing
+`if` or match no longer sees a nested match's rewrite as its own.  The reviewer's three programs
+(`T.deep`, an ordinary deep pattern; `T.matchNested`; and `T.ifNested`) compile with this change
+alone.
+
+`settleBranch` brings a branch of a join to the join's target, the union of the branches'
+consumed values and rewritten records.  When another branch rewrites the record in `ctx.reuse`
+and this one has not, it writes 0 into the slots of the children the branch consumed and
+releases the record, which frees the other children, and marks them consumed.  It then releases
+each other owned tree in the target that the branch has not consumed.  An owned array in the
+target that a branch has not consumed still fails, with a message about arrays.
+`translateNodeIf` settles both branches after both are translated, restoring each branch's
+consumed and rewritten sets in turn, and checks agreement afterward.  `translateNodeCases`
+does the same; the null branch first counts the discriminant consumed when the record branch
+consumes it, since a null pointer needs no release.  The settle statements follow each branch's
+value statement and any slot clears, with hints `clear slot`, `release record`, and `release
+unmoved`.  `releaseUnmoved` keeps its error for trees: a pair result holding a tree still
+fails, and no program proves such a result.
+
+`treeMoves` gains `KeyTree.keepIf` (entry 7), whose `else` branch assigns 0 and releases the
+tree, and `KeyTree.trim` (entry 8).  `trim`'s `then` branch assigns the left child, clears slot
+0, and releases the record, the code of `leftChild`; its `else` branch releases the right child,
+clears slot 2, and assigns the record, the code of `dropRight`.  The internal functions
+`incr.rec` and `insert.rec` move to indices 9 and 10, and their proofs change only in the
+index.  `keepIf_implements` uses `Heap.Rebuilt.refl` and `Stmt.releaseNode_rebuilt`;
+`trim_implements` uses `leftChild_node` (from `Heap.Rebuilt.leftChild`) and
+`Heap.Rebuilt.dropRight`.  `treeMoves_bytes` covers the seven functions and depends on `propext`,
+`Classical.choice`, and `Quot.sound`.  `treeMoves.wasm` is 2,272 bytes, sha256
+`74d308929e80d135…`; the other modules emit the same bytes as before this step.
+
+Tests: `keepIf` and `trim` on 27 trees, three with a root key of 0, and six count cases
+(`keepIf` with `c ≠ 0` frees every record; `trim` frees two of three records when the root's
+key is 0 and one otherwise).  `tests/modules/run.sh` passed 7,001 comparisons, 44 count cases,
+and 12 depth cases; `chunks.py` passed 360 cases; the full build passed (3,576 jobs).
 
