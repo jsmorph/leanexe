@@ -22363,7 +22363,7 @@ an array by one.  A borrowed `push` copies with `emitBuild`, count `size + 1`, a
 Program: CLOB's `stepCommand` returns `(p, s, (out.push bestPrice).push bestSize)` in place of
 `out ++ #[bestPrice, bestSize]`, which removes the allocation and release of the two-element
 array on every step.  Its theorem chains two `Stmt.pushInPlace_spec` steps.  The borrowed copy
-gets an execution case in `tests/modules/Cases.lean`; no program needs its theorem yet.
+gets an execution case in `tests/modules/Cases.lean`.  No program needs its theorem yet.
 
 ### Item 2: releasing an owned value on a path that does not move it
 
@@ -22385,7 +22385,7 @@ not consumed, a tree or an array.  After the join both branches agree, so the ex
 agreement check becomes a consistency check.  Only an `if` inside a record branch can see a
 rewrite mismatch, since `translateNodeCases` clears `reuse` in its null branch and excludes its
 own discriminant.  `releaseUnmoved` releases an unmoved owned tree as it does an array, for
-uniformity; with settling, no tested program reaches it.  A function that returns words still
+uniformity.  With settling, no tested program reaches it.  A function that returns words still
 owns no trees.
 
 Proofs: `Stmt.releaseNode_rebuilt` for (b) and the existing `Heap.Rebuilt.leftChild` and
@@ -22418,9 +22418,9 @@ through `keepBorrowed` and `keepOwned`) for a callee that returns a tree, and an
 a body triple and `Func.entry_consumes` from an internal `Rebuilds`; the same pair for `Keeps`;
 call rules for both, after `Stmt.selfCall_rebuilds`; `Heap.Rebuilt.trans` for consecutive
 consuming calls; and `Implements` from `Consumes`.  Option A is the specification question of
-open item 4, which this plan leaves to the user; B does not preclude it.
+open item 4, which this plan leaves to the user.  B does not preclude it.
 
-Compiler: a tree argument at a borrowed position is a variable, read with `lookupNode`; at an
+Compiler: a tree argument at a borrowed position is a variable, read with `lookupNode`.  At an
 owned position it is an owned variable occurring once among the call's tree arguments, or a
 call term under the shared rule, and the call marks it moved.  Calls with tree arguments stay at
 the top of non-recursive bodies, as all allocating calls are today, so the depth guard of a
@@ -22506,8 +22506,8 @@ alias another argument.  A borrowed `push` copies with `emitBuild`.
 `stepCommand` returns `(p, s, (out.push bestPrice).push bestSize)`.  Its IR has no array literal
 and no release: two `Stmt.pushInPlace` on local 2.  The theorem chains two
 `Stmt.pushInPlace_spec` steps, each turned into `Live` by `Live.appendPost`, and
-`stepTuple_eq` gives the result as two pushes; `runOut`'s theorem is unchanged.
-`clob.wasm` is 4,734 bytes, sha256 `a7c0de9cc1ce2368…`; the other nineteen modules emit the
+`stepTuple_eq` gives the result as two pushes.  `runOut`'s theorem is unchanged.
+`clob.wasm` is 4,734 bytes, sha256 `a7c0de9cc1ce2368…`, and the other nineteen modules emit the
 same bytes as before.
 
 `LeanExe/Examples/Updates.lean` and the module `updates` give execution cases for the new
@@ -22517,7 +22517,7 @@ theorem covers them.  Two count cases for `stepCommand` show the pushes in place
 one word grows once (4 allocations, 1 free), and an empty output grows twice (5, 2).  Before
 this step both cases took 5 allocations and 2 frees: the literal's block, its release, and one
 growth of the output by `++`.  `tests/modules/run.sh`
-passed 6,893 comparisons, 38 count cases, and 12 depth cases; `chunks.py` passed 360 cases; the
+passed 6,893 comparisons, 38 count cases, and 12 depth cases. `chunks.py` passed 360 cases, and the
 full build passed (3,576 jobs).  `clob_bytes` and `Stmt.pushInPlace_spec` depend on
 `propext`, `Classical.choice`, and `Quot.sound`.
 
@@ -22536,7 +22536,7 @@ each other owned tree in the target that the branch has not consumed.  An owned 
 target that a branch has not consumed still fails, with a message about arrays.
 `translateNodeIf` settles both branches after both are translated, restoring each branch's
 consumed and rewritten sets in turn, and checks agreement afterward.  `translateNodeCases`
-does the same; the null branch first counts the discriminant consumed when the record branch
+does the same.  The null branch first counts the discriminant consumed when the record branch
 consumes it, since a null pointer needs no release.  The settle statements follow each branch's
 value statement and any slot clears, with hints `clear slot`, `release record`, and `release
 unmoved`.  `releaseUnmoved` keeps its error for trees: a pair result holding a tree still
@@ -22544,30 +22544,30 @@ fails, and no program proves such a result.
 
 `treeMoves` gains `KeyTree.keepIf` (entry 7), whose `else` branch assigns 0 and releases the
 tree, and `KeyTree.trim` (entry 8).  `trim`'s `then` branch assigns the left child, clears slot
-0, and releases the record, the code of `leftChild`; its `else` branch releases the right child,
+0, and releases the record, the code of `leftChild`.  Its `else` branch releases the right child,
 clears slot 2, and assigns the record, the code of `dropRight`.  The internal functions
 `incr.rec` and `insert.rec` move to indices 9 and 10, and their proofs change only in the
 index.  `keepIf_implements` uses `Heap.Rebuilt.refl` and `Stmt.releaseNode_rebuilt`;
 `trim_implements` uses `leftChild_node` (from `Heap.Rebuilt.leftChild`) and
 `Heap.Rebuilt.dropRight`.  `treeMoves_bytes` covers the seven functions and depends on `propext`,
 `Classical.choice`, and `Quot.sound`.  `treeMoves.wasm` is 2,272 bytes, sha256
-`74d308929e80d135…`; the other modules emit the same bytes as before this step.
+`74d308929e80d135…`, and the other modules emit the same bytes as before this step.
 
 Tests: `keepIf` and `trim` on 27 trees, three with a root key of 0, and six count cases
-(`keepIf` with `c ≠ 0` frees every record; `trim` frees two of three records when the root's
+(`keepIf` with `c ≠ 0` frees every record, and `trim` frees two of three records when the root's
 key is 0 and one otherwise).  `tests/modules/run.sh` passed 7,001 comparisons, 44 count cases,
-and 12 depth cases; `chunks.py` passed 360 cases; the full build passed (3,576 jobs).
+and 12 depth cases. `chunks.py` passed 360 cases, and the full build passed (3,576 jobs).
 
 ### Iteration 10, step 10c: calls with tree arguments
 
 `translateCall` takes arguments of recursive types.  At a borrowed position the argument is a
-variable, read with `lookupNode`; an owned tree there fails ("an owned value may not be passed
+variable, read with `lookupNode`.  An owned tree there fails ("an owned value may not be passed
 where the callee borrows it"), since no program needs `NodeOwned.borrowed` yet.  At an owned
 position the argument is an owned variable that occurs once among the call's tree arguments, or
 a call, which `translateCall` translates first into a fresh local that the outer call consumes.
 The call half of the shared rule also lets an owned array position take an array term, through
 `translateArray`.  For a term at an owned position, every value that `moveSites` finds it moving
-must occur in no other argument; `g xs (xs.push 1)`, where `g` borrows its first argument, fails
+must occur in no other argument.  `g xs (xs.push 1)`, where `g` borrows its first argument, fails
 with "a value that an argument moves may occur in no other argument".  `moveSites` recurses into
 the arguments at a callee's owned positions.  Under `pureCalls`, in loop bodies and array
 elements, tree arguments fail as array arguments do.  A scratch file confirmed the three
@@ -22579,22 +22579,22 @@ function's `Keeps`, and `Stmt.callKeeps_spec` is its call rule, after `Stmt.self
 caller that holds a tree across such a call keeps it because the store does not change, which
 `Implements` does not state.
 
-Programs: `KeyTree.insertTwo a b t := (t.insert a).insert b` in `treeMoves` (entry 9; `incr.rec`
-and `insert.rec` move to 10 and 11) and `KeyTree.sizeSum t := t.size + t.sum` in `trees` (entry
-5; the internal functions move to 6, 7, and 8).  `insertTwo` compiles to two calls of entry 4,
+Programs: `KeyTree.insertTwo a b t := (t.insert a).insert b` in `treeMoves` (entry 9, with `incr.rec`
+and `insert.rec` moving to 10 and 11) and `KeyTree.sizeSum t := t.size + t.sum` in `trees` (entry
+5, with the internal functions moving to 6, 7, and 8).  `insertTwo` compiles to two calls of entry 4,
 the second on the first's result.  `insertTwo_implements` applies `Stmt.callImplements_spec`
-with `insert_implements` twice; the caller holds no other tree across either call, so
+with `insert_implements` twice.  The caller holds no other tree across either call, so
 `Implements` suffices, and the array frames chain through `apart_pointers` and `block_eq`.
-`sizeSum` compiles to calls of entries 2 and 3 on the same pointer; `sizeSum_implements` applies
+`sizeSum` compiles to calls of entries 2 and 3 on the same pointer, and `sizeSum_implements` applies
 `Stmt.callKeeps_spec` with `size_entry` and `sum_entry` and closes with `Func.implements`.
 `Consumes`, `Func.consumes`, `Func.entry_consumes`, the consuming call rule, and
 `Heap.Rebuilt.trans` wait for a program that holds a second tree across a consuming call.
 `treeMoves_bytes` and `trees_bytes` depend on `propext`, `Classical.choice`, and `Quot.sound`.
 `treeMoves.wasm` is 2,317 bytes, sha256 `56f19127f3bf1d6e…`, and `trees.wasm` 1,862 bytes, sha256
-`ebd7f82228c0c8f3…`; the other modules emit the same bytes as before this step.
+`ebd7f82228c0c8f3…`, and the other modules emit the same bytes as before this step.
 
 Tests: `insertTwo` with three key pairs and `sizeSum` on the 24 trees, and two count cases for
-`insertTwo` (two new keys add two records; two present keys add none).
-`tests/modules/run.sh` passed 7,097 comparisons, 46 count cases, and 12 depth cases;
-`chunks.py` passed 360 cases; the full build passed (3,576 jobs).
+`insertTwo` (two new keys add two records, and two present keys add none).
+`tests/modules/run.sh` passed 7,097 comparisons, 46 count cases, and 12 depth cases.
+`chunks.py` passed 360 cases, and the full build passed (3,576 jobs).
 
