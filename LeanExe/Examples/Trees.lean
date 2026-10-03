@@ -120,6 +120,22 @@ def KeyTree.sizeDrop (n : UInt64) (t : KeyTree) : UInt64 × KeyTree :=
   let s := t.size
   if s < n then (s, .leaf) else (s, t)
 
+/-- `sizeDrop`'s size plus one, and its tree: the caller passes the tree component through. -/
+def KeyTree.sizeDropNext (n : UInt64) (t : KeyTree) : UInt64 × KeyTree :=
+  match t.sizeDrop n with | (s, u) => (s + 1, u)
+
+/-- `sizeDrop`'s size: the caller drops the tree component, which it releases at the end. -/
+def KeyTree.sizeAfterDrop (n : UInt64) (t : KeyTree) : UInt64 :=
+  match t.sizeDrop n with | (s, _) => s
+
+/-- `sizeDrop`'s tree, or a leaf when it has fewer than its size plus one nodes: the caller passes
+the tree component to `dropSmall`, which consumes it. -/
+def KeyTree.sizeDropSmall (n : UInt64) (t : KeyTree) : KeyTree :=
+  match t.sizeDrop n with | (s, u) => u.dropSmall (s + 1)
+
+/-- `sizeDrop`'s size, by projection: the tree component is released right after the call. -/
+def KeyTree.sizeFirst (n : UInt64) (t : KeyTree) : UInt64 := (t.sizeDrop n).1
+
 /-- A test of the depth limit: sixteen words computed before the recursive calls and used after
 them, so that the internal function holds 24 values in its frame, the most the compiler
 accepts, and keeps them live across its calls. -/

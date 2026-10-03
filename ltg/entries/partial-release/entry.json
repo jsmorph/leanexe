@@ -8,12 +8,12 @@
   "scope": "compiler-rule",
   "evidenceStatus": "promoted",
   "features": ["release", "record", "store", "move", "frame", "ownership"],
-  "annotationKinds": ["release child", "clear slot", "release record", "release unmoved"],
+  "annotationKinds": ["release child", "clear slot", "release record", "release unmoved", "release owned parameter"],
   "modules": ["Project.Pipeline.Rebuilt", "Project.IR.Release", "Project.IR.Recursion"],
   "declarations": ["Project.Pipeline.Heap.Rebuilt.released", "Project.IR.Stmt.releaseNode_rebuilt", "Project.IR.Stmt.releaseNode_spec", "Project.Pipeline.NodeOwned.clearLeft", "Project.Pipeline.Heap.Rebuilt.leftChild", "Project.Pipeline.Heap.Rebuilt.dropRight", "Project.Pipeline.Heap.Rebuilt.rightChild", "Project.Pipeline.Heap.Rebuilt.node", "Project.Pipeline.Heap.Rebuilt.refl", "Project.IR.Func.implements_rebuilt"],
   "premises": ["A consumed tree argument, owned with pairwise disjoint blocks", "Heap.At and a memory cap of at most 65,535 pages", "The release function at index 1"],
   "result": "Heap.Rebuilt over the consumed blocks for the value the function returns, from which Func.implements_rebuilt gives Implements.",
-  "consumers": ["Project.Trees.dropRight_implements", "Project.Trees.leftChild_implements", "Project.Trees.keepIf_implements", "Project.Trees.trim_implements"],
+  "consumers": ["Project.Trees.dropRight_implements", "Project.Trees.leftChild_implements", "Project.Trees.keepIf_implements", "Project.Trees.trim_implements", "Project.Trees.sizeDrop_implements"],
   "relatedEntries": ["record-reuse", "consumed-recursion", "release-list"],
   "exclusion": null
 }

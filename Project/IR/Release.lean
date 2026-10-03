@@ -73,4 +73,21 @@ theorem Stmt.releaseNode_rebuilt {typeIdx scratch src : Nat} {initial : Store Un
     fun _ _ ⟨hState, heap', hAt, hCaps, hRegion⟩ =>
       ⟨hState, heap', Heap.Rebuilt.released hAt hCaps hRegion⟩
 
+/-- `Stmt.releaseNode_spec` with its frame as `Heap.Keeps`: the release keeps every region apart
+from the released blocks. -/
+theorem Stmt.releaseNode_keeps {typeIdx scratch src : Nat} {initial : Store Unit}
+    {before : State} {heap : Heap} {ptr : UInt64} {n : Node} (hImports : m.imports = [])
+    (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
+    (hPtr : before.get src = some (.i64 ptr)) (hHeap : heap.At initial)
+    (hOwned : NodeOwned heap initial ptr n)
+    (hDisjoint : (n.blocks initial ptr).Pairwise regionsDisjoint) :
+    Triple m (.release src) scratch (fun store state => store = initial ∧ state = before)
+      (fun store state => state = before ∧ ∃ heap' : Heap, heap'.At store ∧
+        store.memoryCaps = initial.memoryCaps ∧
+        heap.Keeps initial (n.blocks initial ptr) heap' store []) :=
+  (Stmt.releaseNode_spec hImports hFunc hPtr hHeap hOwned hDisjoint).mono (fun _ _ h => h)
+    fun _ _ ⟨hState, heap', hAt, hCaps, hRegion⟩ => ⟨hState, heap', hAt, hCaps,
+      fun r hr hpos hApart => ⟨(hRegion r hr hpos hApart).1, (hRegion r hr hpos hApart).2,
+        fun _ hb => nomatch hb⟩⟩
+
 end Project.IR
