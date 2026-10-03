@@ -23132,7 +23132,24 @@ Revised steps:
 - [x] 2a: remove both checks; `RecordHeader.slots`, `NodeOwned.borrowed`,
   `NodeOwned.slotRegions_apart`, and `Heap.Keeps.rebuilt`; the two LTG entries.  The full build
   passed, and all 22 modules emit the same bytes as before.
-- [ ] 2b: `dropSmall` in `trees` and its theorem.
+- [x] 2b: `dropSmall` in `trees` and its theorem.
 - [ ] 2c: `addLeft` in `treeMoves` and its theorem.
 - [ ] 2d: `leftSpine` in `treeMoves` and its theorem.
 - [ ] Tests, LTG, journal.
+
+### Item 2, step 2b: `dropSmall`
+
+`KeyTree.dropSmall n t := if t.size < n then .leaf else t` joined `trees` as entry 7, so
+`size.rec`, `sum.rec`, and `height.rec` moved to `2 + 6` through `2 + 8`.  It is the first
+function in `trees` that consumes its tree.  `dropSmall_implements` follows `keepIf_implements`
+after one call: `Stmt.callImplements_spec` with `size_implements` takes `NodeOwned.borrowed` for
+the lent tree and `Separate.nil`, `Heap.Keeps.node` gives the tree back owned with the same
+blocks, and `Heap.Keeps.rebuilt` joins `size`'s frame to each branch's `Heap.Rebuilt` (the
+release, or `Heap.Rebuilt.refl`).  `trees_bytes` covers it and depends on `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+Tests: 120 comparisons (each tree with five thresholds) and three count cases (a kept tree frees
+nothing, a dropped tree frees its three records, a leaf allocates nothing).
+`tests/modules/run.sh` passed 7,481 comparisons, 53 count cases, and 12 depth cases, and
+`chunks.py` passed 360 cases.  The full build passed, and every other module emits the same
+bytes as before.

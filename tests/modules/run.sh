@@ -163,6 +163,17 @@ for case in "array-u64:7|5,1,.,.,9,.,.|5 1" "array-u64:|.|2 1"; do
     echo "fail: trees pushSum $xs tree-u64:$tree: $out, expected stats $expected"
   fi
 done
+# dropSmall lends its tree to size, which allocates nothing, and then frees every record when the
+# tree has fewer than n nodes.
+for case in "i64:3|5,1,.,.,9,.,.|3 0" "i64:4|5,1,.,.,9,.,.|3 3" "i64:1|.|0 0"; do
+  IFS='|' read -r n tree expected <<<"$case"
+  out=$("$host" call-stats "$build/trees/trees.wasm" dropSmall tree-u64 "$n" "tree-u64:$tree" \
+    | tail -1)
+  if [ "$out" != "stats $expected" ]; then
+    stats_failed=$((stats_failed + 1))
+    echo "fail: trees dropSmall $n tree-u64:$tree: $out, expected stats $expected"
+  fi
+done
 # addRoot reads the first tree and rewrites the second's root record in place: only the host's
 # records are allocated, and nothing is freed.
 out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" addRoot tree-u64 "tree-u64:2,.,." \
@@ -179,7 +190,7 @@ if [ "$out" != "stats 4 0" ]; then
   stats_failed=$((stats_failed + 1))
   echo "fail: treeMoves addAll: $out, expected stats 4 0"
 fi
-echo "release counts: 50 cases, $stats_failed failed"
+echo "release counts: 53 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0
