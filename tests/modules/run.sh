@@ -54,6 +54,15 @@ applyCommand|i64:1 i64:102 i64:4|2 0
 applyCommand|i64:1 i64:102 i64:1|2 0
 applyCommand|i64:2 i64:102 i64:1|2 0
 CASES
+# Two inserts in one call: the first moves each array to a block of twice the capacity and
+# releases the old block, and the second fits, so the counters show 3 host allocations, 2 more
+# blocks, and 2 frees.
+out=$("$host" call-stats "$build/clob/clob.wasm" runCommands list:array-u64,array-u64 \
+  $prices $sizes array-u64:0,103,5,0,104,5 | tail -1)
+if [ "$out" != "stats 5 2" ]; then
+  stats_failed=$((stats_failed + 1))
+  echo "fail: clob runCommands with two inserts: $out, expected stats 5 2"
+fi
 # sumRange releases the list of n cells that it builds, so the counters show n allocations and
 # n frees.
 for n in 0 1 2 64 300; do
@@ -106,7 +115,7 @@ for case in ".|0 0|0 0" "5,.,.|1 0|1 1" "5,1,.,.,9,.,.|3 1|3 2" "5,1,.,.,9,7,.,.
     fi
   done
 done
-echo "release counts: 35 cases, $stats_failed failed"
+echo "release counts: 36 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0

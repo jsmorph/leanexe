@@ -4,13 +4,12 @@
 # ///
 """Runs a stream of CLOB commands through `clob.wasm` three ways in host sessions: one call of
 `runCommands` over the whole stream, calls over chunks that pass the book back in, and one call
-of `applyCommand` per command.  Checks that the three books agree and that `runCommands`
-allocates and frees exactly what the commands do, plus its own arguments.  Does the same for
-`runOut` and `stepCommand`, which also append the best bid after each command to an output
-array, and checks that `runOut` leaves the book of `runCommands`.  Whether an append grows the
-output array depends on the capacity the allocator gave its block, which differs between
-sessions, so for `runOut` the counts are checked only to leave the results and the command
-arrays allocated.
+of `applyCommand` per command.  Checks that the three books agree.  Does the same for `runOut`
+and `stepCommand`, which also append the best bid after each command to an output array, and
+checks that `runOut` leaves the book of `runCommands`.  Whether an insert or an append grows
+its array depends on the capacity the allocator gave its block, which differs between
+sessions, so the counts are checked to leave exactly the results and the command arrays
+allocated.
 
 Usage: uv run tests/modules/chunks.py [build directory]"""
 
@@ -114,22 +113,19 @@ def main():
             for arrays in ([prices, sizes], [prices, sizes, out]):
                 one, (allocs, frees) = run(directory, arrays, commands, [])
                 steps, step_counts = run_steps(directory, arrays, commands)
-                exact = len(arrays) == 2
                 for cuts in splits:
                     cases += 1
                     chunked, (c_allocs, c_frees) = run(directory, arrays, commands, cuts)
-                    # Each chunk adds its commands array; the frees are those of the commands.
-                    counted = (c_allocs == allocs + len(cuts) and c_frees == frees if exact else
-                               c_allocs - c_frees == len(arrays) + len(cuts) + 1)
+                    # The results and one commands array per chunk stay allocated.
+                    counted = c_allocs - c_frees == len(arrays) + len(cuts) + 1
                     if chunked != one or not counted:
                         failed += 1
                         print(f'fail: trial {trial}, {len(arrays)} arrays, cuts {cuts}: {chunked} '
                               f'with {c_allocs} allocations and {c_frees} frees, against {one} '
                               f'with {allocs} and {frees}')
                 cases += 1
-                # One call allocates its commands array beyond what the steps do.
-                counted = (step_counts == (allocs - 1, frees) if exact else
-                           step_counts[0] - step_counts[1] == len(arrays) and
+                # The steps leave the results allocated, and one call also its commands array.
+                counted = (step_counts[0] - step_counts[1] == len(arrays) and
                            allocs - frees == len(arrays) + 1)
                 if steps != one or not counted:
                     failed += 1

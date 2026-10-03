@@ -624,7 +624,7 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
   | (``HAppend.hAppend, #[_, _, _, _, left, _]) =>
       return if params.contains left.consumeMData then [left.consumeMData] else []
   | (``Array.set!, #[_, array, _, _]) | (``Array.setIfInBounds, #[_, array, _, _])
-  | (``Array.eraseIdxIfInBounds, #[_, array, _]) =>
+  | (``Array.insertIdx!, #[_, array, _, _]) | (``Array.eraseIdxIfInBounds, #[_, array, _]) =>
       return if params.contains array.consumeMData then [array.consumeMData] else []
   | (fn, args) =>
       return ((owners.lookup fn).getD []).filterMap fun i =>
@@ -1819,6 +1819,21 @@ mutual
         let vLocal ← fresh .u64 "insert value"
         let vStmt := Project.IR.Stmt.assign vLocal vIR
         pushStmt vStmt (mkHint ⟨[], 0⟩ (stmtLength vStmt) "insert value" (← sourceOf value) :: vHints)
+        -- An owned array at its last use takes the element in place, in a larger block when
+        -- its own is full.
+        if ctx.owned.contains array.consumeMData then
+          let size ← fresh .u64 "size"
+          let cap ← fresh .u64 "capacity"
+          let dst ← fresh .u64 "new block"
+          let limit ← fresh .u64 "limit"
+          let index ← fresh .u64 "index"
+          let stmt := Stmt.insertInPlace arrayLocal size kLocal vLocal cap dst limit index
+          pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "insert in place" source]
+          markMoved array.consumeMData
+          let some dst := dst? | return arrayLocal
+          let move := Project.IR.Stmt.assign dst (.get arrayLocal)
+          pushStmt move [mkHint ⟨[], 0⟩ (stmtLength move) "array move" source]
+          return dst
         let size ← sizeOf arrayLocal
         -- `insertIdx!` past the end panics and returns the empty array.
         let count : IRExpr .u64 :=
