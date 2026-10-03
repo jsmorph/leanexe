@@ -22477,7 +22477,7 @@ Revised steps:
 - [x] 10a: the shared rule for updates, `Stmt.reserve`, `Stmt.pushInPlace`, the `Live`
   conversion; `stepCommand`.
 - [x] 10b: `rebuilt` scoped to its match; settling at joins for trees; `keepIf` and `trim`.
-- [ ] 10c: tree arguments in calls; `Func.entry_keeps` and its call rule; `insertTwo` and
+- [x] 10c: tree arguments in calls; `Func.entry_keeps` and its call rule; `insertTwo` and
   `sizeSum`.
 - [ ] LTG entries and the count cases in `tests/modules/run.sh`.
 
@@ -22557,4 +22557,44 @@ Tests: `keepIf` and `trim` on 27 trees, three with a root key of 0, and six coun
 (`keepIf` with `c ≠ 0` frees every record; `trim` frees two of three records when the root's
 key is 0 and one otherwise).  `tests/modules/run.sh` passed 7,001 comparisons, 44 count cases,
 and 12 depth cases; `chunks.py` passed 360 cases; the full build passed (3,576 jobs).
+
+### Iteration 10, step 10c: calls with tree arguments
+
+`translateCall` takes arguments of recursive types.  At a borrowed position the argument is a
+variable, read with `lookupNode`; an owned tree there fails ("an owned value may not be passed
+where the callee borrows it"), since no program needs `NodeOwned.borrowed` yet.  At an owned
+position the argument is an owned variable that occurs once among the call's tree arguments, or
+a call, which `translateCall` translates first into a fresh local that the outer call consumes.
+The call half of the shared rule also lets an owned array position take an array term, through
+`translateArray`.  For a term at an owned position, every value that `moveSites` finds it moving
+must occur in no other argument; `g xs (xs.push 1)`, where `g` borrows its first argument, fails
+with "a value that an argument moves may occur in no other argument".  `moveSites` recurses into
+the arguments at a callee's owned positions.  Under `pureCalls`, in loop bodies and array
+elements, tree arguments fail as array arguments do.  A scratch file confirmed the three
+rejections.
+
+`KeepsEntry` is the entry form of `Keeps`, without the depth word: a call aborts or keeps the
+store and returns `f x`.  `Func.entry_keeps` derives it for an entry from its internal
+function's `Keeps`, and `Stmt.callKeeps_spec` is its call rule, after `Stmt.selfCall_spec`.  A
+caller that holds a tree across such a call keeps it because the store does not change, which
+`Implements` does not state.
+
+Programs: `KeyTree.insertTwo a b t := (t.insert a).insert b` in `treeMoves` (entry 9; `incr.rec`
+and `insert.rec` move to 10 and 11) and `KeyTree.sizeSum t := t.size + t.sum` in `trees` (entry
+5; the internal functions move to 6, 7, and 8).  `insertTwo` compiles to two calls of entry 4,
+the second on the first's result.  `insertTwo_implements` applies `Stmt.callImplements_spec`
+with `insert_implements` twice; the caller holds no other tree across either call, so
+`Implements` suffices, and the array frames chain through `apart_pointers` and `block_eq`.
+`sizeSum` compiles to calls of entries 2 and 3 on the same pointer; `sizeSum_implements` applies
+`Stmt.callKeeps_spec` with `size_entry` and `sum_entry` and closes with `Func.implements`.
+`Consumes`, `Func.consumes`, `Func.entry_consumes`, the consuming call rule, and
+`Heap.Rebuilt.trans` wait for a program that holds a second tree across a consuming call.
+`treeMoves_bytes` and `trees_bytes` depend on `propext`, `Classical.choice`, and `Quot.sound`.
+`treeMoves.wasm` is 2,317 bytes, sha256 `56f19127f3bf1d6e…`, and `trees.wasm` 1,862 bytes, sha256
+`ebd7f82228c0c8f3…`; the other modules emit the same bytes as before this step.
+
+Tests: `insertTwo` with three key pairs and `sizeSum` on the 24 trees, and two count cases for
+`insertTwo` (two new keys add two records; two present keys add none).
+`tests/modules/run.sh` passed 7,097 comparisons, 46 count cases, and 12 depth cases;
+`chunks.py` passed 360 cases; the full build passed (3,576 jobs).
 

@@ -628,8 +628,9 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
   | (``Array.push, #[_, array, _]) =>
       moveSites owners params array
   | (fn, args) =>
-      return ((owners.lookup fn).getD []).filterMap fun i =>
-        args[i]?.bind fun arg => if params.contains arg.consumeMData then some arg.consumeMData else none
+      return (← ((owners.lookup fn).getD []).mapM fun i => do
+        let some arg := args[i]? | return []
+        moveSites owners params arg).flatten
 
 /-- Releases the owned parameters that the code has not moved on the current path. -/
 def releaseUnmoved (ctx : Ctx) : CompileM Unit := do
@@ -2131,35 +2132,70 @@ mutual
       for arg in term.getAppArgs do
         if ← isArray (← inferType arg) then
           throwError "a call in a loop body or an array element may not take an array: {source}"
+        if ← isNodeType (← inferType arg) then
+          throwError "a call in a loop body or an array element may not take a value of a recursive type: {source}"
       if ← isArray (← inferType term) then
         throwError "a call in a loop body or an array element may not return an array: {source}"
       let scalars ← try (do let _ ← stateTypes (← inferType term); pure true) catch _ => pure false
       unless scalars do
         throwError "a call in a loop body or an array element must return words and floats: {source}"
     let owners := (ctx.owners.lookup term.getAppFn.constName).getD []
-    -- An owned position receives an owned array that no other array argument names.  Word and
-    -- float arguments run before the call, so they may read it.
-    let arrayArgs ← term.getAppArgs.toList.filterM fun arg => do isArray (← inferType arg)
+    -- An owned position receives an owned variable that no other argument of its kind names, or
+    -- a term whose value is new, which the call consumes; a value that such a term moves occurs
+    -- in no other argument.  Word and float arguments run before the call, so they may read an
+    -- owned variable.
+    let callArgs := term.getAppArgs
+    let arrayArgs ← callArgs.toList.filterM fun arg => do isArray (← inferType arg)
+    let nodeArgs ← callArgs.toList.filterM fun arg => do isNodeType (← inferType arg)
     let mut moved := []
     for position in owners do
-      let some arg := term.getAppArgs[position]?
+      let some arg := callArgs[position]?
         | throwError "a call must supply every argument: {source}"
       let arg := arg.consumeMData
-      unless arg.isFVar && ctx.owned.contains arg &&
-          (arrayArgs.map (occurrences arg.fvarId! ·)).sum == 1 do
-        throwError "an owned parameter must receive an array parameter at its last use: {source}"
-      moved := arg :: moved
+      if arg.isFVar then
+        let sameKind := if ← isNodeType (← inferType arg) then nodeArgs else arrayArgs
+        unless ctx.owned.contains arg && (sameKind.map (occurrences arg.fvarId! ·)).sum == 1 do
+          throwError "an owned parameter must receive an owned value at its last use: {source}"
+        moved := arg :: moved
+      else
+        for x in ← moveSites ctx.owners ctx.owned arg do
+          for h : j in [:callArgs.size] do
+            if j != position && occurrences x.fvarId! callArgs[j] != 0 then
+              throwError "a value that an argument moves may occur in no other argument: {source}"
     let mut args : Array ((type : ScalarType) × IRExpr type) := #[]
     let mut hints := #[]
     let mut offset := 0
-    for arg in term.getAppArgs do
+    for h : position in [:callArgs.size] do
+      let arg := callArgs[position]
       let argType ← inferType arg
+      let owned := owners.contains position
       -- The earlier arguments run after this argument's statements.
       let earlier := args.toList.flatMap fun value => readArrays value.2
       let (values, argHints) ← afterReads ctx earlier do
         if ← isArray argType then
-          let some local_ ← lookupArray (ctx.arrays ++ ctx.floatArrays) arg.consumeMData
-            | throwError "an array argument must be an array variable: {source}"
+          let local_ ← match ← lookupArray (ctx.arrays ++ ctx.floatArrays) arg.consumeMData with
+            | some local_ => pure local_
+            | none =>
+                unless owned do
+                  throwError "an array argument at a borrowed position must be an array variable: {source}"
+                translateArray ctx arg.consumeMData
+          let ir : IRExpr .u64 := .get local_
+          pure ([(⟨.u64, ir⟩ : (type : ScalarType) × IRExpr type)],
+            [mkHint ⟨[], offset⟩ (exprLength ir) "variable" (← sourceOf arg)])
+        else if ← isNodeType argType then
+          let local_ ← match ← lookupNode ctx arg.consumeMData with
+            | some local_ =>
+                if !owned && ctx.owned.contains arg.consumeMData then
+                  throwError "an owned value may not be passed where the callee borrows it: {source}"
+                pure local_
+            | none =>
+                unless owned do
+                  throwError "a borrowed argument of a recursive type must be a variable: {source}"
+                let some callee := ctx.callees.lookup arg.consumeMData.getAppFn.constName
+                  | throwError "an owned argument of a recursive type must be a variable or a call: {source}"
+                let [(result, .u64)] ← translateCall ctx arg.consumeMData callee
+                  | throwError "a call argument of a recursive type must come from a call with one result: {source}"
+                pure result
           let ir : IRExpr .u64 := .get local_
           pure ([(⟨.u64, ir⟩ : (type : ScalarType) × IRExpr type)],
             [mkHint ⟨[], offset⟩ (exprLength ir) "variable" (← sourceOf arg)])

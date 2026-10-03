@@ -66,6 +66,12 @@ def KeyTree.trim : KeyTree → KeyTree
   | .leaf => .leaf
   | .node l k r => if k = 0 then l else .node l k .leaf
 
+/-- The search tree `t` with the keys `a` and then `b`. -/
+def KeyTree.insertTwo (a b : UInt64) (t : KeyTree) : KeyTree := (t.insert a).insert b
+
+/-- The number of nodes plus the sum of the keys, modulo 2^64. -/
+def KeyTree.sizeSum (t : KeyTree) : UInt64 := t.size + t.sum
+
 /-- A test of the depth limit: sixteen words computed before the recursive calls and used after
 them, so that the internal function holds 24 values in its frame, the most the compiler
 accepts, and keeps them live across its calls. -/
