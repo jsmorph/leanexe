@@ -82,6 +82,22 @@ theorem Heap.Keeps.node {heap heap' : Heap} {initial store : Store Unit}
   obtain ⟨hOwned, hBlocks⟩ := NodeOwned.frame q m hm fun b hb => ⟨(hKeep b hb).1, (hKeep b hb).2.1⟩
   exact ⟨hOwned, hBlocks, fun b hb => (hKeep b hb).2.2⟩
 
+/-- A step that keeps the regions apart from `gone` keeps each borrowed value of a recursive
+type whose slot regions have positive length and lie apart from `gone`, with the same slot
+regions, and leaves them apart from the blocks `fresh`. -/
+theorem Heap.Keeps.nodeBorrowed {heap heap' : Heap} {initial store : Store Unit}
+    {gone fresh : List (Nat × Nat)} (h : heap.Keeps initial gone heap' store fresh) {q : UInt64}
+    {m : Node} (hm : NodeBorrowed heap initial q m)
+    (hPos : ∀ b ∈ m.slotRegions initial q, 0 < b.2)
+    (hApart : ∀ b ∈ m.slotRegions initial q, ∀ g ∈ gone, regionsDisjoint b g) :
+    NodeBorrowed heap' store q m ∧ m.slotRegions store q = m.slotRegions initial q ∧
+      ∀ b ∈ m.slotRegions initial q, ∀ c ∈ fresh, regionsDisjoint b c := by
+  have hKeep := fun b (hb : b ∈ m.slotRegions initial q) =>
+    h b (NodeBorrowed.regions q m hm b hb) (hPos b hb) (hApart b hb)
+  obtain ⟨hB, hRegions⟩ :=
+    NodeBorrowed.frame q m hm fun b hb => ⟨(hKeep b hb).1, (hKeep b hb).2.1⟩
+  exact ⟨hB, hRegions, fun b hb => (hKeep b hb).2.2⟩
+
 /-- A value owned before a call that consumed `gone`, apart from `gone`, stays owned with the
 same blocks and lies apart from the call's result. -/
 theorem Heap.Rebuilt.keepNode {heap heap' : Heap} {initial store : Store Unit}

@@ -1,6 +1,7 @@
 import Project.Trees.Module
 import Project.Trees.Encode
 import Project.IR.Recursion
+import Project.IR.Call
 import Project.Pipeline.Records
 import Project.Encoding.RoundTrip
 
@@ -220,48 +221,48 @@ theorem height_implements : Implements trees.module 4 KeyTree.height :=
       | [a], _ => exact ⟨_, rfl, by simp [State.get, Func.state, trees.height.ir, Func.locals]⟩)
     height_rec
 
-/-- `size`'s entry keeps the store, so a caller keeps the trees it holds across the call. -/
-theorem size_entry : ∀ t, KeepsEntry (compile trees.funcs) (2 + 0) KeyTree.size t :=
-  Func.entry_keeps trees.funcs 0 trees.size.ir "size" rfl KeyTree.size
-    (g := trees.size.rec.ir.function (2 + 4)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
-    (compile_funcs (i := 4) rfl) rfl
-    (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
-    (by
-      intro params v hLen
-      match params, hLen with
-      | [a], _ => exact ⟨_, rfl, by simp [State.get, Func.state, trees.size.ir, Func.locals]⟩)
-    size_rec
+/-- The positivity premise for `KeyTree`: every record has three slots. -/
+theorem slotRegions_pos (store : Store Unit) :
+    ∀ (t : KeyTree) (p : UInt64), ∀ b ∈ Node.slotRegions store p (encode t), 0 < b.2
+  | .leaf, _, b, hb => nomatch hb
+  | .node l k r, p, b, hb => by
+      simp only [encode, Node.slotRegions, slotsRegions, List.length_cons, List.length_nil,
+        List.append_nil, List.mem_cons, List.mem_append] at hb
+      rcases hb with rfl | hb | hb
+      · show 0 < 8 * (0 + 1 + 1 + 1); decide
+      · exact slotRegions_pos store l _ b hb
+      · exact slotRegions_pos store r _ b hb
 
-/-- `sum`'s entry keeps the store. -/
-theorem sum_entry : ∀ t, KeepsEntry (compile trees.funcs) (2 + 1) KeyTree.sum t :=
-  Func.entry_keeps trees.funcs 1 trees.sum.ir "sum" rfl KeyTree.sum
-    (g := trees.sum.rec.ir.function (2 + 5)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
-    (compile_funcs (i := 5) rfl) rfl
-    (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
-    (by
-      intro params v hLen
-      match params, hLen with
-      | [a], _ => exact ⟨_, rfl, by simp [State.get, Func.state, trees.sum.ir, Func.locals]⟩)
-    sum_rec
-
-/-- `sizeSum` calls `size` and then `sum` on its borrowed tree; the first call keeps the store,
-so the tree is still there for the second. -/
+/-- `sizeSum` calls `size` and then `sum` on its borrowed tree.  `size`'s `Implements` theorem
+keeps the tree for the second call (`Heap.Keeps.nodeBorrowed`). -/
 theorem sizeSum_implements : Implements trees.module 5 KeyTree.sizeSum := by
-  refine Func.implements trees.funcs 3 trees.sizeSum.ir "sizeSum" rfl KeyTree.sizeSum
+  refine Func.implements_heap trees.funcs 3 trees.sizeSum.ir "sizeSum" rfl KeyTree.sizeSum
     (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) ?_
-  rintro t heap initial _ hHeap hB
-  obtain ⟨p, rfl, -⟩ := id hB
+  rintro t heap initial _ hHeap hB hCap
+  obtain ⟨p, rfl, hNode⟩ := id hB
   let start : State := { params := [.i64 p], locals := [.i64 0, .i64 0] }
-  let s1 : State := { params := [.i64 p], locals := [.i64 t.size, .i64 0] }
-  let s2 : State := { params := [.i64 p], locals := [.i64 t.size, .i64 t.sum] }
   show Triple _ (.seq (.call (2 + 0) [⟨.u64, .get 0⟩] [1]) (.call (2 + 1) [⟨.u64, .get 0⟩] [2])) 3
     (fun store state => store = initial ∧ state = start) _
-  refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = s1)
-    (Stmt.callKeeps_spec rfl (compile_funcs (i := 0) rfl) rfl (size_entry t) hHeap hB rfl rfl) ?_
-  refine (Stmt.callKeeps_spec (next := s2) rfl (compile_funcs (i := 1) rfl) rfl (sum_entry t) hHeap
-    hB rfl rfl).mono (fun _ _ h => h) ?_
-  rintro s st ⟨rfl, rfl⟩
-  exact ⟨rfl, _, _, rfl, rfl⟩
+  refine Stmt.seq_spec (Stmt.callImplements_spec size_implements rfl (compile_funcs (i := 0) rfl)
+    rfl (before := start) (results := [1]) (x := t) rfl hHeap hB Separate.nil hCap
+    (fun _ _ _ h => by rw [show _ = _ from h]; exact ⟨_, rfl⟩)) ?_
+  apply Triple.of_forall
+  rintro s1 st1 ⟨heap1, values1, hAt1, hOwned1, hCaps1, hK1, hSet1⟩
+  obtain rfl : values1 = [.i64 t.size] := hOwned1
+  obtain rfl : st1 = { params := [.i64 p], locals := [.i64 t.size, .i64 0] } :=
+    (Option.some.inj (hSet1.symm.trans rfl))
+  have hB1 : NodeBorrowed heap1 s1 p (encode t) :=
+    (hK1.nodeBorrowed hNode (slotRegions_pos initial t p) fun _ _ _ hg => nomatch hg).1
+  refine (Stmt.callImplements_spec sum_implements rfl (compile_funcs (i := 1) rfl) rfl
+    (results := [2]) (x := t) rfl hAt1 ⟨p, rfl, hB1⟩ Separate.nil
+    (memoryCap_le_of_caps hCaps1 hCap)
+    (fun _ _ _ h => by rw [show _ = _ from h]; exact ⟨_, rfl⟩)).mono (fun _ _ h => h) ?_
+  rintro s2 st2 ⟨heap2, values2, hAt2, hOwned2, hCaps2, hK2, hSet2⟩
+  obtain rfl : values2 = [.i64 t.sum] := hOwned2
+  obtain rfl : st2 = { params := [.i64 p], locals := [.i64 t.size, .i64 t.sum] } :=
+    (Option.some.inj (hSet2.symm.trans rfl))
+  exact ⟨heap2, hAt2, hCaps2.trans hCaps1, _, _, rfl, rfl,
+    hK1.trans hK2 fun _ _ _ _ hb => nomatch hb⟩
 
 /-- `encode` succeeds on `trees.module`, and its bytes decode to a module that computes
 `KeyTree.size`, `KeyTree.sum`, `KeyTree.height`, and `KeyTree.sizeSum` exactly. -/
