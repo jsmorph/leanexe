@@ -23679,7 +23679,7 @@ Under unique ownership, a tree that a call consumes and the code uses again, as 
 `(t.incr, t)`, needs a copy, and a recursive `copy` written in Lean infers an owned parameter and
 rebuilds its argument in place, so no program can write one today.  The recommended form is a copy
 function that the compiler generates for each recursive type, with the depth guard and a proof
-through `Heap.Built`; a runtime copy without a depth limit would need a proof on the scale of
+through `Heap.Built`.  A runtime copy without a depth limit would need a proof on the scale of
 `release_run`.
 
 - [ ] 11: a copy for trees at a consuming use that is not the last.
