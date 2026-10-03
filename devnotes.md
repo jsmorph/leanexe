@@ -22192,7 +22192,7 @@ Revised steps:
 - [x] 9-0, compiler only, with CLOB's bytes unchanged: word and float arguments of a call may
   read an owned array; an array that an earlier result component reads may not move later.
 - [x] 9a: `set!` in place; `fillLevel`, `setLevel`, `addBid`, `cancelBid`, and `applyCommand`.
-- [ ] The generalized fill rule for in-place shifts.
+- [x] The generalized fill rule for in-place shifts.
 - [ ] 9b: `eraseIdxIfInBounds` in place; `removeLevel` and `cancelBid`.
 - [ ] 9c: the generalized grow rule, then `insertIdx!` in place; `insertLevel` and `addBid`.
 - [ ] Count cases, `chunks.py`, LTG entries, and `deslop.md`.
@@ -22245,4 +22245,13 @@ each, and `addBid 103 5` frees one more (4 2).  `tests/modules/run.sh` passed 5,
 every module other than `clob` emits the same bytes.  Two mistakes cost rounds: a stale
 `Project.Clob.Module` olean, which `lake env lean` loaded after I rebuilt only `Update`, and a
 `rintro … rfl` that eliminated the state variable that later lines named.
+
+### Iteration 9: the fill rule with an invariant
+
+`Stmt.fill_inv` in `Update.lean` proves `Stmt.fill` under an invariant `I k store` that the
+caller chooses: each step, from a store where `I k` holds, must leave the element's value `w`,
+an address of element `k` inside memory, and `I (k + 1)` of the store with `w` written there.
+`Stmt.fill_spec` is the case where `I k` says that the first `k` elements and the length are
+in place.  The erase loop reads the next element, and the forward insert loop carries the
+displaced element in a local, so both are instances.
 
