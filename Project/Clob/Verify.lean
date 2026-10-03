@@ -1372,8 +1372,8 @@ theorem stepTuple_eq (prices sizes out : Array UInt64) (kind price size : UInt64
     stepTuple (⟨prices⟩, ⟨sizes⟩, ⟨out⟩, kind, price, size) =
       ((applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size)).1,
         (applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size)).2,
-        out ++ #[(applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size)).1[(0 : UInt64).toNat]!,
-          (applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size)).2[(0 : UInt64).toNat]!]) := rfl
+        (out.push (applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size)).1[(0 : UInt64).toNat]!).push
+          (applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size)).2[(0 : UInt64).toNat]!) := rfl
 
 theorem stepCommand_implements : Implements clob.module 13 stepTuple := by
   refine Func.implements_moves clob.funcs 11 clob.stepCommand.ir "stepCommand" rfl stepTuple
@@ -1397,15 +1397,13 @@ theorem stepCommand_implements : Implements clob.module 13 stepTuple := by
     simp [State.update_params_length, State.update_locals_length]
   let start : State :=
     { params := [.i64 pp, .i64 ps, .i64 po, .i64 kind, .i64 price, .i64 size]
-      locals := List.replicate 15 (.i64 0) }
-  have hStartLen : start.params.length + start.locals.length = 21 := rfl
+      locals := List.replicate 17 (.i64 0) }
+  have hStartLen : start.params.length + start.locals.length = 23 := rfl
   show Triple _ (.seq (.call 11 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩,
         ⟨.u64, .get 5⟩] [6, 7]) <|
       .seq (.assign 8 (.read 6 (.const 0))) <| .seq (.assign 9 (.read 7 (.const 0))) <|
-      .seq (Stmt.arrayLiteral 10 [.get 8, .get 9]) <|
-      .seq (Stmt.append 11 12 13 14 15 16 2 10) <|
-      .seq (.assign 17 (.get 6)) <| .seq (.assign 18 (.get 7)) <|
-      .seq (.assign 19 (.get 11)) (.release 10)) 20
+      .seq (.assign 10 (.get 9)) <| .seq (.assign 11 (.get 8)) <|
+      .seq (Stmt.pushInPlace 2 12 11 13 14 15 16) (Stmt.pushInPlace 2 17 10 18 19 20 21)) 22
     (fun store state => store = initial ∧ state = start) _
   have hL := Live.start_moved hHeap (temps := [(pp, prices), (ps, sizes), (po, out)])
     (fun t ht => by
@@ -1427,7 +1425,7 @@ theorem stepCommand_implements : Implements clob.module 13 stepTuple := by
   rintro s1 st1 ⟨heap1, p1, p2, hL1, hst1⟩
   generalize hA : applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size) = A at hL1
   obtain ⟨P, S⟩ := A
-  have hLen1 : st1.params.length + st1.locals.length = 21 := by rw [hst1, hLenU, hLenU, hStartLen]
+  have hLen1 : st1.params.length + st1.locals.length = 23 := by rw [hst1, hLenU, hLenU, hStartLen]
   have g1 : ∀ j, j ≠ 6 → j ≠ 7 → st1.get j = start.get j := fun j h6 h7 => by
     rw [hst1, State.get_update_ne h6, State.get_update_ne h7]
   have g16 : st1.get 6 = some (.i64 p1) := by
@@ -1437,30 +1435,30 @@ theorem stepCommand_implements : Implements clob.module 13 stepTuple := by
   have hP := hL1.tempsOwned (p1, P) List.mem_cons_self
   have hS := hL1.tempsOwned (p2, S) (List.mem_cons_of_mem _ List.mem_cons_self)
   -- The best bid: the first price and size.
-  obtain ⟨st2, hst2⟩ : ∃ st2, st2 = (st1.update 20 (.i64 0)).update 8 (.i64 P[(0 : UInt64).toNat]!) :=
+  obtain ⟨st2, hst2⟩ : ∃ st2, st2 = (st1.update 22 (.i64 0)).update 8 (.i64 P[(0 : UInt64).toNat]!) :=
     ⟨_, rfl⟩
-  have hLen2 : st2.params.length + st2.locals.length = 21 := by rw [hst2, hLenU, hLenU, hLen1]
+  have hLen2 : st2.params.length + st2.locals.length = 23 := by rw [hst2, hLenU, hLenU, hLen1]
   refine Stmt.seq_spec (Stmt.run_spec (final := st2) ?_) ?_
-  · have hRead := Expr.read_spec (scratch := 20) (array := 6) (position := .const 0) (state := st1)
+  · have hRead := Expr.read_spec (scratch := 22) (array := 6) (position := .const 0) (state := st1)
       hP.values rfl (State.set?_eq_update _ (by rw [hLen1]; decide))
       (by rw [State.get_update_ne (by decide)]; exact g16)
     rw [hst2]
     simp only [Stmt.run, hRead, Option.bind_eq_bind, Option.bind_some]
     exact State.set?_eq_update _ (by rw [hLenU, hLen1]; decide)
-  obtain ⟨st3, hst3⟩ : ∃ st3, st3 = (st2.update 20 (.i64 0)).update 9 (.i64 S[(0 : UInt64).toNat]!) :=
+  obtain ⟨st3, hst3⟩ : ∃ st3, st3 = (st2.update 22 (.i64 0)).update 9 (.i64 S[(0 : UInt64).toNat]!) :=
     ⟨_, rfl⟩
-  have hLen3 : st3.params.length + st3.locals.length = 21 := by rw [hst3, hLenU, hLenU, hLen2]
+  have hLen3 : st3.params.length + st3.locals.length = 23 := by rw [hst3, hLenU, hLenU, hLen2]
   refine Stmt.seq_spec (Stmt.run_spec (final := st3) ?_) ?_
-  · have hRead := Expr.read_spec (scratch := 20) (array := 7) (position := .const 0) (state := st2)
+  · have hRead := Expr.read_spec (scratch := 22) (array := 7) (position := .const 0) (state := st2)
       hS.values rfl (State.set?_eq_update _ (by rw [hLen2]; decide))
       (by rw [State.get_update_ne (by decide), hst2, State.get_update_ne (by decide),
         State.get_update_ne (by decide)]; exact g17)
     rw [hst3]
     simp only [Stmt.run, hRead, Option.bind_eq_bind, Option.bind_some]
     exact State.set?_eq_update _ (by rw [hLenU, hLen2]; decide)
-  have g3 : ∀ j, j ≠ 8 → j ≠ 9 → j ≠ 20 → st3.get j = st1.get j := fun j h8 h9 h20 => by
-    rw [hst3, State.get_update_ne h9, State.get_update_ne h20, hst2, State.get_update_ne h8,
-      State.get_update_ne h20]
+  have g3 : ∀ j, j ≠ 8 → j ≠ 9 → j ≠ 22 → st3.get j = st1.get j := fun j h8 h9 h22 => by
+    rw [hst3, State.get_update_ne h9, State.get_update_ne h22, hst2, State.get_update_ne h8,
+      State.get_update_ne h22]
   have g36 : st3.get 6 = some (.i64 p1) := by rw [g3 6 (by decide) (by decide) (by decide), g16]
   have g37 : st3.get 7 = some (.i64 p2) := by rw [g3 7 (by decide) (by decide) (by decide), g17]
   have g38 : st3.get 8 = some (.i64 P[(0 : UInt64).toNat]!) := by
@@ -1468,64 +1466,55 @@ theorem stepCommand_implements : Implements clob.module 13 stepTuple := by
     exact State.get_update_same (by rw [hLenU, hLen1]; decide)
   have g39 : st3.get 9 = some (.i64 S[(0 : UInt64).toNat]!) := by
     rw [hst3]; exact State.get_update_same (by rw [hLenU, hLen2]; decide)
-  -- The literal of the best bid.
-  refine Stmt.seq_spec (Stmt.arrayLiteral_spec (values := [.get 8, .get 9])
-    (words := [P[(0 : UInt64).toNat]!, S[(0 : UInt64).toNat]!]) (before := st3) hMemory32 hImports
-    hAlloc (by decide) (by rw [hLen3]; decide) hL1.at_ (hL1.cap hCap) (by decide)
-    (.cons (fun _ state hF => ⟨state, by simp [Expr.eval, hF.get 8 (by decide) (by decide), g38]⟩)
-      (.cons (fun _ state hF => ⟨state, by simp [Expr.eval, hF.get 9 (by decide) (by decide), g39]⟩)
-        .nil))) ?_
-  apply Triple.of_forall
-  rintro s4 st4 ⟨pw, hF4, g4w, hNew⟩
-  have hL4 := hL1.push hNew
-  -- `out ++ best` consumes the output array.
-  have hW := hL4.tempsOwned _ List.mem_cons_self
-  have hWO : regionsDisjoint (block s4 pw) (block s4 po) :=
-    (List.pairwise_cons.mp hL4.pairwise).1 (po, out) (by simp)
+  -- The pushed values.
+  let P0 := P[(0 : UInt64).toNat]!
+  let S0 := S[(0 : UInt64).toNat]!
+  obtain ⟨st4, hst4⟩ : ∃ st4, st4 = (st3.update 10 (.i64 S0)).update 11 (.i64 P0) := ⟨_, rfl⟩
+  have hLen4 : st4.params.length + st4.locals.length = 23 := by rw [hst4, hLenU, hLenU, hLen3]
+  refine Stmt.seq_spec (Stmt.run_spec (final := st3.update 10 (.i64 S0))
+    (by simp [Stmt.run, Expr.eval, g39, State.set?_eq_update (state := st3) (index := 10) _
+      (by rw [hLen3]; decide), ScalarType.value, S0])) ?_
+  refine Stmt.seq_spec (Stmt.run_spec (final := st4)
+    (by simp [hst4, Stmt.run, Expr.eval, State.get_update_ne, g38,
+      State.set?_eq_update (state := st3.update 10 (.i64 S0)) (index := 11) _
+        (by rw [hLenU, hLen3]; decide), ScalarType.value, P0])) ?_
   have g42 : st4.get 2 = some (.i64 po) := by
-    rw [hF4.get 2 (by decide) (by decide), g3 2 (by decide) (by decide) (by decide),
-      g1 2 (by decide) (by decide)]; rfl
-  refine Stmt.seq_spec (Live.append (pre := [(pw, _), (p1, P), (p2, S)]) (t := (po, out))
-    (post := []) hMemory32 hImports hAlloc hRelease (by decide) (by decide) (by decide)
-    (by decide) (by decide) (by decide) (by rw [hF4.params, hF4.locals, hLen3]; decide) hL4 hCap
-    hW.borrowed (hW.region_apart hWO) g42 g4w) ?_
+    rw [hst4, State.get_update_ne (by decide), State.get_update_ne (by decide),
+      g3 2 (by decide) (by decide) (by decide), g1 2 (by decide) (by decide)]; rfl
+  have g410 : st4.get 10 = some (.i64 S0) := by
+    rw [hst4, State.get_update_ne (by decide)]; exact State.get_update_same (by rw [hLen3]; decide)
+  have g411 : st4.get 11 = some (.i64 P0) := by
+    rw [hst4]; exact State.get_update_same (by rw [hLenU, hLen3]; decide)
+  -- Two pushes in place onto the output array.
+  refine Stmt.seq_spec ((Stmt.pushInPlace_spec (before := st4) hMemory32 hImports hAlloc hRelease
+    (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
+    (by rw [hLen4]; decide) g42 g411 hL1.at_ (hL1.cap hCap)
+    (hL1.tempsOwned (po, out) (by simp))).mono (fun _ _ h => h)
+      fun _ _ h => Live.appendPost (pre := [(p1, P), (p2, S)]) (t := (po, out)) (post := []) hL1 h) ?_
   apply Triple.of_forall
-  rintro s5 st5 ⟨heap5, pd, hL5, hF5, g5d⟩
-  have hLen5 : st5.params.length + st5.locals.length = 21 := by
-    rw [hF5.params, hF5.locals, hF4.params, hF4.locals, hLen3]
-  have g510 : st5.get 10 = some (.i64 pw) := by
-    rw [hF5.get 10 (by decide) (by decide), g4w]
-  -- The results, then the release of the literal.
-  have g56 : st5.get 6 = some (.i64 p1) := by
-    rw [hF5.get 6 (by decide) (by decide), hF4.get 6 (by decide) (by decide), g36]
-  have g57 : st5.get 7 = some (.i64 p2) := by
-    rw [hF5.get 7 (by decide) (by decide), hF4.get 7 (by decide) (by decide), g37]
-  refine Stmt.seq_spec (Stmt.run_spec (final := st5.update 17 (.i64 p1))
-    (by simp [Stmt.run, Expr.eval, g56, State.set?_eq_update (state := st5) (index := 17) _
-      (by rw [hLen5]; decide), ScalarType.value])) ?_
-  refine Stmt.seq_spec (Stmt.run_spec (final := (st5.update 17 (.i64 p1)).update 18 (.i64 p2))
-    (by simp [Stmt.run, Expr.eval, State.get_update_ne, g57,
-      State.set?_eq_update (state := st5.update 17 (.i64 p1)) (index := 18) _
-        (by rw [hLenU, hLen5]; decide), ScalarType.value])) ?_
-  refine Stmt.seq_spec (Stmt.run_spec
-    (final := ((st5.update 17 (.i64 p1)).update 18 (.i64 p2)).update 19 (.i64 pd))
-    (by simp [Stmt.run, Expr.eval, State.get_update_ne, g5d,
-      State.set?_eq_update (state := (st5.update 17 (.i64 p1)).update 18 (.i64 p2)) (index := 19) _
-        (by rw [hLenU, hLenU, hLen5]; decide), ScalarType.value])) ?_
-  refine (Live.releaseAt
-    (pre := [(pd, out ++ #[P[(0 : UInt64).toNat]!, S[(0 : UInt64).toNat]!])])
-    (t := (pw, #[P[(0 : UInt64).toNat]!, S[(0 : UInt64).toNat]!])) (post := [(p1, P), (p2, S)])
-    hL5 hImports hRelease (by simp [State.get_update_ne, g510])).mono (fun _ _ h => h) ?_
-  rintro s7 st7 ⟨hL7, rfl⟩
-  have hHolds : (((st5.update 17 (.i64 p1)).update 18 (.i64 p2)).update 19 (.i64 pd)).Holds
-      [17, 18, 19] (pointers [(p1, P), (p2, S),
-        (pd, out ++ #[P[(0 : UInt64).toNat]!, S[(0 : UInt64).toNat]!])]) :=
-    .cons (by simp [State.get_update_ne, State.get_update_same, hLen5])
-      (.cons (by simp [State.get_update_ne, State.get_update_same, hLen5])
-        (.cons (by simp [State.get_update_same, hLen5]) .nil))
+  rintro s5 st5 ⟨heap5, q1, hL5, hF5, g52⟩
+  have hLen5 : st5.params.length + st5.locals.length = 23 := by
+    rw [hF5.params, hF5.locals, hLen4]
+  have g510 : st5.get 10 = some (.i64 S0) := by rw [hF5.get 10 (by decide) (by decide), g410]
+  refine ((Stmt.pushInPlace_spec (before := st5) hMemory32 hImports hAlloc hRelease
+    (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
+    (by rw [hLen5]; decide) g52 g510 hL5.at_ (hL5.cap hCap)
+    (hL5.tempsOwned _ List.mem_cons_self)).mono (fun _ _ h => h)
+      fun _ _ h => Live.appendPost (pre := []) (t := (q1, out.push P0))
+        (post := [(p1, P), (p2, S)]) hL5 h).mono (fun _ _ h => h) ?_
+  rintro s6 st6 ⟨heap6, q2, hL6, hF6, g62⟩
+  have g66 : st6.get 6 = some (.i64 p1) := by
+    rw [hF6.get 6 (by decide) (by decide), hF5.get 6 (by decide) (by decide), hst4,
+      State.get_update_ne (by decide), State.get_update_ne (by decide), g36]
+  have g67 : st6.get 7 = some (.i64 p2) := by
+    rw [hF6.get 7 (by decide) (by decide), hF5.get 7 (by decide) (by decide), hst4,
+      State.get_update_ne (by decide), State.get_update_ne (by decide), g37]
+  have hHolds : st6.Holds [6, 7, 2] (pointers [(p1, P), (p2, S), (q2, (out.push P0).push S0)]) :=
+    .cons g66 (.cons g67 (.cons g62 .nil))
   rw [stepTuple_eq, hA]
-  exact Live.finish_results (y := (P, S, out ++ #[P[(0 : UInt64).toNat]!, S[(0 : UInt64).toNat]!]))
-    rfl (hL7.perm List.perm_append_comm) hHolds
+  exact Live.finish_results (y := (P, S, (out.push P0).push S0)) rfl
+    (hL6.perm (List.perm_append_comm (l₁ := [(q2, (out.push P0).push S0)])
+      (l₂ := [(p1, P), (p2, S)]))) hHolds
 
 /-- `runOut` with its four arguments as one tuple: the call consumes the book and the output
 array. -/

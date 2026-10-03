@@ -624,8 +624,9 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
   | (``HAppend.hAppend, #[_, _, _, _, left, _]) =>
       return if params.contains left.consumeMData then [left.consumeMData] else []
   | (``Array.set!, #[_, array, _, _]) | (``Array.setIfInBounds, #[_, array, _, _])
-  | (``Array.insertIdx!, #[_, array, _, _]) | (``Array.eraseIdxIfInBounds, #[_, array, _]) =>
-      return if params.contains array.consumeMData then [array.consumeMData] else []
+  | (``Array.insertIdx!, #[_, array, _, _]) | (``Array.eraseIdxIfInBounds, #[_, array, _])
+  | (``Array.push, #[_, array, _]) =>
+      moveSites owners params array
   | (fn, args) =>
       return ((owners.lookup fn).getD []).filterMap fun i =>
         args[i]?.bind fun arg => if params.contains arg.consumeMData then some arg.consumeMData else none
@@ -1736,10 +1737,20 @@ mutual
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) rule source :: countHints ++ elementHints)
     return dst
 
+  /-- The local of an update's array argument, which the update reads after its position and
+  value, and whether the update may write it in place: the local `arrayVar?` of an array
+  variable, in place when the variable is owned, or else the new owned array that
+  `translateArray` builds from the term. -/
+  partial def updateTarget (ctx : Ctx) (array : Lean.Expr) (arrayVar? : Option Nat) :
+      CompileM (Nat × Bool) := do
+    match arrayVar? with
+    | some local_ => return (local_, ctx.owned.contains array.consumeMData)
+    | none => return (← translateArray ctx array, true)
+
   /-- Translates an `Array UInt64` term to statements that leave a new array, which
   the caller owns, in local `dst?` or a fresh local, and returns the local: an
-  array literal, `set!`, `insertIdx!`, or `eraseIdxIfInBounds` on an array
-  variable, `LeanExe.build`, or an array variable, which is copied. -/
+  array literal; `set!`, `insertIdx!`, `eraseIdxIfInBounds`, or `push` on an array
+  variable or on such a term; `LeanExe.build`; or an array variable, which is copied. -/
   partial def translateArray (ctx : Ctx) (term : Lean.Expr) (dst? : Option Nat := none) :
       CompileM Nat := do
     let term := term.consumeMData
@@ -1778,8 +1789,7 @@ mutual
     | (``Array.set!, #[element, array, position, value])
     | (``Array.setIfInBounds, #[element, array, position, value]) =>
         unless ← isUInt64 element do throwError "unsupported array element type in {source}"
-        let some arrayLocal ← lookupArray ctx.arrays array.consumeMData
-          | throwError "`set!` must be applied to an array variable: {source}"
+        let arrayVar? ← lookupArray ctx.arrays array.consumeMData
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "a `set!` position must be `i.toNat` for a UInt64 `i`: {source}"
         let (kIR, kHints) ← translateValue ctx ⟨[], 0⟩ k
@@ -1791,11 +1801,12 @@ mutual
         let vStmt := Project.IR.Stmt.assign vLocal vIR
         pushStmt vStmt (mkHint ⟨[], 0⟩ (stmtLength vStmt) "set value" (← sourceOf value) :: vHints)
         -- An owned array at its last use takes the new element in place.
-        if ctx.owned.contains array.consumeMData then
+        let (arrayLocal, inPlace) ← updateTarget ctx array arrayVar?
+        if inPlace then
           let size ← fresh .u64 "size"
           let stmt := Stmt.setInPlace arrayLocal size kLocal vLocal
           pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "set in place" source]
-          markMoved array.consumeMData
+          if arrayVar?.isSome then markMoved array.consumeMData
           let some dst := dst? | return arrayLocal
           let move := Project.IR.Stmt.assign dst (.get arrayLocal)
           pushStmt move [mkHint ⟨[], 0⟩ (stmtLength move) "array move" source]
@@ -1807,8 +1818,7 @@ mutual
           return (ir, [mkHint loc (exprLength ir) "set element" source])
     | (``Array.insertIdx!, #[element, array, position, value]) =>
         unless ← isUInt64 element do throwError "unsupported array element type in {source}"
-        let some arrayLocal ← lookupArray ctx.arrays array.consumeMData
-          | throwError "`insertIdx!` must be applied to an array variable: {source}"
+        let arrayVar? ← lookupArray ctx.arrays array.consumeMData
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "an `insertIdx!` position must be `i.toNat` for a UInt64 `i`: {source}"
         let (kIR, kHints) ← translateValue ctx ⟨[], 0⟩ k
@@ -1821,7 +1831,8 @@ mutual
         pushStmt vStmt (mkHint ⟨[], 0⟩ (stmtLength vStmt) "insert value" (← sourceOf value) :: vHints)
         -- An owned array at its last use takes the element in place, in a larger block when
         -- its own is full.
-        if ctx.owned.contains array.consumeMData then
+        let (arrayLocal, inPlace) ← updateTarget ctx array arrayVar?
+        if inPlace then
           let size ← fresh .u64 "size"
           let cap ← fresh .u64 "capacity"
           let dst ← fresh .u64 "new block"
@@ -1829,7 +1840,7 @@ mutual
           let index ← fresh .u64 "index"
           let stmt := Stmt.insertInPlace arrayLocal size kLocal vLocal cap dst limit index
           pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "insert in place" source]
-          markMoved array.consumeMData
+          if arrayVar?.isSome then markMoved array.consumeMData
           let some dst := dst? | return arrayLocal
           let move := Project.IR.Stmt.assign dst (.get arrayLocal)
           pushStmt move [mkHint ⟨[], 0⟩ (stmtLength move) "array move" source]
@@ -1846,8 +1857,7 @@ mutual
           return (ir, [mkHint loc (exprLength ir) "insert element" source])
     | (``Array.eraseIdxIfInBounds, #[element, array, position]) =>
         unless ← isUInt64 element do throwError "unsupported array element type in {source}"
-        let some arrayLocal ← lookupArray ctx.arrays array.consumeMData
-          | throwError "`eraseIdxIfInBounds` must be applied to an array variable: {source}"
+        let arrayVar? ← lookupArray ctx.arrays array.consumeMData
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "an `eraseIdxIfInBounds` position must be `i.toNat` for a UInt64 `i`: {source}"
         let (kIR, kHints) ← translateValue ctx ⟨[], 0⟩ k
@@ -1855,13 +1865,14 @@ mutual
         let kStmt := Project.IR.Stmt.assign kLocal kIR
         pushStmt kStmt (mkHint ⟨[], 0⟩ (stmtLength kStmt) "erase position" (← sourceOf k) :: kHints)
         -- An owned array at its last use loses the element in place.
-        if ctx.owned.contains array.consumeMData then
+        let (arrayLocal, inPlace) ← updateTarget ctx array arrayVar?
+        if inPlace then
           let size ← fresh .u64 "size"
           let limit ← fresh .u64 "limit"
           let index ← fresh .u64 "index"
           let stmt := Stmt.eraseInPlace arrayLocal size kLocal limit index
           pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "erase in place" source]
-          markMoved array.consumeMData
+          if arrayVar?.isSome then markMoved array.consumeMData
           let some dst := dst? | return arrayLocal
           let move := Project.IR.Stmt.assign dst (.get arrayLocal)
           pushStmt move [mkHint ⟨[], 0⟩ (stmtLength move) "array move" source]
@@ -1874,6 +1885,35 @@ mutual
             .ite (.ltU (.get index) (.get kLocal)) (.read arrayLocal (.get index))
               (.read arrayLocal (.bin .add (.get index) (.const 1)))
           return (ir, [mkHint loc (exprLength ir) "erase element" source])
+    | (``Array.push, #[element, array, value]) =>
+        unless ← isUInt64 element do throwError "unsupported array element type in {source}"
+        let arrayVar? ← lookupArray ctx.arrays array.consumeMData
+        let (vIR, vHints) ← translateValue ctx ⟨[], 0⟩ value
+        let vLocal ← fresh .u64 "push value"
+        let vStmt := Project.IR.Stmt.assign vLocal vIR
+        pushStmt vStmt (mkHint ⟨[], 0⟩ (stmtLength vStmt) "push value" (← sourceOf value) :: vHints)
+        -- An owned array at its last use takes the element in place, in a larger block when
+        -- its own is full.
+        let (arrayLocal, inPlace) ← updateTarget ctx array arrayVar?
+        if inPlace then
+          let size ← fresh .u64 "size"
+          let cap ← fresh .u64 "capacity"
+          let dst ← fresh .u64 "new block"
+          let limit ← fresh .u64 "limit"
+          let index ← fresh .u64 "index"
+          let stmt := Stmt.pushInPlace arrayLocal size vLocal cap dst limit index
+          pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "push in place" source]
+          if arrayVar?.isSome then markMoved array.consumeMData
+          let some dst := dst? | return arrayLocal
+          let move := Project.IR.Stmt.assign dst (.get arrayLocal)
+          pushStmt move [mkHint ⟨[], 0⟩ (stmtLength move) "array move" source]
+          return dst
+        let size ← sizeOf arrayLocal
+        emitBuild ctx source "array push" (.bin .add (.get size) (.const 1)) [] (dst? := dst?)
+          fun index loc =>
+            let ir : IRExpr .u64 :=
+              .ite (.ltU (.get index) (.get size)) (.read arrayLocal (.get index)) (.get vLocal)
+            return (ir, [mkHint loc (exprLength ir) "push element" source])
     | (``HAppend.hAppend, #[leftType, rightType, _, _, left, right]) =>
         unless (← isArray leftType) && (← isDefEq leftType rightType) do
           throwError "unsupported append in {source}"
