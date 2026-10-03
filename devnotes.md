@@ -22856,3 +22856,26 @@ The change:
 - [ ] 13a: `Represent.reads` with the store, the premise, and its uses.
 - [ ] 13b: `pushSum` and its theorem; tests.
 - [ ] LTG, `deslop.md`, and the journal.
+
+### Review of the Iteration 13 plan
+
+One reviewer checked the plan.  I ran its six files in the job's scratch directory.  Five check
+with no errors and no `sorry`.  `Shape.lean`'s three failing examples assert that `size`, `sum`,
+and `sum.rec` compile to the same IR after `pushSum` joins the module, and the failures confirm
+that they do not: the internal functions move up by one.  `Overlap.lean` builds the motivating
+input: `xs = #[0]` at `p` with capacity 32 and `t = node leaf 5 leaf` borrowed at `p + 8`, both
+premises holding, after which the push rewrites `t`'s key slot, `sum` returns 1, and the new
+premise rejects the input.  `Body.lean` proves `pushSum`'s body triple along the outline, from the
+new separation.  `Move.lean` checks that `Node.slotRegions` elaborates with only
+`Implements.lean`'s dependencies.
+
+Additions to the plan:
+
+| Finding | Response |
+|---------|----------|
+| `Node.slotRegions` must move into `Implements.lean`, after `Node.pointers` | Moved; its theorems stay in `Records.lean` |
+| `Heap.Keeps.trans` drops the push's fresh-block fact, which the final region clause needs | Compose through `Live` (`Live.start_moved`, `Live.appendPost`, `Live.step`) |
+| Adding `pushSum` moves `size.rec`, `sum.rec`, and `height.rec` from 6, 7, 8 to 7, 8, 9 | Renumber their proofs; `trees_bytes` gains the entry |
+| Doc comments at `Implements.lean` (the `reads` field, the `Encode` instance) and the `checkOwnedNodes` doc in the compiler become wrong | Updated |
+| `Rebuilds` states `Separate` with `reads` | Changes the same way |
+| `step_reads` in `Gpt/Generation.lean` has no store in scope | Gains a store parameter |
