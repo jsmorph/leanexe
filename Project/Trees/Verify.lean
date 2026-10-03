@@ -242,7 +242,7 @@ theorem sizeSum_implements : Implements trees.module 5 KeyTree.sizeSum := by
   obtain rfl : st1 = { params := [.i64 p], locals := [.i64 t.size, .i64 0] } :=
     (Option.some.inj (hSet1.symm.trans rfl))
   have hB1 : NodeBorrowed heap1 s1 p (encode t) :=
-    (hK1.nodeBorrowed hNode (slotRegions_pos initial t p) fun _ _ _ hg => nomatch hg).1
+    (hK1.nodeBorrowed hNode (EncodeSlotted.slotRegions_pos t) fun _ _ _ hg => nomatch hg).1
   refine (Stmt.callImplements_spec sum_implements rfl (compile_funcs (i := 1) rfl) rfl
     (results := [2]) (x := t) rfl hAt1 ⟨p, rfl, hB1⟩ Separate.nil
     (memoryCap_le_of_caps hCaps1 hCap)
@@ -293,7 +293,7 @@ theorem pushSum_implements : Implements trees.module 6 pushSumMoved := by
   rintro s2 st2 ⟨heap1, p1, hL1, hF1, g20⟩
   -- The tree is kept through the push: its slot regions lie apart from the consumed block.
   have hB1 : NodeBorrowed heap1 s2 q (encode t) :=
-    (hL1.keeps.nodeBorrowed hNode (slotRegions_pos initial t q) fun b hb g hg => by
+    (hL1.keeps.nodeBorrowed hNode (EncodeSlotted.slotRegions_pos t) fun b hb g hg => by
       simp only [List.map_cons, List.map_nil, List.mem_singleton] at hg
       subst hg
       exact hApart b hb).1
