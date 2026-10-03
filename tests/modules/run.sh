@@ -256,7 +256,15 @@ if [ "$out" != "stats 3 0" ]; then
   stats_failed=$((stats_failed + 1))
   echo "fail: trees leftSizes: $out, expected stats 3 0"
 fi
-echo "release counts: 70 cases, $stats_failed failed"
+# fillKeep copies the host's array, and fillLevel updates the copy in place: two allocations, no
+# frees.
+out=$("$host" call-stats "$build/clob/clob.wasm" fillKeep list:array-u64,array-u64 \
+  array-u64:4,4,6 i64:1 i64:2 | tail -1)
+if [ "$out" != "stats 2 0" ]; then
+  stats_failed=$((stats_failed + 1))
+  echo "fail: clob fillKeep: $out, expected stats 2 0"
+fi
+echo "release counts: 71 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0

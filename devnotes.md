@@ -23672,7 +23672,7 @@ the program asks for: two arrays where Lean's value has two.  A program in `clob
 sizes)`.
 
 - [x] 8a: the compiler; scratch checks and the byte comparison.
-- [ ] 8b: `fillKeep` and its theorem; tests, LTG, journal.
+- [x] 8b: `fillKeep` and its theorem; tests, LTG, journal.
 
 On 2026-10-03 the user decided: arrays first in item 8, then a copy for trees as its own item.
 Under unique ownership, a tree that a call consumes and the code uses again, as in
@@ -23711,3 +23711,16 @@ receives a copy through `translateArray`, which the call consumes.  `(push1 xs, 
 `(push1 xs, xs)`, `(push1 xs, xs.size.toUInt64)`, `let ys := push1 xs; (ys, xs)`, and
 `(xs.push 1, xs)` compile with one copy each.  `dup` and `(xs[0]!, push1 xs)` fail.  The full
 build passed, and all 22 modules emit the same bytes as before.
+
+### Item 8, step 8b: `fillKeep`
+
+`fillKeep sizes k a := (fillLevel sizes k a, sizes)` joined `clob` as entry 16.  It copies the
+sizes, hands the copy to `fillLevel`, and returns the result with the sizes.
+`fillKeep_implements` follows the reviewer's proof: `Live.start_moved` with the handed-over sizes,
+`Live.copy` for the copy, `Live.callTuple` with the copy as the consumed temporary, and
+`Live.finish_results`.  `clob_bytes` covers it and depends on `propext`, `Classical.choice`, and
+`Quot.sound`.  Tests: 144 comparisons and a count case (the host's array and the copy, no frees).
+`tests/modules/run.sh` passed 9,065 comparisons, 71 count cases, and 16 depth cases, and
+`chunks.py` passed 360 cases.  The full build passed with no `sorry`, and every other module
+emits the same bytes as before.  The `array-build` LTG entry covers the copy at an owned call position.  Item 8 is complete for
+arrays.  Trees follow in item 11.

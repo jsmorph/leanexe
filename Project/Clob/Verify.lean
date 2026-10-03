@@ -6,6 +6,7 @@ import Project.IR.Build
 import Project.IR.Update
 import Project.IR.Call
 import Project.IR.ArrayLoop
+import Project.IR.Tuple
 import Project.Encoding.RoundTrip
 
 namespace Project.Clob
@@ -1723,6 +1724,67 @@ theorem fillTwice_implements : Implements clob.module 15 fillTwiceTuple := by
   exact ⟨heap2, hAt2, hCaps2.trans hCaps1, [.i64 q2], _, rfl, ⟨q2, rfl, hOwned2⟩,
     hK1.trans hK2 fun _ _ hFresh => hFresh⟩
 
+/-- `fillKeep` with its three arguments as one tuple, the sizes handed over. -/
+def fillKeepTuple (x : Moved (Array UInt64) × UInt64 × UInt64) : Array UInt64 × Array UInt64 :=
+  LeanExe.Examples.Clob.fillKeep x.1.val x.2.1 x.2.2
+
+/-- `fillKeep` copies the sizes into a fresh block, which `fillLevel` consumes, and returns the
+call's result with the handed-over sizes. -/
+theorem fillKeep_implements : Implements clob.module 16 fillKeepTuple := by
+  refine Func.implements_moves clob.funcs 14 clob.fillKeep.ir "fillKeep" rfl fillKeepTuple
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨⟨sizes⟩, k, a⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ - hCap
+  change heap.Owned initial ps sizes at hSizes
+  rw [show Represent.moves initial ([.i64 ps] ++ Scalar.values (k, a)) (Moved.mk sizes, k, a) = [ps]
+    from rfl]
+  have hNoImports : clob.module.imports.length = 0 := rfl
+  have hImports : clob.module.imports = [] := rfl
+  have hMemory32 : clob.module.memIs64 = false := rfl
+  have hAlloc : clob.module.funcs[0]? = some (allocFunction 0) := rfl
+  let start : State :=
+    { params := [.i64 ps, .i64 k, .i64 a], locals := List.replicate 6 (.i64 0) }
+  have hStartLen : start.params.length + start.locals.length = 9 := rfl
+  show Triple _ (.seq (Stmt.copy 4 5 6 3 0)
+      (.call 3 [⟨.u64, .get 4⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩] [7])) 8
+    (fun store state => store = initial ∧ state = start) _
+  have hL := Live.start_moved hHeap (temps := [(ps, sizes)])
+    (fun t ht => by rw [List.mem_singleton.mp ht]; exact hSizes) (List.pairwise_singleton _ _)
+  -- The copy joins the live temporaries.
+  refine Stmt.seq_spec (Live.copy hMemory32 hImports hAlloc (by decide) (by decide) (by decide)
+    (by decide) (before := start) (by rw [hStartLen]; decide) hL hCap (ptr := ps) (xs := sizes)
+    rfl (hL.tempsOwned _ List.mem_cons_self).borrowed) ?_
+  apply Triple.of_forall
+  rintro s1 st1 ⟨heap1, p, hL1, hF1, g14⟩
+  have hLen1 : st1.params.length + st1.locals.length = 9 := by
+    rw [hF1.params, hF1.locals, hStartLen]
+  have g11 : st1.get 1 = some (.i64 k) := hF1.get 1 (by decide) (by decide)
+  have g12 : st1.get 2 = some (.i64 a) := hF1.get 2 (by decide) (by decide)
+  have g10 : st1.get 0 = some (.i64 ps) := hF1.get 0 (by decide) (by decide)
+  -- `fillLevel` consumes the copy.
+  refine (Live.callTuple (β := Array UInt64) fillLevel_implements rfl
+    (by rw [hNoImports]; exact compile_funcs (funcs := clob.funcs) (i := 1) rfl) rfl
+    (results := [7]) (consumed := [(p, sizes)]) (rest := [(ps, sizes)]) hL1 hCap
+    (x := (⟨sizes⟩, k, a)) (before := st1) (afterArgs := st1)
+    (vals := [.i64 p, .i64 k, .i64 a])
+    (by simp [Expr.evalResults, Expr.eval, g14, g11, g12])
+    ⟨[.i64 p], _, rfl, ⟨p, rfl, hL1.tempsOwned _ List.mem_cons_self⟩, rfl⟩
+    rfl (fun _ hq => absurd hq List.not_mem_nil) rfl
+    (fun r hr => by rw [List.mem_singleton.mp hr, hLen1]; decide)).mono (fun _ _ h => h) ?_
+  rintro s2 st2 ⟨heap2, ts, hTs, hL2, hSet⟩
+  obtain ⟨⟨q, _⟩, ts, rfl, rfl, hTs1⟩ := List.map_eq_cons_iff.mp hTs
+  obtain rfl := List.map_eq_nil_iff.mp hTs1
+  have hst2 : st2 = st1.update 7 (.i64 q) := by
+    simp only [pointers, List.map_cons, List.map_nil, List.reverse_cons, List.reverse_nil,
+      List.nil_append, State.setAll, State.set?_eq_update _ (show 7 < st1.params.length +
+        st1.locals.length by rw [hLen1]; decide), Option.bind_eq_bind, Option.bind_some,
+      Option.some.injEq] at hSet
+    exact hSet.symm
+  have hHolds : st2.Holds [7, 0] (pointers [(q, fillTuple (⟨sizes⟩, k, a)), (ps, sizes)]) := by
+    rw [hst2]
+    exact .cons (State.get_update_same (by rw [hLen1]; decide))
+      (.cons (by rw [State.get_update_ne (by decide), g10]) .nil)
+  exact Live.finish_results (y := (fillTuple (⟨sizes⟩, k, a), sizes)) rfl hL2 hHolds
+
 /-- `encode` succeeds on `clob.module`, and its bytes decode to a module whose
 exports compute the CLOB operations exactly. -/
 theorem clob_bytes : ∃ bytes, Encoding.encode clob.module = .ok bytes ∧
@@ -1733,13 +1795,13 @@ theorem clob_bytes : ∃ bytes, Encoding.encode clob.module = .ok bytes ∧
       Implements m 8 findTuple ∧ Implements m 9 removeTuple ∧
       Implements m 10 cancelTuple ∧ Implements m 11 applyTuple ∧ Implements m 12 runTuple ∧
       Implements m 13 stepTuple ∧ Implements m 14 outTuple ∧
-      Implements m 15 fillTwiceTuple := by
+      Implements m 15 fillTwiceTuple ∧ Implements m 16 fillKeepTuple := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip clob.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, clob.module, decoded, marketBuy_implements, fillLevel_implements,
     insertLevel_implements, setLevel_implements, addBid_implements,
     depth_implements, findLevel_implements, removeLevel_implements, cancelBid_implements,
     applyCommand_implements, runCommands_implements, stepCommand_implements,
-    runOut_implements, fillTwice_implements⟩
+    runOut_implements, fillTwice_implements, fillKeep_implements⟩
 
 end Project.Clob
