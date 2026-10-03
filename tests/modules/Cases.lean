@@ -352,6 +352,9 @@ def treeCases : IO Unit := do
       let r := t.pushSum xs.toArray
       line "trees" "pushSum" "list:array-u64,i64" [arrU xs, s!"tree-u64:{KeyTree.describe t}"]
         s!"{words r.1.toList},{r.2}"
+    for n in [0, 1, 3, 10, maxU] do
+      line "trees" "dropSmall" "tree-u64" [u n, s!"tree-u64:{KeyTree.describe t}"]
+        (KeyTree.describe (t.dropSmall n))
   for t in trees.take 10 do
     line "treeFrame" "wide" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.wide)
   for t in trees do

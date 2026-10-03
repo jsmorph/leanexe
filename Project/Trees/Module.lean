@@ -5,6 +5,6 @@ namespace Project.Trees
 
 open LeanExe.Examples.Trees in
 leanexe_compile trees := [KeyTree.size, KeyTree.sum, KeyTree.height, KeyTree.sizeSum,
-  KeyTree.pushSum]
+  KeyTree.pushSum, KeyTree.dropSmall]
 
 end Project.Trees

@@ -92,6 +92,10 @@ read. -/
 def KeyTree.pushSum (xs : Array UInt64) (t : KeyTree) : Array UInt64 × UInt64 :=
   (xs.push 1, t.sum)
 
+/-- The tree, or a leaf when it has fewer than `n` nodes: `t` is lent to `size`, then released or
+returned. -/
+def KeyTree.dropSmall (n : UInt64) (t : KeyTree) : KeyTree := if t.size < n then .leaf else t
+
 /-- A test of the depth limit: sixteen words computed before the recursive calls and used after
 them, so that the internal function holds 24 values in its frame, the most the compiler
 accepts, and keeps them live across its calls. -/
