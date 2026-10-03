@@ -382,6 +382,9 @@ def treeCases : IO Unit := do
       line "treeMoves" "addAll" "tree-u64"
         [s!"tree-u64:{KeyTree.describe a}", s!"tree-u64:{KeyTree.describe t}"]
         (KeyTree.describe (a.addAll t))
+      line "treeMoves" "leftSpine" "tree-u64"
+        [s!"tree-u64:{KeyTree.describe a}", s!"tree-u64:{KeyTree.describe t}"]
+        (KeyTree.describe (a.leftSpine t))
   -- Trees whose root's key is 0, for `trim`'s other path.
   let zeroRoots : List KeyTree := [.node .leaf 0 .leaf, .node (.node .leaf 1 .leaf) 0 (.node .leaf 2 .leaf),
     .node (KeyTree.arbitrary 5 1) 0 (KeyTree.arbitrary 6 2)]

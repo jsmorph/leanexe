@@ -51,6 +51,8 @@
     "Project.Pipeline.Heap.Built.rebuilt",
     "Project.Pipeline.Heap.Rebuilt.keepNode",
     "Project.Pipeline.Heap.Keeps.nodeBorrowed",
+    "Project.Pipeline.NodeOwned.borrowed",
+    "Project.Pipeline.NodeOwned.slotRegions_apart",
     "Project.Pipeline.Heap.Rebuilt.node",
     "Project.Pipeline.Node.blocks_pos",
     "Project.IR.Rebuilds",
@@ -75,7 +77,9 @@
     "Project.Trees.insert_rec",
     "Project.Trees.insert_implements",
     "Project.Trees.addAll_rec",
-    "Project.Trees.addAll_implements"
+    "Project.Trees.addAll_implements",
+    "Project.Trees.leftSpine_rec",
+    "Project.Trees.leftSpine_implements"
   ],
   "relatedEntries": [
     "record-reuse",
