@@ -22717,3 +22717,42 @@ Open items, each waiting for a program that needs it:
 | A caller that holds a borrowed tree across a call | the slot-region list and `NodeBorrowed.frame`, which the reviewer proved in a scratch file |
 | A function proved through `Heap.Rebuilt` that calls an `Implements` entry | dropping the page fields of `Heap.Rebuilt` and its relatives, or a page clause in `Implements` |
 
+
+## 2026-10-02: Plan: Iteration 12, borrowed trees and page fields
+
+The two open items of Iteration 11, done now at the user's request.
+
+### Borrowed trees
+
+`Heap.Keeps.node` gives back an owned tree; nothing gives back a borrowed one.  The reviewer's
+scratch file proves it: `Node.slotRegions` lists each record's slot region `(p, 8 * slots.length)`
+and those of its children, `NodeBorrowed.frame` keeps a borrowed value whose slot regions keep
+their bytes and stay regions, and `NodeBorrowed.regions` shows that every slot region is a region
+of the heap.  The plan adds these to `Project/Pipeline/Records.lean` and `Heap.Keeps.nodeBorrowed`
+to `Project/Pipeline/Rebuilt.lean`, with the premise that every slot region has positive length:
+the guard `0 < r.2` excludes the empty region of a record without slots.  `KeyTree`'s encoding
+has three slots per record, and the compiler builds no record without slots.
+
+With it, a caller that borrows a tree across a call uses the callee's `Implements` theorem.
+`sizeSum_implements` changes to two applications of `Stmt.callImplements_spec` with
+`size_implements` and `sum_implements`, and `KeepsEntry`, `Func.entry_keeps`,
+`Stmt.callKeeps_spec`, `size_entry`, and `sum_entry` are deleted, leaving `Implements` as the
+only specification for calls between compiled functions.
+
+### Page fields
+
+`Heap.Rebuilt` and `Heap.Built` carry `pages : initial.mem.pages ≤ store.mem.pages`.  Both
+describe the result of several statements, and `Implements` gives no page bound, so a proof
+cannot fill the field across a call.  The plan removes the field from both.  Its uses are of two
+kinds.  `Heap.Rebuilt.keepBorrowed`, `.keepOwned`, `Heap.Built.keepBorrowed`, and `.keepOwned`
+pass it to `Heap.Borrowed.keep` and `Heap.Owned.keep`; they switch to the page-free
+`Heap.Keeps.borrowed` and `.owned`.  The tree proofs in `Project/Trees/MovesVerify.lean` use it
+in eleven places to bound a store into a record inside memory; there the bound follows from the
+record's block being a region of the later heap and from `Heap.At.top`.
+`Heap.NewRecord` and `Releasing` keep their page facts: each describes one runtime operation,
+`alloc` or `release`, whose effect on the page count its own proof gives, and neither spans a
+call.
+
+- [ ] Borrowed trees; `sizeSum` through `Implements`; the deleted specification.
+- [ ] Page fields removed from `Heap.Rebuilt` and `Heap.Built`.
+- [ ] Build, tests, byte comparison, LTG, and journal.
