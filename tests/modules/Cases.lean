@@ -368,6 +368,8 @@ def treeCases : IO Unit := do
         (KeyTree.describe (t.insert x))
     line "treeMoves" "dropRight" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
       (KeyTree.describe t.dropRight)
+    line "treeMoves" "addLeft" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
+      (KeyTree.describe t.addLeft)
     line "treeMoves" "leftChild" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
       (KeyTree.describe t.leftChild)
     for (a, b) in ([(0, 1), (7, 7), (500, maxU)] : List (UInt64 × UInt64)) do

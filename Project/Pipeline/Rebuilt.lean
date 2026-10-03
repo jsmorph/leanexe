@@ -363,19 +363,19 @@ theorem Heap.Rebuilt.leftChild {heap heap' : Heap} {initial final : Store Unit}
     exact hGone b (List.mem_cons_of_mem _ (List.mem_append_left _ hb))
   · exact hCaps
 
-/-- `dropRight`'s record branch: the right child released, then 0 stored into slot 2.  The
-left child stays, rebuilt by `Heap.Rebuilt.refl`, and `Heap.Rebuilt.node` gives the record with
-a null right child, rebuilt from the node's blocks. -/
-theorem Heap.Rebuilt.dropRight {heap heap2 : Heap} {initial store2 : Store Unit} {p k : UInt64}
-    {nl nr : Node} (hHeap : heap.At initial)
+/-- A record branch that keeps the left child and the key, rebuilds the right child, and then
+stores the rebuilt child's pointer into slot 2: `Heap.Rebuilt.node` with `Heap.Rebuilt.refl`
+for the left child. -/
+theorem Heap.Rebuilt.rightChild {heap heap2 : Heap} {initial store2 : Store Unit}
+    {p k q2 : UInt64} {nl nr mr : Node} (hHeap : heap.At initial)
     (hOwned : NodeOwned heap initial p (.record [.child nl, .word k, .child nr]))
     (hDisjoint : (Node.blocks initial p (.record [.child nl, .word k, .child nr])).Pairwise
       regionsDisjoint)
     (h2 : heap.Rebuilt initial (nr.blocks initial (initial.mem.read64 (slotAddress p 2))) heap2
-      store2 0 .null) :
+      store2 q2 mr) :
     heap.Rebuilt initial (Node.blocks initial p (.record [.child nl, .word k, .child nr])) heap2
-      { store2 with mem := store2.mem.write64 (slotAddress p 2) 0 } p
-      (.record [.child nl, .word k, .child .null]) := by
+      { store2 with mem := store2.mem.write64 (slotAddress p 2) q2 } p
+      (.record [.child nl, .word k, .child mr]) := by
   have hOwned' := hOwned
   obtain ⟨hHead, hl, hk, -, -⟩ := hOwned'
   simp only [Nat.zero_add] at hk
@@ -394,7 +394,7 @@ theorem Heap.Rebuilt.dropRight {heap heap2 : Heap} {initial store2 : Store Unit}
   have h0 := slotAddress_toNat (p := p) (i := 0) (by omega)
   have h1 := slotAddress_toNat (p := p) (i := 1) (by omega)
   have h2' := slotAddress_toNat (p := p) (i := 2) (by omega)
-  -- The release keeps the record's block.
+  -- The right child's rebuild keeps the record's block.
   obtain ⟨hBytesP, -, -⟩ := h2.region _ hHead.region (block_pos initial p)
     fun b hb => hP0 b (List.mem_append_right _ hb)
   have hKeep : ∀ i, i < 2 → store2.mem.read64 (slotAddress p i) =
@@ -403,15 +403,28 @@ theorem Heap.Rebuilt.dropRight {heap heap2 : Heap} {initial store2 : Store Unit}
       rw [slotAddress_toNat (by omega)]
       exact hBytesP _ (by simp only [block]; omega) (by simp only [block]; omega)
   have hWrites : Memory.WritesRange store2
-      { store2 with mem := store2.mem.write64 (slotAddress p 2) 0 } p.toNat (p.toNat + 24) :=
-    Memory.WritesRange.write64 store2 _ 0 _ _ (by omega) (by omega)
+      { store2 with mem := store2.mem.write64 (slotAddress p 2) q2 } p.toNat (p.toNat + 24) :=
+    Memory.WritesRange.write64 store2 _ q2 _ _ (by omega) (by omega)
   have hW8 : Memory.WritesRange store2
-      { store2 with mem := store2.mem.write64 (slotAddress p 2) 0 } (p.toNat + 16)
+      { store2 with mem := store2.mem.write64 (slotAddress p 2) q2 } (p.toNat + 16)
         (p.toNat + 24) :=
-    Memory.WritesRange.write64 store2 _ 0 _ _ (by omega) (by omega)
+    Memory.WritesRange.write64 store2 _ q2 _ _ (by omega) (by omega)
   exact Heap.Rebuilt.node hOwned hDisjoint (Heap.Rebuilt.refl hHeap hl hPl) h2 hWrites
     ((hW8.read64 _ (by omega)).trans (hKeep 0 (by omega)))
     ((hW8.read64 _ (by omega)).trans ((hKeep 1 (by omega)).trans hk))
     (Memory.read64_write64 _ _ _)
+
+/-- `dropRight`'s record branch: the right child released, then 0 stored into slot 2. -/
+theorem Heap.Rebuilt.dropRight {heap heap2 : Heap} {initial store2 : Store Unit} {p k : UInt64}
+    {nl nr : Node} (hHeap : heap.At initial)
+    (hOwned : NodeOwned heap initial p (.record [.child nl, .word k, .child nr]))
+    (hDisjoint : (Node.blocks initial p (.record [.child nl, .word k, .child nr])).Pairwise
+      regionsDisjoint)
+    (h2 : heap.Rebuilt initial (nr.blocks initial (initial.mem.read64 (slotAddress p 2))) heap2
+      store2 0 .null) :
+    heap.Rebuilt initial (Node.blocks initial p (.record [.child nl, .word k, .child nr])) heap2
+      { store2 with mem := store2.mem.write64 (slotAddress p 2) 0 } p
+      (.record [.child nl, .word k, .child .null]) :=
+  Heap.Rebuilt.rightChild hHeap hOwned hDisjoint h2
 
 end Project.Pipeline
