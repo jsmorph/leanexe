@@ -22702,8 +22702,9 @@ through, and `Heap.Rebuilt.keepNode` now follows from `Heap.Keeps.node`.
 The program proofs changed where they stated the old clauses: the NewArray and `Live.finish`
 endings in GPT, `two_updates` in CLOB (two in-place updates in a row), `setKey` and
 `insertTwo` in `treeMoves`, `generating_step`, and the list, word, pair, and count modules.  The
-change removed 902 lines and added 667.  No compiler or module file changed, so the emitted
-bytes are the same.  The full build passed (3,576 jobs), and `clob_bytes`, `gpt_bytes`,
+change removed 902 lines and added 667.  No compiler or module file changed.  All 22 modules,
+`gpt` included, emit the same bytes as before, and `tests/modules/run.sh` passed 7,097
+comparisons, 46 count cases, and 12 depth cases.  `chunks.py` passed 360 cases.  The full build passed (3,576 jobs), and `clob_bytes`, `gpt_bytes`,
 `treeMoves_bytes`, `trees_bytes`, `lists_bytes`, and `words_bytes` depend on `propext`,
 `Classical.choice`, and `Quot.sound`.  The LTG entry `region-frame` describes the frame, and
 `function-call`, `array-build`, `array-literal`, and `in-place-update` describe their frames in
