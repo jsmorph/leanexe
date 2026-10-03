@@ -355,6 +355,9 @@ def treeCases : IO Unit := do
     for n in [0, 1, 3, 10, maxU] do
       line "trees" "dropSmall" "tree-u64" [u n, s!"tree-u64:{KeyTree.describe t}"]
         (KeyTree.describe (t.dropSmall n))
+      let r := t.sizeDrop n
+      line "trees" "sizeDrop" "list:i64,tree-u64" [u n, s!"tree-u64:{KeyTree.describe t}"]
+        s!"{r.1},{KeyTree.describe r.2}"
   for t in trees.take 10 do
     line "treeFrame" "wide" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.wide)
   for t in trees do
@@ -385,6 +388,11 @@ def treeCases : IO Unit := do
       line "treeMoves" "leftSpine" "tree-u64"
         [s!"tree-u64:{KeyTree.describe a}", s!"tree-u64:{KeyTree.describe t}"]
         (KeyTree.describe (a.leftSpine t))
+      for c in [0, 1] do
+        let r := KeyTree.pickPair c a t
+        line "treeMoves" "pickPair" "list:tree-u64,tree-u64"
+          [u c, s!"tree-u64:{KeyTree.describe a}", s!"tree-u64:{KeyTree.describe t}"]
+          s!"{KeyTree.describe r.1},{KeyTree.describe r.2}"
   -- Trees whose root's key is 0, for `trim`'s other path.
   let zeroRoots : List KeyTree := [.node .leaf 0 .leaf, .node (.node .leaf 1 .leaf) 0 (.node .leaf 2 .leaf),
     .node (KeyTree.arbitrary 5 1) 0 (KeyTree.arbitrary 6 2)]

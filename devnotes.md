@@ -23251,3 +23251,74 @@ sites use it in place of the removed `Project.Trees.slotRegions_pos`.  The full 
 (3,577 jobs) with no `sorry`, all 22 modules emit the same bytes as before, and the
 `region-frame`, `function-call`, and `consumed-recursion` LTG entries name the new lemma.
 Item 3 is complete.
+
+### Item 4: a tree inside a pair result, analysis
+
+The pair instance of `Represent` covers tree components already: an owned pair is two owned
+components whose blocks lie apart.  Scratch programs show what the compiler does with them:
+
+| Program | Shape | Result |
+|---------|-------|--------|
+| `withSize t := (size t, t)`, `incrPair t := (7, incr t)`, `swap a b := (b, a)`, `pickPair c a b := if c = 0 then (a, b) else (b, a)`, `pushTree xs t := (xs.push 1, t)` | components are variables or calls | compile; no proved program |
+| `keepFirst c t := if c = 0 then (0, t) else (1, .leaf)`, `sizeDrop n t := let s := size t; if s < n then (s, .leaf) else (s, t)` | a path whose pair does not contain the owned tree | rejected by `releaseUnmoved` ("releasing it is not supported yet"); compiles once `releaseUnmoved` releases a tree as it does an array |
+| `match withSize t with \| (n, u) => setKey n u`, `... => (n + 1, u)`, `(withSize t).1` | a caller takes the pair apart | rejected: `ownComponents` makes array and pair components owned but not trees, so `u` counts as borrowed and can be neither consumed, returned, nor released |
+| `splitRoot t := match t with \| .leaf => (.leaf, .leaf) \| .node l _ r => (l, r)`, `rootAndRest` | a pair-valued match on a tree | rejected: `translateCases` handles pair-valued case splits only on structures and enumerations |
+
+The release of an unmoved tree is the call of the release function on its pointer, which frees
+every record through the child masks, as `keepIf` and `dropSmall` do at a join; the proof is
+`Stmt.releaseNode_rebuilt` or `Stmt.releaseNode_spec`.  A caller's tree component would follow
+the array temporaries: an owned temporary at the top of the body, which the code may move and
+the function releases at the end otherwise.
+
+### Item 4: approaches
+
+| Approach | What it does | Effect |
+|----------|--------------|--------|
+| A. Callee side | `releaseUnmoved` releases trees; prove `sizeDrop` in `trees` and `pickPair` in `treeMoves` | Functions return pairs with trees; no Lean caller can use them |
+| B. A plus the caller side | `ownComponents` makes a tree component an owned temporary, released at the end when unmoved; prove a caller that re-pairs the tree and one that drops it | Pair results with trees work between compiled functions |
+| C. B plus pair-valued matches on trees | `translateCases` takes a tree discriminant, with the record branch's reuse and release | Also `splitRoot` and `rootAndRest` |
+
+Recommendation: B, with the pair-valued match on a tree recorded as item 10.  A pair result
+with a tree is useful to Lean callers only when they can take it apart, and the caller side
+reuses the temporaries that arrays use.  The pair-valued match is a separate translation
+feature, as large as the tree-valued match with its reuse and release paths.  Programs:
+`sizeDrop` (lends `t` to `size` through a word `let`, the path the item 2 review found without a
+proof, and releases `t` on one path) and two callers in `trees`, `sizeDropNext n t := match
+sizeDrop n t with | (s, u) => (s + 1, u)` and `sizeAfterDrop n t := match sizeDrop n t with
+| (s, _) => s`; `pickPair` in `treeMoves`, whose two result trees must lie apart.
+
+- [x] 4a: `releaseUnmoved` releases trees; `sizeDrop` and `pickPair` with their theorems.
+- [ ] 4b: tree components of a call's pair result as owned temporaries; the two callers and
+  their theorems.
+- [ ] Tests, LTG, journal.
+
+### Review of the item 4 plan
+
+One reviewer probed the `releaseUnmoved` change and prototyped approach B in a renamed copy of
+the compiler.  I reran its files `R1.lean` and `CurTest.lean`; the outputs match its own.
+
+| Finding | Response |
+|---------|----------|
+| The tree release in `releaseUnmoved` is correct in every probe: branches that move a child take the clear-and-release path, tree-valued joins mark both branches consumed so nothing is released twice, and the release runs after each branch stores its results | 4a stands |
+| Accepted programs whose `Implements` is false, predating this item: an owned pair variable has no move tracking, so `match pairOfA xs with \| (p, _) => (p, p)` returns one array twice, `(p.2, p.2)` and `(p, p)` return one tree twice, and `match p with \| (_, a) => p` releases the array and then returns it; `bindTyped` binds a list component as a word, so `(a, a)` copies a list | Fix in 4b: using a pair variable whole, projecting an owned component, or taking it apart moves it; list components bind as lists |
+| The caller side partly compiles already and leaks: `match sizeDrop n t with \| (s, _) => s` and projections such as `(f t).1` never release the tree component | The analysis was wrong; 4b releases them |
+| `(withSize t).2` fails in `moveSites`, which does not look through projections | 4b: `moveSites` looks through `Prod.fst`, `Prod.snd`, and projections |
+| B needs: tree components as owned temporaries in `ownComponents`; `moveSites` through projections; a projection of a call releases the call's other array and tree components; the pair-variable moves above | Adopted as the plan for 4b |
+| The callers do not test a callee that consumes a temporary | Add `match sizeDrop n t with \| (s, u) => dropSmall (s + 1) u` |
+| `Heap.Keeps.release` covers one object; a tree uses `Stmt.releaseNode_spec`; `sumRange` in `Project/Lists/Verify.lean` releases a call's result the same way | Follow `sumRange` |
+| A pair-valued `if` releases every owned value not yet moved, so `(if c = 0 then (0, 1) else (1, 0), t)` fails; an owned pair of words in a pair-valued branch fails with "an owned parameter has no local" | Limitations, recorded |
+
+### Item 4, step 4a
+
+`releaseUnmoved` releases an owned tree that a path does not move, through the release function
+and the child masks.  `KeyTree.sizeDrop` joined `trees` as entry 8 (the internal functions moved
+to `2 + 7` through `2 + 9`), and `KeyTree.pickPair` joined `treeMoves` as entry 14 (the internal
+functions moved to `2 + 13` through `2 + 16`).  `sizeDrop_implements` lends the tree to `size`
+through a word `let`, which the item 2 review found without a proof, and releases it on the path
+whose pair holds a leaf; `Heap.Rebuilt.wordPair` turns a rebuilt tree paired with a word into
+the owned pair and its frame.  `pickPair_implements` returns two consumed trees in either order:
+`Separate` places their blocks apart, which `treePair_owned` turns into the owned pair.  The test
+host prints a tree inside a list result (`tools/wasmtime-host.c`).
+
+Tests: 120 `sizeDrop` comparisons with two count cases, and 192 `pickPair` comparisons with one
+count case.  `tests/modules/run.sh` passed 7,913 comparisons, 58 count cases, and 12 depth cases.

@@ -139,8 +139,8 @@ theorem treeRec {i : Nat} {func : Func} {name : String} (hFunc : trees.funcs[i]?
     · rintro s st ⟨rfl, rfl⟩
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
-theorem size_rec : ∀ t, Keeps (compile trees.funcs) (2 + 6) KeyTree.size t :=
-  treeRec (i := 6) rfl KeyTree.size 0 (fun a _ b => a + 1 + b) rfl (fun _ _ _ => rfl) 0 _ rfl
+theorem size_rec : ∀ t, Keeps (compile trees.funcs) (2 + 7) KeyTree.size t :=
+  treeRec (i := 7) rfl KeyTree.size 0 (fun a _ b => a + 1 + b) rfl (fun _ _ _ => rfl) 0 _ rfl
     rfl rfl rfl rfl fun initial p d pl k pr a b => by
       refine Stmt.assign_spec.mono ?_ fun _ _ h => h
       rintro s st ⟨rfl, rfl⟩
@@ -150,8 +150,8 @@ theorem size_rec : ∀ t, Keeps (compile trees.funcs) (2 + 6) KeyTree.size t :=
       exact ⟨a + 1 + b, _, next, rfl, rfl, rfl, next,
         by simp [Expr.evalResults, Expr.eval, State.get, next]⟩
 
-theorem sum_rec : ∀ t, Keeps (compile trees.funcs) (2 + 7) KeyTree.sum t :=
-  treeRec (i := 7) rfl KeyTree.sum 0 (fun a k b => a + k + b) rfl (fun _ _ _ => rfl) 0 _ rfl
+theorem sum_rec : ∀ t, Keeps (compile trees.funcs) (2 + 8) KeyTree.sum t :=
+  treeRec (i := 8) rfl KeyTree.sum 0 (fun a k b => a + k + b) rfl (fun _ _ _ => rfl) 0 _ rfl
     rfl rfl rfl rfl fun initial p d pl k pr a b => by
       refine Stmt.assign_spec.mono ?_ fun _ _ h => h
       rintro s st ⟨rfl, rfl⟩
@@ -161,8 +161,8 @@ theorem sum_rec : ∀ t, Keeps (compile trees.funcs) (2 + 7) KeyTree.sum t :=
       exact ⟨a + k + b, _, next, rfl, rfl, rfl, next,
         by simp [Expr.evalResults, Expr.eval, State.get, next]⟩
 
-theorem height_rec : ∀ t, Keeps (compile trees.funcs) (2 + 8) KeyTree.height t :=
-  treeRec (i := 8) rfl KeyTree.height 0 (fun a _ b => max a b + 1) rfl (fun _ _ _ => rfl) 2 _
+theorem height_rec : ∀ t, Keeps (compile trees.funcs) (2 + 9) KeyTree.height t :=
+  treeRec (i := 9) rfl KeyTree.height 0 (fun a _ b => max a b + 1) rfl (fun _ _ _ => rfl) 2 _
     rfl rfl rfl rfl rfl fun initial p d pl k pr a b => by
       let s1 : State :=
         { params := [.i64 p, .i64 d]
@@ -192,8 +192,8 @@ theorem height_rec : ∀ t, Keeps (compile trees.funcs) (2 + 8) KeyTree.height t
 
 theorem size_implements : Implements trees.module 2 KeyTree.size :=
   Func.entry_implements trees.funcs 0 trees.size.ir "size" rfl KeyTree.size
-    (g := trees.size.rec.ir.function (2 + 6)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
-    (compile_funcs (i := 6) rfl) rfl
+    (g := trees.size.rec.ir.function (2 + 7)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
+    (compile_funcs (i := 7) rfl) rfl
     (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
     (by
       intro params v hLen
@@ -203,8 +203,8 @@ theorem size_implements : Implements trees.module 2 KeyTree.size :=
 
 theorem sum_implements : Implements trees.module 3 KeyTree.sum :=
   Func.entry_implements trees.funcs 1 trees.sum.ir "sum" rfl KeyTree.sum
-    (g := trees.sum.rec.ir.function (2 + 7)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
-    (compile_funcs (i := 7) rfl) rfl
+    (g := trees.sum.rec.ir.function (2 + 8)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
+    (compile_funcs (i := 8) rfl) rfl
     (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
     (by
       intro params v hLen
@@ -214,8 +214,8 @@ theorem sum_implements : Implements trees.module 3 KeyTree.sum :=
 
 theorem height_implements : Implements trees.module 4 KeyTree.height :=
   Func.entry_implements trees.funcs 2 trees.height.ir "height" rfl KeyTree.height
-    (g := trees.height.rec.ir.function (2 + 8)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
-    (compile_funcs (i := 8) rfl) rfl
+    (g := trees.height.rec.ir.function (2 + 9)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
+    (compile_funcs (i := 9) rfl) rfl
     (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
     (by
       intro params v hLen
@@ -402,18 +402,125 @@ theorem dropSmall_implements : Implements trees.module 7 dropSmallMoved := by
     · exact ⟨true, s1, by simp [Expr.eval, s1, State.get, hc], rfl, rfl, hc⟩
     · exact ⟨false, s1, by simp [Expr.eval, s1, State.get, hc], rfl, rfl, hc⟩
 
+/-- A rebuilt tree paired with a word is the owned pair, with the rebuild's frame. -/
+theorem Heap.Rebuilt.wordPair {heap heap' : Heap} {initial store : Store Unit}
+    {gone : List (Nat × Nat)} {w q : UInt64} {u : KeyTree}
+    (h : heap.Rebuilt initial gone heap' store q (encode u)) :
+    Represent.owned heap' store [.i64 w, .i64 q] (w, u) ∧
+      heap.Keeps initial gone heap' store (Represent.blocks store [.i64 w, .i64 q] (w, u)) :=
+  ⟨⟨[.i64 w], [.i64 q], rfl, rfl, ⟨q, rfl, h.owned, h.disjoint⟩, fun _ hb => nomatch hb⟩,
+    Heap.Keeps.mono h.region (fun _ hb => hb) fun b hb => by
+      simp [Represent.blocks, Represent.width, Scalar.values] at hb
+      exact hb⟩
+
+/-- `sizeDrop` with its two arguments as one pair, the tree consumed. -/
+def sizeDropMoved (x : UInt64 × Moved KeyTree) : UInt64 × KeyTree := KeyTree.sizeDrop x.1 x.2.val
+
+/-- `sizeDrop` lends its tree to `size` through a word `let`, then releases it on the path whose
+pair holds a leaf and returns it in the pair on the other. -/
+theorem sizeDrop_implements : Implements trees.module 8 sizeDropMoved := by
+  refine Func.implements_moves trees.funcs 6 trees.sizeDrop.ir "sizeDrop" rfl _
+    (by rintro _ _ _ _ ⟨_, _, rfl, rfl, p, rfl, -⟩; rfl) ?_
+  rintro ⟨n, ⟨t⟩⟩ heap initial _ hHeap ⟨_, _, rfl, rfl, p, rfl, hOwned, hDisjoint⟩ - hCap
+  change NodeOwned heap initial p (encode t) at hOwned
+  change (Node.blocks initial p (encode t)).Pairwise regionsDisjoint at hDisjoint
+  have hGone : (Represent.moves initial (Scalar.values n ++ [.i64 p]) (n, Moved.mk t)).map
+      (block initial) = Node.blocks initial p (encode t) := Node.pointers_blocks initial p (encode t)
+  rw [hGone]
+  have hImports : (compile trees.funcs).imports = [] := rfl
+  have hRelease : (compile trees.funcs).funcs[1]? = some (releaseFunction 1) := rfl
+  let z : Value := .i64 0
+  let c := t.size
+  let ps : List Value := [.i64 n, .i64 p]
+  let start : State := { params := ps, locals := [z, z, z, z] }
+  let s1 : State := { params := ps, locals := [.i64 c, z, z, z] }
+  let s2 : State := { params := ps, locals := [.i64 c, .i64 c, z, z] }
+  let s3 : State := { params := ps, locals := [.i64 c, .i64 c, .i64 c, z] }
+  let sElse : State := { params := ps, locals := [.i64 c, .i64 c, .i64 c, .i64 p] }
+  have hStart : trees.sizeDrop.ir.state (Scalar.values n ++ [.i64 p]) = start := rfl
+  rw [hStart]
+  show Triple _ (.seq (.call (2 + 0) [⟨.u64, .get 1⟩] [2])
+      (.seq (.assign 3 (.get 2))
+        (.ite (.ltU (.get 3) (.get 0))
+          (.seq (.assign 4 (.get 3)) (.seq (.assign 5 (.const 0)) (.release 1)))
+          (.seq (.assign 4 (.get 3)) (.assign 5 (.get 1)))))) 6
+    (fun store state => store = initial ∧ state = start) _
+  refine Stmt.seq_spec (Stmt.callImplements_spec size_implements rfl (compile_funcs (i := 0) rfl)
+    rfl (before := start) (results := [2]) (x := t) rfl hHeap
+    ⟨p, rfl, NodeOwned.borrowed p _ hOwned⟩ Separate.nil hCap
+    (fun _ _ _ h => by rw [show _ = _ from h]; exact ⟨_, rfl⟩)) ?_
+  refine Triple.of_forall fun store1 st ⟨heap1, values1, hAt1, hOwned1, hCaps1, hK1, hSet1⟩ => ?_
+  obtain rfl : values1 = [.i64 c] := hOwned1
+  obtain rfl : st = s1 := (Option.some.inj (hSet1.symm.trans rfl))
+  -- The tree comes back owned with the same blocks, since `size` consumes nothing.
+  obtain ⟨hOwnedT, hBlocks, -⟩ := Heap.Keeps.node hK1 hOwned fun _ _ _ hg => nomatch hg
+  have hDisjoint1 : (Node.blocks store1 p (encode t)).Pairwise regionsDisjoint := by
+    rw [hBlocks]; exact hDisjoint
+  have hK : heap.Keeps initial (Node.blocks initial p (encode t)) heap1 store1 [] :=
+    hK1.mono (fun _ hb => nomatch hb) fun _ hb => nomatch hb
+  have hAfter : ∀ r, (∀ b ∈ Node.blocks initial p (encode t), regionsDisjoint r b) →
+      (∀ b ∈ ([] : List (Nat × Nat)), regionsDisjoint r b) →
+      ∀ b ∈ Node.blocks store1 p (encode t), regionsDisjoint r b := fun _ hr _ b hb =>
+    hr b (by rwa [hBlocks] at hb)
+  refine Stmt.seq_spec (M := fun s st => s = store1 ∧ st = s2)
+    (Stmt.assign_spec.mono (fun s st ⟨hs, hst⟩ => ⟨c, s1, s2, by rw [hst]; rfl, rfl, hs, rfl⟩)
+      fun _ _ h => h) ?_
+  refine (Stmt.ite_spec (PThen := fun s st => s = store1 ∧ st = s2 ∧ c < n)
+    (PElse := fun s st => s = store1 ∧ st = s2 ∧ ¬ c < n) ?_ ?_).mono ?_ fun _ _ h => h
+  · -- A leaf in the pair, and the tree released.
+    refine Stmt.seq_spec (M := fun s st => s = store1 ∧ st = s3 ∧ c < n) ?_ <|
+      Stmt.seq_spec (M := fun s st => s = store1 ∧ st = s3 ∧ c < n) ?_ ?_
+    · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+      rintro s st ⟨hs, rfl, hc⟩
+      exact ⟨c, s2, s3, rfl, rfl, hs, rfl, hc⟩
+    · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+      rintro s st ⟨hs, rfl, hc⟩
+      exact ⟨0, s3, s3, rfl, rfl, hs, rfl, hc⟩
+    · refine Triple.of_forall fun s st ⟨hs, hst, hc⟩ => ?_
+      subst s hst
+      refine (Stmt.releaseNode_rebuilt hImports hRelease rfl hAt1 hOwnedT hDisjoint1).mono
+        (fun _ _ h => h) ?_
+      rintro s' st' ⟨rfl, heap', hR⟩
+      have hv : sizeDropMoved (n, ⟨t⟩) = (c, .leaf) := by
+        simp [sizeDropMoved, KeyTree.sizeDrop, c, hc]
+      have hR' := Heap.Keeps.rebuilt hK hCaps1 hR hAfter
+      obtain ⟨hOwnedP, hKP⟩ := Heap.Rebuilt.wordPair (w := c) (u := .leaf) hR'
+      refine ⟨heap', hR'.at_, hR'.caps, [.i64 c, .i64 0], s3, rfl, ?_⟩
+      rw [hv]
+      exact ⟨hOwnedP, hKP⟩
+  · -- The tree, returned in the pair.
+    refine Stmt.seq_spec (M := fun s st => s = store1 ∧ st = s3 ∧ ¬ c < n) ?_ ?_
+    · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+      rintro s st ⟨hs, rfl, hc⟩
+      exact ⟨c, s2, s3, rfl, rfl, hs, rfl, hc⟩
+    · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+      rintro s st ⟨hs, rfl, hc⟩
+      subst s
+      have hv : sizeDropMoved (n, ⟨t⟩) = (c, t) := by
+        simp [sizeDropMoved, KeyTree.sizeDrop, c, hc]
+      have hR' := Heap.Keeps.rebuilt hK hCaps1 (Heap.Rebuilt.refl hAt1 hOwnedT hDisjoint1) hAfter
+      obtain ⟨hOwnedP, hKP⟩ := Heap.Rebuilt.wordPair (w := c) (u := t) hR'
+      refine ⟨p, s3, sElse, rfl, rfl, heap1, hR'.at_, hR'.caps, [.i64 c, .i64 p], sElse, rfl, ?_⟩
+      rw [hv]
+      exact ⟨hOwnedP, hKP⟩
+  · rintro s st ⟨rfl, rfl⟩
+    by_cases hc : c < n
+    · exact ⟨true, s2, by simp [Expr.eval, s2, ps, State.get, hc], rfl, rfl, hc⟩
+    · exact ⟨false, s2, by simp [Expr.eval, s2, ps, State.get, hc], rfl, rfl, hc⟩
+
 /-- `encode` succeeds on `trees.module`, and its bytes decode to a module that computes
-`KeyTree.size`, `KeyTree.sum`, `KeyTree.height`, `KeyTree.sizeSum`, `KeyTree.pushSum`, and
-`KeyTree.dropSmall` exactly. -/
+`KeyTree.size`, `KeyTree.sum`, `KeyTree.height`, `KeyTree.sizeSum`, `KeyTree.pushSum`,
+`KeyTree.dropSmall`, and `KeyTree.sizeDrop` exactly. -/
 theorem trees_bytes : ∃ bytes, Wasm.Encoding.encode trees.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 KeyTree.size ∧
       Implements m 3 KeyTree.sum ∧ Implements m 4 KeyTree.height ∧
       Implements m 5 KeyTree.sizeSum ∧ Implements m 6 pushSumMoved ∧
-      Implements m 7 dropSmallMoved := by
+      Implements m 7 dropSmallMoved ∧ Implements m 8 sizeDropMoved := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip trees.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, trees.module, decoded, size_implements, sum_implements,
-    height_implements, sizeSum_implements, pushSum_implements, dropSmall_implements⟩
+    height_implements, sizeSum_implements, pushSum_implements, dropSmall_implements,
+    sizeDrop_implements⟩
 
 #print axioms trees_bytes
 

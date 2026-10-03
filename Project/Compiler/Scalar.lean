@@ -657,9 +657,7 @@ partial def selfArgs (self : Name) (i : Nat) (term : Lean.Expr) : MetaM (List Le
 def releaseUnmoved (ctx : Ctx) : CompileM Unit := do
   for param in ctx.owned do
     unless (← get).consumed.contains param do
-      if (ctx.nodes.lookup param).isSome then
-        throwError "the owned value {← sourceOf param} must move on every path; releasing it is not supported yet"
-      let some local_ := (ctx.arrays ++ ctx.floatArrays).lookup param
+      let some local_ := (ctx.nodes ++ ctx.arrays ++ ctx.floatArrays).lookup param
         | throwError "an owned parameter has no local"
       let stmt := Project.IR.Stmt.release local_
       pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "release owned parameter" (← sourceOf param)]

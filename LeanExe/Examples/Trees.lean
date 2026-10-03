@@ -95,6 +95,10 @@ def KeyTree.leftSpine (g : KeyTree) : KeyTree → KeyTree
   | .node l k r =>
     .node (KeyTree.leftSpine r l) (k + match g with | .leaf => 0 | .node _ gk _ => gk) .leaf
 
+/-- The two trees in order when `c` is 0, and swapped otherwise. -/
+def KeyTree.pickPair (c : UInt64) (a b : KeyTree) : KeyTree × KeyTree :=
+  if c = 0 then (a, b) else (b, a)
+
 /-- The search tree `t` with the keys `a` and then `b`. -/
 def KeyTree.insertTwo (a b : UInt64) (t : KeyTree) : KeyTree := (t.insert a).insert b
 
@@ -109,6 +113,12 @@ def KeyTree.pushSum (xs : Array UInt64) (t : KeyTree) : Array UInt64 × UInt64 :
 /-- The tree, or a leaf when it has fewer than `n` nodes: `t` is lent to `size`, then released or
 returned. -/
 def KeyTree.dropSmall (n : UInt64) (t : KeyTree) : KeyTree := if t.size < n then .leaf else t
+
+/-- The number of nodes, and the tree or a leaf when it has fewer than `n` nodes: `t` is lent to
+`size` through a word `let`, then released or returned in the pair. -/
+def KeyTree.sizeDrop (n : UInt64) (t : KeyTree) : UInt64 × KeyTree :=
+  let s := t.size
+  if s < n then (s, .leaf) else (s, t)
 
 /-- A test of the depth limit: sixteen words computed before the recursive calls and used after
 them, so that the internal function holds 24 values in its frame, the most the compiler

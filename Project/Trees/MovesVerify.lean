@@ -300,14 +300,14 @@ def incrMoved (t : Moved KeyTree) : KeyTree := t.val.incr
 
 /-- The internal function of `incr`, at any depth, consumes its tree and returns the tree with
 every key incremented, rebuilt in the same records. -/
-theorem incr_rec : ∀ t, Rebuilds (compile treeMoves.funcs) (2 + 12) incrMoved t := by
-  refine Func.rebuildRecursion treeMoves.funcs 12 treeMoves.incr.rec.ir "incr.rec" rfl incrMoved
+theorem incr_rec : ∀ t, Rebuilds (compile treeMoves.funcs) (2 + 13) incrMoved t := by
+  refine Func.rebuildRecursion treeMoves.funcs 13 treeMoves.incr.rec.ir "incr.rec" rfl incrMoved
     (fun t => sizeOf t.val) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl)
     fun ⟨t⟩ ih heap initial vs d hHeap hArgs _ hCap => ?_
   have hArg := hArgs
   obtain ⟨p, rfl, hOwned, -⟩ := hArgs
-  have hCallee : (compile treeMoves.funcs).funcs[2 + 12 - (compile treeMoves.funcs).imports.length]? =
-      some (treeMoves.incr.rec.ir.function (2 + 12)) := compile_funcs (i := 12) rfl
+  have hCallee : (compile treeMoves.funcs).funcs[2 + 13 - (compile treeMoves.funcs).imports.length]? =
+      some (treeMoves.incr.rec.ir.function (2 + 13)) := compile_funcs (i := 13) rfl
   let start : State := { params := [.i64 p, .i64 d], locals := List.replicate 6 (.i64 0) }
   have hStart : treeMoves.incr.rec.ir.state ([.i64 p] ++ [.i64 d]) = start := rfl
   rw [hStart]
@@ -316,8 +316,8 @@ theorem incr_rec : ∀ t, Rebuilds (compile treeMoves.funcs) (2 + 12) incrMoved 
         (.seq (.load .u64 3 (.bin .add (.get 0) (.const 0)))
           (.seq (.load .u64 4 (.bin .add (.get 0) (.const 8)))
             (.seq (.load .u64 5 (.bin .add (.get 0) (.const 16)))
-              (.seq (.call (2 + 12) [⟨.u64, .get 3⟩, ⟨.u64, .bin .add (.get 1) (.const 1)⟩] [6])
-                (.seq (.call (2 + 12) [⟨.u64, .get 5⟩, ⟨.u64, .bin .add (.get 1) (.const 1)⟩] [7])
+              (.seq (.call (2 + 13) [⟨.u64, .get 3⟩, ⟨.u64, .bin .add (.get 1) (.const 1)⟩] [6])
+                (.seq (.call (2 + 13) [⟨.u64, .get 5⟩, ⟨.u64, .bin .add (.get 1) (.const 1)⟩] [7])
                   (.seq (.store (.bin .add (.get 0) (.const 0)) (.get 6))
                     (.seq (.store (.bin .add (.get 0) (.const 8)) (.bin .add (.get 4) (.const 1)))
                       (.seq (.store (.bin .add (.get 0) (.const 16)) (.get 7))
@@ -454,8 +454,8 @@ theorem incr_rec : ∀ t, Rebuilds (compile treeMoves.funcs) (2 + 12) incrMoved 
 
 theorem incr_implements : Implements treeMoves.module 3 incrMoved :=
   Func.entry_rebuilds treeMoves.funcs 1 treeMoves.incr.ir "incr" rfl incrMoved
-    (g := treeMoves.incr.rec.ir.function (2 + 12)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl
-    rfl (compile_funcs (i := 12) rfl) rfl
+    (g := treeMoves.incr.rec.ir.function (2 + 13)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl
+    rfl (compile_funcs (i := 13) rfl) rfl
     (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
     (by
       intro params v hLen
@@ -589,14 +589,14 @@ def insertMoved (x : UInt64 × Moved KeyTree) : KeyTree := KeyTree.insert x.1 x.
 
 /-- The internal function of `insert`, at any depth, consumes its tree and returns the tree with
 the key, rebuilt in the same records and one new record when the key is new. -/
-theorem insert_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 13) insertMoved x := by
-  refine Func.rebuildRecursion treeMoves.funcs 13 treeMoves.insert.rec.ir "insert.rec" rfl
+theorem insert_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 14) insertMoved x := by
+  refine Func.rebuildRecursion treeMoves.funcs 14 treeMoves.insert.rec.ir "insert.rec" rfl
     insertMoved (fun x => sizeOf x.2.val) (by rintro _ _ _ _ ⟨_, _, rfl, rfl, p, rfl, -⟩; rfl)
     fun ⟨x, ⟨t⟩⟩ ih heap initial vs d hHeap hArgs _ hCap => ?_
   obtain ⟨_, _, rfl, rfl, p, rfl, hOwned, hDisjoint⟩ := hArgs
   rw [show Scalar.values x ++ [Value.i64 p] = [.i64 x, .i64 p] from rfl, pair_gone]
-  have hCallee : (compile treeMoves.funcs).funcs[2 + 13 - (compile treeMoves.funcs).imports.length]? =
-      some (treeMoves.insert.rec.ir.function (2 + 13)) := compile_funcs (i := 13) rfl
+  have hCallee : (compile treeMoves.funcs).funcs[2 + 14 - (compile treeMoves.funcs).imports.length]? =
+      some (treeMoves.insert.rec.ir.function (2 + 14)) := compile_funcs (i := 14) rfl
   have hMemory32 : (compile treeMoves.funcs).memIs64 = false := rfl
   have hImports : (compile treeMoves.funcs).imports = [] := rfl
   have hAlloc : (compile treeMoves.funcs).funcs[0]? = some (allocFunction 0) := rfl
@@ -611,11 +611,11 @@ theorem insert_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 13) insertMo
           (.seq (.load .u64 6 (.bin .add (.get 1) (.const 8)))
             (.seq (.load .u64 7 (.bin .add (.get 1) (.const 16)))
               (.seq (.ite (.ltU (.get 0) (.get 6))
-                  (.seq (.call (2 + 13) [⟨.u64, .get 0⟩, ⟨.u64, .get 5⟩,
+                  (.seq (.call (2 + 14) [⟨.u64, .get 0⟩, ⟨.u64, .get 5⟩,
                       ⟨.u64, .bin .add (.get 2) (.const 1)⟩] [9])
                     (.seq (.store (.bin .add (.get 1) (.const 0)) (.get 9)) (.assign 8 (.get 1))))
                   (.seq (.ite (.ltU (.get 6) (.get 0))
-                      (.seq (.call (2 + 13) [⟨.u64, .get 0⟩, ⟨.u64, .get 7⟩,
+                      (.seq (.call (2 + 14) [⟨.u64, .get 0⟩, ⟨.u64, .get 7⟩,
                           ⟨.u64, .bin .add (.get 2) (.const 1)⟩] [11])
                         (.seq (.store (.bin .add (.get 1) (.const 16)) (.get 11))
                           (.assign 10 (.get 1))))
@@ -806,8 +806,8 @@ theorem insert_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 13) insertMo
 
 theorem insert_implements : Implements treeMoves.module 4 insertMoved :=
   Func.entry_rebuilds treeMoves.funcs 2 treeMoves.insert.ir "insert" rfl insertMoved
-    (g := treeMoves.insert.rec.ir.function (2 + 13))
-    (by rintro _ _ _ _ ⟨_, _, rfl, rfl, p, rfl, -⟩; rfl) rfl rfl rfl (compile_funcs (i := 13) rfl) rfl
+    (g := treeMoves.insert.rec.ir.function (2 + 14))
+    (by rintro _ _ _ _ ⟨_, _, rfl, rfl, p, rfl, -⟩; rfl) rfl rfl rfl (compile_funcs (i := 14) rfl) rfl
     (by
       rintro _ _ _ _ ⟨_, _, rfl, rfl, p, rfl, -⟩
       simp [Expr.evalResults, Expr.eval, Func.state, State.get, Scalar.values])
@@ -1518,8 +1518,8 @@ theorem rebuilt_bound {heap heap1 heap2 : Heap} {initial store1 store2 : Store U
 /-- The internal function of `addAll`, at any depth, borrows its first tree, consumes its
 second, and returns the second with the first's root key added to every key, rebuilt in the
 same records. -/
-theorem addAll_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 14) addAllMoved x := by
-  refine Func.rebuildRecursion treeMoves.funcs 14 treeMoves.addAll.rec.ir "addAll.rec" rfl
+theorem addAll_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 15) addAllMoved x := by
+  refine Func.rebuildRecursion treeMoves.funcs 15 treeMoves.addAll.rec.ir "addAll.rec" rfl
     addAllMoved (fun x => sizeOf x.2.val)
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, rfl, -⟩; rfl)
     fun ⟨a, ⟨t⟩⟩ ih heap initial vs d hHeap hArgs hSep hCap => ?_
@@ -1534,8 +1534,8 @@ theorem addAll_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 14) addAllMo
     rw [← Node.pointers_blocks] at hc
     obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hc
     exact h q hq
-  have hCallee : (compile treeMoves.funcs).funcs[2 + 14 - (compile treeMoves.funcs).imports.length]? =
-      some (treeMoves.addAll.rec.ir.function (2 + 14)) := compile_funcs (i := 14) rfl
+  have hCallee : (compile treeMoves.funcs).funcs[2 + 15 - (compile treeMoves.funcs).imports.length]? =
+      some (treeMoves.addAll.rec.ir.function (2 + 15)) := compile_funcs (i := 15) rfl
   let z : Value := .i64 0
   let start : State := { params := [.i64 pa, .i64 p, .i64 d], locals := List.replicate 10 z }
   have hStart : treeMoves.addAll.rec.ir.state ([.i64 pa] ++ [.i64 p] ++ [.i64 d]) = start := rfl
@@ -1545,14 +1545,14 @@ theorem addAll_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 14) addAllMo
         (.seq (.load .u64 4 (.bin .add (.get 1) (.const 0)))
           (.seq (.load .u64 5 (.bin .add (.get 1) (.const 8)))
             (.seq (.load .u64 6 (.bin .add (.get 1) (.const 16)))
-              (.seq (.call (2 + 14) [⟨.u64, .get 0⟩, ⟨.u64, .get 4⟩,
+              (.seq (.call (2 + 15) [⟨.u64, .get 0⟩, ⟨.u64, .get 4⟩,
                   ⟨.u64, .bin .add (.get 2) (.const 1)⟩] [7])
                 (.seq (.ite (.eq (.get 0) (.const 0)) (.assign 8 (.const 0))
                     (.seq (.load .u64 9 (.bin .add (.get 0) (.const 0)))
                       (.seq (.load .u64 10 (.bin .add (.get 0) (.const 8)))
                         (.seq (.load .u64 11 (.bin .add (.get 0) (.const 16)))
                           (.assign 8 (.get 10))))))
-                  (.seq (.call (2 + 14) [⟨.u64, .get 0⟩, ⟨.u64, .get 6⟩,
+                  (.seq (.call (2 + 15) [⟨.u64, .get 0⟩, ⟨.u64, .get 6⟩,
                       ⟨.u64, .bin .add (.get 2) (.const 1)⟩] [12])
                     (.seq (.store (.bin .add (.get 1) (.const 0)) (.get 7))
                       (.seq (.store (.bin .add (.get 1) (.const 8)) (.bin .add (.get 5) (.get 8)))
@@ -1797,9 +1797,9 @@ theorem addAll_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 14) addAllMo
 
 theorem addAll_implements : Implements treeMoves.module 11 addAllMoved :=
   Func.entry_rebuilds treeMoves.funcs 9 treeMoves.addAll.ir "addAll" rfl addAllMoved
-    (g := treeMoves.addAll.rec.ir.function (2 + 14))
+    (g := treeMoves.addAll.rec.ir.function (2 + 15))
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, rfl, -⟩; rfl) rfl rfl
-    rfl (compile_funcs (i := 14) rfl) rfl
+    rfl (compile_funcs (i := 15) rfl) rfl
     (by
       rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, rfl, -⟩
       simp [Expr.evalResults, Expr.eval, Func.state, State.get])
@@ -1941,8 +1941,8 @@ theorem leftSpine_node (g l r : KeyTree) (k : UInt64) :
 second, and returns the second's left spine rebuilt in the same records.  The recursive call
 receives the owned right child at the borrowed position (`NodeOwned.borrowed`), and the right
 child, kept by the call, is released after it. -/
-theorem leftSpine_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 15) leftSpineMoved x := by
-  refine Func.rebuildRecursion treeMoves.funcs 15 treeMoves.leftSpine.rec.ir "leftSpine.rec" rfl
+theorem leftSpine_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 16) leftSpineMoved x := by
+  refine Func.rebuildRecursion treeMoves.funcs 16 treeMoves.leftSpine.rec.ir "leftSpine.rec" rfl
     leftSpineMoved (fun x => sizeOf x.2.val)
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, rfl, -⟩; rfl)
     fun ⟨g, ⟨t⟩⟩ ih heap initial vs d hHeap hArgs hSep hCap => ?_
@@ -1957,8 +1957,8 @@ theorem leftSpine_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 15) leftS
     rw [← Node.pointers_blocks] at hc
     obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hc
     exact h q hq
-  have hCallee : (compile treeMoves.funcs).funcs[2 + 15 - (compile treeMoves.funcs).imports.length]? =
-      some (treeMoves.leftSpine.rec.ir.function (2 + 15)) := compile_funcs (i := 15) rfl
+  have hCallee : (compile treeMoves.funcs).funcs[2 + 16 - (compile treeMoves.funcs).imports.length]? =
+      some (treeMoves.leftSpine.rec.ir.function (2 + 16)) := compile_funcs (i := 16) rfl
   have hImports : (compile treeMoves.funcs).imports = [] := rfl
   have hRelease : (compile treeMoves.funcs).funcs[1]? = some (releaseFunction 1) := rfl
   let z : Value := .i64 0
@@ -1970,7 +1970,7 @@ theorem leftSpine_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 15) leftS
         (.seq (.load .u64 4 (.bin .add (.get 1) (.const 0)))
           (.seq (.load .u64 5 (.bin .add (.get 1) (.const 8)))
             (.seq (.load .u64 6 (.bin .add (.get 1) (.const 16)))
-              (.seq (.call (2 + 15) [⟨.u64, .get 6⟩, ⟨.u64, .get 4⟩,
+              (.seq (.call (2 + 16) [⟨.u64, .get 6⟩, ⟨.u64, .get 4⟩,
                   ⟨.u64, .bin .add (.get 2) (.const 1)⟩] [7])
                 (.seq (.ite (.eq (.get 0) (.const 0)) (.assign 8 (.const 0))
                     (.seq (.load .u64 9 (.bin .add (.get 0) (.const 0)))
@@ -2203,9 +2203,9 @@ theorem leftSpine_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 15) leftS
 
 theorem leftSpine_implements : Implements treeMoves.module 13 leftSpineMoved :=
   Func.entry_rebuilds treeMoves.funcs 11 treeMoves.leftSpine.ir "leftSpine" rfl leftSpineMoved
-    (g := treeMoves.leftSpine.rec.ir.function (2 + 15))
+    (g := treeMoves.leftSpine.rec.ir.function (2 + 16))
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, rfl, -⟩; rfl) rfl rfl
-    rfl (compile_funcs (i := 15) rfl) rfl
+    rfl (compile_funcs (i := 16) rfl) rfl
     (by
       rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, rfl, -⟩
       simp [Expr.evalResults, Expr.eval, Func.state, State.get])
@@ -2216,23 +2216,112 @@ theorem leftSpine_implements : Implements treeMoves.module 13 leftSpineMoved :=
         exact ⟨_, rfl, by simp [State.get, Func.state, treeMoves.leftSpine.ir, Func.locals]⟩)
     leftSpine_rec
 
+/-- `pickPair` with its three arguments as one tuple, both trees consumed. -/
+def pickPairMoved (x : UInt64 × Moved KeyTree × Moved KeyTree) : KeyTree × KeyTree :=
+  KeyTree.pickPair x.1 x.2.1.val x.2.2.val
+
+/-- Two owned trees whose blocks lie apart are an owned pair. -/
+theorem treePair_owned {heap : Heap} {store : Store Unit} {pa pb : UInt64} {a b : KeyTree}
+    (hA : NodeOwned heap store pa (encode a))
+    (hDa : (Node.blocks store pa (encode a)).Pairwise regionsDisjoint)
+    (hB : NodeOwned heap store pb (encode b))
+    (hDb : (Node.blocks store pb (encode b)).Pairwise regionsDisjoint)
+    (hAB : ∀ x ∈ Node.blocks store pa (encode a), ∀ y ∈ Node.blocks store pb (encode b),
+      regionsDisjoint x y) :
+    Represent.owned heap store [.i64 pa, .i64 pb] (a, b) :=
+  ⟨[.i64 pa], [.i64 pb], rfl, ⟨pa, rfl, hA, hDa⟩, ⟨pb, rfl, hB, hDb⟩, fun x hx y hy => hAB x hx y hy⟩
+
+theorem treePair_blocks (store : Store Unit) (pa pb : UInt64) (a b : KeyTree) :
+    Represent.blocks store [.i64 pa, .i64 pb] (a, b) =
+      Node.blocks store pa (encode a) ++ Node.blocks store pb (encode b) := rfl
+
+/-- `pickPair` returns its two consumed trees, in either order, as an owned pair: their blocks
+lie apart by `Separate`, and the code changes no memory. -/
+theorem pickPair_implements : Implements treeMoves.module 14 pickPairMoved := by
+  refine Func.implements_moves treeMoves.funcs 12 treeMoves.pickPair.ir "pickPair" rfl _
+    (by rintro _ _ _ _ ⟨_, _, rfl, rfl, _, _, rfl, ⟨pa, rfl, -⟩, ⟨pb, rfl, -⟩⟩; rfl) ?_
+  rintro ⟨c, ⟨a⟩, ⟨b⟩⟩ heap initial _ hHeap
+    ⟨_, _, rfl, rfl, _, _, rfl, ⟨pa, rfl, hA, hDa⟩, ⟨pb, rfl, hB, hDb⟩⟩ hSep -
+  change NodeOwned heap initial pa (encode a) at hA
+  change (Node.blocks initial pa (encode a)).Pairwise regionsDisjoint at hDa
+  change NodeOwned heap initial pb (encode b) at hB
+  change (Node.blocks initial pb (encode b)).Pairwise regionsDisjoint at hDb
+  have hMoves : (Represent.moves initial (Scalar.values c ++ ([.i64 pa] ++ [.i64 pb]))
+      (c, Moved.mk a, Moved.mk b)).map (block initial) =
+      Node.blocks initial pa (encode a) ++ Node.blocks initial pb (encode b) := by
+    show (Node.pointers initial pa (encode a) ++ Node.pointers initial pb (encode b)).map
+      (block initial) = _
+    rw [List.map_append, Node.pointers_blocks, Node.pointers_blocks]
+  have hPair := hSep.1
+  rw [hMoves] at hPair
+  obtain ⟨-, -, hAB⟩ := List.pairwise_append.mp hPair
+  rw [hMoves]
+  -- The code changes nothing, so it keeps every region and leaves it apart from both trees.
+  have hKeep : ∀ fresh : List (Nat × Nat), (∀ x ∈ fresh,
+      x ∈ Node.blocks initial pa (encode a) ++ Node.blocks initial pb (encode b)) →
+      heap.Keeps initial (Node.blocks initial pa (encode a) ++ Node.blocks initial pb (encode b))
+        heap initial fresh :=
+    fun _ hSub _ hr _ hGone => ⟨fun _ _ _ => rfl, hr, fun x hx => hGone x (hSub x hx)⟩
+  let ps : List Value := [.i64 c, .i64 pa, .i64 pb]
+  let start : State := { params := ps, locals := [.i64 0, .i64 0] }
+  let sThen1 : State := { params := ps, locals := [.i64 pa, .i64 0] }
+  let sThen : State := { params := ps, locals := [.i64 pa, .i64 pb] }
+  let sElse1 : State := { params := ps, locals := [.i64 pb, .i64 0] }
+  let sElse : State := { params := ps, locals := [.i64 pb, .i64 pa] }
+  have hStart : treeMoves.pickPair.ir.state (Scalar.values c ++ ([.i64 pa] ++ [.i64 pb])) =
+      start := rfl
+  rw [hStart]
+  show Triple _ (.ite (.eq (.get 0) (.const 0)) (.seq (.assign 3 (.get 1)) (.assign 4 (.get 2)))
+      (.seq (.assign 3 (.get 2)) (.assign 4 (.get 1)))) 5
+    (fun store state => store = initial ∧ state = start) _
+  refine (Stmt.ite_spec (PThen := fun s st => s = initial ∧ st = start ∧ c = 0)
+    (PElse := fun s st => s = initial ∧ st = start ∧ c ≠ 0) ?_ ?_).mono ?_ fun _ _ h => h
+  · refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = sThen1 ∧ c = 0)
+      (Stmt.assign_spec.mono ?_ fun _ _ h => h) (Stmt.assign_spec.mono ?_ fun _ _ h => h)
+    · rintro s st ⟨hs, rfl, hc⟩
+      exact ⟨pa, start, sThen1, rfl, rfl, hs, rfl, hc⟩
+    · rintro s st ⟨rfl, rfl, hc⟩
+      have hv : pickPairMoved (c, ⟨a⟩, ⟨b⟩) = (a, b) := by
+        simp [pickPairMoved, KeyTree.pickPair, hc]
+      refine ⟨pb, sThen1, sThen, rfl, rfl, heap, hHeap, rfl, [.i64 pa, .i64 pb], sThen, rfl, ?_⟩
+      rw [hv, treePair_blocks]
+      exact ⟨treePair_owned hA hDa hB hDb hAB, hKeep _ fun _ hx => hx⟩
+  · refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = sElse1 ∧ c ≠ 0)
+      (Stmt.assign_spec.mono ?_ fun _ _ h => h) (Stmt.assign_spec.mono ?_ fun _ _ h => h)
+    · rintro s st ⟨hs, rfl, hc⟩
+      exact ⟨pb, start, sElse1, rfl, rfl, hs, rfl, hc⟩
+    · rintro s st ⟨rfl, rfl, hc⟩
+      have hv : pickPairMoved (c, ⟨a⟩, ⟨b⟩) = (b, a) := by
+        simp [pickPairMoved, KeyTree.pickPair, hc]
+      refine ⟨pa, sElse1, sElse, rfl, rfl, heap, hHeap, rfl, [.i64 pb, .i64 pa], sElse, rfl, ?_⟩
+      rw [hv, treePair_blocks]
+      refine ⟨treePair_owned hB hDb hA hDa fun x hx y hy => regionsDisjoint_symm (hAB y hy x hx),
+        hKeep _ fun x hx => ?_⟩
+      rcases List.mem_append.mp hx with hx | hx
+      · exact List.mem_append_right _ hx
+      · exact List.mem_append_left _ hx
+  · rintro s st ⟨rfl, rfl⟩
+    by_cases hc : c = 0
+    · exact ⟨true, start, by simp [Expr.eval, start, ps, State.get, hc], rfl, rfl, hc⟩
+    · exact ⟨false, start, by simp [Expr.eval, start, ps, State.get, hc], rfl, rfl, hc⟩
+
 /-- `encode` succeeds on `treeMoves.module`, and its bytes decode to a module that computes
 `KeyTree.setKey`, `KeyTree.incr`, `KeyTree.insert`, `KeyTree.dropRight`, `KeyTree.leftChild`,
 `KeyTree.keepIf`, `KeyTree.trim`, `KeyTree.insertTwo`, `KeyTree.addRoot`, `KeyTree.addAll`,
-`KeyTree.addLeft`, and `KeyTree.leftSpine` on a consumed tree exactly. -/
+`KeyTree.addLeft`, `KeyTree.leftSpine`, and `KeyTree.pickPair` on consumed trees exactly. -/
 theorem treeMoves_bytes : ∃ bytes, Wasm.Encoding.encode treeMoves.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 setKeyMoved ∧
       Implements m 3 incrMoved ∧ Implements m 4 insertMoved ∧ Implements m 5 dropRightMoved ∧
       Implements m 6 leftChildMoved ∧ Implements m 7 keepIfMoved ∧ Implements m 8 trimMoved ∧
       Implements m 9 insertTwoMoved ∧ Implements m 10 addRootMoved ∧
       Implements m 11 addAllMoved ∧ Implements m 12 addLeftMoved ∧
-      Implements m 13 leftSpineMoved := by
+      Implements m 13 leftSpineMoved ∧ Implements m 14 pickPairMoved := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip treeMoves.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, treeMoves.module, decoded, setKey_implements, incr_implements,
     insert_implements, dropRight_implements, leftChild_implements, keepIf_implements,
     trim_implements, insertTwo_implements, addRoot_implements, addAll_implements,
-    addLeft_implements, leftSpine_implements⟩
+    addLeft_implements, leftSpine_implements, pickPair_implements⟩
 
 #print axioms treeMoves_bytes
 

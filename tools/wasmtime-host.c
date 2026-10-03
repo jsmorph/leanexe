@@ -698,7 +698,8 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
   }
 
   if (list) {
-    /* One line per result: an i64 or f64 as a decimal word, an array as its elements. */
+    /* One line per result: an i64 or f64 as a decimal word, an array as its elements, a tree
+       in the notation of its argument. */
     for (size_t i = 0; i < nresults; i++) {
       char kind[32];
       list_result_kind(result_kind, i, kind, sizeof kind);
@@ -727,6 +728,11 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
           printf("%" PRIu64, read_u64_at(runtime, ptr + 8 + j * 8));
         }
         printf("]\n");
+      } else if (strcmp(kind, "tree-u64") == 0) {
+        if (!runtime->has_memory) {
+          die("tree result requires exported memory");
+        }
+        print_u64_tree(runtime, (uint64_t)results[i].of.i64);
       } else {
         die("unknown result kind in list");
       }
