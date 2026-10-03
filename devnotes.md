@@ -23645,3 +23645,41 @@ LTG entry covers the push copy.  The full build passed with no `sorry`, every mo
 the same bytes as before, `tests/modules/run.sh` passed 8,921 comparisons, 70 count cases, and
 16 depth cases, and `chunks.py` passed 360 cases.  Item 7 is complete.
 
+
+### Item 8: a copy into an owned parameter at a use that is not the last, analysis
+
+A call's owned position takes an owned variable at its last use, or a call's result.  An array
+variable that a later part of the expression still uses fails: `(push1 xs, push1 xs)`,
+`(push1 xs, xs)`, and `(push1 xs, xs.size.toUInt64)` with "the array xs is used after the code
+moved it", and `let ys := push1 xs; (ys, xs)` because the `let` value may move only what its body
+does not use.  A borrowed array at an owned position also fails.  The in-place updates already
+copy in these cases (`updateTarget` writes in place only an owned, movable array), so calls are
+the gap.  `Stmt.copy` and `Stmt.copy_spec` copy an array, and Iteration 4 planned `Live.copy` and
+`Live.callMove` for this case.  Trees have no copy routine; whether they get one is a question to
+the user, so this item covers arrays.
+
+### Item 8: approaches
+
+| Approach | What it does | Effect |
+|----------|--------------|--------|
+| A. Copies at owned positions | An owned position that receives a borrowed array, or an owned one that a later part of the expression uses, receives a copy in a fresh local (`Stmt.copy`), which the call consumes; the earlier parts see as movable only what the later parts do not mention, as `let` values do | All four programs compile, each with one copy |
+| B. Borrowed arrays only | A copy only for a borrowed array at an owned position | The three pair programs and the `let` stay rejected |
+| C. No copies | The status quo | A program must order its uses so that the consuming one is last |
+
+Recommendation: A.  It gives calls the rule that updates already follow, and a copy costs what
+the program asks for: two arrays where Lean's value has two.  A program in `clob`, with
+`fillLevel` as the consuming callee, and its theorem: `fillKeep sizes k a := (fillLevel sizes k a,
+sizes)`.
+
+- [ ] 8a: the compiler; scratch checks and the byte comparison.
+- [ ] 8b: `fillKeep` and its theorem; tests, LTG, journal.
+
+On 2026-10-03 the user decided: arrays first in item 8, then a copy for trees as its own item.
+Under unique ownership, a tree that a call consumes and the code uses again, as in
+`(t.incr, t)`, needs a copy, and a recursive `copy` written in Lean infers an owned parameter and
+rebuilds its argument in place, so no program can write one today.  The recommended form is a copy
+function that the compiler generates for each recursive type, with the depth guard and a proof
+through `Heap.Built`; a runtime copy without a depth limit would need a proof on the scale of
+`release_run`.
+
+- [ ] 11: a copy for trees at a consuming use that is not the last.
