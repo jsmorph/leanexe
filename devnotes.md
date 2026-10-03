@@ -22823,3 +22823,36 @@ comparisons, 46 count cases, and 12 depth cases, and `chunks.py` passed 360 case
 found every listed declaration.  Iteration 12 is complete, and the open items of Iteration 11 are
 closed.
 
+
+## 2026-10-03: Plan: Iteration 13, the memory a call reads includes borrowed trees
+
+`Separate` keeps the consumed blocks apart from the regions in `Represent.reads`, which lists
+an array's region but nothing for a borrowed value of a recursive type.  The compiler accepts a
+function that consumes an array and borrows a tree, for example
+`pushSum (xs : Array UInt64) (t : KeyTree) := (xs.push 1, t.sum)`, which compiles to an in-place
+push followed by a call of `sum` on `t`.  Under the current premise `t`'s records may lie in
+`xs`'s block, where the push rewrites them, so its `Implements` statement is false.  No current
+program has this shape.  The user decided (2026-10-03) to fix the specification now, over
+restricting the compiler or deferring.
+
+The change:
+
+1. `Represent.reads` takes the store: `reads : Store Unit → List Value → α → List (Nat × Nat)`,
+   as `moves` does since Iteration 8.  Arrays, floats, scalars, and `Moved` values ignore it.
+   For a value of a recursive type, `reads store [.i64 p] x = Node.slotRegions store p
+   (Encode.encode x)`, the slot regions of its records.  A pair passes the store to both sides.
+2. `Implements` and `Satisfies` state `Separate store (Represent.moves store params x)
+   (Represent.reads store params x)`, so every slot region of a borrowed tree argument lies
+   apart from the consumed blocks.  The doc comment drops "arrays" from "the arrays the call
+   reads".
+3. The 26 uses of `Represent.reads` in 10 files take the store argument.  Callers that pass a
+   borrowed tree with nothing consumed use `Separate.nil`, as now.
+4. A program shows the premise at work: `KeyTree.pushSum` in `trees`, with a theorem that keeps
+   `t` through the in-place push with `Heap.Keeps.nodeBorrowed`, using the new separation, and
+   then calls `sum` through its `Implements` theorem.
+
+`checkOwnedNodes` stays; lifting it is a separate step that this change allows.
+
+- [ ] 13a: `Represent.reads` with the store, the premise, and its uses.
+- [ ] 13b: `pushSum` and its theorem; tests.
+- [ ] LTG, `deslop.md`, and the journal.
