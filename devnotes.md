@@ -23671,7 +23671,7 @@ the program asks for: two arrays where Lean's value has two.  A program in `clob
 `fillLevel` as the consuming callee, and its theorem: `fillKeep sizes k a := (fillLevel sizes k a,
 sizes)`.
 
-- [ ] 8a: the compiler; scratch checks and the byte comparison.
+- [x] 8a: the compiler; scratch checks and the byte comparison.
 - [ ] 8b: `fillKeep` and its theorem; tests, LTG, journal.
 
 On 2026-10-03 the user decided: arrays first in item 8, then a copy for trees as its own item.
@@ -23683,3 +23683,31 @@ through `Heap.Built`.  A runtime copy without a depth limit would need a proof o
 `release_run`.
 
 - [ ] 11: a copy for trees at a consuming use that is not the last.
+
+### Review of the item 8 plan
+
+One reviewer prototyped A in a renamed copy of the compiler.  I reran its `fillKeep` proof, which
+checks, and its comparison of the arrays-only variant, which reports the same bytes for all 22
+modules.
+
+| Finding | Response |
+|---------|----------|
+| Restricting every owned value per part, as `Ctx.movableIn` does, is unsound for pair variables: `dup xs ys := let (p, _) := mk xs ys.  (p, p)` returns one pair twice, since a pair variable that is not owned moves nothing in the first part | Restrict arrays only |
+| `moveSites` needs the same pair rule, or `(push1 xs, xs.size)` makes `xs` owned, copies it, and releases it | The first part of a pair moves only the arrays the second does not use |
+| At a call, a later argument is no later use: word arguments run before the call.  Restricting by later arguments copies `sizes` in CLOB's `setLevel` calls and changes `clob`'s bytes.  The existing count over array arguments is right | An owned position copies an array that is not owned or that another array argument names |
+| Other sequencing points (operands, conditions, fields, loop states, update arguments) keep rejecting such programs, which is safe | No change until a program needs them |
+| Updates in pairs did not copy before: `(xs.push 1, xs)` failed.  Under A it is a copying push | Tested |
+| B as written would accept `letKeep` | The B row was wrong |
+| Float arrays need nothing more: the copy copies words | No change |
+| `fillKeep` proves with `Live.copy` and `Live.callTuple`.  `Live.callMove` covers only `Array Float` results | Adopted |
+
+### Item 8, step 8a: the compiler
+
+`Ctx.before` gives a part of a pair the owned arrays that no later part mentions, and
+`translateResults` translates each pair part with it.  The pair case of `moveSites` counts a move
+in the first part only for arrays that the second part does not use.  In `translateCall`, an
+owned position that receives an array that is not owned, or that another array argument names,
+receives a copy through `translateArray`, which the call consumes.  `(push1 xs, push1 xs)`,
+`(push1 xs, xs)`, `(push1 xs, xs.size.toUInt64)`, `let ys := push1 xs; (ys, xs)`, and
+`(xs.push 1, xs)` compile with one copy each.  `dup` and `(xs[0]!, push1 xs)` fail.  The full
+build passed, and all 22 modules emit the same bytes as before.
