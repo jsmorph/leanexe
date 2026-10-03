@@ -22479,7 +22479,7 @@ Revised steps:
 - [x] 10b: `rebuilt` scoped to its match; settling at joins for trees; `keepIf` and `trim`.
 - [x] 10c: tree arguments in calls; `Func.entry_keeps` and its call rule; `insertTwo` and
   `sizeSum`.
-- [ ] LTG entries and the count cases in `tests/modules/run.sh`.
+- [x] LTG entries and the count cases in `tests/modules/run.sh`.
 
 ### Iteration 10, step 10a: `push` in place
 
@@ -22597,4 +22597,26 @@ Tests: `insertTwo` with three key pairs and `sizeSum` on the 24 trees, and two c
 `insertTwo` (two new keys add two records, and two present keys add none).
 `tests/modules/run.sh` passed 7,097 comparisons, 46 count cases, and 12 depth cases.
 `chunks.py` passed 360 cases, and the full build passed (3,576 jobs).
+
+### Iteration 10: LTG and open items
+
+The LTG entry `in-place-update` covers `push`, `Stmt.reserve`, and `Live.appendPost`, with
+`stepCommand_implements` as a consumer; `partial-release` covers the settle code (`release
+unmoved`) with `keepIf_implements` and `trim_implements`; and `function-call` covers tree
+arguments, `KeepsEntry`, `Func.entry_keeps`, and `Stmt.callKeeps_spec`, with
+`insertTwo_implements` and `sizeSum_implements`.  `Project/LTG/Check.lean` found every listed
+declaration.
+
+Iteration 10 is complete.  These remain open, each waiting for a program that needs it:
+
+| Item | What it needs |
+|------|---------------|
+| A caller that holds a second tree across a consuming call | `Consumes`, its rules, and `Heap.Rebuilt.trans` |
+| An owned tree passed where the callee borrows it | `NodeOwned.borrowed`, which the reviewer proved in a scratch file |
+| A tree inside a pair result, released on a path that does not return it | a `Represent` proof for such results, then `releaseUnmoved`'s tree case |
+| A `let` whose value moves an owned value | `moveSites` over `let` values and translation with the owned set |
+| A borrowed `push` | a theorem for the copy, which only execution cases cover now |
+
+Whether `Implements` should state that a call keeps the caller's trees, as it does arrays, is
+the specification question of open item 4, for the user.
 
