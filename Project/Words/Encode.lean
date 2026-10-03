@@ -1,5 +1,5 @@
 import LeanExe.Examples.Words
-import Project.Pipeline.Implements
+import Project.Pipeline.Slotted
 
 namespace Project.Words
 
@@ -12,5 +12,11 @@ def encode : Words → Node
   | .cons x w => .record [.word x, .child (encode w)]
 
 instance : Encode Words := ⟨encode⟩
+
+theorem encode_slotted : ∀ w : Words, (encode w).Slotted
+  | .nil => trivial
+  | .cons _ w => ⟨List.cons_ne_nil _ _, encode_slotted w, trivial⟩
+
+instance : EncodeSlotted Words := ⟨encode_slotted⟩
 
 end Project.Words

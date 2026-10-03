@@ -1,5 +1,5 @@
 import LeanExe.Examples.Trees
-import Project.Pipeline.Implements
+import Project.Pipeline.Slotted
 
 namespace Project.Trees
 
@@ -13,16 +13,10 @@ def encode : KeyTree → Node
 
 instance : Encode KeyTree := ⟨encode⟩
 
-/-- The positivity premise for `KeyTree`: every record has three slots. -/
-theorem slotRegions_pos (store : Store Unit) :
-    ∀ (t : KeyTree) (p : UInt64), ∀ b ∈ Node.slotRegions store p (encode t), 0 < b.2
-  | .leaf, _, b, hb => nomatch hb
-  | .node l k r, p, b, hb => by
-      simp only [encode, Node.slotRegions, slotsRegions, List.length_cons, List.length_nil,
-        List.append_nil, List.mem_cons, List.mem_append] at hb
-      rcases hb with rfl | hb | hb
-      · show 0 < 8 * (0 + 1 + 1 + 1); decide
-      · exact slotRegions_pos store l _ b hb
-      · exact slotRegions_pos store r _ b hb
+theorem encode_slotted : ∀ t : KeyTree, (encode t).Slotted
+  | .leaf => trivial
+  | .node l _ r => ⟨List.cons_ne_nil _ _, encode_slotted l, encode_slotted r, trivial⟩
+
+instance : EncodeSlotted KeyTree := ⟨encode_slotted⟩
 
 end Project.Trees

@@ -1658,7 +1658,7 @@ theorem addAll_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 14) addAllMo
             heap1 store1 q1 (encode (KeyTree.addAll a l)) := hR1
         rwa [Node.pointers_blocks] at h
       -- The borrowed tree and the right subtree survive the first call.
-      obtain ⟨hA1, hSlots1, -⟩ := Heap.Keeps.nodeBorrowed hR1'.region hA (slotRegions_pos initial a pa)
+      obtain ⟨hA1, hSlots1, -⟩ := Heap.Keeps.nodeBorrowed hR1'.region hA (EncodeSlotted.slotRegions_pos a)
         hApartL
       obtain ⟨hr1, hrBlocks1, -⟩ := hR1'.keepNode hr fun b hb g hg =>
         regionsDisjoint_symm (hlr g hg b hb)
@@ -2078,7 +2078,7 @@ theorem leftSpine_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 15) leftS
         rwa [Node.pointers_blocks] at h
       -- The borrowed tree and the lent right child survive the call.
       obtain ⟨hA1, -, -⟩ := Heap.Keeps.nodeBorrowed hR1'.region hA
-        (slotRegions_pos initial g pa) hApartL
+        (EncodeSlotted.slotRegions_pos g) hApartL
       obtain ⟨hr1, hrBlocks1, -⟩ := hR1'.keepNode hr fun b hb c hc =>
         regionsDisjoint_symm (hlr c hc b hb)
       have hPr1 : (Node.blocks store1 pr (encode r)).Pairwise regionsDisjoint := by

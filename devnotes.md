@@ -23193,3 +23193,61 @@ emits the same bytes as before.  The `function-call`, `consumed-recursion`, and 
 LTG entries name the new proofs and lemmas, and `Project/LTG/Check.lean` passed.
 
 Item 2 is complete.
+
+### Item 3: positive slot regions for every encoded type, analysis
+
+`Heap.Keeps` covers only regions of positive length, so `Heap.Keeps.nodeBorrowed` takes the
+premise that every slot region of the borrowed value has positive length.  A record without
+slots has the empty slot region `(p, 0)`, which an allocation may leave inside a free or fresh
+block, so the premise cannot be dropped.  Each proof that keeps a borrowed tree supplies
+`Project.Trees.slotRegions_pos`, a `KeyTree` lemma (four uses: `sizeSum`, `pushSum`, `addAll`,
+`leftSpine`).  `Encode` has three hand-written instances, `KeyTree`, `Words`, and
+`List UInt64`, and the class states nothing about record shapes, so a rule stated for any
+`[Encode α]` cannot keep a borrowed value without a per-type premise.  Items 4 and 6 call for
+such rules.  The compiler accepts a recursive type only with one constructor without fields and
+one with fields (`recordCell?`), so every record it builds has at least one slot.
+
+### Item 3: approaches
+
+| Approach | What it does | Effect |
+|----------|--------------|--------|
+| A. `Node.Slotted`, `Node.slotRegions_pos`, and a field `Encode.slotted : ∀ x, (encode x).Slotted` | A predicate that every record has a slot, one generic lemma, and a proof per instance by induction | Generic rules over `[Encode α]` need no premise; `Trees.slotRegions_pos` goes away |
+| B. A field stating slot-region positivity directly | The same, with the field quantified over stores and pointers | Each instance repeats the induction over slot regions instead of over the value |
+| C. `Node.record` with a nonempty slot list | Positivity by construction | Every function and proof over `Node` changes |
+| D. Per-type lemmas | The current state, with lemmas for `Words` and `List UInt64` when a proof needs them | Generic rules carry a premise |
+
+Recommendation: A.  The field adds a proof obligation to each `Encode` instance and does not
+change the meaning of any `Implements` statement: the `encode` functions stay as they are.  The
+predicate states the property in terms of the value's shape, which is what the compiler
+guarantees, and `Heap.Keeps.nodeBorrowed` keeps its general premise, which callers discharge
+with `Node.slotRegions_pos (Encode.slotted x)`.
+
+- [x] 3a (revised after the review): `Node.Slotted`, `Node.slotRegions_pos`, the class
+  `EncodeSlotted` outside the specification files, and the three instance proofs; the four call
+  sites; `Trees.slotRegions_pos` removed.
+- [x] Tests (byte comparison), LTG, journal.
+
+### Review of the item 3 plan
+
+One reviewer checked the plan with scratch files.  I ran `Guard.lean`, `Slotted.lean`, and
+`Variants.lean` and confirmed their results.
+
+| Finding | Response |
+|---------|----------|
+| The premise is needed: a release that merges adjacent free blocks can place an empty region `(p, 0)` inside the merged block, so `RecordSlots` for a record without slots fails after it (`Guard.lean`, by `rfl` on `insertFree`); an allocation takes space from an existing free block or above `top` | The analysis named the wrong step: the cause is a merging release |
+| A field in `Encode` changes no `Implements` statement, but it changes the specification files: `Node.Slotted` and the field would sit in `Implements.lean` | Adopt A': a separate class `EncodeSlotted α [Encode α]` in a new file, with the same proofs and no change to the specification files |
+| A predicate on `Represent` needs an instance for each `Represent` instance and builds on the `Encode` fact (`Variants.lean`) | Leave it to item 6, if its rules quantify over `[Represent α]` |
+| Item 4 concerns owned trees, whose blocks are positive by `Node.blocks_pos`; it does not need this lemma | The analysis overstated the uses |
+| The shape check is in `recordCell?` and the two match translators; `userType?` accepts any non-nested recursive type without parameters, and every record the compiler builds has a slot | The analysis cited the check imprecisely; the conclusion holds |
+| The mutual theorem needs explicit binders for structural recursion | Followed |
+
+### Item 3, step 3a: `EncodeSlotted`
+
+`Project/Pipeline/Slotted.lean` defines `Node.Slotted` (every record has at least one slot),
+proves `Node.slotRegions_pos`, and states the class `EncodeSlotted`, whose instances for
+`KeyTree`, `Words`, and `List UInt64` are one-line inductions.  `EncodeSlotted.slotRegions_pos`
+gives the premise of `Heap.Keeps.nodeBorrowed` for any value of such a type, and the four call
+sites use it in place of the removed `Project.Trees.slotRegions_pos`.  The full build passed
+(3,577 jobs) with no `sorry`, all 22 modules emit the same bytes as before, and the
+`region-frame`, `function-call`, and `consumed-recursion` LTG entries name the new lemma.
+Item 3 is complete.
