@@ -190,7 +190,15 @@ if [ "$out" != "stats 4 0" ]; then
   stats_failed=$((stats_failed + 1))
   echo "fail: treeMoves addAll: $out, expected stats 4 0"
 fi
-echo "release counts: 53 cases, $stats_failed failed"
+# addLeft lends the left child to addRoot, which rewrites the right child's root in place: only
+# the host's records are allocated, and nothing is freed.
+out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" addLeft tree-u64 \
+  "tree-u64:5,1,.,.,9,.,." | tail -1)
+if [ "$out" != "stats 3 0" ]; then
+  stats_failed=$((stats_failed + 1))
+  echo "fail: treeMoves addLeft: $out, expected stats 3 0"
+fi
+echo "release counts: 54 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0

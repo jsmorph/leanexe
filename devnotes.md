@@ -23133,7 +23133,7 @@ Revised steps:
   `NodeOwned.slotRegions_apart`, and `Heap.Keeps.rebuilt`; the two LTG entries.  The full build
   passed, and all 22 modules emit the same bytes as before.
 - [x] 2b: `dropSmall` in `trees` and its theorem.
-- [ ] 2c: `addLeft` in `treeMoves` and its theorem.
+- [x] 2c: `addLeft` in `treeMoves` and its theorem.
 - [ ] 2d: `leftSpine` in `treeMoves` and its theorem.
 - [ ] Tests, LTG, journal.
 
@@ -23153,3 +23153,21 @@ nothing, a dropped tree frees its three records, a leaf allocates nothing).
 `tests/modules/run.sh` passed 7,481 comparisons, 53 count cases, and 12 depth cases, and
 `chunks.py` passed 360 cases.  The full build passed, and every other module emits the same
 bytes as before.
+
+### Item 2, step 2c: `addLeft`
+
+`KeyTree.addLeft`, whose record branch is `.node l k (addRoot l r)`, joined `treeMoves` as entry
+12; the internal functions `incr.rec`, `insert.rec`, and `addAll.rec` moved to `2 + 11` through
+`2 + 13`.  The call lends the owned left child and consumes the right child, and the record
+keeps `l` and `k` and takes the call's result in slot 2.  `addLeft_implements` applies
+`Stmt.callImplements_spec` with `addRoot_implements`: `treePair_args` (formerly `addAll_args`)
+builds the premises from `NodeOwned.borrowed` for `l` and from `NodeOwned.slotRegions_apart`,
+which places `l`'s slot regions inside its blocks, apart from `r`'s.  The call's postcondition is
+a `Heap.Rebuilt` of the right child, and `Heap.Rebuilt.rightChild`, a generalization of
+`Heap.Rebuilt.dropRight` to any rebuilt right child, gives the record.  `dropRight` is now an
+instance of it.  `treeMoves_bytes` covers `addLeft_implements` and depends on `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+Tests: 24 comparisons and a count case (3 host allocations, no frees).  `tests/modules/run.sh`
+passed 7,505 comparisons, 54 count cases, and 12 depth cases, and `chunks.py` passed 360 cases.
+The full build passed, and every other module emits the same bytes as before.

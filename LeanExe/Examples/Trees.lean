@@ -81,6 +81,12 @@ def KeyTree.addAll (a : KeyTree) : KeyTree → KeyTree
     .node (KeyTree.addAll a l) (k + match a with | .leaf => 0 | .node _ ak _ => ak)
       (KeyTree.addAll a r)
 
+/-- The tree with its left child's root key added to its right child's root key: the left child
+is lent to `addRoot`, which rewrites the right child. -/
+def KeyTree.addLeft : KeyTree → KeyTree
+  | .leaf => .leaf
+  | .node l k r => .node l k (KeyTree.addRoot l r)
+
 /-- The search tree `t` with the keys `a` and then `b`. -/
 def KeyTree.insertTwo (a b : UInt64) (t : KeyTree) : KeyTree := (t.insert a).insert b
 
