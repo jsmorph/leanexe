@@ -58,6 +58,10 @@ def elabLeanexeCompileModule : CommandElab
         let mut internals := []
         let mut owners := []
         let mut nextInternal := 2 + names.size
+        -- What a recursive body may call: each recursive definition's internal function, and
+        -- the leaves.
+        let mut recInternals := []
+        let mut leaves := []
         for name in names do
           let short := name.getString!
           let internal ← if ← needsInternal name then
@@ -65,8 +69,12 @@ def elabLeanexeCompileModule : CommandElab
               nextInternal := nextInternal + 1
               pure (some index)
             else pure none
-          let (func, hints, owned, rec_) ← compileDefinition name callees owners internal
+          let (func, hints, owned, rec_) ←
+            compileDefinition name callees owners internal recInternals leaves
           owners := (name, owned) :: owners
+          match internal with
+          | some index => recInternals := (name, index) :: recInternals
+          | none => if isLeaf func then leaves := name :: leaves
           let irName := base ++ Name.mkSimple short ++ `ir
           addDefinition irName (mkConst ``Func) (funcToExpr func)
           addDefinition (base ++ Name.mkSimple short ++ `hints) (mkConst ``Hints) (toExpr hints)
