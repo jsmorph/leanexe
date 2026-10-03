@@ -23322,3 +23322,22 @@ host prints a tree inside a list result (`tools/wasmtime-host.c`).
 
 Tests: 120 `sizeDrop` comparisons with two count cases, and 192 `pickPair` comparisons with one
 count case.  `tests/modules/run.sh` passed 7,913 comparisons, 58 count cases, and 12 depth cases.
+
+### Item 4, step 4b: the compiler
+
+An owned pair variable whose components include heap data (an array, a list, or a value of a
+recursive type) now moves when the code uses it whole, projects such a component, or takes it
+apart (`consumeTuple`); a second use fails with "the pair ... is used after the code moved it".
+`heapComponents` lists which components of a type are heap pointers.  `ownComponents` makes
+array, list, and tree components of a call's result owned temporaries, which the code may move
+and the function releases at the end otherwise.  `bindTyped` binds a list component as a value
+with records, as it binds a tree, so a list is tracked the same way instead of being copied as
+a word.  `moveSites` looks through `Prod.fst`, `Prod.snd`, and projections, and a projection of
+a call releases the call's other heap components right after it.
+
+Scratch checks: `(p, p)`, `(p.2, p.2)`, `match pairOfA xs with \| (p, _) => (p, p)`, the two
+`match p with \| (_, a) => p` programs, and `match pairL n with \| (a, _) => (a, a)` fail; a list
+component passed through or dropped (released at the end), `sizeDropNext`, `sizeAfterDrop`,
+`sizeDropSmall` (passes the tree component to `dropSmall`), `(sizeDrop n t).1` (releases the tree
+right after the call), and `(sizeDrop n t).2` compile.  The full build passed, and all 22 modules
+emit the same bytes as before.
