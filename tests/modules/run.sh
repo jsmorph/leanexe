@@ -163,7 +163,15 @@ for case in "array-u64:7|5,1,.,.,9,.,.|5 1" "array-u64:|.|2 1"; do
     echo "fail: trees pushSum $xs tree-u64:$tree: $out, expected stats $expected"
   fi
 done
-echo "release counts: 48 cases, $stats_failed failed"
+# addRoot reads the first tree and rewrites the second's root record in place: only the host's
+# records are allocated, and nothing is freed.
+out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" addRoot tree-u64 "tree-u64:2,.,." \
+  "tree-u64:5,1,.,.,9,.,." | tail -1)
+if [ "$out" != "stats 4 0" ]; then
+  stats_failed=$((stats_failed + 1))
+  echo "fail: treeMoves addRoot: $out, expected stats 4 0"
+fi
+echo "release counts: 49 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0

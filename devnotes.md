@@ -22994,7 +22994,7 @@ Revised steps:
 - [x] 1a: remove `checkOwnedNodes`; the invariant-parameter rule; the self-call check; matcher
   unfolding in values; `reuse` through a borrowed match.  Scratch checks and the byte
   comparison.
-- [ ] 1b: `addRoot` and its theorem.
+- [x] 1b: `addRoot` and its theorem.
 - [ ] 1c: `addAll a b`, which adds `a`'s root key to every key of `b`, and its theorem.
 - [ ] Tests, LTG, journal.
 
@@ -23023,4 +23023,16 @@ Scratch checks with the real compiler:
 | `addAll` with `@` patterns, `double`, `grand`, `h3`, `quad`, `pushTwice` | rejected, as before |
 
 The full build passed, and all 22 modules emit the same bytes as before.
+
+### Item 1, step 1b: `addRoot`
+
+`KeyTree.addRoot a b`, written with a `match` on `a` inside `b`'s record branch, joined
+`treeMoves` as entry 10; `incr.rec` and `insert.rec` moved to 11 and 12.  It borrows `a` and
+consumes `b`: when both are nodes it loads `a`'s three slots and stores `b`'s key plus `a`'s
+into `b`'s root record.  `addRoot_implements` follows `setKey_implements`, with the loads from
+the borrowed record (`RecordSlots` bounds them in memory, `SlotsBorrowed` gives the key) and a
+case for a leaf `a`, which returns `b` unchanged.  `treeMoves_bytes` covers it and depends on
+`propext`, `Classical.choice`, and `Quot.sound`.  Tests: 96 comparisons on pairs of trees, and a
+count case (4 host allocations, no frees).  `tests/modules/run.sh` passed 7,265 comparisons,
+49 count cases, and 12 depth cases.
 
