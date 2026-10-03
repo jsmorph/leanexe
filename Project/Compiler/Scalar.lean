@@ -611,6 +611,13 @@ that the body does not use. -/
 def Ctx.movableIn (ctx : Ctx) (body : Lean.Expr) : Ctx :=
   { ctx with owned := ctx.owned.filter fun x => occurrences x.fvarId! body == 0 }
 
+/-- `ctx` for a part of a value that the parts `later` follow: the part may move only the owned
+arrays that no later part mentions, since the later parts use them. -/
+def Ctx.before (ctx : Ctx) (later : List Lean.Expr) : Ctx :=
+  let arrays := (ctx.arrays ++ ctx.floatArrays).map (·.1)
+  { ctx with owned := ctx.owned.filter fun x =>
+      !arrays.contains x || later.all fun t => occurrences x.fvarId! t == 0 }
+
 /-- Runs `k` with a fresh variable of each type in `types`. -/
 def withVars {γ : Type} : List Lean.Expr → (List Lean.Expr → MetaM γ) → MetaM γ
   | [], k => k []
@@ -670,7 +677,10 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
         return (← moveSites owners params a) ++ (← moveSites owners params b)
       return []
   | (``Prod.mk, #[_, _, a, b]) =>
-      return (← moveSites owners params a) ++ (← moveSites owners params b)
+      -- The first part moves only the arrays that the second does not use; it copies the rest.
+      let first ← (← moveSites owners params a).filterM fun x => do
+        return !(← isArray (← inferType x)) || occurrences x.fvarId! b == 0
+      return first ++ (← moveSites owners params b)
   | (``LeanExe.loop, #[stateType, _, init, _]) =>
       -- A loop over a nest of arrays moves its initial components.
       unless ← isArrayNest stateType do return []
@@ -2218,11 +2228,14 @@ mutual
         let mut results := []
         let mut hints := []
         let mut remaining := dests?
-        for (part, partType) in parts do
+        for hi : i in [:parts.length] do
+          let (part, partType) := parts[i]
           let width := (← resultTypes partType).length
-          -- The earlier components run after this part's statements.
+          -- The earlier components run after this part's statements, and the later ones use
+          -- the arrays they mention.
+          let partCtx := ctx.before ((parts.drop (i + 1)).map (·.1))
           let (r, h) ← afterReads ctx (results.flatMap fun result => readLocals result.2)
-            (translateResults ctx part partType (remaining.map (·.take width)))
+            (translateResults partCtx part partType (remaining.map (·.take width)))
           results := results ++ r
           hints := hints ++ h
           remaining := remaining.map (·.drop width)
@@ -2275,15 +2288,21 @@ mutual
     let arrayArgs ← callArgs.toList.filterM fun arg => do isArray (← inferType arg)
     let nodeArgs ← callArgs.toList.filterM fun arg => do isNodeType (← inferType arg)
     let mut moved := []
+    let mut copies := []
     for position in owners do
       let some arg := callArgs[position]?
         | throwError "a call must supply every argument: {source}"
       let arg := arg.consumeMData
       if arg.isFVar then
         let sameKind := if ← isNodeType (← inferType arg) then nodeArgs else arrayArgs
-        unless ctx.owned.contains arg && (sameKind.map (occurrences arg.fvarId! ·)).sum == 1 do
+        if ctx.owned.contains arg && (sameKind.map (occurrences arg.fvarId! ·)).sum == 1 then
+          moved := arg :: moved
+        else if ← isArray (← inferType arg) then
+          -- An array that is borrowed, used later, or named by another argument: the call
+          -- consumes a copy.
+          copies := position :: copies
+        else
           throwError "an owned parameter must receive an owned value at its last use: {source}"
-        moved := arg :: moved
       else
         for x in ← moveSites ctx.owners ctx.owned arg do
           for h : j in [:callArgs.size] do
@@ -2301,7 +2320,11 @@ mutual
       let (values, argHints) ← afterReads ctx earlier do
         if ← isArray argType then
           let local_ ← match ← lookupArray (ctx.arrays ++ ctx.floatArrays) arg.consumeMData with
-            | some local_ => pure local_
+            | some local_ =>
+                if copies.contains position then
+                  translateArray { ctx with owned := ctx.owned.erase arg.consumeMData }
+                    arg.consumeMData
+                else pure local_
             | none =>
                 unless owned do
                   throwError "an array argument at a borrowed position must be an array variable: {source}"
