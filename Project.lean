@@ -42,6 +42,7 @@ import Project.Words.Verify
 import Project.Updates.Module
 import Project.Trees.Module
 import Project.Trees.Encode
+import Project.Trees.Node
 import Project.Trees.Verify
 import Project.Trees.Frame
 import Project.Trees.Moves

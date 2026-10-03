@@ -1,5 +1,6 @@
 import Project.Trees.Moves
 import Project.Trees.Encode
+import Project.Trees.Node
 import Project.IR.Recursion
 import Project.IR.Release
 import Project.Pipeline.Records
@@ -123,52 +124,6 @@ theorem setKey_implements : Implements treeMoves.module 2 setKeyMoved := by
     · rintro s st ⟨rfl, rfl⟩
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
-/-- The blocks of a node: its record's, then its subtrees'. -/
-theorem blocks_node (store : Store Unit) (p k : UInt64) (l r : KeyTree) :
-    Node.blocks store p (encode (.node l k r)) = block store p ::
-      (Node.blocks store (store.mem.read64 (slotAddress p 0)) (encode l) ++
-        Node.blocks store (store.mem.read64 (slotAddress p 2)) (encode r)) := by
-  simp [encode, Node.blocks, slotsBlocks]
-
-/-- The consumed blocks of a moved tree are its blocks. -/
-theorem gone_eq (store : Store Unit) (p : UInt64) (t : KeyTree) :
-    (Represent.moves store [.i64 p] (Moved.mk t)).map (block store) =
-      Node.blocks store p (encode t) :=
-  Node.pointers_blocks store p (encode t)
-
-/-- The bound at `incr_rec`'s three stores: the root's block, kept by both
-calls, is a region of `heap2`, which lies in `store2`'s memory. -/
-theorem incr_bound {heap heap1 heap2 : Heap} {initial store1 store2 : Store Unit}
-    {p k q1 q2 : UInt64} {l r : KeyTree}
-    (hArg : Represent.borrowed heap initial [.i64 p] (Moved.mk (KeyTree.node l k r)))
-    (h1 : heap.Rebuilt initial
-      ((Represent.moves initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l)).map
-        (block initial)) heap1 store1 q1 (Encode.encode (KeyTree.incr l)))
-    (h2 : heap1.Rebuilt store1
-      ((Represent.moves store1 [.i64 (initial.mem.read64 (slotAddress p 2))] (Moved.mk r)).map
-        (block store1)) heap2 store2 q2 (Encode.encode (KeyTree.incr r))) :
-    p.toNat + 24 ≤ store2.mem.pages * 65536 := by
-  obtain ⟨p', hp, hOwned, hDisjoint⟩ := hArg
-  simp only [List.cons.injEq, Value.i64.injEq, and_true] at hp
-  subst hp
-  rw [gone_eq] at h1 h2
-  obtain ⟨hHead, -, -, hr, -⟩ := hOwned
-  simp only [Nat.zero_add, Nat.reduceAdd] at hr
-  change (Node.blocks initial p (encode (.node l k r))).Pairwise regionsDisjoint at hDisjoint
-  rw [blocks_node] at hDisjoint
-  obtain ⟨hP0, hPlr⟩ := List.pairwise_cons.mp hDisjoint
-  obtain ⟨-, -, hlr⟩ := List.pairwise_append.mp hPlr
-  obtain ⟨-, hReg1, -⟩ := h1.region _ hHead.region (block_pos initial p)
-    fun b hb => hP0 b (List.mem_append_left _ hb)
-  obtain ⟨-, hrBlocks1, -⟩ := h1.keepNode hr fun b hb g hg => regionsDisjoint_symm (hlr g hg b hb)
-  have hIn := h2.inMemory hReg1 (block_pos initial p) fun b hb => by
-    rw [hrBlocks1] at hb
-    exact hP0 b (List.mem_append_right _ hb)
-  have hBase := hHead.base
-  have hRoom := hHead.capacity
-  simp only [List.length_cons, List.length_nil, block] at hRoom hIn
-  omega
-
 /-- The bound at `insert_rec`'s store into slot 0. -/
 theorem insertLeft_bound {heap heap1 : Heap} {initial store1 : Store Unit} {p k q1 x : UInt64}
     {l r : KeyTree} (hOwned : NodeOwned heap initial p (encode (.node l k r)))
@@ -202,75 +157,6 @@ theorem right_bound {heap heap2 : Heap} {initial store2 : Store Unit} {p k q2 : 
   simp only [List.length_cons, List.length_nil, block] at hRoom hIn
   omega
 
-/-- The premises of the first self-call, from the internal function's own premises. -/
-theorem incr_call1 {heap : Heap} {initial : Store Unit} {p k : UInt64} {l r : KeyTree}
-    (hArg : Represent.borrowed heap initial [.i64 p] (Moved.mk (KeyTree.node l k r))) :
-    Represent.borrowed heap initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l) ∧
-      Separate initial
-        (Represent.moves initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l))
-        (Represent.reads initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l)) := by
-  obtain ⟨p', hp, hOwned, hDisjoint⟩ := hArg
-  simp only [List.cons.injEq, Value.i64.injEq, and_true] at hp
-  subst hp
-  obtain ⟨-, hl, -, -, -⟩ := hOwned
-  change (Node.blocks initial p (encode (.node l k r))).Pairwise regionsDisjoint at hDisjoint
-  rw [blocks_node] at hDisjoint
-  have hPl := (List.pairwise_append.mp (List.pairwise_cons.mp hDisjoint).2).1
-  refine ⟨⟨_, rfl, hl, hPl⟩, ?_, fun _ h => nomatch h⟩
-  rw [gone_eq]
-  exact hPl
-
-/-- The premises of the second self-call, from the first call's result. -/
-theorem incr_call2 {heap heap1 : Heap} {initial store1 : Store Unit} {p k q1 : UInt64}
-    {l r : KeyTree}
-    (hArg : Represent.borrowed heap initial [.i64 p] (Moved.mk (KeyTree.node l k r)))
-    (h1 : heap.Rebuilt initial
-      ((Represent.moves initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l)).map
-        (block initial)) heap1 store1 q1 (Encode.encode (KeyTree.incr l))) :
-    Represent.borrowed heap1 store1 [.i64 (initial.mem.read64 (slotAddress p 2))] (Moved.mk r) ∧
-      Separate store1
-        (Represent.moves store1 [.i64 (initial.mem.read64 (slotAddress p 2))] (Moved.mk r))
-        (Represent.reads initial [.i64 (initial.mem.read64 (slotAddress p 2))] (Moved.mk r)) := by
-  obtain ⟨p', hp, hOwned, hDisjoint⟩ := hArg
-  simp only [List.cons.injEq, Value.i64.injEq, and_true] at hp
-  subst hp
-  obtain ⟨-, -, -, hr, -⟩ := hOwned
-  simp only [Nat.zero_add, Nat.reduceAdd] at hr
-  change (Node.blocks initial p (encode (.node l k r))).Pairwise regionsDisjoint at hDisjoint
-  rw [blocks_node] at hDisjoint
-  obtain ⟨-, hPr, hlr⟩ := List.pairwise_append.mp (List.pairwise_cons.mp hDisjoint).2
-  rw [gone_eq] at h1
-  obtain ⟨hr1, hBlocks1, -⟩ := h1.keepNode hr fun b hb g hg => regionsDisjoint_symm (hlr g hg b hb)
-  have hPr1 : (Node.blocks store1 (initial.mem.read64 (slotAddress p 2)) (encode r)).Pairwise
-      regionsDisjoint := by
-    rw [hBlocks1]; exact hPr
-  refine ⟨⟨_, rfl, hr1, hPr1⟩, ?_, fun _ h => nomatch h⟩
-  rw [gone_eq]
-  exact hPr1
-
-/-- The node case: the record rebuilt from the two calls' results and the three slot writes. -/
-theorem incr_node {heap heap1 heap2 : Heap} {initial store1 store2 final : Store Unit}
-    {p k q1 q2 : UInt64} {l r : KeyTree}
-    (hArg : Represent.borrowed heap initial [.i64 p] (Moved.mk (KeyTree.node l k r)))
-    (h1 : heap.Rebuilt initial
-      ((Represent.moves initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l)).map
-        (block initial)) heap1 store1 q1 (Encode.encode (KeyTree.incr l)))
-    (h2 : heap1.Rebuilt store1
-      ((Represent.moves store1 [.i64 (initial.mem.read64 (slotAddress p 2))] (Moved.mk r)).map
-        (block store1)) heap2 store2 q2 (Encode.encode (KeyTree.incr r)))
-    (hWrites : Memory.WritesRange store2 final p.toNat (p.toNat + 24))
-    (hq1 : final.mem.read64 (slotAddress p 0) = q1)
-    (hk : final.mem.read64 (slotAddress p 1) = k + 1)
-    (hq2 : final.mem.read64 (slotAddress p 2) = q2) :
-    heap.Rebuilt initial
-      ((Represent.moves initial [.i64 p] (Moved.mk (KeyTree.node l k r))).map (block initial))
-      heap2 final p (Encode.encode (KeyTree.incr (.node l k r))) := by
-  obtain ⟨p', hp, hOwned, hDisjoint⟩ := hArg
-  simp only [List.cons.injEq, Value.i64.injEq, and_true] at hp
-  subst hp
-  rw [gone_eq] at h1 h2 ⊢
-  exact Heap.Rebuilt.node hOwned hDisjoint h1 h2 hWrites hq1 hk hq2
-
 /-- The leaf case. -/
 theorem incr_leaf {heap : Heap} {initial : Store Unit} {p : UInt64} (hHeap : heap.At initial)
     (hArg : Represent.borrowed heap initial [.i64 p] (Moved.mk KeyTree.leaf)) :
@@ -281,19 +167,6 @@ theorem incr_leaf {heap : Heap} {initial : Store Unit} {p : UInt64} (hHeap : hea
   simp only [List.cons.injEq, Value.i64.injEq, and_true] at hp
   subst hp
   exact ⟨hOwned, Heap.Rebuilt.null hHeap⟩
-
-/-- The three slot stores of the code, in order, write only the record's slots. -/
-theorem writes3 (store : Store Unit) (p a b c : UInt64) (hAddress : p.toNat + 24 < 4294967296) :
-    Memory.WritesRange store
-      { store with
-        mem := (((store.mem.write64 (slotAddress p 0) a).write64 (slotAddress p 1) b).write64
-          (slotAddress p 2) c) } p.toNat (p.toNat + 24) := by
-  have h0 := slotAddress_toNat (p := p) (i := 0) (by omega)
-  have h1 := slotAddress_toNat (p := p) (i := 1) (by omega)
-  have h2 := slotAddress_toNat (p := p) (i := 2) (by omega)
-  exact ((Memory.WritesRange.write64 store _ a _ _ (by omega) (by omega)).trans
-    (Memory.WritesRange.write64 _ _ b _ _ (by omega) (by omega))).trans
-    (Memory.WritesRange.write64 _ _ c _ _ (by omega) (by omega))
 
 /-- `incr` with its argument consumed. -/
 def incrMoved (t : Moved KeyTree) : KeyTree := t.val.incr
@@ -374,7 +247,7 @@ theorem incr_rec : ∀ t, Rebuilds (compile treeMoves.funcs) (2 + 13) incrMoved 
       { params := ps, locals := [.i64 0, .i64 pl, .i64 k, .i64 pr, .i64 a, .i64 b] }
     let s6 (a b : UInt64) : State :=
       { params := ps, locals := [.i64 p, .i64 pl, .i64 k, .i64 pr, .i64 a, .i64 b] }
-    obtain ⟨hB1, hSep1⟩ := incr_call1 hArg
+    obtain ⟨hB1, hSep1⟩ := node_call1 hArg
     refine (Stmt.ite_spec (PThen := fun _ _ => False)
       (PElse := fun s st => s = initial ∧ st = start) Triple.of_false ?_).mono ?_ fun _ _ h => h
     · refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = s1) ?_ <|
@@ -398,7 +271,7 @@ theorem incr_rec : ∀ t, Rebuilds (compile treeMoves.funcs) (2 + 13) incrMoved 
           hSep1 hCap (d := d + 1) rfl fun a => by simp [State.setAll, State.set?, s3, s4, ps]
       refine Triple.of_forall fun store1 st ⟨heap1, a, hst, hR1⟩ => ?_
       subst hst
-      obtain ⟨hB2, hSep2⟩ := incr_call2 hArg hR1
+      obtain ⟨hB2, hSep2⟩ := node_call2 hArg hR1
       refine Stmt.seq_spec (M := fun s st => ∃ (heap2 : Heap) (b : UInt64), st = s5 a b ∧
           heap1.Rebuilt store1 ((Represent.moves store1 [.i64 pr] (Moved.mk r)).map
             (block store1)) heap2 s b (Encode.encode (incrMoved ⟨r⟩))) ?_ ?_
@@ -417,7 +290,7 @@ theorem incr_rec : ∀ t, Rebuilds (compile treeMoves.funcs) (2 + 13) incrMoved 
         rintro s st ⟨rfl, rfl⟩
         refine ⟨p + 0, s5 a b, a, s5 a b, rfl, rfl, ?_, ?_⟩
         · rw [h0, hs0]
-          have := incr_bound hArg hR1 hR2
+          have := node_bound hArg hR1 hR2
           omega
         · rw [h0]
           exact ⟨rfl, rfl⟩
@@ -425,7 +298,7 @@ theorem incr_rec : ∀ t, Rebuilds (compile treeMoves.funcs) (2 + 13) incrMoved 
         rintro s st ⟨rfl, rfl⟩
         refine ⟨p + 8, s5 a b, k + 1, s5 a b, rfl, rfl, ?_, ?_⟩
         · rw [h1, hs1]
-          have := incr_bound hArg hR1 hR2
+          have := node_bound hArg hR1 hR2
           simp only [w0, Wasm.Mem.write64_pages]
           omega
         · rw [h1]
@@ -434,7 +307,7 @@ theorem incr_rec : ∀ t, Rebuilds (compile treeMoves.funcs) (2 + 13) incrMoved 
         rintro s st ⟨rfl, rfl⟩
         refine ⟨p + 16, s5 a b, b, s5 a b, rfl, rfl, ?_, ?_⟩
         · rw [h2, hs2]
-          have := incr_bound hArg hR1 hR2
+          have := node_bound hArg hR1 hR2
           simp only [w1, w0, Wasm.Mem.write64_pages]
           omega
         · rw [h2]
@@ -448,7 +321,7 @@ theorem incr_rec : ∀ t, Rebuilds (compile treeMoves.funcs) (2 + 13) incrMoved 
           rw [Memory.read64_write64_disjoint _ _ _ _ (by omega), Memory.read64_write64]
         have hRead2 : w2.read64 (slotAddress p 2) = b := Memory.read64_write64 _ _ _
         exact ⟨p, s5 a b, s6 a b, rfl, rfl, heap2, p, s6 a b,
-          rfl, incr_node hArg hR1 hR2 (writes3 store2 p a (k + 1) b (by omega)) hRead0 hRead1 hRead2⟩
+          rfl, node_rebuilt hArg hR1 hR2 (writes3 store2 p a (k + 1) b (by omega)) hRead0 hRead1 hRead2⟩
     · rintro s st ⟨rfl, rfl⟩
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
@@ -479,22 +352,6 @@ theorem pair_args {heap : Heap} {store : Store Unit} {x q : UInt64} {t : KeyTree
   refine ⟨⟨[.i64 x], [.i64 q], rfl, rfl, q, rfl, h, hd⟩, ?_, fun _ h => nomatch h⟩
   rw [pair_gone]
   exact hd
-
-/-- The children of an owned node with disjoint blocks are owned with disjoint blocks. -/
-theorem node_children {heap : Heap} {store : Store Unit} {p k : UInt64} {l r : KeyTree}
-    (h : NodeOwned heap store p (encode (.node l k r)))
-    (hd : (Node.blocks store p (encode (.node l k r))).Pairwise regionsDisjoint) :
-    NodeOwned heap store (store.mem.read64 (slotAddress p 0)) (encode l) ∧
-      (Node.blocks store (store.mem.read64 (slotAddress p 0)) (encode l)).Pairwise
-        regionsDisjoint ∧
-      NodeOwned heap store (store.mem.read64 (slotAddress p 2)) (encode r) ∧
-      (Node.blocks store (store.mem.read64 (slotAddress p 2)) (encode r)).Pairwise
-        regionsDisjoint := by
-  obtain ⟨-, hl, -, hr, -⟩ := h
-  rw [blocks_node] at hd
-  obtain ⟨hPl, hPr, -⟩ := List.pairwise_append.mp (List.pairwise_cons.mp hd).2
-  simp only [Nat.zero_add, Nat.reduceAdd] at hr
-  exact ⟨hl, hPl, hr, hPr⟩
 
 /-- A new record holding a null pointer, the word `x`, and a null pointer is the one-node tree
 of `x`. -/

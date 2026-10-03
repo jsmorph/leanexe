@@ -124,6 +124,76 @@ theorem Func.entry_implements [Represent α] (funcs : List (Func × String)) (i 
   exact ⟨next, by simpa using hNext, rfl, [.i64 (f x)], next,
     by simp [Expr.evalResults, Expr.eval, hGet], rfl⟩
 
+/-- The specification of an entry that keeps the store: from a store with the allocator
+invariant and arguments `vs` that represent `x` as borrowed, a call aborts or keeps the store
+and returns `f x`.  A loop body, whose statements must keep the store, calls such an entry.
+`Implements` keeps only the regions apart from the consumed blocks. -/
+def KeepsEntry [Represent α] (m : Module) (idx : Nat) (f : α → UInt64) (x : α) : Prop :=
+  ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (vs : List Value),
+    heap.At store → Represent.borrowed heap store vs x →
+    ReturnsOrAborts env m idx store vs.reverse
+      (fun final values => final = store ∧ values = [.i64 (f x)])
+
+/-- The entry of a recursive definition, one call of the internal function at depth 0, keeps
+the store when the internal function does. -/
+theorem Func.entry_keeps [Represent α] (funcs : List (Func × String)) (i : Nat)
+    (func : Func) (name : String) (hFunc : funcs[i]? = some (func, name)) (f : α → UInt64)
+    {index : Nat} {g : Wasm.Function} {args : List ((type : ScalarType) × Expr type)}
+    (arity : ∀ heap store params (x : α), Represent.borrowed heap store params x →
+      params.length = func.params.length)
+    (hBody : func.body = .call index args [func.params.length])
+    (hResults : func.results = [⟨.u64, .get func.params.length⟩])
+    (hImport : (compile funcs).imports[index]? = none)
+    (hCallee : (compile funcs).funcs[index - (compile funcs).imports.length]? = some g)
+    (hParams : args.length = g.numParams)
+    (hArgs : ∀ heap store params (x : α), Represent.borrowed heap store params x →
+      Expr.evalResults store.mem func.scratch args (func.state params) =
+        some (params ++ [.i64 0], func.state params))
+    (hSet : ∀ (params : List Value) (v : UInt64), params.length = func.params.length →
+      ∃ next, (func.state params).setAll [func.params.length] [.i64 v] = some next ∧
+        next.get func.params.length = some (.i64 v))
+    (hSpec : ∀ x, Keeps (compile funcs) index f x) :
+    ∀ x, KeepsEntry (compile funcs) (2 + i) f x := by
+  intro x env store heap vs hHeap hB
+  have hRun := Func.keeps funcs i func name hFunc (initial := store) (params := vs)
+    (out := [.i64 (f x)]) (arity _ _ _ _ hB) (by
+      rw [hBody, hResults]
+      refine (Stmt.call_spec hImport hCallee hParams).mono ?_ fun _ _ h => h
+      rintro s st ⟨rfl, rfl⟩
+      refine ⟨vs ++ [.i64 0], func.state vs,
+        fun final values => final = s ∧ values = [.i64 (f x)], hArgs heap s vs x hB,
+        fun env => by simpa using hSpec x env s heap vs 0 hHeap hB, ?_⟩
+      rintro s' out ⟨rfl, rfl⟩
+      obtain ⟨next, hNext, hGet⟩ := hSet vs (f x) (arity _ _ _ _ hB)
+      exact ⟨next, by simpa using hNext, rfl, next, by simp [Expr.evalResults, Expr.eval, hGet]⟩)
+    env
+  refine hRun.mono fun st vs' ⟨hSt, hVs⟩ => ⟨hSt, ?_⟩
+  rw [← List.reverse_reverse vs', hVs]
+  rfl
+
+/-- A call of an entry that keeps the store, from arguments that represent `y` as borrowed,
+keeps the store and leaves `f y` in local `result`. -/
+theorem Stmt.callKeeps_spec [Represent α] {m : Module} {idx : Nat} {f : α → UInt64}
+    {g : Wasm.Function} (hImport : m.imports[idx]? = none)
+    (hFunc : m.funcs[idx - m.imports.length]? = some g) {scratch : Nat}
+    {args : List ((type : ScalarType) × Expr type)} {result : Nat}
+    (hParams : args.length = g.numParams) {initial : Store Unit} {before afterArgs next : State}
+    {heap : Heap} {y : α} {vs : List Value}
+    (hSpec : KeepsEntry m idx f y) (hHeap : heap.At initial)
+    (hB : Represent.borrowed heap initial vs y)
+    (hArgs : Expr.evalResults initial.mem scratch args before = some (vs, afterArgs))
+    (hSet : afterArgs.setAll [result] [.i64 (f y)] = some next) :
+    Triple m (.call idx args [result]) scratch
+      (fun store state => store = initial ∧ state = before)
+      (fun store state => store = initial ∧ state = next) := by
+  refine (Stmt.call_spec hImport hFunc hParams).mono ?_ fun _ _ h => h
+  rintro store state ⟨rfl, rfl⟩
+  refine ⟨vs, afterArgs, fun final values => final = store ∧ values = [.i64 (f y)], hArgs,
+    fun env => ?_, ?_⟩
+  · simpa using hSpec env store heap vs hHeap hB
+  · rintro store' out ⟨rfl, rfl⟩
+    exact ⟨next, by simpa using hSet, rfl, rfl⟩
+
 /-- The specification of an internal function that consumes the moved part of its argument:
 under the premises of `Implements` and for any depth word, a call aborts or returns one
 pointer to the result's records, rebuilt from the consumed blocks. -/

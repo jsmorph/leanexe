@@ -1,3 +1,5 @@
+import LeanExe.Loop
+
 /-!
 Binary trees of words declared by the program, held on the heap as records: a leaf is the
 null pointer, and `node l k r` a record of three slots, the pointer to `l`, the word `k`, and
@@ -147,6 +149,24 @@ returns it. -/
 def KeyTree.dropWithSize (n : UInt64) (t : KeyTree) : UInt64 × KeyTree :=
   let u := t.dropSmall n
   (u.size, u)
+
+/-- The tree with each node's key replaced by the size of its left subtree: each record branch
+lends its left child to `size`. -/
+def KeyTree.leftSizes : KeyTree → KeyTree
+  | .leaf => .leaf
+  | .node l _ r =>
+    let n := l.size
+    .node (KeyTree.leftSizes l) n (KeyTree.leftSizes r)
+
+/-- The number of nodes whose left subtree has more nodes than their right one. -/
+def KeyTree.leftHeavy : KeyTree → UInt64
+  | .leaf => 0
+  | .node l _ r =>
+    (if r.size < l.size then 1 else 0) + KeyTree.leftHeavy l + KeyTree.leftHeavy r
+
+/-- `t`'s size added `n` times: the loop body lends `t` to `size`. -/
+def KeyTree.sumSizes (n : UInt64) (t : KeyTree) : UInt64 :=
+  LeanExe.loop n 0 fun _ acc => acc + t.size
 
 /-- A test of the depth limit: sixteen words computed before the recursive calls and used after
 them, so that the internal function holds 24 values in its frame, the most the compiler
