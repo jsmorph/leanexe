@@ -22991,9 +22991,36 @@ T7.  The findings change the recommendation:
 
 Revised steps:
 
-- [ ] 1a: remove `checkOwnedNodes`; the invariant-parameter rule; the self-call check; matcher
+- [x] 1a: remove `checkOwnedNodes`; the invariant-parameter rule; the self-call check; matcher
   unfolding in values; `reuse` through a borrowed match.  Scratch checks and the byte
   comparison.
 - [ ] 1b: `addRoot` and its theorem.
 - [ ] 1c: `addAll a b`, which adds `a`'s root key to every key of `b`, and its theorem.
 - [ ] Tests, LTG, journal.
+
+### Item 1, step 1a: the compiler
+
+`checkOwnedNodes` is gone.  The mode rule of a recursive definition that returns a tree first
+borrows each tree parameter that every self-call passes unchanged in its own position and that
+the body, with that position borrowed, moves nowhere else (`selfArgs` collects the arguments
+at a position), then runs the greatest fixed point on the rest as before.  `translateSelfCall`
+rejects an owned variable at a borrowed position, as `translateCall` does.  `translateValue`
+unfolds a matcher before looking for a case split, so a `match` can appear inside a value.  A
+match now keeps the enclosing record's `reuse` in its branches, except in the record branch of
+a match on an owned value, which rewrites that value's record: the settle code at the join
+handles a record that one branch rewrites and another does not.  Without this, `zipAdd`'s branch
+for a leaf `a` built a copy of `b`'s record and released the original.
+
+Scratch checks with the real compiler:
+
+| Program | Result |
+|---------|--------|
+| `addRoot a b` (`b`'s root key plus `a`'s, written with a nested `match`) | `a` borrowed, `b` consumed; one store into `b`'s record |
+| `addAll a b` (`a`'s root key added to every key of `b`) | `a` borrowed, passed to both recursive calls; `b` rewritten in place; `a`'s key read between the calls |
+| `zipAdd a b` | both consumed; `b` returned unchanged when `a` is a leaf; otherwise `a`'s record rewritten and `b`'s released |
+| `pick`, `dropIf`, and `caller a b := pick a b` | compile |
+| `pick t t`, and `pick l (.node l k r)` in a record branch | rejected by the occurrence checks |
+| `addAll` with `@` patterns, `double`, `grand`, `h3`, `quad`, `pushTwice` | rejected, as before |
+
+The full build passed, and all 22 modules emit the same bytes as before.
+
