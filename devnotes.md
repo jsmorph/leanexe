@@ -22658,6 +22658,61 @@ Conversion plan, in import order:
    `Func.implements_rebuilt` pass the region clause through.
 4. The program proofs that state the frame directly change to the new form.
 
-- [ ] Steps 1 to 3 and the shared IR rules.
-- [ ] The program proofs; full build, module tests, and byte comparison.
-- [ ] LTG, `deslop.md`, and the journal.
+- [x] Steps 1 to 3 and the shared IR rules.
+- [x] The program proofs; full build, module tests, and byte comparison.
+- [x] LTG, `deslop.md`, and the journal.
+
+### Review of the Iteration 11 statement
+
+One reviewer checked the statement against the code at HEAD.  I ran its three files in the job's
+scratch directory; they check with no `sorry`.  `Strength.lean` derives the four old array
+clauses from the new clause, using page-free keep lemmas, since `Heap.Borrowed.keep` and
+`Heap.Owned.keep` take a page bound that the clause does not give.  `Trees.lean` proves that an
+owned tree apart from the consumed blocks stays owned with the same blocks, from existing lemmas,
+and that a borrowed tree does too, with a new list of slot regions and the condition that every
+record has a slot.  `Guard.lean` shows that the guard `0 < r.2` is needed: an empty region on the
+boundary of a released block and a free block is a region before a release that merges them and
+not after.  By reading, the reviewer found no write outside allocated, consumed, or free blocks,
+and no release that lowers `top`.  The reviewer also noted that `Heap.Rebuilt`, `Heap.Built`,
+`Heap.NewRecord`, and `Releasing` carry page fields, which a proof cannot fill across a call to
+an `Implements` entry, since the clause states no page bound.
+
+### Iteration 11: the region frame
+
+`Heap.Region` moved to `Runtime.lean`, beside `Heap.Keeps heap initial gone heap' store fresh`:
+every region of `heap` apart from the blocks `gone` keeps its bytes, is a region of `heap'`, and
+lies apart from the blocks `fresh`.  `Heap.Keeps.refl`, `.trans`, and `.mono` compose frames.
+`Implements` states the clause with `Apart` and `Represent.outside`, and `Heap.Keeps.implements`
+converts it.  `arrayAt_frameIn`, `Heap.Borrowed.keepIn`, and `Heap.Owned.keepIn` keep an array
+with a bound in memory from `Heap.Region` and `Heap.At.top` in place of a page bound; on them
+rest `Heap.Keeps.borrowed` and `Heap.Keeps.owned`, and `Heap.Keeps.node` gives an owned tree.
+`Heap.Keeps.release` is the frame of an array release.
+
+`Heap.NewArray`, `Stmt.AppendPost`, and `Live` state their frames with `Heap.Keeps`.  Lemmas
+with the old field names (`Live.borrowed`, `.owned`, `.apartB`, `.apartO`, and
+`Heap.NewArray.borrowed`, `.ownedKeep`, `.borrowedApart`, `.ownedApart`) derive the array facts,
+so most program proofs did not change.  `Live.step` adds one step to `Live`: it consumes some
+temporaries, keeps the regions apart from their blocks, and adds new ones.  `Live.call`,
+`Live.callMove`, `Live.releaseFirst`, `Live.push`, `Live.appendPost`, `Live.callTuple`, and
+`Live.callScalar_seq` are each one application of it.  `Stmt.callImplements_spec`,
+`Func.implements_moves`, `Func.implements_heap`, the `Live.finish` rules, and `MovesPost` in
+CLOB carry the `Heap.Keeps` form; `Func.implements_rebuilt` passes `Heap.Rebuilt.region`
+through, and `Heap.Rebuilt.keepNode` now follows from `Heap.Keeps.node`.
+
+The program proofs changed where they stated the old clauses: the NewArray and `Live.finish`
+endings in GPT, `two_updates` in CLOB (two in-place updates in a row), `setKey` and
+`insertTwo` in `treeMoves`, `generating_step`, and the list, word, pair, and count modules.  The
+change removed 902 lines and added 667.  No compiler or module file changed, so the emitted
+bytes are the same.  The full build passed (3,576 jobs), and `clob_bytes`, `gpt_bytes`,
+`treeMoves_bytes`, `trees_bytes`, `lists_bytes`, and `words_bytes` depend on `propext`,
+`Classical.choice`, and `Quot.sound`.  The LTG entry `region-frame` describes the frame, and
+`function-call`, `array-build`, `array-literal`, and `in-place-update` describe their frames in
+its terms.
+
+Open items, each waiting for a program that needs it:
+
+| Item | What it needs |
+|------|---------------|
+| A caller that holds a borrowed tree across a call | the slot-region list and `NodeBorrowed.frame`, which the reviewer proved in a scratch file |
+| A function proved through `Heap.Rebuilt` that calls an `Implements` entry | dropping the page fields of `Heap.Rebuilt` and its relatives, or a page clause in `Implements` |
+

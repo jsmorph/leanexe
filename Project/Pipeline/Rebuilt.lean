@@ -68,6 +68,20 @@ theorem slotsBlocks_pos (store : Store Unit) : ∀ (p : UInt64) (i : Nat) (slots
       · exact slotsBlocks_pos store p (i + 1) rest b hb
 end
 
+/-- A step that keeps the regions apart from `gone` keeps each owned value of a recursive type
+whose blocks lie apart from `gone`, with the same blocks, and leaves its blocks apart from the
+blocks `fresh`. -/
+theorem Heap.Keeps.node {heap heap' : Heap} {initial store : Store Unit}
+    {gone fresh : List (Nat × Nat)} (h : heap.Keeps initial gone heap' store fresh) {q : UInt64}
+    {m : Node} (hm : NodeOwned heap initial q m)
+    (hApart : ∀ b ∈ m.blocks initial q, ∀ g ∈ gone, regionsDisjoint b g) :
+    NodeOwned heap' store q m ∧ m.blocks store q = m.blocks initial q ∧
+      ∀ b ∈ m.blocks initial q, ∀ c ∈ fresh, regionsDisjoint b c := by
+  have hKeep := fun b (hb : b ∈ m.blocks initial q) =>
+    h b (NodeOwned.regions q m hm b hb) (Node.blocks_pos initial q m b hb) (hApart b hb)
+  obtain ⟨hOwned, hBlocks⟩ := NodeOwned.frame q m hm fun b hb => ⟨(hKeep b hb).1, (hKeep b hb).2.1⟩
+  exact ⟨hOwned, hBlocks, fun b hb => (hKeep b hb).2.2⟩
+
 /-- A value owned before a call that consumed `gone`, apart from `gone`, stays owned with the
 same blocks and lies apart from the call's result. -/
 theorem Heap.Rebuilt.keepNode {heap heap' : Heap} {initial store : Store Unit}
@@ -75,12 +89,8 @@ theorem Heap.Rebuilt.keepNode {heap heap' : Heap} {initial store : Store Unit}
     (h : heap.Rebuilt initial gone heap' store p n) (hm : NodeOwned heap initial q m)
     (hApart : ∀ b ∈ m.blocks initial q, ∀ g ∈ gone, regionsDisjoint b g) :
     NodeOwned heap' store q m ∧ m.blocks store q = m.blocks initial q ∧
-      ∀ b ∈ m.blocks initial q, ∀ c ∈ n.blocks store p, regionsDisjoint b c := by
-  have hRegions := NodeOwned.regions q m hm
-  have hKeep := fun b (hb : b ∈ m.blocks initial q) =>
-    h.region b (hRegions b hb) (Node.blocks_pos initial q m b hb) (hApart b hb)
-  obtain ⟨hOwned, hBlocks⟩ := NodeOwned.frame q m hm fun b hb => ⟨(hKeep b hb).1, (hKeep b hb).2.1⟩
-  exact ⟨hOwned, hBlocks, fun b hb => (hKeep b hb).2.2⟩
+      ∀ b ∈ m.blocks initial q, ∀ c ∈ n.blocks store p, regionsDisjoint b c :=
+  Heap.Keeps.node h.region hm hApart
 
 /-- A borrowed array apart from the consumed blocks stays borrowed and lies apart from the
 result. -/
