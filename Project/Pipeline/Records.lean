@@ -254,6 +254,67 @@ theorem SlotsOwned.regions {heap : Heap} {store : Store Unit} :
       · exact SlotsOwned.regions p (i + 1) rest hRest b hb
 end
 
+/-- An owned record's slots are the slots of a borrowed record. -/
+theorem RecordHeader.slots {heap : Heap} {store : Store Unit} {p : UInt64} {slots : List Slot}
+    (h : RecordHeader heap store p slots) : RecordSlots heap p slots := by
+  have hBase := h.base
+  have hCapacity := h.capacity
+  have hAddress := h.address
+  have hBelow := h.below
+  refine ⟨fun hp => by simp [hp] at hBase, by omega, by omega, fun node hNode => ?_⟩
+  have hSeparate := h.separate node hNode
+  unfold regionsDisjoint at hSeparate ⊢
+  omega
+
+mutual
+/-- An owned value can be lent: it is also borrowed, in the same heap. -/
+theorem NodeOwned.borrowed {heap : Heap} {store : Store Unit} :
+    ∀ (p : UInt64) (n : Node), NodeOwned heap store p n → NodeBorrowed heap store p n
+  | _, .null, h => h
+  | p, .record slots, ⟨hHead, hSlots⟩ => ⟨hHead.slots, SlotsOwned.borrowed p 0 slots hSlots⟩
+
+theorem SlotsOwned.borrowed {heap : Heap} {store : Store Unit} :
+    ∀ (p : UInt64) (i : Nat) (slots : List Slot), SlotsOwned heap store p i slots →
+      SlotsBorrowed heap store p i slots
+  | _, _, [], _ => trivial
+  | p, i, .word _ :: rest, ⟨hWord, hRest⟩ => ⟨hWord, SlotsOwned.borrowed p (i + 1) rest hRest⟩
+  | p, i, .child n :: rest, ⟨hChild, hRest⟩ =>
+      ⟨NodeOwned.borrowed _ n hChild, SlotsOwned.borrowed p (i + 1) rest hRest⟩
+end
+
+mutual
+/-- Each slot region of an owned value lies inside one of its blocks, so a region apart from
+every block lies apart from every slot region. -/
+theorem NodeOwned.slotRegions_apart {heap : Heap} {store : Store Unit} {c : Nat × Nat} :
+    ∀ (p : UInt64) (n : Node), NodeOwned heap store p n →
+      (∀ b ∈ n.blocks store p, regionsDisjoint b c) → ∀ s ∈ n.slotRegions store p,
+        regionsDisjoint s c
+  | _, .null, _, _, _, hs => nomatch hs
+  | p, .record slots, ⟨hHead, hSlots⟩, hApart, s, hs => by
+      rcases List.mem_cons.mp hs with rfl | hs
+      · have hBase := hHead.base
+        have hCapacity := hHead.capacity
+        have h := hApart _ (List.mem_cons_self ..)
+        simp only [block, regionsDisjoint] at h ⊢
+        omega
+      · exact SlotsOwned.slotRegions_apart p 0 slots hSlots
+          (fun b hb => hApart b (List.mem_cons_of_mem _ hb)) s hs
+
+theorem SlotsOwned.slotRegions_apart {heap : Heap} {store : Store Unit} {c : Nat × Nat} :
+    ∀ (p : UInt64) (i : Nat) (slots : List Slot), SlotsOwned heap store p i slots →
+      (∀ b ∈ slotsBlocks store p i slots, regionsDisjoint b c) →
+      ∀ s ∈ slotsRegions store p i slots, regionsDisjoint s c
+  | _, _, [], _, _, _, hs => nomatch hs
+  | p, i, .word _ :: rest, ⟨_, hRest⟩, hApart, s, hs =>
+      SlotsOwned.slotRegions_apart p (i + 1) rest hRest hApart s hs
+  | p, i, .child n :: rest, ⟨hChild, hRest⟩, hApart, s, hs => by
+      rcases List.mem_append.mp hs with hs | hs
+      · exact NodeOwned.slotRegions_apart _ n hChild
+          (fun b hb => hApart b (List.mem_append_left _ hb)) s hs
+      · exact SlotsOwned.slotRegions_apart p (i + 1) rest hRest
+          (fun b hb => hApart b (List.mem_append_right _ hb)) s hs
+end
+
 /-- The value `n`, owned at `p` in `heap'` and `store`, built from `heap` and `initial`: the
 allocator invariant holds, the value's blocks are pairwise disjoint, every region of `heap`
 keeps its bytes, stays a region, and lies apart from the value's blocks, and the memory

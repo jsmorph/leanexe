@@ -42,6 +42,17 @@ theorem Heap.Built.rebuilt {heap heap' : Heap} {initial store : Store Unit} {p :
     heap.Rebuilt initial gone heap' store p n :=
   ⟨h.at_, h.owned, h.disjoint, fun r hr _ _ => h.region r hr, h.caps⟩
 
+/-- A step, then a rebuild that consumes only blocks the step keeps or leaves fresh, is a
+rebuild from the state before the step. -/
+theorem Heap.Keeps.rebuilt {heap heap1 heap2 : Heap} {initial store1 store2 : Store Unit}
+    {gone gone2 fresh : List (Nat × Nat)} {p : UInt64} {n : Node}
+    (h1 : heap.Keeps initial gone heap1 store1 fresh) (hCaps : store1.memoryCaps = initial.memoryCaps)
+    (h2 : heap1.Rebuilt store1 gone2 heap2 store2 p n)
+    (hGone : ∀ r, (∀ b ∈ gone, regionsDisjoint r b) → (∀ b ∈ fresh, regionsDisjoint r b) →
+      ∀ b ∈ gone2, regionsDisjoint r b) :
+    heap.Rebuilt initial gone heap2 store2 p n :=
+  ⟨h2.at_, h2.owned, h2.disjoint, Heap.Keeps.trans h1 h2.region hGone, h2.caps.trans hCaps⟩
+
 /-- Every block has positive length. -/
 theorem block_pos (store : Store Unit) (q : UInt64) : 0 < (block store q).2 := by
   simp [block]

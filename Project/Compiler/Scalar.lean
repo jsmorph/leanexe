@@ -2209,10 +2209,7 @@ mutual
             [mkHint ⟨[], offset⟩ (exprLength ir) "variable" (← sourceOf arg)])
         else if ← isNodeType argType then
           let local_ ← match ← lookupNode ctx arg.consumeMData with
-            | some local_ =>
-                if !owned && ctx.owned.contains arg.consumeMData then
-                  throwError "an owned value may not be passed where the callee borrows it: {source}"
-                pure local_
+            | some local_ => pure local_
             | none =>
                 unless owned do
                   throwError "a borrowed argument of a recursive type must be a variable: {source}"
@@ -2271,13 +2268,10 @@ mutual
     let mut args : Array ((type : ScalarType) × IRExpr type) := #[]
     let mut hints := #[]
     let mut offset := 0
-    let selfOwners := (ctx.owners.lookup ctx.self).getD []
     for h : position in [:term.getAppArgs.size] do
       let arg := term.getAppArgs[position]
       let (ir, argHints) ← match ← lookupNode ctx arg.consumeMData with
         | some local_ => do
-            if !selfOwners.contains position && ctx.owned.contains arg.consumeMData then
-              throwError "an owned value may not be passed where the callee borrows it: {source}"
             pure ((.get local_ : IRExpr .u64),
               [mkHint ⟨[], offset⟩ 1 "variable" (← sourceOf arg)])
         | none => do

@@ -23058,3 +23058,81 @@ argument, with `addAll_rec` as its worked proof.
 
 Item 1 is complete.
 
+
+### Item 2: an owned tree where the callee borrows it, analysis
+
+`translateCall` and `translateSelfCall` reject an owned tree variable at a position the callee
+borrows.  Lean programs need the pattern whenever a function reads a tree before consuming it:
+`if t.size < n then .leaf else t`, or `let n := t.size` followed by a match that rewrites `t`'s
+record.  Arrays already allow it: an owned array may go to a borrowed position, and
+`Heap.Owned.borrowed` gives the proof.  For trees, the callee's premise needs `NodeBorrowed`
+from the caller's `NodeOwned`, and `Separate` needs the lent tree's slot regions apart from the
+blocks the same call consumes.  Each slot region lies inside its record's block, so the caller's
+disjointness of owned trees gives the second.  After the call, `Heap.Keeps.node` keeps the lent
+tree owned with the same blocks, since its blocks lie apart from the consumed ones.
+
+With both checks removed, scratch programs compile as follows:
+
+| Program | Result |
+|---------|--------|
+| `keepBig t := if size t < 3 then .leaf else t` | calls `size` on `t`, then releases `t` or returns it |
+| `sizeRoot t := let n := size t; match t with ...` (rewrites the root key) | calls `size`, then stores `n` into `t`'s record; compiled before the change too (see the review) |
+| `setSize t := setKey (size t) t` | calls `size`, then `setKey` consumes `t` |
+| `rightSpine g b`, whose self-call is `rightSpine l r` | `g` borrowed by the mode rule, `l` (owned) lent to the self-call and released after it |
+| `addRoot t t`, `spine r r` (self-call) | rejected: an owned position's variable occurs twice |
+| `addRoot a (addRoot b a)` | rejected: a value that an argument moves occurs in another |
+
+The occurrence checks at owned positions already reject a call that lends and consumes the same
+tree.  A word argument such as `size t` runs before the call, so it may lend `t` even when
+another argument consumes it.
+
+### Item 2: approaches
+
+| Approach | What it does | Effect |
+|----------|--------------|--------|
+| A. Remove both checks; prove one program for each | `NodeOwned.borrowed` and a lemma that a slot region lies inside its block; a non-recursive program in `trees` and a recursive one in `treeMoves`, each with its theorem | Both rules carry a proved program |
+| B. Remove the check in `translateCall` only | Same lemmas; one program | Self-calls wait for item 6, when calls in recursive definitions give natural programs |
+| C. Remove both checks; prove only the non-recursive program | Same lemmas; one program | The self-call rule has no proved program |
+
+Recommendation: A.  The self-call case arises when the mode rule borrows a position that a
+self-call fills with an owned value, which only a contrived program does today, but the proof
+is the same `NodeOwned.borrowed` step inside `Stmt.selfCall_rebuilds`, and leaving the rule
+unproved is the kind of gap this list exists to close.  The programs:
+
+- `KeyTree.dropSmall n t := if t.size < n then .leaf else t` in `trees`, which calls `size` on
+  its owned tree and then releases or returns it.
+- `KeyTree.leftSpine g b`, whose record branch is `.node (leftSpine r l) (k + rootKey g) .leaf`
+  with the root key read by a `match`, in `treeMoves`.  It lends `r` to the self-call and
+  releases it after, so `Heap.Rebuilt.node` takes the call as the left rebuild and the release
+  as the right, in that order.
+
+- [ ] 2a: remove both checks; `NodeOwned.borrowed` and the slot-region lemma.
+- [ ] 2b: `dropSmall` and its theorem.
+- [ ] 2c: `leftSpine` and its theorem.
+- [ ] Tests, LTG, journal.
+
+### Review of the item 2 plan
+
+One reviewer compiled 40 scratch programs with the changed compiler and copied the committed
+compiler to compare.  I ran its old-compiler file and its plan file and confirmed the outputs.
+
+| Finding | Response |
+|---------|----------|
+| No accepted program lends a tree after a statement that consumes, rewrites, or releases it, and every program that lends and moves the same tree in one call fails | Approach A stands |
+| The occurrence checks suffice because no two names with overlapping blocks are in scope at once: a matched owned value counts as moved in its record branch, tree `let`s are unsupported, borrowed positions take only variables, and owned parameters are disjoint by `Separate` | Item 5 must recheck this when it allows tree `let`s |
+| `translateResults` translates a word `let` value with an empty owned set, so `let n := size t` lent `t` before the change, without a proof; `if size t < 3 ...` failed | The analysis is corrected; the change makes the rule uniform |
+| `dropSmall` uses `Separate.nil`, so the slot-region lemma first appears in `leftSpine`; `addLeft t := match t with ... .node l k (addRoot l r)` lends one owned tree and consumes another in a non-recursive call | Add `addLeft` |
+| `dropSmall` through `Func.implements_rebuilt` needs a step followed by a rebuild to give a rebuild | `Heap.Keeps.rebuilt` |
+| `leftSpine` matches `Heap.Rebuilt.node`'s order (call on the left child, then release of the right); `rightSpine` would need a mirrored lemma | Keep `leftSpine` |
+| The `function-call` and `consumed-recursion` LTG entries state the removed rule | Updated in 2a |
+| Indices shift: `size.rec`, `sum.rec`, `height.rec` to `2 + 6` through `2 + 8`; the internal functions of `treeMoves` move after the new entries | Done with each program |
+
+Revised steps:
+
+- [x] 2a: remove both checks; `RecordHeader.slots`, `NodeOwned.borrowed`,
+  `NodeOwned.slotRegions_apart`, and `Heap.Keeps.rebuilt`; the two LTG entries.  The full build
+  passed, and all 22 modules emit the same bytes as before.
+- [ ] 2b: `dropSmall` in `trees` and its theorem.
+- [ ] 2c: `addLeft` in `treeMoves` and its theorem.
+- [ ] 2d: `leftSpine` in `treeMoves` and its theorem.
+- [ ] Tests, LTG, journal.
