@@ -263,6 +263,125 @@ theorem Stmt.appendInPlace_spec {scratch dst size1 size2 limit index cap src1 sr
       simp only [block, regionsDisjoint] at hDisjoint
       omega
 
+/-- The growth fill: a new block of `need` bytes, enough for `all`, receives the length from
+local `limit` and, by the fill loop, the values of `element`, which give the elements of `all`
+while the old arrays stay in place; then the block of `xs` at local `src1` is released. -/
+theorem Stmt.growFill_spec {releaseType scratch dst limit index src1 : Nat} {locals : List Nat}
+    {initial : Store Unit} {before start : State} {heap : Heap} {p1 need : UInt64}
+    {xs all : Array UInt64} {element : Expr .u64} (hImports : m.imports = [])
+    (hRelease : m.funcs[1]? = some (releaseFunction releaseType))
+    (hLocals : [dst, limit, index].Nodup) (hBelow : ∀ j ∈ [dst, limit, index], j < scratch)
+    (hIn : ∀ j ∈ [dst, limit, index], j ∈ locals)
+    (hSrc1 : src1 ∉ locals) (hSrcBelow1 : src1 < scratch)
+    (hRoom : scratch < before.params.length + before.locals.length)
+    (hHeap : heap.At initial) (hXs : heap.Owned initial p1 xs)
+    (hSize : all.size < 536870912) (hFits : heap.Fits need)
+    (hNeed : 8 * (all.size + 1) ≤ need.toNat)
+    (hFrame0 : State.Frame scratch locals before start)
+    (hP1 : before.get src1 = some (.i64 p1))
+    (hDst0 : start.get dst = some (.i64 (FixedArrayAllocate.root heap.top need heap.free)))
+    (hLimit0 : start.get limit = some (.i64 (UInt64.ofNat all.size)))
+    (hIndex0 : start.get index = some (.i64 (UInt64.ofNat 0)))
+    (hElement : ∀ (k : Nat) (hk : k < all.size) (s : Store Unit) (st : State),
+      Memory.WritesRange (heap.allocateStore initial need 1) s
+        (FixedArrayAllocate.root heap.top need heap.free).toNat
+        ((FixedArrayAllocate.root heap.top need heap.free).toNat + 8 * (all.size + 1)) →
+      State.Frame scratch [dst, limit, index] start st →
+      st.get index = some (.i64 (UInt64.ofNat k)) →
+      ∃ next, element.eval s.mem scratch st = some (all[k], next)) :
+    Triple m (.seq (.store (.get dst) (.get limit)) <|
+        .seq (.fill dst limit index .skip element) <|
+        .ite (.eq (.get dst) (.get src1)) .skip (.release src1)) scratch
+      (fun s st => s = heap.allocateStore initial need 1 ∧ st = start)
+      (Stmt.AppendPost heap initial before scratch locals dst p1 all) := by
+  have hNot1 : ∀ j ∈ [dst, limit, index], j ≠ src1 := fun j hj h => hSrc1 (h ▸ hIn j hj)
+  have hBlock := hHeap.allocate_block 1 hFits
+  have hCapacity := allocated_capacity need heap.free
+  have hXApart := hXs.disjoint_allocated hHeap need
+  have hXcap := hXs.capacity
+  generalize hPtrDef : FixedArrayAllocate.root heap.top need heap.free = ptr at hBlock hDst0 hXApart hElement
+  have hBlockAddress := hBlock.address
+  have hBlockMemory := hBlock.memory
+  have hBlockBase := hBlock.base
+  have hPtr32 : ptr.toUInt32.toNat = ptr.toNat := by
+    rw [Memory.toUInt32_toNat]; omega
+  generalize hStoreA : heap.allocateStore initial need 1 = storeA at hBlock hBlockMemory hElement ⊢
+  obtain ⟨store1, hStore1⟩ : ∃ s : Store Unit,
+      s = { storeA with mem := storeA.mem.write64 ptr.toUInt32 (UInt64.ofNat all.size) } :=
+    ⟨_, rfl⟩
+  have hPrefix1 : UInt64Array.PrefixAt store1 ptr all 0 := by
+    subst hStore1
+    refine UInt64Array.PrefixAt.empty _ _ _ (by omega) ?_ (Memory.read64_write64 ..)
+    simp only [Wasm.Mem.write64_pages]
+    omega
+  have hWrites1 : Memory.WritesRange storeA store1 ptr.toNat (ptr.toNat + 8 * (all.size + 1)) := by
+    subst hStore1
+    exact Memory.WritesRange.write64 _ ptr.toUInt32 _ _ _ (by omega) (by omega)
+  have hSrc1F : ∀ {st}, State.Frame scratch [dst, limit, index] start st →
+      st.get src1 = some (.i64 p1) := fun hF => by
+    rw [hF.get src1 hSrcBelow1 (fun h => hNot1 src1 h rfl), hFrame0.get src1 hSrcBelow1 hSrc1, hP1]
+  refine Stmt.seq_spec (M := fun s st => s = store1 ∧ st = start) ?_ <|
+    Stmt.seq_spec (M := fun s st => UInt64Array.At s ptr all ∧
+      Memory.WritesRange storeA s ptr.toNat (ptr.toNat + 8 * (all.size + 1)) ∧
+      State.Frame scratch ([dst, limit, index] ++ []) start st ∧ st.get dst = some (.i64 ptr)) ?_ ?_
+  · refine Stmt.store_spec.mono ?_ fun _ _ h => h
+    rintro s st ⟨hs, hst⟩
+    subst s st
+    exact ⟨ptr, start, UInt64.ofNat all.size, start, by simp [Expr.eval, hDst0],
+      by simp [Expr.eval, hLimit0], by omega, hStore1.symm, rfl⟩
+  · refine Stmt.fill_spec (writes := []) hLocals hBelow (by simp)
+      (by rw [hFrame0.params, hFrame0.locals]; omega) (by omega) (Nat.zero_le _) hPrefix1 hWrites1
+      hDst0 hLimit0 hIndex0 fun k hk s st _ hW hF hI => ?_
+    refine (Stmt.skip_spec (R := fun s' st' => s' = s ∧ st' = st)).mono (fun _ _ h => h) ?_
+    rintro s' st' ⟨hs, hst⟩
+    subst s' st'
+    have hFk : State.Frame scratch [dst, limit, index] start st := by simpa using hF
+    obtain ⟨next, hEval⟩ := hElement k hk s st hW hFk hI
+    exact ⟨rfl, State.Frame.refl _ _ _, next, hEval⟩
+  · apply Triple.of_forall
+    rintro s st ⟨hAt, hW, hF, hD⟩
+    have hFk : State.Frame scratch [dst, limit, index] start st := by simpa using hF
+    have hWithin : WritesWithin storeA s ptr.toNat (allocatedCapacity need heap.free).toNat :=
+      ⟨by rw [hW.1], hW.2.1, fun address h => hW.2.2 address (by omega)⟩
+    subst hPtrDef hStoreA
+    have hNew := Heap.newArray_of_writes hHeap hFits hWithin hAt (by omega)
+      (by rw [hW.1]; exact heap.allocateStore_memoryCaps initial need 1)
+    generalize hPtrDef : FixedArrayAllocate.root heap.top need heap.free = ptr at hNew hD hXApart
+    have hNe : ptr ≠ p1 := by
+      rintro rfl
+      simp only [regionsDisjoint] at hXApart
+      omega
+    obtain ⟨hOwnedP1, hCapP1⟩ := hNew.ownedKeep p1 xs hXs
+    refine (Stmt.ite_spec (PThen := fun _ _ => False) (PElse := fun s' st' => s' = s ∧ st' = st)
+      Triple.of_false (Stmt.release_spec hImports hRelease (hSrc1F hFk) hNew.at_ hOwnedP1)).mono
+      ?_ ?_
+    · rintro s' st' ⟨hs, hst⟩
+      subst s' st'
+      exact ⟨false, st, by simp [Expr.eval, hD, hSrc1F hFk, hNe], rfl, rfl⟩
+    rintro s' st' ⟨hs, hst⟩
+    subst s' st'
+    have hBlockP1 : block s p1 = block initial p1 := block_eq hCapP1
+    have hApartNew : regionsDisjoint (block s ptr) (block s p1) := by
+      have := hNew.ownedApart p1 xs hXs
+      rw [hBlockP1]
+      exact regionsDisjoint_symm this
+    obtain ⟨hOwnedNew, hCapNew⟩ := hNew.owned.release hNew.at_ hOwnedP1.object hApartNew
+    have hBlockNew : block ((heap.allocate need).releaseStore s p1) ptr = block s ptr :=
+      block_eq hCapNew
+    refine ⟨_, ptr, hFrame0.trans (hFk.weaken fun j hj => hIn j (by simpa using hj)), hD,
+      hNew.at_.release hOwnedP1.object, hOwnedNew, hNew.caps, fun q ws hq hDisjoint => ?_,
+      fun q ws hq hDisjoint => ?_⟩
+    · rw [hBlockNew]
+      refine ⟨(hNew.borrowed q ws hq).release hNew.at_ hOwnedP1.object ?_, hNew.borrowedApart q ws hq⟩
+      rw [← hBlockP1] at hDisjoint
+      exact hDisjoint
+    · rw [hBlockNew]
+      obtain ⟨hqOwned, hqCap⟩ := hNew.ownedKeep q ws hq
+      have hqApart : regionsDisjoint (block s q) (block s p1) := by
+        rw [block_eq hqCap, hBlockP1]; exact hDisjoint
+      obtain ⟨hqOwned', hqCap'⟩ := hqOwned.release hNew.at_ hOwnedP1.object hqApart
+      exact ⟨hqOwned', hqCap'.trans hqCap, hNew.ownedApart q ws hq⟩
+
 /-- The growth path: a new block of `need` bytes, enough for the result, receives the length
 and the elements of both arrays, and the block of `xs` is released. -/
 theorem Stmt.appendGrow_spec {releaseType scratch dst size1 size2 limit index cap src1 src2 : Nat}
@@ -304,112 +423,39 @@ theorem Stmt.appendGrow_spec {releaseType scratch dst size1 size2 limit index ca
   have hS1Out : size1 ∉ [dst, limit, index] := by
     simp only [List.mem_cons, List.not_mem_nil, or_false, not_or]
     exact ⟨Ne.symm hDS1, hS1L, hS1I⟩
-  have hBlock := hHeap.allocate_block 1 hFits
-  have hCapacity := allocated_capacity need heap.free
   have hXApart := hXs.disjoint_allocated hHeap need
   have hYApart := hYs.disjoint_allocated hHeap need
   have hXA := hXs.allocate 1 hHeap hFits
   have hYA := hYs.allocate 1 hHeap hFits
-  have hXcap := hXs.capacity
-  generalize hPtrDef : FixedArrayAllocate.root heap.top need heap.free = ptr at hBlock hDst0 hXApart hYApart
+  have hBlock := hHeap.allocate_block 1 hFits
+  have hCapacity := allocated_capacity need heap.free
   have hBlockAddress := hBlock.address
-  have hBlockMemory := hBlock.memory
   have hBlockBase := hBlock.base
-  have hPtr32 : ptr.toUInt32.toNat = ptr.toNat := by
-    rw [Memory.toUInt32_toNat]; omega
-  have hAllSize : (xs ++ ys).size = xs.size + ys.size := Array.size_append ..
-  generalize hAllDef : xs ++ ys = all at hAllSize ⊢
-  generalize hStoreA : heap.allocateStore initial need 1 = storeA at hBlock hBlockMemory hXA hYA ⊢
-  obtain ⟨store1, hStore1⟩ : ∃ s : Store Unit,
-      s = { storeA with mem := storeA.mem.write64 ptr.toUInt32 (UInt64.ofNat all.size) } :=
-    ⟨_, rfl⟩
-  have hPrefix1 : UInt64Array.PrefixAt store1 ptr all 0 := by
-    subst hStore1
-    refine UInt64Array.PrefixAt.empty _ _ _ (by omega) ?_ (Memory.read64_write64 ..)
-    simp only [Wasm.Mem.write64_pages]
-    omega
-  have hWrites1 : Memory.WritesRange storeA store1 ptr.toNat (ptr.toNat + 8 * (all.size + 1)) := by
-    subst hStore1
-    exact Memory.WritesRange.write64 _ ptr.toUInt32 _ _ _ (by omega) (by omega)
+  have hXcap := hXs.capacity
   have hSrc1F : ∀ {st}, State.Frame scratch [dst, limit, index] start st →
       st.get src1 = some (.i64 p1) := fun hF => by
     rw [hF.get src1 hSrcBelow1 (fun h => hNot1 src1 h rfl), hFrame0.get src1 hSrcBelow1 hSrc1, hP1]
-  refine Stmt.seq_spec (M := fun s st => s = store1 ∧ st = start) ?_ <|
-    Stmt.seq_spec (M := fun s st => UInt64Array.At s ptr all ∧
-      Memory.WritesRange storeA s ptr.toNat (ptr.toNat + 8 * (all.size + 1)) ∧
-      State.Frame scratch ([dst, limit, index] ++ []) start st ∧ st.get dst = some (.i64 ptr)) ?_ ?_
-  · refine Stmt.store_spec.mono ?_ fun _ _ h => h
-    rintro s st ⟨hs, hst⟩
-    subst s st
-    exact ⟨ptr, start, UInt64.ofNat all.size, start, by simp [Expr.eval, hDst0],
-      by simp [Expr.eval, hLimit0, hAllSize], by omega, hStore1.symm, rfl⟩
-  · refine Stmt.fill_spec (writes := []) hLocals3 hBelow3 (by simp)
-      (by rw [hFrame0.params, hFrame0.locals]; omega) (by omega) (Nat.zero_le _) hPrefix1 hWrites1
-      hDst0 (by rw [hLimit0, hAllSize]) hIndex0 fun k hk s st _ hW hF hI => ?_
-    refine (Stmt.skip_spec (R := fun s' st' => s' = s ∧ st' = st)).mono (fun _ _ h => h) ?_
-    rintro s' st' ⟨hs, hst⟩
-    subst s' st'
-    have hFk : State.Frame scratch [dst, limit, index] start st := by simpa using hF
-    have hXv : UInt64Array.At s p1 xs := by
-      refine hXA.values.writesRange hW ?_
-      simp only [regionsDisjoint] at hXApart
-      omega
-    have hYv : UInt64Array.At s p2 ys := by
-      refine hYA.values.writesRange hW ?_
-      simp only [regionsDisjoint] at hYApart
-      omega
-    subst hAllDef
-    obtain ⟨next, hEval⟩ := appendElement_eval (store := s) (scratch := scratch) (state := st)
-      (hk := hk) hSize
-      (by rw [hFk.params, hFk.locals, hFrame0.params, hFrame0.locals]; omega)
-      hSrcBelow1 hSrcBelow2 hI (by rw [hFk.get size1 hS1B hS1Out, hSize10]) (hSrc1F hFk)
-      (by rw [hFk.get src2 hSrcBelow2 (fun h => hNot2 src2 h rfl),
-        hFrame0.get src2 hSrcBelow2 hSrc2, hP2])
-      (fun _ => hXv) fun _ => hYv
-    exact ⟨rfl, State.Frame.refl _ _ _, next, hEval⟩
-  · apply Triple.of_forall
-    rintro s st ⟨hAt, hW, hF, hD⟩
-    have hFk : State.Frame scratch [dst, limit, index] start st := by simpa using hF
-    have hWithin : WritesWithin storeA s ptr.toNat (allocatedCapacity need heap.free).toNat :=
-      ⟨by rw [hW.1], hW.2.1, fun address h => hW.2.2 address (by omega)⟩
-    subst hPtrDef hStoreA
-    have hNew := Heap.newArray_of_writes hHeap hFits hWithin hAt (by omega)
-      (by rw [hW.1]; exact heap.allocateStore_memoryCaps initial need 1)
-    generalize hPtrDef : FixedArrayAllocate.root heap.top need heap.free = ptr at hNew hD hXApart
-    have hNe : ptr ≠ p1 := by
-      rintro rfl
-      simp only [regionsDisjoint] at hXApart
-      omega
-    obtain ⟨hOwnedP1, hCapP1⟩ := hNew.ownedKeep p1 xs hXs
-    refine (Stmt.ite_spec (PThen := fun _ _ => False) (PElse := fun s' st' => s' = s ∧ st' = st)
-      Triple.of_false (Stmt.release_spec hImports hRelease (hSrc1F hFk) hNew.at_ hOwnedP1)).mono
-      ?_ ?_
-    · rintro s' st' ⟨hs, hst⟩
-      subst s' st'
-      exact ⟨false, st, by simp [Expr.eval, hD, hSrc1F hFk, hNe], rfl, rfl⟩
-    rintro s' st' ⟨hs, hst⟩
-    subst s' st'
-    have hBlockP1 : block s p1 = block initial p1 := block_eq hCapP1
-    have hApartNew : regionsDisjoint (block s ptr) (block s p1) := by
-      have := hNew.ownedApart p1 xs hXs
-      rw [hBlockP1]
-      exact regionsDisjoint_symm this
-    obtain ⟨hOwnedNew, hCapNew⟩ := hNew.owned.release hNew.at_ hOwnedP1.object hApartNew
-    have hBlockNew : block ((heap.allocate need).releaseStore s p1) ptr = block s ptr :=
-      block_eq hCapNew
-    refine ⟨_, ptr, hFrame0.trans (hFk.weaken fun j hj => by simp at hj ⊢; omega), hD,
-      hNew.at_.release hOwnedP1.object, hOwnedNew, hNew.caps, fun q ws hq hDisjoint => ?_,
-      fun q ws hq hDisjoint => ?_⟩
-    · rw [hBlockNew]
-      refine ⟨(hNew.borrowed q ws hq).release hNew.at_ hOwnedP1.object ?_, hNew.borrowedApart q ws hq⟩
-      rw [← hBlockP1] at hDisjoint
-      exact hDisjoint
-    · rw [hBlockNew]
-      obtain ⟨hqOwned, hqCap⟩ := hNew.ownedKeep q ws hq
-      have hqApart : regionsDisjoint (block s q) (block s p1) := by
-        rw [block_eq hqCap, hBlockP1]; exact hDisjoint
-      obtain ⟨hqOwned', hqCap'⟩ := hqOwned.release hNew.at_ hOwnedP1.object hqApart
-      exact ⟨hqOwned', hqCap'.trans hqCap, hNew.ownedApart q ws hq⟩
+  refine Stmt.growFill_spec (all := xs ++ ys) hImports hRelease hLocals3 hBelow3
+    (fun j hj => hSub.subset hj) hSrc1 hSrcBelow1 hRoom hHeap hXs (by simp; omega) hFits
+    (by simp; omega) hFrame0 hP1 hDst0 (by rw [hLimit0, Array.size_append]) hIndex0
+    fun k hk s st hW hFk hI => ?_
+  have hXv : UInt64Array.At s p1 xs := by
+    refine hXA.values.writesRange hW ?_
+    simp only [regionsDisjoint] at hXApart
+    simp only [Array.size_append] at hW ⊢
+    omega
+  have hYv : UInt64Array.At s p2 ys := by
+    refine hYA.values.writesRange hW ?_
+    simp only [regionsDisjoint] at hYApart
+    simp only [Array.size_append] at hW ⊢
+    omega
+  exact appendElement_eval (store := s) (scratch := scratch) (state := st)
+    (hk := hk) hSize
+    (by rw [hFk.params, hFk.locals, hFrame0.params, hFrame0.locals]; omega)
+    hSrcBelow1 hSrcBelow2 hI (by rw [hFk.get size1 hS1B hS1Out, hSize10]) (hSrc1F hFk)
+    (by rw [hFk.get src2 hSrcBelow2 (fun h => hNot2 src2 h rfl),
+      hFrame0.get src2 hSrcBelow2 hSrc2, hP2])
+    (fun _ => hXv) fun _ => hYv
 
 theorem le_allocSize {bytes : UInt64} (h : bytes.toNat ≤ 4294967296) :
     bytes.toNat ≤ (allocSize bytes).toNat := by
