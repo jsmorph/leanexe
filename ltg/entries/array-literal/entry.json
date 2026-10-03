@@ -12,7 +12,7 @@
   "modules": ["Project.IR.ArrayLiteral", "Project.Pipeline.RuntimeSpec"],
   "declarations": ["Project.IR.Stmt.arrayLiteral", "Project.IR.Stmt.arrayLiteral_spec", "Project.IR.Stmt.storeElements", "Project.IR.Stmt.storeElements_spec", "Project.IR.Stmt.call_spec", "Project.IR.Stmt.store_spec", "Project.Pipeline.alloc_spec_or_abort", "Project.Pipeline.allocSize", "Project.Pipeline.Heap.NewArray", "Project.Pipeline.Heap.newArray_of_writes"],
   "premises": ["The module has no imports, a 32-bit memory, and alloc at function 0", "The destination local is below scratch and the state covers the scratch index", "Heap.At, a memory cap of at most 65,535 pages, and 8 * (k + 1) at most 2^32", "Each element expression evaluates to its word in every state framed from the start except the destination"],
-  "result": "The facts of Heap.NewArray for the new array: the allocator invariant, the owned array, every earlier borrowed or owned array kept and apart from the new object, and the memory limits.",
+  "result": "The facts of Heap.NewArray for the new array: the allocator invariant, the owned array, every earlier region kept and apart from the new object, and the memory limits.",
   "consumers": ["Project.PairSum.pairSum_implements", "Project.SumCount.sumCount_implements"],
   "relatedEntries": ["array-fold-loop", "release-temporary", "array-memory-framing", "direct-call-stack-tail"],
   "exclusion": null
