@@ -66,6 +66,13 @@ def KeyTree.trim : KeyTree → KeyTree
   | .leaf => .leaf
   | .node l k r => if k = 0 then l else .node l k .leaf
 
+/-- The tree `b` with `a`'s root key added to its root key: `a` is read, `b` rewritten. -/
+def KeyTree.addRoot (a : KeyTree) : KeyTree → KeyTree
+  | .leaf => .leaf
+  | .node l k r => match a with
+    | .leaf => .node l k r
+    | .node _ ak _ => .node l (k + ak) r
+
 /-- The search tree `t` with the keys `a` and then `b`. -/
 def KeyTree.insertTwo (a b : UInt64) (t : KeyTree) : KeyTree := (t.insert a).insert b
 
