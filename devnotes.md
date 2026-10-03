@@ -23724,3 +23724,55 @@ sizes, hands the copy to `fillLevel`, and returns the result with the sizes.
 `chunks.py` passed 360 cases.  The full build passed with no `sorry`, and every other module
 emits the same bytes as before.  The `array-build` LTG entry covers the copy at an owned call position.  Item 8 is complete for
 arrays.  Trees follow in item 11.
+
+### Item 10: a pair-valued match on a tree, analysis
+
+A `match` on a tree whose value is a pair fails with "unsupported pair: t": `translateResults`
+sends a case split on a user type to `translateCases`, whose `caseDiscriminant` reads the
+discriminant as a pair (`tupleOf`).  The failure covers a borrowed tree that only reads (`keyPair
+t := match t with | .leaf => (0, 0) | .node _ k _ => (k, k + 1)`) as well as owned ones that move
+children into the pair (`splitRoot t := match t with | .leaf => (.leaf, .leaf) | .node l _ r =>
+(l, r)`) or rewrite the record (`rootAndRest t := match t with | .leaf => (0, .leaf) | .node l k r
+=> (k, .node l 0 r)`).  `translateNodeCases` handles a tree match whose value is one scalar: each
+branch assigns `translatePrefixed`'s value to one local, and the code at the join clears slots,
+releases records, and releases unmoved values (`settleBranch`).  A pair-valued match needs the
+same branches with several result locals.
+
+### Item 10: approaches
+
+| Approach | What it does | Effect |
+|----------|--------------|--------|
+| A. One node-case translator for both | `translateNodeCases` takes the branch translation as a parameter: the scalar form assigns one local as now, the pair form runs `translateResults` into the result locals; `translateResults` sends a pair-valued tree match there | `keyPair`, `splitRoot`, and `rootAndRest` compile |
+| B. Borrowed discriminants only | The pair form without the owned record's reuse and release | `keyPair` only |
+| C. A second translator for pairs | A copy of `translateNodeCases` for pair values | As A, with the join code twice |
+
+Recommendation: A.  It keeps one copy of the join logic, and the scalar form keeps its statements
+and hints, which the byte and hint comparison checks.  Programs: `keyPair` in `trees`, and
+`splitRoot` and `rootAndRest` in `treeMoves`, each with its theorem.
+
+- [x] 10a: the compiler; scratch checks and the byte and hint comparison.
+- [ ] 10b: the three programs and their theorems; tests, LTG, journal.
+
+### Review of the item 10 plan
+
+One reviewer prototyped A in a renamed copy of the compiler and ran 37 programs in Wasmtime.  I
+reran its proof file, which checks, and read its comparison, which reports the same bytes for
+all 22 modules and identical `ir` and `hints` definitions.
+
+| Finding | Response |
+|---------|----------|
+| A, about 43 lines, leaves every module's bytes and hints unchanged | Adopted as prototyped |
+| Pair branches run with temporaries off, as `caseChain` does, since the end of the body releases temporaries on every path | Adopted |
+| Every accepted probe gives Lean's value and the expected allocation and free counts.  A child returned with the record that holds it, a move followed by a read, and a temporary in a branch are rejected | No change |
+| `(.node l k .leaf, r)` is rejected, because the rewrite releases `r` first.  The order `(r, .node l k .leaf)` compiles | A limitation, recorded |
+| The three programs leave `settleBranch` in the pair form untested | A fourth program, `splitOr`, covers it |
+| `splitRoot` needs `NodeOwned.clearRight`, the slot-2 counterpart of `clearLeft`, and a lemma for the two children after the release.  `keyPair` and `rootAndRest` need no new lemma | Adopted |
+| Appending the programs renumbers internal functions | Renumbered, as before |
+
+### Item 10, step 10a: the compiler
+
+`translateNodeCases` takes the translation of a branch as a parameter.  The word and tree form
+assigns `translatePrefixed`'s value to one local, as before, and `translateResults` sends a
+pair-valued match on a tree there with a branch that runs `translateResults` into the result
+locals, with temporaries off.  `keyPair`, `splitRoot`, and `rootAndRest` compile.  The full build
+passed with no `sorry`, and all 22 modules emit the same bytes as before.
