@@ -289,18 +289,9 @@ theorem Func.implements_rebuilt [Represent α] [Encode β] (funcs : List (Func �
   Func.implements_moves funcs i func name hFunc f arity
     fun x heap initial params hHeap hB hSeparate hCap =>
       (correct x heap initial params hHeap hB hSeparate hCap).mono (fun _ _ h => h)
-        fun _ _ ⟨heap', q, next, hEval, hR⟩ => by
-          have hApart : ∀ r, Apart initial (Represent.moves initial params x) r →
-              ∀ b ∈ (Represent.moves initial params x).map (block initial),
-                regionsDisjoint r b := by
-            intro r hr b hb
-            obtain ⟨q', hq', rfl⟩ := List.mem_map.mp hb
-            exact hr q' hq'
-          exact ⟨heap', hR.at_, hR.caps, fun p ws hp ha => (hR.keepBorrowed hp (hApart _ ha)).1,
-            fun p ws hp ha => (hR.keepOwned hp (hApart _ ha)).1, [.i64 q], next, hEval,
-            ⟨q, rfl, hR.owned, hR.disjoint⟩,
-            fun p ws hp ha => (hR.keepBorrowed hp (hApart _ ha)).2,
-            fun p ws hp ha => (hR.keepOwned hp (hApart _ ha)).2⟩
+        fun _ _ ⟨heap', q, next, hEval, hR⟩ =>
+          ⟨heap', hR.at_, hR.caps, [.i64 q], next, hEval, ⟨q, rfl, hR.owned, hR.disjoint⟩,
+            hR.region⟩
 
 /-- The entry of a consumed recursion: one call of the internal function at depth 0. -/
 theorem Func.entry_rebuilds [Represent α] [Encode β] (funcs : List (Func × String)) (i : Nat)

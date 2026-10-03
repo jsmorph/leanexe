@@ -220,11 +220,9 @@ theorem range_implements : Implements words.module 4 Words.range := by
     have hP : state.get 1 = some (.i64 p) := by cases hHolds; assumption
     have hLoop : loopPrefix f .nil n.toNat = Words.range n := rfl
     rw [hLoop] at hBuilt
-    exact ⟨heap', hBuilt.at_, hBuilt.caps, fun q ws hq => (hBuilt.keepBorrowed hq).1,
-      fun q ws hq => (hBuilt.keepOwned hq).1, [.i64 p], state,
+    exact ⟨heap', hBuilt.at_, hBuilt.caps, [.i64 p], state,
       by simp [words.range.ir, Func.scratch, Expr.evalResults, Expr.eval, hP],
-      ⟨p, rfl, hBuilt.owned, hBuilt.disjoint⟩, fun q ws hq => (hBuilt.keepBorrowed hq).2,
-      fun q ws hq => (hBuilt.keepOwned hq).2⟩
+      ⟨p, rfl, hBuilt.owned, hBuilt.disjoint⟩, fun r hr _ _ => hBuilt.region r hr⟩
 
 /-- `encode` succeeds on `words.module`, and its bytes decode to a module that computes
 `Words.first`, `Words.sumAcc`, and `Words.range` exactly. -/

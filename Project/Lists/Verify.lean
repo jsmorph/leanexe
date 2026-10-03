@@ -85,11 +85,9 @@ theorem listRange_implements :
     have hP : state.get 1 = some (.i64 p) := by cases hHolds; assumption
     have hLoop : loopPrefix f [] n.toNat = LeanExe.Examples.Lists.listRange n := rfl
     rw [hLoop] at hBuilt
-    exact ⟨heap', hBuilt.at_, hBuilt.caps, fun q ws hq => (hBuilt.keepBorrowed hq).1,
-      fun q ws hq => (hBuilt.keepOwned hq).1, [.i64 p], state,
+    exact ⟨heap', hBuilt.at_, hBuilt.caps, [.i64 p], state,
       by simp [lists.listRange.ir, Func.scratch, Expr.evalResults, Expr.eval, hP],
-      ⟨p, rfl, hBuilt.owned, hBuilt.disjoint⟩, fun q ws hq => (hBuilt.keepBorrowed hq).2,
-      fun q ws hq => (hBuilt.keepOwned hq).2⟩
+      ⟨p, rfl, hBuilt.owned, hBuilt.disjoint⟩, fun r hr _ _ => hBuilt.region r hr⟩
 
 theorem sumRange_implements :
     Implements lists.module 4 LeanExe.Examples.Lists.sumRange := by
@@ -109,8 +107,7 @@ theorem sumRange_implements :
     exact ⟨_, rfl⟩
   have hRelease : (compile lists.funcs).funcs[1]? = some (releaseFunction 1) := rfl
   apply Triple.of_forall
-  rintro s1 st1 ⟨heap1, values, hAt1, ⟨p, rfl, hOwned1, hDisj1⟩, hCaps1, hKeepB, hKeepO, hOutB,
-    hOutO, hSet⟩
+  rintro s1 st1 ⟨heap1, values, hAt1, ⟨p, rfl, hOwned1, hDisj1⟩, hCaps1, hKeeps1, hSet⟩
   have hSt1 : st1 = { params := [.i64 n], locals := [.i64 p, .i64 0, .i64 0, .i64 0] } := by
     simp [State.setAll, State.set?, start] at hSet
     exact hSet.symm
@@ -136,19 +133,13 @@ theorem sumRange_implements :
   refine (Stmt.releaseNode_spec hImports hRelease hPtr hAt1 hOwned1 hDisj1).mono
     (fun _ _ h => h) ?_
   rintro s3 st3 ⟨rfl, heap3, hAt3, hPages3, hCaps3, hFrame3⟩
-  refine ⟨heap3, hAt3, hCaps3.trans hCaps1, fun q ws hq => ?_, fun q ws hq => ?_,
+  refine ⟨heap3, hAt3, hCaps3.trans hCaps1,
     [.i64 ((LeanExe.Examples.Lists.listRange n).foldl (· + ·) 0)], st3,
     by simp [lists.sumRange.ir, Func.scratch, Expr.evalResults, Expr.eval, hAcc], rfl,
-    fun _ _ _ => Represent.outside_scalar, fun _ _ _ => Represent.outside_scalar⟩
-  · have hB1 := hKeepB q ws hq Apart.nil
-    obtain ⟨hBytes, hRegion⟩ := hFrame3 _ hB1.region (by simp) (hOutB q ws hq Apart.nil)
-    exact hB1.keep hPages3.ge hBytes hRegion
-  · obtain ⟨hO1, hCap1⟩ := hKeepO q ws hq Apart.nil
-    have hOut := hOutO q ws hq Apart.nil
-    rw [← block_eq hCap1] at hOut
-    obtain ⟨hBytes, hRegion⟩ := hFrame3 _ hO1.region (by simp [block]) hOut
-    obtain ⟨hO3, hCap3⟩ := hO1.keep hPages3.ge hBytes hRegion
-    exact ⟨hO3, hCap3.trans hCap1⟩
+    fun r hr hpos _ => ?_⟩
+  obtain ⟨hBytes1, hRegion1, hFresh1⟩ := hKeeps1 r hr hpos fun _ hb => nomatch hb
+  obtain ⟨hBytes3, hRegion3⟩ := hFrame3 r hRegion1 hpos hFresh1
+  exact ⟨fun a hl hh => (hBytes3 a hl hh).trans (hBytes1 a hl hh), hRegion3, fun _ hb => nomatch hb⟩
 
 /-- `encode` succeeds on `lists.module`, and its bytes decode to a module that computes
 `listSum`, `listRange`, and `sumRange` exactly. -/

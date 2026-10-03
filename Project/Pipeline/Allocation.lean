@@ -1,4 +1,5 @@
 import Project.Pipeline.Runtime
+import Project.Pipeline.Implements
 import Project.ProofKit.FixedArrayAllocate
 
 namespace Project.Pipeline
@@ -440,17 +441,26 @@ theorem Heap.At.allocate {heap : Heap} {store : Store Unit} {need : UInt64}
   · exact h.top.trans (Nat.mul_le_mul_right _
       (allocated_pages_ge store heap.top need stride heap.free))
 
-theorem arrayAt_frame {initial final : Store Unit} {ptr : UInt64} {words : Array UInt64}
-    (h : UInt64Array.At initial ptr words) (hPages : initial.mem.pages ≤ final.mem.pages)
+/-- An array whose words keep their bytes, and which lies inside the new memory, is laid out
+there too. -/
+theorem arrayAt_frameIn {initial final : Store Unit} {ptr : UInt64} {words : Array UInt64}
+    (h : UInt64Array.At initial ptr words)
+    (hMem : ptr.toNat + 8 * (words.size + 1) ≤ final.mem.pages * 65536)
     (hBytes : ∀ address, ptr.toNat ≤ address → address < ptr.toNat + 8 * (words.size + 1) →
       final.mem.bytes address = initial.mem.bytes address) : UInt64Array.At final ptr words := by
-  refine ⟨h.1, h.2.1.trans (Nat.mul_le_mul_right _ hPages), ?_, fun i hi => ?_⟩
+  refine ⟨h.1, hMem, ?_, fun i hi => ?_⟩
   · refine (Memory.read64_congr ptr.toUInt32 fun j hj => ?_).trans h.2.2.1
     rw [h.pointerAddress_toNat]
     exact hBytes _ (by omega) (by omega)
   · refine (Memory.read64_congr _ fun j hj => ?_).trans (h.2.2.2 i hi)
     rw [h.elementAddress_toNat i hi]
     exact hBytes _ (by omega) (by omega)
+
+theorem arrayAt_frame {initial final : Store Unit} {ptr : UInt64} {words : Array UInt64}
+    (h : UInt64Array.At initial ptr words) (hPages : initial.mem.pages ≤ final.mem.pages)
+    (hBytes : ∀ address, ptr.toNat ≤ address → address < ptr.toNat + 8 * (words.size + 1) →
+      final.mem.bytes address = initial.mem.bytes address) : UInt64Array.At final ptr words :=
+  arrayAt_frameIn h (h.2.1.trans (Nat.mul_le_mul_right _ hPages)) hBytes
 
 theorem Heap.Borrowed.allocate {heap : Heap} {store : Store Unit}
     {need ptr : UInt64} {words : Array UInt64} (stride : UInt64)
@@ -546,9 +556,9 @@ theorem headerAddress_toNat {ptr k : UInt64} (hk : k.toNat ≤ ptr.toNat)
 /-- An owned object keeps its header, capacity, and words when the page count does
 not shrink and the bytes of its region, header included, are unchanged.  The
 object must lie below the new heap's `top` and outside its free blocks. -/
-theorem Heap.Owned.frame {heap heap' : Heap} {store store' : Store Unit} {ptr : UInt64}
+theorem Heap.Owned.frameIn {heap heap' : Heap} {store store' : Store Unit} {ptr : UInt64}
     {words : Array UInt64} (h : heap.Owned store ptr words)
-    (hPages : store.mem.pages ≤ store'.mem.pages)
+    (hMem : ptr.toNat + 8 * (words.size + 1) ≤ store'.mem.pages * 65536)
     (hBytes : ∀ address, ptr.toNat - 48 ≤ address → address < ptr.toNat + capacityAt store ptr →
       store'.mem.bytes address = store.mem.bytes address)
     (hBelow : ptr.toNat + capacityAt store ptr ≤ heap'.top.toNat)
@@ -566,7 +576,7 @@ theorem Heap.Owned.frame {heap heap' : Heap} {store store' : Store Unit} {ptr : 
   have hCapacity : capacityAt store' ptr = capacityAt store ptr := by
     unfold capacityAt
     rw [hHeader 32 (by decide) (by decide)]
-  refine ⟨arrayAt_frame h.values hPages fun address hLow hHigh => hBytes address (by omega)
+  refine ⟨arrayAt_frameIn h.values hMem fun address hLow hHigh => hBytes address (by omega)
       (by omega), hBase, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [hHeader 48 (by decide) (by decide)]; exact h.magic
   · rw [hHeader 40 (by decide) (by decide)]; exact h.count
@@ -577,6 +587,17 @@ theorem Heap.Owned.frame {heap heap' : Heap} {store store' : Store Unit} {ptr : 
   · rw [hCapacity]; exact hAddress
   · rw [hCapacity]; exact hBelow
   · rw [hCapacity]; exact hSeparate
+
+theorem Heap.Owned.frame {heap heap' : Heap} {store store' : Store Unit} {ptr : UInt64}
+    {words : Array UInt64} (h : heap.Owned store ptr words)
+    (hPages : store.mem.pages ≤ store'.mem.pages)
+    (hBytes : ∀ address, ptr.toNat - 48 ≤ address → address < ptr.toNat + capacityAt store ptr →
+      store'.mem.bytes address = store.mem.bytes address)
+    (hBelow : ptr.toNat + capacityAt store ptr ≤ heap'.top.toNat)
+    (hSeparate : ∀ node ∈ heap'.free,
+      regionsDisjoint node.region (ptr.toNat - 48, 48 + capacityAt store ptr)) :
+    heap'.Owned store' ptr words :=
+  h.frameIn (h.values.2.1.trans (Nat.mul_le_mul_right _ hPages)) hBytes hBelow hSeparate
 
 theorem Heap.Owned.allocate {heap : Heap} {store : Store Unit}
     {need ptr : UInt64} {words : Array UInt64} (stride : UInt64)
@@ -757,23 +778,111 @@ theorem Heap.Block.owned {heap : Heap} {store : Store Unit} {root capacity : UIn
   · exact h.below
   · exact h.separate
 
-/-- What allocating a new array at `ptr` holding `words` leaves, with `heap'` the
-heap after the allocation and `bytes` the allocation's bound: the allocator
-invariant, the new owned array, the bounds on `top` and the page count, every
-array borrowed or owned before still borrowed or owned and apart from the new
-object, and the memory limits. -/
+/-- A borrowed array occupies a region of the heap. -/
+theorem Heap.Borrowed.region {heap : Heap} {store : Store Unit} {p : UInt64}
+    {ws : Array UInt64} (h : heap.Borrowed store p ws) :
+    heap.Region (p.toNat, 8 * (ws.size + 1)) :=
+  ⟨h.below, fun node hNode => regionsDisjoint_symm (h.separate node hNode)⟩
+
+/-- An owned array's block is a region of the heap. -/
+theorem Heap.Owned.region {heap : Heap} {store : Store Unit} {p : UInt64} {ws : Array UInt64}
+    (h : heap.Owned store p ws) : heap.Region (block store p) := by
+  have := h.below
+  have := h.base
+  exact ⟨by simp only [block]; omega, h.separate⟩
+
+/-- A borrowed array whose region keeps its bytes and is a region of a heap at the new store
+stays borrowed. -/
+theorem Heap.Borrowed.keepIn {heap heap' : Heap} {store store' : Store Unit} {q : UInt64}
+    {ws : Array UInt64} (h : heap.Borrowed store q ws) (hAt : heap'.At store')
+    (hBytes : ∀ a, q.toNat ≤ a → a < q.toNat + 8 * (ws.size + 1) →
+      store'.mem.bytes a = store.mem.bytes a)
+    (hRegion : heap'.Region (q.toNat, 8 * (ws.size + 1))) : heap'.Borrowed store' q ws :=
+  ⟨arrayAt_frameIn h.values (hRegion.below.trans hAt.top) hBytes, hRegion.below,
+    fun node hNode => regionsDisjoint_symm (hRegion.separate node hNode)⟩
+
+/-- An owned array whose block keeps its bytes and is a region of a heap at the new store
+stays owned, with the same capacity. -/
+theorem Heap.Owned.keepIn {heap heap' : Heap} {store store' : Store Unit} {q : UInt64}
+    {ws : Array UInt64} (h : heap.Owned store q ws) (hAt : heap'.At store')
+    (hBytes : ∀ a, (block store q).1 ≤ a → a < (block store q).1 + (block store q).2 →
+      store'.mem.bytes a = store.mem.bytes a)
+    (hRegion : heap'.Region (block store q)) :
+    heap'.Owned store' q ws ∧ capacityAt store' q = capacityAt store q := by
+  have := h.base
+  have := h.address
+  have := h.capacity
+  have := hAt.top
+  have hBelow := hRegion.below
+  simp only [block] at hBytes hBelow hRegion
+  exact ⟨h.frameIn (by omega) (fun a hl hh => hBytes a hl (by omega)) (by omega)
+      hRegion.separate,
+    capacityAt_frame (by omega) (by omega) fun a hl hh => hBytes a hl (by omega)⟩
+
+/-- A step that keeps the regions apart from `gone` keeps each borrowed array apart from
+them. -/
+theorem Heap.Keeps.borrowed {heap heap' : Heap} {initial store : Store Unit}
+    {gone fresh : List (Nat × Nat)} (h : heap.Keeps initial gone heap' store fresh)
+    (hAt : heap'.At store) {p : UInt64} {ws : Array UInt64} (hp : heap.Borrowed initial p ws)
+    (hApart : ∀ b ∈ gone, regionsDisjoint (p.toNat, 8 * (ws.size + 1)) b) :
+    heap'.Borrowed store p ws ∧ ∀ b ∈ fresh, regionsDisjoint (p.toNat, 8 * (ws.size + 1)) b := by
+  obtain ⟨hBytes, hRegion, hFresh⟩ := h _ hp.region (by show 0 < 8 * (ws.size + 1); omega) hApart
+  exact ⟨hp.keepIn hAt hBytes hRegion, hFresh⟩
+
+/-- A step that keeps the regions apart from `gone` keeps each owned array apart from them,
+with its capacity. -/
+theorem Heap.Keeps.owned {heap heap' : Heap} {initial store : Store Unit}
+    {gone fresh : List (Nat × Nat)} (h : heap.Keeps initial gone heap' store fresh)
+    (hAt : heap'.At store) {p : UInt64} {ws : Array UInt64} (hp : heap.Owned initial p ws)
+    (hApart : ∀ b ∈ gone, regionsDisjoint (block initial p) b) :
+    (heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
+      ∀ b ∈ fresh, regionsDisjoint (block initial p) b := by
+  obtain ⟨hBytes, hRegion, hFresh⟩ := h _ hp.region (by simp [block]) hApart
+  exact ⟨hp.keepIn hAt hBytes hRegion, hFresh⟩
+
+/-- An allocation leaves the bytes of a region, which stays a region and lies apart from the
+new block. -/
+theorem Heap.Region.allocate {heap : Heap} {store : Store Unit} {r : Nat × Nat}
+    {need : UInt64} (stride : UInt64) (h : heap.Region r) (hHeap : heap.At store)
+    (hFits : heap.Fits need) :
+    (heap.allocate need).Region r ∧
+      (∀ a, r.1 ≤ a → a < r.1 + r.2 →
+        (heap.allocateStore store need stride).mem.bytes a = store.mem.bytes a) ∧
+      regionsDisjoint r ((FixedArrayAllocate.root heap.top need heap.free).toNat - 48,
+        48 + (allocatedCapacity need heap.free).toNat) := by
+  have hBump : takeFirstFitFrom 0 need heap.free = none →
+      heap.top.toNat + 48 + need.toNat ≤ 4294967296 := fun h => by have := hFits h; omega
+  have hBelow := h.below
+  refine ⟨⟨?_, fun node hNode => regionsDisjoint_symm (allocatedNodes_apart hHeap.freeList
+      (fun n hn => regionsDisjoint_symm (h.separate n hn)) node hNode)⟩,
+    fun a hLow hHigh => allocated_bytes_outside store heap.top need stride heap.free r.1 r.2
+      hHeap.freeList (fun node hNode => regionsDisjoint_symm (h.separate node hNode)) hBelow
+      hBump a hLow hHigh, ?_⟩
+  · show r.1 + r.2 ≤ (allocatedTop heap.top need heap.free).toNat
+    rw [allocatedTop_toNat heap.top need heap.free hBump]
+    split <;> omega
+  cases hTake : takeFirstFitFrom 0 need heap.free with
+  | some choice =>
+    have := h.separate _ (takeFirstFitFrom_some_mem hTake)
+    have hWithin := allocated_within (base := heap.top) hHeap.freeList hTake
+    simp only [FreeNode.region, regionsDisjoint] at this ⊢
+    omega
+  | none =>
+    have h48 : (48 : UInt64).toNat = 48 := rfl
+    have := hHeap.top
+    have := hHeap.pages
+    simp only [FixedArrayAllocate.root, allocatedCapacity, hTake, regionsDisjoint,
+      UInt64.toNat_add, h48, Nat.reducePow]
+    omega
+
+/-- What allocating a new array at `ptr` holding `words` leaves, with `heap'` the heap after
+the allocation: the allocator invariant, the new owned array, every region of the heap before
+kept and apart from the new object, and the memory limits. -/
 structure Heap.NewArray (heap : Heap) (initial : Store Unit) (heap' : Heap) (store : Store Unit)
     (ptr : UInt64) (words : Array UInt64) : Prop where
   at_ : heap'.At store
   owned : heap'.Owned store ptr words
-  borrowed : ∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store p ws
-  ownedKeep : ∀ p ws, heap.Owned initial p ws →
-    heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p
-  borrowedApart : ∀ p ws, heap.Borrowed initial p ws →
-    regionsDisjoint (p.toNat, 8 * (ws.size + 1)) (ptr.toNat - 48, 48 + capacityAt store ptr)
-  ownedApart : ∀ p ws, heap.Owned initial p ws →
-    regionsDisjoint (p.toNat - 48, 48 + capacityAt initial p)
-      (ptr.toNat - 48, 48 + capacityAt store ptr)
+  keeps : heap.Keeps initial [] heap' store [block store ptr]
   caps : store.memoryCaps = initial.memoryCaps
 
 /-- An allocation followed by writes that fill the new block with `words` leaves a
@@ -792,12 +901,41 @@ theorem Heap.newArray_of_writes {heap : Heap} {initial store : Store Unit}
   have hBlock := (hHeap.allocate_block 1 hFits).writesWithin hWithin
   have hCapacity := hBlock.capacity_eq
   refine ⟨(hHeap.allocate 1 hFits).writesWithin (hHeap.allocate_block 1 hFits) hWithin,
-    hBlock.owned hValues hPayload,
-    fun p ws h => h.allocate_within hHeap hFits hWithin,
-    fun p ws h => h.allocate_within hHeap hFits hWithin, fun p ws h => ?_, fun p ws h => ?_,
-    hCaps⟩
-  · rw [hCapacity]; exact h.disjoint_allocated hHeap need
-  · rw [hCapacity]; exact h.disjoint_allocated hHeap need
+    hBlock.owned hValues hPayload, fun r hr _ _ => ?_, hCaps⟩
+  obtain ⟨hRegion, hBytes, hApart⟩ := hr.allocate 1 hHeap hFits
+  refine ⟨fun a hl hh => ?_, hRegion, fun b hb => ?_⟩
+  · rw [hWithin.bytes a (by simp only [regionsDisjoint] at hApart; omega)]
+    exact hBytes a hl hh
+  · rw [List.mem_singleton.mp hb, block, hCapacity]
+    exact hApart
+
+/-- Every array borrowed before is still borrowed. -/
+theorem Heap.NewArray.borrowed {heap heap' : Heap} {initial store : Store Unit} {ptr : UInt64}
+    {words : Array UInt64} (h : heap.NewArray initial heap' store ptr words) :
+    ∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store p ws :=
+  fun _ _ hp => (h.keeps.borrowed h.at_ hp fun _ hb => nomatch hb).1
+
+/-- Every array owned before is still owned, with its capacity. -/
+theorem Heap.NewArray.ownedKeep {heap heap' : Heap} {initial store : Store Unit} {ptr : UInt64}
+    {words : Array UInt64} (h : heap.NewArray initial heap' store ptr words) :
+    ∀ p ws, heap.Owned initial p ws →
+      heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p :=
+  fun _ _ hp => (h.keeps.owned h.at_ hp fun _ hb => nomatch hb).1
+
+/-- The new object lies apart from every array borrowed before. -/
+theorem Heap.NewArray.borrowedApart {heap heap' : Heap} {initial store : Store Unit}
+    {ptr : UInt64} {words : Array UInt64} (h : heap.NewArray initial heap' store ptr words) :
+    ∀ p ws, heap.Borrowed initial p ws →
+      regionsDisjoint (p.toNat, 8 * (ws.size + 1)) (ptr.toNat - 48, 48 + capacityAt store ptr) :=
+  fun _ _ hp => (h.keeps.borrowed h.at_ hp fun _ hb => nomatch hb).2 _ (List.mem_singleton_self _)
+
+/-- The new object lies apart from every array owned before. -/
+theorem Heap.NewArray.ownedApart {heap heap' : Heap} {initial store : Store Unit}
+    {ptr : UInt64} {words : Array UInt64} (h : heap.NewArray initial heap' store ptr words) :
+    ∀ p ws, heap.Owned initial p ws →
+      regionsDisjoint (p.toNat - 48, 48 + capacityAt initial p)
+        (ptr.toNat - 48, 48 + capacityAt store ptr) :=
+  fun _ _ hp => (h.keeps.owned h.at_ hp fun _ hb => nomatch hb).2 _ (List.mem_singleton_self _)
 
 /-- Two new arrays in a row: every array owned before keeps its object and capacity,
 and both new objects lie apart from every array borrowed or owned before. -/

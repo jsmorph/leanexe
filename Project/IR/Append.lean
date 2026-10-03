@@ -119,20 +119,15 @@ theorem appendRequest_eval {mem : Mem} {scratch limit cap : Nat} {state : State}
   · refine ⟨(UInt64.ofNat total + 1) * 8, by simp [h1], by rw [hNeed], by rw [hNeed]; omega⟩
 
 /-- The facts after `Stmt.append` with `xs` at `p1`: local `dst` holds an owned array
-`all`, every array apart from the block of `xs` is kept, an owned one with its capacity,
-and the result's block lies apart from each of them. -/
+`all`, and every region of the heap apart from the block of `xs` keeps its bytes, stays a
+region, and lies apart from the result's block. -/
 def Stmt.AppendPost (heap : Heap) (initial : Store Unit) (before : State) (scratch : Nat)
     (locals : List Nat) (dst : Nat) (p1 : UInt64) (all : Array UInt64) (store : Store Unit)
     (state : State) : Prop :=
   ∃ (heap' : Heap) (p : UInt64), State.Frame scratch locals before state ∧
     state.get dst = some (.i64 p) ∧ heap'.At store ∧ heap'.Owned store p all ∧
     store.memoryCaps = initial.memoryCaps ∧
-    (∀ q ws, heap.Borrowed initial q ws →
-      regionsDisjoint (q.toNat, 8 * (ws.size + 1)) (block initial p1) →
-      heap'.Borrowed store q ws ∧ regionsDisjoint (q.toNat, 8 * (ws.size + 1)) (block store p)) ∧
-    (∀ q ws, heap.Owned initial q ws → regionsDisjoint (block initial q) (block initial p1) →
-      heap'.Owned store q ws ∧ capacityAt store q = capacityAt initial q ∧
-      regionsDisjoint (block initial q) (block store p))
+    heap.Keeps initial [block initial p1] heap' store [block store p]
 
 /-- The in-place path: the block of `xs` has room for the result, so the template stores
 the new length and the elements of `ys` after those of `xs`. -/
@@ -251,17 +246,13 @@ theorem Stmt.appendInPlace_spec {scratch dst size1 size2 limit index cap src1 sr
     obtain ⟨hOwned, hCapacity⟩ := hXs.rewrite hWithin hAt (by omega)
     have hBlock : block s p1 = block initial p1 := block_eq hCapacity
     refine ⟨heap, p1, hFrame0.trans (hFk.weaken fun j hj => by simp at hj ⊢; omega), hD,
-      hHeap.writesOwned hXs hWithin, hOwned, by rw [hW.1], fun q ws hq hDisjoint => ?_,
-      fun q ws hq hDisjoint => ?_⟩
-    · rw [hBlock]
-      refine ⟨hq.writesWithin (by rw [hCap32]; exact hDisjoint) hWithin', hDisjoint⟩
-    · rw [hBlock]
-      have hqBase := hq.base
-      have hqFit := hq.address
-      refine ⟨hq.writesWithin (by rw [hCap32]; exact hDisjoint) (by omega) hWithin', ?_, hDisjoint⟩
-      refine capacityAt_frame (by omega) (by omega) fun a hl hh => hWithin.bytes a ?_
-      simp only [block, regionsDisjoint] at hDisjoint
+      hHeap.writesOwned hXs hWithin, hOwned, by rw [hW.1], fun r hr _ hApart => ?_⟩
+    have hDisjoint := hApart _ (List.mem_singleton_self _)
+    refine ⟨fun a hl hh => hWithin.bytes a ?_, hr, fun b hb => ?_⟩
+    · simp only [block, regionsDisjoint] at hDisjoint
       omega
+    · rw [List.mem_singleton.mp hb, hBlock]
+      exact hDisjoint
 
 /-- The growth fill: a new block of `need` bytes, enough for `all`, receives the length from
 local `limit` and, by the fill loop, the values of `element`, which give the elements of `all`
@@ -371,18 +362,16 @@ theorem Stmt.growFill_spec {releaseType scratch dst limit index src1 : Nat} {loc
     have hBlockNew : block ((heap.allocate need).releaseStore s p1) ptr = block s ptr :=
       block_eq hCapNew
     refine ⟨⟨_, ptr, hFrame0.trans (hFk.weaken fun j hj => hIn j (by simpa using hj)), hD,
-      hNew.at_.release hOwnedP1.object, hOwnedNew, hNew.caps, fun q ws hq hDisjoint => ?_,
-      fun q ws hq hDisjoint => ?_⟩, ptr, hD, by rw [hCapNew, hCapS]; exact hCapacity⟩
-    · rw [hBlockNew]
-      refine ⟨(hNew.borrowed q ws hq).release hNew.at_ hOwnedP1.object ?_, hNew.borrowedApart q ws hq⟩
-      rw [← hBlockP1] at hDisjoint
-      exact hDisjoint
-    · rw [hBlockNew]
-      obtain ⟨hqOwned, hqCap⟩ := hNew.ownedKeep q ws hq
-      have hqApart : regionsDisjoint (block s q) (block s p1) := by
-        rw [block_eq hqCap, hBlockP1]; exact hDisjoint
-      obtain ⟨hqOwned', hqCap'⟩ := hqOwned.release hNew.at_ hOwnedP1.object hqApart
-      exact ⟨hqOwned', hqCap'.trans hqCap, hNew.ownedApart q ws hq⟩
+      hNew.at_.release hOwnedP1.object, hOwnedNew, hNew.caps, fun r hr hpos hApart => ?_⟩, ptr,
+      hD, by rw [hCapNew, hCapS]; exact hCapacity⟩
+    obtain ⟨hBytes1, hRegion1, hFresh1⟩ := hNew.keeps r hr hpos fun _ hb => nomatch hb
+    obtain ⟨hBytes2, hRegion2, -⟩ := Heap.Keeps.release hNew.at_ hOwnedP1.object r hRegion1 hpos
+      fun b hb => by
+        rw [List.mem_singleton.mp hb, hBlockP1]
+        exact hApart _ (List.mem_singleton_self _)
+    refine ⟨fun a hl hh => (hBytes2 a hl hh).trans (hBytes1 a hl hh), hRegion2, fun b hb => ?_⟩
+    rw [List.mem_singleton.mp hb, hBlockNew]
+    exact hFresh1 _ (List.mem_singleton_self _)
 
 /-- The growth path: a new block of `need` bytes, enough for the result, receives the length
 and the elements of both arrays, and the block of `xs` is released. -/
@@ -706,53 +695,10 @@ theorem Live.appendPost {heap0 heap : Heap} {initial store s : Store Unit} {move
     (h : Stmt.AppendPost heap store before scratch locals dst t.1 zs s st) :
     ∃ heap' p, Live heap0 initial moved heap' s ((p, zs) :: (pre ++ post)) ∧
       State.Frame scratch locals before st ∧ st.get dst = some (.i64 p) := by
-  have hT : t ∈ pre ++ t :: post := by simp
-  have hRest : ∀ u ∈ pre ++ post, u ∈ pre ++ t :: post := fun u hu => by
-    simp only [List.mem_append, List.mem_cons] at hu ⊢
-    tauto
-  have hPair := hLive.pairwise
-  rw [List.pairwise_append, List.pairwise_cons] at hPair
-  obtain ⟨hPre, ⟨hTPost, hPost⟩, hCross⟩ := hPair
-  have hApartT : ∀ u ∈ pre ++ post, regionsDisjoint (block store u.1) (block store t.1) :=
-    fun u hu => by
-      rcases List.mem_append.mp hu with hu | hu
-      · exact hCross u hu t List.mem_cons_self
-      · exact regionsDisjoint_symm (hTPost u hu)
-  obtain ⟨heap', p, hFrame, hDst, hAt', hOwnedP, hCaps', hKeepB, hKeepO⟩ := h
-  have hKeepT : ∀ u ∈ pre ++ post, heap'.Owned s u.1 u.2 ∧ block s u.1 = block store u.1 ∧
-      regionsDisjoint (block store u.1) (block s p) := fun u hu =>
-    have h := hKeepO u.1 u.2 (hLive.tempsOwned u (hRest u hu)) (hApartT u hu)
-    ⟨h.1, block_eq h.2.1, h.2.2⟩
-  have hOwnedKeep : ∀ q ws, heap0.Owned initial q ws → Apart initial moved (block initial q) →
-      heap'.Owned s q ws ∧ capacityAt s q = capacityAt initial q ∧
-        regionsDisjoint (block initial q) (block s p) := fun q ws h hA => by
-    obtain ⟨hOwned, hCapacity⟩ := hLive.owned q ws h hA
-    have hD := hLive.apartO t hT q ws h hA
-    rw [← block_eq hCapacity] at hD
-    obtain ⟨hOwned', hCapacity', hNew⟩ := hKeepO q ws hOwned hD
-    rw [block_eq hCapacity] at hNew
-    exact ⟨hOwned', hCapacity'.trans hCapacity, hNew⟩
-  refine ⟨heap', p, ⟨hAt', hCaps'.trans hLive.caps,
-    fun q ws h hA => (hKeepB q ws (hLive.borrowed q ws h hA) (hLive.apartB t hT q ws h hA)).1,
-    fun q ws h hA => ⟨(hOwnedKeep q ws h hA).1, (hOwnedKeep q ws h hA).2.1⟩,
-    fun u hu => ?_, fun u hu q ws h hA => ?_, fun u hu q ws h hA => ?_, ?_⟩, hFrame, hDst⟩
-  · rcases List.mem_cons.mp hu with rfl | hu
-    · exact hOwnedP
-    · exact (hKeepT u hu).1
-  · rcases List.mem_cons.mp hu with rfl | hu
-    · exact (hKeepB q ws (hLive.borrowed q ws h hA) (hLive.apartB t hT q ws h hA)).2
-    · rw [(hKeepT u hu).2.1]; exact hLive.apartB u (hRest u hu) q ws h hA
-  · rcases List.mem_cons.mp hu with rfl | hu
-    · exact (hOwnedKeep q ws h hA).2.2
-    · rw [(hKeepT u hu).2.1]; exact hLive.apartO u (hRest u hu) q ws h hA
-  · refine List.pairwise_cons.mpr ⟨fun u hu => ?_, ?_⟩
-    · rw [(hKeepT u hu).2.1]
-      exact regionsDisjoint_symm (hKeepT u hu).2.2
-    refine List.Pairwise.imp_of_mem (fun {u v} hu hv h => ?_)
-      (List.pairwise_append.mpr ⟨hPre, hPost, fun a ha b hb => hCross a ha b
-        (List.mem_cons_of_mem _ hb)⟩)
-    rw [(hKeepT u hu).2.1, (hKeepT v hv).2.1]
-    exact h
+  obtain ⟨heap', p, hFrame, hDst, hAt', hOwnedP, hCaps', hKeeps⟩ := h
+  exact ⟨heap', p, Live.step (consumed := [t]) (news := [(p, zs)]) (hLive.perm List.perm_middle)
+    hAt' hCaps' hKeeps (fun u hu => by rw [List.mem_singleton.mp hu]; exact hOwnedP)
+    (List.pairwise_singleton _ _), hFrame, hDst⟩
 
 /-- `Stmt.append` with the temporary `t` at local `src1`, which it consumes, and a borrowed
 array `ys` at local `src2`, apart from `t`'s block, leaves `t.2 ++ ys` in a new temporary at

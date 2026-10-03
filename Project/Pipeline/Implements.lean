@@ -57,6 +57,22 @@ def Apart (store : Store Unit) (moved : List UInt64) (r : Nat × Nat) : Prop :=
 
 theorem Apart.nil {store : Store Unit} {r : Nat × Nat} : Apart store [] r := nofun
 
+/-- `Apart` is apartness from the blocks of the objects. -/
+theorem apart_blocks {store : Store Unit} {moved : List UInt64} {r : Nat × Nat} :
+    Apart store moved r ↔ ∀ b ∈ moved.map (block store), regionsDisjoint r b := by
+  simp [Apart]
+
+/-- The region clause of `Implements` as `Heap.Keeps`, with the consumed objects' blocks gone
+and the result's blocks fresh. -/
+theorem Heap.Keeps.implements [Represent β] {heap heap' : Heap} {initial store : Store Unit}
+    {moved : List UInt64} {values : List Value} {y : β} :
+    heap.Keeps initial (moved.map (block initial)) heap' store (Represent.blocks store values y) ↔
+      ∀ r, heap.Region r → 0 < r.2 → Apart initial moved r →
+        (∀ a, r.1 ≤ a → a < r.1 + r.2 → store.mem.bytes a = initial.mem.bytes a) ∧
+          heap'.Region r ∧ Represent.outside store values y r :=
+  ⟨fun h r hr hpos hA => h r hr hpos (apart_blocks.mp hA),
+    fun h r hr hpos hA => h r hr hpos (apart_blocks.mpr hA)⟩
+
 /-- The blocks of the objects at `moved` are pairwise disjoint and apart from the
 regions `reads`. -/
 def Separate (store : Store Unit) (moved : List UInt64) (reads : List (Nat × Nat)) : Prop :=
@@ -359,10 +375,11 @@ allocator invariant, with arguments `params` (in declaration order) representing
 reads, in a memory whose cap is at most 65,535 pages, the call aborts at `unreachable`
 or returns values that, in declaration order, represent `f x` and that the caller
 owns.  Talos lists arguments and results with the top of the stack first, hence the
-reversals.  Every array borrowed or owned before the call and apart from the consumed
-blocks is still borrowed or owned with the same contents (an owned one with the same
-capacity), the objects of the result lie apart from all of those arrays, the allocator
-invariant holds again, and the memory's maximum size is unchanged. -/
+reversals.  The allocator invariant holds again, and the memory's maximum size is
+unchanged.  Every region of the heap before the call, below `top` and outside every free
+block, that lies apart from the consumed blocks keeps its bytes, is still such a region, and
+lies apart from the objects of the result.  The caller's arrays and values of recursive types
+apart from the consumed blocks therefore keep their contents. -/
 def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α → β) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
     heap.At store → Represent.borrowed heap store params x →
@@ -371,16 +388,9 @@ def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α 
     ReturnsOrAborts env m entry store params.reverse fun final values =>
       ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final values.reverse (f x) ∧
         final.memoryCaps = store.memoryCaps ∧
-        (∀ p ws, heap.Borrowed store p ws →
-          Apart store (Represent.moves store params x) (p.toNat, 8 * (ws.size + 1)) →
-          heap'.Borrowed final p ws) ∧
-        (∀ p ws, heap.Owned store p ws → Apart store (Represent.moves store params x) (block store p) →
-          heap'.Owned final p ws ∧ capacityAt final p = capacityAt store p) ∧
-        (∀ p ws, heap.Borrowed store p ws →
-          Apart store (Represent.moves store params x) (p.toNat, 8 * (ws.size + 1)) →
-          Represent.outside final values.reverse (f x) (p.toNat, 8 * (ws.size + 1))) ∧
-        (∀ p ws, heap.Owned store p ws → Apart store (Represent.moves store params x) (block store p) →
-          Represent.outside final values.reverse (f x) (block store p))
+        ∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
+          (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+            heap'.Region r ∧ Represent.outside final values.reverse (f x) r
 
 /-- For every input satisfying `P`, under the premises of `Implements`, the call
 aborts at `unreachable` or returns an owned result `y` with `Q x y`. -/
@@ -412,8 +422,7 @@ theorem ImplementsPure.implements [Scalar α] [Scalar β] {m : Module} {entry : 
   refine ⟨N, fun fuel hFuel => ?_⟩
   rcases hN fuel hFuel with ⟨values, final, hRun, rfl, hValues⟩ | hAbort
   · exact .inl ⟨values, final, hRun, heap, hHeap, hValues, rfl,
-      fun _ _ h _ => h, fun _ _ h _ => ⟨h, rfl⟩, fun _ _ _ _ => Represent.outside_scalar,
-      fun _ _ _ _ => Represent.outside_scalar⟩
+      fun _ hr _ _ => ⟨fun _ _ _ => rfl, hr, Represent.outside_scalar⟩⟩
   · exact .inr hAbort
 
 theorem Implements.transfer [Represent α] [Represent β] {m : Module} {entry : Nat}

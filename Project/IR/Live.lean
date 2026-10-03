@@ -19,29 +19,98 @@ open Wasm Project.Pipeline Project.Runtime
 variable {m : Module} {moved : List UInt64}
 
 /-- The facts a body keeps while it runs calls, with the live temporaries `temps`, the
-newest first.  The body consumes the caller's arrays at `moved`, and the facts about the
-caller's arrays cover those apart from their blocks. -/
+newest first.  The body consumes the caller's objects at `moved`.  Every region of the
+caller's heap apart from their blocks keeps its bytes, is a region of the current heap, and
+lies apart from the temporaries, which are owned and pairwise apart. -/
 structure Live (heap0 : Heap) (initial : Store Unit) (moved : List UInt64) (heap : Heap)
     (store : Store Unit) (temps : List (UInt64 × Array UInt64)) : Prop where
   at_ : heap.At store
   caps : store.memoryCaps = initial.memoryCaps
-  borrowed : ∀ p ws, heap0.Borrowed initial p ws →
-    Apart initial moved (p.toNat, 8 * (ws.size + 1)) → heap.Borrowed store p ws
-  owned : ∀ p ws, heap0.Owned initial p ws → Apart initial moved (block initial p) →
-    heap.Owned store p ws ∧ capacityAt store p = capacityAt initial p
+  keeps : heap0.Keeps initial (moved.map (block initial)) heap store
+    (temps.map fun t => block store t.1)
   tempsOwned : ∀ t ∈ temps, heap.Owned store t.1 t.2
-  apartB : ∀ t ∈ temps, ∀ p ws, heap0.Borrowed initial p ws →
-    Apart initial moved (p.toNat, 8 * (ws.size + 1)) →
-    regionsDisjoint (p.toNat, 8 * (ws.size + 1)) (block store t.1)
-  apartO : ∀ t ∈ temps, ∀ p ws, heap0.Owned initial p ws → Apart initial moved (block initial p) →
-    regionsDisjoint (block initial p) (block store t.1)
   pairwise : temps.Pairwise fun t u => regionsDisjoint (block store t.1) (block store u.1)
+
+/-- The caller's borrowed arrays apart from the consumed blocks stay borrowed. -/
+theorem Live.borrowed {heap0 heap : Heap} {initial store : Store Unit}
+    {temps : List (UInt64 × Array UInt64)} (hLive : Live heap0 initial moved heap store temps) :
+    ∀ p ws, heap0.Borrowed initial p ws → Apart initial moved (p.toNat, 8 * (ws.size + 1)) →
+      heap.Borrowed store p ws :=
+  fun _ _ h hA => (hLive.keeps.borrowed hLive.at_ h (apart_blocks.mp hA)).1
+
+/-- The caller's owned arrays apart from the consumed blocks stay owned, with their
+capacities. -/
+theorem Live.owned {heap0 heap : Heap} {initial store : Store Unit}
+    {temps : List (UInt64 × Array UInt64)} (hLive : Live heap0 initial moved heap store temps) :
+    ∀ p ws, heap0.Owned initial p ws → Apart initial moved (block initial p) →
+      heap.Owned store p ws ∧ capacityAt store p = capacityAt initial p :=
+  fun _ _ h hA => (hLive.keeps.owned hLive.at_ h (apart_blocks.mp hA)).1
+
+/-- The temporaries lie apart from the caller's borrowed arrays. -/
+theorem Live.apartB {heap0 heap : Heap} {initial store : Store Unit}
+    {temps : List (UInt64 × Array UInt64)} (hLive : Live heap0 initial moved heap store temps) :
+    ∀ t ∈ temps, ∀ p ws, heap0.Borrowed initial p ws →
+      Apart initial moved (p.toNat, 8 * (ws.size + 1)) →
+      regionsDisjoint (p.toNat, 8 * (ws.size + 1)) (block store t.1) :=
+  fun _ ht _ _ h hA => (hLive.keeps.borrowed hLive.at_ h (apart_blocks.mp hA)).2 _
+    (List.mem_map_of_mem ht)
+
+/-- The temporaries lie apart from the caller's owned arrays. -/
+theorem Live.apartO {heap0 heap : Heap} {initial store : Store Unit}
+    {temps : List (UInt64 × Array UInt64)} (hLive : Live heap0 initial moved heap store temps) :
+    ∀ t ∈ temps, ∀ p ws, heap0.Owned initial p ws → Apart initial moved (block initial p) →
+      regionsDisjoint (block initial p) (block store t.1) :=
+  fun _ ht _ _ h hA => (hLive.keeps.owned hLive.at_ h (apart_blocks.mp hA)).2 _
+    (List.mem_map_of_mem ht)
 
 /-- The memory's cap stays within the bound that `Implements` requires. -/
 theorem Live.cap {heap0 heap : Heap} {initial store : Store Unit}
     {temps : List (UInt64 × Array UInt64)} (hLive : Live heap0 initial moved heap store temps)
     (hCap : initial.memoryCap m 0 ≤ 65535) : store.memoryCap m 0 ≤ 65535 :=
   memoryCap_le_of_caps hLive.caps hCap
+
+/-- A step from a live state that consumes the temporaries `consumed`, keeps every region of
+the heap apart from their blocks, and leaves the owned temporaries `news`, pairwise apart and
+apart from those regions.  The other temporaries stay live after the new ones. -/
+theorem Live.step {heap0 heap heap' : Heap} {initial store s : Store Unit}
+    {consumed rest news : List (UInt64 × Array UInt64)}
+    (hLive : Live heap0 initial moved heap store (consumed ++ rest))
+    (hAt : heap'.At s) (hCaps : s.memoryCaps = store.memoryCaps)
+    (hKeeps : heap.Keeps store (consumed.map fun t => block store t.1) heap' s
+      (news.map fun t => block s t.1))
+    (hNews : ∀ t ∈ news, heap'.Owned s t.1 t.2)
+    (hNewsPair : news.Pairwise fun t u => regionsDisjoint (block s t.1) (block s u.1)) :
+    Live heap0 initial moved heap' s (news ++ rest) := by
+  have hPair := hLive.pairwise
+  rw [List.pairwise_append] at hPair
+  obtain ⟨-, hRestPair, hCross⟩ := hPair
+  have hRest : ∀ u ∈ rest, (heap'.Owned s u.1 u.2 ∧ capacityAt s u.1 = capacityAt store u.1) ∧
+      ∀ b ∈ news.map (fun t => block s t.1), regionsDisjoint (block store u.1) b := fun u hu =>
+    hKeeps.owned hAt (hLive.tempsOwned u (List.mem_append_right _ hu)) fun b hb => by
+      obtain ⟨t, ht, rfl⟩ := List.mem_map.mp hb
+      exact regionsDisjoint_symm (hCross t ht u hu)
+  have hBlock : ∀ u ∈ rest, block s u.1 = block store u.1 := fun u hu => block_eq (hRest u hu).1.2
+  refine ⟨hAt, hCaps.trans hLive.caps, fun r hr hpos hApart => ?_, fun u hu => ?_, ?_⟩
+  · obtain ⟨hBytes1, hRegion1, hFresh1⟩ := hLive.keeps r hr hpos hApart
+    obtain ⟨hBytes2, hRegion2, hFresh2⟩ := hKeeps r hRegion1 hpos fun b hb => by
+      obtain ⟨t, ht, rfl⟩ := List.mem_map.mp hb
+      exact hFresh1 _ (List.mem_map_of_mem (List.mem_append_left _ ht))
+    refine ⟨fun a hl hh => (hBytes2 a hl hh).trans (hBytes1 a hl hh), hRegion2, fun b hb => ?_⟩
+    rw [List.map_append] at hb
+    rcases List.mem_append.mp hb with hb | hb
+    · exact hFresh2 b hb
+    · obtain ⟨u, hu, rfl⟩ := List.mem_map.mp hb
+      rw [hBlock u hu]
+      exact hFresh1 _ (List.mem_map_of_mem (List.mem_append_right _ hu))
+  · rcases List.mem_append.mp hu with hu | hu
+    · exact hNews u hu
+    · exact (hRest u hu).1.1
+  · refine List.pairwise_append.mpr ⟨hNewsPair, ?_, fun t ht u hu => ?_⟩
+    · refine List.Pairwise.imp_of_mem (fun {a b} ha hb h => ?_) hRestPair
+      rw [hBlock a ha, hBlock b hb]
+      exact h
+    · rw [hBlock u hu]
+      exact regionsDisjoint_symm ((hRest u hu).2 _ (List.mem_map_of_mem ht))
 
 /-- Arguments that begin with an `Array Float` begin with its pointer. -/
 theorem Represent.borrowed_float_pair {β : Type} [Represent β] {heap : Heap} {store : Store Unit}
@@ -69,18 +138,17 @@ theorem Represent.borrowed_moved_pair {β : Type} [Represent β] {heap : Heap} {
 
 theorem Live.start {heap : Heap} {initial : Store Unit} (hHeap : heap.At initial) :
     Live heap initial [] heap initial [] :=
-  ⟨hHeap, rfl, fun _ _ h _ => h, fun _ _ h _ => ⟨h, rfl⟩,
-    fun _ h => by simp at h, fun _ h => by simp at h, fun _ h => by simp at h, .nil⟩
+  ⟨hHeap, rfl, fun _ hr _ _ => ⟨fun _ _ _ => rfl, hr, fun _ hb => nomatch hb⟩,
+    fun _ h => by simp at h, .nil⟩
 
 /-- The consumed parameters start as the live temporaries: owned, with pairwise disjoint
-blocks, and the caller's facts cover the arrays apart from those blocks. -/
+blocks, and the caller's facts cover the regions apart from those blocks. -/
 theorem Live.start_moved {heap : Heap} {initial : Store Unit} (hHeap : heap.At initial)
     {temps : List (UInt64 × Array UInt64)} (hOwned : ∀ t ∈ temps, heap.Owned initial t.1 t.2)
     (hPairwise : temps.Pairwise fun t u => regionsDisjoint (block initial t.1) (block initial u.1)) :
     Live heap initial (temps.map (·.1)) heap initial temps :=
-  ⟨hHeap, rfl, fun _ _ h _ => h, fun _ _ h _ => ⟨h, rfl⟩, hOwned,
-    fun t ht _ _ _ hA => hA t.1 (List.mem_map_of_mem ht),
-    fun t ht _ _ _ hA => hA t.1 (List.mem_map_of_mem ht), hPairwise⟩
+  ⟨hHeap, rfl, fun _ hr _ hA => ⟨fun _ _ _ => rfl, hr, fun b hb => hA b (by
+      rw [List.map_map]; exact hb)⟩, hOwned, hPairwise⟩
 
 /-- A call to entry `idx`, which implements `g` and returns an `Array Float`,
 from arguments that represent `x`, leaves its result in local `r` and adds it to
@@ -109,55 +177,25 @@ theorem Live.call [Represent α] {idx : Nat} {g : α → Array Float}
   · obtain ⟨q, rfl, -⟩ := h
     exact ⟨afterArgs.update r (.i64 q), by
       simp [State.setAll, State.set?_eq_update _ hR]⟩
-  rintro s st ⟨heap', values, hAt', hOwned', hCaps', hKeepB, hKeepO, hOutB, hOutO, hSet⟩
+  rintro s st ⟨heap', values, hAt', hOwned', hCaps', hKeeps, hSet⟩
   obtain ⟨q, rfl, hQ⟩ := hOwned'
   simp only [List.reverse_cons, List.reverse_nil, List.nil_append, State.setAll,
     State.set?_eq_update _ hR, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hSet
   subst hSet
-  have hKeepT : ∀ t ∈ temps, heap'.Owned s t.1 t.2 ∧ block s t.1 = block store t.1 := fun t ht =>
-    ⟨(hKeepO t.1 t.2 (hLive.tempsOwned t ht) (hNone _)).1,
-      block_eq (hKeepO t.1 t.2 (hLive.tempsOwned t ht) (hNone _)).2⟩
-  have hNewB : ∀ p ws, heap0.Borrowed initial p ws →
-      Apart initial moved (p.toNat, 8 * (ws.size + 1)) →
-      regionsDisjoint (p.toNat, 8 * (ws.size + 1)) (block s q) := fun p ws h hA => by
-    exact Represent.outside_float.mp (hOutB p ws (hLive.borrowed p ws h hA) (hNone _))
-  have hNewO : ∀ p ws, heap0.Owned initial p ws → Apart initial moved (block initial p) →
-      regionsDisjoint (block initial p) (block s q) :=
-    fun p ws h hA => by
-      have hDisjoint := Represent.outside_float.mp (hOutO p ws (hLive.owned p ws h hA).1 (hNone _))
-      rw [block_eq (hLive.owned p ws h hA).2] at hDisjoint
-      exact hDisjoint
-  have hNewT : ∀ t ∈ temps, regionsDisjoint (block s q) (block s t.1) := fun t ht => by
-    have hDisjoint := Represent.outside_float.mp (hOutO t.1 t.2 (hLive.tempsOwned t ht) (hNone _))
-    rw [(hKeepT t ht).2]
-    exact regionsDisjoint_symm hDisjoint
-  refine ⟨heap', q, ⟨hAt', hCaps'.trans hLive.caps,
-    fun p ws h hA => hKeepB p ws (hLive.borrowed p ws h hA) (hNone _),
-    fun p ws h hA => ⟨(hKeepO p ws (hLive.owned p ws h hA).1 (hNone _)).1,
-      (hKeepO p ws (hLive.owned p ws h hA).1 (hNone _)).2.trans (hLive.owned p ws h hA).2⟩,
-    fun t ht => ?_, fun t ht p ws h hA => ?_, fun t ht p ws h hA => ?_, ?_⟩, rfl⟩
-  · rcases List.mem_cons.mp ht with rfl | ht
-    · exact hQ
-    · exact (hKeepT t ht).1
-  · rcases List.mem_cons.mp ht with rfl | ht
-    · exact hNewB p ws h hA
-    · rw [(hKeepT t ht).2]; exact hLive.apartB t ht p ws h hA
-  · rcases List.mem_cons.mp ht with rfl | ht
-    · exact hNewO p ws h hA
-    · rw [(hKeepT t ht).2]; exact hLive.apartO t ht p ws h hA
-  · refine List.pairwise_cons.mpr ⟨fun t ht => hNewT t ht, ?_⟩
-    refine List.Pairwise.imp_of_mem (fun {t u} ht hu h => ?_) hLive.pairwise
-    rw [(hKeepT t ht).2, (hKeepT u hu).2]
-    exact h
+  refine ⟨heap', q, Live.step (consumed := []) (news := [(q, (g x).map Float.toBits)]) hLive
+    hAt' hCaps' (hKeeps.mono (fun b hb => by rw [hNoMoves] at hb; exact nomatch hb)
+      fun b hb => hb) (fun t ht => ?_) (List.pairwise_singleton _ _), rfl⟩
+  rw [List.mem_singleton.mp ht]
+  exact hQ
 
 /-- The order of the live temporaries does not matter. -/
 theorem Live.perm {heap0 heap : Heap} {initial store : Store Unit}
     {temps temps' : List (UInt64 × Array UInt64)} (hLive : Live heap0 initial moved heap store temps)
     (hPerm : temps.Perm temps') : Live heap0 initial moved heap store temps' :=
-  ⟨hLive.at_, hLive.caps, hLive.borrowed, hLive.owned,
+  ⟨hLive.at_, hLive.caps, hLive.keeps.mono (fun _ h => h) fun b hb => by
+      obtain ⟨t, ht, rfl⟩ := List.mem_map.mp hb
+      exact List.mem_map_of_mem (hPerm.mem_iff.mpr ht),
     fun t ht => hLive.tempsOwned t (hPerm.mem_iff.mpr ht),
-    fun t ht => hLive.apartB t (hPerm.mem_iff.mpr ht),
-    fun t ht => hLive.apartO t (hPerm.mem_iff.mpr ht),
     (hPerm.pairwise_iff fun h => regionsDisjoint_symm h).mp hLive.pairwise⟩
 
 /-- Releasing the newest temporary keeps the rest live. -/
@@ -171,35 +209,11 @@ theorem Live.releaseFirst {heap0 heap : Heap} {initial store : Store Unit}
       (fun s st => Live heap0 initial moved (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
         s rest ∧ st = before) := by
   have hT : heap.Owned store t.1 t.2 := hLive.tempsOwned t (by simp)
-  have hPair := hLive.pairwise
-  simp only [List.pairwise_cons] at hPair
-  obtain ⟨hTRest, hRest⟩ := hPair
   refine (Stmt.release_spec hImports hFunc hPtr hLive.at_ hT).mono (fun _ _ h => h) ?_
   rintro s st ⟨rfl, rfl⟩
-  have hKeep : ∀ u ∈ rest,
-      (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32)).Owned
-        (heap.releaseStore store t.1) u.1 u.2 ∧
-      block (heap.releaseStore store t.1) u.1 = block store u.1 := fun u hu => by
-    obtain ⟨hOwned, hCapacity⟩ := (hLive.tempsOwned u (List.mem_cons_of_mem _ hu)).release
-      hLive.at_ hT.object (regionsDisjoint_symm (hTRest u hu))
-    exact ⟨hOwned, block_eq hCapacity⟩
-  refine ⟨⟨hLive.at_.release hT.object, hLive.caps, fun p ws h hA => (hLive.borrowed p ws h hA).release hLive.at_ hT.object (hLive.apartB t (by simp) p ws h hA),
-    fun p ws h hA => ?_, fun u hu => (hKeep u hu).1, fun u hu p ws h hA => ?_, fun u hu p ws h hA => ?_,
-    ?_⟩, rfl⟩
-  · obtain ⟨hOwned, hCapacity⟩ := hLive.owned p ws h hA
-    have hApart : regionsDisjoint (p.toNat - 48, 48 + capacityAt store p)
-        (t.1.toNat - 48, 48 + capacityAt store t.1) := by
-      have hDisjoint := hLive.apartO t (by simp) p ws h hA
-      simp only [block] at hDisjoint
-      rw [hCapacity]
-      exact hDisjoint
-    obtain ⟨hOwned', hCapacity'⟩ := hOwned.release hLive.at_ hT.object hApart
-    exact ⟨hOwned', hCapacity'.trans hCapacity⟩
-  · rw [(hKeep u hu).2]; exact hLive.apartB u (List.mem_cons_of_mem _ hu) p ws h hA
-  · rw [(hKeep u hu).2]; exact hLive.apartO u (List.mem_cons_of_mem _ hu) p ws h hA
-  · refine List.Pairwise.imp_of_mem (fun {a b} ha hb h => ?_) hRest
-    rw [(hKeep a ha).2, (hKeep b hb).2]
-    exact h
+  exact ⟨Live.step (consumed := [t]) (news := []) hLive (hLive.at_.release hT.object) rfl
+    ((Heap.Keeps.release hLive.at_ hT.object).mono (fun b hb => hb) fun _ hb => nomatch hb)
+    (fun _ h => nomatch h) .nil, rfl⟩
 
 /-- Releasing the temporary `t` at any position keeps the rest live. -/
 theorem Live.releaseAt {heap0 heap : Heap} {initial store : Store Unit}
@@ -247,80 +261,28 @@ theorem Live.callMove [Represent α] {idx : Nat} {g : α → Array Float}
       (fun s st => ∃ heap' ptr, Live heap0 initial moved heap' s
         ((ptr, (g x).map Float.toBits) :: (pre ++ post)) ∧
         st = afterArgs.update r (.i64 ptr)) := by
-  have hT : t ∈ pre ++ t :: post := by simp
-  have hRest : ∀ u ∈ pre ++ post, u ∈ pre ++ t :: post := fun u hu => by
-    simp only [List.mem_append, List.mem_cons] at hu ⊢
-    tauto
-  have hPair := hLive.pairwise
-  rw [List.pairwise_append, List.pairwise_cons] at hPair
-  obtain ⟨hPre, ⟨hTPost, hPost⟩, hCross⟩ := hPair
-  have hApartT : ∀ u ∈ pre ++ post, regionsDisjoint (block store u.1) (block store t.1) :=
-    fun u hu => by
-      rcases List.mem_append.mp hu with hu | hu
-      · exact hCross u hu t (List.mem_cons_self ..)
-      · exact regionsDisjoint_symm (hTPost u hu)
   have hKeep : ∀ region, regionsDisjoint region (block store t.1) →
       Apart store (Represent.moves store vals x) region := fun region h q hq => by
     rw [hMoves, List.mem_singleton] at hq
     subst hq
     exact h
+  have hL := hLive.perm List.perm_middle
   refine (Stmt.callImplements_spec hImpl hImport hFunc hParams hArgs hLive.at_ hBorrowed
     ⟨by rw [hMoves]; exact List.pairwise_singleton _ _, fun q hq => hKeep q (hReads q hq)⟩
     (hLive.cap hCap) fun heap' store' values h => ?_).mono (fun _ _ h => h) ?_
   · obtain ⟨q, rfl, -⟩ := h
     exact ⟨afterArgs.update r (.i64 q), by
       simp [State.setAll, State.set?_eq_update _ hR]⟩
-  rintro s st ⟨heap', values, hAt', hOwned', hCaps', hKeepB, hKeepO, hOutB, hOutO, hSet⟩
+  rintro s st ⟨heap', values, hAt', hOwned', hCaps', hKeeps, hSet⟩
   obtain ⟨q, rfl, hQ⟩ := hOwned'
   simp only [List.reverse_cons, List.reverse_nil, List.nil_append, State.setAll,
     State.set?_eq_update _ hR, Option.bind_eq_bind, Option.bind_some, Option.some.injEq] at hSet
   subst hSet
-  have hKeepT : ∀ u ∈ pre ++ post, heap'.Owned s u.1 u.2 ∧ block s u.1 = block store u.1 :=
-    fun u hu =>
-      have h := hKeepO u.1 u.2 (hLive.tempsOwned u (hRest u hu)) (hKeep _ (hApartT u hu))
-      ⟨h.1, block_eq h.2⟩
-  have hOwnedKeep : ∀ p ws, heap0.Owned initial p ws → Apart initial moved (block initial p) →
-      Apart store (Represent.moves store vals x) (block store p) := fun p ws h hA => by
-    refine hKeep _ ?_
-    rw [block_eq (hLive.owned p ws h hA).2]
-    exact hLive.apartO t hT p ws h hA
-  have hNewB : ∀ p ws, heap0.Borrowed initial p ws →
-      Apart initial moved (p.toNat, 8 * (ws.size + 1)) →
-      regionsDisjoint (p.toNat, 8 * (ws.size + 1)) (block s q) := fun p ws h hA => by
-    exact Represent.outside_float.mp (hOutB p ws (hLive.borrowed p ws h hA)
-      (hKeep _ (hLive.apartB t hT p ws h hA)))
-  have hNewO : ∀ p ws, heap0.Owned initial p ws → Apart initial moved (block initial p) →
-      regionsDisjoint (block initial p) (block s q) := fun p ws h hA => by
-    have hDisjoint := Represent.outside_float.mp
-      (hOutO p ws (hLive.owned p ws h hA).1 (hOwnedKeep p ws h hA))
-    rw [block_eq (hLive.owned p ws h hA).2] at hDisjoint
-    exact hDisjoint
-  have hNewT : ∀ u ∈ pre ++ post, regionsDisjoint (block s q) (block s u.1) := fun u hu => by
-    have hDisjoint := Represent.outside_float.mp (hOutO u.1 u.2 (hLive.tempsOwned u (hRest u hu))
-      (hKeep _ (hApartT u hu)))
-    rw [(hKeepT u hu).2]
-    exact regionsDisjoint_symm hDisjoint
-  refine ⟨heap', q, ⟨hAt', hCaps'.trans hLive.caps,
-    fun p ws h hA => hKeepB p ws (hLive.borrowed p ws h hA) (hKeep _ (hLive.apartB t hT p ws h hA)),
-    fun p ws h hA => ⟨(hKeepO p ws (hLive.owned p ws h hA).1 (hOwnedKeep p ws h hA)).1,
-      (hKeepO p ws (hLive.owned p ws h hA).1 (hOwnedKeep p ws h hA)).2.trans
-        (hLive.owned p ws h hA).2⟩,
-    fun u hu => ?_, fun u hu p ws h hA => ?_, fun u hu p ws h hA => ?_, ?_⟩, rfl⟩
-  · rcases List.mem_cons.mp hu with rfl | hu
-    · exact hQ
-    · exact (hKeepT u hu).1
-  · rcases List.mem_cons.mp hu with rfl | hu
-    · exact hNewB p ws h hA
-    · rw [(hKeepT u hu).2]; exact hLive.apartB u (hRest u hu) p ws h hA
-  · rcases List.mem_cons.mp hu with rfl | hu
-    · exact hNewO p ws h hA
-    · rw [(hKeepT u hu).2]; exact hLive.apartO u (hRest u hu) p ws h hA
-  · refine List.pairwise_cons.mpr ⟨fun u hu => hNewT u hu, ?_⟩
-    refine List.Pairwise.imp_of_mem (fun {u v} hu hv h => ?_)
-      (List.pairwise_append.mpr ⟨hPre, hPost, fun a ha b hb => hCross a ha b
-        (List.mem_cons_of_mem _ hb)⟩)
-    rw [(hKeepT u hu).2, (hKeepT v hv).2]
-    exact h
+  refine ⟨heap', q, Live.step (consumed := [t]) (news := [(q, (g x).map Float.toBits)]) hL
+    hAt' hCaps' (hKeeps.mono (fun b hb => by rw [hMoves] at hb; exact hb) fun b hb => hb)
+    (fun u hu => ?_) (List.pairwise_singleton _ _), rfl⟩
+  rw [List.mem_singleton.mp hu]
+  exact hQ
 
 /-- `Live.callMove` followed by `next`. -/
 theorem Live.callMove_seq [Represent α] {idx : Nat} {g : α → Array Float}
@@ -346,27 +308,17 @@ theorem Live.callMove_seq [Represent α] {idx : Nat} {g : α → Array Float}
     (Live.callMove hImpl hImport hFunc hParams hLive hCap hArgs hBorrowed hMoves hReads hR)
     (Triple.of_forall fun s _ ⟨heap', ptr, hL, hst⟩ => hst ▸ hNext heap' ptr s hL)
 
-/-- With one live array, the result, a body that consumes the arrays at `moved` ends with
+/-- With one live array, the result, a body that consumes the objects at `moved` ends with
 the facts that `Func.implements_moves` requires of a function returning that array. -/
 theorem Live.finish_moved {heap0 heap : Heap} {initial store : Store Unit}
     {ptr : UInt64} {result : Array Float}
     (hLive : Live heap0 initial moved heap store [(ptr, result.map Float.toBits)]) :
     ∃ heap' : Heap, heap'.At store ∧ store.memoryCaps = initial.memoryCaps ∧
-      (∀ p ws, heap0.Borrowed initial p ws → Apart initial moved (p.toNat, 8 * (ws.size + 1)) →
-        heap'.Borrowed store p ws) ∧
-      (∀ p ws, heap0.Owned initial p ws → Apart initial moved (block initial p) →
-        heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
       Represent.owned heap' store [.i64 ptr] result ∧
-      (∀ p ws, heap0.Borrowed initial p ws → Apart initial moved (p.toNat, 8 * (ws.size + 1)) →
-        Represent.outside store [.i64 ptr] result (p.toNat, 8 * (ws.size + 1))) ∧
-      (∀ p ws, heap0.Owned initial p ws → Apart initial moved (block initial p) →
-        Represent.outside store [.i64 ptr] result (block initial p)) := by
-  have hMem : (ptr, result.map Float.toBits) ∈ [(ptr, result.map Float.toBits)] :=
-    List.mem_singleton_self _
-  exact ⟨heap, hLive.at_, hLive.caps, hLive.borrowed, hLive.owned,
-    ⟨ptr, rfl, hLive.tempsOwned _ hMem⟩,
-    fun p ws h hA => Represent.outside_float.mpr (hLive.apartB _ hMem p ws h hA),
-    fun p ws h hA => Represent.outside_float.mpr (hLive.apartO _ hMem p ws h hA)⟩
+      heap0.Keeps initial (moved.map (block initial)) heap' store
+        (Represent.blocks store [.i64 ptr] result) :=
+  ⟨heap, hLive.at_, hLive.caps, ⟨ptr, rfl, hLive.tempsOwned _ (List.mem_singleton_self _)⟩,
+    hLive.keeps.mono (fun _ h => h) fun _ hb => hb⟩
 
 /-- With one live array, the result, a body ends with the facts that
 `Func.implements_heap` requires of a function returning that array. -/
@@ -374,22 +326,9 @@ theorem Live.finish {heap0 heap : Heap} {initial store : Store Unit}
     {ptr : UInt64} {result : Array Float}
     (hLive : Live heap0 initial [] heap store [(ptr, result.map Float.toBits)]) :
     ∃ heap' : Heap, heap'.At store ∧ store.memoryCaps = initial.memoryCaps ∧
-      (∀ p ws, heap0.Borrowed initial p ws → heap'.Borrowed store p ws) ∧
-      (∀ p ws, heap0.Owned initial p ws →
-        heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
       Represent.owned heap' store [.i64 ptr] result ∧
-      (∀ p ws, heap0.Borrowed initial p ws →
-        Represent.outside store [.i64 ptr] result (p.toNat, 8 * (ws.size + 1))) ∧
-      (∀ p ws, heap0.Owned initial p ws →
-        Represent.outside store [.i64 ptr] result (p.toNat - 48, 48 + capacityAt initial p)) := by
-  have hMem : (ptr, result.map Float.toBits) ∈ [(ptr, result.map Float.toBits)] :=
-    List.mem_singleton_self _
-  have hBorrowed := fun p ws h => hLive.borrowed p ws h Apart.nil
-  refine ⟨heap, hLive.at_, hLive.caps, hBorrowed,
-    fun p ws h => hLive.owned p ws h Apart.nil, ?_, fun p ws h => ?_, fun p ws h => ?_⟩
-  · exact ⟨ptr, rfl, hLive.tempsOwned _ hMem⟩
-  · exact Represent.outside_float.mpr (hLive.apartB _ hMem p ws h Apart.nil)
-  · exact Represent.outside_float.mpr (hLive.apartO _ hMem p ws h Apart.nil)
+      heap0.Keeps initial [] heap' store (Represent.blocks store [.i64 ptr] result) :=
+  Live.finish_moved hLive
 
 /-- A call followed by `next`: the proof of `next` receives the heap, the result's pointer,
 and the store the call leaves, so the caller does not substitute the new state. -/
@@ -466,22 +405,12 @@ theorem Live.callScalar_seq [Represent α] [Scalar β] {idx : Nat} {g : α → �
     hBorrowed ⟨by rw [hNoMoves]; exact .nil, fun r _ => hNone r⟩ (hLive.cap hCap)
     fun _ _ values h => ⟨after, (show values = Scalar.values (g x) from h) ▸ hSet⟩)
     (Triple.of_forall fun s st h => ?_)
-  obtain ⟨heap', values, hAt', hOwned', hCaps', hKeepB, hKeepO, -, -, hSet'⟩ := h
+  obtain ⟨heap', values, hAt', hOwned', hCaps', hKeeps, hSet'⟩ := h
   rw [show values = Scalar.values (g x) from hOwned', hSet, Option.some.injEq] at hSet'
   subst hSet'
-  have hKeepT : ∀ t ∈ temps, heap'.Owned s t.1 t.2 ∧ block s t.1 = block store t.1 := fun t ht =>
-    ⟨(hKeepO t.1 t.2 (hLive.tempsOwned t ht) (hNone _)).1,
-      block_eq (hKeepO t.1 t.2 (hLive.tempsOwned t ht) (hNone _)).2⟩
-  refine hNext heap' s ⟨hAt', hCaps'.trans hLive.caps,
-    fun p ws h hA => hKeepB p ws (hLive.borrowed p ws h hA) (hNone _),
-    fun p ws h hA => ⟨(hKeepO p ws (hLive.owned p ws h hA).1 (hNone _)).1,
-      (hKeepO p ws (hLive.owned p ws h hA).1 (hNone _)).2.trans (hLive.owned p ws h hA).2⟩,
-    fun t ht => (hKeepT t ht).1, fun t ht p ws h hA => ?_, fun t ht p ws h hA => ?_, ?_⟩
-  · rw [(hKeepT t ht).2]; exact hLive.apartB t ht p ws h hA
-  · rw [(hKeepT t ht).2]; exact hLive.apartO t ht p ws h hA
-  · refine List.Pairwise.imp_of_mem (fun {t u} ht hu h => ?_) hLive.pairwise
-    rw [(hKeepT t ht).2, (hKeepT u hu).2]
-    exact h
+  exact hNext heap' s (Live.step (consumed := []) (news := []) hLive hAt' hCaps'
+    (hKeeps.mono (fun b hb => by rw [hNoMoves] at hb; exact nomatch hb) fun _ hb => nomatch hb)
+    (fun _ h => nomatch h) .nil)
 
 theorem Expr.evalResults_nil {mem : Mem} {scratch : Nat} {state : State} :
     Expr.evalResults mem scratch [] state = some ([], state) := rfl

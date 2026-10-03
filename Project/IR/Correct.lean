@@ -52,9 +52,9 @@ theorem Func.returns (funcs : List (Func × String)) (i : Nat) (func : Func) (na
 /-- A compiled function implements `f` when, for every `x`, every argument list that
 represents it with separate consumed blocks, and every memory whose cap is at most 65,535
 pages, its body aborts or ends in a store where some heap satisfies the allocator
-invariant, the memory's maximum size is unchanged, every array borrowed or owned before
-and apart from the consumed blocks is still borrowed or owned, and the result expressions
-evaluate to values that represent `f x` as an owned value. -/
+invariant, the memory's maximum size is unchanged, the result expressions evaluate to values
+that represent `f x` as an owned value, and every region of the heap apart from the consumed
+blocks keeps its bytes, stays a region, and lies apart from the result. -/
 theorem Func.implements_moves [Represent α] [Represent β] (funcs : List (Func × String))
     (i : Nat) (func : Func) (name : String) (hFunc : funcs[i]? = some (func, name))
     (f : α → β)
@@ -68,41 +68,25 @@ theorem Func.implements_moves [Represent α] [Represent β] (funcs : List (Func 
         (fun store state => store = initial ∧ state = func.state params)
         (fun store state => ∃ heap' : Heap, heap'.At store ∧
           store.memoryCaps = initial.memoryCaps ∧
-          (∀ p ws, heap.Borrowed initial p ws →
-            Apart initial (Represent.moves initial params x) (p.toNat, 8 * (ws.size + 1)) →
-            heap'.Borrowed store p ws) ∧
-          (∀ p ws, heap.Owned initial p ws →
-            Apart initial (Represent.moves initial params x) (block initial p) →
-            heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
           ∃ values next,
             Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
             Represent.owned heap' store values (f x) ∧
-            (∀ p ws, heap.Borrowed initial p ws →
-              Apart initial (Represent.moves initial params x) (p.toNat, 8 * (ws.size + 1)) →
-              Represent.outside store values (f x) (p.toNat, 8 * (ws.size + 1))) ∧
-            (∀ p ws, heap.Owned initial p ws →
-              Apart initial (Represent.moves initial params x) (block initial p) →
-              Represent.outside store values (f x) (block initial p)))) :
+            heap.Keeps initial ((Represent.moves initial params x).map (block initial)) heap'
+              store (Represent.blocks store values (f x)))) :
     Implements (compile funcs) (2 + i) f := by
   intro env store heap params x hHeap hArgs hSeparate hCap
   let moves := Represent.moves store params x
   exact Func.returns funcs i func name hFunc (arity heap store params x hArgs)
     (P := fun final out => ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final out (f x) ∧
       final.memoryCaps = store.memoryCaps ∧
-      (∀ p ws, heap.Borrowed store p ws → Apart store moves (p.toNat, 8 * (ws.size + 1)) →
-        heap'.Borrowed final p ws) ∧
-      (∀ p ws, heap.Owned store p ws → Apart store moves (block store p) →
-        heap'.Owned final p ws ∧ capacityAt final p = capacityAt store p) ∧
-      (∀ p ws, heap.Borrowed store p ws → Apart store moves (p.toNat, 8 * (ws.size + 1)) →
-        Represent.outside final out (f x) (p.toNat, 8 * (ws.size + 1))) ∧
-      (∀ p ws, heap.Owned store p ws → Apart store moves (block store p) →
-        Represent.outside final out (f x) (block store p)))
+      ∀ r, heap.Region r → 0 < r.2 → Apart store moves r →
+        (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+          heap'.Region r ∧ Represent.outside final out (f x) r)
     ((correct x heap store params hHeap hArgs hSeparate hCap).mono (fun _ _ h => h)
-      fun _ _ ⟨heap', hAt, hCaps, hB, hO, values, next, hEval, hResult, hOB, hOO⟩ =>
-        ⟨values, next, hEval, heap', hAt, hResult, hCaps, hB, hO, hOB, hOO⟩) env
+      fun _ _ ⟨heap', hAt, hCaps, values, next, hEval, hResult, hKeeps⟩ =>
+        ⟨values, next, hEval, heap', hAt, hResult, hCaps, Heap.Keeps.implements.mp hKeeps⟩) env
 
-/-- `Func.implements_moves` for a function that consumes no argument, whose body keeps
-every array. -/
+/-- `Func.implements_moves` for a function that consumes no argument. -/
 theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func × String))
     (i : Nat) (func : Func) (name : String) (hFunc : funcs[i]? = some (func, name))
     (f : α → β)
@@ -114,23 +98,17 @@ theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func �
       Triple (compile funcs) func.body func.scratch
         (fun store state => store = initial ∧ state = func.state params)
         (fun store state => ∃ heap' : Heap, heap'.At store ∧ store.memoryCaps = initial.memoryCaps ∧
-          (∀ p ws, heap.Borrowed initial p ws → heap'.Borrowed store p ws) ∧
-          (∀ p ws, heap.Owned initial p ws →
-            heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
           ∃ values next,
             Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
             Represent.owned heap' store values (f x) ∧
-            (∀ p ws, heap.Borrowed initial p ws →
-              Represent.outside store values (f x) (p.toNat, 8 * (ws.size + 1))) ∧
-            (∀ p ws, heap.Owned initial p ws →
-              Represent.outside store values (f x) (p.toNat - 48, 48 + capacityAt initial p)))) :
+            heap.Keeps initial [] heap' store (Represent.blocks store values (f x)))) :
     Implements (compile funcs) (2 + i) f :=
   Func.implements_moves funcs i func name hFunc f arity
     fun x heap initial params hHeap hArgs _ hCap =>
     (correct x heap initial params hHeap hArgs hCap).mono (fun _ _ h => h)
-      fun _ _ ⟨heap', hAt, hCaps, hB, hO, values, next, hEval, hOwned, hOB, hOO⟩ =>
-        ⟨heap', hAt, hCaps, fun p ws h _ => hB p ws h, fun p ws h _ => hO p ws h,
-          values, next, hEval, hOwned, fun p ws h _ => hOB p ws h, fun p ws h _ => hOO p ws h⟩
+      fun _ _ ⟨heap', hAt, hCaps, values, next, hEval, hOwned, hKeeps⟩ =>
+        ⟨heap', hAt, hCaps, values, next, hEval, hOwned,
+          hKeeps.mono (fun _ hb => nomatch hb) fun _ hb => hb⟩
 
 /-- A compiled function whose body keeps the store implements `f` without
 allocating. -/
@@ -153,9 +131,8 @@ theorem Func.implements [Represent α] [Scalar β] (funcs : List (Func × String
       fun _ _ ⟨hStore, hResult⟩ => by
         subst hStore
         obtain ⟨values, next, hEval, hValues⟩ := hResult
-        exact ⟨heap, hHeap, rfl, fun _ _ h _ => h, fun _ _ h _ => ⟨h, rfl⟩, values, next,
-          hEval, hValues, fun _ _ _ _ => Represent.outside_scalar,
-          fun _ _ _ _ => Represent.outside_scalar⟩
+        exact ⟨heap, hHeap, rfl, values, next, hEval, hValues,
+          fun _ hr _ _ => ⟨fun _ _ _ => rfl, hr, Represent.outside_scalar⟩⟩
 
 /-- A compiled function of scalars whose body keeps the store, for every store,
 computes `f` and keeps the store. -/

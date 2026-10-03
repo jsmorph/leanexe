@@ -122,11 +122,11 @@ theorem mlp_implements : Implements gpt.module 13 mlpTuple := by
     (State.get_update_ne (state := s3) (j := 10) (index := 12) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 11) (by decide)).trans (State.get_update_same (state := s1) (by rw [hS1]; decide)))
   refine hLive3.releaseSecond_seq hImports hRelease r10 fun storeR0 hLiveR0 => ?_
   refine hLiveR0.releaseSecond_last hImports hRelease r9 fun storeR1 hLiveR1 => ?_
-  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+  obtain ⟨heap', hAt', hCaps', hOwned, hKeeps⟩ :=
     hLiveR1.finish
-  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+  exact ⟨heap', hAt', hCaps', [.i64 pr], s4,
     by simp [gpt.mlp.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,
-      State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
+      State.get_update_same, hS3], hOwned, hKeeps⟩
 
 /-- `attention` with its thirteen arguments as one tuple. -/
 def attentionTuple (x : Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
@@ -348,11 +348,11 @@ theorem attention_implements : Implements gpt.module 23 attentionTuple := by
   refine hLiveR2.releaseSecond_seq hImports hRelease r15 fun storeR3 hLiveR3 => ?_
   refine hLiveR3.releaseSecond_seq hImports hRelease r14 fun storeR4 hLiveR4 => ?_
   refine hLiveR4.releaseSecond_last hImports hRelease r13 fun storeR5 hLiveR5 => ?_
-  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+  obtain ⟨heap', hAt', hCaps', hOwned, hKeeps⟩ :=
     hLiveR5.finish
-  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s8,
+  exact ⟨heap', hAt', hCaps', [.i64 pr], s8,
     by simp [gpt.attention.ir, Func.scratch, Expr.evalResults, Expr.eval, s8,
-      State.get_update_same, hS7], hOwned, hOutB, hOutO⟩
+      State.get_update_same, hS7], hOwned, hKeeps⟩
 
 /-- `block` with its twenty-three arguments as one tuple. -/
 def blockTuple (x : Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
@@ -607,11 +607,11 @@ theorem block_implements : Implements gpt.module 24 blockTuple := by
   refine hLiveR1.releaseSecond_seq hImports hRelease r25 fun storeR2 hLiveR2 => ?_
   refine hLiveR2.releaseSecond_seq hImports hRelease r24 fun storeR3 hLiveR3 => ?_
   refine hLiveR3.releaseSecond_last hImports hRelease r23 fun storeR4 hLiveR4 => ?_
-  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+  obtain ⟨heap', hAt', hCaps', hOwned, hKeeps⟩ :=
     hLiveR4.finish
-  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pres], s7,
+  exact ⟨heap', hAt', hCaps', [.i64 pres], s7,
     by simp [gpt.block.ir, Func.scratch, Expr.evalResults, Expr.eval, s7,
-      State.get_update_same, hS6], hOwned, hOutB, hOutO⟩
+      State.get_update_same, hS6], hOwned, hKeeps⟩
 
 /-- The input of `forward`: the tokens, the embeddings, the stacked weights of the blocks,
 the final layer norm, and the dimensions. -/
@@ -864,11 +864,11 @@ theorem forward_implements : Implements gpt.module 28 forwardTuple := by
   refine hLive4.releaseSecond_seq hImports hRelease r34 fun storeR0 hLiveR0 => ?_
   refine hLiveR0.releaseSecond_seq hImports hRelease r29 fun storeR1 hLiveR1 => ?_
   refine hLiveR1.releaseSecond_last hImports hRelease r28 fun storeR2 hLiveR2 => ?_
-  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+  obtain ⟨heap', hAt', hCaps', hOwned, hKeeps⟩ :=
     hLiveR2.finish
-  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s5,
+  exact ⟨heap', hAt', hCaps', [.i64 pr], s5,
     by simp [gpt.forward.ir, Expr.evalResults, Expr.eval, s5,
-      State.get_update_same, hS4], hOwned, hOutB, hOutO⟩
+      State.get_update_same, hS4], hOwned, hKeeps⟩
 
 /-- `layerStep` with its twenty-five arguments as one tuple. -/
 def layerStepTuple (x : Array Float × Array Float × Array Float × Array Float × Array Float × Array Float ×
@@ -1304,11 +1304,11 @@ theorem layerStep_implements : Implements gpt.module 40 layerStepTuple := by
   refine hLiveR9.releaseSecond_seq hImports hRelease r27 fun storeR10 hLiveR10 => ?_
   refine hLiveR10.releaseSecond_seq hImports hRelease r26 fun storeR11 hLiveR11 => ?_
   refine hLiveR11.releaseSecond_last hImports hRelease r25 fun storeR12 hLiveR12 => ?_
-  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+  obtain ⟨heap', hAt', hCaps', hOwned, hKeeps⟩ :=
     hLiveR12.finish
-  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pres], s15,
+  exact ⟨heap', hAt', hCaps', [.i64 pres], s15,
     by simp [gpt.layerStep.ir, Func.scratch, Expr.evalResults, Expr.eval, s15,
-      State.get_update_same, hS14], hOwned, hOutB, hOutO⟩
+      State.get_update_same, hS14], hOwned, hKeeps⟩
 
 /-- `scores` with its nine arguments as one tuple. -/
 def scoresTuple (x : Array Float × Array Float × Array Float × Array Float × UInt64 × UInt64 × UInt64 ×
@@ -1425,11 +1425,11 @@ theorem scores_implements : Implements gpt.module 42 scoresTuple := by
     (State.get_update_ne (state := s3) (j := 10) (index := 12) (by decide)).trans ((State.get_update_ne (state := s2) (j := 10) (index := 11) (by decide)).trans (State.get_update_same (state := s1) (by rw [hS1]; decide)))
   refine hLive3.releaseSecond_seq hImports hRelease r10 fun storeR0 hLiveR0 => ?_
   refine hLiveR0.releaseSecond_last hImports hRelease r9 fun storeR1 hLiveR1 => ?_
-  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+  obtain ⟨heap', hAt', hCaps', hOwned, hKeeps⟩ :=
     hLiveR1.finish
-  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+  exact ⟨heap', hAt', hCaps', [.i64 pr], s4,
     by simp [gpt.scores.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,
-      State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
+      State.get_update_same, hS3], hOwned, hKeeps⟩
 
 /-- The input of `step`: the cache, the embeddings, the stacked weights of the blocks, the
 token, and the dimensions. -/
@@ -1735,10 +1735,10 @@ theorem step_implements : Implements gpt.module 41 stepTuple := by
     (State.get_update_ne (state := s6) (j := 29) (index := 35) (by decide)).trans ((State.get_update_ne (state := s5) (j := 29) (index := 34) (by decide)).trans (hState5))
   refine hLive6.releaseSecond_seq hImports hRelease r29 fun storeR0 hLiveR0 => ?_
   refine hLiveR0.releaseSecond_last hImports hRelease r28 fun storeR1 hLiveR1 => ?_
-  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+  obtain ⟨heap', hAt', hCaps', hOwned, hKeeps⟩ :=
     hLiveR1.finish_moved
-  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s7,
+  exact ⟨heap', hAt', hCaps', [.i64 pr], s7,
     by simp [gpt.step.ir, Expr.evalResults, Expr.eval, s7,
-      State.get_update_same, hS6], hOwned, hOutB, hOutO⟩
+      State.get_update_same, hS6], hOwned, hKeeps⟩
 
 end Project.Gpt

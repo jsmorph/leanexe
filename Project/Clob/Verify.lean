@@ -125,11 +125,9 @@ theorem marketBuy_implements :
     · simp [Expr.eval, hFrame.get 5 (by decide) (by decide), h5]
   · rintro store state ⟨ptr, -, hPtr, hNew⟩
     have hOwned := hNew.owned
-    refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-      hNew.ownedKeep, [.i64 ptr], state,
+    refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
       by simp [clob.marketBuy.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_array.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_array.mpr (hNew.ownedApart p ws h)⟩
+      hNew.keeps⟩
     rw [marketBuyTuple, marketBuy_eq, hResult]
     simpa using hOwned
 
@@ -165,15 +163,47 @@ theorem fillLevel_implements : Implements clob.module 3 fillTuple := by
     (by simp [s2, s1, hParams, hLocals])
     (by simp [s2, s1, hParams, hLocals]) (by decide) (by decide) (by decide) hHeap
     hSizes).mono (fun _ _ h => h) ?_
-  rintro store state ⟨heap', p, -, hPtr, hAt, hOwned, hCaps, hBorrowed, hOwnedKeep⟩
-  have hApart : ∀ r, Apart initial [ps] r → regionsDisjoint r (block initial ps) :=
-    fun r h => h ps (List.mem_singleton_self _)
-  refine ⟨heap', hAt, hCaps, fun q ws hq ha => (hBorrowed q ws hq (hApart _ ha)).1,
-    fun q ws hq ha => (hOwnedKeep q ws hq (hApart _ ha)).imp_right And.left, [.i64 p], state,
-    by simp [clob.fillLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨p, rfl, hOwned⟩,
-    fun q ws hq ha => Represent.outside_array.mpr (hBorrowed q ws hq (hApart _ ha)).2,
-    fun q ws hq ha => Represent.outside_array.mpr (hOwnedKeep q ws hq (hApart _ ha)).2.2⟩
+  rintro store state ⟨heap', p, -, hPtr, hAt, hOwned, hCaps, hKeeps⟩
+  exact ⟨heap', hAt, hCaps, [.i64 p], state,
+    by simp [clob.fillLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨p, rfl, hOwned⟩,
+    hKeeps⟩
+
+/-- Two in-place updates in a row, of the array at `pp` and then of the array at `ps`, whose
+blocks are apart: both results are owned and apart, and every region apart from both blocks
+keeps its bytes, stays a region, and lies apart from both results. -/
+theorem two_updates {heap heap1 heap2 : Heap} {initial store1 store2 : Store Unit}
+    {pp ps q1 q2 : UInt64} {sizes xs1 xs2 : Array UInt64}
+    (hSizes : heap.Owned initial ps sizes)
+    (hPS : regionsDisjoint (block initial pp) (block initial ps))
+    (hK1 : heap.Keeps initial [block initial pp] heap1 store1 [block store1 q1])
+    (hAt1 : heap1.At store1) (hOwned1 : heap1.Owned store1 q1 xs1)
+    (hK2 : heap1.Keeps store1 [block store1 ps] heap2 store2 [block store2 q2])
+    (hAt2 : heap2.At store2) (hOwned2 : heap2.Owned store2 q2 xs2) :
+    Represent.owned heap2 store2 [.i64 q1, .i64 q2] (xs1, xs2) ∧
+      heap.Keeps initial ([pp, ps].map (block initial)) heap2 store2
+        (Represent.blocks store2 [.i64 q1, .i64 q2] (xs1, xs2)) := by
+  obtain ⟨⟨-, hCapS⟩, hApartS⟩ := hK1.owned hAt1 hSizes fun b hb => by
+    rw [List.mem_singleton.mp hb]
+    exact regionsDisjoint_symm hPS
+  have hBlockS : block store1 ps = block initial ps := block_eq hCapS
+  obtain ⟨⟨hPrices2, hCapP2⟩, hApartP2⟩ := hK2.owned hAt2 hOwned1 fun b hb => by
+    rw [List.mem_singleton.mp hb, hBlockS]
+    exact regionsDisjoint_symm (hApartS _ (List.mem_singleton_self _))
+  have hBlockP : block store2 q1 = block store1 q1 := block_eq hCapP2
+  refine ⟨Represent.owned_pair.mpr ⟨hPrices2, hOwned2, by
+    rw [hBlockP]; exact hApartP2 _ (List.mem_singleton_self _)⟩, fun g hg hpos hA => ?_⟩
+  obtain ⟨hB1, hR1, hF1⟩ := hK1 g hg hpos fun b hb => by
+    rw [List.mem_singleton.mp hb]
+    exact hA _ (by simp)
+  obtain ⟨hB2, hR2, hF2⟩ := hK2 g hR1 hpos fun b hb => by
+    rw [List.mem_singleton.mp hb, hBlockS]
+    exact hA _ (by simp)
+  refine ⟨fun a hl hh => (hB2 a hl hh).trans (hB1 a hl hh), hR2, fun b hb => ?_⟩
+  change b ∈ [block store2 q1, block store2 q2] at hb
+  rcases List.mem_cons.mp hb with rfl | hb
+  · rw [hBlockP]
+    exact hF1 _ (List.mem_singleton_self _)
+  · exact hF2 b hb
 
 /-- `insertLevel` with its five arguments as one tuple, both arrays handed over. -/
 def insertTuple (x : Moved (Array UInt64) × Moved (Array UInt64) × UInt64 × UInt64 × UInt64) :
@@ -234,9 +264,10 @@ theorem insertLevel_implements : Implements clob.module 4 insertTuple := by
     (by decide) (by decide) (by decide) (by decide) (by decide) (by omega) ug0 ug5 ug6 hHeap
     hCap hPrices) ?_
   apply Triple.of_forall
-  rintro store1 st1 ⟨heap1, q1, hFr1, hD1, hAt1, hOwned1, hCaps1, hB1, hO1⟩
-  obtain ⟨hSizes1, hCapS, hApartS⟩ := hO1 ps sizes hSizes (regionsDisjoint_symm hPS)
-  have hBlockS : block store1 ps = block initial ps := block_eq hCapS
+  rintro store1 st1 ⟨heap1, q1, hFr1, hD1, hAt1, hOwned1, hCaps1, hK1⟩
+  obtain ⟨⟨hSizes1, -⟩, -⟩ := hK1.owned hAt1 hSizes fun b hb => by
+    rw [List.mem_singleton.mp hb]
+    exact regionsDisjoint_symm hPS
   have hKeep1 : ∀ j, j < 19 → j ∉ [0, 7, 8, 9, 10, 11] → st1.get j = u2.get j :=
     fun j hj hjn => hFr1.get j hj hjn
   have hLen1 : st1.params.length + st1.locals.length = 20 := by
@@ -274,33 +305,14 @@ theorem insertLevel_implements : Implements clob.module 4 insertTuple := by
     hRelease (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
     (by decide) (by decide) (by decide) (by decide) (by omega) vg1 vg12 vg13 hAt1
     (memoryCap_le_of_caps hCaps1 hCap) hSizes1).mono (fun _ _ h => h) ?_
-  rintro store2 st2 ⟨heap2, q2, hFr2, hD2, hAt2, hOwned2, hCaps2, hB2, hO2⟩
+  rintro store2 st2 ⟨heap2, q2, hFr2, hD2, hAt2, hOwned2, hCaps2, hK2⟩
   have hD1' : st2.get 0 = some (.i64 q1) := by
     rw [hFr2.get 0 (by decide) (by decide), State.get_update_ne (by decide),
       State.get_update_ne (by decide), hD1]
-  obtain ⟨hPrices2, hCapP2, hApartP2⟩ := hO2 q1 _ hOwned1
-    (by rw [hBlockS]; exact regionsDisjoint_symm hApartS)
-  have hBlockP : block store2 q1 = block store1 q1 := block_eq hCapP2
-  have hPart : ∀ r, Apart initial [pp, ps] r →
-      regionsDisjoint r (block initial pp) ∧ regionsDisjoint r (block initial ps) :=
-    fun r hA => ⟨hA pp (by simp), hA ps (by simp)⟩
-  refine ⟨heap2, hAt2, hCaps2.trans hCaps1, fun r ws hr hA => ?_, fun r ws hr hA => ?_,
-    [.i64 q1, .i64 q2], st2,
+  obtain ⟨hOwnedPair, hKeeps⟩ := two_updates hSizes hPS hK1 hAt1 hOwned1 hK2 hAt2 hOwned2
+  exact ⟨heap2, hAt2, hCaps2.trans hCaps1, [.i64 q1, .i64 q2], st2,
     by simp [clob.insertLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hD1', hD2],
-    Represent.owned_pair.mpr ⟨hPrices2, hOwned2, by rw [hBlockP]; exact hApartP2⟩,
-    fun r ws hr hA => ?_, fun r ws hr hA => ?_⟩
-  · obtain ⟨hr1, -⟩ := hB1 r ws hr (hPart _ hA).1
-    exact (hB2 r ws hr1 (by rw [hBlockS]; exact (hPart _ hA).2)).1
-  · obtain ⟨hr1, hc1, -⟩ := hO1 r ws hr (hPart _ hA).1
-    obtain ⟨hr2, hc2, -⟩ := hO2 r ws hr1 (by rw [block_eq hc1, hBlockS]; exact (hPart _ hA).2)
-    exact ⟨hr2, hc2.trans hc1⟩
-  · obtain ⟨hr1, hd1⟩ := hB1 r ws hr (hPart _ hA).1
-    exact Represent.outside_pair.mpr ⟨by rw [hBlockP]; exact hd1,
-      (hB2 r ws hr1 (by rw [hBlockS]; exact (hPart _ hA).2)).2⟩
-  · obtain ⟨hr1, hc1, hd1⟩ := hO1 r ws hr (hPart _ hA).1
-    obtain ⟨-, -, hd2⟩ := hO2 r ws hr1 (by rw [block_eq hc1, hBlockS]; exact (hPart _ hA).2)
-    rw [block_eq hc1] at hd2
-    exact Represent.outside_pair.mpr ⟨by rw [hBlockP]; exact hd1, hd2⟩
+    hOwnedPair, hKeeps⟩
 
 /-- `setLevel` with its four arguments as one tuple, both arrays handed over. -/
 def setTuple (x : Moved (Array UInt64) × Moved (Array UInt64) × UInt64 × UInt64) :
@@ -343,23 +355,26 @@ theorem setLevel_implements : Implements clob.module 5 setTuple := by
     (by simp [u2, u1, hStart.1, hStart.2]) (by simp [u2, u1, sg1])
     (by simp [u2, u1, hStart.1, hStart.2]) (by simp [u2, u1, hStart.1, hStart.2])
     (by decide) (by decide) (by decide) hHeap hSizes).mono (fun _ _ h => h) ?_
-  rintro store state ⟨heap', p, hFrame, hPtr, hAt, hOwned, hCaps, hBorrowed, hOwnedKeep⟩
+  rintro store state ⟨heap', p, hFrame, hPtr, hAt, hOwned, hCaps, hKeeps⟩
   have hPtr0 : state.get 0 = some (.i64 pp) := by
     rw [hFrame.get 0 (by decide) (by decide)]; simp [u2, u1, sg0]
-  obtain ⟨hKeptP, hCapP, hApartP⟩ := hOwnedKeep pp prices hPrices hPS
+  obtain ⟨⟨hKeptP, hCapP⟩, hApartP⟩ := hKeeps.owned hAt hPrices fun b hb => by
+    rw [List.mem_singleton.mp hb]
+    exact hPS
   have hBlockP : block store pp = block initial pp := block_eq hCapP
-  have hPart : ∀ r, Apart initial [pp, ps] r →
-      regionsDisjoint r (block initial pp) ∧ regionsDisjoint r (block initial ps) :=
-    fun r hA => ⟨hA pp (by simp), hA ps (by simp)⟩
-  refine ⟨heap', hAt, hCaps, fun q ws hq hA => (hBorrowed q ws hq (hPart _ hA).2).1,
-    fun q ws hq hA => (hOwnedKeep q ws hq (hPart _ hA).2).imp_right And.left,
-    [.i64 pp, .i64 p], state,
+  refine ⟨heap', hAt, hCaps, [.i64 pp, .i64 p], state,
     by simp [clob.setLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr0, hPtr],
-    Represent.owned_pair.mpr ⟨hKeptP, hOwned, by rw [hBlockP]; exact hApartP⟩,
-    fun q ws hq hA => Represent.outside_pair.mpr
-      ⟨by rw [hBlockP]; exact (hPart _ hA).1, (hBorrowed q ws hq (hPart _ hA).2).2⟩,
-    fun q ws hq hA => Represent.outside_pair.mpr
-      ⟨by rw [hBlockP]; exact (hPart _ hA).1, (hOwnedKeep q ws hq (hPart _ hA).2).2.2⟩⟩
+    Represent.owned_pair.mpr ⟨hKeptP, hOwned, by
+      rw [hBlockP]; exact hApartP _ (List.mem_singleton_self _)⟩, fun g hg hpos hA => ?_⟩
+  obtain ⟨hB, hR, hF⟩ := hKeeps g hg hpos fun b hb => by
+    rw [List.mem_singleton.mp hb]
+    exact hA _ (by simp)
+  refine ⟨hB, hR, fun b hb => ?_⟩
+  change b ∈ [block store pp, block store p] at hb
+  rcases List.mem_cons.mp hb with rfl | hb
+  · rw [hBlockP]
+    exact hA _ (by simp)
+  · exact hF b hb
 
 /-- `depth` with its three arguments as one tuple. -/
 def depthTuple (x : Array UInt64 × Array UInt64 × UInt64) : UInt64 :=
@@ -558,13 +573,14 @@ theorem removeLevel_implements : Implements clob.module 9 removeTuple := by
     (by decide) (by decide) (by decide) (by simp [u1, hStart.1, hStart.2]) ug0 ug3 hHeap
     hPrices) ?_
   apply Triple.of_forall
-  rintro store1 st1 ⟨heap1, p1, hFr1, hPtr1, hAt1, hOwned1, hCaps1, hB1, hO1⟩
+  rintro store1 st1 ⟨heap1, p1, hFr1, hPtr1, hAt1, hOwned1, hCaps1, hK1⟩
   have hP1 : p1 = pp := by
     rw [hFr1.get 0 (by decide) (by decide), ug0] at hPtr1
     exact (Value.i64.inj (Option.some.inj hPtr1)).symm
   subst hP1
-  obtain ⟨hSizes1, hCapS, hApartS⟩ := hO1 ps sizes hSizes (regionsDisjoint_symm hPS)
-  have hBlockS : block store1 ps = block initial ps := block_eq hCapS
+  obtain ⟨⟨hSizes1, -⟩, -⟩ := hK1.owned hAt1 hSizes fun b hb => by
+    rw [List.mem_singleton.mp hb]
+    exact regionsDisjoint_symm hPS
   have hLen1 : st1.params.length = 3 ∧ st1.locals.length = 9 := by
     rw [hFr1.params, hFr1.locals]; exact ⟨State.update_params_length .., by
       rw [State.update_locals_length]; exact hStart.2⟩
@@ -579,33 +595,14 @@ theorem removeLevel_implements : Implements clob.module 9 removeTuple := by
     (by decide) (by decide) (by simp [u2, State.update_params_length,
       State.update_locals_length, hLen1.1, hLen1.2]) vg1 vg7 hAt1 hSizes1).mono
     (fun _ _ h => h) ?_
-  rintro store2 st2 ⟨heap2, p2, hFr2, hPtr2, hAt2, hOwned2, hCaps2, hB2, hO2⟩
+  rintro store2 st2 ⟨heap2, p2, hFr2, hPtr2, hAt2, hOwned2, hCaps2, hK2⟩
   have hPtr0 : st2.get 0 = some (.i64 p1) := by
     rw [hFr2.get 0 (by decide) (by decide), State.get_update_ne (by decide),
       hFr1.get 0 (by decide) (by decide), ug0]
-  obtain ⟨hPrices2, hCapP2, hApartP2⟩ := hO2 p1 _ hOwned1
-    (by rw [hBlockS]; exact regionsDisjoint_symm hApartS)
-  have hBlockP : block store2 p1 = block store1 p1 := block_eq hCapP2
-  have hPart : ∀ r, Apart initial [p1, ps] r →
-      regionsDisjoint r (block initial p1) ∧ regionsDisjoint r (block initial ps) :=
-    fun r hA => ⟨hA p1 (by simp), hA ps (by simp)⟩
-  refine ⟨heap2, hAt2, hCaps2.trans hCaps1, fun q ws hq hA => ?_, fun q ws hq hA => ?_,
-    [.i64 p1, .i64 p2], st2,
+  obtain ⟨hOwnedPair, hKeeps⟩ := two_updates hSizes hPS hK1 hAt1 hOwned1 hK2 hAt2 hOwned2
+  exact ⟨heap2, hAt2, hCaps2.trans hCaps1, [.i64 p1, .i64 p2], st2,
     by simp [clob.removeLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr0, hPtr2],
-    Represent.owned_pair.mpr ⟨hPrices2, hOwned2, by rw [hBlockP]; exact hApartP2⟩,
-    fun q ws hq hA => ?_, fun q ws hq hA => ?_⟩
-  · obtain ⟨hq1, -⟩ := hB1 q ws hq (hPart _ hA).1
-    exact (hB2 q ws hq1 (by rw [hBlockS]; exact (hPart _ hA).2)).1
-  · obtain ⟨hq1, hc1, -⟩ := hO1 q ws hq (hPart _ hA).1
-    obtain ⟨hq2, hc2, -⟩ := hO2 q ws hq1 (by rw [block_eq hc1, hBlockS]; exact (hPart _ hA).2)
-    exact ⟨hq2, hc2.trans hc1⟩
-  · obtain ⟨hq1, hd1⟩ := hB1 q ws hq (hPart _ hA).1
-    exact Represent.outside_pair.mpr ⟨by rw [hBlockP]; exact hd1,
-      (hB2 q ws hq1 (by rw [hBlockS]; exact (hPart _ hA).2)).2⟩
-  · obtain ⟨hq1, hc1, hd1⟩ := hO1 q ws hq (hPart _ hA).1
-    obtain ⟨-, -, hd2⟩ := hO2 q ws hq1 (by rw [block_eq hc1, hBlockS]; exact (hPart _ hA).2)
-    rw [block_eq hc1] at hd2
-    exact Represent.outside_pair.mpr ⟨by rw [hBlockP]; exact hd1, hd2⟩
+    hOwnedPair, hKeeps⟩
 
 /-- The locals that the branches of `addBid` and `cancelBid` read: the arguments,
 and the position `k` in local 5. -/
@@ -747,17 +744,11 @@ theorem bid_spec {n : Nat} (hn : 6 ≤ n) {thenStmt elseStmt : Stmt}
 def MovesPost (heap : Heap) (initial : Store Unit) (moved : List UInt64) (scratch a b : Nat)
     (result : Array UInt64 × Array UInt64) (store : Store Unit) (state : State) : Prop :=
   ∃ heap' : Heap, heap'.At store ∧ store.memoryCaps = initial.memoryCaps ∧
-    (∀ p ws, heap.Borrowed initial p ws → Apart initial moved (p.toNat, 8 * (ws.size + 1)) →
-      heap'.Borrowed store p ws) ∧
-    (∀ p ws, heap.Owned initial p ws → Apart initial moved (block initial p) →
-      heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
     ∃ values next,
       Expr.evalResults store.mem scratch [⟨.u64, .get a⟩, ⟨.u64, .get b⟩] state =
         some (values, next) ∧ Represent.owned heap' store values result ∧
-      (∀ p ws, heap.Borrowed initial p ws → Apart initial moved (p.toNat, 8 * (ws.size + 1)) →
-        Represent.outside store values result (p.toNat, 8 * (ws.size + 1))) ∧
-      (∀ p ws, heap.Owned initial p ws → Apart initial moved (block initial p) →
-        Represent.outside store values result (block initial p))
+      heap.Keeps initial (moved.map (block initial)) heap' store
+        (Represent.blocks store values result)
 
 /-- A body whose live temporaries are its two results, in locals `a` and `b`, ends with
 `MovesPost`. -/
@@ -766,9 +757,9 @@ theorem movesPost_of_live {heap heap1 : Heap} {initial store : Store Unit} {move
     (hLive : Live heap initial moved heap1 store [(p1, xs), (p2, ys)])
     (hA : state.get a = some (.i64 p1)) (hB : state.get b = some (.i64 p2)) :
     MovesPost heap initial moved scratch a b (xs, ys) store state := by
-  obtain ⟨heap', hAt, hCaps, hKB, hKO, hOwned, hOB, hOO⟩ := hLive.finish_pair
-  exact ⟨heap', hAt, hCaps, hKB, hKO, [.i64 p1, .i64 p2], state,
-    by simp [Expr.evalResults, Expr.eval, hA, hB], hOwned, hOB, hOO⟩
+  obtain ⟨heap', hAt, hCaps, hOwned, hKeeps⟩ := hLive.finish_pair
+  exact ⟨heap', hAt, hCaps, [.i64 p1, .i64 p2], state,
+    by simp [Expr.evalResults, Expr.eval, hA, hB], hOwned, hKeeps⟩
 
 /-- `addBid` with its four arguments as one tuple: the call consumes both arrays. -/
 def addBidTuple (x : Moved (Array UInt64) × Moved (Array UInt64) × UInt64 × UInt64) :

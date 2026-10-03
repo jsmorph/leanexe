@@ -65,16 +65,14 @@ theorem Stmt.AppendPost.inPlace {heap : Heap} {initial store : Store Unit} {befo
   have hKeep : ∀ r : Nat × Nat, regionsDisjoint r (block initial p) →
       ∀ a, r.1 ≤ a → a < r.1 + r.2 → store.mem.bytes a = initial.mem.bytes a :=
     fun r hr a hLow hHigh => hWrites.2.2 a (by simp only [regionsDisjoint, block] at hr; omega)
-  have hRegion := hOwned.region
   refine ⟨heap, p, hFrame, hDst, hHeap.writesApart hWrites fun node hNode => ?_, hOwned',
-    by rw [hWrites.1], fun q ws hq hApart => ⟨hq.keep (le_of_eq hWrites.2.1.symm)
-      (hKeep _ hApart) hq.region, by rw [hBlock]; exact hApart⟩,
-    fun q ws hq hApart => ?_⟩
-  · have := hOwned.separate node hNode
-    simp only [regionsDisjoint] at this ⊢
-    omega
-  · obtain ⟨hq', hCap⟩ := hq.keep (le_of_eq hWrites.2.1.symm) (hKeep _ hApart) hq.region
-    exact ⟨hq', hCap, by rw [hBlock]; exact hApart⟩
+    by rw [hWrites.1], fun r hr _ hApart => ⟨hKeep r (hApart _ (List.mem_singleton_self _)), hr,
+      fun b hb => by
+        rw [List.mem_singleton.mp hb, hBlock]
+        exact hApart _ (List.mem_singleton_self _)⟩⟩
+  have := hOwned.separate node hNode
+  simp only [regionsDisjoint] at this ⊢
+  omega
 
 /-- `set!` in place: with the array at local `src` owned and the position and value in locals
 `k` and `v`, the template leaves the owned array updated at the same pointer, and local `size`
@@ -897,25 +895,16 @@ theorem Stmt.AppendPost.trans {heap heap1 : Heap} {initial store1 store2 : Store
     {before mid st2 : State} {scratch : Nat} {locals locals2 : List Nat} {dst : Nat}
     {p q : UInt64} {zs : Array UInt64}
     (hFrame : State.Frame scratch locals before mid)
-    (hB1 : ∀ r ws, heap.Borrowed initial r ws →
-      regionsDisjoint (r.toNat, 8 * (ws.size + 1)) (block initial p) →
-      heap1.Borrowed store1 r ws ∧ regionsDisjoint (r.toNat, 8 * (ws.size + 1)) (block store1 q))
-    (hO1 : ∀ r ws, heap.Owned initial r ws → regionsDisjoint (block initial r) (block initial p) →
-      heap1.Owned store1 r ws ∧ capacityAt store1 r = capacityAt initial r ∧
-        regionsDisjoint (block initial r) (block store1 q))
+    (hK1 : heap.Keeps initial [block initial p] heap1 store1 [block store1 q])
     (hCaps1 : store1.memoryCaps = initial.memoryCaps)
     (h2 : Stmt.AppendPost heap1 store1 mid scratch locals2 dst q zs store2 st2)
     (hSub : ∀ j ∈ locals2, j ∈ locals) :
     Stmt.AppendPost heap initial before scratch locals dst p zs store2 st2 := by
-  obtain ⟨heap2, q2, hF2, hD2, hAt2, hOwned2, hCaps2, hB2, hO2⟩ := h2
-  refine ⟨heap2, q2, hFrame.trans (hF2.weaken hSub), hD2, hAt2, hOwned2, hCaps2.trans hCaps1,
-    fun r ws hr hA => ?_, fun r ws hr hA => ?_⟩
-  · obtain ⟨hr1, hA1⟩ := hB1 r ws hr hA
-    exact hB2 r ws hr1 hA1
-  · obtain ⟨hr1, hc1, hA1⟩ := hO1 r ws hr hA
-    obtain ⟨hr2, hc2, hA2⟩ := hO2 r ws hr1 (by rw [block_eq hc1]; exact hA1)
-    rw [block_eq hc1] at hA2
-    exact ⟨hr2, hc2.trans hc1, hA2⟩
+  obtain ⟨heap2, q2, hF2, hD2, hAt2, hOwned2, hCaps2, hK2⟩ := h2
+  exact ⟨heap2, q2, hFrame.trans (hF2.weaken hSub), hD2, hAt2, hOwned2, hCaps2.trans hCaps1,
+    hK1.trans hK2 fun _ _ hFresh b hb => by
+      rw [List.mem_singleton.mp hb]
+      exact hFresh _ (List.mem_singleton_self _)⟩
 
 /-- `Stmt.AppendPost` from a later state, whose frame from the earlier one lies within the
 locals. -/
@@ -926,7 +915,7 @@ theorem Stmt.AppendPost.frame {heap : Heap} {initial store : Store Unit}
     (hSub : ∀ j ∈ locals2, j ∈ locals) :
     Stmt.AppendPost heap initial before scratch locals dst p zs store st :=
   Stmt.AppendPost.trans (heap1 := heap) (store1 := initial) (q := p) hFrame
-    (fun _ _ hr hA => ⟨hr, hA⟩) (fun _ _ hr hA => ⟨hr, rfl, hA⟩) rfl h hSub
+    (fun _ hr _ hA => ⟨fun _ _ _ => rfl, hr, hA⟩) rfl h hSub
 
 /-- Room for one more element: with the array at local `src` owned and its length in local
 `size`, `Stmt.reserve` leaves the array owned at the pointer in `src`, the old one when the block
@@ -1112,7 +1101,7 @@ theorem Stmt.reserve_spec {typeIdx releaseType scratch src size cap dst limit in
         rw [hNat j (by omega), getElem!_pos xs j hj] at hEval
         exact ⟨saved, hEval⟩
       · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
-        rintro s st ⟨⟨heap1, q, hFr, hDq, hAt, hOw, hCaps, hB, hO⟩, q', hq', hcq⟩
+        rintro s st ⟨⟨heap1, q, hFr, hDq, hAt, hOw, hCaps, hK⟩, q', hq', hcq⟩
         obtain rfl : q' = q := by rw [hDq] at hq'; exact (Value.i64.inj (Option.some.inj hq')).symm
         obtain ⟨st', hSt'⟩ := State.exists_set? (state := st) (index := src) (.i64 q')
           (by have := hFr.params; have := hFr.locals; omega)
@@ -1121,7 +1110,7 @@ theorem Stmt.reserve_spec {typeIdx releaseType scratch src size cap dst limit in
           rw [State.get_set?_ne hjs hSt', hFr.get j hj hjn]
         refine ⟨q', st, st', by simp [Expr.eval, hDq], hSt',
           ⟨heap1, q', (hFr.weaken fun j hj => by simp at hj ⊢; omega).set? hSt'
-            (.inl (by simp)), State.get_set?_same hSt', hAt, hOw, hCaps, hB, hO⟩,
+            (.inl (by simp)), State.get_set?_same hSt', hAt, hOw, hCaps, hK⟩,
           ⟨q', State.get_set?_same hSt', by omega⟩, ?_⟩
         · rw [hKeep size hSizeBelow (by simp [hSC, hSD, hSL, hSI]) (Ne.symm hSrc0.1), hSize]
     · rintro s st ⟨hs, hst⟩
@@ -1199,7 +1188,7 @@ theorem Stmt.insertInPlace_spec {typeIdx releaseType scratch src size k v cap ds
     refine Stmt.seq_spec (Stmt.reserve_spec hMemory32 hImports hAlloc hRelease hLocals0 hBelow0
       hSrc00 hSrcBelow (by rw [hF1.params, hF1.locals]; omega) hSrc1 hSize1 hHeap hCap hOwned) ?_
     apply Triple.of_forall
-    rintro s st ⟨⟨heap1, q1, hFr, hDq, hAt, hOw, hCaps, hB, hO⟩, ⟨q, hq, hcq⟩, hsz⟩
+    rintro s st ⟨⟨heap1, q1, hFr, hDq, hAt, hOw, hCaps, hK⟩, ⟨q, hq, hcq⟩, hsz⟩
     obtain rfl : q1 = q := by rw [hDq] at hq; exact Value.i64.inj (Option.some.inj hq)
     have hkk : st.get k = some (.i64 kw) := by
       rw [hFr.get k hKBelow (by simp [hKSrc, hK0.2.1, hK0.2.2.1, hK0.2.2.2.1, hK0.2.2.2.2]), hK1]
@@ -1210,7 +1199,7 @@ theorem Stmt.insertInPlace_spec {typeIdx releaseType scratch src size k v cap ds
       (Ne.symm hV0.2.2.2.2 |>.symm) hSI hSrcBelow hKBelow hIndexBelow hVBelow hSizeBelow
       (by rw [hFr.params, hFr.locals, hF1.params, hF1.locals]; omega) hDq hsz hkk hvv hk hAt hOw
       hcq).mono (fun _ _ h => h) fun s' st' h => ?_
-    exact Stmt.AppendPost.frame hF1 (Stmt.AppendPost.trans hFr hB hO hCaps h (by simp))
+    exact Stmt.AppendPost.frame hF1 (Stmt.AppendPost.trans hFr hK hCaps h (by simp))
       (by simp)
   · -- Past the end: the length becomes 0.
     have hPtr32 := hArray.pointerAddress_toNat
@@ -1336,12 +1325,12 @@ theorem Stmt.pushInPlace_spec {typeIdx releaseType scratch src size v cap dst li
   refine Stmt.seq_spec (Stmt.reserve_spec hMemory32 hImports hAlloc hRelease hLocals0 hBelow0
     hSrc00 hSrcBelow (by rw [hF1.params, hF1.locals]; omega) hSrc1 hSize1 hHeap hCap hOwned) ?_
   apply Triple.of_forall
-  rintro s st ⟨⟨heap1, q1, hFr, hDq, hAt, hOw, hCaps, hB, hO⟩, ⟨q, hq, hcq⟩, hsz⟩
+  rintro s st ⟨⟨heap1, q1, hFr, hDq, hAt, hOw, hCaps, hK⟩, ⟨q, hq, hcq⟩, hsz⟩
   obtain rfl : q1 = q := by rw [hDq] at hq; exact Value.i64.inj (Option.some.inj hq)
   have hvv : st.get v = some (.i64 vw) := by
     rw [hFr.get v hVBelow (by simp [hVSrc, hV0.2.1, hV0.2.2.1, hV0.2.2.2.1, hV0.2.2.2.2]), hV1]
   refine (Stmt.pushStores_spec (initial := s) (before := st) (heap := heap1) hDq hsz hvv hAt hOw
     hcq).mono (fun _ _ h => h) fun s' st' h => ?_
-  exact Stmt.AppendPost.frame hF1 (Stmt.AppendPost.trans hFr hB hO hCaps h (by simp)) (by simp)
+  exact Stmt.AppendPost.frame hF1 (Stmt.AppendPost.trans hFr hK hCaps h (by simp)) (by simp)
 
 end Project.IR
