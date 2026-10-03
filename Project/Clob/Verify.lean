@@ -1682,6 +1682,47 @@ theorem runOut_book (prices sizes out cs : Array UInt64) (hs : cs.size < 2 ^ 64)
   exact foldCommands_map (fun x : Array UInt64 × Array UInt64 × Array UInt64 => (x.1, x.2.1))
     (fun _ _ => rfl) cs _
 
+/-- `fillTwice` with its four arguments as one tuple, the sizes handed over. -/
+def fillTwiceTuple (x : Moved (Array UInt64) × UInt64 × UInt64 × UInt64) : Array UInt64 :=
+  LeanExe.Examples.Clob.fillTwice x.1.val x.2.1 x.2.2.1 x.2.2.2
+
+/-- `fillTwice` binds the array of its first call to `fillLevel` with `let` and hands it to the
+second call, which consumes it: the first call's frame leaves the array's block fresh, which
+the second call consumes. -/
+theorem fillTwice_implements : Implements clob.module 15 fillTwiceTuple := by
+  refine Func.implements_moves clob.funcs 13 clob.fillTwice.ir "fillTwice" rfl fillTwiceTuple
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨⟨sizes⟩, k, a, b⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ - hCap
+  let ys := LeanExe.Examples.Clob.fillLevel sizes k a
+  let ps4 : List Value := [.i64 ps, .i64 k, .i64 a, .i64 b]
+  show Triple _ (.seq (.call 3 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 2⟩] [4])
+      (.call 3 [⟨.u64, .get 4⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩] [5])) 6
+    (fun store state => store = initial ∧ state = ⟨ps4, [.i64 0, .i64 0]⟩) _
+  refine Stmt.seq_spec (Stmt.callImplements_spec fillLevel_implements rfl
+    (compile_funcs (i := 1) rfl) rfl (before := ⟨ps4, [.i64 0, .i64 0]⟩)
+    (afterArgs := ⟨ps4, [.i64 0, .i64 0]⟩) (results := [4]) (x := (⟨sizes⟩, k, a))
+    (vals := [.i64 ps, .i64 k, .i64 a]) (by simp [Expr.evalResults, Expr.eval, State.get, ps4])
+    hHeap ⟨[.i64 ps], [.i64 k, .i64 a], rfl, ⟨ps, rfl, hSizes⟩, rfl⟩
+    ⟨List.pairwise_singleton _ _, fun _ h => by simp [Represent.reads] at h⟩ hCap
+    fun _ _ _ ⟨q, hq, _⟩ => by subst hq; exact ⟨_, rfl⟩) ?_
+  refine Triple.of_forall fun store1 st
+    ⟨heap1, values1, hAt1, ⟨q1, hq1, hOwned1⟩, hCaps1, hK1, hSet1⟩ => ?_
+  subst hq1
+  obtain rfl : st = ⟨ps4, [.i64 q1, .i64 0]⟩ := (Option.some.inj (hSet1.symm.trans rfl))
+  refine (Stmt.callImplements_spec fillLevel_implements rfl (compile_funcs (i := 1) rfl) rfl
+    (before := ⟨ps4, [.i64 q1, .i64 0]⟩) (afterArgs := ⟨ps4, [.i64 q1, .i64 0]⟩)
+    (results := [5]) (x := (⟨ys⟩, k, b)) (vals := [.i64 q1, .i64 k, .i64 b])
+    (by simp [Expr.evalResults, Expr.eval, State.get, ps4]) hAt1
+    ⟨[.i64 q1], [.i64 k, .i64 b], rfl, ⟨q1, rfl, hOwned1⟩, rfl⟩
+    ⟨List.pairwise_singleton _ _, fun _ h => by simp [Represent.reads] at h⟩
+    (memoryCap_le_of_caps hCaps1 hCap)
+    fun _ _ _ ⟨q, hq, _⟩ => by subst hq; exact ⟨_, rfl⟩).mono (fun _ _ h => h) ?_
+  rintro store2 st2 ⟨heap2, values2, hAt2, ⟨q2, hq2, hOwned2⟩, hCaps2, hK2, hSet2⟩
+  subst hq2
+  obtain rfl : st2 = ⟨ps4, [.i64 q1, .i64 q2]⟩ := (Option.some.inj (hSet2.symm.trans rfl))
+  exact ⟨heap2, hAt2, hCaps2.trans hCaps1, [.i64 q2], _, rfl, ⟨q2, rfl, hOwned2⟩,
+    hK1.trans hK2 fun _ _ hFresh => hFresh⟩
+
 /-- `encode` succeeds on `clob.module`, and its bytes decode to a module whose
 exports compute the CLOB operations exactly. -/
 theorem clob_bytes : ∃ bytes, Encoding.encode clob.module = .ok bytes ∧
@@ -1691,13 +1732,14 @@ theorem clob_bytes : ∃ bytes, Encoding.encode clob.module = .ok bytes ∧
       Implements m 6 addBidTuple ∧ Implements m 7 depthTuple ∧
       Implements m 8 findTuple ∧ Implements m 9 removeTuple ∧
       Implements m 10 cancelTuple ∧ Implements m 11 applyTuple ∧ Implements m 12 runTuple ∧
-      Implements m 13 stepTuple ∧ Implements m 14 outTuple := by
+      Implements m 13 stepTuple ∧ Implements m 14 outTuple ∧
+      Implements m 15 fillTwiceTuple := by
   obtain ⟨bytes, success, decoded⟩ :=
     Encoding.round_trip clob.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, clob.module, decoded, marketBuy_implements, fillLevel_implements,
     insertLevel_implements, setLevel_implements, addBid_implements,
     depth_implements, findLevel_implements, removeLevel_implements, cancelBid_implements,
     applyCommand_implements, runCommands_implements, stepCommand_implements,
-    runOut_implements⟩
+    runOut_implements, fillTwice_implements⟩
 
 end Project.Clob

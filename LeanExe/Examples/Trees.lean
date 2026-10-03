@@ -136,6 +136,18 @@ def KeyTree.sizeDropSmall (n : UInt64) (t : KeyTree) : KeyTree :=
 /-- `sizeDrop`'s size, by projection: the tree component is released right after the call. -/
 def KeyTree.sizeFirst (n : UInt64) (t : KeyTree) : UInt64 := (t.sizeDrop n).1
 
+/-- The size of `dropSmall`'s result: the `let` binds the result, lends it to `size`, and
+releases it at the end. -/
+def KeyTree.droppedSize (n : UInt64) (t : KeyTree) : UInt64 :=
+  let u := t.dropSmall n
+  u.size
+
+/-- `dropSmall`'s result with its size: the `let` binds the result, lends it to `size`, and
+returns it. -/
+def KeyTree.dropWithSize (n : UInt64) (t : KeyTree) : UInt64 × KeyTree :=
+  let u := t.dropSmall n
+  (u.size, u)
+
 /-- A test of the depth limit: sixteen words computed before the recursive calls and used after
 them, so that the internal function holds 24 values in its frame, the most the compiler
 accepts, and keeps them live across its calls. -/

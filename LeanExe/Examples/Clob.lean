@@ -16,6 +16,12 @@ def marketBuy (askPrices askSizes : Array UInt64) (qty : UInt64) : Array UInt64 
 def fillLevel (sizes : Array UInt64) (k amount : UInt64) : Array UInt64 :=
   sizes.set! k.toNat (sizes[k.toNat]! - amount)
 
+/-- The level sizes after `a` and then `b` are taken from level `k`: the `let` binds the first
+call's array, which the second call consumes. -/
+def fillTwice (sizes : Array UInt64) (k a b : UInt64) : Array UInt64 :=
+  let ys := fillLevel sizes k a
+  fillLevel ys k b
+
 /-- The book side with a new level of `size` at `price` inserted at position `k`,
 as its prices and its sizes. -/
 def insertLevel (prices sizes : Array UInt64) (k price size : UInt64) :

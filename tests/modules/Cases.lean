@@ -166,6 +166,8 @@ def clobCases : IO Unit := do
     for k in ks do
       line "clob" "fillLevel" "array-u64" [arrU ss, u k, u (below 8 (i + k.toNat))]
         (words (LeanExe.Examples.Clob.fillLevel s k (below 8 (i + k.toNat))).toList)
+      line "clob" "fillTwice" "array-u64" [arrU ss, u k, u (below 8 (i + k.toNat)), u 1]
+        (words (LeanExe.Examples.Clob.fillTwice s k (below 8 (i + k.toNat)) 1).toList)
       line "clob" "insertLevel" pairKind [arrU ps, arrU ss, u k, u 97, u 3]
         (pair (LeanExe.Examples.Clob.insertLevel p s k 97 3))
       line "clob" "setLevel" pairKind [arrU ps, arrU ss, u k, u 9]
@@ -367,6 +369,11 @@ def treeCases : IO Unit := do
         (KeyTree.describe (t.sizeDropSmall n))
       line "trees" "sizeFirst" "i64" [u n, s!"tree-u64:{KeyTree.describe t}"]
         (toString (t.sizeFirst n))
+      line "trees" "droppedSize" "i64" [u n, s!"tree-u64:{KeyTree.describe t}"]
+        (toString (t.droppedSize n))
+      let r3 := t.dropWithSize n
+      line "trees" "dropWithSize" "list:i64,tree-u64" [u n, s!"tree-u64:{KeyTree.describe t}"]
+        s!"{r3.1},{KeyTree.describe r3.2}"
   for t in trees.take 10 do
     line "treeFrame" "wide" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.wide)
   for t in trees do
