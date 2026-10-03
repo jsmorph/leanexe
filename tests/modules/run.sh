@@ -63,6 +63,18 @@ if [ "$out" != "stats 5 2" ]; then
   stats_failed=$((stats_failed + 1))
   echo "fail: clob runCommands with two inserts: $out, expected stats 5 2"
 fi
+# stepCommand pushes two words onto the output array in place.  An output of one word fills its
+# block, so the first push moves it to a block of twice the capacity and the second fits: 3 host
+# allocations, 1 more block, and 1 free.  An empty output grows on both pushes.
+for case in "array-u64:7|4 1" "array-u64:|5 2"; do
+  IFS='|' read -r output expected <<<"$case"
+  out=$("$host" call-stats "$build/clob/clob.wasm" stepCommand \
+    list:array-u64,array-u64,array-u64 $prices $sizes "$output" i64:1 i64:102 i64:4 | tail -1)
+  if [ "$out" != "stats $expected" ]; then
+    stats_failed=$((stats_failed + 1))
+    echo "fail: clob stepCommand with output $output: $out, expected stats $expected"
+  fi
+done
 # sumRange releases the list of n cells that it builds, so the counters show n allocations and
 # n frees.
 for n in 0 1 2 64 300; do
@@ -115,7 +127,7 @@ for case in ".|0 0|0 0" "5,.,.|1 0|1 1" "5,1,.,.,9,.,.|3 1|3 2" "5,1,.,.,9,7,.,.
     fi
   done
 done
-echo "release counts: 36 cases, $stats_failed failed"
+echo "release counts: 38 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0

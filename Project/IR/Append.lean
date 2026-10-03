@@ -697,30 +697,15 @@ theorem Stmt.append_spec {typeIdx releaseType scratch dst size1 size2 limit inde
       (by rw [State.get_set?_ne hS1I hG3, State.get_set?_ne hS1D hG2, State.get_set?_ne hS1C hG1,
         hSize1_5])
 
-/-- `Stmt.append` with the temporary `t` at local `src1`, which it consumes, and a borrowed
-array `ys` at local `src2`, apart from `t`'s block, leaves `t.2 ++ ys` in a new temporary at
-the head of the list, in place of `t`. -/
-theorem Live.append {typeIdx releaseType scratch dst size1 size2 limit index cap src1 src2 : Nat}
-    {moved : List UInt64} (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
-    (hAlloc : m.funcs[0]? = some (allocFunction typeIdx))
-    (hRelease : m.funcs[1]? = some (releaseFunction releaseType))
-    (hLocals : [dst, size1, size2, limit, index, cap].Nodup)
-    (hBelow : ∀ j ∈ [dst, size1, size2, limit, index, cap], j < scratch)
-    (hSrc1 : src1 ∉ [dst, size1, size2, limit, index, cap])
-    (hSrc2 : src2 ∉ [dst, size1, size2, limit, index, cap])
-    (hSrcBelow1 : src1 < scratch) (hSrcBelow2 : src2 < scratch) {before : State}
-    (hRoom : scratch < before.params.length + before.locals.length)
-    {heap0 heap : Heap} {initial store : Store Unit} {pre post : List (UInt64 × Array UInt64)}
-    {t : UInt64 × Array UInt64} (hLive : Live heap0 initial moved heap store (pre ++ t :: post))
-    (hCap : initial.memoryCap m 0 ≤ 65535) {p2 : UInt64} {ys : Array UInt64}
-    (hYs : heap.Borrowed store p2 ys)
-    (hApart : regionsDisjoint (p2.toNat, 8 * (ys.size + 1)) (block store t.1))
-    (hP1 : before.get src1 = some (.i64 t.1)) (hP2 : before.get src2 = some (.i64 p2)) :
-    Triple m (.append dst size1 size2 limit index cap src1 src2) scratch
-      (fun s st => s = store ∧ st = before)
-      (fun s st => ∃ heap' p, Live heap0 initial moved heap' s ((p, t.2 ++ ys) :: (pre ++ post)) ∧
-        State.Frame scratch [dst, size1, size2, limit, index, cap] before st ∧
-        st.get dst = some (.i64 p)) := by
+/-- An array step that consumes the temporary `t` and gives `Stmt.AppendPost` for its block
+leaves its result `zs` in a new temporary at the head of the list, in place of `t`. -/
+theorem Live.appendPost {heap0 heap : Heap} {initial store s : Store Unit} {moved : List UInt64}
+    {pre post : List (UInt64 × Array UInt64)} {t : UInt64 × Array UInt64} {before st : State}
+    {scratch dst : Nat} {locals : List Nat} {zs : Array UInt64}
+    (hLive : Live heap0 initial moved heap store (pre ++ t :: post))
+    (h : Stmt.AppendPost heap store before scratch locals dst t.1 zs s st) :
+    ∃ heap' p, Live heap0 initial moved heap' s ((p, zs) :: (pre ++ post)) ∧
+      State.Frame scratch locals before st ∧ st.get dst = some (.i64 p) := by
   have hT : t ∈ pre ++ t :: post := by simp
   have hRest : ∀ u ∈ pre ++ post, u ∈ pre ++ t :: post := fun u hu => by
     simp only [List.mem_append, List.mem_cons] at hu ⊢
@@ -733,10 +718,7 @@ theorem Live.append {typeIdx releaseType scratch dst size1 size2 limit index cap
       rcases List.mem_append.mp hu with hu | hu
       · exact hCross u hu t List.mem_cons_self
       · exact regionsDisjoint_symm (hTPost u hu)
-  refine (Stmt.append_spec hMemory32 hImports hAlloc hRelease hLocals hBelow hSrc1 hSrc2
-    hSrcBelow1 hSrcBelow2 hRoom hLive.at_ (hLive.cap hCap) (hLive.tempsOwned t hT) hYs hApart
-    hP1 hP2).mono (fun _ _ h => h) ?_
-  rintro s st ⟨heap', p, hFrame, hDst, hAt', hOwnedP, hCaps', hKeepB, hKeepO⟩
+  obtain ⟨heap', p, hFrame, hDst, hAt', hOwnedP, hCaps', hKeepB, hKeepO⟩ := h
   have hKeepT : ∀ u ∈ pre ++ post, heap'.Owned s u.1 u.2 ∧ block s u.1 = block store u.1 ∧
       regionsDisjoint (block store u.1) (block s p) := fun u hu =>
     have h := hKeepO u.1 u.2 (hLive.tempsOwned u (hRest u hu)) (hApartT u hu)
@@ -771,5 +753,34 @@ theorem Live.append {typeIdx releaseType scratch dst size1 size2 limit index cap
         (List.mem_cons_of_mem _ hb)⟩)
     rw [(hKeepT u hu).2.1, (hKeepT v hv).2.1]
     exact h
+
+/-- `Stmt.append` with the temporary `t` at local `src1`, which it consumes, and a borrowed
+array `ys` at local `src2`, apart from `t`'s block, leaves `t.2 ++ ys` in a new temporary at
+the head of the list, in place of `t`. -/
+theorem Live.append {typeIdx releaseType scratch dst size1 size2 limit index cap src1 src2 : Nat}
+    {moved : List UInt64} (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
+    (hAlloc : m.funcs[0]? = some (allocFunction typeIdx))
+    (hRelease : m.funcs[1]? = some (releaseFunction releaseType))
+    (hLocals : [dst, size1, size2, limit, index, cap].Nodup)
+    (hBelow : ∀ j ∈ [dst, size1, size2, limit, index, cap], j < scratch)
+    (hSrc1 : src1 ∉ [dst, size1, size2, limit, index, cap])
+    (hSrc2 : src2 ∉ [dst, size1, size2, limit, index, cap])
+    (hSrcBelow1 : src1 < scratch) (hSrcBelow2 : src2 < scratch) {before : State}
+    (hRoom : scratch < before.params.length + before.locals.length)
+    {heap0 heap : Heap} {initial store : Store Unit} {pre post : List (UInt64 × Array UInt64)}
+    {t : UInt64 × Array UInt64} (hLive : Live heap0 initial moved heap store (pre ++ t :: post))
+    (hCap : initial.memoryCap m 0 ≤ 65535) {p2 : UInt64} {ys : Array UInt64}
+    (hYs : heap.Borrowed store p2 ys)
+    (hApart : regionsDisjoint (p2.toNat, 8 * (ys.size + 1)) (block store t.1))
+    (hP1 : before.get src1 = some (.i64 t.1)) (hP2 : before.get src2 = some (.i64 p2)) :
+    Triple m (.append dst size1 size2 limit index cap src1 src2) scratch
+      (fun s st => s = store ∧ st = before)
+      (fun s st => ∃ heap' p, Live heap0 initial moved heap' s ((p, t.2 ++ ys) :: (pre ++ post)) ∧
+        State.Frame scratch [dst, size1, size2, limit, index, cap] before st ∧
+        st.get dst = some (.i64 p)) := by
+  have hT : t ∈ pre ++ t :: post := by simp
+  exact (Stmt.append_spec hMemory32 hImports hAlloc hRelease hLocals hBelow hSrc1 hSrc2
+    hSrcBelow1 hSrcBelow2 hRoom hLive.at_ (hLive.cap hCap) (hLive.tempsOwned t hT) hYs hApart
+    hP1 hP2).mono (fun _ _ h => h) fun _ _ h => Live.appendPost hLive h
 
 end Project.IR

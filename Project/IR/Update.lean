@@ -500,28 +500,47 @@ def Stmt.insertShift (src size k v index : Nat) : Stmt :=
     (.get v)) <|
   .store (.get src) (.bin .add (.get size) (.const 1))
 
+/-- Makes room for one more element in the block of the array at local `src`, whose length is in
+local `size`.  The capacity word goes into local `cap`; when the block has no room, a block of
+twice the capacity, or of the size needed, receives a copy of the array, the old block is
+released, and `src` takes the new pointer. -/
+def Stmt.reserve (src size cap dst limit index : Nat) : Stmt :=
+  .seq (.load .u64 cap (.bin .sub (.get src) (.const 32))) <|
+    .ite (.leU (.bin .mul (.bin .add (.get size) (.const 2)) (.const 8)) (.get cap)) .skip
+      (.seq (.assign limit (.bin .add (.get size) (.const 1))) <|
+        .seq (.assign cap (Stmt.appendRequest limit cap)) <|
+        .seq (.call 0 [⟨.u64, .get cap⟩] [dst]) <|
+        .seq (.assign limit (.get size)) <|
+        .seq (.assign index (.const 0)) <|
+        .seq (.seq (.store (.get dst) (.get limit)) <|
+          .seq (.fill dst limit index .skip (.read src (.get index))) <|
+          .ite (.eq (.get dst) (.get src)) .skip (.release src)) <|
+        .assign src (.get dst))
+
 /-- Inserts the word in local `v` at position `k`, the word in local `k`, of the array at local
 `src`, whose length local `size` receives.  When `k` exceeds the length, the length becomes 0,
-Lean's `default`.  When the block has no room for one more element, a block of twice the
-capacity, or of the size needed, receives a copy of the array, the old block is released, and
-`src` takes the new pointer.  `Stmt.shiftUp` then moves the elements from `k` on up by one place,
-`v` goes into element `k`, and the longer length is written last. -/
+Lean's `default`.  Otherwise `Stmt.reserve` makes room for one more element, `Stmt.shiftUp`
+moves the elements from `k` on up by one place, `v` goes into element `k`, and the longer length
+is written last. -/
 def Stmt.insertInPlace (src size k v cap dst limit index : Nat) : Stmt :=
   .seq (.arraySize size src) <|
   .ite (.leU (.get k) (.get size))
-    (.seq (.load .u64 cap (.bin .sub (.get src) (.const 32))) <|
-      .seq (.ite (.leU (.bin .mul (.bin .add (.get size) (.const 2)) (.const 8)) (.get cap)) .skip
-        (.seq (.assign limit (.bin .add (.get size) (.const 1))) <|
-          .seq (.assign cap (Stmt.appendRequest limit cap)) <|
-          .seq (.call 0 [⟨.u64, .get cap⟩] [dst]) <|
-          .seq (.assign limit (.get size)) <|
-          .seq (.assign index (.const 0)) <|
-          .seq (.seq (.store (.get dst) (.get limit)) <|
-            .seq (.fill dst limit index .skip (.read src (.get index))) <|
-            .ite (.eq (.get dst) (.get src)) .skip (.release src)) <|
-          .assign src (.get dst))) <|
-      Stmt.insertShift src size k v index)
+    (.seq (Stmt.reserve src size cap dst limit index) (Stmt.insertShift src size k v index))
     (.store (.get src) (.const 0))
+
+/-- With room for one more element in the block of the array at local `src`, whose length is in
+local `size`: `v` goes into the word after the last element, and the longer length is written
+last. -/
+def Stmt.pushStores (src size v : Nat) : Stmt :=
+  .seq (.store (.bin .add (.get src) (.bin .mul (.bin .add (.get size) (.const 1)) (.const 8)))
+    (.get v)) <|
+  .store (.get src) (.bin .add (.get size) (.const 1))
+
+/-- Appends the word in local `v` to the array at local `src`, whose length local `size`
+receives: `Stmt.reserve` makes room, and `Stmt.pushStores` writes the element and the length. -/
+def Stmt.pushInPlace (src size v cap dst limit index : Nat) : Stmt :=
+  .seq (.arraySize size src) <|
+  .seq (Stmt.reserve src size cap dst limit index) (Stmt.pushStores src size v)
 
 /-- `Stmt.shiftUp` under an invariant `J` of the index and the store: when each step from a
 store where `J i` holds, with `k < i`, finds an array laid out at the pointer whose element
@@ -909,6 +928,214 @@ theorem Stmt.AppendPost.frame {heap : Heap} {initial store : Store Unit}
   Stmt.AppendPost.trans (heap1 := heap) (store1 := initial) (q := p) hFrame
     (fun _ _ hr hA => ⟨hr, hA⟩) (fun _ _ hr hA => ⟨hr, rfl, hA⟩) rfl h hSub
 
+/-- Room for one more element: with the array at local `src` owned and its length in local
+`size`, `Stmt.reserve` leaves the array owned at the pointer in `src`, the old one when the block
+has room and a new one otherwise, in a block that holds one more element. -/
+theorem Stmt.reserve_spec {typeIdx releaseType scratch src size cap dst limit index : Nat}
+    {initial : Store Unit} {before : State} {heap : Heap} {p : UInt64} {xs : Array UInt64}
+    (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
+    (hAlloc : m.funcs[0]? = some (allocFunction typeIdx))
+    (hRelease : m.funcs[1]? = some (releaseFunction releaseType))
+    (hLocals : [size, cap, dst, limit, index].Nodup)
+    (hBelow : ∀ j ∈ [size, cap, dst, limit, index], j < scratch)
+    (hSrc0 : src ∉ [size, cap, dst, limit, index]) (hSrcBelow : src < scratch)
+    (hRoom : scratch < before.params.length + before.locals.length)
+    (hSrc : before.get src = some (.i64 p))
+    (hSize : before.get size = some (.i64 (UInt64.ofNat xs.size)))
+    (hHeap : heap.At initial) (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hOwned : heap.Owned initial p xs) :
+    Triple m (Stmt.reserve src size cap dst limit index) scratch
+      (fun store state => store = initial ∧ state = before)
+      (fun s st => Stmt.AppendPost heap initial before scratch [src, cap, dst, limit, index] src p
+          xs s st ∧
+        (∃ q, st.get src = some (.i64 q) ∧ 8 * (xs.size + 2) ≤ capacityAt s q) ∧
+        st.get size = some (.i64 (UInt64.ofNat xs.size))) := by
+  simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
+    List.nodup_nil, not_false_eq_true, and_true] at hLocals hSrc0
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hBelow
+  obtain ⟨⟨hSC, hSD, hSL, hSI⟩, ⟨hCD, hCL, hCI⟩, ⟨hDL, hDI⟩, hLI⟩ := hLocals
+  obtain ⟨hSizeBelow, hCapBelow, hDstBelow, hLimitBelow, hIndexBelow⟩ := hBelow
+  have hArray := hOwned.values
+  have hCapacity := hOwned.capacity
+  have hBase := hOwned.base
+  have hAddr := hOwned.address
+  set n := xs.size with hn
+  have hn29 : n < 536870912 := by have := hArray.1; omega
+  have hNat : ∀ i, i ≤ n + 2 → (UInt64.ofNat i).toNat = i := fun i hi =>
+    UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
+  let R := [src, cap, dst, limit, index]
+  have hSizeNat := hNat n (by omega)
+  have hPtr32 := hArray.pointerAddress_toNat
+  have hMemP := hArray.2.1
+  -- The capacity word.
+  obtain ⟨c, hc⟩ : ∃ c : UInt64, c = initial.mem.read64 (p - 32).toUInt32 := ⟨_, rfl⟩
+  have hcNat : c.toNat = capacityAt initial p := by rw [hc]; rfl
+  have hHeader : (p - 32).toUInt32.toNat = p.toNat - 32 := by
+    have := headerAddress_toNat (ptr := p) (k := 32) (by simp; omega) (by omega)
+    simpa using this
+  obtain ⟨s2, hSet2⟩ := State.exists_set? (state := before) (index := cap) (.i64 c) (by omega)
+  have hF2 : State.Frame scratch R before s2 :=
+    (State.Frame.refl _ _ before).set? hSet2 (.inl (by simp [R]))
+  have hF12 : State.Frame scratch [cap, dst, limit, index] before s2 :=
+    (State.Frame.refl _ _ before).set? hSet2 (.inl (by simp))
+  have hSrc2 : s2.get src = some (.i64 p) := (State.get_set?_ne hSrc0.2.1 hSet2).trans hSrc
+  have hSize2 : s2.get size = some (.i64 (UInt64.ofNat n)) :=
+    (State.get_set?_ne hSC hSet2).trans hSize
+  have hCap2 : s2.get cap = some (.i64 c) := State.get_set?_same hSet2
+  refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = s2) ?_ ?_
+  · refine Stmt.load_spec.mono ?_ fun _ _ h => h
+    rintro s st ⟨hs, hst⟩
+    subst s st
+    refine ⟨p - 32, before, s2, by simp [Expr.eval, hSrc, U64Op.apply], by omega, ?_, rfl, rfl⟩
+    rw [← hc]
+    exact hSet2
+  · refine (Stmt.ite_spec
+      (PThen := fun s st => s = initial ∧ st = s2 ∧ 8 * (n + 2) ≤ capacityAt initial p)
+      (PElse := fun s st => s = initial ∧ st = s2 ∧ ¬8 * (n + 2) ≤ capacityAt initial p)
+      ?_ ?_).mono ?_ fun _ _ h => h
+    · refine Stmt.skip_spec.mono ?_ fun _ _ h => h
+      rintro s st ⟨hs, hst, hRm⟩
+      subst s st
+      exact ⟨Stmt.AppendPost.inPlace hHeap hOwned (.refl _ _ _) hArray (by omega) hF2 hSrc2,
+        ⟨p, hSrc2, hRm⟩, hSize2⟩
+    · apply Triple.of_forall
+      rintro s0 st0 ⟨hs, hst, hRm⟩
+      subst s0 st0
+      -- The growth path: a request, `alloc`, a copy into the new block, and `src` moved.
+      have hLen1 : UInt64.ofNat n + 1 = UInt64.ofNat (n + 1) := by
+        apply UInt64.toNat_inj.mp
+        rw [UInt64.toNat_add, hSizeNat, hNat (n + 1) (by omega)]
+        simp
+        omega
+      obtain ⟨g1, hG1⟩ := State.exists_set? (state := s2) (index := limit)
+        (.i64 (UInt64.ofNat (n + 1))) (by rw [hF2.params, hF2.locals]; omega)
+      have hFG1 := hF12.set? hG1 (.inl (by simp))
+      have hLimitG1 : g1.get limit = some (.i64 (UInt64.ofNat (n + 1))) := State.get_set?_same hG1
+      have hCapG1 : g1.get cap = some (.i64 c) := by rw [State.get_set?_ne hCL hG1, hCap2]
+      obtain ⟨r, hREval, hR1, hR2⟩ := appendRequest_eval (mem := initial.mem) (scratch := scratch)
+        (total := n + 1) (by omega) (by rw [hcNat]; omega) hLimitG1 hCapG1
+      generalize hNeedDef : allocSize r = need
+      have hNeed : 8 * (n + 2) ≤ need.toNat := by
+        rw [← hNeedDef]; exact hR1.trans (le_allocSize hR2)
+      obtain ⟨g2, hG2⟩ := State.exists_set? (state := g1) (index := cap) (.i64 r)
+        (by rw [hFG1.params, hFG1.locals]; omega)
+      have hFG2 := hFG1.set? hG2 (.inl (by simp))
+      obtain ⟨g3, hG3⟩ := State.exists_set? (state := g2) (index := dst)
+        (.i64 (FixedArrayAllocate.root heap.top need heap.free))
+        (by rw [hFG2.params, hFG2.locals]; omega)
+      have hFG3 := hFG2.set? hG3 (.inl (by simp))
+      obtain ⟨g4, hG4⟩ := State.exists_set? (state := g3) (index := limit)
+        (.i64 (UInt64.ofNat n)) (by rw [hFG3.params, hFG3.locals]; omega)
+      have hFG4 := hFG3.set? hG4 (.inl (by simp))
+      obtain ⟨g5, hG5⟩ := State.exists_set? (state := g4) (index := index) (.i64 (UInt64.ofNat 0))
+        (by rw [hFG4.params, hFG4.locals]; omega)
+      have hFG5 := hFG4.set? hG5 (.inl (by simp))
+      have hSizeG2 : g2.get size = some (.i64 (UInt64.ofNat n)) := by
+        rw [State.get_set?_ne hSC hG2, State.get_set?_ne hSL hG1, hSize2]
+      have hCapG2 : g2.get cap = some (.i64 r) := State.get_set?_same hG2
+      have hDstG5 : g5.get dst = some (.i64 (FixedArrayAllocate.root heap.top need heap.free)) := by
+        rw [State.get_set?_ne hDI hG5, State.get_set?_ne hDL hG4, State.get_set?_same hG3]
+      have hLimitG5 : g5.get limit = some (.i64 (UInt64.ofNat n)) := by
+        rw [State.get_set?_ne hLI hG5, State.get_set?_same hG4]
+      have hIndexG5 : g5.get index = some (.i64 (UInt64.ofNat 0)) := State.get_set?_same hG5
+      refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = g1) ?_ <|
+        Stmt.seq_spec (M := fun s st => s = initial ∧ st = g2) ?_ <|
+        Stmt.seq_spec (M := fun s st => heap.Fits need ∧ s = heap.allocateStore initial need 1 ∧
+          st = g3) ?_ <|
+        Stmt.seq_spec (M := fun s st => heap.Fits need ∧ s = heap.allocateStore initial need 1 ∧
+          st = g4) ?_ <|
+        Stmt.seq_spec (M := fun s st => heap.Fits need ∧ s = heap.allocateStore initial need 1 ∧
+          st = g5) ?_ <|
+        Stmt.seq_spec (M := fun s st =>
+          Stmt.AppendPost heap initial before scratch [cap, dst, limit, index] dst p xs s st ∧
+            ∃ q, st.get dst = some (.i64 q) ∧ need.toNat ≤ capacityAt s q) ?_ ?_
+      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨hs, hst⟩
+        subst s st
+        exact ⟨UInt64.ofNat (n + 1), s2, g1, by rw [← hLen1]; simp [Expr.eval, hSize2, U64Op.apply],
+          hG1, rfl, rfl⟩
+      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨hs, hst⟩
+        subst s st
+        exact ⟨r, g1, g2, hREval, hG2, rfl, rfl⟩
+      · refine (Stmt.call_spec (f := allocFunction typeIdx) (by simp [hImports])
+          (by simpa [hImports] using hAlloc) rfl).mono ?_ fun _ _ h => h
+        rintro s st ⟨hs, hst⟩
+        subst s st
+        refine ⟨[.i64 r], g2, _, by simp [Expr.evalResults, Expr.eval, hCapG2],
+          fun env => alloc_spec_or_abort hMemory32 hImports hAlloc env heap initial r hHeap hR2
+            hCap, ?_⟩
+        rintro s' out ⟨hFits, hs', hOut⟩
+        rw [hNeedDef] at hFits hs' hOut
+        exact ⟨g3, by simp [hOut, State.setAll, hG3], hFits, hs', rfl⟩
+      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨hFits, hs, hst⟩
+        subst s st
+        refine ⟨UInt64.ofNat n, g3, g4, ?_, hG4, hFits, rfl, rfl⟩
+        simp [Expr.eval, State.get_set?_ne hSD hG3, hSizeG2]
+      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨hFits, hs, hst⟩
+        subst s st
+        exact ⟨UInt64.ofNat 0, g4, g5, by simp [Expr.eval], hG5, hFits, rfl, rfl⟩
+      · apply Triple.of_forall
+        rintro s st ⟨hFits, hs, hst⟩
+        subst s st
+        have hXApart := hOwned.disjoint_allocated hHeap need
+        have hXA := hOwned.allocate 1 hHeap hFits
+        have hBlock := hHeap.allocate_block 1 hFits
+        have hCapacityA := allocated_capacity need heap.free
+        have hBlockAddress := hBlock.address
+        have hBlockBase := hBlock.base
+        refine Stmt.growFill_spec (locals := [cap, dst, limit, index]) (before := before) (start := g5)
+          (all := xs) (element := .read src (.get index)) hImports hRelease
+          (by simp [hDL, hDI, hLI]) (by simp [hDstBelow, hLimitBelow, hIndexBelow])
+          (by simp) (by simp [hSrc0.2.1, hSrc0.2.2.1, hSrc0.2.2.2.1, hSrc0.2.2.2.2])
+          hSrcBelow (by omega) hHeap hOwned hn29 hFits (by omega)
+          hFG5 hSrc hDstG5 hLimitG5 hIndexG5 fun j hj s st hW hFk hI => ?_
+        have hXv : UInt64Array.At s p xs := by
+          refine hXA.values.writesRange hW ?_
+          simp only [regionsDisjoint] at hXApart
+          omega
+        have hSrcSt : st.get src = some (.i64 p) := by
+          rw [hFk.get src hSrcBelow (by simp [hSrc0.2.2.1, hSrc0.2.2.2.1, hSrc0.2.2.2.2]),
+            State.get_set?_ne hSrc0.2.2.2.2 hG5, State.get_set?_ne hSrc0.2.2.2.1 hG4,
+            State.get_set?_ne hSrc0.2.2.1 hG3, State.get_set?_ne hSrc0.2.1 hG2,
+            State.get_set?_ne hSrc0.2.2.2.1 hG1, hSrc2]
+        obtain ⟨saved, hSaved⟩ := State.exists_set? (state := st) (index := scratch)
+          (.i64 (UInt64.ofNat j)) (by
+            have := hFk.params; have := hFk.locals
+            have := hFG5.params; have := hFG5.locals
+            omega)
+        have hEval := Expr.read_spec (array := src) (scratch := scratch) (state := st)
+          (afterPosition := st) (k := UInt64.ofNat j) (position := .get index) hXv
+          (by simp [Expr.eval, hI]) hSaved (by rw [State.get_set?_ne (by omega) hSaved, hSrcSt])
+        rw [hNat j (by omega), getElem!_pos xs j hj] at hEval
+        exact ⟨saved, hEval⟩
+      · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+        rintro s st ⟨⟨heap1, q, hFr, hDq, hAt, hOw, hCaps, hB, hO⟩, q', hq', hcq⟩
+        obtain rfl : q' = q := by rw [hDq] at hq'; exact (Value.i64.inj (Option.some.inj hq')).symm
+        obtain ⟨st', hSt'⟩ := State.exists_set? (state := st) (index := src) (.i64 q')
+          (by have := hFr.params; have := hFr.locals; omega)
+        have hKeep : ∀ j, j < scratch → j ∉ [cap, dst, limit, index] → j ≠ src →
+            st'.get j = before.get j := fun j hj hjn hjs => by
+          rw [State.get_set?_ne hjs hSt', hFr.get j hj hjn]
+        refine ⟨q', st, st', by simp [Expr.eval, hDq], hSt',
+          ⟨heap1, q', (hFr.weaken fun j hj => by simp at hj ⊢; omega).set? hSt'
+            (.inl (by simp)), State.get_set?_same hSt', hAt, hOw, hCaps, hB, hO⟩,
+          ⟨q', State.get_set?_same hSt', by omega⟩, ?_⟩
+        · rw [hKeep size hSizeBelow (by simp [hSC, hSD, hSL, hSI]) (Ne.symm hSrc0.1), hSize]
+    · rintro s st ⟨hs, hst⟩
+      subst s st
+      have hNeedV : ((UInt64.ofNat n + 2) * 8).toNat = 8 * (n + 2) := by
+        rw [UInt64.toNat_mul, UInt64.toNat_add, hSizeNat]
+        simp
+        omega
+      by_cases hRm : 8 * (n + 2) ≤ capacityAt initial p
+      · refine ⟨true, s2, ?_, rfl, rfl, hRm⟩
+        simp [Expr.eval, hSize2, hCap2, U64Op.apply, UInt64.le_iff_toNat_le, hNeedV, hcNat, hRm]
+      · refine ⟨false, s2, ?_, rfl, rfl, hRm⟩
+        simp [Expr.eval, hSize2, hCap2, U64Op.apply, UInt64.le_iff_toNat_le, hNeedV, hcNat, hRm]
+
 /-- `insertIdx!` in place: with the array at local `src` owned and the position and value in
 locals `k` and `v`, the template leaves the owned array with the value inserted, at the same
 pointer when the block has room and in a new block otherwise, whose pointer `src` then holds. -/
@@ -931,6 +1158,9 @@ theorem Stmt.insertInPlace_spec {typeIdx releaseType scratch src size k v cap ds
       (fun store state => store = initial ∧ state = before)
       (Stmt.AppendPost heap initial before scratch [src, size, cap, dst, limit, index] src p
         (xs.insertIdx! kw.toNat vw)) := by
+  have hLocals0 := hLocals
+  have hBelow0 := hBelow
+  have hSrc00 := hSrc0
   simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
     List.nodup_nil, not_false_eq_true, and_true] at hLocals hSrc0 hK0 hV0
   simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hBelow
@@ -959,30 +1189,6 @@ theorem Stmt.insertInPlace_spec {typeIdx releaseType scratch src size k v cap ds
       fun s st ⟨hs, hst⟩ => ⟨hs, by rw [hSet1] at hst; exact (Option.some.inj hst).symm⟩) ?_
   by_cases hk : kw.toNat ≤ n
   · have hSizeNat := hNat n (by omega)
-    have hPtr32 := hArray.pointerAddress_toNat
-    have hMemP := hArray.2.1
-    -- The capacity word.
-    obtain ⟨c, hc⟩ : ∃ c : UInt64, c = initial.mem.read64 (p - 32).toUInt32 := ⟨_, rfl⟩
-    have hcNat : c.toNat = capacityAt initial p := by rw [hc]; rfl
-    have hHeader : (p - 32).toUInt32.toNat = p.toNat - 32 := by
-      have := headerAddress_toNat (ptr := p) (k := 32) (by simp; omega) (by omega)
-      simpa using this
-    obtain ⟨s2, hSet2⟩ := State.exists_set? (state := s1) (index := cap) (.i64 c)
-      (by rw [hF1.params, hF1.locals]; omega)
-    have hF2 : State.Frame scratch L before s2 := hF1.set? hSet2 (.inl (by simp [L]))
-    have hF12 : State.Frame scratch [cap, dst, limit, index] s1 s2 :=
-      (State.Frame.refl _ _ s1).set? hSet2 (.inl (by simp))
-    have hSrc2 : s2.get src = some (.i64 p) := (State.get_set?_ne hSrc0.2.1 hSet2).trans hSrc1
-    have hK2 : s2.get k = some (.i64 kw) := (State.get_set?_ne hK0.2.1 hSet2).trans hK1
-    have hV2 : s2.get v = some (.i64 vw) := (State.get_set?_ne hV0.2.1 hSet2).trans hV1
-    have hSize2 : s2.get size = some (.i64 (UInt64.ofNat n)) :=
-      (State.get_set?_ne hSC hSet2).trans hSize1
-    have hCap2 : s2.get cap = some (.i64 c) := State.get_set?_same hSet2
-    let M : Store Unit → State → Prop := fun s st =>
-      Stmt.AppendPost heap initial before scratch L src p xs s st ∧
-        (∃ q, st.get src = some (.i64 q) ∧ 8 * (n + 2) ≤ capacityAt s q) ∧
-        st.get size = some (.i64 (UInt64.ofNat n)) ∧ st.get k = some (.i64 kw) ∧
-        st.get v = some (.i64 vw)
     refine (Stmt.ite_spec (PThen := fun s st => s = initial ∧ st = s1)
       (PElse := fun _ _ => False) ?_ Triple.of_false).mono ?_ fun _ _ h => h
     rotate_left
@@ -990,171 +1196,22 @@ theorem Stmt.insertInPlace_spec {typeIdx releaseType scratch src size k v cap ds
       subst s st
       refine ⟨true, s1, ?_, rfl, rfl⟩
       simp [Expr.eval, hK1, hSize1, UInt64.le_iff_toNat_le, hSizeNat, hk]
-    refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = s2) ?_ <|
-      Stmt.seq_spec (M := M) ?_ ?_
-    · refine Stmt.load_spec.mono ?_ fun _ _ h => h
-      rintro s st ⟨hs, hst⟩
-      subst s st
-      refine ⟨p - 32, s1, s2, by simp [Expr.eval, hSrc1, U64Op.apply], by omega, ?_, rfl, rfl⟩
-      rw [← hc]
-      exact hSet2
-    · refine (Stmt.ite_spec
-        (PThen := fun s st => s = initial ∧ st = s2 ∧ 8 * (n + 2) ≤ capacityAt initial p)
-        (PElse := fun s st => s = initial ∧ st = s2 ∧ ¬8 * (n + 2) ≤ capacityAt initial p)
-        ?_ ?_).mono ?_ fun _ _ h => h
-      · refine Stmt.skip_spec.mono ?_ fun _ _ h => h
-        rintro s st ⟨hs, hst, hRm⟩
-        subst s st
-        exact ⟨Stmt.AppendPost.inPlace hHeap hOwned (.refl _ _ _) hArray (by omega) hF2 hSrc2,
-          ⟨p, hSrc2, hRm⟩, hSize2, hK2, hV2⟩
-      · apply Triple.of_forall
-        rintro s0 st0 ⟨hs, hst, hRm⟩
-        subst s0 st0
-        -- The growth path: a request, `alloc`, a copy into the new block, and `src` moved.
-        have hLen1 : UInt64.ofNat n + 1 = UInt64.ofNat (n + 1) := by
-          apply UInt64.toNat_inj.mp
-          rw [UInt64.toNat_add, hSizeNat, hNat (n + 1) (by omega)]
-          simp
-          omega
-        obtain ⟨g1, hG1⟩ := State.exists_set? (state := s2) (index := limit)
-          (.i64 (UInt64.ofNat (n + 1))) (by rw [hF2.params, hF2.locals]; omega)
-        have hFG1 := hF12.set? hG1 (.inl (by simp))
-        have hLimitG1 : g1.get limit = some (.i64 (UInt64.ofNat (n + 1))) := State.get_set?_same hG1
-        have hCapG1 : g1.get cap = some (.i64 c) := by rw [State.get_set?_ne hCL hG1, hCap2]
-        obtain ⟨r, hREval, hR1, hR2⟩ := appendRequest_eval (mem := initial.mem) (scratch := scratch)
-          (total := n + 1) (by omega) (by rw [hcNat]; omega) hLimitG1 hCapG1
-        generalize hNeedDef : allocSize r = need
-        have hNeed : 8 * (n + 2) ≤ need.toNat := by
-          rw [← hNeedDef]; exact hR1.trans (le_allocSize hR2)
-        obtain ⟨g2, hG2⟩ := State.exists_set? (state := g1) (index := cap) (.i64 r)
-          (by rw [hFG1.params, hFG1.locals, hF1.params, hF1.locals]; omega)
-        have hFG2 := hFG1.set? hG2 (.inl (by simp))
-        obtain ⟨g3, hG3⟩ := State.exists_set? (state := g2) (index := dst)
-          (.i64 (FixedArrayAllocate.root heap.top need heap.free))
-          (by rw [hFG2.params, hFG2.locals, hF1.params, hF1.locals]; omega)
-        have hFG3 := hFG2.set? hG3 (.inl (by simp))
-        obtain ⟨g4, hG4⟩ := State.exists_set? (state := g3) (index := limit)
-          (.i64 (UInt64.ofNat n)) (by rw [hFG3.params, hFG3.locals, hF1.params, hF1.locals]; omega)
-        have hFG4 := hFG3.set? hG4 (.inl (by simp))
-        obtain ⟨g5, hG5⟩ := State.exists_set? (state := g4) (index := index) (.i64 (UInt64.ofNat 0))
-          (by rw [hFG4.params, hFG4.locals, hF1.params, hF1.locals]; omega)
-        have hFG5 := hFG4.set? hG5 (.inl (by simp))
-        have hSizeG2 : g2.get size = some (.i64 (UInt64.ofNat n)) := by
-          rw [State.get_set?_ne hSC hG2, State.get_set?_ne hSL hG1, hSize2]
-        have hCapG2 : g2.get cap = some (.i64 r) := State.get_set?_same hG2
-        have hDstG5 : g5.get dst = some (.i64 (FixedArrayAllocate.root heap.top need heap.free)) := by
-          rw [State.get_set?_ne hDI hG5, State.get_set?_ne hDL hG4, State.get_set?_same hG3]
-        have hLimitG5 : g5.get limit = some (.i64 (UInt64.ofNat n)) := by
-          rw [State.get_set?_ne hLI hG5, State.get_set?_same hG4]
-        have hIndexG5 : g5.get index = some (.i64 (UInt64.ofNat 0)) := State.get_set?_same hG5
-        refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = g1) ?_ <|
-          Stmt.seq_spec (M := fun s st => s = initial ∧ st = g2) ?_ <|
-          Stmt.seq_spec (M := fun s st => heap.Fits need ∧ s = heap.allocateStore initial need 1 ∧
-            st = g3) ?_ <|
-          Stmt.seq_spec (M := fun s st => heap.Fits need ∧ s = heap.allocateStore initial need 1 ∧
-            st = g4) ?_ <|
-          Stmt.seq_spec (M := fun s st => heap.Fits need ∧ s = heap.allocateStore initial need 1 ∧
-            st = g5) ?_ <|
-          Stmt.seq_spec (M := fun s st =>
-            Stmt.AppendPost heap initial s1 scratch [cap, dst, limit, index] dst p xs s st ∧
-              ∃ q, st.get dst = some (.i64 q) ∧ need.toNat ≤ capacityAt s q) ?_ ?_
-        · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
-          rintro s st ⟨hs, hst⟩
-          subst s st
-          exact ⟨UInt64.ofNat (n + 1), s2, g1, by rw [← hLen1]; simp [Expr.eval, hSize2, U64Op.apply],
-            hG1, rfl, rfl⟩
-        · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
-          rintro s st ⟨hs, hst⟩
-          subst s st
-          exact ⟨r, g1, g2, hREval, hG2, rfl, rfl⟩
-        · refine (Stmt.call_spec (f := allocFunction typeIdx) (by simp [hImports])
-            (by simpa [hImports] using hAlloc) rfl).mono ?_ fun _ _ h => h
-          rintro s st ⟨hs, hst⟩
-          subst s st
-          refine ⟨[.i64 r], g2, _, by simp [Expr.evalResults, Expr.eval, hCapG2],
-            fun env => alloc_spec_or_abort hMemory32 hImports hAlloc env heap initial r hHeap hR2
-              hCap, ?_⟩
-          rintro s' out ⟨hFits, hs', hOut⟩
-          rw [hNeedDef] at hFits hs' hOut
-          exact ⟨g3, by simp [hOut, State.setAll, hG3], hFits, hs', rfl⟩
-        · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
-          rintro s st ⟨hFits, hs, hst⟩
-          subst s st
-          refine ⟨UInt64.ofNat n, g3, g4, ?_, hG4, hFits, rfl, rfl⟩
-          simp [Expr.eval, State.get_set?_ne hSD hG3, hSizeG2]
-        · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
-          rintro s st ⟨hFits, hs, hst⟩
-          subst s st
-          exact ⟨UInt64.ofNat 0, g4, g5, by simp [Expr.eval], hG5, hFits, rfl, rfl⟩
-        · apply Triple.of_forall
-          rintro s st ⟨hFits, hs, hst⟩
-          subst s st
-          have hXApart := hOwned.disjoint_allocated hHeap need
-          have hXA := hOwned.allocate 1 hHeap hFits
-          have hBlock := hHeap.allocate_block 1 hFits
-          have hCapacityA := allocated_capacity need heap.free
-          have hBlockAddress := hBlock.address
-          have hBlockBase := hBlock.base
-          refine Stmt.growFill_spec (locals := [cap, dst, limit, index]) (before := s1) (start := g5)
-            (all := xs) (element := .read src (.get index)) hImports hRelease
-            (by simp [hDL, hDI, hLI]) (by simp [hDstBelow, hLimitBelow, hIndexBelow])
-            (by simp) (by simp [hSrc0.2.1, hSrc0.2.2.1, hSrc0.2.2.2.1, hSrc0.2.2.2.2])
-            hSrcBelow (by rw [hF1.params, hF1.locals]; omega) hHeap hOwned hn29 hFits (by omega)
-            hFG5 hSrc1 hDstG5 hLimitG5 hIndexG5 fun j hj s st hW hFk hI => ?_
-          have hXv : UInt64Array.At s p xs := by
-            refine hXA.values.writesRange hW ?_
-            simp only [regionsDisjoint] at hXApart
-            omega
-          have hSrcSt : st.get src = some (.i64 p) := by
-            rw [hFk.get src hSrcBelow (by simp [hSrc0.2.2.1, hSrc0.2.2.2.1, hSrc0.2.2.2.2]),
-              State.get_set?_ne hSrc0.2.2.2.2 hG5, State.get_set?_ne hSrc0.2.2.2.1 hG4,
-              State.get_set?_ne hSrc0.2.2.1 hG3, State.get_set?_ne hSrc0.2.1 hG2,
-              State.get_set?_ne hSrc0.2.2.2.1 hG1, hSrc2]
-          obtain ⟨saved, hSaved⟩ := State.exists_set? (state := st) (index := scratch)
-            (.i64 (UInt64.ofNat j)) (by
-              have := hFk.params; have := hFk.locals
-              have := hFG5.params; have := hFG5.locals
-              rw [hF1.params, hF1.locals] at *; omega)
-          have hEval := Expr.read_spec (array := src) (scratch := scratch) (state := st)
-            (afterPosition := st) (k := UInt64.ofNat j) (position := .get index) hXv
-            (by simp [Expr.eval, hI]) hSaved (by rw [State.get_set?_ne (by omega) hSaved, hSrcSt])
-          rw [hNat j (by omega), getElem!_pos xs j hj] at hEval
-          exact ⟨saved, hEval⟩
-        · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
-          rintro s st ⟨⟨heap1, q, hFr, hDq, hAt, hOw, hCaps, hB, hO⟩, q', hq', hcq⟩
-          obtain rfl : q' = q := by rw [hDq] at hq'; exact (Value.i64.inj (Option.some.inj hq')).symm
-          obtain ⟨st', hSt'⟩ := State.exists_set? (state := st) (index := src) (.i64 q')
-            (by have := hFr.params; have := hFr.locals; rw [hF1.params, hF1.locals] at *; omega)
-          have hKeep : ∀ j, j < scratch → j ∉ [cap, dst, limit, index] → j ≠ src →
-              st'.get j = s1.get j := fun j hj hjn hjs => by
-            rw [State.get_set?_ne hjs hSt', hFr.get j hj hjn]
-          refine ⟨q', st, st', by simp [Expr.eval, hDq], hSt',
-            ⟨heap1, q', (hF1.trans (hFr.weaken fun j hj => by simp [L] at hj ⊢; omega)).set? hSt'
-              (.inl (by simp [L])), State.get_set?_same hSt', hAt, hOw, hCaps, hB, hO⟩,
-            ⟨q', State.get_set?_same hSt', by omega⟩, ?_, ?_, ?_⟩
-          · rw [hKeep size hSizeBelow (by simp [hSC, hSD, hSL, hSI]) (Ne.symm hSrc0.1), hSize1]
-          · rw [hKeep k hKBelow (by simp [hK0.2.1, hK0.2.2.1, hK0.2.2.2.1, hK0.2.2.2.2]) hKSrc, hK1]
-          · rw [hKeep v hVBelow (by simp [hV0.2.1, hV0.2.2.1, hV0.2.2.2.1, hV0.2.2.2.2]) hVSrc, hV1]
-      · rintro s st ⟨hs, hst⟩
-        subst s st
-        have hNeedV : ((UInt64.ofNat n + 2) * 8).toNat = 8 * (n + 2) := by
-          rw [UInt64.toNat_mul, UInt64.toNat_add, hSizeNat]
-          simp
-          omega
-        by_cases hRm : 8 * (n + 2) ≤ capacityAt initial p
-        · refine ⟨true, s2, ?_, rfl, rfl, hRm⟩
-          simp [Expr.eval, hSize2, hCap2, U64Op.apply, UInt64.le_iff_toNat_le, hNeedV, hcNat, hRm]
-        · refine ⟨false, s2, ?_, rfl, rfl, hRm⟩
-          simp [Expr.eval, hSize2, hCap2, U64Op.apply, UInt64.le_iff_toNat_le, hNeedV, hcNat, hRm]
-    · apply Triple.of_forall
-      rintro s st ⟨⟨heap1, q1, hFr, hDq, hAt, hOw, hCaps, hB, hO⟩, ⟨q, hq, hcq⟩, hsz, hkk, hvv⟩
-      obtain rfl : q1 = q := by rw [hDq] at hq; exact Value.i64.inj (Option.some.inj hq)
-      refine (Stmt.insertShift_spec (initial := s) (before := st) (heap := heap1) (p := q1)
-        (xs := xs) (Ne.symm hSrc0.2.2.2.2 |>.symm) (Ne.symm hK0.2.2.2.2 |>.symm)
-        (Ne.symm hV0.2.2.2.2 |>.symm) hSI hSrcBelow hKBelow hIndexBelow hVBelow hSizeBelow
-        (by rw [hFr.params, hFr.locals]; omega) hDq hsz hkk hvv hk hAt hOw hcq).mono
-          (fun _ _ h => h) fun s' st' h => ?_
-      exact Stmt.AppendPost.trans hFr hB hO hCaps h (by simp)
+    refine Stmt.seq_spec (Stmt.reserve_spec hMemory32 hImports hAlloc hRelease hLocals0 hBelow0
+      hSrc00 hSrcBelow (by rw [hF1.params, hF1.locals]; omega) hSrc1 hSize1 hHeap hCap hOwned) ?_
+    apply Triple.of_forall
+    rintro s st ⟨⟨heap1, q1, hFr, hDq, hAt, hOw, hCaps, hB, hO⟩, ⟨q, hq, hcq⟩, hsz⟩
+    obtain rfl : q1 = q := by rw [hDq] at hq; exact Value.i64.inj (Option.some.inj hq)
+    have hkk : st.get k = some (.i64 kw) := by
+      rw [hFr.get k hKBelow (by simp [hKSrc, hK0.2.1, hK0.2.2.1, hK0.2.2.2.1, hK0.2.2.2.2]), hK1]
+    have hvv : st.get v = some (.i64 vw) := by
+      rw [hFr.get v hVBelow (by simp [hVSrc, hV0.2.1, hV0.2.2.1, hV0.2.2.2.1, hV0.2.2.2.2]), hV1]
+    refine (Stmt.insertShift_spec (initial := s) (before := st) (heap := heap1) (p := q1)
+      (xs := xs) (Ne.symm hSrc0.2.2.2.2 |>.symm) (Ne.symm hK0.2.2.2.2 |>.symm)
+      (Ne.symm hV0.2.2.2.2 |>.symm) hSI hSrcBelow hKBelow hIndexBelow hVBelow hSizeBelow
+      (by rw [hFr.params, hFr.locals, hF1.params, hF1.locals]; omega) hDq hsz hkk hvv hk hAt hOw
+      hcq).mono (fun _ _ h => h) fun s' st' h => ?_
+    exact Stmt.AppendPost.frame hF1 (Stmt.AppendPost.trans hFr hB hO hCaps h (by simp))
+      (by simp)
   · -- Past the end: the length becomes 0.
     have hPtr32 := hArray.pointerAddress_toNat
     refine (Stmt.ite_spec (PThen := fun _ _ => False)
@@ -1173,5 +1230,118 @@ theorem Stmt.insertInPlace_spec {typeIdx releaseType scratch src size k v cap ds
       subst st
       refine ⟨false, s1, ?_, rfl, rfl⟩
       simp [Expr.eval, hK1, hSize1, UInt64.le_iff_toNat_le, hNat n (by omega), hk]
+
+/-- The element and length stores of a push: from an owned array at the pointer in local `src`
+whose block holds one more element, with its length in local `size` and the word in local `v`,
+`Stmt.pushStores` leaves the owned array with `v` pushed at the same pointer. -/
+theorem Stmt.pushStores_spec {scratch src size v : Nat} {initial : Store Unit} {before : State}
+    {heap : Heap} {p vw : UInt64} {xs : Array UInt64}
+    (hSrc : before.get src = some (.i64 p))
+    (hSize : before.get size = some (.i64 (UInt64.ofNat xs.size)))
+    (hV : before.get v = some (.i64 vw)) (hHeap : heap.At initial)
+    (hOwned : heap.Owned initial p xs) (hFit : 8 * (xs.size + 2) ≤ capacityAt initial p) :
+    Triple m (Stmt.pushStores src size v) scratch
+      (fun store state => store = initial ∧ state = before)
+      (Stmt.AppendPost heap initial before scratch [] src p (xs.push vw)) := by
+  have hArray := hOwned.values
+  have hAddress := hOwned.address
+  have hBelowTop := hOwned.below
+  have hTop := hHeap.top
+  have hBase := hOwned.base
+  set n := xs.size with hn
+  have hn29 : n < 536870912 := by omega
+  have hNat : ∀ i, i ≤ n + 1 → (UInt64.ofNat i).toNat = i := fun i hi =>
+    UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
+  have hPtr32 := hArray.pointerAddress_toNat
+  have hWordAt : ∀ i, i ≤ n + 1 → (UInt64Array.wordAddress p i).toNat = p.toNat + 8 * i :=
+    fun i hi => UInt64Array.wordAddress_toNat (words := n + 2) (by omega) (by omega)
+  have hLen : UInt64.ofNat n + 1 = UInt64.ofNat (n + 1) := by
+    apply UInt64.toNat_inj.mp
+    rw [UInt64.toNat_add, hNat n (by omega), hNat (n + 1) le_rfl]
+    simp
+    omega
+  let s3 : Store Unit := UInt64Array.writeElement initial p n vw
+  have hWrite3 : Memory.WritesRange initial s3 p.toNat (p.toNat + 8 * (n + 2)) :=
+    Memory.WritesRange.write64 initial _ vw _ _ (by rw [hWordAt (n + 1) le_rfl]; omega)
+      (by rw [hWordAt (n + 1) le_rfl]; omega)
+  have hYs : UInt64Array.At s3 p xs :=
+    hArray.write64After (address := UInt64Array.wordAddress p (n + 1)) (value := vw)
+      (by rw [hWordAt (n + 1) le_rfl])
+  have hTop3 : s3.mem.read64 (UInt64Array.wordAddress p (n + 1)) = vw :=
+    Memory.read64_write64 _ _ _
+  have hPages3 : s3.mem.pages = initial.mem.pages := by
+    show (Wasm.Mem.write64 _ _ _).pages = _
+    rw [Wasm.Mem.write64_pages]
+  have hFinal := arrayAt_grow hYs hTop3 (by omega) (by rw [hPages3]; omega)
+  have hWrite4 : Memory.WritesRange s3
+      { s3 with mem := s3.mem.write64 p.toUInt32 (UInt64.ofNat (n + 1)) } p.toNat
+      (p.toNat + 8 * (n + 2)) :=
+    Memory.WritesRange.write64 s3 _ _ _ _ (by rw [hPtr32]) (by rw [hPtr32]; omega)
+  refine Stmt.seq_spec (M := fun s st => s = s3 ∧ st = before) ?_ ?_
+  · refine Stmt.store_spec.mono ?_ fun _ _ h => h
+    rintro s st ⟨hs, hst⟩
+    subst s st
+    refine ⟨p + (UInt64.ofNat n + 1) * 8, before, vw, before,
+      by simp [Expr.eval, hSrc, hSize, U64Op.apply], by simp [Expr.eval, hV], ?_, ?_⟩
+    · rw [element_address p n, hWordAt (n + 1) le_rfl]; omega
+    · rw [element_address p n]; exact ⟨rfl, rfl⟩
+  · refine Stmt.store_spec.mono ?_ fun _ _ h => h
+    rintro s st ⟨hs, hst⟩
+    subst s st
+    refine ⟨p, before, UInt64.ofNat (n + 1), before, by simp [Expr.eval, hSrc],
+      by rw [← hLen]; simp [Expr.eval, hSize, U64Op.apply], ?_, ?_⟩
+    · rw [hPtr32]; show _ ≤ (Wasm.Mem.write64 _ _ _).pages * 65536
+      rw [Wasm.Mem.write64_pages]; omega
+    · exact Stmt.AppendPost.inPlace hHeap hOwned ((hWrite3.trans hWrite4).mono le_rfl (by omega))
+        hFinal (by rw [Array.size_push]; omega) (State.Frame.refl _ _ before) hSrc
+
+/-- `push` in place: with the array at local `src` owned and the word in local `v`, the template
+leaves the owned array with the word pushed, at the same pointer when the block has room and in
+a new block otherwise, whose pointer `src` then holds. -/
+theorem Stmt.pushInPlace_spec {typeIdx releaseType scratch src size v cap dst limit index : Nat}
+    {initial : Store Unit} {before : State} {heap : Heap} {p vw : UInt64} {xs : Array UInt64}
+    (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
+    (hAlloc : m.funcs[0]? = some (allocFunction typeIdx))
+    (hRelease : m.funcs[1]? = some (releaseFunction releaseType))
+    (hLocals : [size, cap, dst, limit, index].Nodup)
+    (hBelow : ∀ j ∈ [size, cap, dst, limit, index], j < scratch)
+    (hSrc0 : src ∉ [size, cap, dst, limit, index]) (hV0 : v ∉ [size, cap, dst, limit, index])
+    (hVSrc : v ≠ src) (hSrcBelow : src < scratch) (hVBelow : v < scratch)
+    (hRoom : scratch < before.params.length + before.locals.length)
+    (hSrc : before.get src = some (.i64 p)) (hV : before.get v = some (.i64 vw))
+    (hHeap : heap.At initial) (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hOwned : heap.Owned initial p xs) :
+    Triple m (Stmt.pushInPlace src size v cap dst limit index) scratch
+      (fun store state => store = initial ∧ state = before)
+      (Stmt.AppendPost heap initial before scratch [src, size, cap, dst, limit, index] src p
+        (xs.push vw)) := by
+  have hLocals0 := hLocals
+  have hBelow0 := hBelow
+  have hSrc00 := hSrc0
+  simp only [List.mem_cons, List.not_mem_nil, or_false, not_or] at hSrc0 hV0
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hBelow
+  obtain ⟨hSizeBelow, -, -, -, -⟩ := hBelow
+  have hArray := hOwned.values
+  let L := [src, size, cap, dst, limit, index]
+  obtain ⟨s1, hSet1⟩ := State.exists_set? (state := before) (index := size)
+    (.i64 (UInt64.ofNat xs.size)) (by omega)
+  have hF1 : State.Frame scratch L before s1 :=
+    (State.Frame.refl _ _ before).set? hSet1 (.inl (by simp [L]))
+  have hSrc1 : s1.get src = some (.i64 p) := (State.get_set?_ne hSrc0.1 hSet1).trans hSrc
+  have hV1 : s1.get v = some (.i64 vw) := (State.get_set?_ne hV0.1 hSet1).trans hV
+  have hSize1 : s1.get size = some (.i64 (UInt64.ofNat xs.size)) := State.get_set?_same hSet1
+  refine Stmt.seq_spec (M := fun s st => s = initial ∧ st = s1)
+    ((Stmt.arraySize_spec hArray hSrc (by omega)).mono (fun _ _ h => h)
+      fun s st ⟨hs, hst⟩ => ⟨hs, by rw [hSet1] at hst; exact (Option.some.inj hst).symm⟩) ?_
+  refine Stmt.seq_spec (Stmt.reserve_spec hMemory32 hImports hAlloc hRelease hLocals0 hBelow0
+    hSrc00 hSrcBelow (by rw [hF1.params, hF1.locals]; omega) hSrc1 hSize1 hHeap hCap hOwned) ?_
+  apply Triple.of_forall
+  rintro s st ⟨⟨heap1, q1, hFr, hDq, hAt, hOw, hCaps, hB, hO⟩, ⟨q, hq, hcq⟩, hsz⟩
+  obtain rfl : q1 = q := by rw [hDq] at hq; exact Value.i64.inj (Option.some.inj hq)
+  have hvv : st.get v = some (.i64 vw) := by
+    rw [hFr.get v hVBelow (by simp [hVSrc, hV0.2.1, hV0.2.2.1, hV0.2.2.2.1, hV0.2.2.2.2]), hV1]
+  refine (Stmt.pushStores_spec (initial := s) (before := st) (heap := heap1) hDq hsz hvv hAt hOw
+    hcq).mono (fun _ _ h => h) fun s' st' h => ?_
+  exact Stmt.AppendPost.frame hF1 (Stmt.AppendPost.trans hFr hB hO hCaps h (by simp)) (by simp)
 
 end Project.IR

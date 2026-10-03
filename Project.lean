@@ -39,6 +39,7 @@ import Project.Lists.Verify
 import Project.Words.Module
 import Project.Words.Encode
 import Project.Words.Verify
+import Project.Updates.Module
 import Project.Trees.Module
 import Project.Trees.Encode
 import Project.Trees.Verify

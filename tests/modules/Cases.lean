@@ -15,6 +15,7 @@ import LeanExe.Examples.Shape
 import LeanExe.Examples.Lists
 import LeanExe.Examples.Words
 import LeanExe.Examples.Trees
+import LeanExe.Examples.Updates
 
 /-! Test cases for the modules other than `gpt.wasm` and `prng.wasm`, computed by native
 Lean.  Each line is `module|export|result kind|host arguments|expected result`, with
@@ -362,7 +363,22 @@ def treeCases : IO Unit := do
     line "treeMoves" "leftChild" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
       (KeyTree.describe t.leftChild)
 
+/-- Chains of updates and a borrowed `push`, at positions inside and past the end of each array. -/
+def updatesCases : IO Unit := do
+  for xs in wordArrays do
+    for i in ([0, 1, 2, 5] : List UInt64) do
+      let a := rw (xs.length + i.toNat)
+      line "updates" "pushTwo" "array-u64" [arrU xs, u a, u (a + 1)]
+        (words (LeanExe.Examples.Updates.pushTwo xs.toArray a (a + 1)).toList)
+      line "updates" "pushCopy" pairKind [arrU xs, u a]
+        (pair (LeanExe.Examples.Updates.pushCopy xs.toArray a))
+      for j in ([0, 1, 3, 7] : List UInt64) do
+        line "updates" "setTwice" "array-u64" [arrU xs, u i, u j, u a]
+          (words (LeanExe.Examples.Updates.setTwice xs.toArray i j a).toList)
+        line "updates" "insertErase" "array-u64" [arrU xs, u i, u j, u a]
+          (words (LeanExe.Examples.Updates.insertErase xs.toArray i j a).toList)
+
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
   piecewiseCases; sumSquaresCases; meanCases; bucketCases; clobCases; runCases
-  calculatorCases; shapeCases; listCases; wordsCases; treeCases
+  calculatorCases; shapeCases; listCases; wordsCases; treeCases; updatesCases

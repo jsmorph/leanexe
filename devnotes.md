@@ -22474,9 +22474,49 @@ discriminant leaves `rebuilt`.
 
 Revised steps:
 
-- [ ] 10a: the shared rule with its occurrence check, `Stmt.reserve`, `Stmt.pushInPlace`, the
-  `Live` conversion; `stepCommand`.
+- [x] 10a: the shared rule for updates, `Stmt.reserve`, `Stmt.pushInPlace`, the `Live`
+  conversion; `stepCommand`.
 - [ ] 10b: `rebuilt` scoped to its match; settling at joins for trees; `keepIf` and `trim`.
 - [ ] 10c: tree arguments in calls; `Func.entry_keeps` and its call rule; `insertTwo` and
   `sizeSum`.
 - [ ] LTG entries and the count cases in `tests/modules/run.sh`.
+
+### Iteration 10, step 10a: `push` in place
+
+`Stmt.reserve src size cap dst limit index` is the capacity check and growth step, taken out of
+`Stmt.insertInPlace`, which is now the length, then under `k ≤ size` `Stmt.reserve` followed by
+`Stmt.insertShift`.  `.seq` emits its parts back to back, so the regrouping changes no bytes.
+`Stmt.reserve_spec` states the step from `Heap.Owned` alone: `Stmt.AppendPost` for the array,
+the new pointer in `src` with room for one more element, and `size` unchanged.
+`Stmt.insertInPlace_spec` now composes it with `Stmt.insertShift_spec` and recovers the `k` and
+`v` locals from the frame.  `Stmt.pushInPlace src size v cap dst limit index` is the length,
+`Stmt.reserve`, and `Stmt.pushStores`, which writes `v` after the last element and then the
+longer length.  `Stmt.pushStores_spec` uses `arrayAt_grow` directly, and
+`Stmt.pushInPlace_spec` chains the three with `Stmt.AppendPost.trans` and `.frame`.
+`Live.appendPost`, taken out of `Live.append`, turns any `Stmt.AppendPost` on a temporary into
+a new `Live` with the result at the head of the list.
+
+The compiler has an `Array.push` case.  The array argument of `set!`, `insertIdx!`,
+`eraseIdxIfInBounds`, or `push` may be another update term: the update translates its position
+and value first, then the inner term through `translateArray`, and writes the inner result in
+place (`updateTarget`).  `moveSites` recurses into the array argument of the four updates.  The
+call half of the shared rule, with its occurrence check, goes with step 10c, since only calls can
+alias another argument.  A borrowed `push` copies with `emitBuild`.
+
+`stepCommand` returns `(p, s, (out.push bestPrice).push bestSize)`.  Its IR has no array literal
+and no release: two `Stmt.pushInPlace` on local 2.  The theorem chains two
+`Stmt.pushInPlace_spec` steps, each turned into `Live` by `Live.appendPost`, and
+`stepTuple_eq` gives the result as two pushes; `runOut`'s theorem is unchanged.
+`clob.wasm` is 4,734 bytes, sha256 `a7c0de9cc1ce2368…`; the other nineteen modules emit the
+same bytes as before.
+
+`LeanExe/Examples/Updates.lean` and the module `updates` give execution cases for the new
+compiler paths: `pushTwo`, `setTwice` (whose outer value reads the element before the inner
+update writes it), `insertErase`, and `pushCopy` (a borrowed `push` in a `let` value).  No
+theorem covers them.  Two count cases for `stepCommand` show the pushes in place: an output of
+one word grows once (4 allocations, 1 free), and an empty output grows twice (5, 2).  Before
+this step the literal added one allocation and one free to each.  `tests/modules/run.sh`
+passed 6,893 comparisons, 38 count cases, and 12 depth cases; `chunks.py` passed 360 cases; the
+full build passed (3,576 jobs).  `clob_bytes` and `Stmt.pushInPlace_spec` depend on
+`propext`, `Classical.choice`, and `Quot.sound`.
+
