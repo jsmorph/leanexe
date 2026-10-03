@@ -22854,8 +22854,8 @@ The change:
 `checkOwnedNodes` stays; lifting it is a separate step that this change allows.
 
 - [x] 13a: `Represent.reads` with the store, the premise, and its uses.
-- [ ] 13b: `pushSum` and its theorem; tests.
-- [ ] LTG, `deslop.md`, and the journal.
+- [x] 13b: `pushSum` and its theorem; tests.
+- [x] LTG, `deslop.md`, and the journal.
 
 ### Review of the Iteration 13 plan
 
@@ -22892,4 +22892,23 @@ scalars, and `Moved` values ignore the store, and a pair passes it to both sides
 store parameter.  The doc comments of the `reads` field, the `Encode` instance, `Implements`,
 and `checkOwnedNodes` describe the change.  Every edit was mechanical, and the full build passed
 with no `sorry`.
+
+### Iteration 13, step 13b: `pushSum`
+
+`KeyTree.pushSum xs t := (xs.push 1, t.sum)` joined `trees` as entry 6, and `size.rec`, `sum.rec`,
+and `height.rec` moved to 7, 8, and 9.  `pushSum_implements`, from the reviewer's body proof,
+starts `Live` with the consumed array, pushes in place (`Stmt.pushInPlace_spec`,
+`Live.appendPost`), keeps the tree with `Heap.Keeps.nodeBorrowed` using the apartness that the
+new `Separate` gives and `slotRegions_pos`, calls `sum` through `Stmt.callImplements_spec` with
+`sum_implements`, and adds that call's frame with `Live.step`.  `trees_bytes` covers the five
+functions and depends on `propext`, `Classical.choice`, and `Quot.sound`.  `trees.wasm` is 2,150
+bytes, sha256 `fd0d942614157ecb…`, and the other 21 modules emit the same bytes as before.
+
+Tests: `pushSum` on the 24 trees with three arrays each, and two count cases (the push grows the
+host's exact-capacity array once and frees the old block; the tree costs no allocation).
+`tests/modules/run.sh` passed 7,169 comparisons, 48 count cases, and 12 depth cases, and
+`chunks.py` passed 360 cases.  The full build passed (3,576 jobs) with no `sorry`, and the LTG
+entry `region-frame` describes the premise.  Iteration 13 is complete.  `checkOwnedNodes` still
+rejects a definition that consumes one tree and borrows another, which the specification now
+allows.
 
