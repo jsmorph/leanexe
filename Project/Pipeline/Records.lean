@@ -121,6 +121,96 @@ theorem SlotsOwned.frame {heap heap' : Heap} {store store' : Store Unit} :
       simp only [slotsBlocks, hRead, hChildBlocks, hRestBlocks]
 end
 
+mutual
+/-- The slot regions of the records of a value: each record's slots, `8` bytes each from its
+pointer, then those of its children. -/
+def Node.slotRegions (store : Store Unit) (p : UInt64) : Node → List (Nat × Nat)
+  | .null => []
+  | .record slots => (p.toNat, 8 * slots.length) :: slotsRegions store p 0 slots
+
+/-- The slot regions of the children in slots `i` on of the record at `p`. -/
+def slotsRegions (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → List (Nat × Nat)
+  | [] => []
+  | .word _ :: rest => slotsRegions store p (i + 1) rest
+  | .child n :: rest =>
+      Node.slotRegions store (store.mem.read64 (slotAddress p i)) n ++
+        slotsRegions store p (i + 1) rest
+end
+
+mutual
+/-- A borrowed value keeps its records when the bytes of its slot regions are unchanged and
+every slot region is a region of the new heap. -/
+theorem NodeBorrowed.frame {heap heap' : Heap} {store store' : Store Unit} :
+    ∀ (p : UInt64) (n : Node), NodeBorrowed heap store p n →
+      (∀ b ∈ n.slotRegions store p, (∀ a, b.1 ≤ a → a < b.1 + b.2 →
+        store'.mem.bytes a = store.mem.bytes a) ∧ heap'.Region b) →
+      NodeBorrowed heap' store' p n ∧ n.slotRegions store' p = n.slotRegions store p
+  | _, .null, h, _ => ⟨h, rfl⟩
+  | p, .record slots, ⟨hRec, hSlots⟩, hR => by
+      have hFirst := hR (p.toNat, 8 * slots.length) List.mem_cons_self
+      have hAddress := hRec.address
+      obtain ⟨hSlots', hRest⟩ := SlotsBorrowed.frame p 0 slots hSlots (by omega)
+        (fun a hLow hHigh => hFirst.1 a (by simp only; omega) (by simp only; omega))
+        (fun b hb => hR b (List.mem_cons_of_mem _ hb))
+      exact ⟨⟨⟨hRec.nonzero, hRec.address, hFirst.2.below,
+          fun node hNode => regionsDisjoint_symm (hFirst.2.separate node hNode)⟩, hSlots'⟩,
+        by simp only [Node.slotRegions, hRest]⟩
+
+theorem SlotsBorrowed.frame {heap heap' : Heap} {store store' : Store Unit} :
+    ∀ (p : UInt64) (i : Nat) (slots : List Slot), SlotsBorrowed heap store p i slots →
+      p.toNat + 8 * (i + slots.length) < 4294967296 →
+      (∀ a, p.toNat + 8 * i ≤ a → a < p.toNat + 8 * (i + slots.length) →
+        store'.mem.bytes a = store.mem.bytes a) →
+      (∀ b ∈ slotsRegions store p i slots, (∀ a, b.1 ≤ a → a < b.1 + b.2 →
+        store'.mem.bytes a = store.mem.bytes a) ∧ heap'.Region b) →
+      SlotsBorrowed heap' store' p i slots ∧
+        slotsRegions store' p i slots = slotsRegions store p i slots
+  | _, _, [], _, _, _, _ => ⟨trivial, rfl⟩
+  | p, i, .word w :: rest, ⟨hWord, hRest⟩, hAddress, hBytes, hR => by
+      simp only [List.length_cons] at hAddress hBytes
+      have hRead : store'.mem.read64 (slotAddress p i) = store.mem.read64 (slotAddress p i) :=
+        Memory.read64_congr _ fun k hk => by
+          rw [slotAddress_toNat (by omega)]
+          exact hBytes _ (by omega) (by omega)
+      obtain ⟨hRest', hR'⟩ := SlotsBorrowed.frame p (i + 1) rest hRest (by omega)
+        (fun a hLow hHigh => hBytes a (by omega) (by omega)) hR
+      exact ⟨⟨hRead.trans hWord, hRest'⟩, hR'⟩
+  | p, i, .child n :: rest, ⟨hChild, hRest⟩, hAddress, hBytes, hR => by
+      simp only [List.length_cons] at hAddress hBytes
+      have hRead : store'.mem.read64 (slotAddress p i) = store.mem.read64 (slotAddress p i) :=
+        Memory.read64_congr _ fun k hk => by
+          rw [slotAddress_toNat (by omega)]
+          exact hBytes _ (by omega) (by omega)
+      simp only [slotsRegions, List.mem_append] at hR
+      obtain ⟨hChild', hChildR⟩ := NodeBorrowed.frame _ n hChild (fun b hb => hR b (.inl hb))
+      obtain ⟨hRest', hRestR⟩ := SlotsBorrowed.frame p (i + 1) rest hRest (by omega)
+        (fun a hLow hHigh => hBytes a (by omega) (by omega)) (fun b hb => hR b (.inr hb))
+      refine ⟨⟨by rw [hRead]; exact hChild', hRest'⟩, ?_⟩
+      simp only [slotsRegions, hRead, hChildR, hRestR]
+end
+
+mutual
+/-- Every slot region of a borrowed value is a region of the heap. -/
+theorem NodeBorrowed.regions {heap : Heap} {store : Store Unit} :
+    ∀ (p : UInt64) (n : Node), NodeBorrowed heap store p n →
+      ∀ b ∈ n.slotRegions store p, heap.Region b
+  | _, .null, _, _, hb => nomatch hb
+  | p, .record slots, ⟨hRec, hSlots⟩, b, hb => by
+      rcases List.mem_cons.mp hb with rfl | hb
+      · exact ⟨hRec.below, fun node hNode => regionsDisjoint_symm (hRec.separate node hNode)⟩
+      · exact SlotsBorrowed.regions p 0 slots hSlots b hb
+
+theorem SlotsBorrowed.regions {heap : Heap} {store : Store Unit} :
+    ∀ (p : UInt64) (i : Nat) (slots : List Slot), SlotsBorrowed heap store p i slots →
+      ∀ b ∈ slotsRegions store p i slots, heap.Region b
+  | _, _, [], _, _, hb => nomatch hb
+  | p, i, .word _ :: rest, ⟨_, hRest⟩, b, hb => SlotsBorrowed.regions p (i + 1) rest hRest b hb
+  | p, i, .child n :: rest, ⟨hChild, hRest⟩, b, hb => by
+      rcases List.mem_append.mp hb with hb | hb
+      · exact NodeBorrowed.regions _ n hChild b hb
+      · exact SlotsBorrowed.regions p (i + 1) rest hRest b hb
+end
+
 /-- Writes apart from every free block keep the allocator invariant. -/
 theorem Heap.At.writesApart {heap : Heap} {store store' : Store Unit} {start stop : Nat}
     (h : heap.At store) (hWrites : Memory.WritesRange store store' start stop)

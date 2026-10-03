@@ -22753,7 +22753,7 @@ record's block being a region of the later heap and from `Heap.At.top`.
 `alloc` or `release`, whose effect on the page count its own proof gives, and neither spans a
 call.
 
-- [ ] Borrowed trees; `sizeSum` through `Implements`; the deleted specification.
+- [x] Borrowed trees; `sizeSum` through `Implements`; the deleted specification.
 - [ ] Page fields removed from `Heap.Rebuilt` and `Heap.Built`.
 - [ ] Build, tests, byte comparison, LTG, and journal.
 
@@ -22787,3 +22787,18 @@ Decisions on what becomes unused, each removed to keep only facts that something
 | `Heap.Rebuilt.keepBorrowed`, `.keepOwned`, `Heap.Built.keepBorrowed`, `.keepOwned` | Deleted; no Lean file calls them since Iteration 11 |
 | `Heap.Borrowed.keep`, `Heap.Owned.keep` | Deleted; `.keepIn` replaces them |
 | LTG entries, `deslop.md`, the `Heap.Built` doc comment, and the list-cell, record-reuse, and release-list READMEs | Updated in the same commits, so that the LTG check passes |
+
+### Iteration 12, step 12a: borrowed trees
+
+`Node.slotRegions` (with `slotsRegions`), `NodeBorrowed.frame`, and `NodeBorrowed.regions` are in
+`Project/Pipeline/Records.lean`, and `Heap.Keeps.nodeBorrowed` beside `Heap.Keeps.node` in
+`Project/Pipeline/Rebuilt.lean`, as the reviewer wrote them.  `slotRegions_pos` proves the
+positivity premise for `KeyTree`.  `sizeSum_implements` applies `Stmt.callImplements_spec` with
+`size_implements`, takes the tree back with `Heap.Keeps.nodeBorrowed`, applies it with
+`sum_implements`, and composes the two frames with `Heap.Keeps.trans` under
+`Func.implements_heap`.  `KeepsEntry`, `Func.entry_keeps`, `Stmt.callKeeps_spec`, `size_entry`,
+and `sum_entry` are gone, so `Implements` is the only specification of a call between compiled
+functions.  The `Implements` doc comment now names borrowed trees among the values a call keeps.
+The full build passed, `trees_bytes` depends on `propext`, `Classical.choice`, and
+`Quot.sound`, and the LTG check found every listed declaration.
+

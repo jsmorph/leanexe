@@ -378,10 +378,10 @@ owns.  Talos lists arguments and results with the top of the stack first, hence 
 reversals.  The allocator invariant holds again, and the memory's maximum size is
 unchanged.  Every region of the heap before the call, below `top` and outside every free
 block, that lies apart from the consumed blocks keeps its bytes, is still such a region, and
-lies apart from the objects of the result.  The caller's arrays and owned values of recursive
-types apart from the consumed blocks therefore keep their contents: `Heap.Keeps.borrowed`,
-`Heap.Keeps.owned`, and `Heap.Keeps.node` derive this from the clause in its `Heap.Keeps`
-form, `Heap.Keeps.implements`. -/
+lies apart from the objects of the result.  The caller's arrays and values of recursive types
+apart from the consumed blocks therefore keep their contents: `Heap.Keeps.borrowed`,
+`Heap.Keeps.owned`, `Heap.Keeps.node`, and `Heap.Keeps.nodeBorrowed` derive this from the
+clause in its `Heap.Keeps` form, `Heap.Keeps.implements`. -/
 def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α → β) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
     heap.At store → Represent.borrowed heap store params x →
