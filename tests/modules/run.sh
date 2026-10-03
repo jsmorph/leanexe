@@ -45,12 +45,12 @@ done <<'CASES'
 setLevel|i64:1 i64:9|2 0
 addBid|i64:103 i64:5|4 2
 addBid|i64:102 i64:5|2 0
-cancelBid|i64:102 i64:4|4 2
+cancelBid|i64:102 i64:4|2 0
 cancelBid|i64:102 i64:1|2 0
 cancelBid|i64:103 i64:1|2 0
 applyCommand|i64:0 i64:103 i64:5|4 2
 applyCommand|i64:0 i64:102 i64:5|2 0
-applyCommand|i64:1 i64:102 i64:4|4 2
+applyCommand|i64:1 i64:102 i64:4|2 0
 applyCommand|i64:1 i64:102 i64:1|2 0
 applyCommand|i64:2 i64:102 i64:1|2 0
 CASES
