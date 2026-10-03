@@ -22515,7 +22515,8 @@ compiler paths: `pushTwo`, `setTwice` (whose outer value reads the element befor
 update writes it), `insertErase`, and `pushCopy` (a borrowed `push` in a `let` value).  No
 theorem covers them.  Two count cases for `stepCommand` show the pushes in place: an output of
 one word grows once (4 allocations, 1 free), and an empty output grows twice (5, 2).  Before
-this step the literal added one allocation and one free to each.  `tests/modules/run.sh`
+this step both cases took 5 allocations and 2 frees: the literal's block, its release, and one
+growth of the output by `++`.  `tests/modules/run.sh`
 passed 6,893 comparisons, 38 count cases, and 12 depth cases; `chunks.py` passed 360 cases; the
 full build passed (3,576 jobs).  `clob_bytes` and `Stmt.pushInPlace_spec` depend on
 `propext`, `Classical.choice`, and `Quot.sound`.
