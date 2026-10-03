@@ -864,8 +864,13 @@ mutual
       return ← translateValue ctx loc unfolded
     if let some (discriminant, alternatives) ← userCases? term then
       if let some ptr ← lookupNode ctx discriminant.consumeMData then
-        let ir : IRExpr .u64 := .get
-          (← translateNodeCases ctx source discriminant.consumeMData ptr .u64 alternatives)
+        let result ← fresh .u64 "match result"
+        translateNodeCases ctx source discriminant.consumeMData ptr alternatives
+          fun ctx at_ body => do
+            let (pre, ⟨_, v⟩, vHints, vAt) ← translatePrefixed ctx at_ .u64 body
+            let stmt : Project.IR.Stmt := .assign result v
+            return (pre ++ [stmt], vHints ++ [mkHint vAt (stmtLength stmt) "match value" source])
+        let ir : IRExpr .u64 := .get result
         return (ir, [hint ir "match result"])
       let (ctx, d, slots, dHints) ← caseDiscriminant ctx loc discriminant alternatives
       let (ir, hints) ← translateWordCases { ctx with foldable := false } loc d 0 (slots.zip alternatives)
@@ -1637,25 +1642,26 @@ mutual
             here := here.skip (stmtLength stmt)
           return (stmts.toList, hints.toList)
 
-  /-- Translates a case split on the value `discriminant` of a recursive type at local `ptr`,
-  whose type has one constructor without fields, the null pointer, and one with fields, a
-  record.  Pushes a conditional statement that tests the pointer against 0; the record's
-  branch loads the fields into fresh locals.  Each branch assigns the alternative's value, of
-  type `type`, to a fresh local, which the function returns.  In the record's branch of a match
-  on an owned value, the value itself counts as moved: a constructor of the same type rewrites
-  the record in place, releasing the children it drops; a branch that moves some children
-  without rewriting the record stores 0 into their slots and releases the record; and a branch
-  that moves none of them only reads the record, which stays owned.  Both branches must move the
-  same owned values and rewrite the same records. -/
+  /-- Translates a case split on the value `discriminant` of a recursive type at local `ptr`, whose
+  type has one constructor without fields, the null pointer, and one with fields, a record.
+  Pushes a conditional statement that tests the pointer against 0, whose record branch loads the
+  fields into fresh locals.  `branch` translates each alternative's body into statements that
+  leave its value in the caller's result locals.  In the record's branch of a match on an owned
+  value, the value itself counts as moved: a constructor of the same type rewrites the record in
+  place, releasing the children it drops; a branch that moves some children without rewriting
+  the record stores 0 into their slots and releases the record; and a branch that moves none of
+  them only reads the record, which stays owned.  Both branches must move the same owned values
+  and rewrite the same records. -/
   partial def translateNodeCases (ctx : Ctx) (source : String) (discriminant : Lean.Expr)
-      (ptr : Nat) (type : ScalarType) (alternatives : List CaseAlt) : CompileM Nat := do
+      (ptr : Nat) (alternatives : List CaseAlt)
+      (branch : Ctx → Loc → Lean.Expr → CompileM (List Project.IR.Stmt × List Hint)) :
+      CompileM Unit := do
     let [first, second] := alternatives
       | throwError "a match on a recursive type must have two constructors: {source}"
     let (nullAlt, recordAlt, nullFirst) ← match first.fields, second.fields with
       | [], _ :: _ => pure (first, second, true)
       | _ :: _, [] => pure (second, first, false)
       | _, _ => throwError "a match on a recursive type needs one constructor without fields and one with fields: {source}"
-    let result ← fresh type "match result"
     -- The branches' statements stay inside the conditional, so they run only on their
     -- branch whenever the match's own statement runs only when needed.  The branches may still
     -- rewrite the record that an enclosing match took apart, except the record branch of a
@@ -1674,9 +1680,7 @@ mutual
       let p ← get
       return (p.consumed.filter fun x => ctx.owned.contains x && !saved.contains x,
         p.rebuilt.filter fun x => x != discriminant && !savedRebuilt.contains x)
-    let (nPre, ⟨_, nv⟩, nHints, nAt) ← translatePrefixed inner nullLoc type (nullAlt.body [])
-    let nullStmt : Project.IR.Stmt := .assign result nv
-    let nullStmts := nPre ++ [nullStmt]
+    let (nullStmts, nHints) ← branch inner nullLoc (nullAlt.body [])
     let (nullMoves, nullRebuilt) ← changes
     let nullState := ((← get).consumed, (← get).rebuilt)
     modify fun p => { p with consumed := saved, rebuilt := savedRebuilt }
@@ -1687,8 +1691,7 @@ mutual
           else ctx
         if owned then markMoved discriminant
         let here := recordLoc.skip (loads.map stmtLength).sum
-        let (rPre, ⟨_, rv⟩, rHints, rAt) ← translatePrefixed ctx here type (recordAlt.body xs)
-        let recordStmt : Project.IR.Stmt := .assign result rv
+        let (rStmts, rHints) ← branch ctx here (recordAlt.body xs)
         -- A record that a branch does not rewrite but takes children from loses those children
         -- to the result: their slots get 0, and the record's release frees the rest.
         let mut drops := []
@@ -1704,15 +1707,14 @@ mutual
             drops := drops ++ [Project.IR.Stmt.release ptr]
             for child in children do
               unless moved.contains child do markMoved child
-        let dropAt := rAt.skip (stmtLength recordStmt)
+        let dropAt := here.skip (rStmts.map stmtLength).sum
         let dropHints := (List.range drops.length).zip drops |>.map fun (j, drop) =>
           mkHint (dropAt.skip ((drops.take j).map stmtLength).sum) (stmtLength drop)
             (if j + 1 == drops.length then "release record" else "clear slot") source
         let loadHints := (List.range loads.length).zip loads |>.map fun (j, load) =>
           mkHint (recordLoc.skip ((loads.take j).map stmtLength).sum) (stmtLength load)
             "field load" source
-        return (loads ++ rPre ++ [recordStmt] ++ drops, loadHints ++ rHints ++
-          mkHint rAt (stmtLength recordStmt) "match value" source :: dropHints))
+        return (loads ++ rStmts ++ drops, loadHints ++ rHints ++ dropHints))
       0 recordAlt.fields [] []
     let (recordMoves, recordRebuilt) ← changes
     -- Each branch releases the owned values that the other consumes and it does not.  A null
@@ -1737,11 +1739,9 @@ mutual
     let recordAll := recordStmts ++ recordSettle.map (·.1)
     let (thenStmts, elseStmts) := if nullFirst then (nullAll, recordAll) else (recordAll, nullAll)
     let stmt : Project.IR.Stmt := .ite condition (seqAll thenStmts) (seqAll elseStmts)
-    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "node match" source :: nHints ++
-      mkHint nAt (stmtLength nullStmt) "match value" source :: rHints ++
+    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "node match" source :: nHints ++ rHints ++
       settleHints (nullLoc.skip (nullStmts.map stmtLength).sum) source nullSettle ++
       settleHints (recordLoc.skip (recordStmts.map stmtLength).sum) source recordSettle)
-    return result
 
   /-- The statements that bring a branch of a join to the join's target, which consumes the
   owned values `moves` and rewrites the records `rebuilt`, each with its hint rule.  When
@@ -2222,6 +2222,21 @@ mutual
           return ← resultsIn (← translateLoop ctx term) dests? (← sourceOf term)
       if ← isTupleType type then
         if let some (discriminant, alternatives) ← userCases? term then
+          -- A match on a value of a recursive type: each branch leaves its pair in the result
+          -- locals.  Temporaries stay at the top of the body, which releases them on every path.
+          if let some ptr ← lookupNode ctx discriminant.consumeMData then
+            let source ← sourceOf term
+            let types ← resultTypes type
+            let dests ← match dests? with
+              | some dests => pure dests
+              | none => types.mapM fun type => fresh type "match result"
+            translateNodeCases ctx source discriminant.consumeMData ptr alternatives
+              fun ctx at_ body => do
+                let (_, stmts, hints) ← withBlock
+                  (translateResults { ctx with temporaries := false } body type dests)
+                return (stmts, hints.map fun hint =>
+                  Hint.within at_.prefix_ (Hint.shift at_.index hint))
+            return ((dests.zip types).map readLocal, dests.map fun _ => [])
           return ← translateCases ctx term discriminant alternatives type dests?
         let some parts ← constructorParts? term type
           | throwError "a pair or structure result must be a constructor, a variable, a call, a loop, or a case split: {← sourceOf term}"
