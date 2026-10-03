@@ -72,6 +72,11 @@ def KeyTree.insertTwo (a b : UInt64) (t : KeyTree) : KeyTree := (t.insert a).ins
 /-- The number of nodes plus the sum of the keys, modulo 2^64. -/
 def KeyTree.sizeSum (t : KeyTree) : UInt64 := t.size + t.sum
 
+/-- `xs` with 1 pushed, and the sum of `t`'s keys: the push writes `xs` in place before `t` is
+read. -/
+def KeyTree.pushSum (xs : Array UInt64) (t : KeyTree) : Array UInt64 × UInt64 :=
+  (xs.push 1, t.sum)
+
 /-- A test of the depth limit: sixteen words computed before the recursive calls and used after
 them, so that the internal function holds 24 values in its frame, the most the compiler
 accepts, and keeps them live across its calls. -/
