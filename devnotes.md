@@ -22912,3 +22912,62 @@ entry `region-frame` describes the premise.  Iteration 13 is complete.  `checkOw
 rejects a definition that consumes one tree and borrows another, which the specification now
 allows.
 
+
+## 2026-10-03: The remaining tree and ownership items
+
+The user asked to finish the open items of this work before the GPU path, one at a time: for
+each, analysis, a menu of approaches, a critical review, then the recommended approach, with
+frequent commits.  The items, in order: (1) lifting `checkOwnedNodes`; (2) passing an owned
+tree where the callee borrows it; (3) positivity of slot regions for every encoded type;
+(4) a tree inside a pair result; (5) a `let` whose value moves an owned value; (6) calls inside
+recursive definitions and tree arguments in loop bodies; (7) a theorem for `push` onto a
+borrowed array; (8) a copy into an owned parameter at a use that is not the last.
+
+### Item 1: lifting `checkOwnedNodes`, analysis
+
+`checkOwnedNodes` rejects a definition that consumes some tree parameters and borrows others.
+Since Iteration 13 the specification allows such a definition.  Three scratch programs show
+what else the change touches:
+
+| Program | Shape | Result today |
+|---------|-------|--------------|
+| `addRoot a b`: `b`'s root key plus `a`'s | reads `a`, rewrites `b` | rejected by `checkOwnedNodes` |
+| `zipAdd a b`: `a`'s keys added into `b`'s matching nodes | both trees' children go to the recursive calls | compiles; both trees consumed |
+| `addAll a b`: `a`'s root key added to every key of `b` | `a` goes to both recursive calls | rejected: the second call receives an `a` already moved |
+
+Mode inference for a recursive definition that returns a tree takes the greatest fixed point
+over the self positions: every tree parameter starts owned, and each round keeps those that the
+body still moves.  `addAll` passes `a` to both self-calls, so `a` stays owned, and the
+translation then finds the second call's `a` moved.  The consistent assignment borrows `a`.  In
+a non-recursive definition the same pattern (a tree passed to two owned positions) fails under
+any assignment, since the callees' modes are fixed.
+
+Two smaller findings: a `match` written inside a branch's value (`match a with ...` in an
+alternative) is unsupported, because `translateValue` does not unfold a matcher; a definition
+with several discriminants (`| .node _ ak _, .node l k r => ...`) compiles, since Lean builds the
+nested case splits itself.  This is a further item for the list.
+
+### Item 1: approaches
+
+| Approach | What it does | Effect |
+|----------|--------------|--------|
+| A. Remove `checkOwnedNodes` only | Mixed modes where inference already gives them | `addRoot` compiles; `addAll`-like recursions still fail |
+| B. A plus a per-path move count in the mode rule | Each round drops a parameter that some path moves more than once; the fixed point is the largest set moved at most once on every path and at least once on some | `addAll` borrows `a`; `zipAdd` still consumes both |
+| C. A plus an explicit mode marker (`Borrowed α`) | The program states the mode | Contradicts the decision that the compiler infers modes (2026-10-01) |
+
+Recommendation: B.  The count follows `moveSites` term for term: a sequence (constructor fields,
+pair components, call arguments, the scrutinee and body of a pair split) adds counts, and the
+branches of an `if` or a match take the maximum.  A match on a parameter counts one move of it
+when its record branch moves a child, as `moveSites` does now.  The same rule applies to
+non-recursive definitions, where it changes only which error a doubly moved parameter reports.
+The byte comparison checks that no current module changes.
+
+Programs: `addRoot` (non-recursive, a theorem like `setKey`'s with a load from the borrowed
+record) and `addAll` (recursive, a theorem like `incr_rec`'s, keeping `a` through the first call
+with `Heap.Keeps.nodeBorrowed`), both in `treeMoves`.  `addAll` binds the root with an `@`
+pattern so that the self-calls receive the variable.
+
+- [ ] 1a: remove `checkOwnedNodes`; the per-path move count; scratch checks.
+- [ ] 1b: `addRoot` and its theorem.
+- [ ] 1c: `addAll` and its theorem.
+- [ ] Tests, LTG, journal.
