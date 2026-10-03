@@ -528,38 +528,40 @@ def lookupNode (ctx : Ctx) (term : Lean.Expr) : CompileM (Option Nat) := do
 /-- Records that the code has moved the owned parameter `param`. -/
 def markMoved (param : Lean.Expr) : CompileM Unit := do
   if (← get).pendingReads.contains param then
-    throwError "the array {← sourceOf param} moves before an earlier part of the same value reads it"
+    throwError "the value {← sourceOf param} moves before an earlier part of the same value reads it"
   modify fun p => { p with consumed := param :: p.consumed }
 
-/-- The pointer locals of the arrays that `e` reads. -/
-def readArrays : {type : ScalarType} → IRExpr type → List Nat
-  | _, .read array position => array :: readArrays position
-  | _, .bin _ l r => readArrays l ++ readArrays r
-  | _, .eq l r => readArrays l ++ readArrays r
-  | _, .ne l r => readArrays l ++ readArrays r
-  | _, .ltU l r => readArrays l ++ readArrays r
-  | _, .leU l r => readArrays l ++ readArrays r
-  | _, .and l r => readArrays l ++ readArrays r
-  | _, .or l r => readArrays l ++ readArrays r
-  | _, .binF _ l r => readArrays l ++ readArrays r
-  | _, .eqF l r => readArrays l ++ readArrays r
-  | _, .ltF l r => readArrays l ++ readArrays r
-  | _, .leF l r => readArrays l ++ readArrays r
-  | _, .not c => readArrays c
-  | _, .unF _ x => readArrays x
-  | _, .convertU x => readArrays x
-  | _, .truncSatU x => readArrays x
-  | _, .ofBits x => readArrays x
-  | _, .toBits x => readArrays x
-  | _, .ite c a b => readArrays c ++ readArrays a ++ readArrays b
-  | _, .iteF c a b => readArrays c ++ readArrays a ++ readArrays b
+/-- The locals that `e` reads: those it gets, including the pointers of arrays and values of
+recursive types that it passes on, and the arrays whose elements it reads. -/
+def readLocals : {type : ScalarType} → IRExpr type → List Nat
+  | _, .get index => [index]
+  | _, .read array position => array :: readLocals position
+  | _, .bin _ l r => readLocals l ++ readLocals r
+  | _, .eq l r => readLocals l ++ readLocals r
+  | _, .ne l r => readLocals l ++ readLocals r
+  | _, .ltU l r => readLocals l ++ readLocals r
+  | _, .leU l r => readLocals l ++ readLocals r
+  | _, .and l r => readLocals l ++ readLocals r
+  | _, .or l r => readLocals l ++ readLocals r
+  | _, .binF _ l r => readLocals l ++ readLocals r
+  | _, .eqF l r => readLocals l ++ readLocals r
+  | _, .ltF l r => readLocals l ++ readLocals r
+  | _, .leF l r => readLocals l ++ readLocals r
+  | _, .not c => readLocals c
+  | _, .unF _ x => readLocals x
+  | _, .convertU x => readLocals x
+  | _, .truncSatU x => readLocals x
+  | _, .ofBits x => readLocals x
+  | _, .toBits x => readLocals x
+  | _, .ite c a b => readLocals c ++ readLocals a ++ readLocals b
+  | _, .iteF c a b => readLocals c ++ readLocals a ++ readLocals b
   | _, _ => []
 
-/-- Runs `action`, which translates a later part of a value, while the arrays at the pointer
-locals `reads`, which earlier parts read, count as pending reads: the earlier parts run after
-`action`'s statements. -/
+/-- Runs `action`, which translates a later part of a value, while the arrays and values of
+recursive types at the locals `reads`, which earlier parts read, count as pending reads: the
+earlier parts run after `action`'s statements, so `action` may not move them. -/
 def afterReads {γ : Type} (ctx : Ctx) (reads : List Nat) (action : CompileM γ) : CompileM γ := do
-  let arrays := (ctx.arrays ++ ctx.floatArrays).filterMap fun (x, local_) =>
+  let arrays := (ctx.arrays ++ ctx.floatArrays ++ ctx.nodes).filterMap fun (x, local_) =>
     if reads.contains local_ then some x else none
   let saved := (← get).pendingReads
   modify fun p => { p with pendingReads := arrays ++ p.pendingReads }
@@ -885,7 +887,7 @@ mutual
         -- statements first, and its value is assigned to a fresh local, so that a call in an
         -- operand runs once.
         let (l, lHints) ← translateValue ctx ⟨[], 0⟩ a
-        let (r, rHints) ← translateValue ctx ⟨[], 0⟩ b
+        let (r, rHints) ← afterReads ctx (readLocals l) (translateValue ctx ⟨[], 0⟩ b)
         let x ← fresh .u64 "max operand"
         let xStmt := Project.IR.Stmt.assign x l
         pushStmt xStmt (mkHint ⟨[], 0⟩ (stmtLength xStmt) "max operand" (← sourceOf a) :: lHints)
@@ -927,7 +929,7 @@ mutual
           throwError "unsupported operand types in {source}"
         let (l, lHints) ← translateValue ctx loc a
         let offset := if op = .divU ∨ op = .remU then exprLength l + 1 else exprLength l
-        let (r, rHints) ← afterReads ctx (readArrays l) (translateValue ctx (loc.skip offset) b)
+        let (r, rHints) ← afterReads ctx (readLocals l) (translateValue ctx (loc.skip offset) b)
         let ir : IRExpr .u64 := .bin op l r
         return (ir, hint ir rule :: lHints ++ rHints)
       | _ => throwError "unsupported term: {source}"
@@ -943,14 +945,14 @@ mutual
     let floatPair (make : IRExpr .f64 → IRExpr .f64 → IRExpr .bool) (rule : String)
         (a b : Lean.Expr) : CompileM (IRExpr .bool × List Hint) := do
       let (l, lHints) ← translateFloat ctx loc a
-      let (r, rHints) ← afterReads ctx (readArrays l)
+      let (r, rHints) ← afterReads ctx (readLocals l)
         (translateFloat ctx (loc.skip (exprLength l)) b)
       let ir := make l r
       return (ir, hint ir rule :: lHints ++ rHints)
     let pair (make : IRExpr .u64 → IRExpr .u64 → IRExpr .bool) (rule : String)
         (a b : Lean.Expr) : CompileM (IRExpr .bool × List Hint) := do
       let (l, lHints) ← translateValue ctx loc a
-      let (r, rHints) ← afterReads ctx (readArrays l)
+      let (r, rHints) ← afterReads ctx (readLocals l)
         (translateValue ctx (loc.skip (exprLength l)) b)
       let ir := make l r
       return (ir, hint ir rule :: lHints ++ rHints)
@@ -958,7 +960,7 @@ mutual
         (a b : Lean.Expr) : CompileM (IRExpr .bool × List Hint) := do
       let (l, lHints) ← translateCondition ctx loc a
       let inner := (loc.skip (exprLength l)).inside (some (if rule == "and" then 0 else 1))
-      let (r, rHints) ← afterReads ctx (readArrays l)
+      let (r, rHints) ← afterReads ctx (readLocals l)
         (translateCondition { ctx with foldable := false } inner b)
       let ir := make l r
       return (ir, hint ir rule :: lHints ++ rHints)
@@ -1115,7 +1117,7 @@ mutual
         unless (← isFloat left) && (← isFloat right) && (← isFloat out) do
           throwError "unsupported operand types in {source}"
         let (l, lHints) ← translateFloat ctx loc a
-        let (r, rHints) ← afterReads ctx (readArrays l)
+        let (r, rHints) ← afterReads ctx (readLocals l)
           (translateFloat ctx (loc.skip (exprLength l)) b)
         let ir : IRExpr .f64 := .binF op l r
         return (ir, hint ir rule :: lHints ++ rHints)
@@ -1320,7 +1322,8 @@ mutual
           unless ctx.allocating do
             throwError "a fold over an array literal may not appear in an element of `LeanExe.build`: {source}"
           pure (← translateArrayLiteral ctx array elements, true)
-    let (⟨_, initial⟩, initialHints) ← translateAs ctx ⟨[], 0⟩ accType init
+    let (⟨_, initial⟩, initialHints) ← afterReads ctx [arrayLocal]
+      (translateAs ctx ⟨[], 0⟩ accType init)
     let before ← get
     let accLocal := before.next
     let (indexLocal, lengthLocal, elementLocal) := (accLocal + 1, accLocal + 2, accLocal + 3)
@@ -1400,7 +1403,9 @@ mutual
     let initTerms ← stateTerms init stateType
     let mut inits := #[]
     for (component, type) in initTerms do
-      inits := inits.push (← translateAs ctx ⟨[], 0⟩ type component, ← sourceOf component)
+      let earlier := readLocals count ++ inits.toList.flatMap fun init => readLocals init.1.1.2
+      inits := inits.push (← afterReads ctx earlier (translateAs ctx ⟨[], 0⟩ type component),
+        ← sourceOf component)
     let mut state := #[]
     for (_, type) in initTerms do
       state := state.push (← fresh type s!"state {state.size}", type)
@@ -1735,7 +1740,7 @@ mutual
       let field := fields[i].consumeMData
       if xs[i]? == some field then continue
       let address : IRExpr .u64 := .bin .add (.get ptr) (.const (UInt64.ofNat (8 * i)))
-      let (value, valueHints) ← afterReads ctx (stores.toList.flatMap fun s => readArrays s.2.1)
+      let (value, valueHints) ← afterReads ctx (stores.toList.flatMap fun s => readLocals s.2.1)
         (translateValue ctx ⟨[], exprLength address + 1⟩ field)
       stores := stores.push (address, value, valueHints)
     for h : i in [:fields.length] do
@@ -1830,7 +1835,7 @@ mutual
     let mut valueHints := []
     let mut here := loc
     for field in fields do
-      let ((v, vHints), fStmts, fStmtHints) ← afterReads ctx (values.flatMap readArrays)
+      let ((v, vHints), fStmts, fStmtHints) ← afterReads ctx (values.flatMap readLocals)
         (withBlock (translateValue ctx ⟨[], 0⟩ field))
       stmts := stmts ++ fStmts
       stmtHints := stmtHints ++ fStmtHints.map (relocate here)
@@ -1912,11 +1917,12 @@ mutual
         let arrayVar? ← lookupArray ctx.arrays array.consumeMData
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "a `set!` position must be `i.toNat` for a UInt64 `i`: {source}"
-        let (kIR, kHints) ← translateValue ctx ⟨[], 0⟩ k
+        let target := arrayVar?.toList
+        let (kIR, kHints) ← afterReads ctx target (translateValue ctx ⟨[], 0⟩ k)
         let kLocal ← fresh .u64 "set position"
         let kStmt := Project.IR.Stmt.assign kLocal kIR
         pushStmt kStmt (mkHint ⟨[], 0⟩ (stmtLength kStmt) "set position" (← sourceOf k) :: kHints)
-        let (vIR, vHints) ← translateValue ctx ⟨[], 0⟩ value
+        let (vIR, vHints) ← afterReads ctx target (translateValue ctx ⟨[], 0⟩ value)
         let vLocal ← fresh .u64 "set value"
         let vStmt := Project.IR.Stmt.assign vLocal vIR
         pushStmt vStmt (mkHint ⟨[], 0⟩ (stmtLength vStmt) "set value" (← sourceOf value) :: vHints)
@@ -1941,11 +1947,12 @@ mutual
         let arrayVar? ← lookupArray ctx.arrays array.consumeMData
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "an `insertIdx!` position must be `i.toNat` for a UInt64 `i`: {source}"
-        let (kIR, kHints) ← translateValue ctx ⟨[], 0⟩ k
+        let target := arrayVar?.toList
+        let (kIR, kHints) ← afterReads ctx target (translateValue ctx ⟨[], 0⟩ k)
         let kLocal ← fresh .u64 "insert position"
         let kStmt := Project.IR.Stmt.assign kLocal kIR
         pushStmt kStmt (mkHint ⟨[], 0⟩ (stmtLength kStmt) "insert position" (← sourceOf k) :: kHints)
-        let (vIR, vHints) ← translateValue ctx ⟨[], 0⟩ value
+        let (vIR, vHints) ← afterReads ctx target (translateValue ctx ⟨[], 0⟩ value)
         let vLocal ← fresh .u64 "insert value"
         let vStmt := Project.IR.Stmt.assign vLocal vIR
         pushStmt vStmt (mkHint ⟨[], 0⟩ (stmtLength vStmt) "insert value" (← sourceOf value) :: vHints)
@@ -1980,7 +1987,7 @@ mutual
         let arrayVar? ← lookupArray ctx.arrays array.consumeMData
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "an `eraseIdxIfInBounds` position must be `i.toNat` for a UInt64 `i`: {source}"
-        let (kIR, kHints) ← translateValue ctx ⟨[], 0⟩ k
+        let (kIR, kHints) ← afterReads ctx arrayVar?.toList (translateValue ctx ⟨[], 0⟩ k)
         let kLocal ← fresh .u64 "erase position"
         let kStmt := Project.IR.Stmt.assign kLocal kIR
         pushStmt kStmt (mkHint ⟨[], 0⟩ (stmtLength kStmt) "erase position" (← sourceOf k) :: kHints)
@@ -2008,7 +2015,7 @@ mutual
     | (``Array.push, #[element, array, value]) =>
         unless ← isUInt64 element do throwError "unsupported array element type in {source}"
         let arrayVar? ← lookupArray ctx.arrays array.consumeMData
-        let (vIR, vHints) ← translateValue ctx ⟨[], 0⟩ value
+        let (vIR, vHints) ← afterReads ctx arrayVar?.toList (translateValue ctx ⟨[], 0⟩ value)
         let vLocal ← fresh .u64 "push value"
         let vStmt := Project.IR.Stmt.assign vLocal vIR
         pushStmt vStmt (mkHint ⟨[], 0⟩ (stmtLength vStmt) "push value" (← sourceOf value) :: vHints)
@@ -2155,7 +2162,7 @@ mutual
         for (part, partType) in parts do
           let width := (← resultTypes partType).length
           -- The earlier components run after this part's statements.
-          let (r, h) ← afterReads ctx (results.flatMap fun result => readArrays result.2)
+          let (r, h) ← afterReads ctx (results.flatMap fun result => readLocals result.2)
             (translateResults ctx part partType (remaining.map (·.take width)))
           results := results ++ r
           hints := hints ++ h
@@ -2228,7 +2235,7 @@ mutual
       let argType ← inferType arg
       let owned := owners.contains position
       -- The earlier arguments run after this argument's statements.
-      let earlier := args.toList.flatMap fun value => readArrays value.2
+      let earlier := args.toList.flatMap fun value => readLocals value.2
       let (values, argHints) ← afterReads ctx earlier do
         if ← isArray argType then
           let local_ ← match ← lookupArray (ctx.arrays ++ ctx.floatArrays) arg.consumeMData with
@@ -2409,7 +2416,7 @@ mutual
     let mut values : Array (IRExpr .u64) := #[]
     let mut valueHints : Array (List Hint) := #[]
     for element in elements do
-      let (value, hints) ← afterReads ctx (values.toList.flatMap readArrays)
+      let (value, hints) ← afterReads ctx (values.toList.flatMap readLocals)
         (translateValue ctx ⟨[], 0⟩ element)
       values := values.push value
       valueHints := valueHints.push hints
