@@ -623,7 +623,8 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
       return terms.filter params.contains
   | (``HAppend.hAppend, #[_, _, _, _, left, _]) =>
       return if params.contains left.consumeMData then [left.consumeMData] else []
-  | (``Array.set!, #[_, array, _, _]) | (``Array.setIfInBounds, #[_, array, _, _]) =>
+  | (``Array.set!, #[_, array, _, _]) | (``Array.setIfInBounds, #[_, array, _, _])
+  | (``Array.eraseIdxIfInBounds, #[_, array, _]) =>
       return if params.contains array.consumeMData then [array.consumeMData] else []
   | (fn, args) =>
       return ((owners.lookup fn).getD []).filterMap fun i =>
@@ -1838,6 +1839,18 @@ mutual
         let kLocal ← fresh .u64 "erase position"
         let kStmt := Project.IR.Stmt.assign kLocal kIR
         pushStmt kStmt (mkHint ⟨[], 0⟩ (stmtLength kStmt) "erase position" (← sourceOf k) :: kHints)
+        -- An owned array at its last use loses the element in place.
+        if ctx.owned.contains array.consumeMData then
+          let size ← fresh .u64 "size"
+          let limit ← fresh .u64 "limit"
+          let index ← fresh .u64 "index"
+          let stmt := Stmt.eraseInPlace arrayLocal size kLocal limit index
+          pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "erase in place" source]
+          markMoved array.consumeMData
+          let some dst := dst? | return arrayLocal
+          let move := Project.IR.Stmt.assign dst (.get arrayLocal)
+          pushStmt move [mkHint ⟨[], 0⟩ (stmtLength move) "array move" source]
+          return dst
         let size ← sizeOf arrayLocal
         let count : IRExpr .u64 :=
           .ite (.ltU (.get kLocal) (.get size)) (.bin .sub (.get size) (.const 1)) (.get size)
