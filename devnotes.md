@@ -22620,3 +22620,44 @@ Iteration 10 is complete.  These remain open, each waiting for a program that ne
 Whether `Implements` should state that a call keeps the caller's trees, as it does arrays, is
 the specification question of open item 4, for the user.
 
+
+## 2026-10-02: Plan: Iteration 11, a region frame in `Implements`
+
+The user approved stating in `Implements` that a call keeps every region of the caller's heap
+apart from the blocks it consumes, in place of the four array clauses.  The new postcondition
+reads:
+
+```lean
+∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final values.reverse (f x) ∧
+  final.memoryCaps = store.memoryCaps ∧
+  ∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
+    (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+      heap'.Region r ∧ Represent.outside final values.reverse (f x) r
+```
+
+`Heap.Region r` (below `top` and apart from every free block) moves to
+`Project/Pipeline/Runtime.lean`.  The clause is the `region` field of `Heap.Rebuilt` with the
+consumed blocks given by `Apart`.  The old array clauses follow from it with
+`Heap.Borrowed.keep` and `Heap.Owned.keep`, and the trees the caller holds with
+`NodeOwned.frame`.  The guard `0 < r.2` excludes empty regions, as in `Heap.Rebuilt`.  The
+statement has no page clause: an array's bound in memory follows from `heap'.Region` and
+`heap'.At`.
+
+Conversion plan, in import order:
+
+1. `Heap.Region` and a shared predicate `Heap.Keeps heap initial gone heap' store fresh` (every
+   region of `heap` apart from the blocks `gone` keeps its bytes, is a region of `heap'`, and
+   lies apart from the blocks `fresh`) in `Runtime.lean`; page-free forms of the array keep
+   lemmas.
+2. `Heap.NewArray`, `Stmt.AppendPost`, and `Live` state their frames with `Heap.Keeps`.
+   Lemmas with the old field names (`Live.borrowed`, `Live.owned`, `Live.apartB`,
+   `Live.apartO`, `Heap.NewArray.borrowed`, `.ownedKeep`, `.borrowedApart`, `.ownedApart`)
+   keep the programs' uses unchanged.  One rule, `Live.step`, adds a step's frame to `Live`,
+   and the `Live` rules use it.
+3. `Stmt.callImplements_spec`, `Func.implements_moves`, `Func.implements_heap`, and
+   `Func.implements_rebuilt` pass the region clause through.
+4. The program proofs that state the frame directly change to the new form.
+
+- [ ] Steps 1 to 3 and the shared IR rules.
+- [ ] The program proofs; full build, module tests, and byte comparison.
+- [ ] LTG, `deslop.md`, and the journal.
