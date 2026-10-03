@@ -23428,9 +23428,9 @@ Revised steps:
 - [x] 5a: pending reads for every heap value an earlier part reads, including pointers passed to
   a call, `max` operands, update targets, fold arrays, and loop counts and initial states.
 - [x] 5b: A′ in the compiler; the byte comparison.
-- [ ] 5c: a tree `let` from a call, lent and then released or returned, and an array `let` from
+- [x] 5c: a tree `let` from a call, lent and then released or returned, and an array `let` from
   a consuming call, with their theorems.
-- [ ] Tests, LTG, journal.
+- [x] Tests, LTG, journal.
 
 ### Item 5, step 5a: evaluation order
 
@@ -23458,3 +23458,24 @@ twice, `a2`, `a3`, `t1`, `t2`, `t4`, and `t5` compile with the IR the review sho
 still copies, and `let ys := xs; (ys, xs)` fails, where it copied before.  I ran the reviewer's
 A′ probe files against the compiler: the outputs differ from its own only where step 5a rejects
 more programs.  The full build passed, and all 22 modules emit the same bytes as before.
+
+### Item 5, step 5c: the programs
+
+`KeyTree.droppedSize n t := let u := t.dropSmall n; u.size` and `KeyTree.dropWithSize n t := let
+u := t.dropSmall n; (u.size, u)` joined `trees` as entries 13 and 14, and the internal functions
+moved to `2 + 13` through `2 + 15`.  Each binds `dropSmall`'s result as a temporary and lends it
+to `size`.  `droppedSize` releases it at the end, and `dropWithSize` returns it.  `dropSmall_call`
+proves the first call once.  The lent call leaves no fresh blocks, so `Heap.Keeps.transBoth`, a
+form of `Heap.Keeps.trans` that keeps the fresh blocks of both steps, carries the temporary's
+blocks to the release and to the result.  `fillTwice sizes k a b := let ys := fillLevel sizes k
+a; fillLevel ys k b` joined `clob` as entry 15 (CLOB has no internal functions, so no index
+moved).  Its proof applies `Stmt.callImplements_spec` with `fillLevel_implements` twice, and
+`Heap.Keeps.trans` composes the frames, since the first call's fresh block is the block the
+second consumes.  `trees_bytes` and `clob_bytes` cover the new theorems and depend on `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+Tests: 120 comparisons for each tree program, 144 for `fillTwice`, and five count cases.
+`tests/modules/run.sh` passed 8,777 comparisons, 69 count cases, and 12 depth cases.  The
+`release-temporary` LTG entry covers `let` temporaries.
+
+Item 5 is complete.

@@ -96,6 +96,22 @@ theorem Heap.Keeps.trans {heap heap1 heap2 : Heap} {initial store1 store2 : Stor
   obtain ⟨hBytes2, hRegion2, hFresh2⟩ := h2 r hRegion1 hpos (hGone r hApart hFresh1)
   exact ⟨fun a hl hh => (hBytes2 a hl hh).trans (hBytes1 a hl hh), hRegion2, hFresh2⟩
 
+/-- Two steps in a row, as in `Heap.Keeps.trans`, leave every kept region apart from the blocks
+that either step leaves fresh. -/
+theorem Heap.Keeps.transBoth {heap heap1 heap2 : Heap} {initial store1 store2 : Store Unit}
+    {gone gone2 fresh1 fresh2 : List (Nat × Nat)}
+    (h1 : heap.Keeps initial gone heap1 store1 fresh1)
+    (h2 : heap1.Keeps store1 gone2 heap2 store2 fresh2)
+    (hGone : ∀ r, (∀ b ∈ gone, regionsDisjoint r b) → (∀ b ∈ fresh1, regionsDisjoint r b) →
+      ∀ b ∈ gone2, regionsDisjoint r b) :
+    heap.Keeps initial gone heap2 store2 (fresh1 ++ fresh2) := fun r hr hpos hApart => by
+  obtain ⟨hBytes1, hRegion1, hFresh1⟩ := h1 r hr hpos hApart
+  obtain ⟨hBytes2, hRegion2, hFresh2⟩ := h2 r hRegion1 hpos (hGone r hApart hFresh1)
+  refine ⟨fun a hl hh => (hBytes2 a hl hh).trans (hBytes1 a hl hh), hRegion2, fun b hb => ?_⟩
+  rcases List.mem_append.mp hb with hb | hb
+  · exact hFresh1 b hb
+  · exact hFresh2 b hb
+
 /-- A step keeps the regions apart from more blocks, and leaves them apart from fewer. -/
 theorem Heap.Keeps.mono {heap heap' : Heap} {initial store : Store Unit}
     {gone gone' fresh fresh' : List (Nat × Nat)} (h : heap.Keeps initial gone heap' store fresh)
