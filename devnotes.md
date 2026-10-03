@@ -22324,3 +22324,117 @@ Iteration 9 is complete.  Open items: in-place `push`, which would use the growt
 reserve; and the three `*_eq_build` lemmas, which no CLOB theorem uses now, though the copying
 templates remain for borrowed arrays.
 
+
+## 2026-10-02: Plan: Iteration 10, `push`, releases in branches, and calls with trees
+
+Three independent items follow, each with options and a recommendation.  They share one
+compiler rule, stated first.
+
+### Shared rule: owned arguments that are terms
+
+Today the array argument of an update and the argument at a callee's owned position must be a
+variable.  The rule extends both to a term that yields a new owned value: an update or a call.
+The compiler translates the inner term into a fresh local, and the outer operation consumes it,
+so no release is needed.  The mode rule (`moveSites`) recurses into such an argument, so a
+parameter that the inner term moves counts as moved by the whole term.  A borrowed position
+still takes only a variable, since a temporary there would need a release.  This covers
+`(xs.push a).push b` and `(t.insert a).insert b`.  A `let` whose value moves an owned value
+remains unsupported: `moveSites` skips `let` values, and the compiler translates them with no
+owned values.
+
+### Item 3: in-place `push`
+
+`Array.push` has no case in the compiler.  An owned array at its last use can take the element
+in its own block when the block has room, and otherwise needs the growth step of
+`Stmt.insertInPlace`.
+
+| Option | Generated code | Proof work |
+|--------|----------------|------------|
+| A: `Stmt.insertInPlace` with `k` set to the length | an extra length read, a comparison that always succeeds, a loop test, and a dead branch | a corollary of `Stmt.insertInPlace_spec` with `insert_end` |
+| B: factor `Stmt.reserve` (the capacity check and growth) out of `Stmt.insertInPlace`; `Stmt.pushInPlace` is the length, `Stmt.reserve`, the element store, and the length store | only the needed steps | split `Stmt.insertInPlace_spec` into `Stmt.reserve_spec` and the rest; `Stmt.pushInPlace_spec` adds two stores |
+| C: `xs ++ #[v]` | allocates and releases a one-element array per push | none new |
+
+Recommendation: B.  The split is mechanical, since `Stmt.insertInPlace_spec` already proves the
+reserve step as its own `Stmt.seq` stage with the intermediate assertion `M`.  The push
+template then has no wasted work, and `Stmt.reserve_spec` serves any later operation that grows
+an array by one.  A borrowed `push` copies with `emitBuild`, count `size + 1`, and element
+`if index < size then xs[index] else v`, as `set!` and `insertIdx!` do.
+
+Program: CLOB's `stepCommand` returns `(p, s, (out.push bestPrice).push bestSize)` in place of
+`out ++ #[bestPrice, bestSize]`, which removes the allocation and release of the two-element
+array on every step.  Its theorem chains two `Stmt.pushInPlace_spec` steps.  The borrowed copy
+gets an execution case in `tests/modules/Cases.lean`; no program needs its theorem yet.
+
+### Item 2: releasing an owned value on a path that does not move it
+
+`translateNodeIf` and `translateNodeCases` reject branches that move different owned values or
+rewrite different records, and `releaseUnmoved` rejects an unmoved owned tree.
+
+| Option | Where the release goes | Cost |
+|--------|------------------------|------|
+| A: settle at the join | at the end of each branch, after its value, for each owned value that another branch consumed | no lookahead; same placement as today's slot clears and record release |
+| B: release early | at the start of each branch, for each owned value the branch never uses | a pre-pass per branch; frees memory sooner |
+| C: release after the join | at the end of the function | needs a run-time flag per value; rejected |
+
+Recommendation: A.  The target state of a join is the union of the branches' consumed values
+and of their rewritten records.  Each branch then emits, after its value: (a) for a record that
+another branch rewrites, the code that today ends a record branch that takes children: 0 into
+the slots of the children this branch moved, and the release of the record, which frees the
+other children; and (b) a release of every other owned value in the target that this branch has
+not consumed, a tree or an array.  After the join both branches agree, so the existing
+agreement check becomes a consistency check.  Only an `if` inside a record branch can see a
+rewrite mismatch, since `translateNodeCases` clears `reuse` in its null branch and excludes its
+own discriminant.  `releaseUnmoved` releases an unmoved owned tree as it does an array, for
+uniformity; with settling, no tested program reaches it.  A function that returns words still
+owns no trees.
+
+Proofs: `Stmt.releaseNode_rebuilt` for (b) and the existing `Heap.Rebuilt.leftChild` and
+`Heap.Rebuilt.dropRight` cases for (a).  Programs, added to `treeMoves`:
+
+- `KeyTree.keepIf (c : UInt64) (t : KeyTree) : KeyTree := if c = 0 then t else .leaf`, whose
+  `else` branch releases `t`.
+- `KeyTree.trim : KeyTree → KeyTree` with `.node l k r => if k = 0 then l else .node l k .leaf`,
+  whose `then` branch clears `l`'s slot and releases the record (as `leftChild` does) because
+  the `else` branch rewrites it (as `dropRight` does).
+
+### Item 1: calls with tree arguments
+
+`translateCall` rejects arguments of recursive types.  A caller's proof needs, from the callee,
+the result and the callee's effect on everything the caller holds.  `Implements` describes the
+caller's arrays but none of its trees, so a caller that passes `t` to `size` cannot conclude
+that `t` survives for a later `sum t`.
+
+| Option | Statement change | Proof work |
+|--------|------------------|------------|
+| A: add a tree clause to `Implements`: every value of a recursive type apart from the consumed blocks stays owned with the same blocks and apart from the result | yes | a node frame for every template rule (`Stmt.AppendPost`, build, copy, in-place updates) and every module's proofs |
+| B: per-callee internal specifications, from which each callee's `Implements` follows | no | two entry-level specifications and their rules; callers use them |
+| D: allow tree arguments only when the caller holds no other tree or array at the call | no | none new, but `t.size + t.sum` and any borrowed use stay out |
+
+Recommendation: B.  The two specifications are the entry-level forms of the existing internal
+ones, without the depth word: `Consumes` (as `Rebuilds`: the result rebuilt from the consumed
+blocks under `Heap.Rebuilt`, which keeps the caller's trees through `keepNode` and arrays
+through `keepBorrowed` and `keepOwned`) for a callee that returns a tree, and an entry form of
+`Keeps` (the store unchanged) for a callee that returns words.  New rules: `Func.consumes` from
+a body triple and `Func.entry_consumes` from an internal `Rebuilds`; the same pair for `Keeps`;
+call rules for both, after `Stmt.selfCall_rebuilds`; `Heap.Rebuilt.trans` for consecutive
+consuming calls; and `Implements` from `Consumes`.  Option A is the specification question of
+open item 4, which this plan leaves to the user; B does not preclude it.
+
+Compiler: a tree argument at a borrowed position is a variable, read with `lookupNode`; at an
+owned position it is an owned variable occurring once among the call's tree arguments, or a
+call term under the shared rule, and the call marks it moved.  Calls with tree arguments stay at
+the top of non-recursive bodies, as all allocating calls are today, so the depth guard of a
+recursive callee starts from 0 below a caller that does not recurse.
+
+Programs: `KeyTree.insertTwo (a b : UInt64) (t : KeyTree) : KeyTree := (t.insert a).insert b` in
+`treeMoves`, and `KeyTree.sizeSum (t : KeyTree) : UInt64 := t.size + t.sum` in `trees`.  Adding
+entries shifts the internal function indices in both modules' proofs.
+
+### Steps
+
+Each step is built, tested, committed, and pushed.
+
+- [ ] 10a: the shared rule, `Stmt.reserve`, and `Stmt.pushInPlace`; `stepCommand`.
+- [ ] 10b: releases at joins; `keepIf` and `trim`.
+- [ ] 10c: calls with tree arguments; `insertTwo` and `sizeSum`.
+- [ ] LTG entries and the count cases in `tests/modules/run.sh`.
