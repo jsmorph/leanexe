@@ -22438,3 +22438,45 @@ Each step is built, tested, committed, and pushed.
 - [ ] 10b: releases at joins; `keepIf` and `trim`.
 - [ ] 10c: calls with tree arguments; `insertTwo` and `sizeSum`.
 - [ ] LTG entries and the count cases in `tests/modules/run.sh`.
+
+### Review of the Iteration 10 plan
+
+One reviewer checked the plan.  I verified the review by running its five files in the job's
+scratch directory.  The five planned programs fail today with the expected errors.  `Leak.lean`
+shows three nested matches rejected (`T.deep`, an ordinary deep pattern; `T.matchNested`; and
+`T.ifNested`) while the same rewrite without a join compiles.  `Unmoved.lean` shows a pair result
+holding a tree reaching `releaseUnmoved`'s tree error.  `Specs.lean` proves `Heap.Rebuilt.trans`,
+an entry form of `Keeps` with `Func.entry_keeps`, and `NodeOwned.borrowed`, with no `sorry`.
+`Push.lean` confirms `Array.push` and `(out.push a).push b = out ++ #[a, b]`.  I checked the cited
+lines in `Scalar.lean`: `translateNodeCases` returns with its discriminant still in `rebuilt`.
+
+The findings and the plan's response:
+
+| Finding | Response |
+|---------|----------|
+| A term at an owned position can alias another argument: in `g xs (xs.push 1)` the push may grow `xs` in place before `g` reads `.get xs`, and pending reads count only `.read` | Every value that a term argument moves occurs in no other argument of the call |
+| Evaluation order of an update over an inner term is unstated | An update evaluates its position and value before the inner term, as Lean does |
+| `moveSites` needs an `Array.push` case | Added to the plan |
+| `stepCommand`'s proof runs in the `Live` framework; two `Stmt.pushInPlace_spec` steps give `Stmt.AppendPost` | Chain the two steps with `Stmt.AppendPost.trans` and convert to `Live` with a lemma factored out of `Live.append` |
+| Only-`if` claim about rewrite mismatches is false; settling as written would free the `else` value of `T.ifNested` | `translateNodeCases` drops its discriminant from `rebuilt` when it returns; settling (a) applies only to the record in `ctx.reuse` |
+| (b) would release `trim`'s `r` a second time after (a) frees it | (a) runs first and marks the record's remaining children moved; (b) skips them |
+| (a) must release the record when the branch moved no children | Stated; the record-branch end code that keeps such a record is a different path |
+| `releaseUnmoved`'s tree case is reachable from a pair result holding a tree | Keep the error; no program proves a tree inside a pair result |
+| No node-valued branch can consume an array | (b) covers trees only; arrays keep the agreement check |
+| `insertTwo` needs only `Stmt.callImplements_spec` and `insert_implements`; `sizeSum` needs only the entry form of `Keeps`, its call rule, and `Func.implements` | `Consumes`, `Func.consumes`, `Func.entry_consumes`, the consuming call rule, and `Heap.Rebuilt.trans` wait for a program that holds a second tree across a consuming call |
+| An owned tree at a borrowed position needs `NodeOwned.borrowed`, which no planned program uses | The compiler rejects it for now |
+| Tree arguments under `pureCalls` (loop bodies) would pass `translateCall` | The compiler rejects them there, as it rejects array arguments |
+| "As all allocating calls are today" is inaccurate: allocating calls occur in result branches | The depth conclusion holds because recursive bodies have no callees |
+| A caller holding a tree across an array template needs a tree frame for that template | Out of scope; no planned program does this |
+
+The `T.deep` fix stands on its own: ordinary deep patterns on owned trees compile once the
+discriminant leaves `rebuilt`.
+
+Revised steps:
+
+- [ ] 10a: the shared rule with its occurrence check, `Stmt.reserve`, `Stmt.pushInPlace`, the
+  `Live` conversion; `stepCommand`.
+- [ ] 10b: `rebuilt` scoped to its match; settling at joins for trees; `keepIf` and `trim`.
+- [ ] 10c: tree arguments in calls; `Func.entry_keeps` and its call rule; `insertTwo` and
+  `sizeSum`.
+- [ ] LTG entries and the count cases in `tests/modules/run.sh`.
