@@ -23596,3 +23596,52 @@ every other module emits the same bytes as before.  The `function-call` LTG entr
 from recursive bodies and loop bodies.
 
 Item 6 is complete.
+
+### Item 7: a theorem for `push` onto a borrowed array, analysis
+
+A `push` whose array is borrowed, or owned but used again, copies: the compiler assigns the value
+to a local, loads the array's size, and builds `size + 1` elements with `Stmt.build`, element
+`i` being `xs[i]` below the size and the value at the end (`emitBuild`, rule `array push`).  The
+only program with this shape is `pushCopy xs v := let ys := xs.push v; (ys, xs)` in `updates`,
+which has no proof file.  The `array-build` LTG entry covers the copies that `set!`,
+`insertIdx!`, and `eraseIdxIfInBounds` make, and no proof covers the copy of `push`.
+`Stmt.build_spec` proves a build to `LeanExe.build n f` for an element `f i`, so the copy needs
+a lemma that `LeanExe.build (xs.size + 1) f` is `xs.push v` for that `f`, and the array-size load
+before it.
+
+### Item 7: approaches
+
+| Approach | What it does | Effect |
+|----------|--------------|--------|
+| A. The copy's rule and `pushCopy` | `Stmt.pushCopy_spec` in `Project/IR/Update.lean` for the size load and the build; `pushCopy_implements` in a new `Project/Updates/Verify.lean` | The borrowed `push` has a proved rule and program |
+| B. A plus the other `updates` programs | Theorems for `pushTwo`, `setTwice`, and `insertErase` as well | Their in-place rules already have proved programs in `clob` and `trees` |
+
+Recommendation: A.  The item concerns the copy, and the in-place rules that B would add
+theorems for are proved through `fillLevel`, `insertLevel`, and `pushSum`.
+
+- [x] 7a: `Stmt.pushCopy_spec` and `pushCopy_implements`; tests, LTG, journal.
+
+### Review of the item 7 plan
+
+One reviewer checked the plan with scratch files.  I ran its `IR.lean`, `Rule.lean`, and
+`Result.lean` and confirmed that they check.
+
+| Finding | Response |
+|---------|----------|
+| The copy happens only when the array is not owned in the current context, and moving or overwriting an array requires ownership, so the value cannot change the array before the copy reads it.  The result is a fresh block | No change |
+| `Stmt.build_spec` gives the rule, with `push_eq_build` stated for the count `UInt64.ofNat xs.size + 1` | Adopted |
+| A rule for the size load and the build together fits only a copy that ends a body, since `seqAll` nests to the right.  A rule for the build alone, with the size local as a premise, fits every copy | `Stmt.pushBuild_spec`, in `Project/IR/Build.lean` |
+| The `pushCopy` result follows from `Heap.NewArray` and the handed-over array (`newArray_with_moved`) | Adopted |
+| B adds theorems for rules already proved elsewhere | A |
+| `updates_bytes` covering only `pushCopy` is cheap, and its docstring should say so | Adopted |
+| The `array-build` entry lists the copies' equation lemmas, but no proof uses them.  `pushCopy` already has test cases | The analysis overstated the coverage |
+
+### Item 7, step 7a
+
+`push_eq_build` and `Stmt.pushBuild_spec` are in `Project/IR/Build.lean`, and
+`Project/Updates/Verify.lean` proves `pushCopy_implements` and `updates_bytes`, which covers
+`pushCopy` only and depends on `propext`, `Classical.choice`, and `Quot.sound`.  The `array-build`
+LTG entry covers the push copy.  The full build passed with no `sorry`, every module emits
+the same bytes as before, `tests/modules/run.sh` passed 8,921 comparisons, 70 count cases, and
+16 depth cases, and `chunks.py` passed 360 cases.  Item 7 is complete.
+
