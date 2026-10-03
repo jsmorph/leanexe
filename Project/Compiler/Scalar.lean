@@ -60,6 +60,26 @@ does not depend on the scratch index. -/
 def exprLength (e : IRExpr type) : Nat := (e.program 0).length
 def stmtLength (s : Project.IR.Stmt) : Nat := (s.program 0).length
 
+/-- The most values a recursive internal function may hold in its frame: parameters, locals,
+and scratch.  With the depth limit of 1,000, every accepted frame overflows Wasmtime's default
+512 KiB stack only beyond 2,000 calls, measured on aarch64 with Wasmtime 44. -/
+def recursiveFrameLimit : Nat := 24
+
+/-- The functions that `s` calls. -/
+def callsOf : Project.IR.Stmt → List Nat
+  | .seq first second => callsOf first ++ callsOf second
+  | .ite _ thenStmt elseStmt => callsOf thenStmt ++ callsOf elseStmt
+  | .while _ body => callsOf body
+  | .call func _ _ => [func]
+  | _ => []
+
+/-- Whether a recursive body may call `func`, which carries no depth: it calls only the
+runtime's `alloc` and `release` and holds at most `recursiveFrameLimit` values, so it adds one
+bounded frame on top of the recursion. -/
+def isLeaf (func : Project.IR.Func) : Bool :=
+  (callsOf func.body).all (· < 2) &&
+    func.params.length + func.vars.length + func.width ≤ recursiveFrameLimit
+
 /-- The compiler's view of the definition being compiled.  `words`, `floats`,
 `arrays`, `floatArrays`, and `lists` give the local of each `UInt64`, `Float`,
 `Array UInt64`, `Array Float`, and `List UInt64` variable in scope, `tuples` gives the
@@ -84,6 +104,12 @@ structure Ctx where
   selfCall : Option (Nat × Nat) := none
   tuples : List (Lean.Expr × List (Nat × ScalarType)) := []
   callees : List (Name × Nat) := []
+  /-- The internal function of each recursive callee, which a call from a recursive body
+  enters at the caller's depth plus one. -/
+  internals : List (Name × Nat) := []
+  /-- The non-recursive callees that a recursive body may call: those that call no compiled
+  function and hold at most `recursiveFrameLimit` values in their frame. -/
+  leaves : List Name := []
   foldable : Bool
   /-- Whether code may allocate or call: false inside an element of
   `LeanExe.build`, whose statements must keep the store. -/
@@ -91,6 +117,8 @@ structure Ctx where
   /-- Whether calls with scalar arguments and results may appear where code must
   keep the store: true in loop bodies and elements of `LeanExe.build`. -/
   pureCalls : Bool := false
+  /-- Whether such a call may also lend a value of a recursive type: true in loop bodies. -/
+  lendsTrees : Bool := false
   /-- Whether a `let` may bind an array: true at the top of a function body, false
   in a branch, since the array is released at the end of the function. -/
   temporaries : Bool := true
@@ -843,7 +871,7 @@ mutual
           return (ir, [hint ir "if result"])
         unless ← isWordType type do throwError "unsupported conditional type in {source}"
         let inner := { ctx with foldable := false }
-        let (c, cHints) ← translateCondition inner loc condition
+        let (c, cHints) ← translateCondition ctx loc condition
         let branch := loc.skip (exprLength c)
         let (a, aHints) ← translateValue inner (branch.inside (some 0)) thenTerm
         let (b, bHints) ← translateValue inner (branch.inside (some 1)) elseTerm
@@ -1427,7 +1455,7 @@ mutual
     for (((⟨_, value⟩, hints), componentSource), (local_, _)) in inits.toList.zip state.toList do
       let stmt := Project.IR.Stmt.assign local_ value
       pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "loop start" componentSource :: hints)
-    let bodyCtx := { ctx with foldable := false, pureCalls := true }
+    let bodyCtx := { ctx with foldable := false, pureCalls := true, lendsTrees := true }
     let (bodyStmts, bodyHints) ← withLocalDeclD `i (mkConst ``UInt64) fun i =>
       withLocalDeclD `state stateType fun x =>
         translateLoopBody ((bodyCtx.bind i [(index, .u64)]).bind x state.toList)
@@ -2225,11 +2253,14 @@ mutual
     unless ctx.foldable && ctx.allocating do
       unless ctx.pureCalls do
         throwError "a call may not appear in a branch, a fold body, or a recursive definition: {source}"
-      for arg in term.getAppArgs do
+      let callOwners := (ctx.owners.lookup term.getAppFn.constName).getD []
+      for h : position in [:term.getAppArgs.size] do
+        let arg := term.getAppArgs[position]
         if ← isArray (← inferType arg) then
           throwError "a call in a loop body or an array element may not take an array: {source}"
         if ← isNodeType (← inferType arg) then
-          throwError "a call in a loop body or an array element may not take a value of a recursive type: {source}"
+          unless ctx.lendsTrees && !callOwners.contains position do
+            throwError "a call in an array element, or at an owned position in a loop body, may not take a value of a recursive type: {source}"
       if ← isArray (← inferType term) then
         throwError "a call in a loop body or an array element may not return an array: {source}"
       let scalars ← try (do let _ ← stateTypes (← inferType term); pure true) catch _ => pure false
@@ -2284,6 +2315,10 @@ mutual
             | none =>
                 unless owned do
                   throwError "a borrowed argument of a recursive type must be a variable: {source}"
+                if arg.consumeMData.getAppFn.constName == ctx.self then
+                  if let some (selfIndex, depth) := ctx.selfCall then
+                    return ([⟨.u64, .get (← translateSelfCall ctx arg.consumeMData selfIndex depth)⟩],
+                      [mkHint ⟨[], offset⟩ 1 "recursive call result" (← sourceOf arg)])
                 let some callee := ctx.callees.lookup arg.consumeMData.getAppFn.constName
                   | throwError "an owned argument of a recursive type must be a variable or a call: {source}"
                 let [(result, .u64)] ← translateCall ctx arg.consumeMData callee
@@ -2310,7 +2345,20 @@ mutual
     let results ← match dests? with
       | some dests => pure (dests.zip types)
       | none => types.mapM fun type => return (← fresh type "call result", type)
-    let stmt := Project.IR.Stmt.call index args.toList (results.map (·.1))
+    -- A call from a recursive body shares its depth: a recursive callee's internal function
+    -- runs at the caller's depth plus one, and any other callee is a leaf, one bounded frame
+    -- on top of the recursion.
+    let name := term.getAppFn.constName
+    let (callIndex, callArgs) ← match ctx.selfCall with
+      | none => pure (index, args)
+      | some (_, depth) =>
+          match ctx.internals.lookup name with
+          | some internal => pure (internal, args.push ⟨.u64, .bin .add (.get depth) (.const 1)⟩)
+          | none => do
+              unless ctx.leaves.contains name do
+                throwError "a recursive definition may call only recursive definitions and definitions that call none and hold at most {recursiveFrameLimit} values: {source}"
+              pure (index, args)
+    let stmt := Project.IR.Stmt.call callIndex callArgs.toList (results.map (·.1))
     pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "call" source :: hints.toList)
     moved.forM markMoved
     return results
@@ -2341,7 +2389,10 @@ mutual
     let mut offset := 0
     for h : position in [:term.getAppArgs.size] do
       let arg := term.getAppArgs[position]
-      let (ir, argHints) ← match ← lookupNode ctx arg.consumeMData with
+      -- The earlier arguments are read where the call runs, after this argument's statements.
+      let earlier := args.toList.flatMap fun value => readLocals value.2
+      let (ir, argHints) ← afterReads ctx earlier do
+        match ← lookupNode ctx arg.consumeMData with
         | some local_ => do
             pure ((.get local_ : IRExpr .u64),
               [mkHint ⟨[], offset⟩ 1 "variable" (← sourceOf arg)])
@@ -2585,11 +2636,6 @@ def needsInternal (declName : Name) : MetaM Bool :=
     unless (body.find? fun e => e.isConstOf declName).isSome do return false
     return !(← tailOnly declName body)
 
-/-- The most values a recursive internal function may hold in its frame: parameters, locals,
-and scratch.  With the depth limit of 1,000, every accepted frame overflows Wasmtime's default
-512 KiB stack only beyond 2,000 calls, measured on aarch64 with Wasmtime 44. -/
-def recursiveFrameLimit : Nat := 24
-
 /-- The depth at which an internal function traps at `unreachable`. -/
 def recursionDepthLimit : UInt64 := 1000
 
@@ -2605,7 +2651,8 @@ of a callee in `owners`, and contains it nowhere else.  A parameter of a recursi
 owned when the result term returns it or places it or one of its children in a constructor.
 The compiler returns the positions of the owned parameters. -/
 def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
-    (owners : List (Name × List Nat) := []) (internal : Option Nat := none) :
+    (owners : List (Name × List Nat) := []) (internal : Option Nat := none)
+    (internals : List (Name × Nat) := []) (leaves : List Name := []) :
     MetaM (Func × Hints × List Nat × Option (Func × Hints)) := do
   let env ← getEnv
   let .defnInfo _ ← getConstInfo declName
@@ -2707,14 +2754,16 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let depth := paramTypes.size
       let ctx : Ctx :=
         { self := declName, params, words, floats, arrays, floatArrays, nodes, foldable := true,
-          selfCall := some (index, depth), owned,
-          owners := (declName, positionsOf owned) :: owners }
+          selfCall := some (index, depth), owned, callees := callees.filter (·.1 != declName),
+          internals, leaves, owners := (declName, positionsOf owned) :: owners }
       let guard : Project.IR.Stmt :=
         .ite (.ltU (.const (recursionDepthLimit - 1)) (.get depth)) .abort .skip
       let ((results, resultHints), prelude) ←
         (translateResults ctx body resultType).run { base := depth + 1 }
       unless owned.all prelude.consumed.contains do
         throwError "an owned parameter of {declName} must move on every path; releasing it is not supported yet"
+      unless prelude.temporaries.all (prelude.consumed.contains ·.1) do
+        throwError "a temporary of {declName} must move on every path; releasing it in a recursive definition is not supported yet"
       let stmts := guard :: prelude.stmts.toList
       let bodyLength := (stmts.map stmtLength).sum
       let (_, shifted) := (results.zip resultHints).foldl (init := (bodyLength, []))

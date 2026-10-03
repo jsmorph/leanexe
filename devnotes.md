@@ -23479,3 +23479,88 @@ Tests: 120 comparisons for each tree program, 144 for `fillTwice`, and five coun
 `release-temporary` LTG entry covers `let` temporaries.
 
 Item 5 is complete.
+
+### Item 6: calls inside recursive definitions and tree arguments in loop bodies, analysis
+
+The internal function of a recursive definition gets a context without `callees`, so a call of
+another listed function fails ("unsupported term: size field").  A call in a loop or fold body
+runs under `pureCalls`, which admits only word and float arguments and results ("a call in a
+loop body or an array element may not take a value of a recursive type").  Scratch programs:
+
+| Program | Shape | Result |
+|---------|-------|--------|
+| `leftSizes`: `.node l _ r => let n := size l; .node (leftSizes l) n (leftSizes r)` | tree recursion that lends a child to `size` | rejected: no callees |
+| `leftHeavy`: `.node l _ r => (if size r < size l then 1 else 0) + leftHeavy l + leftHeavy r` | word recursion that calls `size` | rejected: no callees |
+| `sumSizes n t := LeanExe.loop n 0 fun _ acc => acc + size t` | loop body that lends a tree | rejected by `pureCalls` |
+| `countBelow` with `if contains i t then ...` | a `Bool` condition | rejected: `Bool` results are unsupported, a separate gap |
+
+The two kinds of recursion prove different things.  A tree-result recursion (`Rebuilds`) changes
+the store, so a call inside it composes the callee's `Implements` frame, as `sizeDrop_call` does.
+A word-result recursion (`Keeps`) and a loop body state that the store does not change, which
+`Implements` does not give.  Iteration 10 had that statement for an entry, `KeepsEntry`, with
+`Func.entry_keeps` and `Stmt.callKeeps_spec`.  Iteration 12 removed them once `Implements` kept
+borrowed trees.  `ImplementsPure` states the same for scalar arguments only.  The compiler side
+also needs: temporaries on the recursive path, which nothing releases now, and `afterReads` for
+the word arguments of a self-call (step 5a).
+
+### Item 6: approaches
+
+| Approach | What it does | Effect |
+|----------|--------------|--------|
+| A. Calls in both recursion kinds, and borrowed trees in loop and fold bodies | Callees in the recursive context; the recursive path releases unmoved temporaries; self-call word arguments under `afterReads`; `pureCalls` admits a tree argument at a borrowed position; `KeepsEntry`, `Func.entry_keeps`, and `Stmt.callKeeps_spec` restored outside the specification files | `leftSizes`, `leftHeavy`, and `sumSizes` compile and can be proved |
+| B. Tree-result recursions only | Callees in the recursive context; no store-keeping specification | `leftHeavy` and `sumSizes` stay rejected |
+| C. A without loop bodies | | `sumSizes` stays rejected |
+
+Recommendation: A.  The store-keeping specification serves both word recursions and loop bodies,
+and its proof from an internal function's `Keeps` existed and was checked before.  A callee that
+borrows its trees and returns a word may still allocate and release inside, in which case its
+`KeepsEntry` is false and a caller's proof fails, while the program stays correct.  Programs:
+`leftSizes`, `leftHeavy`, and `sumSizes` in `trees`, each with its theorem, and `size_keeps` from
+`size_rec`.
+
+- [x] 6a: the compiler changes; scratch checks and the byte comparison.
+- [ ] 6b: `KeepsEntry` and its two rules; `size_keeps`.
+- [ ] 6c: the three programs and their theorems.
+- [ ] Tests, LTG, journal.
+
+### Review of the item 6 plan
+
+One reviewer prototyped A and three variants in renamed copies of the compiler and ran them in
+Wasmtime.  I reran its `nestSet` and `selfMove` modules: under A, `nestSet` on a spine of 20,000
+nodes ends in "call stack exhausted", and with its routing fix it aborts at `unreachable`.
+Without `afterReads` on self-call arguments, `selfMove` returns a freed record.
+
+| Finding | Response |
+|---------|----------|
+| With callees in the recursive context, a call to another recursive definition enters its entry, which restarts the depth at 0, against decision (a) of 2026-10-02 ("the depth passed on to other recursive functions' internal functions").  Nested recursions exhaust the stack | A call from a recursive body to a recursive callee enters the callee's internal function at depth + 1 |
+| A non-recursive callee that calls a recursive function also restarts the depth | User decision below |
+| The tree-argument path of `translateCall` looks the definition itself up among its callees, so `setKey k (nestSet l)` calls `nestSet`'s entry | The recursive context drops the definition from its callees, and a self-call at an owned tree position goes through `translateSelfCall` |
+| Without `afterReads` on self-call arguments, `selfMove` frees a child before the self-call receives it | Adopted |
+| The condition of a word `if` is translated with `foldable := false`, so `leftHeavy` as written fails.  Translating it in the enclosing context keeps all 22 modules' bytes | Adopted |
+| `pureCalls` also governs `LeanExe.build` elements, whose specification gives the body only borrowed arrays.  Fold bodies reject calls | A tree argument is admitted in loop bodies only (`lendsTrees`) |
+| Temporaries on the recursive path: only a top-level tree `let` or pair creates them.  No planned program releases one, and in a word recursion the allocation breaks `Keeps` | Rejected on the recursive path for now |
+| `KeepsEntry`, `Func.entry_keeps`, and `Stmt.callKeeps_spec` restored verbatim prove `size_keeps` from `size_rec`, and `sumSizes` with `Stmt.loop_spec` and `Stmt.callKeeps_spec` (`P1.lean`) | Restored in `Project/IR/Recursion.lean`, outside the specification files |
+| With the shared depth, a recursive body proves its calls of recursive callees with `Stmt.selfCall_spec` or `Stmt.selfCall_rebuilds`, which take any index | `KeepsEntry` serves loop bodies |
+
+On 2026-10-03 the user chose the callees of a recursive body: recursive callees through their
+internal functions at depth + 1, and non-recursive callees that call no compiled function and
+hold at most 24 values in their frame, one bounded frame on top of the recursion.
+
+### Item 6, step 6a: the compiler
+
+The module command passes each recursive definition's internal function (`internals`) and the
+leaves (`isLeaf`: the body calls only `alloc` and `release`, and the frame holds at most
+`recursiveFrameLimit` values) to later definitions.  In a recursive body, `translateCall` sends a
+call of a recursive callee to its internal function with the depth plus one, accepts a leaf at
+its entry, and rejects any other callee.  The recursive context drops the definition from its
+callees, so a self-call at an owned tree position of another call goes through
+`translateSelfCall`, whose arguments now translate under `afterReads`.  The condition of a word
+`if` translates in the enclosing context, so it may call.  A loop body may lend a tree to a call
+at a borrowed position (`lendsTrees`), and an element of `LeanExe.build` may not.  A temporary on the
+recursive path that does not move fails.
+
+Scratch checks: `leftSizes` and `leftHeavy` call `size`'s internal function at depth + 1,
+`sumSizes` calls `size` in its loop body, `nestSet` sends its nested self-call through the
+internal function, and `useLeaf` calls a leaf.  `selfMove` (its callee `droppedSize` calls
+`dropSmall`), `useDrop`, and `buildSizes` fail.  The full build passed, and all 22 modules emit the same bytes as
+before.
