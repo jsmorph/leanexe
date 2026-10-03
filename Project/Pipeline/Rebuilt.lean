@@ -21,13 +21,12 @@ structure Heap.Rebuilt (heap : Heap) (initial : Store Unit) (gone : List (Nat ×
   region : ∀ r, heap.Region r → 0 < r.2 → (∀ b ∈ gone, regionsDisjoint r b) →
     (∀ a, r.1 ≤ a → a < r.1 + r.2 → store.mem.bytes a = initial.mem.bytes a) ∧
       heap'.Region r ∧ ∀ b ∈ n.blocks store p, regionsDisjoint r b
-  pages : initial.mem.pages ≤ store.mem.pages
   caps : store.memoryCaps = initial.memoryCaps
 
 /-- The null pointer is the empty value, rebuilt from any heap. -/
 theorem Heap.Rebuilt.null {heap : Heap} {initial : Store Unit} {gone : List (Nat × Nat)}
     (h : heap.At initial) : heap.Rebuilt initial gone heap initial 0 .null :=
-  ⟨h, rfl, .nil, fun _ hr _ _ => ⟨fun _ _ _ => rfl, hr, fun _ hb => nomatch hb⟩, le_refl _, rfl⟩
+  ⟨h, rfl, .nil, fun _ hr _ _ => ⟨fun _ _ _ => rfl, hr, fun _ hb => nomatch hb⟩, rfl⟩
 
 /-- An owned value with disjoint blocks is rebuilt from its own blocks by code that leaves it
 as it is. -/
@@ -35,14 +34,13 @@ theorem Heap.Rebuilt.refl {heap : Heap} {store : Store Unit} {p : UInt64} {n : N
     (hHeap : heap.At store) (h : NodeOwned heap store p n)
     (hd : (n.blocks store p).Pairwise regionsDisjoint) :
     heap.Rebuilt store (n.blocks store p) heap store p n :=
-  ⟨hHeap, h, hd, fun _ hr _ hGone => ⟨fun _ _ _ => rfl, hr, fun b hb => hGone b hb⟩, le_refl _,
-    rfl⟩
+  ⟨hHeap, h, hd, fun _ hr _ hGone => ⟨fun _ _ _ => rfl, hr, fun b hb => hGone b hb⟩, rfl⟩
 
 /-- A value built without consuming anything is rebuilt from any blocks. -/
 theorem Heap.Built.rebuilt {heap heap' : Heap} {initial store : Store Unit} {p : UInt64}
     {n : Node} (h : heap.Built initial heap' store p n) (gone : List (Nat × Nat)) :
     heap.Rebuilt initial gone heap' store p n :=
-  ⟨h.at_, h.owned, h.disjoint, fun r hr _ _ => h.region r hr, h.pages, h.caps⟩
+  ⟨h.at_, h.owned, h.disjoint, fun r hr _ _ => h.region r hr, h.caps⟩
 
 /-- Every block has positive length. -/
 theorem block_pos (store : Store Unit) (q : UInt64) : 0 < (block store q).2 := by
@@ -108,28 +106,14 @@ theorem Heap.Rebuilt.keepNode {heap heap' : Heap} {initial store : Store Unit}
       ∀ b ∈ m.blocks initial q, ∀ c ∈ n.blocks store p, regionsDisjoint b c :=
   Heap.Keeps.node h.region hm hApart
 
-/-- A borrowed array apart from the consumed blocks stays borrowed and lies apart from the
-result. -/
-theorem Heap.Rebuilt.keepBorrowed {heap heap' : Heap} {initial store : Store Unit}
-    {gone : List (Nat × Nat)} {p q : UInt64} {n : Node} {ws : Array UInt64}
-    (h : heap.Rebuilt initial gone heap' store p n) (hq : heap.Borrowed initial q ws)
-    (hApart : ∀ b ∈ gone, regionsDisjoint (q.toNat, 8 * (ws.size + 1)) b) :
-    heap'.Borrowed store q ws ∧
-      ∀ b ∈ n.blocks store p, regionsDisjoint (q.toNat, 8 * (ws.size + 1)) b := by
-  obtain ⟨hBytes, hRegion, hOut⟩ := h.region _ hq.region (by show 0 < 8 * (ws.size + 1); omega)
-    hApart
-  exact ⟨hq.keep h.pages hBytes hRegion, hOut⟩
-
-/-- An owned array apart from the consumed blocks stays owned, with the same capacity, and lies
-apart from the result. -/
-theorem Heap.Rebuilt.keepOwned {heap heap' : Heap} {initial store : Store Unit}
-    {gone : List (Nat × Nat)} {p q : UInt64} {n : Node} {ws : Array UInt64}
-    (h : heap.Rebuilt initial gone heap' store p n) (hq : heap.Owned initial q ws)
-    (hApart : ∀ b ∈ gone, regionsDisjoint (block initial q) b) :
-    (heap'.Owned store q ws ∧ capacityAt store q = capacityAt initial q) ∧
-      ∀ b ∈ n.blocks store p, regionsDisjoint (block initial q) b := by
-  obtain ⟨hBytes, hRegion, hOut⟩ := h.region _ hq.region (block_pos initial q) hApart
-  exact ⟨hq.keep h.pages hBytes hRegion, hOut⟩
+/-- A region of the heap before, of positive length and apart from the consumed blocks, lies
+inside the memory after. -/
+theorem Heap.Rebuilt.inMemory {heap heap' : Heap} {initial store : Store Unit}
+    {gone : List (Nat × Nat)} {p : UInt64} {n : Node}
+    (h : heap.Rebuilt initial gone heap' store p n) {b : Nat × Nat} (hb : heap.Region b)
+    (hpos : 0 < b.2) (hApart : ∀ g ∈ gone, regionsDisjoint b g) :
+    b.1 + b.2 ≤ store.mem.pages * 65536 :=
+  (h.region b hb hpos hApart).2.1.below.trans h.at_.top
 
 /-- The node case of a consumed recursion over a record `[child, word, child]`: the two
 children rebuilt by consecutive calls, then the record's three slots written. -/
@@ -192,7 +176,7 @@ theorem Heap.Rebuilt.node {heap heap1 heap2 : Heap} {initial store1 store2 final
     simp only [Node.blocks, slotsBlocks, Nat.zero_add, Nat.reduceAdd, List.append_nil, hq1, hq2,
       hlBlocksF, hlBlocks2, hrBlocksF, block_eq hCapacity]
   refine ⟨h2.at_.writesApart hWrites fun node hNode => ?_, ⟨hHead', ?_, hk', ?_, trivial⟩, ?_,
-    fun r hr hpos hGone => ?_, h1.pages.trans (h2.pages.trans (le_of_eq hWrites.2.1.symm)), ?_⟩
+    fun r hr hpos hGone => ?_, ?_⟩
   · have := hRegP2.separate node hNode
     simp only [regionsDisjoint, block] at this ⊢
     omega
@@ -229,15 +213,13 @@ theorem Heap.Rebuilt.node {heap heap1 heap2 : Heap} {initial store1 store2 final
 blocks are consumed, and the result is the empty value. -/
 theorem Heap.Rebuilt.released {heap heap' : Heap} {initial store : Store Unit}
     {gone : List (Nat × Nat)} (hAt : heap'.At store)
-    (hPages : store.mem.pages = initial.mem.pages)
     (hCaps : store.memoryCaps = initial.memoryCaps)
     (hRegion : ∀ r, heap.Region r → 0 < r.2 → (∀ b ∈ gone, regionsDisjoint r b) →
       (∀ a, r.1 ≤ a → a < r.1 + r.2 → store.mem.bytes a = initial.mem.bytes a) ∧
         heap'.Region r) :
     heap.Rebuilt initial gone heap' store 0 .null :=
   ⟨hAt, rfl, .nil, fun r hr hpos hGone =>
-    ⟨(hRegion r hr hpos hGone).1, (hRegion r hr hpos hGone).2, fun _ hb => nomatch hb⟩,
-    le_of_eq hPages.symm, hCaps⟩
+    ⟨(hRegion r hr hpos hGone).1, (hRegion r hr hpos hGone).2, fun _ hb => nomatch hb⟩, hCaps⟩
 
 /-- Writing 0 into slot 0 of an owned record `[child nl, word k, child nr]` with disjoint
 blocks: the write stays in the slot, the allocator invariant holds, the record is owned as
@@ -322,7 +304,6 @@ theorem Heap.Rebuilt.leftChild {heap heap' : Heap} {initial final : Store Unit}
     (hDisjoint : (Node.blocks initial p (.record [.child nl, .word k, .child nr])).Pairwise
       regionsDisjoint)
     (hAt : heap'.At final)
-    (hPages : final.mem.pages = initial.mem.pages)
     (hCaps : final.memoryCaps = initial.memoryCaps)
     (hRegion : ∀ r, heap.Region r → 0 < r.2 →
       (∀ b ∈ Node.blocks { initial with mem := initial.mem.write64 (slotAddress p 0) 0 } p
@@ -363,13 +344,12 @@ theorem Heap.Rebuilt.leftChild {heap heap' : Heap} {initial final : Store Unit}
       (regionsDisjoint_symm (hP0 b (List.mem_append_left _ hb)))
       fun c hc => hlr b hb c hc
   obtain ⟨hlF, hlBlocksF⟩ := NodeOwned.frame (heap' := heap') (store' := final) _ nl hl hlKeep
-  refine ⟨hAt, hlF, by rw [hlBlocksF]; exact hPl, fun r hr hpos hGone => ?_, le_of_eq ?_, ?_⟩
+  refine ⟨hAt, hlF, by rw [hlBlocksF]; exact hPl, fun r hr hpos hGone => ?_, ?_⟩
   · obtain ⟨hBytes, hReg⟩ := hKeep r hr hpos (hGone _ List.mem_cons_self)
       fun b hb => hGone b (List.mem_cons_of_mem _ (List.mem_append_right _ hb))
     refine ⟨hBytes, hReg, fun b hb => ?_⟩
     rw [hlBlocksF] at hb
     exact hGone b (List.mem_cons_of_mem _ (List.mem_append_left _ hb))
-  · exact hPages.symm
   · exact hCaps
 
 /-- `dropRight`'s record branch: the right child released, then 0 stored into slot 2.  The

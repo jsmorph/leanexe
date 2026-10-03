@@ -132,7 +132,7 @@ theorem sumRange_implements :
   have hPtr : st2.get 1 = some (.i64 p) := (hFrame2.get 1 (by decide) (by decide)).trans rfl
   refine (Stmt.releaseNode_spec hImports hRelease hPtr hAt1 hOwned1 hDisj1).mono
     (fun _ _ h => h) ?_
-  rintro s3 st3 ⟨rfl, heap3, hAt3, hPages3, hCaps3, hFrame3⟩
+  rintro s3 st3 ⟨rfl, heap3, hAt3, hCaps3, hFrame3⟩
   refine ⟨heap3, hAt3, hCaps3.trans hCaps1,
     [.i64 ((LeanExe.Examples.Lists.listRange n).foldl (· + ·) 0)], st3,
     by simp [lists.sumRange.ir, Func.scratch, Expr.evalResults, Expr.eval, hAcc], rfl,

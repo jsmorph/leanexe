@@ -22754,8 +22754,8 @@ record's block being a region of the later heap and from `Heap.At.top`.
 call.
 
 - [x] Borrowed trees; `sizeSum` through `Implements`; the deleted specification.
-- [ ] Page fields removed from `Heap.Rebuilt` and `Heap.Built`.
-- [ ] Build, tests, byte comparison, LTG, and journal.
+- [x] Page fields removed from `Heap.Rebuilt` and `Heap.Built`.
+- [x] Build, tests, byte comparison, LTG, and journal.
 
 ### Review of the Iteration 12 plan
 
@@ -22801,4 +22801,25 @@ and `sum_entry` are gone, so `Implements` is the only specification of a call be
 functions.  The `Implements` doc comment now names borrowed trees among the values a call keeps.
 The full build passed, `trees_bytes` depends on `propext`, `Classical.choice`, and
 `Quot.sound`, and the LTG check found every listed declaration.
+
+### Iteration 12, step 12b: page fields
+
+`Heap.Rebuilt`, `Heap.Built`, `Heap.NewRecord`, and `Releasing` no longer carry page facts, and
+`release_tree_run` and `Stmt.releaseNode_spec` no longer state that the page count is unchanged.
+`Heap.Rebuilt.released`, `Heap.Rebuilt.leftChild`, and `leftChild_node` lost their page
+premises.  `Heap.Rebuilt.inMemory` gives a region of the heap before, apart from the consumed
+blocks, inside the memory after, from the region clause and `Heap.At.top`.  In
+`Project/Trees/MovesVerify.lean`, `incr_bound`, `insertLeft_bound`, and `right_bound` bound the
+seven stores that read the field: the region is the root record's block in each case.  The
+uncalled keep lemmas `Heap.Rebuilt.keepBorrowed`, `.keepOwned`, `Heap.Built.keepBorrowed`,
+`.keepOwned`, `Heap.Borrowed.keep`, and `Heap.Owned.keep` are deleted, and the consumed-recursion,
+record-reuse, release-list, and list-cell entries describe the region clause in their place.
+A tree function proved through `Heap.Rebuilt` can now call another compiled function: no fact in
+its invariant needs a page bound that `Implements` does not give.
+
+The change removed 138 lines and added 120 in fifteen files.  The full build passed (3,576
+jobs) with no `sorry`, and all 22 modules emit the same bytes.  `tests/modules/run.sh` passed 7,097
+comparisons, 46 count cases, and 12 depth cases, and `chunks.py` passed 360 cases.  The LTG check
+found every listed declaration.  Iteration 12 is complete, and the open items of Iteration 11 are
+closed.
 

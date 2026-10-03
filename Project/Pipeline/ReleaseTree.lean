@@ -748,7 +748,7 @@ theorem forestBlocks_regions {heap : Heap} {store : Store Unit}
 starting from `heap0` and `initial`: the allocator invariant; the pending records `items`,
 linked from `pending`, each with its subtree owned; their blocks pairwise disjoint; every
 region of `heap0` of positive size apart from the tree keeping its bytes, staying a region,
-and lying apart from the pending blocks; and the same pages and memory caps. -/
+and lying apart from the pending blocks; and the same memory caps. -/
 structure Releasing (heap0 : Heap) (initial : Store Unit) (tree : List (Nat × Nat)) (heap : Heap)
     (store : Store Unit) (pending : UInt64) (items : List (UInt64 × List Slot)) : Prop where
   at_ : heap.At store
@@ -758,7 +758,6 @@ structure Releasing (heap0 : Heap) (initial : Store Unit) (tree : List (Nat × N
   region : ∀ r, heap0.Region r → 0 < r.2 → (∀ b ∈ tree, regionsDisjoint r b) →
     (∀ a, r.1 ≤ a → a < r.1 + r.2 → store.mem.bytes a = initial.mem.bytes a) ∧ heap.Region r ∧
       ∀ b ∈ forestBlocks store items, regionsDisjoint r b
-  pages : store.mem.pages = initial.mem.pages
   caps : store.memoryCaps = initial.memoryCaps
 
 theorem mem_blocks_record (store : Store Unit) (k : UInt64 × List Slot) :
@@ -1044,7 +1043,7 @@ theorem Releasing.next {heap0 heap : Heap} {initial store : Store Unit}
       (forestBlocks store (kids ++ rest)) := by
     rw [forestBlocks_append, forestBlocks_append]
     exact ((List.reverse_perm kids).flatMap_right _).append_right _
-  refine ⟨Heap.At.release hAt1 hObj1, ?_, fun k hk => (hFrame k (hMem k hk)).1, ?_, ?_, ?_, ?_⟩
+  refine ⟨Heap.At.release hAt1 hObj1, ?_, fun k hk => (hFrame k (hMem k hk)).1, ?_, ?_, ?_⟩
   · have hChain1 := linkChildren_chain store.mem next kids rest h.chain.2
       (fun k hk => by
         have := (hItem k hk).1.base
@@ -1078,8 +1077,6 @@ theorem Releasing.next {heap0 heap : Heap} {initial store : Store Unit}
     refine ⟨fun a hl hh => (hBytes2 a hl hh).trans (hBytes0 a hl hh), hReg2, fun b hb => ?_⟩
     rw [hBlocks2] at hb
     exact hApartT b (hPerm.mem_iff.mp hb)
-  · rw [Heap.releaseStore_pages]
-    exact (linkChildren_pages _ _ _).trans h.pages
   · exact h.caps
 
 /-- After `release` drops the reference to the root of a tree of owned records, the root is
@@ -1120,7 +1117,7 @@ theorem Releasing.start {heap : Heap} {store : Store Unit} {p : UInt64} {slots :
     simp only [forestBlocks, List.flatMap_cons, List.flatMap_nil, List.append_nil, Node.blocks,
       block_eq hCapEq, hBlocksEq]
   refine ⟨hAt1, ⟨rfl, ?_⟩, fun k hk => ?_, by rw [hTree]; exact hDisjoint, fun r hr hSize hr' => ?_,
-    by simp [releaseEntry, Wasm.Mem.write64_pages], rfl⟩
+    rfl⟩
   · simp only [releaseEntry, PendingAt]
     exact Memory.read64_write64 _ _ _
   · simp only [List.mem_singleton] at hk
@@ -1134,16 +1131,15 @@ theorem Releasing.start {heap : Heap} {store : Store Unit} {p : UInt64} {slots :
 theorem Releasing.done {heap0 heap : Heap} {initial store : Store Unit}
     {tree : List (Nat × Nat)} {pending : UInt64}
     (h : Releasing heap0 initial tree heap store pending []) :
-    pending = 0 ∧ heap.At store ∧ store.mem.pages = initial.mem.pages ∧
-      store.memoryCaps = initial.memoryCaps ∧
+    pending = 0 ∧ heap.At store ∧ store.memoryCaps = initial.memoryCaps ∧
       ∀ r, heap0.Region r → 0 < r.2 → (∀ b ∈ tree, regionsDisjoint r b) →
         (∀ a, r.1 ≤ a → a < r.1 + r.2 → store.mem.bytes a = initial.mem.bytes a) ∧
           heap.Region r :=
-  ⟨h.chain, h.at_, h.pages, h.caps, fun r hr hSize hTree =>
+  ⟨h.chain, h.at_, h.caps, fun r hr hSize hTree =>
     ⟨(h.region r hr hSize hTree).1, (h.region r hr hSize hTree).2.1⟩⟩
 
 /-- `release` on the root of a tree of owned records with pairwise disjoint blocks frees the
-tree: it returns, the allocator invariant holds for some heap, the pages and memory caps are
+tree: it returns, the allocator invariant holds for some heap, the memory caps are
 unchanged, and every region of positive size of the old heap apart from the tree keeps its
 bytes and stays a region.  The null pointer returns at once. -/
 theorem release_tree_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
@@ -1151,8 +1147,7 @@ theorem release_tree_run {m : Module} {typeIdx : Nat} (hImports : m.imports = []
     (store : Store Unit) (p : UInt64) (n : Node) (hHeap : heap.At store)
     (hOwned : NodeOwned heap store p n) (hDisjoint : (n.blocks store p).Pairwise regionsDisjoint) :
     TerminatesWith env m 1 store [.i64 p] fun final out => out = [] ∧
-      ∃ heap' : Heap, heap'.At final ∧ final.mem.pages = store.mem.pages ∧
-        final.memoryCaps = store.memoryCaps ∧
+      ∃ heap' : Heap, heap'.At final ∧ final.memoryCaps = store.memoryCaps ∧
         ∀ r, heap.Region r → 0 < r.2 → (∀ b ∈ n.blocks store p, regionsDisjoint r b) →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
             heap'.Region r := by
@@ -1211,10 +1206,10 @@ theorem release_tree_run {m : Module} {typeIdx : Nat} (hImports : m.imports = []
     subst hRoot
     cases items with
     | nil =>
-      obtain ⟨hPending, hAt', hPages', hCaps', hFrame'⟩ := hR.done
+      obtain ⟨hPending, hAt', hCaps', hFrame'⟩ := hR.done
       subst hPending
       simp [ReleaseVars.toLocals, wp_simp]
-      exact ⟨heap', hAt', hPages', hCaps', fun a b hr hb hT =>
+      exact ⟨heap', hAt', hCaps', fun a b hr hb hT =>
         hFrame' (a, b) hr hb fun x hx => hT x.1 x.2 hx⟩
     | cons item rest =>
       obtain ⟨q, qslots⟩ := item

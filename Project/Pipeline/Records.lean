@@ -240,7 +240,6 @@ structure Heap.NewRecord (heap : Heap) (initial : Store Unit) (heap' : Heap) (st
   region : ∀ r, heap.Region r →
     (∀ a, r.1 ≤ a → a < r.1 + r.2 → store.mem.bytes a = initial.mem.bytes a) ∧
       heap'.Region r ∧ regionsDisjoint r (block store ptr)
-  pages : initial.mem.pages ≤ store.mem.pages
   caps : store.memoryCaps = initial.memoryCaps
 
 /-- An owned record's block is a region of the heap. -/
@@ -273,8 +272,8 @@ end
 
 /-- The value `n`, owned at `p` in `heap'` and `store`, built from `heap` and `initial`: the
 allocator invariant holds, the value's blocks are pairwise disjoint, every region of `heap`
-keeps its bytes, stays a region, and lies apart from the value's blocks, memory has not
-shrunk, and the memory limits are unchanged. -/
+keeps its bytes, stays a region, and lies apart from the value's blocks, and the memory
+limits are unchanged. -/
 structure Heap.Built (heap : Heap) (initial : Store Unit) (heap' : Heap) (store : Store Unit)
     (p : UInt64) (n : Node) : Prop where
   at_ : heap'.At store
@@ -283,13 +282,12 @@ structure Heap.Built (heap : Heap) (initial : Store Unit) (heap' : Heap) (store 
   region : ∀ r, heap.Region r →
     (∀ a, r.1 ≤ a → a < r.1 + r.2 → store.mem.bytes a = initial.mem.bytes a) ∧
       heap'.Region r ∧ ∀ b ∈ n.blocks store p, regionsDisjoint r b
-  pages : initial.mem.pages ≤ store.mem.pages
   caps : store.memoryCaps = initial.memoryCaps
 
 /-- The null pointer is the empty value, built from any heap. -/
 theorem Heap.Built.null {heap : Heap} {initial : Store Unit} (h : heap.At initial) :
     heap.Built initial heap initial 0 .null :=
-  ⟨h, rfl, .nil, fun _ hr => ⟨fun _ _ _ => rfl, hr, fun _ hb => nomatch hb⟩, le_refl _, rfl⟩
+  ⟨h, rfl, .nil, fun _ hr => ⟨fun _ _ _ => rfl, hr, fun _ hb => nomatch hb⟩, rfl⟩
 
 /-- A record allocated and filled with the word `x` and the pointer `p` to a built value
 `n` holds the list cell of `x` and `n`. -/
@@ -306,7 +304,7 @@ theorem Heap.Built.cell {heap heap1 heap2 : Heap} {initial store1 store2 : Store
       block store2 ptr :: n.blocks store1 p := by
     simp only [Node.blocks, slotsBlocks, hp, hBlocks, List.append_nil]
   refine ⟨hNew.at_, ⟨hNew.header _ rfl rfl, hx, by rw [hp]; exact hOwned, trivial⟩, ?_,
-    fun r hr => ?_, h.pages.trans hNew.pages, hNew.caps.trans h.caps⟩
+    fun r hr => ?_, hNew.caps.trans h.caps⟩
   · rw [hNewBlocks]
     exact .cons (fun b hb => regionsDisjoint_symm (hNew.region b (hOld b hb)).2.2) h.disjoint
   · obtain ⟨hBytes, hRegion, hApart⟩ := h.region r hr
@@ -317,31 +315,6 @@ theorem Heap.Built.cell {heap heap1 heap2 : Heap} {initial store1 store2 : Store
     rcases List.mem_cons.mp hb with rfl | hb
     · exact hNewApart
     · exact hApart b hb
-
-/-- A value built from `heap` keeps every array that `heap` lends or owns, and lies apart
-from it. -/
-theorem Heap.Built.keepBorrowed {heap heap' : Heap} {initial store : Store Unit} {p q : UInt64}
-    {n : Node} {ws : Array UInt64} (h : heap.Built initial heap' store p n)
-    (hq : heap.Borrowed initial q ws) :
-    heap'.Borrowed store q ws ∧ ∀ b ∈ n.blocks store p,
-      regionsDisjoint (q.toNat, 8 * (ws.size + 1)) b := by
-  obtain ⟨hBytes, hRegion, hApart⟩ := h.region _ hq.region
-  exact ⟨⟨arrayAt_frame hq.values h.pages hBytes, hRegion.below,
-    fun node hNode => regionsDisjoint_symm (hRegion.separate node hNode)⟩, hApart⟩
-
-theorem Heap.Built.keepOwned {heap heap' : Heap} {initial store : Store Unit} {p q : UInt64}
-    {n : Node} {ws : Array UInt64} (h : heap.Built initial heap' store p n)
-    (hq : heap.Owned initial q ws) :
-    (heap'.Owned store q ws ∧ capacityAt store q = capacityAt initial q) ∧
-      ∀ b ∈ n.blocks store p, regionsDisjoint (q.toNat - 48, 48 + capacityAt initial q) b := by
-  obtain ⟨hBytes, hRegion, hApart⟩ := h.region _ hq.region
-  have := hq.base
-  have := hq.address
-  simp only [block] at hBytes hRegion hApart
-  refine ⟨⟨Heap.Owned.frame hq h.pages (fun a hLow hHigh => hBytes a hLow (by omega))
-      (by have := hRegion.below; simp only at this; omega) hRegion.separate,
-    capacityAt_frame (by omega) (by omega) fun a hLow hHigh => hBytes a hLow (by omega)⟩,
-    hApart⟩
 
 theorem maskOf_cons (s : Slot) (rest : List Slot) :
     maskOf (s :: rest) = 2 * maskOf rest + s.bit := rfl
@@ -441,31 +414,6 @@ theorem NodeOwned.listAt {heap : Heap} {store : Store Unit} (hHeap : heap.At sto
       simp only [List.length_cons, List.length_nil] at *
       exact ⟨fun h => by rw [h] at hBase; simp at hBase, by omega, by omega, hx,
         NodeOwned.listAt hHeap hChild⟩
-
-/-- A borrowed array whose region keeps its bytes and is a region of the new heap stays
-borrowed. -/
-theorem Heap.Borrowed.keep {heap heap' : Heap} {store store' : Store Unit} {q : UInt64}
-    {ws : Array UInt64} (h : heap.Borrowed store q ws) (hPages : store.mem.pages ≤ store'.mem.pages)
-    (hBytes : ∀ a, q.toNat ≤ a → a < q.toNat + 8 * (ws.size + 1) →
-      store'.mem.bytes a = store.mem.bytes a)
-    (hRegion : heap'.Region (q.toNat, 8 * (ws.size + 1))) : heap'.Borrowed store' q ws :=
-  ⟨arrayAt_frame h.values hPages hBytes, hRegion.below,
-    fun node hNode => regionsDisjoint_symm (hRegion.separate node hNode)⟩
-
-/-- An owned array whose block keeps its bytes and is a region of the new heap stays owned,
-with the same capacity. -/
-theorem Heap.Owned.keep {heap heap' : Heap} {store store' : Store Unit} {q : UInt64}
-    {ws : Array UInt64} (h : heap.Owned store q ws) (hPages : store.mem.pages ≤ store'.mem.pages)
-    (hBytes : ∀ a, (block store q).1 ≤ a → a < (block store q).1 + (block store q).2 →
-      store'.mem.bytes a = store.mem.bytes a)
-    (hRegion : heap'.Region (block store q)) :
-    heap'.Owned store' q ws ∧ capacityAt store' q = capacityAt store q := by
-  have := h.base
-  have := h.address
-  simp only [block] at hBytes hRegion
-  exact ⟨h.frame hPages (fun a hl hh => hBytes a hl (by omega)) (by
-      have := hRegion.below; simp only at this; omega) hRegion.separate,
-    capacityAt_frame (by omega) (by omega) fun a hl hh => hBytes a hl (by omega)⟩
 
 /-- Replacing a word slot by a word keeps the child mask. -/
 theorem maskOf_set_word : ∀ (slots : List Slot) (i : Nat) (v w : UInt64),
