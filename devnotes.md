@@ -23519,9 +23519,9 @@ borrows its trees and returns a word may still allocate and release inside, in w
 `size_rec`.
 
 - [x] 6a: the compiler changes; scratch checks and the byte comparison.
-- [ ] 6b: `KeepsEntry` and its two rules; `size_keeps`.
-- [ ] 6c: the three programs and their theorems.
-- [ ] Tests, LTG, journal.
+- [x] 6b: `KeepsEntry` and its two rules; `size_keeps`.
+- [x] 6c: the three programs and their theorems.
+- [x] Tests, LTG, journal.
 
 ### Review of the item 6 plan
 
@@ -23564,3 +23564,35 @@ Scratch checks: `leftSizes` and `leftHeavy` call `size`'s internal function at d
 internal function, and `useLeaf` calls a leaf.  `selfMove` (its callee `droppedSize` calls
 `dropSmall`), `useDrop`, and `buildSizes` fail.  The full build passed, and all 22 modules emit the same bytes as
 before.
+
+### Item 6, steps 6b and 6c: the proofs
+
+`KeepsEntry`, `Func.entry_keeps`, and `Stmt.callKeeps_spec` are back in
+`Project/IR/Recursion.lean`, as the reviewer restored them from before commit 09d68c58.
+`size_keeps` derives `size`'s `KeepsEntry` from `size_rec`.  `KeyTree.leftSizes`,
+`KeyTree.leftHeavy`, and `KeyTree.sumSizes` joined `trees` as entries 15 through 17, so the
+internal functions are now `size.rec` through `height.rec` at `2 + 16` through `2 + 18`,
+`leftSizes.rec` at `2 + 19`, and `leftHeavy.rec` at `2 + 20`.
+
+`leftSizes_rec` follows `incr_rec`, with a call of `size`'s internal function on the left child
+at the depth plus one, proved by `Stmt.selfCall_spec` with `size_rec`.  The call keeps the store,
+so the rest of the proof is `incr_rec`'s.  The helpers that `incr_rec` used (`blocks_node`,
+`gone_eq`, `writes3`, `node_children`, and the call premises, bound, and rebuild of a node) moved
+from `MovesVerify.lean` to `Project/Trees/Node.lean`, stated for any rebuilt children, and both
+files use them.  `leftHeavy_rec` applies `Func.recursion` directly: the record branch makes four
+calls, two of `size`'s internal function and two self-calls, each by `Stmt.selfCall_spec`, then
+one assignment.  `sumSizes_implements` follows the reviewer's `P1.lean`: `Stmt.loop_spec` with the
+loop's prefix as the invariant, and `Stmt.callKeeps_spec` with `size_keeps` in the body, since the
+store never changes and the tree stays borrowed in it.  `trees_bytes` covers the three theorems
+and depends on `propext`, `Classical.choice`, and `Quot.sound`.
+
+Tests: 24 comparisons each for `leftSizes` and `leftHeavy`, 96 for `sumSizes`, a count case
+(`leftSizes` allocates and frees nothing), and four depth cases: `leftHeavy` and `leftSizes` run
+on a chain of 999 nodes and trap at `unreachable` on a chain of 1,000, which shows that `size`
+runs at the caller's depth.  A first run timed out because I had put `sumSizes` in a loop whose
+counts include 2^64 - 1.  `tests/modules/run.sh` passed 8,921 comparisons, 70 count cases, and
+16 depth cases, and `chunks.py` passed 360 cases.  The full build passed with no `sorry`, and
+every other module emits the same bytes as before.  The `function-call` LTG entry covers calls
+from recursive bodies and loop bodies.
+
+Item 6 is complete.

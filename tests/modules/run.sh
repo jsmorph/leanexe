@@ -248,7 +248,15 @@ if [ "$out" != "stats 1 0" ]; then
   stats_failed=$((stats_failed + 1))
   echo "fail: clob fillTwice: $out, expected stats 1 0"
 fi
-echo "release counts: 69 cases, $stats_failed failed"
+# leftSizes rewrites every record in place and lends each left child to size: only the host's
+# records are allocated, and nothing is freed.
+out=$("$host" call-stats "$build/trees/trees.wasm" leftSizes tree-u64 "tree-u64:5,1,.,.,9,.,." \
+  | tail -1)
+if [ "$out" != "stats 3 0" ]; then
+  stats_failed=$((stats_failed + 1))
+  echo "fail: trees leftSizes: $out, expected stats 3 0"
+fi
+echo "release counts: 70 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0
@@ -263,7 +271,10 @@ case "$out" in
   *"wasm \`unreachable\` instruction executed"*) ;;
   *) depth_failed=$((depth_failed + 1)); echo "fail: trees size on a chain of 1000: $out" ;;
 esac
-for module_name in trees:height:i64 treeFrame:wide:i64 treeMoves:incr:tree-u64; do
+# leftHeavy and leftSizes call size's internal function at their own depth plus one, so the
+# depth limit covers both recursions together.
+for module_name in trees:height:i64 treeFrame:wide:i64 treeMoves:incr:tree-u64 \
+    trees:leftHeavy:i64 trees:leftSizes:tree-u64; do
   IFS=: read -r module name kind <<<"$module_name"
   out=$("$host" call "$build/$module/$module.wasm" "$name" "$kind" "$(chain 999)" 2>&1) || true
   case "$out" in
@@ -296,5 +307,5 @@ for call in "dropRight:999 998" "leftChild:999 999"; do
     echo "fail: treeMoves $name on a chain of 999: $out, expected stats $expected"
   fi
 done
-echo "depth guard: 12 cases, $depth_failed failed"
+echo "depth guard: 16 cases, $depth_failed failed"
 [ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$stats_failed" -eq 0 ] && [ "$depth_failed" -eq 0 ]

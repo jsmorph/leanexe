@@ -350,6 +350,12 @@ def treeCases : IO Unit := do
     line "trees" "sum" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.sum)
     line "trees" "height" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.height)
     line "trees" "sizeSum" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.sizeSum)
+    line "trees" "leftSizes" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
+      (KeyTree.describe t.leftSizes)
+    line "trees" "leftHeavy" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.leftHeavy)
+    for n in ([0, 1, 3, 10] : List UInt64) do
+      line "trees" "sumSizes" "i64" [u n, s!"tree-u64:{KeyTree.describe t}"]
+        (toString (t.sumSizes n))
     for xs in ([[], [7], [1, 2, 3]] : List (List UInt64)) do
       let r := t.pushSum xs.toArray
       line "trees" "pushSum" "list:array-u64,i64" [arrU xs, s!"tree-u64:{KeyTree.describe t}"]
