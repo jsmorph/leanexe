@@ -158,12 +158,13 @@ theorem generating_step {store : Store Unit} {W : Weights} {P : Pointers}
       rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bfc], _, rfl, ⟨P.bfc, rfl, b _ _ (by simp [Weights.pairs])⟩, [.i64 P.wproj], _, rfl, ⟨P.wproj, rfl,
       b _ _ (by simp [Weights.pairs])⟩, [.i64 P.bproj], _, rfl, ⟨P.bproj, rfl, b _ _ (by simp [Weights.pairs])⟩, rfl⟩
     ⟨List.pairwise_singleton _ _, hReads⟩ hCap).mono ?_
-  rintro final values ⟨heap', hAt', ⟨pc', hValues, hNew⟩, hCaps, hKeepB, -, hOutB, -⟩
+  rintro final values ⟨heap', hAt', ⟨pc', hValues, hNew⟩, hCaps, hRegion⟩
   have hValues' : values = [.i64 pc'] := by
     rw [← List.reverse_reverse values, hValues]; rfl
   refine ⟨pc', hValues', heap', hAt', memoryCap_le_of_caps hCaps hCap, fun w hw => ⟨?_, ?_⟩, hNew⟩
-  · exact hKeepB w.1 _ (hW w hw).1 (hApart w hw)
-  · have hDisjoint := hOutB w.1 _ (hW w hw).1 (hApart w hw)
+  · obtain ⟨hBytes, hReg, -⟩ := hRegion _ (hW w hw).1.region (by simp) (hApart w hw)
+    exact (hW w hw).1.keepIn hAt' hBytes hReg
+  · have hDisjoint := (hRegion _ (hW w hw).1.region (by simp) (hApart w hw)).2.2
     rw [hValues] at hDisjoint
     have h := Represent.outside_float.mp hDisjoint
     rw [Array.size_map] at h

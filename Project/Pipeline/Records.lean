@@ -12,46 +12,6 @@ namespace Project.Pipeline
 
 open Wasm Project.Runtime Project.ProofKit
 
-/-- A region below `top` and outside every free block, which allocation leaves alone. -/
-structure Heap.Region (heap : Heap) (r : Nat × Nat) : Prop where
-  below : r.1 + r.2 ≤ heap.top.toNat
-  separate : ∀ node ∈ heap.free, regionsDisjoint node.region r
-
-/-- An allocation leaves the bytes of a region, which stays a region and lies apart from the
-new block. -/
-theorem Heap.Region.allocate {heap : Heap} {store : Store Unit} {r : Nat × Nat}
-    {need : UInt64} (stride : UInt64) (h : heap.Region r) (hHeap : heap.At store)
-    (hFits : heap.Fits need) :
-    (heap.allocate need).Region r ∧
-      (∀ a, r.1 ≤ a → a < r.1 + r.2 →
-        (heap.allocateStore store need stride).mem.bytes a = store.mem.bytes a) ∧
-      regionsDisjoint r ((FixedArrayAllocate.root heap.top need heap.free).toNat - 48,
-        48 + (allocatedCapacity need heap.free).toNat) := by
-  have hBump : takeFirstFitFrom 0 need heap.free = none →
-      heap.top.toNat + 48 + need.toNat ≤ 4294967296 := fun h => by have := hFits h; omega
-  have hBelow := h.below
-  refine ⟨⟨?_, fun node hNode => regionsDisjoint_symm (allocatedNodes_apart hHeap.freeList
-      (fun n hn => regionsDisjoint_symm (h.separate n hn)) node hNode)⟩,
-    fun a hLow hHigh => allocated_bytes_outside store heap.top need stride heap.free r.1 r.2
-      hHeap.freeList (fun node hNode => regionsDisjoint_symm (h.separate node hNode)) hBelow
-      hBump a hLow hHigh, ?_⟩
-  · show r.1 + r.2 ≤ (allocatedTop heap.top need heap.free).toNat
-    rw [allocatedTop_toNat heap.top need heap.free hBump]
-    split <;> omega
-  cases hTake : takeFirstFitFrom 0 need heap.free with
-  | some choice =>
-    have := h.separate _ (takeFirstFitFrom_some_mem hTake)
-    have hWithin := allocated_within (base := heap.top) hHeap.freeList hTake
-    simp only [FreeNode.region, regionsDisjoint] at this ⊢
-    omega
-  | none =>
-    have h48 : (48 : UInt64).toNat = 48 := rfl
-    have := hHeap.top
-    have := hHeap.pages
-    simp only [FixedArrayAllocate.root, allocatedCapacity, hTake, regionsDisjoint,
-      UInt64.toNat_add, h48, Nat.reducePow]
-    omega
-
 /-- Slot `i` of a record lies `8 * i` bytes after its pointer. -/
 theorem slotAddress_toNat {p : UInt64} {i : Nat} (h : p.toNat + 8 * i < 4294967296) :
     (slotAddress p i).toNat = p.toNat + 8 * i := by
@@ -192,19 +152,6 @@ structure Heap.NewRecord (heap : Heap) (initial : Store Unit) (heap' : Heap) (st
       heap'.Region r ∧ regionsDisjoint r (block store ptr)
   pages : initial.mem.pages ≤ store.mem.pages
   caps : store.memoryCaps = initial.memoryCaps
-
-/-- A borrowed array occupies a region of the heap. -/
-theorem Heap.Borrowed.region {heap : Heap} {store : Store Unit} {p : UInt64}
-    {ws : Array UInt64} (h : heap.Borrowed store p ws) :
-    heap.Region (p.toNat, 8 * (ws.size + 1)) :=
-  ⟨h.below, fun node hNode => regionsDisjoint_symm (h.separate node hNode)⟩
-
-/-- An owned array's block is a region of the heap. -/
-theorem Heap.Owned.region {heap : Heap} {store : Store Unit} {p : UInt64} {ws : Array UInt64}
-    (h : heap.Owned store p ws) : heap.Region (block store p) := by
-  have := h.below
-  have := h.base
-  exact ⟨by simp only [block]; omega, h.separate⟩
 
 /-- An owned record's block is a region of the heap. -/
 theorem RecordHeader.region {heap : Heap} {store : Store Unit} {p : UInt64} {slots : List Slot}

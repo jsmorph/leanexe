@@ -632,6 +632,14 @@ theorem Heap.Region.release {heap : Heap} {store : Store Unit} {q : UInt64} {r :
   simp only [regionsDisjoint, FreeNode.region] at hSep
   omega
 
+/-- Releasing an object keeps every region apart from its block. -/
+theorem Heap.Keeps.release {heap : Heap} {store : Store Unit} {q : UInt64} (hHeap : heap.At store)
+    (hObject : heap.Object store q) :
+    heap.Keeps store [block store q] (heap.release q (store.mem.read64 (q - 32).toUInt32))
+      (heap.releaseStore store q) [] := fun r hr hpos hApart => by
+  obtain ⟨hRegion, hBytes⟩ := hr.release hpos hHeap hObject (hApart _ (List.mem_singleton_self _))
+  exact ⟨hBytes, hRegion, fun _ hb => nomatch hb⟩
+
 /-- The allocator invariant holds in any store with the same globals and pages and the same
 bytes in the headers of the free blocks. -/
 theorem Heap.At.frame {heap : Heap} {store store' : Store Unit} (h : heap.At store)

@@ -199,11 +199,8 @@ theorem matVec_implements : Implements gpt.module 3 matVecTuple := by
       exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), t, by simp [Expr.eval, g7]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-    hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.matVec.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [gpt.matVec.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   rw [matVecTuple, matVec_eq, build_map]
   exact hNew.owned
 
@@ -461,11 +458,8 @@ theorem layerNorm_implements : Implements gpt.module 4 layerTuple := by
       getElem!_map_toBits, layerElement, F64Bits.toBits_add, F64Bits.toBits_mul,
       F64Bits.toBits_sub]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-    hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.layerNorm.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [gpt.layerNorm.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   rw [layerTuple, layerNorm_eq, hSum, hVar, build_map]
   exact hNew.owned
 
@@ -824,11 +818,8 @@ theorem softmax_implements :
       exact State.Frame.refl _ _ _
     · simp [Expr.eval, g13, b, a, hState.1, hState.2, F64Op.apply, F64Bits.toBits_div, d]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-    hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.softmax.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [gpt.softmax.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   rw [softmax_eq, hMax, hSum, build_map]
   exact hNew.owned
 
@@ -893,11 +884,10 @@ theorem matVec2_implements : Implements gpt.module 7 matVec2Tuple := by
   refine (hLive2.releaseSecond hImports hRelease (by simp [t3, start])).mono
     (fun _ _ h => h) ?_
   rintro store3 state3 ⟨hLive3, rfl⟩
-  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+  obtain ⟨heap', hAt', hCaps', hOwned, hKeeps⟩ :=
     hLive3.finish
-  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], t3,
-    by simp [gpt.matVec2.ir, Func.scratch, Expr.evalResults, Expr.eval, t3, start], hOwned,
-    hOutB, hOutO⟩
+  exact ⟨heap', hAt', hCaps', [.i64 pr], t3,
+    by simp [gpt.matVec2.ir, Func.scratch, Expr.evalResults, Expr.eval, t3, start], hOwned, hKeeps⟩
 
 /-- `matMul` with its five arguments as one tuple. -/
 def matMulTuple (x : Array Float × Array Float × UInt64 × UInt64 × UInt64) : Array Float :=
@@ -1005,11 +995,8 @@ theorem matMul_implements : Implements gpt.module 8 matMulTuple := by
       exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), t, by simp [Expr.eval, g8]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-    hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.matMul.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [gpt.matMul.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   rw [matMulTuple, matMul_eq, build_map]
   exact hNew.owned
 
@@ -1058,11 +1045,8 @@ theorem add_implements : Implements gpt.module 9 addTuple := by
       Expr.readValue_at (hAt pa _ hAs), Expr.readValue_at (hAt pb _ hBs), State.set?_eq_update,
       hState.1, hState.2, F64Op.apply, getElem!_map_toBits, F64Bits.toBits_add]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-    hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.add.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [gpt.add.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hAdd : LeanExe.Examples.Gpt.add a b =
       LeanExe.build a.size.toUInt64 (fun i => a[i.toNat]! + b[i.toNat]!) := rfl
   rw [addTuple, hAdd, build_map]
@@ -1200,11 +1184,8 @@ theorem geluArray_implements :
     repeat refine State.Frame.update ?_ (by simp)
     exact State.Frame.refl _ _ _
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-    hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.geluArray.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [gpt.geluArray.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hGelu : LeanExe.Examples.Gpt.geluArray xs =
       LeanExe.build xs.size.toUInt64 (fun i => LeanExe.Examples.Gpt.gelu xs[i.toNat]!) := rfl
   rw [hGelu, build_map]
@@ -1337,10 +1318,8 @@ theorem linear_implements : Implements gpt.module 29 linearTuple := by
         Expr.readValue_at hB, F64Op.apply, U64Op.apply, getElem!_map_toBits, F64Bits.toBits_add,
         hm]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.linear.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [gpt.linear.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hEq : linearTuple (x, w, b, l, n, k, m) = LeanExe.build (n * m)
       (fun e => LeanExe.loop k 0.0 (linStep x w l k m e) + b[(l * m + e % m).toNat]!) := rfl
   rw [hEq, build_map]
@@ -1437,10 +1416,8 @@ theorem rowMeans_implements : Implements gpt.module 14 rowMeansTuple := by
           (hFrameL.weaken (by simp)), u, by
         simp [Expr.eval, g6, g2, F64Op.apply, F64Bits.toBits_div, F64Convert.toBits_toFloat]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.rowMeans.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [gpt.rowMeans.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hEq : rowMeansTuple (x, t, d) =
       LeanExe.build t (fun r => LeanExe.loop d 0.0 (meanStep x d r) / d.toFloat) := rfl
   rw [hEq, build_map]
@@ -1554,11 +1531,8 @@ theorem rowInvStd_implements : Implements gpt.module 15 rowInvStdTuple := by
         simp [Expr.eval, g8, g3, g4, F64Op.apply, F64UnOp.apply, F64Bits.toBits_div,
           F64Bits.toBits_sqrt, F64Bits.toBits_add, F64Convert.toBits_toFloat, hOne]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-    hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.rowInvStd.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [gpt.rowInvStd.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hEq : rowInvStdTuple (x, means, t, d, eps) = LeanExe.build t (fun r =>
       1.0 / (LeanExe.loop d 0.0 (devStep x means d r) / d.toFloat + eps).sqrt) := rfl
   rw [hEq, build_map]
@@ -1623,10 +1597,9 @@ theorem normalizeRows_implements : Implements gpt.module 16 normalizeTuple := by
       U64Op.apply, getElem!_map_toBits, normalizeAt, F64Bits.toBits_add, F64Bits.toBits_mul,
       F64Bits.toBits_sub, hd]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
     by simp [gpt.normalizeRows.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+    ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hEq : normalizeTuple (x, means, inv, g, b, l, t, d) =
       LeanExe.build (t * d) (normalizeAt x means inv g b l d) := rfl
   rw [hEq, build_map]
@@ -1753,11 +1726,11 @@ theorem layerNormRows_implements :
   rintro store4 st4 ⟨hLive4, rfl⟩
   refine (hLive4.releaseSecond hImports hRelease hS4Get7).mono (fun _ _ h => h) ?_
   rintro store5 st5 ⟨hLive5, rfl⟩
-  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+  obtain ⟨heap', hAt', hCaps', hOwned, hKeeps⟩ :=
     hLive5.finish
-  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+  exact ⟨heap', hAt', hCaps', [.i64 pr], s4,
     by simp [gpt.layerNormRows.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,
-      State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
+      State.get_update_same, hS3], hOwned, hKeeps⟩
 
 /-- `maskedScores` with its six arguments as one tuple. -/
 def maskedTuple (x : Array Float × Array Float × UInt64 × UInt64 × UInt64 × Float) : Array Float :=
@@ -1886,11 +1859,9 @@ theorem maskedScores_implements : Implements gpt.module 18 maskedTuple := by
           (hFrameL.weaken (by simp)), ?_⟩
       simp [Expr.eval, u5, g9, F64Op.apply, F64Bits.toBits_mul]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-    hNew.ownedKeep, [.i64 ptr], state,
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
     by simp [gpt.maskedScores.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+    ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hEq : maskedTuple (q, k, t, nh, dh, scale) = LeanExe.build (t * nh * t) (fun e =>
       LeanExe.loop (if e % t ≤ e / (nh * t) then dh else 0) 0.0 (scoreStep q k t nh dh e) *
         scale) := rfl
@@ -1993,10 +1964,8 @@ theorem rowMax_implements : Implements gpt.module 19 rowMaxTuple := by
       exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g6]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.rowMax.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [gpt.rowMax.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hEq : rowMaxTuple (x, t, nh) = LeanExe.build (t * nh)
       (fun r => LeanExe.loop (r / nh + 1) (-(1.0 / 0.0)) (rowMaxStep x t r)) := rfl
   rw [hEq, build_map]
@@ -2113,11 +2082,8 @@ theorem rowSumExp_implements : Implements gpt.module 20 rowSumExpTuple := by
       exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g7]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-    hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.rowSumExp.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [gpt.rowSumExp.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hEq : rowSumExpTuple (x, mx, t, nh) = LeanExe.build (t * nh)
       (fun r => LeanExe.loop (r / nh + 1) 0.0 (sumExpStep x mx t r)) := rfl
   rw [hEq, build_map]
@@ -2184,10 +2150,9 @@ theorem softmaxApply_implements :
         Expr.readValue_at (hAt ps _ hSs), State.set?_eq_update, F64Op.apply, U64Op.apply,
         getElem!_map_toBits, F64Bits.toBits_div, dv, hw]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
     by simp [gpt.softmaxApply.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+    ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hEq : softmaxApplyTuple (x, mx, sums, t, w) = LeanExe.build (t * w) (fun e =>
       LeanExe.Examples.Gpt.exp (x[e.toNat]! - mx[(e / w).toNat]!) / sums[(e / w).toNat]!) := rfl
   rw [hEq, build_map]
@@ -2311,11 +2276,9 @@ theorem causalMatMul_implements :
       exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g8]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-    hNew.ownedKeep, [.i64 ptr], state,
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
     by simp [gpt.causalMatMul.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+    ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hEq : causalMatMulTuple (p, v, t, nh, dh) = LeanExe.build (t * (nh * dh))
       (fun e => LeanExe.loop (e / (nh * dh) + 1) 0.0 (mixStep p v t nh dh e)) := rfl
   rw [hEq, build_map]
@@ -2425,11 +2388,11 @@ theorem softmaxRows_implements : Implements gpt.module 22 softmaxRowsTuple := by
   rintro store4 st4 ⟨hLive4, rfl⟩
   refine (hLive4.releaseSecond hImports hRelease hS4Get3).mono (fun _ _ h => h) ?_
   rintro store5 st5 ⟨hLive5, rfl⟩
-  obtain ⟨heap', hAt', hCaps', hKeepB, hKeepO, hOwned, hOutB, hOutO⟩ :=
+  obtain ⟨heap', hAt', hCaps', hOwned, hKeeps⟩ :=
     hLive5.finish
-  exact ⟨heap', hAt', hCaps', hKeepB, hKeepO, [.i64 pr], s4,
+  exact ⟨heap', hAt', hCaps', [.i64 pr], s4,
     by simp [gpt.softmaxRows.ir, Func.scratch, Expr.evalResults, Expr.eval, s4,
-      State.get_update_same, hS3], hOwned, hOutB, hOutO⟩
+      State.get_update_same, hS3], hOwned, hKeeps⟩
 
 /-- `embed` with its five arguments as one tuple. -/
 def embedTuple (x : Array UInt64 × Array Float × Array Float × UInt64 × UInt64) : Array Float :=
@@ -2473,10 +2436,9 @@ theorem embed_implements : Implements gpt.module 26 embedTuple := by
       Expr.readValue_at (hAt pe _ hEs), Expr.readValue_at (hAt pp _ hPs), State.set?_eq_update,
       hState.1, hState.2, F64Op.apply, U64Op.apply, getElem!_map_toBits, F64Bits.toBits_add, hd]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed, hNew.ownedKeep, [.i64 ptr], state,
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
     by simp [gpt.embed.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+    ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hEq : embedTuple (tokens, wte, wpe, t, d) = LeanExe.build (t * d)
       (fun e => wte[(tokens[(e / d).toNat]! * d + e % d).toNat]! + wpe[e.toNat]!) := rfl
   rw [hEq, build_map]
@@ -2581,11 +2543,8 @@ theorem matMulT_implements : Implements gpt.module 27 matMulTTuple := by
       exact ⟨rfl, (State.Frame.update (State.Frame.refl _ _ _) (Or.inl (by simp))).trans
           (hFrameL.weaken (by simp)), u, by simp [Expr.eval, g8]⟩
   rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-    hNew.ownedKeep, [.i64 ptr], state,
-    by simp [gpt.matMulT.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_float.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_float.mpr (hNew.ownedApart p ws h)⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [gpt.matMulT.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
   have hEq : matMulTTuple (a, b, n, k, m) =
       LeanExe.build (n * m) (fun e => LeanExe.loop k 0.0 (cellTStep a b k m e)) := rfl
   rw [hEq, build_map]

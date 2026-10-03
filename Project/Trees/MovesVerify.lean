@@ -39,14 +39,11 @@ theorem setKey_implements : Implements treeMoves.module 2 setKeyMoved := by
       (PElse := fun _ _ => False) (Stmt.assign_spec.mono ?_ fun _ _ h => h)
       Triple.of_false).mono ?_ fun _ _ h => h
     · rintro s st ⟨rfl, rfl⟩
-      refine ⟨0, start, start, rfl, rfl, heap, hHeap, rfl, fun _ _ h _ => h,
-        fun _ _ h _ => ⟨h, rfl⟩, [.i64 0], start,
+      refine ⟨0, start, start, rfl, rfl, heap, hHeap, rfl, [.i64 0], start,
         by simp [treeMoves.setKey.ir, Func.scratch, Expr.evalResults, Expr.eval, start, State.get],
-        ⟨0, rfl, rfl, .nil⟩, fun _ _ _ _ b hb => ?_, fun _ _ _ _ b hb => ?_⟩
-      · change b ∈ Node.blocks _ 0 .null at hb
-        cases hb
-      · change b ∈ Node.blocks _ 0 .null at hb
-        cases hb
+        ⟨0, rfl, rfl, .nil⟩, fun _ hg _ _ => ⟨fun _ _ _ => rfl, hg, fun b hb => ?_⟩⟩
+      change b ∈ Node.blocks _ 0 .null at hb
+      cases hb
     · rintro s st ⟨rfl, rfl⟩
       exact ⟨true, start, by simp [Expr.eval, start, State.get], rfl, rfl⟩
   | node l key r =>
@@ -116,19 +113,13 @@ theorem setKey_implements : Implements treeMoves.module 2 setKeyMoved := by
         exact ⟨rfl, rfl⟩
       · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
         rintro s st ⟨rfl, rfl⟩
-        refine ⟨p, s3, s4, rfl, rfl, heap, hAt, rfl, fun q ws hq hApart => ?_,
-          fun q ws hq hApart => ?_, [.i64 p], s4,
+        refine ⟨p, s3, s4, rfl, rfl, heap, hAt, rfl, [.i64 p], s4,
           by simp [treeMoves.setKey.ir, Func.scratch, Expr.evalResults, Expr.eval, State.get, s4, ps],
           ⟨p, rfl, hResult ▸ hOwned', by rw [hResult, hBlocks]; exact hDisjoint⟩,
-          fun q ws hq hApart b hb => ?_, fun q ws hq hApart b hb => ?_⟩
-        · exact hq.keep (le_of_eq hWrites.2.1.symm) (hKeep _ (hApart p hRoot)) hq.region
-        · exact hq.keep (le_of_eq hWrites.2.1.symm) (hKeep _ (hApart p hRoot)) hq.region
-        · change b ∈ Node.blocks final p (Encode.encode (setKeyMoved (k, ⟨.node l key r⟩))) at hb
-          rw [hResult, hBlocks] at hb
-          exact apart_pointers.mp hApart b hb
-        · change b ∈ Node.blocks final p (Encode.encode (setKeyMoved (k, ⟨.node l key r⟩))) at hb
-          rw [hResult, hBlocks] at hb
-          exact apart_pointers.mp hApart b hb
+          fun g hg _ hApart => ⟨hKeep g (hApart _ (List.mem_map_of_mem hRoot)), hg, fun b hb => ?_⟩⟩
+        change b ∈ Node.blocks final p (Encode.encode (setKeyMoved (k, ⟨.node l key r⟩))) at hb
+        rw [hResult, hBlocks] at hb
+        exact hApart b (by rw [Node.pointers_blocks]; exact hb)
     · rintro s st ⟨rfl, rfl⟩
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
@@ -1167,9 +1158,8 @@ theorem trim_implements : Implements treeMoves.module 8 trimMoved := by
 def insertTwoMoved (x : UInt64 × UInt64 × Moved KeyTree) : KeyTree :=
   KeyTree.insertTwo x.1 x.2.1 x.2.2.val
 
-/-- `insertTwo` calls `insert` on its tree and then on the first call's result.  Each call
-consumes its tree, so `insert`'s `Implements` theorem covers both calls: the caller holds no
-other value of a recursive type across either call. -/
+/-- `insertTwo` calls `insert` on its tree and then on the first call's result, which the
+second call consumes.  `insert`'s `Implements` theorem covers both calls. -/
 theorem insertTwo_implements : Implements treeMoves.module 9 insertTwoMoved := by
   refine Func.implements_moves treeMoves.funcs 7 treeMoves.insertTwo.ir "insertTwo" rfl _
     (by rintro _ _ _ _ ⟨_, _, rfl, rfl, _, _, rfl, rfl, p, rfl, -⟩; rfl) ?_
@@ -1186,8 +1176,7 @@ theorem insertTwo_implements : Implements treeMoves.module 9 insertTwoMoved := b
     (before := start) (results := [3]) (x := (a, Moved.mk t)) rfl hHeap hB1 hSep1 hCap
     (by rintro _ _ _ ⟨q, rfl, -⟩; exact ⟨_, rfl⟩)) ?_
   apply Triple.of_forall
-  rintro s1 st1 ⟨heap1, _, hAt1, ⟨q1, rfl, hOwned1, hDisjoint1⟩, hCaps1, hKB1, hKO1, hOB1, hOO1,
-    hSet1⟩
+  rintro s1 st1 ⟨heap1, _, hAt1, ⟨q1, rfl, hOwned1, hDisjoint1⟩, hCaps1, hK1, hSet1⟩
   obtain rfl : st1 = { params := [.i64 a, .i64 b, .i64 p], locals := [.i64 q1, .i64 0] } :=
     (Option.some.inj (hSet1.symm.trans rfl))
   obtain ⟨hB2, hSep2⟩ := pair_args (x := b) hOwned1 hDisjoint1
@@ -1195,30 +1184,12 @@ theorem insertTwo_implements : Implements treeMoves.module 9 insertTwoMoved := b
     (results := [4]) (x := (b, Moved.mk (KeyTree.insert a t))) rfl hAt1 hB2 hSep2
     (memoryCap_le_of_caps hCaps1 hCap) (by rintro _ _ _ ⟨q, rfl, -⟩; exact ⟨_, rfl⟩)).mono
       (fun _ _ h => h) ?_
-  rintro s2 st2 ⟨heap2, _, hAt2, ⟨q2, rfl, hOwned2, hDisjoint2⟩, hCaps2, hKB2, hKO2, hOB2, hOO2,
-    hSet2⟩
+  rintro s2 st2 ⟨heap2, _, hAt2, ⟨q2, rfl, hOwned2, hDisjoint2⟩, hCaps2, hK2, hSet2⟩
   obtain rfl : st2 = { params := [.i64 a, .i64 b, .i64 p], locals := [.i64 q1, .i64 q2] } :=
     (Option.some.inj (hSet2.symm.trans rfl))
-  -- An array apart from the consumed tree is apart from the first call's result, which the
-  -- second call consumes.
-  have hApartB : ∀ r ws, heap.Borrowed initial r ws →
-      Apart initial (Node.pointers initial p (encode t)) (r.toNat, 8 * (ws.size + 1)) →
-      Apart s1 (Node.pointers s1 q1 (encode (KeyTree.insert a t))) (r.toNat, 8 * (ws.size + 1)) :=
-    fun r ws hr hA => apart_pointers.mpr (hOB1 r ws hr hA)
-  have hApartO : ∀ r ws, heap.Owned initial r ws →
-      Apart initial (Node.pointers initial p (encode t)) (block initial r) →
-      Apart s1 (Node.pointers s1 q1 (encode (KeyTree.insert a t))) (block s1 r) :=
-    fun r ws hr hA => by
-      rw [block_eq (hKO1 r ws hr hA).2]
-      exact apart_pointers.mpr (hOO1 r ws hr hA)
-  refine ⟨heap2, hAt2, hCaps2.trans hCaps1,
-    fun r ws hr hA => hKB2 r ws (hKB1 r ws hr hA) (hApartB r ws hr hA),
-    fun r ws hr hA => ?_, [.i64 q2], _, rfl, ⟨q2, rfl, hOwned2, hDisjoint2⟩,
-    fun r ws hr hA => hOB2 r ws (hKB1 r ws hr hA) (hApartB r ws hr hA), fun r ws hr hA => ?_⟩
-  · obtain ⟨hO2, hc2⟩ := hKO2 r ws (hKO1 r ws hr hA).1 (hApartO r ws hr hA)
-    exact ⟨hO2, hc2.trans (hKO1 r ws hr hA).2⟩
-  · have h := hOO2 r ws (hKO1 r ws hr hA).1 (hApartO r ws hr hA)
-    rwa [block_eq (hKO1 r ws hr hA).2] at h
+  -- The second call consumes exactly the first call's result.
+  exact ⟨heap2, hAt2, hCaps2.trans hCaps1, [.i64 q2], _, rfl, ⟨q2, rfl, hOwned2, hDisjoint2⟩,
+    hK1.trans hK2 fun _ _ hFresh c hc => hFresh c (by rw [pair_gone] at hc; exact hc)⟩
 
 /-- `encode` succeeds on `treeMoves.module`, and its bytes decode to a module that computes
 `KeyTree.setKey`, `KeyTree.incr`, `KeyTree.insert`, `KeyTree.dropRight`, `KeyTree.leftChild`,

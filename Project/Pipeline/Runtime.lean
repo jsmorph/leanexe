@@ -64,4 +64,44 @@ structure Heap.Owned (heap : Heap) (store : Store Unit) (ptr : UInt64)
   separate : ∀ node ∈ heap.free,
     regionsDisjoint node.region (ptr.toNat - 48, 48 + capacityAt store ptr)
 
+/-- A region below `top` and outside every free block, which allocation leaves alone. -/
+structure Heap.Region (heap : Heap) (r : Nat × Nat) : Prop where
+  below : r.1 + r.2 ≤ heap.top.toNat
+  separate : ∀ node ∈ heap.free, regionsDisjoint node.region r
+
+/-- What a step from `heap` at `initial` to `heap'` at `store` leaves of the regions of `heap`
+that lie apart from the blocks `gone`: each keeps its bytes, is a region of `heap'`, and lies
+apart from each of the blocks `fresh`. -/
+def Heap.Keeps (heap : Heap) (initial : Store Unit) (gone : List (Nat × Nat)) (heap' : Heap)
+    (store : Store Unit) (fresh : List (Nat × Nat)) : Prop :=
+  ∀ r, heap.Region r → 0 < r.2 → (∀ b ∈ gone, regionsDisjoint r b) →
+    (∀ a, r.1 ≤ a → a < r.1 + r.2 → store.mem.bytes a = initial.mem.bytes a) ∧
+      heap'.Region r ∧ ∀ b ∈ fresh, regionsDisjoint r b
+
+/-- A step that changes nothing keeps every region. -/
+theorem Heap.Keeps.refl (heap : Heap) (store : Store Unit) (gone : List (Nat × Nat)) :
+    heap.Keeps store gone heap store [] :=
+  fun _ hr _ _ => ⟨fun _ _ _ => rfl, hr, fun _ hb => nomatch hb⟩
+
+/-- Two steps in a row, the second consuming only blocks that the first leaves fresh or that
+the first already consumes. -/
+theorem Heap.Keeps.trans {heap heap1 heap2 : Heap} {initial store1 store2 : Store Unit}
+    {gone gone2 fresh1 fresh2 : List (Nat × Nat)}
+    (h1 : heap.Keeps initial gone heap1 store1 fresh1)
+    (h2 : heap1.Keeps store1 gone2 heap2 store2 fresh2)
+    (hGone : ∀ r, (∀ b ∈ gone, regionsDisjoint r b) → (∀ b ∈ fresh1, regionsDisjoint r b) →
+      ∀ b ∈ gone2, regionsDisjoint r b) :
+    heap.Keeps initial gone heap2 store2 fresh2 := fun r hr hpos hApart => by
+  obtain ⟨hBytes1, hRegion1, hFresh1⟩ := h1 r hr hpos hApart
+  obtain ⟨hBytes2, hRegion2, hFresh2⟩ := h2 r hRegion1 hpos (hGone r hApart hFresh1)
+  exact ⟨fun a hl hh => (hBytes2 a hl hh).trans (hBytes1 a hl hh), hRegion2, hFresh2⟩
+
+/-- A step keeps the regions apart from more blocks, and leaves them apart from fewer. -/
+theorem Heap.Keeps.mono {heap heap' : Heap} {initial store : Store Unit}
+    {gone gone' fresh fresh' : List (Nat × Nat)} (h : heap.Keeps initial gone heap' store fresh)
+    (hGone : ∀ b ∈ gone, b ∈ gone') (hFresh : ∀ b ∈ fresh', b ∈ fresh) :
+    heap.Keeps initial gone' heap' store fresh' := fun r hr hpos hApart => by
+  obtain ⟨hBytes, hRegion, hApartFresh⟩ := h r hr hpos fun b hb => hApart b (hGone b hb)
+  exact ⟨hBytes, hRegion, fun b hb => hApartFresh b (hFresh b hb)⟩
+
 end Project.Pipeline

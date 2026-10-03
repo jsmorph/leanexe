@@ -16,8 +16,8 @@ variable {m : Module}
 
 /-- A call of entry `idx`, which implements `g`, from arguments that evaluate to
 words representing `x`, leaves in the locals `results` values that represent
-`g x` as owned.  The heap facts are those of `Implements`, and `hSet` says the
-result locals can hold any represented result. -/
+`g x` as owned.  The heap facts are those of `Implements`, with its region clause as
+`Heap.Keeps`, and `hSet` says the result locals can hold any represented result. -/
 theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : α → β}
     (hImpl : Implements m idx g) {f : Wasm.Function}
     (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
@@ -35,16 +35,8 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
       (fun store state => ∃ (heap' : Heap) (values : List Value), heap'.At store ∧
         Represent.owned heap' store values (g x) ∧
         store.memoryCaps = initial.memoryCaps ∧
-        (∀ p ws, heap.Borrowed initial p ws →
-          Apart initial (Represent.moves initial vals x) (p.toNat, 8 * (ws.size + 1)) →
-          heap'.Borrowed store p ws) ∧
-        (∀ p ws, heap.Owned initial p ws → Apart initial (Represent.moves initial vals x) (block initial p) →
-          heap'.Owned store p ws ∧ capacityAt store p = capacityAt initial p) ∧
-        (∀ p ws, heap.Borrowed initial p ws →
-          Apart initial (Represent.moves initial vals x) (p.toNat, 8 * (ws.size + 1)) →
-          Represent.outside store values (g x) (p.toNat, 8 * (ws.size + 1))) ∧
-        (∀ p ws, heap.Owned initial p ws → Apart initial (Represent.moves initial vals x) (block initial p) →
-          Represent.outside store values (g x) (block initial p)) ∧
+        heap.Keeps initial ((Represent.moves initial vals x).map (block initial)) heap' store
+          (Represent.blocks store values (g x)) ∧
         afterArgs.setAll results.reverse values.reverse = some state) := by
   refine (Stmt.call_spec hImport hFunc hParams).mono ?_ fun _ _ h => h
   rintro store state ⟨hStore, hState⟩
@@ -52,24 +44,16 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
   refine ⟨vals, afterArgs, fun final values => ∃ heap' : Heap, heap'.At final ∧
       Represent.owned heap' final values.reverse (g x) ∧
       final.memoryCaps = initial.memoryCaps ∧
-      (∀ p ws, heap.Borrowed initial p ws →
-        Apart initial (Represent.moves initial vals x) (p.toNat, 8 * (ws.size + 1)) →
-        heap'.Borrowed final p ws) ∧
-      (∀ p ws, heap.Owned initial p ws → Apart initial (Represent.moves initial vals x) (block initial p) →
-        heap'.Owned final p ws ∧ capacityAt final p = capacityAt initial p) ∧
-      (∀ p ws, heap.Borrowed initial p ws →
-        Apart initial (Represent.moves initial vals x) (p.toNat, 8 * (ws.size + 1)) →
-        Represent.outside final values.reverse (g x) (p.toNat, 8 * (ws.size + 1))) ∧
-      (∀ p ws, heap.Owned initial p ws → Apart initial (Represent.moves initial vals x) (block initial p) →
-        Represent.outside final values.reverse (g x) (block initial p)),
+      ∀ r, heap.Region r → 0 < r.2 → Apart initial (Represent.moves initial vals x) r →
+        (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = initial.mem.bytes a) ∧
+          heap'.Region r ∧ Represent.outside final values.reverse (g x) r,
     hArgs, fun env => ?_, ?_⟩
   · exact hImpl env initial heap vals x hHeap hBorrowed hSeparate hCap
-  · rintro store' out ⟨heap', hAt', hOwned', hCaps, hKeepBorrowed, hKeepOwned, hOutsideB,
-      hOutsideO⟩
+  · rintro store' out ⟨heap', hAt', hOwned', hCaps, hRegion⟩
     obtain ⟨next, hNext⟩ := hSet heap' store' out.reverse hOwned'
     rw [List.reverse_reverse] at hNext
-    exact ⟨next, hNext, heap', out.reverse, hAt', hOwned', hCaps, hKeepBorrowed, hKeepOwned,
-      hOutsideB, hOutsideO, by rw [List.reverse_reverse]; exact hNext⟩
+    exact ⟨next, hNext, heap', out.reverse, hAt', hOwned', hCaps,
+      Heap.Keeps.implements.mpr hRegion, by rw [List.reverse_reverse]; exact hNext⟩
 
 /-- A call of entry `idx`, which computes `g` on scalars and keeps the store, from
 arguments that evaluate to the values of `x`, keeps the store and leaves the values

@@ -46,31 +46,10 @@ theorem Live.push {heap0 heap heap' : Heap} {initial store store' : Store Unit}
     {temps : List (UInt64 × Array UInt64)} {ptr : UInt64} {ws : Array UInt64}
     (hLive : Live heap0 initial moved heap store temps)
     (hNew : heap.NewArray store heap' store' ptr ws) :
-    Live heap0 initial moved heap' store' ((ptr, ws) :: temps) := by
-  have hKeepT : ∀ t ∈ temps, heap'.Owned store' t.1 t.2 ∧ block store' t.1 = block store t.1 :=
-    fun t ht => ⟨(hNew.ownedKeep t.1 t.2 (hLive.tempsOwned t ht)).1,
-      block_eq (hNew.ownedKeep t.1 t.2 (hLive.tempsOwned t ht)).2⟩
-  refine ⟨hNew.at_, hNew.caps.trans hLive.caps, fun p ws h hA => hNew.borrowed p ws (hLive.borrowed p ws h hA),
-    fun p ws h hA => ⟨(hNew.ownedKeep p ws (hLive.owned p ws h hA).1).1,
-      (hNew.ownedKeep p ws (hLive.owned p ws h hA).1).2.trans (hLive.owned p ws h hA).2⟩,
-    fun t ht => ?_, fun t ht p ws h hA => ?_, fun t ht p ws h hA => ?_, ?_⟩
-  · rcases List.mem_cons.mp ht with rfl | ht
-    · exact hNew.owned
-    · exact (hKeepT t ht).1
-  · rcases List.mem_cons.mp ht with rfl | ht
-    · exact hNew.borrowedApart p ws (hLive.borrowed p ws h hA)
-    · rw [(hKeepT t ht).2]; exact hLive.apartB t ht p ws h hA
-  · rcases List.mem_cons.mp ht with rfl | ht
-    · have hDisjoint := hNew.ownedApart p ws (hLive.owned p ws h hA).1
-      rw [(hLive.owned p ws h hA).2] at hDisjoint
-      exact hDisjoint
-    · rw [(hKeepT t ht).2]; exact hLive.apartO t ht p ws h hA
-  · refine List.pairwise_cons.mpr ⟨fun t ht => ?_, ?_⟩
-    · rw [(hKeepT t ht).2]
-      exact regionsDisjoint_symm (hNew.ownedApart t.1 t.2 (hLive.tempsOwned t ht))
-    · refine List.Pairwise.imp_of_mem (fun {t u} ht hu h => ?_) hLive.pairwise
-      rw [(hKeepT t ht).2, (hKeepT u hu).2]
-      exact h
+    Live heap0 initial moved heap' store' ((ptr, ws) :: temps) :=
+  Live.step (consumed := []) (news := [(ptr, ws)]) hLive hNew.at_ hNew.caps
+    (hNew.keeps.mono (fun _ hb => nomatch hb) fun _ hb => hb)
+    (fun t ht => by rw [List.mem_singleton.mp ht]; exact hNew.owned) (List.pairwise_singleton _ _)
 
 /-- A copy of an array adds the copy to the live temporaries. -/
 theorem Live.copy {typeIdx scratch src size dst limit index : Nat} (hMemory32 : m.memIs64 = false)
