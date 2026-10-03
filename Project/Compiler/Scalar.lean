@@ -8,6 +8,7 @@ import Project.IR.Function
 import Project.IR.Loop
 import Project.IR.Append
 import Project.IR.Build
+import Project.IR.Update
 import Project.IR.ArrayLoop
 import Project.IR.Hint
 
@@ -622,6 +623,8 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
       return terms.filter params.contains
   | (``HAppend.hAppend, #[_, _, _, _, left, _]) =>
       return if params.contains left.consumeMData then [left.consumeMData] else []
+  | (``Array.set!, #[_, array, _, _]) | (``Array.setIfInBounds, #[_, array, _, _]) =>
+      return if params.contains array.consumeMData then [array.consumeMData] else []
   | (fn, args) =>
       return ((owners.lookup fn).getD []).filterMap fun i =>
         args[i]?.bind fun arg => if params.contains arg.consumeMData then some arg.consumeMData else none
@@ -1786,6 +1789,16 @@ mutual
         let vLocal ← fresh .u64 "set value"
         let vStmt := Project.IR.Stmt.assign vLocal vIR
         pushStmt vStmt (mkHint ⟨[], 0⟩ (stmtLength vStmt) "set value" (← sourceOf value) :: vHints)
+        -- An owned array at its last use takes the new element in place.
+        if ctx.owned.contains array.consumeMData then
+          let size ← fresh .u64 "size"
+          let stmt := Stmt.setInPlace arrayLocal size kLocal vLocal
+          pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "set in place" source]
+          markMoved array.consumeMData
+          let some dst := dst? | return arrayLocal
+          let move := Project.IR.Stmt.assign dst (.get arrayLocal)
+          pushStmt move [mkHint ⟨[], 0⟩ (stmtLength move) "array move" source]
+          return dst
         let size ← sizeOf arrayLocal
         emitBuild ctx source "array set" (.get size) [] (dst? := dst?) fun index loc =>
           let ir : IRExpr .u64 :=

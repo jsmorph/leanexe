@@ -42,16 +42,16 @@ while IFS='|' read -r name args expected; do
     echo "fail: clob $name $args: $out, expected stats $expected"
   fi
 done <<'CASES'
-setLevel|i64:1 i64:9|3 0
-addBid|i64:103 i64:5|4 1
-addBid|i64:102 i64:5|3 0
+setLevel|i64:1 i64:9|2 0
+addBid|i64:103 i64:5|4 2
+addBid|i64:102 i64:5|2 0
 cancelBid|i64:102 i64:4|4 2
-cancelBid|i64:102 i64:1|3 1
+cancelBid|i64:102 i64:1|2 0
 cancelBid|i64:103 i64:1|2 0
 applyCommand|i64:0 i64:103 i64:5|4 2
-applyCommand|i64:0 i64:102 i64:5|3 1
+applyCommand|i64:0 i64:102 i64:5|2 0
 applyCommand|i64:1 i64:102 i64:4|4 2
-applyCommand|i64:1 i64:102 i64:1|3 1
+applyCommand|i64:1 i64:102 i64:1|2 0
 applyCommand|i64:2 i64:102 i64:1|2 0
 CASES
 # sumRange releases the list of n cells that it builds, so the counters show n allocations and

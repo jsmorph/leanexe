@@ -3,6 +3,7 @@ import Project.IR.Correct
 import Project.IR.Loop
 import Project.IR.Read
 import Project.IR.Build
+import Project.IR.Update
 import Project.IR.Call
 import Project.IR.ArrayLoop
 import Project.Encoding.RoundTrip
@@ -132,72 +133,47 @@ theorem marketBuy_implements :
     rw [marketBuyTuple, marketBuy_eq, hResult]
     simpa using hOwned
 
-/-- `fillLevel` with its three arguments as one tuple. -/
-def fillTuple (x : Array UInt64 × UInt64 × UInt64) : Array UInt64 :=
-  LeanExe.Examples.Clob.fillLevel x.1 x.2.1 x.2.2
+/-- `fillLevel` with its three arguments as one tuple, the sizes handed over. -/
+def fillTuple (x : Moved (Array UInt64) × UInt64 × UInt64) : Array UInt64 :=
+  LeanExe.Examples.Clob.fillLevel x.1.val x.2.1 x.2.2
 
 theorem fillLevel_implements : Implements clob.module 3 fillTuple := by
-  refine Func.implements_heap clob.funcs 1 clob.fillLevel.ir "fillLevel" rfl fillTuple
+  refine Func.implements_moves clob.funcs 1 clob.fillLevel.ir "fillLevel" rfl fillTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
-  rintro ⟨sizes, k, amount⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hCap
-  have hMemory32 : clob.module.memIs64 = false := rfl
-  have hImports : clob.module.imports = [] := rfl
-  have hAlloc : clob.module.funcs[0]? = some (allocFunction 0) := rfl
+  rintro ⟨⟨sizes⟩, k, amount⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ - -
   have hS := hSizes.values
-  have hSize64 := hS.size_lt
   let value := sizes[k.toNat]! - amount
   let start : State :=
-    { params := [.i64 ps, .i64 k, .i64 amount], locals := List.replicate 7 (.i64 0) }
+    { params := [.i64 ps, .i64 k, .i64 amount], locals := List.replicate 4 (.i64 0) }
   let s1 := start.update 3 (.i64 k)
-  let s2 := (s1.update 9 (.i64 k)).update 4 (.i64 value)
-  let s3 := s2.update 5 (.i64 (UInt64.ofNat sizes.size))
+  let s2 := (s1.update 6 (.i64 k)).update 4 (.i64 value)
   show Triple _ (.seq (.assign 3 (.get 1)) (.seq (.assign 4 (.bin .sub (.read 0 (.get 1)) (.get 2)))
-    (.seq (.arraySize 5 0) (.build 6 7 8 (.get 5)
-      (.ite (.eq (.get 8) (.get 3)) (.get 4) (.read 0 (.get 8))))))) 9
+    (Stmt.setInPlace 0 5 3 4))) 6
     (fun store state => store = initial ∧ state = start) _
   have hParams : start.params.length = 3 := rfl
-  have hLocals : start.locals.length = 7 := rfl
+  have hLocals : start.locals.length = 4 := rfl
   have hGet0 : start.get 0 = some (.i64 ps) := rfl
   have hGet1 : start.get 1 = some (.i64 k) := rfl
   have hGet2 : start.get 2 = some (.i64 amount) := rfl
-  have hLength := hS.lengthBound
-  simp only [UInt64.toNat_toUInt32] at hLength
   refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) <|
-    Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) <|
-    Stmt.seq_spec (Stmt.run_spec (final := s3) ?_) ?_
+    Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) ?_
   · simp [Stmt.run, Expr.eval, hGet1, State.set?_eq_update, hParams, hLocals, s1]
   · simp [Stmt.run, Expr.eval, hGet1, hGet2, Expr.readValue_at hS, hGet0, State.set?_eq_update,
       hParams, hLocals, s1, s2, U64Op.apply, value]
-  · simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLength, hS.lengthRead,
-      State.set?_eq_update, hParams, hLocals, s1, s2, s3]
-  have hn : (UInt64.ofNat sizes.size).toNat = sizes.size := UInt64.toNat_ofNat_of_lt' hSize64
-  refine (Stmt.build_spec (n := UInt64.ofNat sizes.size)
-    (fun j => if j = k then value else sizes[j.toNat]!) hMemory32 hImports hAlloc
-    (by decide) (by decide) (by simp [s3, s2, s1, hParams, hLocals]) hHeap
-    hCap ⟨s3, by simp [Expr.eval, s3, s2, s1, hParams, hLocals]⟩ ?_).mono
-      (fun _ _ h => h) ?_
-  · intro j store state hj hAt hFrame hIndex
-    have hState : state.params.length = 3 ∧ state.locals.length = 7 := by
-      rw [hFrame.params, hFrame.locals]; simp [s3, s2, s1, hParams, hLocals]
-    have h0 : state.get 0 = some (.i64 ps) := (hFrame.get 0 (by decide) (by decide)).trans
-      (by simp [s3, s2, s1, hGet0])
-    have h3 : state.get 3 = some (.i64 k) := (hFrame.get 3 (by decide) (by decide)).trans
-      (by simp [s3, s2, s1, hParams, hLocals])
-    have h4 : state.get 4 = some (.i64 value) := (hFrame.get 4 (by decide) (by decide)).trans
-      (by simp [s3, s2, s1, hParams, hLocals])
-    by_cases hjk : UInt64.ofNat j = k
-    · simp [Expr.eval, hIndex, h3, h4, hjk]
-    · simp [Expr.eval, hIndex, h3, hjk, Expr.readValue_at (hAt ps sizes hSizes), h0,
-        State.set?_eq_update, hState.1, hState.2]
-  · rintro store state ⟨ptr, -, hPtr, hNew⟩
-    have hOwned := hNew.owned
-    refine ⟨_, hNew.at_, hNew.caps, hNew.borrowed,
-      hNew.ownedKeep, [.i64 ptr], state,
-      by simp [clob.fillLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    fun p ws h => Represent.outside_array.mpr (hNew.borrowedApart p ws h),
-    fun p ws h => Represent.outside_array.mpr (hNew.ownedApart p ws h)⟩
-    rw [fillTuple, LeanExe.Examples.Clob.fillLevel, set!_eq_build sizes k value hSize64]
-    exact hOwned
+  refine (Stmt.setInPlace_spec (p := ps) (kw := k) (vw := value) (by decide)
+    (by simp [s2, s1, hParams, hLocals]) (by simp [s2, s1, hGet0])
+    (by simp [s2, s1, hParams, hLocals])
+    (by simp [s2, s1, hParams, hLocals]) (by decide) (by decide) (by decide) hHeap
+    hSizes).mono (fun _ _ h => h) ?_
+  rintro store state ⟨heap', p, -, hPtr, hAt, hOwned, hCaps, hBorrowed, hOwnedKeep⟩
+  have hApart : ∀ r, Apart initial [ps] r → regionsDisjoint r (block initial ps) :=
+    fun r h => h ps (List.mem_singleton_self _)
+  refine ⟨heap', hAt, hCaps, fun q ws hq ha => (hBorrowed q ws hq (hApart _ ha)).1,
+    fun q ws hq ha => (hOwnedKeep q ws hq (hApart _ ha)).imp_right And.left, [.i64 p], state,
+    by simp [clob.fillLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
+    ⟨p, rfl, hOwned⟩,
+    fun q ws hq ha => Represent.outside_array.mpr (hBorrowed q ws hq (hApart _ ha)).2,
+    fun q ws hq ha => Represent.outside_array.mpr (hOwnedKeep q ws hq (hApart _ ha)).2.2⟩
 
 /-- `insertLevel` with its five arguments as one tuple. -/
 def insertTuple (x : Array UInt64 × Array UInt64 × UInt64 × UInt64 × UInt64) :
@@ -373,85 +349,64 @@ theorem insertLevel_implements : Implements clob.module 4 insertTuple := by
   · rw [insertIdx!_eq_build sizes k size (by omega)]
     exact hOwned2
 
-/-- `setLevel` with its four arguments as one tuple. -/
-def setTuple (x : Moved (Array UInt64) × Array UInt64 × UInt64 × UInt64) :
+/-- `setLevel` with its four arguments as one tuple, both arrays handed over. -/
+def setTuple (x : Moved (Array UInt64) × Moved (Array UInt64) × UInt64 × UInt64) :
     Array UInt64 × Array UInt64 :=
-  LeanExe.Examples.Clob.setLevel x.1.val x.2.1 x.2.2.1 x.2.2.2
+  LeanExe.Examples.Clob.setLevel x.1.val x.2.1.val x.2.2.1 x.2.2.2
 
 theorem setLevel_implements : Implements clob.module 5 setTuple := by
   refine Func.implements_moves clob.funcs 3 clob.setLevel.ir "setLevel" rfl setTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
-  rintro ⟨⟨prices⟩, sizes, k, size⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ _ hCap
-  have hMemory32 : clob.module.memIs64 = false := rfl
-  have hImports : clob.module.imports = [] := rfl
-  have hAlloc : clob.module.funcs[0]? = some (allocFunction 0) := rfl
+  rintro ⟨⟨prices⟩, ⟨sizes⟩, k, size⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ hSeparate -
   change heap.Owned initial pp prices at hPrices
-  change heap.Borrowed initial ps sizes at hSizes
-  have hS := hSizes.values
-  have hSFit := hS.1
-  have hLengthS := hS.lengthBound
-  simp only [UInt64.toNat_toUInt32] at hLengthS
+  change heap.Owned initial ps sizes at hSizes
+  have hMoved : Represent.moves initial ([.i64 pp] ++ ([.i64 ps] ++ Scalar.values (k, size)))
+      (Moved.mk prices, Moved.mk sizes, k, size) = [pp, ps] := rfl
+  rw [hMoved] at hSeparate ⊢
+  have hPS : regionsDisjoint (block initial pp) (block initial ps) := by
+    have := hSeparate.1
+    simp only [List.map_cons, List.map_nil, List.pairwise_cons, List.mem_singleton,
+      forall_eq] at this
+    exact this.1
   let start : State :=
-    { params := [.i64 pp, .i64 ps, .i64 k, .i64 size], locals := List.replicate 7 (.i64 0) }
+    { params := [.i64 pp, .i64 ps, .i64 k, .i64 size], locals := List.replicate 3 (.i64 0) }
   show Triple _ (.seq (.assign 4 (.get 2)) (.seq (.assign 5 (.get 3))
-    (.seq (.arraySize 6 1) (.build 7 8 9 (.get 6)
-      (.ite (.eq (.get 9) (.get 4)) (.get 5) (.read 1 (.get 9))))))) 10
+    (Stmt.setInPlace 1 6 4 5))) 7
     (fun store state => store = initial ∧ state = start) _
-  have hStart : start.params.length = 4 ∧ start.locals.length = 7 := ⟨rfl, rfl⟩
+  have hStart : start.params.length = 4 ∧ start.locals.length = 3 := ⟨rfl, rfl⟩
   have sg0 : start.get 0 = some (.i64 pp) := rfl
   have sg1 : start.get 1 = some (.i64 ps) := rfl
   have sg2 : start.get 2 = some (.i64 k) := rfl
   have sg3 : start.get 3 = some (.i64 size) := rfl
   let u1 := start.update 4 (.i64 k)
   let u2 := u1.update 5 (.i64 size)
-  let u3 := u2.update 6 (.i64 (UInt64.ofNat sizes.size))
   have g1_3 : u1.get 3 = some (.i64 size) := by rw [State.get_update_ne (by decide), sg3]
-  have g2_1 : u2.get 1 = some (.i64 ps) := by
-    rw [State.get_update_ne (by decide), State.get_update_ne (by decide), sg1]
   refine Stmt.seq_spec (Stmt.run_spec (final := u1) ?_) <|
-    Stmt.seq_spec (Stmt.run_spec (final := u2) ?_) <|
-    Stmt.seq_spec (Stmt.run_spec (final := u3) ?_) ?_
+    Stmt.seq_spec (Stmt.run_spec (final := u2) ?_) ?_
   · simp [Stmt.run, Expr.eval, sg2, State.set?_eq_update, hStart.1, hStart.2, u1]
   · simp [Stmt.run, Expr.eval, g1_3, State.set?_eq_update, hStart.1, hStart.2, u1, u2]
-  · simp [Stmt.run, Stmt.arraySize, Expr.eval, g2_1, hLengthS, hS.lengthRead,
-      State.set?_eq_update, hStart.1, hStart.2, u1, u2, u3]
-  have hn2 : (UInt64.ofNat sizes.size).toNat = sizes.size :=
-    UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
-  refine (Stmt.build_spec (n := UInt64.ofNat sizes.size)
-    (fun j => if j = k then size else sizes[j.toNat]!) hMemory32 hImports hAlloc
-    (by decide) (by decide) (by simp [u3, u2, u1, hStart.1, hStart.2]) hHeap hCap
-    ⟨u3, by simp [Expr.eval, u3, u2, u1, hStart.1, hStart.2]⟩ ?_).mono (fun _ _ h => h) ?_
-  · intro j store state hj hAt hFrame hIndex
-    have hState : state.params.length = 4 ∧ state.locals.length = 7 := by
-      rw [hFrame.params, hFrame.locals]; simp [u3, u2, u1, start]
-    have h1 : state.get 1 = some (.i64 ps) :=
-      (hFrame.get 1 (by decide) (by decide)).trans (by simp [u3, u2, u1, sg1])
-    have h4 : state.get 4 = some (.i64 k) :=
-      (hFrame.get 4 (by decide) (by decide)).trans (by simp [u3, u2, u1, start])
-    have h5 : state.get 5 = some (.i64 size) :=
-      (hFrame.get 5 (by decide) (by decide)).trans (by simp [u3, u2, u1, start])
-    by_cases hjk : UInt64.ofNat j = k
-    · simp [Expr.eval, hIndex, h4, h5, hjk]
-    · simp [Expr.eval, hIndex, h4, hjk, Expr.readValue_at (hAt ps sizes hSizes), h1,
-        State.set?_eq_update, hState.1, hState.2]
-  rintro store2 t2 ⟨ptr2, hFrame2, hPtr2, hNew⟩
-  have hPtr0 : t2.get 0 = some (.i64 pp) := by
-    rw [hFrame2.get 0 (by decide) (by decide)]; simp [u3, u2, u1, sg0]
-  obtain ⟨hKeptP, hCapP⟩ := hNew.ownedKeep pp prices hPrices
-  have hBlockP : block store2 pp = block initial pp := block_eq hCapP
-  have hMoves : ∀ r, Apart initial [pp] r → regionsDisjoint r (block initial pp) :=
-    fun r hA => hA pp (List.mem_singleton_self _)
-  refine ⟨_, hNew.at_, hNew.caps, fun p ws h _ => hNew.borrowed p ws h,
-    fun p ws h _ => hNew.ownedKeep p ws h, [.i64 pp, .i64 ptr2], t2,
-    by simp [clob.setLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr0, hPtr2],
-    Represent.owned_pair.mpr ⟨hKeptP, ?_, by rw [hBlockP]; exact hNew.ownedApart pp prices hPrices⟩,
-    fun p ws h hA => Represent.outside_pair.mpr
-      ⟨by rw [hBlockP]; exact hMoves _ hA, hNew.borrowedApart p ws h⟩,
-    fun p ws h hA => Represent.outside_pair.mpr
-      ⟨by rw [hBlockP]; exact hMoves _ hA, hNew.ownedApart p ws h⟩⟩
-  rw [set!_eq_build sizes k size (by omega)]
-  exact hNew.owned
+  refine (Stmt.setInPlace_spec (p := ps) (kw := k) (vw := size) (by decide)
+    (by simp [u2, u1, hStart.1, hStart.2]) (by simp [u2, u1, sg1])
+    (by simp [u2, u1, hStart.1, hStart.2]) (by simp [u2, u1, hStart.1, hStart.2])
+    (by decide) (by decide) (by decide) hHeap hSizes).mono (fun _ _ h => h) ?_
+  rintro store state ⟨heap', p, hFrame, hPtr, hAt, hOwned, hCaps, hBorrowed, hOwnedKeep⟩
+  have hPtr0 : state.get 0 = some (.i64 pp) := by
+    rw [hFrame.get 0 (by decide) (by decide)]; simp [u2, u1, sg0]
+  obtain ⟨hKeptP, hCapP, hApartP⟩ := hOwnedKeep pp prices hPrices hPS
+  have hBlockP : block store pp = block initial pp := block_eq hCapP
+  have hPart : ∀ r, Apart initial [pp, ps] r →
+      regionsDisjoint r (block initial pp) ∧ regionsDisjoint r (block initial ps) :=
+    fun r hA => ⟨hA pp (by simp), hA ps (by simp)⟩
+  refine ⟨heap', hAt, hCaps, fun q ws hq hA => (hBorrowed q ws hq (hPart _ hA).2).1,
+    fun q ws hq hA => (hOwnedKeep q ws hq (hPart _ hA).2).imp_right And.left,
+    [.i64 pp, .i64 p], state,
+    by simp [clob.setLevel.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr0, hPtr],
+    Represent.owned_pair.mpr ⟨hKeptP, hOwned, by rw [hBlockP]; exact hApartP⟩,
+    fun q ws hq hA => Represent.outside_pair.mpr
+      ⟨by rw [hBlockP]; exact (hPart _ hA).1, (hBorrowed q ws hq (hPart _ hA).2).2⟩,
+    fun q ws hq hA => Represent.outside_pair.mpr
+      ⟨by rw [hBlockP]; exact (hPart _ hA).1, (hOwnedKeep q ws hq (hPart _ hA).2).2.2⟩⟩
 
 /-- `depth` with its three arguments as one tuple. -/
 def depthTuple (x : Array UInt64 × Array UInt64 × UInt64) : UInt64 :=
@@ -921,20 +876,37 @@ theorem movesPost_of_live {heap heap1 : Heap} {initial store : Store Unit} {move
   exact ⟨heap', hAt, hCaps, hKB, hKO, [.i64 p1, .i64 p2], state,
     by simp [Expr.evalResults, Expr.eval, hA, hB], hOwned, hOB, hOO⟩
 
-/-- `addBid` with its four arguments as one tuple: the call consumes the prices. -/
-def addBidTuple (x : Moved (Array UInt64) × Array UInt64 × UInt64 × UInt64) :
+/-- `addBid` with its four arguments as one tuple: the call consumes both arrays. -/
+def addBidTuple (x : Moved (Array UInt64) × Moved (Array UInt64) × UInt64 × UInt64) :
     Array UInt64 × Array UInt64 :=
-  LeanExe.Examples.Clob.addBid x.1.val x.2.1 x.2.2.1 x.2.2.2
+  LeanExe.Examples.Clob.addBid x.1.val x.2.1.val x.2.2.1 x.2.2.2
+
+/-- Two owned arrays whose blocks are apart start the live temporaries of a body that consumes
+both. -/
+theorem live_two {heap : Heap} {initial : Store Unit} {pp ps : UInt64}
+    {prices sizes : Array UInt64} (hHeap : heap.At initial) (hPrices : heap.Owned initial pp prices)
+    (hSizes : heap.Owned initial ps sizes)
+    (hPS : regionsDisjoint (block initial pp) (block initial ps)) :
+    Live heap initial [pp, ps] heap initial [(pp, prices), (ps, sizes)] :=
+  Live.start_moved hHeap (temps := [(pp, prices), (ps, sizes)])
+    (fun t ht => by
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at ht
+      rcases ht with rfl | rfl
+      exacts [hPrices, hSizes])
+    (.cons (by simpa using hPS) (.cons (by simp) .nil))
 
 theorem addBid_implements : Implements clob.module 6 addBidTuple := by
   refine Func.implements_moves clob.funcs 4 clob.addBid.ir "addBid" rfl addBidTuple
     (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, _, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
-  rintro ⟨⟨prices⟩, sizes, price, size⟩ heap initial _ hHeap
-    ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ ⟨-, hSep⟩ hCap
+  rintro ⟨⟨prices⟩, ⟨sizes⟩, price, size⟩ heap initial _ hHeap
+    ⟨_, _, rfl, ⟨pp, rfl, hPrices⟩, _, _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ ⟨hPair, -⟩ hCap
   change heap.Owned initial pp prices at hPrices
-  change heap.Borrowed initial ps sizes at hSizes
-  have hAS : Apart initial [pp] (ps.toNat, 8 * (sizes.size + 1)) :=
-    hSep _ (List.mem_singleton_self _)
+  change heap.Owned initial ps sizes at hSizes
+  have hPS : regionsDisjoint (block initial pp) (block initial ps) := by
+    change ([pp, ps].map (block initial)).Pairwise regionsDisjoint at hPair
+    simp only [List.map_cons, List.map_nil, List.pairwise_cons, List.mem_singleton,
+      forall_eq] at hPair
+    exact hPair.1
   have hNoImports : clob.module.imports.length = 0 := rfl
   have hImports : clob.module.imports = [] := rfl
   have hRelease : clob.module.funcs[1]? = some (releaseFunction 1) := rfl
@@ -946,17 +918,15 @@ theorem addBid_implements : Implements clob.module 6 addBidTuple := by
     (.call 5 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩,
       ⟨.u64, .bin .add (.read 1 (.get 5)) (.get 3)⟩] [6, 7])
     (.seq (.call 4 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩, ⟨.u64, .get 2⟩,
-      ⟨.u64, .get 3⟩] [6, 7]) (.release 0))) (6 + 3)
+      ⟨.u64, .get 3⟩] [6, 7]) (.seq (.release 1) (.release 0)))) (6 + 3)
     (fun store state => store = initial ∧ state = bidStart pp ps price size 6)
-    (MovesPost heap initial [pp] 9 6 7 (addBidTuple (⟨prices⟩, sizes, price, size)))
-  have hStart := Live.start_moved hHeap (temps := [(pp, prices)])
-    (fun _ ht => (List.mem_singleton.mp ht) ▸ hPrices) (List.pairwise_singleton _ _)
-  refine bid_spec (by decide) hStart
-    (fun _ _ hL => (hL.tempsOwned _ (List.mem_singleton_self _)).borrowed) hCap ?_ ?_
-  · -- An existing level: `setLevel` consumes the prices and adds to the size.
+    (MovesPost heap initial [pp, ps] 9 6 7 (addBidTuple (⟨prices⟩, ⟨sizes⟩, price, size)))
+  refine bid_spec (by decide) (live_two hHeap hPrices hSizes hPS)
+    (fun _ _ hL => (hL.tempsOwned (pp, prices) (by simp)).borrowed) hCap ?_ ?_
+  · -- An existing level: `setLevel` consumes both arrays and adds to the size.
     intro heap1 store1 state hL hB hFound
     set K := findTuple (prices, price) with hK
-    have hS1 := hL.borrowed ps sizes hSizes hAS
+    have hS1 := (hL.tempsOwned (ps, sizes) (by simp)).borrowed
     have hRead1 : (state.update 9 (.i64 K)).get 1 = some (.i64 ps) := by
       rw [State.get_update_ne (by decide), hB.get1]
     have hLength : (state.update 9 (.i64 K)).params.length +
@@ -964,54 +934,56 @@ theorem addBid_implements : Implements clob.module 6 addBidTuple := by
       simp only [State.update_params_length, State.update_locals_length, hB.params, hB.locals]
     refine (Live.callPair setLevel_implements rfl
       (by rw [hNoImports]; exact compile_funcs (funcs := clob.funcs) (i := 3) rfl) rfl
-      (consumed := [(pp, prices)]) (rest := []) hL hCap
+      (consumed := [(pp, prices), (ps, sizes)]) (rest := []) hL hCap
       (vals := [.i64 pp, .i64 ps, .i64 K, .i64 (sizes[K.toNat]! + size)])
-      (x := (⟨prices⟩, sizes, K, sizes[K.toNat]! + size)) (afterArgs := state.update 9 (.i64 K))
+      (x := (⟨prices⟩, ⟨sizes⟩, K, sizes[K.toNat]! + size)) (afterArgs := state.update 9 (.i64 K))
       (by simp [Expr.evalResults, Expr.eval, hB.get0, hB.get1, hB.get3, hB.get5, U64Op.apply,
         State.set?_eq_update _ (show 9 < state.params.length + state.locals.length by
           rw [hB.params, hB.locals]; decide), Expr.readValue_at hS1.values hRead1])
-      ⟨[.i64 pp], _, rfl, ⟨pp, rfl, hL.tempsOwned _ (List.mem_singleton_self _)⟩, [.i64 ps], _,
-        rfl, ⟨ps, rfl, hS1⟩, rfl⟩ rfl
-      (fun q hq t ht => by
-        rw [List.mem_singleton] at ht
-        subst ht
-        rw [List.mem_singleton.mp hq]
-        exact hL.apartB _ (List.mem_singleton_self _) ps sizes hSizes hAS)
+      ⟨[.i64 pp], _, rfl, ⟨pp, rfl, hL.tempsOwned (pp, prices) (by simp)⟩, [.i64 ps], _,
+        rfl, ⟨ps, rfl, hL.tempsOwned (ps, sizes) (by simp)⟩, rfl⟩ rfl
+      (fun q hq => by simp [Represent.reads] at hq)
       (by omega) (by omega)).mono (fun _ _ h => h) ?_
     rintro s st ⟨heap2, p1, p2, hL2, rfl⟩
-    have hResult : addBidTuple (⟨prices⟩, sizes, price, size) =
-        setTuple (⟨prices⟩, sizes, K, sizes[K.toNat]! + size) := by
+    have hResult : addBidTuple (⟨prices⟩, ⟨sizes⟩, price, size) =
+        setTuple (⟨prices⟩, ⟨sizes⟩, K, sizes[K.toNat]! + size) := by
       unfold addBidTuple LeanExe.Examples.Clob.addBid; exact ite_eq_left hFound
     rw [hResult]
     exact movesPost_of_live hL2 (State.get_update_same (by rw [hLenU, hLength]; decide))
       (by rw [State.get_update_ne (by decide)]; exact State.get_update_same (by omega))
-  · -- A new level: `insertLevel` copies both arrays, and the prices are released.
+  · -- A new level: `insertLevel` copies both arrays, and both are released.
     intro heap1 store1 state hL hB hFound
     set K := findTuple (prices, price) with hK
-    have hP1 := (hL.tempsOwned _ (List.mem_singleton_self _)).borrowed
+    have hP1 := (hL.tempsOwned (pp, prices) (by simp)).borrowed
+    have hS1 := (hL.tempsOwned (ps, sizes) (by simp)).borrowed
     have hLength : state.params.length + state.locals.length = 10 := by
       rw [hB.params, hB.locals]
     refine Stmt.seq_spec (Live.callPair insertLevel_implements rfl
       (by rw [hNoImports]; exact compile_funcs (funcs := clob.funcs) (i := 2) rfl) rfl
-      (consumed := []) (rest := [(pp, prices)]) hL hCap
+      (consumed := []) (rest := [(pp, prices), (ps, sizes)]) hL hCap
       (vals := [.i64 pp, .i64 ps, .i64 K, .i64 price, .i64 size])
       (x := (prices, sizes, K, price, size)) (afterArgs := state)
       (by simp [Expr.evalResults, Expr.eval, hB.get0, hB.get1, hB.get2, hB.get3, hB.get5])
-      ⟨[.i64 pp], _, rfl, ⟨pp, rfl, hP1⟩, [.i64 ps], _, rfl,
-        ⟨ps, rfl, hL.borrowed ps sizes hSizes hAS⟩, rfl⟩ rfl (fun _ _ _ ht => nomatch ht)
-      (by omega) (by omega)) ?_
+      ⟨[.i64 pp], _, rfl, ⟨pp, rfl, hP1⟩, [.i64 ps], _, rfl, ⟨ps, rfl, hS1⟩, rfl⟩ rfl
+      (fun _ _ _ ht => nomatch ht) (by omega) (by omega)) ?_
     apply Triple.of_forall
     rintro s st ⟨heap2, p1, p2, hL2, rfl⟩
-    have hResult : addBidTuple (⟨prices⟩, sizes, price, size) =
+    have hResult : addBidTuple (⟨prices⟩, ⟨sizes⟩, price, size) =
         insertTuple (prices, sizes, K, price, size) := by
       unfold addBidTuple LeanExe.Examples.Clob.addBid; exact ite_eq_right hFound
     have hGet0 : ((state.update 7 (.i64 p2)).update 6 (.i64 p1)).get 0 = some (.i64 pp) := by
       rw [State.get_update_ne (by decide), State.get_update_ne (by decide), hB.get0]
-    refine (Live.releaseAt (pre := [_, _]) (post := []) hL2 hImports hRelease hGet0).mono
-      (fun _ _ h => h) ?_
+    have hGet1 : ((state.update 7 (.i64 p2)).update 6 (.i64 p1)).get 1 = some (.i64 ps) := by
+      rw [State.get_update_ne (by decide), State.get_update_ne (by decide), hB.get1]
+    refine Stmt.seq_spec (Live.releaseAt (pre := [_, _, _]) (post := []) hL2 hImports hRelease
+      hGet1) ?_
+    apply Triple.of_forall
     rintro s' st' ⟨hL3, rfl⟩
+    refine (Live.releaseAt (pre := [_, _]) (post := []) hL3 hImports hRelease hGet0).mono
+      (fun _ _ h => h) ?_
+    rintro s'' st'' ⟨hL4, rfl⟩
     rw [hResult]
-    exact movesPost_of_live hL3 (State.get_update_same (by rw [hLenU, hLength]; decide))
+    exact movesPost_of_live hL4 (State.get_update_same (by rw [hLenU, hLength]; decide))
       (by rw [State.get_update_ne (by decide)]; exact State.get_update_same (by omega))
 
 /-- `cancelBid` with its four arguments as one tuple: the call consumes both arrays. -/
@@ -1038,8 +1010,8 @@ theorem cancelBid_implements : Implements clob.module 10 cancelTuple := by
     (.ite (.leU (.read 1 (.get 5)) (.get 3))
       (.seq (.call 9 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩] [6, 7])
         (.seq (.release 1) (.release 0)))
-      (.seq (.call 5 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩,
-        ⟨.u64, .bin .sub (.read 1 (.get 5)) (.get 3)⟩] [6, 7]) (.release 1)))
+      (.call 5 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 5⟩,
+        ⟨.u64, .bin .sub (.read 1 (.get 5)) (.get 3)⟩] [6, 7]))
     (.seq (.assign 6 (.get 0)) (.assign 7 (.get 1)))) (6 + 3)
     (fun store state => store = initial ∧ state = bidStart pp ps price size 6)
     (MovesPost heap initial [pp, ps] 9 6 7 (cancelTuple (⟨prices⟩, ⟨sizes⟩, price, size)))
@@ -1108,43 +1080,32 @@ theorem cancelBid_implements : Implements clob.module 10 cancelTuple := by
       rw [hResult]
       exact movesPost_of_live hL4 (State.get_update_same (by rw [hLenU, hReadLen]; decide))
         (by rw [State.get_update_ne (by decide)]; exact State.get_update_same (by omega))
-    · -- `setLevel` consumes the prices and reduces the size; the sizes are released.
+    · -- `setLevel` consumes both arrays and reduces the size.
       let read2 := read.update 9 (.i64 K)
       have hRead1' : read2.get 1 = some (.i64 ps) := by
         rw [State.get_update_ne (by decide), hRead1]
       have hRead2Len : read2.params.length + read2.locals.length = 10 := by
         rw [hLenU, hReadLen]
-      refine Stmt.seq_spec (Live.callPair setLevel_implements rfl
+      refine (Live.callPair setLevel_implements rfl
         (by rw [hNoImports]; exact compile_funcs (funcs := clob.funcs) (i := 3) rfl) rfl
-        (consumed := [(pp, prices)]) (rest := [(ps, sizes)]) hL hCap
+        (consumed := [(pp, prices), (ps, sizes)]) (rest := []) hL hCap
         (vals := [.i64 pp, .i64 ps, .i64 K, .i64 (sizes[K.toNat]! - size)])
-        (x := (⟨prices⟩, sizes, K, sizes[K.toNat]! - size)) (afterArgs := read2)
+        (x := (⟨prices⟩, ⟨sizes⟩, K, sizes[K.toNat]! - size)) (afterArgs := read2)
         (by simp [Expr.evalResults, Expr.eval, hReadGet 0 (by decide), hReadGet 1 (by decide),
           hReadGet 3 (by decide), hReadGet 5 (by decide), hB.get0, hB.get1, hB.get3, hB.get5,
           U64Op.apply, State.set?_eq_update _ (show 9 < read.params.length + read.locals.length by
             omega), Expr.readValue_at hS1.values hRead1', read2])
         ⟨[.i64 pp], _, rfl, ⟨pp, rfl, hL.tempsOwned _ hMemP⟩, [.i64 ps], _, rfl,
-          ⟨ps, rfl, hS1⟩, rfl⟩ rfl
-        (fun q hq t ht => by
-          rw [List.mem_singleton] at ht
-          subst ht
-          rw [List.mem_singleton.mp hq]
-          exact (hL.tempsOwned _ hMemS).region_apart (regionsDisjoint_symm
-            ((List.pairwise_cons.mp hL.pairwise).1 _ (List.mem_singleton_self _))))
-        (by omega) (by omega)) ?_
-      apply Triple.of_forall
+          ⟨ps, rfl, hL.tempsOwned _ hMemS⟩, rfl⟩ rfl
+        (fun q hq => by simp [Represent.reads] at hq) (by omega) (by omega)).mono
+          (fun _ _ h => h) ?_
       rintro s2 st2 ⟨heap2, p1, p2, hL2, rfl⟩
-      have hGet1 : ((read2.update 7 (.i64 p2)).update 6 (.i64 p1)).get 1 = some (.i64 ps) := by
-        rw [State.get_update_ne (by decide), State.get_update_ne (by decide), hRead1']
-      refine (Live.releaseAt (pre := [_, _]) (post := []) hL2 hImports hRelease hGet1).mono
-        (fun _ _ h => h) ?_
-      rintro s3 st3 ⟨hL3, rfl⟩
       have hResult : cancelTuple (⟨prices⟩, ⟨sizes⟩, price, size) =
-          setTuple (⟨prices⟩, sizes, K, sizes[K.toNat]! - size) := by
+          setTuple (⟨prices⟩, ⟨sizes⟩, K, sizes[K.toNat]! - size) := by
         unfold cancelTuple LeanExe.Examples.Clob.cancelBid
         exact (ite_eq_left hFound).trans (ite_eq_right hLe)
       rw [hResult]
-      exact movesPost_of_live hL3 (State.get_update_same (by rw [hLenU, hRead2Len]; decide))
+      exact movesPost_of_live hL2 (State.get_update_same (by rw [hLenU, hRead2Len]; decide))
         (by rw [State.get_update_ne (by decide)]; exact State.get_update_same (by omega))
   · -- No level at the price: both arrays are returned.
     intro heap1 store1 state hL hB hFound
@@ -1189,8 +1150,7 @@ theorem applyCommand_implements : Implements clob.module 11 applyTuple := by
         s.params.length + s.locals.length := fun s j v => by
     simp [State.update_params_length, State.update_locals_length]
   show Triple _ (.ite (.eq (.get 2) (.const 0))
-      (.seq (.call 6 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [5, 6])
-        (.release 1))
+      (.call 6 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [5, 6])
       (.ite (.eq (.get 2) (.const 1))
         (.call 10 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩, ⟨.u64, .get 3⟩, ⟨.u64, .get 4⟩] [5, 6])
         (.seq (.assign 5 (.get 0)) (.assign 6 (.get 1))))) 7
@@ -1232,30 +1192,20 @@ theorem applyCommand_implements : Implements clob.module 11 applyTuple := by
     apply Triple.of_forall
     rintro s st ⟨hs, rfl, hKind⟩
     subst s
-  · -- Kind 0: `addBid` consumes the prices; the sizes are released.
-    refine Stmt.seq_spec (Live.callPair addBid_implements rfl
+  · -- Kind 0: `addBid` consumes both arrays.
+    refine (Live.callPair addBid_implements rfl
       (by rw [hNoImports]; exact compile_funcs (funcs := clob.funcs) (i := 4) rfl) rfl
-      (consumed := [(pp, prices)]) (rest := [(ps, sizes)]) hL hCap
-      (vals := [.i64 pp, .i64 ps, .i64 price, .i64 size]) (x := (⟨prices⟩, sizes, price, size))
+      (consumed := [(pp, prices), (ps, sizes)]) (rest := []) hL hCap
+      (vals := [.i64 pp, .i64 ps, .i64 price, .i64 size]) (x := (⟨prices⟩, ⟨sizes⟩, price, size))
       hArgs
-      ⟨[.i64 pp], _, rfl, ⟨pp, rfl, hPrices⟩, [.i64 ps], _, rfl, ⟨ps, rfl, hSizes.borrowed⟩, rfl⟩
-      rfl
-      (fun q hq t ht => by
-        rw [List.mem_singleton] at ht
-        subst ht
-        rw [List.mem_singleton.mp hq]
-        exact hSizes.region_apart (regionsDisjoint_symm hPS))
-      (by rw [hLength]; decide) (by rw [hLength]; decide)) ?_
-    apply Triple.of_forall
+      ⟨[.i64 pp], _, rfl, ⟨pp, rfl, hPrices⟩, [.i64 ps], _, rfl, ⟨ps, rfl, hSizes⟩, rfl⟩ rfl
+      (fun _ hq => absurd hq List.not_mem_nil)
+      (by rw [hLength]; decide) (by rw [hLength]; decide)).mono (fun _ _ h => h) ?_
     rintro s2 st2 ⟨heap2, p1, p2, hL2, rfl⟩
-    refine (Live.releaseAt (pre := [_, _]) (post := []) hL2 hImports hRelease
-      (by rw [State.get_update_ne (by decide), State.get_update_ne (by decide)]; rfl)).mono
-      (fun _ _ h => h) ?_
-    rintro s3 st3 ⟨hL3, rfl⟩
     rw [show applyTuple (⟨prices⟩, ⟨sizes⟩, kind, price, size) =
-        addBidTuple (⟨prices⟩, sizes, price, size) by
+        addBidTuple (⟨prices⟩, ⟨sizes⟩, price, size) by
       unfold applyTuple LeanExe.Examples.Clob.applyCommand; exact ite_eq_left hKind]
-    exact hFinal _ _ p1 p2 _ hL3
+    exact hFinal _ _ p1 p2 _ hL2
   refine (Stmt.ite_spec
     (PThen := fun s st => s = initial ∧ st = start ∧ kind = 1)
     (PElse := fun s st => s = initial ∧ st = start ∧ kind ≠ 1) ?_ ?_).mono ?_ fun _ _ h => h
