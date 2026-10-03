@@ -22995,8 +22995,8 @@ Revised steps:
   unfolding in values; `reuse` through a borrowed match.  Scratch checks and the byte
   comparison.
 - [x] 1b: `addRoot` and its theorem.
-- [ ] 1c: `addAll a b`, which adds `a`'s root key to every key of `b`, and its theorem.
-- [ ] Tests, LTG, journal.
+- [x] 1c: `addAll a b`, which adds `a`'s root key to every key of `b`, and its theorem.
+- [x] Tests, LTG, journal.
 
 ### Item 1, step 1a: the compiler
 
@@ -23035,4 +23035,26 @@ case for a leaf `a`, which returns `b` unchanged.  `treeMoves_bytes` covers it a
 `propext`, `Classical.choice`, and `Quot.sound`.  Tests: 96 comparisons on pairs of trees, and a
 count case (4 host allocations, no frees).  `tests/modules/run.sh` passed 7,265 comparisons,
 49 count cases, and 12 depth cases.
+
+### Item 1, step 1c: `addAll`
+
+`KeyTree.addAll a b` joined `treeMoves` as entry 11, with its internal function at module index
+14; `incr.rec` and `insert.rec` moved to 12 and 13.  The invariant-parameter rule borrows `a`,
+which both self-calls receive, and the internal function consumes `b`, reads `a`'s root key
+between the calls, and rewrites `b`'s record in place.  `addAll_rec` follows `incr_rec`.
+`addAll_args` builds each self-call's premises from the parent's: the borrowed tree, the
+consumed child with disjoint blocks, and `Separate` between the child's blocks and `a`'s slot
+regions.  `Heap.Keeps.nodeBorrowed` keeps `a` through the first call with the same slot regions,
+which needs their positive lengths, so `slotRegions_pos` moved from `Project.Trees.Verify` to
+`Project.Trees.Encode`.  `addAll_bound` places the consumed root record inside the memory after
+both calls, for the three stores.  `treeMoves_bytes` covers `addAll_implements` and depends on
+`propext`, `Classical.choice`, and `Quot.sound`.
+
+Tests: 96 comparisons on pairs of trees, and a count case (4 host allocations, no frees).
+`tests/modules/run.sh` passed 7,361 comparisons, 50 count cases, and 12 depth cases, and
+`chunks.py` passed 360 cases.  The `trees` and `treeFrame` modules emit the same bytes as before.
+The `consumed-recursion` LTG entry describes the invariant-parameter rule and the borrowed
+argument, with `addAll_rec` as its worked proof.
+
+Item 1 is complete.
 

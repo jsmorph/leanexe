@@ -73,6 +73,14 @@ def KeyTree.addRoot (a : KeyTree) : KeyTree → KeyTree
     | .leaf => .node l k r
     | .node _ ak _ => .node l (k + ak) r
 
+/-- The tree `b` with `a`'s root key added to every key: `a` is read at every node of `b`, which
+is rewritten. -/
+def KeyTree.addAll (a : KeyTree) : KeyTree → KeyTree
+  | .leaf => .leaf
+  | .node l k r =>
+    .node (KeyTree.addAll a l) (k + match a with | .leaf => 0 | .node _ ak _ => ak)
+      (KeyTree.addAll a r)
+
 /-- The search tree `t` with the keys `a` and then `b`. -/
 def KeyTree.insertTwo (a b : UInt64) (t : KeyTree) : KeyTree := (t.insert a).insert b
 
