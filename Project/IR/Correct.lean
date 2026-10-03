@@ -62,7 +62,7 @@ theorem Func.implements_moves [Represent α] [Represent β] (funcs : List (Func 
       params.length = func.params.length)
     (correct : ∀ (x : α) (heap : Heap) (initial : Store Unit) (params : List Value),
       heap.At initial → Represent.borrowed heap initial params x →
-      Separate initial (Represent.moves initial params x) (Represent.reads params x) →
+      Separate initial (Represent.moves initial params x) (Represent.reads initial params x) →
       initial.memoryCap (compile funcs) 0 ≤ 65535 →
       Triple (compile funcs) func.body func.scratch
         (fun store state => store = initial ∧ state = func.state params)

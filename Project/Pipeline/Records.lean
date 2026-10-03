@@ -122,22 +122,6 @@ theorem SlotsOwned.frame {heap heap' : Heap} {store store' : Store Unit} :
 end
 
 mutual
-/-- The slot regions of the records of a value: each record's slots, `8` bytes each from its
-pointer, then those of its children. -/
-def Node.slotRegions (store : Store Unit) (p : UInt64) : Node → List (Nat × Nat)
-  | .null => []
-  | .record slots => (p.toNat, 8 * slots.length) :: slotsRegions store p 0 slots
-
-/-- The slot regions of the children in slots `i` on of the record at `p`. -/
-def slotsRegions (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → List (Nat × Nat)
-  | [] => []
-  | .word _ :: rest => slotsRegions store p (i + 1) rest
-  | .child n :: rest =>
-      Node.slotRegions store (store.mem.read64 (slotAddress p i)) n ++
-        slotsRegions store p (i + 1) rest
-end
-
-mutual
 /-- A borrowed value keeps its records when the bytes of its slot regions are unchanged and
 every slot region is a region of the new heap. -/
 theorem NodeBorrowed.frame {heap heap' : Heap} {store store' : Store Unit} :

@@ -110,9 +110,9 @@ theorem generating_start {store : Store Unit} {heap : Heap} {W : Weights} {P : P
 
 /-- The regions of the arrays that `step` reads: the weights of the blocks and the
 embeddings, the first eighteen weight arrays. -/
-theorem step_reads (pc : UInt64) (P : Pointers) (W : Weights) (cache : Array Float)
+theorem step_reads (store : Store Unit) (pc : UInt64) (P : Pointers) (W : Weights) (cache : Array Float)
     (token layers nh dh f : UInt64) (eps : Float) :
-    Represent.reads (stepArgs pc P token layers nh dh f eps)
+    Represent.reads store (stepArgs pc P token layers nh dh f eps)
       ((⟨cache⟩ : Moved (Array Float)), W.wte, W.wpe, W.g1, W.b1, W.wq, W.bq, W.wk, W.bk, W.wv,
         W.bv, W.wo, W.bo, W.g2, W.b2, W.wfc, W.bfc, W.wproj, W.bproj, token, layers, nh, dh, f,
         eps) =
@@ -136,7 +136,7 @@ theorem generating_step {store : Store Unit} {W : Weights} {P : Pointers}
     subst hq
     rw [Array.size_map]
     exact (hW w hw).2
-  have hReads : ∀ r ∈ Represent.reads (stepArgs pc P tokens[p]! layers nh dh f eps)
+  have hReads : ∀ r ∈ Represent.reads store (stepArgs pc P tokens[p]! layers nh dh f eps)
       ((⟨W.cache tokens layers nh dh f eps p⟩ : Moved (Array Float)), W.wte, W.wpe, W.g1, W.b1,
         W.wq, W.bq, W.wk, W.bk, W.wv, W.bv, W.wo, W.bo, W.g2, W.b2, W.wfc, W.bfc, W.wproj,
         W.bproj, tokens[p]!, layers, nh, dh, f, eps), Apart store [pc] r := by

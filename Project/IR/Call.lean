@@ -26,7 +26,7 @@ theorem Stmt.callImplements_spec [Represent α] [Represent β] {idx : Nat} {g : 
     {heap : Heap} {x : α} {vals : List Value}
     (hArgs : Expr.evalResults initial.mem scratch args before = some (vals, afterArgs))
     (hHeap : heap.At initial) (hBorrowed : Represent.borrowed heap initial vals x)
-    (hSeparate : Separate initial (Represent.moves initial vals x) (Represent.reads vals x))
+    (hSeparate : Separate initial (Represent.moves initial vals x) (Represent.reads initial vals x))
     (hCap : initial.memoryCap m 0 ≤ 65535)
     (hSet : ∀ heap' store values, Represent.owned heap' store values (g x) →
       ∃ next, afterArgs.setAll results.reverse values.reverse = some next) :

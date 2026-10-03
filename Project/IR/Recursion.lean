@@ -130,7 +130,7 @@ pointer to the result's records, rebuilt from the consumed blocks. -/
 def Rebuilds [Represent α] [Encode β] (m : Module) (idx : Nat) (f : α → β) (x : α) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (vs : List Value) (d : UInt64),
     heap.At store → Represent.borrowed heap store vs x →
-    Separate store (Represent.moves store vs x) (Represent.reads vs x) →
+    Separate store (Represent.moves store vs x) (Represent.reads store vs x) →
     store.memoryCap m 0 ≤ 65535 →
     ReturnsOrAborts env m idx store (.i64 d :: vs.reverse)
       (fun final values => ∃ (heap' : Heap) (q : UInt64), values = [.i64 q] ∧
@@ -145,7 +145,7 @@ theorem Func.rebuildRecursion [Represent α] [Encode β] (funcs : List (Func × 
       vs.length + 1 = func.params.length)
     (hBody : ∀ x, (∀ y, measure y < measure x → Rebuilds (compile funcs) (2 + i) f y) →
       ∀ heap initial vs (d : UInt64), heap.At initial → Represent.borrowed heap initial vs x →
-      Separate initial (Represent.moves initial vs x) (Represent.reads vs x) →
+      Separate initial (Represent.moves initial vs x) (Represent.reads initial vs x) →
       initial.memoryCap (compile funcs) 0 ≤ 65535 →
       Triple (compile funcs) func.body func.scratch
         (fun store state => store = initial ∧ state = func.state (vs ++ [.i64 d]))
@@ -181,7 +181,7 @@ theorem Stmt.selfCall_rebuilds [Represent α] [Encode β] {m : Module} {idx : Na
     {next : UInt64 → State} {heap : Heap} {y : α} {vs : List Value} {d : UInt64}
     (hSpec : Rebuilds m idx f y) (hHeap : heap.At initial)
     (hB : Represent.borrowed heap initial vs y)
-    (hSeparate : Separate initial (Represent.moves initial vs y) (Represent.reads vs y))
+    (hSeparate : Separate initial (Represent.moves initial vs y) (Represent.reads initial vs y))
     (hCap : initial.memoryCap m 0 ≤ 65535)
     (hArgs : Expr.evalResults initial.mem scratch args before = some (vs ++ [.i64 d], afterArgs))
     (hSet : ∀ q, afterArgs.setAll [result] [.i64 q] = some (next q)) :
@@ -207,7 +207,7 @@ theorem Func.implements_rebuilt [Represent α] [Encode β] (funcs : List (Func �
       params.length = func.params.length)
     (correct : ∀ (x : α) (heap : Heap) (initial : Store Unit) (params : List Value),
       heap.At initial → Represent.borrowed heap initial params x →
-      Separate initial (Represent.moves initial params x) (Represent.reads params x) →
+      Separate initial (Represent.moves initial params x) (Represent.reads initial params x) →
       initial.memoryCap (compile funcs) 0 ≤ 65535 →
       Triple (compile funcs) func.body func.scratch
         (fun store state => store = initial ∧ state = func.state params)

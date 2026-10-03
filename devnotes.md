@@ -22853,7 +22853,7 @@ The change:
 
 `checkOwnedNodes` stays; lifting it is a separate step that this change allows.
 
-- [ ] 13a: `Represent.reads` with the store, the premise, and its uses.
+- [x] 13a: `Represent.reads` with the store, the premise, and its uses.
 - [ ] 13b: `pushSum` and its theorem; tests.
 - [ ] LTG, `deslop.md`, and the journal.
 
@@ -22879,3 +22879,17 @@ Additions to the plan:
 | Doc comments at `Implements.lean` (the `reads` field, the `Encode` instance) and the `checkOwnedNodes` doc in the compiler become wrong | Updated |
 | `Rebuilds` states `Separate` with `reads` | Changes the same way |
 | `step_reads` in `Gpt/Generation.lean` has no store in scope | Gains a store parameter |
+
+### Iteration 13, step 13a: reads of borrowed trees
+
+`Represent.reads` takes the store.  For a value of a recursive type it is
+`Node.slotRegions store p (Encode.encode x)`, which moved into `Implements.lean`; arrays,
+scalars, and `Moved` values ignore the store, and a pair passes it to both sides.
+`Implements`, `Satisfies`, `Rebuilds`, `Func.implements_moves`, `Func.rebuildRecursion`,
+`Func.implements_rebuilt`, and `Stmt.callImplements_spec` state `Separate` with
+`Represent.reads store params x`, and the `hReads` premises of `Live.callMove`,
+`Live.callTuple`, `Live.callPair`, and `Live.tupleLoop` take the store.  `step_reads` gained a
+store parameter.  The doc comments of the `reads` field, the `Encode` instance, `Implements`,
+and `checkOwnedNodes` describe the change.  Every edit was mechanical, and the full build passed
+with no `sorry`.
+

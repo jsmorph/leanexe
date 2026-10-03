@@ -2498,9 +2498,9 @@ def recursiveFrameLimit : Nat := 24
 /-- The depth at which an internal function traps at `unreachable`. -/
 def recursionDepthLimit : UInt64 := 1000
 
-/-- Rejects a definition that consumes one parameter of a recursive type and borrows another:
-`Separate` keeps the consumed records apart from the arrays a call reads, but not from a
-borrowed tree. -/
+/-- Rejects a definition that consumes one parameter of a recursive type and borrows another.
+`Separate` keeps a borrowed tree's record slots apart from the consumed records, so the
+specification allows such a definition; no program has needed it yet. -/
 def checkOwnedNodes (declName : Name) (nodeParams owned : List Lean.Expr) : MetaM Unit := do
   let ownedNodes := nodeParams.filter owned.contains
   unless ownedNodes.isEmpty || ownedNodes.length == nodeParams.length do

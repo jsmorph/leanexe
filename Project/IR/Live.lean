@@ -255,7 +255,7 @@ theorem Live.callMove [Represent α] {idx : Nat} {g : α → Array Float}
     (hArgs : Expr.evalResults store.mem scratch args before = some (vals, afterArgs))
     (hBorrowed : Represent.borrowed heap store vals x)
     (hMoves : Represent.moves store vals x = [t.1])
-    (hReads : ∀ q ∈ Represent.reads vals x, regionsDisjoint q (block store t.1))
+    (hReads : ∀ q ∈ Represent.reads store vals x, regionsDisjoint q (block store t.1))
     (hR : r < afterArgs.params.length + afterArgs.locals.length) :
     Triple m (.call idx args [r]) scratch (fun s st => s = store ∧ st = before)
       (fun s st => ∃ heap' ptr, Live heap0 initial moved heap' s
@@ -297,7 +297,7 @@ theorem Live.callMove_seq [Represent α] {idx : Nat} {g : α → Array Float}
     (hArgs : Expr.evalResults store.mem scratch args before = some (vals, afterArgs))
     (hBorrowed : Represent.borrowed heap store vals x)
     (hMoves : Represent.moves store vals x = [t.1])
-    (hReads : ∀ q ∈ Represent.reads vals x, regionsDisjoint q (block store t.1))
+    (hReads : ∀ q ∈ Represent.reads store vals x, regionsDisjoint q (block store t.1))
     (hR : r < afterArgs.params.length + afterArgs.locals.length)
     {next : Stmt} {Q : Store Unit → State → Prop}
     (hNext : ∀ heap' ptr s, Live heap0 initial moved heap' s
