@@ -22194,8 +22194,8 @@ Revised steps:
 - [x] 9a: `set!` in place; `fillLevel`, `setLevel`, `addBid`, `cancelBid`, and `applyCommand`.
 - [x] The generalized fill rule for in-place shifts.
 - [x] 9b: `eraseIdxIfInBounds` in place; `removeLevel` and `cancelBid`.
-- [ ] 9c: the generalized grow rule, then `insertIdx!` in place; `insertLevel` and `addBid`.
-- [ ] Count cases, `chunks.py`, LTG entries, and `deslop.md`.
+- [x] 9c: the generalized grow rule, then `insertIdx!` in place; `insertLevel` and `addBid`.
+- [x] Count cases, `chunks.py`, LTG entries, and `deslop.md`.
 
 ### Iteration 9, step 9-0: the call rule and pending reads
 
@@ -22280,3 +22280,47 @@ cases `cancelBid 102 4` and `applyCommand 1 102 4` fell from 4 2 to 2 0, as the 
 predicted.  `tests/modules/run.sh` passed 5,493 comparisons, 35 count cases, and 12 depth
 cases; `chunks.py` passed 360 cases; the full build passed; and every module other than `clob`
 emits the same bytes.
+
+### Iteration 9, step 9c: `insertIdx!` in place
+
+`Stmt.insertInPlace src size k v cap dst limit index` reads the length; past the end it writes
+length 0, Lean's `#[]`.  Otherwise it loads the capacity word and, when the block has no room
+for one more element (`8 * (n + 2) ≤ capacity` fails), requests twice the capacity or the size
+needed, calls `alloc`, copies the array into the new block with `Stmt.fill` and the element
+`.read src index`, releases the old block, and moves the pointer into `src`.  Then
+`Stmt.insertShift` sets `index` to the length, runs `Stmt.shiftUp`, which moves element
+`index - 1` into `index` while `k < index`, writes `v` into element `k`, and writes the longer
+length last.  The first draft carried the displaced element forward in a local, as the reviewer
+suggested; `Stmt.fill_inv`'s invariant covers only the store, so the carry's value was lost
+between iterations, and the loop now runs from the top down with a memory-only invariant.
+
+The proof pieces, all in `Update.lean` except the first:
+
+- `Stmt.growFill_spec` in `Append.lean`: the growth rule of `Stmt.append` with any element
+  whose values give the result while the old arrays stay in place, and the new block's
+  capacity in its postcondition.  `Stmt.appendGrow_spec` now follows from it.
+- `Stmt.shiftUp_inv`: the down-counting loop under an invariant of the store.
+- `shiftedUp`, `shiftedUp_step`, `shiftedUp_get`, `arrayAt_grow` (a longer length with the next
+  word already in place pushes it), and `insert_final`, `insert_end`, `insert_out`, which equate
+  the result with `insertIdx!` in range, at the end, and past it.
+- `Stmt.insertShift_spec`, the in-place part with room, under the invariant that the store holds
+  `shiftedUp xs i` and, below the top, the last element one place up.
+- `Stmt.AppendPost.trans` and `Stmt.AppendPost.frame`, which compose two array steps.
+- `Stmt.insertInPlace_spec`, from `Heap.Owned` to `Stmt.AppendPost` over all three paths.
+
+In CLOB, `insertLevel` takes both arrays as `Moved` and inserts into each in place; its proof
+chains two `Stmt.insertInPlace_spec` steps, and the four insert helpers of the copying proof are
+gone.  `addBid`'s insert path consumes both arrays and releases nothing.  The single-call count
+cases are unchanged, since the host gives each input array exact capacity and every single
+insert grows; a new case, `runCommands` with two inserts, shows the second insert fitting the
+doubled block (5 allocations, 2 frees).  `tests/modules/chunks.py` checked exact counts for
+`runCommands`; growth now depends on capacity, so it checks, as for `runOut`, that exactly the
+results and the command arrays stay allocated.  `tests/modules/run.sh` passed 5,493 comparisons,
+36 count cases, and 12 depth cases; `chunks.py` passed 360 cases; the full build passed; every
+module other than `clob` emits the same bytes.  The LTG entry `in-place-update` describes the
+templates, and `array-build` no longer lists the four CLOB theorems.
+
+Iteration 9 is complete.  Open items: in-place `push`, which would use the growth step as a
+reserve; and the three `*_eq_build` lemmas, which no CLOB theorem uses now, though the copying
+templates remain for borrowed arrays.
+

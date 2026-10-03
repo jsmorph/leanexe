@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "in-place-update",
+  "title": "In-place array update",
+  "summary": "Proves the compiler's in-place templates for set!, eraseIdxIfInBounds, and insertIdx! on an owned array at its last use: one store; a loop that moves the later elements down and a shorter length; and a move to a block of twice the capacity when full, a loop that moves the later elements up from the top down, the new element, and a longer length.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["arrays", "ownership", "compiler-motifs", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["array", "store", "loop", "allocation", "release", "move", "frame", "ownership"],
+  "annotationKinds": ["set in place", "erase in place", "insert in place", "set position", "set value", "erase position", "insert position", "insert value", "array move"],
+  "modules": ["Project.IR.Update", "Project.IR.Append"],
+  "declarations": ["Project.IR.Stmt.setInPlace", "Project.IR.Stmt.setInPlace_spec", "Project.IR.Stmt.eraseInPlace", "Project.IR.Stmt.eraseInPlace_spec", "Project.IR.Stmt.insertInPlace", "Project.IR.Stmt.insertInPlace_spec", "Project.IR.Stmt.insertShift", "Project.IR.Stmt.insertShift_spec", "Project.IR.Stmt.shiftUp", "Project.IR.Stmt.shiftUp_inv", "Project.IR.Stmt.fill_inv", "Project.IR.Stmt.growFill_spec", "Project.IR.Stmt.AppendPost", "Project.IR.Stmt.AppendPost.inPlace", "Project.IR.Stmt.AppendPost.trans", "Project.IR.Stmt.AppendPost.frame", "Project.IR.arrayAt_set", "Project.IR.arrayAt_shrink", "Project.IR.arrayAt_grow", "Project.IR.shifted", "Project.IR.shiftedUp", "Project.IR.insert_final", "Project.IR.insert_end", "Project.IR.insert_out"],
+  "premises": ["heap.Owned for the array the call hands over, and Heap.At", "A memory cap of at most 65,535 pages, and alloc and release at functions 0 and 1, for insertIdx!", "Locals for the length, the loop, and the growth path below scratch and apart from the array, position, and value"],
+  "result": "Stmt.AppendPost for the updated array: owned at the same pointer, or for an insert into a full block at a new one, with every array apart from the old block kept and apart from the result.",
+  "consumers": ["Project.Clob.fillLevel_implements", "Project.Clob.setLevel_implements", "Project.Clob.removeLevel_implements", "Project.Clob.insertLevel_implements"],
+  "relatedEntries": ["array-build", "memory-write-range", "array-state-loop"],
+  "exclusion": null
+}

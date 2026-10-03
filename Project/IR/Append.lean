@@ -293,7 +293,8 @@ theorem Stmt.growFill_spec {releaseType scratch dst limit index src1 : Nat} {loc
         .seq (.fill dst limit index .skip element) <|
         .ite (.eq (.get dst) (.get src1)) .skip (.release src1)) scratch
       (fun s st => s = heap.allocateStore initial need 1 ∧ st = start)
-      (Stmt.AppendPost heap initial before scratch locals dst p1 all) := by
+      (fun s st => Stmt.AppendPost heap initial before scratch locals dst p1 all s st ∧
+        ∃ q, st.get dst = some (.i64 q) ∧ need.toNat ≤ capacityAt s q) := by
   have hNot1 : ∀ j ∈ [dst, limit, index], j ≠ src1 := fun j hj h => hSrc1 (h ▸ hIn j hj)
   have hBlock := hHeap.allocate_block 1 hFits
   have hCapacity := allocated_capacity need heap.free
@@ -346,7 +347,8 @@ theorem Stmt.growFill_spec {releaseType scratch dst limit index src1 : Nat} {loc
     subst hPtrDef hStoreA
     have hNew := Heap.newArray_of_writes hHeap hFits hWithin hAt (by omega)
       (by rw [hW.1]; exact heap.allocateStore_memoryCaps initial need 1)
-    generalize hPtrDef : FixedArrayAllocate.root heap.top need heap.free = ptr at hNew hD hXApart
+    have hCapS := ((hHeap.allocate_block 1 hFits).writesWithin hWithin).capacity_eq
+    generalize hPtrDef : FixedArrayAllocate.root heap.top need heap.free = ptr at hNew hD hXApart hCapS
     have hNe : ptr ≠ p1 := by
       rintro rfl
       simp only [regionsDisjoint] at hXApart
@@ -368,9 +370,9 @@ theorem Stmt.growFill_spec {releaseType scratch dst limit index src1 : Nat} {loc
     obtain ⟨hOwnedNew, hCapNew⟩ := hNew.owned.release hNew.at_ hOwnedP1.object hApartNew
     have hBlockNew : block ((heap.allocate need).releaseStore s p1) ptr = block s ptr :=
       block_eq hCapNew
-    refine ⟨_, ptr, hFrame0.trans (hFk.weaken fun j hj => hIn j (by simpa using hj)), hD,
+    refine ⟨⟨_, ptr, hFrame0.trans (hFk.weaken fun j hj => hIn j (by simpa using hj)), hD,
       hNew.at_.release hOwnedP1.object, hOwnedNew, hNew.caps, fun q ws hq hDisjoint => ?_,
-      fun q ws hq hDisjoint => ?_⟩
+      fun q ws hq hDisjoint => ?_⟩, ptr, hD, by rw [hCapNew, hCapS]; exact hCapacity⟩
     · rw [hBlockNew]
       refine ⟨(hNew.borrowed q ws hq).release hNew.at_ hOwnedP1.object ?_, hNew.borrowedApart q ws hq⟩
       rw [← hBlockP1] at hDisjoint
@@ -435,10 +437,10 @@ theorem Stmt.appendGrow_spec {releaseType scratch dst size1 size2 limit index ca
   have hSrc1F : ∀ {st}, State.Frame scratch [dst, limit, index] start st →
       st.get src1 = some (.i64 p1) := fun hF => by
     rw [hF.get src1 hSrcBelow1 (fun h => hNot1 src1 h rfl), hFrame0.get src1 hSrcBelow1 hSrc1, hP1]
-  refine Stmt.growFill_spec (all := xs ++ ys) hImports hRelease hLocals3 hBelow3
+  refine (Stmt.growFill_spec (all := xs ++ ys) hImports hRelease hLocals3 hBelow3
     (fun j hj => hSub.subset hj) hSrc1 hSrcBelow1 hRoom hHeap hXs (by simp; omega) hFits
     (by simp; omega) hFrame0 hP1 hDst0 (by rw [hLimit0, Array.size_append]) hIndex0
-    fun k hk s st hW hFk hI => ?_
+    fun k hk s st hW hFk hI => ?_).mono (fun _ _ h => h) fun _ _ h => h.1
   have hXv : UInt64Array.At s p1 xs := by
     refine hXA.values.writesRange hW ?_
     simp only [regionsDisjoint] at hXApart
