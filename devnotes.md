@@ -22191,7 +22191,7 @@ Revised steps:
 
 - [x] 9-0, compiler only, with CLOB's bytes unchanged: word and float arguments of a call may
   read an owned array; an array that an earlier result component reads may not move later.
-- [ ] 9a: `set!` in place; `fillLevel`, `setLevel`, `addBid`, `cancelBid`, and `applyCommand`.
+- [x] 9a: `set!` in place; `fillLevel`, `setLevel`, `addBid`, `cancelBid`, and `applyCommand`.
 - [ ] The generalized fill rule for in-place shifts.
 - [ ] 9b: `eraseIdxIfInBounds` in place; `removeLevel` and `cancelBid`.
 - [ ] 9c: the generalized grow rule, then `insertIdx!` in place; `insertLevel` and `addBid`.
@@ -22218,4 +22218,31 @@ the array arguments only, since word and float arguments run before the call, an
 `translateSelfCall` counts among the tree arguments; `setLevel prices sizes k
 (sizes[k.toNat]! + size)` with `sizes` owned compiles.  The full build passed, and all 21
 modules emit the bytes they emitted before.
+
+### Iteration 9, step 9a: `set!` in place
+
+`moveSites` counts the array argument of `set!` or `setIfInBounds` at a result position as a move
+site.  `translateArray` computes the position and the value into locals, as before, and then,
+for an owned array, emits `Stmt.setInPlace src size k v` (hint `set in place`): the length into
+`size`, and, when `k` is below it, a store of `v` into element `k`; the result is the array's
+own pointer.  A borrowed array still copies.
+
+`Project/IR/Update.lean` holds the template and its rule.  `arrayAt_set` states the array after
+the store, and `Stmt.AppendPost.inPlace` turns writes inside an owned array's block that leave
+it holding a result fitting its capacity into `Stmt.AppendPost` at the same pointer, through the
+existing `Heap.Owned.rewrite`, `Heap.Borrowed.keep`, and `Heap.Owned.keep`; the erase and insert
+rules can use it too.  `Stmt.setInPlace_spec` proves the template from `Heap.Owned` to
+`Stmt.AppendPost` for `xs.set! k v`.
+
+In CLOB, `sizes` became `Moved` in `fillLevel`, `setLevel`, and `addBid`.  `fillLevel` and
+`setLevel` are proved with the new rule; `addBid` starts both arrays as live temporaries
+(`live_two`), its `setLevel` path consumes both, and its `insertLevel` path releases both;
+`cancelBid`'s `setLevel` path and `applyCommand`'s kind-0 path lose a release.  The CLOB count
+cases now match the reviewer's predicted 9a column: `setLevel` 2 0, `addBid 102 5` 2 0,
+`cancelBid 102 1` 2 0, `applyCommand 0 102 5` 2 0, and `applyCommand 1 102 1` 2 0 drop one copy
+each, and `addBid 103 5` frees one more (4 2).  `tests/modules/run.sh` passed 5,493 comparisons,
+35 count cases, and 12 depth cases; `chunks.py` passed 360 cases; the full build passed; and
+every module other than `clob` emits the same bytes.  Two mistakes cost rounds: a stale
+`Project.Clob.Module` olean, which `lake env lean` loaded after I rebuilt only `Update`, and a
+`rintro … rfl` that eliminated the state variable that later lines named.
 
