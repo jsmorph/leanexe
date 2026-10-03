@@ -22932,7 +22932,7 @@ what else the change touches:
 | Program | Shape | Result today |
 |---------|-------|--------------|
 | `addRoot a b`: `b`'s root key plus `a`'s | reads `a`, rewrites `b` | rejected by `checkOwnedNodes` |
-| `zipAdd a b`: `a`'s keys added into `b`'s matching nodes | both trees' children go to the recursive calls | compiles; both trees consumed |
+| `zipAdd a b`: `a`'s keys added into `b`'s matching nodes | both trees' children go to the recursive calls | compiles.  Both trees consumed |
 | `addAll a b`: `a`'s root key added to every key of `b` | `a` goes to both recursive calls | rejected: the second call receives an `a` already moved |
 
 Mode inference for a recursive definition that returns a tree takes the greatest fixed point
@@ -22951,8 +22951,8 @@ nested case splits itself.  This is a further item for the list.
 
 | Approach | What it does | Effect |
 |----------|--------------|--------|
-| A. Remove `checkOwnedNodes` only | Mixed modes where inference already gives them | `addRoot` compiles; `addAll`-like recursions still fail |
-| B. A plus a per-path move count in the mode rule | Each round drops a parameter that some path moves more than once; the fixed point is the largest set moved at most once on every path and at least once on some | `addAll` borrows `a`; `zipAdd` still consumes both |
+| A. Remove `checkOwnedNodes` only | Mixed modes where inference already gives them | `addRoot` compiles.  `addAll`-like recursions still fail |
+| B. A plus a per-path move count in the mode rule | Each round drops a parameter that some path moves more than once.  The fixed point is the largest set moved at most once on every path and at least once on some | `addAll` borrows `a`.  `zipAdd` still consumes both |
 | C. A plus an explicit mode marker (`Borrowed α`) | The program states the mode | Contradicts the decision that the compiler infers modes (2026-10-01) |
 
 Recommendation: B.  The count follows `moveSites` term for term: a sequence (constructor fields,
@@ -22980,12 +22980,12 @@ T7.  The findings change the recommendation:
 
 | Finding | Response |
 |---------|----------|
-| `addAll` with an `@` pattern fails under every mode assignment: Lean's matcher hands the self-calls the rebuilt pattern term (`KeyTree.leaf`, `left.node key right`), never the parameter | The analysis was wrong; `addAll` is written with the parameter itself |
+| `addAll` with an `@` pattern fails under every mode assignment: Lean's matcher hands the self-calls the rebuilt pattern term (`KeyTree.leaf`, `left.node key right`), never the parameter | The analysis was wrong.  `addAll` is written with the parameter itself |
 | B's "largest set moved at most once" need not exist (`quad` has three incomparable maximal sets), and B picks assignments the translation rejects (`quad`, `h3`) | B is dropped |
 | B makes a non-recursive `pushTwice x := (x.push 1, x.push 2)` compile with two copies | B is dropped |
-| A better option: a tree parameter that every self-call passes unchanged in its own position, and that the body moves nowhere else with that position borrowed, is borrowed; the greatest fixed point runs on the rest | Adopted (D).  In T7 it borrows `a` in `dup` and `addAllC` and leaves `zipAdd`, `incr`, `insert`, and `h3` as the current rule does; non-recursive definitions are untouched |
-| `translateSelfCall` accepts an owned variable at a borrowed position, which `translateCall` rejects; the proof would need `NodeOwned.borrowed` (item 2) | Add the check to self-calls; item 2 lifts both |
-| A match clears `reuse` for its branches, so `addRoot` with `b`'s rows first allocates new records and releases `b`'s instead of writing in place; rows that split on `a` first write in place | Keep `reuse` through a match whose discriminant is borrowed, with the settle code given the outer record |
+| A better option: a tree parameter that every self-call passes unchanged in its own position, and that the body moves nowhere else with that position borrowed, is borrowed.  The greatest fixed point runs on the rest | Adopted (D).  In T7 it borrows `a` in `dup` and `addAllC` and leaves `zipAdd`, `incr`, `insert`, and `h3` as the current rule does.  Non-recursive definitions are untouched |
+| `translateSelfCall` accepts an owned variable at a borrowed position, which `translateCall` rejects.  The proof would need `NodeOwned.borrowed` (item 2) | Add the check to self-calls.  Item 2 lifts both |
+| A match clears `reuse` for its branches, so `addRoot` with `b`'s rows first allocates new records and releases `b`'s instead of writing in place.  Rows that split on `a` first write in place | Keep `reuse` through a match whose discriminant is borrowed, with the settle code given the outer record |
 | A `match` inside a value is unsupported | `translateValue` unfolds a matcher, as `moveSites` does, so `addAll` can read `a`'s key with `match` |
 | No program found whose `Implements` would be false once `checkOwnedNodes` is gone | — |
 
@@ -23015,9 +23015,9 @@ Scratch checks with the real compiler:
 
 | Program | Result |
 |---------|--------|
-| `addRoot a b` (`b`'s root key plus `a`'s, written with a nested `match`) | `a` borrowed, `b` consumed; one store into `b`'s record |
-| `addAll a b` (`a`'s root key added to every key of `b`) | `a` borrowed, passed to both recursive calls; `b` rewritten in place; `a`'s key read between the calls |
-| `zipAdd a b` | both consumed; `b` returned unchanged when `a` is a leaf; otherwise `a`'s record rewritten and `b`'s released |
+| `addRoot a b` (`b`'s root key plus `a`'s, written with a nested `match`) | `a` borrowed, `b` consumed.  One store into `b`'s record |
+| `addAll a b` (`a`'s root key added to every key of `b`) | `a` borrowed, passed to both recursive calls.  `b` rewritten in place.  `a`'s key read between the calls |
+| `zipAdd a b` | both consumed.  `b` returned unchanged when `a` is a leaf.  Otherwise `a`'s record rewritten and `b`'s released |
 | `pick`, `dropIf`, and `caller a b := pick a b` | compile |
 | `pick t t`, and `pick l (.node l k r)` in a record branch | rejected by the occurrence checks |
 | `addAll` with `@` patterns, `double`, `grand`, `h3`, `quad`, `pushTwice` | rejected, as before |
@@ -23027,7 +23027,7 @@ The full build passed, and all 22 modules emit the same bytes as before.
 ### Item 1, step 1b: `addRoot`
 
 `KeyTree.addRoot a b`, written with a `match` on `a` inside `b`'s record branch, joined
-`treeMoves` as entry 10; `incr.rec` and `insert.rec` moved to 11 and 12.  It borrows `a` and
+`treeMoves` as entry 10, and `incr.rec` and `insert.rec` moved to 11 and 12.  It borrows `a` and
 consumes `b`: when both are nodes it loads `a`'s three slots and stores `b`'s key plus `a`'s
 into `b`'s root record.  `addRoot_implements` follows `setKey_implements`, with the loads from
 the borrowed record (`RecordSlots` bounds them in memory, `SlotsBorrowed` gives the key) and a
@@ -23039,7 +23039,7 @@ count case (4 host allocations, no frees).  `tests/modules/run.sh` passed 7,265 
 ### Item 1, step 1c: `addAll`
 
 `KeyTree.addAll a b` joined `treeMoves` as entry 11, with its internal function at module index
-14; `incr.rec` and `insert.rec` moved to 12 and 13.  The invariant-parameter rule borrows `a`,
+14, and `incr.rec` and `insert.rec` moved to 12 and 13.  The invariant-parameter rule borrows `a`,
 which both self-calls receive, and the internal function consumes `b`, reads `a`'s root key
 between the calls, and rewrites `b`'s record in place.  `addAll_rec` follows `incr_rec`.
 `addAll_args` builds each self-call's premises from the parent's: the borrowed tree, the
@@ -23076,7 +23076,7 @@ With both checks removed, scratch programs compile as follows:
 | Program | Result |
 |---------|--------|
 | `keepBig t := if size t < 3 then .leaf else t` | calls `size` on `t`, then releases `t` or returns it |
-| `sizeRoot t := let n := size t; match t with ...` (rewrites the root key) | calls `size`, then stores `n` into `t`'s record; compiled before the change too (see the review) |
+| `sizeRoot t := let n := size t.  Match t with ...` (rewrites the root key) | calls `size`, then stores `n` into `t`'s record.  Compiled before the change too (see the review) |
 | `setSize t := setKey (size t) t` | calls `size`, then `setKey` consumes `t` |
 | `rightSpine g b`, whose self-call is `rightSpine l r` | `g` borrowed by the mode rule, `l` (owned) lent to the self-call and released after it |
 | `addRoot t t`, `spine r r` (self-call) | rejected: an owned position's variable occurs twice |
@@ -23090,9 +23090,9 @@ another argument consumes it.
 
 | Approach | What it does | Effect |
 |----------|--------------|--------|
-| A. Remove both checks; prove one program for each | `NodeOwned.borrowed` and a lemma that a slot region lies inside its block; a non-recursive program in `trees` and a recursive one in `treeMoves`, each with its theorem | Both rules carry a proved program |
-| B. Remove the check in `translateCall` only | Same lemmas; one program | Self-calls wait for item 6, when calls in recursive definitions give natural programs |
-| C. Remove both checks; prove only the non-recursive program | Same lemmas; one program | The self-call rule has no proved program |
+| A. Remove both checks.  Prove one program for each | `NodeOwned.borrowed` and a lemma that a slot region lies inside its block.  A non-recursive program in `trees` and a recursive one in `treeMoves`, each with its theorem | Both rules carry a proved program |
+| B. Remove the check in `translateCall` only | Same lemmas.  One program | Self-calls wait for item 6, when calls in recursive definitions give natural programs |
+| C. Remove both checks.  Prove only the non-recursive program | Same lemmas.  One program | The self-call rule has no proved program |
 
 Recommendation: A.  The self-call case arises when the mode rule borrows a position that a
 self-call fills with an owned value, which only a contrived program does today, but the proof
@@ -23120,12 +23120,12 @@ compiler to compare.  I ran its old-compiler file and its plan file and confirme
 |---------|----------|
 | No accepted program lends a tree after a statement that consumes, rewrites, or releases it, and every program that lends and moves the same tree in one call fails | Approach A stands |
 | The occurrence checks suffice because no two names with overlapping blocks are in scope at once: a matched owned value counts as moved in its record branch, tree `let`s are unsupported, borrowed positions take only variables, and owned parameters are disjoint by `Separate` | Item 5 must recheck this when it allows tree `let`s |
-| `translateResults` translates a word `let` value with an empty owned set, so `let n := size t` lent `t` before the change, without a proof; `if size t < 3 ...` failed | The analysis is corrected; the change makes the rule uniform |
-| `dropSmall` uses `Separate.nil`, so the slot-region lemma first appears in `leftSpine`; `addLeft t := match t with ... .node l k (addRoot l r)` lends one owned tree and consumes another in a non-recursive call | Add `addLeft` |
+| `translateResults` translates a word `let` value with an empty owned set, so `let n := size t` lent `t` before the change, without a proof.  `if size t < 3 ...` failed | The analysis is corrected.  The change makes the rule uniform |
+| `dropSmall` uses `Separate.nil`, so the slot-region lemma first appears in `leftSpine`.  `addLeft t := match t with ... .node l k (addRoot l r)` lends one owned tree and consumes another in a non-recursive call | Add `addLeft` |
 | `dropSmall` through `Func.implements_rebuilt` needs a step followed by a rebuild to give a rebuild | `Heap.Keeps.rebuilt` |
-| `leftSpine` matches `Heap.Rebuilt.node`'s order (call on the left child, then release of the right); `rightSpine` would need a mirrored lemma | Keep `leftSpine` |
+| `leftSpine` matches `Heap.Rebuilt.node`'s order (call on the left child, then release of the right).  `rightSpine` would need a mirrored lemma | Keep `leftSpine` |
 | The `function-call` and `consumed-recursion` LTG entries state the removed rule | Updated in 2a |
-| Indices shift: `size.rec`, `sum.rec`, `height.rec` to `2 + 6` through `2 + 8`; the internal functions of `treeMoves` move after the new entries | Done with each program |
+| Indices shift: `size.rec`, `sum.rec`, `height.rec` to `2 + 6` through `2 + 8`.  The internal functions of `treeMoves` move after the new entries | Done with each program |
 
 Revised steps:
 
@@ -23157,7 +23157,7 @@ bytes as before.
 ### Item 2, step 2c: `addLeft`
 
 `KeyTree.addLeft`, whose record branch is `.node l k (addRoot l r)`, joined `treeMoves` as entry
-12; the internal functions `incr.rec`, `insert.rec`, and `addAll.rec` moved to `2 + 11` through
+12, and the internal functions `incr.rec`, `insert.rec`, and `addAll.rec` moved to `2 + 11` through
 `2 + 13`.  The call lends the owned left child and consumes the right child, and the record
 keeps `l` and `k` and takes the call's result in slot 2.  `addLeft_implements` applies
 `Stmt.callImplements_spec` with `addRoot_implements`: `treePair_args` (formerly `addAll_args`)
@@ -23176,7 +23176,7 @@ The full build passed, and every other module emits the same bytes as before.
 
 `KeyTree.leftSpine g b`, whose record branch is
 `.node (leftSpine r l) (k + match g with ...) .leaf`, joined `treeMoves` as entry 13, with its
-internal function at `2 + 15`; `incr.rec`, `insert.rec`, and `addAll.rec` moved to `2 + 12`
+internal function at `2 + 15`, and `incr.rec`, `insert.rec`, and `addAll.rec` moved to `2 + 12`
 through `2 + 14`.  The mode rule borrows `g` and consumes `b`, so the self-call receives the
 owned right child `r` at its borrowed position and consumes `l`.  `leftSpine_rec` follows
 `addAll_rec`: `treePair_args` with `NodeOwned.borrowed` and `NodeOwned.slotRegions_apart` gives
@@ -23211,7 +23211,7 @@ one with fields (`recordCell?`), so every record it builds has at least one slot
 
 | Approach | What it does | Effect |
 |----------|--------------|--------|
-| A. `Node.Slotted`, `Node.slotRegions_pos`, and a field `Encode.slotted : ∀ x, (encode x).Slotted` | A predicate that every record has a slot, one generic lemma, and a proof per instance by induction | Generic rules over `[Encode α]` need no premise; `Trees.slotRegions_pos` goes away |
+| A. `Node.Slotted`, `Node.slotRegions_pos`, and a field `Encode.slotted : ∀ x, (encode x).Slotted` | A predicate that every record has a slot, one generic lemma, and a proof per instance by induction | Generic rules over `[Encode α]` need no premise.  `Trees.slotRegions_pos` goes away |
 | B. A field stating slot-region positivity directly | The same, with the field quantified over stores and pointers | Each instance repeats the induction over slot regions instead of over the value |
 | C. `Node.record` with a nonempty slot list | Positivity by construction | Every function and proof over `Node` changes |
 | D. Per-type lemmas | The current state, with lemmas for `Words` and `List UInt64` when a proof needs them | Generic rules carry a premise |
@@ -23234,11 +23234,11 @@ One reviewer checked the plan with scratch files.  I ran `Guard.lean`, `Slotted.
 
 | Finding | Response |
 |---------|----------|
-| The premise is needed: a release that merges adjacent free blocks can place an empty region `(p, 0)` inside the merged block, so `RecordSlots` for a record without slots fails after it (`Guard.lean`, by `rfl` on `insertFree`); an allocation takes space from an existing free block or above `top` | The analysis named the wrong step: the cause is a merging release |
+| The premise is needed: a release that merges adjacent free blocks can place an empty region `(p, 0)` inside the merged block, so `RecordSlots` for a record without slots fails after it (`Guard.lean`, by `rfl` on `insertFree`).  An allocation takes space from an existing free block or above `top` | The analysis named the wrong step: the cause is a merging release |
 | A field in `Encode` changes no `Implements` statement, but it changes the specification files: `Node.Slotted` and the field would sit in `Implements.lean` | Adopt A': a separate class `EncodeSlotted α [Encode α]` in a new file, with the same proofs and no change to the specification files |
 | A predicate on `Represent` needs an instance for each `Represent` instance and builds on the `Encode` fact (`Variants.lean`) | Leave it to item 6, if its rules quantify over `[Represent α]` |
-| Item 4 concerns owned trees, whose blocks are positive by `Node.blocks_pos`; it does not need this lemma | The analysis overstated the uses |
-| The shape check is in `recordCell?` and the two match translators; `userType?` accepts any non-nested recursive type without parameters, and every record the compiler builds has a slot | The analysis cited the check imprecisely; the conclusion holds |
+| Item 4 concerns owned trees, whose blocks are positive by `Node.blocks_pos`.  It does not need this lemma | The analysis overstated the uses |
+| The shape check is in `recordCell?` and the two match translators.  `userType?` accepts any non-nested recursive type without parameters, and every record the compiler builds has a slot | The analysis cited the check imprecisely.  The conclusion holds |
 | The mutual theorem needs explicit binders for structural recursion | Followed |
 
 ### Item 3, step 3a: `EncodeSlotted`
@@ -23259,13 +23259,13 @@ components whose blocks lie apart.  Scratch programs show what the compiler does
 
 | Program | Shape | Result |
 |---------|-------|--------|
-| `withSize t := (size t, t)`, `incrPair t := (7, incr t)`, `swap a b := (b, a)`, `pickPair c a b := if c = 0 then (a, b) else (b, a)`, `pushTree xs t := (xs.push 1, t)` | components are variables or calls | compile; no proved program |
-| `keepFirst c t := if c = 0 then (0, t) else (1, .leaf)`, `sizeDrop n t := let s := size t; if s < n then (s, .leaf) else (s, t)` | a path whose pair does not contain the owned tree | rejected by `releaseUnmoved` ("releasing it is not supported yet"); compiles once `releaseUnmoved` releases a tree as it does an array |
+| `withSize t := (size t, t)`, `incrPair t := (7, incr t)`, `swap a b := (b, a)`, `pickPair c a b := if c = 0 then (a, b) else (b, a)`, `pushTree xs t := (xs.push 1, t)` | components are variables or calls | compile.  No proved program |
+| `keepFirst c t := if c = 0 then (0, t) else (1, .leaf)`, `sizeDrop n t := let s := size t.  If s < n then (s, .leaf) else (s, t)` | a path whose pair does not contain the owned tree | rejected by `releaseUnmoved` ("releasing it is not supported yet").  Compiles once `releaseUnmoved` releases a tree as it does an array |
 | `match withSize t with \| (n, u) => setKey n u`, `... => (n + 1, u)`, `(withSize t).1` | a caller takes the pair apart | rejected: `ownComponents` makes array and pair components owned but not trees, so `u` counts as borrowed and can be neither consumed, returned, nor released |
 | `splitRoot t := match t with \| .leaf => (.leaf, .leaf) \| .node l _ r => (l, r)`, `rootAndRest` | a pair-valued match on a tree | rejected: `translateCases` handles pair-valued case splits only on structures and enumerations |
 
 The release of an unmoved tree is the call of the release function on its pointer, which frees
-every record through the child masks, as `keepIf` and `dropSmall` do at a join; the proof is
+every record through the child masks, as `keepIf` and `dropSmall` do at a join.  The proof is
 `Stmt.releaseNode_rebuilt` or `Stmt.releaseNode_spec`.  A caller's tree component would follow
 the array temporaries: an owned temporary at the top of the body, which the code may move and
 the function releases at the end otherwise.
@@ -23274,8 +23274,8 @@ the function releases at the end otherwise.
 
 | Approach | What it does | Effect |
 |----------|--------------|--------|
-| A. Callee side | `releaseUnmoved` releases trees; prove `sizeDrop` in `trees` and `pickPair` in `treeMoves` | Functions return pairs with trees; no Lean caller can use them |
-| B. A plus the caller side | `ownComponents` makes a tree component an owned temporary, released at the end when unmoved; prove a caller that re-pairs the tree and one that drops it | Pair results with trees work between compiled functions |
+| A. Callee side | `releaseUnmoved` releases trees.  Prove `sizeDrop` in `trees` and `pickPair` in `treeMoves` | Functions return pairs with trees.  No Lean caller can use them |
+| B. A plus the caller side | `ownComponents` makes a tree component an owned temporary, released at the end when unmoved.  Prove a caller that re-pairs the tree and one that drops it | Pair results with trees work between compiled functions |
 | C. B plus pair-valued matches on trees | `translateCases` takes a tree discriminant, with the record branch's reuse and release | Also `splitRoot` and `rootAndRest` |
 
 Recommendation: B, with the pair-valued match on a tree recorded as item 10.  A pair result
@@ -23285,7 +23285,7 @@ feature, as large as the tree-valued match with its reuse and release paths.  Pr
 `sizeDrop` (lends `t` to `size` through a word `let`, the path the item 2 review found without a
 proof, and releases `t` on one path) and two callers in `trees`, `sizeDropNext n t := match
 sizeDrop n t with | (s, u) => (s + 1, u)` and `sizeAfterDrop n t := match sizeDrop n t with
-| (s, _) => s`; `pickPair` in `treeMoves`, whose two result trees must lie apart.
+| (s, _) => s`.  `pickPair` in `treeMoves`, whose two result trees must lie apart.
 
 - [x] 4a: `releaseUnmoved` releases trees; `sizeDrop` and `pickPair` with their theorems.
 - [x] 4b: tree components of a call's pair result as owned temporaries; the callers and their
@@ -23295,18 +23295,18 @@ sizeDrop n t with | (s, u) => (s + 1, u)` and `sizeAfterDrop n t := match sizeDr
 ### Review of the item 4 plan
 
 One reviewer probed the `releaseUnmoved` change and prototyped approach B in a renamed copy of
-the compiler.  I reran its files `R1.lean` and `CurTest.lean`; the outputs match its own.
+the compiler.  I reran its files `R1.lean` and `CurTest.lean`, and the outputs match its own.
 
 | Finding | Response |
 |---------|----------|
 | The tree release in `releaseUnmoved` is correct in every probe: branches that move a child take the clear-and-release path, tree-valued joins mark both branches consumed so nothing is released twice, and the release runs after each branch stores its results | 4a stands |
-| Accepted programs whose `Implements` is false, predating this item: an owned pair variable has no move tracking, so `match pairOfA xs with \| (p, _) => (p, p)` returns one array twice, `(p.2, p.2)` and `(p, p)` return one tree twice, and `match p with \| (_, a) => p` releases the array and then returns it; `bindTyped` binds a list component as a word, so `(a, a)` copies a list | Fix in 4b: using a pair variable whole, projecting an owned component, or taking it apart moves it; list components bind as lists |
-| The caller side partly compiles already and leaks: `match sizeDrop n t with \| (s, _) => s` and projections such as `(f t).1` never release the tree component | The analysis was wrong; 4b releases them |
+| Accepted programs whose `Implements` is false, predating this item: an owned pair variable has no move tracking, so `match pairOfA xs with \| (p, _) => (p, p)` returns one array twice, `(p.2, p.2)` and `(p, p)` return one tree twice, and `match p with \| (_, a) => p` releases the array and then returns it.  `bindTyped` binds a list component as a word, so `(a, a)` copies a list | Fix in 4b: using a pair variable whole, projecting an owned component, or taking it apart moves it.  List components bind as lists |
+| The caller side partly compiles already and leaks: `match sizeDrop n t with \| (s, _) => s` and projections such as `(f t).1` never release the tree component | The analysis was wrong.  4b releases them |
 | `(withSize t).2` fails in `moveSites`, which does not look through projections | 4b: `moveSites` looks through `Prod.fst`, `Prod.snd`, and projections |
-| B needs: tree components as owned temporaries in `ownComponents`; `moveSites` through projections; a projection of a call releases the call's other array and tree components; the pair-variable moves above | Adopted as the plan for 4b |
+| B needs: tree components as owned temporaries in `ownComponents`.  `moveSites` through projections.  A projection of a call releases the call's other array and tree components.  The pair-variable moves above | Adopted as the plan for 4b |
 | The callers do not test a callee that consumes a temporary | Add `match sizeDrop n t with \| (s, u) => dropSmall (s + 1) u` |
-| `Heap.Keeps.release` covers one object; a tree uses `Stmt.releaseNode_spec`; `sumRange` in `Project/Lists/Verify.lean` releases a call's result the same way | Follow `sumRange` |
-| A pair-valued `if` releases every owned value not yet moved, so `(if c = 0 then (0, 1) else (1, 0), t)` fails; an owned pair of words in a pair-valued branch fails with "an owned parameter has no local" | Limitations, recorded |
+| `Heap.Keeps.release` covers one object.  A tree uses `Stmt.releaseNode_spec`.  `sumRange` in `Project/Lists/Verify.lean` releases a call's result the same way | Follow `sumRange` |
+| A pair-valued `if` releases every owned value not yet moved, so `(if c = 0 then (0, 1) else (1, 0), t)` fails.  An owned pair of words in a pair-valued branch fails with "an owned parameter has no local" | Limitations, recorded |
 
 ### Item 4, step 4a
 
@@ -23315,7 +23315,7 @@ and the child masks.  `KeyTree.sizeDrop` joined `trees` as entry 8 (the internal
 to `2 + 7` through `2 + 9`), and `KeyTree.pickPair` joined `treeMoves` as entry 14 (the internal
 functions moved to `2 + 13` through `2 + 16`).  `sizeDrop_implements` lends the tree to `size`
 through a word `let`, which the item 2 review found without a proof, and releases it on the path
-whose pair holds a leaf; `Heap.Rebuilt.wordPair` turns a rebuilt tree paired with a word into
+whose pair holds a leaf.  `Heap.Rebuilt.wordPair` turns a rebuilt tree paired with a word into
 the owned pair and its frame.  `pickPair_implements` returns two consumed trees in either order:
 `Separate` places their blocks apart, which `treePair_owned` turns into the owned pair.  The test
 host prints a tree inside a list result (`tools/wasmtime-host.c`).
@@ -23327,7 +23327,7 @@ count case.  `tests/modules/run.sh` passed 7,913 comparisons, 58 count cases, an
 
 An owned pair variable whose components include heap data (an array, a list, or a value of a
 recursive type) now moves when the code uses it whole, projects such a component, or takes it
-apart (`consumeTuple`); a second use fails with "the pair ... is used after the code moved it".
+apart (`consumeTuple`), and a second use fails with "the pair ... is used after the code moved it".
 `heapComponents` lists which components of a type are heap pointers.  `ownComponents` makes
 array, list, and tree components of a call's result owned temporaries, which the code may move
 and the function releases at the end otherwise.  `bindTyped` binds a list component as a value
@@ -23336,7 +23336,7 @@ a word.  `moveSites` looks through `Prod.fst`, `Prod.snd`, and projections, and 
 a call releases the call's other heap components right after it.
 
 Scratch checks: `(p, p)`, `(p.2, p.2)`, `match pairOfA xs with \| (p, _) => (p, p)`, the two
-`match p with \| (_, a) => p` programs, and `match pairL n with \| (a, _) => (a, a)` fail; a list
+`match p with \| (_, a) => p` programs, and `match pairL n with \| (a, _) => (a, a)` fail.  A list
 component passed through or dropped (released at the end), `sizeDropNext`, `sizeAfterDrop`,
 `sizeDropSmall` (passes the tree component to `dropSmall`), `(sizeDrop n t).1` (releases the tree
 right after the call), and `(sizeDrop n t).2` compile.  The full build passed, and all 22 modules
@@ -23363,9 +23363,86 @@ release of an unmoved tree on a path, and `function-call` pair results with tree
 Item 4 is complete.  A new item joins the list after item 8:
 
 - [ ] 10: a pair-valued match on a tree (`splitRoot t := match t with | .leaf => (.leaf, .leaf) |
-  .node l _ r => (l, r)`), which `translateCases` rejects; it needs the record branch's reuse and
+  .node l _ r => (l, r)`), which `translateCases` rejects.  It needs the record branch's reuse and
   release paths for a pair value.
 
 Two limitations stay recorded: a pair-valued `if` releases every owned value not yet moved, so
 `(if c = 0 then (0, 1) else (1, 0), t)` fails, and an owned pair of words in a pair-valued branch
 fails with "an owned parameter has no local".
+
+### Item 5: a `let` whose value moves an owned value, analysis
+
+`moveSites` skips the value of a `let` and looks only at its body, and `translateResults`
+translates a `let` value with an empty owned set.  A tree `let` fails in `scalarTypeOf`.
+Scratch programs with the current compiler:
+
+| Program | Result |
+|---------|--------|
+| `a1 xs := let ys := xs.push 1.  Ys.push 2` | compiles, but `xs` stays borrowed, so the first push copies it (item 7's borrowed push) |
+| `a2 xs := let ys := push1 xs.  Push1 ys`, `a3 xs := let ys := push1 xs.  (ys.size.toUInt64, ys)` | rejected: "an owned parameter must receive an owned value at its last use: push1 xs" |
+| `t1 t := let u := incr t.  Incr u`, `t2 t := let u := incr t.  (size u, u)`, `t4 t := let u := t.  Incr u`, `t5 t := let u := incr t.  Size u` | rejected: "unsupported type KeyTree" |
+| `t3 t := let n := size (incr t).  N` | rejected: a borrowed argument of a recursive type must be a variable |
+
+The aliasing argument from the item 2 review assumes that no tree `let` exists: a new name for
+a tree must not leave the old name usable.  A `let` whose value is a variable renames it and
+moves the old name.  A call's result is new, since `Implements` places its blocks apart from
+every region the caller keeps.
+
+### Item 5: approaches
+
+| Approach | What it does | Effect |
+|----------|--------------|--------|
+| A. Moves in `let` values, and tree `let`s | `moveSites` scans `let` values.  Values translate with the owned set.  A tree `let` at the top of the body binds a call's result as an owned temporary, or renames an owned variable and moves it | `a1` moves instead of copying.  `a2`, `a3`, `t1`, `t2`, `t4`, `t5` compile |
+| B. A without renaming | A tree `let` binds only a call's result | `t4` stays rejected |
+| C. Arrays only | Moves in array `let` values | Tree `let`s stay unsupported |
+
+Recommendation: A.  The two changes to `let` values make a `let` behave as the same expression
+used in place, and a tree `let` uses the temporaries that arrays and pair components use.
+Renaming costs one case.  `t3`, a call's result at a borrowed position, becomes expressible as
+`t5`, so it stays rejected.  Programs and theorems: `t2`-like in `trees` (a tree `let` from a
+call, lent to `size`, then returned), an array `let` from a consuming call in an array module,
+and `t4`-like renaming in `treeMoves`.
+
+- [ ] 5a: the compiler: `moveSites` over `let` values, `let` values with the owned set, tree
+  `let`s; the byte comparison.
+- [ ] 5b: the programs and their theorems.
+- [ ] Tests, LTG, journal.
+
+### Review of the item 5 plan
+
+One reviewer prototyped A and a revised A′ in renamed copies of the compiler and ran the
+results in Wasmtime.  I reran its `hD` probe with the current compiler and the host: the module
+returns two trees with key 7 where Lean returns keys 0 and 7.
+
+| Finding | Response |
+|---------|----------|
+| Accepted programs whose results are wrong, in the current compiler: `hD t := (setFirst t (fbt t), node leaf 7 leaf)` and `bset2 xs := (xs.set! 0 (fb xs), #[7])`, where a word-valued call in a later argument consumes the tree or array that an earlier part passes or updates.  The occurrence checks count only arguments of the same kind, and `max` operands, in-place update targets, fold arrays, and loop initial states have the same gap | Fixed first, as step 5a below |
+| A breaks `updates`: `pushCopy` relies on `let` values borrowing, so it copies | A′ |
+| Under A, `let u := t.  U.size` consumes and frees `t`, where `t.size` borrows it | A′ replaces a `let` of a variable by the variable |
+| A′: a `let` of a variable is the variable, in `moveSites` and in translation.  A `let` value moves only owned values that its body does not mention.  A tree `let` binds only a call's result.  All 22 modules keep their bytes.  `a1` pushes in place.  `a2`, `a3`, `t1`, `t2`, `t4`, `t5` compile | Adopted |
+| A tree `let` from a call needs no new lemma (`sizeDrop_call`, `Stmt.releaseNode_keeps`).  An array `let` from a consuming call needs a direct proof with `Stmt.callImplements_spec`, since `Live.callMove` covers only `Array Float` results | Planned |
+| The recursive path never releases temporaries | Item 6 must handle it |
+
+Revised steps:
+
+- [x] 5a: pending reads for every heap value an earlier part reads, including pointers passed to
+  a call, `max` operands, update targets, fold arrays, and loop counts and initial states.
+- [ ] 5b: A′ in the compiler; the byte comparison.
+- [ ] 5c: a tree `let` from a call, lent and then released or returned, and an array `let` from
+  a consuming call, with their theorems.
+- [ ] Tests, LTG, journal.
+
+### Item 5, step 5a: evaluation order
+
+`readArrays` became `readLocals`, which also lists the locals that an expression gets, so a
+pointer passed to a call counts as read where the call runs.  `afterReads` marks arrays and
+values of recursive types at those locals as pending while later parts translate, and moving a
+pending value fails with "the value ... moves before an earlier part of the same value reads
+it".  The second operand of `max`, the position and value of `set!`, `insertIdx!`,
+`eraseIdxIfInBounds`, and `push` on an array variable, the initial value of an array fold, and
+each initial state component of a loop (after the count and the earlier components) now
+translate under `afterReads`.  `hD`, `bset2`, and `xs.push (fb xs)` fail, and `setFirst t t.size`,
+`xs.push xs.size.toUInt64`, and `max` of two reads compile.  Self-calls do not use `afterReads`
+yet, since their word arguments cannot call functions that take trees.  Item 6 must add it.  The full build
+passed, all 22 modules emit the same bytes as before, `tests/modules/run.sh` passed 8,393
+comparisons, 64 count cases, and 12 depth cases, and `chunks.py` passed 360 cases.
