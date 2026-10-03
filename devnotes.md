@@ -22971,3 +22971,29 @@ pattern so that the self-calls receive the variable.
 - [ ] 1b: `addRoot` and its theorem.
 - [ ] 1c: `addAll` and its theorem.
 - [ ] Tests, LTG, journal.
+
+### Review of the item 1 plan
+
+One reviewer checked the plan with a copy of `compileDefinition` that switches the mode rule
+and `checkOwnedNodes`, run against the repository's translation.  I ran its tests T2, T6, and
+T7.  The findings change the recommendation:
+
+| Finding | Response |
+|---------|----------|
+| `addAll` with an `@` pattern fails under every mode assignment: Lean's matcher hands the self-calls the rebuilt pattern term (`KeyTree.leaf`, `left.node key right`), never the parameter | The analysis was wrong; `addAll` is written with the parameter itself |
+| B's "largest set moved at most once" need not exist (`quad` has three incomparable maximal sets), and B picks assignments the translation rejects (`quad`, `h3`) | B is dropped |
+| B makes a non-recursive `pushTwice x := (x.push 1, x.push 2)` compile with two copies | B is dropped |
+| A better option: a tree parameter that every self-call passes unchanged in its own position, and that the body moves nowhere else with that position borrowed, is borrowed; the greatest fixed point runs on the rest | Adopted (D).  In T7 it borrows `a` in `dup` and `addAllC` and leaves `zipAdd`, `incr`, `insert`, and `h3` as the current rule does; non-recursive definitions are untouched |
+| `translateSelfCall` accepts an owned variable at a borrowed position, which `translateCall` rejects; the proof would need `NodeOwned.borrowed` (item 2) | Add the check to self-calls; item 2 lifts both |
+| A match clears `reuse` for its branches, so `addRoot` with `b`'s rows first allocates new records and releases `b`'s instead of writing in place; rows that split on `a` first write in place | Keep `reuse` through a match whose discriminant is borrowed, with the settle code given the outer record |
+| A `match` inside a value is unsupported | `translateValue` unfolds a matcher, as `moveSites` does, so `addAll` can read `a`'s key with `match` |
+| No program found whose `Implements` would be false once `checkOwnedNodes` is gone | — |
+
+Revised steps:
+
+- [ ] 1a: remove `checkOwnedNodes`; the invariant-parameter rule; the self-call check; matcher
+  unfolding in values; `reuse` through a borrowed match.  Scratch checks and the byte
+  comparison.
+- [ ] 1b: `addRoot` and its theorem.
+- [ ] 1c: `addAll a b`, which adds `a`'s root key to every key of `b`, and its theorem.
+- [ ] Tests, LTG, journal.
