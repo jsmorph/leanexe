@@ -23134,8 +23134,8 @@ Revised steps:
   passed, and all 22 modules emit the same bytes as before.
 - [x] 2b: `dropSmall` in `trees` and its theorem.
 - [x] 2c: `addLeft` in `treeMoves` and its theorem.
-- [ ] 2d: `leftSpine` in `treeMoves` and its theorem.
-- [ ] Tests, LTG, journal.
+- [x] 2d: `leftSpine` in `treeMoves` and its theorem.
+- [x] Tests, LTG, journal.
 
 ### Item 2, step 2b: `dropSmall`
 
@@ -23171,3 +23171,25 @@ instance of it.  `treeMoves_bytes` covers `addLeft_implements` and depends on `p
 Tests: 24 comparisons and a count case (3 host allocations, no frees).  `tests/modules/run.sh`
 passed 7,505 comparisons, 54 count cases, and 12 depth cases, and `chunks.py` passed 360 cases.
 The full build passed, and every other module emits the same bytes as before.
+
+### Item 2, step 2d: `leftSpine`
+
+`KeyTree.leftSpine g b`, whose record branch is
+`.node (leftSpine r l) (k + match g with ...) .leaf`, joined `treeMoves` as entry 13, with its
+internal function at `2 + 15`; `incr.rec`, `insert.rec`, and `addAll.rec` moved to `2 + 12`
+through `2 + 14`.  The mode rule borrows `g` and consumes `b`, so the self-call receives the
+owned right child `r` at its borrowed position and consumes `l`.  `leftSpine_rec` follows
+`addAll_rec`: `treePair_args` with `NodeOwned.borrowed` and `NodeOwned.slotRegions_apart` gives
+the call's premises, `Heap.Keeps.nodeBorrowed` keeps `g` for the key read after the call,
+`Heap.Rebuilt.keepNode` keeps `r`, and `Stmt.releaseNode_rebuilt` releases it.
+`Heap.Rebuilt.node` takes the call as the left rebuild and the release as the right.
+`addAll_bound` became `rebuilt_bound`, since both proofs use it.  `treeMoves_bytes` covers
+`leftSpine_implements` and depends on `propext`, `Classical.choice`, and `Quot.sound`.
+
+Tests: 96 comparisons on pairs of trees, and a count case (4 host allocations and one free, the
+root's right child).  `tests/modules/run.sh` passed 7,601 comparisons, 55 count cases, and 12
+depth cases, and `chunks.py` passed 360 cases.  The full build passed, and every other module
+emits the same bytes as before.  The `function-call`, `consumed-recursion`, and `partial-release`
+LTG entries name the new proofs and lemmas, and `Project/LTG/Check.lean` passed.
+
+Item 2 is complete.

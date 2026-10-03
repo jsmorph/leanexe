@@ -87,6 +87,14 @@ def KeyTree.addLeft : KeyTree → KeyTree
   | .leaf => .leaf
   | .node l k r => .node l k (KeyTree.addRoot l r)
 
+/-- The left spine of the second tree, each key increased by the root key of a guide: the first
+tree at the root, and below it the right subtree dropped one level up.  Each right subtree is lent
+to the recursive call as its guide and then released. -/
+def KeyTree.leftSpine (g : KeyTree) : KeyTree → KeyTree
+  | .leaf => .leaf
+  | .node l k r =>
+    .node (KeyTree.leftSpine r l) (k + match g with | .leaf => 0 | .node _ gk _ => gk) .leaf
+
 /-- The search tree `t` with the keys `a` and then `b`. -/
 def KeyTree.insertTwo (a b : UInt64) (t : KeyTree) : KeyTree := (t.insert a).insert b
 
