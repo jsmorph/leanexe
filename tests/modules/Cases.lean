@@ -168,6 +168,9 @@ def clobCases : IO Unit := do
         (words (LeanExe.Examples.Clob.fillLevel s k (below 8 (i + k.toNat))).toList)
       line "clob" "fillTwice" "array-u64" [arrU ss, u k, u (below 8 (i + k.toNat)), u 1]
         (words (LeanExe.Examples.Clob.fillTwice s k (below 8 (i + k.toNat)) 1).toList)
+      let fk := LeanExe.Examples.Clob.fillKeep s k (below 8 (i + k.toNat))
+      line "clob" "fillKeep" "list:array-u64,array-u64" [arrU ss, u k, u (below 8 (i + k.toNat))]
+        s!"{words fk.1.toList},{words fk.2.toList}"
       line "clob" "insertLevel" pairKind [arrU ps, arrU ss, u k, u 97, u 3]
         (pair (LeanExe.Examples.Clob.insertLevel p s k 97 3))
       line "clob" "setLevel" pairKind [arrU ps, arrU ss, u k, u 9]

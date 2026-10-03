@@ -22,6 +22,11 @@ def fillTwice (sizes : Array UInt64) (k a b : UInt64) : Array UInt64 :=
   let ys := fillLevel sizes k a
   fillLevel ys k b
 
+/-- The level sizes after `a` is taken from level `k`, and the sizes before: the call consumes a
+copy of the sizes, since the result uses them again. -/
+def fillKeep (sizes : Array UInt64) (k a : UInt64) : Array UInt64 × Array UInt64 :=
+  (fillLevel sizes k a, sizes)
+
 /-- The book side with a new level of `size` at `price` inserted at position `k`,
 as its prices and its sizes. -/
 def insertLevel (prices sizes : Array UInt64) (k price size : UInt64) :
