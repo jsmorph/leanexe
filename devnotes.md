@@ -22756,3 +22756,34 @@ call.
 - [ ] Borrowed trees; `sizeSum` through `Implements`; the deleted specification.
 - [ ] Page fields removed from `Heap.Rebuilt` and `Heap.Built`.
 - [ ] Build, tests, byte comparison, LTG, and journal.
+
+### Review of the Iteration 12 plan
+
+One reviewer checked the plan.  I ran its two files in the job's scratch directory; both check
+with no `sorry`.  `Borrowed.lean` states `Heap.Keeps.nodeBorrowed`, proves the positivity
+premise for `KeyTree` (`slotRegions_pos`, a structural recursion), and proves
+`sizeSum_implements` through `size_implements` and `sum_implements`.  That proof needs
+`Func.implements_heap` in place of `Func.implements`, which requires the body to end in the
+initial store and gives no memory cap for the call rule.  `Pages.lean` checks page-free copies
+of `Heap.Rebuilt` and `Heap.Built`, their keep lemmas, `Built.cell`, `Rebuilt.node`, and the
+memory bounds of the tree proofs: at every store the region is the root record's block,
+`block initial p`, kept through the recursive calls, and the bound comes from the later heap's
+`Heap.At.top`.
+
+Corrections to the plan: the tree proofs read the field ten times, at seven stores; the
+eleventh use fills `Heap.Built.pages`.  The `Heap.Built` keep lemmas call `arrayAt_frame` and
+`Heap.Owned.frame`; only the `Heap.Rebuilt` ones call `Heap.Borrowed.keep` and `.keep`.  The
+borrowed-tree lemma also needs the slot regions apart from the consumed blocks, which
+`Represent.reads` does not supply for values of recursive types; `sizeSum` consumes nothing, and
+the general case is the caveat recorded in Iteration 11's review.
+
+Decisions on what becomes unused, each removed to keep only facts that something reads:
+
+| Item | Decision |
+|------|----------|
+| The page premises of `Heap.Rebuilt.released`, `Heap.Rebuilt.leftChild`, and `leftChild_node` | Removed; they only filled the field |
+| `Heap.NewRecord.pages` | Removed; it only filled `Heap.Built.pages` |
+| `Releasing.pages`, and the page conjuncts of `release_tree_run` and `Stmt.releaseNode_spec` | Removed; their only readers are the premises above |
+| `Heap.Rebuilt.keepBorrowed`, `.keepOwned`, `Heap.Built.keepBorrowed`, `.keepOwned` | Deleted; no Lean file calls them since Iteration 11 |
+| `Heap.Borrowed.keep`, `Heap.Owned.keep` | Deleted; `.keepIn` replaces them |
+| LTG entries, `deslop.md`, the `Heap.Built` doc comment, and the list-cell, record-reuse, and release-list READMEs | Updated in the same commits, so that the LTG check passes |
