@@ -223,18 +223,6 @@ theorem height_implements : Implements trees.module 4 KeyTree.height :=
       | [a], _ => exact ⟨_, rfl, by simp [State.get, Func.state, trees.height.ir, Func.locals]⟩)
     height_rec
 
-/-- The positivity premise for `KeyTree`: every record has three slots. -/
-theorem slotRegions_pos (store : Store Unit) :
-    ∀ (t : KeyTree) (p : UInt64), ∀ b ∈ Node.slotRegions store p (encode t), 0 < b.2
-  | .leaf, _, b, hb => nomatch hb
-  | .node l k r, p, b, hb => by
-      simp only [encode, Node.slotRegions, slotsRegions, List.length_cons, List.length_nil,
-        List.append_nil, List.mem_cons, List.mem_append] at hb
-      rcases hb with rfl | hb | hb
-      · show 0 < 8 * (0 + 1 + 1 + 1); decide
-      · exact slotRegions_pos store l _ b hb
-      · exact slotRegions_pos store r _ b hb
-
 /-- `sizeSum` calls `size` and then `sum` on its borrowed tree.  `size`'s `Implements` theorem
 keeps the tree for the second call (`Heap.Keeps.nodeBorrowed`). -/
 theorem sizeSum_implements : Implements trees.module 5 KeyTree.sizeSum := by
