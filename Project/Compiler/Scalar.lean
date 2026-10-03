@@ -428,8 +428,8 @@ def Ctx.bindTyped (ctx : Ctx) (x type : Lean.Expr) (components : List (Nat × Sc
   if ← isFloatArray type then
     let [(index, _)] := components | throwError "an array takes one local"
     return { ctx with floatArrays := (x, index) :: ctx.floatArrays }
-  if ← isNodeType type then
-    let [(index, _)] := components | throwError "a value of a recursive type takes one local"
+  if (← isNodeType type) || (← isUInt64List type) then
+    let [(index, _)] := components | throwError "a value with records takes one local"
     return { ctx with nodes := (x, index) :: ctx.nodes }
   return ctx.bind x components
 
@@ -581,6 +581,15 @@ def withVars {γ : Type} : List Lean.Expr → (List Lean.Expr → MetaM γ) → 
   | [], k => k []
   | type :: types, k => withLocalDeclD `field type fun x => withVars types fun xs => k (x :: xs)
 
+/-- For each result component of `type`, whether it points to heap data the value owns: an
+array, a list, or a value of a recursive type. -/
+partial def heapComponents (type : Lean.Expr) : MetaM (List Bool) := do
+  let type ← whnfR type
+  if type.isAppOfArity ``Prod 2 then
+    return (← heapComponents type.appFn!.appArg!) ++ (← heapComponents type.appArg!)
+  if (← isArray type) || (← isUInt64List type) || (← isNodeType type) then return [true]
+  return (← resultTypes type).map fun _ => false
+
 /-- The array parameters and parameters of recursive types among `params` that the result
 term `term` moves on some path, through its `let`s, matches, branches, and pairs: those it
 returns, passes as the left operand of `++`, passes at an owned position of a callee in
@@ -591,6 +600,7 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
   let term := term.consumeMData.headBeta
   if let .letE _ _ _ body _ := term then return ← moveSites owners params body
   if params.contains term then return [term]
+  if let .proj _ _ pair := term then return ← moveSites owners params pair
   if let some unfolded ← unfoldMatcher? term then return ← moveSites owners params unfolded
   if let some (discriminant, alternatives) ← userCases? term then
     if ← isNodeType (← inferType discriminant) then
@@ -610,6 +620,8 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
   | (``Prod.casesOn, #[_, _, _, pair, alternative]) =>
       return (← moveSites owners params pair) ++
         (← lambdaTelescope alternative fun _ body => moveSites owners params body)
+  | (``Prod.fst, #[_, _, pair]) | (``Prod.snd, #[_, _, pair]) =>
+      moveSites owners params pair
   | (``ite, #[type, _, _, a, b]) =>
       if (← whnfR type).isAppOfArity ``Prod 2 || (← isArray type) || (← isNodeType type) then
         return (← moveSites owners params a) ++ (← moveSites owners params b)
@@ -663,18 +675,18 @@ def releaseUnmoved (ctx : Ctx) : CompileM Unit := do
       pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "release owned parameter" (← sourceOf param)]
       markMoved param
 
-/-- Makes the arrays among `xs`, the components of a call's result or of an owned pair,
-owned temporaries, which the code may move and the function releases otherwise, and marks
-the pairs among them as owned pairs. -/
+/-- Makes the arrays, lists, and values of recursive types among `xs`, the components of a
+call's result or of an owned pair, owned temporaries, which the code may move and the function
+releases otherwise, and marks the pairs among them as owned pairs. -/
 def ownComponents (ctx : Ctx) (source : String) (xs : List (Lean.Expr × Lean.Expr)) :
     CompileM Ctx := do
   let mut ctx := ctx
   for (x, type) in xs do
-    if ← isArray type then
+    if (← isArray type) || (← isUInt64List type) || (← isNodeType type) then
       unless ctx.temporaries && ctx.foldable && ctx.allocating do
-        throwError "an array may be bound from a call's result only at the top of a function body: {source}"
-      let some local_ := (ctx.arrays ++ ctx.floatArrays).lookup x
-        | throwError "an array component has no local: {source}"
+        throwError "an array, a list, or a value of a recursive type may be bound from a call's result only at the top of a function body: {source}"
+      let some local_ := (ctx.arrays ++ ctx.floatArrays ++ ctx.nodes).lookup x
+        | throwError "a heap component has no local: {source}"
       modify fun p => { p with temporaries := p.temporaries.push (x, local_, source) }
       ctx := { ctx with owned := x :: ctx.owned }
     else if ← isTupleType type then
@@ -1131,9 +1143,30 @@ mutual
     let .proj _ index value := reduced | return some (.inl reduced)
     let some fields ← tupleFields? (← inferType value)
       | throwError "unsupported projection: {← sourceOf term}"
-    let components ← tupleOf ctx value.consumeMData
+    let value := value.consumeMData
+    let isVariable := (ctx.tuples.lookup value).isSome
+    if isVariable && (← heapComponents fields[index]!).any id then consumeTuple ctx value
+    let components ← tupleOf ctx value
     let widths ← fields.mapM fun field => return (← resultTypes field).length
-    return some (.inr ((components.drop (widths.take index).sum).take widths[index]!))
+    let start := (widths.take index).sum
+    unless isVariable do
+      -- A call's result is new: its heap components other than the projected one are released.
+      let heap ← heapComponents (← inferType value)
+      for h : j in [:components.length] do
+        if heap[j]?.getD false && !(start ≤ j && j < start + widths[index]!) then
+          let stmt := Project.IR.Stmt.release components[j].1
+          pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "release dropped component"
+            (← sourceOf term)]
+    return some (.inr ((components.drop start).take widths[index]!))
+
+  /-- Marks the owned pair variable `value`, whose components include heap data, as moved:
+  using it whole, projecting a heap component, or taking it apart moves it. -/
+  partial def consumeTuple (ctx : Ctx) (value : Lean.Expr) : CompileM Unit := do
+    unless ctx.owned.contains value do return
+    unless (← heapComponents (← inferType value)).any id do return
+    if (← get).consumed.contains value then
+      throwError "the pair {← sourceOf value} is used after the code moved it"
+    markMoved value
 
   /-- The constructor index of the discriminant of a case split, and for each alternative,
   the locals of its constructor's fields: none for an enumeration, whose value is the index,
@@ -1332,6 +1365,7 @@ mutual
       return ← peel ctx unfolded k
     let some (value, fields, alternative) ← tupleCases? term | k ctx term
     let value := value.consumeMData
+    if (ctx.tuples.lookup value).isSome then consumeTuple ctx value
     -- The components of a call's result, or of an owned pair, are owned.
     let owned := (ctx.tuples.lookup value).isNone || ctx.owned.contains value
     let source ← sourceOf value
@@ -2095,6 +2129,7 @@ mutual
       -- A tuple variable, or a term already computed into locals, such as a call that a
       -- case split examines.
       if let some components := ctx.tuples.lookup term then
+        consumeTuple ctx term
         return ← resultsIn components dests? (← sourceOf term)
       if let some index := ctx.callees.lookup term.getAppFn.constName then
         let results ← translateCall ctx term index dests?
