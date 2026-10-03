@@ -632,6 +632,27 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
         let some arg := args[i]? | return []
         moveSites owners params arg).flatten
 
+/-- The arguments at position `i` of the calls of `self` in `term`. -/
+partial def selfArgs (self : Name) (i : Nat) (term : Lean.Expr) : MetaM (List Lean.Expr) := do
+  let term := term.consumeMData.headBeta
+  if let .letE n t v body _ := term then
+    return (← selfArgs self i v) ++
+      (← withLocalDeclD n t fun x => selfArgs self i (body.instantiate1 x))
+  if let some unfolded ← unfoldMatcher? term then return ← selfArgs self i unfolded
+  if let some (discriminant, alternatives) ← userCases? term then
+    let mut out ← selfArgs self i discriminant
+    for alternative in alternatives do
+      out := out ++ (← withVars alternative.fields fun xs => selfArgs self i (alternative.body xs))
+    return out
+  match term with
+  | .app .. =>
+    let args := term.getAppArgs
+    let here := if term.getAppFn.isConstOf self then (args[i]?.map (·.consumeMData)).toList
+      else []
+    return here ++ (← args.toList.mapM (selfArgs self i)).flatten
+  | .lam .. => lambdaTelescope term fun _ body => selfArgs self i body
+  | _ => return []
+
 /-- Releases the owned parameters that the code has not moved on the current path. -/
 def releaseUnmoved (ctx : Ctx) : CompileM Unit := do
   for param in ctx.owned do
@@ -776,6 +797,8 @@ mutual
       pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
       return ← withLocalDeclD name type fun x =>
         translateValue (ctx.bind x [(local_, .u64)]) loc (body.instantiate1 x)
+    if let some unfolded ← unfoldMatcher? term then
+      return ← translateValue ctx loc unfolded
     if let some (discriminant, alternatives) ← userCases? term then
       if let some ptr ← lookupNode ctx discriminant.consumeMData then
         let ir : IRExpr .u64 := .get
@@ -1546,9 +1569,11 @@ mutual
       | _, _ => throwError "a match on a recursive type needs one constructor without fields and one with fields: {source}"
     let result ← fresh type "match result"
     -- The branches' statements stay inside the conditional, so they run only on their
-    -- branch whenever the match's own statement runs only when needed.
-    let inner := { ctx with reuse := none }
+    -- branch whenever the match's own statement runs only when needed.  The branches may still
+    -- rewrite the record that an enclosing match took apart, except the record branch of a
+    -- match on an owned value, which rewrites that value's record instead.
     let owned := ctx.owned.contains discriminant
+    let inner := ctx
     let condition : IRExpr .bool := if nullFirst then .eq (.get ptr) (.const 0)
       else .ne (.get ptr) (.const 0)
     let branchLoc (branch : Nat) : Loc :=
@@ -2246,10 +2271,15 @@ mutual
     let mut args : Array ((type : ScalarType) × IRExpr type) := #[]
     let mut hints := #[]
     let mut offset := 0
-    for arg in term.getAppArgs do
+    let selfOwners := (ctx.owners.lookup ctx.self).getD []
+    for h : position in [:term.getAppArgs.size] do
+      let arg := term.getAppArgs[position]
       let (ir, argHints) ← match ← lookupNode ctx arg.consumeMData with
-        | some local_ => pure ((.get local_ : IRExpr .u64),
-            [mkHint ⟨[], offset⟩ 1 "variable" (← sourceOf arg)])
+        | some local_ => do
+            if !selfOwners.contains position && ctx.owned.contains arg.consumeMData then
+              throwError "an owned value may not be passed where the callee borrows it: {source}"
+            pure ((.get local_ : IRExpr .u64),
+              [mkHint ⟨[], offset⟩ 1 "variable" (← sourceOf arg)])
         | none => do
             unless ← isWordType (← inferType arg) do
               throwError "a recursive call's argument must be a word or a field of a recursive type: {source}"
@@ -2498,14 +2528,6 @@ def recursiveFrameLimit : Nat := 24
 /-- The depth at which an internal function traps at `unreachable`. -/
 def recursionDepthLimit : UInt64 := 1000
 
-/-- Rejects a definition that consumes one parameter of a recursive type and borrows another.
-`Separate` keeps a borrowed tree's record slots apart from the consumed records, so the
-specification allows such a definition; no program has needed it yet. -/
-def checkOwnedNodes (declName : Name) (nodeParams owned : List Lean.Expr) : MetaM Unit := do
-  let ownedNodes := nodeParams.filter owned.contains
-  unless ownedNodes.isEmpty || ownedNodes.length == nodeParams.length do
-    throwError "{declName} consumes a value of a recursive type and borrows another, which is not supported"
-
 /-- Compiles the definition `declName`, whose parameters are `UInt64`, `Float`,
 `Array UInt64`, or `Array Float` and whose result is `UInt64`, `Float`, or an
 `Array UInt64` literal, to an IR function with hints.  The
@@ -2594,18 +2616,28 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
         throwError "a recursive definition may take only UInt64 and values of recursive types, and return only UInt64 or a value of a recursive type: {declName}"
       -- A definition that returns a tree owns the parameters in the greatest fixed point of the
       -- mode rule: every parameter of a recursive type starts owned at the self-calls, and each
-      -- round keeps those that the body still moves.  A definition that returns a word owns
-      -- none, since it could not release them.
+      -- round keeps those that the body still moves.  A parameter that every self-call passes
+      -- unchanged in its own position, and that the body moves nowhere else, is borrowed first:
+      -- the calls share it.  A definition that returns a word owns none, since it could not
+      -- release them.
       let positionsOf (owned : List Lean.Expr) : List Nat :=
         (List.range params.size).filter fun i => owned.contains params[i]!
       let nodeParams := nodes.map (·.1)
-      let mut owned := if treeResult then nodeParams else []
+      let mut owned := []
+      if treeResult then
+        for h : i in [:params.size] do
+          let p := params[i]
+          unless nodeParams.contains p do continue
+          let args ← selfArgs declName i body
+          let others := (positionsOf nodeParams).filter (· != i)
+          let sites ← moveSites ((declName, others) :: owners) nodeParams body
+          unless !args.isEmpty && args.all (· == p) && !sites.contains p do
+            owned := owned ++ [p]
       for _ in [:nodeParams.length + 1] do
         let sites ← moveSites ((declName, positionsOf owned) :: owners) nodeParams body
         let next := owned.filter sites.contains
         if next.length == owned.length then break
         owned := next
-      checkOwnedNodes declName nodeParams owned
       -- The internal function: the parameters and the depth, a guard, and the body.
       let depth := paramTypes.size
       let ctx : Ctx :=
@@ -2674,7 +2706,6 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let movable := (arrays ++ floatArrays ++ nodes).map (·.1)
       let sites ← moveSites owners movable body
       let owned := movable.filter sites.contains
-      checkOwnedNodes declName (nodes.map (·.1)) owned
       let ctx : Ctx :=
         { self := declName, params, words, floats, arrays, floatArrays, lists, nodes, tuples,
           callees, owners, owned, foldable := true }
