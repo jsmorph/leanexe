@@ -23288,9 +23288,9 @@ sizeDrop n t with | (s, u) => (s + 1, u)` and `sizeAfterDrop n t := match sizeDr
 | (s, _) => s`; `pickPair` in `treeMoves`, whose two result trees must lie apart.
 
 - [x] 4a: `releaseUnmoved` releases trees; `sizeDrop` and `pickPair` with their theorems.
-- [ ] 4b: tree components of a call's pair result as owned temporaries; the two callers and
-  their theorems.
-- [ ] Tests, LTG, journal.
+- [x] 4b: tree components of a call's pair result as owned temporaries; the callers and their
+  theorems.
+- [x] Tests, LTG, journal.
 
 ### Review of the item 4 plan
 
@@ -23341,3 +23341,31 @@ component passed through or dropped (released at the end), `sizeDropNext`, `size
 `sizeDropSmall` (passes the tree component to `dropSmall`), `(sizeDrop n t).1` (releases the tree
 right after the call), and `(sizeDrop n t).2` compile.  The full build passed, and all 22 modules
 emit the same bytes as before.
+
+### Item 4, step 4b: the callers
+
+Four callers of `sizeDrop` joined `trees` as entries 9 through 12, and the internal functions
+moved to `2 + 11` through `2 + 13`.  `sizeDropNext` passes the tree component through to its
+result, `sizeAfterDrop` releases it at its end, `sizeDropSmall` passes it to `dropSmall`, which
+consumes it, and `sizeFirst`, a projection, releases it right after the call.  `sizeDrop_call`
+proves the shared first statement once: it applies `Stmt.callImplements_spec` with
+`sizeDrop_implements` and gives the word in local 2 and the owned tree in local 3, with the call's
+frame.  `Stmt.releaseNode_keeps` states a tree release as a `Heap.Keeps` step, which
+`Heap.Keeps.trans` joins to the call's frame.  `trees_bytes` covers the five new theorems and
+depends on `propext`, `Classical.choice`, and `Quot.sound`.
+
+Tests: 120 comparisons for each caller and six count cases.  `tests/modules/run.sh` passed 8,393
+comparisons, 64 count cases, and 12 depth cases, and `chunks.py` passed 360 cases.  The full
+build passed, and every other module emits the same bytes as before.  The `release-temporary`
+entry covers tree and list temporaries and the release after a projection, `partial-release` the
+release of an unmoved tree on a path, and `function-call` pair results with trees.
+
+Item 4 is complete.  A new item joins the list after item 8:
+
+- [ ] 10: a pair-valued match on a tree (`splitRoot t := match t with | .leaf => (.leaf, .leaf) |
+  .node l _ r => (l, r)`), which `translateCases` rejects; it needs the record branch's reuse and
+  release paths for a pair value.
+
+Two limitations stay recorded: a pair-valued `if` releases every owned value not yet moved, so
+`(if c = 0 then (0, 1) else (1, 0), t)` fails, and an owned pair of words in a pair-valued branch
+fails with "an owned parameter has no local".

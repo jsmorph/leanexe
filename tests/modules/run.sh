@@ -185,6 +185,21 @@ for case in "i64:3|5,1,.,.,9,.,.|3 0" "i64:4|5,1,.,.,9,.,.|3 3"; do
     echo "fail: trees sizeDrop $n tree-u64:$tree: $out, expected stats $expected"
   fi
 done
+# The callers of sizeDrop: sizeDropNext passes the tree through, sizeAfterDrop releases it at its
+# end, sizeDropSmall passes it to dropSmall, which frees it, and sizeFirst releases it right after
+# the call.
+for case in "sizeDropNext list:i64,tree-u64|i64:3|3 0" "sizeDropNext list:i64,tree-u64|i64:4|3 3" \
+    "sizeAfterDrop i64|i64:3|3 3" "sizeAfterDrop i64|i64:4|3 3" "sizeDropSmall tree-u64|i64:3|3 3" \
+    "sizeFirst i64|i64:3|3 3"; do
+  IFS='|' read -r call n expected <<<"$case"
+  read -ra argv <<<"$call"
+  out=$("$host" call-stats "$build/trees/trees.wasm" "${argv[@]}" "$n" "tree-u64:5,1,.,.,9,.,." \
+    | tail -1)
+  if [ "$out" != "stats $expected" ]; then
+    stats_failed=$((stats_failed + 1))
+    echo "fail: trees $call $n: $out, expected stats $expected"
+  fi
+done
 # addRoot reads the first tree and rewrites the second's root record in place: only the host's
 # records are allocated, and nothing is freed.
 out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" addRoot tree-u64 "tree-u64:2,.,." \
@@ -224,7 +239,7 @@ if [ "$out" != "stats 4 0" ]; then
   stats_failed=$((stats_failed + 1))
   echo "fail: treeMoves pickPair: $out, expected stats 4 0"
 fi
-echo "release counts: 58 cases, $stats_failed failed"
+echo "release counts: 64 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0

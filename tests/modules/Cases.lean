@@ -358,6 +358,15 @@ def treeCases : IO Unit := do
       let r := t.sizeDrop n
       line "trees" "sizeDrop" "list:i64,tree-u64" [u n, s!"tree-u64:{KeyTree.describe t}"]
         s!"{r.1},{KeyTree.describe r.2}"
+      let r2 := t.sizeDropNext n
+      line "trees" "sizeDropNext" "list:i64,tree-u64" [u n, s!"tree-u64:{KeyTree.describe t}"]
+        s!"{r2.1},{KeyTree.describe r2.2}"
+      line "trees" "sizeAfterDrop" "i64" [u n, s!"tree-u64:{KeyTree.describe t}"]
+        (toString (t.sizeAfterDrop n))
+      line "trees" "sizeDropSmall" "tree-u64" [u n, s!"tree-u64:{KeyTree.describe t}"]
+        (KeyTree.describe (t.sizeDropSmall n))
+      line "trees" "sizeFirst" "i64" [u n, s!"tree-u64:{KeyTree.describe t}"]
+        (toString (t.sizeFirst n))
   for t in trees.take 10 do
     line "treeFrame" "wide" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.wide)
   for t in trees do
