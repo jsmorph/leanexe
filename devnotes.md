@@ -22193,7 +22193,7 @@ Revised steps:
   read an owned array; an array that an earlier result component reads may not move later.
 - [x] 9a: `set!` in place; `fillLevel`, `setLevel`, `addBid`, `cancelBid`, and `applyCommand`.
 - [x] The generalized fill rule for in-place shifts.
-- [ ] 9b: `eraseIdxIfInBounds` in place; `removeLevel` and `cancelBid`.
+- [x] 9b: `eraseIdxIfInBounds` in place; `removeLevel` and `cancelBid`.
 - [ ] 9c: the generalized grow rule, then `insertIdx!` in place; `insertLevel` and `addBid`.
 - [ ] Count cases, `chunks.py`, LTG entries, and `deslop.md`.
 
@@ -22255,3 +22255,28 @@ an address of element `k` inside memory, and `I (k + 1)` of the store with `w` w
 in place.  The erase loop reads the next element, and the forward insert loop carries the
 displaced element in a local, so both are instances.
 
+
+### Iteration 9, step 9b: `eraseIdxIfInBounds` in place
+
+`Stmt.eraseInPlace src size k limit index` reads the length into `size` and, when `k` is below
+it, sets `limit` to the length less one and `index` to `k`, runs `Stmt.fill` with the element
+`.read src (index + 1)`, and stores `limit` into the length word last.  `moveSites` treats the
+array argument of `eraseIdxIfInBounds` at a result position as a move site, and
+`translateArray` emits the template for an owned array (hint `erase in place`).
+
+`Stmt.eraseInPlace_spec` proves it with `Stmt.fill_inv` and the invariant that the store holds
+`shifted xs k j`, the array whose elements `k` to `j - 1` are those of `xs` one place later, and
+writes only inside the array.  `shifted_start`, `shifted_step` (writing `xs[j + 1]!` into
+element `j` gives `shifted xs k (j + 1)`), `shifted_get`, and `shifted_erase` (the first `n - 1`
+elements of `shifted xs k (n - 1)` are `xs.eraseIdxIfInBounds k`) carry the array, and
+`arrayAt_shrink` the shorter length.  `Stmt.fill_inv` gained two facts on the way: its step
+receives the destination pointer, which the frame of the loop's own locals does not keep, and
+its postcondition reports the limit's value, which the length store reads.
+
+In CLOB, `removeLevel` takes both arrays as `Moved` and erases from each in place; its proof
+chains two `Stmt.eraseInPlace_spec` steps, and the four erase helpers of the copying proof are
+gone.  `cancelBid`'s `removeLevel` path consumes both arrays and releases nothing.  The count
+cases `cancelBid 102 4` and `applyCommand 1 102 4` fell from 4 2 to 2 0, as the reviewer
+predicted.  `tests/modules/run.sh` passed 5,493 comparisons, 35 count cases, and 12 depth
+cases; `chunks.py` passed 360 cases; the full build passed; and every module other than `clob`
+emits the same bytes.
