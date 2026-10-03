@@ -17,9 +17,9 @@ class Represent (α : Type) where
   /-- The blocks of the objects that the owned values `vs` of `x` occupy, each given as
   its start and length. -/
   blocks : Store Unit → List Value → α → List (Nat × Nat)
-  /-- The regions of the arrays among the arguments `vs` of `x` that the call reads
-  and leaves intact. -/
-  reads : List Value → α → List (Nat × Nat)
+  /-- The regions of memory among the arguments `vs` of `x` that the call reads and leaves
+  intact: an array's words, and the slots of a borrowed value's records. -/
+  reads : Store Unit → List Value → α → List (Nat × Nat)
   /-- The pointers of the arrays among the arguments `vs` of `x` that the call
   consumes. -/
   moves : Store Unit → List Value → α → List UInt64
@@ -90,7 +90,7 @@ instance (priority := low) [Scalar α] : Represent α where
   borrowed _ _ vs x := vs = Scalar.values x
   owned _ _ vs x := vs = Scalar.values x
   blocks _ _ _ := []
-  reads _ _ := []
+  reads _ _ _ := []
   moves _ _ _ := []
 
 theorem Scalar.borrowed [Scalar α] {heap : Heap} {store : Store Unit} {params : List Value}
@@ -120,7 +120,7 @@ instance : Represent (Array UInt64) where
   blocks store vs _ := match vs with
     | [.i64 ptr] => [block store ptr]
     | _ => []
-  reads vs xs := match vs with
+  reads _ vs xs := match vs with
     | [.i64 ptr] => [(ptr.toNat, 8 * (xs.size + 1))]
     | _ => []
   moves _ _ _ := []
@@ -137,8 +137,8 @@ instance (priority := 50) [Represent α] [Represent β] : Represent (α × β) w
     ∀ b ∈ Represent.blocks store first p.1, Represent.outside store second p.2 b
   blocks store vs p := Represent.blocks store (vs.take (Represent.width p.1)) p.1 ++
     Represent.blocks store (vs.drop (Represent.width p.1)) p.2
-  reads vs p := Represent.reads (vs.take (Represent.width p.1)) p.1 ++
-    Represent.reads (vs.drop (Represent.width p.1)) p.2
+  reads store vs p := Represent.reads store (vs.take (Represent.width p.1)) p.1 ++
+    Represent.reads store (vs.drop (Represent.width p.1)) p.2
   moves store vs p := Represent.moves store (vs.take (Represent.width p.1)) p.1 ++
     Represent.moves store (vs.drop (Represent.width p.1)) p.2
 
@@ -148,7 +148,7 @@ instance : Represent (Array Float) where
   borrowed heap store vs xs := Represent.borrowed heap store vs (xs.map Float.toBits)
   owned heap store vs xs := Represent.owned heap store vs (xs.map Float.toBits)
   blocks store vs xs := Represent.blocks store vs (xs.map Float.toBits)
-  reads vs xs := Represent.reads vs (xs.map Float.toBits)
+  reads store vs xs := Represent.reads store vs (xs.map Float.toBits)
   moves _ _ _ := []
 
 /-- An array that the caller hands over: the call receives it as owned, reads
@@ -158,7 +158,7 @@ instance : Represent (Moved (Array UInt64)) where
   borrowed heap store vs xs := Represent.owned heap store vs xs.val
   owned heap store vs xs := Represent.owned heap store vs xs.val
   blocks store vs xs := Represent.blocks store vs xs.val
-  reads _ _ := []
+  reads _ _ _ := []
   moves _ vs _ := match vs with
     | [.i64 ptr] => [ptr]
     | _ => []
@@ -168,7 +168,7 @@ instance : Represent (Moved (Array Float)) where
   borrowed heap store vs xs := Represent.borrowed heap store vs (Moved.mk (xs.val.map Float.toBits))
   owned heap store vs xs := Represent.owned heap store vs (Moved.mk (xs.val.map Float.toBits))
   blocks store vs xs := Represent.blocks store vs (Moved.mk (xs.val.map Float.toBits))
-  reads _ _ := []
+  reads _ _ _ := []
   moves store vs xs := Represent.moves store vs (Moved.mk (xs.val.map Float.toBits))
 
 mutual
@@ -283,6 +283,22 @@ def slotsPointers (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → Li
         slotsPointers store p (i + 1) rest
 end
 
+mutual
+/-- The slot regions of the records of a value: each record's slots, `8` bytes each from its
+pointer, then those of its children. -/
+def Node.slotRegions (store : Store Unit) (p : UInt64) : Node → List (Nat × Nat)
+  | .null => []
+  | .record slots => (p.toNat, 8 * slots.length) :: slotsRegions store p 0 slots
+
+/-- The slot regions of the children in slots `i` on of the record at `p`. -/
+def slotsRegions (store : Store Unit) (p : UInt64) (i : Nat) : List Slot → List (Nat × Nat)
+  | [] => []
+  | .word _ :: rest => slotsRegions store p (i + 1) rest
+  | .child n :: rest =>
+      Node.slotRegions store (store.mem.read64 (slotAddress p i)) n ++
+        slotsRegions store p (i + 1) rest
+end
+
 /-- A type whose values are records on the heap: `encode x` gives the records that hold
 `x`. -/
 class Encode (α : Type) where
@@ -290,7 +306,8 @@ class Encode (α : Type) where
 
 /-- A value of a type with `Encode` is a pointer to the records that `encode` gives.  The
 caller lends records that hold the right words and pointers; a result's records are owned
-and occupy pairwise disjoint blocks.  The arguments' records take no part in `Separate`. -/
+and occupy pairwise disjoint blocks.  The call reads the slots of the records, which
+`Separate` keeps apart from the consumed blocks. -/
 instance [Encode α] : Represent α where
   width _ := 1
   borrowed heap store vs x := ∃ p, vs = [.i64 p] ∧ NodeBorrowed heap store p (Encode.encode x)
@@ -299,7 +316,9 @@ instance [Encode α] : Represent α where
   blocks store vs x := match vs with
     | [.i64 p] => Node.blocks store p (Encode.encode x)
     | _ => []
-  reads _ _ := []
+  reads store vs x := match vs with
+    | [.i64 p] => Node.slotRegions store p (Encode.encode x)
+    | _ => []
   moves _ _ _ := []
 
 /-- A value of a recursive type that the caller hands over: the call receives its records as
@@ -309,7 +328,7 @@ instance [Encode α] : Represent (Moved α) where
   borrowed heap store vs x := Represent.owned heap store vs x.val
   owned heap store vs x := Represent.owned heap store vs x.val
   blocks store vs x := Represent.blocks store vs x.val
-  reads _ _ := []
+  reads _ _ _ := []
   moves store vs x := match vs with
     | [.i64 p] => Node.pointers store p (Encode.encode x.val)
     | _ => []
@@ -371,8 +390,8 @@ theorem memoryCap_le_of_caps {m : Module} {store store' : Store Unit}
 
 /-- Entry `entry` of `m` computes `f` exactly.  From any store that satisfies the
 allocator invariant, with arguments `params` (in declaration order) representing
-`x`, whose consumed blocks are pairwise disjoint and apart from the arrays the call
-reads, in a memory whose cap is at most 65,535 pages, the call aborts at `unreachable`
+`x`, whose consumed blocks are pairwise disjoint and apart from the memory the call
+reads (an array's words and a borrowed value's record slots), in a memory whose cap is at most 65,535 pages, the call aborts at `unreachable`
 or returns values that, in declaration order, represent `f x` and that the caller
 owns.  Talos lists arguments and results with the top of the stack first, hence the
 reversals.  The allocator invariant holds again, and the memory's maximum size is
@@ -385,7 +404,7 @@ clause in its `Heap.Keeps` form, `Heap.Keeps.implements`. -/
 def Implements [Represent α] [Represent β] (m : Module) (entry : Nat) (f : α → β) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
     heap.At store → Represent.borrowed heap store params x →
-    Separate store (Represent.moves store params x) (Represent.reads params x) →
+    Separate store (Represent.moves store params x) (Represent.reads store params x) →
     store.memoryCap m 0 ≤ 65535 →
     ReturnsOrAborts env m entry store params.reverse fun final values =>
       ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final values.reverse (f x) ∧
@@ -400,7 +419,7 @@ def Satisfies [Represent α] [Represent β] (m : Module) (entry : Nat)
     (P : α → Prop) (Q : α → β → Prop) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
     P x → heap.At store → Represent.borrowed heap store params x →
-    Separate store (Represent.moves store params x) (Represent.reads params x) →
+    Separate store (Represent.moves store params x) (Represent.reads store params x) →
     store.memoryCap m 0 ≤ 65535 →
     ReturnsOrAborts env m entry store params.reverse fun final values =>
       ∃ (heap' : Heap) (y : β), heap'.At final ∧ Represent.owned heap' final values.reverse y ∧

@@ -340,7 +340,7 @@ theorem Live.tupleLoop [Represent α] [Represent β] [Arrays β] {idx : Nat} {g 
           (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) x0 k)) ∧
         Represent.moves store' vals (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) x0 k)) =
           us.map (·.1) ∧
-        ∀ q ∈ Represent.reads vals (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) x0 k)),
+        ∀ q ∈ Represent.reads store' vals (F (UInt64.ofNat k) (loopPrefix (fun l x => g (F l x)) x0 k)),
           ∀ t ∈ us, regionsDisjoint q (block store' t.1)) :
     Triple m (.tupleLoop states limit index srcs idx count args) scratch
       (fun s st => s = store ∧ st = before)

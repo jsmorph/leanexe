@@ -208,7 +208,7 @@ theorem incr_call1 {heap : Heap} {initial : Store Unit} {p k : UInt64} {l r : Ke
     Represent.borrowed heap initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l) ∧
       Separate initial
         (Represent.moves initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l))
-        (Represent.reads [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l)) := by
+        (Represent.reads initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l)) := by
   obtain ⟨p', hp, hOwned, hDisjoint⟩ := hArg
   simp only [List.cons.injEq, Value.i64.injEq, and_true] at hp
   subst hp
@@ -230,7 +230,7 @@ theorem incr_call2 {heap heap1 : Heap} {initial store1 : Store Unit} {p k q1 : U
     Represent.borrowed heap1 store1 [.i64 (initial.mem.read64 (slotAddress p 2))] (Moved.mk r) ∧
       Separate store1
         (Represent.moves store1 [.i64 (initial.mem.read64 (slotAddress p 2))] (Moved.mk r))
-        (Represent.reads [.i64 (initial.mem.read64 (slotAddress p 2))] (Moved.mk r)) := by
+        (Represent.reads initial [.i64 (initial.mem.read64 (slotAddress p 2))] (Moved.mk r)) := by
   obtain ⟨p', hp, hOwned, hDisjoint⟩ := hArg
   simp only [List.cons.injEq, Value.i64.injEq, and_true] at hp
   subst hp
@@ -475,7 +475,7 @@ theorem pair_args {heap : Heap} {store : Store Unit} {x q : UInt64} {t : KeyTree
     (hd : (Node.blocks store q (encode t)).Pairwise regionsDisjoint) :
     Represent.borrowed heap store [.i64 x, .i64 q] (x, Moved.mk t) ∧
       Separate store (Represent.moves store [.i64 x, .i64 q] (x, Moved.mk t))
-        (Represent.reads [.i64 x, .i64 q] (x, Moved.mk t)) := by
+        (Represent.reads store [.i64 x, .i64 q] (x, Moved.mk t)) := by
   refine ⟨⟨[.i64 x], [.i64 q], rfl, rfl, q, rfl, h, hd⟩, ?_, fun _ h => nomatch h⟩
   rw [pair_gone]
   exact hd
