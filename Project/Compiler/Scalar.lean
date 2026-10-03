@@ -578,6 +578,11 @@ partial def occurrences (x : FVarId) : Lean.Expr → Nat
   | .mdata _ e | .proj _ _ e => occurrences x e
   | _ => 0
 
+/-- `ctx` for the value of a `let` whose body is `body`: the value may move only the owned values
+that the body does not use. -/
+def Ctx.movableIn (ctx : Ctx) (body : Lean.Expr) : Ctx :=
+  { ctx with owned := ctx.owned.filter fun x => occurrences x.fvarId! body == 0 }
+
 /-- Runs `k` with a fresh variable of each type in `types`. -/
 def withVars {γ : Type} : List Lean.Expr → (List Lean.Expr → MetaM γ) → MetaM γ
   | [], k => k []
@@ -600,7 +605,15 @@ type moves the value when its record branch moves one of the record's children. 
 partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Expr)
     (term : Lean.Expr) : MetaM (List Lean.Expr) := do
   let term := term.consumeMData.headBeta
-  if let .letE _ _ _ body _ := term then return ← moveSites owners params body
+  if let .letE name type value body _ := term then
+    -- A `let` of an array or tree variable is the variable, and a value moves only what the
+    -- body does not use.
+    if value.consumeMData.isFVar && ((← isArray type) || (← isNodeType type)) then
+      return ← moveSites owners params (body.instantiate1 value.consumeMData)
+    let inValue := (← moveSites owners params value).filter fun x =>
+      occurrences x.fvarId! body == 0
+    return inValue ++ (← withLocalDeclD name type fun x =>
+      moveSites owners params (body.instantiate1 x))
   if params.contains term then return [term]
   if let .proj _ _ pair := term then return ← moveSites owners params pair
   if let some unfolded ← unfoldMatcher? term then return ← moveSites owners params unfolded
@@ -803,7 +816,7 @@ mutual
     -- The value is pure, so its statement may run whenever the body's statements run.
     if let .letE name type value body _ := term then
       unless ← isWordType type do throwError "a `let` in a word value must bind a word: {source}"
-      let (v, vHints) ← translateValue ctx ⟨[], 0⟩ value
+      let (v, vHints) ← translateValue (ctx.movableIn body) ⟨[], 0⟩ value
       let local_ ← fresh .u64 name.eraseMacroScopes.toString
       let stmt := Project.IR.Stmt.assign local_ v
       pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
@@ -2106,13 +2119,31 @@ mutual
     peel ctx term fun ctx term => do
       let type ← whnfR type
       if let .letE name letType value body _ := term then
+        -- A `let` of an array or tree variable is the variable.
+        if value.consumeMData.isFVar && ((← isArray letType) || (← isNodeType letType)) then
+          return ← translateResults ctx (body.instantiate1 value.consumeMData) type dests?
+        -- The value may move the owned values that the body does not use.
+        let valueCtx := ctx.movableIn body
+        if ← isNodeType letType then
+          -- A call's result, a temporary that the code may move and the function releases
+          -- otherwise.
+          let source ← sourceOf value
+          unless ctx.temporaries && ctx.foldable && ctx.allocating do
+            throwError "a value of a recursive type may be bound by `let` only at the top of a function body: {source}"
+          let some index := ctx.callees.lookup value.getAppFn.constName
+            | throwError "a `let` of a recursive type must bind a call's result: {source}"
+          let [(local_, .u64)] ← translateCall valueCtx value index
+            | throwError "a `let` of a recursive type must bind a call with one result: {source}"
+          return ← withLocalDeclD name letType fun x => do
+            modify fun p => { p with temporaries := p.temporaries.push (x, local_, source) }
+            translateResults { ctx with nodes := (x, local_) :: ctx.nodes, owned := x :: ctx.owned }
+              (body.instantiate1 x) type dests?
         if ← isArray letType then
           -- A temporary array, from a call or a build, which the code may move and the
           -- function releases otherwise.
           let source ← sourceOf value
           unless ctx.temporaries && ctx.foldable && ctx.allocating do
             throwError "an array may be bound by `let` only at the top of a function body: {source}"
-          let valueCtx := { ctx with owned := [] }
           let local_ ← match ctx.callees.lookup value.getAppFn.constName with
             | some index => do
                 let [(result, .u64)] ← translateCall valueCtx value index
@@ -2127,7 +2158,7 @@ mutual
             translateResults { inner with owned := x :: inner.owned } (body.instantiate1 x) type
               dests?
         let scalar ← scalarTypeOf letType
-        let (⟨_, v⟩, vHints) ← translateAs { ctx with owned := [] } ⟨[], 0⟩ scalar value
+        let (⟨_, v⟩, vHints) ← translateAs valueCtx ⟨[], 0⟩ scalar value
         let local_ ← fresh scalar name.toString
         let stmt := Project.IR.Stmt.assign local_ v
         pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)

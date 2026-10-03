@@ -23427,7 +23427,7 @@ Revised steps:
 
 - [x] 5a: pending reads for every heap value an earlier part reads, including pointers passed to
   a call, `max` operands, update targets, fold arrays, and loop counts and initial states.
-- [ ] 5b: A′ in the compiler; the byte comparison.
+- [x] 5b: A′ in the compiler; the byte comparison.
 - [ ] 5c: a tree `let` from a call, lent and then released or returned, and an array `let` from
   a consuming call, with their theorems.
 - [ ] Tests, LTG, journal.
@@ -23446,3 +23446,15 @@ translate under `afterReads`.  `hD`, `bset2`, and `xs.push (fb xs)` fail, and `s
 yet, since their word arguments cannot call functions that take trees.  Item 6 must add it.  The full build
 passed, all 22 modules emit the same bytes as before, `tests/modules/run.sh` passed 8,393
 comparisons, 64 count cases, and 12 depth cases, and `chunks.py` passed 360 cases.
+
+### Item 5, step 5b: `let` values
+
+`moveSites` replaces a `let` of an array or tree variable by the variable and counts a move in a
+`let` value only when the body does not use the moved value.  `Ctx.movableIn` gives a `let`
+value the owned values that its body does not use, in `translateResults` and in word `let`s
+inside values.  A tree `let` at the top of the body binds a call's result as an owned temporary,
+which the code may move and the function releases at the end otherwise.  `a1` pushes in place
+twice, `a2`, `a3`, `t1`, `t2`, `t4`, and `t5` compile with the IR the review shows, `pushCopy`
+still copies, and `let ys := xs; (ys, xs)` fails, where it copied before.  I ran the reviewer's
+A′ probe files against the compiler: the outputs differ from its own only where step 5a rejects
+more programs.  The full build passed, and all 22 modules emit the same bytes as before.
