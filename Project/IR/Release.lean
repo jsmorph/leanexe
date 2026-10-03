@@ -34,7 +34,7 @@ theorem Stmt.release_spec {typeIdx scratch src : Nat} {initial : Store Unit} {be
     fun store' out ⟨hOut, hStore'⟩ => ⟨before, by simp [hOut, State.setAll], hStore', rfl⟩⟩
 
 /-- Releasing an owned value of a recursive type keeps the state, and frees its records: the
-allocator invariant holds for some heap, the pages and memory caps are unchanged, and every
+allocator invariant holds for some heap, the memory caps are unchanged, and every
 region of positive size of the old heap apart from the value's blocks keeps its bytes and
 stays a region. -/
 theorem Stmt.releaseNode_spec {typeIdx scratch src : Nat} {initial : Store Unit}
@@ -45,7 +45,7 @@ theorem Stmt.releaseNode_spec {typeIdx scratch src : Nat} {initial : Store Unit}
     (hDisjoint : (n.blocks initial ptr).Pairwise regionsDisjoint) :
     Triple m (.release src) scratch (fun store state => store = initial ∧ state = before)
       (fun store state => state = before ∧ ∃ heap' : Heap, heap'.At store ∧
-        store.mem.pages = initial.mem.pages ∧ store.memoryCaps = initial.memoryCaps ∧
+        store.memoryCaps = initial.memoryCaps ∧
         ∀ r, heap.Region r → 0 < r.2 → (∀ b ∈ n.blocks initial ptr, regionsDisjoint r b) →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → store.mem.bytes a = initial.mem.bytes a) ∧
             heap'.Region r) := by
@@ -70,7 +70,7 @@ theorem Stmt.releaseNode_rebuilt {typeIdx scratch src : Nat} {initial : Store Un
       (fun store state => state = before ∧ ∃ heap' : Heap,
         heap.Rebuilt initial (n.blocks initial ptr) heap' store 0 .null) :=
   (Stmt.releaseNode_spec hImports hFunc hPtr hHeap hOwned hDisjoint).mono (fun _ _ h => h)
-    fun _ _ ⟨hState, heap', hAt, hPages, hCaps, hRegion⟩ =>
-      ⟨hState, heap', Heap.Rebuilt.released hAt hPages hCaps hRegion⟩
+    fun _ _ ⟨hState, heap', hAt, hCaps, hRegion⟩ =>
+      ⟨hState, heap', Heap.Rebuilt.released hAt hCaps hRegion⟩
 
 end Project.IR

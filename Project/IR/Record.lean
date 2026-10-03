@@ -221,7 +221,7 @@ theorem Stmt.record_spec {typeIdx scratch dst : Nat} {values : List (Expr .u64)}
   have hFresh := hBlock.fresh
   obtain ⟨hMagic1, hCount1, -, -, -, -⟩ := hFresh
   have hGlobals : s.memoryCaps = store1.memoryCaps := by rw [hAll.1]
-  refine ⟨ptr, hFrame, hPtr, ⟨?_, fun slots hLen hMaskOf => ?_, hSlots, fun r hR => ?_, ?_, ?_⟩⟩
+  refine ⟨ptr, hFrame, hPtr, ⟨?_, fun slots hLen hMaskOf => ?_, hSlots, fun r hR => ?_, ?_⟩⟩
   · refine (hHeap.allocate 1 hFitsNeed).writesApart hAll fun node hNode => ?_
     have hSep := hBlock.separate node hNode
     simp only [regionsDisjoint] at hSep ⊢
@@ -242,7 +242,6 @@ theorem Stmt.record_spec {typeIdx scratch dst : Nat} {values : List (Expr .u64)}
     · rw [hAll.2.2 a (by simp only [regionsDisjoint] at hApart; omega)]
       exact hBytes a hLow hHigh
     · simp only [block, hCapS]; exact hApart
-  · rw [hAll.2.1]; exact allocated_pages_ge initial heap.top need 1 heap.free
   · rw [hGlobals]; exact heap.allocateStore_memoryCaps initial need 1
 
 end Project.IR

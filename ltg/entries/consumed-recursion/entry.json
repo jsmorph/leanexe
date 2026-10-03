@@ -50,8 +50,6 @@
     "Project.Pipeline.Heap.Rebuilt.null",
     "Project.Pipeline.Heap.Built.rebuilt",
     "Project.Pipeline.Heap.Rebuilt.keepNode",
-    "Project.Pipeline.Heap.Rebuilt.keepBorrowed",
-    "Project.Pipeline.Heap.Rebuilt.keepOwned",
     "Project.Pipeline.Heap.Rebuilt.node",
     "Project.Pipeline.Node.blocks_pos",
     "Project.IR.Rebuilds",
