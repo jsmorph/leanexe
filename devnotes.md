@@ -24591,3 +24591,33 @@ SwiftShader and llvmpipe.
 
 - [x] G1: `ite` and `iteF32`, `sub`, division and remainder by powers of two, and the
   conditions, with simulation lemmas and GPU tests.
+
+### Review of the GPT-2 plan
+
+One reviewer measured the plan on both drivers.  I reran its limit query and its reassociation
+probe and got its results: with `x = 1.7` and `M = 1.5 · 2^23`, IEEE arithmetic gives `(x + M) -
+M = 2.0`, but SwiftShader returns 1.7 when `M` is a literal, and llvmpipe returns 1.7 even when
+`M` comes from a buffer or a `var`; SwiftShader also returns 1.7 for `(x · M) / M`, where IEEE
+gives 1.7000002.  WGSL allows these rewrites (15.7.5), so both drivers violate the strict profile
+of the device model on such expressions, while every kernel so far, which has none, matched.
+
+| Finding | Response |
+|---------|----------|
+| The magic-number rounding in `exp` is such an expression: 1,239,863 of 1,310,720 outputs differed on both drivers.  Rounding with WGSL's `round` and taking the exponent from the bits of `kf + M` gave no difference | A binary32 `nearest` in the IR (Wasm `f32.nearest`, WGSL `round`, both ties to even), modeled by `LeanExe.Float32.nearestBits`, for which `ProofKit/F32Nearest.lean` proves `nearest_eq`.  Agreement on a driver remains a test result |
+| The matrix-vector kernel takes 2 ms at 3072 × 768 and 42 ms at 50257 × 768 on SwiftShader, about 0.11 to 0.15 s per token for the whole step, far below my estimate; checked rows matched strict binary32 | The analysis's estimate was wrong by a factor of 10 to 30 |
+| llvmpipe's largest storage binding is 128 MiB, and SwiftShader's 1 GiB with 10 storage buffers.  Under L1 the token embedding (309 MB) and the stacked `wfc` and `wproj` (226 MB each) do not fit on llvmpipe | L1 with per-layer weight arrays, the token embedding in four chunks of 12,565 rows (77 MB each), and a host that requests the adapter's limits |
+| The compiled binary64 kernels divide by `d`, `m`, and the vocabulary size, and use `UInt64.toFloat`, which binary32 lacks | One-row kernels, with no row index; GPT-2 124M's dimensions as literals where a division or a float of a size is needed (`768.0`, scale `0.125`) |
+| The compiler rejects `Float32.toBits`, `Float32.ofBits`, and conversions to `Float32`, and compiles `exp`, `tanh`, and `gelu` to IR calls, which neither `Stmt.denote` nor WGSL has | Compiler rules for the bit conversions and `nearest`, and the compiler unfolds a function marked `@[inline]` at its use, so `exp` lands inside each kernel |
+| One factor `2^k` overflows near 88.7 and underflows early.  Two factors with the argument clamped to `[-104, 89]` and a Taylor polynomial of degree 7 give at most 1.19 ulp of error over `[-90, 90]` | Two factors and degree 7, with the clamp written as comparisons so that a NaN passes through |
+| An append kernel over one cache array of all layers exceeds 65,535 workgroups at 219 positions | Per-layer key and value arrays, appended by one kernel per layer, which stays within the limit to 5,461 positions |
+| A count that is an expression is not a `Spec` count; some kernels need more than 8 storage buffers | Counts as parameters; the host requests the adapter's storage buffer limit |
+| `headMax` starts from `-(1.0 / 0.0)`, a run-time division by zero, and WGSL lets an implementation assume finite values | Start the maximum from the first element |
+| Hugging Face's float32 model sums in another order, so its greedy tokens may differ from ours at near ties | The comparison checks the scores within a tolerance and reports token differences with their score gaps |
+
+The revised increments split G2.
+
+- [ ] G2a: `nearest` in the IR, the encoder, and WGSL (`round`); compiler rules for the binary32
+  bit conversions; unfolding of `@[inline]` functions; the binary32 `exp` in a kernel with tests.
+- [ ] G2b: the one-row GPT-2 kernels in binary32, with element lemmas, dispatch theorems, and
+  tests against native Lean.
+- [ ] G3: the host session, per-layer weight files, and the Python driver, with greedy generation.
