@@ -24989,3 +24989,7 @@ greedy.  `sampleTopK` borrows the scores, so the page releases them after the ca
 Chromium, seed 42 gave the same eight tokens twice and seed 7 gave others, with equal WGSL and
 Wasm scores at every step.
 
+At the user's direction, one server, `tests/web/serve.py`, now serves both pages on port 8000:
+the kernel tests at `/kernels/` and GPT-2 at `/gpt2/`, with links to both at `/`.  It replaces
+`tests/wgsl/serve.py` and `tests/gpt32/serve.py`.
+

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs every case of tests/wgsl/Cases.lean on SwiftShader and llvmpipe with the kernel text that
 # Project/WGSL/Emit.lean prints, and compares the output words with native Lean's.  The kernels
-# and the cases stay in the build directory's wgsl/, where tests/wgsl/serve.py serves them to the
+# and the cases stay in the build directory's wgsl/, where tests/web/serve.py serves them to the
 # browser page of tests/wgsl/browser.
 # Usage: tests/wgsl/run.sh [build directory]
 set -euo pipefail

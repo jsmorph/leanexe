@@ -2,8 +2,8 @@ import Project.Gpt32.Program
 
 /-!
 `gpt32-lines NH F CHUNK VOCAB LAYERS` prints the host commands of `Project/Gpt32/Program.lean`
-for the shape `shapeOf NH F CHUNK VOCAB LAYERS`, for the browser page of `tests/gpt32/serve.py`.
-It reads requests from standard input, one per line, and answers each with the command lines
+for the shape `shapeOf NH F CHUNK VOCAB LAYERS`, for the GPT-2 page that `tests/web/serve.py`
+serves.  It reads requests from standard input, one per line, and answers each with the command lines
 followed by a line `end`: `setup DIR` gives a `shader` command for each kernel, with its text at
 `wgsl/NAME.wgsl`, and the lines of `setupItems` with the weights of `DIR`, and `step TOKEN P` gives
 the lines of `stepItems` for `TOKEN` at position `P`.  These are the commands of
