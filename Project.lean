@@ -128,6 +128,8 @@ import Project.ProofKit.F64Add
 import Project.ProofKit.F64AddFinite
 import Project.ProofKit.F64Bits
 import Project.ProofKit.F32Bits
+import Project.ProofKit.F32Compare
+import Project.ProofKit.F32Sign
 import Project.ProofKit.F64Compare
 import Project.ProofKit.F64Convert
 import Project.ProofKit.F64Decoded

@@ -38,15 +38,90 @@ def isFloat (type : Lean.Expr) : MetaM Bool := do
 def isFloat32 (type : Lean.Expr) : MetaM Bool := do
   return (← whnfR type).isConstOf ``Float32
 
-/-- The source operators on `Float` the compiler translates. -/
-def floatRules : List (Name × F64Op × String) :=
-  [(``HAdd.hAdd, .add, "float add"), (``HSub.hSub, .sub, "float sub"),
-   (``HMul.hMul, .mul, "float mul"), (``HDiv.hDiv, .div, "float div")]
+/-- A source floating-point format: `Float`, binary64, or `Float32`, binary32. -/
+inductive FloatFormat where
+  | binary64
+  | binary32
+  deriving BEq
 
-/-- The source operators on `Float32` the compiler translates. -/
-def float32Rules : List (Name × F32Op × String) :=
-  [(``HAdd.hAdd, .add, "float32 add"), (``HSub.hSub, .sub, "float32 sub"),
-   (``HMul.hMul, .mul, "float32 mul"), (``HDiv.hDiv, .div, "float32 div")]
+/-- The format of `type`, or `none` when it is neither `Float` nor `Float32`. -/
+def floatFormat? (type : Lean.Expr) : MetaM (Option FloatFormat) := do
+  let type ← whnfR type
+  if type.isConstOf ``Float then return some .binary64
+  if type.isConstOf ``Float32 then return some .binary32
+  return none
+
+namespace FloatFormat
+
+def type : FloatFormat → ScalarType
+  | .binary64 => .f64
+  | .binary32 => .f32
+
+/-- The hint rule `name` for the format: `float name` or `float32 name`. -/
+def rule (fmt : FloatFormat) (name : String) : String :=
+  match fmt with
+  | .binary64 => s!"float {name}"
+  | .binary32 => s!"float32 {name}"
+
+def get : (fmt : FloatFormat) → Nat → IRExpr fmt.type
+  | .binary64, index => .getF index
+  | .binary32, index => .getF32 index
+
+/-- The literal `mantissa * 10 ^ (±exponent)` rounded to the format. -/
+def literal : (fmt : FloatFormat) → Nat → Bool → Nat → IRExpr fmt.type
+  | .binary64, m, negative, e => .constF (OfScientific.ofScientific m negative e : Float).toBits
+  | .binary32, m, negative, e =>
+      .constF32 (OfScientific.ofScientific m negative e : Float32).toBits
+
+def natLiteral : (fmt : FloatFormat) → Nat → IRExpr fmt.type
+  | .binary64, n => .constF (Float.ofNat n).toBits
+  | .binary32, n => .constF32 (Float32.ofNat n).toBits
+
+/-- Negative zero, from which `-x` subtracts `x`. -/
+def negZero : (fmt : FloatFormat) → IRExpr fmt.type
+  | .binary64 => .constF 0x8000000000000000
+  | .binary32 => .constF32 0x80000000
+
+def bin : (fmt : FloatFormat) → F64Op → IRExpr fmt.type → IRExpr fmt.type → IRExpr fmt.type
+  | .binary64, op, l, r => .binF op l r
+  | .binary32, op, l, r =>
+      .binF32 (match op with | .add => .add | .sub => .sub | .mul => .mul | .div => .div) l r
+
+def sqrt : (fmt : FloatFormat) → IRExpr fmt.type → IRExpr fmt.type
+  | .binary64, x => .unF .sqrt x
+  | .binary32, x => .unF32 .sqrt x
+
+def abs : (fmt : FloatFormat) → IRExpr fmt.type → IRExpr fmt.type
+  | .binary64, x => .unF .abs x
+  | .binary32, x => .unF32 .abs x
+
+def ite : (fmt : FloatFormat) → IRExpr .bool → IRExpr fmt.type → IRExpr fmt.type → IRExpr fmt.type
+  | .binary64, c, a, b => .iteF c a b
+  | .binary32, c, a, b => .iteF32 c a b
+
+def eq : (fmt : FloatFormat) → IRExpr fmt.type → IRExpr fmt.type → IRExpr .bool
+  | .binary64, l, r => .eqF l r
+  | .binary32, l, r => .eqF32 l r
+
+def lt : (fmt : FloatFormat) → IRExpr fmt.type → IRExpr fmt.type → IRExpr .bool
+  | .binary64, l, r => .ltF l r
+  | .binary32, l, r => .ltF32 l r
+
+def le : (fmt : FloatFormat) → IRExpr fmt.type → IRExpr fmt.type → IRExpr .bool
+  | .binary64, l, r => .leF l r
+  | .binary32, l, r => .leF32 l r
+
+/-- Element `position` of the array at local `array`, a word holding the element's bits. -/
+def read : (fmt : FloatFormat) → Nat → IRExpr .u64 → IRExpr fmt.type
+  | .binary64, array, position => .ofBits (.read array position)
+  | .binary32, array, position => .ofBits32 (.read array position)
+
+end FloatFormat
+
+/-- The source operators on floats the compiler translates, with their hint rule names. -/
+def floatRules : List (Name × F64Op × String) :=
+  [(``HAdd.hAdd, .add, "add"), (``HSub.hSub, .sub, "sub"), (``HMul.hMul, .mul, "mul"),
+   (``HDiv.hDiv, .div, "div")]
 
 def isUInt64Array (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
@@ -592,13 +667,17 @@ def readLocals : {type : ScalarType} → IRExpr type → List Nat
   | _, .unF32 _ x => readLocals x
   | _, .ofBits32 x => readLocals x
   | _, .toBits32 x => readLocals x
+  | _, .eqF32 l r => readLocals l ++ readLocals r
+  | _, .ltF32 l r => readLocals l ++ readLocals r
+  | _, .leF32 l r => readLocals l ++ readLocals r
+  | _, .iteF32 c a b => readLocals c ++ readLocals a ++ readLocals b
   | _, .convertU x => readLocals x
   | _, .truncSatU x => readLocals x
   | _, .ofBits x => readLocals x
   | _, .toBits x => readLocals x
   | _, .ite c a b => readLocals c ++ readLocals a ++ readLocals b
   | _, .iteF c a b => readLocals c ++ readLocals a ++ readLocals b
-  | _, _ => []
+  | _, .const _ | _, .bconst _ | _, .getF _ | _, .constF _ | _, .getF32 _ | _, .constF32 _ => []
 
 /-- Runs `action`, which translates a later part of a value, while the arrays and values of
 recursive types at the locals `reads`, which earlier parts read, count as pending reads: the
@@ -1055,13 +1134,14 @@ mutual
     let source ← sourceOf prop
     let hint (ir : IRExpr .bool) (rule : String) : Hint :=
       mkHint loc (exprLength ir) rule source
-    let floatPair (make : IRExpr .f64 → IRExpr .f64 → IRExpr .bool) (rule : String)
-        (a b : Lean.Expr) : CompileM (IRExpr .bool × List Hint) := do
-      let (l, lHints) ← translateFloat ctx loc a
+    let floatPair (fmt : FloatFormat)
+        (make : (fmt : FloatFormat) → IRExpr fmt.type → IRExpr fmt.type → IRExpr .bool)
+        (rule : String) (a b : Lean.Expr) : CompileM (IRExpr .bool × List Hint) := do
+      let (l, lHints) ← translateFloat ctx loc a fmt
       let (r, rHints) ← afterReads ctx (readLocals l)
-        (translateFloat ctx (loc.skip (exprLength l)) b)
-      let ir := make l r
-      return (ir, hint ir rule :: lHints ++ rHints)
+        (translateFloat ctx (loc.skip (exprLength l)) b fmt)
+      let ir := make fmt l r
+      return (ir, hint ir (fmt.rule rule) :: lHints ++ rHints)
     let pair (make : IRExpr .u64 → IRExpr .u64 → IRExpr .bool) (rule : String)
         (a b : Lean.Expr) : CompileM (IRExpr .bool × List Hint) := do
       let (l, lHints) ← translateValue ctx loc a
@@ -1083,8 +1163,9 @@ mutual
         if (← whnfR type).isConstOf ``Bool && rhs.consumeMData.isConstOf ``Bool.true then
           match lhs.consumeMData.getAppFnArgs with
           | (``BEq.beq, #[floatType, _, a, b]) =>
-              unless ← isFloat floatType do throwError "unsupported equality type in {source}"
-              floatPair .eqF "float equal" a b
+              let some fmt ← floatFormat? floatType
+                | throwError "unsupported equality type in {source}"
+              floatPair fmt FloatFormat.eq "equal" a b
           | _ => throwError "unsupported condition: {source}"
         else
           unless ← isUInt64 type do throwError "unsupported equality type in {source}"
@@ -1093,22 +1174,22 @@ mutual
         unless ← isUInt64 type do throwError "unsupported inequality type in {source}"
         pair .ne "not equal" a b
     | (``LT.lt, #[type, _, a, b]) =>
-        if ← isFloat type then floatPair .ltF "float less than" a b
+        if let some fmt ← floatFormat? type then floatPair fmt FloatFormat.lt "less than" a b
         else
           unless ← isUInt64 type do throwError "unsupported comparison type in {source}"
           pair .ltU "less than" a b
     | (``LE.le, #[type, _, a, b]) =>
-        if ← isFloat type then floatPair .leF "float at most" a b
+        if let some fmt ← floatFormat? type then floatPair fmt FloatFormat.le "at most" a b
         else
           unless ← isUInt64 type do throwError "unsupported comparison type in {source}"
           pair .leU "at most" a b
     | (``GT.gt, #[type, _, a, b]) =>
-        if ← isFloat type then floatPair .ltF "float greater than" b a
+        if let some fmt ← floatFormat? type then floatPair fmt FloatFormat.lt "greater than" b a
         else
           unless ← isUInt64 type do throwError "unsupported comparison type in {source}"
           pair .ltU "greater than" b a
     | (``GE.ge, #[type, _, a, b]) =>
-        if ← isFloat type then floatPair .leF "float at least" b a
+        if let some fmt ← floatFormat? type then floatPair fmt FloatFormat.le "at least" b a
         else
           unless ← isUInt64 type do throwError "unsupported comparison type in {source}"
           pair .leU "at least" b a
@@ -1120,188 +1201,137 @@ mutual
     | (``Or, #[a, b]) => connective .or "or" a b
     | _ => throwError "unsupported condition: {source}"
 
-  /-- Translates a `Float` term to an IR expression whose code starts at `loc`. -/
-  partial def translateFloat (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
-      CompileM (IRExpr .f64 × List Hint) := do
+  /-- Translates a `Float` or `Float32` term, of format `fmt`, to an IR expression whose code
+  starts at `loc`.  Case splits, folds, `UInt64.toFloat`, and `Float.ofBits` are binary64 only. -/
+  partial def translateFloat (ctx : Ctx) (loc : Loc) (term : Lean.Expr)
+      (fmt : FloatFormat := .binary64) : CompileM (IRExpr fmt.type × List Hint) := do
     let term := term.consumeMData
     let source ← sourceOf term
-    let hint (ir : IRExpr .f64) (rule : String) : Hint :=
+    let hint (ir : IRExpr fmt.type) (rule : String) : Hint :=
       mkHint loc (exprLength ir) rule source
+    let isFormat (type : Lean.Expr) : MetaM Bool := return (← floatFormat? type) == some fmt
+    let only64 (action : CompileM (IRExpr .f64 × List Hint)) :
+        CompileM (IRExpr fmt.type × List Hint) :=
+      match fmt with
+      | .binary64 => action
+      | .binary32 => throwError "unsupported Float32 term: {source}"
     if let some index := ctx.floats.lookup term then
-      let ir : IRExpr .f64 := .getF index
-      return (ir, [hint ir "float variable"])
+      let ir := fmt.get index
+      return (ir, [hint ir (fmt.rule "variable")])
     if let some field ← projectionField? ctx term then
       match field with
-      | .inl reduced => return ← translateFloat ctx loc reduced
-      | .inr [(local_, .f64)] =>
-          let ir : IRExpr .f64 := .getF local_
+      | .inl reduced => return ← translateFloat ctx loc reduced fmt
+      | .inr [(local_, type)] =>
+          unless type == fmt.type do throwError "a field used as a float must be one float: {source}"
+          let ir := fmt.get local_
           return (ir, [hint ir "field"])
       | .inr _ => throwError "a field used as a float must be one float: {source}"
     if let some (discriminant, alternatives) ← userCases? term then
-      let (ctx, d, slots, dHints) ← caseDiscriminant ctx loc discriminant alternatives
-      let (ir, hints) ← translateFloatCases { ctx with foldable := false } loc d 0 (slots.zip alternatives)
-      return (ir, hint ir "case split" :: dHints ++ hints)
+      return ← only64 do
+        let (ctx, d, slots, dHints) ← caseDiscriminant ctx loc discriminant alternatives
+        let (ir, hints) ← translateFloatCases { ctx with foldable := false } loc d 0
+          (slots.zip alternatives)
+        return (ir, mkHint loc (exprLength ir) "case split" source :: dHints ++ hints)
     if let some index := ctx.callees.lookup term.getAppFn.constName then
-      let [(result, .f64)] ← translateCall ctx term index
+      let [(result, type)] ← translateCall ctx term index
         | throwError "a call used as a float must return one float: {source}"
-      let ir : IRExpr .f64 := .getF result
+      unless type == fmt.type do throwError "a call used as a float must return one float: {source}"
+      let ir := fmt.get result
       return (ir, [hint ir "call result"])
     match term.getAppFnArgs with
     | (``OfScientific.ofScientific, #[type, _, .lit (.natVal mantissa), sign, .lit (.natVal exponent)]) =>
-        unless ← isFloat type do throwError "unsupported literal type in {source}"
+        unless ← isFormat type do throwError "unsupported literal type in {source}"
         let negative ← match sign.consumeMData with
           | .const ``Bool.true _ => pure true
           | .const ``Bool.false _ => pure false
           | _ => throwError "unsupported literal: {source}"
-        let ir : IRExpr .f64 := .constF (OfScientific.ofScientific mantissa negative exponent : Float).toBits
-        return (ir, [hint ir "float literal"])
+        let ir := fmt.literal mantissa negative exponent
+        return (ir, [hint ir (fmt.rule "literal")])
     | (``OfNat.ofNat, #[type, .lit (.natVal value), _]) =>
-        unless ← isFloat type do throwError "unsupported literal type in {source}"
-        let ir : IRExpr .f64 := .constF (Float.ofNat value).toBits
-        return (ir, [hint ir "float literal"])
+        unless ← isFormat type do throwError "unsupported literal type in {source}"
+        let ir := fmt.natLiteral value
+        return (ir, [hint ir (fmt.rule "literal")])
     | (``Neg.neg, #[type, _, operand]) =>
-        unless ← isFloat type do throwError "unsupported negation type in {source}"
+        unless ← isFormat type do throwError "unsupported negation type in {source}"
         -- `-x` is `-0.0 - x`, which is exact and yields the canonical NaN for NaN.
-        let zero : IRExpr .f64 := .constF 0x8000000000000000
-        let (x, xHints) ← translateFloat ctx (loc.skip (exprLength zero)) operand
-        let ir : IRExpr .f64 := .binF .sub zero x
-        return (ir, hint ir "float neg" :: xHints)
-    | (``Float.abs, #[operand]) =>
-        let (x, xHints) ← translateFloat ctx loc operand
-        let ir : IRExpr .f64 := .unF .abs x
-        return (ir, hint ir "float abs" :: xHints)
+        let zero := fmt.negZero
+        let (x, xHints) ← translateFloat ctx (loc.skip (exprLength zero)) operand fmt
+        let ir := fmt.bin .sub zero x
+        return (ir, hint ir (fmt.rule "neg") :: xHints)
+    | (``Float.abs, #[operand]) | (``Float32.abs, #[operand]) =>
+        let (x, xHints) ← translateFloat ctx loc operand fmt
+        let ir := fmt.abs x
+        return (ir, hint ir (fmt.rule "abs") :: xHints)
     | (``Min.min, #[type, _, a, b]) | (``Max.max, #[type, _, a, b]) =>
-        unless ← isFloat type do throwError "unsupported min or max type in {source}"
+        unless ← isFormat type do throwError "unsupported min or max type in {source}"
         -- `min a b` is `if a ≤ b then a else b`, and `max a b` is `if a ≤ b then b else a`.
         let isMin := term.isAppOf ``Min.min
         let inner := { ctx with foldable := false }
-        let (l, lHints) ← translateFloat inner loc a
-        let (r, rHints) ← translateFloat inner (loc.skip (exprLength l)) b
-        let condition : IRExpr .bool := .leF l r
+        let (l, lHints) ← translateFloat inner loc a fmt
+        let (r, rHints) ← translateFloat inner (loc.skip (exprLength l)) b fmt
+        let condition := fmt.le l r
         let branch := loc.skip (exprLength condition)
         let (first, second) := if isMin then (a, b) else (b, a)
-        let (x, xHints) ← translateFloat inner (branch.inside (some 0)) first
-        let (y, yHints) ← translateFloat inner (branch.inside (some 1)) second
-        let ir : IRExpr .f64 := .iteF condition x y
-        return (ir, hint ir (if isMin then "float min" else "float max") ::
+        let (x, xHints) ← translateFloat inner (branch.inside (some 0)) first fmt
+        let (y, yHints) ← translateFloat inner (branch.inside (some 1)) second fmt
+        let ir := fmt.ite condition x y
+        return (ir, hint ir (fmt.rule (if isMin then "min" else "max")) ::
           lHints ++ rHints ++ xHints ++ yHints)
     | (``ite, #[type, condition, _, thenTerm, elseTerm]) =>
-        unless ← isFloat type do throwError "unsupported conditional type in {source}"
+        unless ← isFormat type do throwError "unsupported conditional type in {source}"
         let inner := { ctx with foldable := false }
         let (c, cHints) ← translateCondition inner loc condition
         let branch := loc.skip (exprLength c)
-        let (a, aHints) ← translateFloat inner (branch.inside (some 0)) thenTerm
-        let (b, bHints) ← translateFloat inner (branch.inside (some 1)) elseTerm
-        let ir : IRExpr .f64 := .iteF c a b
-        return (ir, hint ir "float conditional" :: cHints ++ aHints ++ bHints)
-    | (``Float.sqrt, #[operand]) =>
-        let (x, xHints) ← translateFloat ctx loc operand
-        let ir : IRExpr .f64 := .unF .sqrt x
-        return (ir, hint ir "float sqrt" :: xHints)
+        let (a, aHints) ← translateFloat inner (branch.inside (some 0)) thenTerm fmt
+        let (b, bHints) ← translateFloat inner (branch.inside (some 1)) elseTerm fmt
+        let ir := fmt.ite c a b
+        return (ir, hint ir (fmt.rule "conditional") :: cHints ++ aHints ++ bHints)
+    | (``Float.sqrt, #[operand]) | (``Float32.sqrt, #[operand]) =>
+        let (x, xHints) ← translateFloat ctx loc operand fmt
+        let ir := fmt.sqrt x
+        return (ir, hint ir (fmt.rule "sqrt") :: xHints)
     | (``Array.foldl, _) | (``List.foldl, _) =>
-        let ir : IRExpr .f64 := .getF (← translateFold ctx term .f64)
-        return (ir, [hint ir "fold result"])
+        only64 do
+          let ir : IRExpr .f64 := .getF (← translateFold ctx term .f64)
+          return (ir, [mkHint loc (exprLength ir) "fold result" source])
     | (``LeanExe.loop, _) =>
-        let [(state, .f64)] ← translateLoop ctx term
+        let [(state, type)] ← translateLoop ctx term
           | throwError "a loop used as a float must have a float state: {source}"
-        let ir : IRExpr .f64 := .getF state
+        unless type == fmt.type do
+          throwError "a loop used as a float must have a float state: {source}"
+        let ir := fmt.get state
         return (ir, [hint ir "loop result"])
     | (``UInt64.toFloat, #[operand]) =>
-        let (x, xHints) ← translateValue ctx loc operand
-        let ir : IRExpr .f64 := .convertU x
-        return (ir, hint ir "word to float" :: xHints)
+        only64 do
+          let (x, xHints) ← translateValue ctx loc operand
+          let ir : IRExpr .f64 := .convertU x
+          return (ir, mkHint loc (exprLength ir) "word to float" source :: xHints)
     | (``Float.ofBits, #[bits]) =>
         -- The reinterpretation keeps a NaN payload, which Lean's model replaces with the
         -- canonical NaN, so a proof must show that `bits` is not a NaN pattern.
-        let (w, wHints) ← translateValue ctx loc bits
-        let ir : IRExpr .f64 := .ofBits w
-        return (ir, hint ir "float of bits" :: wHints)
+        only64 do
+          let (w, wHints) ← translateValue ctx loc bits
+          let ir : IRExpr .f64 := .ofBits w
+          return (ir, mkHint loc (exprLength ir) "float of bits" source :: wHints)
     | (``GetElem?.getElem!, #[_, _, _, _, _, _, array, position]) =>
         let some arrayLocal ← lookupArray ctx.floatArrays array.consumeMData
-          | throwError "a float read must be of an `Array Float` variable: {source}"
+          | throwError "a float read must be of an `Array Float` or `Array Float32` variable: {source}"
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "a read position must be `i.toNat` for a UInt64 `i`: {source}"
         let (i, iHints) ← translateValue ctx loc k
-        let ir : IRExpr .f64 := .ofBits (.read arrayLocal i)
-        return (ir, hint ir "float array read" :: iHints)
+        let ir := fmt.read arrayLocal i
+        return (ir, hint ir (fmt.rule "array read") :: iHints)
     | (fn, #[left, right, out, _, a, b]) =>
         let some (_, op, rule) := floatRules.find? (·.1 == fn)
           | throwError "unsupported float operation {fn} in {source}"
-        unless (← isFloat left) && (← isFloat right) && (← isFloat out) do
+        unless (← isFormat left) && (← isFormat right) && (← isFormat out) do
           throwError "unsupported operand types in {source}"
-        let (l, lHints) ← translateFloat ctx loc a
+        let (l, lHints) ← translateFloat ctx loc a fmt
         let (r, rHints) ← afterReads ctx (readLocals l)
-          (translateFloat ctx (loc.skip (exprLength l)) b)
-        let ir : IRExpr .f64 := .binF op l r
-        return (ir, hint ir rule :: lHints ++ rHints)
+          (translateFloat ctx (loc.skip (exprLength l)) b fmt)
+        let ir := fmt.bin op l r
+        return (ir, hint ir (fmt.rule rule) :: lHints ++ rHints)
     | _ => throwError "unsupported float term: {source}"
-
-  /-- Translates a `Float32` term to an IR expression whose code starts at `loc`: variables,
-  fields, call results, literals, the four arithmetic operations, `Float32.sqrt`, reads of an
-  `Array Float32`, and loops with one `Float32` state. -/
-  partial def translateFloat32 (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
-      CompileM (IRExpr .f32 × List Hint) := do
-    let term := term.consumeMData
-    let source ← sourceOf term
-    let hint (ir : IRExpr .f32) (rule : String) : Hint :=
-      mkHint loc (exprLength ir) rule source
-    if let some index := ctx.floats.lookup term then
-      let ir : IRExpr .f32 := .getF32 index
-      return (ir, [hint ir "float32 variable"])
-    if let some field ← projectionField? ctx term then
-      match field with
-      | .inl reduced => return ← translateFloat32 ctx loc reduced
-      | .inr [(local_, .f32)] =>
-          let ir : IRExpr .f32 := .getF32 local_
-          return (ir, [hint ir "field"])
-      | .inr _ => throwError "a field used as a Float32 must be one Float32: {source}"
-    if let some index := ctx.callees.lookup term.getAppFn.constName then
-      let [(result, .f32)] ← translateCall ctx term index
-        | throwError "a call used as a Float32 must return one Float32: {source}"
-      let ir : IRExpr .f32 := .getF32 result
-      return (ir, [hint ir "call result"])
-    match term.getAppFnArgs with
-    | (``OfScientific.ofScientific, #[type, _, .lit (.natVal mantissa), sign, .lit (.natVal exponent)]) =>
-        unless ← isFloat32 type do throwError "unsupported literal type in {source}"
-        let negative ← match sign.consumeMData with
-          | .const ``Bool.true _ => pure true
-          | .const ``Bool.false _ => pure false
-          | _ => throwError "unsupported literal: {source}"
-        let ir : IRExpr .f32 :=
-          .constF32 (OfScientific.ofScientific mantissa negative exponent : Float32).toBits
-        return (ir, [hint ir "float32 literal"])
-    | (``OfNat.ofNat, #[type, .lit (.natVal value), _]) =>
-        unless ← isFloat32 type do throwError "unsupported literal type in {source}"
-        let ir : IRExpr .f32 := .constF32 (Float32.ofNat value).toBits
-        return (ir, [hint ir "float32 literal"])
-    | (``LeanExe.loop, _) =>
-        let [(state, .f32)] ← translateLoop ctx term
-          | throwError "a loop used as a Float32 must have a Float32 state: {source}"
-        let ir : IRExpr .f32 := .getF32 state
-        return (ir, [hint ir "loop result"])
-    | (``GetElem?.getElem!, #[_, _, _, _, _, _, array, position]) =>
-        let some arrayLocal ← lookupArray ctx.floatArrays array.consumeMData
-          | throwError "a Float32 read must be of an `Array Float32` variable: {source}"
-        let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
-          | throwError "a read position must be `i.toNat` for a UInt64 `i`: {source}"
-        let (i, iHints) ← translateValue ctx loc k
-        let ir : IRExpr .f32 := .ofBits32 (.read arrayLocal i)
-        return (ir, hint ir "float32 array read" :: iHints)
-    | (``Float32.sqrt, #[operand]) =>
-        let (x, xHints) ← translateFloat32 ctx loc operand
-        let ir : IRExpr .f32 := .unF32 .sqrt x
-        return (ir, hint ir "float32 sqrt" :: xHints)
-    | (fn, #[left, right, out, _, a, b]) =>
-        let some (_, op, rule) := float32Rules.find? (·.1 == fn)
-          | throwError "unsupported Float32 operation {fn} in {source}"
-        unless (← isFloat32 left) && (← isFloat32 right) && (← isFloat32 out) do
-          throwError "unsupported operand types in {source}"
-        let (l, lHints) ← translateFloat32 ctx loc a
-        let (r, rHints) ← afterReads ctx (readLocals l)
-          (translateFloat32 ctx (loc.skip (exprLength l)) b)
-        let ir : IRExpr .f32 := .binF32 op l r
-        return (ir, hint ir rule :: lHints ++ rHints)
-    | _ => throwError "unsupported Float32 term: {source}"
 
   /-- Translates a term of type `type`, which is `UInt64` or `Float`. -/
   partial def translateAs (ctx : Ctx) (loc : Loc) (type : ScalarType) (term : Lean.Expr) :
@@ -1309,7 +1339,7 @@ mutual
     match type with
     | .u64 => let (ir, hints) ← translateValue ctx loc term; return (⟨.u64, ir⟩, hints)
     | .f64 => let (ir, hints) ← translateFloat ctx loc term; return (⟨.f64, ir⟩, hints)
-    | .f32 => let (ir, hints) ← translateFloat32 ctx loc term; return (⟨.f32, ir⟩, hints)
+    | .f32 => let (ir, hints) ← translateFloat ctx loc term .binary32; return (⟨.f32, ir⟩, hints)
     | .bool => throwError "a Bool value is not supported: {← sourceOf term}"
 
   /-- The field that `term` projects from a pair or structure: the field term itself when
@@ -2262,7 +2292,7 @@ mutual
               let (x, xHints) ← translateFloat inner ⟨[], 0⟩ (mkApp f i).headBeta
               pure ((.toBits x : IRExpr .u64), xHints)
             else if float32Element then
-              let (x, xHints) ← translateFloat32 inner ⟨[], 0⟩ (mkApp f i).headBeta
+              let (x, xHints) ← translateFloat inner ⟨[], 0⟩ (mkApp f i).headBeta .binary32
               pure ((.toBits32 x : IRExpr .u64), xHints)
             else translateValue inner ⟨[], 0⟩ (mkApp f i).headBeta
         let body := seqAll bodyStmts
@@ -2504,7 +2534,7 @@ mutual
           let (ir, irHints) ← translateFloat ctx ⟨[], offset⟩ arg
           pure ([⟨.f64, ir⟩], irHints)
         else if ← isFloat32 argType then
-          let (ir, irHints) ← translateFloat32 ctx ⟨[], offset⟩ arg
+          let (ir, irHints) ← translateFloat ctx ⟨[], offset⟩ arg .binary32
           pure ([⟨.f32, ir⟩], irHints)
         else if (← isWordType argType) || (← isTupleType argType) then
           translateComponents ctx ⟨[], offset⟩ arg argType
@@ -3056,6 +3086,12 @@ def irToExpr : {type : ScalarType} → IRExpr type → Lean.Expr
   | _, .constF32 bits => mkApp (mkConst ``Project.IR.Expr.constF32) (toExpr bits)
   | _, .ofBits32 operand => mkApp (mkConst ``Project.IR.Expr.ofBits32) (irToExpr operand)
   | _, .toBits32 operand => mkApp (mkConst ``Project.IR.Expr.toBits32) (irToExpr operand)
+  | _, .iteF32 condition thenValue elseValue =>
+      mkApp3 (mkConst ``Project.IR.Expr.iteF32) (irToExpr condition) (irToExpr thenValue)
+        (irToExpr elseValue)
+  | _, .eqF32 left right => mkApp2 (mkConst ``Project.IR.Expr.eqF32) (irToExpr left) (irToExpr right)
+  | _, .ltF32 left right => mkApp2 (mkConst ``Project.IR.Expr.ltF32) (irToExpr left) (irToExpr right)
+  | _, .leF32 left right => mkApp2 (mkConst ``Project.IR.Expr.leF32) (irToExpr left) (irToExpr right)
   | _, .convertU operand => mkApp (mkConst ``Project.IR.Expr.convertU) (irToExpr operand)
   | _, .truncSatU operand => mkApp (mkConst ``Project.IR.Expr.truncSatU) (irToExpr operand)
   | _, .ofBits operand => mkApp (mkConst ``Project.IR.Expr.ofBits) (irToExpr operand)

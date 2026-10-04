@@ -60,7 +60,8 @@ binary review.
 | Integer comparisons and `eqz` | Consume the stated integer type and produce `i32`.  Binary comparisons consume two operands. |
 | Integer binary arithmetic | `[iN, iN] -> [iN]`, for the declared width. |
 | Float binary arithmetic | `[fN, fN] -> [fN]`. |
-| Float unary arithmetic | `[fN] -> [fN]` for `f32.nearest`, `f32.sqrt`, and `f64.sqrt`. |
+| Float unary arithmetic | `[fN] -> [fN]` for `f32.nearest`, `f32.sqrt`, `f32.abs`, and `f64.sqrt`. |
+| Float comparisons | `[fN, fN] -> [i32]` for `f32.eq`, `f32.lt`, and `f32.le` (2026-10-03). |
 | Wrap and unsigned extension | `i64 -> i32` and `i32 -> i64`, respectively. |
 | Signed byte extension | `i32 -> i32`. |
 | Signed conversion and saturating truncation | `i32 -> f32` and `f32 -> i32`, respectively. |

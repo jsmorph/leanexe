@@ -24,6 +24,10 @@ mutual
     | f64Lt : InstructionForm .f64Lt
     | f64Le : InstructionForm .f64Le
     | f64Abs : InstructionForm .f64Abs
+    | f32Eq : InstructionForm .f32Eq
+    | f32Lt : InstructionForm .f32Lt
+    | f32Le : InstructionForm .f32Le
+    | f32Abs : InstructionForm .f32Abs
     | f64ConvertI64U : InstructionForm .f64ConvertI64U
     | geUI64 : InstructionForm .geUI64
     | add : InstructionForm .add

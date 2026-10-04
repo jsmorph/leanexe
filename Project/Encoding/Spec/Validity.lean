@@ -21,6 +21,7 @@ inductive Unary : Wasm.Instruction → Wasm.ValueType → Wasm.ValueType → Pro
   | f32Sqrt : Unary .f32Sqrt .f32 .f32
   | f64Sqrt : Unary .f64Sqrt .f64 .f64
   | f64Abs : Unary .f64Abs .f64 .f64
+  | f32Abs : Unary .f32Abs .f32 .f32
   | f64ConvertI64U : Unary .f64ConvertI64U .i64 .f64
   | f32ConvertI32S : Unary .f32ConvertI32S .i32 .f32
   | i32TruncSatF32S : Unary .i32TruncSatF32S .f32 .i32
@@ -45,6 +46,9 @@ inductive Binary : Wasm.Instruction → Wasm.ValueType → Wasm.ValueType → Pr
   | f64Eq : Binary .f64Eq .f64 .i32
   | f64Lt : Binary .f64Lt .f64 .i32
   | f64Le : Binary .f64Le .f64 .i32
+  | f32Eq : Binary .f32Eq .f32 .i32
+  | f32Lt : Binary .f32Lt .f32 .i32
+  | f32Le : Binary .f32Le .f32 .i32
   | neI64 : Binary .neI64 .i64 .i32
   | ltUI64 : Binary .ltUI64 .i64 .i32
   | leUI64 : Binary .leUI64 .i64 .i32

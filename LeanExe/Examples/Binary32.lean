@@ -18,4 +18,12 @@ def matVec32 (m v : Array Float32) (rows cols : UInt64) : Array Float32 :=
   LeanExe.build rows fun r =>
     LeanExe.loop cols 0.0 fun c acc => acc + m[(r * cols + c).toNat]! * v[c.toNat]!
 
+/-- `Piecewise.piecewise` in binary32: comparisons, conditionals, negation, absolute value, `min`,
+and `max`. -/
+def piecewise32 (x lo hi : Float32) : Float32 :=
+  if x == lo then 0.0
+  else if x < lo then -(lo - x) * 0.5
+  else if hi ≤ x then (hi - x).abs + 1.5
+  else max lo (min x hi)
+
 end LeanExe.Examples.Binary32

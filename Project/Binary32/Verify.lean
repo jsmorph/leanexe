@@ -167,16 +167,46 @@ theorem matVec32_implements : Implements binary32.module 5 matVec32Tuple := by
   rw [matVec32Tuple, matVec32_eq, build_map]
   exact hNew.owned
 
+/-- `piecewise32` with its three arguments as one tuple. -/
+def piecewise32Tuple (x : Float32 × Float32 × Float32) : Float32 := piecewise32 x.1 x.2.1 x.2.2
+
+theorem piecewise32_implements : Implements binary32.module 6 piecewise32Tuple :=
+  Func.implements binary32.funcs 4 binary32.piecewise32.ir "piecewise32" rfl piecewise32Tuple
+    (fun _ _ _ _ h => by rw [Scalar.borrowed.mp h]; rfl) fun ⟨x, lo, hi⟩ _ _ _ _ h =>
+    Stmt.skip_spec.mono (fun _ _ ⟨hStore, hState⟩ => ⟨hStore, by
+      rw [Scalar.borrowed.mp h] at hState
+      subst hState
+      refine ⟨[.f32 (piecewise32 x lo hi).toBits],
+        binary32.piecewise32.ir.state (Scalar.values (x, lo, hi)), ?_, rfl⟩
+      have h0 : (0.0 : Float32).toBits = 0 := by decide
+      have h05 : (0.5 : Float32).toBits = 0x3f000000 := by decide
+      have h15 : (1.5 : Float32).toBits = 0x3fc00000 := by decide
+      have hx : binary32.piecewise32.ir.state (Scalar.values (x, lo, hi)) =
+          { params := [.f32 x.toBits, .f32 lo.toBits, .f32 hi.toBits], locals := [] } := rfl
+      rw [hx]
+      dsimp only [binary32.piecewise32.ir, Func.scratch]
+      simp [Expr.evalResults, Expr.eval, State.get, F32Op.apply, F32UnOp.apply, piecewise32,
+        F32Bits.beq_eq, F32Bits.lt_iff, F32Bits.le_iff]
+      cases h1 : Wasm.IEEE32.eq x.toBits lo.toBits <;>
+        cases h2 : Wasm.IEEE32.lt x.toBits lo.toBits <;>
+        cases h3 : Wasm.IEEE32.le hi.toBits x.toBits <;>
+        cases h4 : Wasm.IEEE32.le x.toBits hi.toBits <;>
+        cases h5 : Wasm.IEEE32.le lo.toBits x.toBits <;>
+        cases h6 : Wasm.IEEE32.le lo.toBits hi.toBits <;>
+        simp [h1, h2, h3, h4, h5, h6, F32Bits.toBits_add, F32Bits.toBits_sub, F32Bits.toBits_mul,
+          F32Bits.toBits_neg, F32Bits.toBits_abs, F32Bits.toBits_min, F32Bits.toBits_max, h0, h05,
+          h15]⟩) fun _ _ h => h
+
 /-- `encode` succeeds on `binary32.module`, and its bytes decode to a module that computes
-`axpy32`, `hypot32`, `ratio32`, and `matVec32` bit for bit. -/
+`axpy32`, `hypot32`, `ratio32`, `matVec32`, and `piecewise32` bit for bit. -/
 theorem binary32_bytes : ∃ bytes, Wasm.Encoding.encode binary32.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 axpy32Tuple ∧
       Implements m 3 hypot32Pair ∧ Implements m 4 ratio32Tuple ∧
-      Implements m 5 matVec32Tuple := by
+      Implements m 5 matVec32Tuple ∧ Implements m 6 piecewise32Tuple := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip binary32.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, binary32.module, decoded, axpy32_implements, hypot32_implements,
-    ratio32_implements, matVec32_implements⟩
+    ratio32_implements, matVec32_implements, piecewise32_implements⟩
 
 #print axioms binary32_bytes
 

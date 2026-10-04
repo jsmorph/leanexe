@@ -138,6 +138,12 @@ def binary32Cases : IO Unit := do
       (toString (LeanExe.Examples.Binary32.hypot32 a x).toBits)
     line "binary32" "ratio32" "f32" [fl32 a, fl32 x, fl32 y]
       (toString (LeanExe.Examples.Binary32.ratio32 a x y).toBits)
+  let bounds : List (Float32 × Float32 × Float32) :=
+    [(1.0, 1.0, 2.0), (0.5, 1.0, 2.0), (3.0, 1.0, 2.0), (1.5, 1.0, 2.0), (2.0, 1.0, 2.0),
+      (nan32, 1.0, 2.0), (1.5, nan32, 2.0), (1.5, 1.0, nan32), (-0.0, 0.0, 1.0), (1.5, 2.0, 1.0)]
+  for (x, lo, hi) in bounds ++ float32Triples do
+    line "binary32" "piecewise32" "f32" [fl32 x, fl32 lo, fl32 hi]
+      (toString (LeanExe.Examples.Binary32.piecewise32 x lo hi).toBits)
   -- Matrices stored by rows with the vectors they multiply, including short matrices and vectors,
   -- whose missing elements count as 0.
   let words32 (xs : List Float32) : List UInt64 := xs.map fun x => x.toBits.toUInt64
