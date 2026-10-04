@@ -24780,7 +24780,56 @@ theorem, by induction on the tokens, connects setup and steps to a run of `step3
 prefix.  The proof is bookkeeping: twelve instances of the run rule, a layer lemma of eighteen
 dispatches and two frees, and the step, about 600 lines by comparison with G2c.
 
-- [ ] G4a: `step32`, `Buf`, the commands, `Exec`, the printer, and the program of a step.
-- [ ] G4b: the run rule, the layer lemma, the step theorem, and the sequence theorem.
-- [ ] G4c: the Lean printer as a co-process of `generate.py`, the native `step32` comparison,
-  and generation again on both drivers.
+### Review of the dispatch program design
+
+An independent reviewer checked the analysis against the code and the W3C WebGPU Candidate
+Recommendation of 15 September 2026, and I checked its citations.  The dispatch count, the
+host's binding order, the replacement of a name by `output`, `words`, and `load`, the aliasing
+rule, and the three default limits are right: WebGPU guarantees 65,535 workgroups per dimension,
+8 storage buffers per stage, and 128 MiB per binding (3.6.2), and the program needs at most
+12,288, 6, and 77,199,368 bytes.  Queue order makes the sequential semantics right: each `run` is
+its own submission, each dispatch is its own usage scope (3.4.4), and a released buffer lives
+until the work that uses it completes (5.1.4).
+
+The reviewer found eight gaps.  (1) The host's `run` takes workgroups while `Module.dispatch`
+counts invocations, so a run of `W` workgroups is a dispatch of `64 W` invocations, with
+`workgroupSize = 64` from `Spec.module`.  (2) Shaders and buffers share the host's one name
+table, so a buffer name equal to a shader name releases the pipeline.  (3) Word buffers named by
+value, as `generate.py` names them, accumulate across steps and make a step depend on earlier
+ones.  (4) Ten theorems also need the count word below 2^29, and `add32` and `geluArray32` take
+their count from an array's size, so the store must carry sizes.  (5) `free` needs a store of
+partial functions.  (6) A stale kernel file breaks the link between a `shader` command and the
+Lean module, since `generate.py` writes a file only when it is missing.  (7) The limits show only
+that no validation error occurs, and allocation can still fail.  (8) A theorem about a relation
+says nothing when no derivation exists, so the semantics should be a partial function with race
+freedom as a separate conjunct.  It also proposed typed calls in place of raw commands, caches
+named by layer and parity, and a Lean process that drives the host in place of Python.
+
+The revised design has two levels.  A host command (`load`, `words`, `output`, `run`) has a
+partial function on stores of word arrays, with a run of `W` workgroups dispatching `64 W`
+invocations, the output name distinct from the inputs, and race freedom as a separate predicate.
+A typed item, a kernel call (kernel, element count, output, inputs) or a word or float constant,
+acts on a store of typed values (a binary32 array, a word, or a float), where a call checks
+every size bound and the element count and yields the kernel's Lean function.  One lemma per
+kernel, from its dispatch theorem, shows that the printed `output` and `run` of a call do on the
+encoded store what the call does on the typed store.  The step theorem then works with Lean
+arrays and names alone.  Word constants have names by role (position, base, top, row, width,
+and the rest) and are rewritten at the start of each step, so the step's precondition is the
+weights and the caches.  Each layer's caches alternate between two names by the parity of the
+position, so an `append` replaces the buffer of two positions back, and no `free` is needed.
+
+The driver moves into Lean: `Project/Gpt32/Generate.lean`, run with `lean --run`, writes the
+kernel files from the Lean modules, starts the host, sends the setup and each step's commands,
+reads the scores, chooses each token with a Lean `greedy32`, and saves the scores.  Python keeps
+the tokenizer, the export of the weights, the decoding, and the comparison with Hugging Face on
+the saved scores.  The printer writes readable buffer names and prefixes shader names with a
+character no buffer name contains.  The printer and the host's parsing stay unproved, and the
+native comparison tests them.  A lemma that the program fits WebGPU's default limits moves to
+Iteration 25, where the browser needs it.  The small configurations of the native test keep heads
+of 64 and a capacity of 1,024, which the kernels fix.
+
+- [ ] G4a: `step32`, `greedy32`, the buffer names, the host commands and their semantics, the
+  typed items, the printer, and the setup and step programs.
+- [ ] G4b: the call lemmas, the layer lemma, the step theorem, and the sequence theorem.
+- [ ] G4c: the Lean driver, the native `step32` comparison on small configurations, and
+  generation on both drivers.

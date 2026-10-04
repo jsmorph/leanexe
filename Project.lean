@@ -219,3 +219,5 @@ import Project.Gpt32.Module
 import Project.Gpt32.Kernels
 import Project.Gpt32.Specs
 import Project.Gpt32.Proofs
+import Project.Gpt32.Program
+import Project.Gpt32.Exec
