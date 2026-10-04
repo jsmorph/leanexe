@@ -22,12 +22,6 @@ namespace Project.Gpt32
 
 open Project.WGSL LeanExe.Examples.Gpt32
 
-def KernelName.module : KernelName → Module
-  | .embed => embedKernel | .layerNorm => layerNormKernel | .linear => linearKernel
-  | .append => appendKernel | .scores => scoresKernel | .headMax => headMaxKernel
-  | .headSum => headSumKernel | .probs => probsKernel | .mix => mixKernel | .add => addKernel
-  | .gelu => geluKernel | .logits => logitsKernel
-
 abbrev HostStore := Buf → Option (Array UInt32)
 
 def HostStore.set (s : HostStore) (b : Buf) (ws : Array UInt32) : HostStore :=
@@ -241,7 +235,7 @@ theorem HostStore.mapM_set {s : HostStore} {b : Buf} {ws : Array UInt32} :
   | [], _ => rfl
   | i :: is, h => by
     simp only [List.mem_cons, not_or] at h
-    simp only [List.mapM_cons, HostStore.set, if_neg (fun e : i = b => h.1 e.symm),
+    simp only [List.mapM_cons, HostStore.set, ite_eq_right (fun e : i = b => h.1 e.symm),
       HostStore.mapM_set h.2]
 
 theorem Store.mapM_host (s : Store) : ∀ (ins : List Buf) (vs : List Val),
