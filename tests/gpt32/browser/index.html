@@ -57,7 +57,9 @@ code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
 <h1>GPT-2 in Binary32</h1>
 <p class="muted">GPT-2 124M, greedy decoding.  Each token runs the host commands of
 <code>Project/Gpt32/Program.lean</code>, which <code>generate_host</code> proves compute
-<code>step32</code>.  With WGSL, each kernel call is a WebGPU dispatch of its translated kernel.
+<code>step32</code> on a device with strict binary32 arithmetic.  WGSL lets a device flush
+subnormal values to zero and fuse multiplications with additions, and the comparison shows the
+effect on this one.  With WGSL, each kernel call is a WebGPU dispatch of its translated kernel.
 Without WGSL, it is a call of the same kernel compiled to <code>gpt32.wasm</code> on the CPU.  Both
 together run every step on each and compare the scores bit for bit; the tokens follow Wasm.</p>
 

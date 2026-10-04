@@ -24975,3 +24975,8 @@ Apple GPU does not.  WGSL's `u32` operations are exact, so binary32 emulated wit
 operations is the one route to equal results on every device; Talos defines `IEEE32` over
 unbounded naturals, so it would need fixed-width algorithms proved against those definitions.
 
+The user decided on 2026-10-04 to keep the strict profile: the theorem stays exact on devices that
+meet it, the kernel page serves as the conformance check, and on other devices the pages report
+the measured deviation and claim nothing more.  Integer emulation of binary32, a fallback to Wasm,
+and error bounds were the alternatives.  The GPT-2 page now states the condition.
+
