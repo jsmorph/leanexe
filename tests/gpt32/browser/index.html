@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GPT-2 in Binary32</title>
+<style>
+:root {
+  --bg: #fafaf8; --fg: #1d2421; --muted: #5d6762; --line: #d6dbd6; --panel: #ffffff;
+  --pass: #1f6b43; --fail: #a3321f; --accent: #2a5d8f; --gen: #e6f0e8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151918; --fg: #e3e8e5; --muted: #98a39d; --line: #333b38; --panel: #1c2120;
+    --pass: #6fcf97; --fail: #f08a75; --accent: #7fb2e5; --gen: #23332a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151918; --fg: #e3e8e5; --muted: #98a39d; --line: #333b38; --panel: #1c2120;
+  --pass: #6fcf97; --fail: #f08a75; --accent: #7fb2e5; --gen: #23332a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 24px; margin: 0 0 6px; font-weight: 600; }
+h2 { font-size: 15px; margin: 0 0 10px; font-weight: 600; }
+p { margin: 0 0 12px; }
+.muted { color: var(--muted); }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 16px; margin: 16px 0; overflow-x: auto; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
+select, button, input { font: inherit; padding: 6px 10px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--fg); }
+input[type="number"] { width: 6em; }
+button { background: var(--accent); border-color: var(--accent); color: #fff; cursor: pointer; }
+button.secondary { background: var(--panel); color: var(--fg); border-color: var(--line); }
+button:disabled { opacity: 0.5; cursor: default; }
+textarea { width: 100%; font: 15px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+#prompt { min-height: 70px; }
+#report { min-height: 200px; font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+#text { white-space: pre-wrap; overflow-wrap: anywhere; font: 16px/1.6 Georgia, serif; min-height: 90px; }
+#text .gen { background: var(--gen); }
+.pass { color: var(--pass); }
+.fail { color: var(--fail); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; color: var(--muted); font-size: 13px; }
+.stats { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+.stats strong { display: block; color: var(--fg); font-size: 18px; font-weight: 600; }
+code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+</style>
+</head>
+<body>
+<main>
+<h1>GPT-2 in Binary32</h1>
+<p class="muted">GPT-2 124M, greedy decoding.  Each token runs the host commands of
+<code>Project/Gpt32/Program.lean</code>, which <code>generate_host</code> proves compute
+<code>step32</code>.  With WGSL, each kernel call is a WebGPU dispatch of its translated kernel.
+Without WGSL, it is a call of the same kernel compiled to <code>gpt32.wasm</code> on the CPU.  Both
+together run every step on each and compare the scores bit for bit; the tokens follow Wasm.</p>
+
+<section>
+<h2>Model</h2>
+<div class="controls">
+  <label for="mode">Kernels</label>
+  <select id="mode">
+    <option value="both">WGSL and Wasm, compared</option>
+    <option value="gpu">WGSL on WebGPU</option>
+    <option value="wasm">gpt32.wasm on the CPU</option>
+  </select>
+  <label for="power">Adapter</label>
+  <select id="power">
+    <option value="high-performance">high-performance</option>
+    <option value="low-power">low-power</option>
+    <option value="fallback">fallback (software)</option>
+  </select>
+  <button id="load">Load</button>
+</div>
+<p id="loaded" class="muted">Loading reads about 1 GB of weights for each kind of kernel.</p>
+</section>
+
+<section>
+<h2>Prompt</h2>
+<textarea id="prompt" spellcheck="false">The meaning of life is</textarea>
+<div class="controls">
+  <label for="tokens">Tokens</label>
+  <input id="tokens" type="number" min="1" max="1000" value="32">
+  <button id="generate" disabled>Generate</button>
+  <button id="stop" class="secondary" disabled>Stop</button>
+  <span id="status" role="status" aria-live="polite"></span>
+</div>
+</section>
+
+<section>
+<h2>Text</h2>
+<div id="text"></div>
+<div class="stats">
+  <div><strong id="count">0</strong>tokens generated</div>
+  <div><strong id="perGpu">—</strong>seconds per step, WGSL</div>
+  <div><strong id="perWasm">—</strong>seconds per step, Wasm</div>
+  <div><strong id="equal">—</strong>steps with equal scores</div>
+  <div><strong id="agree">—</strong>steps with the same token</div>
+</div>
+</section>
+
+<section>
+<h2>Comparison</h2>
+<p class="muted">For each step with both kinds of kernel: the scores that differ in their bits, the largest
+difference relative to the largest Wasm score, and each side's token.</p>
+<table>
+  <thead><tr><th>Position</th><th>Differing scores</th><th>Largest difference</th><th>Wasm token</th><th>WGSL token</th></tr></thead>
+  <tbody id="steps"></tbody>
+</table>
+</section>
+
+<section>
+<h2>Report</h2>
+<textarea id="report" readonly></textarea>
+</section>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
