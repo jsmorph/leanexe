@@ -101,7 +101,7 @@ WASM instruction names, with a common type prefix shown once per group.
 | `i64` comparisons | `eqz=50`, `eq=51`, `ne=52`, `lt_u=54`, `le_u=58`, `ge_u=5a` |
 | `i32` arithmetic | `add=6a`, `and=71` |
 | `i64` arithmetic | `add=7c`, `sub=7d`, `mul=7e`, `div_u=80`, `rem_u=82`, `and=83`, `or=84`, `xor=85`, `shl=86`, `shr_u=88` |
-| `f32` operations | `nearest=90`, `sqrt=91`, `add=92`, `sub=93`, `mul=94`, `div=95` |
+| `f32` operations | `nearest=90`, `sqrt=91`, `add=92`, `sub=93`, `mul=94`, `div=95`, and, compared on 2026-10-03, `eq=5b`, `lt=5d`, `le=5f`, `abs=8b` |
 | `f64` operations | `sqrt=9f`, `add=a0`, `sub=a1`, `mul=a2`, `div=a3` |
 | Integer conversion | `i32.wrap_i64=a7`, `i64.extend_i32_u=ad`, `i32.extend8_s=c0` |
 | Numeric conversion | `f32.convert_i32_s=b2`, `f32.demote_f64=b6`, `f64.promote_f32=bb`, `i32.trunc_sat_f32_s=fc 00` |
@@ -114,7 +114,8 @@ WASM instruction names, with a common type prefix shown once per group.
 | Structured control | `block=02`, `loop=03`, `if=04`, `else=05`, `end=0b` |
 
 The counts above date from the first review.  On 2026-10-03 the rules numbered 58 `Plain`
-rules, eight indexed rules, six memory rules, four constants, and three structured controls.
+rules, eight indexed rules, six memory rules, four constants, and three structured controls,
+and then 62 `Plain` rules after the binary32 comparisons and `f32.abs`.
 That day `f32.const` was added and compared, with `f64.const`, which the encoder already had,
 against lines 194 and 195 of the [instruction grammar][instructions], `0x43 p:Bf32` and
 `0x44 p:Bf64`, and `BfN` in the [binary values][values], N/8 bytes through `$inv_fbytes_`.

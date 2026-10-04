@@ -38,6 +38,10 @@ mutual
     | .f64Lt => .ok ⟨[0x63], .plain _ _ .f64Lt⟩
     | .f64Le => .ok ⟨[0x65], .plain _ _ .f64Le⟩
     | .f64Abs => .ok ⟨[0x99], .plain _ _ .f64Abs⟩
+    | .f32Eq => .ok ⟨[0x5b], .plain _ _ .f32Eq⟩
+    | .f32Lt => .ok ⟨[0x5d], .plain _ _ .f32Lt⟩
+    | .f32Le => .ok ⟨[0x5f], .plain _ _ .f32Le⟩
+    | .f32Abs => .ok ⟨[0x8b], .plain _ _ .f32Abs⟩
     | .f64ConvertI64U => .ok ⟨[0xba], .plain _ _ .f64ConvertI64U⟩
     | .geUI64 => .ok ⟨[0x5a], .plain _ _ .geUI64⟩
     | .add => .ok ⟨[0x6a], .plain _ _ .add⟩

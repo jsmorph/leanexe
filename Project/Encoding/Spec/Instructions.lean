@@ -22,6 +22,10 @@ inductive Plain : Bytes → Wasm.Instruction → Prop
   | f64Lt : Plain [0x63] .f64Lt
   | f64Le : Plain [0x65] .f64Le
   | f64Abs : Plain [0x99] .f64Abs
+  | f32Eq : Plain [0x5b] .f32Eq
+  | f32Lt : Plain [0x5d] .f32Lt
+  | f32Le : Plain [0x5f] .f32Le
+  | f32Abs : Plain [0x8b] .f32Abs
   | f64ConvertI64U : Plain [0xba] .f64ConvertI64U
   | geUI64 : Plain [0x5a] .geUI64
   | add : Plain [0x6a] .add

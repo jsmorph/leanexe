@@ -23979,7 +23979,7 @@ follow later for chosen kernels.  Binary32 enters the Wasm IR first, as the user
 kernel compiler then translates a subset of the same IR, so a kernel and its Wasm counterpart share
 the Lean function, the front end, and the IR proofs.
 
-- [ ] Iteration 23: binary32 on the Wasm path: `f32` in the IR, `Float32` arithmetic and
+- [x] Iteration 23: binary32 on the Wasm path: `f32` in the IR, `Float32` arithmetic and
   comparisons, `Float32` arrays, and one binary32 program with its theorem.
 - [ ] Iteration 24: a WGSL subset with a printer and a parser proved to invert it, a dispatch
   semantics under the strict profile, the translation of the kernel subset, and one kernel with its
@@ -24036,7 +24036,7 @@ and prints `[4, 5]` and `[]`, `F32BitsProto.lean` proves `toBits_add` with `prop
   compiler's `Float32` scalars, the host's `f32` kinds, and `axpy32` with its theorem.
 - [x] 23b: `f32.const`, `Array Float32` as 8-byte words, `Float32` reads, loops, and builds, and
   `matVec32` with its theorem.
-- [ ] 23c: `F32Compare`, `F32Sign`, the binary32 comparisons, `abs`, and `neg` in the encoder, and
+- [x] 23c: `F32Compare`, `F32Sign`, the binary32 comparisons, `abs`, and `neg` in the encoder, and
   conditionals, `min`, and `max` on `Float32`.
 
 ### Iteration 23, step 23a: binary32 scalars
@@ -24087,3 +24087,28 @@ The full build passed with no `sorry`, and `binary32_bytes` depends on `propext`
 `Classical.choice`, and `Quot.sound`.  The 22 earlier modules emit the same bytes as before.  The
 module tests passed 9,531 comparisons, 250 of them binary32, among them 10 `matVec32` shapes with
 short matrices and vectors, and 77 count cases, 20 depth cases, and 360 cases of `chunks.py`.
+
+### Iteration 23, step 23c: binary32 comparisons and sign operations
+
+`F32Compare` and `F32Sign` translate `F64Compare` and `F64Sign` with a script that maps the
+names and the format constants (1074 to 149, 2098 to 277, 971 to 104, `2 ^ 53` to `2 ^ 24`,
+`2 ^ 52` to `2 ^ 23`, 2047 to 255, and the negative zero), and both built on the first attempt.
+`F32Bits` gained the comparison and sign results for Lean's `Float32`, translated from `F64Bits`.
+The encoder gained `f32.eq`, `f32.lt`, `f32.le`, and `f32.abs` (`5b`, `5d`, `5f`, and `8b` in the
+official grammar), and the IR gained `iteF32`, `eqF32`, `ltF32`, `leF32`, and absolute value in
+`F32UnOp`.  `f32.neg` is not needed, since `-x` compiles to `-0.0 - x` as in binary64.
+
+`translateFloat` now takes a format, `FloatFormat.binary64` by default, and builds each node
+through `FloatFormat` helpers, which replaces `translateFloat32`.  Case splits, folds,
+`UInt64.toFloat`, and `Float.ofBits` remain binary64 only.  Comparisons in conditions take the
+format of their operands, and binary32 hint rules read `float32` where binary64 rules read
+`float`.  `readLocals` now lists every constructor, since its final wildcard would have returned
+no locals for a constructor added without a case.  `piecewise32`, the binary32 copy of `piecewise`,
+covers equality, `<`, `≤`, negation, absolute value, `min`, `max`, literals, and conditionals,
+and its theorem is the binary64 proof with `F32Bits` and `IEEE32`.
+
+The full build passed with no `sorry`, `binary32_bytes` depends on `propext`, `Classical.choice`,
+and `Quot.sound`, and the 22 earlier modules emit the same bytes after the translator change.  The
+module tests passed 9,621 comparisons, 340 of them binary32, with 77 count cases, 20 depth cases,
+and 360 cases of `chunks.py`.  Iteration 23 is complete.  Binary32 lacks conversions, folds, and
+case splits with a binary32 value, which no planned kernel needs yet.

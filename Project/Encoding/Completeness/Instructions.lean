@@ -28,6 +28,7 @@ mutual
     | unreachable | nop | ret | drop | eqz | eq
     | ltU | gtU | leU | geU | eqzI64 | eqI64
     | neI64 | ltUI64 | leUI64 | geUI64 | add | and | f64Eq | f64Lt | f64Le | f64Abs
+    | f32Eq | f32Lt | f32Le | f32Abs
     | f64ConvertI64U | i64TruncSatF64U
     | addI64 | subI64 | mulI64 | divUI64 | remUI64 | andI64
     | orI64 | xorI64 | shlI64 | shrUI64 | f32Nearest | f32Sqrt
