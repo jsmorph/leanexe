@@ -45,3 +45,18 @@ def main : IO Unit := do
       IO.println s!"scale|{groups}|u64:{words initial}|{scalarBuffer a} u64:{words (arrayWords64 x)}|{words (arrayWords32 r)}"
       let r2 := (axpyArray32 a x.toArray y.toArray).toList
       IO.println s!"axpyArray|{groups}|u64:{words initial}|{scalarBuffer a} u64:{words (arrayWords64 x)} u64:{words (arrayWords64 y)}|{words (arrayWords32 r2)}"
+  for rows in [0, 1, 2, 5, 64, 65] do
+    for cols in [0, 1, 3, 7, 40] do
+      for variant in [0, 1] do
+        let seed := 7 * rows + 13 * cols + variant
+        let mSize := if variant = 1 then rows * cols / 2 else rows * cols
+        let vSize := if variant = 1 && cols > 1 then cols - 1 else cols
+        let m := (List.range mSize).map fun i => if i % 4 = 0 then arbitrary (i + seed)
+          else specials[(i + seed) % specials.length]!
+        let v := (List.range vSize).map fun i => if i % 5 = 0 then arbitrary (i + 3 * seed)
+          else specials[(2 * i + seed) % specials.length]!
+        let groups := max ((rows + 63) / 64 + variant) 1
+        let initial := rows.toUInt64 :: (List.replicate rows 0x7fc000017fc00001)
+        let r := (matVec32 m.toArray v.toArray rows.toUInt64 cols.toUInt64).toList
+        IO.println s!"matVec|{groups}|u64:{words initial}|u64:{words (arrayWords64 m)} u64:{words (arrayWords64 v)} u64:{rows} u64:{cols}|{words (arrayWords32 r)}"
+

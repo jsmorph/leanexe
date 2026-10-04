@@ -7,13 +7,13 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 build=${1:-$root/build}
 host=$root/build/tools/leanexe-webgpu-host
 mkdir -p "$build/wgsl"
-for kernel in scale axpyArray; do
+for kernel in scale axpyArray matVec; do
   (cd "$root" && tools/leanrun --timeout 10m lake env lean --run Project/WGSL/Emit.lean \
     Project.WGSL.Binary32 "Project.WGSL.${kernel}Kernel" "$build/wgsl/$kernel.wgsl")
 done
 cases=$(mktemp)
 trap 'rm -f "$cases"' EXIT
-# Reads past the end of a shorter `y` with `!` print panic messages from native Lean, which then
+# Reads past the end of a shorter array with `!` print panic messages from native Lean, which then
 # returns the default 0; they are expected.
 (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tests/wgsl/Cases.lean) >"$cases" \
   2>/dev/null

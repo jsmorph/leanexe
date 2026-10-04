@@ -24235,7 +24235,7 @@ and each `let` matches one step of `Expr.eval`.
   statement, and dispatch semantics; and one elementwise kernel proved directly.
 - [x] 24b: the translation of straight-line IR with simulation lemmas, and `axpyArray32` compiled
   to Wasm and WGSL with both theorems.
-- [ ] 24c: the loop rule, `mul64`, and `matVec32` as a kernel.
+- [x] 24c: the loop rule, `mul64`, and `matVec32` as a kernel.
 
 ### Iteration 24, step 24a: syntax, printer, parser, and round trip
 
@@ -24422,7 +24422,7 @@ declarations, as an `if` block does, so the body's `let` names stay fresh.
   `add64`, `mul64`, and `lt64` in `trExpr`, with simulation lemmas.
 - [x] 24c2: `Stmt.denote`, its Wasm theorem, the loop lemma, and `matVec32_implements` through
   them.
-- [ ] 24c3: the WGSL `while` (syntax, printer, parser, round trip, semantics), the statement
+- [x] 24c3: the WGSL `while` (syntax, printer, parser, round trip, semantics), the statement
   translation and its simulation, `Spec` with a body and a parameter count, and the `matVec32`
   kernel with tests.
 
@@ -24451,3 +24451,57 @@ element `r` of the product in local 7.  `matVec32_implements` now follows from i
 `Stmt.denote_spec` and `Expr.eval_denote`, and `rowBody32_run` and the direct use of
 `Stmt.loop_spec` are gone.  The full build passed with no `sorry`.  The compiled IR is unchanged,
 so the module bytes are the same.
+
+### Review of the loop design
+
+One reviewer checked the 24c analysis.  It proved the key step of approach (A) in Lean against
+`Stmt.while_spec`, ran both forms of `mul64` on 4,096 pairs on SwiftShader and llvmpipe, and ran a
+hand translation of `matVec32` on 36 cases on both drivers.  I reran its GPU scripts for both
+`mul64` forms, which give 20,480 words equal to Lean's on each driver, and its Lean files
+`Review24cWhile.lean`, `Review24cMulB.lean`, and `Review24cExec.lean`, which check with the axioms
+it reported.
+
+| Finding | Response |
+|---------|----------|
+| `while_fuel_spec` derives a `Triple` for `while` from a fuel-bounded denotation, with the least sufficient fuel (`Nat.find`) as the measure | `Stmt.denote_spec` uses that method |
+| The analysis said the model's loop runs at most 2^64 iterations.  Dawn's loop hardening and naga's `force_loop_bounding`, on by default, end a loop at its 2^64-th entry, so a loop of exactly 2^64 iterations would have a result in the model but not on the device | The analysis text was wrong.  The code counts tests of the condition: `loopIter` and `loopRuns` allow 2^64 tests, so a run with a result has at most 2^64 - 1 body runs, which both compilers complete |
+| A fuel-bounded `while` in `Stmt.exec` stays a structural definition that `simp` unfolds | Adopted as `loopRuns` |
+| Both `mul64` forms matched `UInt64` multiplication on all pairs on both drivers, and the proof is tractable with `grind` and small `omega` goals | No change |
+| The committed `mul64` repeats subexpressions and prints 60 operators where `let`s would need 28 | Kept.  The `matVec32` kernel text is 5,651 bytes, and drivers remove the duplicates |
+| Assigning a local that shares a variable with a parameter, the index, or the size local breaks the simulation | `Spec.wfb` checks that assigned locals are none of these, and `Layout.Distinct` carries the fact.  `Stmt.denote` fails on an assignment to an array's pointer local |
+| `Env.set` updates bindings in place, so statements need a relation between environments | `Env.Shape` (same names and kinds) and `StmtSim` |
+| `Stmt.buildWith_spec` supplies the index local but not the size local | `matVecRow_denote` takes any locals that hold the two it reads |
+| One dispatch has at most 65,535 workgroups, 4,194,240 invocations of 64, and a binding at most 128 MiB, 16,777,215 elements, where the theorems allow 2^29 | Recorded for Iteration 25: the host rejects counts it cannot cover |
+| One invocation runs a whole row in series, so on a physical GPU a long row can exceed the watchdog and lose the device | Recorded as a limit of the model.  The host reports device loss as an error |
+
+### Iteration 24, step 24c3: loops in kernels and `matVec32`
+
+The WGSL subset has a `while` statement.  `Stmt.exec` runs it through `loopRuns`, which tests the
+condition at most `loopBound` (2^64) times, drops the body's declarations after each run, and
+stops at a `return`.  The printer, parser, and round-trip proof cover it.  `trStmt` in
+`Project/WGSL/TranslateStmt.lean` translates `skip`, `seq`, an assignment to an assigned local,
+which becomes the expression's `let`s and an assignment to its `var`, and a `while` on `ltU (get
+index) (get limit)`, which becomes `while lt64(index, limit)`.  `trStmt_sim` proves that from an
+environment that agrees with the denotation's locals, the translation runs and leaves an
+environment with the same names and kinds that agrees with the denoted locals, in front of new
+`let`s.  The `while` case runs in lockstep with `loopIter`, one test and one body run at a time.
+
+`Spec` now describes `buildWith dst limit index (get c) body element` with a count from a `u64`
+parameter or an `arraySize` local, the locals the body assigns with their types, and a bound on
+the IR locals, and `Spec.wfb` checks its indices by `decide`.  The kernel declares a `var` for each
+assigned local after the parameters.  `Spec.dispatch_eq` takes, for each index below the count,
+the denotation of the body and the element.  `matVecSpec` describes the compiled `matVec32`, and
+`matVecKernel_dispatch` proves that with buffers holding `m`, `v`, `rows`, and `cols`, `rows`
+below 2^29, an output of the result's size with the host's length word, and at least `rows`
+invocations, the dispatch leaves `matVec32 m v rows cols` in the output, with distinct
+invocations storing to distinct words.  Its element fact is `matVecRow_denote`, the lemma that
+`matVec32_implements` uses.  `scale32` and `axpyArray32` moved to the new `Spec` with an empty
+body.
+
+`tests/wgsl/run.sh` adds 60 cases of the `matVec32` kernel, with 0 to 65 rows, 0 to 40 columns,
+short arrays, special values, and extra workgroups.  All 300 cases pass on SwiftShader and
+llvmpipe, and the LTG check passes with the updated `wgsl-kernel` entry.  The full build passed
+with no `sorry`, the 23 Wasm modules emit the same bytes as before, and the module tests passed
+9,669 comparisons with 77 count cases, 20 depth cases, and 360 cases of `chunks.py`.  The translation of
+`ite`, `iteF32`, `and`, and `or` into a `var` assigned in `if` blocks, which the review of 24b
+placed in 24c, is not done, and the translator still rejects kernels with those constructs.

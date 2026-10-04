@@ -619,4 +619,61 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
       intro next stmts next' htr
       simp [trStmt] at htr
 
+theorem trStmt_writes (F : Layout) :
+    ∀ (s : Project.IR.Stmt) (next : Nat) (stmts : List Stmt) (next' : Nat),
+      trStmt F s next = some (stmts, next') → ∀ j ∈ s.writes, (F.assigned j).isSome := by
+  intro s
+  induction s with
+  | assign i e =>
+      intro next stmts next' h j hj
+      simp only [Project.IR.Stmt.writes, List.mem_singleton] at hj
+      subst hj
+      simp only [trStmt, Option.bind_eq_bind] at h
+      cases hw : F.scalar j with
+      | none => simp [hw] at h
+      | some w =>
+        simp only [hw, Option.bind_some] at h
+        split at h
+        · rename_i hty; simp [hty]
+        · cases h
+  | seq a b iha ihb =>
+      intro next stmts next' h j hj
+      simp only [trStmt, Option.bind_eq_bind] at h
+      cases ha : trStmt F a next with
+      | none => simp [ha] at h
+      | some ra =>
+        cases hb : trStmt F b ra.2 with
+        | none => simp [ha, hb] at h
+        | some rb =>
+          simp only [Project.IR.Stmt.writes, List.mem_append] at hj
+          rcases hj with hj | hj
+          · exact iha _ _ _ ha j hj
+          · exact ihb _ _ _ hb j hj
+  | «while» c body ih =>
+      intro next stmts next' h j hj
+      simp only [trStmt, Option.bind_eq_bind] at h
+      cases hc : trCond F c with
+      | none => simp [hc] at h
+      | some ce =>
+        cases hb : trStmt F body next with
+        | none => simp [hc, hb] at h
+        | some rb => exact ih _ _ _ hb j hj
+  | skip => intro next stmts next' _ j hj; simp [Project.IR.Stmt.writes] at hj
+  | _ => intro next stmts next' h; simp [trStmt] at h
+
+theorem Env.find_of_mem {env : Env} (hnd : (env.map (·.1)).Nodup) {w : Nat} {v : Value} {m : Bool}
+    (h : (w, v, m) ∈ env) : env.find w = some (v, m) := by
+  induction env with
+  | nil => cases h
+  | cons x env ih =>
+      obtain ⟨n, val, flag⟩ := x
+      simp only [List.map_cons, List.nodup_cons, List.mem_map] at hnd
+      rcases List.mem_cons.mp h with h | h
+      · simp only [Prod.mk.injEq] at h
+        obtain ⟨rfl, rfl, rfl⟩ := h
+        exact Env.find_cons_self _ _ _ _
+      · have hne : n ≠ w := fun hn => hnd.1 ⟨(w, v, m), h, by simp [hn]⟩
+        rw [Env.find_cons_ne _ _ _ _ _ hne]
+        exact ih hnd.2 h
+
 end Project.WGSL
