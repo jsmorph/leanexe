@@ -11,10 +11,12 @@ result variable, a `u64` as the pair of its halves and a binary32 value as an `f
 namespace Project.WGSL
 
 /-- Where the translation finds each IR local: a scalar local's WGSL variable, and an array
-pointer's buffer and the variable that holds the array's length as a pair. -/
+pointer's buffer and the variable that holds the array's length as a pair.  The locals that
+statements assign have types, and their variables are `var`s. -/
 structure Layout where
   scalar : Nat → Option Nat
   array : Nat → Option (Nat × Nat)
+  assigned : Nat → Option Project.IR.ScalarType := fun _ => none
 
 def F32Op.wgsl : Project.IR.F32Op → BinOp
   | .add => .add
@@ -138,6 +140,10 @@ theorem exec_let (ctx : Context) (env : Env) (writes : List (Nat × UInt32)) (n 
 theorem Env.find_cons_self (env : Env) (n : Nat) (v : Value) (m : Bool) :
     Env.find ((n, v, m) :: env) n = some (v, m) := by
   simp [Env.find]
+
+theorem Env.find_cons_ne (env : Env) (x m : Nat) (v : Value) (mu : Bool) (h : x ≠ m) :
+    Env.find ((x, v, mu) :: env) m = Env.find env m := by
+  simp [Env.find, List.find?_cons, h]
 
 /-- What running a translation leaves: new bindings with names from `next` up to `next'`, and the
 result variable holding the value. -/

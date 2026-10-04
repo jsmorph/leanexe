@@ -205,6 +205,12 @@ mutual
             let (es, rest) ← parseStmts fuel rest
             let rest ← expect "}" rest
             pure (.ite c ts es, rest)
+        | "while", rest => do
+            let (c, rest) ← parseExpr fuel rest
+            let rest ← expect "{" rest
+            let (body, rest) ← parseStmts fuel rest
+            let rest ← expect "}" rest
+            pure (.while_ c body, rest)
         | "return", ";" :: rest => some (.ret, rest)
         | _, _ => none
 

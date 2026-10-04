@@ -63,6 +63,8 @@ inductive Stmt where
   /-- `b[i] = e;` -/
   | store (buffer : Nat) (position value : Expr)
   | ite (condition : Expr) (thenStmts elseStmts : List Stmt)
+  /-- `while c { body }` -/
+  | while_ (condition : Expr) (body : List Stmt)
   | ret
   deriving Repr
 

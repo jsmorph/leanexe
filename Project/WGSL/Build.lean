@@ -102,10 +102,6 @@ theorem pairOf_ofNat (k : Nat) (hk : k < 2 ^ 32) : pairOf (UInt64.ofNat k) = .ve
     simp [UInt64.toNat_shiftRight, Nat.shiftRight_eq_div_pow]
     omega
 
-theorem Env.find_cons_ne (env : Env) (x m : Nat) (v : Value) (mu : Bool) (h : x ≠ m) :
-    Env.find ((x, v, mu) :: env) m = Env.find env m := by
-  simp [Env.find, List.find?_cons, h]
-
 /-- The value a parameter's statement binds. -/
 theorem paramStmt_eval (ctx : Context) (env : Env) (j : Nat) (a : Arg)
     (hbuf : ctx.inputs[j]? = some a.buffer) (hsize : ∀ xs, a = .array xs → xs.size < 2 ^ 29) :
