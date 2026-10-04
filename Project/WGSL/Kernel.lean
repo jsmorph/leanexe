@@ -32,8 +32,8 @@ theorem arrayWords_get (xs : Array UInt64) (i : Nat) (h : i < 2 + 2 * xs.size) :
       else wordHalf xs[(i - 2) / 2]! (i % 2 = 1)) := by
   simp [arrayWords, h]
 
-theorem lt64_eval (ctx : Context) (env : Env) (a b : Nat) (x y : UInt32)
-    (ha : env.find a = some (.vec2 x 0, false)) (hb : env.find b = some (.vec2 y 0, false)) :
+theorem lt64_eval (ctx : Context) (env : Env) {ma mb : Bool} (a b : Nat) (x y : UInt32)
+    (ha : env.find a = some (.vec2 x 0, ma)) (hb : env.find b = some (.vec2 y 0, mb)) :
     (lt64 a b).eval ctx env = some (.bool (decide (x < y))) := by
   simp [lt64, Expr.eval, ha, hb, BinOp.apply]
 
@@ -53,12 +53,12 @@ abbrev readLow (b k len : Nat) : Expr := readAt b k len 2
 /-- The high half of element `k`. -/
 abbrev readHigh (b k len : Nat) : Expr := readAt b k len 3
 
-theorem readAt_eval (ctx : Context) (env : Env) (b k len : Nat) (base : UInt32)
+theorem readAt_eval (ctx : Context) (env : Env) {mk ml : Bool} (b k len : Nat) (base : UInt32)
     (hbase : 2 ≤ base.toNat ∧ base.toNat ≤ 3) (klo : UInt32) (n : Nat)
     (buf : Array UInt32) (hbuf : ctx.inputs[b]? = some buf) (hsize : buf.size = 2 + 2 * n)
     (hn : n < 2 ^ 31)
-    (hk : env.find k = some (.vec2 klo 0, false))
-    (hl : env.find len = some (.vec2 (UInt32.ofNat n) 0, false)) :
+    (hk : env.find k = some (.vec2 klo 0, mk))
+    (hl : env.find len = some (.vec2 (UInt32.ofNat n) 0, ml)) :
     (readAt b k len base).eval ctx env =
       some (.u32 (if klo.toNat < n then buf[base.toNat + 2 * klo.toNat]! else 0)) := by
   have hklo := klo.toNat_lt
@@ -119,11 +119,11 @@ theorem readAt_eval (ctx : Context) (env : Env) (b k len : Nat) (base : UInt32)
   · simp [Value.sameType, h, hmEl h, getElem!_pos buf (base.toNat + 2 * klo.toNat) (by omega)]
   · simp [Value.sameType, h]
 
-theorem readLow_eval (ctx : Context) (env : Env) (b k len : Nat) (klo : UInt32) (n : Nat)
+theorem readLow_eval (ctx : Context) (env : Env) {mk ml : Bool} (b k len : Nat) (klo : UInt32) (n : Nat)
     (buf : Array UInt32) (hbuf : ctx.inputs[b]? = some buf) (hsize : buf.size = 2 + 2 * n)
     (hn : n < 2 ^ 31)
-    (hk : env.find k = some (.vec2 klo 0, false))
-    (hl : env.find len = some (.vec2 (UInt32.ofNat n) 0, false)) :
+    (hk : env.find k = some (.vec2 klo 0, mk))
+    (hl : env.find len = some (.vec2 (UInt32.ofNat n) 0, ml)) :
     (readLow b k len).eval ctx env =
       some (.u32 (if klo.toNat < n then buf[2 + 2 * klo.toNat]! else 0)) :=
   readAt_eval ctx env b k len 2 (by decide) klo n buf hbuf hsize hn hk hl
@@ -139,8 +139,8 @@ theorem toNat_of_halves (w : UInt64) :
   omega
 
 /-- The comparison of two `u64` values held as their halves. -/
-theorem lt64_word (ctx : Context) (env : Env) (a b : Nat) (x y : UInt64)
-    (ha : env.find a = some (pairOf x, false)) (hb : env.find b = some (pairOf y, false)) :
+theorem lt64_word (ctx : Context) (env : Env) {ma mb : Bool} (a b : Nat) (x y : UInt64)
+    (ha : env.find a = some (pairOf x, ma)) (hb : env.find b = some (pairOf y, mb)) :
     (lt64 a b).eval ctx env = some (.bool (decide (x < y))) := by
   have hx := toNat_of_halves x
   have hy := toNat_of_halves y
@@ -169,11 +169,11 @@ theorem lt64_word (ctx : Context) (env : Env) (a b : Nat) (x y : UInt64)
   cases h1 : decide (xh < yh) <;> cases h2 : (xh == yh) <;> cases h3 : decide (xl < yl) <;>
     simp [lt64, Expr.eval, ha, hb, BinOp.apply, h1, h2, h3]
 
-theorem readAt_eval_high (ctx : Context) (env : Env) (b k len : Nat) (base : UInt32)
+theorem readAt_eval_high (ctx : Context) (env : Env) {mk ml : Bool} (b k len : Nat) (base : UInt32)
     (klo khi : UInt32) (n : Nat) (buf : Array UInt32) (hbuf : ctx.inputs[b]? = some buf)
     (hsize : buf.size = 2 + 2 * n) (hn : n < 2 ^ 31) (hhi : khi ≠ 0)
-    (hk : env.find k = some (.vec2 klo khi, false))
-    (hl : env.find len = some (.vec2 (UInt32.ofNat n) 0, false)) :
+    (hk : env.find k = some (.vec2 klo khi, mk))
+    (hl : env.find len = some (.vec2 (UInt32.ofNat n) 0, ml)) :
     (readAt b k len base).eval ctx env = some (.u32 0) := by
   have hlast : (UInt32.ofNat buf.size - 1).toNat = 1 + 2 * n := by
     rw [hsize, UInt32.toNat_sub, UInt32.toNat_ofNat']
@@ -196,11 +196,11 @@ theorem readAt_eval_high (ctx : Context) (env : Env) (b k len : Nat) (base : UIn
 /-- The read of element `k`, any `u64` held as its halves, of a Wasm array in a buffer: base 2
 gives the low half of `xs[k.toNat]!` and base 3 its high half, as `Expr.readValue_at` gives the
 word. -/
-theorem readAt_word (ctx : Context) (env : Env) (b kv len : Nat) (xs : Array UInt64)
+theorem readAt_word (ctx : Context) (env : Env) {mk ml : Bool} (b kv len : Nat) (xs : Array UInt64)
     (hn : xs.size < 2 ^ 29) (k : UInt64) (high : Bool)
     (hbuf : ctx.inputs[b]? = some (arrayWords xs))
-    (hk : env.find kv = some (pairOf k, false))
-    (hl : env.find len = some (.vec2 (UInt32.ofNat xs.size) 0, false)) :
+    (hk : env.find kv = some (pairOf k, mk))
+    (hl : env.find len = some (.vec2 (UInt32.ofNat xs.size) 0, ml)) :
     (readAt b kv len (if high then 3 else 2)).eval ctx env =
       some (.u32 (wordHalf xs[k.toNat]! high)) := by
   have hsize := arrayWords_size xs
