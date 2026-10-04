@@ -24377,3 +24377,51 @@ each for `scale32` and `axpyArray32`, with 77 count cases, 20 depth cases, 360 c
 `chunks.py`, and the LTG check.  `tests/wgsl/run.sh` runs 240 cases of the two translated
 kernels, with sizes up to 200, shorter second arrays, and extra workgroups, and all pass on
 SwiftShader and llvmpipe.
+
+### Iteration 24, step 24c: loops, analysis
+
+The compiled `matVec32` body is `buildWith 4 5 6 (get 2) (seq (assign 7 (constF32 0)) (loop 8 9
+(get 3) rowBody32)) (toBits32 (getF32 7))`.  `Stmt.loop` expands to assignments of the limit and
+the index and a `while` on `ltU (get 9) (get 8)` whose body ends with `assign 9 (bin add (get 9)
+(const 1))`, and `rowBody32` reads `m` at `bin add (bin mul (get 6) (get 3)) (get 9)`.  Beyond
+24b the kernel therefore needs `u64` addition, multiplication, and `ltU`; assignments to IR
+locals, which become WGSL `var`s; a loop; and a count taken from a parameter instead of an
+`arraySize` statement.  The Wasm build aborts unless the count is below 2^29, so the kernel
+theorem takes that bound.
+
+The main question is how the kernel proof and the Wasm proof share the element fact when the
+element runs a loop.
+
+| Approach | Per program | Generic work | Concern |
+|----------|-------------|--------------|---------|
+| (A) A memory-free denotation of statements (`skip`, `assign`, `seq`, `while`) whose `while` runs at most 2^64 iterations; a Wasm theorem that a statement whose denotation succeeds reaches a state that agrees with it, through `Stmt.while_spec` with the least sufficient bound as the measure; a lemma that the denotation of `Stmt.loop` is `LeanExe.loop`; and a WGSL `while` with the same bound, simulated in lockstep | One denotation lemma for the loop over a row, from which both theorems follow; `matVec32_implements` is proved again through it, and `rowBody32_run` goes | The largest | The bound in the WGSL semantics |
+| (B) A WGSL loop rule with `Stmt.loop_spec`'s hypotheses, and kernel proofs that mirror the Wasm proofs | Two proofs, each with its own body lemma | A WGSL `while` and the simulation of assignments | Every program proved twice |
+| (C) A kernel statement type with a counted loop, recognized in the IR, and a WGSL `for` of fixed form defined as `n` iterations | One lemma | A recognizer, a second statement type, and a WGSL construct whose meaning is derived from the specification's rule instead of being that rule | A larger review claim |
+
+I recommend (A).  The model's `while` gives `none` when its condition still holds after 2^64
+iterations.  A theorem that a dispatch gives `some out` under the bound also holds for WGSL's
+unbounded loop, since a bounded run that succeeds is the unbounded run.  The IR's loops count
+with a `u64` index, so they finish within 2^64 checks of the condition.
+
+The multiplication of pairs needs the high half of a 32-bit product, which WGSL does not
+provide, so `mul64` splits each low half into 16-bit halves.  The 24 analysis tested a version with
+`>>` and `&`, which the subset lacks.  Division and multiplication by `65536u`, which the subset
+has and WGSL defines exactly for a nonzero constant divisor, compute the same halves with about 28
+operations instead of 24, and need no change to the printer, parser, or round-trip proof.  I
+recommend that form.
+
+A `while` condition is one expression, evaluated before each iteration, but `trExpr` produces
+`let` statements and a variable.  The compiler's loop condition is always `ltU (get index) (get
+limit)`, which becomes `lt64(index, limit)` with no `let`s, so the translation accepts a `while`
+only with a condition of that form.  Each assigned local becomes a `var` declared after the
+parameters with a zero of its type, `Layout.Agrees` accepts a `var`, and the translation maps
+each assigned local to its own variable.  Each iteration of a WGSL loop body drops the body's
+declarations, as an `if` block does, so the body's `let` names stay fresh.
+
+- [ ] 24c1: `u64` addition, multiplication, and `ltU` in `Expr.denote` and `Expr.eval_denote`;
+  `add64`, `mul64`, and `lt64` in `trExpr`, with simulation lemmas.
+- [ ] 24c2: `Stmt.denote`, its Wasm theorem, the loop lemma, and `matVec32_implements` through
+  them.
+- [ ] 24c3: the WGSL `while` (syntax, printer, parser, round trip, semantics), the statement
+  translation and its simulation, `Spec` with a body and a parameter count, and the `matVec32`
+  kernel with tests.
