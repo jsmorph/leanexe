@@ -264,7 +264,21 @@ if [ "$out" != "stats 2 0" ]; then
   stats_failed=$((stats_failed + 1))
   echo "fail: clob fillKeep: $out, expected stats 2 0"
 fi
-echo "release counts: 71 cases, $stats_failed failed"
+# Pair-valued matches on trees: splitRoot frees the root record, rootAndRest rewrites it in place,
+# and splitOr frees a's root record and b when a is a node, and nothing when a is a leaf.
+for case in "splitRoot|list:tree-u64,tree-u64|tree-u64:5,1,.,.,9,.,.|3 1" \
+    "rootAndRest|list:i64,tree-u64|tree-u64:5,1,.,.,9,.,.|3 0" \
+    "splitOr|list:tree-u64,tree-u64|tree-u64:5,1,.,.,9,.,. tree-u64:2,.,.|4 2" \
+    "splitOr|list:tree-u64,tree-u64|tree-u64:. tree-u64:2,.,.|1 0"; do
+  IFS='|' read -r name kind trees expected <<<"$case"
+  read -ra argv <<<"$trees"
+  out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" "$name" "$kind" "${argv[@]}" | tail -1)
+  if [ "$out" != "stats $expected" ]; then
+    stats_failed=$((stats_failed + 1))
+    echo "fail: treeMoves $name $trees: $out, expected stats $expected"
+  fi
+done
+echo "release counts: 75 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0

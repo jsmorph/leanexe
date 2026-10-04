@@ -154,4 +154,15 @@ theorem node_children {heap : Heap} {store : Store Unit} {p k : UInt64} {l r : K
   simp only [Nat.zero_add, Nat.reduceAdd] at hr
   exact ⟨hl, hPl, hr, hPr⟩
 
+/-- A rebuilt tree paired with a word is the owned pair, with the rebuild's frame. -/
+theorem Heap.Rebuilt.wordPair {heap heap' : Heap} {initial store : Store Unit}
+    {gone : List (Nat × Nat)} {w q : UInt64} {u : KeyTree}
+    (h : heap.Rebuilt initial gone heap' store q (encode u)) :
+    Represent.owned heap' store [.i64 w, .i64 q] (w, u) ∧
+      heap.Keeps initial gone heap' store (Represent.blocks store [.i64 w, .i64 q] (w, u)) :=
+  ⟨⟨[.i64 w], [.i64 q], rfl, rfl, ⟨q, rfl, h.owned, h.disjoint⟩, fun _ hb => nomatch hb⟩,
+    Heap.Keeps.mono h.region (fun _ hb => hb) fun b hb => by
+      simp [Represent.blocks, Represent.width, Scalar.values] at hb
+      exact hb⟩
+
 end Project.Trees
