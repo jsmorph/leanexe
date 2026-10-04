@@ -343,4 +343,10 @@ theorem Stmt.call_spec {scratch func : Nat} {args : List ((type : ScalarType) ×
   obtain ⟨next, hSet, hR⟩ := hResult store' out hOut
   exact State.setAll_spec hSet (hPost store' next hR)
 
+/-- `stmts` in sequence, with the code of each placed after the previous. -/
+def seqAll : List Stmt → Stmt
+  | [] => .skip
+  | [s] => s
+  | s :: rest => .seq s (seqAll rest)
+
 end Project.IR

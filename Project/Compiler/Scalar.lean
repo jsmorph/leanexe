@@ -11,6 +11,7 @@ import Project.IR.Build
 import Project.IR.Update
 import Project.IR.ArrayLoop
 import Project.IR.Hint
+import Project.IR.Copy
 
 namespace Project.Compiler
 
@@ -202,17 +203,15 @@ structure Prelude where
   /-- The arrays that already translated parts of a value read.  Those parts run after the
   statements of the parts translated now, which therefore may not move these arrays. -/
   pendingReads : List Lean.Expr := []
+  /-- The copy function of each recursive type that the module's code copies, with its index. -/
+  copies : List (Name × Nat) := []
+  /-- The index of the next copy function, or `none` outside a module list. -/
+  nextCopy : Option Nat := none
 
 /-- The next free local. -/
 def Prelude.next (p : Prelude) : Nat := p.base + p.vars.size
 
 abbrev CompileM := StateT Prelude MetaM
-
-/-- `stmts` in sequence, with the code of each placed after the previous. -/
-def seqAll : List Project.IR.Stmt → Project.IR.Stmt
-  | [] => .skip
-  | [s] => s
-  | s :: rest => .seq s (seqAll rest)
 
 /-- The user types the compiler accepts: an enumeration, held as the word of its constructor
 index; a structure, held as its fields' components in order; and a sum, held as the word of
@@ -612,9 +611,10 @@ def Ctx.movableIn (ctx : Ctx) (body : Lean.Expr) : Ctx :=
   { ctx with owned := ctx.owned.filter fun x => occurrences x.fvarId! body == 0 }
 
 /-- `ctx` for a part of a value that the parts `later` follow: the part may move only the owned
-arrays that no later part mentions, since the later parts use them. -/
+arrays and values of recursive types that no later part mentions, since the later parts use
+them. -/
 def Ctx.before (ctx : Ctx) (later : List Lean.Expr) : Ctx :=
-  let arrays := (ctx.arrays ++ ctx.floatArrays).map (·.1)
+  let arrays := (ctx.arrays ++ ctx.floatArrays ++ ctx.nodes).map (·.1)
   { ctx with owned := ctx.owned.filter fun x =>
       !arrays.contains x || later.all fun t => occurrences x.fvarId! t == 0 }
 
@@ -677,9 +677,11 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
         return (← moveSites owners params a) ++ (← moveSites owners params b)
       return []
   | (``Prod.mk, #[_, _, a, b]) =>
-      -- The first part moves only the arrays that the second does not use; it copies the rest.
+      -- The first part moves only the arrays and values of recursive types that the second does
+      -- not use; it copies the rest.
       let first ← (← moveSites owners params a).filterM fun x => do
-        return !(← isArray (← inferType x)) || occurrences x.fvarId! b == 0
+        let type ← inferType x
+        return !((← isArray type) || (← isNodeType type)) || occurrences x.fvarId! b == 0
       return first ++ (← moveSites owners params b)
   | (``LeanExe.loop, #[stateType, _, init, _]) =>
       -- A loop over a nest of arrays moves its initial components.
@@ -695,7 +697,13 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
   | (fn, args) =>
       return (← ((owners.lookup fn).getD []).mapM fun i => do
         let some arg := args[i]? | return []
-        moveSites owners params arg).flatten
+        -- A value that another array or tree argument names is copied at the owned position,
+        -- so the call does not move it.
+        let others ← (args.toList.eraseIdx i).filterM fun a => do
+          let type ← inferType a
+          return (← isArray type) || (← isNodeType type)
+        return (← moveSites owners params arg).filter fun x =>
+          others.all fun a => occurrences x.fvarId! a == 0).flatten
 
 /-- The arguments at position `i` of the calls of `self` in `term`. -/
 partial def selfArgs (self : Name) (i : Nat) (term : Lean.Expr) : MetaM (List Lean.Expr) := do
@@ -805,6 +813,36 @@ def readLocal : Nat × ScalarType → Σ type, IRExpr type
   | (local_, .f64) => ⟨.f64, .getF local_⟩
   | (local_, _) => ⟨.u64, .get local_⟩
 
+/-- The index of the copy function of the recursive type `type`, which the module command
+appends after the internal functions; a type's first copy assigns the next index. -/
+def copyIndex (type : Name) : CompileM Nat := do
+  let p ← get
+  if let some index := p.copies.lookup type then return index
+  let some next := p.nextCopy
+    | throwError "a copy of a value of a recursive type needs a module list, which adds the copy function"
+  set { p with copies := p.copies ++ [(type, next)], nextCopy := some (next + 1) }
+  return next
+
+/-- Pushes a call of the copy function of `term`'s type on the pointer at local `local_` and
+returns the local of the new value.  A recursive body passes its depth plus one, so that the
+copy shares the depth limit, and other code passes 0. -/
+def emitCopy (ctx : Ctx) (term : Lean.Expr) (local_ : Nat) : CompileM Nat := do
+  let source ← sourceOf term
+  unless ctx.foldable && ctx.allocating do
+    throwError "a value of a recursive type may be copied only at the top of a body or in a branch of a match or an `if` on values of a recursive type: {source}"
+  let .const type _ ← whnfR (← inferType term)
+    | throwError "only a value of a recursive user type may be copied: {source}"
+  unless (← userType? (.const type [])) matches some (.recursive _) do
+    throwError "only a value of a recursive user type may be copied: {source}"
+  let index ← copyIndex type
+  let depth : IRExpr .u64 := match ctx.selfCall with
+    | some (_, depth) => .bin .add (.get depth) (.const 1)
+    | none => .const 0
+  let dst ← fresh .u64 "copy"
+  let stmt := Project.IR.Stmt.call index [⟨.u64, .get local_⟩, ⟨.u64, depth⟩] [dst]
+  pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "tree copy" source]
+  return dst
+
 mutual
   /-- Translates a `UInt64` term to an IR expression whose code starts at `loc`.
   A fold in the term adds its statements to the prelude, and the expression reads
@@ -822,8 +860,10 @@ mutual
       throwError "the array {source} is used as a value"
     -- An owned value of a recursive type moves into the value that uses it.
     if let some local_ ← lookupNode ctx term then
+      -- A value the code may not move goes in as a copy.
       unless ctx.owned.contains term do
-        throwError "a borrowed value of a recursive type may not be returned or stored: {source}"
+        let ir : IRExpr .u64 := .get (← emitCopy ctx term local_)
+        return (ir, [hint ir "copy"])
       markMoved term
       let ir : IRExpr .u64 := .get local_
       return (ir, [hint ir "move"])
@@ -2312,9 +2352,9 @@ mutual
         let sameKind := if ← isNodeType (← inferType arg) then nodeArgs else arrayArgs
         if ctx.owned.contains arg && (sameKind.map (occurrences arg.fvarId! ·)).sum == 1 then
           moved := arg :: moved
-        else if ← isArray (← inferType arg) then
-          -- An array that is borrowed, used later, or named by another argument: the call
-          -- consumes a copy.
+        else if (← isArray (← inferType arg)) || (← isNodeType (← inferType arg)) then
+          -- An array or a value of a recursive type that is borrowed, used later, or named by
+          -- another argument: the call consumes a copy.
           copies := position :: copies
         else
           throwError "an owned parameter must receive an owned value at its last use: {source}"
@@ -2349,7 +2389,9 @@ mutual
             [mkHint ⟨[], offset⟩ (exprLength ir) "variable" (← sourceOf arg)])
         else if ← isNodeType argType then
           let local_ ← match ← lookupNode ctx arg.consumeMData with
-            | some local_ => pure local_
+            | some local_ =>
+                if copies.contains position then emitCopy ctx arg.consumeMData local_
+                else pure local_
             | none =>
                 unless owned do
                   throwError "a borrowed argument of a recursive type must be a variable: {source}"
@@ -2674,9 +2716,6 @@ def needsInternal (declName : Name) : MetaM Bool :=
     unless (body.find? fun e => e.isConstOf declName).isSome do return false
     return !(← tailOnly declName body)
 
-/-- The depth at which an internal function traps at `unreachable`. -/
-def recursionDepthLimit : UInt64 := 1000
-
 /-- Compiles the definition `declName`, whose parameters are `UInt64`, `Float`,
 `Array UInt64`, or `Array Float` and whose result is `UInt64`, `Float`, or an
 `Array UInt64` literal, to an IR function with hints.  The
@@ -2690,8 +2729,10 @@ owned when the result term returns it or places it or one of its children in a c
 The compiler returns the positions of the owned parameters. -/
 def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
     (owners : List (Name × List Nat) := []) (internal : Option Nat := none)
-    (internals : List (Name × Nat) := []) (leaves : List Name := []) :
-    MetaM (Func × Hints × List Nat × Option (Func × Hints)) := do
+    (internals : List (Name × Nat) := []) (leaves : List Name := [])
+    (copies : List (Name × Nat) := []) (nextCopy : Option Nat := none) :
+    MetaM (Func × Hints × List Nat × Option (Func × Hints) × List (Name × Nat) × Option Nat) :=
+    do
   let env ← getEnv
   let .defnInfo _ ← getConstInfo declName
     | throwError "{declName} is not a definition"
@@ -2797,7 +2838,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let guard : Project.IR.Stmt :=
         .ite (.ltU (.const (recursionDepthLimit - 1)) (.get depth)) .abort .skip
       let ((results, resultHints), prelude) ←
-        (translateResults ctx body resultType).run { base := depth + 1 }
+        (translateResults ctx body resultType).run { base := depth + 1, copies, nextCopy }
       unless owned.all prelude.consumed.contains do
         throwError "an owned parameter of {declName} must move on every path; releasing it is not supported yet"
       unless prelude.temporaries.all (prelude.consumed.contains ·.1) do
@@ -2826,7 +2867,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let entryHints : Hints :=
         { locals := paramNames.toList ++ [("result", paramTypes.size)]
           nodes := [mkHint ⟨[], 0⟩ (stmtLength entryCall) "recursive entry" (← sourceOf body)] }
-      return (entry, entryHints, positionsOf owned, some (rec_, recHints))
+      return (entry, entryHints, positionsOf owned, some (rec_, recHints), prelude.copies,
+        prelude.nextCopy)
     if recursive then
       unless arrays.isEmpty && floatArrays.isEmpty && lists.isEmpty && floats.isEmpty &&
           tuples.isEmpty &&
@@ -2853,7 +2895,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let func : Func :=
         { params := paramTypes.toList, vars := List.replicate ctx.vars .u64 ++ prelude.vars.toList,
           body := loop, results := [⟨.u64, .get ctx.result⟩] }
-      return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] }, [], none)
+      return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] }, [], none,
+        copies, nextCopy)
     else
       let movable := (arrays ++ floatArrays ++ nodes).map (·.1)
       let sites ← moveSites owners movable body
@@ -2881,7 +2924,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
           for (_, local_, source) in temporaries.reverse do
             let stmt := Project.IR.Stmt.release local_
             pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "release temporary" source]
-          return (stored.toList, stored.toList.map fun _ => [])).run { base := paramTypes.size }
+          return (stored.toList, stored.toList.map fun _ => [])).run
+            { base := paramTypes.size, copies, nextCopy }
       -- Each result's code follows the body and the earlier results.
       let (_, shifted) := (results.zip resultHints).foldl (init := (prelude.length, []))
         fun (offset, hints) (⟨_, ir⟩, own) =>
@@ -2893,7 +2937,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
         { locals := paramNames.toList ++ prelude.names.toList
           nodes := prelude.hints.toList ++ shifted }
       let positions := (List.range params.size).filter fun i => owned.contains params[i]!
-      return (func, hints, positions, none)
+      return (func, hints, positions, none, prelude.copies, prelude.nextCopy)
 
 deriving instance ToExpr for U64Op
 deriving instance ToExpr for F64Op
@@ -2963,5 +3007,39 @@ def stmtToExpr : Project.IR.Stmt → Lean.Expr
 def funcToExpr (func : Func) : Lean.Expr :=
   mkApp4 (mkConst ``Func.mk) (toExpr func.params) (toExpr func.vars) (stmtToExpr func.body)
     (typedToExpr func.results)
+
+/-- The slots of the record of the recursive type `type`, `true` for a child and `false` for a
+word, which `Func.copy` takes, and the hints of its copy function.  A child of another recursive
+type is not supported. -/
+def copyLayout (type : Name) : MetaM (List Bool × Hints) := do
+  let some (.recursive ctors) ← userType? (.const type [])
+    | throwError "not a recursive type: {type}"
+  let some (_, fields) := ctors.find? (!·.2.isEmpty)
+    | throwError "a recursive type needs a constructor with fields: {type}"
+  let mut children : Array Bool := #[]
+  for field in fields do
+    if ← isNodeType field then
+      unless (← whnfR field).isConstOf type do
+        throwError "a copy of a type whose children have another type is not supported: {type}"
+      children := children.push true
+    else if ← isWordType field then
+      children := children.push false
+    else throwError "a field of a copied type must be a word or a child: {field}"
+  let n := fields.length
+  let childCount := (children.toList.filter id).length
+  let copy := Func.copy children.toList 0
+  unless copy.params.length + copy.vars.length + copy.width ≤ recursiveFrameLimit do
+    throwError "the copy function of {type} holds more than {recursiveFrameLimit} values in its frame"
+  let source := s!"{type}.copy"
+  let guardLength := stmtLength (.ite (.ltU (.const (recursionDepthLimit - 1)) (.get 1)) .abort .skip)
+  let hints : Hints :=
+    { locals := [("value", 0), ("depth", 1), ("result", 2)] ++
+        (List.range n).map (fun i => (s!"field {i}", 3 + i)) ++
+        (List.range childCount).map (fun j => (s!"copy {j}", 3 + n + j)) ++
+        [("record", 3 + n + childCount)]
+      nodes := [mkHint ⟨[], 0⟩ guardLength "depth guard" source,
+        mkHint ⟨[], guardLength⟩ (stmtLength copy.body - guardLength) "tree copy function"
+          source] }
+  return (children.toList, hints)
 
 end Project.Compiler
