@@ -528,7 +528,7 @@ theorem appendKernel_dispatch (cache row : Array Float32) (base n : UInt64)
     (fun e => (if e < base then cache[e.toNat]! else row[(e - base).toNat]!).toBits.toUInt64)
     (fun k _ => ⟨_, rfl, by
       simp only [appendSpec, Project.IR.Expr.denote, Spec.locals, Spec.arrays, floatWords,
-        Count.sizeLocal?, Option.bind_eq_bind, Option.bind_some, Option.pure_def, Option.map_some]
+        Count.sizeLocal?, Option.bind_eq_bind, Option.pure_def]
       by_cases hlt : UInt64.ofNat k < base <;>
         simp [hlt, getElem!_map_toBits32, U64Op.apply]⟩)
     output (by simpa using hOut) (by simpa using hL0) hL1 count (by simpa using hCover) h32
@@ -842,7 +842,7 @@ theorem probs_element (s mx sm : Array Float32) (p e : UInt64) (L : Nat → Opti
       some (.i64 e) := by simp [h7']
   have h3'' : (fun i => if i = 15 then some (Wasm.Value.f32 w.toBits) else expLocals 8 z L i) 3 =
       some (.i64 p) := by simp [h3']
-  simp only [probsSpec, Project.IR.Expr.denote, h15, h7'', h3'', Option.bind_eq_bind,
+  simp only [probsSpec, Project.IR.Expr.denote, h7'', h3'', Option.bind_eq_bind,
     Option.bind_some, Option.pure_def, U64Op.apply, show (1024 : UInt64) ≠ 0 by decide,
     ↓reduceIte, ite_some, Option.map_some]
   by_cases hc : e % 1024 ≤ p
@@ -873,6 +873,388 @@ theorem probsKernel_dispatch (s mx sm : Array Float32) (p n : UInt64) (hs : s.si
   rw [show floatWords (probs32 s mx sm p n) = LeanExe.build n
     (fun e => (probsAt s mx sm p e).toBits.toUInt64) by
       simp [probs32, probsAt, floatWords, Project.IR.build_map]]
+  exact h
+
+/-! ### The accumulating loop with any term -/
+
+/-- The loop body that adds `T` to local `acc` through local `tmp`. -/
+def accBody (acc tmp : Nat) (T : Project.IR.Expr .f32) : Project.IR.Stmt :=
+  .seq (.assign tmp (.binF32 .add (.getF32 acc) T)) (.assign acc (.getF32 tmp))
+
+theorem accLoop_denote {arrays : Nat → Option (Array UInt64)} {L : Nat → Option Wasm.Value}
+    {acc tmp limit idx : Nat} {count : Project.IR.Expr .u64} {T : Project.IR.Expr .f32}
+    {n : UInt64} (s0 : Float32) (ft : UInt64 → Float32)
+    (hdis : [limit, idx, tmp, acc].Nodup)
+    (harr : arrays limit = none ∧ arrays idx = none ∧ arrays tmp = none ∧ arrays acc = none)
+    (hcount : count.denote L arrays = some n) (hinit : L acc = some (.f32 s0.toBits))
+    (hT : ∀ (k : Nat) (Lc : Nat → Option Wasm.Value), k < n.toNat →
+      (∀ j, j ∉ [limit, idx, tmp, acc] → Lc j = L j) → Lc idx = some (.i64 (UInt64.ofNat k)) →
+      T.denote Lc arrays = some (ft (UInt64.ofNat k)).toBits) :
+    ∃ L', (Stmt.loop limit idx count (accBody acc tmp T)).denote arrays L = some L' ∧
+      L' acc = some (.f32 (LeanExe.loop n s0 (fun j s => s + ft j)).toBits) ∧
+      ∀ j, j ∉ [limit, idx, tmp, acc] → L' j = L j := by
+  simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
+    List.nodup_nil, not_false_eq_true, and_true] at hdis
+  obtain ⟨⟨h1, h2, h3⟩, ⟨h4, h5⟩, h6⟩ := hdis
+  have hBody : ∀ (k : Nat) (s : Float32) (Lc : Nat → Option Wasm.Value), k < n.toNat →
+      (∀ j, j ∉ limit :: idx :: (accBody acc tmp T).writes → Lc j = L j) →
+      Lc idx = some (.i64 (UInt64.ofNat k)) → Lc limit = some (.i64 n) →
+      LocalsHold Lc [acc] (Scalar.values s) →
+      ∃ L2, (accBody acc tmp T).denote arrays Lc = some L2 ∧
+        LocalsHold L2 [acc] (Scalar.values (s + ft (UInt64.ofNat k))) := by
+    intro k s Lc hk hframe hidx _ hhold
+    have hacc : Lc acc = some (.f32 s.toBits) := by simpa [LocalsHold, Scalar.values] using hhold
+    have ht := hT k Lc hk (fun j hj => hframe j (by simpa [accBody, Stmt.writes] using hj)) hidx
+    have s1 := denote_assign_f32 (L := Lc) (j := tmp) (e := .binF32 .add (.getF32 acc) T)
+      (v := (s + ft (UInt64.ofNat k)).toBits) harr.2.2.1 (by
+        simp [Project.IR.Expr.denote, hacc, ht, F32Op.apply, F32Bits.toBits_add])
+    have s2 := denote_assign_f32 (arrays := arrays) (j := acc) (e := .getF32 tmp)
+      (v := (s + ft (UInt64.ofNat k)).toBits) harr.2.2.2
+      (L := fun i => if i = tmp then some (.f32 (s + ft (UInt64.ofNat k)).toBits) else Lc i)
+      (by simp [Project.IR.Expr.denote])
+    exact ⟨_, by rw [accBody, denote_seq_some s1]; exact s2, by simp [LocalsHold, Scalar.values]⟩
+  obtain ⟨L', hL', hHold⟩ := Stmt.denote_loop (vars := [acc]) (init := s0) (L := L)
+    (body := accBody acc tmp T) (fun j s => s + ft j) h1 ⟨harr.1, harr.2.1⟩
+    (by simp [accBody, Stmt.writes]; omega) (by simp; omega) hcount
+    (by simp [LocalsHold, Scalar.values, hinit]) hBody
+  refine ⟨L', hL', by simpa [LocalsHold, Scalar.values] using hHold, fun j hj => ?_⟩
+  apply Stmt.denote_frame arrays _ L L' hL' j
+  simp only [List.mem_cons, List.not_mem_nil, or_false, not_or] at hj
+  simp [Stmt.loop, Stmt.writes, accBody, hj.1, hj.2.1, hj.2.2.1, hj.2.2.2]
+
+/-! ### `layerNorm32` -/
+
+def lnD : Project.IR.Expr .f32 := .binF32 .sub (.ofBits32 (.read 0 (.get 15))) (.getF32 12)
+
+def layerNormSpec : Spec :=
+  { kinds := [.array, .array, .array, .word, .float], index := 7, count := .param 3,
+    vars := [(8, .f32), (9, .u64), (10, .u64), (11, .f32), (12, .f32), (13, .f32), (14, .u64),
+      (15, .u64), (16, .f32), (17, .f32)], width := 18,
+    body := .seq (.assign 8 (.constF32 0))
+      (.seq (Stmt.loop 9 10 (.get 3) (accBody 8 11 (.ofBits32 (.read 0 (.get 10)))))
+      (.seq (.assign 12 (.binF32 .div (.getF32 8) (.getF32 4)))
+      (.seq (.assign 13 (.constF32 0))
+      (.seq (Stmt.loop 14 15 (.get 3) (dotBody 13 16 lnD lnD))
+        (.assign 17 (.binF32 .div (.getF32 13) (.getF32 4))))))),
+    element := .toBits32 (.binF32 .add (.binF32 .mul (.binF32 .mul (.binF32 .sub
+      (.ofBits32 (.read 0 (.get 7))) (.getF32 12)) (.binF32 .div (.constF32 1065353216)
+      (.unF32 .sqrt (.binF32 .add (.getF32 17) (.constF32 925353388)))))
+      (.ofBits32 (.read 1 (.get 7)))) (.ofBits32 (.read 2 (.get 7)))) }
+
+theorem layerNormSpec_eq :
+    specOf gpt32.layerNorm32.ir [.array, .array, .array, .word, .float] = some layerNormSpec :=
+  rfl
+
+theorem layerNormSpec_wf : layerNormSpec.WF := layerNormSpec.wf_of_wfb (by decide)
+
+theorem layerNormSpec_module : layerNormSpec.module = some layerNormKernel := by
+  rw [layerNormKernel, kernelOf, layerNormSpec_eq]
+  rfl
+
+/-- Element `c` of `layerNorm32 x g b d nf`. -/
+def layerNormAt (x g b : Array Float32) (d : UInt64) (nf : Float32) (c : UInt64) : Float32 :=
+  let mean := LeanExe.loop d 0.0 (fun i acc => acc + x[i.toNat]!) / nf
+  let var := LeanExe.loop d 0.0 (fun i acc => acc + (x[i.toNat]! - mean) * (x[i.toNat]! - mean)) / nf
+  (x[c.toNat]! - mean) * (1.0 / (var + 0.00001).sqrt) * g[c.toNat]! + b[c.toNat]!
+
+theorem layerNorm_element (x g b : Array Float32) (d : UInt64) (nf : Float32) (c : UInt64)
+    (L : Nat → Option Wasm.Value) (arrays : Nat → Option (Array UInt64))
+    (h3 : L 3 = some (.i64 d)) (h4 : L 4 = some (.f32 nf.toBits)) (h7 : L 7 = some (.i64 c))
+    (h0 : arrays 0 = some (floatWords x)) (h1 : arrays 1 = some (floatWords g))
+    (h2 : arrays 2 = some (floatWords b)) (hn : ∀ j, 8 ≤ j → j ≤ 17 → arrays j = none) :
+    ∃ L', layerNormSpec.body.denote arrays L = some L' ∧
+      layerNormSpec.element.denote L' arrays = some (layerNormAt x g b d nf c).toBits.toUInt64 := by
+  have h1b : (1.0 : Float32).toBits = 1065353216 := by decide +kernel
+  have heps : (0.00001 : Float32).toBits = 925353388 := by decide +kernel
+  let sum := LeanExe.loop d 0.0 (fun i acc => acc + x[i.toNat]!)
+  let mean := sum / nf
+  let sq := LeanExe.loop d 0.0 (fun i acc => acc + (x[i.toNat]! - mean) * (x[i.toNat]! - mean))
+  let var := sq / nf
+  let L1 : Nat → Option Wasm.Value := fun i => if i = 8 then some (.f32 0) else L i
+  have s0 : (Project.IR.Stmt.assign 8 (.constF32 0)).denote arrays L = some L1 :=
+    denote_assign_f32 (hn 8 (by omega) (by omega)) rfl
+  obtain ⟨L2, hL2, hsum, hf2⟩ := accLoop_denote (L := L1) (acc := 8) (tmp := 11) (limit := 9)
+    (idx := 10) (count := .get 3) (n := d) (T := .ofBits32 (.read 0 (.get 10)))
+    0.0 (fun i => x[i.toNat]!) (by decide)
+    ⟨hn 9 (by omega) (by omega), hn 10 (by omega) (by omega), hn 11 (by omega) (by omega),
+      hn 8 (by omega) (by omega)⟩
+    (by simp [Project.IR.Expr.denote, L1, h3]) (by simp [L1, zero_bits])
+    (fun k' Lc _ _ hidx => by
+      simp [Project.IR.Expr.denote, hidx, h0, floatWords, getElem!_map_toBits32])
+  have l2_4 : L2 4 = some (.f32 nf.toBits) := (hf2 4 (by decide)).trans (by simp [L1, h4])
+  have s12 := denote_assign_f32 (arrays := arrays) (L := L2) (j := 12)
+    (e := .binF32 .div (.getF32 8) (.getF32 4)) (v := mean.toBits) (hn 12 (by omega) (by omega))
+    (by simp [Project.IR.Expr.denote, hsum, l2_4, F32Op.apply, mean, sum, F32Bits.toBits_div])
+  let L3 : Nat → Option Wasm.Value := fun i => if i = 12 then some (.f32 mean.toBits) else L2 i
+  let L4 : Nat → Option Wasm.Value := fun i => if i = 13 then some (.f32 0) else L3 i
+  have s13 : (Project.IR.Stmt.assign 13 (.constF32 0)).denote arrays L3 = some L4 :=
+    denote_assign_f32 (hn 13 (by omega) (by omega)) rfl
+  obtain ⟨L5, hL5, hsq, hf5⟩ := dotLoop_denote (L := L4) (acc := 13) (tmp := 16) (limit := 14)
+    (idx := 15) (count := .get 3) (n := d) (A := lnD) (B := lnD)
+    0.0 (fun i => x[i.toNat]! - mean) (fun i => x[i.toNat]! - mean) (by decide)
+    ⟨hn 14 (by omega) (by omega), hn 15 (by omega) (by omega), hn 16 (by omega) (by omega),
+      hn 13 (by omega) (by omega)⟩
+    (by simp [Project.IR.Expr.denote, L4, L3, (hf2 3 (by decide)).trans (by simp [L1, h3] :
+      L1 3 = some (.i64 d))]) (by simp [L4, zero_bits])
+    (fun k' Lc _ hf hidx => by
+      have hl12 : Lc 12 = some (.f32 mean.toBits) := (hf 12 (by decide)).trans (by simp [L4, L3])
+      constructor <;>
+        simp [lnD, Project.IR.Expr.denote, hidx, hl12, h0, floatWords, getElem!_map_toBits32,
+          F32Op.apply, F32Bits.toBits_sub])
+  have l5_4 : L5 4 = some (.f32 nf.toBits) := (hf5 4 (by decide)).trans (by simp [L4, L3, l2_4])
+  have s17 := denote_assign_f32 (arrays := arrays) (L := L5) (j := 17)
+    (e := .binF32 .div (.getF32 13) (.getF32 4)) (v := var.toBits) (hn 17 (by omega) (by omega))
+    (by simp [Project.IR.Expr.denote, hsq, l5_4, F32Op.apply, var, sq, F32Bits.toBits_div])
+  have hb : layerNormSpec.body.denote arrays L =
+      some (fun i => if i = 17 then some (.f32 var.toBits) else L5 i) := by
+    show (Project.IR.Stmt.seq _ (.seq _ (.seq _ (.seq _ (.seq _ _))))).denote arrays L = _
+    rw [denote_seq_some s0, denote_seq_some hL2, denote_seq_some s12, denote_seq_some s13,
+      denote_seq_some hL5]
+    exact s17
+  refine ⟨_, hb, ?_⟩
+  have l7 : L5 7 = some (.i64 c) :=
+    (hf5 7 (by decide)).trans (by simp [L4, L3, (hf2 7 (by decide)).trans (by simp [L1, h7] :
+      L1 7 = some (.i64 c))])
+  have l12 : L5 12 = some (.f32 mean.toBits) := (hf5 12 (by decide)).trans (by simp [L4, L3])
+  simp only [layerNormSpec, Project.IR.Expr.denote, ↓reduceIte, l7, l12, h0, h1, h2,
+    show (7 : Nat) ≠ 17 by decide, show (12 : Nat) ≠ 17 by decide, Option.bind_eq_bind,
+    Option.bind_some, Option.pure_def, Option.map_some, F32Op.apply, F32UnOp.apply, floatWords,
+    getElem!_map_toBits32, Option.some.injEq]
+  simp only [layerNormAt, F32Bits.toBits_add, F32Bits.toBits_mul, F32Bits.toBits_sub,
+    F32Bits.toBits_div, F32Bits.toBits_sqrt, h1b, heps, mean, sum, var, sq]
+
+theorem layerNormKernel_dispatch (x g b : Array Float32) (d : UInt64) (nf : Float32)
+    (hx : x.size < 2 ^ 29) (hg : g.size < 2 ^ 29) (hb : b.size < 2 ^ 29) (hd : d.toNat < 2 ^ 29)
+    (output : Array UInt32) (hOut : output.size = 2 + 2 * d.toNat)
+    (hL0 : output[0]? = some (UInt32.ofNat d.toNat)) (hL1 : output[1]? = some 0)
+    (count : Nat) (hCover : d.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
+    layerNormKernel.dispatch [(Arg.array (floatWords x)).buffer, (Arg.array (floatWords g)).buffer,
+        (Arg.array (floatWords b)).buffer, (Arg.word d).buffer, (Arg.float nf.toBits).buffer]
+        output count = some (arrayWords (floatWords (layerNorm32 x g b d nf))) ∧
+      layerNormKernel.RaceFree [(Arg.array (floatWords x)).buffer,
+        (Arg.array (floatWords g)).buffer, (Arg.array (floatWords b)).buffer, (Arg.word d).buffer,
+        (Arg.float nf.toBits).buffer] output.size count := by
+  have hfits : layerNormSpec.Fits [.array (floatWords x), .array (floatWords g),
+      .array (floatWords b), .word d, .float nf.toBits] d.toNat :=
+    ⟨rfl, by simp; omega, by simp [layerNormSpec], hd⟩
+  have h := layerNormSpec.dispatch_eq layerNormSpec_wf layerNormKernel layerNormSpec_module _ _
+    hfits (fun c => (layerNormAt x g b d nf c).toBits.toUInt64)
+    (fun c _ => layerNorm_element x g b d nf _ _ _
+      (by simp [Spec.locals, layerNormSpec, Count.sizeLocal?])
+      (by simp [Spec.locals, layerNormSpec, Count.sizeLocal?]) (by simp [Spec.locals, layerNormSpec])
+      (by simp [Spec.arrays]) (by simp [Spec.arrays]) (by simp [Spec.arrays])
+      (fun j h1 _ => arrays_none _ j (by simp; omega)))
+    output (by simpa using hOut) (by simpa using hL0) hL1 count (by simpa using hCover) h32
+  simp only [List.map_cons, List.map_nil, UInt64.ofNat_toNat] at h
+  rw [show floatWords (layerNorm32 x g b d nf) = LeanExe.build d
+    (fun c => (layerNormAt x g b d nf c).toBits.toUInt64) by
+      simp [layerNorm32, layerNormAt, floatWords, Project.IR.build_map]]
+  exact h
+
+/-! ### `headMax32` -/
+
+def hmR : Project.IR.Expr .f32 :=
+  .ofBits32 (.read 0 (.bin .add (.bin .add (.bin .mul (.get 5) (.const 1024)) (.get 8)) (.const 1)))
+
+def hmBody : Project.IR.Stmt :=
+  .seq (.assign 9 (.iteF32 (.leF32 (.getF32 6) hmR) hmR (.getF32 6))) (.assign 6 (.getF32 9))
+
+def headMaxSpec : Spec :=
+  { kinds := [.array, .word, .word], index := 5, count := .param 2,
+    vars := [(6, .f32), (7, .u64), (8, .u64), (9, .f32)], width := 10,
+    body := .seq (.assign 6 (.ofBits32 (.read 0 (.bin .mul (.get 5) (.const 1024)))))
+      (Stmt.loop 7 8 (.get 1) hmBody),
+    element := .toBits32 (.getF32 6) }
+
+theorem headMaxSpec_eq : specOf gpt32.headMax32.ir [.array, .word, .word] = some headMaxSpec :=
+  rfl
+
+theorem headMaxSpec_wf : headMaxSpec.WF := headMaxSpec.wf_of_wfb (by decide)
+
+theorem headMaxSpec_module : headMaxSpec.module = some headMaxKernel := by
+  rw [headMaxKernel, kernelOf, headMaxSpec_eq]
+  rfl
+
+/-- Element `h` of `headMax32 s p nh`. -/
+def headMaxAt (s : Array Float32) (p h : UInt64) : Float32 :=
+  LeanExe.loop p s[(h * 1024).toNat]! (fun j acc => max acc s[(h * 1024 + j + 1).toNat]!)
+
+theorem headMax_element (s : Array Float32) (p h : UInt64) (L : Nat → Option Wasm.Value)
+    (arrays : Nat → Option (Array UInt64)) (h1 : L 1 = some (.i64 p)) (h5 : L 5 = some (.i64 h))
+    (h0 : arrays 0 = some (floatWords s)) (hn : ∀ j, 6 ≤ j → j ≤ 9 → arrays j = none) :
+    ∃ L', headMaxSpec.body.denote arrays L = some L' ∧
+      headMaxSpec.element.denote L' arrays = some (headMaxAt s p h).toBits.toUInt64 := by
+  let L1 : Nat → Option Wasm.Value := fun i =>
+    if i = 6 then some (.f32 s[(h * 1024).toNat]!.toBits) else L i
+  have s0 : (Project.IR.Stmt.assign 6 (.ofBits32 (.read 0 (.bin .mul (.get 5) (.const 1024))))).denote
+      arrays L = some L1 :=
+    denote_assign_f32 (hn 6 (by omega) (by omega)) (by
+      simp [Project.IR.Expr.denote, h5, h0, floatWords, getElem!_map_toBits32, U64Op.apply])
+  have hBody : ∀ (k : Nat) (acc : Float32) (Lc : Nat → Option Wasm.Value), k < p.toNat →
+      (∀ j, j ∉ 7 :: 8 :: hmBody.writes → Lc j = L1 j) →
+      Lc 8 = some (.i64 (UInt64.ofNat k)) → Lc 7 = some (.i64 p) →
+      LocalsHold Lc [6] (Scalar.values acc) →
+      ∃ L2, hmBody.denote arrays Lc = some L2 ∧
+        LocalsHold L2 [6] (Scalar.values (max acc s[(h * 1024 + UInt64.ofNat k + 1).toNat]!)) := by
+    intro k acc Lc _ hframe hidx _ hhold
+    have h6 : Lc 6 = some (.f32 acc.toBits) := by simpa [LocalsHold, Scalar.values] using hhold
+    have hl5 : Lc 5 = some (.i64 h) := (hframe 5 (by decide)).trans (by simp [L1, h5])
+    let v := max acc s[(h * 1024 + UInt64.ofNat k + 1).toNat]!
+    have hR : hmR.denote Lc arrays = some s[(h * 1024 + UInt64.ofNat k + 1).toNat]!.toBits := by
+      simp [hmR, Project.IR.Expr.denote, hidx, hl5, h0, floatWords, getElem!_map_toBits32,
+        U64Op.apply]
+    have s1 := denote_assign_f32 (L := Lc) (j := 9) (e := .iteF32 (.leF32 (.getF32 6) hmR) hmR (.getF32 6))
+      (v := v.toBits) (hn 9 (by omega) (by omega)) (by
+        simp only [Project.IR.Expr.denote, h6, hR, Option.bind_eq_bind, Option.bind_some,
+          Option.pure_def, ite_some]
+        simp only [v, F32Bits.toBits_max])
+    have s2 := denote_assign_f32 (arrays := arrays) (j := 6) (e := .getF32 9) (v := v.toBits)
+      (hn 6 (by omega) (by omega))
+      (L := fun i => if i = 9 then some (.f32 v.toBits) else Lc i) (by simp [Project.IR.Expr.denote])
+    exact ⟨_, by rw [hmBody, denote_seq_some s1]; exact s2, by simp [LocalsHold, Scalar.values, v]⟩
+  obtain ⟨L', hL', hHold⟩ := Stmt.denote_loop (vars := [6]) (init := s[(h * 1024).toNat]!)
+    (L := L1) (body := hmBody) (count := .get 1) (n := p)
+    (fun j acc => max acc s[(h * 1024 + j + 1).toNat]!) (by decide)
+    ⟨hn 7 (by omega) (by omega), hn 8 (by omega) (by omega)⟩ (by decide) (by simp)
+    (by simp [Project.IR.Expr.denote, L1, h1]) (by simp [LocalsHold, Scalar.values, L1]) hBody
+  refine ⟨L', ?_, ?_⟩
+  · show (Project.IR.Stmt.seq _ _).denote arrays L = some L'
+    rw [denote_seq_some s0]
+    exact hL'
+  · have h6 : L' 6 = some (.f32 (headMaxAt s p h).toBits) := by
+      simpa [LocalsHold, Scalar.values, headMaxAt] using hHold
+    simp [headMaxSpec, Project.IR.Expr.denote, h6]
+
+theorem headMaxKernel_dispatch (s : Array Float32) (p nh : UInt64) (hs : s.size < 2 ^ 29)
+    (hnh : nh.toNat < 2 ^ 29) (output : Array UInt32) (hOut : output.size = 2 + 2 * nh.toNat)
+    (hL0 : output[0]? = some (UInt32.ofNat nh.toNat)) (hL1 : output[1]? = some 0)
+    (count : Nat) (hCover : nh.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
+    headMaxKernel.dispatch [(Arg.array (floatWords s)).buffer, (Arg.word p).buffer,
+        (Arg.word nh).buffer] output count = some (arrayWords (floatWords (headMax32 s p nh))) ∧
+      headMaxKernel.RaceFree [(Arg.array (floatWords s)).buffer, (Arg.word p).buffer,
+        (Arg.word nh).buffer] output.size count := by
+  have hfits : headMaxSpec.Fits [.array (floatWords s), .word p, .word nh] nh.toNat :=
+    ⟨rfl, by simp; omega, by simp [headMaxSpec], hnh⟩
+  have h := headMaxSpec.dispatch_eq headMaxSpec_wf headMaxKernel headMaxSpec_module _ _ hfits
+    (fun h => (headMaxAt s p h).toBits.toUInt64)
+    (fun c _ => headMax_element s p _ _ _ (by simp [Spec.locals, headMaxSpec, Count.sizeLocal?])
+      (by simp [Spec.locals, headMaxSpec]) (by simp [Spec.arrays])
+      (fun j h1 _ => arrays_none _ j (by simp; omega)))
+    output (by simpa using hOut) (by simpa using hL0) hL1 count (by simpa using hCover) h32
+  simp only [List.map_cons, List.map_nil, UInt64.ofNat_toNat] at h
+  rw [show floatWords (headMax32 s p nh) = LeanExe.build nh
+    (fun h => (headMaxAt s p h).toBits.toUInt64) by
+      simp [headMax32, headMaxAt, floatWords, Project.IR.build_map]]
+  exact h
+
+/-! ### `headSum32` -/
+
+def hsArg : Project.IR.Expr .f32 :=
+  .binF32 .sub (.ofBits32 (.read 0 (.bin .add (.bin .mul (.get 6) (.const 1024)) (.get 9))))
+    (.ofBits32 (.read 1 (.get 6)))
+
+def hsBody : Project.IR.Stmt :=
+  seqList (expAssigns 10 hsArg ++ [.assign 17 (.binF32 .add (.getF32 7) (expTail 10)),
+    .assign 7 (.getF32 17)])
+
+def headSumSpec : Spec :=
+  { kinds := [.array, .array, .word, .word], index := 6, count := .param 3,
+    vars := [(7, .f32), (8, .u64), (9, .u64), (10, .f32), (11, .f32), (12, .f32), (13, .f32),
+      (14, .f32), (15, .u64), (16, .u64), (17, .f32)], width := 18,
+    body := .seq (.assign 7 (.constF32 0)) (Stmt.loop 8 9 (.bin .add (.get 2) (.const 1)) hsBody),
+    element := .toBits32 (.getF32 7) }
+
+theorem headSumSpec_eq : specOf gpt32.headSum32.ir [.array, .array, .word, .word] =
+    some headSumSpec := rfl
+
+theorem headSumSpec_wf : headSumSpec.WF := headSumSpec.wf_of_wfb (by decide)
+
+theorem headSumSpec_module : headSumSpec.module = some headSumKernel := by
+  rw [headSumKernel, kernelOf, headSumSpec_eq]
+  rfl
+
+/-- Element `h` of `headSum32 s mx p nh`. -/
+def headSumAt (s mx : Array Float32) (p h : UInt64) : Float32 :=
+  LeanExe.loop (p + 1) 0.0 (fun j acc => acc + exp32 (s[(h * 1024 + j).toNat]! - mx[h.toNat]!))
+
+theorem headSum_element (s mx : Array Float32) (p h : UInt64) (L : Nat → Option Wasm.Value)
+    (arrays : Nat → Option (Array UInt64)) (h2 : L 2 = some (.i64 p)) (h6 : L 6 = some (.i64 h))
+    (h0 : arrays 0 = some (floatWords s)) (h1 : arrays 1 = some (floatWords mx))
+    (hn : ∀ j, 7 ≤ j → j ≤ 17 → arrays j = none) :
+    ∃ L', headSumSpec.body.denote arrays L = some L' ∧
+      headSumSpec.element.denote L' arrays = some (headSumAt s mx p h).toBits.toUInt64 := by
+  let L1 : Nat → Option Wasm.Value := fun i => if i = 7 then some (.f32 0) else L i
+  have s0 : (Project.IR.Stmt.assign 7 (.constF32 0)).denote arrays L = some L1 :=
+    denote_assign_f32 (hn 7 (by omega) (by omega)) rfl
+  have hBody : ∀ (k : Nat) (acc : Float32) (Lc : Nat → Option Wasm.Value), k < (p + 1).toNat →
+      (∀ j, j ∉ 8 :: 9 :: hsBody.writes → Lc j = L1 j) →
+      Lc 9 = some (.i64 (UInt64.ofNat k)) → Lc 8 = some (.i64 (p + 1)) →
+      LocalsHold Lc [7] (Scalar.values acc) →
+      ∃ L2, hsBody.denote arrays Lc = some L2 ∧
+        LocalsHold L2 [7] (Scalar.values
+          (acc + exp32 (s[(h * 1024 + UInt64.ofNat k).toNat]! - mx[h.toNat]!))) := by
+    intro k acc Lc _ hframe hidx _ hhold
+    have h7 : Lc 7 = some (.f32 acc.toBits) := by simpa [LocalsHold, Scalar.values] using hhold
+    have hl6 : Lc 6 = some (.i64 h) := (hframe 6 (by decide)).trans (by simp [L1, h6])
+    let z : Float32 := s[(h * 1024 + UInt64.ofNat k).toNat]! - mx[h.toNat]!
+    have hz : hsArg.denote Lc arrays = some z.toBits := by
+      simp [hsArg, Project.IR.Expr.denote, hidx, hl6, h0, h1, floatWords, getElem!_map_toBits32,
+        U64Op.apply, F32Op.apply, z, F32Bits.toBits_sub]
+    obtain ⟨hexp, htail⟩ := expAssigns_denote 10 hsArg z arrays Lc hz
+      (fun j h1 h2 => hn j (by omega) (by omega))
+    have h7' : expLocals 10 z Lc 7 = some (.f32 acc.toBits) := by simp [expLocals, h7]
+    let v := acc + exp32 z
+    have s17 := denote_assign_f32 (arrays := arrays) (L := expLocals 10 z Lc) (j := 17)
+      (e := .binF32 .add (.getF32 7) (expTail 10)) (v := v.toBits) (hn 17 (by omega) (by omega))
+      (by simp [Project.IR.Expr.denote, h7', htail, F32Op.apply, v, F32Bits.toBits_add])
+    have s7 := denote_assign_f32 (arrays := arrays) (j := 7) (e := .getF32 17) (v := v.toBits)
+      (hn 7 (by omega) (by omega))
+      (L := fun i => if i = 17 then some (.f32 v.toBits) else expLocals 10 z Lc i)
+      (by simp [Project.IR.Expr.denote])
+    exact ⟨_, by
+      show (seqList (expAssigns 10 hsArg ++ _)).denote arrays Lc = _
+      rw [denote_seqList_append _ _ Lc _ (by simp [expAssigns]) (by simp) hexp]
+      show (Project.IR.Stmt.seq _ _).denote arrays _ = _
+      rw [denote_seq_some s17]
+      exact s7, by simp [LocalsHold, Scalar.values, v, z]⟩
+  obtain ⟨L', hL', hHold⟩ := Stmt.denote_loop (vars := [7]) (init := (0.0 : Float32))
+    (L := L1) (body := hsBody) (count := .bin .add (.get 2) (.const 1)) (n := p + 1)
+    (fun j acc => acc + exp32 (s[(h * 1024 + j).toNat]! - mx[h.toNat]!)) (by decide)
+    ⟨hn 8 (by omega) (by omega), hn 9 (by omega) (by omega)⟩ (by decide) (by simp)
+    (by simp [Project.IR.Expr.denote, L1, h2, U64Op.apply])
+    (by simp [LocalsHold, Scalar.values, L1, zero_bits]) hBody
+  refine ⟨L', ?_, ?_⟩
+  · show (Project.IR.Stmt.seq _ _).denote arrays L = some L'
+    rw [denote_seq_some s0]
+    exact hL'
+  · have h7 : L' 7 = some (.f32 (headSumAt s mx p h).toBits) := by
+      simpa [LocalsHold, Scalar.values, headSumAt] using hHold
+    simp [headSumSpec, Project.IR.Expr.denote, h7]
+
+theorem headSumKernel_dispatch (s mx : Array Float32) (p nh : UInt64) (hs : s.size < 2 ^ 29)
+    (hm : mx.size < 2 ^ 29) (hnh : nh.toNat < 2 ^ 29) (output : Array UInt32)
+    (hOut : output.size = 2 + 2 * nh.toNat) (hL0 : output[0]? = some (UInt32.ofNat nh.toNat))
+    (hL1 : output[1]? = some 0) (count : Nat) (hCover : nh.toNat ≤ count)
+    (h32 : count ≤ 2 ^ 32) :
+    headSumKernel.dispatch [(Arg.array (floatWords s)).buffer, (Arg.array (floatWords mx)).buffer,
+        (Arg.word p).buffer, (Arg.word nh).buffer] output count =
+        some (arrayWords (floatWords (headSum32 s mx p nh))) ∧
+      headSumKernel.RaceFree [(Arg.array (floatWords s)).buffer, (Arg.array (floatWords mx)).buffer,
+        (Arg.word p).buffer, (Arg.word nh).buffer] output.size count := by
+  have hfits : headSumSpec.Fits [.array (floatWords s), .array (floatWords mx), .word p, .word nh]
+      nh.toNat :=
+    ⟨rfl, by simp; omega, by simp [headSumSpec], hnh⟩
+  have h := headSumSpec.dispatch_eq headSumSpec_wf headSumKernel headSumSpec_module _ _ hfits
+    (fun h => (headSumAt s mx p h).toBits.toUInt64)
+    (fun c _ => headSum_element s mx p _ _ _
+      (by simp [Spec.locals, headSumSpec, Count.sizeLocal?]) (by simp [Spec.locals, headSumSpec])
+      (by simp [Spec.arrays]) (by simp [Spec.arrays])
+      (fun j h1 _ => arrays_none _ j (by simp; omega)))
+    output (by simpa using hOut) (by simpa using hL0) hL1 count (by simpa using hCover) h32
+  simp only [List.map_cons, List.map_nil, UInt64.ofNat_toNat] at h
+  rw [show floatWords (headSum32 s mx p nh) = LeanExe.build nh
+    (fun h => (headSumAt s mx p h).toBits.toUInt64) by
+      simp [headSum32, headSumAt, floatWords, Project.IR.build_map]]
   exact h
 
 end Project.Gpt32
