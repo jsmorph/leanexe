@@ -24231,7 +24231,7 @@ whose clamped index keeps the access in bounds, so evaluating both arguments of 
 cause a dynamic error.  The translation binds each IR node to a `let`, so expressions stay shallow
 and each `let` matches one step of `Expr.eval`.
 
-- [ ] 24a: the WGSL syntax tree, printer, lexer, parser, and round trip; the expression,
+- [x] 24a: the WGSL syntax tree, printer, lexer, parser, and round trip; the expression,
   statement, and dispatch semantics; and one elementwise kernel proved directly.
 - [ ] 24b: the translation of straight-line IR with simulation lemmas, and `axpyArray32` compiled
   to Wasm and WGSL with both theorems.
@@ -24255,3 +24255,38 @@ token first as a literal, variable, buffer, or keyword.  `Module.parse_print` in
 `Project/WGSL/RoundTrip.lean` proves `Module.parse m.print = some m` for every kernel whose
 indices fit in eight hexadecimal digits, with `propext`, `Classical.choice`, and `Quot.sound`.
 The four files have 963 lines, of which the proof is 528.
+
+### Iteration 24, step 24a: semantics and the first kernel
+
+`Project/WGSL/Semantics.lean` gives the device model's meaning.  Values are `u32`, `f32` bit
+patterns, Booleans, and `vec2<u32>` pairs; binary32 operations are Talos's `IEEE32`; `&&` and `||`
+evaluate their right operand only when needed, and `select` evaluates all three arguments.  An
+invocation (`Module.invoke`) runs the body on the read-only buffers and returns its stores to the
+read-write buffer, and reading that buffer, an ill-typed operation, or an access outside a buffer
+makes the result `none`.  `Module.dispatch` applies the stores of invocations `0` to `count - 1`
+in order, and `Module.RaceFree` states that distinct invocations store to distinct words.  The
+semantics evaluated in Lean gave the same element words as both drivers on a test input.
+
+`Project/WGSL/Kernel.lean` holds what kernels share: `arrayWords`, the 32-bit words of a Wasm
+array of 64-bit words; `lt64`, the comparison of `u64` pairs; and `readLow`, the read of an
+element of a Wasm array in a buffer, `select(0u, b[min(2u + 2u * k.x, arrayLength(&b) - 1u)],
+lt64(k, len) && k.x < (arrayLength(&b) - 2u) / 2u)`, with `readLow_eval` proving that it gives
+the element's low half below the length and 0 otherwise.  `Project/WGSL/Scale.lean` writes the
+kernel of `scale32 a x := LeanExe.build x.size.toUInt64 fun i => a * x[i.toNat]!` by hand.
+`scaleKernel_dispatch` proves that for buffers holding `x` as a Wasm array and `a`'s word, an
+output of the result's size with the host's length word, and at least `x.size` invocations, the
+dispatch leaves the output holding `scale32 a x` as a Wasm array, and that distinct invocations
+store to distinct words.  `scaleKernel_text` proves that the printed text parses to the kernel.
+Both depend on `propext`, `Classical.choice`, and `Quot.sound`.
+
+One `simp` call over a whole invocation timed out, so `scaleKernel_invoke` proves one lemma per
+statement, with the buffer contents behind hypotheses so that `simp` never unfolds `arrayWords`.
+`UInt32` facts go through `toNat` and `omega`, since `simp` rewrites `UInt32.ofNat (2 + 2 * n)`
+into `2 + 2 * UInt32.ofNat n`.  The LTG entry `wgsl-kernel` records the method.
+
+`Project/WGSL/Emit.lean` writes a kernel's text after checking that it parses back, and the
+harness now takes the output's initial words, which carry the host's length word.
+`tests/wgsl/run.sh` runs 120 cases, sizes 0 to 200 with special values, arbitrary bit patterns,
+and extra workgroups, on SwiftShader and llvmpipe, and all 240 runs match native Lean.  The full
+build passed with no `sorry`, the 23 Wasm modules emit the same bytes as before, and the module
+tests, count cases, depth cases, chunks, and LTG check passed.
