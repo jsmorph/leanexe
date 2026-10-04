@@ -24505,3 +24505,61 @@ with no `sorry`, the 23 Wasm modules emit the same bytes as before, and the modu
 9,669 comparisons with 77 count cases, 20 depth cases, and 360 cases of `chunks.py`.  The translation of
 `ite`, `iteF32`, `and`, and `or` into a `var` assigned in `if` blocks, which the review of 24b
 placed in 24c, is not done, and the translator still rejects kernels with those constructs.
+
+## 2026-10-04: GPT-2 on WGSL, analysis
+
+The user asked for a working GPT-2 with WGSL: GPT-2 124M generating text, with its arithmetic in
+WGSL kernels translated from compiled IR, each kernel with a dispatch theorem, on wgpu-native
+with SwiftShader and llvmpipe, and later in a browser.  The existing model is the binary64
+`LeanExe/Examples/Gpt.lean`: `forward`, the cached `step` and `scores`, their Wasm proofs, and
+`tests/gpt/gpt2_compare.py`, which generated 256 tokens matching Hugging Face's greedy choices in
+180 seconds.  WGSL has no binary64, so the GPU model is a binary32 Lean model with its own
+theorems, as decided for the GPU path on 2026-10-01.  The checkpoint's parameters are float32,
+so they load exactly.
+
+The cached step of the binary64 model needs constructs that the WGSL translation lacks.
+
+| Construct | Use in the step | Approach |
+|-----------|-----------------|----------|
+| `ite`, `iteF32` | the running maximum of a softmax, the clamping in `exp`, the choice between cache and new row, the cache append | A `var` assigned in both branches of an `if`, which runs only the taken branch, so the simulation still follows the denotation (24b review) |
+| `bin sub` | the exponent in `exp` | A borrow, as `add64` carries |
+| `divU`, `remU` | splitting an element index into head and position | Only by a power-of-two constant `2^s`, which the pair arithmetic computes exactly with `u32` division and multiplication; the binary32 model lays out scores with a power-of-two stride |
+| `eq`, `leU`, `not`, `and`, `or` | conditions | As the step needs them |
+| `exp` in binary32 | softmax, GELU's `tanh` | A Lean function from arithmetic and bits: rounding to an integer with the constant 1.5 · 2^23, a polynomial on the reduced argument, and 2^k from the bits `(k + 127) · 2^23`, with no error theorem, as for the binary64 `exp` |
+
+WGSL's own `exp` and `tanh` have implementation-defined precision (15.7.4), so the device model
+cannot give them exact results, and the model computes them from basic operations.  The binary64
+step divides by run-time values (`cache.size / bsize`, an index by `p + 1`).  The binary32 step
+takes the position as an argument and uses the constants of GPT-2 124M where it divides: heads of
+width 64 and a position capacity of 1,024, GPT-2's context length, so that every division is by a
+power of two.
+
+The cost per token is about 85 million multiply-adds in the twelve blocks and 38.6 million in the
+scores over the vocabulary.  The translated inner loop of a matrix-vector product spends roughly
+80 `u32` operations per multiply-add: an index addition on pairs, two clamped reads of both halves,
+the binary32 operations, the counter's addition, and its comparison.  On the four cores of this
+machine that suggests a few seconds per token on llvmpipe, which the review will measure.  In the
+Wasm array layout each binary32 value takes 8 bytes, so the weights take about 1.0 GB, and the
+token embedding alone 309 MB, above WebGPU's default binding limit of 128 MiB.
+
+| Buffer layout | Effect |
+|---------------|--------|
+| (L1) The Wasm array layout of 24 | No new theorem statements.  1.0 GB of weights, twice the bandwidth, and raised binding and buffer limits |
+| (L2) Packed binary32 buffers, 4 bytes per value | Half the memory and bandwidth.  A new argument kind, a read translation for `ofBits32 (read …)`, and new theorem statements.  The token embedding, 155 MB, still exceeds the default binding limit |
+
+| Host | Effect |
+|------|--------|
+| (H1) A session in the C host (a device, buffers loaded from files, kernels run on named buffers, buffers read back) driven by a Python script that tokenizes, orders the step's dispatches, and picks tokens | The shortest route to text.  The order of dispatches is unproved and tested against native Lean |
+| (H2) The step's dispatch sequence as Lean data, with a semantics over named buffers and a theorem that it computes the binary32 step, run by the host from a printed form | Proves the composition.  Needs a format for the program and a host interpreter |
+
+I recommend L1 and H1 to reach a working model, then H2, and L2 if bandwidth limits the speed.
+The binary32 kernels need no Wasm theorems: a dispatch theorem rests on the element lemma over
+`Expr.denote` and `Stmt.denote` alone.
+
+- [ ] G1: `ite` and `iteF32`, `sub`, division and remainder by powers of two, and the
+  conditions, with simulation lemmas and GPU tests.
+- [ ] G2: the binary32 `exp` and the cached step's kernels in Lean, compiled, translated, and
+  proved, with tests against native Lean on small configurations.
+- [ ] G3: the host session and the Python driver: logits equal native Lean's binary32 step on both
+  drivers, a comparison with Hugging Face's float32 model, and greedy generation.
+- [ ] G4: the dispatch program and its composition theorem.
