@@ -265,11 +265,14 @@ if [ "$out" != "stats 2 0" ]; then
   echo "fail: clob fillKeep: $out, expected stats 2 0"
 fi
 # Pair-valued matches on trees: splitRoot frees the root record, rootAndRest rewrites it in place,
-# and splitOr frees a's root record and b when a is a node, and nothing when a is a leaf.
+# and splitOr frees a's root record and b when a is a node, and nothing when a is a leaf.  keepOld
+# and addSelf allocate a copy of the tree, which incr and addRoot rewrite in place.
 for case in "splitRoot|list:tree-u64,tree-u64|tree-u64:5,1,.,.,9,.,.|3 1" \
     "rootAndRest|list:i64,tree-u64|tree-u64:5,1,.,.,9,.,.|3 0" \
     "splitOr|list:tree-u64,tree-u64|tree-u64:5,1,.,.,9,.,. tree-u64:2,.,.|4 2" \
-    "splitOr|list:tree-u64,tree-u64|tree-u64:. tree-u64:2,.,.|1 0"; do
+    "splitOr|list:tree-u64,tree-u64|tree-u64:. tree-u64:2,.,.|1 0" \
+    "keepOld|list:tree-u64,tree-u64|tree-u64:5,1,.,.,9,.,.|6 0" \
+    "addSelf|tree-u64|tree-u64:5,1,.,.,9,.,.|6 0"; do
   IFS='|' read -r name kind trees expected <<<"$case"
   read -ra argv <<<"$trees"
   out=$("$host" call-stats "$build/treeMoves/treeMoves.wasm" "$name" "$kind" "${argv[@]}" | tail -1)
@@ -278,7 +281,7 @@ for case in "splitRoot|list:tree-u64,tree-u64|tree-u64:5,1,.,.,9,.,.|3 1" \
     echo "fail: treeMoves $name $trees: $out, expected stats $expected"
   fi
 done
-echo "release counts: 75 cases, $stats_failed failed"
+echo "release counts: 77 cases, $stats_failed failed"
 # The internal function of a recursive definition traps at `unreachable` at depth 1,000: a
 # chain of 999 nodes succeeds, and a chain of 1,000 traps there, before Wasmtime's stack ends.
 depth_failed=0
@@ -294,9 +297,10 @@ case "$out" in
   *) depth_failed=$((depth_failed + 1)); echo "fail: trees size on a chain of 1000: $out" ;;
 esac
 # leftHeavy and leftSizes call size's internal function at their own depth plus one, so the
-# depth limit covers both recursions together.
+# depth limit covers both recursions together.  keepOld and addSelf reach it in the copy.
 for module_name in trees:height:i64 treeFrame:wide:i64 treeMoves:incr:tree-u64 \
-    trees:leftHeavy:i64 trees:leftSizes:tree-u64; do
+    trees:leftHeavy:i64 trees:leftSizes:tree-u64 treeMoves:keepOld:list:tree-u64,tree-u64 \
+    treeMoves:addSelf:tree-u64; do
   IFS=: read -r module name kind <<<"$module_name"
   out=$("$host" call "$build/$module/$module.wasm" "$name" "$kind" "$(chain 999)" 2>&1) || true
   case "$out" in
@@ -329,5 +333,5 @@ for call in "dropRight:999 998" "leftChild:999 999"; do
     echo "fail: treeMoves $name on a chain of 999: $out, expected stats $expected"
   fi
 done
-echo "depth guard: 16 cases, $depth_failed failed"
+echo "depth guard: 20 cases, $depth_failed failed"
 [ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$stats_failed" -eq 0 ] && [ "$depth_failed" -eq 0 ]

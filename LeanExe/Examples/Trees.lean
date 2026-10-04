@@ -125,6 +125,13 @@ def KeyTree.splitOr (a b : KeyTree) : KeyTree × KeyTree := match a with
   | .leaf => (b, .leaf)
   | .node l _ r => (l, r)
 
+/-- The tree with 1 added to every key, and the tree: `incr` consumes a copy of `t`, and the pair
+holds `t` itself. -/
+def KeyTree.keepOld (t : KeyTree) : KeyTree × KeyTree := (t.incr, t)
+
+/-- The tree with its root key doubled: `addRoot` reads `t` and rewrites a copy of it. -/
+def KeyTree.addSelf (t : KeyTree) : KeyTree := KeyTree.addRoot t t
+
 /-- The search tree `t` with the keys `a` and then `b`. -/
 def KeyTree.insertTwo (a b : UInt64) (t : KeyTree) : KeyTree := (t.insert a).insert b
 

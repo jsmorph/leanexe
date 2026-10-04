@@ -498,4 +498,53 @@ theorem Heap.Rebuilt.dropRight {heap heap2 : Heap} {initial store2 : Store Unit}
       (.record [.child nl, .word k, .child .null]) :=
   Heap.Rebuilt.rightChild hHeap hOwned hDisjoint h2
 
+/-- Two values rebuilt in turn without consuming anything, then a new record that holds the
+first, a word, and the second: the record `[child, word, child]`, rebuilt without consuming
+anything from the heap before the two steps. -/
+theorem Heap.Rebuilt.newNode {heap heap1 heap2 heap3 : Heap} {initial store1 store2 store3 : Store Unit}
+    {q1 q2 ptr k : UInt64} {ml mr : Node}
+    (h1 : heap.Rebuilt initial [] heap1 store1 q1 ml)
+    (h2 : heap1.Rebuilt store1 [] heap2 store2 q2 mr)
+    (hNew : heap2.NewRecord store2 heap3 store3 ptr [q1, k, q2] 5) :
+    heap.Rebuilt initial [] heap3 store3 ptr (.record [.child ml, .word k, .child mr]) := by
+  obtain ⟨hl2, hlBlocks2, hlApart2⟩ := h2.keepNode h1.owned fun _ _ _ hg => nomatch hg
+  have hOld1 := NodeOwned.regions q1 ml hl2
+  have hOld2 := NodeOwned.regions q2 mr h2.owned
+  obtain ⟨hl3, hlBlocks3⟩ := NodeOwned.frame q1 ml hl2 fun b hb =>
+    ⟨(hNew.region b (hOld1 b hb)).1, (hNew.region b (hOld1 b hb)).2.1⟩
+  obtain ⟨hr3, hrBlocks3⟩ := NodeOwned.frame q2 mr h2.owned fun b hb =>
+    ⟨(hNew.region b (hOld2 b hb)).1, (hNew.region b (hOld2 b hb)).2.1⟩
+  have h0 : store3.mem.read64 (slotAddress ptr 0) = q1 := hNew.slots 0 (by simp)
+  have hk : store3.mem.read64 (slotAddress ptr 1) = k := hNew.slots 1 (by simp)
+  have h2' : store3.mem.read64 (slotAddress ptr 2) = q2 := hNew.slots 2 (by simp)
+  have hNewBlocks : Node.blocks store3 ptr (.record [.child ml, .word k, .child mr]) =
+      block store3 ptr :: (ml.blocks store1 q1 ++ mr.blocks store2 q2) := by
+    simp only [Node.blocks, slotsBlocks, Nat.zero_add, Nat.reduceAdd, h0, h2', hlBlocks3,
+      hlBlocks2, hrBlocks3, List.append_nil]
+  refine ⟨hNew.at_, ⟨hNew.header _ rfl rfl, ?_⟩, ?_, fun r hr hpos _ => ?_,
+    hNew.caps.trans (h2.caps.trans h1.caps)⟩
+  · show NodeOwned heap3 store3 (store3.mem.read64 (slotAddress ptr 0)) ml ∧
+      store3.mem.read64 (slotAddress ptr 1) = k ∧
+      NodeOwned heap3 store3 (store3.mem.read64 (slotAddress ptr 2)) mr ∧ True
+    rw [h0, hk, h2']
+    exact ⟨hl3, rfl, hr3, trivial⟩
+  · rw [hNewBlocks]
+    refine List.pairwise_cons.mpr ⟨fun b hb => ?_,
+      List.pairwise_append.mpr ⟨h1.disjoint, h2.disjoint, hlApart2⟩⟩
+    rcases List.mem_append.mp hb with hb | hb
+    · exact regionsDisjoint_symm (hNew.region b (hOld1 b (hlBlocks2 ▸ hb))).2.2
+    · exact regionsDisjoint_symm (hNew.region b (hOld2 b hb)).2.2
+  · obtain ⟨hB1, hR1, hA1⟩ := h1.region r hr hpos fun _ hg => nomatch hg
+    obtain ⟨hB2, hR2, hA2⟩ := h2.region r hR1 hpos fun _ hg => nomatch hg
+    obtain ⟨hB3, hR3, hA3⟩ := hNew.region r hR2
+    refine ⟨fun a hLow hHigh => (hB3 a hLow hHigh).trans ((hB2 a hLow hHigh).trans
+      (hB1 a hLow hHigh)), hR3, ?_⟩
+    rw [hNewBlocks]
+    intro b hb
+    rcases List.mem_cons.mp hb with rfl | hb
+    · exact hA3
+    rcases List.mem_append.mp hb with hb | hb
+    · exact hA1 b hb
+    · exact hA2 b hb
+
 end Project.Pipeline

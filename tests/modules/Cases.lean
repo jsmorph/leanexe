@@ -406,6 +406,11 @@ def treeCases : IO Unit := do
     let rr := t.rootAndRest
     line "treeMoves" "rootAndRest" "list:i64,tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
       s!"{rr.1},{KeyTree.describe rr.2}"
+    let ko := t.keepOld
+    line "treeMoves" "keepOld" "list:tree-u64,tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
+      s!"{KeyTree.describe ko.1},{KeyTree.describe ko.2}"
+    line "treeMoves" "addSelf" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
+      (KeyTree.describe t.addSelf)
     line "treeMoves" "leftChild" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
       (KeyTree.describe t.leftChild)
     for (a, b) in ([(0, 1), (7, 7), (500, maxU)] : List (UInt64 × UInt64)) do

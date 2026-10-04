@@ -23836,7 +23836,7 @@ as long as the code that emits a record.  Programs in `treeMoves`: `keepOld t :=
 `incrSize t := (t.incr, t.size)`, with `KeyTree.copy`'s theorem.
 
 - [x] 11a: the copy's IR and its insertion; scratch checks and the byte comparison.
-- [ ] 11b: `KeyTree.copy`'s theorem, the two programs, and their theorems; tests, LTG, journal.
+- [x] 11b: `KeyTree.copy`'s theorem, the two programs, and their theorems; tests, LTG, journal.
 
 ### Review of the item 11 plan
 
@@ -23870,3 +23870,30 @@ tree argument of the call names the value, since that position receives a copy. 
 `addSelf` owned `t`, copied it, and released it at the end.  `keepOld` and `addSelf` compile with
 one copy each, and the copy function equals `Func.copy [true, false, true] 11` by `rfl`.  The full
 build passed with no `sorry`, and all 22 modules emit the same bytes as before.
+
+### Item 11, step 11b: the theorems
+
+`Project.Trees.copy_rec`, in `Project/Trees/Copy.lean`, states `Rebuilds` for the identity at
+function `2 + i` of any module whose function `i` is `Func.copy [true, false, true] (2 + i)`.  The
+proof is the reviewer's, stated against `Func.copy`: `rfl` reduces the function's start state,
+scratch size, and results, and `show` states its body.  `Heap.Rebuilt.newNode`, in
+`Project/Pipeline/Rebuilt.lean`, combines the two children's rebuilds and the new record into the
+copy's `Heap.Rebuilt`, which consumes nothing.  `treeMoves` gains `keepOld` and `addSelf`, which
+moves its four internal functions from indices 16 to 19 to indices 18 to 21 and places
+`KeyTree.copy` at 22.  The proofs of the four recursions changed only in those indices.
+
+`keepOld_implements` and `addSelf_implements` call the copy through `Stmt.selfCall_rebuilds` with
+`copy_rec` and then call `incr` or `addRoot` through `Stmt.callImplements_spec`.  In `keepOld`,
+`Heap.Rebuilt.keepNode` and `Heap.Keeps.node` keep the consumed tree's records through both calls,
+and the result is an owned pair by `treePair_owned`.  In `addSelf`, `Heap.Keeps.nodeBorrowed` keeps
+the borrowed tree through the copy, and `treePair_args` builds `addRoot`'s premises.  Both proofs
+compose the region clauses with `Heap.Keeps.trans`, since the second call consumes only the copy's
+blocks.  The new LTG entry `tree-copy` covers the hints `tree copy`, `copy`, `tree copy function`,
+and `depth guard`.
+
+The full build passed with no `sorry`, and `treeMoves_bytes` depends on `propext`,
+`Classical.choice`, and `Quot.sound` only.  The other 21 modules emit the same bytes as before.
+The module tests passed 9,281 comparisons, 24 of them for each new function, and 77 count cases,
+which include 6 allocations and no frees for each new function on a three-node tree.  The 20
+depth cases include chains of 999 and 1,000 nodes for both, and `chunks.py` passed 360 cases.
+Item 11 is complete.
