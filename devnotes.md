@@ -24013,3 +24013,28 @@ constructors a GPU can run.  b1 reuses every array lemma, and a kernel can read 
 `array<u32>` at even indices, so the host can upload the bytes unchanged.  The encoder gains the
 missing binary32 instructions, and ProofKit gains `F32Compare` and `F32Sign`, translated from the
 binary64 files as the binary64 chain was translated from the binary32 one.
+
+### Review of the Iteration 23 plan
+
+One reviewer prototyped a2 as a full copy of `Project/IR/Expr.lean` and an `F32Bits` translation,
+and checked the facts.  I reran its files: `A2Test.lean` compiles with deprecation warnings only
+and prints `[4, 5]` and `[]`, `F32BitsProto.lean` proves `toBits_add` with `propext`,
+`Classical.choice`, and `Quot.sound`, and `decide +kernel` proves `(0.1 : Float32).toBits =
+0x3dcccccd` and rejects `0x3dccccce`.
+
+| Finding | Response |
+|---------|----------|
+| a2 leaves the three binary64 proofs it tried (`piecewise`, `axpy`, and `dotBody`) unchanged, so my reason against it was unsupported | Reason replaced |
+| Under a2 a pattern that omits the format matches binary64 only: the copied `readLocals` returns `[]` for a binary32 `ofBits (read 4 (get 5))`.  Binders in `induction ... with` shift, `irToExpr` changes arity, and binary32 constants sit in 64-bit words | a1 |
+| ProofKit states the binary32 results for the `LeanExe.Float32` wrappers only.  `F32Bits` translates `F64Bits`, and the prototype compiled on the first attempt | `F32Bits` added to the plan |
+| A plain encoder instruction needs one line in each of six places and two review rows, and `f32.const` about 35 lines | Instructions added when a program needs them |
+| b1 works on the Wasm path.  On a GPU it doubles transfer, device memory, and reads, an output kernel must write the zero halves, and WebGPU's 256-byte offset alignment makes the host copy the bytes in any case | b1 now, the kernel layout decided in Iteration 24 |
+| The plan omitted the Pipeline instances (`Scalar Float32`, `Represent (Array Float32)`), the compiler's `Float32` recognition, operators, literals, reads, loops, builds, `irToExpr`, and `readLocals`, the host's `f32` kinds, and test helpers | Added |
+| `axpy32` needs no encoder change, `matVec32` needs `f32.const` only, and comparisons, `abs`, and `neg` can follow | The order below |
+
+- [ ] 23a: `F32Bits`, the `f32` type and its arithmetic constructors, `Scalar Float32`, the
+  compiler's `Float32` scalars, the host's `f32` kinds, and `axpy32` with its theorem.
+- [ ] 23b: `f32.const`, `Array Float32` as 8-byte words, `Float32` reads, loops, and builds, and
+  `matVec32` with its theorem.
+- [ ] 23c: `F32Compare`, `F32Sign`, the binary32 comparisons, `abs`, and `neg` in the encoder, and
+  conditionals, `min`, and `max` on `Float32`.
