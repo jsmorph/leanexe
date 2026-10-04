@@ -24213,3 +24213,26 @@ compiler does not use it, since Lean's `-x` compiles to `-0.0 - x`.
 The increments become: 24a, the syntax tree, printer, parser, round trip, WGSL and dispatch
 semantics, and one elementwise kernel proved directly; 24b, the translation of straight-line IR
 with simulation lemmas and a compiled `axpyArray32`; 24c, the loop rule, `mul64`, and `matVec32`.
+
+### Decisions on the WGSL kernel design
+
+On 2026-10-04 the user decided, one question at a time: D1 (i), a syntax tree, a printer, a
+parser, and `parse (print k) = k` in the restricted format; D2 (a), `u64` arithmetic as pairs of
+`u32`; and the D5 device model as stated.  Under that model a kernel theorem assumes that binary32
+operations compute Talos's `IEEE32` results (round to nearest even, subnormals and zero signs
+kept, no reordering or fusion, every NaN result `0x7fc00000`), that a dispatch runs each
+invocation on the initial buffers and the output takes each invocation's writes, and that the host
+writes the output's length word, the dispatch covers the count, and no dynamic error occurs.  D3
+(a) and D4 (a) follow the recommendation.
+
+Reads stay expressions: element `k` of binding `b` is
+`select(0u, b[min(2u + 2u * k.x, arrayLength(&b) - 1u)], lt64(k, len) && k.x < (arrayLength(&b) - 2u) / 2u)`,
+whose clamped index keeps the access in bounds, so evaluating both arguments of `select` cannot
+cause a dynamic error.  The translation binds each IR node to a `let`, so expressions stay shallow
+and each `let` matches one step of `Expr.eval`.
+
+- [ ] 24a: the WGSL syntax tree, printer, lexer, parser, and round trip; the expression,
+  statement, and dispatch semantics; and one elementwise kernel proved directly.
+- [ ] 24b: the translation of straight-line IR with simulation lemmas, and `axpyArray32` compiled
+  to Wasm and WGSL with both theorems.
+- [ ] 24c: the loop rule, `mul64`, and `matVec32` as a kernel.
