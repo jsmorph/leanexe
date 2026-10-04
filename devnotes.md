@@ -24148,3 +24148,40 @@ unless the device fuses, `a / b`, `sqrt(a)`, a subnormal times 1.0, `a * b`, and
 drivers matched every case: neither fused, both rounded division and square root correctly, and
 both kept subnormals.  This is evidence for these cases on these two drivers and says nothing
 about physical GPUs.
+
+### Iteration 24: WGSL kernels, analysis
+
+A kernel is the per-element part of `LeanExe.build n f`: the compiler already emits
+`Stmt.buildWith dst limit index count body element`, whose `body` and `element` compute element
+`index` from the parameters and the input arrays without allocating or calling, as
+`matVec32_implements` shows.  One GPU invocation per index runs `body` and `element` and writes
+the element.  The kernel subset of the IR is then assignments, sequences, conditionals, counting
+loops, `u64` arithmetic and comparisons, binary32 arithmetic, comparisons, and conditionals,
+`constF32`, reads `ofBits32 (read a i)`, and `toBits32` for the element.
+
+| Question | Options | Effect |
+|----------|---------|--------|
+| D1. What gives the WGSL text its meaning | (i) A Lean syntax tree for the subset, a printer, a parser, and `parse (print k) = k`, with the parser's grammar compared with the WGSL specification in a review record, as for the Wasm encoder | The printed file means the tree's semantics, and the parser and the review join what the theorem assumes |
+| | (ii) The printer alone, reviewed | Less code, and the printer joins what the theorem assumes |
+| D2. How `u64` index arithmetic runs on a GPU, which has no 64-bit integers | (a) As pairs of `u32` with verified add, multiply, and compare | Exact IR semantics, about 5 to 20 `u32` operations per `u64` operation, and no new premise |
+| | (b) As `u32` | Fast, and each kernel needs a premise or proof that every index value is below 2^32, since `r * cols + c` wraps at 2^32 on the GPU where the IR returns 0 for an out-of-range read |
+| D3. How a kernel is proved | (a) A simulation lemma per construct: a WGSL invocation running the translation of IR code computes what `Stmt.run` and `Expr.eval` compute, so a kernel reuses its Wasm proof's per-element facts | The WGSL backend is verified rule by rule, once |
+| | (b) A proof per kernel against the Lean function | No simulation layer, and every kernel repeats a loop proof |
+| D4. Buffer layout | (a) A buffer holds an array's Wasm bytes: the length word, then one 8-byte word per element, the bits in the low half | Reads match `Expr.read` with its bounds check, and the host copies bytes; twice the transfer and reads of packed binary32 |
+| | (b) Packed binary32 | Half the traffic, and the host converts, which Iteration 25 must prove |
+| D5. Dispatch semantics | Each invocation runs on the initial buffers, and the final output takes each invocation's writes, given a proof that invocation `i` writes only element `i` and reads only input buffers | A definition the theorem assumes, which WGSL's memory model supports for programs without data races |
+
+Recommendation: D1 (i), D2 (a), D3 (a), D4 (a), and the D5 model.  D1 (i) matches the encoder
+and the user's view that printing needs verified serialization and parsing, and fully
+parenthesized expressions keep the grammar small.  D2 (a) keeps the IR's semantics exactly, and a
+`u32` translation with proved ranges can follow as an optimization.  D3 (a) follows the plan of
+verifying the compiler rule by rule.  D4 (a) makes the kernel's reads the IR's reads and the
+host's transfers byte copies, at twice the memory traffic, which a packed layout can remove later.
+Scalar parameters go in one more buffer of 64-bit words.
+
+Increments: 24a, an elementwise kernel without loops (`axpyArray32 a x y`, element
+`a * x[i] + y[i]`), through syntax, printer, parser, semantics, translation, theorem, and a run on
+SwiftShader and llvmpipe; 24b, counting loops and `matVec32`.
+
+Decisions D1, D2, and D5 change what a kernel theorem states or assumes, so they go to the user
+one at a time after the review.
