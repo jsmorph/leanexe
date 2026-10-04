@@ -65,6 +65,11 @@ structure Words (s : Shape32) (p : UInt64) (st : Store) : Prop where
   scoreLen : st .scoreLen = some (.word (s.nh * 1024))
   nf : st .nf = some (.float (64 * s.nh).toFloat32)
 
+/-- The word constants of a step, which every step writes first. -/
+def Buf.isWord : Buf → Bool
+  | .pos | .base | .top | .row | .width | .hidden | .heads | .scoreLen | .rowCount | .nf => true
+  | _ => false
+
 /-- The activations of a step, which every step overwrites. -/
 def Buf.scratch : Buf → Bool
   | .x | .h1 | .q | .k | .v | .sc | .mx | .sm | .pw | .o | .a | .r | .h2 | .m1 | .g | .m2
@@ -78,6 +83,15 @@ theorem Buf.ne_of_scratch {c : Buf} (h : c.scratch = false) :
     c ≠ .x ∧ c ≠ .h1 ∧ c ≠ .q ∧ c ≠ .k ∧ c ≠ .v ∧ c ≠ .sc ∧ c ≠ .mx ∧ c ≠ .sm ∧ c ≠ .pw ∧
       c ≠ .o ∧ c ≠ .a ∧ c ≠ .r ∧ c ≠ .h2 ∧ c ≠ .m1 ∧ c ≠ .g ∧ c ≠ .m2 := by
   cases c <;> simp_all [Buf.scratch]
+
+theorem Words.set {s : Shape32} {p : UInt64} {st : Store} (h : Words s p st) {b : Buf}
+    (hb : b.isWord = false) (v : Val) : Words s p (st.set b v) := by
+  have ne : ∀ c : Buf, c.isWord = true → c ≠ b := fun c hc e => by subst e; simp [hc] at hb
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩ := h
+  exact ⟨by rw [Store.set_ne (ne _ rfl)]; exact h1, by rw [Store.set_ne (ne _ rfl)]; exact h2,
+    by rw [Store.set_ne (ne _ rfl)]; exact h3, by rw [Store.set_ne (ne _ rfl)]; exact h4,
+    by rw [Store.set_ne (ne _ rfl)]; exact h5, by rw [Store.set_ne (ne _ rfl)]; exact h6,
+    by rw [Store.set_ne (ne _ rfl)]; exact h7, by rw [Store.set_ne (ne _ rfl)]; exact h8⟩
 
 theorem Bounds.d {s : Shape32} {p : UInt64} (h : Bounds s p) :
     (64 * s.nh).toNat = 64 * s.nh.toNat := by
@@ -330,5 +344,339 @@ theorem layer_exec (files : String → Option Val) {s : Shape32} {p : UInt64} (l
       Store.set_ne nr, Store.set_ne na, Store.set_ne no, Store.set_ne npw, Store.set_ne nsm,
       Store.set_ne nmx, Store.set_ne nsc, Store.set_ne hv', Store.set_ne hk', Store.set_ne nv,
       Store.set_ne nk, Store.set_ne nq, Store.set_ne nh1]
+
+theorem layers32_cons (nh f p : UInt64) (w : Layer32) (ws : List Layer32) (kc vc : Array Float32)
+    (cs : List (Array Float32 × Array Float32)) (x : Array Float32) :
+    layers32 nh f p (w :: ws) ((kc, vc) :: cs) x =
+      ((layers32 nh f p ws cs (layerStep32 nh f p w x kc vc).1).1,
+        ((layerStep32 nh f p w x kc vc).2.1, (layerStep32 nh f p w x kc vc).2.2) ::
+          (layers32 nh f p ws cs (layerStep32 nh f p w x kc vc).1).2) := rfl
+
+/-- The layers `l0` to `l0 + ws.length - 1` at position `p`. -/
+theorem layers_exec (files : String → Option Val) {s : Shape32} {p : UInt64} (hB : Bounds s p) :
+    ∀ (ws : List Layer32) (cs : List (Array Float32 × Array Float32)) (l0 : Nat)
+      (x : Array Float32) (st : Store) (is : List Item),
+      ws.length = cs.length → Words s p st → st .x = some (.arr x) →
+      x.size = 64 * s.nh.toNat →
+      (∀ i < ws.length, ∀ f : Field, st (.layer (l0 + i) f) = some (.arr (f.get ws[i]!))) →
+      (∀ w ∈ ws, ∀ f : Field, Small (f.get w)) →
+      (∀ i < cs.length, st (.kc (l0 + i) (p % 2).toNat) = some (.arr cs[i]!.1) ∧
+        st (.vc (l0 + i) (p % 2).toNat) = some (.arr cs[i]!.2)) →
+      (∀ c ∈ cs, Small c.1 ∧ Small c.2) →
+      ∃ st', Item.execAll files st ((List.range' l0 ws.length).flatMap (layerItems s p) ++ is) =
+          Item.execAll files st' is ∧
+        st' .x = some (.arr (layers32 s.nh s.f p ws cs x).1) ∧
+        (layers32 s.nh s.f p ws cs x).1.size = 64 * s.nh.toNat ∧
+        (layers32 s.nh s.f p ws cs x).2.length = cs.length ∧
+        (∀ i < cs.length,
+          st' (.kc (l0 + i) ((p + 1) % 2).toNat) =
+            some (.arr (layers32 s.nh s.f p ws cs x).2[i]!.1) ∧
+          st' (.vc (l0 + i) ((p + 1) % 2).toNat) =
+            some (.arr (layers32 s.nh s.f p ws cs x).2[i]!.2)) ∧
+        (∀ c ∈ (layers32 s.nh s.f p ws cs x).2, Small c.1 ∧ Small c.2) ∧
+        ∀ c, c.scratch = false →
+          (∀ i < cs.length, c ≠ .kc (l0 + i) ((p + 1) % 2).toNat ∧
+            c ≠ .vc (l0 + i) ((p + 1) % 2).toNat) → st' c = st c
+  | [], cs, l0, x, st, is, hlen, _, hx, hxs, _, _, _, _ => by
+    cases cs with
+    | cons _ _ => simp at hlen
+    | nil =>
+      refine ⟨st, by simp, hx, hxs, rfl, by simp, by simp [layers32], fun _ _ _ => rfl⟩
+  | w :: ws, cs, l0, x, st, is, hlen, hW, hx, hxs, hw, hws, hc, hcs => by
+    cases cs with
+    | nil => simp at hlen
+    | cons c cs =>
+      obtain ⟨kc, vc⟩ := c
+      have hlen' : ws.length = cs.length := by simpa using hlen
+      obtain ⟨hk0, hv0⟩ := hc 0 (by simp)
+      simp only [Nat.add_zero, List.getElem!_cons_zero] at hk0 hv0
+      obtain ⟨hks, hvs⟩ := hcs (kc, vc) (by simp)
+      obtain ⟨st1, he1, hx1, hxs1, hk1, hv1, hks1, hvs1, hf1⟩ :=
+        layer_exec files l0 w x kc vc st
+          ((List.range' (l0 + 1) ws.length).flatMap (layerItems s p) ++ is) hB hW hx hxs
+          (by simpa using hw 0 (by simp)) (hws w (by simp)) hk0 hv0 hks hvs
+      have hpar : (p % 2).toNat ≠ ((p + 1) % 2).toNat := by
+        rw [UInt64.toNat_mod, UInt64.toNat_mod, hB.p1]
+        simp only [UInt64.reduceToNat]
+        omega
+      have hW1 : Words s p st1 := by
+        obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩ := hW
+        exact ⟨by rw [hf1 _ rfl (by simp) (by simp)]; exact h1,
+          by rw [hf1 _ rfl (by simp) (by simp)]; exact h2,
+          by rw [hf1 _ rfl (by simp) (by simp)]; exact h3,
+          by rw [hf1 _ rfl (by simp) (by simp)]; exact h4,
+          by rw [hf1 _ rfl (by simp) (by simp)]; exact h5,
+          by rw [hf1 _ rfl (by simp) (by simp)]; exact h6,
+          by rw [hf1 _ rfl (by simp) (by simp)]; exact h7,
+          by rw [hf1 _ rfl (by simp) (by simp)]; exact h8⟩
+      obtain ⟨st2, he2, hx2, hxs2, hlen2, hc2, hcs2, hf2⟩ :=
+        layers_exec files hB ws cs (l0 + 1) _ st1 is hlen' hW1 hx1 hxs1
+          (fun i hi f => by
+            rw [hf1 _ rfl (by simp) (by simp), show l0 + 1 + i = l0 + (i + 1) by omega]
+            simpa using hw (i + 1) (by simp; omega) f)
+          (fun w' hw' => hws w' (by simp [hw']))
+          (fun i hi => by
+            rw [hf1 _ rfl (by simp; omega) (by simp),
+              hf1 _ rfl (by simp) (by simp; omega),
+              show l0 + 1 + i = l0 + (i + 1) by omega]
+            simpa using hc (i + 1) (by simp; omega))
+          (fun c hc' => hcs c (by simp [hc']))
+      refine ⟨st2, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      · simp only [List.length_cons, List.range'_succ, List.flatMap_cons, List.append_assoc]
+        rw [he1, he2]
+      · rw [layers32_cons]
+        exact hx2
+      · rw [layers32_cons]
+        exact hxs2
+      · rw [layers32_cons]
+        simp [hlen2]
+      · intro i hi
+        rw [layers32_cons]
+        cases i with
+        | zero =>
+          simp only [Nat.add_zero, List.getElem!_cons_zero]
+          exact ⟨by rw [hf2 _ rfl (fun j hj => by simp; omega)]; exact hk1,
+            by rw [hf2 _ rfl (fun j hj => by simp; omega)]; exact hv1⟩
+        | succ i =>
+          simp only [List.getElem!_cons_succ, show l0 + (i + 1) = l0 + 1 + i by omega]
+          exact hc2 i (by simpa using hi)
+      · rw [layers32_cons]
+        intro c hc'
+        simp only [List.mem_cons] at hc'
+        rcases hc' with rfl | hc'
+        · exact ⟨hks1, hvs1⟩
+        · exact hcs2 c hc'
+      · intro c hc' hne
+        rw [hf2 c hc' (fun i hi => by
+          have := hne (i + 1) (by simp; omega)
+          rwa [show l0 + (i + 1) = l0 + 1 + i by omega] at this)]
+        exact hf1 c hc' (by simpa using (hne 0 (by simp)).1) (by simpa using (hne 0 (by simp)).2)
+
+theorem Item.execAll_word (files : String → Option Val) (st : Store) (b : Buf) (v : UInt64)
+    (is : List Item) :
+    Item.execAll files st (.word b v :: is) = Item.execAll files (st.set b (.word v)) is := rfl
+
+/-- The scores of chunks `c0` to `c0 + n - 1` of the hidden row `h`. -/
+theorem logits_exec (files : String → Option Val) (s : Shape32) (W : Weights32)
+    (h : Array Float32) (hh : h.size < 536870912) :
+    ∀ (n c0 : Nat) (st : Store), st .hf = some (.arr h) →
+      st .width = some (.word (64 * s.nh)) →
+      (∀ c, c0 ≤ c → c < c0 + n → st (.wte c) = some (.arr W.wte[c]!) ∧
+        W.wte[c]!.size < 536870912 ∧ s.rows[c]!.toNat < 536870912) →
+      ∃ st', Item.execAll files st
+          ((List.range' c0 n).flatMap fun c => logitsItems s c s.rows[c]!) = some st' ∧
+        (∀ c, c0 ≤ c → c < c0 + n →
+          st' (.z c) = some (.arr (logits32 h W.wte[c]! s.rows[c]! (64 * s.nh)))) ∧
+        ∀ b, (∀ c, c0 ≤ c → c < c0 + n → b ≠ .z c) → b ≠ .rowCount → st' b = st b
+  | 0, c0, st, _, _, _ => ⟨st, by simp [Item.execAll], fun c h1 h2 => by omega, fun _ _ _ => rfl⟩
+  | n + 1, c0, st, hh', hw, hc => by
+    obtain ⟨hwte, hs, hr⟩ := hc c0 (le_refl _) (by omega)
+    let z := logits32 h W.wte[c0]! s.rows[c0]! (64 * s.nh)
+    let st1 := (st.set .rowCount (.word s.rows[c0]!)).set (.z c0) (.arr z)
+    obtain ⟨st', he', hz, hf⟩ := logits_exec files s W h hh n (c0 + 1) st1
+      (by simp [st1, Store.set, hh']) (by simp [st1, Store.set, hw])
+      (fun c h1 h2 => by
+        obtain ⟨a, b, c'⟩ := hc c (by omega) (by omega)
+        exact ⟨by simpa [st1, Store.set] using a, b, c'⟩)
+    refine ⟨st', ?_, ?_, ?_⟩
+    · simp only [List.range'_succ, List.flatMap_cons, logitsItems, List.cons_append,
+        List.nil_append]
+      rw [Item.execAll_word, Item.execAll_call _ z (by simp)
+        (by
+          simp [Store.set, hh', hw, hwte, KernelName.apply, hh]
+          exact ⟨⟨by simpa using hs, by simpa using hr⟩, by simp [z]⟩)
+        (by simp [z, logits32_size])]
+      exact he'
+    · intro c h1 h2
+      by_cases hc0 : c = c0
+      · subst hc0
+        rw [hf _ (fun c' h1 _ => by simp; omega) (by simp)]
+        simp [st1, Store.set, z]
+      · exact hz c (by omega) (by omega)
+    · intro b hb hr'
+      rw [hf b (fun c h1 h2 => hb c (by omega) (by omega)) hr']
+      simp [st1, Store.set, hb c0 (le_refl _) (by omega), hr']
+
+/-- The sizes a step needs: the shape's layers and chunks, and every weight and cache below
+2^29 elements. -/
+structure Fits (s : Shape32) (W : Weights32) (caches : List (Array Float32 × Array Float32)) :
+    Prop where
+  layers : W.layers.length = s.layers
+  cacheCount : caches.length = s.layers
+  chunks : W.wte.length = s.rows.length
+  wte : ∀ c < W.wte.length, Small W.wte[c]!
+  rows : ∀ c < s.rows.length, SmallWord s.rows[c]!
+  wpe : Small W.wpe
+  gf : Small W.gf
+  bf : Small W.bf
+  weights : ∀ w ∈ W.layers, ∀ f : Field, Small (f.get w)
+  small : ∀ c ∈ caches, Small c.1 ∧ Small c.2
+
+/-- The store before the step of position `p`: the weights, and the caches of each layer at the
+parity of `p`. -/
+structure Holds (W : Weights32) (p : UInt64) (caches : List (Array Float32 × Array Float32))
+    (st : Store) : Prop where
+  wte : ∀ c < W.wte.length, st (.wte c) = some (.arr W.wte[c]!)
+  wpe : st .wpe = some (.arr W.wpe)
+  gf : st .gf = some (.arr W.gf)
+  bf : st .bf = some (.arr W.bf)
+  layer : ∀ l < W.layers.length, ∀ f : Field,
+    st (.layer l f) = some (.arr (f.get W.layers[l]!))
+  caches : ∀ l < caches.length, st (.kc l (p % 2).toNat) = some (.arr caches[l]!.1) ∧
+    st (.vc l (p % 2).toNat) = some (.arr caches[l]!.2)
+
+theorem step32_eq (s : Shape32) (W : Weights32) (token p : UInt64)
+    (caches : List (Array Float32 × Array Float32)) :
+    step32 s W token p caches =
+      let x := embed32 (W.wte.getD (token / s.chunk).toNat #[]) W.wpe (token % s.chunk) p
+        (64 * s.nh)
+      let y := layers32 s.nh s.f p W.layers caches x
+      let h := layerNorm32 y.1 W.gf W.bf (64 * s.nh) (64 * s.nh).toFloat32
+      (y.2, (W.wte.zip s.rows).map fun (wte, rows) => logits32 h wte rows (64 * s.nh)) := rfl
+
+/-- The step program of `token` at position `p` computes `step32`: it ends in a store holding
+the weights, each layer's caches through `p` at the parity of `p + 1`, and the scores of chunk
+`c` in `z c`. -/
+theorem step_exec (files : String → Option Val) (s : Shape32) (W : Weights32)
+    (token p : UInt64) (caches : List (Array Float32 × Array Float32)) (st : Store)
+    (hB : Bounds s p) (hF : Fits s W caches) (hT : (token / s.chunk).toNat < s.rows.length)
+    (hH : Holds W p caches st) :
+    ∃ st', Item.execAll files st (stepItems s token p) = some st' ∧
+      Holds W (p + 1) (step32 s W token p caches).1 st' ∧
+      Fits s W (step32 s W token p caches).1 ∧
+      (step32 s W token p caches).2.length = s.rows.length ∧
+      ∀ c < s.rows.length, st' (.z c) = some (.arr (step32 s W token p caches).2[c]!) := by
+  have hd := hB.d
+  have hnh := hB.nh
+  have hD29 : (64 * s.nh).toNat < 536870912 := by omega
+  have hc0 : (token / s.chunk).toNat < W.wte.length := by rw [hF.chunks]; exact hT
+  let st9 := st |>.set .pos (.word p) |>.set .base (.word (p * (64 * s.nh))) |>.set .top
+    (.word ((p + 1) * (64 * s.nh))) |>.set .row (.word (token % s.chunk))
+    |>.set .width (.word (64 * s.nh)) |>.set .hidden (.word s.f) |>.set .heads (.word s.nh)
+    |>.set .scoreLen (.word (s.nh * 1024)) |>.set .nf (.float (64 * s.nh).toFloat32)
+  have h9 : ∀ b, b.isWord = false → st9 b = st b := by
+    intro b hb
+    cases b <;> simp_all [st9, Store.set, Buf.isWord]
+  have hw9 : ∀ rest, Item.execAll files st (wordItems s token p ++ rest) =
+      Item.execAll files st9 rest := fun _ => rfl
+  have hW9 : Words s p st9 := ⟨by simp [st9, Store.set], by simp [st9, Store.set],
+    by simp [st9, Store.set], by simp [st9, Store.set], by simp [st9, Store.set],
+    by simp [st9, Store.set], by simp [st9, Store.set], by simp [st9, Store.set]⟩
+  let x0 := embed32 W.wte[(token / s.chunk).toNat]! W.wpe (token % s.chunk) p (64 * s.nh)
+  let st10 := st9.set .x (.arr x0)
+  have hW10 : Words s p st10 := hW9.set rfl _
+  have swte0 := hF.wte _ hc0
+  have swpe := hF.wpe
+  simp only [Small] at swte0 swpe
+  obtain ⟨st11, he11, hx11, hxs11, hlen11, hc11, hcs11, hf11⟩ :=
+    layers_exec files hB W.layers caches 0 x0 st10
+      ([.call .layerNorm (64 * s.nh).toNat .hf [.x, .gf, .bf, .width, .nf]] ++
+        (List.range' 0 s.rows.length).flatMap fun c => logitsItems s c s.rows[c]!)
+      (by rw [hF.layers, hF.cacheCount]) hW10 (by simp [st10, Store.set])
+      (by simp only [x0, embed32_size, hd])
+      (fun i hi f => by
+        rw [Nat.zero_add]
+        dsimp only [st10]
+        rw [Store.set_ne (by simp), h9 _ rfl]
+        exact hH.layer i hi f)
+      hF.weights
+      (fun i hi => by
+        rw [Nat.zero_add]
+        dsimp only [st10]
+        rw [Store.set_ne (by simp), h9 _ rfl, Store.set_ne (by simp), h9 _ rfl]
+        exact hH.caches i hi)
+      hF.small
+  let y := (layers32 s.nh s.f p W.layers caches x0).1
+  let hv := layerNorm32 y W.gf W.bf (64 * s.nh) (64 * s.nh).toFloat32
+  have hfr : ∀ b, b.scratch = false → b.isWord = false →
+      (∀ l, b ≠ .kc l ((p + 1) % 2).toNat ∧ b ≠ .vc l ((p + 1) % 2).toNat) → st11 b = st b := by
+    intro b hs hw hkv
+    rw [hf11 b hs (fun i _ => hkv (0 + i))]
+    dsimp only [st10]
+    rw [Store.set_ne (fun e => by subst e; simp [Buf.scratch] at hs), h9 b hw]
+  have hW11 : Words s p st11 := by
+    obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8⟩ := hW10
+    exact ⟨by rw [hf11 _ rfl (by simp)]; exact h1, by rw [hf11 _ rfl (by simp)]; exact h2,
+      by rw [hf11 _ rfl (by simp)]; exact h3, by rw [hf11 _ rfl (by simp)]; exact h4,
+      by rw [hf11 _ rfl (by simp)]; exact h5, by rw [hf11 _ rfl (by simp)]; exact h6,
+      by rw [hf11 _ rfl (by simp)]; exact h7, by rw [hf11 _ rfl (by simp)]; exact h8⟩
+  have sgf := hF.gf
+  have sbf := hF.bf
+  simp only [Small] at sgf sbf
+  have hy : (layers32 s.nh s.f p W.layers caches x0).1.size < 536870912 := by omega
+  let st12 := st11.set .hf (.arr hv)
+  have hvs : hv.size < 536870912 := by simp only [hv, layerNorm32_size]; omega
+  obtain ⟨st', he', hz', hf'⟩ := logits_exec files s W hv hvs s.rows.length 0 st12
+    (by simp [st12, Store.set]) (by simp [st12, Store.set, hW11.width])
+    (fun c _ hc => by
+      have hcw : c < W.wte.length := by rw [hF.chunks]; omega
+      refine ⟨?_, by simpa [Small] using hF.wte c hcw, by simpa [SmallWord] using hF.rows c (by omega)⟩
+      dsimp only [st12]
+      rw [Store.set_ne (by simp), hfr _ rfl rfl (fun l => by simp)]
+      exact hH.wte c hcw)
+  have hstep : step32 s W token p caches =
+      ((layers32 s.nh s.f p W.layers caches x0).2,
+        (W.wte.zip s.rows).map fun (wte, rows) => logits32 hv wte rows (64 * s.nh)) := by
+    rw [step32_eq]
+    simp only [x0, hv, y, List.getD_eq_getElem?_getD, List.getElem!_eq_getElem?_getD,
+      List.getElem?_eq_getElem hc0, Option.getD_some]
+  refine ⟨st', ?_, ?_, ?_, ?_, ?_⟩
+  · simp only [stepItems, List.append_assoc, List.range_eq_range', ← hF.layers]
+    rw [hw9, List.singleton_append]
+    rw [Item.execAll_call _ x0 (by simp)
+      (by
+        simp [-UInt64.toNat_div, st9, Store.set, hH.wte _ hc0, hH.wpe, KernelName.apply]
+        exact ⟨⟨by simpa using swte0, by simpa using swpe, by omega⟩, by simp [x0]⟩)
+      (by simp only [x0, embed32_size])]
+    rw [he11, List.singleton_append, Item.execAll_call _ hv (by simp)
+      (by
+        simp [hx11, hfr .gf rfl rfl (fun l => by simp), hfr .bf rfl rfl (fun l => by simp),
+          hH.gf, hH.bf, hW11.width, hW11.nf, KernelName.apply, hy]
+        exact ⟨⟨by simpa using sgf, by simpa using sbf, by omega⟩, rfl⟩)
+      (by simp only [hv, layerNorm32_size])]
+    exact he'
+  · rw [hstep]
+    refine ⟨fun c hc => ?_, ?_, ?_, ?_, ?_, fun l hl => ?_⟩
+    · rw [hf' _ (fun _ _ _ => by simp) (by simp)]
+      dsimp only [st12]
+      rw [Store.set_ne (by simp), hfr _ rfl rfl (fun l => by simp)]
+      exact hH.wte c hc
+    · rw [hf' _ (fun _ _ _ => by simp) (by simp)]
+      dsimp only [st12]
+      rw [Store.set_ne (by simp), hfr _ rfl rfl (fun l => by simp)]
+      exact hH.wpe
+    · rw [hf' _ (fun _ _ _ => by simp) (by simp)]
+      dsimp only [st12]
+      rw [Store.set_ne (by simp), hfr _ rfl rfl (fun l => by simp)]
+      exact hH.gf
+    · rw [hf' _ (fun _ _ _ => by simp) (by simp)]
+      dsimp only [st12]
+      rw [Store.set_ne (by simp), hfr _ rfl rfl (fun l => by simp)]
+      exact hH.bf
+    · intro l hl f
+      rw [hf' _ (fun _ _ _ => by simp) (by simp)]
+      dsimp only [st12]
+      rw [Store.set_ne (by simp), hfr _ rfl rfl (fun l => by simp)]
+      exact hH.layer l hl f
+    · have hl' : l < caches.length := by rw [← hlen11]; exact hl
+      obtain ⟨hk, hv'⟩ := hc11 l hl'
+      rw [Nat.zero_add] at hk hv'
+      refine ⟨?_, ?_⟩
+      · rw [hf' _ (fun _ _ _ => by simp) (by simp)]
+        dsimp only [st12]
+        rw [Store.set_ne (by simp)]
+        exact hk
+      · rw [hf' _ (fun _ _ _ => by simp) (by simp)]
+        dsimp only [st12]
+        rw [Store.set_ne (by simp)]
+        exact hv'
+  · rw [hstep]
+    exact { hF with cacheCount := by rw [hlen11, hF.cacheCount], small := hcs11 }
+  · rw [hstep]
+    simp [hF.chunks]
+  · intro c hc
+    rw [hz' c (by omega) (by omega), hstep]
+    have hcw : c < W.wte.length := by rw [hF.chunks]; exact hc
+    simp [hcw, hc]
 
 end Project.Gpt32

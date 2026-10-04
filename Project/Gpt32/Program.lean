@@ -42,9 +42,7 @@ inductive Buf where
   | layer (l : Nat) (field : Field)
   | kc (l b : Nat)
   | vc (l b : Nat)
-  | pos | base | top | row | width | hidden | heads | scoreLen
-  | rows (c : Nat)
-  | nf
+  | pos | base | top | row | width | hidden | heads | scoreLen | rowCount | nf
   deriving DecidableEq, Repr
 
 def Buf.name : Buf → String
@@ -58,8 +56,7 @@ def Buf.name : Buf → String
   | .kc l b => s!"kc{l}_{b}"
   | .vc l b => s!"vc{l}_{b}"
   | .pos => "pos" | .base => "base" | .top => "top" | .row => "row" | .width => "width"
-  | .hidden => "hidden" | .heads => "heads" | .scoreLen => "scorelen"
-  | .rows c => s!"rows{c}"
+  | .hidden => "hidden" | .heads => "heads" | .scoreLen => "scorelen" | .rowCount => "rowcount"
   | .nf => "nf"
 
 inductive KernelName where
@@ -115,8 +112,11 @@ def wordItems (s : Shape32) (token p : UInt64) : List Item :=
   let d := 64 * s.nh
   [.word .pos p, .word .base (p * d), .word .top ((p + 1) * d), .word .row (token % s.chunk),
    .word .width d, .word .hidden s.f, .word .heads s.nh, .word .scoreLen (s.nh * 1024),
-   .float .nf d.toFloat32] ++
-  (s.rows.zipIdx.map fun (n, c) => .word (.rows c) n)
+   .float .nf d.toFloat32]
+
+/-- The scores of chunk `c`, which has `n` rows. -/
+def logitsItems (s : Shape32) (c : Nat) (n : UInt64) : List Item :=
+  [.word .rowCount n, .call .logits n.toNat (.z c) [.hf, .wte c, .rowCount, .width]]
 
 /-- Layer `l` at position `p`. -/
 def layerItems (s : Shape32) (p : UInt64) (l : Nat) : List Item :=
@@ -151,7 +151,7 @@ def stepItems (s : Shape32) (token p : UInt64) : List Item :=
   [.call .embed d .x [.wte (token / s.chunk).toNat, .wpe, .row, .pos, .width]] ++
   (List.range s.layers).flatMap (layerItems s p) ++
   [.call .layerNorm d .hf [.x, .gf, .bf, .width, .nf]] ++
-  (s.rows.zipIdx.map fun (n, c) => .call .logits n.toNat (.z c) [.hf, .wte c, .rows c, .width])
+  (List.range s.rows.length).flatMap fun c => logitsItems s c s.rows[c]!
 
 /-- The weights from the files of `dir`, as `tests/gpt32/generate.py` writes them, and the empty
 caches of position 0. -/
