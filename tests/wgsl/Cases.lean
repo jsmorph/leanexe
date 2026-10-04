@@ -32,6 +32,22 @@ def arbitrary (i : Nat) : Float32 :=
 /-- A binary32 scalar parameter's buffer: its bits and 0. -/
 def scalarBuffer (a : Float32) : String := s!"u32:{a.toBits},0"
 
+/-- Moderate values in `[-2, 2]`, with a special value at every 37th place. -/
+def moderate (i : Nat) : Float32 :=
+  if i % 37 = 36 then specials[i / 37 % specials.length]!
+  else (((i * 2654435761 + 7) % 2001).toFloat / 500.0 - 2.0).toFloat32
+
+def floats (n seed : Nat) : List Float32 := (List.range n).map fun i => moderate (i + 131 * seed)
+
+/-- A case line for kernel `name` with `n` output elements. -/
+def caseLine (name : String) (n : Nat) (extra : Nat) (inputs : List String) (r : Array Float32) :
+    String :=
+  let groups := max ((n + 63) / 64 + extra) 1
+  let initial := n.toUInt64 :: (List.replicate n 0x7fc000017fc00001)
+  s!"{name}|{groups}|u64:{words initial}|{" ".intercalate inputs}|{words (arrayWords32 r.toList)}"
+
+def arr (x : List Float32) : String := s!"u64:{words (arrayWords64 x)}"
+
 def main : IO Unit := do
   let sizes := [0, 1, 2, 15, 63, 64, 65, 200]
   for n in sizes do
@@ -81,4 +97,55 @@ def main : IO Unit := do
     let initial := n.toUInt64 :: (List.replicate n 0x7fc000017fc00001)
     let r := (expArray32 x.toArray).toList
     IO.println s!"exp|{groups}|u64:{words initial}|u64:{words (arrayWords64 x)}|{words (arrayWords32 r)}"
+  -- The GPT-2 kernels on small configurations.
+  for seed in [0, 1, 2] do
+    let d := [8, 16, 64][seed]!
+    let rows := 5
+    let wte := floats (rows * d) seed
+    let wpe := floats (4 * d) (seed + 10)
+    for (row, p) in [(0, 0), (3, 2), (rows + 1, 1)] do
+      IO.println (caseLine "embed" d seed [arr wte, arr wpe, s!"u64:{row}", s!"u64:{p}", s!"u64:{d}"]
+        (embed32 wte.toArray wpe.toArray row.toUInt64 p.toUInt64 d.toUInt64))
+    let x := floats d (seed + 20)
+    let g := floats d (seed + 21)
+    let b := floats d (seed + 22)
+    IO.println (caseLine "layerNorm" d seed [arr x, arr g, arr b, s!"u64:{d}",
+      scalarBuffer d.toFloat.toFloat32]
+      (layerNorm32 x.toArray g.toArray b.toArray d.toUInt64 d.toFloat.toFloat32))
+    for (k, m) in [(d, 5), (d, 2 * d + 1), (2 * d + 3, d / 2 + 1)] do
+      let xs := floats k (seed + 30)
+      let w := floats (k * m) (seed + 31)
+      let bs := floats m (seed + 32)
+      IO.println (caseLine "linear" m seed [arr xs, arr w, arr bs, s!"u64:{k}", s!"u64:{m}"]
+        (linear32 xs.toArray w.toArray bs.toArray k.toUInt64 m.toUInt64))
+    let base := d * (seed + 1)
+    let cache := floats base (seed + 40)
+    let rowv := floats d (seed + 41)
+    IO.println (caseLine "append" (base + d) seed [arr cache, arr rowv, s!"u64:{base}",
+      s!"u64:{base + d}"] (append32 cache.toArray rowv.toArray base.toUInt64 (base + d).toUInt64))
+    IO.println (caseLine "add" d seed [arr x, arr g] (add32 x.toArray g.toArray))
+    IO.println (caseLine "gelu" (3 * d) seed [arr (floats (3 * d) (seed + 50) ++ [])]
+      (geluArray32 (floats (3 * d) (seed + 50)).toArray))
+    let vocab := 7
+    let wv := floats (vocab * d) (seed + 60)
+    IO.println (caseLine "logits" vocab seed [arr x, arr wv, s!"u64:{vocab}", s!"u64:{d}"]
+      (logits32 x.toArray wv.toArray vocab.toUInt64 d.toUInt64))
+  -- Attention with two heads of 64 (rows of 128) at several positions.
+  for p in [0, 2, 9] do
+    let d := 128
+    let n := 2 * 1024
+    let q := floats d (p + 70)
+    let kc := floats ((p + 1) * d) (p + 71)
+    let vc := floats ((p + 1) * d) (p + 72)
+    let sc := scores32 q.toArray kc.toArray p.toUInt64 d.toUInt64 n.toUInt64
+    IO.println (caseLine "scores" n 0 [arr q, arr kc, s!"u64:{p}", s!"u64:{d}", s!"u64:{n}"] sc)
+    let mx := headMax32 sc p.toUInt64 2
+    IO.println (caseLine "headMax" 2 1 [arr sc.toList, s!"u64:{p}", "u64:2"] mx)
+    let sm := headSum32 sc mx p.toUInt64 2
+    IO.println (caseLine "headSum" 2 0 [arr sc.toList, arr mx.toList, s!"u64:{p}", "u64:2"] sm)
+    let pw := probs32 sc mx sm p.toUInt64 n.toUInt64
+    IO.println (caseLine "probs" n 1 [arr sc.toList, arr mx.toList, arr sm.toList, s!"u64:{p}",
+      s!"u64:{n}"] pw)
+    IO.println (caseLine "mix" d 0 [arr pw.toList, arr vc, s!"u64:{p}", s!"u64:{d}"]
+      (mix32 pw vc.toArray p.toUInt64 d.toUInt64))
 

@@ -9,7 +9,13 @@ host=$root/build/tools/leanexe-webgpu-host
 mkdir -p "$build/wgsl"
 for entry in Project.WGSL.Binary32:Project.WGSL:scale Project.WGSL.Binary32:Project.WGSL:axpyArray \
     Project.WGSL.Binary32:Project.WGSL:matVec Project.WGSL.Binary32:Project.WGSL:condMix \
-    Project.Gpt32.Kernels:Project.Gpt32:exp; do
+    Project.Gpt32.Kernels:Project.Gpt32:exp Project.Gpt32.Specs:Project.Gpt32:embed \
+    Project.Gpt32.Specs:Project.Gpt32:layerNorm Project.Gpt32.Specs:Project.Gpt32:linear \
+    Project.Gpt32.Specs:Project.Gpt32:append Project.Gpt32.Specs:Project.Gpt32:scores \
+    Project.Gpt32.Specs:Project.Gpt32:headMax Project.Gpt32.Specs:Project.Gpt32:headSum \
+    Project.Gpt32.Specs:Project.Gpt32:probs Project.Gpt32.Specs:Project.Gpt32:mix \
+    Project.Gpt32.Specs:Project.Gpt32:add Project.Gpt32.Specs:Project.Gpt32:gelu \
+    Project.Gpt32.Specs:Project.Gpt32:logits; do
   IFS=: read -r module namespace kernel <<<"$entry"
   (cd "$root" && tools/leanrun --timeout 10m lake env lean --run Project/WGSL/Emit.lean \
     "$module" "$namespace.${kernel}Kernel" "$build/wgsl/$kernel.wgsl")
