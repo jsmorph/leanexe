@@ -24690,8 +24690,8 @@ translation of the IR into WGSL is proved.
 binary32 values, one file per array: the token embedding in four chunks of at most 12,565 rows,
 which keeps every binding under llvmpipe's 128 MiB, the positional embedding, and each layer's
 sixteen arrays.  It drives `leanexe-webgpu-host session`: the weights load once, each kernel
-compiles once, and each token runs the step's dispatches in the order of the Lean kernels, 4 +
-12 × 17 + 5 of them, with the host writing each output's length word.  The caches are one key and
+compiles once, and each token runs the step's dispatches in the order of the Lean kernels, 1 +
+12 × 18 + 5 = 222 of them, with the host writing each output's length word.  The caches are one key and
 one value array per layer, grown by `append32` each token.  The script reads the scores, takes
 the largest, and compares each step with Hugging Face's float32 model on the same prefix.
 
@@ -24712,5 +24712,75 @@ Hugging Face's, with a largest score difference of 1.4e-4 of the largest score. 
 "WebGPU is a new standard for running programs on the graphics processor of a computer, and",
 generated 48 tokens on both drivers with every choice matching Hugging Face's, and `--save`
 showed that the two drivers' 48 × 50,257 scores are equal bit for bit.
-- [ ] G2c: the element lemmas and dispatch theorems of the twelve kernels.
+
+### GPT-2 on WGSL, step G2c: the kernels' theorems
+
+`Project/Gpt32/Proofs.lean` proves a dispatch theorem for each of the twelve kernels, as
+`Kernels.lean` does for `expArray32`.  Each theorem states that the kernel's dispatch over the
+argument buffers yields the words of the Lean function's result and is race-free, for arrays
+below 2^29 elements, an output buffer with the host's length word, and at least as many
+invocations as elements.  Each proof applies `Spec.dispatch_eq` to the spec that `specOf` reads
+from the compiled IR, whose equality with a written spec holds by `rfl`, and to an element lemma
+over `Stmt.denote` and `Expr.denote`.
+
+Three lemmas carry the loops.  `dotLoop_denote` covers the dot products of `linear32`,
+`logits32`, `mix32`, and `scores32` and the sum of squares in `layerNorm32`, and `accLoop_denote`
+covers the plain sum of `layerNorm32`.  `expAssigns_denote` follows the seven assignments of the
+inlined `exp32` and serves `geluArray32`, `probs32`, and the loop body of `headSum32`, while
+`headMax32` applies `Stmt.denote_loop` directly with `max` as the step.  With these theorems,
+each kernel is proved against its Lean function in the device model of 24.  The order of the
+dispatches in `generate.py` remains unproved (G4).  The full check passes: the build has no
+`sorry`, the module tests pass 9,669 comparisons with the count, depth, and chunk cases, the
+other 22 modules emit the same bytes, LTG's check passes, and the 474 WGSL cases pass on
+SwiftShader and llvmpipe.
+
+- [x] G2c: the element lemmas and dispatch theorems of the twelve kernels.
 - [ ] G4: the dispatch program and its composition theorem.
+
+### GPT-2 on WGSL, step G4: the dispatch program, analysis
+
+`generate.py` orders one token's 222 dispatches, names their buffers, and computes their counts
+and word arguments.  The dispatch theorems of G2c say what each kernel computes, but nothing
+proves that the outputs of one dispatch reach the right inputs of the next, that every argument
+has the size and value the next theorem needs, or that the sequence computes a GPT-2 step.  G3
+also planned a comparison of the scores with native Lean's binary32 step, which needs a Lean
+step function that does not yet exist.  All twelve dispatch theorems have the same hypotheses:
+every array argument below 2^29 elements, an output of `2 + 2n` words whose first word is `n`
+and second is 0, as the host's `output NAME N` command makes it, and a count from `n` to 2^32.
+So one rule for a host `output` followed by a `run` covers every kernel.
+
+The composition needs four pieces.  `step32` in `LeanExe/Examples/Gpt32.lean` is the binary32
+step as a Lean function over the weights, the token, the position, and the caches, written as
+the composition of the kernels' functions in `generate.py`'s order, generic in the width, the
+hidden width, the number of heads (with the width 64 times it), the layers, and the chunk sizes
+of the token embedding.  A program is a list of host commands over structured buffer names
+(`Buf`: the activations, the weights of layer `l`, the caches of layer `l` at position `p`, the
+chunks of the token embedding, and the word constants), with a printer that writes the host's
+session lines.  `Exec` is a relation between stores, functions from names to buffers, that
+gives each command the meaning the host gives it, with a `run` that requires the dispatch's
+result and its race freedom.  The theorem says that the program of a step, run on a store
+holding the weights and the caches of positions below `p`, ends in a store holding the caches
+through `p` and the scores of `step32`.
+
+| Choice | Options | Recommendation |
+|--------|---------|----------------|
+| (N) Buffer names | Strings, as the host has them, or the inductive `Buf` with an injective printer | `Buf`: distinct names are distinct constructors, so `simp` decides every lookup, while strings built from layer numbers need lemmas about `toString` |
+| (R) Race freedom | In `Exec`'s `run`, or as separate facts beside the theorem | In `run`: the device model transfers a sequential dispatch to the concurrent device only when it is race-free |
+| (L) Device limits | None, or a `Limits` parameter that `run` checks: workgroups per dispatch, storage buffers per dispatch, and bytes per binding | Limits: with WebGPU's defaults (65,535, 8, 128 MiB) the theorem shows that the program fits any WebGPU device, which the browser run of Iteration 25 needs |
+| (D) Who sends the commands | Python as now (unproved order), a Lean process that prints each step's commands for Python to forward, or a Lean process that drives the host and chooses tokens | The Lean printer as a co-process: Python sends the token and position, forwards the lines unchanged, reads the scores, and keeps the tokenizer and the Hugging Face comparison |
+| (T) Tests | GPU against Hugging Face only, or also against native `step32` | Also native `step32`: bitwise on small random configurations in `tests/wgsl`, and on GPT-2 for a few tokens |
+
+The `run` rule also requires that the output name differ from every input name, since WebGPU
+rejects a buffer bound both read-only and read-write.  The host's `output` and `words` replace
+an existing name, as `new_entry` does, and `free` removes it.  `load` reads a file, so `Exec`
+takes a map from paths to words, and the theorem's precondition is that the weight files hold
+the arrays' words, which `generate.py` writes and which only the Hugging Face comparison tests.
+The setup program loads the weights and kernels and creates the empty caches, and a sequence
+theorem, by induction on the tokens, connects setup and steps to a run of `step32` over a
+prefix.  The proof is bookkeeping: twelve instances of the run rule, a layer lemma of eighteen
+dispatches and two frees, and the step, about 600 lines by comparison with G2c.
+
+- [ ] G4a: `step32`, `Buf`, the commands, `Exec`, the printer, and the program of a step.
+- [ ] G4b: the run rule, the layer lemma, the step theorem, and the sequence theorem.
+- [ ] G4c: the Lean printer as a co-process of `generate.py`, the native `step32` comparison,
+  and generation again on both drivers.
