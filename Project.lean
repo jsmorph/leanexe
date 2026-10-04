@@ -77,6 +77,7 @@ import Project.IR.Live
 import Project.IR.Loop
 import Project.IR.Read
 import Project.IR.Denote
+import Project.IR.DenoteStmt
 import Project.IR.Recursion
 import Project.IR.Record
 import Project.IR.Copy

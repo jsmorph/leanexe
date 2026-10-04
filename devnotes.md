@@ -24418,10 +24418,36 @@ parameters with a zero of its type, `Layout.Agrees` accepts a `var`, and the tra
 each assigned local to its own variable.  Each iteration of a WGSL loop body drops the body's
 declarations, as an `if` block does, so the body's `let` names stay fresh.
 
-- [ ] 24c1: `u64` addition, multiplication, and `ltU` in `Expr.denote` and `Expr.eval_denote`;
+- [x] 24c1: `u64` addition, multiplication, and `ltU` in `Expr.denote` and `Expr.eval_denote`;
   `add64`, `mul64`, and `lt64` in `trExpr`, with simulation lemmas.
-- [ ] 24c2: `Stmt.denote`, its Wasm theorem, the loop lemma, and `matVec32_implements` through
+- [x] 24c2: `Stmt.denote`, its Wasm theorem, the loop lemma, and `matVec32_implements` through
   them.
 - [ ] 24c3: the WGSL `while` (syntax, printer, parser, round trip, semantics), the statement
   translation and its simulation, `Spec` with a body and a parameter count, and the `matVec32`
   kernel with tests.
+
+### Iteration 24, steps 24c1 and 24c2: pair arithmetic and the statement denotation
+
+`Expr.denote` now covers every `u64` operation except `divU` and `remU`, whose evaluation uses
+scratch locals, and `ltU`.  `Project/WGSL/Pair.lean` defines `add64`, with the carry of the low
+halves, and `mul64`, whose high half adds the cross products to `mulHigh`, the high half of the
+product of the low halves computed from 16-bit halves by division and multiplication by
+`65536u`.  `add64_word` and `mul64_word` prove that they give the pairs of `x + y` and `x * y`.
+The ring identities go through `grind`, and the rest through `omega` after the products become
+variables.  `trExpr` translates `bin add`, `bin mul`, and `ltU`, each to one `let`, and
+`simulates_bin` holds the proof steps that the binary cases share.  `Layout.Agrees` and
+`Simulates` accept a variable of either kind, `let` or `var`, and the lemmas on `lt64` and
+`readAt` accept either kind of index variable, since a loop index will be a `var`.
+
+`Project/IR/DenoteStmt.lean` defines `Stmt.denote` for `skip`, `assign`, `seq`, and `while`.  A
+`while` runs through `loopIter`, which tests the condition at most `loopBound` (2^64) times, and
+an assignment to an array's pointer local fails.  `Stmt.denote_spec` proves that the compiled code
+of a statement whose denotation succeeds keeps the store, writes only the statement's locals
+below the scratch base, and ends in a state that agrees with the denoted locals.  Its `while`
+case uses `Stmt.while_spec` with the least sufficient bound, found by `Nat.find`, as the measure.
+`Stmt.denote_loop` gives the denotation of `Stmt.loop` as `LeanExe.loop`, from a fact about one
+run of the loop body.  `matVecRow_denote` states that the statements of `matVec32`'s build leave
+element `r` of the product in local 7.  `matVec32_implements` now follows from it through
+`Stmt.denote_spec` and `Expr.eval_denote`, and `rowBody32_run` and the direct use of
+`Stmt.loop_spec` are gone.  The full build passed with no `sorry`.  The compiled IR is unchanged,
+so the module bytes are the same.
