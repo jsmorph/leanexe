@@ -215,3 +215,5 @@ import Project.WGSL.Translate
 import Project.WGSL.TranslateStmt
 import Project.WGSL.Build
 import Project.WGSL.Binary32
+import Project.Gpt32.Module
+import Project.Gpt32.Kernels

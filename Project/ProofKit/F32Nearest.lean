@@ -1,4 +1,5 @@
 import Project.ProofKit.F32Convert
+import Project.ProofKit.F32Bits
 
 namespace Project.ProofKit.F32Nearest
 
@@ -76,4 +77,83 @@ theorem nearest_eq (value : UInt32) :
 
 #print axioms nearest_eq
 
+theorem isNaN_encodeFinite (negative : Bool) (e f : Nat) (he : e < 255) (hf : f < 2 ^ 23) :
+    Wasm.IEEE32.isNaN (Wasm.IEEE32.encodeFinite negative e f) = false := by
+  have hlt : (if negative then 2 ^ 31 else 0) + e * 2 ^ 23 + f < 2 ^ 32 := by
+    split <;> omega
+  simp only [Wasm.IEEE32.isNaN, Wasm.IEEE32.exponent, Wasm.IEEE32.fraction,
+    Wasm.IEEE32.encodeFinite, UInt32.toNat_ofNat', Nat.mod_eq_of_lt hlt]
+  cases negative <;> simp only [Bool.false_eq_true, ↓reduceIte] <;>
+    simp only [Bool.and_eq_false_iff, beq_eq_false_iff_ne, bne_eq_false_iff_eq] <;> omega
+
+/-- Rounding a scaled magnitude gives a finite value or an infinity, never a NaN. -/
+theorem isNaN_roundScaledMagnitude (negative : Bool) (n : Nat) :
+    Wasm.IEEE32.isNaN (Wasm.IEEE32.roundScaledMagnitude negative n) = false := by
+  unfold Wasm.IEEE32.roundScaledMagnitude
+  split
+  · exact isNaN_encodeFinite negative 0 n (by omega) (by omega)
+  split
+  · exact isNaN_encodeFinite negative 1 (n - 2 ^ 23) (by omega) (by omega)
+  rename_i h1 h2
+  have hn : n ≠ 0 := by omega
+  have hlow := Nat.log2_self_le hn
+  have hhigh := Nat.lt_log2_self (n := n)
+  have hlog : 24 ≤ n.log2 := by
+    by_contra h
+    have : n.log2 + 1 ≤ 24 := by omega
+    have := Nat.pow_le_pow_right (show 0 < 2 by omega) this
+    omega
+  have hsplit : 2 ^ n.log2 = 2 ^ 23 * 2 ^ (n.log2 - 23) := by
+    rw [← Nat.pow_add]; congr 1; omega
+  have hsplit' : 2 ^ (n.log2 + 1) = 2 ^ 24 * 2 ^ (n.log2 - 23) := by
+    rw [← Nat.pow_add]; congr 1; omega
+  have hq1 : 2 ^ 23 ≤ n / 2 ^ (n.log2 - 23) :=
+    (Nat.le_div_iff_mul_le (Nat.two_pow_pos _)).2 (by rw [← hsplit]; exact hlow)
+  have hq2 : n / 2 ^ (n.log2 - 23) < 2 ^ 24 :=
+    (Nat.div_lt_iff_lt_mul (Nat.two_pow_pos _)).2 (by rw [← hsplit']; exact hhigh)
+  have hr := CodeLib.IEEE32.roundShift_bounds n (n.log2 - 23)
+  dsimp only
+  generalize Wasm.IEEE32.roundShift n (n.log2 - 23) = R at hr ⊢
+  by_cases hR : R = 2 ^ 24
+  · have hR' : (R == 2 ^ 24) = true := by simp [hR]
+    simp only [hR', ↓reduceIte]
+    by_cases hx : 255 ≤ n.log2 - 23 + 1 + 1
+    · simp only [hx, ↓reduceIte]
+      exact CodeLib.IEEE32.infinity_not_nan negative
+    · simp only [hx, ↓reduceIte]
+      exact isNaN_encodeFinite negative _ _ (by omega) (by simp)
+  · have hR' : (R == 2 ^ 24) = false := by simpa using hR
+    simp only [hR', Bool.false_eq_true, ↓reduceIte]
+    by_cases hx : 255 ≤ n.log2 - 23 + 1
+    · simp only [hx, ↓reduceIte]
+      exact CodeLib.IEEE32.infinity_not_nan negative
+    · simp only [hx, ↓reduceIte]
+      exact isNaN_encodeFinite negative _ _ (by omega) (by omega)
+
+/-- The only NaN that `nearest` returns is the canonical NaN. -/
+theorem nearest_nan (value : UInt32) (h : Wasm.IEEE32.isNaN (Wasm.IEEE32.nearest value) = true) :
+    Wasm.IEEE32.nearest value = Wasm.IEEE32.canonicalNaN := by
+  unfold Wasm.IEEE32.nearest Wasm.IEEE32.roundIntegral at *
+  split
+  · rfl
+  · rename_i hnan
+    split at h
+    · contradiction
+    split at h
+    · exact absurd h hnan
+    split at h
+    · exact absurd h hnan
+    · unfold Wasm.IEEE32.roundIntegralFinite at h
+      rw [isNaN_roundScaledMagnitude] at h
+      contradiction
+
+theorem toBits_nearest (x : Float32) :
+    (LeanExe.Float32.nearest x).toBits = Wasm.IEEE32.nearest x.toBits := by
+  unfold LeanExe.Float32.nearest
+  rw [F32Bits.toBits_ofBits, nearest_eq]
+  split
+  · rename_i h; exact (nearest_nan _ h).symm
+  · rfl
+
 end Project.ProofKit.F32Nearest
+

@@ -70,7 +70,7 @@ theorem classify_bufToken (n : Nat) (h : n < 2 ^ 32) : classify (bufToken n) = .
 def Expr.size : Expr → Nat
   | .lit _ | .bool _ | .var _ | .gidX | .fst _ | .snd _ | .length _ => 1
   | .vec2 a b | .bin _ a b | .min a b => a.size + b.size + 1
-  | .not a | .toF32 a | .toU32 a | .sqrt a | .abs a => a.size + 1
+  | .not a | .toF32 a | .toU32 a | .sqrt a | .round a | .abs a => a.size + 1
   | .select f t c => f.size + t.size + c.size + 1
   | .index _ p => p.size + 1
 
@@ -79,7 +79,7 @@ def Expr.WF : Expr → Prop
   | .lit _ | .bool _ | .gidX => True
   | .var n | .fst n | .snd n | .length n => n < 2 ^ 32
   | .vec2 a b | .bin _ a b | .min a b => a.WF ∧ b.WF
-  | .not a | .toF32 a | .toU32 a | .sqrt a | .abs a => a.WF
+  | .not a | .toF32 a | .toU32 a | .sqrt a | .round a | .abs a => a.WF
   | .select f t c => f.WF ∧ t.WF ∧ c.WF
   | .index b p => b < 2 ^ 32 ∧ p.WF
 
@@ -91,6 +91,7 @@ theorem classify_gid : classify "gid" = .kw "gid" := rfl
 theorem classify_vec2 : classify "vec2" = .kw "vec2" := rfl
 theorem classify_bitcast : classify "bitcast" = .kw "bitcast" := rfl
 theorem classify_sqrt : classify "sqrt" = .kw "sqrt" := rfl
+theorem classify_round : classify "round" = .kw "round" := rfl
 theorem classify_abs : classify "abs" = .kw "abs" := rfl
 theorem classify_select : classify "select" = .kw "select" := rfl
 theorem classify_min : classify "min" = .kw "min" := rfl
@@ -179,6 +180,12 @@ theorem Expr.parse_tokens : ∀ (e : Expr), e.WF → ∀ fuel, e.size < fuel →
       obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by simp [Expr.size] at hf; omega⟩
       simp only [Expr.WF, Expr.size] at hwf hf
       simp [Expr.tokens, parseExpr, classify_sqrt, expect,
+        iha hwf f (by omega) _ (by simp : (")" :: rest).head? ≠ some ".")]
+  | round a iha =>
+      intro hwf fuel hf rest _
+      obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by simp [Expr.size] at hf; omega⟩
+      simp only [Expr.WF, Expr.size] at hwf hf
+      simp [Expr.tokens, parseExpr, classify_round, expect,
         iha hwf f (by omega) _ (by simp : (")" :: rest).head? ≠ some ".")]
   | abs a iha =>
       intro hwf fuel hf rest _
@@ -548,7 +555,7 @@ def Expr.wfb : Expr → Bool
   | .lit _ | .bool _ | .gidX => true
   | .var n | .fst n | .snd n | .length n => decide (n < 2 ^ 32)
   | .vec2 a b | .bin _ a b | .min a b => a.wfb && b.wfb
-  | .not a | .toF32 a | .toU32 a | .sqrt a | .abs a => a.wfb
+  | .not a | .toF32 a | .toU32 a | .sqrt a | .round a | .abs a => a.wfb
   | .select f t c => f.wfb && t.wfb && c.wfb
   | .index b p => decide (b < 2 ^ 32) && p.wfb
 

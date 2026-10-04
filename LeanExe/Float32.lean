@@ -49,4 +49,9 @@ def nearestBits (value : UInt32) : UInt32 :=
       (_root_.Float32.Model.ofInt
         (if value < 0x80000000 then (rounded : Int) else -(rounded : Int))).toBits
 
+/-- The integer nearest to `x`, ties to even, as Wasm's `f32.nearest` and WGSL's `round`
+compute it. -/
+def nearest (x : _root_.Float32) : _root_.Float32 :=
+  _root_.Float32.ofBits (nearestBits x.toBits)
+
 end LeanExe.Float32

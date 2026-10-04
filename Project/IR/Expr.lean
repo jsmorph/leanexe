@@ -267,15 +267,18 @@ def F32Op.instruction : F32Op → Instruction
 inductive F32UnOp where
   | sqrt
   | abs
+  | nearest
   deriving Repr, DecidableEq
 
 def F32UnOp.apply : F32UnOp → UInt32 → UInt32
   | .sqrt, value => IEEE32.sqrt value
   | .abs, value => IEEE32.abs value
+  | .nearest, value => IEEE32.nearest value
 
 def F32UnOp.instruction : F32UnOp → Instruction
   | .sqrt => .f32Sqrt
   | .abs => .f32Abs
+  | .nearest => .f32Nearest
 
 inductive Expr : ScalarType → Type where
   | get (index : Nat) : Expr .u64
@@ -1355,7 +1358,8 @@ theorem Expr.program_spec
         (next := afterOperand) (result := value) (values := values)
         (rest := _) (Q := _) hOperand
       cases op <;>
-        simpa [F32UnOp.instruction, F32UnOp.apply, wp_simp, Wasm.f32Sqrt, Wasm.f32Abs] using hNext
+        simpa [F32UnOp.instruction, F32UnOp.apply, wp_simp, Wasm.f32Sqrt, Wasm.f32Abs,
+          Wasm.f32Nearest] using hNext
   | eqF32 left right leftSpec rightSpec | ltF32 left right leftSpec rightSpec
   | leF32 left right leftSpec rightSpec =>
       simp only [Expr.eval] at hEval

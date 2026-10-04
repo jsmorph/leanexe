@@ -128,6 +128,10 @@ def parseExpr : Nat → List String → Option (Expr × List String)
           let (a, rest) ← parseExpr fuel rest
           let rest ← expect ")" rest
           pure (.sqrt a, rest)
+      | "round", "(" :: rest => do
+          let (a, rest) ← parseExpr fuel rest
+          let rest ← expect ")" rest
+          pure (.round a, rest)
       | "abs", "(" :: rest => do
           let (a, rest) ← parseExpr fuel rest
           let rest ← expect ")" rest

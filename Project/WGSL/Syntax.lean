@@ -46,6 +46,8 @@ inductive Expr where
   /-- `bitcast<u32>` of an `f32`. -/
   | toU32 (operand : Expr)
   | sqrt (operand : Expr)
+  /-- `round(e)`, the nearest integer, ties to even. -/
+  | round (operand : Expr)
   | abs (operand : Expr)
   /-- `select(f, t, c)`: `t` when `c` holds, and otherwise `f`. -/
   | select (falseValue trueValue condition : Expr)

@@ -1,7 +1,8 @@
-/* Runs one WGSL compute entry point with wgpu-native and prints its output buffer.
+/* Runs WGSL compute entry points with wgpu-native.
 
    webgpu-host info
    webgpu-host run SHADER ENTRY WORKGROUPS OUTPUT [INPUT...]
+   webgpu-host session
 
    Each INPUT is a read-only storage buffer at the next binding of group 0, given as
    u32:W,W,... (32-bit words), u64:W,W,... (64-bit words, least significant half first), or
@@ -11,7 +12,20 @@
    not write keeps that value, or a buffer specification as for an input, which gives the
    output's initial words.  The dispatch is WORKGROUPS workgroups along x.  The output words are
    printed in decimal, separated by commas.  The Vulkan driver is chosen by the loader, for
-   example through VK_ICD_FILENAMES. */
+   example through VK_ICD_FILENAMES.
+
+   A session keeps one device and named buffers, and reads commands from standard input, one
+   per line, answering each with a line `ok` or with the requested data:
+     load NAME PATH           a buffer holding the file's bytes
+     words NAME SPEC          a buffer holding u32:W,... or u64:W,... as for an input
+     output NAME N            a buffer of 2 + 2N words: the length N as a 64-bit word, then zeros
+     shader NAME PATH         compiles the entry point `main` of a WGSL file
+     run SHADER WORKGROUPS OUT IN...   dispatches with IN... at bindings 0, 1, ... and OUT after
+     read NAME PATH           writes the buffer's bytes to the file
+     free NAME                releases the buffer
+     quit
+   The device has the adapter's limits, so buffers and bindings may be as large as it allows.
+   Any error ends the process with a message on standard error. */
 
 #include <errno.h>
 #include <inttypes.h>
@@ -130,7 +144,12 @@ static Gpu open_gpu(void) {
   gpu.adapter = request.adapter;
 
   request.done = false;
+  WGPULimits limits = WGPU_LIMITS_INIT;
+  if (wgpuAdapterGetLimits(gpu.adapter, &limits) != WGPUStatus_Success) {
+    die("wgpuAdapterGetLimits failed");
+  }
   WGPUDeviceDescriptor deviceDescriptor = {0};
+  deviceDescriptor.requiredLimits = &limits;
   deviceDescriptor.uncapturedErrorCallbackInfo.callback = on_error;
   WGPURequestDeviceCallbackInfo deviceCallback = {0};
   deviceCallback.mode = WGPUCallbackMode_AllowProcessEvents;
@@ -371,10 +390,219 @@ static void run(Gpu *gpu, const char *shaderPath, const char *entry, uint32_t wo
   free(code);
 }
 
+/* A named buffer or pipeline of a session. */
+typedef struct {
+  char name[64];
+  WGPUBuffer buffer;
+  size_t bytes;
+  WGPUComputePipeline pipeline;
+} Entry;
+
+#define MAX_ENTRIES 4096
+static Entry entries_[MAX_ENTRIES];
+static int entryCount_ = 0;
+
+static Entry *find_entry(const char *name) {
+  for (int i = 0; i < entryCount_; i++) {
+    if (strcmp(entries_[i].name, name) == 0) {
+      return &entries_[i];
+    }
+  }
+  return NULL;
+}
+
+static Entry *new_entry(const char *name) {
+  if (strlen(name) >= sizeof entries_[0].name) {
+    fprintf(stderr, "name too long: %s\n", name);
+    exit(1);
+  }
+  Entry *entry = find_entry(name);
+  if (entry != NULL) {
+    if (entry->buffer != NULL) {
+      wgpuBufferRelease(entry->buffer);
+    }
+    if (entry->pipeline != NULL) {
+      wgpuComputePipelineRelease(entry->pipeline);
+    }
+  } else {
+    if (entryCount_ == MAX_ENTRIES) {
+      die("too many names");
+    }
+    entry = &entries_[entryCount_++];
+  }
+  memset(entry, 0, sizeof *entry);
+  strcpy(entry->name, name);
+  return entry;
+}
+
+static Entry *need_buffer(const char *name) {
+  Entry *entry = find_entry(name);
+  if (entry == NULL || entry->buffer == NULL) {
+    fprintf(stderr, "no buffer named %s\n", name);
+    exit(1);
+  }
+  return entry;
+}
+
+static void store_buffer(Gpu *gpu, const char *name, const uint32_t *words, size_t count) {
+  Entry *entry = new_entry(name);
+  entry->bytes = count * 4;
+  entry->buffer = make_buffer(gpu, WGPUBufferUsage_Storage | WGPUBufferUsage_CopySrc |
+                                       WGPUBufferUsage_CopyDst, entry->bytes);
+  wgpuQueueWriteBuffer(gpu->queue, entry->buffer, 0, words, entry->bytes);
+}
+
+static void wait_map(Gpu *gpu, WGPUBuffer buffer, size_t bytes) {
+  bool mapped = false;
+  WGPUBufferMapCallbackInfo mapCallback = {0};
+  mapCallback.mode = WGPUCallbackMode_AllowProcessEvents;
+  mapCallback.callback = on_map;
+  mapCallback.userdata1 = &mapped;
+  wgpuBufferMapAsync(buffer, WGPUMapMode_Read, 0, bytes, mapCallback);
+  while (!mapped) {
+    wgpuDevicePoll(gpu->device, true, NULL);
+    wgpuInstanceProcessEvents(gpu->instance);
+  }
+}
+
+static void session(Gpu *gpu) {
+  char line[65536];
+  while (fgets(line, sizeof line, stdin) != NULL) {
+    size_t length = strlen(line);
+    if (length > 0 && line[length - 1] == '\n') {
+      line[--length] = 0;
+    }
+    char *words[64];
+    int count = 0;
+    for (char *token = strtok(line, " "); token != NULL && count < 64; token = strtok(NULL, " ")) {
+      words[count++] = token;
+    }
+    if (count == 0) {
+      continue;
+    }
+    const char *command = words[0];
+    if (strcmp(command, "quit") == 0) {
+      return;
+    } else if (strcmp(command, "load") == 0 && count == 3) {
+      size_t n;
+      char spec[4096];
+      snprintf(spec, sizeof spec, "file:%s", words[2]);
+      uint32_t *data = parse_input(spec, &n);
+      store_buffer(gpu, words[1], data, n);
+      free(data);
+    } else if (strcmp(command, "words") == 0 && count == 3) {
+      size_t n;
+      uint32_t *data = parse_input(words[2], &n);
+      store_buffer(gpu, words[1], data, n);
+      free(data);
+    } else if (strcmp(command, "output") == 0 && count == 3) {
+      char *end;
+      uint64_t n = parse_word(words[2], &end, (SIZE_MAX / 8) - 1);
+      size_t total = 2 + 2 * (size_t)n;
+      uint32_t *data = calloc(total, sizeof *data);
+      if (data == NULL) {
+        die("out of memory");
+      }
+      data[0] = (uint32_t)n;
+      data[1] = (uint32_t)(n >> 32);
+      store_buffer(gpu, words[1], data, total);
+      free(data);
+    } else if (strcmp(command, "shader") == 0 && count == 3) {
+      char *code = read_file(words[2], NULL);
+      WGPUShaderSourceWGSL source = {0};
+      source.chain.sType = WGPUSType_ShaderSourceWGSL;
+      source.code = view(code);
+      WGPUShaderModuleDescriptor moduleDescriptor = {0};
+      moduleDescriptor.nextInChain = &source.chain;
+      WGPUShaderModule module = wgpuDeviceCreateShaderModule(gpu->device, &moduleDescriptor);
+      WGPUComputePipelineDescriptor pipelineDescriptor = {0};
+      pipelineDescriptor.compute.module = module;
+      pipelineDescriptor.compute.entryPoint = view("main");
+      Entry *entry = new_entry(words[1]);
+      entry->pipeline = wgpuDeviceCreateComputePipeline(gpu->device, &pipelineDescriptor);
+      wgpuShaderModuleRelease(module);
+      free(code);
+    } else if (strcmp(command, "run") == 0 && count >= 4) {
+      Entry *shader = find_entry(words[1]);
+      if (shader == NULL || shader->pipeline == NULL) {
+        fprintf(stderr, "no shader named %s\n", words[1]);
+        exit(1);
+      }
+      char *end;
+      uint32_t workgroups = (uint32_t)parse_word(words[2], &end, UINT32_MAX);
+      int inputs = count - 4;
+      WGPUBindGroupEntry bindings[64];
+      memset(bindings, 0, sizeof bindings);
+      for (int i = 0; i <= inputs; i++) {
+        Entry *buffer = need_buffer(i < inputs ? words[4 + i] : words[3]);
+        bindings[i].binding = (uint32_t)i;
+        bindings[i].buffer = buffer->buffer;
+        bindings[i].size = buffer->bytes;
+      }
+      WGPUBindGroupDescriptor groupDescriptor = {0};
+      groupDescriptor.layout = wgpuComputePipelineGetBindGroupLayout(shader->pipeline, 0);
+      groupDescriptor.entryCount = (size_t)inputs + 1;
+      groupDescriptor.entries = bindings;
+      WGPUBindGroup group = wgpuDeviceCreateBindGroup(gpu->device, &groupDescriptor);
+      WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(gpu->device, NULL);
+      WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(encoder, NULL);
+      wgpuComputePassEncoderSetPipeline(pass, shader->pipeline);
+      wgpuComputePassEncoderSetBindGroup(pass, 0, group, 0, NULL);
+      wgpuComputePassEncoderDispatchWorkgroups(pass, workgroups, 1, 1);
+      wgpuComputePassEncoderEnd(pass);
+      WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, NULL);
+      wgpuQueueSubmit(gpu->queue, 1, &commands);
+      wgpuCommandBufferRelease(commands);
+      wgpuComputePassEncoderRelease(pass);
+      wgpuCommandEncoderRelease(encoder);
+      wgpuBindGroupRelease(group);
+      wgpuBindGroupLayoutRelease(groupDescriptor.layout);
+    } else if (strcmp(command, "read") == 0 && count == 3) {
+      Entry *buffer = need_buffer(words[1]);
+      WGPUBuffer readback =
+          make_buffer(gpu, WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst, buffer->bytes);
+      WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(gpu->device, NULL);
+      wgpuCommandEncoderCopyBufferToBuffer(encoder, buffer->buffer, 0, readback, 0, buffer->bytes);
+      WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, NULL);
+      wgpuQueueSubmit(gpu->queue, 1, &commands);
+      wgpuCommandBufferRelease(commands);
+      wgpuCommandEncoderRelease(encoder);
+      wait_map(gpu, readback, buffer->bytes);
+      const void *data = wgpuBufferGetConstMappedRange(readback, 0, buffer->bytes);
+      if (data == NULL) {
+        die("wgpuBufferGetConstMappedRange failed");
+      }
+      FILE *file = fopen(words[2], "wb");
+      if (file == NULL || fwrite(data, 1, buffer->bytes, file) != buffer->bytes ||
+          fclose(file) != 0) {
+        fprintf(stderr, "cannot write %s\n", words[2]);
+        exit(1);
+      }
+      wgpuBufferUnmap(readback);
+      wgpuBufferRelease(readback);
+    } else if (strcmp(command, "free") == 0 && count == 2) {
+      Entry *buffer = need_buffer(words[1]);
+      wgpuBufferRelease(buffer->buffer);
+      buffer->buffer = NULL;
+      buffer->bytes = 0;
+    } else {
+      fprintf(stderr, "bad command: %s\n", command);
+      exit(1);
+    }
+    printf("ok\n");
+    fflush(stdout);
+  }
+}
+
 int main(int argc, char **argv) {
   if (argc >= 2 && strcmp(argv[1], "info") == 0) {
     Gpu gpu = open_gpu();
     print_info(&gpu);
+    return 0;
+  }
+  if (argc == 2 && strcmp(argv[1], "session") == 0) {
+    Gpu gpu = open_gpu();
+    session(&gpu);
     return 0;
   }
   if (argc >= 6 && strcmp(argv[1], "run") == 0) {
@@ -387,6 +615,7 @@ int main(int argc, char **argv) {
   fprintf(stderr,
           "usage: webgpu-host info\n"
           "       webgpu-host run SHADER ENTRY WORKGROUPS OUTPUT_WORDS|BUFFER "
-          "[u32:W,...|u64:W,...|file:PATH]...\n");
+          "[u32:W,...|u64:W,...|file:PATH]...\n"
+          "       webgpu-host session\n");
   return 2;
 }
