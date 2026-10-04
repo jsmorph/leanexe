@@ -8,6 +8,6 @@ leanexe_compile trees := [KeyTree.size, KeyTree.sum, KeyTree.height, KeyTree.siz
   KeyTree.pushSum, KeyTree.dropSmall,
   KeyTree.sizeDrop, KeyTree.sizeDropNext, KeyTree.sizeAfterDrop, KeyTree.sizeDropSmall,
   KeyTree.sizeFirst, KeyTree.droppedSize, KeyTree.dropWithSize, KeyTree.leftSizes,
-  KeyTree.leftHeavy, KeyTree.sumSizes]
+  KeyTree.leftHeavy, KeyTree.sumSizes, KeyTree.keyPair]
 
 end Project.Trees

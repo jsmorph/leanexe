@@ -23751,7 +23751,7 @@ and hints, which the byte and hint comparison checks.  Programs: `keyPair` in `t
 `splitRoot` and `rootAndRest` in `treeMoves`, each with its theorem.
 
 - [x] 10a: the compiler; scratch checks and the byte and hint comparison.
-- [ ] 10b: the three programs and their theorems; tests, LTG, journal.
+- [x] 10b: the three programs and their theorems; tests, LTG, journal.
 
 ### Review of the item 10 plan
 
@@ -23776,3 +23776,29 @@ assigns `translatePrefixed`'s value to one local, as before, and `translateResul
 pair-valued match on a tree there with a branch that runs `translateResults` into the result
 locals, with temporaries off.  `keyPair`, `splitRoot`, and `rootAndRest` compile.  The full build
 passed with no `sorry`, and all 22 modules emit the same bytes as before.
+
+### Item 10, step 10b: the programs
+
+`KeyTree.keyPair` joined `trees` as entry 18, and `KeyTree.splitRoot`, `KeyTree.rootAndRest`, and
+`KeyTree.splitOr` joined `treeMoves` as entries 15 through 17.  The internal functions moved up
+by one in `trees` and by three in `treeMoves`.  `keyPair_implements`, `splitRoot_implements`, and
+`rootAndRest_implements` are the reviewer's proofs.  `NodeOwned.clearRight`, the slot-2
+counterpart of `clearLeft`, is in `Project/Pipeline/Rebuilt.lean`, and `splitRoot_children`, which
+gives the two children of a released record as an owned pair, is in `MovesVerify.lean`.
+`Heap.Rebuilt.wordPair` moved from `Verify.lean` to `Project/Trees/Node.lean`, since both proof
+files use it.  `splitOr a b := match a with | .leaf => (b, .leaf) | .node l _ r => (l, r)` covers
+the release at the join in the pair form: its record branch releases `a`'s record as `splitRoot`
+does and then `b`, which only the other branch moves, and `splitOr_implements` keeps the two
+children through that release with `Heap.Keeps.node` and joins the frames with
+`Heap.Keeps.transBoth`.  `trees_bytes` and `treeMoves_bytes` cover the four theorems and depend on
+`propext`, `Classical.choice`, and `Quot.sound`.
+
+Tests: 24 comparisons each for `keyPair`, `splitRoot`, and `rootAndRest`, 96 for `splitOr`, and
+four count cases (`splitRoot` frees the root record, `rootAndRest` frees nothing, and `splitOr`
+frees `a`'s root record and `b`, or nothing when `a` is a leaf).  `tests/modules/run.sh` passed
+9,233 comparisons, 75 count cases, and 16 depth cases, and `chunks.py` passed 360 cases.  The
+full build passed with no `sorry`, and every other module emits the same bytes as before.  The
+`node-match` LTG entry covers pair-valued matches.  Its first check failed because no entry
+listed `Project.Trees.MovesVerify`, where `splitRoot_children` lives, and the entry now lists
+it.
+Item 10 is complete.

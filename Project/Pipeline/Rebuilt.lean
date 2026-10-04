@@ -305,6 +305,77 @@ theorem NodeOwned.clearLeft {heap : Heap} {initial : Store Unit} {p k : UInt64} 
   · show NodeOwned heap store1 (store1.mem.read64 (slotAddress p (0 + 1 + 1))) nr
     rw [hRead2]; exact hr1
 
+
+/-- `NodeOwned.clearLeft` for slot 2: writing 0 into slot 2 of an owned record
+`[child nl, word k, child nr]` with disjoint blocks. -/
+theorem NodeOwned.clearRight {heap : Heap} {initial : Store Unit} {p k : UInt64} {nl nr : Node}
+    (hHeap : heap.At initial)
+    (hOwned : NodeOwned heap initial p (.record [.child nl, .word k, .child nr]))
+    (hDisjoint : (Node.blocks initial p (.record [.child nl, .word k, .child nr])).Pairwise
+      regionsDisjoint) :
+    let store1 : Store Unit := { initial with mem := initial.mem.write64 (slotAddress p 2) 0 }
+    Memory.WritesRange initial store1 p.toNat (p.toNat + 24) ∧ heap.At store1 ∧
+      NodeOwned heap store1 p (.record [.child nl, .word k, .child .null]) ∧
+      Node.blocks store1 p (.record [.child nl, .word k, .child .null]) =
+        block initial p :: nl.blocks initial (initial.mem.read64 (slotAddress p 0)) ∧
+      (Node.blocks store1 p (.record [.child nl, .word k, .child .null])).Pairwise
+        regionsDisjoint ∧
+      NodeOwned heap store1 (initial.mem.read64 (slotAddress p 2)) nr ∧
+      nr.blocks store1 (initial.mem.read64 (slotAddress p 2)) =
+        nr.blocks initial (initial.mem.read64 (slotAddress p 2)) := by
+  intro store1
+  obtain ⟨hHead, hl, hk, hr, -⟩ := hOwned
+  simp only [Nat.zero_add, Nat.reduceAdd] at hk hr
+  have hBlocks : Node.blocks initial p (.record [.child nl, .word k, .child nr]) =
+      block initial p :: (nl.blocks initial (initial.mem.read64 (slotAddress p 0)) ++
+        nr.blocks initial (initial.mem.read64 (slotAddress p 2))) := by
+    simp [Node.blocks, slotsBlocks]
+  rw [hBlocks] at hDisjoint
+  have hP0 := (List.pairwise_cons.mp hDisjoint).1
+  have hRoom := hHead.capacity
+  have hAddress := hHead.address
+  have hBase := hHead.base
+  simp only [List.length_cons, List.length_nil] at hRoom
+  have h0 := slotAddress_toNat (p := p) (i := 0) (by omega)
+  have h1 := slotAddress_toNat (p := p) (i := 1) (by omega)
+  have h2 := slotAddress_toNat (p := p) (i := 2) (by omega)
+  have hW : Memory.WritesRange initial store1 p.toNat (p.toNat + 24) :=
+    Memory.WritesRange.write64 initial _ 0 _ _ (by omega) (by omega)
+  have hW8 : Memory.WritesRange initial store1 (p.toNat + 16) (p.toNat + 24) :=
+    Memory.WritesRange.write64 initial _ 0 _ _ (by omega) (by omega)
+  have hApartBytes : ∀ b, regionsDisjoint (block initial p) b → ∀ a, b.1 ≤ a →
+      a < b.1 + b.2 → store1.mem.bytes a = initial.mem.bytes a := fun b hb a hLow hHigh =>
+    hW.2.2 a (by simp only [regionsDisjoint, block] at hb; omega)
+  obtain ⟨hHead', hCapacity⟩ := hHead.rewrite (heap' := heap) (store' := store1)
+    (slots' := [.child nl, .word k, .child .null])
+    (fun a _ hHigh => hW.2.2 a (.inl hHigh)) rfl rfl hHead.region
+  obtain ⟨hl1, hlBlocks⟩ := NodeOwned.frame (heap' := heap) (store' := store1) _ nl hl
+    fun b hb => ⟨hApartBytes b (hP0 b (List.mem_append_left _ hb)),
+      NodeOwned.regions _ nl hl b hb⟩
+  obtain ⟨hr1, hrBlocks⟩ := NodeOwned.frame (heap' := heap) (store' := store1) _ nr hr
+    fun b hb => ⟨hApartBytes b (hP0 b (List.mem_append_right _ hb)),
+      NodeOwned.regions _ nr hr b hb⟩
+  have hRead0 : store1.mem.read64 (slotAddress p 0) = initial.mem.read64 (slotAddress p 0) :=
+    hW8.read64 _ (by omega)
+  have hRead1 : store1.mem.read64 (slotAddress p 1) = initial.mem.read64 (slotAddress p 1) :=
+    hW8.read64 _ (by omega)
+  have hRead2 : store1.mem.read64 (slotAddress p 2) = 0 := Memory.read64_write64 _ _ _
+  have hClearedBlocks : Node.blocks store1 p (.record [.child nl, .word k, .child .null]) =
+      block initial p :: nl.blocks initial (initial.mem.read64 (slotAddress p 0)) := by
+    simp only [Node.blocks, slotsBlocks, Nat.zero_add, Nat.reduceAdd, List.append_nil,
+      block_eq hCapacity, hRead0, hlBlocks]
+  have hSub : List.Sublist (block initial p :: nl.blocks initial (initial.mem.read64 (slotAddress p 0)))
+      (block initial p :: (nl.blocks initial (initial.mem.read64 (slotAddress p 0)) ++
+        nr.blocks initial (initial.mem.read64 (slotAddress p 2)))) :=
+    (List.sublist_append_left _ _).cons_cons _
+  refine ⟨hW, hHeap.writesApart hW8 fun node hNode => ?_, ⟨hHead', ?_, ?_, hRead2, trivial⟩,
+    hClearedBlocks, by rw [hClearedBlocks]; exact hDisjoint.sublist hSub, hr1, hrBlocks⟩
+  · have := hHead.separate node hNode
+    simp only [regionsDisjoint] at this ⊢
+    omega
+  · rw [hRead0]; exact hl1
+  · show store1.mem.read64 (slotAddress p (0 + 1)) = k
+    rw [hRead1]; exact hk
 /-- `leftChild`'s record branch: slot 0 of an owned record `[child nl, word k, child nr]` with
 disjoint blocks cleared, then the record released.  From the release rule's postcondition for
 the cleared record, the left child, at the old slot-0 pointer, is rebuilt from the record's

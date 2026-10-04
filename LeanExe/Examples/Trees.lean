@@ -101,6 +101,30 @@ def KeyTree.leftSpine (g : KeyTree) : KeyTree → KeyTree
 def KeyTree.pickPair (c : UInt64) (a b : KeyTree) : KeyTree × KeyTree :=
   if c = 0 then (a, b) else (b, a)
 
+/-- The root key and the root key plus one, or two zeros for a leaf: a pair-valued match that
+reads the tree. -/
+def KeyTree.keyPair (t : KeyTree) : UInt64 × UInt64 := match t with
+  | .leaf => (0, 0)
+  | .node _ k _ => (k, k + 1)
+
+/-- The two subtrees: the record branch moves both children into the pair and releases the root
+record. -/
+def KeyTree.splitRoot (t : KeyTree) : KeyTree × KeyTree := match t with
+  | .leaf => (.leaf, .leaf)
+  | .node l _ r => (l, r)
+
+/-- The root key, and the tree with its root key set to 0: the record branch rewrites the record
+in place. -/
+def KeyTree.rootAndRest (t : KeyTree) : UInt64 × KeyTree := match t with
+  | .leaf => (0, .leaf)
+  | .node l k r => (k, .node l 0 r)
+
+/-- `a`'s subtrees when `a` is a node, and `b` with a leaf otherwise: the record branch releases
+`b`, which only the other branch moves. -/
+def KeyTree.splitOr (a b : KeyTree) : KeyTree × KeyTree := match a with
+  | .leaf => (b, .leaf)
+  | .node l _ r => (l, r)
+
 /-- The search tree `t` with the keys `a` and then `b`. -/
 def KeyTree.insertTwo (a b : UInt64) (t : KeyTree) : KeyTree := (t.insert a).insert b
 
