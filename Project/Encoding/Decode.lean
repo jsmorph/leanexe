@@ -46,6 +46,11 @@ def fixed64 : Parser UInt64 := do
   let bytes ← take 8
   pure (UInt64.ofNat (bytes.foldr (fun b acc => b.toNat + 256 * acc) 0))
 
+/-- Four bytes, least significant first, as a 32-bit word. -/
+def fixed32 : Parser UInt32 := do
+  let bytes ← take 4
+  pure (UInt32.ofNat (bytes.foldr (fun b acc => b.toNat + 256 * acc) 0))
+
 def remaining : Parser Nat := do
   return (← get).length
 
@@ -341,6 +346,7 @@ where
     | 0x41 => return .const (wrap32 (← signed 32))
     | 0x42 => return .constI64 (wrap64 (← signed 64))
     | 0x44 => return .f64Const (← fixed64)
+    | 0x43 => return .f32Const (← fixed32)
     | 0x3f | 0x40 => do
         if (← unsigned 32) ≠ 0 then unsupported "memory index"
         return if opcode = 0x3f then .memorySize else .memoryGrow

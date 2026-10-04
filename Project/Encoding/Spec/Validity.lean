@@ -91,6 +91,7 @@ mutual
     | const32 (value : UInt32) : Instruction context (.const value) [] [.i32]
     | const64 (value : UInt64) : Instruction context (.constI64 value) [] [.i64]
     | constF64 (value : UInt64) : Instruction context (.f64Const value) [] [.f64]
+    | constF32 (value : UInt32) : Instruction context (.f32Const value) [] [.f32]
     | localGet (index : Nat) (found : context.locals[index]? = some type) :
         Instruction context (.localGet index) [] [type]
     | localSet (index : Nat) (found : context.locals[index]? = some type) :

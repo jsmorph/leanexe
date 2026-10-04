@@ -52,15 +52,18 @@ def isUInt64Array (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
   if type.isAppOfArity ``Array 1 then isUInt64 type.appArg! else return false
 
+/-- Whether `type` is `Array Float` or `Array Float32`, both stored as arrays of words. -/
 def isFloatArray (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
-  if type.isAppOfArity ``Array 1 then isFloat type.appArg! else return false
+  if type.isAppOfArity ``Array 1 then
+    return (← isFloat type.appArg!) || (← isFloat32 type.appArg!)
+  else return false
 
 def isUInt64List (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
   if type.isAppOfArity ``List 1 then isUInt64 type.appArg! else return false
 
-/-- Whether `type` is `Array UInt64` or `Array Float`, both a pointer word. -/
+/-- Whether `type` is `Array UInt64`, `Array Float`, or `Array Float32`, each a pointer word. -/
 def isArray (type : Lean.Expr) : MetaM Bool := do
   return (← isUInt64Array type) || (← isFloatArray type)
 
@@ -587,6 +590,8 @@ def readLocals : {type : ScalarType} → IRExpr type → List Nat
   | _, .not c => readLocals c
   | _, .unF _ x => readLocals x
   | _, .unF32 _ x => readLocals x
+  | _, .ofBits32 x => readLocals x
+  | _, .toBits32 x => readLocals x
   | _, .convertU x => readLocals x
   | _, .truncSatU x => readLocals x
   | _, .ofBits x => readLocals x
@@ -1232,7 +1237,8 @@ mutual
     | _ => throwError "unsupported float term: {source}"
 
   /-- Translates a `Float32` term to an IR expression whose code starts at `loc`: variables,
-  fields, call results, the four arithmetic operations, and `Float32.sqrt`. -/
+  fields, call results, literals, the four arithmetic operations, `Float32.sqrt`, reads of an
+  `Array Float32`, and loops with one `Float32` state. -/
   partial def translateFloat32 (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
       CompileM (IRExpr .f32 × List Hint) := do
     let term := term.consumeMData
@@ -1255,6 +1261,32 @@ mutual
       let ir : IRExpr .f32 := .getF32 result
       return (ir, [hint ir "call result"])
     match term.getAppFnArgs with
+    | (``OfScientific.ofScientific, #[type, _, .lit (.natVal mantissa), sign, .lit (.natVal exponent)]) =>
+        unless ← isFloat32 type do throwError "unsupported literal type in {source}"
+        let negative ← match sign.consumeMData with
+          | .const ``Bool.true _ => pure true
+          | .const ``Bool.false _ => pure false
+          | _ => throwError "unsupported literal: {source}"
+        let ir : IRExpr .f32 :=
+          .constF32 (OfScientific.ofScientific mantissa negative exponent : Float32).toBits
+        return (ir, [hint ir "float32 literal"])
+    | (``OfNat.ofNat, #[type, .lit (.natVal value), _]) =>
+        unless ← isFloat32 type do throwError "unsupported literal type in {source}"
+        let ir : IRExpr .f32 := .constF32 (Float32.ofNat value).toBits
+        return (ir, [hint ir "float32 literal"])
+    | (``LeanExe.loop, _) =>
+        let [(state, .f32)] ← translateLoop ctx term
+          | throwError "a loop used as a Float32 must have a Float32 state: {source}"
+        let ir : IRExpr .f32 := .getF32 state
+        return (ir, [hint ir "loop result"])
+    | (``GetElem?.getElem!, #[_, _, _, _, _, _, array, position]) =>
+        let some arrayLocal ← lookupArray ctx.floatArrays array.consumeMData
+          | throwError "a Float32 read must be of an `Array Float32` variable: {source}"
+        let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
+          | throwError "a read position must be `i.toNat` for a UInt64 `i`: {source}"
+        let (i, iHints) ← translateValue ctx loc k
+        let ir : IRExpr .f32 := .ofBits32 (.read arrayLocal i)
+        return (ir, hint ir "float32 array read" :: iHints)
     | (``Float32.sqrt, #[operand]) =>
         let (x, xHints) ← translateFloat32 ctx loc operand
         let ir : IRExpr .f32 := .unF32 .sqrt x
@@ -1481,7 +1513,7 @@ mutual
     let bodyLoc := foldBodyLoc foldLoc
       (Stmt.fold elementType arrayLocal accLocal indexLocal lengthLocal elementLocal (.const 0))
     let bind (type : ScalarType) (x : Lean.Expr) (index : Nat) (ctx : Ctx) : Ctx :=
-      if type == .f64 then { ctx with floats := (x, index) :: ctx.floats }
+      if type == .f64 || type == .f32 then { ctx with floats := (x, index) :: ctx.floats }
       else { ctx with words := (x, index) :: ctx.words }
     let (⟨_, body⟩, bodyHints) ← withLocalDeclD `acc acc fun a =>
       withLocalDeclD `element element fun e =>
@@ -2211,7 +2243,8 @@ mutual
         return dst
     | (``LeanExe.build, #[element, count, f]) =>
         let floatElement ← isFloat element
-        unless floatElement || (← isUInt64 element) do
+        let float32Element ← isFloat32 element
+        unless floatElement || float32Element || (← isUInt64 element) do
           throwError "unsupported array element type in {source}"
         let (countIR, countHints) ← translateValue ctx ⟨[], 0⟩ count
         let dst ← match dst? with
@@ -2228,6 +2261,9 @@ mutual
             if floatElement then
               let (x, xHints) ← translateFloat inner ⟨[], 0⟩ (mkApp f i).headBeta
               pure ((.toBits x : IRExpr .u64), xHints)
+            else if float32Element then
+              let (x, xHints) ← translateFloat32 inner ⟨[], 0⟩ (mkApp f i).headBeta
+              pure ((.toBits32 x : IRExpr .u64), xHints)
             else translateValue inner ⟨[], 0⟩ (mkApp f i).headBeta
         let body := seqAll bodyStmts
         let relocate (loc : Loc) (hint : Hint) : Hint :=
@@ -3017,6 +3053,9 @@ def irToExpr : {type : ScalarType} → IRExpr type → Lean.Expr
   | _, .binF32 op left right =>
       mkApp3 (mkConst ``Project.IR.Expr.binF32) (toExpr op) (irToExpr left) (irToExpr right)
   | _, .unF32 op operand => mkApp2 (mkConst ``Project.IR.Expr.unF32) (toExpr op) (irToExpr operand)
+  | _, .constF32 bits => mkApp (mkConst ``Project.IR.Expr.constF32) (toExpr bits)
+  | _, .ofBits32 operand => mkApp (mkConst ``Project.IR.Expr.ofBits32) (irToExpr operand)
+  | _, .toBits32 operand => mkApp (mkConst ``Project.IR.Expr.toBits32) (irToExpr operand)
   | _, .convertU operand => mkApp (mkConst ``Project.IR.Expr.convertU) (irToExpr operand)
   | _, .truncSatU operand => mkApp (mkConst ``Project.IR.Expr.truncSatU) (irToExpr operand)
   | _, .ofBits operand => mkApp (mkConst ``Project.IR.Expr.ofBits) (irToExpr operand)

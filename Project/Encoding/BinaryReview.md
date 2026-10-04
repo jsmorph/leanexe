@@ -110,8 +110,15 @@ WASM instruction names, with a common type prefix shown once per group.
 | Loads | `i32.load=28`, `i64.load=29`, `i32.load8_u=2d` |
 | Stores | `i32.store=36`, `i64.store=37`, `i32.store8=3a` |
 | Memory operations | `memory.size=3f 00`, `memory.grow=40 00` |
-| Constants | `i32.const=41` with signed 32-bit immediate.  `i64.const=42` with signed 64-bit immediate. |
+| Constants | `i32.const=41` with signed 32-bit immediate.  `i64.const=42` with signed 64-bit immediate.  `f32.const=43` with four bytes and `f64.const=44` with eight bytes, least significant first. |
 | Structured control | `block=02`, `loop=03`, `if=04`, `else=05`, `end=0b` |
+
+The counts above date from the first review.  On 2026-10-03 the rules numbered 58 `Plain`
+rules, eight indexed rules, six memory rules, four constants, and three structured controls.
+That day `f32.const` was added and compared, with `f64.const`, which the encoder already had,
+against lines 194 and 195 of the [instruction grammar][instructions], `0x43 p:Bf32` and
+`0x44 p:Bf64`, and `BfN` in the [binary values][values], N/8 bytes through `$inv_fbytes_`.
+The `Plain` rules added after the first review have not been compared in this record.
 
 Indexed immediates use `u32`.  In `fc 00`, the second byte encodes unsigned
 subopcode zero.  The trailing zero in `memory.size` and `memory.grow` encodes

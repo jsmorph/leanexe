@@ -311,6 +311,13 @@ inductive Expr : ScalarType → Type where
   | getF32 (index : Nat) : Expr .f32
   | binF32 (op : F32Op) (left right : Expr .f32) : Expr .f32
   | unF32 (op : F32UnOp) (operand : Expr .f32) : Expr .f32
+  | constF32 (bits : UInt32) : Expr .f32
+  /-- The binary32 float whose bit pattern is the word's low 32 bits, as `i32.wrap_i64` and
+  `f32.reinterpret_i32`. -/
+  | ofBits32 (operand : Expr .u64) : Expr .f32
+  /-- The binary32 float's bit pattern as a word, as `i32.reinterpret_f32` and
+  `i64.extend_i32_u`. -/
+  | toBits32 (operand : Expr .f32) : Expr .u64
   deriving Repr
 
 /-- Element `k` of the array whose pointer local `array` holds, or 0 when `k` is
@@ -355,6 +362,13 @@ mutual
     | .f32, .unF32 op operand, mem, scratch, state => do
         let (value, next) ← operand.eval mem scratch state
         pure (op.apply value, next)
+    | .f32, .constF32 bits, _, _, state => pure (bits, state)
+    | .f32, .ofBits32 operand, mem, scratch, state => do
+        let (value, next) ← operand.eval mem scratch state
+        pure (value.toUInt32, next)
+    | .u64, .toBits32 operand, mem, scratch, state => do
+        let (value, next) ← operand.eval mem scratch state
+        pure (value.toUInt64, next)
     | .f64, .convertU operand, mem, scratch, state => do
         let (value, next) ← operand.eval mem scratch state
         pure (IEEE64.convertI64U value, next)
@@ -445,6 +459,11 @@ mutual
     | .f32, .binF32 op left right, scratch =>
         left.program scratch ++ right.program scratch ++ [op.instruction]
     | .f32, .unF32 op operand, scratch => operand.program scratch ++ [op.instruction]
+    | .f32, .constF32 bits, _ => [.f32Const bits]
+    | .f32, .ofBits32 operand, scratch =>
+        operand.program scratch ++ [.wrapI64, .f32ReinterpretI32]
+    | .u64, .toBits32 operand, scratch =>
+        operand.program scratch ++ [.i32ReinterpretF32, .extendUI32]
     | .f64, .convertU operand, scratch => operand.program scratch ++ [.f64ConvertI64U]
     | .u64, .truncSatU operand, scratch => operand.program scratch ++ [.i64TruncSatF64U]
     | .f64, .ofBits operand, scratch => operand.program scratch ++ [.f64ReinterpretI64]
@@ -493,10 +512,11 @@ mutual
 end
 
 def Expr.scratchWidth : {type : ScalarType} → Expr type → Nat
-  | _, .get _ | _, .const _ | _, .bconst _ | _, .getF _ | _, .constF _ | _, .getF32 _ => 0
+  | _, .get _ | _, .const _ | _, .bconst _ | _, .getF _ | _, .constF _ | _, .getF32 _
+  | _, .constF32 _ => 0
   | _, .binF _ left right | _, .binF32 _ left right => max left.scratchWidth right.scratchWidth
   | _, .unF _ operand | _, .convertU operand | _, .truncSatU operand | _, .ofBits operand
-  | _, .toBits operand | _, .unF32 _ operand =>
+  | _, .toBits operand | _, .unF32 _ operand | _, .ofBits32 operand | _, .toBits32 operand =>
       operand.scratchWidth
   | _, .eqF left right | _, .ltF left right | _, .leF left right =>
       max left.scratchWidth right.scratchWidth
@@ -526,6 +546,13 @@ theorem wrap_toUInt32 (a : UInt64) : UInt32.ofNat (a.toNat % 2 ^ 32) = a.toUInt3
 /-- `wrap_toUInt32` with the modulus as `simp` writes it. -/
 theorem ofNat_mod_toUInt32 (a : UInt64) : UInt32.ofNat (a.toNat % 4294967296) = a.toUInt32 :=
   wrap_toUInt32 a
+
+/-- `i64.extend_i32_u` gives the word's value. -/
+theorem ofNat_toNat_toUInt64 (a : UInt32) : UInt64.ofNat a.toNat = a.toUInt64 := by
+  apply UInt64.toNat_inj.mp
+  have := a.toNat_lt
+  simp only [UInt64.toNat_ofNat', UInt32.toNat_toUInt64]
+  omega
 
 /-- A read changes the state only by evaluating its position and saving the
 position in its scratch local. -/
@@ -562,7 +589,7 @@ theorem Expr.eval_preserves_below
           case i64 value =>
             obtain ⟨rfl, rfl⟩ := hEval
             rfl
-  | const value | constF value =>
+  | const value | constF value | constF32 value =>
       obtain ⟨rfl, rfl⟩ := Option.some.inj hEval
       rfl
   | bconst value =>
@@ -739,7 +766,8 @@ theorem Expr.eval_preserves_below
         (leftPreserves scratch state afterLeft leftValue index hLeft hIndex)
   | unF _ operand operandPreserves | convertU operand operandPreserves
   | truncSatU operand operandPreserves | ofBits operand operandPreserves
-  | toBits operand operandPreserves | unF32 _ operand operandPreserves =>
+  | toBits operand operandPreserves | unF32 _ operand operandPreserves
+  | ofBits32 operand operandPreserves | toBits32 operand operandPreserves =>
       simp only [Expr.eval] at hEval
       rcases hOperand : operand.eval mem scratch state with _ | ⟨value, afterOperand⟩
       · simp [hOperand] at hEval
@@ -1291,6 +1319,21 @@ theorem Expr.program_spec
         (rest := _) (Q := _) hOperand
       cases op
       simpa [F32UnOp.instruction, F32UnOp.apply, wp_simp, Wasm.f32Sqrt] using hNext
+  | constF32 bits =>
+      obtain ⟨rfl, rfl⟩ := Option.some.inj hEval
+      simp only [Expr.program, List.cons_append, List.nil_append, Wasm.wp_f32Const_cons]
+      exact hNext
+  | ofBits32 operand operandSpec | toBits32 operand operandSpec =>
+      simp only [Expr.eval] at hEval
+      simp only [Expr.program, List.append_assoc]
+      rcases hOperand : operand.eval store.mem scratch state with _ | ⟨value, afterOperand⟩
+      · simp [hOperand] at hEval
+      simp [hOperand] at hEval
+      obtain ⟨rfl, rfl⟩ := hEval
+      apply operandSpec (scratch := scratch) (state := state)
+        (next := afterOperand) (result := value) (values := values)
+        (rest := _) (Q := _) hOperand
+      simpa [wp_simp, ofNat_mod_toUInt32, ofNat_toNat_toUInt64] using hNext
   | convertU operand operandSpec | truncSatU operand operandSpec | ofBits operand operandSpec
   | toBits operand operandSpec =>
       simp only [Expr.eval] at hEval
@@ -1419,7 +1462,7 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
           cases value <;> simp [hGet] at hEval
           obtain ⟨rfl, rfl⟩ := hEval
           exact .refl _ _ _
-  | const value | bconst value | constF value =>
+  | const value | bconst value | constF value | constF32 value =>
       obtain ⟨rfl, rfl⟩ := Option.some.inj hEval
       exact .refl _ _ _
   | bin op left right hLeftFrame hRightFrame =>
@@ -1537,7 +1580,8 @@ theorem Expr.eval_frame (writes : List Nat) {type : ScalarType} (expression : Ex
       exact (hLeftFrame _ _ _ _ hLeft).trans (hRightFrame _ _ _ _ hRight)
   | unF _ operand hOperandFrame | convertU operand hOperandFrame
   | truncSatU operand hOperandFrame | ofBits operand hOperandFrame
-  | toBits operand hOperandFrame | unF32 _ operand hOperandFrame =>
+  | toBits operand hOperandFrame | unF32 _ operand hOperandFrame
+  | ofBits32 operand hOperandFrame | toBits32 operand hOperandFrame =>
       simp only [Expr.eval] at hEval
       rcases hOperand : operand.eval mem scratch state with _ | ⟨value, afterOperand⟩
       · simp [hOperand] at hEval

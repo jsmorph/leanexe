@@ -24034,7 +24034,7 @@ and prints `[4, 5]` and `[]`, `F32BitsProto.lean` proves `toBits_add` with `prop
 
 - [x] 23a: `F32Bits`, the `f32` type and its arithmetic constructors, `Scalar Float32`, the
   compiler's `Float32` scalars, the host's `f32` kinds, and `axpy32` with its theorem.
-- [ ] 23b: `f32.const`, `Array Float32` as 8-byte words, `Float32` reads, loops, and builds, and
+- [x] 23b: `f32.const`, `Array Float32` as 8-byte words, `Float32` reads, loops, and builds, and
   `matVec32` with its theorem.
 - [ ] 23c: `F32Compare`, `F32Sign`, the binary32 comparisons, `abs`, and `neg` in the encoder, and
   conditionals, `min`, and `max` on `Float32`.
@@ -24063,3 +24063,27 @@ bit for bit with one `simp` call each, depending on `propext`, `Classical.choice
 passed with no `sorry`, the 22 earlier modules emit the same bytes as before, and the module tests
 passed 9,521 comparisons, 240 of them binary32 cases over special values, arbitrary bit patterns,
 and moderate values, with 77 count cases, 20 depth cases, and 360 cases of `chunks.py`.
+
+### Iteration 23, step 23b: binary32 arrays
+
+The verified encoder gained `f32.const`: `0x43` and four bytes, least significant first, with the
+specification's rules `0x43 p:Bf32 => CONST F32 p` and `CONST nt c_nt : eps -> nt` at the
+revision the encoder review cites.  It took the seven places that `f64.const` occupies, and the
+decoder proofs went through as written.  The binary and validity reviews gained rows for both float
+constants, since `f64.const` had none, and a note that the review's rule counts predate several
+later `Plain` rules.  The IR gained `constF32`, `ofBits32` (`i32.wrap_i64` and
+`f32.reinterpret_i32`, the word's low half), and `toBits32` (`i32.reinterpret_f32` and
+`i64.extend_i32_u`).
+
+`Represent (Array Float32)` is the word array `xs.map fun x : Float32 => x.toBits.toUInt64`, and
+`getElem!_map_toBits32` reads an element's bits from a word's low half, including the 0 of a
+missing element.  The compiler stores `Array Float32` values with the `Array Float` values,
+translates `Float32` literals, reads, and loops with a `Float32` state, and stores a `Float32`
+element of `LeanExe.build` through `toBits32`.  `matVec32_implements` is the binary64 `matVec`
+proof with `f32` constructors, `F32Bits`, `getElem!_map_toBits32`, and `fun r => (row32 m v cols
+r).toBits.toUInt64` as the built function, and it checked on the first attempt.
+
+The full build passed with no `sorry`, and `binary32_bytes` depends on `propext`,
+`Classical.choice`, and `Quot.sound`.  The 22 earlier modules emit the same bytes as before.  The
+module tests passed 9,531 comparisons, 250 of them binary32, among them 10 `matVec32` shapes with
+short matrices and vectors, and 77 count cases, 20 depth cases, and 360 cases of `chunks.py`.
