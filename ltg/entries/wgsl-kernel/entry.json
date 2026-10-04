@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "wgsl-kernel",
   "title": "WGSL kernels from IR builds",
-  "summary": "Gives a printed WGSL kernel its meaning through a parser proved to invert the printer, defines the invocation and dispatch semantics of the device model, translates the element of an IR build into WGSL with a simulation lemma from a memory-free denotation, and proves a build kernel from the element lemma its Wasm proof uses.",
+  "summary": "Gives a printed WGSL kernel its meaning through a parser proved to invert the printer, defines the invocation and dispatch semantics of the device model, translates the statements and element of an IR build, loops included, into WGSL with simulation lemmas from a memory-free denotation, and proves a build kernel from the element lemma its Wasm proof uses.",
   "roles": [
     "checked-proof-asset",
     "guidance"
@@ -19,17 +19,21 @@
     "binary32",
     "dispatch",
     "race-free",
-    "u64-pairs"
+    "u64-pairs",
+    "loops"
   ],
   "annotationKinds": [],
   "modules": [
     "Project.WGSL.RoundTrip",
     "Project.WGSL.Semantics",
     "Project.WGSL.Kernel",
+    "Project.WGSL.Pair",
     "Project.WGSL.Translate",
+    "Project.WGSL.TranslateStmt",
     "Project.WGSL.Build",
     "Project.WGSL.Binary32",
-    "Project.IR.Denote"
+    "Project.IR.Denote",
+    "Project.IR.DenoteStmt"
   ],
   "declarations": [
     "Project.WGSL.Module.parse_print",
@@ -60,11 +64,23 @@
     "Project.WGSL.scaleKernel_dispatch",
     "Project.WGSL.axpyArrayKernel_dispatch",
     "Project.Binary32.axpyArrayElement_denote",
-    "Project.Binary32.axpyArray32_implements"
+    "Project.Binary32.axpyArray32_implements",
+    "Project.WGSL.add64_word",
+    "Project.WGSL.mul64_word",
+    "Project.WGSL.trStmt",
+    "Project.WGSL.trStmt_sim",
+    "Project.IR.Stmt.denote",
+    "Project.IR.Stmt.denote_spec",
+    "Project.IR.Stmt.denote_loop",
+    "Project.WGSL.Spec.wfb",
+    "Project.WGSL.matVecKernel_dispatch",
+    "Project.Binary32.matVecRow_denote",
+    "Project.Binary32.matVec32_implements"
   ],
   "premises": [
     "The device model of 2026-10-04: IEEE32 binary32 results with the canonical NaN, race-free dispatch, the host's length word, a dispatch that covers the count, and no dynamic errors",
-    "One buffer per IR parameter: an array's Wasm array, or a scalar's two words, with arrays below 2^29 elements"
+    "A loop whose condition still holds at its 2^64-th test has no result in the model; Dawn and naga end a loop at that test",
+    "One buffer per IR parameter: an array's Wasm array, or a scalar's two words, with arrays and the count below 2^29 elements"
   ],
   "result": "The dispatch leaves the output holding the Lean function's build as a Wasm array, distinct invocations store to distinct words, and the printed text parses to the kernel; the Wasm theorem of the same function follows from the same element lemma.",
   "consumers": [
@@ -73,7 +89,10 @@
     "Project.WGSL.scaleKernel_text",
     "Project.WGSL.axpyArrayKernel_text",
     "Project.Binary32.scale32_implements",
-    "Project.Binary32.axpyArray32_implements"
+    "Project.Binary32.axpyArray32_implements",
+    "Project.WGSL.matVecKernel_dispatch",
+    "Project.WGSL.matVecKernel_text",
+    "Project.Binary32.matVec32_implements"
   ],
   "relatedEntries": [
     "binary32-arithmetic",
