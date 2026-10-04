@@ -241,13 +241,13 @@ theorem Spec.agrees (K : Spec) (args : List Arg) (xs : Array UInt64) (h : K.Fits
     · subst hji
       simp only [ite_true, Option.some.injEq, Wasm.Value.i64.injEq] at hj
       subst hj
-      refine ⟨0, by simp [Spec.layout, show ¬ K.index < K.kinds.length by have := h.index; omega],
+      refine ⟨0, false, by simp [Spec.layout, show ¬ K.index < K.kinds.length by have := h.index; omega],
         by rw [hfind0, pairOf_ofNat g hg]⟩
     · by_cases hjs : j = K.sizeLocal
       · subst hjs
         simp only [hji, ite_false, ite_true, Option.some.injEq, Wasm.Value.i64.injEq] at hj
         subst hj
-        refine ⟨1 + K.sizeSource, by
+        refine ⟨1 + K.sizeSource, false, by
           simp [Spec.layout, show ¬ K.sizeLocal < K.kinds.length by have := h.sizeLocal; omega,
             Ne.symm h.distinct], ?_⟩
         rw [hfindj _ _ h.source, pairOf_ofNat xs.size (by omega)]
@@ -259,7 +259,7 @@ theorem Spec.agrees (K : Spec) (args : List Arg) (xs : Array UInt64) (h : K.Fits
           subst hj
           have hjl : j < K.kinds.length := by
             obtain ⟨hj', _⟩ := List.getElem?_eq_some_iff.mp hv; omega
-          refine ⟨1 + j, ?_, by rw [hfindj _ _ hv]; rfl⟩
+          refine ⟨1 + j, false, ?_, by rw [hfindj _ _ hv]; rfl⟩
           have : K.kinds[j] = .word := by
             rw [hkind j hjl]; rw [List.getElem?_eq_some_iff] at hv; obtain ⟨_, hv⟩ := hv; simp [hv, Arg.kind]
           simp [Spec.layout, hjl, this]
@@ -278,7 +278,7 @@ theorem Spec.agrees (K : Spec) (args : List Arg) (xs : Array UInt64) (h : K.Fits
           subst hj
           have hjl : j < K.kinds.length := by
             obtain ⟨hj', _⟩ := List.getElem?_eq_some_iff.mp hv; omega
-          refine ⟨1 + j, ?_, by rw [hfindj _ _ hv]; rfl⟩
+          refine ⟨1 + j, false, ?_, by rw [hfindj _ _ hv]; rfl⟩
           have : K.kinds[j] = .float := by
             rw [hkind j hjl]; rw [List.getElem?_eq_some_iff] at hv; obtain ⟨_, hv⟩ := hv; simp [hv, Arg.kind]
           simp [Spec.layout, hjl, this]
@@ -364,7 +364,7 @@ theorem Spec.invoke_eq (K : Spec) (m : Module) (hm : K.module = some m) (args : 
         simp only [Env.find, List.find?_cons, List.find?_nil]
         have : ¬ (0 = n) := by omega
         simp [this]
-      obtain ⟨added, hrun, hb, hle, hlt, hres⟩ := trExpr_sim K.layout (K.locals args g xs.size)
+      obtain ⟨added, hrun, hb, hle, hlt, mres, hres⟩ := trExpr_sim K.layout (K.locals args g xs.size)
         (Spec.arrays args) ctx [] K.element (1 + K.kinds.length) stmts res next' htr
         (f (UInt64.ofNat g)) (hElem g hgn) envP hAgree hfresh
       rw [hrun, Option.bind_some]

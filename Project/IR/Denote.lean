@@ -18,6 +18,11 @@ def Expr.denote (locals : Nat → Option Value) (arrays : Nat → Option (Array 
     | some (.i64 v) => some v
     | _ => none
   | .u64, .const v => some v
+  | .u64, .bin op left right =>
+      if op = .divU ∨ op = .remU then none
+      else do pure (op.apply (← left.denote locals arrays) (← right.denote locals arrays))
+  | .bool, .ltU left right => do
+      pure (decide ((← left.denote locals arrays) < (← right.denote locals arrays)))
   | .f32, .getF32 j => match locals j with
     | some (.f32 v) => some v
     | _ => none
@@ -81,6 +86,48 @@ theorem Expr.eval_denote {locals : Nat → Option Value} {arrays : Nat → Optio
       intro scratch state v _ _ hDenote
       cases hDenote
       exact ⟨state, rfl⟩
+  | bin op left right ihl ihr =>
+      intro scratch state v hAgree hRoom hDenote
+      simp only [Expr.denote] at hDenote
+      split at hDenote
+      · cases hDenote
+      rename_i hOp
+      simp only [Option.bind_eq_bind, Option.pure_def] at hDenote
+      cases hl : left.denote locals arrays with
+      | none => simp [hl] at hDenote
+      | some lv =>
+        cases hr : right.denote locals arrays with
+        | none => simp [hl, hr] at hDenote
+        | some rv =>
+          simp only [hl, hr, Option.bind_some, Option.some.injEq] at hDenote
+          subst hDenote
+          simp only [Expr.scratchWidth, hOp, ↓reduceIte] at hRoom
+          obtain ⟨s1, h1⟩ := ihl scratch state lv hAgree (by omega) hl
+          have hFrame := Expr.eval_frame [] left store.mem scratch state s1 lv h1
+          have hAgree1 := hAgree.frame fun j hj =>
+            Expr.eval_preserves_below left store.mem scratch state s1 lv j h1 hj
+          obtain ⟨s2, h2⟩ := ihr scratch s1 rv hAgree1
+            (by rw [hFrame.params, hFrame.locals]; omega) hr
+          exact ⟨s2, by simp [Expr.eval, hOp, h1, h2]⟩
+  | ltU left right ihl ihr =>
+      intro scratch state v hAgree hRoom hDenote
+      simp only [Expr.denote, Option.bind_eq_bind, Option.pure_def] at hDenote
+      cases hl : left.denote locals arrays with
+      | none => simp [hl] at hDenote
+      | some lv =>
+        cases hr : right.denote locals arrays with
+        | none => simp [hl, hr] at hDenote
+        | some rv =>
+          simp only [hl, hr, Option.bind_some, Option.some.injEq] at hDenote
+          subst hDenote
+          simp only [Expr.scratchWidth] at hRoom
+          obtain ⟨s1, h1⟩ := ihl scratch state lv hAgree (by omega) hl
+          have hFrame := Expr.eval_frame [] left store.mem scratch state s1 lv h1
+          have hAgree1 := hAgree.frame fun j hj =>
+            Expr.eval_preserves_below left store.mem scratch state s1 lv j h1 hj
+          obtain ⟨s2, h2⟩ := ihr scratch s1 rv hAgree1
+            (by rw [hFrame.params, hFrame.locals]; omega) hr
+          exact ⟨s2, by simp [Expr.eval, h1, h2]⟩
   | getF32 j =>
       intro scratch state v hAgree _ hDenote
       simp only [Expr.denote] at hDenote
