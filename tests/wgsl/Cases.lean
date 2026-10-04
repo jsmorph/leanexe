@@ -59,4 +59,15 @@ def main : IO Unit := do
         let initial := rows.toUInt64 :: (List.replicate rows 0x7fc000017fc00001)
         let r := (matVec32 m.toArray v.toArray rows.toUInt64 cols.toUInt64).toList
         IO.println s!"matVec|{groups}|u64:{words initial}|u64:{words (arrayWords64 m)} u64:{words (arrayWords64 v)} u64:{rows} u64:{cols}|{words (arrayWords32 r)}"
+  for n in [0, 1, 3, 4, 7, 64, 65, 130] do
+    for (lo, k) in specials.zip (List.range specials.length) do
+      let hi := specials[(k * 7 + 3) % specials.length]!
+      let x := (List.range n).map fun i => if i % 3 = 0 then arbitrary (i + 11 * k)
+        else specials[(i + 5 * k) % specials.length]!
+      let bound : UInt64 := if k % 3 = 0 then n.toUInt64 else if k % 3 = 1 then (n / 2).toUInt64
+        else 0xffffffff00000000
+      let groups := max ((n + 63) / 64 + (if k % 2 = 0 then 0 else 1)) 1
+      let initial := n.toUInt64 :: (List.replicate n 0x7fc000017fc00001)
+      let r := (condMix32 x.toArray lo hi bound).toList
+      IO.println s!"condMix|{groups}|u64:{words initial}|u64:{words (arrayWords64 x)} {scalarBuffer lo} {scalarBuffer hi} u64:{bound}|{words (arrayWords32 r)}"
 

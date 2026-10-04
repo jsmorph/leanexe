@@ -34,4 +34,14 @@ def scale32 (a : Float32) (x : Array Float32) : Array Float32 :=
 def axpyArray32 (a : Float32) (x y : Array Float32) : Array Float32 :=
   LeanExe.build x.size.toUInt64 fun i => a * x[i.toNat]! + y[i.toNat]!
 
+/-- Each element of `x`, replaced by its mirror within its group of four when below `lo` and the
+mirror is below `n`, by `hi` when at least `hi`, and otherwise by the larger of `lo` and itself. -/
+def condMix32 (x : Array Float32) (lo hi : Float32) (n : UInt64) : Array Float32 :=
+  LeanExe.build x.size.toUInt64 fun i =>
+    if x[i.toNat]! < lo then
+      (if i % 4 ≤ 3 ∧ i / 4 * 4 + (3 - i % 4) < n then
+        x[(i / 4 * 4 + (3 - i % 4)).toNat]!
+      else max lo x[i.toNat]!)
+    else if hi ≤ x[i.toNat]! then hi else max lo x[i.toNat]!
+
 end LeanExe.Examples.Binary32

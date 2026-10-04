@@ -28,11 +28,31 @@ def F32UnOp.wgsl : Project.IR.F32UnOp → Expr → Expr
   | .sqrt, e => .sqrt e
   | .abs, e => .abs e
 
-/-- The pair operation of a `u64` operation, for those the translation covers. -/
-def U64Op.wgsl? : Project.IR.U64Op → Option (Nat → Nat → Expr)
-  | .add => some add64
-  | .mul => some mul64
-  | _ => none
+/-- The exponent `s` of a constant `2^s` with `1 ≤ s ≤ 31`. -/
+def pow2Exp? (c : UInt64) : Option Nat :=
+  (List.range 32).find? fun s => decide (1 ≤ s ∧ c.toNat = 2 ^ s)
+
+theorem pow2Exp?_spec {c : UInt64} {s : Nat} (h : pow2Exp? c = some s) :
+    (1 ≤ s ∧ s ≤ 31) ∧ c = UInt64.ofNat (2 ^ s) := by
+  unfold pow2Exp? at h
+  have hmem := List.mem_of_find?_eq_some h
+  have hp := List.find?_some h
+  simp only [List.mem_range, decide_eq_true_eq] at hmem hp
+  refine ⟨⟨hp.1, by omega⟩, ?_⟩
+  apply UInt64.toNat_inj.mp
+  rw [hp.2, UInt64.toNat_ofNat']
+  exact (Nat.mod_eq_of_lt (Nat.pow_lt_pow_right (by omega) (by omega))).symm
+
+/-- The pair operation of a `u64` operation with right operand `right`, for those the
+translation covers: addition, subtraction, multiplication, and division and remainder by a
+constant power of two from 2 to 2^31. -/
+def U64Op.wgsl? : Project.IR.U64Op → Project.IR.Expr .u64 → Option (Nat → Nat → Expr)
+  | .add, _ => some add64
+  | .sub, _ => some sub64
+  | .mul, _ => some mul64
+  | .divU, .const c => (pow2Exp? c).map fun s a _ => divPow2 a s
+  | .remU, .const c => (pow2Exp? c).map fun s a _ => remPow2 a s
+  | _, _ => none
 
 /-- The statements that compute an IR expression from variable `next` on, the variable that holds
 its value, and the next free variable; `none` outside the kernel subset. -/
@@ -41,8 +61,9 @@ def trExpr (F : Layout) : {type : Project.IR.ScalarType} → Project.IR.Expr typ
   | .u64, .get j, next => (F.scalar j).map fun v => ([], v, next)
   | .u64, .const c, next =>
       some ([.let_ next .vec2u (.vec2 (.lit c.toUInt32) (.lit (c >>> 32).toUInt32))], next, next + 1)
+  | .bool, .bconst b, next => some ([.let_ next .bool (.bool b)], next, next + 1)
   | .u64, .bin op left right, next => do
-      let f ← U64Op.wgsl? op
+      let f ← U64Op.wgsl? op right
       let (sl, vl, n1) ← trExpr F left next
       let (sr, vr, n2) ← trExpr F right n1
       pure (sl ++ sr ++ [.let_ n2 .vec2u (f vl vr)], n2, n2 + 1)
@@ -50,6 +71,55 @@ def trExpr (F : Layout) : {type : Project.IR.ScalarType} → Project.IR.Expr typ
       let (sl, vl, n1) ← trExpr F left next
       let (sr, vr, n2) ← trExpr F right n1
       pure (sl ++ sr ++ [.let_ n2 .bool (lt64 vl vr)], n2, n2 + 1)
+  | .bool, .leU left right, next => do
+      let (sl, vl, n1) ← trExpr F left next
+      let (sr, vr, n2) ← trExpr F right n1
+      pure (sl ++ sr ++ [.let_ n2 .bool (le64 vl vr)], n2, n2 + 1)
+  | .bool, .eq left right, next => do
+      let (sl, vl, n1) ← trExpr F left next
+      let (sr, vr, n2) ← trExpr F right n1
+      pure (sl ++ sr ++ [.let_ n2 .bool (eq64 vl vr)], n2, n2 + 1)
+  | .bool, .ne left right, next => do
+      let (sl, vl, n1) ← trExpr F left next
+      let (sr, vr, n2) ← trExpr F right n1
+      pure (sl ++ sr ++ [.let_ n2 .bool (.not (eq64 vl vr))], n2, n2 + 1)
+  | .bool, .eqF32 left right, next => do
+      let (sl, vl, n1) ← trExpr F left next
+      let (sr, vr, n2) ← trExpr F right n1
+      pure (sl ++ sr ++ [.let_ n2 .bool (.bin .eq (.var vl) (.var vr))], n2, n2 + 1)
+  | .bool, .ltF32 left right, next => do
+      let (sl, vl, n1) ← trExpr F left next
+      let (sr, vr, n2) ← trExpr F right n1
+      pure (sl ++ sr ++ [.let_ n2 .bool (.bin .lt (.var vl) (.var vr))], n2, n2 + 1)
+  | .bool, .leF32 left right, next => do
+      let (sl, vl, n1) ← trExpr F left next
+      let (sr, vr, n2) ← trExpr F right n1
+      pure (sl ++ sr ++ [.let_ n2 .bool (.bin .le (.var vl) (.var vr))], n2, n2 + 1)
+  | .bool, .not operand, next => do
+      let (so, vo, n1) ← trExpr F operand next
+      pure (so ++ [.let_ n1 .bool (.not (.var vo))], n1, n1 + 1)
+  | .bool, .and left right, next => do
+      let (sl, vl, n1) ← trExpr F left next
+      let (sr, vr, n2) ← trExpr F right (n1 + 1)
+      pure (sl ++ [.var n1 .bool (.bool false),
+        .ite (.var vl) (sr ++ [.assign n1 (.var vr)]) []], n1, n2)
+  | .bool, .or left right, next => do
+      let (sl, vl, n1) ← trExpr F left next
+      let (sr, vr, n2) ← trExpr F right (n1 + 1)
+      pure (sl ++ [.var n1 .bool (.bool true),
+        .ite (.var vl) [] (sr ++ [.assign n1 (.var vr)])], n1, n2)
+  | .u64, .ite c t e, next => do
+      let (sc, vc, n1) ← trExpr F c next
+      let (st, vt, n2) ← trExpr F t (n1 + 1)
+      let (se, ve, n3) ← trExpr F e n2
+      pure (sc ++ [.var n1 .vec2u (.vec2 (.lit 0) (.lit 0)),
+        .ite (.var vc) (st ++ [.assign n1 (.var vt)]) (se ++ [.assign n1 (.var ve)])], n1, n3)
+  | .f32, .iteF32 c t e, next => do
+      let (sc, vc, n1) ← trExpr F c next
+      let (st, vt, n2) ← trExpr F t (n1 + 1)
+      let (se, ve, n3) ← trExpr F e n2
+      pure (sc ++ [.var n1 .f32 (.toF32 (.lit 0)),
+        .ite (.var vc) (st ++ [.assign n1 (.var vt)]) (se ++ [.assign n1 (.var ve)])], n1, n3)
   | .f32, .getF32 j, next => (F.scalar j).map fun v => ([], v, next)
   | .f32, .constF32 bits, next =>
       if Wasm.IEEE32.isNaN bits || Wasm.IEEE32.isInfinite bits then none
@@ -220,6 +290,259 @@ theorem simulates_bin {ctx : Context} {env : Env} {writes : List (Nat × UInt32)
       (fun b hb h => by have := hb2 b hb; omega)]
     exact hf1
 
+/-- The names of an environment that is free from `n` up are below `n`. -/
+theorem names_lt {env : Env} {n : Nat} (h : ∀ k, n ≤ k → env.find k = none) :
+    ∀ b ∈ env, b.1 < n := by
+  intro b hb
+  by_contra hlt
+  have := h b.1 (by omega)
+  simp only [Env.find, Option.map_eq_none_iff, List.find?_eq_none] at this
+  exact this b hb (by simp)
+
+theorem find_none_of_names {env : Env} {n : Nat} (h : ∀ b ∈ env, b.1 < n) :
+    ∀ k, n ≤ k → env.find k = none := by
+  intro k hk
+  simp only [Env.find, Option.map_eq_none_iff, List.find?_eq_none]
+  intro b hb
+  have := h b hb
+  simp only [decide_eq_true_eq]
+  omega
+
+theorem trExpr_mono (F : Layout) : ∀ {type : Project.IR.ScalarType} (e : Project.IR.Expr type)
+    (next : Nat) (stmts : List Stmt) (res next' : Nat),
+    trExpr F e next = some (stmts, res, next') → next ≤ next' := by
+  intro type e
+  induction e with
+  | get j | getF32 j =>
+      intro next stmts res next' h
+      simp only [trExpr, Option.map_eq_some_iff] at h
+      obtain ⟨_, _, h⟩ := h
+      cases h; omega
+  | const c | bconst c =>
+      intro next stmts res next' h
+      simp only [trExpr, Option.some.injEq, Prod.mk.injEq] at h
+      omega
+  | constF32 bits =>
+      intro next stmts res next' h
+      simp only [trExpr] at h
+      split at h
+      · cases h
+      · simp only [Option.some.injEq, Prod.mk.injEq] at h; omega
+  | bin op left right ihl ihr =>
+      intro next stmts res next' h
+      simp only [trExpr, Option.bind_eq_bind] at h
+      cases hop : U64Op.wgsl? op right with
+      | none => simp [hop] at h
+      | some f =>
+        cases hl : trExpr F left next with
+        | none => simp [hop, hl] at h
+        | some rl =>
+          obtain ⟨sl, vl, n1⟩ := rl
+          cases hr : trExpr F right n1 with
+          | none => simp [hop, hl, hr] at h
+          | some rr =>
+            obtain ⟨sr, vr, n2⟩ := rr
+            simp only [hop, hl, hr, Option.bind_some, Option.pure_def, Option.some.injEq,
+              Prod.mk.injEq] at h
+            have := ihl _ _ _ _ hl
+            have := ihr _ _ _ _ hr
+            omega
+  | ltU left right ihl ihr | leU left right ihl ihr | eq left right ihl ihr
+  | ne left right ihl ihr | eqF32 left right ihl ihr | ltF32 left right ihl ihr
+  | leF32 left right ihl ihr | binF32 _ left right ihl ihr =>
+      intro next stmts res next' h
+      simp only [trExpr, Option.bind_eq_bind] at h
+      cases hl : trExpr F left next with
+      | none => simp [hl] at h
+      | some rl =>
+        obtain ⟨sl, vl, n1⟩ := rl
+        cases hr : trExpr F right n1 with
+        | none => simp [hl, hr] at h
+        | some rr =>
+          obtain ⟨sr, vr, n2⟩ := rr
+          simp only [hl, hr, Option.bind_some, Option.pure_def, Option.some.injEq,
+            Prod.mk.injEq] at h
+          have := ihl _ _ _ _ hl
+          have := ihr _ _ _ _ hr
+          omega
+  | not operand ih | unF32 _ operand ih | ofBits32 operand ih | toBits32 operand ih =>
+      intro next stmts res next' h
+      simp only [trExpr, Option.bind_eq_bind] at h
+      cases ho : trExpr F operand next with
+      | none => simp [ho] at h
+      | some ro =>
+        obtain ⟨so, vo, n1⟩ := ro
+        simp only [ho, Option.bind_some, Option.pure_def, Option.some.injEq, Prod.mk.injEq] at h
+        have := ih _ _ _ _ ho
+        omega
+  | and left right ihl ihr | or left right ihl ihr =>
+      intro next stmts res next' h
+      simp only [trExpr, Option.bind_eq_bind] at h
+      cases hl : trExpr F left next with
+      | none => simp [hl] at h
+      | some rl =>
+        obtain ⟨sl, vl, n1⟩ := rl
+        cases hr : trExpr F right (n1 + 1) with
+        | none => simp [hl, hr] at h
+        | some rr =>
+          obtain ⟨sr, vr, n2⟩ := rr
+          simp only [hl, hr, Option.bind_some, Option.pure_def, Option.some.injEq,
+            Prod.mk.injEq] at h
+          have := ihl _ _ _ _ hl
+          have := ihr _ _ _ _ hr
+          omega
+  | ite c t e ihc iht ihe | iteF32 c t e ihc iht ihe =>
+      intro next stmts res next' h
+      simp only [trExpr, Option.bind_eq_bind] at h
+      cases hc : trExpr F c next with
+      | none => simp [hc] at h
+      | some rc =>
+        obtain ⟨sc, vc, n1⟩ := rc
+        cases ht : trExpr F t (n1 + 1) with
+        | none => simp [hc, ht] at h
+        | some rt =>
+          obtain ⟨st, vt, n2⟩ := rt
+          cases he : trExpr F e n2 with
+          | none => simp [hc, ht, he] at h
+          | some re =>
+            obtain ⟨se, ve, n3⟩ := re
+            simp only [hc, ht, he, Option.bind_some, Option.pure_def, Option.some.injEq,
+              Prod.mk.injEq] at h
+            have := ihc _ _ _ _ hc
+            have := iht _ _ _ _ ht
+            have := ihe _ _ _ _ he
+            omega
+  | read array position ih =>
+      intro next stmts res next' h
+      simp only [trExpr, Option.bind_eq_bind] at h
+      cases hF : F.array array with
+      | none => simp [hF] at h
+      | some bl =>
+        cases hp : trExpr F position next with
+        | none => simp [hF, hp] at h
+        | some rp =>
+          obtain ⟨sp, vp, n1⟩ := rp
+          simp only [hF, hp, Option.bind_some, Option.pure_def, Option.some.injEq,
+            Prod.mk.injEq] at h
+          have := ih _ _ _ _ hp
+          omega
+  | _ =>
+      intro next stmts res next' h
+      simp [trExpr] at h
+
+theorem Env.set_fresh (env : Env) (w : Nat) (v : Value) (h : ∀ b ∈ env, b.1 ≠ w) :
+    env.set w v = env := by
+  induction env with
+  | nil => rfl
+  | cons x env ih =>
+      simp only [Env.set, List.map_cons, List.cons.injEq]
+      exact ⟨by simp [h x (by simp)], ih fun b hb => h b (by simp [hb])⟩
+
+theorem Env.set_append (a b : Env) (w : Nat) (v : Value) :
+    (a ++ b).set w v = a.set w v ++ b.set w v := by
+  simp [Env.set]
+
+
+theorem U64Op.wgsl?_eval {op : Project.IR.U64Op} {right : Project.IR.Expr .u64}
+    {f : Nat → Nat → Expr} (h : U64Op.wgsl? op right = some f)
+    {locals : Nat → Option Wasm.Value} {arrays : Nat → Option (Array UInt64)} {rv : UInt64}
+    (hr : right.denote locals arrays = some rv) (ctx : Context) (env : Env) {ma mb : Bool}
+    (a b : Nat) (lv : UInt64) (ha : env.find a = some (pairOf lv, ma))
+    (hb : env.find b = some (pairOf rv, mb)) :
+    (f a b).eval ctx env = some (pairOf (op.apply lv rv)) := by
+  cases op with
+  | add => cases h; exact add64_word ctx env a b lv rv ha hb
+  | sub => cases h; exact sub64_word ctx env a b lv rv ha hb
+  | mul => cases h; exact mul64_word ctx env a b lv rv ha hb
+  | divU =>
+      cases right with
+      | const c =>
+          simp only [U64Op.wgsl?, Option.map_eq_some_iff] at h
+          obtain ⟨s, hs, rfl⟩ := h
+          obtain ⟨hs1, rfl⟩ := pow2Exp?_spec hs
+          simp only [Project.IR.Expr.denote, Option.some.injEq] at hr
+          subst hr
+          have hne : UInt64.ofNat (2 ^ s) ≠ 0 := fun h0 => by
+            have := congrArg UInt64.toNat h0
+            rw [UInt64.toNat_ofNat', Nat.mod_eq_of_lt (Nat.pow_lt_pow_right (by omega)
+              (by omega))] at this
+            simp at this
+          simp only [Project.IR.U64Op.apply, hne, ↓reduceIte]
+          exact divPow2_word ctx env a s lv hs1 ha
+      | _ => simp [U64Op.wgsl?] at h
+  | remU =>
+      cases right with
+      | const c =>
+          simp only [U64Op.wgsl?, Option.map_eq_some_iff] at h
+          obtain ⟨s, hs, rfl⟩ := h
+          obtain ⟨hs1, rfl⟩ := pow2Exp?_spec hs
+          simp only [Project.IR.Expr.denote, Option.some.injEq] at hr
+          subst hr
+          have hne : UInt64.ofNat (2 ^ s) ≠ 0 := fun h0 => by
+            have := congrArg UInt64.toNat h0
+            rw [UInt64.toNat_ofNat', Nat.mod_eq_of_lt (Nat.pow_lt_pow_right (by omega)
+              (by omega))] at this
+            simp at this
+          simp only [Project.IR.U64Op.apply, hne, ↓reduceIte]
+          exact remPow2_word ctx env a s lv hs1 ha
+      | _ => simp [U64Op.wgsl?] at h
+  | _ => simp [U64Op.wgsl?] at h
+
+/-- A branch that computes a value and assigns it to the `var` `n1` declared before the `if`. -/
+theorem branch_assign {ctx : Context} {writes : List (Nat × UInt32)} {st : List Stmt}
+    {vt lo hi : Nat} {zero v : Value} (n1 : Nat) (rest : Env)
+    (h : Simulates ctx ((n1, zero, true) :: rest) writes st vt lo hi v) (hlo : n1 < lo)
+    (hsame : zero.sameType v = true) (hn1 : ∀ x ∈ rest, x.1 ≠ n1) :
+    ∃ addt, Stmt.execList ctx ⟨(n1, zero, true) :: rest, writes, false⟩
+        (st ++ [.assign n1 (.var vt)]) = some ⟨addt ++ (n1, v, true) :: rest, writes, false⟩ ∧
+      ∀ x ∈ addt, n1 < x.1 ∧ x.1 < hi := by
+  obtain ⟨addt, hrun, hb, hle, hlt, m, hf⟩ := h
+  have hfn1 : Env.find (addt ++ (n1, zero, true) :: rest) n1 = some (zero, true) := by
+    rw [Env.find_append_fresh _ _ n1 (fun x hx h => by have := hb x hx; omega)]
+    exact Env.find_cons_self _ _ _ _
+  have hset : (addt ++ (n1, zero, true) :: rest).set n1 v = addt ++ (n1, v, true) :: rest := by
+    rw [Env.set_append, Env.set_fresh addt n1 v (fun x hx h => by have := hb x hx; omega)]
+    simp only [Env.set, List.map_cons, ↓reduceIte]
+    exact congrArg (fun r => addt ++ (n1, v, true) :: r) (Env.set_fresh rest n1 v hn1)
+  refine ⟨addt, ?_, fun x hx => ⟨by have := hb x hx; omega, (hb x hx).2⟩⟩
+  rw [execList_append, hrun, Option.bind_some]
+  simp [Stmt.execList, Stmt.exec, Expr.eval, hf, hfn1, hsame, hset]
+
+/-- A conditional: the condition's statements, a `var` `n1` at the condition's next variable,
+and an `if` whose taken branch leaves the value in the `var`. -/
+theorem simulates_cond {ctx : Context} {env : Env} {writes : List (Nat × UInt32)}
+    {sc ts es : List Stmt} {vc next n1 hi : Nat} {b : Bool} {ty : Ty} {ze : Expr} {zero v : Value}
+    (hc : Simulates ctx env writes sc vc next n1 (.bool b))
+    (hFresh : ∀ n, next ≤ n → Env.find env n = none)
+    (hze : ∀ env', ze.eval ctx env' = some zero) (hzt : ty.holds zero = true) (hhi : n1 < hi)
+    (hbr : ∀ added : Env, (∀ x ∈ added, next ≤ x.1 ∧ x.1 < n1) →
+      ∃ addt, Stmt.execList ctx ⟨(n1, zero, true) :: (added ++ env), writes, false⟩
+          (if b then ts else es) = some ⟨addt ++ (n1, v, true) :: (added ++ env), writes, false⟩ ∧
+        ∀ x ∈ addt, n1 < x.1 ∧ x.1 < hi) :
+    Simulates ctx env writes (sc ++ [.var n1 ty ze, .ite (.var vc) ts es]) n1 next hi v := by
+  obtain ⟨added, hrun, hb, hle, hlt, m, hf⟩ := hc
+  have hfree : Env.find (added ++ env) n1 = none := by
+    rw [Env.find_append_fresh added env n1 (fun x hx h => by have := hb x hx; omega)]
+    exact hFresh n1 hle
+  have hfc : Env.find ((n1, zero, true) :: (added ++ env)) vc = some (.bool b, m) := by
+    rw [Env.find_cons_ne _ _ _ _ _ (by omega)]
+    exact hf
+  obtain ⟨addt, hbranch, hbt⟩ := hbr added hb
+  have hdrop : List.drop ((addt ++ (n1, v, true) :: (added ++ env)).length -
+      ((n1, zero, true) :: (added ++ env)).length) (addt ++ (n1, v, true) :: (added ++ env)) =
+      (n1, v, true) :: (added ++ env) := by
+    simp only [List.length_append, List.length_cons, Nat.add_sub_cancel]
+    exact List.drop_left
+  refine ⟨(n1, v, true) :: added, ?_, ?_, by omega, hhi, true, by
+    simp only [List.cons_append]; exact Env.find_cons_self _ _ _ _⟩
+  · rw [execList_append, hrun, Option.bind_some]
+    cases b <;> simp only [Bool.false_eq_true, ↓reduceIte] at hbranch <;>
+      simp [Stmt.execList, Stmt.exec, hze, hzt, hfree, Expr.eval, hfc, hbranch, hdrop]
+  · intro x hx
+    rcases List.mem_cons.mp hx with rfl | hx
+    · exact ⟨hle, hhi⟩
+    · have := hb x hx; omega
+
 /-- Running the translation of an expression leaves its denotation in the result variable. -/
 theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
     (arrays : Nat → Option (Array UInt64)) (ctx : Context) (writes : List (Nat × UInt32)) :
@@ -258,7 +581,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
   | bin op left right ihl ihr =>
       intro next stmts res next' htr v hden env hAgree hFresh
       simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
-      cases hop : U64Op.wgsl? op with
+      cases hop : U64Op.wgsl? op right with
       | none => simp [hop] at htr
       | some f =>
         cases hl : trExpr F left next with
@@ -272,29 +595,319 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
             simp only [hop, hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
             obtain ⟨rfl, rfl, rfl⟩ := htr
             simp only [Project.IR.Expr.denote] at hden
-            have hdiv : ¬(op = .divU ∨ op = .remU) := by
-              rintro (rfl | rfl) <;> simp [U64Op.wgsl?] at hop
-            simp only [hdiv, ↓reduceIte, Option.bind_eq_bind, Option.pure_def] at hden
-            cases hdl : left.denote locals arrays with
-            | none => simp [hdl] at hden
-            | some lv =>
-              cases hdr : right.denote locals arrays with
-              | none => simp [hdl, hdr] at hden
-              | some rv =>
-                simp only [hdl, hdr, Option.bind_some, Option.some.injEq] at hden
-                subst hden
-                exact simulates_bin .vec2u (f vl vr) (wgslValue .u64 (op.apply lv rv))
-                  (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
-                  (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
-                    (hAgree.extend added (fun b hb' => hFresh b.1 (hb b hb').1))
-                    (fresh_append hFresh hb hle))
-                  hFresh
-                  (fun env' ml mr h1 h2 => by
-                    cases op <;> simp only [U64Op.wgsl?, Option.some.injEq, reduceCtorEq] at hop <;>
-                      subst hop
-                    · exact add64_word ctx env' vl vr lv rv h1 h2
-                    · exact mul64_word ctx env' vl vr lv rv h1 h2)
-                  (by simp [wgslValue, pairOf, Ty.holds])
+            obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Project.IR.denote_two hden
+            exact simulates_bin .vec2u (f vl vr) (wgslValue .u64 (op.apply lv rv))
+              (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
+              (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
+                (hAgree.extend added (fun b hb' => hFresh b.1 (hb b hb').1))
+                (fresh_append hFresh hb hle))
+              hFresh
+              (fun env' ml mr h1 h2 => U64Op.wgsl?_eval hop hdr ctx env' vl vr lv h1 h2)
+              (by simp [wgslValue, pairOf, Ty.holds])
+  | bconst c =>
+      intro next stmts res next' htr v hden env hAgree hFresh
+      simp only [trExpr, Option.some.injEq, Prod.mk.injEq] at htr
+      obtain ⟨rfl, rfl, rfl⟩ := htr
+      simp only [Project.IR.Expr.denote, Option.some.injEq] at hden
+      subst hden
+      have hfree := hFresh next (le_refl _)
+      refine ⟨[(next, .bool c, false)], ?_, by simp, by omega, by omega, false,
+        Env.find_cons_self _ _ _ _⟩
+      rw [exec_let ctx env writes next .bool _ (.bool c) (by simp [Expr.eval]) rfl hfree]
+      rfl
+  | leU left right ihl ihr =>
+      intro next stmts res next' htr v hden env hAgree hFresh
+      simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
+      cases hl : trExpr F left next with
+      | none => simp [hl] at htr
+      | some rl =>
+        obtain ⟨sl, vl, n1⟩ := rl
+        cases hr : trExpr F right n1 with
+        | none => simp [hl, hr] at htr
+        | some rr =>
+          obtain ⟨sr, vr, n2⟩ := rr
+          simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
+          obtain ⟨rfl, rfl, rfl⟩ := htr
+          simp only [Project.IR.Expr.denote] at hden
+          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Project.IR.denote_two hden
+          exact simulates_bin .bool (le64 vl vr) (wgslValue .bool (decide (lv ≤ rv)))
+            (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
+            (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
+              (hAgree.extend added (fun b hb' => hFresh b.1 (hb b hb').1))
+              (fresh_append hFresh hb hle))
+            hFresh (fun env' ml mr h1 h2 => by exact le64_word ctx env' vl vr lv rv h1 h2) rfl
+  | eq left right ihl ihr =>
+      intro next stmts res next' htr v hden env hAgree hFresh
+      simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
+      cases hl : trExpr F left next with
+      | none => simp [hl] at htr
+      | some rl =>
+        obtain ⟨sl, vl, n1⟩ := rl
+        cases hr : trExpr F right n1 with
+        | none => simp [hl, hr] at htr
+        | some rr =>
+          obtain ⟨sr, vr, n2⟩ := rr
+          simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
+          obtain ⟨rfl, rfl, rfl⟩ := htr
+          simp only [Project.IR.Expr.denote] at hden
+          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Project.IR.denote_two hden
+          exact simulates_bin .bool (eq64 vl vr) (wgslValue .bool (lv == rv))
+            (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
+            (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
+              (hAgree.extend added (fun b hb' => hFresh b.1 (hb b hb').1))
+              (fresh_append hFresh hb hle))
+            hFresh (fun env' ml mr h1 h2 => by exact eq64_word ctx env' vl vr lv rv h1 h2) rfl
+  | ne left right ihl ihr =>
+      intro next stmts res next' htr v hden env hAgree hFresh
+      simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
+      cases hl : trExpr F left next with
+      | none => simp [hl] at htr
+      | some rl =>
+        obtain ⟨sl, vl, n1⟩ := rl
+        cases hr : trExpr F right n1 with
+        | none => simp [hl, hr] at htr
+        | some rr =>
+          obtain ⟨sr, vr, n2⟩ := rr
+          simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
+          obtain ⟨rfl, rfl, rfl⟩ := htr
+          simp only [Project.IR.Expr.denote] at hden
+          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Project.IR.denote_two hden
+          exact simulates_bin .bool (.not (eq64 vl vr)) (wgslValue .bool (lv != rv))
+            (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
+            (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
+              (hAgree.extend added (fun b hb' => hFresh b.1 (hb b hb').1))
+              (fresh_append hFresh hb hle))
+            hFresh (fun env' ml mr h1 h2 => by simp [Expr.eval, eq64_word ctx env' vl vr lv rv h1 h2, bne, wgslValue]) rfl
+  | eqF32 left right ihl ihr =>
+      intro next stmts res next' htr v hden env hAgree hFresh
+      simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
+      cases hl : trExpr F left next with
+      | none => simp [hl] at htr
+      | some rl =>
+        obtain ⟨sl, vl, n1⟩ := rl
+        cases hr : trExpr F right n1 with
+        | none => simp [hl, hr] at htr
+        | some rr =>
+          obtain ⟨sr, vr, n2⟩ := rr
+          simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
+          obtain ⟨rfl, rfl, rfl⟩ := htr
+          simp only [Project.IR.Expr.denote] at hden
+          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Project.IR.denote_two hden
+          exact simulates_bin .bool (.bin .eq (.var vl) (.var vr)) (wgslValue .bool (Wasm.IEEE32.eq lv rv))
+            (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
+            (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
+              (hAgree.extend added (fun b hb' => hFresh b.1 (hb b hb').1))
+              (fresh_append hFresh hb hle))
+            hFresh (fun env' ml mr h1 h2 => by simp only [wgslValue] at h1 h2; simp [Expr.eval, h1, h2, BinOp.apply, wgslValue]) rfl
+  | ltF32 left right ihl ihr =>
+      intro next stmts res next' htr v hden env hAgree hFresh
+      simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
+      cases hl : trExpr F left next with
+      | none => simp [hl] at htr
+      | some rl =>
+        obtain ⟨sl, vl, n1⟩ := rl
+        cases hr : trExpr F right n1 with
+        | none => simp [hl, hr] at htr
+        | some rr =>
+          obtain ⟨sr, vr, n2⟩ := rr
+          simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
+          obtain ⟨rfl, rfl, rfl⟩ := htr
+          simp only [Project.IR.Expr.denote] at hden
+          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Project.IR.denote_two hden
+          exact simulates_bin .bool (.bin .lt (.var vl) (.var vr)) (wgslValue .bool (Wasm.IEEE32.lt lv rv))
+            (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
+            (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
+              (hAgree.extend added (fun b hb' => hFresh b.1 (hb b hb').1))
+              (fresh_append hFresh hb hle))
+            hFresh (fun env' ml mr h1 h2 => by simp only [wgslValue] at h1 h2; simp [Expr.eval, h1, h2, BinOp.apply, wgslValue]) rfl
+  | leF32 left right ihl ihr =>
+      intro next stmts res next' htr v hden env hAgree hFresh
+      simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
+      cases hl : trExpr F left next with
+      | none => simp [hl] at htr
+      | some rl =>
+        obtain ⟨sl, vl, n1⟩ := rl
+        cases hr : trExpr F right n1 with
+        | none => simp [hl, hr] at htr
+        | some rr =>
+          obtain ⟨sr, vr, n2⟩ := rr
+          simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
+          obtain ⟨rfl, rfl, rfl⟩ := htr
+          simp only [Project.IR.Expr.denote] at hden
+          obtain ⟨lv, rv, hdl, hdr, rfl⟩ := Project.IR.denote_two hden
+          exact simulates_bin .bool (.bin .le (.var vl) (.var vr)) (wgslValue .bool (Wasm.IEEE32.le lv rv))
+            (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
+            (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
+              (hAgree.extend added (fun b hb' => hFresh b.1 (hb b hb').1))
+              (fresh_append hFresh hb hle))
+            hFresh (fun env' ml mr h1 h2 => by simp only [wgslValue] at h1 h2; simp [Expr.eval, h1, h2, BinOp.apply, wgslValue]) rfl
+  | not operand ih =>
+      intro next stmts res next' htr v hden env hAgree hFresh
+      simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
+      cases ho : trExpr F operand next with
+      | none => simp [ho] at htr
+      | some ro =>
+        obtain ⟨so, vo, n1⟩ := ro
+        simp only [ho, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
+        obtain ⟨rfl, rfl, rfl⟩ := htr
+        simp only [Project.IR.Expr.denote] at hden
+        obtain ⟨w, hd, rfl⟩ := Option.map_eq_some_iff.mp hden
+        exact simulates_step .bool (.not (.var vo)) (wgslValue .bool (!w))
+          (ih next so vo n1 ho w hd env hAgree hFresh) hFresh
+          (fun added _ _ hfr => by
+            simp only [wgslValue] at hfr
+            simp [Expr.eval, hfr, wgslValue])
+          rfl
+  | and left right ihl ihr | or left right ihl ihr =>
+      intro next stmts res next' htr v hden env hAgree hFresh
+      simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
+      cases hl : trExpr F left next with
+      | none => simp [hl] at htr
+      | some rl =>
+        obtain ⟨sl, vl, n1⟩ := rl
+        cases hr : trExpr F right (n1 + 1) with
+        | none => simp [hl, hr] at htr
+        | some rr =>
+          obtain ⟨sr, vr, n2⟩ := rr
+          simp only [hl, hr, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
+          obtain ⟨rfl, rfl, rfl⟩ := htr
+          simp only [Project.IR.Expr.denote, Option.bind_eq_bind] at hden
+          cases hdl : left.denote locals arrays with
+          | none => simp [hdl] at hden
+          | some b =>
+            simp only [hdl, Option.bind_some] at hden
+            have hL := ihl next sl vl n1 hl b hdl env hAgree hFresh
+            have hle2 := trExpr_mono F right _ _ _ _ hr
+            obtain ⟨_, _, _, hle1, hn1, _⟩ := id hL
+            refine simulates_cond hL hFresh (fun _ => rfl) rfl (by omega) fun added hb => ?_
+            have hEnvNames : ∀ x ∈ added ++ env, x.1 < n1 := fun x hx => by
+              rcases List.mem_append.mp hx with hx | hx
+              · exact (hb x hx).2
+              · have := names_lt hFresh x hx; omega
+            cases b <;> simp only [Bool.false_eq_true, ↓reduceIte, Option.pure_def,
+              Option.some.injEq] at hden ⊢
+            all_goals first
+              | (subst hden
+                 exact ⟨[], by simp [Stmt.execList, wgslValue], by simp⟩)
+              | (exact branch_assign (v := wgslValue .bool v) n1
+                    (added ++ env)
+                    (ihr (n1 + 1) sr vr n2 hr v hden _
+                      (hAgree.extend ((n1, _, true) :: added) (fun x hx => by
+                        rcases List.mem_cons.mp hx with rfl | hx
+                        · exact hFresh _ (by omega)
+                        · exact hFresh x.1 (hb x hx).1))
+                      (find_none_of_names fun x hx => by
+                        rcases List.mem_cons.mp hx with rfl | hx
+                        · simp
+                        · have := hEnvNames x hx; omega))
+                    (by omega) (by simp [Value.sameType, wgslValue])
+                    (fun x hx h => by have := hEnvNames x hx; omega))
+  | ite c t e ihc iht ihe =>
+      intro next stmts res next' htr v hden env hAgree hFresh
+      simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
+      cases hc : trExpr F c next with
+      | none => simp [hc] at htr
+      | some rc =>
+        obtain ⟨sc, vc, n1⟩ := rc
+        cases ht : trExpr F t (n1 + 1) with
+        | none => simp [hc, ht] at htr
+        | some rt =>
+          obtain ⟨st, vt, n2⟩ := rt
+          cases he : trExpr F e n2 with
+          | none => simp [hc, ht, he] at htr
+          | some re =>
+            obtain ⟨se, ve, n3⟩ := re
+            simp only [hc, ht, he, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
+            obtain ⟨rfl, rfl, rfl⟩ := htr
+            simp only [Project.IR.Expr.denote, Option.bind_eq_bind] at hden
+            cases hdc : c.denote locals arrays with
+            | none => simp [hdc] at hden
+            | some b =>
+              simp only [hdc, Option.bind_some] at hden
+              have hC := ihc next sc vc n1 hc b hdc env hAgree hFresh
+              have hle2 := trExpr_mono F t _ _ _ _ ht
+              have hle3 := trExpr_mono F e _ _ _ _ he
+              obtain ⟨_, _, _, hle1, hn1, _⟩ := id hC
+              refine simulates_cond hC hFresh (fun _ => rfl) rfl (by omega) fun added hb => ?_
+              have hEnvNames : ∀ x ∈ added ++ env, x.1 < n1 := fun x hx => by
+                rcases List.mem_append.mp hx with hx | hx
+                · exact (hb x hx).2
+                · have := names_lt hFresh x hx; omega
+              have hAg : F.Agrees locals arrays ctx ((n1, .vec2 0 0, true) :: (added ++ env)) :=
+                hAgree.extend ((n1, _, true) :: added) (fun x hx => by
+                  rcases List.mem_cons.mp hx with rfl | hx
+                  · exact hFresh _ (by omega)
+                  · exact hFresh x.1 (hb x hx).1)
+              have hFr : ∀ k, n1 + 1 ≤ k →
+                  Env.find ((n1, .vec2 0 0, true) :: (added ++ env)) k = none :=
+                find_none_of_names fun x hx => by
+                  rcases List.mem_cons.mp hx with rfl | hx
+                  · simp
+                  · have := hEnvNames x hx; omega
+              cases b <;> simp only [Bool.false_eq_true, ↓reduceIte] at hden ⊢
+              · obtain ⟨addt, hrun, hbt⟩ := branch_assign (v := wgslValue .u64 v) n1 (added ++ env)
+                  (ihe n2 se ve n3 he v hden _ hAg (fun k hk => hFr k (by omega)))
+                  (by omega) (by simp [Value.sameType, wgslValue, pairOf])
+                  (fun x hx h => by have := hEnvNames x hx; omega)
+                exact ⟨addt, hrun, hbt⟩
+              · obtain ⟨addt, hrun, hbt⟩ := branch_assign (v := wgslValue .u64 v) n1 (added ++ env)
+                  (iht (n1 + 1) st vt n2 ht v hden _ hAg hFr)
+                  (by omega) (by simp [Value.sameType, wgslValue, pairOf])
+                  (fun x hx h => by have := hEnvNames x hx; omega)
+                exact ⟨addt, hrun, fun x hx => ⟨(hbt x hx).1, by have := (hbt x hx).2; omega⟩⟩
+  | iteF32 c t e ihc iht ihe =>
+      intro next stmts res next' htr v hden env hAgree hFresh
+      simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
+      cases hc : trExpr F c next with
+      | none => simp [hc] at htr
+      | some rc =>
+        obtain ⟨sc, vc, n1⟩ := rc
+        cases ht : trExpr F t (n1 + 1) with
+        | none => simp [hc, ht] at htr
+        | some rt =>
+          obtain ⟨st, vt, n2⟩ := rt
+          cases he : trExpr F e n2 with
+          | none => simp [hc, ht, he] at htr
+          | some re =>
+            obtain ⟨se, ve, n3⟩ := re
+            simp only [hc, ht, he, Option.bind_some, Option.some.injEq, Prod.mk.injEq] at htr
+            obtain ⟨rfl, rfl, rfl⟩ := htr
+            simp only [Project.IR.Expr.denote, Option.bind_eq_bind] at hden
+            cases hdc : c.denote locals arrays with
+            | none => simp [hdc] at hden
+            | some b =>
+              simp only [hdc, Option.bind_some] at hden
+              have hC := ihc next sc vc n1 hc b hdc env hAgree hFresh
+              have hle2 := trExpr_mono F t _ _ _ _ ht
+              have hle3 := trExpr_mono F e _ _ _ _ he
+              obtain ⟨_, _, _, hle1, hn1, _⟩ := id hC
+              refine simulates_cond hC hFresh (fun _ => rfl) rfl (by omega) fun added hb => ?_
+              have hEnvNames : ∀ x ∈ added ++ env, x.1 < n1 := fun x hx => by
+                rcases List.mem_append.mp hx with hx | hx
+                · exact (hb x hx).2
+                · have := names_lt hFresh x hx; omega
+              have hAg : F.Agrees locals arrays ctx ((n1, .f32 0, true) :: (added ++ env)) :=
+                hAgree.extend ((n1, _, true) :: added) (fun x hx => by
+                  rcases List.mem_cons.mp hx with rfl | hx
+                  · exact hFresh _ (by omega)
+                  · exact hFresh x.1 (hb x hx).1)
+              have hFr : ∀ k, n1 + 1 ≤ k →
+                  Env.find ((n1, .f32 0, true) :: (added ++ env)) k = none :=
+                find_none_of_names fun x hx => by
+                  rcases List.mem_cons.mp hx with rfl | hx
+                  · simp
+                  · have := hEnvNames x hx; omega
+              cases b <;> simp only [Bool.false_eq_true, ↓reduceIte] at hden ⊢
+              · obtain ⟨addt, hrun, hbt⟩ := branch_assign (v := wgslValue .f32 v) n1 (added ++ env)
+                  (ihe n2 se ve n3 he v hden _ hAg (fun k hk => hFr k (by omega)))
+                  (by omega) (by simp [Value.sameType, wgslValue, pairOf])
+                  (fun x hx h => by have := hEnvNames x hx; omega)
+                exact ⟨addt, hrun, hbt⟩
+              · obtain ⟨addt, hrun, hbt⟩ := branch_assign (v := wgslValue .f32 v) n1 (added ++ env)
+                  (iht (n1 + 1) st vt n2 ht v hden _ hAg hFr)
+                  (by omega) (by simp [Value.sameType, wgslValue, pairOf])
+                  (fun x hx h => by have := hEnvNames x hx; omega)
+                exact ⟨addt, hrun, fun x hx => ⟨(hbt x hx).1, by have := (hbt x hx).2; omega⟩⟩
   | ltU left right ihl ihr =>
       intro next stmts res next' htr v hden env hAgree hFresh
       simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
