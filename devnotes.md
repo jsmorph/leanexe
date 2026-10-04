@@ -24683,3 +24683,26 @@ on SwiftShader and llvmpipe.
 The element lemmas and dispatch theorems of these kernels remain (G2c).  Until they exist, the
 correspondence between a kernel's IR and its Lean function rests on these tests, while the
 translation of the IR into WGSL is proved.
+
+### GPT-2 on WGSL, step G3: generation
+
+`tests/gpt32/generate.py` writes the pinned checkpoint to `build/gpt2-32/` as Wasm arrays of
+binary32 values, one file per array: the token embedding in four chunks of at most 12,565 rows,
+which keeps every binding under llvmpipe's 128 MiB, the positional embedding, and each layer's
+sixteen arrays.  It drives `leanexe-webgpu-host session`: the weights load once, each kernel
+compiles once, and each token runs the step's dispatches in the order of the Lean kernels, 4 +
+12 × 17 + 5 of them, with the host writing each output's length word.  The caches are one key and
+one value array per layer, grown by `append32` each token.  The script reads the scores, takes
+the largest, and compares each step with Hugging Face's float32 model on the same prefix.
+
+From "The meaning of life is", greedy generation of 64 tokens gives "The meaning of life is not
+the same as the meaning of death." repeated, as the binary64 model and Hugging Face do, on both
+SwiftShader and llvmpipe, in 16.6 and 17.0 seconds for 68 steps, about 0.25 seconds a step.
+Every choice matches Hugging Face's, and the largest score difference is 1.3e-4 of the largest
+score; the difference grows along the text, since the two models sum in different orders.
+
+- [x] G3 (first part): the host session, per-layer weight files, and the Python driver, with
+  greedy generation.
+- [ ] Generation to 256 tokens and a second prompt; scores compared across the two drivers.
+- [ ] G2c: the element lemmas and dispatch theorems of the twelve kernels.
+- [ ] G4: the dispatch program and its composition theorem.
