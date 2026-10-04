@@ -538,4 +538,341 @@ theorem appendKernel_dispatch (cache row : Array Float32) (base n : UInt64)
       simp [append32, floatWords, Project.IR.build_map]]
   exact h
 
+/-! ### The inlined `exp32` -/
+
+/-- Statements in order, nested to the right as the compiler nests them. -/
+def seqList : List Project.IR.Stmt → Project.IR.Stmt
+  | [] => .skip
+  | [s] => s
+  | s :: rest => .seq s (seqList rest)
+
+theorem seqList_cons (s : Project.IR.Stmt) (rest : List Project.IR.Stmt) (h : rest ≠ []) :
+    seqList (s :: rest) = .seq s (seqList rest) := by
+  cases rest with
+  | nil => contradiction
+  | cons _ _ => rfl
+
+/-- The seven assignments of `exp32` of `xe` into locals `b` to `b + 6`. -/
+def expAssigns (b : Nat) (xe : Project.IR.Expr .f32) : List Project.IR.Stmt :=
+  let n104 : Project.IR.Expr .f32 := .binF32 .sub (.constF32 2147483648) (.constF32 1120927744)
+  [.assign b (.iteF32 (.leF32 xe (.constF32 1118961664)) xe (.constF32 1118961664)),
+   .assign (b + 1) (.iteF32 (.leF32 n104 (.getF32 b)) (.getF32 b) n104),
+   .assign (b + 2) (.unF32 .nearest (.binF32 .mul (.getF32 (b + 1)) (.constF32 1069066811))),
+   .assign (b + 3) (.binF32 .add (.binF32 .sub (.getF32 (b + 1)) (.binF32 .mul (.getF32 (b + 2))
+     (.constF32 1060208640))) (.binF32 .mul (.getF32 (b + 2)) (.constF32 962494595))),
+   .assign (b + 4) (hornerIR (b + 3) [1065353216, 1065353216, 1056964608, 1042983595, 1026206379,
+     1007192201, 985008993] 961547521),
+   .assign (b + 5) (.bin .sub (.toBits32 (.binF32 .add (.getF32 (b + 2)) (.constF32 1262485504)))
+     (.const 1262485250)),
+   .assign (b + 6) (.bin .divU (.get (b + 5)) (.const 2))]
+
+/-- The expression that finishes `exp32` from the locals `b` to `b + 6`. -/
+def expTail (b : Nat) : Project.IR.Expr .f32 :=
+  .binF32 .mul (.binF32 .mul (.getF32 (b + 4)) (.ofBits32 (.bin .mul (.get (b + 6)) (.const 8388608))))
+    (.ofBits32 (.bin .mul (.bin .sub (.get (b + 5)) (.get (b + 6))) (.const 8388608)))
+
+/-- The steps of `exp32`. -/
+def expA (x : Float32) : Float32 := if x ≤ 89.0 then x else 89.0
+def expC (x : Float32) : Float32 := if -104.0 ≤ expA x then expA x else -104.0
+def expK (x : Float32) : Float32 := LeanExe.Float32.nearest (expC x * 1.44269502162933349609375)
+def expR (x : Float32) : Float32 :=
+  expC x - expK x * 0.693359375 + expK x * 0.000212194441701285541057586669921875
+def expP (x : Float32) : Float32 :=
+  1.0 + expR x * (1.0 + expR x * (0.5 + expR x * (0.16666667163372039794921875 +
+    expR x * (0.0416666679084300994873046875 + expR x * (0.008333333767950534820556640625 +
+    expR x * (0.001388888922519981861114501953125 +
+    expR x * 0.000198412701138295233249664306640625))))))
+def expM (x : Float32) : UInt64 := (expK x + 12582912.0).toBits.toUInt64 - 1262485250
+def expH (x : Float32) : UInt64 := expM x / 2
+
+theorem exp32_steps (x : Float32) : exp32 x = expP x * Float32.ofBits (expH x * 8388608).toUInt32 *
+    Float32.ofBits ((expM x - expH x) * 8388608).toUInt32 := rfl
+
+/-- The locals after the seven assignments. -/
+def expLocals (b : Nat) (x : Float32) (L : Nat → Option Wasm.Value) : Nat → Option Wasm.Value :=
+  fun i => if i = b + 6 then some (.i64 (expH x)) else if i = b + 5 then some (.i64 (expM x))
+    else if i = b + 4 then some (.f32 (expP x).toBits) else if i = b + 3 then some (.f32 (expR x).toBits)
+    else if i = b + 2 then some (.f32 (expK x).toBits) else if i = b + 1 then some (.f32 (expC x).toBits)
+    else if i = b then some (.f32 (expA x).toBits) else L i
+
+theorem denote_seqList_append {arrays : Nat → Option (Array UInt64)} :
+    ∀ (A rest : List Project.IR.Stmt) (L L' : Nat → Option Wasm.Value), A ≠ [] → rest ≠ [] →
+      (seqList A).denote arrays L = some L' →
+      (seqList (A ++ rest)).denote arrays L = (seqList rest).denote arrays L'
+  | [], _, _, _, h, _, _ => absurd rfl h
+  | [s], rest, L, L', _, hr, hA => by
+      have hA' : s.denote arrays L = some L' := hA
+      rw [List.singleton_append, seqList_cons s rest hr, denote_seq_some hA']
+  | s :: t :: u, rest, L, L', _, hr, hA => by
+      rw [seqList_cons s (t :: u) (by simp)] at hA
+      simp only [Project.IR.Stmt.denote, Option.bind_eq_some_iff] at hA
+      obtain ⟨L1, h1, h2⟩ := hA
+      rw [List.cons_append, seqList_cons s _ (by simp), denote_seq_some h1]
+      exact denote_seqList_append (t :: u) rest L1 L' (by simp) hr h2
+
+theorem exp_literals :
+    (89.0 : Float32).toBits = 1118961664 ∧ (104.0 : Float32).toBits = 1120927744 ∧
+    (1.44269502162933349609375 : Float32).toBits = 1069066811 ∧
+    (0.693359375 : Float32).toBits = 1060208640 ∧
+    (0.000212194441701285541057586669921875 : Float32).toBits = 962494595 ∧
+    (1.0 : Float32).toBits = 1065353216 ∧ (0.5 : Float32).toBits = 1056964608 ∧
+    (0.16666667163372039794921875 : Float32).toBits = 1042983595 ∧
+    (0.0416666679084300994873046875 : Float32).toBits = 1026206379 ∧
+    (0.008333333767950534820556640625 : Float32).toBits = 1007192201 ∧
+    (0.001388888922519981861114501953125 : Float32).toBits = 985008993 ∧
+    (0.000198412701138295233249664306640625 : Float32).toBits = 961547521 ∧
+    (12582912.0 : Float32).toBits = 1262485504 := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> decide +kernel
+
+/-- The seven assignments of `exp32` of `xe` at locals `b` to `b + 6` leave `expLocals`, from
+which `expTail` gives `exp32`'s bits. -/
+theorem expAssigns_denote (b : Nat) (xe : Project.IR.Expr .f32) (x : Float32)
+    (arrays : Nat → Option (Array UInt64)) (L : Nat → Option Wasm.Value)
+    (hx : xe.denote L arrays = some x.toBits) (hn : ∀ j, b ≤ j → j ≤ b + 6 → arrays j = none) :
+    (seqList (expAssigns b xe)).denote arrays L = some (expLocals b x L) ∧
+      (expTail b).denote (expLocals b x L) arrays = some (exp32 x).toBits := by
+  obtain ⟨h89, h104, hlog, hhi, hlo, h1, h05, hc3, hc4, hc5, hc6, hc7, hM⟩ := exp_literals
+  let L0 := fun i => if i = b then some (Wasm.Value.f32 (expA x).toBits) else L i
+  let L1 := fun i => if i = b + 1 then some (Wasm.Value.f32 (expC x).toBits) else L0 i
+  let L2 := fun i => if i = b + 2 then some (Wasm.Value.f32 (expK x).toBits) else L1 i
+  let L3 := fun i => if i = b + 3 then some (Wasm.Value.f32 (expR x).toBits) else L2 i
+  let L4 := fun i => if i = b + 4 then some (Wasm.Value.f32 (expP x).toBits) else L3 i
+  let L5 := fun i => if i = b + 5 then some (Wasm.Value.i64 (expM x)) else L4 i
+  let L6 := fun i => if i = b + 6 then some (Wasm.Value.i64 (expH x)) else L5 i
+  have s0 := denote_assign_f32 (arrays := arrays) (L := L) (j := b)
+    (e := .iteF32 (.leF32 xe (.constF32 1118961664)) xe (.constF32 1118961664))
+    (v := (expA x).toBits) (hn b (by omega) (by omega)) (by
+      simp only [Project.IR.Expr.denote, hx, Option.bind_eq_bind, Option.bind_some,
+        Option.pure_def, ite_some]
+      simp only [expA, apply_ite Float32.toBits, F32Bits.le_iff, h89])
+  have s1 := denote_assign_f32 (arrays := arrays) (L := L0) (j := b + 1)
+    (e := .iteF32 (.leF32 (.binF32 .sub (.constF32 2147483648) (.constF32 1120927744)) (.getF32 b))
+      (.getF32 b) (.binF32 .sub (.constF32 2147483648) (.constF32 1120927744)))
+    (v := (expC x).toBits) (hn (b + 1) (by omega) (by omega)) (by
+      simp only [Project.IR.Expr.denote, L0, ↓reduceIte, Option.bind_eq_bind, Option.bind_some,
+        Option.pure_def, F32Op.apply, ite_some]
+      simp only [expC, apply_ite Float32.toBits, F32Bits.le_iff, F32Bits.toBits_neg, h104])
+  have s2 := denote_assign_f32 (arrays := arrays) (L := L1) (j := b + 2)
+    (e := .unF32 .nearest (.binF32 .mul (.getF32 (b + 1)) (.constF32 1069066811)))
+    (v := (expK x).toBits) (hn (b + 2) (by omega) (by omega)) (by
+      simp only [Project.IR.Expr.denote, L1, ↓reduceIte, Option.bind_eq_bind, Option.bind_some,
+        Option.pure_def, Option.map_some, F32Op.apply, F32UnOp.apply]
+      simp only [expK, F32Nearest.toBits_nearest, F32Bits.toBits_mul, hlog])
+  have s3 := denote_assign_f32 (arrays := arrays) (L := L2) (j := b + 3)
+    (e := .binF32 .add (.binF32 .sub (.getF32 (b + 1)) (.binF32 .mul (.getF32 (b + 2))
+      (.constF32 1060208640))) (.binF32 .mul (.getF32 (b + 2)) (.constF32 962494595)))
+    (v := (expR x).toBits) (hn (b + 3) (by omega) (by omega)) (by
+      have e1 : L2 (b + 1) = some (.f32 (expC x).toBits) := by simp [L2, L1]
+      have e2 : L2 (b + 2) = some (.f32 (expK x).toBits) := by simp [L2]
+      simp only [Project.IR.Expr.denote, e1, e2, Option.bind_eq_bind, Option.bind_some,
+        Option.pure_def, F32Op.apply]
+      simp only [expR, F32Bits.toBits_add, F32Bits.toBits_sub, F32Bits.toBits_mul, hhi, hlo])
+  have s4 := denote_assign_f32 (arrays := arrays) (L := L3) (j := b + 4)
+    (e := hornerIR (b + 3) [1065353216, 1065353216, 1056964608, 1042983595, 1026206379,
+      1007192201, 985008993] 961547521)
+    (v := (expP x).toBits) (hn (b + 4) (by omega) (by omega)) (by
+      have e3 : L3 (b + 3) = some (.f32 (expR x).toBits) := by simp [L3]
+      simp only [hornerIR, Project.IR.Expr.denote, e3, Option.bind_eq_bind, Option.bind_some,
+        Option.pure_def, F32Op.apply]
+      simp only [expP, F32Bits.toBits_add, F32Bits.toBits_mul, h1, h05, hc3, hc4, hc5, hc6, hc7])
+  have s5 := denote_assign_u64 (arrays := arrays) (L := L4) (j := b + 5)
+    (e := .bin .sub (.toBits32 (.binF32 .add (.getF32 (b + 2)) (.constF32 1262485504)))
+      (.const 1262485250))
+    (v := expM x) (hn (b + 5) (by omega) (by omega)) (by
+      have e2 : L4 (b + 2) = some (.f32 (expK x).toBits) := by simp [L4, L3, L2]
+      simp only [Project.IR.Expr.denote, e2, Option.bind_eq_bind, Option.bind_some,
+        Option.pure_def, Option.map_some, F32Op.apply, U64Op.apply]
+      simp only [expM, F32Bits.toBits_add, hM])
+  have s6 := denote_assign_u64 (arrays := arrays) (L := L5) (j := b + 6)
+    (e := .bin .divU (.get (b + 5)) (.const 2))
+    (v := expH x) (hn (b + 6) (by omega) (by omega)) (by
+      have e5 : L5 (b + 5) = some (.i64 (expM x)) := by simp [L5]
+      simp only [Project.IR.Expr.denote, e5, Option.bind_eq_bind, Option.bind_some,
+        Option.pure_def, U64Op.apply, show (2 : UInt64) ≠ 0 by decide, ↓reduceIte]
+      rfl)
+  have hL6 : L6 = expLocals b x L := by
+    funext i
+    simp only [L6, L5, L4, L3, L2, L1, L0, expLocals]
+  constructor
+  · rw [← hL6]
+    simp only [expAssigns]
+    rw [seqList_cons _ _ (by simp), denote_seq_some s0, seqList_cons _ _ (by simp),
+      denote_seq_some s1, seqList_cons _ _ (by simp), denote_seq_some s2,
+      seqList_cons _ _ (by simp), denote_seq_some s3, seqList_cons _ _ (by simp),
+      denote_seq_some s4, seqList_cons _ _ (by simp), denote_seq_some s5]
+    exact s6
+  · have e4 : expLocals b x L (b + 4) = some (.f32 (expP x).toBits) := by simp [expLocals]
+    have e5 : expLocals b x L (b + 5) = some (.i64 (expM x)) := by simp [expLocals]
+    have e6 : expLocals b x L (b + 6) = some (.i64 (expH x)) := by simp [expLocals]
+    simp only [expTail, Project.IR.Expr.denote, e4, e5, e6, Option.bind_eq_bind,
+      Option.bind_some, Option.pure_def, Option.map_some, F32Op.apply, U64Op.apply]
+    rw [exp32_steps, F32Bits.toBits_mul, F32Bits.toBits_mul, F32Bits.toBits_ofBits,
+      F32Bits.toBits_ofBits, isNaN_pow23, isNaN_pow23]
+    rfl
+
+/-! ### `geluArray32` -/
+
+def geluX : Project.IR.Expr .f32 := .ofBits32 (.read 0 (.get 4))
+
+def geluArg : Project.IR.Expr .f32 :=
+  .binF32 .mul (.constF32 1073741824) (.binF32 .mul (.constF32 1061962282) (.binF32 .add geluX
+    (.binF32 .mul (.binF32 .mul (.binF32 .mul (.constF32 1027024659) geluX) geluX) geluX)))
+
+def geluSpec : Spec :=
+  { kinds := [.array], index := 4, count := .size 1 0,
+    vars := [(5, .f32), (6, .f32), (7, .f32), (8, .f32), (9, .f32), (10, .u64), (11, .u64)],
+    width := 12, body := seqList (expAssigns 5 geluArg),
+    element := .toBits32 (.binF32 .mul (.binF32 .mul (.constF32 1056964608) geluX)
+      (.binF32 .sub (.constF32 1073741824) (.binF32 .div (.constF32 1073741824)
+        (.binF32 .add (expTail 5) (.constF32 1065353216))))) }
+
+theorem geluSpec_eq : specOf gpt32.geluArray32.ir [.array] = some geluSpec := rfl
+
+theorem geluSpec_wf : geluSpec.WF := geluSpec.wf_of_wfb (by decide)
+
+theorem geluSpec_module : geluSpec.module = some geluKernel := by
+  rw [geluKernel, kernelOf, geluSpec_eq]
+  rfl
+
+theorem gelu_element (x : Array Float32) (i : UInt64) (L : Nat → Option Wasm.Value)
+    (arrays : Nat → Option (Array UInt64)) (h4 : L 4 = some (.i64 i))
+    (h0 : arrays 0 = some (floatWords x)) (hn : ∀ j, 5 ≤ j → j ≤ 11 → arrays j = none) :
+    ∃ L', geluSpec.body.denote arrays L = some L' ∧
+      geluSpec.element.denote L' arrays = some (gelu32 x[i.toNat]!).toBits.toUInt64 := by
+  have h2 : (2.0 : Float32).toBits = 1073741824 := by decide +kernel
+  have hc : (0.79788458347320556640625 : Float32).toBits = 1061962282 := by decide +kernel
+  have hq : (0.044715 : Float32).toBits = 1027024659 := by decide +kernel
+  have h05 : (0.5 : Float32).toBits = 1056964608 := by decide +kernel
+  have h1 : (1.0 : Float32).toBits = 1065353216 := by decide +kernel
+  generalize hxv : x[i.toNat]! = xv
+  have hX : ∀ L0 : Nat → Option Wasm.Value, L0 4 = some (.i64 i) →
+      geluX.denote L0 arrays = some xv.toBits := fun L0 h => by
+    simp [geluX, Project.IR.Expr.denote, h, h0, floatWords, getElem!_map_toBits32, hxv]
+  let z : Float32 := 2.0 * (0.79788458347320556640625 * (xv + 0.044715 * xv * xv * xv))
+  have hz : geluArg.denote L arrays = some z.toBits := by
+    simp only [geluArg, Project.IR.Expr.denote, hX L h4, Option.bind_eq_bind, Option.bind_some,
+      Option.pure_def, F32Op.apply]
+    simp only [z, F32Bits.toBits_mul, F32Bits.toBits_add, h2, hc, hq]
+  obtain ⟨hbody, htail⟩ := expAssigns_denote 5 geluArg z arrays L hz hn
+  refine ⟨_, hbody, ?_⟩
+  have h4' : expLocals 5 z L 4 = some (.i64 i) := by simp [expLocals, h4]
+  simp only [geluSpec, Project.IR.Expr.denote, hX _ h4', htail, Option.bind_eq_bind,
+    Option.bind_some, Option.pure_def, Option.map_some, F32Op.apply]
+  simp only [gelu32, z, F32Bits.toBits_mul, F32Bits.toBits_sub, F32Bits.toBits_div,
+    F32Bits.toBits_add, h05, h2, h1]
+
+theorem geluKernel_dispatch (x : Array Float32) (hx : x.size < 2 ^ 29) (output : Array UInt32)
+    (hOut : output.size = 2 + 2 * x.size) (hL0 : output[0]? = some (UInt32.ofNat x.size))
+    (hL1 : output[1]? = some 0) (count : Nat) (hCover : x.size ≤ count) (h32 : count ≤ 2 ^ 32) :
+    geluKernel.dispatch [(Arg.array (floatWords x)).buffer] output count =
+        some (arrayWords (floatWords (geluArray32 x))) ∧
+      geluKernel.RaceFree [(Arg.array (floatWords x)).buffer] output.size count := by
+  have hfits : geluSpec.Fits [.array (floatWords x)] (floatWords x).size :=
+    ⟨rfl, by simp; omega, ⟨_, rfl, rfl⟩, by simpa using hx⟩
+  have h := geluSpec.dispatch_eq geluSpec_wf geluKernel geluSpec_module _ _ hfits
+    (fun i => (gelu32 x[i.toNat]!).toBits.toUInt64)
+    (fun k _ => gelu_element x _ _ _ (by simp [Spec.locals, geluSpec]) (by simp [Spec.arrays])
+      (fun j h1 _ => arrays_none _ j (by simp; omega)))
+    output (by simpa using hOut) (by simpa using hL0) hL1 count (by simpa using hCover) h32
+  simp only [List.map_cons, List.map_nil] at h
+  rw [show floatWords (geluArray32 x) = LeanExe.build (UInt64.ofNat (floatWords x).size)
+    (fun i => (gelu32 x[i.toNat]!).toBits.toUInt64) by
+      simp [geluArray32, floatWords, Project.IR.build_map]]
+  exact h
+
+/-! ### `probs32` -/
+
+def probsArg : Project.IR.Expr .f32 :=
+  .binF32 .sub (.ofBits32 (.read 0 (.get 7))) (.ofBits32 (.read 1 (.bin .divU (.get 7) (.const 1024))))
+
+def probsSpec : Spec :=
+  { kinds := [.array, .array, .array, .word, .word], index := 7, count := .param 4,
+    vars := [(8, .f32), (9, .f32), (10, .f32), (11, .f32), (12, .f32), (13, .u64), (14, .u64),
+      (15, .f32)], width := 16,
+    body := seqList (expAssigns 8 probsArg ++ [.assign 15 (.binF32 .div (expTail 8)
+      (.ofBits32 (.read 2 (.bin .divU (.get 7) (.const 1024)))))]),
+    element := .toBits32 (.iteF32 (.leU (.bin .remU (.get 7) (.const 1024)) (.get 3))
+      (.getF32 15) (.constF32 0)) }
+
+theorem probsSpec_eq : specOf gpt32.probs32.ir [.array, .array, .array, .word, .word] =
+    some probsSpec := rfl
+
+theorem probsSpec_wf : probsSpec.WF := probsSpec.wf_of_wfb (by decide)
+
+theorem probsSpec_module : probsSpec.module = some probsKernel := by
+  rw [probsKernel, kernelOf, probsSpec_eq]
+  rfl
+
+/-- Element `e` of `probs32 s mx sm p n`. -/
+def probsAt (s mx sm : Array Float32) (p e : UInt64) : Float32 :=
+  let w := exp32 (s[e.toNat]! - mx[(e / 1024).toNat]!) / sm[(e / 1024).toNat]!
+  if e % 1024 ≤ p then w else 0.0
+
+theorem probs_element (s mx sm : Array Float32) (p e : UInt64) (L : Nat → Option Wasm.Value)
+    (arrays : Nat → Option (Array UInt64)) (h3 : L 3 = some (.i64 p)) (h7 : L 7 = some (.i64 e))
+    (h0 : arrays 0 = some (floatWords s)) (h1 : arrays 1 = some (floatWords mx))
+    (h2 : arrays 2 = some (floatWords sm)) (hn : ∀ j, 8 ≤ j → j ≤ 15 → arrays j = none) :
+    ∃ L', probsSpec.body.denote arrays L = some L' ∧
+      probsSpec.element.denote L' arrays = some (probsAt s mx sm p e).toBits.toUInt64 := by
+  let z : Float32 := s[e.toNat]! - mx[(e / 1024).toNat]!
+  have hz : probsArg.denote L arrays = some z.toBits := by
+    simp [probsArg, Project.IR.Expr.denote, h7, h0, h1, floatWords, getElem!_map_toBits32,
+      U64Op.apply, F32Op.apply, z, F32Bits.toBits_sub]
+  obtain ⟨hbody, htail⟩ := expAssigns_denote 8 probsArg z arrays L hz
+    (fun j h1 h2 => hn j h1 (by omega))
+  have h7' : expLocals 8 z L 7 = some (.i64 e) := by simp [expLocals, h7]
+  let w : Float32 := exp32 z / sm[(e / 1024).toNat]!
+  have s15 := denote_assign_f32 (arrays := arrays) (L := expLocals 8 z L) (j := 15)
+    (e := .binF32 .div (expTail 8) (.ofBits32 (.read 2 (.bin .divU (.get 7) (.const 1024)))))
+    (v := w.toBits) (hn 15 (by omega) (by omega)) (by
+      simp only [Project.IR.Expr.denote, htail, h7', h2, Option.bind_eq_bind, Option.bind_some,
+        Option.pure_def, Option.map_some, U64Op.apply, F32Op.apply,
+        show (1024 : UInt64) ≠ 0 by decide, ↓reduceIte]
+      simp [w, floatWords, getElem!_map_toBits32, F32Bits.toBits_div])
+  have hb : probsSpec.body.denote arrays L =
+      some (fun i => if i = 15 then some (.f32 w.toBits) else expLocals 8 z L i) := by
+    show (seqList (expAssigns 8 probsArg ++ _)).denote arrays L = _
+    rw [denote_seqList_append _ _ L _ (by simp [expAssigns]) (by simp) hbody]
+    exact s15
+  refine ⟨_, hb, ?_⟩
+  have h3' : expLocals 8 z L 3 = some (.i64 p) := by simp [expLocals, h3]
+  have h15 : (fun i => if i = 15 then some (Wasm.Value.f32 w.toBits) else expLocals 8 z L i) 15 =
+      some (.f32 w.toBits) := by simp
+  have h7'' : (fun i => if i = 15 then some (Wasm.Value.f32 w.toBits) else expLocals 8 z L i) 7 =
+      some (.i64 e) := by simp [h7']
+  have h3'' : (fun i => if i = 15 then some (Wasm.Value.f32 w.toBits) else expLocals 8 z L i) 3 =
+      some (.i64 p) := by simp [h3']
+  simp only [probsSpec, Project.IR.Expr.denote, h15, h7'', h3'', Option.bind_eq_bind,
+    Option.bind_some, Option.pure_def, U64Op.apply, show (1024 : UInt64) ≠ 0 by decide,
+    ↓reduceIte, ite_some, Option.map_some]
+  by_cases hc : e % 1024 ≤ p
+  · simp [probsAt, hc, w, z]
+  · simp [probsAt, hc, zero_bits]
+
+theorem probsKernel_dispatch (s mx sm : Array Float32) (p n : UInt64) (hs : s.size < 2 ^ 29)
+    (hm : mx.size < 2 ^ 29) (hsm : sm.size < 2 ^ 29) (hn : n.toNat < 2 ^ 29)
+    (output : Array UInt32) (hOut : output.size = 2 + 2 * n.toNat)
+    (hL0 : output[0]? = some (UInt32.ofNat n.toNat)) (hL1 : output[1]? = some 0)
+    (count : Nat) (hCover : n.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
+    probsKernel.dispatch [(Arg.array (floatWords s)).buffer, (Arg.array (floatWords mx)).buffer,
+        (Arg.array (floatWords sm)).buffer, (Arg.word p).buffer, (Arg.word n).buffer] output
+        count = some (arrayWords (floatWords (probs32 s mx sm p n))) ∧
+      probsKernel.RaceFree [(Arg.array (floatWords s)).buffer, (Arg.array (floatWords mx)).buffer,
+        (Arg.array (floatWords sm)).buffer, (Arg.word p).buffer, (Arg.word n).buffer]
+        output.size count := by
+  have hfits : probsSpec.Fits [.array (floatWords s), .array (floatWords mx),
+      .array (floatWords sm), .word p, .word n] n.toNat :=
+    ⟨rfl, by simp; omega, by simp [probsSpec], hn⟩
+  have h := probsSpec.dispatch_eq probsSpec_wf probsKernel probsSpec_module _ _ hfits
+    (fun e => (probsAt s mx sm p e).toBits.toUInt64)
+    (fun e _ => probs_element s mx sm p _ _ _ (by simp [Spec.locals, probsSpec, Count.sizeLocal?])
+      (by simp [Spec.locals, probsSpec]) (by simp [Spec.arrays]) (by simp [Spec.arrays])
+      (by simp [Spec.arrays]) (fun j h1 _ => arrays_none _ j (by simp; omega)))
+    output (by simpa using hOut) (by simpa using hL0) hL1 count (by simpa using hCover) h32
+  simp only [List.map_cons, List.map_nil, UInt64.ofNat_toNat] at h
+  rw [show floatWords (probs32 s mx sm p n) = LeanExe.build n
+    (fun e => (probsAt s mx sm p e).toBits.toUInt64) by
+      simp [probs32, probsAt, floatWords, Project.IR.build_map]]
+  exact h
+
 end Project.Gpt32
