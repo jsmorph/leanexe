@@ -23969,3 +23969,19 @@ removes most of the reason to use a GPU.
 
 Decisions, one at a time: (1) the theorem form; (2) whether binary32 enters the Wasm IR first;
 (3) the runtime for tests, which needs a new tool; and (4) how the host invokes kernels.
+
+### Decisions on the kernel theorem and the order
+
+On 2026-10-03 the user chose A: a kernel's theorem states that its output words equal the Lean
+`Float32` function's, under the strict profile as a hypothesis.  Bounds under WGSL's rules may
+follow later for chosen kernels.  Binary32 enters the Wasm IR first, as the user decided on
+2026-09-28 ("the IR includes `f32` and `f64` from the start"), which the IR has not yet done.  The
+kernel compiler then translates a subset of the same IR, so a kernel and its Wasm counterpart share
+the Lean function, the front end, and the IR proofs.
+
+- [ ] Iteration 23: binary32 on the Wasm path: `f32` in the IR, `Float32` arithmetic and
+  comparisons, `Float32` arrays, and one binary32 program with its theorem.
+- [ ] Iteration 24: a WGSL subset with a printer and a parser proved to invert it, a dispatch
+  semantics under the strict profile, the translation of the kernel subset, and one kernel with its
+  theorem, run on a test runtime (decision 3: the runtime).
+- [ ] Iteration 25: the host's invocation of kernels (decision 4) and a run in a browser.
