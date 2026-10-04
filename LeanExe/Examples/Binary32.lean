@@ -26,4 +26,8 @@ def piecewise32 (x lo hi : Float32) : Float32 :=
   else if hi ≤ x then (hi - x).abs + 1.5
   else max lo (min x hi)
 
+/-- Each element of `x` times `a` in binary32. -/
+def scale32 (a : Float32) (x : Array Float32) : Array Float32 :=
+  LeanExe.build x.size.toUInt64 fun i => a * x[i.toNat]!
+
 end LeanExe.Examples.Binary32

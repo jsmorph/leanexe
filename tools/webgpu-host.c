@@ -1,14 +1,15 @@
 /* Runs one WGSL compute entry point with wgpu-native and prints its output buffer.
 
    webgpu-host info
-   webgpu-host run SHADER ENTRY WORKGROUPS OUTPUT_WORDS [INPUT...]
+   webgpu-host run SHADER ENTRY WORKGROUPS OUTPUT [INPUT...]
 
    Each INPUT is a read-only storage buffer at the next binding of group 0, given as
    u32:W,W,... (32-bit words), u64:W,W,... (64-bit words, least significant half first), or
    file:PATH (the file's bytes, whose length must be a multiple of 4).
-   The output is a read-write storage buffer of OUTPUT_WORDS 32-bit words at the binding after
-   the inputs, filled with 0x7fc00001 before the dispatch, so a word the kernel does not write
-   keeps that value.  The dispatch is WORKGROUPS workgroups along x.  The output words are
+   The output is a read-write storage buffer at the binding after the inputs.  OUTPUT is either
+   a number of 32-bit words, filled with 0x7fc00001 before the dispatch so a word the kernel does
+   not write keeps that value, or a buffer specification as for an input, which gives the
+   output's initial words.  The dispatch is WORKGROUPS workgroups along x.  The output words are
    printed in decimal, separated by commas.  The Vulkan driver is chosen by the loader, for
    example through VK_ICD_FILENAMES. */
 
@@ -274,9 +275,24 @@ static WGPUBuffer make_buffer(Gpu *gpu, WGPUBufferUsage usage, size_t bytes) {
 }
 
 static void run(Gpu *gpu, const char *shaderPath, const char *entry, uint32_t workgroups,
-                size_t outputWords, int inputCount, char **inputs) {
-  if (outputWords == 0) {
-    die("the output needs at least one word");
+                const char *outputSpec, int inputCount, char **inputs) {
+  size_t outputWords;
+  uint32_t *initial;
+  if (strchr(outputSpec, ':') != NULL) {
+    initial = parse_input(outputSpec, &outputWords);
+  } else {
+    char *end;
+    outputWords = (size_t)parse_word(outputSpec, &end, SIZE_MAX / 4);
+    if (outputWords == 0) {
+      die("the output needs at least one word");
+    }
+    initial = malloc(outputWords * 4);
+    if (initial == NULL) {
+      die("out of memory");
+    }
+    for (size_t j = 0; j < outputWords; j++) {
+      initial[j] = FILL_WORD;
+    }
   }
   char *code = read_file(shaderPath, NULL);
   WGPUShaderSourceWGSL source = {0};
@@ -307,17 +323,10 @@ static void run(Gpu *gpu, const char *shaderPath, const char *entry, uint32_t wo
     entries[i].size = count * 4;
   }
   size_t outputBytes = outputWords * 4;
-  uint32_t *fill = malloc(outputBytes);
-  if (fill == NULL) {
-    die("out of memory");
-  }
-  for (size_t j = 0; j < outputWords; j++) {
-    fill[j] = FILL_WORD;
-  }
   WGPUBuffer output = make_buffer(
       gpu, WGPUBufferUsage_Storage | WGPUBufferUsage_CopySrc | WGPUBufferUsage_CopyDst, outputBytes);
-  wgpuQueueWriteBuffer(gpu->queue, output, 0, fill, outputBytes);
-  free(fill);
+  wgpuQueueWriteBuffer(gpu->queue, output, 0, initial, outputBytes);
+  free(initial);
   entries[inputCount].binding = (uint32_t)inputCount;
   entries[inputCount].buffer = output;
   entries[inputCount].size = outputBytes;
@@ -371,14 +380,13 @@ int main(int argc, char **argv) {
   if (argc >= 6 && strcmp(argv[1], "run") == 0) {
     char *end;
     uint32_t workgroups = (uint32_t)parse_word(argv[4], &end, UINT32_MAX);
-    size_t outputWords = (size_t)parse_word(argv[5], &end, SIZE_MAX / 4);
     Gpu gpu = open_gpu();
-    run(&gpu, argv[2], argv[3], workgroups, outputWords, argc - 6, argv + 6);
+    run(&gpu, argv[2], argv[3], workgroups, argv[5], argc - 6, argv + 6);
     return 0;
   }
   fprintf(stderr,
           "usage: webgpu-host info\n"
-          "       webgpu-host run SHADER ENTRY WORKGROUPS OUTPUT_WORDS "
+          "       webgpu-host run SHADER ENTRY WORKGROUPS OUTPUT_WORDS|BUFFER "
           "[u32:W,...|u64:W,...|file:PATH]...\n");
   return 2;
 }

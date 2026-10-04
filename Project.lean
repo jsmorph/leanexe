@@ -206,3 +206,6 @@ import Project.WGSL.Syntax
 import Project.WGSL.Print
 import Project.WGSL.Parse
 import Project.WGSL.RoundTrip
+import Project.WGSL.Semantics
+import Project.WGSL.Kernel
+import Project.WGSL.Scale

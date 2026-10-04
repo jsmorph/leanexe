@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "wgsl-kernel",
+  "title": "WGSL kernel text and dispatch",
+  "summary": "Gives a printed WGSL kernel its meaning through a parser proved to invert the printer, defines the invocation and dispatch semantics of the device model, and proves a kernel by evaluating each statement of one invocation and folding the invocations' stores.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["gpu", "proof-construction", "semantics"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["wgsl", "binary32", "dispatch", "race-free", "u64-pairs"],
+  "annotationKinds": [],
+  "modules": ["Project.WGSL.RoundTrip", "Project.WGSL.Semantics", "Project.WGSL.Kernel", "Project.WGSL.Scale"],
+  "declarations": ["Project.WGSL.Module.parse_print", "Project.WGSL.Module.dispatch", "Project.WGSL.Module.invoke", "Project.WGSL.Module.RaceFree", "Project.WGSL.Expr.eval", "Project.WGSL.Stmt.exec", "Project.WGSL.Stmt.execList", "Project.WGSL.arrayWords", "Project.WGSL.arrayWords_get", "Project.WGSL.lt64_eval", "Project.WGSL.readLow", "Project.WGSL.readLow_eval", "Project.WGSL.foldlM_some", "Project.WGSL.arrayWords_floats", "Project.WGSL.scaleKernel_invoke", "Project.WGSL.scale_fold", "Project.WGSL.scaleKernel_dispatch", "Project.WGSL.scaleKernel_text"],
+  "premises": ["The device model of 2026-10-04: IEEE32 binary32 results with the canonical NaN, race-free dispatch, the host's length word, a dispatch that covers the count, and no dynamic errors", "Input buffers that hold Wasm arrays of 64-bit words and buffer sizes below 2^32"],
+  "result": "The dispatch leaves the output holding the Lean function's result as a Wasm array, distinct invocations store to distinct words, and the printed text parses to the kernel.",
+  "consumers": ["Project.WGSL.scaleKernel_dispatch", "Project.WGSL.scaleKernel_text"],
+  "relatedEntries": ["binary32-arithmetic", "array-build"],
+  "exclusion": null
+}
