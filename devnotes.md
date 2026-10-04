@@ -23985,3 +23985,31 @@ the Lean function, the front end, and the IR proofs.
   semantics under the strict profile, the translation of the kernel subset, and one kernel with its
   theorem, run on a test runtime (decision 3: the runtime).
 - [ ] Iteration 25: the host's invocation of kernels (decision 4) and a run in a browser.
+
+### Iteration 23: binary32 on the Wasm path, analysis
+
+The IR's types are `u64`, `bool`, and `f64`, and the binary64 constructors are `getF`, `binF`,
+`unF`, `constF`, `iteF`, `eqF`, `ltF`, `leF`, `convertU`, `truncSatU`, `ofBits`, and `toBits`, with
+`F64Op.apply` over `IEEE64`.  Talos defines every binary32 instruction and has a `wp` lemma for
+each (`wp_f32Add_cons` through `wp_f32Store_cons` in `Interpreter/Wasm/Wp/Atomic.lean`).  The
+verified encoder covers `f32.add`, `f32.sub`, `f32.mul`, `f32.div`, `f32.sqrt`, `f32.nearest`, the
+reinterpretations, promotion and demotion, `i32.load`, and `i32.store`, and lacks `f32.const`, the
+six binary32 comparisons, `f32.abs`, and `f32.neg`.  ProofKit has the binary32 arithmetic chain
+and `F32Convert` for integer conversions, and lacks binary32 counterparts of `F64Compare` (226
+lines) and `F64Sign` (98 lines).  The binary64 constructors occur about 550 times in proof and
+compiler files, 249 of them in `Project/Gpt/Verify.lean`.
+
+| Question | Options | Effect |
+|----------|---------|--------|
+| a. How the IR holds binary32 | a1: a type `f32` (a `UInt32` bit pattern, Talos `.f32`) and its own constructors, the operator enumerations shared with binary64 | Adds cases to the IR's definitions and lemmas and changes no existing proof |
+| | a2: one set of float constructors indexed by a format, binary64 the default argument | One set of cases, and a change to every match on the float constructors, with uncertain effect on the 550 uses in the binary64 proofs |
+| b. How an `Array Float32` is stored | b1: one 8-byte word per element, the bits in the low half | No change to the array machinery, and half the memory unused |
+| | b2: 4-byte elements | An element width in every array definition and lemma |
+| c. The first program | `axpy32` on scalars, then `matVec32`, the binary32 counterpart of `Project.Gpt.matVec` and the first kernel's CPU form | `matVec32` needs arrays, a loop, and the build rule |
+
+Recommendation: a1, b1, and c.  a1 keeps the binary64 proofs as they are, and its cases follow the
+binary64 cases with Talos's binary32 `wp` lemmas.  It also gives the WGSL translation exactly the
+constructors a GPU can run.  b1 reuses every array lemma, and a kernel can read such an array as
+`array<u32>` at even indices, so the host can upload the bytes unchanged.  The encoder gains the
+missing binary32 instructions, and ProofKit gains `F32Compare` and `F32Sign`, translated from the
+binary64 files as the binary64 chain was translated from the binary32 one.
