@@ -24233,7 +24233,7 @@ and each `let` matches one step of `Expr.eval`.
 
 - [x] 24a: the WGSL syntax tree, printer, lexer, parser, and round trip; the expression,
   statement, and dispatch semantics; and one elementwise kernel proved directly.
-- [ ] 24b: the translation of straight-line IR with simulation lemmas, and `axpyArray32` compiled
+- [x] 24b: the translation of straight-line IR with simulation lemmas, and `axpyArray32` compiled
   to Wasm and WGSL with both theorems.
 - [ ] 24c: the loop rule, `mul64`, and `matVec32` as a kernel.
 
@@ -24345,5 +24345,35 @@ proved the general read.  I reran its files: `Shape.lean` confirms the IR below 
   proves that from an environment that agrees with a `Layout`, the statements run and leave the
   denotation in the result variable, with new names only from `next` up.  All with `propext`,
   `Classical.choice`, and `Quot.sound`.
-- [ ] 24b3: the kernel from a build with an `arraySize` prefix, the generic dispatch theorem, and
+- [x] 24b3: the kernel from a build with an `arraySize` prefix, the generic dispatch theorem, and
   `axpyArray32` on Wasm and WGSL with tests.
+
+### Iteration 24, step 24b: kernels translated from the IR
+
+`Project/WGSL/Build.lean` builds the kernel of a compiled body `seq (arraySize s src) (build dst
+limit index (get s) element)` from a `Spec`: the parameters' kinds, the index and size locals, and
+the element.  Each IR parameter has its own buffer, numbered by its parameter index, which keeps
+index arithmetic out of the proofs at the cost of one binding per parameter, so WebGPU's default
+of 8 storage buffers allows 7 parameters.  The kernel binds the index pair `vec2(gid.x, 0)`, each
+parameter's value or an array's length pair, returns when the index is not below the count, runs
+the element's translation, and stores the element's halves.  `Spec.invoke_eq` proves what one
+invocation stores, from the prologue (`params_run`), the agreement of the environment with the
+layout (`Spec.agrees`), the guard (`lt64_word`), and `trExpr_sim`.  `Spec.dispatch_eq` proves
+that the dispatch leaves `LeanExe.build n f` in the output and that invocations store to distinct
+words, from the one fact that the element's denotation gives `f k` for each `k` below the count.
+
+`scale32` and `axpyArray32 a x y := LeanExe.build x.size.toUInt64 fun i => a * x[i.toNat]! +
+y[i.toNat]!` compile to Wasm in `binary32.wasm`, and `scale32_implements` and
+`axpyArray32_implements` prove them through `Stmt.arraySize_spec`, `Stmt.build_spec`, and
+`Expr.eval_denote`.  The same element lemmas, `scaleElement_denote` and
+`axpyArrayElement_denote`, prove the translated kernels in `Project/WGSL/Binary32.lean`
+(`scaleKernel_dispatch`, `axpyArrayKernel_dispatch`).  `Module.parse_print_of_wfb` checks a
+concrete kernel's indices by `decide`, which gives the text theorems.  The hand-written kernel of
+24a and its separate proof are gone, since the translation produces the scale kernel.
+
+The full build passed with no `sorry`, the 22 other modules emit the same bytes as before, and
+`binary32.wasm` differs by its two new functions.  The module tests passed 9,669 comparisons, 24
+each for `scale32` and `axpyArray32`, with 77 count cases, 20 depth cases, 360 cases of
+`chunks.py`, and the LTG check.  `tests/wgsl/run.sh` runs 240 cases of the two translated
+kernels, with sizes up to 200, shorter second arrays, and extra workgroups, and all pass on
+SwiftShader and llvmpipe.

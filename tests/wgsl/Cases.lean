@@ -28,13 +28,20 @@ def specials : List Float32 :=
 def arbitrary (i : Nat) : Float32 :=
   Float32.ofBits (UInt32.ofNat ((i * 2654435761 + 12345) % 4294967296))
 
+/-- A binary32 scalar parameter's buffer: its bits and 0. -/
+def scalarBuffer (a : Float32) : String := s!"u32:{a.toBits},0"
+
 def main : IO Unit := do
   let sizes := [0, 1, 2, 15, 63, 64, 65, 200]
   for n in sizes do
     for (a, k) in specials.zip (List.range specials.length) do
       let x := (List.range n).map fun i => if i % 3 = 0 then arbitrary (i + 31 * k)
         else specials[(i + k) % specials.length]!
-      let r := (scale32 a x.toArray).toList
-      let groups := (n + 63) / 64 + (if k % 2 = 0 then 0 else 1)
+      let y := (List.range (if k % 4 = 1 then n / 2 else n)).map fun i =>
+        if i % 2 = 0 then arbitrary (i + 17 * k + 5) else specials[(i + 2 * k) % specials.length]!
+      let groups := max ((n + 63) / 64 + (if k % 2 = 0 then 0 else 1)) 1
       let initial := n.toUInt64 :: (List.replicate n 0x7fc000017fc00001)
-      IO.println s!"scale|{max groups 1}|u64:{words initial}|u64:{words (arrayWords64 x)} u64:{a.toBits.toUInt64}|{words (arrayWords32 r)}"
+      let r := (scale32 a x.toArray).toList
+      IO.println s!"scale|{groups}|u64:{words initial}|{scalarBuffer a} u64:{words (arrayWords64 x)}|{words (arrayWords32 r)}"
+      let r2 := (axpyArray32 a x.toArray y.toArray).toList
+      IO.println s!"axpyArray|{groups}|u64:{words initial}|{scalarBuffer a} u64:{words (arrayWords64 x)} u64:{words (arrayWords64 y)}|{words (arrayWords32 r2)}"

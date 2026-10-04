@@ -525,4 +525,57 @@ theorem Module.parse_print (m : Module) (h : m.WF) : Module.parse m.print = some
   unfold Module.parse Module.print
   rw [lex_render _ (Module.good m), parseModule_tokens m h]
 
+/-- `Expr.WF` as a computation. -/
+def Expr.wfb : Expr → Bool
+  | .lit _ | .bool _ | .gidX => true
+  | .var n | .fst n | .snd n | .length n => decide (n < 2 ^ 32)
+  | .vec2 a b | .bin _ a b | .min a b => a.wfb && b.wfb
+  | .not a | .toF32 a | .toU32 a | .sqrt a | .abs a => a.wfb
+  | .select f t c => f.wfb && t.wfb && c.wfb
+  | .index b p => decide (b < 2 ^ 32) && p.wfb
+
+theorem Expr.wf_of_wfb (e : Expr) (h : e.wfb = true) : e.WF := by
+  induction e <;> simp_all [Expr.wfb, Expr.WF]
+
+mutual
+  def Stmt.wfb : Stmt → Bool
+    | .let_ n _ e | .var n _ e | .assign n e => decide (n < 2 ^ 32) && e.wfb
+    | .store b p e => decide (b < 2 ^ 32) && p.wfb && e.wfb
+    | .ite c ts es => c.wfb && Stmt.listWfb ts && Stmt.listWfb es
+    | .ret => true
+
+  def Stmt.listWfb : List Stmt → Bool
+    | [] => true
+    | s :: rest => s.wfb && Stmt.listWfb rest
+end
+
+mutual
+  theorem Stmt.wf_of_wfb : ∀ s : Stmt, s.wfb = true → s.WF
+    | .let_ n _ e, h | .var n _ e, h | .assign n e, h => by
+        simp only [Stmt.wfb, Bool.and_eq_true, decide_eq_true_eq] at h
+        exact ⟨h.1, Expr.wf_of_wfb e h.2⟩
+    | .store b p e, h => by
+        simp only [Stmt.wfb, Bool.and_eq_true, decide_eq_true_eq] at h
+        exact ⟨h.1.1, Expr.wf_of_wfb p h.1.2, Expr.wf_of_wfb e h.2⟩
+    | .ite c ts es, h => by
+        simp only [Stmt.wfb, Bool.and_eq_true] at h
+        exact ⟨Expr.wf_of_wfb c h.1.1, Stmt.listWf_of_wfb ts h.1.2, Stmt.listWf_of_wfb es h.2⟩
+    | .ret, _ => trivial
+
+  theorem Stmt.listWf_of_wfb : ∀ ss : List Stmt, Stmt.listWfb ss = true → Stmt.ListWF ss
+    | [], _ => trivial
+    | s :: rest, h => by
+        simp only [Stmt.listWfb, Bool.and_eq_true] at h
+        exact ⟨Stmt.wf_of_wfb s h.1, Stmt.listWf_of_wfb rest h.2⟩
+end
+
+def Module.wfb (m : Module) : Bool :=
+  decide (m.inputs < 2 ^ 32) && decide (m.workgroupSize < 2 ^ 32) && Stmt.listWfb m.body
+
+/-- The parser reads a printed kernel back when the check passes, which `decide` evaluates for a
+concrete kernel. -/
+theorem Module.parse_print_of_wfb (m : Module) (h : m.wfb = true) : Module.parse m.print = some m := by
+  simp only [Module.wfb, Bool.and_eq_true, decide_eq_true_eq] at h
+  exact Module.parse_print m ⟨h.1.1, h.1.2, Stmt.listWf_of_wfb _ h.2⟩
+
 end Project.WGSL
