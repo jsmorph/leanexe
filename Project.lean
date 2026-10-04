@@ -218,3 +218,4 @@ import Project.WGSL.Binary32
 import Project.Gpt32.Module
 import Project.Gpt32.Kernels
 import Project.Gpt32.Specs
+import Project.Gpt32.Proofs
