@@ -24112,3 +24112,22 @@ and `Quot.sound`, and the 22 earlier modules emit the same bytes after the trans
 module tests passed 9,621 comparisons, 340 of them binary32, with 77 count cases, 20 depth cases,
 and 360 cases of `chunks.py`.  Iteration 23 is complete.  Binary32 lacks conversions, folds, and
 case splits with a binary32 value, which no planned kernel needs yet.
+
+### Iteration 24: the test runtime (decision 3)
+
+Kernel tests need a WebGPU implementation on this machine, a Debian arm64 virtual machine with a
+Parallels virtual GPU, Mesa's Vulkan drivers including the CPU driver `lavapipe`, and Chromium
+145, which bundles SwiftShader's Vulkan driver (`/usr/lib/chromium/libvk_swiftshader.so`).
+Chromium contains Dawn, but headless runs expose no `navigator.gpu` with `--enable-unsafe-webgpu`,
+`--enable-unsafe-swiftshader`, `--ignore-gpu-blocklist`, or the Vulkan and SwiftShader adapter
+flags, and the binary reports "WebGPU has been disabled via blocklist or the command line".
+
+| Option | What it installs | Harness | WGSL compiler |
+|--------|------------------|---------|---------------|
+| R1. wgpu-native | The prebuilt C library from `gfx-rs/wgpu-native` (v29.0.1.1 has `wgpu-linux-aarch64-release.zip`, 16 MB), downloaded by a script as Wasmtime is | A C program beside `tools/wasmtime-host.c`, on SwiftShader or `lavapipe` | Naga (Firefox) |
+| R2. Dawn for Node | The `webgpu` npm package, Dawn's prebuilt Node binding | A Node script | Tint (Chrome) |
+| R3. Deno | The Deno binary, which includes wgpu | A TypeScript script | Naga |
+
+Recommendation: R1.  It follows the existing pattern of a downloaded runtime and a C host, adds
+one library and no package manager, and runs on SwiftShader, which matched the earlier backend's
+exact words.  Chrome's compiler, Tint, gets its test in Iteration 25's browser run.
