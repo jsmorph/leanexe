@@ -6,11 +6,11 @@
 tests/wgsl/Cases.lean on the browser's WebGPU, and /gpt2/, which runs GPT-2 124M in binary32 with
 each kernel on WebGPU or in gpt32.wasm on the CPU.
 
-Run with `uv run tests/web/serve.py [--host H] [--port P]` (default 127.0.0.1:8000).  The kernel
-page needs the kernels and cases that tests/wgsl/run.sh writes to build/wgsl.  The GPT-2 page needs
-the weight files that tests/gpt32/generate.py writes to build/gpt2-32; the server emits the GPT-2
-kernels, gpt32.wasm, and the sampler's module gpt.wasm, and builds the program printer
-`gpt32-lines`, when they are missing.  The GPT-2 page gets each step's host commands from
+Run with `uv run tests/web/serve.py [--host H] [--port P]` (default 127.0.0.1:8000).  At start
+the server writes what is missing from build/: the kernel texts and the cases in build/wgsl,
+gpt32.wasm, the sampler's module gpt.wasm, and the program printer `gpt32-lines`.  The GPT-2 page
+also needs the weight files that `uv run tests/gpt32/generate.py --export` writes to
+build/gpt2-32.  tests/web/README.md describes the pages.  The GPT-2 page gets each step's host commands from
 `gpt32-lines`, which prints the programs of Project/Gpt32/Program.lean, and the server tokenizes
 and decodes with the pinned GPT-2 tokenizer.  Browsers expose WebGPU only to secure contexts,
 which include http://127.0.0.1 and http://localhost; a browser on another machine needs an SSH
@@ -40,8 +40,13 @@ LINES = ROOT / '.lake/build/bin/gpt32-lines'
 REPO = 'openai-community/gpt2'
 REVISION = '607a30d783dfa663caf39e06633721c8d4cfcd7e'
 SHAPE = ['12', '3072', '12565', '50257', '12']
-KERNELS = ['embed', 'layerNorm', 'linear', 'append', 'scores', 'headMax', 'headSum', 'probs',
-           'mix', 'add', 'gelu', 'logits']
+# The kernels of both pages, as tests/wgsl/run.sh emits them: (Lean module, namespace, kernel).
+KERNELS = ([('Project.WGSL.Binary32', 'Project.WGSL', k)
+            for k in ['scale', 'axpyArray', 'matVec', 'condMix']] +
+           [('Project.Gpt32.Kernels', 'Project.Gpt32', 'exp')] +
+           [('Project.Gpt32.Specs', 'Project.Gpt32', k)
+            for k in ['embed', 'layerNorm', 'linear', 'append', 'scores', 'headMax', 'headSum',
+                      'probs', 'mix', 'add', 'gelu', 'logits']])
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
          '.wgsl': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
          '.wasm': 'application/wasm', '.bin': 'application/octet-stream',
@@ -53,11 +58,18 @@ def leanrun(*args):
 
 
 def prepare():
-    for k in KERNELS:
+    WGSL.mkdir(parents=True, exist_ok=True)
+    for module, namespace, k in KERNELS:
         if not (WGSL / f'{k}.wgsl').is_file():
-            WGSL.mkdir(parents=True, exist_ok=True)
-            leanrun('lake', 'env', 'lean', '--run', 'Project/WGSL/Emit.lean', 'Project.Gpt32.Specs',
-                    f'Project.Gpt32.{k}Kernel', str(WGSL / f'{k}.wgsl'))
+            leanrun('lake', 'env', 'lean', '--run', 'Project/WGSL/Emit.lean', module,
+                    f'{namespace}.{k}Kernel', str(WGSL / f'{k}.wgsl'))
+    if not (WGSL / 'cases.txt').is_file():
+        # Reads past the end of a shorter array print panic messages from native Lean, which
+        # then returns the default 0; they are expected, as in tests/wgsl/run.sh.
+        with (WGSL / 'cases.txt').open('w') as out:
+            subprocess.run([str(ROOT / 'tools/leanrun'), '--timeout', '30m', 'lake', 'env', 'lean',
+                            '--run', 'tests/wgsl/Cases.lean'], cwd=ROOT, check=True, stdout=out,
+                           stderr=subprocess.DEVNULL)
     for path, module in [(WASM, 'Project.Gpt32.Module:Project.Gpt32.gpt32.module'),
                          (SAMPLER, 'Project.Gpt.Module:Project.Gpt.gpt.module')]:
         if not path.is_file():
@@ -66,11 +78,9 @@ def prepare():
                     *module.split(':'), str(path))
     if not LINES.is_file():
         leanrun('lake', 'build', 'gpt32-lines')
-    if not (WGSL / 'cases.txt').is_file():
-        print(f'{WGSL}/cases.txt is missing; the kernel page needs tests/wgsl/run.sh', flush=True)
     if not (WEIGHTS / 'revision').is_file():
         print(f'{WEIGHTS} has no weights; the GPT-2 page needs '
-              '`uv run tests/gpt32/generate.py --tokens 1`', flush=True)
+              '`uv run tests/gpt32/generate.py --export`', flush=True)
 
 
 class Lines:
